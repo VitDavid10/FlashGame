@@ -1,0 +1,14 @@
+{
+  "name": "pillwars",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PillWars - servidor multijugador (Fase 1: local)",
+  "scripts": {
+    "server": "node server/index.js",
+    "web": "npx -y http-server -p 8123 -c-1 .",
+    "admin": "start http://localhost:8080/admin"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

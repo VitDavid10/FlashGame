@@ -1,0 +1,16 @@
+# Dependencias
+node_modules/
+
+# Datos de ejecución del servidor (privados: contienen IPs y stats locales)
+server/connections.log
+server/stats.json
+server/players.json
+server/roomrules.json
+server/geo.json
+
+# Notas internas de desarrollo
+tasks/
+.claude/
+
+# Binarios descargados
+cloudflared.exe

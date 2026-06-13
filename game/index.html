@@ -519,6 +519,7 @@
                     </div>
                     <!-- FREE ROOM BELOW PAYMENT ROOMS -->
                     <button class="srv-btn" style="width:100%; margin-bottom:5px; border-color:var(--primary); color:var(--primary);" onclick="selectServer('Free', this)">PRACTICE (FREE)</button>
+                    <button class="srv-btn" style="width:100%; margin-bottom:5px; border-color:#1a73e8; color:#6ea8ff;" onclick="selectServer('*', this)">🎲 CUALQUIERA (entrar donde haya gente)</button>
                     
                     <button class="btn-reset" onclick="forceResetRoom()">⚠ RESET CURRENT ROOM ⚠</button>
 
@@ -664,6 +665,7 @@
                     </details>
 
                     <button class="btn-play" id="btnEnterGame" onclick="startGame()">ENTER ARENA</button>
+                    <button class="btn-play" id="btnPlayOnline" onclick="startOnlineGame()" style="background:#1a73e8; margin-top:6px;">PLAY ONLINE</button>
                     <button class="btn-spectate" onclick="startSpectatorMode()">SPECTATE</button>
                     
                     <button id="qUltra" class="ultra-btn" onclick="setQuality('ultra')">
@@ -756,6 +758,7 @@
             <div id="myResult" style="margin: 20px 0; font-family:'Russo One'; font-size:18px;"></div>
             
             <button class="btn-spectate" onclick="startSpectatorMode()" style="margin-bottom: 10px;">SPECTATE</button>
+            <button class="btn-play" id="btnTryAgainOnline" onclick="tryAgainOnline()" style="display:none; background:#1a73e8; margin-bottom:8px;">TRY AGAIN</button>
             <button class="btn-play" onclick="returnToMenu()">BACK TO MENU</button>
         </div>
     </div>
@@ -797,6 +800,12 @@
         <div class="ab-slot" id="slot10" ondblclick="removeSkill(10)" draggable="true" ondragstart="dragStart(event, 9)" ondrop="drop(event, 9)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(10, event)" onmousedown="activateSkillTouch(10, event)"><div class="skill-icon icon-empty" id="icon10"></div><div class="count-badge" id="count10" style="display:none">0</div><div class="gcd-badge" id="gcd10"></div><div class="cooldown-overlay" id="cd10"></div><div class="active-overlay" id="dur10"></div></div>
     </div>
 
+    <div id="lobbyBanner" style="display:none; position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:55; background:rgba(8,10,14,0.88); border:1px solid #1a73e8; color:#fff; padding:9px 20px; border-radius:9px; font-family:'Russo One', sans-serif; font-size:13px; text-align:center; box-shadow:0 4px 18px rgba(0,0,0,0.5);"></div>
+
+    <div id="cmdBar" style="display:none; position:fixed; bottom:90px; left:50%; transform:translateX(-50%); z-index:60;">
+        <input id="cmdInput" autocomplete="off" placeholder="/god   /mass 50000   /bots 10   /speed 2   /help" style="width:430px; padding:10px 14px; background:rgba(0,0,0,0.85); border:1px solid #00ffaa; color:#fff; font-family:'Russo One', sans-serif; font-size:13px; border-radius:8px; outline:none;">
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
     <!-- TOOLTIP HTML (FLOTANTE) -->
@@ -812,15 +821,12 @@
         </div>
     </div>
 
+<script src="../shared/sim.js"></script>
 <script>
-    // --- PARÁMETROS DE MUNDO ---
-    const WORLD_CONFIG = {
-        arcade: { size: 3500 },
-        classic: { size: 7000 },
-        foodDensity: 40, 
-        virusDensity: 1
-    };
-    
+    // --- La lógica de juego vive en shared/sim.js (PillSim); aquí queda
+    // --- presentación: render, cámara, input, menús, HUD y sonido. ---
+    const WORLD_CONFIG = PillSim.WORLD_CONFIG;
+
     let worldSettings = { map: 1, food: 1, virus: 1, speed: 1 };
     const ZOOM_CONFIG = { baseScale: 1.4, exponent: 0.3, minScale: 0.05, maxScale: 2.0 };
     const UI_PARAMS = { skillSelectTop: "5%" };
@@ -883,45 +889,6 @@
         stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; }
     };
 
-    // --- OPTIMIZATION CLASSES ---
-    class ObjectPool {
-        constructor(createFn) { this.createFn = createFn; this.pool = []; }
-        get() { return this.pool.length > 0 ? this.pool.pop() : this.createFn(); }
-        free(obj) { this.pool.push(obj); }
-    }
-    const createFood = () => ({ x: 0, y: 0, r: 0, c1: '#fff', c2: '#fff', angle: 0, spikes: [] });
-    const createVirus = () => ({ x: 0, y: 0, r: 0, vx: 0, vy: 0, hits: 0, damaged: false, animTime: 0, spots: [] });
-    const foodPool = new ObjectPool(createFood);
-    const virusPool = new ObjectPool(createVirus);
-
-    class SpatialGrid {
-        constructor(cellSize) { this.cellSize = cellSize; this.buckets = new Map(); }
-        clear() { this.buckets.clear(); }
-        key(x, y) { return `${Math.floor(x/this.cellSize)},${Math.floor(y/this.cellSize)}`; }
-        insert(obj) {
-            const k = this.key(obj.x, obj.y);
-            if(!this.buckets.has(k)) this.buckets.set(k, []);
-            this.buckets.get(k).push(obj);
-        }
-        query(x, y) {
-            const keys = [];
-            const cx = Math.floor(x / this.cellSize);
-            const cy = Math.floor(y / this.cellSize);
-            for(let i=-1; i<=1; i++) {
-                for(let j=-1; j<=1; j++) {
-                    keys.push(`${cx+i},${cy+j}`);
-                }
-            }
-            let results = [];
-            for(let k of keys) {
-                const b = this.buckets.get(k);
-                if(b) results = results.concat(b);
-            }
-            return results;
-        }
-    }
-    const foodGrid = new SpatialGrid(150);
-
     function enableAudioContext() { document.removeEventListener('click', enableAudioContext); document.removeEventListener('keydown', enableAudioContext); document.removeEventListener('touchstart', enableAudioContext); }
     document.addEventListener('click', enableAudioContext); document.addEventListener('keydown', enableAudioContext); document.addEventListener('touchstart', enableAudioContext);
     function toggleAudio() { SoundManager.toggleSFX(); }
@@ -951,29 +918,35 @@
         else { root.style.setProperty('--bg-color', '#050505'); root.style.setProperty('--grid-line', 'rgba(255, 255, 255, 0.03)'); }
     }
 
-    const baseTime = 15000, massFactor = 0.225, SPLIT_COOLDOWN_MS = 1000;
-    const SKILL_PARAMS = { clonCost: 2000, clonCooldown: 1000, clonSpeed: 40, shootCost: 2500, shootBulletSpeed: 20, shootVirusSpeed: 20, shootDmgThreshold: 15000, sprintSpeedMult: 1.5, sprintDuration: 10000, magnetForce: 3, magnetRange: 200, magnetDuration: 8000, shieldDuration: 3000, bigMin: 5000, bigMax: 12000 };
-    const VIRUS_RADIUS = 70, VIRUS_GAIN_LOW = 5000, VIRUS_GAIN_HIGH = 10000, VIRUS_GAIN_THRESHOLD = 100000;  
-    
-    let globalCDTimer = 0, fpsTimer = 0, frameCount = 0, GLOBAL_CD_MS = 1000;
-    const SHOW_MASS_AS_SCORE = true, AUTO_SPLIT_LEVEL_1 = 200000, AUTO_SPLIT_LEVEL_2 = 300000;
+    // Constantes compartidas con la simulación
+    const SKILL_PARAMS = PillSim.SKILL_PARAMS, SKILL_DEFS = PillSim.SKILL_DEFS;
+    const INITIAL_RADIUS = PillSim.INITIAL_RADIUS, PILL_RATIO = PillSim.PILL_RATIO;
+
+    let fpsTimer = 0, frameCount = 0;
+    const SHOW_MASS_AS_SCORE = true;
     const BASE_WIDTH = 1920, BASE_HEIGHT = 1080;
-    let roomStates = {}, roomTimers = {}, MAP_SIZE = 3500; 
-    const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 1.4, SPLIT_FORCE = 65, PILL_RATIO = 2.0; 
-    let MAX_BOT_CELLS = 16, GAME_DURATION_MS = 3 * 60 * 1000 + 50 * 1000; 
-    let currentKillStreak = 0, logoutTimer = null, isLoggingOut = false, isSpecDragging = false, lastSpecX = 0, lastSpecY = 0;
+    // roomStates[roomKey] = { sim, config } — una Simulation por sala
+    let roomStates = {}, roomTimers = {}, MAP_SIZE = 3500;
+    let MAX_BOT_CELLS = 16, GAME_DURATION_MS = 3 * 60 * 1000 + 50 * 1000;
+    let logoutTimer = null, isLoggingOut = false, isSpecDragging = false, lastSpecX = 0, lastSpecY = 0;
+
+    // Sala activa y accesos al estado del jugador local dentro de la sim
+    let sim = null;
+    let playerName = "Player";
+    function me() { return sim ? sim.players.get('me') : null; }
+    function myCells() { const p = me(); return p ? p.cells : []; }
+    function myKillStreak() { const p = me(); return p ? p.killStreak : 0; }
 
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     const els = { modeScreen: document.getElementById('modeScreen'), loginOverlay: document.getElementById('loginOverlay'), selectedModeTitle: document.getElementById('selectedModeTitle'), playerNameInput: document.getElementById('playerNameInput'), botsToggle: document.getElementById('botsToggle'), botCountInput: document.getElementById('botCountInput'), botRespawnToggle: document.getElementById('botRespawnToggle'), godModeToggle: document.getElementById('godModeToggle'), enemyCount: document.getElementById('enemyCount'), score: document.getElementById('score'), room: document.getElementById('roomName'), lbList: document.getElementById('lb-list'), timer: document.getElementById('timerDisplay'), result: document.getElementById('resultOverlay'), resultTitle: document.getElementById('resultTitle'), gameOver: document.getElementById('gameOverMsg'), winnerList: document.getElementById('winnerList'), myResult: document.getElementById('myResult'), debugHud: document.getElementById('debugHud'), fpsVal: document.getElementById('fpsVal'), speedVal: document.getElementById('speedVal'), skillOverlay: document.getElementById('skillChoiceOverlay'), skillOpts: document.getElementById('skillOptionsContainer'), skillTimer: document.getElementById('skillTimerFill'), actionBar: document.getElementById('actionBar'), buffTable: document.getElementById('buffTable'), buffList: document.getElementById('buff-list-content') };
 
-    let currentGameMode = 'classic', currentServer = "5$", width, height, gameRunning = false, isGodMode = false, isSpectating = false; 
-    let lastTapTime = 0, lastSplitTime = 0, splitMilestones = { level1: false, level2: false }, lastFrameTime = performance.now(), timeScale = 1.0;
+    let currentGameMode = 'classic', currentServer = "5$", width, height, gameRunning = false, isGodMode = false, isSpectating = false;
+    let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
     let camera = { x: 0, y: 0, scale: 0.8 }, mouse = { x: 0, y: 0 }, inputMode = 'MOUSE', keys = { w: false, a: false, s: false, d: false, f: false }, botConfig = { enabled: true, count: 25, respawn: true };
-    let foods = [], viruses = [], enemies = [], explosions = [], ejectedMasses = [], projectiles = [], player = { name: "Player", id: "me", cells: [] };
+    let explosions = []; // efecto visual local; el resto del mundo vive en sim.*
 
-    let skills = { 1: { id: 1, name: 'CLON', icon: 'icon-clon', uses: 4, active: 0, maxActive: SKILL_PARAMS.clonCooldown }, 2: { id: 2, name: 'SHOOT', icon: 'icon-shot', uses: 4, active: 0, maxActive: 15 }, 3: { id: 3, name: 'SPRINT', icon: 'icon-sprint', uses: 1, active: 0, maxActive: SKILL_PARAMS.sprintDuration }, 4: { id: 4, name: 'TELEPORT', icon: 'icon-tp', uses: 1, active: 0, maxActive: 20 }, 5: { id: 5, name: 'MAGNET', icon: 'icon-magnet', uses: 1, active: 0, maxActive: SKILL_PARAMS.magnetDuration }, 6: { id: 6, name: 'SHIELD', icon: 'icon-shield', uses: 1, active: 0, maxActive: SKILL_PARAMS.shieldDuration }, 7: { id: 7, name: 'PLUS', icon: 'icon-big', uses: 1, active: 0, maxActive: 20 }, 8: { id: 8, name: 'GAMBLE', icon: 'icon-random', uses: 1, active: 0, maxActive: 20 } };
-    let playerSkills = [], nextSkillPickTime = 0, isPickingSkill = false, pickTimer = 0, massMilestoneReached = false, uiSlots = [], uiCounts = [], uiOverlays = [], uiOverlaysActive = [], uiIcons = [], uiGcds = [];
-    const BOT_NAMES = ["ETH", "USA", "Doge", "NASA", "Icefox", "Bandit", "Mars", "BTC", "PUMP", "Noob"], COLORS = ['#F44336', '#9C27B0', '#3F51B5', '#03A9F4', '#009688', '#8BC34A', '#FFC107', '#FF5722'];
+    const SKILL_ICONS = { 1: 'icon-clon', 2: 'icon-shot', 3: 'icon-sprint', 4: 'icon-tp', 5: 'icon-magnet', 6: 'icon-shield', 7: 'icon-big', 8: 'icon-random' };
+    let nextSkillPickTime = 0, isPickingSkill = false, pickTimer = 0, massMilestoneReached = false, uiSlots = [], uiCounts = [], uiOverlays = [], uiOverlaysActive = [], uiIcons = [], uiGcds = [];
     
     let skillChoiceIndex = 0, isHoveringUI = false, ignoreNextHover = false, lastHoveredMode = null;
     let currentGuideIndex = 0;
@@ -1051,9 +1024,8 @@
         const grid = document.getElementById('skillsGrid');
         grid.innerHTML = '';
         for(let i=1; i<=8; i++) {
-            let s = skills[i];
             let div = document.createElement('div');
-            div.className = `grid-skill-icon ${s.icon}`;
+            div.className = `grid-skill-icon ${SKILL_ICONS[i]}`;
             div.style.backgroundColor = '#111'; 
             
             div.onmouseenter = function(e) { TooltipManager.show(e, i); };
@@ -1124,206 +1096,50 @@
     let uiTexts = [];
 
     function spawnFloatingText(text, color, isWorld = false) {
-        if (isWorld) { if(player.cells.length > 0) { let c = player.cells.reduce((prev, curr) => prev.r > curr.r ? prev : curr); floatingTexts.push(new FloatingText(c.x, c.y, text, color)); } } 
+        if (isWorld) { const cells = myCells(); if(cells.length > 0) { let c = cells.reduce((prev, curr) => prev.r > curr.r ? prev : curr); floatingTexts.push(new FloatingText(c.x, c.y, text, color)); } }
         else { uiTexts.push(new FixedUIText(text, color)); }
     }
 
     if (!CanvasRenderingContext2D.prototype.roundRect) { CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) { if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2; this.beginPath(); this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r); this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r); this.closePath(); return this; }; }
-    const uuid = () => Math.random().toString(36).substr(2, 9), getEllipticalDist = (c1, c2) => { let dx = c1.x - c2.x, dy = c1.y - c2.y, k = 0.7071; let rx = dx*k - dy*k, ry = (dx*k + dy*k) / PILL_RATIO; return Math.sqrt(rx*rx + ry*ry); };
+    const getEllipticalDist = PillSim.getEllipticalDist;
 
     function getViewScale() { let scaleX = width / BASE_WIDTH; let scaleY = height / BASE_HEIGHT; return camera.scale * Math.max(scaleX, scaleY); }
-    function getRandomColor() { return COLORS[Math.floor(Math.random() * COLORS.length)]; }
 
-    function grantBotSkill(bot) {
-        let siblings = enemies.filter(e => e.id === bot.id);
-        let pool = [3, 4, 5, 6, 7, 7, 8, 8]; 
-        let skillId = pool[Math.floor(Math.random() * pool.length)];
-        siblings.forEach(s => { s.botSkills.push(skillId); });
-    }
+    // --- RENDER DE CÉLULAS (la lógica de Cell vive en shared/sim.js) ---
+    const skinCache = new Map();
+    function getSkinImage(url) { if (!url) return null; if (!skinCache.has(url)) { const img = new Image(); img.src = url; skinCache.set(url, img); } return skinCache.get(url); }
 
-    function botEmitProjectile(bot, type, cost) {
-        if (bot.mass - cost < 314) return;
-        bot.r = Math.sqrt((bot.mass - cost) / (Math.PI * PILL_RATIO));
-        let angle = Math.atan2(bot.vy, bot.vx); if (Math.abs(bot.vx) < 0.1 && Math.abs(bot.vy) < 0.1) angle = Math.random() * Math.PI * 2;
-        let spawnDist = bot.r * 1.5 + 25, spd = (type==='shoot')?20:40, r = (type==='shoot')?12:16;
-        let obj = { x: bot.x + Math.cos(angle) * spawnDist, y: bot.y + Math.sin(angle) * spawnDist, vx: Math.cos(angle)*spd, vy: Math.sin(angle)*spd, r: r, angle: Math.random()*Math.PI, type: type, c1: bot.colorBot, c2: bot.colorTop }; 
-        if(type==='shoot') { obj.c1 = '#ff2a2a'; obj.c2 = '#fff'; }
-        ejectedMasses.push(obj);
-        if (enableEnemySnd) SoundManager.play('shoot', {x: bot.x, y: bot.y});
-    }
-
-    class Cell {
-        constructor(x, y, r, cBot, cTop, name, isBot = false, skinUrl = null, id = null) { 
-            this.x = x; this.y = y; this.r = r; this.colorBot = cBot; this.colorTop = cTop; 
-            this.name = name; this.isBot = isBot; this.id = id || uuid(); 
-            this.skin = (skinUrl && skinUrl.length > 5) ? new Image() : null; if(this.skin) this.skin.src = skinUrl; 
-            this.particles = []; this.vx = 0; this.vy = 0; this.boostX = 0; this.boostY = 0;
-            this.bornTime = Date.now(); this.changeDirTimer = 0; this.targetX = x; this.targetY = y; 
-            this.immuneTime = 0; this.groupMaxR = r; this.flashTime = 0; this.flashColor = null; 
-            this.lastSplitTime = 0; 
-            this.tpPhase = 0; this.tpTimer = 0; this.tpDest = {x:0, y:0};
-            if (this.isBot) { this.botSkills = []; this.botGcd = 0; this.botNextSkillTime = 0; this.massMilestoneMet = false; this.magnetTime = 0; this.sprintTime = 0; this.shouldSplit = false; }
+    function drawCell(c) {
+        let isSprinting = c.sprintTime > 0;
+        let alpha = 1; if (c.tpPhase === 1) alpha = Math.max(0, c.tpTimer / 500); else if (c.tpPhase === 2) alpha = Math.max(0, 1 - (c.tpTimer / 500));
+        ctx.save(); ctx.globalAlpha = alpha; const drawEffects = !c.isBot || enableEnemyFX;
+        if (isSprinting && drawEffects) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4); let pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 30; ctx.fillStyle = 'rgba(255, 215, 0, 0.3)'; ctx.beginPath(); ctx.roundRect(-pW/2 - 5, -pH/2 - 5, pW + 10, pH + 10, rBox); ctx.fill(); ctx.restore(); }
+        if (c.immuneTime > 0 && drawEffects) {
+            ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4); let pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2, gap = c.r * 0.1; ctx.strokeStyle = '#a020f0'; ctx.lineWidth = 4; ctx.shadowBlur = 10; ctx.shadowColor = '#a020f0'; ctx.beginPath(); ctx.roundRect(-pW/2 - gap, -pH/2 - gap, pW + gap*2, pH + gap*2, rBox + gap); ctx.stroke();
+            let time = performance.now() / 1200, shieldScale = Math.max(0.6, c.r / 25), shieldW = pW + gap*2, shieldH = pH + gap*2; for(let i=0; i<4; i++) { let angle = time + (i * (Math.PI / 2)), sx = Math.cos(angle) * (shieldW/2 + (10 * shieldScale)), sy = Math.sin(angle) * (shieldH/2 + (10 * shieldScale)); ctx.save(); ctx.translate(sx, sy); ctx.scale(shieldScale, shieldScale); ctx.rotate(-angle); ctx.fillStyle = '#a020f0'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(6, -6); ctx.lineTo(6, 0); ctx.quadraticCurveTo(6, 8, 0, 10); ctx.quadraticCurveTo(-6, 8, -6, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 2; ctx.moveTo(0, -4); ctx.lineTo(0, 6); ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.stroke(); ctx.restore(); } ctx.restore();
         }
-        get mass() { return Math.PI * this.r * (this.r * PILL_RATIO); }
-        get mergeTime() { return baseTime + (this.mass * massFactor); }
-        get canMerge() { return (Date.now() - this.bornTime) > this.mergeTime; }
-        
-        update(delta) {
-            if (this.tpPhase > 0) {
-                this.tpTimer -= delta;
-                if (this.tpPhase === 1) { if (this.tpTimer <= 0) { this.x = this.tpDest.x; this.y = this.tpDest.y; this.targetX = this.x; this.targetY = this.y; this.tpPhase = 2; this.tpTimer = 500; this.immuneTime = 500; } } 
-                else if (this.tpPhase === 2) { if (this.tpTimer <= 0) { this.tpPhase = 0; } }
-                this.vx = 0; this.vy = 0; this.boostX = 0; this.boostY = 0; return;
-            }
-            if (this.immuneTime > 0) { this.immuneTime -= delta; if (this.immuneTime < 0) this.immuneTime = 0; }
-            if (this.flashTime > 0) { this.flashTime -= delta; if(this.flashTime < 0) this.flashTime = 0; }
-            if (this.isBot) { if (this.magnetTime > 0) { this.magnetTime -= delta; if(this.magnetTime < 0) this.magnetTime = 0; } if (this.sprintTime > 0) { this.sprintTime -= delta; if(this.sprintTime < 0) this.sprintTime = 0; } }
-
-            for(let i=this.particles.length-1; i>=0; i--) { let p = this.particles[i]; p.life -= 0.05 * timeScale; p.y += p.vy * timeScale; p.x += p.vx * timeScale; if(p.life <= 0) this.particles.splice(i, 1); }
-            let effectiveR = Math.max(this.groupMaxR, this.r, 20);
-            let baseSpeed = VELOC_BASE * (worldSettings.speed || 1);
-            let speedMult = baseSpeed * 10.0 * Math.pow(effectiveR, -0.46);
-            let isSprinting = false;
-            
-            if (!this.isBot && (currentGameMode === 'arcade' || currentGameMode === 'skills')) { if(playerSkills.some(s => s && s.id === 3 && skills[3].active > 0)) { speedMult *= SKILL_PARAMS.sprintSpeedMult; isSprinting = true; } }
-            if (this.isBot && this.sprintTime > 0) { speedMult *= SKILL_PARAMS.sprintSpeedMult; isSprinting = true; }
-
-            if (isSprinting && Math.random() < 0.2) this.spawnParticles('BOLT');
-            if(speedMult < 0.2) speedMult = 0.2; 
-            if (Math.abs(this.boostX) > 0.1 || Math.abs(this.boostY) > 0.1) { this.boostX *= Math.pow(0.9, timeScale); this.boostY *= Math.pow(0.9, timeScale); } else { this.boostX = 0; this.boostY = 0; }
-            let dx = 0, dy = 0;
-            if (!this.isBot && !isSpectating) { 
-                if (isLoggingOut) { dx = 0; dy = 0; } 
-                else if (inputMode === 'MOUSE') { let es = getViewScale(); dx = ((mouse.x - width/2) / es + camera.x) - this.x; dy = ((mouse.y - height/2) / es + camera.y) - this.y; } 
-                else { 
-                    let avgX = 0, avgY = 0, count = 0; if (!this.isBot && player.cells.length > 0) { player.cells.forEach(c => { avgX += c.x; avgY += c.y; count++; }); if(count > 0) { avgX /= count; avgY /= count; } let dirX = 0, dirY = 0; if (keys.a) dirX -= 1; if (keys.d) dirX += 1; if (keys.w) dirY -= 1; if (keys.s) dirY += 1; let dist = 1000; let targetX = avgX + (dirX * dist); let targetY = avgY + (dirY * dist); dx = targetX - this.x; dy = targetY - this.y; }
-                } 
-            } else if (this.isBot) { this.botAI(delta); dx = this.targetX - this.x; dy = this.targetY - this.y; }
-            
-            // CORRECCIÓN VIBRACIÓN BOTS
-            let dist = Math.sqrt(dx*dx + dy*dy); 
-            // Aumentamos el margen de 0.001 a 5. Si está a menos de 5px, se para.
-            if (dist > 5) { 
-                this.vx = (dx / dist) * speedMult; 
-                this.vy = (dy / dist) * speedMult; 
-
-                // Suavizado extra: si está muy cerca del objetivo (menos del radio), reducir velocidad
-                // Esto hace que "aparquen" suavemente en lugar de frenar en seco o vibrar
-                if (dist < 40) {
-                    let brake = dist / 40;
-                    this.vx *= brake;
-                    this.vy *= brake;
-                }
-            } else { 
-                this.vx = 0; 
-                this.vy = 0; 
-            }
-            
-            let maxAllowed = speedMult * 1.2, currentSpeed = Math.sqrt(this.vx*this.vx + this.vy*this.vy); if (currentSpeed > maxAllowed) { let ratio = maxAllowed / currentSpeed; this.vx *= ratio; this.vy *= ratio; }
-            this.x += (this.vx + this.boostX) * timeScale; this.y += (this.vy + this.boostY) * timeScale;
-            let margin = (this.r + (this.r * PILL_RATIO)) * 0.7071, limit = MAP_SIZE - margin; this.x = Math.max(Math.min(this.x, limit), -limit); this.y = Math.max(Math.min(this.y, limit), -limit);
-        }
-
-        spawnParticles(type) {
-            if (this.isBot && !enableEnemyFX) return;
-            let count = (type === 'BOLT') ? 1 : (Math.floor(Math.random() * 3) + 4); let scale = (type === 'BOLT') ? Math.max(1, this.r / 15) : 1; 
-            for(let i=0; i<count; i++) {
-                let angle = Math.random() * Math.PI * 2; let offset = this.r * Math.random(); let vy = (type === 'PLUS') ? -(Math.random()*2 + 1) : (Math.random()*2 + 1);
-                if (type === 'BOLT') { this.particles.push({ x: Math.cos(angle) * this.r, y: Math.sin(angle) * this.r, vx: Math.cos(angle) * 3, vy: Math.sin(angle) * 3, life: 0.8, type: type, rot: Math.random() * 360, scale: scale }); } 
-                else { this.particles.push({ x: Math.cos(angle) * offset, y: Math.sin(angle) * offset, vx: (Math.random() - 0.5) * 2, vy: vy, life: 1.0, type: type, rot: Math.random() * 360, scale: 1 }); }
-            }
-        }
-
-        botAI(delta) { 
-            if (this.botGcd > 0) this.botGcd -= delta;
-            let siblings = enemies.filter(e => e.id === this.id).sort((a,b) => b.mass - a.mass);
-            let leader = siblings[0]; 
-            if (this !== leader) { this.targetX = leader.targetX; this.targetY = leader.targetY; return; }
-            
-            if (currentGameMode === 'skills') {
-                if (Date.now() > this.botNextSkillTime) { let nextTime = Date.now() + 3000; siblings.forEach(s => s.botNextSkillTime = nextTime); grantBotSkill(this); }
-            } else if (currentGameMode === 'arcade') {
-                if (!this.massMilestoneMet && this.mass >= 3500) { let nextTime = Date.now() + 30000; siblings.forEach(s => { s.massMilestoneMet = true; s.botNextSkillTime = nextTime; }); grantBotSkill(this); }
-                if (this.massMilestoneMet && Date.now() > this.botNextSkillTime) { let nextTime = Date.now() + 30000; siblings.forEach(s => s.botNextSkillTime = nextTime); grantBotSkill(this); }
-            }
-
-            if (this.botSkills.length > 0 && this.botGcd <= 0) {
-                let priorityIdx = this.botSkills.findIndex(id => id === 7 || id === 8); let skillToUse = -1;
-                if (priorityIdx !== -1) { skillToUse = this.botSkills[priorityIdx]; } 
-                else { let chance = (currentGameMode === 'skills') ? 0.1 : 0.02; if (this.botSkills.includes(3) && Math.random() < 0.05) skillToUse = 3; else if (Math.random() < chance) skillToUse = this.botSkills[0]; }
-                if (skillToUse !== -1) { this.executeBotSkill(skillToUse); siblings.forEach(s => { let idx = s.botSkills.indexOf(skillToUse); if(idx !== -1) s.botSkills.splice(idx, 1); s.botGcd = 1000; }); }
-            }
-
-            this.changeDirTimer--; if (Math.abs(this.x) > MAP_SIZE - 200 || Math.abs(this.y) > MAP_SIZE - 200) { this.targetX = 0; this.targetY = 0; return; } 
-            let flee = false, visionRange = 750, targetPrey = null; 
-            let allEntities = [...enemies, ...player.cells];
-            
-            allEntities.forEach(e => {
-                if (e.id === this.id) return; 
-                let d = getEllipticalDist(this, e);
-                if (e.mass > this.mass * 1.25 && d < visionRange + this.r) { this.targetX = this.x - (e.x - this.x); this.targetY = this.y - (e.y - this.y); flee = true; }
-                else if (this.mass > e.mass * 1.25 && d < visionRange) { if (!targetPrey || d < targetPrey.dist) { targetPrey = { cell: e, dist: d }; } }
+        ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4); let pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2;
+        if(c.flashTime > 0 && c.flashColor && drawEffects) { ctx.save(); ctx.shadowBlur = 50; ctx.shadowColor = c.flashColor; ctx.fillStyle = c.flashColor; ctx.globalAlpha = 0.35 * alpha; ctx.beginPath(); ctx.roundRect(-pW/2 - 10, -pH/2 - 10, pW + 20, pH + 20, rBox + 10); ctx.fill(); ctx.restore(); }
+        ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip();
+        const skinImg = getSkinImage(c.skinUrl);
+        if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) { try { ctx.drawImage(skinImg, -pW/2, -pH/2, pW, pH); } catch (e) { drawCellColors(c, pW, pH); } } else { drawCellColors(c, pW, pH); }
+        if (c.immuneTime > 0 && drawEffects) { ctx.fillStyle = 'rgba(160, 32, 240, 0.4)'; ctx.fill(); }
+        ctx.beginPath(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.ellipse(-pW/4, -pH/4, pW/5, pH/6, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.lineWidth = Math.max(2, c.r * 0.1); ctx.strokeStyle = '#222'; ctx.stroke(); ctx.restore();
+        if (c.particles.length > 0 && drawEffects) {
+            ctx.save(); ctx.translate(c.x, c.y);
+            c.particles.forEach(p => {
+                ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = p.life * alpha;
+                if (p.type === 'BOLT') { ctx.scale(p.scale, p.scale); ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 3; ctx.shadowColor = '#FFF'; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(0, 0); ctx.lineTo(-2, 2); ctx.lineTo(5, 5); ctx.stroke(); }
+                else { ctx.font = `bold ${Math.max(16, c.r/1.5)}px Russo One`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 5; ctx.fillText("+", 0, 0); } else { ctx.fillStyle = '#ff0000'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5; ctx.fillText("-", 0, 0); } }
+                ctx.restore();
             });
-
-            if (!flee && targetPrey) { let isHiding = isHiddenInVirus(targetPrey.cell); if (!isHiding) { this.targetX = targetPrey.cell.x; this.targetY = targetPrey.cell.y; flee = true; } }
-            if(!flee) viruses.forEach(v => { if (this.r > v.r && getEllipticalDist(this, v) < this.r + 120) flee = true; }); 
-            
-            if (targetPrey && this.r > 45) { 
-                let mySplitMass = (this.mass / 2); let preyMass = targetPrey.cell.mass; let boostRange = 400 + this.r; let attackRange = boostRange * 0.66;
-                if (mySplitMass > preyMass * 1.5 && targetPrey.dist < attackRange && (Date.now() - this.lastSplitTime > 8000)) {
-                    let currentCount = siblings.length;
-                    siblings.forEach(s => {
-                        if (currentCount >= MAX_BOT_CELLS) return; 
-                        if ( (s.mass/2) > preyMass * 1.5 ) { performSplit(s, Math.atan2(targetPrey.cell.y - s.y, targetPrey.cell.x - s.x)); s.lastSplitTime = Date.now(); currentCount++; }
-                    });
-                }
-            }
-            if (flee) return; if (this.changeDirTimer <= 0) { this.targetX = Math.random() * (MAP_SIZE*1.8) - MAP_SIZE*0.9; this.targetY = Math.random() * (MAP_SIZE*1.8) - MAP_SIZE*0.9; this.changeDirTimer = Math.random() * 80 + 40; } 
-        }
-
-        executeBotSkill(id) {
-            let siblings = enemies.filter(e => e.id === this.id); let leader = this;
-            const showText = (txt, col) => { if (player.cells.length > 0 && getEllipticalDist(leader, player.cells[0]) < 1500 && enableEnemyFX) { floatingTexts.push(new FloatingText(leader.x, leader.y, txt, col)); } };
-            
-            if (id === 3) { siblings.forEach(s => { s.sprintTime = SKILL_PARAMS.sprintDuration; s.boostX += s.vx * 2; s.boostY += s.vy * 2; if(enableEnemyFX) s.spawnParticles('BOLT'); }); } 
-            else if (id === 4) { let limit = MAP_SIZE - 300; let centerX = Math.random()*(limit*2)-limit; let centerY = Math.random()*(limit*2)-limit; siblings.forEach(s => { s.tpPhase = 1; s.tpTimer = 500; s.tpDest = { x: centerX + (Math.random()*100-50), y: centerY + (Math.random()*100-50) }; }); }
-            else if (id === 5) { siblings.forEach(s => s.magnetTime = SKILL_PARAMS.magnetDuration); showText("MAGNET", "#A020F0"); }
-            else if (id === 6) { siblings.forEach(s => s.immuneTime = SKILL_PARAMS.shieldDuration); showText("SHIELD", "#FFD700"); }
-            else if (id === 7) { let totalGain = Math.floor(Math.random()*(SKILL_PARAMS.bigMax-SKILL_PARAMS.bigMin+1))+SKILL_PARAMS.bigMin; let gainPerCell = totalGain / siblings.length; siblings.forEach(s => { s.r = Math.sqrt((s.mass + gainPerCell) / (Math.PI * PILL_RATIO)); if(enableEnemyFX) { s.flashColor = '#00ff00'; s.flashTime = 1000; s.spawnParticles('PLUS'); } }); showText("MASS UP", "#00FF00"); }
-            else if (id === 8) { let totalVal = (Math.random() < 0.5) ? -5000 : 15000; let valPerCell = totalVal / siblings.length; siblings.forEach(s => { let newMass = s.mass + valPerCell; if (newMass < 314) newMass = 314; s.r = Math.sqrt(newMass / (Math.PI * PILL_RATIO)); if(enableEnemyFX) { s.flashColor = (totalVal >= 0) ? '#00ff00' : '#ff0000'; s.flashTime = 1000; s.spawnParticles(totalVal >= 0 ? 'PLUS' : 'MINUS'); } }); showText(totalVal >= 0 ? "JACKPOT!" : "FAIL!", totalVal >= 0 ? "#00FF00" : "#FF0000"); }
-        }
-        
-        draw() { 
-            let isSprinting = (!this.isBot && (currentGameMode === 'arcade' || currentGameMode === 'skills') && playerSkills.some(s => s && s.id === 3 && skills[3].active > 0)); if (this.isBot && this.sprintTime > 0) isSprinting = true;
-            let alpha = 1; if (this.tpPhase === 1) alpha = Math.max(0, this.tpTimer / 500); else if (this.tpPhase === 2) alpha = Math.max(0, 1 - (this.tpTimer / 500));
-            ctx.save(); ctx.globalAlpha = alpha; const drawEffects = !this.isBot || enableEnemyFX;
-            if (isSprinting && drawEffects) { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(-Math.PI / 4); let pW = this.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 30; ctx.fillStyle = 'rgba(255, 215, 0, 0.3)'; ctx.beginPath(); ctx.roundRect(-pW/2 - 5, -pH/2 - 5, pW + 10, pH + 10, rBox); ctx.fill(); ctx.restore(); }
-            if (this.immuneTime > 0 && drawEffects) {
-                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(-Math.PI / 4); let pW = this.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2, gap = this.r * 0.1; ctx.strokeStyle = '#a020f0'; ctx.lineWidth = 4; ctx.shadowBlur = 10; ctx.shadowColor = '#a020f0'; ctx.beginPath(); ctx.roundRect(-pW/2 - gap, -pH/2 - gap, pW + gap*2, pH + gap*2, rBox + gap); ctx.stroke();
-                let time = performance.now() / 1200, shieldScale = Math.max(0.6, this.r / 25), shieldW = pW + gap*2, shieldH = pH + gap*2; for(let i=0; i<4; i++) { let angle = time + (i * (Math.PI / 2)), sx = Math.cos(angle) * (shieldW/2 + (10 * shieldScale)), sy = Math.sin(angle) * (shieldH/2 + (10 * shieldScale)); ctx.save(); ctx.translate(sx, sy); ctx.scale(shieldScale, shieldScale); ctx.rotate(-angle); ctx.fillStyle = '#a020f0'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(6, -6); ctx.lineTo(6, 0); ctx.quadraticCurveTo(6, 8, 0, 10); ctx.quadraticCurveTo(-6, 8, -6, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 2; ctx.moveTo(0, -4); ctx.lineTo(0, 6); ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.stroke(); ctx.restore(); } ctx.restore();
-            }
-            ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(-Math.PI / 4); let pW = this.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2; 
-            if(this.flashTime > 0 && this.flashColor && drawEffects) { ctx.save(); ctx.shadowBlur = 50; ctx.shadowColor = this.flashColor; ctx.fillStyle = this.flashColor; ctx.globalAlpha = 0.35 * alpha; ctx.beginPath(); ctx.roundRect(-pW/2 - 10, -pH/2 - 10, pW + 20, pH + 20, rBox + 10); ctx.fill(); ctx.restore(); } 
-            ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip(); 
-            if (this.skin && this.skin.complete && this.skin.naturalWidth > 0) { try { ctx.drawImage(this.skin, -pW/2, -pH/2, pW, pH); } catch (e) { this.drawColors(pW, pH); } } else { this.drawColors(pW, pH); } 
-            if (this.immuneTime > 0 && drawEffects) { ctx.fillStyle = 'rgba(160, 32, 240, 0.4)'; ctx.fill(); }
-            ctx.beginPath(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.ellipse(-pW/4, -pH/4, pW/5, pH/6, 0, 0, Math.PI*2); ctx.fill(); 
-            ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.lineWidth = Math.max(2, this.r * 0.1); ctx.strokeStyle = '#222'; ctx.stroke(); ctx.restore(); 
-            if (this.particles.length > 0 && drawEffects) { 
-                ctx.save(); ctx.translate(this.x, this.y); 
-                this.particles.forEach(p => { 
-                    ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = p.life * alpha; 
-                    if (p.type === 'BOLT') { ctx.scale(p.scale, p.scale); ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 3; ctx.shadowColor = '#FFF'; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(0, 0); ctx.lineTo(-2, 2); ctx.lineTo(5, 5); ctx.stroke(); } 
-                    else { ctx.font = `bold ${Math.max(16, this.r/1.5)}px Russo One`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 5; ctx.fillText("+", 0, 0); } else { ctx.fillStyle = '#ff0000'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5; ctx.fillText("-", 0, 0); } } 
-                    ctx.restore(); 
-                }); 
-                ctx.restore(); 
-            }
-            if (this.name) { ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3; let fSize = Math.max(12, this.r / 1.2); ctx.font = `bold ${fSize}px Russo One`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.strokeText(this.name, this.x, this.y - (this.r * PILL_RATIO) + 5); ctx.fillText(this.name, this.x, this.y - (this.r * PILL_RATIO) + 5); } 
             ctx.restore();
         }
-        drawColors(w, h) { ctx.fillStyle = this.colorTop; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = this.colorBot; ctx.fillRect(-w/2, 0, w, h/2); }
+        if (c.name) { ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3; let fSize = Math.max(12, c.r / 1.2); ctx.font = `bold ${fSize}px Russo One`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); }
+        ctx.restore();
     }
+    function drawCellColors(c, w, h) { ctx.fillStyle = c.colorTop; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = c.colorBot; ctx.fillRect(-w/2, 0, w, h/2); }
 
     class Explosion { constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; this.particles = []; for(let i=0; i<16; i++) { let angle = (Math.PI*2 * i) / 16; this.particles.push({ x: 0, y: 0, vx: Math.cos(angle)*8, vy: Math.sin(angle)*8, r: Math.random()*5+5, rot: Math.random()*Math.PI }); } } update() { this.life -= 0.02; this.particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.rot+=0.1; }); } draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.globalAlpha = Math.max(0, this.life); this.particles.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = '#81F126'; ctx.strokeStyle = '#3E8E11'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<12; i++) { let r = (i%2===0) ? p.r : p.r/2; ctx.lineTo(Math.cos((Math.PI*i)/6)*r, Math.sin((Math.PI*i)/6)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }); ctx.restore(); } }
 
@@ -1407,8 +1223,8 @@
             modal.style.display = 'flex';
             if (currentGameMode === 'classic') {
                 title.innerText = "SECURE CASHOUT"; let penaltyText = "", color = "";
-                if (currentKillStreak < 2) { penaltyText = "WARNING: 10% FEE (Kills < 2)"; color = "#ff2a2a"; } else { penaltyText = "SAFE EXIT: 0% FEE (Kills 2+)"; color = "#00ff88"; }
-                desc.innerHTML = `You have <span style="color:#fff">${currentKillStreak} Kills</span>.<br><span style="color:${color}; font-weight:bold;">${penaltyText}</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your progress will be wiped to collect rewards)</span>`;
+                if (myKillStreak() < 2) { penaltyText = "WARNING: 10% FEE (Kills < 2)"; color = "#ff2a2a"; } else { penaltyText = "SAFE EXIT: 0% FEE (Kills 2+)"; color = "#00ff88"; }
+                desc.innerHTML = `You have <span style="color:#fff">${myKillStreak()} Kills</span>.<br><span style="color:${color}; font-weight:bold;">${penaltyText}</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your progress will be wiped to collect rewards)</span>`;
                 btn.onclick = startClassicLogout; btn.innerText = "START CASHOUT (5s)";
             } else { title.innerText = "WARNING: FORFEIT?"; desc.innerHTML = "You will lose <span style='color:#ff2a2a'>100% of the PILLS</span> used to enter.<br>Are you sure?"; btn.onclick = confirmExit; btn.innerText = "EXIT NOW"; }
         }
@@ -1430,14 +1246,17 @@
         els.skillOverlay.addEventListener('mouseenter', () => isHoveringUI = true); els.skillOverlay.addEventListener('mouseleave', () => isHoveringUI = false);
         document.getElementById('exitGameBtn').addEventListener('mouseenter', () => isHoveringUI = true); document.getElementById('exitGameBtn').addEventListener('mouseleave', () => isHoveringUI = false);
         window.addEventListener('blur', () => { keys.w = false; keys.a = false; keys.s = false; keys.d = false; });
-        window.addEventListener('beforeunload', () => { if (gameRunning && !isSpectating && player.cells.length > 0) { saveSystem.save(); } });
+        window.addEventListener('beforeunload', () => { if (gameRunning && !isSpectating && myCells().length > 0) { saveSystem.save(); } });
         window.addEventListener('mousedown', e => { if(isSpectating && !isHoveringUI) { isSpecDragging = true; lastSpecX = e.clientX; lastSpecY = e.clientY; } });
         window.addEventListener('mouseup', () => { isSpecDragging = false; });
         window.addEventListener('mousemove', e => { if(isHoveringUI || isLoggingOut) return; mouse.x = e.clientX; mouse.y = e.clientY; if (!isSpectating && !(keys.w || keys.a || keys.s || keys.d)) { inputMode = 'MOUSE'; } });
         window.addEventListener('touchmove', e => { if (!gameRunning || isLoggingOut) return; e.preventDefault(); const t = e.touches[0]; mouse.x = t.clientX; mouse.y = t.clientY; inputMode = 'MOUSE'; }, {passive: false}); 
         window.addEventListener('touchstart', e => { if(e.target.closest('.ab-slot, button, #loginOverlay, #resultOverlay, #skillChoiceOverlay, #exitGameBtn, #exitModal, .nav-btn')) return; const now = Date.now(); if (now - lastTapTime < 300) { splitPlayer(); e.preventDefault(); } else { if(e.touches[0] && !isLoggingOut){ mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; inputMode = 'MOUSE'; } } lastTapTime = now; }, {passive: false}); 
-        window.addEventListener('keydown', e => { 
-            if (!gameRunning) return; if (e.code === 'Escape') { toggleExitModal(); return; }
+        window.addEventListener('keydown', e => {
+            if (!gameRunning) return;
+            if (cmdBarOpen) { if (e.code === 'Escape') toggleCmdBar(false); else if (e.code === 'Enter' || e.code === 'NumpadEnter') submitCmd(); return; }
+            if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !isLoggingOut) { toggleCmdBar(true); e.preventDefault(); return; }
+            if (e.code === 'Escape') { toggleExitModal(); return; }
             if (isPickingSkill) { if (e.code === 'Tab') { e.preventDefault(); SoundManager.playSimpleHover(); skillChoiceIndex = (skillChoiceIndex === 0) ? 1 : 0; updateChoiceVisuals(); return; } if (e.code === 'KeyQ') { let options = els.skillOpts.children; if(options[skillChoiceIndex]) options[skillChoiceIndex].click(); return; } }
             if (e.code.startsWith('Digit')) { let n = parseInt(e.code.slice(-1)); if(n === 0) n = 10; if (n >= 1 && n <= 10) { if(uiSlots[n]) uiSlots[n].classList.add('active'); useSkill(n); } }
             if (e.code === 'Space') splitPlayer(); if (['KeyW','KeyA','KeyS','KeyD'].includes(e.code)) { inputMode = 'KEYBOARD'; if(!isLoggingOut) keys[e.code.slice(-1).toLowerCase()] = true; } 
@@ -1448,141 +1267,114 @@
 
     function dragStart(ev, idx) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills') return; draggedIdx = idx; ev.dataTransfer.effectAllowed = "move"; }
     function allowDrop(ev) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills') return; ev.preventDefault(); }
-    function drop(ev, dropIdx) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills') return; ev.preventDefault(); if(draggedIdx === -1 || draggedIdx === dropIdx) return; let temp = playerSkills[draggedIdx]; playerSkills[draggedIdx] = playerSkills[dropIdx]; playerSkills[dropIdx] = temp; updateSkillsUI_Arcade(); draggedIdx = -1; }
-    function removeSkill(slotIdx) { let idx = slotIdx - 1; if(playerSkills[idx] && !isGodMode && playerSkills[idx].uses <= 0) { playerSkills[idx] = null; updateSkillsUI_Arcade(); } }
+    function drop(ev, dropIdx) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills') return; ev.preventDefault(); if(draggedIdx === -1 || draggedIdx === dropIdx) return; if (sim && sim.isRemote) { sim.sendReorder(draggedIdx, dropIdx); draggedIdx = -1; return; } const slots = me() ? me().skillSlots : null; if(!slots) return; let temp = slots[draggedIdx]; slots[draggedIdx] = slots[dropIdx]; slots[dropIdx] = temp; updateSkillsUI_Arcade(); draggedIdx = -1; }
+    function removeSkill(slotIdx) { let idx = slotIdx - 1; const slots = me() ? me().skillSlots : null; if(slots && slots[idx] && !isGodMode && slots[idx].uses <= 0) { slots[idx] = null; updateSkillsUI_Arcade(); } }
     function activateSkillTouch(slotIdx, event) { if(currentGameMode === 'classic' && slotIdx !== 1) return; event.preventDefault(); event.stopPropagation(); if(uiSlots[slotIdx]) { uiSlots[slotIdx].classList.add('active'); setTimeout(() => uiSlots[slotIdx].classList.remove('active'), 150); } useSkill(slotIdx); }
 
+    // La lógica de skills vive en la sim; aquí solo se encola la acción con el
+    // objetivo del ratón en coordenadas de mundo. El feedback vuelve por eventos.
     function useSkill(slotIndex) {
-        if (!gameRunning) return; if (globalCDTimer > 0) { SoundManager.play('cd'); return; }
-        if (currentGameMode === 'classic') { if (slotIndex === 1) { if (player.cells.some(c => c.mass > SKILL_PARAMS.shootCost + 314) || isGodMode) { emitProjectile('shoot', SKILL_PARAMS.shootCost); globalCDTimer = GLOBAL_CD_MS; } } else if (slotIndex === 2 && isGodMode) { let totalGain = 10000; let gainPerCell = (player.cells.length > 0) ? (totalGain / player.cells.length) : totalGain; player.cells.forEach(c => { c.r = Math.sqrt((c.mass + gainPerCell) / (Math.PI * PILL_RATIO)); c.flashColor = '#00ff00'; c.flashTime = 1000; c.spawnParticles('PLUS'); }); spawnFloatingText("GOD MODE MASS", "#00FF00"); SoundManager.play('big'); globalCDTimer = 200; } return; }
-        if(slotIndex > playerSkills.length) return; let skillObj = playerSkills[slotIndex - 1]; if (skillObj && skillObj.uses <= 0 && !isGodMode) { playerSkills[slotIndex - 1] = null; updateSkillsUI_Arcade(); return; }
-        if (!skillObj) return; let def = skills[skillObj.id]; if (def.active > 0) return; let activated = false, id = skillObj.id;
-        if (id === 1) { if(player.cells.some(c => c.mass > SKILL_PARAMS.clonCost + 314) || isGodMode) { emitProjectile('clon', SKILL_PARAMS.clonCost); activated = true; } } 
-        else if (id === 2) { if(player.cells.some(c => c.mass > SKILL_PARAMS.shootCost + 314) || isGodMode) { emitProjectile('shoot', SKILL_PARAMS.shootCost); activated = true; } }
-        else if (id === 3) { activated = true; spawnFloatingText("+ SPEED", "#00FFFF"); SoundManager.play('sprint'); } 
-        else if (id === 4) { let limit = MAP_SIZE - 300; let targetX = Math.random() * (limit * 2) - limit; let targetY = Math.random() * (limit * 2) - limit; let avgX = 0, avgY = 0; player.cells.forEach(c => { avgX += c.x; avgY += c.y; }); avgX /= player.cells.length; avgY /= player.cells.length; let dx = targetX - avgX, dy = targetY - avgY; player.cells.forEach(c => { c.tpPhase = 1; c.tpTimer = 500; c.tpDest = { x: c.x + dx, y: c.y + dy }; }); activated = true; SoundManager.play('tp'); }
-        else if (id === 5) { activated = true; spawnFloatingText("+ MAGNET POWER", "#A020F0"); SoundManager.play('iman'); } 
-        else if (id === 6) { player.cells.forEach(c => c.immuneTime = SKILL_PARAMS.shieldDuration); activated = true; spawnFloatingText("IMMUNITY", "#FFD700"); SoundManager.play('shield'); }
-        else if (id === 7) { let totalGain = Math.floor(Math.random() * (SKILL_PARAMS.bigMax - SKILL_PARAMS.bigMin + 1)) + SKILL_PARAMS.bigMin, gainPerCell = (player.cells.length > 0) ? (totalGain / player.cells.length) : totalGain; player.cells.forEach(c => { c.r = Math.sqrt((c.mass + gainPerCell) / (Math.PI * PILL_RATIO)); c.flashColor = '#00ff00'; c.flashTime = 1000; c.spawnParticles('PLUS'); }); activated = true; spawnFloatingText("MASS UP", "#00FF00"); SoundManager.play('big'); }
-        else if (id === 8) { let totalVal = (Math.random() < 0.5) ? -5000 : 15000, valPerCell = (player.cells.length > 0) ? (totalVal / player.cells.length) : totalVal; player.cells.forEach(c => { let newMass = c.mass + valPerCell; if(newMass < 314) newMass = 314; c.r = Math.sqrt(newMass / (Math.PI * PILL_RATIO)); c.flashColor = (valPerCell >= 0) ? '#00ff00' : '#ff0000'; c.flashTime = 1000; c.spawnParticles(valPerCell >= 0 ? 'PLUS' : 'MINUS'); }); activated = true; if (totalVal >= 0) { spawnFloatingText("LUCKY! +MASS", "#00FF00"); SoundManager.play('big'); } else { spawnFloatingText("UNLUCKY! -MASS", "#FF0000"); SoundManager.play('little'); } }
-        if (activated) { if (!isGodMode) skillObj.uses--; if (id === 3 || id === 4 || id === 5 || id === 6 || id === 7 || id === 8) { def.active = def.maxActive; } globalCDTimer = GLOBAL_CD_MS; updateSkillsUI_Arcade(); }
+        if (!gameRunning || !sim || isSpectating) return;
+        const p = me(); if (!p) return;
+        if (p.globalCD > 0) { SoundManager.play('cd'); return; }
+        const es = getViewScale(), tx = (mouse.x - width/2) / es + camera.x, ty = (mouse.y - height/2) / es + camera.y;
+        sim.queueAction('me', { kind: 'skill', slot: slotIndex, tx: tx, ty: ty });
     }
 
     function updateSkillsUI_Arcade() {
         if(currentGameMode !== 'arcade' && currentGameMode !== 'skills') return;
+        const slots = me() ? me().skillSlots : [];
         for(let i=0; i<10; i++) {
-            let slotNum = i+1, divSlot = uiSlots[slotNum]; if (i >= playerSkills.length) { if(divSlot) divSlot.style.display = 'none'; continue; } else { if(divSlot) divSlot.style.display = 'flex'; }
-            let skill = playerSkills[i], iconDiv = uiIcons[slotNum], countBadge = uiCounts[slotNum]; if(!iconDiv) continue; iconDiv.className = 'skill-icon';
-            if (skill) { let def = skills[skill.id]; iconDiv.classList.add(def.icon); countBadge.style.display = 'block'; countBadge.innerText = isGodMode ? "∞" : skill.uses; countBadge.style.background = (skill.uses <= 0 && !isGodMode) ? '#555' : '#ff2a2a'; uiSlots[slotNum].style.opacity = (skill.uses <= 0 && !isGodMode) ? '0.5' : '1'; uiSlots[slotNum].style.cursor = (skill.uses <= 0 && !isGodMode) ? 'alias' : 'grab'; } else { iconDiv.classList.add('icon-empty'); countBadge.style.display = 'none'; uiSlots[slotNum].style.opacity = '1'; uiOverlays[slotNum].style.height = '0%'; uiOverlaysActive[slotNum].style.height = '0%'; uiSlots[slotNum].style.cursor = 'grab'; }
+            let slotNum = i+1, divSlot = uiSlots[slotNum]; if (i >= slots.length) { if(divSlot) divSlot.style.display = 'none'; continue; } else { if(divSlot) divSlot.style.display = 'flex'; }
+            let skill = slots[i], iconDiv = uiIcons[slotNum], countBadge = uiCounts[slotNum]; if(!iconDiv) continue; iconDiv.className = 'skill-icon';
+            if (skill) { iconDiv.classList.add(SKILL_ICONS[skill.id]); countBadge.style.display = 'block'; countBadge.innerText = isGodMode ? "∞" : skill.uses; countBadge.style.background = (skill.uses <= 0 && !isGodMode) ? '#555' : '#ff2a2a'; uiSlots[slotNum].style.opacity = (skill.uses <= 0 && !isGodMode) ? '0.5' : '1'; uiSlots[slotNum].style.cursor = (skill.uses <= 0 && !isGodMode) ? 'alias' : 'grab'; } else { iconDiv.classList.add('icon-empty'); countBadge.style.display = 'none'; uiSlots[slotNum].style.opacity = '1'; uiOverlays[slotNum].style.height = '0%'; uiOverlaysActive[slotNum].style.height = '0%'; uiSlots[slotNum].style.cursor = 'grab'; }
         }
-    }
-
-    function generateWorldData() {
-        let sizeMult = worldSettings.map || 1; let foodMult = worldSettings.food || 1; let virusMult = worldSettings.virus || 1;
-        let currentMapSize = MAP_SIZE * sizeMult; let areaMillions = Math.pow(currentMapSize * 2, 2) / 1000000; 
-        let foodCount = Math.floor(areaMillions * WORLD_CONFIG.foodDensity); let virusCount = Math.floor(areaMillions * WORLD_CONFIG.virusDensity * virusMult);
-        let f = [], v = [], e = [];
-        for(let i=0; i<foodCount; i++) { 
-            spawnFoodSafe(f, currentMapSize);
-        }
-        for(let i=0; i<virusCount; i++) { spawnVirusSafe(v, currentMapSize); }
-        if (botConfig.enabled) { for(let i=0; i<botConfig.count; i++) { let p = getSafePos(currentMapSize); let name = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]; e.push(new Cell(p.x, p.y, Math.random() * 5 + 14, getRandomColor(), getRandomColor(), name, true, null)); } }
-        return { foods: f, viruses: v, enemies: e, projectiles: [], ejected: [] };
-    }
-
-    function spawnFoodSafe(foodArray, limit = MAP_SIZE) {
-        let food = foodPool.get();
-        food.x = Math.random()*limit*2-limit;
-        food.y = Math.random()*limit*2-limit;
-        food.r = Math.random()*4+5;
-        food.c1 = COLORS[Math.floor(Math.random()*COLORS.length)];
-        food.c2 = COLORS[Math.floor(Math.random()*COLORS.length)];
-        food.angle = Math.random()*Math.PI;
-        food.spikes = [];
-        for(let j=0; j<4; j++) food.spikes.push(Math.random() * Math.PI * 2);
-        foodArray.push(food);
-    }
-
-    function spawnVirusSafe(virusArray, limit = MAP_SIZE) {
-        let attempts = 0, x, y, valid; do { x = Math.random() * limit * 2 - limit; y = Math.random() * limit * 2 - limit; valid = true; for(let other of virusArray) { if(Math.hypot(x - other.x, y - other.y) < 350) { valid = false; break; } } attempts++; } while(!valid && attempts < 30);
-        let spots = []; for(let k=0; k<2; k++) { let angle = Math.random() * Math.PI * 2; let dist = Math.random() * (VIRUS_RADIUS * 0.5); spots.push({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist, r: Math.random() * 8 + 4 }); }
-        let v = virusPool.get();
-        v.x = x; v.y = y; v.r = VIRUS_RADIUS; v.vx = 0; v.vy = 0; v.hits = 0; v.damaged = false; v.animTime = 0; v.spots = spots;
-        virusArray.push(v);
     }
 
     const saveSystem = {
         key: 'pillwars_save',
         save: function() {
-            const pCells = player.cells.map(c => ({ x: c.x, y: c.y, r: c.r, colorBot: c.colorBot, colorTop: c.colorTop, name: c.name, skinSrc: c.skin ? c.skin.src : null, id: c.id }));
-            const eCells = enemies.map(c => ({ x: c.x, y: c.y, r: c.r, colorBot: c.colorBot, colorTop: c.colorTop, name: c.name, id: c.id, botSkills: c.botSkills, massMilestoneMet: c.massMilestoneMet }));
-            const data = { mode: currentGameMode, server: currentServer, player: { name: player.name, cells: pCells, skills: playerSkills, killStreak: currentKillStreak }, enemies: eCells, timers: roomTimers, arcadeState: { nextPick: nextSkillPickTime, milestone: massMilestoneReached }, timestamp: Date.now() }; localStorage.setItem(this.key, JSON.stringify(data));
+            const p = me(); if (!p || !sim || sim.isRemote) return;
+            const pCells = p.cells.map(c => ({ x: c.x, y: c.y, r: c.r, colorBot: c.colorBot, colorTop: c.colorTop, name: c.name, skinSrc: c.skinUrl, id: c.id }));
+            const eCells = sim.enemies.map(c => ({ x: c.x, y: c.y, r: c.r, colorBot: c.colorBot, colorTop: c.colorTop, name: c.name, id: c.id, botSkills: c.botSkills, massMilestoneMet: c.massMilestoneMet }));
+            const data = { mode: currentGameMode, server: currentServer, player: { name: p.name, cells: pCells, skills: p.skillSlots, killStreak: p.killStreak }, enemies: eCells, timers: roomTimers, arcadeState: { nextPick: nextSkillPickTime, milestone: massMilestoneReached }, timestamp: Date.now() }; localStorage.setItem(this.key, JSON.stringify(data));
         },
         load: function() { const str = localStorage.getItem(this.key); if(!str) return null; try { return JSON.parse(str); } catch(e) { return null; } },
         hasSaveForRoom: function(mode, server) { const data = this.load(); if(!data) return false; if(Date.now() - data.timestamp > 20 * 60 * 1000) return false; return data.mode === mode && data.server === server && data.player.cells.length > 0; }
     };
 
     function startGame() {
-        SoundManager.play('select'); SoundManager.playMusic(); 
-        player.name = document.getElementById('playerNameInput').value.trim() || "";
+        SoundManager.play('select'); SoundManager.playMusic();
+        playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
         MAX_BOT_CELLS = parseInt(document.getElementById('botSplitLimit').value);
         worldSettings.map = parseInt(document.getElementById('mapMult').value); worldSettings.food = parseInt(document.getElementById('foodMult').value); worldSettings.virus = parseInt(document.getElementById('virusMult').value); worldSettings.speed = parseFloat(document.getElementById('speedMult').value);
         let currentBotConfig = { botEnabled: document.getElementById('botsToggle').checked, botCount: parseInt(document.getElementById('botCountInput').value), botRespawn: document.getElementById('botRespawnToggle').checked, chaosMode: document.getElementById('chaosModeToggle') ? document.getElementById('chaosModeToggle').checked : false, botMaxSplits: MAX_BOT_CELLS, world: {...worldSettings} };
         enableEnemyFX = !document.getElementById('noEnemyFX').checked; enableEnemySnd = !document.getElementById('noEnemySnd').checked;
         const isChaosMode = document.getElementById('chaosModeToggle').checked; if (currentGameMode === 'arcade' && isChaosMode) { currentGameMode = 'skills'; }
-        isGodMode = document.getElementById('godModeToggle').checked; isSpectating = false; 
-        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; els.actionBar.style.display = 'none'; }  else { 
-            MAP_SIZE = WORLD_CONFIG.arcade.size; 
-            els.actionBar.style.display = 'flex'; 
-            playerSkills = isGodMode ? Array(10).fill().map((_,k)=>(k<8?{id:k+1,uses:999}:null)) : [null, null, null, null]; 
-            massMilestoneReached = false; 
-            
-            // --- CORRECCIÓN: Sincronizar con el tiempo de sala ---
+        isGodMode = document.getElementById('godModeToggle').checked; isSpectating = false;
+        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; els.actionBar.style.display = 'none'; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; els.actionBar.style.display = 'flex'; }
+        MAP_SIZE *= worldSettings.map;
+        botConfig.enabled = document.getElementById('botsToggle').checked; botConfig.count = parseInt(document.getElementById('botCountInput').value); botConfig.respawn = document.getElementById('botRespawnToggle').checked;
+        let roomKey = currentGameMode + '_' + currentServer;
+
+        // Crear o reutilizar la simulación de esta sala
+        let entry = roomStates[roomKey];
+        if (!entry) {
+            sim = new PillSim.Simulation({ mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }, maxBotCells: MAX_BOT_CELLS, fx: { enabled: true, enemyFX: enableEnemyFX } });
+            sim.populate();
+            explosions = [];
+            roomStates[roomKey] = { sim: sim, config: currentBotConfig };
+        } else {
+            sim = entry.sim;
+            explosions = [];
+            if (entry.config) { botConfig.enabled = entry.config.botEnabled; botConfig.count = entry.config.botCount; botConfig.respawn = entry.config.botRespawn; sim.config.botConfig = { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }; }
+            sim.config.fx.enemyFX = enableEnemyFX;
+        }
+        MAP_SIZE = sim.mapSize;
+
+        const skinUrlVal = document.getElementById('secretSkinInput').value; const useSkin = (document.getElementById('secretSkinPanel').style.display === 'block') && skinUrlVal.length > 5;
+        const colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value;
+        if (!me()) sim.addPlayer('me');
+        const p = me(); p.name = playerName; p.godMode = isGodMode; p.colorBot = colBot; p.colorTop = colTop; p.skinUrl = useSkin ? skinUrlVal : null; p.killStreak = 0;
+
+        if (currentGameMode !== 'classic') {
+            p.skillSlots = isGodMode ? Array(10).fill().map((_,k)=>(k<8?{id:k+1,uses:999}:null)) : [null, null, null, null];
+            massMilestoneReached = false;
+            // Sincronizar la próxima elección de skill con el tiempo de sala
             let rKey = currentGameMode + '_' + currentServer;
             if (roomTimers[rKey]) {
-                // Calculamos cuánto tiempo lleva la sala activa
                 let elapsed = (GAME_DURATION_MS - (roomTimers[rKey] - Date.now())) / 1000;
                 if(elapsed < 0) elapsed = 0;
-                
-                // Programamos la skill para el SIGUIENTE múltiplo de 30
-                // Ejemplo: Si entras en el seg 70, la próxima es en el 90.
                 nextSkillPickTime = (Math.floor(elapsed / 30) + 1) * 30;
             } else {
                 nextSkillPickTime = 30;
             }
-            // -----------------------------------------------------
-
-            isPickingSkill = false; 
-            els.skillOverlay.style.display = 'none'; 
-            updateSkillsUI_Arcade(); 
+            isPickingSkill = false;
+            els.skillOverlay.style.display = 'none';
+            updateSkillsUI_Arcade();
         }
-        MAP_SIZE *= worldSettings.map;
-        const skinUrlVal = document.getElementById('secretSkinInput').value; const useSkin = (document.getElementById('secretSkinPanel').style.display === 'block') && skinUrlVal.length > 5;
-        currentKillStreak = 0; splitMilestones = { level1: false, level2: false }; botConfig.enabled = document.getElementById('botsToggle').checked; botConfig.count = parseInt(document.getElementById('botCountInput').value); botConfig.respawn = document.getElementById('botRespawnToggle').checked;
-        let roomKey = currentGameMode + '_' + currentServer;
+
         let loadedSave = false;
         if (saveSystem.hasSaveForRoom(currentGameMode, currentServer)) {
             const saveData = saveSystem.load();
             if(saveData) {
-                player.cells = saveData.player.cells.map(c => new Cell(c.x, c.y, c.r, c.colorBot, c.colorTop, c.name, false, c.skinSrc, c.id)); if(saveData.player.skills) playerSkills = saveData.player.skills; currentKillStreak = saveData.player.killStreak || 0;
-                enemies = saveData.enemies.map(c => { let e = new Cell(c.x, c.y, c.r, c.colorBot, c.colorTop, c.name, true, null, c.id); e.botSkills = c.botSkills || []; e.massMilestoneMet = c.massMilestoneMet; return e; });
+                p.cells = saveData.player.cells.map(c => new PillSim.Cell(c.x, c.y, c.r, c.colorBot, c.colorTop, c.name, false, c.skinSrc, c.id, sim.now)); p.alive = p.cells.length > 0;
+                if(saveData.player.skills) p.skillSlots = saveData.player.skills; p.killStreak = saveData.player.killStreak || 0;
+                sim.enemies = saveData.enemies.map(c => { let e = new PillSim.Cell(c.x, c.y, c.r, c.colorBot, c.colorTop, c.name, true, null, c.id, sim.now); e.botSkills = c.botSkills || []; e.massMilestoneMet = c.massMilestoneMet; return e; });
                 if(saveData.timers) roomTimers = saveData.timers; if(saveData.arcadeState) { nextSkillPickTime = saveData.arcadeState.nextPick; massMilestoneReached = saveData.arcadeState.milestone; }
-                if(!roomStates[roomKey]) { let newData = generateWorldData(); foods = newData.foods; viruses = newData.viruses; roomStates[roomKey] = { foods, viruses, enemies, projectiles: [], ejected: [], config: currentBotConfig }; } else { roomStates[roomKey].enemies = enemies; foods = roomStates[roomKey].foods; viruses = roomStates[roomKey].viruses; }
-                if(player.cells.length > 0) { camera.x = player.cells[0].x; camera.y = player.cells[0].y; } loadedSave = true; updateSkillsUI_Arcade();
+                if(p.cells.length > 0) { camera.x = p.cells[0].x; camera.y = p.cells[0].y; } loadedSave = true; updateSkillsUI_Arcade();
             }
         }
         if(!roomTimers[roomKey] || roomTimers[roomKey] <= Date.now()) { if(GAME_DURATION_MS) roomTimers[roomKey] = Date.now() + GAME_DURATION_MS; }
         if (!loadedSave) {
-            let needsRegen = false; if (!roomStates[roomKey]) needsRegen = true;
-            if (needsRegen) { let newData = generateWorldData(); foods = newData.foods; viruses = newData.viruses; enemies = newData.enemies; projectiles = []; ejectedMasses = []; explosions = []; roomStates[roomKey] = { foods, viruses, enemies, projectiles, ejected: ejectedMasses, config: currentBotConfig }; } 
-            else { let s = roomStates[roomKey]; foods = s.foods; viruses = s.viruses; enemies = s.enemies; projectiles = s.projectiles; ejectedMasses = s.ejected; explosions = []; if(s.config) { botConfig.enabled = s.config.botEnabled; botConfig.count = s.config.botCount; botConfig.respawn = s.config.botRespawn; } }
-            for(let i=1; i<=8; i++) skills[i].active = 0; let startPos = getSafePos(MAP_SIZE), colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value; let skin = useSkin ? skinUrlVal : null;
-            player.cells = [ new Cell(startPos.x, startPos.y, INITIAL_RADIUS, colBot, colTop, player.name, false, skin, "me") ]; camera.x = startPos.x; camera.y = startPos.y; 
+            const startCell = sim.spawnPlayer('me');
+            camera.x = startCell.x; camera.y = startCell.y;
         }
-        els.room.innerText = currentServer; els.loginOverlay.style.display = 'none'; els.result.style.display = 'none'; 
-        document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex'; 
-        if(saveInterval) clearInterval(saveInterval); saveInterval = setInterval(() => { if(gameRunning && !isSpectating && player.cells.length > 0) saveSystem.save(); }, 2000);
+        els.room.innerText = currentServer; els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
+        document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
+        if(saveInterval) clearInterval(saveInterval); saveInterval = setInterval(() => { if(gameRunning && !isSpectating && myCells().length > 0) saveSystem.save(); }, 2000);
+        lastFrameTime = Date.now();
         gameRunning = true;
     }
     
@@ -1593,17 +1385,31 @@
         let currentBotConfig = { botEnabled: botConfig.enabled, botCount: botConfig.count, botRespawn: botConfig.respawn, chaosMode: document.getElementById('chaosModeToggle') ? document.getElementById('chaosModeToggle').checked : false, botMaxSplits: MAX_BOT_CELLS, world: {...worldSettings} };
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
         isSpectating = true; gameRunning = true; isGodMode = false;
-        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; els.actionBar.style.display = 'none'; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; els.actionBar.style.display = 'none'; } MAP_SIZE *= worldSettings.map;
+        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; } els.actionBar.style.display = 'none'; MAP_SIZE *= worldSettings.map;
         let roomKey = currentGameMode + '_' + currentServer; if (!roomTimers[roomKey] || roomTimers[roomKey] <= Date.now()) { if(GAME_DURATION_MS) roomTimers[roomKey] = Date.now() + GAME_DURATION_MS; }
-        let needsRegen = !roomStates[roomKey]; if (needsRegen) { let newData = generateWorldData(); foods = newData.foods; viruses = newData.viruses; enemies = newData.enemies; projectiles = []; ejectedMasses = []; explosions = []; roomStates[roomKey] = { foods, viruses, enemies, projectiles, ejected: ejectedMasses, config: currentBotConfig }; } else { let s = roomStates[roomKey]; if(s) { foods = s.foods; viruses = s.viruses; enemies = s.enemies; projectiles = s.projectiles; ejectedMasses = s.ejected; if(s.config) { botConfig.enabled = s.config.botEnabled; botConfig.count = s.config.botCount; botConfig.respawn = s.config.botRespawn; } } else { let newData = generateWorldData(); foods = newData.foods; viruses = newData.viruses; enemies = newData.enemies; } }
-        player.cells = []; els.loginOverlay.style.display = 'none'; els.result.style.display = 'none'; els.skillOverlay.style.display = 'none'; document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex'; 
-        if (!isSpectating) { camera.x = 0; camera.y = 0; camera.scale = 0.1; } SoundManager.playMusic();
+        let entry = roomStates[roomKey];
+        if (!entry) {
+            sim = new PillSim.Simulation({ mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }, maxBotCells: MAX_BOT_CELLS, fx: { enabled: true, enemyFX: enableEnemyFX } });
+            sim.populate();
+            roomStates[roomKey] = { sim: sim, config: currentBotConfig };
+        } else {
+            sim = entry.sim;
+            if (entry.config) { botConfig.enabled = entry.config.botEnabled; botConfig.count = entry.config.botCount; botConfig.respawn = entry.config.botRespawn; sim.config.botConfig = { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }; }
+            sim.config.fx.enemyFX = enableEnemyFX;
+        }
+        MAP_SIZE = sim.mapSize;
+        explosions = [];
+        if (!me()) sim.addPlayer('me');
+        const p = me(); p.cells = []; p.alive = false; p.input = null;
+        els.loginOverlay.style.display = 'none'; els.result.style.display = 'none'; els.skillOverlay.style.display = 'none'; document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
+        lastFrameTime = Date.now();
+        SoundManager.playMusic();
     }
 
-    function stopGame() { isSpectating = true; SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; saveCurrentRoomState(); if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { els.resultTitle.innerText = "GAME OVER"; els.resultTitle.style.color = "#ff2a2a"; showResultsUI(); }, 1400); }
-    function showResultsUI() { document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: player.name, m: 0, isMe: true}]; player.cells.forEach(c => all[0].m += c.mass); enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
-    function finishGameSuccess() { SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; saveCurrentRoomState(); if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
-    function returnToMenu() { SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); checkActiveRoomConfig(); }
+    function stopGame() { isSpectating = true; SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { els.resultTitle.innerText = "GAME OVER"; els.resultTitle.style.color = "#ff2a2a"; showResultsUI(); }, 1400); }
+    function showResultsUI() { document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
+    function finishGameSuccess() { SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
+    function returnToMenu() { SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         let roomKey = currentGameMode + '_' + currentServer;
@@ -1629,247 +1435,565 @@
         MAX_BOT_CELLS = parseInt(splitLimit.value); toggleBotOptions();
     }
     function hideGameHUD() { document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; }
-    function saveCurrentRoomState() { let roomKey = currentGameMode + '_' + currentServer; let prevConfig = (roomStates[roomKey] && roomStates[roomKey].config) ? roomStates[roomKey].config : null; roomStates[roomKey] = { foods, viruses, enemies, projectiles, ejected: ejectedMasses, config: prevConfig }; }
-    function spawnBot() { if (!botConfig.enabled) return; let p = getSafePos(MAP_SIZE); let name = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]; enemies.push(new Cell(p.x, p.y, Math.random() * 5 + 14, getRandomColor(), getRandomColor(), name, true, null)); }
-    function spawnFood() { 
-        spawnFoodSafe(foods, MAP_SIZE);
+    // El split también vive en la sim: solo encolamos la acción con el objetivo del ratón.
+    function splitPlayer() {
+        if (!gameRunning || !sim || isSpectating) return;
+        const es = getViewScale(); const wMX = (mouse.x - width/2) / es + camera.x; const wMY = (mouse.y - height/2) / es + camera.y;
+        sim.queueAction('me', { kind: 'split', tx: wMX, ty: wMY });
     }
-    function spawnVirus() { spawnVirusSafe(viruses, MAP_SIZE); }
-    function getSafePos(limit) { let attempts = 0; while (attempts < 100) { let x = Math.random() * limit * 0.9 - limit * 0.45; let y = Math.random() * limit * 0.9 - limit * 0.45; let isSafe = true; let allEntities = [...enemies, ...player.cells]; for (let e of allEntities) { if (e.mass === 0) continue; let dist = Math.hypot(x - e.x, y - e.y); if (dist < 600 + (e.r * 4)) { isSafe = false; break; } } if (isSafe) return { x: x, y: y }; attempts++; } return { x: Math.random() * limit * 0.8 - limit * 0.4, y: Math.random() * limit * 0.8 - limit * 0.4 }; }
 
-    function emitProjectile(type, cost) {
-        let best = null, minD = Infinity, es = getViewScale(), wMX = (mouse.x - width/2) / es + camera.x, wMY = (mouse.y - height/2) / es + camera.y;
-        player.cells.forEach(c => { if (c.mass - cost > 314) { let d = Math.hypot(c.x - wMX, c.y - wMY); if(d < minD) { minD = d; best = c; } } });
-        if(best) { 
-            let c = best; c.r = Math.sqrt((c.mass - cost) / (Math.PI * PILL_RATIO)); 
-            let a = Math.atan2(wMY - c.y, wMX - c.x); let relAngle = a - (-Math.PI / 4); let edgeDist = (c.r * (c.r * PILL_RATIO)) / Math.sqrt(Math.pow((c.r * PILL_RATIO) * Math.cos(relAngle), 2) + Math.pow(c.r * Math.sin(relAngle), 2));
-            let spawnDist = edgeDist + 25; let spd = (type==='shoot')?20:40; let r = (type==='shoot')?12:16;
-            let obj = { x: c.x + Math.cos(a) * spawnDist, y: c.y + Math.sin(a) * spawnDist, vx: Math.cos(a)*spd, vy: Math.sin(a)*spd, r, angle: Math.random()*Math.PI, type }; 
-            if(type==='shoot') { obj.c1 = '#ff2a2a'; obj.c2 = '#fff'; } else { obj.c1 = c.colorBot; obj.c2 = c.colorTop; } 
-            ejectedMasses.push(obj); SoundManager.play('shoot');
+    // --- Consola de comandos (se abre con Enter durante la partida) ---
+    // Los comandos los ejecuta la sim (autoridad): en local directamente,
+    // online se envían al servidor. Lista: /god /mass N /bots N /speed X /help
+    let cmdBarOpen = false;
+    function toggleCmdBar(show) {
+        const bar = document.getElementById('cmdBar'), inp = document.getElementById('cmdInput');
+        cmdBarOpen = show; bar.style.display = show ? 'block' : 'none';
+        if (show) { inp.value = ''; setTimeout(() => inp.focus(), 0); } else { inp.blur(); }
+    }
+    function submitCmd() {
+        const inp = document.getElementById('cmdInput'); const v = inp.value.trim();
+        toggleCmdBar(false);
+        if (!v || !v.startsWith('/')) return;
+        const parts = v.slice(1).trim().split(/\s+/);
+        runGameCommand(parts[0], parts.slice(1));
+    }
+    function runGameCommand(name, args) {
+        if (!sim || !gameRunning) return;
+        if (sim.isRemote) { sim.sendCommand(name, args); }
+        else { sim.runCommand('me', name, args); const p = me(); if (p) isGodMode = p.godMode; }
+    }
+
+    // ============ MODO ONLINE (Fases 1-3) ============
+    // RemoteSim imita la interfaz de lectura de PillSim.Simulation, pero el estado
+    // viene del servidor por WebSocket. Fase 3: mantiene un buffer de snapshots y
+    // renderiza con ~100 ms de retraso interpolando entre los dos snapshots que
+    // rodean ese instante; las celdas PROPIAS se extrapolan desde el snapshot más
+    // reciente para que el control se sienta inmediato (predicción ligera).
+    const INTERP_DELAY_MS = 80;
+
+    class RemoteSim {
+        constructor(ws, welcome) {
+            this.isRemote = true;
+            this.ws = ws;
+            this.myId = welcome.id;
+            this.token = welcome.token;
+            this.mapSize = welcome.mapSize;
+            this.mode = welcome.mode;
+            this.duration = welcome.duration;
+            this.config = { mode: welcome.mode, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 }, fx: { enabled: true, enemyFX: true } };
+            this.foods = welcome.foods || [];
+            this.viruses = []; this.enemies = []; this.ejectedMasses = []; this.projectiles = [];
+            this.players = new Map();
+            const skillState = {}; for (let i = 1; i <= 8; i++) skillState[i] = 0;
+            this.players.set('me', { id: 'me', name: playerName, cells: [], skillSlots: [], skillState, globalCD: 0, killStreak: 0, alive: true, godMode: false });
+            this.events = [];
+            this.snaps = [];
+            this.svrTime = welcome.simTime || 0;
+            this._tlBase = (welcome.tl == null) ? null : welcome.tl; this._tlAt = Date.now();
+            this._objs = new Map();
+            this.now = 0; this.timeScale = 1.0;
+            this._lastInput = null; this._lastInputSent = 0; this._camInit = false;
+        }
+        remainingMs() { return (this._tlBase == null) ? null : Math.max(0, this._tlBase - (Date.now() - this._tlAt)); }
+
+        onMessage(msg) {
+            if (msg.t === 'snap') {
+                this.snaps.push(msg);
+                if (this.snaps.length > 30) this.snaps.shift();
+                if (msg.tl != null) { this._tlBase = msg.tl; this._tlAt = Date.now(); }
+                // Estado propio (HUD/cartas): se aplica al instante, sin retraso
+                const meP = this.players.get('me');
+                const sp = msg.players.find(q => q.id === this.myId);
+                if (sp) {
+                    // Si morimos mientras estábamos desconectados, el evento playerDied
+                    // se perdió: lo regeneramos al ver alive=false en el snapshot.
+                    if (sp.alive === false && this._aliveSeen !== false) { this._aliveSeen = false; this.events.push({ type: 'playerDied', playerId: 'me' }); }
+                    if (sp.alive) this._aliveSeen = true;
+                    meP.name = sp.name; meP.killStreak = sp.ks; meP.alive = sp.alive; meP.globalCD = sp.gcd;
+                    for (let i = 1; i <= 8; i++) meP.skillState[i] = (sp.ss && sp.ss[i]) ? sp.ss[i] : 0;
+                    if (sp.slots) {
+                        const ns = sp.slots.map(s => s ? { id: s.id, uses: s.u } : null);
+                        if (JSON.stringify(ns) !== JSON.stringify(meP.skillSlots)) { meP.skillSlots = ns; updateSkillsUI_Arcade(); }
+                    }
+                }
+            } else if (msg.t === 'events') {
+                for (const ev of msg.events) {
+                    if (ev.type === 'foodRespawn') { const f = this.foods; if (ev.index < f.length) { f[ev.index] = f[f.length - 1]; f.pop(); } f.push(ev.food); }
+                    else {
+                        if (ev.playerId === this.myId) ev.playerId = 'me';
+                        if (ev.type === 'playerDied' && ev.playerId === 'me') { if (this._aliveSeen === false) continue; this._aliveSeen = false; }
+                        this.events.push(ev);
+                    }
+                }
+            } else if (msg.t === 'matchEnd') {
+                this.events.push({ type: 'matchEnd' });
+            }
+        }
+        drainEvents() { const evs = this.events; this.events = []; return evs; }
+        setInput(id, input) { this._lastInput = input; }
+        queueAction(id, a) { this._send({ t: 'action', kind: a.kind, slot: a.slot, tx: a.tx, ty: a.ty }); }
+        grantSkillToPlayer(id, skillId) { this._send({ t: 'pickSkill', id: skillId }); }
+        sendReorder(from, to) { this._send({ t: 'reorder', from: from, to: to }); }
+        sendCommand(name, args) { this._send({ t: 'cmd', name: name, args: args }); }
+        _send(o) { if (this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); }
+        close() { try { this.ws.close(); } catch (e) {} }
+
+        step(delta) {
+            this.now += delta;
+            this._frameDelta = delta;
+            this.timeScale = delta / (1000 / 60); if (this.timeScale > 3) this.timeScale = 3;
+            if (this.now - this._lastInputSent >= 33) {
+                this._lastInputSent = this.now;
+                const i = this._lastInput;
+                this._send(i ? { t: 'input', tx: i.tx, ty: i.ty } : { t: 'input', tx: null, ty: null });
+            }
+            if (this.snaps.length === 0) return;
+            // Reloj de servidor estimado: avanza con el frame y se corrige suavemente
+            const newest = this.snaps[this.snaps.length - 1].time;
+            this.svrTime += delta;
+            const err = newest - this.svrTime;
+            if (Math.abs(err) > 300) this.svrTime = newest; else this.svrTime += err * 0.1;
+            this._rebuild();
+        }
+
+        _index(s) {
+            const m = new Map();
+            for (const p of s.players) { for (const c of p.cells) m.set(c.ci, c); }
+            for (const b of s.bots) m.set(b.ci, b);
+            for (const v of s.viruses) m.set(v.ci, v);
+            for (const e of s.ejected) m.set(e.ci, e);
+            for (const pr of s.projectiles) m.set(pr.ci, pr);
+            return m;
+        }
+        _obj(ci, seen) { seen.add(ci); let o = this._objs.get(ci); if (!o) { o = { particles: [] }; this._objs.set(ci, o); } return o; }
+
+        _rebuild() {
+            const renderTime = this.svrTime - INTERP_DELAY_MS;
+            // Snapshots que rodean el instante a renderizar
+            let s0 = this.snaps[0], s1 = null;
+            for (let i = 0; i < this.snaps.length; i++) {
+                if (this.snaps[i].time <= renderTime) s0 = this.snaps[i];
+                else { s1 = this.snaps[i]; break; }
+            }
+            if (!s1) s1 = s0;
+            const span = s1.time - s0.time;
+            const alpha = span > 0 ? Math.min(1, Math.max(0, (renderTime - s0.time) / span)) : 1;
+            const m0 = this._index(s0);
+            const lerp = (a, b) => a + (b - a) * alpha;
+            const seen = new Set();
+            const fill = (o, cd, gid, name, isBot) => {
+                o.id = gid; o.name = name; o.colorBot = cd.cb; o.colorTop = cd.ct; o.skinUrl = cd.sk || null;
+                o.isBot = isBot;
+                o.immuneTime = cd.im || 0; o.sprintTime = cd.sp ? 1 : 0; o.magnetTime = cd.mg ? 1 : 0;
+                o.tpPhase = cd.tp || 0; o.tpTimer = cd.tt || 0; o.flashTime = 0; o.flashColor = null;
+                o.mass = Math.PI * o.r * (o.r * PILL_RATIO);
+            };
+
+            // Celdas propias: último snapshot + extrapolación con su velocidad
+            const sN = this.snaps[this.snaps.length - 1];
+            const sP = this.snaps.length > 1 ? this.snaps[this.snaps.length - 2] : sN;
+            const mPrev = this._index(sP);
+            const dtN = Math.max(1, sN.time - sP.time);
+            const ahead = Math.max(0, Math.min(150, this.svrTime - sN.time));
+            const meP = this.players.get('me');
+            const meSnap = sN.players.find(q => q.id === this.myId);
+            const meCells = [];
+            if (meSnap) {
+                for (const cd of meSnap.cells) {
+                    const o = this._obj(cd.ci, seen);
+                    const prev = mPrev.get(cd.ci);
+                    const vx = prev ? (cd.x - prev.x) / dtN : 0, vy = prev ? (cd.y - prev.y) / dtN : 0;
+                    // Objetivo extrapolado + mezcla exponencial continua: sin esto,
+                    // cada snapshot "re-basa" la posición y la píldora vibra.
+                    const txp = cd.x + vx * ahead, typ = cd.y + vy * ahead;
+                    if (o._init) {
+                        const k = 1 - Math.exp(-(this._frameDelta || 16) / 60);
+                        o.x += (txp - o.x) * k; o.y += (typ - o.y) * k;
+                        o.r += (cd.r - o.r) * Math.min(1, (this._frameDelta || 16) / 100);
+                    } else { o.x = txp; o.y = typ; o.r = cd.r; o._init = true; }
+                    fill(o, cd, 'me', meSnap.name, false);
+                    meCells.push(o);
+                }
+            }
+            meP.cells = meCells;
+            if (!this._camInit && meCells.length > 0) { camera.x = meCells[0].x; camera.y = meCells[0].y; this._camInit = true; }
+
+            // Resto de jugadores y bots: interpolación s0→s1
+            const newEnemies = [];
+            for (const pl of s1.players) {
+                if (pl.id === this.myId) continue;
+                for (const cd of pl.cells) {
+                    const o = this._obj(cd.ci, seen);
+                    const c0 = m0.get(cd.ci) || cd;
+                    o.x = lerp(c0.x, cd.x); o.y = lerp(c0.y, cd.y); o.r = lerp(c0.r, cd.r);
+                    fill(o, cd, pl.id, pl.name, false);
+                    newEnemies.push(o);
+                }
+            }
+            for (const b of s1.bots) {
+                const o = this._obj(b.ci, seen);
+                const c0 = m0.get(b.ci) || b;
+                o.x = lerp(c0.x, b.x); o.y = lerp(c0.y, b.y); o.r = lerp(c0.r, b.r);
+                fill(o, b, b.id, b.n, true);
+                newEnemies.push(o);
+            }
+            this.enemies = newEnemies;
+
+            // Virus, eyectados y proyectiles también interpolados
+            this.viruses = s1.viruses.map(v => { const o = this._obj(v.ci, seen); const c0 = m0.get(v.ci) || v; o.x = lerp(c0.x, v.x); o.y = lerp(c0.y, v.y); o.r = lerp(c0.r, v.r); o.damaged = !!v.d; o.animTime = v.a || 0; o.spots = o.spots || null; return o; });
+            this.ejectedMasses = s1.ejected.map(e => { const o = this._obj(e.ci, seen); const c0 = m0.get(e.ci) || e; o.x = lerp(c0.x, e.x); o.y = lerp(c0.y, e.y); o.r = e.r; o.c1 = e.c1; o.c2 = e.c2; o.angle = e.a; return o; });
+            this.projectiles = s1.projectiles.map(pr => { const o = this._obj(pr.ci, seen); const c0 = m0.get(pr.ci) || pr; o.x = lerp(c0.x, pr.x); o.y = lerp(c0.y, pr.y); o.r = pr.r; return o; });
+
+            // Purga de objetos que ya no existen y recorte del buffer
+            if (this._objs.size > seen.size + 200) { for (const k of this._objs.keys()) { if (!seen.has(k)) this._objs.delete(k); } }
+            while (this.snaps.length > 3 && this.snaps[1].time < renderTime - 400) this.snaps.shift();
         }
     }
 
-    function performSplit(cell, angle) {
-        let nR = cell.r / 1.414; cell.r = nR; cell.bornTime = Date.now(); 
-        let s = new Cell(cell.x + Math.cos(angle)*cell.r*2, cell.y + Math.sin(angle)*cell.r*2, nR, cell.colorBot, cell.colorTop, cell.name, cell.isBot, (cell.skin?cell.skin.src:null), cell.id);
-        if (cell.isBot) { s.botSkills = [...cell.botSkills]; s.botGcd = cell.botGcd; s.botNextSkillTime = cell.botNextSkillTime; s.massMilestoneMet = cell.massMilestoneMet; s.magnetTime = cell.magnetTime; s.sprintTime = cell.sprintTime; s.immuneTime = cell.immuneTime; }
-        s.boostX = Math.cos(angle) * SPLIT_FORCE; s.boostY = Math.sin(angle) * SPLIT_FORCE;
-        if (cell.isBot) enemies.push(s); else player.cells.push(s);
-        if(cell.isBot) { if (enableEnemySnd) SoundManager.play('split', {x: cell.x, y: cell.y}); } else { SoundManager.playSplit(); }
+    // --- Conexión online con reconexión automática ---
+    let netState = null;   // { url, token, attempts, joinMsg }
+
+    function startOnlineGame() {
+        SoundManager.play('select');
+        playerName = document.getElementById('playerNameInput').value.trim() || "";
+        if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
+        enableEnemyFX = !document.getElementById('noEnemyFX').checked; enableEnemySnd = !document.getElementById('noEnemySnd').checked;
+        const isChaos = document.getElementById('chaosModeToggle') && document.getElementById('chaosModeToggle').checked;
+        const mode = (currentGameMode === 'arcade' && isChaos) ? 'skills' : currentGameMode;
+        const skinUrlVal = document.getElementById('secretSkinInput').value; const useSkin = (document.getElementById('secretSkinPanel').style.display === 'block') && skinUrlVal.length > 5;
+        const colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value;
+        const cfg = {
+            botEnabled: document.getElementById('botsToggle').checked,
+            botCount: parseInt(document.getElementById('botCountInput').value),
+            botRespawn: document.getElementById('botRespawnToggle').checked,
+            botMaxSplits: parseInt(document.getElementById('botSplitLimit').value),
+            world: { map: parseInt(document.getElementById('mapMult').value), food: parseInt(document.getElementById('foodMult').value), virus: parseInt(document.getElementById('virusMult').value), speed: parseFloat(document.getElementById('speedMult').value) }
+        };
+        // Servidor: ?server=... manda (y se recuerda); si no, el último usado;
+        // en https (web publicada) por defecto el mismo dominio; en local, localhost.
+        const qsServer = new URLSearchParams(location.search).get('server');
+        if (qsServer) { try { localStorage.setItem('pw_server', qsServer); } catch (e) {} }
+        let savedServer = null; try { savedServer = localStorage.getItem('pw_server'); } catch (e) {}
+        const url = qsServer || savedServer || (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://localhost:8080');
+        netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, config: cfg } };
+        netConnect(false);
     }
 
-    function splitPlayer() { 
-        if (Date.now() - lastSplitTime < SPLIT_COOLDOWN_MS || player.cells.length >= MAX_CELLS) return; 
-        let did = false; let es = getViewScale(); let wMX = (mouse.x - width/2) / es + camera.x; let wMY = (mouse.y - height/2) / es + camera.y;
-        for(let i = player.cells.length - 1; i >= 0; i--) { let c = player.cells[i]; if (c.r >= 35 && player.cells.length < MAX_CELLS) { let a = Math.atan2(wMY - c.y, wMX - c.x); performSplit(c, a); did = true; } }
-        if (did) lastSplitTime = Date.now();
+    // Práctica offline mientras la sala online espera jugadores
+    let practiceMode = false;
+
+    function setLobbyBanner(texto) {
+        const b = document.getElementById('lobbyBanner');
+        if (!texto) { b.style.display = 'none'; return; }
+        b.style.display = 'block'; b.innerText = texto;
     }
-    
-    function triggerRandomSplit() { if (player.cells.length >= MAX_CELLS) return; let newC = []; player.cells.forEach(c => { if (c.r >= 35 && player.cells.length + newC.length < MAX_CELLS) { let nR = c.r / 1.414; c.r = nR; c.bornTime = Date.now(); let a = Math.random() * Math.PI * 2; let s = new Cell(c.x + Math.cos(a)*c.r*2, c.y + Math.sin(a)*c.r*2, nR, c.colorBot, c.colorTop, c.name, false, (c.skin?c.skin.src:null), c.id); s.boostX = Math.cos(a) * SPLIT_FORCE; s.boostY = Math.sin(a) * SPLIT_FORCE; newC.push(s); } }); player.cells = player.cells.concat(newC); createExplosion(player.cells[0].x, player.cells[0].y); }
-    
-    function handleVirusCollision(v, vIdx, cell, isP = false) { 
-        createExplosion(v.x, v.y); if (vIdx !== -1) { virusPool.free(viruses[vIdx]); viruses.splice(vIdx, 1); } spawnVirus(); 
-        if (cell.isBot) { if(enableEnemySnd) SoundManager.play('virus', {x: v.x, y: v.y}); } else { SoundManager.play('virus'); }
-        if (!isP) { let g = (cell.mass < VIRUS_GAIN_THRESHOLD) ? VIRUS_GAIN_LOW : VIRUS_GAIN_HIGH; cell.r = Math.sqrt((cell.mass + g) / (Math.PI * PILL_RATIO)); if(!cell.isBot) spawnFloatingText("VIRUS GAIN MASS+", "#00FF00", true); } 
-        if(cell.immuneTime > 0) return; 
-        let list = cell.isBot ? enemies : player.cells; let lim = MAX_CELLS; let myCount = 0;
-        if (cell.isBot) { for(let e of enemies) if(e.id === cell.id) myCount++; } else { myCount = player.cells.length; }
-        if(myCount >= lim) return; 
-        cell.r /= 1.732; cell.bornTime = Date.now(); 
-        for(let k=0; k<2; k++) { 
-            let currentCountCheck = 0; if (cell.isBot) { for(let e of enemies) if(e.id === cell.id) currentCountCheck++; } else { currentCountCheck = player.cells.length; } if(currentCountCheck >= lim) break; 
-            let a = Math.random() * Math.PI * 2; let f = new Cell(cell.x, cell.y, cell.r, cell.colorBot, cell.colorTop, cell.name, cell.isBot, (cell.skin?cell.skin.src:null), cell.id); 
-            if (cell.isBot) { f.botSkills = [...cell.botSkills]; f.botGcd = cell.botGcd; f.botNextSkillTime = cell.botNextSkillTime; f.massMilestoneMet = cell.massMilestoneMet; f.magnetTime = cell.magnetTime; f.sprintTime = cell.sprintTime; f.immuneTime = cell.immuneTime; }
-            f.boostX = Math.cos(a) * 45; f.boostY = Math.sin(a) * 45; list.push(f); 
-        } 
+
+    function startPracticeGame(mode) {
+        practiceMode = true;
+        const botCount = parseInt(document.getElementById('botCountInput').value) || 20;
+        const baseSize = (mode === 'classic') ? WORLD_CONFIG.classic.size : WORLD_CONFIG.arcade.size;
+        sim = new PillSim.Simulation({
+            mode: mode, mapSize: baseSize, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
+            botConfig: { enabled: true, count: botCount, respawn: true },
+            maxBotCells: mode === 'classic' ? 8 : 4,
+            fx: { enabled: true, enemyFX: enableEnemyFX }
+        });
+        sim.populate();
+        MAP_SIZE = sim.mapSize;
+        const colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value;
+        const p = sim.addPlayer('me', { name: playerName, colorBot: colBot, colorTop: colTop });
+        p.godMode = false;
+        const c = sim.spawnPlayer('me');
+        camera.x = c.x; camera.y = c.y; camera.scale = 0.8;
+        explosions = [];
+        isGodMode = false; isSpectating = false; currentGameMode = mode;
+        const esArcade = (mode === 'arcade' || mode === 'skills');
+        els.actionBar.style.display = esArcade ? 'flex' : 'none';
+        if (esArcade) { p.skillSlots = [null, null, null, null]; massMilestoneReached = false; nextSkillPickTime = 30; isPickingSkill = false; els.skillOverlay.style.display = 'none'; updateSkillsUI_Arcade(); roomTimers[mode + '_' + currentServer] = Date.now() + GAME_DURATION_MS; }
+        els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
+        document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
+        if (saveInterval) clearInterval(saveInterval);
+        lastFrameTime = Date.now();
+        SoundManager.playMusic();
+        gameRunning = true;
     }
+
+    function abandonNet(texto) { practiceMode = false; setLobbyBanner(null); sim = null; gameRunning = false; netState = null; returnToMenu(); if (texto) alert(texto); }
+
+    // TRY AGAIN tras morir / fin de partida / reinicio: vuelve a entrar a la
+    // MISMA sala sin pasar por el menú (nuevo join con los mismos datos).
+    function tryAgainOnline() {
+        if (!netState || !netState.joinMsg) { returnToMenu(); return; }
+        SoundManager.play('select');
+        const jm = netState.joinMsg, url = netState.url;
+        if (netState.ws) { const w = netState.ws; netState.ws = null; try { w.onclose = null; w.close(); } catch (e) {} }
+        practiceMode = false; setLobbyBanner(null); sim = null;
+        els.result.style.display = 'none';
+        netState = { url: url, token: null, attempts: 0, joinMsg: jm };
+        gameRunning = false;
+        netConnect(false);
+    }
+
+    function netConnect(isResume) {
+        const btn = document.getElementById('btnPlayOnline');
+        if (!isResume) { btn.disabled = true; btn.innerText = 'CONNECTING...'; }
+        const restoreBtn = () => { btn.disabled = false; btn.innerText = 'PLAY ONLINE'; };
+        let joined = false;
+        const ws = new WebSocket(netState.url);
+        netState.ws = ws;
+        ws.onopen = () => {
+            const j = Object.assign({}, netState.joinMsg);
+            if (isResume && netState.token) j.resume = netState.token;
+            ws.send(JSON.stringify(j));
+        };
+        ws.onmessage = (e) => {
+            let msg; try { msg = JSON.parse(e.data); } catch (err) { return; }
+            if (msg.t === 'welcome' && !joined) {
+                joined = true; restoreBtn(); netState.attempts = 0; netState.token = msg.token;
+                netState.lastWelcome = msg;
+                if (msg.state === 'playing') {
+                    enterOnlineGame(ws, msg, isResume);
+                } else {
+                    // Sala en lobby (o reiniciándose): práctica offline mientras tanto
+                    if (msg.state === 'ended') setLobbyBanner('🌐 SALA ' + msg.roomName + ' — reiniciándose...   ·   PRÁCTICA OFFLINE');
+                    else setLobbyBanner('🌐 SALA ' + msg.roomName + ' — esperando jugadores (' + msg.count + '/' + msg.needed + ')   ·   PRÁCTICA OFFLINE');
+                    if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
+                }
+            } else if (msg.t === 'waiting') {
+                if (practiceMode) setLobbyBanner('🌐 SALA ' + msg.roomName + ' — esperando jugadores (' + msg.count + '/' + msg.needed + ')   ·   PRÁCTICA OFFLINE');
+            } else if (msg.t === 'roomRestart') {
+                // El admin reinició la sala en plena partida: fin como si murieses + TRY AGAIN
+                if (sim && sim.isRemote && sim.ws === ws && gameRunning && !practiceMode) {
+                    SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true;
+                    els.skillOverlay.style.display = 'none'; isPickingSkill = false;
+                    els.resultTitle.innerText = 'SALA REINICIADA'; els.resultTitle.style.color = '#ffcc00';
+                    showResultsUI();
+                }
+            } else if (msg.t === 'matchStart') {
+                practiceMode = false; setLobbyBanner(null);
+                spawnFloatingText('¡EMPIEZA LA PARTIDA ONLINE!', '#00ff88');
+                enterOnlineGame(ws, msg, false);
+            } else if (msg.t === 'resumeFail') {
+                netState.token = null; try { ws.close(); } catch (err) {}
+            } else if (msg.t === 'kicked') {
+                window.__kicked = true;
+            } else if (sim && sim.isRemote && sim.ws === ws) {
+                sim.onMessage(msg);
+            }
+        };
+        ws.onclose = () => {
+            restoreBtn();
+            if (window.__kicked) {
+                window.__kicked = false;
+                if (gameRunning) abandonNet('Has sido expulsado por el administrador.');
+                return;
+            }
+            if (!gameRunning || !netState || netState.ws !== ws) return;
+            if (netState.token && netState.attempts < 5) {
+                netState.attempts++;
+                spawnFloatingText('RECONECTANDO... (' + netState.attempts + '/5)', '#ffcc00');
+                setTimeout(() => { if (gameRunning && netState) netConnect(true); }, 1200);
+            } else {
+                abandonNet(netState.token ? 'Conexión con el servidor perdida.' : 'No se pudo reanudar la partida.');
+            }
+        };
+        ws.onerror = () => {
+            if (!joined && !isResume && !gameRunning) { restoreBtn(); alert('No se pudo conectar a ' + netState.url + '\n¿Está arrancado el servidor? (node server/index.js)'); }
+        };
+    }
+
+    function enterOnlineGame(ws, msg, isResume) {
+        practiceMode = false; setLobbyBanner(null);
+        sim = new RemoteSim(ws, msg);
+        if (isResume) sim._camInit = true;   // mantener la cámara donde estaba
+        MAP_SIZE = msg.mapSize;
+        currentGameMode = msg.mode;
+        isGodMode = false; isSpectating = false;
+        if (saveInterval) clearInterval(saveInterval);
+        if (!isResume) { explosions = []; camera.scale = 0.8; }
+        const esArcade = (msg.mode === 'arcade' || msg.mode === 'skills');
+        els.actionBar.style.display = esArcade ? 'flex' : 'none';
+        if (esArcade && !isResume) {
+            massMilestoneReached = false; isPickingSkill = false; els.skillOverlay.style.display = 'none';
+            const tl = (msg.tl != null) ? msg.tl : msg.duration;
+            const elapsed = Math.max(0, (msg.duration - tl) / 1000);
+            nextSkillPickTime = (Math.floor(elapsed / 30) + 1) * 30;
+            updateSkillsUI_Arcade();
+        }
+        els.room.innerText = (msg.roomName || currentServer) + ' ⚡';
+        els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
+        document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
+        lastFrameTime = Date.now();
+        if (!isResume) SoundManager.playMusic();
+        gameRunning = true;
+        if (isResume) spawnFloatingText('RECONECTADO', '#00ff88');
+    }
+
     function lerpColor(a, b, amount) { if (typeof amount !== 'number') return a; var ah = parseInt(a.replace(/#/g, ''), 16), ar = ah >> 16, ag = ah >> 8 & 0xff, ab = ah & 0xff, bh = parseInt(b.replace(/#/g, ''), 16), br = bh >> 16, bg = bh >> 8 & 0xff, bb = bh & 0xff, rr = ar + amount * (br - ar), rg = ag + amount * (bg - ag), rb = ab + amount * (bb - ab); return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1); }
     function createExplosion(x, y) { explosions.push(new Explosion(x, y)); }
 
-    function showSkillChoice() { if(isPickingSkill) return; SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let s = skills[id], div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${s.icon}" style="background-color:transparent;"></div><div class="skill-opt-name">${s.name}</div>`; div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
+    function showSkillChoice() { if(isPickingSkill) return; SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div><div class="skill-opt-name">${SKILL_DEFS[id].name}</div>`; div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
-    function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; let idx = playerSkills.findIndex(s => s && s.id === id); if (idx !== -1) { playerSkills[idx].uses += skills[id].uses; } else { let slot = playerSkills.indexOf(null); if(slot === -1) slot = 3; playerSkills[slot] = { id, uses: skills[id].uses }; } updateSkillsUI_Arcade(); }
-    
-    function isHiddenInVirus(cell) { for(let v of viruses) { if (cell.r < v.r && getEllipticalDist(cell, v) + cell.r < v.r) { return true; } } return false; }
+    function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
 
+    // Cada frame: entrega el input a la sim, avanza un tick, consume los eventos
+    // y actualiza el HUD. Toda la física/colisiones ocurre dentro de sim.step().
     function updateGame() {
-        if (!gameRunning) return;
-        let totalM = 0; player.cells.forEach(c => totalM += c.mass);
+        if (!gameRunning || !sim) return;
+        const p = me();
         const now = Date.now(), delta = now - lastFrameTime; lastFrameTime = now;
-        if(globalCDTimer > 0) { globalCDTimer -= delta; if(globalCDTimer < 0) globalCDTimer = 0; }
+
+        // 1) Input → sim (objetivo en coordenadas de mundo)
+        if (isSpectating || isLoggingOut || !p) { if (p) sim.setInput('me', null); }
+        else if (inputMode === 'MOUSE') { const es = getViewScale(); sim.setInput('me', { tx: (mouse.x - width/2) / es + camera.x, ty: (mouse.y - height/2) / es + camera.y }); }
+        else {
+            let avgX = 0, avgY = 0, count = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; count++; });
+            if (count > 0) { avgX /= count; avgY /= count; let dirX = 0, dirY = 0; if (keys.a) dirX -= 1; if (keys.d) dirX += 1; if (keys.w) dirY -= 1; if (keys.s) dirY += 1; sim.setInput('me', { tx: avgX + dirX * 1000, ty: avgY + dirY * 1000 }); }
+        }
+
+        // 2) Tick de simulación + eventos hacia la presentación
+        sim.step(delta);
+        timeScale = sim.timeScale;
+        processSimEvents(sim.drainEvents());
+
+        // 3) HUD
+        let totalM = 0; myCells().forEach(c => totalM += c.mass);
         fpsTimer += delta; frameCount++; if (fpsTimer >= 1000) { els.fpsVal.innerText = frameCount; fpsTimer = 0; frameCount = 0; }
-        let gcdText = globalCDTimer > 0 ? (globalCDTimer/1000).toFixed(1) : ""; for(let i=1; i<=10; i++) { if(uiGcds[i]) uiGcds[i].innerText = gcdText; }
-        
-        let activeBuffs = []; if (skills[3].active > 0) activeBuffs.push({id: 3, time: skills[3].active}); if (skills[5].active > 0) activeBuffs.push({id: 5, time: skills[5].active}); if (skills[6].active > 0) activeBuffs.push({id: 6, time: skills[6].active});
-        // CORREGIDO: Rutas a imágenes con ../
+        const globalCD = p ? p.globalCD : 0;
+        let gcdText = globalCD > 0 ? (globalCD/1000).toFixed(1) : ""; for(let i=1; i<=10; i++) { if(uiGcds[i]) uiGcds[i].innerText = gcdText; }
+
+        let activeBuffs = []; if (p) { if (p.skillState[3] > 0) activeBuffs.push({id: 3, time: p.skillState[3]}); if (p.skillState[5] > 0) activeBuffs.push({id: 5, time: p.skillState[5]}); if (p.skillState[6] > 0) activeBuffs.push({id: 6, time: p.skillState[6]}); }
         if(activeBuffs.length > 0) { els.buffTable.style.display = 'block'; let buffHtml = ""; const buffImages = { 3: '../img/sprint.png', 5: '../img/iman.png', 6: '../img/inmune.png' }; activeBuffs.forEach(buff => { let seconds = Math.ceil(buff.time / 1000); let imgSrc = buffImages[buff.id] || ''; buffHtml += `<div class="buff-row"><img src="${imgSrc}" class="buff-icon-img" onerror="this.style.display='none'"><span class="buff-time">${seconds}s</span></div>`; }); els.buffList.innerHTML = buffHtml; } else { els.buffTable.style.display = 'none'; }
 
-        let roomKey = currentGameMode + '_' + currentServer;
-        if (currentGameMode === 'arcade' || currentGameMode === 'skills') { 
-            let tl = roomTimers[roomKey] - Date.now(); 
-            if(tl <= 0) { finishGameSuccess(); return; } 
-            let min = Math.floor(tl/60000), sec = Math.floor((tl%60000)/1000); els.timer.innerText = (min<10?"0"+min:min) + ":" + (sec<10?"0"+sec:sec); 
-            if(!isGodMode && !isSpectating) { let elapsed = (GAME_DURATION_MS - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = (pickTimer * 10) + "%"; if(pickTimer <= 0) { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } } 
+        if (currentGameMode === 'arcade' || currentGameMode === 'skills') {
+            // Tiempo de sala: local (roomTimers) u online (el servidor lo manda en cada snapshot)
+            let tl, dur;
+            if (sim.isRemote) { tl = sim.remainingMs(); if (tl == null) tl = 0; dur = sim.duration; }
+            else { tl = roomTimers[currentGameMode + '_' + currentServer] - Date.now(); dur = GAME_DURATION_MS; if (tl <= 0) { finishGameSuccess(); return; } }
+            let min = Math.floor(tl/60000), sec = Math.floor((tl%60000)/1000); els.timer.innerText = (min<10?"0"+min:min) + ":" + (sec<10?"0"+sec:sec);
+            if(!isGodMode && !isSpectating && tl > 0) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = (pickTimer * 10) + "%"; if(pickTimer <= 0) { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } }
         } else { els.timer.innerText = ""; }
-        
+
         if (isGodMode) { els.debugHud.style.display = 'block'; } else { els.debugHud.style.display = 'none'; }
-        for(let i=1; i<=8; i++) { if(skills[i].active > 0) { skills[i].active -= delta; if(skills[i].active < 0) skills[i].active = 0; } }
-        if (currentGameMode === 'arcade' || currentGameMode === 'skills') { for(let i=0; i<10; i++) { let slot = i+1, s = playerSkills[i]; if(s && uiCounts[slot]) { uiCounts[slot].innerText = isGodMode ? "∞" : s.uses; if(s.uses <= 0 && !isGodMode) uiSlots[slot].style.opacity = '0.5'; } } }
-        
-        foodGrid.clear();
-        for(let f of foods) foodGrid.insert(f);
+        if ((currentGameMode === 'arcade' || currentGameMode === 'skills') && p) { for(let i=0; i<10; i++) { let slot = i+1, s = p.skillSlots[i]; if(s && uiCounts[slot]) { uiCounts[slot].innerText = isGodMode ? "∞" : s.uses; if(s.uses <= 0 && !isGodMode) uiSlots[slot].style.opacity = '0.5'; } } }
 
-        if(skills[5].active > 0) { player.cells.forEach(p => { if(p.tpPhase > 0) return; foods.forEach(f => { let dx = p.x - f.x, dy = p.y - f.y, dist = Math.sqrt(dx*dx+dy*dy); if(dist < (SKILL_PARAMS.magnetRange + p.r) && dist > 1) { f.x += (dx/dist)*3 * timeScale; f.y += (dy/dist)*3 * timeScale; } }); }); }
+        els.score.innerText = Math.floor(totalM);
 
-        let tx=0, ty=0, totalR=0, n=player.cells.length; player.cells.forEach(c => { tx+=c.x; ty+=c.y; totalR+=c.r; c.groupMaxR = Math.max(...player.cells.map(x=>x.r)); }); els.score.innerText = Math.floor(totalM);
-        if (totalM >= AUTO_SPLIT_LEVEL_1 && !splitMilestones.level1) { triggerRandomSplit(); splitMilestones.level1 = true; }
-        if (totalM >= AUTO_SPLIT_LEVEL_2 && !splitMilestones.level2) { triggerRandomSplit(); splitMilestones.level2 = true; }
-        
+        // 4) Cámara
         if (isSpectating) {
             let specR = 178; let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / specR, ZOOM_CONFIG.exponent); targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale)); camera.scale += (targetScale - camera.scale) * 0.05 * timeScale;
             if (isSpecDragging) { let es = getViewScale(); let dx = (mouse.x - lastSpecX) / es; let dy = (mouse.y - lastSpecY) / es; camera.x -= dx * 1.5; camera.y -= dy * 1.5; lastSpecX = mouse.x; lastSpecY = mouse.y; }
         } else {
+            const cells = myCells(); let tx=0, ty=0, totalR=0, n=cells.length; cells.forEach(c => { tx+=c.x; ty+=c.y; totalR+=c.r; });
             if(n > 0) { camera.x += ((tx/n) - camera.x) * 0.05 * timeScale; camera.y += ((ty/n) - camera.y) * 0.05 * timeScale; let effR = Math.max(INITIAL_RADIUS, totalR / Math.pow(n, 0.4)); let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / effR, ZOOM_CONFIG.exponent); targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale)); camera.scale += (targetScale - camera.scale) * 0.05 * timeScale; }
         }
 
+        // 5) Efectos visuales locales
         explosions.forEach((e, i) => { e.update(); if(e.life <= 0) explosions.splice(i, 1); });
         floatingTexts.forEach((ft, i) => { ft.update(); if(ft.life <= 0) floatingTexts.splice(i, 1); });
         uiTexts.forEach((ut, i) => { ut.update(); if(ut.life <= 0) uiTexts.splice(i, 1); });
 
-        let living = [...player.cells, ...enemies];
-        for(let i=ejectedMasses.length-1; i>=0; i--) { 
-            let m = ejectedMasses[i], f = (m.type === 'shoot') ? 0.93 : 0.9; m.x += m.vx * timeScale; m.y += m.vy * timeScale; m.vx *= Math.pow(f, timeScale); m.vy *= Math.pow(f, timeScale); 
-            if (m.type === 'shoot') { for(let c of living) { if(getEllipticalDist(m, c) < c.r) { createExplosion(m.x, m.y); ejectedMasses.splice(i, 1); break; } } } 
-            for(let c of living) { if(getEllipticalDist(m, c) < c.r) { c.r = Math.sqrt((c.mass + (Math.PI*m.r*m.r*2))/(Math.PI*PILL_RATIO)); ejectedMasses.splice(i, 1); break; } } 
-            if(i < ejectedMasses.length) { 
-                for(let vIdx=0; vIdx<viruses.length; vIdx++) { 
-                    let v = viruses[vIdx]; 
-                    if(Math.hypot(m.x-v.x, m.y-v.y) < v.r) { 
-                        if(m.type === 'shoot') { ejectedMasses.splice(i, 1); if(!v.damaged) { v.damaged = true; v.animTime = 0; createExplosion(v.x, v.y); } else { createExplosion(v.x, v.y); virusPool.free(viruses[vIdx]); viruses.splice(vIdx, 1); projectiles.push({ x: v.x, y: v.y, vx: Math.cos(Math.atan2(m.vy, m.vx))*20, vy: Math.sin(Math.atan2(m.vy, m.vx))*20, r: 25, type: 'virusShot' }); spawnVirus(); } } 
-                        else { ejectedMasses.splice(i, 1); createExplosion(v.x, v.y); v.hits = (v.hits||0) + 1; v.r += 6; if(v.hits >= 2) { v.hits = 0; v.r = 70; let a = Math.atan2(m.vy, m.vx); let vNew = virusPool.get(); vNew.x = v.x+Math.cos(a)*55; vNew.y = v.y+Math.sin(a)*55; vNew.r = 70; vNew.vx = Math.cos(a)*30; vNew.vy = Math.sin(a)*30; vNew.hits = 0; vNew.damaged = false; viruses.push(vNew); if((currentGameMode === 'arcade' || currentGameMode === 'skills') && !isGodMode && !isSpectating) showSkillChoice(); } } 
-                        break; 
-                    } 
+        // ALIVE = grupos enemigos vivos (bots y otros jugadores) + tú si sigues vivo
+        const uniqueIds = new Set(sim.enemies.map(e => e.id)); els.enemyCount.innerText = uniqueIds.size + (myCells().length > 0 ? 1 : 0); updateLeaderboard();
+    }
+
+    // Traduce los eventos de la sim a sonidos, explosiones, textos y UI.
+    function processSimEvents(events) {
+        for (const ev of events) {
+            switch (ev.type) {
+                case 'explosion': createExplosion(ev.x, ev.y); break;
+                case 'splitSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('split', {x: ev.x, y: ev.y}); } else { SoundManager.playSplit(); } break;
+                case 'shootSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('shoot', {x: ev.x, y: ev.y}); } else { SoundManager.play('shoot'); } break;
+                case 'virusSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('virus', {x: ev.x, y: ev.y}); } else { SoundManager.play('virus'); } break;
+                case 'text': if (ev.playerId === 'me') spawnFloatingText(ev.text, ev.color, ev.world); break;
+                case 'botText': { const cells = myCells(); if (enableEnemyFX && cells.length > 0 && getEllipticalDist({x: ev.x, y: ev.y}, cells[0]) < 1500) { floatingTexts.push(new FloatingText(ev.x, ev.y, ev.text, ev.color)); } break; }
+                case 'botKilled': {
+                    if (ev.playerId !== 'me') break;
+                    if (ev.mode === 'classic') {
+                        let msg = "KILL"; if (ev.streak === 1) msg = "FIRST BLOOD"; else if (ev.streak === 2) msg = "DOUBLE KILL"; else if (ev.streak === 3) msg = "TRIPLE KILL"; else if (ev.streak === 4) msg = "QUADRA KILL"; else if (ev.streak >= 5) msg = "PENTAKILL";
+                        spawnFloatingText(msg, "#FF0000", true); SoundManager.playFloatKill();
+                        if (ev.streak >= 5) setTimeout(() => finishGameSuccess(), 1000);
+                    } else {
+                        const taunts = ["REKT", "PWNED", "BYE", "EZ", "BOOM", "SIT DOWN", "LATER", "DELETED"]; let randomMsg = taunts[Math.floor(Math.random() * taunts.length)];
+                        spawnFloatingText(randomMsg + " " + ev.botName, "#FF2A2A", true); SoundManager.playFloatKill();
+                    }
+                    break;
                 }
+                case 'botPieceEaten': if (ev.playerId === 'me') SoundManager.play('kill1'); break;
+                case 'playerDied': {
+                    if (ev.playerId !== 'me') break;
+                    if (practiceMode && sim && !sim.isRemote) {
+                        // En práctica (esperando sala online) se reaparece al instante
+                        const c = sim.spawnPlayer('me');
+                        camera.x = c.x; camera.y = c.y;
+                        SoundManager.play('death');
+                        spawnFloatingText('REAPARECES (PRÁCTICA)', '#ffcc00');
+                    } else { stopGame(); }
+                    break;
+                }
+                case 'virusFedSplit': if ((currentGameMode === 'arcade' || currentGameMode === 'skills') && !isGodMode && !isSpectating) showSkillChoice(); break;
+                case 'skillUsed': {
+                    if (ev.playerId !== 'me') break;
+                    if (ev.id === 'godmass') { spawnFloatingText("GOD MODE MASS", "#00FF00"); SoundManager.play('big'); }
+                    else if (ev.id === 3) { spawnFloatingText("+ SPEED", "#00FFFF"); SoundManager.play('sprint'); }
+                    else if (ev.id === 4) { SoundManager.play('tp'); }
+                    else if (ev.id === 5) { spawnFloatingText("+ MAGNET POWER", "#A020F0"); SoundManager.play('iman'); }
+                    else if (ev.id === 6) { spawnFloatingText("IMMUNITY", "#FFD700"); SoundManager.play('shield'); }
+                    else if (ev.id === 7) { spawnFloatingText("MASS UP", "#00FF00"); SoundManager.play('big'); }
+                    else if (ev.id === 8) { if (ev.win) { spawnFloatingText("LUCKY! +MASS", "#00FF00"); SoundManager.play('big'); } else { spawnFloatingText("UNLUCKY! -MASS", "#FF0000"); SoundManager.play('little'); } }
+                    break;
+                }
+                case 'skillsUI': if (ev.playerId === 'me') updateSkillsUI_Arcade(); break;
+                case 'matchEnd': finishGameSuccess(); break;
             }
         }
-
-        for(let i=projectiles.length-1; i>=0; i--) { let p = projectiles[i]; p.x += p.vx * timeScale; p.y += p.vy * timeScale; if (Math.abs(p.x) > MAP_SIZE || Math.abs(p.y) > MAP_SIZE) { projectiles.splice(i,1); continue; } for(let c of living) { if(c.immuneTime > 0 || c.tpPhase > 0) continue; if(getEllipticalDist(p, c) < c.r + p.r) { createExplosion(c.x, c.y); handleVirusCollision({x:c.x, y:c.y}, -1, c, true); projectiles.splice(i, 1); break; } } }
-
-        for(let i=0; i<viruses.length; i++) { 
-            let v = viruses[i]; if (v.damaged && v.animTime < 1) { v.animTime += 0.015 * timeScale; if(v.animTime > 1) v.animTime = 1; }
-            v.x += v.vx * timeScale; v.y += v.vy * timeScale; v.vx *= Math.pow(0.94, timeScale); v.vy *= Math.pow(0.94, timeScale); 
-            if(Math.abs(v.x) > MAP_SIZE) v.vx*=-1; if(Math.abs(v.y) > MAP_SIZE) v.vy*=-1; 
-            for(let c of living) { if(c.immuneTime > 0 || c.tpPhase > 0) continue; let vulnerable = (c.mass >= 15000) || (c.r > v.r); if (((v.vx**2 + v.vy**2) > 25 && getEllipticalDist(c, v) < c.r + v.r - 10) || (vulnerable && getEllipticalDist(c, v) < c.r * 0.9)) { handleVirusCollision(v, i, c, false); i--; break; } } 
-        }
-
-        for(let i=0; i<player.cells.length; i++) { let p = player.cells[i]; p.update(delta); for(let j=i+1; j<player.cells.length; j++) resolveCellCollision(p, player.cells[j], true); }
-        player.cells = player.cells.filter(c => c.r > 0); if(player.cells.length === 0 && gameRunning && !isSpectating) stopGame();
-
-        enemies.forEach(bot => { let siblings = enemies.filter(e => e.id === bot.id); let maxR = 0; siblings.forEach(s => { if(s.r > maxR) maxR = s.r; }); bot.groupMaxR = maxR; bot.update(delta); });
-        
-        for(let i=enemies.length-1; i>=0; i--) { 
-            let bot = enemies[i]; if (bot.r <= 0) { enemies.splice(i,1); continue; } 
-            for(let k=player.cells.length-1; k>=0; k--) { 
-                let p = player.cells[k]; if (p.tpPhase > 0 || bot.tpPhase > 0) continue; if (p.immuneTime > 0 && bot.r > p.r) continue; if (bot.immuneTime > 0 && p.r > bot.r) continue;
-                if (currentGameMode === 'classic' && currentKillStreak >= 5) continue; let botHiding = isHiddenInVirus(bot); let playerHiding = isHiddenInVirus(p);
-                if(!isGodMode && bot.r > p.r*1.15 && getEllipticalDist(bot, p) < bot.r*0.8 && !playerHiding) { bot.r = Math.sqrt((bot.mass+p.mass)/(Math.PI*PILL_RATIO)); player.cells.splice(k,1); } 
-                else if(p.r > bot.r*1.15 && getEllipticalDist(p, bot) < p.r*0.8 && !botHiding) { 
-                    p.r = Math.sqrt((p.mass+bot.mass)/(Math.PI*PILL_RATIO)); let botId = bot.id; let botName = bot.name; enemies.splice(i,1); 
-                    let remainingPieces = enemies.filter(e => e.id === botId).length;
-                    if (remainingPieces === 0) {
-                        if (currentGameMode === 'classic') { 
-                            currentKillStreak++; let msg = "KILL";
-                            if (currentKillStreak === 1) msg = "FIRST BLOOD"; else if (currentKillStreak === 2) msg = "DOUBLE KILL"; else if (currentKillStreak === 3) msg = "TRIPLE KILL"; else if (currentKillStreak === 4) msg = "QUADRA KILL"; else if (currentKillStreak >= 5) msg = "PENTAKILL"
-                            spawnFloatingText(msg, "#FF0000", true); SoundManager.playFloatKill(); if (currentKillStreak >= 5) setTimeout(() => finishGameSuccess(), 1000); 
-                        } else { 
-                            const taunts = ["REKT", "PWNED", "BYE", "EZ", "BOOM", "SIT DOWN", "LATER", "DELETED"]; let randomMsg = taunts[Math.floor(Math.random() * taunts.length)];
-                            spawnFloatingText(randomMsg + " " + botName, "#FF2A2A", true); SoundManager.playFloatKill(); 
-                        }
-                        if(botConfig.respawn) setTimeout(spawnBot, 3000); 
-                    } else { SoundManager.play('kill1'); }
-                    i--; break; 
-                }
-            } 
-            if(i < 0 || i >= enemies.length) continue;
-            for(let j=i-1; j>=0; j--) { 
-                let other = enemies[j]; resolveCellCollision(bot, other, bot.id === other.id); 
-                if (bot.id !== other.id) { 
-                     if (bot.r > other.r * 1.15 && getEllipticalDist(bot, other) < bot.r * 0.6) { if (!isHiddenInVirus(other) && other.immuneTime <= 0) { bot.r = Math.sqrt((bot.mass + other.mass) / (Math.PI * PILL_RATIO)); let otherId = other.id; enemies.splice(j, 1); let remaining = enemies.filter(e => e.id === otherId).length; if (remaining === 0 && botConfig.respawn) setTimeout(spawnBot, 3000); i--; } }
-                     else if (other.r > bot.r * 1.15 && getEllipticalDist(other, bot) < other.r * 0.6) { if (!isHiddenInVirus(bot) && bot.immuneTime <= 0) { other.r = Math.sqrt((other.mass + bot.mass) / (Math.PI * PILL_RATIO)); let botId = bot.id; enemies.splice(i, 1); let remaining = enemies.filter(e => e.id === botId).length; if (remaining === 0 && botConfig.respawn) setTimeout(spawnBot, 3000); break; } }
-                }
-            }
-        }
-        
-        living = [...player.cells, ...enemies]; let gainMultiplier = worldSettings.food || 1;
-        living.forEach(c => {
-            const nearbyFoods = foodGrid.query(c.x, c.y);
-            for(let f of nearbyFoods) {
-                if(f.eaten) continue;
-                if(getEllipticalDist(c, f) < c.r + f.r) {
-                    let gain = (Math.PI*f.r*f.r*2.5) * gainMultiplier;
-                    c.r = Math.sqrt((c.mass + gain)/(Math.PI*PILL_RATIO));
-                    f.eaten = true;
-                }
-            }
-        });
-
-        for (let i = foods.length - 1; i >= 0; i--) {
-            if (foods[i].eaten) {
-                foods[i].eaten = false;
-                foodPool.free(foods[i]);
-                foods[i] = foods[foods.length - 1];
-                foods.pop();
-                spawnFood();
-            }
-        }
-
-        const uniqueIds = new Set(enemies.map(e => e.id)); els.enemyCount.innerText = uniqueIds.size; updateLeaderboard();
     }
 
     function draw() {
-        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color'); ctx.fillRect(0, 0, width, height); if (!gameRunning) return;
+        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color'); ctx.fillRect(0, 0, width, height); if (!gameRunning || !sim) return;
+        const p = me();
         let es = getViewScale(); ctx.save(); ctx.translate(width/2, height/2); ctx.scale(es, es); ctx.translate(-camera.x, -camera.y);
         let vL = camera.x - (width/2)/es - 100, vR = camera.x + (width/2)/es + 100, vT = camera.y - (height/2)/es - 100, vB = camera.y + (height/2)/es + 100;
-        ctx.lineWidth = 1; ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--grid-line'); let g = 100, sX = Math.floor(vL/g)*g, eX = Math.ceil(vR/g)*g, sY = Math.floor(vT/g)*g, eY = Math.ceil(vB/g)*g; ctx.beginPath(); for(let x = sX; x <= eX; x+=g) { ctx.moveTo(x, vT); ctx.lineTo(x, vB); } for(let y = sY; y <= eY; y+=g) { ctx.moveTo(vL, y); ctx.lineTo(vR, y); } ctx.stroke(); 
-        
+        ctx.lineWidth = 1; ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--grid-line'); let g = 100, sX = Math.floor(vL/g)*g, eX = Math.ceil(vR/g)*g, sY = Math.floor(vT/g)*g, eY = Math.ceil(vB/g)*g; ctx.beginPath(); for(let x = sX; x <= eX; x+=g) { ctx.moveTo(x, vT); ctx.lineTo(x, vB); } for(let y = sY; y <= eY; y+=g) { ctx.moveTo(vL, y); ctx.lineTo(vR, y); } ctx.stroke();
+
         ctx.save(); ctx.beginPath(); ctx.lineWidth = 20; ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)'; ctx.shadowBlur = 40; ctx.shadowColor = '#ff0000'; ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke();
         ctx.beginPath(); ctx.lineWidth = 4; ctx.strokeStyle = '#ff3333'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000'; let dashOffset = (performance.now() / 20) % 60; ctx.setLineDash([30, 30]); ctx.lineDashOffset = -dashOffset; ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke(); ctx.restore();
 
         let spikeCount = 0; if (selectedQuality === 'high') spikeCount = 4; else if (selectedQuality === 'normal') spikeCount = 2; else if (selectedQuality === 'low') spikeCount = 1;
 
         ctx.save();
-        for(let i=0; i<foods.length; i++) { 
-            let f = foods[i]; if (f.x > vL && f.x < vR && f.y > vT && f.y < vB) { 
-                ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill(); 
+        for(let i=0; i<sim.foods.length; i++) {
+            let f = sim.foods[i]; if (f.x > vL && f.x < vR && f.y > vT && f.y < vB) {
+                ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
                 if (spikeCount > 0 && f.spikes) { for(let j = 0; j < spikeCount; j++) { let ang = f.spikes[j]; ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(ang); ctx.fillStyle = f.c1; ctx.beginPath(); ctx.moveTo(f.r - 1, -f.r/2); ctx.lineTo(f.r + f.r/1.5, 0); ctx.lineTo(f.r - 1, f.r/2); ctx.fill(); ctx.restore(); } }
-            } 
+            }
         }
-        ctx.restore();
-        
-        ctx.save();
-        ejectedMasses.forEach(m => { if (m.x > vL && m.x < vR && m.y > vT && m.y < vB) drawMiniPill(m, es); });
         ctx.restore();
 
         ctx.save();
-        projectiles.forEach(p => { if (p.x > vL && p.x < vR && p.y > vT && p.y < vB) { if (isLowQuality) { ctx.fillStyle = '#9EE32D'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(p.x, p.y); let sL = 5; ctx.fillStyle = '#9EE32D'; ctx.strokeStyle = '#3E8E11'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<16; i++) { let r=(i%2===0)?p.r + sL:p.r, a=(Math.PI*i)/8; (i===0)?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); } } });
+        sim.ejectedMasses.forEach(m => { if (m.x > vL && m.x < vR && m.y > vT && m.y < vB) drawMiniPill(m, es); });
+        ctx.restore();
+
+        ctx.save();
+        sim.projectiles.forEach(pr => { if (pr.x > vL && pr.x < vR && pr.y > vT && pr.y < vB) { if (isLowQuality) { ctx.fillStyle = '#9EE32D'; ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(pr.x, pr.y); let sL = 5; ctx.fillStyle = '#9EE32D'; ctx.strokeStyle = '#3E8E11'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<16; i++) { let r=(i%2===0)?pr.r + sL:pr.r, a=(Math.PI*i)/8; (i===0)?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); } } });
         ctx.restore();
 
         explosions.forEach(e => e.draw());
-        
-        if (skills[5].active > 0 && player.cells.length > 0) { 
-            let avgX = 0, avgY = 0, maxR = 0; player.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= player.cells.length; avgY /= player.cells.length; let magnetRad = SKILL_PARAMS.magnetRange + maxR; 
+
+        if (p && p.skillState[5] > 0 && p.cells.length > 0) {
+            let avgX = 0, avgY = 0, maxR = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= p.cells.length; avgY /= p.cells.length; let magnetRad = SKILL_PARAMS.magnetRange + maxR;
             let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(avgX, avgY);
             for(let i=0; i<3; i++) { let offset = i * 0.3, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(160, 32, 240, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore();
         }
 
-        [...enemies, ...player.cells].sort((a,b) => a.r - b.r).forEach(e => { if (e.x + e.r > vL && e.x - e.r < vR && e.y + e.r > vT && e.y - e.r < vB) {
-            e.draw(); if (e.isBot && e.magnetTime > 0 && enableEnemyFX) { let magnetRad = SKILL_PARAMS.magnetRange + e.r; let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(e.x, e.y); for(let i=0; i<3; i++) { let offset = i * 0.33, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(160, 32, 240, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore(); }
+        [...sim.enemies, ...myCells()].sort((a,b) => a.r - b.r).forEach(e => { if (e.x + e.r > vL && e.x - e.r < vR && e.y + e.r > vT && e.y - e.r < vB) {
+            drawCell(e); if (e.isBot && e.magnetTime > 0 && enableEnemyFX) { let magnetRad = SKILL_PARAMS.magnetRange + e.r; let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(e.x, e.y); for(let i=0; i<3; i++) { let offset = i * 0.33, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(160, 32, 240, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore(); }
         }});
-        
+
         ctx.save();
-        viruses.forEach(v => { 
-            if (v.x + v.r > vL && v.x - v.r < vR && v.y + v.r > vT && v.y - v.r < vB) { 
+        sim.viruses.forEach(v => {
+            if (v.x + v.r > vL && v.x - v.r < vR && v.y + v.r > vT && v.y - v.r < vB) {
                 ctx.save(); ctx.translate(v.x, v.y);
                 let fillColor = '#9EE32D'; let strokeColor = '#3E8E11';
                 if (v.damaged) { fillColor = lerpColor('#9EE32D', '#a020f0', v.animTime); strokeColor = lerpColor('#3E8E11', '#501078', v.animTime); if(v.animTime < 1) { ctx.translate((Math.random()-0.5)*4, (Math.random()-0.5)*4); } }
@@ -1877,60 +2001,42 @@
                     let grad = ctx.createRadialGradient(0, 0, v.r * 0.2, 0, 0, v.r); grad.addColorStop(0, '#ccff66'); grad.addColorStop(1, fillColor); ctx.fillStyle = grad; ctx.strokeStyle = strokeColor; ctx.lineWidth = 5; ctx.lineJoin = 'round';
                     ctx.beginPath(); const numSpikes = 20; for(let i=0; i<numSpikes; i++) { let angle = (Math.PI * 2 * i) / numSpikes; let nextAngle = (Math.PI * 2 * (i+1)) / numSpikes; let midAngle = (angle + nextAngle) / 2; let rOut = v.r + 5; let xOut = Math.cos(midAngle) * rOut; let yOut = Math.sin(midAngle) * rOut; let rIn = v.r - 5; let xIn = Math.cos(nextAngle) * rIn; let yIn = Math.sin(nextAngle) * rIn; if (i===0) ctx.moveTo(Math.cos(angle)*rIn, Math.sin(angle)*rIn); ctx.quadraticCurveTo(Math.cos(angle + (midAngle-angle)/2) * rOut, Math.sin(angle + (midAngle-angle)/2) * rOut, xOut, yOut); ctx.quadraticCurveTo(Math.cos(midAngle + (nextAngle-midAngle)/2) * rOut, Math.sin(midAngle + (nextAngle-midAngle)/2) * rOut, xIn, yIn); } ctx.closePath(); ctx.fill(); ctx.stroke();
                 } else {
-                    ctx.fillStyle = fillColor; ctx.strokeStyle = strokeColor; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.beginPath(); for(let i=0; i<24; i++) { let r=(i%2===0)? v.r + 8 : v.r - 2; let a=(Math.PI*i)/12; (i===0)?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); 
+                    ctx.fillStyle = fillColor; ctx.strokeStyle = strokeColor; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.beginPath(); for(let i=0; i<24; i++) { let r=(i%2===0)? v.r + 8 : v.r - 2; let a=(Math.PI*i)/12; (i===0)?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.stroke();
                 }
                 if (v.spots && !isLowQuality) { ctx.fillStyle = 'rgba(0,0,0,0.2)'; v.spots.forEach(spot => { ctx.beginPath(); ctx.arc(spot.x, spot.y, spot.r, 0, Math.PI*2); ctx.fill(); }); }
-                ctx.restore(); 
-            } 
+                ctx.restore();
+            }
         });
         ctx.restore();
-        
+
         floatingTexts.forEach(ft => ft.draw(ctx)); ctx.restore(); uiTexts.forEach(ut => ut.draw(ctx));
     }
-    
+
     function drawMiniPill(f, scale) { let sR = f.r * scale; if (isLowQuality || sR < DRAW_LOD_THRESHOLD) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle||0); let w = f.r * 2, h = w * 2.0, r = w / 2; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, r); ctx.clip(); ctx.fillStyle = f.c1; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = f.c2; ctx.fillRect(-w/2, 0, w, h/2); ctx.restore(); } }
     function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
-    
-    // COLLISION RESOLUTION (Standard Cell-Cell Physics)
-    function resolveCellCollision(c1, c2, sameTeam) {
-        if (c1.tpPhase > 0 || c2.tpPhase > 0) return;
-        let dx = c1.x - c2.x; let dy = c1.y - c2.y; let dist = Math.sqrt(dx*dx + dy*dy); let minDist = c1.r + c2.r;
-        if (dist < minDist && dist > 0.001) {
-            let pen = minDist - dist;
-            if (sameTeam) {
-                if (c1.canMerge && c2.canMerge) {
-                    if (c1.mass >= c2.mass) { c1.r = Math.sqrt((c1.mass+c2.mass)/(Math.PI*PILL_RATIO)); c2.r = 0; }
-                    else { c2.r = Math.sqrt((c2.mass+c1.mass)/(Math.PI*PILL_RATIO)); c1.r = 0; }
-                } else {
-                    let f = pen / dist * 0.5;
-                    let tx = dx * f; let ty = dy * f;
-                    c1.x += tx; c1.y += ty; c2.x -= tx; c2.y -= ty;
-                }
-            }
-        }
-    }
 
     // UPDATE LEADERBOARD
     function updateLeaderboard() {
         let all = [];
-        if (player.cells.length > 0) {
-            let m = 0; player.cells.forEach(c => m += c.mass);
-            all.push({ name: player.name, mass: m, isMe: true });
+        const cells = myCells();
+        if (cells.length > 0) {
+            let m = 0; cells.forEach(c => m += c.mass);
+            all.push({ name: me().name, mass: m, isMe: true });
         }
         let botMap = new Map();
-        enemies.forEach(e => {
+        sim.enemies.forEach(e => {
             if (!botMap.has(e.id)) botMap.set(e.id, { name: e.name, mass: 0, isMe: false });
             botMap.get(e.id).mass += e.mass;
         });
         for (let b of botMap.values()) all.push(b);
         all.sort((a,b) => b.mass - a.mass);
-        
+
         let html = "";
         for (let i=0; i<Math.min(10, all.length); i++) {
-            let p = all[i];
-            let displayMass = SHOW_MASS_AS_SCORE ? Math.floor(p.mass) : Math.floor(Math.sqrt(p.mass/Math.PI));
-            let cls = p.isMe ? "lb-item is-me" : "lb-item";
-            html += `<div class="${cls}"><span>${i+1}. ${p.name}</span><span>${displayMass}</span></div>`;
+            let pl = all[i];
+            let displayMass = SHOW_MASS_AS_SCORE ? Math.floor(pl.mass) : Math.floor(Math.sqrt(pl.mass/Math.PI));
+            let cls = pl.isMe ? "lb-item is-me" : "lb-item";
+            html += `<div class="${cls}"><span>${i+1}. ${pl.name}</span><span>${displayMass}</span></div>`;
         }
         els.lbList.innerHTML = html;
     }

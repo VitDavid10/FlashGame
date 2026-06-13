@@ -1,0 +1,91 @@
+==========================================================
+  PILLWARS — INSTRUCCIONES DE USO (multijugador local)
+==========================================================
+
+LO MÁS FÁCIL
+------------
+Doble clic en  ABRIR-TODO.bat
+→ arranca el servidor, la web, y abre el juego en el navegador.
+(Se abrirán 2 ventanas negras: NO las cierres mientras juegas;
+son el servidor del juego y la web.)
+
+
+ARCHIVOS UNO POR UNO (si prefieres control manual)
+--------------------------------------------------
+1) ABRIR-SERVIDOR.bat  → el servidor del juego (físicas, salas, bots).
+                          Déjalo abierto. Se cierra = se corta la partida.
+2) ABRIR-WEB.bat       → la página del juego. Déjalo abierto también.
+3) ABRIR-JUEGO.bat     → abre el navegador en http://localhost:8123/game/
+4) ABRIR-ADMIN.bat     → abre el panel de administración
+                          (clave: 1234)
+
+Orden recomendado: 1 → 2 → 3 (el 4 cuando quieras administrar).
+
+
+CÓMO JUGAR ONLINE
+-----------------
+- En el juego: CLASSIC o ARCADE → pon tu nombre → elige sala (Free, 5$...)
+  o el botón "CUALQUIERA" (te mete donde más gente haya) → PLAY ONLINE.
+- Las salas online NO tienen bots y necesitan 10 jugadores para empezar.
+  Mientras la sala se llena, juegas PRÁCTICA OFFLINE contra bots (arriba
+  verás el contador "esperando jugadores X/10"). Cuando se llena, entras
+  a la partida online automáticamente.
+- ¿Sois menos de 10? Dos opciones:
+    a) Desde el panel de admin: botón "Forzar inicio" en la sala.
+    b) Arrancar el servidor con otro mínimo: en cmd,
+       set MIN_PLAYERS=2 && node server\index.js
+- Para jugar 2 personas en el mismo PC: abre dos pestañas del navegador.
+- Para jugar con alguien de tu casa (misma WiFi):
+    1. Mira tu IP local: abre cmd y escribe  ipconfig
+       (busca "Dirección IPv4", por ejemplo 192.168.1.50)
+    2. El otro jugador entra desde su navegador a:
+       http://TU-IP:8123/game/?server=ws://TU-IP:8080
+       (ejemplo: http://192.168.1.50:8123/game/?server=ws://192.168.1.50:8080)
+    3. Si no le carga, el firewall de Windows te preguntó al arrancar
+       Node la primera vez: hay que "Permitir acceso" en redes privadas.
+
+
+COMANDOS DENTRO DEL JUEGO (pulsa ENTER durante la partida)
+----------------------------------------------------------
+/god          → invulnerable + skills gratis (on/off)
+/mass 50000   → ponerte esa masa
+/bots 10      → poner o quitar bots (0 a 200)
+/speed 2      → velocidad del mundo (0.25 a 5)
+/help         → lista de comandos
+
+
+PANEL DE ADMINISTRACIÓN (ABRIR-ADMIN.bat, clave 1234)
+-----------------------------------------------------
+- TODAS las salas (classic y arcade × Free/5$/10$/20$/50$) con su estado:
+  ONLINE (verde), LOBBY (esperando gente), FIN DE PARTIDA u OFFLINE.
+- Clic en el contador de jugadores (punto verde) → lista con nombre, IP,
+  masa, kills y botones God / Masa / Echar.
+- Reglas por sala: velocidad y masa de comida (en vivo), densidad de virus
+  y bots (se aplican al reiniciar la sala). Se guardan aunque apagues
+  el servidor (server\roomrules.json).
+- Botones por sala: Forzar inicio (lobby), Reiniciar, Echar a todos, Apagar.
+- Arcade: tiempo restante de partida y cuenta atrás de reinicio (30 s).
+- Contadores por sala y totales: entradas, muertes y dinero generado
+  (entradas × precio de la sala). Persisten en server\stats.json.
+- Historial de conexiones guardado en server\connections.log
+
+
+COSAS ÚTILES QUE CONVIENE SABER
+-------------------------------
+- Si te desconectas en mitad de una partida online, tus píldoras se
+  quedan 15 segundos en la arena (y te pueden comer). El juego intenta
+  reconectarse solo hasta 5 veces.
+- Las salas (5$, 25$...) son independientes; la primera persona que
+  entra define los bots y reglas de esa sala.
+- Modos online: CLASSIC, ARCADE y CHAOS. La partida arcade dura 3:50.
+- Para cambiar la clave del admin: abre el servidor desde cmd así:
+    set ADMIN_KEY=miclave && node server\index.js
+
+
+SI ALGO NO VA
+-------------
+- "No se pudo conectar": el servidor no está arrancado → ABRIR-SERVIDOR.bat
+- La página no carga: la web no está arrancada → ABRIR-WEB.bat
+- "Port 8080/8123 is in use": ya hay una ventana abierta con el servidor
+  o la web; usa esa, o ciérrala y vuelve a abrirla.
+==========================================================
