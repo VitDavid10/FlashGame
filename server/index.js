@@ -387,7 +387,10 @@ const wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws, req) => {
     let room = null, playerId = null;
-    const ip = cleanIp(req.socket.remoteAddress);
+    // Detrás del túnel/proxy de Cloudflare la IP real viene en cabeceras
+    const ip = cleanIp(req.headers['cf-connecting-ip']
+        || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+        || req.socket.remoteAddress);
 
     ws.on('message', raw => {
         let msg; try { msg = JSON.parse(raw); } catch (e) { return; }

@@ -89,3 +89,27 @@ SI ALGO NO VA
 - "Port 8080/8123 is in use": ya hay una ventana abierta con el servidor
   o la web; usa esa, o ciérrala y vuelve a abrirla.
 ==========================================================
+
+==========================================================
+ JUGAR CON AMIGOS POR INTERNET (pillwars.fun + tunel)
+==========================================================
+
+El juego vive en https://pillwars.fun/game/ (GitHub Pages) y el
+servidor corre en TU PC, expuesto con un tunel de Cloudflare.
+
+PASOS:
+ 1. Abre ABRIR-SERVIDOR.bat  (el servidor en tu PC)
+ 2. Abre ABRIR-TUNEL.bat     (espera a ver la URL https://xxxx.trycloudflare.com)
+ 3. Pasa a tus amigos el enlace:
+      https://pillwars.fun/game/?server=wss://xxxx.trycloudflare.com
+    (cambia xxxx por tu URL; el navegador la recuerda, solo
+     necesitan el enlace completo la primera vez)
+ 4. Tu admin queda en https://xxxx.trycloudflare.com/admin
+
+NOTAS:
+ - La URL del tunel CAMBIA cada vez que lo abres: reenvia el enlace.
+ - Si se apaga tu PC o cierras las ventanas, se acaba el juego online.
+ - El lobby arranca con 5 jugadores reales y rellena con bots hasta 10
+   (editable por sala en el panel: "Min. reales" y "Poblacion").
+ - Para subir cambios del juego a pillwars.fun:  git add -A,
+   git commit -m "...", git push   (Pages tarda ~1 min en actualizar)
