@@ -160,7 +160,8 @@ function getOrCreateRoom(key, mode, roomName) {
             tickCount: 0, lastTick: Date.now(), emptySince: 0,
             endsAt: null, restartAt: null,
             pendingRemovals: new Map(),       // gracia de reconexión
-            deadRemovals: new Map()           // retirada de muertos
+            deadRemovals: new Map(),          // retirada de muertos
+            spectators: new Set()             // ws que solo miran (panel de control)
         });
         log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(key)} reales, población ${targetPopOf(key)})`);
     }
@@ -369,25 +370,38 @@ function findClient(playerId) {
     return null;
 }
 
-// --- HTTP: panel de admin en el mismo puerto ---
+// --- HTTP: panel de admin + juego estático en el mismo puerto ---
+const ROOT = path.join(__dirname, '..');
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 const httpServer = http.createServer((req, res) => {
-    const url = (req.url || '/').split('?')[0];
-    if (url === '/admin' || url === '/admin.html') {
+    const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+    if (urlPath === '/admin' || urlPath === '/admin.html') {
         try {
             const html = fs.readFileSync(path.join(__dirname, 'admin.html'));
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(html);
         } catch (e) { res.writeHead(500); res.end('No se pudo cargar admin.html'); }
-    } else {
-        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('Servidor PillWars activo. Panel: /admin');
+        return;
     }
+    // Estáticos del juego servidos desde la raíz del repo (mismo origen que el WS):
+    // así el espectador del panel y un único túnel sirven web + juego + websocket.
+    let rel = urlPath.replace(/^\/+/, '') || 'index.html';
+    let filePath = path.normalize(path.join(ROOT, rel));
+    if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end('Forbidden'); return; }
+    fs.stat(filePath, (err, st) => {
+        if (!err && st.isDirectory()) filePath = path.join(filePath, 'index.html');
+        fs.readFile(filePath, (e2, data) => {
+            if (e2) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); return; }
+            res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream' });
+            res.end(data);
+        });
+    });
 });
 
 const wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws, req) => {
-    let room = null, playerId = null;
+    let room = null, playerId = null, spectatorRoom = null;
     // Detrás del túnel/proxy de Cloudflare la IP real viene en cabeceras
     const ip = cleanIp(req.headers['cf-connecting-ip']
         || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
@@ -449,6 +463,21 @@ wss.on('connection', (ws, req) => {
                 const sala = rooms.get(msg.room);
                 if (sala) shutdownRoom(sala, 'admin');
             }
+            return;
+        }
+
+        // --- Espectador puro (panel de control): mira la sala sin jugar ---
+        if (msg.t === 'spectate' && !room && !spectatorRoom) {
+            const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
+            let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
+            const key = mode + '_' + roomName;
+            const sala = rooms.get(key);
+            if (!sala) { ws.send(JSON.stringify({ t: 'specEmpty' })); return; }
+            spectatorRoom = sala;
+            sala.spectators.add(ws);
+            // welcome sin id de jugador → el cliente entra como espectador puro
+            ws.send(JSON.stringify(Object.assign(welcomeMsg(sala, null, null, 'specWelcome'), { id: null })));
+            log(`Espectador conectado a ${key} (${sala.spectators.size} mirando)`);
             return;
         }
 
@@ -519,6 +548,7 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('close', () => {
+        if (spectatorRoom) { spectatorRoom.spectators.delete(ws); }
         if (room && playerId && room.clients.get(playerId) && room.clients.get(playerId).ws === ws) {
             room.clients.delete(playerId);
             if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
@@ -596,6 +626,12 @@ setInterval(() => {
         if (out.length) {
             for (const cli of room.clients.values()) {
                 if (cli.ws.readyState === 1) { for (const m of out) cli.ws.send(m); }
+            }
+            if (room.spectators.size) {
+                for (const sws of room.spectators) {
+                    if (sws.readyState === 1) { for (const m of out) sws.send(m); }
+                    else room.spectators.delete(sws);
+                }
             }
         }
     }

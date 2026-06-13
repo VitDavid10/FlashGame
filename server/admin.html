@@ -335,6 +335,7 @@ function forzar(room) { send({ cmd: 'forceStart', room }); setTimeout(pedir, 300
 function reiniciar(room) { if (confirm('¿Reiniciar la sala? Los que estén jugando verán "SALA REINICIADA" y podrán darle a TRY AGAIN.')) { send({ cmd: 'restart', room }); setTimeout(pedir, 300); } }
 function vaciar(room) { if (confirm('¿Echar a TODOS los jugadores de la sala?')) { send({ cmd: 'kickAll', room }); setTimeout(pedir, 300); } }
 function apagar(room) { if (confirm('¿APAGAR la sala? Echa a todos y la destruye.')) { send({ cmd: 'shutdown', room }); setTimeout(pedir, 300); } }
+function espectar(mode, room) { window.open(location.origin + '/game/?spectate=' + encodeURIComponent(room) + '&mode=' + encodeURIComponent(mode), '_blank'); }
 function togglePlayers(roomKey) { if (expandidos.has(roomKey)) expandidos.delete(roomKey); else expandidos.add(roomKey); pedir(); }
 function aplicarReglas(roomKey) {
     const g = id => document.getElementById(id + '_' + roomKey);
@@ -405,6 +406,7 @@ function cartaSala(r) {
             </div>
             <div class="btns">
                 <button class="b verde" onclick="forzar('${id}')" ${r.state !== 'waiting' ? 'disabled' : ''}>${IC.play} Forzar inicio</button>
+                <button class="b azul" onclick="espectar('${r.mode}','${esc(r.roomName)}')" ${r.state !== 'playing' ? 'disabled' : ''}>${IC.users} Espectar</button>
                 <button class="b naranja" onclick="reiniciar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.refresh} Reiniciar</button>
                 <button class="b" onclick="vaciar('${id}')" ${r.conectados === 0 ? 'disabled' : ''}>${IC.broom} Echar a todos</button>
                 <button class="b rojo" onclick="apagar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.power} Apagar</button>

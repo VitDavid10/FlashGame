@@ -2073,7 +2073,45 @@
     const fpsInterval = 1000 / 60; let then = performance.now();
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
     function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); setHoverMode('classic'); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; }
+
+    // Espectador puro desde el panel de control: ?spectate=SALA&mode=MODO&server=wss://...
+    // Mira la partida en curso sin jugar; cámara libre arrastrable por el mapa.
+    function startRemoteSpectator() {
+        const params = new URLSearchParams(location.search);
+        const room = params.get('spectate');
+        if (!room) return false;
+        const mode = ['classic', 'arcade', 'skills'].includes(params.get('mode')) ? params.get('mode') : 'classic';
+        const qsServer = params.get('server');
+        const url = qsServer || (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://localhost:8080');
+        els.modeScreen.style.display = 'none'; els.modeScreen.style.pointerEvents = 'none'; els.loginOverlay.style.display = 'none';
+        setLobbyBanner('👁 CONECTANDO COMO ESPECTADOR...');
+        const ws = new WebSocket(url);
+        ws.onopen = () => ws.send(JSON.stringify({ t: 'spectate', room, mode }));
+        ws.onmessage = (e) => {
+            let msg; try { msg = JSON.parse(e.data); } catch (err) { return; }
+            if (msg.t === 'specWelcome') {
+                sim = new RemoteSim(ws, msg); sim._camInit = true;
+                MAP_SIZE = msg.mapSize; currentGameMode = msg.mode; currentServer = msg.roomName;
+                isSpectating = true; onlineSpectator = false; gameRunning = true;
+                document.getElementById('ui').style.display = 'flex';
+                document.getElementById('leaderboard').style.display = 'block';
+                els.room.innerText = msg.roomName;
+                camera.x = 0; camera.y = 0; camera.scale = 0.45; lastFrameTime = Date.now();
+                setLobbyBanner('👁 ESPECTANDO ' + String(msg.roomName).toUpperCase() + ' · arrastra para mover la cámara');
+                SoundManager.playMusic();
+            } else if (msg.t === 'specEmpty') {
+                setLobbyBanner('⚠ La sala ' + room + ' no está activa (nadie jugando ahora mismo).');
+            } else if (sim && sim.isRemote && sim.ws === ws) {
+                sim.onMessage(msg);
+            }
+        };
+        ws.onclose = () => { if (gameRunning) setLobbyBanner('Conexión cerrada — la sala terminó o el servidor se apagó.'); };
+        ws.onerror = () => setLobbyBanner('⚠ No se pudo conectar al servidor para espectar.');
+        return true;
+    }
+
     initMenuState(); init();
+    if (!startRemoteSpectator()) { /* arranque normal con menú */ }
 </script>
 </body>
 </html>
