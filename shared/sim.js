@@ -464,14 +464,20 @@
 
         // Comandos de reglas/hacks (consola del juego). Misma autoridad que el resto
         // de la sim: en local se llama directo, en red lo invoca el servidor.
-        runCommand(id, name, args) {
+        runCommand(id, name, args, fromAdmin = false) {
             // id puede ser null cuando lo invoca el panel de admin (reglas de sala);
             // los comandos que actúan sobre un jugador concreto exigen id válido.
+            // fromAdmin = el panel de admin lo ejecuta sobre un jugador (salta enforceGod).
             const p = id ? this.players.get(id) : null;
             if (id && !p) return;
             args = Array.isArray(args) ? args : [];
             const say = (text, color) => { if (p) this.emit({ type: 'text', playerId: id, world: false, text, color: color || '#00ffaa' }); };
             name = String(name || '').toLowerCase();
+            // Servidor autoritativo (enforceGod): los comandos de truco exigen GOD,
+            // que solo concede el panel de admin (id === null). Offline = sin restricción.
+            if (this.config.enforceGod && !fromAdmin && id !== null && !(p && p.godMode)) {
+                return say('🔒 COMANDOS SOLO EN MODO GOD', '#ff5555');
+            }
             if (name === 'god') {
                 if (!p) return;
                 p.godMode = !p.godMode;

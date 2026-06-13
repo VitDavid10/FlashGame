@@ -279,7 +279,7 @@ function conectar() {
     key = document.getElementById('key').value;
     if (!key) { errorLogin('Escribe la clave'); return; }
     if (ws) { try { ws.close(); } catch(e){} }
-    ws = new WebSocket('ws://' + location.host);
+    ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
     ws.onopen = () => pedir();
     ws.onmessage = e => {
         let m; try { m = JSON.parse(e.data); } catch(err) { return; }

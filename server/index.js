@@ -142,7 +142,8 @@ function buildSim(mode, rules) {
         botConfig: { enabled: !!rules.botsEnabled, count: rules.botCount || 0, respawn: !!rules.botsEnabled },
         maxBotCells: mode === 'classic' ? 8 : 4,
         fx: { enabled: false, enemyFX: false },
-        emitFoodEvents: true
+        emitFoodEvents: true,
+        enforceGod: true   // online: comandos de truco solo para jugadores con GOD (lo da el admin)
     });
     sim.populate();
     return sim;
@@ -410,7 +411,7 @@ wss.on('connection', (ws, req) => {
                 }
             } else if (msg.cmd === 'power' && msg.playerId) {
                 const found = findClient(msg.playerId);
-                if (found) { found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : []); log(`ADMIN poder /${msg.name} a ${found.cli.name}`); }
+                if (found) { found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : [], true); log(`ADMIN poder /${msg.name} a ${found.cli.name}`); }
             } else if (msg.cmd === 'rules' && msg.room) {
                 const rules = rulesOf(msg.room); const r = msg.rules || {};
                 if (typeof r.speed === 'number') rules.speed = Math.max(0.25, Math.min(5, r.speed));
