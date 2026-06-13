@@ -666,8 +666,7 @@
 
                     <button class="btn-play" id="btnEnterGame" onclick="startGame()">ENTER ARENA</button>
                     <button class="btn-play" id="btnPlayOnline" onclick="startOnlineGame()" style="background:#1a73e8; margin-top:6px;">PLAY ONLINE</button>
-                    <button class="btn-spectate" onclick="startSpectatorMode()">SPECTATE</button>
-                    
+
                     <button id="qUltra" class="ultra-btn" onclick="setQuality('ultra')">
                         ⚡ ULTRA LOW (FASTEST) ⚡
                     </button>
@@ -757,8 +756,8 @@
             <ul class="winner-list" id="winnerList"></ul>
             <div id="myResult" style="margin: 20px 0; font-family:'Russo One'; font-size:18px;"></div>
             
-            <button class="btn-spectate" onclick="startSpectatorMode()" style="margin-bottom: 10px;">SPECTATE</button>
-            <button class="btn-play" id="btnTryAgainOnline" onclick="tryAgainOnline()" style="display:none; background:#1a73e8; margin-bottom:8px;">TRY AGAIN</button>
+            <button class="btn-play" id="btnTryAgainOnline" onclick="tryAgainOnline()" style="display:none; background:var(--primary); color:#04150c; margin-bottom:10px;">TRY AGAIN</button>
+            <button class="btn-spectate" onclick="onSpectateClick()" style="margin-bottom: 10px;">SPECTATE</button>
             <button class="btn-play" onclick="returnToMenu()">BACK TO MENU</button>
         </div>
     </div>
@@ -802,12 +801,6 @@
 
     <div id="lobbyBanner" style="display:none; position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:55; background:rgba(8,10,14,0.88); border:1px solid #1a73e8; color:#fff; padding:9px 20px; border-radius:9px; font-family:'Russo One', sans-serif; font-size:13px; text-align:center; box-shadow:0 4px 18px rgba(0,0,0,0.5);"></div>
 
-    <div id="spectatorBar" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:58; background:rgba(8,10,14,0.92); border:1px solid #ff2a2a; color:#fff; padding:12px 18px; border-radius:11px; font-family:'Russo One', sans-serif; text-align:center; box-shadow:0 4px 22px rgba(0,0,0,0.6); display:flex; align-items:center; gap:14px;">
-        <span style="font-size:13px;">💀 TE ELIMINARON <span style="color:#888; font-size:11px;">· espectando</span></span>
-        <button onclick="specFollowLeader()" style="padding:7px 14px; background:transparent; border:1px solid #00ff88; color:#00ff88; font-family:'Russo One', sans-serif; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">👁 Seguir líder</button>
-        <button onclick="tryAgainOnline()" style="padding:7px 16px; background:#1a73e8; border:none; color:#fff; font-family:'Russo One', sans-serif; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">↻ Volver a jugar</button>
-        <button onclick="returnToMenu()" style="padding:7px 14px; background:transparent; border:1px solid #555; color:#aaa; font-family:'Russo One', sans-serif; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">Salir</button>
-    </div>
 
     <div id="cmdBar" style="display:none; position:fixed; bottom:90px; left:50%; transform:translateX(-50%); z-index:60;">
         <input id="cmdInput" autocomplete="off" placeholder="/god   /mass 50000   /bots 10   /speed 2   /help" style="width:430px; padding:10px 14px; background:rgba(0,0,0,0.85); border:1px solid #00ffaa; color:#fff; font-family:'Russo One', sans-serif; font-size:13px; border-radius:8px; outline:none;">
@@ -936,7 +929,7 @@
     let roomStates = {}, roomTimers = {}, MAP_SIZE = 3500;
     let MAX_BOT_CELLS = 16, GAME_DURATION_MS = 3 * 60 * 1000 + 50 * 1000;
     let logoutTimer = null, isLoggingOut = false, isSpecDragging = false, lastSpecX = 0, lastSpecY = 0;
-    let onlineSpectator = false, specAutoFollow = true;   // espectador tras morir online
+    let onlineSpectator = false;   // espectando una partida online (botón SPECTATE)
 
     // Sala activa y accesos al estado del jugador local dentro de la sim
     let sim = null;
@@ -1416,18 +1409,23 @@
 
     function stopGame() { isSpectating = true; SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { els.resultTitle.innerText = "GAME OVER"; els.resultTitle.style.color = "#ff2a2a"; showResultsUI(); }, 1400); }
 
-    // Al morir online: en vez de GAME OVER, sigues viendo la partida como espectador.
-    function enterOnlineSpectator() {
-        isSpectating = true; onlineSpectator = true; specAutoFollow = true;
-        SoundManager.play('death'); SoundManager.stop('timer');
-        els.skillOverlay.style.display = 'none'; isPickingSkill = false;
-        els.actionBar.style.display = 'none';
-        els.result.style.display = 'none';
-        document.getElementById('spectatorBar').style.display = 'flex';
-        spawnFloatingText('TE ELIMINARON · ESPECTANDO', '#ff2a2a', false);
+    // Botón SPECTATE del menú GAME OVER: online sigue la partida en curso, offline crea sim local.
+    function onSpectateClick() {
+        if (typeof netState !== 'undefined' && netState && sim && sim.isRemote) spectateOnline();
+        else startSpectatorMode();
     }
-    function specFollowLeader() { specAutoFollow = true; }
-    function hideSpectatorBar() { onlineSpectator = false; const b = document.getElementById('spectatorBar'); if (b) b.style.display = 'none'; }
+    // Espectar la partida online: la cámara sigue al líder con su mismo zoom (visión de jugador).
+    function spectateOnline() {
+        els.result.style.display = 'none';
+        isSpectating = true; onlineSpectator = true;
+        els.actionBar.style.display = 'none';
+        document.getElementById('ui').style.display = 'flex';
+        document.getElementById('leaderboard').style.display = 'block';
+        document.getElementById('timerDisplay').style.display = 'block';
+        document.getElementById('exitGameBtn').style.display = 'flex';
+        SoundManager.playMusic();
+    }
+    function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
     function finishGameSuccess() { SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
     function returnToMenu() { hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); }
@@ -1904,9 +1902,17 @@
 
         // 4) Cámara
         if (isSpectating) {
-            let specR = 178; let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / specR, ZOOM_CONFIG.exponent); targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale)); camera.scale += (targetScale - camera.scale) * 0.05 * timeScale;
-            if (isSpecDragging) { specAutoFollow = false; let es = getViewScale(); let dx = (mouse.x - lastSpecX) / es; let dy = (mouse.y - lastSpecY) / es; camera.x -= dx * 1.5; camera.y -= dy * 1.5; lastSpecX = mouse.x; lastSpecY = mouse.y; }
-            else if (onlineSpectator && specAutoFollow && sim) { let lead = null; for (const e of sim.enemies) { if (!lead || e.r > lead.r) lead = e; } if (lead) { camera.x += (lead.x - camera.x) * 0.06 * timeScale; camera.y += (lead.y - camera.y) * 0.06 * timeScale; } }
+            if (onlineSpectator && sim) {
+                // Sigue al líder (mayor radio) con su mismo zoom: visión cercana, como un jugador
+                let lead = null; for (const e of sim.enemies) { if (!lead || e.r > lead.r) lead = e; }
+                if (lead) {
+                    camera.x += (lead.x - camera.x) * 0.08 * timeScale; camera.y += (lead.y - camera.y) * 0.08 * timeScale;
+                    let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / lead.r, ZOOM_CONFIG.exponent); targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale)); camera.scale += (targetScale - camera.scale) * 0.05 * timeScale;
+                }
+            } else {
+                let specR = 178; let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / specR, ZOOM_CONFIG.exponent); targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale)); camera.scale += (targetScale - camera.scale) * 0.05 * timeScale;
+                if (isSpecDragging) { let es = getViewScale(); let dx = (mouse.x - lastSpecX) / es; let dy = (mouse.y - lastSpecY) / es; camera.x -= dx * 1.5; camera.y -= dy * 1.5; lastSpecX = mouse.x; lastSpecY = mouse.y; }
+            }
         } else {
             const cells = myCells(); let tx=0, ty=0, totalR=0, n=cells.length; cells.forEach(c => { tx+=c.x; ty+=c.y; totalR+=c.r; });
             if(n > 0) { camera.x += ((tx/n) - camera.x) * 0.05 * timeScale; camera.y += ((ty/n) - camera.y) * 0.05 * timeScale; let effR = Math.max(INITIAL_RADIUS, totalR / Math.pow(n, 0.4)); let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / effR, ZOOM_CONFIG.exponent); targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale)); camera.scale += (targetScale - camera.scale) * 0.05 * timeScale; }
@@ -1952,9 +1958,6 @@
                         camera.x = c.x; camera.y = c.y;
                         SoundManager.play('death');
                         spawnFloatingText('REAPARECES (PRÁCTICA)', '#ffcc00');
-                    } else if (sim && sim.isRemote) {
-                        // Online: pasas a espectador y sigues viendo la partida
-                        enterOnlineSpectator();
                     } else { stopGame(); }
                     break;
                 }
