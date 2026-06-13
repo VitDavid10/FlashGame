@@ -801,6 +801,17 @@
 
     <div id="lobbyBanner" style="display:none; position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:55; background:rgba(8,10,14,0.88); border:1px solid #1a73e8; color:#fff; padding:9px 20px; border-radius:9px; font-family:'Russo One', sans-serif; font-size:13px; text-align:center; box-shadow:0 4px 18px rgba(0,0,0,0.5);"></div>
 
+    <!-- Panel de control en el espectador (cuando se abre desde PillWars Control con clave) -->
+    <div id="specAdminPanel" style="display:none; position:fixed; top:0; left:0; height:100%; width:250px; z-index:70; background:rgba(8,10,14,0.96); border-right:1px solid #00ff88; box-shadow:4px 0 22px rgba(0,0,0,0.6); padding:16px 14px; overflow-y:auto; font-family:'Russo One', sans-serif;">
+        <div style="color:#00ff88; font-size:14px; letter-spacing:1px; text-shadow:0 0 10px rgba(0,255,136,0.4); margin-bottom:4px;">CONTROL</div>
+        <div id="specRoomLabel" style="color:#888; font-size:10px; letter-spacing:1px; margin-bottom:14px;"></div>
+        <div style="color:#666; font-size:9px; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Jugadores</div>
+        <div id="specPlayers" style="margin-bottom:16px;"></div>
+        <button onclick="specReiniciar()" style="width:100%; padding:9px; margin-bottom:7px; background:transparent; border:1px solid #ffae42; color:#ffae42; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">↻ Reiniciar sala</button>
+        <button onclick="specVaciar()" style="width:100%; padding:9px; margin-bottom:7px; background:transparent; border:1px solid #888; color:#aaa; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">⊘ Echar a todos</button>
+        <button onclick="specApagar()" style="width:100%; padding:9px; background:transparent; border:1px solid #ff2a2a; color:#ff2a2a; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">⏻ Apagar (cierra)</button>
+    </div>
+
 
     <div id="cmdBar" style="display:none; position:fixed; bottom:90px; left:50%; transform:translateX(-50%); z-index:60;">
         <input id="cmdInput" autocomplete="off" placeholder="/god   /mass 50000   /bots 10   /speed 2   /help" style="width:430px; padding:10px 14px; background:rgba(0,0,0,0.85); border:1px solid #00ffaa; color:#fff; font-family:'Russo One', sans-serif; font-size:13px; border-radius:8px; outline:none;">
@@ -930,6 +941,7 @@
     let MAX_BOT_CELLS = 16, GAME_DURATION_MS = 3 * 60 * 1000 + 50 * 1000;
     let logoutTimer = null, isLoggingOut = false, isSpecDragging = false, lastSpecX = 0, lastSpecY = 0;
     let onlineSpectator = false;   // espectando una partida online (botón SPECTATE)
+    let specAdminKey = null, specRoomKey = null, specStateTimer = null;   // control desde el espectador
 
     // Sala activa y accesos al estado del jugador local dentro de la sim
     let sim = null;
@@ -1246,6 +1258,7 @@
         els.actionBar.addEventListener('mouseenter', () => isHoveringUI = true); els.actionBar.addEventListener('mouseleave', () => isHoveringUI = false);
         els.skillOverlay.addEventListener('mouseenter', () => isHoveringUI = true); els.skillOverlay.addEventListener('mouseleave', () => isHoveringUI = false);
         document.getElementById('exitGameBtn').addEventListener('mouseenter', () => isHoveringUI = true); document.getElementById('exitGameBtn').addEventListener('mouseleave', () => isHoveringUI = false);
+        document.getElementById('specAdminPanel').addEventListener('mouseenter', () => isHoveringUI = true); document.getElementById('specAdminPanel').addEventListener('mouseleave', () => isHoveringUI = false);
         window.addEventListener('blur', () => { keys.w = false; keys.a = false; keys.s = false; keys.d = false; });
         window.addEventListener('beforeunload', () => { if (gameRunning && !isSpectating && myCells().length > 0) { saveSystem.save(); } });
         window.addEventListener('mousedown', e => { if(isSpectating && !isHoveringUI) { isSpecDragging = true; lastSpecX = e.clientX; lastSpecY = e.clientY; } });
@@ -2083,6 +2096,8 @@
         const mode = ['classic', 'arcade', 'skills'].includes(params.get('mode')) ? params.get('mode') : 'classic';
         const qsServer = params.get('server');
         const url = qsServer || (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://localhost:8080');
+        specAdminKey = params.get('admin') || null;
+        specRoomKey = mode + '_' + room;
         els.modeScreen.style.display = 'none'; els.modeScreen.style.pointerEvents = 'none'; els.loginOverlay.style.display = 'none';
         setLobbyBanner('👁 CONECTANDO COMO ESPECTADOR...');
         const ws = new WebSocket(url);
@@ -2099,8 +2114,15 @@
                 camera.x = 0; camera.y = 0; camera.scale = 0.45; lastFrameTime = Date.now();
                 setLobbyBanner('👁 ESPECTANDO ' + String(msg.roomName).toUpperCase() + ' · arrastra para mover la cámara');
                 SoundManager.playMusic();
+                if (specAdminKey) {   // abierto desde el panel de control: panel lateral con mandos
+                    document.getElementById('specAdminPanel').style.display = 'block';
+                    const pedir = () => specSend({ t: 'admin', key: specAdminKey, cmd: 'state' });
+                    pedir(); specStateTimer = setInterval(pedir, 2000);
+                }
             } else if (msg.t === 'specEmpty') {
                 setLobbyBanner('⚠ La sala ' + room + ' no está activa (nadie jugando ahora mismo).');
+            } else if (msg.t === 'adminState') {
+                renderSpecPlayers(msg);
             } else if (sim && sim.isRemote && sim.ws === ws) {
                 sim.onMessage(msg);
             }
@@ -2108,6 +2130,24 @@
         ws.onclose = () => { if (gameRunning) setLobbyBanner('Conexión cerrada — la sala terminó o el servidor se apagó.'); };
         ws.onerror = () => setLobbyBanner('⚠ No se pudo conectar al servidor para espectar.');
         return true;
+    }
+
+    // Mandos del panel de control dentro del espectador (usan el mismo WebSocket)
+    function specSend(o) { if (sim && sim.ws && sim.ws.readyState === 1) sim.ws.send(JSON.stringify(o)); }
+    function specKick(id) { if (confirm('¿Echar a este jugador?')) specSend({ t: 'admin', key: specAdminKey, cmd: 'kick', playerId: id }); }
+    function specReiniciar() { if (confirm('¿Reiniciar la sala? Los jugadores verán "SALA REINICIADA".')) specSend({ t: 'admin', key: specAdminKey, cmd: 'restart', room: specRoomKey }); }
+    function specVaciar() { if (confirm('¿Echar a TODOS los jugadores de la sala?')) specSend({ t: 'admin', key: specAdminKey, cmd: 'kickAll', room: specRoomKey }); }
+    function specApagar() { if (confirm('¿APAGAR la sala? Se destruye y se cierra esta pestaña.')) { specSend({ t: 'admin', key: specAdminKey, cmd: 'shutdown', room: specRoomKey }); setTimeout(() => window.close(), 350); } }
+    function renderSpecPlayers(state) {
+        const r = (state.rooms || []).find(x => x.key === specRoomKey);
+        document.getElementById('specRoomLabel').innerText = r ? (r.roomName + ' · ' + r.mode.toUpperCase() + ' · ' + r.conectados + ' jugadores') : specRoomKey;
+        const cont = document.getElementById('specPlayers');
+        if (!r || !r.players || r.players.length === 0) { cont.innerHTML = '<div style="color:#555; font-size:10px;">Nadie conectado</div>'; return; }
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        cont.innerHTML = r.players.map(p => `<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:5px 0; border-bottom:1px solid #1a1a1a;">
+            <span style="min-width:0; color:#fff; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(p.name) || '(sin nombre)'}<span style="display:block; color:#666; font-size:8px;">${Number(p.mass).toLocaleString('en-US')} masa${p.alive ? '' : ' · espect.'}</span></span>
+            <button onclick="specKick('${esc(p.id)}')" style="flex:none; padding:3px 8px; background:transparent; border:1px solid #ff2a2a; color:#ff2a2a; font-family:'Russo One'; font-size:9px; border-radius:4px; cursor:pointer;">Echar</button>
+        </div>`).join('');
     }
 
     initMenuState(); init();
