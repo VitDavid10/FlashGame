@@ -378,7 +378,7 @@ const httpServer = http.createServer((req, res) => {
     if (urlPath === '/admin' || urlPath === '/admin.html') {
         try {
             const html = fs.readFileSync(path.join(__dirname, 'admin.html'));
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
             res.end(html);
         } catch (e) { res.writeHead(500); res.end('No se pudo cargar admin.html'); }
         return;
@@ -395,7 +395,7 @@ const httpServer = http.createServer((req, res) => {
         if (!err && st.isDirectory()) filePath = path.join(filePath, 'index.html');
         fs.readFile(filePath, (e2, data) => {
             if (e2) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); return; }
-            res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream' });
+            res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
             res.end(data);
         });
     });
