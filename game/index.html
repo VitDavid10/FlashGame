@@ -958,6 +958,63 @@
     let currentGameMode = 'classic', currentServer = "5$", width, height, gameRunning = false, isGodMode = false, isSpectating = false;
     let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
     let camera = { x: 0, y: 0, scale: 0.8 }, mouse = { x: 0, y: 0 }, inputMode = 'MOUSE', keys = { w: false, a: false, s: false, d: false, f: false }, botConfig = { enabled: true, count: 25, respawn: true };
+
+    // --- Daily Quests: reportar progreso al servidor con clientId anónimo ---
+    const Quests = (() => {
+        function uuid() {
+            if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+        }
+        let cid = null;
+        try { cid = localStorage.getItem('pw_cid'); if (!cid) { cid = uuid().replace(/-/g, '').slice(0, 24); localStorage.setItem('pw_cid', cid); } } catch (e) { cid = 'guest-' + Math.random().toString(36).slice(2, 12); }
+        // Por partida: kills (classic), skills usadas (arcade), pico de masa
+        let match = null;
+        function startMatch(mode, online) {
+            match = { mode, online, kills: 0, skillsUsed: new Set(), peakMass: 0, alive: true, reportedOnline: false, reportedGame: false, reportedSurvive: false };
+        }
+        function endMatch(reason) {
+            if (!match) return;
+            const ev = {};
+            if (match.peakMass > 0) ev.mass = match.peakMass;
+            // Q1 finish: arcade hasta el final (matchEnd) o classic con ≥5 kills
+            if (!match.reportedGame) {
+                const finished = (match.mode === 'arcade' && reason === 'matchEnd') ||
+                                 (match.mode === 'classic' && match.kills >= 5);
+                if (finished) { ev.game_finished = true; match.reportedGame = true; }
+            }
+            // Q2 online: contar la partida online (en cuanto entras y mueres/matas/acaba)
+            if (match.online && !match.reportedOnline && (match.kills > 0 || !match.alive || reason === 'matchEnd')) {
+                ev.online_match = true; match.reportedOnline = true;
+            }
+            // Q5 escapar vivo de classic (matchEnd no es classic; el "escape" es returnToMenu vivo)
+            if (match.mode === 'classic' && match.alive && reason === 'leave' && !match.reportedSurvive) {
+                ev.classic_survived = true; match.reportedSurvive = true;
+            }
+            send(ev);
+            // Tras reportar, mantenemos el match si solo fue "intermitente" para más eventos posteriores
+            if (reason !== 'leave' && reason !== 'death') return;
+            match = null;
+        }
+        function reportKill() { if (match) match.kills++; }
+        function reportSkill(slot) { if (match && match.mode === 'arcade' && slot != null) match.skillsUsed.add(slot); }
+        function reportMass(m) { if (match && m > match.peakMass) { match.peakMass = m; if (m >= 50000) send({ mass: m }); } }
+        function reportDeath() { if (match) match.alive = false; }
+        function flushArcadeSkills() {
+            if (match && match.mode === 'arcade' && match.skillsUsed.size >= 2) send({ skill_in_arcade: true });
+        }
+        let sending = false, queue = [];
+        async function send(ev) {
+            if (!ev || !Object.keys(ev).length) return;
+            queue.push(ev); if (sending) return; sending = true;
+            try {
+                while (queue.length) {
+                    const next = queue.shift();
+                    await fetch('/api/quests', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Client-Id': cid }, body: JSON.stringify(next) }).catch(() => {});
+                }
+            } finally { sending = false; }
+        }
+        return { cid, startMatch, endMatch, reportKill, reportSkill, reportMass, reportDeath, flushArcadeSkills };
+    })();
     let explosions = []; // efecto visual local; el resto del mundo vive en sim.*
 
     const SKILL_ICONS = { 1: 'icon-clon', 2: 'icon-shot', 3: 'icon-sprint', 4: 'icon-tp', 5: 'icon-magnet', 6: 'icon-shield', 7: 'icon-big', 8: 'icon-random' };
@@ -1443,7 +1500,7 @@
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
     function finishGameSuccess() { SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
-    function returnToMenu() { hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); }
+    function returnToMenu() { Quests.endMatch('leave'); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         let roomKey = currentGameMode + '_' + currentServer;
@@ -1742,6 +1799,7 @@
         camera.x = c.x; camera.y = c.y; camera.scale = 0.8;
         explosions = [];
         isGodMode = false; isSpectating = false; currentGameMode = mode;
+        Quests.startMatch(mode === 'skills' ? 'arcade' : mode, false);
         const esArcade = (mode === 'arcade' || mode === 'skills');
         els.actionBar.style.display = esArcade ? 'flex' : 'none';
         if (esArcade) { p.skillSlots = [null, null, null, null]; massMilestoneReached = false; nextSkillPickTime = 30; isPickingSkill = false; els.skillOverlay.style.display = 'none'; updateSkillsUI_Arcade(); roomTimers[mode + '_' + currentServer] = Date.now() + GAME_DURATION_MS; }
@@ -1844,6 +1902,7 @@
         if (isResume) sim._camInit = true;   // mantener la cámara donde estaba
         MAP_SIZE = msg.mapSize;
         currentGameMode = msg.mode;
+        if (!isResume) Quests.startMatch(msg.mode === 'skills' ? 'arcade' : msg.mode, true);
         isGodMode = false; isSpectating = false; hideSpectatorBar();
         if (saveInterval) clearInterval(saveInterval);
         if (!isResume) { explosions = []; camera.scale = 0.8; }
@@ -1894,6 +1953,7 @@
 
         // 3) HUD
         let totalM = 0; myCells().forEach(c => totalM += c.mass);
+        if (totalM > 0) Quests.reportMass(totalM);
         fpsTimer += delta; frameCount++; if (fpsTimer >= 1000) { els.fpsVal.innerText = frameCount; fpsTimer = 0; frameCount = 0; }
         const globalCD = p ? p.globalCD : 0;
         let gcdText = globalCD > 0 ? (globalCD/1000).toFixed(1) : ""; for(let i=1; i<=10; i++) { if(uiGcds[i]) uiGcds[i].innerText = gcdText; }
@@ -1954,6 +2014,7 @@
                 case 'botText': { const cells = myCells(); if (enableEnemyFX && cells.length > 0 && getEllipticalDist({x: ev.x, y: ev.y}, cells[0]) < 1500) { floatingTexts.push(new FloatingText(ev.x, ev.y, ev.text, ev.color)); } break; }
                 case 'botKilled': {
                     if (ev.playerId !== 'me') break;
+                    Quests.reportKill();
                     if (ev.mode === 'classic') {
                         let msg = "KILL"; if (ev.streak === 1) msg = "FIRST BLOOD"; else if (ev.streak === 2) msg = "DOUBLE KILL"; else if (ev.streak === 3) msg = "TRIPLE KILL"; else if (ev.streak === 4) msg = "QUADRA KILL"; else if (ev.streak >= 5) msg = "PENTAKILL";
                         spawnFloatingText(msg, "#FF0000", true); SoundManager.playFloatKill();
@@ -1973,12 +2034,13 @@
                         camera.x = c.x; camera.y = c.y;
                         SoundManager.play('death');
                         spawnFloatingText('REAPARECES (PRÁCTICA)', '#ffcc00');
-                    } else { stopGame(); }
+                    } else { Quests.reportDeath(); Quests.endMatch('death'); stopGame(); }
                     break;
                 }
                 case 'virusFedSplit': if ((currentGameMode === 'arcade' || currentGameMode === 'skills') && !isGodMode && !isSpectating) showSkillChoice(); break;
                 case 'skillUsed': {
                     if (ev.playerId !== 'me') break;
+                    Quests.reportSkill(ev.id);
                     if (ev.id === 'godmass') { spawnFloatingText("GOD MODE MASS", "#00FF00"); SoundManager.play('big'); }
                     else if (ev.id === 3) { spawnFloatingText("+ SPEED", "#00FFFF"); SoundManager.play('sprint'); }
                     else if (ev.id === 4) { SoundManager.play('tp'); }
@@ -1989,7 +2051,7 @@
                     break;
                 }
                 case 'skillsUI': if (ev.playerId === 'me') updateSkillsUI_Arcade(); break;
-                case 'matchEnd': finishGameSuccess(); break;
+                case 'matchEnd': Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); finishGameSuccess(); break;
             }
         }
     }

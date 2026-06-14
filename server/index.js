@@ -89,14 +89,31 @@ function minRealOf(key) { return Math.max(1, rulesOf(key).minReal); }
 function targetPopOf(key) { return Math.max(0, rulesOf(key).targetPop); }
 function pstatOf(name) {
     const k = String(name).toLowerCase();
-    if (!playerStats[k]) playerStats[k] = { name: name, partidas: 0, kills: 0, muertes: 0, lastSeen: null, lastIp: null };
+    if (!playerStats[k]) playerStats[k] = { name: name, partidas: 0, kills: 0, muertes: 0, bestMass: 0, lastSeen: null, lastIp: null };
+    if (playerStats[k].bestMass == null) playerStats[k].bestMass = 0;
     return playerStats[k];
 }
+
+// --- Quests + identidad anónima por clientId (UUID que el navegador guarda en localStorage) ---
+const QUESTS_FILE = path.join(__dirname, 'quests.json');
+const questsStore = loadJson(QUESTS_FILE, {});   // clientId → { v1: {...quests}, bestMass, updated }
+let questsDirty = false;
+function isValidClientId(id) { return typeof id === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(id); }
+function questsOf(clientId) {
+    if (!questsStore[clientId]) questsStore[clientId] = {
+        // Contadores por quest. quest 4 (mejor masa) se actualiza por separado.
+        q1_games_finished: 0, q2_online_matches: 0, q3_skills_in_arcade: 0, q5_classic_survived: 0,
+        bestMass: 0, updated: Date.now()
+    };
+    return questsStore[clientId];
+}
+
 setInterval(() => {
     if (statsDirty) { statsDirty = false; fs.writeFile(STATS_FILE, JSON.stringify(roomStats, null, 1), () => {}); }
     if (rulesDirty) { rulesDirty = false; fs.writeFile(RULES_FILE, JSON.stringify(roomRules, null, 1), () => {}); }
     if (playersDirty) { playersDirty = false; fs.writeFile(PLAYERS_FILE, JSON.stringify(playerStats, null, 1), () => {}); }
     if (geoDirty) { geoDirty = false; fs.writeFile(GEO_FILE, JSON.stringify(geoCache, null, 1), () => {}); }
+    if (questsDirty) { questsDirty = false; fs.writeFile(QUESTS_FILE, JSON.stringify(questsStore, null, 1), () => {}); }
 }, 5000);
 
 function cleanIp(addr) { return String(addr || '?').replace(/^::ffff:/, '').replace(/^::1$/, 'localhost'); }
@@ -417,18 +434,62 @@ const ROOT = path.join(__dirname, '..');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 const httpServer = http.createServer((req, res) => {
     const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-    // Endpoint público del ranking (para "Global Elite" en la web)
+    // Endpoint público del ranking (para "Global Elite" en la web). Ordena por bestMass.
     if (urlPath === '/ranking.json' || urlPath === '/api/ranking') {
         const top = Object.entries(playerStats)
             .filter(([k, p]) => p.name && p.name.trim().length > 0)
-            .sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas))
+            .sort(([, a], [, b]) => ((b.bestMass | 0) - (a.bestMass | 0)) || (b.kills - a.kills) || (b.partidas - a.partidas))
             .slice(0, 30)
             .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' };
-                return { name: p.name, kills: p.kills | 0, muertes: p.muertes | 0, partidas: p.partidas | 0, paisCode: g.code, paisName: g.name };
+                return { name: p.name, bestMass: p.bestMass | 0, kills: p.kills | 0, muertes: p.muertes | 0, partidas: p.partidas | 0, paisCode: g.code, paisName: g.name };
             });
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ ranking: top, updated: Date.now() }));
         return;
+    }
+    // Endpoint de quests: GET → lee el progreso del clientId; POST → suma eventos.
+    if (urlPath === '/api/quests') {
+        const cid = String(req.headers['x-client-id'] || '').trim();
+        if (!isValidClientId(cid)) {
+            res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, X-Client-Id', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
+            res.end(JSON.stringify({ error: 'invalid clientId' }));
+            return;
+        }
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, X-Client-Id', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
+            res.end(); return;
+        }
+        const q = questsOf(cid);
+        if (req.method === 'GET') {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ quests: q }));
+            return;
+        }
+        if (req.method === 'POST') {
+            let body = ''; req.on('data', c => { if (body.length < 4096) body += c; });
+            req.on('end', () => {
+                let ev = {}; try { ev = JSON.parse(body || '{}'); } catch (e) {}
+                // Eventos aceptados: sumar contadores (con tope) y actualizar bestMass
+                if (ev.game_finished) q.q1_games_finished = Math.min(2, (q.q1_games_finished | 0) + 1);
+                if (ev.online_match) q.q2_online_matches = Math.min(2, (q.q2_online_matches | 0) + 1);
+                if (ev.skill_in_arcade) q.q3_skills_in_arcade = Math.min(2, (q.q3_skills_in_arcade | 0) + 1);
+                if (ev.classic_survived) q.q5_classic_survived = Math.min(2, (q.q5_classic_survived | 0) + 1);
+                if (typeof ev.mass === 'number' && ev.mass > q.bestMass) q.bestMass = Math.floor(ev.mass);
+                q.updated = Date.now(); questsDirty = true;
+                const done = [
+                    q.q1_games_finished >= 2,
+                    q.q2_online_matches >= 2,
+                    q.q3_skills_in_arcade >= 2,
+                    q.bestMass >= 50000,
+                    q.q5_classic_survived >= 2
+                ].filter(Boolean).length;
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ quests: q, completed: done, unlocked: done >= 3 }));
+            });
+            return;
+        }
+        res.writeHead(405, { 'Allow': 'GET, POST, OPTIONS', 'Access-Control-Allow-Origin': '*' });
+        res.end('Method Not Allowed'); return;
     }
     if (urlPath === '/admin' || urlPath === '/admin.html') {
         try {
@@ -685,12 +746,25 @@ setInterval(() => {
         room.sim.step(delta);
         room.tickCount++;
 
+        // Récord de masa por jugador (pico) — barato: solo lectura, 40Hz
+        for (const p of room.sim.players.values()) {
+            if (!p.alive || !p.cells.length) continue;
+            let m = 0; for (const c of p.cells) m += c.mass;
+            if (m > (p.peakMass | 0)) p.peakMass = m;
+        }
+
         const events = room.sim.drainEvents();
         for (const ev of events) {
             if (ev.type === 'playerDied') {
                 statsOf(room.key).muertes++; statsDirty = true;
                 const pj = room.sim.players.get(ev.playerId);
-                if (pj && pj.name) { pstatOf(pj.name).muertes++; playersDirty = true; }
+                if (pj && pj.name) {
+                    const ps = pstatOf(pj.name); ps.muertes++;
+                    // Mejor masa: usar el pico que el jugador alcanzó en su vida
+                    const peak = pj.peakMass || 0;
+                    if (peak > (ps.bestMass | 0)) ps.bestMass = Math.floor(peak);
+                    playersDirty = true;
+                }
                 if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + DEAD_REMOVE_MS);
             } else if (ev.type === 'botKilled') {
                 const killer = room.sim.players.get(ev.playerId);

@@ -358,7 +358,7 @@ body.trailer-open #page-content{
 
         /* Leaderboard "Global Elite" */
         .lb-wrap { width: 100%; max-width: 980px; background: rgba(10,10,10,0.7); border: 1px solid rgba(0,255,136,0.18); border-radius: 18px; padding: 18px 20px 22px; box-shadow: 0 10px 50px rgba(0,0,0,0.5); }
-        .lb-head, .lb-row { display: grid; grid-template-columns: 64px 1.7fr 0.8fr 0.9fr 0.7fr 0.8fr 1fr; gap: 10px; align-items: center; padding: 11px 14px; font-family: 'Inter', sans-serif; font-size: 14px; }
+        .lb-head, .lb-row { display: grid; grid-template-columns: 64px 1.5fr 1fr 0.7fr 0.8fr 0.7fr 0.7fr 1fr; gap: 10px; align-items: center; padding: 11px 14px; font-family: 'Inter', sans-serif; font-size: 14px; }
         .lb-head { color: #666; font-family: 'Russo One'; font-weight: 400; font-size: 11px; letter-spacing: 2px; border-bottom: 1px solid #1c1c1c; margin-bottom: 4px; }
         .lb-row { border-bottom: 1px solid #141414; transition: 0.2s; }
         .lb-row:hover { background: rgba(0,255,136,0.04); }
@@ -368,6 +368,43 @@ body.trailer-open #page-content{
         .lb-row.p3 .lb-c-pos { background: linear-gradient(180deg,#e29c66,#8c5523); border: 0; color: #2b1a07; }
         .lb-c-name { color: #fff; font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lb-c-kills { color: var(--primary); font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
+        .lb-c-mass { color: #ffce3d; font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
+
+        /* DAILY QUESTS */
+        .dq-tag { display: inline-block; font-family: 'Russo One', sans-serif; font-size: 11px; letter-spacing: 4px; color: var(--primary); padding: 5px 14px; border: 1px solid rgba(0,255,136,0.3); border-radius: 20px; text-transform: uppercase; background: rgba(0,255,136,0.05); }
+        .dq-subtitle { color: #888; font-size: 15px; margin: 10px 0 30px; text-align: center; max-width: 640px; }
+        .dq-subtitle b { color: var(--primary); font-weight: 600; }
+        .dq-summary { width: 100%; max-width: 980px; background: rgba(10,15,10,0.7); border: 1px solid rgba(0,255,136,0.18); border-radius: 16px; padding: 22px 26px; margin-bottom: 26px; display: flex; align-items: center; gap: 22px; }
+        .dq-ring { position: relative; width: 90px; height: 90px; flex: none; }
+        .dq-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .dq-ring .num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Russo One'; }
+        .dq-ring .num span:first-child { font-size: 24px; color: var(--primary); }
+        .dq-ring .num span:first-child em { font-style: normal; color: #555; }
+        .dq-ring .num span:last-child { font-size: 9px; color: #666; letter-spacing: 1px; }
+        .dq-summary .info { flex: 1; }
+        .dq-summary .info .ti { font-family: 'Russo One'; color: #fff; font-size: 18px; letter-spacing: 1px; margin-bottom: 4px; }
+        .dq-summary .info .sub { color: #888; font-size: 13px; }
+        .dq-summary .info .sub.ok { color: var(--primary); }
+        .dq-btn { flex: none; font-family: 'Russo One'; font-size: 13px; letter-spacing: 1px; padding: 13px 24px; border-radius: 8px; text-transform: uppercase; cursor: not-allowed; background: #222; border: 1px solid #333; color: #666; transition: 0.2s; text-decoration: none; display: inline-block; }
+        .dq-btn.unlocked { background: var(--primary); border-color: var(--primary); color: #04150c; cursor: pointer; box-shadow: 0 0 20px rgba(0,255,136,0.3); }
+        .dq-btn.unlocked:hover { filter: brightness(1.1); }
+        .dq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; width: 100%; max-width: 980px; }
+        .dq-card { background: rgba(10,15,10,0.7); border: 1px solid #1a1a1a; border-left: 3px solid #555; border-radius: 12px; padding: 18px 20px; }
+        .dq-card.done { border-color: rgba(0,255,136,0.35); border-left-color: var(--primary); }
+        .dq-card.prog { border-left-color: #ffce3d; }
+        .dq-card-h { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+        .dq-num { font-family: 'Russo One'; font-size: 26px; color: #444; line-height: 1; letter-spacing: 1px; min-width: 38px; }
+        .dq-card.done .dq-num { color: var(--primary); }
+        .dq-card.prog .dq-num { color: #ffce3d; }
+        .dq-title { font-family: 'Russo One'; color: #fff; font-size: 13px; letter-spacing: 1px; line-height: 1.3; margin-bottom: 4px; }
+        .dq-desc { color: #888; font-size: 12px; line-height: 1.5; }
+        .dq-bar { height: 5px; background: #111; border-radius: 3px; overflow: hidden; }
+        .dq-bar i { display: block; height: 100%; background: #555; transition: width 0.4s; }
+        .dq-card.done .dq-bar i { background: var(--primary); }
+        .dq-card.prog .dq-bar i { background: #ffce3d; }
+        .dq-foot { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: #666; font-family: 'Russo One'; letter-spacing: 1px; }
+        .dq-card.done .dq-foot .state { color: var(--primary); }
+        .dq-card.prog .dq-foot .state { color: #ffce3d; }
         .lb-c-deaths, .lb-c-kd, .lb-c-games { color: #ccc; font-variant-numeric: tabular-nums; }
         .lb-c-country { color: #ccc; }
         .lb-flag { font-size: 18px; margin-right: 7px; vertical-align: -2px; }
@@ -723,12 +760,33 @@ body.trailer-open #page-content{
         <h1 class="section-title holo-text">Skin Shop</h1>
         <div class="placeholder-box" style="border-color: var(--accent);"><h3>NFT MARKETPLACE</h3></div>
     </div>
+    <div id="quests" class="section-container">
+        <span class="dq-tag">PRE-LAUNCH EXCLUSIVE</span>
+        <h1 class="section-title holo-text" style="margin: 14px 0 0;">Daily Quests</h1>
+        <p class="dq-subtitle">Complete 3 of 5 quests to unlock <b>exclusive Telegram access</b> — the contract drops there first.</p>
+        <div class="dq-summary">
+            <div class="dq-ring">
+                <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#1c1c1c" stroke-width="8"/>
+                    <circle id="dq-ring-fill" cx="50" cy="50" r="42" fill="none" stroke="#00ff88" stroke-width="8" stroke-dasharray="0 264" stroke-linecap="round"/>
+                </svg>
+                <div class="num"><span id="dq-done">0<em>/5</em></span><span>QUESTS</span></div>
+            </div>
+            <div class="info">
+                <div class="ti">REWARD: EXCLUSIVE TELEGRAM ACCESS</div>
+                <div class="sub" id="dq-sub">Complete 3 quests to unlock.</div>
+            </div>
+            <a id="dq-btn" class="dq-btn" href="#" onclick="return false;">LOCKED</a>
+        </div>
+        <div class="dq-grid" id="dq-grid"></div>
+    </div>
     <div id="ranking" class="section-container">
         <h1 class="section-title holo-text">Global Elite</h1>
         <div id="lb-wrap" class="lb-wrap">
             <div class="lb-head">
                 <span class="lb-c-pos">#</span>
                 <span class="lb-c-name">PLAYER</span>
+                <span class="lb-c-mass">BEST MASS</span>
                 <span class="lb-c-kills">KILLS</span>
                 <span class="lb-c-deaths">DEATHS</span>
                 <span class="lb-c-kd">K/D</span>
@@ -1184,6 +1242,108 @@ function toggleTrailerMode() {
         App.Market.updateTicker();
         setInterval(App.Market.updateTicker, 30000);
 
+        // DAILY QUESTS: identidad anónima (UUID en localStorage) + progreso desde el servidor
+        (function () {
+            // Enlace de Telegram exclusivo — CAMBIAR cuando lo crees en Telegram:
+            const TELEGRAM_INVITE = 'https://t.me/pillwars';
+
+            function uuid() {
+                if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+                return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+            }
+            let cid = null;
+            try {
+                cid = localStorage.getItem('pw_cid');
+                if (!cid) { cid = uuid().replace(/-/g, '').slice(0, 24); localStorage.setItem('pw_cid', cid); }
+            } catch (e) { cid = 'guest-' + Math.random().toString(36).slice(2, 12); }
+            window.PWQuests = { cid: cid, base: '', post: null, get: null, refresh: null };
+
+            const QUESTS = [
+                { id: 'q1', title: 'FINISH 2 GAMES', desc: 'Arcade until time runs out, or Classic with at least 5 kills.', key: 'q1_games_finished', target: 2 },
+                { id: 'q2', title: 'PLAY 2 ONLINE MATCHES', desc: 'Join an online room, get a kill or a death — either counts.', key: 'q2_online_matches', target: 2 },
+                { id: 'q3', title: 'USE 2 SKILLS IN ARCADE', desc: 'Cast two different skills during a single arcade game.', key: 'q3_skills_in_arcade', target: 2 },
+                { id: 'q4', title: 'REACH 50,000 MASS', desc: 'Hit 50k mass at any point in a single match.', key: 'bestMass', target: 50000, isMass: true },
+                { id: 'q5', title: 'SURVIVE CLASSIC × 2', desc: 'Leave 2 Classic matches alive (escape without dying).', key: 'q5_classic_survived', target: 2 }
+            ];
+
+            const grid = document.getElementById('dq-grid');
+            const ringFill = document.getElementById('dq-ring-fill');
+            const ringNum = document.getElementById('dq-done');
+            const sub = document.getElementById('dq-sub');
+            const btn = document.getElementById('dq-btn');
+
+            function fmt(n) { return (n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,'') + 'k' : String(n)); }
+            function render(q) {
+                if (!q) q = {};
+                let completed = 0;
+                grid.innerHTML = QUESTS.map((Q, i) => {
+                    const val = q[Q.key] | 0;
+                    const pct = Math.min(100, Math.round(val / Q.target * 100));
+                    const done = val >= Q.target;
+                    const inProg = val > 0 && !done;
+                    if (done) completed++;
+                    const num = String(i + 1).padStart(2, '0');
+                    const state = done ? 'COMPLETED' : inProg ? 'IN PROGRESS' : 'NOT STARTED';
+                    const right = Q.isMass ? (fmt(val) + ' / ' + fmt(Q.target)) : (val + '/' + Q.target);
+                    const left = done ? state : inProg ? (Q.isMass ? state + ' · BEST ' + val.toLocaleString('en-US') : state) : state;
+                    return '<div class="dq-card ' + (done ? 'done' : inProg ? 'prog' : '') + '">' +
+                        '<div class="dq-card-h"><div class="dq-num">' + num + '</div><div style="flex:1;">' +
+                        '<div class="dq-title">' + Q.title + '</div><div class="dq-desc">' + Q.desc + '</div></div></div>' +
+                        '<div class="dq-bar"><i style="width:' + pct + '%;"></i></div>' +
+                        '<div class="dq-foot"><span class="state">' + left + '</span><span>' + right + '</span></div>' +
+                        '</div>';
+                }).join('');
+                // Anillo y resumen
+                const total = QUESTS.length;
+                const dash = (completed / total) * 264;
+                ringFill.setAttribute('stroke-dasharray', dash + ' 264');
+                ringNum.innerHTML = completed + '<em>/' + total + '</em>';
+                const unlocked = completed >= 3;
+                btn.classList.toggle('unlocked', unlocked);
+                if (unlocked) {
+                    btn.textContent = 'JOIN TELEGRAM';
+                    btn.href = TELEGRAM_INVITE;
+                    btn.target = '_blank';
+                    btn.rel = 'noopener noreferrer';
+                    btn.onclick = null;
+                    sub.textContent = 'You unlocked the exclusive group. Welcome.';
+                    sub.classList.add('ok');
+                } else {
+                    btn.textContent = 'LOCKED';
+                    btn.removeAttribute('href');
+                    btn.onclick = function (e) { e.preventDefault(); return false; };
+                    sub.textContent = (3 - completed) + ' more ' + (3 - completed === 1 ? 'quest' : 'quests') + ' and you’re in.';
+                    sub.classList.remove('ok');
+                }
+            }
+            render({});   // estado inicial mientras llega
+
+            async function pull() {
+                try {
+                    const r = await fetch('/api/quests', { headers: { 'X-Client-Id': cid }, cache: 'no-store' });
+                    if (!r.ok) return;
+                    const data = await r.json();
+                    render(data.quests || {});
+                } catch (e) {}
+            }
+            async function post(ev) {
+                try {
+                    const r = await fetch('/api/quests', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Client-Id': cid }, body: JSON.stringify(ev || {}) });
+                    if (!r.ok) return null;
+                    const data = await r.json();
+                    if (data.quests) render(data.quests);
+                    return data;
+                } catch (e) { return null; }
+            }
+            window.PWQuests.post = post;
+            window.PWQuests.get = pull;
+            window.PWQuests.refresh = pull;
+            pull();
+            // Refresca al volver al foco (vuelves de jugar → se actualiza)
+            window.addEventListener('focus', pull);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+        })();
+
         // GLOBAL ELITE: ranking en vivo desde el servidor del juego
         (function () {
             const body = document.getElementById('lb-body');
@@ -1205,9 +1365,11 @@ function toggleTrailerMode() {
                     body.innerHTML = list.map((p, i) => {
                         const kd = p.muertes > 0 ? (p.kills / p.muertes).toFixed(2) : (p.kills).toFixed(0) + '.00';
                         const cls = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
+                        const best = (p.bestMass || 0) >= 1000 ? (p.bestMass / 1000).toFixed(1) + 'k' : (p.bestMass || 0).toString();
                         return `<div class="lb-row ${cls}">
                             <span><span class="lb-c-pos">${i + 1}</span></span>
                             <span class="lb-c-name">${esc(p.name)}</span>
+                            <span class="lb-c-mass">${best}</span>
                             <span class="lb-c-kills">${p.kills.toLocaleString('en-US')}</span>
                             <span class="lb-c-deaths">${p.muertes.toLocaleString('en-US')}</span>
                             <span class="lb-c-kd">${kd}</span>
