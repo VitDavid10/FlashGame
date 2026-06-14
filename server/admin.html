@@ -93,6 +93,17 @@
 
     /* Ranking de países */
     .ccode { display: inline-flex; min-width: 34px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 5px; background: #1a1a1a; border: 1px solid #2c2c2c; font-family: 'Russo One'; font-size: 10px; letter-spacing: 1px; color: var(--primary); }
+    .flag { font-size: 16px; margin-right: 6px; vertical-align: -2px; }
+
+    /* Toasts (avisos no bloqueantes) */
+    #toasts { position: fixed; top: 80px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 360px; pointer-events: none; }
+    .toast { background: rgba(10,15,10,0.96); border: 1px solid var(--primary); border-left: 4px solid var(--primary); border-radius: 8px; padding: 12px 16px; color: #fff; font-family: 'Inter', sans-serif; font-size: 13px; box-shadow: 0 6px 22px rgba(0,0,0,0.6), 0 0 14px rgba(0,255,136,0.15); animation: tslide 0.25s ease-out; pointer-events: auto; }
+    .toast.err { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 6px 22px rgba(0,0,0,0.6), 0 0 14px rgba(255,42,42,0.18); }
+    .toast.warn { border-color: var(--yellow); border-left-color: var(--yellow); box-shadow: 0 6px 22px rgba(0,0,0,0.6), 0 0 14px rgba(255,206,61,0.18); }
+    .toast strong { font-family: 'Russo One'; font-weight: 400; letter-spacing: 1px; font-size: 11px; color: var(--primary); text-transform: uppercase; }
+    .toast.err strong { color: var(--accent); }
+    .toast.warn strong { color: var(--yellow); }
+    @keyframes tslide { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
 
     /* sala: caja del menú con acento de estado */
@@ -191,6 +202,8 @@
 </head>
 <body>
 
+<div id="toasts"></div>
+
 <div id="loginOverlay">
     <div class="login-card" id="loginCard">
         <div class="pill-logo grande"></div>
@@ -234,7 +247,7 @@
         <div id="tab_jugadores" style="display:none">
             <h2 class="section">Ranking de jugadores</h2>
             <table class="rank">
-                <thead><tr><th></th><th>Jugador</th><th>Kills</th><th>Muertes</th><th>K / D</th><th>Partidas</th><th>Última vez</th><th>IP</th></tr></thead>
+                <thead><tr><th></th><th>Jugador</th><th>Kills</th><th>Muertes</th><th>K / D</th><th>Partidas</th><th>Última vez</th><th>País</th><th></th></tr></thead>
                 <tbody id="rankCuerpo"></tbody>
             </table>
         </div>
@@ -327,16 +340,32 @@ function fmtMs(ms) { const s = Math.ceil(ms / 1000); const m = Math.floor(s / 60
 function num(n) { return Number(n || 0).toLocaleString('en-US'); }
 function dinero(n) { return num(n) + ' $'; }
 function ponCnt(id, n) { const el = document.getElementById(id); el.innerText = `(${n})`; el.classList.toggle('cero', n === 0); }
+// Toast: aviso flotante de 3.5s, no bloquea (no hace falta cambiar de pestaña)
+function toast(msg, kind) {
+    const c = document.getElementById('toasts'); if (!c) return;
+    const t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : '');
+    t.innerHTML = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.style.transition = 'opacity 0.3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 3500);
+}
+// Banderita emoji a partir del código país (ej. 'ES' → 🇪🇸). LOCAL/?? → planeta.
+function flag(code) {
+    if (!code || code === 'LOCAL' || code === '??') return '🌐';
+    const c = String(code).toUpperCase();
+    if (c.length !== 2) return '🌐';
+    return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65) + String.fromCodePoint(0x1F1E6 + c.charCodeAt(1) - 65);
+}
 function fecha(iso) { return iso ? String(iso).replace('T', ' ').slice(0, 16) : '—'; }
 
 // acciones
-function kick(id) { if (confirm('¿Expulsar a este jugador?')) { send({ cmd: 'kick', playerId: id }); setTimeout(pedir, 300); } }
-function god(id) { send({ cmd: 'power', playerId: id, name: 'god', args: [] }); setTimeout(pedir, 300); }
-function masa(id) { const n = prompt('Nueva masa:', '50000'); if (n) { send({ cmd: 'power', playerId: id, name: 'mass', args: [n] }); setTimeout(pedir, 300); } }
-function forzar(room) { send({ cmd: 'forceStart', room }); setTimeout(pedir, 300); }
-function reiniciar(room) { if (confirm('¿Reiniciar la sala? Los que estén jugando verán "SALA REINICIADA" y podrán darle a TRY AGAIN.')) { send({ cmd: 'restart', room }); setTimeout(pedir, 300); } }
-function vaciar(room) { if (confirm('¿Echar a TODOS los jugadores de la sala?')) { send({ cmd: 'kickAll', room }); setTimeout(pedir, 300); } }
-function apagar(room) { if (confirm('¿APAGAR la sala? Echa a todos y la destruye.')) { send({ cmd: 'shutdown', room }); setTimeout(pedir, 300); } }
+function kick(id) { if (confirm('¿Expulsar a este jugador?')) { send({ cmd: 'kick', playerId: id }); toast('<strong>Jugador expulsado</strong>', 'warn'); setTimeout(pedir, 300); } }
+function god(id) { send({ cmd: 'power', playerId: id, name: 'god', args: [] }); toast('<strong>GOD aplicado</strong>', 'ok'); setTimeout(pedir, 300); }
+function masa(id) { const n = prompt('Nueva masa:', '50000'); if (n) { send({ cmd: 'power', playerId: id, name: 'mass', args: [n] }); toast('<strong>Masa puesta: ' + esc(n) + '</strong>', 'ok'); setTimeout(pedir, 300); } }
+function forzar(room) { send({ cmd: 'forceStart', room }); toast('<strong>Sala iniciada</strong><br>' + esc(room), 'ok'); setTimeout(pedir, 300); }
+function reiniciar(room) { if (confirm('¿Reiniciar la sala? Los que estén jugando verán "SALA REINICIADA" y podrán darle a TRY AGAIN.')) { send({ cmd: 'restart', room }); toast('<strong>Sala reiniciada</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 300); } }
+function vaciar(room) { if (confirm('¿Echar a TODOS los jugadores de la sala?')) { send({ cmd: 'kickAll', room }); toast('<strong>Sala vaciada</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 300); } }
+function apagar(room) { if (confirm('¿APAGAR la sala? Echa a todos y la destruye.')) { send({ cmd: 'shutdown', room }); toast('<strong>Sala apagada</strong><br>' + esc(room), 'err'); setTimeout(pedir, 300); } }
+function borrarRanking(playerKey, nombre) { if (confirm('¿Borrar a ' + nombre + ' del ranking? Sus estadísticas se eliminan en el servidor.')) { send({ cmd: 'deleteRanking', playerKey }); toast('<strong>Borrado del ranking</strong><br>' + esc(nombre), 'err'); setTimeout(pedir, 300); } }
 function espectar(mode, room) { window.open(location.origin + '/game/?spectate=' + encodeURIComponent(room) + '&mode=' + encodeURIComponent(mode) + '&admin=' + encodeURIComponent(key), '_blank'); }
 function togglePlayers(roomKey) { if (expandidos.has(roomKey)) expandidos.delete(roomKey); else expandidos.add(roomKey); pedir(); }
 function aplicarReglas(roomKey) {
@@ -447,10 +476,12 @@ function render(m) {
         rank += `<tr>
             <td><span class="pos ${i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : ''} russo">${i + 1}</span></td>
             <td><b style="color:#fff">${esc(p.name)}</b></td><td class="kills">${num(p.kills)}</td><td>${num(p.muertes)}</td><td>${kd}</td>
-            <td>${num(p.partidas)}</td><td>${fecha(p.lastSeen)}</td><td style="color:#666">${esc(p.lastIp || '—')}</td>
+            <td>${num(p.partidas)}</td><td>${fecha(p.lastSeen)}</td>
+            <td title="${esc(p.paisName || '')}"><span class="flag">${flag(p.paisCode)}</span><span style="color:#aaa; font-size:10px;">${esc(p.paisCode || '??')}</span></td>
+            <td><button class="b rojo mini" onclick="borrarRanking('${esc(p.key)}','${esc(p.name)}')">Borrar</button></td>
         </tr>`;
     });
-    document.getElementById('rankCuerpo').innerHTML = rank || '<tr><td colspan="8" class="vacio">Aún no hay jugadores con nombre registrados.</td></tr>';
+    document.getElementById('rankCuerpo').innerHTML = rank || '<tr><td colspan="9" class="vacio">Aún no hay jugadores con nombre registrados.</td></tr>';
 
     // Registro de acciones de admin, agrupado por sala
     const porSala = {};
@@ -470,7 +501,7 @@ function render(m) {
     (m.paises || []).forEach((p, i) => {
         pais += `<tr>
             <td><span class="pos ${i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : ''} russo">${i + 1}</span></td>
-            <td><b style="color:#fff">${esc(p.name)}</b></td>
+            <td><span class="flag">${flag(p.code)}</span><b style="color:#fff">${esc(p.name)}</b></td>
             <td><span class="ccode">${esc(p.code)}</span></td>
             <td class="kills">${num(p.jugadores)}</td>
         </tr>`;

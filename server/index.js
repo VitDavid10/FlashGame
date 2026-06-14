@@ -367,11 +367,12 @@ function buildAdminState() {
     }
     let totEntradas = 0, totMuertes = 0, totDinero = 0;
     for (const e of list) { totEntradas += e.stats.entradas; totMuertes += e.stats.muertes; totDinero += e.stats.dinero; }
-    // Ranking de jugadores con nombre (los anónimos quedan fuera)
-    const ranking = Object.values(playerStats)
-        .filter(p => p.name && p.name.trim().length > 0)
-        .sort((a, b) => (b.kills - a.kills) || (b.partidas - a.partidas))
-        .slice(0, 15);
+    // Ranking de jugadores con nombre (los anónimos quedan fuera); con país por IP
+    const ranking = Object.entries(playerStats)
+        .filter(([k, p]) => p.name && p.name.trim().length > 0)
+        .sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas))
+        .slice(0, 30)
+        .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' }; return Object.assign({}, p, { key, paisCode: g.code, paisName: g.name }); });
     // Ranking de países: JUGADORES DISTINTOS (IPs únicas) por país, no entradas
     const porPais = {};
     for (const c of connLog) {
@@ -517,6 +518,14 @@ wss.on('connection', (ws, req) => {
             } else if (msg.cmd === 'shutdown' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala) { shutdownRoom(sala, 'admin'); logAdmin(msg.room, 'Apagó la sala', ''); }
+            } else if (msg.cmd === 'deleteRanking' && msg.playerKey) {
+                const key = String(msg.playerKey).toLowerCase();
+                if (playerStats[key]) {
+                    const nombre = playerStats[key].name || msg.playerKey;
+                    delete playerStats[key]; playersDirty = true;
+                    logAdmin('-', 'Borró del ranking', nombre);
+                    log(`ADMIN borró del ranking: ${nombre}`);
+                }
             }
             return;
         }
