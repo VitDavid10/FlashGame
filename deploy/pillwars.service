@@ -1,0 +1,27 @@
+# Servicio systemd: mantiene el servidor PillWars corriendo 24/7 y lo reinicia si falla.
+# Instalar en /etc/systemd/system/pillwars.service y luego:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now pillwars
+# Ver logs:  journalctl -u pillwars -f
+
+[Unit]
+Description=PillWars game server
+After=network.target
+
+[Service]
+Type=simple
+User=pillwars
+WorkingDirectory=/home/pillwars/FlashGame
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=3
+
+# El servidor solo escucha en localhost; Caddy le pone el HTTPS por delante.
+Environment=PORT=8080
+# CAMBIA esta clave por una larga y secreta (NO dejes 1234 en producción)
+Environment=ADMIN_KEY=CAMBIA_ESTA_CLAVE_LARGA
+Environment=MIN_PLAYERS=5
+Environment=TARGET_POP=10
+
+[Install]
+WantedBy=multi-user.target

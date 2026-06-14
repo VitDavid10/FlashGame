@@ -1,2 +1,2 @@
 @echo off
-start http://localhost:8123/game/
+start http://localhost:8080/game/

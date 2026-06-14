@@ -388,6 +388,9 @@ const httpServer = http.createServer((req, res) => {
     let rel = urlPath.replace(/^\/+/, '') || 'index.html';
     let filePath = path.normalize(path.join(ROOT, rel));
     if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end('Forbidden'); return; }
+    // Nunca servir carpetas privadas (datos con IPs, código de servidor, repo, notas)
+    const top = path.relative(ROOT, filePath).replace(/\\/g, '/').split('/')[0].toLowerCase();
+    if (['server', '.git', 'node_modules', 'tasks', '.claude', 'memory'].includes(top)) { res.writeHead(403); res.end('Forbidden'); return; }
     fs.stat(filePath, (err, st) => {
         if (!err && st.isDirectory()) filePath = path.join(filePath, 'index.html');
         fs.readFile(filePath, (e2, data) => {

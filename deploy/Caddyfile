@@ -1,0 +1,11 @@
+# Caddy: HTTPS automático (Let's Encrypt) y proxy al servidor Node.
+# Caddy gestiona el certificado TLS solo y reenvía también los WebSocket (wss).
+# Colócalo en /etc/caddy/Caddyfile y recarga con:  sudo systemctl reload caddy
+#
+# Requisito: pillwars.fun debe apuntar (registro A) a la IP del VPS ANTES de
+# arrancar Caddy, porque Let's Encrypt valida el dominio por HTTP.
+
+pillwars.fun, www.pillwars.fun {
+	encode zstd gzip
+	reverse_proxy localhost:8080
+}
