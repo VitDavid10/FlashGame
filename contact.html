@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact — PillWars</title>
+    <link rel="icon" href="img/web.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #00ff88; --accent: #ff2a2a; --bg: #050505; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; background: var(--bg); color: #cfd3d6; font-family: 'Inter', sans-serif; line-height: 1.6;
+            background-image: linear-gradient(rgba(0,255,136,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,136,0.05) 1px, transparent 1px);
+            background-size: 40px 40px; min-height: 100vh;
+        }
+        .wrap { max-width: 560px; margin: 0 auto; padding: 50px 22px 80px; }
+        .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+        .pill { width: 34px; height: 18px; border-radius: 9px; background: linear-gradient(135deg, #fff 0 50%, var(--primary) 50% 100%); transform: rotate(-30deg); box-shadow: 0 0 14px rgba(0,255,136,0.5); }
+        h1 { font-family: 'Russo One', sans-serif; color: #fff; font-size: 26px; margin: 0; letter-spacing: 1px; }
+        h1 b { color: var(--primary); }
+        .sub { color: #888; font-size: 14px; margin: 10px 0 26px; }
+        label { display: block; font-family: 'Russo One', sans-serif; font-size: 12px; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 6px; }
+        input, textarea {
+            width: 100%; background: rgba(15,20,15,0.7); border: 1px solid rgba(0,255,136,0.25); border-radius: 8px;
+            color: #fff; font-family: 'Inter', sans-serif; font-size: 15px; padding: 11px 14px; outline: none;
+        }
+        input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(0,255,136,0.25); }
+        textarea { resize: vertical; min-height: 130px; }
+        button {
+            margin-top: 22px; width: 100%; padding: 13px; background: var(--primary); color: #04150c; border: none;
+            font-family: 'Russo One', sans-serif; font-size: 16px; letter-spacing: 1px; text-transform: uppercase;
+            border-radius: 8px; cursor: pointer; transition: 0.2s;
+        }
+        button:hover { filter: brightness(1.1); box-shadow: 0 0 20px rgba(0,255,136,0.4); }
+        button:disabled { opacity: 0.6; cursor: default; }
+        #cstatus { margin-top: 16px; font-size: 14px; min-height: 20px; text-align: center; }
+        .alt { margin-top: 26px; color: #777; font-size: 13px; text-align: center; }
+        .alt a { color: var(--primary); }
+        .back { display: inline-block; margin-top: 30px; font-family: 'Russo One', sans-serif; color: var(--primary); text-decoration: none; border: 1px solid var(--primary); padding: 9px 18px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        .back:hover { background: var(--primary); color: #04150c; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="logo"><div class="pill"></div><h1>PILL <b>WARS</b></h1></div>
+        <div class="sub">Got a question, a bug, or want to report a cheater? Drop us a line.</div>
+
+        <form id="cform">
+            <input type="hidden" name="access_key" value="b1cc038d-5769-4172-b3a7-113eed9f3640">
+            <input type="hidden" name="subject" value="New message from pillwars.fun">
+            <input type="checkbox" name="botcheck" style="display:none">
+
+            <label for="name">Your name</label>
+            <input type="text" id="name" name="name" required maxlength="80" placeholder="What's your name">
+
+            <label for="email">Your email</label>
+            <input type="email" id="email" name="email" required placeholder="So we can reply">
+
+            <label for="message">Message</label>
+            <textarea id="message" name="message" required maxlength="2000" placeholder="Tell us..."></textarea>
+
+            <button type="submit" id="cbtn">Send message</button>
+            <div id="cstatus"></div>
+        </form>
+
+        <div class="alt">Or email us directly at <a href="mailto:contacto@pillwars.fun">contacto@pillwars.fun</a></div>
+        <a class="back" href="/">← Back to PillWars</a>
+    </div>
+
+    <script>
+        const form = document.getElementById('cform');
+        const status = document.getElementById('cstatus');
+        const btn = document.getElementById('cbtn');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            btn.disabled = true; status.style.color = '#aaa'; status.textContent = 'Sending...';
+            try {
+                const res = await fetch('https://api.web3forms.com/submit', { method: 'POST', body: new FormData(form) });
+                const data = await res.json();
+                if (data.success) {
+                    status.style.color = '#00ff88'; status.textContent = '✅ Message sent! We\'ll get back to you soon.';
+                    form.reset();
+                } else {
+                    status.style.color = '#ff2a2a'; status.textContent = '❌ Could not send. Email us at contacto@pillwars.fun';
+                }
+            } catch (err) {
+                status.style.color = '#ff2a2a'; status.textContent = '❌ Connection error. Email us at contacto@pillwars.fun';
+            }
+            btn.disabled = false;
+        });
+    </script>
+</body>
+</html>
