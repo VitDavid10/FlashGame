@@ -7,6 +7,7 @@ server/stats.json
 server/players.json
 server/roomrules.json
 server/geo.json
+server/adminlog.log
 
 # Notas internas de desarrollo
 tasks/

@@ -61,6 +61,17 @@ let connLog = [];
 try { if (fs.existsSync(LOG_FILE)) connLog = fs.readFileSync(LOG_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean); } catch (e) {}
 function logConnection(entry) { connLog.push(entry); fs.appendFile(LOG_FILE, JSON.stringify(entry) + '\n', () => {}); }
 
+// Log de acciones de administración (god/masa/echar/reiniciar/...), por sala
+const ADMINLOG_FILE = path.join(__dirname, 'adminlog.log');
+let adminLog = [];
+try { if (fs.existsSync(ADMINLOG_FILE)) adminLog = fs.readFileSync(ADMINLOG_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean); } catch (e) {}
+function logAdmin(sala, accion, objetivo) {
+    const entry = { fecha: new Date().toISOString(), sala: sala || '-', accion, objetivo: objetivo || '' };
+    adminLog.push(entry);
+    if (adminLog.length > 1000) adminLog = adminLog.slice(-1000);
+    fs.appendFile(ADMINLOG_FILE, JSON.stringify(entry) + '\n', () => {});
+}
+
 const PLAYERS_FILE = path.join(__dirname, 'players.json');
 const roomStats = loadJson(STATS_FILE, {});     // roomKey → { entradas, muertes }
 const roomRules = loadJson(RULES_FILE, {});     // roomKey → { speed, food, virus, botsEnabled, botCount }
@@ -342,15 +353,25 @@ function buildAdminState() {
         .filter(p => p.name && p.name.trim().length > 0)
         .sort((a, b) => (b.kills - a.kills) || (b.partidas - a.partidas))
         .slice(0, 15);
-    // Ranking de países según la IP de cada conexión del historial
+    // Ranking de países: JUGADORES DISTINTOS (IPs únicas) por país, no entradas
     const porPais = {};
     for (const c of connLog) {
         const g = geoOf(c.ip);
-        if (!porPais[g.code]) porPais[g.code] = { code: g.code, name: g.name, entradas: 0, dinero: 0 };
-        porPais[g.code].entradas++;
-        porPais[g.code].dinero += priceOf(c.sala);
+        if (!porPais[g.code]) porPais[g.code] = { code: g.code, name: g.name, ips: new Set() };
+        porPais[g.code].ips.add(c.ip);
     }
-    const paises = Object.values(porPais).sort((a, b) => (b.dinero - a.dinero) || (b.entradas - a.entradas));
+    const paises = Object.values(porPais)
+        .map(p => ({ code: p.code, name: p.name, jugadores: p.ips.size }))
+        .sort((a, b) => b.jugadores - a.jugadores);
+    // Últimas conexiones: una sola entrada por IP (la más reciente)
+    const vistas = new Set();
+    const historial = [];
+    for (let i = connLog.length - 1; i >= 0 && historial.length < 30; i--) {
+        const c = connLog[i];
+        if (vistas.has(c.ip)) continue;
+        vistas.add(c.ip);
+        historial.push(c);
+    }
     return {
         t: 'adminState',
         minPlayers: MIN_PLAYERS,
@@ -358,7 +379,8 @@ function buildAdminState() {
         rooms: list,
         ranking,
         paises,
-        historial: connLog.slice(-30).reverse()
+        historial,
+        adminLog: adminLog.slice(-60).reverse()
     };
 }
 
@@ -424,11 +446,19 @@ wss.on('connection', (ws, req) => {
                     try { found.cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {}
                     try { found.cli.ws.close(); } catch (e) {}
                     found.room.pendingRemovals.set(msg.playerId, 0);
+                    logAdmin(found.room.key, 'Echó a un jugador', found.cli.name || '(sin nombre)');
                     log(`ADMIN expulsó a ${found.cli.name} de ${found.room.key}`);
                 }
             } else if (msg.cmd === 'power' && msg.playerId) {
                 const found = findClient(msg.playerId);
-                if (found) { found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : [], true); log(`ADMIN poder /${msg.name} a ${found.cli.name}`); }
+                if (found) {
+                    found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : [], true);
+                    const nm = found.cli.name || '(sin nombre)';
+                    if (msg.name === 'god') { const p = found.room.sim.players.get(msg.playerId); logAdmin(found.room.key, (p && p.godMode) ? 'Dio GOD' : 'Quitó GOD', nm); }
+                    else if (msg.name === 'mass') { logAdmin(found.room.key, 'Puso masa ' + (msg.args && msg.args[0] || ''), nm); }
+                    else logAdmin(found.room.key, 'Poder /' + msg.name, nm);
+                    log(`ADMIN poder /${msg.name} a ${found.cli.name}`);
+                }
             } else if (msg.cmd === 'rules' && msg.room) {
                 const rules = rulesOf(msg.room); const r = msg.rules || {};
                 if (typeof r.speed === 'number') rules.speed = Math.max(0.25, Math.min(5, r.speed));
@@ -449,22 +479,24 @@ wss.on('connection', (ws, req) => {
                         if (sala.clients.size >= minRealOf(msg.room)) startMatch(sala);
                     }
                 }
+                logAdmin(msg.room, 'Cambió reglas', '');
                 log(`ADMIN reglas en ${msg.room}: ${JSON.stringify(rules)}`);
             } else if (msg.cmd === 'forceStart' && msg.room) {
                 const sala = rooms.get(msg.room);
-                if (sala && sala.state === 'waiting') { startMatch(sala); log(`ADMIN forzó inicio de ${msg.room}`); }
+                if (sala && sala.state === 'waiting') { startMatch(sala); logAdmin(msg.room, 'Forzó el inicio', ''); log(`ADMIN forzó inicio de ${msg.room}`); }
             } else if (msg.cmd === 'restart' && msg.room) {
                 const sala = rooms.get(msg.room);
-                if (sala) restartRoom(sala);
+                if (sala) { restartRoom(sala); logAdmin(msg.room, 'Reinició la sala', ''); }
             } else if (msg.cmd === 'kickAll' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala) {
                     for (const cli of sala.clients.values()) { try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {} try { cli.ws.close(); } catch (e) {} }
+                    logAdmin(msg.room, 'Echó a todos', '');
                     log(`ADMIN vació la sala ${msg.room}`);
                 }
             } else if (msg.cmd === 'shutdown' && msg.room) {
                 const sala = rooms.get(msg.room);
-                if (sala) shutdownRoom(sala, 'admin');
+                if (sala) { shutdownRoom(sala, 'admin'); logAdmin(msg.room, 'Apagó la sala', ''); }
             }
             return;
         }

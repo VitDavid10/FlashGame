@@ -810,6 +810,8 @@
         <button onclick="specReiniciar()" style="width:100%; padding:9px; margin-bottom:7px; background:transparent; border:1px solid #ffae42; color:#ffae42; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">↻ Reiniciar sala</button>
         <button onclick="specVaciar()" style="width:100%; padding:9px; margin-bottom:7px; background:transparent; border:1px solid #888; color:#aaa; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">⊘ Echar a todos</button>
         <button onclick="specApagar()" style="width:100%; padding:9px; background:transparent; border:1px solid #ff2a2a; color:#ff2a2a; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">⏻ Apagar (cierra)</button>
+        <div style="color:#666; font-size:9px; letter-spacing:1px; text-transform:uppercase; margin:16px 0 6px;">Registro de esta sala</div>
+        <div id="specLog" style="font-size:9px;"></div>
     </div>
 
 
@@ -2155,6 +2157,15 @@
                 <button onclick="specKick('${esc(p.id)}')" style="flex:1; padding:3px 0; background:transparent; border:1px solid #ff2a2a; color:#ff2a2a; font-family:'Russo One'; font-size:8.5px; border-radius:4px; cursor:pointer;">Echar</button>
             </div>
         </div>`).join('');
+        // Registro de acciones de admin de ESTA sala
+        const logEl = document.getElementById('specLog');
+        if (logEl) {
+            const hora = f => { try { return new Date(f).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+            const mias = (state.adminLog || []).filter(a => a.sala === specRoomKey).slice(0, 15);
+            logEl.innerHTML = mias.length ? mias.map(a => `<div style="padding:3px 0; border-top:1px solid #1a1a1a; color:#999;">
+                <span style="color:#555;">${hora(a.fecha)}</span> ${esc(a.accion)}${a.objetivo ? ' <span style="color:#00ff88;">' + esc(a.objetivo) + '</span>' : ''}
+            </div>`).join('') : '<div style="color:#555;">Sin acciones todavía</div>';
+        }
     }
 
     initMenuState(); init();

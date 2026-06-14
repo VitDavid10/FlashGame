@@ -240,9 +240,11 @@
         </div>
 
         <div id="tab_actividad" style="display:none">
+            <h2 class="section">Registro de acciones</h2>
+            <div class="usage" id="adminLog" style="padding-top:8px"></div>
             <h2 class="section">Países</h2>
             <table class="rank">
-                <thead><tr><th></th><th>País</th><th></th><th>Entradas</th><th>"Dinero"</th></tr></thead>
+                <thead><tr><th></th><th>País</th><th></th><th>Jugadores</th></tr></thead>
                 <tbody id="paisesCuerpo"></tbody>
             </table>
             <h2 class="section">Salas más usadas</h2>
@@ -450,17 +452,30 @@ function render(m) {
     });
     document.getElementById('rankCuerpo').innerHTML = rank || '<tr><td colspan="8" class="vacio">Aún no hay jugadores con nombre registrados.</td></tr>';
 
+    // Registro de acciones de admin, agrupado por sala
+    const porSala = {};
+    for (const a of (m.adminLog || [])) { (porSala[a.sala] = porSala[a.sala] || []).push(a); }
+    const salasLog = Object.keys(porSala);
+    document.getElementById('adminLog').innerHTML = salasLog.length ? salasLog.map(sala => `
+        <div style="margin-bottom:14px">
+            <div class="nm russo" style="color:var(--primary); font-size:12px; margin-bottom:6px">${esc(sala)}</div>
+            ${porSala[sala].slice(0, 12).map(a => `<div style="display:flex; gap:12px; font-size:11.5px; color:var(--muted); padding:3px 0; border-top:1px solid #1a1a1a">
+                <span style="color:#666; min-width:62px">${fecha(a.fecha)}</span>
+                <span style="color:#ddd">${esc(a.accion)}</span>
+                ${a.objetivo ? `<span style="color:var(--primary)">${esc(a.objetivo)}</span>` : ''}
+            </div>`).join('')}
+        </div>`).join('') : '<div class="vacio">Aún no se han hecho acciones de administración.</div>';
+
     let pais = '';
     (m.paises || []).forEach((p, i) => {
         pais += `<tr>
             <td><span class="pos ${i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : ''} russo">${i + 1}</span></td>
             <td><b style="color:#fff">${esc(p.name)}</b></td>
             <td><span class="ccode">${esc(p.code)}</span></td>
-            <td>${num(p.entradas)}</td>
-            <td class="kills">${dinero(p.dinero)}</td>
+            <td class="kills">${num(p.jugadores)}</td>
         </tr>`;
     });
-    document.getElementById('paisesCuerpo').innerHTML = pais || '<tr><td colspan="5" class="vacio">Sin conexiones registradas.</td></tr>';
+    document.getElementById('paisesCuerpo').innerHTML = pais || '<tr><td colspan="4" class="vacio">Sin conexiones registradas.</td></tr>';
 
     const usadas = m.rooms.filter(r => r.stats.entradas > 0).sort((a, b) => b.stats.entradas - a.stats.entradas).slice(0, 10);
     const maxE = usadas.length ? usadas[0].stats.entradas : 1;
