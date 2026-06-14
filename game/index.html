@@ -2302,7 +2302,8 @@
         const mode = ['classic', 'arcade', 'skills'].includes(params.get('mode')) ? params.get('mode') : 'classic';
         const qsServer = params.get('server');
         const url = qsServer || (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://localhost:8080');
-        specAdminKey = params.get('admin') || null;
+        // Prioriza el token temporal (?t=...); compatibilidad con ?admin= antiguo durante el rollout
+        specAdminKey = params.get('t') || params.get('admin') || null;
         specRoomKey = mode + '_' + room;
         els.modeScreen.style.display = 'none'; els.modeScreen.style.pointerEvents = 'none'; els.loginOverlay.style.display = 'none';
         setLobbyBanner('👁 CONECTANDO COMO ESPECTADOR...');

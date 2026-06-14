@@ -51,6 +51,13 @@ const CATALOG_MODES = ['classic', 'arcade'];
 
 const rooms = new Map();
 const resumeTokens = new Map();   // token → { roomKey, playerId }
+const adminFails = new Map();     // ip → { c: intentos, until: timestamp bloqueo }
+const specTokens = new Map();     // token → expira_en (timestamp ms)
+setInterval(() => {                // limpieza periódica de tokens caducados
+    const now = Date.now();
+    for (const [k, exp] of specTokens) if (exp <= now) specTokens.delete(k);
+    for (const [ip, fb] of adminFails) if (fb.until && fb.until <= now) adminFails.delete(ip);
+}, 60000);
 
 function log(...args) { console.log(new Date().toISOString().slice(11, 19), ...args); }
 function priceOf(roomName) { const m = String(roomName).match(/(\d+)\s*\$/); return m ? parseInt(m[1], 10) : 0; }
@@ -432,7 +439,15 @@ function findClient(playerId) {
 // --- HTTP: panel de admin + juego estático en el mismo puerto ---
 const ROOT = path.join(__dirname, '..');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
+// Headers básicos de seguridad (no son escudo total, pero cierran vectores comunes)
+function applySecurityHeaders(res) {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+}
 const httpServer = http.createServer((req, res) => {
+    applySecurityHeaders(res);
     const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
     // Endpoint público del ranking (para "Global Elite" en la web). Ordena por bestMass.
     if (urlPath === '/ranking.json' || urlPath === '/api/ranking') {
@@ -466,8 +481,10 @@ const httpServer = http.createServer((req, res) => {
             return;
         }
         if (req.method === 'POST') {
-            let body = ''; req.on('data', c => { if (body.length < 4096) body += c; });
+            let body = ''; let abortado = false;
+            req.on('data', c => { if (abortado) return; body += c; if (body.length > 2048) { abortado = true; res.writeHead(413); res.end('Payload too large'); req.destroy(); } });
             req.on('end', () => {
+                if (abortado) return;
                 let ev = {}; try { ev = JSON.parse(body || '{}'); } catch (e) {}
                 // Eventos aceptados: sumar contadores (con tope) y actualizar bestMass
                 if (ev.game_finished) q.q1_games_finished = Math.min(2, (q.q1_games_finished | 0) + 1);
@@ -477,7 +494,8 @@ const httpServer = http.createServer((req, res) => {
                 // Compat con clientes viejos: si llega skill_in_arcade booleano, equivale a al menos 2
                 if (ev.skill_in_arcade && (q.q3_skills_in_arcade | 0) < 2) q.q3_skills_in_arcade = 2;
                 if (ev.classic_survived) q.q5_classic_survived = Math.min(2, (q.q5_classic_survived | 0) + 1);
-                if (typeof ev.mass === 'number' && ev.mass > q.bestMass) q.bestMass = Math.floor(ev.mass);
+                // Validación: mass en rango sensato (cap a 10M para que nadie spoofee 9999999999)
+                if (typeof ev.mass === 'number' && ev.mass > q.bestMass && ev.mass < 10000000) q.bestMass = Math.floor(ev.mass);
                 q.updated = Date.now(); questsDirty = true;
                 const done = [
                     q.q1_games_finished >= 2,
@@ -535,7 +553,24 @@ wss.on('connection', (ws, req) => {
 
         // --- Administración ---
         if (msg.t === 'admin') {
-            if (msg.key !== ADMIN_KEY) { ws.send(JSON.stringify({ t: 'adminError' })); return; }
+            // Rate-limit por IP: 8 intentos fallidos / 60s → bloqueo 10 min
+            const fb = adminFails.get(ip) || { c: 0, until: 0 };
+            if (fb.until > Date.now()) { ws.send(JSON.stringify({ t: 'adminError' })); return; }
+            const validKey = (msg.key === ADMIN_KEY);
+            const validTok = msg.key && specTokens.has(msg.key) && specTokens.get(msg.key) > Date.now();
+            if (!validKey && !validTok) {
+                fb.c++; if (fb.c >= 8) { fb.until = Date.now() + 10*60*1000; fb.c = 0; log(`[seguridad] IP ${ip} bloqueada 10 min por intentos fallidos de admin`); }
+                adminFails.set(ip, fb);
+                ws.send(JSON.stringify({ t: 'adminError' })); return;
+            }
+            adminFails.delete(ip);
+            // Token temporal para el espectador-control (10 min, single-use)
+            if (msg.cmd === 'getSpecToken') {
+                const tok = require('crypto').randomBytes(24).toString('hex');
+                specTokens.set(tok, Date.now() + 10*60*1000);
+                ws.send(JSON.stringify({ t: 'specToken', token: tok }));
+                return;
+            }
             if (msg.cmd === 'state') {
                 ws.send(JSON.stringify(buildAdminState()));
             } else if (msg.cmd === 'kick' && msg.playerId) {
@@ -802,7 +837,9 @@ setInterval(purgeOldLogs, 24 * 3600 * 1000); // y una vez al día
 
 httpServer.listen(PORT, () => {
     log(`Servidor PillWars escuchando en ws://localhost:${PORT}`);
-    log(`Panel de admin: http://localhost:${PORT}/admin  (clave: ${ADMIN_KEY})`);
+    // Solo mostramos la clave si es la insegura por defecto (avisamos) — en producción NUNCA se loguea
+    if (ADMIN_KEY === '1234') log(`⚠ [SEGURIDAD] ADMIN_KEY no definida — usando '1234' por defecto. Define ADMIN_KEY en producción.`);
+    else log(`Panel de admin: http://localhost:${PORT}/admin  (clave definida en ADMIN_KEY, ${ADMIN_KEY.length} chars)`);
     log(`Lobby: mínimo ${MIN_PLAYERS} reales, población objetivo ${TARGET_POP} (editable por sala en el panel)`);
     log(`Privacidad: IPs anonimizadas, logs borrados a los ${LOG_RETENTION_DAYS} días`);
 });

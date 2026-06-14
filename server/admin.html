@@ -372,7 +372,18 @@ function vaciar(room) { if (confirm('¿Echar a TODOS los jugadores de la sala?')
 function apagar(room) { if (confirm('¿APAGAR la sala? Echa a todos y la destruye.')) { send({ cmd: 'shutdown', room }); toast('<strong>Sala apagada</strong><br>' + esc(room), 'err'); setTimeout(pedir, 300); } }
 function borrarRanking(playerKey, nombre) { if (confirm('¿Borrar a ' + nombre + ' del ranking? Sus estadísticas se eliminan en el servidor.')) { send({ cmd: 'deleteRanking', playerKey }); toast('<strong>Borrado del ranking</strong><br>' + esc(nombre), 'err'); setTimeout(pedir, 300); } }
 function resetearQuests() { if (confirm('¿RESETEAR las quests de TODOS los jugadores? Esta acción es irreversible.')) { send({ cmd: 'resetQuests' }); toast('<strong>Quests reseteadas</strong><br>Todos los jugadores empiezan de cero', 'warn'); setTimeout(pedir, 300); } }
-function espectar(mode, room) { window.open(location.origin + '/game/?spectate=' + encodeURIComponent(room) + '&mode=' + encodeURIComponent(mode) + '&admin=' + encodeURIComponent(key), '_blank'); }
+function espectar(mode, room) {
+    // Pedimos un token temporal al servidor para no exponer la admin key en la URL
+    const handler = (e) => {
+        try { const m = JSON.parse(e.data); if (m && m.t === 'specToken' && m.token) {
+            ws.removeEventListener('message', handler);
+            window.open(location.origin + '/game/?spectate=' + encodeURIComponent(room) + '&mode=' + encodeURIComponent(mode) + '&t=' + encodeURIComponent(m.token), '_blank');
+        } } catch (err) {}
+    };
+    ws.addEventListener('message', handler);
+    send({ cmd: 'getSpecToken' });
+    setTimeout(() => ws.removeEventListener('message', handler), 5000);
+}
 function togglePlayers(roomKey) { if (expandidos.has(roomKey)) expandidos.delete(roomKey); else expandidos.add(roomKey); pedir(); }
 function aplicarReglas(roomKey) {
     const g = id => document.getElementById(id + '_' + roomKey);
