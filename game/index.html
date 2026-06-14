@@ -202,7 +202,9 @@
         .mode-panel.hidden { opacity: 0; pointer-events: none; }
 
         /* --- BOTÓN "DAILY QUESTS" + PANEL DESPLEGABLE --- */
-        .mqp-btn { position: absolute; top: 22%; z-index: 35; display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); font-family: 'Russo One'; font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; cursor: pointer; user-select: none; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
+        .mqp-btn { position: absolute; top: 22%; z-index: 35; display: none; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); font-family: 'Russo One'; font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; cursor: pointer; user-select: none; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
+        #modeScreen.hover-arcade .mqp-btn.arcade { display: inline-flex; }
+        #modeScreen.hover-classic .mqp-btn.classic { display: inline-flex; }
         .mqp-btn:hover { transform: translateY(-2px); filter: brightness(1.15); }
         .mqp-btn .dot { width: 8px; height: 8px; border-radius: 50%; }
         .mqp-btn.classic { right: 40px; border: 1px solid rgba(0,255,170,0.35); color: #00ffaa; }
@@ -1265,7 +1267,7 @@
     class Explosion { constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; this.particles = []; for(let i=0; i<16; i++) { let angle = (Math.PI*2 * i) / 16; this.particles.push({ x: 0, y: 0, vx: Math.cos(angle)*8, vy: Math.sin(angle)*8, r: Math.random()*5+5, rot: Math.random()*Math.PI }); } } update() { this.life -= 0.02; this.particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.rot+=0.1; }); } draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.globalAlpha = Math.max(0, this.life); this.particles.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = '#81F126'; ctx.strokeStyle = '#3E8E11'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<12; i++) { let r = (i%2===0) ? p.r : p.r/2; ctx.lineTo(Math.cos((Math.PI*i)/6)*r, Math.sin((Math.PI*i)/6)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }); ctx.restore(); } }
 
     function tryPlayHover(m) { if (ignoreNextHover) { if (m !== lastHoveredMode) { ignoreNextHover = false; SoundManager.play('hover'); } } else { SoundManager.play('hover'); } }
-    function setHoverMode(m) { lastHoveredMode = m; if(m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); } else if(m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); } updateModeQuestsUI(); }
+    function setHoverMode(m) { lastHoveredMode = m; if(m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); } else if(m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); } document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open')); updateModeQuestsUI(); }
 
     // Pinta los paneles de quests laterales con el progreso actual del jugador
     const MODE_QUESTS = {
