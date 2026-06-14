@@ -1298,14 +1298,14 @@
         classic: [
             { n: '01', t: 'FINISH 2 GAMES', desc: 'Finish 2 full games. In Classic: get 5 kills (PENTAKILL).', key: 'q1_games_finished', target: 2 },
             { n: '02', t: 'PLAY 2 ONLINE', desc: 'Join an online room and get a kill or a death. Counts toward your total.', key: 'q2_online_matches', target: 2 },
-            { n: '04', t: 'REACH 50K MASS', desc: 'Hit at least 50,000 mass in a single match (any mode).', key: 'bestMass', target: 50000, isMass: true },
+            { n: '04', t: 'REACH 100K MASS', desc: 'Hit at least 100,000 mass in a single match (any mode).', key: 'bestMass', target: 100000, isMass: true },
             { n: '05', t: 'SURVIVE x2',     desc: 'Leave 2 Classic matches alive — use BACK TO MENU before dying.', key: 'q5_classic_survived', target: 2 }
         ],
         arcade: [
             { n: '01', t: 'FINISH 2 GAMES', desc: 'Finish 2 full games. In Arcade: survive until the timer runs out (matchEnd).', key: 'q1_games_finished', target: 2 },
             { n: '02', t: 'PLAY 2 ONLINE', desc: 'Join an online room and get a kill or a death. Counts toward your total.', key: 'q2_online_matches', target: 2 },
             { n: '03', t: 'USE 2 SKILLS', desc: 'Use 2 DIFFERENT skills in a single Arcade match.', key: 'q3_skills_in_arcade', target: 2 },
-            { n: '04', t: 'REACH 50K MASS', desc: 'Hit at least 50,000 mass in a single match (any mode).', key: 'bestMass', target: 50000, isMass: true }
+            { n: '04', t: 'REACH 100K MASS', desc: 'Hit at least 100,000 mass in a single match (any mode).', key: 'bestMass', target: 100000, isMass: true }
         ]
     };
     let _questsCache = {};
@@ -1323,7 +1323,7 @@
             const inProg = val > 0 && !ok;
             if (ok) done++;
             const cls = ok ? 'done' : inProg ? 'prog' : '';
-            const right = q.isMass ? fmtMqpVal(q, val) + ' / 50k' : (val|0) + '/' + q.target;
+            const right = q.isMass ? fmtMqpVal(q, val) + ' / 100k' : (val|0) + '/' + q.target;
             const safe = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
             return '<div class="mqp-q ' + cls + '">' +
                 '<div class="n">' + q.n + '</div>' +
@@ -1646,7 +1646,7 @@
     }
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
-    function finishGameSuccess() { SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
+    function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
     function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
@@ -2198,7 +2198,7 @@
                     break;
                 }
                 case 'skillsUI': if (ev.playerId === 'me') updateSkillsUI_Arcade(); break;
-                case 'matchEnd': Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); finishGameSuccess(); break;
+                case 'matchEnd': finishGameSuccess(); break;
             }
         }
     }

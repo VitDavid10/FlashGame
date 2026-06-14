@@ -480,7 +480,7 @@ const httpServer = http.createServer((req, res) => {
                     q.q1_games_finished >= 2,
                     q.q2_online_matches >= 2,
                     q.q3_skills_in_arcade >= 2,
-                    q.bestMass >= 50000,
+                    q.bestMass >= 100000,
                     q.q5_classic_survived >= 2
                 ].filter(Boolean).length;
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
