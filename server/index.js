@@ -600,6 +600,12 @@ wss.on('connection', (ws, req) => {
                     logAdmin('-', 'Borró del ranking', nombre);
                     log(`ADMIN borró del ranking: ${nombre}`);
                 }
+            } else if (msg.cmd === 'resetQuests') {
+                const cuantos = Object.keys(questsStore).length;
+                for (const k of Object.keys(questsStore)) delete questsStore[k];
+                questsDirty = true;
+                logAdmin('-', 'Reseteó las quests de todos', cuantos + ' jugadores');
+                log(`ADMIN reseteó quests (${cuantos} jugadores)`);
             }
             return;
         }

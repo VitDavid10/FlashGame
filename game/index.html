@@ -1029,7 +1029,7 @@
         // Por partida: kills (classic), skills usadas (arcade), pico de masa
         let match = null;
         function startMatch(mode, online) {
-            match = { mode, online, kills: 0, skillsUsed: new Set(), peakMass: 0, alive: true, reportedOnline: false, reportedGame: false, reportedSurvive: false };
+            match = { mode, online, kills: 0, skillsUsed: 0, peakMass: 0, alive: true, reportedOnline: false, reportedGame: false, reportedSurvive: false, reportedSkill: false };
         }
         function endMatch(reason) {
             if (!match) return;
@@ -1046,8 +1046,8 @@
             if (match.online && !match.reportedOnline && (match.kills > 0 || !match.alive || reason === 'matchEnd')) {
                 ev.online_match = true; match.reportedOnline = true;
             }
-            // Q3 - usar 2 skills DISTINTAS en arcade: AHORA también al morir/salir (antes solo en matchEnd)
-            if (!match.reportedSkill && (match.mode === 'arcade') && match.skillsUsed.size >= 2) {
+            // Q3 - 2 usos de skills en arcade (cualquiera, mismas o distintas)
+            if (!match.reportedSkill && (match.mode === 'arcade') && match.skillsUsed >= 2) {
                 ev.skill_in_arcade = true; match.reportedSkill = true;
             }
             // Q5 escapar vivo de classic (matchEnd no es classic; el "escape" es returnToMenu vivo)
@@ -1060,7 +1060,7 @@
             match = null;
         }
         function reportKill() { if (match) match.kills++; }
-        function reportSkill(slot) { if (match && match.mode === 'arcade' && slot != null) match.skillsUsed.add(slot); }
+        function reportSkill(slot) { if (match && match.mode === 'arcade' && slot != null) match.skillsUsed++; }
         // Manda la masa cada vez que sube un escalón (cada 5k) → así el ranking se va actualizando y el 50k siempre llega
         function reportMass(m) {
             if (!match) return;
@@ -1072,7 +1072,7 @@
         }
         function reportDeath() { if (match) match.alive = false; }
         function flushArcadeSkills() {
-            if (match && match.mode === 'arcade' && match.skillsUsed.size >= 2 && !match.reportedSkill) {
+            if (match && match.mode === 'arcade' && match.skillsUsed >= 2 && !match.reportedSkill) {
                 send({ skill_in_arcade: true });
                 match.reportedSkill = true;
             }
@@ -1304,7 +1304,7 @@
         arcade: [
             { n: '01', t: 'FINISH 2 GAMES', desc: 'Finish 2 full games. In Arcade: survive until the timer runs out (matchEnd).', key: 'q1_games_finished', target: 2 },
             { n: '02', t: 'PLAY 2 ONLINE', desc: 'Join an online room and get a kill or a death. Counts toward your total.', key: 'q2_online_matches', target: 2 },
-            { n: '03', t: 'USE 2 SKILLS', desc: 'Use 2 DIFFERENT skills in a single Arcade match.', key: 'q3_skills_in_arcade', target: 2 },
+            { n: '03', t: 'USE 2 SKILLS', desc: 'Use any 2 skills in a single Arcade match (can be the same).', key: 'q3_skills_in_arcade', target: 2 },
             { n: '04', t: 'REACH 100K MASS', desc: 'Hit at least 100,000 mass in a single match (any mode).', key: 'bestMass', target: 100000, isMass: true }
         ]
     };

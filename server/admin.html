@@ -253,6 +253,11 @@
         </div>
 
         <div id="tab_actividad" style="display:none">
+            <h2 class="section">Acciones globales</h2>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <button class="b rojo" onclick="resetearQuests()">⟲ Resetear quests de todos</button>
+                <span style="color:#666; font-size: 12px;">Borra el progreso de Daily Quests de todos los jugadores. Los récords de masa del ranking NO se tocan.</span>
+            </div>
             <h2 class="section">Registro de acciones</h2>
             <div class="usage" id="adminLog" style="padding-top:8px"></div>
             <h2 class="section">Países</h2>
@@ -366,6 +371,7 @@ function reiniciar(room) { if (confirm('¿Reiniciar la sala? Los que estén juga
 function vaciar(room) { if (confirm('¿Echar a TODOS los jugadores de la sala?')) { send({ cmd: 'kickAll', room }); toast('<strong>Sala vaciada</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 300); } }
 function apagar(room) { if (confirm('¿APAGAR la sala? Echa a todos y la destruye.')) { send({ cmd: 'shutdown', room }); toast('<strong>Sala apagada</strong><br>' + esc(room), 'err'); setTimeout(pedir, 300); } }
 function borrarRanking(playerKey, nombre) { if (confirm('¿Borrar a ' + nombre + ' del ranking? Sus estadísticas se eliminan en el servidor.')) { send({ cmd: 'deleteRanking', playerKey }); toast('<strong>Borrado del ranking</strong><br>' + esc(nombre), 'err'); setTimeout(pedir, 300); } }
+function resetearQuests() { if (confirm('¿RESETEAR las quests de TODOS los jugadores? Esta acción es irreversible.')) { send({ cmd: 'resetQuests' }); toast('<strong>Quests reseteadas</strong><br>Todos los jugadores empiezan de cero', 'warn'); setTimeout(pedir, 300); } }
 function espectar(mode, room) { window.open(location.origin + '/game/?spectate=' + encodeURIComponent(room) + '&mode=' + encodeURIComponent(mode) + '&admin=' + encodeURIComponent(key), '_blank'); }
 function togglePlayers(roomKey) { if (expandidos.has(roomKey)) expandidos.delete(roomKey); else expandidos.add(roomKey); pedir(); }
 function aplicarReglas(roomKey) {
