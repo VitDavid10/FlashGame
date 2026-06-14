@@ -216,7 +216,8 @@
         .mqp { position: absolute; top: 28%; z-index: 32; width: 290px; pointer-events: none; opacity: 0; transform: translateY(-10px); transition: opacity 0.3s ease, transform 0.35s ease; padding: 22px 20px 24px; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
         .mqp.classic { right: 30px; border: 1px solid rgba(0,255,170,0.25); border-left: 3px solid #00ffaa; }
         .mqp.arcade { left: 30px; border: 1px solid rgba(204,255,0,0.25); border-right: 3px solid #ccff00; }
-        .mqp.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        /* Solo se ve si está abierto Y estás en su lado del menú (al cambiar de modo se oculta sin perder el estado abierto) */
+        #modeScreen.hover-classic .mqp.classic.open, #modeScreen.hover-arcade .mqp.arcade.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
         .mqp-head { font-family: 'Russo One'; font-size: 11px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
         .mqp.classic .mqp-head .pill { color: #00ffaa; }
         .mqp.arcade .mqp-head .pill { color: #ccff00; }
@@ -1267,7 +1268,7 @@
     class Explosion { constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; this.particles = []; for(let i=0; i<16; i++) { let angle = (Math.PI*2 * i) / 16; this.particles.push({ x: 0, y: 0, vx: Math.cos(angle)*8, vy: Math.sin(angle)*8, r: Math.random()*5+5, rot: Math.random()*Math.PI }); } } update() { this.life -= 0.02; this.particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.rot+=0.1; }); } draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.globalAlpha = Math.max(0, this.life); this.particles.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = '#81F126'; ctx.strokeStyle = '#3E8E11'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<12; i++) { let r = (i%2===0) ? p.r : p.r/2; ctx.lineTo(Math.cos((Math.PI*i)/6)*r, Math.sin((Math.PI*i)/6)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }); ctx.restore(); } }
 
     function tryPlayHover(m) { if (ignoreNextHover) { if (m !== lastHoveredMode) { ignoreNextHover = false; SoundManager.play('hover'); } } else { SoundManager.play('hover'); } }
-    function setHoverMode(m) { lastHoveredMode = m; if(m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); } else if(m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); } document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open')); updateModeQuestsUI(); }
+    function setHoverMode(m) { lastHoveredMode = m; if(m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); } else if(m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); } updateModeQuestsUI(); }
 
     // Pinta los paneles de quests laterales con el progreso actual del jugador
     const MODE_QUESTS = {
