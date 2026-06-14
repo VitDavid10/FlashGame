@@ -237,6 +237,13 @@
         .mqp.classic .mqp-q.done .mqp-bar i, .mqp.classic .mqp-q.prog .mqp-bar i { background: #00ffaa; }
         .mqp.arcade .mqp-q.done .mqp-bar i, .mqp.arcade .mqp-q.prog .mqp-bar i { background: #ccff00; }
         .mqp-foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); font-family: 'Russo One'; font-size: 10px; letter-spacing: 2px; color: #666; display: flex; justify-content: space-between; align-items: center; }
+
+        /* Tooltip de descripción sobre cada quest del panel del menú */
+        .mqp-q { position: relative; cursor: help; }
+        .mqp-q .tip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%) translateY(4px); width: 240px; padding: 10px 12px; background: rgba(8,12,8,0.97); border: 1px solid rgba(0,255,170,0.3); border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 400; line-height: 1.5; color: #ddd; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 50; text-transform: none; letter-spacing: 0; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
+        .mqp.arcade .mqp-q .tip { border-color: rgba(204,255,0,0.3); }
+        .mqp-q:hover .tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .mqp-q .tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: rgba(8,12,8,0.97); }
         .mqp.classic .mqp-foot .num { color: #00ffaa; }
         .mqp.arcade .mqp-foot .num { color: #ccff00; }
 
@@ -1027,6 +1034,7 @@
         function endMatch(reason) {
             if (!match) return;
             const ev = {};
+            // Q4 - mejor masa de la partida (siempre, sirve al ranking aunque no llegue a 50k)
             if (match.peakMass > 0) ev.mass = match.peakMass;
             // Q1 finish: arcade hasta el final (matchEnd) o classic con ≥5 kills
             if (!match.reportedGame) {
@@ -1037,6 +1045,10 @@
             // Q2 online: contar la partida online (en cuanto entras y mueres/matas/acaba)
             if (match.online && !match.reportedOnline && (match.kills > 0 || !match.alive || reason === 'matchEnd')) {
                 ev.online_match = true; match.reportedOnline = true;
+            }
+            // Q3 - usar 2 skills DISTINTAS en arcade: AHORA también al morir/salir (antes solo en matchEnd)
+            if (!match.reportedSkill && (match.mode === 'arcade') && match.skillsUsed.size >= 2) {
+                ev.skill_in_arcade = true; match.reportedSkill = true;
             }
             // Q5 escapar vivo de classic (matchEnd no es classic; el "escape" es returnToMenu vivo)
             if (match.mode === 'classic' && match.alive && reason === 'leave' && !match.reportedSurvive) {
@@ -1049,10 +1061,21 @@
         }
         function reportKill() { if (match) match.kills++; }
         function reportSkill(slot) { if (match && match.mode === 'arcade' && slot != null) match.skillsUsed.add(slot); }
-        function reportMass(m) { if (match && m > match.peakMass) { match.peakMass = m; if (m >= 50000) send({ mass: m }); } }
+        // Manda la masa cada vez que sube un escalón (cada 5k) → así el ranking se va actualizando y el 50k siempre llega
+        function reportMass(m) {
+            if (!match) return;
+            if (m <= match.peakMass) return;
+            const prevStep = Math.floor(match.peakMass / 5000);
+            match.peakMass = m;
+            const newStep = Math.floor(m / 5000);
+            if (newStep > prevStep) send({ mass: m });
+        }
         function reportDeath() { if (match) match.alive = false; }
         function flushArcadeSkills() {
-            if (match && match.mode === 'arcade' && match.skillsUsed.size >= 2) send({ skill_in_arcade: true });
+            if (match && match.mode === 'arcade' && match.skillsUsed.size >= 2 && !match.reportedSkill) {
+                send({ skill_in_arcade: true });
+                match.reportedSkill = true;
+            }
         }
         let sending = false, queue = [];
         async function send(ev) {
@@ -1273,16 +1296,16 @@
     // Pinta los paneles de quests laterales con el progreso actual del jugador
     const MODE_QUESTS = {
         classic: [
-            { n: '01', t: 'FINISH 2 GAMES', key: 'q1_games_finished', target: 2 },
-            { n: '02', t: 'PLAY 2 ONLINE', key: 'q2_online_matches', target: 2 },
-            { n: '04', t: 'REACH 50K MASS', key: 'bestMass', target: 50000, isMass: true },
-            { n: '05', t: 'SURVIVE x2',     key: 'q5_classic_survived', target: 2 }
+            { n: '01', t: 'FINISH 2 GAMES', desc: 'Finish 2 full games. In Classic: get 5 kills (PENTAKILL).', key: 'q1_games_finished', target: 2 },
+            { n: '02', t: 'PLAY 2 ONLINE', desc: 'Join an online room and get a kill or a death. Counts toward your total.', key: 'q2_online_matches', target: 2 },
+            { n: '04', t: 'REACH 50K MASS', desc: 'Hit at least 50,000 mass in a single match (any mode).', key: 'bestMass', target: 50000, isMass: true },
+            { n: '05', t: 'SURVIVE x2',     desc: 'Leave 2 Classic matches alive — use BACK TO MENU before dying.', key: 'q5_classic_survived', target: 2 }
         ],
         arcade: [
-            { n: '01', t: 'FINISH 2 GAMES', key: 'q1_games_finished', target: 2 },
-            { n: '02', t: 'PLAY 2 ONLINE', key: 'q2_online_matches', target: 2 },
-            { n: '03', t: 'USE 2 SKILLS', key: 'q3_skills_in_arcade', target: 2 },
-            { n: '04', t: 'REACH 50K MASS', key: 'bestMass', target: 50000, isMass: true }
+            { n: '01', t: 'FINISH 2 GAMES', desc: 'Finish 2 full games. In Arcade: survive until the timer runs out (matchEnd).', key: 'q1_games_finished', target: 2 },
+            { n: '02', t: 'PLAY 2 ONLINE', desc: 'Join an online room and get a kill or a death. Counts toward your total.', key: 'q2_online_matches', target: 2 },
+            { n: '03', t: 'USE 2 SKILLS', desc: 'Use 2 DIFFERENT skills in a single Arcade match.', key: 'q3_skills_in_arcade', target: 2 },
+            { n: '04', t: 'REACH 50K MASS', desc: 'Hit at least 50,000 mass in a single match (any mode).', key: 'bestMass', target: 50000, isMass: true }
         ]
     };
     let _questsCache = {};
@@ -1301,11 +1324,13 @@
             if (ok) done++;
             const cls = ok ? 'done' : inProg ? 'prog' : '';
             const right = q.isMass ? fmtMqpVal(q, val) + ' / 50k' : (val|0) + '/' + q.target;
+            const safe = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
             return '<div class="mqp-q ' + cls + '">' +
                 '<div class="n">' + q.n + '</div>' +
                 '<div class="t">' + q.t + '</div>' +
                 '<div class="v">' + right + '</div>' +
                 '<div class="mqp-bar"><i style="width:' + pct + '%;"></i></div>' +
+                '<div class="tip">' + safe(q.desc || '') + '</div>' +
                 '</div>';
         }).join('');
         if (numEl) numEl.textContent = done;
