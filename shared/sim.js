@@ -553,7 +553,9 @@
                 if (!p.godMode) skillObj.uses--;
                 if (id >= 3 && id <= 8) { p.skillState[id] = def.maxActive; }
                 p.globalCD = GLOBAL_CD_MS;
-                if (id >= 3 && id <= 8) this.emit({ type: 'skillUsed', playerId: p.id, id, win });
+                // Emite skillUsed para todas las skills 1-8 (antes solo 3-8). El cliente lo usa para sonidos
+                // específicos de slots 3-8 y para contar Q3 (use 2 skills) — ahora cuentan los 8 slots.
+                this.emit({ type: 'skillUsed', playerId: p.id, id, win });
                 this.emit({ type: 'skillsUI', playerId: p.id });
             }
         }
