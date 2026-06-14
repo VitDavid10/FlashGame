@@ -201,6 +201,34 @@
         .mode-panel.expanded { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%) !important; z-index: 40; filter:brightness(1) !important; width:100% !important; height:100% !important; top:0 !important; left:0 !important; }
         .mode-panel.hidden { opacity: 0; pointer-events: none; }
 
+        /* --- PANELES DE QUESTS LATERALES (solo visibles al hover sobre su modo) --- */
+        .mqp { position: absolute; top: 50%; transform: translateY(-50%) translateX(40px); z-index: 30; width: 290px; pointer-events: none; opacity: 0; transition: opacity 0.45s ease, transform 0.5s ease; padding: 22px 20px 24px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); }
+        .mqp.classic { right: 30px; border: 1px solid rgba(0,255,170,0.25); border-left: 3px solid #00ffaa; }
+        .mqp.arcade { left: 30px; transform: translateY(-50%) translateX(-40px); border: 1px solid rgba(204,255,0,0.25); border-right: 3px solid #ccff00; }
+        #panelClassic:hover ~ .mqp.classic, .mqp.classic:hover { opacity: 1; transform: translateY(-50%) translateX(0); pointer-events: auto; }
+        #panelArcade:hover ~ .mqp.arcade, .mqp.arcade:hover { opacity: 1; transform: translateY(-50%) translateX(0); pointer-events: auto; }
+        .mqp-head { font-family: 'Russo One'; font-size: 11px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+        .mqp.classic .mqp-head .pill { color: #00ffaa; }
+        .mqp.arcade .mqp-head .pill { color: #ccff00; }
+        .mqp-q { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid rgba(255,255,255,0.06); }
+        .mqp-q:first-of-type { border-top: 0; }
+        .mqp-q .n { font-family: 'Russo One'; font-size: 16px; color: #555; letter-spacing: 1px; }
+        .mqp-q.done .n, .mqp-q.prog .n { color: inherit; }
+        .mqp.classic .mqp-q.done .n, .mqp.classic .mqp-q.prog .n { color: #00ffaa; }
+        .mqp.arcade .mqp-q.done .n, .mqp.arcade .mqp-q.prog .n { color: #ccff00; }
+        .mqp-q .t { font-family: 'Russo One'; font-size: 10.5px; letter-spacing: 1px; color: #ddd; line-height: 1.2; text-transform: uppercase; }
+        .mqp-q .v { font-family: 'Russo One'; font-size: 11px; color: #888; font-variant-numeric: tabular-nums; }
+        .mqp-q.done .v { color: inherit; }
+        .mqp.classic .mqp-q.done .v { color: #00ffaa; }
+        .mqp.arcade .mqp-q.done .v { color: #ccff00; }
+        .mqp-bar { grid-column: 2 / span 2; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+        .mqp-bar i { display: block; height: 100%; width: 0%; background: #444; transition: width 0.4s; }
+        .mqp.classic .mqp-q.done .mqp-bar i, .mqp.classic .mqp-q.prog .mqp-bar i { background: #00ffaa; }
+        .mqp.arcade .mqp-q.done .mqp-bar i, .mqp.arcade .mqp-q.prog .mqp-bar i { background: #ccff00; }
+        .mqp-foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); font-family: 'Russo One'; font-size: 10px; letter-spacing: 2px; color: #666; display: flex; justify-content: space-between; align-items: center; }
+        .mqp.classic .mqp-foot .num { color: #00ffaa; }
+        .mqp.arcade .mqp-foot .num { color: #ccff00; }
+
         /* --- LOGIN OVERLAY --- */
         #loginOverlay, #resultOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 60; }
         #loginOverlay.bg-classic { background-image: linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(135deg, var(--classic-bg-1) 0%, #000 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
@@ -496,6 +524,17 @@
                     <span style="color:#00ffaa;">PURE CELL-EATING GAMES EXPERIENCE.</span>
                 </div>
             </div>
+        </div>
+        <!-- Paneles de quests por modo (visibles al hover de su lado) -->
+        <div id="mqpArcade" class="mqp arcade">
+            <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">ARCADE</span></div>
+            <div id="mqpArcadeList"></div>
+            <div class="mqp-foot"><span>UNLOCK 3 / 5</span><span><span class="num" id="mqpArcadeNum">0</span> DONE</span></div>
+        </div>
+        <div id="mqpClassic" class="mqp classic">
+            <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">CLASSIC</span></div>
+            <div id="mqpClassicList"></div>
+            <div class="mqp-foot"><span>UNLOCK 3 / 5</span><span><span class="num" id="mqpClassicNum">0</span> DONE</span></div>
         </div>
     </div>
 
@@ -1216,7 +1255,62 @@
     class Explosion { constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; this.particles = []; for(let i=0; i<16; i++) { let angle = (Math.PI*2 * i) / 16; this.particles.push({ x: 0, y: 0, vx: Math.cos(angle)*8, vy: Math.sin(angle)*8, r: Math.random()*5+5, rot: Math.random()*Math.PI }); } } update() { this.life -= 0.02; this.particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.rot+=0.1; }); } draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.globalAlpha = Math.max(0, this.life); this.particles.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = '#81F126'; ctx.strokeStyle = '#3E8E11'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<12; i++) { let r = (i%2===0) ? p.r : p.r/2; ctx.lineTo(Math.cos((Math.PI*i)/6)*r, Math.sin((Math.PI*i)/6)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }); ctx.restore(); } }
 
     function tryPlayHover(m) { if (ignoreNextHover) { if (m !== lastHoveredMode) { ignoreNextHover = false; SoundManager.play('hover'); } } else { SoundManager.play('hover'); } }
-    function setHoverMode(m) { lastHoveredMode = m; if(m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); } else if(m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); } }
+    function setHoverMode(m) { lastHoveredMode = m; if(m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); } else if(m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); } updateModeQuestsUI(); }
+
+    // Pinta los paneles de quests laterales con el progreso actual del jugador
+    const MODE_QUESTS = {
+        classic: [
+            { n: '01', t: 'FINISH 2 GAMES', key: 'q1_games_finished', target: 2 },
+            { n: '02', t: 'PLAY 2 ONLINE', key: 'q2_online_matches', target: 2 },
+            { n: '04', t: 'REACH 50K MASS', key: 'bestMass', target: 50000, isMass: true },
+            { n: '05', t: 'SURVIVE x2',     key: 'q5_classic_survived', target: 2 }
+        ],
+        arcade: [
+            { n: '01', t: 'FINISH 2 GAMES', key: 'q1_games_finished', target: 2 },
+            { n: '02', t: 'PLAY 2 ONLINE', key: 'q2_online_matches', target: 2 },
+            { n: '03', t: 'USE 2 SKILLS', key: 'q3_skills_in_arcade', target: 2 },
+            { n: '04', t: 'REACH 50K MASS', key: 'bestMass', target: 50000, isMass: true }
+        ]
+    };
+    let _questsCache = {};
+    function fmtMqpVal(q, val) { if (q.isMass) { return val >= 1000 ? (val/1000).toFixed(val >= 10000 ? 0 : 1) + 'k' : String(val|0); } return (val|0) + '/' + q.target; }
+    function renderMode(mode) {
+        const list = MODE_QUESTS[mode];
+        const cont = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'List');
+        const numEl = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'Num');
+        if (!cont) return;
+        let done = 0;
+        cont.innerHTML = list.map(q => {
+            const val = _questsCache[q.key] | 0;
+            const pct = Math.min(100, Math.round(val / q.target * 100));
+            const ok = val >= q.target;
+            const inProg = val > 0 && !ok;
+            if (ok) done++;
+            const cls = ok ? 'done' : inProg ? 'prog' : '';
+            const right = q.isMass ? fmtMqpVal(q, val) + ' / 50k' : (val|0) + '/' + q.target;
+            return '<div class="mqp-q ' + cls + '">' +
+                '<div class="n">' + q.n + '</div>' +
+                '<div class="t">' + q.t + '</div>' +
+                '<div class="v">' + right + '</div>' +
+                '<div class="mqp-bar"><i style="width:' + pct + '%;"></i></div>' +
+                '</div>';
+        }).join('');
+        if (numEl) numEl.textContent = done;
+    }
+    function updateModeQuestsUI() { renderMode('classic'); renderMode('arcade'); }
+    async function loadModeQuests() {
+        try {
+            const r = await fetch('/api/quests', { headers: { 'X-Client-Id': Quests.cid }, cache: 'no-store' });
+            if (!r.ok) return;
+            const data = await r.json();
+            _questsCache = data.quests || {};
+            updateModeQuestsUI();
+        } catch (e) {}
+    }
+    loadModeQuests();
+    // Refrescar cada vez que vuelves a la pantalla de modos
+    window.addEventListener('focus', loadModeQuests);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) loadModeQuests(); });
     els.modeScreen.onmouseleave = () => { els.modeScreen.classList.remove('hover-classic', 'hover-arcade'); lastHoveredMode = null; };
     
     function selectMode(m) { 
@@ -1500,7 +1594,7 @@
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
     function finishGameSuccess() { SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
-    function returnToMenu() { Quests.endMatch('leave'); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); }
+    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         let roomKey = currentGameMode + '_' + currentServer;
