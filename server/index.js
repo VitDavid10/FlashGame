@@ -100,6 +100,25 @@ setInterval(() => {
 }, 5000);
 
 function cleanIp(addr) { return String(addr || '?').replace(/^::ffff:/, '').replace(/^::1$/, 'localhost'); }
+// Anonimiza la IP (RGPD): IPv4 sin el último octeto, IPv6 solo el prefijo /48.
+// Sigue valiendo para sacar el país y para distinguir redes, sin guardar la IP exacta.
+function anonIp(ip) {
+    if (!ip || ip === 'localhost' || ip === '?') return ip;
+    if (ip.indexOf('.') >= 0) { const p = ip.split('.'); if (p.length === 4) { p[3] = '0'; return p.join('.'); } }
+    else if (ip.indexOf(':') >= 0) { return ip.split(':').slice(0, 3).join(':') + '::'; }
+    return ip;
+}
+
+// --- Retención de logs (RGPD): borrar conexiones y acciones de más de N días ---
+const LOG_RETENTION_DAYS = parseInt(process.env.LOG_RETENTION_DAYS, 10) || 60;
+function purgeOldLogs() {
+    const cutoff = Date.now() - LOG_RETENTION_DAYS * 86400000;
+    const okFecha = e => { const t = new Date(e.fecha).getTime(); return isNaN(t) || t >= cutoff; };
+    const c0 = connLog.length; connLog = connLog.filter(okFecha);
+    if (connLog.length !== c0) fs.writeFile(LOG_FILE, connLog.map(e => JSON.stringify(e)).join('\n') + (connLog.length ? '\n' : ''), () => {});
+    const a0 = adminLog.length; adminLog = adminLog.filter(okFecha);
+    if (adminLog.length !== a0) fs.writeFile(ADMINLOG_FILE, adminLog.map(e => JSON.stringify(e)).join('\n') + (adminLog.length ? '\n' : ''), () => {});
+}
 
 // --- Geolocalización de IPs (caché persistente + ip-api.com) ---
 const GEO_FILE = path.join(__dirname, 'geo.json');
@@ -427,10 +446,11 @@ const wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws, req) => {
     let room = null, playerId = null, spectatorRoom = null;
-    // Detrás del túnel/proxy de Cloudflare la IP real viene en cabeceras
-    const ip = cleanIp(req.headers['cf-connecting-ip']
+    // Detrás del túnel/proxy de Cloudflare la IP real viene en cabeceras.
+    // Se anonimiza de inmediato (RGPD): nunca se almacena ni se muestra la IP exacta.
+    const ip = anonIp(cleanIp(req.headers['cf-connecting-ip']
         || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
-        || req.socket.remoteAddress);
+        || req.socket.remoteAddress));
 
     ws.on('message', raw => {
         let msg; try { msg = JSON.parse(raw); } catch (e) { return; }
@@ -672,8 +692,12 @@ setInterval(() => {
     }
 }, TICK_MS);
 
+purgeOldLogs();                              // limpia logs viejos al arrancar
+setInterval(purgeOldLogs, 24 * 3600 * 1000); // y una vez al día
+
 httpServer.listen(PORT, () => {
     log(`Servidor PillWars escuchando en ws://localhost:${PORT}`);
     log(`Panel de admin: http://localhost:${PORT}/admin  (clave: ${ADMIN_KEY})`);
     log(`Lobby: mínimo ${MIN_PLAYERS} reales, población objetivo ${TARGET_POP} (editable por sala en el panel)`);
+    log(`Privacidad: IPs anonimizadas, logs borrados a los ${LOG_RETENTION_DAYS} días`);
 });
