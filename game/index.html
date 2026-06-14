@@ -1046,10 +1046,8 @@
             if (match.online && !match.reportedOnline && (match.kills > 0 || !match.alive || reason === 'matchEnd')) {
                 ev.online_match = true; match.reportedOnline = true;
             }
-            // Q3 - 2 usos de skills en arcade (cualquiera, mismas o distintas)
-            if (!match.reportedSkill && (match.mode === 'arcade') && match.skillsUsed >= 2) {
-                ev.skill_in_arcade = true; match.reportedSkill = true;
-            }
+            // Q3 - "X skills en UNA partida": el servidor guarda el máximo. No hay reportedSkill.
+            if (match.mode === 'arcade' && match.skillsUsed > 0) ev.skills_used = match.skillsUsed;
             // Q5 escapar vivo de classic (matchEnd no es classic; el "escape" es returnToMenu vivo)
             if (match.mode === 'classic' && match.alive && reason === 'leave' && !match.reportedSurvive) {
                 ev.classic_survived = true; match.reportedSurvive = true;
@@ -1072,10 +1070,7 @@
         }
         function reportDeath() { if (match) match.alive = false; }
         function flushArcadeSkills() {
-            if (match && match.mode === 'arcade' && match.skillsUsed >= 2 && !match.reportedSkill) {
-                send({ skill_in_arcade: true });
-                match.reportedSkill = true;
-            }
+            if (match && match.mode === 'arcade' && match.skillsUsed > 0) send({ skills_used: match.skillsUsed });
         }
         let sending = false, queue = [];
         async function send(ev) {
@@ -1304,7 +1299,7 @@
         arcade: [
             { n: '01', t: 'FINISH 2 GAMES', desc: 'Finish 2 full games. In Arcade: survive until the timer runs out (matchEnd).', key: 'q1_games_finished', target: 2 },
             { n: '02', t: 'PLAY 2 ONLINE', desc: 'Join an online room and get a kill or a death. Counts toward your total.', key: 'q2_online_matches', target: 2 },
-            { n: '03', t: 'USE 2 SKILLS', desc: 'Use any 2 skills in a single Arcade match (can be the same).', key: 'q3_skills_in_arcade', target: 2 },
+            { n: '03', t: 'USE 8 SKILLS', desc: 'Use 8 skills in a single Arcade match (can repeat the same skill).', key: 'q3_skills_in_arcade', target: 8 },
             { n: '04', t: 'REACH 100K MASS', desc: 'Hit at least 100,000 mass in a single match (any mode).', key: 'bestMass', target: 100000, isMass: true }
         ]
     };

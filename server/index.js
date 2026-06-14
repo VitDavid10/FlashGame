@@ -472,14 +472,17 @@ const httpServer = http.createServer((req, res) => {
                 // Eventos aceptados: sumar contadores (con tope) y actualizar bestMass
                 if (ev.game_finished) q.q1_games_finished = Math.min(2, (q.q1_games_finished | 0) + 1);
                 if (ev.online_match) q.q2_online_matches = Math.min(2, (q.q2_online_matches | 0) + 1);
-                if (ev.skill_in_arcade) q.q3_skills_in_arcade = Math.min(2, (q.q3_skills_in_arcade | 0) + 1);
+                // q3 = mejor pico de skills usadas en una sola partida arcade (no contador de partidas)
+                if (typeof ev.skills_used === 'number' && ev.skills_used > (q.q3_skills_in_arcade | 0)) q.q3_skills_in_arcade = Math.min(8, ev.skills_used | 0);
+                // Compat con clientes viejos: si llega skill_in_arcade booleano, equivale a al menos 2
+                if (ev.skill_in_arcade && (q.q3_skills_in_arcade | 0) < 2) q.q3_skills_in_arcade = 2;
                 if (ev.classic_survived) q.q5_classic_survived = Math.min(2, (q.q5_classic_survived | 0) + 1);
                 if (typeof ev.mass === 'number' && ev.mass > q.bestMass) q.bestMass = Math.floor(ev.mass);
                 q.updated = Date.now(); questsDirty = true;
                 const done = [
                     q.q1_games_finished >= 2,
                     q.q2_online_matches >= 2,
-                    q.q3_skills_in_arcade >= 2,
+                    q.q3_skills_in_arcade >= 8,
                     q.bestMass >= 100000,
                     q.q5_classic_survived >= 2
                 ].filter(Boolean).length;
