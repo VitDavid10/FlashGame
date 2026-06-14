@@ -356,6 +356,29 @@ body.trailer-open #page-content{
         .section-title { font-size: 48px; font-family: 'Russo One'; margin-bottom: 50px; text-transform: uppercase; text-align: center; }
         .placeholder-box { width: 100%; max-width: 700px; height: 300px; border: 2px dashed #333; background: rgba(0,0,0,0.4); border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #444; }
 
+        /* Leaderboard "Global Elite" */
+        .lb-wrap { width: 100%; max-width: 980px; background: rgba(10,10,10,0.7); border: 1px solid rgba(0,255,136,0.18); border-radius: 18px; padding: 18px 20px 22px; box-shadow: 0 10px 50px rgba(0,0,0,0.5); }
+        .lb-head, .lb-row { display: grid; grid-template-columns: 64px 1.7fr 0.8fr 0.9fr 0.7fr 0.8fr 1fr; gap: 10px; align-items: center; padding: 11px 14px; font-family: 'Inter', sans-serif; font-size: 14px; }
+        .lb-head { color: #666; font-family: 'Russo One'; font-weight: 400; font-size: 11px; letter-spacing: 2px; border-bottom: 1px solid #1c1c1c; margin-bottom: 4px; }
+        .lb-row { border-bottom: 1px solid #141414; transition: 0.2s; }
+        .lb-row:hover { background: rgba(0,255,136,0.04); }
+        .lb-c-pos { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: 'Russo One'; font-size: 14px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #999; }
+        .lb-row.p1 .lb-c-pos { background: linear-gradient(180deg,#ffd54a,#b8860b); border: 0; color: #2b2000; box-shadow: 0 0 14px rgba(255,213,74,0.4); }
+        .lb-row.p2 .lb-c-pos { background: linear-gradient(180deg,#e0e6ee,#8a95a5); border: 0; color: #1c222c; }
+        .lb-row.p3 .lb-c-pos { background: linear-gradient(180deg,#e29c66,#8c5523); border: 0; color: #2b1a07; }
+        .lb-c-name { color: #fff; font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lb-c-kills { color: var(--primary); font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
+        .lb-c-deaths, .lb-c-kd, .lb-c-games { color: #ccc; font-variant-numeric: tabular-nums; }
+        .lb-c-country { color: #ccc; }
+        .lb-flag { font-size: 18px; margin-right: 7px; vertical-align: -2px; }
+        .lb-empty { padding: 50px 0; text-align: center; color: #555; font-family: 'Russo One'; font-size: 14px; letter-spacing: 2px; }
+        @media (max-width: 720px) {
+            .lb-head { display: none; }
+            .lb-row { grid-template-columns: 56px 1fr; gap: 6px; }
+            .lb-c-deaths, .lb-c-kd, .lb-c-games, .lb-c-country { grid-column: 2; color: #888; font-size: 12px; }
+            .lb-c-kills { grid-column: 2; }
+        }
+
         footer { 
             padding: 60px; text-align: center; background: #020202; border-top: none; font-size: 12px; color: #444; 
             position: relative; z-index: 50; 
@@ -702,7 +725,18 @@ body.trailer-open #page-content{
     </div>
     <div id="ranking" class="section-container">
         <h1 class="section-title holo-text">Global Elite</h1>
-        <div class="placeholder-box"><h3>FETCHING LEADERBOARD...</h3></div>
+        <div id="lb-wrap" class="lb-wrap">
+            <div class="lb-head">
+                <span class="lb-c-pos">#</span>
+                <span class="lb-c-name">PLAYER</span>
+                <span class="lb-c-kills">KILLS</span>
+                <span class="lb-c-deaths">DEATHS</span>
+                <span class="lb-c-kd">K/D</span>
+                <span class="lb-c-games">GAMES</span>
+                <span class="lb-c-country">COUNTRY</span>
+            </div>
+            <div id="lb-body"><div class="lb-empty">Loading leaderboard…</div></div>
+        </div>
     </div>
 
     <!-- FOOTER -->
@@ -1149,6 +1183,45 @@ function toggleTrailerMode() {
         App.UI.init();
         App.Market.updateTicker();
         setInterval(App.Market.updateTicker, 30000);
+
+        // GLOBAL ELITE: ranking en vivo desde el servidor del juego
+        (function () {
+            const body = document.getElementById('lb-body');
+            if (!body) return;
+            function flag(code) {
+                if (!code || code === 'LOCAL' || code === '??') return '🌐';
+                const c = String(code).toUpperCase();
+                if (c.length !== 2) return '🌐';
+                return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65) + String.fromCodePoint(0x1F1E6 + c.charCodeAt(1) - 65);
+            }
+            function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+            async function pull() {
+                try {
+                    const r = await fetch('/ranking.json', { cache: 'no-store' });
+                    if (!r.ok) throw new Error(r.status);
+                    const data = await r.json();
+                    const list = data.ranking || [];
+                    if (!list.length) { body.innerHTML = '<div class="lb-empty">No players ranked yet — be the first!</div>'; return; }
+                    body.innerHTML = list.map((p, i) => {
+                        const kd = p.muertes > 0 ? (p.kills / p.muertes).toFixed(2) : (p.kills).toFixed(0) + '.00';
+                        const cls = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
+                        return `<div class="lb-row ${cls}">
+                            <span><span class="lb-c-pos">${i + 1}</span></span>
+                            <span class="lb-c-name">${esc(p.name)}</span>
+                            <span class="lb-c-kills">${p.kills.toLocaleString('en-US')}</span>
+                            <span class="lb-c-deaths">${p.muertes.toLocaleString('en-US')}</span>
+                            <span class="lb-c-kd">${kd}</span>
+                            <span class="lb-c-games">${p.partidas.toLocaleString('en-US')}</span>
+                            <span class="lb-c-country" title="${esc(p.paisName || '')}"><span class="lb-flag">${flag(p.paisCode)}</span>${esc(p.paisCode || '??')}</span>
+                        </div>`;
+                    }).join('');
+                } catch (e) {
+                    if (!body.querySelector('.lb-row')) body.innerHTML = '<div class="lb-empty">Leaderboard unavailable. Try again later.</div>';
+                }
+            }
+            pull();
+            setInterval(pull, 15000);
+        })();
     </script>
 
     <!-- Modal de contacto: abrir/cerrar + envío vía Web3Forms -->

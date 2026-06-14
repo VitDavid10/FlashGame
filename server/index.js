@@ -417,6 +417,19 @@ const ROOT = path.join(__dirname, '..');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 const httpServer = http.createServer((req, res) => {
     const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+    // Endpoint público del ranking (para "Global Elite" en la web)
+    if (urlPath === '/ranking.json' || urlPath === '/api/ranking') {
+        const top = Object.entries(playerStats)
+            .filter(([k, p]) => p.name && p.name.trim().length > 0)
+            .sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas))
+            .slice(0, 30)
+            .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' };
+                return { name: p.name, kills: p.kills | 0, muertes: p.muertes | 0, partidas: p.partidas | 0, paisCode: g.code, paisName: g.name };
+            });
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ ranking: top, updated: Date.now() }));
+        return;
+    }
     if (urlPath === '/admin' || urlPath === '/admin.html') {
         try {
             const html = fs.readFileSync(path.join(__dirname, 'admin.html'));
