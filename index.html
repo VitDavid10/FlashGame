@@ -380,7 +380,16 @@ body.trailer-open #page-content{
         .modal-close { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #666; font-weight: bold; }
         .modal-close:hover { color: #fff; }
         .modal-title { font-family: 'Russo One'; color: #fff; font-size: 20px; margin-bottom: 25px; text-transform: uppercase; }
-        
+
+        /* Campos del modal de contacto */
+        .cmodal-label { display: block; text-align: left; font-family: 'Russo One'; font-size: 11px; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin: 10px 0 5px; }
+        .cmodal-field { width: 100%; background: #111; border: 1px solid #333; border-radius: 8px; color: #fff; font-family: 'Inter', sans-serif; font-size: 14px; padding: 11px 13px; outline: none; }
+        .cmodal-field:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(0,255,136,0.2); }
+        .cmodal-field textarea, textarea.cmodal-field { resize: vertical; }
+        .cmodal-btn { width: 100%; padding: 12px; background: var(--primary); color: #04150c; border: none; font-family: 'Russo One'; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; border-radius: 8px; cursor: pointer; margin-top: 14px; transition: 0.2s; }
+        .cmodal-btn:hover { filter: brightness(1.1); box-shadow: 0 0 18px rgba(0,255,136,0.4); }
+        .cmodal-btn:disabled { opacity: 0.6; cursor: default; }
+
         .wallet-option { 
             display: flex; align-items: center; gap: 15px; background: #111; border: 1px solid #333; 
             padding: 15px 20px; border-radius: 8px; margin-bottom: 12px; transition: 0.2s; 
@@ -703,7 +712,7 @@ body.trailer-open #page-content{
          <a href="https://x.com/PillWars" target="_blank">Twitter</a>
          <a href="https://t.me/pillwars" target="_blank">Telegram</a>
          <a href="#">PlayBook</a>
-         <a href="/contact.html">Contact</a>
+         <a href="#" onclick="openContact(); return false;">Contact</a>
          <a href="/privacy.html">Privacy</a>
         </p>
     </footer>
@@ -719,6 +728,27 @@ body.trailer-open #page-content{
             </div>
             <div class="wallet-option"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="Backpack"><span>Backpack (Soon)</span></div>
             <div class="wallet-option"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="Solflare"><span>Solflare (Soon)</span></div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONTACTO -->
+    <div id="contact-modal" class="modal-overlay" onclick="if(event.target===this) closeContact()">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeContact()">&times;</span>
+            <div class="modal-title">Contact</div>
+            <form id="cmodal-form">
+                <input type="hidden" name="access_key" value="b1cc038d-5769-4172-b3a7-113eed9f3640">
+                <input type="hidden" name="subject" value="New message from pillwars.fun">
+                <input type="checkbox" name="botcheck" style="display:none">
+                <label class="cmodal-label">Your name</label>
+                <input class="cmodal-field" type="text" name="name" required maxlength="80" placeholder="What's your name">
+                <label class="cmodal-label">Your email</label>
+                <input class="cmodal-field" type="email" name="email" required placeholder="So we can reply">
+                <label class="cmodal-label">Message</label>
+                <textarea class="cmodal-field" name="message" required maxlength="2000" rows="4" placeholder="Tell us..."></textarea>
+                <button class="cmodal-btn" type="submit" id="cmodal-btn">Send message</button>
+                <div id="cmodal-status" style="margin-top:12px; font-size:13px; min-height:18px;"></div>
+            </form>
         </div>
     </div>
 
@@ -1119,6 +1149,31 @@ function toggleTrailerMode() {
         App.UI.init();
         App.Market.updateTicker();
         setInterval(App.Market.updateTicker, 30000);
+    </script>
+
+    <!-- Modal de contacto: abrir/cerrar + envío vía Web3Forms -->
+    <script>
+        function openContact() { document.getElementById('contact-modal').style.display = 'flex'; }
+        function closeContact() { document.getElementById('contact-modal').style.display = 'none'; }
+        (function () {
+            const form = document.getElementById('cmodal-form');
+            if (!form) return;
+            const status = document.getElementById('cmodal-status');
+            const btn = document.getElementById('cmodal-btn');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                btn.disabled = true; status.style.color = '#aaa'; status.textContent = 'Sending...';
+                try {
+                    const res = await fetch('https://api.web3forms.com/submit', { method: 'POST', body: new FormData(form) });
+                    const data = await res.json();
+                    if (data.success) { status.style.color = '#00ff88'; status.textContent = "✅ Message sent! We'll get back to you soon."; form.reset(); }
+                    else { status.style.color = '#ff2a2a'; status.textContent = '❌ Could not send. Email contacto@pillwars.fun'; }
+                } catch (err) { status.style.color = '#ff2a2a'; status.textContent = '❌ Connection error. Email contacto@pillwars.fun'; }
+                btn.disabled = false;
+            });
+            // Cerrar con la tecla Escape
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeContact(); });
+        })();
     </script>
 </body>
 </html>
