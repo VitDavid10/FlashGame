@@ -389,7 +389,10 @@ body.trailer-open #page-content{
         .dq-btn.unlocked { background: var(--primary); border-color: var(--primary); color: #04150c; cursor: pointer; box-shadow: 0 0 20px rgba(0,255,136,0.3); }
         .dq-btn.unlocked:hover { filter: brightness(1.1); }
         .dq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; width: 100%; max-width: 980px; }
-        .dq-card { background: rgba(10,15,10,0.7); border: 1px solid #1a1a1a; border-left: 3px solid #555; border-radius: 12px; padding: 18px 20px; }
+        .dq-card { background: rgba(10,15,10,0.7); border: 1px solid #1a1a1a; border-left: 3px solid #555; border-radius: 12px; padding: 18px 20px; transition: 0.25s; cursor: default; }
+        .dq-card:hover { border-color: var(--primary); background: #111; box-shadow: 0 0 20px rgba(0,255,136,0.1); transform: translateY(-2px); }
+        .dq-card.done:hover { box-shadow: 0 0 22px rgba(0,255,136,0.18); }
+        .dq-card.prog:hover { border-color: #ffce3d; box-shadow: 0 0 20px rgba(255,206,61,0.12); }
         .dq-card.done { border-color: rgba(0,255,136,0.35); border-left-color: var(--primary); }
         .dq-card.prog { border-left-color: #ffce3d; }
         .dq-card-h { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
