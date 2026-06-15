@@ -271,7 +271,7 @@
             const p = {
                 id, name: opts.name || "", colorBot: opts.colorBot || getRandomColor(), colorTop: opts.colorTop || getRandomColor(),
                 skinUrl: opts.skinUrl || null, godMode: !!opts.godMode,
-                cells: [], skillSlots: [], skillState, globalCD: 0,
+                cells: [], skillSlots: [null, null, null, null], skillState, globalCD: 0,
                 killStreak: 0, splitMilestones: { level1: false, level2: false },
                 lastSplitTime: -Infinity, alive: false, input: null, actions: []
             };

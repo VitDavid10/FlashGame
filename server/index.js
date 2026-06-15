@@ -440,6 +440,22 @@ function buildAdminState() {
     };
 }
 
+// Guarda el peakMass del jugador en playerStats (ranking) y quests (clientId).
+// Idempotente: solo sube el bestMass si supera el récord existente.
+function flushPeakMass(room, pid, cli) {
+    const pj = room.sim.players.get(pid); if (!pj) return;
+    const peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
+    if (peak <= 0) return;
+    if (pj.name) {
+        const ps = pstatOf(pj.name);
+        if (peak > (ps.bestMass | 0)) { ps.bestMass = peak; playersDirty = true; }
+    }
+    if (cli && cli.cid) {
+        const q = questsOf(cli.cid);
+        if (peak > (q.bestMass | 0)) { q.bestMass = peak; q.updated = Date.now(); questsDirty = true; }
+    }
+}
+
 function findClient(playerId) {
     for (const room of rooms.values()) {
         const cli = room.clients.get(playerId);
@@ -743,6 +759,15 @@ wss.on('connection', (ws, req) => {
     ws.on('close', () => {
         if (spectatorRoom) { spectatorRoom.spectators.delete(ws); }
         if (room && playerId && room.clients.get(playerId) && room.clients.get(playerId).ws === ws) {
+            const cli = room.clients.get(playerId);
+            // FIX: si se desconecta SIN morir (cerró pestaña), guardar su mejor masa
+            // y contarle la muerte. Antes solo se actualizaba en playerDied.
+            const pj = room.sim.players.get(playerId);
+            if (pj && pj.alive) {
+                flushPeakMass(room, playerId, cli);
+                if (pj.name) { pstatOf(pj.name).muertes++; playersDirty = true; }
+                statsOf(room.key).muertes++; statsDirty = true;
+            }
             room.clients.delete(playerId);
             if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
             log(`Jugador ${playerId} desconectado de ${room.key} — quedan ${room.clients.size}`);
@@ -835,19 +860,8 @@ setInterval(() => {
             if (ev.type === 'playerDied') {
                 statsOf(room.key).muertes++; statsDirty = true;
                 const pj = room.sim.players.get(ev.playerId);
-                const peak = (pj && pj.peakMass) ? Math.floor(pj.peakMass) : 0;
-                if (pj && pj.name) {
-                    const ps = pstatOf(pj.name); ps.muertes++;
-                    if (peak > (ps.bestMass | 0)) ps.bestMass = peak;
-                    playersDirty = true;
-                }
-                // BLINDAJE: actualizamos la quest mass por clientId DESDE EL SERVIDOR
-                // (no aceptamos el valor del cliente, lo calcula la propia sim)
-                const cli = room.clients.get(ev.playerId);
-                if (cli && cli.cid && peak > 0) {
-                    const q = questsOf(cli.cid);
-                    if (peak > (q.bestMass | 0)) { q.bestMass = peak; q.updated = Date.now(); questsDirty = true; }
-                }
+                if (pj && pj.name) { pstatOf(pj.name).muertes++; playersDirty = true; }
+                flushPeakMass(room, ev.playerId, room.clients.get(ev.playerId));
                 if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + DEAD_REMOVE_MS);
             } else if (ev.type === 'botKilled') {
                 const killer = room.sim.players.get(ev.playerId);
