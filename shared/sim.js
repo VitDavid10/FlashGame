@@ -39,9 +39,8 @@
         if (n.startsWith('xX')) n = n + 'Xx';
         return n.slice(0, 16);
     }
-    // BOT_NAMES sigue exportado por compatibilidad (callers viejos lo usan como pool)
-    const BOT_NAMES = [];
-    for (let i = 0; i < 200; i++) BOT_NAMES.push(genBotName());
+    // BOT_NAMES = los 10 nombres simples originales (se usan en offline para que se note "modo casual")
+    const BOT_NAMES = ["ETH", "USA", "Doge", "NASA", "Icefox", "Bandit", "Mars", "BTC", "PUMP", "Noob"];
     const SKILL_DEFS = {
         1: { id: 1, name: 'CLON', uses: 4, maxActive: SKILL_PARAMS.clonCooldown },
         2: { id: 2, name: 'SHOOT', uses: 4, maxActive: 15 },
@@ -335,7 +334,9 @@
         spawnBot(limit) {
             if (!this.config.botConfig.enabled) return;
             let p = this.getSafePos(limit || this.mapSize);
-            let name = genBotName();
+            // Online (servidor): nombres realistas tipo "xDarkz", "Pablo23..." para parecer jugadores reales.
+            // Offline (navegador): nombres simples originales del juego ("ETH", "Doge", "NASA"...).
+            let name = this.config.realisticBotNames ? genBotName() : BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
             this.enemies.push(new Cell(p.x, p.y, Math.random() * 5 + 14, getRandomColor(), getRandomColor(), name, true, null, null, this.now));
         }
 

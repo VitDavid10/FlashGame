@@ -197,7 +197,8 @@ function buildSim(mode, rules) {
         maxBotCells: mode === 'classic' ? 8 : 4,
         fx: { enabled: false, enemyFX: false },
         emitFoodEvents: true,
-        enforceGod: true   // online: comandos de truco solo para jugadores con GOD (lo da el admin)
+        enforceGod: true,            // online: comandos de truco solo para GOD
+        realisticBotNames: true      // online: bots usan nombres tipo jugador real
     });
     sim.populate();
     return sim;
@@ -862,10 +863,22 @@ setInterval(() => {
                 const pj = room.sim.players.get(ev.playerId);
                 if (pj && pj.name) { pstatOf(pj.name).muertes++; playersDirty = true; }
                 flushPeakMass(room, ev.playerId, room.clients.get(ev.playerId));
+                // Q2 también cuenta al morir online (jugaste la partida hasta el final aunque te eliminaran)
+                const cliD = room.clients.get(ev.playerId);
+                if (cliD && cliD.cid) {
+                    const q = questsOf(cliD.cid);
+                    if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
+                }
                 if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + DEAD_REMOVE_MS);
             } else if (ev.type === 'botKilled') {
                 const killer = room.sim.players.get(ev.playerId);
                 if (killer && killer.name) { pstatOf(killer.name).kills++; playersDirty = true; }
+                // Las kills contra bots cuentan para Q2 (los bots simulan jugadores reales)
+                const cliK = room.clients.get(ev.playerId);
+                if (cliK && cliK.cid) {
+                    const q = questsOf(cliK.cid);
+                    if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
+                }
             } else if (ev.type === 'skillUsed') {
                 // BLINDAJE Q3: el servidor cuenta skills (no el cliente)
                 const cli = room.clients.get(ev.playerId);
