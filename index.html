@@ -203,7 +203,9 @@
       /* ===== BLUR SOLO AL CONTENIDO (NO AL VIDEO) ===== */
 #page-content{
   transition: filter 0.25s ease;
-  will-change: filter;
+  /* OJO: NO añadir will-change/transform/filter aquí. Rompen position:fixed de los hijos
+     (la navbar deja de quedarse fija al hacer scroll). El blur del modo cine se aplica
+     puntualmente y no necesita precálculo. */
 }
 
 body.trailer-open #page-content{
