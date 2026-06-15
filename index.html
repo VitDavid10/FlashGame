@@ -983,7 +983,11 @@ body.trailer-open #page-content{
                             const targetId = this.getAttribute('href');
                             const targetSection = document.querySelector(targetId);
                             if (targetSection) {
-                                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                const navbarEl = document.querySelector('.navbar');
+                                const tickerEl = document.querySelector('.ticker-wrap');
+                                const offset = (navbarEl ? navbarEl.offsetHeight : 0) + (tickerEl ? tickerEl.offsetHeight : 0);
+                                const top = targetSection.getBoundingClientRect().top + window.scrollY - offset;
+                                window.scrollTo({ top, behavior: 'smooth' });
                             }
                         });
                     });
