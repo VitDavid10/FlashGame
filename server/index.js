@@ -795,16 +795,24 @@ setInterval(() => {
         if (room.endsAt && now >= room.endsAt) {
             room.state = 'ended';
             room.restartAt = now + RESTART_MS;
-            // BLINDAJE Q1: jugadores vivos al matchEnd completan "Finish arcade match"
+            // BLINDAJE matchEnd: para cada cliente con cid, actualiza Q1, Q2, Q4 (mass).
+            // Q3 (skills) ya se actualizó incrementalmente en cada skillUsed.
             for (const [pid, cli] of room.clients) {
                 if (!cli.cid) continue;
                 const pj = room.sim.players.get(pid);
-                if (pj && pj.alive && room.mode === 'arcade') {
-                    const q = questsOf(cli.cid);
-                    if ((q.q1_games_finished | 0) < 2) { q.q1_games_finished = (q.q1_games_finished | 0) + 1; q.updated = Date.now(); questsDirty = true; }
-                    // Q2 online también se cuenta aquí (estabas online al final)
+                if (!pj) continue;
+                const q = questsOf(cli.cid);
+                // Q4 masa: guardar el pico real, esté vivo o muerto al final
+                const peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
+                if (peak > (q.bestMass | 0)) { q.bestMass = peak; questsDirty = true; }
+                // Q1, Q2: jugador VIVO al final de arcade → cuenta como "finish + online match"
+                if (pj.alive && room.mode === 'arcade') {
+                    if ((q.q1_games_finished | 0) < 2) { q.q1_games_finished = (q.q1_games_finished | 0) + 1; questsDirty = true; }
                     if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; questsDirty = true; }
                 }
+                q.updated = Date.now();
+                // Reset por partida del contador interno de skills
+                pj.matchSkillUses = 0;
             }
             broadcast(room, { t: 'matchEnd' });
             log(`Partida terminada en ${room.key}; reinicio en ${RESTART_MS / 1000}s`);
