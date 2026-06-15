@@ -498,16 +498,12 @@ const httpServer = http.createServer((req, res) => {
             req.on('end', () => {
                 if (abortado) return;
                 let ev = {}; try { ev = JSON.parse(body || '{}'); } catch (e) {}
-                // Eventos aceptados: sumar contadores (con tope) y actualizar bestMass
-                if (ev.game_finished) q.q1_games_finished = Math.min(2, (q.q1_games_finished | 0) + 1);
-                if (ev.online_match) q.q2_online_matches = Math.min(2, (q.q2_online_matches | 0) + 1);
-                // q3 = mejor pico de skills usadas en una sola partida arcade (no contador de partidas)
-                if (typeof ev.skills_used === 'number' && ev.skills_used > (q.q3_skills_in_arcade | 0)) q.q3_skills_in_arcade = Math.min(8, ev.skills_used | 0);
-                // Compat con clientes viejos: si llega skill_in_arcade booleano, equivale a al menos 2
-                if (ev.skill_in_arcade && (q.q3_skills_in_arcade | 0) < 2) q.q3_skills_in_arcade = 2;
+                // BLINDAJE: las quests "verificables por la sim" (mass, skills, game_finished,
+                // online_match) las cuenta el servidor cuando ve los eventos reales del juego.
+                // El cliente solo puede reportar "classic_survived" (que requiere salir vivo
+                // con BACK TO MENU, algo que el servidor no detecta por sí solo); todo lo
+                // demás se ignora aunque venga en el POST.
                 if (ev.classic_survived) q.q5_classic_survived = Math.min(2, (q.q5_classic_survived | 0) + 1);
-                // Validación: mass en rango sensato (cap a 10M para que nadie spoofee 9999999999)
-                if (typeof ev.mass === 'number' && ev.mass > q.bestMass && ev.mass < 10000000) q.bestMass = Math.floor(ev.mass);
                 q.updated = Date.now(); questsDirty = true;
                 const done = [
                     q.q1_games_finished >= 2,
@@ -709,7 +705,10 @@ wss.on('connection', (ws, req) => {
             room.sim.addPlayer(playerId, opts);
             const token = PillSim.uuid() + PillSim.uuid();
             resumeTokens.set(token, { roomKey: key, playerId });
-            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts });
+            // Guarda el clientId anónimo del navegador para que el servidor pueda
+            // sumar las quests autoritativamente (sin depender de lo que mande el cliente).
+            const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
+            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid });
             statsOf(key).entradas++; statsDirty = true;
             if (name) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; playersDirty = true; }
             logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
@@ -796,6 +795,17 @@ setInterval(() => {
         if (room.endsAt && now >= room.endsAt) {
             room.state = 'ended';
             room.restartAt = now + RESTART_MS;
+            // BLINDAJE Q1: jugadores vivos al matchEnd completan "Finish arcade match"
+            for (const [pid, cli] of room.clients) {
+                if (!cli.cid) continue;
+                const pj = room.sim.players.get(pid);
+                if (pj && pj.alive && room.mode === 'arcade') {
+                    const q = questsOf(cli.cid);
+                    if ((q.q1_games_finished | 0) < 2) { q.q1_games_finished = (q.q1_games_finished | 0) + 1; q.updated = Date.now(); questsDirty = true; }
+                    // Q2 online también se cuenta aquí (estabas online al final)
+                    if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; questsDirty = true; }
+                }
+            }
             broadcast(room, { t: 'matchEnd' });
             log(`Partida terminada en ${room.key}; reinicio en ${RESTART_MS / 1000}s`);
             continue;
@@ -817,17 +827,36 @@ setInterval(() => {
             if (ev.type === 'playerDied') {
                 statsOf(room.key).muertes++; statsDirty = true;
                 const pj = room.sim.players.get(ev.playerId);
+                const peak = (pj && pj.peakMass) ? Math.floor(pj.peakMass) : 0;
                 if (pj && pj.name) {
                     const ps = pstatOf(pj.name); ps.muertes++;
-                    // Mejor masa: usar el pico que el jugador alcanzó en su vida
-                    const peak = pj.peakMass || 0;
-                    if (peak > (ps.bestMass | 0)) ps.bestMass = Math.floor(peak);
+                    if (peak > (ps.bestMass | 0)) ps.bestMass = peak;
                     playersDirty = true;
+                }
+                // BLINDAJE: actualizamos la quest mass por clientId DESDE EL SERVIDOR
+                // (no aceptamos el valor del cliente, lo calcula la propia sim)
+                const cli = room.clients.get(ev.playerId);
+                if (cli && cli.cid && peak > 0) {
+                    const q = questsOf(cli.cid);
+                    if (peak > (q.bestMass | 0)) { q.bestMass = peak; q.updated = Date.now(); questsDirty = true; }
                 }
                 if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + DEAD_REMOVE_MS);
             } else if (ev.type === 'botKilled') {
                 const killer = room.sim.players.get(ev.playerId);
                 if (killer && killer.name) { pstatOf(killer.name).kills++; playersDirty = true; }
+            } else if (ev.type === 'skillUsed') {
+                // BLINDAJE Q3: el servidor cuenta skills (no el cliente)
+                const cli = room.clients.get(ev.playerId);
+                if (cli && cli.cid && room.mode === 'arcade') {
+                    const pj2 = room.sim.players.get(ev.playerId);
+                    if (pj2) { pj2.matchSkillUses = (pj2.matchSkillUses | 0) + 1;
+                        const q = questsOf(cli.cid);
+                        if (pj2.matchSkillUses > (q.q3_skills_in_arcade | 0)) {
+                            q.q3_skills_in_arcade = Math.min(8, pj2.matchSkillUses);
+                            q.updated = Date.now(); questsDirty = true;
+                        }
+                    }
+                }
             }
         }
         const out = [];
