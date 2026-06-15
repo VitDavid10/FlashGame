@@ -244,25 +244,37 @@ function welcomeMsg(room, playerId, token, type) {
     };
 }
 
-// Backfill: mantiene la población en targetPop rellenando con bots.
-// Con población 0 no se toca nada (gestión manual de bots desde reglas).
+// Backfill: ajusta el OBJETIVO de bots (no añade de golpe). La cola gradual
+// los mete poco a poco, así parece que la sala se va llenando naturalmente.
 function refillBots(room) {
     if (room.state !== 'playing') return;
     const target = targetPopOf(room.key);
     if (target === 0) return;
     const sim = room.sim;
     const deseados = Math.max(0, target - room.clients.size);
-    const grupos = [...new Set(sim.enemies.map(e => e.id))];
     sim.config.botConfig.count = deseados;
     sim.config.botConfig.enabled = deseados > 0;
     sim.config.botConfig.respawn = deseados > 0;
-    if (grupos.length < deseados) {
-        for (let i = grupos.length; i < deseados; i++) sim.spawnBot();
-    } else if (grupos.length > deseados) {
-        // retirar los grupos con menos masa: es lo que menos se nota en la partida
+    room.botTargetCount = deseados;   // el tick gradual hará el ajuste real
+}
+
+// Cola gradual de spawn/despawn: en cada llamada acerca el número de bots
+// al objetivo en +1 (1 bot cada 1.5–2.5 s). Se llama desde el bucle principal.
+function tickGradualBots(room, now) {
+    if (room.state !== 'playing') return;
+    const target = room.botTargetCount | 0;
+    const sim = room.sim;
+    const grupos = [...new Set(sim.enemies.map(e => e.id))];
+    if (grupos.length === target) return;
+    if ((room.lastBotStep || 0) + (1500 + Math.random() * 1000) > now) return;
+    room.lastBotStep = now;
+    if (grupos.length < target) {
+        sim.spawnBot();
+    } else if (grupos.length > target) {
+        // retirar el grupo de menos masa: es el que menos se nota
         const masaDe = id => sim.enemies.filter(e => e.id === id).reduce((s, c) => s + c.mass, 0);
-        const quitar = new Set(grupos.sort((a, b) => masaDe(a) - masaDe(b)).slice(0, grupos.length - deseados));
-        sim.enemies = sim.enemies.filter(e => !quitar.has(e.id));
+        const peor = grupos.slice().sort((a, b) => masaDe(a) - masaDe(b))[0];
+        sim.enemies = sim.enemies.filter(e => e.id !== peor);
     }
 }
 
@@ -776,6 +788,9 @@ setInterval(() => {
             continue;
         }
         if (room.state !== 'playing') continue;
+
+        // Backfill gradual de bots (se acerca al objetivo a razón de +1 cada ~2s)
+        tickGradualBots(room, now);
 
         // fin de partida (arcade/skills)
         if (room.endsAt && now >= room.endsAt) {

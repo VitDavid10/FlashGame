@@ -20,9 +20,28 @@
     const AUTO_SPLIT_LEVEL_1 = 200000, AUTO_SPLIT_LEVEL_2 = 300000;
     const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 1.4, SPLIT_FORCE = 65, PILL_RATIO = 2.0;
     const COLORS = ['#F44336', '#9C27B0', '#3F51B5', '#03A9F4', '#009688', '#8BC34A', '#FFC107', '#FF5722'];
-    const BOT_NAMES = ["ETH", "USA", "Doge", "NASA", "Icefox", "Bandit", "Mars", "BTC", "PUMP", "Noob",
-        "xDarkz", "Pablo23", "killerYT", "Sr.Pepe", "lucas_07", "NoScope", "Trolazo", "elPro99", "Mariano", "Wolfie",
-        "zZShadow", "tito44", "CrackXD", "Furby", "M4teo", "la_bestia", "Pingu", "javi2010", "GhostKing", "Patata"];
+    // Generador de nombres realistas: ~150 raíces × prefijos/sufijos/números = >5000 únicos
+    const NAME_ROOTS = [
+        'Drag','Shadow','Ghost','Phoenix','Wolf','Tiger','Lion','Falcon','Eagle','Hawk','Raven','Bear','Snake','Cobra','Viper','Spider','Demon','Angel','Reaper','Slayer','Hunter','Killer','Ninja','Samurai','Pirate','Viking','Warrior','Knight','Sniper','Crusher','Smasher','Ripper','Blaster','Striker','Bomber','Soldier','Captain','Major','General','King','Queen','Lord','Sir','Baron','Prince','Master','Wizard','Mage','Sage','Doc','Mr','Dr','Pro','Noob','Boss','Chief','Mafia','Gangster','Thug','Outlaw','Bandit','Rebel','Rogue','Hero','Legend','Myth','Saint','Sinner','Devil','Beast','Monster','Titan','Giant','Pixel','Glitch','Crypto','Diamond','Gold','Silver','Iron','Steel','Bronze','Frost','Fire','Storm','Thunder','Lightning','Blaze','Shadow','Mist','Rain','Snow','Cloud','Sky','Moon','Sun','Star','Galaxy','Nova','Comet','Meteor','Atom','Neon','Pixel','Byte','Cyber','Hyper','Mega','Ultra','Super','Turbo','Nitro','Rocket','Bullet','Arrow','Blade','Sword','Axe','Hammer','Spear','Shield','Crown','Skull','Bone','Blood','Fang','Claw','Wing','Eye','Heart','Soul','Spirit','Ghost','Echo','Pablo','Mario','Lucas','Javi','Mateo','Diego','Hugo','Pepe','Tito','Manolo','Carlos','David','Alex','Leo','Toni','Iker','Adri','Bruno','Marc'
+    ];
+    const NAME_TAGS = ['','','','_','XD','YT','TV','TTV','xD','99','420','69','007','HD','Pro','Lite','MAX','x','Z','XX','OG','GG','TM','_RU','_ES','_FR','_DE','_USA','_MX','_AR','_BR','_IT','_JP','_KR','_CN','_UK','_PT','_NL','_PL','_TR'];
+    const NAME_PREFS = ['','','xX','x','TheReal','El','Sr.','Sra.','MX_','iam','its','Lord','King','Lil','Big','Mr','Ms','Capt','Sgt','Dr','Mc'];
+    function genBotName() {
+        const r = NAME_ROOTS[Math.floor(Math.random() * NAME_ROOTS.length)];
+        let n = r;
+        // ~30% lleva prefijo
+        if (Math.random() < 0.3) n = NAME_PREFS[Math.floor(Math.random() * NAME_PREFS.length)] + n;
+        // ~55% lleva sufijo/etiqueta
+        if (Math.random() < 0.55) n = n + NAME_TAGS[Math.floor(Math.random() * NAME_TAGS.length)];
+        // ~40% lleva número al final
+        if (Math.random() < 0.4) n = n + (Math.floor(Math.random() * 999) + 1);
+        // cerrar con xX si va prefijado xX
+        if (n.startsWith('xX')) n = n + 'Xx';
+        return n.slice(0, 16);
+    }
+    // BOT_NAMES sigue exportado por compatibilidad (callers viejos lo usan como pool)
+    const BOT_NAMES = [];
+    for (let i = 0; i < 200; i++) BOT_NAMES.push(genBotName());
     const SKILL_DEFS = {
         1: { id: 1, name: 'CLON', uses: 4, maxActive: SKILL_PARAMS.clonCooldown },
         2: { id: 2, name: 'SHOOT', uses: 4, maxActive: 15 },
@@ -316,7 +335,7 @@
         spawnBot(limit) {
             if (!this.config.botConfig.enabled) return;
             let p = this.getSafePos(limit || this.mapSize);
-            let name = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
+            let name = genBotName();
             this.enemies.push(new Cell(p.x, p.y, Math.random() * 5 + 14, getRandomColor(), getRandomColor(), name, true, null, null, this.now));
         }
 

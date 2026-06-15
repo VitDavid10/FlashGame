@@ -1033,8 +1033,10 @@
         }
         function endMatch(reason) {
             if (!match) return;
+            // TODAS las quests cuentan SOLO online. Offline = juegas sin consecuencias.
+            if (!match.online) { if (reason === 'leave' || reason === 'death') match = null; return; }
             const ev = {};
-            // Q4 - mejor masa de la partida (siempre, sirve al ranking aunque no llegue a 50k)
+            // Q4 - mejor masa (pico real al final)
             if (match.peakMass > 0) ev.mass = match.peakMass;
             // Q1 finish: arcade hasta el final (matchEnd) o classic con ≥5 kills
             if (!match.reportedGame) {
@@ -1043,34 +1045,34 @@
                 if (finished) { ev.game_finished = true; match.reportedGame = true; }
             }
             // Q2 online: contar la partida online (en cuanto entras y mueres/matas/acaba)
-            if (match.online && !match.reportedOnline && (match.kills > 0 || !match.alive || reason === 'matchEnd')) {
+            if (!match.reportedOnline && (match.kills > 0 || !match.alive || reason === 'matchEnd')) {
                 ev.online_match = true; match.reportedOnline = true;
             }
-            // Q3 - "X skills en UNA partida": el servidor guarda el máximo. No hay reportedSkill.
+            // Q3 - X skills en UNA partida (servidor guarda el máximo)
             if (match.mode === 'arcade' && match.skillsUsed > 0) ev.skills_used = match.skillsUsed;
             // Q5 escapar vivo de classic (matchEnd no es classic; el "escape" es returnToMenu vivo)
             if (match.mode === 'classic' && match.alive && reason === 'leave' && !match.reportedSurvive) {
                 ev.classic_survived = true; match.reportedSurvive = true;
             }
             send(ev);
-            // Tras reportar, mantenemos el match si solo fue "intermitente" para más eventos posteriores
             if (reason !== 'leave' && reason !== 'death') return;
             match = null;
         }
         function reportKill() { if (match) match.kills++; }
         function reportSkill(slot) { if (match && match.mode === 'arcade' && slot != null) match.skillsUsed++; }
-        // Manda la masa cada vez que sube un escalón (cada 5k) → así el ranking se va actualizando y el 50k siempre llega
+        // Manda la masa SOLO ONLINE (offline = se almacena local pero no se sube)
+        // Por escalones de 5k para ir alimentando el ranking, y luego el pico real al final.
         function reportMass(m) {
             if (!match) return;
             if (m <= match.peakMass) return;
             const prevStep = Math.floor(match.peakMass / 5000);
             match.peakMass = m;
             const newStep = Math.floor(m / 5000);
-            if (newStep > prevStep) send({ mass: m });
+            if (match.online && newStep > prevStep) send({ mass: m });
         }
         function reportDeath() { if (match) match.alive = false; }
         function flushArcadeSkills() {
-            if (match && match.mode === 'arcade' && match.skillsUsed > 0) send({ skills_used: match.skillsUsed });
+            if (match && match.online && match.mode === 'arcade' && match.skillsUsed > 0) send({ skills_used: match.skillsUsed });
         }
         let sending = false, queue = [];
         async function send(ev) {
