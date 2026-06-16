@@ -38,7 +38,12 @@ const TARGET_POP = parseInt(process.env.TARGET_POP, 10) || 10;     // población
 const MATCH_MS = parseInt(process.env.MATCH_MS, 10) || (3 * 60 * 1000 + 50 * 1000);
 const RESTART_MS = parseInt(process.env.RESTART_MS, 10) || 30000;
 const TICK_MS = 25;            // 40 Hz de simulación
-const SNAPSHOT_EVERY = 1;      // snapshot en cada tick → 40 Hz (más fluidez)
+const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
+// Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
+// Menos Hz = menos tráfico y menos carga → más capacidad, a costa de algo de fluidez
+// (el cliente interpola). Default por env SNAPSHOT_HZ (40 si no se define).
+function hzToEvery(hz) { return Math.max(1, Math.min(TICK_HZ, Math.round(TICK_HZ / Math.max(1, hz)))); }
+let SNAPSHOT_EVERY = hzToEvery(parseInt(process.env.SNAPSHOT_HZ, 10) || TICK_HZ);
 const EMPTY_ROOM_TTL = 60000;
 const RESUME_GRACE_MS = 15000;
 const DEAD_REMOVE_MS = 3000;   // tras morir, retirar al jugador de la sim
@@ -436,6 +441,7 @@ function buildAdminState() {
     return {
         t: 'adminState',
         minPlayers: MIN_PLAYERS,
+        snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY),
         totales: { entradas: totEntradas, muertes: totMuertes, dinero: totDinero, salasOnline: [...rooms.values()].filter(r => r.clients.size > 0).length, jugadores: [...rooms.values()].reduce((s, r) => s + r.clients.size, 0), jugadoresUnicos: Object.keys(playerStats).length },
         rooms: list,
         ranking,
@@ -644,6 +650,12 @@ wss.on('connection', (ws, req) => {
                 }
                 logAdmin(msg.room, 'Cambió reglas', '');
                 log(`ADMIN reglas en ${msg.room}: ${JSON.stringify(rules)}`);
+            } else if (msg.cmd === 'snapshotHz' && typeof msg.hz === 'number') {
+                const prev = Math.round(TICK_HZ / SNAPSHOT_EVERY);
+                SNAPSHOT_EVERY = hzToEvery(msg.hz | 0);
+                const now = Math.round(TICK_HZ / SNAPSHOT_EVERY);
+                logAdmin('-', 'Cambió snapshots Hz', prev + ' → ' + now);
+                log(`ADMIN snapshots: ${prev}Hz → ${now}Hz (cada ${SNAPSHOT_EVERY} ticks)`);
             } else if (msg.cmd === 'forceStart' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala && sala.state === 'waiting') { startMatch(sala); logAdmin(msg.room, 'Forzó el inicio', ''); log(`ADMIN forzó inicio de ${msg.room}`); }

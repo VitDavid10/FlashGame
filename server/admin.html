@@ -258,6 +258,18 @@
                 <button class="b rojo" onclick="resetearQuests()">Resetear quests de todos</button>
                 <span style="color:#666; font-size: 12px;">Borra el progreso de Daily Quests de todos los jugadores. Los récords de masa del ranking NO se tocan.</span>
             </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Frecuencia de red (snapshots):</label>
+                <select id="snapHzSel" onchange="aplicarSnapHz()" style="background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px">
+                    <option value="40">40 Hz (máx. fluidez)</option>
+                    <option value="30">30 Hz</option>
+                    <option value="25">25 Hz</option>
+                    <option value="20">20 Hz (menos carga)</option>
+                    <option value="15">15 Hz</option>
+                    <option value="10">10 Hz (mínimo)</option>
+                </select>
+                <span style="color:#666; font-size: 12px;">Global, afecta a TODAS las salas al instante. Menos Hz = menos lag con mucha gente (el cliente interpola). Se reinicia al valor por defecto si reinicias el servidor.</span>
+            </div>
             <h2 class="section">Registro de acciones</h2>
             <div class="usage" id="adminLog" style="padding-top:8px"></div>
             <h2 class="section">Países</h2>
@@ -466,9 +478,11 @@ function cartaSala(r) {
     </div>`;
 }
 
+function aplicarSnapHz() { send({ cmd: 'snapshotHz', hz: parseInt(document.getElementById('snapHzSel').value, 10) }); setTimeout(pedir, 100); }
 function render(m) {
     document.getElementById('liveTxt').innerText = 'en vivo';
-    document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores`;
+    document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · red ${m.snapshotHz}Hz`;
+    if (m.snapshotHz != null && document.activeElement.id !== 'snapHzSel') document.getElementById('snapHzSel').value = m.snapshotHz;
     document.getElementById('summary').innerHTML = `
         <div class="sumcard">${IC.room}<div><div class="v russo">${m.totales.salasOnline}</div><div class="k">salas con gente</div></div></div>
         <div class="sumcard">${IC.users}<div><div class="v russo">${m.totales.jugadores}</div><div class="k">conectados ahora</div></div></div>
