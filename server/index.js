@@ -90,8 +90,9 @@ function rulesOf(key) {
     const r = roomRules[key];
     if (r.minReal == null) r.minReal = MIN_PLAYERS;
     if (r.targetPop == null) r.targetPop = TARGET_POP;
-    // Tope de jugadores REALES por sala. Classic tiene mapa más grande → 50; arcade/skills → 30.
-    if (r.maxPlayers == null) r.maxPlayers = String(key).startsWith('classic') ? 50 : 30;
+    // Tope de jugadores REALES por sala (30 por defecto; editable por sala desde el panel).
+    // 30 × 10 salas = 300 concurrentes, el techo cómodo del VPS antes de que suba la latencia.
+    if (r.maxPlayers == null) r.maxPlayers = 30;
     return r;
 }
 function minRealOf(key) { return Math.max(1, rulesOf(key).minReal); }
