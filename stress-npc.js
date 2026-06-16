@@ -38,9 +38,10 @@ for (const m of MODES) for (const p of PRICES) ROOMS.push({ mode: m, room: p });
 
 const stats = {
   connected: 0, disconnected: 0, errors: 0,
+  entered: 0, rejected: 0,   // entraron a jugar vs rechazados por "sala llena"
   messagesSent: 0, messagesReceived: 0,
   latencies: [],
-  porSala: {},   // "mode_room" → activos
+  porSala: {},   // "mode_room" → dentro de la sala
 };
 ROOMS.forEach(r => stats.porSala[r.mode + '_' + r.room] = 0);
 
@@ -69,7 +70,6 @@ function spawnBot(i) {
 
   ws.on('open', () => {
     stats.connected++;
-    stats.porSala[salaKey]++; counted = true;
     ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: 'NPC' + i, colorBot: randColor(), colorTop: randColor() }));
     stats.messagesSent++;
 
@@ -90,6 +90,8 @@ function spawnBot(i) {
   ws.on('message', (data) => {
     stats.messagesReceived++;
     let m; try { m = JSON.parse(data); } catch { return; }
+    if (m.t === 'roomFull') { stats.rejected++; try { ws.close(); } catch {} return; }
+    if (m.t === 'welcome' && !counted) { stats.entered++; stats.porSala[salaKey]++; counted = true; }
     if (m.mapSize) mapSize = m.mapSize;   // el welcome trae el tamaño real del mapa
     if (lastPing) { stats.latencies.push(Date.now() - lastPing); if (stats.latencies.length > 200) stats.latencies.shift(); lastPing = 0; }
   });
@@ -120,7 +122,7 @@ const rampTimer = setInterval(() => {
 const reportTimer = setInterval(() => {
   const active = stats.connected - stats.disconnected;
   const dist = ROOMS.map(r => { const k = r.mode + '_' + r.room; return `${r.room[0]}${r.mode[0]}:${stats.porSala[k]}`; }).join(' ');
-  process.stdout.write(`\r⚡ ${active}/${BOTS} act  ↑${stats.messagesSent} ↓${stats.messagesReceived}  ⚠${stats.errors}  ~${avgLatency()}ms  [${dist}]   `);
+  process.stdout.write(`\r⚡ ${active}/${BOTS} act  ✓${stats.entered} dentro  ✗${stats.rejected} llenas  ↑${stats.messagesSent} ↓${stats.messagesReceived}  ⚠${stats.errors}  ~${avgLatency()}ms  [${dist}]   `);
 }, 2000);
 
 if (DURATION_S > 0) {
@@ -130,6 +132,8 @@ if (DURATION_S > 0) {
     console.log('\n\n' + '─'.repeat(60));
     console.log('RESULTADOS FINALES');
     console.log(`  Conexiones abiertas    : ${stats.connected}`);
+    console.log(`  Entraron a jugar       : ${stats.entered}`);
+    console.log(`  Rechazados (sala llena): ${stats.rejected}`);
     console.log(`  Desconexiones          : ${stats.disconnected}`);
     console.log(`  Activos al finalizar   : ${active}`);
     console.log(`  Errores de conexión    : ${stats.errors}`);
