@@ -232,6 +232,7 @@
             <button id="tabBtn_salas" class="act" onclick="verTab('salas')">Salas</button>
             <button id="tabBtn_jugadores" onclick="verTab('jugadores')">Jugadores</button>
             <button id="tabBtn_actividad" onclick="verTab('actividad')">Actividad</button>
+            <button id="tabBtn_stress" onclick="verTab('stress')">Stress test</button>
         </nav>
 
         <div id="tab_salas">
@@ -283,6 +284,28 @@
             <div class="usage" style="padding-top:8px">
                 <table class="hist"><tbody id="histCuerpo"></tbody></table>
             </div>
+        </div>
+
+        <div id="tab_stress" style="display:none">
+            <h2 class="section">Stress test (carga de conexiones)</h2>
+            <div class="usage" style="padding:18px 20px">
+                <div class="rules" style="margin-bottom:14px">
+                    <div><label>Bots (conexiones)</label><input type="number" id="s_bots" value="300" min="1" max="5000" step="10"></div>
+                    <div><label>Duración (s)</label><input type="number" id="s_dur" value="60" min="0" max="3600" step="10"></div>
+                    <div><label>Ramp (ms entre conexión)</label><input type="number" id="s_ramp" value="60" min="5" max="2000" step="5"></div>
+                    <div><label>Inputs por bot (Hz)</label><input type="number" id="s_inhz" value="10" min="1" max="40" step="1"></div>
+                </div>
+                <div style="margin-bottom:14px">
+                    <label style="display:block;margin-bottom:6px;color:#aaa">Salas afectadas <span style="color:#666;font-size:12px">(ninguna marcada = todas)</span></label>
+                    <div id="s_rooms" style="display:flex;flex-wrap:wrap;gap:6px 14px"></div>
+                </div>
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                    <button class="b verde" id="s_btnLanzar" onclick="lanzarStress()">▶ Lanzar test</button>
+                    <button class="b rojo" id="s_btnParar" onclick="pararStress()">■ Detener</button>
+                    <span style="color:#666;font-size:12px">El test corre en el propio servidor (igual que ejecutarlo por consola). Mide cuántos entran vs rebotan por sala llena.</span>
+                </div>
+            </div>
+            <div class="usage" id="s_estado" style="padding:18px 20px;margin-top:6px">Sin test en marcha.</div>
         </div>
     </main>
 </div>
@@ -337,7 +360,7 @@ setInterval(() => { if (autorizado) pedir(); }, 750);
 
 function verTab(t) {
     tabActiva = t;
-    for (const x of ['salas', 'jugadores', 'actividad']) {
+    for (const x of ['salas', 'jugadores', 'actividad', 'stress']) {
         document.getElementById('tab_' + x).style.display = (x === t) ? 'block' : 'none';
         document.getElementById('tabBtn_' + x).classList.toggle('act', x === t);
     }
@@ -479,10 +502,60 @@ function cartaSala(r) {
 }
 
 function aplicarSnapHz() { send({ cmd: 'snapshotHz', hz: parseInt(document.getElementById('snapHzSel').value, 10) }); setTimeout(pedir, 100); }
+
+// --- Stress test ---
+const STRESS_PRECIOS = ['Free', '5$', '10$', '20$', '50$'];
+const STRESS_MODOS = ['classic', 'arcade'];
+function construirSalasStress() {
+    const cont = document.getElementById('s_rooms');
+    if (cont.dataset.listo) return;
+    let html = '';
+    for (const m of STRESS_MODOS) for (const p of STRESS_PRECIOS) {
+        const k = m + '_' + p;
+        html += `<label style="color:#ccc;font-size:13px;display:flex;align-items:center;gap:5px"><input type="checkbox" class="s_room" value="${k}"> ${k}</label>`;
+    }
+    cont.innerHTML = html; cont.dataset.listo = '1';
+}
+function lanzarStress() {
+    construirSalasStress();
+    const salas = [...document.querySelectorAll('.s_room:checked')].map(c => c.value);
+    send({ cmd: 'stressStart', params: {
+        bots: parseInt(document.getElementById('s_bots').value, 10),
+        duration: parseInt(document.getElementById('s_dur').value, 10),
+        ramp: parseInt(document.getElementById('s_ramp').value, 10),
+        inputHz: parseInt(document.getElementById('s_inhz').value, 10),
+        rooms: salas,
+    } });
+    setTimeout(pedir, 200);
+}
+function pararStress() { send({ cmd: 'stressStop' }); setTimeout(pedir, 200); }
+function renderStress(s) {
+    if (!s) return;
+    const lanzar = document.getElementById('s_btnLanzar'), parar = document.getElementById('s_btnParar');
+    lanzar.disabled = s.running; parar.disabled = !s.running;
+    const el = document.getElementById('s_estado');
+    if (!s.running && !s.stats) { el.innerHTML = '<span style="color:#666">Sin test en marcha.</span>' + (s.error ? `<div style="color:#ff6b6b;margin-top:8px">Error: ${s.error}</div>` : ''); return; }
+    const st = s.stats || {};
+    const dist = st.porSala ? Object.entries(st.porSala).map(([k, v]) => `<span style="color:#888">${k}</span> <b>${v}</b>`).join('  ·  ') : '';
+    const lat = st.latency || 0;
+    const latColor = lat > 300 ? '#ff6b6b' : lat > 120 ? '#ffce3d' : '#00ff88';
+    el.innerHTML = `
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline">
+            <div><span style="color:#666;font-size:12px">ESTADO</span><br><b style="color:${s.running ? '#00ff88' : '#888'};font-size:18px">${s.running ? 'EN MARCHA' : 'TERMINADO'}</b> <span style="color:#666">${s.elapsed}s${s.params && s.params.duration ? ' / ' + s.params.duration + 's' : ''}</span></div>
+            <div><span style="color:#666;font-size:12px">ACTIVOS</span><br><b style="font-size:18px">${st.active || 0}</b> <span style="color:#666">/ ${st.bots || 0}</span></div>
+            <div><span style="color:#666;font-size:12px">ENTRARON</span><br><b style="color:#00ff88;font-size:18px">${st.entered || 0}</b></div>
+            <div><span style="color:#666;font-size:12px">RECHAZADOS (llena)</span><br><b style="color:#ffce3d;font-size:18px">${st.rejected || 0}</b></div>
+            <div><span style="color:#666;font-size:12px">LATENCIA</span><br><b style="color:${latColor};font-size:18px">${lat} ms</b></div>
+            <div><span style="color:#666;font-size:12px">ERRORES</span><br><b style="color:${st.errors ? '#ff6b6b' : '#888'};font-size:18px">${st.errors || 0}</b></div>
+        </div>
+        <div style="margin-top:14px;font-size:13px;line-height:1.9">${dist}</div>
+        ${s.error ? `<div style="color:#ff6b6b;margin-top:8px">Error: ${s.error}</div>` : ''}`;
+}
 function render(m) {
     document.getElementById('liveTxt').innerText = 'en vivo';
     document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · red ${m.snapshotHz}Hz`;
     if (m.snapshotHz != null && document.activeElement.id !== 'snapHzSel') document.getElementById('snapHzSel').value = m.snapshotHz;
+    construirSalasStress(); renderStress(m.stress);
     document.getElementById('summary').innerHTML = `
         <div class="sumcard">${IC.room}<div><div class="v russo">${m.totales.salasOnline}</div><div class="k">salas con gente</div></div></div>
         <div class="sumcard">${IC.users}<div><div class="v russo">${m.totales.jugadores}</div><div class="k">conectados ahora</div></div></div>

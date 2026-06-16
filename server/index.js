@@ -28,6 +28,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 const { WebSocketServer } = require('ws');
 const PillSim = require('../shared/sim.js');
 
@@ -56,6 +57,53 @@ const CATALOG_MODES = ['classic', 'arcade'];
 
 const rooms = new Map();
 const resumeTokens = new Map();   // token → { roomKey, playerId }
+
+// --- Stress test lanzable desde el panel (proceso hijo: stress-npc.js) ---
+const stress = { proc: null, running: false, params: null, stats: null, startedAt: 0, error: null };
+function stressBuildState() {
+    return {
+        running: stress.running,
+        params: stress.params,
+        stats: stress.stats,
+        elapsed: stress.running ? Math.round((Date.now() - stress.startedAt) / 1000) : 0,
+        error: stress.error,
+    };
+}
+function stressStop() {
+    if (stress.proc) { try { stress.proc.kill('SIGTERM'); } catch (e) {} }
+    stress.proc = null; stress.running = false;
+}
+function stressStart(p) {
+    if (stress.running) return;
+    const bots = Math.max(1, Math.min(5000, p.bots | 0 || 300));
+    const duration = Math.max(0, Math.min(3600, p.duration | 0));
+    const ramp = Math.max(5, Math.min(2000, p.ramp | 0 || 60));
+    const inputHz = Math.max(1, Math.min(40, p.inputHz | 0 || 10));
+    const roomsList = Array.isArray(p.rooms) ? p.rooms.filter(k => typeof k === 'string').slice(0, 40).join(',') : '';
+    const env = Object.assign({}, process.env, {
+        SERVER: 'ws://localhost:' + PORT, BOTS: String(bots), DURATION_S: String(duration),
+        RAMP_MS: String(ramp), INPUT_HZ: String(inputHz), STRESS_JSON: '1',
+    });
+    if (roomsList) env.ROOMS = roomsList;
+    stress.params = { bots, duration, ramp, inputHz, rooms: roomsList ? roomsList.split(',') : 'todas' };
+    stress.stats = null; stress.error = null; stress.startedAt = Date.now(); stress.running = true;
+    const script = path.join(__dirname, '..', 'stress-npc.js');
+    const proc = spawn(process.execPath, [script], { env, cwd: path.join(__dirname, '..') });
+    stress.proc = proc;
+    let buf = '';
+    proc.stdout.on('data', d => {
+        buf += d.toString();
+        let nl; while ((nl = buf.indexOf('\n')) >= 0) {
+            const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
+            if (line.startsWith('STATS ')) { try { stress.stats = JSON.parse(line.slice(6)); } catch (e) {} }
+        }
+    });
+    proc.stderr.on('data', d => { stress.error = d.toString().slice(0, 200); });
+    proc.on('exit', () => { stress.running = false; stress.proc = null; });
+    proc.on('error', e => { stress.error = e.message; stress.running = false; stress.proc = null; });
+    logAdmin('-', 'Lanzó stress test', `${bots} bots, ${duration}s, salas: ${roomsList || 'todas'}`);
+    log(`ADMIN lanzó stress test: ${bots} bots, ${duration}s, ramp ${ramp}ms, salas ${roomsList || 'todas'}`);
+}
 const adminFails = new Map();     // ip → { c: intentos, until: timestamp bloqueo }
 const specTokens = new Map();     // token → expira_en (timestamp ms)
 setInterval(() => {                // limpieza periódica de tokens caducados
@@ -442,6 +490,7 @@ function buildAdminState() {
         t: 'adminState',
         minPlayers: MIN_PLAYERS,
         snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY),
+        stress: stressBuildState(),
         totales: { entradas: totEntradas, muertes: totMuertes, dinero: totDinero, salasOnline: [...rooms.values()].filter(r => r.clients.size > 0).length, jugadores: [...rooms.values()].reduce((s, r) => s + r.clients.size, 0), jugadoresUnicos: Object.keys(playerStats).length },
         rooms: list,
         ranking,
@@ -656,6 +705,10 @@ wss.on('connection', (ws, req) => {
                 const now = Math.round(TICK_HZ / SNAPSHOT_EVERY);
                 logAdmin('-', 'Cambió snapshots Hz', prev + ' → ' + now);
                 log(`ADMIN snapshots: ${prev}Hz → ${now}Hz (cada ${SNAPSHOT_EVERY} ticks)`);
+            } else if (msg.cmd === 'stressStart') {
+                stressStart(msg.params || {});
+            } else if (msg.cmd === 'stressStop') {
+                stressStop(); logAdmin('-', 'Detuvo stress test', '');
             } else if (msg.cmd === 'forceStart' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala && sala.state === 'waiting') { startMatch(sala); logAdmin(msg.room, 'Forzó el inicio', ''); log(`ADMIN forzó inicio de ${msg.room}`); }

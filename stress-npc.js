@@ -16,6 +16,8 @@
  *   DURATION_S=60                Segundos que dura el test (0 = indefinido)
  *   MODES=classic,arcade         Modos a usar
  *   PRICES=Free,5$,10$,20$,50$   Precios a usar
+ *   ROOMS=classic_Free,arcade_5$ Salas exactas (mode_room) — anula MODES/PRICES
+ *   STRESS_JSON=1                Emite líneas "STATS {json}" en vez del informe bonito
  */
 
 'use strict';
@@ -29,12 +31,20 @@ const INPUT_HZ   = parseInt(process.env.INPUT_HZ  || '10',  10);
 const DURATION_S = parseInt(process.env.DURATION_S || '60', 10);
 const MODES      = (process.env.MODES  || 'classic,arcade').split(',');
 const PRICES     = (process.env.PRICES || 'Free,5$,10$,20$,50$').split(',');
+const JSON_MODE  = process.env.STRESS_JSON === '1';
 
 const INPUT_INTERVAL = Math.max(33, Math.round(1000 / INPUT_HZ));
 
-// Catálogo de salas: modo × precio. Los bots se reparten en round-robin.
+// Catálogo de salas. Si se pasa ROOMS (lista exacta "mode_room") se usa esa;
+// si no, se construye con MODES × PRICES. Los bots se reparten en round-robin.
 const ROOMS = [];
-for (const m of MODES) for (const p of PRICES) ROOMS.push({ mode: m, room: p });
+if (process.env.ROOMS) {
+  for (const k of process.env.ROOMS.split(',').map(s => s.trim()).filter(Boolean)) {
+    const i = k.indexOf('_');
+    if (i > 0) ROOMS.push({ mode: k.slice(0, i), room: k.slice(i + 1) });
+  }
+}
+if (!ROOMS.length) { for (const m of MODES) for (const p of PRICES) ROOMS.push({ mode: m, room: p }); }
 
 const stats = {
   connected: 0, disconnected: 0, errors: 0,
@@ -105,13 +115,26 @@ function spawnBot(i) {
   ws.on('error', () => { stats.errors++; });
 }
 
-console.log(`\nPillWars Stress Test (movimiento NPC)`);
-console.log(`Servidor : ${SERVER}`);
-console.log(`Bots     : ${BOTS}  repartidos entre ${ROOMS.length} salas`);
-console.log(`Salas    : ${ROOMS.map(r => r.mode + '_' + r.room).join(', ')}`);
-console.log(`Inputs   : ${INPUT_HZ} Hz por bot   Ramp: ${RAMP_MS}ms`);
-console.log(`Duración : ${DURATION_S ? DURATION_S + 's' : 'indefinido'}`);
-console.log('─'.repeat(60));
+// Snapshot de estadísticas para el modo JSON (lo parsea el servidor/panel)
+function snapshotStats(done) {
+  return {
+    bots: BOTS, launched, active: stats.connected - stats.disconnected,
+    entered: stats.entered, rejected: stats.rejected, errors: stats.errors,
+    sent: stats.messagesSent, received: stats.messagesReceived,
+    latency: avgLatency(), porSala: stats.porSala, done: !!done,
+  };
+}
+function emitJson(done) { process.stdout.write('STATS ' + JSON.stringify(snapshotStats(done)) + '\n'); }
+
+if (!JSON_MODE) {
+  console.log(`\nPillWars Stress Test (movimiento NPC)`);
+  console.log(`Servidor : ${SERVER}`);
+  console.log(`Bots     : ${BOTS}  repartidos entre ${ROOMS.length} salas`);
+  console.log(`Salas    : ${ROOMS.map(r => r.mode + '_' + r.room).join(', ')}`);
+  console.log(`Inputs   : ${INPUT_HZ} Hz por bot   Ramp: ${RAMP_MS}ms`);
+  console.log(`Duración : ${DURATION_S ? DURATION_S + 's' : 'indefinido'}`);
+  console.log('─'.repeat(60));
+}
 
 let launched = 0;
 const rampTimer = setInterval(() => {
@@ -120,14 +143,16 @@ const rampTimer = setInterval(() => {
 }, RAMP_MS);
 
 const reportTimer = setInterval(() => {
+  if (JSON_MODE) { emitJson(false); return; }
   const active = stats.connected - stats.disconnected;
   const dist = ROOMS.map(r => { const k = r.mode + '_' + r.room; return `${r.room[0]}${r.mode[0]}:${stats.porSala[k]}`; }).join(' ');
   process.stdout.write(`\r⚡ ${active}/${BOTS} act  ✓${stats.entered} dentro  ✗${stats.rejected} llenas  ↑${stats.messagesSent} ↓${stats.messagesReceived}  ⚠${stats.errors}  ~${avgLatency()}ms  [${dist}]   `);
-}, 2000);
+}, JSON_MODE ? 1000 : 2000);
 
 if (DURATION_S > 0) {
   setTimeout(() => {
     clearInterval(rampTimer); clearInterval(reportTimer);
+    if (JSON_MODE) { emitJson(true); process.exit(0); }
     const active = stats.connected - stats.disconnected;
     console.log('\n\n' + '─'.repeat(60));
     console.log('RESULTADOS FINALES');
