@@ -90,10 +90,13 @@ function rulesOf(key) {
     const r = roomRules[key];
     if (r.minReal == null) r.minReal = MIN_PLAYERS;
     if (r.targetPop == null) r.targetPop = TARGET_POP;
+    // Tope de jugadores REALES por sala. Classic tiene mapa más grande → 50; arcade/skills → 30.
+    if (r.maxPlayers == null) r.maxPlayers = String(key).startsWith('classic') ? 50 : 30;
     return r;
 }
 function minRealOf(key) { return Math.max(1, rulesOf(key).minReal); }
 function targetPopOf(key) { return Math.max(0, rulesOf(key).targetPop); }
+function maxPlayersOf(key) { return Math.max(1, rulesOf(key).maxPlayers); }
 function pstatOf(name) {
     const k = String(name).toLowerCase();
     if (!playerStats[k]) playerStats[k] = { name: name, partidas: 0, kills: 0, muertes: 0, bestMass: 0, lastSeen: null, lastIp: null };
@@ -626,6 +629,7 @@ wss.on('connection', (ws, req) => {
                 if (typeof r.botCount === 'number') rules.botCount = Math.max(0, Math.min(200, r.botCount | 0));
                 if (typeof r.minReal === 'number') rules.minReal = Math.max(1, Math.min(50, r.minReal | 0));
                 if (typeof r.targetPop === 'number') rules.targetPop = Math.max(0, Math.min(60, r.targetPop | 0));
+                if (typeof r.maxPlayers === 'number') rules.maxPlayers = Math.max(1, Math.min(100, r.maxPlayers | 0));
                 rulesDirty = true;
                 const sala = rooms.get(msg.room);
                 if (sala) { // speed, food y población se aplican en vivo; virus y bots manuales al reiniciar
@@ -711,6 +715,13 @@ wss.on('connection', (ws, req) => {
             if (roomName === '*') roomName = resolveQuickJoin(mode);
             const key = mode + '_' + roomName;
             room = getOrCreateRoom(key, mode, roomName);
+            // Tope de jugadores reales: si la sala está llena, rechazar la entrada.
+            if (room.clients.size >= maxPlayersOf(key)) {
+                ws.send(JSON.stringify({ t: 'roomFull', roomName, max: maxPlayersOf(key) }));
+                log(`Sala ${key} LLENA (${room.clients.size}/${maxPlayersOf(key)}): entrada rechazada`);
+                room = null;
+                return;
+            }
             playerId = PillSim.uuid();
             const name = typeof msg.name === 'string' ? msg.name.slice(0, 16) : '';
             const opts = {

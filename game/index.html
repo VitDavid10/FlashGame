@@ -1996,6 +1996,9 @@
                 practiceMode = false; setLobbyBanner(null);
                 spawnFloatingText('¡EMPIEZA LA PARTIDA ONLINE!', '#00ff88');
                 enterOnlineGame(ws, msg, false);
+            } else if (msg.t === 'roomFull') {
+                restoreBtn(); try { ws.close(); } catch (err) {}
+                alert('Sala ' + (msg.roomName || '') + ' llena (máximo ' + (msg.max || '') + ' jugadores).\nPrueba otra sala o vuelve a intentarlo en un momento.');
             } else if (msg.t === 'resumeFail') {
                 netState.token = null; try { ws.close(); } catch (err) {}
             } else if (msg.t === 'kicked') {

@@ -392,7 +392,8 @@ function aplicarReglas(roomKey) {
         speed: parseFloat(g('r_speed').value), food: parseFloat(g('r_food').value),
         virus: parseFloat(g('r_virus').value), botsEnabled: g('r_botson').checked,
         botCount: parseInt(g('r_botn').value),
-        minReal: parseInt(g('r_minreal').value), targetPop: parseInt(g('r_pop').value)
+        minReal: parseInt(g('r_minreal').value), targetPop: parseInt(g('r_pop').value),
+        maxPlayers: parseInt(g('r_maxp').value)
     } });
     setTimeout(pedir, 100);
 }
@@ -447,6 +448,7 @@ function cartaSala(r) {
                 <div><label>Bots</label><input type="number" step="1" min="0" max="200" id="r_botn_${id}" value="${rl.botCount}"></div>
                 <div><label>Mín. reales</label><input type="number" step="1" min="1" max="50" id="r_minreal_${id}" value="${rl.minReal != null ? rl.minReal : 5}"></div>
                 <div><label>Población</label><input type="number" step="1" min="0" max="60" id="r_pop_${id}" value="${rl.targetPop != null ? rl.targetPop : 10}"></div>
+                <div><label>Tope reales</label><input type="number" step="1" min="1" max="100" id="r_maxp_${id}" value="${rl.maxPlayers != null ? rl.maxPlayers : 30}"></div>
             </div>
             <div class="ruleline">
                 <label class="chk"><input type="checkbox" id="r_botson_${id}" ${rl.botsEnabled ? 'checked' : ''}> bots activados</label>
