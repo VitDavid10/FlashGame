@@ -48,6 +48,11 @@ let SNAPSHOT_EVERY = hzToEvery(parseInt(process.env.SNAPSHOT_HZ, 10) || TICK_HZ)
 const EMPTY_ROOM_TTL = 60000;
 const RESUME_GRACE_MS = 15000;
 const DEAD_REMOVE_MS = 3000;   // tras morir, retirar al jugador de la sim
+// Rate-limit por conexión (anti-flood/DoS). Un cliente real manda ~30-40 msg/s
+// (input 30 Hz + pings); dejamos margen de sobra. Por encima del umbral suave se
+// descartan los mensajes; un flood evidente (umbral duro) cierra la conexión.
+const MSG_RATE_SOFT = parseInt(process.env.MSG_RATE_SOFT, 10) || 100;  // msg/s: descarta el exceso
+const MSG_RATE_HARD = parseInt(process.env.MSG_RATE_HARD, 10) || 400;  // msg/s: flood → cerrar
 const LOG_FILE = path.join(__dirname, 'connections.log');
 const STATS_FILE = path.join(__dirname, 'stats.json');
 const RULES_FILE = path.join(__dirname, 'roomrules.json');
@@ -631,6 +636,7 @@ const wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws, req) => {
     let room = null, playerId = null, spectatorRoom = null;
+    let rlWindow = 0, rlCount = 0;   // rate-limit: ventana (segundo) y mensajes en ella
     // Detrás del túnel/proxy de Cloudflare la IP real viene en cabeceras.
     // Se anonimiza de inmediato (RGPD): nunca se almacena ni se muestra la IP exacta.
     const ip = anonIp(cleanIp(req.headers['cf-connecting-ip']
@@ -638,6 +644,17 @@ wss.on('connection', (ws, req) => {
         || req.socket.remoteAddress));
 
     ws.on('message', raw => {
+        // Rate-limit por conexión: contador por segundo (antes de parsear, para no
+        // gastar CPU en un flood). Exceso suave → descartar; flood duro → cerrar.
+        const rlSec = (Date.now() / 1000) | 0;
+        if (rlSec !== rlWindow) { rlWindow = rlSec; rlCount = 0; }
+        if (++rlCount > MSG_RATE_HARD) {
+            log(`[seguridad] Conexión ${ip} cerrada por flood (>${MSG_RATE_HARD} msg/s)`);
+            try { ws.close(); } catch (e) {}
+            return;
+        }
+        if (rlCount > MSG_RATE_SOFT) return;   // descarta el exceso sin procesar
+
         let msg; try { msg = JSON.parse(raw); } catch (e) { return; }
 
         // Ping/pong: latencia real (RTT). Responde al instante, sin tocar la sala.
