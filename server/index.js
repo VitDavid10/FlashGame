@@ -572,7 +572,7 @@ const httpServer = http.createServer((req, res) => {
         const top = Object.entries(playerStats)
             .filter(([k, p]) => p.name && p.name.trim().length > 0)
             .sort(([, a], [, b]) => ((b.bestMass | 0) - (a.bestMass | 0)) || (b.kills - a.kills) || (b.partidas - a.partidas))
-            .slice(0, 30)
+            .slice(0, 100)   // la web pagina/busca en cliente (10 por página)
             .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' };
                 return { name: p.name, bestMass: p.bestMass | 0, kills: p.kills | 0, muertes: p.muertes | 0, partidas: p.partidas | 0, paisCode: g.code, paisName: g.name };
             });

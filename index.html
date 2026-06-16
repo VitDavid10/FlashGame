@@ -355,6 +355,12 @@ body.trailer-open #page-content{
         #quest { background: radial-gradient(circle at top, #0a1a0a, #000); }
         #shop { background: linear-gradient(180deg, #020202 0%, #150515 100%); }
         #ranking { background: linear-gradient(0deg, #050505 0%, #051015 100%); border-bottom: 1px solid #222; }
+        .lb-pag { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 22px; }
+        .lb-pag button { background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 7px 12px; font-family: 'Russo One'; font-size: 12px; cursor: pointer; transition: 0.2s; min-width: 36px; }
+        .lb-pag button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .lb-pag button.active { background: var(--primary); color: #04150c; border-color: var(--primary); }
+        .lb-pag button:disabled { opacity: 0.35; cursor: default; }
+        .lb-pag span { color: #555; padding: 0 2px; }
         .section-title { font-size: 48px; font-family: 'Russo One'; margin-bottom: 50px; text-transform: uppercase; text-align: center; }
         .placeholder-box { width: 100%; max-width: 700px; height: 300px; border: 2px dashed #333; background: rgba(0,0,0,0.4); border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #444; }
 
@@ -783,6 +789,10 @@ body.trailer-open #page-content{
     </div>
     <div id="ranking" class="section-container">
         <h1 class="section-title holo-text">Global Elite</h1>
+        <div style="width:100%;max-width:900px;margin:0 auto 18px;display:flex;justify-content:center">
+            <input id="lb-search" type="text" placeholder="Search player..." oninput="lbSearch(this.value)"
+                style="width:100%;max-width:340px;background:rgba(0,0,0,0.5);color:#fff;border:1px solid rgba(0,255,136,0.3);border-radius:10px;padding:11px 16px;font-size:14px;font-family:inherit;outline:none">
+        </div>
         <div id="lb-wrap" class="lb-wrap">
             <div class="lb-head">
                 <span class="lb-c-pos">#</span>
@@ -796,6 +806,7 @@ body.trailer-open #page-content{
             </div>
             <div id="lb-body"><div class="lb-empty">Loading leaderboard…</div></div>
         </div>
+        <div id="lb-pag" class="lb-pag"></div>
     </div>
 
     <!-- FOOTER -->
@@ -1360,28 +1371,57 @@ function toggleTrailerMode() {
                 return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65) + String.fromCodePoint(0x1F1E6 + c.charCodeAt(1) - 65);
             }
             function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+            const PER_PAGE = 10;
+            let lbData = [], lbQuery = '', lbPage = 1;
+            const pagEl = document.getElementById('lb-pag');
+
+            function lbFiltered() { const q = lbQuery.trim().toLowerCase(); return q ? lbData.filter(p => (p.name || '').toLowerCase().includes(q)) : lbData; }
+            window.lbSearch = function (v) { lbQuery = v; lbPage = 1; renderLB(); };
+            window.lbGoto = function (n) { lbPage = n; renderLB(); };
+
+            function renderLB() {
+                const filt = lbFiltered();
+                if (!lbData.length) { body.innerHTML = '<div class="lb-empty">No players ranked yet — be the first!</div>'; pagEl.innerHTML = ''; return; }
+                if (!filt.length) { body.innerHTML = '<div class="lb-empty">No players match your search.</div>'; pagEl.innerHTML = ''; return; }
+                const totalPag = Math.max(1, Math.ceil(filt.length / PER_PAGE));
+                if (lbPage > totalPag) lbPage = totalPag;
+                const ini = (lbPage - 1) * PER_PAGE;
+                body.innerHTML = filt.slice(ini, ini + PER_PAGE).map(p => {
+                    const pos = lbData.indexOf(p) + 1;   // ranking real global
+                    const kd = p.muertes > 0 ? (p.kills / p.muertes).toFixed(2) : (p.kills).toFixed(0) + '.00';
+                    const cls = pos === 1 ? 'p1' : pos === 2 ? 'p2' : pos === 3 ? 'p3' : '';
+                    const best = (p.bestMass || 0) >= 1000 ? (p.bestMass / 1000).toFixed(1) + 'k' : (p.bestMass || 0).toString();
+                    return `<div class="lb-row ${cls}">
+                        <span><span class="lb-c-pos">${pos}</span></span>
+                        <span class="lb-c-name">${esc(p.name)}</span>
+                        <span class="lb-c-mass">${best}</span>
+                        <span class="lb-c-kills">${p.kills.toLocaleString('en-US')}</span>
+                        <span class="lb-c-deaths">${p.muertes.toLocaleString('en-US')}</span>
+                        <span class="lb-c-kd">${kd}</span>
+                        <span class="lb-c-games">${p.partidas.toLocaleString('en-US')}</span>
+                        <span class="lb-c-country" title="${esc(p.paisName || '')}"><span class="lb-flag">${flag(p.paisCode)}</span>${esc(p.paisCode || '??')}</span>
+                    </div>`;
+                }).join('');
+                renderPag(totalPag);
+            }
+            function renderPag(totalPag) {
+                if (totalPag <= 1) { pagEl.innerHTML = ''; return; }
+                let h = `<button ${lbPage <= 1 ? 'disabled' : ''} onclick="lbGoto(${lbPage - 1})">‹</button>`;
+                const win = 2, desde = Math.max(1, lbPage - win), hasta = Math.min(totalPag, lbPage + win);
+                if (desde > 1) { h += `<button onclick="lbGoto(1)">1</button>`; if (desde > 2) h += `<span>…</span>`; }
+                for (let n = desde; n <= hasta; n++) h += `<button class="${n === lbPage ? 'active' : ''}" onclick="lbGoto(${n})">${n}</button>`;
+                if (hasta < totalPag) { if (hasta < totalPag - 1) h += `<span>…</span>`; h += `<button onclick="lbGoto(${totalPag})">${totalPag}</button>`; }
+                h += `<button ${lbPage >= totalPag ? 'disabled' : ''} onclick="lbGoto(${lbPage + 1})">›</button>`;
+                pagEl.innerHTML = h;
+            }
             async function pull() {
                 try {
                     const r = await fetch('/ranking.json', { cache: 'no-store' });
                     if (!r.ok) throw new Error(r.status);
                     const data = await r.json();
-                    const list = data.ranking || [];
-                    if (!list.length) { body.innerHTML = '<div class="lb-empty">No players ranked yet — be the first!</div>'; return; }
-                    body.innerHTML = list.map((p, i) => {
-                        const kd = p.muertes > 0 ? (p.kills / p.muertes).toFixed(2) : (p.kills).toFixed(0) + '.00';
-                        const cls = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
-                        const best = (p.bestMass || 0) >= 1000 ? (p.bestMass / 1000).toFixed(1) + 'k' : (p.bestMass || 0).toString();
-                        return `<div class="lb-row ${cls}">
-                            <span><span class="lb-c-pos">${i + 1}</span></span>
-                            <span class="lb-c-name">${esc(p.name)}</span>
-                            <span class="lb-c-mass">${best}</span>
-                            <span class="lb-c-kills">${p.kills.toLocaleString('en-US')}</span>
-                            <span class="lb-c-deaths">${p.muertes.toLocaleString('en-US')}</span>
-                            <span class="lb-c-kd">${kd}</span>
-                            <span class="lb-c-games">${p.partidas.toLocaleString('en-US')}</span>
-                            <span class="lb-c-country" title="${esc(p.paisName || '')}"><span class="lb-flag">${flag(p.paisCode)}</span>${esc(p.paisCode || '??')}</span>
-                        </div>`;
-                    }).join('');
+                    lbData = data.ranking || [];
+                    renderLB();
                 } catch (e) {
                     if (!body.querySelector('.lb-row')) body.innerHTML = '<div class="lb-empty">Leaderboard unavailable. Try again later.</div>';
                 }
