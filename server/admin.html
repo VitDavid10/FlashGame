@@ -168,6 +168,14 @@
     .b.rojo:hover { background: var(--accent); color: #fff; box-shadow: 0 0 18px rgba(255,42,42,0.5); }
     .b.naranja { background: transparent; border: 1px solid var(--orange); color: var(--orange); }
     .b.naranja:hover { background: var(--orange); color: #000; box-shadow: 0 0 16px rgba(255,140,66,0.4); }
+
+    /* Chips de selección de salas (stress test) */
+    .sroom-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 20px; background: #111; border: 1px solid var(--border); color: #999; font-size: 12px; font-family: 'Russo One'; letter-spacing: 0.5px; cursor: pointer; user-select: none; transition: 0.2s; }
+    .sroom-chip input { display: none; }
+    .sroom-chip:hover { border-color: #555; color: #ccc; }
+    .sroom-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: #333; border: 1px solid #555; transition: 0.2s; }
+    .sroom-chip:has(input:checked) { border-color: var(--primary); color: var(--primary); background: rgba(0,255,136,0.08); box-shadow: 0 0 10px var(--primary-dim); }
+    .sroom-chip:has(input:checked) .dot { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 6px var(--primary); }
     .b.morado { background: transparent; border: 1px solid var(--purple); color: var(--purple); }
     .b.morado:hover { background: var(--purple); color: #000; box-shadow: 0 0 16px rgba(176,124,247,0.4); }
     .b.azul { background: transparent; border: 1px solid #4f9cff; color: #4f9cff; }
@@ -294,8 +302,11 @@
                     <div><label>Inputs por bot (Hz)</label><input type="number" id="s_inhz" value="10" min="1" max="40" step="1"></div>
                 </div>
                 <div style="margin-bottom:14px">
-                    <label style="display:block;margin-bottom:6px;color:#aaa">Salas afectadas <span style="color:#666;font-size:12px">(ninguna marcada = todas)</span></label>
-                    <div id="s_rooms" style="display:flex;flex-wrap:wrap;gap:6px 14px"></div>
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+                        <label style="color:#aaa">Salas afectadas <span style="color:#666;font-size:12px">(ninguna marcada = todas)</span></label>
+                        <button class="b mini" type="button" onclick="toggleTodasStress()" id="s_btnTodas">Seleccionar todas</button>
+                    </div>
+                    <div id="s_rooms" style="display:flex;flex-wrap:wrap;gap:8px"></div>
                 </div>
                 <div style="margin-bottom:14px">
                     <label class="chk" style="color:#ccc"><input type="checkbox" id="s_respawn" checked> Reponer al morir (mantener salas pobladas, reentran poco a poco)</label>
@@ -538,9 +549,16 @@ function construirSalasStress() {
     let html = '';
     for (const m of STRESS_MODOS) for (const p of STRESS_PRECIOS) {
         const k = m + '_' + p;
-        html += `<label style="color:#ccc;font-size:13px;display:flex;align-items:center;gap:5px"><input type="checkbox" class="s_room" value="${k}"> ${k}</label>`;
+        html += `<label class="sroom-chip"><input type="checkbox" class="s_room" value="${k}"><span class="dot"></span>${k}</label>`;
     }
     cont.innerHTML = html; cont.dataset.listo = '1';
+}
+function toggleTodasStress() {
+    construirSalasStress();
+    const chips = [...document.querySelectorAll('.s_room')];
+    const marcarTodas = !chips.every(c => c.checked);   // si no están todas, marca todas; si lo están, desmarca
+    chips.forEach(c => c.checked = marcarTodas);
+    document.getElementById('s_btnTodas').innerText = marcarTodas ? 'Quitar todas' : 'Seleccionar todas';
 }
 function lanzarStress() {
     construirSalasStress();

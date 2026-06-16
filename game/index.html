@@ -151,6 +151,16 @@
         .btn-cancel { flex: 1; padding: 12px; border: 1px solid #444; background: transparent; color: #ccc; font-weight: bold; border-radius: 6px; cursor: pointer; font-family: 'Russo One'; }
         .btn-cancel:hover { border-color: #fff; color: #fff; }
 
+        /* Aviso de sistema (estilo del juego) */
+        #sysModal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 300; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.2s;
+        }
+        #sysModal .exit-box { border-color: rgba(0,255,136,0.4); box-shadow: 0 0 40px rgba(0,255,136,0.15); }
+        .sys-title { color: var(--primary) !important; text-shadow: 0 0 14px rgba(0,255,136,0.4); }
+        .btn-sys { flex: 1; padding: 12px; border: 1px solid var(--primary); background: transparent; color: var(--primary); font-weight: bold; border-radius: 6px; cursor: pointer; font-family: 'Russo One'; letter-spacing: 1px; transition: 0.2s; }
+        .btn-sys:hover { background: var(--primary); color: #04150c; box-shadow: 0 0 18px rgba(0,255,136,0.5); }
+
         #buffTable {
             position: absolute; top: 100px; left: 15px; background: rgba(10, 10, 10, 0.8); border: 1px solid #333; color: white; padding: 15px; border-radius: 12px; width: 180px; pointer-events: none; z-index: 20; font-size: 12px; display: none;
         }
@@ -519,6 +529,17 @@
             <div class="exit-actions">
                 <button class="btn-cancel" onclick="toggleExitModal()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
                 <button class="btn-confirm" id="btnConfirmExit" onclick="confirmExit()" onmouseenter="SoundManager.playSimpleHover()">EXIT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aviso de sistema con el estilo del juego (sustituye a alert()) -->
+    <div id="sysModal">
+        <div class="exit-box">
+            <div class="exit-title sys-title" id="sysModalTitle">NOTICE</div>
+            <div class="exit-desc" id="sysModalDesc"></div>
+            <div class="exit-actions">
+                <button class="btn-sys" onclick="hideSystemMsg()" onmouseenter="SoundManager.playSimpleHover()">OK</button>
             </div>
         </div>
     </div>
@@ -1940,7 +1961,17 @@
         gameRunning = true;
     }
 
-    function abandonNet(texto) { practiceMode = false; setLobbyBanner(null); sim = null; gameRunning = false; netState = null; returnToMenu(); if (texto) alert(texto); }
+    // Aviso de sistema con el estilo del juego (sustituye a alert()). Siempre en inglés.
+    function showSystemMsg(message, title) {
+        const m = document.getElementById('sysModal');
+        document.getElementById('sysModalTitle').innerText = title || 'NOTICE';
+        document.getElementById('sysModalDesc').innerText = message;
+        m.style.display = 'flex';
+        try { SoundManager.play('little'); } catch (e) {}
+    }
+    function hideSystemMsg() { document.getElementById('sysModal').style.display = 'none'; }
+
+    function abandonNet(texto) { practiceMode = false; setLobbyBanner(null); sim = null; gameRunning = false; netState = null; returnToMenu(); if (texto) showSystemMsg(texto); }
 
     // TRY AGAIN tras morir / fin de partida / reinicio: vuelve a entrar a la
     // MISMA sala sin pasar por el menú (nuevo join con los mismos datos).
@@ -1998,7 +2029,7 @@
                 enterOnlineGame(ws, msg, false);
             } else if (msg.t === 'roomFull') {
                 restoreBtn(); try { ws.close(); } catch (err) {}
-                alert('Sala ' + (msg.roomName || '') + ' llena (máximo ' + (msg.max || '') + ' jugadores).\nPrueba otra sala o vuelve a intentarlo en un momento.');
+                showSystemMsg('Room ' + (msg.roomName || '') + ' is full (max ' + (msg.max || '') + ' players). Try another room or come back in a moment.', 'ROOM FULL');
             } else if (msg.t === 'resumeFail') {
                 netState.token = null; try { ws.close(); } catch (err) {}
             } else if (msg.t === 'kicked') {
@@ -2011,7 +2042,7 @@
             restoreBtn();
             if (window.__kicked) {
                 window.__kicked = false;
-                if (gameRunning) abandonNet('Has sido expulsado por el administrador.');
+                if (gameRunning) abandonNet('You have been kicked by an administrator.');
                 return;
             }
             if (!gameRunning || !netState || netState.ws !== ws) return;
@@ -2020,11 +2051,11 @@
                 spawnFloatingText('RECONECTANDO... (' + netState.attempts + '/5)', '#ffcc00');
                 setTimeout(() => { if (gameRunning && netState) netConnect(true); }, 1200);
             } else {
-                abandonNet(netState.token ? 'Conexión con el servidor perdida.' : 'No se pudo reanudar la partida.');
+                abandonNet(netState.token ? 'Connection to the server was lost.' : 'Could not resume the game.');
             }
         };
         ws.onerror = () => {
-            if (!joined && !isResume && !gameRunning) { restoreBtn(); alert('No se pudo conectar a ' + netState.url + '\n¿Está arrancado el servidor? (node server/index.js)'); }
+            if (!joined && !isResume && !gameRunning) { restoreBtn(); showSystemMsg("Couldn't connect to the server. Please try again in a moment.", 'CONNECTION FAILED'); }
         };
     }
 
