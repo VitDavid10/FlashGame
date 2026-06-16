@@ -307,6 +307,28 @@
                 </div>
             </div>
             <div class="usage" id="s_estado" style="padding:18px 20px;margin-top:6px">Sin test en marcha.</div>
+
+            <h2 class="section">Test de DDoS / flood (rate-limit)</h2>
+            <div class="usage" style="padding:18px 20px">
+                <div class="rules" style="margin-bottom:14px">
+                    <div><label>Mensajes/seg (total)</label>
+                        <select id="d_rate" style="background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px">
+                            <option value="100">100 msg/s</option>
+                            <option value="500">500 msg/s</option>
+                            <option value="1000" selected>1.000 msg/s</option>
+                            <option value="10000">10.000 msg/s</option>
+                            <option value="50000">50.000 msg/s</option>
+                        </select>
+                    </div>
+                    <div><label>Conexiones atacantes</label><input type="number" id="d_conns" value="10" min="1" max="500" step="1"></div>
+                    <div><label>Duración (s)</label><input type="number" id="d_dur" value="20" min="1" max="600" step="5"></div>
+                </div>
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                    <button class="b naranja" id="d_btnLanzar" onclick="lanzarDdos()">💥 Lanzar DDoS</button>
+                    <button class="b rojo" id="d_btnParar" onclick="pararStress()">■ Detener</button>
+                    <span style="color:#666;font-size:12px">Floodea el servidor para probar el rate-limit. Un "canario" juega normal: si su ping sigue bajo, el servidor aguanta. Mira el log de seguridad en Actividad.</span>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -534,27 +556,55 @@ function lanzarStress() {
     setTimeout(pedir, 200);
 }
 function pararStress() { send({ cmd: 'stressStop' }); setTimeout(pedir, 200); }
+function lanzarDdos() {
+    send({ cmd: 'ddosStart', params: {
+        rate: parseInt(document.getElementById('d_rate').value, 10),
+        conns: parseInt(document.getElementById('d_conns').value, 10),
+        duration: parseInt(document.getElementById('d_dur').value, 10),
+    } });
+    setTimeout(pedir, 200);
+}
+function cajaStat(label, valor, color) {
+    return `<div><span style="color:#666;font-size:12px">${label}</span><br><b style="color:${color || '#fff'};font-size:18px">${valor}</b></div>`;
+}
 function renderStress(s) {
     if (!s) return;
-    const lanzar = document.getElementById('s_btnLanzar'), parar = document.getElementById('s_btnParar');
-    lanzar.disabled = s.running; parar.disabled = !s.running;
+    const runningNpc = s.running && s.kind === 'npc', runningDdos = s.running && s.kind === 'ddos';
+    document.getElementById('s_btnLanzar').disabled = s.running;
+    document.getElementById('d_btnLanzar').disabled = s.running;
+    document.getElementById('s_btnParar').disabled = !s.running;
+    document.getElementById('d_btnParar').disabled = !s.running;
     const el = document.getElementById('s_estado');
     if (!s.running && !s.stats) { el.innerHTML = '<span style="color:#666">Sin test en marcha.</span>' + (s.error ? `<div style="color:#ff6b6b;margin-top:8px">Error: ${s.error}</div>` : ''); return; }
     const st = s.stats || {};
-    const dist = st.porSala ? Object.entries(st.porSala).map(([k, v]) => `<span style="color:#888">${k}</span> <b>${v}</b>`).join('  ·  ') : '';
-    const lat = st.latency || 0;
-    const latColor = lat > 300 ? '#ff6b6b' : lat > 120 ? '#ffce3d' : '#00ff88';
-    el.innerHTML = `
-        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline">
-            <div><span style="color:#666;font-size:12px">ESTADO</span><br><b style="color:${s.running ? '#00ff88' : '#888'};font-size:18px">${s.running ? 'EN MARCHA' : 'TERMINADO'}</b> <span style="color:#666">${s.elapsed}s${s.params && s.params.duration ? ' / ' + s.params.duration + 's' : ''}</span></div>
-            <div><span style="color:#666;font-size:12px">ACTIVOS</span><br><b style="font-size:18px">${st.active || 0}</b> <span style="color:#666">/ ${st.bots || 0}</span></div>
-            <div><span style="color:#666;font-size:12px">ENTRARON</span><br><b style="color:#00ff88;font-size:18px">${st.entered || 0}</b></div>
-            <div><span style="color:#666;font-size:12px">RECHAZADOS (llena)</span><br><b style="color:#ffce3d;font-size:18px">${st.rejected || 0}</b></div>
-            <div><span style="color:#666;font-size:12px">LATENCIA</span><br><b style="color:${latColor};font-size:18px">${lat} ms</b></div>
-            <div><span style="color:#666;font-size:12px">ERRORES</span><br><b style="color:${st.errors ? '#ff6b6b' : '#888'};font-size:18px">${st.errors || 0}</b></div>
-        </div>
-        <div style="margin-top:14px;font-size:13px;line-height:1.9">${dist}</div>
-        ${s.error ? `<div style="color:#ff6b6b;margin-top:8px">Error: ${s.error}</div>` : ''}`;
+    const srvCpu = s.serverCpu || 0, testCpu = st.cpu || 0;
+    const cpuColor = c => c > 85 ? '#ff6b6b' : c > 60 ? '#ffce3d' : '#00ff88';
+    const cpuBox = cajaStat('CPU SERVIDOR', srvCpu + '%', cpuColor(srvCpu)) + cajaStat('CPU TEST', testCpu + '%', cpuColor(testCpu));
+    const estadoBox = `<div><span style="color:#666;font-size:12px">ESTADO</span><br><b style="color:${s.running ? '#00ff88' : '#888'};font-size:18px">${s.running ? (s.kind === 'ddos' ? 'ATACANDO' : 'EN MARCHA') : 'TERMINADO'}</b> <span style="color:#666">${s.elapsed}s${s.params && s.params.duration ? ' / ' + s.params.duration + 's' : ''}</span></div>`;
+    let boxes, extra = '';
+    if (s.kind === 'ddos') {
+        const ping = st.canaryPing || 0;
+        const pingColor = ping > 300 ? '#ff6b6b' : ping > 120 ? '#ffce3d' : '#00ff88';
+        boxes = estadoBox
+            + cajaStat('ENVIADOS (flood)', num(st.sent || 0), '#fff')
+            + cajaStat('ATACANTES', (st.attackersUp || 0) + ' / ' + (st.conns || 0), '#fff')
+            + cajaStat('CERRADOS x SERVIDOR', st.closedByServer || 0, '#ffce3d')
+            + cajaStat('PING CANARIO', ping + ' ms', pingColor)
+            + cpuBox;
+    } else {
+        const lat = st.latency || 0, latColor = lat > 300 ? '#ff6b6b' : lat > 120 ? '#ffce3d' : '#00ff88';
+        const dist = st.porSala ? Object.entries(st.porSala).map(([k, v]) => `<span style="color:#888">${k}</span> <b>${v}</b>`).join('  ·  ') : '';
+        boxes = estadoBox
+            + cajaStat('ACTIVOS', (st.active || 0) + ' / ' + (st.bots || 0))
+            + cajaStat('ENTRARON', st.entered || 0, '#00ff88')
+            + cajaStat('RECHAZADOS (llena)', st.rejected || 0, '#ffce3d')
+            + cajaStat('LATENCIA', lat + ' ms', latColor)
+            + cajaStat('ERRORES', st.errors || 0, st.errors ? '#ff6b6b' : '#888')
+            + cpuBox;
+        extra = `<div style="margin-top:14px;font-size:13px;line-height:1.9">${dist}</div>`;
+    }
+    el.innerHTML = `<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline">${boxes}</div>` + extra
+        + (s.error ? `<div style="color:#ff6b6b;margin-top:8px">Error: ${s.error}</div>` : '');
 }
 function render(m) {
     document.getElementById('liveTxt').innerText = 'en vivo';

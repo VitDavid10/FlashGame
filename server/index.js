@@ -63,13 +63,22 @@ const CATALOG_MODES = ['classic', 'arcade'];
 const rooms = new Map();
 const resumeTokens = new Map();   // token → { roomKey, playerId }
 
-// --- Stress test lanzable desde el panel (proceso hijo: stress-npc.js) ---
-const stress = { proc: null, running: false, params: null, stats: null, startedAt: 0, error: null };
+// --- Stress / DDoS test lanzable desde el panel (proceso hijo) ---
+const stress = { proc: null, running: false, kind: null, params: null, stats: null, startedAt: 0, error: null };
+// %CPU del propio servidor, muestreado cada segundo (para comparar con el del test).
+let serverCpuPct = 0; let _cpuLast = process.cpuUsage(); let _cpuLastT = Date.now();
+setInterval(() => {
+    const u = process.cpuUsage(_cpuLast); const dt = Date.now() - _cpuLastT;
+    _cpuLast = process.cpuUsage(); _cpuLastT = Date.now();
+    serverCpuPct = dt > 0 ? Math.round((u.user + u.system) / 1000 / dt * 100) : 0;
+}, 1000);
 function stressBuildState() {
     return {
         running: stress.running,
+        kind: stress.kind,
         params: stress.params,
         stats: stress.stats,
+        serverCpu: serverCpuPct,
         elapsed: stress.running ? Math.round((Date.now() - stress.startedAt) / 1000) : 0,
         error: stress.error,
     };
@@ -78,24 +87,11 @@ function stressStop() {
     if (stress.proc) { try { stress.proc.kill('SIGTERM'); } catch (e) {} }
     stress.proc = null; stress.running = false;
 }
-function stressStart(p) {
-    if (stress.running) return;
-    const bots = Math.max(1, Math.min(5000, p.bots | 0 || 300));
-    const duration = Math.max(0, Math.min(3600, p.duration | 0));
-    const ramp = Math.max(5, Math.min(2000, p.ramp | 0 || 60));
-    const inputHz = Math.max(1, Math.min(40, p.inputHz | 0 || 10));
-    const roomsList = Array.isArray(p.rooms) ? p.rooms.filter(k => typeof k === 'string').slice(0, 40).join(',') : '';
-    const respawn = p.respawn !== false;   // por defecto repone al morir
-    const env = Object.assign({}, process.env, {
-        SERVER: 'ws://localhost:' + PORT, BOTS: String(bots), DURATION_S: String(duration),
-        RAMP_MS: String(ramp), INPUT_HZ: String(inputHz), STRESS_JSON: '1',
-        RESPAWN: respawn ? '1' : '0',
-    });
-    if (roomsList) env.ROOMS = roomsList;
-    stress.params = { bots, duration, ramp, inputHz, respawn, rooms: roomsList ? roomsList.split(',') : 'todas' };
+function stressSpawn(kind, script, env, params, logMsg) {
+    stress.kind = kind; stress.params = params;
     stress.stats = null; stress.error = null; stress.startedAt = Date.now(); stress.running = true;
-    const script = path.join(__dirname, '..', 'stress-npc.js');
-    const proc = spawn(process.execPath, [script], { env, cwd: path.join(__dirname, '..') });
+    const proc = spawn(process.execPath, [path.join(__dirname, '..', script)],
+        { env: Object.assign({}, process.env, env, { SERVER: 'ws://localhost:' + PORT, STRESS_JSON: '1' }), cwd: path.join(__dirname, '..') });
     stress.proc = proc;
     let buf = '';
     proc.stdout.on('data', d => {
@@ -108,8 +104,32 @@ function stressStart(p) {
     proc.stderr.on('data', d => { stress.error = d.toString().slice(0, 200); });
     proc.on('exit', () => { stress.running = false; stress.proc = null; });
     proc.on('error', e => { stress.error = e.message; stress.running = false; stress.proc = null; });
-    logAdmin('-', 'Lanzó stress test', `${bots} bots, ${duration}s, salas: ${roomsList || 'todas'}`);
-    log(`ADMIN lanzó stress test: ${bots} bots, ${duration}s, ramp ${ramp}ms, salas ${roomsList || 'todas'}`);
+    logAdmin('-', logMsg, '');
+    log(`ADMIN ${logMsg}`);
+}
+function stressStart(p) {
+    if (stress.running) return;
+    const bots = Math.max(1, Math.min(5000, p.bots | 0 || 300));
+    const duration = Math.max(0, Math.min(3600, p.duration | 0));
+    const ramp = Math.max(5, Math.min(2000, p.ramp | 0 || 60));
+    const inputHz = Math.max(1, Math.min(40, p.inputHz | 0 || 10));
+    const roomsList = Array.isArray(p.rooms) ? p.rooms.filter(k => typeof k === 'string').slice(0, 40).join(',') : '';
+    const respawn = p.respawn !== false;
+    const env = { BOTS: String(bots), DURATION_S: String(duration), RAMP_MS: String(ramp), INPUT_HZ: String(inputHz), RESPAWN: respawn ? '1' : '0' };
+    if (roomsList) env.ROOMS = roomsList;
+    stressSpawn('npc', 'stress-npc.js', env,
+        { bots, duration, ramp, inputHz, respawn, rooms: roomsList ? roomsList.split(',') : 'todas' },
+        `lanzó stress test: ${bots} bots, ${duration}s, salas ${roomsList || 'todas'}`);
+}
+function ddosStart(p) {
+    if (stress.running) return;
+    const rate = Math.max(10, Math.min(100000, p.rate | 0 || 1000));   // mensajes/seg TOTAL
+    const conns = Math.max(1, Math.min(500, p.conns | 0 || 10));       // conexiones atacantes
+    const duration = Math.max(1, Math.min(600, p.duration | 0 || 20));
+    const env = { RATE: String(rate), CONNS: String(conns), DURATION_S: String(duration) };
+    stressSpawn('ddos', 'stress-ddos.js', env,
+        { rate, conns, duration },
+        `lanzó test DDoS: ${rate} msg/s, ${conns} conexiones, ${duration}s`);
 }
 const adminFails = new Map();     // ip → { c: intentos, until: timestamp bloqueo }
 const specTokens = new Map();     // token → expira_en (timestamp ms)
@@ -732,8 +752,10 @@ wss.on('connection', (ws, req) => {
                 log(`ADMIN snapshots: ${prev}Hz → ${now}Hz (cada ${SNAPSHOT_EVERY} ticks)`);
             } else if (msg.cmd === 'stressStart') {
                 stressStart(msg.params || {});
+            } else if (msg.cmd === 'ddosStart') {
+                ddosStart(msg.params || {});
             } else if (msg.cmd === 'stressStop') {
-                stressStop(); logAdmin('-', 'Detuvo stress test', '');
+                stressStop(); logAdmin('-', 'Detuvo stress/ddos test', '');
             } else if (msg.cmd === 'forceStart' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala && sala.state === 'waiting') { startMatch(sala); logAdmin(msg.room, 'Forzó el inicio', ''); log(`ADMIN forzó inicio de ${msg.room}`); }

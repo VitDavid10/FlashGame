@@ -140,12 +140,18 @@ function spawnBot(i) {
 }
 
 // Snapshot de estadísticas para el modo JSON (lo parsea el servidor/panel)
+let _cpu = process.cpuUsage(), _cpuT = Date.now();
+function cpuPct() {
+  const u = process.cpuUsage(_cpu); const dt = Date.now() - _cpuT;
+  _cpu = process.cpuUsage(); _cpuT = Date.now();
+  return dt > 0 ? Math.round((u.user + u.system) / 1000 / dt * 100) : 0;
+}
 function snapshotStats(done) {
   return {
     bots: BOTS, launched, active: stats.connected - stats.disconnected,
     entered: stats.entered, rejected: stats.rejected, errors: stats.errors,
     sent: stats.messagesSent, received: stats.messagesReceived,
-    latency: avgLatency(), porSala: stats.porSala, done: !!done,
+    latency: avgLatency(), porSala: stats.porSala, cpu: cpuPct(), done: !!done,
   };
 }
 function emitJson(done) { process.stdout.write('STATS ' + JSON.stringify(snapshotStats(done)) + '\n'); }
