@@ -615,6 +615,7 @@ function renderStress(s) {
         boxes = estadoBox
             + cajaStat('ACTIVOS', (st.active || 0) + ' / ' + (st.bots || 0))
             + cajaStat('ENTRARON', st.entered || 0, '#00ff88')
+            + cajaStat('GANARON (5 kills)', st.wins || 0, '#b07cf7')
             + cajaStat('RECHAZADOS (llena)', st.rejected || 0, '#ffce3d')
             + cajaStat('LATENCIA', lat + ' ms', latColor)
             + cajaStat('ERRORES', st.errors || 0, st.errors ? '#ff6b6b' : '#888')

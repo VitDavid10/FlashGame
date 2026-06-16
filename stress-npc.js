@@ -54,7 +54,7 @@ if (!ROOMS.length) { for (const m of MODES) for (const p of PRICES) ROOMS.push({
 
 const stats = {
   connected: 0, disconnected: 0, errors: 0,
-  entered: 0, rejected: 0,   // entraron a jugar vs rechazados por "sala llena"
+  entered: 0, rejected: 0, wins: 0,   // entraron / rechazados (llena) / ganaron (5 kills classic)
   messagesSent: 0, messagesReceived: 0,
   latencies: [],
   porSala: {},   // "mode_room" → dentro de la sala
@@ -113,11 +113,15 @@ function spawnBot(i) {
     if (m.id) myId = m.id;   // welcome / matchStart traen mi id
     if (m.t === 'welcome' && !counted) { stats.entered++; stats.porSala[salaKey]++; counted = true; }
     if (m.mapSize) mapSize = m.mapSize;   // el welcome trae el tamaño real del mapa
-    // Detectar mi muerte para reponer (respawn). Los muertos quedan de espectador,
-    // así que reconectamos como jugador nuevo para que la sala no se vacíe.
+    // Salir y reponer cuando MUERO o GANO (en classic, a 5 kills se gana y el
+    // jugador real se desconecta). Reconectamos como nuevo para que la sala cicle
+    // igual que con jugadores reales, en vez de quedarnos inmunes ocupando plaza.
     if (m.t === 'events' && Array.isArray(m.events) && myId && !reconnectPending) {
       for (const ev of m.events) {
-        if (ev.type === 'playerDied' && ev.playerId === myId) {
+        const muerto = ev.type === 'playerDied' && ev.playerId === myId;
+        const gano = ev.type === 'botKilled' && ev.playerId === myId && ev.mode === 'classic' && ev.streak >= 5;
+        if (muerto || gano) {
+          if (gano) stats.wins++;
           if (RESPAWN && !testOver) {
             reconnectPending = true;
             const delay = RESPAWN_MIN + Math.random() * Math.max(0, RESPAWN_MAX - RESPAWN_MIN);
@@ -149,7 +153,7 @@ function cpuPct() {
 function snapshotStats(done) {
   return {
     bots: BOTS, launched, active: stats.connected - stats.disconnected,
-    entered: stats.entered, rejected: stats.rejected, errors: stats.errors,
+    entered: stats.entered, rejected: stats.rejected, wins: stats.wins, errors: stats.errors,
     sent: stats.messagesSent, received: stats.messagesReceived,
     latency: avgLatency(), porSala: stats.porSala, cpu: cpuPct(), done: !!done,
   };
