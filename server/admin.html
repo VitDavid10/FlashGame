@@ -299,6 +299,9 @@
                     <label style="display:block;margin-bottom:6px;color:#aaa">Salas afectadas <span style="color:#666;font-size:12px">(ninguna marcada = todas)</span></label>
                     <div id="s_rooms" style="display:flex;flex-wrap:wrap;gap:6px 14px"></div>
                 </div>
+                <div style="margin-bottom:14px">
+                    <label class="chk" style="color:#ccc"><input type="checkbox" id="s_respawn" checked> Reponer al morir (mantener salas pobladas, reentran poco a poco)</label>
+                </div>
                 <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
                     <button class="b verde" id="s_btnLanzar" onclick="lanzarStress()">▶ Lanzar test</button>
                     <button class="b rojo" id="s_btnParar" onclick="pararStress()">■ Detener</button>
@@ -468,7 +471,10 @@ function cartaSala(r) {
         </div>
         <div class="room-body">
             <div class="statline">
-                <span class="players-chip" onclick="togglePlayers('${id}')"><span class="pdot ${r.conectados > 0 ? 'on' : ''}"></span>${r.conectados} JUGADOR${r.conectados === 1 ? '' : 'ES'} <span style="color:#555">${expandidos.has(id) ? '&#9662;' : '&#9656;'}</span></span>
+                <span class="players-chip" onclick="togglePlayers('${id}')"><span class="pdot ${r.conectados > 0 ? 'on' : ''}"></span>${r.conectados}/${r.maxReales != null ? r.maxReales : '-'} JUGADOR${r.conectados === 1 ? '' : 'ES'} <span style="color:#555">${expandidos.has(id) ? '&#9662;' : '&#9656;'}</span></span>
+                <span class="it" style="color:#00ff88" title="vivos">${IC.users} ${r.vivos != null ? r.vivos : 0} vivos</span>
+                <span class="it" style="color:#ff6b6b" title="muertos / espectando tras morir">${IC.skull} ${Math.max(0, (r.conectados || 0) - (r.vivos || 0))} muertos</span>
+                ${r.espectadores ? `<span class="it" style="color:#b07cf7" title="espectadores">${IC.door} ${r.espectadores} viendo</span>` : ''}
                 <span class="it">${IC.bot} ${r.bots} bots</span>
                 <span class="it">${IC.in} ${num(r.stats.entradas)} entradas</span>
                 <span class="it">${IC.skull} ${num(r.stats.muertes)}</span>
@@ -524,6 +530,7 @@ function lanzarStress() {
         duration: parseInt(document.getElementById('s_dur').value, 10),
         ramp: parseInt(document.getElementById('s_ramp').value, 10),
         inputHz: parseInt(document.getElementById('s_inhz').value, 10),
+        respawn: document.getElementById('s_respawn').checked,
         rooms: salas,
     } });
     setTimeout(pedir, 200);

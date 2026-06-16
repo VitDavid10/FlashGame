@@ -32,6 +32,12 @@ const DURATION_S = parseInt(process.env.DURATION_S || '60', 10);
 const MODES      = (process.env.MODES  || 'classic,arcade').split(',');
 const PRICES     = (process.env.PRICES || 'Free,5$,10$,20$,50$').split(',');
 const JSON_MODE  = process.env.STRESS_JSON === '1';
+// Respawn: al morir un bot, reconecta tras un retardo aleatorio para que la sala
+// no se vacíe (mantiene la población ~constante, pero sin reentrar todos a la vez).
+const RESPAWN    = process.env.RESPAWN !== '0';
+const RESPAWN_MIN = parseInt(process.env.RESPAWN_MIN_MS || '2000', 10);
+const RESPAWN_MAX = parseInt(process.env.RESPAWN_MAX_MS || '6000', 10);
+let testOver = false;   // se activa al acabar la duración: deja de reconectar
 
 const INPUT_INTERVAL = Math.max(33, Math.round(1000 / INPUT_HZ));
 
@@ -69,6 +75,8 @@ function spawnBot(i) {
   let mapSize = 4000;            // se actualiza con el welcome del servidor
   let tx = 0, ty = 0;            // objetivo actual (coordenadas del mundo)
   let counted = false;
+  let myId = null;               // id del jugador en la sim (para detectar mi muerte)
+  let reconnectPending = false;
 
   // Elige un nuevo destino dentro del mapa (a veces hacia el centro para no pegarse al borde)
   function nuevoDestino() {
@@ -101,8 +109,24 @@ function spawnBot(i) {
     stats.messagesReceived++;
     let m; try { m = JSON.parse(data); } catch { return; }
     if (m.t === 'roomFull') { stats.rejected++; try { ws.close(); } catch {} return; }
+    if (m.id) myId = m.id;   // welcome / matchStart traen mi id
     if (m.t === 'welcome' && !counted) { stats.entered++; stats.porSala[salaKey]++; counted = true; }
     if (m.mapSize) mapSize = m.mapSize;   // el welcome trae el tamaño real del mapa
+    // Detectar mi muerte para reponer (respawn). Los muertos quedan de espectador,
+    // así que reconectamos como jugador nuevo para que la sala no se vacíe.
+    if (m.t === 'events' && Array.isArray(m.events) && myId && !reconnectPending) {
+      for (const ev of m.events) {
+        if (ev.type === 'playerDied' && ev.playerId === myId) {
+          if (RESPAWN && !testOver) {
+            reconnectPending = true;
+            const delay = RESPAWN_MIN + Math.random() * Math.max(0, RESPAWN_MAX - RESPAWN_MIN);
+            setTimeout(() => { if (!testOver) spawnBot(i); }, delay);
+          }
+          try { ws.close(); } catch {}
+          break;
+        }
+      }
+    }
     if (lastPing) { stats.latencies.push(Date.now() - lastPing); if (stats.latencies.length > 200) stats.latencies.shift(); lastPing = 0; }
   });
 
@@ -151,6 +175,7 @@ const reportTimer = setInterval(() => {
 
 if (DURATION_S > 0) {
   setTimeout(() => {
+    testOver = true;
     clearInterval(rampTimer); clearInterval(reportTimer);
     if (JSON_MODE) { emitJson(true); process.exit(0); }
     const active = stats.connected - stats.disconnected;

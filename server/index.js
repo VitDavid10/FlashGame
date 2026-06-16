@@ -80,12 +80,14 @@ function stressStart(p) {
     const ramp = Math.max(5, Math.min(2000, p.ramp | 0 || 60));
     const inputHz = Math.max(1, Math.min(40, p.inputHz | 0 || 10));
     const roomsList = Array.isArray(p.rooms) ? p.rooms.filter(k => typeof k === 'string').slice(0, 40).join(',') : '';
+    const respawn = p.respawn !== false;   // por defecto repone al morir
     const env = Object.assign({}, process.env, {
         SERVER: 'ws://localhost:' + PORT, BOTS: String(bots), DURATION_S: String(duration),
         RAMP_MS: String(ramp), INPUT_HZ: String(inputHz), STRESS_JSON: '1',
+        RESPAWN: respawn ? '1' : '0',
     });
     if (roomsList) env.ROOMS = roomsList;
-    stress.params = { bots, duration, ramp, inputHz, rooms: roomsList ? roomsList.split(',') : 'todas' };
+    stress.params = { bots, duration, ramp, inputHz, respawn, rooms: roomsList ? roomsList.split(',') : 'todas' };
     stress.stats = null; stress.error = null; stress.startedAt = Date.now(); stress.running = true;
     const script = path.join(__dirname, '..', 'stress-npc.js');
     const proc = spawn(process.execPath, [script], { env, cwd: path.join(__dirname, '..') });
@@ -429,6 +431,9 @@ function buildAdminState() {
             key, mode, roomName, price,
             state: room ? room.state : 'offline',
             conectados: room ? room.clients.size : 0,
+            vivos: room ? [...room.clients.keys()].filter(pid => { const p = room.sim.players.get(pid); return p && p.alive; }).length : 0,
+            espectadores: room ? room.spectators.size : 0,
+            maxReales: maxPlayersOf(key),
             needed: minRealOf(key),
             bots: room ? new Set(room.sim.enemies.map(e => e.id)).size : 0,
             rules,
