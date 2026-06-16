@@ -255,10 +255,19 @@
 
         <div id="tab_jugadores" style="display:none">
             <h2 class="section">Ranking de jugadores</h2>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+                <input id="rankSearch" type="text" placeholder="Buscar nombre..." oninput="rankBuscar(this.value)"
+                    style="flex:1;min-width:180px;background:#111;color:#fff;border:1px solid #333;border-radius:8px;padding:9px 12px;font-size:13px">
+                <button class="b mini" type="button" onclick="rankSelTodosFiltrados()">Seleccionar resultados</button>
+                <button class="b mini" type="button" onclick="rankLimpiarSel()">Quitar selección</button>
+                <button class="b rojo mini" type="button" id="rankBtnBorrar" onclick="rankBorrarSel()">Borrar seleccionados</button>
+                <span id="rankSelInfo" style="color:#888;font-size:12px"></span>
+            </div>
             <table class="rank">
-                <thead><tr><th></th><th>Jugador</th><th>Kills</th><th>Muertes</th><th>K / D</th><th>Partidas</th><th>Última vez</th><th>País</th><th></th></tr></thead>
+                <thead><tr><th style="width:34px"></th><th></th><th>Jugador</th><th>Kills</th><th>Muertes</th><th>K / D</th><th>Partidas</th><th>Última vez</th><th>País</th><th></th></tr></thead>
                 <tbody id="rankCuerpo"></tbody>
             </table>
+            <div id="rankPag" style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:14px"></div>
         </div>
 
         <div id="tab_actividad" style="display:none">
@@ -442,6 +451,60 @@ function vaciar(room) { if (confirm('¿Echar a TODOS los jugadores de la sala?')
 function apagar(room) { if (confirm('¿APAGAR la sala? Echa a todos y la destruye.')) { send({ cmd: 'shutdown', room }); toast('<strong>Sala apagada</strong><br>' + esc(room), 'err'); setTimeout(pedir, 100); } }
 function borrarRanking(playerKey, nombre) { if (confirm('¿Borrar a ' + nombre + ' del ranking? Sus estadísticas se eliminan en el servidor.')) { send({ cmd: 'deleteRanking', playerKey }); toast('<strong>Borrado del ranking</strong><br>' + esc(nombre), 'err'); setTimeout(pedir, 100); } }
 function resetearQuests() { if (confirm('¿RESETEAR las quests de TODOS los jugadores? Esta acción es irreversible.')) { send({ cmd: 'resetQuests' }); toast('<strong>Quests reseteadas</strong><br>Todos los jugadores empiezan de cero', 'warn'); setTimeout(pedir, 100); } }
+
+// --- Ranking: búsqueda, paginación (top 10/página) y borrado por selección ---
+let rankData = [], rankSearch = '', rankPage = 1, rankSel = new Set();
+const RANK_PER_PAGE = 10;
+function rankFiltrado() { const q = rankSearch.trim().toLowerCase(); return q ? rankData.filter(p => (p.name || '').toLowerCase().includes(q)) : rankData; }
+function rankBuscar(v) { rankSearch = v; rankPage = 1; renderRanking(); }
+function rankToggle(key) { if (rankSel.has(key)) rankSel.delete(key); else rankSel.add(key); renderRanking(); }
+function rankSelTodosFiltrados() { for (const p of rankFiltrado()) rankSel.add(p.key); renderRanking(); }
+function rankLimpiarSel() { rankSel.clear(); renderRanking(); }
+function rankIrPagina(n) { rankPage = n; renderRanking(); }
+function rankBorrarSel() {
+    if (!rankSel.size) { toast('No hay jugadores seleccionados', 'warn'); return; }
+    if (!confirm('¿Borrar ' + rankSel.size + ' jugador(es) del ranking? Es irreversible.')) return;
+    const keys = [...rankSel];
+    send({ cmd: 'deleteRankingMany', keys });
+    toast('<strong>Borrados</strong><br>' + keys.length + ' jugadores', 'err');
+    rankSel.clear(); setTimeout(pedir, 150);
+}
+function renderRanking() {
+    const filt = rankFiltrado();
+    const totalPag = Math.max(1, Math.ceil(filt.length / RANK_PER_PAGE));
+    if (rankPage > totalPag) rankPage = totalPag;
+    const ini = (rankPage - 1) * RANK_PER_PAGE;
+    let rank = '';
+    filt.slice(ini, ini + RANK_PER_PAGE).forEach(p => {
+        const pos = rankData.indexOf(p) + 1;   // posición real en el ranking global
+        const kd = p.muertes > 0 ? (p.kills / p.muertes).toFixed(2) : p.kills.toFixed(0) + '.00';
+        const sel = rankSel.has(p.key);
+        rank += `<tr style="${sel ? 'background:rgba(255,42,42,0.08)' : ''}">
+            <td><input type="checkbox" ${sel ? 'checked' : ''} onclick="rankToggle('${esc(p.key)}')"></td>
+            <td><span class="pos ${pos === 1 ? 'p1' : pos === 2 ? 'p2' : pos === 3 ? 'p3' : ''} russo">${pos}</span></td>
+            <td><b style="color:#fff">${esc(p.name)}</b></td><td class="kills">${num(p.kills)}</td><td>${num(p.muertes)}</td><td>${kd}</td>
+            <td>${num(p.partidas)}</td><td>${fecha(p.lastSeen)}</td>
+            <td title="${esc(p.paisName || '')}"><span class="flag">${flag(p.paisCode)}</span><span style="color:#aaa; font-size:10px;">${esc(p.paisCode || '??')}</span></td>
+            <td><button class="b rojo mini" onclick="borrarRanking('${esc(p.key)}','${esc(p.name)}')">Borrar</button></td>
+        </tr>`;
+    });
+    document.getElementById('rankCuerpo').innerHTML = rank || `<tr><td colspan="10" class="vacio">${rankData.length ? 'Sin resultados para la búsqueda.' : 'Aún no hay jugadores con nombre registrados.'}</td></tr>`;
+    const info = document.getElementById('rankSelInfo');
+    if (info) info.innerText = `${filt.length} jugador(es)${rankSearch ? ' (de ' + rankData.length + ')' : ''} · ${rankSel.size} seleccionados`;
+    document.getElementById('rankBtnBorrar').disabled = rankSel.size === 0;
+    renderRankPag(totalPag);
+}
+function renderRankPag(totalPag) {
+    const cont = document.getElementById('rankPag');
+    if (totalPag <= 1) { cont.innerHTML = ''; return; }
+    let h = `<button class="b mini" ${rankPage <= 1 ? 'disabled' : ''} onclick="rankIrPagina(${rankPage - 1})">‹</button>`;
+    const win = 3, desde = Math.max(1, rankPage - win), hasta = Math.min(totalPag, rankPage + win);
+    if (desde > 1) { h += `<button class="b mini" onclick="rankIrPagina(1)">1</button>`; if (desde > 2) h += `<span style="color:#555">…</span>`; }
+    for (let n = desde; n <= hasta; n++) h += `<button class="b mini ${n === rankPage ? 'verde' : ''}" onclick="rankIrPagina(${n})">${n}</button>`;
+    if (hasta < totalPag) { if (hasta < totalPag - 1) h += `<span style="color:#555">…</span>`; h += `<button class="b mini" onclick="rankIrPagina(${totalPag})">${totalPag}</button>`; }
+    h += `<button class="b mini" ${rankPage >= totalPag ? 'disabled' : ''} onclick="rankIrPagina(${rankPage + 1})">›</button>`;
+    cont.innerHTML = h;
+}
 function espectar(mode, room) {
     // Pedimos un token temporal al servidor para no exponer la admin key en la URL
     const handler = (e) => {
@@ -651,18 +714,8 @@ function render(m) {
     document.getElementById('gridOtras').innerHTML = porSeccion.otras.length
         ? '<h2 class="section">Otras salas</h2><div class="grid">' + porSeccion.otras.map(cartaSala).join('') + '</div>' : '';
 
-    let rank = '';
-    (m.ranking || []).forEach((p, i) => {
-        const kd = p.muertes > 0 ? (p.kills / p.muertes).toFixed(2) : p.kills.toFixed(0) + '.00';
-        rank += `<tr>
-            <td><span class="pos ${i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : ''} russo">${i + 1}</span></td>
-            <td><b style="color:#fff">${esc(p.name)}</b></td><td class="kills">${num(p.kills)}</td><td>${num(p.muertes)}</td><td>${kd}</td>
-            <td>${num(p.partidas)}</td><td>${fecha(p.lastSeen)}</td>
-            <td title="${esc(p.paisName || '')}"><span class="flag">${flag(p.paisCode)}</span><span style="color:#aaa; font-size:10px;">${esc(p.paisCode || '??')}</span></td>
-            <td><button class="b rojo mini" onclick="borrarRanking('${esc(p.key)}','${esc(p.name)}')">Borrar</button></td>
-        </tr>`;
-    });
-    document.getElementById('rankCuerpo').innerHTML = rank || '<tr><td colspan="9" class="vacio">Aún no hay jugadores con nombre registrados.</td></tr>';
+    rankData = m.ranking || [];
+    renderRanking();
 
     // Registro de acciones de admin, agrupado por sala
     const porSala = {};

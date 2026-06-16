@@ -495,7 +495,7 @@ function buildAdminState() {
     const ranking = Object.entries(playerStats)
         .filter(([k, p]) => p.name && p.name.trim().length > 0)
         .sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas))
-        .slice(0, 30)
+        .slice(0, 500)   // el panel pagina/busca en cliente (top 10 por página)
         .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' }; return Object.assign({}, p, { key, paisCode: g.code, paisName: g.name }); });
     // Ranking de países: JUGADORES DISTINTOS (IPs únicas) por país, no entradas
     const porPais = {};
@@ -780,6 +780,13 @@ wss.on('connection', (ws, req) => {
                     logAdmin('-', 'Borró del ranking', nombre);
                     log(`ADMIN borró del ranking: ${nombre}`);
                 }
+            } else if (msg.cmd === 'deleteRankingMany' && Array.isArray(msg.keys)) {
+                let borrados = 0;
+                for (const raw of msg.keys.slice(0, 500)) {
+                    const key = String(raw).toLowerCase();
+                    if (playerStats[key]) { delete playerStats[key]; borrados++; }
+                }
+                if (borrados) { playersDirty = true; logAdmin('-', 'Borró del ranking (lote)', borrados + ' jugadores'); log(`ADMIN borró ${borrados} jugadores del ranking`); }
             } else if (msg.cmd === 'resetQuests') {
                 const cuantos = Object.keys(questsStore).length;
                 for (const k of Object.keys(questsStore)) delete questsStore[k];
