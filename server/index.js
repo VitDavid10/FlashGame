@@ -640,6 +640,9 @@ wss.on('connection', (ws, req) => {
     ws.on('message', raw => {
         let msg; try { msg = JSON.parse(raw); } catch (e) { return; }
 
+        // Ping/pong: latencia real (RTT). Responde al instante, sin tocar la sala.
+        if (msg.t === 'ping') { if (ws.readyState === 1) ws.send(JSON.stringify({ t: 'pong', ts: msg.ts })); return; }
+
         // --- Administración ---
         if (msg.t === 'admin') {
             // Rate-limit por IP: 8 intentos fallidos / 60s → bloqueo 10 min

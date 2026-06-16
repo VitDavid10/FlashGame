@@ -71,7 +71,7 @@ function spawnBot(i) {
   let ws;
   try { ws = new WebSocket(SERVER); } catch { stats.errors++; return; }
 
-  let inputTimer = null, pingTimer = null, lastPing = 0;
+  let inputTimer = null, pingTimer = null;
   let mapSize = 4000;            // se actualiza con el welcome del servidor
   let tx = 0, ty = 0;            // objetivo actual (coordenadas del mundo)
   let counted = false;
@@ -101,14 +101,15 @@ function spawnBot(i) {
 
     pingTimer = setInterval(() => {
       if (ws.readyState !== WebSocket.OPEN) return;
-      lastPing = Date.now(); ws.send(JSON.stringify({ t: 'ping' })); stats.messagesSent++;
-    }, 5000);
+      ws.send(JSON.stringify({ t: 'ping', ts: Date.now() })); stats.messagesSent++;
+    }, 3000);
   });
 
   ws.on('message', (data) => {
     stats.messagesReceived++;
     let m; try { m = JSON.parse(data); } catch { return; }
     if (m.t === 'roomFull') { stats.rejected++; try { ws.close(); } catch {} return; }
+    if (m.t === 'pong') { if (m.ts) { stats.latencies.push(Date.now() - m.ts); if (stats.latencies.length > 200) stats.latencies.shift(); } return; }
     if (m.id) myId = m.id;   // welcome / matchStart traen mi id
     if (m.t === 'welcome' && !counted) { stats.entered++; stats.porSala[salaKey]++; counted = true; }
     if (m.mapSize) mapSize = m.mapSize;   // el welcome trae el tamaño real del mapa
@@ -127,7 +128,6 @@ function spawnBot(i) {
         }
       }
     }
-    if (lastPing) { stats.latencies.push(Date.now() - lastPing); if (stats.latencies.length > 200) stats.latencies.shift(); lastPing = 0; }
   });
 
   ws.on('close', () => {

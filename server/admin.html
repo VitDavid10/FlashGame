@@ -262,12 +262,10 @@
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <label style="font-weight:600">Frecuencia de red (snapshots):</label>
                 <select id="snapHzSel" onchange="aplicarSnapHz()" style="background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px">
-                    <option value="40">40 Hz (máx. fluidez)</option>
-                    <option value="30">30 Hz</option>
-                    <option value="25">25 Hz</option>
-                    <option value="20">20 Hz (menos carga)</option>
-                    <option value="15">15 Hz</option>
-                    <option value="10">10 Hz (mínimo)</option>
+                    <option value="40">40 Hz (1 de cada 1 tick · máx. fluidez)</option>
+                    <option value="20">20 Hz (1 de cada 2 · menos carga)</option>
+                    <option value="13">13 Hz (1 de cada 3)</option>
+                    <option value="10">10 Hz (1 de cada 4 · mínimo)</option>
                 </select>
                 <span style="color:#666; font-size: 12px;">Global, afecta a TODAS las salas al instante. Menos Hz = menos lag con mucha gente (el cliente interpola). Se reinicia al valor por defecto si reinicias el servidor.</span>
             </div>
