@@ -255,7 +255,7 @@
         <div id="tab_actividad" style="display:none">
             <h2 class="section">Acciones globales</h2>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <button class="b rojo" onclick="resetearQuests()">�?Resetear quests de todos</button>
+                <button class="b rojo" onclick="resetearQuests()">Resetear quests de todos</button>
                 <span style="color:#666; font-size: 12px;">Borra el progreso de Daily Quests de todos los jugadores. Los récords de masa del ranking NO se tocan.</span>
             </div>
             <h2 class="section">Registro de acciones</h2>
@@ -354,14 +354,14 @@ function toast(msg, kind) {
     c.appendChild(t);
     setTimeout(() => { t.style.transition = 'opacity 0.3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 3500);
 }
-// Banderita emoji a partir del código país (ej. 'ES' �?🇪🇸). LOCAL/?? �?planeta.
+// Banderita emoji a partir del código país (ej. 'ES' ->🇪🇸). LOCAL/?? ->planeta.
 function flag(code) {
     if (!code || code === 'LOCAL' || code === '??') return '🌐';
     const c = String(code).toUpperCase();
     if (c.length !== 2) return '🌐';
     return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65) + String.fromCodePoint(0x1F1E6 + c.charCodeAt(1) - 65);
 }
-function fecha(iso) { return iso ? String(iso).replace('T', ' ').slice(0, 16) : '�?; }
+function fecha(iso) { return iso ? String(iso).replace('T', ' ').slice(0, 16) : '-'; }
 
 // acciones
 function kick(id) { if (confirm('¿Expulsar a este jugador?')) { send({ cmd: 'kick', playerId: id }); toast('<strong>Jugador expulsado</strong>', 'warn'); setTimeout(pedir, 100); } }
@@ -432,7 +432,7 @@ function cartaSala(r) {
         </div>
         <div class="room-body">
             <div class="statline">
-                <span class="players-chip" onclick="togglePlayers('${id}')"><span class="pdot ${r.conectados > 0 ? 'on' : ''}"></span>${r.conectados} JUGADOR${r.conectados === 1 ? '' : 'ES'} <span style="color:#555">${expandidos.has(id) ? '�? : '�?}</span></span>
+                <span class="players-chip" onclick="togglePlayers('${id}')"><span class="pdot ${r.conectados > 0 ? 'on' : ''}"></span>${r.conectados} JUGADOR${r.conectados === 1 ? '' : 'ES'} <span style="color:#555">${expandidos.has(id) ? '&#9662;' : '&#9656;'}</span></span>
                 <span class="it">${IC.bot} ${r.bots} bots</span>
                 <span class="it">${IC.in} ${num(r.stats.entradas)} entradas</span>
                 <span class="it">${IC.skull} ${num(r.stats.muertes)}</span>
