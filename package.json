@@ -13,11 +13,9 @@
     "test:deposit": "node scripts/test-deposit.js"
   },
   "dependencies": {
+    "@solana/spl-token": "^0.4.8",
+    "@solana/web3.js": "^1.95.0",
     "tweetnacl": "^1.0.3",
     "ws": "^8.18.0"
-  },
-  "devDependencies": {
-    "@solana/spl-token": "^0.4.8",
-    "@solana/web3.js": "^1.95.0"
   }
 }
