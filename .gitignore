@@ -16,3 +16,6 @@ tasks/
 
 # Binarios descargados
 cloudflared.exe
+
+# Claves SECRETAS de Solana (NUNCA subir) — la del token de devnet
+scripts/.devnet-authority.json
