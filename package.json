@@ -7,7 +7,8 @@
     "server": "node server/index.js",
     "web": "npx -y http-server -p 8123 -c-1 .",
     "admin": "start http://localhost:8080/admin",
-    "token:devnet": "node scripts/create-devnet-token.js"
+    "token:devnet": "node scripts/create-devnet-token.js",
+    "pill:send": "node scripts/send-pill.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
