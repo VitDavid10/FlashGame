@@ -115,6 +115,8 @@
         #war-balance-display { display: none; font-family: 'Russo One'; color: #ffce3d; font-size: 14px; text-shadow: 0 0 10px rgba(255,206,61,0.3); margin-right: 10px; }
         .btn-deposit { display: none; background: transparent; color: #ffce3d; border: 1px solid #ffce3d; border-radius: 8px; padding: 8px 16px; font-family: 'Russo One'; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-right: 10px; }
         .btn-deposit:hover { background: #ffce3d; color: #1a1300; box-shadow: 0 0 18px rgba(255,206,61,0.45); }
+        .btn-withdraw { display: none; background: transparent; color: #aaa; border: 1px solid #555; border-radius: 8px; padding: 8px 16px; font-family: 'Russo One'; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-right: 10px; }
+        .btn-withdraw:hover { border-color: #fff; color: #fff; }
         
         .btn-connect {
             background: transparent; border: 1px solid var(--primary); color: var(--primary);
@@ -600,6 +602,7 @@ body.trailer-open #page-content{
             <span id="user-balance-display"></span>
             <span id="war-balance-display"></span>
             <button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()">DEPOSIT</button>
+            <button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()">WITHDRAW</button>
             <div class="dropdown">
                 <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading... ▾</span>
                 <div class="dropdown-content">
@@ -858,6 +861,19 @@ body.trailer-open #page-content{
         </div>
     </div>
 
+    <!-- WITHDRAW MODAL -->
+    <div id="withdraw-modal" class="modal-overlay">
+        <div class="modal-box">
+            <span class="modal-close" onclick="App.Withdraw.close()">×</span>
+            <div class="modal-title">Withdraw $PILL</div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In WAR</span><b id="wd-war-bal" style="color:#ffce3d">—</b></div>
+            <label class="cmodal-label">Amount</label>
+            <input id="withdraw-amount" class="cmodal-field" type="number" min="1" placeholder="amount to withdraw">
+            <button class="cmodal-btn" id="withdraw-confirm" onclick="App.Withdraw.confirm()">Withdraw to wallet</button>
+            <p style="font-size:11px;color:#666;margin-top:12px;line-height:1.5">Sends $PILL from your WAR balance back to your connected wallet.</p>
+        </div>
+    </div>
+
     <!-- MESSAGE MODAL (estilo del sitio, sustituye a alert) -->
     <div id="msg-modal" class="modal-overlay">
         <div class="modal-box">
@@ -925,6 +941,11 @@ body.trailer-open #page-content{
             depositConfirm: document.getElementById('deposit-confirm'),
             depWalletBal: document.getElementById('dep-wallet-bal'),
             depWarBal: document.getElementById('dep-war-bal'),
+            withdrawBtn: document.getElementById('withdraw-btn'),
+            withdrawModal: document.getElementById('withdraw-modal'),
+            withdrawAmount: document.getElementById('withdraw-amount'),
+            withdrawConfirm: document.getElementById('withdraw-confirm'),
+            wdWarBal: document.getElementById('wd-war-bal'),
             msgModal: document.getElementById('msg-modal'),
             msgTitle: document.getElementById('msg-title'),
             msgText: document.getElementById('msg-text'),
@@ -1155,7 +1176,7 @@ body.trailer-open #page-content{
                     else DOM.walletModal.style.display = 'flex';
                 },
                 closeModal: () => { DOM.walletModal.style.display = 'none'; },
-                connect: async (name) => {
+                connect: async (name, silent) => {
                     App.Wallet.closeModal();
                     const provider = App.Wallet.getProvider(name);
                     if (!provider) { window.open(App.Wallet.installUrl[name] || "https://phantom.app/", "_blank"); return; }
@@ -1169,15 +1190,49 @@ body.trailer-open #page-content{
                         try { await provider.signMessage(new TextEncoder().encode("Welcome to PillWars!"), "utf8"); } catch (e) {}
                         DOM.walletBtn.innerText = "DISCONNECT " + App.Wallet.address.slice(0, 4) + '...';
                         DOM.walletBtn.classList.add('btn-disconnect');
+                        try { localStorage.setItem('pw_wallet', name); } catch (e) {}
                         App.Market.fetchBalance(App.Wallet.address);
                         App.Market.fetchWar(App.Wallet.address);
                         DOM.depositBtn.style.display = 'inline-block';
-                    } catch (err) { console.error(err); App.Msg.show('Connection failed', 'Could not connect or the request was cancelled.'); }
+                        DOM.withdrawBtn.style.display = 'inline-block';
+                        App.Wallet.startAutoRefresh();
+                    } catch (err) { console.error(err); if (!silent) App.Msg.show('Connection failed', 'Could not connect or the request was cancelled.'); }
+                },
+                // Reconexión silenciosa al recargar (si ya autorizaste antes la wallet)
+                eagerConnect: async () => {
+                    let name; try { name = localStorage.getItem('pw_wallet'); } catch (e) {}
+                    if (!name) return;
+                    const provider = App.Wallet.getProvider(name);
+                    if (!provider) return;
+                    try {
+                        const resp = await provider.connect({ onlyIfTrusted: true });
+                        const pk = (resp && resp.publicKey) ? resp.publicKey : provider.publicKey;
+                        if (!pk) return;
+                        App.Wallet.address = pk.toString();
+                        App.Wallet.provider = provider;
+                        DOM.walletBtn.innerText = "DISCONNECT " + App.Wallet.address.slice(0, 4) + '...';
+                        DOM.walletBtn.classList.add('btn-disconnect');
+                        DOM.depositBtn.style.display = 'inline-block';
+                        DOM.withdrawBtn.style.display = 'inline-block';
+                        App.Market.fetchBalance(App.Wallet.address);
+                        App.Market.fetchWar(App.Wallet.address);
+                        App.Wallet.startAutoRefresh();
+                    } catch (e) { /* no estaba autorizada: el usuario tendrá que conectar a mano */ }
+                },
+                startAutoRefresh: () => {
+                    if (App.Wallet._timer) clearInterval(App.Wallet._timer);
+                    App.Wallet._timer = setInterval(() => {
+                        if (!App.Wallet.address) return;
+                        App.Market.fetchBalance(App.Wallet.address);
+                        App.Market.fetchWar(App.Wallet.address);
+                    }, 12000);
                 },
                 // Compatibilidad con el onclick antiguo
                 connectPhantom: () => App.Wallet.connect('phantom'),
                 disconnect: () => {
                     try { if (App.Wallet.provider && App.Wallet.provider.disconnect) App.Wallet.provider.disconnect(); } catch (e) {}
+                    if (App.Wallet._timer) { clearInterval(App.Wallet._timer); App.Wallet._timer = null; }
+                    try { localStorage.removeItem('pw_wallet'); } catch (e) {}
                     App.Wallet.address = null;
                     App.Wallet.provider = null;
                     DOM.walletBtn.innerText = "CONNECT WALLET";
@@ -1185,6 +1240,7 @@ body.trailer-open #page-content{
                     DOM.balanceDisplay.style.display = 'none';
                     DOM.warDisplay.style.display = 'none';
                     DOM.depositBtn.style.display = 'none';
+                    DOM.withdrawBtn.style.display = 'none';
                 }
             },
 
@@ -1222,6 +1278,34 @@ body.trailer-open #page-content{
                         App.Msg.show('Deposit failed', (e.message || String(e)).slice(0, 140));
                     }
                     DOM.depositConfirm.disabled = false; DOM.depositConfirm.innerText = old;
+                }
+            },
+
+            // Retiro de $PILL del saldo WAR de vuelta a la wallet
+            Withdraw: {
+                open: () => {
+                    if (!App.Wallet.address) { DOM.walletModal.style.display = 'flex'; return; }
+                    DOM.wdWarBal.innerText = DOM.warDisplay.innerText.replace('WAR: ', '') || '—';
+                    DOM.withdrawModal.style.display = 'flex';
+                    App.Market.fetchWar(App.Wallet.address);
+                },
+                close: () => { DOM.withdrawModal.style.display = 'none'; },
+                confirm: async () => {
+                    const w = App.Wallet.address;
+                    if (!w) return;
+                    const amt = Math.max(1, parseInt(DOM.withdrawAmount.value, 10) || 0);
+                    DOM.withdrawConfirm.disabled = true; const old = DOM.withdrawConfirm.innerText; DOM.withdrawConfirm.innerText = 'Withdrawing...';
+                    try {
+                        const r = await (await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: w, amount: amt }) })).json();
+                        if (!r.ok) throw new Error(r.reason || 'withdraw failed');
+                        App.Withdraw.close();
+                        App.Market.fetchBalance(w); App.Market.fetchWar(w);
+                        App.Msg.show('Withdraw complete', amt.toLocaleString('en-US') + ' $PILL sent back to your wallet.');
+                    } catch (e) {
+                        console.error(e);
+                        App.Msg.show('Withdraw failed', (e.message || String(e)).slice(0, 140));
+                    }
+                    DOM.withdrawConfirm.disabled = false; DOM.withdrawConfirm.innerText = old;
                 }
             },
 
@@ -1370,6 +1454,7 @@ function toggleTrailerMode() {
         window.App = App;   // exponer App para el módulo ESM de blockchain (PillChain)
         App.UI.init();
         App.Market.updateTicker();
+        App.Wallet.eagerConnect();   // reconectar la wallet si ya estaba autorizada
         setInterval(App.Market.updateTicker, 30000);
 
         // DAILY QUESTS: identidad anónima (UUID en localStorage) + progreso desde el servidor

@@ -71,4 +71,29 @@ async function verifyDeposit({ sig, fromOwner, minPill }) {
     return { ok: true, amount: Number(treasuryDelta) / 10 ** DECIMALS };
 }
 
-module.exports = { verifyDeposit, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };
+// --- Retiro: envía PILL del treasury de vuelta a la wallet del jugador ---
+// Requiere la keypair de la autoridad (treasury) en el servidor.
+let _authority = null;
+function loadAuthority() {
+    if (_authority) return _authority;
+    const f = path.join(__dirname, '..', 'scripts', '.devnet-authority.json');
+    if (!fs.existsSync(f)) throw new Error('clave del treasury no disponible en el servidor');
+    const { Keypair } = require('@solana/web3.js');
+    _authority = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(f, 'utf8'))));
+    return _authority;
+}
+function canWithdraw() { try { loadAuthority(); return true; } catch (e) { return false; } }
+
+async function withdraw(toWallet, pill) {
+    const { Connection, PublicKey } = require('@solana/web3.js');
+    const { getOrCreateAssociatedTokenAccount, transfer } = require('@solana/spl-token');
+    const auth = loadAuthority();
+    const conn = new Connection(RPC, 'confirmed');
+    const mint = new PublicKey(MINT);
+    const fromAta = await getOrCreateAssociatedTokenAccount(conn, auth, mint, auth.publicKey);
+    const toAta = await getOrCreateAssociatedTokenAccount(conn, auth, mint, new PublicKey(toWallet));
+    const sig = await transfer(conn, auth, fromAta.address, toAta.address, auth, pillToRaw(pill));
+    return sig;
+}
+
+module.exports = { verifyDeposit, withdraw, canWithdraw, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };

@@ -599,6 +599,33 @@ const httpServer = http.createServer(async (req, res) => {
         });
         return;
     }
+    // --- Retiro: descuenta del saldo WAR y envía PILL del treasury a la wallet ---
+    if (urlPath === '/api/withdraw' && req.method === 'POST') {
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
+            const wallet = String(p.wallet || ''), amount = Math.floor(Number(p.amount) || 0);
+            if (!isSolAddr(wallet) || amount <= 0) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+            if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'retiros no disponibles (servidor sin clave del treasury)' })); return; }
+            if (warbank.getBalance(wallet) < amount) { res.end(JSON.stringify({ ok: false, reason: 'saldo WAR insuficiente' })); return; }
+            // Descontamos ANTES de enviar (evita doble retiro); si falla on-chain, devolvemos.
+            warbank.debit(wallet, amount);
+            try {
+                const sig = await solana.withdraw(wallet, amount);
+                const saldo = warbank.getBalance(wallet);
+                logAdmin('-', 'Retiro $PILL', wallet.slice(0, 6) + '… -' + amount);
+                log(`Retiro: ${wallet.slice(0, 6)}… -${amount} PILL → saldo ${saldo} (tx ${sig.slice(0, 8)}…)`);
+                res.end(JSON.stringify({ ok: true, withdrawn: amount, warBalance: saldo, sig }));
+            } catch (e) {
+                warbank.credit(wallet, amount);   // refund del saldo WAR si el envío falló
+                log(`Retiro FALLÓ (${wallet.slice(0, 6)}…): ${e.message} — saldo devuelto`);
+                res.end(JSON.stringify({ ok: false, reason: 'envío on-chain falló: ' + e.message }));
+            }
+        });
+        return;
+    }
 
     // Endpoint público del ranking (para "Global Elite" en la web). Ordena por bestMass.
     if (urlPath === '/ranking.json' || urlPath === '/api/ranking') {
