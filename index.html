@@ -1407,11 +1407,10 @@ function toggleTrailerMode() {
             }
             function renderPag(totalPag) {
                 if (totalPag <= 1) { pagEl.innerHTML = ''; return; }
+                // Mostramos SIEMPRE todas las páginas: así las flechas y los números no
+                // se mueven al navegar (solo cambia el resaltado de la página activa).
                 let h = `<button ${lbPage <= 1 ? 'disabled' : ''} onclick="lbGoto(${lbPage - 1})">‹</button>`;
-                const win = 2, desde = Math.max(1, lbPage - win), hasta = Math.min(totalPag, lbPage + win);
-                if (desde > 1) { h += `<button onclick="lbGoto(1)">1</button>`; if (desde > 2) h += `<span>…</span>`; }
-                for (let n = desde; n <= hasta; n++) h += `<button class="${n === lbPage ? 'active' : ''}" onclick="lbGoto(${n})">${n}</button>`;
-                if (hasta < totalPag) { if (hasta < totalPag - 1) h += `<span>…</span>`; h += `<button onclick="lbGoto(${totalPag})">${totalPag}</button>`; }
+                for (let n = 1; n <= totalPag; n++) h += `<button class="${n === lbPage ? 'active' : ''}" onclick="lbGoto(${n})">${n}</button>`;
                 h += `<button ${lbPage >= totalPag ? 'disabled' : ''} onclick="lbGoto(${lbPage + 1})">›</button>`;
                 pagEl.innerHTML = h;
             }
