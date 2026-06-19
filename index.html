@@ -1294,9 +1294,16 @@ body.trailer-open #page-content{
                     const w = App.Wallet.address;
                     if (!w) return;
                     const amt = Math.max(1, parseInt(DOM.withdrawAmount.value, 10) || 0);
-                    DOM.withdrawConfirm.disabled = true; const old = DOM.withdrawConfirm.innerText; DOM.withdrawConfirm.innerText = 'Withdrawing...';
+                    DOM.withdrawConfirm.disabled = true; const old = DOM.withdrawConfirm.innerText; DOM.withdrawConfirm.innerText = 'Sign in wallet...';
                     try {
-                        const r = await (await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: w, amount: amt }) })).json();
+                        // Firmar el retiro con la wallet (autoriza; prueba que eres el dueño)
+                        const ts = Date.now();
+                        const message = `PillWars withdraw ${amt} PILL @ ${ts}`;
+                        const res = await App.Wallet.provider.signMessage(new TextEncoder().encode(message), 'utf8');
+                        const sigBytes = res && res.signature ? res.signature : res;
+                        const signature = Array.from(sigBytes);
+                        DOM.withdrawConfirm.innerText = 'Withdrawing...';
+                        const r = await (await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: w, amount: amt, ts, message, signature }) })).json();
                         if (!r.ok) throw new Error(r.reason || 'withdraw failed');
                         App.Withdraw.close();
                         App.Market.fetchBalance(w); App.Market.fetchWar(w);

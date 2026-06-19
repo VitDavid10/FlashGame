@@ -607,9 +607,18 @@ const httpServer = http.createServer(async (req, res) => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
             let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
             const wallet = String(p.wallet || ''), amount = Math.floor(Number(p.amount) || 0);
+            const ts = Number(p.ts) || 0, message = String(p.message || ''), signature = p.signature;
             if (!isSolAddr(wallet) || amount <= 0) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+            // El jugador debe FIRMAR el retiro con su wallet (prueba que es el dueño).
+            const expected = `PillWars withdraw ${amount} PILL @ ${ts}`;
+            if (message !== expected) { res.end(JSON.stringify({ ok: false, reason: 'mensaje inválido' })); return; }
+            if (Math.abs(Date.now() - ts) > 120000) { res.end(JSON.stringify({ ok: false, reason: 'firma caducada, reintenta' })); return; }
+            const sigKey = 'wd_' + (Array.isArray(signature) ? signature.join('') : '');
+            if (warbank.sigUsed(sigKey)) { res.end(JSON.stringify({ ok: false, reason: 'firma ya usada' })); return; }
+            if (!solana.verifySignedMessage(wallet, message, signature)) { res.end(JSON.stringify({ ok: false, reason: 'firma no válida' })); return; }
             if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'retiros no disponibles (servidor sin clave del treasury)' })); return; }
             if (warbank.getBalance(wallet) < amount) { res.end(JSON.stringify({ ok: false, reason: 'saldo WAR insuficiente' })); return; }
+            warbank.creditDeposit(wallet, 0, sigKey);   // marca la firma como usada (anti-replay)
             // Descontamos ANTES de enviar (evita doble retiro); si falla on-chain, devolvemos.
             warbank.debit(wallet, amount);
             try {

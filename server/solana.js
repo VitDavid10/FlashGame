@@ -102,4 +102,17 @@ async function withdraw(toWallet, pill) {
     return sig;
 }
 
-module.exports = { verifyDeposit, withdraw, canWithdraw, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };
+// Verifica que `signature` es una firma válida de `message` hecha por `wallet`.
+// (El jugador firma un mensaje con su wallet para AUTORIZAR el retiro; prueba que es el dueño.)
+function verifySignedMessage(wallet, message, signatureArr) {
+    try {
+        const nacl = require('tweetnacl');
+        const { PublicKey } = require('@solana/web3.js');
+        const pub = new PublicKey(wallet).toBytes();
+        const sig = Uint8Array.from(signatureArr);
+        const msg = new TextEncoder().encode(message);
+        return nacl.sign.detached.verify(msg, sig, pub);
+    } catch (e) { return false; }
+}
+
+module.exports = { verifyDeposit, withdraw, canWithdraw, verifySignedMessage, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };
