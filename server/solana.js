@@ -76,9 +76,15 @@ async function verifyDeposit({ sig, fromOwner, minPill }) {
 let _authority = null;
 function loadAuthority() {
     if (_authority) return _authority;
+    const { Keypair } = require('@solana/web3.js');
+    // 1) Por variable de entorno (recomendado en el VPS, no se sube a git): TREASURY_SECRET=[1,2,3,...]
+    if (process.env.TREASURY_SECRET) {
+        _authority = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.TREASURY_SECRET)));
+        return _authority;
+    }
+    // 2) Por archivo local (en tu PC): scripts/.devnet-authority.json
     const f = path.join(__dirname, '..', 'scripts', '.devnet-authority.json');
     if (!fs.existsSync(f)) throw new Error('clave del treasury no disponible en el servidor');
-    const { Keypair } = require('@solana/web3.js');
     _authority = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(f, 'utf8'))));
     return _authority;
 }
