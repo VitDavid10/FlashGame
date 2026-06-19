@@ -921,7 +921,7 @@ body.trailer-open #page-content{
         const App = {
             // DEVNET (fase de pruebas blockchain). Token $PILL de prueba creado con
             // scripts/create-devnet-token.js. Cambiar a mainnet + mint real al lanzar.
-            Config: { Token: "Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r", RPC: "https://api.devnet.solana.com", Cluster: "devnet" },
+            Config: { Token: "Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r", RPC: "https://api.devnet.solana.com", Cluster: "devnet", Treasury: "4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN", Decimals: 6 },
             isTouch: false,
 
             UI: {
@@ -1279,6 +1279,7 @@ function toggleTrailerMode() {
 }
 
 
+        window.App = App;   // exponer App para el módulo ESM de blockchain (PillChain)
         App.UI.init();
         App.Market.updateTicker();
         setInterval(App.Market.updateTicker, 30000);
@@ -1478,6 +1479,70 @@ function toggleTrailerMode() {
             // Cerrar con la tecla Escape
             document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeContact(); });
         })();
+    </script>
+
+    <!-- Depósito de entrada $PILL (Solana). Módulo ESM: construye y firma el transfer
+         al treasury con la wallet conectada. Base de las salas de pago (Fase B2). -->
+    <script type="module">
+        import { Connection, PublicKey, Transaction } from 'https://esm.sh/@solana/web3.js@1.95.3';
+        import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount }
+            from 'https://esm.sh/@solana/spl-token@0.4.8?deps=@solana/web3.js@1.95.3';
+
+        const C = () => window.App.Config;
+
+        // Deposita `entryPill` PILL al treasury, firmando con la wallet conectada.
+        // Devuelve la firma de la transacción. Lanza si algo falla.
+        async function deposit(entryPill) {
+            const W = window.App.Wallet;
+            if (!W.address || !W.provider) throw new Error('Connect your wallet first');
+            const conn = new Connection(C().RPC, 'confirmed');
+            const owner = new PublicKey(W.address);
+            const mint = new PublicKey(C().Token);
+            const treasuryOwner = new PublicKey(C().Treasury);
+            const raw = BigInt(Math.round(entryPill)) * (10n ** BigInt(C().Decimals));
+
+            const fromAta = await getAssociatedTokenAddress(mint, owner);
+            const toAta = await getAssociatedTokenAddress(mint, treasuryOwner);
+
+            const tx = new Transaction();
+            // Si el treasury aún no tiene su cuenta de PILL, la crea (la paga el jugador).
+            try { await getAccount(conn, toAta); }
+            catch (e) { tx.add(createAssociatedTokenAccountInstruction(owner, toAta, treasuryOwner, mint)); }
+            tx.add(createTransferInstruction(fromAta, toAta, owner, raw));
+            tx.feePayer = owner;
+            tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
+
+            let signature;
+            if (W.provider.signAndSendTransaction) {
+                const res = await W.provider.signAndSendTransaction(tx);
+                signature = res.signature || res;
+            } else {
+                const signed = await W.provider.signTransaction(tx);
+                signature = await conn.sendRawTransaction(signed.serialize());
+            }
+            await conn.confirmTransaction(signature, 'confirmed');
+            return signature;
+        }
+
+        window.PillChain = { deposit };
+
+        // Botón de prueba SOLO en devnet: deposita 50.000 PILL al treasury.
+        if (C().Cluster === 'devnet') {
+            const b = document.createElement('button');
+            b.textContent = 'DEV: Deposit 50k $PILL';
+            b.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:9999;background:#111;color:#00ff88;border:1px solid #00ff88;border-radius:8px;padding:10px 14px;font-family:monospace;font-size:12px;cursor:pointer;box-shadow:0 0 14px rgba(0,255,136,0.3)';
+            b.onclick = async () => {
+                if (!window.App.Wallet.address) { alert('Connect your wallet first (Devnet).'); return; }
+                b.disabled = true; const old = b.textContent; b.textContent = 'Depositing...';
+                try {
+                    const sig = await deposit(50000);
+                    alert('✅ Deposit OK\nTx: ' + sig + '\n\nExplorer:\nhttps://explorer.solana.com/tx/' + sig + '?cluster=devnet');
+                    window.App.Market.fetchBalance(window.App.Wallet.address);
+                } catch (e) { console.error(e); alert('❌ Deposit failed: ' + (e.message || e)); }
+                b.disabled = false; b.textContent = old;
+            };
+            document.body.appendChild(b);
+        }
     </script>
 </body>
 </html>
