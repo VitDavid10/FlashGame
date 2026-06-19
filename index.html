@@ -1524,24 +1524,53 @@ function toggleTrailerMode() {
             return signature;
         }
 
-        window.PillChain = { deposit };
+        // Lee el saldo WAR (PILL depositado en el juego) del servidor.
+        async function getWarBalance(wallet) {
+            try { const r = await fetch('/api/warbalance?wallet=' + wallet); return (await r.json()).pill || 0; } catch (e) { return 0; }
+        }
+        // Pide al servidor que verifique el depósito on-chain y lo acredite al saldo WAR.
+        async function creditDeposit(wallet, sig) {
+            const r = await fetch('/api/deposit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet, sig }) });
+            return r.json();
+        }
+        window.PillChain = { deposit, getWarBalance, creditDeposit };
 
-        // Botón de prueba SOLO en devnet: deposita 50.000 PILL al treasury.
+        // Panel de wallet/depósito (por ahora solo en devnet, para pruebas).
         if (C().Cluster === 'devnet') {
-            const b = document.createElement('button');
-            b.textContent = 'DEV: Deposit 50k $PILL';
-            b.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:9999;background:#111;color:#00ff88;border:1px solid #00ff88;border-radius:8px;padding:10px 14px;font-family:monospace;font-size:12px;cursor:pointer;box-shadow:0 0 14px rgba(0,255,136,0.3)';
-            b.onclick = async () => {
-                if (!window.App.Wallet.address) { alert('Connect your wallet first (Devnet).'); return; }
-                b.disabled = true; const old = b.textContent; b.textContent = 'Depositing...';
+            const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+            const panel = document.createElement('div');
+            panel.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:9999;background:#0b0b0b;border:1px solid #00ff88;border-radius:10px;padding:12px 14px;font-family:monospace;font-size:12px;color:#cfcfcf;box-shadow:0 0 18px rgba(0,255,136,0.25);width:230px';
+            panel.innerHTML =
+                '<div style="color:#00ff88;font-weight:bold;letter-spacing:1px;margin-bottom:8px">PILL WALLET · DEVNET</div>' +
+                '<div style="display:flex;justify-content:space-between;margin-bottom:4px">In WAR: <b id="war-bal" style="color:#fff">—</b></div>' +
+                '<div style="display:flex;gap:6px;margin-top:8px">' +
+                '  <input id="dep-amt" type="number" value="50000" min="1" style="flex:1;width:60px;background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:6px">' +
+                '  <button id="dep-btn" style="background:transparent;color:#00ff88;border:1px solid #00ff88;border-radius:6px;padding:6px 10px;cursor:pointer">Deposit</button>' +
+                '</div>';
+            document.body.appendChild(panel);
+            const warEl = panel.querySelector('#war-bal'), depBtn = panel.querySelector('#dep-btn'), depAmt = panel.querySelector('#dep-amt');
+
+            async function refreshWar() {
+                const w = window.App.Wallet.address;
+                warEl.textContent = w ? (fmt(await getWarBalance(w)) + ' $PILL') : 'connect wallet';
+            }
+            refreshWar();
+            setInterval(refreshWar, 5000);
+
+            depBtn.onclick = async () => {
+                const w = window.App.Wallet.address;
+                if (!w) { alert('Connect your wallet first (Devnet).'); return; }
+                const amt = Math.max(1, parseInt(depAmt.value, 10) || 0);
+                depBtn.disabled = true; const old = depBtn.textContent; depBtn.textContent = '...';
                 try {
-                    const sig = await deposit(50000);
-                    alert('✅ Deposit OK\nTx: ' + sig + '\n\nExplorer:\nhttps://explorer.solana.com/tx/' + sig + '?cluster=devnet');
-                    window.App.Market.fetchBalance(window.App.Wallet.address);
+                    const sig = await deposit(amt);                 // 1) firma + envía on-chain
+                    const r = await creditDeposit(w, sig);          // 2) el servidor verifica y acredita
+                    if (!r.ok) throw new Error(r.reason || 'verify failed');
+                    alert('✅ Deposited ' + fmt(amt) + ' $PILL\nWAR balance: ' + fmt(r.warBalance) + '\n\nTx: ' + sig);
+                    window.App.Market.fetchBalance(w); refreshWar();
                 } catch (e) { console.error(e); alert('❌ Deposit failed: ' + (e.message || e)); }
-                b.disabled = false; b.textContent = old;
+                depBtn.disabled = false; depBtn.textContent = old;
             };
-            document.body.appendChild(b);
         }
     </script>
 </body>

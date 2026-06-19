@@ -31,6 +31,8 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { WebSocketServer } = require('ws');
 const PillSim = require('../shared/sim.js');
+const solana = require('./solana.js');     // verificación de depósitos $PILL
+const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
@@ -564,9 +566,40 @@ function applySecurityHeaders(res) {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 }
-const httpServer = http.createServer((req, res) => {
+function isSolAddr(s) { return typeof s === 'string' && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s); }
+
+const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+    const query = new URLSearchParams((req.url || '').split('?')[1] || '');
+
+    // --- Saldo WAR (PILL depositado en el juego) ---
+    if (urlPath === '/api/warbalance') {
+        const wallet = String(query.get('wallet') || '');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ pill: isSolAddr(wallet) ? warbank.getBalance(wallet) : 0 }));
+        return;
+    }
+    // --- Acreditar un depósito: el cliente manda {wallet, sig}; verificamos on-chain y acreditamos ---
+    if (urlPath === '/api/deposit' && req.method === 'POST') {
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
+            const wallet = String(p.wallet || ''), sig = String(p.sig || '');
+            if (!isSolAddr(wallet) || !sig) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+            if (warbank.sigUsed(sig)) { res.end(JSON.stringify({ ok: false, reason: 'depósito ya acreditado' })); return; }
+            const v = await solana.verifyDeposit({ sig, fromOwner: wallet, minPill: 1 });
+            if (!v.ok) { res.end(JSON.stringify({ ok: false, reason: v.reason || 'no verificado' })); return; }
+            const saldo = warbank.creditDeposit(wallet, v.amount, sig);
+            logAdmin('-', 'Depósito $PILL', wallet.slice(0, 6) + '… +' + v.amount);
+            log(`Depósito acreditado: ${wallet.slice(0, 6)}… +${v.amount} PILL → saldo ${saldo}`);
+            res.end(JSON.stringify({ ok: true, credited: v.amount, warBalance: saldo }));
+        });
+        return;
+    }
+
     // Endpoint público del ranking (para "Global Elite" en la web). Ordena por bestMass.
     if (urlPath === '/ranking.json' || urlPath === '/api/ranking') {
         const top = Object.entries(playerStats)
