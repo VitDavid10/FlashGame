@@ -831,11 +831,11 @@ body.trailer-open #page-content{
         <div class="modal-box">
             <span class="modal-close" onclick="App.Wallet.closeModal()">×</span>
             <div class="modal-title">Connect Wallet</div>
-            <div class="wallet-option" onclick="App.Wallet.connectPhantom()">
+            <div class="wallet-option" onclick="App.Wallet.connect('phantom')">
                 <img src="https://i.imgur.com/esN0veD.png" alt="Phantom"><span>Phantom</span>
             </div>
-            <div class="wallet-option"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="Backpack"><span>Backpack (Soon)</span></div>
-            <div class="wallet-option"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="Solflare"><span>Solflare (Soon)</span></div>
+            <div class="wallet-option" onclick="App.Wallet.connect('backpack')"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="Backpack"><span>Backpack</span></div>
+            <div class="wallet-option" onclick="App.Wallet.connect('solflare')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="Solflare"><span>Solflare</span></div>
         </div>
     </div>
 
@@ -919,8 +919,9 @@ body.trailer-open #page-content{
         };
 
         const App = {
-            // RPC PUBLICNODE (MAS ESTABLE QUE OFICIAL PARA WEBS)
-            Config: { Token: "NOT LIVE", RPC: "https://solana-rpc.publicnode.com" },
+            // DEVNET (fase de pruebas blockchain). Token $PILL de prueba creado con
+            // scripts/create-devnet-token.js. Cambiar a mainnet + mint real al lanzar.
+            Config: { Token: "Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r", RPC: "https://api.devnet.solana.com", Cluster: "devnet" },
             isTouch: false,
 
             UI: {
@@ -1101,29 +1102,44 @@ body.trailer-open #page-content{
 
             Wallet: {
                 address: null,
+                provider: null,
+                // Webs de cada wallet por si no está instalada
+                installUrl: { phantom: "https://phantom.app/", solflare: "https://solflare.com/", backpack: "https://backpack.app/" },
+                // Localiza el proveedor inyectado de cada wallet (multi-wallet sin React)
+                getProvider: (name) => {
+                    if (name === 'phantom') return (window.phantom && window.phantom.solana) || (window.solana && window.solana.isPhantom ? window.solana : null);
+                    if (name === 'solflare') return window.solflare || null;
+                    if (name === 'backpack') return (window.backpack) || (window.xnft && window.xnft.solana) || null;
+                    return null;
+                },
                 toggle: () => {
                     if (App.Wallet.address) App.Wallet.disconnect();
                     else DOM.walletModal.style.display = 'flex';
                 },
                 closeModal: () => { DOM.walletModal.style.display = 'none'; },
-                connectPhantom: async () => {
+                connect: async (name) => {
                     App.Wallet.closeModal();
-                    if ("solana" in window) {
-                        try {
-                            const resp = await window.solana.connect();
-                            App.Wallet.address = resp.publicKey.toString();
-                            await window.solana.signMessage(new TextEncoder().encode("Welcome to PillWars!"), "utf8");
-                            DOM.walletBtn.innerText = "DISCONNECT " + App.Wallet.address.slice(0, 4) + '...';
-                            DOM.walletBtn.classList.add('btn-disconnect');
-                            App.Market.fetchBalance(App.Wallet.address);
-                        } catch (err) { console.error(err); alert("Connection failed or cancelled."); }
-                    } else { 
-                        window.open("https://phantom.app/", "_blank"); 
-                    }
+                    const provider = App.Wallet.getProvider(name);
+                    if (!provider) { window.open(App.Wallet.installUrl[name] || "https://phantom.app/", "_blank"); return; }
+                    try {
+                        const resp = await provider.connect();
+                        const pk = (resp && resp.publicKey) ? resp.publicKey : provider.publicKey;
+                        if (!pk) throw new Error("No public key");
+                        App.Wallet.address = pk.toString();
+                        App.Wallet.provider = provider;
+                        // Firma de bienvenida (opcional: algunas wallets no la soportan igual)
+                        try { await provider.signMessage(new TextEncoder().encode("Welcome to PillWars!"), "utf8"); } catch (e) {}
+                        DOM.walletBtn.innerText = "DISCONNECT " + App.Wallet.address.slice(0, 4) + '...';
+                        DOM.walletBtn.classList.add('btn-disconnect');
+                        App.Market.fetchBalance(App.Wallet.address);
+                    } catch (err) { console.error(err); alert("Connection failed or cancelled."); }
                 },
+                // Compatibilidad con el onclick antiguo
+                connectPhantom: () => App.Wallet.connect('phantom'),
                 disconnect: () => {
-                    if("solana" in window) window.solana.disconnect();
+                    try { if (App.Wallet.provider && App.Wallet.provider.disconnect) App.Wallet.provider.disconnect(); } catch (e) {}
                     App.Wallet.address = null;
+                    App.Wallet.provider = null;
                     DOM.walletBtn.innerText = "CONNECT WALLET";
                     DOM.walletBtn.classList.remove('btn-disconnect');
                     DOM.balanceDisplay.style.display = 'none';
@@ -1176,6 +1192,11 @@ body.trailer-open #page-content{
                     }
                 },
                 updateTicker: async () => {
+                    // En devnet no hay mercado (DexScreener es de mainnet): mostramos etiqueta y salimos.
+                    if (App.Config.Cluster === 'devnet') {
+                        if (DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span> &nbsp; DEVNET ▾`;
+                        return;
+                    }
                     try {
                         const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${App.Config.Token}`);
                         const data = await res.json();
