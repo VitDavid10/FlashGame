@@ -1,0 +1,10 @@
+{
+  "cluster": "devnet",
+  "rpc": "https://api.devnet.solana.com",
+  "mint": "Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r",
+  "decimals": 6,
+  "supply": "1000000000",
+  "authority": "4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN",
+  "authorityTokenAccount": "6c7TxTBqj3rdW9VvMB5X93wNnesVYonTUPJy9E2S8vcv",
+  "createdAt": "2026-06-19T10:00:44.690Z"
+}
