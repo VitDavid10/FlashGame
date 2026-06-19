@@ -112,6 +112,9 @@
         .dd-icon { width: 18px; height: 18px; border-radius: 50%; }
 
         #user-balance-display { display: none; font-family: 'Russo One'; color: var(--primary); font-size: 14px; text-shadow: 0 0 10px rgba(0,255,136,0.3); margin-right: 10px; }
+        #war-balance-display { display: none; font-family: 'Russo One'; color: #ffce3d; font-size: 14px; text-shadow: 0 0 10px rgba(255,206,61,0.3); margin-right: 10px; }
+        .btn-deposit { display: none; background: transparent; color: #ffce3d; border: 1px solid #ffce3d; border-radius: 8px; padding: 8px 16px; font-family: 'Russo One'; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-right: 10px; }
+        .btn-deposit:hover { background: #ffce3d; color: #1a1300; box-shadow: 0 0 18px rgba(255,206,61,0.45); }
         
         .btn-connect {
             background: transparent; border: 1px solid var(--primary); color: var(--primary);
@@ -595,6 +598,8 @@ body.trailer-open #page-content{
                 </svg>
             </a>
             <span id="user-balance-display"></span>
+            <span id="war-balance-display"></span>
+            <button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()">DEPOSIT</button>
             <div class="dropdown">
                 <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading... ▾</span>
                 <div class="dropdown-content">
@@ -839,6 +844,29 @@ body.trailer-open #page-content{
         </div>
     </div>
 
+    <!-- DEPOSIT MODAL -->
+    <div id="deposit-modal" class="modal-overlay">
+        <div class="modal-box">
+            <span class="modal-close" onclick="App.Deposit.close()">×</span>
+            <div class="modal-title">Deposit $PILL</div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:4px"><span>In wallet</span><b id="dep-wallet-bal" style="color:var(--primary)">—</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In WAR</span><b id="dep-war-bal" style="color:#ffce3d">—</b></div>
+            <label class="cmodal-label">Amount</label>
+            <input id="deposit-amount" class="cmodal-field" type="number" min="1" placeholder="e.g. 50000" value="50000">
+            <button class="cmodal-btn" id="deposit-confirm" onclick="App.Deposit.confirm()">Deposit to WAR</button>
+            <p style="font-size:11px;color:#666;margin-top:12px;line-height:1.5">You'll sign one transaction. The amount moves to your in-game WAR balance, used to enter paid rooms.</p>
+        </div>
+    </div>
+
+    <!-- MESSAGE MODAL (estilo del sitio, sustituye a alert) -->
+    <div id="msg-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title" id="msg-title">Notice</div>
+            <p id="msg-text" style="color:#ccc;font-size:14px;line-height:1.6;margin-bottom:22px"></p>
+            <button class="cmodal-btn" onclick="App.Msg.close()">OK</button>
+        </div>
+    </div>
+
     <!-- MODAL DE CONTACTO -->
     <div id="contact-modal" class="modal-overlay" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);" onclick="if(event.target===this) closeContact()">
         <div class="modal-box">
@@ -890,6 +918,16 @@ body.trailer-open #page-content{
             walletBtn: document.getElementById('wallet-btn'),
             footer: document.getElementById('main-footer'),
             balanceDisplay: document.getElementById('user-balance-display'),
+            warDisplay: document.getElementById('war-balance-display'),
+            depositBtn: document.getElementById('deposit-btn'),
+            depositModal: document.getElementById('deposit-modal'),
+            depositAmount: document.getElementById('deposit-amount'),
+            depositConfirm: document.getElementById('deposit-confirm'),
+            depWalletBal: document.getElementById('dep-wallet-bal'),
+            depWarBal: document.getElementById('dep-war-bal'),
+            msgModal: document.getElementById('msg-modal'),
+            msgTitle: document.getElementById('msg-title'),
+            msgText: document.getElementById('msg-text'),
             ticker: document.querySelector('.ticker'),
             tickerWrap: document.getElementById('ticker-wrap'),
             navbar: document.getElementById('main-navbar'),
@@ -1132,7 +1170,9 @@ body.trailer-open #page-content{
                         DOM.walletBtn.innerText = "DISCONNECT " + App.Wallet.address.slice(0, 4) + '...';
                         DOM.walletBtn.classList.add('btn-disconnect');
                         App.Market.fetchBalance(App.Wallet.address);
-                    } catch (err) { console.error(err); alert("Connection failed or cancelled."); }
+                        App.Market.fetchWar(App.Wallet.address);
+                        DOM.depositBtn.style.display = 'inline-block';
+                    } catch (err) { console.error(err); App.Msg.show('Connection failed', 'Could not connect or the request was cancelled.'); }
                 },
                 // Compatibilidad con el onclick antiguo
                 connectPhantom: () => App.Wallet.connect('phantom'),
@@ -1143,10 +1183,58 @@ body.trailer-open #page-content{
                     DOM.walletBtn.innerText = "CONNECT WALLET";
                     DOM.walletBtn.classList.remove('btn-disconnect');
                     DOM.balanceDisplay.style.display = 'none';
+                    DOM.warDisplay.style.display = 'none';
+                    DOM.depositBtn.style.display = 'none';
+                }
+            },
+
+            // Aviso con el estilo del sitio (sustituye a alert)
+            Msg: {
+                show: (title, text) => { DOM.msgTitle.innerText = title || 'Notice'; DOM.msgText.innerText = text || ''; DOM.msgModal.style.display = 'flex'; },
+                close: () => { DOM.msgModal.style.display = 'none'; }
+            },
+
+            // Depósito de $PILL al saldo WAR (modal con estilo del sitio)
+            Deposit: {
+                open: () => {
+                    if (!App.Wallet.address) { DOM.walletModal.style.display = 'flex'; return; }
+                    DOM.depWalletBal.innerText = DOM.balanceDisplay.innerText || '—';
+                    DOM.depWarBal.innerText = DOM.warDisplay.innerText || '—';
+                    DOM.depositModal.style.display = 'flex';
+                    App.Market.fetchWar(App.Wallet.address);
+                },
+                close: () => { DOM.depositModal.style.display = 'none'; },
+                confirm: async () => {
+                    const w = App.Wallet.address;
+                    if (!w) return;
+                    const amt = Math.max(1, parseInt(DOM.depositAmount.value, 10) || 0);
+                    if (!window.PillChain) { App.Msg.show('Please wait', 'Wallet module still loading, try again in a moment.'); return; }
+                    DOM.depositConfirm.disabled = true; const old = DOM.depositConfirm.innerText; DOM.depositConfirm.innerText = 'Depositing...';
+                    try {
+                        const sig = await window.PillChain.deposit(amt);
+                        const r = await window.PillChain.creditDeposit(w, sig);
+                        if (!r.ok) throw new Error(r.reason || 'verification failed');
+                        App.Deposit.close();
+                        App.Market.fetchBalance(w); App.Market.fetchWar(w);
+                        App.Msg.show('Deposit complete', amt.toLocaleString('en-US') + ' $PILL added to your WAR balance.');
+                    } catch (e) {
+                        console.error(e);
+                        App.Msg.show('Deposit failed', (e.message || String(e)).slice(0, 140));
+                    }
+                    DOM.depositConfirm.disabled = false; DOM.depositConfirm.innerText = old;
                 }
             },
 
             Market: {
+                fetchWar: async (wallet) => {
+                    if (!window.PillChain || !wallet) return;
+                    try {
+                        const pill = await window.PillChain.getWarBalance(wallet);
+                        DOM.warDisplay.innerText = 'WAR: ' + Number(pill).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' $PILL';
+                        DOM.warDisplay.style.display = 'inline-block';
+                        DOM.depWarBal.innerText = Number(pill).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' $PILL';
+                    } catch (e) {}
+                },
                 fetchBalance: async (wallet) => {
                     DOM.balanceDisplay.innerText = "Scanning...";
                     DOM.balanceDisplay.style.display = 'inline-block';
@@ -1534,44 +1622,8 @@ function toggleTrailerMode() {
             return r.json();
         }
         window.PillChain = { deposit, getWarBalance, creditDeposit };
-
-        // Panel de wallet/depósito (por ahora solo en devnet, para pruebas).
-        if (C().Cluster === 'devnet') {
-            const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
-            const panel = document.createElement('div');
-            panel.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:9999;background:#0b0b0b;border:1px solid #00ff88;border-radius:10px;padding:12px 14px;font-family:monospace;font-size:12px;color:#cfcfcf;box-shadow:0 0 18px rgba(0,255,136,0.25);width:230px';
-            panel.innerHTML =
-                '<div style="color:#00ff88;font-weight:bold;letter-spacing:1px;margin-bottom:8px">PILL WALLET · DEVNET</div>' +
-                '<div style="display:flex;justify-content:space-between;margin-bottom:4px">In WAR: <b id="war-bal" style="color:#fff">—</b></div>' +
-                '<div style="display:flex;gap:6px;margin-top:8px">' +
-                '  <input id="dep-amt" type="number" value="50000" min="1" style="flex:1;width:60px;background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:6px">' +
-                '  <button id="dep-btn" style="background:transparent;color:#00ff88;border:1px solid #00ff88;border-radius:6px;padding:6px 10px;cursor:pointer">Deposit</button>' +
-                '</div>';
-            document.body.appendChild(panel);
-            const warEl = panel.querySelector('#war-bal'), depBtn = panel.querySelector('#dep-btn'), depAmt = panel.querySelector('#dep-amt');
-
-            async function refreshWar() {
-                const w = window.App.Wallet.address;
-                warEl.textContent = w ? (fmt(await getWarBalance(w)) + ' $PILL') : 'connect wallet';
-            }
-            refreshWar();
-            setInterval(refreshWar, 5000);
-
-            depBtn.onclick = async () => {
-                const w = window.App.Wallet.address;
-                if (!w) { alert('Connect your wallet first (Devnet).'); return; }
-                const amt = Math.max(1, parseInt(depAmt.value, 10) || 0);
-                depBtn.disabled = true; const old = depBtn.textContent; depBtn.textContent = '...';
-                try {
-                    const sig = await deposit(amt);                 // 1) firma + envía on-chain
-                    const r = await creditDeposit(w, sig);          // 2) el servidor verifica y acredita
-                    if (!r.ok) throw new Error(r.reason || 'verify failed');
-                    alert('✅ Deposited ' + fmt(amt) + ' $PILL\nWAR balance: ' + fmt(r.warBalance) + '\n\nTx: ' + sig);
-                    window.App.Market.fetchBalance(w); refreshWar();
-                } catch (e) { console.error(e); alert('❌ Deposit failed: ' + (e.message || e)); }
-                depBtn.disabled = false; depBtn.textContent = old;
-            };
-        }
+        // Si la wallet ya estaba conectada al cargar el módulo, refresca el saldo WAR.
+        if (window.App && window.App.Wallet && window.App.Wallet.address) window.App.Market.fetchWar(window.App.Wallet.address);
     </script>
 </body>
 </html>
