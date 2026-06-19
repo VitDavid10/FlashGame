@@ -9,7 +9,8 @@
     "admin": "start http://localhost:8080/admin",
     "token:devnet": "node scripts/create-devnet-token.js",
     "pill:send": "node scripts/send-pill.js",
-    "sol:send": "node scripts/send-sol.js"
+    "sol:send": "node scripts/send-sol.js",
+    "test:deposit": "node scripts/test-deposit.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
