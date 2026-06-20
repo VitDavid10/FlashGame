@@ -112,7 +112,7 @@ function stressSpawn(kind, script, env, params, logMsg) {
 function stressStart(p) {
     if (stress.running) return;
     const bots = Math.max(1, Math.min(5000, p.bots | 0 || 300));
-    const duration = Math.max(0, Math.min(3600, p.duration | 0));
+    const duration = Math.max(0, Math.min(86400, p.duration | 0));   // hasta 24h
     const ramp = Math.max(5, Math.min(2000, p.ramp | 0 || 60));
     const inputHz = Math.max(1, Math.min(40, p.inputHz | 0 || 10));
     const roomsList = Array.isArray(p.rooms) ? p.rooms.filter(k => typeof k === 'string').slice(0, 40).join(',') : '';
