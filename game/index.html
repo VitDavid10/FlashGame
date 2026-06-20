@@ -1895,7 +1895,55 @@
     // --- Conexión online con reconexión automática ---
     let netState = null;   // { url, token, attempts, joinMsg }
 
-    function startOnlineGame() {
+    // --- Wallet en la página del juego (para pagar la entrada de salas de pago) ---
+    const GameWallet = {
+        address: null, provider: null,
+        getProvider(name) {
+            if (name === 'phantom') return (window.phantom && window.phantom.solana) || (window.solana && window.solana.isPhantom ? window.solana : null);
+            if (name === 'solflare') return window.solflare || null;
+            if (name === 'backpack') return (window.backpack) || (window.xnft && window.xnft.solana) || null;
+            return null;
+        },
+        async ensure() {   // reconexión silenciosa con la sesión guardada en la web
+            if (this.address && this.provider) return true;
+            let name; try { name = localStorage.getItem('pw_wallet'); } catch (e) {}
+            if (!name) return false;
+            const p = this.getProvider(name); if (!p) return false;
+            try {
+                const r = await p.connect({ onlyIfTrusted: true });
+                const pk = (r && r.publicKey) ? r.publicKey : p.publicKey;
+                if (!pk) return false;
+                this.address = pk.toString(); this.provider = p; return true;
+            } catch (e) { return false; }
+        }
+    };
+    let gamePillPerDollar = null;
+    async function getPillPerDollar() {
+        if (gamePillPerDollar != null) return gamePillPerDollar;
+        try { gamePillPerDollar = (await (await fetch('/api/fees')).json()).pillPerDollar || 10000; } catch (e) { gamePillPerDollar = 10000; }
+        return gamePillPerDollar;
+    }
+    // Para salas de pago: comprueba saldo WAR y firma la entrada. Devuelve el objeto
+    // `pay` para el join, o null si no se puede (ya avisa al usuario).
+    async function preparePayment(mode, roomName) {
+        const price = parseInt(roomName, 10) || 0;
+        if (price <= 0) return { pay: null };   // sala gratis
+        const ok = await GameWallet.ensure();
+        if (!ok) { showSystemMsg('Connect your wallet first on the home page, then come back to play paid rooms.', 'WALLET REQUIRED'); return null; }
+        const ppd = await getPillPerDollar();
+        const fee = price * ppd;
+        let bal = 0; try { bal = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
+        if (bal < fee) { showSystemMsg('Not enough WAR balance. Entry costs ' + fee.toLocaleString('en-US') + ' $PILL and you have ' + bal.toLocaleString('en-US') + '. Deposit more on the home page.', 'INSUFFICIENT BALANCE'); return null; }
+        try {
+            const ts = Date.now();
+            const message = `PillWars enter ${mode}_${roomName} paying ${fee} PILL @ ${ts}`;
+            const res = await GameWallet.provider.signMessage(new TextEncoder().encode(message), 'utf8');
+            const sigBytes = res && res.signature ? res.signature : res;
+            return { pay: { wallet: GameWallet.address, message, ts, signature: Array.from(sigBytes) } };
+        } catch (e) { showSystemMsg('You must sign the entry payment to join a paid room.', 'PAYMENT CANCELLED'); return null; }
+    }
+
+    async function startOnlineGame() {
         SoundManager.play('select');
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
@@ -1917,7 +1965,10 @@
         if (qsServer) { try { localStorage.setItem('pw_server', qsServer); } catch (e) {} }
         let savedServer = null; try { savedServer = localStorage.getItem('pw_server'); } catch (e) {}
         const url = qsServer || savedServer || (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://localhost:8080');
-        netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg } };
+        // Salas de pago: comprobar saldo WAR y FIRMAR la entrada antes de conectar.
+        const paid = await preparePayment(mode, currentServer);
+        if (!paid) return;   // sin saldo / sin firma / sin wallet → ya se avisó
+        netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg, pay: paid.pay } };
         netConnect(false);
     }
 
@@ -2030,6 +2081,9 @@
             } else if (msg.t === 'roomFull') {
                 restoreBtn(); try { ws.close(); } catch (err) {}
                 showSystemMsg('Room ' + (msg.roomName || '') + ' is full (max ' + (msg.max || '') + ' players). Try another room or come back in a moment.', 'ROOM FULL');
+            } else if (msg.t === 'payRequired') {
+                restoreBtn(); try { ws.close(); } catch (err) {}
+                showSystemMsg('Entry payment could not be verified (' + (msg.reason || '') + '). Make sure you have enough WAR balance and try again.', 'PAYMENT REQUIRED');
             } else if (msg.t === 'resumeFail') {
                 netState.token = null; try { ws.close(); } catch (err) {}
             } else if (msg.t === 'kicked') {
