@@ -111,8 +111,6 @@
         .dropdown:hover .dropdown-content { display: block; }
         .dd-icon { width: 18px; height: 18px; border-radius: 50%; }
 
-        #user-balance-display { display: none; font-family: 'Russo One'; color: var(--primary); font-size: 14px; text-shadow: 0 0 10px rgba(0,255,136,0.3); margin-right: 10px; }
-        #war-balance-display { display: none; font-family: 'Russo One'; color: #ffce3d; font-size: 14px; text-shadow: 0 0 10px rgba(255,206,61,0.3); margin-right: 10px; }
         .btn-deposit { display: none; background: transparent; color: #ffce3d; border: 1px solid #ffce3d; border-radius: 8px; padding: 8px 16px; font-family: 'Russo One'; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-right: 10px; }
         .btn-deposit:hover { background: #ffce3d; color: #1a1300; box-shadow: 0 0 18px rgba(255,206,61,0.45); }
         .btn-withdraw { display: none; background: transparent; color: #aaa; border: 1px solid #555; border-radius: 8px; padding: 8px 16px; font-family: 'Russo One'; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-right: 10px; }
@@ -599,8 +597,6 @@ body.trailer-open #page-content{
                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 11.944 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
                 </svg>
             </a>
-            <span id="user-balance-display"></span>
-            <span id="war-balance-display"></span>
             <button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()">DEPOSIT</button>
             <button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()">WITHDRAW</button>
             <div class="dropdown">
@@ -933,8 +929,6 @@ body.trailer-open #page-content{
             walletModal: document.getElementById('wallet-modal'),
             walletBtn: document.getElementById('wallet-btn'),
             footer: document.getElementById('main-footer'),
-            balanceDisplay: document.getElementById('user-balance-display'),
-            warDisplay: document.getElementById('war-balance-display'),
             depositBtn: document.getElementById('deposit-btn'),
             depositModal: document.getElementById('deposit-modal'),
             depositAmount: document.getElementById('deposit-amount'),
@@ -1184,10 +1178,11 @@ body.trailer-open #page-content{
                         const resp = await provider.connect();
                         const pk = (resp && resp.publicKey) ? resp.publicKey : provider.publicKey;
                         if (!pk) throw new Error("No public key");
+                        // FIRMA obligatoria para iniciar sesión (autenticación, como las webs pro).
+                        // Si el usuario la rechaza, no se conecta.
+                        await provider.signMessage(new TextEncoder().encode("Sign in to PillWars"), "utf8");
                         App.Wallet.address = pk.toString();
                         App.Wallet.provider = provider;
-                        // Firma de bienvenida (opcional: algunas wallets no la soportan igual)
-                        try { await provider.signMessage(new TextEncoder().encode("Welcome to PillWars!"), "utf8"); } catch (e) {}
                         DOM.walletBtn.innerText = "DISCONNECT " + App.Wallet.address.slice(0, 4) + '...';
                         DOM.walletBtn.classList.add('btn-disconnect');
                         try { localStorage.setItem('pw_wallet', name); } catch (e) {}
@@ -1196,7 +1191,11 @@ body.trailer-open #page-content{
                         DOM.depositBtn.style.display = 'inline-block';
                         DOM.withdrawBtn.style.display = 'inline-block';
                         App.Wallet.startAutoRefresh();
-                    } catch (err) { console.error(err); if (!silent) App.Msg.show('Connection failed', 'Could not connect or the request was cancelled.'); }
+                    } catch (err) {
+                        console.error(err);
+                        try { if (provider.disconnect) provider.disconnect(); } catch (e) {}
+                        if (!silent) App.Msg.show('Sign-in required', 'You must sign the message with your wallet to connect.');
+                    }
                 },
                 // Reconexión silenciosa al recargar (si ya autorizaste antes la wallet)
                 eagerConnect: async () => {
@@ -1237,8 +1236,6 @@ body.trailer-open #page-content{
                     App.Wallet.provider = null;
                     DOM.walletBtn.innerText = "CONNECT WALLET";
                     DOM.walletBtn.classList.remove('btn-disconnect');
-                    DOM.balanceDisplay.style.display = 'none';
-                    DOM.warDisplay.style.display = 'none';
                     DOM.depositBtn.style.display = 'none';
                     DOM.withdrawBtn.style.display = 'none';
                 }
@@ -1254,10 +1251,10 @@ body.trailer-open #page-content{
             Deposit: {
                 open: () => {
                     if (!App.Wallet.address) { DOM.walletModal.style.display = 'flex'; return; }
-                    DOM.depWalletBal.innerText = DOM.balanceDisplay.innerText || '—';
-                    DOM.depWarBal.innerText = DOM.warDisplay.innerText || '—';
+                    DOM.depWalletBal.innerText = App.Wallet.pillBal || '—';
+                    DOM.depWarBal.innerText = App.Wallet.warBal || '—';
                     DOM.depositModal.style.display = 'flex';
-                    App.Market.fetchWar(App.Wallet.address);
+                    App.Market.fetchBalance(App.Wallet.address); App.Market.fetchWar(App.Wallet.address);
                 },
                 close: () => { DOM.depositModal.style.display = 'none'; },
                 confirm: async () => {
@@ -1285,7 +1282,7 @@ body.trailer-open #page-content{
             Withdraw: {
                 open: () => {
                     if (!App.Wallet.address) { DOM.walletModal.style.display = 'flex'; return; }
-                    DOM.wdWarBal.innerText = DOM.warDisplay.innerText.replace('WAR: ', '') || '—';
+                    DOM.wdWarBal.innerText = App.Wallet.warBal || '—';
                     DOM.withdrawModal.style.display = 'flex';
                     App.Market.fetchWar(App.Wallet.address);
                 },
@@ -1317,58 +1314,32 @@ body.trailer-open #page-content{
             },
 
             Market: {
+                // Saldos: se muestran SOLO en los modales (la barra queda limpia).
                 fetchWar: async (wallet) => {
                     if (!window.PillChain || !wallet) return;
                     try {
                         const pill = await window.PillChain.getWarBalance(wallet);
-                        DOM.warDisplay.innerText = 'WAR: ' + Number(pill).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' $PILL';
-                        DOM.warDisplay.style.display = 'inline-block';
-                        DOM.depWarBal.innerText = Number(pill).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' $PILL';
+                        const txt = Number(pill).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' $PILL';
+                        App.Wallet.warBal = txt;
+                        if (DOM.depWarBal) DOM.depWarBal.innerText = txt;
+                        if (DOM.wdWarBal) DOM.wdWarBal.innerText = txt;
                     } catch (e) {}
                 },
                 fetchBalance: async (wallet) => {
-                    DOM.balanceDisplay.innerText = "Scanning...";
-                    DOM.balanceDisplay.style.display = 'inline-block';
-                    
-                    console.log("Connecting to RPC:", App.Config.RPC);
-
+                    const set = (t) => { App.Wallet.pillBal = t; if (DOM.depWalletBal) DOM.depWalletBal.innerText = t; };
+                    set('Scanning...');
                     try {
                         const res = await fetch(App.Config.RPC, {
-                            method: 'POST', 
+                            method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                jsonrpc: "2.0", 
-                                id: 1, 
-                                method: "getTokenAccountsByOwner", 
-                                params: [
-                                    wallet, 
-                                    { mint: App.Config.Token }, 
-                                    { encoding: "jsonParsed" }
-                                ] 
-                            })
+                            body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getTokenAccountsByOwner", params: [wallet, { mint: App.Config.Token }, { encoding: "jsonParsed" }] })
                         });
-                        
                         const data = await res.json();
-                        
-                        if (data.error) {
-                            console.error("RPC Error:", data.error);
-                            DOM.balanceDisplay.innerText = "Net Err"; 
-                            return;
-                        }
-
-                        if (!data.result || !data.result.value || data.result.value.length === 0) {
-                            console.log("Wallet has no tokens (Balance 0)");
-                            DOM.balanceDisplay.innerText = "0 $PILL";
-                            return;
-                        }
-
-                        const amount = parseFloat(data.result.value[0].account.data.parsed.info.tokenAmount.uiAmountString).toLocaleString('en-US', {maximumFractionDigits: 0});
-                        DOM.balanceDisplay.innerText = `${amount} $PILL`;
-
-                    } catch (e) { 
-                        console.error("Connection Failed:", e);
-                        DOM.balanceDisplay.innerText = "Net Err"; 
-                    }
+                        if (data.error) { set('Net Err'); return; }
+                        if (!data.result || !data.result.value || data.result.value.length === 0) { set('0 $PILL'); return; }
+                        const amount = parseFloat(data.result.value[0].account.data.parsed.info.tokenAmount.uiAmountString).toLocaleString('en-US', { maximumFractionDigits: 0 });
+                        set(`${amount} $PILL`);
+                    } catch (e) { set('Net Err'); }
                 },
                 updateTicker: async () => {
                     // En devnet no hay mercado (DexScreener es de mainnet): mostramos etiqueta y salimos.
