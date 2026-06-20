@@ -849,11 +849,11 @@ body.trailer-open #page-content{
             <span class="modal-close" onclick="App.Deposit.close()">×</span>
             <div class="modal-title">Deposit $PILL</div>
             <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:4px"><span>In wallet</span><b id="dep-wallet-bal" style="color:var(--primary)">—</b></div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In WAR</span><b id="dep-war-bal" style="color:#ffce3d">—</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In GAME</span><b id="dep-war-bal" style="color:#ffce3d">—</b></div>
             <label class="cmodal-label">Amount</label>
             <input id="deposit-amount" class="cmodal-field" type="number" min="1" placeholder="e.g. 50000" value="50000">
-            <button class="cmodal-btn" id="deposit-confirm" onclick="App.Deposit.confirm()">Deposit to WAR</button>
-            <p style="font-size:11px;color:#666;margin-top:12px;line-height:1.5">You'll sign one transaction. The amount moves to your in-game WAR balance, used to enter paid rooms.</p>
+            <button class="cmodal-btn" id="deposit-confirm" onclick="App.Deposit.confirm()">Deposit to GAME</button>
+            <p style="font-size:11px;color:#666;margin-top:12px;line-height:1.5">You'll sign one transaction. The amount moves to your in-GAME balance, used to enter paid rooms.</p>
         </div>
     </div>
 
@@ -862,11 +862,11 @@ body.trailer-open #page-content{
         <div class="modal-box">
             <span class="modal-close" onclick="App.Withdraw.close()">×</span>
             <div class="modal-title">Withdraw $PILL</div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In WAR</span><b id="wd-war-bal" style="color:#ffce3d">—</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In GAME</span><b id="wd-war-bal" style="color:#ffce3d">—</b></div>
             <label class="cmodal-label">Amount</label>
             <input id="withdraw-amount" class="cmodal-field" type="number" min="1" placeholder="amount to withdraw">
             <button class="cmodal-btn" id="withdraw-confirm" onclick="App.Withdraw.confirm()">Withdraw to wallet</button>
-            <p style="font-size:11px;color:#666;margin-top:12px;line-height:1.5">Sends $PILL from your WAR balance back to your connected wallet.</p>
+            <p style="font-size:11px;color:#666;margin-top:12px;line-height:1.5">Sends $PILL from your in-GAME balance back to your connected wallet.</p>
         </div>
     </div>
 
@@ -1280,7 +1280,7 @@ body.trailer-open #page-content{
                         if (!r.ok) throw new Error(r.reason || 'verification failed');
                         App.Deposit.close();
                         App.Market.fetchBalance(w); App.Market.fetchWar(w);
-                        App.Msg.show('Deposit complete', amt.toLocaleString('en-US') + ' $PILL added to your WAR balance.');
+                        App.Msg.show('Deposit complete', amt.toLocaleString('en-US') + ' $PILL added to your in-GAME balance.');
                     } catch (e) {
                         console.error(e);
                         App.Msg.show('Deposit failed', (e.message || String(e)).slice(0, 140));

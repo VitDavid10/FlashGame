@@ -111,10 +111,47 @@
         .sound-btn:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
         .sound-btn svg { width: 22px; height: 22px; fill: currentColor; }
         
-        #soundToggle { right: 20px; } 
+        #soundToggle { right: 20px; }
         #musicToggle { right: 70px; }
         #exitGameBtn { right: 120px; border-color: #522; color: #f55; display: none; }
         #exitGameBtn:hover { background: rgba(255, 50, 50, 0.2); border-color: #f00; color: #fff; }
+
+        /* Wallet widget en el juego (arriba derecha, a la izquierda de los botones de sonido). */
+        #gameWalletPanel {
+            position: absolute; top: 20px; right: 175px; z-index: 100;
+            display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+            background: rgba(0,0,0,0.55); border: 1px solid rgba(0,255,136,0.35);
+            border-radius: 8px; backdrop-filter: blur(4px); font-family: 'Russo One',sans-serif; font-size: 12px;
+        }
+        #gameWalletPanel .gw-bal { color: #ffce3d; text-shadow: 0 0 8px rgba(255,206,61,0.3); white-space: nowrap; }
+        #gameWalletPanel button {
+            background: transparent; border: 1px solid #ffce3d; color: #ffce3d; border-radius: 6px;
+            padding: 5px 10px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 1px; transition: 0.2s;
+        }
+        #gameWalletPanel button:hover { background: #ffce3d; color: #1a1300; box-shadow: 0 0 12px rgba(255,206,61,0.4); }
+        #gameWalletPanel .gw-connect { border-color: #00ff88; color: #00ff88; }
+        #gameWalletPanel .gw-connect:hover { background: #00ff88; color: #04150c; box-shadow: 0 0 12px rgba(0,255,136,0.4); }
+
+        /* Modales del juego (deposit + prize) en el estilo del juego */
+        .gameModal { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 250; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.2s; }
+        .gameModalBox { background: #0a0a0a; border: 1px solid var(--primary); border-radius: 14px; padding: 28px; width: 100%; max-width: 420px; box-shadow: 0 0 40px rgba(0,255,136,0.1); position: relative; text-align: center; }
+        .gameModalBox h3 { font-family:'Russo One'; color:#fff; font-size:22px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .gameModalBox .close { position:absolute; top:12px; right:18px; font-size:22px; color:#666; cursor:pointer; }
+        .gameModalBox .close:hover { color:#fff; }
+        .gameModalBox label { display:block; text-align:left; font-family:'Russo One'; font-size:11px; color:var(--primary); margin: 10px 0 5px; letter-spacing:1px; }
+        .gameModalBox input { width:100%; background:#111; border:1px solid #333; border-radius:8px; color:#fff; font-family:'Inter'; font-size:14px; padding:10px 12px; outline:none; box-sizing:border-box; }
+        .gameModalBox input:focus { border-color: var(--primary); }
+        .gameModalBox .gm-btn { width:100%; padding:12px; background: var(--primary); color:#04150c; border:none; border-radius:8px; font-family:'Russo One'; font-size:14px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; margin-top:14px; transition:0.2s; }
+        .gameModalBox .gm-btn:hover { filter: brightness(1.1); box-shadow: 0 0 18px rgba(0,255,136,0.4); }
+        .gameModalBox .gm-btn:disabled { opacity: 0.6; cursor:default; }
+        .gameModalBox .gm-row { display:flex; justify-content:space-between; font-size:13px; color:#888; margin-bottom: 4px; }
+        /* Tabla de reparto (popup arcade) */
+        .prizeRow { display:grid; grid-template-columns:34px 1fr 60px 90px; gap:8px; padding:6px 10px; align-items:center; border-bottom:1px solid #1a1a1a; font-size:13px; }
+        .prizeRow.mine { background: rgba(255,206,61,0.1); border:1px solid rgba(255,206,61,0.5); border-radius:6px; }
+        .prizeRow .pos { font-family:'Russo One'; color:#888; }
+        .prizeRow.mine .pos, .prizeRow.mine .name { color:#ffce3d; }
+        .prizeRow .pct { color:#888; text-align:right; }
+        .prizeRow .amt { color:var(--primary); font-family:'Russo One'; text-align:right; }
 
         .sound-on, .sound-off { display: block; } 
         .sound-btn:not(.muted) .sound-off { display: none !important; }
@@ -522,6 +559,39 @@
         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
     </div>
 
+    <!-- Wallet en el juego: connect + balance "in GAME" + deposit -->
+    <div id="gameWalletPanel">
+        <span class="gw-bal" id="gwBal">—</span>
+        <button class="gw-connect" id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
+        <button id="gwDeposit" onclick="GameWalletUI.openDeposit()" style="display:none">DEPOSIT</button>
+    </div>
+
+    <!-- Deposit modal del juego -->
+    <div id="gameDepositModal" class="gameModal">
+        <div class="gameModalBox">
+            <span class="close" onclick="GameWalletUI.closeDeposit()">×</span>
+            <h3>Deposit $PILL</h3>
+            <div class="gm-row"><span>In wallet</span><b id="gdWallet" style="color:var(--primary)">—</b></div>
+            <div class="gm-row" style="margin-bottom:14px"><span>In GAME</span><b id="gdGame" style="color:#ffce3d">—</b></div>
+            <label>Amount</label>
+            <input id="gdAmount" type="number" min="1" value="50000">
+            <button class="gm-btn" id="gdConfirm" onclick="GameWalletUI.deposit()">Deposit to GAME</button>
+            <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.5">One signature. Used to enter paid rooms.</p>
+        </div>
+    </div>
+
+    <!-- Prize modal (cashout / victory / arcade end) -->
+    <div id="prizeModal" class="gameModal">
+        <div class="gameModalBox">
+            <span class="close" onclick="document.getElementById('prizeModal').style.display='none'">×</span>
+            <h3 id="prizeTitle" style="color:var(--primary)">YOU WON</h3>
+            <div id="prizeAmount" style="font-family:'Russo One';font-size:36px;color:#ffce3d;margin:8px 0 4px;text-shadow:0 0 18px rgba(255,206,61,0.5)">0 $PILL</div>
+            <div id="prizeSubtitle" style="color:#aaa;font-size:13px;margin-bottom:18px"></div>
+            <div id="prizeTable" style="margin-bottom:14px;display:none"></div>
+            <button class="gm-btn" onclick="document.getElementById('prizeModal').style.display='none'">CONTINUE</button>
+        </div>
+    </div>
+
     <div id="exitModal">
         <div class="exit-box">
             <div class="exit-title" id="exitModalTitle">LEAVE ARENA?</div>
@@ -856,6 +926,9 @@
         <div class="hud-item">ROOM: <span id="roomName" class="hud-val">5$</span></div>
         <div class="hud-item">MASS: <span id="score" class="hud-val">0</span></div>
         <div class="hud-item">ALIVE: <span id="enemyCount" class="hud-val">0</span></div>
+        <div class="hud-item econ-hud" id="econHud" style="display:none;border-color:rgba(255,206,61,0.5)">
+            <span id="econLabel">CARRY</span>: <span id="econVal" class="hud-val" style="color:#ffce3d">0</span> <span style="color:#888;font-size:11px">$PILL</span>
+        </div>
         <div class="hud-item" id="debugHud" style="display:none;">FPS: <span id="fpsVal" style="color:#fff">0</span> | SPD: <span id="speedVal" style="color:#fff">0</span></div>
     </div>
     
@@ -1690,7 +1763,7 @@
         }
         MAX_BOT_CELLS = parseInt(splitLimit.value); toggleBotOptions();
     }
-    function hideGameHUD() { document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; }
+    function hideGameHUD() { document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; document.getElementById('econHud').style.display='none'; } }
     // El split también vive en la sim: solo encolamos la acción con el objetivo del ratón.
     function splitPlayer() {
         if (!gameRunning || !sim || isSpectating) return;
@@ -1758,6 +1831,7 @@
                 this.snaps.push(msg);
                 if (this.snaps.length > 30) this.snaps.shift();
                 if (msg.tl != null) { this._tlBase = msg.tl; this._tlAt = Date.now(); }
+                if (msg.pot != null) EconHUD.update(null, msg.pot);   // bote en tiempo real
                 // Estado propio (HUD/cartas): se aplica al instante, sin retraso
                 const meP = this.players.get('me');
                 const sp = msg.players.find(q => q.id === this.myId);
@@ -1932,6 +2006,115 @@
             } catch (e) { return false; }
         }
     };
+    // UI de wallet en el juego: panel arriba-derecha, deposit modal, balance "in GAME"
+    const GameWalletUI = {
+        gameBalance: 0,
+        fmt(n) { return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }); },
+        async refresh() {
+            const bal = document.getElementById('gwBal'), conn = document.getElementById('gwConnect'), dep = document.getElementById('gwDeposit');
+            if (!GameWallet.address) { await GameWallet.ensure(); }
+            if (GameWallet.address) {
+                conn.style.display = 'none'; dep.style.display = 'inline-block';
+                try { this.gameBalance = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
+                bal.innerHTML = '<span style="color:#888">in GAME:</span> ' + this.fmt(this.gameBalance) + ' $PILL';
+            } else {
+                conn.style.display = 'inline-block'; dep.style.display = 'none';
+                bal.innerHTML = '<span style="color:#888">Wallet not connected</span>';
+            }
+        },
+        async connect() {
+            const p = GameWallet.getProvider('phantom');
+            if (!p) { showSystemMsg('Install Phantom wallet to connect.', 'WALLET'); return; }
+            try {
+                const r = await p.connect();
+                const pk = (r && r.publicKey) ? r.publicKey : p.publicKey;
+                if (!pk) return;
+                await p.signMessage(new TextEncoder().encode('Sign in to PillWars'), 'utf8');
+                GameWallet.address = pk.toString(); GameWallet.provider = p;
+                try { localStorage.setItem('pw_wallet', 'phantom'); localStorage.setItem('pw_addr', pk.toString()); } catch (e) {}
+                this.refresh();
+            } catch (e) { showSystemMsg('Sign-in cancelled.', 'WALLET'); }
+        },
+        async openDeposit() {
+            if (!GameWallet.address) { this.connect(); return; }
+            document.getElementById('gameDepositModal').style.display = 'flex';
+            document.getElementById('gdGame').innerText = this.fmt(this.gameBalance) + ' $PILL';
+            document.getElementById('gdWallet').innerText = '—';
+            // Lee saldo wallet on-chain (RPC) — devnet
+            try {
+                const RPC = location.protocol === 'https:' ? 'https://api.devnet.solana.com' : 'https://api.devnet.solana.com';
+                const MINT = 'Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r';
+                const res = await fetch(RPC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenAccountsByOwner', params: [GameWallet.address, { mint: MINT }, { encoding: 'jsonParsed' }] }) });
+                const data = await res.json();
+                const amt = data.result && data.result.value && data.result.value[0] ? data.result.value[0].account.data.parsed.info.tokenAmount.uiAmountString : '0';
+                document.getElementById('gdWallet').innerText = this.fmt(amt) + ' $PILL';
+            } catch (e) {}
+        },
+        closeDeposit() { document.getElementById('gameDepositModal').style.display = 'none'; },
+        async deposit() {
+            if (!window.PillChain) { showSystemMsg('Wallet module not loaded yet.', 'WALLET'); return; }
+            const amt = Math.max(1, parseInt(document.getElementById('gdAmount').value, 10) || 0);
+            const btn = document.getElementById('gdConfirm'); const old = btn.innerText; btn.disabled = true; btn.innerText = 'Sign in wallet...';
+            try {
+                const sig = await window.PillChain.deposit(amt);
+                btn.innerText = 'Depositing...';
+                const r = await window.PillChain.creditDeposit(GameWallet.address, sig);
+                if (!r.ok) throw new Error(r.reason || 'verification failed');
+                this.closeDeposit();
+                this.refresh();
+                showSystemMsg(this.fmt(amt) + ' $PILL added to your in-GAME balance.', 'DEPOSIT COMPLETE');
+            } catch (e) { showSystemMsg((e.message || String(e)).slice(0, 140), 'DEPOSIT FAILED'); }
+            btn.disabled = false; btn.innerText = old;
+        }
+    };
+
+    // HUD del juego: actualiza carry/bote y muestra popup de premios al ganar.
+    const EconHUD = {
+        mode: null, carry: 0, pot: 0,
+        setMode(m) { this.mode = m; },
+        update(carry, pot) {
+            if (carry != null) this.carry = carry;
+            if (pot != null) this.pot = pot;
+            const el = document.getElementById('econHud'), lbl = document.getElementById('econLabel'), val = document.getElementById('econVal');
+            if (!el) return;
+            const isClassic = currentGameMode === 'classic';
+            const show = (isClassic ? this.carry : this.pot) > 0;
+            if (!show) { el.style.display = 'none'; return; }
+            el.style.display = 'inline-block';
+            lbl.innerText = isClassic ? 'CARRY' : 'POT';
+            val.innerText = Number(isClassic ? this.carry : this.pot).toLocaleString('en-US');
+        },
+        showPrize(msg) {
+            const m = document.getElementById('prizeModal');
+            const title = document.getElementById('prizeTitle'), amt = document.getElementById('prizeAmount'), sub = document.getElementById('prizeSubtitle'), tbl = document.getElementById('prizeTable');
+            const fmt = n => Number(n || 0).toLocaleString('en-US');
+            tbl.style.display = 'none'; tbl.innerHTML = '';
+            if (msg.reason === 'victory') {
+                title.innerText = 'VICTORY!'; title.style.color = '#ffce3d';
+                amt.innerText = '+' + fmt(msg.amount) + ' $PILL';
+                sub.innerHTML = '5 KILLS · You took the entire pot of <b style="color:#ffce3d">' + fmt(msg.pot) + '</b> + your carry <b style="color:#00ff88">' + fmt(msg.carry) + '</b>';
+            } else if (msg.reason === 'cashout') {
+                title.innerText = 'CASHOUT'; title.style.color = '#00ff88';
+                amt.innerText = '+' + fmt(msg.amount) + ' $PILL';
+                sub.innerHTML = msg.kills + ' kills · carry <b>' + fmt(msg.carry) + '</b> − ' + msg.feePct + '% fee (<b>' + fmt(msg.fee) + '</b> to pot)';
+            } else if (msg.reason === 'arcadeEnd') {
+                title.innerText = 'MATCH ENDED'; title.style.color = msg.myAmount > 0 ? '#ffce3d' : '#aaa';
+                amt.innerText = msg.myAmount > 0 ? '+' + fmt(msg.myAmount) + ' $PILL' : 'Out of top 10';
+                sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmt(msg.pot) + '</b> $PILL';
+                tbl.style.display = 'block';
+                tbl.innerHTML = (msg.top || []).map(t =>
+                    `<div class="prizeRow ${t.mine ? 'mine' : ''}"><span class="pos">#${t.pos}</span><span class="name">${esc(t.name || '—')}</span><span class="pct">${t.pct}%</span><span class="amt">${fmt(t.amount)}</span></div>`
+                ).join('');
+            }
+            m.style.display = 'flex';
+            // Refrescar saldo in GAME
+            setTimeout(() => GameWalletUI.refresh(), 800);
+        }
+    };
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    // Refrescar el panel cada 6s + al cargar
+    GameWalletUI.refresh(); setInterval(() => GameWalletUI.refresh(), 6000);
+
     let gamePillPerDollar = null;
     async function getPillPerDollar() {
         if (gamePillPerDollar != null) return gamePillPerDollar;
@@ -1948,7 +2131,7 @@
         const ppd = await getPillPerDollar();
         const fee = price * ppd;
         let bal = 0; try { bal = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
-        if (bal < fee) { showSystemMsg('Not enough WAR balance. Entry costs ' + fee.toLocaleString('en-US') + ' $PILL and you have ' + bal.toLocaleString('en-US') + '. Deposit more on the home page.', 'INSUFFICIENT BALANCE'); return null; }
+        if (bal < fee) { showSystemMsg('Not enough in-GAME balance. Entry costs ' + fee.toLocaleString('en-US') + ' $PILL and you have ' + bal.toLocaleString('en-US') + '. Use the DEPOSIT button to add more.', 'INSUFFICIENT BALANCE'); return null; }
         try {
             const ts = Date.now();
             const message = `PillWars enter ${mode}_${roomName} paying ${fee} PILL @ ${ts}`;
@@ -2098,7 +2281,11 @@
                 showSystemMsg('Room ' + (msg.roomName || '') + ' is full (max ' + (msg.max || '') + ' players). Try another room or come back in a moment.', 'ROOM FULL');
             } else if (msg.t === 'payRequired') {
                 restoreBtn(); try { ws.close(); } catch (err) {}
-                showSystemMsg('Entry payment could not be verified (' + (msg.reason || '') + '). Make sure you have enough WAR balance and try again.', 'PAYMENT REQUIRED');
+                showSystemMsg('Entry payment could not be verified (' + (msg.reason || '') + '). Make sure you have enough in-GAME balance and try again.', 'PAYMENT REQUIRED');
+            } else if (msg.t === 'econ') {
+                EconHUD.update(msg.carry, msg.pot);
+            } else if (msg.t === 'prize') {
+                EconHUD.showPrize(msg);
             } else if (msg.t === 'resumeFail') {
                 netState.token = null; try { ws.close(); } catch (err) {}
             } else if (msg.t === 'kicked') {
@@ -2466,6 +2653,45 @@
 
     initMenuState(); init();
     if (!startRemoteSpectator()) { /* arranque normal con menú */ }
+</script>
+
+<!-- Depósito de $PILL desde el juego: mismo módulo ESM que la web (web3.js + spl-token) -->
+<script type="module">
+    import { Connection, PublicKey, Transaction } from 'https://esm.sh/@solana/web3.js@1.95.3';
+    import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount }
+        from 'https://esm.sh/@solana/spl-token@0.4.8?deps=@solana/web3.js@1.95.3';
+    const RPC = 'https://api.devnet.solana.com';
+    const MINT = 'Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r';
+    const TREASURY = '4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN';
+    const DECIMALS = 6;
+    async function deposit(amount) {
+        const W = window.GameWallet;
+        if (!W || !W.address || !W.provider) throw new Error('Connect your wallet first');
+        const conn = new Connection(RPC, 'confirmed');
+        const owner = new PublicKey(W.address);
+        const mint = new PublicKey(MINT);
+        const treasury = new PublicKey(TREASURY);
+        const raw = BigInt(Math.round(amount)) * (10n ** BigInt(DECIMALS));
+        const fromAta = await getAssociatedTokenAddress(mint, owner);
+        const toAta = await getAssociatedTokenAddress(mint, treasury);
+        const tx = new Transaction();
+        try { await getAccount(conn, toAta); }
+        catch (e) { tx.add(createAssociatedTokenAccountInstruction(owner, toAta, treasury, mint)); }
+        tx.add(createTransferInstruction(fromAta, toAta, owner, raw));
+        tx.feePayer = owner;
+        tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
+        let sig;
+        if (W.provider.signAndSendTransaction) { const r = await W.provider.signAndSendTransaction(tx); sig = r.signature || r; }
+        else { const signed = await W.provider.signTransaction(tx); sig = await conn.sendRawTransaction(signed.serialize()); }
+        await conn.confirmTransaction(sig, 'confirmed');
+        return sig;
+    }
+    async function creditDeposit(wallet, sig) {
+        const r = await fetch('/api/deposit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet, sig }) });
+        return r.json();
+    }
+    window.PillChain = { deposit, creditDeposit };
+    window.GameWallet = GameWallet;   // expone GameWallet para el módulo
 </script>
 </body>
 </html>
