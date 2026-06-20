@@ -88,7 +88,7 @@ function spawnBot(i) {
 
   ws.on('open', () => {
     stats.connected++;
-    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: 'NPC' + i, colorBot: randColor(), colorTop: randColor() }));
+    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: 'NPC' + i, colorBot: randColor(), colorTop: randColor(), tester: 'STRESS_TEST_DEVNET' }));
     stats.messagesSent++;
 
     // Movimiento tipo NPC: dirigirse al destino; al acercarse, elegir otro.

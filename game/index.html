@@ -1441,14 +1441,29 @@
         if(!gameRunning) return;
         const modal = document.getElementById('exitModal'); const btn = document.getElementById('btnConfirmExit'); const title = document.getElementById('exitModalTitle'); const desc = document.getElementById('exitModalDesc');
         if (logoutTimer) clearInterval(logoutTimer); btn.disabled = false; btn.innerText = "EXIT";
-        if(modal.style.display === 'flex') { modal.style.display = 'none'; isLoggingOut = false; } else {
-            modal.style.display = 'flex';
-            if (currentGameMode === 'classic') {
-                title.innerText = "SECURE CASHOUT"; let penaltyText = "", color = "";
-                if (myKillStreak() < 2) { penaltyText = "WARNING: 10% FEE (Kills < 2)"; color = "#ff2a2a"; } else { penaltyText = "SAFE EXIT: 0% FEE (Kills 2+)"; color = "#00ff88"; }
-                desc.innerHTML = `You have <span style="color:#fff">${myKillStreak()} Kills</span>.<br><span style="color:${color}; font-weight:bold;">${penaltyText}</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your progress will be wiped to collect rewards)</span>`;
-                btn.onclick = startClassicLogout; btn.innerText = "START CASHOUT (5s)";
-            } else { title.innerText = "WARNING: FORFEIT?"; desc.innerHTML = "You will lose <span style='color:#ff2a2a'>100% of the PILLS</span> used to enter.<br>Are you sure?"; btn.onclick = confirmExit; btn.innerText = "EXIT NOW"; }
+        if(modal.style.display === 'flex') { modal.style.display = 'none'; isLoggingOut = false; return; }
+        modal.style.display = 'flex';
+        // Si la partida online aún NO ha empezado (lobby/practice): salir devuelve la entrada,
+        // sin hablar de fees ni kills (no aplica todavía).
+        const enLobby = practiceMode || (netState && netState.token && !sim);
+        if (enLobby) {
+            title.innerText = "LEAVE LOBBY?";
+            desc.innerHTML = "The match has not started yet.<br><span style='color:#00ff88; font-weight:bold;'>Your entry will be refunded to your in-game balance.</span>";
+            btn.onclick = confirmExit; btn.innerText = "LEAVE";
+            return;
+        }
+        if (currentGameMode === 'classic') {
+            const k = myKillStreak();
+            const fee = k >= 2 ? 0 : (k >= 1 ? 10 : 20);
+            const color = fee === 0 ? '#00ff88' : (fee === 10 ? '#ffce3d' : '#ff2a2a');
+            const txt = fee === 0 ? `SAFE EXIT: 0% FEE (${k}+ kills)` : `WARNING: ${fee}% FEE (Kills < ${k + 1})`;
+            title.innerText = "SECURE CASHOUT";
+            desc.innerHTML = `You have <span style="color:#fff">${k} Kills</span>.<br><span style="color:${color}; font-weight:bold;">${txt}</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>`;
+            btn.onclick = startClassicLogout; btn.innerText = "START CASHOUT (5s)";
+        } else {
+            title.innerText = "WARNING: FORFEIT?";
+            desc.innerHTML = "You will lose <span style='color:#ff2a2a'>100% of the PILLS</span> used to enter (they go to the prize pot).<br>Are you sure?";
+            btn.onclick = confirmExit; btn.innerText = "EXIT NOW";
         }
     }
 

@@ -190,6 +190,8 @@ function entryFeePill(key) { return priceOf(key) * PILL_PER_DOLLAR; }
 function classicExitFeePct(kills) { if (kills >= 2) return 0; if (kills >= 1) return 10; return 20; }
 // Mueve `amount` PILL al "bote" interno de la sala (off-chain, en memoria).
 function addToPot(room, amount) { if (amount > 0) room.pot = (room.pot || 0) + amount; }
+// Notifica al cliente su carry actual y el bote de la sala (para el HUD del juego).
+function sendEcon(cli, room) { if (cli && cli.ws && cli.ws.readyState === 1) try { cli.ws.send(JSON.stringify({ t: 'econ', carry: cli.carry | 0, pot: room.pot | 0 })); } catch (e) {} }
 // Cashout en classic: paga al jugador su carry menos el exit fee; el fee va al bote.
 // Devuelve el neto pagado al WAR del jugador.
 function classicCashout(room, cli, kills) {
@@ -199,6 +201,7 @@ function classicCashout(room, cli, kills) {
     if (net > 0) warbank.credit(cli.payWallet, net);
     if (fee > 0) addToPot(room, fee);
     log(`Cashout classic: ${cli.payWallet.slice(0, 6)}… +${net} PILL (carry ${cli.carry}, fee ${fee} → bote)`);
+    try { cli.ws.send(JSON.stringify({ t: 'prize', reason: 'cashout', amount: net, carry: cli.carry, feePct: classicExitFeePct(kills), fee, kills })); } catch (e) {}
     cli.carry = 0;
     return net;
 }
@@ -455,6 +458,7 @@ function buildSnapshot(room) {
         t: 'snap',
         time: Math.round(sim.now),
         tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
+        pot: room.pot | 0,        // bote acumulado en PILL (0 si free)
         players: [...sim.players.values()].map(p => ({
             id: p.id, name: p.name, ks: p.killStreak, alive: p.alive, gcd: Math.round(p.globalCD),
             slots: p.skillSlots.map(s => s ? { id: s.id, u: s.uses } : 0),
@@ -941,9 +945,12 @@ wss.on('connection', (ws, req) => {
                 return;
             }
             // Salas de pago: exigir FIRMA de la wallet + descontar del saldo WAR.
+            // Excepción: bots del stress test pueden entrar gratis con el token de tester
+            // (solo válido si se ejecutan en el mismo servidor: SOL_RPC=devnet).
             const fee = entryFeePill(key);
             let payWallet = null;
-            if (fee > 0) {
+            const TESTER_OK = msg.tester === 'STRESS_TEST_DEVNET' && /devnet/i.test(solana.RPC || '');
+            if (fee > 0 && !TESTER_OK) {
                 const pay = msg.pay || {};
                 const w = String(pay.wallet || ''), ts = Number(pay.ts) || 0;
                 const expected = `PillWars enter ${key} paying ${fee} PILL @ ${ts}`;
@@ -975,6 +982,7 @@ wss.on('connection', (ws, req) => {
             const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
             // carry: dinero "retenido" del jugador en esta sala (se inicializa con su entrada y sube al matar).
             room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0 });
+            sendEcon(room.clients.get(playerId), room);
             statsOf(key).entradas++; statsDirty = true;
             if (name) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; playersDirty = true; }
             logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
@@ -1101,20 +1109,31 @@ setInterval(() => {
             }
             // ARCADE: reparto del bote por TOP 10. Curva: 35/20/13/9/7/5/4/3/2.5/1.5 (=100%).
             // Los que sigan vivos al final también aportan su carry al bote (igualdad de trato).
+            let payoutMsg = null;
             if (room.mode !== 'classic' && (room.pot || 0) > 0) {
                 for (const cli of room.clients.values()) { if (cli.carry > 0) { addToPot(room, cli.carry); cli.carry = 0; } }
                 const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
                 const ranking = [...room.sim.players.values()]
                     .filter(p => (p.peakMass | 0) > 0 || p.alive)
                     .sort((a, b) => (b.peakMass | 0) - (a.peakMass | 0));
-                const pagos = [];
+                const totalPot = room.pot;
+                const top = [];
                 for (let i = 0; i < Math.min(10, ranking.length); i++) {
-                    const cli = room.clients.get(ranking[i].id);
-                    if (!cli || !cli.payWallet) continue;   // bot o sin wallet → su parte se queda en el bote
-                    const parte = Math.floor(room.pot * PESOS[i] / 100);
-                    if (parte > 0) { warbank.credit(cli.payWallet, parte); pagos.push(`#${i + 1}=${parte}`); }
+                    const pj = ranking[i];
+                    const cli = room.clients.get(pj.id);
+                    const parte = Math.floor(totalPot * PESOS[i] / 100);
+                    if (cli && cli.payWallet && parte > 0) warbank.credit(cli.payWallet, parte);
+                    top.push({ pos: i + 1, name: pj.name, mass: pj.peakMass | 0, pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
                 }
-                log(`Reparto arcade ${room.key}: bote ${room.pot} → ${pagos.join(' ') || '(sin ganadores con wallet)'}`);
+                payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top };
+                // Enviar a cada cliente con su #pos marcada como "mine"
+                for (const [pid, cli] of room.clients) {
+                    if (cli.ws.readyState !== 1) continue;
+                    const idx = top.findIndex(t => ranking[t.pos - 1] && ranking[t.pos - 1].id === pid);
+                    const myCopy = top.map((t, i) => Object.assign({}, t, { mine: i === idx }));
+                    try { cli.ws.send(JSON.stringify(Object.assign({}, payoutMsg, { top: myCopy, myAmount: idx >= 0 ? top[idx].amount : 0 }))); } catch (e) {}
+                }
+                log(`Reparto arcade ${room.key}: bote ${totalPot} → ${top.filter(t => t.paid).map(t => `#${t.pos}=${t.amount}`).join(' ') || '(sin ganadores con wallet)'}`);
                 room.pot = 0;
             }
             broadcast(room, { t: 'matchEnd' });
@@ -1167,16 +1186,20 @@ setInterval(() => {
                     const victimCli = ev.victimId ? room.clients.get(ev.victimId) : null;
                     if (victimCli && victimCli.carry > 0) {
                         cliK.carry += victimCli.carry; victimCli.carry = 0;
+                        sendEcon(victimCli, room);
                     } else {
                         // víctima bot: aporta una entrada al bote (representa su contribución)
                         addToPot(room, entryFeePill(room.key));
                     }
+                    sendEcon(cliK, room);
                     // VICTORIA en classic (5 kills): cashout automático sin fee + se lleva el bote acumulado.
                     if (ev.streak >= 5 && cliK.payWallet) {
                         const win = cliK.carry + (room.pot || 0);
                         if (win > 0) warbank.credit(cliK.payWallet, win);
                         log(`VICTORIA classic: ${cliK.payWallet.slice(0, 6)}… +${win} PILL (carry ${cliK.carry} + bote ${room.pot || 0})`);
+                        try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: room.pot || 0 })); } catch (e) {}
                         cliK.carry = 0; room.pot = 0;
+                        sendEcon(cliK, room);
                     }
                 }
             } else if (ev.type === 'skillUsed') {
