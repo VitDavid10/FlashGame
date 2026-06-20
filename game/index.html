@@ -579,7 +579,11 @@
             <div class="gm-row"><span>In wallet</span><b id="gdWallet" style="color:var(--primary)">—</b></div>
             <div class="gm-row" style="margin-bottom:14px"><span>In GAME</span><b id="gdGame" style="color:#ffce3d">—</b></div>
             <label>Amount</label>
-            <input id="gdAmount" type="number" min="1" value="50000">
+            <div style="position:relative">
+                <input id="gdAmount" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 50000" value="50000" style="padding-right:60px"
+                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <button type="button" onclick="GameWalletUI.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+            </div>
             <button class="gm-btn" id="gdConfirm" onclick="GameWalletUI.deposit()">Deposit to GAME</button>
             <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.5">One signature. Used to enter paid rooms.</p>
         </div>
@@ -2069,6 +2073,10 @@
             } catch (e) {}
         },
         closeDeposit() { document.getElementById('gameDepositModal').style.display = 'none'; },
+        fillMax() {
+            const raw = (document.getElementById('gdWallet').innerText || '').replace(/[^\d]/g, '');
+            if (raw) document.getElementById('gdAmount').value = raw;
+        },
         async deposit() {
             if (!window.PillChain) { showSystemMsg('Wallet module not loaded yet.', 'WALLET'); return; }
             const amt = Math.max(1, parseInt(document.getElementById('gdAmount').value, 10) || 0);
