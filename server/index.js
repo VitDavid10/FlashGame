@@ -184,6 +184,24 @@ function maxPlayersOf(key) { return Math.max(1, rulesOf(key).maxPlayers); }
 // oráculo es la Fase B4; por ahora una conversión fija.) Free = 0.
 const PILL_PER_DOLLAR = parseInt(process.env.PILL_PER_DOLLAR, 10) || 10000;
 function entryFeePill(key) { return priceOf(key) * PILL_PER_DOLLAR; }
+
+// --- Economía B3 (custodiada): carry de classic + bote de arcade ---
+// Exit fee de classic según killStreak al hacer cashout (20% sin kills, 10% con 1, 0% con 2+).
+function classicExitFeePct(kills) { if (kills >= 2) return 0; if (kills >= 1) return 10; return 20; }
+// Mueve `amount` PILL al "bote" interno de la sala (off-chain, en memoria).
+function addToPot(room, amount) { if (amount > 0) room.pot = (room.pot || 0) + amount; }
+// Cashout en classic: paga al jugador su carry menos el exit fee; el fee va al bote.
+// Devuelve el neto pagado al WAR del jugador.
+function classicCashout(room, cli, kills) {
+    if (!cli || !cli.payWallet || cli.carry <= 0) return 0;
+    const fee = Math.floor(cli.carry * classicExitFeePct(kills) / 100);
+    const net = cli.carry - fee;
+    if (net > 0) warbank.credit(cli.payWallet, net);
+    if (fee > 0) addToPot(room, fee);
+    log(`Cashout classic: ${cli.payWallet.slice(0, 6)}… +${net} PILL (carry ${cli.carry}, fee ${fee} → bote)`);
+    cli.carry = 0;
+    return net;
+}
 function pstatOf(name) {
     const k = String(name).toLowerCase();
     if (!playerStats[k]) playerStats[k] = { name: name, partidas: 0, kills: 0, muertes: 0, bestMass: 0, lastSeen: null, lastIp: null };
@@ -955,7 +973,8 @@ wss.on('connection', (ws, req) => {
             // Guarda el clientId anónimo del navegador para que el servidor pueda
             // sumar las quests autoritativamente (sin depender de lo que mande el cliente).
             const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
-            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet });
+            // carry: dinero "retenido" del jugador en esta sala (se inicializa con su entrada y sube al matar).
+            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0 });
             statsOf(key).entradas++; statsDirty = true;
             if (name) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; playersDirty = true; }
             logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
@@ -998,6 +1017,11 @@ wss.on('connection', (ws, req) => {
                 flushPeakMass(room, playerId, cli);
                 if (pj.name) { pstatOf(pj.name).muertes++; playersDirty = true; }
                 statsOf(room.key).muertes++; statsDirty = true;
+                // CLASSIC: salir VIVO = cashout con exit fee (20/10/0 según kills); el fee va al bote.
+                if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, pj.killStreak | 0);
+            } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
+                // Murió y desconecta: su carry ya pasó al matador al morir; nada que hacer.
+                cli.carry = 0;
             }
             // Reembolso de la entrada si la partida NO había empezado (paidFee>0 = no consumida).
             if (cli.paidFee > 0 && cli.payWallet && room.state === 'waiting') {
@@ -1075,6 +1099,24 @@ setInterval(() => {
                 // Reset por partida del contador interno de skills
                 pj.matchSkillUses = 0;
             }
+            // ARCADE: reparto del bote por TOP 10. Curva: 35/20/13/9/7/5/4/3/2.5/1.5 (=100%).
+            // Los que sigan vivos al final también aportan su carry al bote (igualdad de trato).
+            if (room.mode !== 'classic' && (room.pot || 0) > 0) {
+                for (const cli of room.clients.values()) { if (cli.carry > 0) { addToPot(room, cli.carry); cli.carry = 0; } }
+                const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
+                const ranking = [...room.sim.players.values()]
+                    .filter(p => (p.peakMass | 0) > 0 || p.alive)
+                    .sort((a, b) => (b.peakMass | 0) - (a.peakMass | 0));
+                const pagos = [];
+                for (let i = 0; i < Math.min(10, ranking.length); i++) {
+                    const cli = room.clients.get(ranking[i].id);
+                    if (!cli || !cli.payWallet) continue;   // bot o sin wallet → su parte se queda en el bote
+                    const parte = Math.floor(room.pot * PESOS[i] / 100);
+                    if (parte > 0) { warbank.credit(cli.payWallet, parte); pagos.push(`#${i + 1}=${parte}`); }
+                }
+                log(`Reparto arcade ${room.key}: bote ${room.pot} → ${pagos.join(' ') || '(sin ganadores con wallet)'}`);
+                room.pot = 0;
+            }
             broadcast(room, { t: 'matchEnd' });
             log(`Partida terminada en ${room.key}; reinicio en ${RESTART_MS / 1000}s`);
             continue;
@@ -1098,6 +1140,12 @@ setInterval(() => {
                 const pj = room.sim.players.get(ev.playerId);
                 if (pj && pj.name) { pstatOf(pj.name).muertes++; playersDirty = true; }
                 flushPeakMass(room, ev.playerId, room.clients.get(ev.playerId));
+                // ARCADE: cada muerte llena el bote (entrada del muerto va al bote).
+                if (room.mode !== 'classic') {
+                    const dCli = room.clients.get(ev.playerId);
+                    if (dCli && dCli.carry > 0) { addToPot(room, dCli.carry); dCli.carry = 0; }
+                    else addToPot(room, entryFeePill(room.key));   // bot: su entrada al bote
+                }
                 // Q2 también cuenta al morir online (jugaste la partida hasta el final aunque te eliminaran)
                 const cliD = room.clients.get(ev.playerId);
                 if (cliD && cliD.cid) {
@@ -1113,6 +1161,23 @@ setInterval(() => {
                 if (cliK && cliK.cid) {
                     const q = questsOf(cliK.cid);
                     if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
+                }
+                // CLASSIC: carry de la víctima → matador. Si la víctima era un bot, la entrada del bot va al bote.
+                if (cliK && room.mode === 'classic') {
+                    const victimCli = ev.victimId ? room.clients.get(ev.victimId) : null;
+                    if (victimCli && victimCli.carry > 0) {
+                        cliK.carry += victimCli.carry; victimCli.carry = 0;
+                    } else {
+                        // víctima bot: aporta una entrada al bote (representa su contribución)
+                        addToPot(room, entryFeePill(room.key));
+                    }
+                    // VICTORIA en classic (5 kills): cashout automático sin fee + se lleva el bote acumulado.
+                    if (ev.streak >= 5 && cliK.payWallet) {
+                        const win = cliK.carry + (room.pot || 0);
+                        if (win > 0) warbank.credit(cliK.payWallet, win);
+                        log(`VICTORIA classic: ${cliK.payWallet.slice(0, 6)}… +${win} PILL (carry ${cliK.carry} + bote ${room.pot || 0})`);
+                        cliK.carry = 0; room.pot = 0;
+                    }
                 }
             } else if (ev.type === 'skillUsed') {
                 // BLINDAJE Q3: el servidor cuenta skills (no el cliente)

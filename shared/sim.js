@@ -454,7 +454,7 @@
                         def.cells.splice(k, 1);
                         if (def.cells.length === 0) {
                             if (this.config.mode === 'classic') atk.killStreak++;
-                            this.emit({ type: 'botKilled', playerId: atk.id, botName: def.name || 'PLAYER', streak: atk.killStreak, mode: this.config.mode });
+                            this.emit({ type: 'botKilled', playerId: atk.id, victimId: def.id, botName: def.name || 'PLAYER', streak: atk.killStreak, mode: this.config.mode });
                             if (def.alive) { def.alive = false; this.emit({ type: 'playerDied', playerId: def.id }); }
                         } else {
                             this.emit({ type: 'botPieceEaten', playerId: atk.id });
