@@ -116,21 +116,23 @@
         #exitGameBtn { right: 120px; border-color: #522; color: #f55; display: none; }
         #exitGameBtn:hover { background: rgba(255, 50, 50, 0.2); border-color: #f00; color: #fff; }
 
-        /* Wallet widget en el juego (arriba derecha, a la izquierda de los botones de sonido). */
-        #gameWalletPanel {
-            position: absolute; top: 20px; right: 175px; z-index: 100;
-            display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-            background: rgba(0,0,0,0.55); border: 1px solid rgba(0,255,136,0.35);
-            border-radius: 8px; backdrop-filter: blur(4px); font-family: 'Russo One',sans-serif; font-size: 12px;
+        /* Wallet area en el juego: dos cajas separadas (saldo / botones) arriba-derecha.
+           Solo visible en menú de modo. El color del botón toma --mode-color del modo activo. */
+        #gameWalletArea { position: absolute; top: 20px; right: 175px; z-index: 100; display: none; align-items: center; gap: 10px; font-family: 'Russo One',sans-serif; }
+        #gwBalBox {
+            display: none; align-items: center; gap: 6px; padding: 8px 14px;
+            background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4);
+            border-radius: 8px; backdrop-filter: blur(4px); font-size: 12px; color: #ffce3d;
+            text-shadow: 0 0 8px rgba(255,206,61,0.25); white-space: nowrap;
         }
-        #gameWalletPanel .gw-bal { color: #ffce3d; text-shadow: 0 0 8px rgba(255,206,61,0.3); white-space: nowrap; }
-        #gameWalletPanel button {
-            background: transparent; border: 1px solid #ffce3d; color: #ffce3d; border-radius: 6px;
-            padding: 5px 10px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 1px; transition: 0.2s;
+        #gwBalBox b { color: #fff; }
+        /* Botones (CONNECT/DEPOSIT) con el mismo tamaño/forma que el de la web pública */
+        #gameWalletArea button {
+            background: transparent; border: 1px solid var(--mode-color, #00ff88); color: var(--mode-color, #00ff88);
+            border-radius: 8px; padding: 8px 16px; font-family: 'Russo One'; font-size: 12px;
+            letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s;
         }
-        #gameWalletPanel button:hover { background: #ffce3d; color: #1a1300; box-shadow: 0 0 12px rgba(255,206,61,0.4); }
-        #gameWalletPanel .gw-connect { border-color: #00ff88; color: #00ff88; }
-        #gameWalletPanel .gw-connect:hover { background: #00ff88; color: #04150c; box-shadow: 0 0 12px rgba(0,255,136,0.4); }
+        #gameWalletArea button:hover { background: var(--mode-color, #00ff88); color: #04150c; box-shadow: 0 0 18px color-mix(in srgb, var(--mode-color, #00ff88) 45%, transparent); }
 
         /* Modales del juego (deposit + prize) en el estilo del juego */
         .gameModal { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 250; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.2s; }
@@ -447,7 +449,8 @@
         .btn-spectate:hover { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 20px rgba(0, 188, 212, 0.4); }
 
         #ui { position: absolute; top: 15px; left: 15px; color: #fff; font-family: 'Russo One'; font-size: 14px; pointer-events: none; z-index: 10; text-shadow: 0 2px 4px #000; display: none; gap: 15px; }
-        .hud-item { background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+        .hud-item { background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); font-variant-numeric: tabular-nums; will-change: contents; }
+        .hud-val { display: inline-block; min-width: 1ch; text-align: right; font-variant-numeric: tabular-nums; }
         .hud-val { color: var(--primary); }
         #timerDisplay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); color: #fff; font-family: 'Russo One'; font-size: 24px; text-shadow: 0 0 10px var(--primary); pointer-events: none; z-index: 10; display: none;}
         #leaderboard { position: absolute; top: 75px; right: 15px; background: rgba(10, 10, 10, 0.8); border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; width: 160px; pointer-events: none; z-index: 10; font-size: 12px; display: none; }
@@ -559,10 +562,10 @@
         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
     </div>
 
-    <!-- Wallet en el juego: connect + balance "in GAME" + deposit -->
-    <div id="gameWalletPanel">
-        <span class="gw-bal" id="gwBal">—</span>
-        <button class="gw-connect" id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
+    <!-- Wallet en el juego: caja de saldo + botón connect/deposit aparte. Solo visible en menú de modo. -->
+    <div id="gameWalletArea">
+        <div id="gwBalBox"><span style="color:#888">in GAME:</span> <b id="gwBalValue">—</b> <span style="color:#888">$PILL</span></div>
+        <button id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
         <button id="gwDeposit" onclick="GameWalletUI.openDeposit()" style="display:none">DEPOSIT</button>
     </div>
 
@@ -1442,11 +1445,12 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) loadModeQuests(); });
     els.modeScreen.onmouseleave = () => { els.modeScreen.classList.remove('hover-classic', 'hover-arcade'); lastHoveredMode = null; };
     
-    function selectMode(m) { 
-        SoundManager.stop('hover'); 
-        SoundManager.play('select'); 
-        ignoreNextHover = true; 
-        currentGameMode = m; 
+    function selectMode(m) {
+        SoundManager.stop('hover');
+        SoundManager.play('select');
+        ignoreNextHover = true;
+        currentGameMode = m;
+        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);   // wallet area solo al seleccionar modo
         
         // Bloquear interacción durante transición
         els.modeScreen.style.pointerEvents = 'none'; 
@@ -1500,8 +1504,9 @@
         }, 1200); 
     }
 
-    function goBackToModes() { 
+    function goBackToModes() {
         SoundManager.play('select'); ignoreNextHover = true; els.loginOverlay.style.display = 'none'; els.skillOverlay.style.display = 'none';
+        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // ocultar wallet al volver a la pantalla de selección
         els.modeScreen.style.display = 'flex'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); 
         document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; 
         if(currentGameMode === 'classic') setHoverMode('classic'); else setHoverMode('arcade'); currentGameMode = null; 
@@ -1738,7 +1743,7 @@
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
     function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
-    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); }
+    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         let roomKey = currentGameMode + '_' + currentServer;
@@ -2011,16 +2016,27 @@
         gameBalance: 0,
         fmt(n) { return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }); },
         async refresh() {
-            const bal = document.getElementById('gwBal'), conn = document.getElementById('gwConnect'), dep = document.getElementById('gwDeposit');
+            const balBox = document.getElementById('gwBalBox'), balVal = document.getElementById('gwBalValue');
+            const conn = document.getElementById('gwConnect'), dep = document.getElementById('gwDeposit');
             if (!GameWallet.address) { await GameWallet.ensure(); }
             if (GameWallet.address) {
                 conn.style.display = 'none'; dep.style.display = 'inline-block';
                 try { this.gameBalance = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
-                bal.innerHTML = '<span style="color:#888">in GAME:</span> ' + this.fmt(this.gameBalance) + ' $PILL';
+                if (balVal) balVal.innerText = this.fmt(this.gameBalance);
+                if (balBox) balBox.style.display = 'inline-flex';
             } else {
                 conn.style.display = 'inline-block'; dep.style.display = 'none';
-                bal.innerHTML = '<span style="color:#888">Wallet not connected</span>';
+                if (balBox) balBox.style.display = 'none';
             }
+        },
+        // Muestra/oculta el panel completo y aplica el color del modo activo
+        setVisible(visible, mode) {
+            const a = document.getElementById('gameWalletArea');
+            if (!a) return;
+            a.style.display = visible ? 'inline-flex' : 'none';
+            const color = mode === 'classic' ? '#00ff88' : (mode === 'arcade' ? '#ccff00' : '#00ff88');
+            a.style.setProperty('--mode-color', color);
+            if (visible) this.refresh();
         },
         async connect() {
             const p = GameWallet.getProvider('phantom');
@@ -2112,8 +2128,9 @@
         }
     };
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-    // Refrescar el panel cada 6s + al cargar
-    GameWalletUI.refresh(); setInterval(() => GameWalletUI.refresh(), 6000);
+    // Solo refrescamos cuando el panel está visible (en menú de modo). Refresco periódico ligero.
+    setInterval(() => { if (document.getElementById('gameWalletArea').style.display !== 'none') GameWalletUI.refresh(); }, 6000);
+    window.GameWalletUI = GameWalletUI;   // expone para debug y para el módulo ESM
 
     let gamePillPerDollar = null;
     async function getPillPerDollar() {
@@ -2181,6 +2198,7 @@
 
     function startPracticeGame(mode) {
         practiceMode = true;
+        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
         const botCount = parseInt(document.getElementById('botCountInput').value) || 20;
         const baseSize = (mode === 'classic') ? WORLD_CONFIG.classic.size : WORLD_CONFIG.arcade.size;
         sim = new PillSim.Simulation({
@@ -2317,6 +2335,7 @@
 
     function enterOnlineGame(ws, msg, isResume) {
         practiceMode = false; setLobbyBanner(null);
+        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // ocultar wallet durante la partida
         sim = new RemoteSim(ws, msg);
         if (isResume) sim._camInit = true;   // mantener la cámara donde estaba
         MAP_SIZE = msg.mapSize;
