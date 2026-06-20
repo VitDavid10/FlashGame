@@ -1185,7 +1185,7 @@ body.trailer-open #page-content{
                         App.Wallet.provider = provider;
                         DOM.walletBtn.innerText = "DISCONNECT " + App.Wallet.address.slice(0, 4) + '...';
                         DOM.walletBtn.classList.add('btn-disconnect');
-                        try { localStorage.setItem('pw_wallet', name); } catch (e) {}
+                        try { localStorage.setItem('pw_wallet', name); localStorage.setItem('pw_addr', App.Wallet.address); } catch (e) {}
                         App.Market.fetchBalance(App.Wallet.address);
                         App.Market.fetchWar(App.Wallet.address);
                         DOM.depositBtn.style.display = 'inline-block';
@@ -1197,12 +1197,23 @@ body.trailer-open #page-content{
                         if (!silent) App.Msg.show('Sign-in required', 'You must sign the message with your wallet to connect.');
                     }
                 },
+                // Pinta la barra como "conectado" al instante en el F5 (sin parpadeo),
+                // usando la última sesión guardada. eagerConnect lo confirma por detrás.
+                restoreUI: () => {
+                    let name, addr; try { name = localStorage.getItem('pw_wallet'); addr = localStorage.getItem('pw_addr'); } catch (e) {}
+                    if (!name || !addr) return;
+                    App.Wallet.address = addr;
+                    DOM.walletBtn.innerText = "DISCONNECT " + addr.slice(0, 4) + '...';
+                    DOM.walletBtn.classList.add('btn-disconnect');
+                    DOM.depositBtn.style.display = 'inline-block';
+                    DOM.withdrawBtn.style.display = 'inline-block';
+                },
                 // Reconexión silenciosa al recargar (si ya autorizaste antes la wallet)
                 eagerConnect: async () => {
                     let name; try { name = localStorage.getItem('pw_wallet'); } catch (e) {}
                     if (!name) return;
                     const provider = App.Wallet.getProvider(name);
-                    if (!provider) return;
+                    if (!provider) { App.Wallet.disconnect(); return; }
                     try {
                         const resp = await provider.connect({ onlyIfTrusted: true });
                         const pk = (resp && resp.publicKey) ? resp.publicKey : provider.publicKey;
@@ -1216,7 +1227,7 @@ body.trailer-open #page-content{
                         App.Market.fetchBalance(App.Wallet.address);
                         App.Market.fetchWar(App.Wallet.address);
                         App.Wallet.startAutoRefresh();
-                    } catch (e) { /* no estaba autorizada: el usuario tendrá que conectar a mano */ }
+                    } catch (e) { App.Wallet.disconnect(); /* ya no está autorizada: revertir la UI optimista */ }
                 },
                 startAutoRefresh: () => {
                     if (App.Wallet._timer) clearInterval(App.Wallet._timer);
@@ -1231,7 +1242,7 @@ body.trailer-open #page-content{
                 disconnect: () => {
                     try { if (App.Wallet.provider && App.Wallet.provider.disconnect) App.Wallet.provider.disconnect(); } catch (e) {}
                     if (App.Wallet._timer) { clearInterval(App.Wallet._timer); App.Wallet._timer = null; }
-                    try { localStorage.removeItem('pw_wallet'); } catch (e) {}
+                    try { localStorage.removeItem('pw_wallet'); localStorage.removeItem('pw_addr'); } catch (e) {}
                     App.Wallet.address = null;
                     App.Wallet.provider = null;
                     DOM.walletBtn.innerText = "CONNECT WALLET";
@@ -1432,7 +1443,8 @@ function toggleTrailerMode() {
         window.App = App;   // exponer App para el módulo ESM de blockchain (PillChain)
         App.UI.init();
         App.Market.updateTicker();
-        App.Wallet.eagerConnect();   // reconectar la wallet si ya estaba autorizada
+        App.Wallet.restoreUI();      // pinta "conectado" al instante (sin parpadeo en F5)
+        App.Wallet.eagerConnect();   // confirma la sesión en silencio (o revierte si ya no vale)
         setInterval(App.Market.updateTicker, 30000);
 
         // DAILY QUESTS: identidad anónima (UUID en localStorage) + progreso desde el servidor
