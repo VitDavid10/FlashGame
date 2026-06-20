@@ -180,6 +180,10 @@ function rulesOf(key) {
 function minRealOf(key) { return Math.max(1, rulesOf(key).minReal); }
 function targetPopOf(key) { return Math.max(0, rulesOf(key).targetPop); }
 function maxPlayersOf(key) { return Math.max(1, rulesOf(key).maxPlayers); }
+// Tarifa de entrada en PILL = precio($) × PILL_PER_DOLLAR. (El precio real en $ vía
+// oráculo es la Fase B4; por ahora una conversión fija.) Free = 0.
+const PILL_PER_DOLLAR = parseInt(process.env.PILL_PER_DOLLAR, 10) || 10000;
+function entryFeePill(key) { return priceOf(key) * PILL_PER_DOLLAR; }
 function pstatOf(name) {
     const k = String(name).toLowerCase();
     if (!playerStats[k]) playerStats[k] = { name: name, partidas: 0, kills: 0, muertes: 0, bestMass: 0, lastSeen: null, lastIp: null };
@@ -373,6 +377,7 @@ function startMatch(room) {
     for (const [pid, cli] of room.clients) {
         if (!room.sim.players.has(pid)) room.sim.addPlayer(pid, cli.opts || {});
         room.sim.spawnPlayer(pid);
+        cli.paidFee = 0;   // la entrada se consume al empezar (ya no se reembolsa)
         if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify(welcomeMsg(room, pid, cli.token, 'matchStart')));
     }
     refillBots(room);
@@ -573,6 +578,12 @@ const httpServer = http.createServer(async (req, res) => {
     const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
     const query = new URLSearchParams((req.url || '').split('?')[1] || '');
 
+    // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
+    if (urlPath === '/api/fees') {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ pillPerDollar: PILL_PER_DOLLAR }));
+        return;
+    }
     // --- Saldo WAR (PILL depositado en el juego) ---
     if (urlPath === '/api/warbalance') {
         const wallet = String(query.get('wallet') || '');
@@ -911,6 +922,25 @@ wss.on('connection', (ws, req) => {
                 room = null;
                 return;
             }
+            // Salas de pago: exigir FIRMA de la wallet + descontar del saldo WAR.
+            const fee = entryFeePill(key);
+            let payWallet = null;
+            if (fee > 0) {
+                const pay = msg.pay || {};
+                const w = String(pay.wallet || ''), ts = Number(pay.ts) || 0;
+                const expected = `PillWars enter ${key} paying ${fee} PILL @ ${ts}`;
+                const reject = (reason) => { ws.send(JSON.stringify({ t: 'payRequired', room: roomName, fee, reason, balance: isSolAddr(w) ? warbank.getBalance(w) : 0 })); room = null; };
+                if (!isSolAddr(w) || pay.message !== expected || Math.abs(Date.now() - ts) > 120000) { reject('firma de pago inválida'); return; }
+                const sigKey = 'enter_' + (Array.isArray(pay.signature) ? pay.signature.join('') : '');
+                if (warbank.sigUsed(sigKey)) { reject('firma ya usada'); return; }
+                if (!solana.verifySignedMessage(w, pay.message, pay.signature)) { reject('firma no válida'); return; }
+                if (warbank.getBalance(w) < fee) { reject('saldo WAR insuficiente'); return; }
+                warbank.debit(w, fee);
+                warbank.creditDeposit(w, 0, sigKey);   // marca la firma como usada (anti-replay)
+                payWallet = w;
+                logAdmin(key, 'Entrada pagada', w.slice(0, 6) + '… -' + fee + ' PILL');
+                log(`Entrada pagada: ${w.slice(0, 6)}… -${fee} PILL → ${key}`);
+            }
             playerId = PillSim.uuid();
             const name = typeof msg.name === 'string' ? msg.name.slice(0, 16) : '';
             const opts = {
@@ -925,7 +955,7 @@ wss.on('connection', (ws, req) => {
             // Guarda el clientId anónimo del navegador para que el servidor pueda
             // sumar las quests autoritativamente (sin depender de lo que mande el cliente).
             const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
-            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid });
+            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet });
             statsOf(key).entradas++; statsDirty = true;
             if (name) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; playersDirty = true; }
             logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
@@ -968,6 +998,11 @@ wss.on('connection', (ws, req) => {
                 flushPeakMass(room, playerId, cli);
                 if (pj.name) { pstatOf(pj.name).muertes++; playersDirty = true; }
                 statsOf(room.key).muertes++; statsDirty = true;
+            }
+            // Reembolso de la entrada si la partida NO había empezado (paidFee>0 = no consumida).
+            if (cli.paidFee > 0 && cli.payWallet && room.state === 'waiting') {
+                warbank.credit(cli.payWallet, cli.paidFee);
+                log(`Reembolso de entrada (sala no empezó): ${cli.payWallet.slice(0, 6)}… +${cli.paidFee} PILL`);
             }
             room.clients.delete(playerId);
             if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
