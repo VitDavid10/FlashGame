@@ -851,7 +851,11 @@ body.trailer-open #page-content{
             <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:4px"><span>In wallet</span><b id="dep-wallet-bal" style="color:var(--primary)">—</b></div>
             <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In GAME</span><b id="dep-war-bal" style="color:#ffce3d">—</b></div>
             <label class="cmodal-label">Amount</label>
-            <input id="deposit-amount" class="cmodal-field" type="number" min="1" placeholder="e.g. 50000" value="50000">
+            <div style="position:relative">
+                <input id="deposit-amount" class="cmodal-field" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 50000" value="50000" style="padding-right:60px"
+                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <button type="button" onclick="App.Deposit.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+            </div>
             <button class="cmodal-btn" id="deposit-confirm" onclick="App.Deposit.confirm()">Deposit to GAME</button>
             <p style="font-size:11px;color:#666;margin-top:12px;line-height:1.5">You'll sign one transaction. The amount moves to your in-GAME balance, used to enter paid rooms.</p>
         </div>
@@ -865,7 +869,8 @@ body.trailer-open #page-content{
             <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In GAME</span><b id="wd-war-bal" style="color:#ffce3d">—</b></div>
             <label class="cmodal-label">Amount</label>
             <div style="position:relative">
-                <input id="withdraw-amount" class="cmodal-field" type="number" min="1" placeholder="amount to withdraw" style="padding-right:60px">
+                <input id="withdraw-amount" class="cmodal-field" type="text" inputmode="numeric" autocomplete="off" placeholder="amount to withdraw" style="padding-right:60px"
+                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                 <button type="button" onclick="App.Withdraw.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
             </div>
             <button class="cmodal-btn" id="withdraw-confirm" onclick="App.Withdraw.confirm()">Withdraw to wallet</button>
@@ -1271,6 +1276,10 @@ body.trailer-open #page-content{
                     App.Market.fetchBalance(App.Wallet.address); App.Market.fetchWar(App.Wallet.address);
                 },
                 close: () => { DOM.depositModal.style.display = 'none'; },
+                fillMax: () => {
+                    const raw = (App.Wallet.pillBal || '').replace(/[^\d]/g, '');
+                    if (raw) DOM.depositAmount.value = raw;
+                },
                 confirm: async () => {
                     const w = App.Wallet.address;
                     if (!w) return;
