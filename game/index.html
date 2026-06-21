@@ -304,26 +304,39 @@
         #loginOverlay, #resultOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 60; }
 
         /* Paneles laterales (oracle + missions) — derecha, junto al menú principal */
-        .menu-side { position: absolute; right: 28px; width: 290px; z-index: 61; pointer-events: auto; }
-        #oraclePanel { top: 80px; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border: 1px solid rgba(255,206,61,0.3); border-radius: 12px; padding: 16px 18px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); }
-        #missionsPanel { bottom: 80px; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 12px; padding: 16px 18px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); }
+        .menu-side { position: absolute; right: 30px; width: 360px; z-index: 61; pointer-events: auto; }
+        #oraclePanel { top: 70px; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border: 1px solid rgba(255,206,61,0.3); border-radius: 12px; padding: 18px 22px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); }
+        #missionsPanel { bottom: 70px; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 12px; padding: 18px 22px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); min-height: 250px; }
         #missionsPanel.classic { border: 1px solid rgba(0,255,170,0.3); }
         #missionsPanel.arcade { border: 1px solid rgba(204,255,0,0.3); }
-        .menu-side-head { font-family: 'Russo One'; font-size: 12px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+        .menu-side-head { font-family: 'Russo One'; font-size: 13px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
         #oraclePanel .menu-side-head { color: #ffce3d; }
         #missionsPanel.classic .menu-side-head { color: #00ffaa; }
         #missionsPanel.arcade .menu-side-head { color: #ccff00; }
-        /* Lista de salas dentro del oracle */
-        .oracle-row { display: grid; grid-template-columns: 14px 50px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; font-family: 'Russo One'; font-size: 11px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); }
+
+        /* Lista de salas dentro del oracle: nombre · precio en PILL · STATUS + dot */
+        .oracle-row { display: grid; grid-template-columns: 60px 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; font-family: 'Russo One'; font-size: 12px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); }
         .oracle-row:first-of-type { border-top: 0; }
-        .oracle-row .ostatus { width: 9px; height: 9px; border-radius: 50%; }
-        .oracle-row .ostatus.on { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
-        .oracle-row .ostatus.off { background: #444; }
-        .oracle-row .oprice { color: #fff; font-size: 12px; }
-        .oracle-row .opill { color: #ffce3d; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; }
-        .oracle-row .opeople { color: #777; font-size: 10px; padding-left: 4px; }
-        .oracle-timer { text-align: center; font-family: 'Russo One'; font-size: 13px; color: #ffce3d; padding: 8px 0 12px; border-bottom: 1px dashed rgba(255,206,61,0.2); margin-bottom: 8px; letter-spacing: 1px; }
-        .oracle-timer .ot-lbl { color: #888; font-size: 10px; display: block; letter-spacing: 2px; margin-bottom: 2px; }
+        .oracle-row .oroom { color: #fff; font-size: 13px; }
+        .oracle-row .opill { color: #ffce3d; font-size: 12px; font-variant-numeric: tabular-nums; }
+        .oracle-row .ostatuslabel { color: #666; font-size: 10px; letter-spacing: 1.5px; }
+        .oracle-row .ostatus { width: 10px; height: 10px; border-radius: 50%; }
+        .oracle-row .ostatus.full { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+        .oracle-row .ostatus.some { background: #ffce3d; box-shadow: 0 0 8px rgba(255,206,61,0.6); }
+        .oracle-row .ostatus.empty { background: #444; }
+        .oracle-timer { text-align: center; font-family: 'Russo One'; font-size: 14px; color: #ffce3d; padding: 8px 0 12px; border-bottom: 1px dashed rgba(255,206,61,0.2); margin-bottom: 10px; letter-spacing: 1px; }
+        .oracle-timer .ot-lbl { color: #888; font-size: 10px; display: block; letter-spacing: 2px; margin-bottom: 3px; }
+
+        /* Carrusel del panel inferior (MISSIONS ↔ SKINS) */
+        .side-tabs-arrow { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-family: 'Russo One'; font-size: 12px; line-height: 18px; padding: 0; transition: 0.2s; }
+        .side-tabs-arrow:hover { background: currentColor; color: #04150c; }
+        .side-tabs-dots { display: flex; gap: 5px; justify-content: center; margin-top: 10px; }
+        .side-tabs-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: 0.2s; }
+        .side-tabs-dots span.act { background: currentColor; box-shadow: 0 0 6px currentColor; }
+        #missionsPanel.classic .side-tabs-dots span.act, #missionsPanel.classic .side-tabs-arrow { color: #00ffaa; }
+        #missionsPanel.arcade .side-tabs-dots span.act, #missionsPanel.arcade .side-tabs-arrow { color: #ccff00; }
+        .skins-soon { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; color: #555; font-family: 'Russo One'; font-size: 13px; letter-spacing: 2px; }
+        .skins-soon .ss-big { font-size: 28px; color: #777; margin-bottom: 10px; }
         #loginOverlay.bg-classic { background-image: linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(135deg, var(--classic-bg-1) 0%, #000 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
         #loginOverlay.bg-arcade { background-image: linear-gradient(rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(135deg, #000 0%, var(--arcade-bg-1) 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
         
@@ -331,6 +344,8 @@
             background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary);
             box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px;
             border-radius: 12px; text-align: center; width: 850px;
+            /* Desplazado fuerte a la izquierda para dar sitio a los paneles laterales */
+            margin-right: 420px;
             max-width: 95%; display: flex; flex-direction: column;
             animation: slideUp 0.4s ease-out; position: relative; 
             overflow: visible; transition: width 0.3s ease; 
@@ -678,12 +693,12 @@
         <!-- Botones que despliegan los paneles de quests por modo -->
         <div class="mqp-btn arcade" onclick="toggleModeQuests('arcade')"><span class="dot"></span>DAILY QUESTS <span class="cnt" id="mqpArcadeBtnCnt">0/5</span></div>
         <div class="mqp-btn classic" onclick="toggleModeQuests('classic')"><span class="dot"></span>DAILY QUESTS <span class="cnt" id="mqpClassicBtnCnt">0/5</span></div>
-        <div id="mqpArcade" class="mqp arcade open">
+        <div id="mqpArcade" class="mqp arcade">
             <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">ARCADE</span></div>
             <div id="mqpArcadeList"></div>
             <div class="mqp-foot"><span>UNLOCK 3 / 5</span><span><span class="num" id="mqpArcadeNum">0</span> DONE</span></div>
         </div>
-        <div id="mqpClassic" class="mqp classic open">
+        <div id="mqpClassic" class="mqp classic">
             <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">CLASSIC</span></div>
             <div id="mqpClassicList"></div>
             <div class="mqp-foot"><span>UNLOCK 3 / 5</span><span><span class="num" id="mqpClassicNum">0</span> DONE</span></div>
@@ -950,10 +965,24 @@
             <div id="oracleRows"></div>
         </div>
 
-        <!-- Panel MISSIONS (abajo-derecha): las daily quests del modo activo -->
+        <!-- Panel MISSIONS / SKINS (abajo-derecha): carrusel con flecha para alternar -->
         <div id="missionsPanel" class="menu-side classic">
-            <div class="menu-side-head"><span>MISSIONS</span><span style="font-size:10px;color:#888;letter-spacing:1px;"><span id="missionsDone">0</span>/5</span></div>
-            <div id="missionsList"></div>
+            <div class="menu-side-head">
+                <span id="sidePanelTitle">MISSIONS</span>
+                <span style="display:flex; align-items:center; gap:10px;">
+                    <span id="sidePanelExtra" style="font-size:10px;color:#888;letter-spacing:1px;"><span id="missionsDone">0</span>/5</span>
+                    <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
+                </span>
+            </div>
+            <div id="sidePanelMissions"><div id="missionsList"></div></div>
+            <div id="sidePanelSkins" style="display:none">
+                <div class="skins-soon">
+                    <div class="ss-big">★</div>
+                    <div>SKINS</div>
+                    <div style="font-size:10px; color:#444; margin-top:8px;">COMING SOON</div>
+                </div>
+            </div>
+            <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span></div>
         </div>
     </div>
 
@@ -1415,7 +1444,21 @@
     class Explosion { constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; this.particles = []; for(let i=0; i<16; i++) { let angle = (Math.PI*2 * i) / 16; this.particles.push({ x: 0, y: 0, vx: Math.cos(angle)*8, vy: Math.sin(angle)*8, r: Math.random()*5+5, rot: Math.random()*Math.PI }); } } update() { this.life -= 0.02; this.particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.rot+=0.1; }); } draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.globalAlpha = Math.max(0, this.life); this.particles.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = '#81F126'; ctx.strokeStyle = '#3E8E11'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<12; i++) { let r = (i%2===0) ? p.r : p.r/2; ctx.lineTo(Math.cos((Math.PI*i)/6)*r, Math.sin((Math.PI*i)/6)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }); ctx.restore(); } }
 
     function tryPlayHover(m) { if (ignoreNextHover) { if (m !== lastHoveredMode) { ignoreNextHover = false; SoundManager.play('hover'); } } else { SoundManager.play('hover'); } }
-    function setHoverMode(m) { lastHoveredMode = m; if(m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); } else if(m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); } updateModeQuestsUI(); }
+    let _questsHoverTimer = null;
+    function setHoverMode(m) {
+        lastHoveredMode = m;
+        if (m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); }
+        else if (m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); }
+        updateModeQuestsUI();
+        // Cerrar el panel del otro modo al instante, abrir el del actual TRAS la animación
+        // de hover (~700ms) para que no tape el título mientras la cara del modo se expande.
+        document.querySelectorAll('.mqp.open').forEach(el => { if (!el.classList.contains(m)) el.classList.remove('open'); });
+        if (_questsHoverTimer) clearTimeout(_questsHoverTimer);
+        _questsHoverTimer = setTimeout(() => {
+            const t = document.getElementById('mqp' + (m === 'classic' ? 'Classic' : 'Arcade'));
+            if (t && lastHoveredMode === m) t.classList.add('open');
+        }, 700);
+    }
 
     // Pinta los paneles de quests laterales con el progreso actual del jugador
     const MODE_QUESTS = {
@@ -1497,7 +1540,7 @@
     // Refrescar cada vez que vuelves a la pantalla de modos
     window.addEventListener('focus', loadModeQuests);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) loadModeQuests(); });
-    els.modeScreen.onmouseleave = () => { els.modeScreen.classList.remove('hover-classic', 'hover-arcade'); lastHoveredMode = null; };
+    els.modeScreen.onmouseleave = () => { els.modeScreen.classList.remove('hover-classic', 'hover-arcade'); lastHoveredMode = null; if (_questsHoverTimer) clearTimeout(_questsHoverTimer); document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open')); };
     
     function selectMode(m) {
         SoundManager.stop('hover');
@@ -2198,7 +2241,8 @@
         try { gamePillPerDollar = (await (await fetch('/api/fees')).json()).pillPerDollar || 10000; } catch (e) { gamePillPerDollar = 10000; }
         return gamePillPerDollar;
     }
-    // ORACLE: pinta la tabla de salas con su precio en PILL y status (verde si hay gente).
+    // ORACLE: pinta la tabla de salas. Status: VERDE >=50% del tope · AMARILLO algo de
+    // gente pero <50% · GRIS vacía. La capacidad por sala viene como `cap` o se asume 30.
     async function refreshOracle() {
         try {
             const data = await (await fetch('/api/rooms')).json();
@@ -2206,17 +2250,30 @@
             const cont = document.getElementById('oracleRows'); if (!cont) return;
             const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic'));
             cont.innerHTML = rowsForMode.map(r => {
-                const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US');
-                const on = r.players > 0 ? 'on' : 'off';
+                const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL';
+                const cap = r.cap || 30;
+                const cls = r.players === 0 ? 'empty' : (r.players >= cap / 2 ? 'full' : 'some');
                 return `<div class="oracle-row">
-                    <span class="ostatus ${on}"></span>
-                    <span class="oprice">${r.priceUsd === 0 ? 'Free' : '$' + r.priceUsd}</span>
+                    <span class="oroom">${r.priceUsd === 0 ? 'Free' : '$' + r.priceUsd}</span>
                     <span class="opill">${fee}</span>
-                    <span class="opeople">${r.players}p</span>
+                    <span class="ostatuslabel">STATUS:</span>
+                    <span class="ostatus ${cls}" title="${r.players} players"></span>
                 </div>`;
             }).join('');
             oracleNextRefresh = Date.now() + ORACLE_EVERY_MS;
         } catch (e) {}
+    }
+    // Carrusel del panel inferior derecho: alterna MISSIONS ↔ SKINS
+    let sidePanelTab = 'missions';
+    function switchSidePanel() {
+        sidePanelTab = sidePanelTab === 'missions' ? 'skins' : 'missions';
+        document.getElementById('sidePanelMissions').style.display = sidePanelTab === 'missions' ? 'block' : 'none';
+        document.getElementById('sidePanelSkins').style.display = sidePanelTab === 'skins' ? 'block' : 'none';
+        document.getElementById('sidePanelTitle').textContent = sidePanelTab === 'missions' ? 'MISSIONS' : 'SKINS';
+        document.getElementById('sidePanelExtra').style.display = sidePanelTab === 'missions' ? 'inline-block' : 'none';
+        document.getElementById('dot-missions').classList.toggle('act', sidePanelTab === 'missions');
+        document.getElementById('dot-skins').classList.toggle('act', sidePanelTab === 'skins');
+        try { SoundManager.play('simpleselect'); } catch (e) {}
     }
     function tickOracleTimer() {
         const el = document.getElementById('oracleTimer'); if (!el) return;

@@ -642,6 +642,7 @@ const httpServer = http.createServer(async (req, res) => {
                 priceUsd: priceOf(price),
                 pillFee: entryFeePill(key),
                 players: room ? room.clients.size : 0,
+                cap: maxPlayersOf(key),
                 state: room ? room.state : 'offline',
             });
         }
