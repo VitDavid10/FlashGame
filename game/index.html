@@ -275,14 +275,6 @@
         .mqp.classic .mqp-head .pill { color: #00ffaa; }
         .mqp.arcade .mqp-head .pill { color: #ccff00; }
         .mqp-q { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid rgba(255,255,255,0.06); }
-        /* Versión inline integrada en el menú: variante compacta de las quests */
-        .mqp-inline-list .mqp-q { padding: 6px 0; }
-        .mqp-inline-list .mqp-q .t { font-size: 10px; color: #ccc; }
-        .mqp-inline-list .mqp-q .n { font-size: 13px; }
-        .mqp-inline-list .mqp-q .v { font-size: 10px; }
-        .mqp-inline-list .mqp-q .tip { display: none; }
-        .mqp-inline.classic .mqp-q.done .n, .mqp-inline.classic .mqp-q.prog .n { color: #00ffaa; }
-        .mqp-inline.arcade .mqp-q.done .n, .mqp-inline.arcade .mqp-q.prog .n { color: #ccff00; }
         .mqp-q:first-of-type { border-top: 0; }
         .mqp-q .n { font-family: 'Russo One'; font-size: 16px; color: #555; letter-spacing: 1px; }
         .mqp-q.done .n, .mqp-q.prog .n { color: inherit; }
@@ -310,6 +302,28 @@
 
         /* --- LOGIN OVERLAY --- */
         #loginOverlay, #resultOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 60; }
+
+        /* Paneles laterales (oracle + missions) — derecha, junto al menú principal */
+        .menu-side { position: absolute; right: 28px; width: 290px; z-index: 61; pointer-events: auto; }
+        #oraclePanel { top: 80px; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border: 1px solid rgba(255,206,61,0.3); border-radius: 12px; padding: 16px 18px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); }
+        #missionsPanel { bottom: 80px; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 12px; padding: 16px 18px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); }
+        #missionsPanel.classic { border: 1px solid rgba(0,255,170,0.3); }
+        #missionsPanel.arcade { border: 1px solid rgba(204,255,0,0.3); }
+        .menu-side-head { font-family: 'Russo One'; font-size: 12px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+        #oraclePanel .menu-side-head { color: #ffce3d; }
+        #missionsPanel.classic .menu-side-head { color: #00ffaa; }
+        #missionsPanel.arcade .menu-side-head { color: #ccff00; }
+        /* Lista de salas dentro del oracle */
+        .oracle-row { display: grid; grid-template-columns: 14px 50px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; font-family: 'Russo One'; font-size: 11px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); }
+        .oracle-row:first-of-type { border-top: 0; }
+        .oracle-row .ostatus { width: 9px; height: 9px; border-radius: 50%; }
+        .oracle-row .ostatus.on { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+        .oracle-row .ostatus.off { background: #444; }
+        .oracle-row .oprice { color: #fff; font-size: 12px; }
+        .oracle-row .opill { color: #ffce3d; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; }
+        .oracle-row .opeople { color: #777; font-size: 10px; padding-left: 4px; }
+        .oracle-timer { text-align: center; font-family: 'Russo One'; font-size: 13px; color: #ffce3d; padding: 8px 0 12px; border-bottom: 1px dashed rgba(255,206,61,0.2); margin-bottom: 8px; letter-spacing: 1px; }
+        .oracle-timer .ot-lbl { color: #888; font-size: 10px; display: block; letter-spacing: 2px; margin-bottom: 2px; }
         #loginOverlay.bg-classic { background-image: linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(135deg, var(--classic-bg-1) 0%, #000 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
         #loginOverlay.bg-arcade { background-image: linear-gradient(rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(135deg, #000 0%, var(--arcade-bg-1) 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
         
@@ -317,8 +331,6 @@
             background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary);
             box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px;
             border-radius: 12px; text-align: center; width: 850px;
-            /* Desplazado ligeramente a la izquierda para dar aire al lateral derecho */
-            margin-right: 90px;
             max-width: 95%; display: flex; flex-direction: column;
             animation: slideUp 0.4s ease-out; position: relative; 
             overflow: visible; transition: width 0.3s ease; 
@@ -666,12 +678,12 @@
         <!-- Botones que despliegan los paneles de quests por modo -->
         <div class="mqp-btn arcade" onclick="toggleModeQuests('arcade')"><span class="dot"></span>DAILY QUESTS <span class="cnt" id="mqpArcadeBtnCnt">0/5</span></div>
         <div class="mqp-btn classic" onclick="toggleModeQuests('classic')"><span class="dot"></span>DAILY QUESTS <span class="cnt" id="mqpClassicBtnCnt">0/5</span></div>
-        <div id="mqpArcade" class="mqp arcade">
+        <div id="mqpArcade" class="mqp arcade open">
             <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">ARCADE</span></div>
             <div id="mqpArcadeList"></div>
             <div class="mqp-foot"><span>UNLOCK 3 / 5</span><span><span class="num" id="mqpArcadeNum">0</span> DONE</span></div>
         </div>
-        <div id="mqpClassic" class="mqp classic">
+        <div id="mqpClassic" class="mqp classic open">
             <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">CLASSIC</span></div>
             <div id="mqpClassicList"></div>
             <div class="mqp-foot"><span>UNLOCK 3 / 5</span><span><span class="num" id="mqpClassicNum">0</span> DONE</span></div>
@@ -690,19 +702,11 @@
             <div class="login-content-wrapper">
                 <div class="login-left">
                     <div class="section-title">1. Room Select (Token amount depends on $PILL price)</div>
-                    <div style="display:flex; gap:10px; align-items:stretch; margin-bottom:6px;">
-                        <div class="server-selector" style="flex:1; margin-bottom:0;">
-                            <button class="srv-btn selected" onclick="selectServer('5$', this)">5$</button>
-                            <button class="srv-btn" onclick="selectServer('10$', this)">10$</button>
-                            <button class="srv-btn" onclick="selectServer('20$', this)">20$</button>
-                            <button class="srv-btn" onclick="selectServer('50$', this)">50$</button>
-                        </div>
-                        <div id="pillRateBox" style="background:rgba(0,255,136,0.06); border:1px solid rgba(0,255,136,0.4); border-radius:6px; padding:6px 12px; display:flex; flex-direction:column; justify-content:center; min-width:130px; text-align:right;">
-                            <div style="color:#ffce3d; font-family:'Russo One'; font-size:14px; line-height:1; white-space:nowrap;">
-                                <span id="pillRateUsd">$1</span> <span style="color:#666; font-size:11px;">=</span> <span id="pillRateAmt">10,000</span>
-                            </div>
-                            <div style="color:#666; font-size:9px; letter-spacing:1px; margin-top:3px;">$PILL · updates every 5min</div>
-                        </div>
+                    <div class="server-selector">
+                        <button class="srv-btn selected" onclick="selectServer('5$', this)">5$</button>
+                        <button class="srv-btn" onclick="selectServer('10$', this)">10$</button>
+                        <button class="srv-btn" onclick="selectServer('20$', this)">20$</button>
+                        <button class="srv-btn" onclick="selectServer('50$', this)">50$</button>
                     </div>
                     <!-- FREE ROOM BELOW PAYMENT ROOMS -->
                     <button class="srv-btn" style="width:100%; margin-bottom:5px; border-color:var(--primary); color:var(--primary);" onclick="selectServer('Free', this)">PRACTICE (FREE)</button>
@@ -883,15 +887,6 @@
                         </div>
                     </div>
 
-                    <!-- DAILY QUESTS (inline, junto a la skills card) -->
-                    <div class="skill-info-card mqp-inline arcade" style="border-color:#ccff00;">
-                        <div class="card-header" style="color:#ccff00; display:flex; justify-content:space-between; align-items:center;">
-                            <span>DAILY QUESTS</span>
-                            <span style="font-size:10px; color:#888; letter-spacing:1px;"><span id="mqpArcadeInlineNum">0</span>/5 DONE</span>
-                        </div>
-                        <div id="mqpArcadeInlineList" class="mqp-inline-list" style="padding:6px 0 2px;"></div>
-                    </div>
-                    
                     <div id="secretSkinPanel" style="display:none; margin-top: 15px; border-top: 1px solid #333; padding-top: 10px; text-align: center; animation: fadeIn 0.5s;">
                         <div style="color:#ffd700; font-family:'Russo One'; font-size:12px; margin-bottom:5px;">✨ SECRET SKIN UNLOCKED ✨</div>
                         <input type="text" id="secretSkinInput" value="https://upload.wikimedia.org/wikipedia/en/5/5f/Original_Doge_meme.jpg" placeholder="Paste Image URL..." style="width:100%; padding: 8px; font-size:11px; background:#000; border:1px solid #ffd700; color:#fff; border-radius:4px; box-sizing:border-box;">
@@ -932,15 +927,6 @@
                         </div>
                     </div>
 
-                    <!-- DAILY QUESTS (inline, junto a EXIT RULES) -->
-                    <div class="skill-info-card mqp-inline classic" style="border-color: #00ffaa;">
-                        <div class="card-header" style="color:#00ffaa; display:flex; justify-content:space-between; align-items:center;">
-                            <span>DAILY QUESTS</span>
-                            <span style="font-size:10px; color:#888; letter-spacing:1px;"><span id="mqpClassicInlineNum">0</span>/5 DONE</span>
-                        </div>
-                        <div id="mqpClassicInlineList" class="mqp-inline-list" style="padding:6px 0 2px;"></div>
-                    </div>
-
                     <!-- VIDEO CORREGIDO (../video) -->
                     <div class="split-guide-box">
                         <video id="guideVideo" class="split-video" src="../video/Split.mp4" autoplay loop muted playsinline></video>
@@ -952,6 +938,22 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Panel ORACLE (arriba-derecha): tipo de cambio actual + tabla de salas con status -->
+        <div id="oraclePanel" class="menu-side">
+            <div class="menu-side-head"><span>ORACLE · PRICES</span></div>
+            <div class="oracle-timer">
+                <span class="ot-lbl">REFRESH IN</span>
+                <span id="oracleTimer">5:00</span>
+            </div>
+            <div id="oracleRows"></div>
+        </div>
+
+        <!-- Panel MISSIONS (abajo-derecha): las daily quests del modo activo -->
+        <div id="missionsPanel" class="menu-side classic">
+            <div class="menu-side-head"><span>MISSIONS</span><span style="font-size:10px;color:#888;letter-spacing:1px;"><span id="missionsDone">0</span>/5</span></div>
+            <div id="missionsList"></div>
         </div>
     </div>
 
@@ -1458,11 +1460,15 @@
         if (numEl) numEl.textContent = done;
         const btnCnt = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'BtnCnt');
         if (btnCnt) btnCnt.textContent = done + '/' + list.length;
-        // Panel inline integrado en login-right (mismo contenido)
-        const inlineList = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'InlineList');
-        const inlineNum = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'InlineNum');
-        if (inlineList) inlineList.innerHTML = cont.innerHTML;
-        if (inlineNum) inlineNum.textContent = done;
+        // Panel MISSIONS lateral derecho (solo del modo activo seleccionado)
+        if (mode === currentGameMode) {
+            const mList = document.getElementById('missionsList');
+            const mNum = document.getElementById('missionsDone');
+            const mPanel = document.getElementById('missionsPanel');
+            if (mList) mList.innerHTML = cont.innerHTML;
+            if (mNum) mNum.textContent = done;
+            if (mPanel) { mPanel.classList.toggle('classic', mode === 'classic'); mPanel.classList.toggle('arcade', mode !== 'classic'); }
+        }
     }
     function updateModeQuestsUI() { renderMode('classic'); renderMode('arcade'); }
     function toggleModeQuests(mode) {
@@ -1472,10 +1478,10 @@
         if (target) target.classList.toggle('open');
         try { SoundManager.play('simpleselect'); } catch (e) {}
     }
-    // Cerrar el panel si se pulsa fuera (en el menú de modos)
+    // Las quests están abiertas por defecto en el menú de modos; no cerrar al clic fuera.
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.mqp') && !e.target.closest('.mqp-btn')) {
-            document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open'));
+        if (false) {
+            // (deshabilitado a propósito; antes cerraba el panel al pulsar fuera)
         }
     });
     async function loadModeQuests() {
@@ -2185,19 +2191,43 @@
     window.GameWalletUI = GameWalletUI;   // expone para debug y para el módulo ESM
 
     let gamePillPerDollar = null;
+    let oracleNextRefresh = 0;
+    const ORACLE_EVERY_MS = 5 * 60 * 1000;
     async function getPillPerDollar() {
         if (gamePillPerDollar != null) return gamePillPerDollar;
         try { gamePillPerDollar = (await (await fetch('/api/fees')).json()).pillPerDollar || 10000; } catch (e) { gamePillPerDollar = 10000; }
-        updatePillRateBox();
         return gamePillPerDollar;
     }
-    function updatePillRateBox() {
-        const el = document.getElementById('pillRateAmt');
-        if (el && gamePillPerDollar) el.innerText = Number(gamePillPerDollar).toLocaleString('en-US');
+    // ORACLE: pinta la tabla de salas con su precio en PILL y status (verde si hay gente).
+    async function refreshOracle() {
+        try {
+            const data = await (await fetch('/api/rooms')).json();
+            gamePillPerDollar = data.pillPerDollar || gamePillPerDollar || 10000;
+            const cont = document.getElementById('oracleRows'); if (!cont) return;
+            const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic'));
+            cont.innerHTML = rowsForMode.map(r => {
+                const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US');
+                const on = r.players > 0 ? 'on' : 'off';
+                return `<div class="oracle-row">
+                    <span class="ostatus ${on}"></span>
+                    <span class="oprice">${r.priceUsd === 0 ? 'Free' : '$' + r.priceUsd}</span>
+                    <span class="opill">${fee}</span>
+                    <span class="opeople">${r.players}p</span>
+                </div>`;
+            }).join('');
+            oracleNextRefresh = Date.now() + ORACLE_EVERY_MS;
+        } catch (e) {}
     }
-    // Cargar el ratio al abrir el menú y refrescarlo cada 5 min ("simulando" oráculo)
-    getPillPerDollar();
-    setInterval(() => { gamePillPerDollar = null; getPillPerDollar(); }, 5 * 60 * 1000);
+    function tickOracleTimer() {
+        const el = document.getElementById('oracleTimer'); if (!el) return;
+        const left = Math.max(0, oracleNextRefresh - Date.now());
+        const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
+        el.textContent = m + ':' + (s < 10 ? '0' + s : s);
+        if (left <= 0) refreshOracle();
+    }
+    refreshOracle();
+    setInterval(refreshOracle, ORACLE_EVERY_MS);
+    setInterval(tickOracleTimer, 1000);
     // Para salas de pago: comprueba saldo WAR y firma la entrada. Devuelve el objeto
     // `pay` para el join, o null si no se puede (ya avisa al usuario).
     async function preparePayment(mode, roomName) {

@@ -631,6 +631,24 @@ const httpServer = http.createServer(async (req, res) => {
         }));
         return;
     }
+    // --- Estado público de salas (para el "ORACLE" del menú del juego) ---
+    if (urlPath === '/api/rooms') {
+        const list = [];
+        for (const mode of CATALOG_MODES) for (const price of PRICES) {
+            const key = mode + '_' + price;
+            const room = rooms.get(key);
+            list.push({
+                key, mode, room: price,
+                priceUsd: priceOf(price),
+                pillFee: entryFeePill(key),
+                players: room ? room.clients.size : 0,
+                state: room ? room.state : 'offline',
+            });
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000 }));
+        return;
+    }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
     if (urlPath === '/api/fees') {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
