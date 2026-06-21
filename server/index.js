@@ -199,7 +199,11 @@ function tickOracle() {
     log(`Oráculo: $1 = ${PILL_PER_DOLLAR} PILL`);
 }
 setInterval(tickOracle, ORACLE_REFRESH_MS);
-function entryFeePill(key) { return priceOf(key) * PILL_PER_DOLLAR; }
+// Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
+function entryFeePill(key, rate) { return priceOf(key) * (rate || PILL_PER_DOLLAR); }
+// Rate "vigente" de una sala: si tiene gente jugando usa el bloqueado; si está vacía,
+// el precio vivo del oráculo (lo que pagaría el próximo en entrar y fijar el precio).
+function roomRate(room) { return (room && room.clients.size > 0 && room.pillRate) ? room.pillRate : PILL_PER_DOLLAR; }
 
 // --- Economía B3 (custodiada): carry de classic + bote de arcade ---
 // Exit fee de classic según killStreak al hacer cashout (20% sin kills, 10% con 1, 0% con 2+).
@@ -652,7 +656,8 @@ const httpServer = http.createServer(async (req, res) => {
             list.push({
                 key, mode, room: price,
                 priceUsd: priceOf(price),
-                pillFee: entryFeePill(key),
+                pillFee: entryFeePill(key, roomRate(room)),   // bloqueado si hay gente, vivo si vacía
+                locked: !!(room && room.clients.size > 0),
                 players: room ? room.clients.size : 0,
                 cap: maxPlayersOf(key),
                 state: room ? room.state : 'offline',
@@ -1006,10 +1011,14 @@ wss.on('connection', (ws, req) => {
                 room = null;
                 return;
             }
+            // Precio BLOQUEADO por sala: si esta sala está vacía (este es el primer
+            // jugador), fija el precio al del oráculo actual. Mientras haya gente, no
+            // cambia → todos en la misma partida pagan los mismos PILL (reparto justo).
+            if (room.clients.size === 0) room.pillRate = PILL_PER_DOLLAR;
             // Salas de pago: exigir FIRMA de la wallet + descontar del saldo WAR.
             // Excepción: bots del stress test pueden entrar gratis con el token de tester
             // (solo válido si se ejecutan en el mismo servidor: SOL_RPC=devnet).
-            const fee = entryFeePill(key);
+            const fee = entryFeePill(key, room.pillRate);
             let payWallet = null;
             const TESTER_OK = msg.tester === 'STRESS_TEST_DEVNET' && /devnet/i.test(solana.RPC || '');
             if (fee > 0 && !TESTER_OK) {
@@ -1225,7 +1234,7 @@ setInterval(() => {
                 if (room.mode !== 'classic') {
                     const dCli = room.clients.get(ev.playerId);
                     if (dCli && dCli.carry > 0) { addToPot(room, dCli.carry); dCli.carry = 0; }
-                    else addToPot(room, entryFeePill(room.key));   // bot: su entrada al bote
+                    else addToPot(room, entryFeePill(room.key, room.pillRate));   // bot: su entrada al bote
                 }
                 // Q2 también cuenta al morir online (jugaste la partida hasta el final aunque te eliminaran)
                 const cliD = room.clients.get(ev.playerId);
@@ -1251,7 +1260,7 @@ setInterval(() => {
                         sendEcon(victimCli, room);
                     } else {
                         // víctima bot: aporta una entrada al bote (representa su contribución)
-                        addToPot(room, entryFeePill(room.key));
+                        addToPot(room, entryFeePill(room.key, room.pillRate));
                     }
                     sendEcon(cliK, room);
                     // VICTORIA en classic (5 kills): cashout automático sin fee + se lleva el bote acumulado.

@@ -2262,7 +2262,8 @@
             const cont = document.getElementById('oracleRows'); if (!cont) return;
             const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic'));
             cont.innerHTML = rowsForMode.map(r => {
-                const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL';
+                const lock = r.locked ? ' <span title="price locked while players are inside" style="color:#888">🔒</span>' : '';
+                const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL' + lock;
                 const cap = r.cap || 30;
                 const cls = r.players === 0 ? 'empty' : (r.players >= cap / 2 ? 'full' : 'some');
                 return `<div class="oracle-row">
