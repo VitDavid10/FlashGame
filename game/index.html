@@ -275,6 +275,14 @@
         .mqp.classic .mqp-head .pill { color: #00ffaa; }
         .mqp.arcade .mqp-head .pill { color: #ccff00; }
         .mqp-q { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid rgba(255,255,255,0.06); }
+        /* Versión inline integrada en el menú: variante compacta de las quests */
+        .mqp-inline-list .mqp-q { padding: 6px 0; }
+        .mqp-inline-list .mqp-q .t { font-size: 10px; color: #ccc; }
+        .mqp-inline-list .mqp-q .n { font-size: 13px; }
+        .mqp-inline-list .mqp-q .v { font-size: 10px; }
+        .mqp-inline-list .mqp-q .tip { display: none; }
+        .mqp-inline.classic .mqp-q.done .n, .mqp-inline.classic .mqp-q.prog .n { color: #00ffaa; }
+        .mqp-inline.arcade .mqp-q.done .n, .mqp-inline.arcade .mqp-q.prog .n { color: #ccff00; }
         .mqp-q:first-of-type { border-top: 0; }
         .mqp-q .n { font-family: 'Russo One'; font-size: 16px; color: #555; letter-spacing: 1px; }
         .mqp-q.done .n, .mqp-q.prog .n { color: inherit; }
@@ -305,11 +313,13 @@
         #loginOverlay.bg-classic { background-image: linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(135deg, var(--classic-bg-1) 0%, #000 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
         #loginOverlay.bg-arcade { background-image: linear-gradient(rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(135deg, #000 0%, var(--arcade-bg-1) 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
         
-        .login-box { 
-            background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary); 
-            box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px; 
-            border-radius: 12px; text-align: center; width: 850px; 
-            max-width: 95%; display: flex; flex-direction: column; 
+        .login-box {
+            background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary);
+            box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px;
+            border-radius: 12px; text-align: center; width: 850px;
+            /* Desplazado ligeramente a la izquierda para dar aire al lateral derecho */
+            margin-right: 90px;
+            max-width: 95%; display: flex; flex-direction: column;
             animation: slideUp 0.4s ease-out; position: relative; 
             overflow: visible; transition: width 0.3s ease; 
             max-height: 95vh;
@@ -566,7 +576,7 @@
 
     <!-- Wallet en el juego: caja de saldo + botón connect/deposit aparte. Solo visible en menú de modo. -->
     <div id="gameWalletArea">
-        <div id="gwBalBox"><span style="color:#888">in GAME:</span> <b id="gwBalValue">—</b> <span style="color:#888">$PILL</span></div>
+        <div id="gwBalBox"><span style="color:var(--primary)">in GAME:</span> <b id="gwBalValue">—</b> <span style="color:var(--primary)">$PILL</span></div>
         <button id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
         <button id="gwDeposit" onclick="GameWalletUI.openDeposit()" style="display:none">DEPOSIT</button>
     </div>
@@ -680,15 +690,22 @@
             <div class="login-content-wrapper">
                 <div class="login-left">
                     <div class="section-title">1. Room Select (Token amount depends on $PILL price)</div>
-                    <div class="server-selector">
-                        <button class="srv-btn selected" onclick="selectServer('5$', this)">5$</button>
-                        <button class="srv-btn" onclick="selectServer('10$', this)">10$</button>
-                        <button class="srv-btn" onclick="selectServer('20$', this)">20$</button>
-                        <button class="srv-btn" onclick="selectServer('50$', this)">50$</button>
+                    <div style="display:flex; gap:10px; align-items:stretch; margin-bottom:6px;">
+                        <div class="server-selector" style="flex:1; margin-bottom:0;">
+                            <button class="srv-btn selected" onclick="selectServer('5$', this)">5$</button>
+                            <button class="srv-btn" onclick="selectServer('10$', this)">10$</button>
+                            <button class="srv-btn" onclick="selectServer('20$', this)">20$</button>
+                            <button class="srv-btn" onclick="selectServer('50$', this)">50$</button>
+                        </div>
+                        <div id="pillRateBox" style="background:rgba(0,255,136,0.06); border:1px solid rgba(0,255,136,0.4); border-radius:6px; padding:6px 12px; display:flex; flex-direction:column; justify-content:center; min-width:130px; text-align:right;">
+                            <div style="color:#ffce3d; font-family:'Russo One'; font-size:14px; line-height:1; white-space:nowrap;">
+                                <span id="pillRateUsd">$1</span> <span style="color:#666; font-size:11px;">=</span> <span id="pillRateAmt">10,000</span>
+                            </div>
+                            <div style="color:#666; font-size:9px; letter-spacing:1px; margin-top:3px;">$PILL · updates every 5min</div>
+                        </div>
                     </div>
                     <!-- FREE ROOM BELOW PAYMENT ROOMS -->
                     <button class="srv-btn" style="width:100%; margin-bottom:5px; border-color:var(--primary); color:var(--primary);" onclick="selectServer('Free', this)">PRACTICE (FREE)</button>
-                    <button class="srv-btn" style="width:100%; margin-bottom:5px; border-color:#1a73e8; color:#6ea8ff;" onclick="selectServer('*', this)">🎲 CUALQUIERA (entrar donde haya gente)</button>
                     
                     <button class="btn-reset" onclick="forceResetRoom()">⚠ RESET CURRENT ROOM ⚠</button>
 
@@ -865,6 +882,15 @@
                             Description area...
                         </div>
                     </div>
+
+                    <!-- DAILY QUESTS (inline, junto a la skills card) -->
+                    <div class="skill-info-card mqp-inline arcade" style="border-color:#ccff00;">
+                        <div class="card-header" style="color:#ccff00; display:flex; justify-content:space-between; align-items:center;">
+                            <span>DAILY QUESTS</span>
+                            <span style="font-size:10px; color:#888; letter-spacing:1px;"><span id="mqpArcadeInlineNum">0</span>/5 DONE</span>
+                        </div>
+                        <div id="mqpArcadeInlineList" class="mqp-inline-list" style="padding:6px 0 2px;"></div>
+                    </div>
                     
                     <div id="secretSkinPanel" style="display:none; margin-top: 15px; border-top: 1px solid #333; padding-top: 10px; text-align: center; animation: fadeIn 0.5s;">
                         <div style="color:#ffd700; font-family:'Russo One'; font-size:12px; margin-bottom:5px;">✨ SECRET SKIN UNLOCKED ✨</div>
@@ -893,7 +919,9 @@
                             <div class="card-lines" style="border-color:#00ffaa;"></div>
                             YOU CAN EXIT ANYTIME, BUT WATCH OUT FOR PENALTIES.
                             <br><br>
-                            <span style="color:var(--accent);">KILLS < 2:</span> 10% PENALTY FEE.
+                            <span style="color:var(--accent);">KILLS &lt; 1:</span> 20% PENALTY FEE.
+                            <br>
+                            <span style="color:#ffce3d;">KILLS &lt; 2:</span> 10% PENALTY FEE.
                             <br>
                             <span style="color:var(--primary);">KILLS 2+:</span> 0% PENALTY FEE (SAFE EXIT).
                             <br><br>
@@ -903,7 +931,16 @@
                             <div class="card-lines-bottom" style="border-color:#00ffaa;"></div>
                         </div>
                     </div>
-                    
+
+                    <!-- DAILY QUESTS (inline, junto a EXIT RULES) -->
+                    <div class="skill-info-card mqp-inline classic" style="border-color: #00ffaa;">
+                        <div class="card-header" style="color:#00ffaa; display:flex; justify-content:space-between; align-items:center;">
+                            <span>DAILY QUESTS</span>
+                            <span style="font-size:10px; color:#888; letter-spacing:1px;"><span id="mqpClassicInlineNum">0</span>/5 DONE</span>
+                        </div>
+                        <div id="mqpClassicInlineList" class="mqp-inline-list" style="padding:6px 0 2px;"></div>
+                    </div>
+
                     <!-- VIDEO CORREGIDO (../video) -->
                     <div class="split-guide-box">
                         <video id="guideVideo" class="split-video" src="../video/Split.mp4" autoplay loop muted playsinline></video>
@@ -1421,6 +1458,11 @@
         if (numEl) numEl.textContent = done;
         const btnCnt = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'BtnCnt');
         if (btnCnt) btnCnt.textContent = done + '/' + list.length;
+        // Panel inline integrado en login-right (mismo contenido)
+        const inlineList = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'InlineList');
+        const inlineNum = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'InlineNum');
+        if (inlineList) inlineList.innerHTML = cont.innerHTML;
+        if (inlineNum) inlineNum.textContent = done;
     }
     function updateModeQuestsUI() { renderMode('classic'); renderMode('arcade'); }
     function toggleModeQuests(mode) {
@@ -2146,8 +2188,16 @@
     async function getPillPerDollar() {
         if (gamePillPerDollar != null) return gamePillPerDollar;
         try { gamePillPerDollar = (await (await fetch('/api/fees')).json()).pillPerDollar || 10000; } catch (e) { gamePillPerDollar = 10000; }
+        updatePillRateBox();
         return gamePillPerDollar;
     }
+    function updatePillRateBox() {
+        const el = document.getElementById('pillRateAmt');
+        if (el && gamePillPerDollar) el.innerText = Number(gamePillPerDollar).toLocaleString('en-US');
+    }
+    // Cargar el ratio al abrir el menú y refrescarlo cada 5 min ("simulando" oráculo)
+    getPillPerDollar();
+    setInterval(() => { gamePillPerDollar = null; getPillPerDollar(); }, 5 * 60 * 1000);
     // Para salas de pago: comprueba saldo WAR y firma la entrada. Devuelve el objeto
     // `pay` para el join, o null si no se puede (ya avisa al usuario).
     async function preparePayment(mode, roomName) {
