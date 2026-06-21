@@ -256,8 +256,8 @@
 
         /* --- BOTÓN "DAILY QUESTS" + PANEL DESPLEGABLE --- */
         .mqp-btn { position: absolute; top: 22%; z-index: 35; display: none; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); font-family: 'Russo One'; font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; cursor: pointer; user-select: none; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
-        #modeScreen.hover-arcade .mqp-btn.arcade { display: inline-flex; }
-        #modeScreen.hover-classic .mqp-btn.classic { display: inline-flex; }
+        #modeScreen.hover-arcade.quests-ready .mqp-btn.arcade { display: inline-flex; }
+        #modeScreen.hover-classic.quests-ready .mqp-btn.classic { display: inline-flex; }
         .mqp-btn:hover { transform: translateY(-2px); filter: brightness(1.15); }
         .mqp-btn .dot { width: 8px; height: 8px; border-radius: 50%; }
         .mqp-btn.classic { right: 40px; border: 1px solid rgba(0,255,170,0.35); color: #00ffaa; }
@@ -303,29 +303,35 @@
         /* --- LOGIN OVERLAY --- */
         #loginOverlay, #resultOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 60; }
 
-        /* Paneles laterales (oracle + missions) — derecha, junto al menú principal */
-        .menu-side { position: absolute; right: 30px; width: 360px; z-index: 61; pointer-events: auto; }
-        #oraclePanel { top: 70px; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border: 1px solid rgba(255,206,61,0.3); border-radius: 12px; padding: 18px 22px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); }
-        #missionsPanel { bottom: 70px; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 12px; padding: 18px 22px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); min-height: 250px; }
+        /* Columna derecha: dos bloques iguales (oracle arriba, missions/skins abajo),
+           ocupando ~lo mismo que el menú central. El menú se desplaza a la izquierda. */
+        .menu-right-col { position: absolute; right: 32px; top: 80px; bottom: 80px; width: 430px; max-width: 38vw; z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; }
+        #oraclePanel, #missionsPanel { flex: 1; min-height: 0; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 14px; padding: 20px 24px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); display: flex; flex-direction: column; overflow: hidden; }
+        #oraclePanel { border: 1px solid rgba(255,206,61,0.3); }
         #missionsPanel.classic { border: 1px solid rgba(0,255,170,0.3); }
         #missionsPanel.arcade { border: 1px solid rgba(204,255,0,0.3); }
-        .menu-side-head { font-family: 'Russo One'; font-size: 13px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+        .menu-side-head { font-family: 'Russo One'; font-size: 14px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
         #oraclePanel .menu-side-head { color: #ffce3d; }
         #missionsPanel.classic .menu-side-head { color: #00ffaa; }
         #missionsPanel.arcade .menu-side-head { color: #ccff00; }
+        .menu-side-head .otimer { font-size: 12px; color: #ffce3d; letter-spacing: 1px; }
 
-        /* Lista de salas dentro del oracle: nombre · precio en PILL · STATUS + dot */
-        .oracle-row { display: grid; grid-template-columns: 60px 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; font-family: 'Russo One'; font-size: 12px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); }
+        /* Oracle: descripción + precio centrado + lista de salas */
+        .oracle-desc { color: #999; font-family: 'Inter',sans-serif; font-size: 11.5px; line-height: 1.5; margin-bottom: 14px; flex-shrink: 0; }
+        .oracle-rate { text-align: center; padding: 10px 0 14px; border-top: 1px dashed rgba(255,206,61,0.2); border-bottom: 1px dashed rgba(255,206,61,0.2); margin-bottom: 6px; flex-shrink: 0; }
+        .oracle-rate .or-amt { font-family: 'Russo One'; font-size: 30px; color: #ffce3d; text-shadow: 0 0 16px rgba(255,206,61,0.35); }
+        .oracle-rate .or-unit { font-family: 'Russo One'; font-size: 13px; color: #888; letter-spacing: 1px; }
+        .oracle-rows { overflow-y: auto; flex: 1; }
+        .oracle-row { display: grid; grid-template-columns: 56px 1fr 56px 14px; gap: 10px; align-items: center; padding: 10px 0; font-family: 'Russo One'; font-size: 12px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); }
         .oracle-row:first-of-type { border-top: 0; }
-        .oracle-row .oroom { color: #fff; font-size: 13px; }
+        .oracle-row .oroom { color: #fff; font-size: 14px; }
         .oracle-row .opill { color: #ffce3d; font-size: 12px; font-variant-numeric: tabular-nums; }
-        .oracle-row .ostatuslabel { color: #666; font-size: 10px; letter-spacing: 1.5px; }
-        .oracle-row .ostatus { width: 10px; height: 10px; border-radius: 50%; }
+        .oracle-row .ostatuslabel { color: #666; font-size: 10px; letter-spacing: 1px; text-align: right; }
+        .oracle-row .ostatus { width: 11px; height: 11px; border-radius: 50%; }
         .oracle-row .ostatus.full { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
         .oracle-row .ostatus.some { background: #ffce3d; box-shadow: 0 0 8px rgba(255,206,61,0.6); }
         .oracle-row .ostatus.empty { background: #444; }
-        .oracle-timer { text-align: center; font-family: 'Russo One'; font-size: 14px; color: #ffce3d; padding: 8px 0 12px; border-bottom: 1px dashed rgba(255,206,61,0.2); margin-bottom: 10px; letter-spacing: 1px; }
-        .oracle-timer .ot-lbl { color: #888; font-size: 10px; display: block; letter-spacing: 2px; margin-bottom: 3px; }
+        #sidePanelMissions { flex: 1; overflow-y: auto; }
 
         /* Carrusel del panel inferior (MISSIONS ↔ SKINS) */
         .side-tabs-arrow { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-family: 'Russo One'; font-size: 12px; line-height: 18px; padding: 0; transition: 0.2s; }
@@ -344,8 +350,8 @@
             background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary);
             box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px;
             border-radius: 12px; text-align: center; width: 850px;
-            /* Desplazado fuerte a la izquierda para dar sitio a los paneles laterales */
-            margin-right: 420px;
+            /* Desplazado a la izquierda para dejar la columna derecha (oracle+missions) */
+            margin-right: 480px;
             max-width: 95%; display: flex; flex-direction: column;
             animation: slideUp 0.4s ease-out; position: relative; 
             overflow: visible; transition: width 0.3s ease; 
@@ -451,7 +457,7 @@
         @media (max-height: 700px) { .grid-skill-icon { width: 40px; height: 40px; } }
         .result-box { background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary); box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px 30px; border-radius: 12px; text-align: center; width: 380px; animation: slideUp 0.4s ease-out; position: relative; max-height: 95vh; overflow-y: auto; }
         @keyframes slideUp { from {transform:translateY(20px); opacity:0;} to {transform:translateY(0); opacity:1;} }
-        .back-icon { position: absolute; top: 15px; left: 15px; width: 30px; height: 30px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 6px; display: flex; justify-content: center; align-items: center; transition: 0.2s; border: 1px solid #333; }
+        .back-icon { position: fixed; top: 20px; left: 20px; width: 40px; height: 40px; z-index: 65; cursor: pointer; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border-radius: 8px; display: flex; justify-content: center; align-items: center; transition: 0.2s; border: 1px solid #444; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
         .back-icon:hover { background: rgba(255,255,255,0.2); border-color: #fff; }
         .back-icon svg { width: 16px; height: 16px; fill: #ccc; }
         h1 { margin: 0 0 5px 0; color: #fff; font-family: 'Russo One'; font-size: 28px; text-transform: uppercase; }
@@ -696,12 +702,12 @@
         <div id="mqpArcade" class="mqp arcade">
             <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">ARCADE</span></div>
             <div id="mqpArcadeList"></div>
-            <div class="mqp-foot"><span>UNLOCK 3 / 5</span><span><span class="num" id="mqpArcadeNum">0</span> DONE</span></div>
+            <div class="mqp-foot"><span>3 / 4 → TELEGRAM ACCESS</span><span><span class="num" id="mqpArcadeNum">0</span> DONE</span></div>
         </div>
         <div id="mqpClassic" class="mqp classic">
             <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">CLASSIC</span></div>
             <div id="mqpClassicList"></div>
-            <div class="mqp-foot"><span>UNLOCK 3 / 5</span><span><span class="num" id="mqpClassicNum">0</span> DONE</span></div>
+            <div class="mqp-foot"><span>3 / 4 → TELEGRAM ACCESS</span><span><span class="num" id="mqpClassicNum">0</span> DONE</span></div>
         </div>
     </div>
 
@@ -955,34 +961,35 @@
             </div>
         </div>
 
-        <!-- Panel ORACLE (arriba-derecha): tipo de cambio actual + tabla de salas con status -->
-        <div id="oraclePanel" class="menu-side">
-            <div class="menu-side-head"><span>ORACLE · PRICES</span></div>
-            <div class="oracle-timer">
-                <span class="ot-lbl">REFRESH IN</span>
-                <span id="oracleTimer">5:00</span>
+        <!-- Columna derecha: dos bloques iguales (ROOM PRICES arriba, MISSIONS/SKINS abajo) -->
+        <div class="menu-right-col">
+            <!-- Bloque ORACLE: descripción + precio del token + tabla de salas -->
+            <div id="oraclePanel">
+                <div class="menu-side-head"><span>ROOM · PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
+                <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
+                <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
+                <div id="oracleRows" class="oracle-rows"></div>
             </div>
-            <div id="oracleRows"></div>
-        </div>
 
-        <!-- Panel MISSIONS / SKINS (abajo-derecha): carrusel con flecha para alternar -->
-        <div id="missionsPanel" class="menu-side classic">
-            <div class="menu-side-head">
-                <span id="sidePanelTitle">MISSIONS</span>
-                <span style="display:flex; align-items:center; gap:10px;">
-                    <span id="sidePanelExtra" style="font-size:10px;color:#888;letter-spacing:1px;"><span id="missionsDone">0</span>/5</span>
-                    <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
-                </span>
-            </div>
-            <div id="sidePanelMissions"><div id="missionsList"></div></div>
-            <div id="sidePanelSkins" style="display:none">
-                <div class="skins-soon">
-                    <div class="ss-big">★</div>
-                    <div>SKINS</div>
-                    <div style="font-size:10px; color:#444; margin-top:8px;">COMING SOON</div>
+            <!-- Bloque MISSIONS / SKINS: carrusel con flecha -->
+            <div id="missionsPanel" class="classic">
+                <div class="menu-side-head">
+                    <span id="sidePanelTitle">DAILY QUESTS</span>
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span id="sidePanelExtra" style="font-size:11px;color:#888;letter-spacing:1px;"><span id="missionsDone">0</span>/4</span>
+                        <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
+                    </span>
                 </div>
+                <div id="sidePanelMissions"><div id="missionsList"></div></div>
+                <div id="sidePanelSkins" style="display:none">
+                    <div class="skins-soon">
+                        <div class="ss-big">★</div>
+                        <div>SKINS</div>
+                        <div style="font-size:10px; color:#444; margin-top:8px;">COMING SOON · earn SKIN POINTS from daily quests</div>
+                    </div>
+                </div>
+                <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span></div>
             </div>
-            <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span></div>
         </div>
     </div>
 
@@ -1450,13 +1457,16 @@
         if (m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); }
         else if (m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); }
         updateModeQuestsUI();
-        // Cerrar el panel del otro modo al instante, abrir el del actual TRAS la animación
-        // de hover (~700ms) para que no tape el título mientras la cara del modo se expande.
+        // El botón "DAILY QUESTS" y el panel aparecen JUNTOS, pero solo TRAS la animación
+        // de hover (~700ms), para que no tapen el título al expandirse la cara del modo.
+        els.modeScreen.classList.remove('quests-ready');
         document.querySelectorAll('.mqp.open').forEach(el => { if (!el.classList.contains(m)) el.classList.remove('open'); });
         if (_questsHoverTimer) clearTimeout(_questsHoverTimer);
         _questsHoverTimer = setTimeout(() => {
+            if (lastHoveredMode !== m) return;
+            els.modeScreen.classList.add('quests-ready');     // muestra el botón
             const t = document.getElementById('mqp' + (m === 'classic' ? 'Classic' : 'Arcade'));
-            if (t && lastHoveredMode === m) t.classList.add('open');
+            if (t) t.classList.add('open');                   // y el panel, a la vez
         }, 700);
     }
 
@@ -1540,7 +1550,7 @@
     // Refrescar cada vez que vuelves a la pantalla de modos
     window.addEventListener('focus', loadModeQuests);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) loadModeQuests(); });
-    els.modeScreen.onmouseleave = () => { els.modeScreen.classList.remove('hover-classic', 'hover-arcade'); lastHoveredMode = null; if (_questsHoverTimer) clearTimeout(_questsHoverTimer); document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open')); };
+    els.modeScreen.onmouseleave = () => { els.modeScreen.classList.remove('hover-classic', 'hover-arcade', 'quests-ready'); lastHoveredMode = null; if (_questsHoverTimer) clearTimeout(_questsHoverTimer); document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open')); };
     
     function selectMode(m) {
         SoundManager.stop('hover');
@@ -2241,12 +2251,14 @@
         try { gamePillPerDollar = (await (await fetch('/api/fees')).json()).pillPerDollar || 10000; } catch (e) { gamePillPerDollar = 10000; }
         return gamePillPerDollar;
     }
-    // ORACLE: pinta la tabla de salas. Status: VERDE >=50% del tope · AMARILLO algo de
-    // gente pero <50% · GRIS vacía. La capacidad por sala viene como `cap` o se asume 30.
+    // ORACLE: precio del token (PILL por $1) + tabla de salas. Status: VERDE >=50% del
+    // tope · AMARILLO algo de gente pero <50% · GRIS vacía.
     async function refreshOracle() {
         try {
             const data = await (await fetch('/api/rooms')).json();
             gamePillPerDollar = data.pillPerDollar || gamePillPerDollar || 10000;
+            const rateEl = document.getElementById('oracleRateAmt');
+            if (rateEl) rateEl.textContent = Number(gamePillPerDollar).toLocaleString('en-US');
             const cont = document.getElementById('oracleRows'); if (!cont) return;
             const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic'));
             cont.innerHTML = rowsForMode.map(r => {
@@ -2256,7 +2268,7 @@
                 return `<div class="oracle-row">
                     <span class="oroom">${r.priceUsd === 0 ? 'Free' : '$' + r.priceUsd}</span>
                     <span class="opill">${fee}</span>
-                    <span class="ostatuslabel">STATUS:</span>
+                    <span class="ostatuslabel">STATUS</span>
                     <span class="ostatus ${cls}" title="${r.players} players"></span>
                 </div>`;
             }).join('');
@@ -2292,8 +2304,14 @@
         if (price <= 0) return { pay: null };   // sala gratis
         const ok = await GameWallet.ensure();
         if (!ok) { showSystemMsg('Connect your wallet first on the home page, then come back to play paid rooms.', 'WALLET REQUIRED'); return null; }
-        const ppd = await getPillPerDollar();
-        const fee = price * ppd;
+        // Tarifa AUTORITATIVA del servidor justo antes de firmar (el oráculo puede haber
+        // cambiado). Así la firma coincide con lo que el servidor cobrará.
+        let fee = price * (await getPillPerDollar());
+        try {
+            const rooms = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).rooms || [];
+            const rr = rooms.find(r => r.key === (mode + '_' + roomName));
+            if (rr && rr.pillFee > 0) fee = rr.pillFee;
+        } catch (e) {}
         let bal = 0; try { bal = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
         if (bal < fee) { showSystemMsg('Not enough in-GAME balance. Entry costs ' + fee.toLocaleString('en-US') + ' $PILL and you have ' + bal.toLocaleString('en-US') + '. Use the DEPOSIT button to add more.', 'INSUFFICIENT BALANCE'); return null; }
         try {

@@ -186,7 +186,19 @@ function targetPopOf(key) { return Math.max(0, rulesOf(key).targetPop); }
 function maxPlayersOf(key) { return Math.max(1, rulesOf(key).maxPlayers); }
 // Tarifa de entrada en PILL = precio($) × PILL_PER_DOLLAR. (El precio real en $ vía
 // oráculo es la Fase B4; por ahora una conversión fija.) Free = 0.
-const PILL_PER_DOLLAR = parseInt(process.env.PILL_PER_DOLLAR, 10) || 10000;
+// Oráculo de precio: PILL por $1. Base fija, pero "deriva" cada 5 min ±15% para simular
+// el precio vivo del token (en mainnet vendría de un feed real). El precio se BLOQUEA en
+// la entrada (la firma incluye la tarifa exacta), así que cambiarlo NO afecta a quien ya
+// está dentro: su carry está en PILL absolutos.
+const PILL_PER_DOLLAR_BASE = parseInt(process.env.PILL_PER_DOLLAR, 10) || 10000;
+let PILL_PER_DOLLAR = PILL_PER_DOLLAR_BASE;
+const ORACLE_REFRESH_MS = 5 * 60 * 1000;
+function tickOracle() {
+    const drift = 1 + (Math.random() * 0.30 - 0.15);   // ±15%
+    PILL_PER_DOLLAR = Math.max(1, Math.round(PILL_PER_DOLLAR_BASE * drift / 1000) * 1000);
+    log(`Oráculo: $1 = ${PILL_PER_DOLLAR} PILL`);
+}
+setInterval(tickOracle, ORACLE_REFRESH_MS);
 function entryFeePill(key) { return priceOf(key) * PILL_PER_DOLLAR; }
 
 // --- Economía B3 (custodiada): carry de classic + bote de arcade ---
