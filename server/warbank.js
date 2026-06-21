@@ -22,6 +22,17 @@ function save() { if (!dirty) return; dirty = false; fs.writeFile(FILE, JSON.str
 setInterval(save, 3000);
 process.on('SIGTERM', save); process.on('SIGINT', () => { save(); process.exit(0); });
 
+// Purga periódica de firmas viejas (>24h). Anti-leak: el map crece eternamente si no.
+const SIG_TTL_MS = 24 * 3600 * 1000;
+setInterval(() => {
+    const cutoff = Date.now() - SIG_TTL_MS;
+    let removed = 0;
+    for (const [k, t] of Object.entries(data.sigs)) {
+        if (t < cutoff) { delete data.sigs[k]; removed++; }
+    }
+    if (removed > 0) dirty = true;
+}, 30 * 60 * 1000);   // cada 30 min
+
 function getBalance(wallet) { return data.balances[wallet] || 0; }
 function sigUsed(sig) { return !!data.sigs[sig]; }
 
@@ -39,4 +50,9 @@ function debit(wallet, amount) {
     data.balances[wallet] -= amount; dirty = true; return data.balances[wallet];
 }
 
-module.exports = { getBalance, sigUsed, creditDeposit, credit, debit, save };
+module.exports = {
+    getBalance, sigUsed, creditDeposit, credit, debit, save,
+    // Expone los maps para el endpoint /api/health (solo lectura, diagnóstico)
+    get _balances() { return data.balances; },
+    get _sigs() { return data.sigs; },
+};

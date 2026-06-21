@@ -148,7 +148,11 @@ function priceOf(roomName) { const m = String(roomName).match(/(\d+)\s*\$/); ret
 function loadJson(file, fallback) { try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {} return fallback; }
 let connLog = [];
 try { if (fs.existsSync(LOG_FILE)) connLog = fs.readFileSync(LOG_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean); } catch (e) {}
-function logConnection(entry) { connLog.push(entry); fs.appendFile(LOG_FILE, JSON.stringify(entry) + '\n', () => {}); }
+// Memoria acotada: solo guardamos las últimas N conexiones en RAM (en disco va todo).
+// Antes el array crecía sin tope; con stress tests largos llegaba a cientos de miles
+// → el panel admin se ralentizaba y subía la CPU recorriéndolo. 2000 es de sobra.
+const CONNLOG_MAX_RAM = 2000;
+function logConnection(entry) { connLog.push(entry); if (connLog.length > CONNLOG_MAX_RAM) connLog = connLog.slice(-CONNLOG_MAX_RAM); fs.appendFile(LOG_FILE, JSON.stringify(entry) + '\n', () => {}); }
 
 // Log de acciones de administración (god/masa/echar/reiniciar/...), por sala
 const ADMINLOG_FILE = path.join(__dirname, 'adminlog.log');
@@ -600,6 +604,33 @@ const httpServer = http.createServer(async (req, res) => {
     const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
     const query = new URLSearchParams((req.url || '').split('?')[1] || '');
 
+    // --- Salud del servidor: heap, uptime y tamaños de estructuras (diagnóstico de leaks) ---
+    if (urlPath === '/api/health') {
+        const mem = process.memoryUsage();
+        let simPlayers = 0, simEnemies = 0, simFoods = 0, simViruses = 0;
+        for (const r of rooms.values()) {
+            simPlayers += r.sim.players.size;
+            simEnemies += r.sim.enemies.length;
+            if (r.sim.foods) simFoods += r.sim.foods.length;
+            if (r.sim.viruses) simViruses += r.sim.viruses.length;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({
+            uptimeSec: Math.round(process.uptime()),
+            heapMB: Math.round(mem.heapUsed / 1024 / 1024),
+            heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+            rssMB: Math.round(mem.rss / 1024 / 1024),
+            rooms: rooms.size,
+            simPlayers, simEnemies, simFoods, simViruses,
+            resumeTokens: resumeTokens.size,
+            connLog: connLog.length,
+            adminLog: adminLog.length,
+            playerStats: Object.keys(playerStats).length,
+            warSigs: Object.keys(warbank._sigs || {}).length,
+            warBalances: Object.keys(warbank._balances || {}).length,
+        }));
+        return;
+    }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
     if (urlPath === '/api/fees') {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });

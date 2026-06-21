@@ -286,6 +286,9 @@
                 </select>
                 <span style="color:#666; font-size: 12px;">Global, afecta a TODAS las salas al instante. Menos Hz = menos lag con mucha gente (el cliente interpola). Se reinicia al valor por defecto si reinicias el servidor.</span>
             </div>
+            <h2 class="section">Salud del servidor</h2>
+            <div class="usage" id="healthBox" style="padding:18px 20px;font-family:'Inter',sans-serif;font-size:13px">Cargando…</div>
+
             <h2 class="section">Registro de acciones</h2>
             <div class="usage" id="adminLog" style="padding-top:8px"></div>
             <h2 class="section">Países</h2>
@@ -400,6 +403,31 @@ function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(Object.
 function pedir() { send({ cmd: 'state' }); }
 // Refresco más rápido para que los cambios y el cronómetro se vean al instante
 setInterval(() => { if (autorizado) pedir(); }, 750);
+
+// Salud del servidor (heap/uptime/leaks): se pide aparte por HTTP, refresco cada 5s.
+async function refrescarSalud() {
+    if (!autorizado) return;
+    try {
+        const h = await (await fetch('/api/health')).json();
+        const el = document.getElementById('healthBox'); if (!el) return;
+        const days = Math.floor(h.uptimeSec / 86400), hrs = Math.floor((h.uptimeSec % 86400) / 3600), mins = Math.floor((h.uptimeSec % 3600) / 60);
+        const uptime = (days ? days + 'd ' : '') + (hrs || days ? hrs + 'h ' : '') + mins + 'm';
+        const heapColor = h.heapMB > 500 ? '#ff6b6b' : h.heapMB > 250 ? '#ffce3d' : '#00ff88';
+        el.innerHTML = `
+            <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline">
+                <div><span style="color:#666;font-size:11px">UPTIME</span><br><b style="font-size:16px">${uptime}</b></div>
+                <div><span style="color:#666;font-size:11px">HEAP</span><br><b style="font-size:16px;color:${heapColor}">${h.heapMB} MB</b> <span style="color:#666;font-size:11px">/ ${h.heapTotalMB} MB</span></div>
+                <div><span style="color:#666;font-size:11px">RSS</span><br><b style="font-size:16px">${h.rssMB} MB</b></div>
+                <div><span style="color:#666;font-size:11px">SALAS</span><br><b style="font-size:16px">${h.rooms}</b></div>
+                <div><span style="color:#666;font-size:11px">SIM PLAYERS</span><br><b style="font-size:16px">${h.simPlayers}</b></div>
+                <div><span style="color:#666;font-size:11px">SIM ENEMIES</span><br><b style="font-size:16px">${h.simEnemies}</b></div>
+            </div>
+            <div style="margin-top:12px;color:#888;font-size:11px;line-height:1.7">
+                connLog (RAM): <b style="color:#ccc">${h.connLog}</b> · adminLog: <b style="color:#ccc">${h.adminLog}</b> · resumeTokens: <b style="color:#ccc">${h.resumeTokens}</b> · playerStats: <b style="color:#ccc">${h.playerStats}</b> · WAR balances: <b style="color:#ccc">${h.warBalances}</b> · WAR sigs: <b style="color:#ccc">${h.warSigs}</b>
+            </div>`;
+    } catch (e) {}
+}
+setInterval(refrescarSalud, 5000); refrescarSalud();
 
 function verTab(t) {
     tabActiva = t;
