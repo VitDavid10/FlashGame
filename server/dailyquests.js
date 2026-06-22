@@ -1,5 +1,5 @@
 /*
- * Daily missions rotativas. Cada día (UTC) el servidor elige 6 retos del pool de forma
+ * Daily quests rotativas. Cada día (UTC) el servidor elige 5 retos del pool de forma
  * determinística por fecha (mismo set para todos los jugadores ese día). Al completar
  * un reto se acreditan SKIN POINTS al clientId. Se resetean al cambiar de día.
  *
@@ -85,12 +85,12 @@ function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { 
 
 function todayKey() { return new Date().toISOString().slice(0, 10); }   // YYYY-MM-DD UTC
 
-// Elige 6 retos del pool para `date`, sin repetir.
+// Elige 5 retos del pool para `date`, sin repetir.
 function pickFor(date) {
     const idxs = [];
     let seed = hash(date);
     const pool = POOL.slice();
-    while (idxs.length < 6 && pool.length) {
+    while (idxs.length < 5 && pool.length) {
         seed = (seed * 1664525 + 1013904223) >>> 0;
         const i = seed % pool.length;
         idxs.push(pool.splice(i, 1)[0]);

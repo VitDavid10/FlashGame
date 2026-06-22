@@ -389,7 +389,7 @@ body.trailer-open #page-content{
         .lb-c-kills { color: var(--primary); font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
         .lb-c-mass { color: #ffce3d; font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
 
-        /* DAILY MISSIONS */
+        /* DAILY QUESTS */
         .dq-tag { display: inline-block; font-family: 'Russo One', sans-serif; font-size: 11px; letter-spacing: 4px; color: var(--primary); padding: 5px 14px; border: 1px solid rgba(0,255,136,0.3); border-radius: 20px; text-transform: uppercase; background: rgba(0,255,136,0.05); }
         .dq-subtitle { color: #888; font-size: 15px; margin: 10px 0 30px; text-align: center; max-width: 640px; }
         .dq-subtitle b { color: var(--primary); font-weight: 600; }
@@ -582,7 +582,7 @@ body.trailer-open #page-content{
             <div class="nav-links-container">
                 <button class="btn-play" onclick="window.location.href='game/'">PLAY NOW</button>
                 <a href="#hero" class="nav-link">GAME</a>
-                <a href="#quest" class="nav-link">MISSIONS</a>
+                <a href="#quest" class="nav-link">QUESTS</a>
                 <a href="#shop" class="nav-link">STORE</a>
                 <a href="#ranking" class="nav-link">LEADERBOARD</a>
             </div>
@@ -777,15 +777,15 @@ body.trailer-open #page-content{
     <!-- SECCIONES -->
     <div id="quest" class="section-container">
         <span class="dq-tag">PRE-LAUNCH EXCLUSIVE</span>
-        <h1 class="section-title holo-text" style="margin: 14px 0 0;">Daily Missions</h1>
-        <p class="dq-subtitle">Complete 3 of 6 daily missions to unlock <b>exclusive Telegram access</b> — the contract drops there first.</p>
+        <h1 class="section-title holo-text" style="margin: 14px 0 0;">Daily Quests</h1>
+        <p class="dq-subtitle">Complete 3 of 5 daily quests to unlock <b>exclusive Telegram access</b> — the contract drops there first.</p>
         <div class="dq-summary">
             <div class="dq-ring">
                 <svg viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="42" fill="none" stroke="#1c1c1c" stroke-width="8"/>
                     <circle id="dq-ring-fill" cx="50" cy="50" r="42" fill="none" stroke="#00ff88" stroke-width="8" stroke-dasharray="0 264" stroke-linecap="round"/>
                 </svg>
-                <div class="num"><span id="dq-done">0<em>/6</em></span><span>MISSIONS</span></div>
+                <div class="num"><span id="dq-done">0<em>/5</em></span><span>QUESTS</span></div>
             </div>
             <div class="info">
                 <div class="ti">REWARD: EXCLUSIVE TELEGRAM ACCESS</div>
@@ -1463,7 +1463,7 @@ function toggleTrailerMode() {
         App.Wallet.eagerConnect();   // confirma la sesión en silencio (o revierte si ya no vale)
         setInterval(App.Market.updateTicker, 30000);
 
-        // DAILY MISSIONS: anonymous identity shared with game (pw_cid) + /api/dailyquests
+        // DAILY QUESTS: anonymous identity shared with game (pw_cid) + /api/dailyquests
         (function () {
             var TELEGRAM_INVITE = "https://t.me/pillwars";
             function uuid() {
@@ -1491,7 +1491,7 @@ function toggleTrailerMode() {
 
             function render(quests) {
                 if (!Array.isArray(quests) || !quests.length) {
-                    grid.innerHTML = "<div style=\"color:#555;font-family:Russo One,sans-serif;font-size:13px;letter-spacing:2px;padding:30px 0;text-align:center;\">LOADING MISSIONS...</div>";
+                    grid.innerHTML = "<div style=\"color:#555;font-family:Russo One,sans-serif;font-size:13px;letter-spacing:2px;padding:30px 0;text-align:center;\">LOADING QUESTS...</div>";
                     return;
                 }
                 var completed = 0;
@@ -1531,7 +1531,7 @@ function toggleTrailerMode() {
                     btn.removeAttribute("href");
                     btn.onclick = function(e) { e.preventDefault(); return false; };
                     var left = Math.max(0, 3 - completed);
-                    sub.textContent = left + " more " + (left === 1 ? "mission" : "missions") + " and you are in.";
+                    sub.textContent = left + " more " + (left === 1 ? "quest" : "quests") + " and you are in.";
                     sub.classList.remove("ok");
                 }
             }
