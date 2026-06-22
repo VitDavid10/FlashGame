@@ -78,6 +78,7 @@ function spawnBot(i) {
   let counted = false;
   let myId = null;               // id del jugador en la sim (para detectar mi muerte)
   let reconnectPending = false;
+  let lastSplit = 0;             // timestamp del último split (cooldown ~8s)
 
   // Elige un nuevo destino dentro del mapa (a veces hacia el centro para no pegarse al borde)
   function nuevoDestino() {
@@ -93,11 +94,24 @@ function spawnBot(i) {
     stats.messagesSent++;
 
     // Movimiento tipo NPC: dirigirse al destino; al acercarse, elegir otro.
+    // Split y skills aleatorios igual que los bots offline.
     inputTimer = setInterval(() => {
       if (ws.readyState !== WebSocket.OPEN) return;
       if (Math.random() < 0.04) nuevoDestino();   // de vez en cuando cambia de rumbo
       ws.send(JSON.stringify({ t: 'input', tx, ty }));
       stats.messagesSent++;
+      // Split ~cada 15-20s (0.5% por tick a 10Hz = media de 20s; cooldown mínimo 8s)
+      const now = Date.now();
+      if (Math.random() < 0.005 && (now - lastSplit) > 8000) {
+        ws.send(JSON.stringify({ t: 'action', kind: 'split', tx, ty }));
+        lastSplit = now;
+        stats.messagesSent++;
+      }
+      // Skill aleatoria ~cada 5s (2% por tick a 10Hz); slot 1 o 2 al azar
+      if (Math.random() < 0.02) {
+        ws.send(JSON.stringify({ t: 'action', kind: 'skill', slot: Math.random() < 0.5 ? 1 : 2, tx, ty }));
+        stats.messagesSent++;
+      }
     }, INPUT_INTERVAL);
 
     pingTimer = setInterval(() => {
