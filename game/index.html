@@ -362,6 +362,15 @@
         .skins-soon .ss-big { font-size: 28px; color: #777; margin-bottom: 10px; }
         #loginOverlay.bg-classic { background-image: linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(135deg, var(--classic-bg-1) 0%, #000 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
         #loginOverlay.bg-arcade { background-image: linear-gradient(rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(135deg, #000 0%, var(--arcade-bg-1) 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
+        /* En modo ARCADE: el neon verde por defecto pasa a amarillo arcade en login-box, section titles, srv-btn, mqp-arcade etc. */
+        #loginOverlay.bg-arcade .login-box { border-color: #ccff00; box-shadow: 0 0 50px rgba(204, 255, 0, 0.18); }
+        #loginOverlay.bg-arcade .section-title { color: #ccff00; }
+        #loginOverlay.bg-arcade .srv-btn.selected { background: #ccff00; color: #000; border-color: #ccff00; }
+        #loginOverlay.bg-arcade .srv-btn.free { border-color: #ccff00; color: #ccff00; }
+        #loginOverlay.bg-arcade .srv-btn.free.selected { color: #000; }
+        #loginOverlay.bg-arcade .arcade-objective span[style*="--primary"],
+        #loginOverlay.bg-arcade [style*="color:var(--primary)"],
+        #loginOverlay.bg-arcade [style*="color: var(--primary)"] { color: #ccff00 !important; }
         
         .login-box {
             background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary);
