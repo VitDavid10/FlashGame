@@ -497,6 +497,8 @@
         .ultra-btn:hover { background: #300; border-color: #f00; color: #fff; }
         .ultra-btn.selected { background: #f00; color: #000; border-color: #f00; }
 
+        #botsBanner { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(8,12,8,0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0,255,136,0.4); border-radius: 10px; padding: 12px 28px; font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #00ff88; box-shadow: 0 0 30px rgba(0,255,136,0.2); white-space: nowrap; transition: top 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s; opacity: 0; pointer-events: none; }
+        #botsBanner.show { top: 22px; opacity: 1; }
         .btn-play { width: 100%; padding: 12px; margin-top: 10px; background: var(--accent); color: white; border: none; font-family: 'Russo One'; font-size: 18px; letter-spacing: 1px; clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
         .btn-play:hover { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 20px rgba(255, 42, 42, 0.4); }
         .btn-reset { width: 100%; padding: 6px; margin-top: 5px; background: transparent; border: 1px dashed #333; color: #555; font-size: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
@@ -617,13 +619,15 @@
         </div>
     </div>
 
+    <div id="botsBanner">🤖 Playing against bots</div>
+
     <div id="exitGameBtn" class="sound-btn" onclick="toggleExitModal()" title="Quit Game">
         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
     </div>
 
     <!-- Wallet en el juego: caja de saldo + botón connect/deposit aparte. Solo visible en menú de modo. -->
     <div id="gameWalletArea">
-        <div id="gwBalBox"><span style="color:var(--primary)">in GAME:</span> <b id="gwBalValue">—</b> <span style="color:var(--primary)">$PILL</span></div>
+        <div id="gwBalBox"><b id="gwBalValue">—</b> <span style="color:var(--primary)">$PILL</span></div>
         <button id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
         <button id="gwDeposit" onclick="GameWalletUI.openDeposit()" style="display:none">DEPOSIT</button>
     </div>
@@ -749,8 +753,6 @@
                     <!-- FREE ROOM BELOW PAYMENT ROOMS -->
                     <button class="srv-btn" style="width:100%; margin-bottom:5px; border-color:var(--primary); color:var(--primary);" onclick="selectServer('Free', this)">PRACTICE (FREE)</button>
                     
-                    <button class="btn-reset" onclick="forceResetRoom()">⚠ RESET CURRENT ROOM ⚠</button>
-
                     <div class="section-title">2. Character</div>
                     <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
                     <div class="style-type-selector" style="display:none;">
@@ -759,8 +761,8 @@
                     </div>
                     
                     <div id="colorPickersContainer" class="color-pickers">
-                        <div class="cp-group"><label>Top</label><input type="color" id="colTop" value="#ffffff"></div>
-                        <div class="cp-group"><label>Base</label><input type="color" id="colBot" value="#00ff88"></div>
+                        <div class="cp-group"><label>Top</label><input type="color" id="colTop" value="#c0c8d0"></div>
+                        <div class="cp-group"><label>Base</label><input type="color" id="colBot" value="#00ff44"></div>
                     </div>
                     
                     <div id="skinInputContainer" style="display:none;"></div>
@@ -787,110 +789,6 @@
                             <input type="radio" name="themeMode" value="white" onclick="setTheme('white')"> White
                         </label>
                     </div>
-
-                    <details class="advanced-settings">
-                        <summary>⚙️ ADVANCED SETTINGS</summary>
-                        <div class="options-content">
-                            <div id="settingsLock" style="padding:20px 10px; text-align:center;">
-                                <div style="font-size:10px; color:#aaa; margin-bottom:5px; font-weight:bold;">ENTER PASSWORD</div>
-                                <div style="display:flex; gap:5px; justify-content:center;">
-                                    <input type="password" id="settingsPass" style="width:70px; padding:5px; text-align:center; border:1px solid #444; background:#000; color:#fff; border-radius:4px;" placeholder="****" maxlength="4">
-                                    <button onclick="unlockSettings()" class="btn-reset" style="width:auto; margin:0; padding:5px 10px; color:#00ff88; border-color:#00ff88;">UNLOCK</button>
-                                </div>
-                            </div>
-
-                            <div id="settingsControls" style="display:none;">
-                                <div id="chaosModeContainer" style="margin: 0 0 10px 0; background: #220000; border: 1px dashed #ff2a2a; padding: 8px; border-radius: 6px;">
-                                    <label style="color:#ff5555; font-size:11px; font-weight:800; display:flex; align-items:center; gap:8px; cursor:pointer;">
-                                        <input type="checkbox" id="chaosModeToggle"> 🔥 SKILL TEST MODE (Bots get skills every 3s)
-                                    </label>
-                                </div>
-
-                                <div style="display:flex; justify-content:flex-start; margin-bottom:10px; background:#222; padding:5px; border-radius:4px;">
-                                    <label style="color:#fff; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="godModeToggle"> GOD MODE (Invincible + Inf. Skills)</label>
-                                </div>
-
-                                <div class="section-title" style="margin-top:0;">WORLD GENETICS</div>
-                                <div class="bot-config-box">
-                                    <div class="bot-row">
-                                        <span>Map Size:</span>
-                                        <select id="mapMult" style="background:#111; color:#ccc; border:1px solid #333; border-radius:4px; font-size:10px; font-family:'Russo One'; padding:2px;">
-                                            <option value="1">x1</option>
-                                            <option value="2">x2</option>
-                                            <option value="3">x3</option>
-                                            <option value="4">x4</option>
-                                        </select>
-                                    </div>
-                                    <div class="bot-row">
-                                        <span>Food Mass Gain:</span>
-                                        <select id="foodMult" style="background:#111; color:#ccc; border:1px solid #333; border-radius:4px; font-size:10px; font-family:'Russo One'; padding:2px;">
-                                            <option value="1">x1</option>
-                                            <option value="2">x2</option>
-                                            <option value="3">x3</option>
-                                            <option value="4">x4</option>
-                                        </select>
-                                    </div>
-                                    <div class="bot-row">
-                                        <span>Base Speed:</span>
-                                        <select id="speedMult" style="background:#111; color:#ccc; border:1px solid #333; border-radius:4px; font-size:10px; font-family:'Russo One'; padding:2px;">
-                                            <option value="1" selected>x1 (Normal)</option>
-                                            <option value="1.25">x1.25</option>
-                                            <option value="1.5">x1.5</option>
-                                            <option value="1.75">x1.75</option>
-                                            <option value="2">x2</option>
-                                        </select>
-                                    </div>
-                                    <div class="bot-row">
-                                        <span>Virus Density:</span>
-                                        <select id="virusMult" style="background:#111; color:#ccc; border:1px solid #333; border-radius:4px; font-size:10px; font-family:'Russo One'; padding:2px;">
-                                            <option value="1">x1</option>
-                                            <option value="2">x2</option>
-                                            <option value="3">x3</option>
-                                            <option value="4">x4</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="section-title">BOT CONFIGURATION</div>
-                                <div class="bot-config-box">
-                                    <div class="bot-row">
-                                        <label style="display:flex; align-items:center; gap:5px;"><input type="checkbox" id="botsToggle" checked onchange="toggleBotOptions()"> Enable Bots</label>
-                                    </div>
-                                    <div id="botOptionsGroup">
-                                        <div class="bot-row">
-                                            <span>Count:</span>
-                                            <div class="slider-container">
-                                                <input type="range" id="botCountInput" min="0" max="50" value="25" oninput="document.getElementById('botCountVal').innerText = this.value">
-                                                <span id="botCountVal" class="val-display">25</span>
-                                            </div>
-                                        </div>
-                                        <div class="bot-row"><span>Respawn:</span><input type="checkbox" id="botRespawnToggle" checked></div>
-                                        <div class="bot-row">
-                                            <span>Bot Max Splits:</span>
-                                            <select id="botSplitLimit" style="background:#111; color:#ccc; border:1px solid #333; border-radius:4px; font-size:10px; font-family:'Russo One'; padding:2px;">
-                                                <option value="4">4</option>
-                                                <option value="8">8</option>
-                                                <option value="16" selected>16</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style="margin-top:10px; padding-top:10px; border-top:1px solid #444;">
-                                    <div class="bot-row" style="margin-bottom: 5px;">
-                                        <label style="display:flex; align-items:center; gap:5px; cursor:pointer; color:#aaa;">
-                                            <input type="checkbox" id="noEnemyFX" onchange="toggleEnemyFX()"> Disable Enemy Visuals
-                                        </label>
-                                    </div>
-                                    <div class="bot-row">
-                                        <label style="display:flex; align-items:center; gap:5px; cursor:pointer; color:#aaa;">
-                                            <input type="checkbox" id="noEnemySnd" checked onchange="toggleEnemySnd()"> Disable Enemy Sounds
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </details>
 
                     <button class="btn-play" id="btnEnterGame" onclick="startGame()">ENTER ARENA</button>
                     <button class="btn-play" id="btnPlayOnline" onclick="startOnlineGame()" style="background:#1a73e8; margin-top:6px;">PLAY ONLINE</button>
@@ -1133,7 +1031,7 @@
         init: function() {
             if(localStorage.getItem('pillwars_muted') === 'true') { this.muted = true; document.getElementById('soundToggle').classList.add('muted'); }
             this.music.loop = true; this.music.volume = MUSIC_VOLUME;
-            this.menuMusic.loop = true; this.menuMusic.volume = MUSIC_VOLUME * 0.75;
+            this.menuMusic.loop = true; this.menuMusic.volume = Math.min(1, MUSIC_VOLUME * 1.5);
             if(localStorage.getItem('pillwars_music_muted') === 'true') { this.musicMuted = true; this.music.muted = true; this.menuMusic.muted = true; document.getElementById('musicToggle').classList.add('muted'); }
             else { document.getElementById('musicToggle').classList.remove('muted'); }
             for(let key in this.sounds) { this.sounds[key].load(); } this.music.load(); this.menuMusic.load();
@@ -1150,7 +1048,7 @@
             if (!this.musicMuted && gameRunning && !isSpectating && !this.startTimer) { this.music.play().catch(e=>{}); }
             if (!this.musicMuted && !gameRunning) { this.menuMusic.play().catch(e=>{}); }
         },
-        setVolume: function(val) { const v = parseFloat(val); this.music.volume = v; this.menuMusic.volume = v * 0.75; },
+        setVolume: function(val) { const v = parseFloat(val); this.music.volume = v; this.menuMusic.volume = Math.min(1, v * 1.5); },
         play: function(name, pos = null) { 
             if(this.muted || !this.sounds[name]) return; 
             if (pos && gameRunning && !isSpectating) {
@@ -1167,8 +1065,8 @@
         playSplit: function() { const now = Date.now(); if (now - this.lastSplitTime < 150) return; this.lastSplitTime = now; this.play('split'); },
         playMusic: function() { if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
         stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; },
-        playMenuMusic: function() { if(!this.musicMuted) { this.stopMusic(); this.menuMusic.play().catch(e=>{}); } },
-        stopMenuMusic: function() { this.menuMusic.pause(); this.menuMusic.currentTime = 0; }
+        playMenuMusic: function() { if(!this.musicMuted) { this.stopMusic(); clearTimeout(this._menuMusicTimer); this._menuMusicTimer = setTimeout(() => { if(!this.musicMuted) this.menuMusic.play().catch(e=>{}); }, 2000); } },
+        stopMenuMusic: function() { clearTimeout(this._menuMusicTimer); this.menuMusic.pause(); this.menuMusic.currentTime = 0; }
     };
 
     function enableAudioContext() { document.removeEventListener('click', enableAudioContext); document.removeEventListener('keydown', enableAudioContext); document.removeEventListener('touchstart', enableAudioContext); }
@@ -1840,19 +1738,26 @@
         hasSaveForRoom: function(mode, server) { const data = this.load(); if(!data) return false; if(Date.now() - data.timestamp > 20 * 60 * 1000) return false; return data.mode === mode && data.server === server && data.player.cells.length > 0; }
     };
 
+    function showBotsBanner() {
+        const b = document.getElementById('botsBanner');
+        b.classList.remove('show');
+        void b.offsetWidth; // fuerza reflow para reiniciar transición
+        b.classList.add('show');
+        clearTimeout(b._hideTimer);
+        b._hideTimer = setTimeout(() => { b.classList.remove('show'); }, 3500);
+    }
     function startGame() {
-        SoundManager.play('select'); SoundManager.stopMenuMusic(); SoundManager.playMusic();
+        SoundManager.play('select'); SoundManager.stopMenuMusic(); SoundManager.playMusic(); showBotsBanner();
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
-        MAX_BOT_CELLS = parseInt(document.getElementById('botSplitLimit').value);
-        worldSettings.map = parseInt(document.getElementById('mapMult').value); worldSettings.food = parseInt(document.getElementById('foodMult').value); worldSettings.virus = parseInt(document.getElementById('virusMult').value); worldSettings.speed = parseFloat(document.getElementById('speedMult').value);
-        let currentBotConfig = { botEnabled: document.getElementById('botsToggle').checked, botCount: parseInt(document.getElementById('botCountInput').value), botRespawn: document.getElementById('botRespawnToggle').checked, chaosMode: document.getElementById('chaosModeToggle') ? document.getElementById('chaosModeToggle').checked : false, botMaxSplits: MAX_BOT_CELLS, world: {...worldSettings} };
-        enableEnemyFX = !document.getElementById('noEnemyFX').checked; enableEnemySnd = !document.getElementById('noEnemySnd').checked;
-        const isChaosMode = document.getElementById('chaosModeToggle').checked; if (currentGameMode === 'arcade' && isChaosMode) { currentGameMode = 'skills'; }
-        isGodMode = document.getElementById('godModeToggle').checked; isSpectating = false;
+        MAX_BOT_CELLS = 16;
+        worldSettings.map = 1; worldSettings.food = 1; worldSettings.virus = 1; worldSettings.speed = 1;
+        let currentBotConfig = { botEnabled: true, botCount: 25, botRespawn: true, chaosMode: false, botMaxSplits: MAX_BOT_CELLS, world: {...worldSettings} };
+        enableEnemyFX = true; enableEnemySnd = false;
+        isGodMode = false; isSpectating = false;
         if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; els.actionBar.style.display = 'none'; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; els.actionBar.style.display = 'flex'; }
         MAP_SIZE *= worldSettings.map;
-        botConfig.enabled = document.getElementById('botsToggle').checked; botConfig.count = parseInt(document.getElementById('botCountInput').value); botConfig.respawn = document.getElementById('botRespawnToggle').checked;
+        botConfig.enabled = true; botConfig.count = 25; botConfig.respawn = true;
         let roomKey = currentGameMode + '_' + currentServer;
 
         // Crear o reutilizar la simulación de esta sala
