@@ -302,10 +302,13 @@
 
         /* --- LOGIN OVERLAY --- */
         #loginOverlay, #resultOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 60; }
+        /* Wrapper flex con baseline alignment: el login-box marca el tope/abajo,
+           la columna se anclla a su top/bottom vía sticky pseudo-clip (JS sync). */
+        .menu-row { display: flex; flex-direction: row; gap: 24px; align-items: flex-start; max-width: 100%; }
 
-        /* Columna derecha: dos bloques iguales (oracle arriba, missions/skins abajo),
-           ocupando ~lo mismo que el menú central. El menú se desplaza a la izquierda. */
-        .menu-right-col { position: absolute; right: 32px; top: 80px; bottom: 80px; width: 430px; max-width: 38vw; z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; }
+        /* Columna derecha: dos bloques iguales (oracle arriba, missions/skins abajo).
+           Misma animación slideUp que el login-box para que se muevan juntos al abrir. */
+        .menu-right-col { width: 430px; max-width: 38vw; z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
         #oraclePanel, #missionsPanel { flex: 1; min-height: 0; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 14px; padding: 20px 24px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); display: flex; flex-direction: column; overflow: hidden; }
         #oraclePanel { border: 1px solid rgba(255,206,61,0.3); }
         #missionsPanel.classic { border: 1px solid rgba(0,255,170,0.3); }
@@ -350,8 +353,6 @@
             background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary);
             box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px;
             border-radius: 12px; text-align: center; width: 850px;
-            /* Desplazado a la izquierda para dejar la columna derecha (oracle+missions) */
-            margin-right: 480px;
             max-width: 95%; display: flex; flex-direction: column;
             animation: slideUp 0.4s ease-out; position: relative; 
             overflow: visible; transition: width 0.3s ease; 
@@ -712,6 +713,7 @@
     </div>
 
     <div id="loginOverlay">
+      <div class="menu-row">
         <div class="login-box">
             <div class="back-icon" onclick="goBackToModes()">
                 <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
@@ -991,6 +993,7 @@
                 <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span></div>
             </div>
         </div>
+      </div>
     </div>
 
     <div id="resultOverlay">
@@ -2754,6 +2757,19 @@
     const fpsInterval = 1000 / 60; let then = performance.now();
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
     function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); setHoverMode('classic'); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; }
+
+    // Sincroniza la altura de la columna lateral (oracle+missions) con el menú central
+    // PILLWARS. Resuelve el desfase de top/bottom: garantiza alineación pixel-perfect.
+    function syncSidePanelHeight() {
+        const lb = document.querySelector('.login-box');
+        const col = document.querySelector('.menu-right-col');
+        if (!lb || !col) return;
+        const h = lb.getBoundingClientRect().height;
+        if (h > 0) col.style.height = h + 'px';
+    }
+    window.addEventListener('resize', syncSidePanelHeight);
+    new MutationObserver(syncSidePanelHeight).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
+    setInterval(syncSidePanelHeight, 600);   // por si el contenido del menú cambia (classic/arcade)
 
     // Espectador puro desde el panel de control: ?spectate=SALA&mode=MODO&server=wss://...
     // Mira la partida en curso sin jugar; cámara libre arrastrable por el mapa.
