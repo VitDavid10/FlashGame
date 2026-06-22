@@ -1461,23 +1461,25 @@
 
     class Explosion { constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; this.particles = []; for(let i=0; i<16; i++) { let angle = (Math.PI*2 * i) / 16; this.particles.push({ x: 0, y: 0, vx: Math.cos(angle)*8, vy: Math.sin(angle)*8, r: Math.random()*5+5, rot: Math.random()*Math.PI }); } } update() { this.life -= 0.02; this.particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.rot+=0.1; }); } draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.globalAlpha = Math.max(0, this.life); this.particles.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = '#81F126'; ctx.strokeStyle = '#3E8E11'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<12; i++) { let r = (i%2===0) ? p.r : p.r/2; ctx.lineTo(Math.cos((Math.PI*i)/6)*r, Math.sin((Math.PI*i)/6)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }); ctx.restore(); } }
 
-    function tryPlayHover(m) { if (ignoreNextHover) { if (m !== lastHoveredMode) { ignoreNextHover = false; SoundManager.play('hover'); } } else { SoundManager.play('hover'); } }
+    function tryPlayHover(m) {
+        if (ignoreNextHover) { ignoreNextHover = false; return; }
+        if (m !== lastHoveredMode) SoundManager.play('hover');
+    }
     let _questsHoverTimer = null;
     function setHoverMode(m) {
+        if (lastHoveredMode === m) return;   // mismo modo: no flickear ni resetear nada
         lastHoveredMode = m;
         if (m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); }
         else if (m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); }
         updateModeQuestsUI();
-        // El botón "DAILY QUESTS" y el panel aparecen JUNTOS, pero solo TRAS la animación
-        // de hover (~700ms), para que no tapen el título al expandirse la cara del modo.
         els.modeScreen.classList.remove('quests-ready');
         document.querySelectorAll('.mqp.open').forEach(el => { if (!el.classList.contains(m)) el.classList.remove('open'); });
         if (_questsHoverTimer) clearTimeout(_questsHoverTimer);
         _questsHoverTimer = setTimeout(() => {
             if (lastHoveredMode !== m) return;
-            els.modeScreen.classList.add('quests-ready');     // muestra el botón
+            els.modeScreen.classList.add('quests-ready');
             const t = document.getElementById('mqp' + (m === 'classic' ? 'Classic' : 'Arcade'));
-            if (t) t.classList.add('open');                   // y el panel, a la vez
+            if (t) t.classList.add('open');
         }, 700);
     }
 
