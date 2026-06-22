@@ -344,6 +344,14 @@
         .side-tabs-dots span.act { background: currentColor; box-shadow: 0 0 6px currentColor; }
         #missionsPanel.classic .side-tabs-dots span.act, #missionsPanel.classic .side-tabs-arrow { color: #00ffaa; }
         #missionsPanel.arcade .side-tabs-dots span.act, #missionsPanel.arcade .side-tabs-arrow { color: #ccff00; }
+
+        /* Colores .done/.prog para el panel MISSIONS dentro del menú de sala */
+        #missionsPanel.classic .mqp-q.done .n, #missionsPanel.classic .mqp-q.prog .n { color: #00ffaa; }
+        #missionsPanel.arcade  .mqp-q.done .n, #missionsPanel.arcade  .mqp-q.prog .n { color: #ccff00; }
+        #missionsPanel.classic .mqp-q.done .v { color: #00ffaa; }
+        #missionsPanel.arcade  .mqp-q.done .v { color: #ccff00; }
+        #missionsPanel.classic .mqp-q.done .mqp-bar i, #missionsPanel.classic .mqp-q.prog .mqp-bar i { background: #00ffaa; }
+        #missionsPanel.arcade  .mqp-q.done .mqp-bar i, #missionsPanel.arcade  .mqp-q.prog .mqp-bar i { background: #ccff00; }
         .skins-soon { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; color: #555; font-family: 'Russo One'; font-size: 13px; letter-spacing: 2px; }
         .skins-soon .ss-big { font-size: 28px; color: #777; margin-bottom: 10px; }
         #loginOverlay.bg-classic { background-image: linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(135deg, var(--classic-bg-1) 0%, #000 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
@@ -1024,7 +1032,7 @@
     </div>
 
     <div id="timerDisplay">03:50</div>
-    <div id="leaderboard"><h3>TOP MASS</h3><div id="lb-list"></div></div>
+    <div id="leaderboard"><h3>TOP MASS</h3><div id="lb-list"></div><div id="killsSection" style="border-top:1px solid #333;margin-top:8px;padding-top:8px;"><div style="font-family:'Russo One';color:#888;font-size:11px;letter-spacing:1px;margin-bottom:3px;">KILLS</div><div id="killsVal" style="font-family:'Russo One';font-size:26px;color:#ff4444;text-shadow:0 0 10px rgba(255,68,68,0.5);line-height:1;">0</div></div></div>
     
     <div id="skillChoiceOverlay">
         <div class="skill-choice-card">
@@ -1220,6 +1228,7 @@
         let match = null;
         function startMatch(mode, online) {
             match = { mode, online, kills: 0, skillsUsed: 0, peakMass: 0, alive: true, reportedOnline: false, reportedGame: false, reportedSurvive: false, reportedSkill: false };
+            const el = document.getElementById('killsVal'); if (el) el.textContent = '0';
         }
         function endMatch(reason) {
             if (!match) return;
@@ -1234,7 +1243,7 @@
             match = null;
         }
         // Hooks no-op por compatibilidad — todo se cuenta server-side ahora.
-        function reportKill() { if (match) match.kills++; }
+        function reportKill() { if (match) { match.kills++; const el = document.getElementById('killsVal'); if (el) el.textContent = match.kills; } }
         function reportSkill() {}
         function reportMass() {}
         function reportDeath() { if (match) match.alive = false; }
