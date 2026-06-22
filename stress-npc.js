@@ -23,6 +23,7 @@
 'use strict';
 
 const WebSocket = require('ws');
+const { genBotName } = require('./shared/botnames');
 
 const SERVER     = process.env.SERVER     || 'ws://localhost:8080';
 const BOTS       = parseInt(process.env.BOTS      || '300', 10);
@@ -88,7 +89,7 @@ function spawnBot(i) {
 
   ws.on('open', () => {
     stats.connected++;
-    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: 'NPC' + i, colorBot: randColor(), colorTop: randColor(), tester: 'STRESS_TEST_DEVNET' }));
+    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: genBotName(), colorBot: randColor(), colorTop: randColor(), tester: 'STRESS_TEST_DEVNET' }));
     stats.messagesSent++;
 
     // Movimiento tipo NPC: dirigirse al destino; al acercarse, elegir otro.

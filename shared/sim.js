@@ -20,12 +20,86 @@
     const AUTO_SPLIT_LEVEL_1 = 200000, AUTO_SPLIT_LEVEL_2 = 300000;
     const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 1.4, SPLIT_FORCE = 65, PILL_RATIO = 2.0;
     const COLORS = ['#F44336', '#9C27B0', '#3F51B5', '#03A9F4', '#009688', '#8BC34A', '#FFC107', '#FF5722'];
-    // Generador de nombres realistas: ~150 raíces × prefijos/sufijos/números = >5000 únicos
+    // Generador de nombres realistas: ~350 raíces × ~80 tags × ~40 prefijos ≈ 1.1M combinaciones
     const NAME_ROOTS = [
-        'Drag','Shadow','Ghost','Phoenix','Wolf','Tiger','Lion','Falcon','Eagle','Hawk','Raven','Bear','Snake','Cobra','Viper','Spider','Demon','Angel','Reaper','Slayer','Hunter','Killer','Ninja','Samurai','Pirate','Viking','Warrior','Knight','Sniper','Crusher','Smasher','Ripper','Blaster','Striker','Bomber','Soldier','Captain','Major','General','King','Queen','Lord','Sir','Baron','Prince','Master','Wizard','Mage','Sage','Doc','Mr','Dr','Pro','Noob','Boss','Chief','Mafia','Gangster','Thug','Outlaw','Bandit','Rebel','Rogue','Hero','Legend','Myth','Saint','Sinner','Devil','Beast','Monster','Titan','Giant','Pixel','Glitch','Crypto','Diamond','Gold','Silver','Iron','Steel','Bronze','Frost','Fire','Storm','Thunder','Lightning','Blaze','Shadow','Mist','Rain','Snow','Cloud','Sky','Moon','Sun','Star','Galaxy','Nova','Comet','Meteor','Atom','Neon','Pixel','Byte','Cyber','Hyper','Mega','Ultra','Super','Turbo','Nitro','Rocket','Bullet','Arrow','Blade','Sword','Axe','Hammer','Spear','Shield','Crown','Skull','Bone','Blood','Fang','Claw','Wing','Eye','Heart','Soul','Spirit','Ghost','Echo','Pablo','Mario','Lucas','Javi','Mateo','Diego','Hugo','Pepe','Tito','Manolo','Carlos','David','Alex','Leo','Toni','Iker','Adri','Bruno','Marc'
+        // Animales
+        'Drag','Shadow','Ghost','Phoenix','Wolf','Tiger','Lion','Falcon','Eagle','Hawk',
+        'Raven','Bear','Snake','Cobra','Viper','Spider','Fox','Cat','Owl','Elk',
+        'Bat','Crow','Swan','Lynx','Puma','Croc','Rhino','Shark','Panther','Jaguar',
+        'Hyena','Dingo','Gecko','Mamba','Panda','Koala','Moose','Bison','Condor','Pelican',
+        'Scorpion','Mantis','Hornet','Wasp','Beetle','Dragonfly','Firefly','Moth','Locust','Venom',
+        // Fantasía / personajes
+        'Demon','Angel','Reaper','Slayer','Hunter','Killer','Ninja','Samurai','Pirate','Viking',
+        'Warrior','Knight','Sniper','Crusher','Smasher','Ripper','Blaster','Striker','Bomber','Soldier',
+        'Captain','Major','General','King','Queen','Lord','Sir','Baron','Prince','Master',
+        'Wizard','Mage','Sage','Saint','Sinner','Devil','Beast','Monster','Titan','Giant',
+        'Hero','Legend','Myth','Rebel','Rogue','Outlaw','Bandit','Thug','Gangster','Mafia',
+        'Paladin','Warlock','Druid','Ranger','Berserker','Templar','Crusader','Assassin','Scout','Gladiator',
+        'Oracle','Sorcerer','Necromancer','Alchemist','Trickster','Brawler','Duelist','Prophet','Seer','Archon',
+        // Elementos / naturaleza
+        'Frost','Fire','Storm','Thunder','Lightning','Blaze','Mist','Rain','Snow','Cloud',
+        'Sky','Moon','Sun','Star','Galaxy','Nova','Comet','Meteor','Atom','Neon',
+        'Lava','Quake','Tide','Wind','Drift','Gale','Hail','Dusk','Dawn','Void',
+        'Abyss','Crater','Glacier','Ember','Ash','Cinder','Spark','Flare','Surge','Torrent',
+        'Arctic','Tropic','Desert','Jungle','Tundra','Swamp','Ridge','Peak','Vale','Reef',
+        // Tecnología / cyber
+        'Pixel','Glitch','Crypto','Byte','Cyber','Hyper','Mega','Ultra','Super','Turbo',
+        'Nitro','Rocket','Bullet','Arrow','Blade','Sword','Axe','Hammer','Spear','Shield',
+        'Laser','Plasma','Quasar','Pulsar','Photon','Proton','Electron','Ion','Flux','Matrix',
+        'Vector','Kernel','Stack','Cache','Signal','Cipher','Nanobot','Drone','Mech','Synth',
+        'Neural','Binary','Hex','Grid','Loop','Codec','Tensor','Buffer','Queue','Shader',
+        // Colores / materiales
+        'Diamond','Gold','Silver','Iron','Steel','Bronze','Obsidian','Onyx','Jade','Ivory',
+        'Crimson','Scarlet','Azure','Indigo','Violet','Teal','Amber','Coral','Cyan','Magenta',
+        'Ebony','Titanium','Platinum','Cobalt','Chrome','Carbon','Crystal','Quartz','Opal','Garnet',
+        // Acciones / intensidad
+        'Crown','Skull','Bone','Blood','Fang','Claw','Wing','Eye','Heart','Soul',
+        'Spirit','Echo','Pulse','Rush','Dash','Flash','Bolt','Burst','Force','Drive',
+        'Push','Slam','Jump','Spin','Roll','Flip','Snap','Crack','Rip','Tear',
+        'Grind','Stomp','Wreck','Shred','Pierce','Cleave','Smite','Maul','Pummel','Ravage',
+        // Internet / cultura gamer
+        'Gamer','Noob','Boss','Pro','Chief','Doc','Dude','Sweat','Vibe','Flex',
+        'Clout','Hype','Chad','Nerd','Geek','Cringe','Frag','Loot','Grinder','Carry',
+        // Nombres españoles / latinos
+        'Pablo','Mario','Lucas','Javi','Mateo','Diego','Hugo','Pepe','Tito','Manolo',
+        'Carlos','David','Alex','Leo','Toni','Iker','Adri','Bruno','Marc','Ruben',
+        'Ivan','Oscar','Victor','Simon','Tomas','Xavier','Fabian','Emilio','Felipe','Cristian',
+        'Gonzalo','Hernan','Ignacio','Javier','Kevin','Lorenzo','Martin','Omar','Pedro','Juan',
+        'Jose','Angel','Jesus','Miguel','Luis','Jorge','Antonio','Ricardo','Daniel','Francisco',
+        'Roberto','Eduardo','Sergio','Nicolas','Santiago','Sebastian','Gabriel','Rodrigo','Manuel','Andres',
+        'Lucia','Sofia','Laura','Elena','Maria','Claudia','Natalia','Beatriz','Carmen','Rosa',
+        'Ana','Vera','Lena','Nina','Olga','Zara','Emma','Mia','Ava','Eva',
+        // Nombres internacionales
+        'Max','Rex','Ace','Kai','Jin','Zen','Axel','Liam','Noah','Ethan',
+        'Mason','Logan','Oliver','Aiden','Caden','Jackson','Yuki','Kenji','Hiro','Ryu',
+        'Kira','Sora','Nami','Taro','Akira','Nikita','Vlad','Boris','Sasha','Dima',
+        'Luca','Marco','Gio','Rafa','Xavi','Riki','Kai','Remy','Enzo','Dario'
     ];
-    const NAME_TAGS = ['','','','_','XD','YT','TV','TTV','xD','99','420','69','007','HD','Pro','Lite','MAX','x','Z','XX','OG','GG','TM','_RU','_ES','_FR','_DE','_USA','_MX','_AR','_BR','_IT','_JP','_KR','_CN','_UK','_PT','_NL','_PL','_TR'];
-    const NAME_PREFS = ['','','xX','x','TheReal','El','Sr.','Sra.','MX_','iam','its','Lord','King','Lil','Big','Mr','Ms','Capt','Sgt','Dr','Mc'];
+    const NAME_TAGS = [
+        '','','','','_',
+        'XD','YT','TV','TTV','xD',
+        '99','420','69','007','HD',
+        'Pro','Lite','MAX','x','Z',
+        'XX','OG','GG','TM','PvP',
+        'FTW','AFK','EZ','WP','MVP',
+        '_RU','_ES','_FR','_DE','_USA',
+        '_MX','_AR','_BR','_IT','_JP',
+        '_KR','_CN','_UK','_PT','_NL',
+        '_PL','_TR','_VN','_ID','_PH',
+        '_AU','_CA','_ZA','_IN','_NG',
+        'gg','ok','lol','omg','wtf',
+        'Gaming','Plays','Live','Real','Official'
+    ];
+    const NAME_PREFS = [
+        '','','','',
+        'xX','x','iX','iM',
+        'TheReal','El','La','Sr.','Sra.',
+        'MX_','BR_','iam','its',
+        'Lord','King','Queen','Lil','Big',
+        'Mr','Ms','Capt','Sgt','Dr','Mc',
+        'Dark','Red','Ice','God','Top',
+        'Ultra','Mega','Neo','Zeta','Alpha'
+    ];
     function genBotName() {
         const r = NAME_ROOTS[Math.floor(Math.random() * NAME_ROOTS.length)];
         let n = r;
