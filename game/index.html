@@ -683,7 +683,7 @@
             <span>BACK TO SITE</span>
         </a>
         <div class="diagonal-divider"></div>
-        <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade'); setHoverMode('arcade')" onclick="selectMode('arcade')">
+        <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
             <div id="contentArcade" class="mode-content">
                 <div class="mode-sub">ROGUELIKE MECHANICS</div>
                 <div class="mode-title">ARCADE</div>
@@ -694,7 +694,7 @@
                 </div>
             </div>
         </div>
-        <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic'); setHoverMode('classic')" onclick="selectMode('classic')">
+        <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
             <div id="contentClassic" class="mode-content">
                 <div class="mode-sub">STANDARD MODE</div>
                 <div class="mode-title">CLASSIC</div>
@@ -1461,14 +1461,18 @@
 
     class Explosion { constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; this.particles = []; for(let i=0; i<16; i++) { let angle = (Math.PI*2 * i) / 16; this.particles.push({ x: 0, y: 0, vx: Math.cos(angle)*8, vy: Math.sin(angle)*8, r: Math.random()*5+5, rot: Math.random()*Math.PI }); } } update() { this.life -= 0.02; this.particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.rot+=0.1; }); } draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.globalAlpha = Math.max(0, this.life); this.particles.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = '#81F126'; ctx.strokeStyle = '#3E8E11'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<12; i++) { let r = (i%2===0) ? p.r : p.r/2; ctx.lineTo(Math.cos((Math.PI*i)/6)*r, Math.sin((Math.PI*i)/6)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }); ctx.restore(); } }
 
-    function tryPlayHover(m) {
+    const MODE_DEAD_ZONE_PX = 65;  // top 65px: zona muerta (botones volumen/URL bar)
+    function tryPlayHover(m, e) {
+        if (e && e.clientY < MODE_DEAD_ZONE_PX) return;
         if (ignoreNextHover) { ignoreNextHover = false; return; }
         if (m !== lastHoveredMode) SoundManager.play('hover');
     }
     let _questsHoverTimer = null;
-    function setHoverMode(m) {
+    function setHoverMode(m, mouseY) {
+        if (mouseY !== undefined && mouseY < MODE_DEAD_ZONE_PX) return;
         if (lastHoveredMode === m) return;   // mismo modo: no flickear ni resetear nada
         lastHoveredMode = m;
+        try { localStorage.setItem('pw_lastMode', m); } catch(e) {}
         if (m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); }
         else if (m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); }
         updateModeQuestsUI();
@@ -1634,7 +1638,7 @@
     // Refrescar cada vez que vuelves a la pantalla de modos
     window.addEventListener('focus', loadModeQuests);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) loadModeQuests(); });
-    els.modeScreen.onmouseleave = () => { els.modeScreen.classList.remove('hover-classic', 'hover-arcade', 'quests-ready'); lastHoveredMode = null; if (_questsHoverTimer) clearTimeout(_questsHoverTimer); document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open')); };
+    els.modeScreen.onmouseleave = () => { els.modeScreen.classList.remove('quests-ready'); lastHoveredMode = null; if (_questsHoverTimer) clearTimeout(_questsHoverTimer); document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open')); };
     
     function selectMode(m) {
         SoundManager.stop('hover');
@@ -2837,7 +2841,7 @@
 
     const fpsInterval = 1000 / 60; let then = performance.now();
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
-    function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); setHoverMode('classic'); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; }
+    function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); let savedMode = 'classic'; try { savedMode = localStorage.getItem('pw_lastMode') || 'classic'; } catch(e) {} setHoverMode(savedMode); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; }
 
     // Sincroniza la altura de la columna lateral (oracle+missions) con el menú central
     // PILLWARS. Resuelve el desfase de top/bottom: garantiza alineación pixel-perfect.
