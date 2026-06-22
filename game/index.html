@@ -210,7 +210,7 @@
 
         /* --- MODE SCREEN (DESKTOP DEFAULT) --- */
         #modeScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; display: flex; overflow: hidden; background: #000; transition: opacity 0.5s; }
-        .back-to-web { position: absolute; top: 22px; left: 24px; z-index: 60; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border: 1px solid rgba(0,255,136,0.35); border-radius: 8px; color: #00ff88; font-family: 'Russo One',sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; cursor: pointer; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
+        .back-to-web { position: absolute; top: 22px; left: 24px; z-index: 200; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border: 1px solid rgba(0,255,136,0.35); border-radius: 8px; color: #00ff88; font-family: 'Russo One',sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; cursor: pointer; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
         .back-to-web:hover { background: #00ff88; color: #04150c; border-color: #00ff88; box-shadow: 0 0 22px rgba(0,255,136,0.55); transform: translateX(-2px); }
         .back-to-web svg { transition: transform 0.25s; }
         .back-to-web:hover svg { transform: translateX(-3px); }
@@ -466,14 +466,10 @@
         @media (max-height: 700px) { .grid-skill-icon { width: 40px; height: 40px; } }
         .result-box { background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary); box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px 30px; border-radius: 12px; text-align: center; width: 380px; animation: slideUp 0.4s ease-out; position: relative; max-height: 95vh; overflow-y: auto; }
         @keyframes slideUp { from {transform:translateY(20px); opacity:0;} to {transform:translateY(0); opacity:1;} }
-        .back-icon { position: absolute; top: 20px; left: 20px; z-index: 65; cursor: pointer; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border-radius: 8px; display: inline-flex; width: fit-content; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid rgba(0,255,136,0.35); color: #00ff88; box-shadow: 0 6px 22px rgba(0,0,0,0.5); font-family: 'Russo One',sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; transition: 0.25s; text-decoration: none; }
-        .back-icon:hover { background: #00ff88; color: #04150c; border-color: #00ff88; box-shadow: 0 0 22px rgba(0,255,136,0.55); }
-        .back-icon svg { width: 16px; height: 16px; flex-shrink: 0; transition: transform 0.25s; }
-        .back-icon:hover svg { transform: translateX(-3px); }
-        .back-icon.mode-classic { border-color: rgba(0,255,170,0.5); color: #00ffaa; }
-        .back-icon.mode-classic:hover { background: #00ffaa; color: #04150c; border-color: #00ffaa; box-shadow: 0 0 22px rgba(0,255,170,0.55); }
-        .back-icon.mode-arcade { border-color: rgba(204,255,0,0.5); color: #ccff00; }
-        .back-icon.mode-arcade:hover { background: #ccff00; color: #04150c; border-color: #ccff00; box-shadow: 0 0 22px rgba(204,255,0,0.55); }
+        .back-icon { position: absolute; top: 20px; left: 20px; z-index: 65; cursor: pointer; background: rgba(8,12,8,0.9); border-radius: 8px; width: 38px; height: 38px; display: flex; justify-content: center; align-items: center; border: 1px solid currentColor; box-shadow: 0 4px 16px rgba(0,0,0,0.6); color: #aaa; font-size: 20px; line-height: 1; transition: background 0.2s, color 0.2s; user-select: none; }
+        .back-icon:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .back-icon.mode-classic { color: #00ffaa; }
+        .back-icon.mode-arcade { color: #ccff00; }
         h1 { margin: 0 0 5px 0; color: #fff; font-family: 'Russo One'; font-size: 28px; text-transform: uppercase; }
         #selectedModeTitle { font-family: 'Russo One'; font-size: 18px; text-transform: uppercase; margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #333; letter-spacing: 2px; }
         .section-title { font-family: 'Russo One'; font-size: 10px; color: var(--primary); text-transform: uppercase; margin: 10px 0 5px; text-align: left; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 2px; }
@@ -726,10 +722,7 @@
     </div>
 
     <div id="loginOverlay">
-      <div class="back-icon" onclick="goBackToModes()">
-          <svg viewBox="-2 -2 28 28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          <span>BACK</span>
-      </div>
+      <div class="back-icon" onclick="goBackToModes()">←</div>
       <div class="menu-row">
         <div class="login-box">
             <h1>PillWars</h1>
@@ -1127,26 +1120,29 @@
             tp: new Audio('../snd/tp.mp3'), big: new Audio('../snd/big.mp3'), little: new Audio('../snd/little.mp3'),
             virus: new Audio('../snd/virus.mp3'), floatkill: new Audio('../snd/floatkill.mp3')
         },
-        music: new Audio('../snd/music.mp3'), startTimer: null, 
+        music: new Audio('../snd/music.mp3'), startTimer: null,
+        menuMusic: new Audio('../snd/FizzleHolyA.ogg'),
         init: function() {
             if(localStorage.getItem('pillwars_muted') === 'true') { this.muted = true; document.getElementById('soundToggle').classList.add('muted'); }
             this.music.loop = true; this.music.volume = MUSIC_VOLUME;
-            if(localStorage.getItem('pillwars_music_muted') === 'true') { this.musicMuted = true; this.music.muted = true; document.getElementById('musicToggle').classList.add('muted'); } 
+            this.menuMusic.loop = true; this.menuMusic.volume = MUSIC_VOLUME * 0.75;
+            if(localStorage.getItem('pillwars_music_muted') === 'true') { this.musicMuted = true; this.music.muted = true; this.menuMusic.muted = true; document.getElementById('musicToggle').classList.add('muted'); }
             else { document.getElementById('musicToggle').classList.remove('muted'); }
-            for(let key in this.sounds) { this.sounds[key].load(); } this.music.load();
+            for(let key in this.sounds) { this.sounds[key].load(); } this.music.load(); this.menuMusic.load();
         },
         toggleSFX: function() { 
             this.muted = !this.muted; const btn = document.getElementById('soundToggle'); 
             if (this.muted) { btn.classList.add('muted'); localStorage.setItem('pillwars_muted', 'true'); } 
             else { btn.classList.remove('muted'); localStorage.setItem('pillwars_muted', 'false'); } 
         },
-        toggleMusic: function() { 
-            this.musicMuted = !this.musicMuted; this.music.muted = this.musicMuted; const btn = document.getElementById('musicToggle'); 
-            if (this.musicMuted) { btn.classList.add('muted'); localStorage.setItem('pillwars_music_muted', 'true'); } 
-            else { btn.classList.remove('muted'); localStorage.setItem('pillwars_music_muted', 'false'); } 
-            if(!this.musicMuted && gameRunning && !isSpectating && !this.startTimer) { this.music.play().catch(e=>{}); } 
+        toggleMusic: function() {
+            this.musicMuted = !this.musicMuted; this.music.muted = this.musicMuted; this.menuMusic.muted = this.musicMuted; const btn = document.getElementById('musicToggle');
+            if (this.musicMuted) { btn.classList.add('muted'); localStorage.setItem('pillwars_music_muted', 'true'); }
+            else { btn.classList.remove('muted'); localStorage.setItem('pillwars_music_muted', 'false'); }
+            if (!this.musicMuted && gameRunning && !isSpectating && !this.startTimer) { this.music.play().catch(e=>{}); }
+            if (!this.musicMuted && !gameRunning) { this.menuMusic.play().catch(e=>{}); }
         },
-        setVolume: function(val) { this.music.volume = parseFloat(val); },
+        setVolume: function(val) { const v = parseFloat(val); this.music.volume = v; this.menuMusic.volume = v * 0.75; },
         play: function(name, pos = null) { 
             if(this.muted || !this.sounds[name]) return; 
             if (pos && gameRunning && !isSpectating) {
@@ -1162,7 +1158,9 @@
         playFloatKill: function() { const now = Date.now(); if (now - this.lastFloatKillTime < 200) return; this.lastFloatKillTime = now; this.play('floatkill'); },
         playSplit: function() { const now = Date.now(); if (now - this.lastSplitTime < 150) return; this.lastSplitTime = now; this.play('split'); },
         playMusic: function() { if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
-        stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; }
+        stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; },
+        playMenuMusic: function() { if(!this.musicMuted) { this.stopMusic(); this.menuMusic.play().catch(e=>{}); } },
+        stopMenuMusic: function() { this.menuMusic.pause(); this.menuMusic.currentTime = 0; }
     };
 
     function enableAudioContext() { document.removeEventListener('click', enableAudioContext); document.removeEventListener('keydown', enableAudioContext); document.removeEventListener('touchstart', enableAudioContext); }
@@ -1720,7 +1718,7 @@
     }
 
     function goBackToModes() {
-        SoundManager.play('select'); ignoreNextHover = true; els.loginOverlay.style.display = 'none'; els.skillOverlay.style.display = 'none';
+        SoundManager.play('select'); SoundManager.playMenuMusic(); ignoreNextHover = true; els.loginOverlay.style.display = 'none'; els.skillOverlay.style.display = 'none';
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // ocultar wallet al volver a la pantalla de selección
         els.modeScreen.style.display = 'flex'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); 
         document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; 
@@ -1835,7 +1833,7 @@
     };
 
     function startGame() {
-        SoundManager.play('select'); SoundManager.playMusic();
+        SoundManager.play('select'); SoundManager.stopMenuMusic(); SoundManager.playMusic();
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
         MAX_BOT_CELLS = parseInt(document.getElementById('botSplitLimit').value);
@@ -2433,7 +2431,7 @@
     }
 
     async function startOnlineGame() {
-        SoundManager.play('select');
+        SoundManager.play('select'); SoundManager.stopMenuMusic();
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
         enableEnemyFX = !document.getElementById('noEnemyFX').checked; enableEnemySnd = !document.getElementById('noEnemySnd').checked;
@@ -2861,7 +2859,7 @@
 
     const fpsInterval = 1000 / 60; let then = performance.now();
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
-    function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); let savedMode = 'classic'; try { savedMode = localStorage.getItem('pw_lastMode') || 'classic'; } catch(e) {} setHoverMode(savedMode); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; }
+    function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); let savedMode = 'classic'; try { savedMode = localStorage.getItem('pw_lastMode') || 'classic'; } catch(e) {} setHoverMode(savedMode); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; SoundManager.playMenuMusic(); }
 
     // Sincroniza la altura de la columna lateral (oracle+missions) con el menú central
     // PILLWARS. Resuelve el desfase de top/bottom: garantiza alineación pixel-perfect.
