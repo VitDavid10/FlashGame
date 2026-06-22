@@ -389,7 +389,7 @@ body.trailer-open #page-content{
         .lb-c-kills { color: var(--primary); font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
         .lb-c-mass { color: #ffce3d; font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
 
-        /* DAILY QUESTS */
+        /* DAILY MISSIONS */
         .dq-tag { display: inline-block; font-family: 'Russo One', sans-serif; font-size: 11px; letter-spacing: 4px; color: var(--primary); padding: 5px 14px; border: 1px solid rgba(0,255,136,0.3); border-radius: 20px; text-transform: uppercase; background: rgba(0,255,136,0.05); }
         .dq-subtitle { color: #888; font-size: 15px; margin: 10px 0 30px; text-align: center; max-width: 640px; }
         .dq-subtitle b { color: var(--primary); font-weight: 600; }
@@ -582,7 +582,7 @@ body.trailer-open #page-content{
             <div class="nav-links-container">
                 <button class="btn-play" onclick="window.location.href='game/'">PLAY NOW</button>
                 <a href="#hero" class="nav-link">GAME</a>
-                <a href="#quest" class="nav-link">QUEST</a>
+                <a href="#quest" class="nav-link">MISSIONS</a>
                 <a href="#shop" class="nav-link">STORE</a>
                 <a href="#ranking" class="nav-link">LEADERBOARD</a>
             </div>
@@ -777,15 +777,15 @@ body.trailer-open #page-content{
     <!-- SECCIONES -->
     <div id="quest" class="section-container">
         <span class="dq-tag">PRE-LAUNCH EXCLUSIVE</span>
-        <h1 class="section-title holo-text" style="margin: 14px 0 0;">Daily Quests</h1>
-        <p class="dq-subtitle">Complete 3 of 5 quests to unlock <b>exclusive Telegram access</b> — the contract drops there first.</p>
+        <h1 class="section-title holo-text" style="margin: 14px 0 0;">Daily Missions</h1>
+        <p class="dq-subtitle">Complete 3 of 6 daily missions to unlock <b>exclusive Telegram access</b> — the contract drops there first.</p>
         <div class="dq-summary">
             <div class="dq-ring">
                 <svg viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="42" fill="none" stroke="#1c1c1c" stroke-width="8"/>
                     <circle id="dq-ring-fill" cx="50" cy="50" r="42" fill="none" stroke="#00ff88" stroke-width="8" stroke-dasharray="0 264" stroke-linecap="round"/>
                 </svg>
-                <div class="num"><span id="dq-done">0<em>/5</em></span><span>QUESTS</span></div>
+                <div class="num"><span id="dq-done">0<em>/6</em></span><span>MISSIONS</span></div>
             </div>
             <div class="info">
                 <div class="ti">REWARD: EXCLUSIVE TELEGRAM ACCESS</div>
@@ -1463,106 +1463,91 @@ function toggleTrailerMode() {
         App.Wallet.eagerConnect();   // confirma la sesión en silencio (o revierte si ya no vale)
         setInterval(App.Market.updateTicker, 30000);
 
-        // DAILY QUESTS: identidad anónima (UUID en localStorage) + progreso desde el servidor
+        // DAILY MISSIONS: anonymous identity shared with game (pw_cid) + /api/dailyquests
         (function () {
-            // Enlace de Telegram exclusivo — CAMBIAR cuando lo crees en Telegram:
-            const TELEGRAM_INVITE = 'https://t.me/pillwars';
-
+            var TELEGRAM_INVITE = "https://t.me/pillwars";
             function uuid() {
                 if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-                return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+                return "xxxxxxxxxxxxxxxxxxxxxxxx".replace(/x/g, function() { return Math.floor(Math.random()*16).toString(16); });
             }
-            let cid = null;
+            var cid = null;
             try {
-                cid = localStorage.getItem('pw_cid');
-                if (!cid) { cid = uuid().replace(/-/g, '').slice(0, 24); localStorage.setItem('pw_cid', cid); }
-            } catch (e) { cid = 'guest-' + Math.random().toString(36).slice(2, 12); }
-            window.PWQuests = { cid: cid, base: '', post: null, get: null, refresh: null };
+                cid = localStorage.getItem("pw_cid");
+                if (!cid) { cid = uuid().slice(0, 24); localStorage.setItem("pw_cid", cid); }
+            } catch(e) { cid = "guest-" + Math.random().toString(36).slice(2, 12); }
+            window.PWQuests = { cid: cid, refresh: null };
 
-            const QUESTS = [
-                { id: 'q1', title: 'FINISH 2 GAMES', desc: 'Arcade until time runs out, or Classic with at least 5 kills.', key: 'q1_games_finished', target: 2 },
-                { id: 'q2', title: 'PLAY 2 ONLINE MATCHES', desc: 'Join an online room, get a kill or a death — either counts.', key: 'q2_online_matches', target: 2 },
-                { id: 'q3', title: 'USE 8 SKILLS IN ARCADE', desc: 'Cast 8 skills in a single arcade match (the same skill can repeat).', key: 'q3_skills_in_arcade', target: 8 },
-                { id: 'q4', title: 'REACH 100,000 MASS', desc: 'Hit 100k mass at any point in a single match.', key: 'bestMass', target: 100000, isMass: true },
-                { id: 'q5', title: 'SURVIVE CLASSIC × 2', desc: 'Leave 2 Classic matches alive (escape without dying).', key: 'q5_classic_survived', target: 2 }
-            ];
+            var grid = document.getElementById("dq-grid");
+            var ringFill = document.getElementById("dq-ring-fill");
+            var ringNum = document.getElementById("dq-done");
+            var sub = document.getElementById("dq-sub");
+            var btn = document.getElementById("dq-btn");
 
-            const grid = document.getElementById('dq-grid');
-            const ringFill = document.getElementById('dq-ring-fill');
-            const ringNum = document.getElementById('dq-done');
-            const sub = document.getElementById('dq-sub');
-            const btn = document.getElementById('dq-btn');
+            function esc(s) {
+                return String(s == null ? "" : s).replace(/[&<>"]/g, function(c) {
+                    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':'&quot;'}[c];
+                });
+            }
 
-            function fmt(n) { return (n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,'') + 'k' : String(n)); }
-            function render(q) {
-                if (!q) q = {};
-                let completed = 0;
-                grid.innerHTML = QUESTS.map((Q, i) => {
-                    const val = q[Q.key] | 0;
-                    const pct = Math.min(100, Math.round(val / Q.target * 100));
-                    const done = val >= Q.target;
-                    const inProg = val > 0 && !done;
+            function render(quests) {
+                if (!Array.isArray(quests) || !quests.length) {
+                    grid.innerHTML = "<div style=\"color:#555;font-family:Russo One,sans-serif;font-size:13px;letter-spacing:2px;padding:30px 0;text-align:center;\">LOADING MISSIONS...</div>";
+                    return;
+                }
+                var completed = 0;
+                grid.innerHTML = quests.map(function(Q, i) {
+                    var val = Q.progress | 0;
+                    var pct = Math.min(100, Math.round(val / Q.target * 100));
+                    var done = !!Q.done;
+                    var inProg = val > 0 && !done;
                     if (done) completed++;
-                    const num = String(i + 1).padStart(2, '0');
-                    const state = done ? 'COMPLETED' : inProg ? 'IN PROGRESS' : 'NOT STARTED';
-                    const right = Q.isMass ? (fmt(val) + ' / ' + fmt(Q.target)) : (val + '/' + Q.target);
-                    const left = done ? state : inProg ? (Q.isMass ? state + ' · BEST ' + val.toLocaleString('en-US') : state) : state;
-                    return '<div class="dq-card ' + (done ? 'done' : inProg ? 'prog' : '') + '">' +
-                        '<div class="dq-card-h"><div class="dq-num">' + num + '</div><div style="flex:1;">' +
-                        '<div class="dq-title">' + Q.title + '</div><div class="dq-desc">' + Q.desc + '</div></div></div>' +
-                        '<div class="dq-bar"><i style="width:' + pct + '%;"></i></div>' +
-                        '<div class="dq-foot"><span class="state">' + left + '</span><span>' + right + '</span></div>' +
-                        '</div>';
-                }).join('');
-                // Anillo y resumen
-                const total = QUESTS.length;
-                const dash = (completed / total) * 264;
-                ringFill.setAttribute('stroke-dasharray', dash + ' 264');
-                ringNum.innerHTML = completed + '<em>/' + total + '</em>';
-                const unlocked = completed >= 3;
-                btn.classList.toggle('unlocked', unlocked);
+                    var num = String(i + 1).padStart(2, "0");
+                    var state = done ? "COMPLETED" : inProg ? "IN PROGRESS" : "NOT STARTED";
+                    var right = val + "/" + Q.target;
+                    var descTxt = Q.desc ? esc(Q.desc) : ("+" + Q.reward + " SP");
+                    return '<div class="dq-card ' + (done ? "done" : inProg ? "prog" : "") + '">' +
+                        '<div class="dq-card-h"><div class="dq-num">' + num + '</div><div style="flex:1">' +
+                        '<div class="dq-title">' + esc(Q.t) + '</div><div class="dq-desc">' + descTxt + '</div></div></div>' +
+                        '<div class="dq-bar"><i style="width:' + pct + '%"></i></div>' +
+                        '<div class="dq-foot"><span class="state">' + state + '</span><span>' + right + '</span></div>' +
+                        "</div>";
+                }).join("");
+                var total = quests.length;
+                var dash = (completed / total) * 264;
+                ringFill.setAttribute("stroke-dasharray", dash + " 264");
+                ringNum.innerHTML = completed + "<em>/" + total + "</em>";
+                var unlocked = completed >= 3;
+                btn.classList.toggle("unlocked", unlocked);
                 if (unlocked) {
-                    btn.textContent = 'JOIN TELEGRAM';
+                    btn.textContent = "JOIN TELEGRAM";
                     btn.href = TELEGRAM_INVITE;
-                    btn.target = '_blank';
-                    btn.rel = 'noopener noreferrer';
+                    btn.target = "_blank";
+                    btn.rel = "noopener noreferrer";
                     btn.onclick = null;
-                    sub.textContent = 'You unlocked the exclusive group. Welcome.';
-                    sub.classList.add('ok');
+                    sub.textContent = "You unlocked the exclusive group. Welcome.";
+                    sub.classList.add("ok");
                 } else {
-                    btn.textContent = 'LOCKED';
-                    btn.removeAttribute('href');
-                    btn.onclick = function (e) { e.preventDefault(); return false; };
-                    sub.textContent = (3 - completed) + ' more ' + (3 - completed === 1 ? 'quest' : 'quests') + ' and you’re in.';
-                    sub.classList.remove('ok');
+                    btn.textContent = "LOCKED";
+                    btn.removeAttribute("href");
+                    btn.onclick = function(e) { e.preventDefault(); return false; };
+                    var left = Math.max(0, 3 - completed);
+                    sub.textContent = left + " more " + (left === 1 ? "mission" : "missions") + " and you are in.";
+                    sub.classList.remove("ok");
                 }
             }
-            render({});   // estado inicial mientras llega
+            render([]);
 
-            async function pull() {
-                try {
-                    const r = await fetch('/api/quests', { headers: { 'X-Client-Id': cid }, cache: 'no-store' });
-                    if (!r.ok) return;
-                    const data = await r.json();
-                    render(data.quests || {});
-                } catch (e) {}
+            function pull() {
+                fetch("/api/dailyquests", { headers: { "X-Client-Id": cid }, cache: "no-store" })
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) { if (data) render(data.quests || []); })
+                    .catch(function() {});
             }
-            async function post(ev) {
-                try {
-                    const r = await fetch('/api/quests', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Client-Id': cid }, body: JSON.stringify(ev || {}) });
-                    if (!r.ok) return null;
-                    const data = await r.json();
-                    if (data.quests) render(data.quests);
-                    return data;
-                } catch (e) { return null; }
-            }
-            window.PWQuests.post = post;
-            window.PWQuests.get = pull;
             window.PWQuests.refresh = pull;
             pull();
-            // Refresca al volver al foco (vuelves de jugar → se actualiza)
-            window.addEventListener('focus', pull);
-            document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+            window.addEventListener("focus", pull);
+            document.addEventListener("visibilitychange", function() { if (!document.hidden) pull(); });
+            setInterval(pull, 30000);
         })();
 
         // GLOBAL ELITE: ranking en vivo desde el servidor del juego
