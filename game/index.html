@@ -627,7 +627,7 @@
 
     <!-- Wallet en el juego: caja de saldo + botón connect/deposit aparte. Solo visible en menú de modo. -->
     <div id="gameWalletArea">
-        <div id="gwBalBox"><b id="gwBalValue">—</b> <span style="color:var(--primary)">$PILL</span></div>
+        <div id="gwBalBox"><span style="color:var(--primary)">in GAME:</span> <b id="gwBalValue">—</b> <span style="color:var(--primary)">$PILL</span></div>
         <button id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
         <button id="gwDeposit" onclick="GameWalletUI.openDeposit()" style="display:none">DEPOSIT</button>
     </div>
@@ -1031,7 +1031,7 @@
         init: function() {
             if(localStorage.getItem('pillwars_muted') === 'true') { this.muted = true; document.getElementById('soundToggle').classList.add('muted'); }
             this.music.loop = true; this.music.volume = MUSIC_VOLUME;
-            this.menuMusic.loop = true; this.menuMusic.volume = Math.min(1, MUSIC_VOLUME * 1.5);
+            this.menuMusic.loop = true; this.menuMusic.volume = Math.min(1, MUSIC_VOLUME * 1.875);
             if(localStorage.getItem('pillwars_music_muted') === 'true') { this.musicMuted = true; this.music.muted = true; this.menuMusic.muted = true; document.getElementById('musicToggle').classList.add('muted'); }
             else { document.getElementById('musicToggle').classList.remove('muted'); }
             for(let key in this.sounds) { this.sounds[key].load(); } this.music.load(); this.menuMusic.load();
@@ -1048,7 +1048,7 @@
             if (!this.musicMuted && gameRunning && !isSpectating && !this.startTimer) { this.music.play().catch(e=>{}); }
             if (!this.musicMuted && !gameRunning) { this.menuMusic.play().catch(e=>{}); }
         },
-        setVolume: function(val) { const v = parseFloat(val); this.music.volume = v; this.menuMusic.volume = Math.min(1, v * 1.5); },
+        setVolume: function(val) { const v = parseFloat(val); this.music.volume = v; this.menuMusic.volume = Math.min(1, v * 1.875); },
         play: function(name, pos = null) { 
             if(this.muted || !this.sounds[name]) return; 
             if (pos && gameRunning && !isSpectating) {
@@ -1065,7 +1065,7 @@
         playSplit: function() { const now = Date.now(); if (now - this.lastSplitTime < 150) return; this.lastSplitTime = now; this.play('split'); },
         playMusic: function() { if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
         stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; },
-        playMenuMusic: function() { if(!this.musicMuted) { this.stopMusic(); clearTimeout(this._menuMusicTimer); this._menuMusicTimer = setTimeout(() => { if(!this.musicMuted) this.menuMusic.play().catch(e=>{}); }, 2000); } },
+        playMenuMusic: function(delayMs) { if(this.musicMuted) return; this.stopMusic(); clearTimeout(this._menuMusicTimer); const d = (typeof delayMs === 'number') ? delayMs : 0; this._menuMusicTimer = setTimeout(() => { if(!this.musicMuted) this.menuMusic.play().catch(e=>{}); }, d); },
         stopMenuMusic: function() { clearTimeout(this._menuMusicTimer); this.menuMusic.pause(); this.menuMusic.currentTime = 0; }
     };
 
@@ -1633,7 +1633,7 @@
     function toggleStyleUI() { const m = document.querySelector('input[name="styleMode"]:checked').value; document.getElementById('colorPickersContainer').style.display = (m === 'color') ? 'flex' : 'none'; document.getElementById('skinInputContainer').style.display = (m === 'skin') ? 'block' : 'none'; }
     function toggleBotOptions() { const isChecked = document.getElementById('botsToggle').checked; document.getElementById('botOptionsGroup').style.opacity = isChecked ? "1" : "0.3"; document.getElementById('botOptionsGroup').style.pointerEvents = isChecked ? "auto" : "none"; }
 
-    function selectServer(a, b) { SoundManager.play('simpleselect'); gameRunning = false; currentServer = a; document.querySelectorAll('.srv-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); checkActiveRoomConfig(); }
+    function selectServer(a, b) { SoundManager.play('simpleselect'); gameRunning = false; currentServer = a; document.querySelectorAll('.srv-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function toggleExitModal() {
         if(!gameRunning) return;
         const modal = document.getElementById('exitModal'); const btn = document.getElementById('btnConfirmExit'); const title = document.getElementById('exitModalTitle'); const desc = document.getElementById('exitModalDesc');
@@ -1869,30 +1869,15 @@
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
     function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
-    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
-        let roomKey = currentGameMode + '_' + currentServer;
-        let slider = document.getElementById('botCountInput'), toggle = document.getElementById('botsToggle'), respawnToggle = document.getElementById('botRespawnToggle'), chaosToggle = document.getElementById('chaosModeToggle'), splitLimit = document.getElementById('botSplitLimit');
-        let mapMult = document.getElementById('mapMult'), foodMult = document.getElementById('foodMult'), virusMult = document.getElementById('virusMult'), speedMult = document.getElementById('speedMult');
-        let chaosBox = document.getElementById('chaosModeContainer');
-        let btn = document.getElementById('btnEnterGame');
-        if (saveSystem.hasSaveForRoom(currentGameMode, currentServer)) { btn.innerText = "RESUME GAME"; btn.style.background = "#ffd700"; btn.style.color = "#000"; } else { btn.innerText = "ENTER ARENA"; btn.style.background = "var(--accent)"; btn.style.color = "#fff"; }
-        if (roomStates[roomKey] && roomStates[roomKey].config) {
-            let config = roomStates[roomKey].config;
-            slider.value = config.botCount; document.getElementById('botCountVal').innerText = config.botCount; toggle.checked = config.botEnabled; respawnToggle.checked = config.botRespawn; if(chaosToggle) chaosToggle.checked = config.chaosMode;
-            if (config.botMaxSplits) splitLimit.value = config.botMaxSplits;
-            if (config.world) { mapMult.value = config.world.map; foodMult.value = config.world.food; virusMult.value = config.world.virus; if(config.world.speed) speedMult.value = config.world.speed; }
-            slider.disabled = true; toggle.disabled = true; respawnToggle.disabled = true; splitLimit.disabled = true; mapMult.disabled = true; foodMult.disabled = true; virusMult.disabled = true; speedMult.disabled = true; if(chaosToggle) chaosToggle.disabled = true;
-            document.getElementById('settingsControls').style.opacity = "0.5"; document.getElementById('settingsControls').style.pointerEvents = "none"; document.getElementById('settingsControls').style.filter = "grayscale(1)";
-            if(chaosBox) { chaosBox.style.opacity = "0.5"; chaosBox.style.pointerEvents = "none"; chaosBox.style.filter = "grayscale(1)"; }
-        } else {
-            slider.disabled = false; toggle.disabled = false; respawnToggle.disabled = false; splitLimit.disabled = false; mapMult.disabled = false; foodMult.disabled = false; virusMult.disabled = false; speedMult.disabled = false; if(chaosToggle) chaosToggle.disabled = false;
-            if (!splitLimit.getAttribute('data-user-set')) { splitLimit.value = (currentGameMode === 'classic') ? "8" : "4"; }
-            document.getElementById('settingsControls').style.opacity = "1"; document.getElementById('settingsControls').style.pointerEvents = "auto"; document.getElementById('settingsControls').style.filter = "none";
-            if(chaosBox) { chaosBox.style.opacity = "1"; chaosBox.style.pointerEvents = "auto"; chaosBox.style.filter = "none"; }
+        const btn = document.getElementById('btnEnterGame');
+        if (btn) {
+            if (saveSystem.hasSaveForRoom(currentGameMode, currentServer)) { btn.innerText = "RESUME GAME"; btn.style.background = "#ffd700"; btn.style.color = "#000"; }
+            else { btn.innerText = "ENTER ARENA"; btn.style.background = "var(--accent)"; btn.style.color = "#fff"; }
         }
-        MAX_BOT_CELLS = parseInt(splitLimit.value); toggleBotOptions();
+        MAX_BOT_CELLS = (currentGameMode === 'classic') ? 8 : 16;
     }
     function hideGameHUD() { document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; document.getElementById('econHud').style.display='none'; } }
     // El split también vive en la sim: solo encolamos la acción con el objetivo del ratón.
@@ -2155,14 +2140,16 @@
                 if (balBox) balBox.style.display = 'none';
             }
         },
-        // Muestra/oculta el panel completo y aplica el color del modo activo
+        // Muestra/oculta el panel completo y aplica el color del modo activo.
+        // En sala FREE (modo offline) se oculta porque no aplica wallet.
         setVisible(visible, mode) {
             const a = document.getElementById('gameWalletArea');
             if (!a) return;
-            a.style.display = visible ? 'inline-flex' : 'none';
+            const shouldShow = visible && currentServer !== 'Free';
+            a.style.display = shouldShow ? 'inline-flex' : 'none';
             const color = mode === 'classic' ? '#00ff88' : (mode === 'arcade' ? '#ccff00' : '#00ff88');
             a.style.setProperty('--mode-color', color);
-            if (visible) this.refresh();
+            if (shouldShow) this.refresh();
         },
         async connect() {
             const p = GameWallet.getProvider('phantom');
@@ -2772,7 +2759,7 @@
 
     const fpsInterval = 1000 / 60; let then = performance.now();
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
-    function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); let savedMode = 'classic'; try { savedMode = localStorage.getItem('pw_lastMode') || 'classic'; } catch(e) {} setHoverMode(savedMode); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; SoundManager.playMenuMusic(); }
+    function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); let savedMode = 'classic'; try { savedMode = localStorage.getItem('pw_lastMode') || 'classic'; } catch(e) {} setHoverMode(savedMode); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; SoundManager.playMenuMusic(2000); }
 
     // Sincroniza la altura de la columna lateral (oracle+missions) con el menú central
     // PILLWARS. Resuelve el desfase de top/bottom: garantiza alineación pixel-perfect.
