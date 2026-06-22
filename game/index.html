@@ -310,14 +310,20 @@
            Misma animación slideUp que el login-box para que se muevan juntos al abrir. */
         .menu-right-col { width: 430px; max-width: 38vw; z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
         #oraclePanel, #missionsPanel { flex: 1; min-height: 0; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 14px; padding: 20px 24px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); display: flex; flex-direction: column; overflow: hidden; }
-        #oraclePanel { border: 1px solid rgba(255,206,61,0.3); }
+        #oraclePanel.classic { border: 1px solid rgba(0,255,170,0.3); }
+        #oraclePanel.arcade  { border: 1px solid rgba(204,255,0,0.3); }
         #missionsPanel.classic { border: 1px solid rgba(0,255,170,0.3); }
         #missionsPanel.arcade { border: 1px solid rgba(204,255,0,0.3); }
         .menu-side-head { font-family: 'Russo One'; font-size: 14px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-        #oraclePanel .menu-side-head { color: #ffce3d; }
+        #oraclePanel.classic .menu-side-head { color: #00ffaa; }
+        #oraclePanel.arcade  .menu-side-head { color: #ccff00; }
         #missionsPanel.classic .menu-side-head { color: #00ffaa; }
         #missionsPanel.arcade .menu-side-head { color: #ccff00; }
-        .menu-side-head .otimer { font-size: 12px; color: #ffce3d; letter-spacing: 1px; }
+        .menu-side-head .otimer { font-size: 12px; letter-spacing: 1px; }
+        #oraclePanel.classic .otimer { color: #00ffaa; }
+        #oraclePanel.arcade  .otimer { color: #ccff00; }
+        #missionsPanel.classic #sidePanelExtra { color: #00ffaa !important; }
+        #missionsPanel.arcade  #sidePanelExtra { color: #ccff00 !important; }
 
         /* Oracle: descripción + precio centrado + lista de salas */
         .oracle-desc { color: #999; font-family: 'Inter',sans-serif; font-size: 11.5px; line-height: 1.5; margin-bottom: 14px; flex-shrink: 0; }
@@ -877,7 +883,7 @@
         <!-- Columna derecha: dos bloques iguales (ROOM PRICES arriba, MISSIONS/SKINS abajo) -->
         <div class="menu-right-col">
             <!-- Bloque ORACLE: descripción + precio del token + tabla de salas -->
-            <div id="oraclePanel">
+            <div id="oraclePanel" class="classic">
                 <div class="menu-side-head"><span>ROOM · PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
                 <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
                 <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
@@ -889,7 +895,7 @@
                 <div class="menu-side-head">
                     <span id="sidePanelTitle">DAILY QUESTS</span>
                     <span style="display:flex; align-items:center; gap:10px;">
-                        <span id="sidePanelExtra" style="font-size:11px;color:#ffce3d;letter-spacing:1px;"><span id="missionsDone">0</span>/5 · <span id="missionsSp">0</span> SP</span>
+                        <span id="sidePanelExtra" style="font-size:11px;letter-spacing:1px;"><span id="missionsDone">0</span>/5 · <span id="missionsSp">0</span> SP</span>
                         <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                     </span>
                 </div>
@@ -1587,13 +1593,17 @@
         if (backIcon) { backIcon.classList.toggle('back-mode-classic', m === 'classic'); backIcon.classList.toggle('back-mode-arcade', m === 'arcade'); }
 
         // Animación de los paneles
+        const oraclePanel = document.getElementById('oraclePanel');
+        const missionsPanel = document.getElementById('missionsPanel');
+        if (oraclePanel) { oraclePanel.classList.remove('classic','arcade'); oraclePanel.classList.add(m === 'arcade' ? 'arcade' : 'classic'); }
+        if (missionsPanel) { missionsPanel.classList.remove('classic','arcade'); missionsPanel.classList.add(m === 'arcade' ? 'arcade' : 'classic'); }
         if (m === 'classic') {
-            document.getElementById('panelClassic').classList.add('expanded'); 
-            document.getElementById('panelArcade').classList.add('hidden'); 
-            els.selectedModeTitle.innerText = "CLASSIC MODE"; 
-            els.selectedModeTitle.style.color = "#00ffaa"; 
-            els.loginOverlay.classList.remove('bg-arcade'); 
-            els.loginOverlay.classList.add('bg-classic'); 
+            document.getElementById('panelClassic').classList.add('expanded');
+            document.getElementById('panelArcade').classList.add('hidden');
+            els.selectedModeTitle.innerText = "CLASSIC MODE";
+            els.selectedModeTitle.style.color = "#00ffaa";
+            els.loginOverlay.classList.remove('bg-arcade');
+            els.loginOverlay.classList.add('bg-classic');
             document.getElementById('arcadeGuidePanel').style.display = 'none'; 
             document.getElementById('classicGuidePanel').style.display = 'flex'; 
             loginBox.style.width = '850px'; 
