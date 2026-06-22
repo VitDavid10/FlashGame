@@ -10,6 +10,8 @@ server/geo.json
 server/adminlog.log
 server/quests.json
 server/warbalances.json
+server/skinpoints.json
+server/daily.json
 
 # Notas internas de desarrollo
 tasks/

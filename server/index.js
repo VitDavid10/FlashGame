@@ -33,6 +33,8 @@ const { WebSocketServer } = require('ws');
 const PillSim = require('../shared/sim.js');
 const solana = require('./solana.js');     // verificación de depósitos $PILL
 const warbank = require('./warbank.js');   // saldo WAR interno por wallet
+const skinpoints = require('./skinpoints.js');     // puntos de skin por clientId
+const dailyquests = require('./dailyquests.js');   // retos diarios rotativos
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
@@ -222,6 +224,7 @@ function classicCashout(room, cli, kills) {
     if (fee > 0) addToPot(room, fee);
     log(`Cashout classic: ${cli.payWallet.slice(0, 6)}… +${net} PILL (carry ${cli.carry}, fee ${fee} → bote)`);
     try { cli.ws.send(JSON.stringify({ t: 'prize', reason: 'cashout', amount: net, carry: cli.carry, feePct: classicExitFeePct(kills), fee, kills })); } catch (e) {}
+    if (cli.cid && kills >= 2) dailyquests.recordEvent(cli.cid, 'classic_safe_exit', 1);
     cli.carry = 0;
     return net;
 }
@@ -647,6 +650,14 @@ const httpServer = http.createServer(async (req, res) => {
         }));
         return;
     }
+    // --- Daily quests: 4 retos del día + progreso del clientId + saldo skin points ---
+    if (urlPath === '/api/dailyquests') {
+        const cid = String(req.headers['x-client-id'] || '').trim();
+        const state = dailyquests.getState(isValidClientId(cid) ? cid : null);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(state));
+        return;
+    }
     // --- Estado público de salas (para el "ORACLE" del menú del juego) ---
     if (urlPath === '/api/rooms') {
         const list = [];
@@ -1056,6 +1067,8 @@ wss.on('connection', (ws, req) => {
             sendEcon(room.clients.get(playerId), room);
             statsOf(key).entradas++; statsDirty = true;
             if (name) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; playersDirty = true; }
+            // Daily quests: cuenta partida jugada (por modo)
+            if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
             logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
             if (room.state === 'playing') { room.sim.spawnPlayer(playerId); refillBots(room); }
             ws.send(JSON.stringify(welcomeMsg(room, playerId, token)));
@@ -1194,6 +1207,8 @@ setInterval(() => {
                     const cli = room.clients.get(pj.id);
                     const parte = Math.floor(totalPot * PESOS[i] / 100);
                     if (cli && cli.payWallet && parte > 0) warbank.credit(cli.payWallet, parte);
+                    // Daily: terminar top 5 en arcade
+                    if (cli && cli.cid && (i + 1) <= 5) dailyquests.recordEvent(cli.cid, 'arcade_top5', 1);
                     top.push({ pos: i + 1, name: pj.name, mass: pj.peakMass | 0, pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
                 }
                 payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top };
@@ -1251,6 +1266,14 @@ setInterval(() => {
                 if (cliK && cliK.cid) {
                     const q = questsOf(cliK.cid);
                     if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
+                    // Daily: cada kill cuenta. Mass milestones se chequean al alcanzarlos.
+                    dailyquests.recordEvent(cliK.cid, 'kill', 1);
+                    const killer = room.sim.players.get(ev.playerId);
+                    if (killer) {
+                        const peak = killer.peakMass | 0;
+                        if (peak >= 50000 && !cliK._mass50) { cliK._mass50 = true; dailyquests.recordEvent(cliK.cid, 'mass_50k', 1); }
+                        if (peak >= 100000 && !cliK._mass100) { cliK._mass100 = true; dailyquests.recordEvent(cliK.cid, 'mass_100k', 1); }
+                    }
                 }
                 // CLASSIC: carry de la víctima → matador. Si la víctima era un bot, la entrada del bot va al bote.
                 if (cliK && room.mode === 'classic') {
@@ -1271,6 +1294,7 @@ setInterval(() => {
                         try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: room.pot || 0 })); } catch (e) {}
                         cliK.carry = 0; room.pot = 0;
                         sendEcon(cliK, room);
+                        if (cliK.cid) dailyquests.recordEvent(cliK.cid, 'classic_5kills', 1);
                     }
                 }
             } else if (ev.type === 'skillUsed') {
@@ -1284,6 +1308,7 @@ setInterval(() => {
                             q.q3_skills_in_arcade = Math.min(8, pj2.matchSkillUses);
                             q.updated = Date.now(); questsDirty = true;
                         }
+                        dailyquests.recordEvent(cli.cid, 'skill_used_arcade', 1);
                     }
                 }
             }

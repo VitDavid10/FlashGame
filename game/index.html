@@ -978,16 +978,19 @@
                 <div class="menu-side-head">
                     <span id="sidePanelTitle">DAILY QUESTS</span>
                     <span style="display:flex; align-items:center; gap:10px;">
-                        <span id="sidePanelExtra" style="font-size:11px;color:#888;letter-spacing:1px;"><span id="missionsDone">0</span>/4</span>
+                        <span id="sidePanelExtra" style="font-size:11px;color:#ffce3d;letter-spacing:1px;"><span id="missionsDone">0</span>/4 · <span id="missionsSp">0</span> SP</span>
                         <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                     </span>
                 </div>
                 <div id="sidePanelMissions"><div id="missionsList"></div></div>
                 <div id="sidePanelSkins" style="display:none">
                     <div class="skins-soon">
-                        <div class="ss-big">★</div>
-                        <div>SKINS</div>
-                        <div style="font-size:10px; color:#444; margin-top:8px;">COMING SOON · earn SKIN POINTS from daily quests</div>
+                        <div class="ss-big" style="color:#ffce3d">★</div>
+                        <div style="font-family:'Russo One'; font-size:11px; color:#888; letter-spacing:2px">SKIN POINTS</div>
+                        <div style="font-family:'Russo One'; font-size:32px; color:#ffce3d; text-shadow:0 0 12px rgba(255,206,61,0.4); margin:4px 0 14px;">
+                            <span id="skinPointsValue">0</span> <span style="font-size:13px; color:#888">SP</span>
+                        </div>
+                        <div style="color:#666; font-size:11px; text-align:center; line-height:1.5; padding: 0 8px;">Earn SP by completing daily quests.<br>Catalog coming soon.</div>
                     </div>
                 </div>
                 <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span></div>
@@ -1516,17 +1519,57 @@
         if (numEl) numEl.textContent = done;
         const btnCnt = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'BtnCnt');
         if (btnCnt) btnCnt.textContent = done + '/' + list.length;
-        // Panel MISSIONS lateral derecho (solo del modo activo seleccionado)
-        if (mode === currentGameMode) {
-            const mList = document.getElementById('missionsList');
-            const mNum = document.getElementById('missionsDone');
-            const mPanel = document.getElementById('missionsPanel');
-            if (mList) mList.innerHTML = cont.innerHTML;
-            if (mNum) mNum.textContent = done;
-            if (mPanel) { mPanel.classList.toggle('classic', mode === 'classic'); mPanel.classList.toggle('arcade', mode !== 'classic'); }
-        }
+        // El panel MISSIONS lateral muestra ahora DAILY QUESTS rotativas (loadDailyQuests).
     }
     function updateModeQuestsUI() { renderMode('classic'); renderMode('arcade'); }
+
+    // --- Daily quests rotativas (panel MISSIONS lateral) ---
+    // Reemplaza el contenido del panel MISSIONS con los 4 retos del día y muestra los
+    // skin points ganados. El sistema de quests permanente (Telegram access) sigue
+    // viviendo en los desplegables flotantes de la pantalla de modos.
+    let _dailyState = null;
+    async function loadDailyQuests() {
+        try {
+            const r = await fetch('/api/dailyquests', { headers: { 'X-Client-Id': Quests.cid }, cache: 'no-store' });
+            if (!r.ok) return;
+            _dailyState = await r.json();
+            renderDailyQuestsPanel();
+        } catch (e) {}
+    }
+    function renderDailyQuestsPanel() {
+        const s = _dailyState; if (!s) return;
+        const list = document.getElementById('missionsList');
+        const num = document.getElementById('missionsDone');
+        const panel = document.getElementById('missionsPanel');
+        if (!list) return;
+        let done = 0;
+        const safe = (str) => String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        list.innerHTML = s.quests.map((q, i) => {
+            const pct = Math.min(100, Math.round((q.progress | 0) / q.target * 100));
+            const ok = !!q.done;
+            const inProg = !ok && (q.progress | 0) > 0;
+            if (ok) done++;
+            const cls = ok ? 'done' : inProg ? 'prog' : '';
+            const right = q.progress + '/' + q.target;
+            return '<div class="mqp-q ' + cls + '">' +
+                '<div class="n">' + (i + 1).toString().padStart(2, '0') + '</div>' +
+                '<div class="t">' + safe(q.t) + ' <span style="color:#888;font-size:9px">+' + q.reward + ' SP</span></div>' +
+                '<div class="v">' + right + '</div>' +
+                '<div class="mqp-bar"><i style="width:' + pct + '%;"></i></div>' +
+                '</div>';
+        }).join('');
+        if (num) num.textContent = done;
+        // Skin points: en header del panel y en pestaña SKINS
+        const ptsTxt = Number(s.points || 0).toLocaleString('en-US');
+        const spEl = document.getElementById('skinPointsValue');
+        if (spEl) spEl.textContent = ptsTxt;
+        const spHead = document.getElementById('missionsSp');
+        if (spHead) spHead.textContent = ptsTxt;
+    }
+    // Carga inicial + refresco cada 8s (para ver actualizaciones tras matar/morir/cashout)
+    loadDailyQuests();
+    setInterval(loadDailyQuests, 8000);
+    window.addEventListener('focus', loadDailyQuests);
     function toggleModeQuests(mode) {
         const target = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade'));
         const other = document.getElementById('mqp' + (mode === 'classic' ? 'Arcade' : 'Classic'));
