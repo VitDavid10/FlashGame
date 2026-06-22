@@ -698,17 +698,17 @@
             </div>
         </div>
         <!-- Botones que despliegan los paneles de quests por modo -->
-        <div class="mqp-btn arcade" onclick="toggleModeQuests('arcade')"><span class="dot"></span>DAILY QUESTS <span class="cnt" id="mqpArcadeBtnCnt">0/5</span></div>
-        <div class="mqp-btn classic" onclick="toggleModeQuests('classic')"><span class="dot"></span>DAILY QUESTS <span class="cnt" id="mqpClassicBtnCnt">0/5</span></div>
+        <div class="mqp-btn arcade" onclick="toggleModeQuests('arcade')"><span class="dot"></span>DAILY MISSIONS <span class="cnt" id="mqpArcadeBtnCnt">0/5</span></div>
+        <div class="mqp-btn classic" onclick="toggleModeQuests('classic')"><span class="dot"></span>DAILY MISSIONS <span class="cnt" id="mqpClassicBtnCnt">0/5</span></div>
         <div id="mqpArcade" class="mqp arcade">
-            <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">ARCADE</span></div>
+            <div class="mqp-head"><span>DAILY MISSIONS</span><span class="pill">ARCADE</span></div>
             <div id="mqpArcadeList"></div>
-            <div class="mqp-foot"><span>3 / 4 → TELEGRAM ACCESS</span><span><span class="num" id="mqpArcadeNum">0</span> DONE</span></div>
+            <div class="mqp-foot"><span>4 / 5 → TELEGRAM ACCESS</span><span><span class="num" id="mqpArcadeNum">0</span> DONE</span></div>
         </div>
         <div id="mqpClassic" class="mqp classic">
-            <div class="mqp-head"><span>DAILY QUESTS</span><span class="pill">CLASSIC</span></div>
+            <div class="mqp-head"><span>DAILY MISSIONS</span><span class="pill">CLASSIC</span></div>
             <div id="mqpClassicList"></div>
-            <div class="mqp-foot"><span>3 / 4 → TELEGRAM ACCESS</span><span><span class="num" id="mqpClassicNum">0</span> DONE</span></div>
+            <div class="mqp-foot"><span>4 / 5 → TELEGRAM ACCESS</span><span><span class="num" id="mqpClassicNum">0</span> DONE</span></div>
         </div>
     </div>
 
@@ -972,9 +972,9 @@
             <!-- Bloque MISSIONS / SKINS: carrusel con flecha -->
             <div id="missionsPanel" class="classic">
                 <div class="menu-side-head">
-                    <span id="sidePanelTitle">DAILY QUESTS</span>
+                    <span id="sidePanelTitle">DAILY MISSIONS</span>
                     <span style="display:flex; align-items:center; gap:10px;">
-                        <span id="sidePanelExtra" style="font-size:11px;color:#ffce3d;letter-spacing:1px;"><span id="missionsDone">0</span>/4 · <span id="missionsSp">0</span> SP</span>
+                        <span id="sidePanelExtra" style="font-size:11px;color:#ffce3d;letter-spacing:1px;"><span id="missionsDone">0</span>/5 · <span id="missionsSp">0</span> SP</span>
                         <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                     </span>
                 </div>
@@ -1477,6 +1477,7 @@
         classic: [
             { n: '01', t: 'FINISH 2 GAMES', desc: 'Finish 2 full games. In Classic: get 5 kills (PENTAKILL).', key: 'q1_games_finished', target: 2 },
             { n: '02', t: 'PLAY 2 ONLINE', desc: 'Join an online room and get a kill or a death. Counts toward your total.', key: 'q2_online_matches', target: 2 },
+            { n: '03', t: 'GET 10 KILLS', desc: 'Accumulate 10 total kills across all Classic matches.', key: 'q3_kills_total', target: 10 },
             { n: '04', t: 'REACH 100K MASS', desc: 'Hit at least 100,000 mass in a single match (any mode).', key: 'bestMass', target: 100000, isMass: true },
             { n: '05', t: 'SURVIVE x2',     desc: 'Leave 2 Classic matches alive — use BACK TO MENU before dying.', key: 'q5_classic_survived', target: 2 }
         ],
@@ -1484,7 +1485,8 @@
             { n: '01', t: 'FINISH 2 GAMES', desc: 'Finish 2 full games. In Arcade: survive until the timer runs out (matchEnd).', key: 'q1_games_finished', target: 2 },
             { n: '02', t: 'PLAY 2 ONLINE', desc: 'Join an online room and get a kill or a death. Counts toward your total.', key: 'q2_online_matches', target: 2 },
             { n: '03', t: 'USE 8 SKILLS', desc: 'Use 8 skills in a single Arcade match (can repeat the same skill).', key: 'q3_skills_in_arcade', target: 8 },
-            { n: '04', t: 'REACH 100K MASS', desc: 'Hit at least 100,000 mass in a single match (any mode).', key: 'bestMass', target: 100000, isMass: true }
+            { n: '04', t: 'REACH 100K MASS', desc: 'Hit at least 100,000 mass in a single match (any mode).', key: 'bestMass', target: 100000, isMass: true },
+            { n: '05', t: 'GET 3 TOP 5 FINISHES', desc: 'Finish in the top 5 of 3 different Arcade matches.', key: 'q5_top5_finishes', target: 3 }
         ]
     };
     let _questsCache = {};
@@ -1515,12 +1517,12 @@
         if (numEl) numEl.textContent = done;
         const btnCnt = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'BtnCnt');
         if (btnCnt) btnCnt.textContent = done + '/' + list.length;
-        // El panel MISSIONS lateral muestra ahora DAILY QUESTS rotativas (loadDailyQuests).
+        // El panel MISSIONS lateral muestra ahora DAILY MISSIONS rotativas (loadDailyQuests).
     }
     function updateModeQuestsUI() { renderMode('classic'); renderMode('arcade'); }
 
     // --- Daily quests rotativas (panel MISSIONS lateral) ---
-    // Reemplaza el contenido del panel MISSIONS con los 4 retos del día y muestra los
+    // Reemplaza el contenido del panel MISSIONS con los 5 retos del día y muestra los
     // skin points ganados. El sistema de quests permanente (Telegram access) sigue
     // viviendo en los desplegables flotantes de la pantalla de modos.
     let _dailyState = null;
