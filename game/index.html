@@ -466,9 +466,13 @@
         @media (max-height: 700px) { .grid-skill-icon { width: 40px; height: 40px; } }
         .result-box { background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary); box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px 30px; border-radius: 12px; text-align: center; width: 380px; animation: slideUp 0.4s ease-out; position: relative; max-height: 95vh; overflow-y: auto; }
         @keyframes slideUp { from {transform:translateY(20px); opacity:0;} to {transform:translateY(0); opacity:1;} }
-        .back-icon { position: fixed; top: 20px; left: 20px; width: 40px; height: 40px; z-index: 65; cursor: pointer; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border-radius: 8px; display: flex; justify-content: center; align-items: center; transition: 0.2s; border: 1px solid #444; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
-        .back-icon:hover { background: rgba(255,255,255,0.2); border-color: #fff; }
-        .back-icon svg { width: 16px; height: 16px; fill: #ccc; }
+        .back-icon { position: absolute; top: 20px; left: 20px; width: 40px; height: 40px; z-index: 65; cursor: pointer; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border-radius: 8px; display: flex; justify-content: center; align-items: center; transition: background 0.2s, border-color 0.2s; border: 1px solid #444; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
+        .back-icon:hover { background: rgba(255,255,255,0.15); border-color: #fff; }
+        .back-icon svg { width: 16px; height: 16px; fill: #ccc; transition: fill 0.2s; }
+        .back-icon.mode-classic { border-color: rgba(0,255,170,0.5); }
+        .back-icon.mode-classic svg { fill: #00ffaa; }
+        .back-icon.mode-arcade { border-color: rgba(204,255,0,0.5); }
+        .back-icon.mode-arcade svg { fill: #ccff00; }
         h1 { margin: 0 0 5px 0; color: #fff; font-family: 'Russo One'; font-size: 28px; text-transform: uppercase; }
         #selectedModeTitle { font-family: 'Russo One'; font-size: 18px; text-transform: uppercase; margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #333; letter-spacing: 2px; }
         .section-title { font-family: 'Russo One'; font-size: 10px; color: var(--primary); text-transform: uppercase; margin: 10px 0 5px; text-align: left; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 2px; }
@@ -721,11 +725,11 @@
     </div>
 
     <div id="loginOverlay">
+      <div class="back-icon" onclick="goBackToModes()">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </div>
       <div class="menu-row">
         <div class="login-box">
-            <div class="back-icon" onclick="goBackToModes()">
-                <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-            </div>
             <h1>PillWars</h1>
             <h2 id="selectedModeTitle">MODE SELECTED</h2>
             <div id="gameOverMsg" style="display:none; color:#ff2a2a; font-weight:bold; margin-bottom:10px;">GAME OVER</div>
@@ -1638,7 +1642,23 @@
     // Refrescar cada vez que vuelves a la pantalla de modos
     window.addEventListener('focus', loadModeQuests);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) loadModeQuests(); });
-    els.modeScreen.onmouseleave = () => { els.modeScreen.classList.remove('quests-ready'); lastHoveredMode = null; if (_questsHoverTimer) clearTimeout(_questsHoverTimer); document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open')); };
+    els.modeScreen.onmouseleave = () => {
+        els.modeScreen.classList.remove('quests-ready');
+        if (_questsHoverTimer) clearTimeout(_questsHoverTimer);
+        document.querySelectorAll('.mqp.open').forEach(el => el.classList.remove('open'));
+        // lastHoveredMode se conserva para restaurar las quests al volver
+    };
+    els.modeScreen.addEventListener('mouseenter', () => {
+        const m = lastHoveredMode;
+        if (!m) return;
+        if (_questsHoverTimer) clearTimeout(_questsHoverTimer);
+        _questsHoverTimer = setTimeout(() => {
+            if (lastHoveredMode !== m) return;
+            els.modeScreen.classList.add('quests-ready');
+            const t = document.getElementById('mqp' + (m === 'classic' ? 'Classic' : 'Arcade'));
+            if (t) t.classList.add('open');
+        }, 500);
+    });
     
     function selectMode(m) {
         SoundManager.stop('hover');
@@ -1659,9 +1679,11 @@
 
         const loginBox = document.querySelector('.login-box');
         const splitSelect = document.getElementById('botSplitLimit');
-        
+        const backIcon = document.querySelector('#loginOverlay .back-icon');
+        if (backIcon) { backIcon.classList.toggle('mode-classic', m === 'classic'); backIcon.classList.toggle('mode-arcade', m === 'arcade'); }
+
         // Animación de los paneles
-        if (m === 'classic') { 
+        if (m === 'classic') {
             document.getElementById('panelClassic').classList.add('expanded'); 
             document.getElementById('panelArcade').classList.add('hidden'); 
             els.selectedModeTitle.innerText = "CLASSIC MODE"; 
