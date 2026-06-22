@@ -1748,6 +1748,7 @@
     }
     function startGame() {
         SoundManager.play('select'); SoundManager.stopMenuMusic(); SoundManager.playMusic(); showBotsBanner();
+        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
         MAX_BOT_CELLS = 16;
