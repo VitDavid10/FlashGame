@@ -1121,7 +1121,7 @@
             virus: new Audio('../snd/virus.mp3'), floatkill: new Audio('../snd/floatkill.mp3')
         },
         music: new Audio('../snd/music.mp3'), startTimer: null,
-        menuMusic: new Audio('../snd/FizzleHolyA.ogg'),
+        menuMusic: new Audio('../snd/menu.mp3'),
         init: function() {
             if(localStorage.getItem('pillwars_muted') === 'true') { this.muted = true; document.getElementById('soundToggle').classList.add('muted'); }
             this.music.loop = true; this.music.volume = MUSIC_VOLUME;
