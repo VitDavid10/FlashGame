@@ -100,15 +100,15 @@ function spawnBot(i) {
       if (Math.random() < 0.04) nuevoDestino();   // de vez en cuando cambia de rumbo
       ws.send(JSON.stringify({ t: 'input', tx, ty }));
       stats.messagesSent++;
-      // Split ~cada 15-20s (0.5% por tick a 10Hz = media de 20s; cooldown mínimo 8s)
+      // Split ~cada 20s de media (independiente del Hz); cooldown mínimo 8s
       const now = Date.now();
-      if (Math.random() < 0.005 && (now - lastSplit) > 8000) {
+      if (Math.random() < INPUT_INTERVAL / 20000 && (now - lastSplit) > 8000) {
         ws.send(JSON.stringify({ t: 'action', kind: 'split', tx, ty }));
         lastSplit = now;
         stats.messagesSent++;
       }
-      // Skill aleatoria ~cada 5s (2% por tick a 10Hz); slot 1 o 2 al azar
-      if (Math.random() < 0.02) {
+      // Skill aleatoria ~cada 5s de media (independiente del Hz); slot 1 o 2 al azar
+      if (Math.random() < INPUT_INTERVAL / 5000) {
         ws.send(JSON.stringify({ t: 'action', kind: 'skill', slot: Math.random() < 0.5 ? 1 : 2, tx, ty }));
         stats.messagesSent++;
       }
