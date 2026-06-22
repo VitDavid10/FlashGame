@@ -466,10 +466,14 @@
         @media (max-height: 700px) { .grid-skill-icon { width: 40px; height: 40px; } }
         .result-box { background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary); box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px 30px; border-radius: 12px; text-align: center; width: 380px; animation: slideUp 0.4s ease-out; position: relative; max-height: 95vh; overflow-y: auto; }
         @keyframes slideUp { from {transform:translateY(20px); opacity:0;} to {transform:translateY(0); opacity:1;} }
-        .back-icon { position: absolute; top: 20px; left: 20px; z-index: 65; cursor: pointer; background: rgba(8,12,8,0.9); border-radius: 8px; width: 38px; height: 38px; display: flex; justify-content: center; align-items: center; border: 1px solid currentColor; box-shadow: 0 4px 16px rgba(0,0,0,0.6); color: #aaa; font-size: 20px; line-height: 1; transition: background 0.2s, color 0.2s; user-select: none; }
-        .back-icon:hover { background: rgba(255,255,255,0.15); color: #fff; }
-        .back-icon.mode-classic { color: #00ffaa; }
-        .back-icon.mode-arcade { color: #ccff00; }
+        .back-icon { position: absolute; top: 22px; left: 24px; z-index: 65; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border: 1px solid rgba(0,255,136,0.35); border-radius: 8px; color: #00ff88; cursor: pointer; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); user-select: none; }
+        .back-icon:hover { background: #00ff88; color: #04150c; border-color: #00ff88; box-shadow: 0 0 22px rgba(0,255,136,0.55); transform: translateX(-2px); }
+        .back-icon svg { transition: transform 0.25s; }
+        .back-icon:hover svg { transform: translateX(-3px); }
+        .back-icon.back-mode-classic { border-color: rgba(0,255,170,0.5); color: #00ffaa; }
+        .back-icon.back-mode-classic:hover { background: #00ffaa; color: #04150c; border-color: #00ffaa; box-shadow: 0 0 22px rgba(0,255,170,0.55); }
+        .back-icon.back-mode-arcade { border-color: rgba(204,255,0,0.5); color: #ccff00; }
+        .back-icon.back-mode-arcade:hover { background: #ccff00; color: #04150c; border-color: #ccff00; box-shadow: 0 0 22px rgba(204,255,0,0.55); }
         h1 { margin: 0 0 5px 0; color: #fff; font-family: 'Russo One'; font-size: 28px; text-transform: uppercase; }
         #selectedModeTitle { font-family: 'Russo One'; font-size: 18px; text-transform: uppercase; margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #333; letter-spacing: 2px; }
         .section-title { font-family: 'Russo One'; font-size: 10px; color: var(--primary); text-transform: uppercase; margin: 10px 0 5px; text-align: left; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 2px; }
@@ -722,7 +726,11 @@
     </div>
 
     <div id="loginOverlay">
-      <div class="back-icon" onclick="goBackToModes()">←</div>
+      <div class="back-icon" onclick="goBackToModes()">
+          <svg viewBox="-2 -2 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+      </div>
       <div class="menu-row">
         <div class="login-box">
             <h1>PillWars</h1>
@@ -1676,7 +1684,7 @@
         const loginBox = document.querySelector('.login-box');
         const splitSelect = document.getElementById('botSplitLimit');
         const backIcon = document.querySelector('#loginOverlay .back-icon');
-        if (backIcon) { backIcon.classList.toggle('mode-classic', m === 'classic'); backIcon.classList.toggle('mode-arcade', m === 'arcade'); }
+        if (backIcon) { backIcon.classList.toggle('back-mode-classic', m === 'classic'); backIcon.classList.toggle('back-mode-arcade', m === 'arcade'); }
 
         // Animación de los paneles
         if (m === 'classic') {
