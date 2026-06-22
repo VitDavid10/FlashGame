@@ -1490,8 +1490,36 @@
         ]
     };
     let _questsCache = {};
+    let _dailyMissionsMode = null; // Track which mode's daily missions to show
     function fmtMqpVal(q, val) { if (q.isMass) { return val >= 1000 ? (val/1000).toFixed(val >= 10000 ? 0 : 1) + 'k' : String(val|0); } return (val|0) + '/' + q.target; }
     function renderMode(mode) {
+        // Si tenemos misiones diarias cargadas y el usuario seleccionó un modo, usar esas
+        if (_dailyState && _dailyState.quests && _dailyState.quests.length > 0) {
+            const cont = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'List');
+            const numEl = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'Num');
+            if (!cont) return;
+            const safe = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            let done = 0;
+            cont.innerHTML = _dailyState.quests.map((q, i) => {
+                const ok = !!q.done;
+                const inProg = !ok && (q.progress | 0) > 0;
+                if (ok) done++;
+                const cls = ok ? 'done' : inProg ? 'prog' : '';
+                const right = q.progress + '/' + q.target;
+                const pct = Math.min(100, Math.round((q.progress | 0) / q.target * 100));
+                return '<div class="mqp-q ' + cls + '">' +
+                    '<div class="n">' + (i + 1).toString().padStart(2, '0') + '</div>' +
+                    '<div class="t">' + safe(q.t) + '</div>' +
+                    '<div class="v">' + right + '</div>' +
+                    '<div class="mqp-bar"><i style="width:' + pct + '%;"></i></div>' +
+                    '</div>';
+            }).join('');
+            if (numEl) numEl.textContent = done;
+            const btnCnt = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'BtnCnt');
+            if (btnCnt) btnCnt.textContent = done + '/' + _dailyState.quests.length;
+            return;
+        }
+        // Fallback: usar MODE_QUESTS locales
         const list = MODE_QUESTS[mode];
         const cont = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'List');
         const numEl = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'Num');
@@ -1517,7 +1545,6 @@
         if (numEl) numEl.textContent = done;
         const btnCnt = document.getElementById('mqp' + (mode === 'classic' ? 'Classic' : 'Arcade') + 'BtnCnt');
         if (btnCnt) btnCnt.textContent = done + '/' + list.length;
-        // El panel MISSIONS lateral muestra ahora DAILY MISSIONS rotativas (loadDailyQuests).
     }
     function updateModeQuestsUI() { renderMode('classic'); renderMode('arcade'); }
 
@@ -1563,6 +1590,8 @@
         if (spEl) spEl.textContent = ptsTxt;
         const spHead = document.getElementById('missionsSp');
         if (spHead) spHead.textContent = ptsTxt;
+        // Sincronizar el menú flotante MQP con las mismas misiones
+        updateModeQuestsUI();
     }
     // Carga inicial + refresco cada 8s (para ver actualizaciones tras matar/morir/cashout)
     loadDailyQuests();
