@@ -2335,17 +2335,14 @@
         SoundManager.play('select'); SoundManager.stopMenuMusic();
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
-        enableEnemyFX = !document.getElementById('noEnemyFX').checked; enableEnemySnd = !document.getElementById('noEnemySnd').checked;
-        const isChaos = document.getElementById('chaosModeToggle') && document.getElementById('chaosModeToggle').checked;
-        const mode = (currentGameMode === 'arcade' && isChaos) ? 'skills' : currentGameMode;
-        const skinUrlVal = document.getElementById('secretSkinInput').value; const useSkin = (document.getElementById('secretSkinPanel').style.display === 'block') && skinUrlVal.length > 5;
+        enableEnemyFX = true; enableEnemySnd = false;
+        const mode = currentGameMode;
+        const skinInput = document.getElementById('secretSkinInput'); const skinPanel = document.getElementById('secretSkinPanel');
+        const skinUrlVal = skinInput ? skinInput.value : ''; const useSkin = skinPanel && (skinPanel.style.display === 'block') && skinUrlVal.length > 5;
         const colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value;
         const cfg = {
-            botEnabled: document.getElementById('botsToggle').checked,
-            botCount: parseInt(document.getElementById('botCountInput').value),
-            botRespawn: document.getElementById('botRespawnToggle').checked,
-            botMaxSplits: parseInt(document.getElementById('botSplitLimit').value),
-            world: { map: parseInt(document.getElementById('mapMult').value), food: parseInt(document.getElementById('foodMult').value), virus: parseInt(document.getElementById('virusMult').value), speed: parseFloat(document.getElementById('speedMult').value) }
+            botEnabled: true, botCount: 25, botRespawn: true, botMaxSplits: 16,
+            world: { map: 1, food: 1, virus: 1, speed: 1 }
         };
         // Servidor: ?server=... manda (y se recuerda); si no, el último usado;
         // en https (web publicada) por defecto el mismo dominio; en local, localhost.
