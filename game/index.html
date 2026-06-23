@@ -2535,26 +2535,28 @@
     // MISMA sala sin pasar por el menú (nuevo join con los mismos datos).
     async function tryAgainOnline() {
         if (_joinInFlight) return;
-        hideSpectatorBar();
         if (!netState || !netState.joinMsg) { returnToMenu(); return; }
         _joinInFlight = true;
         const tryBtn = document.getElementById('btnTryAgainOnline');
         if (tryBtn) { tryBtn.disabled = true; tryBtn.innerText = 'SIGNING...'; }
         SoundManager.play('select');
         const oldJm = netState.joinMsg, url = netState.url;
+        // IMPORTANTE: NO ocultar el menú de muerte ni cerrar el WS antes de que la
+        // firma se complete. Si el usuario cancela la firma se queda viendo el menú
+        // de resultados igual que antes (en vez de pantalla negra).
+        let paid;
+        try { paid = await preparePayment(oldJm.mode, oldJm.room); } catch (e) { paid = null; }
+        if (!paid) {
+            _joinInFlight = false;
+            if (tryBtn) { tryBtn.disabled = false; tryBtn.innerText = 'TRY AGAIN'; }
+            return;
+        }
+        // Firma OK: ahora sí, cerrar el WS viejo, ocultar menú de muerte y reconectar.
+        hideSpectatorBar();
         if (netState.ws) { const w = netState.ws; netState.ws = null; try { w.onclose = null; w.close(); } catch (e) {} }
         practiceMode = false; setLobbyBanner(null); sim = null;
         els.result.style.display = 'none';
         gameRunning = false;
-        // Sala de pago: hay que volver a firmar la entrada (la firma anterior ya está
-        // quemada anti-replay en el servidor). Si el usuario cancela, abortamos.
-        let paid;
-        try { paid = await preparePayment(oldJm.mode, oldJm.room); } catch (e) { paid = null; }
-        if (!paid) {
-            netState = null; _joinInFlight = false;
-            if (tryBtn) { tryBtn.disabled = false; tryBtn.innerText = 'TRY AGAIN'; }
-            return;
-        }
         const newJm = Object.assign({}, oldJm, { pay: paid.pay });
         netState = { url, token: null, attempts: 0, joinMsg: newJm };
         if (tryBtn) tryBtn.innerText = 'CONNECTING...';
