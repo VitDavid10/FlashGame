@@ -525,6 +525,21 @@
             85%  { opacity: 1; transform: translateY(-30px) scale(1); }
             100% { opacity: 0; transform: translateY(-60px) scale(0.95); }
         }
+        /* Pentakill warning: banner arriba pulsando cuando faltan 1-2 kills */
+        #pentakillBanner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9997; padding: 14px 36px; background: rgba(20,4,4,0.92); backdrop-filter: blur(8px); border: 2px solid #ff2a2a; border-radius: 12px; font-family: 'Russo One', sans-serif; font-size: 18px; letter-spacing: 4px; text-transform: uppercase; color: #fff; box-shadow: 0 0 30px rgba(255,42,42,0.55); white-space: nowrap; display: none; pointer-events: none; animation: pentakillPulse 0.8s ease-in-out infinite; }
+        #pentakillBanner.almost { background: rgba(28,28,4,0.92); border-color: #ffce3d; color: #ffce3d; box-shadow: 0 0 26px rgba(255,206,61,0.45); }
+        #pentakillBanner.final { color: #ff5544; }
+        @keyframes pentakillPulse {
+            0%, 100% { transform: translateX(-50%) scale(1); filter: brightness(1); }
+            50%      { transform: translateX(-50%) scale(1.06); filter: brightness(1.3); }
+        }
+        /* killsVal pulsa con glow más intenso conforme se acerca al pentakill */
+        #killsVal.k-warn { color: #ffce3d !important; text-shadow: 0 0 14px rgba(255,206,61,0.8) !important; }
+        #killsVal.k-crit { color: #ff5544 !important; text-shadow: 0 0 18px rgba(255,85,68,0.95) !important; animation: killsPulse 0.6s ease-in-out infinite; }
+        @keyframes killsPulse {
+            0%, 100% { transform: scale(1); }
+            50%      { transform: scale(1.18); }
+        }
         .btn-play { width: 100%; padding: 12px; margin-top: 10px; background: var(--accent); color: white; border: none; font-family: 'Russo One'; font-size: 18px; letter-spacing: 1px; clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
         .btn-play:hover { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 20px rgba(255, 42, 42, 0.4); }
         .btn-reset { width: 100%; padding: 6px; margin-top: 5px; background: transparent; border: 1px dashed #333; color: #555; font-size: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
@@ -648,6 +663,8 @@
     <div id="botsBanner">🤖 Playing against bots</div>
 
     <div id="killGainStack"></div>
+
+    <div id="pentakillBanner">2 KILLS TO PENTAKILL</div>
 
     <div id="exitGameBtn" class="sound-btn" onclick="toggleExitModal()" title="Quit Game">
         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -1912,7 +1929,7 @@
         }
         MAX_BOT_CELLS = (currentGameMode === 'classic') ? 8 : 16;
     }
-    function hideGameHUD() { document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; document.getElementById('econHud').style.display='none'; } }
+    function hideGameHUD() { document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; document.getElementById('econHud').style.display='none'; } updatePentakillHint(0); }
     // El split también vive en la sim: solo encolamos la acción con el objetivo del ratón.
     function splitPlayer() {
         if (!gameRunning || !sim || isSpectating) return;
@@ -2287,6 +2304,32 @@
         el.innerText = '+' + Number(amount).toLocaleString('en-US') + ' $PILL';
         stack.appendChild(el);
         setTimeout(() => { try { el.remove(); } catch (e) {} }, 2000);
+    }
+    // Aviso de pentakill cercano: banner arriba + glow pulsante del contador.
+    // Solo aplica a classic; arcade y los demás modos lo ignoran.
+    function updatePentakillHint(streak) {
+        const banner = document.getElementById('pentakillBanner');
+        const kv = document.getElementById('killsVal');
+        if (!banner || !kv) return;
+        kv.classList.remove('k-warn', 'k-crit');
+        banner.classList.remove('almost', 'final');
+        if (currentGameMode !== 'classic' || streak >= 5 || streak <= 0) {
+            banner.style.display = 'none';
+            return;
+        }
+        if (streak === 3) {
+            banner.innerText = '2 KILLS TO PENTAKILL';
+            banner.classList.add('almost');
+            banner.style.display = 'block';
+            kv.classList.add('k-warn');
+        } else if (streak === 4) {
+            banner.innerText = '★ 1 MORE KILL TO WIN ★';
+            banner.classList.add('final');
+            banner.style.display = 'block';
+            kv.classList.add('k-crit');
+        } else {
+            banner.style.display = 'none';
+        }
     }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     // Solo refrescamos cuando el panel está visible (en menú de modo). Refresco periódico ligero.
@@ -2671,6 +2714,7 @@
                     if (ev.mode === 'classic') {
                         let msg = "KILL"; if (ev.streak === 1) msg = "FIRST BLOOD"; else if (ev.streak === 2) msg = "DOUBLE KILL"; else if (ev.streak === 3) msg = "TRIPLE KILL"; else if (ev.streak === 4) msg = "QUADRA KILL"; else if (ev.streak >= 5) msg = "PENTAKILL";
                         spawnFloatingText(msg, "#FF0000", true); SoundManager.playFloatKill();
+                        updatePentakillHint(ev.streak);
                         if (ev.streak >= 5) setTimeout(() => finishGameSuccess(), 1000);
                     } else {
                         const taunts = ["REKT", "PWNED", "BYE", "EZ", "BOOM", "SIT DOWN", "LATER", "DELETED"]; let randomMsg = taunts[Math.floor(Math.random() * taunts.length)];
