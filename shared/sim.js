@@ -691,7 +691,9 @@
             let living = this.livingCells();
             for (let i = this.ejectedMasses.length - 1; i >= 0; i--) {
                 let m = this.ejectedMasses[i], f = (m.type === 'shoot') ? 0.93 : 0.9; m.x += m.vx * timeScale; m.y += m.vy * timeScale; m.vx *= Math.pow(f, timeScale); m.vy *= Math.pow(f, timeScale);
-                if (m.type === 'shoot') { for (let c of living) { if (getEllipticalDist(m, c) < c.r) { this.emit({ type: 'explosion', x: m.x, y: m.y }); this.ejectedMasses.splice(i, 1); break; } } }
+                // Shoot impacta jugador: SIN explosión visual (era ruido innecesario al
+                // disparar contra rivales; la explosión solo se mantiene contra virus lila).
+                if (m.type === 'shoot') { for (let c of living) { if (getEllipticalDist(m, c) < c.r) { this.ejectedMasses.splice(i, 1); break; } } }
                 for (let c of living) { if (getEllipticalDist(m, c) < c.r) { c.r = Math.sqrt((c.mass + (Math.PI * m.r * m.r * 2)) / (Math.PI * PILL_RATIO)); this.ejectedMasses.splice(i, 1); break; } }
                 if (i < this.ejectedMasses.length) {
                     for (let vIdx = 0; vIdx < this.viruses.length; vIdx++) {
