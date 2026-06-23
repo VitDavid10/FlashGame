@@ -454,7 +454,7 @@
                 let spawnDist = edgeDist + 25; let spd = (type === 'shoot') ? 20 : 40; let r = (type === 'shoot') ? 12 : 16;
                 let obj = { ci: nextSeq(), x: c.x + Math.cos(a) * spawnDist, y: c.y + Math.sin(a) * spawnDist, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r, angle: Math.random() * Math.PI, type };
                 if (type === 'shoot') { obj.c1 = '#ff2a2a'; obj.c2 = '#fff'; } else { obj.c1 = c.colorBot; obj.c2 = c.colorTop; }
-                this.ejectedMasses.push(obj); this.emit({ type: 'shootSound', isBot: false, playerId: p.id });
+                this.ejectedMasses.push(obj); this.emit({ type: 'shootSound', isBot: false, playerId: p.id, x: c.x, y: c.y });
             }
         }
 

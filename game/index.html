@@ -2720,10 +2720,14 @@
                 case 'explosion': createExplosion(ev.x, ev.y); break;
                 case 'splitSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('split', {x: ev.x, y: ev.y}); } else { SoundManager.playSplit(); } break;
                 case 'shootSound':
+                    // El sonido shoot del propio jugador en classic es muy spammy (tecla 1),
+                    // y los stress NPCs online también pueden disparar; lo silenciamos en classic
+                    // tanto para el propio jugador como para otros, en arcade se mantiene atenuado
+                    // por distancia.
+                    if (currentGameMode === 'classic') break;
                     if (ev.isBot) { if (enableEnemySnd) SoundManager.play('shoot', {x: ev.x, y: ev.y}); }
-                    // Sonido del propio disparo: en classic la tecla 1 se usa mucho y el shoot
-                    // se vuelve repetitivo y molesto. Silenciado en classic; arcade lo mantiene.
-                    else if (currentGameMode !== 'classic') { SoundManager.play('shoot'); }
+                    else if (ev.playerId === 'me' || ev.x == null) { SoundManager.play('shoot'); }
+                    else { SoundManager.play('shoot', {x: ev.x, y: ev.y}); }
                     break;
                 case 'virusSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('virus', {x: ev.x, y: ev.y}); } else { SoundManager.play('virus'); } break;
                 case 'text': if (ev.playerId === 'me') spawnFloatingText(ev.text, ev.color, ev.world); break;

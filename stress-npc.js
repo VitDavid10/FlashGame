@@ -107,9 +107,15 @@ function spawnBot(i) {
         lastSplit = now;
         stats.messagesSent++;
       }
-      // Skill aleatoria ~cada 5s de media (independiente del Hz); slot 1 o 2 al azar
-      if (Math.random() < INPUT_INTERVAL / 5000) {
-        ws.send(JSON.stringify({ t: 'action', kind: 'skill', slot: Math.random() < 0.5 ? 1 : 2, tx, ty }));
+      // Skill aleatoria ~cada 25s de media (antes 5s, demasiado spam de shoot).
+      // El slot 1 (shoot) es ofensivo y costoso en masa: un jugador real solo lo
+      // usa contra enemigo cerca, no a lo loco. Para imitarlo:
+      //   - 90% de las veces los stress bots usan skill slot 3+ (skills no-shoot,
+      //     solo aplican en arcade donde tengan skill asignada; en classic no hace nada).
+      //   - 10% slot 1 (shoot ofensivo).
+      if (Math.random() < INPUT_INTERVAL / 25000) {
+        const slot = Math.random() < 0.1 ? 1 : (2 + Math.floor(Math.random() * 8));
+        ws.send(JSON.stringify({ t: 'action', kind: 'skill', slot, tx, ty }));
         stats.messagesSent++;
       }
     }, INPUT_INTERVAL);
