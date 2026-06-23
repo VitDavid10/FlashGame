@@ -172,7 +172,7 @@ const roomStats = loadJson(STATS_FILE, {});     // roomKey → { entradas, muert
 const roomRules = loadJson(RULES_FILE, {});     // roomKey → { speed, food, virus, botsEnabled, botCount }
 const playerStats = loadJson(PLAYERS_FILE, {}); // nombre (minúsculas) → { name, partidas, kills, muertes, lastSeen, lastIp }
 let statsDirty = false, rulesDirty = false, playersDirty = false;
-function statsOf(key) { if (!roomStats[key]) roomStats[key] = { entradas: 0, muertes: 0 }; return roomStats[key]; }
+function statsOf(key) { if (!roomStats[key]) roomStats[key] = { entradas: 0, muertes: 0, entradasReal: 0, muertesReal: 0 }; const s = roomStats[key]; if (s.entradasReal == null) { s.entradasReal = 0; s.muertesReal = 0; } return s; }
 function rulesOf(key) {
     if (!roomRules[key]) roomRules[key] = { speed: 1, food: 1, virus: 1, botsEnabled: false, botCount: 20 };
     const r = roomRules[key];
@@ -514,7 +514,7 @@ function buildAdminState() {
             needed: minRealOf(key),
             bots: room ? new Set(room.sim.enemies.map(e => e.id)).size : 0,
             rules,
-            stats: { entradas: stats.entradas, muertes: stats.muertes, dinero: stats.entradas * price },
+            stats: { entradas: stats.entradas, muertes: stats.muertes, dinero: stats.entradas * price, entradasReal: stats.entradasReal || 0, muertesReal: stats.muertesReal || 0, dineroReal: (stats.entradasReal || 0) * price },
             tlMs: (room && room.endsAt) ? Math.max(0, room.endsAt - now) : null,
             restartEnMs: (room && room.restartAt) ? Math.max(0, room.restartAt - now) : null,
             players: room ? [...room.clients.keys()].map(pid => {
@@ -541,8 +541,8 @@ function buildAdminState() {
     for (const room of rooms.values()) {
         if (!keysSeen.has(room.key)) list.push(roomEntry(room.key, room.mode, room.roomName, room));
     }
-    let totEntradas = 0, totMuertes = 0, totDinero = 0;
-    for (const e of list) { totEntradas += e.stats.entradas; totMuertes += e.stats.muertes; totDinero += e.stats.dinero; }
+    let totEntradas = 0, totMuertes = 0, totDinero = 0, totEntradasReal = 0, totMuertesReal = 0, totDineroReal = 0;
+    for (const e of list) { totEntradas += e.stats.entradas; totMuertes += e.stats.muertes; totDinero += e.stats.dinero; totEntradasReal += e.stats.entradasReal; totMuertesReal += e.stats.muertesReal; totDineroReal += e.stats.dineroReal; }
     // Ranking de jugadores con nombre (los anónimos quedan fuera); con país por IP
     const ranking = Object.entries(playerStats)
         .filter(([k, p]) => p.name && p.name.trim().length > 0)
@@ -573,7 +573,14 @@ function buildAdminState() {
         minPlayers: MIN_PLAYERS,
         snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY),
         stress: stressBuildState(),
-        totales: { entradas: totEntradas, muertes: totMuertes, dinero: totDinero, salasOnline: [...rooms.values()].filter(r => r.clients.size > 0).length, jugadores: [...rooms.values()].reduce((s, r) => s + r.clients.size, 0), jugadoresUnicos: Object.keys(playerStats).length },
+        totales: {
+            entradas: totEntradas, muertes: totMuertes, dinero: totDinero,
+            entradasReal: totEntradasReal, muertesReal: totMuertesReal, dineroReal: totDineroReal,
+            salasOnline: [...rooms.values()].filter(r => r.clients.size > 0).length,
+            jugadores: [...rooms.values()].reduce((s, r) => s + r.clients.size, 0),
+            jugadoresReales: [...rooms.values()].reduce((s, r) => { for (const c of r.clients.values()) if (!c.isTester) s++; return s; }, 0),
+            jugadoresUnicos: Object.keys(playerStats).length,
+        },
         rooms: list,
         ranking,
         paises,
@@ -973,6 +980,20 @@ wss.on('connection', (ws, req) => {
                 questsDirty = true;
                 logAdmin('-', 'Reseteó las quests de todos', cuantos + ' jugadores');
                 log(`ADMIN reseteó quests (${cuantos} jugadores)`);
+            } else if (msg.cmd === 'resetStats') {
+                const scope = msg.scope || 'counters';
+                for (const k of Object.keys(roomStats)) { roomStats[k] = { entradas: 0, muertes: 0, entradasReal: 0, muertesReal: 0 }; }
+                statsDirty = true;
+                connLog.length = 0;
+                if (scope === 'all') {
+                    for (const k of Object.keys(playerStats)) delete playerStats[k];
+                    playersDirty = true;
+                    logAdmin('-', 'Reset TOTAL (stats + ranking + log)', '');
+                    log('ADMIN reset total de stats, ranking y log');
+                } else {
+                    logAdmin('-', 'Reset contadores (entradas/muertes/log)', '');
+                    log('ADMIN reset contadores de stats y log');
+                }
             }
             return;
         }
@@ -1063,13 +1084,12 @@ wss.on('connection', (ws, req) => {
             // sumar las quests autoritativamente (sin depender de lo que mande el cliente).
             const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
             // carry: dinero "retenido" del jugador en esta sala (se inicializa con su entrada y sube al matar).
-            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0 });
+            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK });
             sendEcon(room.clients.get(playerId), room);
-            statsOf(key).entradas++; statsDirty = true;
-            if (name) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; playersDirty = true; }
-            // Daily quests: cuenta partida jugada (por modo)
+            const st_ = statsOf(key); st_.entradas++; if (!TESTER_OK) st_.entradasReal++; statsDirty = true;
+            if (name && !TESTER_OK) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; playersDirty = true; }
             if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
-            logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
+            if (!TESTER_OK) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
             if (room.state === 'playing') { room.sim.spawnPlayer(playerId); refillBots(room); }
             ws.send(JSON.stringify(welcomeMsg(room, playerId, token)));
             log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(key)}`);
@@ -1107,8 +1127,8 @@ wss.on('connection', (ws, req) => {
             const pj = room.sim.players.get(playerId);
             if (pj && pj.alive) {
                 flushPeakMass(room, playerId, cli);
-                if (pj.name) { pstatOf(pj.name).muertes++; playersDirty = true; }
-                statsOf(room.key).muertes++; statsDirty = true;
+                if (pj.name && !cli.isTester) { pstatOf(pj.name).muertes++; playersDirty = true; }
+                const ds_ = statsOf(room.key); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
                 // CLASSIC: salir VIVO = cashout con exit fee (20/10/0 según kills); el fee va al bote.
                 if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, pj.killStreak | 0);
             } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
@@ -1241,9 +1261,11 @@ setInterval(() => {
         const events = room.sim.drainEvents();
         for (const ev of events) {
             if (ev.type === 'playerDied') {
-                statsOf(room.key).muertes++; statsDirty = true;
+                const dCli_ = room.clients.get(ev.playerId);
+                const dTest_ = dCli_ && dCli_.isTester;
+                const ds2_ = statsOf(room.key); ds2_.muertes++; if (!dTest_) ds2_.muertesReal++; statsDirty = true;
                 const pj = room.sim.players.get(ev.playerId);
-                if (pj && pj.name) { pstatOf(pj.name).muertes++; playersDirty = true; }
+                if (pj && pj.name && !dTest_) { pstatOf(pj.name).muertes++; playersDirty = true; }
                 flushPeakMass(room, ev.playerId, room.clients.get(ev.playerId));
                 // ARCADE: cada muerte llena el bote (entrada del muerto va al bote).
                 if (room.mode !== 'classic') {
@@ -1260,7 +1282,8 @@ setInterval(() => {
                 if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + DEAD_REMOVE_MS);
             } else if (ev.type === 'botKilled') {
                 const killer = room.sim.players.get(ev.playerId);
-                if (killer && killer.name) { pstatOf(killer.name).kills++; playersDirty = true; }
+                const cliKiller_ = room.clients.get(ev.playerId);
+                if (killer && killer.name && !(cliKiller_ && cliKiller_.isTester)) { pstatOf(killer.name).kills++; playersDirty = true; }
                 // Las kills contra bots cuentan para Q2 (los bots simulan jugadores reales)
                 const cliK = room.clients.get(ev.playerId);
                 if (cliK && cliK.cid) {

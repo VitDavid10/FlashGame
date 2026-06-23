@@ -78,6 +78,14 @@
     .sumcard svg { width: 26px; height: 26px; flex: none; }
     .sumcard .v { font-size: 21px; color: var(--primary); text-shadow: 0 0 10px rgba(0,255,136,0.35); line-height: 1.1; }
     .sumcard .k { color: var(--muted); font-size: 10.5px; margin-top: 3px; letter-spacing: 1px; text-transform: uppercase; font-family: 'Russo One'; }
+    .stats-toolbar { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
+    .stats-toolbar label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: #ccc; font-family: 'Russo One'; letter-spacing: 1px; text-transform: uppercase; user-select: none; }
+    .toggle-track { width: 36px; height: 20px; background: #333; border-radius: 10px; position: relative; transition: 0.25s; flex: none; }
+    .toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #888; border-radius: 50%; transition: 0.25s; }
+    .toggle-track.on { background: var(--primary); box-shadow: 0 0 8px rgba(0,255,136,0.4); }
+    .toggle-track.on::after { left: 18px; background: #000; }
+    .reset-btn { background: transparent; border: 1px solid #555; color: #aaa; font-size: 11px; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-family: 'Russo One'; letter-spacing: 1px; transition: 0.2s; }
+    .reset-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 10px rgba(255,42,42,0.3); }
 
     h2.section { font-family: 'Russo One'; font-size: 13px; letter-spacing: 3px; color: var(--primary); text-transform: uppercase; margin: 30px 0 14px 0; display: flex; align-items: center; gap: 14px; text-shadow: 0 0 12px rgba(0,255,136,0.4); }
     h2.section::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--primary-dim), transparent); }
@@ -235,6 +243,11 @@
         </div>
     </header>
     <main>
+        <div class="stats-toolbar" id="statsToolbar">
+            <label onclick="toggleRealOnly()"><span class="toggle-track" id="realOnlyToggle"></span> Solo reales</label>
+            <button class="reset-btn" onclick="resetStats()">Reset stats</button>
+            <button class="reset-btn" onclick="resetStatsAll()">Reset TODO</button>
+        </div>
         <div class="summary" id="summary"></div>
         <nav class="tabs">
             <button id="tabBtn_salas" class="act" onclick="verTab('salas')">Salas</button>
@@ -401,6 +414,10 @@ function errorLogin(txt) { document.getElementById('loginError').innerText = txt
 function bloquear() { autorizado = false; key = ''; if (ws) { try { ws.onclose = null; ws.onmessage = null; ws.close(); } catch(e){} ws = null; } document.getElementById('app').style.display = 'none'; document.getElementById('loginOverlay').style.display = 'flex'; document.getElementById('key').value = ''; document.getElementById('loginError').innerText = ''; }
 function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(Object.assign({ t: 'admin', key }, o))); }
 function pedir() { send({ cmd: 'state' }); }
+let realOnly = false;
+function toggleRealOnly() { realOnly = !realOnly; document.getElementById('realOnlyToggle').classList.toggle('on', realOnly); }
+function resetStats() { if (confirm('¿Resetear contadores de entradas, muertes y log de conexiones?\n(El ranking de jugadores se mantiene)')) { send({ cmd: 'resetStats', scope: 'counters' }); } }
+function resetStatsAll() { if (confirm('⚠️ ¿Resetear TODO: contadores + ranking + log?\nEsta acción no se puede deshacer.')) { send({ cmd: 'resetStats', scope: 'all' }); } }
 // Refresco más rápido para que los cambios y el cronómetro se vean al instante
 setInterval(() => { if (autorizado) pedir(); }, 750);
 
@@ -598,9 +615,9 @@ function cartaSala(r) {
                 <span class="it" style="color:#ff6b6b" title="muertos / espectando tras morir">${IC.skull} ${Math.max(0, (r.conectados || 0) - (r.vivos || 0))} muertos</span>
                 ${r.espectadores ? `<span class="it" style="color:#b07cf7" title="espectadores">${IC.door} ${r.espectadores} viendo</span>` : ''}
                 <span class="it">${IC.bot} ${r.bots} bots</span>
-                <span class="it">${IC.in} ${num(r.stats.entradas)} entradas</span>
-                <span class="it">${IC.skull} ${num(r.stats.muertes)}</span>
-                <span class="it">${IC.coin} ${dinero(r.stats.dinero)}</span>
+                <span class="it">${IC.in} ${num(realOnly ? r.stats.entradasReal : r.stats.entradas)} entradas</span>
+                <span class="it">${IC.skull} ${num(realOnly ? r.stats.muertesReal : r.stats.muertes)}</span>
+                <span class="it">${IC.coin} ${dinero(realOnly ? r.stats.dineroReal : r.stats.dinero)}</span>
             </div>
             ${timer}
             ${jugadores}
@@ -721,13 +738,18 @@ function render(m) {
     document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · red ${m.snapshotHz}Hz`;
     if (m.snapshotHz != null && document.activeElement.id !== 'snapHzSel') document.getElementById('snapHzSel').value = m.snapshotHz;
     construirSalasStress(); renderStress(m.stress);
+    const t = m.totales;
+    const sEntradas = realOnly ? t.entradasReal : t.entradas;
+    const sMuertes = realOnly ? t.muertesReal : t.muertes;
+    const sDinero = realOnly ? t.dineroReal : t.dinero;
+    const sConectados = realOnly ? (t.jugadoresReales || 0) : t.jugadores;
     document.getElementById('summary').innerHTML = `
-        <div class="sumcard">${IC.room}<div><div class="v russo">${m.totales.salasOnline}</div><div class="k">salas con gente</div></div></div>
-        <div class="sumcard">${IC.users}<div><div class="v russo">${m.totales.jugadores}</div><div class="k">conectados ahora</div></div></div>
-        <div class="sumcard">${IC.door}<div><div class="v russo">${num(m.totales.jugadoresUnicos)}</div><div class="k">jugadores distintos</div></div></div>
-        <div class="sumcard">${IC.in}<div><div class="v russo">${num(m.totales.entradas)}</div><div class="k">entradas totales</div></div></div>
-        <div class="sumcard">${IC.skull}<div><div class="v russo">${num(m.totales.muertes)}</div><div class="k">muertes totales</div></div></div>
-        <div class="sumcard">${IC.coin}<div><div class="v russo">${dinero(m.totales.dinero)}</div><div class="k">dinero generado</div></div></div>`;
+        <div class="sumcard">${IC.room}<div><div class="v russo">${t.salasOnline}</div><div class="k">salas con gente</div></div></div>
+        <div class="sumcard">${IC.users}<div><div class="v russo">${sConectados}</div><div class="k">conectados ahora</div></div></div>
+        <div class="sumcard">${IC.door}<div><div class="v russo">${num(t.jugadoresUnicos)}</div><div class="k">jugadores distintos</div></div></div>
+        <div class="sumcard">${IC.in}<div><div class="v russo">${num(sEntradas)}</div><div class="k">entradas totales</div></div></div>
+        <div class="sumcard">${IC.skull}<div><div class="v russo">${num(sMuertes)}</div><div class="k">muertes totales</div></div></div>
+        <div class="sumcard">${IC.coin}<div><div class="v russo">${dinero(sDinero)}</div><div class="k">dinero generado</div></div></div>`;
 
     const porSeccion = { classic: [], arcade: [], otras: [] };
     for (const r of m.rooms) {
