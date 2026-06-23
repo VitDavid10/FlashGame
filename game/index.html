@@ -2427,7 +2427,18 @@
         } catch (e) { showSystemMsg('You must sign the entry payment to join a paid room.', 'PAYMENT CANCELLED'); return null; }
     }
 
+    // Lock global para evitar que un doble click (o un click mientras Phantom muestra
+    // el popup de firma) dispare dos preparePayment en paralelo y haga firmar dos veces.
+    let _joinInFlight = false;
+    function setPlayBtnState(busy, label) {
+        const btn = document.getElementById('btnPlayOnline');
+        const btnLocal = document.getElementById('btnEnterGame');
+        if (btn) { btn.disabled = !!busy; btn.innerText = busy ? (label || 'CONNECTING...') : 'PLAY ONLINE'; }
+        if (btnLocal) { btnLocal.disabled = !!busy; }
+    }
     async function startOnlineGame() {
+        if (_joinInFlight) return;
+        _joinInFlight = true; setPlayBtnState(true, 'SIGNING...');
         SoundManager.play('select'); SoundManager.stopMenuMusic();
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
@@ -2447,10 +2458,13 @@
         let savedServer = null; try { savedServer = localStorage.getItem('pw_server'); } catch (e) {}
         const url = qsServer || savedServer || (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://localhost:8080');
         // Salas de pago: comprobar saldo WAR y FIRMAR la entrada antes de conectar.
-        const paid = await preparePayment(mode, currentServer);
-        if (!paid) return;   // sin saldo / sin firma / sin wallet → ya se avisó
+        let paid;
+        try { paid = await preparePayment(mode, currentServer); } catch (e) { paid = null; }
+        if (!paid) { _joinInFlight = false; setPlayBtnState(false); return; }   // sin saldo / sin firma → ya se avisó
         netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg, pay: paid.pay } };
+        setPlayBtnState(true, 'CONNECTING...');
         netConnect(false);
+        // El lock se libera al recibir welcome/roomFull/payRequired/error desde el WS.
     }
 
     // Práctica offline mientras la sala online espera jugadores
@@ -2509,8 +2523,12 @@
     // TRY AGAIN tras morir / fin de partida / reinicio: vuelve a entrar a la
     // MISMA sala sin pasar por el menú (nuevo join con los mismos datos).
     async function tryAgainOnline() {
+        if (_joinInFlight) return;
         hideSpectatorBar();
         if (!netState || !netState.joinMsg) { returnToMenu(); return; }
+        _joinInFlight = true;
+        const tryBtn = document.getElementById('btnTryAgainOnline');
+        if (tryBtn) { tryBtn.disabled = true; tryBtn.innerText = 'SIGNING...'; }
         SoundManager.play('select');
         const oldJm = netState.joinMsg, url = netState.url;
         if (netState.ws) { const w = netState.ws; netState.ws = null; try { w.onclose = null; w.close(); } catch (e) {} }
@@ -2519,17 +2537,29 @@
         gameRunning = false;
         // Sala de pago: hay que volver a firmar la entrada (la firma anterior ya está
         // quemada anti-replay en el servidor). Si el usuario cancela, abortamos.
-        const paid = await preparePayment(oldJm.mode, oldJm.room);
-        if (!paid) { netState = null; return; }
+        let paid;
+        try { paid = await preparePayment(oldJm.mode, oldJm.room); } catch (e) { paid = null; }
+        if (!paid) {
+            netState = null; _joinInFlight = false;
+            if (tryBtn) { tryBtn.disabled = false; tryBtn.innerText = 'TRY AGAIN'; }
+            return;
+        }
         const newJm = Object.assign({}, oldJm, { pay: paid.pay });
         netState = { url, token: null, attempts: 0, joinMsg: newJm };
+        if (tryBtn) tryBtn.innerText = 'CONNECTING...';
         netConnect(false);
     }
 
     function netConnect(isResume) {
         const btn = document.getElementById('btnPlayOnline');
+        const tryBtn = document.getElementById('btnTryAgainOnline');
         if (!isResume) { btn.disabled = true; btn.innerText = 'CONNECTING...'; }
-        const restoreBtn = () => { btn.disabled = false; btn.innerText = 'PLAY ONLINE'; };
+        const restoreBtn = () => {
+            btn.disabled = false; btn.innerText = 'PLAY ONLINE';
+            if (tryBtn) { tryBtn.disabled = false; tryBtn.innerText = 'TRY AGAIN'; }
+            const btnLocal = document.getElementById('btnEnterGame'); if (btnLocal) btnLocal.disabled = false;
+            _joinInFlight = false;
+        };
         let joined = false;
         const ws = new WebSocket(netState.url);
         netState.ws = ws;
