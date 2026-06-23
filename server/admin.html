@@ -86,6 +86,8 @@
     .toggle-track.on::after { left: 18px; background: #000; }
     .reset-btn { background: transparent; border: 1px solid #555; color: #aaa; font-size: 11px; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-family: 'Russo One'; letter-spacing: 1px; transition: 0.2s; }
     .reset-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 10px rgba(255,42,42,0.3); }
+    .sumcard.clickable { cursor: pointer; }
+    .sumcard.clickable:hover { border-color: #b07cf7; box-shadow: 0 0 20px rgba(176,124,247,0.25); }
 
     h2.section { font-family: 'Russo One'; font-size: 13px; letter-spacing: 3px; color: var(--primary); text-transform: uppercase; margin: 30px 0 14px 0; display: flex; align-items: center; gap: 14px; text-shadow: 0 0 12px rgba(0,255,136,0.4); }
     h2.section::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--primary-dim), transparent); }
@@ -302,9 +304,7 @@
             <h2 class="section">Salud del servidor</h2>
             <div class="usage" id="healthBox" style="padding:18px 20px;font-family:'Inter',sans-serif;font-size:13px">Cargando…</div>
 
-            <h2 class="section">Registro de acciones</h2>
-            <div class="usage" id="adminLog" style="padding-top:8px"></div>
-            <h2 class="section">Países</h2>
+            <h2 class="section" id="seccionJugadores">Jugadores por país</h2>
             <table class="rank">
                 <thead><tr><th></th><th>País</th><th></th><th>Jugadores</th></tr></thead>
                 <tbody id="paisesCuerpo"></tbody>
@@ -315,6 +315,8 @@
             <div class="usage" style="padding-top:8px">
                 <table class="hist"><tbody id="histCuerpo"></tbody></table>
             </div>
+            <h2 class="section">Registro de acciones</h2>
+            <div class="usage" id="adminLog" style="padding-top:8px"></div>
         </div>
 
         <div id="tab_stress" style="display:none">
@@ -418,6 +420,7 @@ let realOnly = false;
 function toggleRealOnly() { realOnly = !realOnly; document.getElementById('realOnlyToggle').classList.toggle('on', realOnly); }
 function resetStats() { if (confirm('¿Resetear contadores de entradas, muertes y log de conexiones?\n(El ranking de jugadores se mantiene)')) { send({ cmd: 'resetStats', scope: 'counters' }); } }
 function resetStatsAll() { if (confirm('⚠️ ¿Resetear TODO: contadores + ranking + log?\nEsta acción no se puede deshacer.')) { send({ cmd: 'resetStats', scope: 'all' }); } }
+function irAJugadores() { verTab('actividad'); setTimeout(() => { const el = document.getElementById('seccionJugadores'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }
 // Refresco más rápido para que los cambios y el cronómetro se vean al instante
 setInterval(() => { if (autorizado) pedir(); }, 750);
 
@@ -746,7 +749,7 @@ function render(m) {
     document.getElementById('summary').innerHTML = `
         <div class="sumcard">${IC.room}<div><div class="v russo">${t.salasOnline}</div><div class="k">salas con gente</div></div></div>
         <div class="sumcard">${IC.users}<div><div class="v russo">${sConectados}</div><div class="k">conectados ahora</div></div></div>
-        <div class="sumcard">${IC.door}<div><div class="v russo">${num(realOnly ? (t.jugadoresUnicosReal || 0) : t.jugadoresUnicos)}</div><div class="k">jugadores distintos</div></div></div>
+        <div class="sumcard clickable" onclick="irAJugadores()" title="Ver jugadores por país">${IC.door}<div><div class="v russo">${num(realOnly ? (t.jugadoresUnicosReal || 0) : t.jugadoresUnicos)}</div><div class="k">jugadores distintos</div></div></div>
         <div class="sumcard">${IC.in}<div><div class="v russo">${num(sEntradas)}</div><div class="k">entradas totales</div></div></div>
         <div class="sumcard">${IC.skull}<div><div class="v russo">${num(sMuertes)}</div><div class="k">muertes totales</div></div></div>
         <div class="sumcard">${IC.coin}<div><div class="v russo">${dinero(sDinero)}</div><div class="k">dinero generado</div></div></div>`;
