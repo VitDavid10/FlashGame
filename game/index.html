@@ -340,6 +340,8 @@
         .oracle-row .ostatus.full { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
         .oracle-row .ostatus.some { background: #ffce3d; box-shadow: 0 0 8px rgba(255,206,61,0.6); }
         .oracle-row .ostatus.empty { background: #444; }
+        .oracle-row .ostatus.capfull { background: #ff2a2a; box-shadow: 0 0 10px rgba(255,42,42,0.8); animation: capfullPulse 1.4s ease-in-out infinite; }
+        @keyframes capfullPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
         #sidePanelMissions { flex: 1; overflow-y: auto; }
 
         /* Carrusel del panel inferior (MISSIONS ↔ SKINS) */
@@ -1700,6 +1702,13 @@
         if (logoutTimer) clearInterval(logoutTimer); btn.disabled = false; btn.innerText = "EXIT";
         if(modal.style.display === 'flex') { modal.style.display = 'none'; isLoggingOut = false; return; }
         modal.style.display = 'flex';
+        // Espectando: no eres jugador, no aplica nada de carry/kills/fees. Modal simple.
+        if (isSpectating && onlineSpectator) {
+            title.innerText = "STOP SPECTATING?";
+            desc.innerHTML = "You're just watching this match. Leave to return to the menu.";
+            btn.onclick = confirmExit; btn.innerText = "BACK TO MENU";
+            return;
+        }
         // Si la partida online aún NO ha empezado (lobby/practice): salir devuelve la entrada,
         // sin hablar de fees ni kills (no aplica todavía).
         const enLobby = practiceMode || (netState && netState.token && !sim);
@@ -1917,6 +1926,7 @@
         else startSpectatorMode();
     }
     // Espectar la partida online: la cámara sigue al líder con su mismo zoom (visión de jugador).
+    // No reproducimos música — espectar no es jugar, evita el "vuelve a sonar la canción".
     function spectateOnline() {
         els.result.style.display = 'none';
         isSpectating = true; onlineSpectator = true;
@@ -1925,7 +1935,6 @@
         document.getElementById('leaderboard').style.display = 'block';
         document.getElementById('timerDisplay').style.display = 'block';
         document.getElementById('exitGameBtn').style.display = 'flex';
-        SoundManager.playMusic();
     }
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
@@ -2378,12 +2387,17 @@
                 const lock = r.locked ? ' <span title="price locked while players are inside" style="color:#888">🔒</span>' : '';
                 const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL' + lock;
                 const cap = r.cap || 30;
-                const cls = r.players === 0 ? 'empty' : (r.players >= cap / 2 ? 'full' : 'some');
+                // 0 → gris (vacía). 1-49% → amarillo (some). 50-99% → verde (full).
+                // 100% → rojo pulsante (no se puede entrar).
+                const cls = r.players === 0 ? 'empty'
+                    : (r.players >= cap ? 'capfull'
+                    : (r.players >= cap / 2 ? 'full' : 'some'));
+                const title = r.players >= cap ? `FULL — ${r.players}/${cap} players` : `${r.players}/${cap} players`;
                 return `<div class="oracle-row">
                     <span class="oroom">${r.priceUsd === 0 ? 'Free' : '$' + r.priceUsd}</span>
                     <span class="opill">${fee}</span>
                     <span class="ostatuslabel">STATUS</span>
-                    <span class="ostatus ${cls}" title="${r.players} players"></span>
+                    <span class="ostatus ${cls}" title="${title}"></span>
                 </div>`;
             }).join('');
         } catch (e) {}
