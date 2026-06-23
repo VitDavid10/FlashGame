@@ -1094,14 +1094,24 @@
             if (!this.musicMuted && !gameRunning) { this.menuMusic.play().catch(e=>{}); }
         },
         setVolume: function(val) { const v = parseFloat(val); this.music.volume = v; this.menuMusic.volume = Math.min(1, v * 1.875); },
-        play: function(name, pos = null) { 
-            if(this.muted || !this.sounds[name]) return; 
+        play: function(name, pos = null) {
+            if(this.muted || !this.sounds[name]) return;
+            // Volumen por distancia: lo que entra en pantalla suena fuerte, lo lejano
+            // se atenúa, y por encima de ~1.4× el radio del viewport se descarta.
+            let vol = 1;
             if (pos && gameRunning && !isSpectating) {
-                let es = getViewScale(); let vW = width / es; let vH = height / es; let margin = 100;
-                if (pos.x < camera.x - vW/2 - margin || pos.x > camera.x + vW/2 + margin || pos.y < camera.y - vH/2 - margin || pos.y > camera.y + vH/2 + margin) { return; }
+                const dx = pos.x - camera.x, dy = pos.y - camera.y;
+                const dist = Math.hypot(dx, dy);
+                const es = getViewScale();
+                const screenRadius = Math.max(width, height) / es / 2;
+                if (dist > screenRadius * 1.4) return;
+                if (dist > screenRadius * 0.6) {
+                    vol = 1 - (dist - screenRadius * 0.6) / (screenRadius * 0.8);
+                    vol = Math.max(0, Math.min(1, vol));
+                }
             }
             if (name === 'cd') { if (Date.now() - this.lastCdTime < 700) return; this.lastCdTime = Date.now(); }
-            const s = this.sounds[name]; s.currentTime = 0; s.play().catch(e => {}); 
+            const s = this.sounds[name]; s.currentTime = 0; s.volume = vol; s.play().catch(e => {});
         },
         stop: function(name) { if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },
         playSimpleHover: function() { if (Date.now() - this.lastSimpleHoverTime < 100) return; this.lastSimpleHoverTime = Date.now(); this.play('simplehover'); },
@@ -2498,16 +2508,21 @@
 
     // TRY AGAIN tras morir / fin de partida / reinicio: vuelve a entrar a la
     // MISMA sala sin pasar por el menú (nuevo join con los mismos datos).
-    function tryAgainOnline() {
+    async function tryAgainOnline() {
         hideSpectatorBar();
         if (!netState || !netState.joinMsg) { returnToMenu(); return; }
         SoundManager.play('select');
-        const jm = netState.joinMsg, url = netState.url;
+        const oldJm = netState.joinMsg, url = netState.url;
         if (netState.ws) { const w = netState.ws; netState.ws = null; try { w.onclose = null; w.close(); } catch (e) {} }
         practiceMode = false; setLobbyBanner(null); sim = null;
         els.result.style.display = 'none';
-        netState = { url: url, token: null, attempts: 0, joinMsg: jm };
         gameRunning = false;
+        // Sala de pago: hay que volver a firmar la entrada (la firma anterior ya está
+        // quemada anti-replay en el servidor). Si el usuario cancela, abortamos.
+        const paid = await preparePayment(oldJm.mode, oldJm.room);
+        if (!paid) { netState = null; return; }
+        const newJm = Object.assign({}, oldJm, { pay: paid.pay });
+        netState = { url, token: null, attempts: 0, joinMsg: newJm };
         netConnect(false);
     }
 
@@ -2704,7 +2719,12 @@
             switch (ev.type) {
                 case 'explosion': createExplosion(ev.x, ev.y); break;
                 case 'splitSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('split', {x: ev.x, y: ev.y}); } else { SoundManager.playSplit(); } break;
-                case 'shootSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('shoot', {x: ev.x, y: ev.y}); } else { SoundManager.play('shoot'); } break;
+                case 'shootSound':
+                    if (ev.isBot) { if (enableEnemySnd) SoundManager.play('shoot', {x: ev.x, y: ev.y}); }
+                    // Sonido del propio disparo: en classic la tecla 1 se usa mucho y el shoot
+                    // se vuelve repetitivo y molesto. Silenciado en classic; arcade lo mantiene.
+                    else if (currentGameMode !== 'classic') { SoundManager.play('shoot'); }
+                    break;
                 case 'virusSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('virus', {x: ev.x, y: ev.y}); } else { SoundManager.play('virus'); } break;
                 case 'text': if (ev.playerId === 'me') spawnFloatingText(ev.text, ev.color, ev.world); break;
                 case 'botText': { const cells = myCells(); if (enableEnemyFX && cells.length > 0 && getEllipticalDist({x: ev.x, y: ev.y}, cells[0]) < 1500) { floatingTexts.push(new FloatingText(ev.x, ev.y, ev.text, ev.color)); } break; }
