@@ -214,15 +214,15 @@ function classicExitFeePct(kills) { if (kills >= 2) return 0; if (kills >= 1) re
 function addToPot(room, amount) { if (amount > 0) room.pot = (room.pot || 0) + amount; }
 // Notifica al cliente su carry actual y el bote de la sala (para el HUD del juego).
 function sendEcon(cli, room) { if (cli && cli.ws && cli.ws.readyState === 1) try { cli.ws.send(JSON.stringify({ t: 'econ', carry: cli.carry | 0, pot: room.pot | 0 })); } catch (e) {} }
-// Cashout en classic: paga al jugador su carry menos el exit fee; el fee va al bote.
+// Cashout en classic: paga al jugador su carry menos el exit fee. El fee se descarta
+// (no hay pot en classic: el modelo es "pure skill, mata y huye o pierdes").
 // Devuelve el neto pagado al WAR del jugador.
 function classicCashout(room, cli, kills) {
     if (!cli || !cli.payWallet || cli.carry <= 0) return 0;
     const fee = Math.floor(cli.carry * classicExitFeePct(kills) / 100);
     const net = cli.carry - fee;
     if (net > 0) warbank.credit(cli.payWallet, net);
-    if (fee > 0) addToPot(room, fee);
-    log(`Cashout classic: ${cli.payWallet.slice(0, 6)}… +${net} PILL (carry ${cli.carry}, fee ${fee} → bote)`);
+    log(`Cashout classic: ${cli.payWallet.slice(0, 6)}… +${net} PILL (carry ${cli.carry}, fee ${fee} descartado)`);
     try { cli.ws.send(JSON.stringify({ t: 'prize', reason: 'cashout', amount: net, carry: cli.carry, feePct: classicExitFeePct(kills), fee, kills })); } catch (e) {}
     if (cli.cid && kills >= 2) dailyquests.recordEvent(cli.cid, 'classic_safe_exit', 1);
     cli.carry = 0;
@@ -1275,24 +1275,29 @@ setInterval(() => {
                         if (peak >= 100000 && !cliK._mass100) { cliK._mass100 = true; dailyquests.recordEvent(cliK.cid, 'mass_100k', 1); }
                     }
                 }
-                // CLASSIC: carry de la víctima → matador. Si la víctima era un bot, la entrada del bot va al bote.
+                // CLASSIC: el matador recibe carry de la víctima directamente (humano o bot virtual).
+                // No hay "pot" en classic — todo es carry, más simple y coherente con "pure skill".
                 if (cliK && room.mode === 'classic') {
                     const victimCli = ev.victimId ? room.clients.get(ev.victimId) : null;
+                    let gain = 0;
                     if (victimCli && victimCli.carry > 0) {
-                        cliK.carry += victimCli.carry; victimCli.carry = 0;
+                        gain = victimCli.carry; victimCli.carry = 0;
                         sendEcon(victimCli, room);
                     } else {
-                        // víctima bot: aporta una entrada al bote (representa su contribución)
-                        addToPot(room, entryFeePill(room.key, room.pillRate));
+                        // víctima bot: aporta una entrada virtual directa al carry del matador
+                        gain = entryFeePill(room.key, room.pillRate);
                     }
+                    cliK.carry += gain;
+                    // Notificar el +X PILL al cliente para que muestre el floating naranja
+                    if (gain > 0) { try { cliK.ws.send(JSON.stringify({ t: 'killGain', amount: gain, victimWasBot: !(victimCli && victimCli.carry >= 0 && victimCli.payWallet) })); } catch (e) {} }
                     sendEcon(cliK, room);
-                    // VICTORIA en classic (5 kills): cashout automático sin fee + se lleva el bote acumulado.
+                    // VICTORIA en classic (5 kills): cashout automático sin fee, se lleva todo su carry.
                     if (ev.streak >= 5 && cliK.payWallet) {
-                        const win = cliK.carry + (room.pot || 0);
+                        const win = cliK.carry;
                         if (win > 0) warbank.credit(cliK.payWallet, win);
-                        log(`VICTORIA classic: ${cliK.payWallet.slice(0, 6)}… +${win} PILL (carry ${cliK.carry} + bote ${room.pot || 0})`);
-                        try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: room.pot || 0 })); } catch (e) {}
-                        cliK.carry = 0; room.pot = 0;
+                        log(`VICTORIA classic: ${cliK.payWallet.slice(0, 6)}… +${win} PILL (carry completo)`);
+                        try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: 0 })); } catch (e) {}
+                        cliK.carry = 0;
                         sendEcon(cliK, room);
                         if (cliK.cid) dailyquests.recordEvent(cliK.cid, 'classic_5kills', 1);
                     }

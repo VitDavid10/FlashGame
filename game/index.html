@@ -516,6 +516,15 @@
 
         #botsBanner { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(8,12,8,0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0,255,136,0.4); border-radius: 10px; padding: 12px 28px; font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #00ff88; box-shadow: 0 0 30px rgba(0,255,136,0.2); white-space: nowrap; transition: top 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s; opacity: 0; pointer-events: none; }
         #botsBanner.show { top: 22px; opacity: 1; }
+        #killGainStack { position: fixed; top: 90px; left: 50%; transform: translateX(-50%); z-index: 9998; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+        .kill-gain { font-family: 'Russo One', sans-serif; font-size: 22px; letter-spacing: 2px; color: #ff9933; text-shadow: 0 0 14px rgba(255,153,51,0.85), 0 2px 6px rgba(0,0,0,0.85); animation: killGainFloat 2s cubic-bezier(0.2,0.7,0.3,1) forwards; }
+        @keyframes killGainFloat {
+            0%   { opacity: 0; transform: translateY(20px) scale(0.7); }
+            12%  { opacity: 1; transform: translateY(0) scale(1.1); }
+            22%  { transform: translateY(-4px) scale(1); }
+            85%  { opacity: 1; transform: translateY(-30px) scale(1); }
+            100% { opacity: 0; transform: translateY(-60px) scale(0.95); }
+        }
         .btn-play { width: 100%; padding: 12px; margin-top: 10px; background: var(--accent); color: white; border: none; font-family: 'Russo One'; font-size: 18px; letter-spacing: 1px; clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
         .btn-play:hover { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 20px rgba(255, 42, 42, 0.4); }
         .btn-reset { width: 100%; padding: 6px; margin-top: 5px; background: transparent; border: 1px dashed #333; color: #555; font-size: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
@@ -637,6 +646,8 @@
     </div>
 
     <div id="botsBanner">🤖 Playing against bots</div>
+
+    <div id="killGainStack"></div>
 
     <div id="exitGameBtn" class="sound-btn" onclick="toggleExitModal()" title="Quit Game">
         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -2247,11 +2258,11 @@
             if (msg.reason === 'victory') {
                 title.innerText = 'VICTORY!'; title.style.color = '#ffce3d';
                 amt.innerText = '+' + fmt(msg.amount) + ' $PILL';
-                sub.innerHTML = '5 KILLS · You took the entire pot of <b style="color:#ffce3d">' + fmt(msg.pot) + '</b> + your carry <b style="color:#00ff88">' + fmt(msg.carry) + '</b>';
+                sub.innerHTML = '5 KILLS · Total carry won: <b style="color:#00ff88">' + fmt(msg.carry) + '</b> $PILL';
             } else if (msg.reason === 'cashout') {
                 title.innerText = 'CASHOUT'; title.style.color = '#00ff88';
                 amt.innerText = '+' + fmt(msg.amount) + ' $PILL';
-                sub.innerHTML = msg.kills + ' kills · carry <b>' + fmt(msg.carry) + '</b> − ' + msg.feePct + '% fee (<b>' + fmt(msg.fee) + '</b> to pot)';
+                sub.innerHTML = msg.kills + ' kills · carry <b>' + fmt(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmt(msg.fee) + '</b>)';
             } else if (msg.reason === 'arcadeEnd') {
                 title.innerText = 'MATCH ENDED'; title.style.color = msg.myAmount > 0 ? '#ffce3d' : '#aaa';
                 amt.innerText = msg.myAmount > 0 ? '+' + fmt(msg.myAmount) + ' $PILL' : 'Out of top 10';
@@ -2266,6 +2277,17 @@
             setTimeout(() => GameWalletUI.refresh(), 800);
         }
     };
+    // Floating "+X $PILL" en naranja al matar (solo classic). Aparece sobre el HUD y sube.
+    function showKillGain(amount) {
+        if (!amount || amount <= 0) return;
+        const stack = document.getElementById('killGainStack');
+        if (!stack) return;
+        const el = document.createElement('div');
+        el.className = 'kill-gain';
+        el.innerText = '+' + Number(amount).toLocaleString('en-US') + ' $PILL';
+        stack.appendChild(el);
+        setTimeout(() => { try { el.remove(); } catch (e) {} }, 2000);
+    }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     // Solo refrescamos cuando el panel está visible (en menú de modo). Refresco periódico ligero.
     setInterval(() => { if (document.getElementById('gameWalletArea').style.display !== 'none') GameWalletUI.refresh(); }, 6000);
@@ -2493,6 +2515,8 @@
                 showSystemMsg('Entry payment could not be verified (' + (msg.reason || '') + '). Make sure you have enough in-GAME balance and try again.', 'PAYMENT REQUIRED');
             } else if (msg.t === 'econ') {
                 EconHUD.update(msg.carry, msg.pot);
+            } else if (msg.t === 'killGain') {
+                showKillGain(msg.amount);
             } else if (msg.t === 'prize') {
                 EconHUD.showPrize(msg);
             } else if (msg.t === 'resumeFail') {
