@@ -746,7 +746,7 @@ function render(m) {
     document.getElementById('summary').innerHTML = `
         <div class="sumcard">${IC.room}<div><div class="v russo">${t.salasOnline}</div><div class="k">salas con gente</div></div></div>
         <div class="sumcard">${IC.users}<div><div class="v russo">${sConectados}</div><div class="k">conectados ahora</div></div></div>
-        <div class="sumcard">${IC.door}<div><div class="v russo">${num(t.jugadoresUnicos)}</div><div class="k">jugadores distintos</div></div></div>
+        <div class="sumcard">${IC.door}<div><div class="v russo">${num(realOnly ? (t.jugadoresUnicosReal || 0) : t.jugadoresUnicos)}</div><div class="k">jugadores distintos</div></div></div>
         <div class="sumcard">${IC.in}<div><div class="v russo">${num(sEntradas)}</div><div class="k">entradas totales</div></div></div>
         <div class="sumcard">${IC.skull}<div><div class="v russo">${num(sMuertes)}</div><div class="k">muertes totales</div></div></div>
         <div class="sumcard">${IC.coin}<div><div class="v russo">${dinero(sDinero)}</div><div class="k">dinero generado</div></div></div>`;

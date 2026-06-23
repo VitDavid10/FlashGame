@@ -580,6 +580,7 @@ function buildAdminState() {
             jugadores: [...rooms.values()].reduce((s, r) => s + r.clients.size, 0),
             jugadoresReales: [...rooms.values()].reduce((s, r) => { for (const c of r.clients.values()) if (!c.isTester) s++; return s; }, 0),
             jugadoresUnicos: Object.keys(playerStats).length,
+            jugadoresUnicosReal: Object.values(playerStats).filter(p => p.isReal).length,
         },
         rooms: list,
         ranking,
@@ -1087,7 +1088,7 @@ wss.on('connection', (ws, req) => {
             room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK });
             sendEcon(room.clients.get(playerId), room);
             const st_ = statsOf(key); st_.entradas++; if (!TESTER_OK) st_.entradasReal++; statsDirty = true;
-            if (name && !TESTER_OK) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; playersDirty = true; }
+            if (name && !TESTER_OK) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; st.isReal = true; playersDirty = true; }
             if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
             if (!TESTER_OK) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
             if (room.state === 'playing') { room.sim.spawnPlayer(playerId); refillBots(room); }
