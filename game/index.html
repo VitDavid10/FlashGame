@@ -1623,6 +1623,7 @@
         ignoreNextHover = true;
         currentGameMode = m;
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);   // wallet area solo al seleccionar modo
+        if (typeof refreshOracle === 'function') refreshOracle();   // refresca status de salas para el nuevo modo
         
         // Bloquear interacción durante transición
         els.modeScreen.style.pointerEvents = 'none'; 
@@ -1929,7 +1930,7 @@
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
     function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
-    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
@@ -2356,12 +2357,21 @@
     }
     // ORACLE: precio del token (PILL por $1) + tabla de salas. Status: VERDE >=50% del
     // tope · AMARILLO algo de gente pero <50% · GRIS vacía.
+    // El precio cambia cada 5 min (timer); los players/status se refrescan cada pocos
+    // segundos para que se vea en vivo si la sala se llena.
+    let _lastPillPerDollar = 0;
     async function refreshOracle() {
         try {
-            const data = await (await fetch('/api/rooms')).json();
-            gamePillPerDollar = data.pillPerDollar || gamePillPerDollar || 10000;
-            const rateEl = document.getElementById('oracleRateAmt');
-            if (rateEl) rateEl.textContent = Number(gamePillPerDollar).toLocaleString('en-US');
+            const data = await (await fetch('/api/rooms', { cache: 'no-store' })).json();
+            const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
+            // Reset del timer solo si el precio realmente cambió (cada 5 min en servidor).
+            if (newRate !== _lastPillPerDollar) {
+                _lastPillPerDollar = newRate;
+                oracleNextRefresh = Date.now() + ORACLE_EVERY_MS;
+                gamePillPerDollar = newRate;
+                const rateEl = document.getElementById('oracleRateAmt');
+                if (rateEl) rateEl.textContent = Number(gamePillPerDollar).toLocaleString('en-US');
+            }
             const cont = document.getElementById('oracleRows'); if (!cont) return;
             const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic'));
             cont.innerHTML = rowsForMode.map(r => {
@@ -2376,7 +2386,6 @@
                     <span class="ostatus ${cls}" title="${r.players} players"></span>
                 </div>`;
             }).join('');
-            oracleNextRefresh = Date.now() + ORACLE_EVERY_MS;
         } catch (e) {}
     }
     // Carrusel del panel inferior derecho: alterna MISSIONS ↔ SKINS
@@ -2399,7 +2408,9 @@
         if (left <= 0) refreshOracle();
     }
     refreshOracle();
-    setInterval(refreshOracle, ORACLE_EVERY_MS);
+    // Refresh frecuente: status de salas + precio. El precio solo dispara animación
+    // de timer cuando cambia (cada 5 min), pero los players se ven en vivo.
+    setInterval(refreshOracle, 8000);
     setInterval(tickOracleTimer, 1000);
     // Para salas de pago: comprueba saldo WAR y firma la entrada. Devuelve el objeto
     // `pay` para el join, o null si no se puede (ya avisa al usuario).
