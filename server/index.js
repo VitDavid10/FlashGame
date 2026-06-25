@@ -363,7 +363,7 @@ function broadcast(room, objOrString) {
 }
 
 function sendWaiting(room) {
-    broadcast(room, { t: 'waiting', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName });
+    broadcast(room, { t: 'waiting', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName, mode: room.mode });
 }
 
 function welcomeMsg(room, playerId, token, type) {
@@ -1097,6 +1097,9 @@ wss.on('connection', (ws, req) => {
             if (room.state === 'waiting') {
                 sendWaiting(room);
                 if (room.clients.size >= minRealOf(key)) startMatch(room);
+            } else if (room.state === 'ended') {
+                const restartIn = Math.max(0, room.restartAt - now);
+                ws.send(JSON.stringify({ t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName, mode: room.mode, restartIn }));
             }
             return;
         }
@@ -1244,6 +1247,7 @@ setInterval(() => {
                 room.pot = 0;
             }
             broadcast(room, { t: 'matchEnd' });
+            broadcast(room, { t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName, mode: room.mode, restartIn: RESTART_MS });
             log(`Partida terminada en ${room.key}; reinicio en ${RESTART_MS / 1000}s`);
             continue;
         }

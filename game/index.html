@@ -2609,7 +2609,21 @@
                     if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
                 }
             } else if (msg.t === 'waiting') {
-                if (practiceMode) setLobbyBanner('🌐 SALA ' + msg.roomName + ' — esperando jugadores (' + msg.count + '/' + msg.needed + ')   ·   PRÁCTICA OFFLINE');
+                if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
+                setLobbyBanner('🌐 SALA ' + msg.roomName + ' — esperando jugadores (' + msg.count + '/' + msg.needed + ')   ·   PRÁCTICA OFFLINE');
+                if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
+            } else if (msg.t === 'lobbyPreview') {
+                if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
+                if (window._lobbyPreviewTimer) clearInterval(window._lobbyPreviewTimer);
+                let remaining = Math.ceil((msg.restartIn || 0) / 1000);
+                const previewRoom = msg.roomName, previewCount = msg.count, previewNeeded = msg.needed;
+                const updatePreviewBanner = () => {
+                    if (remaining <= 0) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; return; }
+                    setLobbyBanner('🌐 SALA ' + previewRoom + ' — ' + previewCount + '/' + previewNeeded + ' jugadores · PRÓXIMA PARTIDA EN ' + remaining + 's   ·   PRÁCTICA OFFLINE');
+                    remaining--;
+                };
+                updatePreviewBanner();
+                window._lobbyPreviewTimer = setInterval(updatePreviewBanner, 1000);
             } else if (msg.t === 'roomRestart') {
                 // El admin reinició la sala en plena partida: fin como si murieses + TRY AGAIN
                 if (sim && sim.isRemote && sim.ws === ws && gameRunning && !practiceMode) {
@@ -2619,6 +2633,7 @@
                     showResultsUI();
                 }
             } else if (msg.t === 'matchStart') {
+                if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
                 practiceMode = false; setLobbyBanner(null);
                 spawnFloatingText('¡EMPIEZA LA PARTIDA ONLINE!', '#00ff88');
                 enterOnlineGame(ws, msg, false);
