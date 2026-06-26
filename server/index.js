@@ -149,13 +149,20 @@ function priceOf(roomName) { const m = String(roomName).match(/(\d+)\s*\$/); ret
 
 // --- Persistencia simple (historial, stats, reglas) ---
 function loadJson(file, fallback) { try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {} return fallback; }
-let connLog = [];
-try { if (fs.existsSync(LOG_FILE)) connLog = fs.readFileSync(LOG_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean); } catch (e) {}
-// Memoria acotada: solo guardamos las últimas N conexiones en RAM (en disco va todo).
-// Antes el array crecía sin tope; con stress tests largos llegaba a cientos de miles
-// → el panel admin se ralentizaba y subía la CPU recorriéndolo. 2000 es de sobra.
 const CONNLOG_MAX_RAM = 2000;
-function logConnection(entry) { connLog.push(entry); if (connLog.length > CONNLOG_MAX_RAM) connLog = connLog.slice(-CONNLOG_MAX_RAM); fs.appendFile(LOG_FILE, JSON.stringify(entry) + '\n', () => {}); }
+let connLog = [];
+try { if (fs.existsSync(LOG_FILE)) connLog = fs.readFileSync(LOG_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean).slice(-CONNLOG_MAX_RAM); } catch (e) {}
+// porPaisMap: { countryCode → { code, name, ips: Set<ip> } } — se mantiene incremental en logConnection.
+// Se popula desde connLog al arrancar (ya trimado) y desde geoOf (que usa el caché geo.json).
+const porPaisMap = {};
+function logConnection(entry) {
+    connLog.push(entry);
+    if (connLog.length > CONNLOG_MAX_RAM) connLog = connLog.slice(-CONNLOG_MAX_RAM);
+    fs.appendFile(LOG_FILE, JSON.stringify(entry) + '\n', () => {});
+    const g = geoOf(entry.ip);
+    if (!porPaisMap[g.code]) porPaisMap[g.code] = { code: g.code, name: g.name, ips: new Set() };
+    porPaisMap[g.code].ips.add(entry.ip);
+}
 
 // Log de acciones de administración (god/masa/echar/reiniciar/...), por sala
 const ADMINLOG_FILE = path.join(__dirname, 'adminlog.log');
@@ -255,7 +262,15 @@ function questsOf(clientId) {
 setInterval(() => {
     if (statsDirty) { statsDirty = false; fs.writeFile(STATS_FILE, JSON.stringify(roomStats), () => {}); }
     if (rulesDirty) { rulesDirty = false; fs.writeFile(RULES_FILE, JSON.stringify(roomRules), () => {}); }
-    if (playersDirty) { playersDirty = false; fs.writeFile(PLAYERS_FILE, JSON.stringify(playerStats), () => {}); }
+    if (playersDirty) {
+        playersDirty = false;
+        const cutoff = Date.now() - 30 * 86400000;
+        const toSave = {};
+        for (const [k, p] of Object.entries(playerStats)) {
+            if (!p.lastSeen || new Date(p.lastSeen).getTime() >= cutoff || (p.bestMass || 0) >= 10000 || (p.kills || 0) >= 50) toSave[k] = p;
+        }
+        fs.writeFile(PLAYERS_FILE, JSON.stringify(toSave), () => {});
+    }
     if (geoDirty) { geoDirty = false; fs.writeFile(GEO_FILE, JSON.stringify(geoCache), () => {}); }
     if (questsDirty) { questsDirty = false; fs.writeFile(QUESTS_FILE, JSON.stringify(questsStore), () => {}); }
 }, 5000);
@@ -322,6 +337,14 @@ setInterval(() => {
         });
     }).on('error', () => { geoQueued.delete(ip); geoFailedAt[ip] = Date.now(); });
 }, 2000);
+
+// Poblar porPaisMap desde el connLog ya cargado (trimado a CONNLOG_MAX_RAM entradas).
+// geoOf usa el caché de geo.json así que la mayoría de IPs se resuelven al instante.
+for (const c of connLog) {
+    const g = geoOf(c.ip);
+    if (!porPaisMap[g.code]) porPaisMap[g.code] = { code: g.code, name: g.name, ips: new Set() };
+    porPaisMap[g.code].ips.add(c.ip);
+}
 
 // --- Salas ---
 function buildSim(mode, rules) {
@@ -553,13 +576,7 @@ function buildAdminState() {
         .slice(0, 500)   // el panel pagina/busca en cliente (top 10 por página)
         .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' }; return Object.assign({}, p, { key, paisCode: g.code, paisName: g.name }); });
     // Ranking de países: JUGADORES DISTINTOS (IPs únicas) por país, no entradas
-    const porPais = {};
-    for (const c of connLog) {
-        const g = geoOf(c.ip);
-        if (!porPais[g.code]) porPais[g.code] = { code: g.code, name: g.name, ips: new Set() };
-        porPais[g.code].ips.add(c.ip);
-    }
-    const paises = Object.values(porPais)
+    const paises = Object.values(porPaisMap)
         .map(p => ({ code: p.code, name: p.name, jugadores: p.ips.size }))
         .sort((a, b) => b.jugadores - a.jugadores);
     // Últimas conexiones: una sola entrada por IP (la más reciente)
