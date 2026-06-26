@@ -185,7 +185,7 @@ const playerStats = loadJson(PLAYERS_FILE, {}); // nombre (minúsculas) → { na
 let _rankingCache = [];
 let _rankingUpdatedAt = 0;
 let _rankingIncludesTesters = false;
-function isBotIp(ip) { return !ip || ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('127.'); }
+function isBotIp(ip) { return ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || (!!ip && ip.startsWith('127.')); }
 function computeRanking(includeTesters) {
     _rankingIncludesTesters = includeTesters;
     const t0 = performance.now();
