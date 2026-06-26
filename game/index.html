@@ -1033,6 +1033,7 @@
             <span id="econLabel">CARRY</span>: <span id="econVal" class="hud-val" style="color:#ffce3d">0</span> <span style="color:#888;font-size:11px">$PILL</span>
         </div>
         <div class="hud-item" id="debugHud" style="display:none;">FPS: <span id="fpsVal" style="color:#fff">0</span> | SPD: <span id="speedVal" style="color:#fff">0</span></div>
+        <div class="hud-item" id="netHud" style="display:none;">PING: <span id="pingVal" style="color:#fff">--</span>ms | SNAPS: <span id="snapsVal" style="color:#fff">--</span>/s | JIT: <span id="jitVal" style="color:#fff">--</span>ms | FPS: <span id="netFpsVal" style="color:#fff">--</span></div>
     </div>
     
     <div id="buffTable">
@@ -2052,6 +2053,60 @@
     // reciente para que el control se sienta inmediato (predicción ligera).
     const INTERP_DELAY_MS = 80;
 
+    // HUD de red online: muestra ping RTT, snapshots recibidos/s, jitter y FPS.
+    // Toggle con F4. Visible solo durante partida online.
+    const NetHud = {
+        enabled: true,
+        ping: 0,            // último RTT
+        pingEma: 0,         // RTT suavizado
+        snapTimes: [],      // timestamps de los snaps recibidos en el último segundo
+        snapsPerSec: 0,
+        jitter: 0,          // desviación entre intervalos de snapshots (ms)
+        reportPing(rtt) {
+            this.ping = rtt;
+            this.pingEma = this.pingEma ? Math.round(this.pingEma * 0.7 + rtt * 0.3) : rtt;
+        },
+        reportSnap() {
+            const now = Date.now();
+            this.snapTimes.push(now);
+            while (this.snapTimes.length && this.snapTimes[0] < now - 1000) this.snapTimes.shift();
+            this.snapsPerSec = this.snapTimes.length;
+            // Jitter: stddev de los gaps entre snaps del último segundo.
+            const t = this.snapTimes;
+            if (t.length >= 3) {
+                let sum = 0, sumSq = 0, n = 0;
+                for (let i = 1; i < t.length; i++) { const g = t[i] - t[i-1]; sum += g; sumSq += g*g; n++; }
+                const mean = sum / n;
+                this.jitter = Math.round(Math.sqrt(Math.max(0, sumSq / n - mean * mean)));
+            } else this.jitter = 0;
+        },
+        toggle() { this.enabled = !this.enabled; this.update(); },
+        update() {
+            const el = document.getElementById('netHud');
+            if (!el) return;
+            const online = sim && sim.isRemote;
+            if (!this.enabled || !online) { el.style.display = 'none'; return; }
+            el.style.display = '';
+            const p = this.pingEma | 0;
+            const pColor = p < 80 ? '#0f0' : (p < 180 ? '#ffce3d' : '#ff4444');
+            const sps = this.snapsPerSec;
+            const sColor = sps >= 30 ? '#0f0' : (sps >= 15 ? '#ffce3d' : '#ff4444');
+            const j = this.jitter;
+            const jColor = j < 10 ? '#0f0' : (j < 25 ? '#ffce3d' : '#ff4444');
+            document.getElementById('pingVal').textContent = p;
+            document.getElementById('pingVal').style.color = pColor;
+            document.getElementById('snapsVal').textContent = sps;
+            document.getElementById('snapsVal').style.color = sColor;
+            document.getElementById('jitVal').textContent = j;
+            document.getElementById('jitVal').style.color = jColor;
+            document.getElementById('netFpsVal').textContent = els.fpsVal.textContent;
+        }
+    };
+    // Refresca el HUD 4 veces por segundo (no en cada frame, así no añade trabajo al loop).
+    setInterval(() => NetHud.update(), 250);
+    // F4 toggle
+    window.addEventListener('keydown', (e) => { if (e.key === 'F4') { e.preventDefault(); NetHud.toggle(); } });
+
     class RemoteSim {
         constructor(ws, welcome) {
             this.isRemote = true;
@@ -2078,7 +2133,12 @@
         remainingMs() { return (this._tlBase == null) ? null : Math.max(0, this._tlBase - (Date.now() - this._tlAt)); }
 
         onMessage(msg) {
+            if (msg.t === 'pong' && typeof msg.ts === 'number') {
+                NetHud.reportPing(Date.now() - msg.ts);
+                return;
+            }
             if (msg.t === 'snap') {
+                NetHud.reportSnap();
                 this.snaps.push(msg);
                 if (this.snaps.length > 30) this.snaps.shift();
                 if (msg.tl != null) { this._tlBase = msg.tl; this._tlAt = Date.now(); }
@@ -2128,6 +2188,11 @@
                 this._lastInputSent = this.now;
                 const i = this._lastInput;
                 this._send(i ? { t: 'input', tx: i.tx, ty: i.ty } : { t: 'input', tx: null, ty: null });
+            }
+            // Ping para el HUD de red: 1 cada segundo
+            if (!this._lastPingSent || this.now - this._lastPingSent >= 1000) {
+                this._lastPingSent = this.now;
+                this._send({ t: 'ping', ts: Date.now() });
             }
             if (this.snaps.length === 0) return;
             // Reloj de servidor estimado: avanza con el frame y se corrige suavemente
