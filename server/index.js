@@ -179,6 +179,9 @@ const PLAYERS_FILE = path.join(__dirname, 'players.json');
 const roomStats = loadJson(STATS_FILE, {});     // roomKey → { entradas, muertes }
 const roomRules = loadJson(RULES_FILE, {});     // roomKey → { speed, food, virus, botsEnabled, botCount }
 const playerStats = loadJson(PLAYERS_FILE, {}); // nombre (minúsculas) → { name, partidas, kills, muertes, lastSeen, lastIp }
+// Purga en memoria al arrancar: libera heap de jugadores inactivos >30 días sin récord.
+// Sin esto, playerStats crece hasta 87k+ entradas → el save itera todo en el main thread.
+{ const _pCutoff = new Date(Date.now() - 30 * 86400000).toISOString(); for (const k of Object.keys(playerStats)) { const p = playerStats[k]; if (p.lastSeen && p.lastSeen < _pCutoff && (p.bestMass || 0) < 10000 && (p.kills || 0) < 50) delete playerStats[k]; } }
 let statsDirty = false, rulesDirty = false, playersDirty = false;
 function statsOf(key) { if (!roomStats[key]) roomStats[key] = { entradas: 0, muertes: 0, entradasReal: 0, muertesReal: 0 }; const s = roomStats[key]; if (s.entradasReal == null) { s.entradasReal = 0; s.muertesReal = 0; } return s; }
 function rulesOf(key) {
@@ -264,10 +267,10 @@ setInterval(() => {
     if (rulesDirty) { rulesDirty = false; fs.writeFile(RULES_FILE, JSON.stringify(roomRules), () => {}); }
     if (playersDirty) {
         playersDirty = false;
-        const cutoff = Date.now() - 30 * 86400000;
+        const cutoffStr = new Date(Date.now() - 30 * 86400000).toISOString();
         const toSave = {};
         for (const [k, p] of Object.entries(playerStats)) {
-            if (!p.lastSeen || new Date(p.lastSeen).getTime() >= cutoff || (p.bestMass || 0) >= 10000 || (p.kills || 0) >= 50) toSave[k] = p;
+            if (!p.lastSeen || p.lastSeen >= cutoffStr || (p.bestMass || 0) >= 10000 || (p.kills || 0) >= 50) toSave[k] = p;
         }
         fs.writeFile(PLAYERS_FILE, JSON.stringify(toSave), () => {});
     }

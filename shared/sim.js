@@ -146,15 +146,17 @@
     class SpatialGrid {
         constructor(cellSize) { this.cellSize = cellSize; this.buckets = new Map(); }
         clear() { this.buckets.clear(); }
-        key(x, y) { return `${Math.floor(x / this.cellSize)},${Math.floor(y / this.cellSize)}`; }
+        // Clave entera: evita template strings (150ns/llamada → ~1ns).
+        // Rango seguro para |cx|,|cy| < 256 (cubre mapSize hasta ~38400 con cellSize=150).
         insert(obj) {
-            const k = this.key(obj.x, obj.y);
-            if (!this.buckets.has(k)) this.buckets.set(k, []);
-            this.buckets.get(k).push(obj);
+            const cs = this.cellSize;
+            const k = (Math.floor(obj.x / cs) + 256) * 512 + (Math.floor(obj.y / cs) + 256);
+            let b = this.buckets.get(k);
+            if (!b) { b = []; this.buckets.set(k, b); }
+            b.push(obj);
         }
         // radius opcional en unidades de mundo. Sin radius, busca 3x3 celdas.
         // Con radius, cubre ceil(radius/cellSize) celdas en cada dirección.
-        // Devuelve buckets concatenados (con push, no .concat → menos basura).
         query(x, y, radius) {
             const cs = this.cellSize;
             const cx = Math.floor(x / cs), cy = Math.floor(y / cs);
@@ -162,7 +164,7 @@
             const results = [];
             for (let i = -r; i <= r; i++) {
                 for (let j = -r; j <= r; j++) {
-                    const b = this.buckets.get(`${cx + i},${cy + j}`);
+                    const b = this.buckets.get((cx + i + 256) * 512 + (cy + j + 256));
                     if (b) for (const o of b) results.push(o);
                 }
             }
@@ -749,14 +751,19 @@
 
             // Celdas de jugadores: movimiento, colisiones internas, muerte
             for (const p of this.players.values()) {
-                if (p.cells.length > 0) { const maxR = Math.max(...p.cells.map(x => x.r)); p.cells.forEach(c => c.groupMaxR = maxR); }
+                if (p.cells.length > 0) {
+                    let maxR = 0; for (const c of p.cells) if (c.r > maxR) maxR = c.r;
+                    for (const c of p.cells) c.groupMaxR = maxR;
+                }
                 for (let i = 0; i < p.cells.length; i++) { let c = p.cells[i]; c.update(this, delta, p.input); for (let j = i + 1; j < p.cells.length; j++) this.resolveCellCollision(c, p.cells[j], true); }
                 p.cells = p.cells.filter(c => c.r > 0);
                 if (p.alive && p.cells.length === 0) { p.alive = false; this.emit({ type: 'playerDied', playerId: p.id }); }
             }
 
-            // Bots: IA + movimiento, y combate bot-jugador / bot-bot
-            this.enemies.forEach(bot => { let maxR = 0; this.enemies.forEach(s => { if (s.id === bot.id && s.r > maxR) maxR = s.r; }); bot.groupMaxR = maxR; bot.update(this, delta, null); });
+            // Bots: IA + movimiento. groupMaxR precalculado en O(N) en vez de O(N²).
+            const _botMaxR = new Map();
+            for (const bot of this.enemies) { const prev = _botMaxR.get(bot.id) || 0; if (bot.r > prev) _botMaxR.set(bot.id, bot.r); }
+            for (const bot of this.enemies) { bot.groupMaxR = _botMaxR.get(bot.id) || bot.r; bot.update(this, delta, null); }
 
             for (let i = this.enemies.length - 1; i >= 0; i--) {
                 let bot = this.enemies[i]; if (bot.r <= 0) { this.enemies.splice(i, 1); continue; }
