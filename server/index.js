@@ -184,10 +184,13 @@ const playerStats = loadJson(PLAYERS_FILE, {}); // nombre (minúsculas) → { na
 // bloqueaba el main thread ~90ms — ahora es O(1) en cada poll.
 let _rankingCache = [];
 let _rankingUpdatedAt = 0;
+let _rankingIncludesTesters = false;
+function isBotIp(ip) { return !ip || ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('127.'); }
 function computeRanking(includeTesters) {
+    _rankingIncludesTesters = includeTesters;
     const t0 = performance.now();
     _rankingCache = Object.entries(playerStats)
-        .filter(([, p]) => p.name && p.name.trim().length > 0 && (includeTesters || p.isReal !== false))
+        .filter(([, p]) => p.name && p.name.trim().length > 0 && (includeTesters || !isBotIp(p.lastIp)))
         .sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas))
         .slice(0, 500)
         .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' }; return Object.assign({}, p, { key, paisCode: g.code, paisName: g.name }); });
@@ -1026,6 +1029,7 @@ wss.on('connection', (ws, req) => {
                     delete playerStats[key]; playersDirty = true;
                     logAdmin('-', 'Borró del ranking', nombre);
                     log(`ADMIN borró del ranking: ${nombre}`);
+                    if (_rankingUpdatedAt > 0) computeRanking(_rankingIncludesTesters);
                 }
             } else if (msg.cmd === 'deleteRankingMany' && Array.isArray(msg.keys)) {
                 let borrados = 0;
@@ -1033,7 +1037,12 @@ wss.on('connection', (ws, req) => {
                     const key = String(raw).toLowerCase();
                     if (playerStats[key]) { delete playerStats[key]; borrados++; }
                 }
-                if (borrados) { playersDirty = true; logAdmin('-', 'Borró del ranking (lote)', borrados + ' jugadores'); log(`ADMIN borró ${borrados} jugadores del ranking`); }
+                if (borrados) {
+                    playersDirty = true;
+                    logAdmin('-', 'Borró del ranking (lote)', borrados + ' jugadores');
+                    log(`ADMIN borró ${borrados} jugadores del ranking`);
+                    if (_rankingUpdatedAt > 0) computeRanking(_rankingIncludesTesters);
+                }
             } else if (msg.cmd === 'resetQuests') {
                 const cuantos = Object.keys(questsStore).length;
                 for (const k of Object.keys(questsStore)) delete questsStore[k];
