@@ -2171,29 +2171,20 @@
                 o.mass = Math.PI * o.r * (o.r * PILL_RATIO);
             };
 
-            // Celdas propias: último snapshot + extrapolación con su velocidad
-            const sN = this.snaps[this.snaps.length - 1];
-            const sP = this.snaps.length > 1 ? this.snaps[this.snaps.length - 2] : sN;
-            const mPrev = this._index(sP);
-            const dtN = Math.max(1, sN.time - sP.time);
-            const ahead = Math.max(0, Math.min(150, this.svrTime - sN.time));
+            // Celdas propias: MISMA interpolación s0→s1 que el resto. Antes se
+            // extrapolaba con la velocidad de los 2 últimos snapshots, pero al
+            // cambiar de dirección esa velocidad va obsoleta → "rubber band"
+            // (la píldora va para adelante y se corrige hacia atrás al llegar
+            // el nuevo snapshot). Renderizar el pasado conocido es suave.
             const meP = this.players.get('me');
-            const meSnap = sN.players.find(q => q.id === this.myId);
+            const mePl = s1.players.find(q => q.id === this.myId);
             const meCells = [];
-            if (meSnap) {
-                for (const cd of meSnap.cells) {
+            if (mePl) {
+                for (const cd of mePl.cells) {
                     const o = this._obj(cd.ci, seen);
-                    const prev = mPrev.get(cd.ci);
-                    const vx = prev ? (cd.x - prev.x) / dtN : 0, vy = prev ? (cd.y - prev.y) / dtN : 0;
-                    // Objetivo extrapolado + mezcla exponencial continua: sin esto,
-                    // cada snapshot "re-basa" la posición y la píldora vibra.
-                    const txp = cd.x + vx * ahead, typ = cd.y + vy * ahead;
-                    if (o._init) {
-                        const k = 1 - Math.exp(-(this._frameDelta || 16) / 60);
-                        o.x += (txp - o.x) * k; o.y += (typ - o.y) * k;
-                        o.r += (cd.r - o.r) * Math.min(1, (this._frameDelta || 16) / 100);
-                    } else { o.x = txp; o.y = typ; o.r = cd.r; o._init = true; }
-                    fill(o, cd, 'me', meSnap.name, false);
+                    const c0 = m0.get(cd.ci) || cd;
+                    o.x = lerp(c0.x, cd.x); o.y = lerp(c0.y, cd.y); o.r = lerp(c0.r, cd.r);
+                    fill(o, cd, 'me', mePl.name, false);
                     meCells.push(o);
                 }
             }
