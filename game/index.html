@@ -2727,6 +2727,11 @@
         };
         ws.onmessage = (e) => {
             let msg; try { msg = JSON.parse(e.data); } catch (err) { return; }
+            // Tras matchEnd ignoramos cualquier mensaje del WS: el modal de
+            // resultados queda visible y el user decide con TRY AGAIN (nueva
+            // firma) o BACK TO MENU. Sin esto, lobbyPreview/matchStart te
+            // metían a la siguiente partida sin cobrar la entrada → bote mal.
+            if (netState && netState._matchOver) return;
             if (msg.t === 'welcome' && !joined) {
                 joined = true; restoreBtn(); netState.attempts = 0; netState.token = msg.token;
                 netState.lastWelcome = msg;
@@ -2794,6 +2799,9 @@
                 if (gameRunning) abandonNet('You have been kicked by an administrator.');
                 return;
             }
+            // Cierre limpio tras matchEnd: el modal de resultados ya está abierto
+            // y el user decide. No reconectar ni mostrar "Connection lost".
+            if (netState && netState._matchOver) return;
             if (!gameRunning || !netState || netState.ws !== ws) return;
             if (netState.token && netState.attempts < 5) {
                 netState.attempts++;
@@ -2969,7 +2977,17 @@
                     break;
                 }
                 case 'skillsUI': if (ev.playerId === 'me') updateSkillsUI_Arcade(); break;
-                case 'matchEnd': finishGameSuccess(); break;
+                case 'matchEnd':
+                    // Marcar fin de partida online: bloquea futuros mensajes del WS
+                    // (lobbyPreview/matchStart/etc) y cierra la conexión limpia.
+                    // El cliente sale de room.clients del server → la siguiente
+                    // partida ya no lo incluye sin pagar.
+                    if (typeof netState !== 'undefined' && netState) {
+                        netState._matchOver = true;
+                        if (netState.ws) { try { netState.ws.close(); } catch (e) {} }
+                    }
+                    finishGameSuccess();
+                    break;
             }
         }
     }
