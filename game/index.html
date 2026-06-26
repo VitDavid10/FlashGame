@@ -87,17 +87,62 @@
         .mb-highlight { color: var(--primary); font-weight: bold; }
         .mb-warn { color: var(--accent); font-weight: bold; }
 
+        .mb-continue {
+            margin-top: 28px;
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            font-family: 'Russo One', sans-serif;
+            font-size: 13px;
+            letter-spacing: 2px;
+            padding: 12px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+        .mb-continue:hover, .mb-continue:active {
+            background: var(--primary);
+            color: #04150c;
+            box-shadow: 0 0 22px rgba(0,255,136,0.45);
+        }
+
         @keyframes floatIcon {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
 
-        /* REGLA DE BLOQUEO: 
-           Se activa si la pantalla es menor a 900px O si el dispositivo es táctil (móvil/tablet) */
+        /* REGLA DE BLOQUEO:
+           Se activa si la pantalla es menor a 900px O si el dispositivo es táctil (móvil/tablet).
+           Cuando el usuario pulsa "Continue anyway", se añade body.mobile-allowed y se desactiva el bloqueo. */
         @media (max-width: 900px), (pointer: coarse) and (max-width: 1024px) {
             #mobileBlock { display: flex !important; }
-            /* Opcional: Ocultar el resto para ahorrar recursos visuales */
             #modeScreen, #loginOverlay, #ui, #gameCanvas { filter: blur(10px); pointer-events: none; }
+        }
+        body.mobile-allowed #mobileBlock { display: none !important; }
+        body.mobile-allowed #modeScreen,
+        body.mobile-allowed #loginOverlay,
+        body.mobile-allowed #ui,
+        body.mobile-allowed #gameCanvas { filter: none !important; pointer-events: auto !important; }
+
+        /* --- ESCALADO MÓVIL: HUD y menú proporcionales como un juego móvil ---
+           Solo se aplica cuando el usuario aceptó jugar en móvil (.mobile-allowed)
+           Y la pantalla es realmente pequeña. */
+        @media (max-width: 900px), (pointer: coarse) and (max-width: 1024px) {
+            /* Menú: zoom físico para que el layout de escritorio (1200px+) entre en 375-768px.
+               zoom afecta al cálculo de layout (no solo a la pintura), así que evita overflow. */
+            body.mobile-allowed #modeScreen { zoom: 0.55; overflow-y: auto; }
+
+            /* En sesión, escalar el HUD proporcionalmente. */
+            body.mobile-allowed #actionBar { transform: scale(0.7); transform-origin: bottom center; }
+            body.mobile-allowed #ui { transform: scale(0.75); transform-origin: top left; }
+            body.mobile-allowed #leaderboard { transform: scale(0.7); transform-origin: top right; }
+            body.mobile-allowed #minimap { transform: scale(0.7); transform-origin: bottom right; }
+            body.mobile-allowed .sound-btn { width: 34px; height: 34px; }
+            body.mobile-allowed .sound-btn svg { width: 18px; height: 18px; }
+            body.mobile-allowed #soundToggle { right: 12px; top: 12px; }
+            body.mobile-allowed #musicToggle { right: 54px; top: 12px; }
+            body.mobile-allowed #exitGameBtn { right: 96px; top: 12px; }
         }
 
         /* --- UI & BUTTONS --- */
@@ -636,15 +681,27 @@
     <!-- PANTALLA DE BLOQUEO (Solo visible en móviles/tablets por CSS) -->
     <div id="mobileBlock">
         <div class="mb-icon">💻</div>
-        <div class="mb-title">Desktop Only</div>
+        <div class="mb-title">Desktop Recommended</div>
         <div class="mb-desc">
-            PillWars Arena is designed for competitive play using <span class="mb-highlight">Mouse & Keyboard</span>.
+            PillWars Arena is designed for <span class="mb-highlight">Mouse &amp; Keyboard</span>.
             <br><br>
-            <span class="mb-warn">Mobile devices are not supported.</span>
-            <br>
-            Please create room on a PC/Mac.
+            On mobile you can play <span class="mb-highlight">Free rooms only</span> with touch controls — drag to move, double-tap to split.
+            <br><br>
+            <span class="mb-warn">Paid rooms require a PC/Mac.</span>
         </div>
+        <button class="mb-continue" onclick="allowMobile()">CONTINUE ANYWAY</button>
     </div>
+    <script>
+        // Mobile gate: si el usuario aceptó previamente, restaurar el estado al cargar.
+        // Persistente (localStorage) para no preguntar de nuevo.
+        function allowMobile() {
+            try { localStorage.setItem('pw_mobile_allowed', '1'); } catch(e) {}
+            document.body.classList.add('mobile-allowed');
+        }
+        try {
+            if (localStorage.getItem('pw_mobile_allowed') === '1') document.body.classList.add('mobile-allowed');
+        } catch(e) {}
+    </script>
 
  <!-- BOTONES SONIDO/MUSICA Y SALIDA -->
     <div id="soundToggle" class="sound-btn" onclick="toggleAudio()" title="Sound Effects">
@@ -1695,7 +1752,15 @@
     function toggleStyleUI() { const m = document.querySelector('input[name="styleMode"]:checked').value; document.getElementById('colorPickersContainer').style.display = (m === 'color') ? 'flex' : 'none'; document.getElementById('skinInputContainer').style.display = (m === 'skin') ? 'block' : 'none'; }
     function toggleBotOptions() { const isChecked = document.getElementById('botsToggle').checked; document.getElementById('botOptionsGroup').style.opacity = isChecked ? "1" : "0.3"; document.getElementById('botOptionsGroup').style.pointerEvents = isChecked ? "auto" : "none"; }
 
-    function selectServer(a, b) { SoundManager.play('simpleselect'); gameRunning = false; currentServer = a; document.querySelectorAll('.srv-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function selectServer(a, b) {
+        // En móvil (warning aceptado) solo se permite la sala FREE; las de pago requieren PC/Mac.
+        if (document.body.classList.contains('mobile-allowed') && a !== 'Free') {
+            SoundManager.play('cd');
+            alert('Paid rooms require a PC/Mac. Free room is available on mobile.');
+            return;
+        }
+        SoundManager.play('simpleselect'); gameRunning = false; currentServer = a; document.querySelectorAll('.srv-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode);
+    }
     function toggleExitModal() {
         if(!gameRunning) return;
         const modal = document.getElementById('exitModal'); const btn = document.getElementById('btnConfirmExit'); const title = document.getElementById('exitModalTitle'); const desc = document.getElementById('exitModalDesc');
