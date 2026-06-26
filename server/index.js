@@ -179,22 +179,20 @@ const PLAYERS_FILE = path.join(__dirname, 'players.json');
 const roomStats = loadJson(STATS_FILE, {});     // roomKey → { entradas, muertes }
 const roomRules = loadJson(RULES_FILE, {});     // roomKey → { speed, food, virus, botsEnabled, botCount }
 const playerStats = loadJson(PLAYERS_FILE, {}); // nombre (minúsculas) → { name, partidas, kills, muertes, lastSeen, lastIp }
-// Purga en memoria al arrancar: libera heap de jugadores inactivos >30 días sin récord.
-// Sin esto, playerStats crece hasta 87k+ entradas → el save itera todo en el main thread.
-// Incluye entradas sin lastSeen (anónimos antiguos, antes de añadir el campo) sin récord
-// notable: si no tienen ni 10k de masa ni 50 kills, son ruido histórico — fuera.
-{
-    const _pCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
-    const _antes = Object.keys(playerStats).length;
-    let _borrados = 0;
-    for (const k of Object.keys(playerStats)) {
-        const p = playerStats[k];
-        const recent = p.lastSeen && p.lastSeen >= _pCutoff;
-        const noRecord = (p.bestMass || 0) < 10000 && (p.kills || 0) < 50;
-        if (!recent && noRecord) { delete playerStats[k]; _borrados++; }
-    }
-    console.log(`[purge] playerStats: ${_antes} → ${_antes - _borrados} (eliminados ${_borrados})`);
-    playersDirty = true;   // forzar reescritura del fichero compactado al primer save
+// Ranking cacheado: se calcula bajo demanda desde el panel (cmd updateRanking),
+// no en cada poll de buildAdminState. Con 87k entradas, calcular en cada poll
+// bloqueaba el main thread ~90ms — ahora es O(1) en cada poll.
+let _rankingCache = [];
+let _rankingUpdatedAt = 0;
+function computeRanking(includeTesters) {
+    const t0 = performance.now();
+    _rankingCache = Object.entries(playerStats)
+        .filter(([, p]) => p.name && p.name.trim().length > 0 && (includeTesters || p.isReal !== false))
+        .sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas))
+        .slice(0, 500)
+        .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' }; return Object.assign({}, p, { key, paisCode: g.code, paisName: g.name }); });
+    _rankingUpdatedAt = Date.now();
+    log(`Ranking actualizado: ${_rankingCache.length} jugadores (${includeTesters ? 'con' : 'sin'} testers) en ${(performance.now() - t0).toFixed(0)}ms`);
 }
 let statsDirty = false, rulesDirty = false, playersDirty = false;
 function statsOf(key) { if (!roomStats[key]) roomStats[key] = { entradas: 0, muertes: 0, entradasReal: 0, muertesReal: 0 }; const s = roomStats[key]; if (s.entradasReal == null) { s.entradasReal = 0; s.muertesReal = 0; } return s; }
@@ -277,29 +275,30 @@ function questsOf(clientId) {
 // Saves periódicos. JSON.stringify SIN pretty-print: el indent=1 multiplica tamaño
 // y tiempo de serialización; estos archivos no se leen a mano en producción.
 // Instrumentado: si un save bloquea >30ms se loguea — así diagnosticamos el lag.max.
+function _t(label, fn) {
+    const t0 = performance.now();
+    fn();
+    const dt = performance.now() - t0;
+    if (dt > 30) console.log(`[slow-save] ${label}: ${dt.toFixed(1)}ms`);
+}
 setInterval(() => {
-    const _t = (label, fn) => {
-        const t0 = performance.now();
-        fn();
-        const dt = performance.now() - t0;
-        if (dt > 30) console.log(`[slow-save] ${label}: ${dt.toFixed(1)}ms`);
-    };
     if (statsDirty)   { statsDirty = false;   _t('stats',   () => fs.writeFile(STATS_FILE,   JSON.stringify(roomStats),  () => {})); }
     if (rulesDirty)   { rulesDirty = false;   _t('rules',   () => fs.writeFile(RULES_FILE,   JSON.stringify(roomRules),  () => {})); }
-    if (playersDirty) {
-        playersDirty = false;
-        _t('players', () => {
-            const cutoffStr = new Date(Date.now() - 30 * 86400000).toISOString();
-            const toSave = {};
-            for (const [k, p] of Object.entries(playerStats)) {
-                if (!p.lastSeen || p.lastSeen >= cutoffStr || (p.bestMass || 0) >= 10000 || (p.kills || 0) >= 50) toSave[k] = p;
-            }
-            fs.writeFile(PLAYERS_FILE, JSON.stringify(toSave), () => {});
-        });
-    }
+    // playerStats se guarda en su propio intervalo (2 min) y en shutdown — no aquí.
     if (geoDirty)     { geoDirty = false;     _t('geo',     () => fs.writeFile(GEO_FILE,     JSON.stringify(geoCache),    () => {})); }
     if (questsDirty) { questsDirty = false; _t('quests', () => fs.writeFile(QUESTS_FILE, JSON.stringify(questsStore), () => {})); }
 }, 5000);
+
+// playerStats: se guarda cada 2 min (red de seguridad) y en shutdown.
+// NO está en el intervalo de 5s — con 87k+ entradas, JSON.stringify bloquea ~90ms el main thread.
+function savePlayerStats() {
+    if (!playersDirty) return;
+    playersDirty = false;
+    _t('players', () => fs.writeFile(PLAYERS_FILE, JSON.stringify(playerStats), () => {}));
+}
+setInterval(savePlayerStats, 2 * 60 * 1000);
+process.on('SIGTERM', () => { savePlayerStats(); process.exit(0); });
+process.on('SIGINT',  () => { savePlayerStats(); process.exit(0); });
 
 function cleanIp(addr) { return String(addr || '?').replace(/^::ffff:/, '').replace(/^::1$/, 'localhost'); }
 // Anonimiza la IP (RGPD): IPv4 sin el último octeto, IPv6 solo el prefijo /48.
@@ -595,12 +594,9 @@ function buildAdminState() {
     }
     let totEntradas = 0, totMuertes = 0, totDinero = 0, totEntradasReal = 0, totMuertesReal = 0, totDineroReal = 0;
     for (const e of list) { totEntradas += e.stats.entradas; totMuertes += e.stats.muertes; totDinero += e.stats.dinero; totEntradasReal += e.stats.entradasReal; totMuertesReal += e.stats.muertesReal; totDineroReal += e.stats.dineroReal; }
-    // Ranking de jugadores con nombre (los anónimos quedan fuera); con país por IP
-    const ranking = Object.entries(playerStats)
-        .filter(([k, p]) => p.name && p.name.trim().length > 0)
-        .sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas))
-        .slice(0, 500)   // el panel pagina/busca en cliente (top 10 por página)
-        .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' }; return Object.assign({}, p, { key, paisCode: g.code, paisName: g.name }); });
+    // Ranking: usa el cache calculado bajo demanda (botón "Actualizar ranking" en panel).
+    // No se recalcula aquí — con 87k entradas bloquearía el main thread en cada poll.
+    const ranking = _rankingCache;
     // Ranking de países: JUGADORES DISTINTOS (IPs únicas) por país, no entradas
     const paises = Object.values(porPaisMap)
         .map(p => ({ code: p.code, name: p.name, jugadores: p.ips.size }))
@@ -630,6 +626,8 @@ function buildAdminState() {
         },
         rooms: list,
         ranking,
+        rankingUpdatedAt: _rankingUpdatedAt,
+        rankingStale: _rankingUpdatedAt === 0,
         paises,
         historial,
         adminLog: adminLog.slice(-60).reverse()
@@ -814,15 +812,15 @@ const httpServer = http.createServer(async (req, res) => {
 
     // Endpoint público del ranking (para "Global Elite" en la web). Ordena por bestMass.
     if (urlPath === '/ranking.json' || urlPath === '/api/ranking') {
-        const top = Object.entries(playerStats)
-            .filter(([k, p]) => p.name && p.name.trim().length > 0)
-            .sort(([, a], [, b]) => ((b.bestMass | 0) - (a.bestMass | 0)) || (b.kills - a.kills) || (b.partidas - a.partidas))
-            .slice(0, 100)   // la web pagina/busca en cliente (10 por página)
-            .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' };
-                return { name: p.name, bestMass: p.bestMass | 0, kills: p.kills | 0, muertes: p.muertes | 0, partidas: p.partidas | 0, paisCode: g.code, paisName: g.name };
-            });
+        // Sirve el cache — si está vacío (nunca actualizado) devuelve array vacío.
+        // Actualizar desde el panel admin con cmd updateRanking.
+        const top = _rankingCache.slice(0, 100).map(p => ({
+            name: p.name, bestMass: p.bestMass | 0, kills: p.kills | 0,
+            muertes: p.muertes | 0, partidas: p.partidas | 0,
+            paisCode: p.paisCode, paisName: p.paisName
+        }));
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ ranking: top, updated: Date.now() }));
+        res.end(JSON.stringify({ ranking: top, updated: _rankingUpdatedAt, stale: _rankingUpdatedAt === 0 }));
         return;
     }
     // Endpoint de quests: GET → lee el progreso del clientId; POST → suma eventos.
@@ -1017,6 +1015,10 @@ wss.on('connection', (ws, req) => {
             } else if (msg.cmd === 'shutdown' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala) { shutdownRoom(sala, 'admin'); logAdmin(msg.room, 'Apagó la sala', ''); }
+            } else if (msg.cmd === 'updateRanking') {
+                computeRanking(!!msg.includeTesters);
+                playersDirty = true;   // aprovechar para forzar save tras recalcular
+                logAdmin('-', 'Actualizó el ranking', msg.includeTesters ? 'con testers' : 'sin testers');
             } else if (msg.cmd === 'deleteRanking' && msg.playerKey) {
                 const key = String(msg.playerKey).toLowerCase();
                 if (playerStats[key]) {
