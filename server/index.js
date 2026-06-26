@@ -50,7 +50,7 @@ const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 function hzToEvery(hz) { return Math.max(1, Math.min(TICK_HZ, Math.round(TICK_HZ / Math.max(1, hz)))); }
 let SNAPSHOT_EVERY = hzToEvery(parseInt(process.env.SNAPSHOT_HZ, 10) || TICK_HZ);
 const EMPTY_ROOM_TTL = 60000;
-const RESUME_GRACE_MS = 15000;
+const RESUME_GRACE_MS = 30000;   // ventana para hacer REJOIN tras desconexión accidental
 const DEAD_REMOVE_MS = 3000;   // tras morir, retirar al jugador de la sim
 // Rate-limit por conexión (anti-flood/DoS). Un cliente real manda ~30-40 msg/s
 // (input 30 Hz + pings); dejamos margen de sobra. Por encima del umbral suave se

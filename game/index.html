@@ -2009,7 +2009,7 @@
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
     function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
-    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
@@ -2597,6 +2597,21 @@
     }
     async function startOnlineGame() {
         if (_joinInFlight) return;
+        // REJOIN: si hay token vivo, reconectar a la partida en curso sin pagar.
+        const rejoinInfo = Rejoin.get();
+        if (rejoinInfo) {
+            _joinInFlight = true; setPlayBtnState(true, 'REJOINING...');
+            SoundManager.play('select'); SoundManager.stopMenuMusic();
+            playerName = document.getElementById('playerNameInput').value.trim() || playerName || '';
+            netState = {
+                url: rejoinInfo.url,
+                token: rejoinInfo.token,
+                attempts: 0,
+                joinMsg: { t: 'join', mode: rejoinInfo.mode, room: rejoinInfo.room, name: playerName, cid: Quests.cid }
+            };
+            netConnect(true);   // isResume=true: añade j.resume = token
+            return;
+        }
         _joinInFlight = true; setPlayBtnState(true, 'SIGNING...');
         SoundManager.play('select'); SoundManager.stopMenuMusic();
         playerName = document.getElementById('playerNameInput').value.trim() || "";
@@ -2634,6 +2649,50 @@
         if (!texto) { b.style.display = 'none'; return; }
         b.style.display = 'block'; b.innerText = texto;
     }
+
+    // Rejoin: si te desconectas sin querer en mitad de una partida online,
+    // tienes una ventana (30s en server) para volver a entrar SIN pagar usando
+    // el token guardado. Mientras la ventana esté viva el botón PLAY ONLINE se
+    // sustituye por un REJOIN amarillo con countdown.
+    const REJOIN_KEY = 'pw_resume';
+    const REJOIN_WINDOW_MS = 28000;   // un poco menos que el grace del server por seguridad
+    const Rejoin = {
+        save(info) {
+            try { localStorage.setItem(REJOIN_KEY, JSON.stringify({ ...info, expiresAt: Date.now() + REJOIN_WINDOW_MS })); } catch (e) {}
+            this.refreshButton();
+        },
+        get() {
+            try {
+                const raw = localStorage.getItem(REJOIN_KEY);
+                if (!raw) return null;
+                const r = JSON.parse(raw);
+                if (!r || !r.expiresAt || Date.now() >= r.expiresAt) { this.clear(); return null; }
+                return r;
+            } catch (e) { return null; }
+        },
+        clear() {
+            try { localStorage.removeItem(REJOIN_KEY); } catch (e) {}
+            this.refreshButton();
+        },
+        refreshButton() {
+            const btn = document.getElementById('btnPlayOnline');
+            if (!btn) return;
+            const r = this.get();
+            if (r) {
+                const left = Math.max(0, Math.ceil((r.expiresAt - Date.now()) / 1000));
+                btn.style.background = '#ffce3d';
+                btn.style.color = '#04150c';
+                btn.innerText = 'REJOIN (' + left + 's)';
+                btn.dataset.rejoin = '1';
+            } else if (btn.dataset.rejoin) {
+                btn.style.background = '#1a73e8';
+                btn.style.color = '';
+                btn.innerText = 'PLAY ONLINE';
+                btn.dataset.rejoin = '';
+            }
+        }
+    };
+    setInterval(() => Rejoin.refreshButton(), 1000);
 
     // HUD del contador de espera (next match / cuenta atrás), integrado en la
     // barra superior junto a ROOM/MASS/ALIVE. Visible solo durante práctica
@@ -2819,7 +2878,10 @@
             } else if (msg.t === 'prize') {
                 EconHUD.showPrize(msg);
             } else if (msg.t === 'resumeFail') {
+                // Ventana de REJOIN cerrada (>30s o sala ya reiniciada).
+                Rejoin.clear();
                 netState.token = null; try { ws.close(); } catch (err) {}
+                showSystemMsg('The rejoin window has closed. Your slot was released and you need to enter again.', 'REJOIN EXPIRED');
             } else if (msg.t === 'kicked') {
                 window.__kicked = true;
             } else if (sim && sim.isRemote && sim.ws === ws) {
@@ -2877,6 +2939,17 @@
         if (!isResume) SoundManager.playMusic();
         gameRunning = true;
         if (isResume) spawnFloatingText('RECONECTADO', '#00ff88');
+        // Persiste info de rejoin: si la pestaña se cierra ahora, el user podrá
+        // volver a entrar sin pagar pulsando "REJOIN" en el menú durante 28s.
+        if (netState && netState.token) {
+            Rejoin.save({
+                token: netState.token,
+                url: netState.url,
+                mode: msg.mode,
+                room: (netState.joinMsg && netState.joinMsg.room) || currentServer,
+                roomName: msg.roomName
+            });
+        }
     }
 
     function lerpColor(a, b, amount) { if (typeof amount !== 'number') return a; var ah = parseInt(a.replace(/#/g, ''), 16), ar = ah >> 16, ag = ah >> 8 & 0xff, ab = ah & 0xff, bh = parseInt(b.replace(/#/g, ''), 16), br = bh >> 16, bg = bh >> 8 & 0xff, bb = bh & 0xff, rr = ar + amount * (br - ar), rg = ag + amount * (bg - ag), rb = ab + amount * (bb - ab); return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1); }
@@ -3015,11 +3088,13 @@
                     // Marcar fin de partida online: bloquea futuros mensajes del WS
                     // (lobbyPreview/matchStart/etc) y cierra la conexión limpia.
                     // El cliente sale de room.clients del server → la siguiente
-                    // partida ya no lo incluye sin pagar.
+                    // partida ya no lo incluye sin pagar. También limpia el
+                    // rejoin: la partida acabó normal, no es reconexión.
                     if (typeof netState !== 'undefined' && netState) {
                         netState._matchOver = true;
                         if (netState.ws) { try { netState.ws.close(); } catch (e) {} }
                     }
+                    Rejoin.clear();
                     finishGameSuccess();
                     break;
             }
