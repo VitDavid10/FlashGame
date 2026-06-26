@@ -152,13 +152,18 @@
             if (!this.buckets.has(k)) this.buckets.set(k, []);
             this.buckets.get(k).push(obj);
         }
-        query(x, y) {
-            const cx = Math.floor(x / this.cellSize), cy = Math.floor(y / this.cellSize);
-            let results = [];
-            for (let i = -1; i <= 1; i++) {
-                for (let j = -1; j <= 1; j++) {
+        // radius opcional en unidades de mundo. Sin radius, busca 3x3 celdas.
+        // Con radius, cubre ceil(radius/cellSize) celdas en cada dirección.
+        // Devuelve buckets concatenados (con push, no .concat → menos basura).
+        query(x, y, radius) {
+            const cs = this.cellSize;
+            const cx = Math.floor(x / cs), cy = Math.floor(y / cs);
+            const r = radius ? Math.ceil(radius / cs) : 1;
+            const results = [];
+            for (let i = -r; i <= r; i++) {
+                for (let j = -r; j <= r; j++) {
                     const b = this.buckets.get(`${cx + i},${cy + j}`);
-                    if (b) results = results.concat(b);
+                    if (b) for (const o of b) results.push(o);
                 }
             }
             return results;
@@ -269,14 +274,17 @@
 
             this.changeDirTimer--; if (Math.abs(this.x) > sim.mapSize - 200 || Math.abs(this.y) > sim.mapSize - 200) { this.targetX = 0; this.targetY = 0; return; }
             let flee = false, visionRange = 750, targetPrey = null;
-            let allEntities = [...sim.enemies, ...sim.allPlayerCells()];
 
-            allEntities.forEach(e => {
+            // Antes: `[...sim.enemies, ...sim.allPlayerCells()]` por cada bot líder cada tick.
+            // Ahora iteramos en sitio los dos contenedores sin crear el array intermedio.
+            const checkEntity = (e) => {
                 if (e.id === this.id) return;
                 let d = getEllipticalDist(this, e);
                 if (e.mass > this.mass * 1.25 && d < visionRange + this.r) { this.targetX = this.x - (e.x - this.x); this.targetY = this.y - (e.y - this.y); flee = true; }
                 else if (this.mass > e.mass * 1.25 && d < visionRange) { if (!targetPrey || d < targetPrey.dist) { targetPrey = { cell: e, dist: d }; } }
-            });
+            };
+            for (const e of sim.enemies) checkEntity(e);
+            for (const p of sim.players.values()) { for (const c of p.cells) checkEntity(c); }
 
             if (!flee && targetPrey) { let isHiding = sim.isHiddenInVirus(targetPrey.cell); if (!isHiding) { this.targetX = targetPrey.cell.x; this.targetY = targetPrey.cell.y; flee = true; } }
             if (!flee) sim.viruses.forEach(v => { if (this.r > v.r && getEllipticalDist(this, v) < this.r + 120) flee = true; });
@@ -335,8 +343,14 @@
         emit(ev) { this.events.push(ev); }
         drainEvents() { const evs = this.events; this.events = []; return evs; }
 
-        allPlayerCells() { let out = []; for (const p of this.players.values()) { for (const c of p.cells) out.push(c); } return out; }
-        livingCells() { return [...this.allPlayerCells(), ...this.enemies]; }
+        allPlayerCells() { const out = []; for (const p of this.players.values()) { for (const c of p.cells) out.push(c); } return out; }
+        // Push manual en vez de spread: con 200+ celdas el [...a, ...b] crea basura
+        // proporcional al total, y livingCells() se llama 2 veces por step + dentro de cada bot líder.
+        livingCells() {
+            const out = this.allPlayerCells();
+            for (const e of this.enemies) out.push(e);
+            return out;
+        }
         ownerCellsOf(cell) { if (cell.isBot) return this.enemies; const p = this.players.get(cell.id); return p ? p.cells : []; }
 
         addPlayer(id, opts = {}) {
@@ -674,9 +688,24 @@
             this.foodGrid.clear();
             for (let f of this.foods) this.foodGrid.insert(f);
 
-            // Imán: atrae comida hacia las celdas del jugador con la skill activa
+            // Imán: atrae comida cercana hacia cada celda del jugador con la skill activa.
+            // Antes iteraba TODAS las foods por cada celda (O(N×K) con N=miles); ahora consulta
+            // el foodGrid en el radio del magnet (~3-4 celdas del grid) — 2 órdenes menos.
             for (const p of this.players.values()) {
-                if (p.skillState[5] > 0) { p.cells.forEach(c => { if (c.tpPhase > 0) return; this.foods.forEach(f => { let dx = c.x - f.x, dy = c.y - f.y, dist = Math.sqrt(dx * dx + dy * dy); if (dist < (SKILL_PARAMS.magnetRange + c.r) && dist > 1) { f.x += (dx / dist) * 3 * timeScale; f.y += (dy / dist) * 3 * timeScale; } }); }); }
+                if (p.skillState[5] <= 0) continue;
+                for (const c of p.cells) {
+                    if (c.tpPhase > 0) continue;
+                    const range = SKILL_PARAMS.magnetRange + c.r;
+                    const nearby = this.foodGrid.query(c.x, c.y, range);
+                    for (const f of nearby) {
+                        const dx = c.x - f.x, dy = c.y - f.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < range && dist > 1) {
+                            f.x += (dx / dist) * 3 * timeScale;
+                            f.y += (dy / dist) * 3 * timeScale;
+                        }
+                    }
+                }
             }
 
             // Auto-split por hitos de masa
