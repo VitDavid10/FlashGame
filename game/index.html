@@ -1026,6 +1026,10 @@
     </div>
 
     <div id="ui">
+        <div class="hud-item" id="waitHud" style="display:none; border-color:rgba(26,115,232,0.6); background:rgba(26,115,232,0.12);">
+            <span id="waitLabel" style="color:#9bbfff; font-size:11px; letter-spacing:1.2px;">NEXT MATCH</span>
+            <span id="waitTimer" class="hud-val" style="color:#fff; margin-left:6px;">--</span>
+        </div>
         <div class="hud-item">ROOM: <span id="roomName" class="hud-val">5$</span></div>
         <div class="hud-item">MASS: <span id="score" class="hud-val">0</span></div>
         <div class="hud-item">ALIVE: <span id="enemyCount" class="hud-val">0</span></div>
@@ -2631,6 +2635,30 @@
         b.style.display = 'block'; b.innerText = texto;
     }
 
+    // HUD del contador de espera (next match / cuenta atrás), integrado en la
+    // barra superior junto a ROOM/MASS/ALIVE. Visible solo durante práctica
+    // mientras esperas a una sala online; se oculta en matchStart.
+    const WaitHud = {
+        showTimer(seconds) {
+            const el = document.getElementById('waitHud'); if (!el) return;
+            document.getElementById('waitLabel').innerText = 'NEXT MATCH';
+            document.getElementById('waitTimer').innerText = seconds + 's';
+            const v = document.getElementById('waitTimer');
+            v.style.color = seconds <= 5 ? '#ff4444' : (seconds <= 15 ? '#ffce3d' : '#00ff88');
+            el.style.display = '';
+        },
+        showCount(count, needed) {
+            const el = document.getElementById('waitHud'); if (!el) return;
+            document.getElementById('waitLabel').innerText = 'WAITING';
+            document.getElementById('waitTimer').innerText = count + '/' + needed;
+            document.getElementById('waitTimer').style.color = '#9bbfff';
+            el.style.display = '';
+        },
+        hide() {
+            const el = document.getElementById('waitHud'); if (el) el.style.display = 'none';
+        }
+    };
+
     function startPracticeGame(mode) {
         practiceMode = true;
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
@@ -2746,6 +2774,7 @@
             } else if (msg.t === 'waiting') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
                 setLobbyBanner('🌐 SALA ' + msg.roomName + ' — esperando jugadores (' + msg.count + '/' + msg.needed + ')   ·   PRÁCTICA OFFLINE');
+                WaitHud.showCount(msg.count, msg.needed);
                 if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
             } else if (msg.t === 'lobbyPreview') {
                 if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
@@ -2753,8 +2782,13 @@
                 let remaining = Math.ceil((msg.restartIn || 0) / 1000);
                 const previewRoom = msg.roomName, previewCount = msg.count, previewNeeded = msg.needed;
                 const updatePreviewBanner = () => {
-                    if (remaining <= 0) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; return; }
+                    if (remaining <= 0) {
+                        clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null;
+                        WaitHud.hide();
+                        return;
+                    }
                     setLobbyBanner('🌐 SALA ' + previewRoom + ' — ' + previewCount + '/' + previewNeeded + ' jugadores · PRÓXIMA PARTIDA EN ' + remaining + 's   ·   PRÁCTICA OFFLINE');
+                    WaitHud.showTimer(remaining);
                     remaining--;
                 };
                 updatePreviewBanner();
@@ -2769,7 +2803,7 @@
                 }
             } else if (msg.t === 'matchStart') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
-                practiceMode = false; setLobbyBanner(null);
+                practiceMode = false; setLobbyBanner(null); WaitHud.hide();
                 spawnFloatingText('¡EMPIEZA LA PARTIDA ONLINE!', '#00ff88');
                 enterOnlineGame(ws, msg, false);
             } else if (msg.t === 'roomFull') {
