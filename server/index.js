@@ -181,7 +181,21 @@ const roomRules = loadJson(RULES_FILE, {});     // roomKey → { speed, food, vi
 const playerStats = loadJson(PLAYERS_FILE, {}); // nombre (minúsculas) → { name, partidas, kills, muertes, lastSeen, lastIp }
 // Purga en memoria al arrancar: libera heap de jugadores inactivos >30 días sin récord.
 // Sin esto, playerStats crece hasta 87k+ entradas → el save itera todo en el main thread.
-{ const _pCutoff = new Date(Date.now() - 30 * 86400000).toISOString(); for (const k of Object.keys(playerStats)) { const p = playerStats[k]; if (p.lastSeen && p.lastSeen < _pCutoff && (p.bestMass || 0) < 10000 && (p.kills || 0) < 50) delete playerStats[k]; } }
+// Incluye entradas sin lastSeen (anónimos antiguos, antes de añadir el campo) sin récord
+// notable: si no tienen ni 10k de masa ni 50 kills, son ruido histórico — fuera.
+{
+    const _pCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+    const _antes = Object.keys(playerStats).length;
+    let _borrados = 0;
+    for (const k of Object.keys(playerStats)) {
+        const p = playerStats[k];
+        const recent = p.lastSeen && p.lastSeen >= _pCutoff;
+        const noRecord = (p.bestMass || 0) < 10000 && (p.kills || 0) < 50;
+        if (!recent && noRecord) { delete playerStats[k]; _borrados++; }
+    }
+    console.log(`[purge] playerStats: ${_antes} → ${_antes - _borrados} (eliminados ${_borrados})`);
+    playersDirty = true;   // forzar reescritura del fichero compactado al primer save
+}
 let statsDirty = false, rulesDirty = false, playersDirty = false;
 function statsOf(key) { if (!roomStats[key]) roomStats[key] = { entradas: 0, muertes: 0, entradasReal: 0, muertesReal: 0 }; const s = roomStats[key]; if (s.entradasReal == null) { s.entradasReal = 0; s.muertesReal = 0; } return s; }
 function rulesOf(key) {
@@ -262,20 +276,29 @@ function questsOf(clientId) {
 
 // Saves periódicos. JSON.stringify SIN pretty-print: el indent=1 multiplica tamaño
 // y tiempo de serialización; estos archivos no se leen a mano en producción.
+// Instrumentado: si un save bloquea >30ms se loguea — así diagnosticamos el lag.max.
 setInterval(() => {
-    if (statsDirty) { statsDirty = false; fs.writeFile(STATS_FILE, JSON.stringify(roomStats), () => {}); }
-    if (rulesDirty) { rulesDirty = false; fs.writeFile(RULES_FILE, JSON.stringify(roomRules), () => {}); }
+    const _t = (label, fn) => {
+        const t0 = performance.now();
+        fn();
+        const dt = performance.now() - t0;
+        if (dt > 30) console.log(`[slow-save] ${label}: ${dt.toFixed(1)}ms`);
+    };
+    if (statsDirty)   { statsDirty = false;   _t('stats',   () => fs.writeFile(STATS_FILE,   JSON.stringify(roomStats),  () => {})); }
+    if (rulesDirty)   { rulesDirty = false;   _t('rules',   () => fs.writeFile(RULES_FILE,   JSON.stringify(roomRules),  () => {})); }
     if (playersDirty) {
         playersDirty = false;
-        const cutoffStr = new Date(Date.now() - 30 * 86400000).toISOString();
-        const toSave = {};
-        for (const [k, p] of Object.entries(playerStats)) {
-            if (!p.lastSeen || p.lastSeen >= cutoffStr || (p.bestMass || 0) >= 10000 || (p.kills || 0) >= 50) toSave[k] = p;
-        }
-        fs.writeFile(PLAYERS_FILE, JSON.stringify(toSave), () => {});
+        _t('players', () => {
+            const cutoffStr = new Date(Date.now() - 30 * 86400000).toISOString();
+            const toSave = {};
+            for (const [k, p] of Object.entries(playerStats)) {
+                if (!p.lastSeen || p.lastSeen >= cutoffStr || (p.bestMass || 0) >= 10000 || (p.kills || 0) >= 50) toSave[k] = p;
+            }
+            fs.writeFile(PLAYERS_FILE, JSON.stringify(toSave), () => {});
+        });
     }
-    if (geoDirty) { geoDirty = false; fs.writeFile(GEO_FILE, JSON.stringify(geoCache), () => {}); }
-    if (questsDirty) { questsDirty = false; fs.writeFile(QUESTS_FILE, JSON.stringify(questsStore), () => {}); }
+    if (geoDirty)     { geoDirty = false;     _t('geo',     () => fs.writeFile(GEO_FILE,     JSON.stringify(geoCache),    () => {})); }
+    if (questsDirty) { questsDirty = false; _t('quests', () => fs.writeFile(QUESTS_FILE, JSON.stringify(questsStore), () => {})); }
 }, 5000);
 
 function cleanIp(addr) { return String(addr || '?').replace(/^::ffff:/, '').replace(/^::1$/, 'localhost'); }
