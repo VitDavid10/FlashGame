@@ -86,7 +86,11 @@ function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { 
 function todayKey() { return new Date().toISOString().slice(0, 10); }   // YYYY-MM-DD UTC
 
 // Elige 5 retos del pool para `date`, sin repetir.
+// Cacheado por fecha: solo recalcula cuando cambia el día UTC (1 vez/día),
+// no en cada kill/skill. Antes era el hot-spot del tick loop online.
+let _pickCacheDate = null, _pickCachePicks = null;
 function pickFor(date) {
+    if (date === _pickCacheDate) return _pickCachePicks;
     const idxs = [];
     let seed = hash(date);
     const pool = POOL.slice();
@@ -95,6 +99,8 @@ function pickFor(date) {
         const i = seed % pool.length;
         idxs.push(pool.splice(i, 1)[0]);
     }
+    _pickCacheDate = date;
+    _pickCachePicks = idxs;
     return idxs;
 }
 

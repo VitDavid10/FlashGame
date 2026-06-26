@@ -29,6 +29,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { performance } = require('perf_hooks');
 const { WebSocketServer } = require('ws');
 const PillSim = require('../shared/sim.js');
 const solana = require('./solana.js');     // verificación de depósitos $PILL
@@ -249,12 +250,14 @@ function questsOf(clientId) {
     return questsStore[clientId];
 }
 
+// Saves periódicos. JSON.stringify SIN pretty-print: el indent=1 multiplica tamaño
+// y tiempo de serialización; estos archivos no se leen a mano en producción.
 setInterval(() => {
-    if (statsDirty) { statsDirty = false; fs.writeFile(STATS_FILE, JSON.stringify(roomStats, null, 1), () => {}); }
-    if (rulesDirty) { rulesDirty = false; fs.writeFile(RULES_FILE, JSON.stringify(roomRules, null, 1), () => {}); }
-    if (playersDirty) { playersDirty = false; fs.writeFile(PLAYERS_FILE, JSON.stringify(playerStats, null, 1), () => {}); }
-    if (geoDirty) { geoDirty = false; fs.writeFile(GEO_FILE, JSON.stringify(geoCache, null, 1), () => {}); }
-    if (questsDirty) { questsDirty = false; fs.writeFile(QUESTS_FILE, JSON.stringify(questsStore, null, 1), () => {}); }
+    if (statsDirty) { statsDirty = false; fs.writeFile(STATS_FILE, JSON.stringify(roomStats), () => {}); }
+    if (rulesDirty) { rulesDirty = false; fs.writeFile(RULES_FILE, JSON.stringify(roomRules), () => {}); }
+    if (playersDirty) { playersDirty = false; fs.writeFile(PLAYERS_FILE, JSON.stringify(playerStats), () => {}); }
+    if (geoDirty) { geoDirty = false; fs.writeFile(GEO_FILE, JSON.stringify(geoCache), () => {}); }
+    if (questsDirty) { questsDirty = false; fs.writeFile(QUESTS_FILE, JSON.stringify(questsStore), () => {}); }
 }, 5000);
 
 function cleanIp(addr) { return String(addr || '?').replace(/^::ffff:/, '').replace(/^::1$/, 'localhost'); }
@@ -655,6 +658,17 @@ const httpServer = http.createServer(async (req, res) => {
             playerStats: Object.keys(playerStats).length,
             warSigs: Object.keys(warbank._sigs || {}).length,
             warBalances: Object.keys(warbank._balances || {}).length,
+            // Diagnóstico de microparones. Tick nominal = TICK_MS (25ms a 40Hz).
+            // lag.max alto = el event loop se atascó (GC u otro trabajo); total > TICK_MS = el tick no cabe en su ventana.
+            tick: {
+                samples: tickHist.n,
+                tickMs: TICK_MS,
+                lag:   pStats(tickHist.lag,   tickHist.n),
+                step:  pStats(tickHist.step,  tickHist.n),
+                snap:  pStats(tickHist.snap,  tickHist.n),
+                send:  pStats(tickHist.send,  tickHist.n),
+                total: pStats(tickHist.total, tickHist.n),
+            },
         }));
         return;
     }
@@ -1154,8 +1168,38 @@ wss.on('connection', (ws, req) => {
     ws.on('error', () => {});
 });
 
+// === Métricas del tick loop (para diagnosticar microparones/lag-tick) ===
+// Ring buffer de las últimas N muestras. Se expone en /api/health.
+// - lag: cuánto se desvió el setInterval del intervalo nominal (drift, ms)
+// - step: tiempo en sim.step() sumado entre todas las salas
+// - snap: tiempo en buildSnapshot + JSON.stringify del snapshot
+// - send: tiempo enviando a clientes y espectadores
+// - total: tiempo total del callback del setInterval
+const TICK_HIST_LEN = 240;   // ~6s a 40Hz
+const tickHist = {
+    lag:   new Float32Array(TICK_HIST_LEN),
+    step:  new Float32Array(TICK_HIST_LEN),
+    snap:  new Float32Array(TICK_HIST_LEN),
+    send:  new Float32Array(TICK_HIST_LEN),
+    total: new Float32Array(TICK_HIST_LEN),
+    i: 0, n: 0
+};
+let _lastTickT = 0;
+function pStats(arr, n) {
+    if (!n) return { p50: 0, p95: 0, max: 0 };
+    const tmp = new Array(n); for (let i = 0; i < n; i++) tmp[i] = arr[i];
+    tmp.sort((a, b) => a - b);
+    const r1 = v => Math.round(v * 10) / 10;
+    return { p50: r1(tmp[Math.floor(n * 0.5)]), p95: r1(tmp[Math.floor(n * 0.95)]), max: r1(tmp[n - 1]) };
+}
+
 setInterval(() => {
-    const now = Date.now();
+    const tickStart = performance.now();
+    const tickStartT = Date.now();
+    const lag = _lastTickT ? Math.max(0, (tickStartT - _lastTickT) - TICK_MS) : 0;
+    _lastTickT = tickStartT;
+    let stepMs = 0, snapMs = 0, sendMs = 0;
+    const now = tickStartT;
     for (const room of rooms.values()) {
         // jugadores en gracia de reconexión que no volvieron
         for (const [pid, deadline] of room.pendingRemovals) {
@@ -1253,7 +1297,9 @@ setInterval(() => {
         }
 
         const delta = now - room.lastTick; room.lastTick = now;
+        const _t0 = performance.now();
         room.sim.step(delta);
+        stepMs += performance.now() - _t0;
         room.tickCount++;
 
         // Récord de masa por jugador (pico) — barato: solo lectura, 40Hz
@@ -1346,9 +1392,12 @@ setInterval(() => {
                 }
             }
         }
+        const _t1 = performance.now();
         const out = [];
         if (events.length) out.push(JSON.stringify({ t: 'events', events }));
         if (room.tickCount % SNAPSHOT_EVERY === 0) out.push(JSON.stringify(buildSnapshot(room)));
+        const _t2 = performance.now();
+        snapMs += _t2 - _t1;
         if (out.length) {
             for (const cli of room.clients.values()) {
                 if (cli.ws.readyState === 1) { for (const m of out) cli.ws.send(m); }
@@ -1360,7 +1409,17 @@ setInterval(() => {
                 }
             }
         }
+        sendMs += performance.now() - _t2;
     }
+    const total = performance.now() - tickStart;
+    const i = tickHist.i;
+    tickHist.lag[i]   = lag;
+    tickHist.step[i]  = stepMs;
+    tickHist.snap[i]  = snapMs;
+    tickHist.send[i]  = sendMs;
+    tickHist.total[i] = total;
+    tickHist.i = (i + 1) % TICK_HIST_LEN;
+    if (tickHist.n < TICK_HIST_LEN) tickHist.n++;
 }, TICK_MS);
 
 purgeOldLogs();                              // limpia logs viejos al arrancar
