@@ -875,7 +875,7 @@ const httpServer = http.createServer(async (req, res) => {
     if (urlPath === '/admin' || urlPath === '/admin.html') {
         try {
             const html = fs.readFileSync(path.join(__dirname, 'admin.html'));
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
             res.end(html);
         } catch (e) { res.writeHead(500); res.end('No se pudo cargar admin.html'); }
         return;
