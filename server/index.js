@@ -190,7 +190,7 @@ function computeRanking(includeTesters) {
     _rankingIncludesTesters = includeTesters;
     const t0 = performance.now();
     _rankingCache = Object.entries(playerStats)
-        .filter(([, p]) => p.name && p.name.trim().length > 0 && (includeTesters || !isBotIp(p.lastIp)))
+        .filter(([, p]) => p.name && p.name.trim().length > 0 && (includeTesters || p.isReal === true))
         .sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas))
         .slice(0, 500)
         .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' }; return Object.assign({}, p, { key, paisCode: g.code, paisName: g.name }); });
@@ -643,7 +643,7 @@ function flushPeakMass(room, pid, cli) {
     const pj = room.sim.players.get(pid); if (!pj) return;
     const peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
     if (peak <= 0) return;
-    if (pj.name) {
+    if (pj.name && !(cli && cli.isTester)) {
         const ps = pstatOf(pj.name);
         if (peak > (ps.bestMass | 0)) { ps.bestMass = peak; playersDirty = true; }
     }
