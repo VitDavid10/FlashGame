@@ -270,6 +270,12 @@
 
         <div id="tab_jugadores" style="display:none">
             <h2 class="section">Ranking de jugadores</h2>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;background:#111;border:1px solid #222;border-radius:10px;padding:12px 14px">
+                <span style="color:#aaa;font-size:12px">Calcular ranking:</span>
+                <button class="b mini" type="button" onclick="actualizarRanking(false)">&#128100; Solo jugadores reales</button>
+                <button class="b mini" type="button" onclick="actualizarRanking(true)">&#129302; Incluir bots de stress</button>
+                <span id="rankUpdatedAt" style="color:#555;font-size:11px;margin-left:4px"></span>
+            </div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
                 <input id="rankSearch" type="text" placeholder="Buscar nombre..." oninput="rankBuscar(this.value)"
                     style="flex:1;min-width:180px;background:#111;color:#fff;border:1px solid #333;border-radius:8px;padding:9px 12px;font-size:13px">
@@ -497,6 +503,11 @@ function forzar(room) { send({ cmd: 'forceStart', room }); toast('<strong>Sala i
 function reiniciar(room) { if (confirm('¿Reiniciar la sala? Los que estén jugando verán "SALA REINICIADA" y podrán darle a TRY AGAIN.')) { send({ cmd: 'restart', room }); toast('<strong>Sala reiniciada</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 100); } }
 function vaciar(room) { if (confirm('¿Echar a TODOS los jugadores de la sala?')) { send({ cmd: 'kickAll', room }); toast('<strong>Sala vaciada</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 100); } }
 function apagar(room) { if (confirm('¿APAGAR la sala? Echa a todos y la destruye.')) { send({ cmd: 'shutdown', room }); toast('<strong>Sala apagada</strong><br>' + esc(room), 'err'); setTimeout(pedir, 100); } }
+function actualizarRanking(includeTesters) {
+    send({ cmd: 'updateRanking', includeTesters });
+    document.getElementById('rankUpdatedAt').textContent = 'Calculando...';
+    setTimeout(pedir, 800);
+}
 function borrarRanking(playerKey, nombre) { if (confirm('¿Borrar a ' + nombre + ' del ranking? Sus estadísticas se eliminan en el servidor.')) { send({ cmd: 'deleteRanking', playerKey }); toast('<strong>Borrado del ranking</strong><br>' + esc(nombre), 'err'); setTimeout(pedir, 100); } }
 function resetearQuests() { if (confirm('¿RESETEAR las quests de TODOS los jugadores? Esta acción es irreversible.')) { send({ cmd: 'resetQuests' }); toast('<strong>Quests reseteadas</strong><br>Todos los jugadores empiezan de cero', 'warn'); setTimeout(pedir, 100); } }
 
@@ -769,6 +780,11 @@ function render(m) {
 
     rankData = m.ranking || [];
     renderRanking();
+    const rankEl = document.getElementById('rankUpdatedAt');
+    if (rankEl) {
+        if (m.rankingStale) rankEl.textContent = 'Sin calcular — pulsa un botón';
+        else if (m.rankingUpdatedAt) rankEl.textContent = 'Actualizado: ' + new Date(m.rankingUpdatedAt).toLocaleTimeString();
+    }
 
     // Registro de acciones de admin, agrupado por sala
     const porSala = {};
