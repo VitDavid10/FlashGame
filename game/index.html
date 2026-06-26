@@ -2569,7 +2569,7 @@
     function startPracticeGame(mode) {
         practiceMode = true;
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
-        const botCount = parseInt(document.getElementById('botCountInput').value) || 20;
+        const botCount = 25;
         const baseSize = (mode === 'classic') ? WORLD_CONFIG.classic.size : WORLD_CONFIG.arcade.size;
         sim = new PillSim.Simulation({
             mode: mode, mapSize: baseSize, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
