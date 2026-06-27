@@ -805,6 +805,8 @@ const httpServer = http.createServer(async (req, res) => {
                 cap: maxPlayersOf(key),
                 state: room ? room.state : 'offline',
                 startIn: (room && room.startAt) ? Math.max(0, room.startAt - Date.now()) : null,
+                restartIn: (room && room.state === 'ended' && room.restartAt) ? Math.max(0, room.restartAt - Date.now()) : null,
+                roomName: room ? room.roomName : price,
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });

@@ -2524,17 +2524,26 @@
                 const lock = r.locked ? ' <span title="price locked while players are inside" style="color:#888">🔒</span>' : '';
                 const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL' + lock;
                 const cap = r.cap || 30;
-                // Cuenta atrás de lobby en marcha → icono azul pulsante + segundos.
-                const counting = r.startIn != null && r.startIn > 0;
-                if (counting) window._roomCountdowns[r.key] = Date.now() + r.startIn; else delete window._roomCountdowns[r.key];
+                // ended → icono azul pulsante + cuenta atrás hasta reinicio.
+                // counting → icono azul pulsante + cuenta atrás hasta inicio de partida.
+                const ended = r.state === 'ended';
+                const counting = !ended && r.startIn != null && r.startIn > 0;
+                if (ended && r.restartIn != null) window._roomCountdowns[r.key] = Date.now() + r.restartIn;
+                else if (counting) window._roomCountdowns[r.key] = Date.now() + r.startIn;
+                else delete window._roomCountdowns[r.key];
                 // 0 → gris (vacía). 1-49% → amarillo (some). 50-99% → verde (full).
                 // 100% → rojo pulsante (no se puede entrar).
-                const cls = counting ? 'starting'
+                const cls = (ended || counting) ? 'starting'
                     : (r.players === 0 ? 'empty'
                     : (r.players >= cap ? 'capfull'
                     : (r.players >= cap / 2 ? 'full' : 'some')));
-                const title = counting ? `STARTING — ${r.players}/${r.needed} ready` : (r.players >= cap ? `FULL — ${r.players}/${cap} players` : `${r.players}/${cap} players`);
-                const label = counting ? `<span class="ostartin" data-key="${r.key}">${Math.ceil(r.startIn / 1000)}s</span>` : 'STATUS';
+                const secsLeft = ended
+                    ? (r.restartIn != null ? Math.ceil(r.restartIn / 1000) : '…')
+                    : Math.ceil(r.startIn / 1000);
+                const title = ended ? `RESTARTING — ${secsLeft}s`
+                    : counting ? `STARTING — ${r.players}/${r.needed} ready`
+                    : (r.players >= cap ? `FULL — ${r.players}/${cap} players` : `${r.players}/${cap} players`);
+                const label = (ended || counting) ? `<span class="ostartin" data-key="${r.key}">${secsLeft}s</span>` : 'STATUS';
                 return `<div class="oracle-row">
                     <span class="oroom">${r.priceUsd === 0 ? 'Free' : '$' + r.priceUsd}</span>
                     <span class="opill">${fee}</span>
