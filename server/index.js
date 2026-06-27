@@ -77,6 +77,10 @@ const CATALOG_MODES = ['classic', 'arcade'];
 const LAYERS_PER_COMBO = parseInt(process.env.LAYERS_PER_COMBO, 10) || 2;
 function comboKeyOf(mode, roomName) { return mode + '_' + roomName; }
 function layerKeyOf(mode, roomName, layerIdx) { return mode + '_' + roomName + '_L' + layerIdx; }
+// Estado on/off por layerIdx. Si layerOff[i] === true, esa layer no existe en
+// rooms (sus salas borradas del Map → no consumen tick). El admin la enciende
+// con cmd setLayerActive y se recrean.
+const layerOff = {};
 
 const rooms = new Map();   // layerKey → room
 const resumeTokens = new Map();   // token → { roomKey: layerKey, playerId }
@@ -781,6 +785,7 @@ function buildAdminState() {
         for (const price of PRICES) {
             const ck = comboKeyOf(mode, price);
             for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
+                if (layerOff[i]) continue;   // layer apagada → no enumerar sus salas
                 const lk = layerKeyOf(mode, price, i);
                 keysSeen.add(lk);
                 list.push(roomEntry(lk, ck, mode, price, i, rooms.get(lk) || null));
@@ -821,6 +826,8 @@ function buildAdminState() {
         minPlayers: MIN_PLAYERS,
         snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY),
         aoiEnabled: AOI_ENABLED,
+        layersPerCombo: LAYERS_PER_COMBO,
+        layerOff: Object.assign({}, layerOff),   // { 2: true } si L2 está apagada
         arcadeRestartMs, arcadeLobbyMs,
         stress: stressBuildState(),
         totales: {
@@ -941,6 +948,7 @@ const httpServer = http.createServer(async (req, res) => {
             const ck = mode + '_' + price;
             const layers = [];
             for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
+                if (layerOff[i]) continue;
                 const r = rooms.get(layerKeyOf(mode, price, i));
                 if (!r) continue;
                 layers.push({
@@ -1245,15 +1253,47 @@ wss.on('connection', (ws, req) => {
                 AOI_ENABLED = !AOI_ENABLED;
                 logAdmin('-', 'AOI ' + (AOI_ENABLED ? 'ACTIVADO' : 'DESACTIVADO'), '');
                 log(`ADMIN AOI: ${AOI_ENABLED ? 'ON' : 'OFF'}`);
-            } else if (msg.cmd === 'toggleLayer' && msg.room) {
-                // Desactivar/activar una layer concreta. Layer desactivada queda
-                // fuera del matchmaker (pickLayer la salta). Los jugadores ya
-                // dentro siguen jugando hasta el fin natural.
-                const sala = rooms.get(msg.room);
-                if (sala) {
-                    sala.disabled = !sala.disabled;
-                    logAdmin(msg.room, sala.disabled ? 'Desactivó layer' : 'Activó layer', '');
-                    log(`ADMIN layer ${msg.room}: ${sala.disabled ? 'OFF' : 'ON'}`);
+            } else if (msg.cmd === 'setLayerActive' && typeof msg.layerIdx === 'number') {
+                // Apaga/enciende TODAS las layers con ese idx (ej. todas las L2).
+                // Apagar: borra las salas del Map → dejan de consumir tick/RAM.
+                //         Solo permitido si TODAS están vacías (no se echa a nadie).
+                // Encender: las recrea con getOrCreateRoom (vuelven al matchmaker).
+                const idx = msg.layerIdx | 0;
+                const active = !!msg.active;
+                if (idx < 1 || idx > LAYERS_PER_COMBO) {
+                    ws.send(JSON.stringify({ t: 'layerActionError', reason: 'idx inválido' }));
+                } else if (!active) {
+                    // Apagar: buscar todas las layers de ese idx
+                    const targets = [];
+                    let blocked = null;
+                    for (const r of rooms.values()) {
+                        if (r.layerIdx !== idx) continue;
+                        if (r.clients.size > 0) { blocked = r.key; break; }
+                        targets.push(r);
+                    }
+                    if (blocked) {
+                        ws.send(JSON.stringify({ t: 'layerActionError', reason: 'Hay jugadores en ' + blocked + '. Espera a que se vacíe.' }));
+                    } else {
+                        for (const r of targets) {
+                            rooms.delete(r.key);
+                            for (const [tok, info] of resumeTokens) { if (info.roomKey === r.key) resumeTokens.delete(tok); }
+                        }
+                        layerOff[idx] = true;
+                        logAdmin('-', 'Apagó Layer ' + idx, targets.length + ' salas');
+                        log(`ADMIN apagó Layer ${idx}: ${targets.length} salas borradas`);
+                    }
+                } else {
+                    // Encender: recrear todas las layers de ese idx
+                    let n = 0;
+                    for (const mode of CATALOG_MODES) {
+                        for (const price of PRICES) {
+                            getOrCreateRoom(layerKeyOf(mode, price, idx), mode, price);
+                            n++;
+                        }
+                    }
+                    layerOff[idx] = false;
+                    logAdmin('-', 'Encendió Layer ' + idx, n + ' salas');
+                    log(`ADMIN encendió Layer ${idx}: ${n} salas recreadas`);
                 }
             } else if (msg.cmd === 'stressStart') {
                 stressStart(msg.params || {});

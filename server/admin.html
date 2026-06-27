@@ -265,10 +265,12 @@
                 <button id="modeBtn_classic" class="modetab act" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
                 <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
             </div>
-            <div class="modetabs" style="margin-top:8px; padding-left:8px; gap:8px;">
+            <div class="modetabs" style="margin-top:8px; padding-left:8px; gap:8px; align-items:center;">
                 <span style="color:#666;font-size:11px;letter-spacing:1px;margin-right:6px;">LAYER:</span>
                 <button id="layerBtn_1" class="modetab act" style="font-size:12px;padding:4px 10px;" onclick="verLayer(1)">L1 <span id="cntLayer1" class="cnt cero">(0)</span></button>
                 <button id="layerBtn_2" class="modetab" style="font-size:12px;padding:4px 10px;" onclick="verLayer(2)">L2 <span id="cntLayer2" class="cnt cero">(0)</span></button>
+                <button id="layerPowerBtn_2" class="b" style="font-size:11px;padding:4px 10px;margin-left:8px;" onclick="toggleLayerPower(2)" title="Apaga/enciende todas las salas de Layer 2. Apagar libera CPU. Solo se puede apagar si están vacías.">⏻ L2: ON</button>
+                <span id="layerPowerHint" style="color:#777;font-size:10px;margin-left:6px;"></span>
             </div>
             <div class="grid" id="gridClassic"></div>
             <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px; display:none;">
@@ -431,6 +433,8 @@ function conectar() {
             render(m);
         } else if (m.t === 'adminError') {
             errorLogin('Clave incorrecta');
+        } else if (m.t === 'layerActionError') {
+            toast('<strong>No se puede</strong><br>' + esc(m.reason || ''), 'warn');
         }
     };
     ws.onclose = () => {
@@ -500,7 +504,14 @@ function verLayer(n) {
     document.getElementById('layerBtn_2').classList.toggle('act', n === 2);
     pedir();
 }
-function toggleLayer(layerKey) { send({ cmd: 'toggleLayer', room: layerKey }); setTimeout(pedir, 100); }
+// Apaga/enciende una layer ENTERA (todas las salas de ese idx). Apagar libera
+// CPU. Solo se puede apagar si todas están vacías — el server rechaza si no.
+let _layerOff = {};
+function toggleLayerPower(idx) {
+    const isOff = !!_layerOff[idx];
+    send({ cmd: 'setLayerActive', layerIdx: idx, active: isOff });   // si está off → encender; si on → apagar
+    setTimeout(pedir, 200);
+}
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtSeg(s) { if (s < 60) return s + 's'; if (s < 3600) return Math.floor(s/60) + 'm'; return Math.floor(s/3600) + 'h' + Math.floor((s%3600)/60) + 'm'; }
@@ -686,7 +697,6 @@ function cartaSala(r) {
                 <button class="b azul" onclick="espectar('${r.mode}','${esc(r.roomName)}',${r.layerIdx || 1})" ${r.state !== 'playing' ? 'disabled' : ''}>${IC.users} Espectar L${r.layerIdx || 1}</button>
                 <button class="b naranja" onclick="reiniciar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.refresh} Reiniciar</button>
                 <button class="b" onclick="vaciar('${id}')" ${r.conectados === 0 ? 'disabled' : ''}>${IC.broom} Echar a todos</button>
-                <button class="b ${r.disabled ? 'verde' : 'morado'}" onclick="toggleLayer('${id}')">${r.disabled ? '▶ Reactivar layer' : '⏸ Desactivar layer'}</button>
                 <button class="b rojo" onclick="apagar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.power} Apagar</button>
             </div>
         </div>
@@ -797,6 +807,21 @@ function render(m) {
         aoiBtn.innerText = m.aoiEnabled ? 'ON — desactivar' : 'OFF — activar';
         aoiBtn.className = 'b ' + (m.aoiEnabled ? 'verde' : 'rojo');
     }
+    // Estado del botón power Layer 2 (apaga/enciende todas las L2 a la vez).
+    _layerOff = m.layerOff || {};
+    const lpb = document.getElementById('layerPowerBtn_2');
+    if (lpb) {
+        const off = !!_layerOff[2];
+        lpb.innerText = off ? '⏻ L2: OFF' : '⏻ L2: ON';
+        lpb.className = 'b ' + (off ? 'rojo' : 'verde');
+        // Si la layer activa en el panel es L2 pero está OFF, vuelve a L1
+        if (off && layerActivo === 2) verLayer(1);
+        // Desactivar el botón del tab L2 si está off (para que no se intente ver una layer vacía)
+        const tabL2 = document.getElementById('layerBtn_2');
+        if (tabL2) tabL2.disabled = off;
+    }
+    const lph = document.getElementById('layerPowerHint');
+    if (lph) lph.innerText = _layerOff[2] ? 'L2 apagada: 0 sims, no consume CPU.' : '';
     if (m.arcadeLobbyMs   != null && document.activeElement.id !== 'g_lobby')   document.getElementById('g_lobby').value   = Math.round(m.arcadeLobbyMs   / 1000);
     if (m.arcadeRestartMs != null && document.activeElement.id !== 'g_restart') document.getElementById('g_restart').value = Math.round(m.arcadeRestartMs / 1000);
     construirSalasStress(); renderStress(m.stress);
