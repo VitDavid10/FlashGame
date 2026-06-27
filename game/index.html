@@ -1110,6 +1110,7 @@
     </div>
 
 <script src="../shared/sim.js"></script>
+<script src="../shared/proto.js"></script>
 <script>
     // --- La lógica de juego vive en shared/sim.js (PillSim); aquí queda
     // --- presentación: render, cámara, input, menús, HUD y sonido. ---
@@ -2669,7 +2670,10 @@
         let paid;
         try { paid = await preparePayment(mode, currentServer); } catch (e) { paid = null; }
         if (!paid) { _joinInFlight = false; setPlayBtnState(false); return; }   // sin saldo / sin firma → ya se avisó
-        netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg, pay: paid.pay } };
+        // ?bin=1 en la URL activa el protocolo binario para snapshots (opt-in
+        // mientras se valida en producción; ahorra ~50% extra sobre AOI+JSON).
+        const _binFlag = (new URLSearchParams(location.search)).get('bin') === '1';
+        netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 1 : 0 } };
         setPlayBtnState(true, 'CONNECTING...');
         netConnect(false);
         // El lock se libera al recibir welcome/roomFull/payRequired/error desde el WS.
@@ -2875,6 +2879,7 @@
         };
         let joined = false;
         const ws = new WebSocket(netState.url);
+        ws.binaryType = 'arraybuffer';
         netState.ws = ws;
         ws.onopen = () => {
             const j = Object.assign({}, netState.joinMsg);
@@ -2882,7 +2887,13 @@
             ws.send(JSON.stringify(j));
         };
         ws.onmessage = (e) => {
-            let msg; try { msg = JSON.parse(e.data); } catch (err) { return; }
+            let msg;
+            if (e.data instanceof ArrayBuffer) {
+                // Frame binario: solo snap por ahora (los demás van JSON).
+                try { msg = window.PillProto.decodeSnap(e.data); } catch (err) { return; }
+            } else {
+                try { msg = JSON.parse(e.data); } catch (err) { return; }
+            }
             // Tras matchEnd ignoramos cualquier mensaje del WS: el modal de
             // resultados queda visible y el user decide con TRY AGAIN (nueva
             // firma) o BACK TO MENU. Sin esto, lobbyPreview/matchStart te

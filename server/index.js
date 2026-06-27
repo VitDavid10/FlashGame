@@ -32,6 +32,7 @@ const { spawn } = require('child_process');
 const { performance } = require('perf_hooks');
 const { WebSocketServer } = require('ws');
 const PillSim = require('../shared/sim.js');
+const proto = require('../shared/proto.js');     // protocolo binario para snaps (opt-in)
 const solana = require('./solana.js');     // verificación de depósitos $PILL
 const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 const skinpoints = require('./skinpoints.js');     // puntos de skin por clientId
@@ -595,26 +596,92 @@ function cellData(c) {
     return o;
 }
 
-function buildSnapshot(room) {
+// --- AOI (Area of Interest) ---
+// Cada jugador recibe solo lo cercano a su centroide. Esto:
+//  - corta tráfico ~5-10× en salas grandes (los bots/virus lejanos no se mandan)
+//  - cierra el maphack (un cliente modificado no puede dibujar lo que no recibe)
+//
+// La caja es cuadrada centrada en el centroide ponderado por masa del jugador.
+// El lado depende del tamaño del jugador (más grande → ve más, porque su zoom
+// se aleja). Margen extra para que la interpolación no popee al entrar entidades.
+// Las celdas propias del jugador SIEMPRE van enteras (tras un split sus celdas
+// pueden estar fuera del centroide y aun así son suyas).
+let AOI_ENABLED = process.env.AOI !== '0';   // ON por defecto; AOI=0 para apagar
+const AOI_BASE = 1800;          // visión mínima en píxeles del mundo
+const AOI_PER_R = 18;           // px de visión extra por cada px de radio máximo
+const AOI_MARGIN = 1.30;        // margen para interpolación / pop-in
+function aoiBoxFor(p) {
+    if (!p || p.cells.length === 0) return null;
+    let cx = 0, cy = 0, mtot = 0, maxR = 0;
+    for (const c of p.cells) {
+        const m = c.r * c.r;
+        cx += c.x * m; cy += c.y * m; mtot += m;
+        if (c.r > maxR) maxR = c.r;
+    }
+    cx /= mtot; cy /= mtot;
+    const view = Math.round((AOI_BASE + maxR * AOI_PER_R) * AOI_MARGIN);
+    return { cx, cy, half: view };
+}
+// ¿La circunferencia (x,y,r) intersecta la caja? (distancia al borde ≤ r).
+function intersectsBox(box, x, y, r) {
+    const dxLeft = box.cx - box.half - x;
+    const dxRight = x - (box.cx + box.half);
+    const dyTop = box.cy - box.half - y;
+    const dyBot = y - (box.cy + box.half);
+    const dx = Math.max(dxLeft, dxRight, 0);
+    const dy = Math.max(dyTop, dyBot, 0);
+    return (dx * dx + dy * dy) <= (r * r);
+}
+
+// Snapshot filtrado por AOI. Si box es null → snapshot completo (espectadores
+// del panel de control, jugadores muertos, debug). Si viewerId está definido,
+// sus celdas siempre se incluyen aunque estén fuera de la caja (split).
+function buildSnapshotFor(room, viewerId, box) {
     const sim = room.sim;
     const ssOf = p => { const out = {}; for (let i = 1; i <= 8; i++) { if (p.skillState[i] > 0) out[i] = Math.round(p.skillState[i]); } return out; };
+    const players = [];
+    for (const p of sim.players.values()) {
+        const isMe = p.id === viewerId;
+        let cellsArr = p.cells;
+        if (box && !isMe) {
+            cellsArr = [];
+            for (const c of p.cells) if (intersectsBox(box, c.x, c.y, c.r)) cellsArr.push(c);
+        }
+        // Meta del jugador siempre va (leaderboard / lista online). Las celdas
+        // pueden venir vacías si está fuera de mi zona — solo lo veo en la lista.
+        players.push({
+            id: p.id, name: p.name, ks: p.killStreak, alive: p.alive, gcd: Math.round(p.globalCD),
+            slots: p.skillSlots.map(s => s ? { id: s.id, u: s.uses } : 0),
+            ss: ssOf(p),
+            cells: cellsArr.map(cellData)
+        });
+    }
+    const bots = [];
+    for (const c of sim.enemies) {
+        if (!box || intersectsBox(box, c.x, c.y, c.r)) bots.push(Object.assign(cellData(c), { id: c.id, n: c.name }));
+    }
+    const viruses = [];
+    for (const v of sim.viruses) {
+        if (!box || intersectsBox(box, v.x, v.y, v.r)) viruses.push({ ci: v.ci, x: round1(v.x), y: round1(v.y), r: round1(v.r), d: v.damaged ? 1 : 0, a: round1(v.animTime) });
+    }
+    const ejected = [];
+    for (const m of sim.ejectedMasses) {
+        if (!box || intersectsBox(box, m.x, m.y, m.r)) ejected.push({ ci: m.ci, x: round1(m.x), y: round1(m.y), r: m.r, c1: m.c1, c2: m.c2, a: round1(m.angle || 0) });
+    }
+    const projectiles = [];
+    for (const pr of sim.projectiles) {
+        if (!box || intersectsBox(box, pr.x, pr.y, pr.r)) projectiles.push({ ci: pr.ci, x: round1(pr.x), y: round1(pr.y), r: pr.r });
+    }
     return {
         t: 'snap',
         time: Math.round(sim.now),
         tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
-        pot: room.pot | 0,        // bote acumulado en PILL (0 si free)
-        players: [...sim.players.values()].map(p => ({
-            id: p.id, name: p.name, ks: p.killStreak, alive: p.alive, gcd: Math.round(p.globalCD),
-            slots: p.skillSlots.map(s => s ? { id: s.id, u: s.uses } : 0),
-            ss: ssOf(p),
-            cells: p.cells.map(cellData)
-        })),
-        bots: sim.enemies.map(c => Object.assign(cellData(c), { id: c.id, n: c.name })),
-        viruses: sim.viruses.map(v => ({ ci: v.ci, x: round1(v.x), y: round1(v.y), r: round1(v.r), d: v.damaged ? 1 : 0, a: round1(v.animTime) })),
-        ejected: sim.ejectedMasses.map(m => ({ ci: m.ci, x: round1(m.x), y: round1(m.y), r: m.r, c1: m.c1, c2: m.c2, a: round1(m.angle || 0) })),
-        projectiles: sim.projectiles.map(p => ({ ci: p.ci, x: round1(p.x), y: round1(p.y), r: p.r }))
+        pot: room.pot | 0,
+        players, bots, viruses, ejected, projectiles
     };
 }
+// Snapshot completo (sin AOI). Wrapper para mantener compatibilidad.
+function buildSnapshot(room) { return buildSnapshotFor(room, null, null); }
 
 // --- Estado para el panel de admin: catálogo completo + salas dinámicas ---
 function buildAdminState() {
@@ -685,6 +752,7 @@ function buildAdminState() {
         t: 'adminState',
         minPlayers: MIN_PLAYERS,
         snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY),
+        aoiEnabled: AOI_ENABLED,
         arcadeRestartMs, arcadeLobbyMs,
         stress: stressBuildState(),
         totales: {
@@ -1076,6 +1144,10 @@ wss.on('connection', (ws, req) => {
                 const now = Math.round(TICK_HZ / SNAPSHOT_EVERY);
                 logAdmin('-', 'Cambió snapshots Hz', prev + ' → ' + now);
                 log(`ADMIN snapshots: ${prev}Hz → ${now}Hz (cada ${SNAPSHOT_EVERY} ticks)`);
+            } else if (msg.cmd === 'aoiToggle') {
+                AOI_ENABLED = !AOI_ENABLED;
+                logAdmin('-', 'AOI ' + (AOI_ENABLED ? 'ACTIVADO' : 'DESACTIVADO'), '');
+                log(`ADMIN AOI: ${AOI_ENABLED ? 'ON' : 'OFF'}`);
             } else if (msg.cmd === 'stressStart') {
                 stressStart(msg.params || {});
             } else if (msg.cmd === 'ddosStart') {
@@ -1233,15 +1305,18 @@ wss.on('connection', (ws, req) => {
             // sumar las quests autoritativamente (sin depender de lo que mande el cliente).
             const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
             // carry: dinero "retenido" del jugador en esta sala (se inicializa con su entrada y sube al matar).
-            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK });
+            // Opt-in al protocolo binario para snapshots (msg.bin === 1).
+            // Eco en welcome.useBin para que el cliente decodifique los frames.
+            const useBin = msg.bin === 1 || msg.bin === true;
+            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK, useBin });
             sendEcon(room.clients.get(playerId), room);
             const st_ = statsOf(key); st_.entradas++; if (!TESTER_OK) st_.entradasReal++; statsDirty = true;
             if (name && !TESTER_OK) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; st.isReal = true; playersDirty = true; }
             if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
             if (!TESTER_OK) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
             if (room.state === 'playing') { room.sim.spawnPlayer(playerId); refillBots(room); }
-            ws.send(JSON.stringify(welcomeMsg(room, playerId, token)));
-            log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(key)}`);
+            ws.send(JSON.stringify(Object.assign(welcomeMsg(room, playerId, token), useBin ? { useBin: true } : {})));
+            log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(key)}${useBin ? ' [bin]' : ''}`);
             if (room.state === 'waiting') {
                 sendWaiting(room);
                 armLobby(room);
@@ -1532,19 +1607,37 @@ setInterval(() => {
             }
         }
         const _t1 = performance.now();
-        const out = [];
-        if (events.length) out.push(JSON.stringify({ t: 'events', events }));
-        if (room.tickCount % SNAPSHOT_EVERY === 0) out.push(JSON.stringify(buildSnapshot(room)));
+        // Eventos: broadcast simple (mismos para todos, siempre JSON).
+        const eventsJson = events.length ? JSON.stringify({ t: 'events', events }) : null;
+        // Snapshots: por AOI por jugador (si AOI_ENABLED). Espectadores reciben
+        // snapshot completo (son pocos, panel-control). Jugadores muertos
+        // también reciben full (modo espectador local). Si cli.useBin, el snap
+        // se serializa con el protocolo binario (proto.encodeSnap).
+        const doSnap = (room.tickCount % SNAPSHOT_EVERY === 0);
+        let fullSnap = null, fullJson = null, fullBin = null;
+        const ensureFullSnap = () => fullSnap || (fullSnap = buildSnapshotFor(room, null, null));
+        const ensureFullJson = () => fullJson || (fullJson = JSON.stringify(ensureFullSnap()));
+        const ensureFullBin  = () => fullBin  || (fullBin  = proto.encodeSnap(ensureFullSnap()));
         const _t2 = performance.now();
         snapMs += _t2 - _t1;
-        if (out.length) {
-            for (const cli of room.clients.values()) {
-                if (cli.ws.readyState === 1) { for (const m of out) cli.ws.send(m); }
+        if (eventsJson || doSnap) {
+            for (const [pid, cli] of room.clients) {
+                if (cli.ws.readyState !== 1) continue;
+                if (eventsJson) cli.ws.send(eventsJson);
+                if (!doSnap) continue;
+                if (!AOI_ENABLED) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
+                const pj = room.sim.players.get(pid);
+                if (!pj || !pj.alive || pj.cells.length === 0) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
+                const box = aoiBoxFor(pj);
+                const snap = buildSnapshotFor(room, pid, box);
+                cli.ws.send(cli.useBin ? proto.encodeSnap(snap) : JSON.stringify(snap));
             }
             if (room.spectators.size) {
+                const specJson = doSnap ? ensureFullJson() : null;
                 for (const sws of room.spectators) {
-                    if (sws.readyState === 1) { for (const m of out) sws.send(m); }
-                    else room.spectators.delete(sws);
+                    if (sws.readyState !== 1) { room.spectators.delete(sws); continue; }
+                    if (eventsJson) sws.send(eventsJson);
+                    if (specJson) sws.send(specJson);
                 }
             }
         }

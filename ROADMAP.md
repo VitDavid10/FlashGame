@@ -43,20 +43,22 @@ recomendado: de más rentable (poco esfuerzo, mucha ganancia) a más complejo.
 
 ---
 
+### Fase 4 — AOI + protocolo binario ✅ (HECHA)
+- **AOI (Area of Interest)** activo por defecto: el server filtra el snapshot por
+  jugador (caja cuadrada centrada en su centroide, lado dependiente del tamaño
+  del jugador + 30% margen). Tus propias celdas SIEMPRE se incluyen (split).
+  Espectadores y muertos reciben snapshot completo. Toggle en `/admin` y env
+  `AOI=0` para desactivar.
+- **Protocolo binario** (`shared/proto.js`) opt-in con `?bin=1` en la URL del
+  juego. Frame ~17 B por celda (i16 x/y, u16 r×10, 6 B colores RGB, flags).
+  Strings UTF-8 con prefijo u16. Sólo SNAP es binario; events/welcome/etc. siguen JSON.
+- **Medido en local** (classic Free, 1 jugador + 25 bots):
+  - Sin AOI + JSON ……… **11935 B/snap** (referencia)
+  - AOI + JSON ………… 2629 B/snap (−78%)
+  - AOI + BIN ………… **910 B/snap (−92%)**
+- Maphack cerrado: un cliente modificado no puede dibujar lo que el server ya no manda.
+
 ## ⏳ Fases pendientes (para ser más pro)
-
-### Fase 4 — AOI + protocolo binario  ⭐ (la más rentable)
-El cuello de botella actual es enviar snapshots a 40 Hz a todos los jugadores.
-Un solo proceso aguanta cómodo ~300 jugadores (~30 ms de ping). Para subir ese
-techo SIN partir el servidor:
-
-- **AOI (Area of Interest)**: a cada jugador se le manda solo lo que tiene cerca
-  (su zona de visión), no todas las entidades de la sala. Enorme ahorro en salas
-  grandes y con mucha gente.
-- **Protocolo binario** en vez de JSON: serializar posiciones en bytes en lugar de
-  texto. Mucha menos CPU de serialización y mucho menos ancho de banda.
-
-➡️ Con esto un solo proceso pasa de ~300 a bastante más, con poco riesgo arquitectónico.
 
 ### Fase 5 — Salas independientes (multiproceso)
 Node.js usa un solo núcleo. Como las salas **no interactúan entre sí**, se pueden
@@ -93,8 +95,8 @@ repartir entre varios procesos (sharding) para aprovechar todos los núcleos del
 - ✅ IPs anonimizadas (RGPD); logs borrados a los 60 días.
 
 **Vulnerabilidades que quedan:**
-- ⚠️ **Maphack / visión total**: el servidor manda TODA la sala a cada jugador, así
-  que un cliente modificado puede dibujar/zoom-out y ver a todos. → **lo arregla el AOI (Fase 4)**.
+- ✅ ~~**Maphack / visión total**~~ — cerrado por AOI: cada cliente solo recibe
+  entidades en su zona de visión (Fase 4).
 - ⚠️ **Bots / aimbot**: el servidor acepta inputs de cualquier WebSocket; no distingue
   humano de script. Mitigable con heurísticas anti-bot, no eliminable del todo.
 

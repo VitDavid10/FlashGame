@@ -318,6 +318,11 @@
                 </select>
                 <span style="color:#666; font-size: 12px;">Global, afecta a TODAS las salas al instante. Menos Hz = menos lag con mucha gente (el cliente interpola). Se reinicia al valor por defecto si reinicias el servidor.</span>
             </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">AOI (Area of Interest):</label>
+                <button id="aoiToggleBtn" class="b" onclick="toggleAoi()">Cargando…</button>
+                <span style="color:#666; font-size: 12px;">Cada jugador recibe solo lo cercano a su píldora. Reduce tráfico ~5× en salas grandes y cierra el maphack (cliente modificado). Apagarlo solo si depuras render lejano.</span>
+            </div>
             <h2 class="section">Salud del servidor</h2>
             <div class="usage" id="healthBox" style="padding:18px 20px;font-family:'Inter',sans-serif;font-size:13px">Cargando…</div>
 
@@ -674,6 +679,7 @@ function cartaSala(r) {
 }
 
 function aplicarSnapHz() { send({ cmd: 'snapshotHz', hz: parseInt(document.getElementById('snapHzSel').value, 10) }); setTimeout(pedir, 100); }
+function toggleAoi() { send({ cmd: 'aoiToggle' }); setTimeout(pedir, 100); }
 function aplicarGlobal() {
     send({ cmd: 'setGlobal',
         arcadeLobbyMs:   Math.round(parseFloat(document.getElementById('g_lobby').value)   * 1000),
@@ -769,8 +775,13 @@ function renderStress(s) {
 }
 function render(m) {
     document.getElementById('liveTxt').innerText = 'en vivo';
-    document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · red ${m.snapshotHz}Hz`;
+    document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · red ${m.snapshotHz}Hz · AOI ${m.aoiEnabled ? 'ON' : 'OFF'}`;
     if (m.snapshotHz != null && document.activeElement.id !== 'snapHzSel') document.getElementById('snapHzSel').value = m.snapshotHz;
+    const aoiBtn = document.getElementById('aoiToggleBtn');
+    if (aoiBtn) {
+        aoiBtn.innerText = m.aoiEnabled ? 'ON — desactivar' : 'OFF — activar';
+        aoiBtn.className = 'b ' + (m.aoiEnabled ? 'verde' : 'rojo');
+    }
     if (m.arcadeLobbyMs   != null && document.activeElement.id !== 'g_lobby')   document.getElementById('g_lobby').value   = Math.round(m.arcadeLobbyMs   / 1000);
     if (m.arcadeRestartMs != null && document.activeElement.id !== 'g_restart') document.getElementById('g_restart').value = Math.round(m.arcadeRestartMs / 1000);
     construirSalasStress(); renderStress(m.stress);
