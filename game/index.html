@@ -387,7 +387,9 @@
         .oracle-row .ostatus.empty { background: #444; }
         .oracle-row .ostatus.capfull { background: #ff2a2a; box-shadow: 0 0 10px rgba(255,42,42,0.8); animation: capfullPulse 1.4s ease-in-out infinite; }
         .oracle-row .ostatus.starting { background: #1a73e8; box-shadow: 0 0 10px rgba(26,115,232,0.9); animation: capfullPulse 1.2s ease-in-out infinite; }
+        .oracle-row .ostatus.ending { background: #ff8c00; box-shadow: 0 0 10px rgba(255,140,0,0.9); animation: capfullPulse 1.0s ease-in-out infinite; }
         .oracle-row .ostartin { color: #4d9bff; font-size: 11px; font-weight: bold; font-variant-numeric: tabular-nums; }
+        .oracle-row .ostartin.ending-label { color: #ff8c00; }
         @keyframes capfullPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
         #sidePanelMissions { flex: 1; overflow-y: auto; }
 
@@ -2524,26 +2526,33 @@
                 const lock = r.locked ? ' <span title="price locked while players are inside" style="color:#888">🔒</span>' : '';
                 const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL' + lock;
                 const cap = r.cap || 30;
-                // ended → icono azul pulsante + cuenta atrás hasta reinicio.
-                // counting → icono azul pulsante + cuenta atrás hasta inicio de partida.
+                // ending  → últimas 30s de partida: icono naranja + "LAST Xs"
+                // ended   → sala reiniciándose: icono azul + "Xs"
+                // counting → lobby countdown pre-partida: icono azul + "STARTS IN Xs"
+                const ending = r.state === 'playing' && r.endsIn != null && r.endsIn <= 30000;
                 const ended = r.state === 'ended';
-                const counting = !ended && r.startIn != null && r.startIn > 0;
-                if (ended && r.restartIn != null) window._roomCountdowns[r.key] = Date.now() + r.restartIn;
+                const counting = !ended && !ending && r.startIn != null && r.startIn > 0;
+                if (ending) window._roomCountdowns[r.key] = Date.now() + r.endsIn;
+                else if (ended && r.restartIn != null) window._roomCountdowns[r.key] = Date.now() + r.restartIn;
                 else if (counting) window._roomCountdowns[r.key] = Date.now() + r.startIn;
                 else delete window._roomCountdowns[r.key];
-                // 0 → gris (vacía). 1-49% → amarillo (some). 50-99% → verde (full).
-                // 100% → rojo pulsante (no se puede entrar).
-                const cls = (ended || counting) ? 'starting'
+                // 0 → gris (vacía). 1-49% → amarillo. 50-99% → verde. 100% → rojo.
+                const cls = ending ? 'ending'
+                    : (ended || counting) ? 'starting'
                     : (r.players === 0 ? 'empty'
                     : (r.players >= cap ? 'capfull'
                     : (r.players >= cap / 2 ? 'full' : 'some')));
-                const secsLeft = ended
-                    ? (r.restartIn != null ? Math.ceil(r.restartIn / 1000) : '…')
+                const secsLeft = ending ? Math.ceil(r.endsIn / 1000)
+                    : ended ? (r.restartIn != null ? Math.ceil(r.restartIn / 1000) : '…')
                     : Math.ceil(r.startIn / 1000);
-                const title = ended ? `RESTARTING — ${secsLeft}s`
+                const prefix = ending ? 'LAST ' : counting ? 'STARTS IN ' : '';
+                const title = ending ? `ENDING — ${secsLeft}s left`
+                    : ended ? `RESTARTING — ${secsLeft}s`
                     : counting ? `STARTING — ${r.players}/${r.needed} ready`
                     : (r.players >= cap ? `FULL — ${r.players}/${cap} players` : `${r.players}/${cap} players`);
-                const label = (ended || counting) ? `<span class="ostartin" data-key="${r.key}">${secsLeft}s</span>` : 'STATUS';
+                const label = (ending || ended || counting)
+                    ? `<span class="ostartin${ending ? ' ending-label' : ''}" data-key="${r.key}" data-prefix="${prefix}">${prefix}${secsLeft}s</span>`
+                    : 'STATUS';
                 return `<div class="oracle-row">
                     <span class="oroom">${r.priceUsd === 0 ? 'Free' : '$' + r.priceUsd}</span>
                     <span class="opill">${fee}</span>
@@ -2576,7 +2585,7 @@
             document.querySelectorAll('.ostartin').forEach(span => {
                 const endsAt = window._roomCountdowns[span.dataset.key];
                 if (!endsAt) return;
-                span.textContent = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) + 's';
+                span.textContent = (span.dataset.prefix || '') + Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) + 's';
             });
         }
     }

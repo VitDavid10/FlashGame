@@ -806,6 +806,7 @@ const httpServer = http.createServer(async (req, res) => {
                 state: room ? room.state : 'offline',
                 startIn: (room && room.startAt) ? Math.max(0, room.startAt - Date.now()) : null,
                 restartIn: (room && room.state === 'ended' && room.restartAt) ? Math.max(0, room.restartAt - Date.now()) : null,
+                endsIn: (room && room.state === 'playing' && room.endsAt) ? Math.max(0, room.endsAt - Date.now()) : null,
                 roomName: room ? room.roomName : price,
             });
         }
