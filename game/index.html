@@ -2548,8 +2548,8 @@
                 const prefix = ending ? 'LAST ' : counting ? 'STARTS IN ' : ended ? 'RESET IN ' : '';
                 const title = ending ? `ENDING — ${secsLeft}s left`
                     : ended ? `RESTARTING — ${secsLeft}s`
-                    : counting ? `STARTING — ${r.players}/${r.needed} ready`
-                    : (r.players >= cap ? `FULL — ${r.players}/${cap} players` : `${r.players}/${cap} players`);
+                    : counting ? `STARTING IN ${secsLeft}s`
+                    : (r.players >= cap ? 'FULL' : '');
                 const label = (ending || ended || counting)
                     ? `<span class="ostartin${ending ? ' ending-label' : ''}" data-key="${r.key}" data-prefix="${prefix}">${prefix}${secsLeft}s</span>`
                     : 'STATUS';

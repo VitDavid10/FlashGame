@@ -266,6 +266,15 @@
                 <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
             </div>
             <div class="grid" id="gridClassic"></div>
+            <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px; display:none;">
+                <div style="color:#4d9bff; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">⚙ Arcade Mode — Global Parameters</div>
+                <div style="display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap;">
+                    <div><label style="color:#888;font-size:10px;display:block;margin-bottom:4px;">Lobby (s)</label><input type="number" step="1" min="0" max="120" id="g_lobby" value="20" style="width:70px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;"></div>
+                    <div><label style="color:#888;font-size:10px;display:block;margin-bottom:4px;">Restart (s)</label><input type="number" step="1" min="1" max="300" id="g_restart" value="10" style="width:70px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;"></div>
+                    <button class="b verde mini" onclick="aplicarGlobal()" style="margin-bottom:1px;">Aplicar</button>
+                    <span style="color:#555;font-size:10px;">Se aplica a todas las salas arcade</span>
+                </div>
+            </div>
             <div class="grid" id="gridArcade" style="display:none"></div>
             <div id="gridOtras"></div>
         </div>
@@ -470,6 +479,7 @@ function verModo(m) {
     modoActivo = m;
     document.getElementById('gridClassic').style.display = (m === 'classic') ? '' : 'none';
     document.getElementById('gridArcade').style.display = (m === 'arcade') ? '' : 'none';
+    document.getElementById('arcadeGlobalPanel').style.display = (m === 'arcade') ? '' : 'none';
     document.getElementById('modeBtn_classic').classList.toggle('act', m === 'classic');
     document.getElementById('modeBtn_arcade').classList.toggle('act', m === 'arcade');
 }
@@ -586,7 +596,7 @@ function aplicarReglas(roomKey) {
         virus: parseFloat(g('r_virus').value), botsEnabled: g('r_botson').checked,
         botCount: parseInt(g('r_botn').value),
         minReal: parseInt(g('r_minreal').value), targetPop: parseInt(g('r_pop').value),
-        maxPlayers: parseInt(g('r_maxp').value), lobbyMs: Math.round(parseFloat(g('r_lobby').value) * 1000)
+        maxPlayers: parseInt(g('r_maxp').value)
     } });
     setTimeout(pedir, 100);
 }
@@ -646,7 +656,6 @@ function cartaSala(r) {
                 <div><label>Mín. reales</label><input type="number" step="1" min="1" max="50" id="r_minreal_${id}" value="${rl.minReal != null ? rl.minReal : 5}"></div>
                 <div><label>Población</label><input type="number" step="1" min="0" max="60" id="r_pop_${id}" value="${rl.targetPop != null ? rl.targetPop : 10}"></div>
                 <div><label>Tope reales</label><input type="number" step="1" min="1" max="100" id="r_maxp_${id}" value="${rl.maxPlayers != null ? rl.maxPlayers : 30}"></div>
-                <div><label>Lobby (s)</label><input type="number" step="1" min="0" max="120" id="r_lobby_${id}" value="${rl.lobbyMs != null ? Math.round(rl.lobbyMs / 1000) : 20}"></div>
             </div>
             <div class="ruleline">
                 <label class="chk"><input type="checkbox" id="r_botson_${id}" ${rl.botsEnabled ? 'checked' : ''}> bots activados</label>
@@ -665,6 +674,13 @@ function cartaSala(r) {
 }
 
 function aplicarSnapHz() { send({ cmd: 'snapshotHz', hz: parseInt(document.getElementById('snapHzSel').value, 10) }); setTimeout(pedir, 100); }
+function aplicarGlobal() {
+    send({ cmd: 'setGlobal',
+        arcadeLobbyMs:   Math.round(parseFloat(document.getElementById('g_lobby').value)   * 1000),
+        arcadeRestartMs: Math.round(parseFloat(document.getElementById('g_restart').value) * 1000)
+    });
+    setTimeout(pedir, 100);
+}
 
 // --- Stress test ---
 const STRESS_PRECIOS = ['Free', '5$', '10$', '20$', '50$'];
@@ -755,6 +771,8 @@ function render(m) {
     document.getElementById('liveTxt').innerText = 'en vivo';
     document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · red ${m.snapshotHz}Hz`;
     if (m.snapshotHz != null && document.activeElement.id !== 'snapHzSel') document.getElementById('snapHzSel').value = m.snapshotHz;
+    if (m.arcadeLobbyMs   != null && document.activeElement.id !== 'g_lobby')   document.getElementById('g_lobby').value   = Math.round(m.arcadeLobbyMs   / 1000);
+    if (m.arcadeRestartMs != null && document.activeElement.id !== 'g_restart') document.getElementById('g_restart').value = Math.round(m.arcadeRestartMs / 1000);
     construirSalasStress(); renderStress(m.stress);
     const t = m.totales;
     const sEntradas = realOnly ? t.entradasReal : t.entradas;

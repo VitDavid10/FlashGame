@@ -42,7 +42,11 @@ const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
 const MIN_PLAYERS = parseInt(process.env.MIN_PLAYERS, 10) || 5;    // reales para empezar (editable por sala desde el panel)
 const TARGET_POP = parseInt(process.env.TARGET_POP, 10) || 10;     // población objetivo: reales + bots de relleno
 const MATCH_MS = parseInt(process.env.MATCH_MS, 10) || (3 * 60 * 1000 + 50 * 1000);
-const RESTART_MS = parseInt(process.env.RESTART_MS, 10) || 30000;
+const GLOBAL_FILE = path.join(__dirname, 'globalsettings.json');
+let _glob = loadJson(GLOBAL_FILE, {});
+let arcadeRestartMs = Math.max(1000, (_glob.arcadeRestartMs | 0) || 10000);
+let arcadeLobbyMs  = Math.max(0,    (_glob.arcadeLobbyMs  | 0) || 20000);
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -223,13 +227,12 @@ function rulesOf(key) {
     // Cuenta atrás de lobby (ms) antes de empezar al alcanzar el mínimo de reales.
     // 0 = empezar al instante. Por defecto solo arcade espera 20s (es donde tiene
     // sentido: fin de partida → menú → cuenta atrás). Classic sigue al instante.
-    if (r.lobbyMs == null) r.lobbyMs = /^arcade_/.test(key) ? 20000 : 0;
     return r;
 }
 function minRealOf(key) { return Math.max(1, rulesOf(key).minReal); }
 function targetPopOf(key) { return Math.max(0, rulesOf(key).targetPop); }
 function maxPlayersOf(key) { return Math.max(1, rulesOf(key).maxPlayers); }
-function lobbyMsOf(key) { return Math.max(0, rulesOf(key).lobbyMs); }
+function lobbyMsOf(key) { return /^arcade_/.test(key) ? arcadeLobbyMs : 0; }
 // Tarifa de entrada en PILL = precio($) × PILL_PER_DOLLAR. (El precio real en $ vía
 // oráculo es la Fase B4; por ahora una conversión fija.) Free = 0.
 // Oráculo de precio: PILL por $1. Base fija, pero "deriva" cada 5 min ±15% para simular
@@ -682,6 +685,7 @@ function buildAdminState() {
         t: 'adminState',
         minPlayers: MIN_PLAYERS,
         snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY),
+        arcadeRestartMs, arcadeLobbyMs,
         stress: stressBuildState(),
         totales: {
             entradas: totEntradas, muertes: totMuertes, dinero: totDinero,
@@ -1047,7 +1051,6 @@ wss.on('connection', (ws, req) => {
                 if (typeof r.minReal === 'number') rules.minReal = Math.max(1, Math.min(50, r.minReal | 0));
                 if (typeof r.targetPop === 'number') rules.targetPop = Math.max(0, Math.min(60, r.targetPop | 0));
                 if (typeof r.maxPlayers === 'number') rules.maxPlayers = Math.max(1, Math.min(100, r.maxPlayers | 0));
-                if (typeof r.lobbyMs === 'number') rules.lobbyMs = Math.max(0, Math.min(120000, r.lobbyMs | 0));
                 rulesDirty = true;
                 const sala = rooms.get(msg.room);
                 if (sala) { // speed, food y población se aplican en vivo; virus y bots manuales al reiniciar
@@ -1061,6 +1064,12 @@ wss.on('connection', (ws, req) => {
                 }
                 logAdmin(msg.room, 'Cambió reglas', '');
                 log(`ADMIN reglas en ${msg.room}: ${JSON.stringify(rules)}`);
+            } else if (msg.cmd === 'setGlobal') {
+                if (typeof msg.arcadeRestartMs === 'number') arcadeRestartMs = Math.max(1000, Math.min(300000, msg.arcadeRestartMs | 0));
+                if (typeof msg.arcadeLobbyMs === 'number')  arcadeLobbyMs  = Math.max(0,    Math.min(120000, msg.arcadeLobbyMs  | 0));
+                saveGlobal();
+                ws.send(JSON.stringify(buildAdminState()));
+                log(`Global arcade: restart=${arcadeRestartMs / 1000}s lobby=${arcadeLobbyMs / 1000}s`);
             } else if (msg.cmd === 'snapshotHz' && typeof msg.hz === 'number') {
                 const prev = Math.round(TICK_HZ / SNAPSHOT_EVERY);
                 SNAPSHOT_EVERY = hzToEvery(msg.hz | 0);
@@ -1369,7 +1378,7 @@ setInterval(() => {
         // fin de partida (arcade/skills)
         if (room.endsAt && now >= room.endsAt) {
             room.state = 'ended';
-            room.restartAt = now + RESTART_MS;
+            room.restartAt = now + arcadeRestartMs;
             // BLINDAJE matchEnd: para cada cliente con cid, actualiza Q1, Q2, Q4 (mass).
             // Q3 (skills) ya se actualizó incrementalmente en cada skillUsed.
             for (const [pid, cli] of room.clients) {
@@ -1421,7 +1430,7 @@ setInterval(() => {
                 room.pot = 0;
             }
             broadcast(room, { t: 'matchEnd' });
-            broadcast(room, { t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName, mode: room.mode, restartIn: RESTART_MS });
+            broadcast(room, { t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName, mode: room.mode, restartIn: arcadeRestartMs });
             log(`Partida terminada en ${room.key}; reinicio en ${RESTART_MS / 1000}s`);
             continue;
         }
