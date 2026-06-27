@@ -1078,12 +1078,12 @@
     <div id="specAdminPanel" style="display:none; position:fixed; top:0; left:0; height:100%; width:250px; z-index:70; background:rgba(8,10,14,0.96); border-right:1px solid #00ff88; box-shadow:4px 0 22px rgba(0,0,0,0.6); padding:16px 14px; overflow-y:auto; font-family:'Russo One', sans-serif;">
         <div style="color:#00ff88; font-size:14px; letter-spacing:1px; text-shadow:0 0 10px rgba(0,255,136,0.4); margin-bottom:4px;">CONTROL</div>
         <div id="specRoomLabel" style="color:#888; font-size:10px; letter-spacing:1px; margin-bottom:14px;"></div>
-        <div style="color:#666; font-size:9px; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Jugadores</div>
+        <div style="color:#666; font-size:9px; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Players</div>
         <div id="specPlayers" style="margin-bottom:16px;"></div>
-        <button onclick="specReiniciar()" style="width:100%; padding:9px; margin-bottom:7px; background:transparent; border:1px solid #ffae42; color:#ffae42; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">↻ Reiniciar sala</button>
-        <button onclick="specVaciar()" style="width:100%; padding:9px; margin-bottom:7px; background:transparent; border:1px solid #888; color:#aaa; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">⊘ Echar a todos</button>
-        <button onclick="specApagar()" style="width:100%; padding:9px; background:transparent; border:1px solid #ff2a2a; color:#ff2a2a; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">⏻ Apagar (cierra)</button>
-        <div style="color:#666; font-size:9px; letter-spacing:1px; text-transform:uppercase; margin:16px 0 6px;">Registro de esta sala</div>
+        <button onclick="specReiniciar()" style="width:100%; padding:9px; margin-bottom:7px; background:transparent; border:1px solid #ffae42; color:#ffae42; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">↻ Restart room</button>
+        <button onclick="specVaciar()" style="width:100%; padding:9px; margin-bottom:7px; background:transparent; border:1px solid #888; color:#aaa; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">⊘ Kick all</button>
+        <button onclick="specApagar()" style="width:100%; padding:9px; background:transparent; border:1px solid #ff2a2a; color:#ff2a2a; font-family:'Russo One'; font-size:11px; border-radius:6px; cursor:pointer; text-transform:uppercase;">⏻ Shut down</button>
+        <div style="color:#666; font-size:9px; letter-spacing:1px; text-transform:uppercase; margin:16px 0 6px;">Room log</div>
         <div id="specLog" style="font-size:9px;"></div>
     </div>
 
@@ -2768,7 +2768,7 @@
                 WaitHud.hide();
                 return;
             }
-            setLobbyBanner('🌐 SALA ' + roomName + ' — ' + count + '/' + needed + ' jugadores · PRÓXIMA PARTIDA EN ' + remaining + 's   ·   PRÁCTICA OFFLINE');
+            setLobbyBanner('🌐 ROOM ' + roomName + ' — ' + count + '/' + needed + ' players · NEXT MATCH IN ' + remaining + 's   ·   OFFLINE PRACTICE');
             WaitHud.showTimer(remaining);
             remaining--;
         };
@@ -2888,15 +2888,15 @@
                     enterOnlineGame(ws, msg, isResume);
                 } else {
                     // Sala en lobby (o reiniciándose): práctica offline mientras tanto
-                    if (msg.state === 'ended') setLobbyBanner('🌐 SALA ' + msg.roomName + ' — reiniciándose...   ·   PRÁCTICA OFFLINE');
-                    else setLobbyBanner('🌐 SALA ' + msg.roomName + ' — esperando jugadores (' + msg.count + '/' + msg.needed + ')   ·   PRÁCTICA OFFLINE');
+                    if (msg.state === 'ended') setLobbyBanner('🌐 ROOM ' + msg.roomName + ' — restarting...   ·   OFFLINE PRACTICE');
+                    else setLobbyBanner('🌐 ROOM ' + msg.roomName + ' — waiting for players (' + msg.count + '/' + msg.needed + ')   ·   OFFLINE PRACTICE');
                     if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
                     // Si entras con una cuenta atrás de lobby ya en marcha, muéstrala.
                     if (msg.startIn > 0) runLobbyCountdown(msg.startIn, msg.roomName, msg.count, msg.needed);
                 }
             } else if (msg.t === 'waiting') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
-                setLobbyBanner('🌐 SALA ' + msg.roomName + ' — esperando jugadores (' + msg.count + '/' + msg.needed + ')   ·   PRÁCTICA OFFLINE');
+                setLobbyBanner('🌐 ROOM ' + msg.roomName + ' — waiting for players (' + msg.count + '/' + msg.needed + ')   ·   OFFLINE PRACTICE');
                 WaitHud.showCount(msg.count, msg.needed);
                 if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
             } else if (msg.t === 'lobbyPreview' || msg.t === 'lobbyCountdown') {
@@ -2910,13 +2910,13 @@
                 if (sim && sim.isRemote && sim.ws === ws && gameRunning && !practiceMode) {
                     SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true;
                     els.skillOverlay.style.display = 'none'; isPickingSkill = false;
-                    els.resultTitle.innerText = 'SALA REINICIADA'; els.resultTitle.style.color = '#ffcc00';
+                    els.resultTitle.innerText = 'ROOM RESTARTED'; els.resultTitle.style.color = '#ffcc00';
                     showResultsUI();
                 }
             } else if (msg.t === 'matchStart') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
                 practiceMode = false; setLobbyBanner(null); WaitHud.hide();
-                spawnFloatingText('¡EMPIEZA LA PARTIDA ONLINE!', '#00ff88');
+                spawnFloatingText('ONLINE MATCH STARTING!', '#00ff88');
                 enterOnlineGame(ws, msg, false);
             } else if (msg.t === 'roomFull') {
                 restoreBtn(); try { ws.close(); } catch (err) {}
@@ -3001,7 +3001,7 @@
         lastFrameTime = Date.now();
         SoundManager.playMusic();   // también en resume (antes se quedaba en silencio)
         gameRunning = true;
-        if (isResume) spawnFloatingText('RECONECTADO', '#00ff88');
+        if (isResume) spawnFloatingText('RECONNECTED', '#00ff88');
         // Persiste info de rejoin: si la pestaña se cierra ahora, el user podrá
         // volver a entrar sin pagar pulsando "REJOIN" en el menú durante 28s.
         if (netState && netState.token) {
@@ -3129,7 +3129,7 @@
                         const c = sim.spawnPlayer('me');
                         camera.x = c.x; camera.y = c.y;
                         SoundManager.play('death');
-                        spawnFloatingText('REAPARECES (PRÁCTICA)', '#ffcc00');
+                        spawnFloatingText('RESPAWNING (PRACTICE)', '#ffcc00');
                     } else { Quests.reportDeath(); Quests.endMatch('death'); stopGame(); }
                     break;
                 }
@@ -3307,39 +3307,39 @@
                     pedir(); specStateTimer = setInterval(pedir, 2000);
                 }
             } else if (msg.t === 'specEmpty') {
-                setLobbyBanner('⚠ La sala ' + room + ' no está activa (nadie jugando ahora mismo).');
+                setLobbyBanner('⚠ Room ' + room + ' is not active (nobody playing right now).');
             } else if (msg.t === 'adminState') {
                 renderSpecPlayers(msg);
             } else if (sim && sim.isRemote && sim.ws === ws) {
                 sim.onMessage(msg);
             }
         };
-        ws.onclose = () => { if (gameRunning) setLobbyBanner('Conexión cerrada — la sala terminó o el servidor se apagó.'); };
-        ws.onerror = () => setLobbyBanner('⚠ No se pudo conectar al servidor para espectar.');
+        ws.onclose = () => { if (gameRunning) setLobbyBanner('Connection closed — the room ended or the server shut down.'); };
+        ws.onerror = () => setLobbyBanner('⚠ Could not connect to the server to spectate.');
         return true;
     }
 
     // Mandos del panel de control dentro del espectador (usan el mismo WebSocket)
     function specSend(o) { if (sim && sim.ws && sim.ws.readyState === 1) sim.ws.send(JSON.stringify(o)); }
-    function specKick(id) { if (confirm('¿Echar a este jugador?')) specSend({ t: 'admin', key: specAdminKey, cmd: 'kick', playerId: id }); }
+    function specKick(id) { if (confirm('Kick this player?')) specSend({ t: 'admin', key: specAdminKey, cmd: 'kick', playerId: id }); }
     function specGod(id) { specSend({ t: 'admin', key: specAdminKey, cmd: 'power', playerId: id, name: 'god', args: [] }); }
-    function specMasa(id) { const n = prompt('Nueva masa para el jugador:', '50000'); if (n) specSend({ t: 'admin', key: specAdminKey, cmd: 'power', playerId: id, name: 'mass', args: [n] }); }
-    function specReiniciar() { if (confirm('¿Reiniciar la sala? Los jugadores verán "SALA REINICIADA".')) specSend({ t: 'admin', key: specAdminKey, cmd: 'restart', room: specRoomKey }); }
-    function specVaciar() { if (confirm('¿Echar a TODOS los jugadores de la sala?')) specSend({ t: 'admin', key: specAdminKey, cmd: 'kickAll', room: specRoomKey }); }
-    function specApagar() { if (confirm('¿APAGAR la sala? Se destruye y se cierra esta pestaña.')) { specSend({ t: 'admin', key: specAdminKey, cmd: 'shutdown', room: specRoomKey }); setTimeout(() => window.close(), 350); } }
+    function specMasa(id) { const n = prompt('New mass for player:', '50000'); if (n) specSend({ t: 'admin', key: specAdminKey, cmd: 'power', playerId: id, name: 'mass', args: [n] }); }
+    function specReiniciar() { if (confirm('Restart the room? Players will see "ROOM RESTARTED".')) specSend({ t: 'admin', key: specAdminKey, cmd: 'restart', room: specRoomKey }); }
+    function specVaciar() { if (confirm('Kick ALL players from the room?')) specSend({ t: 'admin', key: specAdminKey, cmd: 'kickAll', room: specRoomKey }); }
+    function specApagar() { if (confirm('SHUT DOWN the room? It will be destroyed and this tab will close.')) { specSend({ t: 'admin', key: specAdminKey, cmd: 'shutdown', room: specRoomKey }); setTimeout(() => window.close(), 350); } }
     function renderSpecPlayers(state) {
         const r = (state.rooms || []).find(x => x.key === specRoomKey);
-        document.getElementById('specRoomLabel').innerText = r ? (r.roomName + ' · ' + r.mode.toUpperCase() + ' · ' + r.conectados + ' jugadores') : specRoomKey;
+        document.getElementById('specRoomLabel').innerText = r ? (r.roomName + ' · ' + r.mode.toUpperCase() + ' · ' + r.conectados + ' players') : specRoomKey;
         const cont = document.getElementById('specPlayers');
-        if (!r || !r.players || r.players.length === 0) { cont.innerHTML = '<div style="color:#555; font-size:10px;">Nadie conectado</div>'; return; }
+        if (!r || !r.players || r.players.length === 0) { cont.innerHTML = '<div style="color:#555; font-size:10px;">Nobody connected</div>'; return; }
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         cont.innerHTML = r.players.map(p => `<div style="padding:6px 0; border-bottom:1px solid #1a1a1a;">
-            <div style="color:#fff; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(p.name) || '(sin nombre)'}${p.god ? ' <span style="color:#b07cf7;">★GOD</span>' : ''}</div>
-            <div style="color:#666; font-size:8px; margin-bottom:4px;">${Number(p.mass).toLocaleString('en-US')} masa${p.alive ? '' : ' · espect.'}</div>
+            <div style="color:#fff; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(p.name) || '(no name)'}${p.god ? ' <span style="color:#b07cf7;">★GOD</span>' : ''}</div>
+            <div style="color:#666; font-size:8px; margin-bottom:4px;">${Number(p.mass).toLocaleString('en-US')} mass${p.alive ? '' : ' · spec.'}</div>
             <div style="display:flex; gap:4px;">
-                <button onclick="specGod('${esc(p.id)}')" style="flex:1; padding:3px 0; background:transparent; border:1px solid #b07cf7; color:#b07cf7; font-family:'Russo One'; font-size:8.5px; border-radius:4px; cursor:pointer;">${p.god ? 'Quitar' : 'God'}</button>
-                <button onclick="specMasa('${esc(p.id)}')" style="flex:1; padding:3px 0; background:transparent; border:1px solid #4f9cff; color:#4f9cff; font-family:'Russo One'; font-size:8.5px; border-radius:4px; cursor:pointer;">Masa</button>
-                <button onclick="specKick('${esc(p.id)}')" style="flex:1; padding:3px 0; background:transparent; border:1px solid #ff2a2a; color:#ff2a2a; font-family:'Russo One'; font-size:8.5px; border-radius:4px; cursor:pointer;">Echar</button>
+                <button onclick="specGod('${esc(p.id)}')" style="flex:1; padding:3px 0; background:transparent; border:1px solid #b07cf7; color:#b07cf7; font-family:'Russo One'; font-size:8.5px; border-radius:4px; cursor:pointer;">${p.god ? 'Remove' : 'God'}</button>
+                <button onclick="specMasa('${esc(p.id)}')" style="flex:1; padding:3px 0; background:transparent; border:1px solid #4f9cff; color:#4f9cff; font-family:'Russo One'; font-size:8.5px; border-radius:4px; cursor:pointer;">Mass</button>
+                <button onclick="specKick('${esc(p.id)}')" style="flex:1; padding:3px 0; background:transparent; border:1px solid #ff2a2a; color:#ff2a2a; font-family:'Russo One'; font-size:8.5px; border-radius:4px; cursor:pointer;">Kick</button>
             </div>
         </div>`).join('');
         // Registro de acciones de admin de ESTA sala
