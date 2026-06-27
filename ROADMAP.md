@@ -58,18 +58,28 @@ recomendado: de más rentable (poco esfuerzo, mucha ganancia) a más complejo.
   - AOI + BIN ………… **910 B/snap (−92%)**
 - Maphack cerrado: un cliente modificado no puede dibujar lo que el server ya no manda.
 
+### Fase 5a — Sharding lógico + matchmaker ✅ (HECHA)
+- **20 salas pre-creadas** al arrancar: 2 layers × 2 modos × 5 precios. No se crean
+  más bajo demanda. Configurable con env `LAYERS_PER_COMBO`.
+- **Matchmaker que APILA**: al hacer join, server elige la layer del combo más
+  llena que cumpla (no llena, no a <30s del final, no `ended`). Si ninguna cumple
+  → `noSlot` y el cliente vuelve al menú.
+- **UX cliente "BUSCANDO SALA..."**: en vez de entrar al instante al recibir
+  `welcome`, el cliente queda 3 s con banner animado + 0.6 s "ROOM FOUND" sobre la
+  práctica offline. Da sensación de matchmaking.
+- **Layers invisibles para el cliente**: solo ve "Free", "5$", etc. El panel admin
+  sí las ve con sufijo `L1`/`L2`.
+- **Stress test medido (local, 1 proceso)** con 600 bots y AOI+binario:
+  - Pico ramp: ~515 simultáneos.
+  - Tras absorber el ramp: **p50 0.2 ms · p95 1 ms · max 6.7 ms** (tick nominal 25 ms).
+  - Lag del event loop: p95 14-16 ms.
+  - Conclusión: 1 proceso aguanta 600 conexiones cómodo con AOI+binario.
+
 ## ⏳ Fases pendientes (para ser más pro)
 
-### Fase 5 — Salas independientes (multiproceso)
-Node.js usa un solo núcleo. Como las salas **no interactúan entre sí**, se pueden
-repartir entre varios procesos (sharding) para aprovechar todos los núcleos del VPS.
-
-- Lanzar N copias del servidor, cada una dueña de unas salas.
-- **Capa de enrutado (gateway)** que mande cada jugador al proceso de su sala.
-- Panel de admin que **agregue** la información de todos los procesos.
-- Más complejidad de despliegue (varios servicios en vez de uno).
-
-➡️ Solo merece la pena cuando se necesiten **miles de jugadores concurrentes** de forma habitual.
+### Fase 5b — Multiproceso real (solo si hace falta)
+1 proceso aguanta 600 jugadores cómodos. Cuando el VPS empiece a saturar (~1500+),
+repartir las salas entre procesos vía `cluster` + gateway. NO urgente.
 
 ### Extras "nivel pro" (cuando toque)
 - **Delta compression**: mandar solo lo que cambió entre snapshots, no el estado completo.

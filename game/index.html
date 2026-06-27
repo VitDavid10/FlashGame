@@ -2831,7 +2831,7 @@
     }
     function hideSystemMsg() { document.getElementById('sysModal').style.display = 'none'; }
 
-    function abandonNet(texto) { practiceMode = false; setLobbyBanner(null); sim = null; gameRunning = false; netState = null; returnToMenu(); if (texto) showSystemMsg(texto); }
+    function abandonNet(texto) { cancelMatchmakingUX(); practiceMode = false; setLobbyBanner(null); sim = null; gameRunning = false; netState = null; returnToMenu(); if (texto) showSystemMsg(texto); }
 
     // TRY AGAIN tras morir / fin de partida / reinicio: vuelve a entrar a la
     // MISMA sala sin pasar por el menú (nuevo join con los mismos datos).
@@ -2865,6 +2865,34 @@
         netState = { url, token: null, attempts: 0, joinMsg: newJm };
         if (tryBtn) tryBtn.innerText = 'CONNECTING...';
         netConnect(false);
+    }
+
+    // UX matchmaking: muestra "BUSCANDO SALA..." (puntos animados) durante 3s
+    // sobre la práctica offline, luego "SALA ENCONTRADA" 600 ms, y entra.
+    // Aborta si el usuario pulsó BACK o el ws se cerró antes.
+    let _mmTimer = null, _mmTimeout1 = null, _mmTimeout2 = null;
+    function cancelMatchmakingUX() {
+        if (_mmTimer) { clearInterval(_mmTimer); _mmTimer = null; }
+        if (_mmTimeout1) { clearTimeout(_mmTimeout1); _mmTimeout1 = null; }
+        if (_mmTimeout2) { clearTimeout(_mmTimeout2); _mmTimeout2 = null; }
+    }
+    function enterWithMatchmakingUX(ws, msg, isResume) {
+        cancelMatchmakingUX();
+        practiceMode = true;
+        if (!gameRunning) startPracticeGame(msg.mode);
+        let n = 0;
+        const baseText = '🔎 FINDING ROOM';
+        setLobbyBanner(baseText + '.');
+        _mmTimer = setInterval(() => { n++; setLobbyBanner(baseText + '.'.repeat((n % 3) + 1)); }, 400);
+        _mmTimeout1 = setTimeout(() => {
+            cancelMatchmakingUX();
+            setLobbyBanner('✅ ROOM FOUND — ' + (msg.roomName || ''));
+            _mmTimeout2 = setTimeout(() => {
+                if (!netState || netState._matchOver || netState.ws !== ws) { setLobbyBanner(null); return; }
+                practiceMode = false; setLobbyBanner(null);
+                enterOnlineGame(ws, msg, isResume);
+            }, 600);
+        }, 3000);
     }
 
     function netConnect(isResume) {
@@ -2905,7 +2933,11 @@
                 joined = true; restoreBtn(); netState.attempts = 0; netState.token = msg.token;
                 netState.lastWelcome = msg;
                 if (msg.state === 'playing') {
-                    enterOnlineGame(ws, msg, isResume);
+                    // UX matchmaking: en vez de entrar al instante, mostrar
+                    // "BUSCANDO SALA..." sobre la práctica offline 3s y luego
+                    // "SALA ENCONTRADA" — da sensación de que el server reparte
+                    // gente entre layers, aunque la asignación ya está hecha.
+                    enterWithMatchmakingUX(ws, msg, isResume);
                 } else {
                     // Sala en lobby (o reiniciándose): práctica offline mientras tanto
                     if (msg.state === 'ended') setLobbyBanner('🌐 ROOM ' + msg.roomName + ' — restarting...   ·   OFFLINE PRACTICE');
@@ -2935,9 +2967,15 @@
                 }
             } else if (msg.t === 'matchStart') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
-                practiceMode = false; setLobbyBanner(null); WaitHud.hide();
+                WaitHud.hide();
                 spawnFloatingText('ONLINE MATCH STARTING!', '#00ff88');
-                enterOnlineGame(ws, msg, false);
+                // También con UX de matchmaking: la partida arranca, te dejamos
+                // ver "SALA ENCONTRADA" antes de entrar.
+                enterWithMatchmakingUX(ws, msg, false);
+            } else if (msg.t === 'noSlot') {
+                // Todas las layers del combo llenas o a punto de acabar.
+                restoreBtn(); try { ws.close(); } catch (err) {}
+                showSystemMsg('All rooms for ' + (msg.roomName || '') + ' are full or finishing. Try again in a moment.', 'NO SLOT');
             } else if (msg.t === 'roomFull') {
                 restoreBtn(); try { ws.close(); } catch (err) {}
                 showSystemMsg('Room ' + (msg.roomName || '') + ' is full (max ' + (msg.max || '') + ' players). Try another room or come back in a moment.', 'ROOM FULL');
@@ -3304,11 +3342,12 @@
         // Solo token temporal (?t=...): la clave admin real NUNCA viaja por la URL.
         // (Eliminado el fallback ?admin= legacy por seguridad: quedaba en el historial.)
         specAdminKey = params.get('t') || null;
-        specRoomKey = mode + '_' + room;
+        const layer = Math.max(1, parseInt(params.get('layer'), 10) || 1);
+        specRoomKey = mode + '_' + room + '_L' + layer;   // layerKey (admin lo usa para kick/restart)
         els.modeScreen.style.display = 'none'; els.modeScreen.style.pointerEvents = 'none'; els.loginOverlay.style.display = 'none';
         setLobbyBanner('👁 CONECTANDO COMO ESPECTADOR...');
         const ws = new WebSocket(url);
-        ws.onopen = () => ws.send(JSON.stringify({ t: 'spectate', room, mode }));
+        ws.onopen = () => ws.send(JSON.stringify({ t: 'spectate', room, mode, layer }));
         ws.onmessage = (e) => {
             let msg; try { msg = JSON.parse(e.data); } catch (err) { return; }
             if (msg.t === 'specWelcome') {

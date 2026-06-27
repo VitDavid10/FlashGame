@@ -69,9 +69,17 @@ const RULES_FILE = path.join(__dirname, 'roomrules.json');
 
 const PRICES = ['Free', '5$', '10$', '20$', '50$'];
 const CATALOG_MODES = ['classic', 'arcade'];
+// Layers por combo (mode × price). Cada combo tiene N instancias paralelas:
+// el matchmaker te mete en una al hacer join, apilando gente en la más llena
+// (90% ocupación) antes de pasar a la siguiente. Las layers SON INVISIBLES
+// para el cliente: solo ve "Free", "5$", etc. — el server decide la layer.
+// 2 layers × 2 modos × 5 precios = 20 salas pre-creadas al arrancar.
+const LAYERS_PER_COMBO = parseInt(process.env.LAYERS_PER_COMBO, 10) || 2;
+function comboKeyOf(mode, roomName) { return mode + '_' + roomName; }
+function layerKeyOf(mode, roomName, layerIdx) { return mode + '_' + roomName + '_L' + layerIdx; }
 
-const rooms = new Map();
-const resumeTokens = new Map();   // token → { roomKey, playerId }
+const rooms = new Map();   // layerKey → room
+const resumeTokens = new Map();   // token → { roomKey: layerKey, playerId }
 
 // --- Stress / DDoS test lanzable desde el panel (proceso hijo) ---
 const stress = { proc: null, running: false, kind: null, params: null, stats: null, startedAt: 0, error: null };
@@ -438,11 +446,16 @@ function buildSim(mode, rules) {
     return sim;
 }
 
+// Crea (o devuelve) una layer concreta. key = layerKey = "mode_roomName_LN".
+// Las reglas/stats persisten por comboKey, no por layer.
 function getOrCreateRoom(key, mode, roomName) {
     if (!rooms.has(key)) {
-        const rules = rulesOf(key); rulesDirty = true;
+        const ck = comboKeyOf(mode, roomName);
+        const rules = rulesOf(ck); rulesDirty = true;
+        const m = key.match(/_L(\d+)$/);
+        const layerIdx = m ? parseInt(m[1], 10) : 1;
         rooms.set(key, {
-            key, mode, roomName,
+            key, comboKey: ck, layerIdx, mode, roomName,
             sim: buildSim(mode, rules),
             clients: new Map(),
             state: 'waiting',                 // waiting | playing | ended
@@ -450,11 +463,50 @@ function getOrCreateRoom(key, mode, roomName) {
             endsAt: null, restartAt: null, startAt: null,
             pendingRemovals: new Map(),       // gracia de reconexión
             deadRemovals: new Map(),          // retirada de muertos
-            spectators: new Set()             // ws que solo miran (panel de control)
+            spectators: new Set(),            // ws que solo miran (panel de control)
+            persistent: true                  // layers pre-creadas no se borran al quedar vacías
         });
-        log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(key)} reales, población ${targetPopOf(key)})`);
+        log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(ck)} reales, población ${targetPopOf(ck)})`);
     }
     return rooms.get(key);
+}
+
+// Matchmaker: elige la layer del combo donde meter a un nuevo jugador.
+// Política: APILAR. Devuelve la layer más llena que cumpla:
+//  - no llena (clients.size < maxPlayers del combo)
+//  - no a <30s del final (te evita partidas que mueren en tu cara)
+//  - state no 'ended'
+// Si ninguna cumple, devuelve null → el cliente recibe noSlot y sigue offline.
+// NO crea layers nuevas: las 20 se pre-crean en startup.
+function pickLayer(mode, roomName) {
+    const ck = comboKeyOf(mode, roomName);
+    const max = maxPlayersOf(ck);
+    const candidates = [];
+    for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
+        const r = rooms.get(layerKeyOf(mode, roomName, i));
+        if (!r) continue;
+        if (r.state === 'ended') continue;
+        if (r.clients.size >= max) continue;
+        if (r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
+        candidates.push(r);
+    }
+    if (candidates.length === 0) return null;
+    candidates.sort((a, b) => b.clients.size - a.clients.size);
+    return candidates[0];
+}
+
+// Pre-crea TODAS las salas en startup (20 = 2 layers × 2 modos × 5 precios).
+function initLayers() {
+    let n = 0;
+    for (const mode of CATALOG_MODES) {
+        for (const price of PRICES) {
+            for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
+                getOrCreateRoom(layerKeyOf(mode, price, i), mode, price);
+                n++;
+            }
+        }
+    }
+    log(`Pre-creadas ${n} salas (${LAYERS_PER_COMBO} layers × ${CATALOG_MODES.length} modos × ${PRICES.length} precios)`);
 }
 
 function broadcast(room, objOrString) {
@@ -463,14 +515,14 @@ function broadcast(room, objOrString) {
 }
 
 function sendWaiting(room) {
-    broadcast(room, { t: 'waiting', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName, mode: room.mode });
+    broadcast(room, { t: 'waiting', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode });
 }
 
 function welcomeMsg(room, playerId, token, type) {
     return {
         t: type || 'welcome', id: playerId, token,
         mapSize: room.sim.mapSize, mode: room.mode, roomName: room.roomName,
-        state: room.state, count: room.clients.size, needed: minRealOf(room.key),
+        state: room.state, count: room.clients.size, needed: minRealOf(room.comboKey),
         duration: MATCH_MS,
         tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
         startIn: room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
@@ -484,7 +536,7 @@ function welcomeMsg(room, playerId, token, type) {
 // los mete poco a poco, así parece que la sala se va llenando naturalmente.
 function refillBots(room) {
     if (room.state !== 'playing') return;
-    const target = targetPopOf(room.key);
+    const target = targetPopOf(room.comboKey);
     if (target === 0) return;
     const sim = room.sim;
     const deseados = Math.max(0, target - room.clients.size);
@@ -519,10 +571,10 @@ function tickGradualBots(room, now) {
 // lobbyMs; si baja del mínimo lo cancela. Con lobbyMs=0 empieza al instante.
 function armLobby(room) {
     if (room.state !== 'waiting') return;
-    const min = minRealOf(room.key);
+    const min = minRealOf(room.comboKey);
     if (room.clients.size >= min) {
         if (room.startAt) return;   // ya hay cuenta atrás en marcha
-        const lobbyMs = lobbyMsOf(room.key);
+        const lobbyMs = lobbyMsOf(room.comboKey);
         if (lobbyMs <= 0) { startMatch(room); return; }
         room.startAt = Date.now() + lobbyMs;
         broadcast(room, { t: 'lobbyCountdown', startIn: lobbyMs, count: room.clients.size, needed: min, roomName: room.roomName, mode: room.mode });
@@ -553,7 +605,7 @@ function startMatch(room) {
 function restartRoom(room) {
     // Aviso a los que estén jugando: pantalla de fin + TRY AGAIN en el cliente
     broadcast(room, { t: 'roomRestart' });
-    room.sim = buildSim(room.mode, rulesOf(room.key));
+    room.sim = buildSim(room.mode, rulesOf(room.comboKey));
     room.state = 'waiting';
     room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false;
     room.deadRemovals.clear(); room.pendingRemovals.clear();
@@ -683,25 +735,27 @@ function buildSnapshotFor(room, viewerId, box) {
 // Snapshot completo (sin AOI). Wrapper para mantener compatibilidad.
 function buildSnapshot(room) { return buildSnapshotFor(room, null, null); }
 
-// --- Estado para el panel de admin: catálogo completo + salas dinámicas ---
+// --- Estado para el panel de admin: una entrada por layer, agrupable por combo ---
 function buildAdminState() {
     const now = Date.now();
     const list = [];
-    const keysSeen = new Set();
-    const roomEntry = (key, mode, roomName, room) => {
-        const stats = statsOf(key);
-        const rules = rulesOf(key);
+    const roomEntry = (key, comboKey, mode, roomName, layerIdx, room) => {
+        const stats = statsOf(comboKey);
+        const rules = rulesOf(comboKey);
         const price = priceOf(roomName);
-        const entry = {
-            key, mode, roomName, price,
+        return {
+            key, comboKey, mode, roomName, layerIdx, price,
             state: room ? room.state : 'offline',
             conectados: room ? room.clients.size : 0,
             vivos: room ? [...room.clients.keys()].filter(pid => { const p = room.sim.players.get(pid); return p && p.alive; }).length : 0,
             espectadores: room ? room.spectators.size : 0,
-            maxReales: maxPlayersOf(key),
-            needed: minRealOf(key),
+            maxReales: maxPlayersOf(comboKey),
+            needed: minRealOf(comboKey),
             bots: room ? new Set(room.sim.enemies.map(e => e.id)).size : 0,
             rules,
+            // Las stats son del COMBO (compartidas por todas sus layers). Se
+            // devuelven en cada layer por comodidad; al sumar totales hay que
+            // contar UNA vez por comboKey (ver bucle de abajo).
             stats: { entradas: stats.entradas, muertes: stats.muertes, dinero: stats.entradas * price, entradasReal: stats.entradasReal || 0, muertesReal: stats.muertesReal || 0, dineroReal: (stats.entradasReal || 0) * price },
             tlMs: (room && room.endsAt) ? Math.max(0, room.endsAt - now) : null,
             startInMs: (room && room.startAt) ? Math.max(0, room.startAt - now) : null,
@@ -718,20 +772,31 @@ function buildAdminState() {
                 };
             }) : []
         };
-        return entry;
     };
+    const keysSeen = new Set();
     for (const mode of CATALOG_MODES) {
         for (const price of PRICES) {
-            const key = mode + '_' + price;
-            keysSeen.add(key);
-            list.push(roomEntry(key, mode, price, rooms.get(key) || null));
+            const ck = comboKeyOf(mode, price);
+            for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
+                const lk = layerKeyOf(mode, price, i);
+                keysSeen.add(lk);
+                list.push(roomEntry(lk, ck, mode, price, i, rooms.get(lk) || null));
+            }
         }
     }
+    // Salas dinámicas fuera del catálogo (legacy: por si quedan en disco).
     for (const room of rooms.values()) {
-        if (!keysSeen.has(room.key)) list.push(roomEntry(room.key, room.mode, room.roomName, room));
+        if (!keysSeen.has(room.key)) list.push(roomEntry(room.key, room.comboKey || room.key, room.mode, room.roomName, room.layerIdx || 1, room));
     }
+    // Totales agregados: contar stats UNA vez por comboKey.
     let totEntradas = 0, totMuertes = 0, totDinero = 0, totEntradasReal = 0, totMuertesReal = 0, totDineroReal = 0;
-    for (const e of list) { totEntradas += e.stats.entradas; totMuertes += e.stats.muertes; totDinero += e.stats.dinero; totEntradasReal += e.stats.entradasReal; totMuertesReal += e.stats.muertesReal; totDineroReal += e.stats.dineroReal; }
+    const seenCombo = new Set();
+    for (const e of list) {
+        if (seenCombo.has(e.comboKey)) continue;
+        seenCombo.add(e.comboKey);
+        totEntradas += e.stats.entradas; totMuertes += e.stats.muertes; totDinero += e.stats.dinero;
+        totEntradasReal += e.stats.entradasReal; totMuertesReal += e.stats.muertesReal; totDineroReal += e.stats.dineroReal;
+    }
     // Ranking: usa el cache calculado bajo demanda (botón "Actualizar ranking" en panel).
     // No se recalcula aquí — con 87k entradas bloquearía el main thread en cada poll.
     const ranking = _rankingCache;
@@ -1110,7 +1175,11 @@ wss.on('connection', (ws, req) => {
                     log(`ADMIN poder /${msg.name} a ${found.cli.name}`);
                 }
             } else if (msg.cmd === 'rules' && msg.room) {
-                const rules = rulesOf(msg.room); const r = msg.rules || {};
+                // Las reglas son por COMBO (afectan a todas sus layers). El panel
+                // puede mandar layerKey o comboKey; resolvemos al combo.
+                const sala0 = rooms.get(msg.room);
+                const ck = sala0 ? sala0.comboKey : msg.room;
+                const rules = rulesOf(ck); const r = msg.rules || {};
                 if (typeof r.speed === 'number') rules.speed = Math.max(0.25, Math.min(5, r.speed));
                 if (typeof r.food === 'number') rules.food = Math.max(0.25, Math.min(10, r.food));
                 if (typeof r.virus === 'number') rules.virus = Math.max(0, Math.min(10, r.virus));
@@ -1120,8 +1189,9 @@ wss.on('connection', (ws, req) => {
                 if (typeof r.targetPop === 'number') rules.targetPop = Math.max(0, Math.min(60, r.targetPop | 0));
                 if (typeof r.maxPlayers === 'number') rules.maxPlayers = Math.max(1, Math.min(100, r.maxPlayers | 0));
                 rulesDirty = true;
-                const sala = rooms.get(msg.room);
-                if (sala) { // speed, food y población se aplican en vivo; virus y bots manuales al reiniciar
+                // Aplicar en vivo a TODAS las layers del combo (speed/food/población).
+                for (const sala of rooms.values()) {
+                    if (sala.comboKey !== ck) continue;
                     sala.sim.config.worldSettings.speed = rules.speed;
                     sala.sim.config.worldSettings.food = rules.food;
                     if (sala.state === 'playing') refillBots(sala);
@@ -1223,8 +1293,12 @@ wss.on('connection', (ws, req) => {
         if (msg.t === 'spectate' && !room && !spectatorRoom) {
             const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
             let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
-            const key = mode + '_' + roomName;
-            const sala = rooms.get(key);
+            // Espectador: puede pedir una layer concreta (?layer=2 del panel admin);
+            // si no, se le mete en L1 por defecto. Si la layer pedida no existe,
+            // cae a L1; si tampoco, specEmpty.
+            const layerIdx = Math.max(1, Math.min(LAYERS_PER_COMBO, parseInt(msg.layer, 10) || 1));
+            const key = layerKeyOf(mode, roomName, layerIdx);
+            const sala = rooms.get(key) || rooms.get(layerKeyOf(mode, roomName, 1));
             if (!sala) { ws.send(JSON.stringify({ t: 'specEmpty' })); return; }
             spectatorRoom = sala;
             sala.spectators.add(ws);
@@ -1255,15 +1329,17 @@ wss.on('connection', (ws, req) => {
             const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
             let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
             if (roomName === '*') roomName = resolveQuickJoin(mode);
-            const key = mode + '_' + roomName;
-            room = getOrCreateRoom(key, mode, roomName);
-            // Tope de jugadores reales: si la sala está llena, rechazar la entrada.
-            if (room.clients.size >= maxPlayersOf(key)) {
-                ws.send(JSON.stringify({ t: 'roomFull', roomName, max: maxPlayersOf(key) }));
-                log(`Sala ${key} LLENA (${room.clients.size}/${maxPlayersOf(key)}): entrada rechazada`);
-                room = null;
+            // Matchmaker: elige la layer del combo (apilando). null = todas mal
+            // (llenas, a punto de acabar o ended). En ese caso el cliente recibe
+            // noSlot y sigue en práctica offline.
+            room = pickLayer(mode, roomName);
+            if (!room) {
+                ws.send(JSON.stringify({ t: 'noSlot', roomName, mode }));
+                log(`Sin sitio en ${comboKeyOf(mode, roomName)}: todas las layers llenas o a punto de acabar`);
                 return;
             }
+            const key = room.key;
+            const ck = room.comboKey;
             // Precio BLOQUEADO por sala: si esta sala está vacía (este es el primer
             // jugador), fija el precio al del oráculo actual. Mientras haya gente, no
             // cambia → todos en la misma partida pagan los mismos PILL (reparto justo).
@@ -1271,13 +1347,16 @@ wss.on('connection', (ws, req) => {
             // Salas de pago: exigir FIRMA de la wallet + descontar del saldo WAR.
             // Excepción: bots del stress test pueden entrar gratis con el token de tester
             // (solo válido si se ejecutan en el mismo servidor: SOL_RPC=devnet).
-            const fee = entryFeePill(key, room.pillRate);
+            // Fee/firma de pago van por COMBO (mode_price), no por layer:
+            // la firma del usuario es la misma para classic_5$ aunque le toque
+            // L1 o L2 — el server las cobra al saldo igual.
+            const fee = entryFeePill(ck, room.pillRate);
             let payWallet = null;
             const TESTER_OK = msg.tester === 'STRESS_TEST_DEVNET' && /devnet/i.test(solana.RPC || '');
             if (fee > 0 && !TESTER_OK) {
                 const pay = msg.pay || {};
                 const w = String(pay.wallet || ''), ts = Number(pay.ts) || 0;
-                const expected = `PillWars enter ${key} paying ${fee} PILL @ ${ts}`;
+                const expected = `PillWars enter ${ck} paying ${fee} PILL @ ${ts}`;
                 const reject = (reason) => { ws.send(JSON.stringify({ t: 'payRequired', room: roomName, fee, reason, balance: isSolAddr(w) ? warbank.getBalance(w) : 0 })); room = null; };
                 if (!isSolAddr(w) || pay.message !== expected || Math.abs(Date.now() - ts) > 120000) { reject('firma de pago inválida'); return; }
                 const sigKey = 'enter_' + (Array.isArray(pay.signature) ? pay.signature.join('') : '');
@@ -1310,19 +1389,20 @@ wss.on('connection', (ws, req) => {
             const useBin = msg.bin === 1 || msg.bin === true;
             room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK, useBin });
             sendEcon(room.clients.get(playerId), room);
-            const st_ = statsOf(key); st_.entradas++; if (!TESTER_OK) st_.entradasReal++; statsDirty = true;
+            // Stats por COMBO (compartidas entre layers).
+            const st_ = statsOf(ck); st_.entradas++; if (!TESTER_OK) st_.entradasReal++; statsDirty = true;
             if (name && !TESTER_OK) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; st.isReal = true; playersDirty = true; }
             if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
             if (!TESTER_OK) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
             if (room.state === 'playing') { room.sim.spawnPlayer(playerId); refillBots(room); }
             ws.send(JSON.stringify(Object.assign(welcomeMsg(room, playerId, token), useBin ? { useBin: true } : {})));
-            log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(key)}${useBin ? ' [bin]' : ''}`);
+            log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(ck)}${useBin ? ' [bin]' : ''}`);
             if (room.state === 'waiting') {
                 sendWaiting(room);
                 armLobby(room);
             } else if (room.state === 'ended') {
                 const restartIn = Math.max(0, room.restartAt - now);
-                ws.send(JSON.stringify({ t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName, mode: room.mode, restartIn }));
+                ws.send(JSON.stringify({ t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode, restartIn }));
             }
             return;
         }
@@ -1355,7 +1435,7 @@ wss.on('connection', (ws, req) => {
             if (pj && pj.alive) {
                 flushPeakMass(room, playerId, cli);
                 if (pj.name && !cli.isTester) { pstatOf(pj.name).muertes++; playersDirty = true; }
-                const ds_ = statsOf(room.key); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
+                const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
                 // CLASSIC: salir VIVO = cashout con exit fee (20/10/0 según kills); el fee va al bote.
                 if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, pj.killStreak | 0);
             } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
@@ -1425,6 +1505,9 @@ setInterval(() => {
         }
 
         if (room.clients.size === 0) {
+            // Layers persistentes (pre-creadas): nunca se cierran, solo
+            // descansan en estado waiting. Las dinámicas (legacy) sí se cierran.
+            if (room.persistent) continue;
             if (!room.emptySince) room.emptySince = now;
             if (now - room.emptySince > EMPTY_ROOM_TTL) {
                 rooms.delete(room.key);
@@ -1505,7 +1588,7 @@ setInterval(() => {
                 room.pot = 0;
             }
             broadcast(room, { t: 'matchEnd' });
-            broadcast(room, { t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName, mode: room.mode, restartIn: arcadeRestartMs });
+            broadcast(room, { t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode, restartIn: arcadeRestartMs });
             log(`Partida terminada en ${room.key}; reinicio en ${RESTART_MS / 1000}s`);
             continue;
         }
@@ -1528,7 +1611,7 @@ setInterval(() => {
             if (ev.type === 'playerDied') {
                 const dCli_ = room.clients.get(ev.playerId);
                 const dTest_ = dCli_ && dCli_.isTester;
-                const ds2_ = statsOf(room.key); ds2_.muertes++; if (!dTest_) ds2_.muertesReal++; statsDirty = true;
+                const ds2_ = statsOf(room.comboKey); ds2_.muertes++; if (!dTest_) ds2_.muertesReal++; statsDirty = true;
                 const pj = room.sim.players.get(ev.playerId);
                 if (pj && pj.name && !dTest_) { pstatOf(pj.name).muertes++; playersDirty = true; }
                 flushPeakMass(room, ev.playerId, room.clients.get(ev.playerId));
@@ -1536,7 +1619,7 @@ setInterval(() => {
                 if (room.mode !== 'classic') {
                     const dCli = room.clients.get(ev.playerId);
                     if (dCli && dCli.carry > 0) { addToPot(room, dCli.carry); dCli.carry = 0; }
-                    else addToPot(room, entryFeePill(room.key, room.pillRate));   // bot: su entrada al bote
+                    else addToPot(room, entryFeePill(room.comboKey, room.pillRate));   // bot: su entrada al bote
                 }
                 // Q2 también cuenta al morir online (jugaste la partida hasta el final aunque te eliminaran)
                 const cliD = room.clients.get(ev.playerId);
@@ -1573,7 +1656,7 @@ setInterval(() => {
                         sendEcon(victimCli, room);
                     } else {
                         // víctima bot: aporta una entrada virtual directa al carry del matador
-                        gain = entryFeePill(room.key, room.pillRate);
+                        gain = entryFeePill(room.comboKey, room.pillRate);
                     }
                     cliK.carry += gain;
                     // Notificar el +X PILL al cliente para que muestre el floating naranja
@@ -1656,6 +1739,8 @@ setInterval(() => {
 
 purgeOldLogs();                              // limpia logs viejos al arrancar
 setInterval(purgeOldLogs, 24 * 3600 * 1000); // y una vez al día
+
+initLayers();   // pre-crea las 20 salas (LAYERS_PER_COMBO × 2 modos × 5 precios)
 
 httpServer.listen(PORT, () => {
     log(`Servidor PillWars escuchando en ws://localhost:${PORT}`);

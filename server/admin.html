@@ -581,12 +581,13 @@ function renderRankPag(totalPag) {
     h += `<button class="b mini" ${rankPage >= totalPag ? 'disabled' : ''} onclick="rankIrPagina(${rankPage + 1})">›</button>`;
     cont.innerHTML = h;
 }
-function espectar(mode, room) {
+function espectar(mode, room, layer) {
     // Pedimos un token temporal al servidor para no exponer la admin key en la URL
     const handler = (e) => {
         try { const m = JSON.parse(e.data); if (m && m.t === 'specToken' && m.token) {
             ws.removeEventListener('message', handler);
-            window.open(location.origin + '/game/?spectate=' + encodeURIComponent(room) + '&mode=' + encodeURIComponent(mode) + '&t=' + encodeURIComponent(m.token), '_blank');
+            const layerQ = layer ? '&layer=' + layer : '';
+            window.open(location.origin + '/game/?spectate=' + encodeURIComponent(room) + '&mode=' + encodeURIComponent(mode) + layerQ + '&t=' + encodeURIComponent(m.token), '_blank');
         } } catch (err) {}
     };
     ws.addEventListener('message', handler);
@@ -637,7 +638,7 @@ function cartaSala(r) {
     const rl = r.rules;
     return `<div class="room ${cardCls}" id="card_${id}">
         <div class="room-head">
-            <div class="room-name russo">${esc(r.roomName)}<span class="meta">${r.mode.toUpperCase()} · ${r.price ? 'ENTRADA ' + r.price + '$' : 'GRATIS'}</span></div>
+            <div class="room-name russo">${esc(r.roomName)} <span style="font-size:13px;color:#777">L${r.layerIdx || 1}</span><span class="meta">${r.mode.toUpperCase()} · ${r.price ? 'ENTRADA ' + r.price + '$' : 'GRATIS'}</span></div>
             <span class="state ${stCls}"><span class="d"></span>${stTxt}</span>
         </div>
         <div class="room-body">
@@ -669,7 +670,7 @@ function cartaSala(r) {
             </div>
             <div class="btns">
                 <button class="b verde" onclick="forzar('${id}')" ${r.state !== 'waiting' ? 'disabled' : ''}>${IC.play} Forzar inicio</button>
-                <button class="b azul" onclick="espectar('${r.mode}','${esc(r.roomName)}')" ${r.state !== 'playing' ? 'disabled' : ''}>${IC.users} Espectar</button>
+                <button class="b azul" onclick="espectar('${r.mode}','${esc(r.roomName)}',${r.layerIdx || 1})" ${r.state !== 'playing' ? 'disabled' : ''}>${IC.users} Espectar L${r.layerIdx || 1}</button>
                 <button class="b naranja" onclick="reiniciar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.refresh} Reiniciar</button>
                 <button class="b" onclick="vaciar('${id}')" ${r.conectados === 0 ? 'disabled' : ''}>${IC.broom} Echar a todos</button>
                 <button class="b rojo" onclick="apagar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.power} Apagar</button>
