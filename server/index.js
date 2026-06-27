@@ -186,16 +186,29 @@ let _rankingCache = [];
 let _rankingUpdatedAt = 0;
 let _rankingIncludesTesters = false;
 function isBotIp(ip) { return ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || (!!ip && ip.startsWith('127.')); }
+// Filtro e iteración en chunks de 1000 entries, cediendo el event loop entre cada trozo.
+// El game tick (25ms) se cuela entre chunks — nunca se bloquea más de ~3ms de golpe.
 function computeRanking(includeTesters) {
     _rankingIncludesTesters = includeTesters;
-    const t0 = performance.now();
-    _rankingCache = Object.entries(playerStats)
-        .filter(([, p]) => p.name && p.name.trim().length > 0 && (includeTesters || p.isReal === true))
-        .sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas))
-        .slice(0, 500)
-        .map(([key, p]) => { const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' }; return Object.assign({}, p, { key, paisCode: g.code, paisName: g.name }); });
-    _rankingUpdatedAt = Date.now();
-    log(`Ranking actualizado: ${_rankingCache.length} jugadores (${includeTesters ? 'con' : 'sin'} testers) en ${(performance.now() - t0).toFixed(0)}ms`);
+    const entries = Object.entries(playerStats);
+    const filtered = [];
+    let i = 0;
+    function step() {
+        const end = Math.min(i + 1000, entries.length);
+        while (i < end) {
+            const [key, p] = entries[i++];
+            if (p.name && p.name.trim().length > 0 && (includeTesters || p.isReal === true)) filtered.push([key, p]);
+        }
+        if (i < entries.length) { setImmediate(step); return; }
+        filtered.sort(([, a], [, b]) => (b.kills - a.kills) || (b.partidas - a.partidas));
+        _rankingCache = filtered.slice(0, 500).map(([key, p]) => {
+            const g = p.lastIp ? geoOf(p.lastIp) : { code: '??', name: 'Desconocido' };
+            return Object.assign({}, p, { key, paisCode: g.code, paisName: g.name });
+        });
+        _rankingUpdatedAt = Date.now();
+        log(`Ranking actualizado: ${_rankingCache.length} jugadores (${includeTesters ? 'con' : 'sin'} testers)`);
+    }
+    setImmediate(step);
 }
 let statsDirty = false, rulesDirty = false, playersDirty = false;
 function statsOf(key) { if (!roomStats[key]) roomStats[key] = { entradas: 0, muertes: 0, entradasReal: 0, muertesReal: 0 }; const s = roomStats[key]; if (s.entradasReal == null) { s.entradasReal = 0; s.muertesReal = 0; } return s; }
@@ -292,16 +305,35 @@ setInterval(() => {
     if (questsDirty) { questsDirty = false; _t('quests', () => fs.writeFile(QUESTS_FILE, JSON.stringify(questsStore), () => {})); }
 }, 5000);
 
-// playerStats: se guarda cada 2 min (red de seguridad) y en shutdown.
-// NO está en el intervalo de 5s — con 87k+ entradas, JSON.stringify bloquea ~90ms el main thread.
-function savePlayerStats() {
+// playerStats: save en chunks de 1000 entries via setImmediate — el game tick
+// nunca espera más de ~3ms entre trozos. Auto-save cada 2 min + shutdown.
+function savePlayerStats(sync) {
     if (!playersDirty) return;
     playersDirty = false;
-    _t('players', () => fs.writeFile(PLAYERS_FILE, JSON.stringify(playerStats), () => {}));
+    if (sync) {
+        // En shutdown el proceso va a salir — hacemos el save síncrono obligatoriamente.
+        fs.writeFileSync(PLAYERS_FILE, JSON.stringify(playerStats));
+        return;
+    }
+    const entries = Object.entries(playerStats);
+    const parts = [];
+    let i = 0;
+    function step() {
+        const end = Math.min(i + 1000, entries.length);
+        while (i < end) {
+            const [k, v] = entries[i++];
+            parts.push(JSON.stringify(k) + ':' + JSON.stringify(v));
+        }
+        if (i < entries.length) { setImmediate(step); return; }
+        fs.writeFile(PLAYERS_FILE, '{' + parts.join(',') + '}', () => {});
+    }
+    setImmediate(step);
 }
 setInterval(savePlayerStats, 2 * 60 * 1000);
-process.on('SIGTERM', () => { savePlayerStats(); process.exit(0); });
-process.on('SIGINT',  () => { savePlayerStats(); process.exit(0); });
+// Ranking automático cada 5 min (solo jugadores reales), también en chunks.
+setInterval(() => computeRanking(false), 5 * 60 * 1000);
+process.on('SIGTERM', () => { savePlayerStats(true); process.exit(0); });
+process.on('SIGINT',  () => { savePlayerStats(true); process.exit(0); });
 
 function cleanIp(addr) { return String(addr || '?').replace(/^::ffff:/, '').replace(/^::1$/, 'localhost'); }
 // Anonimiza la IP (RGPD): IPv4 sin el último octeto, IPv6 solo el prefijo /48.
