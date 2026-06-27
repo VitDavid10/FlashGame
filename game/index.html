@@ -2831,11 +2831,13 @@
             if (tryBtn) { tryBtn.disabled = false; tryBtn.innerText = 'TRY AGAIN'; }
             return;
         }
-        // Firma OK: ahora sí, cerrar el WS viejo, ocultar menú de muerte y reconectar.
+        // Firma OK: ahora sí, cerrar el WS viejo y reconectar.
+        // NO ocultar els.result aquí: enterOnlineGame/startPracticeGame ya lo hacen
+        // cuando llega el 'welcome'. Si lo ocultamos antes, hay un flash negro mientras
+        // el WS conecta (~300ms). El overlay de resultados tapa el canvas vacío.
         hideSpectatorBar();
         if (netState.ws) { const w = netState.ws; netState.ws = null; try { w.onclose = null; w.close(); } catch (e) {} }
         practiceMode = false; setLobbyBanner(null); sim = null;
-        els.result.style.display = 'none';
         gameRunning = false;
         const newJm = Object.assign({}, oldJm, { pay: paid.pay });
         netState = { url, token: null, attempts: 0, joinMsg: newJm };
