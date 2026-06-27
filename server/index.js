@@ -220,11 +220,16 @@ function rulesOf(key) {
     // Tope de jugadores REALES por sala (30 por defecto; editable por sala desde el panel).
     // 30 × 10 salas = 300 concurrentes, el techo cómodo del VPS antes de que suba la latencia.
     if (r.maxPlayers == null) r.maxPlayers = 30;
+    // Cuenta atrás de lobby (ms) antes de empezar al alcanzar el mínimo de reales.
+    // 0 = empezar al instante. Por defecto solo arcade espera 20s (es donde tiene
+    // sentido: fin de partida → menú → cuenta atrás). Classic sigue al instante.
+    if (r.lobbyMs == null) r.lobbyMs = /^arcade_/.test(key) ? 20000 : 0;
     return r;
 }
 function minRealOf(key) { return Math.max(1, rulesOf(key).minReal); }
 function targetPopOf(key) { return Math.max(0, rulesOf(key).targetPop); }
 function maxPlayersOf(key) { return Math.max(1, rulesOf(key).maxPlayers); }
+function lobbyMsOf(key) { return Math.max(0, rulesOf(key).lobbyMs); }
 // Tarifa de entrada en PILL = precio($) × PILL_PER_DOLLAR. (El precio real en $ vía
 // oráculo es la Fase B4; por ahora una conversión fija.) Free = 0.
 // Oráculo de precio: PILL por $1. Base fija, pero "deriva" cada 5 min ±15% para simular
@@ -334,6 +339,11 @@ setInterval(savePlayerStats, 2 * 60 * 1000);
 setInterval(() => computeRanking(false), 5 * 60 * 1000);
 process.on('SIGTERM', () => { savePlayerStats(true); process.exit(0); });
 process.on('SIGINT',  () => { savePlayerStats(true); process.exit(0); });
+// BLINDAJE: un error puntual (p.ej. un ws.send sobre un socket roto durante un
+// broadcast) NO debe tumbar el proceso entero — si lo hace, se caen TODAS las
+// salas y todos los bots a la vez. Logueamos y seguimos.
+process.on('uncaughtException', (e) => { try { log('uncaughtException: ' + (e && e.stack || e)); } catch (_) {} });
+process.on('unhandledRejection', (e) => { try { log('unhandledRejection: ' + (e && e.stack || e)); } catch (_) {} });
 
 function cleanIp(addr) { return String(addr || '?').replace(/^::ffff:/, '').replace(/^::1$/, 'localhost'); }
 // Anonimiza la IP (RGPD): IPv4 sin el último octeto, IPv6 solo el prefijo /48.
@@ -433,7 +443,7 @@ function getOrCreateRoom(key, mode, roomName) {
             clients: new Map(),
             state: 'waiting',                 // waiting | playing | ended
             tickCount: 0, lastTick: Date.now(), emptySince: 0,
-            endsAt: null, restartAt: null,
+            endsAt: null, restartAt: null, startAt: null,
             pendingRemovals: new Map(),       // gracia de reconexión
             deadRemovals: new Map(),          // retirada de muertos
             spectators: new Set()             // ws que solo miran (panel de control)
@@ -445,7 +455,7 @@ function getOrCreateRoom(key, mode, roomName) {
 
 function broadcast(room, objOrString) {
     const m = typeof objOrString === 'string' ? objOrString : JSON.stringify(objOrString);
-    for (const cli of room.clients.values()) { if (cli.ws.readyState === 1) cli.ws.send(m); }
+    for (const cli of room.clients.values()) { if (cli.ws.readyState === 1) { try { cli.ws.send(m); } catch (e) {} } }
 }
 
 function sendWaiting(room) {
@@ -459,6 +469,7 @@ function welcomeMsg(room, playerId, token, type) {
         state: room.state, count: room.clients.size, needed: minRealOf(room.key),
         duration: MATCH_MS,
         tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
+        startIn: room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
         restartEnMs: room.restartAt ? Math.max(0, room.restartAt - Date.now()) : null,
         simTime: Math.round(room.sim.now),
         foods: room.sim.foods
@@ -499,9 +510,30 @@ function tickGradualBots(room, now) {
     }
 }
 
+// Arma (o cancela) la cuenta atrás de lobby. Se llama cuando cambia el nº de
+// reales en una sala en espera. Al llegar al mínimo arranca un countdown de
+// lobbyMs; si baja del mínimo lo cancela. Con lobbyMs=0 empieza al instante.
+function armLobby(room) {
+    if (room.state !== 'waiting') return;
+    const min = minRealOf(room.key);
+    if (room.clients.size >= min) {
+        if (room.startAt) return;   // ya hay cuenta atrás en marcha
+        const lobbyMs = lobbyMsOf(room.key);
+        if (lobbyMs <= 0) { startMatch(room); return; }
+        room.startAt = Date.now() + lobbyMs;
+        broadcast(room, { t: 'lobbyCountdown', startIn: lobbyMs, count: room.clients.size, needed: min, roomName: room.roomName, mode: room.mode });
+        log(`Lobby ${room.key}: ${room.clients.size}/${min} → cuenta atrás ${lobbyMs / 1000}s`);
+    } else if (room.startAt) {
+        room.startAt = null;
+        sendWaiting(room);   // vuelve a "esperando X/min"
+        log(`Lobby ${room.key}: cuenta atrás cancelada (${room.clients.size}/${min})`);
+    }
+}
+
 function startMatch(room) {
     if (room.state !== 'waiting') return;
     room.state = 'playing';
+    room.startAt = null;
     room.lastTick = Date.now();
     if (room.mode !== 'classic') room.endsAt = Date.now() + MATCH_MS;
     for (const [pid, cli] of room.clients) {
@@ -519,12 +551,12 @@ function restartRoom(room) {
     broadcast(room, { t: 'roomRestart' });
     room.sim = buildSim(room.mode, rulesOf(room.key));
     room.state = 'waiting';
-    room.endsAt = null; room.restartAt = null; room.ended = false;
+    room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false;
     room.deadRemovals.clear(); room.pendingRemovals.clear();
     // los clientes que sigan conectados vuelven al lobby
     for (const [pid, cli] of room.clients) { room.sim.addPlayer(pid, cli.opts || {}); }
     sendWaiting(room);
-    if (room.clients.size >= minRealOf(room.key)) startMatch(room);
+    armLobby(room);
     log(`Sala reiniciada: ${room.key}`);
 }
 
@@ -602,6 +634,7 @@ function buildAdminState() {
             rules,
             stats: { entradas: stats.entradas, muertes: stats.muertes, dinero: stats.entradas * price, entradasReal: stats.entradasReal || 0, muertesReal: stats.muertesReal || 0, dineroReal: (stats.entradasReal || 0) * price },
             tlMs: (room && room.endsAt) ? Math.max(0, room.endsAt - now) : null,
+            startInMs: (room && room.startAt) ? Math.max(0, room.startAt - now) : null,
             restartEnMs: (room && room.restartAt) ? Math.max(0, room.restartAt - now) : null,
             players: room ? [...room.clients.keys()].map(pid => {
                 const cli = room.clients.get(pid);
@@ -768,8 +801,10 @@ const httpServer = http.createServer(async (req, res) => {
                 pillFee: entryFeePill(key, roomRate(room)),   // bloqueado si hay gente, vivo si vacía
                 locked: !!(room && room.clients.size > 0),
                 players: room ? room.clients.size : 0,
+                needed: minRealOf(key),
                 cap: maxPlayersOf(key),
                 state: room ? room.state : 'offline',
+                startIn: (room && room.startAt) ? Math.max(0, room.startAt - Date.now()) : null,
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
@@ -1009,6 +1044,7 @@ wss.on('connection', (ws, req) => {
                 if (typeof r.minReal === 'number') rules.minReal = Math.max(1, Math.min(50, r.minReal | 0));
                 if (typeof r.targetPop === 'number') rules.targetPop = Math.max(0, Math.min(60, r.targetPop | 0));
                 if (typeof r.maxPlayers === 'number') rules.maxPlayers = Math.max(1, Math.min(100, r.maxPlayers | 0));
+                if (typeof r.lobbyMs === 'number') rules.lobbyMs = Math.max(0, Math.min(120000, r.lobbyMs | 0));
                 rulesDirty = true;
                 const sala = rooms.get(msg.room);
                 if (sala) { // speed, food y población se aplican en vivo; virus y bots manuales al reiniciar
@@ -1017,7 +1053,7 @@ wss.on('connection', (ws, req) => {
                     if (sala.state === 'playing') refillBots(sala);
                     if (sala.state === 'waiting') {
                         sendWaiting(sala);
-                        if (sala.clients.size >= minRealOf(msg.room)) startMatch(sala);
+                        armLobby(sala);
                     }
                 }
                 logAdmin(msg.room, 'Cambió reglas', '');
@@ -1196,7 +1232,7 @@ wss.on('connection', (ws, req) => {
             log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(key)}`);
             if (room.state === 'waiting') {
                 sendWaiting(room);
-                if (room.clients.size >= minRealOf(key)) startMatch(room);
+                armLobby(room);
             } else if (room.state === 'ended') {
                 const restartIn = Math.max(0, room.restartAt - now);
                 ws.send(JSON.stringify({ t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.key), roomName: room.roomName, mode: room.mode, restartIn }));
@@ -1247,7 +1283,7 @@ wss.on('connection', (ws, req) => {
             room.clients.delete(playerId);
             if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
             log(`Jugador ${playerId} desconectado de ${room.key} — quedan ${room.clients.size}`);
-            if (room.state === 'waiting') sendWaiting(room);
+            if (room.state === 'waiting') { sendWaiting(room); armLobby(room); }   // cancela la cuenta atrás si baja del mínimo
             refillBots(room);   // un bot cubre el hueco (y se retira si el jugador reconecta)
         }
     });
@@ -1315,6 +1351,11 @@ setInterval(() => {
         // reinicio programado tras el fin de una partida arcade
         if (room.state === 'ended') {
             if (room.restartAt && now >= room.restartAt) restartRoom(room);
+            continue;
+        }
+        // cuenta atrás de lobby: al llegar a 0 empieza la partida
+        if (room.state === 'waiting') {
+            if (room.startAt && now >= room.startAt) startMatch(room);
             continue;
         }
         if (room.state !== 'playing') continue;

@@ -386,6 +386,8 @@
         .oracle-row .ostatus.some { background: #ffce3d; box-shadow: 0 0 8px rgba(255,206,61,0.6); }
         .oracle-row .ostatus.empty { background: #444; }
         .oracle-row .ostatus.capfull { background: #ff2a2a; box-shadow: 0 0 10px rgba(255,42,42,0.8); animation: capfullPulse 1.4s ease-in-out infinite; }
+        .oracle-row .ostatus.starting { background: #1a73e8; box-shadow: 0 0 10px rgba(26,115,232,0.9); animation: capfullPulse 1.2s ease-in-out infinite; }
+        .oracle-row .ostartin { color: #4d9bff; font-size: 11px; font-weight: bold; font-variant-numeric: tabular-nums; }
         @keyframes capfullPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
         #sidePanelMissions { flex: 1; overflow-y: auto; }
 
@@ -2008,7 +2010,7 @@
     }
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
-    function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); }
+    function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); const tb = document.getElementById('btnTryAgainOnline'); if (tb) tb.style.display = 'none'; }
     function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
@@ -2517,20 +2519,26 @@
             }
             const cont = document.getElementById('oracleRows'); if (!cont) return;
             const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic'));
+            window._roomCountdowns = window._roomCountdowns || {};
             cont.innerHTML = rowsForMode.map(r => {
                 const lock = r.locked ? ' <span title="price locked while players are inside" style="color:#888">🔒</span>' : '';
                 const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL' + lock;
                 const cap = r.cap || 30;
+                // Cuenta atrás de lobby en marcha → icono azul pulsante + segundos.
+                const counting = r.startIn != null && r.startIn > 0;
+                if (counting) window._roomCountdowns[r.key] = Date.now() + r.startIn; else delete window._roomCountdowns[r.key];
                 // 0 → gris (vacía). 1-49% → amarillo (some). 50-99% → verde (full).
                 // 100% → rojo pulsante (no se puede entrar).
-                const cls = r.players === 0 ? 'empty'
+                const cls = counting ? 'starting'
+                    : (r.players === 0 ? 'empty'
                     : (r.players >= cap ? 'capfull'
-                    : (r.players >= cap / 2 ? 'full' : 'some'));
-                const title = r.players >= cap ? `FULL — ${r.players}/${cap} players` : `${r.players}/${cap} players`;
+                    : (r.players >= cap / 2 ? 'full' : 'some')));
+                const title = counting ? `STARTING — ${r.players}/${r.needed} ready` : (r.players >= cap ? `FULL — ${r.players}/${cap} players` : `${r.players}/${cap} players`);
+                const label = counting ? `<span class="ostartin" data-key="${r.key}">${Math.ceil(r.startIn / 1000)}s</span>` : 'STATUS';
                 return `<div class="oracle-row">
                     <span class="oroom">${r.priceUsd === 0 ? 'Free' : '$' + r.priceUsd}</span>
                     <span class="opill">${fee}</span>
-                    <span class="ostatuslabel">STATUS</span>
+                    <span class="ostatuslabel">${label}</span>
                     <span class="ostatus ${cls}" title="${title}"></span>
                 </div>`;
             }).join('');
@@ -2554,6 +2562,14 @@
         const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
         el.textContent = m + ':' + (s < 10 ? '0' + s : s);
         if (left <= 0) refreshOracle();
+        // Suaviza las cuentas atrás de lobby por sala entre polls (cada 8s) del panel.
+        if (window._roomCountdowns) {
+            document.querySelectorAll('.ostartin').forEach(span => {
+                const endsAt = window._roomCountdowns[span.dataset.key];
+                if (!endsAt) return;
+                span.textContent = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) + 's';
+            });
+        }
     }
     refreshOracle();
     // Refresh frecuente: status de salas + precio. El precio solo dispara animación
@@ -2693,6 +2709,20 @@
         }
     };
     setInterval(() => Rejoin.refreshButton(), 1000);
+    // Heartbeat: mientras juegas online (con token), re-sella expiresAt = ahora+ventana.
+    // Así la ventana de REJOIN se cuenta desde la DESCONEXIÓN, no desde que entraste
+    // (antes, tras >28s de partida, el token guardado ya había "caducado" en local y
+    // no salía REJOIN aunque el server aún lo aceptara durante 30s).
+    setInterval(() => {
+        if (!gameRunning || !netState || !netState.token) return;
+        try {
+            const raw = localStorage.getItem(REJOIN_KEY);
+            if (!raw) return;
+            const r = JSON.parse(raw);
+            r.expiresAt = Date.now() + REJOIN_WINDOW_MS;
+            localStorage.setItem(REJOIN_KEY, JSON.stringify(r));
+        } catch (e) {}
+    }, 3000);
 
     // HUD del contador de espera (next match / cuenta atrás), integrado en la
     // barra superior junto a ROOM/MASS/ALIVE. Visible solo durante práctica
@@ -2717,6 +2747,25 @@
             const el = document.getElementById('waitHud'); if (el) el.style.display = 'none';
         }
     };
+
+    // Cuenta atrás de lobby (pre o post partida) durante la práctica offline:
+    // pinta el banner + WaitHud y va decrementando cada segundo hasta 0.
+    function runLobbyCountdown(ms, roomName, count, needed) {
+        if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
+        let remaining = Math.ceil((ms || 0) / 1000);
+        const tick = () => {
+            if (remaining <= 0) {
+                clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null;
+                WaitHud.hide();
+                return;
+            }
+            setLobbyBanner('🌐 SALA ' + roomName + ' — ' + count + '/' + needed + ' jugadores · PRÓXIMA PARTIDA EN ' + remaining + 's   ·   PRÁCTICA OFFLINE');
+            WaitHud.showTimer(remaining);
+            remaining--;
+        };
+        tick();
+        window._lobbyPreviewTimer = setInterval(tick, 1000);
+    }
 
     function startPracticeGame(mode) {
         practiceMode = true;
@@ -2829,29 +2878,20 @@
                     if (msg.state === 'ended') setLobbyBanner('🌐 SALA ' + msg.roomName + ' — reiniciándose...   ·   PRÁCTICA OFFLINE');
                     else setLobbyBanner('🌐 SALA ' + msg.roomName + ' — esperando jugadores (' + msg.count + '/' + msg.needed + ')   ·   PRÁCTICA OFFLINE');
                     if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
+                    // Si entras con una cuenta atrás de lobby ya en marcha, muéstrala.
+                    if (msg.startIn > 0) runLobbyCountdown(msg.startIn, msg.roomName, msg.count, msg.needed);
                 }
             } else if (msg.t === 'waiting') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
                 setLobbyBanner('🌐 SALA ' + msg.roomName + ' — esperando jugadores (' + msg.count + '/' + msg.needed + ')   ·   PRÁCTICA OFFLINE');
                 WaitHud.showCount(msg.count, msg.needed);
                 if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
-            } else if (msg.t === 'lobbyPreview') {
+            } else if (msg.t === 'lobbyPreview' || msg.t === 'lobbyCountdown') {
+                // lobbyPreview = cuenta atrás POST-partida (reinicio); lobbyCountdown =
+                // cuenta atrás PRE-partida (al alcanzar el mínimo de jugadores). Misma UI.
                 if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
-                if (window._lobbyPreviewTimer) clearInterval(window._lobbyPreviewTimer);
-                let remaining = Math.ceil((msg.restartIn || 0) / 1000);
-                const previewRoom = msg.roomName, previewCount = msg.count, previewNeeded = msg.needed;
-                const updatePreviewBanner = () => {
-                    if (remaining <= 0) {
-                        clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null;
-                        WaitHud.hide();
-                        return;
-                    }
-                    setLobbyBanner('🌐 SALA ' + previewRoom + ' — ' + previewCount + '/' + previewNeeded + ' jugadores · PRÓXIMA PARTIDA EN ' + remaining + 's   ·   PRÁCTICA OFFLINE');
-                    WaitHud.showTimer(remaining);
-                    remaining--;
-                };
-                updatePreviewBanner();
-                window._lobbyPreviewTimer = setInterval(updatePreviewBanner, 1000);
+                const ms = (msg.restartIn != null ? msg.restartIn : msg.startIn) || 0;
+                runLobbyCountdown(ms, msg.roomName, msg.count, msg.needed);
             } else if (msg.t === 'roomRestart') {
                 // El admin reinició la sala en plena partida: fin como si murieses + TRY AGAIN
                 if (sim && sim.isRemote && sim.ws === ws && gameRunning && !practiceMode) {
@@ -2884,6 +2924,14 @@
                 showSystemMsg('The rejoin window has closed. Your slot was released and you need to enter again.', 'REJOIN EXPIRED');
             } else if (msg.t === 'kicked') {
                 window.__kicked = true;
+            } else if (msg.t === 'matchEnd') {
+                // Marcar fin de partida SÍNCRONO al recibirlo: así el lobbyPreview
+                // que el server manda justo después queda bloqueado por la guarda
+                // _matchOver de arriba (antes se procesaba el matchEnd un frame más
+                // tarde, vía cola de eventos del sim, y el preview se colaba → te
+                // metía en práctica con el timer al acabar la partida).
+                if (netState) netState._matchOver = true;
+                if (sim && sim.isRemote && sim.ws === ws) sim.onMessage(msg);
             } else if (sim && sim.isRemote && sim.ws === ws) {
                 sim.onMessage(msg);
             }
@@ -2916,7 +2964,9 @@
         practiceMode = false; setLobbyBanner(null);
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // ocultar wallet durante la partida
         sim = new RemoteSim(ws, msg);
-        if (isResume) sim._camInit = true;   // mantener la cámara donde estaba
+        // En resume NO forzamos _camInit: dejamos que el primer snapshot salte la
+        // cámara a nuestra celda (si no, la cámara arrancaba en el centro y viajaba
+        // hacia ti revelando dónde está la gente por el camino).
         MAP_SIZE = msg.mapSize;
         currentGameMode = msg.mode;
         if (!isResume) Quests.startMatch(msg.mode === 'skills' ? 'arcade' : msg.mode, true);
@@ -2936,7 +2986,7 @@
         els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
         document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
         lastFrameTime = Date.now();
-        if (!isResume) SoundManager.playMusic();
+        SoundManager.playMusic();   // también en resume (antes se quedaba en silencio)
         gameRunning = true;
         if (isResume) spawnFloatingText('RECONECTADO', '#00ff88');
         // Persiste info de rejoin: si la pestaña se cierra ahora, el user podrá

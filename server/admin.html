@@ -143,6 +143,7 @@
     .timerline svg { width: 14px; height: 14px; }
     .timerline.naranja { color: var(--orange); text-shadow: 0 0 8px rgba(255,140,66,0.35); }
     .timerline.amarillo { color: var(--yellow); text-shadow: 0 0 8px rgba(255,206,61,0.3); }
+    .timerline.azul { color: #4f9cff; text-shadow: 0 0 8px rgba(79,156,255,0.35); }
 
     .players-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #222; }
     table.players { width: 100%; border-collapse: collapse; margin: 0; background: #0a0a0a; margin-bottom: 12px; }
@@ -585,7 +586,7 @@ function aplicarReglas(roomKey) {
         virus: parseFloat(g('r_virus').value), botsEnabled: g('r_botson').checked,
         botCount: parseInt(g('r_botn').value),
         minReal: parseInt(g('r_minreal').value), targetPop: parseInt(g('r_pop').value),
-        maxPlayers: parseInt(g('r_maxp').value)
+        maxPlayers: parseInt(g('r_maxp').value), lobbyMs: Math.round(parseFloat(g('r_lobby').value) * 1000)
     } });
     setTimeout(pedir, 100);
 }
@@ -598,7 +599,8 @@ function cartaSala(r) {
     let timer = '';
     if (r.state === 'playing' && r.tlMs != null) timer = `<div class="timerline">${IC.clock} Quedan ${fmtMs(r.tlMs)} de partida</div>`;
     if (r.state === 'ended' && r.restartEnMs != null) timer = `<div class="timerline naranja">${IC.refresh} La sala se reinicia en ${Math.ceil(r.restartEnMs/1000)} s</div>`;
-    if (r.state === 'waiting') timer = `<div class="timerline amarillo">${IC.users} En el lobby: ${r.conectados} de ${r.needed} necesarios</div>`;
+    if (r.state === 'waiting' && r.startInMs != null) timer = `<div class="timerline azul">${IC.clock} La partida empieza en ${Math.ceil(r.startInMs/1000)} s (${r.conectados}/${r.needed})</div>`;
+    else if (r.state === 'waiting') timer = `<div class="timerline amarillo">${IC.users} En el lobby: ${r.conectados} de ${r.needed} necesarios</div>`;
 
     let jugadores = '';
     if (expandidos.has(id) && r.players.length > 0) {
@@ -644,6 +646,7 @@ function cartaSala(r) {
                 <div><label>Mín. reales</label><input type="number" step="1" min="1" max="50" id="r_minreal_${id}" value="${rl.minReal != null ? rl.minReal : 5}"></div>
                 <div><label>Población</label><input type="number" step="1" min="0" max="60" id="r_pop_${id}" value="${rl.targetPop != null ? rl.targetPop : 10}"></div>
                 <div><label>Tope reales</label><input type="number" step="1" min="1" max="100" id="r_maxp_${id}" value="${rl.maxPlayers != null ? rl.maxPlayers : 30}"></div>
+                <div><label>Lobby (s)</label><input type="number" step="1" min="0" max="120" id="r_lobby_${id}" value="${rl.lobbyMs != null ? Math.round(rl.lobbyMs / 1000) : 20}"></div>
             </div>
             <div class="ruleline">
                 <label class="chk"><input type="checkbox" id="r_botson_${id}" ${rl.botsEnabled ? 'checked' : ''}> bots activados</label>
