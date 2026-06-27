@@ -265,6 +265,11 @@
                 <button id="modeBtn_classic" class="modetab act" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
                 <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
             </div>
+            <div class="modetabs" style="margin-top:8px; padding-left:8px; gap:8px;">
+                <span style="color:#666;font-size:11px;letter-spacing:1px;margin-right:6px;">LAYER:</span>
+                <button id="layerBtn_1" class="modetab act" style="font-size:12px;padding:4px 10px;" onclick="verLayer(1)">L1 <span id="cntLayer1" class="cnt cero">(0)</span></button>
+                <button id="layerBtn_2" class="modetab" style="font-size:12px;padding:4px 10px;" onclick="verLayer(2)">L2 <span id="cntLayer2" class="cnt cero">(0)</span></button>
+            </div>
             <div class="grid" id="gridClassic"></div>
             <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px; display:none;">
                 <div style="color:#4d9bff; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">⚙ Arcade Mode — Global Parameters</div>
@@ -480,6 +485,7 @@ function verTab(t) {
 }
 
 let modoActivo = 'classic';
+let layerActivo = 1;
 function verModo(m) {
     modoActivo = m;
     document.getElementById('gridClassic').style.display = (m === 'classic') ? '' : 'none';
@@ -488,6 +494,13 @@ function verModo(m) {
     document.getElementById('modeBtn_classic').classList.toggle('act', m === 'classic');
     document.getElementById('modeBtn_arcade').classList.toggle('act', m === 'arcade');
 }
+function verLayer(n) {
+    layerActivo = n;
+    document.getElementById('layerBtn_1').classList.toggle('act', n === 1);
+    document.getElementById('layerBtn_2').classList.toggle('act', n === 2);
+    pedir();
+}
+function toggleLayer(layerKey) { send({ cmd: 'toggleLayer', room: layerKey }); setTimeout(pedir, 100); }
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtSeg(s) { if (s < 60) return s + 's'; if (s < 3600) return Math.floor(s/60) + 'm'; return Math.floor(s/3600) + 'h' + Math.floor((s%3600)/60) + 'm'; }
@@ -638,7 +651,7 @@ function cartaSala(r) {
     const rl = r.rules;
     return `<div class="room ${cardCls}" id="card_${id}">
         <div class="room-head">
-            <div class="room-name russo">${esc(r.roomName)} <span style="font-size:13px;color:#777">L${r.layerIdx || 1}</span><span class="meta">${r.mode.toUpperCase()} · ${r.price ? 'ENTRADA ' + r.price + '$' : 'GRATIS'}</span></div>
+            <div class="room-name russo">${esc(r.roomName)} <span style="font-size:13px;color:#777">L${r.layerIdx || 1}</span>${r.disabled ? ' <span style="font-size:11px;color:#ff6b6b;background:#3a1a1a;padding:2px 8px;border-radius:4px;letter-spacing:1px;margin-left:6px;">PAUSED</span>' : ''}<span class="meta">${r.mode.toUpperCase()} · ${r.price ? 'ENTRADA ' + r.price + '$' : 'GRATIS'}</span></div>
             <span class="state ${stCls}"><span class="d"></span>${stTxt}</span>
         </div>
         <div class="room-body">
@@ -673,6 +686,7 @@ function cartaSala(r) {
                 <button class="b azul" onclick="espectar('${r.mode}','${esc(r.roomName)}',${r.layerIdx || 1})" ${r.state !== 'playing' ? 'disabled' : ''}>${IC.users} Espectar L${r.layerIdx || 1}</button>
                 <button class="b naranja" onclick="reiniciar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.refresh} Reiniciar</button>
                 <button class="b" onclick="vaciar('${id}')" ${r.conectados === 0 ? 'disabled' : ''}>${IC.broom} Echar a todos</button>
+                <button class="b ${r.disabled ? 'verde' : 'morado'}" onclick="toggleLayer('${id}')">${r.disabled ? '▶ Reactivar layer' : '⏸ Desactivar layer'}</button>
                 <button class="b rojo" onclick="apagar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.power} Apagar</button>
             </div>
         </div>
@@ -805,8 +819,18 @@ function render(m) {
         else if (r.mode === 'arcade') porSeccion.arcade.push(r);
         else porSeccion.otras.push(r);
     }
-    pintarGrid('gridClassic', porSeccion.classic);
-    pintarGrid('gridArcade', porSeccion.arcade);
+    // Contadores por layer (suma de todas las salas de cada layer).
+    const cntL = { 1: 0, 2: 0 };
+    for (const r of m.rooms) { const i = r.layerIdx || 1; cntL[i] = (cntL[i] || 0) + r.conectados; }
+    ponCnt('cntLayer1', cntL[1] || 0);
+    ponCnt('cntLayer2', cntL[2] || 0);
+    // Filtrar por la layer activa (default L1).
+    const _l = layerActivo || 1;
+    const classicL = porSeccion.classic.filter(r => (r.layerIdx || 1) === _l);
+    const arcadeL = porSeccion.arcade.filter(r => (r.layerIdx || 1) === _l);
+    pintarGrid('gridClassic', classicL);
+    pintarGrid('gridArcade', arcadeL);
+    // El contador de Classic/Arcade muestra el TOTAL del modo (todas las layers)
     ponCnt('cntClassic', porSeccion.classic.reduce((s, r) => s + r.conectados, 0));
     ponCnt('cntArcade', porSeccion.arcade.reduce((s, r) => s + r.conectados, 0));
     document.getElementById('gridOtras').innerHTML = porSeccion.otras.length

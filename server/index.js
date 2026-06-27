@@ -475,9 +475,13 @@ function getOrCreateRoom(key, mode, roomName) {
 // Política: APILAR. Devuelve la layer más llena que cumpla:
 //  - no llena (clients.size < maxPlayers del combo)
 //  - no a <30s del final (te evita partidas que mueren en tu cara)
-//  - state no 'ended'
-// Si ninguna cumple, devuelve null → el cliente recibe noSlot y sigue offline.
-// NO crea layers nuevas: las 20 se pre-crean en startup.
+//  - no desactivada manualmente desde admin
+//  - estado playing | waiting | ended (en ended ves la cuenta atrás del reinicio)
+// Si ninguna cumple, devuelve null → cliente recibe noSlot y sigue offline.
+// NO crea layers nuevas: las pre-creamos en startup.
+//
+// Prioridad de ordenación: PRIMERO las playing/waiting (apila gente activa),
+// las ended quedan al final (entras pero esperas reinicio).
 function pickLayer(mode, roomName) {
     const ck = comboKeyOf(mode, roomName);
     const max = maxPlayersOf(ck);
@@ -485,13 +489,20 @@ function pickLayer(mode, roomName) {
     for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
         const r = rooms.get(layerKeyOf(mode, roomName, i));
         if (!r) continue;
-        if (r.state === 'ended') continue;
+        if (r.disabled) continue;
         if (r.clients.size >= max) continue;
-        if (r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
+        if (r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
         candidates.push(r);
     }
     if (candidates.length === 0) return null;
-    candidates.sort((a, b) => b.clients.size - a.clients.size);
+    // Apilar: ended al final (no son ideales pero válidas), entre las activas
+    // la más llena primero.
+    candidates.sort((a, b) => {
+        const aEnded = a.state === 'ended' ? 1 : 0;
+        const bEnded = b.state === 'ended' ? 1 : 0;
+        if (aEnded !== bEnded) return aEnded - bEnded;
+        return b.clients.size - a.clients.size;
+    });
     return candidates[0];
 }
 
@@ -745,6 +756,7 @@ function buildAdminState() {
         const price = priceOf(roomName);
         return {
             key, comboKey, mode, roomName, layerIdx, price,
+            disabled: !!(room && room.disabled),
             state: room ? room.state : 'offline',
             conectados: room ? room.clients.size : 0,
             vivos: room ? [...room.clients.keys()].filter(pid => { const p = room.sim.players.get(pid); return p && p.alive; }).length : 0,
@@ -928,27 +940,51 @@ const httpServer = http.createServer(async (req, res) => {
     }
     // --- Estado público de salas (para el "ORACLE" del menú del juego) ---
     if (urlPath === '/api/rooms') {
+        // Cada combo (mode×price) tiene N layers. Devolvemos UN entry por combo
+        // con la info AGREGADA (la layer que el matchmaker elegiría = más llena
+        // que cumpla condiciones; si ninguna cumple, la primera) + la lista de
+        // layers para el oracle multi-layer.
         const list = [];
+        const now = Date.now();
         for (const mode of CATALOG_MODES) for (const price of PRICES) {
-            const key = mode + '_' + price;
-            const room = rooms.get(key);
+            const ck = mode + '_' + price;
+            const layers = [];
+            for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
+                const r = rooms.get(layerKeyOf(mode, price, i));
+                if (!r) continue;
+                layers.push({
+                    layerIdx: i,
+                    key: r.key,
+                    players: r.clients.size,
+                    state: r.state,
+                    startIn: r.startAt ? Math.max(0, r.startAt - now) : null,
+                    restartIn: (r.state === 'ended' && r.restartAt) ? Math.max(0, r.restartAt - now) : null,
+                    endsIn: (r.state === 'playing' && r.endsAt) ? Math.max(0, r.endsAt - now) : null,
+                    disabled: !!r.disabled,
+                });
+            }
+            // Layer "representativa": la que el matchmaker elegiría. Si pickLayer
+            // devuelve null (todas mal), cogemos la layer 1 para no dejar gris.
+            const pick = pickLayer(mode, price) || rooms.get(layerKeyOf(mode, price, 1));
+            const players = layers.reduce((s, l) => s + l.players, 0);
             list.push({
-                key, mode, room: price,
+                key: ck, mode, room: price,
                 priceUsd: priceOf(price),
-                pillFee: entryFeePill(key, roomRate(room)),   // bloqueado si hay gente, vivo si vacía
-                locked: !!(room && room.clients.size > 0),
-                players: room ? room.clients.size : 0,
-                needed: minRealOf(key),
-                cap: maxPlayersOf(key),
-                state: room ? room.state : 'offline',
-                startIn: (room && room.startAt) ? Math.max(0, room.startAt - Date.now()) : null,
-                restartIn: (room && room.state === 'ended' && room.restartAt) ? Math.max(0, room.restartAt - Date.now()) : null,
-                endsIn: (room && room.state === 'playing' && room.endsAt) ? Math.max(0, room.endsAt - Date.now()) : null,
-                roomName: room ? room.roomName : price,
+                pillFee: entryFeePill(ck, roomRate(pick)),
+                locked: !!(pick && pick.clients.size > 0),
+                players,                                  // total del combo (todas las layers)
+                needed: minRealOf(ck),
+                cap: maxPlayersOf(ck) * LAYERS_PER_COMBO, // capacidad TOTAL del combo
+                state: pick ? pick.state : 'offline',
+                startIn: (pick && pick.startAt) ? Math.max(0, pick.startAt - now) : null,
+                restartIn: (pick && pick.state === 'ended' && pick.restartAt) ? Math.max(0, pick.restartAt - now) : null,
+                endsIn: (pick && pick.state === 'playing' && pick.endsAt) ? Math.max(0, pick.endsAt - now) : null,
+                roomName: price,
+                layers,
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000 }));
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO }));
         return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
@@ -1218,6 +1254,16 @@ wss.on('connection', (ws, req) => {
                 AOI_ENABLED = !AOI_ENABLED;
                 logAdmin('-', 'AOI ' + (AOI_ENABLED ? 'ACTIVADO' : 'DESACTIVADO'), '');
                 log(`ADMIN AOI: ${AOI_ENABLED ? 'ON' : 'OFF'}`);
+            } else if (msg.cmd === 'toggleLayer' && msg.room) {
+                // Desactivar/activar una layer concreta. Layer desactivada queda
+                // fuera del matchmaker (pickLayer la salta). Los jugadores ya
+                // dentro siguen jugando hasta el fin natural.
+                const sala = rooms.get(msg.room);
+                if (sala) {
+                    sala.disabled = !sala.disabled;
+                    logAdmin(msg.room, sala.disabled ? 'Desactivó layer' : 'Activó layer', '');
+                    log(`ADMIN layer ${msg.room}: ${sala.disabled ? 'OFF' : 'ON'}`);
+                }
             } else if (msg.cmd === 'stressStart') {
                 stressStart(msg.params || {});
             } else if (msg.cmd === 'ddosStart') {
