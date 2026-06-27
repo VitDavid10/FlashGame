@@ -472,38 +472,29 @@ function getOrCreateRoom(key, mode, roomName) {
 }
 
 // Matchmaker: elige la layer del combo donde meter a un nuevo jugador.
-// Política: APILAR. Devuelve la layer más llena que cumpla:
-//  - no llena (clients.size < maxPlayers del combo)
-//  - no a <30s del final (te evita partidas que mueren en tu cara)
-//  - no desactivada manualmente desde admin
-//  - estado playing | waiting | ended (en ended ves la cuenta atrás del reinicio)
-// Si ninguna cumple, devuelve null → cliente recibe noSlot y sigue offline.
-// NO crea layers nuevas: las pre-creamos en startup.
+// Política: **L1 ESTRICTA**. Recorre las layers en orden (L1, L2, ...) y se
+// queda con la PRIMERA que cumpla. L2 solo se usa cuando L1 está llena. Si L1
+// se vacía después, los próximos vuelven a L1 (los de L2 siguen su partida).
 //
-// Prioridad de ordenación: PRIMERO las playing/waiting (apila gente activa),
-// las ended quedan al final (entras pero esperas reinicio).
+// Filtros:
+//  - no llena (clients.size < maxPlayers del combo)
+//  - no a <30s del final de partida (te evita morir entrando)
+//  - no desactivada manualmente desde admin
+//  - state playing | waiting | ended (en ended ves la cuenta atrás del reinicio)
+//
+// Si ninguna cumple → null → cliente recibe noSlot y sigue en práctica offline.
 function pickLayer(mode, roomName) {
     const ck = comboKeyOf(mode, roomName);
     const max = maxPlayersOf(ck);
-    const candidates = [];
     for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
         const r = rooms.get(layerKeyOf(mode, roomName, i));
         if (!r) continue;
         if (r.disabled) continue;
         if (r.clients.size >= max) continue;
         if (r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
-        candidates.push(r);
+        return r;
     }
-    if (candidates.length === 0) return null;
-    // Apilar: ended al final (no son ideales pero válidas), entre las activas
-    // la más llena primero.
-    candidates.sort((a, b) => {
-        const aEnded = a.state === 'ended' ? 1 : 0;
-        const bEnded = b.state === 'ended' ? 1 : 0;
-        if (aEnded !== bEnded) return aEnded - bEnded;
-        return b.clients.size - a.clients.size;
-    });
-    return candidates[0];
+    return null;
 }
 
 // Pre-crea TODAS las salas en startup (20 = 2 layers × 2 modos × 5 precios).

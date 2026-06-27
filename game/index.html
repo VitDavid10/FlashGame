@@ -2546,7 +2546,8 @@
             const layersPerCombo = data.layersPerCombo || 2;
             // Si el oracle muestra una layer concreta, sustituimos el state/players/etc.
             // del combo por los de esa layer (manteniendo fee/cap/priceUsd del combo).
-            const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic')).map(r => {
+            // Ocultamos Free (priceUsd=0): no aporta info útil al menú y ocupa espacio.
+            const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic') && r.priceUsd > 0).map(r => {
                 if (lv === 'auto' || !r.layers) return r;
                 const L = r.layers.find(x => x.layerIdx === lv);
                 if (!L) return r;
