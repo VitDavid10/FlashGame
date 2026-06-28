@@ -310,7 +310,13 @@ parentPort.on('message', (msg) => {
     switch (msg.type) {
         case 'init':
             initSim(msg);
-            if (!tickInterval) tickInterval = setInterval(tick, TICK_MS);
+            // Delay de arranque para repartir los ticks uniformemente en la ventana
+            // de 25ms y evitar que los 20 workers bombardeen el main al mismo tiempo.
+            if (!tickInterval) {
+                const delay = (msg.tickOffset || 0);
+                if (delay > 0) setTimeout(() => { if (!tickInterval) tickInterval = setInterval(tick, TICK_MS); }, delay);
+                else tickInterval = setInterval(tick, TICK_MS);
+            }
             parentPort.postMessage({ type: 'ready', foods: sim.foods, mapSize: sim.config.mapSize });
             break;
 

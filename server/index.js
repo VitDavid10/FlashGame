@@ -500,11 +500,16 @@ function getOrCreateRoom(key, mode, roomName) {
 function spawnWorker(room, rules) {
     const w = new Worker(WORKER_SCRIPT);
     room.worker = w;
+    // Offset de arranque: reparte los 20 workers uniformemente en la ventana de 25ms
+    // para que el main reciba 1 tickResult cada ~1.25ms en vez de 20 de golpe.
+    const workerIndex = rooms.size;  // rooms.set ya se hizo antes, rooms.size incluye esta sala
+    const tickOffset = Math.round((workerIndex % 20) * (TICK_MS / 20));
     w.postMessage({
         type: 'init', mode: room.mode, rules,
         matchMs: MATCH_MS,
         aoiEnabled: AOI_ENABLED,
         snapshotEvery: SNAPSHOT_EVERY,
+        tickOffset,
     });
     w.on('message', (msg) => handleWorkerMsg(room, msg));
     w.on('error', (err) => {
