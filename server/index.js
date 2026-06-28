@@ -30,6 +30,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { performance } = require('perf_hooks');
+const { Worker } = require('worker_threads');
 const { WebSocketServer } = require('ws');
 const PillSim = require('../shared/sim.js');
 const proto = require('../shared/proto.js');     // protocolo binario para snaps (opt-in)
@@ -457,27 +458,235 @@ function buildSim(mode, rules) {
 
 // Crea (o devuelve) una layer concreta. key = layerKey = "mode_roomName_LN".
 // Las reglas/stats persisten por comboKey, no por layer.
+// Multihilo: si USE_WORKERS está activo, cada sala corre su sim en un Worker.
+const USE_WORKERS = process.env.WORKERS !== '0';
+const WORKER_SCRIPT = path.join(__dirname, 'room-worker.js');
+
 function getOrCreateRoom(key, mode, roomName) {
     if (!rooms.has(key)) {
         const ck = comboKeyOf(mode, roomName);
         const rules = rulesOf(ck); rulesDirty = true;
         const m = key.match(/_L(\d+)$/);
         const layerIdx = m ? parseInt(m[1], 10) : 1;
-        rooms.set(key, {
+        const room = {
             key, comboKey: ck, layerIdx, mode, roomName,
-            sim: buildSim(mode, rules),
+            sim: USE_WORKERS ? null : buildSim(mode, rules),
+            worker: null,
             clients: new Map(),
-            state: 'waiting',                 // waiting | playing | ended
+            state: 'waiting',
             tickCount: 0, lastTick: Date.now(), emptySince: 0,
             endsAt: null, restartAt: null, startAt: null,
-            pendingRemovals: new Map(),       // gracia de reconexión
-            deadRemovals: new Map(),          // retirada de muertos
-            spectators: new Set(),            // ws que solo miran (panel de control)
-            persistent: true                  // layers pre-creadas no se borran al quedar vacías
-        });
-        log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(ck)} reales, población ${targetPopOf(ck)})`);
+            pendingRemovals: new Map(),
+            deadRemovals: new Map(),
+            spectators: new Set(),
+            persistent: true,
+            pot: 0,
+        };
+        rooms.set(key, room);
+        if (USE_WORKERS) spawnWorker(room, rules);
+        log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(ck)} reales, población ${targetPopOf(ck)})${USE_WORKERS ? ' [worker]' : ''}`);
     }
     return rooms.get(key);
+}
+
+// --- Worker lifecycle ---
+function spawnWorker(room, rules) {
+    const w = new Worker(WORKER_SCRIPT);
+    room.worker = w;
+    w.postMessage({
+        type: 'init', mode: room.mode, rules,
+        matchMs: MATCH_MS,
+        aoiEnabled: AOI_ENABLED,
+        snapshotEvery: SNAPSHOT_EVERY,
+    });
+    w.on('message', (msg) => handleWorkerMsg(room, msg));
+    w.on('error', (err) => {
+        log(`Worker ERROR en ${room.key}: ${err.message}`);
+        // Fallback: recrear con worker
+        room.worker = null;
+        spawnWorker(room, rulesOf(room.comboKey));
+    });
+    w.on('exit', (code) => {
+        if (code !== 0 && room.worker === w) {
+            log(`Worker salió con code ${code} en ${room.key}, respawneando`);
+            room.worker = null;
+            spawnWorker(room, rulesOf(room.comboKey));
+        }
+    });
+}
+
+function handleWorkerMsg(room, msg) {
+    switch (msg.type) {
+        case 'ready':
+            break;
+
+        case 'tickResult':
+            room.tickCount++;
+            if (msg.botCount != null) room._botCount = msg.botCount;
+            // 1) Enviar snapshots a los clientes WS
+            if (msg.snapshots) {
+                for (const s of msg.snapshots) {
+                    if (s.pid === '__spectators__') {
+                        // Snapshot completo para espectadores
+                        if (s.snapData) for (const sws of room.spectators) {
+                            if (sws.readyState !== 1) { room.spectators.delete(sws); continue; }
+                            if (s.eventsJson) sws.send(s.eventsJson);
+                            sws.send(s.snapData);
+                        }
+                        continue;
+                    }
+                    const cli = room.clients.get(s.pid);
+                    if (!cli || cli.ws.readyState !== 1) continue;
+                    if (s.eventsJson) cli.ws.send(s.eventsJson);
+                    if (s.snapData) cli.ws.send(s.snapData);
+                }
+            }
+
+            // 2) Procesar peaks
+            if (msg.peaks) for (const pk of msg.peaks) {
+                const cli = room.clients.get(pk.pid);
+                if (cli) { cli._peakMass = pk.mass; }
+            }
+
+            // 3) Procesar eventos (warbank, stats, quests — TODO lo que toca estado global)
+            if (msg.events) for (const ev of msg.events) {
+                processWorkerEvent(room, ev, Date.now());
+            }
+            break;
+
+        case 'matchEnd': {
+            room.state = 'ended';
+            room.restartAt = Date.now() + arcadeRestartMs;
+            room.worker.postMessage({ type: 'setState', state: 'ended', restartAt: room.restartAt });
+            // Q1/Q2/Q4 al final de arcade
+            for (const [pid, cli] of room.clients) {
+                if (!cli.cid) continue;
+                const pRank = msg.ranking.find(r => r.id === pid);
+                if (!pRank) continue;
+                const q = questsOf(cli.cid);
+                const peak = pRank.peakMass || 0;
+                if (peak > (q.bestMass | 0)) { q.bestMass = peak; questsDirty = true; }
+                if (pRank.alive && room.mode === 'arcade') {
+                    if ((q.q1_games_finished | 0) < 2) { q.q1_games_finished = (q.q1_games_finished | 0) + 1; questsDirty = true; }
+                    if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; questsDirty = true; }
+                }
+                q.updated = Date.now();
+            }
+            // Reparto del bote arcade
+            if (room.mode !== 'classic' && (room.pot || 0) > 0) {
+                for (const cli of room.clients.values()) { if (cli.carry > 0) { addToPot(room, cli.carry); cli.carry = 0; } }
+                const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
+                const ranking = msg.ranking;
+                const totalPot = room.pot;
+                const top = [];
+                for (let i = 0; i < Math.min(10, ranking.length); i++) {
+                    const pj = ranking[i];
+                    const cli = room.clients.get(pj.id);
+                    const parte = Math.floor(totalPot * PESOS[i] / 100);
+                    if (cli && cli.payWallet && parte > 0) warbank.credit(cli.payWallet, parte);
+                    if (cli && cli.cid && (i + 1) <= 5) dailyquests.recordEvent(cli.cid, 'arcade_top5', 1);
+                    top.push({ pos: i + 1, name: pj.name, mass: pj.peakMass | 0, pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
+                }
+                const payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top };
+                for (const [pid, cli] of room.clients) {
+                    if (cli.ws.readyState !== 1) continue;
+                    const idx = top.findIndex(t => ranking[t.pos - 1] && ranking[t.pos - 1].id === pid);
+                    const myCopy = top.map((t, i) => Object.assign({}, t, { mine: i === idx }));
+                    try { cli.ws.send(JSON.stringify(Object.assign({}, payoutMsg, { top: myCopy, myAmount: idx >= 0 ? top[idx].amount : 0 }))); } catch (e) {}
+                }
+                log(`Reparto arcade ${room.key}: bote ${totalPot}`);
+                room.pot = 0;
+            }
+            broadcast(room, { t: 'matchEnd' });
+            broadcast(room, { t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode, restartIn: arcadeRestartMs });
+            log(`Partida terminada en ${room.key}; reinicio en ${arcadeRestartMs / 1000}s`);
+            break;
+        }
+
+        case 'requestStart':
+            startMatch(room);
+            break;
+
+        case 'requestRestart':
+            restartRoom(room);
+            break;
+    }
+}
+
+function processWorkerEvent(room, ev, now) {
+    if (ev.type === 'playerDied') {
+        const dCli_ = room.clients.get(ev.playerId);
+        if (dCli_) { dCli_._alive = false; dCli_._killStreak = 0; }
+        const dTest_ = dCli_ && dCli_.isTester;
+        const ds2_ = statsOf(room.comboKey); ds2_.muertes++; if (!dTest_) ds2_.muertesReal++; statsDirty = true;
+        if (dCli_ && dCli_.name && !dTest_) { pstatOf(dCli_.name).muertes++; playersDirty = true; }
+        // Peak mass flush
+        if (dCli_) {
+            const peak = dCli_._peakMass || 0;
+            if (peak > 0 && dCli_.name && !dTest_) {
+                const ps = pstatOf(dCli_.name);
+                if (peak > (ps.bestMass | 0)) { ps.bestMass = peak; playersDirty = true; }
+            }
+        }
+        if (room.mode !== 'classic') {
+            const dCli = room.clients.get(ev.playerId);
+            if (dCli && dCli.carry > 0) { addToPot(room, dCli.carry); dCli.carry = 0; }
+            else addToPot(room, entryFeePill(room.comboKey, room.pillRate));
+        }
+        const cliD = room.clients.get(ev.playerId);
+        if (cliD && cliD.cid) {
+            const q = questsOf(cliD.cid);
+            if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
+        }
+        if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + DEAD_REMOVE_MS);
+    } else if (ev.type === 'botKilled') {
+        const cliKiller_ = room.clients.get(ev.playerId);
+        if (cliKiller_) cliKiller_._killStreak = ev.streak || 0;
+        if (cliKiller_ && cliKiller_.name && !cliKiller_.isTester) { pstatOf(cliKiller_.name).kills++; playersDirty = true; }
+        const cliK = room.clients.get(ev.playerId);
+        if (cliK && cliK.cid) {
+            const q = questsOf(cliK.cid);
+            if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
+            dailyquests.recordEvent(cliK.cid, 'kill', 1);
+            const peak = cliK._peakMass || 0;
+            if (peak >= 50000 && !cliK._mass50) { cliK._mass50 = true; dailyquests.recordEvent(cliK.cid, 'mass_50k', 1); }
+            if (peak >= 100000 && !cliK._mass100) { cliK._mass100 = true; dailyquests.recordEvent(cliK.cid, 'mass_100k', 1); }
+        }
+        if (cliK && room.mode === 'classic') {
+            const victimCli = ev.victimId ? room.clients.get(ev.victimId) : null;
+            let gain = 0;
+            if (victimCli && victimCli.carry > 0) {
+                gain = victimCli.carry; victimCli.carry = 0;
+                sendEcon(victimCli, room);
+            } else {
+                gain = entryFeePill(room.comboKey, room.pillRate);
+            }
+            cliK.carry += gain;
+            if (gain > 0) { try { cliK.ws.send(JSON.stringify({ t: 'killGain', amount: gain, victimWasBot: !(victimCli && victimCli.carry >= 0 && victimCli.payWallet) })); } catch (e) {} }
+            sendEcon(cliK, room);
+            if (ev.streak >= 5 && cliK.payWallet) {
+                const win = cliK.carry;
+                if (win > 0) warbank.credit(cliK.payWallet, win);
+                log(`VICTORIA classic: ${cliK.payWallet.slice(0, 6)}… +${win} PILL (carry completo)`);
+                try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: 0 })); } catch (e) {}
+                cliK.carry = 0;
+                sendEcon(cliK, room);
+                if (cliK.cid) dailyquests.recordEvent(cliK.cid, 'classic_5kills', 1);
+            }
+        }
+    } else if (ev.type === 'skillUsed') {
+        const cli = room.clients.get(ev.playerId);
+        if (cli && cli.cid && room.mode === 'arcade') {
+            const uses = (cli._matchSkillUses || 0) + 1;
+            cli._matchSkillUses = uses;
+            const q = questsOf(cli.cid);
+            if (uses > (q.q3_skills_in_arcade | 0)) {
+                q.q3_skills_in_arcade = Math.min(8, uses);
+                q.updated = Date.now(); questsDirty = true;
+            }
+            dailyquests.recordEvent(cli.cid, 'skill_used_arcade', 1);
+        }
+    }
 }
 
 // Matchmaker: elige la layer del combo donde meter a un nuevo jugador.
@@ -530,16 +739,17 @@ function sendWaiting(room) {
 }
 
 function welcomeMsg(room, playerId, token, type) {
+    const baseSize = PillSim.WORLD_CONFIG[room.mode === 'classic' ? 'classic' : 'arcade'].size;
     return {
         t: type || 'welcome', id: playerId, token,
-        mapSize: room.sim.mapSize, mode: room.mode, roomName: room.roomName,
+        mapSize: room.sim ? room.sim.mapSize : baseSize, mode: room.mode, roomName: room.roomName,
         state: room.state, count: room.clients.size, needed: minRealOf(room.comboKey),
         duration: MATCH_MS,
         tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
         startIn: room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
         restartEnMs: room.restartAt ? Math.max(0, room.restartAt - Date.now()) : null,
-        simTime: Math.round(room.sim.now),
-        foods: room.sim.foods
+        simTime: room.sim ? Math.round(room.sim.now) : 0,
+        foods: room.sim ? room.sim.foods : []
     };
 }
 
@@ -549,12 +759,16 @@ function refillBots(room) {
     if (room.state !== 'playing') return;
     const target = targetPopOf(room.comboKey);
     if (target === 0) return;
-    const sim = room.sim;
     const deseados = Math.max(0, target - room.clients.size);
-    sim.config.botConfig.count = deseados;
-    sim.config.botConfig.enabled = deseados > 0;
-    sim.config.botConfig.respawn = deseados > 0;
-    room.botTargetCount = deseados;   // el tick gradual hará el ajuste real
+    if (room.worker) {
+        room.worker.postMessage({ type: 'refillBots', target: deseados });
+    } else {
+        const sim = room.sim;
+        sim.config.botConfig.count = deseados;
+        sim.config.botConfig.enabled = deseados > 0;
+        sim.config.botConfig.respawn = deseados > 0;
+        room.botTargetCount = deseados;
+    }
 }
 
 // Cola gradual de spawn/despawn: en cada llamada acerca el número de bots
@@ -603,25 +817,45 @@ function startMatch(room) {
     room.startAt = null;
     room.lastTick = Date.now();
     if (room.mode !== 'classic') room.endsAt = Date.now() + MATCH_MS;
-    for (const [pid, cli] of room.clients) {
-        if (!room.sim.players.has(pid)) room.sim.addPlayer(pid, cli.opts || {});
-        room.sim.spawnPlayer(pid);
-        cli.paidFee = 0;   // la entrada se consume al empezar (ya no se reembolsa)
-        if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify(welcomeMsg(room, pid, cli.token, 'matchStart')));
+    if (room.worker) {
+        room.worker.postMessage({ type: 'startMatch' });
+        for (const [pid, cli] of room.clients) {
+            cli.paidFee = 0;
+            cli._matchSkillUses = 0;
+            if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify(welcomeMsg(room, pid, cli.token, 'matchStart')));
+        }
+        refillBots(room);
+        log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales [worker]`);
+    } else {
+        for (const [pid, cli] of room.clients) {
+            if (!room.sim.players.has(pid)) room.sim.addPlayer(pid, cli.opts || {});
+            room.sim.spawnPlayer(pid);
+            cli.paidFee = 0;
+            if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify(welcomeMsg(room, pid, cli.token, 'matchStart')));
+        }
+        refillBots(room);
+        log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales + ${new Set(room.sim.enemies.map(e => e.id)).size} bots de relleno`);
     }
-    refillBots(room);
-    log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales + ${new Set(room.sim.enemies.map(e => e.id)).size} bots de relleno`);
 }
 
 function restartRoom(room) {
-    // Aviso a los que estén jugando: pantalla de fin + TRY AGAIN en el cliente
     broadcast(room, { t: 'roomRestart' });
-    room.sim = buildSim(room.mode, rulesOf(room.comboKey));
     room.state = 'waiting';
     room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false;
     room.deadRemovals.clear(); room.pendingRemovals.clear();
-    // los clientes que sigan conectados vuelven al lobby
-    for (const [pid, cli] of room.clients) { room.sim.addPlayer(pid, cli.opts || {}); }
+    if (room.worker) {
+        const rules = rulesOf(room.comboKey);
+        room.worker.postMessage({
+            type: 'restartSim', mode: room.mode, rules,
+            matchMs: MATCH_MS, aoiEnabled: AOI_ENABLED, snapshotEvery: SNAPSHOT_EVERY,
+        });
+        for (const [pid, cli] of room.clients) {
+            room.worker.postMessage({ type: 'addPlayer', pid, opts: cli.opts || {}, aspect: cli.aspect || 1, useBin: !!cli.useBin });
+        }
+    } else {
+        room.sim = buildSim(room.mode, rulesOf(room.comboKey));
+        for (const [pid, cli] of room.clients) { room.sim.addPlayer(pid, cli.opts || {}); }
+    }
     sendWaiting(room);
     armLobby(room);
     log(`Sala reiniciada: ${room.key}`);
@@ -632,6 +866,7 @@ function shutdownRoom(room, motivo) {
         try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {}
         try { cli.ws.close(); } catch (e) {}
     }
+    if (room.worker) { try { room.worker.postMessage({ type: 'shutdown' }); } catch (e) {} room.worker = null; }
     rooms.delete(room.key);
     for (const [tok, info] of resumeTokens) { if (info.roomKey === room.key) resumeTokens.delete(tok); }
     log(`Sala apagada (${motivo}): ${room.key}`);
@@ -793,11 +1028,11 @@ function buildAdminState() {
             disabled: !!(room && room.disabled),
             state: room ? room.state : 'offline',
             conectados: room ? room.clients.size : 0,
-            vivos: room ? [...room.clients.keys()].filter(pid => { const p = room.sim.players.get(pid); return p && p.alive; }).length : 0,
+            vivos: room ? (room.worker ? [...room.clients.values()].filter(c => c._alive).length : [...room.clients.keys()].filter(pid => { const p = room.sim.players.get(pid); return p && p.alive; }).length) : 0,
             espectadores: room ? room.spectators.size : 0,
             maxReales: maxPlayersOf(comboKey),
             needed: minRealOf(comboKey),
-            bots: room ? new Set(room.sim.enemies.map(e => e.id)).size : 0,
+            bots: room ? (room.worker ? (room._botCount || 0) : new Set(room.sim.enemies.map(e => e.id)).size) : 0,
             rules,
             // Las stats son del COMBO (compartidas por todas sus layers). Se
             // devuelven en cada layer por comodidad; al sumar totales hay que
@@ -808,8 +1043,8 @@ function buildAdminState() {
             restartEnMs: (room && room.restartAt) ? Math.max(0, room.restartAt - now) : null,
             players: room ? [...room.clients.keys()].map(pid => {
                 const cli = room.clients.get(pid);
-                const p = room.sim.players.get(pid);
-                let mass = 0; if (p) p.cells.forEach(c => mass += c.mass);
+                const p = room.worker ? null : room.sim.players.get(pid);
+                let mass = room.worker ? (cli._peakMass || 0) : 0; if (p) p.cells.forEach(c => mass += c.mass);
                 return {
                     id: pid, name: cli.name || (p ? p.name : '?'), ip: cli.ip,
                     mass: Math.floor(mass), kills: p ? p.killStreak : 0,
@@ -891,11 +1126,16 @@ function buildAdminState() {
 // Guarda el peakMass del jugador en playerStats (ranking) y quests (clientId).
 // Idempotente: solo sube el bestMass si supera el récord existente.
 function flushPeakMass(room, pid, cli) {
-    const pj = room.sim.players.get(pid); if (!pj) return;
-    const peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
+    let peak;
+    if (room.worker) {
+        peak = (cli && cli._peakMass) ? Math.floor(cli._peakMass) : 0;
+    } else {
+        const pj = room.sim.players.get(pid); if (!pj) return;
+        peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
+    }
     if (peak <= 0) return;
-    if (pj.name && !(cli && cli.isTester)) {
-        const ps = pstatOf(pj.name);
+    if (cli && cli.name && !cli.isTester) {
+        const ps = pstatOf(cli.name);
         if (peak > (ps.bestMass | 0)) { ps.bestMass = peak; playersDirty = true; }
     }
     if (cli && cli.cid) {
@@ -1241,9 +1481,13 @@ wss.on('connection', (ws, req) => {
             } else if (msg.cmd === 'power' && msg.playerId) {
                 const found = findClient(msg.playerId);
                 if (found) {
-                    found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : [], true);
+                    if (found.room.worker) {
+                        found.room.worker.postMessage({ type: 'cmd', pid: msg.playerId, name: msg.name, args: Array.isArray(msg.args) ? msg.args.slice(0, 4) : [] });
+                    } else {
+                        found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : [], true);
+                    }
                     const nm = found.cli.name || '(sin nombre)';
-                    if (msg.name === 'god') { const p = found.room.sim.players.get(msg.playerId); logAdmin(found.room.key, (p && p.godMode) ? 'Dio GOD' : 'Quitó GOD', nm); }
+                    if (msg.name === 'god') { logAdmin(found.room.key, 'Toggled GOD', nm); }
                     else if (msg.name === 'mass') { logAdmin(found.room.key, 'Puso masa ' + (msg.args && msg.args[0] || ''), nm); }
                     else logAdmin(found.room.key, 'Poder /' + msg.name, nm);
                     log(`ADMIN poder /${msg.name} a ${found.cli.name}`);
@@ -1466,7 +1710,7 @@ wss.on('connection', (ws, req) => {
             if (msg.resume) {
                 const tok = resumeTokens.get(msg.resume);
                 const r = tok ? rooms.get(tok.roomKey) : null;
-                if (tok && r && r.sim.players.has(tok.playerId) && !r.clients.has(tok.playerId)) {
+                if (tok && r && !r.worker && r.sim.players.has(tok.playerId) && !r.clients.has(tok.playerId)) {
                     room = r; playerId = tok.playerId;
                     room.pendingRemovals.delete(playerId);
                     const p = room.sim.players.get(playerId);
@@ -1530,7 +1774,9 @@ wss.on('connection', (ws, req) => {
                 colorTop: typeof msg.colorTop === 'string' ? msg.colorTop.slice(0, 9) : undefined,
                 skinUrl: typeof msg.skinUrl === 'string' ? msg.skinUrl.slice(0, 300) : null
             };
-            room.sim.addPlayer(playerId, opts);
+            if (room.worker) room.worker.postMessage({ type: 'addPlayer', pid: playerId, opts, aspect: (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1, useBin: msg.bin === 1 || msg.bin === true });
+            else room.sim.addPlayer(playerId, opts);
+            const _alive = true, _killStreak = 0;
             const token = PillSim.uuid() + PillSim.uuid();
             resumeTokens.set(token, { roomKey: key, playerId });
             // Guarda el clientId anónimo del navegador para que el servidor pueda
@@ -1541,14 +1787,18 @@ wss.on('connection', (ws, req) => {
             // Eco en welcome.useBin para que el cliente decodifique los frames.
             const useBin = msg.bin === 1 || msg.bin === true;
             const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
-            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK, useBin, aspect });
+            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK, useBin, aspect, _alive, _killStreak });
             sendEcon(room.clients.get(playerId), room);
             // Stats por COMBO (compartidas entre layers).
             const st_ = statsOf(ck); st_.entradas++; if (!TESTER_OK) st_.entradasReal++; statsDirty = true;
             if (name && !TESTER_OK) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; st.isReal = true; playersDirty = true; }
             if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
             if (!TESTER_OK) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
-            if (room.state === 'playing') { room.sim.spawnPlayer(playerId); refillBots(room); }
+            if (room.state === 'playing') {
+                if (room.worker) room.worker.postMessage({ type: 'spawnPlayer', pid: playerId });
+                else room.sim.spawnPlayer(playerId);
+                refillBots(room);
+            }
             ws.send(JSON.stringify(Object.assign(welcomeMsg(room, playerId, token), useBin ? { useBin: true } : {})));
             log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(ck)}${useBin ? ' [bin]' : ''}`);
             if (room.state === 'waiting') {
@@ -1563,21 +1813,40 @@ wss.on('connection', (ws, req) => {
         if (!room || !playerId) return;
 
         if (msg.t === 'input') {
-            room.sim.setInput(playerId, (typeof msg.tx === 'number' && typeof msg.ty === 'number') ? { tx: msg.tx, ty: msg.ty } : null);
+            const input = (typeof msg.tx === 'number' && typeof msg.ty === 'number') ? { tx: msg.tx, ty: msg.ty } : null;
+            if (room.worker) room.worker.postMessage({ type: 'setInput', pid: playerId, input });
+            else room.sim.setInput(playerId, input);
         } else if (msg.t === 'aspect') {
             const cli = room.clients.get(playerId);
-            if (cli && typeof msg.r === 'number' && msg.r > 0) cli.aspect = Math.max(0.5, Math.min(4, msg.r));
+            if (cli && typeof msg.r === 'number' && msg.r > 0) {
+                cli.aspect = Math.max(0.5, Math.min(4, msg.r));
+                if (room.worker) room.worker.postMessage({ type: 'setAspect', pid: playerId, aspect: cli.aspect });
+            }
         } else if (msg.t === 'action') {
-            if (msg.kind === 'split') room.sim.queueAction(playerId, { kind: 'split', tx: +msg.tx || 0, ty: +msg.ty || 0 });
-            else if (msg.kind === 'skill') room.sim.queueAction(playerId, { kind: 'skill', slot: msg.slot | 0, tx: +msg.tx || 0, ty: +msg.ty || 0 });
+            if (msg.kind === 'split') {
+                const a = { kind: 'split', tx: +msg.tx || 0, ty: +msg.ty || 0 };
+                if (room.worker) room.worker.postMessage({ type: 'action', pid: playerId, action: a });
+                else room.sim.queueAction(playerId, a);
+            } else if (msg.kind === 'skill') {
+                const a = { kind: 'skill', slot: msg.slot | 0, tx: +msg.tx || 0, ty: +msg.ty || 0 };
+                if (room.worker) room.worker.postMessage({ type: 'action', pid: playerId, action: a });
+                else room.sim.queueAction(playerId, a);
+            }
         } else if (msg.t === 'pickSkill') {
             const id = msg.id | 0;
-            if (id >= 1 && id <= 8) room.sim.grantSkillToPlayer(playerId, id);
+            if (id >= 1 && id <= 8) {
+                if (room.worker) room.worker.postMessage({ type: 'grantSkill', pid: playerId, skillId: id });
+                else room.sim.grantSkillToPlayer(playerId, id);
+            }
         } else if (msg.t === 'reorder') {
-            const p = room.sim.players.get(playerId);
-            if (p) { const a = msg.from | 0, b = msg.to | 0; if (a >= 0 && a < p.skillSlots.length && b >= 0 && b < p.skillSlots.length && a !== b) { const t = p.skillSlots[a]; p.skillSlots[a] = p.skillSlots[b]; p.skillSlots[b] = t; } }
+            if (room.worker) room.worker.postMessage({ type: 'reorder', pid: playerId, from: msg.from | 0, to: msg.to | 0 });
+            else {
+                const p = room.sim.players.get(playerId);
+                if (p) { const a = msg.from | 0, b = msg.to | 0; if (a >= 0 && a < p.skillSlots.length && b >= 0 && b < p.skillSlots.length && a !== b) { const t = p.skillSlots[a]; p.skillSlots[a] = p.skillSlots[b]; p.skillSlots[b] = t; } }
+            }
         } else if (msg.t === 'cmd') {
-            room.sim.runCommand(playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : []);
+            if (room.worker) room.worker.postMessage({ type: 'cmd', pid: playerId, name: msg.name, args: Array.isArray(msg.args) ? msg.args.slice(0, 4) : [] });
+            else room.sim.runCommand(playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : []);
             log(`Comando de ${playerId}: /${msg.name} ${(msg.args || []).join(' ')}`);
         }
     });
@@ -1588,16 +1857,29 @@ wss.on('connection', (ws, req) => {
             const cli = room.clients.get(playerId);
             // FIX: si se desconecta SIN morir (cerró pestaña), guardar su mejor masa
             // y contarle la muerte. Antes solo se actualizaba en playerDied.
-            const pj = room.sim.players.get(playerId);
-            if (pj && pj.alive) {
-                flushPeakMass(room, playerId, cli);
-                if (pj.name && !cli.isTester) { pstatOf(pj.name).muertes++; playersDirty = true; }
-                const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
-                // CLASSIC: salir VIVO = cashout con exit fee (20/10/0 según kills); el fee va al bote.
-                if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, pj.killStreak | 0);
-            } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
-                // Murió y desconecta: su carry ya pasó al matador al morir; nada que hacer.
-                cli.carry = 0;
+            if (room.worker) {
+                room.worker.postMessage({ type: 'removePlayer', pid: playerId });
+                // Con worker no tenemos acceso síncrono al estado alive/kills del jugador.
+                // El peak mass se flushea cuando llega del worker (processWorkerEvent).
+                // Para classic cashout, usamos un flag _alive que mantiene el main thread.
+                if (cli._alive) {
+                    flushPeakMass(room, playerId, cli);
+                    if (cli.name && !cli.isTester) { pstatOf(cli.name).muertes++; playersDirty = true; }
+                    const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
+                    if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, cli._killStreak || 0);
+                } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
+                    cli.carry = 0;
+                }
+            } else {
+                const pj = room.sim.players.get(playerId);
+                if (pj && pj.alive) {
+                    flushPeakMass(room, playerId, cli);
+                    if (pj.name && !cli.isTester) { pstatOf(pj.name).muertes++; playersDirty = true; }
+                    const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
+                    if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, pj.killStreak | 0);
+                } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
+                    cli.carry = 0;
+                }
             }
             // Reembolso de la entrada si la partida NO había empezado (paidFee>0 = no consumida).
             if (cli.paidFee > 0 && cli.payWallet && room.state === 'waiting') {
@@ -1672,6 +1954,7 @@ setInterval(() => {
     let stepMs = 0, snapMs = 0, sendMs = 0;
     const now = tickStartT;
     for (const room of rooms.values()) {
+        if (room.worker) continue;   // el worker tiene su propio tick loop
         const m = tickRoomOnce(room, now, tickCtx);
         stepMs += m.stepMs; snapMs += m.snapMs; sendMs += m.sendMs;
     }
