@@ -72,9 +72,9 @@ const RULES_FILE = path.join(__dirname, 'roomrules.json');
 const PRICES = ['Free', '5$', '10$', '20$', '50$'];
 const CATALOG_MODES = ['classic', 'arcade'];
 // Layers por combo (mode × price). Cada combo tiene N instancias paralelas:
-// el matchmaker te mete en una al hacer join, apilando gente en la más llena
-// (90% ocupación) antes de pasar a la siguiente. Las layers SON INVISIBLES
-// para el cliente: solo ve "Free", "5$", etc. — el server decide la layer.
+// el matchmaker (pickLayer) te mete en L1 hasta LLENARLA (clients.size >= maxPlayers),
+// y solo entonces pasa a L2. NO hay umbral del 90%: es 100% estricto. Las layers
+// SON INVISIBLES para el cliente: solo ve "Free", "5$", etc. — el server decide.
 // 2 layers × 2 modos × 5 precios = 20 salas pre-creadas al arrancar.
 const LAYERS_PER_COMBO = parseInt(process.env.LAYERS_PER_COMBO, 10) || 2;
 function comboKeyOf(mode, roomName) { return mode + '_' + roomName; }
