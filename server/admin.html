@@ -118,7 +118,7 @@
 
     /* sala: caja del menú con acento de estado */
     .room { background: var(--box); border: 1px solid var(--border); border-left: 3px solid #444; border-radius: 12px; overflow: hidden; transition: 0.25s; }
-    .room.empty { opacity: 0.45; filter: grayscale(0.7); }
+    .room.empty { opacity: 0.35; filter: grayscale(1) brightness(0.5); border-left-color: #333 !important; }
     .room:hover { border-color: var(--primary); border-left-width: 3px; box-shadow: 0 0 30px var(--primary-dim); transform: translateY(-2px); }
     .room.s-playing { border-left-color: var(--primary); }
     .room.s-waiting { border-left-color: var(--yellow); }
@@ -265,11 +265,6 @@
             <div class="modetabs">
                 <button id="modeBtn_classic" class="modetab act" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
                 <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
-            </div>
-            <div id="layerTabsBar" class="modetabs" style="margin-top:8px; padding-left:8px; gap:8px; align-items:center;">
-                <span style="color:#666;font-size:11px;letter-spacing:1px;margin-right:6px;">LAYER:</span>
-                <button id="layerBtn_1" class="modetab act" style="font-size:12px;padding:4px 10px;" onclick="verLayer(1)">L1 <span id="cntLayer1" class="cnt cero">(0)</span></button>
-                <button id="layerBtn_2" class="modetab" style="font-size:12px;padding:4px 10px;" onclick="verLayer(2)">L2 <span id="cntLayer2" class="cnt cero">(0)</span></button>
             </div>
             <div class="grid" id="gridClassic"></div>
             <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px; display:none;">
@@ -494,7 +489,6 @@ function verTab(t) {
 }
 
 let modoActivo = 'classic';
-let layerActivo = 1;
 function verModo(m) {
     modoActivo = m;
     document.getElementById('gridClassic').style.display = (m === 'classic') ? '' : 'none';
@@ -502,12 +496,6 @@ function verModo(m) {
     document.getElementById('arcadeGlobalPanel').style.display = (m === 'arcade') ? '' : 'none';
     document.getElementById('modeBtn_classic').classList.toggle('act', m === 'classic');
     document.getElementById('modeBtn_arcade').classList.toggle('act', m === 'arcade');
-}
-function verLayer(n) {
-    layerActivo = n;
-    document.getElementById('layerBtn_1').classList.toggle('act', n === 1);
-    document.getElementById('layerBtn_2').classList.toggle('act', n === 2);
-    pedir();
 }
 // Apaga/enciende una layer ENTERA (todas las salas de ese idx). Apagar libera
 // CPU. Solo se puede apagar si todas están vacías — el server rechaza si no.
@@ -812,7 +800,7 @@ function render(m) {
         aoiBtn.innerText = m.aoiEnabled ? 'ON — desactivar' : 'OFF — activar';
         aoiBtn.className = 'b ' + (m.aoiEnabled ? 'verde' : 'rojo');
     }
-    // Estado del botón power Layer 2 (apaga/enciende todas las L2 a la vez).
+    // Botón power Layer 2 (en pestaña Actividad)
     _layerOff = m.layerOff || {};
     const off2 = !!_layerOff[2];
     const lpb = document.getElementById('layerPowerBtn_2');
@@ -822,10 +810,6 @@ function render(m) {
     }
     const lph = document.getElementById('layerPowerHint');
     if (lph) lph.innerText = off2 ? 'L2 apagada — 0 sims, no consume CPU.' : '';
-    // Barra de layer tabs: solo visible cuando L2 está ON (si solo hay L1 no hace falta)
-    const layerBar = document.getElementById('layerTabsBar');
-    if (layerBar) layerBar.style.display = off2 ? 'none' : '';
-    if (off2 && layerActivo === 2) verLayer(1);
     if (m.arcadeLobbyMs   != null && document.activeElement.id !== 'g_lobby')   document.getElementById('g_lobby').value   = Math.round(m.arcadeLobbyMs   / 1000);
     if (m.arcadeRestartMs != null && document.activeElement.id !== 'g_restart') document.getElementById('g_restart').value = Math.round(m.arcadeRestartMs / 1000);
     construirSalasStress(); renderStress(m.stress);
@@ -848,18 +832,9 @@ function render(m) {
         else if (r.mode === 'arcade') porSeccion.arcade.push(r);
         else porSeccion.otras.push(r);
     }
-    // Contadores por layer (suma de todas las salas de cada layer).
-    const cntL = { 1: 0, 2: 0 };
-    for (const r of m.rooms) { const i = r.layerIdx || 1; cntL[i] = (cntL[i] || 0) + r.conectados; }
-    ponCnt('cntLayer1', cntL[1] || 0);
-    ponCnt('cntLayer2', cntL[2] || 0);
-    // Filtrar por la layer activa (default L1).
-    const _l = layerActivo || 1;
-    const classicL = porSeccion.classic.filter(r => (r.layerIdx || 1) === _l);
-    const arcadeL = porSeccion.arcade.filter(r => (r.layerIdx || 1) === _l);
-    pintarGrid('gridClassic', classicL);
-    pintarGrid('gridArcade', arcadeL);
-    // El contador de Classic/Arcade muestra el TOTAL del modo (todas las layers)
+    // Mostrar todas las salas sin filtrar por layer
+    pintarGrid('gridClassic', porSeccion.classic);
+    pintarGrid('gridArcade', porSeccion.arcade);
     ponCnt('cntClassic', porSeccion.classic.reduce((s, r) => s + r.conectados, 0));
     ponCnt('cntArcade', porSeccion.arcade.reduce((s, r) => s + r.conectados, 0));
     document.getElementById('gridOtras').innerHTML = porSeccion.otras.length
