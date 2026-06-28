@@ -885,14 +885,14 @@ function render(m) {
 
     const porSeccion = { classic: [], arcade: [], free: [], otras: [] };
     for (const r of m.rooms) {
-        if (r.priceUsd === 0) porSeccion.free.push(r);
+        if (r.price === 0) porSeccion.free.push(r);
         else if (r.mode === 'classic') porSeccion.classic.push(r);
         else if (r.mode === 'arcade') porSeccion.arcade.push(r);
         else porSeccion.otras.push(r);
     }
     // Contadores por layer (solo premium — Free tiene siempre sus layers).
     const cntL = { 1: 0, 2: 0 };
-    for (const r of m.rooms) { if (r.priceUsd > 0) { const i = r.layerIdx || 1; cntL[i] = (cntL[i] || 0) + r.conectados; } }
+    for (const r of m.rooms) { if (r.price > 0) { const i = r.layerIdx || 1; cntL[i] = (cntL[i] || 0) + r.conectados; } }
     ponCnt('cntLayer1', cntL[1] || 0);
     ponCnt('cntLayer2', cntL[2] || 0);
     // Filtrar premium por la layer activa. Free se muestra siempre entera.
