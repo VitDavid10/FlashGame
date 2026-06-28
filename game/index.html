@@ -376,11 +376,6 @@
         .oracle-rate .or-amt { font-family: 'Russo One'; font-size: 30px; color: #ffce3d; text-shadow: 0 0 16px rgba(255,206,61,0.35); }
         .oracle-rate .or-unit { font-family: 'Russo One'; font-size: 13px; color: #888; letter-spacing: 1px; }
         .oracle-rows { overflow-y: auto; flex: 1; }
-        .oracle-layers { display: flex; gap: 6px; align-items: center; margin: 8px 0 4px; flex-wrap: wrap; }
-        .oracle-layers button { background: #1a1a2e; color: #888; border: 1px solid #333; border-radius: 6px; padding: 3px 10px; font-family: 'Russo One', sans-serif; font-size: 10px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; }
-        .oracle-layers button:hover { color: #fff; border-color: #555; }
-        .oracle-layers button.act { background: var(--primary, #00ff88); color: #000; border-color: var(--primary, #00ff88); }
-        .oracle-layers-hint { color: #555; font-size: 9px; letter-spacing: 0.5px; margin-left: 4px; flex: 1; }
         .oracle-row { display: grid; grid-template-columns: 56px 1fr auto 14px; gap: 10px; align-items: center; padding: 10px 0; font-family: 'Russo One'; font-size: 12px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); }
         .oracle-row:first-of-type { border-top: 0; }
         .oracle-row .oroom { color: #fff; font-size: 14px; }
@@ -992,11 +987,6 @@
                 <div class="menu-side-head"><span>ROOM · PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
                 <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
                 <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
-                <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
-                    <button data-oraclelayer="1" class="act" onclick="setOracleLayer(1)">L1</button>
-                    <button data-oraclelayer="2" onclick="setOracleLayer(2)">L2</button>
-                    <span class="oracle-layers-hint">view a specific room layer (you can't choose which one you'll be assigned to)</span>
-                </div>
                 <div id="oracleRows" class="oracle-rows"></div>
             </div>
 
@@ -2518,17 +2508,6 @@
     // El precio cambia cada 5 min (timer); los players/status se refrescan cada pocos
     // segundos para que se vea en vivo si la sala se llena.
     let _lastPillPerDollar = 0;
-    // Layer que muestra el oracle: 'auto' = la que el matchmaker elegiría
-    // (representativa). 1 / 2 = forzar mostrar esa layer concreta. El cliente
-    // NO elige a qué layer entrar (eso lo decide el server) — esto es solo
-    // para ver el estado de la "otra layer".
-    // Default L1. 1/2 = filtrar a esa layer. Nunca null (sin vista agregada).
-    window.oracleLayerView = 1;
-    function setOracleLayer(v) {
-        window.oracleLayerView = v;
-        document.querySelectorAll('[data-oraclelayer]').forEach(b => b.classList.toggle('act', b.dataset.oraclelayer === String(v)));
-        refreshOracle();
-    }
     async function refreshOracle() {
         try {
             const data = await (await fetch('/api/rooms', { cache: 'no-store' })).json();
@@ -2542,30 +2521,17 @@
                 if (rateEl) rateEl.textContent = Number(gamePillPerDollar).toLocaleString('en-US');
             }
             const cont = document.getElementById('oracleRows'); if (!cont) return;
-            // Barra AUTO/L1/L2: solo visible si hay más de una layer activa (L2 ON desde admin).
-            const layerOff = data.layerOff || {};
-            const activeLayers = (data.layersPerCombo || 2) - Object.keys(layerOff).filter(k => layerOff[k]).length;
-            const layersBar = document.getElementById('oracleLayersBar');
-            if (layersBar) {
-                layersBar.style.display = activeLayers > 1 ? 'flex' : 'none';
-                if (activeLayers <= 1 && window.oracleLayerView !== 1) {
-                    setOracleLayer(1);
-                }
-            }
-            const lv = window.oracleLayerView;   // null = agregado, 1/2 = layer específica
+            // El oracle muestra la layer 1 de premium (la representativa: matchmaker L1 estricta).
+            // Free queda fuera del oracle — ocupa espacio sin aportar info.
             const layersPerCombo = data.layersPerCombo || 2;
-            // Si el oracle muestra una layer concreta, sustituimos el state/players/etc.
-            // del combo por los de esa layer (manteniendo fee/cap/priceUsd del combo).
-            // Ocultamos Free (priceUsd=0): no aporta info útil al menú y ocupa espacio.
             const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic') && r.priceUsd > 0).map(r => {
-                if (lv == null || !r.layers) return r;
-                const L = r.layers.find(x => x.layerIdx === lv);
+                if (!r.layers) return r;
+                const L = r.layers.find(x => x.layerIdx === 1);
                 if (!L) return r;
                 return Object.assign({}, r, {
                     players: L.players, state: L.state, startIn: L.startIn,
                     restartIn: L.restartIn, endsIn: L.endsIn, key: L.key,
                     cap: (r.cap || 30) / layersPerCombo,
-                    layerLabel: 'L' + L.layerIdx,
                 });
             });
             window._roomCountdowns = window._roomCountdowns || {};
