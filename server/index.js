@@ -535,6 +535,7 @@ function handleWorkerMsg(room, msg) {
                             if (s.eventsJson) sws.send(s.eventsJson);
                             sws.send(s.snapData);
                         }
+                        if (room.spectators.size === 0) room.worker.postMessage({ type: 'setSpectators', on: false });
                         continue;
                     }
                     const cli = room.clients.get(s.pid);
@@ -1710,6 +1711,7 @@ wss.on('connection', (ws, req) => {
             if (!sala) { ws.send(JSON.stringify({ t: 'specEmpty' })); return; }
             spectatorRoom = sala;
             sala.spectators.add(ws);
+            if (sala.worker) sala.worker.postMessage({ type: 'setSpectators', on: true });
             // welcome sin id de jugador → el cliente entra como espectador puro
             ws.send(JSON.stringify(Object.assign(welcomeMsg(sala, null, null, 'specWelcome'), { id: null })));
             log(`Espectador conectado a ${key} (${sala.spectators.size} mirando)`);
@@ -1863,7 +1865,10 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('close', () => {
-        if (spectatorRoom) { spectatorRoom.spectators.delete(ws); }
+        if (spectatorRoom) {
+            spectatorRoom.spectators.delete(ws);
+            if (spectatorRoom.worker && spectatorRoom.spectators.size === 0) spectatorRoom.worker.postMessage({ type: 'setSpectators', on: false });
+        }
         if (room && playerId && room.clients.get(playerId) && room.clients.get(playerId).ws === ws) {
             const cli = room.clients.get(playerId);
             // FIX: si se desconecta SIN morir (cerró pestaña), guardar su mejor masa

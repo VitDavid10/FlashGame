@@ -159,6 +159,7 @@ function tickGradualBots(now) {
 // --- Configuración dinámica (recibida del main) ---
 let aoiEnabled = true;
 let snapshotEvery = 1;
+let wantSpectatorSnap = false;   // el main lo activa solo si hay espectadores
 
 // --- Tick loop ---
 let tickInterval = null;
@@ -243,20 +244,23 @@ function tick() {
             }
             snapshots.push(entry);
         }
-        // Full para espectadores
-        if (doSnap) {
+        // Full para espectadores (solo si los hay: el full snap es caro de generar)
+        if (doSnap && wantSpectatorSnap) {
             snapshots.push({ pid: '__spectators__', snapData: ensureFullJson(), isBin: false, eventsJson });
         }
     }
 
     const snapMs = performance.now() - _t1;
 
-    // Transferir los ArrayBuffers para evitar copias
-    const transferable = [];
+    // Transferir los ArrayBuffers para evitar copias. Usamos un Set porque el
+    // full snap binario se cachea y se comparte entre varios muertos: transferir
+    // el mismo buffer dos veces lanza DataCloneError y crashea el worker.
+    const transferSet = new Set();
     for (const s of snapshots) {
-        if (s.snapData instanceof ArrayBuffer) transferable.push(s.snapData);
-        else if (s.snapData && s.snapData.buffer instanceof ArrayBuffer) transferable.push(s.snapData.buffer);
+        if (s.snapData instanceof ArrayBuffer) transferSet.add(s.snapData);
+        else if (s.snapData && s.snapData.buffer instanceof ArrayBuffer) transferSet.add(s.snapData.buffer);
     }
+    const transferable = [...transferSet];
 
     parentPort.postMessage({
         type: 'tickResult',
@@ -322,6 +326,10 @@ parentPort.on('message', (msg) => {
 
         case 'spawnPlayer':
             sim.spawnPlayer(msg.pid);
+            break;
+
+        case 'setSpectators':
+            wantSpectatorSnap = !!msg.on;
             break;
 
         case 'setInput':
