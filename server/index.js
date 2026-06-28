@@ -98,14 +98,16 @@ let serverCpuPct = 0; let _cpuLast = process.cpuUsage(); let _cpuLastT = Date.no
 // Diagnóstico main thread: ms de CPU/seg en handleWorkerMsg (send vs total).
 // Si mainSendMs ≈ mainTotalMs ≈ ~900 → el cuello es el ws.send del main.
 let _wmSendUs = 0, _wmTotalUs = 0;
-let mainSendMs = 0, mainTotalMs = 0;
+let _wmRecvMs = 0, _wmRecvN = 0;   // delay cola+structured-clone worker→main
+let mainSendMs = 0, mainTotalMs = 0, mainRecvDelay = 0;
 setInterval(() => {
     const u = process.cpuUsage(_cpuLast); const dt = Date.now() - _cpuLastT;
     _cpuLast = process.cpuUsage(); _cpuLastT = Date.now();
     serverCpuPct = dt > 0 ? Math.round((u.user + u.system) / 1000 / dt * 100) : 0;
     mainSendMs = Math.round(_wmSendUs / 1000); mainTotalMs = Math.round(_wmTotalUs / 1000);
-    _wmSendUs = 0; _wmTotalUs = 0;
-    if (mainTotalMs > 200) log(`MAIN cpu=${serverCpuPct}% workerMsg=${mainTotalMs}ms/s (send=${mainSendMs}ms/s) lag.p95=${pStats(tickHist.lag, tickHist.n).p95}ms`);
+    mainRecvDelay = _wmRecvN ? +(_wmRecvMs / _wmRecvN).toFixed(1) : 0;
+    _wmSendUs = 0; _wmTotalUs = 0; _wmRecvMs = 0; _wmRecvN = 0;
+    if (mainTotalMs > 200) log(`MAIN cpu=${serverCpuPct}% workerMsg=${mainTotalMs}ms/s (send=${mainSendMs}ms/s) recvDelay=${mainRecvDelay}ms lag.p95=${pStats(tickHist.lag, tickHist.n).p95}ms`);
 }, 1000);
 function stressBuildState() {
     return {
@@ -537,7 +539,9 @@ function handleWorkerMsg(room, msg) {
         case 'tickResult': {
             room.tickCount++;
             if (msg.botCount != null) room._botCount = msg.botCount;
+            if (msg.postedAt) { _wmRecvMs += Math.max(0, Date.now() - msg.postedAt); _wmRecvN++; }
             const _wmT0 = performance.now();
+            const evJson = msg.eventsJson;
             // 1) Enviar snapshots a los clientes WS
             if (msg.snapshots) {
                 for (const s of msg.snapshots) {
@@ -545,7 +549,7 @@ function handleWorkerMsg(room, msg) {
                         // Snapshot completo para espectadores
                         if (s.snapData) for (const sws of room.spectators) {
                             if (sws.readyState !== 1) { room.spectators.delete(sws); continue; }
-                            if (s.eventsJson) sws.send(s.eventsJson);
+                            if (evJson) sws.send(evJson);
                             sws.send(s.snapData);
                         }
                         if (room.spectators.size === 0) room.worker.postMessage({ type: 'setSpectators', on: false });
@@ -553,7 +557,7 @@ function handleWorkerMsg(room, msg) {
                     }
                     const cli = room.clients.get(s.pid);
                     if (!cli || cli.ws.readyState !== 1) continue;
-                    if (s.eventsJson) cli.ws.send(s.eventsJson);
+                    if (evJson) cli.ws.send(evJson);
                     if (s.snapData) cli.ws.send(s.snapData);
                 }
             }

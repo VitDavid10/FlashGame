@@ -229,7 +229,7 @@ function tick() {
         const ensureFullBin  = () => fullBin  || (fullBin  = proto.encodeSnap(ensureFullSnap()));
 
         for (const [pid, cli] of clients) {
-            const entry = { pid, eventsJson };
+            const entry = { pid };   // eventsJson va una sola vez top-level, no duplicado por entry
             if (!doSnap) { snapshots.push(entry); continue; }
 
             const pj = sim.players.get(pid);
@@ -246,7 +246,7 @@ function tick() {
         }
         // Full para espectadores (solo si los hay: el full snap es caro de generar)
         if (doSnap && wantSpectatorSnap) {
-            snapshots.push({ pid: '__spectators__', snapData: ensureFullJson(), isBin: false, eventsJson });
+            snapshots.push({ pid: '__spectators__', snapData: ensureFullJson(), isBin: false });
         }
     }
 
@@ -270,6 +270,7 @@ function tick() {
         peaks,
         stepMs,
         snapMs,
+        postedAt: Date.now(),
         botCount: new Set(sim.enemies.map(e => e.id)).size,
     }, transferable);
 }
