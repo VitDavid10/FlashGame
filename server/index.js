@@ -983,7 +983,7 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO }));
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff) }));
         return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
