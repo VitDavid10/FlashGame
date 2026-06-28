@@ -23,7 +23,7 @@
 'use strict';
 
 const WebSocket = require('ws');
-const { genBotName } = require('./shared/botnames');
+const { genBotName } = require('./botnames');
 
 const SERVER     = process.env.SERVER     || 'ws://localhost:8080';
 const BOTS       = parseInt(process.env.BOTS      || '300', 10);

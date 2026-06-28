@@ -1,0 +1,13 @@
+{
+  "name": "pillwars-stress-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Panel local de stress test para PillWars. Corre en tu PC contra el servidor del VPS.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

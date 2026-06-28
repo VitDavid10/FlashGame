@@ -28,7 +28,6 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
 const { performance } = require('perf_hooks');
 const { Worker } = require('worker_threads');
 const { WebSocketServer } = require('ws');
@@ -91,17 +90,13 @@ function isLayerOffForPrice(price, layerIdx) {
 const rooms = new Map();   // layerKey → room
 const resumeTokens = new Map();   // token → { roomKey: layerKey, playerId }
 
-// --- Stress / DDoS test lanzable desde el panel (proceso hijo) ---
-const stress = { proc: null, running: false, kind: null, params: null, stats: null, startedAt: 0, error: null };
-// %CPU del propio servidor, muestreado cada segundo (para comparar con el del test).
+// %CPU del propio servidor, muestreado cada segundo (expuesto en admin/health).
 let serverCpuPct = 0; let _cpuLast = process.cpuUsage(); let _cpuLastT = Date.now();
 // Diagnóstico main thread: ms de CPU/seg en handleWorkerMsg (send vs total).
-// Si mainSendMs ≈ mainTotalMs ≈ ~900 → el cuello es el ws.send del main.
+// Si mainSendMs ≈ mainTotalMs y se acerca a ~900 → el cuello es el ws.send.
 let _wmSendUs = 0, _wmTotalUs = 0;
 let _wmRecvMs = 0, _wmRecvN = 0;   // delay cola+structured-clone worker→main
 let mainSendMs = 0, mainTotalMs = 0, mainRecvDelay = 0;
-// Diagnóstico ciclo de vida: joins/muertes/cierres por segundo + clients totales.
-let _evJoins = 0, _evDeaths = 0, _evCloses = 0;
 setInterval(() => {
     const u = process.cpuUsage(_cpuLast); const dt = Date.now() - _cpuLastT;
     _cpuLast = process.cpuUsage(); _cpuLastT = Date.now();
@@ -109,69 +104,11 @@ setInterval(() => {
     mainSendMs = Math.round(_wmSendUs / 1000); mainTotalMs = Math.round(_wmTotalUs / 1000);
     mainRecvDelay = _wmRecvN ? +(_wmRecvMs / _wmRecvN).toFixed(1) : 0;
     _wmSendUs = 0; _wmTotalUs = 0; _wmRecvMs = 0; _wmRecvN = 0;
-    let totalClients = 0; for (const r of rooms.values()) totalClients += r.clients.size;
-    log(`VIDA clients=${totalClients} joins/s=${_evJoins} deaths/s=${_evDeaths} closes/s=${_evCloses} | cpu=${serverCpuPct}% send=${mainSendMs}ms/s recvDelay=${mainRecvDelay}ms lag.p95=${pStats(tickHist.lag, tickHist.n).p95}ms`);
-    _evJoins = 0; _evDeaths = 0; _evCloses = 0;
+    // Solo loguea bajo carga (evita spam en producción).
+    if (mainTotalMs > 300 || mainRecvDelay > 20) {
+        log(`DIAG cpu=${serverCpuPct}% workerMsg=${mainTotalMs}ms/s send=${mainSendMs}ms/s recvDelay=${mainRecvDelay}ms lag.p95=${pStats(tickHist.lag, tickHist.n).p95}ms`);
+    }
 }, 1000);
-function stressBuildState() {
-    return {
-        running: stress.running,
-        kind: stress.kind,
-        params: stress.params,
-        stats: stress.stats,
-        serverCpu: serverCpuPct,
-        elapsed: stress.running ? Math.round((Date.now() - stress.startedAt) / 1000) : 0,
-        error: stress.error,
-    };
-}
-function stressStop() {
-    if (stress.proc) { try { stress.proc.kill('SIGTERM'); } catch (e) {} }
-    stress.proc = null; stress.running = false;
-}
-function stressSpawn(kind, script, env, params, logMsg) {
-    stress.kind = kind; stress.params = params;
-    stress.stats = null; stress.error = null; stress.startedAt = Date.now(); stress.running = true;
-    const proc = spawn(process.execPath, [path.join(__dirname, '..', script)],
-        { env: Object.assign({}, process.env, env, { SERVER: 'ws://localhost:' + PORT, STRESS_JSON: '1' }), cwd: path.join(__dirname, '..') });
-    stress.proc = proc;
-    let buf = '';
-    proc.stdout.on('data', d => {
-        buf += d.toString();
-        let nl; while ((nl = buf.indexOf('\n')) >= 0) {
-            const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
-            if (line.startsWith('STATS ')) { try { stress.stats = JSON.parse(line.slice(6)); } catch (e) {} }
-        }
-    });
-    proc.stderr.on('data', d => { stress.error = d.toString().slice(0, 200); });
-    proc.on('exit', () => { stress.running = false; stress.proc = null; });
-    proc.on('error', e => { stress.error = e.message; stress.running = false; stress.proc = null; });
-    logAdmin('-', logMsg, '');
-    log(`ADMIN ${logMsg}`);
-}
-function stressStart(p) {
-    if (stress.running) return;
-    const bots = Math.max(1, Math.min(5000, p.bots | 0 || 300));
-    const duration = Math.max(0, Math.min(86400, p.duration | 0));   // hasta 24h
-    const ramp = Math.max(5, Math.min(2000, p.ramp | 0 || 60));
-    const inputHz = Math.max(1, Math.min(40, p.inputHz | 0 || 30));
-    const roomsList = Array.isArray(p.rooms) ? p.rooms.filter(k => typeof k === 'string').slice(0, 40).join(',') : '';
-    const respawn = p.respawn !== false;
-    const env = { BOTS: String(bots), DURATION_S: String(duration), RAMP_MS: String(ramp), INPUT_HZ: String(inputHz), RESPAWN: respawn ? '1' : '0' };
-    if (roomsList) env.ROOMS = roomsList;
-    stressSpawn('npc', 'stress-npc.js', env,
-        { bots, duration, ramp, inputHz, respawn, rooms: roomsList ? roomsList.split(',') : 'todas' },
-        `lanzó stress test: ${bots} bots, ${duration}s, salas ${roomsList || 'todas'}`);
-}
-function ddosStart(p) {
-    if (stress.running) return;
-    const rate = Math.max(10, Math.min(100000, p.rate | 0 || 1000));   // mensajes/seg TOTAL
-    const conns = Math.max(1, Math.min(500, p.conns | 0 || 10));       // conexiones atacantes
-    const duration = Math.max(1, Math.min(600, p.duration | 0 || 20));
-    const env = { RATE: String(rate), CONNS: String(conns), DURATION_S: String(duration) };
-    stressSpawn('ddos', 'stress-ddos.js', env,
-        { rate, conns, duration },
-        `lanzó test DDoS: ${rate} msg/s, ${conns} conexiones, ${duration}s`);
-}
 const adminFails = new Map();     // ip → { c: intentos, until: timestamp bloqueo }
 const specTokens = new Map();     // token → expira_en (timestamp ms)
 setInterval(() => {                // limpieza periódica de tokens caducados
@@ -670,7 +607,6 @@ function processWorkerEvent(room, ev, now) {
             const q = questsOf(cliD.cid);
             if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
         }
-        _evDeaths++;
         if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + DEAD_REMOVE_MS);
     } else if (ev.type === 'botKilled') {
         const cliKiller_ = room.clients.get(ev.playerId);
@@ -1156,7 +1092,7 @@ function buildAdminState() {
         layerOff: Object.assign({}, layerOff),   // { 2: true } si L2 está apagada
         arcadeRestartMs, arcadeLobbyMs,
         mainSendMs, mainTotalMs,
-        stress: stressBuildState(),
+        serverCpu: serverCpuPct,
         totales: {
             entradas: totEntradas, muertes: totMuertes, dinero: totDinero,
             entradasReal: totEntradasReal, muertesReal: totMuertesReal, dineroReal: totDineroReal,
@@ -1635,12 +1571,6 @@ wss.on('connection', (ws, req) => {
                     logAdmin('-', 'Encendió Layer ' + idx + ' premium', n + ' salas');
                     log(`ADMIN encendió Layer ${idx} premium: ${n} salas recreadas`);
                 }
-            } else if (msg.cmd === 'stressStart') {
-                stressStart(msg.params || {});
-            } else if (msg.cmd === 'ddosStart') {
-                ddosStart(msg.params || {});
-            } else if (msg.cmd === 'stressStop') {
-                stressStop(); logAdmin('-', 'Detuvo stress/ddos test', '');
             } else if (msg.cmd === 'forceStart' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala && sala.state === 'waiting') { startMatch(sala); logAdmin(msg.room, 'Forzó el inicio', ''); log(`ADMIN forzó inicio de ${msg.room}`); }
@@ -1855,7 +1785,6 @@ wss.on('connection', (ws, req) => {
                 refillBots(room);
             }
             ws.send(welcomeMsg(room, playerId, token, undefined, useBin ? { useBin: true } : null));
-            _evJoins++;
             log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(ck)}${useBin ? ' [bin]' : ''}`);
             if (room.state === 'waiting') {
                 sendWaiting(room);
@@ -1946,7 +1875,6 @@ wss.on('connection', (ws, req) => {
                 log(`Reembolso de entrada (sala no empezó): ${cli.payWallet.slice(0, 6)}… +${cli.paidFee} PILL`);
             }
             room.clients.delete(playerId);
-            _evCloses++;
             if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
             log(`Jugador ${playerId} desconectado de ${room.key} — quedan ${room.clients.size}`);
             if (room.state === 'waiting') { sendWaiting(room); armLobby(room); }   // cancela la cuenta atrás si baja del mínimo
