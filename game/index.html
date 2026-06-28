@@ -993,7 +993,7 @@
                 <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
                 <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
                 <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
-                    <button data-oraclelayer="1" onclick="setOracleLayer(1)">L1</button>
+                    <button data-oraclelayer="1" class="act" onclick="setOracleLayer(1)">L1</button>
                     <button data-oraclelayer="2" onclick="setOracleLayer(2)">L2</button>
                     <span class="oracle-layers-hint">view a specific room layer (you can't choose which one you'll be assigned to)</span>
                 </div>
@@ -2522,8 +2522,8 @@
     // (representativa). 1 / 2 = forzar mostrar esa layer concreta. El cliente
     // NO elige a qué layer entrar (eso lo decide el server) — esto es solo
     // para ver el estado de la "otra layer".
-    // null = vista agregada (suma de todas las layers, default). 1/2 = filtrar a esa layer.
-    window.oracleLayerView = null;
+    // Default L1. 1/2 = filtrar a esa layer. Nunca null (sin vista agregada).
+    window.oracleLayerView = 1;
     function setOracleLayer(v) {
         window.oracleLayerView = v;
         document.querySelectorAll('[data-oraclelayer]').forEach(b => b.classList.toggle('act', b.dataset.oraclelayer === String(v)));
@@ -2548,8 +2548,8 @@
             const layersBar = document.getElementById('oracleLayersBar');
             if (layersBar) {
                 layersBar.style.display = activeLayers > 1 ? 'flex' : 'none';
-                if (activeLayers <= 1 && window.oracleLayerView != null) {
-                    setOracleLayer(null);
+                if (activeLayers <= 1 && window.oracleLayerView !== 1) {
+                    setOracleLayer(1);
                 }
             }
             const lv = window.oracleLayerView;   // null = agregado, 1/2 = layer específica
