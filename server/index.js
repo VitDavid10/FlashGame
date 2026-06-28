@@ -95,10 +95,17 @@ const resumeTokens = new Map();   // token → { roomKey: layerKey, playerId }
 const stress = { proc: null, running: false, kind: null, params: null, stats: null, startedAt: 0, error: null };
 // %CPU del propio servidor, muestreado cada segundo (para comparar con el del test).
 let serverCpuPct = 0; let _cpuLast = process.cpuUsage(); let _cpuLastT = Date.now();
+// Diagnóstico main thread: ms de CPU/seg en handleWorkerMsg (send vs total).
+// Si mainSendMs ≈ mainTotalMs ≈ ~900 → el cuello es el ws.send del main.
+let _wmSendUs = 0, _wmTotalUs = 0;
+let mainSendMs = 0, mainTotalMs = 0;
 setInterval(() => {
     const u = process.cpuUsage(_cpuLast); const dt = Date.now() - _cpuLastT;
     _cpuLast = process.cpuUsage(); _cpuLastT = Date.now();
     serverCpuPct = dt > 0 ? Math.round((u.user + u.system) / 1000 / dt * 100) : 0;
+    mainSendMs = Math.round(_wmSendUs / 1000); mainTotalMs = Math.round(_wmTotalUs / 1000);
+    _wmSendUs = 0; _wmTotalUs = 0;
+    if (mainTotalMs > 200) log(`MAIN cpu=${serverCpuPct}% workerMsg=${mainTotalMs}ms/s (send=${mainSendMs}ms/s) lag.p95=${pStats(tickHist.lag, tickHist.n).p95}ms`);
 }, 1000);
 function stressBuildState() {
     return {
@@ -522,9 +529,10 @@ function handleWorkerMsg(room, msg) {
             if (msg.mapSize) room._mapSize = msg.mapSize;
             break;
 
-        case 'tickResult':
+        case 'tickResult': {
             room.tickCount++;
             if (msg.botCount != null) room._botCount = msg.botCount;
+            const _wmT0 = performance.now();
             // 1) Enviar snapshots a los clientes WS
             if (msg.snapshots) {
                 for (const s of msg.snapshots) {
@@ -544,6 +552,7 @@ function handleWorkerMsg(room, msg) {
                     if (s.snapData) cli.ws.send(s.snapData);
                 }
             }
+            _wmSendUs += (performance.now() - _wmT0) * 1000;
 
             // 2) Procesar peaks
             if (msg.peaks) for (const pk of msg.peaks) {
@@ -555,7 +564,9 @@ function handleWorkerMsg(room, msg) {
             if (msg.events) for (const ev of msg.events) {
                 processWorkerEvent(room, ev, Date.now());
             }
+            _wmTotalUs += (performance.now() - _wmT0) * 1000;
             break;
+        }
 
         case 'matchEnd': {
             room.state = 'ended';
@@ -1115,6 +1126,7 @@ function buildAdminState() {
         layersPerCombo: LAYERS_PER_COMBO,
         layerOff: Object.assign({}, layerOff),   // { 2: true } si L2 está apagada
         arcadeRestartMs, arcadeLobbyMs,
+        mainSendMs, mainTotalMs,
         stress: stressBuildState(),
         totales: {
             entradas: totEntradas, muertes: totMuertes, dinero: totDinero,
