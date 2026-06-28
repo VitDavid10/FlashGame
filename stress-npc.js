@@ -130,6 +130,16 @@ function spawnBot(i) {
     stats.messagesReceived++;
     let m; try { m = JSON.parse(data); } catch { return; }
     if (m.t === 'roomFull') { stats.rejected++; try { ws.close(); } catch {} return; }
+    if (m.t === 'roomRestart') {
+      // La sala se reinició — salir y reconectar gradualmente (como al morir)
+      if (RESPAWN && !testOver) {
+        reconnectPending = true;
+        const delay = RESPAWN_MIN + Math.random() * Math.max(0, RESPAWN_MAX - RESPAWN_MIN);
+        setTimeout(() => { if (!testOver) spawnBot(i); }, delay);
+      }
+      try { ws.close(); } catch {}
+      return;
+    }
     if (m.t === 'noSlot') {
       // Sin hueco ahora (sala a punto de acabar o llena) → reconectar tras un delay
       if (RESPAWN && !testOver) {

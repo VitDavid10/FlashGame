@@ -1359,6 +1359,40 @@ wss.on('connection', (ws, req) => {
             } else if (msg.cmd === 'shutdown' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala) { shutdownRoom(sala, 'admin'); logAdmin(msg.room, 'Apagó la sala', ''); }
+            } else if (msg.cmd === 'encender' && msg.room) {
+                // Recrea una sala persistente que fue apagada (shutdownRoom la borra del Map).
+                const lk = msg.room;
+                if (!rooms.has(lk)) {
+                    const parts = lk.split('_');
+                    const mode = parts[0]; const price = parts.slice(1, -1).join('_');
+                    getOrCreateRoom(lk, mode, price);
+                    logAdmin(lk, 'Encendió sala', '');
+                    log(`ADMIN encendió sala: ${lk}`);
+                }
+            } else if (msg.cmd === 'kickAllMode' && msg.mode) {
+                let n = 0;
+                for (const sala of rooms.values()) {
+                    if (msg.mode !== 'all' && sala.mode !== msg.mode) continue;
+                    for (const cli of sala.clients.values()) { try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {} try { cli.ws.close(); } catch (e) {} }
+                    n += sala.clients.size;
+                }
+                logAdmin('-', `Echó a todos del modo ${msg.mode}`, `${n} jugadores`);
+                log(`ADMIN kickAll modo=${msg.mode}: ${n} jugadores`);
+            } else if (msg.cmd === 'restartMode' && msg.mode) {
+                let n = 0;
+                for (const sala of rooms.values()) {
+                    if (msg.mode !== 'all' && sala.mode !== msg.mode) continue;
+                    restartRoom(sala); n++;
+                }
+                logAdmin('-', `Reinició modo ${msg.mode}`, `${n} salas`);
+                log(`ADMIN restartMode=${msg.mode}: ${n} salas`);
+            } else if (msg.cmd === 'restartServer') {
+                logAdmin('-', 'Reinició el servidor', '');
+                log('ADMIN ordenó reinicio del proceso — saliendo en 500ms');
+                ws.send(JSON.stringify({ t: 'serverRestarting' }));
+                // Dar tiempo al admin a recibir el ack antes de salir.
+                // pm2/forever/systemd relanzarán el proceso automáticamente.
+                setTimeout(() => process.exit(0), 500);
             } else if (msg.cmd === 'updateRanking') {
                 computeRanking(!!msg.includeTesters);
                 playersDirty = true;   // aprovechar para forzar save tras recalcular

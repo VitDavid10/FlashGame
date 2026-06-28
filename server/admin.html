@@ -262,9 +262,23 @@
         </nav>
 
         <div id="tab_salas">
+            <!-- Controles globales de modo -->
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:18px; background:#0d0d0d; border:1px solid #1e1e1e; border-radius:10px; padding:12px 16px;">
+                <span style="color:#555; font-size:11px; letter-spacing:1px; margin-right:4px;">CONTROL GLOBAL:</span>
+                <button class="b naranja mini" onclick="modoAction('classic','restart')" title="Reiniciar todas las salas classic">↺ Reiniciar Classic</button>
+                <button class="b naranja mini" onclick="modoAction('arcade','restart')" title="Reiniciar todas las salas arcade">↺ Reiniciar Arcade</button>
+                <button class="b naranja mini" onclick="modoAction('all','restart')" title="Reiniciar TODAS las salas">↺ Reiniciar Todo</button>
+                <span style="color:#333; margin:0 4px;">|</span>
+                <button class="b rojo mini" onclick="modoAction('classic','kick')" title="Echar a todos los jugadores de classic">✕ Kick Classic</button>
+                <button class="b rojo mini" onclick="modoAction('arcade','kick')" title="Echar a todos los jugadores de arcade">✕ Kick Arcade</button>
+                <button class="b rojo mini" onclick="modoAction('all','kick')" title="Echar a TODOS los jugadores">✕ Kick Todo</button>
+                <span style="color:#333; margin:0 4px;">|</span>
+                <button class="b rojo mini" style="background:#3a0000; border-color:#660000;" onclick="restartServidor()" title="Reinicia el proceso Node (pm2/systemd lo relanza)">⚠ Restart Servidor</button>
+            </div>
             <div class="modetabs">
                 <button id="modeBtn_classic" class="modetab act" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
                 <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
+                <button id="modeBtn_free" class="modetab" onclick="verModo('free')">Free <span id="cntFree" class="cnt cero">(0)</span></button>
             </div>
             <div id="layerTabsBar" class="modetabs" style="margin-top:8px; padding-left:8px; gap:8px; align-items:center;">
                 <span style="color:#666;font-size:11px;letter-spacing:1px;margin-right:6px;">LAYER:</span>
@@ -272,7 +286,7 @@
                 <button id="layerBtn_2" class="modetab" style="font-size:12px;padding:4px 10px;" onclick="verLayer(2)">L2 <span id="cntLayer2" class="cnt cero">(0)</span></button>
             </div>
             <div class="grid" id="gridClassic"></div>
-            <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px; display:none;">
+            <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
                 <div style="color:#4d9bff; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">⚙ Arcade Mode — Global Parameters</div>
                 <div style="display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap;">
                     <div><label style="color:#888;font-size:10px;display:block;margin-bottom:4px;">Lobby (s)</label><input type="number" step="1" min="0" max="120" id="g_lobby" value="20" style="width:70px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;"></div>
@@ -282,6 +296,7 @@
                 </div>
             </div>
             <div class="grid" id="gridArcade" style="display:none"></div>
+            <div class="grid" id="gridFree" style="display:none"></div>
             <div id="gridOtras"></div>
         </div>
 
@@ -499,9 +514,33 @@ function verModo(m) {
     modoActivo = m;
     document.getElementById('gridClassic').style.display = (m === 'classic') ? '' : 'none';
     document.getElementById('gridArcade').style.display = (m === 'arcade') ? '' : 'none';
+    document.getElementById('gridFree').style.display = (m === 'free') ? '' : 'none';
     document.getElementById('arcadeGlobalPanel').style.display = (m === 'arcade') ? '' : 'none';
     document.getElementById('modeBtn_classic').classList.toggle('act', m === 'classic');
     document.getElementById('modeBtn_arcade').classList.toggle('act', m === 'arcade');
+    document.getElementById('modeBtn_free').classList.toggle('act', m === 'free');
+    // La barra de layers no aplica a Free (siempre activas)
+    const ltb = document.getElementById('layerTabsBar');
+    if (ltb) ltb.style.display = (m === 'free') ? 'none' : '';
+}
+function modoAction(mode, action) {
+    const labels = { classic: 'Classic', arcade: 'Arcade', all: 'TODAS las salas' };
+    const label = labels[mode] || mode;
+    if (action === 'kick') {
+        if (!confirm(`¿Echar a TODOS los jugadores de ${label}?`)) return;
+        send({ cmd: 'kickAllMode', mode });
+        toast(`Kick ${label}`, 'warn');
+    } else if (action === 'restart') {
+        if (!confirm(`¿Reiniciar ${label}?`)) return;
+        send({ cmd: 'restartMode', mode });
+        toast(`Reiniciando ${label}…`, 'warn');
+    }
+    setTimeout(pedir, 300);
+}
+function restartServidor() {
+    if (!confirm('¿REINICIAR EL PROCESO DEL SERVIDOR?\n\npm2/systemd lo relanzará automáticamente.\nTodos los jugadores serán desconectados.')) return;
+    send({ cmd: 'restartServer' });
+    toast('<strong>⚠ Servidor reiniciándose…</strong><br>Reconectando en unos segundos', 'err');
 }
 function verLayer(n) {
     layerActivo = n;
@@ -549,6 +588,7 @@ function forzar(room) { send({ cmd: 'forceStart', room }); toast('<strong>Sala i
 function reiniciar(room) { if (confirm('¿Reiniciar la sala? Los que estén jugando verán "SALA REINICIADA" y podrán darle a TRY AGAIN.')) { send({ cmd: 'restart', room }); toast('<strong>Sala reiniciada</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 100); } }
 function vaciar(room) { if (confirm('¿Echar a TODOS los jugadores de la sala?')) { send({ cmd: 'kickAll', room }); toast('<strong>Sala vaciada</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 100); } }
 function apagar(room) { if (confirm('¿APAGAR la sala? Echa a todos y la destruye.')) { send({ cmd: 'shutdown', room }); toast('<strong>Sala apagada</strong><br>' + esc(room), 'err'); setTimeout(pedir, 100); } }
+function encender(room) { send({ cmd: 'encender', room }); toast('<strong>Sala encendida</strong><br>' + esc(room), 'ok'); setTimeout(pedir, 300); }
 function actualizarRanking(includeTesters) {
     send({ cmd: 'updateRanking', includeTesters });
     document.getElementById('rankUpdatedAt').textContent = 'Calculando...';
@@ -703,6 +743,7 @@ function cartaSala(r) {
                 <button class="b naranja" onclick="reiniciar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.refresh} Reiniciar</button>
                 <button class="b" onclick="vaciar('${id}')" ${r.conectados === 0 ? 'disabled' : ''}>${IC.broom} Echar a todos</button>
                 <button class="b rojo" onclick="apagar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.power} Apagar</button>
+                ${r.state === 'offline' ? `<button class="b verde" onclick="encender('${id}')">${IC.play} Encender</button>` : ''}
             </div>
         </div>
     </div>`;
@@ -842,26 +883,28 @@ function render(m) {
         <div class="sumcard">${IC.skull}<div><div class="v russo">${num(sMuertes)}</div><div class="k">muertes totales</div></div></div>
         <div class="sumcard">${IC.coin}<div><div class="v russo">${dinero(sDinero)}</div><div class="k">dinero generado</div></div></div>`;
 
-    const porSeccion = { classic: [], arcade: [], otras: [] };
+    const porSeccion = { classic: [], arcade: [], free: [], otras: [] };
     for (const r of m.rooms) {
-        if (r.mode === 'classic') porSeccion.classic.push(r);
+        if (r.priceUsd === 0) porSeccion.free.push(r);
+        else if (r.mode === 'classic') porSeccion.classic.push(r);
         else if (r.mode === 'arcade') porSeccion.arcade.push(r);
         else porSeccion.otras.push(r);
     }
-    // Contadores por layer (suma de todas las salas de cada layer).
+    // Contadores por layer (solo premium — Free tiene siempre sus layers).
     const cntL = { 1: 0, 2: 0 };
-    for (const r of m.rooms) { const i = r.layerIdx || 1; cntL[i] = (cntL[i] || 0) + r.conectados; }
+    for (const r of m.rooms) { if (r.priceUsd > 0) { const i = r.layerIdx || 1; cntL[i] = (cntL[i] || 0) + r.conectados; } }
     ponCnt('cntLayer1', cntL[1] || 0);
     ponCnt('cntLayer2', cntL[2] || 0);
-    // Filtrar por la layer activa (default L1).
+    // Filtrar premium por la layer activa. Free se muestra siempre entera.
     const _l = layerActivo || 1;
     const classicL = porSeccion.classic.filter(r => (r.layerIdx || 1) === _l);
-    const arcadeL = porSeccion.arcade.filter(r => (r.layerIdx || 1) === _l);
+    const arcadeL  = porSeccion.arcade.filter(r => (r.layerIdx || 1) === _l);
     pintarGrid('gridClassic', classicL);
-    pintarGrid('gridArcade', arcadeL);
-    // El contador de Classic/Arcade muestra el TOTAL del modo (todas las layers)
+    pintarGrid('gridArcade',  arcadeL);
+    pintarGrid('gridFree',    porSeccion.free);
     ponCnt('cntClassic', porSeccion.classic.reduce((s, r) => s + r.conectados, 0));
-    ponCnt('cntArcade', porSeccion.arcade.reduce((s, r) => s + r.conectados, 0));
+    ponCnt('cntArcade',  porSeccion.arcade.reduce((s, r) => s + r.conectados, 0));
+    ponCnt('cntFree',    porSeccion.free.reduce((s, r) => s + r.conectados, 0));
     document.getElementById('gridOtras').innerHTML = porSeccion.otras.length
         ? '<h2 class="section">Otras salas</h2><div class="grid">' + porSeccion.otras.map(cartaSala).join('') + '</div>' : '';
 
