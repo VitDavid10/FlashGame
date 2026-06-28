@@ -766,9 +766,23 @@ function sendWaiting(room) {
     broadcast(room, { t: 'waiting', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode });
 }
 
-function welcomeMsg(room, playerId, token, type) {
+// Cache del JSON de foods por sala. Serializar ~7800 foods (classic) en CADA
+// join/reconnect satura el main: con el churn de reconexiones del stress test son
+// decenas de joins/seg. Cacheamos el string 2s; el cliente se autocorrige con los
+// eventos foodRespawn, así que un cache ligeramente viejo no se nota.
+function foodsJsonOf(room) {
+    const now = Date.now();
+    if (room._foodsJson && now - (room._foodsJsonAt || 0) < 2000) return room._foodsJson;
+    const foods = room.sim ? room.sim.foods : (room._foods || []);
+    room._foodsJson = JSON.stringify(foods);
+    room._foodsJsonAt = now;
+    return room._foodsJson;
+}
+// Devuelve el welcome ya serializado como STRING, con el foods cacheado inyectado
+// sin re-serializar. `extra` añade campos al head (ej. { useBin: true }).
+function welcomeMsg(room, playerId, token, type, extra) {
     const baseSize = PillSim.WORLD_CONFIG[room.mode === 'classic' ? 'classic' : 'arcade'].size;
-    return {
+    const head = {
         t: type || 'welcome', id: playerId, token,
         mapSize: room.sim ? room.sim.mapSize : (room._mapSize || baseSize), mode: room.mode, roomName: room.roomName,
         state: room.state, count: room.clients.size, needed: minRealOf(room.comboKey),
@@ -776,9 +790,10 @@ function welcomeMsg(room, playerId, token, type) {
         tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
         startIn: room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
         restartEnMs: room.restartAt ? Math.max(0, room.restartAt - Date.now()) : null,
-        simTime: room.sim ? Math.round(room.sim.now) : 0,
-        foods: room.sim ? room.sim.foods : (room._foods || [])
+        simTime: room.sim ? Math.round(room.sim.now) : 0
     };
+    if (extra) Object.assign(head, extra);
+    return JSON.stringify(head).slice(0, -1) + ',"foods":' + foodsJsonOf(room) + '}';
 }
 
 // Backfill: ajusta el OBJETIVO de bots (no añade de golpe). La cola gradual
@@ -854,7 +869,7 @@ function startMatch(room) {
             cli._matchSkillUses = 0;
             cli._alive = true;
             cli._killStreak = 0;
-            if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify(welcomeMsg(room, pid, cli.token, 'matchStart')));
+            if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
         }
         refillBots(room);
         log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales [worker]`);
@@ -863,7 +878,7 @@ function startMatch(room) {
             if (!room.sim.players.has(pid)) room.sim.addPlayer(pid, cli.opts || {});
             room.sim.spawnPlayer(pid);
             cli.paidFee = 0;
-            if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify(welcomeMsg(room, pid, cli.token, 'matchStart')));
+            if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
         }
         refillBots(room);
         log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales + ${new Set(room.sim.enemies.map(e => e.id)).size} bots de relleno`);
@@ -1735,7 +1750,7 @@ wss.on('connection', (ws, req) => {
             sala.spectators.add(ws);
             if (sala.worker) sala.worker.postMessage({ type: 'setSpectators', on: true });
             // welcome sin id de jugador → el cliente entra como espectador puro
-            ws.send(JSON.stringify(Object.assign(welcomeMsg(sala, null, null, 'specWelcome'), { id: null })));
+            ws.send(welcomeMsg(sala, null, null, 'specWelcome'));   // playerId=null → id:null en el head
             log(`Espectador conectado a ${key} (${sala.spectators.size} mirando)`);
             return;
         }
@@ -1750,7 +1765,7 @@ wss.on('connection', (ws, req) => {
                     room.pendingRemovals.delete(playerId);
                     const p = room.sim.players.get(playerId);
                     room.clients.set(playerId, { ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume, opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop, skinUrl: p.skinUrl } });
-                    ws.send(JSON.stringify(welcomeMsg(room, playerId, msg.resume)));
+                    ws.send(welcomeMsg(room, playerId, msg.resume));
                     refillBots(room);
                     log(`Jugador '${p.name}' RECONECTADO a ${room.key}`);
                 } else {
@@ -1834,7 +1849,7 @@ wss.on('connection', (ws, req) => {
                 else room.sim.spawnPlayer(playerId);
                 refillBots(room);
             }
-            ws.send(JSON.stringify(Object.assign(welcomeMsg(room, playerId, token), useBin ? { useBin: true } : {})));
+            ws.send(welcomeMsg(room, playerId, token, undefined, useBin ? { useBin: true } : null));
             log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(ck)}${useBin ? ' [bin]' : ''}`);
             if (room.state === 'waiting') {
                 sendWaiting(room);
