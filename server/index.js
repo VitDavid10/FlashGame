@@ -1198,6 +1198,7 @@ const httpServer = http.createServer(async (req, res) => {
         const mem = process.memoryUsage();
         let simPlayers = 0, simEnemies = 0, simFoods = 0, simViruses = 0;
         for (const r of rooms.values()) {
+            if (!r.sim) continue;
             simPlayers += r.sim.players.size;
             simEnemies += r.sim.enemies.length;
             if (r.sim.foods) simFoods += r.sim.foods.length;
