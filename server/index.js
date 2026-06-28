@@ -668,26 +668,35 @@ let AOI_ENABLED = process.env.AOI !== '0';   // ON por defecto; AOI=0 para apaga
 const AOI_BASE = 1800;          // visión mínima en píxeles del mundo
 const AOI_PER_R = 18;           // px de visión extra por cada px de radio máximo
 const AOI_MARGIN = 1.30;        // margen para interpolación / pop-in
-function aoiBoxFor(p) {
+// Caja rectangular: si el cliente envió su aspect ratio (W/H), la caja se estira
+// para cubrir el viewport real. Sin aspect → caja cuadrada (compat con clientes viejos).
+// Clamp [0.5, 4.0]: protege de ratios absurdos (cliente trucado para ver más).
+function aoiBoxFor(p, aspect) {
     if (!p || p.cells.length === 0) return null;
     let cx = 0, cy = 0, mtot = 0, maxR = 0;
-    for (const c of p.cells) {
+    const cells = p.cells;
+    for (let i = 0; i < cells.length; i++) {
+        const c = cells[i];
         const m = c.r * c.r;
         cx += c.x * m; cy += c.y * m; mtot += m;
         if (c.r > maxR) maxR = c.r;
     }
     cx /= mtot; cy /= mtot;
-    const view = Math.round((AOI_BASE + maxR * AOI_PER_R) * AOI_MARGIN);
-    return { cx, cy, half: view };
+    const view = (AOI_BASE + maxR * AOI_PER_R) * AOI_MARGIN;
+    let ar = aspect > 0 ? aspect : 1;
+    if (ar > 4) ar = 4; else if (ar < 0.5) ar = 0.5;
+    // halfX × halfY mantienen el ÁREA equivalente al cuadrado (sqrt del ratio).
+    const sq = Math.sqrt(ar);
+    return { cx, cy, halfX: view * sq, halfY: view / sq };
 }
 // ¿La circunferencia (x,y,r) intersecta la caja? (distancia al borde ≤ r).
 function intersectsBox(box, x, y, r) {
-    const dxLeft = box.cx - box.half - x;
-    const dxRight = x - (box.cx + box.half);
-    const dyTop = box.cy - box.half - y;
-    const dyBot = y - (box.cy + box.half);
-    const dx = Math.max(dxLeft, dxRight, 0);
-    const dy = Math.max(dyTop, dyBot, 0);
+    const dxLeft = box.cx - box.halfX - x;
+    const dxRight = x - (box.cx + box.halfX);
+    const dyTop = box.cy - box.halfY - y;
+    const dyBot = y - (box.cy + box.halfY);
+    const dx = dxLeft > dxRight ? (dxLeft > 0 ? dxLeft : 0) : (dxRight > 0 ? dxRight : 0);
+    const dy = dyTop > dyBot ? (dyTop > 0 ? dyTop : 0) : (dyBot > 0 ? dyBot : 0);
     return (dx * dx + dy * dy) <= (r * r);
 }
 
@@ -696,38 +705,63 @@ function intersectsBox(box, x, y, r) {
 // sus celdas siempre se incluyen aunque estén fuera de la caja (split).
 function buildSnapshotFor(room, viewerId, box) {
     const sim = room.sim;
-    const ssOf = p => { const out = {}; for (let i = 1; i <= 8; i++) { if (p.skillState[i] > 0) out[i] = Math.round(p.skillState[i]); } return out; };
     const players = [];
     for (const p of sim.players.values()) {
         const isMe = p.id === viewerId;
-        let cellsArr = p.cells;
+        const srcCells = p.cells;
+        // Filtrar in-line sin closure ni .map() para evitar allocations.
+        const outCells = [];
         if (box && !isMe) {
-            cellsArr = [];
-            for (const c of p.cells) if (intersectsBox(box, c.x, c.y, c.r)) cellsArr.push(c);
+            for (let i = 0; i < srcCells.length; i++) {
+                const c = srcCells[i];
+                if (intersectsBox(box, c.x, c.y, c.r)) outCells.push(cellData(c));
+            }
+        } else {
+            for (let i = 0; i < srcCells.length; i++) outCells.push(cellData(srcCells[i]));
         }
-        // Meta del jugador siempre va (leaderboard / lista online). Las celdas
-        // pueden venir vacías si está fuera de mi zona — solo lo veo en la lista.
+        // slots: array preasignado (longitud constante por jugador), evita map().
+        const srcSlots = p.skillSlots;
+        const slotsOut = new Array(srcSlots.length);
+        for (let i = 0; i < srcSlots.length; i++) {
+            const s = srcSlots[i];
+            slotsOut[i] = s ? { id: s.id, u: s.uses } : 0;
+        }
+        // skillState: solo claves con valor > 0 (objeto plano sin alloc extra).
+        const ss = {};
+        const st = p.skillState;
+        for (let i = 1; i <= 8; i++) { if (st[i] > 0) ss[i] = Math.round(st[i]); }
         players.push({
             id: p.id, name: p.name, ks: p.killStreak, alive: p.alive, gcd: Math.round(p.globalCD),
-            slots: p.skillSlots.map(s => s ? { id: s.id, u: s.uses } : 0),
-            ss: ssOf(p),
-            cells: cellsArr.map(cellData)
+            slots: slotsOut, ss, cells: outCells
         });
     }
     const bots = [];
-    for (const c of sim.enemies) {
-        if (!box || intersectsBox(box, c.x, c.y, c.r)) bots.push(Object.assign(cellData(c), { id: c.id, n: c.name }));
+    const enemies = sim.enemies;
+    for (let i = 0; i < enemies.length; i++) {
+        const c = enemies[i];
+        if (!box || intersectsBox(box, c.x, c.y, c.r)) {
+            // En vez de Object.assign(cellData(c), {...}), construimos directo.
+            const o = cellData(c);
+            o.id = c.id; o.n = c.name;
+            bots.push(o);
+        }
     }
     const viruses = [];
-    for (const v of sim.viruses) {
+    const vs = sim.viruses;
+    for (let i = 0; i < vs.length; i++) {
+        const v = vs[i];
         if (!box || intersectsBox(box, v.x, v.y, v.r)) viruses.push({ ci: v.ci, x: round1(v.x), y: round1(v.y), r: round1(v.r), d: v.damaged ? 1 : 0, a: round1(v.animTime) });
     }
     const ejected = [];
-    for (const m of sim.ejectedMasses) {
+    const em = sim.ejectedMasses;
+    for (let i = 0; i < em.length; i++) {
+        const m = em[i];
         if (!box || intersectsBox(box, m.x, m.y, m.r)) ejected.push({ ci: m.ci, x: round1(m.x), y: round1(m.y), r: m.r, c1: m.c1, c2: m.c2, a: round1(m.angle || 0) });
     }
     const projectiles = [];
-    for (const pr of sim.projectiles) {
+    const pj = sim.projectiles;
+    for (let i = 0; i < pj.length; i++) {
+        const pr = pj[i];
         if (!box || intersectsBox(box, pr.x, pr.y, pr.r)) projectiles.push({ ci: pr.ci, x: round1(pr.x), y: round1(pr.y), r: pr.r });
     }
     return {
@@ -1464,7 +1498,8 @@ wss.on('connection', (ws, req) => {
             // Opt-in al protocolo binario para snapshots (msg.bin === 1).
             // Eco en welcome.useBin para que el cliente decodifique los frames.
             const useBin = msg.bin === 1 || msg.bin === true;
-            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK, useBin });
+            const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
+            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK, useBin, aspect });
             sendEcon(room.clients.get(playerId), room);
             // Stats por COMBO (compartidas entre layers).
             const st_ = statsOf(ck); st_.entradas++; if (!TESTER_OK) st_.entradasReal++; statsDirty = true;
@@ -1487,6 +1522,9 @@ wss.on('connection', (ws, req) => {
 
         if (msg.t === 'input') {
             room.sim.setInput(playerId, (typeof msg.tx === 'number' && typeof msg.ty === 'number') ? { tx: msg.tx, ty: msg.ty } : null);
+        } else if (msg.t === 'aspect') {
+            const cli = room.clients.get(playerId);
+            if (cli && typeof msg.r === 'number' && msg.r > 0) cli.aspect = Math.max(0.5, Math.min(4, msg.r));
         } else if (msg.t === 'action') {
             if (msg.kind === 'split') room.sim.queueAction(playerId, { kind: 'split', tx: +msg.tx || 0, ty: +msg.ty || 0 });
             else if (msg.kind === 'skill') room.sim.queueAction(playerId, { kind: 'skill', slot: msg.slot | 0, tx: +msg.tx || 0, ty: +msg.ty || 0 });
@@ -1788,7 +1826,7 @@ setInterval(() => {
                 if (!AOI_ENABLED) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
                 const pj = room.sim.players.get(pid);
                 if (!pj || !pj.alive || pj.cells.length === 0) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
-                const box = aoiBoxFor(pj);
+                const box = aoiBoxFor(pj, cli.aspect);
                 const snap = buildSnapshotFor(room, pid, box);
                 cli.ws.send(cli.useBin ? proto.encodeSnap(snap) : JSON.stringify(snap));
             }

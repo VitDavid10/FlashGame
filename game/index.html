@@ -2719,7 +2719,8 @@
         // ?bin=1 en la URL activa el protocolo binario para snapshots (opt-in
         // mientras se valida en producción; ahorra ~50% extra sobre AOI+JSON).
         const _binFlag = (new URLSearchParams(location.search)).get('bin') === '1';
-        netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 1 : 0 } };
+        const _aspect = (window.innerWidth && window.innerHeight) ? (window.innerWidth / window.innerHeight) : 1;
+        netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 1 : 0, aspect: _aspect } };
         setPlayBtnState(true, 'CONNECTING...');
         netConnect(false);
         // El lock se libera al recibir welcome/roomFull/payRequired/error desde el WS.
@@ -3332,7 +3333,19 @@
     }
 
     function drawMiniPill(f, scale) { let sR = f.r * scale; if (isLowQuality || sR < DRAW_LOD_THRESHOLD) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle||0); let w = f.r * 2, h = w * 2.0, r = w / 2; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, r); ctx.clip(); ctx.fillStyle = f.c1; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = f.c2; ctx.fillRect(-w/2, 0, w, h/2); ctx.restore(); } }
-    function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
+    function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; scheduleAspectUpdate(); }
+    // Notifica al server el nuevo aspect ratio (debounced) para que AOI se ajuste.
+    let _aspectTimer = null;
+    function scheduleAspectUpdate() {
+        if (_aspectTimer) clearTimeout(_aspectTimer);
+        _aspectTimer = setTimeout(() => {
+            _aspectTimer = null;
+            const w = (typeof netState !== 'undefined' && netState) ? netState.ws : null;
+            if (w && w.readyState === 1 && height > 0) {
+                try { w.send(JSON.stringify({ t: 'aspect', r: width / height })); } catch (e) {}
+            }
+        }, 300);
+    }
 
     // UPDATE LEADERBOARD
     function updateLeaderboard() {
