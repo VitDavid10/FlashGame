@@ -705,7 +705,7 @@ function cartaSala(r) {
     }
 
     const rl = r.rules;
-    return `<div class="room ${cardCls}${r.conectados === 0 ? ' empty' : ''}" id="card_${id}">
+    return `<div class="room ${cardCls}${r.state === 'offline' ? ' empty' : ''}" id="card_${id}">
         <div class="room-head">
             <div class="room-name russo">${esc(r.roomName)} <span style="font-size:13px;color:#777">L${r.layerIdx || 1}</span>${r.disabled ? ' <span style="font-size:11px;color:#ff6b6b;background:#3a1a1a;padding:2px 8px;border-radius:4px;letter-spacing:1px;margin-left:6px;">PAUSED</span>' : ''}<span class="meta">${r.mode.toUpperCase()} · ${r.price ? 'ENTRADA ' + r.price + '$' : 'GRATIS'}</span></div>
             <span class="state ${stCls}"><span class="d"></span>${stTxt}</span>
