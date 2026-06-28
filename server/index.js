@@ -518,6 +518,8 @@ function spawnWorker(room, rules) {
 function handleWorkerMsg(room, msg) {
     switch (msg.type) {
         case 'ready':
+            if (msg.foods) room._foods = msg.foods;
+            if (msg.mapSize) room._mapSize = msg.mapSize;
             break;
 
         case 'tickResult':
@@ -602,6 +604,11 @@ function handleWorkerMsg(room, msg) {
             log(`Partida terminada en ${room.key}; reinicio en ${arcadeRestartMs / 1000}s`);
             break;
         }
+
+        case 'matchStarted':
+            room._foods = msg.foods || [];
+            room._mapSize = msg.mapSize || 4000;
+            break;
 
         case 'requestStart':
             startMatch(room);
@@ -742,14 +749,14 @@ function welcomeMsg(room, playerId, token, type) {
     const baseSize = PillSim.WORLD_CONFIG[room.mode === 'classic' ? 'classic' : 'arcade'].size;
     return {
         t: type || 'welcome', id: playerId, token,
-        mapSize: room.sim ? room.sim.mapSize : baseSize, mode: room.mode, roomName: room.roomName,
+        mapSize: room.sim ? room.sim.mapSize : (room._mapSize || baseSize), mode: room.mode, roomName: room.roomName,
         state: room.state, count: room.clients.size, needed: minRealOf(room.comboKey),
         duration: MATCH_MS,
         tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
         startIn: room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
         restartEnMs: room.restartAt ? Math.max(0, room.restartAt - Date.now()) : null,
         simTime: room.sim ? Math.round(room.sim.now) : 0,
-        foods: room.sim ? room.sim.foods : []
+        foods: room.sim ? room.sim.foods : (room._foods || [])
     };
 }
 
@@ -802,10 +809,12 @@ function armLobby(room) {
         const lobbyMs = lobbyMsOf(room.comboKey);
         if (lobbyMs <= 0) { startMatch(room); return; }
         room.startAt = Date.now() + lobbyMs;
+        if (room.worker) room.worker.postMessage({ type: 'setLobbyStart', startAt: room.startAt });
         broadcast(room, { t: 'lobbyCountdown', startIn: lobbyMs, count: room.clients.size, needed: min, roomName: room.roomName, mode: room.mode });
         log(`Lobby ${room.key}: ${room.clients.size}/${min} → cuenta atrás ${lobbyMs / 1000}s`);
     } else if (room.startAt) {
         room.startAt = null;
+        if (room.worker) room.worker.postMessage({ type: 'cancelLobby' });
         sendWaiting(room);   // vuelve a "esperando X/min"
         log(`Lobby ${room.key}: cuenta atrás cancelada (${room.clients.size}/${min})`);
     }
@@ -822,6 +831,8 @@ function startMatch(room) {
         for (const [pid, cli] of room.clients) {
             cli.paidFee = 0;
             cli._matchSkillUses = 0;
+            cli._alive = true;
+            cli._killStreak = 0;
             if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify(welcomeMsg(room, pid, cli.token, 'matchStart')));
         }
         refillBots(room);
@@ -1954,7 +1965,16 @@ setInterval(() => {
     let stepMs = 0, snapMs = 0, sendMs = 0;
     const now = tickStartT;
     for (const room of rooms.values()) {
-        if (room.worker) continue;   // el worker tiene su propio tick loop
+        if (room.worker) {
+            // Procesar deadRemovals y pendingRemovals para rooms con worker
+            for (const [pid, deadline] of room.deadRemovals) {
+                if (now >= deadline) { room.deadRemovals.delete(pid); room.worker.postMessage({ type: 'removePlayer', pid }); }
+            }
+            for (const [pid, deadline] of room.pendingRemovals) {
+                if (now >= deadline) { room.pendingRemovals.delete(pid); room.worker.postMessage({ type: 'removePlayer', pid }); resumeTokens.forEach((v, k) => { if (v.playerId === pid) resumeTokens.delete(k); }); }
+            }
+            continue;
+        }
         const m = tickRoomOnce(room, now, tickCtx);
         stepMs += m.stepMs; snapMs += m.snapMs; sendMs += m.sendMs;
     }

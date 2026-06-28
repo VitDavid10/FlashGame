@@ -35,7 +35,13 @@ const clients = new Map();  // pid → { aspect, useBin }
 // --- Funciones auxiliares ---
 const round1 = v => Math.round(v * 10) / 10;
 function cellData(c) {
-    return { ci: c.ci, x: round1(c.x), y: round1(c.y), r: round1(c.r), c1: c.c1, c2: c.c2, sn: c.skinUrl || undefined };
+    const o = { ci: c.ci, x: round1(c.x), y: round1(c.y), r: round1(c.r), cb: c.colorBot, ct: c.colorTop };
+    if (c.skinUrl) o.sk = c.skinUrl;
+    if (c.immuneTime > 0) o.im = Math.round(c.immuneTime);
+    if (c.sprintTime > 0) o.sp = 1;
+    if (c.magnetTime > 0) o.mg = 1;
+    if (c.tpPhase) { o.tp = c.tpPhase; o.tt = Math.round(c.tpTimer); }
+    return o;
 }
 
 // AOI rectangular (misma lógica que index.js)
@@ -301,7 +307,7 @@ parentPort.on('message', (msg) => {
         case 'init':
             initSim(msg);
             if (!tickInterval) tickInterval = setInterval(tick, TICK_MS);
-            parentPort.postMessage({ type: 'ready' });
+            parentPort.postMessage({ type: 'ready', foods: sim.foods, mapSize: sim.config.mapSize });
             break;
 
         case 'addPlayer':
@@ -360,10 +366,12 @@ parentPort.on('message', (msg) => {
                 if (!sim.players.has(pid)) sim.addPlayer(pid, {});
                 sim.spawnPlayer(pid);
             }
+            parentPort.postMessage({ type: 'matchStarted', foods: sim.foods, mapSize: sim.config.mapSize });
             break;
 
         case 'restartSim':
             initSim(msg);
+            parentPort.postMessage({ type: 'ready', foods: sim.foods, mapSize: sim.config.mapSize });
             break;
 
         case 'setLobbyStart':
