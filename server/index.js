@@ -77,10 +77,14 @@ const CATALOG_MODES = ['classic', 'arcade'];
 const LAYERS_PER_COMBO = parseInt(process.env.LAYERS_PER_COMBO, 10) || 2;
 function comboKeyOf(mode, roomName) { return mode + '_' + roomName; }
 function layerKeyOf(mode, roomName, layerIdx) { return mode + '_' + roomName + '_L' + layerIdx; }
-// Estado on/off por layerIdx. Si layerOff[i] === true, esa layer no existe en
-// rooms (sus salas borradas del Map → no consumen tick). El admin la enciende
-// con cmd setLayerActive y se recrean.
+// Estado on/off por layerIdx. Si layerOff[i] === true, las salas PREMIUM de esa
+// layer no existen en rooms (sus sims borradas del Map → no consumen tick).
+// Las salas FREE NUNCA se apagan: siempre tienen sus N layers activas porque
+// son las que más gente atraen y deben mantener capacidad asegurada.
 const layerOff = {};
+function isLayerOffForPrice(price, layerIdx) {
+    return !!layerOff[layerIdx] && priceOf(price) > 0;
+}
 
 const rooms = new Map();   // layerKey → room
 const resumeTokens = new Map();   // token → { roomKey: layerKey, playerId }
@@ -819,7 +823,7 @@ function buildAdminState() {
         for (const price of PRICES) {
             const ck = comboKeyOf(mode, price);
             for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
-                if (layerOff[i]) continue;   // layer apagada → no enumerar sus salas
+                if (isLayerOffForPrice(price, i)) continue;   // premium con layer apagada
                 const lk = layerKeyOf(mode, price, i);
                 keysSeen.add(lk);
                 list.push(roomEntry(lk, ck, mode, price, i, rooms.get(lk) || null));
@@ -982,7 +986,7 @@ const httpServer = http.createServer(async (req, res) => {
             const ck = mode + '_' + price;
             const layers = [];
             for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
-                if (layerOff[i]) continue;
+                if (isLayerOffForPrice(price, i)) continue;
                 const r = rooms.get(layerKeyOf(mode, price, i));
                 if (!r) continue;
                 layers.push({
@@ -1298,10 +1302,12 @@ wss.on('connection', (ws, req) => {
                     ws.send(JSON.stringify({ t: 'layerActionError', reason: 'idx inválido' }));
                 } else if (!active) {
                     // Apagar: buscar todas las layers de ese idx
+                    // Solo se apagan salas PREMIUM (priceOf > 0). Las Free se quedan.
                     const targets = [];
                     let blocked = null;
                     for (const r of rooms.values()) {
                         if (r.layerIdx !== idx) continue;
+                        if (priceOf(r.roomName) === 0) continue;   // Free intocable
                         if (r.clients.size > 0) { blocked = r.key; break; }
                         targets.push(r);
                     }
@@ -1313,21 +1319,22 @@ wss.on('connection', (ws, req) => {
                             for (const [tok, info] of resumeTokens) { if (info.roomKey === r.key) resumeTokens.delete(tok); }
                         }
                         layerOff[idx] = true;
-                        logAdmin('-', 'Apagó Layer ' + idx, targets.length + ' salas');
-                        log(`ADMIN apagó Layer ${idx}: ${targets.length} salas borradas`);
+                        logAdmin('-', 'Apagó Layer ' + idx + ' premium', targets.length + ' salas');
+                        log(`ADMIN apagó Layer ${idx} premium: ${targets.length} salas borradas (Free intocable)`);
                     }
                 } else {
-                    // Encender: recrear todas las layers de ese idx
+                    // Encender: recrear las layers PREMIUM de ese idx (Free ya existen)
                     let n = 0;
                     for (const mode of CATALOG_MODES) {
                         for (const price of PRICES) {
+                            if (priceOf(price) === 0) continue;   // Free ya existen
                             getOrCreateRoom(layerKeyOf(mode, price, idx), mode, price);
                             n++;
                         }
                     }
                     layerOff[idx] = false;
-                    logAdmin('-', 'Encendió Layer ' + idx, n + ' salas');
-                    log(`ADMIN encendió Layer ${idx}: ${n} salas recreadas`);
+                    logAdmin('-', 'Encendió Layer ' + idx + ' premium', n + ' salas');
+                    log(`ADMIN encendió Layer ${idx} premium: ${n} salas recreadas`);
                 }
             } else if (msg.cmd === 'stressStart') {
                 stressStart(msg.params || {});
