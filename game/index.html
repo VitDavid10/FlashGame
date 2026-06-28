@@ -2716,9 +2716,9 @@
         let paid;
         try { paid = await preparePayment(mode, currentServer); } catch (e) { paid = null; }
         if (!paid) { _joinInFlight = false; setPlayBtnState(false); return; }   // sin saldo / sin firma → ya se avisó
-        // ?bin=1 en la URL activa el protocolo binario para snapshots (opt-in
-        // mientras se valida en producción; ahorra ~50% extra sobre AOI+JSON).
-        const _binFlag = (new URLSearchParams(location.search)).get('bin') === '1';
+        // Protocolo binario ON por defecto (ahorra ~50% extra sobre AOI+JSON).
+        // ?bin=0 fuerza JSON para debug.
+        const _binFlag = (new URLSearchParams(location.search)).get('bin') !== '0';
         const _aspect = (window.innerWidth && window.innerHeight) ? (window.innerWidth / window.innerHeight) : 1;
         netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 1 : 0, aspect: _aspect } };
         setPlayBtnState(true, 'CONNECTING...');
