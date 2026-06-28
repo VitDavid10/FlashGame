@@ -64,6 +64,11 @@ const DEAD_REMOVE_MS = 3000;   // tras morir, retirar al jugador de la sim
 // descartan los mensajes; un flood evidente (umbral duro) cierra la conexión.
 const MSG_RATE_SOFT = parseInt(process.env.MSG_RATE_SOFT, 10) || 100;  // msg/s: descarta el exceso
 const MSG_RATE_HARD = parseInt(process.env.MSG_RATE_HARD, 10) || 400;  // msg/s: flood → cerrar
+// Backpressure WebSocket: si un cliente lento ya tiene >N bytes sin enviar en su
+// buffer, dejamos de mandarle snapshots hasta que se vacíe. Sin esto, los clientes
+// con red mala arrastran al servidor entero (cola del event loop crece sin parar).
+// 256KB ≈ 4-8 snapshots binarios típicos: tolera microcortes pero corta sangrías.
+const WS_BACKPRESSURE_MAX = parseInt(process.env.WS_BACKPRESSURE_MAX, 10) || (256 * 1024);
 const LOG_FILE = path.join(__dirname, 'connections.log');
 const STATS_FILE = path.join(__dirname, 'stats.json');
 const RULES_FILE = path.join(__dirname, 'roomrules.json');
@@ -483,7 +488,11 @@ function handleWorkerMsg(room, msg) {
             if (msg.postedAt) { _wmRecvMs += Math.max(0, Date.now() - msg.postedAt); _wmRecvN++; }
             const _wmT0 = performance.now();
             const evJson = msg.eventsJson;
-            // 1) Enviar snapshots a los clientes WS
+            // 1) Enviar snapshots a los clientes WS.
+            // Backpressure: si un cliente lento ya tiene >256KB sin consumir, saltamos
+            // su snapshot. Sin esto, los ws.send se acumulan en kernel buffer + cola del
+            // event loop y el main entra en spiral de muerte (procesa cola vieja en vez
+            // de tickResults nuevos). Eventos importantes (kills, etc.) siempre van.
             if (msg.snapshots) {
                 for (const s of msg.snapshots) {
                     if (s.pid === '__spectators__') {
@@ -491,7 +500,7 @@ function handleWorkerMsg(room, msg) {
                         if (s.snapData) for (const sws of room.spectators) {
                             if (sws.readyState !== 1) { room.spectators.delete(sws); continue; }
                             if (evJson) sws.send(evJson);
-                            sws.send(s.snapData);
+                            if (sws.bufferedAmount < WS_BACKPRESSURE_MAX) sws.send(s.snapData);
                         }
                         if (room.spectators.size === 0) room.worker.postMessage({ type: 'setSpectators', on: false });
                         continue;
@@ -499,7 +508,7 @@ function handleWorkerMsg(room, msg) {
                     const cli = room.clients.get(s.pid);
                     if (!cli || cli.ws.readyState !== 1) continue;
                     if (evJson) cli.ws.send(evJson);
-                    if (s.snapData) cli.ws.send(s.snapData);
+                    if (s.snapData && cli.ws.bufferedAmount < WS_BACKPRESSURE_MAX) cli.ws.send(s.snapData);
                 }
             }
             _wmSendUs += (performance.now() - _wmT0) * 1000;
