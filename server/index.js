@@ -100,6 +100,8 @@ let serverCpuPct = 0; let _cpuLast = process.cpuUsage(); let _cpuLastT = Date.no
 let _wmSendUs = 0, _wmTotalUs = 0;
 let _wmRecvMs = 0, _wmRecvN = 0;   // delay cola+structured-clone worker→main
 let mainSendMs = 0, mainTotalMs = 0, mainRecvDelay = 0;
+// Diagnóstico ciclo de vida: joins/muertes/cierres por segundo + clients totales.
+let _evJoins = 0, _evDeaths = 0, _evCloses = 0;
 setInterval(() => {
     const u = process.cpuUsage(_cpuLast); const dt = Date.now() - _cpuLastT;
     _cpuLast = process.cpuUsage(); _cpuLastT = Date.now();
@@ -107,7 +109,9 @@ setInterval(() => {
     mainSendMs = Math.round(_wmSendUs / 1000); mainTotalMs = Math.round(_wmTotalUs / 1000);
     mainRecvDelay = _wmRecvN ? +(_wmRecvMs / _wmRecvN).toFixed(1) : 0;
     _wmSendUs = 0; _wmTotalUs = 0; _wmRecvMs = 0; _wmRecvN = 0;
-    if (mainTotalMs > 200) log(`MAIN cpu=${serverCpuPct}% workerMsg=${mainTotalMs}ms/s (send=${mainSendMs}ms/s) recvDelay=${mainRecvDelay}ms lag.p95=${pStats(tickHist.lag, tickHist.n).p95}ms`);
+    let totalClients = 0; for (const r of rooms.values()) totalClients += r.clients.size;
+    log(`VIDA clients=${totalClients} joins/s=${_evJoins} deaths/s=${_evDeaths} closes/s=${_evCloses} | cpu=${serverCpuPct}% send=${mainSendMs}ms/s recvDelay=${mainRecvDelay}ms lag.p95=${pStats(tickHist.lag, tickHist.n).p95}ms`);
+    _evJoins = 0; _evDeaths = 0; _evCloses = 0;
 }, 1000);
 function stressBuildState() {
     return {
@@ -666,6 +670,7 @@ function processWorkerEvent(room, ev, now) {
             const q = questsOf(cliD.cid);
             if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
         }
+        _evDeaths++;
         if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + DEAD_REMOVE_MS);
     } else if (ev.type === 'botKilled') {
         const cliKiller_ = room.clients.get(ev.playerId);
@@ -1850,6 +1855,7 @@ wss.on('connection', (ws, req) => {
                 refillBots(room);
             }
             ws.send(welcomeMsg(room, playerId, token, undefined, useBin ? { useBin: true } : null));
+            _evJoins++;
             log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(ck)}${useBin ? ' [bin]' : ''}`);
             if (room.state === 'waiting') {
                 sendWaiting(room);
@@ -1940,6 +1946,7 @@ wss.on('connection', (ws, req) => {
                 log(`Reembolso de entrada (sala no empezó): ${cli.payWallet.slice(0, 6)}… +${cli.paidFee} PILL`);
             }
             room.clients.delete(playerId);
+            _evCloses++;
             if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
             log(`Jugador ${playerId} desconectado de ${room.key} — quedan ${room.clients.size}`);
             if (room.state === 'waiting') { sendWaiting(room); armLobby(room); }   // cancela la cuenta atrás si baja del mínimo
