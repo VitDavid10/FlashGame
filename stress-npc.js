@@ -130,6 +130,15 @@ function spawnBot(i) {
     stats.messagesReceived++;
     let m; try { m = JSON.parse(data); } catch { return; }
     if (m.t === 'roomFull') { stats.rejected++; try { ws.close(); } catch {} return; }
+    if (m.t === 'noSlot') {
+      // Sin hueco ahora (sala a punto de acabar o llena) → reconectar tras un delay
+      if (RESPAWN && !testOver) {
+        const delay = RESPAWN_MIN + Math.random() * Math.max(0, RESPAWN_MAX - RESPAWN_MIN);
+        setTimeout(() => { if (!testOver) spawnBot(i); }, delay);
+      }
+      try { ws.close(); } catch {}
+      return;
+    }
     if (m.t === 'pong') { if (m.ts) { stats.latencies.push(Date.now() - m.ts); if (stats.latencies.length > 200) stats.latencies.shift(); } return; }
     if (m.id) myId = m.id;   // welcome / matchStart traen mi id
     if (m.t === 'welcome' && !counted) { stats.entered++; stats.porSala[salaKey]++; counted = true; }

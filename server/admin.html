@@ -118,6 +118,7 @@
 
     /* sala: caja del menú con acento de estado */
     .room { background: var(--box); border: 1px solid var(--border); border-left: 3px solid #444; border-radius: 12px; overflow: hidden; transition: 0.25s; }
+    .room.empty { opacity: 0.45; filter: grayscale(0.7); }
     .room:hover { border-color: var(--primary); border-left-width: 3px; box-shadow: 0 0 30px var(--primary-dim); transform: translateY(-2px); }
     .room.s-playing { border-left-color: var(--primary); }
     .room.s-waiting { border-left-color: var(--yellow); }
@@ -265,12 +266,10 @@
                 <button id="modeBtn_classic" class="modetab act" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
                 <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
             </div>
-            <div class="modetabs" style="margin-top:8px; padding-left:8px; gap:8px; align-items:center;">
+            <div id="layerTabsBar" class="modetabs" style="margin-top:8px; padding-left:8px; gap:8px; align-items:center;">
                 <span style="color:#666;font-size:11px;letter-spacing:1px;margin-right:6px;">LAYER:</span>
                 <button id="layerBtn_1" class="modetab act" style="font-size:12px;padding:4px 10px;" onclick="verLayer(1)">L1 <span id="cntLayer1" class="cnt cero">(0)</span></button>
                 <button id="layerBtn_2" class="modetab" style="font-size:12px;padding:4px 10px;" onclick="verLayer(2)">L2 <span id="cntLayer2" class="cnt cero">(0)</span></button>
-                <button id="layerPowerBtn_2" class="b" style="font-size:11px;padding:4px 10px;margin-left:8px;" onclick="toggleLayerPower(2)" title="Apaga/enciende todas las salas de Layer 2. Apagar libera CPU. Solo se puede apagar si están vacías.">⏻ L2: ON</button>
-                <span id="layerPowerHint" style="color:#777;font-size:10px;margin-left:6px;"></span>
             </div>
             <div class="grid" id="gridClassic"></div>
             <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px; display:none;">
@@ -324,6 +323,12 @@
                     <option value="10">10 Hz (1 de cada 4 · mínimo)</option>
                 </select>
                 <span style="color:#666; font-size: 12px;">Global, afecta a TODAS las salas al instante. Menos Hz = menos lag con mucha gente (el cliente interpola). Se reinicia al valor por defecto si reinicias el servidor.</span>
+            </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Layer 2:</label>
+                <button id="layerPowerBtn_2" class="b" onclick="toggleLayerPower(2)" title="Apaga/enciende todas las salas de Layer 2. Apagar libera CPU. Solo se puede apagar si están vacías.">⏻ L2: ON</button>
+                <span id="layerPowerHint" style="color:#777;font-size:12px;"></span>
+                <span style="color:#666; font-size: 12px;">Apagar la Layer 2 libera CPU (elimina 10 simulaciones). Solo se puede apagar si están vacías. En producción con poca gente, mantener solo L1 es suficiente.</span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <label style="font-weight:600">AOI (Area of Interest):</label>
@@ -660,7 +665,7 @@ function cartaSala(r) {
     }
 
     const rl = r.rules;
-    return `<div class="room ${cardCls}" id="card_${id}">
+    return `<div class="room ${cardCls}${r.conectados === 0 ? ' empty' : ''}" id="card_${id}">
         <div class="room-head">
             <div class="room-name russo">${esc(r.roomName)} <span style="font-size:13px;color:#777">L${r.layerIdx || 1}</span>${r.disabled ? ' <span style="font-size:11px;color:#ff6b6b;background:#3a1a1a;padding:2px 8px;border-radius:4px;letter-spacing:1px;margin-left:6px;">PAUSED</span>' : ''}<span class="meta">${r.mode.toUpperCase()} · ${r.price ? 'ENTRADA ' + r.price + '$' : 'GRATIS'}</span></div>
             <span class="state ${stCls}"><span class="d"></span>${stTxt}</span>
@@ -809,19 +814,18 @@ function render(m) {
     }
     // Estado del botón power Layer 2 (apaga/enciende todas las L2 a la vez).
     _layerOff = m.layerOff || {};
+    const off2 = !!_layerOff[2];
     const lpb = document.getElementById('layerPowerBtn_2');
     if (lpb) {
-        const off = !!_layerOff[2];
-        lpb.innerText = off ? '⏻ L2: OFF' : '⏻ L2: ON';
-        lpb.className = 'b ' + (off ? 'rojo' : 'verde');
-        // Si la layer activa en el panel es L2 pero está OFF, vuelve a L1
-        if (off && layerActivo === 2) verLayer(1);
-        // Desactivar el botón del tab L2 si está off (para que no se intente ver una layer vacía)
-        const tabL2 = document.getElementById('layerBtn_2');
-        if (tabL2) tabL2.disabled = off;
+        lpb.innerText = off2 ? '⏻ L2: OFF' : '⏻ L2: ON';
+        lpb.className = 'b ' + (off2 ? 'rojo' : 'verde');
     }
     const lph = document.getElementById('layerPowerHint');
-    if (lph) lph.innerText = _layerOff[2] ? 'L2 apagada: 0 sims, no consume CPU.' : '';
+    if (lph) lph.innerText = off2 ? 'L2 apagada — 0 sims, no consume CPU.' : '';
+    // Barra de layer tabs: solo visible cuando L2 está ON (si solo hay L1 no hace falta)
+    const layerBar = document.getElementById('layerTabsBar');
+    if (layerBar) layerBar.style.display = off2 ? 'none' : '';
+    if (off2 && layerActivo === 2) verLayer(1);
     if (m.arcadeLobbyMs   != null && document.activeElement.id !== 'g_lobby')   document.getElementById('g_lobby').value   = Math.round(m.arcadeLobbyMs   / 1000);
     if (m.arcadeRestartMs != null && document.activeElement.id !== 'g_restart') document.getElementById('g_restart').value = Math.round(m.arcadeRestartMs / 1000);
     construirSalasStress(); renderStress(m.stress);
