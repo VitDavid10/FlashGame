@@ -1154,7 +1154,7 @@
             split: new Audio('../snd/split.mp3'), sprint: new Audio('../snd/sprint.mp3'), timer: new Audio('../snd/timer.mp3'),
             tp: new Audio('../snd/tp.mp3'), big: new Audio('../snd/big.mp3'), little: new Audio('../snd/little.mp3'),
             virus: new Audio('../snd/virus.mp3'), floatkill: new Audio('../snd/floatkill.mp3'),
-            loading: new Audio('../snd/loading.mp3')
+            loading: new Audio('../snd/loading.mp3'), go: new Audio('../snd/GO.mp3')
         },
         music: new Audio('../snd/music.mp3'), startTimer: null,
         menuMusic: new Audio('../snd/menu.mp3'),
@@ -3110,8 +3110,12 @@
     // verde + píldora + título neón), sin música. Bloquea el input (window.__loadingLock)
     // para que no te metan en la batalla de golpe; el spawn lleva inmunidad de sobra.
     // En resume NO se muestra: quieres volver rápido.
-    const LOADING_MS = 2000;
-    function showLoadingScreen(durationMs, onDone) {
+    const LOADING_MS = 2000;        // tiempo mínimo de carga (para que se vea/oiga)
+    const LOADING_MAX_MS = 9000;    // tope: si el server no responde, no te dejamos colgado
+    // readyFn (opcional): la carga no termina hasta que sea true Y haya pasado minMs.
+    // Así el GO! sale justo cuando la partida está REALMENTE cargada (primer snapshot),
+    // no a un tiempo fijo: si tarda en cargar, la barra espera; si va rápida, mínimo minMs.
+    function showLoadingScreen(minMs, readyFn, onDone) {
         window.__loadingLock = true;
         let ov = document.getElementById('loadingScreen');
         if (!ov) {
@@ -3156,16 +3160,26 @@
         bar.style.transition = 'none'; bar.style.width = '0%';
         // forzar reflow antes de animar
         void bar.offsetWidth;
-        bar.style.transition = 'width ' + durationMs + 'ms linear';
-        bar.style.width = '100%';
+        // La barra llega al 92% en minMs; el 8% final se completa al estar lista.
+        bar.style.transition = 'width ' + minMs + 'ms linear';
+        bar.style.width = '92%';
+        const start = Date.now();
         if (window.__loadingTimer) clearTimeout(window.__loadingTimer);
-        window.__loadingTimer = setTimeout(() => {
-            window.__loadingTimer = null;
+        const finish = () => {
+            if (window.__loadingTimer) { clearTimeout(window.__loadingTimer); window.__loadingTimer = null; }
+            bar.style.transition = 'width .15s ease'; bar.style.width = '100%';
             window.__loadingLock = false;
             SoundManager.stop('loading');
             ov.style.display = 'none';
             if (onDone) onDone();
-        }, durationMs);
+        };
+        const tick = () => {
+            const elapsed = Date.now() - start;
+            const ready = !readyFn || readyFn();
+            if ((elapsed >= minMs && ready) || elapsed >= LOADING_MAX_MS) finish();
+            else window.__loadingTimer = setTimeout(tick, 80);
+        };
+        window.__loadingTimer = setTimeout(tick, minMs);
     }
 
     // Splash "GO!" estilo PillWars al arrancar la partida (entra grande, rebota y se
@@ -3188,6 +3202,7 @@
         el.id = 'goSplash';
         el.innerHTML = '<div class="go-txt">GO!</div>';
         document.body.appendChild(el);
+        SoundManager.play('go');
         setTimeout(() => el.remove(), 1650);
     }
 
@@ -3222,9 +3237,12 @@
             window.__loadingLock = false;
             SoundManager.playMusic();   // resume: volvemos rápido, sin carga
         } else {
-            // Entrada nueva: carga (solo sonido de loading); al terminar GO!, arranca
-            // la música y se libera el input (aún queda inmunidad de spawn).
-            showLoadingScreen(LOADING_MS, () => { showGoSplash(); SoundManager.playMusic(); });
+            // Entrada nueva: carga (solo sonido de loading) hasta que llegue el primer
+            // snapshot (partida realmente cargada); al terminar GO!, arranca la música y
+            // se libera el input (aún queda inmunidad de spawn).
+            showLoadingScreen(LOADING_MS,
+                () => sim && sim.isRemote && sim.snaps && sim.snaps.length > 0,
+                () => { showGoSplash(); SoundManager.playMusic(); });
         }
         if (isResume) spawnFloatingText('RECONNECTED', '#00ff88');
         // Persiste info de rejoin: si la pestaña se cierra ahora, el user podrá
