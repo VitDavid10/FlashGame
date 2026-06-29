@@ -48,7 +48,13 @@ const GLOBAL_FILE = path.join(__dirname, 'globalsettings.json');
 let _glob = loadJson(GLOBAL_FILE, {});
 let arcadeRestartMs = Math.max(1000, (_glob.arcadeRestartMs | 0) || 10000);
 let arcadeLobbyMs  = Math.max(0,    (_glob.arcadeLobbyMs  | 0) || 20000);
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs }), () => {}); }
+// Multihilo: persistido en globalsettings.json. El admin puede apagarlo desde el panel.
+// El env var WORKERS sigue funcionando como override (devs/tests). Si no hay nada
+// configurado, multihilo apagado por defecto (single-thread aguanta más en este VPS).
+let useWorkers = (typeof _glob.useWorkers === 'boolean') ? _glob.useWorkers : false;
+if (process.env.WORKERS === '1') useWorkers = true;
+if (process.env.WORKERS === '0') useWorkers = false;
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, useWorkers }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -417,8 +423,9 @@ function buildSim(mode, rules) {
 
 // Crea (o devuelve) una layer concreta. key = layerKey = "mode_roomName_LN".
 // Las reglas/stats persisten por comboKey, no por layer.
-// Multihilo: si USE_WORKERS está activo, cada sala corre su sim en un Worker.
-const USE_WORKERS = process.env.WORKERS !== '0';
+// Multihilo: si useWorkers está activo (configurable desde admin), cada sala corre
+// su sim en un Worker. Default: OFF — single-thread aguanta más en este VPS por el
+// coste del structured-clone worker→main en cada tick (~25 mensajes/seg por sala).
 const WORKER_SCRIPT = path.join(__dirname, 'room-worker.js');
 
 function getOrCreateRoom(key, mode, roomName) {
@@ -429,7 +436,7 @@ function getOrCreateRoom(key, mode, roomName) {
         const layerIdx = m ? parseInt(m[1], 10) : 1;
         const room = {
             key, comboKey: ck, layerIdx, mode, roomName,
-            sim: USE_WORKERS ? null : buildSim(mode, rules),
+            sim: useWorkers ? null : buildSim(mode, rules),
             worker: null,
             clients: new Map(),
             state: 'waiting',
@@ -442,8 +449,8 @@ function getOrCreateRoom(key, mode, roomName) {
             pot: 0,
         };
         rooms.set(key, room);
-        if (USE_WORKERS) spawnWorker(room, rules);
-        log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(ck)} reales, población ${targetPopOf(ck)})${USE_WORKERS ? ' [worker]' : ''}`);
+        if (useWorkers) spawnWorker(room, rules);
+        log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(ck)} reales, población ${targetPopOf(ck)})${useWorkers ? ' [worker]' : ''}`);
     }
     return rooms.get(key);
 }
@@ -1120,6 +1127,7 @@ function buildAdminState() {
         layersPerCombo: LAYERS_PER_COMBO,
         layerOff: Object.assign({}, layerOff),   // { 2: true } si L2 está apagada
         arcadeRestartMs, arcadeLobbyMs,
+        useWorkers,
         mainSendMs, mainTotalMs,
         serverCpu: serverCpuPct,
         totales: {
@@ -1643,6 +1651,13 @@ wss.on('connection', (ws, req) => {
                 }
                 logAdmin('-', `Reinició modo ${msg.mode}`, `${n} salas`);
                 log(`ADMIN restartMode=${msg.mode}: ${n} salas`);
+            } else if (msg.cmd === 'setWorkers') {
+                useWorkers = !!msg.on;
+                saveGlobal();
+                logAdmin('-', `Multihilo ${useWorkers ? 'ACTIVADO' : 'DESACTIVADO'}`, 'reiniciando proceso');
+                log(`ADMIN useWorkers=${useWorkers} — reiniciando en 500ms para aplicar`);
+                ws.send(JSON.stringify({ t: 'serverRestarting' }));
+                setTimeout(() => process.exit(0), 500);
             } else if (msg.cmd === 'restartServer') {
                 logAdmin('-', 'Reinició el servidor', '');
                 log('ADMIN ordenó reinicio del proceso — saliendo en 500ms');

@@ -342,6 +342,11 @@
                 <button id="aoiToggleBtn" class="b" onclick="toggleAoi()">Cargando…</button>
                 <span style="color:#666; font-size: 12px;">Cada jugador recibe solo lo cercano a su píldora. Reduce tráfico ~5× en salas grandes y cierra el maphack (cliente modificado). Apagarlo solo si depuras render lejano.</span>
             </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Multihilo (worker_threads):</label>
+                <button id="workersToggleBtn" class="b" onclick="toggleWorkers()">Cargando…</button>
+                <span style="color:#666; font-size: 12px;">Cada sala corre en su propio hilo. En este VPS introduce overhead (structured-clone) y reduce el techo de jugadores. Mantenerlo en OFF salvo que pruebes lo contrario. Al cambiar, el proceso se reinicia.</span>
+            </div>
             <h2 class="section">Salud del servidor</h2>
             <div class="usage" id="healthBox" style="padding:18px 20px;font-family:'Inter',sans-serif;font-size:13px">Cargando…</div>
 
@@ -694,6 +699,12 @@ function cartaSala(r) {
 
 function aplicarSnapHz() { send({ cmd: 'snapshotHz', hz: parseInt(document.getElementById('snapHzSel').value, 10) }); setTimeout(pedir, 100); }
 function toggleAoi() { send({ cmd: 'aoiToggle' }); setTimeout(pedir, 100); }
+function toggleWorkers() {
+    const willBeOn = !window._useWorkers;
+    if (!confirm('Cambiar multihilo a ' + (willBeOn ? 'ON' : 'OFF') + ' reinicia el proceso del servidor (~3-5s).\n¿Continuar?')) return;
+    send({ cmd: 'setWorkers', on: willBeOn });
+    toast('<strong>Reiniciando servidor…</strong><br>Multihilo: ' + (willBeOn ? 'ON' : 'OFF'), 'warn');
+}
 function aplicarGlobal() {
     send({ cmd: 'setGlobal',
         arcadeLobbyMs:   Math.round(parseFloat(document.getElementById('g_lobby').value)   * 1000),
@@ -710,6 +721,12 @@ function render(m) {
     if (aoiBtn) {
         aoiBtn.innerText = m.aoiEnabled ? 'ON — desactivar' : 'OFF — activar';
         aoiBtn.className = 'b ' + (m.aoiEnabled ? 'verde' : 'rojo');
+    }
+    window._useWorkers = !!m.useWorkers;
+    const wkBtn = document.getElementById('workersToggleBtn');
+    if (wkBtn) {
+        wkBtn.innerText = m.useWorkers ? 'ON — desactivar' : 'OFF — activar';
+        wkBtn.className = 'b ' + (m.useWorkers ? 'naranja' : 'verde');
     }
     // Estado del botón power Layer 2 (apaga/enciende todas las L2 a la vez).
     _layerOff = m.layerOff || {};
