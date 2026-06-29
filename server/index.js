@@ -2061,9 +2061,11 @@ setInterval(() => {
 purgeOldLogs();                              // limpia logs viejos al arrancar
 setInterval(purgeOldLogs, 24 * 3600 * 1000); // y una vez al día
 
-// Política de topes por modo: fija maxPlayers en TODAS las salas del catálogo al
-// arrancar (classic 35, arcade 25). Sobrescribe lo persistido para que la política
-// viva en código y se despliegue por git. Editable en vivo, se reaplica al reiniciar.
+// Política por modo: fija maxPlayers (classic 35, arcade 25) y población=0 (SIN
+// bots de relleno) en TODAS las salas del catálogo al arrancar. Sobrescribe lo
+// persistido para que la política viva en código y se despliegue por git
+// (roomrules.json es gitignored, no llega al VPS). Editable en vivo desde el panel;
+// se reaplica en cada reinicio.
 function enforceRoomCaps() {
     let n = 0;
     for (const mode of CATALOG_MODES) {
@@ -2072,9 +2074,10 @@ function enforceRoomCaps() {
             const ck = comboKeyOf(mode, price);
             const r = rulesOf(ck);
             if (r.maxPlayers !== cap) { r.maxPlayers = cap; rulesDirty = true; n++; }
+            if (r.targetPop !== 0) { r.targetPop = 0; rulesDirty = true; n++; }
         }
     }
-    if (n) log(`Topes por modo aplicados: classic ${ROOM_CAPS.classic}, arcade ${ROOM_CAPS.arcade} (${n} combos ajustados)`);
+    if (n) log(`Política por modo aplicada: classic ${ROOM_CAPS.classic}, arcade ${ROOM_CAPS.arcade}, población 0 (${n} ajustes)`);
 }
 enforceRoomCaps();
 
