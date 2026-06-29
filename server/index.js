@@ -1047,6 +1047,7 @@ function buildSnapshotFor(room, viewerId, box) {
         time: Math.round(sim.now),
         tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
         pot: room.pot | 0,
+        alv: room._aliveCount | 0,
         players, bots, viruses, ejected, projectiles
     };
 }
@@ -1513,11 +1514,14 @@ wss.on('connection', (ws, req) => {
             } else if (msg.cmd === 'kick' && msg.playerId) {
                 const found = findClient(msg.playerId);
                 if (found) {
-                    try { found.cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {}
+                    // Bloqueo por IP 30s: sin esto el jugador echado reentraba al
+                    // instante (el kick solo cerraba el socket). Igual que kickAll.
+                    if (found.cli.ip) kickedIps.set(found.cli.ip, Date.now() + KICKED_MS);
+                    try { found.cli.ws.send(JSON.stringify({ t: 'kicked', secondsLeft: 30 })); } catch (e) {}
                     try { found.cli.ws.close(); } catch (e) {}
                     found.room.pendingRemovals.set(msg.playerId, 0);
                     logAdmin(found.room.key, 'Echó a un jugador', found.cli.name || '(sin nombre)');
-                    log(`ADMIN expulsó a ${found.cli.name} de ${found.room.key}`);
+                    log(`ADMIN expulsó a ${found.cli.name} de ${found.room.key} — IP bloqueada 30s`);
                 }
             } else if (msg.cmd === 'power' && msg.playerId) {
                 const found = findClient(msg.playerId);

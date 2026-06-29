@@ -1947,8 +1947,7 @@
             } else {
                 nextSkillPickTime = 30;
             }
-            isPickingSkill = false;
-            els.skillOverlay.style.display = 'none';
+            closeSkillChoice();
             updateSkillsUI_Arcade();
         }
 
@@ -2161,6 +2160,7 @@
                 this.snaps.push(msg);
                 if (this.snaps.length > 30) this.snaps.shift();
                 if (msg.tl != null) { this._tlBase = msg.tl; this._tlAt = Date.now(); }
+                if (msg.alv != null) this.aliveCount = msg.alv;   // ALIVE global autoritativo (no AOI)
                 if (msg.pot != null) EconHUD.update(null, msg.pot);   // bote en tiempo real
                 // Estado propio (HUD/cartas): se aplica al instante, sin retraso
                 const meP = this.players.get('me');
@@ -2841,6 +2841,9 @@
             mode: mode, mapSize: baseSize, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
             botConfig: { enabled: true, count: botCount, respawn: true },
             maxBotCells: mode === 'classic' ? 8 : 4,
+            // Calentamiento: en el preview offline los bots ignoran al jugador los
+            // primeros 15s (entras en calor sin que sea "muere-muere-muere").
+            botPlayerGraceMs: 15000,
             fx: { enabled: true, enemyFX: enableEnemyFX }
         });
         sim.populate();
@@ -3135,7 +3138,7 @@
         const esArcade = (msg.mode === 'arcade' || msg.mode === 'skills');
         els.actionBar.style.display = esArcade ? 'flex' : 'none';
         if (esArcade && !isResume) {
-            massMilestoneReached = false; isPickingSkill = false; els.skillOverlay.style.display = 'none';
+            massMilestoneReached = false; closeSkillChoice();
             const tl = (msg.tl != null) ? msg.tl : msg.duration;
             const elapsed = Math.max(0, (msg.duration - tl) / 1000);
             nextSkillPickTime = (Math.floor(elapsed / 30) + 1) * 30;
@@ -3171,6 +3174,10 @@
     function lerpColor(a, b, amount) { if (typeof amount !== 'number') return a; var ah = parseInt(a.replace(/#/g, ''), 16), ar = ah >> 16, ag = ah >> 8 & 0xff, ab = ah & 0xff, bh = parseInt(b.replace(/#/g, ''), 16), br = bh >> 16, bg = bh >> 8 & 0xff, bb = bh & 0xff, rr = ar + amount * (br - ar), rg = ag + amount * (bg - ag), rb = ab + amount * (bb - ab); return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1); }
     function createExplosion(x, y) { explosions.push(new Explosion(x, y)); }
 
+    // Cierra el panel de elección de skill SIEMPRE parando el sonido 'timer' (dura
+    // los 10s del pick). Centralizado para que el sonido se vaya tanto si eliges como
+    // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
+    function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
     function showSkillChoice() { if(isPickingSkill) return; SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div><div class="skill-opt-name">${SKILL_DEFS[id].name}</div>`; div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
@@ -3242,8 +3249,16 @@
         floatingTexts.forEach((ft, i) => { ft.update(); if(ft.life <= 0) floatingTexts.splice(i, 1); });
         uiTexts.forEach((ut, i) => { ut.update(); if(ut.life <= 0) uiTexts.splice(i, 1); });
 
-        // ALIVE = grupos enemigos vivos (bots y otros jugadores) + tú si sigues vivo
-        const uniqueIds = new Set(sim.enemies.map(e => e.id)); els.enemyCount.innerText = uniqueIds.size + (myCells().length > 0 ? 1 : 0); updateLeaderboard();
+        // ALIVE = grupos enemigos vivos (bots y otros jugadores) + tú si sigues vivo.
+        // En online usamos el contador global autoritativo del server (snap.alv): el
+        // conteo local solo ve tu AOI y daría números distintos jugando/espectando.
+        if (sim.isRemote && typeof sim.aliveCount === 'number') {
+            els.enemyCount.innerText = sim.aliveCount;
+        } else {
+            const uniqueIds = new Set(sim.enemies.map(e => e.id));
+            els.enemyCount.innerText = uniqueIds.size + (myCells().length > 0 ? 1 : 0);
+        }
+        updateLeaderboard();
     }
 
     // Traduce los eventos de la sim a sonidos, explosiones, textos y UI.
@@ -3281,6 +3296,7 @@
                         // En práctica (esperando sala online) se reaparece al instante
                         const c = sim.spawnPlayer('me');
                         camera.x = c.x; camera.y = c.y;
+                        closeSkillChoice();
                         SoundManager.play('death');
                         spawnFloatingText('RESPAWNING (PRACTICE)', '#ffcc00');
                     } else { Quests.reportDeath(); Quests.endMatch('death'); stopGame(); }

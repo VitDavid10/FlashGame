@@ -230,6 +230,13 @@ function tickRoomOnce(room, now, ctx) {
     // también reciben full (modo espectador local). Si cli.useBin, el snap
     // se serializa con el protocolo binario (proto.encodeSnap).
     const doSnap = (room.tickCount % ctx.snapshotEvery === 0);
+    // ALIVE global autoritativo: grupos enemigos únicos + jugadores vivos. Se
+    // calcula una vez por tick (no por viewer) para que el contador sea idéntico
+    // jugando, espectando y en el panel, sin depender del AOI de cada cliente.
+    if (doSnap) {
+        let ap = 0; for (const p of room.sim.players.values()) if (p.alive) ap++;
+        room._aliveCount = new Set(room.sim.enemies.map(e => e.id)).size + ap;
+    }
     let fullSnap = null, fullJson = null, fullBin = null;
     const ensureFullSnap = () => fullSnap || (fullSnap = ctx.buildSnapshotFor(room, null, null));
     const ensureFullJson = () => fullJson || (fullJson = JSON.stringify(ensureFullSnap()));

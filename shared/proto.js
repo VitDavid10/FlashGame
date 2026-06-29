@@ -10,6 +10,7 @@
  *   u32 time
  *   i32 tl                 (-1 = null)
  *   u32 pot
+ *   u16 alv                (alive global autoritativo)
  *   u16 nPlayers
  *     per player: idStr, nameStr, u8 ks, u8 flags (bit0 alive), u16 gcd,
  *       u8 nSlots [u8 id, u8 uses]*,
@@ -35,7 +36,7 @@
  */
 'use strict';
 
-const VER = 1;
+const VER = 2;
 const FLAG_SKIN = 1, FLAG_IM = 2, FLAG_SP = 4, FLAG_MG = 8, FLAG_TP = 16;
 const FLAG_ALIVE = 1;
 
@@ -158,6 +159,7 @@ function encodeSnap(snap) {
     w.u32(snap.time >>> 0);
     w.i32(snap.tl == null ? -1 : (snap.tl | 0));
     w.u32(snap.pot | 0);
+    w.u16(Math.min(65535, snap.alv | 0));   // alive global (autoritativo, no AOI)
     // Players
     w.u16(snap.players.length);
     for (const p of snap.players) {
@@ -227,6 +229,7 @@ function decodeSnap(arrayBuffer) {
     snap.time = r.u32();
     const tl = r.i32(); snap.tl = (tl < 0) ? null : tl;
     snap.pot = r.u32();
+    snap.alv = r.u16();
     const nPlayers = r.u16();
     snap.players = [];
     for (let i = 0; i < nPlayers; i++) {

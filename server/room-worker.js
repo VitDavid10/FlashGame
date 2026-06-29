@@ -136,6 +136,7 @@ function buildSnapshotFor(viewerId, box) {
         time: Math.round(sim.now),
         tl: endsAt ? Math.max(0, endsAt - Date.now()) : null,
         pot: 0,  // pot es del main thread
+        alv: aliveCount | 0,
         players, bots, viruses, ejected, projectiles
     };
 }
@@ -159,6 +160,7 @@ function tickGradualBots(now) {
 // --- Configuración dinámica (recibida del main) ---
 let aoiEnabled = true;
 let snapshotEvery = 1;
+let aliveCount = 0;   // ALIVE global autoritativo (grupos enemigos + jugadores vivos)
 let wantSpectatorSnap = false;   // el main lo activa solo si hay espectadores
 
 // --- Tick loop ---
@@ -218,6 +220,10 @@ function tick() {
     // Snapshots per-player (AOI)
     const _t1 = performance.now();
     const doSnap = (tickCount % snapshotEvery === 0);
+    if (doSnap) {
+        let ap = 0; for (const p of sim.players.values()) if (p.alive) ap++;
+        aliveCount = new Set(sim.enemies.map(e => e.id)).size + ap;
+    }
     const snapshots = [];
     const eventsJson = events.length ? JSON.stringify({ t: 'events', events }) : null;
 

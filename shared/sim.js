@@ -286,7 +286,10 @@
                 else if (this.mass > e.mass * 1.25 && d < visionRange) { if (!targetPrey || d < targetPrey.dist) { targetPrey = { cell: e, dist: d }; } }
             };
             for (const e of sim.enemies) checkEntity(e);
-            for (const p of sim.players.values()) { for (const c of p.cells) checkEntity(c); }
+            // Gracia de calentamiento (solo preview offline): durante los primeros
+            // botPlayerGraceMs ms los bots ni cazan ni huyen del jugador.
+            const playerGrace = sim.config.botPlayerGraceMs && sim.now < sim.config.botPlayerGraceMs;
+            if (!playerGrace) for (const p of sim.players.values()) { for (const c of p.cells) checkEntity(c); }
 
             if (!flee && targetPrey) { let isHiding = sim.isHiddenInVirus(targetPrey.cell); if (!isHiding) { this.targetX = targetPrey.cell.x; this.targetY = targetPrey.cell.y; flee = true; } }
             if (!flee) sim.viruses.forEach(v => { if (this.r > v.r && getEllipticalDist(this, v) < this.r + 120) flee = true; });
