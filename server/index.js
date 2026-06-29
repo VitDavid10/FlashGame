@@ -687,8 +687,16 @@ function pickLayer(mode, roomName) {
     const ck = comboKeyOf(mode, roomName);
     const max = maxPlayersOf(ck);
     for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
-        const r = rooms.get(layerKeyOf(mode, roomName, i));
-        if (!r) continue;
+        const key = layerKeyOf(mode, roomName, i);
+        let r = rooms.get(key);
+        if (!r) {
+            // Lazy L2+: solo se crea cuando hace falta. Si i=1 no existe es bug (debería
+            // pre-crearse en initLayers). Para i>=2: créala on-demand si no está apagada.
+            if (i === 1) continue;
+            if (isLayerOffForPrice(roomName, i)) continue;
+            r = getOrCreateRoom(key, mode, roomName);
+            log(`Lazy: creada ${key} porque L${i-1} está llena`);
+        }
         if (r.disabled) continue;
         if (r.clients.size >= max) continue;
         if (r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
@@ -697,18 +705,18 @@ function pickLayer(mode, roomName) {
     return null;
 }
 
-// Pre-crea TODAS las salas en startup (20 = 2 layers × 2 modos × 5 precios).
+// Pre-crea SOLO L1 en startup (10 salas: 2 modos × 5 precios). Las L2+ se crean
+// en pickLayer cuando L1 se llena. Antes pre-creábamos las 20 → 10 workers ociosos
+// gastando CPU en el setInterval del tick, kernel hacía context switches sin parar.
 function initLayers() {
     let n = 0;
     for (const mode of CATALOG_MODES) {
         for (const price of PRICES) {
-            for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
-                getOrCreateRoom(layerKeyOf(mode, price, i), mode, price);
-                n++;
-            }
+            getOrCreateRoom(layerKeyOf(mode, price, 1), mode, price);
+            n++;
         }
     }
-    log(`Pre-creadas ${n} salas (${LAYERS_PER_COMBO} layers × ${CATALOG_MODES.length} modos × ${PRICES.length} precios)`);
+    log(`Pre-creadas ${n} salas L1. L2+ se crean on-demand cuando L1 se llene.`);
 }
 
 function broadcast(room, objOrString) {
@@ -797,11 +805,19 @@ function armLobby(room) {
     if (room.clients.size >= min) {
         if (room.startAt) return;   // ya hay cuenta atrás en marcha
         const lobbyMs = lobbyMsOf(room.comboKey);
-        if (lobbyMs <= 0) { startMatch(room); return; }
-        room.startAt = Date.now() + lobbyMs;
+        // Jitter 0-1500ms para que varias salas que se llenan a la vez NO arranquen
+        // en el mismo tick. Sin esto, llegabas a 150 spawns simultáneos cuando 5 salas
+        // pasaban a 'playing' en el mismo segundo → spike de workerMsg a 3000ms/s.
+        // El tick loop (single-thread) y el worker ya disparan startMatch cuando llega
+        // startAt, así que el jitter funciona para los dos modos.
+        const jitter = Math.floor(Math.random() * 1500);
+        const total = Math.max(0, lobbyMs) + jitter;
+        room.startAt = Date.now() + total;
         if (room.worker) room.worker.postMessage({ type: 'setLobbyStart', startAt: room.startAt });
-        broadcast(room, { t: 'lobbyCountdown', startIn: lobbyMs, count: room.clients.size, needed: min, roomName: room.roomName, mode: room.mode });
-        log(`Lobby ${room.key}: ${room.clients.size}/${min} → cuenta atrás ${lobbyMs / 1000}s`);
+        if (lobbyMs > 0) {
+            broadcast(room, { t: 'lobbyCountdown', startIn: lobbyMs, count: room.clients.size, needed: min, roomName: room.roomName, mode: room.mode });
+            log(`Lobby ${room.key}: ${room.clients.size}/${min} → cuenta atrás ${lobbyMs / 1000}s (+${jitter}ms jitter)`);
+        }
     } else if (room.startAt) {
         room.startAt = null;
         if (room.worker) room.worker.postMessage({ type: 'cancelLobby' });
