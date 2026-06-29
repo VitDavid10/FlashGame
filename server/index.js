@@ -56,7 +56,13 @@ let arcadeLobbyMs  = Math.max(0,    (_glob.arcadeLobbyMs  | 0) || 20000);
 let useWorkers = (typeof _glob.useWorkers === 'boolean') ? _glob.useWorkers : false;
 if (process.env.WORKERS === '1') useWorkers = true;
 if (process.env.WORKERS === '0') useWorkers = false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, useWorkers }), () => {}); }
+// Volumen "por defecto" que el servidor manda al cliente (0..1). El cliente lo aplica
+// como master (efectos -30%, música -15% de fábrica) y luego puede mutear/ajustar.
+// Editable desde el panel admin.
+const _clamp01 = v => Math.max(0, Math.min(1, v));
+let sfxVol   = (typeof _glob.sfxVol   === 'number') ? _clamp01(_glob.sfxVol)   : 0.70;
+let musicVol = (typeof _glob.musicVol === 'number') ? _clamp01(_glob.musicVol) : 0.85;
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, useWorkers, sfxVol, musicVol }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -1150,6 +1156,7 @@ function buildAdminState() {
         layerOff: Object.assign({}, layerOff),   // { 2: true } si L2 está apagada
         arcadeRestartMs, arcadeLobbyMs,
         useWorkers,
+        sfxVol, musicVol,
         mainSendMs, mainTotalMs,
         serverCpu: serverCpuPct,
         totales: {
@@ -1311,7 +1318,7 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff) }));
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff), sfxVol, musicVol }));
         return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
@@ -1578,6 +1585,12 @@ wss.on('connection', (ws, req) => {
                 saveGlobal();
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global arcade: restart=${arcadeRestartMs / 1000}s lobby=${arcadeLobbyMs / 1000}s`);
+            } else if (msg.cmd === 'setVolumes') {
+                if (typeof msg.sfxVol === 'number')   sfxVol   = _clamp01(msg.sfxVol);
+                if (typeof msg.musicVol === 'number') musicVol = _clamp01(msg.musicVol);
+                saveGlobal();
+                ws.send(JSON.stringify(buildAdminState()));
+                log(`Global volumen: efectos=${Math.round(sfxVol * 100)}% música=${Math.round(musicVol * 100)}%`);
             } else if (msg.cmd === 'snapshotHz' && typeof msg.hz === 'number') {
                 const prev = Math.round(TICK_HZ / SNAPSHOT_EVERY);
                 SNAPSHOT_EVERY = hzToEvery(msg.hz | 0);

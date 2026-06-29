@@ -331,6 +331,21 @@
                 </select>
                 <span style="color:#666; font-size: 12px;">Global, afecta a TODAS las salas al instante. Menos Hz = menos lag con mucha gente (el cliente interpola). Se reinicia al valor por defecto si reinicias el servidor.</span>
             </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Volumen por defecto (cliente):</label>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="color:#888;font-size:12px;">Efectos</span>
+                    <input type="range" min="0" max="100" step="1" id="volSfx" oninput="document.getElementById('volSfxVal').innerText=this.value+'%'" style="width:130px;">
+                    <span id="volSfxVal" style="color:#00ff88;font-size:12px;width:38px;">70%</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="color:#888;font-size:12px;">Música</span>
+                    <input type="range" min="0" max="100" step="1" id="volMusic" oninput="document.getElementById('volMusicVal').innerText=this.value+'%'" style="width:130px;">
+                    <span id="volMusicVal" style="color:#00ff88;font-size:12px;width:38px;">85%</span>
+                </div>
+                <button class="b verde mini" onclick="aplicarVolumenes()">Aplicar</button>
+                <span style="color:#666; font-size: 12px;">Volumen base que reciben los clientes. Cada jugador puede mutear/ajustar encima. Persiste entre reinicios.</span>
+            </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <label style="font-weight:600">Layer 2:</label>
                 <button id="layerPowerBtn_2" class="b" onclick="toggleLayerPower(2)" title="Apaga/enciende todas las salas de Layer 2. Apagar libera CPU. Solo se puede apagar si están vacías.">⏻ L2: ON</button>
@@ -705,6 +720,14 @@ function toggleWorkers() {
     send({ cmd: 'setWorkers', on: willBeOn });
     toast('<strong>Reiniciando servidor…</strong><br>Multihilo: ' + (willBeOn ? 'ON' : 'OFF'), 'warn');
 }
+function aplicarVolumenes() {
+    send({ cmd: 'setVolumes',
+        sfxVol:   parseInt(document.getElementById('volSfx').value, 10) / 100,
+        musicVol: parseInt(document.getElementById('volMusic').value, 10) / 100
+    });
+    toast('<strong>Volumen aplicado</strong>', 'ok');
+    setTimeout(pedir, 100);
+}
 function aplicarGlobal() {
     send({ cmd: 'setGlobal',
         arcadeLobbyMs:   Math.round(parseFloat(document.getElementById('g_lobby').value)   * 1000),
@@ -744,6 +767,8 @@ function render(m) {
     if (off2 && layerActivo === 2) verLayer(1);
     if (m.arcadeLobbyMs   != null && document.activeElement.id !== 'g_lobby')   document.getElementById('g_lobby').value   = Math.round(m.arcadeLobbyMs   / 1000);
     if (m.arcadeRestartMs != null && document.activeElement.id !== 'g_restart') document.getElementById('g_restart').value = Math.round(m.arcadeRestartMs / 1000);
+    if (m.sfxVol != null && document.activeElement.id !== 'volSfx') { const v = Math.round(m.sfxVol * 100); document.getElementById('volSfx').value = v; document.getElementById('volSfxVal').innerText = v + '%'; }
+    if (m.musicVol != null && document.activeElement.id !== 'volMusic') { const v = Math.round(m.musicVol * 100); document.getElementById('volMusic').value = v; document.getElementById('volMusicVal').innerText = v + '%'; }
     const t = m.totales;
     const sEntradas = realOnly ? t.entradasReal : t.entradas;
     const sMuertes = realOnly ? t.muertesReal : t.muertes;

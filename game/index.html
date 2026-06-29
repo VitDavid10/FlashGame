@@ -1131,6 +1131,11 @@
     const UI_PARAMS = { skillSelectTop: "5%" };
     const MUSIC_VOLUME = 0.15;
     const MUSIC_START_DELAY = 1400;
+    // Masters de volumen "por defecto del servidor": el server los manda en /api/rooms
+    // y el cliente los aplica como base (efectos -30%, música -15% de fábrica). El
+    // usuario puede mutear o ajustar encima. 1 = sin reducción.
+    let SFX_MASTER = 0.70;     // multiplica el volumen de TODOS los efectos
+    let MUSIC_MASTER = 0.85;   // multiplica MUSIC_VOLUME
     let DRAW_LOD_THRESHOLD = 3; 
     let isLowQuality = false;
     let selectedQuality = 'normal';
@@ -1148,14 +1153,14 @@
             shoot: new Audio('../snd/shoot.mp3'), simplehover: new Audio('../snd/simplehover.mp3'), simpleselect: new Audio('../snd/simpleselect.mp3'),
             split: new Audio('../snd/split.mp3'), sprint: new Audio('../snd/sprint.mp3'), timer: new Audio('../snd/timer.mp3'),
             tp: new Audio('../snd/tp.mp3'), big: new Audio('../snd/big.mp3'), little: new Audio('../snd/little.mp3'),
-            virus: new Audio('../snd/virus.mp3'), floatkill: new Audio('../snd/floatkill.mp3')
+            virus: new Audio('../snd/virus.mp3'), floatkill: new Audio('../snd/floatkill.mp3'),
+            loading: new Audio('../snd/loading.mp3')
         },
         music: new Audio('../snd/music.mp3'), startTimer: null,
         menuMusic: new Audio('../snd/menu.mp3'),
         init: function() {
             if(localStorage.getItem('pillwars_muted') === 'true') { this.muted = true; document.getElementById('soundToggle').classList.add('muted'); }
-            this.music.loop = true; this.music.volume = MUSIC_VOLUME;
-            this.menuMusic.loop = true; this.menuMusic.volume = Math.min(1, MUSIC_VOLUME * 1.875);
+            this.music.loop = true; this.menuMusic.loop = true; this.applyMusicVolume();
             if(localStorage.getItem('pillwars_music_muted') === 'true') { this.musicMuted = true; this.music.muted = true; this.menuMusic.muted = true; document.getElementById('musicToggle').classList.add('muted'); }
             else { document.getElementById('musicToggle').classList.remove('muted'); }
             for(let key in this.sounds) { this.sounds[key].load(); } this.music.load(); this.menuMusic.load();
@@ -1173,6 +1178,8 @@
             if (!this.musicMuted && !gameRunning) { this.menuMusic.play().catch(e=>{}); }
         },
         setVolume: function(val) { const v = parseFloat(val); this.music.volume = v; this.menuMusic.volume = Math.min(1, v * 1.875); },
+        // Recalcula el volumen de la música aplicando el master del servidor.
+        applyMusicVolume: function() { this.music.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER); this.menuMusic.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER * 1.875); },
         play: function(name, pos = null) {
             if(this.muted || !this.sounds[name]) return;
             // Volumen por distancia: lo que entra en pantalla suena fuerte, lo lejano
@@ -1190,7 +1197,7 @@
                 }
             }
             if (name === 'cd') { if (Date.now() - this.lastCdTime < 700) return; this.lastCdTime = Date.now(); }
-            const s = this.sounds[name]; s.currentTime = 0; s.volume = vol; s.play().catch(e => {});
+            const s = this.sounds[name]; s.currentTime = 0; s.volume = Math.min(1, vol * SFX_MASTER); s.play().catch(e => {});
         },
         stop: function(name) { if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },
         playSimpleHover: function() { if (Date.now() - this.lastSimpleHoverTime < 100) return; this.lastSimpleHoverTime = Date.now(); this.play('simplehover'); },
@@ -2531,6 +2538,10 @@
     async function refreshOracle() {
         try {
             const data = await (await fetch('/api/rooms', { cache: 'no-store' })).json();
+            // Volumen "por defecto del servidor" (admin): se aplica como master; el
+            // usuario sigue pudiendo mutear/ajustar encima.
+            if (typeof data.sfxVol === 'number') SFX_MASTER = Math.max(0, Math.min(1, data.sfxVol));
+            if (typeof data.musicVol === 'number') { MUSIC_MASTER = Math.max(0, Math.min(1, data.musicVol)); SoundManager.applyMusicVolume(); }
             const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
             // Reset del timer solo si el precio realmente cambió (cada 5 min en servidor).
             if (newRate !== _lastPillPerDollar) {
@@ -2863,7 +2874,7 @@
         document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
         if (saveInterval) clearInterval(saveInterval);
         lastFrameTime = Date.now();
-        SoundManager.playMusic();
+        // Sin música en el preview/práctica (mientras esperas sala online).
         gameRunning = true;
     }
 
@@ -3138,6 +3149,9 @@
             document.body.appendChild(ov);
         }
         ov.style.display = 'flex';
+        // Solo suena el sonido de carga (sin música; la música arranca al hacer GO).
+        SoundManager.stopMusic();
+        SoundManager.play('loading');
         const bar = document.getElementById('loadingBar');
         bar.style.transition = 'none'; bar.style.width = '0%';
         // forzar reflow antes de animar
@@ -3148,9 +3162,33 @@
         window.__loadingTimer = setTimeout(() => {
             window.__loadingTimer = null;
             window.__loadingLock = false;
+            SoundManager.stop('loading');
             ov.style.display = 'none';
             if (onDone) onDone();
         }, durationMs);
+    }
+
+    // Splash "GO!" estilo PillWars al arrancar la partida (entra grande, rebota y se
+    // desvanece). Acompaña al inicio de la música y la liberación del control.
+    function showGoSplash() {
+        if (!document.getElementById('goSplashCss')) {
+            const st = document.createElement('style');
+            st.id = 'goSplashCss';
+            st.textContent =
+                '#goSplash{position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;pointer-events:none}' +
+                '#goSplash .go-txt{font-family:\'Russo One\',sans-serif;font-size:clamp(120px,26vw,300px);line-height:1;color:#fff;' +
+                '-webkit-text-stroke:4px #000;text-shadow:0 0 30px #00ff88,0 0 70px #00ff88,0 6px 0 rgba(0,0,0,.5);' +
+                'animation:goPop .9s cubic-bezier(.2,1.4,.3,1) forwards}' +
+                '@keyframes goPop{0%{transform:scale(.2);opacity:0}25%{transform:scale(1.15);opacity:1}45%{transform:scale(1)}' +
+                '75%{transform:scale(1);opacity:1}100%{transform:scale(1.4);opacity:0}}';
+            document.head.appendChild(st);
+        }
+        const old = document.getElementById('goSplash'); if (old) old.remove();
+        const el = document.createElement('div');
+        el.id = 'goSplash';
+        el.innerHTML = '<div class="go-txt">GO!</div>';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 950);
     }
 
     function enterOnlineGame(ws, msg, isResume) {
@@ -3184,9 +3222,9 @@
             window.__loadingLock = false;
             SoundManager.playMusic();   // resume: volvemos rápido, sin carga
         } else {
-            // Entrada nueva: 5s de carga sin música; al terminar arranca la música
-            // y se libera el input (todavía quedan 2s de inmunidad de spawn).
-            showLoadingScreen(LOADING_MS, () => { SoundManager.playMusic(); });
+            // Entrada nueva: carga (solo sonido de loading); al terminar GO!, arranca
+            // la música y se libera el input (aún queda inmunidad de spawn).
+            showLoadingScreen(LOADING_MS, () => { showGoSplash(); SoundManager.playMusic(); });
         }
         if (isResume) spawnFloatingText('RECONNECTED', '#00ff88');
         // Persiste info de rejoin: si la pestaña se cierra ahora, el user podrá
