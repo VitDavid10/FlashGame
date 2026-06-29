@@ -62,13 +62,17 @@ const DEAD_REMOVE_MS = 3000;   // tras morir, retirar al jugador de la sim
 // Rate-limit por conexión (anti-flood/DoS). Un cliente real manda ~30-40 msg/s
 // (input 30 Hz + pings); dejamos margen de sobra. Por encima del umbral suave se
 // descartan los mensajes; un flood evidente (umbral duro) cierra la conexión.
-const MSG_RATE_SOFT = parseInt(process.env.MSG_RATE_SOFT, 10) || 100;  // msg/s: descarta el exceso
-const MSG_RATE_HARD = parseInt(process.env.MSG_RATE_HARD, 10) || 400;  // msg/s: flood → cerrar
+const MSG_RATE_SOFT = parseInt(process.env.MSG_RATE_SOFT, 10) || 100;   // msg/s: descarta el exceso
+// Sube de 400 a 800: bajo microlag del servidor el cliente acumula inputs y los
+// suelta en ráfaga al desatascarse el WAN; 400 nos hacía cerrar bots legítimos.
+// Un flood real es 10x esto: 800 sigue siendo barrera anti-DDoS sin falsos positivos.
+const MSG_RATE_HARD = parseInt(process.env.MSG_RATE_HARD, 10) || 800;
 // Backpressure WebSocket: si un cliente lento ya tiene >N bytes sin enviar en su
 // buffer, dejamos de mandarle snapshots hasta que se vacíe. Sin esto, los clientes
 // con red mala arrastran al servidor entero (cola del event loop crece sin parar).
-// 256KB ≈ 4-8 snapshots binarios típicos: tolera microcortes pero corta sangrías.
-const WS_BACKPRESSURE_MAX = parseInt(process.env.WS_BACKPRESSURE_MAX, 10) || (256 * 1024);
+// 64KB ≈ 1-2 snapshots binarios típicos: estricto pero evita el pile-up que veíamos
+// con 256KB (el cliente lento se llenaba rápido y nunca llegábamos a cortarlo).
+const WS_BACKPRESSURE_MAX = parseInt(process.env.WS_BACKPRESSURE_MAX, 10) || (64 * 1024);
 const LOG_FILE = path.join(__dirname, 'connections.log');
 const STATS_FILE = path.join(__dirname, 'stats.json');
 const RULES_FILE = path.join(__dirname, 'roomrules.json');

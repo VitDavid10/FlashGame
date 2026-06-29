@@ -90,7 +90,9 @@ function spawnBot(i) {
 
   ws.on('open', () => {
     stats.connected++;
-    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: genBotName(), colorBot: randColor(), colorTop: randColor(), tester: 'STRESS_TEST_DEVNET' }));
+    // bin:1 → snapshots binarios (~40% menos bytes que JSON). Reduce el coste de
+    // ws.send en el servidor cuando hay muchos bots, sin cambiar nada en el juego real.
+    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: genBotName(), colorBot: randColor(), colorTop: randColor(), tester: 'STRESS_TEST_DEVNET', bin: 1 }));
     stats.messagesSent++;
 
     // Movimiento tipo NPC: dirigirse al destino; al acercarse, elegir otro.
