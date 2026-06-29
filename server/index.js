@@ -1617,9 +1617,10 @@ wss.on('connection', (ws, req) => {
             } else if (msg.cmd === 'kickAll' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala) {
+                    sala.kickedUntil = Date.now() + 30000;   // 30s sin nuevas entradas
                     for (const cli of sala.clients.values()) { try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {} try { cli.ws.close(); } catch (e) {} }
                     logAdmin(msg.room, 'Echó a todos', '');
-                    log(`ADMIN vació la sala ${msg.room}`);
+                    log(`ADMIN vació la sala ${msg.room} (rechaza entradas 30s)`);
                 }
             } else if (msg.cmd === 'shutdown' && msg.room) {
                 const sala = rooms.get(msg.room);
@@ -1636,13 +1637,15 @@ wss.on('connection', (ws, req) => {
                 }
             } else if (msg.cmd === 'kickAllMode' && msg.mode) {
                 let n = 0;
+                const until = Date.now() + 30000;   // 30s sin nuevas entradas
                 for (const sala of rooms.values()) {
                     if (msg.mode !== 'all' && sala.mode !== msg.mode) continue;
+                    sala.kickedUntil = until;
                     for (const cli of sala.clients.values()) { try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {} try { cli.ws.close(); } catch (e) {} }
                     n += sala.clients.size;
                 }
                 logAdmin('-', `Echó a todos del modo ${msg.mode}`, `${n} jugadores`);
-                log(`ADMIN kickAll modo=${msg.mode}: ${n} jugadores`);
+                log(`ADMIN kickAll modo=${msg.mode}: ${n} jugadores (rechaza entradas 30s)`);
             } else if (msg.cmd === 'restartMode' && msg.mode) {
                 let n = 0;
                 for (const sala of rooms.values()) {
@@ -1762,6 +1765,14 @@ wss.on('connection', (ws, req) => {
             if (!room) {
                 ws.send(JSON.stringify({ t: 'noSlot', roomName, mode }));
                 log(`Sin sitio en ${comboKeyOf(mode, roomName)}: todas las layers llenas o a punto de acabar`);
+                return;
+            }
+            // Si la sala fue vaciada hace <30s por admin (kickAll), rechazar entradas
+            // durante esa ventana. Aplica a TODOS (jugadores y testers) — el cliente
+            // ve noSlot y reintenta más tarde. Útil para que el stress no rellene al
+            // instante una sala que el admin acaba de limpiar.
+            if (room.kickedUntil && Date.now() < room.kickedUntil) {
+                ws.send(JSON.stringify({ t: 'noSlot', roomName, mode }));
                 return;
             }
             const key = room.key;
