@@ -2979,11 +2979,19 @@
                 joined = true; restoreBtn(); netState.attempts = 0; netState.token = msg.token;
                 netState.lastWelcome = msg;
                 if (msg.state === 'playing') {
-                    // UX matchmaking: en vez de entrar al instante, mostrar
-                    // "BUSCANDO SALA..." sobre la práctica offline 3s y luego
-                    // "SALA ENCONTRADA" — da sensación de que el server reparte
-                    // gente entre layers, aunque la asignación ya está hecha.
-                    enterWithMatchmakingUX(ws, msg, isResume);
+                    if (isResume) {
+                        // Rejoin: entrar directo a la partida, sin matchmaking UX ni
+                        // pantalla de carga (ya estabas dentro, solo reconectas; el
+                        // server no re-spawnea ni re-aplica inmunidad).
+                        practiceMode = false; setLobbyBanner(null);
+                        enterOnlineGame(ws, msg, true);
+                    } else {
+                        // UX matchmaking: en vez de entrar al instante, mostrar
+                        // "BUSCANDO SALA..." sobre la práctica offline 3s y luego
+                        // "SALA ENCONTRADA" — da sensación de que el server reparte
+                        // gente entre layers, aunque la asignación ya está hecha.
+                        enterWithMatchmakingUX(ws, msg, isResume);
+                    }
                 } else {
                     // Sala en lobby (o reiniciándose): práctica offline mientras tanto
                     if (msg.state === 'ended') setLobbyBanner('🌐 ROOM ' + msg.roomName + ' — restarting...   ·   OFFLINE PRACTICE');
@@ -3091,7 +3099,7 @@
     // sin música. Bloquea el input (window.__loadingLock) para que no te metan en la
     // batalla de golpe; el spawn lleva 7s de inmunidad (5s carga + 2s de margen para
     // pillar tu skill y moverte). En resume NO se muestra: quieres volver rápido.
-    const LOADING_MS = 5000;
+    const LOADING_MS = 2000;
     function showLoadingScreen(durationMs, onDone) {
         window.__loadingLock = true;
         let ov = document.getElementById('loadingScreen');

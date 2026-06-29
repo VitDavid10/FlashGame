@@ -80,10 +80,10 @@ const MSG_RATE_HARD = parseInt(process.env.MSG_RATE_HARD, 10) || 800;
 // con 256KB (el cliente lento se llenaba rápido y nunca llegábamos a cortarlo).
 const WS_BACKPRESSURE_MAX = parseInt(process.env.WS_BACKPRESSURE_MAX, 10) || (64 * 1024);
 // Inmunidad al spawn (ms). El cliente, tras matchStart, pasa por la UX de
-// matchmaking (~3.6s) y luego por la pantalla de carga (5s) antes de darte el
+// matchmaking (~3.6s) y luego por la pantalla de carga (2s) antes de darte el
 // control. La inmunidad debe cubrir todo eso + 2s de margen para que cojas skill
-// y te posiciones sin morir: 3.6 + 5 + 2 ≈ 11s.
-const SPAWN_IMMUNE_MS = 11000;
+// y te posiciones sin morir: 3.6 + 2 + 2 ≈ 8s.
+const SPAWN_IMMUNE_MS = 8000;
 const LOG_FILE = path.join(__dirname, 'connections.log');
 const STATS_FILE = path.join(__dirname, 'stats.json');
 const RULES_FILE = path.join(__dirname, 'roomrules.json');
