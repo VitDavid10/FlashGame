@@ -42,7 +42,9 @@ const { tickRoomOnce } = require('./room-loop.js');   // tick por sala (paso pre
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
 const MIN_PLAYERS = parseInt(process.env.MIN_PLAYERS, 10) || 5;    // reales para empezar (editable por sala desde el panel)
-const TARGET_POP = parseInt(process.env.TARGET_POP, 10) || 10;     // población objetivo: reales + bots de relleno
+// Población objetivo (reales + bots de relleno). 0 = SIN bots de relleno: online
+// solo tiene jugadores reales. Editable por sala desde el panel si se quieren bots.
+const TARGET_POP = process.env.TARGET_POP != null ? parseInt(process.env.TARGET_POP, 10) : 0;
 const MATCH_MS = parseInt(process.env.MATCH_MS, 10) || (3 * 60 * 1000 + 50 * 1000);
 const GLOBAL_FILE = path.join(__dirname, 'globalsettings.json');
 let _glob = loadJson(GLOBAL_FILE, {});
