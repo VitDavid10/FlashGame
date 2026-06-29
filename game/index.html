@@ -3095,23 +3095,46 @@
         };
     }
 
-    // Pantalla de carga de 5s al entrar en una partida online: logo + barra verde,
-    // sin música. Bloquea el input (window.__loadingLock) para que no te metan en la
-    // batalla de golpe; el spawn lleva 7s de inmunidad (5s carga + 2s de margen para
-    // pillar tu skill y moverte). En resume NO se muestra: quieres volver rápido.
+    // Pantalla de carga al entrar en una partida online (estilo portada: cuadrícula
+    // verde + píldora + título neón), sin música. Bloquea el input (window.__loadingLock)
+    // para que no te metan en la batalla de golpe; el spawn lleva inmunidad de sobra.
+    // En resume NO se muestra: quieres volver rápido.
     const LOADING_MS = 2000;
     function showLoadingScreen(durationMs, onDone) {
         window.__loadingLock = true;
         let ov = document.getElementById('loadingScreen');
         if (!ov) {
+            // Estilos de la landing (cuadrícula verde, píldora, título neón) para que
+            // la carga tenga la misma calidad que la portada de pillwars.fun.
+            if (!document.getElementById('loadingScreenCss')) {
+                const st = document.createElement('style');
+                st.id = 'loadingScreenCss';
+                st.textContent =
+                    '#loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;' +
+                    'background-color:#050505;background-image:radial-gradient(circle at 50% 40%,rgba(0,255,136,.10),transparent 60%),' +
+                    'linear-gradient(rgba(0,255,136,.05) 1.5px,transparent 1.5px),linear-gradient(90deg,rgba(0,255,136,.05) 1.5px,transparent 1.5px);' +
+                    'background-size:100% 100%,50px 50px,50px 50px;animation:lsFade .25s ease}' +
+                    '#loadingScreen .ls-pill{width:58px;height:104px;border-radius:99px;background:linear-gradient(180deg,#fff 50%,#00ff88 50%);' +
+                    'border:3px solid #000;box-shadow:0 0 35px #00ff88;animation:lsFloat 2.4s ease-in-out infinite}' +
+                    '#loadingScreen .ls-title{font-family:\'Russo One\',sans-serif;font-size:clamp(46px,9vw,86px);line-height:1;color:#fff;' +
+                    'letter-spacing:3px;margin:0;animation:lsGlow 2.4s ease-in-out infinite}' +
+                    '#loadingScreen .ls-sub{font-family:\'Russo One\',sans-serif;font-size:clamp(13px,1.6vw,20px);color:#00ff88;font-weight:800;' +
+                    'text-transform:uppercase;letter-spacing:8px;margin-top:-12px}' +
+                    '#loadingScreen .ls-track{width:min(340px,70vw);height:12px;border:2px solid rgba(0,255,136,.6);border-radius:8px;overflow:hidden;' +
+                    'background:rgba(0,255,136,.06);box-shadow:0 0 14px rgba(0,255,136,.35)}' +
+                    '#loadingBar{width:0%;height:100%;background:linear-gradient(90deg,#00cc6e,#00ff88);box-shadow:0 0 12px #00ff88}' +
+                    '@keyframes lsFade{from{opacity:0}to{opacity:1}}' +
+                    '@keyframes lsFloat{0%,100%{transform:rotate(-30deg) translateY(0)}50%{transform:rotate(-30deg) translateY(-14px)}}' +
+                    '@keyframes lsGlow{0%,100%{text-shadow:0 0 18px rgba(0,255,136,.55),0 0 36px rgba(0,255,136,.35)}50%{text-shadow:0 0 28px rgba(0,255,136,.9),0 0 60px rgba(0,255,136,.55)}}';
+                document.head.appendChild(st);
+            }
             ov = document.createElement('div');
             ov.id = 'loadingScreen';
-            ov.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0f;gap:28px;';
             ov.innerHTML =
-                '<img src="../img/web.png" alt="PillWars" style="width:160px;height:160px;object-fit:contain;filter:drop-shadow(0 0 18px #00ff88);">' +
-                '<div style="font-family:\'Russo One\',sans-serif;font-size:40px;letter-spacing:4px;color:#fff;text-shadow:0 0 14px #00ff88,0 0 28px #00ff88;">PILLWARS</div>' +
-                '<div style="width:280px;height:14px;border:2px solid #00ff88;border-radius:8px;overflow:hidden;box-shadow:0 0 12px rgba(0,255,136,.5);">' +
-                '<div id="loadingBar" style="width:0%;height:100%;background:#00ff88;box-shadow:0 0 10px #00ff88;"></div></div>';
+                '<div class="ls-pill"></div>' +
+                '<h1 class="ls-title">PILLWARS</h1>' +
+                '<div class="ls-sub">The Crypto Arena</div>' +
+                '<div class="ls-track"><div id="loadingBar"></div></div>';
             document.body.appendChild(ov);
         }
         ov.style.display = 'flex';
