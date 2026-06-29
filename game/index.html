@@ -3178,9 +3178,9 @@
                 '#goSplash{position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;pointer-events:none}' +
                 '#goSplash .go-txt{font-family:\'Russo One\',sans-serif;font-size:clamp(120px,26vw,300px);line-height:1;color:#fff;' +
                 '-webkit-text-stroke:4px #000;text-shadow:0 0 30px #00ff88,0 0 70px #00ff88,0 6px 0 rgba(0,0,0,.5);' +
-                'animation:goPop .9s cubic-bezier(.2,1.4,.3,1) forwards}' +
-                '@keyframes goPop{0%{transform:scale(.2);opacity:0}25%{transform:scale(1.15);opacity:1}45%{transform:scale(1)}' +
-                '75%{transform:scale(1);opacity:1}100%{transform:scale(1.4);opacity:0}}';
+                'animation:goPop 1.6s cubic-bezier(.2,1.4,.3,1) forwards}' +
+                '@keyframes goPop{0%{transform:scale(.2);opacity:0}14%{transform:scale(1.15);opacity:1}24%{transform:scale(1)}' +
+                '80%{transform:scale(1);opacity:1}100%{transform:scale(1.4);opacity:0}}';
             document.head.appendChild(st);
         }
         const old = document.getElementById('goSplash'); if (old) old.remove();
@@ -3188,7 +3188,7 @@
         el.id = 'goSplash';
         el.innerHTML = '<div class="go-txt">GO!</div>';
         document.body.appendChild(el);
-        setTimeout(() => el.remove(), 950);
+        setTimeout(() => el.remove(), 1650);
     }
 
     function enterOnlineGame(ws, msg, isResume) {
