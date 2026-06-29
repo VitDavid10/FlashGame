@@ -2075,6 +2075,8 @@ function enforceRoomCaps() {
             const r = rulesOf(ck);
             if (r.maxPlayers !== cap) { r.maxPlayers = cap; rulesDirty = true; n++; }
             if (r.targetPop !== 0) { r.targetPop = 0; rulesDirty = true; n++; }
+            if (r.botsEnabled !== false) { r.botsEnabled = false; rulesDirty = true; n++; }
+            if (r.botCount !== 0) { r.botCount = 0; rulesDirty = true; n++; }
         }
     }
     if (n) log(`Política por modo aplicada: classic ${ROOM_CAPS.classic}, arcade ${ROOM_CAPS.arcade}, población 0 (${n} ajustes)`);
