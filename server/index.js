@@ -92,6 +92,11 @@ const RULES_FILE = path.join(__dirname, 'roomrules.json');
 
 const PRICES = ['Free', '5$', '10$', '20$', '50$'];
 const CATALOG_MODES = ['classic', 'arcade'];
+// Tope de jugadores reales por sala, por modo. Se fija en el arranque para TODAS
+// las salas del catálogo (enforceRoomCaps), así queda en código y llega al VPS por
+// git (roomrules.json es gitignored y no se despliega). Editable en vivo desde el
+// panel; se reaplica esta política en cada reinicio.
+const ROOM_CAPS = { classic: 35, arcade: 25 };
 // Layers por combo (mode × price). Cada combo tiene N instancias paralelas:
 // el matchmaker (pickLayer) te mete en L1 hasta LLENARLA (clients.size >= maxPlayers),
 // y solo entonces pasa a L2. NO hay umbral del 90%: es 100% estricto. Las layers
@@ -217,9 +222,9 @@ function rulesOf(key) {
     const r = roomRules[key];
     if (r.minReal == null) r.minReal = MIN_PLAYERS;
     if (r.targetPop == null) r.targetPop = TARGET_POP;
-    // Tope de jugadores REALES por sala (30 por defecto; editable por sala desde el panel).
-    // 30 × 10 salas = 300 concurrentes, el techo cómodo del VPS antes de que suba la latencia.
-    if (r.maxPlayers == null) r.maxPlayers = 30;
+    // Tope de jugadores REALES por sala. Default por modo (ROOM_CAPS); enforceRoomCaps
+    // lo reaplica en el arranque a todas las salas del catálogo.
+    if (r.maxPlayers == null) r.maxPlayers = key.startsWith('classic') ? ROOM_CAPS.classic : ROOM_CAPS.arcade;
     // Cuenta atrás de lobby (ms) antes de empezar al alcanzar el mínimo de reales.
     // 0 = empezar al instante. Por defecto solo arcade espera 20s (es donde tiene
     // sentido: fin de partida → menú → cuenta atrás). Classic sigue al instante.
@@ -2055,6 +2060,23 @@ setInterval(() => {
 
 purgeOldLogs();                              // limpia logs viejos al arrancar
 setInterval(purgeOldLogs, 24 * 3600 * 1000); // y una vez al día
+
+// Política de topes por modo: fija maxPlayers en TODAS las salas del catálogo al
+// arrancar (classic 35, arcade 25). Sobrescribe lo persistido para que la política
+// viva en código y se despliegue por git. Editable en vivo, se reaplica al reiniciar.
+function enforceRoomCaps() {
+    let n = 0;
+    for (const mode of CATALOG_MODES) {
+        const cap = ROOM_CAPS[mode] || 25;
+        for (const price of PRICES) {
+            const ck = comboKeyOf(mode, price);
+            const r = rulesOf(ck);
+            if (r.maxPlayers !== cap) { r.maxPlayers = cap; rulesDirty = true; n++; }
+        }
+    }
+    if (n) log(`Topes por modo aplicados: classic ${ROOM_CAPS.classic}, arcade ${ROOM_CAPS.arcade} (${n} combos ajustados)`);
+}
+enforceRoomCaps();
 
 initLayers();   // pre-crea las 20 salas (LAYERS_PER_COMBO × 2 modos × 5 precios)
 
