@@ -3036,6 +3036,13 @@
                 showSystemMsg('The rejoin window has closed. Your slot was released and you need to enter again.', 'REJOIN EXPIRED');
             } else if (msg.t === 'kicked') {
                 window.__kicked = true;
+                window.__kickedSeconds = (msg.secondsLeft | 0) || 30;
+            } else if (msg.t === 'kickedWait') {
+                // Reentro rechazado durante la ventana de bloqueo del admin.
+                const s = (msg.secondsLeft | 0) || 30;
+                if (gameRunning) abandonNet('You were kicked. Wait ' + s + ' seconds before rejoining.');
+                else showSystemMsg('You were kicked. Wait ' + s + ' seconds before rejoining.', 'KICKED');
+                try { ws.close(); } catch (e) {}
             } else if (msg.t === 'matchEnd') {
                 // Marcar fin de partida SÍNCRONO al recibirlo: así el lobbyPreview
                 // que el server manda justo después queda bloqueado por la guarda
@@ -3052,7 +3059,9 @@
             restoreBtn();
             if (window.__kicked) {
                 window.__kicked = false;
-                if (gameRunning) abandonNet('You have been kicked by an administrator.');
+                const s = window.__kickedSeconds | 0; window.__kickedSeconds = 0;
+                const txt = 'You have been kicked by an administrator.' + (s ? ' Wait ' + s + ' seconds before rejoining.' : '');
+                if (gameRunning) abandonNet(txt); else showSystemMsg(txt, 'KICKED');
                 return;
             }
             // Cierre limpio tras matchEnd: el modal de resultados ya está abierto

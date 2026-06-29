@@ -103,6 +103,11 @@ function isLayerOffForPrice(price, layerIdx) {
 }
 
 const rooms = new Map();   // layerKey → room
+// IPs echadas por admin: ip → timestamp expiración. Mientras esté >now, la IP
+// no puede entrar a ninguna sala (ve kickedWait). Se limpia automáticamente al
+// expirar en el chequeo de join (sin GC explícito, no crece sin control).
+const kickedIps = new Map();
+const KICKED_MS = 30000;
 const resumeTokens = new Map();   // token → { roomKey: layerKey, playerId }
 
 // %CPU del propio servidor, muestreado cada segundo (expuesto en admin/health).
@@ -863,26 +868,30 @@ function startMatch(room) {
 }
 
 function restartRoom(room) {
+    // Vaciar la sala al reiniciar: cerrar todas las conexiones tras el broadcast.
+    // Antes se mantenían los jugadores entre partidas, lo que dejaba a los mismos
+    // 30 dentro tras cada arcade → otros que esperaban fuera no tenían chance. Ahora
+    // todos salen y el lobby se llena desde 0. El cliente ve roomRestart + close y
+    // muestra TRY AGAIN; el stress-bot reentra solo tras su delay aleatorio.
+    const closed = room.clients.size;
     broadcast(room, { t: 'roomRestart' });
+    for (const cli of room.clients.values()) {
+        try { cli.ws.close(); } catch (e) {}
+    }
+    // room.clients se vacía vía ws.on('close'); no esperamos a eso para pasar a waiting
     room.state = 'waiting';
     room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false;
     room.deadRemovals.clear(); room.pendingRemovals.clear();
     if (room.worker) {
-        const rules = rulesOf(room.comboKey);
         room.worker.postMessage({
-            type: 'restartSim', mode: room.mode, rules,
+            type: 'restartSim', mode: room.mode, rules: rulesOf(room.comboKey),
             matchMs: MATCH_MS, aoiEnabled: AOI_ENABLED, snapshotEvery: SNAPSHOT_EVERY,
         });
-        for (const [pid, cli] of room.clients) {
-            room.worker.postMessage({ type: 'addPlayer', pid, opts: cli.opts || {}, aspect: cli.aspect || 1, useBin: !!cli.useBin });
-        }
     } else {
         room.sim = buildSim(room.mode, rulesOf(room.comboKey));
-        for (const [pid, cli] of room.clients) { room.sim.addPlayer(pid, cli.opts || {}); }
     }
     sendWaiting(room);
-    armLobby(room);
-    log(`Sala reiniciada: ${room.key}`);
+    log(`Sala reiniciada: ${room.key} (${closed} expulsados, lobby empieza desde 0)`);
 }
 
 function shutdownRoom(room, motivo) {
@@ -1617,10 +1626,14 @@ wss.on('connection', (ws, req) => {
             } else if (msg.cmd === 'kickAll' && msg.room) {
                 const sala = rooms.get(msg.room);
                 if (sala) {
-                    sala.kickedUntil = Date.now() + 30000;   // 30s sin nuevas entradas
-                    for (const cli of sala.clients.values()) { try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {} try { cli.ws.close(); } catch (e) {} }
-                    logAdmin(msg.room, 'Echó a todos', '');
-                    log(`ADMIN vació la sala ${msg.room} (rechaza entradas 30s)`);
+                    const until = Date.now() + KICKED_MS;
+                    for (const cli of sala.clients.values()) {
+                        if (cli.ip) kickedIps.set(cli.ip, until);
+                        try { cli.ws.send(JSON.stringify({ t: 'kicked', secondsLeft: 30 })); } catch (e) {}
+                        try { cli.ws.close(); } catch (e) {}
+                    }
+                    logAdmin(msg.room, 'Echó a todos', sala.clients.size + ' IPs bloqueadas 30s');
+                    log(`ADMIN vació la sala ${msg.room} — ${sala.clients.size} IPs bloqueadas 30s`);
                 }
             } else if (msg.cmd === 'shutdown' && msg.room) {
                 const sala = rooms.get(msg.room);
@@ -1637,15 +1650,18 @@ wss.on('connection', (ws, req) => {
                 }
             } else if (msg.cmd === 'kickAllMode' && msg.mode) {
                 let n = 0;
-                const until = Date.now() + 30000;   // 30s sin nuevas entradas
+                const until = Date.now() + KICKED_MS;
                 for (const sala of rooms.values()) {
                     if (msg.mode !== 'all' && sala.mode !== msg.mode) continue;
-                    sala.kickedUntil = until;
-                    for (const cli of sala.clients.values()) { try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {} try { cli.ws.close(); } catch (e) {} }
+                    for (const cli of sala.clients.values()) {
+                        if (cli.ip) kickedIps.set(cli.ip, until);
+                        try { cli.ws.send(JSON.stringify({ t: 'kicked', secondsLeft: 30 })); } catch (e) {}
+                        try { cli.ws.close(); } catch (e) {}
+                    }
                     n += sala.clients.size;
                 }
-                logAdmin('-', `Echó a todos del modo ${msg.mode}`, `${n} jugadores`);
-                log(`ADMIN kickAll modo=${msg.mode}: ${n} jugadores (rechaza entradas 30s)`);
+                logAdmin('-', `Echó a todos del modo ${msg.mode}`, `${n} IPs bloqueadas 30s`);
+                log(`ADMIN kickAll modo=${msg.mode}: ${n} IPs bloqueadas 30s`);
             } else if (msg.cmd === 'restartMode' && msg.mode) {
                 let n = 0;
                 for (const sala of rooms.values()) {
@@ -1761,18 +1777,18 @@ wss.on('connection', (ws, req) => {
             // Matchmaker: elige la layer del combo (apilando). null = todas mal
             // (llenas, a punto de acabar o ended). En ese caso el cliente recibe
             // noSlot y sigue en práctica offline.
+            // Bloqueo por IP: si esta IP fue echada por admin en los últimos 30s,
+            // rechazar la entrada a CUALQUIER sala (no solo a la kickadada). Avisamos
+            // con kickedWait + segundos restantes para que el cliente lo muestre.
+            const kickExp = kickedIps.get(ip);
+            if (kickExp && kickExp > Date.now()) {
+                ws.send(JSON.stringify({ t: 'kickedWait', secondsLeft: Math.ceil((kickExp - Date.now()) / 1000) }));
+                return;
+            }
             room = pickLayer(mode, roomName);
             if (!room) {
                 ws.send(JSON.stringify({ t: 'noSlot', roomName, mode }));
                 log(`Sin sitio en ${comboKeyOf(mode, roomName)}: todas las layers llenas o a punto de acabar`);
-                return;
-            }
-            // Si la sala fue vaciada hace <30s por admin (kickAll), rechazar entradas
-            // durante esa ventana. Aplica a TODOS (jugadores y testers) — el cliente
-            // ve noSlot y reintenta más tarde. Útil para que el stress no rellene al
-            // instante una sala que el admin acaba de limpiar.
-            if (room.kickedUntil && Date.now() < room.kickedUntil) {
-                ws.send(JSON.stringify({ t: 'noSlot', roomName, mode }));
                 return;
             }
             const key = room.key;
