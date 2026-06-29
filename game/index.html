@@ -3240,8 +3240,10 @@
             // Entrada nueva: carga (solo sonido de loading) hasta que llegue el primer
             // snapshot (partida realmente cargada); al terminar GO!, arranca la música y
             // se libera el input (aún queda inmunidad de spawn).
+            // Listo = la cámara ya saltó a tu píldora (_camInit), o sea que la escena
+            // se está dibujando contigo en pantalla — no solo "llegó un snapshot".
             showLoadingScreen(LOADING_MS,
-                () => sim && sim.isRemote && sim.snaps && sim.snaps.length > 0,
+                () => sim && sim.isRemote && sim._camInit && myCells().length > 0,
                 () => { showGoSplash(); SoundManager.playMusic(); });
         }
         if (isResume) spawnFloatingText('RECONNECTED', '#00ff88');
