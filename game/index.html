@@ -2205,7 +2205,10 @@
             this.timeScale = delta / (1000 / 60); if (this.timeScale > 3) this.timeScale = 3;
             if (this.now - this._lastInputSent >= 33) {
                 this._lastInputSent = this.now;
-                const i = this._lastInput;
+                // Durante la pantalla de carga bloqueamos el movimiento: mandamos
+                // input nulo aunque el ratón se mueva, para que no te arrastren a la
+                // batalla antes de que termine la carga.
+                const i = window.__loadingLock ? null : this._lastInput;
                 this._send(i ? { t: 'input', tx: i.tx, ty: i.ty } : { t: 'input', tx: null, ty: null });
             }
             // Ping para el HUD de red: 1 cada segundo
@@ -3081,6 +3084,41 @@
         };
     }
 
+    // Pantalla de carga de 5s al entrar en una partida online: logo + barra verde,
+    // sin música. Bloquea el input (window.__loadingLock) para que no te metan en la
+    // batalla de golpe; el spawn lleva 7s de inmunidad (5s carga + 2s de margen para
+    // pillar tu skill y moverte). En resume NO se muestra: quieres volver rápido.
+    const LOADING_MS = 5000;
+    function showLoadingScreen(durationMs, onDone) {
+        window.__loadingLock = true;
+        let ov = document.getElementById('loadingScreen');
+        if (!ov) {
+            ov = document.createElement('div');
+            ov.id = 'loadingScreen';
+            ov.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0f;gap:28px;';
+            ov.innerHTML =
+                '<img src="../img/web.png" alt="PillWars" style="width:160px;height:160px;object-fit:contain;filter:drop-shadow(0 0 18px #00ff88);">' +
+                '<div style="font-family:\'Russo One\',sans-serif;font-size:40px;letter-spacing:4px;color:#fff;text-shadow:0 0 14px #00ff88,0 0 28px #00ff88;">PILLWARS</div>' +
+                '<div style="width:280px;height:14px;border:2px solid #00ff88;border-radius:8px;overflow:hidden;box-shadow:0 0 12px rgba(0,255,136,.5);">' +
+                '<div id="loadingBar" style="width:0%;height:100%;background:#00ff88;box-shadow:0 0 10px #00ff88;"></div></div>';
+            document.body.appendChild(ov);
+        }
+        ov.style.display = 'flex';
+        const bar = document.getElementById('loadingBar');
+        bar.style.transition = 'none'; bar.style.width = '0%';
+        // forzar reflow antes de animar
+        void bar.offsetWidth;
+        bar.style.transition = 'width ' + durationMs + 'ms linear';
+        bar.style.width = '100%';
+        if (window.__loadingTimer) clearTimeout(window.__loadingTimer);
+        window.__loadingTimer = setTimeout(() => {
+            window.__loadingTimer = null;
+            window.__loadingLock = false;
+            ov.style.display = 'none';
+            if (onDone) onDone();
+        }, durationMs);
+    }
+
     function enterOnlineGame(ws, msg, isResume) {
         practiceMode = false; setLobbyBanner(null);
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // ocultar wallet durante la partida
@@ -3107,8 +3145,15 @@
         els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
         document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
         lastFrameTime = Date.now();
-        SoundManager.playMusic();   // también en resume (antes se quedaba en silencio)
         gameRunning = true;
+        if (isResume) {
+            window.__loadingLock = false;
+            SoundManager.playMusic();   // resume: volvemos rápido, sin carga
+        } else {
+            // Entrada nueva: 5s de carga sin música; al terminar arranca la música
+            // y se libera el input (todavía quedan 2s de inmunidad de spawn).
+            showLoadingScreen(LOADING_MS, () => { SoundManager.playMusic(); });
+        }
         if (isResume) spawnFloatingText('RECONNECTED', '#00ff88');
         // Persiste info de rejoin: si la pestaña se cierra ahora, el user podrá
         // volver a entrar sin pagar pulsando "REJOIN" en el menú durante 28s.

@@ -369,10 +369,12 @@
         }
         removePlayer(id) { this.players.delete(id); }
 
-        spawnPlayer(id) {
+        spawnPlayer(id, initialImmuneMs) {
             const p = this.players.get(id);
             const pos = this.getSafePos(this.mapSize);
-            p.cells = [new Cell(pos.x, pos.y, INITIAL_RADIUS, p.colorBot, p.colorTop, p.name, false, p.skinUrl, id, this.now)];
+            const cell = new Cell(pos.x, pos.y, INITIAL_RADIUS, p.colorBot, p.colorTop, p.name, false, p.skinUrl, id, this.now);
+            if (initialImmuneMs > 0) cell.immuneTime = initialImmuneMs;
+            p.cells = [cell];
             p.alive = true;
             p.splitMilestones = { level1: false, level2: false };
             p.lastSplitTime = -Infinity;

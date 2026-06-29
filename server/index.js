@@ -79,6 +79,11 @@ const MSG_RATE_HARD = parseInt(process.env.MSG_RATE_HARD, 10) || 800;
 // 64KB ≈ 1-2 snapshots binarios típicos: estricto pero evita el pile-up que veíamos
 // con 256KB (el cliente lento se llenaba rápido y nunca llegábamos a cortarlo).
 const WS_BACKPRESSURE_MAX = parseInt(process.env.WS_BACKPRESSURE_MAX, 10) || (64 * 1024);
+// Inmunidad al spawn (ms). El cliente, tras matchStart, pasa por la UX de
+// matchmaking (~3.6s) y luego por la pantalla de carga (5s) antes de darte el
+// control. La inmunidad debe cubrir todo eso + 2s de margen para que cojas skill
+// y te posiciones sin morir: 3.6 + 5 + 2 ≈ 11s.
+const SPAWN_IMMUNE_MS = 11000;
 const LOG_FILE = path.join(__dirname, 'connections.log');
 const STATS_FILE = path.join(__dirname, 'stats.json');
 const RULES_FILE = path.join(__dirname, 'roomrules.json');
@@ -845,7 +850,7 @@ function startMatch(room) {
     room.lastTick = Date.now();
     if (room.mode !== 'classic') room.endsAt = Date.now() + MATCH_MS;
     if (room.worker) {
-        room.worker.postMessage({ type: 'startMatch' });
+        room.worker.postMessage({ type: 'startMatch', immuneMs: SPAWN_IMMUNE_MS });
         for (const [pid, cli] of room.clients) {
             cli.paidFee = 0;
             cli._matchSkillUses = 0;
@@ -858,7 +863,7 @@ function startMatch(room) {
     } else {
         for (const [pid, cli] of room.clients) {
             if (!room.sim.players.has(pid)) room.sim.addPlayer(pid, cli.opts || {});
-            room.sim.spawnPlayer(pid);
+            room.sim.spawnPlayer(pid, SPAWN_IMMUNE_MS);
             cli.paidFee = 0;
             if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
         }
@@ -1851,8 +1856,9 @@ wss.on('connection', (ws, req) => {
             if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
             if (!TESTER_OK) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
             if (room.state === 'playing') {
-                if (room.worker) room.worker.postMessage({ type: 'spawnPlayer', pid: playerId });
-                else room.sim.spawnPlayer(playerId);
+                // Tarde-join: spawn con inmunidad para que vea su loading y se posicione.
+                if (room.worker) room.worker.postMessage({ type: 'spawnPlayer', pid: playerId, immuneMs: SPAWN_IMMUNE_MS });
+                else room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS);
                 refillBots(room);
             }
             ws.send(welcomeMsg(room, playerId, token, undefined, useBin ? { useBin: true } : null));

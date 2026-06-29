@@ -332,7 +332,7 @@ parentPort.on('message', (msg) => {
             break;
 
         case 'spawnPlayer':
-            sim.spawnPlayer(msg.pid);
+            sim.spawnPlayer(msg.pid, msg.immuneMs | 0);
             break;
 
         case 'setSpectators':
@@ -379,7 +379,7 @@ parentPort.on('message', (msg) => {
             if (mode !== 'classic') endsAt = Date.now() + matchMs;
             for (const pid of clients.keys()) {
                 if (!sim.players.has(pid)) sim.addPlayer(pid, {});
-                sim.spawnPlayer(pid);
+                sim.spawnPlayer(pid, msg.immuneMs | 0);
             }
             parentPort.postMessage({ type: 'matchStarted', foods: sim.foods, mapSize: sim.config.mapSize });
             break;
