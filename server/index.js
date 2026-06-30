@@ -87,11 +87,11 @@ const MSG_RATE_HARD = parseInt(process.env.MSG_RATE_HARD, 10) || 800;
 // 64KB ≈ 1-2 snapshots binarios típicos: estricto pero evita el pile-up que veíamos
 // con 256KB (el cliente lento se llenaba rápido y nunca llegábamos a cortarlo).
 const WS_BACKPRESSURE_MAX = parseInt(process.env.WS_BACKPRESSURE_MAX, 10) || (64 * 1024);
-// Inmunidad al spawn (ms). El cliente, tras matchStart, pasa por la UX de
-// matchmaking (~3.6s) y luego por la pantalla de carga (2s) antes de darte el
-// control. La inmunidad debe cubrir todo eso + 2s de margen para que cojas skill
-// y te posiciones sin morir: 3.6 + 2 + 2 ≈ 8s.
-const SPAWN_IMMUNE_MS = 8000;
+// Inmunidad al spawn (ms). Ahora el spawn ocurre cuando el cliente manda 'ready'
+// (al terminar su carga), así que esto es PURA gracia de juego: el tiempo que tienes
+// inmune nada más entrar para coger skill y posicionarte. No cubre carga ni
+// matchmaking (eso ya pasó antes del spawn).
+const SPAWN_IMMUNE_MS = 3000;
 const LOG_FILE = path.join(__dirname, 'connections.log');
 const STATS_FILE = path.join(__dirname, 'stats.json');
 const RULES_FILE = path.join(__dirname, 'roomrules.json');
@@ -862,26 +862,30 @@ function startMatch(room) {
     room.startAt = null;
     room.lastTick = Date.now();
     if (room.mode !== 'classic') room.endsAt = Date.now() + MATCH_MS;
+    // NO spawneamos aquí: cada jugador se spawnea cuando su cliente manda 'ready'
+    // (al terminar su pantalla de carga). Así la inmunidad empieza justo cuando entra
+    // de verdad, dure lo que dure su carga, y no está expuesto mientras carga.
     if (room.worker) {
-        room.worker.postMessage({ type: 'startMatch', immuneMs: SPAWN_IMMUNE_MS });
+        room.worker.postMessage({ type: 'startMatch' });
         for (const [pid, cli] of room.clients) {
             cli.paidFee = 0;
             cli._matchSkillUses = 0;
             cli._alive = true;
             cli._killStreak = 0;
+            cli._spawned = false;
             if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
         }
         refillBots(room);
-        log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales [worker]`);
+        log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales [worker] (spawn al ready)`);
     } else {
         for (const [pid, cli] of room.clients) {
             if (!room.sim.players.has(pid)) room.sim.addPlayer(pid, cli.opts || {});
-            room.sim.spawnPlayer(pid, SPAWN_IMMUNE_MS);
             cli.paidFee = 0;
+            cli._spawned = false;
             if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
         }
         refillBots(room);
-        log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales + ${new Set(room.sim.enemies.map(e => e.id)).size} bots de relleno`);
+        log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales (spawn al ready)`);
     }
 }
 
@@ -1872,7 +1876,7 @@ wss.on('connection', (ws, req) => {
             // Eco en welcome.useBin para que el cliente decodifique los frames.
             const useBin = msg.bin === 1 || msg.bin === true;
             const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
-            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK, useBin, aspect, _alive, _killStreak });
+            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK, useBin, aspect, _alive, _killStreak, _spawned: false });
             sendEcon(room.clients.get(playerId), room);
             // Stats por COMBO (compartidas entre layers).
             const st_ = statsOf(ck); st_.entradas++; if (!TESTER_OK) st_.entradasReal++; statsDirty = true;
@@ -1880,9 +1884,8 @@ wss.on('connection', (ws, req) => {
             if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
             if (!TESTER_OK) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
             if (room.state === 'playing') {
-                // Tarde-join: spawn con inmunidad para que vea su loading y se posicione.
-                if (room.worker) room.worker.postMessage({ type: 'spawnPlayer', pid: playerId, immuneMs: SPAWN_IMMUNE_MS });
-                else room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS);
+                // Tarde-join: NO spawneamos aquí. El cliente verá su pantalla de carga y
+                // mandará 'ready'; ahí lo spawneamos con inmunidad (empieza al entrar).
                 refillBots(room);
             }
             ws.send(welcomeMsg(room, playerId, token, undefined, useBin ? { useBin: true } : null));
@@ -1898,6 +1901,18 @@ wss.on('connection', (ws, req) => {
         }
         if (!room || !playerId) return;
 
+        if (msg.t === 'ready') {
+            // El cliente terminó su pantalla de carga: lo spawneamos AHORA con inmunidad,
+            // así empieza justo cuando entra de verdad (no expuesto mientras cargaba).
+            const cli = room.clients.get(playerId);
+            if (room.state === 'playing' && cli && !cli._spawned) {
+                cli._spawned = true;
+                if (room.worker) room.worker.postMessage({ type: 'spawnPlayer', pid: playerId, immuneMs: SPAWN_IMMUNE_MS });
+                else { if (!room.sim.players.has(playerId)) room.sim.addPlayer(playerId, cli.opts || {}); room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS); }
+                refillBots(room);
+            }
+            return;
+        }
         if (msg.t === 'input') {
             const input = (typeof msg.tx === 'number' && typeof msg.ty === 'number') ? { tx: msg.tx, ty: msg.ty } : null;
             if (room.worker) room.worker.postMessage({ type: 'setInput', pid: playerId, input });

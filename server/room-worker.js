@@ -383,9 +383,10 @@ parentPort.on('message', (msg) => {
             startAt = null;
             lastTick = Date.now();
             if (mode !== 'classic') endsAt = Date.now() + matchMs;
+            // Sin spawn: cada jugador se spawnea cuando el main reenvía su 'ready'
+            // (mensaje 'spawnPlayer'). Solo aseguramos que existe en sim.players.
             for (const pid of clients.keys()) {
                 if (!sim.players.has(pid)) sim.addPlayer(pid, {});
-                sim.spawnPlayer(pid, msg.immuneMs | 0);
             }
             parentPort.postMessage({ type: 'matchStarted', foods: sim.foods, mapSize: sim.config.mapSize });
             break;
