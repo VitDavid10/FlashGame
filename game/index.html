@@ -2978,32 +2978,48 @@
     // UX matchmaking: muestra "BUSCANDO SALA..." (puntos animados) durante 3s
     // sobre la práctica offline, luego "SALA ENCONTRADA" 600 ms, y entra.
     // Aborta si el usuario pulsó BACK o el ws se cerró antes.
-    let _mmTimer = null, _mmTimeout1 = null, _mmTimeout2 = null;
+    let _mmTimer = null, _mmTimeout1 = null, _mmTimeout2 = null, _findingDone = false, _pendingWelcome = null, _pendingWs = null, _pendingAt = 0;
     function cancelMatchmakingUX() {
         if (_mmTimer) { clearInterval(_mmTimer); _mmTimer = null; }
         if (_mmTimeout1) { clearTimeout(_mmTimeout1); _mmTimeout1 = null; }
         if (_mmTimeout2) { clearTimeout(_mmTimeout2); _mmTimeout2 = null; }
+        _findingDone = false; _pendingWelcome = null; _pendingWs = null;
     }
-    // Solo cuando te unes a una sala YA EN JUEGO: "FINDING ROOM" (3s) → "ROOM FOUND"
-    // (0.6s) → entras. Si la sala está esperando NO se usa (eso va directo al lobby
-    // con la cuenta atrás; un "ROOM FOUND" ahí no tenía sentido).
-    function enterPlayingWithFindingUX(ws, msg) {
+    // FINDING ROOM (3s) al conectar, mientras se localiza la sala. El welcome llega
+    // antes, se bufferiza, y al terminar los 3s se aplica: si la sala YA JUEGA →
+    // ROOM FOUND (0.6s) → entras; si ESPERA → WAITING + cuenta atrás (sin FOUND).
+    function startFindingUX(mode) {
         cancelMatchmakingUX();
         practiceMode = true;
-        if (!gameRunning) startPracticeGame(msg.mode);
+        if (!gameRunning) startPracticeGame(mode);
         let n = 0;
         const baseText = 'FINDING ROOM';
         setLobbyBanner(baseText + '.', 'search');
         _mmTimer = setInterval(() => { n++; setLobbyBanner(baseText + '.'.repeat((n % 3) + 1), 'search'); }, 400);
         _mmTimeout1 = setTimeout(() => {
             if (_mmTimer) { clearInterval(_mmTimer); _mmTimer = null; }
+            _findingDone = true;
+            if (_pendingWelcome) { const m = _pendingWelcome, w = _pendingWs; _pendingWelcome = null; _pendingWs = null; applyWelcome(w, m); }
+        }, 3000);
+    }
+    // Aplica el welcome tras el FINDING. playing → ROOM FOUND → entrar; waiting → lobby.
+    function applyWelcome(ws, msg) {
+        if (!netState || netState._matchOver || netState.ws !== ws) { setLobbyBanner(null); return; }
+        if (msg.state === 'playing') {
             setLobbyBanner('ROOM FOUND' + (msg.roomName ? ' · <b>' + msg.roomName + '</b>' : ''), 'found');
             _mmTimeout2 = setTimeout(() => {
                 if (!netState || netState._matchOver || netState.ws !== ws) { setLobbyBanner(null); return; }
                 practiceMode = false; setLobbyBanner(null);
                 enterOnlineGame(ws, msg, false);
             }, 600);
-        }, 3000);
+        } else {
+            if (msg.state === 'ended') setLobbyBanner('<b>' + msg.roomName + '</b> · RESTARTING…');
+            else setLobbyBanner('<b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
+            if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
+            // Descontar lo ya transcurrido desde que llegó el welcome (el FINDING tardó ~3s).
+            const startIn = (msg.startIn > 0) ? Math.max(0, msg.startIn - (Date.now() - _pendingAt)) : 0;
+            if (startIn > 0) runLobbyCountdown(startIn, msg.roomName, msg.count, msg.needed);
+        }
     }
 
     function netConnect(isResume) {
@@ -3020,6 +3036,8 @@
         const ws = new WebSocket(netState.url);
         ws.binaryType = 'arraybuffer';
         netState.ws = ws;
+        // FINDING ROOM al conectar (localizando sala). En rejoin no: entra directo.
+        if (!isResume) startFindingUX((netState.joinMsg && netState.joinMsg.mode) || currentGameMode || 'arcade');
         ws.onopen = () => {
             const j = Object.assign({}, netState.joinMsg);
             if (isResume && netState.token) j.resume = netState.token;
@@ -3043,24 +3061,16 @@
             if (msg.t === 'welcome' && !joined) {
                 joined = true; restoreBtn(); netState.attempts = 0; netState.token = msg.token;
                 netState.lastWelcome = msg;
-                if (msg.state === 'playing') {
-                    if (isResume) {
-                        // Rejoin: entrar directo, sin FINDING ni loading.
-                        cancelMatchmakingUX(); practiceMode = false; setLobbyBanner(null);
-                        enterOnlineGame(ws, msg, true);
-                    } else {
-                        // Te unes a una partida EN CURSO → FINDING ROOM (3s) → ROOM FOUND.
-                        enterPlayingWithFindingUX(ws, msg);
-                    }
+                if (isResume) {
+                    // Rejoin: entrar directo, sin FINDING ni theatrics.
+                    cancelMatchmakingUX(); practiceMode = false; setLobbyBanner(null);
+                    enterOnlineGame(ws, msg, true);
                 } else {
-                    // Sala esperando → directo al lobby + cuenta atrás (sin FINDING/FOUND).
-                    cancelMatchmakingUX();
-                    // Sala en lobby (o reiniciándose): práctica offline mientras tanto
-                    if (msg.state === 'ended') setLobbyBanner('<b>' + msg.roomName + '</b> · RESTARTING…');
-                    else setLobbyBanner('<b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
-                    if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
-                    // Si entras con una cuenta atrás de lobby ya en marcha, muéstrala.
-                    if (msg.startIn > 0) runLobbyCountdown(msg.startIn, msg.roomName, msg.count, msg.needed);
+                    _pendingAt = Date.now();
+                    // Si el FINDING ya acabó (welcome lento) aplicamos ya; si no, se
+                    // bufferiza y se aplica al terminar los 3s.
+                    if (_findingDone) applyWelcome(ws, msg);
+                    else { _pendingWelcome = msg; _pendingWs = ws; }
                 }
             } else if (msg.t === 'waiting') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
