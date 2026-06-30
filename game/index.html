@@ -1200,6 +1200,7 @@
             const s = this.sounds[name]; s.currentTime = 0; s.volume = Math.min(1, vol * SFX_MASTER); s.play().catch(e => {});
         },
         stop: function(name) { if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },
+        stopAllSfx: function() { for (const k in this.sounds) { try { this.sounds[k].pause(); this.sounds[k].currentTime = 0; } catch (e) {} } },
         playSimpleHover: function() { if (Date.now() - this.lastSimpleHoverTime < 100) return; this.lastSimpleHoverTime = Date.now(); this.play('simplehover'); },
         playKill: function() { const now = Date.now(); if (now - this.lastKillTime < 150) return; this.lastKillTime = now; const snd = Math.random() < 0.5 ? 'kill1' : 'kill2'; this.play(snd); },
         playFloatKill: function() { const now = Date.now(); if (now - this.lastFloatKillTime < 200) return; this.lastFloatKillTime = now; this.play('floatkill'); },
@@ -2754,8 +2755,9 @@
             "#lobbyBanner.lb-search .lb-strong{color:#9bbfff}" +
             "#lobbyBanner.lb-found{border-color:#00ff88;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 22px rgba(0,255,136,.5)}" +
             "@keyframes lbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}" +
-            "#cdNum{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;pointer-events:none}" +
-            "#cdNum .cd-n{font-family:'Russo One',sans-serif;font-size:clamp(90px,20vw,230px);line-height:1;color:#fff;" +
+            "#cdNum{position:fixed;left:0;right:0;bottom:18vh;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;pointer-events:none}" +
+            "#cdNum .cd-lbl{font-family:'Russo One',sans-serif;font-size:13px;letter-spacing:4px;color:#00ff88;text-shadow:0 0 10px #00ff88;opacity:.9}" +
+            "#cdNum .cd-n{font-family:'Russo One',sans-serif;font-size:clamp(72px,14vw,150px);line-height:1;color:#fff;" +
             "-webkit-text-stroke:4px #000;text-shadow:0 0 26px #00ff88,0 0 60px #00ff88,0 6px 0 rgba(0,0,0,.5);animation:cdPop 1s ease-out forwards}" +
             "@keyframes cdPop{0%{transform:scale(.4);opacity:0}18%{transform:scale(1.12);opacity:1}38%{transform:scale(1)}78%{opacity:1}100%{transform:scale(.8);opacity:0}}";
         document.head.appendChild(st);
@@ -2776,7 +2778,7 @@
         ensureLobbyFx();
         const old = document.getElementById('cdNum'); if (old) old.remove();
         const el = document.createElement('div'); el.id = 'cdNum';
-        el.innerHTML = '<div class="cd-n">' + n + '</div>';
+        el.innerHTML = '<div class="cd-lbl">MATCH STARTING</div><div class="cd-n">' + n + '</div>';
         document.body.appendChild(el);
         SoundManager.play('cd');
         setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
@@ -3076,9 +3078,11 @@
             } else if (msg.t === 'matchStart') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
                 WaitHud.hide(); hideCountdownNumber();
-                spawnFloatingText('ONLINE MATCH STARTING!', '#00ff88');
-                // También con UX de matchmaking: la partida arranca, te dejamos
-                // ver "SALA ENCONTRADA" antes de entrar.
+                // Encontró partida: cortamos cualquier sonido del preview (muerte arcade,
+                // skills, etc.) para que no se solape con la entrada.
+                SoundManager.stopAllSfx();
+                // El mensaje "MATCH STARTING" ya es un cartel: la UX de matchmaking
+                // muestra FINDING ROOM → ROOM FOUND antes de entrar.
                 enterWithMatchmakingUX(ws, msg, false);
             } else if (msg.t === 'noSlot') {
                 // Todas las layers del combo llenas (todas a tope reales).
@@ -3317,7 +3321,7 @@
     // los 10s del pick). Centralizado para que el sonido se vaya tanto si eliges como
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
-    function showSkillChoice() { if(isPickingSkill) return; SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div><div class="skill-opt-name">${SKILL_DEFS[id].name}</div>`; div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
+    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode) return; SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div><div class="skill-opt-name">${SKILL_DEFS[id].name}</div>`; div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
 

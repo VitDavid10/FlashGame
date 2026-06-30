@@ -72,6 +72,11 @@ function hzToEvery(hz) { return Math.max(1, Math.min(TICK_HZ, Math.round(TICK_HZ
 let SNAPSHOT_EVERY = hzToEvery(parseInt(process.env.SNAPSHOT_HZ, 10) || TICK_HZ);
 const EMPTY_ROOM_TTL = 60000;
 const RESUME_GRACE_MS = 30000;   // ventana para hacer REJOIN tras desconexión accidental
+// Si una sala persistente se queda VACÍA en 'playing'/'ended', se resetea a 'waiting'
+// tras este grace (mayor que la ventana de rejoin para no cortar reconexiones). Evita
+// que una sala se cuelgue en plena partida cuando todos se van (no terminaba ni
+// dejaba entrar).
+const EMPTY_RESET_MS = 33000;
 const DEAD_REMOVE_MS = 3000;   // tras morir, retirar al jugador de la sim
 // Rate-limit por conexión (anti-flood/DoS). Un cliente real manda ~30-40 msg/s
 // (input 30 Hz + pings); dejamos margen de sobra. Por encima del umbral suave se
@@ -2043,7 +2048,7 @@ const tickCtx = {
     pstatOf, statsOf, questsOf, addToPot, sendEcon, entryFeePill, flushPeakMass, minRealOf,
     deleteRoom: (key) => rooms.delete(key),
     // constantes
-    DEAD_REMOVE_MS, EMPTY_ROOM_TTL,
+    DEAD_REMOVE_MS, EMPTY_ROOM_TTL, EMPTY_RESET_MS,
     // dinámicos (getters porque cambian en runtime desde admin)
     get aoiEnabled() { return AOI_ENABLED; },
     get snapshotEvery() { return SNAPSHOT_EVERY; },

@@ -37,10 +37,18 @@ function tickRoomOnce(room, now, ctx) {
     }
 
     if (room.clients.size === 0) {
-        // Layers persistentes (pre-creadas): nunca se cierran, solo
-        // descansan en estado waiting. Las dinámicas (legacy) sí se cierran.
-        if (room.persistent) return { stepMs, snapMs, sendMs };
         if (!room.emptySince) room.emptySince = now;
+        // Layers persistentes (pre-creadas): nunca se cierran, descansan en 'waiting'.
+        // PERO si se vaciaron en plena partida quedaban colgadas en 'playing' (este
+        // return saltaba el procesado de endsAt/restart) → no terminaban ni dejaban
+        // entrar. Las reseteamos a 'waiting' tras un grace (respeta el rejoin).
+        if (room.persistent) {
+            if (room.state !== 'waiting' && (now - room.emptySince) > ctx.EMPTY_RESET_MS) {
+                ctx.restartRoom(room);
+                ctx.log(`Sala vacía reseteada a lobby: ${room.key} (estaba colgada en ${room.state})`);
+            }
+            return { stepMs, snapMs, sendMs };
+        }
         if (now - room.emptySince > ctx.EMPTY_ROOM_TTL) {
             ctx.deleteRoom(room.key);
             for (const [tok, info] of ctx.resumeTokens) { if (info.roomKey === room.key) ctx.resumeTokens.delete(tok); }
