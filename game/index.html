@@ -2984,18 +2984,26 @@
         if (_mmTimeout1) { clearTimeout(_mmTimeout1); _mmTimeout1 = null; }
         if (_mmTimeout2) { clearTimeout(_mmTimeout2); _mmTimeout2 = null; }
     }
-    // "FINDING ROOM" mientras se LOCALIZA la sala (al conectar), antes de saber su
-    // estado. Cuando llega el welcome: si la sala ya juega → entras; si espera →
-    // lobby con la cuenta atrás. NO se usa al empezar la partida (eso ya no lleva
-    // theatrics: te mete directo).
-    function startFindingUX(mode) {
+    // Solo cuando te unes a una sala YA EN JUEGO: "FINDING ROOM" (3s) → "ROOM FOUND"
+    // (0.6s) → entras. Si la sala está esperando NO se usa (eso va directo al lobby
+    // con la cuenta atrás; un "ROOM FOUND" ahí no tenía sentido).
+    function enterPlayingWithFindingUX(ws, msg) {
         cancelMatchmakingUX();
         practiceMode = true;
-        if (!gameRunning) startPracticeGame(mode);
+        if (!gameRunning) startPracticeGame(msg.mode);
         let n = 0;
         const baseText = 'FINDING ROOM';
         setLobbyBanner(baseText + '.', 'search');
         _mmTimer = setInterval(() => { n++; setLobbyBanner(baseText + '.'.repeat((n % 3) + 1), 'search'); }, 400);
+        _mmTimeout1 = setTimeout(() => {
+            if (_mmTimer) { clearInterval(_mmTimer); _mmTimer = null; }
+            setLobbyBanner('ROOM FOUND' + (msg.roomName ? ' · <b>' + msg.roomName + '</b>' : ''), 'found');
+            _mmTimeout2 = setTimeout(() => {
+                if (!netState || netState._matchOver || netState.ws !== ws) { setLobbyBanner(null); return; }
+                practiceMode = false; setLobbyBanner(null);
+                enterOnlineGame(ws, msg, false);
+            }, 600);
+        }, 3000);
     }
 
     function netConnect(isResume) {
@@ -3012,8 +3020,6 @@
         const ws = new WebSocket(netState.url);
         ws.binaryType = 'arraybuffer';
         netState.ws = ws;
-        // FINDING ROOM mientras se localiza la sala (no en rejoin: ahí entras directo).
-        if (!isResume) startFindingUX((netState.joinMsg && netState.joinMsg.mode) || currentGameMode || 'arcade');
         ws.onopen = () => {
             const j = Object.assign({}, netState.joinMsg);
             if (isResume && netState.token) j.resume = netState.token;
@@ -3038,13 +3044,16 @@
                 joined = true; restoreBtn(); netState.attempts = 0; netState.token = msg.token;
                 netState.lastWelcome = msg;
                 if (msg.state === 'playing') {
-                    // La sala ya está en juego → te mete directo (loading → GO). Sin
-                    // theatrics de FINDING/FOUND. Igual en rejoin.
-                    cancelMatchmakingUX();
-                    practiceMode = false; setLobbyBanner(null);
-                    enterOnlineGame(ws, msg, isResume);
+                    if (isResume) {
+                        // Rejoin: entrar directo, sin FINDING ni loading.
+                        cancelMatchmakingUX(); practiceMode = false; setLobbyBanner(null);
+                        enterOnlineGame(ws, msg, true);
+                    } else {
+                        // Te unes a una partida EN CURSO → FINDING ROOM (3s) → ROOM FOUND.
+                        enterPlayingWithFindingUX(ws, msg);
+                    }
                 } else {
-                    // Sala en lobby: paramos el FINDING; abajo se pinta WAITING + countdown.
+                    // Sala esperando → directo al lobby + cuenta atrás (sin FINDING/FOUND).
                     cancelMatchmakingUX();
                     // Sala en lobby (o reiniciándose): práctica offline mientras tanto
                     if (msg.state === 'ended') setLobbyBanner('<b>' + msg.roomName + '</b> · RESTARTING…');
