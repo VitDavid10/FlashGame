@@ -2767,7 +2767,11 @@
     function setLobbyBanner(texto, type) {
         ensureLobbyFx();
         const b = document.getElementById('lobbyBanner');
-        if (!texto) { b.className = ''; b.style.display = 'none'; hideCountdownNumber(); return; }
+        // Importante: controlar visibilidad SOLO por clase. Si pusiéramos
+        // b.style.display='none' al ocultar, ese inline ganaría a .show{display:flex}
+        // y el banner no volvería a salir (pasaba al salir de una sala y entrar a otra).
+        if (!texto) { b.className = ''; hideCountdownNumber(); return; }
+        b.style.display = '';   // por si quedó algún inline antiguo
         b.className = 'show' + (type === 'search' ? ' lb-search' : (type === 'found' ? ' lb-found' : ''));
         b.innerHTML = '<span class="lb-dot"></span><span>' + texto.replace(/<b>/g, '<b class="lb-strong">') + '</span>';
     }
