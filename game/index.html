@@ -1084,7 +1084,7 @@
         <div class="ab-slot" id="slot10" ondblclick="removeSkill(10)" draggable="true" ondragstart="dragStart(event, 9)" ondrop="drop(event, 9)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(10, event)" onmousedown="activateSkillTouch(10, event)"><div class="skill-icon icon-empty" id="icon10"></div><div class="count-badge" id="count10" style="display:none">0</div><div class="gcd-badge" id="gcd10"></div><div class="cooldown-overlay" id="cd10"></div><div class="active-overlay" id="dur10"></div></div>
     </div>
 
-    <div id="lobbyBanner" style="display:none; position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:55; background:rgba(8,10,14,0.88); border:1px solid #1a73e8; color:#fff; padding:9px 20px; border-radius:9px; font-family:'Russo One', sans-serif; font-size:13px; text-align:center; box-shadow:0 4px 18px rgba(0,0,0,0.5);"></div>
+    <div id="lobbyBanner"></div>
 
     <!-- Panel de control en el espectador (cuando se abre desde PillWars Control con clave) -->
     <div id="specAdminPanel" style="display:none; position:fixed; top:0; left:0; height:100%; width:250px; z-index:70; background:rgba(8,10,14,0.96); border-right:1px solid #00ff88; box-shadow:4px 0 22px rgba(0,0,0,0.6); padding:16px 14px; overflow-y:auto; font-family:'Russo One', sans-serif;">
@@ -2737,11 +2737,51 @@
     // Práctica offline mientras la sala online espera jugadores
     let practiceMode = false;
 
-    function setLobbyBanner(texto) {
-        const b = document.getElementById('lobbyBanner');
-        if (!texto) { b.style.display = 'none'; return; }
-        b.style.display = 'block'; b.innerText = texto;
+    // Estilos de los carteles de lobby/matchmaking y de la cuenta atrás grande.
+    function ensureLobbyFx() {
+        if (document.getElementById('lobbyFxCss')) return;
+        const st = document.createElement('style'); st.id = 'lobbyFxCss';
+        st.textContent =
+            "#lobbyBanner{display:none;position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:55;" +
+            "align-items:center;gap:10px;background:rgba(8,12,10,.92);border:1px solid rgba(0,255,136,.5);color:#fff;" +
+            "padding:10px 22px;border-radius:11px;font-family:'Russo One',sans-serif;font-size:14px;letter-spacing:1px;" +
+            "white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px rgba(0,255,136,.22);backdrop-filter:blur(6px)}" +
+            "#lobbyBanner.show{display:flex}" +
+            "#lobbyBanner .lb-dot{width:9px;height:9px;border-radius:50%;background:#00ff88;box-shadow:0 0 10px #00ff88;flex:0 0 auto;animation:lbPulse 1s ease-in-out infinite}" +
+            "#lobbyBanner .lb-strong{color:#00ff88}" +
+            "#lobbyBanner.lb-search{border-color:rgba(77,155,255,.6);box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px rgba(77,155,255,.3)}" +
+            "#lobbyBanner.lb-search .lb-dot{background:#4d9bff;box-shadow:0 0 10px #4d9bff}" +
+            "#lobbyBanner.lb-search .lb-strong{color:#9bbfff}" +
+            "#lobbyBanner.lb-found{border-color:#00ff88;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 22px rgba(0,255,136,.5)}" +
+            "@keyframes lbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}" +
+            "#cdNum{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;pointer-events:none}" +
+            "#cdNum .cd-n{font-family:'Russo One',sans-serif;font-size:clamp(90px,20vw,230px);line-height:1;color:#fff;" +
+            "-webkit-text-stroke:4px #000;text-shadow:0 0 26px #00ff88,0 0 60px #00ff88,0 6px 0 rgba(0,0,0,.5);animation:cdPop 1s ease-out forwards}" +
+            "@keyframes cdPop{0%{transform:scale(.4);opacity:0}18%{transform:scale(1.12);opacity:1}38%{transform:scale(1)}78%{opacity:1}100%{transform:scale(.8);opacity:0}}";
+        document.head.appendChild(st);
     }
+    // texto puede llevar <b>..</b> para resaltar (se pinta con la clase del tipo).
+    // type: 'search' | 'found' | null (verde por defecto).
+    function setLobbyBanner(texto, type) {
+        ensureLobbyFx();
+        const b = document.getElementById('lobbyBanner');
+        if (!texto) { b.className = ''; b.style.display = 'none'; hideCountdownNumber(); return; }
+        b.className = 'show' + (type === 'search' ? ' lb-search' : (type === 'found' ? ' lb-found' : ''));
+        b.innerHTML = '<span class="lb-dot"></span><span>' + texto.replace(/<b>/g, '<b class="lb-strong">') + '</span>';
+    }
+    // Número grande de cuenta atrás (9..1), estilo GO!. Se llama una vez por segundo.
+    let _lastCdNum = null;
+    function showCountdownNumber(n) {
+        if (n === _lastCdNum) return; _lastCdNum = n;
+        ensureLobbyFx();
+        const old = document.getElementById('cdNum'); if (old) old.remove();
+        const el = document.createElement('div'); el.id = 'cdNum';
+        el.innerHTML = '<div class="cd-n">' + n + '</div>';
+        document.body.appendChild(el);
+        SoundManager.play('cd');
+        setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
+    }
+    function hideCountdownNumber() { _lastCdNum = null; const el = document.getElementById('cdNum'); if (el) el.remove(); }
 
     // Rejoin: si te desconectas sin querer en mitad de una partida online,
     // tienes una ventana (30s en server) para volver a entrar SIN pagar usando
@@ -2815,8 +2855,8 @@
         },
         showCount(count, needed) {
             const el = document.getElementById('waitHud'); if (!el) return;
-            document.getElementById('waitLabel').innerText = 'WAITING';
-            document.getElementById('waitTimer').innerText = count + '/' + needed;
+            document.getElementById('waitLabel').innerText = 'IN ROOM';
+            document.getElementById('waitTimer').innerText = count + (count === 1 ? ' PLAYER' : ' PLAYERS');
             document.getElementById('waitTimer').style.color = '#9bbfff';
             el.style.display = '';
         },
@@ -2833,11 +2873,13 @@
         const tick = () => {
             if (remaining <= 0) {
                 clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null;
-                WaitHud.hide();
+                WaitHud.hide(); hideCountdownNumber();
                 return;
             }
-            setLobbyBanner('🌐 ROOM ' + roomName + ' — ' + count + '/' + needed + ' players · NEXT MATCH IN ' + remaining + 's   ·   OFFLINE PRACTICE');
+            setLobbyBanner('🌐 <b>' + roomName + '</b> · MATCH STARTING IN <b>' + remaining + 's</b>');
             WaitHud.showTimer(remaining);
+            // Cuenta atrás grande estilo GO! en los últimos 9 segundos.
+            if (remaining <= 9) showCountdownNumber(remaining); else hideCountdownNumber();
             remaining--;
         };
         tick();
@@ -2940,11 +2982,11 @@
         if (!gameRunning) startPracticeGame(msg.mode);
         let n = 0;
         const baseText = '🔎 FINDING ROOM';
-        setLobbyBanner(baseText + '.');
-        _mmTimer = setInterval(() => { n++; setLobbyBanner(baseText + '.'.repeat((n % 3) + 1)); }, 400);
+        setLobbyBanner(baseText + '.', 'search');
+        _mmTimer = setInterval(() => { n++; setLobbyBanner(baseText + '.'.repeat((n % 3) + 1), 'search'); }, 400);
         _mmTimeout1 = setTimeout(() => {
             cancelMatchmakingUX();
-            setLobbyBanner('✅ ROOM FOUND — ' + (msg.roomName || ''));
+            setLobbyBanner('✅ ROOM FOUND' + (msg.roomName ? ' · <b>' + msg.roomName + '</b>' : ''), 'found');
             _mmTimeout2 = setTimeout(() => {
                 if (!netState || netState._matchOver || netState.ws !== ws) { setLobbyBanner(null); return; }
                 practiceMode = false; setLobbyBanner(null);
@@ -3006,15 +3048,15 @@
                     }
                 } else {
                     // Sala en lobby (o reiniciándose): práctica offline mientras tanto
-                    if (msg.state === 'ended') setLobbyBanner('🌐 ROOM ' + msg.roomName + ' — restarting...   ·   OFFLINE PRACTICE');
-                    else setLobbyBanner('🌐 ROOM ' + msg.roomName + ' — waiting for players (' + msg.count + '/' + msg.needed + ')   ·   OFFLINE PRACTICE');
+                    if (msg.state === 'ended') setLobbyBanner('🌐 <b>' + msg.roomName + '</b> · RESTARTING…');
+                    else setLobbyBanner('🌐 <b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
                     if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
                     // Si entras con una cuenta atrás de lobby ya en marcha, muéstrala.
                     if (msg.startIn > 0) runLobbyCountdown(msg.startIn, msg.roomName, msg.count, msg.needed);
                 }
             } else if (msg.t === 'waiting') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
-                setLobbyBanner('🌐 ROOM ' + msg.roomName + ' — waiting for players (' + msg.count + '/' + msg.needed + ')   ·   OFFLINE PRACTICE');
+                setLobbyBanner('🌐 <b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
                 WaitHud.showCount(msg.count, msg.needed);
                 if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
             } else if (msg.t === 'lobbyPreview' || msg.t === 'lobbyCountdown') {
@@ -3033,7 +3075,7 @@
                 }
             } else if (msg.t === 'matchStart') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
-                WaitHud.hide();
+                WaitHud.hide(); hideCountdownNumber();
                 spawnFloatingText('ONLINE MATCH STARTING!', '#00ff88');
                 // También con UX de matchmaking: la partida arranca, te dejamos
                 // ver "SALA ENCONTRADA" antes de entrar.
