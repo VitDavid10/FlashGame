@@ -2758,7 +2758,7 @@
             "#lobbyBanner.lb-search .lb-strong{color:#9bbfff}" +
             "#lobbyBanner.lb-found{border-color:#00ff88;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 22px rgba(0,255,136,.5)}" +
             "@keyframes lbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}" +
-            "#cdNum{position:fixed;left:0;right:0;top:108px;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none}" +
+            "#cdNum{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none;transform:translateY(-120px)}" +
             "#cdNum .cd-lbl{font-family:'Russo One',sans-serif;font-size:13px;letter-spacing:4px;color:#00ff88;text-shadow:0 0 10px #00ff88;opacity:.9}" +
             "#cdNum .cd-n{font-family:'Russo One',sans-serif;font-size:clamp(72px,14vw,150px);line-height:1;color:#fff;" +
             "-webkit-text-stroke:4px #000;text-shadow:0 0 26px #00ff88,0 0 60px #00ff88,0 6px 0 rgba(0,0,0,.5);animation:cdPop 1s ease-out forwards}" +
@@ -2885,13 +2885,19 @@
     function lobbyTick() {
         const remaining = Math.ceil((_lobbyTarget - Date.now()) / 1000);
         if (remaining <= 0) { stopLobbyTimer(); return; }
-        // Mientras el FINDING (3s) está activo no pisamos su banner.
-        if (_findingDone) setLobbyBanner('<b>' + _lobbyRoom + '</b> · MATCH STARTING IN <b>' + remaining + 's</b>');
-        WaitHud.showTimer(remaining);
         if (remaining <= 5) {
+            // Últimos 5s: solo el número grande. Se oculta el texto de tiempo de arriba
+            // (HUD + banner) — el banner se limpia por clase para NO matar el número.
+            WaitHud.hide();
+            const b = document.getElementById('lobbyBanner'); if (b) b.className = '';
             if (!_cdSoundPlayed) { _cdSoundPlayed = true; SoundManager.play('contador'); }
             showCountdownNumber(remaining, 'MATCH STARTING');
-        } else { hideCountdownNumber(); }
+        } else {
+            // Mientras el FINDING (3s) está activo no pisamos su banner.
+            if (_findingDone) setLobbyBanner('<b>' + _lobbyRoom + '</b> · MATCH STARTING IN <b>' + remaining + 's</b>');
+            WaitHud.showTimer(remaining);
+            hideCountdownNumber();
+        }
     }
     // ms = tiempo que falta para empezar (del server). null/0 → no hay cuenta atrás.
     function setLobbyTimer(ms, roomName) {
