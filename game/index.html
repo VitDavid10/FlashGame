@@ -1154,7 +1154,8 @@
             split: new Audio('../snd/split.mp3'), sprint: new Audio('../snd/sprint.mp3'), timer: new Audio('../snd/timer.mp3'),
             tp: new Audio('../snd/tp.mp3'), big: new Audio('../snd/big.mp3'), little: new Audio('../snd/little.mp3'),
             virus: new Audio('../snd/virus.mp3'), floatkill: new Audio('../snd/floatkill.mp3'),
-            loading: new Audio('../snd/loading.mp3'), go: new Audio('../snd/GO.mp3')
+            loading: new Audio('../snd/loading.mp3'), go: new Audio('../snd/GO.mp3'),
+            contador: new Audio('../snd/contador.mp3')
         },
         music: new Audio('../snd/music.mp3'), startTimer: null,
         menuMusic: new Audio('../snd/menu.mp3'),
@@ -2738,6 +2739,7 @@
     // Práctica offline mientras la sala online espera jugadores
     let practiceMode = false;
     let practiceFirstSkillDone = false;   // en preview se omite SOLO el primer selector de skill
+    let _endCdPlayed = false;   // para que el sonido de cuenta atrás del final suene una vez
 
     // Estilos de los carteles de lobby/matchmaking y de la cuenta atrás grande.
     function ensureLobbyFx() {
@@ -2756,7 +2758,7 @@
             "#lobbyBanner.lb-search .lb-strong{color:#9bbfff}" +
             "#lobbyBanner.lb-found{border-color:#00ff88;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 22px rgba(0,255,136,.5)}" +
             "@keyframes lbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}" +
-            "#cdNum{position:fixed;left:0;right:0;bottom:18vh;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;pointer-events:none}" +
+            "#cdNum{position:fixed;left:0;right:0;top:108px;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none}" +
             "#cdNum .cd-lbl{font-family:'Russo One',sans-serif;font-size:13px;letter-spacing:4px;color:#00ff88;text-shadow:0 0 10px #00ff88;opacity:.9}" +
             "#cdNum .cd-n{font-family:'Russo One',sans-serif;font-size:clamp(72px,14vw,150px);line-height:1;color:#fff;" +
             "-webkit-text-stroke:4px #000;text-shadow:0 0 26px #00ff88,0 0 60px #00ff88,0 6px 0 rgba(0,0,0,.5);animation:cdPop 1s ease-out forwards}" +
@@ -2785,7 +2787,7 @@
         const el = document.createElement('div'); el.id = 'cdNum';
         el.innerHTML = '<div class="cd-lbl">' + (label || 'MATCH STARTING') + '</div><div class="cd-n">' + n + '</div>';
         document.body.appendChild(el);
-        SoundManager.play('cd');
+        // El sonido (contador.mp3, 5s) lo dispara quien llama, una vez al entrar en los 5s.
         setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
     }
     function hideCountdownNumber() { _lastCdNum = null; const el = document.getElementById('cdNum'); if (el) el.remove(); }
@@ -2872,26 +2874,35 @@
         }
     };
 
-    // Cuenta atrás de lobby (pre o post partida) durante la práctica offline:
-    // pinta el banner + WaitHud y va decrementando cada segundo hasta 0.
-    function runLobbyCountdown(ms, roomName, count, needed) {
+    // Cuenta atrás de lobby basada en el tiempo ABSOLUTO del server (_lobbyTarget).
+    // Se re-sincroniza con cada mensaje (waiting/lobbyCountdown trae startIn), así un
+    // 'waiting' frecuente ya no la mata. Número grande + sonido (5s) en los últimos 5s.
+    let _lobbyTarget = 0, _lobbyRoom = '', _cdSoundPlayed = false;
+    function stopLobbyTimer() {
         if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
-        let remaining = Math.ceil((ms || 0) / 1000);
-        const tick = () => {
-            if (remaining <= 0) {
-                clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null;
-                WaitHud.hide(); hideCountdownNumber();
-                return;
-            }
-            setLobbyBanner('<b>' + roomName + '</b> · MATCH STARTING IN <b>' + remaining + 's</b>');
-            WaitHud.showTimer(remaining);
-            // Cuenta atrás grande estilo GO! en los últimos 9 segundos.
-            if (remaining <= 9) showCountdownNumber(remaining); else hideCountdownNumber();
-            remaining--;
-        };
-        tick();
-        window._lobbyPreviewTimer = setInterval(tick, 1000);
+        _cdSoundPlayed = false; WaitHud.hide(); hideCountdownNumber();
     }
+    function lobbyTick() {
+        const remaining = Math.ceil((_lobbyTarget - Date.now()) / 1000);
+        if (remaining <= 0) { stopLobbyTimer(); return; }
+        // Mientras el FINDING (3s) está activo no pisamos su banner.
+        if (_findingDone) setLobbyBanner('<b>' + _lobbyRoom + '</b> · MATCH STARTING IN <b>' + remaining + 's</b>');
+        WaitHud.showTimer(remaining);
+        if (remaining <= 5) {
+            if (!_cdSoundPlayed) { _cdSoundPlayed = true; SoundManager.play('contador'); }
+            showCountdownNumber(remaining, 'MATCH STARTING');
+        } else { hideCountdownNumber(); }
+    }
+    // ms = tiempo que falta para empezar (del server). null/0 → no hay cuenta atrás.
+    function setLobbyTimer(ms, roomName) {
+        if (roomName) _lobbyRoom = roomName;
+        if (!(ms > 0)) { stopLobbyTimer(); return; }
+        _lobbyTarget = Date.now() + ms;
+        if (!window._lobbyPreviewTimer) { _cdSoundPlayed = false; window._lobbyPreviewTimer = setInterval(lobbyTick, 250); }
+        lobbyTick();
+    }
+    // Compat: las llamadas antiguas siguen funcionando.
+    function runLobbyCountdown(ms, roomName) { setLobbyTimer(ms, roomName); }
 
     function startPracticeGame(mode) {
         practiceMode = true;
@@ -3073,16 +3084,22 @@
                     else { _pendingWelcome = msg; _pendingWs = ws; }
                 }
             } else if (msg.t === 'waiting') {
-                if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
-                setLobbyBanner('<b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
-                WaitHud.showCount(msg.count, msg.needed);
                 if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
+                if (msg.startIn > 0) {
+                    // Lobby armado → cuenta atrás (sincronizada con el server).
+                    setLobbyTimer(msg.startIn, msg.roomName);
+                } else {
+                    // Aún esperando jugadores → solo el cartel WAITING + contador de gente.
+                    stopLobbyTimer();
+                    if (_findingDone) setLobbyBanner('<b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
+                    WaitHud.showCount(msg.count, msg.needed);
+                }
             } else if (msg.t === 'lobbyPreview' || msg.t === 'lobbyCountdown') {
                 // lobbyPreview = cuenta atrás POST-partida (reinicio); lobbyCountdown =
                 // cuenta atrás PRE-partida (al alcanzar el mínimo de jugadores). Misma UI.
                 if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
                 const ms = (msg.restartIn != null ? msg.restartIn : msg.startIn) || 0;
-                runLobbyCountdown(ms, msg.roomName, msg.count, msg.needed);
+                setLobbyTimer(ms, msg.roomName);
             } else if (msg.t === 'roomRestart') {
                 // El admin reinició la sala en plena partida: fin como si murieses + TRY AGAIN
                 if (sim && sim.isRemote && sim.ws === ws && gameRunning && !practiceMode) {
@@ -3296,6 +3313,7 @@
         document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
         lastFrameTime = Date.now();
         gameRunning = true;
+        _endCdPlayed = false;
         if (isResume) {
             window.__loadingLock = false;
             SoundManager.playMusic();   // resume: volvemos rápido, sin carga
@@ -3376,9 +3394,10 @@
             let tl, dur;
             if (sim.isRemote) { tl = sim.remainingMs(); if (tl == null) tl = 0; dur = sim.duration; }
             else { tl = roomTimers[currentGameMode + '_' + currentServer] - Date.now(); dur = GAME_DURATION_MS; if (tl <= 0) { finishGameSuccess(); return; } }
-            // Últimos 10s: cuenta atrás grande estilo GO! y se oculta el contador normal.
-            if (tl > 0 && tl <= 10000 && !isSpectating) {
+            // Últimos 5s: cuenta atrás grande estilo GO! (+ sonido 5s) y se oculta el contador normal.
+            if (tl > 0 && tl <= 5000 && !isSpectating) {
                 els.timer.innerText = "";
+                if (!_endCdPlayed) { _endCdPlayed = true; SoundManager.play('contador'); }
                 showCountdownNumber(Math.ceil(tl / 1000), 'MATCH ENDING');
             } else {
                 let min = Math.floor(tl/60000), sec = Math.floor((tl%60000)/1000); els.timer.innerText = (min<10?"0"+min:min) + ":" + (sec<10?"0"+sec:sec);

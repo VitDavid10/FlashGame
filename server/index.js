@@ -760,7 +760,10 @@ function broadcast(room, objOrString) {
 }
 
 function sendWaiting(room) {
-    broadcast(room, { t: 'waiting', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode });
+    // startIn: ms que faltan para empezar si el lobby ya está armado (null si no).
+    // El cliente lo usa para la cuenta atrás (se re-sincroniza en cada waiting).
+    const startIn = room.startAt ? Math.max(0, room.startAt - Date.now()) : null;
+    broadcast(room, { t: 'waiting', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode, startIn });
 }
 
 // Cache del JSON de foods por sala. Serializar ~7800 foods (classic) en CADA
