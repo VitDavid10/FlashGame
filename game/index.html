@@ -2173,9 +2173,10 @@
                 const meP = this.players.get('me');
                 const sp = msg.players.find(q => q.id === this.myId);
                 if (sp) {
-                    // Si morimos mientras estábamos desconectados, el evento playerDied
-                    // se perdió: lo regeneramos al ver alive=false en el snapshot.
-                    if (sp.alive === false && this._aliveSeen !== false) { this._aliveSeen = false; this.events.push({ type: 'playerDied', playerId: 'me' }); }
+                    // Muerte: solo si ANTES te vimos vivo (transición vivo→muerto). Con
+                    // spawn-al-ready empiezas con alive=false hasta spawnear, así que sin
+                    // este guard te marcaba muerto nada más entrar.
+                    if (sp.alive === false && this._aliveSeen === true) { this._aliveSeen = false; this.events.push({ type: 'playerDied', playerId: 'me' }); }
                     if (sp.alive) this._aliveSeen = true;
                     meP.name = sp.name; meP.killStreak = sp.ks; meP.alive = sp.alive; meP.globalCD = sp.gcd;
                     for (let i = 1; i <= 8; i++) meP.skillState[i] = (sp.ss && sp.ss[i]) ? sp.ss[i] : 0;

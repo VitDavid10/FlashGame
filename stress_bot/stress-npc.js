@@ -155,6 +155,11 @@ function spawnBot(i) {
     if (m.id) myId = m.id;   // welcome / matchStart traen mi id
     if (m.t === 'welcome' && !counted) { stats.entered++; stats.porSala[salaKey]++; counted = true; }
     if (m.mapSize) mapSize = m.mapSize;   // el welcome trae el tamaño real del mapa
+    // Spawn-al-ready: el server ya no spawnea en startMatch; hay que pedir el spawn
+    // mandando 'ready' al recibir matchStart (o welcome con la sala ya en juego).
+    if (m.t === 'matchStart' || (m.t === 'welcome' && m.state === 'playing')) {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'ready' }));
+    }
     // Salir y reponer cuando MUERO o GANO (en classic, a 5 kills se gana y el
     // jugador real se desconecta). Reconectamos como nuevo para que la sala cicle
     // igual que con jugadores reales, en vez de quedarnos inmunes ocupando plaza.
