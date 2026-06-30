@@ -347,6 +347,24 @@
                 <span style="color:#666; font-size: 12px;">Volumen base que reciben los clientes. Cada jugador puede mutear/ajustar encima. Persiste entre reinicios.</span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Animaciones de enemigos (global):</label>
+                <button id="enemyFxBtn" class="b" onclick="toggleEnemyFx()">Cargando…</button>
+                <span style="color:#666; font-size: 12px;">OFF = NINGÚN cliente dibuja los efectos de los demás jugadores (alivia carga a todos). La tuya siempre se ve. Persiste y avisa en vivo.</span>
+            </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Zoom base (solo TU vista):</label>
+                <input type="number" step="0.1" min="0.3" max="4" id="baseZoom" style="width:80px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;">
+                <button class="b verde mini" onclick="aplicarZoom()">Aplicar</button>
+                <button class="b mini" onclick="resetZoom()">Reset</button>
+                <span style="color:#666; font-size: 12px;">Mayor = más cerca (1.4 por defecto). Solo afecta a ESTE navegador (testeo); se guarda en localStorage y se aplica en vivo si tienes el juego abierto en otra pestaña.</span>
+            </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Anuncio a todos:</label>
+                <input type="text" id="announceText" maxlength="140" placeholder="Mensaje para todos los jugadores online…" style="flex:1;min-width:220px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px;font-size:13px;">
+                <button class="b verde mini" onclick="enviarAnuncio()">Enviar</button>
+                <span style="color:#666; font-size: 12px;">Manda un cartel a TODOS los jugadores conectados ahora mismo.</span>
+            </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <label style="font-weight:600">Layer 2:</label>
                 <button id="layerPowerBtn_2" class="b" onclick="toggleLayerPower(2)" title="Apaga/enciende todas las salas de Layer 2. Apagar libera CPU. Solo se puede apagar si están vacías.">⏻ L2: ON</button>
                 <span id="layerPowerHint" style="color:#777;font-size:12px;"></span>
@@ -728,6 +746,20 @@ function aplicarVolumenes() {
     toast('<strong>Volumen aplicado</strong>', 'ok');
     setTimeout(pedir, 100);
 }
+let _enemyFxOn = true;
+function toggleEnemyFx() { send({ cmd: 'setEnemyFx', on: !_enemyFxOn }); toast('<strong>Animaciones enemigos: ' + (!_enemyFxOn ? 'ON' : 'OFF') + '</strong>', 'ok'); setTimeout(pedir, 100); }
+function aplicarZoom() {
+    const z = parseFloat(document.getElementById('baseZoom').value);
+    if (z > 0) { localStorage.setItem('pw_baseZoom', String(z)); toast('<strong>Zoom base: ' + z + '</strong><br>Solo tu navegador', 'ok'); }
+}
+function resetZoom() { localStorage.removeItem('pw_baseZoom'); document.getElementById('baseZoom').value = '1.4'; localStorage.setItem('pw_baseZoom', '1.4'); toast('<strong>Zoom reseteado (1.4)</strong>', 'ok'); }
+function enviarAnuncio() {
+    const t = document.getElementById('announceText').value.trim();
+    if (!t) { toast('Escribe un mensaje', 'warn'); return; }
+    send({ cmd: 'announce', text: t });
+    toast('<strong>Anuncio enviado</strong>', 'ok');
+    document.getElementById('announceText').value = '';
+}
 function aplicarGlobal() {
     send({ cmd: 'setGlobal',
         arcadeLobbyMs:   Math.round(parseFloat(document.getElementById('g_lobby').value)   * 1000),
@@ -769,6 +801,8 @@ function render(m) {
     if (m.arcadeRestartMs != null && document.activeElement.id !== 'g_restart') document.getElementById('g_restart').value = Math.round(m.arcadeRestartMs / 1000);
     if (m.sfxVol != null && document.activeElement.id !== 'volSfx') { const v = Math.round(m.sfxVol * 100); document.getElementById('volSfx').value = v; document.getElementById('volSfxVal').innerText = v + '%'; }
     if (m.musicVol != null && document.activeElement.id !== 'volMusic') { const v = Math.round(m.musicVol * 100); document.getElementById('volMusic').value = v; document.getElementById('volMusicVal').innerText = v + '%'; }
+    if (typeof m.enemyFx === 'boolean') { _enemyFxOn = m.enemyFx; const b = document.getElementById('enemyFxBtn'); if (b) { b.innerText = m.enemyFx ? 'ON' : 'OFF'; b.className = 'b ' + (m.enemyFx ? 'verde' : 'rojo'); } }
+    if (document.activeElement.id !== 'baseZoom') { const bz = document.getElementById('baseZoom'); if (bz && !bz.value) bz.value = localStorage.getItem('pw_baseZoom') || '1.4'; }
     const t = m.totales;
     const sEntradas = realOnly ? t.entradasReal : t.entradas;
     const sMuertes = realOnly ? t.muertesReal : t.muertes;

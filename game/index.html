@@ -1140,6 +1140,11 @@
     let isLowQuality = false;
     let selectedQuality = 'normal';
     let enableEnemyFX = true;
+    let serverEnemyFx = true;   // override global del server (admin): false = sin FX de enemigos para todos
+    // Zoom base: ajuste LOCAL de tu navegador (lo pone el panel admin via localStorage,
+    // compartido por ser mismo origen). Solo afecta a TU vista. Mayor = más cerca.
+    (function(){ const z = parseFloat(localStorage.getItem('pw_baseZoom')); if (z > 0) ZOOM_CONFIG.baseScale = z; })();
+    window.addEventListener('storage', e => { if (e.key === 'pw_baseZoom') { const z = parseFloat(e.newValue); if (z > 0) ZOOM_CONFIG.baseScale = z; } });
     let enableEnemySnd = true;
 
     const SoundManager = {
@@ -1216,7 +1221,14 @@
     document.addEventListener('click', enableAudioContext); document.addEventListener('keydown', enableAudioContext); document.addEventListener('touchstart', enableAudioContext);
     function toggleAudio() { SoundManager.toggleSFX(); }
     function toggleMusic() { SoundManager.toggleMusic(); }
-    function toggleEnemyFX() { enableEnemyFX = !document.getElementById('noEnemyFX').checked; }
+    function toggleEnemyFX() { applyEnemyFx(serverEnemyFx); }
+    // Efectivo = override global del server AND preferencia local (checkbox noEnemyFX).
+    function applyEnemyFx(serverOn) {
+        serverEnemyFx = serverOn;
+        const cb = document.getElementById('noEnemyFX');
+        enableEnemyFX = serverEnemyFx && !(cb && cb.checked);
+        if (typeof sim !== 'undefined' && sim && sim.config && sim.config.fx) sim.config.fx.enemyFX = enableEnemyFX;
+    }
     function toggleEnemySnd() { enableEnemySnd = !document.getElementById('noEnemySnd').checked; }
     
     function unlockSettings() {
@@ -1917,7 +1929,7 @@
         MAX_BOT_CELLS = 16;
         worldSettings.map = 1; worldSettings.food = 1; worldSettings.virus = 1; worldSettings.speed = 1;
         let currentBotConfig = { botEnabled: true, botCount: 25, botRespawn: true, chaosMode: false, botMaxSplits: MAX_BOT_CELLS, world: {...worldSettings} };
-        enableEnemyFX = true; enableEnemySnd = false;
+        enableEnemyFX = serverEnemyFx; enableEnemySnd = false;
         isGodMode = false; isSpectating = false;
         if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; els.actionBar.style.display = 'none'; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; els.actionBar.style.display = 'flex'; }
         MAP_SIZE *= worldSettings.map;
@@ -2545,6 +2557,7 @@
             // usuario sigue pudiendo mutear/ajustar encima.
             if (typeof data.sfxVol === 'number') SFX_MASTER = Math.max(0, Math.min(1, data.sfxVol));
             if (typeof data.musicVol === 'number') { MUSIC_MASTER = Math.max(0, Math.min(1, data.musicVol)); SoundManager.applyMusicVolume(); }
+            if (typeof data.enemyFx === 'boolean') applyEnemyFx(data.enemyFx);
             const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
             // Reset del timer solo si el precio realmente cambió (cada 5 min en servidor).
             if (newRate !== _lastPillPerDollar) {
@@ -2707,7 +2720,7 @@
         SoundManager.play('select'); SoundManager.stopMenuMusic();
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
-        enableEnemyFX = true; enableEnemySnd = false;
+        enableEnemyFX = serverEnemyFx; enableEnemySnd = false;
         const mode = currentGameMode;
         const skinInput = document.getElementById('secretSkinInput'); const skinPanel = document.getElementById('secretSkinPanel');
         const skinUrlVal = skinInput ? skinInput.value : ''; const useSkin = skinPanel && (skinPanel.style.display === 'block') && skinUrlVal.length > 5;
@@ -3140,6 +3153,13 @@
                 setLobbyBanner('NOT ENOUGH PLAYERS · RESTARTING IN <b>' + Math.round((msg.in || 30000) / 1000) + 's</b>');
                 SoundManager.play('alert');
                 setTimeout(() => { if (gameRunning && !practiceMode) setLobbyBanner(null); }, 4000);
+            } else if (msg.t === 'enemyFx') {
+                applyEnemyFx(!!msg.on);   // admin cambió las animaciones de enemigos en vivo
+            } else if (msg.t === 'announce') {
+                // Anuncio del admin a todos: cartel destacado + sonido.
+                setLobbyBanner('<b>' + (msg.text || '') + '</b>', 'found');
+                SoundManager.play('alert');
+                setTimeout(() => { if (gameRunning && !practiceMode) setLobbyBanner(null); }, 6000);
             } else if (msg.t === 'econ') {
                 EconHUD.update(msg.carry, msg.pot);
             } else if (msg.t === 'killGain') {

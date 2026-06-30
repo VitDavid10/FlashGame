@@ -62,7 +62,10 @@ if (process.env.WORKERS === '0') useWorkers = false;
 const _clamp01 = v => Math.max(0, Math.min(1, v));
 let sfxVol   = (typeof _glob.sfxVol   === 'number') ? _clamp01(_glob.sfxVol)   : 0.70;
 let musicVol = (typeof _glob.musicVol === 'number') ? _clamp01(_glob.musicVol) : 0.85;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, useWorkers, sfxVol, musicVol }), () => {}); }
+// Animaciones/efectos de los DEMÁS jugadores (global). false = todos los clientes
+// dejan de dibujar FX de enemigos (alivia carga). La tuya siempre se dibuja.
+let enemyFx  = (typeof _glob.enemyFx  === 'boolean') ? _glob.enemyFx : true;
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, useWorkers, sfxVol, musicVol, enemyFx }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -1172,7 +1175,7 @@ function buildAdminState() {
         layerOff: Object.assign({}, layerOff),   // { 2: true } si L2 está apagada
         arcadeRestartMs, arcadeLobbyMs,
         useWorkers,
-        sfxVol, musicVol,
+        sfxVol, musicVol, enemyFx,
         mainSendMs, mainTotalMs,
         serverCpu: serverCpuPct,
         totales: {
@@ -1334,7 +1337,7 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff), sfxVol, musicVol }));
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff), sfxVol, musicVol, enemyFx }));
         return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
@@ -1607,6 +1610,22 @@ wss.on('connection', (ws, req) => {
                 saveGlobal();
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global volumen: efectos=${Math.round(sfxVol * 100)}% música=${Math.round(musicVol * 100)}%`);
+            } else if (msg.cmd === 'setEnemyFx') {
+                enemyFx = !!msg.on;
+                saveGlobal();
+                // Avisar en vivo a todos los jugadores online.
+                for (const r of rooms.values()) broadcast(r, { t: 'enemyFx', on: enemyFx });
+                ws.send(JSON.stringify(buildAdminState()));
+                log(`Global animaciones de enemigos: ${enemyFx ? 'ON' : 'OFF'}`);
+            } else if (msg.cmd === 'announce') {
+                const text = (typeof msg.text === 'string') ? msg.text.slice(0, 140) : '';
+                if (text) {
+                    let n = 0;
+                    for (const r of rooms.values()) { broadcast(r, { t: 'announce', text }); n += r.clients.size; }
+                    logAdmin('-', 'Anuncio a todos', text);
+                    log(`ADMIN anuncio a ${n} jugadores: ${text}`);
+                }
+                ws.send(JSON.stringify(buildAdminState()));
             } else if (msg.cmd === 'snapshotHz' && typeof msg.hz === 'number') {
                 const prev = Math.round(TICK_HZ / SNAPSHOT_EVERY);
                 SNAPSHOT_EVERY = hzToEvery(msg.hz | 0);
