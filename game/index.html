@@ -2876,7 +2876,7 @@
                 WaitHud.hide(); hideCountdownNumber();
                 return;
             }
-            setLobbyBanner('🌐 <b>' + roomName + '</b> · MATCH STARTING IN <b>' + remaining + 's</b>');
+            setLobbyBanner('<b>' + roomName + '</b> · MATCH STARTING IN <b>' + remaining + 's</b>');
             WaitHud.showTimer(remaining);
             // Cuenta atrás grande estilo GO! en los últimos 9 segundos.
             if (remaining <= 9) showCountdownNumber(remaining); else hideCountdownNumber();
@@ -2981,12 +2981,12 @@
         practiceMode = true;
         if (!gameRunning) startPracticeGame(msg.mode);
         let n = 0;
-        const baseText = '🔎 FINDING ROOM';
+        const baseText = 'FINDING ROOM';
         setLobbyBanner(baseText + '.', 'search');
         _mmTimer = setInterval(() => { n++; setLobbyBanner(baseText + '.'.repeat((n % 3) + 1), 'search'); }, 400);
         _mmTimeout1 = setTimeout(() => {
             cancelMatchmakingUX();
-            setLobbyBanner('✅ ROOM FOUND' + (msg.roomName ? ' · <b>' + msg.roomName + '</b>' : ''), 'found');
+            setLobbyBanner('ROOM FOUND' + (msg.roomName ? ' · <b>' + msg.roomName + '</b>' : ''), 'found');
             _mmTimeout2 = setTimeout(() => {
                 if (!netState || netState._matchOver || netState.ws !== ws) { setLobbyBanner(null); return; }
                 practiceMode = false; setLobbyBanner(null);
@@ -3048,15 +3048,15 @@
                     }
                 } else {
                     // Sala en lobby (o reiniciándose): práctica offline mientras tanto
-                    if (msg.state === 'ended') setLobbyBanner('🌐 <b>' + msg.roomName + '</b> · RESTARTING…');
-                    else setLobbyBanner('🌐 <b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
+                    if (msg.state === 'ended') setLobbyBanner('<b>' + msg.roomName + '</b> · RESTARTING…');
+                    else setLobbyBanner('<b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
                     if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
                     // Si entras con una cuenta atrás de lobby ya en marcha, muéstrala.
                     if (msg.startIn > 0) runLobbyCountdown(msg.startIn, msg.roomName, msg.count, msg.needed);
                 }
             } else if (msg.t === 'waiting') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
-                setLobbyBanner('🌐 <b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
+                setLobbyBanner('<b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
                 WaitHud.showCount(msg.count, msg.needed);
                 if (!practiceMode || !gameRunning) startPracticeGame(msg.mode || currentGameMode || 'arcade');
             } else if (msg.t === 'lobbyPreview' || msg.t === 'lobbyCountdown') {
