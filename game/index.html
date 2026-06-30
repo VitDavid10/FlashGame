@@ -2010,7 +2010,7 @@
         SoundManager.playMusic();
     }
 
-    function stopGame() { isSpectating = true; SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { els.resultTitle.innerText = "GAME OVER"; els.resultTitle.style.color = "#ff2a2a"; showResultsUI(); }, 1400); }
+    function stopGame() { isSpectating = true; hideCountdownNumber(); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { els.resultTitle.innerText = "GAME OVER"; els.resultTitle.style.color = "#ff2a2a"; showResultsUI(); }, 1400); }
 
     // Botón SPECTATE del menú GAME OVER: online sigue la partida en curso, offline crea sim local.
     function onSpectateClick() {
@@ -2030,7 +2030,7 @@
     }
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
-    function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); const tb = document.getElementById('btnTryAgainOnline'); if (tb) tb.style.display = 'none'; }
+    function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} hideCountdownNumber(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); const tb = document.getElementById('btnTryAgainOnline'); if (tb) tb.style.display = 'none'; }
     function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
@@ -2737,6 +2737,7 @@
 
     // Práctica offline mientras la sala online espera jugadores
     let practiceMode = false;
+    let practiceFirstSkillDone = false;   // en preview se omite SOLO el primer selector de skill
 
     // Estilos de los carteles de lobby/matchmaking y de la cuenta atrás grande.
     function ensureLobbyFx() {
@@ -2777,12 +2778,12 @@
     }
     // Número grande de cuenta atrás (9..1), estilo GO!. Se llama una vez por segundo.
     let _lastCdNum = null;
-    function showCountdownNumber(n) {
+    function showCountdownNumber(n, label) {
         if (n === _lastCdNum) return; _lastCdNum = n;
         ensureLobbyFx();
         const old = document.getElementById('cdNum'); if (old) old.remove();
         const el = document.createElement('div'); el.id = 'cdNum';
-        el.innerHTML = '<div class="cd-lbl">MATCH STARTING</div><div class="cd-n">' + n + '</div>';
+        el.innerHTML = '<div class="cd-lbl">' + (label || 'MATCH STARTING') + '</div><div class="cd-n">' + n + '</div>';
         document.body.appendChild(el);
         SoundManager.play('cd');
         setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
@@ -2923,7 +2924,8 @@
         document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
         if (saveInterval) clearInterval(saveInterval);
         lastFrameTime = Date.now();
-        // Sin música en el preview/práctica (mientras esperas sala online).
+        practiceFirstSkillDone = false;   // el primer selector de skill del preview se omite
+        SoundManager.playMusic();   // el preview tiene sonido; se corta al empezar la partida
         gameRunning = true;
     }
 
@@ -2982,23 +2984,18 @@
         if (_mmTimeout1) { clearTimeout(_mmTimeout1); _mmTimeout1 = null; }
         if (_mmTimeout2) { clearTimeout(_mmTimeout2); _mmTimeout2 = null; }
     }
-    function enterWithMatchmakingUX(ws, msg, isResume) {
+    // "FINDING ROOM" mientras se LOCALIZA la sala (al conectar), antes de saber su
+    // estado. Cuando llega el welcome: si la sala ya juega → entras; si espera →
+    // lobby con la cuenta atrás. NO se usa al empezar la partida (eso ya no lleva
+    // theatrics: te mete directo).
+    function startFindingUX(mode) {
         cancelMatchmakingUX();
         practiceMode = true;
-        if (!gameRunning) startPracticeGame(msg.mode);
+        if (!gameRunning) startPracticeGame(mode);
         let n = 0;
         const baseText = 'FINDING ROOM';
         setLobbyBanner(baseText + '.', 'search');
         _mmTimer = setInterval(() => { n++; setLobbyBanner(baseText + '.'.repeat((n % 3) + 1), 'search'); }, 400);
-        _mmTimeout1 = setTimeout(() => {
-            cancelMatchmakingUX();
-            setLobbyBanner('ROOM FOUND' + (msg.roomName ? ' · <b>' + msg.roomName + '</b>' : ''), 'found');
-            _mmTimeout2 = setTimeout(() => {
-                if (!netState || netState._matchOver || netState.ws !== ws) { setLobbyBanner(null); return; }
-                practiceMode = false; setLobbyBanner(null);
-                enterOnlineGame(ws, msg, isResume);
-            }, 600);
-        }, 3000);
     }
 
     function netConnect(isResume) {
@@ -3015,6 +3012,8 @@
         const ws = new WebSocket(netState.url);
         ws.binaryType = 'arraybuffer';
         netState.ws = ws;
+        // FINDING ROOM mientras se localiza la sala (no en rejoin: ahí entras directo).
+        if (!isResume) startFindingUX((netState.joinMsg && netState.joinMsg.mode) || currentGameMode || 'arcade');
         ws.onopen = () => {
             const j = Object.assign({}, netState.joinMsg);
             if (isResume && netState.token) j.resume = netState.token;
@@ -3039,20 +3038,14 @@
                 joined = true; restoreBtn(); netState.attempts = 0; netState.token = msg.token;
                 netState.lastWelcome = msg;
                 if (msg.state === 'playing') {
-                    if (isResume) {
-                        // Rejoin: entrar directo a la partida, sin matchmaking UX ni
-                        // pantalla de carga (ya estabas dentro, solo reconectas; el
-                        // server no re-spawnea ni re-aplica inmunidad).
-                        practiceMode = false; setLobbyBanner(null);
-                        enterOnlineGame(ws, msg, true);
-                    } else {
-                        // UX matchmaking: en vez de entrar al instante, mostrar
-                        // "BUSCANDO SALA..." sobre la práctica offline 3s y luego
-                        // "SALA ENCONTRADA" — da sensación de que el server reparte
-                        // gente entre layers, aunque la asignación ya está hecha.
-                        enterWithMatchmakingUX(ws, msg, isResume);
-                    }
+                    // La sala ya está en juego → te mete directo (loading → GO). Sin
+                    // theatrics de FINDING/FOUND. Igual en rejoin.
+                    cancelMatchmakingUX();
+                    practiceMode = false; setLobbyBanner(null);
+                    enterOnlineGame(ws, msg, isResume);
                 } else {
+                    // Sala en lobby: paramos el FINDING; abajo se pinta WAITING + countdown.
+                    cancelMatchmakingUX();
                     // Sala en lobby (o reiniciándose): práctica offline mientras tanto
                     if (msg.state === 'ended') setLobbyBanner('<b>' + msg.roomName + '</b> · RESTARTING…');
                     else setLobbyBanner('<b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
@@ -3082,12 +3075,12 @@
             } else if (msg.t === 'matchStart') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
                 WaitHud.hide(); hideCountdownNumber();
-                // Encontró partida: cortamos cualquier sonido del preview (muerte arcade,
-                // skills, etc.) para que no se solape con la entrada.
-                SoundManager.stopAllSfx();
-                // El mensaje "MATCH STARTING" ya es un cartel: la UX de matchmaking
-                // muestra FINDING ROOM → ROOM FOUND antes de entrar.
-                enterWithMatchmakingUX(ws, msg, false);
+                // Encontró partida: cortamos el sonido del preview (música + efectos)
+                // para que no se solape con la entrada; la música arranca con el GO.
+                SoundManager.stopAllSfx(); SoundManager.stopMusic();
+                cancelMatchmakingUX();
+                // La partida empieza → te mete directo (loading → GO). Sin FINDING/FOUND.
+                enterOnlineGame(ws, msg, false);
             } else if (msg.t === 'noSlot') {
                 // Todas las layers del combo llenas (todas a tope reales).
                 // No se cobra pago: el server rechaza ANTES de tocar la firma.
@@ -3325,7 +3318,7 @@
     // los 10s del pick). Centralizado para que el sonido se vaya tanto si eliges como
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
-    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode) return; SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div><div class="skill-opt-name">${SKILL_DEFS[id].name}</div>`; div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
+    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div><div class="skill-opt-name">${SKILL_DEFS[id].name}</div>`; div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
 
@@ -3364,7 +3357,13 @@
             let tl, dur;
             if (sim.isRemote) { tl = sim.remainingMs(); if (tl == null) tl = 0; dur = sim.duration; }
             else { tl = roomTimers[currentGameMode + '_' + currentServer] - Date.now(); dur = GAME_DURATION_MS; if (tl <= 0) { finishGameSuccess(); return; } }
-            let min = Math.floor(tl/60000), sec = Math.floor((tl%60000)/1000); els.timer.innerText = (min<10?"0"+min:min) + ":" + (sec<10?"0"+sec:sec);
+            // Últimos 10s: cuenta atrás grande estilo GO! y se oculta el contador normal.
+            if (tl > 0 && tl <= 10000 && !isSpectating) {
+                els.timer.innerText = "";
+                showCountdownNumber(Math.ceil(tl / 1000), 'MATCH ENDING');
+            } else {
+                let min = Math.floor(tl/60000), sec = Math.floor((tl%60000)/1000); els.timer.innerText = (min<10?"0"+min:min) + ":" + (sec<10?"0"+sec:sec);
+            }
             if(!isGodMode && !isSpectating && tl > 0) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = (pickTimer * 10) + "%"; if(pickTimer <= 0) { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } }
         } else { els.timer.innerText = ""; }
 
