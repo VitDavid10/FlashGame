@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PillWars · Laboratorio de estilos</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #05070a; color: #cfe; font-family: 'Russo One', sans-serif; overflow: hidden; }
+  #wrap { display: flex; height: 100%; }
+  #stage { flex: 1; position: relative; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #panel { width: 280px; background: #0a0e14; border-left: 1px solid #1c2a3a; padding: 16px; overflow-y: auto; }
+  h1 { font-size: 15px; color: #39ff88; letter-spacing: 1px; margin-bottom: 4px; text-shadow: 0 0 8px #39ff8855; }
+  .sub { font-size: 10px; color: #5a7; margin-bottom: 16px; line-height: 1.4; }
+  .grp { margin-bottom: 18px; }
+  .grp > label { display: block; font-size: 10px; color: #8ab; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .styles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .styles button { background: #111a26; border: 1px solid #243446; color: #9bd; padding: 9px 4px; font-family: 'Russo One'; font-size: 11px; border-radius: 6px; cursor: pointer; transition: .15s; }
+  .styles button:hover { border-color: #39ff88; color: #cfe; }
+  .styles button.on { background: #0e3a24; border-color: #39ff88; color: #39ff88; box-shadow: 0 0 10px #39ff8833; }
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 11px; color: #9bd; }
+  .row input[type=range] { flex: 1; accent-color: #39ff88; }
+  .row .val { width: 38px; text-align: right; color: #cfe; font-size: 11px; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #9bd; margin-bottom: 8px; cursor: pointer; }
+  .desc { font-size: 10px; color: #678; line-height: 1.45; margin-top: 6px; border-top: 1px solid #1c2a3a; padding-top: 10px; }
+  .desc b { color: #9bd; }
+  kbd { background: #1a2430; border: 1px solid #2a3a4a; border-radius: 3px; padding: 1px 5px; font-size: 9px; color: #cfe; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><canvas id="cv"></canvas></div>
+  <div id="panel">
+    <h1>LABORATORIO DE ESTILOS</h1>
+    <div class="sub">Mismo gameplay, distinta piel. Mira cómo se ve al zoom real del juego antes de tocar nada.</div>
+
+    <div class="grp">
+      <label>Estilo</label>
+      <div class="styles" id="styleBtns"></div>
+    </div>
+
+    <div class="grp">
+      <label>Cámara</label>
+      <div class="row"><span>Zoom</span><input id="zoom" type="range" min="0.4" max="2.5" step="0.05" value="1.4"><span class="val" id="zoomV">1.4</span></div>
+      <div class="row"><span>Veloc.</span><input id="speed" type="range" min="0" max="2" step="0.1" value="1"><span class="val" id="speedV">1.0</span></div>
+    </div>
+
+    <div class="grp">
+      <label>Mostrar</label>
+      <label class="toggle"><input type="checkbox" id="tNames" checked> Nombres</label>
+      <label class="toggle"><input type="checkbox" id="tFood" checked> Comida</label>
+      <label class="toggle"><input type="checkbox" id="tVirus" checked> Virus</label>
+      <label class="toggle"><input type="checkbox" id="tGrow" checked> Animar crecimiento</label>
+    </div>
+
+    <div class="desc" id="desc"></div>
+    <div class="desc">Atajos: <kbd>1</kbd>–<kbd>5</kbd> estilos · <kbd>Espacio</kbd> pausa · rueda = zoom</div>
+  </div>
+</div>
+
+<script>
+// Cargar webfonts de forma ASÍNCRONA (no bloquea el render ni el evento load).
+(function(){ const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family=Russo+One&family=Press+Start+2P&display=swap'; document.head.appendChild(l); })();
+
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+let W, H, DPR = Math.min(window.devicePixelRatio || 1, 2);
+function resize() { W = cv.clientWidth; H = cv.clientHeight; cv.width = W * DPR; cv.height = H * DPR; }
+window.addEventListener('resize', resize);
+
+// ---- Constantes calcadas del juego ----
+const PILL_RATIO = 1.6;       // alto/ancho de la cápsula (aprox del juego)
+const MAP = 1400;
+const COLORS = ['#ff4d6d','#4dd2ff','#ffd24d','#9b5dff','#4dff91','#ff7a4d','#4d7aff','#ff4de0'];
+const NAMES = ['NEO','VOID','PIXL','GHOST','KILO','RUNE','ZEN','FLUX','BYTE','NOVA'];
+
+// ---- Entidades de mentira (solo para ver el render) ----
+let pills = [], foods = [], viruses = [];
+function rnd(a,b){ return a + Math.random()*(b-a); }
+function init() {
+  pills = []; foods = []; viruses = [];
+  for (let i=0;i<9;i++){
+    const r = rnd(22, 90);
+    pills.push({ x: rnd(-MAP,MAP), y: rnd(-MAP,MAP), vx: rnd(-1,1), vy: rnd(-1,1),
+      r, baseR: r, grow: rnd(0,Math.PI*2), color: COLORS[i%COLORS.length], name: NAMES[i%NAMES.length],
+      sprint: Math.random()<0.3 });
+  }
+  // El jugador (cápsula central grande)
+  pills[0] = { x:0,y:0,vx:0,vy:0, r:60, baseR:60, grow:0, color:'#39ff88', name:'TÚ', sprint:false, me:true };
+  for (let i=0;i<140;i++) foods.push({ x: rnd(-MAP,MAP), y: rnd(-MAP,MAP), r: rnd(5,8), color: COLORS[(Math.random()*COLORS.length)|0] });
+  for (let i=0;i<6;i++) viruses.push({ x: rnd(-MAP,MAP), y: rnd(-MAP,MAP), r: rnd(45,60), phase: rnd(0,6) });
+}
+init();
+
+// ---- Estado UI ----
+let style = 'neon', zoom = 1.4, speed = 1, paused = false;
+let cam = { x:0, y:0 };
+const opt = { names:true, food:true, virus:true, grow:true };
+
+const STYLES = {
+  neon:    { label:'Neón',     desc:'<b>El actual.</b> Glow, fondo oscuro liso, cápsulas con brillo. Limpio y ya resuelto.' },
+  pixel:   { label:'Pixel',    desc:'<b>Pixel art.</b> Sprites pixelados, dithering en el fondo, fuente bitmap. Mira si tiembla al zoom.' },
+  cartoon: { label:'Cartoon',  desc:'<b>Cel-shaded.</b> Contorno negro grueso, sombras planas, colores saturados. Estilo cómic.' },
+  synth:   { label:'Synthwave',desc:'<b>Retro CRT.</b> Rejilla en perspectiva, scanlines, neón rosa/cian. Mucha personalidad.' },
+  glass:   { label:'Glass',    desc:'<b>Glassmorphism.</b> Cápsulas translúcidas con reflejo, fondo con blobs difusos. Moderno y suave.' },
+};
+
+const btnWrap = document.getElementById('styleBtns');
+Object.keys(STYLES).forEach((k,i)=>{
+  const b = document.createElement('button');
+  b.textContent = (i+1)+' '+STYLES[k].label; b.dataset.k = k;
+  b.onclick = ()=> setStyle(k);
+  btnWrap.appendChild(b);
+});
+function setStyle(k){ style=k; document.querySelectorAll('#styleBtns button').forEach(b=>b.classList.toggle('on', b.dataset.k===k)); document.getElementById('desc').innerHTML = STYLES[k].desc; }
+setStyle('neon');
+
+document.getElementById('zoom').oninput = e=>{ zoom=+e.target.value; document.getElementById('zoomV').textContent=zoom.toFixed(2); };
+document.getElementById('speed').oninput = e=>{ speed=+e.target.value; document.getElementById('speedV').textContent=speed.toFixed(1); };
+document.getElementById('tNames').onchange = e=>opt.names=e.target.checked;
+document.getElementById('tFood').onchange = e=>opt.food=e.target.checked;
+document.getElementById('tVirus').onchange = e=>opt.virus=e.target.checked;
+document.getElementById('tGrow').onchange = e=>opt.grow=e.target.checked;
+window.addEventListener('keydown', e=>{
+  if (e.key>='1'&&e.key<='5'){ const k=Object.keys(STYLES)[+e.key-1]; if(k) setStyle(k); }
+  if (e.code==='Space'){ paused=!paused; e.preventDefault(); }
+});
+cv.addEventListener('wheel', e=>{ zoom = Math.max(0.4, Math.min(2.5, zoom - e.deltaY*0.001)); document.getElementById('zoom').value=zoom; document.getElementById('zoomV').textContent=zoom.toFixed(2); e.preventDefault(); }, {passive:false});
+
+// ---- Helpers de dibujo ----
+// Cápsula = roundRect rotada -45°, igual que el juego (pW=r*2, pH=pW*RATIO)
+function capsulePath(c, padW=0, padH=0){
+  const pW = c.r*2 + padW, pH = pW*PILL_RATIO/2 + padH;  // ajustado para que no sea exagerada
+  ctx.beginPath();
+  ctx.roundRect(-pW/2, -pH/2, pW, pH, pW/2);
+}
+function update(dt){
+  if (paused) return;
+  for (const p of pills){
+    p.x += p.vx*speed*dt*0.06; p.y += p.vy*speed*dt*0.06;
+    if (p.x<-MAP||p.x>MAP) p.vx*=-1; if (p.y<-MAP||p.y>MAP) p.vy*=-1;
+    if (opt.grow && !p.me){ p.grow += dt*0.002; p.r = p.baseR * (1 + Math.sin(p.grow)*0.12); }
+    else p.r = p.baseR;
+  }
+  // cámara sigue al jugador suave
+  cam.x += (pills[0].x - cam.x)*0.08; cam.y += (pills[0].y - cam.y)*0.08;
+  for (const v of viruses) v.phase += dt*0.003;
+}
+
+// =================== ESTILOS ===================
+function drawBackground(){
+  ctx.save();
+  if (style==='neon'){
+    ctx.fillStyle = '#070b12'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = 'rgba(60,90,120,0.12)'; ctx.lineWidth=1;
+    gridLines(120);
+  } else if (style==='pixel'){
+    ctx.fillStyle = '#1a1426'; ctx.fillRect(0,0,W,H);
+    // dithering por bloques
+    const s = 16*zoom;
+    for (let y=0;y<H;y+=s) for (let x=0;x<W;x+=s){
+      const n = ((Math.floor((x+cam.x*zoom)/s)*7 + Math.floor((y+cam.y*zoom)/s)*13)%5);
+      if (n===0){ ctx.fillStyle='rgba(60,40,90,0.5)'; ctx.fillRect(x,y,s,s); }
+      else if (n===2){ ctx.fillStyle='rgba(40,30,70,0.4)'; ctx.fillRect(x,y,s,s); }
+    }
+  } else if (style==='cartoon'){
+    ctx.fillStyle = '#bfe3ff'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = 'rgba(120,180,220,0.35)'; ctx.lineWidth=2; gridLines(140);
+  } else if (style==='synth'){
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#1a0830'); g.addColorStop(0.55,'#2a0a4a'); g.addColorStop(1,'#3a0a3a');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    perspectiveGrid();
+    // sol
+    ctx.fillStyle='rgba(255,90,160,0.25)'; ctx.beginPath(); ctx.arc(W/2,H*0.32,120,0,7); ctx.fill();
+  } else if (style==='glass'){
+    const g = ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'#0a1a2a'); g.addColorStop(1,'#1a0a2a'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // blobs difusos
+    for (const [bx,by,br,bc] of [[0.25,0.3,260,'#39ff8830'],[0.75,0.65,300,'#4dd2ff28'],[0.6,0.2,200,'#ff4de022']]){
+      const rg = ctx.createRadialGradient(W*bx,H*by,0,W*bx,H*by,br);
+      rg.addColorStop(0,bc); rg.addColorStop(1,'transparent'); ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+    }
+  }
+  ctx.restore();
+}
+function gridLines(step){
+  const ox = (-cam.x*zoom + W/2) % (step*zoom), oy = (-cam.y*zoom + H/2) % (step*zoom);
+  ctx.beginPath();
+  for (let x=ox; x<W; x+=step*zoom){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
+  for (let y=oy; y<H; y+=step*zoom){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
+  ctx.stroke();
+}
+function perspectiveGrid(){
+  const hz = H*0.42; ctx.strokeStyle='rgba(255,80,200,0.4)'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for (let i=-10;i<=10;i++){ const x=W/2 + i*60; ctx.moveTo(W/2 + i*16, hz); ctx.lineTo(x, H); }
+  const t = (Date.now()*0.0004)%1;
+  for (let i=0;i<14;i++){ const f=((i+t)/14); const y=hz + f*f*(H-hz); ctx.moveTo(0,y); ctx.lineTo(W,y); }
+  ctx.stroke();
+}
+
+function worldToScreen(wx,wy){ return [ (wx-cam.x)*zoom + W/2, (wy-cam.y)*zoom + H/2 ]; }
+
+function drawFood(){
+  if (!opt.food) return;
+  for (const f of foods){
+    const [sx,sy]=worldToScreen(f.x,f.y), r=f.r*zoom;
+    if (sx<-20||sx>W+20||sy<-20||sy>H+20) continue;
+    if (style==='pixel'){ ctx.fillStyle=f.color; const s=Math.max(3,r); ctx.fillRect(sx-s/2,sy-s/2,s,s); }
+    else if (style==='cartoon'){ ctx.fillStyle=f.color; ctx.strokeStyle='#000'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(sx,sy,r,0,7); ctx.fill(); ctx.stroke(); }
+    else if (style==='synth'){ ctx.fillStyle=f.color; ctx.shadowColor=f.color; ctx.shadowBlur=8; ctx.beginPath(); ctx.arc(sx,sy,r,0,7); ctx.fill(); ctx.shadowBlur=0; }
+    else if (style==='glass'){ ctx.fillStyle=f.color+'cc'; ctx.beginPath(); ctx.arc(sx,sy,r,0,7); ctx.fill(); }
+    else { ctx.fillStyle=f.color; ctx.beginPath(); ctx.arc(sx,sy,r,0,7); ctx.fill(); }
+  }
+}
+
+function drawVirus(v){
+  if (!opt.virus) return;
+  const [sx,sy]=worldToScreen(v.x,v.y), r=v.r*zoom;
+  ctx.save(); ctx.translate(sx,sy);
+  const spikes=16;
+  if (style==='pixel'){
+    ctx.fillStyle='#33dd55';
+    for (let i=0;i<spikes;i++){ const a=i/spikes*7; const rr=r*(i%2?0.78:1); ctx.fillRect(Math.cos(a)*rr-r*0.08,Math.sin(a)*rr-r*0.08,r*0.16,r*0.16); }
+    ctx.beginPath(); ctx.arc(0,0,r*0.7,0,7); ctx.fill();
+    ctx.fillStyle='#0a2a12'; ctx.fillRect(-r*0.2,-r*0.2,r*0.4,r*0.4);
+  } else {
+    ctx.beginPath();
+    for (let i=0;i<spikes*2;i++){ const a=i/(spikes*2)*Math.PI*2 + v.phase*0.1; const rr=(i%2?r*0.82:r); const x=Math.cos(a)*rr,y=Math.sin(a)*rr; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.closePath();
+    if (style==='synth'){ ctx.fillStyle='#1a3a1a'; ctx.strokeStyle='#3dff6d'; ctx.shadowColor='#3dff6d'; ctx.shadowBlur=14; ctx.lineWidth=2; ctx.fill(); ctx.stroke(); }
+    else if (style==='cartoon'){ ctx.fillStyle='#3ad14d'; ctx.strokeStyle='#000'; ctx.lineWidth=3; ctx.fill(); ctx.stroke(); }
+    else if (style==='glass'){ ctx.fillStyle='#3dff6d33'; ctx.strokeStyle='#3dff6d88'; ctx.lineWidth=2; ctx.fill(); ctx.stroke(); }
+    else { ctx.fillStyle='#22aa3322'; ctx.strokeStyle='#33dd55'; ctx.lineWidth=3; ctx.shadowColor='#33dd55'; ctx.shadowBlur=10; ctx.fill(); ctx.stroke(); }
+  }
+  ctx.restore(); ctx.shadowBlur=0;
+}
+
+function drawPill(p){
+  const [sx,sy]=worldToScreen(p.x,p.y), r=p.r*zoom;
+  if (sx<-150||sx>W+150||sy<-150||sy>H+150) return;
+  ctx.save(); ctx.translate(sx,sy); ctx.rotate(-Math.PI/4);
+  const pW=r*2, pH=pW*PILL_RATIO/2 + r*0.5;
+  const rr = pW/2;
+
+  if (style==='neon'){
+    ctx.shadowColor=p.color; ctx.shadowBlur=p.me?28:18;
+    ctx.fillStyle=p.color; roundRect(-pW/2,-pH/2,pW,pH,rr); ctx.fill();
+    ctx.shadowBlur=0; ctx.fillStyle='rgba(255,255,255,0.22)'; roundRect(-pW/2,-pH/2,pW,pH*0.4,rr); ctx.fill();
+  } else if (style==='pixel'){
+    // cápsula "pixelada": rect con esquinas escalonadas + banda divisoria
+    const px = Math.max(2, r*0.14);
+    ctx.imageSmoothingEnabled=false;
+    ctx.fillStyle=p.color; pixelCapsule(-pW/2,-pH/2,pW,pH,px);
+    ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.fillRect(-pW/2+px, -pH/2+px, pW-px*2, px); // brillo top
+    ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(-pW*0.5, -px/2, pW, px); // línea central
+    ctx.strokeStyle='#0008'; ctx.lineWidth=px; // outline oscuro
+  } else if (style==='cartoon'){
+    ctx.fillStyle=p.color; ctx.strokeStyle='#101418'; ctx.lineWidth=Math.max(3,r*0.12);
+    roundRect(-pW/2,-pH/2,pW,pH,rr); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.35)'; roundRect(-pW/2+rr*0.2,-pH/2+rr*0.2,pW*0.5,pH*0.35,rr*0.6); ctx.fill();
+  } else if (style==='synth'){
+    ctx.shadowColor=p.color; ctx.shadowBlur=22;
+    ctx.fillStyle='#0a0a14'; roundRect(-pW/2,-pH/2,pW,pH,rr); ctx.fill();
+    ctx.shadowBlur=10; ctx.strokeStyle=p.color; ctx.lineWidth=Math.max(2,r*0.08); roundRect(-pW/2,-pH/2,pW,pH,rr); ctx.stroke();
+    ctx.shadowBlur=0; ctx.strokeStyle=p.color+'88'; ctx.lineWidth=1; roundRect(-pW/2+5,-pH/2+5,pW-10,pH-10,rr); ctx.stroke();
+  } else if (style==='glass'){
+    ctx.fillStyle=p.color+'44'; roundRect(-pW/2,-pH/2,pW,pH,rr); ctx.fill();
+    ctx.strokeStyle=p.color+'aa'; ctx.lineWidth=Math.max(1.5,r*0.05); roundRect(-pW/2,-pH/2,pW,pH,rr); ctx.stroke();
+    const g=ctx.createLinearGradient(0,-pH/2,0,pH/2); g.addColorStop(0,'rgba(255,255,255,0.5)'); g.addColorStop(0.4,'rgba(255,255,255,0.05)'); g.addColorStop(1,'transparent');
+    ctx.fillStyle=g; roundRect(-pW/2,-pH/2,pW,pH*0.5,rr); ctx.fill();
+  }
+  ctx.restore(); ctx.shadowBlur=0;
+
+  // Nombre (sin rotar)
+  if (opt.names && p.name){
+    const fs = Math.max(10, r*0.5);
+    if (style==='pixel'){ ctx.font=`${Math.max(7,fs*0.7)}px "Press Start 2P"`; ctx.fillStyle='#fff'; ctx.strokeStyle='#000'; ctx.lineWidth=3; }
+    else { ctx.font=`${fs}px "Russo One"`; ctx.fillStyle='#fff'; ctx.strokeStyle='#000'; ctx.lineWidth=3; }
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.strokeText(p.name,sx,sy); ctx.fillText(p.name,sx,sy);
+  }
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+function pixelCapsule(x,y,w,h,px){
+  // dibuja la cápsula como rect con esquinas recortadas (look bitmap)
+  const c=Math.round(px*1.5);
+  ctx.beginPath();
+  ctx.moveTo(x+c,y); ctx.lineTo(x+w-c,y); ctx.lineTo(x+w,y+c); ctx.lineTo(x+w,y+h-c);
+  ctx.lineTo(x+w-c,y+h); ctx.lineTo(x+c,y+h); ctx.lineTo(x,y+h-c); ctx.lineTo(x,y+c); ctx.closePath(); ctx.fill();
+}
+
+function applyPostFx(){
+  if (style==='synth'){ // scanlines
+    ctx.fillStyle='rgba(0,0,0,0.18)';
+    for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
+  } else if (style==='pixel'){ // viñeta sutil
+    const g=ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.75);
+    g.addColorStop(0,'transparent'); g.addColorStop(1,'rgba(0,0,0,0.4)'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  }
+}
+
+let last=performance.now();
+function loop(now){
+  const dt = Math.min(50, now-last); last=now;
+  update(dt);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.imageSmoothingEnabled = (style!=='pixel');
+  drawBackground();
+  drawFood();
+  if (opt.virus) for (const v of viruses) drawVirus(v);
+  // pills ordenadas por tamaño (grandes encima)
+  [...pills].sort((a,b)=>a.r-b.r).forEach(drawPill);
+  applyPostFx();
+  requestAnimationFrame(loop);
+}
+resize(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
