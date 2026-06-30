@@ -2925,7 +2925,7 @@
         if (saveInterval) clearInterval(saveInterval);
         lastFrameTime = Date.now();
         practiceFirstSkillDone = false;   // el primer selector de skill del preview se omite
-        SoundManager.playMusic();   // el preview tiene sonido; se corta al empezar la partida
+        // Preview sin música: solo efectos (se cortan al empezar la partida).
         gameRunning = true;
     }
 
