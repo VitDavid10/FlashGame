@@ -77,6 +77,10 @@ const RESUME_GRACE_MS = 30000;   // ventana para hacer REJOIN tras desconexión 
 // que una sala se cuelgue en plena partida cuando todos se van (no terminaba ni
 // dejaba entrar).
 const EMPTY_RESET_MS = 33000;
+// Arcade en juego con MENOS de este nº de jugadores reales → la partida se acorta
+// para terminar en 30s (se recicla la sala rápido en vez de seguir medio vacía).
+const ARCADE_KEEP_MIN = 5;
+const ARCADE_SHORTEN_MS = 30000;
 const DEAD_REMOVE_MS = 3000;   // tras morir, retirar al jugador de la sim
 // Rate-limit por conexión (anti-flood/DoS). Un cliente real manda ~30-40 msg/s
 // (input 30 Hz + pings); dejamos margen de sobra. Por encima del umbral suave se
@@ -910,7 +914,7 @@ function restartRoom(room) {
     }
     // room.clients se vacía vía ws.on('close'); no esperamos a eso para pasar a waiting
     room.state = 'waiting';
-    room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false;
+    room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false; room._shortened = false;
     room.deadRemovals.clear(); room.pendingRemovals.clear();
     if (room.worker) {
         room.worker.postMessage({
@@ -2051,7 +2055,7 @@ const tickCtx = {
     pstatOf, statsOf, questsOf, addToPot, sendEcon, entryFeePill, flushPeakMass, minRealOf,
     deleteRoom: (key) => rooms.delete(key),
     // constantes
-    DEAD_REMOVE_MS, EMPTY_ROOM_TTL, EMPTY_RESET_MS,
+    DEAD_REMOVE_MS, EMPTY_ROOM_TTL, EMPTY_RESET_MS, ARCADE_KEEP_MIN, ARCADE_SHORTEN_MS,
     // dinámicos (getters porque cambian en runtime desde admin)
     get aoiEnabled() { return AOI_ENABLED; },
     get snapshotEvery() { return SNAPSHOT_EVERY; },

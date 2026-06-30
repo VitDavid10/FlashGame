@@ -73,6 +73,17 @@ function tickRoomOnce(room, now, ctx) {
     // Backfill gradual de bots (se acerca al objetivo a razón de +1 cada ~2s)
     ctx.tickGradualBots(room, now);
 
+    // Arcade con MENOS de ARCADE_KEEP_MIN jugadores reales: acortar la partida para
+    // terminar en 30s (reciclar la sala). El top timer (tl del snapshot) se actualiza
+    // solo. Avisamos una vez con 'roomShorten' para el cartel del cliente.
+    if (room.mode !== 'classic' && !room._shortened && room.clients.size < ctx.ARCADE_KEEP_MIN
+        && room.endsAt && (room.endsAt - now) > ctx.ARCADE_SHORTEN_MS) {
+        room._shortened = true;
+        room.endsAt = now + ctx.ARCADE_SHORTEN_MS;
+        ctx.broadcast(room, { t: 'roomShorten', in: ctx.ARCADE_SHORTEN_MS, count: room.clients.size, min: ctx.ARCADE_KEEP_MIN });
+        ctx.log(`Arcade ${room.key}: ${room.clients.size}<${ctx.ARCADE_KEEP_MIN} jugadores → fin acelerado a ${ctx.ARCADE_SHORTEN_MS / 1000}s`);
+    }
+
     // fin de partida (arcade/skills)
     if (room.endsAt && now >= room.endsAt) {
         room.state = 'ended';

@@ -3011,7 +3011,7 @@
         if (!gameRunning) startPracticeGame(mode);
         let n = 0;
         const baseText = 'FINDING ROOM';
-        setLobbyBanner(baseText + '.', 'search');
+        setLobbyBanner(baseText + '.', 'search'); SoundManager.play('alert');
         _mmTimer = setInterval(() => { n++; setLobbyBanner(baseText + '.'.repeat((n % 3) + 1), 'search'); }, 400);
         _mmTimeout1 = setTimeout(() => {
             if (_mmTimer) { clearInterval(_mmTimer); _mmTimer = null; }
@@ -3023,7 +3023,7 @@
     function applyWelcome(ws, msg) {
         if (!netState || netState._matchOver || netState.ws !== ws) { setLobbyBanner(null); return; }
         if (msg.state === 'playing') {
-            setLobbyBanner('ROOM FOUND' + (msg.roomName ? ' · <b>' + msg.roomName + '</b>' : ''), 'found');
+            setLobbyBanner('ROOM FOUND' + (msg.roomName ? ' · <b>' + msg.roomName + '</b>' : ''), 'found'); SoundManager.play('alert');
             _mmTimeout2 = setTimeout(() => {
                 if (!netState || netState._matchOver || netState.ws !== ws) { setLobbyBanner(null); return; }
                 practiceMode = false; setLobbyBanner(null);
@@ -3134,6 +3134,12 @@
             } else if (msg.t === 'payRequired') {
                 restoreBtn(); try { ws.close(); } catch (err) {}
                 showSystemMsg('Entry payment could not be verified (' + (msg.reason || '') + '). Make sure you have enough in-GAME balance and try again.', 'PAYMENT REQUIRED');
+            } else if (msg.t === 'roomShorten') {
+                // Arcade con pocos jugadores: la sala se reinicia pronto. El top timer
+                // ya se acorta solo (snapshots) y el contador grande sale en los últimos 5s.
+                setLobbyBanner('NOT ENOUGH PLAYERS · RESTARTING IN <b>' + Math.round((msg.in || 30000) / 1000) + 's</b>');
+                SoundManager.play('alert');
+                setTimeout(() => { if (gameRunning && !practiceMode) setLobbyBanner(null); }, 4000);
             } else if (msg.t === 'econ') {
                 EconHUD.update(msg.carry, msg.pot);
             } else if (msg.t === 'killGain') {
