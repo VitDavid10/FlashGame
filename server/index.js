@@ -1925,6 +1925,7 @@ wss.on('connection', (ws, req) => {
                 // El peak mass se flushea cuando llega del worker (processWorkerEvent).
                 // Para classic cashout, usamos un flag _alive que mantiene el main thread.
                 if (cli._alive) {
+                    room.liveCount = Math.max(0, (room.liveCount | 0) - 1);
                     flushPeakMass(room, playerId, cli);
                     if (cli.name && !cli.isTester) { pstatOf(cli.name).muertes++; playersDirty = true; }
                     const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
@@ -1935,6 +1936,7 @@ wss.on('connection', (ws, req) => {
             } else {
                 const pj = room.sim.players.get(playerId);
                 if (pj && pj.alive) {
+                    room.liveCount = Math.max(0, (room.liveCount | 0) - 1);
                     flushPeakMass(room, playerId, cli);
                     if (pj.name && !cli.isTester) { pstatOf(pj.name).muertes++; playersDirty = true; }
                     const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
