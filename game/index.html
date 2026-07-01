@@ -2558,6 +2558,8 @@
             if (typeof data.sfxVol === 'number') SFX_MASTER = Math.max(0, Math.min(1, data.sfxVol));
             if (typeof data.musicVol === 'number') { MUSIC_MASTER = Math.max(0, Math.min(1, data.musicVol)); SoundManager.applyMusicVolume(); }
             if (typeof data.enemyFx === 'boolean') applyEnemyFx(data.enemyFx);
+            // Zoom base global del server (admin): zoom al spawnear, se aleja al crecer.
+            if (typeof data.baseZoom === 'number' && data.baseZoom > 0) ZOOM_CONFIG.baseScale = data.baseZoom;
             const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
             // Reset del timer solo si el precio realmente cambió (cada 5 min en servidor).
             if (newRate !== _lastPillPerDollar) {
@@ -3155,6 +3157,8 @@
                 setTimeout(() => { if (gameRunning && !practiceMode) setLobbyBanner(null); }, 4000);
             } else if (msg.t === 'enemyFx') {
                 applyEnemyFx(!!msg.on);   // admin cambió las animaciones de enemigos en vivo
+            } else if (msg.t === 'baseZoom') {
+                if (typeof msg.value === 'number' && msg.value > 0) ZOOM_CONFIG.baseScale = msg.value;   // admin cambió el zoom base en vivo
             } else if (msg.t === 'announce') {
                 // Anuncio del admin a todos: cartel destacado + sonido.
                 setLobbyBanner('<b>' + (msg.text || '') + '</b>', 'found');

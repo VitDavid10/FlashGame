@@ -352,7 +352,7 @@
                 <span style="color:#666; font-size: 12px;">OFF = NINGÚN cliente dibuja los efectos de los demás jugadores (alivia carga a todos). La tuya siempre se ve. Persiste y avisa en vivo.</span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight:600">Zoom base (solo TU vista):</label>
+                <label style="font-weight:600">Zoom base (GLOBAL, todos los jugadores):</label>
                 <input type="number" step="0.1" min="0.3" max="4" id="baseZoom" style="width:80px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;">
                 <button class="b verde mini" onclick="aplicarZoom()">Aplicar</button>
                 <button class="b mini" onclick="resetZoom()">Reset</button>
@@ -750,9 +750,9 @@ let _enemyFxOn = true;
 function toggleEnemyFx() { send({ cmd: 'setEnemyFx', on: !_enemyFxOn }); toast('<strong>Animaciones enemigos: ' + (!_enemyFxOn ? 'ON' : 'OFF') + '</strong>', 'ok'); setTimeout(pedir, 100); }
 function aplicarZoom() {
     const z = parseFloat(document.getElementById('baseZoom').value);
-    if (z > 0) { localStorage.setItem('pw_baseZoom', String(z)); toast('<strong>Zoom base: ' + z + '</strong><br>Solo tu navegador', 'ok'); }
+    if (z > 0) { send({ cmd: 'setBaseZoom', value: z }); toast('<strong>Zoom base global: ' + z + '</strong><br>Todos los jugadores', 'ok'); setTimeout(pedir, 100); }
 }
-function resetZoom() { localStorage.removeItem('pw_baseZoom'); document.getElementById('baseZoom').value = '1.4'; localStorage.setItem('pw_baseZoom', '1.4'); toast('<strong>Zoom reseteado (1.4)</strong>', 'ok'); }
+function resetZoom() { document.getElementById('baseZoom').value = '1.4'; send({ cmd: 'setBaseZoom', value: 1.4 }); toast('<strong>Zoom reseteado (1.4)</strong>', 'ok'); setTimeout(pedir, 100); }
 function enviarAnuncio() {
     const t = document.getElementById('announceText').value.trim();
     if (!t) { toast('Escribe un mensaje', 'warn'); return; }
@@ -802,7 +802,7 @@ function render(m) {
     if (m.sfxVol != null && document.activeElement.id !== 'volSfx') { const v = Math.round(m.sfxVol * 100); document.getElementById('volSfx').value = v; document.getElementById('volSfxVal').innerText = v + '%'; }
     if (m.musicVol != null && document.activeElement.id !== 'volMusic') { const v = Math.round(m.musicVol * 100); document.getElementById('volMusic').value = v; document.getElementById('volMusicVal').innerText = v + '%'; }
     if (typeof m.enemyFx === 'boolean') { _enemyFxOn = m.enemyFx; const b = document.getElementById('enemyFxBtn'); if (b) { b.innerText = m.enemyFx ? 'ON' : 'OFF'; b.className = 'b ' + (m.enemyFx ? 'verde' : 'rojo'); } }
-    if (document.activeElement.id !== 'baseZoom') { const bz = document.getElementById('baseZoom'); if (bz && !bz.value) bz.value = localStorage.getItem('pw_baseZoom') || '1.4'; }
+    if (typeof m.baseZoom === 'number' && document.activeElement.id !== 'baseZoom') { const bz = document.getElementById('baseZoom'); if (bz) bz.value = m.baseZoom; }
     const t = m.totales;
     const sEntradas = realOnly ? t.entradasReal : t.entradas;
     const sMuertes = realOnly ? t.muertesReal : t.muertes;

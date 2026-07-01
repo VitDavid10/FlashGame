@@ -65,7 +65,11 @@ let musicVol = (typeof _glob.musicVol === 'number') ? _clamp01(_glob.musicVol) :
 // Animaciones/efectos de los DEMÁS jugadores (global). false = todos los clientes
 // dejan de dibujar FX de enemigos (alivia carga). La tuya siempre se dibuja.
 let enemyFx  = (typeof _glob.enemyFx  === 'boolean') ? _glob.enemyFx : true;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, useWorkers, sfxVol, musicVol, enemyFx }), () => {}); }
+// Zoom base GLOBAL del juego (todos los jugadores). Es el zoom al spawnear (r=INITIAL_RADIUS);
+// el cliente lo aleja al crecer con su curva. Editable en vivo desde admin. Mayor = más cerca.
+const _clampZoom = v => Math.max(0.3, Math.min(4, v));
+let baseZoom = (typeof _glob.baseZoom === 'number') ? _clampZoom(_glob.baseZoom) : 1.4;
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, useWorkers, sfxVol, musicVol, enemyFx, baseZoom }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -1008,6 +1012,7 @@ let AOI_ENABLED = process.env.AOI !== '0';   // ON por defecto; AOI=0 para apaga
 const AOI_BASE = 1800;          // visión mínima en píxeles del mundo
 const AOI_PER_R = 18;           // px de visión extra por cada px de radio máximo
 const AOI_MARGIN = 1.30;        // margen para interpolación / pop-in
+const AOI_ZOOM_REF = 1.4;       // zoom base de referencia (el AOI escala inverso al zoom real)
 // Caja rectangular: si el cliente envió su aspect ratio (W/H), la caja se estira
 // para cubrir el viewport real. Sin aspect → caja cuadrada (compat con clientes viejos).
 // Clamp [0.5, 4.0]: protege de ratios absurdos (cliente trucado para ver más).
@@ -1022,7 +1027,9 @@ function aoiBoxFor(p, aspect) {
         if (c.r > maxR) maxR = c.r;
     }
     cx /= mtot; cy /= mtot;
-    const view = (AOI_BASE + maxR * AOI_PER_R) * AOI_MARGIN;
+    // Escala inversa al zoom base global: más zoom (más cerca) → el cliente ve menos
+    // área → el server manda una caja proporcionalmente menor. A baseZoom=REF, factor 1.
+    const view = (AOI_BASE + maxR * AOI_PER_R) * AOI_MARGIN * (AOI_ZOOM_REF / baseZoom);
     let ar = aspect > 0 ? aspect : 1;
     if (ar > 4) ar = 4; else if (ar < 0.5) ar = 0.5;
     // halfX × halfY mantienen el ÁREA equivalente al cuadrado (sqrt del ratio).
@@ -1205,7 +1212,7 @@ function buildAdminState() {
         layerOff: Object.assign({}, layerOff),   // { 2: true } si L2 está apagada
         arcadeRestartMs, arcadeLobbyMs,
         useWorkers,
-        sfxVol, musicVol, enemyFx,
+        sfxVol, musicVol, enemyFx, baseZoom,
         mainSendMs, mainTotalMs,
         serverCpu: serverCpuPct,
         totales: {
@@ -1367,7 +1374,7 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff), sfxVol, musicVol, enemyFx }));
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff), sfxVol, musicVol, enemyFx, baseZoom }));
         return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
@@ -1682,6 +1689,13 @@ wss.on('connection', (ws, req) => {
                 for (const r of rooms.values()) broadcast(r, { t: 'enemyFx', on: enemyFx });
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global animaciones de enemigos: ${enemyFx ? 'ON' : 'OFF'}`);
+            } else if (msg.cmd === 'setBaseZoom') {
+                if (typeof msg.value === 'number') baseZoom = _clampZoom(msg.value);
+                saveGlobal();
+                // Aplicar en vivo a todos los jugadores online (y espectadores).
+                for (const r of rooms.values()) broadcast(r, { t: 'baseZoom', value: baseZoom });
+                ws.send(JSON.stringify(buildAdminState()));
+                log(`Global zoom base: ${baseZoom}`);
             } else if (msg.cmd === 'announce') {
                 const text = (typeof msg.text === 'string') ? msg.text.slice(0, 140) : '';
                 if (text) {
