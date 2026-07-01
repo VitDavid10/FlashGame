@@ -33,6 +33,7 @@ function createGameHost(deps) {
         resumeTokens,
         refillBots, SPAWN_IMMUNE_MS,
         director, RESUME_GRACE_MS, sendWaiting, armLobby,
+        welcomeMsg, sendEcon, resolveQuickJoin,
     } = deps;
 
     function buildSim(mode, rules) {
@@ -214,6 +215,84 @@ function createGameHost(deps) {
         }
     }
 
+    // Entrada de un jugador (join/resume). Es del Host porque en el split real el WS
+    // lo posee el Host. Orquesta: matchmaking (pickLayer) + sim (addPlayer) + welcome/
+    // lobby, y delega en el Director todo lo económico/stats (kick, precio, cobro,
+    // registro) vía director.*. Devuelve {room, playerId} para que el caller
+    // actualice su estado de conexión, o null si no entró (rechazo/noSlot/pago).
+    function handleJoin(ws, ip, msg) {
+        // Reconexión con token: recupera la célula viva del jugador si sigue en la sim.
+        if (msg.resume) {
+            const tok = resumeTokens.get(msg.resume);
+            const r = tok ? rooms.get(tok.roomKey) : null;
+            if (tok && r && !r.worker && r.sim.players.has(tok.playerId) && !r.clients.has(tok.playerId)) {
+                const playerId = tok.playerId;
+                r.pendingRemovals.delete(playerId);
+                const p = r.sim.players.get(playerId);
+                r.clients.set(playerId, { ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume, opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop, skinUrl: p.skinUrl } });
+                ws.send(welcomeMsg(r, playerId, msg.resume));
+                refillBots(r);
+                log(`Jugador '${p.name}' RECONECTADO a ${r.key}`);
+                return { room: r, playerId };
+            }
+            ws.send(JSON.stringify({ t: 'resumeFail' }));
+            return null;
+        }
+        const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
+        let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
+        if (roomName === '*') roomName = resolveQuickJoin(mode);
+        const kick = director.checkKick(ip);
+        if (kick) { ws.send(JSON.stringify({ t: 'kickedWait', secondsLeft: kick.secondsLeft })); return null; }
+        const room = pickLayer(mode, roomName);
+        if (!room) {
+            ws.send(JSON.stringify({ t: 'noSlot', roomName, mode }));
+            log(`Sin sitio en ${comboKeyOf(mode, roomName)}: todas las layers llenas o a punto de acabar`);
+            return null;
+        }
+        const key = room.key;
+        const ck = room.comboKey;
+        director.lockPriceIfEmpty(room);
+        // Cobro/autorización (Director). Si falla, ya envió payRequired al cliente.
+        const auth = director.authorizeEntry(room, msg, ws);
+        if (!auth.ok) return null;
+        const { payWallet, fee, tester } = auth;
+        const playerId = PillSim.uuid();
+        const name = typeof msg.name === 'string' ? msg.name.slice(0, 16) : '';
+        const opts = {
+            name,
+            colorBot: typeof msg.colorBot === 'string' ? msg.colorBot.slice(0, 9) : undefined,
+            colorTop: typeof msg.colorTop === 'string' ? msg.colorTop.slice(0, 9) : undefined,
+            skinUrl: typeof msg.skinUrl === 'string' ? msg.skinUrl.slice(0, 300) : null
+        };
+        if (room.worker) room.worker.postMessage({ type: 'addPlayer', pid: playerId, opts, aspect: (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1, useBin: msg.bin === 1 || msg.bin === true });
+        else room.sim.addPlayer(playerId, opts);
+        const _alive = true, _killStreak = 0;
+        const token = PillSim.uuid() + PillSim.uuid();
+        resumeTokens.set(token, { roomKey: key, playerId });
+        const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
+        // Opt-in al protocolo binario para snapshots (msg.bin === 1); eco en welcome.
+        const useBin = msg.bin === 1 || msg.bin === true;
+        const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
+        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, aspect, _alive, _killStreak, _spawned: false });
+        sendEcon(room.clients.get(playerId), room);
+        director.recordEntry(room, playerId, name, cid, ip, tester);
+        if (room.state === 'playing') {
+            // Tarde-join: NO spawneamos aquí. El cliente verá su pantalla de carga y
+            // mandará 'ready'; ahí lo spawneamos con inmunidad (empieza al entrar).
+            refillBots(room);
+        }
+        ws.send(welcomeMsg(room, playerId, token, undefined, useBin ? { useBin: true } : null));
+        log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(ck)}${useBin ? ' [bin]' : ''}`);
+        if (room.state === 'waiting') {
+            sendWaiting(room);
+            armLobby(room);
+        } else if (room.state === 'ended') {
+            const restartIn = Math.max(0, room.restartAt - Date.now());
+            ws.send(JSON.stringify({ t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode, restartIn }));
+        }
+        return { room, playerId };
+    }
+
     // Cierre de un socket. Es del Host porque en el split real el 'close' del WS
     // ocurre en el proceso dueño del socket. El Host limpia espectador/sim/lobby y
     // calcula los datos autoritativos (wasAlive, kills) desde SU sim; toda la lógica
@@ -246,7 +325,7 @@ function createGameHost(deps) {
         }
     }
 
-    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms, handleInput, handleClose };
+    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms, handleInput, handleClose, handleJoin };
 }
 
 module.exports = { createGameHost };

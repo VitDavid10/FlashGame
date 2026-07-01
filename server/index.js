@@ -695,6 +695,54 @@ const director = {
             log(`Reembolso de entrada (sala no empezó): ${cli.payWallet.slice(0, 6)}… +${cli.paidFee} PILL`);
         }
     },
+
+    // IP echada por admin en los últimos 30s → bloqueada para cualquier sala.
+    // Devuelve {secondsLeft} si está bloqueada, o null.
+    checkKick(ip) {
+        const kickExp = kickedIps.get(ip);
+        if (kickExp && kickExp > Date.now()) return { secondsLeft: Math.ceil((kickExp - Date.now()) / 1000) };
+        return null;
+    },
+
+    // Precio BLOQUEADO por sala: si está vacía (primer jugador), fija el rate al del
+    // oráculo actual; mientras haya gente, no cambia (todos pagan lo mismo).
+    lockPriceIfEmpty(room) { if (room.clients.size === 0) room.pillRate = PILL_PER_DOLLAR; },
+
+    // Autoriza y COBRA la entrada. Salas gratis o testers pasan sin cobro. Salas de
+    // pago exigen firma de wallet + saldo WAR; si algo falla, envía payRequired y
+    // devuelve {ok:false}. Si cobra, descuenta del saldo y marca la firma (anti-replay).
+    // Devuelve {ok, payWallet, fee, tester}. Es la frontera de deltas de la ENTRADA.
+    authorizeEntry(room, msg, ws) {
+        const ck = room.comboKey, key = room.key;
+        const fee = entryFeePill(ck, room.pillRate);
+        const tester = msg.tester === 'STRESS_TEST_DEVNET' && /devnet/i.test(solana.RPC || '');
+        if (fee > 0 && !tester) {
+            const pay = msg.pay || {};
+            const w = String(pay.wallet || ''), ts = Number(pay.ts) || 0;
+            const expected = `PillWars enter ${ck} paying ${fee} PILL @ ${ts}`;
+            const reject = (reason) => { ws.send(JSON.stringify({ t: 'payRequired', room: room.roomName, fee, reason, balance: isSolAddr(w) ? warbank.getBalance(w) : 0 })); };
+            if (!isSolAddr(w) || pay.message !== expected || Math.abs(Date.now() - ts) > 120000) { reject('firma de pago inválida'); return { ok: false }; }
+            const sigKey = 'enter_' + (Array.isArray(pay.signature) ? pay.signature.join('') : '');
+            if (warbank.sigUsed(sigKey)) { reject('firma ya usada'); return { ok: false }; }
+            if (!solana.verifySignedMessage(w, pay.message, pay.signature)) { reject('firma no válida'); return { ok: false }; }
+            if (warbank.getBalance(w) < fee) { reject('saldo WAR insuficiente'); return { ok: false }; }
+            warbank.debit(w, fee);
+            warbank.creditDeposit(w, 0, sigKey);   // marca la firma como usada (anti-replay)
+            logAdmin(key, 'Entrada pagada', w.slice(0, 6) + '… -' + fee + ' PILL');
+            log(`Entrada pagada: ${w.slice(0, 6)}… -${fee} PILL → ${key}`);
+            return { ok: true, payWallet: w, fee, tester };
+        }
+        return { ok: true, payWallet: null, fee, tester };
+    },
+
+    // Registra la entrada en las stats globales (combo + jugador + quests + log).
+    recordEntry(room, playerId, name, cid, ip, tester) {
+        const ck = room.comboKey;
+        const st_ = statsOf(ck); st_.entradas++; if (!tester) st_.entradasReal++; statsDirty = true;
+        if (name && !tester) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; st.isReal = true; playersDirty = true; }
+        if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
+        if (!tester) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: room.key, id: playerId });
+    },
 };
 
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
@@ -712,6 +760,7 @@ const gameHost = createGameHost({
     resumeTokens,
     refillBots, SPAWN_IMMUNE_MS,
     director, RESUME_GRACE_MS, sendWaiting, armLobby,
+    welcomeMsg, sendEcon, resolveQuickJoin,
 });
 const { buildSim, getOrCreateRoom, pickLayer, initLayers } = gameHost;
 
@@ -1772,116 +1821,10 @@ wss.on('connection', (ws, req) => {
         }
 
         if (msg.t === 'join' && !room) {
-            // Reconexión con token
-            if (msg.resume) {
-                const tok = resumeTokens.get(msg.resume);
-                const r = tok ? rooms.get(tok.roomKey) : null;
-                if (tok && r && !r.worker && r.sim.players.has(tok.playerId) && !r.clients.has(tok.playerId)) {
-                    room = r; playerId = tok.playerId;
-                    room.pendingRemovals.delete(playerId);
-                    const p = room.sim.players.get(playerId);
-                    room.clients.set(playerId, { ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume, opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop, skinUrl: p.skinUrl } });
-                    ws.send(welcomeMsg(room, playerId, msg.resume));
-                    refillBots(room);
-                    log(`Jugador '${p.name}' RECONECTADO a ${room.key}`);
-                } else {
-                    ws.send(JSON.stringify({ t: 'resumeFail' }));
-                }
-                return;
-            }
-            const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
-            let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
-            if (roomName === '*') roomName = resolveQuickJoin(mode);
-            // Matchmaker: elige la layer del combo (apilando). null = todas mal
-            // (llenas, a punto de acabar o ended). En ese caso el cliente recibe
-            // noSlot y sigue en práctica offline.
-            // Bloqueo por IP: si esta IP fue echada por admin en los últimos 30s,
-            // rechazar la entrada a CUALQUIER sala (no solo a la kickadada). Avisamos
-            // con kickedWait + segundos restantes para que el cliente lo muestre.
-            const kickExp = kickedIps.get(ip);
-            if (kickExp && kickExp > Date.now()) {
-                ws.send(JSON.stringify({ t: 'kickedWait', secondsLeft: Math.ceil((kickExp - Date.now()) / 1000) }));
-                return;
-            }
-            room = pickLayer(mode, roomName);
-            if (!room) {
-                ws.send(JSON.stringify({ t: 'noSlot', roomName, mode }));
-                log(`Sin sitio en ${comboKeyOf(mode, roomName)}: todas las layers llenas o a punto de acabar`);
-                return;
-            }
-            const key = room.key;
-            const ck = room.comboKey;
-            // Precio BLOQUEADO por sala: si esta sala está vacía (este es el primer
-            // jugador), fija el precio al del oráculo actual. Mientras haya gente, no
-            // cambia → todos en la misma partida pagan los mismos PILL (reparto justo).
-            if (room.clients.size === 0) room.pillRate = PILL_PER_DOLLAR;
-            // Salas de pago: exigir FIRMA de la wallet + descontar del saldo WAR.
-            // Excepción: bots del stress test pueden entrar gratis con el token de tester
-            // (solo válido si se ejecutan en el mismo servidor: SOL_RPC=devnet).
-            // Fee/firma de pago van por COMBO (mode_price), no por layer:
-            // la firma del usuario es la misma para classic_5$ aunque le toque
-            // L1 o L2 — el server las cobra al saldo igual.
-            const fee = entryFeePill(ck, room.pillRate);
-            let payWallet = null;
-            const TESTER_OK = msg.tester === 'STRESS_TEST_DEVNET' && /devnet/i.test(solana.RPC || '');
-            if (fee > 0 && !TESTER_OK) {
-                const pay = msg.pay || {};
-                const w = String(pay.wallet || ''), ts = Number(pay.ts) || 0;
-                const expected = `PillWars enter ${ck} paying ${fee} PILL @ ${ts}`;
-                const reject = (reason) => { ws.send(JSON.stringify({ t: 'payRequired', room: roomName, fee, reason, balance: isSolAddr(w) ? warbank.getBalance(w) : 0 })); room = null; };
-                if (!isSolAddr(w) || pay.message !== expected || Math.abs(Date.now() - ts) > 120000) { reject('firma de pago inválida'); return; }
-                const sigKey = 'enter_' + (Array.isArray(pay.signature) ? pay.signature.join('') : '');
-                if (warbank.sigUsed(sigKey)) { reject('firma ya usada'); return; }
-                if (!solana.verifySignedMessage(w, pay.message, pay.signature)) { reject('firma no válida'); return; }
-                if (warbank.getBalance(w) < fee) { reject('saldo WAR insuficiente'); return; }
-                warbank.debit(w, fee);
-                warbank.creditDeposit(w, 0, sigKey);   // marca la firma como usada (anti-replay)
-                payWallet = w;
-                logAdmin(key, 'Entrada pagada', w.slice(0, 6) + '… -' + fee + ' PILL');
-                log(`Entrada pagada: ${w.slice(0, 6)}… -${fee} PILL → ${key}`);
-            }
-            playerId = PillSim.uuid();
-            const name = typeof msg.name === 'string' ? msg.name.slice(0, 16) : '';
-            const opts = {
-                name,
-                colorBot: typeof msg.colorBot === 'string' ? msg.colorBot.slice(0, 9) : undefined,
-                colorTop: typeof msg.colorTop === 'string' ? msg.colorTop.slice(0, 9) : undefined,
-                skinUrl: typeof msg.skinUrl === 'string' ? msg.skinUrl.slice(0, 300) : null
-            };
-            if (room.worker) room.worker.postMessage({ type: 'addPlayer', pid: playerId, opts, aspect: (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1, useBin: msg.bin === 1 || msg.bin === true });
-            else room.sim.addPlayer(playerId, opts);
-            const _alive = true, _killStreak = 0;
-            const token = PillSim.uuid() + PillSim.uuid();
-            resumeTokens.set(token, { roomKey: key, playerId });
-            // Guarda el clientId anónimo del navegador para que el servidor pueda
-            // sumar las quests autoritativamente (sin depender de lo que mande el cliente).
-            const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
-            // carry: dinero "retenido" del jugador en esta sala (se inicializa con su entrada y sube al matar).
-            // Opt-in al protocolo binario para snapshots (msg.bin === 1).
-            // Eco en welcome.useBin para que el cliente decodifique los frames.
-            const useBin = msg.bin === 1 || msg.bin === true;
-            const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
-            room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: TESTER_OK, useBin, aspect, _alive, _killStreak, _spawned: false });
-            sendEcon(room.clients.get(playerId), room);
-            // Stats por COMBO (compartidas entre layers).
-            const st_ = statsOf(ck); st_.entradas++; if (!TESTER_OK) st_.entradasReal++; statsDirty = true;
-            if (name && !TESTER_OK) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; st.isReal = true; playersDirty = true; }
-            if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
-            if (!TESTER_OK) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
-            if (room.state === 'playing') {
-                // Tarde-join: NO spawneamos aquí. El cliente verá su pantalla de carga y
-                // mandará 'ready'; ahí lo spawneamos con inmunidad (empieza al entrar).
-                refillBots(room);
-            }
-            ws.send(welcomeMsg(room, playerId, token, undefined, useBin ? { useBin: true } : null));
-            log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(ck)}${useBin ? ' [bin]' : ''}`);
-            if (room.state === 'waiting') {
-                sendWaiting(room);
-                armLobby(room);
-            } else if (room.state === 'ended') {
-                const restartIn = Math.max(0, room.restartAt - now);
-                ws.send(JSON.stringify({ t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode, restartIn }));
-            }
+            // El GameHost orquesta matchmaking + sim + welcome; el cobro/stats los hace
+            // vía director.*. Devuelve {room, playerId} para actualizar esta conexión.
+            const res = gameHost.handleJoin(ws, ip, msg);
+            if (res) { room = res.room; playerId = res.playerId; }
             return;
         }
         if (!room || !playerId) return;
