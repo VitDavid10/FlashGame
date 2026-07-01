@@ -26,14 +26,14 @@ function createGameHost(deps) {
     const {
         rooms,
         comboKeyOf, layerKeyOf, isLayerOffForPrice,
-        rulesOf, minRealOf, targetPopOf, maxPlayersOf,
+        rulesOf, minRealOf, targetPopOf, maxPlayersOf, lobbyMsOf,
         log, spawnWorker,
         getUseWorkers, onRulesDirty,
         CATALOG_MODES, PRICES, LAYERS_PER_COMBO,
+        MATCH_MS, getAoiEnabled, getSnapshotEvery,
         resumeTokens,
-        refillBots, SPAWN_IMMUNE_MS,
-        director, RESUME_GRACE_MS, sendWaiting, armLobby,
-        welcomeMsg, sendEcon, resolveQuickJoin,
+        SPAWN_IMMUNE_MS,
+        director, RESUME_GRACE_MS, sendEcon,
     } = deps;
 
     function buildSim(mode, rules) {
@@ -343,7 +343,209 @@ function createGameHost(deps) {
         }
     }
 
-    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms, handleInput, handleClose, handleJoin, handleSpectate };
+    // ===================================================================
+    // Runtime de sala (movido desde index.js en Fase 4 / 4a.2). Es lógica de
+    // Host puro: broadcast, lobby, arranque/reinicio de partida, bots de relleno.
+    // NO toca dinero/stats (eso sigue en el Director vía director.* y tickCtx).
+    // ===================================================================
+
+    function broadcast(room, objOrString) {
+        const m = typeof objOrString === 'string' ? objOrString : JSON.stringify(objOrString);
+        for (const cli of room.clients.values()) { if (cli.ws.readyState === 1) { try { cli.ws.send(m); } catch (e) {} } }
+    }
+
+    function sendWaiting(room) {
+        // startIn: ms que faltan para empezar si el lobby ya está armado (null si no).
+        // El cliente lo usa para la cuenta atrás (se re-sincroniza en cada waiting).
+        const startIn = room.startAt ? Math.max(0, room.startAt - Date.now()) : null;
+        broadcast(room, { t: 'waiting', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode, startIn });
+    }
+
+    // Cache del JSON de foods por sala. Serializar ~7800 foods (classic) en CADA
+    // join/reconnect satura el main: con el churn de reconexiones del stress test son
+    // decenas de joins/seg. Cacheamos el string 2s; el cliente se autocorrige con los
+    // eventos foodRespawn, así que un cache ligeramente viejo no se nota.
+    function foodsJsonOf(room) {
+        const now = Date.now();
+        if (room._foodsJson && now - (room._foodsJsonAt || 0) < 2000) return room._foodsJson;
+        const foods = room.sim ? room.sim.foods : (room._foods || []);
+        room._foodsJson = JSON.stringify(foods);
+        room._foodsJsonAt = now;
+        return room._foodsJson;
+    }
+    // Devuelve el welcome ya serializado como STRING, con el foods cacheado inyectado
+    // sin re-serializar. `extra` añade campos al head (ej. { useBin: true }).
+    function welcomeMsg(room, playerId, token, type, extra) {
+        const baseSize = PillSim.WORLD_CONFIG[room.mode === 'classic' ? 'classic' : 'arcade'].size;
+        const head = {
+            t: type || 'welcome', id: playerId, token,
+            mapSize: room.sim ? room.sim.mapSize : (room._mapSize || baseSize), mode: room.mode, roomName: room.roomName,
+            state: room.state, count: room.clients.size, needed: minRealOf(room.comboKey),
+            duration: MATCH_MS,
+            tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
+            startIn: room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
+            restartEnMs: room.restartAt ? Math.max(0, room.restartAt - Date.now()) : null,
+            simTime: room.sim ? Math.round(room.sim.now) : 0
+        };
+        if (extra) Object.assign(head, extra);
+        return JSON.stringify(head).slice(0, -1) + ',"foods":' + foodsJsonOf(room) + '}';
+    }
+
+    // Backfill: ajusta el OBJETIVO de bots (no añade de golpe). La cola gradual
+    // los mete poco a poco, así parece que la sala se va llenando naturalmente.
+    function refillBots(room) {
+        if (room.state !== 'playing') return;
+        const target = targetPopOf(room.comboKey);
+        if (target === 0) return;
+        const deseados = Math.max(0, target - room.clients.size);
+        if (room.worker) {
+            room.worker.postMessage({ type: 'refillBots', target: deseados });
+        } else {
+            const sim = room.sim;
+            sim.config.botConfig.count = deseados;
+            sim.config.botConfig.enabled = deseados > 0;
+            sim.config.botConfig.respawn = deseados > 0;
+            room.botTargetCount = deseados;
+        }
+    }
+
+    // Cola gradual de spawn/despawn: en cada llamada acerca el número de bots
+    // al objetivo en +1 (1 bot cada 1.5–2.5 s). Se llama desde el bucle principal.
+    function tickGradualBots(room, now) {
+        if (room.state !== 'playing') return;
+        const target = room.botTargetCount | 0;
+        const sim = room.sim;
+        const grupos = [...new Set(sim.enemies.map(e => e.id))];
+        if (grupos.length === target) return;
+        if ((room.lastBotStep || 0) + (1500 + Math.random() * 1000) > now) return;
+        room.lastBotStep = now;
+        if (grupos.length < target) {
+            sim.spawnBot();
+        } else if (grupos.length > target) {
+            // retirar el grupo de menos masa: es el que menos se nota
+            const masaDe = id => sim.enemies.filter(e => e.id === id).reduce((s, c) => s + c.mass, 0);
+            const peor = grupos.slice().sort((a, b) => masaDe(a) - masaDe(b))[0];
+            sim.enemies = sim.enemies.filter(e => e.id !== peor);
+        }
+    }
+
+    // Arma (o cancela) la cuenta atrás de lobby. Se llama cuando cambia el nº de
+    // reales en una sala en espera. Al llegar al mínimo arranca un countdown de
+    // lobbyMs; si baja del mínimo lo cancela. Con lobbyMs=0 empieza al instante.
+    function armLobby(room) {
+        if (room.state !== 'waiting') return;
+        const min = minRealOf(room.comboKey);
+        if (room.clients.size >= min) {
+            if (room.startAt) return;   // ya hay cuenta atrás en marcha
+            const lobbyMs = lobbyMsOf(room.comboKey);
+            // Jitter 0-1500ms para que varias salas que se llenan a la vez NO arranquen
+            // en el mismo tick. Sin esto, llegabas a 150 spawns simultáneos cuando 5 salas
+            // pasaban a 'playing' en el mismo segundo → spike de workerMsg a 3000ms/s.
+            // El tick loop (single-thread) y el worker ya disparan startMatch cuando llega
+            // startAt, así que el jitter funciona para los dos modos.
+            const jitter = Math.floor(Math.random() * 1500);
+            const total = Math.max(0, lobbyMs) + jitter;
+            room.startAt = Date.now() + total;
+            if (room.worker) room.worker.postMessage({ type: 'setLobbyStart', startAt: room.startAt });
+            if (lobbyMs > 0) {
+                broadcast(room, { t: 'lobbyCountdown', startIn: lobbyMs, count: room.clients.size, needed: min, roomName: room.roomName, mode: room.mode });
+                log(`Lobby ${room.key}: ${room.clients.size}/${min} → cuenta atrás ${lobbyMs / 1000}s (+${jitter}ms jitter)`);
+            }
+        } else if (room.startAt) {
+            room.startAt = null;
+            if (room.worker) room.worker.postMessage({ type: 'cancelLobby' });
+            sendWaiting(room);   // vuelve a "esperando X/min"
+            log(`Lobby ${room.key}: cuenta atrás cancelada (${room.clients.size}/${min})`);
+        }
+    }
+
+    function startMatch(room) {
+        if (room.state !== 'waiting') return;
+        room.state = 'playing';
+        room.startAt = null;
+        room.lastTick = Date.now();
+        if (room.mode !== 'classic') room.endsAt = Date.now() + MATCH_MS;
+        // NO spawneamos aquí: cada jugador se spawnea cuando su cliente manda 'ready'
+        // (al terminar su pantalla de carga). Así la inmunidad empieza justo cuando entra
+        // de verdad, dure lo que dure su carga, y no está expuesto mientras carga.
+        if (room.worker) {
+            room.worker.postMessage({ type: 'startMatch' });
+            for (const [pid, cli] of room.clients) {
+                cli.paidFee = 0;
+                cli._matchSkillUses = 0;
+                cli._alive = true;
+                cli._killStreak = 0;
+                cli._spawned = false;
+                if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
+            }
+            refillBots(room);
+            log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales [worker] (spawn al ready)`);
+        } else {
+            for (const [pid, cli] of room.clients) {
+                if (!room.sim.players.has(pid)) room.sim.addPlayer(pid, cli.opts || {});
+                cli.paidFee = 0;
+                cli._spawned = false;
+                if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
+            }
+            refillBots(room);
+            log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales (spawn al ready)`);
+        }
+    }
+
+    function restartRoom(room) {
+        // Vaciar la sala al reiniciar: cerrar todas las conexiones tras el broadcast.
+        // Antes se mantenían los jugadores entre partidas, lo que dejaba a los mismos
+        // 30 dentro tras cada arcade → otros que esperaban fuera no tenían chance. Ahora
+        // todos salen y el lobby se llena desde 0. El cliente ve roomRestart + close y
+        // muestra TRY AGAIN; el stress-bot reentra solo tras su delay aleatorio.
+        const closed = room.clients.size;
+        broadcast(room, { t: 'roomRestart' });
+        for (const cli of room.clients.values()) {
+            try { cli.ws.close(); } catch (e) {}
+        }
+        // room.clients se vacía vía ws.on('close'); no esperamos a eso para pasar a waiting
+        room.state = 'waiting';
+        room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false; room._shortened = false;
+        room.deadRemovals.clear(); room.pendingRemovals.clear();
+        if (room.worker) {
+            room.worker.postMessage({
+                type: 'restartSim', mode: room.mode, rules: rulesOf(room.comboKey),
+                matchMs: MATCH_MS, aoiEnabled: getAoiEnabled(), snapshotEvery: getSnapshotEvery(),
+            });
+        } else {
+            room.sim = buildSim(room.mode, rulesOf(room.comboKey));
+        }
+        sendWaiting(room);
+        log(`Sala reiniciada: ${room.key} (${closed} expulsados, lobby empieza desde 0)`);
+    }
+
+    function shutdownRoom(room, motivo) {
+        for (const cli of room.clients.values()) {
+            try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {}
+            try { cli.ws.close(); } catch (e) {}
+        }
+        if (room.worker) { try { room.worker.postMessage({ type: 'shutdown' }); } catch (e) {} room.worker = null; }
+        rooms.delete(room.key);
+        for (const [tok, info] of resumeTokens) { if (info.roomKey === room.key) resumeTokens.delete(tok); }
+        log(`Sala apagada (${motivo}): ${room.key}`);
+    }
+
+    // Quick join: la sala del modo pedido con más gente; si no hay ninguna, Free
+    function resolveQuickJoin(mode) {
+        let best = null;
+        for (const room of rooms.values()) {
+            if (room.mode !== mode || room.state === 'ended') continue;
+            if (!best || room.clients.size > best.clients.size) best = room;
+        }
+        return best ? best.roomName : 'Free';
+    }
+
+    return {
+        buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms,
+        handleInput, handleClose, handleJoin, handleSpectate,
+        broadcast, sendWaiting, welcomeMsg, refillBots, tickGradualBots,
+        armLobby, startMatch, restartRoom, shutdownRoom, resolveQuickJoin,
+    };
 }
 
 module.exports = { createGameHost };
