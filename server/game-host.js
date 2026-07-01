@@ -64,6 +64,7 @@ function createGameHost(deps) {
                 sim: uw ? null : buildSim(mode, rules),
                 worker: null,
                 clients: new Map(),
+                liveCount: 0,
                 state: 'waiting',
                 tickCount: 0, lastTick: Date.now(), emptySince: 0,
                 endsAt: null, restartAt: null, startAt: null,
@@ -98,7 +99,7 @@ function createGameHost(deps) {
                 log(`Lazy: creada ${key} porque L${i - 1} está llena`);
             }
             if (r.disabled) continue;
-            if (r.clients.size >= max) continue;
+            if (r.liveCount >= max) continue;
             if (r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
             return r;
         }

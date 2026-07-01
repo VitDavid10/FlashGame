@@ -843,6 +843,7 @@ function restartRoom(room) {
     // room.clients se vacía vía ws.on('close'); no esperamos a eso para pasar a waiting
     room.state = 'waiting';
     room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false; room._shortened = false;
+    room.liveCount = 0;
     room.deadRemovals.clear(); room.pendingRemovals.clear();
     if (room.worker) {
         room.worker.postMessage({
@@ -1865,6 +1866,7 @@ wss.on('connection', (ws, req) => {
                 cli._spawned = true;
                 if (room.worker) room.worker.postMessage({ type: 'spawnPlayer', pid: playerId, immuneMs: SPAWN_IMMUNE_MS });
                 else { if (!room.sim.players.has(playerId)) room.sim.addPlayer(playerId, cli.opts || {}); room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS); }
+                room.liveCount++;
                 refillBots(room);
             }
             return;
