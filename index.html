@@ -115,6 +115,18 @@
         .btn-deposit:hover { background: #ffce3d; color: #1a1300; box-shadow: 0 0 18px rgba(255,206,61,0.45); }
         .btn-withdraw { display: none; background: transparent; color: var(--primary); border: 1px solid var(--primary); border-radius: 8px; padding: 8px 16px; font-family: 'Russo One'; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-right: 10px; box-shadow: 0 0 5px var(--primary-dim); }
         .btn-withdraw:hover { background: var(--primary); color: #04150c; box-shadow: 0 0 18px var(--primary); }
+        /* Faucet de testnet: dos botones pill (redondos) bajo el hero, separados y
+           con aparición animada escalonada. Solo se muestran con wallet conectada. */
+        .claim-zone { display: none; justify-content: center; gap: 18px; margin-top: 34px; flex-wrap: wrap; }
+        .claim-pill { display: inline-flex; align-items: center; gap: 9px; padding: 13px 28px; border-radius: 999px; font-family: 'Russo One'; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; color: var(--primary); background: rgba(0,255,136,.06); border: 1.5px solid var(--primary); box-shadow: 0 0 14px var(--primary-dim), inset 0 0 12px rgba(0,255,136,.07); transition: transform .18s, background .18s, box-shadow .18s, color .18s; opacity: 0; transform: translateY(16px); }
+        .claim-zone.show .claim-pill { opacity: 1; transform: none; animation: claimRise .55s cubic-bezier(.2,.9,.3,1.25); }
+        .claim-zone.show .claim-pill:nth-child(2) { animation-delay: .12s; }
+        .claim-pill .claim-ico { font-size: 16px; }
+        .claim-pill:hover { background: var(--primary); color: #04150c; box-shadow: 0 0 22px var(--primary); transform: translateY(-2px); }
+        .claim-pill:disabled { opacity: .55; cursor: default; filter: grayscale(.35); transform: none; }
+        .claim-pill-sol { color: #b98cff; border-color: #9945ff; background: rgba(153,69,255,.08); box-shadow: 0 0 14px rgba(153,69,255,.28), inset 0 0 12px rgba(153,69,255,.1); }
+        .claim-pill-sol:hover { background: #9945ff; color: #fff; box-shadow: 0 0 22px #9945ff; }
+        @keyframes claimRise { to { opacity: 1; transform: translateY(0); } }
         
         .btn-connect {
             background: transparent; border: 1px solid var(--primary); color: var(--primary);
@@ -621,6 +633,11 @@ body.trailer-open #page-content{
         <div class="hero-main-content">
             <h1 class="big-title">PILLWARS</h1>
             <div class="big-subtitle">THE CRYPTO ARENA</div>
+            <!-- Faucet de testnet: solo visible con wallet conectada (App.Wallet). -->
+            <div class="claim-zone" id="claim-zone">
+                <button class="claim-pill" id="claim-pill-btn" onclick="App.Claim.pill()"><span class="claim-ico">🪙</span> CLAIM TESTNET TOKENS</button>
+                <button class="claim-pill claim-pill-sol" id="claim-sol-btn" onclick="App.Claim.sol()"><span class="claim-ico">◎</span> CLAIM 0.005 SOL</button>
+            </div>
         </div>
     </div>
 
@@ -944,6 +961,9 @@ body.trailer-open #page-content{
             depWalletBal: document.getElementById('dep-wallet-bal'),
             depWarBal: document.getElementById('dep-war-bal'),
             withdrawBtn: document.getElementById('withdraw-btn'),
+            claimZone: document.getElementById('claim-zone'),
+            claimPillBtn: document.getElementById('claim-pill-btn'),
+            claimSolBtn: document.getElementById('claim-sol-btn'),
             withdrawModal: document.getElementById('withdraw-modal'),
             withdrawAmount: document.getElementById('withdraw-amount'),
             withdrawConfirm: document.getElementById('withdraw-confirm'),
@@ -1198,6 +1218,7 @@ body.trailer-open #page-content{
                         App.Market.fetchWar(App.Wallet.address);
                         DOM.depositBtn.style.display = 'inline-block';
                         DOM.withdrawBtn.style.display = 'inline-block';
+                    DOM.claimZone.style.display = 'flex'; DOM.claimZone.classList.remove('show'); void DOM.claimZone.offsetWidth; DOM.claimZone.classList.add('show');
                         App.Wallet.startAutoRefresh();
                     } catch (err) {
                         console.error(err);
@@ -1215,6 +1236,7 @@ body.trailer-open #page-content{
                     DOM.walletBtn.classList.add('btn-disconnect');
                     DOM.depositBtn.style.display = 'inline-block';
                     DOM.withdrawBtn.style.display = 'inline-block';
+                    DOM.claimZone.style.display = 'flex'; DOM.claimZone.classList.remove('show'); void DOM.claimZone.offsetWidth; DOM.claimZone.classList.add('show');
                 },
                 // Reconexión silenciosa al recargar (si ya autorizaste antes la wallet)
                 eagerConnect: async () => {
@@ -1232,6 +1254,7 @@ body.trailer-open #page-content{
                         DOM.walletBtn.classList.add('btn-disconnect');
                         DOM.depositBtn.style.display = 'inline-block';
                         DOM.withdrawBtn.style.display = 'inline-block';
+                    DOM.claimZone.style.display = 'flex'; DOM.claimZone.classList.remove('show'); void DOM.claimZone.offsetWidth; DOM.claimZone.classList.add('show');
                         App.Market.fetchBalance(App.Wallet.address);
                         App.Market.fetchWar(App.Wallet.address);
                         App.Wallet.startAutoRefresh();
@@ -1257,6 +1280,7 @@ body.trailer-open #page-content{
                     DOM.walletBtn.classList.remove('btn-disconnect');
                     DOM.depositBtn.style.display = 'none';
                     DOM.withdrawBtn.style.display = 'none';
+                    DOM.claimZone.style.display = 'none'; DOM.claimZone.classList.remove('show');
                 }
             },
 
@@ -1338,6 +1362,32 @@ body.trailer-open #page-content{
                     }
                     DOM.withdrawConfirm.disabled = false; DOM.withdrawConfirm.innerText = old;
                 }
+            },
+
+            // Faucet de testnet: reclama $PILL o SOL (devnet) a la wallet, 1 vez al día.
+            Claim: {
+                _busy: false,
+                run: async (kind, btn, okTitle, okText) => {
+                    const w = App.Wallet.address;
+                    if (!w) { DOM.walletModal.style.display = 'flex'; return; }
+                    if (App.Claim._busy) return;
+                    App.Claim._busy = true;
+                    const old = btn.innerText; btn.disabled = true; btn.innerText = 'Claiming...';
+                    try {
+                        const r = await (await fetch('/api/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: w, kind }) })).json();
+                        if (!r.ok) {
+                            if (r.nextInMs) { const h = Math.max(1, Math.ceil(r.nextInMs / 3600000)); throw new Error('Already claimed today. Come back in ~' + h + 'h.'); }
+                            throw new Error(r.reason || 'claim failed');
+                        }
+                        App.Msg.show(okTitle, okText);
+                        App.Market.fetchBalance(w); App.Market.fetchWar(w);
+                    } catch (e) {
+                        App.Msg.show('Claim failed', (e.message || String(e)).slice(0, 140));
+                    }
+                    btn.disabled = false; btn.innerText = old; App.Claim._busy = false;
+                },
+                pill: () => App.Claim.run('pill', DOM.claimPillBtn, 'Tokens on the way', '500,000 $PILL sent to your wallet (devnet). It may take a few seconds to arrive.'),
+                sol: () => App.Claim.run('sol', DOM.claimSolBtn, 'SOL on the way', '0.005 SOL sent to your wallet (devnet). It may take a few seconds to arrive.')
             },
 
             Market: {

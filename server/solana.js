@@ -90,6 +90,18 @@ function loadAuthority() {
 }
 function canWithdraw() { try { loadAuthority(); return true; } catch (e) { return false; } }
 
+// --- Faucet SOL (devnet): envía SOL nativo del treasury a la wallet del jugador ---
+// Usa la MISMA keypair de la autoridad (que ya paga el gas de los retiros). Esa
+// cuenta debe tener SOL de devnet (se rellena con `solana airdrop 1 <addr> -u devnet`).
+async function airdropSol(toWallet, sol) {
+    const { Connection, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } = require('@solana/web3.js');
+    const auth = loadAuthority();
+    const conn = new Connection(RPC, 'confirmed');
+    const lamports = Math.round(sol * 1e9);
+    const tx = new Transaction().add(SystemProgram.transfer({ fromPubkey: auth.publicKey, toPubkey: new PublicKey(toWallet), lamports }));
+    return await sendAndConfirmTransaction(conn, tx, [auth]);
+}
+
 async function withdraw(toWallet, pill) {
     const { Connection, PublicKey } = require('@solana/web3.js');
     const { getOrCreateAssociatedTokenAccount, transfer } = require('@solana/spl-token');
@@ -115,4 +127,4 @@ function verifySignedMessage(wallet, message, signatureArr) {
     } catch (e) { return false; }
 }
 
-module.exports = { verifyDeposit, withdraw, canWithdraw, verifySignedMessage, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };
+module.exports = { verifyDeposit, withdraw, airdropSol, canWithdraw, verifySignedMessage, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };

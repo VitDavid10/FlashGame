@@ -315,6 +315,33 @@ function questsOf(clientId) {
     return questsStore[clientId];
 }
 
+// --- Faucet de testnet (devnet): claim diario de $PILL y SOL a la wallet ---
+// Ambos son transferencias ON-CHAIN reales desde el treasury. Anti-abuso: 1 cada 24h
+// por wallet Y por IP (el SOL sale de fondos reales del treasury). Persistimos el
+// último claim por wallet/IP y kind en faucet.json.
+const FAUCET_FILE = path.join(__dirname, 'faucet.json');
+const faucet = loadJson(FAUCET_FILE, { wallets: {}, ips: {} });
+let faucetDirty = false;
+setInterval(() => { if (faucetDirty) { faucetDirty = false; fs.writeFile(FAUCET_FILE, JSON.stringify(faucet), () => {}); } }, 3000);
+const CLAIM_PILL = 500000;         // $PILL por claim diario
+const CLAIM_SOL = 0.005;           // SOL devnet por claim diario
+const CLAIM_COOLDOWN_MS = 24 * 3600 * 1000;
+// Devuelve ms que faltan para poder volver a reclamar `kind` (0 = disponible ya).
+function claimCooldownLeft(wallet, ip, kind) {
+    const now = Date.now();
+    const last = Math.max(
+        (faucet.wallets[wallet] && faucet.wallets[wallet][kind]) || 0,
+        (faucet.ips[ip] && faucet.ips[ip][kind]) || 0
+    );
+    return Math.max(0, CLAIM_COOLDOWN_MS - (now - last));
+}
+function markClaim(wallet, ip, kind) {
+    const now = Date.now();
+    (faucet.wallets[wallet] || (faucet.wallets[wallet] = {}))[kind] = now;
+    (faucet.ips[ip] || (faucet.ips[ip] = {}))[kind] = now;
+    faucetDirty = true;
+}
+
 // Saves periódicos. JSON.stringify SIN pretty-print: el indent=1 multiplica tamaño
 // y tiempo de serialización; estos archivos no se leen a mano en producción.
 // Instrumentado: si un save bloquea >30ms se loguea — así diagnosticamos el lag.max.
@@ -1406,6 +1433,41 @@ const httpServer = http.createServer(async (req, res) => {
             } catch (e) {
                 warbank.credit(wallet, amount);   // refund del saldo WAR si el envío falló
                 log(`Retiro FALLÓ (${wallet.slice(0, 6)}…): ${e.message} — saldo devuelto`);
+                res.end(JSON.stringify({ ok: false, reason: 'envío on-chain falló: ' + e.message }));
+            }
+        });
+        return;
+    }
+
+    // --- Faucet de testnet: claim diario de $PILL o SOL (transfer on-chain real) ---
+    if (urlPath === '/api/claim' && req.method === 'POST') {
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
+            const wallet = String(p.wallet || ''), kind = String(p.kind || '');
+            if (!isSolAddr(wallet) || (kind !== 'pill' && kind !== 'sol')) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+            if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'faucet no disponible (servidor sin clave del treasury)' })); return; }
+            const ip = anonIp(cleanIp(req.headers['cf-connecting-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress));
+            const left = claimCooldownLeft(wallet, ip, kind);
+            if (left > 0) { res.end(JSON.stringify({ ok: false, reason: 'ya reclamado hoy', nextInMs: left })); return; }
+            // Marca ANTES de enviar (evita doble claim por requests solapadas); si falla, revierte.
+            markClaim(wallet, ip, kind);
+            try {
+                const sig = (kind === 'pill')
+                    ? await solana.withdraw(wallet, CLAIM_PILL)
+                    : await solana.airdropSol(wallet, CLAIM_SOL);
+                const amount = kind === 'pill' ? CLAIM_PILL : CLAIM_SOL;
+                logAdmin('-', 'Faucet ' + kind, wallet.slice(0, 6) + '… +' + amount);
+                log(`Faucet ${kind}: ${wallet.slice(0, 6)}… +${amount} (tx ${sig.slice(0, 8)}…)`);
+                res.end(JSON.stringify({ ok: true, kind, amount, sig }));
+            } catch (e) {
+                // Revertir el cooldown: el claim no llegó, que pueda reintentar.
+                if (faucet.wallets[wallet]) delete faucet.wallets[wallet][kind];
+                if (faucet.ips[ip]) delete faucet.ips[ip][kind];
+                faucetDirty = true;
+                log(`Faucet ${kind} FALLÓ (${wallet.slice(0, 6)}…): ${e.message}`);
                 res.end(JSON.stringify({ ok: false, reason: 'envío on-chain falló: ' + e.message }));
             }
         });
