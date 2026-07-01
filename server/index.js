@@ -670,6 +670,33 @@ function processWorkerEvent(room, ev, now) {
     }
 }
 
+// Interfaz `director`: lo que el GameHost necesita del Director (dinero + stats).
+// El Host NO conoce warbank/pstatOf/statsOf; cuando un socket se va, calcula los
+// datos autoritativos (wasAlive, kills) desde SU sim y delega aquí toda la lógica
+// económica. En el split real esto será un mensaje IPC Host→Director; hoy es una
+// llamada directa. Esta es la frontera de deltas de la salida de un jugador.
+const director = {
+    // Un jugador dejó la sala (cerró pestaña/socket). El Host ya calculó si estaba
+    // vivo y su killStreak. Aquí: peak mass, muertes (pstat + combo), cashout classic
+    // y reembolso de entrada si la partida no había empezado.
+    onPlayerLeave(room, cli, pid, wasAlive, kills) {
+        if (wasAlive) {
+            flushPeakMass(room, pid, cli);
+            // cli.name equivale a pj.name (ambos vienen del mismo opts.name del join).
+            if (cli.name && !cli.isTester) { pstatOf(cli.name).muertes++; playersDirty = true; }
+            const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
+            if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, kills);
+        } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
+            cli.carry = 0;
+        }
+        // Reembolso de la entrada si la partida NO había empezado (paidFee>0 = no consumida).
+        if (cli.paidFee > 0 && cli.payWallet && room.state === 'waiting') {
+            warbank.credit(cli.payWallet, cli.paidFee);
+            log(`Reembolso de entrada (sala no empezó): ${cli.payWallet.slice(0, 6)}… +${cli.paidFee} PILL`);
+        }
+    },
+};
+
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
 // Se crea aquí, una vez definidas todas sus dependencias (rooms, reglas del
 // catálogo, spawnWorker…). Los nombres se desestructuran para que los call sites
@@ -684,6 +711,7 @@ const gameHost = createGameHost({
     CATALOG_MODES, PRICES, LAYERS_PER_COMBO,
     resumeTokens,
     refillBots, SPAWN_IMMUNE_MS,
+    director, RESUME_GRACE_MS, sendWaiting, armLobby,
 });
 const { buildSim, getOrCreateRoom, pickLayer, initLayers } = gameHost;
 
@@ -1863,51 +1891,7 @@ wss.on('connection', (ws, req) => {
         gameHost.handleInput(room, playerId, msg);
     });
 
-    ws.on('close', () => {
-        if (spectatorRoom) {
-            spectatorRoom.spectators.delete(ws);
-            if (spectatorRoom.worker && spectatorRoom.spectators.size === 0) spectatorRoom.worker.postMessage({ type: 'setSpectators', on: false });
-        }
-        if (room && playerId && room.clients.get(playerId) && room.clients.get(playerId).ws === ws) {
-            const cli = room.clients.get(playerId);
-            // FIX: si se desconecta SIN morir (cerró pestaña), guardar su mejor masa
-            // y contarle la muerte. Antes solo se actualizaba en playerDied.
-            if (room.worker) {
-                room.worker.postMessage({ type: 'removePlayer', pid: playerId });
-                // Con worker no tenemos acceso síncrono al estado alive/kills del jugador.
-                // El peak mass se flushea cuando llega del worker (processWorkerEvent).
-                // Para classic cashout, usamos un flag _alive que mantiene el main thread.
-                if (cli._alive) {
-                    flushPeakMass(room, playerId, cli);
-                    if (cli.name && !cli.isTester) { pstatOf(cli.name).muertes++; playersDirty = true; }
-                    const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
-                    if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, cli._killStreak || 0);
-                } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
-                    cli.carry = 0;
-                }
-            } else {
-                const pj = room.sim.players.get(playerId);
-                if (pj && pj.alive) {
-                    flushPeakMass(room, playerId, cli);
-                    if (pj.name && !cli.isTester) { pstatOf(pj.name).muertes++; playersDirty = true; }
-                    const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
-                    if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, pj.killStreak | 0);
-                } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
-                    cli.carry = 0;
-                }
-            }
-            // Reembolso de la entrada si la partida NO había empezado (paidFee>0 = no consumida).
-            if (cli.paidFee > 0 && cli.payWallet && room.state === 'waiting') {
-                warbank.credit(cli.payWallet, cli.paidFee);
-                log(`Reembolso de entrada (sala no empezó): ${cli.payWallet.slice(0, 6)}… +${cli.paidFee} PILL`);
-            }
-            room.clients.delete(playerId);
-            if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
-            log(`Jugador ${playerId} desconectado de ${room.key} — quedan ${room.clients.size}`);
-            if (room.state === 'waiting') { sendWaiting(room); armLobby(room); }   // cancela la cuenta atrás si baja del mínimo
-            refillBots(room);   // un bot cubre el hueco (y se retira si el jugador reconecta)
-        }
-    });
+    ws.on('close', () => gameHost.handleClose(ws, room, playerId, spectatorRoom));
     ws.on('error', () => {});
 });
 

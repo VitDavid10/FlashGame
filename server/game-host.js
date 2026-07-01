@@ -32,6 +32,7 @@ function createGameHost(deps) {
         CATALOG_MODES, PRICES, LAYERS_PER_COMBO,
         resumeTokens,
         refillBots, SPAWN_IMMUNE_MS,
+        director, RESUME_GRACE_MS, sendWaiting, armLobby,
     } = deps;
 
     function buildSim(mode, rules) {
@@ -213,7 +214,39 @@ function createGameHost(deps) {
         }
     }
 
-    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms, handleInput };
+    // Cierre de un socket. Es del Host porque en el split real el 'close' del WS
+    // ocurre en el proceso dueño del socket. El Host limpia espectador/sim/lobby y
+    // calcula los datos autoritativos (wasAlive, kills) desde SU sim; toda la lógica
+    // económica/stats la delega a director.onPlayerLeave (frontera de deltas).
+    function handleClose(ws, room, playerId, spectatorRoom) {
+        if (spectatorRoom) {
+            spectatorRoom.spectators.delete(ws);
+            if (spectatorRoom.worker && spectatorRoom.spectators.size === 0) spectatorRoom.worker.postMessage({ type: 'setSpectators', on: false });
+        }
+        if (room && playerId && room.clients.get(playerId) && room.clients.get(playerId).ws === ws) {
+            const cli = room.clients.get(playerId);
+            // wasAlive/kills desde la fuente autoritativa: la sim (o el flag _alive que
+            // el main mantiene para el path worker, sin acceso síncrono a la sim).
+            let wasAlive, kills;
+            if (room.worker) {
+                room.worker.postMessage({ type: 'removePlayer', pid: playerId });
+                wasAlive = !!cli._alive;
+                kills = cli._killStreak || 0;
+            } else {
+                const pj = room.sim.players.get(playerId);
+                wasAlive = !!(pj && pj.alive);
+                kills = pj ? (pj.killStreak | 0) : 0;
+            }
+            director.onPlayerLeave(room, cli, playerId, wasAlive, kills);
+            room.clients.delete(playerId);
+            if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
+            log(`Jugador ${playerId} desconectado de ${room.key} — quedan ${room.clients.size}`);
+            if (room.state === 'waiting') { sendWaiting(room); armLobby(room); }   // cancela la cuenta atrás si baja del mínimo
+            refillBots(room);   // un bot cubre el hueco (y se retira si el jugador reconecta)
+        }
+    }
+
+    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms, handleInput, handleClose };
 }
 
 module.exports = { createGameHost };
