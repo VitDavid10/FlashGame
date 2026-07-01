@@ -1029,8 +1029,6 @@
     <div id="resultOverlay">
         <div class="result-box">
             <h1 style="color:var(--primary);" id="resultTitle">MATCH FINISHED</h1>
-            <div class="section-title" style="text-align:center;">LEADERBOARD</div>
-            <ul class="winner-list" id="winnerList"></ul>
             <div id="myResult" style="margin: 20px 0; font-family:'Russo One'; font-size:18px;"></div>
             
             <button class="btn-play" id="btnTryAgainOnline" onclick="tryAgainOnline()" style="display:none; background:var(--primary); color:#04150c; margin-bottom:10px;">TRY AGAIN</button>
@@ -2042,7 +2040,30 @@
         document.getElementById('exitGameBtn').style.display = 'flex';
     }
     function hideSpectatorBar() { onlineSpectator = false; }
-    function showResultsUI() { hideSpectatorBar(); document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none'; document.getElementById('exitGameBtn').style.display = 'none'; let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}]; myCells().forEach(c => all[0].m += c.mass); if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false})); all.sort((a,b) => b.m - a.m); let html = ''; all.slice(0, 3).forEach((e, i) => { let ds = SHOW_MASS_AS_SCORE ? Math.floor(e.m) : Math.floor(Math.sqrt(e.m/Math.PI)); html += `<li class="winner-item"><span>#${i+1} ${e.name}</span><span>${ds}</span></li>`; }); els.winnerList.innerHTML = html; let myRank = all.findIndex(e => e.isMe) + 1; els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`; els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc'; els.result.style.display = 'flex'; hideGameHUD(); }
+    function showResultsUI() {
+        hideSpectatorBar();
+        document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none';
+        document.getElementById('exitGameBtn').style.display = 'none';
+        const isPaid = currentServer && currentServer !== 'Free';
+        if (isPaid && typeof EconHUD !== 'undefined') {
+            const kills = parseInt(document.getElementById('killsVal').innerText, 10) || 0;
+            const carry = EconHUD.carry || 0;
+            const carryFmt = carry.toLocaleString('en-US');
+            const killColor = kills >= 5 ? '#ff4444' : kills >= 1 ? '#ffce3d' : '#888';
+            els.myResult.innerHTML = `<span style="color:${killColor}">${kills} KILL${kills !== 1 ? 'S' : ''}</span><br><span style="color:#ffce3d;font-size:22px;">${carryFmt} <span style="font-size:14px;color:#888;">$PILL</span></span>`;
+            els.myResult.style.color = '';
+        } else {
+            let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}];
+            myCells().forEach(c => all[0].m += c.mass);
+            if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false}));
+            all.sort((a,b) => b.m - a.m);
+            const myRank = all.findIndex(e => e.isMe) + 1;
+            els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`;
+            els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc';
+        }
+        els.result.style.display = 'flex';
+        hideGameHUD();
+    }
     function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} hideCountdownNumber(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); const tb = document.getElementById('btnTryAgainOnline'); if (tb) tb.style.display = 'none'; }
     function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
