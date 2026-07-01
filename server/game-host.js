@@ -65,7 +65,6 @@ function createGameHost(deps) {
                 sim: uw ? null : buildSim(mode, rules),
                 worker: null,
                 clients: new Map(),
-                liveCount: 0,
                 state: 'waiting',
                 tickCount: 0, lastTick: Date.now(), emptySince: 0,
                 endsAt: null, restartAt: null, startAt: null,
@@ -87,6 +86,21 @@ function createGameHost(deps) {
     //  - no a <30s del final de partida (te evita morir entrando)
     //  - no desactivada manualmente desde admin
     // Las L2+ se crean on-demand aquí cuando L1 se llena. Si ninguna cumple → null.
+    // Slots ocupados por jugadores reales en la sala: los que están cargando (aún
+    // sin spawnear) o vivos. Los muertos espectando NO ocupan. Se deriva de la sim
+    // en vez de mantener un contador a mano → robusto al grace/resume (mientras la
+    // célula sigue viva durante el rejoin de 30s, cuenta; al morir/expirar, no).
+    // Worker (deprecado): sin sim en el main, cae al comportamiento antiguo.
+    function liveInRoom(r) {
+        if (r.worker) return r.clients.size;
+        let n = 0;
+        for (const [pid, cli] of r.clients) {
+            const pj = r.sim.players.get(pid);
+            if (!cli._spawned || (pj && pj.alive)) n++;
+        }
+        return n;
+    }
+
     function pickLayer(mode, roomName) {
         const ck = comboKeyOf(mode, roomName);
         const max = maxPlayersOf(ck);
@@ -100,7 +114,7 @@ function createGameHost(deps) {
                 log(`Lazy: creada ${key} porque L${i - 1} está llena`);
             }
             if (r.disabled) continue;
-            if (r.liveCount >= max) continue;
+            if (liveInRoom(r) >= max) continue;
             if (r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
             return r;
         }
@@ -145,7 +159,7 @@ function createGameHost(deps) {
 
     // Rutea un mensaje de juego (ready/input/aspect/action/pickSkill/reorder/cmd)
     // a la sim de la sala (o al worker si la sala corre en uno). Es puro Host: solo
-    // toca sim/worker/liveCount, ninguna delta económica cruza hacia el Director.
+    // toca sim/worker, ninguna delta económica cruza hacia el Director.
     // El Director sigue dueño de join/close (pago, stats) y llama aquí para el resto.
     function handleInput(room, playerId, msg) {
         if (msg.t === 'ready') {
@@ -156,7 +170,6 @@ function createGameHost(deps) {
                 cli._spawned = true;
                 if (room.worker) room.worker.postMessage({ type: 'spawnPlayer', pid: playerId, immuneMs: SPAWN_IMMUNE_MS });
                 else { if (!room.sim.players.has(playerId)) room.sim.addPlayer(playerId, cli.opts || {}); room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS); }
-                room.liveCount++;
                 refillBots(room);
             }
             return;

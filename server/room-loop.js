@@ -179,7 +179,6 @@ function tickRoomOnce(room, now, ctx) {
                 if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); ctx.flags.quests = true; }
             }
             if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + ctx.DEAD_REMOVE_MS);
-            room.liveCount = Math.max(0, (room.liveCount | 0) - 1);
         } else if (ev.type === 'botKilled') {
             const killer = room.sim.players.get(ev.playerId);
             const cliKiller_ = room.clients.get(ev.playerId);
