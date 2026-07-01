@@ -29,7 +29,7 @@ function createGameHost(deps) {
         rulesOf, minRealOf, targetPopOf, maxPlayersOf, lobbyMsOf,
         log, spawnWorker,
         getUseWorkers, onRulesDirty,
-        CATALOG_MODES, PRICES, LAYERS_PER_COMBO,
+        CATALOG_MODES, PRICES, LAYERS_PER_COMBO, ownsCombo,
         MATCH_MS, getAoiEnabled, getSnapshotEvery,
         resumeTokens,
         SPAWN_IMMUNE_MS,
@@ -129,6 +129,9 @@ function createGameHost(deps) {
         let n = 0;
         for (const mode of CATALOG_MODES) {
             for (const price of PRICES) {
+                // Fase 4: en modo host cada proceso pre-crea SOLO los combos que le
+                // asigna el shard-map. En mono, ownsCombo es siempre true → las 10.
+                if (ownsCombo && !ownsCombo(mode, price)) continue;
                 getOrCreateRoom(layerKeyOf(mode, price, 1), mode, price);
                 n++;
             }

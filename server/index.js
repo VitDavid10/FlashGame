@@ -38,6 +38,16 @@ const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 const skinpoints = require('./skinpoints.js');     // puntos de skin por clientId
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
+const { buildShardMap } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
+
+// --- Rol del proceso (Fase 4 split multiproceso) ---
+// 'mono'     : un solo proceso hace TODO (comportamiento clásico, por defecto).
+// 'host'     : proceso hijo dueño de un subconjunto de combos (salas + WS de juego + tick).
+// 'director' : proceso padre (HTTP/admin/warbank/matchmaking) que forkea los hosts.
+// Sin la env PW_ROLE el server arranca en 'mono' → idéntico a antes del split.
+const PW_ROLE = process.env.PW_ROLE || 'mono';
+const PW_HOST_ID = parseInt(process.env.PW_HOST_ID, 10) || 0;
+const PW_HOST_COUNT = parseInt(process.env.PW_HOST_COUNT, 10) || 1;
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
@@ -114,6 +124,15 @@ const RULES_FILE = path.join(__dirname, 'roomrules.json');
 
 const PRICES = ['Free', '5$', '10$', '20$', '50$'];
 const CATALOG_MODES = ['classic', 'arcade'];
+
+// Reparto de combos entre hosts (Fase 4). En 'mono' este proceso es dueño de TODOS
+// los combos; en 'host' solo de los que le asigna el shard-map (combo→hostId). El
+// matchmaker del Director usará el mismo mapa para enrutar al cliente al host correcto.
+const SHARD = buildShardMap(CATALOG_MODES, PRICES, PW_ROLE === 'mono' ? 1 : PW_HOST_COUNT);
+const MY_HOST_ID = PW_ROLE === 'mono' ? 0 : PW_HOST_ID;
+function ownsCombo(mode, price) {
+    return SHARD.comboToHost.get(mode + '_' + price) === MY_HOST_ID;
+}
 // Tope de jugadores reales por sala, por modo. Se fija en el arranque para TODAS
 // las salas del catálogo (enforceRoomCaps), así queda en código y llega al VPS por
 // git (roomrules.json es gitignored y no se despliega). Editable en vivo desde el
@@ -814,7 +833,7 @@ const gameHost = createGameHost({
     log, spawnWorker,
     getUseWorkers: () => useWorkers,
     onRulesDirty: () => { rulesDirty = true; },
-    CATALOG_MODES, PRICES, LAYERS_PER_COMBO,
+    CATALOG_MODES, PRICES, LAYERS_PER_COMBO, ownsCombo,
     MATCH_MS, getAoiEnabled: () => AOI_ENABLED, getSnapshotEvery: () => SNAPSHOT_EVERY,
     resumeTokens,
     SPAWN_IMMUNE_MS,
