@@ -17,6 +17,7 @@
 'use strict';
 
 const PillSim = require('../shared/sim.js');
+const { tickRoomOnce } = require('./room-loop.js');   // tick por sala (simulación + snapshots)
 
 // Crea una instancia de GameHost capturando las dependencias una sola vez.
 // Devuelve la interfaz pública que index.js usa en lugar de las funciones
@@ -29,6 +30,7 @@ function createGameHost(deps) {
         log, spawnWorker,
         getUseWorkers, onRulesDirty,
         CATALOG_MODES, PRICES, LAYERS_PER_COMBO,
+        resumeTokens,
     } = deps;
 
     function buildSim(mode, rules) {
@@ -116,7 +118,30 @@ function createGameHost(deps) {
         log(`Pre-creadas ${n} salas L1. L2+ se crean on-demand cuando L1 se llene.`);
     }
 
-    return { buildSim, getOrCreateRoom, pickLayer, initLayers };
+    // Recorre todas las salas del host y las avanza un tick: las que corren en
+    // este hilo se simulan con tickRoomOnce; las que corren en Worker solo
+    // procesan sus removals pendientes (el propio worker las tickea). Devuelve el
+    // coste agregado (step/snap/send) para que el Director lo mida en tickHist.
+    function tickRooms(now, tickCtx) {
+        let stepMs = 0, snapMs = 0, sendMs = 0;
+        for (const room of rooms.values()) {
+            if (room.worker) {
+                // Procesar deadRemovals y pendingRemovals para rooms con worker
+                for (const [pid, deadline] of room.deadRemovals) {
+                    if (now >= deadline) { room.deadRemovals.delete(pid); room.worker.postMessage({ type: 'removePlayer', pid }); }
+                }
+                for (const [pid, deadline] of room.pendingRemovals) {
+                    if (now >= deadline) { room.pendingRemovals.delete(pid); room.worker.postMessage({ type: 'removePlayer', pid }); resumeTokens.forEach((v, k) => { if (v.playerId === pid) resumeTokens.delete(k); }); }
+                }
+                continue;
+            }
+            const m = tickRoomOnce(room, now, tickCtx);
+            stepMs += m.stepMs; snapMs += m.snapMs; sendMs += m.sendMs;
+        }
+        return { stepMs, snapMs, sendMs };
+    }
+
+    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms };
 }
 
 module.exports = { createGameHost };

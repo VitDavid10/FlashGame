@@ -37,8 +37,7 @@ const solana = require('./solana.js');     // verificación de depósitos $PILL
 const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 const skinpoints = require('./skinpoints.js');     // puntos de skin por clientId
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos
-const { tickRoomOnce } = require('./room-loop.js');   // tick por sala (paso previo a worker_threads)
-const { createGameHost } = require('./game-host.js');   // gestión de salas + matchmaking (Fase 1 split Director/Host)
+const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
@@ -683,6 +682,7 @@ const gameHost = createGameHost({
     getUseWorkers: () => useWorkers,
     onRulesDirty: () => { rulesDirty = true; },
     CATALOG_MODES, PRICES, LAYERS_PER_COMBO,
+    resumeTokens,
 });
 const { buildSim, getOrCreateRoom, pickLayer, initLayers } = gameHost;
 
@@ -2011,22 +2011,10 @@ setInterval(() => {
     const tickStartT = Date.now();
     const lag = _lastTickT ? Math.max(0, (tickStartT - _lastTickT) - TICK_MS) : 0;
     _lastTickT = tickStartT;
-    let stepMs = 0, snapMs = 0, sendMs = 0;
     const now = tickStartT;
-    for (const room of rooms.values()) {
-        if (room.worker) {
-            // Procesar deadRemovals y pendingRemovals para rooms con worker
-            for (const [pid, deadline] of room.deadRemovals) {
-                if (now >= deadline) { room.deadRemovals.delete(pid); room.worker.postMessage({ type: 'removePlayer', pid }); }
-            }
-            for (const [pid, deadline] of room.pendingRemovals) {
-                if (now >= deadline) { room.pendingRemovals.delete(pid); room.worker.postMessage({ type: 'removePlayer', pid }); resumeTokens.forEach((v, k) => { if (v.playerId === pid) resumeTokens.delete(k); }); }
-            }
-            continue;
-        }
-        const m = tickRoomOnce(room, now, tickCtx);
-        stepMs += m.stepMs; snapMs += m.snapMs; sendMs += m.sendMs;
-    }
+    // El bucle de salas (simulación + removals de workers) vive en el GameHost.
+    // El Director solo mide el coste agregado en tickHist y propaga dirty flags.
+    const { stepMs, snapMs, sendMs } = gameHost.tickRooms(now, tickCtx);
     // Propagar dirty flags al estado global (los saves periódicos los recogen).
     if (tickFlags.stats)   { statsDirty   = true; tickFlags.stats = false; }
     if (tickFlags.players) { playersDirty = true; tickFlags.players = false; }
