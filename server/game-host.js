@@ -31,6 +31,7 @@ function createGameHost(deps) {
         getUseWorkers, onRulesDirty,
         CATALOG_MODES, PRICES, LAYERS_PER_COMBO,
         resumeTokens,
+        refillBots, SPAWN_IMMUNE_MS,
     } = deps;
 
     function buildSim(mode, rules) {
@@ -142,7 +143,64 @@ function createGameHost(deps) {
         return { stepMs, snapMs, sendMs };
     }
 
-    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms };
+    // Rutea un mensaje de juego (ready/input/aspect/action/pickSkill/reorder/cmd)
+    // a la sim de la sala (o al worker si la sala corre en uno). Es puro Host: solo
+    // toca sim/worker/liveCount, ninguna delta económica cruza hacia el Director.
+    // El Director sigue dueño de join/close (pago, stats) y llama aquí para el resto.
+    function handleInput(room, playerId, msg) {
+        if (msg.t === 'ready') {
+            // El cliente terminó su pantalla de carga: lo spawneamos AHORA con inmunidad,
+            // así empieza justo cuando entra de verdad (no expuesto mientras cargaba).
+            const cli = room.clients.get(playerId);
+            if (room.state === 'playing' && cli && !cli._spawned) {
+                cli._spawned = true;
+                if (room.worker) room.worker.postMessage({ type: 'spawnPlayer', pid: playerId, immuneMs: SPAWN_IMMUNE_MS });
+                else { if (!room.sim.players.has(playerId)) room.sim.addPlayer(playerId, cli.opts || {}); room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS); }
+                room.liveCount++;
+                refillBots(room);
+            }
+            return;
+        }
+        if (msg.t === 'input') {
+            const input = (typeof msg.tx === 'number' && typeof msg.ty === 'number') ? { tx: msg.tx, ty: msg.ty } : null;
+            if (room.worker) room.worker.postMessage({ type: 'setInput', pid: playerId, input });
+            else room.sim.setInput(playerId, input);
+        } else if (msg.t === 'aspect') {
+            const cli = room.clients.get(playerId);
+            if (cli && typeof msg.r === 'number' && msg.r > 0) {
+                cli.aspect = Math.max(0.5, Math.min(4, msg.r));
+                if (room.worker) room.worker.postMessage({ type: 'setAspect', pid: playerId, aspect: cli.aspect });
+            }
+        } else if (msg.t === 'action') {
+            if (msg.kind === 'split') {
+                const a = { kind: 'split', tx: +msg.tx || 0, ty: +msg.ty || 0 };
+                if (room.worker) room.worker.postMessage({ type: 'action', pid: playerId, action: a });
+                else room.sim.queueAction(playerId, a);
+            } else if (msg.kind === 'skill') {
+                const a = { kind: 'skill', slot: msg.slot | 0, tx: +msg.tx || 0, ty: +msg.ty || 0 };
+                if (room.worker) room.worker.postMessage({ type: 'action', pid: playerId, action: a });
+                else room.sim.queueAction(playerId, a);
+            }
+        } else if (msg.t === 'pickSkill') {
+            const id = msg.id | 0;
+            if (id >= 1 && id <= 8) {
+                if (room.worker) room.worker.postMessage({ type: 'grantSkill', pid: playerId, skillId: id });
+                else room.sim.grantSkillToPlayer(playerId, id);
+            }
+        } else if (msg.t === 'reorder') {
+            if (room.worker) room.worker.postMessage({ type: 'reorder', pid: playerId, from: msg.from | 0, to: msg.to | 0 });
+            else {
+                const p = room.sim.players.get(playerId);
+                if (p) { const a = msg.from | 0, b = msg.to | 0; if (a >= 0 && a < p.skillSlots.length && b >= 0 && b < p.skillSlots.length && a !== b) { const t = p.skillSlots[a]; p.skillSlots[a] = p.skillSlots[b]; p.skillSlots[b] = t; } }
+            }
+        } else if (msg.t === 'cmd') {
+            if (room.worker) room.worker.postMessage({ type: 'cmd', pid: playerId, name: msg.name, args: Array.isArray(msg.args) ? msg.args.slice(0, 4) : [] });
+            else room.sim.runCommand(playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : []);
+            log(`Comando de ${playerId}: /${msg.name} ${(msg.args || []).join(' ')}`);
+        }
+    }
+
+    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms, handleInput };
 }
 
 module.exports = { createGameHost };
