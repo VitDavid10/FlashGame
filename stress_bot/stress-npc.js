@@ -38,6 +38,10 @@ const JSON_MODE  = process.env.STRESS_JSON === '1';
 const RESPAWN    = process.env.RESPAWN !== '0';
 const RESPAWN_MIN = parseInt(process.env.RESPAWN_MIN_MS || '2000', 10);
 const RESPAWN_MAX = parseInt(process.env.RESPAWN_MAX_MS || '6000', 10);
+// TTL de vida por bot: se recicla (cierra + reconecta) tras este tiempo, pase lo
+// que pase. Evita que los bots que mueren sin detectar su muerte (o que entran en
+// lobby y nunca spawnean) se queden zombies espectando y ocupando plaza. 0 = off.
+const MAX_LIFE_MS = parseInt(process.env.MAX_LIFE_MS || '75000', 10);
 let testOver = false;   // se activa al acabar la duración: deja de reconectar
 
 const INPUT_INTERVAL = Math.max(33, Math.round(1000 / INPUT_HZ));
@@ -72,13 +76,24 @@ function spawnBot(i) {
   let ws;
   try { ws = new WebSocket(SERVER); } catch { stats.errors++; return; }
 
-  let inputTimer = null, pingTimer = null;
+  let inputTimer = null, pingTimer = null, lifeTimer = null;
   let mapSize = 4000;            // se actualiza con el welcome del servidor
   let tx = 0, ty = 0;            // objetivo actual (coordenadas del mundo)
   let counted = false;
   let myId = null;               // id del jugador en la sim (para detectar mi muerte)
   let reconnectPending = false;
   let lastSplit = 0;             // timestamp del último split (cooldown ~8s)
+
+  // Cierra este bot y programa uno nuevo tras un retardo (si RESPAWN). Centraliza
+  // la reconexión que antes estaba repetida en muerte/roomRestart/noSlot.
+  function reciclar() {
+    if (RESPAWN && !testOver && !reconnectPending) {
+      reconnectPending = true;
+      const delay = RESPAWN_MIN + Math.random() * Math.max(0, RESPAWN_MAX - RESPAWN_MIN);
+      setTimeout(() => { if (!testOver) spawnBot(i); }, delay);
+    }
+    try { ws.close(); } catch {}
+  }
 
   // Elige un nuevo destino dentro del mapa (a veces hacia el centro para no pegarse al borde)
   function nuevoDestino() {
@@ -126,6 +141,12 @@ function spawnBot(i) {
       if (ws.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ t: 'ping', ts: Date.now() })); stats.messagesSent++;
     }, 3000);
+
+    // TTL de vida: recicla el bot tras MAX_LIFE_MS ±30% de jitter. Garantiza que
+    // ningún bot se quede zombie espectando (murió sin detectarlo o nunca spawneó).
+    if (MAX_LIFE_MS > 0) {
+      lifeTimer = setTimeout(reciclar, Math.round(MAX_LIFE_MS * (0.7 + Math.random() * 0.6)));
+    }
   });
 
   ws.on('message', (data) => {
@@ -134,21 +155,12 @@ function spawnBot(i) {
     if (m.t === 'roomFull') { stats.rejected++; try { ws.close(); } catch {} return; }
     if (m.t === 'roomRestart') {
       // La sala se reinició — salir y reconectar gradualmente (como al morir)
-      if (RESPAWN && !testOver) {
-        reconnectPending = true;
-        const delay = RESPAWN_MIN + Math.random() * Math.max(0, RESPAWN_MAX - RESPAWN_MIN);
-        setTimeout(() => { if (!testOver) spawnBot(i); }, delay);
-      }
-      try { ws.close(); } catch {}
+      reciclar();
       return;
     }
     if (m.t === 'noSlot') {
       // Sin hueco ahora (sala a punto de acabar o llena) → reconectar tras un delay
-      if (RESPAWN && !testOver) {
-        const delay = RESPAWN_MIN + Math.random() * Math.max(0, RESPAWN_MAX - RESPAWN_MIN);
-        setTimeout(() => { if (!testOver) spawnBot(i); }, delay);
-      }
-      try { ws.close(); } catch {}
+      reciclar();
       return;
     }
     if (m.t === 'pong') { if (m.ts) { stats.latencies.push(Date.now() - m.ts); if (stats.latencies.length > 200) stats.latencies.shift(); } return; }
@@ -169,12 +181,7 @@ function spawnBot(i) {
         const gano = ev.type === 'botKilled' && ev.playerId === myId && ev.mode === 'classic' && ev.streak >= 5;
         if (muerto || gano) {
           if (gano) stats.wins++;
-          if (RESPAWN && !testOver) {
-            reconnectPending = true;
-            const delay = RESPAWN_MIN + Math.random() * Math.max(0, RESPAWN_MAX - RESPAWN_MIN);
-            setTimeout(() => { if (!testOver) spawnBot(i); }, delay);
-          }
-          try { ws.close(); } catch {}
+          reciclar();
           break;
         }
       }
@@ -184,7 +191,7 @@ function spawnBot(i) {
   ws.on('close', () => {
     stats.disconnected++;
     if (counted) { stats.porSala[salaKey]--; counted = false; }
-    clearInterval(inputTimer); clearInterval(pingTimer);
+    clearInterval(inputTimer); clearInterval(pingTimer); clearTimeout(lifeTimer);
   });
 
   ws.on('error', () => { stats.errors++; });
