@@ -273,6 +273,28 @@ function tickRoomOnce(room, now, ctx) {
             }
         }
     }
+    // Leaderboard de la sala ENTERA (~2 Hz). Con AOI el cliente solo ve su zona, así
+    // que NO puede rankear la sala completa: lo calcula el server (todos los jugadores
+    // vivos + grupos de bots, por masa actual) y lo manda a todos. El cliente marca su
+    // propia fila por id. Es barato: una pasada sobre células cada 20 ticks.
+    if (room.tickCount % 20 === 0) {
+        const board = [];
+        for (const p of room.sim.players.values()) {
+            if (!p.alive || !p.cells.length) continue;
+            let m = 0; for (const c of p.cells) m += c.mass;
+            board.push({ id: p.id, n: p.name, m: Math.round(m) });
+        }
+        const botMap = new Map();   // id → { n, m }
+        for (const e of room.sim.enemies) {
+            const g = botMap.get(e.id);
+            if (g) g.m += e.mass; else botMap.set(e.id, { n: e.name, m: e.mass });
+        }
+        for (const [id, g] of botMap) board.push({ id, n: g.n, m: Math.round(g.m) });
+        board.sort((a, b) => b.m - a.m);
+        const lbJson = JSON.stringify({ t: 'lb', top: board.slice(0, 10) });
+        for (const [, cli] of room.clients) { if (cli.ws.readyState === 1) try { cli.ws.send(lbJson); } catch (e) {} }
+        for (const sws of room.spectators) { if (sws.readyState === 1) try { sws.send(lbJson); } catch (e) {} }
+    }
     sendMs += performance.now() - _t2;
     return { stepMs, snapMs, sendMs };
 }

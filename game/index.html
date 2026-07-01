@@ -1276,6 +1276,7 @@
     const els = { modeScreen: document.getElementById('modeScreen'), loginOverlay: document.getElementById('loginOverlay'), selectedModeTitle: document.getElementById('selectedModeTitle'), playerNameInput: document.getElementById('playerNameInput'), botsToggle: document.getElementById('botsToggle'), botCountInput: document.getElementById('botCountInput'), botRespawnToggle: document.getElementById('botRespawnToggle'), godModeToggle: document.getElementById('godModeToggle'), enemyCount: document.getElementById('enemyCount'), score: document.getElementById('score'), room: document.getElementById('roomName'), lbList: document.getElementById('lb-list'), timer: document.getElementById('timerDisplay'), result: document.getElementById('resultOverlay'), resultTitle: document.getElementById('resultTitle'), gameOver: document.getElementById('gameOverMsg'), winnerList: document.getElementById('winnerList'), myResult: document.getElementById('myResult'), debugHud: document.getElementById('debugHud'), fpsVal: document.getElementById('fpsVal'), speedVal: document.getElementById('speedVal'), skillOverlay: document.getElementById('skillChoiceOverlay'), skillOpts: document.getElementById('skillOptionsContainer'), skillTimer: document.getElementById('skillTimerFill'), actionBar: document.getElementById('actionBar'), buffTable: document.getElementById('buffTable'), buffList: document.getElementById('buff-list-content') };
 
     let currentGameMode = 'classic', currentServer = "5$", width, height, gameRunning = false, isGodMode = false, isSpectating = false;
+    let serverLeaderboard = null;   // ranking de la sala entera que manda el server (online); null = usar cálculo local (offline)
     let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
     let camera = { x: 0, y: 0, scale: 0.8 }, mouse = { x: 0, y: 0 }, inputMode = 'MOUSE', keys = { w: false, a: false, s: false, d: false, f: false }, botConfig = { enabled: true, count: 25, respawn: true };
 
@@ -2065,7 +2066,7 @@
         hideGameHUD();
     }
     function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} hideCountdownNumber(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); const tb = document.getElementById('btnTryAgainOnline'); if (tb) tb.style.display = 'none'; }
-    function returnToMenu() { Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function returnToMenu() { serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
@@ -3014,11 +3015,15 @@
             if (tryBtn) { tryBtn.disabled = false; tryBtn.innerText = 'TRY AGAIN'; }
             return;
         }
-        // Firma OK: ahora sí, cerrar el WS viejo y reconectar.
-        // NO ocultar els.result aquí: enterOnlineGame/startPracticeGame ya lo hacen
-        // cuando llega el 'welcome'. Si lo ocultamos antes, hay un flash negro mientras
-        // el WS conecta (~300ms). El overlay de resultados tapa el canvas vacío.
+        // Firma OK: cerrar el WS viejo y reconectar.
+        // El menú de muerte se OCULTA ya al pulsar TRY AGAIN (antes se dejaba visible
+        // esperando que el 'welcome' lo cerrara, pero al reconectar a un lobby arcade
+        // en 'waiting' ese path no siempre oculta els.result → menú pegado). Tapamos
+        // el hueco de conexión (~300ms) con el WaitHud + banner CONNECTING.
         hideSpectatorBar();
+        els.result.style.display = 'none';
+        els.skillOverlay.style.display = 'none';
+        WaitHud.showCount(0, 0); document.getElementById('waitLabel').innerText = 'CONNECTING';
         if (netState.ws) { const w = netState.ws; netState.ws = null; try { w.onclose = null; w.close(); } catch (e) {} }
         practiceMode = false; setLobbyBanner(null); sim = null;
         gameRunning = false;
@@ -3176,6 +3181,8 @@
                 setLobbyBanner('NOT ENOUGH PLAYERS · RESTARTING IN <b>' + Math.round((msg.in || 30000) / 1000) + 's</b>');
                 SoundManager.play('alert');
                 setTimeout(() => { if (gameRunning && !practiceMode) setLobbyBanner(null); }, 4000);
+            } else if (msg.t === 'lb') {
+                serverLeaderboard = Array.isArray(msg.top) ? msg.top : null;   // ranking de la sala entera (server, ~2Hz)
             } else if (msg.t === 'enemyFx') {
                 applyEnemyFx(!!msg.on);   // admin cambió las animaciones de enemigos en vivo
             } else if (msg.t === 'baseZoom') {
@@ -3654,18 +3661,24 @@
     // UPDATE LEADERBOARD
     function updateLeaderboard() {
         let all = [];
-        const cells = myCells();
-        if (cells.length > 0) {
-            let m = 0; cells.forEach(c => m += c.mass);
-            all.push({ name: me().name, mass: m, isMe: true });
+        // Online: el ranking de la sala ENTERA lo calcula el server (con AOI el cliente
+        // solo ve su zona). Usamos ese top; marcamos "me" por id. Offline/practice: local.
+        if (sim && sim.isRemote && serverLeaderboard) {
+            all = serverLeaderboard.map(e => ({ name: e.n, mass: e.m, isMe: e.id === sim.myId }));
+        } else {
+            const cells = myCells();
+            if (cells.length > 0) {
+                let m = 0; cells.forEach(c => m += c.mass);
+                all.push({ name: me().name, mass: m, isMe: true });
+            }
+            let botMap = new Map();
+            sim.enemies.forEach(e => {
+                if (!botMap.has(e.id)) botMap.set(e.id, { name: e.name, mass: 0, isMe: false });
+                botMap.get(e.id).mass += e.mass;
+            });
+            for (let b of botMap.values()) all.push(b);
+            all.sort((a,b) => b.mass - a.mass);
         }
-        let botMap = new Map();
-        sim.enemies.forEach(e => {
-            if (!botMap.has(e.id)) botMap.set(e.id, { name: e.name, mass: 0, isMe: false });
-            botMap.get(e.id).mass += e.mass;
-        });
-        for (let b of botMap.values()) all.push(b);
-        all.sort((a,b) => b.mass - a.mass);
 
         let html = "";
         for (let i=0; i<Math.min(10, all.length); i++) {

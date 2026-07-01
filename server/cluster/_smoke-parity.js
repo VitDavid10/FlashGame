@@ -26,7 +26,7 @@ function done(ok) {
 
 setTimeout(() => {
     const ws = new WebSocket(`ws://localhost:${PORT}`);
-    let gotWelcome = false, gotStart = false, gotSnap = false;
+    let gotWelcome = false, gotStart = false, gotSnap = false, gotLb = false;
     ws.on('open', () => ws.send(JSON.stringify({ t: 'join', mode: 'classic', room: 'Free', name: 'ParityBot' })));
     ws.on('message', (data) => {
         let m; try { m = JSON.parse(data); } catch { return; }   // los snap binarios no; aquí todo JSON
@@ -45,13 +45,15 @@ setTimeout(() => {
             ws.send(JSON.stringify({ t: 'ready' }));
         } else if (m.t === 'snap' || m.t === 'events') {
             if (gotStart && !gotSnap) { gotSnap = true; results['ready → snapshot/eventos (tick)'] = true; }
+        } else if (m.t === 'lb') {
+            if (!gotLb && Array.isArray(m.top)) { gotLb = true; results['leaderboard de sala (server → lb)'] = true; }
         }
     });
     ws.on('error', e => { results['conexión'] = false; srvLog += '\nWS ERR ' + e.message; });
 
     setTimeout(() => {
         const ok = gotWelcome && results['welcome trae foods (foodsJsonOf)'] &&
-            results['join → waiting (sendWaiting/armLobby)'] && gotStart && gotSnap;
+            results['join → waiting (sendWaiting/armLobby)'] && gotStart && gotSnap && gotLb;
         done(ok);
     }, 3500);
 }, 1500);
