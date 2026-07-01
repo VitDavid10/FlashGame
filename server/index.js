@@ -38,6 +38,7 @@ const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 const skinpoints = require('./skinpoints.js');     // puntos de skin por clientId
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos
 const { tickRoomOnce } = require('./room-loop.js');   // tick por sala (paso previo a worker_threads)
+const { createGameHost } = require('./game-host.js');   // gestión de salas + matchmaking (Fase 1 split Director/Host)
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
@@ -439,56 +440,13 @@ for (const c of connLog) {
 }
 
 // --- Salas ---
-function buildSim(mode, rules) {
-    const baseSize = PillSim.WORLD_CONFIG[mode === 'classic' ? 'classic' : 'arcade'].size;
-    const sim = new PillSim.Simulation({
-        mode,
-        mapSize: baseSize,
-        worldSettings: { map: 1, food: rules.food || 1, virus: rules.virus || 1, speed: rules.speed || 1 },
-        botConfig: { enabled: !!rules.botsEnabled, count: rules.botCount || 0, respawn: !!rules.botsEnabled },
-        maxBotCells: mode === 'classic' ? 8 : 4,
-        fx: { enabled: false, enemyFX: false },
-        emitFoodEvents: true,
-        enforceGod: true,            // online: comandos de truco solo para GOD
-        realisticBotNames: true      // online: bots usan nombres tipo jugador real
-    });
-    sim.populate();
-    return sim;
-}
-
-// Crea (o devuelve) una layer concreta. key = layerKey = "mode_roomName_LN".
-// Las reglas/stats persisten por comboKey, no por layer.
+// buildSim, getOrCreateRoom, pickLayer e initLayers viven ahora en game-host.js
+// (createGameHost). Se instancian como `gameHost` más abajo, con las deps de este
+// módulo. Aquí se quedan spawnWorker/handleWorkerMsg (sistema worker_threads).
 // Multihilo: si useWorkers está activo (configurable desde admin), cada sala corre
 // su sim en un Worker. Default: OFF — single-thread aguanta más en este VPS por el
 // coste del structured-clone worker→main en cada tick (~25 mensajes/seg por sala).
 const WORKER_SCRIPT = path.join(__dirname, 'room-worker.js');
-
-function getOrCreateRoom(key, mode, roomName) {
-    if (!rooms.has(key)) {
-        const ck = comboKeyOf(mode, roomName);
-        const rules = rulesOf(ck); rulesDirty = true;
-        const m = key.match(/_L(\d+)$/);
-        const layerIdx = m ? parseInt(m[1], 10) : 1;
-        const room = {
-            key, comboKey: ck, layerIdx, mode, roomName,
-            sim: useWorkers ? null : buildSim(mode, rules),
-            worker: null,
-            clients: new Map(),
-            state: 'waiting',
-            tickCount: 0, lastTick: Date.now(), emptySince: 0,
-            endsAt: null, restartAt: null, startAt: null,
-            pendingRemovals: new Map(),
-            deadRemovals: new Map(),
-            spectators: new Set(),
-            persistent: true,
-            pot: 0,
-        };
-        rooms.set(key, room);
-        if (useWorkers) spawnWorker(room, rules);
-        log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(ck)} reales, población ${targetPopOf(ck)})${useWorkers ? ' [worker]' : ''}`);
-    }
-    return rooms.get(key);
-}
 
 // --- Worker lifecycle ---
 function spawnWorker(room, rules) {
@@ -713,53 +671,20 @@ function processWorkerEvent(room, ev, now) {
     }
 }
 
-// Matchmaker: elige la layer del combo donde meter a un nuevo jugador.
-// Política: **L1 ESTRICTA**. Recorre las layers en orden (L1, L2, ...) y se
-// queda con la PRIMERA que cumpla. L2 solo se usa cuando L1 está llena. Si L1
-// se vacía después, los próximos vuelven a L1 (los de L2 siguen su partida).
-//
-// Filtros:
-//  - no llena (clients.size < maxPlayers del combo)
-//  - no a <30s del final de partida (te evita morir entrando)
-//  - no desactivada manualmente desde admin
-//  - state playing | waiting | ended (en ended ves la cuenta atrás del reinicio)
-//
-// Si ninguna cumple → null → cliente recibe noSlot y sigue en práctica offline.
-function pickLayer(mode, roomName) {
-    const ck = comboKeyOf(mode, roomName);
-    const max = maxPlayersOf(ck);
-    for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
-        const key = layerKeyOf(mode, roomName, i);
-        let r = rooms.get(key);
-        if (!r) {
-            // Lazy L2+: solo se crea cuando hace falta. Si i=1 no existe es bug (debería
-            // pre-crearse en initLayers). Para i>=2: créala on-demand si no está apagada.
-            if (i === 1) continue;
-            if (isLayerOffForPrice(roomName, i)) continue;
-            r = getOrCreateRoom(key, mode, roomName);
-            log(`Lazy: creada ${key} porque L${i-1} está llena`);
-        }
-        if (r.disabled) continue;
-        if (r.clients.size >= max) continue;
-        if (r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
-        return r;
-    }
-    return null;
-}
-
-// Pre-crea SOLO L1 en startup (10 salas: 2 modos × 5 precios). Las L2+ se crean
-// en pickLayer cuando L1 se llena. Antes pre-creábamos las 20 → 10 workers ociosos
-// gastando CPU en el setInterval del tick, kernel hacía context switches sin parar.
-function initLayers() {
-    let n = 0;
-    for (const mode of CATALOG_MODES) {
-        for (const price of PRICES) {
-            getOrCreateRoom(layerKeyOf(mode, price, 1), mode, price);
-            n++;
-        }
-    }
-    log(`Pre-creadas ${n} salas L1. L2+ se crean on-demand cuando L1 se llene.`);
-}
+// Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
+// Se crea aquí, una vez definidas todas sus dependencias (rooms, reglas del
+// catálogo, spawnWorker…). Los nombres se desestructuran para que los call sites
+// existentes (pickLayer/getOrCreateRoom/buildSim/initLayers) no cambien.
+const gameHost = createGameHost({
+    rooms,
+    comboKeyOf, layerKeyOf, isLayerOffForPrice,
+    rulesOf, minRealOf, targetPopOf, maxPlayersOf,
+    log, spawnWorker,
+    getUseWorkers: () => useWorkers,
+    onRulesDirty: () => { rulesDirty = true; },
+    CATALOG_MODES, PRICES, LAYERS_PER_COMBO,
+});
+const { buildSim, getOrCreateRoom, pickLayer, initLayers } = gameHost;
 
 function broadcast(room, objOrString) {
     const m = typeof objOrString === 'string' ? objOrString : JSON.stringify(objOrString);
