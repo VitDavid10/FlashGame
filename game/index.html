@@ -113,9 +113,11 @@
         }
 
         /* REGLA DE BLOQUEO:
-           Se activa si la pantalla es menor a 900px O si el dispositivo es táctil (móvil/tablet).
-           Cuando el usuario pulsa "Continue anyway", se añade body.mobile-allowed y se desactiva el bloqueo. */
-        @media (max-width: 900px), (pointer: coarse) and (max-width: 1024px) {
+           Solo dispositivos TÁCTILES reales (móvil/tablet: puntero grueso y sin hover).
+           Un PC con ratón NUNCA se bloquea, aunque la ventana sea estrecha (antes un
+           max-width:900px atrapaba PCs con la ventana pequeña → falso positivo).
+           Cuando el usuario pulsa "Continue anyway", se añade body.mobile-allowed y se desactiva. */
+        @media (pointer: coarse) and (hover: none) {
             #mobileBlock { display: flex !important; }
             #modeScreen, #loginOverlay, #ui, #gameCanvas { filter: blur(10px); pointer-events: none; }
         }
@@ -708,6 +710,11 @@
             document.body.classList.add('mobile-allowed');
         }
         try {
+            // Auto-cura: en un dispositivo NO táctil (PC con ratón) nunca se entra en
+            // modo móvil, y se borra un flag viejo que hubiera quedado por un falso
+            // positivo (ventana estrecha en PC). Así el PC nunca queda con salas de pago bloqueadas.
+            var _isTouch = window.matchMedia && window.matchMedia('(pointer: coarse) and (hover: none)').matches;
+            if (!_isTouch) localStorage.removeItem('pw_mobile_allowed');
             if (localStorage.getItem('pw_mobile_allowed') === '1') document.body.classList.add('mobile-allowed');
         } catch(e) {}
     </script>
