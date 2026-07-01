@@ -94,16 +94,14 @@ function tickRoomOnce(room, now, ctx) {
             if (!cli.cid) continue;
             const pj = room.sim.players.get(pid);
             if (!pj) continue;
-            const q = ctx.questsOf(cli.cid);
             // Q4 masa: guardar el pico real, esté vivo o muerto al final
             const peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
-            if (peak > (q.bestMass | 0)) { q.bestMass = peak; ctx.flags.quests = true; }
+            ctx.econ.questBestMass(cli.cid, peak);
             // Q1, Q2: jugador VIVO al final de arcade → cuenta como "finish + online match"
             if (pj.alive && room.mode === 'arcade') {
-                if ((q.q1_games_finished | 0) < 2) { q.q1_games_finished = (q.q1_games_finished | 0) + 1; ctx.flags.quests = true; }
-                if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; ctx.flags.quests = true; }
+                ctx.econ.questFinishArcade(cli.cid);
+                ctx.econ.questOnlineMatch(cli.cid);
             }
-            q.updated = Date.now();
             // Reset por partida del contador interno de skills
             pj.matchSkillUses = 0;
         }
@@ -122,9 +120,9 @@ function tickRoomOnce(room, now, ctx) {
                 const pj = ranking[i];
                 const cli = room.clients.get(pj.id);
                 const parte = Math.floor(totalPot * PESOS[i] / 100);
-                if (cli && cli.payWallet && parte > 0) ctx.warbank.credit(cli.payWallet, parte);
+                if (cli && cli.payWallet && parte > 0) ctx.econ.credit(cli.payWallet, parte);
                 // Daily: terminar top 5 en arcade
-                if (cli && cli.cid && (i + 1) <= 5) ctx.dailyquests.recordEvent(cli.cid, 'arcade_top5', 1);
+                if (cli && cli.cid && (i + 1) <= 5) ctx.econ.dailyEvent(cli.cid, 'arcade_top5', 1);
                 top.push({ pos: i + 1, name: pj.name, mass: pj.peakMass | 0, pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
             }
             payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top };
@@ -162,10 +160,9 @@ function tickRoomOnce(room, now, ctx) {
         if (ev.type === 'playerDied') {
             const dCli_ = room.clients.get(ev.playerId);
             const dTest_ = dCli_ && dCli_.isTester;
-            const ds2_ = ctx.statsOf(room.comboKey); ds2_.muertes++; if (!dTest_) ds2_.muertesReal++; ctx.flags.stats = true;
             const pj = room.sim.players.get(ev.playerId);
-            if (pj && pj.name && !dTest_) { ctx.pstatOf(pj.name).muertes++; ctx.flags.players = true; }
-            ctx.flushPeakMass(room, ev.playerId, room.clients.get(ev.playerId));
+            ctx.econ.playerDeath(room.comboKey, dTest_, pj && pj.name);
+            ctx.econ.peakMassFlush(room, ev.playerId, room.clients.get(ev.playerId));
             // ARCADE: cada muerte llena el bote (entrada del muerto va al bote).
             if (room.mode !== 'classic') {
                 const dCli = room.clients.get(ev.playerId);
@@ -174,27 +171,23 @@ function tickRoomOnce(room, now, ctx) {
             }
             // Q2 también cuenta al morir online (jugaste la partida hasta el final aunque te eliminaran)
             const cliD = room.clients.get(ev.playerId);
-            if (cliD && cliD.cid) {
-                const q = ctx.questsOf(cliD.cid);
-                if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); ctx.flags.quests = true; }
-            }
+            if (cliD && cliD.cid) ctx.econ.questOnlineMatch(cliD.cid);
             if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + ctx.DEAD_REMOVE_MS);
         } else if (ev.type === 'botKilled') {
             const killer = room.sim.players.get(ev.playerId);
             const cliKiller_ = room.clients.get(ev.playerId);
-            if (killer && killer.name && !(cliKiller_ && cliKiller_.isTester)) { ctx.pstatOf(killer.name).kills++; ctx.flags.players = true; }
+            ctx.econ.botKill(killer && killer.name, cliKiller_ && cliKiller_.isTester);
             // Las kills contra bots cuentan para Q2 (los bots simulan jugadores reales)
             const cliK = room.clients.get(ev.playerId);
             if (cliK && cliK.cid) {
-                const q = ctx.questsOf(cliK.cid);
-                if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); ctx.flags.quests = true; }
+                ctx.econ.questOnlineMatch(cliK.cid);
                 // Daily: cada kill cuenta. Mass milestones se chequean al alcanzarlos.
-                ctx.dailyquests.recordEvent(cliK.cid, 'kill', 1);
+                ctx.econ.dailyEvent(cliK.cid, 'kill', 1);
                 const killer2 = room.sim.players.get(ev.playerId);
                 if (killer2) {
                     const peak = killer2.peakMass | 0;
-                    if (peak >= 50000 && !cliK._mass50) { cliK._mass50 = true; ctx.dailyquests.recordEvent(cliK.cid, 'mass_50k', 1); }
-                    if (peak >= 100000 && !cliK._mass100) { cliK._mass100 = true; ctx.dailyquests.recordEvent(cliK.cid, 'mass_100k', 1); }
+                    if (peak >= 50000 && !cliK._mass50) { cliK._mass50 = true; ctx.econ.dailyEvent(cliK.cid, 'mass_50k', 1); }
+                    if (peak >= 100000 && !cliK._mass100) { cliK._mass100 = true; ctx.econ.dailyEvent(cliK.cid, 'mass_100k', 1); }
                 }
             }
             // CLASSIC: el matador recibe carry de la víctima directamente (humano o bot virtual).
@@ -216,12 +209,12 @@ function tickRoomOnce(room, now, ctx) {
                 // VICTORIA en classic (5 kills): cashout automático sin fee, se lleva todo su carry.
                 if (ev.streak >= 5 && cliK.payWallet) {
                     const win = cliK.carry;
-                    if (win > 0) ctx.warbank.credit(cliK.payWallet, win);
+                    if (win > 0) ctx.econ.credit(cliK.payWallet, win);
                     ctx.log(`VICTORIA classic: ${cliK.payWallet.slice(0, 6)}… +${win} PILL (carry completo)`);
                     try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: 0 })); } catch (e) {}
                     cliK.carry = 0;
                     ctx.sendEcon(cliK, room);
-                    if (cliK.cid) ctx.dailyquests.recordEvent(cliK.cid, 'classic_5kills', 1);
+                    if (cliK.cid) ctx.econ.dailyEvent(cliK.cid, 'classic_5kills', 1);
                 }
             }
         } else if (ev.type === 'skillUsed') {
@@ -231,12 +224,8 @@ function tickRoomOnce(room, now, ctx) {
                 const pj2 = room.sim.players.get(ev.playerId);
                 if (pj2) {
                     pj2.matchSkillUses = (pj2.matchSkillUses | 0) + 1;
-                    const q = ctx.questsOf(cli.cid);
-                    if (pj2.matchSkillUses > (q.q3_skills_in_arcade | 0)) {
-                        q.q3_skills_in_arcade = Math.min(8, pj2.matchSkillUses);
-                        q.updated = Date.now(); ctx.flags.quests = true;
-                    }
-                    ctx.dailyquests.recordEvent(cli.cid, 'skill_used_arcade', 1);
+                    ctx.econ.questSkills(cli.cid, pj2.matchSkillUses);
+                    ctx.econ.dailyEvent(cli.cid, 'skill_used_arcade', 1);
                 }
             }
         }

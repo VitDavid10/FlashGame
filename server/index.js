@@ -776,6 +776,33 @@ const director = {
     },
 };
 
+// econ — sink de eventos económicos/stats/quests que el TICK de sala emite hacia
+// el Director (Fase 4/4a.3). El Host reporta HECHOS del juego; el Director aplica
+// las consecuencias sobre el estado persistente (warbank, stats, quests). En
+// mono-proceso estos métodos ejecutan la lógica directa (idéntica a la que había
+// inline en room-loop.js); en el split multiproceso se sustituyen por un proxy IPC.
+// Lo LOCAL de la partida (carry, pot, sendEcon, entryFeePill) NO vive aquí: es del Host.
+const econ = {
+    // Único dinero persistente que cruza al Director: acredita saldo WAR.
+    credit(wallet, amount) { if (wallet && amount > 0) warbank.credit(wallet, amount); },
+    // Muerte de un jugador: stats de la sala (combo) y del jugador.
+    playerDeath(comboKey, tester, name) {
+        const ds = statsOf(comboKey); ds.muertes++; if (!tester) ds.muertesReal++; statsDirty = true;
+        if (name && !tester) { pstatOf(name).muertes++; playersDirty = true; }
+    },
+    // Kill de bot: suma al contador de kills del matador.
+    botKill(name, tester) { if (name && !tester) { pstatOf(name).kills++; playersDirty = true; } },
+    // Vuelca el pico de masa a stats/quests (misma lógica que la función global).
+    peakMassFlush(room, pid, cli) { flushPeakMass(room, pid, cli); },
+    // Retos diarios rotativos (fire-and-forget: telemetría, no dinero).
+    dailyEvent(cid, type, n) { if (cid) dailyquests.recordEvent(cid, type, n); },
+    // Quests semanales con CAP aplicado en el Director (el Host solo emite el hecho).
+    questOnlineMatch(cid) { const q = questsOf(cid); if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; } },
+    questFinishArcade(cid) { const q = questsOf(cid); if ((q.q1_games_finished | 0) < 2) { q.q1_games_finished = (q.q1_games_finished | 0) + 1; q.updated = Date.now(); questsDirty = true; } },
+    questBestMass(cid, peak) { const q = questsOf(cid); if (peak > (q.bestMass | 0)) { q.bestMass = peak; q.updated = Date.now(); questsDirty = true; } },
+    questSkills(cid, matchSkillUses) { const q = questsOf(cid); if (matchSkillUses > (q.q3_skills_in_arcade | 0)) { q.q3_skills_in_arcade = Math.min(8, matchSkillUses); q.updated = Date.now(); questsDirty = true; } },
+};
+
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
 // Se crea aquí, una vez definidas todas sus dependencias (rooms, reglas del
 // catálogo, spawnWorker…). Los nombres se desestructuran para que los call sites
@@ -1749,14 +1776,17 @@ function pStats(arr, n) {
 const tickFlags = { stats: false, players: false, quests: false };
 const tickCtx = {
     // módulos
-    warbank, dailyquests, proto,
+    proto,
+    // Frontera económica: el tick emite hechos a econ.* (dinero/stats/quests van al
+    // Director). En el split multiproceso, econ se sustituye por un proxy IPC.
+    econ,
     // estado compartido (lectura/escritura)
     resumeTokens,
     flags: tickFlags,
     // funciones puras
     log, logAdmin, broadcast, restartRoom, startMatch, tickGradualBots,
     buildSnapshotFor, aoiBoxFor,
-    pstatOf, statsOf, questsOf, addToPot, sendEcon, entryFeePill, flushPeakMass, minRealOf,
+    addToPot, sendEcon, entryFeePill, minRealOf,
     deleteRoom: (key) => rooms.delete(key),
     // constantes
     DEAD_REMOVE_MS, EMPTY_ROOM_TTL, EMPTY_RESET_MS, ARCADE_KEEP_MIN, ARCADE_SHORTEN_MS,

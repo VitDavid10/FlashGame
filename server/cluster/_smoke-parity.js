@@ -6,7 +6,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const WebSocket = require(path.join(__dirname, '../../stress_bot/node_modules/ws'));
 
-const PORT = 8097;
+const PORT = 8090;
 const srv = spawn(process.execPath, [path.join(__dirname, '../index.js')], {
     env: { ...process.env, PORT: String(PORT), ADMIN_KEY: '1234', MIN_PLAYERS: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
