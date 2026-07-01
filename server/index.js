@@ -1864,21 +1864,7 @@ wss.on('connection', (ws, req) => {
 
         // --- Espectador puro (panel de control): mira la sala sin jugar ---
         if (msg.t === 'spectate' && !room && !spectatorRoom) {
-            const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
-            let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
-            // Espectador: puede pedir una layer concreta (?layer=2 del panel admin);
-            // si no, se le mete en L1 por defecto. Si la layer pedida no existe,
-            // cae a L1; si tampoco, specEmpty.
-            const layerIdx = Math.max(1, Math.min(LAYERS_PER_COMBO, parseInt(msg.layer, 10) || 1));
-            const key = layerKeyOf(mode, roomName, layerIdx);
-            const sala = rooms.get(key) || rooms.get(layerKeyOf(mode, roomName, 1));
-            if (!sala) { ws.send(JSON.stringify({ t: 'specEmpty' })); return; }
-            spectatorRoom = sala;
-            sala.spectators.add(ws);
-            if (sala.worker) sala.worker.postMessage({ type: 'setSpectators', on: true });
-            // welcome sin id de jugador → el cliente entra como espectador puro
-            ws.send(welcomeMsg(sala, null, null, 'specWelcome'));   // playerId=null → id:null en el head
-            log(`Espectador conectado a ${key} (${sala.spectators.size} mirando)`);
+            spectatorRoom = gameHost.handleSpectate(ws, msg);
             return;
         }
 

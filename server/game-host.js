@@ -215,6 +215,24 @@ function createGameHost(deps) {
         }
     }
 
+    // Entrada como ESPECTADOR (mira una sala sin jugar). Es del Host: usa sus sockets
+    // y su sim (snapshot completo, sin AOI). Devuelve la sala observada o null.
+    function handleSpectate(ws, msg) {
+        const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
+        let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
+        // Puede pedir una layer concreta (?layer=2 del panel admin); si no existe, cae a L1.
+        const layerIdx = Math.max(1, Math.min(LAYERS_PER_COMBO, parseInt(msg.layer, 10) || 1));
+        const key = layerKeyOf(mode, roomName, layerIdx);
+        const sala = rooms.get(key) || rooms.get(layerKeyOf(mode, roomName, 1));
+        if (!sala) { ws.send(JSON.stringify({ t: 'specEmpty' })); return null; }
+        sala.spectators.add(ws);
+        if (sala.worker) sala.worker.postMessage({ type: 'setSpectators', on: true });
+        // welcome sin id de jugador → el cliente entra como espectador puro
+        ws.send(welcomeMsg(sala, null, null, 'specWelcome'));
+        log(`Espectador conectado a ${key} (${sala.spectators.size} mirando)`);
+        return sala;
+    }
+
     // Entrada de un jugador (join/resume). Es del Host porque en el split real el WS
     // lo posee el Host. Orquesta: matchmaking (pickLayer) + sim (addPlayer) + welcome/
     // lobby, y delega en el Director todo lo económico/stats (kick, precio, cobro,
@@ -325,7 +343,7 @@ function createGameHost(deps) {
         }
     }
 
-    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms, handleInput, handleClose, handleJoin };
+    return { buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms, handleInput, handleClose, handleJoin, handleSpectate };
 }
 
 module.exports = { createGameHost };
