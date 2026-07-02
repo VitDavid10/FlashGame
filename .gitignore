@@ -12,6 +12,7 @@ server/quests.json
 server/warbalances.json
 server/skinpoints.json
 server/daily.json
+server/globalsettings.json
 
 # Notas internas de desarrollo
 tasks/

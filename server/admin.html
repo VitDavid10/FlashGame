@@ -251,11 +251,13 @@
             <button id="tabBtn_salas" class="act" onclick="verTab('salas')">Salas</button>
             <button id="tabBtn_jugadores" onclick="verTab('jugadores')">Jugadores</button>
             <button id="tabBtn_actividad" onclick="verTab('actividad')">Actividad</button>
+            <button id="tabBtn_ajustes" onclick="verTab('ajustes')" style="display:none">Ajustes</button>
+            <button id="tabBtn_rendimiento" onclick="verTab('rendimiento')" style="display:none">Rendimiento</button>
         </nav>
 
         <div id="tab_salas">
-            <!-- Controles globales de modo -->
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:18px; background:#0d0d0d; border:1px solid #1e1e1e; border-radius:10px; padding:12px 16px;">
+            <!-- Controles globales de modo: en rol host se oculta entero (viven solo en /admin) -->
+            <div id="controlGlobalBar" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:18px; background:#0d0d0d; border:1px solid #1e1e1e; border-radius:10px; padding:12px 16px;">
                 <span style="color:#555; font-size:11px; letter-spacing:1px; margin-right:4px;">CONTROL GLOBAL:</span>
                 <button class="b naranja mini" onclick="modoAction('classic','restart')" title="Reiniciar todas las salas classic">↺ Reiniciar Classic</button>
                 <button class="b naranja mini" onclick="modoAction('arcade','restart')" title="Reiniciar todas las salas arcade">↺ Reiniciar Arcade</button>
@@ -264,32 +266,36 @@
                 <button class="b rojo mini" onclick="modoAction('classic','kick')" title="Echar a todos los jugadores de classic">✕ Kick Classic</button>
                 <button class="b rojo mini" onclick="modoAction('arcade','kick')" title="Echar a todos los jugadores de arcade">✕ Kick Arcade</button>
                 <button class="b rojo mini" onclick="modoAction('all','kick')" title="Echar a TODOS los jugadores">✕ Kick Todo</button>
-                <span style="color:#333; margin:0 4px;">|</span>
-                <button class="b rojo mini" style="background:#3a0000; border-color:#660000;" onclick="restartServidor()" title="Reinicia el proceso Node (pm2/systemd lo relanza)">⚠ Restart Servidor</button>
+                <span id="restartServidorSep" style="color:#333; margin:0 4px;">|</span>
+                <button id="restartServidorBtn" class="b rojo mini" style="background:#3a0000; border-color:#660000;" onclick="restartServidor()" title="Reinicia el proceso Node (pm2/systemd lo relanza)">⚠ Restart Servidor</button>
             </div>
-            <div class="modetabs">
-                <button id="modeBtn_classic" class="modetab act" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
-                <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
-                <button id="modeBtn_free" class="modetab" onclick="verModo('free')">Free <span id="cntFree" class="cnt cero">(0)</span></button>
-            </div>
-            <div id="layerTabsBar" class="modetabs" style="margin-top:8px; padding-left:8px; gap:8px; align-items:center;">
-                <span style="color:#666;font-size:11px;letter-spacing:1px;margin-right:6px;">LAYER:</span>
-                <button id="layerBtn_1" class="modetab act" style="font-size:12px;padding:4px 10px;" onclick="verLayer(1)">L1 <span id="cntLayer1" class="cnt cero">(0)</span></button>
-                <button id="layerBtn_2" class="modetab" style="font-size:12px;padding:4px 10px;" onclick="verLayer(2)">L2 <span id="cntLayer2" class="cnt cero">(0)</span></button>
-            </div>
-            <div class="grid" id="gridClassic"></div>
-            <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
-                <div style="color:#4d9bff; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">⚙ Arcade Mode — Global Parameters</div>
-                <div style="display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap;">
-                    <div><label style="color:#888;font-size:10px;display:block;margin-bottom:4px;">Lobby (s)</label><input type="number" step="1" min="0" max="120" id="g_lobby" value="20" style="width:70px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;"></div>
-                    <div><label style="color:#888;font-size:10px;display:block;margin-bottom:4px;">Restart (s)</label><input type="number" step="1" min="1" max="300" id="g_restart" value="10" style="width:70px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;"></div>
-                    <button class="b verde mini" onclick="aplicarGlobal()" style="margin-bottom:1px;">Aplicar</button>
-                    <span style="color:#555;font-size:10px;">Se aplica a todas las salas arcade</span>
+            <!-- Director (Fase 4b): las salas viven en los hosts, aquí solo hay 2 accesos -->
+            <div id="hostCardsView" style="display:none"></div>
+            <div id="roomsView">
+                <div class="modetabs">
+                    <button id="modeBtn_classic" class="modetab act" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
+                    <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
+                    <button id="modeBtn_free" class="modetab" onclick="verModo('free')">Free <span id="cntFree" class="cnt cero">(0)</span></button>
                 </div>
+                <div id="layerTabsBar" class="modetabs" style="margin-top:8px; padding-left:8px; gap:8px; align-items:center;">
+                    <span style="color:#666;font-size:11px;letter-spacing:1px;margin-right:6px;">LAYER:</span>
+                    <button id="layerBtn_1" class="modetab act" style="font-size:12px;padding:4px 10px;" onclick="verLayer(1)">L1 <span id="cntLayer1" class="cnt cero">(0)</span></button>
+                    <button id="layerBtn_2" class="modetab" style="font-size:12px;padding:4px 10px;" onclick="verLayer(2)">L2 <span id="cntLayer2" class="cnt cero">(0)</span></button>
+                </div>
+                <div class="grid" id="gridClassic"></div>
+                <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
+                    <div style="color:#4d9bff; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">⚙ Arcade Mode — Global Parameters</div>
+                    <div style="display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap;">
+                        <div><label style="color:#888;font-size:10px;display:block;margin-bottom:4px;">Lobby (s)</label><input type="number" step="1" min="0" max="120" id="g_lobby" value="20" style="width:70px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;"></div>
+                        <div><label style="color:#888;font-size:10px;display:block;margin-bottom:4px;">Restart (s)</label><input type="number" step="1" min="1" max="300" id="g_restart" value="10" style="width:70px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;"></div>
+                        <button class="b verde mini" onclick="aplicarGlobal()" style="margin-bottom:1px;">Aplicar</button>
+                        <span style="color:#555;font-size:10px;">Se aplica a todas las salas arcade</span>
+                    </div>
+                </div>
+                <div class="grid" id="gridArcade" style="display:none"></div>
+                <div class="grid" id="gridFree" style="display:none"></div>
+                <div id="gridOtras"></div>
             </div>
-            <div class="grid" id="gridArcade" style="display:none"></div>
-            <div class="grid" id="gridFree" style="display:none"></div>
-            <div id="gridOtras"></div>
         </div>
 
         <div id="tab_jugadores" style="display:none">
@@ -316,20 +322,32 @@
         </div>
 
         <div id="tab_actividad" style="display:none">
-            <h2 class="section">Acciones globales</h2>
+            <!-- Director (Fase 4b): lo primero y principal es cuántos hay conectados
+                 en cada sala, agregado de los hosts. En mono/host no aplica (vacío). -->
+            <div id="connByRoomBox"></div>
+
+            <h2 class="section">Salud del servidor</h2>
+            <div class="usage" id="healthBox" style="padding:18px 20px;font-family:'Inter',sans-serif;font-size:13px">Cargando…</div>
+
+            <h2 class="section" id="seccionJugadores">Jugadores por país</h2>
+            <table class="rank">
+                <thead><tr><th></th><th>País</th><th></th><th>Jugadores</th></tr></thead>
+                <tbody id="paisesCuerpo"></tbody>
+            </table>
+            <h2 class="section">Salas más usadas</h2>
+            <div class="usage" id="usoSalas"></div>
+            <h2 class="section">Últimas conexiones</h2>
+            <div class="usage" style="padding-top:8px">
+                <table class="hist"><tbody id="histCuerpo"></tbody></table>
+            </div>
+            <h2 class="section">Registro de acciones</h2>
+            <div class="usage" id="adminLog" style="padding-top:8px"></div>
+        </div>
+
+        <div id="tab_ajustes" style="display:none">
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <button class="b rojo" onclick="resetearQuests()">Resetear quests de todos</button>
                 <span style="color:#666; font-size: 12px;">Borra el progreso de Daily Quests de todos los jugadores. Los récords de masa del ranking NO se tocan.</span>
-            </div>
-            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight:600">Frecuencia de red (snapshots):</label>
-                <select id="snapHzSel" onchange="aplicarSnapHz()" style="background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px">
-                    <option value="40">40 Hz (1 de cada 1 tick · máx. fluidez)</option>
-                    <option value="20">20 Hz (1 de cada 2 · menos carga)</option>
-                    <option value="13">13 Hz (1 de cada 3)</option>
-                    <option value="10">10 Hz (1 de cada 4 · mínimo)</option>
-                </select>
-                <span style="color:#666; font-size: 12px;">Global, afecta a TODAS las salas al instante. Menos Hz = menos lag con mucha gente (el cliente interpola). Se reinicia al valor por defecto si reinicias el servidor.</span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
                 <label style="font-weight:600">Volumen por defecto (cliente):</label>
@@ -344,7 +362,7 @@
                     <span id="volMusicVal" style="color:#00ff88;font-size:12px;width:38px;">85%</span>
                 </div>
                 <button class="b verde mini" onclick="aplicarVolumenes()">Aplicar</button>
-                <span style="color:#666; font-size: 12px;">Volumen base que reciben los clientes. Cada jugador puede mutear/ajustar encima. Persiste entre reinicios.</span>
+                <span style="color:#666; font-size: 12px;">Volumen base que reciben los clientes. Cada jugador puede mutear/ajustar encima. Persiste entre reinicios. <span id="ajustesHostsNote"></span></span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <label style="font-weight:600">Animaciones de enemigos (global):</label>
@@ -364,38 +382,40 @@
                 <button class="b verde mini" onclick="enviarAnuncio()">Enviar</button>
                 <span style="color:#666; font-size: 12px;">Manda un cartel a TODOS los jugadores conectados ahora mismo.</span>
             </div>
-            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight:600">Layer 2:</label>
-                <button id="layerPowerBtn_2" class="b" onclick="toggleLayerPower(2)" title="Apaga/enciende todas las salas de Layer 2. Apagar libera CPU. Solo se puede apagar si están vacías.">⏻ L2: ON</button>
-                <span id="layerPowerHint" style="color:#777;font-size:12px;"></span>
-                <span style="color:#666; font-size: 12px;">Apagar la Layer 2 libera CPU (elimina 10 simulaciones). Solo se puede apagar si están vacías. En producción con poca gente, mantener solo L1 es suficiente.</span>
-            </div>
-            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight:600">AOI (Area of Interest):</label>
-                <button id="aoiToggleBtn" class="b" onclick="toggleAoi()">Cargando…</button>
-                <span style="color:#666; font-size: 12px;">Cada jugador recibe solo lo cercano a su píldora. Reduce tráfico ~5× en salas grandes y cierra el maphack (cliente modificado). Apagarlo solo si depuras render lejano.</span>
-            </div>
-            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight:600">Multihilo (worker_threads):</label>
-                <button id="workersToggleBtn" class="b" onclick="toggleWorkers()">Cargando…</button>
-                <span style="color:#666; font-size: 12px;">Cada sala corre en su propio hilo. En este VPS introduce overhead (structured-clone) y reduce el techo de jugadores. Mantenerlo en OFF salvo que pruebes lo contrario. Al cambiar, el proceso se reinicia.</span>
-            </div>
-            <h2 class="section">Salud del servidor</h2>
-            <div class="usage" id="healthBox" style="padding:18px 20px;font-family:'Inter',sans-serif;font-size:13px">Cargando…</div>
+        </div>
 
-            <h2 class="section" id="seccionJugadores">Jugadores por país</h2>
-            <table class="rank">
-                <thead><tr><th></th><th>País</th><th></th><th>Jugadores</th></tr></thead>
-                <tbody id="paisesCuerpo"></tbody>
-            </table>
-            <h2 class="section">Salas más usadas</h2>
-            <div class="usage" id="usoSalas"></div>
-            <h2 class="section">Últimas conexiones</h2>
-            <div class="usage" style="padding-top:8px">
-                <table class="hist"><tbody id="histCuerpo"></tbody></table>
+        <div id="tab_rendimiento" style="display:none">
+            <!-- mono/host: controles de siempre, sin selector de host -->
+            <div id="perfMono">
+                <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight:600">Frecuencia de red (snapshots):</label>
+                    <select id="snapHzSel" onchange="aplicarSnapHz()" style="background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px">
+                        <option value="40">40 Hz (1 de cada 1 tick · máx. fluidez)</option>
+                        <option value="20">20 Hz (1 de cada 2 · menos carga)</option>
+                        <option value="13">13 Hz (1 de cada 3)</option>
+                        <option value="10">10 Hz (1 de cada 4 · mínimo)</option>
+                    </select>
+                    <span style="color:#666; font-size: 12px;">Afecta a TODAS las salas al instante. Menos Hz = menos lag con mucha gente (el cliente interpola).</span>
+                </div>
+                <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight:600">Layer 2:</label>
+                    <button id="layerPowerBtn_2" class="b" onclick="toggleLayerPower(2)" title="Apaga/enciende todas las salas de Layer 2. Apagar libera CPU. Solo se puede apagar si están vacías.">⏻ L2: ON</button>
+                    <span id="layerPowerHint" style="color:#777;font-size:12px;"></span>
+                    <span style="color:#666; font-size: 12px;">Apagar la Layer 2 libera CPU. Solo se puede apagar si están vacías.</span>
+                </div>
+                <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight:600">AOI (Area of Interest):</label>
+                    <button id="aoiToggleBtn" class="b" onclick="toggleAoi()">Cargando…</button>
+                    <span style="color:#666; font-size: 12px;">Cada jugador recibe solo lo cercano a su píldora. Reduce tráfico ~5× y cierra el maphack.</span>
+                </div>
+                <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight:600">Multihilo (worker_threads):</label>
+                    <button id="workersToggleBtn" class="b" onclick="toggleWorkers()">Cargando…</button>
+                    <span style="color:#666; font-size: 12px;">Cada sala corre en su propio hilo. Overhead en este VPS; mantener OFF salvo pruebas. Reinicia el proceso al cambiar.</span>
+                </div>
             </div>
-            <h2 class="section">Registro de acciones</h2>
-            <div class="usage" id="adminLog" style="padding-top:8px"></div>
+            <!-- director: una fila de control POR HOST (override independiente) -->
+            <div id="perfHosts" style="display:none"></div>
         </div>
 
     </main>
@@ -488,9 +508,9 @@ setInterval(refrescarSalud, 5000); refrescarSalud();
 
 function verTab(t) {
     tabActiva = t;
-    for (const x of ['salas', 'jugadores', 'actividad']) {
-        document.getElementById('tab_' + x).style.display = (x === t) ? 'block' : 'none';
-        document.getElementById('tabBtn_' + x).classList.toggle('act', x === t);
+    for (const x of ['salas', 'jugadores', 'actividad', 'ajustes', 'rendimiento']) {
+        const tab = document.getElementById('tab_' + x); if (tab) tab.style.display = (x === t) ? 'block' : 'none';
+        const btn = document.getElementById('tabBtn_' + x); if (btn) btn.classList.toggle('act', x === t);
     }
 }
 
@@ -776,9 +796,97 @@ function aplicarGlobal() {
     setTimeout(pedir, 100);
 }
 
+// --- Fase 4b: panel /admin del Director — 2 tarjetas de host, conectados por
+// sala agregados y control de "Rendimiento" con override independiente por host.
+function renderHostCards(m) {
+    const cont = document.getElementById('hostCardsView');
+    const hosts = m.hosts || [];
+    cont.innerHTML = '<div class="grid">' + hosts.map(h => `
+        <a href="/h${h.hostId}/admin" class="room ${h.alive ? 's-playing' : 's-ended'}" style="text-decoration:none;display:block">
+            <div class="room-head">
+                <div class="room-name russo">HOST ${h.hostId}</div>
+                <span class="state ${h.alive ? 'st-playing' : 'st-offline'}"><span class="d"></span>${h.alive ? 'VIVO' : 'CAÍDO'}</span>
+            </div>
+            <div class="room-body">
+                <div class="statline">
+                    <span class="it" style="color:#00ff88">${IC.room} ${h.salasOnline} salas con gente</span>
+                    <span class="it">${IC.users} ${h.jugadores} conectados</span>
+                </div>
+                <div class="hint">puerto ${h.port} · abre el panel de sus salas</div>
+            </div>
+        </a>`).join('') + '</div>';
+}
+function renderConnByRoom(m) {
+    const box = document.getElementById('connByRoomBox');
+    const rows = [];
+    for (const h of (m.hosts || [])) for (const r of (h.rooms || [])) if (r.conectados > 0) rows.push(Object.assign({ hostId: h.hostId }, r));
+    rows.sort((a, b) => b.conectados - a.conectados);
+    box.innerHTML = '<h2 class="section">Conectados por sala</h2>' + (rows.length
+        ? '<table class="rank"><thead><tr><th>Sala</th><th>Modo</th><th>Host</th><th>Estado</th><th>Conectados</th></tr></thead><tbody>' +
+            rows.map(r => `<tr><td><b style="color:#fff">${esc(r.roomName)}</b> <span style="color:#666">L${r.layerIdx || 1}</span></td><td>${esc(r.mode)}</td><td>Host ${r.hostId}</td><td>${esc(r.state)}</td><td class="kills">${r.conectados}</td></tr>`).join('') +
+            '</tbody></table>'
+        : '<div class="usage vacio">Ninguna sala con jugadores ahora mismo.</div>');
+}
+function renderPerfHosts(m) {
+    const cont = document.getElementById('perfHosts');
+    const hosts = m.hosts || [];
+    cont.innerHTML = hosts.map(h => {
+        const p = h.perf || { snapshotHz: 40, aoiEnabled: true, layerOff: {} };
+        const off2 = !!(p.layerOff && p.layerOff[2]);
+        return `<div class="usage" style="padding:16px 20px;margin-bottom:14px">
+            <div class="nm russo" style="color:var(--primary);font-size:13px;margin-bottom:10px">HOST ${h.hostId} <span style="color:#666;font-size:11px">(puerto ${h.port}${h.alive ? '' : ' · CAÍDO'})</span></div>
+            <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="color:#888;font-size:12px">Hz</span>
+                    <select onchange="applySnapHzHost(${h.hostId}, parseInt(this.value,10))" style="background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px">
+                        ${[40, 20, 13, 10].map(hz => `<option value="${hz}" ${p.snapshotHz === hz ? 'selected' : ''}>${hz} Hz</option>`).join('')}
+                    </select>
+                </div>
+                <button class="b ${p.aoiEnabled ? 'verde' : 'rojo'}" onclick="applyAoiHost(${h.hostId}, ${!p.aoiEnabled})">AOI: ${p.aoiEnabled ? 'ON — desactivar' : 'OFF — activar'}</button>
+                <button class="b ${off2 ? 'rojo' : 'verde'}" onclick="applyLayerHost(${h.hostId}, 2, ${off2})">L2: ${off2 ? 'OFF — encender' : 'ON — apagar'}</button>
+                <span style="color:#666;font-size:11px">Multihilo: forzado OFF (incompatible con el split)</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+function applySnapHzHost(hostId, hz) { send({ cmd: 'snapshotHz', hz, hostIds: [hostId] }); setTimeout(pedir, 200); }
+function applyAoiHost(hostId, on) { send({ cmd: 'aoiToggle', on, hostIds: [hostId] }); setTimeout(pedir, 200); }
+function applyLayerHost(hostId, idx, active) { send({ cmd: 'setLayerActive', layerIdx: idx, active, hostIds: [hostId] }); setTimeout(pedir, 200); }
+
 function render(m) {
     document.getElementById('liveTxt').innerText = 'en vivo';
-    document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · red ${m.snapshotHz}Hz · AOI ${m.aoiEnabled ? 'ON' : 'OFF'}`;
+    const role = m.role || 'mono';
+
+    // --- Fase 4b: qué se ve según el rol de ESTE proceso ---
+    // director: sin salas propias (2 tarjetas de host) + Ajustes/Rendimiento (con
+    //           override por host en Rendimiento). host: SOLO salas, sin nada global
+    //           (todo eso vive en /admin). mono: exactamente como siempre.
+    const soloSalas = (role === 'host');
+    document.getElementById('statsToolbar').style.display = soloSalas ? 'none' : '';
+    document.getElementById('summary').style.display = soloSalas ? 'none' : '';
+    document.getElementById('tabBtn_jugadores').style.display = soloSalas ? 'none' : '';
+    document.getElementById('tabBtn_actividad').style.display = soloSalas ? 'none' : '';
+    document.getElementById('tabBtn_ajustes').style.display = soloSalas ? 'none' : '';
+    document.getElementById('tabBtn_rendimiento').style.display = soloSalas ? 'none' : '';
+    document.getElementById('controlGlobalBar').style.display = soloSalas ? 'none' : '';
+    if (soloSalas && tabActiva !== 'salas') verTab('salas');
+    document.getElementById('hostCardsView').style.display = (role === 'director') ? '' : 'none';
+    document.getElementById('roomsView').style.display = (role === 'director') ? 'none' : '';
+    document.getElementById('perfMono').style.display = (role === 'director') ? 'none' : '';
+    document.getElementById('perfHosts').style.display = (role === 'director') ? '' : 'none';
+    const ajustesNote = document.getElementById('ajustesHostsNote');
+    if (ajustesNote) ajustesNote.innerText = (role === 'director') ? '(se aplica a los ' + (m.hosts ? m.hosts.length : 0) + ' hosts)' : '';
+
+    if (role === 'director') {
+        renderHostCards(m);
+        renderConnByRoom(m);
+        renderPerfHosts(m);
+        const vivos = (m.hosts || []).filter(h => h.alive).length;
+        document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · ${vivos}/${(m.hosts || []).length} hosts vivos`;
+    } else {
+        document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · red ${m.snapshotHz}Hz · AOI ${m.aoiEnabled ? 'ON' : 'OFF'}`;
+    }
+
     if (m.snapshotHz != null && document.activeElement.id !== 'snapHzSel') document.getElementById('snapHzSel').value = m.snapshotHz;
     const aoiBtn = document.getElementById('aoiToggleBtn');
     if (aoiBtn) {

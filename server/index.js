@@ -179,6 +179,26 @@ function killHosts() {
     _shuttingDown = true;
     for (const h of hostProcs.values()) { try { h.child.kill(); } catch (e) {} }
 }
+// Fase 4b: el Director es la fuente de verdad de los "Ajustes" (volumen,
+// animaciones, zoom, tiempos de arcade) — se guardan aquí y se empujan a TODOS
+// los hosts por notify (fire-and-forget, no hace falta confirmación).
+function pushSettingsToHosts() {
+    const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom };
+    for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('settingsSync', patch); }
+}
+// "Rendimiento" SÍ admite override por host (comparar Hz/AOI/layers entre los
+// dos). hostIds opcional: si no se manda (o viene vacío), afecta a TODOS.
+// Devuelve [{hostId, ok, reason?}] — el único caso con reason es layerActive
+// bloqueado por salas no vacías.
+async function pushPerfToHosts(hostIds, patch) {
+    const ids = (Array.isArray(hostIds) && hostIds.length) ? hostIds : [...hostProcs.keys()];
+    return Promise.all(ids.map(async (id) => {
+        const h = hostProcs.get(id);
+        if (!h || !h.alive) return { hostId: id, ok: false, reason: 'host no disponible' };
+        try { const r = await h.ipc.request('perfSync', patch); return Object.assign({ hostId: id }, r); }
+        catch (e) { return { hostId: id, ok: false, reason: String(e && e.message || e) }; }
+    }));
+}
 // Tope de jugadores reales por sala, por modo. Se fija en el arranque para TODAS
 // las salas del catálogo (enforceRoomCaps), así queda en código y llega al VPS por
 // git (roomrules.json es gitignored y no se despliega). Editable en vivo desde el
@@ -876,6 +896,28 @@ const hostIpc = PW_ROLE === 'host' ? createIpc(process, { label: `host${PW_HOST_
 if (hostIpc) {
     // Cache del oráculo: el Director lo manda al forkear y en cada tickOracle.
     hostIpc.handle('oracleRate', (d) => { if (d && d.rate > 0) { PILL_PER_DOLLAR = d.rate; log(`Oráculo (IPC): $1 = ${PILL_PER_DOLLAR} PILL`); } });
+    // Fase 4b: el Director es la fuente de verdad de "Ajustes"/"Rendimiento" y
+    // reenvía aquí los cambios hechos en /admin. Las acciones de alcance (kick/
+    // restart por modo, anuncios) también llegan reenviadas — cada host las
+    // aplica solo sobre SU `rooms` local (ya acotado a sus propias combos).
+    hostIpc.handle('settingsSync', (p) => applySettingsPatch(p));
+    hostIpc.handle('perfSync', (p) => applyPerfPatch(p));
+    hostIpc.handle('adminAnnounce', (p) => {
+        const n = applyAnnounce(String(p && p.text || '').slice(0, 140));
+        logAdmin('-', 'Anuncio a todos (reenviado)', p && p.text || '');
+        log(`ADMIN anuncio (reenviado) a ${n} jugadores: ${p && p.text}`);
+    });
+    hostIpc.handle('adminKickMode', (p) => {
+        const n = applyKickAllMode(p && p.mode);
+        logAdmin('-', `Echó a todos del modo ${p && p.mode} (reenviado)`, `${n} IPs bloqueadas 30s`);
+        log(`ADMIN kickAll modo=${p && p.mode} (reenviado): ${n} IPs bloqueadas 30s`);
+    });
+    hostIpc.handle('adminRestartMode', (p) => {
+        const n = applyRestartMode(p && p.mode);
+        logAdmin('-', `Reinició modo ${p && p.mode} (reenviado)`, `${n} salas`);
+        log(`ADMIN restartMode=${p && p.mode} (reenviado): ${n} salas`);
+    });
+    hostIpc.handle('getRoomsSummary', () => buildRoomsSummary());
 }
 const directorProxy = hostIpc && {
     async checkKick(ip) {
@@ -940,6 +982,8 @@ function registerHostHandlers(hostEntry) {
     ipc.handle('econ.questSkills', (p) => econLocal.questSkills(p.cid, p.matchSkillUses));
     // Rate actual del oráculo para el cache del host recién forkeado.
     ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR });
+    // Ajustes actuales (volumen/animaciones/zoom/tiempos) para el host recién forkeado.
+    ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom });
 }
 
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
@@ -967,6 +1011,114 @@ const {
     broadcast, sendWaiting, refillBots, tickGradualBots,
     armLobby, startMatch, restartRoom, shutdownRoom,
 } = gameHost;
+
+// --- Acciones de admin de ALCANCE GLOBAL, extraídas a funciones puras (sin ws) ---
+// Las usa tanto el handler directo del comando admin (mono/host, conexión propia)
+// como el handler IPC 'adminAnnounce'/'adminKickMode'/'adminRestartMode'/'perfSync'
+// que cada host expone para que el Director reenvíe estas acciones (Fase 4b).
+// Operan siempre sobre `rooms` (el Map LOCAL del proceso), así que en un host del
+// split ya quedan automáticamente acotadas a sus propias combos.
+function applyAnnounce(text) {
+    let n = 0;
+    for (const r of rooms.values()) { broadcast(r, { t: 'announce', text }); n += r.clients.size; }
+    return n;
+}
+function applyKickAllMode(mode) {
+    let n = 0;
+    const until = Date.now() + KICKED_MS;
+    for (const sala of rooms.values()) {
+        if (mode !== 'all' && sala.mode !== mode) continue;
+        for (const cli of sala.clients.values()) {
+            if (cli.ip) kickedIps.set(cli.ip, until);
+            try { cli.ws.send(JSON.stringify({ t: 'kicked', secondsLeft: 30 })); } catch (e) {}
+            try { cli.ws.close(); } catch (e) {}
+        }
+        n += sala.clients.size;
+    }
+    return n;
+}
+function applyRestartMode(mode) {
+    let n = 0;
+    for (const sala of rooms.values()) {
+        if (mode !== 'all' && sala.mode !== mode) continue;
+        restartRoom(sala); n++;
+    }
+    return n;
+}
+// Apaga/enciende TODAS las layers con ese idx (ej. todas las L2) EN ESTE PROCESO.
+// Devuelve { ok:true, n } o { ok:false, reason }.
+function applySetLayerActive(idx, active) {
+    if (idx < 1 || idx > LAYERS_PER_COMBO) return { ok: false, reason: 'idx inválido' };
+    if (!active) {
+        // Apagar: solo si TODAS las salas premium de ese idx están vacías.
+        const targets = [];
+        let blocked = null;
+        for (const r of rooms.values()) {
+            if (r.layerIdx !== idx) continue;
+            if (priceOf(r.roomName) === 0) continue;   // Free intocable
+            if (r.clients.size > 0) { blocked = r.key; break; }
+            targets.push(r);
+        }
+        if (blocked) return { ok: false, reason: 'Hay jugadores en ' + blocked + '. Espera a que se vacíe.' };
+        for (const r of targets) {
+            rooms.delete(r.key);
+            for (const [tok, info] of resumeTokens) { if (info.roomKey === r.key) resumeTokens.delete(tok); }
+        }
+        layerOff[idx] = true;
+        return { ok: true, n: targets.length };
+    }
+    // Encender: recrear las layers PREMIUM de ese idx que pertenezcan a este proceso.
+    let n = 0;
+    for (const mode of CATALOG_MODES) {
+        for (const price of PRICES) {
+            if (priceOf(price) === 0) continue;   // Free ya existen
+            if (ownsCombo && !ownsCombo(mode, price)) continue;
+            getOrCreateRoom(layerKeyOf(mode, price, idx), mode, price);
+            n++;
+        }
+    }
+    layerOff[idx] = false;
+    return { ok: true, n };
+}
+// Aplica un parche de ajustes "Ajustes" (no de rendimiento) recibido por IPC del
+// Director en un host. Mismos clamps que los cmd admin directos.
+function applySettingsPatch(p) {
+    if (!p) return;
+    if (typeof p.arcadeRestartMs === 'number') arcadeRestartMs = Math.max(1000, Math.min(300000, p.arcadeRestartMs | 0));
+    if (typeof p.arcadeLobbyMs === 'number')  arcadeLobbyMs  = Math.max(0,    Math.min(120000, p.arcadeLobbyMs  | 0));
+    if (typeof p.sfxVol === 'number')   sfxVol   = _clamp01(p.sfxVol);
+    if (typeof p.musicVol === 'number') musicVol = _clamp01(p.musicVol);
+    if (typeof p.enemyFx === 'boolean') { enemyFx = p.enemyFx; for (const r of rooms.values()) broadcast(r, { t: 'enemyFx', on: enemyFx }); }
+    if (typeof p.baseZoom === 'number') { baseZoom = _clampZoom(p.baseZoom); for (const r of rooms.values()) broadcast(r, { t: 'baseZoom', value: baseZoom }); }
+}
+// Aplica un parche de "Rendimiento" recibido por IPC (puede ir dirigido a un
+// subconjunto de hosts — ver pushPerfToHosts). useWorkers NO se propaga nunca:
+// en rol host queda siempre forzado a OFF (incompatible con el split, ver arriba).
+function applyPerfPatch(p) {
+    if (!p) return { ok: true };
+    if (typeof p.snapshotHz === 'number') SNAPSHOT_EVERY = hzToEvery(p.snapshotHz | 0);
+    if (typeof p.aoiEnabled === 'boolean') AOI_ENABLED = p.aoiEnabled;
+    if (p.layerActive && typeof p.layerActive.idx === 'number') {
+        return applySetLayerActive(p.layerActive.idx | 0, !!p.layerActive.active);
+    }
+    return { ok: true };
+}
+// Resumen ligero de este proceso para el fan-out que hace el Director (Fase 4b):
+// alimenta las 2 tarjetas de host y el total agregado del panel /admin.
+function buildRoomsSummary() {
+    let salasOnline = 0, jugadores = 0, jugadoresReales = 0;
+    const list = [];
+    for (const r of rooms.values()) {
+        if (r.clients.size > 0) salasOnline++;
+        jugadores += r.clients.size;
+        for (const cli of r.clients.values()) if (!cli.isTester) jugadoresReales++;
+        list.push({ key: r.key, comboKey: r.comboKey, mode: r.mode, roomName: r.roomName, layerIdx: r.layerIdx, state: r.state, conectados: r.clients.size });
+    }
+    return {
+        hostId: PW_HOST_ID, salasOnline, jugadores, jugadoresReales, rooms: list,
+        perf: { snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY), aoiEnabled: AOI_ENABLED, layerOff: Object.assign({}, layerOff), useWorkers },
+    };
+}
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
@@ -1147,6 +1299,11 @@ function buildAdminState() {
     const keysSeen = new Set();
     for (const mode of CATALOG_MODES) {
         for (const price of PRICES) {
+            // Fase 4b: en rol host, el panel /admin de ESE proceso debe listar SOLO
+            // sus propias combos. Sin este filtro, las combos del OTRO host salían
+            // como entradas "offline" con botón "Encender" que crearía la sala en
+            // el host equivocado (rompe el reparto del shard-map).
+            if (ownsCombo && !ownsCombo(mode, price)) continue;
             const ck = comboKeyOf(mode, price);
             for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
                 if (isLayerOffForPrice(price, i)) continue;   // premium con layer apagada
@@ -1187,6 +1344,7 @@ function buildAdminState() {
     }
     return {
         t: 'adminState',
+        role: PW_ROLE,
         minPlayers: MIN_PLAYERS,
         snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY),
         aoiEnabled: AOI_ENABLED,
@@ -1214,6 +1372,31 @@ function buildAdminState() {
         historial,
         adminLog: adminLog.slice(-60).reverse()
     };
+}
+
+// Fase 4b: agregado del estado para el panel /admin del Director. Las salas NO
+// viven aquí (rooms=[] siempre en rol director) — se sustituyen por un fan-out
+// IPC a cada host (getRoomsSummary) que alimenta las 2 tarjetas de host y los
+// totales de "conectados ahora"/"salas con gente". Dinero/muertes/entradas/
+// ranking/quests YA son correctos en buildAdminState() (viajan por econ IPC
+// desde los hosts y se acumulan solo en el Director) — no hace falta agregarlos.
+async function buildDirectorAdminState() {
+    const base = buildAdminState();
+    const summaries = await Promise.all([...hostProcs.values()].map(async (h) => {
+        const empty = { hostId: h.id, port: h.port, alive: false, salasOnline: 0, jugadores: 0, jugadoresReales: 0, rooms: [], perf: null };
+        if (!h.alive) return empty;
+        try {
+            const s = await h.ipc.request('getRoomsSummary', {});
+            return Object.assign({ port: h.port, alive: true }, s);
+        } catch (e) { return empty; }
+    }));
+    let salasOnline = 0, jugadores = 0, jugadoresReales = 0;
+    for (const s of summaries) { salasOnline += s.salasOnline; jugadores += s.jugadores; jugadoresReales += s.jugadoresReales; }
+    base.hosts = summaries.sort((a, b) => a.hostId - b.hostId);
+    base.totales.salasOnline = salasOnline;
+    base.totales.jugadores = jugadores;
+    base.totales.jugadoresReales = jugadoresReales;
+    return base;
 }
 
 // Aplica un peakMass YA CALCULADO a playerStats (ranking) y quests (clientId).
@@ -1662,7 +1845,8 @@ wss.on('connection', (ws, req) => {
                 return;
             }
             if (msg.cmd === 'state') {
-                ws.send(JSON.stringify(buildAdminState()));
+                if (PW_ROLE === 'director') buildDirectorAdminState().then(state => ws.send(JSON.stringify(state)));
+                else ws.send(JSON.stringify(buildAdminState()));
             } else if (msg.cmd === 'kick' && msg.playerId) {
                 const found = findClient(msg.playerId);
                 if (found) {
@@ -1721,47 +1905,68 @@ wss.on('connection', (ws, req) => {
                 if (typeof msg.arcadeRestartMs === 'number') arcadeRestartMs = Math.max(1000, Math.min(300000, msg.arcadeRestartMs | 0));
                 if (typeof msg.arcadeLobbyMs === 'number')  arcadeLobbyMs  = Math.max(0,    Math.min(120000, msg.arcadeLobbyMs  | 0));
                 saveGlobal();
+                if (PW_ROLE === 'director') pushSettingsToHosts();
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global arcade: restart=${arcadeRestartMs / 1000}s lobby=${arcadeLobbyMs / 1000}s`);
             } else if (msg.cmd === 'setVolumes') {
                 if (typeof msg.sfxVol === 'number')   sfxVol   = _clamp01(msg.sfxVol);
                 if (typeof msg.musicVol === 'number') musicVol = _clamp01(msg.musicVol);
                 saveGlobal();
+                if (PW_ROLE === 'director') pushSettingsToHosts();
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global volumen: efectos=${Math.round(sfxVol * 100)}% música=${Math.round(musicVol * 100)}%`);
             } else if (msg.cmd === 'setEnemyFx') {
                 enemyFx = !!msg.on;
                 saveGlobal();
-                // Avisar en vivo a todos los jugadores online.
+                // Avisar en vivo a todos los jugadores online (de ESTE proceso).
                 for (const r of rooms.values()) broadcast(r, { t: 'enemyFx', on: enemyFx });
+                if (PW_ROLE === 'director') pushSettingsToHosts();
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global animaciones de enemigos: ${enemyFx ? 'ON' : 'OFF'}`);
             } else if (msg.cmd === 'setBaseZoom') {
                 if (typeof msg.value === 'number') baseZoom = _clampZoom(msg.value);
                 saveGlobal();
-                // Aplicar en vivo a todos los jugadores online (y espectadores).
+                // Aplicar en vivo a todos los jugadores online (y espectadores) de ESTE proceso.
                 for (const r of rooms.values()) broadcast(r, { t: 'baseZoom', value: baseZoom });
+                if (PW_ROLE === 'director') pushSettingsToHosts();
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global zoom base: ${baseZoom}`);
             } else if (msg.cmd === 'announce') {
                 const text = (typeof msg.text === 'string') ? msg.text.slice(0, 140) : '';
                 if (text) {
-                    let n = 0;
-                    for (const r of rooms.values()) { broadcast(r, { t: 'announce', text }); n += r.clients.size; }
+                    const n = applyAnnounce(text);
+                    if (PW_ROLE === 'director') for (const h of hostProcs.values()) if (h.alive) h.ipc.notify('adminAnnounce', { text });
                     logAdmin('-', 'Anuncio a todos', text);
                     log(`ADMIN anuncio a ${n} jugadores: ${text}`);
                 }
                 ws.send(JSON.stringify(buildAdminState()));
             } else if (msg.cmd === 'snapshotHz' && typeof msg.hz === 'number') {
-                const prev = Math.round(TICK_HZ / SNAPSHOT_EVERY);
-                SNAPSHOT_EVERY = hzToEvery(msg.hz | 0);
-                const now = Math.round(TICK_HZ / SNAPSHOT_EVERY);
-                logAdmin('-', 'Cambió snapshots Hz', prev + ' → ' + now);
-                log(`ADMIN snapshots: ${prev}Hz → ${now}Hz (cada ${SNAPSHOT_EVERY} ticks)`);
+                const hz = msg.hz | 0;
+                if (PW_ROLE === 'director') {
+                    logAdmin('-', 'Cambió snapshots Hz (hosts)', String(hz));
+                    log(`ADMIN snapshots (reenviado a hosts): ${hz}Hz`);
+                    pushPerfToHosts(msg.hostIds, { snapshotHz: hz }).then(async () => ws.send(JSON.stringify(await buildDirectorAdminState())));
+                } else {
+                    const prev = Math.round(TICK_HZ / SNAPSHOT_EVERY);
+                    SNAPSHOT_EVERY = hzToEvery(hz);
+                    const now = Math.round(TICK_HZ / SNAPSHOT_EVERY);
+                    logAdmin('-', 'Cambió snapshots Hz', prev + ' → ' + now);
+                    log(`ADMIN snapshots: ${prev}Hz → ${now}Hz (cada ${SNAPSHOT_EVERY} ticks)`);
+                }
             } else if (msg.cmd === 'aoiToggle') {
-                AOI_ENABLED = !AOI_ENABLED;
-                logAdmin('-', 'AOI ' + (AOI_ENABLED ? 'ACTIVADO' : 'DESACTIVADO'), '');
-                log(`ADMIN AOI: ${AOI_ENABLED ? 'ON' : 'OFF'}`);
+                if (PW_ROLE === 'director') {
+                    // En director cada host puede tener un estado distinto (override por
+                    // host de "Rendimiento"): el panel manda el estado FINAL deseado, no
+                    // un flip ambiguo (msg.on) + a qué hosts aplica (msg.hostIds).
+                    const on = !!msg.on;
+                    logAdmin('-', 'AOI (hosts) ' + (on ? 'ACTIVADO' : 'DESACTIVADO'), '');
+                    log(`ADMIN AOI (reenviado a hosts): ${on ? 'ON' : 'OFF'}`);
+                    pushPerfToHosts(msg.hostIds, { aoiEnabled: on }).then(async () => ws.send(JSON.stringify(await buildDirectorAdminState())));
+                } else {
+                    AOI_ENABLED = !AOI_ENABLED;
+                    logAdmin('-', 'AOI ' + (AOI_ENABLED ? 'ACTIVADO' : 'DESACTIVADO'), '');
+                    log(`ADMIN AOI: ${AOI_ENABLED ? 'ON' : 'OFF'}`);
+                }
             } else if (msg.cmd === 'setLayerActive' && typeof msg.layerIdx === 'number') {
                 // Apaga/enciende TODAS las layers con ese idx (ej. todas las L2).
                 // Apagar: borra las salas del Map → dejan de consumir tick/RAM.
@@ -1769,43 +1974,25 @@ wss.on('connection', (ws, req) => {
                 // Encender: las recrea con getOrCreateRoom (vuelven al matchmaker).
                 const idx = msg.layerIdx | 0;
                 const active = !!msg.active;
-                if (idx < 1 || idx > LAYERS_PER_COMBO) {
-                    ws.send(JSON.stringify({ t: 'layerActionError', reason: 'idx inválido' }));
-                } else if (!active) {
-                    // Apagar: buscar todas las layers de ese idx
-                    // Solo se apagan salas PREMIUM (priceOf > 0). Las Free se quedan.
-                    const targets = [];
-                    let blocked = null;
-                    for (const r of rooms.values()) {
-                        if (r.layerIdx !== idx) continue;
-                        if (priceOf(r.roomName) === 0) continue;   // Free intocable
-                        if (r.clients.size > 0) { blocked = r.key; break; }
-                        targets.push(r);
-                    }
-                    if (blocked) {
-                        ws.send(JSON.stringify({ t: 'layerActionError', reason: 'Hay jugadores en ' + blocked + '. Espera a que se vacíe.' }));
-                    } else {
-                        for (const r of targets) {
-                            rooms.delete(r.key);
-                            for (const [tok, info] of resumeTokens) { if (info.roomKey === r.key) resumeTokens.delete(tok); }
-                        }
-                        layerOff[idx] = true;
-                        logAdmin('-', 'Apagó Layer ' + idx + ' premium', targets.length + ' salas');
-                        log(`ADMIN apagó Layer ${idx} premium: ${targets.length} salas borradas (Free intocable)`);
-                    }
+                if (PW_ROLE === 'director') {
+                    logAdmin('-', `Layer ${idx} ${active ? 'ON' : 'OFF'} (hosts)`, '');
+                    log(`ADMIN setLayerActive idx=${idx} active=${active} (reenviado a hosts)`);
+                    pushPerfToHosts(msg.hostIds, { layerActive: { idx, active } }).then(async (results) => {
+                        const blocked = results.find(r => !r.ok);
+                        if (blocked) ws.send(JSON.stringify({ t: 'layerActionError', reason: `Host ${blocked.hostId}: ${blocked.reason}` }));
+                        ws.send(JSON.stringify(await buildDirectorAdminState()));
+                    });
                 } else {
-                    // Encender: recrear las layers PREMIUM de ese idx (Free ya existen)
-                    let n = 0;
-                    for (const mode of CATALOG_MODES) {
-                        for (const price of PRICES) {
-                            if (priceOf(price) === 0) continue;   // Free ya existen
-                            getOrCreateRoom(layerKeyOf(mode, price, idx), mode, price);
-                            n++;
-                        }
+                    const r = applySetLayerActive(idx, active);
+                    if (!r.ok) {
+                        ws.send(JSON.stringify({ t: 'layerActionError', reason: r.reason }));
+                    } else if (!active) {
+                        logAdmin('-', 'Apagó Layer ' + idx + ' premium', r.n + ' salas');
+                        log(`ADMIN apagó Layer ${idx} premium: ${r.n} salas borradas (Free intocable)`);
+                    } else {
+                        logAdmin('-', 'Encendió Layer ' + idx + ' premium', r.n + ' salas');
+                        log(`ADMIN encendió Layer ${idx} premium: ${r.n} salas recreadas`);
                     }
-                    layerOff[idx] = false;
-                    logAdmin('-', 'Encendió Layer ' + idx + ' premium', n + ' salas');
-                    log(`ADMIN encendió Layer ${idx} premium: ${n} salas recreadas`);
                 }
             } else if (msg.cmd === 'forceStart' && msg.room) {
                 const sala = rooms.get(msg.room);
@@ -1839,41 +2026,40 @@ wss.on('connection', (ws, req) => {
                     log(`ADMIN encendió sala: ${lk}`);
                 }
             } else if (msg.cmd === 'kickAllMode' && msg.mode) {
-                let n = 0;
-                const until = Date.now() + KICKED_MS;
-                for (const sala of rooms.values()) {
-                    if (msg.mode !== 'all' && sala.mode !== msg.mode) continue;
-                    for (const cli of sala.clients.values()) {
-                        if (cli.ip) kickedIps.set(cli.ip, until);
-                        try { cli.ws.send(JSON.stringify({ t: 'kicked', secondsLeft: 30 })); } catch (e) {}
-                        try { cli.ws.close(); } catch (e) {}
-                    }
-                    n += sala.clients.size;
-                }
+                const n = applyKickAllMode(msg.mode);
+                if (PW_ROLE === 'director') for (const h of hostProcs.values()) if (h.alive) h.ipc.notify('adminKickMode', { mode: msg.mode });
                 logAdmin('-', `Echó a todos del modo ${msg.mode}`, `${n} IPs bloqueadas 30s`);
                 log(`ADMIN kickAll modo=${msg.mode}: ${n} IPs bloqueadas 30s`);
             } else if (msg.cmd === 'restartMode' && msg.mode) {
-                let n = 0;
-                for (const sala of rooms.values()) {
-                    if (msg.mode !== 'all' && sala.mode !== msg.mode) continue;
-                    restartRoom(sala); n++;
-                }
+                const n = applyRestartMode(msg.mode);
+                if (PW_ROLE === 'director') for (const h of hostProcs.values()) if (h.alive) h.ipc.notify('adminRestartMode', { mode: msg.mode });
                 logAdmin('-', `Reinició modo ${msg.mode}`, `${n} salas`);
                 log(`ADMIN restartMode=${msg.mode}: ${n} salas`);
             } else if (msg.cmd === 'setWorkers') {
-                useWorkers = !!msg.on;
-                saveGlobal();
-                logAdmin('-', `Multihilo ${useWorkers ? 'ACTIVADO' : 'DESACTIVADO'}`, 'reiniciando proceso');
-                log(`ADMIN useWorkers=${useWorkers} — reiniciando en 500ms para aplicar`);
-                ws.send(JSON.stringify({ t: 'serverRestarting' }));
-                setTimeout(() => process.exit(0), 500);
+                // Multihilo (worker_threads) es incompatible con el split y queda forzado
+                // a OFF en rol host (ver arranque) — no tiene sentido propagarlo por IPC.
+                // Solo aplica de verdad en mono; en director/host es un no-op informativo.
+                if (PW_ROLE === 'mono') {
+                    useWorkers = !!msg.on;
+                    saveGlobal();
+                    logAdmin('-', `Multihilo ${useWorkers ? 'ACTIVADO' : 'DESACTIVADO'}`, 'reiniciando proceso');
+                    log(`ADMIN useWorkers=${useWorkers} — reiniciando en 500ms para aplicar`);
+                    ws.send(JSON.stringify({ t: 'serverRestarting' }));
+                    setTimeout(() => process.exit(0), 500);
+                }
             } else if (msg.cmd === 'restartServer') {
-                logAdmin('-', 'Reinició el servidor', '');
-                log('ADMIN ordenó reinicio del proceso — saliendo en 500ms');
-                ws.send(JSON.stringify({ t: 'serverRestarting' }));
-                // Dar tiempo al admin a recibir el ack antes de salir.
-                // pm2/forever/systemd relanzarán el proceso automáticamente.
-                setTimeout(() => process.exit(0), 500);
+                // Solo el Director (o mono) puede autoreiniciarse desde aquí: un host del
+                // split corta partidas en curso de sus 5 combos sin previo aviso al panel
+                // del propio host — esa acción no está en el panel de host (se quitó el
+                // botón), y aquí lo bloqueamos también por si llega el cmd de otra forma.
+                if (PW_ROLE !== 'host') {
+                    logAdmin('-', 'Reinició el servidor', '');
+                    log('ADMIN ordenó reinicio del proceso — saliendo en 500ms');
+                    ws.send(JSON.stringify({ t: 'serverRestarting' }));
+                    // Dar tiempo al admin a recibir el ack antes de salir.
+                    // pm2/forever/systemd relanzarán el proceso automáticamente.
+                    setTimeout(() => process.exit(0), 500);
+                }
             } else if (msg.cmd === 'updateRanking') {
                 computeRanking(!!msg.includeTesters);
                 playersDirty = true;   // aprovechar para forzar save tras recalcular
