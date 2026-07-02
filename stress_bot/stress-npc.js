@@ -24,6 +24,7 @@
 
 const WebSocket = require('ws');
 const { genBotName } = require('./botnames');
+const proto = require('../shared/proto.js');   // decodifica snaps binarios (bin:1) como un cliente real
 
 const SERVER     = process.env.SERVER     || 'ws://localhost:8080';
 const BOTS       = parseInt(process.env.BOTS      || '300', 10);
@@ -60,7 +61,7 @@ if (!ROOMS.length) { for (const m of MODES) for (const p of PRICES) ROOMS.push({
 const stats = {
   connected: 0, disconnected: 0, errors: 0,
   entered: 0, rejected: 0, wins: 0,   // entraron / rechazados (llena) / ganaron (5 kills classic)
-  messagesSent: 0, messagesReceived: 0,
+  messagesSent: 0, messagesReceived: 0, bytesReceived: 0,
   latencies: [],
   porSala: {},   // "mode_room" → dentro de la sala
 };
@@ -168,9 +169,12 @@ async function spawnBot(i) {
     }
   });
 
-  ws.on('message', (data) => {
+  ws.on('message', (data, isBinary) => {
     stats.messagesReceived++;
-    let m; try { m = JSON.parse(data); } catch { return; }
+    stats.bytesReceived += data.length;   // bytes reales de wire (payload WS)
+    let m;
+    if (isBinary) { try { m = proto.decodeSnap(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)); } catch { return; } }
+    else { try { m = JSON.parse(data); } catch { return; } }
     if (m.t === 'roomFull') { stats.rejected++; try { ws.close(); } catch {} return; }
     if (m.t === 'roomRestart') {
       // La sala se reinició — salir y reconectar gradualmente (como al morir)
@@ -254,11 +258,16 @@ const rampTimer = setInterval(() => {
   spawnBot(launched); launched++;
 }, RAMP_MS);
 
+let _lastBytes = 0, _lastBytesT = Date.now();
 const reportTimer = setInterval(() => {
   if (JSON_MODE) { emitJson(false); return; }
   const active = stats.connected - stats.disconnected;
+  const dt = (Date.now() - _lastBytesT) / 1000;
+  const bps = dt > 0 ? (stats.bytesReceived - _lastBytes) / dt : 0;
+  _lastBytes = stats.bytesReceived; _lastBytesT = Date.now();
+  const kbsPer = active > 0 ? (bps / 1024 / active) : 0;   // KB/s por jugador (ventana de este intervalo)
   const dist = ROOMS.map(r => { const k = r.mode + '_' + r.room; return `${r.room[0]}${r.mode[0]}:${stats.porSala[k]}`; }).join(' ');
-  process.stdout.write(`\r⚡ ${active}/${BOTS} act  ✓${stats.entered} dentro  ✗${stats.rejected} llenas  ↑${stats.messagesSent} ↓${stats.messagesReceived}  ⚠${stats.errors}  ~${avgLatency()}ms  [${dist}]   `);
+  process.stdout.write(`\r⚡ ${active}/${BOTS} act  ✓${stats.entered} dentro  ↓${(bps / 1024).toFixed(0)}KB/s (${kbsPer.toFixed(1)}KB/s·jug)  ⚠${stats.errors}  ~${avgLatency()}ms  [${dist}]   `);
 }, JSON_MODE ? 1000 : 2000);
 
 if (DURATION_S > 0) {
@@ -277,6 +286,9 @@ if (DURATION_S > 0) {
     console.log(`  Errores de conexión    : ${stats.errors}`);
     console.log(`  Mensajes enviados      : ${stats.messagesSent}`);
     console.log(`  Mensajes recibidos     : ${stats.messagesReceived}`);
+    console.log(`  Bytes recibidos totales: ${(stats.bytesReceived / 1024 / 1024).toFixed(1)} MB`);
+    console.log(`  Bajada media global    : ${(stats.bytesReceived / 1024 / DURATION_S).toFixed(0)} KB/s`);
+    console.log(`  Bajada media / jugador : ${active > 0 ? (stats.bytesReceived / 1024 / DURATION_S / active).toFixed(1) : '—'} KB/s  (media cruda; ver la ventana en vivo para el steady-state)`);
     console.log(`  Latencia media (ping)  : ${avgLatency()}ms`);
     console.log('  Distribución por sala  :');
     ROOMS.forEach(r => { const k = r.mode + '_' + r.room; console.log(`    ${k.padEnd(16)} ${stats.porSala[k]}`); });
