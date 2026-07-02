@@ -36,8 +36,7 @@ const PillSim = require('../shared/sim.js');
 const proto = require('../shared/proto.js');     // protocolo binario para snaps (opt-in)
 const solana = require('./solana.js');     // verificación de depósitos $PILL
 const warbank = require('./warbank.js');   // saldo WAR interno por wallet
-const skinpoints = require('./skinpoints.js');     // puntos de skin por clientId
-const dailyquests = require('./dailyquests.js');   // retos diarios rotativos
+const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
 const { buildShardMap } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
 const { createIpc } = require('./cluster/ipc.js');             // request/response sobre fork (Fase 4)
@@ -250,6 +249,8 @@ setInterval(() => {
 }, 1000);
 const adminFails = new Map();     // ip → { c: intentos, until: timestamp bloqueo }
 const specTokens = new Map();     // token → expira_en (timestamp ms)
+// Comandos permitidos con token de espectador (los que usa la vista spectate del juego).
+const SPEC_TOKEN_CMDS = new Set(['state', 'kick', 'power', 'restart', 'kickAll', 'shutdown']);
 setInterval(() => {                // limpieza periódica de tokens caducados
     const now = Date.now();
     for (const [k, exp] of specTokens) if (exp <= now) specTokens.delete(k);
@@ -1254,9 +1255,6 @@ function buildSnapshotFor(room, viewerId, box) {
         players, bots, viruses, ejected, projectiles
     };
 }
-// Snapshot completo (sin AOI). Wrapper para mantener compatibilidad.
-function buildSnapshot(room) { return buildSnapshotFor(room, null, null); }
-
 // --- Estado para el panel de admin: una entrada por layer, agrupable por combo ---
 function buildAdminState() {
     const now = Date.now();
@@ -1444,6 +1442,8 @@ function applySecurityHeaders(res) {
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 }
 function isSolAddr(s) { return typeof s === 'string' && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s); }
+// Firmas de depósito en verificación RPC ahora mismo (ver /api/deposit).
+const pendingDeposits = new Set();
 
 const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
@@ -1628,9 +1628,17 @@ const httpServer = http.createServer(async (req, res) => {
             let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
             const wallet = String(p.wallet || ''), sig = String(p.sig || '');
             if (!isSolAddr(wallet) || !sig) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
-            if (warbank.sigUsed(sig)) { res.end(JSON.stringify({ ok: false, reason: 'depósito ya acreditado' })); return; }
-            const v = await solana.verifyDeposit({ sig, fromOwner: wallet, minPill: 1 });
+            // Anti doble-acreditación: la firma se reserva ANTES del await (la verificación
+            // RPC tarda cientos de ms; dos requests simultáneas con la misma sig pasaban
+            // ambas el sigUsed y se acreditaba dos veces). pendingDeposits cierra esa ventana.
+            if (warbank.sigUsed(sig) || pendingDeposits.has(sig)) { res.end(JSON.stringify({ ok: false, reason: 'depósito ya acreditado' })); return; }
+            pendingDeposits.add(sig);
+            let v;
+            try {
+                v = await solana.verifyDeposit({ sig, fromOwner: wallet, minPill: 1 });
+            } finally { pendingDeposits.delete(sig); }
             if (!v.ok) { res.end(JSON.stringify({ ok: false, reason: v.reason || 'no verificado' })); return; }
+            if (warbank.sigUsed(sig)) { res.end(JSON.stringify({ ok: false, reason: 'depósito ya acreditado' })); return; }
             const saldo = warbank.creditDeposit(wallet, v.amount, sig);
             logAdmin('-', 'Depósito $PILL', wallet.slice(0, 6) + '… +' + v.amount);
             log(`Depósito acreditado: ${wallet.slice(0, 6)}… +${v.amount} PILL → saldo ${saldo}`);
@@ -1837,6 +1845,11 @@ wss.on('connection', (ws, req) => {
                 ws.send(JSON.stringify({ t: 'adminError' })); return;
             }
             adminFails.delete(ip);
+            // El token de espectador-control (viaja en la URL ?t=) solo autoriza los
+            // comandos que usa esa vista, TODOS de ámbito sala. Nunca comandos globales
+            // (restartServer, resets, config, getSpecToken...): para eso hace falta la
+            // ADMIN_KEY real. Sin esto, un token filtrado (historial/logs) daba admin total.
+            if (!validKey && !SPEC_TOKEN_CMDS.has(msg.cmd)) { ws.send(JSON.stringify({ t: 'adminError' })); return; }
             // Token temporal para el espectador-control (10 min, single-use)
             if (msg.cmd === 'getSpecToken') {
                 const tok = require('crypto').randomBytes(24).toString('hex');
@@ -2187,6 +2200,7 @@ const tickCtx = {
     deleteRoom: (key) => rooms.delete(key),
     // constantes
     DEAD_REMOVE_MS, EMPTY_ROOM_TTL, EMPTY_RESET_MS, ARCADE_KEEP_MIN, ARCADE_SHORTEN_MS,
+    WS_BACKPRESSURE_MAX,
     // dinámicos (getters porque cambian en runtime desde admin)
     get aoiEnabled() { return AOI_ENABLED; },
     get snapshotEvery() { return SNAPSHOT_EVERY; },

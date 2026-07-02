@@ -18,7 +18,7 @@
  *     questsOf, addToPot, sendEcon, entryFeePill, flushPeakMass, minRealOf
  *   - estado mutable: resumeTokens (Map), flags ({stats, players, quests})
  *   - getters dinámicos: aoiEnabled, snapshotEvery, arcadeRestartMs
- *   - constantes: DEAD_REMOVE_MS, EMPTY_ROOM_TTL
+ *   - constantes: DEAD_REMOVE_MS, EMPTY_ROOM_TTL, WS_BACKPRESSURE_MAX
  */
 function tickRoomOnce(room, now, ctx) {
     let stepMs = 0, snapMs = 0, sendMs = 0;
@@ -259,6 +259,12 @@ function tickRoomOnce(room, now, ctx) {
             if (cli.ws.readyState !== 1) continue;
             if (eventsJson) cli.ws.send(eventsJson);
             if (!doSnap) continue;
+            // Backpressure: si el cliente ya acumula >N bytes sin enviar, saltamos SU
+            // snapshot (el siguiente lo pondrá al día). Los eventos sí van siempre (son
+            // pequeños e importantes: kills, muertes). Sin este corte, un cliente con
+            // red mala acumula snapshots sin límite en RAM del proceso y lo arrastra.
+            // También ahorra el buildSnapshotFor de ese viewer (no serializamos en vano).
+            if (cli.ws.bufferedAmount >= ctx.WS_BACKPRESSURE_MAX) continue;
             if (!aoiOn) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
             const pj = room.sim.players.get(pid);
             if (!pj || !pj.alive || pj.cells.length === 0) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
@@ -271,7 +277,7 @@ function tickRoomOnce(room, now, ctx) {
             for (const sws of room.spectators) {
                 if (sws.readyState !== 1) { room.spectators.delete(sws); continue; }
                 if (eventsJson) sws.send(eventsJson);
-                if (specJson) sws.send(specJson);
+                if (specJson && sws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX) sws.send(specJson);
             }
         }
     }
@@ -294,8 +300,8 @@ function tickRoomOnce(room, now, ctx) {
         for (const [id, g] of botMap) board.push({ id, n: g.n, m: Math.round(g.m) });
         board.sort((a, b) => b.m - a.m);
         const lbJson = JSON.stringify({ t: 'lb', top: board.slice(0, 10) });
-        for (const [, cli] of room.clients) { if (cli.ws.readyState === 1) try { cli.ws.send(lbJson); } catch (e) {} }
-        for (const sws of room.spectators) { if (sws.readyState === 1) try { sws.send(lbJson); } catch (e) {} }
+        for (const [, cli] of room.clients) { if (cli.ws.readyState === 1 && cli.ws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX) try { cli.ws.send(lbJson); } catch (e) {} }
+        for (const sws of room.spectators) { if (sws.readyState === 1 && sws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX) try { sws.send(lbJson); } catch (e) {} }
     }
     sendMs += performance.now() - _t2;
     return { stepMs, snapMs, sendMs };
