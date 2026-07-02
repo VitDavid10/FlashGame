@@ -410,11 +410,6 @@
                     <button id="aoiToggleBtn" class="b" onclick="toggleAoi()">Cargando…</button>
                     <span style="color:#666; font-size: 12px;">Cada jugador recibe solo lo cercano a su píldora. Reduce tráfico ~5× y cierra el maphack.</span>
                 </div>
-                <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                    <label style="font-weight:600">Multihilo (worker_threads):</label>
-                    <button id="workersToggleBtn" class="b" onclick="toggleWorkers()">Cargando…</button>
-                    <span style="color:#666; font-size: 12px;">Cada sala corre en su propio hilo. Overhead en este VPS; mantener OFF salvo pruebas. Reinicia el proceso al cambiar.</span>
-                </div>
             </div>
             <!-- director: una fila de control POR HOST (override independiente) -->
             <div id="perfHosts" style="display:none"></div>
@@ -764,12 +759,6 @@ function cartaSala(r) {
 
 function aplicarSnapHz() { send({ cmd: 'snapshotHz', hz: parseInt(document.getElementById('snapHzSel').value, 10) }); setTimeout(pedir, 100); }
 function toggleAoi() { send({ cmd: 'aoiToggle' }); setTimeout(pedir, 100); }
-function toggleWorkers() {
-    const willBeOn = !window._useWorkers;
-    if (!confirm('Cambiar multihilo a ' + (willBeOn ? 'ON' : 'OFF') + ' reinicia el proceso del servidor (~3-5s).\n¿Continuar?')) return;
-    send({ cmd: 'setWorkers', on: willBeOn });
-    toast('<strong>Reiniciando servidor…</strong><br>Multihilo: ' + (willBeOn ? 'ON' : 'OFF'), 'warn');
-}
 function aplicarVolumenes() {
     send({ cmd: 'setVolumes',
         sfxVol:   parseInt(document.getElementById('volSfx').value, 10) / 100,
@@ -847,7 +836,6 @@ function renderPerfHosts(m) {
                 </div>
                 <button class="b ${p.aoiEnabled ? 'verde' : 'rojo'}" onclick="applyAoiHost(${h.hostId}, ${!p.aoiEnabled})">AOI: ${p.aoiEnabled ? 'ON — desactivar' : 'OFF — activar'}</button>
                 <button class="b ${off2 ? 'rojo' : 'verde'}" onclick="applyLayerHost(${h.hostId}, 2, ${off2})">L2: ${off2 ? 'OFF — encender' : 'ON — apagar'}</button>
-                <span style="color:#666;font-size:11px">Multihilo: forzado OFF (incompatible con el split)</span>
             </div>
         </div>`;
     }).join('');
@@ -895,12 +883,6 @@ function render(m) {
     if (aoiBtn) {
         aoiBtn.innerText = m.aoiEnabled ? 'ON — desactivar' : 'OFF — activar';
         aoiBtn.className = 'b ' + (m.aoiEnabled ? 'verde' : 'rojo');
-    }
-    window._useWorkers = !!m.useWorkers;
-    const wkBtn = document.getElementById('workersToggleBtn');
-    if (wkBtn) {
-        wkBtn.innerText = m.useWorkers ? 'ON — desactivar' : 'OFF — activar';
-        wkBtn.className = 'b ' + (m.useWorkers ? 'naranja' : 'verde');
     }
     // Estado del botón power Layer 2 (apaga/enciende todas las L2 a la vez).
     _layerOff = m.layerOff || {};

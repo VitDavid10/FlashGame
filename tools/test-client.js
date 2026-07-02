@@ -2,7 +2,7 @@
  * Cliente de prueba headless: se conecta al servidor como un jugador real
  * y se mueve en círculos alrededor de su punto de aparición.
  *
- * Uso: node server/test-client.js [nombre] [sala]
+ * Uso: node tools/test-client.js [nombre] [sala]
  */
 'use strict';
 

@@ -7,7 +7,7 @@
  * - Esquivan virus cuando les harían daño y se reparten para no chocarse.
  * - Si mueren, reentran solos a los 3 segundos.
  *
- * Uso: node server/hunters.js [n] [sala] [modo]   (def: 4 Free classic)
+ * Uso: node tools/hunters.js [n] [sala] [modo]   (def: 4 Free classic)
  *      SERVER=wss://... para ir por túnel; def ws://localhost:8080
  */
 'use strict';

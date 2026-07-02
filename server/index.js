@@ -29,7 +29,6 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { performance } = require('perf_hooks');
-const { Worker } = require('worker_threads');
 const { fork } = require('child_process');
 const { WebSocketServer } = require('ws');
 const PillSim = require('../shared/sim.js');
@@ -61,15 +60,6 @@ const GLOBAL_FILE = path.join(__dirname, 'globalsettings.json');
 let _glob = loadJson(GLOBAL_FILE, {});
 let arcadeRestartMs = Math.max(1000, (_glob.arcadeRestartMs | 0) || 10000);
 let arcadeLobbyMs  = Math.max(0,    (_glob.arcadeLobbyMs  | 0) || 20000);
-// Multihilo: persistido en globalsettings.json. El admin puede apagarlo desde el panel.
-// El env var WORKERS sigue funcionando como override (devs/tests). Si no hay nada
-// configurado, multihilo apagado por defecto (single-thread aguanta más en este VPS).
-let useWorkers = (typeof _glob.useWorkers === 'boolean') ? _glob.useWorkers : false;
-if (process.env.WORKERS === '1') useWorkers = true;
-if (process.env.WORKERS === '0') useWorkers = false;
-// Fase 4: el path worker_threads (deprecado) ejecuta dinero/stats en local
-// (handleWorkerMsg) y se saltaría el IPC del split. En rol 'host' se fuerza OFF.
-if (process.env.PW_ROLE === 'host' && useWorkers) { useWorkers = false; console.log('PW_ROLE=host: useWorkers forzado a OFF (worker path deprecado, incompatible con el split)'); }
 // Volumen "por defecto" que el servidor manda al cliente (0..1). El cliente lo aplica
 // como master (efectos -30%, música -15% de fábrica) y luego puede mutear/ajustar.
 // Editable desde el panel admin.
@@ -83,7 +73,7 @@ let enemyFx  = (typeof _glob.enemyFx  === 'boolean') ? _glob.enemyFx : true;
 // el cliente lo aleja al crecer con su curva. Editable en vivo desde admin. Mayor = más cerca.
 const _clampZoom = v => Math.max(0.3, Math.min(4, v));
 let baseZoom = (typeof _glob.baseZoom === 'number') ? _clampZoom(_glob.baseZoom) : 1.4;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, useWorkers, sfxVol, musicVol, enemyFx, baseZoom }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -230,22 +220,10 @@ const resumeTokens = new Map();   // token → { roomKey: layerKey, playerId }
 
 // %CPU del propio servidor, muestreado cada segundo (expuesto en admin/health).
 let serverCpuPct = 0; let _cpuLast = process.cpuUsage(); let _cpuLastT = Date.now();
-// Diagnóstico main thread: ms de CPU/seg en handleWorkerMsg (send vs total).
-// Si mainSendMs ≈ mainTotalMs y se acerca a ~900 → el cuello es el ws.send.
-let _wmSendUs = 0, _wmTotalUs = 0;
-let _wmRecvMs = 0, _wmRecvN = 0;   // delay cola+structured-clone worker→main
-let mainSendMs = 0, mainTotalMs = 0, mainRecvDelay = 0;
 setInterval(() => {
     const u = process.cpuUsage(_cpuLast); const dt = Date.now() - _cpuLastT;
     _cpuLast = process.cpuUsage(); _cpuLastT = Date.now();
     serverCpuPct = dt > 0 ? Math.round((u.user + u.system) / 1000 / dt * 100) : 0;
-    mainSendMs = Math.round(_wmSendUs / 1000); mainTotalMs = Math.round(_wmTotalUs / 1000);
-    mainRecvDelay = _wmRecvN ? +(_wmRecvMs / _wmRecvN).toFixed(1) : 0;
-    _wmSendUs = 0; _wmTotalUs = 0; _wmRecvMs = 0; _wmRecvN = 0;
-    // Solo loguea bajo carga (evita spam en producción).
-    if (mainTotalMs > 300 || mainRecvDelay > 20) {
-        log(`DIAG cpu=${serverCpuPct}% workerMsg=${mainTotalMs}ms/s send=${mainSendMs}ms/s recvDelay=${mainRecvDelay}ms lag.p95=${pStats(tickHist.lag, tickHist.n).p95}ms`);
-    }
 }, 1000);
 const adminFails = new Map();     // ip → { c: intentos, until: timestamp bloqueo }
 const specTokens = new Map();     // token → expira_en (timestamp ms)
@@ -550,234 +528,8 @@ for (const c of connLog) {
 // --- Salas ---
 // buildSim, getOrCreateRoom, pickLayer e initLayers viven ahora en game-host.js
 // (createGameHost). Se instancian como `gameHost` más abajo, con las deps de este
-// módulo. Aquí se quedan spawnWorker/handleWorkerMsg (sistema worker_threads).
-// Multihilo: si useWorkers está activo (configurable desde admin), cada sala corre
-// su sim en un Worker. Default: OFF — single-thread aguanta más en este VPS por el
-// coste del structured-clone worker→main en cada tick (~25 mensajes/seg por sala).
-const WORKER_SCRIPT = path.join(__dirname, 'room-worker.js');
-
-// --- Worker lifecycle ---
-function spawnWorker(room, rules) {
-    const w = new Worker(WORKER_SCRIPT);
-    room.worker = w;
-    // Offset de arranque: reparte los 20 workers uniformemente en la ventana de 25ms
-    // para que el main reciba 1 tickResult cada ~1.25ms en vez de 20 de golpe.
-    const workerIndex = rooms.size;  // rooms.set ya se hizo antes, rooms.size incluye esta sala
-    const tickOffset = Math.round((workerIndex % 20) * (TICK_MS / 20));
-    w.postMessage({
-        type: 'init', mode: room.mode, rules,
-        matchMs: MATCH_MS,
-        aoiEnabled: AOI_ENABLED,
-        snapshotEvery: SNAPSHOT_EVERY,
-        tickOffset,
-    });
-    w.on('message', (msg) => handleWorkerMsg(room, msg));
-    w.on('error', (err) => {
-        log(`Worker ERROR en ${room.key}: ${err.message}`);
-        // Fallback: recrear con worker
-        room.worker = null;
-        spawnWorker(room, rulesOf(room.comboKey));
-    });
-    w.on('exit', (code) => {
-        if (code !== 0 && room.worker === w) {
-            log(`Worker salió con code ${code} en ${room.key}, respawneando`);
-            room.worker = null;
-            spawnWorker(room, rulesOf(room.comboKey));
-        }
-    });
-}
-
-function handleWorkerMsg(room, msg) {
-    switch (msg.type) {
-        case 'ready':
-            if (msg.foods) room._foods = msg.foods;
-            if (msg.mapSize) room._mapSize = msg.mapSize;
-            break;
-
-        case 'tickResult': {
-            room.tickCount++;
-            if (msg.botCount != null) room._botCount = msg.botCount;
-            if (msg.postedAt) { _wmRecvMs += Math.max(0, Date.now() - msg.postedAt); _wmRecvN++; }
-            const _wmT0 = performance.now();
-            const evJson = msg.eventsJson;
-            // 1) Enviar snapshots a los clientes WS.
-            // Backpressure: si un cliente lento ya tiene >256KB sin consumir, saltamos
-            // su snapshot. Sin esto, los ws.send se acumulan en kernel buffer + cola del
-            // event loop y el main entra en spiral de muerte (procesa cola vieja en vez
-            // de tickResults nuevos). Eventos importantes (kills, etc.) siempre van.
-            if (msg.snapshots) {
-                for (const s of msg.snapshots) {
-                    if (s.pid === '__spectators__') {
-                        // Snapshot completo para espectadores
-                        if (s.snapData) for (const sws of room.spectators) {
-                            if (sws.readyState !== 1) { room.spectators.delete(sws); continue; }
-                            if (evJson) sws.send(evJson);
-                            if (sws.bufferedAmount < WS_BACKPRESSURE_MAX) sws.send(s.snapData);
-                        }
-                        if (room.spectators.size === 0) room.worker.postMessage({ type: 'setSpectators', on: false });
-                        continue;
-                    }
-                    const cli = room.clients.get(s.pid);
-                    if (!cli || cli.ws.readyState !== 1) continue;
-                    if (evJson) cli.ws.send(evJson);
-                    if (s.snapData && cli.ws.bufferedAmount < WS_BACKPRESSURE_MAX) cli.ws.send(s.snapData);
-                }
-            }
-            _wmSendUs += (performance.now() - _wmT0) * 1000;
-
-            // 2) Procesar peaks
-            if (msg.peaks) for (const pk of msg.peaks) {
-                const cli = room.clients.get(pk.pid);
-                if (cli) { cli._peakMass = pk.mass; }
-            }
-
-            // 3) Procesar eventos (warbank, stats, quests — TODO lo que toca estado global)
-            if (msg.events) for (const ev of msg.events) {
-                processWorkerEvent(room, ev, Date.now());
-            }
-            _wmTotalUs += (performance.now() - _wmT0) * 1000;
-            break;
-        }
-
-        case 'matchEnd': {
-            room.state = 'ended';
-            room.restartAt = Date.now() + arcadeRestartMs;
-            room.worker.postMessage({ type: 'setState', state: 'ended', restartAt: room.restartAt });
-            // Q1/Q2/Q4 al final de arcade
-            for (const [pid, cli] of room.clients) {
-                if (!cli.cid) continue;
-                const pRank = msg.ranking.find(r => r.id === pid);
-                if (!pRank) continue;
-                const q = questsOf(cli.cid);
-                const peak = pRank.peakMass || 0;
-                if (peak > (q.bestMass | 0)) { q.bestMass = peak; questsDirty = true; }
-                if (pRank.alive && room.mode === 'arcade') {
-                    if ((q.q1_games_finished | 0) < 2) { q.q1_games_finished = (q.q1_games_finished | 0) + 1; questsDirty = true; }
-                    if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; questsDirty = true; }
-                }
-                q.updated = Date.now();
-            }
-            // Reparto del bote arcade
-            if (room.mode !== 'classic' && (room.pot || 0) > 0) {
-                for (const cli of room.clients.values()) { if (cli.carry > 0) { addToPot(room, cli.carry); cli.carry = 0; } }
-                const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
-                const ranking = msg.ranking;
-                const totalPot = room.pot;
-                const top = [];
-                for (let i = 0; i < Math.min(10, ranking.length); i++) {
-                    const pj = ranking[i];
-                    const cli = room.clients.get(pj.id);
-                    const parte = Math.floor(totalPot * PESOS[i] / 100);
-                    if (cli && cli.payWallet && parte > 0) warbank.credit(cli.payWallet, parte);
-                    if (cli && cli.cid && (i + 1) <= 5) dailyquests.recordEvent(cli.cid, 'arcade_top5', 1);
-                    top.push({ pos: i + 1, name: pj.name, mass: pj.peakMass | 0, pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
-                }
-                const payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top };
-                for (const [pid, cli] of room.clients) {
-                    if (cli.ws.readyState !== 1) continue;
-                    const idx = top.findIndex(t => ranking[t.pos - 1] && ranking[t.pos - 1].id === pid);
-                    const myCopy = top.map((t, i) => Object.assign({}, t, { mine: i === idx }));
-                    try { cli.ws.send(JSON.stringify(Object.assign({}, payoutMsg, { top: myCopy, myAmount: idx >= 0 ? top[idx].amount : 0 }))); } catch (e) {}
-                }
-                log(`Reparto arcade ${room.key}: bote ${totalPot}`);
-                room.pot = 0;
-            }
-            broadcast(room, { t: 'matchEnd' });
-            broadcast(room, { t: 'lobbyPreview', count: room.clients.size, needed: minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode, restartIn: arcadeRestartMs });
-            log(`Partida terminada en ${room.key}; reinicio en ${arcadeRestartMs / 1000}s`);
-            break;
-        }
-
-        case 'matchStarted':
-            room._foods = msg.foods || [];
-            room._mapSize = msg.mapSize || 4000;
-            break;
-
-        case 'requestStart':
-            startMatch(room);
-            break;
-
-        case 'requestRestart':
-            restartRoom(room);
-            break;
-    }
-}
-
-function processWorkerEvent(room, ev, now) {
-    if (ev.type === 'playerDied') {
-        const dCli_ = room.clients.get(ev.playerId);
-        if (dCli_) { dCli_._alive = false; dCli_._killStreak = 0; }
-        const dTest_ = dCli_ && dCli_.isTester;
-        const ds2_ = statsOf(room.comboKey); ds2_.muertes++; if (!dTest_) ds2_.muertesReal++; statsDirty = true;
-        if (dCli_ && dCli_.name && !dTest_) { pstatOf(dCli_.name).muertes++; playersDirty = true; }
-        // Peak mass flush
-        if (dCli_) {
-            const peak = dCli_._peakMass || 0;
-            if (peak > 0 && dCli_.name && !dTest_) {
-                const ps = pstatOf(dCli_.name);
-                if (peak > (ps.bestMass | 0)) { ps.bestMass = peak; playersDirty = true; }
-            }
-        }
-        if (room.mode !== 'classic') {
-            const dCli = room.clients.get(ev.playerId);
-            if (dCli && dCli.carry > 0) { addToPot(room, dCli.carry); dCli.carry = 0; }
-            else addToPot(room, entryFeePill(room.comboKey, room.pillRate));
-        }
-        const cliD = room.clients.get(ev.playerId);
-        if (cliD && cliD.cid) {
-            const q = questsOf(cliD.cid);
-            if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
-        }
-        if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + DEAD_REMOVE_MS);
-    } else if (ev.type === 'botKilled') {
-        const cliKiller_ = room.clients.get(ev.playerId);
-        if (cliKiller_) cliKiller_._killStreak = ev.streak || 0;
-        if (cliKiller_ && cliKiller_.name && !cliKiller_.isTester) { pstatOf(cliKiller_.name).kills++; playersDirty = true; }
-        const cliK = room.clients.get(ev.playerId);
-        if (cliK && cliK.cid) {
-            const q = questsOf(cliK.cid);
-            if ((q.q2_online_matches | 0) < 2) { q.q2_online_matches = (q.q2_online_matches | 0) + 1; q.updated = Date.now(); questsDirty = true; }
-            dailyquests.recordEvent(cliK.cid, 'kill', 1);
-            const peak = cliK._peakMass || 0;
-            if (peak >= 50000 && !cliK._mass50) { cliK._mass50 = true; dailyquests.recordEvent(cliK.cid, 'mass_50k', 1); }
-            if (peak >= 100000 && !cliK._mass100) { cliK._mass100 = true; dailyquests.recordEvent(cliK.cid, 'mass_100k', 1); }
-        }
-        if (cliK && room.mode === 'classic') {
-            const victimCli = ev.victimId ? room.clients.get(ev.victimId) : null;
-            let gain = 0;
-            if (victimCli && victimCli.carry > 0) {
-                gain = victimCli.carry; victimCli.carry = 0;
-                sendEcon(victimCli, room);
-            } else {
-                gain = entryFeePill(room.comboKey, room.pillRate);
-            }
-            cliK.carry += gain;
-            if (gain > 0) { try { cliK.ws.send(JSON.stringify({ t: 'killGain', amount: gain, victimWasBot: !(victimCli && victimCli.carry >= 0 && victimCli.payWallet) })); } catch (e) {} }
-            sendEcon(cliK, room);
-            if (ev.streak >= 5 && cliK.payWallet) {
-                const win = cliK.carry;
-                if (win > 0) warbank.credit(cliK.payWallet, win);
-                log(`VICTORIA classic: ${cliK.payWallet.slice(0, 6)}… +${win} PILL (carry completo)`);
-                try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: 0 })); } catch (e) {}
-                cliK.carry = 0;
-                sendEcon(cliK, room);
-                if (cliK.cid) dailyquests.recordEvent(cliK.cid, 'classic_5kills', 1);
-            }
-        }
-    } else if (ev.type === 'skillUsed') {
-        const cli = room.clients.get(ev.playerId);
-        if (cli && cli.cid && room.mode === 'arcade') {
-            const uses = (cli._matchSkillUses || 0) + 1;
-            cli._matchSkillUses = uses;
-            const q = questsOf(cli.cid);
-            if (uses > (q.q3_skills_in_arcade | 0)) {
-                q.q3_skills_in_arcade = Math.min(8, uses);
-                q.updated = Date.now(); questsDirty = true;
-            }
-            dailyquests.recordEvent(cli.cid, 'skill_used_arcade', 1);
-        }
-    }
-}
+// módulo. El antiguo path de worker_threads (una sim por Worker) se eliminó: el
+// paralelismo real viene del split multiproceso de la Fase 4 (Director + hosts).
 
 // Interfaz `director`: lo que el GameHost necesita del Director (dinero + stats).
 // El Host NO conoce warbank/pstatOf/statsOf; cuando un socket se va, calcula los
@@ -944,9 +696,8 @@ const econProxy = hostIpc && {
     botKill(name, tester) { hostIpc.notify('econ.botKill', { name: name || null, tester: !!tester }); },
     // El peak se LEE aquí (la sim vive en el host) y viaja como dato plano.
     peakMassFlush(room, pid, cli) {
-        let peak;
-        if (room.worker) { peak = (cli && cli._peakMass) ? Math.floor(cli._peakMass) : 0; }
-        else { const pj = room.sim.players.get(pid); if (!pj) return; peak = pj.peakMass ? Math.floor(pj.peakMass) : 0; }
+        const pj = room.sim.players.get(pid); if (!pj) return;
+        const peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
         if (peak <= 0) return;
         hostIpc.notify('econ.peakMass', { name: cli && cli.name, isTester: !!(cli && cli.isTester), cid: (cli && cli.cid) || null, peak });
     },
@@ -989,24 +740,23 @@ function registerHostHandlers(hostEntry) {
 
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
 // Se crea aquí, una vez definidas todas sus dependencias (rooms, reglas del
-// catálogo, spawnWorker…). Los nombres se desestructuran para que los call sites
+// catálogo…). Los nombres se desestructuran para que los call sites
 // existentes (pickLayer/getOrCreateRoom/buildSim/initLayers) no cambien.
 const gameHost = createGameHost({
     rooms,
     comboKeyOf, layerKeyOf, isLayerOffForPrice,
     rulesOf, minRealOf, targetPopOf, maxPlayersOf, lobbyMsOf,
-    log, spawnWorker,
-    getUseWorkers: () => useWorkers,
+    log,
     onRulesDirty: () => { rulesDirty = true; },
     CATALOG_MODES, PRICES, LAYERS_PER_COMBO, ownsCombo,
-    MATCH_MS, getAoiEnabled: () => AOI_ENABLED, getSnapshotEvery: () => SNAPSHOT_EVERY,
+    MATCH_MS,
     resumeTokens,
     SPAWN_IMMUNE_MS,
     director, RESUME_GRACE_MS, sendEcon, entryFeePill,
 });
 // El runtime de sala (broadcast/lobby/startMatch/…) vive ahora en el GameHost
 // (Fase 4/4a.2). Se desestructura con los mismos nombres para que los call sites
-// del Director (admin, tick loop, processWorkerEvent) no cambien.
+// del Director (admin, tick loop) no cambien.
 const {
     buildSim, getOrCreateRoom, pickLayer, initLayers,
     broadcast, sendWaiting, refillBots, tickGradualBots,
@@ -1093,8 +843,7 @@ function applySettingsPatch(p) {
     if (typeof p.baseZoom === 'number') { baseZoom = _clampZoom(p.baseZoom); for (const r of rooms.values()) broadcast(r, { t: 'baseZoom', value: baseZoom }); }
 }
 // Aplica un parche de "Rendimiento" recibido por IPC (puede ir dirigido a un
-// subconjunto de hosts — ver pushPerfToHosts). useWorkers NO se propaga nunca:
-// en rol host queda siempre forzado a OFF (incompatible con el split, ver arriba).
+// subconjunto de hosts — ver pushPerfToHosts).
 function applyPerfPatch(p) {
     if (!p) return { ok: true };
     if (typeof p.snapshotHz === 'number') SNAPSHOT_EVERY = hzToEvery(p.snapshotHz | 0);
@@ -1117,7 +866,7 @@ function buildRoomsSummary() {
     }
     return {
         hostId: PW_HOST_ID, salasOnline, jugadores, jugadoresReales, rooms: list, cpu: serverCpuPct,
-        perf: { snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY), aoiEnabled: AOI_ENABLED, layerOff: Object.assign({}, layerOff), useWorkers },
+        perf: { snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY), aoiEnabled: AOI_ENABLED, layerOff: Object.assign({}, layerOff) },
     };
 }
 
@@ -1125,7 +874,6 @@ function round1(n) { return Math.round(n * 10) / 10; }
 
 function cellData(c) {
     const o = { ci: c.ci, x: round1(c.x), y: round1(c.y), r: round1(c.r), cb: c.colorBot, ct: c.colorTop };
-    if (c.skinUrl) o.sk = c.skinUrl;
     if (c.immuneTime > 0) o.im = Math.round(c.immuneTime);
     if (c.sprintTime > 0) o.sp = 1;
     if (c.magnetTime > 0) o.mg = 1;
@@ -1268,11 +1016,11 @@ function buildAdminState() {
             disabled: !!(room && room.disabled),
             state: room ? room.state : 'offline',
             conectados: room ? room.clients.size : 0,
-            vivos: room ? (room.worker ? [...room.clients.values()].filter(c => c._alive).length : [...room.clients.keys()].filter(pid => { const p = room.sim.players.get(pid); return p && p.alive; }).length) : 0,
+            vivos: room ? [...room.clients.keys()].filter(pid => { const p = room.sim.players.get(pid); return p && p.alive; }).length : 0,
             espectadores: room ? room.spectators.size : 0,
             maxReales: maxPlayersOf(comboKey),
             needed: minRealOf(comboKey),
-            bots: room ? (room.worker ? (room._botCount || 0) : new Set(room.sim.enemies.map(e => e.id)).size) : 0,
+            bots: room ? new Set(room.sim.enemies.map(e => e.id)).size : 0,
             rules,
             // Las stats son del COMBO (compartidas por todas sus layers). Se
             // devuelven en cada layer por comodidad; al sumar totales hay que
@@ -1283,8 +1031,8 @@ function buildAdminState() {
             restartEnMs: (room && room.restartAt) ? Math.max(0, room.restartAt - now) : null,
             players: room ? [...room.clients.keys()].map(pid => {
                 const cli = room.clients.get(pid);
-                const p = room.worker ? null : room.sim.players.get(pid);
-                let mass = room.worker ? (cli._peakMass || 0) : 0; if (p) p.cells.forEach(c => mass += c.mass);
+                const p = room.sim.players.get(pid);
+                let mass = 0; if (p) p.cells.forEach(c => mass += c.mass);
                 return {
                     id: pid, name: cli.name || (p ? p.name : '?'), ip: cli.ip,
                     mass: Math.floor(mass), kills: p ? p.killStreak : 0,
@@ -1349,9 +1097,7 @@ function buildAdminState() {
         layersPerCombo: LAYERS_PER_COMBO,
         layerOff: Object.assign({}, layerOff),   // { 2: true } si L2 está apagada
         arcadeRestartMs, arcadeLobbyMs,
-        useWorkers,
         sfxVol, musicVol, enemyFx, baseZoom,
-        mainSendMs, mainTotalMs,
         serverCpu: serverCpuPct,
         totales: {
             entradas: totEntradas, muertes: totMuertes, dinero: totDinero,
@@ -1411,15 +1157,10 @@ function applyPeakMass(name, isTester, cid, peak) {
         if (peak > (q.bestMass | 0)) { q.bestMass = peak; q.updated = Date.now(); questsDirty = true; }
     }
 }
-// Lee el peakMass desde la sim/worker local y lo aplica (path mono/director).
+// Lee el peakMass desde la sim local y lo aplica (path mono/director).
 function flushPeakMass(room, pid, cli) {
-    let peak;
-    if (room.worker) {
-        peak = (cli && cli._peakMass) ? Math.floor(cli._peakMass) : 0;
-    } else {
-        const pj = room.sim.players.get(pid); if (!pj) return;
-        peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
-    }
+    const pj = room.sim.players.get(pid); if (!pj) return;
+    const peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
     applyPeakMass(cli && cli.name, !!(cli && cli.isTester), cli && cli.cid, peak);
 }
 
@@ -1444,10 +1185,26 @@ function applySecurityHeaders(res) {
 function isSolAddr(s) { return typeof s === 'string' && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s); }
 // Firmas de depósito en verificación RPC ahora mismo (ver /api/deposit).
 const pendingDeposits = new Set();
+// Rate-limit por IP de los endpoints que disparan llamadas al RPC de Solana
+// (deposit/withdraw/claim): sin esto, un bucle de POSTs agota la cuota del RPC
+// gratuito y tumba los depósitos para todo el mundo. 5 por minuto y por IP.
+const rpcApiHits = new Map();   // ip → { c: peticiones, resetAt: timestamp }
+function rpcRateLimited(req) {
+    const ip = cleanIp(req.headers['cf-connecting-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress);
+    const now = Date.now();
+    let e = rpcApiHits.get(ip);
+    if (!e || now >= e.resetAt) { e = { c: 0, resetAt: now + 60000 }; rpcApiHits.set(ip, e); }
+    return ++e.c > 5;
+}
+setInterval(() => { const now = Date.now(); for (const [k, e] of rpcApiHits) if (now >= e.resetAt) rpcApiHits.delete(k); }, 60000);
 
 const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
-    const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+    // decodeURIComponent lanza URIError con escapes rotos (%zz): 400 en vez de
+    // dejar la request colgada a merced del uncaughtException.
+    let urlPath;
+    try { urlPath = decodeURIComponent((req.url || '/').split('?')[0]); }
+    catch (e) { res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('400 Bad Request'); return; }
     const query = new URLSearchParams((req.url || '').split('?')[1] || '');
 
     // --- Salud del servidor: heap, uptime y tamaños de estructuras (diagnóstico de leaks) ---
@@ -1621,6 +1378,7 @@ const httpServer = http.createServer(async (req, res) => {
     }
     // --- Acreditar un depósito: el cliente manda {wallet, sig}; verificamos on-chain y acreditamos ---
     if (urlPath === '/api/deposit' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
         let body = '';
         req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
         req.on('end', async () => {
@@ -1648,6 +1406,7 @@ const httpServer = http.createServer(async (req, res) => {
     }
     // --- Retiro: descuenta del saldo WAR y envía PILL del treasury a la wallet ---
     if (urlPath === '/api/withdraw' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
         let body = '';
         req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
         req.on('end', async () => {
@@ -1685,6 +1444,7 @@ const httpServer = http.createServer(async (req, res) => {
 
     // --- Faucet de testnet: claim diario de $PILL o SOL (transfer on-chain real) ---
     if (urlPath === '/api/claim' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
         let body = '';
         req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
         req.on('end', async () => {
@@ -1789,7 +1549,9 @@ const httpServer = http.createServer(async (req, res) => {
     // así el espectador del panel y un único túnel sirven web + juego + websocket.
     let rel = urlPath.replace(/^\/+/, '') || 'index.html';
     let filePath = path.normalize(path.join(ROOT, rel));
-    if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end('Forbidden'); return; }
+    // Comparar con separador: sin él, un directorio hermano cuyo nombre empiece
+    // igual que ROOT (p.ej. "FlashGame-main-backup") pasaría el guard.
+    if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) { res.writeHead(403); res.end('Forbidden'); return; }
     // Nunca servir carpetas privadas (datos con IPs, código de servidor, repo, notas)
     const top = path.relative(ROOT, filePath).replace(/\\/g, '/').split('/')[0].toLowerCase();
     if (['server', '.git', 'node_modules', 'tasks', '.claude', 'memory'].includes(top)) { res.writeHead(403); res.end('Forbidden'); return; }
@@ -1875,11 +1637,7 @@ wss.on('connection', (ws, req) => {
             } else if (msg.cmd === 'power' && msg.playerId) {
                 const found = findClient(msg.playerId);
                 if (found) {
-                    if (found.room.worker) {
-                        found.room.worker.postMessage({ type: 'cmd', pid: msg.playerId, name: msg.name, args: Array.isArray(msg.args) ? msg.args.slice(0, 4) : [] });
-                    } else {
-                        found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : [], true);
-                    }
+                    found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : [], true);
                     const nm = found.cli.name || '(sin nombre)';
                     if (msg.name === 'god') { logAdmin(found.room.key, 'Toggled GOD', nm); }
                     else if (msg.name === 'mass') { logAdmin(found.room.key, 'Puso masa ' + (msg.args && msg.args[0] || ''), nm); }
@@ -2048,18 +1806,6 @@ wss.on('connection', (ws, req) => {
                 if (PW_ROLE === 'director') for (const h of hostProcs.values()) if (h.alive) h.ipc.notify('adminRestartMode', { mode: msg.mode });
                 logAdmin('-', `Reinició modo ${msg.mode}`, `${n} salas`);
                 log(`ADMIN restartMode=${msg.mode}: ${n} salas`);
-            } else if (msg.cmd === 'setWorkers') {
-                // Multihilo (worker_threads) es incompatible con el split y queda forzado
-                // a OFF en rol host (ver arranque) — no tiene sentido propagarlo por IPC.
-                // Solo aplica de verdad en mono; en director/host es un no-op informativo.
-                if (PW_ROLE === 'mono') {
-                    useWorkers = !!msg.on;
-                    saveGlobal();
-                    logAdmin('-', `Multihilo ${useWorkers ? 'ACTIVADO' : 'DESACTIVADO'}`, 'reiniciando proceso');
-                    log(`ADMIN useWorkers=${useWorkers} — reiniciando en 500ms para aplicar`);
-                    ws.send(JSON.stringify({ t: 'serverRestarting' }));
-                    setTimeout(() => process.exit(0), 500);
-                }
             } else if (msg.cmd === 'restartServer') {
                 // Solo el Director (o mono) puede autoreiniciarse desde aquí: un host del
                 // split corta partidas en curso de sus 5 combos sin previo aviso al panel
@@ -2145,7 +1891,7 @@ wss.on('connection', (ws, req) => {
         if (!room || !playerId) return;
 
         // Mensajes de juego (ready/input/aspect/action/pickSkill/reorder/cmd): los
-        // rutea el GameHost a su sim/worker. join/close (pago, stats) siguen aquí.
+        // rutea el GameHost a su sim. join/close (pago, stats) siguen aquí.
         gameHost.handleInput(room, playerId, msg);
     });
 
@@ -2181,8 +1927,6 @@ function pStats(arr, n) {
 // Contexto del tick: refs + getters dinámicos para los valores que cambian en
 // runtime (AOI_ENABLED, SNAPSHOT_EVERY, arcadeRestartMs). `flags` es el puente
 // para que el tick señale al main que toca persistir stats/players/quests.
-// Cuando este módulo viva en un worker_thread, este ctx será un proxy de
-// postMessage en vez de refs directas.
 const tickFlags = { stats: false, players: false, quests: false };
 const tickCtx = {
     // módulos
@@ -2213,7 +1957,7 @@ setInterval(() => {
     const lag = _lastTickT ? Math.max(0, (tickStartT - _lastTickT) - TICK_MS) : 0;
     _lastTickT = tickStartT;
     const now = tickStartT;
-    // El bucle de salas (simulación + removals de workers) vive en el GameHost.
+    // El bucle de salas (simulación + removals) vive en el GameHost.
     // El Director solo mide el coste agregado en tickHist y propaga dirty flags.
     const { stepMs, snapMs, sendMs } = gameHost.tickRooms(now, tickCtx);
     // Propagar dirty flags al estado global (los saves periódicos los recogen).

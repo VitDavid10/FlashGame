@@ -10,9 +10,6 @@
  * inyectadas (mismo patrón que room-loop.js). El estado global (rooms, reglas,
  * warbank, stats…) sigue viviendo en index.js y se pasa como deps; la frontera
  * real Director↔Host (deltas por IPC) se introduce en un paso posterior.
- *
- * spawnWorker/handleWorkerMsg (sistema worker_threads, a deprecar) se quedan en
- * index.js y se inyectan como dependencia.
  */
 'use strict';
 
@@ -27,10 +24,9 @@ function createGameHost(deps) {
         rooms,
         comboKeyOf, layerKeyOf, isLayerOffForPrice,
         rulesOf, minRealOf, targetPopOf, maxPlayersOf, lobbyMsOf,
-        log, spawnWorker,
-        getUseWorkers, onRulesDirty,
+        log, onRulesDirty,
         CATALOG_MODES, PRICES, LAYERS_PER_COMBO, ownsCombo,
-        MATCH_MS, getAoiEnabled, getSnapshotEvery,
+        MATCH_MS,
         resumeTokens,
         SPAWN_IMMUNE_MS,
         director, RESUME_GRACE_MS, sendEcon, entryFeePill,
@@ -57,15 +53,13 @@ function createGameHost(deps) {
     // Las reglas/stats persisten por comboKey, no por layer.
     function getOrCreateRoom(key, mode, roomName) {
         if (!rooms.has(key)) {
-            const uw = getUseWorkers();
             const ck = comboKeyOf(mode, roomName);
             const rules = rulesOf(ck); onRulesDirty();
             const m = key.match(/_L(\d+)$/);
             const layerIdx = m ? parseInt(m[1], 10) : 1;
             const room = {
                 key, comboKey: ck, layerIdx, mode, roomName,
-                sim: uw ? null : buildSim(mode, rules),
-                worker: null,
+                sim: buildSim(mode, rules),
                 clients: new Map(),
                 state: 'waiting',
                 tickCount: 0, lastTick: Date.now(), emptySince: 0,
@@ -77,8 +71,7 @@ function createGameHost(deps) {
                 pot: 0,
             };
             rooms.set(key, room);
-            if (uw) spawnWorker(room, rules);
-            log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(ck)} reales, población ${targetPopOf(ck)})${uw ? ' [worker]' : ''}`);
+            log(`Sala creada: ${key} (lobby, mínimo ${minRealOf(ck)} reales, población ${targetPopOf(ck)})`);
         }
         return rooms.get(key);
     }
@@ -92,9 +85,7 @@ function createGameHost(deps) {
     // sin spawnear) o vivos. Los muertos espectando NO ocupan. Se deriva de la sim
     // en vez de mantener un contador a mano → robusto al grace/resume (mientras la
     // célula sigue viva durante el rejoin de 30s, cuenta; al morir/expirar, no).
-    // Worker (deprecado): sin sim en el main, cae al comportamiento antiguo.
     function liveInRoom(r) {
-        if (r.worker) return r.clients.size;
         let n = 0;
         for (const [pid, cli] of r.clients) {
             const pj = r.sim.players.get(pid);
@@ -145,23 +136,11 @@ function createGameHost(deps) {
         log(`Pre-creadas ${n} salas L1. L2+ se crean on-demand cuando L1 se llene.`);
     }
 
-    // Recorre todas las salas del host y las avanza un tick: las que corren en
-    // este hilo se simulan con tickRoomOnce; las que corren en Worker solo
-    // procesan sus removals pendientes (el propio worker las tickea). Devuelve el
-    // coste agregado (step/snap/send) para que el Director lo mida en tickHist.
+    // Recorre todas las salas del host y las avanza un tick con tickRoomOnce.
+    // Devuelve el coste agregado (step/snap/send) para el tickHist del Director.
     function tickRooms(now, tickCtx) {
         let stepMs = 0, snapMs = 0, sendMs = 0;
         for (const room of rooms.values()) {
-            if (room.worker) {
-                // Procesar deadRemovals y pendingRemovals para rooms con worker
-                for (const [pid, deadline] of room.deadRemovals) {
-                    if (now >= deadline) { room.deadRemovals.delete(pid); room.worker.postMessage({ type: 'removePlayer', pid }); }
-                }
-                for (const [pid, deadline] of room.pendingRemovals) {
-                    if (now >= deadline) { room.pendingRemovals.delete(pid); room.worker.postMessage({ type: 'removePlayer', pid }); resumeTokens.forEach((v, k) => { if (v.playerId === pid) resumeTokens.delete(k); }); }
-                }
-                continue;
-            }
             const m = tickRoomOnce(room, now, tickCtx);
             stepMs += m.stepMs; snapMs += m.snapMs; sendMs += m.sendMs;
         }
@@ -169,8 +148,8 @@ function createGameHost(deps) {
     }
 
     // Rutea un mensaje de juego (ready/input/aspect/action/pickSkill/reorder/cmd)
-    // a la sim de la sala (o al worker si la sala corre en uno). Es puro Host: solo
-    // toca sim/worker, ninguna delta económica cruza hacia el Director.
+    // a la sim de la sala. Es puro Host: solo toca la sim, ninguna delta económica
+    // cruza hacia el Director.
     // El Director sigue dueño de join/close (pago, stats) y llama aquí para el resto.
     function handleInput(room, playerId, msg) {
         if (msg.t === 'ready') {
@@ -179,47 +158,34 @@ function createGameHost(deps) {
             const cli = room.clients.get(playerId);
             if (room.state === 'playing' && cli && !cli._spawned) {
                 cli._spawned = true;
-                if (room.worker) room.worker.postMessage({ type: 'spawnPlayer', pid: playerId, immuneMs: SPAWN_IMMUNE_MS });
-                else { if (!room.sim.players.has(playerId)) room.sim.addPlayer(playerId, cli.opts || {}); room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS); }
+                if (!room.sim.players.has(playerId)) room.sim.addPlayer(playerId, cli.opts || {});
+                room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS);
                 refillBots(room);
             }
             return;
         }
         if (msg.t === 'input') {
             const input = (typeof msg.tx === 'number' && typeof msg.ty === 'number') ? { tx: msg.tx, ty: msg.ty } : null;
-            if (room.worker) room.worker.postMessage({ type: 'setInput', pid: playerId, input });
-            else room.sim.setInput(playerId, input);
+            room.sim.setInput(playerId, input);
         } else if (msg.t === 'aspect') {
             const cli = room.clients.get(playerId);
             if (cli && typeof msg.r === 'number' && msg.r > 0) {
                 cli.aspect = Math.max(0.5, Math.min(4, msg.r));
-                if (room.worker) room.worker.postMessage({ type: 'setAspect', pid: playerId, aspect: cli.aspect });
             }
         } else if (msg.t === 'action') {
             if (msg.kind === 'split') {
-                const a = { kind: 'split', tx: +msg.tx || 0, ty: +msg.ty || 0 };
-                if (room.worker) room.worker.postMessage({ type: 'action', pid: playerId, action: a });
-                else room.sim.queueAction(playerId, a);
+                room.sim.queueAction(playerId, { kind: 'split', tx: +msg.tx || 0, ty: +msg.ty || 0 });
             } else if (msg.kind === 'skill') {
-                const a = { kind: 'skill', slot: msg.slot | 0, tx: +msg.tx || 0, ty: +msg.ty || 0 };
-                if (room.worker) room.worker.postMessage({ type: 'action', pid: playerId, action: a });
-                else room.sim.queueAction(playerId, a);
+                room.sim.queueAction(playerId, { kind: 'skill', slot: msg.slot | 0, tx: +msg.tx || 0, ty: +msg.ty || 0 });
             }
         } else if (msg.t === 'pickSkill') {
             const id = msg.id | 0;
-            if (id >= 1 && id <= 8) {
-                if (room.worker) room.worker.postMessage({ type: 'grantSkill', pid: playerId, skillId: id });
-                else room.sim.grantSkillToPlayer(playerId, id);
-            }
+            if (id >= 1 && id <= 8) room.sim.grantSkillToPlayer(playerId, id);
         } else if (msg.t === 'reorder') {
-            if (room.worker) room.worker.postMessage({ type: 'reorder', pid: playerId, from: msg.from | 0, to: msg.to | 0 });
-            else {
-                const p = room.sim.players.get(playerId);
-                if (p) { const a = msg.from | 0, b = msg.to | 0; if (a >= 0 && a < p.skillSlots.length && b >= 0 && b < p.skillSlots.length && a !== b) { const t = p.skillSlots[a]; p.skillSlots[a] = p.skillSlots[b]; p.skillSlots[b] = t; } }
-            }
+            const p = room.sim.players.get(playerId);
+            if (p) { const a = msg.from | 0, b = msg.to | 0; if (a >= 0 && a < p.skillSlots.length && b >= 0 && b < p.skillSlots.length && a !== b) { const t = p.skillSlots[a]; p.skillSlots[a] = p.skillSlots[b]; p.skillSlots[b] = t; } }
         } else if (msg.t === 'cmd') {
-            if (room.worker) room.worker.postMessage({ type: 'cmd', pid: playerId, name: msg.name, args: Array.isArray(msg.args) ? msg.args.slice(0, 4) : [] });
-            else room.sim.runCommand(playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : []);
+            room.sim.runCommand(playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : []);
             log(`Comando de ${playerId}: /${msg.name} ${(msg.args || []).join(' ')}`);
         }
     }
@@ -227,7 +193,7 @@ function createGameHost(deps) {
     // Entrada como ESPECTADOR (mira una sala sin jugar). Es del Host: usa sus sockets
     // y su sim (snapshot completo, sin AOI). Devuelve la sala observada o null.
     function handleSpectate(ws, msg) {
-        const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
+        const mode = ['classic', 'arcade'].includes(msg.mode) ? msg.mode : 'classic';
         let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
         // Puede pedir una layer concreta (?layer=2 del panel admin); si no existe, cae a L1.
         const layerIdx = Math.max(1, Math.min(LAYERS_PER_COMBO, parseInt(msg.layer, 10) || 1));
@@ -235,7 +201,6 @@ function createGameHost(deps) {
         const sala = rooms.get(key) || rooms.get(layerKeyOf(mode, roomName, 1));
         if (!sala) { ws.send(JSON.stringify({ t: 'specEmpty' })); return null; }
         sala.spectators.add(ws);
-        if (sala.worker) sala.worker.postMessage({ type: 'setSpectators', on: true });
         // welcome sin id de jugador → el cliente entra como espectador puro
         ws.send(welcomeMsg(sala, null, null, 'specWelcome'));
         log(`Espectador conectado a ${key} (${sala.spectators.size} mirando)`);
@@ -253,11 +218,11 @@ function createGameHost(deps) {
         if (msg.resume) {
             const tok = resumeTokens.get(msg.resume);
             const r = tok ? rooms.get(tok.roomKey) : null;
-            if (tok && r && !r.worker && r.sim.players.has(tok.playerId) && !r.clients.has(tok.playerId)) {
+            if (tok && r && r.sim.players.has(tok.playerId) && !r.clients.has(tok.playerId)) {
                 const playerId = tok.playerId;
                 r.pendingRemovals.delete(playerId);
                 const p = r.sim.players.get(playerId);
-                r.clients.set(playerId, { ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume, opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop, skinUrl: p.skinUrl } });
+                r.clients.set(playerId, { ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume, opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop } });
                 ws.send(welcomeMsg(r, playerId, msg.resume));
                 refillBots(r);
                 log(`Jugador '${p.name}' RECONECTADO a ${r.key}`);
@@ -266,7 +231,7 @@ function createGameHost(deps) {
             ws.send(JSON.stringify({ t: 'resumeFail' }));
             return null;
         }
-        const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
+        const mode = ['classic', 'arcade'].includes(msg.mode) ? msg.mode : 'classic';
         let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
         if (roomName === '*') roomName = resolveQuickJoin(mode);
         const kick = await director.checkKick(ip);
@@ -306,22 +271,22 @@ function createGameHost(deps) {
         }
         const playerId = PillSim.uuid();
         const name = typeof msg.name === 'string' ? msg.name.slice(0, 16) : '';
+        // skinUrl eliminado del online: era una URL arbitraria que los navegadores del
+        // resto de jugadores descargaban (fuga de IP a un servidor ajeno) y hasta 300 B
+        // por celda en cada snapshot. La skin local del modo offline no pasa por aquí.
         const opts = {
             name,
             colorBot: typeof msg.colorBot === 'string' ? msg.colorBot.slice(0, 9) : undefined,
-            colorTop: typeof msg.colorTop === 'string' ? msg.colorTop.slice(0, 9) : undefined,
-            skinUrl: typeof msg.skinUrl === 'string' ? msg.skinUrl.slice(0, 300) : null
+            colorTop: typeof msg.colorTop === 'string' ? msg.colorTop.slice(0, 9) : undefined
         };
-        if (room.worker) room.worker.postMessage({ type: 'addPlayer', pid: playerId, opts, aspect: (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1, useBin: msg.bin === 1 || msg.bin === true });
-        else room.sim.addPlayer(playerId, opts);
-        const _alive = true, _killStreak = 0;
+        room.sim.addPlayer(playerId, opts);
         const token = PillSim.uuid() + PillSim.uuid();
         resumeTokens.set(token, { roomKey: key, playerId });
         const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
         // Opt-in al protocolo binario para snapshots (msg.bin === 1); eco en welcome.
         const useBin = msg.bin === 1 || msg.bin === true;
         const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
-        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, aspect, _alive, _killStreak, _spawned: false });
+        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, aspect, _spawned: false });
         sendEcon(room.clients.get(playerId), room);
         director.recordEntry({ comboKey: ck, key, mode: room.mode, playerId, name, cid, ip, tester });
         if (room.state === 'playing') {
@@ -348,24 +313,14 @@ function createGameHost(deps) {
     function handleClose(ws, room, playerId, spectatorRoom) {
         if (spectatorRoom) {
             spectatorRoom.spectators.delete(ws);
-            if (spectatorRoom.worker && spectatorRoom.spectators.size === 0) spectatorRoom.worker.postMessage({ type: 'setSpectators', on: false });
         }
         if (room && playerId && room.clients.get(playerId) && room.clients.get(playerId).ws === ws) {
             const cli = room.clients.get(playerId);
-            // wasAlive/kills/peak desde la fuente autoritativa: la sim (o los flags que
-            // el main mantiene para el path worker, sin acceso síncrono a la sim).
-            let wasAlive, kills, peak;
-            if (room.worker) {
-                room.worker.postMessage({ type: 'removePlayer', pid: playerId });
-                wasAlive = !!cli._alive;
-                kills = cli._killStreak || 0;
-                peak = cli._peakMass ? Math.floor(cli._peakMass) : 0;
-            } else {
-                const pj = room.sim.players.get(playerId);
-                wasAlive = !!(pj && pj.alive);
-                kills = pj ? (pj.killStreak | 0) : 0;
-                peak = (pj && pj.peakMass) ? Math.floor(pj.peakMass) : 0;
-            }
+            // wasAlive/kills/peak desde la fuente autoritativa: la sim.
+            const pj = room.sim.players.get(playerId);
+            const wasAlive = !!(pj && pj.alive);
+            const kills = pj ? (pj.killStreak | 0) : 0;
+            const peak = (pj && pj.peakMass) ? Math.floor(pj.peakMass) : 0;
             // Frontera de deltas de la SALIDA: datos planos → misma llamada local o IPC.
             director.onPlayerLeave({
                 mode: room.mode, comboKey: room.comboKey, state: room.state,
@@ -406,7 +361,7 @@ function createGameHost(deps) {
     function foodsJsonOf(room) {
         const now = Date.now();
         if (room._foodsJson && now - (room._foodsJsonAt || 0) < 2000) return room._foodsJson;
-        const foods = room.sim ? room.sim.foods : (room._foods || []);
+        const foods = room.sim.foods;
         room._foodsJson = JSON.stringify(foods);
         room._foodsJsonAt = now;
         return room._foodsJson;
@@ -414,10 +369,9 @@ function createGameHost(deps) {
     // Devuelve el welcome ya serializado como STRING, con el foods cacheado inyectado
     // sin re-serializar. `extra` añade campos al head (ej. { useBin: true }).
     function welcomeMsg(room, playerId, token, type, extra) {
-        const baseSize = PillSim.WORLD_CONFIG[room.mode === 'classic' ? 'classic' : 'arcade'].size;
         const head = {
             t: type || 'welcome', id: playerId, token,
-            mapSize: room.sim ? room.sim.mapSize : (room._mapSize || baseSize), mode: room.mode, roomName: room.roomName,
+            mapSize: room.sim.mapSize, mode: room.mode, roomName: room.roomName,
             state: room.state, count: room.clients.size, needed: minRealOf(room.comboKey),
             duration: MATCH_MS,
             tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
@@ -436,15 +390,11 @@ function createGameHost(deps) {
         const target = targetPopOf(room.comboKey);
         if (target === 0) return;
         const deseados = Math.max(0, target - room.clients.size);
-        if (room.worker) {
-            room.worker.postMessage({ type: 'refillBots', target: deseados });
-        } else {
-            const sim = room.sim;
-            sim.config.botConfig.count = deseados;
-            sim.config.botConfig.enabled = deseados > 0;
-            sim.config.botConfig.respawn = deseados > 0;
-            room.botTargetCount = deseados;
-        }
+        const sim = room.sim;
+        sim.config.botConfig.count = deseados;
+        sim.config.botConfig.enabled = deseados > 0;
+        sim.config.botConfig.respawn = deseados > 0;
+        room.botTargetCount = deseados;
     }
 
     // Cola gradual de spawn/despawn: en cada llamada acerca el número de bots
@@ -478,20 +428,17 @@ function createGameHost(deps) {
             const lobbyMs = lobbyMsOf(room.comboKey);
             // Jitter 0-1500ms para que varias salas que se llenan a la vez NO arranquen
             // en el mismo tick. Sin esto, llegabas a 150 spawns simultáneos cuando 5 salas
-            // pasaban a 'playing' en el mismo segundo → spike de workerMsg a 3000ms/s.
-            // El tick loop (single-thread) y el worker ya disparan startMatch cuando llega
-            // startAt, así que el jitter funciona para los dos modos.
+            // pasaban a 'playing' en el mismo segundo. El tick loop dispara startMatch
+            // cuando llega startAt.
             const jitter = Math.floor(Math.random() * 1500);
             const total = Math.max(0, lobbyMs) + jitter;
             room.startAt = Date.now() + total;
-            if (room.worker) room.worker.postMessage({ type: 'setLobbyStart', startAt: room.startAt });
             if (lobbyMs > 0) {
                 broadcast(room, { t: 'lobbyCountdown', startIn: lobbyMs, count: room.clients.size, needed: min, roomName: room.roomName, mode: room.mode });
                 log(`Lobby ${room.key}: ${room.clients.size}/${min} → cuenta atrás ${lobbyMs / 1000}s (+${jitter}ms jitter)`);
             }
         } else if (room.startAt) {
             room.startAt = null;
-            if (room.worker) room.worker.postMessage({ type: 'cancelLobby' });
             sendWaiting(room);   // vuelve a "esperando X/min"
             log(`Lobby ${room.key}: cuenta atrás cancelada (${room.clients.size}/${min})`);
         }
@@ -506,28 +453,14 @@ function createGameHost(deps) {
         // NO spawneamos aquí: cada jugador se spawnea cuando su cliente manda 'ready'
         // (al terminar su pantalla de carga). Así la inmunidad empieza justo cuando entra
         // de verdad, dure lo que dure su carga, y no está expuesto mientras carga.
-        if (room.worker) {
-            room.worker.postMessage({ type: 'startMatch' });
-            for (const [pid, cli] of room.clients) {
-                cli.paidFee = 0;
-                cli._matchSkillUses = 0;
-                cli._alive = true;
-                cli._killStreak = 0;
-                cli._spawned = false;
-                if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
-            }
-            refillBots(room);
-            log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales [worker] (spawn al ready)`);
-        } else {
-            for (const [pid, cli] of room.clients) {
-                if (!room.sim.players.has(pid)) room.sim.addPlayer(pid, cli.opts || {});
-                cli.paidFee = 0;
-                cli._spawned = false;
-                if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
-            }
-            refillBots(room);
-            log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales (spawn al ready)`);
+        for (const [pid, cli] of room.clients) {
+            if (!room.sim.players.has(pid)) room.sim.addPlayer(pid, cli.opts || {});
+            cli.paidFee = 0;
+            cli._spawned = false;
+            if (cli.ws.readyState === 1) cli.ws.send(welcomeMsg(room, pid, cli.token, 'matchStart'));
         }
+        refillBots(room);
+        log(`¡Partida INICIADA en ${room.key}: ${room.clients.size} reales (spawn al ready)`);
     }
 
     function restartRoom(room) {
@@ -545,14 +478,7 @@ function createGameHost(deps) {
         room.state = 'waiting';
         room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false; room._shortened = false;
         room.deadRemovals.clear(); room.pendingRemovals.clear();
-        if (room.worker) {
-            room.worker.postMessage({
-                type: 'restartSim', mode: room.mode, rules: rulesOf(room.comboKey),
-                matchMs: MATCH_MS, aoiEnabled: getAoiEnabled(), snapshotEvery: getSnapshotEvery(),
-            });
-        } else {
-            room.sim = buildSim(room.mode, rulesOf(room.comboKey));
-        }
+        room.sim = buildSim(room.mode, rulesOf(room.comboKey));
         sendWaiting(room);
         log(`Sala reiniciada: ${room.key} (${closed} expulsados, lobby empieza desde 0)`);
     }
@@ -562,7 +488,6 @@ function createGameHost(deps) {
             try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {}
             try { cli.ws.close(); } catch (e) {}
         }
-        if (room.worker) { try { room.worker.postMessage({ type: 'shutdown' }); } catch (e) {} room.worker = null; }
         rooms.delete(room.key);
         for (const [tok, info] of resumeTokens) { if (info.roomKey === room.key) resumeTokens.delete(tok); }
         log(`Sala apagada (${motivo}): ${room.key}`);

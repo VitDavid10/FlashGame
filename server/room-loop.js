@@ -4,9 +4,8 @@
  *
  * Esta función contiene EXACTAMENTE la misma lógica que tenía el bucle interno
  * del `for (const room of rooms.values())` en index.js, sin cambios funcionales.
- * El objetivo es modularizar el contrato sala↔servidor antes de migrar a
- * `worker_threads` (Fase 5b multihilo): cuando este módulo se importe desde un
- * worker, el `ctx` será una pasarela de postMessage en vez de refs directas.
+ * Modulariza el contrato sala↔servidor: el `ctx` agrupa las dependencias para
+ * que el tick no toque el scope global de index.js directamente.
  *
  * Contrato:
  *   tickRoomOnce(room, now, ctx) → { stepMs, snapMs, sendMs }

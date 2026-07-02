@@ -2,7 +2,7 @@
  * Prueba del backfill: 1 real + forzar inicio → 9 bots; entra 2º real → 8 bots;
  * se va el 2º → 9 bots de nuevo.
  *
- * Uso: node server/test-backfill.js
+ * Uso: node tools/test-backfill.js
  */
 'use strict';
 

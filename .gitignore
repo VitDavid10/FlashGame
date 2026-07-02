@@ -13,6 +13,7 @@ server/warbalances.json
 server/skinpoints.json
 server/daily.json
 server/globalsettings.json
+server/faucet.json
 
 # Notas internas de desarrollo
 tasks/
