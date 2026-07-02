@@ -961,6 +961,33 @@ function intersectsBox(box, x, y, r) {
 // Snapshot filtrado por AOI. Si box es null → snapshot completo (espectadores
 // del panel de control, jugadores muertos, debug). Si viewerId está definido,
 // sus celdas siempre se incluyen aunque estén fuera de la caja (split).
+// Grids espaciales POR TICK para el snapshot AOI (mismo patrón que foodGrid en
+// sim.js, pero reconstruidos cada tick en vez de persistentes: virus/masas
+// eyectadas/proyectiles/bots se mueven SIEMPRE, así que no hay nada que mantener
+// entre ticks — solo evitar que CADA jugador recorra el array entero de la sala.
+// Antes: buildSnapshotFor(viewer) escaneaba TODAS las entidades de la sala, y eso
+// se repetía una vez por jugador → coste = viewers × entidades. Ahora: 1 build
+// barato (O(entidades), memoizado por tickCount, se comparte entre TODOS los
+// viewers de este tick) + cada viewer solo consulta lo cercano a su caja.
+// Se activa solo cuando hay `box` (AOI real, no el snapshot completo compartido,
+// que ya no necesita filtrar nada).
+const ENT_GRID_CELL = 500;
+function buildRoomEntityGrids(room) {
+    if (room._entGridTick === room.tickCount && room._entGrids) return room._entGrids;
+    const sim = room.sim;
+    const virusGrid = new PillSim.SpatialGrid(ENT_GRID_CELL);
+    for (const v of sim.viruses) virusGrid.insert(v);
+    const ejectedGrid = new PillSim.SpatialGrid(ENT_GRID_CELL);
+    for (const m of sim.ejectedMasses) ejectedGrid.insert(m);
+    const projGrid = new PillSim.SpatialGrid(ENT_GRID_CELL);
+    for (const pr of sim.projectiles) projGrid.insert(pr);
+    const enemyGrid = new PillSim.SpatialGrid(ENT_GRID_CELL);
+    for (const e of sim.enemies) enemyGrid.insert(e);
+    room._entGrids = { virusGrid, ejectedGrid, projGrid, enemyGrid };
+    room._entGridTick = room.tickCount;
+    return room._entGrids;
+}
+
 function buildSnapshotFor(room, viewerId, box) {
     const sim = room.sim;
     const players = [];
@@ -993,8 +1020,15 @@ function buildSnapshotFor(room, viewerId, box) {
             slots: slotsOut, ss, cells: outCells
         });
     }
+    // Con caja: consulta el grid del tick (solo lo cercano) en vez del array
+    // entero de la sala. intersectsBox sigue haciendo el filtro EXACTO sobre los
+    // candidatos del grid (el grid es cuadrado, la caja puede ser rectangular) —
+    // mismo resultado que antes, mucho menos que recorrer.
+    const grids = box ? buildRoomEntityGrids(room) : null;
+    const qr = box ? Math.max(box.halfX, box.halfY) : 0;
+
     const bots = [];
-    const enemies = sim.enemies;
+    const enemies = grids ? grids.enemyGrid.query(box.cx, box.cy, qr) : sim.enemies;
     for (let i = 0; i < enemies.length; i++) {
         const c = enemies[i];
         if (!box || intersectsBox(box, c.x, c.y, c.r)) {
@@ -1005,19 +1039,19 @@ function buildSnapshotFor(room, viewerId, box) {
         }
     }
     const viruses = [];
-    const vs = sim.viruses;
+    const vs = grids ? grids.virusGrid.query(box.cx, box.cy, qr) : sim.viruses;
     for (let i = 0; i < vs.length; i++) {
         const v = vs[i];
         if (!box || intersectsBox(box, v.x, v.y, v.r)) viruses.push({ ci: v.ci, x: round1(v.x), y: round1(v.y), r: round1(v.r), d: v.damaged ? 1 : 0, a: round1(v.animTime) });
     }
     const ejected = [];
-    const em = sim.ejectedMasses;
+    const em = grids ? grids.ejectedGrid.query(box.cx, box.cy, qr) : sim.ejectedMasses;
     for (let i = 0; i < em.length; i++) {
         const m = em[i];
         if (!box || intersectsBox(box, m.x, m.y, m.r)) ejected.push({ ci: m.ci, x: round1(m.x), y: round1(m.y), r: m.r, c1: m.c1, c2: m.c2, a: round1(m.angle || 0) });
     }
     const projectiles = [];
-    const pj = sim.projectiles;
+    const pj = grids ? grids.projGrid.query(box.cx, box.cy, qr) : sim.projectiles;
     for (let i = 0; i < pj.length; i++) {
         const pr = pj[i];
         if (!box || intersectsBox(box, pr.x, pr.y, pr.r)) projectiles.push({ ci: pr.ci, x: round1(pr.x), y: round1(pr.y), r: pr.r });
