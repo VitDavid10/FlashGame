@@ -2072,7 +2072,25 @@
         els.result.style.display = 'flex';
         hideGameHUD();
     }
-    function finishGameSuccess() { try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {} hideCountdownNumber(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88"; showResultsUI(); const tb = document.getElementById('btnTryAgainOnline'); if (tb) tb.style.display = 'none'; }
+    function finishGameSuccess() {
+        try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {}
+        hideCountdownNumber(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer');
+        isSpectating = true;
+        if (saveInterval) clearInterval(saveInterval);
+        localStorage.removeItem('pillwars_save');
+        hideGameHUD();
+        // Sala de pago en arcade: el server ya mandó 'prize' (reparto del bote) ANTES
+        // de 'matchEnd', y ese modal (prizeModal) ya está abierto con las ganancias
+        // reales. Abrir aquí TAMBIÉN el overlay viejo duplicaba el resultado (con el
+        // carry ya vaciado al pot → mostraba otra cantidad, parecía un segundo ranking).
+        const isPaidArcade = currentServer && currentServer !== 'Free' && (currentGameMode === 'arcade' || currentGameMode === 'skills');
+        const prizeOpen = isPaidArcade && document.getElementById('prizeModal').style.display === 'flex';
+        if (!prizeOpen) {
+            els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88";
+            showResultsUI();
+        }
+        const tb = document.getElementById('btnTryAgainOnline'); if (tb) tb.style.display = 'none';
+    }
     function returnToMenu() { serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
