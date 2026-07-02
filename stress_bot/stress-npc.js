@@ -194,8 +194,13 @@ async function spawnBot(i) {
     // Salir y reponer cuando MUERO o GANO (en classic, a 5 kills se gana y el
     // jugador real se desconecta). Reconectamos como nuevo para que la sala cicle
     // igual que con jugadores reales, en vez de quedarnos inmunes ocupando plaza.
-    if (m.t === 'events' && Array.isArray(m.events) && myId && !reconnectPending) {
-      for (const ev of m.events) {
+    // Los eventos llegan sueltos (t:'events') O fusionados dentro del snap (m.ev,
+    // optimización de red): hay que mirar los dos sitios o el bot deja de detectar
+    // su propia muerte/victoria en cuanto el server fusiona.
+    const evList = (m.t === 'events' && Array.isArray(m.events)) ? m.events
+      : (m.t === 'snap' && Array.isArray(m.ev)) ? m.ev : null;
+    if (evList && myId && !reconnectPending) {
+      for (const ev of evList) {
         const muerto = ev.type === 'playerDied' && ev.playerId === myId;
         const gano = ev.type === 'botKilled' && ev.playerId === myId && ev.mode === 'classic' && ev.streak >= 5;
         if (muerto || gano) {

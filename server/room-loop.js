@@ -246,8 +246,15 @@ function tickRoomOnce(room, now, ctx) {
         let ap = 0; for (const p of room.sim.players.values()) if (p.alive) ap++;
         room._aliveCount = new Set(room.sim.enemies.map(e => e.id)).size + ap;
     }
+    // Los eventos viajan FUSIONADOS dentro del snap de este mismo tick (campo `ev`,
+    // tanto en JSON como en el frame binario — ver shared/proto.js) cuando ese
+    // cliente recibe snapshot este tick. Solo se manda eventsJson SUELTO cuando el
+    // cliente no recibe snapshot ahora (doSnap=false, o backpressure): sin esto, un
+    // kill se retrasaría hasta el siguiente snapshot en vez de perderse un send.
+    // En la config de producción (SNAPSHOT_HZ=40=cada tick) doSnap es true siempre,
+    // así que en la práctica esto SIEMPRE fusiona: la mitad de los sends por tick.
     let fullSnap = null, fullJson = null, fullBin = null;
-    const ensureFullSnap = () => fullSnap || (fullSnap = ctx.buildSnapshotFor(room, null, null));
+    const ensureFullSnap = () => { if (!fullSnap) { fullSnap = ctx.buildSnapshotFor(room, null, null); if (events.length) fullSnap.ev = events; } return fullSnap; };
     const ensureFullJson = () => fullJson || (fullJson = JSON.stringify(ensureFullSnap()));
     const ensureFullBin  = () => fullBin  || (fullBin  = ctx.proto.encodeSnap(ensureFullSnap()));
     const _t2 = performance.now();
@@ -256,27 +263,26 @@ function tickRoomOnce(room, now, ctx) {
         const aoiOn = ctx.aoiEnabled;
         for (const [pid, cli] of room.clients) {
             if (cli.ws.readyState !== 1) continue;
-            if (eventsJson) cli.ws.send(eventsJson);
-            if (!doSnap) continue;
             // Backpressure: si el cliente ya acumula >N bytes sin enviar, saltamos SU
-            // snapshot (el siguiente lo pondrá al día). Los eventos sí van siempre (son
+            // snapshot (el siguiente lo pondrá al día); sus eventos van sueltos (son
             // pequeños e importantes: kills, muertes). Sin este corte, un cliente con
             // red mala acumula snapshots sin límite en RAM del proceso y lo arrastra.
-            // También ahorra el buildSnapshotFor de ese viewer (no serializamos en vano).
-            if (cli.ws.bufferedAmount >= ctx.WS_BACKPRESSURE_MAX) continue;
+            const canSnap = doSnap && cli.ws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX;
+            if (!canSnap) { if (eventsJson) cli.ws.send(eventsJson); continue; }
             if (!aoiOn) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
             const pj = room.sim.players.get(pid);
             if (!pj || !pj.alive || pj.cells.length === 0) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
             const box = ctx.aoiBoxFor(pj, cli.aspect);
             const snap = ctx.buildSnapshotFor(room, pid, box);
+            if (events.length) snap.ev = events;
             cli.ws.send(cli.useBin ? ctx.proto.encodeSnap(snap) : JSON.stringify(snap));
         }
         if (room.spectators.size) {
-            const specJson = doSnap ? ensureFullJson() : null;
             for (const sws of room.spectators) {
                 if (sws.readyState !== 1) { room.spectators.delete(sws); continue; }
-                if (eventsJson) sws.send(eventsJson);
-                if (specJson && sws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX) sws.send(specJson);
+                const canSnap = doSnap && sws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX;
+                if (!canSnap) { if (eventsJson) sws.send(eventsJson); continue; }
+                sws.send(ensureFullJson());
             }
         }
     }

@@ -24,6 +24,7 @@
  *     per: u32 ci, i16 x, i16 y, u8 r, 3B c1, 3B c2, i16 angle*1000
  *   u16 nProjectiles
  *     per: u32 ci, i16 x, i16 y, u8 r
+ *   str evJson              (eventos del tick fusionados en el mismo frame; '' si ninguno)
  *
  *   str = u8 len, bytes (utf8)
  *   cellBin (≥17B):
@@ -36,7 +37,7 @@
  */
 'use strict';
 
-const VER = 2;
+const VER = 3;
 const FLAG_SKIN = 1, FLAG_IM = 2, FLAG_SP = 4, FLAG_MG = 8, FLAG_TP = 16;
 const FLAG_ALIVE = 1;
 
@@ -218,6 +219,8 @@ function encodeSnap(snap) {
         w.i16(Math.round(pr.y));
         w.u8(Math.max(0, Math.min(255, Math.round(pr.r))));
     }
+    // Eventos fusionados: evita un 2º ws.send por tick cuando hay kills/muertes.
+    w.str((snap.ev && snap.ev.length) ? JSON.stringify(snap.ev) : '');
     return w.out();
 }
 
@@ -286,6 +289,8 @@ function decodeSnap(arrayBuffer) {
     for (let i = 0; i < nProj; i++) {
         snap.projectiles.push({ ci: r.u32(), x: r.i16(), y: r.i16(), r: r.u8() });
     }
+    const evStr = r.str();
+    snap.ev = evStr ? JSON.parse(evStr) : null;
     return snap;
 }
 

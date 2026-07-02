@@ -2246,17 +2246,23 @@
                         if (JSON.stringify(ns) !== JSON.stringify(meP.skillSlots)) { meP.skillSlots = ns; updateSkillsUI_Arcade(); }
                     }
                 }
+                // Eventos fusionados en el mismo snap (optimización de red): mismo
+                // tratamiento que el mensaje 'events' suelto de abajo.
+                if (msg.ev && msg.ev.length) this._applyEvents(msg.ev);
             } else if (msg.t === 'events') {
-                for (const ev of msg.events) {
-                    if (ev.type === 'foodRespawn') { const f = this.foods; if (ev.index < f.length) { f[ev.index] = f[f.length - 1]; f.pop(); } f.push(ev.food); }
-                    else {
-                        if (ev.playerId === this.myId) ev.playerId = 'me';
-                        if (ev.type === 'playerDied' && ev.playerId === 'me') { if (this._aliveSeen === false) continue; this._aliveSeen = false; }
-                        this.events.push(ev);
-                    }
-                }
+                this._applyEvents(msg.events);
             } else if (msg.t === 'matchEnd') {
                 this.events.push({ type: 'matchEnd' });
+            }
+        }
+        _applyEvents(evs) {
+            for (const ev of evs) {
+                if (ev.type === 'foodRespawn') { const f = this.foods; if (ev.index < f.length) { f[ev.index] = f[f.length - 1]; f.pop(); } f.push(ev.food); }
+                else {
+                    if (ev.playerId === this.myId) ev.playerId = 'me';
+                    if (ev.type === 'playerDied' && ev.playerId === 'me') { if (this._aliveSeen === false) continue; this._aliveSeen = false; }
+                    this.events.push(ev);
+                }
             }
         }
         drainEvents() { const evs = this.events; this.events = []; return evs; }

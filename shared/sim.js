@@ -155,6 +155,14 @@
             if (!b) { b = []; this.buckets.set(k, b); }
             b.push(obj);
         }
+        remove(obj) {
+            const cs = this.cellSize;
+            const k = (Math.floor(obj.x / cs) + 256) * 512 + (Math.floor(obj.y / cs) + 256);
+            const b = this.buckets.get(k);
+            if (!b) return;
+            const idx = b.indexOf(obj);
+            if (idx !== -1) b.splice(idx, 1);
+        }
         // radius opcional en unidades de mundo. Sin radius, busca 3x3 celdas.
         // Con radius, cubre ceil(radius/cellSize) celdas en cada dirección.
         query(x, y, radius) {
@@ -413,6 +421,7 @@
             food.spikes = [];
             for (let j = 0; j < 4; j++) food.spikes.push(Math.random() * Math.PI * 2);
             foodArray.push(food);
+            this.foodGrid.insert(food);
         }
 
         spawnVirusSafe(virusArray, limit) {
@@ -692,8 +701,9 @@
                 }
             }
 
-            this.foodGrid.clear();
-            for (let f of this.foods) this.foodGrid.insert(f);
+            // El foodGrid es persistente entre ticks (ya no se reconstruye entera cada
+            // vez): se mantiene al día en cada spawn/comida/movimiento (ver spawnFoodSafe,
+            // el imán abajo y la limpieza de comida comida más adelante).
 
             // Imán: atrae comida cercana hacia cada celda del jugador con la skill activa.
             // Antes iteraba TODAS las foods por cada celda (O(N×K) con N=miles); ahora consulta
@@ -708,8 +718,12 @@
                         const dx = c.x - f.x, dy = c.y - f.y;
                         const dist = Math.sqrt(dx * dx + dy * dy);
                         if (dist < range && dist > 1) {
+                            // La comida movida cambia de celda del grid: hay que re-bucketearla
+                            // (remove con la posición vieja, insert con la nueva) o queda huérfana.
+                            this.foodGrid.remove(f);
                             f.x += (dx / dist) * 3 * timeScale;
                             f.y += (dy / dist) * 3 * timeScale;
+                            this.foodGrid.insert(f);
                         }
                     }
                 }
@@ -828,6 +842,10 @@
             });
             for (let i = this.foods.length - 1; i >= 0; i--) {
                 if (this.foods[i].eaten) {
+                    // Sacar del grid ANTES de reciclar el objeto: spawnFood() reutiliza el
+                    // mismo objeto del pool con una posición nueva, y si sigue en el bucket
+                    // viejo queda una referencia fantasma con coordenadas desactualizadas.
+                    this.foodGrid.remove(this.foods[i]);
                     this.foods[i].eaten = false;
                     this.foodPool.free(this.foods[i]);
                     this.foods[i] = this.foods[this.foods.length - 1];
