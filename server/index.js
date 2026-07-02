@@ -893,42 +893,59 @@ function cellData(c) {
 }
 
 // --- AOI (Area of Interest) ---
-// Cada jugador recibe solo lo cercano a su centroide. Esto:
-//  - corta tráfico ~5-10× en salas grandes (los bots/virus lejanos no se mandan)
+// Cada jugador recibe SOLO lo que su cámara puede mostrar. Esto:
+//  - corta tráfico (lo que está fuera de pantalla no se manda)
 //  - cierra el maphack (un cliente modificado no puede dibujar lo que no recibe)
 //
-// La caja es cuadrada centrada en el centroide ponderado por masa del jugador.
-// El lado depende del tamaño del jugador (más grande → ve más, porque su zoom
-// se aleja). Margen extra para que la interpolación no popee al entrar entidades.
+// La caja REPLICA la cámara real del cliente (ZOOM_CONFIG en game/index.html):
+//   effR  = max(10, Σradios / nCeldas^0.4)                ← radio efectivo multi-celda
+//   scale = clamp(baseZoom · (10/effR)^0.3, 0.05, 2.0)    ← zoom de la cámara
+//   media pantalla visible en px de mundo = (altoPantalla/2) / scale
+// La fórmula antigua ((1800 + r·18)·1.3) crecía LINEAL con el radio mientras la
+// cámara real se aleja con potencia 0.3: divergen tanto que a radio ~90 la caja
+// ya superaba el mapa arcade entero — el AOI degeneraba en "manda todo, pero
+// serializado por jugador": todo el coste de CPU, cero ahorro de bytes, y el
+// maphack medio abierto (recibías ~10-25× más mundo del visible). Medido con
+// 500 bots: mismos bytes con y sin AOI, 41ms vs 11ms de tick.
+//
+// El zoom del cliente se suaviza (lerp de cámara): aquí se replica ese lerp en
+// p._aoiScale y se usa el MENOR de (actual, objetivo) — así, al encogerte de
+// golpe (te comen), la caja sigue cubriendo lo que la cámara aún enseña
+// mientras se acerca, y no hay pop-in en los bordes durante la transición.
 // Las celdas propias del jugador SIEMPRE van enteras (tras un split sus celdas
-// pueden estar fuera del centroide y aun así son suyas).
+// pueden estar fuera del centro y aun así son suyas).
 let AOI_ENABLED = process.env.AOI !== '0';   // ON por defecto; AOI=0 para apagar
-const AOI_BASE = 1800;          // visión mínima en píxeles del mundo
-const AOI_PER_R = 18;           // px de visión extra por cada px de radio máximo
-const AOI_MARGIN = 1.30;        // margen para interpolación / pop-in
-const AOI_ZOOM_REF = 1.4;       // zoom base de referencia (el AOI escala inverso al zoom real)
-// Caja rectangular: si el cliente envió su aspect ratio (W/H), la caja se estira
-// para cubrir el viewport real. Sin aspect → caja cuadrada (compat con clientes viejos).
+const AOI_VIEW_HALF_H = 720;    // media ALTURA de pantalla de referencia (cubre hasta 1440px CSS de alto)
+const AOI_MARGIN = 1.35;        // margen: interpolación + retardo del pan de cámara
+const AOI_ZOOM_EXP = 0.3;       // = ZOOM_CONFIG.exponent del cliente
+const AOI_SCALE_MIN = 0.05, AOI_SCALE_MAX = 2.0;   // = ZOOM_CONFIG min/maxScale
+const AOI_SCALE_LERP = 0.075;   // ≈ el lerp 0.05/frame del cliente (60fps), traducido a 40Hz
+const AOI_FULL_FRAC = 0.9;      // caja ≥90% del mapa en ambos ejes → full compartido
+// Caja rectangular con el aspect ratio (W/H) que el cliente manda en el join.
 // Clamp [0.5, 4.0]: protege de ratios absurdos (cliente trucado para ver más).
-function aoiBoxFor(p, aspect) {
+// Devuelve null si la caja cubre (casi) todo el mapa: el caller sirve entonces
+// el snapshot COMPLETO CACHEADO de la sala (una única serialización compartida)
+// en vez de construir y serializar uno idéntico por jugador.
+function aoiBoxFor(p, aspect, mapSize) {
     if (!p || p.cells.length === 0) return null;
-    let cx = 0, cy = 0, mtot = 0, maxR = 0;
     const cells = p.cells;
-    for (let i = 0; i < cells.length; i++) {
-        const c = cells[i];
-        const m = c.r * c.r;
-        cx += c.x * m; cy += c.y * m; mtot += m;
-        if (c.r > maxR) maxR = c.r;
-    }
-    cx /= mtot; cy /= mtot;
-    // Escala inversa al zoom base global: más zoom (más cerca) → el cliente ve menos
-    // área → el server manda una caja proporcionalmente menor. A baseZoom=REF, factor 1.
-    const view = (AOI_BASE + maxR * AOI_PER_R) * AOI_MARGIN * (AOI_ZOOM_REF / baseZoom);
+    let cx = 0, cy = 0, totR = 0;
+    for (let i = 0; i < cells.length; i++) { cx += cells[i].x; cy += cells[i].y; totR += cells[i].r; }
+    const n = cells.length;
+    cx /= n; cy /= n;   // la cámara del cliente centra en la media SIMPLE de las celdas
+    const effR = Math.max(10, totR / Math.pow(n, 0.4));
+    let target = baseZoom * Math.pow(10 / effR, AOI_ZOOM_EXP);
+    if (target < AOI_SCALE_MIN) target = AOI_SCALE_MIN; else if (target > AOI_SCALE_MAX) target = AOI_SCALE_MAX;
+    // Réplica del suavizado de cámara (el cliente arranca la cámara en 0.8).
+    if (p._aoiScale == null) p._aoiScale = 0.8;
+    p._aoiScale += (target - p._aoiScale) * AOI_SCALE_LERP;
+    const scaleSafe = Math.min(p._aoiScale, target);   // el más alejado = el que más mundo enseña
+    const halfY = (AOI_VIEW_HALF_H / scaleSafe) * AOI_MARGIN;
     let ar = aspect > 0 ? aspect : 1;
     if (ar > 4) ar = 4; else if (ar < 0.5) ar = 0.5;
-    // halfX × halfY mantienen el ÁREA equivalente al cuadrado (sqrt del ratio).
-    const sq = Math.sqrt(ar);
-    return { cx, cy, halfX: view * sq, halfY: view / sq };
+    const halfX = halfY * ar;
+    if (mapSize && halfX >= mapSize * AOI_FULL_FRAC && halfY >= mapSize * AOI_FULL_FRAC) return null;
+    return { cx, cy, halfX, halfY };
 }
 // ¿La circunferencia (x,y,r) intersecta la caja? (distancia al borde ≤ r).
 function intersectsBox(box, x, y, r) {

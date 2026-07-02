@@ -272,7 +272,12 @@ function tickRoomOnce(room, now, ctx) {
             if (!aoiOn) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
             const pj = room.sim.players.get(pid);
             if (!pj || !pj.alive || pj.cells.length === 0) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
-            const box = ctx.aoiBoxFor(pj, cli.aspect);
+            // box null = la caja cubriría (casi) todo el mapa → snapshot completo
+            // CACHEADO (una serialización para todos) en vez de uno idéntico por
+            // jugador. Es lo que hace barato el caso "jugador enorme" o "zoom
+            // global muy alejado" sin apagar el AOI para el resto.
+            const box = ctx.aoiBoxFor(pj, cli.aspect, room.sim.mapSize);
+            if (!box) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
             const snap = ctx.buildSnapshotFor(room, pid, box);
             if (events.length) snap.ev = events;
             cli.ws.send(cli.useBin ? ctx.proto.encodeSnap(snap) : JSON.stringify(snap));
