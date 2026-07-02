@@ -4,8 +4,25 @@
 #
 # Requisito: pillwars.fun debe apuntar (registro A) a la IP del VPS ANTES de
 # arrancar Caddy, porque Let's Encrypt valida el dominio por HTTP.
+#
+# Fase 4b (split multiproceso): el Director escucha en 8080 y forkea los hosts
+# en 8081, 8082, ... (PORT+1+id). Cada host se expone por prefijo de path:
+#   wss://pillwars.fun/h0/  →  localhost:8081   (host 0)
+#   wss://pillwars.fun/h1/  →  localhost:8082   (host 1)
+#   todo lo demás           →  localhost:8080   (Director: /match, dinero, APIs)
+# handle_path QUITA el prefijo /hN antes de reenviar (el host sirve en /).
+# Si subes PW_HOST_COUNT, añade aquí un bloque /hN/* por cada host nuevo.
+# En modo mono (sin PW_ROLE) los bloques /hN/* no reciben tráfico y no molestan.
 
 pillwars.fun, www.pillwars.fun {
 	encode zstd gzip
-	reverse_proxy localhost:8080
+	handle_path /h0/* {
+		reverse_proxy localhost:8081
+	}
+	handle_path /h1/* {
+		reverse_proxy localhost:8082
+	}
+	handle {
+		reverse_proxy localhost:8080
+	}
 }

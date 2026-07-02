@@ -2790,17 +2790,21 @@
         if (!paid) { _joinInFlight = false; setPlayBtnState(false); return; }   // sin saldo / sin firma → ya se avisó
         // Fase 4 (split multiproceso): preguntar al matchmaker (/match del Director)
         // qué host sirve este combo ANTES de abrir el WS de juego. En modo mono el
-        // server devuelve su PROPIO puerto → no se reescribe nada (flujo idéntico).
-        // Solo aplica en ws:// (local): en wss:// (web publicada) el enrutado por
-        // subdominio/puerto es la Fase 4b y de momento se conecta como siempre.
+        // server devuelve su PROPIO puerto y sin `path` → no se reescribe nada.
+        // En ws:// (local) se enruta por puerto; en wss:// (web publicada, Fase 4b)
+        // por prefijo de path: el proxy (Caddy) manda /hN/* al host N.
         // Cualquier fallo (server viejo sin /match, red) → URL de siempre.
         let gameUrl = url;
         try {
-            if (url.startsWith('ws://')) {
-                const u = new URL(url);
-                const mm = await fetch('http://' + u.host + '/match?mode=' + encodeURIComponent(mode) + '&price=' + encodeURIComponent(currentServer), { cache: 'no-store' });
-                const mj = await mm.json();
-                if (mj && mj.ok && mj.port && String(mj.port) !== (u.port || '80')) {
+            const u = new URL(url);
+            const isWss = url.startsWith('wss://');
+            const mm = await fetch((isWss ? 'https://' : 'http://') + u.host + '/match?mode=' + encodeURIComponent(mode) + '&price=' + encodeURIComponent(currentServer), { cache: 'no-store' });
+            const mj = await mm.json();
+            if (mj && mj.ok) {
+                if (isWss && mj.path) {
+                    gameUrl = 'wss://' + u.host + mj.path + '/';
+                    console.log('[match] combo ' + mode + '_' + currentServer + ' → host ' + gameUrl);
+                } else if (!isWss && mj.port && String(mj.port) !== (u.port || '80')) {
                     gameUrl = 'ws://' + u.hostname + ':' + mj.port;
                     console.log('[match] combo ' + mode + '_' + currentServer + ' → host ' + gameUrl);
                 }

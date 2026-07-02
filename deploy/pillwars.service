@@ -22,6 +22,11 @@ Environment=PORT=8080
 Environment=ADMIN_KEY=CAMBIA_ESTA_CLAVE_LARGA
 Environment=MIN_PLAYERS=5
 Environment=TARGET_POP=10
+# Fase 4b — split multiproceso: el Director (8080) forkea PW_HOST_COUNT hosts
+# (8081, 8082...) y reparte los combos entre ellos. Los hosts heredan este env.
+# Para volver al modo mono: comenta estas 2 líneas y `systemctl restart pillwars`.
+Environment=PW_ROLE=director
+Environment=PW_HOST_COUNT=2
 
 [Install]
 WantedBy=multi-user.target

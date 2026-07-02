@@ -148,6 +148,7 @@ function ownsCombo(mode, price) {
 // host muere, se reforkea tras 1s: sus combos quedan sin servicio ese intervalo
 // (/match responde 503 → el cliente reintenta) en vez de colgar al Director.
 const hostProcs = new Map();   // hostId → { id, port, child, ipc, alive }
+let _roomsCache = null;        // cache 1s del /api/rooms agregado (rol director, 4b)
 function hostPortOf(hostId) { return PORT + 1 + hostId; }
 let _shuttingDown = false;
 function spawnHost(hostId) {
@@ -1319,7 +1320,10 @@ const httpServer = http.createServer(async (req, res) => {
         if (PW_ROLE === 'director') {
             const h = hostProcs.get(hostId);
             if (!h || !h.alive) { res.end(JSON.stringify({ ok: false, reason: 'host no disponible, reintenta' })); return; }
-            res.end(JSON.stringify({ ok: true, host: 'localhost', port: h.port, hostId }));
+            // `path`: enrutado de producción (4b). Detrás del proxy (Caddy) cada host
+            // se sirve por prefijo de path (wss://dominio/hN/); en local el cliente
+            // usa el puerto directamente.
+            res.end(JSON.stringify({ ok: true, host: 'localhost', port: h.port, hostId, path: '/h' + hostId }));
         } else if (hostId === MY_HOST_ID) {
             // mono (o host dueño del combo): el WS de juego vive en este puerto
             res.end(JSON.stringify({ ok: true, host: 'localhost', port: PORT, hostId }));
@@ -1338,6 +1342,39 @@ const httpServer = http.createServer(async (req, res) => {
     }
     // --- Estado público de salas (para el "ORACLE" del menú del juego) ---
     if (urlPath === '/api/rooms') {
+        // Rol director (4b): las salas viven en los hosts → fan-out HTTP interno y
+        // merge por combo según el shard-map. Cache 1s (el menú de cada cliente
+        // hace polling; sin cache cada refresco serían N fetches a los hosts).
+        if (PW_ROLE === 'director') {
+            const nowD = Date.now();
+            if (!_roomsCache || nowD - _roomsCache.at > 1000) {
+                const perHost = new Map();
+                await Promise.all([...hostProcs.values()].map(async (h) => {
+                    if (!h.alive) return;
+                    try {
+                        const r = await fetch(`http://localhost:${h.port}/api/rooms`);
+                        perHost.set(h.id, await r.json());
+                    } catch (e) { /* host caído: sus combos salen 'offline' */ }
+                }));
+                const list = [];
+                for (const mode of CATALOG_MODES) for (const price of PRICES) {
+                    const ck = mode + '_' + price;
+                    const hj = perHost.get(SHARD.comboToHost.get(ck));
+                    const entry = hj && hj.rooms && hj.rooms.find(r => r.key === ck);
+                    list.push(entry || {
+                        key: ck, mode, room: price, priceUsd: priceOf(price),
+                        pillFee: entryFeePill(ck, null), locked: false, players: 0,
+                        needed: minRealOf(ck), cap: maxPlayersOf(ck) * LAYERS_PER_COMBO,
+                        state: 'offline', startIn: null, restartIn: null, endsIn: null,
+                        roomName: price, layers: [],
+                    });
+                }
+                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff), sfxVol, musicVol, enemyFx, baseZoom }) };
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(_roomsCache.body);
+            return;
+        }
         // Cada combo (mode×price) tiene N layers. Devolvemos UN entry por combo
         // con la info AGREGADA (la layer que el matchmaker elegiría = más llena
         // que cumpla condiciones; si ninguna cumple, la primera) + la lista de

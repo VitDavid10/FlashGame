@@ -1,11 +1,17 @@
 # Desplegar PillWars en un VPS (Hetzner + Ubuntu 24.04)
 
-Guía paso a paso. Arquitectura final:
+Guía paso a paso. Arquitectura final (Fase 4b, split multiproceso):
 
 ```
-Jugador ──HTTPS/wss──> Caddy (:443, certificado automático) ──> Node (localhost:8080)
-                                                                    sirve web + juego + admin + partidas
+Jugador ──HTTPS/wss──> Caddy (:443, certificado automático)
+                          ├── /h0/* ──> Host 0 (localhost:8081)  partidas de sus 5 combos
+                          ├── /h1/* ──> Host 1 (localhost:8082)  partidas de sus otros 5
+                          └── resto ──> Director (localhost:8080) web + /match + dinero + APIs
 ```
+
+El Director forkea los hosts al arrancar (`PW_ROLE=director`, `PW_HOST_COUNT=2`).
+El cliente pregunta a `/match` qué host sirve su combo y conecta a `wss://pillwars.fun/hN/`.
+Con 2 núcleos, cada host usa el suyo; el Director apenas gasta CPU.
 
 Todo bajo **pillwars.fun**, sin Cloudflare ni túnel. El dominio se apunta al VPS
 con un registro A en Porkbun.
@@ -92,7 +98,38 @@ con el juego, y el WebSocket irá por **wss://pillwars.fun** automáticamente
 
 ## 7. Panel de control
 
-`https://pillwars.fun/admin` — con la clave que pusiste en `ADMIN_KEY`.
+Con el split hay un panel por proceso (cada uno ve SUS salas):
+
+- `https://pillwars.fun/admin` — Director: dinero/warbank, stats globales, /match.
+  No tiene salas (viven en los hosts).
+- `https://pillwars.fun/h0/admin` — Host 0: sus 5 combos (salas, kick, forceStart, espectador).
+- `https://pillwars.fun/h1/admin` — Host 1: sus otros 5 combos.
+
+Misma clave `ADMIN_KEY` en los tres (los hosts la heredan del Director).
+
+## 8. Activar / desactivar el split (rollback a mono)
+
+El interruptor son 2 líneas de env en `/etc/systemd/system/pillwars.service`:
+
+```
+Environment=PW_ROLE=director
+Environment=PW_HOST_COUNT=2
+```
+
+- **Volver a mono**: coméntalas (`#` delante), `systemctl daemon-reload && systemctl restart pillwars`.
+  El Caddyfile no hace falta tocarlo (los bloques /hN/* simplemente no reciben tráfico)
+  y el cliente es compatible con ambos modos sin cambios.
+- **Verificar que el split está vivo** (desde el VPS):
+
+```bash
+curl -s 'http://localhost:8080/match?mode=arcade&price=5$'   # debe traer "path":"/h0" o "/h1"
+curl -s http://localhost:8081/api/health                     # host 0: "rooms":5
+curl -s http://localhost:8082/api/health                     # host 1: "rooms":5
+curl -s http://localhost:8080/api/rooms | head -c 300        # 10 combos agregados (menú ORACLE)
+```
+
+Y desde fuera: abre `https://pillwars.fun`, entra a una sala y en la consola del
+navegador debe salir `[match] combo ... → host wss://pillwars.fun/hN/`.
 
 ---
 
