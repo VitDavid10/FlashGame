@@ -220,10 +220,17 @@ const resumeTokens = new Map();   // token → { roomKey: layerKey, playerId }
 
 // %CPU del propio servidor, muestreado cada segundo (expuesto en admin/health).
 let serverCpuPct = 0; let _cpuLast = process.cpuUsage(); let _cpuLastT = Date.now();
+// Egress WS del proceso: cada socket suma sus bytes salientes en _netBytes (ver
+// el wrap de ws.send en la conexión); aquí se muestrea a KB/s en ventanas de 1s.
+// Alimenta la tarjeta de monitorización del panel Rendimiento (por HOST, no por sala).
+let _netBytes = 0;
+let netKBs = 0;
 setInterval(() => {
     const u = process.cpuUsage(_cpuLast); const dt = Date.now() - _cpuLastT;
     _cpuLast = process.cpuUsage(); _cpuLastT = Date.now();
     serverCpuPct = dt > 0 ? Math.round((u.user + u.system) / 1000 / dt * 100) : 0;
+    netKBs = Math.round(_netBytes / 1024);
+    _netBytes = 0;
 }, 1000);
 const adminFails = new Map();     // ip → { c: intentos, until: timestamp bloqueo }
 const specTokens = new Map();     // token → expira_en (timestamp ms)
@@ -866,6 +873,10 @@ function buildRoomsSummary() {
     }
     return {
         hostId: PW_HOST_ID, salasOnline, jugadores, jugadoresReales, rooms: list, cpu: serverCpuPct,
+        // Monitorización (panel Rendimiento): coste del tick, egress y RAM de ESTE
+        // proceso. tick/lag salen del ring buffer tickHist (últimos ~6s a 40Hz).
+        tick: pStats(tickHist.total, tickHist.n), lag: pStats(tickHist.lag, tickHist.n),
+        netKBs, rssMB: Math.round(process.memoryUsage().rss / 1048576),
         perf: { snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY), aoiEnabled: AOI_ENABLED, layerOff: Object.assign({}, layerOff) },
     };
 }
@@ -1099,6 +1110,9 @@ function buildAdminState() {
         arcadeRestartMs, arcadeLobbyMs,
         sfxVol, musicVol, enemyFx, baseZoom,
         serverCpu: serverCpuPct,
+        // Monitorización del PROPIO proceso (la tarjeta del Director en el panel).
+        tick: pStats(tickHist.total, tickHist.n), lag: pStats(tickHist.lag, tickHist.n),
+        netKBs, rssMB: Math.round(process.memoryUsage().rss / 1048576),
         totales: {
             entradas: totEntradas, muertes: totMuertes, dinero: totDinero,
             entradasReal: totEntradasReal, muertesReal: totMuertesReal, dineroReal: totDineroReal,
@@ -1568,6 +1582,14 @@ const httpServer = http.createServer(async (req, res) => {
 const wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws, req) => {
+    // Contador de egress (panel Rendimiento): se envuelve el send UNA vez por
+    // socket y cuenta TODO lo que sale (snaps, events, welcome, lb, admin...).
+    // Un solo punto de medida en vez de tocar cada send del room-loop.
+    const _rawSend = ws.send;
+    ws.send = function (data, opts, cb) {
+        _netBytes += typeof data === 'string' ? Buffer.byteLength(data) : ((data && data.length) || 0);
+        return _rawSend.call(this, data, opts, cb);
+    };
     let room = null, playerId = null, spectatorRoom = null;
     let joinPending = false;   // join en vuelo (authorizeEntry es async): bloquea joins dobles
     let rlWindow = 0, rlCount = 0;   // rate-limit: ventana (segundo) y mensajes en ella
