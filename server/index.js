@@ -30,6 +30,7 @@ const fs = require('fs');
 const path = require('path');
 const { performance } = require('perf_hooks');
 const { Worker } = require('worker_threads');
+const { fork } = require('child_process');
 const { WebSocketServer } = require('ws');
 const PillSim = require('../shared/sim.js');
 const proto = require('../shared/proto.js');     // protocolo binario para snaps (opt-in)
@@ -39,6 +40,7 @@ const skinpoints = require('./skinpoints.js');     // puntos de skin por clientI
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
 const { buildShardMap } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
+const { createIpc } = require('./cluster/ipc.js');             // request/response sobre fork (Fase 4)
 
 // --- Rol del proceso (Fase 4 split multiproceso) ---
 // 'mono'     : un solo proceso hace TODO (comportamiento clásico, por defecto).
@@ -132,6 +134,43 @@ const SHARD = buildShardMap(CATALOG_MODES, PRICES, PW_ROLE === 'mono' ? 1 : PW_H
 const MY_HOST_ID = PW_ROLE === 'mono' ? 0 : PW_HOST_ID;
 function ownsCombo(mode, price) {
     return SHARD.comboToHost.get(mode + '_' + price) === MY_HOST_ID;
+}
+
+// --- Rol 'director': forkea los N hosts (un binario, dos roles) ---
+// Cada host es este MISMO index.js con PW_ROLE=host y su propio puerto de escucha
+// (PORT+1+id). El canal IPC de fork() queda listo para el dinero (4a.4.3). Si un
+// host muere, se reforkea tras 1s: sus combos quedan sin servicio ese intervalo
+// (/match responde 503 → el cliente reintenta) en vez de colgar al Director.
+const hostProcs = new Map();   // hostId → { id, port, child, ipc, alive }
+function hostPortOf(hostId) { return PORT + 1 + hostId; }
+let _shuttingDown = false;
+function spawnHost(hostId) {
+    const port = hostPortOf(hostId);
+    const child = fork(__filename, [], {
+        env: Object.assign({}, process.env, {
+            PW_ROLE: 'host',
+            PW_HOST_ID: String(hostId),
+            PW_HOST_COUNT: String(PW_HOST_COUNT),
+            PORT: String(port),
+        }),
+    });
+    const ipc = createIpc(child, { label: `director→host${hostId}` });
+    const entry = { id: hostId, port, child, ipc, alive: true };
+    hostProcs.set(hostId, entry);
+    registerHostHandlers(entry);
+    child.on('exit', (code, signal) => {
+        entry.alive = false;
+        ipc.failAll(`host ${hostId} murió (code=${code} signal=${signal})`);
+        if (_shuttingDown) return;
+        log(`Host ${hostId} (puerto ${port}) murió (code=${code}) — refork en 1s`);
+        setTimeout(() => { if (!_shuttingDown && hostProcs.get(hostId) === entry) spawnHost(hostId); }, 1000);
+    });
+    log(`Host ${hostId} forkeado → puerto ${port} (combos: ${SHARD.hostToCombos.get(hostId).join(', ')})`);
+    return entry;
+}
+function killHosts() {
+    _shuttingDown = true;
+    for (const h of hostProcs.values()) { try { h.child.kill(); } catch (e) {} }
 }
 // Tope de jugadores reales por sala, por modo. Se fija en el arranque para TODAS
 // las salas del catálogo (enforceRoomCaps), así queda en código y llega al VPS por
@@ -822,6 +861,13 @@ const econ = {
     questSkills(cid, matchSkillUses) { const q = questsOf(cid); if (matchSkillUses > (q.q3_skills_in_arcade | 0)) { q.q3_skills_in_arcade = Math.min(8, matchSkillUses); q.updated = Date.now(); questsDirty = true; } },
 };
 
+// Handlers IPC que el Director registra por cada host forkeado. En 4a.4.2 el
+// canal existe pero aún no viaja dinero por él (cada host ejecuta la lógica
+// local heredada del modo mono); en 4a.4.3 aquí se registran authorizeEntry,
+// onPlayerLeave, checkKick, recordEntry y todos los econ.* contra el estado
+// real del Director (warbank, stats, quests).
+function registerHostHandlers(hostEntry) { /* se rellena en 4a.4.3 */ }
+
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
 // Se crea aquí, una vez definidas todas sus dependencias (rooms, reglas del
 // catálogo, spawnWorker…). Los nombres se desestructuran para que los call sites
@@ -1179,6 +1225,29 @@ const httpServer = http.createServer(async (req, res) => {
                 total: pStats(tickHist.total, tickHist.n),
             },
         }));
+        return;
+    }
+    // --- Matchmaking del split multiproceso (Fase 4): ¿qué host sirve este combo? ---
+    // El cliente pregunta aquí ANTES de abrir el WS de juego. En 'director' se
+    // devuelve el puerto del host hijo dueño del combo (503 si está caído → el
+    // cliente reintenta; fail-closed, nunca se enruta a un host muerto). En 'mono'
+    // este mismo proceso sirve todos los combos → devuelve su propio puerto.
+    if (urlPath === '/match') {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        const mode = String(query.get('mode') || '');
+        const price = String(query.get('price') || '');
+        const hostId = SHARD.comboToHost.get(mode + '_' + price);
+        if (hostId == null) { res.end(JSON.stringify({ ok: false, reason: 'combo desconocido' })); return; }
+        if (PW_ROLE === 'director') {
+            const h = hostProcs.get(hostId);
+            if (!h || !h.alive) { res.end(JSON.stringify({ ok: false, reason: 'host no disponible, reintenta' })); return; }
+            res.end(JSON.stringify({ ok: true, host: 'localhost', port: h.port, hostId }));
+        } else if (hostId === MY_HOST_ID) {
+            // mono (o host dueño del combo): el WS de juego vive en este puerto
+            res.end(JSON.stringify({ ok: true, host: 'localhost', port: PORT, hostId }));
+        } else {
+            res.end(JSON.stringify({ ok: false, reason: 'combo de otro host, pregunta al director' }));
+        }
         return;
     }
     // --- Daily quests: 4 retos del día + progreso del clientId + saldo skin points ---
@@ -1864,10 +1933,18 @@ function enforceRoomCaps() {
 }
 enforceRoomCaps();
 
-initLayers();   // pre-crea las 20 salas (LAYERS_PER_COMBO × 2 modos × 5 precios)
+if (PW_ROLE === 'director') {
+    // El Director NO corre salas propias: forkea los N hosts (cada uno pre-crea
+    // sus combos del shard-map) y se queda con HTTP/admin/dinero + /match.
+    // Su tick de salas corre sobre un Map vacío (inofensivo).
+    for (let i = 0; i < PW_HOST_COUNT; i++) spawnHost(i);
+    process.on('exit', killHosts);
+} else {
+    initLayers();   // pre-crea las salas L1 de los combos propios (10 en mono)
+}
 
 httpServer.listen(PORT, () => {
-    log(`Servidor PillWars escuchando en ws://localhost:${PORT}`);
+    log(`Servidor PillWars [${PW_ROLE}${PW_ROLE === 'host' ? ' ' + PW_HOST_ID + '/' + PW_HOST_COUNT : ''}] escuchando en ws://localhost:${PORT}`);
     // Solo mostramos la clave si es la insegura por defecto (avisamos) — en producción NUNCA se loguea
     if (ADMIN_KEY === '1234') log(`⚠ [SEGURIDAD] ADMIN_KEY no definida — usando '1234' por defecto. Define ADMIN_KEY en producción.`);
     else log(`Panel de admin: http://localhost:${PORT}/admin  (clave definida en ADMIN_KEY, ${ADMIN_KEY.length} chars)`);
