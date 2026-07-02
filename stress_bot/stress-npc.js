@@ -69,12 +69,31 @@ ROOMS.forEach(r => stats.porSala[r.mode + '_' + r.room] = 0);
 function randColor() { return '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0'); }
 function avgLatency() { return stats.latencies.length ? Math.round(stats.latencies.reduce((a, b) => a + b, 0) / stats.latencies.length) : 0; }
 
-function spawnBot(i) {
+// Fase 4b (split multiproceso): si SERVER apunta a un Director, cada combo vive
+// en un host distinto — hay que preguntar a /match qué host sirve ESTE combo
+// antes de conectar, igual que hace el cliente real (game/index.html). En mono
+// /match devuelve el mismo SERVER (sin port/path que reescribir) → sin cambios.
+async function resolveTarget(mode, room) {
+  try {
+    const u = new URL(SERVER);
+    const isWss = u.protocol === 'wss:';
+    const mm = await fetch(`${isWss ? 'https:' : 'http:'}//${u.host}/match?mode=${encodeURIComponent(mode)}&price=${encodeURIComponent(room)}`);
+    const mj = await mm.json();
+    if (mj && mj.ok) {
+      if (isWss && mj.path) return `wss://${u.host}${mj.path}/`;
+      if (!isWss && mj.port && String(mj.port) !== (u.port || '80')) return `ws://${u.hostname}:${mj.port}`;
+    }
+  } catch (e) { /* server viejo sin /match, o red: usar SERVER tal cual (compat mono) */ }
+  return SERVER;
+}
+
+async function spawnBot(i) {
   const dest = ROOMS[i % ROOMS.length];   // reparto equitativo entre todas las salas
   const salaKey = dest.mode + '_' + dest.room;
 
+  const target = await resolveTarget(dest.mode, dest.room);
   let ws;
-  try { ws = new WebSocket(SERVER); } catch { stats.errors++; return; }
+  try { ws = new WebSocket(target); } catch { stats.errors++; return; }
 
   let inputTimer = null, pingTimer = null, lifeTimer = null;
   let mapSize = 4000;            // se actualiza con el welcome del servidor
