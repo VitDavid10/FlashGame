@@ -988,8 +988,43 @@ function buildRoomEntityGrids(room) {
     return room._entGrids;
 }
 
+// Payloads memoizados POR TICK: el objeto serializable de una entidad es
+// idéntico para todos los viewers del mismo tick (nada depende del viewer),
+// así que se construye UNA vez y se comparte — encodeSnap/JSON.stringify solo
+// leen. Sin esto, con AOI cada entidad visible se re-alocaba una vez por
+// viewer (~25× allocations/tick por sala: presión de GC, no de red).
+// Stamp con room.tickCount: monotónico y nunca se resetea (ver _entGrids).
+function cellDataT(c, tick) {
+    if (c._sdT === tick) return c._sd;
+    c._sdT = tick;
+    return (c._sd = cellData(c));
+}
+function botDataT(c, tick) {
+    if (c._sdT === tick) return c._sd;
+    const o = cellData(c);
+    o.id = c.id; o.n = c.name;
+    c._sdT = tick;
+    return (c._sd = o);
+}
+function virusDataT(v, tick) {
+    if (v._sdT === tick) return v._sd;
+    v._sdT = tick;
+    return (v._sd = { ci: v.ci, x: round1(v.x), y: round1(v.y), r: round1(v.r), d: v.damaged ? 1 : 0, a: round1(v.animTime) });
+}
+function ejectedDataT(m, tick) {
+    if (m._sdT === tick) return m._sd;
+    m._sdT = tick;
+    return (m._sd = { ci: m.ci, x: round1(m.x), y: round1(m.y), r: m.r, c1: m.c1, c2: m.c2, a: round1(m.angle || 0) });
+}
+function projDataT(pr, tick) {
+    if (pr._sdT === tick) return pr._sd;
+    pr._sdT = tick;
+    return (pr._sd = { ci: pr.ci, x: round1(pr.x), y: round1(pr.y), r: pr.r });
+}
+
 function buildSnapshotFor(room, viewerId, box) {
     const sim = room.sim;
+    const tick = room.tickCount;
     const players = [];
     for (const p of sim.players.values()) {
         const isMe = p.id === viewerId;
@@ -999,25 +1034,36 @@ function buildSnapshotFor(room, viewerId, box) {
         if (box && !isMe) {
             for (let i = 0; i < srcCells.length; i++) {
                 const c = srcCells[i];
-                if (intersectsBox(box, c.x, c.y, c.r)) outCells.push(cellData(c));
+                if (intersectsBox(box, c.x, c.y, c.r)) outCells.push(cellDataT(c, tick));
             }
+            // AOI: jugador sin NINGUNA celda visible → no mandar ni su metadata
+            // (id/nombre/slots). El cliente solo usa las entradas ajenas para
+            // pintar celdas, y muertes/kills viajan por eventos. Con 25 players
+            // por sala la metadata era el grueso FIJO de cada frame AOI (~70B
+            // × players × 40Hz × viewers), y además filtraba ids/nombres de
+            // fuera de la vista (maphack parcial).
+            if (outCells.length === 0) continue;
         } else {
-            for (let i = 0; i < srcCells.length; i++) outCells.push(cellData(srcCells[i]));
+            for (let i = 0; i < srcCells.length; i++) outCells.push(cellDataT(srcCells[i], tick));
         }
-        // slots: array preasignado (longitud constante por jugador), evita map().
-        const srcSlots = p.skillSlots;
-        const slotsOut = new Array(srcSlots.length);
-        for (let i = 0; i < srcSlots.length; i++) {
-            const s = srcSlots[i];
-            slotsOut[i] = s ? { id: s.id, u: s.uses } : 0;
+        // slots/ss memoizados por tick (idénticos para todos los viewers).
+        if (p._metaT !== tick) {
+            // slots: array preasignado (longitud constante por jugador), evita map().
+            const srcSlots = p.skillSlots;
+            const slotsOut = new Array(srcSlots.length);
+            for (let i = 0; i < srcSlots.length; i++) {
+                const s = srcSlots[i];
+                slotsOut[i] = s ? { id: s.id, u: s.uses } : 0;
+            }
+            // skillState: solo claves con valor > 0 (objeto plano sin alloc extra).
+            const ss = {};
+            const st = p.skillState;
+            for (let i = 1; i <= 8; i++) { if (st[i] > 0) ss[i] = Math.round(st[i]); }
+            p._metaT = tick; p._metaSlots = slotsOut; p._metaSs = ss;
         }
-        // skillState: solo claves con valor > 0 (objeto plano sin alloc extra).
-        const ss = {};
-        const st = p.skillState;
-        for (let i = 1; i <= 8; i++) { if (st[i] > 0) ss[i] = Math.round(st[i]); }
         players.push({
             id: p.id, name: p.name, ks: p.killStreak, alive: p.alive, gcd: Math.round(p.globalCD),
-            slots: slotsOut, ss, cells: outCells
+            slots: p._metaSlots, ss: p._metaSs, cells: outCells
         });
     }
     // Con caja: consulta el grid del tick (solo lo cercano) en vez del array
@@ -1031,30 +1077,25 @@ function buildSnapshotFor(room, viewerId, box) {
     const enemies = grids ? grids.enemyGrid.query(box.cx, box.cy, qr) : sim.enemies;
     for (let i = 0; i < enemies.length; i++) {
         const c = enemies[i];
-        if (!box || intersectsBox(box, c.x, c.y, c.r)) {
-            // En vez de Object.assign(cellData(c), {...}), construimos directo.
-            const o = cellData(c);
-            o.id = c.id; o.n = c.name;
-            bots.push(o);
-        }
+        if (!box || intersectsBox(box, c.x, c.y, c.r)) bots.push(botDataT(c, tick));
     }
     const viruses = [];
     const vs = grids ? grids.virusGrid.query(box.cx, box.cy, qr) : sim.viruses;
     for (let i = 0; i < vs.length; i++) {
         const v = vs[i];
-        if (!box || intersectsBox(box, v.x, v.y, v.r)) viruses.push({ ci: v.ci, x: round1(v.x), y: round1(v.y), r: round1(v.r), d: v.damaged ? 1 : 0, a: round1(v.animTime) });
+        if (!box || intersectsBox(box, v.x, v.y, v.r)) viruses.push(virusDataT(v, tick));
     }
     const ejected = [];
     const em = grids ? grids.ejectedGrid.query(box.cx, box.cy, qr) : sim.ejectedMasses;
     for (let i = 0; i < em.length; i++) {
         const m = em[i];
-        if (!box || intersectsBox(box, m.x, m.y, m.r)) ejected.push({ ci: m.ci, x: round1(m.x), y: round1(m.y), r: m.r, c1: m.c1, c2: m.c2, a: round1(m.angle || 0) });
+        if (!box || intersectsBox(box, m.x, m.y, m.r)) ejected.push(ejectedDataT(m, tick));
     }
     const projectiles = [];
     const pj = grids ? grids.projGrid.query(box.cx, box.cy, qr) : sim.projectiles;
     for (let i = 0; i < pj.length; i++) {
         const pr = pj[i];
-        if (!box || intersectsBox(box, pr.x, pr.y, pr.r)) projectiles.push({ ci: pr.ci, x: round1(pr.x), y: round1(pr.y), r: pr.r });
+        if (!box || intersectsBox(box, pr.x, pr.y, pr.r)) projectiles.push(projDataT(pr, tick));
     }
     return {
         t: 'snap',

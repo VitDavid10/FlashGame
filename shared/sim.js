@@ -852,7 +852,19 @@
                     this.foods.pop();
                     this.spawnFood();
                     // Diff replicable en cliente: f[i]=f[último]; f.pop(); f.push(food)
-                    if (this.config.emitFoodEvents) this.emit({ type: 'foodRespawn', index: i, food: this.foods[this.foods.length - 1] });
+                    // Copia compacta con floats redondeados: el objeto del pool lleva
+                    // doubles de 17 dígitos (x/y/angle/spikes de Math.random()) que en
+                    // JSON pesan ~250-300B por evento; broadcast a TODA la sala (el diff
+                    // es posicional, no se puede filtrar por AOI). Redondeado queda en
+                    // ~⅓ del tamaño y la diferencia (0.01px / 0.01rad) es invisible.
+                    if (this.config.emitFoodEvents) {
+                        const nf = this.foods[this.foods.length - 1];
+                        const r2 = v => Math.round(v * 100) / 100;
+                        this.emit({ type: 'foodRespawn', index: i, food: {
+                            x: r2(nf.x), y: r2(nf.y), r: r2(nf.r), c1: nf.c1, c2: nf.c2,
+                            angle: r2(nf.angle), spikes: nf.spikes.map(r2)
+                        } });
+                    }
                 }
             }
 

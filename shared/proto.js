@@ -41,6 +41,12 @@ const VER = 3;
 const FLAG_SKIN = 1, FLAG_IM = 2, FLAG_SP = 4, FLAG_MG = 8, FLAG_TP = 16;
 const FLAG_ALIVE = 1;
 
+// Instancias compartidas: crear un TextEncoder/TextDecoder POR string (como
+// antes) aloca cientos de miles de objetos/s con AOI (un encode por id/nombre
+// por viewer por tick). Son stateless: una instancia a nivel de módulo basta.
+const _TE = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
+const _TD = (typeof TextDecoder !== 'undefined') ? new TextDecoder('utf-8') : null;
+
 // Buffer escritor que crece on-demand. WebSocket acepta Uint8Array.
 class Writer {
     constructor(initial = 4096) {
@@ -67,7 +73,7 @@ class Writer {
         // Truncamos a 255 bytes (utf8). El servidor ya limita name a 16; para
         // ids/UUIDs basta ASCII y son 36 bytes; skinUrl es data: largo.
         let bytes;
-        if (typeof TextEncoder !== 'undefined') bytes = new TextEncoder().encode(s);
+        if (_TE) bytes = _TE.encode(s);
         else { bytes = []; for (let i = 0; i < s.length; i++) bytes.push(s.charCodeAt(i) & 0xff); bytes = Uint8Array.from(bytes); }
         let len = bytes.length;
         if (len > 65535) { bytes = bytes.subarray(0, 65535); len = 65535; }
@@ -95,7 +101,7 @@ class Reader {
         const len = this.u16();
         const bytes = this.buf.subarray(this.pos, this.pos + len);
         this.pos += len;
-        if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(bytes);
+        if (_TD) return _TD.decode(bytes);
         let s = ''; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return s;
     }
 }
@@ -220,7 +226,9 @@ function encodeSnap(snap) {
         w.u8(Math.max(0, Math.min(255, Math.round(pr.r))));
     }
     // Eventos fusionados: evita un 2º ws.send por tick cuando hay kills/muertes.
-    w.str((snap.ev && snap.ev.length) ? JSON.stringify(snap.ev) : '');
+    // snap.evs = los mismos eventos ya stringificados UNA vez por sala/tick (son
+    // idénticos para todos los viewers; sin esto se re-stringificaban por viewer).
+    w.str(typeof snap.evs === 'string' ? snap.evs : ((snap.ev && snap.ev.length) ? JSON.stringify(snap.ev) : ''));
     return w.out();
 }
 

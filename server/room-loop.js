@@ -257,6 +257,10 @@ function tickRoomOnce(room, now, ctx) {
     const ensureFullSnap = () => { if (!fullSnap) { fullSnap = ctx.buildSnapshotFor(room, null, null); if (events.length) fullSnap.ev = events; } return fullSnap; };
     const ensureFullJson = () => fullJson || (fullJson = JSON.stringify(ensureFullSnap()));
     const ensureFullBin  = () => fullBin  || (fullBin  = ctx.proto.encodeSnap(ensureFullSnap()));
+    // Eventos pre-stringificados UNA vez por tick para los snaps AOI binarios:
+    // son idénticos para todos los viewers; sin esto encodeSnap re-stringificaba
+    // el mismo array una vez por viewer.
+    const evStr = events.length ? JSON.stringify(events) : '';
     const _t2 = performance.now();
     snapMs += _t2 - _t1;
     if (eventsJson || doSnap) {
@@ -279,7 +283,8 @@ function tickRoomOnce(room, now, ctx) {
             const box = ctx.aoiBoxFor(pj, cli.aspect, room.sim.mapSize);
             if (!box) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
             const snap = ctx.buildSnapshotFor(room, pid, box);
-            if (events.length) snap.ev = events;
+            // Binario: pasar el string ya hecho (snap.evs); JSON: el array (snap.ev).
+            if (events.length) { if (cli.useBin) snap.evs = evStr; else snap.ev = events; }
             cli.ws.send(cli.useBin ? ctx.proto.encodeSnap(snap) : JSON.stringify(snap));
         }
         if (room.spectators.size) {
