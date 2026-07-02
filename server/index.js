@@ -1112,10 +1112,10 @@ function buildRoomsSummary() {
         if (r.clients.size > 0) salasOnline++;
         jugadores += r.clients.size;
         for (const cli of r.clients.values()) if (!cli.isTester) jugadoresReales++;
-        list.push({ key: r.key, comboKey: r.comboKey, mode: r.mode, roomName: r.roomName, layerIdx: r.layerIdx, state: r.state, conectados: r.clients.size });
+        list.push({ key: r.key, comboKey: r.comboKey, mode: r.mode, roomName: r.roomName, layerIdx: r.layerIdx, state: r.state, conectados: r.clients.size, maxReales: maxPlayersOf(r.comboKey) });
     }
     return {
-        hostId: PW_HOST_ID, salasOnline, jugadores, jugadoresReales, rooms: list,
+        hostId: PW_HOST_ID, salasOnline, jugadores, jugadoresReales, rooms: list, cpu: serverCpuPct,
         perf: { snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY), aoiEnabled: AOI_ENABLED, layerOff: Object.assign({}, layerOff), useWorkers },
     };
 }

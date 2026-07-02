@@ -269,11 +269,16 @@
                 <span id="restartServidorSep" style="color:#333; margin:0 4px;">|</span>
                 <button id="restartServidorBtn" class="b rojo mini" style="background:#3a0000; border-color:#660000;" onclick="restartServidor()" title="Reinicia el proceso Node (pm2/systemd lo relanza)">⚠ Restart Servidor</button>
             </div>
-            <!-- Director (Fase 4b): las salas viven en los hosts, aquí solo hay 2 accesos -->
-            <div id="hostCardsView" style="display:none"></div>
+            <!-- Director (Fase 4b): las salas viven en los hosts. Lista visual de
+                 todas (nombre + ocupación) + accesos rápidos a cada panel de host. -->
+            <div id="hostCardsWrap" style="display:none">
+                <div id="hostLinksBar" style="display:flex;gap:8px;margin-bottom:16px"></div>
+                <div class="usage" id="hostCardsView" style="padding:18px 20px"></div>
+            </div>
             <div id="roomsView">
                 <div class="modetabs">
-                    <button id="modeBtn_classic" class="modetab act" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
+                    <button id="modeBtn_all" class="modetab act" onclick="verModo('all')">Todas <span id="cntAll" class="cnt cero">(0)</span></button>
+                    <button id="modeBtn_classic" class="modetab" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
                     <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
                     <button id="modeBtn_free" class="modetab" onclick="verModo('free')">Free <span id="cntFree" class="cnt cero">(0)</span></button>
                 </div>
@@ -282,7 +287,8 @@
                     <button id="layerBtn_1" class="modetab act" style="font-size:12px;padding:4px 10px;" onclick="verLayer(1)">L1 <span id="cntLayer1" class="cnt cero">(0)</span></button>
                     <button id="layerBtn_2" class="modetab" style="font-size:12px;padding:4px 10px;" onclick="verLayer(2)">L2 <span id="cntLayer2" class="cnt cero">(0)</span></button>
                 </div>
-                <div class="grid" id="gridClassic"></div>
+                <div class="grid" id="gridAll"></div>
+                <div class="grid" id="gridClassic" style="display:none"></div>
                 <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
                     <div style="color:#4d9bff; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">⚙ Arcade Mode — Global Parameters</div>
                     <div style="display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap;">
@@ -322,10 +328,6 @@
         </div>
 
         <div id="tab_actividad" style="display:none">
-            <!-- Director (Fase 4b): lo primero y principal es cuántos hay conectados
-                 en cada sala, agregado de los hosts. En mono/host no aplica (vacío). -->
-            <div id="connByRoomBox"></div>
-
             <h2 class="section">Salud del servidor</h2>
             <div class="usage" id="healthBox" style="padding:18px 20px;font-family:'Inter',sans-serif;font-size:13px">Cargando…</div>
 
@@ -514,14 +516,16 @@ function verTab(t) {
     }
 }
 
-let modoActivo = 'classic';
+let modoActivo = 'all';   // vista por defecto: todas las salas juntas
 let layerActivo = 1;
 function verModo(m) {
     modoActivo = m;
-    document.getElementById('gridClassic').style.display = (m === 'classic') ? '' : 'none';
-    document.getElementById('gridArcade').style.display = (m === 'arcade') ? '' : 'none';
-    document.getElementById('gridFree').style.display = (m === 'free') ? '' : 'none';
+    document.getElementById('gridAll').style.display     = (m === 'all') ? '' : 'none';
+    document.getElementById('gridClassic').style.display  = (m === 'classic') ? '' : 'none';
+    document.getElementById('gridArcade').style.display   = (m === 'arcade') ? '' : 'none';
+    document.getElementById('gridFree').style.display     = (m === 'free') ? '' : 'none';
     document.getElementById('arcadeGlobalPanel').style.display = (m === 'arcade') ? '' : 'none';
+    document.getElementById('modeBtn_all').classList.toggle('act', m === 'all');
     document.getElementById('modeBtn_classic').classList.toggle('act', m === 'classic');
     document.getElementById('modeBtn_arcade').classList.toggle('act', m === 'arcade');
     document.getElementById('modeBtn_free').classList.toggle('act', m === 'free');
@@ -798,43 +802,42 @@ function aplicarGlobal() {
 
 // --- Fase 4b: panel /admin del Director — 2 tarjetas de host, conectados por
 // sala agregados y control de "Rendimiento" con override independiente por host.
+// Fase 4b: la pestaña Salas del Director ya no muestra 2 tarjetas de host —
+// es una lista visual de TODAS las salas (de los 2 hosts juntas), una detrás
+// de otra, solo con el nombre y cuántos hay dentro (nada técnico como puertos).
+// Orden estable de catálogo (no por ocupación) para que no salte al refrescar.
 function renderHostCards(m) {
-    const cont = document.getElementById('hostCardsView');
     const hosts = m.hosts || [];
-    cont.innerHTML = '<div class="grid">' + hosts.map(h => `
-        <a href="/h${h.hostId}/admin" class="room ${h.alive ? 's-playing' : 's-ended'}" style="text-decoration:none;display:block">
-            <div class="room-head">
-                <div class="room-name russo">HOST ${h.hostId}</div>
-                <span class="state ${h.alive ? 'st-playing' : 'st-offline'}"><span class="d"></span>${h.alive ? 'VIVO' : 'CAÍDO'}</span>
-            </div>
-            <div class="room-body">
-                <div class="statline">
-                    <span class="it" style="color:#00ff88">${IC.room} ${h.salasOnline} salas con gente</span>
-                    <span class="it">${IC.users} ${h.jugadores} conectados</span>
-                </div>
-                <div class="hint">puerto ${h.port} · abre el panel de sus salas</div>
-            </div>
-        </a>`).join('') + '</div>';
-}
-function renderConnByRoom(m) {
-    const box = document.getElementById('connByRoomBox');
+    const links = document.getElementById('hostLinksBar');
+    if (links) links.innerHTML = hosts.map(h => `<a class="b mini" href="/h${h.hostId}/admin" style="text-decoration:none">Abrir Host ${h.hostId}${h.alive ? '' : ' (caído)'}</a>`).join('');
     const rows = [];
-    for (const h of (m.hosts || [])) for (const r of (h.rooms || [])) if (r.conectados > 0) rows.push(Object.assign({ hostId: h.hostId }, r));
-    rows.sort((a, b) => b.conectados - a.conectados);
-    box.innerHTML = '<h2 class="section">Conectados por sala</h2>' + (rows.length
-        ? '<table class="rank"><thead><tr><th>Sala</th><th>Modo</th><th>Host</th><th>Estado</th><th>Conectados</th></tr></thead><tbody>' +
-            rows.map(r => `<tr><td><b style="color:#fff">${esc(r.roomName)}</b> <span style="color:#666">L${r.layerIdx || 1}</span></td><td>${esc(r.mode)}</td><td>Host ${r.hostId}</td><td>${esc(r.state)}</td><td class="kills">${r.conectados}</td></tr>`).join('') +
-            '</tbody></table>'
-        : '<div class="usage vacio">Ninguna sala con jugadores ahora mismo.</div>');
+    for (const h of hosts) for (const r of (h.rooms || [])) rows.push(r);
+    const cont = document.getElementById('hostCardsView');
+    cont.innerHTML = rows.length ? rows.map(r => {
+        const pct = r.maxReales ? Math.min(100, Math.round(r.conectados / r.maxReales * 100)) : 0;
+        return `<div class="urow">
+            <span class="nm russo">${esc(r.roomName)} <span>${r.mode.toUpperCase()} L${r.layerIdx || 1}</span></span>
+            <div class="ubar"><i style="width:${Math.max(r.conectados > 0 ? 4 : 0, pct)}%"></i></div>
+            <span class="val">${r.conectados}${r.maxReales ? '/' + r.maxReales : ''} jugadores</span>
+        </div>`;
+    }).join('') : '<div class="usage vacio">Los hosts todavía no han reportado sus salas.</div>';
 }
+function cpuColor(pct) { return pct > 80 ? '#ff6b6b' : pct > 50 ? '#ffce3d' : '#00ff88'; }
+function cpuBar(pct) { const c = cpuColor(pct); return `<div class="ubar" style="flex:1;max-width:220px"><i style="width:${Math.min(100, pct)}%;background:${c}"></i></div><span style="color:${c};font-size:12px;min-width:36px;text-align:right">${pct}%</span>`; }
 function renderPerfHosts(m) {
     const cont = document.getElementById('perfHosts');
     const hosts = m.hosts || [];
-    cont.innerHTML = hosts.map(h => {
+    const dirCpu = m.serverCpu || 0;
+    let html = `<div class="usage" style="padding:14px 20px;margin-bottom:14px;display:flex;align-items:center;gap:14px">
+        <span class="nm russo" style="color:#aaa;font-size:12px">DIRECTOR (sin salas propias)</span>${cpuBar(dirCpu)}
+    </div>`;
+    html += hosts.map(h => {
         const p = h.perf || { snapshotHz: 40, aoiEnabled: true, layerOff: {} };
         const off2 = !!(p.layerOff && p.layerOff[2]);
         return `<div class="usage" style="padding:16px 20px;margin-bottom:14px">
-            <div class="nm russo" style="color:var(--primary);font-size:13px;margin-bottom:10px">HOST ${h.hostId} <span style="color:#666;font-size:11px">(puerto ${h.port}${h.alive ? '' : ' · CAÍDO'})</span></div>
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+                <span class="nm russo" style="color:var(--primary);font-size:13px">HOST ${h.hostId}${h.alive ? '' : ' · CAÍDO'}</span>${cpuBar(h.cpu || 0)}
+            </div>
             <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
                 <div style="display:flex;align-items:center;gap:8px">
                     <span style="color:#888;font-size:12px">Hz</span>
@@ -848,6 +851,7 @@ function renderPerfHosts(m) {
             </div>
         </div>`;
     }).join('');
+    cont.innerHTML = html;
 }
 function applySnapHzHost(hostId, hz) { send({ cmd: 'snapshotHz', hz, hostIds: [hostId] }); setTimeout(pedir, 200); }
 function applyAoiHost(hostId, on) { send({ cmd: 'aoiToggle', on, hostIds: [hostId] }); setTimeout(pedir, 200); }
@@ -870,7 +874,7 @@ function render(m) {
     document.getElementById('tabBtn_rendimiento').style.display = soloSalas ? 'none' : '';
     document.getElementById('controlGlobalBar').style.display = soloSalas ? 'none' : '';
     if (soloSalas && tabActiva !== 'salas') verTab('salas');
-    document.getElementById('hostCardsView').style.display = (role === 'director') ? '' : 'none';
+    document.getElementById('hostCardsWrap').style.display = (role === 'director') ? '' : 'none';
     document.getElementById('roomsView').style.display = (role === 'director') ? 'none' : '';
     document.getElementById('perfMono').style.display = (role === 'director') ? 'none' : '';
     document.getElementById('perfHosts').style.display = (role === 'director') ? '' : 'none';
@@ -879,7 +883,6 @@ function render(m) {
 
     if (role === 'director') {
         renderHostCards(m);
-        renderConnByRoom(m);
         renderPerfHosts(m);
         const vivos = (m.hosts || []).filter(h => h.alive).length;
         document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · ${vivos}/${(m.hosts || []).length} hosts vivos`;
@@ -948,9 +951,11 @@ function render(m) {
     const _l = layerActivo || 1;
     const classicL = porSeccion.classic.filter(r => (r.layerIdx || 1) === _l);
     const arcadeL  = porSeccion.arcade.filter(r => (r.layerIdx || 1) === _l);
+    pintarGrid('gridAll',     classicL.concat(arcadeL, porSeccion.free));
     pintarGrid('gridClassic', classicL);
     pintarGrid('gridArcade',  arcadeL);
     pintarGrid('gridFree',    porSeccion.free);
+    ponCnt('cntAll',     classicL.concat(arcadeL, porSeccion.free).reduce((s, r) => s + r.conectados, 0));
     ponCnt('cntClassic', porSeccion.classic.reduce((s, r) => s + r.conectados, 0));
     ponCnt('cntArcade',  porSeccion.arcade.reduce((s, r) => s + r.conectados, 0));
     ponCnt('cntFree',    porSeccion.free.reduce((s, r) => s + r.conectados, 0));
