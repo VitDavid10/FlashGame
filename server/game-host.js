@@ -104,6 +104,10 @@ function createGameHost(deps) {
     }
 
     function pickLayer(mode, roomName) {
+        // Fase 4: este proceso solo materializa salas de SUS combos. Sin el guard,
+        // el lazy-create de L2+ creaba salas de combos ajenos (p.ej. en el Director,
+        // cuyo rooms está vacío, /api/rooms interpretaba "L1 llena" y creaba L2).
+        if (ownsCombo && !ownsCombo(mode, roomName)) return null;
         const ck = comboKeyOf(mode, roomName);
         const max = maxPlayersOf(ck);
         for (let i = 1; i <= LAYERS_PER_COMBO; i++) {

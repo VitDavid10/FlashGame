@@ -2788,11 +2788,29 @@
         let paid;
         try { paid = await preparePayment(mode, currentServer); } catch (e) { paid = null; }
         if (!paid) { _joinInFlight = false; setPlayBtnState(false); return; }   // sin saldo / sin firma → ya se avisó
+        // Fase 4 (split multiproceso): preguntar al matchmaker (/match del Director)
+        // qué host sirve este combo ANTES de abrir el WS de juego. En modo mono el
+        // server devuelve su PROPIO puerto → no se reescribe nada (flujo idéntico).
+        // Solo aplica en ws:// (local): en wss:// (web publicada) el enrutado por
+        // subdominio/puerto es la Fase 4b y de momento se conecta como siempre.
+        // Cualquier fallo (server viejo sin /match, red) → URL de siempre.
+        let gameUrl = url;
+        try {
+            if (url.startsWith('ws://')) {
+                const u = new URL(url);
+                const mm = await fetch('http://' + u.host + '/match?mode=' + encodeURIComponent(mode) + '&price=' + encodeURIComponent(currentServer), { cache: 'no-store' });
+                const mj = await mm.json();
+                if (mj && mj.ok && mj.port && String(mj.port) !== (u.port || '80')) {
+                    gameUrl = 'ws://' + u.hostname + ':' + mj.port;
+                    console.log('[match] combo ' + mode + '_' + currentServer + ' → host ' + gameUrl);
+                }
+            }
+        } catch (e) { /* sin /match: seguir con la URL base (compat mono) */ }
         // Protocolo binario ON por defecto (ahorra ~50% extra sobre AOI+JSON).
         // ?bin=0 fuerza JSON para debug.
         const _binFlag = (new URLSearchParams(location.search)).get('bin') !== '0';
         const _aspect = (window.innerWidth && window.innerHeight) ? (window.innerWidth / window.innerHeight) : 1;
-        netState = { url, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 1 : 0, aspect: _aspect } };
+        netState = { url: gameUrl, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, skinUrl: useSkin ? skinUrlVal : null, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 1 : 0, aspect: _aspect } };
         setPlayBtnState(true, 'CONNECTING...');
         netConnect(false);
         // El lock se libera al recibir welcome/roomFull/payRequired/error desde el WS.

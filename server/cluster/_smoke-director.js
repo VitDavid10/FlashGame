@@ -71,6 +71,12 @@ async function main() {
     const dh = await getJson(`http://localhost:${DIR_PORT}/api/health`);
     check(`director sin salas propias (rooms=${dh.rooms})`, dh.rooms === 0);
 
+    // 4b) consultar /api/rooms al director NO le hace lazy-create de salas
+    // (regresión: pickLayer interpretaba su rooms vacío como "L1 llena" y creaba L2)
+    await getJson(`http://localhost:${DIR_PORT}/api/rooms`);
+    const dh2 = await getJson(`http://localhost:${DIR_PORT}/api/health`);
+    check(`director sigue sin salas tras /api/rooms (rooms=${dh2.rooms})`, dh2.rooms === 0);
+
     // 5) modo mono: /match devuelve su propio puerto (compat total)
     const jm = await getJson(`http://localhost:${MONO_PORT}/match?mode=arcade&price=5$`);
     check('mono /match devuelve su propio puerto', jm.ok === true && jm.port === MONO_PORT);

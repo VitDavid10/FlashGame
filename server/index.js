@@ -136,6 +136,9 @@ const CATALOG_MODES = ['classic', 'arcade'];
 const SHARD = buildShardMap(CATALOG_MODES, PRICES, PW_ROLE === 'mono' ? 1 : PW_HOST_COUNT);
 const MY_HOST_ID = PW_ROLE === 'mono' ? 0 : PW_HOST_ID;
 function ownsCombo(mode, price) {
+    // El Director no posee NINGÚN combo: sus salas viven en los hosts forkeados.
+    // Sin esto, /api/rooms (pickLayer) le hacía lazy-create de salas propias.
+    if (PW_ROLE === 'director') return false;
     return SHARD.comboToHost.get(mode + '_' + price) === MY_HOST_ID;
 }
 
