@@ -107,5 +107,26 @@ check('tester: econ.playerDeath recibe tester=true', () => {
     assert.ok(pd && pd[2] === true, 'econ.playerDeath debe marcar tester=true');
 });
 
+// --- Escenario 5: arcade sin ninguna muerte → el carry de los vivos igual reparte el pot ---
+check('arcade fin sin muertes: carry de los vivos entra al pot y se reparte', () => {
+    const econ = spyEcon();
+    const A = { id: 'A', name: 'Alive1', peakMass: 300, cells: [{ mass: 300 }], alive: true, matchSkillUses: 0 };
+    const B = { id: 'B', name: 'Alive2', peakMass: 200, cells: [{ mass: 200 }], alive: true, matchSkillUses: 0 };
+    const sim = mockSim([A, B], []);
+    const cliA = { ws: ws(), carry: 100, payWallet: 'WalletA', cid: null, name: 'Alive1' };
+    const cliB = { ws: ws(), carry: 100, payWallet: 'WalletB', cid: null, name: 'Alive2' };
+    const room = playingRoom('arcade', sim, [['A', cliA], ['B', cliB]]);
+    room.endsAt = Date.now() - 1; // fuerza fin de partida ya alcanzado
+    tickRoomOnce(room, Date.now(), baseCtx(econ));
+    assert.strictEqual(cliA.carry, 0, 'carry del vivo A debe vaciarse al pot');
+    assert.strictEqual(cliB.carry, 0, 'carry del vivo B debe vaciarse al pot');
+    assert.strictEqual(room.pot, 0, 'el pot se resetea tras el reparto');
+    const credits = econ.calls.filter(c => c[0] === 'credit');
+    assert.strictEqual(credits.length, 2, 'debe repartirse a ambos jugadores vivos (pot=200)');
+    const totalCredited = credits.reduce((s, c) => s + c[2], 0);
+    assert.ok(totalCredited > 0, 'el reparto debe ser > 0 aunque nadie murió');
+    assert.ok(cliA.ws.sent.some(m => JSON.parse(m).t === 'prize'), 'debe emitirse el evento prize a los jugadores');
+});
+
 console.log(`\n${fail === 0 ? 'OK' : 'FALLOS'}: ${pass} pass, ${fail} fail`);
 process.exit(fail === 0 ? 0 : 1);

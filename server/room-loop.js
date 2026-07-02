@@ -108,8 +108,10 @@ function tickRoomOnce(room, now, ctx) {
         // ARCADE: reparto del bote por TOP 10. Curva: 35/20/13/9/7/5/4/3/2.5/1.5 (=100%).
         // Los que sigan vivos al final también aportan su carry al bote (igualdad de trato).
         let payoutMsg = null;
-        if (room.mode !== 'classic' && (room.pot || 0) > 0) {
+        if (room.mode !== 'classic') {
             for (const cli of room.clients.values()) { if (cli.carry > 0) { ctx.addToPot(room, cli.carry); cli.carry = 0; } }
+        }
+        if (room.mode !== 'classic' && (room.pot || 0) > 0) {
             const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
             const ranking = [...room.sim.players.values()]
                 .filter(p => (p.peakMass | 0) > 0 || p.alive)
