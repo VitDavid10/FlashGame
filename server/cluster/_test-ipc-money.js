@@ -129,7 +129,9 @@ async function scenarioB() {
     const HOST_PORT = 8099;
     // El test hace de "director" que forkea el host pero NUNCA responde authorizeEntry.
     fakeHost = fork(INDEX, [], {
-        env: { ...process.env, PORT: String(HOST_PORT), PW_ROLE: 'host', PW_HOST_ID: '0', PW_HOST_COUNT: '2', PILL_PER_DOLLAR: String(RATE), ADMIN_KEY: '1234' },
+        // classic_5$ pertenece al host 1 de 2 (orden lexicográfico del shard-map:
+        // '$' < '0' → arcade_5$ va antes que arcade_50$ → classic_5$ cae en índice 7).
+        env: { ...process.env, PORT: String(HOST_PORT), PW_ROLE: 'host', PW_HOST_ID: '1', PW_HOST_COUNT: '2', PILL_PER_DOLLAR: String(RATE), ADMIN_KEY: '1234' },
         stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     });
     fakeHost.stdout.on('data', () => {});
@@ -140,8 +142,8 @@ async function scenarioB() {
     ipc.notify('oracleRate', { rate: RATE });
     await sleep(1800);
 
-    // classic_5$ pertenece al host 0 de 2 (shard-map). El cobro debe hacer timeout
-    // (5s) y terminar en payRequired — bajo NINGÚN concepto en welcome.
+    // El cobro debe hacer timeout (5s) y terminar en payRequired — bajo NINGÚN
+    // concepto en welcome.
     const pay = signedEntry('classic_5$', FEE);
     const j = await tryJoin(HOST_PORT, { t: 'join', mode: 'classic', room: '5$', name: 'TimeoutBot', pay }, 8000);
     check('IPC sin respuesta → payRequired tras timeout (fail-closed, no entra sin pagar)',
