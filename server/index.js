@@ -68,6 +68,9 @@ let arcadeLobbyMs  = Math.max(0,    (_glob.arcadeLobbyMs  | 0) || 20000);
 let useWorkers = (typeof _glob.useWorkers === 'boolean') ? _glob.useWorkers : false;
 if (process.env.WORKERS === '1') useWorkers = true;
 if (process.env.WORKERS === '0') useWorkers = false;
+// Fase 4: el path worker_threads (deprecado) ejecuta dinero/stats en local
+// (handleWorkerMsg) y se saltaría el IPC del split. En rol 'host' se fuerza OFF.
+if (process.env.PW_ROLE === 'host' && useWorkers) { useWorkers = false; console.log('PW_ROLE=host: useWorkers forzado a OFF (worker path deprecado, incompatible con el split)'); }
 // Volumen "por defecto" que el servidor manda al cliente (0..1). El cliente lo aplica
 // como master (efectos -30%, música -15% de fábrica) y luego puede mutear/ajustar.
 // Editable desde el panel admin.
@@ -327,8 +330,14 @@ function tickOracle() {
     const drift = 1 + (Math.random() * 0.30 - 0.15);   // ±15%
     PILL_PER_DOLLAR = Math.max(1, Math.round(PILL_PER_DOLLAR_BASE * drift / 1000) * 1000);
     log(`Oráculo: $1 = ${PILL_PER_DOLLAR} PILL`);
+    // Fase 4: los hosts cachean el rate (lo usan para bloquear el precio de sala
+    // y calcular la tarifa); el oráculo SOLO deriva aquí, en el Director.
+    for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR }); }
 }
-setInterval(tickOracle, ORACLE_REFRESH_MS);
+// En rol 'host' el oráculo NO deriva por su cuenta: el rate llega por IPC
+// (notify 'oracleRate') desde el Director. Dos relojes independientes harían
+// que el fee firmado por el cliente no cuadrara con el del cobro.
+if (PW_ROLE !== 'host') setInterval(tickOracle, ORACLE_REFRESH_MS);
 // Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
 function entryFeePill(key, rate) { return priceOf(key) * (rate || PILL_PER_DOLLAR); }
 // Rate "vigente" de una sala: si tiene gente jugando usa el bloqueado; si está vacía,
@@ -342,20 +351,6 @@ function classicExitFeePct(kills) { if (kills >= 2) return 0; if (kills >= 1) re
 function addToPot(room, amount) { if (amount > 0) room.pot = (room.pot || 0) + amount; }
 // Notifica al cliente su carry actual y el bote de la sala (para el HUD del juego).
 function sendEcon(cli, room) { if (cli && cli.ws && cli.ws.readyState === 1) try { cli.ws.send(JSON.stringify({ t: 'econ', carry: cli.carry | 0, pot: room.pot | 0 })); } catch (e) {} }
-// Cashout en classic: paga al jugador su carry menos el exit fee. El fee se descarta
-// (no hay pot en classic: el modelo es "pure skill, mata y huye o pierdes").
-// Devuelve el neto pagado al WAR del jugador.
-function classicCashout(room, cli, kills) {
-    if (!cli || !cli.payWallet || cli.carry <= 0) return 0;
-    const fee = Math.floor(cli.carry * classicExitFeePct(kills) / 100);
-    const net = cli.carry - fee;
-    if (net > 0) warbank.credit(cli.payWallet, net);
-    log(`Cashout classic: ${cli.payWallet.slice(0, 6)}… +${net} PILL (carry ${cli.carry}, fee ${fee} descartado)`);
-    try { cli.ws.send(JSON.stringify({ t: 'prize', reason: 'cashout', amount: net, carry: cli.carry, feePct: classicExitFeePct(kills), fee, kills })); } catch (e) {}
-    if (cli.cid && kills >= 2) dailyquests.recordEvent(cli.cid, 'classic_safe_exit', 1);
-    cli.carry = 0;
-    return net;
-}
 function pstatOf(name) {
     const k = String(name).toLowerCase();
     if (!playerStats[k]) playerStats[k] = { name: name, partidas: 0, kills: 0, muertes: 0, bestMass: 0, lastSeen: null, lastIp: null };
@@ -761,27 +756,33 @@ function processWorkerEvent(room, ev, now) {
 
 // Interfaz `director`: lo que el GameHost necesita del Director (dinero + stats).
 // El Host NO conoce warbank/pstatOf/statsOf; cuando un socket se va, calcula los
-// datos autoritativos (wasAlive, kills) desde SU sim y delega aquí toda la lógica
-// económica. En el split real esto será un mensaje IPC Host→Director; hoy es una
-// llamada directa. Esta es la frontera de deltas de la salida de un jugador.
-const director = {
-    // Un jugador dejó la sala (cerró pestaña/socket). El Host ya calculó si estaba
-    // vivo y su killStreak. Aquí: peak mass, muertes (pstat + combo), cashout classic
-    // y reembolso de entrada si la partida no había empezado.
-    onPlayerLeave(room, cli, pid, wasAlive, kills) {
-        if (wasAlive) {
-            flushPeakMass(room, pid, cli);
-            // cli.name equivale a pj.name (ambos vienen del mismo opts.name del join).
-            if (cli.name && !cli.isTester) { pstatOf(cli.name).muertes++; playersDirty = true; }
-            const ds_ = statsOf(room.comboKey); ds_.muertes++; if (!cli.isTester) ds_.muertesReal++; statsDirty = true;
-            if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') classicCashout(room, cli, kills);
-        } else if (room.mode === 'classic' && cli.carry > 0 && room.state === 'playing') {
-            cli.carry = 0;
+// datos autoritativos (wasAlive, kills, peak) desde SU sim y delega aquí toda la
+// lógica económica. Desde 4a.4.3 los contratos son DATOS PLANOS (serializables):
+// la misma llamada funciona local (mono) y por IPC (host→director). Esta lógica
+// vive en `directorLocal`; en rol 'host' se sustituye por proxies IPC más abajo.
+const directorLocal = {
+    // Un jugador dejó la sala (cerró pestaña/socket). Aquí: peak mass, muertes
+    // (pstat + combo), cashout classic y reembolso si la partida no había empezado.
+    // Nota: el mensaje 'prize' del cashout ya no se envía — el socket acaba de
+    // cerrarse (nunca llegaba: el send caía en el try/catch con el WS cerrado).
+    onPlayerLeave(p) {
+        if (p.wasAlive) {
+            applyPeakMass(p.name, p.isTester, p.cid, p.peak);
+            if (p.name && !p.isTester) { pstatOf(p.name).muertes++; playersDirty = true; }
+            const ds_ = statsOf(p.comboKey); ds_.muertes++; if (!p.isTester) ds_.muertesReal++; statsDirty = true;
+            // Cashout classic al salir vivo en plena partida: carry menos exit fee.
+            if (p.mode === 'classic' && p.carry > 0 && p.state === 'playing' && p.payWallet) {
+                const fee = Math.floor(p.carry * classicExitFeePct(p.kills) / 100);
+                const net = p.carry - fee;
+                if (net > 0) warbank.credit(p.payWallet, net);
+                log(`Cashout classic: ${p.payWallet.slice(0, 6)}… +${net} PILL (carry ${p.carry}, fee ${fee} descartado)`);
+                if (p.cid && p.kills >= 2) dailyquests.recordEvent(p.cid, 'classic_safe_exit', 1);
+            }
         }
         // Reembolso de la entrada si la partida NO había empezado (paidFee>0 = no consumida).
-        if (cli.paidFee > 0 && cli.payWallet && room.state === 'waiting') {
-            warbank.credit(cli.payWallet, cli.paidFee);
-            log(`Reembolso de entrada (sala no empezó): ${cli.payWallet.slice(0, 6)}… +${cli.paidFee} PILL`);
+        if (p.paidFee > 0 && p.payWallet && p.state === 'waiting') {
+            warbank.credit(p.payWallet, p.paidFee);
+            log(`Reembolso de entrada (sala no empezó): ${p.payWallet.slice(0, 6)}… +${p.paidFee} PILL`);
         }
     },
 
@@ -798,23 +799,24 @@ const director = {
     lockPriceIfEmpty(room) { if (room.clients.size === 0) room.pillRate = PILL_PER_DOLLAR; },
 
     // Autoriza y COBRA la entrada. Salas gratis o testers pasan sin cobro. Salas de
-    // pago exigen firma de wallet + saldo WAR; si algo falla, envía payRequired y
-    // devuelve {ok:false}. Si cobra, descuenta del saldo y marca la firma (anti-replay).
-    // Devuelve {ok, payWallet, fee, tester}. Es la frontera de deltas de la ENTRADA.
-    authorizeEntry(room, msg, ws) {
-        const ck = room.comboKey, key = room.key;
-        const fee = entryFeePill(ck, room.pillRate);
-        const tester = msg.tester === 'STRESS_TEST_DEVNET' && /devnet/i.test(solana.RPC || '');
+    // pago exigen firma de wallet + saldo WAR. Si cobra, descuenta del saldo y marca
+    // la firma (anti-replay). Devuelve {ok, payWallet, fee, tester} o
+    // {ok:false, reason, balance} — el payRequired al cliente lo envía el CALLER
+    // (game-host), que es quien tiene el ws. Frontera de deltas de la ENTRADA.
+    // `fee` viene del Host (calculado con el rate BLOQUEADO de su sala); la firma
+    // del cliente incluye ese fee exacto, así que un fee desalineado se rechaza.
+    authorizeEntry({ comboKey, key, fee, pay, testerReq }) {
+        const tester = testerReq === 'STRESS_TEST_DEVNET' && /devnet/i.test(solana.RPC || '');
         if (fee > 0 && !tester) {
-            const pay = msg.pay || {};
+            pay = pay || {};
             const w = String(pay.wallet || ''), ts = Number(pay.ts) || 0;
-            const expected = `PillWars enter ${ck} paying ${fee} PILL @ ${ts}`;
-            const reject = (reason) => { ws.send(JSON.stringify({ t: 'payRequired', room: room.roomName, fee, reason, balance: isSolAddr(w) ? warbank.getBalance(w) : 0 })); };
-            if (!isSolAddr(w) || pay.message !== expected || Math.abs(Date.now() - ts) > 120000) { reject('firma de pago inválida'); return { ok: false }; }
+            const expected = `PillWars enter ${comboKey} paying ${fee} PILL @ ${ts}`;
+            const balance = isSolAddr(w) ? warbank.getBalance(w) : 0;
+            if (!isSolAddr(w) || pay.message !== expected || Math.abs(Date.now() - ts) > 120000) return { ok: false, reason: 'firma de pago inválida', balance };
             const sigKey = 'enter_' + (Array.isArray(pay.signature) ? pay.signature.join('') : '');
-            if (warbank.sigUsed(sigKey)) { reject('firma ya usada'); return { ok: false }; }
-            if (!solana.verifySignedMessage(w, pay.message, pay.signature)) { reject('firma no válida'); return { ok: false }; }
-            if (warbank.getBalance(w) < fee) { reject('saldo WAR insuficiente'); return { ok: false }; }
+            if (warbank.sigUsed(sigKey)) return { ok: false, reason: 'firma ya usada', balance };
+            if (!solana.verifySignedMessage(w, pay.message, pay.signature)) return { ok: false, reason: 'firma no válida', balance };
+            if (warbank.getBalance(w) < fee) return { ok: false, reason: 'saldo WAR insuficiente', balance };
             warbank.debit(w, fee);
             warbank.creditDeposit(w, 0, sigKey);   // marca la firma como usada (anti-replay)
             logAdmin(key, 'Entrada pagada', w.slice(0, 6) + '… -' + fee + ' PILL');
@@ -825,12 +827,11 @@ const director = {
     },
 
     // Registra la entrada en las stats globales (combo + jugador + quests + log).
-    recordEntry(room, playerId, name, cid, ip, tester) {
-        const ck = room.comboKey;
-        const st_ = statsOf(ck); st_.entradas++; if (!tester) st_.entradasReal++; statsDirty = true;
+    recordEntry({ comboKey, key, mode, playerId, name, cid, ip, tester }) {
+        const st_ = statsOf(comboKey); st_.entradas++; if (!tester) st_.entradasReal++; statsDirty = true;
         if (name && !tester) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; st.isReal = true; playersDirty = true; }
-        if (cid) dailyquests.recordEvent(cid, room.mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
-        if (!tester) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: room.key, id: playerId });
+        if (cid) dailyquests.recordEvent(cid, mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
+        if (!tester) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
     },
 };
 
@@ -838,9 +839,9 @@ const director = {
 // el Director (Fase 4/4a.3). El Host reporta HECHOS del juego; el Director aplica
 // las consecuencias sobre el estado persistente (warbank, stats, quests). En
 // mono-proceso estos métodos ejecutan la lógica directa (idéntica a la que había
-// inline en room-loop.js); en el split multiproceso se sustituyen por un proxy IPC.
+// inline en room-loop.js); en rol 'host' se sustituyen por el proxy IPC de abajo.
 // Lo LOCAL de la partida (carry, pot, sendEcon, entryFeePill) NO vive aquí: es del Host.
-const econ = {
+const econLocal = {
     // Único dinero persistente que cruza al Director: acredita saldo WAR.
     credit(wallet, amount) { if (wallet && amount > 0) warbank.credit(wallet, amount); },
     // Muerte de un jugador: stats de la sala (combo) y del jugador.
@@ -861,12 +862,81 @@ const econ = {
     questSkills(cid, matchSkillUses) { const q = questsOf(cid); if (matchSkillUses > (q.q3_skills_in_arcade | 0)) { q.q3_skills_in_arcade = Math.min(8, matchSkillUses); q.updated = Date.now(); questsDirty = true; } },
 };
 
-// Handlers IPC que el Director registra por cada host forkeado. En 4a.4.2 el
-// canal existe pero aún no viaja dinero por él (cada host ejecuta la lógica
-// local heredada del modo mono); en 4a.4.3 aquí se registran authorizeEntry,
-// onPlayerLeave, checkKick, recordEntry y todos los econ.* contra el estado
-// real del Director (warbank, stats, quests).
-function registerHostHandlers(hostEntry) { /* se rellena en 4a.4.3 */ }
+// --- Rol 'host': director/econ se convierten en proxies IPC hacia el padre ---
+// El canal es el que fork() abre gratis: process.send/process.on('message').
+// REGLA DE ORO (dinero): fail-closed. Si el IPC falla o hace timeout, la
+// autorización devuelve ok:false y el jugador NO entra sin pagar. Los econ.*
+// son hechos ya consumados del juego (telemetría/stats/premios ya decididos)
+// y viajan como notify (fire-and-forget), tal y como fija el diseño de fase 4.
+const hostIpc = PW_ROLE === 'host' ? createIpc(process, { label: `host${PW_HOST_ID}→director` }) : null;
+if (hostIpc) {
+    // Cache del oráculo: el Director lo manda al forkear y en cada tickOracle.
+    hostIpc.handle('oracleRate', (d) => { if (d && d.rate > 0) { PILL_PER_DOLLAR = d.rate; log(`Oráculo (IPC): $1 = ${PILL_PER_DOLLAR} PILL`); } });
+}
+const directorProxy = hostIpc && {
+    async checkKick(ip) {
+        // Fail-closed: sin respuesta del Director no se entra (bloqueo corto y reintenta).
+        try { return await hostIpc.request('checkKick', { ip }); }
+        catch (e) { log(`IPC checkKick falló: ${e.message} — join bloqueado (fail-closed)`); return { secondsLeft: 3 }; }
+    },
+    // El precio se bloquea con el rate CACHEADO del oráculo del Director (síncrono).
+    lockPriceIfEmpty(room) { if (room.clients.size === 0) room.pillRate = PILL_PER_DOLLAR; },
+    async authorizeEntry(payload) {
+        try { return await hostIpc.request('authorizeEntry', payload); }
+        catch (e) {
+            log(`IPC authorizeEntry falló: ${e.message} — entrada RECHAZADA (fail-closed)`);
+            return { ok: false, reason: 'pago no disponible, reintenta', balance: 0 };
+        }
+    },
+    recordEntry(payload) { hostIpc.notify('recordEntry', payload); },
+    onPlayerLeave(payload) { hostIpc.notify('onPlayerLeave', payload); },
+};
+const econProxy = hostIpc && {
+    credit(wallet, amount) { if (wallet && amount > 0) hostIpc.notify('econ.credit', { wallet, amount }); },
+    playerDeath(comboKey, tester, name) { hostIpc.notify('econ.playerDeath', { comboKey, tester: !!tester, name: name || null }); },
+    botKill(name, tester) { hostIpc.notify('econ.botKill', { name: name || null, tester: !!tester }); },
+    // El peak se LEE aquí (la sim vive en el host) y viaja como dato plano.
+    peakMassFlush(room, pid, cli) {
+        let peak;
+        if (room.worker) { peak = (cli && cli._peakMass) ? Math.floor(cli._peakMass) : 0; }
+        else { const pj = room.sim.players.get(pid); if (!pj) return; peak = pj.peakMass ? Math.floor(pj.peakMass) : 0; }
+        if (peak <= 0) return;
+        hostIpc.notify('econ.peakMass', { name: cli && cli.name, isTester: !!(cli && cli.isTester), cid: (cli && cli.cid) || null, peak });
+    },
+    dailyEvent(cid, type, n) { if (cid) hostIpc.notify('econ.dailyEvent', { cid, type, n }); },
+    questOnlineMatch(cid) { hostIpc.notify('econ.questOnlineMatch', { cid }); },
+    questFinishArcade(cid) { hostIpc.notify('econ.questFinishArcade', { cid }); },
+    questBestMass(cid, peak) { hostIpc.notify('econ.questBestMass', { cid, peak }); },
+    questSkills(cid, matchSkillUses) { hostIpc.notify('econ.questSkills', { cid, matchSkillUses }); },
+};
+// La frontera que ve el resto del código: local en mono/director, proxy en host.
+const director = directorProxy || directorLocal;
+const econ = econProxy || econLocal;
+
+// Handlers IPC que el Director registra por cada host forkeado: responden las
+// peticiones de dinero (request) y aplican los hechos (notify) ejecutando la
+// MISMA lógica local (directorLocal/econLocal) que usa el modo mono. Ninguna
+// validación de pago se relaja: la firma/saldo/anti-replay se comprueban aquí.
+function registerHostHandlers(hostEntry) {
+    const ipc = hostEntry.ipc;
+    // request/response — el host espera el resultado (entrada de dinero)
+    ipc.handle('checkKick', (p) => directorLocal.checkKick(p.ip));
+    ipc.handle('authorizeEntry', (p) => directorLocal.authorizeEntry(p));
+    // notify — hechos consumados (stats, premios ya decididos por la partida)
+    ipc.handle('recordEntry', (p) => directorLocal.recordEntry(p));
+    ipc.handle('onPlayerLeave', (p) => directorLocal.onPlayerLeave(p));
+    ipc.handle('econ.credit', (p) => econLocal.credit(p.wallet, p.amount));
+    ipc.handle('econ.playerDeath', (p) => econLocal.playerDeath(p.comboKey, p.tester, p.name));
+    ipc.handle('econ.botKill', (p) => econLocal.botKill(p.name, p.tester));
+    ipc.handle('econ.peakMass', (p) => applyPeakMass(p.name, p.isTester, p.cid, p.peak));
+    ipc.handle('econ.dailyEvent', (p) => econLocal.dailyEvent(p.cid, p.type, p.n));
+    ipc.handle('econ.questOnlineMatch', (p) => econLocal.questOnlineMatch(p.cid));
+    ipc.handle('econ.questFinishArcade', (p) => econLocal.questFinishArcade(p.cid));
+    ipc.handle('econ.questBestMass', (p) => econLocal.questBestMass(p.cid, p.peak));
+    ipc.handle('econ.questSkills', (p) => econLocal.questSkills(p.cid, p.matchSkillUses));
+    // Rate actual del oráculo para el cache del host recién forkeado.
+    ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR });
+}
 
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
 // Se crea aquí, una vez definidas todas sus dependencias (rooms, reglas del
@@ -883,7 +953,7 @@ const gameHost = createGameHost({
     MATCH_MS, getAoiEnabled: () => AOI_ENABLED, getSnapshotEvery: () => SNAPSHOT_EVERY,
     resumeTokens,
     SPAWN_IMMUNE_MS,
-    director, RESUME_GRACE_MS, sendEcon,
+    director, RESUME_GRACE_MS, sendEcon, entryFeePill,
 });
 // El runtime de sala (broadcast/lobby/startMatch/…) vive ahora en el GameHost
 // (Fase 4/4a.2). Se desestructura con los mismos nombres para que los call sites
@@ -1142,8 +1212,21 @@ function buildAdminState() {
     };
 }
 
-// Guarda el peakMass del jugador en playerStats (ranking) y quests (clientId).
-// Idempotente: solo sube el bestMass si supera el récord existente.
+// Aplica un peakMass YA CALCULADO a playerStats (ranking) y quests (clientId).
+// Datos planos: es lo que ejecuta el Director tanto en mono como al recibir el
+// notify 'econ.peakMass' de un host. Idempotente: solo sube si supera el récord.
+function applyPeakMass(name, isTester, cid, peak) {
+    if (!(peak > 0)) return;
+    if (name && !isTester) {
+        const ps = pstatOf(name);
+        if (peak > (ps.bestMass | 0)) { ps.bestMass = peak; playersDirty = true; }
+    }
+    if (cid) {
+        const q = questsOf(cid);
+        if (peak > (q.bestMass | 0)) { q.bestMass = peak; q.updated = Date.now(); questsDirty = true; }
+    }
+}
+// Lee el peakMass desde la sim/worker local y lo aplica (path mono/director).
 function flushPeakMass(room, pid, cli) {
     let peak;
     if (room.worker) {
@@ -1152,15 +1235,7 @@ function flushPeakMass(room, pid, cli) {
         const pj = room.sim.players.get(pid); if (!pj) return;
         peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
     }
-    if (peak <= 0) return;
-    if (cli && cli.name && !cli.isTester) {
-        const ps = pstatOf(cli.name);
-        if (peak > (ps.bestMass | 0)) { ps.bestMass = peak; playersDirty = true; }
-    }
-    if (cli && cli.cid) {
-        const q = questsOf(cli.cid);
-        if (peak > (q.bestMass | 0)) { q.bestMass = peak; q.updated = Date.now(); questsDirty = true; }
-    }
+    applyPeakMass(cli && cli.name, !!(cli && cli.isTester), cli && cli.cid, peak);
 }
 
 function findClient(playerId) {
@@ -1501,6 +1576,7 @@ const wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws, req) => {
     let room = null, playerId = null, spectatorRoom = null;
+    let joinPending = false;   // join en vuelo (authorizeEntry es async): bloquea joins dobles
     let rlWindow = 0, rlCount = 0;   // rate-limit: ventana (segundo) y mensajes en ella
     // Detrás del túnel/proxy de Cloudflare la IP real viene en cabeceras.
     // Se anonimiza de inmediato (RGPD): nunca se almacena ni se muestra la IP exacta.
@@ -1815,9 +1891,16 @@ wss.on('connection', (ws, req) => {
 
         if (msg.t === 'join' && !room) {
             // El GameHost orquesta matchmaking + sim + welcome; el cobro/stats los hace
-            // vía director.*. Devuelve {room, playerId} para actualizar esta conexión.
-            const res = gameHost.handleJoin(ws, ip, msg);
-            if (res) { room = res.room; playerId = res.playerId; }
+            // vía director.*. Desde 4a.4.3 handleJoin es ASYNC (authorizeEntry puede ir
+            // por IPC): hay que esperar la promesa, y mientras está en vuelo se ignoran
+            // joins repetidos (un doble join podría intentar cobrar dos veces; además
+            // el anti-replay de la firma pararía el segundo cobro en el Director).
+            if (joinPending) return;
+            joinPending = true;
+            Promise.resolve(gameHost.handleJoin(ws, ip, msg))
+                .then(res => { if (res) { room = res.room; playerId = res.playerId; } })
+                .catch(e => { log('handleJoin error: ' + (e && e.stack || e)); })
+                .finally(() => { joinPending = false; });
             return;
         }
         if (!room || !playerId) return;

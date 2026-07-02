@@ -33,7 +33,7 @@ function createGameHost(deps) {
         MATCH_MS, getAoiEnabled, getSnapshotEvery,
         resumeTokens,
         SPAWN_IMMUNE_MS,
-        director, RESUME_GRACE_MS, sendEcon,
+        director, RESUME_GRACE_MS, sendEcon, entryFeePill,
     } = deps;
 
     function buildSim(mode, rules) {
@@ -116,7 +116,9 @@ function createGameHost(deps) {
                 log(`Lazy: creada ${key} porque L${i - 1} está llena`);
             }
             if (r.disabled) continue;
-            if (liveInRoom(r) >= max) continue;
+            // _reserved: joins con el cobro IPC en vuelo (async). Cuentan como slot
+            // ocupado para que dos joins simultáneos no desborden el cap de la sala.
+            if (liveInRoom(r) + (r._reserved || 0) >= max) continue;
             if (r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
             return r;
         }
@@ -239,9 +241,10 @@ function createGameHost(deps) {
     // Entrada de un jugador (join/resume). Es del Host porque en el split real el WS
     // lo posee el Host. Orquesta: matchmaking (pickLayer) + sim (addPlayer) + welcome/
     // lobby, y delega en el Director todo lo económico/stats (kick, precio, cobro,
-    // registro) vía director.*. Devuelve {room, playerId} para que el caller
+    // registro) vía director.*. ASYNC desde 4a.4.3: checkKick/authorizeEntry pueden
+    // ser peticiones IPC al Director. Devuelve {room, playerId} para que el caller
     // actualice su estado de conexión, o null si no entró (rechazo/noSlot/pago).
-    function handleJoin(ws, ip, msg) {
+    async function handleJoin(ws, ip, msg) {
         // Reconexión con token: recupera la célula viva del jugador si sigue en la sim.
         if (msg.resume) {
             const tok = resumeTokens.get(msg.resume);
@@ -262,7 +265,7 @@ function createGameHost(deps) {
         const mode = ['classic', 'arcade', 'skills'].includes(msg.mode) ? msg.mode : 'classic';
         let roomName = typeof msg.room === 'string' ? msg.room.slice(0, 12) : 'Free';
         if (roomName === '*') roomName = resolveQuickJoin(mode);
-        const kick = director.checkKick(ip);
+        const kick = await director.checkKick(ip);
         if (kick) { ws.send(JSON.stringify({ t: 'kickedWait', secondsLeft: kick.secondsLeft })); return null; }
         const room = pickLayer(mode, roomName);
         if (!room) {
@@ -273,10 +276,30 @@ function createGameHost(deps) {
         const key = room.key;
         const ck = room.comboKey;
         director.lockPriceIfEmpty(room);
-        // Cobro/autorización (Director). Si falla, ya envió payRequired al cliente.
-        const auth = director.authorizeEntry(room, msg, ws);
-        if (!auth.ok) return null;
+        const fee0 = entryFeePill(ck, room.pillRate);
+        // Cobro/autorización (Director). Reserva el slot mientras el cobro (posible
+        // IPC) está en vuelo, para que otro join simultáneo no pise el cap de la sala.
+        let auth;
+        room._reserved = (room._reserved || 0) + 1;
+        try {
+            auth = await director.authorizeEntry({ comboKey: ck, key, fee: fee0, pay: msg.pay, testerReq: msg.tester });
+        } finally {
+            room._reserved--;
+        }
+        if (!auth.ok) {
+            ws.send(JSON.stringify({ t: 'payRequired', room: room.roomName, fee: fee0, reason: auth.reason || 'pago rechazado', balance: auth.balance | 0 }));
+            return null;
+        }
         const { payWallet, fee, tester } = auth;
+        // El socket murió mientras el cobro estaba en vuelo: no hay a quién meter en
+        // la sala. Se devuelve la entrada por el mismo camino que "la sala no empezó".
+        if (ws.readyState !== 1) {
+            if (fee > 0 && payWallet) {
+                director.onPlayerLeave({ mode: room.mode, comboKey: ck, state: 'waiting', name: '', isTester: !!tester, carry: 0, payWallet, paidFee: fee, cid: null, peak: 0, wasAlive: false, kills: 0 });
+                log(`Join abortado (socket cerrado durante el cobro): reembolso ${fee} PILL a ${payWallet.slice(0, 6)}…`);
+            }
+            return null;
+        }
         const playerId = PillSim.uuid();
         const name = typeof msg.name === 'string' ? msg.name.slice(0, 16) : '';
         const opts = {
@@ -296,7 +319,7 @@ function createGameHost(deps) {
         const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
         room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, aspect, _alive, _killStreak, _spawned: false });
         sendEcon(room.clients.get(playerId), room);
-        director.recordEntry(room, playerId, name, cid, ip, tester);
+        director.recordEntry({ comboKey: ck, key, mode: room.mode, playerId, name, cid, ip, tester });
         if (room.state === 'playing') {
             // Tarde-join: NO spawneamos aquí. El cliente verá su pantalla de carga y
             // mandará 'ready'; ahí lo spawneamos con inmunidad (empieza al entrar).
@@ -325,19 +348,27 @@ function createGameHost(deps) {
         }
         if (room && playerId && room.clients.get(playerId) && room.clients.get(playerId).ws === ws) {
             const cli = room.clients.get(playerId);
-            // wasAlive/kills desde la fuente autoritativa: la sim (o el flag _alive que
+            // wasAlive/kills/peak desde la fuente autoritativa: la sim (o los flags que
             // el main mantiene para el path worker, sin acceso síncrono a la sim).
-            let wasAlive, kills;
+            let wasAlive, kills, peak;
             if (room.worker) {
                 room.worker.postMessage({ type: 'removePlayer', pid: playerId });
                 wasAlive = !!cli._alive;
                 kills = cli._killStreak || 0;
+                peak = cli._peakMass ? Math.floor(cli._peakMass) : 0;
             } else {
                 const pj = room.sim.players.get(playerId);
                 wasAlive = !!(pj && pj.alive);
                 kills = pj ? (pj.killStreak | 0) : 0;
+                peak = (pj && pj.peakMass) ? Math.floor(pj.peakMass) : 0;
             }
-            director.onPlayerLeave(room, cli, playerId, wasAlive, kills);
+            // Frontera de deltas de la SALIDA: datos planos → misma llamada local o IPC.
+            director.onPlayerLeave({
+                mode: room.mode, comboKey: room.comboKey, state: room.state,
+                name: cli.name || '', isTester: !!cli.isTester, carry: cli.carry | 0,
+                payWallet: cli.payWallet || null, paidFee: cli.paidFee | 0,
+                cid: cli.cid || null, peak, wasAlive, kills,
+            });
             room.clients.delete(playerId);
             if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
             log(`Jugador ${playerId} desconectado de ${room.key} — quedan ${room.clients.size}`);
