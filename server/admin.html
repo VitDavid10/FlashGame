@@ -256,9 +256,12 @@
     .schip.on i { background: var(--cc, var(--primary)); box-shadow: 0 0 8px var(--cc, var(--primary)); }
     #bigChartWrap { position: relative; }
     #bigChart { width: 100%; height: 260px; display: block; cursor: crosshair; }
-    #chartTip { position: absolute; pointer-events: none; background: rgba(8,12,9,0.97); border: 1px solid #2a352c; border-radius: 8px; padding: 8px 12px; font-size: 11px; color: #ccc; display: none; z-index: 5; box-shadow: 0 8px 20px rgba(0,0,0,0.5); white-space: nowrap; line-height: 1.7; }
-    #chartTip b { font-family: 'Russo One'; font-weight: 400; }
-    .dash-grid2 { display: grid; grid-template-columns: 1fr 1.5fr; gap: 16px; margin-top: 16px; align-items: start; }
+    #chartTip, #mapTip { position: absolute; pointer-events: none; background: rgba(8,12,9,0.97); border: 1px solid #2a352c; border-radius: 8px; padding: 8px 12px; font-size: 11px; color: #ccc; display: none; z-index: 5; box-shadow: 0 8px 20px rgba(0,0,0,0.5); white-space: nowrap; line-height: 1.7; }
+    #chartTip b, #mapTip b { font-family: 'Russo One'; font-weight: 400; }
+    #worldMap { width: 100%; height: 320px; display: block; cursor: crosshair; }
+    .maplegend { margin-left: auto; display: flex; gap: 14px; font-family: 'Russo One'; font-size: 9px; letter-spacing: 1.5px; color: #7b857e; text-transform: uppercase; align-items: center; }
+    .maplegend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+    .dash-grid2 { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; margin-top: 16px; align-items: start; }
     @media (max-width: 1150px) { .dash-grid2 { grid-template-columns: 1fr; } }
     .crow { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #131a15; }
     .crow:last-child { border-bottom: 0; }
@@ -360,15 +363,22 @@
                 <button class="reset-btn" onclick="resetStatsAll()">Reset TODO</button>
             </div>
             <div class="dash-cards" id="dashCards"></div>
+            <div id="dashPerf" style="margin-bottom:16px"></div>
             <div class="panelcard">
                 <div class="panelhead"><span class="pt">Actividad · por minuto</span><div class="chip-row" id="serieChips"></div></div>
                 <div id="bigChartWrap"><canvas id="bigChart" height="260"></canvas><div id="chartTip"></div></div>
                 <div class="hint" style="margin-top:10px">El servidor guarda una muestra por minuto (últimas 3 h, se resetea al reiniciar). Entradas, muertes y dinero son incrementos por minuto; conectados y activos, valores absolutos.</div>
             </div>
             <div class="dash-grid2">
+                <div class="panelcard">
+                    <div class="panelhead"><span class="pt">Mapa mundial · jugadores</span>
+                        <span class="maplegend"><span><i style="background:#00ff88;box-shadow:0 0 6px #00ff88"></i>Conectados ahora</span><span><i style="background:rgba(0,255,136,0.45)"></i>Han jugado</span></span>
+                    </div>
+                    <div id="worldWrap" style="position:relative"><canvas id="worldMap" height="320"></canvas><div id="mapTip"></div></div>
+                </div>
                 <div class="panelcard"><div class="panelhead"><span class="pt">Jugadores por país</span></div><div id="dashPaises"></div></div>
-                <div id="usoSalas"></div>
             </div>
+            <div style="margin-top:16px"><div id="usoSalas"></div></div>
         </div>
 
         <div id="tab_salas" style="display:none">
@@ -1099,7 +1109,6 @@ const DASH_CARDS = [
     { id: 'conect',   cls: 'ac-blue',   icon: 'users', color: '#4f9cff', label: 'conectados ahora' },
     { id: 'activos',  cls: 'ac-purple', icon: 'clock', color: '#b07cf7', label: 'activos última hora' },
     { id: 'unicos',   cls: 'ac-blue',   icon: 'door',  color: '#4f9cff', label: 'jugadores distintos', click: 'irAJugadores()', nospark: true },
-    { id: 'entradas', cls: '',          icon: 'in',    color: '#00ff88', label: 'entradas totales' },
     { id: 'muertes',  cls: 'ac-red',    icon: 'skull', color: '#ff4d4d', label: 'muertes totales' },
     { id: 'dinero',   cls: 'ac-yellow', icon: 'coin',  color: '#ffce3d', label: 'dinero generado' },
 ];
@@ -1203,38 +1212,138 @@ function drawBigChart(hoverI) {
 function renderDashPaises(m) {
     const cont = document.getElementById('dashPaises'); if (!cont) return;
     const ps = (m.paises || []).slice(0, 8);
+    const now = m.paisesNow || {};
     const tot = (m.paises || []).reduce((s, p) => s + p.jugadores, 0) || 1;
     const maxP = ps.length ? ps[0].jugadores : 1;
     cont.innerHTML = ps.length ? ps.map(p => `
         <div class="crow">
             <span class="fl">${flag(p.code)}</span>
             <div class="cinfo">
-                <div class="cname"><span>${esc(p.name)}<span class="pct">${Math.round(p.jugadores / tot * 100)}%</span></span><b>${num(p.jugadores)}</b></div>
+                <div class="cname"><span>${esc(p.name)}<span class="pct">${Math.round(p.jugadores / tot * 100)}%</span>${now[p.code] ? `<span style="color:#00ff88;font-size:10px;margin-left:8px">● ${now[p.code]} online</span>` : ''}</span><b>${num(p.jugadores)}</b></div>
                 <div class="ubar" style="height:7px"><i style="width:${Math.max(4, Math.round(p.jugadores / maxP * 100))}%"></i></div>
             </div>
         </div>`).join('') : '<div class="vacio">Sin conexiones registradas.</div>';
 }
+
+// ===== Mapa mundial de puntos (rejilla generada offline desde countries.geo.json) =====
+// Cada celda tierra lleva el índice de su país. Verde tenue = país con jugadores
+// históricos (intensidad por cantidad); verde brillante con anillo = conectados AHORA.
+const WORLD = { w: 150, h: 66, codes: ["CA","GL","RU","US","NO","FI","SE","IS","GB","EE","DK","LT","LV","IE","DE","PL","BY","KZ","NL","UA","CN","FR","BE","CZ","MN","AT","SK","HU","MD","CH","IT","SI","RO","HR","BA","RS","UZ","JP","ES","AL","BG","GE","TM","KG","PT","TR","AM","AZ","KP","GR","IR","TJ","AF","KR","DZ","TN","SY","IQ","PK","MA","IN","MX","LY","JO","EG","IL","SA","NP","??","MR","MM","BS","ML","OM","BD","TW","CU","NE","TD","LA","VN","SD","JM","HT","DO","PR","YE","TH","PH","GT","ER","HN","SN","BF","ET","NI","GW","GN","NG","KH","CR","CO","VE","TT","GH","BJ","CF","SS","SO","PA","SL","CI","TG","CM","LK","GY","LR","SR","GF","CD","KE","ID","MY","BR","CG","UG","EC","GA","RW","TZ","PE","BI","PG","AO","ZM","BO","MZ","AU","MG","MW","VU","NA","ZW","BW","CL","PY","AR","ZA","LS","UY","NZ"], rle: "23.0,3.1,9.0,2.1,14.0,15.2,32.0,1.3,12.0,10.3,52.0,8.1,2.0,2.1,2.0,7.1,8.0,13.2,31.0,2.3,6.0,1.3,2.0,22.3,4.0,4.3,20.0,7.4,6.0,1.1,5.0,7.1,2.0,2.1,2.0,8.1,5.0,14.2,17.0,3.5,1.6,1.5,15.0,2.3,1.0,36.3,8.0,1.3,5.0,10.4,11.1,3.0,1.1,3.0,4.1,1.0,2.1,2.0,4.1,6.0,9.2,19.0,1.5,3.7,2.6,5.3,1.0,1.3,2.0,54.3,1.0,3.3,2.0,10.4,23.1,5.0,5.1,4.0,7.2,5.0,1.8,2.0,1.8,11.0,1.5,4.7,2.6,2.3,3.0,58.3,8.0,8.4,22.1,1.0,2.1,4.0,3.1,5.0,5.2,8.0,2.8,11.0,2.5,3.7,1.0,3.6,61.3,7.0,10.4,20.1,6.0,3.1,9.0,3.2,20.0,3.5,2.7,2.0,4.6,60.3,7.0,1.4,1.0,4.4,1.0,1.4,2.0,2.4,19.1,7.0,3.1,10.0,1.2,20.0,3.5,3.7,1.0,1.6,2.0,52.3,3.0,3.3,14.0,2.4,8.0,1.4,16.1,7.0,6.1,24.0,1.9,6.0,2.7,3.0,2.10,47.3,7.0,2.3,15.0,1.4,11.0,1.4,18.1,4.0,6.1,24.0,1.9,4.0,1.11,1.0,2.7,2.0,1.12,2.13,45.3,8.0,3.3,28.0,20.1,1.0,9.1,20.0,1.14,1.9,1.0,1.9,4.0,2.15,4.16,3.17,13.3,4.18,27.3,8.0,2.3,30.0,19.1,1.0,10.1,19.0,1.14,1.0,3.9,1.0,1.19,3.15,4.16,3.17,1.20,11.3,8.18,17.3,3.21,7.3,5.0,1.3,31.0,25.1,2.0,1.1,26.0,1.22,1.23,2.15,2.24,3.16,6.20,4.3,15.18,3.3,1.25,2.3,4.25,5.3,3.21,7.3,39.0,13.4,11.1,2.0,3.1,20.0,5.22,2.15,2.26,1.27,1.28,2.20,1.29,5.20,2.3,17.18,1.21,11.25,7.21,3.3,40.0,17.4,6.1,1.4,3.1,24.0,4.22,1.30,2.31,1.32,2.28,3.33,1.20,1.0,1.20,1.0,4.3,2.0,12.18,4.21,11.25,7.21,2.3,40.0,18.4,2.1,4.4,1.1,26.0,4.22,2.31,1.0,1.34,1.35,1.36,3.33,4.0,4.3,1.0,2.18,3.37,7.18,7.21,6.25,9.21,2.3,2.0,2.38,37.0,17.4,1.1,5.4,25.0,5.39,4.0,1.31,2.0,1.40,3.41,5.0,2.42,1.3,2.0,1.43,1.37,1.43,3.37,2.18,3.44,10.21,1.25,10.21,4.0,2.38,38.0,21.4,27.0,1.45,3.39,3.0,1.31,2.0,2.31,1.40,2.0,7.46,1.47,2.48,1.0,4.43,4.37,1.44,19.21,1.0,1.21,2.49,4.0,1.38,40.0,20.4,27.0,1.45,3.39,9.0,1.50,1.0,8.46,1.51,2.0,5.43,1.37,1.52,1.53,1.52,18.21,3.0,1.49,1.54,4.0,1.38,40.0,19.4,29.0,1.39,2.0,3.55,1.56,8.0,2.46,1.0,2.57,2.58,6.51,2.43,3.53,2.59,18.21,3.0,1.54,3.0,2.38,41.0,18.4,29.0,2.60,4.55,1.56,11.0,2.57,2.58,6.51,5.53,1.59,2.61,17.21,6.0,1.38,44.0,1.62,14.4,30.0,3.60,5.55,1.56,1.63,2.0,2.63,5.0,1.64,4.58,5.51,4.53,2.59,2.61,18.21,3.0,1.38,48.0,3.62,10.4,30.0,2.60,6.55,6.63,4.65,1.66,1.64,2.67,2.58,6.51,2.53,3.59,3.61,17.21,51.0,6.62,2.4,35.0,1.60,8.55,6.63,4.65,6.67,1.0,5.51,4.59,4.61,2.68,3.21,1.61,11.21,52.0,6.62,7.0,1.4,27.0,1.60,1.69,1.70,7.55,6.63,4.65,1.0,6.67,3.0,2.51,3.59,11.61,1.71,9.21,55.0,4.62,8.0,1.72,26.0,1.60,2.70,1.73,7.55,5.63,5.65,1.0,5.67,2.0,1.74,4.0,2.59,7.61,1.75,1.61,2.71,8.21,1.0,1.76,55.0,3.62,7.0,1.77,26.0,1.60,1.69,2.70,3.73,4.55,2.78,1.79,3.63,5.65,1.0,7.67,2.74,4.0,8.61,2.75,2.71,1.21,1.80,1.81,4.21,58.0,4.62,2.0,2.62,4.0,1.77,24.0,5.70,3.73,2.55,4.78,2.79,1.63,5.82,2.0,6.67,1.74,6.0,6.61,3.0,3.71,2.80,63.0,6.62,4.0,1.83,1.0,1.84,1.85,1.0,1.86,20.0,5.70,4.73,4.78,4.79,6.82,1.0,3.67,2.87,2.74,6.0,5.61,4.0,2.71,1.88,2.80,1.0,1.21,4.0,1.89,58.0,3.62,1.90,30.0,5.70,4.73,4.78,4.79,5.82,1.91,2.0,4.87,9.0,3.61,5.0,1.71,1.0,3.88,1.81,5.0,1.89,61.0,1.90,2.92,28.0,2.93,4.73,1.94,6.78,3.79,6.82,1.91,1.95,1.0,3.87,10.0,2.61,8.0,3.88,1.80,5.0,1.89,63.0,1.96,28.0,1.97,1.98,3.73,3.94,1.78,4.99,3.79,6.82,3.95,13.0,2.61,8.0,1.88,1.0,2.100,1.81,4.0,1.89,63.0,1.101,4.0,1.102,2.103,1.0,1.103,1.104,19.0,3.98,1.73,1.94,1.105,2.106,4.99,3.79,1.107,3.82,1.108,4.95,1.0,1.69,1.109,11.0,1.61,10.0,2.81,6.0,1.89,63.0,3.110,2.102,5.103,20.0,1.111,1.98,2.112,1.105,1.113,4.99,1.114,2.79,2.107,4.108,5.95,1.69,1.109,11.0,1.61,1.115,7.0,1.88,9.0,2.89,65.0,3.102,4.103,1.116,19.0,1.117,3.112,1.105,1.113,3.99,2.114,5.107,3.108,5.95,2.109,12.0,1.115,84.0,4.102,3.103,1.116,1.118,1.119,24.0,1.99,1.0,2.114,2.107,4.120,2.108,1.121,3.95,2.109,20.0,1.122,1.0,1.123,5.0,1.123,68.0,5.102,1.103,2.124,1.116,1.118,1.119,1.124,25.0,3.114,1.125,5.120,1.126,3.121,2.109,22.0,1.122,1.123,3.0,2.123,1.122,68.0,1.127,3.102,8.124,25.0,2.128,1.125,5.120,2.126,3.121,1.109,23.0,2.122,2.0,4.122,1.0,2.122,1.0,1.122,62.0,3.127,2.102,10.124,23.0,2.128,1.125,5.120,1.129,1.130,3.121,25.0,2.122,2.0,3.122,1.0,1.122,4.0,1.122,61.0,4.131,13.124,20.0,1.128,2.125,5.120,1.132,3.130,1.121,25.0,2.122,3.0,1.122,2.0,1.122,2.0,1.122,1.0,4.122,1.133,56.0,4.131,15.124,20.0,7.120,4.130,27.0,1.122,13.0,2.122,2.133,1.0,1.133,1.0,1.133,52.0,2.131,17.124,19.0,2.134,1.120,1.134,4.120,3.130,28.0,3.122,11.0,1.122,2.133,56.0,3.131,15.124,20.0,4.134,3.120,2.135,3.130,44.0,1.133,56.0,3.131,2.136,11.124,22.0,4.134,1.135,1.120,2.135,2.130,1.137,42.0,1.138,58.0,3.131,3.136,10.124,21.0,4.134,5.135,3.137,3.0,1.139,33.0,3.138,2.0,1.138,59.0,2.131,4.136,9.124,21.0,4.134,4.135,1.137,1.140,2.137,2.0,2.139,31.0,5.138,2.0,2.138,8.0,1.141,50.0,1.131,5.136,8.124,21.0,1.142,4.134,1.135,3.143,2.137,2.0,3.139,30.0,7.138,1.0,2.138,60.0,5.136,7.124,22.0,4.142,2.144,3.143,1.137,3.0,2.139,31.0,10.138,60.0,1.145,2.136,2.146,7.124,23.0,3.142,3.144,1.143,2.137,3.0,2.139,28.0,14.138,59.0,1.145,2.147,3.146,5.124,24.0,2.142,3.144,2.148,2.137,3.0,2.139,27.0,16.138,58.0,5.147,1.146,3.124,26.0,2.142,3.144,2.148,1.137,33.0,17.138,56.0,1.145,5.147,1.146,3.124,26.0,2.142,6.148,33.0,17.138,56.0,1.145,5.147,3.124,28.0,4.148,1.149,1.148,35.0,16.138,56.0,1.145,5.147,1.150,2.124,28.0,6.148,35.0,16.138,56.0,1.145,5.147,2.150,30.0,3.148,37.0,4.138,4.0,7.138,57.0,1.145,5.147,82.0,5.138,9.0,1.151,46.0,1.145,6.147,82.0,4.138,57.0,1.145,4.147,98.0,2.151,45.0,1.145,4.147,86.0,2.138,10.0,1.151,47.0,3.147,98.0,1.151,47.0,1.145,2.147,98.0,1.151,48.0,1.145,2.147,147.0,1.145,2.147,147.0,1.145,1.147,148.0,1.145,1.0,1.147,148.0,2.145,1.147,102.0" };
+const _worldCells = (() => {
+    const cells = new Int16Array(WORLD.w * WORLD.h);
+    let i = 0;
+    for (const tok of WORLD.rle.split(',')) {
+        const p = tok.split('.');
+        for (let k = 0; k < +p[0]; k++) cells[i++] = +p[1];
+    }
+    return cells;
+})();
+const _countryCells = (() => {   // code → [índices de celda] (centroides y hover)
+    const cc = {};
+    for (let i = 0; i < _worldCells.length; i++) {
+        const idx = _worldCells[i]; if (!idx) continue;
+        const c = WORLD.codes[idx - 1];
+        (cc[c] = cc[c] || []).push(i);
+    }
+    return cc;
+})();
+let _mapData = null;   // { hist: {code→jugadores}, now: {code→conectados}, names: {code→nombre} }
+function updateWorldMap(m) {
+    const hist = {}, names = {};
+    for (const p of (m.paises || [])) { hist[p.code] = p.jugadores; names[p.code] = p.name; }
+    _mapData = { hist, now: m.paisesNow || {}, names };
+    drawWorldMap();
+}
+function drawWorldMap(hoverCode) {
+    const cv = document.getElementById('worldMap'); if (!cv) return;
+    const W = cv.width = cv.clientWidth || 700, H = cv.height;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+    const sx = W / WORLD.w, sy = H / WORLD.h;
+    const r = Math.max(1.2, Math.min(sx, sy) * 0.33);
+    const d = _mapData || { hist: {}, now: {} };
+    let maxH = 1; for (const k in d.hist) if (d.hist[k] > maxH) maxH = d.hist[k];
+    for (let gy = 0; gy < WORLD.h; gy++) for (let gx = 0; gx < WORLD.w; gx++) {
+        const idx = _worldCells[gy * WORLD.w + gx];
+        if (!idx) continue;
+        const code = WORLD.codes[idx - 1];
+        const nNow = d.now[code] || 0, nHist = d.hist[code] || 0;
+        let col = 'rgba(125,145,132,0.15)';   // tierra sin datos
+        if (nHist) col = `rgba(0,255,136,${(0.28 + 0.45 * Math.sqrt(nHist / maxH)).toFixed(2)})`;
+        if (nNow) col = '#00ff88';
+        if (hoverCode && code === hoverCode) col = '#ffffff';
+        ctx.fillStyle = col;
+        if (nNow) { ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 6; }
+        ctx.beginPath(); ctx.arc((gx + 0.5) * sx, (gy + 0.5) * sy, r, 0, 7); ctx.fill();
+        if (nNow) ctx.shadowBlur = 0;
+    }
+    // Países con gente conectada AHORA: anillo en el centroide + etiqueta con el número
+    ctx.font = "10px 'Russo One'";
+    for (const code in d.now) {
+        const cells = _countryCells[code]; if (!cells || !d.now[code]) continue;
+        let cxs = 0, cys = 0;
+        for (const ci of cells) { cxs += ci % WORLD.w; cys += (ci / WORLD.w) | 0; }
+        const x = (cxs / cells.length + 0.5) * sx, y = (cys / cells.length + 0.5) * sy;
+        ctx.strokeStyle = 'rgba(0,255,136,0.85)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.stroke();
+        const label = code + ' · ' + d.now[code];
+        const tw = ctx.measureText(label).width;
+        const bx = Math.max(2, Math.min(W - tw - 14, x - tw / 2 - 6)), by = Math.max(2, y - 26);
+        ctx.fillStyle = 'rgba(4,10,6,0.92)';
+        ctx.beginPath(); ctx.roundRect(bx, by, tw + 12, 16, 8); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,255,136,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = '#00ff88'; ctx.fillText(label, bx + 6, by + 11.5);
+    }
+}
+// Hover del mapa: resalta el país y muestra tooltip con sus datos
+(function () {
+    const cv = document.getElementById('worldMap'), tip = document.getElementById('mapTip');
+    if (!cv || !tip) return;
+    cv.addEventListener('mousemove', e => {
+        const rc = cv.getBoundingClientRect();
+        const gx = Math.floor((e.clientX - rc.left) / rc.width * WORLD.w);
+        const gy = Math.floor((e.clientY - rc.top) / rc.height * WORLD.h);
+        const idx = (gx >= 0 && gx < WORLD.w && gy >= 0 && gy < WORLD.h) ? _worldCells[gy * WORLD.w + gx] : 0;
+        const code = idx ? WORLD.codes[idx - 1] : null;
+        drawWorldMap(code);
+        if (!code || !_mapData) { tip.style.display = 'none'; return; }
+        const j = _mapData.hist[code] || 0, n = _mapData.now[code] || 0;
+        tip.style.display = 'block';
+        tip.style.left = Math.min(e.clientX - rc.left + 14, rc.width - 170) + 'px';
+        tip.style.top = (e.clientY - rc.top + 12) + 'px';
+        tip.innerHTML = `<b style="color:#fff">${flag(code)} ${esc(_mapData.names[code] || code)}</b><br>` +
+            `<span style="color:#00ff88">●</span> ${num(j)} jugador${j === 1 ? '' : 'es'}` +
+            (n ? `<br><span style="color:#00ff88">●</span> <b style="color:#00ff88">${n} conectado${n === 1 ? '' : 's'} ahora</b>` : '');
+    });
+    cv.addEventListener('mouseleave', () => { tip.style.display = 'none'; drawWorldMap(); });
+})();
 function updateDashboard(m, t, sConectados, sEntradas, sMuertes, sDinero) {
     if (!document.getElementById('dv_salas')) { buildDashCards(); buildSerieChips(); }
     const vals = {
         salas: t.salasOnline, conect: sConectados, activos: num(t.activosHora || 0),
         unicos: num(realOnly ? (t.jugadoresUnicosReal || 0) : t.jugadoresUnicos),
-        entradas: num(sEntradas), muertes: num(sMuertes), dinero: dinero(sDinero)
+        muertes: num(sMuertes), dinero: dinero(sDinero)
     };
     for (const k of Object.keys(vals)) { const el = document.getElementById('dv_' + k); if (el) el.innerText = vals[k]; }
+    // Rendimiento del PROPIO proceso (mono o director), misma tarjeta que en la
+    // pestaña Rendimiento del split. El historial acumula aunque la pestaña esté oculta.
+    if (!document.getElementById('pc_dash')) document.getElementById('dashPerf').innerHTML = _perfCardHtml('dash', 'SERVIDOR', 'monitorización en vivo', false);
+    _histPush('dash', (m.tick && m.tick.p95) || 0, m.netKBs || 0);
     if (tabActiva !== 'dashboard') return;   // canvas ocultos miden 0: no dibujar
+    _updatePerfCard('dash', { alive: true, cpu: m.serverCpu || 0, tick: m.tick, lag: m.lag, netKBs: m.netKBs || 0,
+        mrow: `<span><b>${m.rssMB || 0}</b> MB RAM</span><span><b>${t.jugadores || 0}</b> conectados</span><span><b>${t.salasOnline || 0}</b> salas con gente</span><span>red <b>${m.snapshotHz || '—'} Hz</b></span><span>AOI <b>${m.aoiEnabled ? 'ON' : 'OFF'}</b></span>` });
     const S = m.series || [];
     const dsets = {
         salas: S.map(v => v.salasOnline || 0).slice(1),
         conect: S.map(v => v.conectados || 0).slice(1),
         activos: S.map(v => v.activos || 0).slice(1),
-        entradas: _serieVals(S, 'entradas', true),
         muertes: _serieVals(S, 'muertes', true),
         dinero: _serieVals(S, 'dinero', true),
     };
     for (const c of DASH_CARDS) { if (!c.nospark && dsets[c.id]) drawSpark(document.getElementById('dc_' + c.id), dsets[c.id], c.color); }
     updateBigData(m);
     renderDashPaises(m);
+    updateWorldMap(m);
 }
 // Hover de la gráfica grande: guía vertical + tooltip con los valores del minuto
 (function () {

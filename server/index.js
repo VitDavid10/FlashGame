@@ -1119,7 +1119,22 @@ function activosUltimaHora() {
         if (new Date(c.fecha).getTime() < desde) break;
         vistos.add((c.nombre || '') + '|' + c.ip);
     }
+    // Los que siguen conectados también cuentan aunque entraran hace >1h
+    // (connLog solo registra el JOIN). Testers fuera, como en el propio log.
+    for (const room of rooms.values()) for (const cli of room.clients.values()) {
+        if (!cli.isTester) vistos.add((cli.name || '') + '|' + cli.ip);
+    }
     return vistos.size;
+}
+// Conectados AHORA por país (para el mapa del dashboard). Pocos clientes → barato.
+function paisesConectados() {
+    const porPais = {};
+    for (const room of rooms.values()) for (const cli of room.clients.values()) {
+        if (cli.isTester) continue;
+        const g = geoOf(cli.ip);
+        porPais[g.code] = (porPais[g.code] || 0) + 1;
+    }
+    return porPais;
 }
 const SERIES_MAX = 180;          // 3 h a 1 muestra/min
 const adminSeries = [];
@@ -1253,6 +1268,7 @@ function buildAdminState() {
             activosHora: activosUltimaHora(),
         },
         series: adminSeries,
+        paisesNow: paisesConectados(),
         rooms: list,
         ranking,
         rankingUpdatedAt: _rankingUpdatedAt,
