@@ -3238,8 +3238,15 @@
                 // está en pantalla y sigue igual). Nada de popup ni de menú.
                 restoreBtn();
                 const retries = (netState._noSlotRetries = (netState._noSlotRetries || 0) + 1);
-                if (retries > 24) {   // ~60s reintentando en silencio; si sigue sin hueco, avisar de verdad
-                    showSystemMsg('Room ' + (msg.roomName || '') + ' is still full. Try another room in a moment.', 'ROOM FULL');
+                // ~60s reintentando en silencio; si sigue sin hueco, avisar de verdad y
+                // volver al menú (que elija otra sala/precio). Tope importante para las
+                // salas de pago: la firma de entrada caduca a los 120s (ver
+                // authorizeEntry en index.js) — parar aquí evita que un reintento tardío
+                // choque con "firma caducada" y salga un confuso PAYMENT REQUIRED en vez
+                // de este aviso, que es la causa real.
+                if (retries > 24) {
+                    try { ws.close(); } catch (err) {}
+                    abandonNet('All rooms in this category are full right now. Please try a different room or price from the menu.');
                 } else {
                     setTimeout(() => {
                         if (!netState || netState.ws !== ws || ws.readyState !== WebSocket.OPEN) return;
