@@ -1108,7 +1108,7 @@
     
     <div id="skillChoiceOverlay">
         <div class="skill-choice-card">
-            <div style="font-family:'Russo One'; color:#fff; font-size:24px;">SELECT A SKILL</div>
+            <div id="skillChoiceTitle" style="font-family:'Russo One'; color:#fff; font-size:24px;">SELECT A SKILL</div>
             <div class="skill-options" id="skillOptionsContainer"></div>
             <div class="skill-tips">PRESS [TAB] TO SWITCH - [Q] TO SELECT</div>
             <div class="timer-bar"><div class="timer-fill" id="skillTimerFill"></div></div>
@@ -1520,8 +1520,10 @@
         draw(ctx) {
             let es = getViewScale(); let screenX = (this.x - camera.x) * es + width/2; let screenY = (this.y - camera.y) * es + height/2;
             if (screenX < -200 || screenX > width + 200 || screenY < -200 || screenY > height + 200) return;
-            ctx.save(); ctx.translate(this.x, this.y); ctx.scale(1/es, 1/es); ctx.globalAlpha = Math.max(0, this.life); ctx.font = pixelMode ? "32px " + PIX_FONT : "900 32px 'Russo One'"; ctx.textAlign = "center";
-            ctx.lineWidth = 5; ctx.strokeStyle = "#000"; ctx.strokeText(this.text, 0, 0); ctx.fillStyle = this.color; ctx.fillText(this.text, 0, 0); ctx.restore();
+            ctx.save(); ctx.translate(this.x, this.y); ctx.scale(1/es, 1/es); ctx.globalAlpha = Math.max(0, this.life);
+            if (pixelMode) { const px = 4, w = pixTextWidth(this.text, px); drawPixelText(ctx, this.text, -w / 2, -3.5 * px, px, this.color, "#000"); }
+            else { ctx.font = "900 32px 'Russo One'"; ctx.textAlign = "center"; ctx.lineWidth = 5; ctx.strokeStyle = "#000"; ctx.strokeText(this.text, 0, 0); ctx.fillStyle = this.color; ctx.fillText(this.text, 0, 0); }
+            ctx.restore();
         }
     }
     let floatingTexts = [];
@@ -1530,8 +1532,11 @@
         constructor(text, color) { this.text = text; this.color = color; this.life = 2.0; this.yOffset = 0; }
         update() { this.life -= 0.02; this.yOffset -= 0.5 * timeScale; }
         draw(ctx) {
-            ctx.save(); ctx.globalAlpha = Math.min(1, this.life); ctx.font = pixelMode ? "22px " + PIX_FONT : "bold 20px 'Russo One'"; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "#000";
-            let posX = width / 2; let posY = height * 0.4 + this.yOffset; ctx.strokeText(this.text, posX, posY); ctx.fillStyle = this.color; ctx.fillText(this.text, posX, posY); ctx.restore();
+            ctx.save(); ctx.globalAlpha = Math.min(1, this.life);
+            let posX = width / 2, posY = height * 0.4 + this.yOffset;
+            if (pixelMode) { const px = 4, w = pixTextWidth(this.text, px); drawPixelText(ctx, this.text, posX - w / 2, posY - 3.5 * px, px, this.color, "#000"); }
+            else { ctx.font = "bold 20px 'Russo One'"; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(this.text, posX, posY); ctx.fillStyle = this.color; ctx.fillText(this.text, posX, posY); }
+            ctx.restore();
         }
     }
     let uiTexts = [];
@@ -1681,6 +1686,63 @@
         g.fillRect(cx - Math.floor(t / 2), cy - arm, t, arm * 2);
         g.fillRect(cx - arm, cy - Math.floor(t / 2), arm * 2, t);
         PIX.shield.set(sW, spr); return spr;
+    }
+
+    // ===== Fuente bitmap pixel 5×7 (procedural, sin assets) =====
+    // Cada glifo = 7 filas de 5 bits (bit 4 = columna izquierda). Se dibuja con
+    // fillRect por píxel; contorno sólido en 8 direcciones. Todo en mayúsculas.
+    const PIXFONT = {
+        ' ': [0,0,0,0,0,0,0],
+        '0': [0x0E,0x11,0x13,0x15,0x19,0x11,0x0E], '1': [0x04,0x0C,0x04,0x04,0x04,0x04,0x0E],
+        '2': [0x0E,0x11,0x01,0x02,0x04,0x08,0x1F], '3': [0x1F,0x02,0x04,0x02,0x01,0x11,0x0E],
+        '4': [0x02,0x06,0x0A,0x12,0x1F,0x02,0x02], '5': [0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E],
+        '6': [0x06,0x08,0x10,0x1E,0x11,0x11,0x0E], '7': [0x1F,0x01,0x02,0x04,0x08,0x08,0x08],
+        '8': [0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E], '9': [0x0E,0x11,0x11,0x0F,0x01,0x02,0x0C],
+        'A': [0x0E,0x11,0x11,0x1F,0x11,0x11,0x11], 'B': [0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E],
+        'C': [0x0E,0x11,0x10,0x10,0x10,0x11,0x0E], 'D': [0x1C,0x12,0x11,0x11,0x11,0x12,0x1C],
+        'E': [0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F], 'F': [0x1F,0x10,0x10,0x1E,0x10,0x10,0x10],
+        'G': [0x0E,0x11,0x10,0x17,0x11,0x11,0x0F], 'H': [0x11,0x11,0x11,0x1F,0x11,0x11,0x11],
+        'I': [0x0E,0x04,0x04,0x04,0x04,0x04,0x0E], 'J': [0x07,0x02,0x02,0x02,0x02,0x12,0x0C],
+        'K': [0x11,0x12,0x14,0x18,0x14,0x12,0x11], 'L': [0x10,0x10,0x10,0x10,0x10,0x10,0x1F],
+        'M': [0x11,0x1B,0x15,0x15,0x11,0x11,0x11], 'N': [0x11,0x11,0x19,0x15,0x13,0x11,0x11],
+        'O': [0x0E,0x11,0x11,0x11,0x11,0x11,0x0E], 'P': [0x1E,0x11,0x11,0x1E,0x10,0x10,0x10],
+        'Q': [0x0E,0x11,0x11,0x11,0x15,0x12,0x0D], 'R': [0x1E,0x11,0x11,0x1E,0x14,0x12,0x11],
+        'S': [0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E], 'T': [0x1F,0x04,0x04,0x04,0x04,0x04,0x04],
+        'U': [0x11,0x11,0x11,0x11,0x11,0x11,0x0E], 'V': [0x11,0x11,0x11,0x11,0x11,0x0A,0x04],
+        'W': [0x11,0x11,0x11,0x15,0x15,0x1B,0x11], 'X': [0x11,0x11,0x0A,0x04,0x0A,0x11,0x11],
+        'Y': [0x11,0x11,0x0A,0x04,0x04,0x04,0x04], 'Z': [0x1F,0x01,0x02,0x04,0x08,0x10,0x1F],
+        '!': [0x04,0x04,0x04,0x04,0x04,0x00,0x04], '+': [0x00,0x04,0x04,0x1F,0x04,0x04,0x00],
+        '-': [0x00,0x00,0x00,0x1F,0x00,0x00,0x00], '(': [0x02,0x04,0x08,0x08,0x08,0x04,0x02],
+        ')': [0x08,0x04,0x02,0x02,0x02,0x04,0x08], '/': [0x01,0x02,0x02,0x04,0x08,0x08,0x10],
+        ':': [0x00,0x04,0x04,0x00,0x04,0x04,0x00], '.': [0x00,0x00,0x00,0x00,0x00,0x06,0x06],
+        ',': [0x00,0x00,0x00,0x00,0x06,0x04,0x08], '?': [0x0E,0x11,0x01,0x02,0x04,0x00,0x04],
+        '$': [0x04,0x0F,0x14,0x0E,0x05,0x1E,0x04], '%': [0x18,0x19,0x02,0x04,0x08,0x13,0x03],
+        "'": [0x04,0x04,0x04,0x00,0x00,0x00,0x00],
+    };
+    function pixTextWidth(text, px) { const n = String(text).length; return n > 0 ? n * 6 * px - px : 0; }
+    function _pixTextBlocks(g, text, x, y, px, color) {
+        g.fillStyle = color; let cx = x;
+        for (const ch of String(text).toUpperCase()) {
+            const rows = PIXFONT[ch];
+            if (rows) for (let r = 0; r < 7; r++) { const bits = rows[r]; for (let c = 0; c < 5; c++) if (bits & (1 << (4 - c))) g.fillRect(cx + c * px, y + r * px, px, px); }
+            cx += 6 * px;
+        }
+    }
+    const _PIX_OUT8 = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+    function drawPixelText(g, text, x, y, px, fill, outline) {
+        if (outline) for (const o of _PIX_OUT8) _pixTextBlocks(g, text, x + o[0] * px, y + o[1] * px, px, outline);
+        _pixTextBlocks(g, text, x, y, px, fill);
+    }
+    // Canvas independiente con texto pixel (para overlays DOM: GO!, cuenta atrás).
+    // shadow = color de sombra diagonal abajo-derecha (estilo arcade), opcional.
+    function pixTextCanvas(text, px, fill, outline, shadow) {
+        const sh = shadow ? 2 : 0, w = pixTextWidth(text, px), pad = px;
+        const cv = document.createElement('canvas'); cv.width = w + pad * 2 + sh * px; cv.height = 7 * px + pad * 2 + sh * px;
+        const g = cv.getContext('2d');
+        if (shadow) _pixTextBlocks(g, text, pad + sh * px, pad + sh * px, px, shadow);
+        drawPixelText(g, text, pad, pad, px, fill, outline);
+        cv.style.imageRendering = 'pixelated'; cv.style.display = 'block';
+        return cv;
     }
 
     // Versión pixel de drawCell: misma estructura (tp/sprint/inmunidad/flash/
@@ -3136,7 +3198,9 @@
         ensureLobbyFx();
         const old = document.getElementById('cdNum'); if (old) old.remove();
         const el = document.createElement('div'); el.id = 'cdNum';
-        el.innerHTML = '<div class="cd-lbl">' + (label || 'MATCH STARTING') + '</div><div class="cd-n">' + n + '</div>';
+        el.innerHTML = '<div class="cd-lbl">' + (label || 'MATCH STARTING') + '</div>';
+        if (pixelMode) { const cv = pixTextCanvas(String(n), 26, '#fff', '#000', '#00ff88'); cv.className = 'cd-n'; el.appendChild(cv); }
+        else { const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3, 5s) lo dispara quien llama, una vez al entrar en los 5s.
         setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
@@ -3683,7 +3747,8 @@
         const old = document.getElementById('goSplash'); if (old) old.remove();
         const el = document.createElement('div');
         el.id = 'goSplash';
-        el.innerHTML = '<div class="go-txt">GO!</div>';
+        if (pixelMode) { const cv = pixTextCanvas('GO!', 34, '#fff', '#000', '#00ff88'); cv.className = 'go-txt'; el.appendChild(cv); }
+        else el.innerHTML = '<div class="go-txt">GO!</div>';
         document.body.appendChild(el);
         SoundManager.play('go');
         setTimeout(() => el.remove(), 1650);
@@ -3758,7 +3823,8 @@
     // los 10s del pick). Centralizado para que el sonido se vaya tanto si eliges como
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
-    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div><div class="skill-opt-name">${SKILL_DEFS[id].name}</div>`; div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
+    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { titleEl.innerHTML = ''; const tc = pixTextCanvas('SELECT A SKILL', 6, '#fff', '#000', '#00ff88'); tc.style.margin = '0 auto'; titleEl.appendChild(tc); } else titleEl.textContent = 'SELECT A SKILL'; }
+        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nc = pixTextCanvas(SKILL_DEFS[id].name, 4, '#fff', '#000'); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
 
