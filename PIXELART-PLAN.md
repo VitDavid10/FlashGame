@@ -15,8 +15,13 @@ render es un lector del estado. Todo el trabajo de este plan es cliente puro
   colores). (b) Fuente **bitmap pixel 5×7 procedural** (`PIXFONT` + `drawPixelText`
   + `pixTextCanvas`, contorno 8-dir y sombra diagonal arcade) aplicada a: GO!
   splash, número de cuenta atrás, textos flotantes (world + UI) y overlay de
-  skills (título "SELECT A SKILL" + nombres de skill). Falta: landing
-  (`index.html`), y decidir si más UI DOM pasa a bitmap o se queda en VT323.
+  skills (título "SELECT A SKILL" + nombres de skill). (c) Versión "premium"
+  multicapa (`pixFancyText`: bold 11×15, sombreado interno, tinta + halo verde +
+  placa oscura + sparkles) y marco 9-slice con brackets (`ensurePixPanelCss`,
+  border-image) para la skill-choice-card, timer bar y botones. Falta: landing
+  (`index.html`), aplicar el marco bracket a más paneles (modales, leaderboard),
+  y los PNG del usuario (logo PILLWARS splash, iconos de skills) que se enchufan
+  tal cual, sin recortes.
 - [x] **F2 — Sprites del mundo** — HECHA en versión procedural: pills, comida,
   virus, proyectiles y masa eyectada se dibujan desde sprites pixel generados en
   código (contorno + sombreado + brillo), escalados sin suavizado a resolución
