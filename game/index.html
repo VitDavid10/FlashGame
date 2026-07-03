@@ -1742,23 +1742,80 @@
         if (outline) for (const o of _PIX_OUT8) _pixTextBlocks(g, text, x + o[0] * px, y + o[1] * px, px, outline);
         _pixTextBlocks(g, text, x, y, px, fill);
     }
+
+    // ===== Texto "HD": misma fuente 5×7, más resolución real vía Scale2x =====
+    // El glifo bold (11×15, ya dilatado) se sube de resolución con la regla
+    // Scale2x/AdvMAME2x (suaviza escalones diagonales generando esquinas
+    // intermedias reales) en vez de solo escalar en bloque. Resultado: mismas
+    // letras, mismo tamaño final, pero con muchos más "píxeles" de detalle en
+    // las curvas — igual que el pixel art dibujado a mano en vez de bitmap crudo.
+    function _glyphBoldGrid(ch) {
+        const rows = PIXFONT[ch], w = 11, h = 15, bits = new Uint8Array(w * h);
+        if (rows) for (let r = 0; r < 7; r++) { const bitrow = rows[r]; for (let c = 0; c < 5; c++) if (bitrow & (1 << (4 - c))) {
+            const bx = c * 2, by = r * 2;
+            for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < 3; xx++) { const gx = bx + xx, gy = by + yy; if (gx < w && gy < h) bits[gy * w + gx] = 1; }
+        } }
+        return { bits, w, h };
+    }
+    function _scale2xBool(bits, w, h) {
+        const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : bits[y * w + x];
+        const w2 = w * 2, h2 = h * 2, out = new Uint8Array(w2 * h2);
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+            const E = at(x, y), B = at(x, y - 1), D = at(x - 1, y), F = at(x + 1, y), H = at(x, y + 1);
+            let e0 = E, e1 = E, e2 = E, e3 = E;
+            if (B !== H && D !== F) { e0 = (D === B) ? D : E; e1 = (B === F) ? F : E; e2 = (D === H) ? D : E; e3 = (H === F) ? F : E; }
+            const ox = x * 2, oy = y * 2;
+            out[oy * w2 + ox] = e0; out[oy * w2 + ox + 1] = e1; out[(oy + 1) * w2 + ox] = e2; out[(oy + 1) * w2 + ox + 1] = e3;
+        }
+        return { bits: out, w: w2, h: h2 };
+    }
+    const _hdGlyphCache = new Map();
+    function _hdGlyph(ch, levels) {
+        const key = ch + '|' + levels; let g = _hdGlyphCache.get(key); if (g) return g;
+        let cur = _glyphBoldGrid(ch);
+        for (let i = 0; i < levels; i++) cur = _scale2xBool(cur.bits, cur.w, cur.h);
+        _hdGlyphCache.set(key, cur); return cur;
+    }
+    function _pixTextBlocksHD(g, text, x, y, px, color, shade, levels) {
+        const scale = 1 << levels, cellPx = px / scale, adv = 13 * px; let cx = x;
+        for (const ch of String(text).toUpperCase()) {
+            const { bits, w, h } = _hdGlyph(ch, levels), shadeFrom = Math.floor(h * 5 / 7);
+            for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) if (bits[yy * w + xx]) {
+                g.fillStyle = (shade && yy >= shadeFrom) ? shade : color;
+                g.fillRect(cx + xx * cellPx, y + yy * cellPx, cellPx + 0.5, cellPx + 0.5);
+            }
+            cx += adv;
+        }
+    }
     // Canvas de texto pixel "premium" (para overlays DOM: GO!, cuenta atrás, títulos).
     // Trazo bold + capas de contorno estilo cartel arcade: fill blanco con sombreado
     // interno → tinta negra → halo verde brillante → halo verde oscuro. Opciones:
     // fill/shade/ink/accent/dark (colores), plain (solo tinta, sin halos),
+    // thin (sin placa oscura gruesa, solo tinta + línea fina), glow (color de halo
+    // difuminado real detrás de las letras, estilo cartel de neón), glowBlur (radio),
     // sparkles (cruces decorativas en el padding).
     function pixFancyText(text, px, o = {}) {
         const fill = o.fill || '#fff', shade = o.shade || '#b9c2cc', ink = o.ink || '#000';
         const accent = o.accent || '#00ff88', dark = o.dark || '#0a4a2a';
-        const layers = o.plain ? [[1, ink]] : [[4, dark], [2, accent], [1, ink]];
-        const pad = (layers[0][0] + (o.sparkles ? 4 : 0)) * px;
+        const layers = o.plain ? [[1, ink]] : o.thin ? [[2, accent], [1, ink]] : [[4, dark], [2, accent], [1, ink]];
+        const glowBlur = o.glow ? (o.glowBlur || px * 3) : 0;
+        const pad = (layers[0][0] + (o.sparkles ? 4 : 0) + Math.ceil(glowBlur / px)) * px;
         const cv = document.createElement('canvas');
         cv.width = pixTextWidth(text, px, true) + pad * 2; cv.height = 15 * px + pad * 2;
         const g = cv.getContext('2d');
+        const draw = (gx, gy, col, sh) => { if (o.hd) _pixTextBlocksHD(g, text, gx, gy, px, col, sh, o.hd); else _pixTextBlocks(g, text, gx, gy, px, col, true, sh); };
+        if (o.glow) {
+            // silueta aparte para no ensuciar de blur el resto de capas (nítidas).
+            const sil = document.createElement('canvas'); sil.width = cv.width; sil.height = cv.height;
+            if (o.hd) _pixTextBlocksHD(sil.getContext('2d'), text, pad, pad, px, o.glow, false, o.hd); else _pixTextBlocks(sil.getContext('2d'), text, pad, pad, px, o.glow, true);
+            g.save(); g.shadowColor = o.glow; g.shadowBlur = glowBlur; g.globalCompositeOperation = 'lighter';
+            for (let i = 0; i < 4; i++) g.drawImage(sil, 0, 0);
+            g.restore();
+        }
         for (const [d, col] of layers)
             for (let dx = -d; dx <= d; dx++) for (let dy = -d; dy <= d; dy++)
-                _pixTextBlocks(g, text, pad + dx * px, pad + dy * px, px, col, true);
-        _pixTextBlocks(g, text, pad, pad, px, fill, true, shade);
+                draw(pad + dx * px, pad + dy * px, col);
+        draw(pad, pad, fill, shade);
         if (o.sparkles) {
             g.fillStyle = accent;
             const sp = Math.max(2, Math.round(px * 0.75));
@@ -3803,7 +3860,7 @@
         const old = document.getElementById('goSplash'); if (old) old.remove();
         const el = document.createElement('div');
         el.id = 'goSplash';
-        if (pixelMode) { const px = Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))); const cv = pixFancyText('GO!', px, { sparkles: 5 }); cv.className = 'go-txt'; el.appendChild(cv); }
+        if (pixelMode) { const px = Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))); const cv = pixFancyText('GO!', px, { sparkles: 5, thin: true, glow: '#00ff88', glowBlur: px * 4, hd: 2 }); cv.className = 'go-txt'; el.appendChild(cv); }
         else el.innerHTML = '<div class="go-txt">GO!</div>';
         document.body.appendChild(el);
         SoundManager.play('go');
