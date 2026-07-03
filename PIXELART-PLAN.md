@@ -7,12 +7,20 @@ render es un lector del estado. Todo el trabajo de este plan es cliente puro
 
 ## Estado
 
-- [x] **F0 — Modo retro instantáneo** (hecho, commit de esta fase)
-- [ ] **F1 — Paleta, fuente pixel y UI** (web principal + menús /game)
-- [ ] **F2 — Sprites del mundo** (pills, comida, virus, proyectiles)
-- [ ] **F3 — Fondo y borde del mapa**
-- [ ] **F4 — Animaciones y efectos**
-- [ ] **F5 — Texture pack seleccionable definitivo + QA**
+- [x] **F0 — Modo retro instantáneo** — DESCARTADA tras probarla: bajar la resolución
+  del frame entero se ve "a mala resolución", no pixel art. Se sustituyó por F2.
+- [ ] **F1 — Paleta, fuente pixel y UI** (web principal + menús /game; la fuente
+  pixel en canvas ya está hecha como parte de F2)
+- [x] **F2 — Sprites del mundo** — HECHA en versión procedural: pills, comida,
+  virus, proyectiles y masa eyectada se dibujan desde sprites pixel generados en
+  código (contorno + sombreado + brillo), escalados sin suavizado a resolución
+  completa. Los PNG de ChatGPT quedan como mejora opcional que se enchufa en los
+  mismos puntos.
+- [ ] **F3 — Fondo y borde del mapa** (el borde ya tiene versión pixel sin glow;
+  falta el tile del fondo)
+- [ ] **F4 — Animaciones y efectos** (explosión, partículas y textos ya tienen
+  versión pixel; faltan imán/sprint refinados)
+- [ ] **F5 — Texture pack seleccionable definitivo + QA** (el toggle ya activa todo)
 
 ## Puntos de anclaje en el código
 
@@ -28,21 +36,15 @@ Todo el dibujo del mundo está concentrado en `game/index.html`:
 | Textos flotantes | `FloatingText` / `FixedUIText` | Fuente Russo One sobre canvas |
 | Temas | `setTheme()` | Variables CSS `--bg-color` / `--grid-line` |
 | Calidad | `setQuality()` | Ya condiciona el dibujo (high/normal/low/ultra) |
-| Modo pixel (F0) | `setPixelMode()` / `pixScale()` / `resize()` | `localStorage.pw_pixel`, factor `PIXEL_FACTOR = 3` |
+| Modo pixel | `setPixelMode()` / `drawCellPixel()` / `pixPillSprite()` / `pixDotSprite()` / `pixVirusSprite()` | `localStorage.pw_pixel`; píxel gordo `PIX_SCREEN_PX = 4`; caches en `PIX.*` |
 
-## F0 — Modo retro instantáneo ✅
+## F0 — Modo retro instantáneo ❌ (descartada)
 
-Backbuffer a `1/PIXEL_FACTOR` de resolución en `resize()`; el CSS del canvas
-(`width:100%; height:100%`) lo reescala solo, con `image-rendering: pixelated` +
-`ctx.imageSmoothingEnabled = false`. El ratón se divide por `pixScale()` en los 4
-puntos de captura (mousemove/touchmove/touchstart/mousedown de espectador) para que
-la conversión pantalla→mundo (que compara contra `width/height` del backbuffer) siga
-cuadrando. El aspect que se manda al server (`width/height`) no cambia de ratio.
-
-Toggle "Texture Pack: Classic/Pixel" bajo Map Theme, persistido en `pw_pixel`.
-
-Sirve para **decidir la escala de píxel** antes de encargar sprites: probar
-`PIXEL_FACTOR` 2/3/4 y elegir. Con 1920×1080 y factor 3 → backbuffer 640×360.
+Se probó bajar el backbuffer a 1/3 y reescalar con `image-rendering: pixelated`.
+Veredicto: se ve como el juego "a mala resolución", no como pixel art. Lección:
+**pixel art premium = pantalla nítida a resolución completa + sprites deliberados
+con pocos píxeles** (estilo Celeste/Dead Cells), no downscale global. El toggle y
+la persistencia (`pw_pixel`) se conservaron; el render se reemplazó por F2.
 
 ## F1 — Paleta, fuente pixel y UI
 
@@ -61,21 +63,29 @@ Sirve para **decidir la escala de píxel** antes de encargar sprites: probar
   - sin antialiasing, sin degradados, borde exterior 1px oscuro
   - mismo prompt base para todos, cambiando solo el sujeto
 
-## F2 — Sprites del mundo
+## F2 — Sprites del mundo ✅ (versión procedural)
 
-- **Atlas**: un `game/textures.png` + JSON de coordenadas; carga con `Image` y
-  `drawImage(atlas, sx, sy, sw, sh, …)`. Nada de un fichero por sprite.
-- **Pills**: sprite base en **escala de grises** (no lo puede generar ChatGPT con
-  colores porque top/bot son dinámicos). Tintado: canvas offscreen, dibujar el
-  sprite gris, `globalCompositeOperation = 'multiply'` con los 2 colores por
-  mitades, cachear por par de colores (mismo patrón que `skinCache`). Enganchar en
-  `drawCell()` donde ya se clipa la skin.
-- **Comida**: sprite 16×16, 2–3 variantes (ya tiene `f.c1` de color → tintado igual
-  que pills o variantes precoloreadas con la paleta).
-- **Virus**: 64×64, estado normal + dañado (hoy hace lerp verde→morado con
-  `v.animTime`; con sprites, 2–3 frames).
-- **Proyectiles y masa eyectada**: 16×16. Mantener el LOD actual (círculo plano por
-  debajo del umbral) — con backbuffer reducido apenas se nota y ahorra draw calls.
+Implementado sin assets externos: cada sprite se genera pixel a pixel en un canvas
+offscreen a resolución lógica baja y se escala sin suavizado
+(`ctx.imageSmoothingEnabled = false` en `resize()`), con el píxel gordo a
+~`PIX_SCREEN_PX` (4px) constante en pantalla — un objeto grande tiene más píxeles
+de detalle que uno pequeño, como en pixel art real.
+
+- **Pills** (`pixPillSprite`): cápsula con contorno oscuro 1px lógico, banda de
+  sombra abajo-derecha, banda de luz arriba-izquierda, costura entre mitades y
+  highlight. Cache por `tamaño|colorTop|colorBot` (colores dinámicos por jugador,
+  cap 400 entradas). Las skins por URL siguen funcionando (se pixelan solas al
+  escalarse sin suavizado).
+- **Comida/proyectiles** (`pixDotSprite`): blob redondo con contorno y sombra
+  diagonal; a tamaños mínimos queda como cruz/rombo pixel. Cache por color.
+- **Virus** (`pixVirusSprite`): rueda dentada de 12 dientes, 3 tonos + manchas;
+  estado dañado con lerp verde→morado cuantizado a pasos de 0.25.
+- **Masa eyectada**: mismo `pixPillSprite` pequeño, rotado con `f.angle`.
+- LOD: los buckets de tamaño hacen de LOD natural (mínimo 4px lógicos).
+
+Mejora opcional futura: sustituir los generadores por PNG dibujados a mano/ChatGPT
+en los MISMOS puntos (las funciones `pix*Sprite` devuelven un canvas; basta
+devolver una imagen del atlas).
 
 ## F3 — Fondo y borde del mapa
 
