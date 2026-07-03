@@ -885,7 +885,17 @@ function buildRoomsSummary() {
         if (r.clients.size > 0) salasOnline++;
         jugadores += r.clients.size;
         for (const cli of r.clients.values()) if (!cli.isTester) jugadoresReales++;
-        list.push({ key: r.key, comboKey: r.comboKey, mode: r.mode, roomName: r.roomName, layerIdx: r.layerIdx, state: r.state, conectados: r.clients.size, maxReales: maxPlayersOf(r.comboKey) });
+        list.push({
+            key: r.key, comboKey: r.comboKey, mode: r.mode, roomName: r.roomName, layerIdx: r.layerIdx, state: r.state,
+            conectados: r.clients.size, maxReales: maxPlayersOf(r.comboKey),
+            // Para las barras del panel del Director: cuenta atrás de arcade y
+            // pentakills de classic (acumulados desde el último restart de la sala,
+            // los cuenta room-loop al llegar la racha a 5).
+            tlMs: (r.state === 'playing' && r.endsAt) ? Math.max(0, r.endsAt - Date.now()) : null,
+            restartEnMs: r.restartAt ? Math.max(0, r.restartAt - Date.now()) : null,
+            startInMs: r.startAt ? Math.max(0, r.startAt - Date.now()) : null,
+            pentakills: r.mode === 'classic' ? (r.pentas | 0) : 0
+        });
     }
     return {
         hostId: PW_HOST_ID, salasOnline, jugadores, jugadoresReales, rooms: list, cpu: serverCpuPct,
@@ -1168,8 +1178,8 @@ function sampleAdminSeries() {
     adminSeries.push({
         ts: Date.now(),
         entradas, muertes, dinero, entradasReal, muertesReal, dineroReal,
-        conectados: [...rooms.values()].reduce((s, r) => s + r.clients.size, 0),
-        salasOnline: [...rooms.values()].filter(r => r.clients.size > 0).length,
+        conectados: PW_ROLE === 'director' ? _dirAgg.conectados : [...rooms.values()].reduce((s, r) => s + r.clients.size, 0),
+        salasOnline: PW_ROLE === 'director' ? _dirAgg.salasOnline : [...rooms.values()].filter(r => r.clients.size > 0).length,
         activos: activosUltimaHora(true),
         activosReal: activosUltimaHora(false),
         unicos: Object.keys(playerStats).length,
@@ -1177,9 +1187,24 @@ function sampleAdminSeries() {
     });
     if (adminSeries.length > SERIES_MAX) adminSeries.shift();
 }
-// El Director no tiene salas propias: sus gráficas saldrían planas a 0.
-// (Cuando se despliegue el split, agregar por IPC igual que getRoomsSummary.)
-if (PW_ROLE !== 'director') { sampleAdminSeries(); setInterval(sampleAdminSeries, 60000); }
+// En rol director las salas viven en los hosts: antes de cada muestra se agregan
+// conectados/salas por IPC (roomStats/activos/unicos ya viven aquí). En mono/host
+// se muestrea directo de las salas locales.
+let _dirAgg = { conectados: 0, salasOnline: 0 };
+async function refreshDirAgg() {
+    let jug = 0, salas = 0;
+    await Promise.all([...hostProcs.values()].filter(h => h.alive).map(async (h) => {
+        try { const s = await h.ipc.request('getRoomsSummary', {}); jug += s.jugadores || 0; salas += s.salasOnline || 0; } catch (e) {}
+    }));
+    _dirAgg = { conectados: jug, salasOnline: salas };
+}
+if (PW_ROLE === 'director') {
+    const tick = () => refreshDirAgg().then(sampleAdminSeries);
+    setTimeout(tick, 5000);   // primera muestra cuando los hosts ya han arrancado
+    setInterval(tick, 60000);
+} else {
+    sampleAdminSeries(); setInterval(sampleAdminSeries, 60000);
+}
 
 // --- Estado para el panel de admin: una entrada por layer, agrupable por combo ---
 function buildAdminState() {
@@ -1227,7 +1252,10 @@ function buildAdminState() {
             // sus propias combos. Sin este filtro, las combos del OTRO host salían
             // como entradas "offline" con botón "Encender" que crearía la sala en
             // el host equivocado (rompe el reparto del shard-map).
-            if (ownsCombo && !ownsCombo(mode, price)) continue;
+            // En rol director SÍ se listan todas (ownsCombo=false por diseño): sus
+            // stats de combo alimentan el "Top rooms" del dashboard; la vista de
+            // salas del director es hostCardsView, así que no hay botón Encender.
+            if (PW_ROLE === 'host' && ownsCombo && !ownsCombo(mode, price)) continue;
             const ck = comboKeyOf(mode, price);
             for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
                 if (isLayerOffForPrice(price, i)) continue;   // premium con layer apagada
@@ -1241,14 +1269,15 @@ function buildAdminState() {
     for (const room of rooms.values()) {
         if (!keysSeen.has(room.key)) list.push(roomEntry(room.key, room.comboKey || room.key, room.mode, room.roomName, room.layerIdx || 1, room));
     }
-    // Totales agregados: contar stats UNA vez por comboKey.
+    // Totales agregados: directamente desde roomStats (una entrada por combo).
+    // Antes se sumaba iterando `list`, pero en rol director la lista de salas
+    // propias está vacía y los totales salían a 0 aunque roomStats (que vive
+    // aquí: los hechos llegan por econ IPC desde los hosts) tuviera los datos.
     let totEntradas = 0, totMuertes = 0, totDinero = 0, totEntradasReal = 0, totMuertesReal = 0, totDineroReal = 0;
-    const seenCombo = new Set();
-    for (const e of list) {
-        if (seenCombo.has(e.comboKey)) continue;
-        seenCombo.add(e.comboKey);
-        totEntradas += e.stats.entradas; totMuertes += e.stats.muertes; totDinero += e.stats.dinero;
-        totEntradasReal += e.stats.entradasReal; totMuertesReal += e.stats.muertesReal; totDineroReal += e.stats.dineroReal;
+    for (const [ck, s] of Object.entries(roomStats)) {
+        const price = priceOf(ck);
+        totEntradas += s.entradas || 0; totMuertes += s.muertes || 0; totDinero += (s.entradas || 0) * price;
+        totEntradasReal += s.entradasReal || 0; totMuertesReal += s.muertesReal || 0; totDineroReal += (s.entradasReal || 0) * price;
     }
     // Ranking: usa el cache calculado bajo demanda (botón "Actualizar ranking" en panel).
     // No se recalcula aquí — con 87k entradas bloquearía el main thread en cada poll.

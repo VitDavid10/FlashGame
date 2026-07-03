@@ -239,6 +239,13 @@
     .vlab .nm { display: block; font-family: 'Russo One'; font-size: 11.5px; color: #fff; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .vlab .md { display: block; font-size: 8.5px; color: #667; font-family: 'Russo One'; letter-spacing: 1.5px; margin-top: 2px; }
     .vlab .dn { display: block; font-size: 10.5px; color: var(--yellow); margin-top: 3px; }
+    .vbar.dim { opacity: 0.3; box-shadow: none; }
+    .vxb { display: inline-block; margin-top: 5px; padding: 2.5px 9px; border-radius: 10px; font-family: 'Russo One'; font-size: 8.5px; letter-spacing: 1px; white-space: nowrap; }
+    .vxb.naranja { background: rgba(255,140,66,0.12); color: var(--orange); border: 1px solid rgba(255,140,66,0.3); }
+    .vxb.penta { background: rgba(176,124,247,0.14); color: var(--purple); border: 1px solid rgba(176,124,247,0.35); box-shadow: 0 0 10px rgba(176,124,247,0.15); }
+    .vxb.azul { background: rgba(79,156,255,0.10); color: #4f9cff; border: 1px solid rgba(79,156,255,0.3); }
+    .vxb.gris { background: rgba(255,255,255,0.03); color: #566; border: 1px solid #202520; }
+    .vlegend b { font-weight: 400; font-family: 'Russo One'; }
 
     /* ===== Dashboard ===== */
     .dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 14px; margin-bottom: 18px; }
@@ -399,7 +406,7 @@
                  todas (nombre + ocupación) + accesos rápidos a cada panel de host. -->
             <div id="hostCardsWrap" style="display:none">
                 <div id="hostLinksBar" style="display:flex;gap:8px;margin-bottom:16px"></div>
-                <div class="usage" id="hostCardsView" style="padding:18px 20px"></div>
+                <div id="hostCardsView"></div>
             </div>
             <div id="roomsView">
                 <div class="modetabs">
@@ -918,21 +925,59 @@ function aplicarGlobal() {
 // es una lista visual de TODAS las salas (de los 2 hosts juntas), una detrás
 // de otra, solo con el nombre y cuántos hay dentro (nada técnico como puertos).
 // Orden estable de catálogo (no por ocupación) para que no salte al refrescar.
+// Vista Salas del Director: dos gráficos de barras verticales (CLASSIC / ARCADE)
+// con ocupación por sala, cuenta atrás de la partida en arcade y pentakills
+// (racha 5+ viva) en classic, más chips de resumen por modo.
+const PRICE_ORDER = { 'Free': 0, '5$': 1, '10$': 2, '20$': 3, '50$': 4 };
+function _roomBadge(mode, r) {
+    if (mode === 'arcade') {
+        if (r.state === 'playing' && r.tlMs != null) return `<span class="vxb naranja">${fmtMs(r.tlMs)} left</span>`;
+        if (r.restartEnMs != null) return `<span class="vxb naranja">restart ${Math.ceil(r.restartEnMs / 1000)}s</span>`;
+        if (r.startInMs != null) return `<span class="vxb azul">starts ${Math.ceil(r.startInMs / 1000)}s</span>`;
+        return `<span class="vxb gris">lobby</span>`;
+    }
+    return r.pentakills ? `<span class="vxb penta">${r.pentakills} PENTAKILL${r.pentakills === 1 ? '' : 'S'}</span>` : `<span class="vxb gris">no pentakills</span>`;
+}
+function _roomsChart(mode, rooms) {
+    if (!rooms.length) return '';
+    const col = mode === 'classic' ? '#00ff88' : '#4f9cff';
+    const players = rooms.reduce((s, r) => s + (r.conectados || 0), 0);
+    const live = rooms.filter(r => r.state === 'playing').length;
+    const cap = rooms.reduce((s, r) => s + (r.maxReales || 0), 0);
+    const occ = cap ? Math.round(players / cap * 100) : 0;
+    const pentas = mode === 'classic' ? rooms.reduce((s, r) => s + (r.pentakills || 0), 0) : 0;
+    return `<div class="vchart" style="margin-bottom:16px">
+        <span class="vtitle" style="color:${col}">${mode} rooms</span>
+        <div class="vlegend" style="color:#889">
+            <span><b style="color:#fff">${num(players)}</b>&nbsp;players</span>
+            <span><b style="color:#fff">${live}/${rooms.length}</b>&nbsp;live</span>
+            <span><b style="color:${occ >= 90 ? '#ff6b6b' : '#fff'}">${occ}%</b>&nbsp;full</span>
+            ${mode === 'classic' ? `<span style="color:#b07cf7"><b>${pentas}</b>&nbsp;pentakills</span>` : ''}
+        </div>
+        <div class="vplot">${rooms.map(r => {
+            const pct = r.maxReales ? Math.min(100, Math.round(r.conectados / r.maxReales * 100)) : 0;
+            const [stTxt] = ESTADOS[r.state] || ESTADOS.offline;
+            return `<div class="vcol" title="${esc(r.roomName)} L${r.layerIdx || 1} · ${stTxt} · ${r.conectados}/${r.maxReales} players">
+                <div class="vbar${mode === 'arcade' ? ' arc' : ''}${!r.conectados ? ' dim' : ''}" style="height:${Math.max(2, pct)}%"><span class="vval">${r.conectados}/${r.maxReales}</span></div>
+            </div>`;
+        }).join('')}</div>
+        <div class="vlabels">${rooms.map(r => {
+            const [stTxt] = ESTADOS[r.state] || ESTADOS.offline;
+            return `<div class="vlab"><span class="nm">${esc(r.roomName)}</span><span class="md">L${r.layerIdx || 1} · ${stTxt}</span>${_roomBadge(mode, r)}</div>`;
+        }).join('')}</div>
+    </div>`;
+}
 function renderHostCards(m) {
     const hosts = m.hosts || [];
     const links = document.getElementById('hostLinksBar');
     if (links) links.innerHTML = hosts.map(h => `<a class="b mini" href="/h${h.hostId}/admin" style="text-decoration:none">Open Host ${h.hostId}${h.alive ? '' : ' (down)'}</a>`).join('');
     const rows = [];
     for (const h of hosts) for (const r of (h.rooms || [])) rows.push(r);
+    rows.sort((a, b) => ((PRICE_ORDER[a.roomName] != null ? PRICE_ORDER[a.roomName] : 9) - (PRICE_ORDER[b.roomName] != null ? PRICE_ORDER[b.roomName] : 9)) || ((a.layerIdx || 1) - (b.layerIdx || 1)));
     const cont = document.getElementById('hostCardsView');
-    cont.innerHTML = rows.length ? rows.map(r => {
-        const pct = r.maxReales ? Math.min(100, Math.round(r.conectados / r.maxReales * 100)) : 0;
-        return `<div class="urow">
-            <span class="nm russo">${esc(r.roomName)} <span>${r.mode.toUpperCase()} L${r.layerIdx || 1}</span></span>
-            <div class="ubar"><i style="width:${Math.max(r.conectados > 0 ? 4 : 0, pct)}%"></i></div>
-            <span class="val">${r.conectados}${r.maxReales ? '/' + r.maxReales : ''} players</span>
-        </div>`;
-    }).join('') : '<div class="usage vacio">Hosts have not reported their rooms yet.</div>';
+    cont.innerHTML = rows.length
+        ? _roomsChart('classic', rows.filter(r => r.mode === 'classic')) + _roomsChart('arcade', rows.filter(r => r.mode === 'arcade'))
+        : '<div class="usage vacio">Hosts have not reported their rooms yet.</div>';
 }
 function cpuColor(pct) { return pct > 80 ? '#ff6b6b' : pct > 50 ? '#ffce3d' : '#00ff88'; }
 

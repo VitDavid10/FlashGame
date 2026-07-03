@@ -179,6 +179,9 @@ function tickRoomOnce(room, now, ctx) {
             const killer = room.sim.players.get(ev.playerId);
             const cliKiller_ = room.clients.get(ev.playerId);
             ctx.econ.botKill(killer && killer.name, cliKiller_ && cliKiller_.isTester);
+            // Pentakills acumulados de la sala (panel admin): se cuenta el momento
+            // exacto de llegar a 5 (=== y no >=, para no recontar en la kill 6, 7...).
+            if (room.mode === 'classic' && ev.streak === 5) room.pentas = (room.pentas | 0) + 1;
             // Las kills contra bots cuentan para Q2 (los bots simulan jugadores reales)
             const cliK = room.clients.get(ev.playerId);
             if (cliK && cliK.cid) {

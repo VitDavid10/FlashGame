@@ -494,7 +494,7 @@ function createGameHost(deps) {
         }
         // room.clients se vacía vía ws.on('close'); no esperamos a eso para pasar a waiting
         room.state = 'waiting';
-        room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false; room._shortened = false;
+        room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false; room._shortened = false; room.pentas = 0;
         room.deadRemovals.clear(); room.pendingRemovals.clear();
         room.sim = buildSim(room.mode, rulesOf(room.comboKey));
         sendWaiting(room);

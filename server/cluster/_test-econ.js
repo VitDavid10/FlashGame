@@ -128,5 +128,31 @@ check('arcade fin sin muertes: carry de los vivos entra al pot y se reparte', ()
     assert.ok(cliA.ws.sent.some(m => JSON.parse(m).t === 'prize'), 'debe emitirse el evento prize a los jugadores');
 });
 
+// --- Escenario 6: pentakills de sala (panel admin) — cuenta SOLO al llegar a 5 ---
+check('classic pentakills: room.pentas cuenta streak===5, no recuenta 6+, arcade no cuenta', () => {
+    const econ = spyEcon();
+    const K = { id: 'K', name: 'Killer', peakMass: 0, cells: [], alive: true, matchSkillUses: 0 };
+    const sim = mockSim([K], [
+        { type: 'botKilled', playerId: 'K', streak: 4, victimId: null },
+        { type: 'botKilled', playerId: 'K', streak: 5, victimId: null },
+        { type: 'botKilled', playerId: 'K', streak: 6, victimId: null },
+    ]);
+    const cliK = { ws: ws(), carry: 0, payWallet: null, cid: null, name: 'Killer' };
+    const room = playingRoom('classic', sim, [['K', cliK]]);
+    tickRoomOnce(room, Date.now(), baseCtx(econ));
+    assert.strictEqual(room.pentas, 1, 'una racha 4→5→6 debe contar UN pentakill');
+    // segunda racha del mismo jugador (murió y volvió a 5): cuenta otro
+    sim.players.get('K'); // sigue en la sala
+    const sim2events = [{ type: 'botKilled', playerId: 'K', streak: 5, victimId: null }];
+    room.sim = mockSim([K], sim2events);
+    room.lastTick = Date.now() - 25;
+    tickRoomOnce(room, Date.now(), baseCtx(econ));
+    assert.strictEqual(room.pentas, 2, 'otra racha que llega a 5 debe sumar otro pentakill');
+    // arcade: streak 5 no toca pentas
+    const roomA = playingRoom('arcade', mockSim([K], [{ type: 'botKilled', playerId: 'K', streak: 5, victimId: null }]), [['K', cliK]]);
+    tickRoomOnce(roomA, Date.now(), baseCtx(econ));
+    assert.strictEqual(roomA.pentas | 0, 0, 'arcade no cuenta pentakills');
+});
+
 console.log(`\n${fail === 0 ? 'OK' : 'FALLOS'}: ${pass} pass, ${fail} fail`);
 process.exit(fail === 0 ? 0 : 1);
