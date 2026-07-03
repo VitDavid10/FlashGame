@@ -3944,8 +3944,18 @@
 
         ctx.save();
         if (pixelMode) {
-            ctx.beginPath(); ctx.lineWidth = 20; ctx.strokeStyle = 'rgba(255, 0, 0, 0.25)'; ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke();
-            ctx.beginPath(); ctx.lineWidth = 6; ctx.strokeStyle = '#ff3333'; ctx.setLineDash([30, 30]); ctx.lineDashOffset = -(Math.floor(performance.now() / 120) * 10 % 60); ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke();
+            // Zona de peligro translúcida + banda "hazard" de bloques pixel que marchan.
+            ctx.beginPath(); ctx.lineWidth = 20; ctx.strokeStyle = 'rgba(255, 0, 0, 0.22)'; ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke();
+            const B = 48, bw = 20, march = Math.floor(performance.now() / 160) % 2, M = MAP_SIZE;
+            const blk = (i) => ((Math.floor(i / B) + march) & 1) ? '#5a0000' : '#ff3333';
+            if (vT <= -M && vB >= -M || vT <= M && vB >= M) {
+                const sx = Math.max(-M, Math.floor(vL / B) * B), ex = Math.min(M, Math.ceil(vR / B) * B);
+                for (let x = sx; x < ex; x += B) { ctx.fillStyle = blk(x); if (-M >= vT) ctx.fillRect(x, -M, B, bw); if (M <= vB) ctx.fillRect(x, M - bw, B, bw); }
+            }
+            if (vL <= -M && vR >= -M || vL <= M && vR >= M) {
+                const sy = Math.max(-M, Math.floor(vT / B) * B), ey = Math.min(M, Math.ceil(vB / B) * B);
+                for (let y = sy; y < ey; y += B) { ctx.fillStyle = blk(y); if (-M >= vL) ctx.fillRect(-M, y, bw, B); if (M <= vR) ctx.fillRect(M - bw, y, bw, B); }
+            }
         } else {
             ctx.beginPath(); ctx.lineWidth = 20; ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)'; ctx.shadowBlur = 40; ctx.shadowColor = '#ff0000'; ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke();
             ctx.beginPath(); ctx.lineWidth = 4; ctx.strokeStyle = '#ff3333'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000'; let dashOffset = (performance.now() / 20) % 60; ctx.setLineDash([30, 30]); ctx.lineDashOffset = -dashOffset; ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke();
