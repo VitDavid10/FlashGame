@@ -23,9 +23,10 @@
     html, body { margin: 0; }
     body {
         background-color: var(--bg-dark);
-        background-image: linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+        background-image: radial-gradient(1000px 420px at 50% -120px, rgba(0,255,136,0.07), transparent 70%),
+                          linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
                           linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
-        background-size: 50px 50px;
+        background-size: 100% 100%, 50px 50px, 50px 50px;
         color: #e0e0e0; font-family: 'Inter', sans-serif; font-size: 13.5px;
         min-height: 100vh;
     }
@@ -72,12 +73,20 @@
     nav.tabs button.act { color: var(--primary); border-bottom-color: var(--primary); text-shadow: 0 0 12px rgba(0,255,136,0.5); }
 
     /* resumen */
-    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 12px; margin-bottom: 28px; }
-    .sumcard { background: var(--box); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display: flex; gap: 14px; align-items: center; transition: 0.25s; }
-    .sumcard:hover { border-color: var(--primary); box-shadow: 0 0 20px var(--primary-dim); transform: translateY(-2px); }
-    .sumcard svg { width: 26px; height: 26px; flex: none; }
-    .sumcard .v { font-size: 21px; color: var(--primary); text-shadow: 0 0 10px rgba(0,255,136,0.35); line-height: 1.1; }
-    .sumcard .k { color: var(--muted); font-size: 10.5px; margin-top: 3px; letter-spacing: 1px; text-transform: uppercase; font-family: 'Russo One'; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .sumcard { --ac: #00ff88; --acdim: rgba(0,255,136,0.10); --acbr: rgba(0,255,136,0.30); position: relative; overflow: hidden; background: linear-gradient(165deg, rgba(14,20,15,0.97), rgba(7,9,8,0.97)); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; display: flex; gap: 15px; align-items: center; transition: 0.25s; }
+    .sumcard::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--ac), transparent 70%); opacity: 0.9; }
+    .sumcard:hover { border-color: var(--acbr); box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 22px var(--acdim); transform: translateY(-2px); }
+    .sumcard.ac-blue { --ac: #4f9cff; --acdim: rgba(79,156,255,0.10); --acbr: rgba(79,156,255,0.30); }
+    .sumcard.ac-purple { --ac: #b07cf7; --acdim: rgba(176,124,247,0.10); --acbr: rgba(176,124,247,0.30); }
+    .sumcard.ac-yellow { --ac: #ffce3d; --acdim: rgba(255,206,61,0.10); --acbr: rgba(255,206,61,0.30); }
+    .sumcard.ac-red { --ac: #ff4d4d; --acdim: rgba(255,77,77,0.10); --acbr: rgba(255,77,77,0.30); }
+    .sumcard .ico { width: 44px; height: 44px; border-radius: 12px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--acdim); border: 1px solid var(--acbr); }
+    .sumcard .ico svg { width: 22px; height: 22px; }
+    .sumcard .ico svg * { stroke: var(--ac); }
+    .sumcard .ico svg [fill]:not([fill="none"]) { fill: var(--ac); }
+    .sumcard .v { font-size: 24px; color: var(--ac); text-shadow: 0 0 14px var(--acdim); line-height: 1.1; }
+    .sumcard .k { color: var(--muted); font-size: 10px; margin-top: 4px; letter-spacing: 1.2px; text-transform: uppercase; font-family: 'Russo One'; }
     .stats-toolbar { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
     .stats-toolbar label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: #ccc; font-family: 'Russo One'; letter-spacing: 1px; text-transform: uppercase; user-select: none; }
     .toggle-track { width: 36px; height: 20px; background: #333; border-radius: 10px; position: relative; transition: 0.25s; flex: none; }
@@ -207,6 +216,30 @@
     .urow .nm span { color: #666; font-family: 'Inter'; font-size: 9.5px; letter-spacing: 1px; }
     .ubar { height: 12px; background: #0a0a0a; border: 1px solid #222; border-radius: 7px; overflow: hidden; }
     .ubar i { display: block; height: 100%; background: linear-gradient(90deg, rgba(0,255,136,0.45), var(--primary)); box-shadow: 0 0 10px var(--primary-dim); border-radius: 7px; transition: width .6s ease; }
+
+    /* ===== Gráfico de barras vertical (salas más usadas) ===== */
+    .vchart { position: relative; background: var(--box); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px 18px 24px; }
+    .vlegend { position: absolute; top: 16px; right: 20px; display: flex; gap: 16px; font-family: 'Russo One'; font-size: 9px; letter-spacing: 1.5px; color: #888; text-transform: uppercase; z-index: 1; }
+    .vlegend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+    .vplot { position: relative; display: flex; align-items: flex-end; gap: 18px; height: 195px; padding-top: 30px; border-bottom: 1px solid rgba(0,255,136,0.25); }
+    .vplot::before { content: ''; position: absolute; left: 0; right: 0; top: 30px; bottom: 0; background: repeating-linear-gradient(to top, transparent 0, transparent 40px, rgba(255,255,255,0.05) 40px, rgba(255,255,255,0.05) 41px); pointer-events: none; }
+    .vcol { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+    .vbar { --bc: #00ff88; --bc2: rgba(0,255,136,0.15); --bcg: rgba(0,255,136,0.35); position: relative; width: min(54px, 90%); min-height: 3px; border-radius: 7px 7px 2px 2px; background: linear-gradient(180deg, var(--bc), var(--bc2)); box-shadow: 0 0 18px var(--bcg), inset 0 1px 0 rgba(255,255,255,0.35); transition: height 0.5s ease, filter 0.2s; }
+    .vbar.arc { --bc: #4f9cff; --bc2: rgba(79,156,255,0.15); --bcg: rgba(79,156,255,0.35); }
+    .vcol:hover .vbar { filter: brightness(1.3); }
+    .vbar .vval { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-family: 'Russo One'; font-size: 12px; color: var(--bc); text-shadow: 0 0 10px var(--bcg); white-space: nowrap; }
+    .vlabels { display: flex; gap: 18px; margin-top: 10px; }
+    .vlabels .vlab { flex: 1; min-width: 0; text-align: center; }
+    .vlab .nm { display: block; font-family: 'Russo One'; font-size: 11.5px; color: #fff; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vlab .md { display: block; font-size: 8.5px; color: #667; font-family: 'Russo One'; letter-spacing: 1.5px; margin-top: 2px; }
+    .vlab .dn { display: block; font-size: 10.5px; color: var(--yellow); margin-top: 3px; }
+
+    /* ===== Salud del servidor: chips de métricas ===== */
+    .hstats { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hchip { background: #0c110d; border: 1px solid #1e2620; border-radius: 10px; padding: 10px 18px; min-width: 108px; }
+    .hchip .hk { color: #667; font-size: 9px; font-family: 'Russo One'; letter-spacing: 1.5px; text-transform: uppercase; }
+    .hchip .hv { font-family: 'Russo One'; font-size: 17px; color: #eee; margin-top: 5px; }
+    .hchip .hv small { font-size: 10px; color: #667; font-family: 'Inter', sans-serif; }
 
     /* ===== Rendimiento: tarjetas de monitorización por proceso (director) ===== */
     #perfHosts { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 14px; }
@@ -363,11 +396,11 @@
 
             <h2 class="section" id="seccionJugadores">Jugadores por país</h2>
             <table class="rank">
-                <thead><tr><th></th><th>País</th><th></th><th>Jugadores</th></tr></thead>
+                <thead><tr><th></th><th>País</th><th></th><th style="width:32%"></th><th>Jugadores</th></tr></thead>
                 <tbody id="paisesCuerpo"></tbody>
             </table>
             <h2 class="section">Salas más usadas</h2>
-            <div class="usage" id="usoSalas"></div>
+            <div id="usoSalas"></div>
             <h2 class="section">Últimas conexiones</h2>
             <div class="usage" style="padding-top:8px">
                 <table class="hist"><tbody id="histCuerpo"></tbody></table>
@@ -518,13 +551,13 @@ async function refrescarSalud() {
         const uptime = (days ? days + 'd ' : '') + (hrs || days ? hrs + 'h ' : '') + mins + 'm';
         const heapColor = h.heapMB > 500 ? '#ff6b6b' : h.heapMB > 250 ? '#ffce3d' : '#00ff88';
         el.innerHTML = `
-            <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline">
-                <div><span style="color:#666;font-size:11px">UPTIME</span><br><b style="font-size:16px">${uptime}</b></div>
-                <div><span style="color:#666;font-size:11px">HEAP</span><br><b style="font-size:16px;color:${heapColor}">${h.heapMB} MB</b> <span style="color:#666;font-size:11px">/ ${h.heapTotalMB} MB</span></div>
-                <div><span style="color:#666;font-size:11px">RSS</span><br><b style="font-size:16px">${h.rssMB} MB</b></div>
-                <div><span style="color:#666;font-size:11px">SALAS</span><br><b style="font-size:16px">${h.rooms}</b></div>
-                <div><span style="color:#666;font-size:11px">SIM PLAYERS</span><br><b style="font-size:16px">${h.simPlayers}</b></div>
-                <div><span style="color:#666;font-size:11px">SIM ENEMIES</span><br><b style="font-size:16px">${h.simEnemies}</b></div>
+            <div class="hstats">
+                <div class="hchip"><div class="hk">Uptime</div><div class="hv">${uptime}</div></div>
+                <div class="hchip"><div class="hk">Heap</div><div class="hv" style="color:${heapColor}">${h.heapMB} MB <small>/ ${h.heapTotalMB} MB</small></div></div>
+                <div class="hchip"><div class="hk">RSS</div><div class="hv">${h.rssMB} MB</div></div>
+                <div class="hchip"><div class="hk">Salas</div><div class="hv">${h.rooms}</div></div>
+                <div class="hchip"><div class="hk">Sim players</div><div class="hv">${h.simPlayers}</div></div>
+                <div class="hchip"><div class="hk">Sim enemies</div><div class="hv">${h.simEnemies}</div></div>
             </div>
             <div style="margin-top:12px;color:#888;font-size:11px;line-height:1.7">
                 connLog (RAM): <b style="color:#ccc">${h.connLog}</b> · adminLog: <b style="color:#ccc">${h.adminLog}</b> · resumeTokens: <b style="color:#ccc">${h.resumeTokens}</b> · playerStats: <b style="color:#ccc">${h.playerStats}</b> · WAR balances: <b style="color:#ccc">${h.warBalances}</b> · WAR sigs: <b style="color:#ccc">${h.warSigs}</b>
@@ -1067,12 +1100,12 @@ function render(m) {
     const sDinero = realOnly ? t.dineroReal : t.dinero;
     const sConectados = realOnly ? (t.jugadoresReales || 0) : t.jugadores;
     document.getElementById('summary').innerHTML = `
-        <div class="sumcard">${IC.room}<div><div class="v russo">${t.salasOnline}</div><div class="k">salas con gente</div></div></div>
-        <div class="sumcard">${IC.users}<div><div class="v russo">${sConectados}</div><div class="k">conectados ahora</div></div></div>
-        <div class="sumcard clickable" onclick="irAJugadores()" title="Ver jugadores por país">${IC.door}<div><div class="v russo">${num(realOnly ? (t.jugadoresUnicosReal || 0) : t.jugadoresUnicos)}</div><div class="k">jugadores distintos</div></div></div>
-        <div class="sumcard">${IC.in}<div><div class="v russo">${num(sEntradas)}</div><div class="k">entradas totales</div></div></div>
-        <div class="sumcard">${IC.skull}<div><div class="v russo">${num(sMuertes)}</div><div class="k">muertes totales</div></div></div>
-        <div class="sumcard">${IC.coin}<div><div class="v russo">${dinero(sDinero)}</div><div class="k">dinero generado</div></div></div>`;
+        <div class="sumcard"><span class="ico">${IC.room}</span><div><div class="v russo">${t.salasOnline}</div><div class="k">salas con gente</div></div></div>
+        <div class="sumcard ac-blue"><span class="ico">${IC.users}</span><div><div class="v russo">${sConectados}</div><div class="k">conectados ahora</div></div></div>
+        <div class="sumcard ac-purple clickable" onclick="irAJugadores()" title="Ver jugadores por país"><span class="ico">${IC.door}</span><div><div class="v russo">${num(realOnly ? (t.jugadoresUnicosReal || 0) : t.jugadoresUnicos)}</div><div class="k">jugadores distintos</div></div></div>
+        <div class="sumcard"><span class="ico">${IC.in}</span><div><div class="v russo">${num(sEntradas)}</div><div class="k">entradas totales</div></div></div>
+        <div class="sumcard ac-red"><span class="ico">${IC.skull}</span><div><div class="v russo">${num(sMuertes)}</div><div class="k">muertes totales</div></div></div>
+        <div class="sumcard ac-yellow"><span class="ico">${IC.coin}</span><div><div class="v russo">${dinero(sDinero)}</div><div class="k">dinero generado</div></div></div>`;
 
     const porSeccion = { classic: [], arcade: [], free: [], otras: [] };
     for (const r of m.rooms) {
@@ -1124,24 +1157,32 @@ function render(m) {
         </div>`).join('') : '<div class="vacio">Aún no se han hecho acciones de administración.</div>';
 
     let pais = '';
+    const maxPais = Math.max(1, ...(m.paises || []).map(p => p.jugadores || 0));
     (m.paises || []).forEach((p, i) => {
         pais += `<tr>
             <td><span class="pos ${i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : ''} russo">${i + 1}</span></td>
             <td><span class="flag">${flag(p.code)}</span><b style="color:#fff">${esc(p.name)}</b></td>
             <td><span class="ccode">${esc(p.code)}</span></td>
+            <td><div class="ubar" style="height:9px"><i style="width:${Math.max(4, Math.round(p.jugadores / maxPais * 100))}%"></i></div></td>
             <td class="kills">${num(p.jugadores)}</td>
         </tr>`;
     });
-    document.getElementById('paisesCuerpo').innerHTML = pais || '<tr><td colspan="4" class="vacio">Sin conexiones registradas.</td></tr>';
+    document.getElementById('paisesCuerpo').innerHTML = pais || '<tr><td colspan="5" class="vacio">Sin conexiones registradas.</td></tr>';
 
     const usadas = m.rooms.filter(r => r.stats.entradas > 0).sort((a, b) => b.stats.entradas - a.stats.entradas).slice(0, 10);
     const maxE = usadas.length ? usadas[0].stats.entradas : 1;
-    document.getElementById('usoSalas').innerHTML = usadas.length ? usadas.map(r => `
-        <div class="urow">
-            <span class="nm russo">${esc(r.roomName)} <span>${r.mode.toUpperCase()}</span></span>
-            <div class="ubar"><i style="width:${Math.max(4, Math.round(r.stats.entradas / maxE * 100))}%"></i></div>
-            <span class="val">${num(r.stats.entradas)} entradas · ${dinero(r.stats.dinero)}</span>
-        </div>`).join('') : '<div class="vacio">Sin actividad todavía.</div>';
+    document.getElementById('usoSalas').innerHTML = usadas.length ? `
+        <div class="vchart">
+            <div class="vlegend"><span><i style="background:#00ff88"></i>Classic</span><span><i style="background:#4f9cff"></i>Arcade</span></div>
+            <div class="vplot">${usadas.map(r => `
+                <div class="vcol" title="${esc(r.roomName)} ${r.mode.toUpperCase()} · ${num(r.stats.entradas)} entradas · ${dinero(r.stats.dinero)}">
+                    <div class="vbar${r.mode === 'arcade' ? ' arc' : ''}" style="height:${Math.max(2, Math.round(r.stats.entradas / maxE * 100))}%"><span class="vval">${num(r.stats.entradas)}</span></div>
+                </div>`).join('')}
+            </div>
+            <div class="vlabels">${usadas.map(r => `
+                <div class="vlab"><span class="nm">${esc(r.roomName)}</span><span class="md">${r.mode.toUpperCase()} · L${r.layerIdx || 1}</span><span class="dn">${dinero(r.stats.dinero)}</span></div>`).join('')}
+            </div>
+        </div>` : '<div class="usage vacio">Sin actividad todavía.</div>';
 
     let hist = '';
     for (const h of m.historial) hist += `<tr><td>${fecha(h.fecha)}</td><td><b style="color:#ccc">${esc(h.nombre)}</b></td><td>${esc(h.ip)}</td><td>${esc(h.sala)}</td></tr>`;
