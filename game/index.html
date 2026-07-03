@@ -1557,7 +1557,7 @@
     // Cache por color/tamaño, mismo patrón que skinCache.
     const PIX_SCREEN_PX = 4;
     const PIX_FONT = "'VT323', monospace";
-    const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map() };
+    const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map() };
     if (document.fonts && document.fonts.load) document.fonts.load("32px 'VT323'");
     const _pixProbe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     function pixRgb(col) { _pixProbe.clearRect(0, 0, 1, 1); _pixProbe.fillStyle = col; _pixProbe.fillRect(0, 0, 1, 1); const d = _pixProbe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
@@ -1655,6 +1655,34 @@
         PIX.virus.set(key, spr); return spr;
     }
 
+    // Escudo heater pixel (más alto que ancho). Contorno oscuro 1px, cuerpo morado
+    // con luz arriba-izquierda / sombra abajo-derecha, y emblema de cruz. Cache por
+    // tamaño lógico (queda upright, nunca se rota, para que sea pixel-perfect).
+    function pixShieldSprite(sW) {
+        let spr = PIX.shield.get(sW); if (spr) return spr;
+        const sH = Math.round(sW * 1.2);
+        spr = document.createElement('canvas'); spr.width = sW; spr.height = sH;
+        const g = spr.getContext('2d'), rgb = pixRgb('#a020f0');
+        // media-anchura del heater por fila: recto arriba, punta abajo.
+        const halfW = (y) => { const t = y / (sH - 1); return t < 0.32 ? sW / 2 : (sW / 2) * (1 - ((t - 0.32) / 0.68) * ((t - 0.32) / 0.68)); };
+        const inside = (x, y) => { if (x < 0 || y < 0 || x >= sW || y >= sH) return false; return Math.abs(x + 0.5 - sW / 2) <= halfW(y); };
+        for (let y = 0; y < sH; y++) for (let x = 0; x < sW; x++) {
+            if (!inside(x, y)) continue;
+            let col;
+            if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = pixShade(rgb, -0.55);
+            else if (!inside(x + 1, y + 1)) col = pixShade(rgb, -0.28);
+            else if (!inside(x - 1, y - 1)) col = pixShade(rgb, 0.3);
+            else col = 'rgb(' + rgb.join(',') + ')';
+            g.fillStyle = col; g.fillRect(x, y, 1, 1);
+        }
+        // emblema: cruz verde (mismo acento que antes).
+        g.fillStyle = '#00ff88';
+        const cx = Math.round(sW / 2), cy = Math.round(sH * 0.42), t = Math.max(1, Math.round(sW / 10)), arm = Math.max(2, Math.round(sW / 4));
+        g.fillRect(cx - Math.floor(t / 2), cy - arm, t, arm * 2);
+        g.fillRect(cx - arm, cy - Math.floor(t / 2), arm * 2, t);
+        PIX.shield.set(sW, spr); return spr;
+    }
+
     // Versión pixel de drawCell: misma estructura (tp/sprint/inmunidad/flash/
     // partículas/nombre) pero sin shadowBlur, con el cuerpo desde sprite y
     // la órbita de escudos cuantizada a pasos.
@@ -1666,8 +1694,16 @@
         if (c.sprintTime > 0 && drawEffects) { ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)'; ctx.lineWidth = Math.max(3, c.r * 0.14); ctx.beginPath(); ctx.roundRect(-pW/2 - 6, -pH/2 - 6, pW + 12, pH + 12, rBox + 6); ctx.stroke(); }
         if (c.immuneTime > 0 && drawEffects) {
             const gap = c.r * 0.1; ctx.strokeStyle = '#a020f0'; ctx.lineWidth = Math.max(3, c.r * 0.1); ctx.beginPath(); ctx.roundRect(-pW/2 - gap, -pH/2 - gap, pW + gap*2, pH + gap*2, rBox + gap); ctx.stroke();
-            const time = Math.floor(performance.now() / 150) * 0.125, shieldScale = Math.max(0.6, c.r / 25), shieldW = pW + gap*2, shieldH = pH + gap*2;
-            for (let i = 0; i < 4; i++) { const angle = time + (i * (Math.PI / 2)), sx = Math.cos(angle) * (shieldW/2 + (10 * shieldScale)), sy = Math.sin(angle) * (shieldH/2 + (10 * shieldScale)); ctx.save(); ctx.translate(sx, sy); ctx.scale(shieldScale, shieldScale); ctx.rotate(-angle); ctx.fillStyle = '#a020f0'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(6, -6); ctx.lineTo(6, 0); ctx.quadraticCurveTo(6, 8, 0, 10); ctx.quadraticCurveTo(-6, 8, -6, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 2; ctx.moveTo(0, -4); ctx.lineTo(0, 6); ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.stroke(); ctx.restore(); }
+            // 4 escudos heater pixel orbitando en pasos (upright, sin rotar), con leve pulso.
+            const step = Math.floor(performance.now() / 150), time = step * 0.125;
+            const shieldWorld = Math.max(10, c.r * 0.55), sW = Math.max(8, Math.min(28, Math.round(shieldWorld * getViewScale() / PIX_SCREEN_PX)));
+            const spr = pixShieldSprite(sW), sh = spr.height / spr.width * shieldWorld;
+            const rx = pW / 2 + gap + shieldWorld * 0.5, ry = pH / 2 + gap + shieldWorld * 0.5;
+            const pulse = 1 + 0.08 * (step % 2);
+            for (let i = 0; i < 4; i++) {
+                const angle = time + (i * (Math.PI / 2)), dw = shieldWorld * pulse, dh = sh * pulse;
+                ctx.drawImage(spr, Math.cos(angle) * rx - dw / 2, Math.sin(angle) * ry - dh / 2, dw, dh);
+            }
         }
         if (c.flashTime > 0 && c.flashColor && drawEffects) { ctx.save(); ctx.globalAlpha = 0.35 * alpha; ctx.fillStyle = c.flashColor; ctx.beginPath(); ctx.roundRect(-pW/2 - 8, -pH/2 - 8, pW + 16, pH + 16, rBox + 8); ctx.fill(); ctx.restore(); }
         const skinImg = getSkinImage(c.skinUrl);
