@@ -111,6 +111,10 @@
     .modetab.act { color: var(--primary); border-bottom-color: var(--primary); text-shadow: 0 0 12px rgba(0,255,136,0.4); }
     .modetab .cnt { color: var(--primary); }
     .modetab .cnt.cero { color: rgba(0,255,136,0.3); text-shadow: none; }
+    /* Modificador arcade: tono lima característico (mismo look que .modetab, distinto color) */
+    .modetab.arc { color: rgba(212,255,0,0.55); }
+    .modetab.arc:hover { color: #d4ff00; text-shadow: 0 0 10px #d4ff00; }
+    .modetab.arc.act { color: #d4ff00; border-bottom-color: #d4ff00; text-shadow: 0 0 12px rgba(212,255,0,0.45); }
 
     /* Ranking de países */
     .ccode { display: inline-flex; min-width: 34px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 5px; background: #1a1a1a; border: 1px solid #2c2c2c; font-family: 'Russo One'; font-size: 10px; letter-spacing: 1px; color: var(--primary); }
@@ -999,6 +1003,13 @@ function _roomsChart(mode, rooms) {
 // Crea (una vez) el botón del sidebar y la página de cada host forkeado. Las salas
 // se pintan con las MISMAS cartas que el panel de un host (cartaSala): los botones
 // mandan los cmd normales y el Director los reenvía por IPC al host dueño.
+const hostModeActive = {};   // { hostId: 'classic' | 'arcade' } — pestaña activa por host
+function switchHostMode(hostId, mode) {
+    hostModeActive[hostId] = mode;
+    document.getElementById('hostGrid_' + hostId + '_classic').style.display = (mode === 'classic') ? '' : 'none';
+    document.getElementById('hostGrid_' + hostId + '_arcade').style.display = (mode === 'arcade') ? '' : 'none';
+    [...document.querySelectorAll(`[id^="hostModeBtn_${hostId}_"]`)].forEach(b => b.classList.toggle('act', b.id === `hostModeBtn_${hostId}_${mode}`));
+}
 function ensureHostUi(hosts) {
     document.getElementById('ngroupHosts').style.display = hosts.length ? '' : 'none';
     for (const h of hosts) {
@@ -1006,13 +1017,18 @@ function ensureHostUi(hosts) {
         if (document.getElementById('tab_' + tid)) continue;
         ALL_TABS.push(tid);
         TAB_TITLES[tid] = 'Host ' + h.hostId;
+        hostModeActive[h.hostId] = 'classic';
         const div = document.createElement('div');
         div.id = 'tab_' + tid;
         div.style.display = 'none';
         div.innerHTML = `
             <div class="usage" id="hostMeta_${h.hostId}" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:14px 18px;margin-bottom:6px"></div>
-            <h2 class="section">Classic</h2><div class="grid" id="hostGrid_${h.hostId}_classic"></div>
-            <h2 class="section">Arcade</h2><div class="grid" id="hostGrid_${h.hostId}_arcade"></div>`;
+            <div class="modetabs" style="margin:0 18px 14px 18px;">
+                <button id="hostModeBtn_${h.hostId}_classic" class="modetab act" onclick="switchHostMode(${h.hostId}, 'classic')">Classic</button>
+                <button id="hostModeBtn_${h.hostId}_arcade" class="modetab arc" onclick="switchHostMode(${h.hostId}, 'arcade')">Arcade</button>
+            </div>
+            <div class="grid" id="hostGrid_${h.hostId}_classic"></div>
+            <div class="grid" id="hostGrid_${h.hostId}_arcade" style="display:none"></div>`;
         document.querySelector('main').appendChild(div);
         const btn = document.createElement('button');
         btn.id = 'tabBtn_' + tid;
