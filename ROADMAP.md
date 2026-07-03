@@ -82,7 +82,10 @@ recomendado: de más rentable (poco esfuerzo, mucha ganancia) a más complejo.
 repartir las salas entre procesos vía `cluster` + gateway. NO urgente.
 
 ### Extras "nivel pro" (cuando toque)
-- **Delta compression**: mandar solo lo que cambió entre snapshots, no el estado completo.
+- ✅ ~~**Delta compression**~~ — hecha (proto v4, join `bin:2`): la identidad de cada
+  jugador (id UUID + nombre) viaja una vez por conexión (después un índice u16) y
+  slots/skills solo en tu propia entrada; welcome/foodRespawn mínimos. Medido:
+  −70% de bytes por jugador adicional sobre el AOI ya optimizado.
 - **Predicción del propio jugador + reconciliación** con el servidor (movimiento
   instantáneo aunque haya ping).
 - **Monitorización real** (Grafana/Prometheus) en lugar del stress test casero.
