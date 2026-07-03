@@ -337,6 +337,9 @@
             <button id="tabBtn_dashboard" class="nitem act" onclick="verTab('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>Dashboard</button>
             <button id="tabBtn_salas" class="nitem" onclick="verTab('salas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/></svg>Rooms</button>
             <button id="tabBtn_jugadores" class="nitem" onclick="verTab('jugadores')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M16 14.4c2.9.3 5.5 2.3 5.5 5.6"/></svg>Players</button>
+            <!-- Solo rol director: un botón por host forkeado (se crean en ensureHostUi) -->
+            <div class="ngroup" id="ngroupHosts" style="display:none">Hosts</div>
+            <div id="hostNavBtns"></div>
             <div class="ngroup" id="ngroupDatos">Data</div>
             <button id="tabBtn_actividad" class="nitem" onclick="verTab('actividad')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2.5-7 5 14 2.5-7h4"/></svg>Activity</button>
             <button id="tabBtn_transactions" class="nitem" onclick="verTab('transactions')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10h13l-4-4M17 14H4l4 4"/></svg>Transactions</button>
@@ -398,10 +401,9 @@
                 <span id="restartServidorSep" style="color:#333; margin:0 4px;">|</span>
                 <button id="restartServidorBtn" class="b rojo mini" style="background:#3a0000; border-color:#660000;" onclick="restartServidor()" title="Restarts the Node process (pm2/systemd relaunches it)">Restart Server</button>
             </div>
-            <!-- Director (Fase 4b): las salas viven en los hosts. Lista visual de
-                 todas (nombre + ocupación) + accesos rápidos a cada panel de host. -->
+            <!-- Director (Fase 4b): las salas viven en los hosts. Gráficas de ocupación
+                 agregadas; el control por sala vive en las páginas Host N del sidebar. -->
             <div id="hostCardsWrap" style="display:none">
-                <div id="hostLinksBar" style="display:flex;gap:8px;margin-bottom:16px"></div>
                 <div id="hostCardsView"></div>
             </div>
             <div id="roomsView">
@@ -568,6 +570,8 @@ const IC = {
 let ws = null, key = '', autorizado = false, tabActiva = 'dashboard';
 let hostOnlyView = false;   // rol host: solo Rooms, sin Dashboard/Players (ver render())
 const MAIN_GROUP_TABS = ['dashboard', 'salas', 'jugadores'];
+// Registro de tabs: los fijos + los de host que crea ensureHostUi en rol director.
+const ALL_TABS = ['dashboard', 'salas', 'jugadores', 'actividad', 'transactions', 'ajustes', 'rendimiento'];
 function mainVisible() { return !hostOnlyView && MAIN_GROUP_TABS.includes(tabActiva); }
 let _pendingScrollTab = null;   // scroll a una sección de Main, disparado en el próximo render() (ver verTab)
 const expandidos = new Set();
@@ -644,18 +648,23 @@ function verTab(t) {
     // En rol host (solo Rooms) el grupo se reduce a esa única sección.
     const group = hostOnlyView ? ['salas'] : MAIN_GROUP_TABS;
     const showMain = group.includes(t);
-    for (const x of ['dashboard', 'salas', 'jugadores', 'actividad', 'transactions', 'ajustes', 'rendimiento']) {
+    for (const x of ALL_TABS) {
         const tab = document.getElementById('tab_' + x);
         if (tab) tab.style.display = (showMain ? group.includes(x) : x === t) ? 'block' : 'none';
         const btn = document.getElementById('tabBtn_' + x); if (btn) btn.classList.toggle('act', x === t);
     }
     const pt = document.getElementById('pageTitle'); if (pt) pt.innerText = TAB_TITLES[t] || t;
     if (showMain) {
-        // El scroll se difiere al PRÓXIMO render(): pintarGrid() restaura el scroll
-        // anterior en cada poll (anti-jank de las cartas de sala) y si hacemos el
-        // scrollIntoView aquí mismo, esa restauración lo cancela antes de que se vea.
-        if (group.length > 1) _pendingScrollTab = t;
+        // Dashboard = arriba del todo. El scroll a las otras secciones se difiere al
+        // PRÓXIMO render(): pintarGrid() restaura el scroll anterior en cada poll
+        // (anti-jank de las cartas de sala) y si hacemos el scrollIntoView aquí
+        // mismo, esa restauración lo cancela antes de que se vea.
+        if (t === 'dashboard') window.scrollTo(0, 0);
+        else if (group.length > 1) _pendingScrollTab = t;
         pedir();   // refresco inmediato para que las gráficas no esperen al poll
+    } else {
+        window.scrollTo(0, 0);   // página suelta (Activity, Host N...): empezar arriba
+        if (t.startsWith('host')) pedir();
     }
 }
 
@@ -796,20 +805,28 @@ function renderRankPag(totalPag) {
     h += `<button class="b mini" ${rankPage >= totalPag ? 'disabled' : ''} onclick="rankIrPagina(${rankPage + 1})">›</button>`;
     cont.innerHTML = h;
 }
-function espectar(mode, room, layer) {
+function espectar(mode, room, layer, hostId) {
     // Pedimos un token temporal al servidor para no exponer la admin key en la URL
     const handler = (e) => {
         try { const m = JSON.parse(e.data); if (m && m.t === 'specToken' && m.token) {
             ws.removeEventListener('message', handler);
             const layerQ = layer ? '&layer=' + layer : '';
-            // Con prefijo /hN (panel de un host del split): el espectador debe conectar
-            // al WS de ESE host, no al Director → se le pasa por ?server=.
-            const srvQ = BASE_PATH ? '&server=' + encodeURIComponent((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + BASE_PATH + '/') : '';
+            // El espectador debe conectar al WS del proceso que TIENE la sala:
+            // - página Host N del Director (m.hostId): token emitido por ese host;
+            //   en prod via path /hN (Caddy), en local directo a su puerto.
+            // - panel /hN/admin de un host (BASE_PATH): su propio prefijo.
+            let srv = BASE_PATH ? (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + BASE_PATH + '/' : '';
+            if (m.hostId != null) {
+                srv = location.protocol === 'https:'
+                    ? 'wss://' + location.host + '/h' + m.hostId + '/'
+                    : 'ws://' + location.hostname + ':' + m.port;
+            }
+            const srvQ = srv ? '&server=' + encodeURIComponent(srv) : '';
             window.open(location.origin + '/game/?spectate=' + encodeURIComponent(room) + '&mode=' + encodeURIComponent(mode) + layerQ + '&t=' + encodeURIComponent(m.token) + srvQ, '_blank');
         } } catch (err) {}
     };
     ws.addEventListener('message', handler);
-    send({ cmd: 'getSpecToken' });
+    send(hostId != null ? { cmd: 'getSpecToken', hostId } : { cmd: 'getSpecToken' });
     setTimeout(() => ws.removeEventListener('message', handler), 5000);
 }
 function togglePlayers(roomKey) { if (expandidos.has(roomKey)) expandidos.delete(roomKey); else expandidos.add(roomKey); pedir(); }
@@ -888,7 +905,7 @@ function cartaSala(r) {
             </div>
             <div class="btns">
                 <button class="b verde" onclick="forzar('${id}')" ${r.state !== 'waiting' ? 'disabled' : ''}>${IC.play} Force start</button>
-                <button class="b azul" onclick="espectar('${r.mode}','${esc(r.roomName)}',${r.layerIdx || 1})" ${r.state !== 'playing' ? 'disabled' : ''}>${IC.users} Spectate L${r.layerIdx || 1}</button>
+                <button class="b azul" onclick="espectar('${r.mode}','${esc(r.roomName)}',${r.layerIdx || 1}${r.hostId != null ? ',' + r.hostId : ''})" ${r.state !== 'playing' ? 'disabled' : ''}>${IC.users} Spectate L${r.layerIdx || 1}</button>
                 <button class="b naranja" onclick="reiniciar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.refresh} Restart</button>
                 <button class="b" onclick="vaciar('${id}')" ${r.conectados === 0 ? 'disabled' : ''}>${IC.broom} Kick all</button>
                 <button class="b rojo" onclick="apagar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.power} Power off</button>
@@ -978,10 +995,51 @@ function _roomsChart(mode, rooms) {
         }).join('')}</div>
     </div>`;
 }
+// ===== Páginas "Host N" (solo rol director): salas de cada host con control =====
+// Crea (una vez) el botón del sidebar y la página de cada host forkeado. Las salas
+// se pintan con las MISMAS cartas que el panel de un host (cartaSala): los botones
+// mandan los cmd normales y el Director los reenvía por IPC al host dueño.
+function ensureHostUi(hosts) {
+    document.getElementById('ngroupHosts').style.display = hosts.length ? '' : 'none';
+    for (const h of hosts) {
+        const tid = 'host' + h.hostId;
+        if (document.getElementById('tab_' + tid)) continue;
+        ALL_TABS.push(tid);
+        TAB_TITLES[tid] = 'Host ' + h.hostId;
+        const div = document.createElement('div');
+        div.id = 'tab_' + tid;
+        div.style.display = 'none';
+        div.innerHTML = `
+            <div class="usage" id="hostMeta_${h.hostId}" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:14px 18px;margin-bottom:6px"></div>
+            <h2 class="section">Classic</h2><div class="grid" id="hostGrid_${h.hostId}_classic"></div>
+            <h2 class="section">Arcade</h2><div class="grid" id="hostGrid_${h.hostId}_arcade"></div>`;
+        document.querySelector('main').appendChild(div);
+        const btn = document.createElement('button');
+        btn.id = 'tabBtn_' + tid;
+        btn.className = 'nitem';
+        btn.onclick = () => verTab(tid);
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/></svg>Host ${h.hostId}`;
+        document.getElementById('hostNavBtns').appendChild(btn);
+    }
+}
+function renderHostTabs(m) {
+    const hosts = m.hosts || [];
+    ensureHostUi(hosts);
+    for (const h of hosts) {
+        const meta = document.getElementById('hostMeta_' + h.hostId);
+        if (meta) meta.innerHTML = `
+            <span class="state ${h.alive ? 'st-playing' : 'st-offline'}"><span class="d"></span>${h.alive ? 'ALIVE' : 'DOWN'}</span>
+            <span style="color:#889;font-size:12px"><b style="color:#fff">${num(h.jugadores || 0)}</b> players</span>
+            <span style="color:#889;font-size:12px"><b style="color:#fff">${h.salasOnline || 0}</b> rooms with people</span>
+            <span style="color:#889;font-size:12px">CPU <b style="color:${cpuColor(h.cpu || 0)}">${h.cpu != null ? h.cpu + '%' : '—'}</b></span>
+            <a class="b mini" href="/h${h.hostId}/admin" style="text-decoration:none;margin-left:auto" title="Direct panel served by this host process (works even if the Director is down)">Standalone panel</a>`;
+        const roomsH = h.adminRooms || [];
+        pintarGrid('hostGrid_' + h.hostId + '_classic', roomsH.filter(r => r.mode === 'classic'));
+        pintarGrid('hostGrid_' + h.hostId + '_arcade', roomsH.filter(r => r.mode === 'arcade'));
+    }
+}
 function renderHostCards(m) {
     const hosts = m.hosts || [];
-    const links = document.getElementById('hostLinksBar');
-    if (links) links.innerHTML = hosts.map(h => `<a class="b mini" href="/h${h.hostId}/admin" style="text-decoration:none">Open Host ${h.hostId}${h.alive ? '' : ' (down)'}</a>`).join('');
     const rows = [];
     for (const h of hosts) for (const r of (h.rooms || [])) rows.push(r);
     rows.sort((a, b) => ((PRICE_ORDER[a.roomName] != null ? PRICE_ORDER[a.roomName] : 9) - (PRICE_ORDER[b.roomName] != null ? PRICE_ORDER[b.roomName] : 9)) || ((a.layerIdx || 1) - (b.layerIdx || 1)));
@@ -1468,6 +1526,7 @@ function render(m) {
 
     if (role === 'director') {
         renderHostCards(m);
+        renderHostTabs(m);
         renderPerfHosts(m);
         const vivos = (m.hosts || []).filter(h => h.alive).length;
         document.getElementById('metaInfo').innerText = `min per room: ${m.minPlayers} players · ${vivos}/${(m.hosts || []).length} hosts alive`;
@@ -1508,32 +1567,37 @@ function render(m) {
     const sConectados = realOnly ? (t.jugadoresReales || 0) : t.jugadores;
     if (!soloSalas) updateDashboard(m, t, sConectados, sEntradas, sMuertes, sDinero);
 
-    const porSeccion = { classic: [], arcade: [], free: [], otras: [] };
-    for (const r of m.rooms) {
-        if (r.price === 0) porSeccion.free.push(r);
-        else if (r.mode === 'classic') porSeccion.classic.push(r);
-        else if (r.mode === 'arcade') porSeccion.arcade.push(r);
-        else porSeccion.otras.push(r);
+    // En director roomsView está oculto (las salas se controlan en las páginas
+    // Host N): saltarse estos grids evita además IDs duplicados con las cartas
+    // de host (card_<key>, r_speed_<key>... — getElementById cogería el oculto).
+    if (role !== 'director') {
+        const porSeccion = { classic: [], arcade: [], free: [], otras: [] };
+        for (const r of m.rooms) {
+            if (r.price === 0) porSeccion.free.push(r);
+            else if (r.mode === 'classic') porSeccion.classic.push(r);
+            else if (r.mode === 'arcade') porSeccion.arcade.push(r);
+            else porSeccion.otras.push(r);
+        }
+        // Contadores por layer (solo premium — Free tiene siempre sus layers).
+        const cntL = { 1: 0, 2: 0 };
+        for (const r of m.rooms) { if (r.price > 0) { const i = r.layerIdx || 1; cntL[i] = (cntL[i] || 0) + r.conectados; } }
+        ponCnt('cntLayer1', cntL[1] || 0);
+        ponCnt('cntLayer2', cntL[2] || 0);
+        // Filtrar premium por la layer activa. Free se muestra siempre entera.
+        const _l = layerActivo || 1;
+        const classicL = porSeccion.classic.filter(r => (r.layerIdx || 1) === _l);
+        const arcadeL  = porSeccion.arcade.filter(r => (r.layerIdx || 1) === _l);
+        pintarGrid('gridAll',     classicL.concat(arcadeL, porSeccion.free));
+        pintarGrid('gridClassic', classicL);
+        pintarGrid('gridArcade',  arcadeL);
+        pintarGrid('gridFree',    porSeccion.free);
+        ponCnt('cntAll',     classicL.concat(arcadeL, porSeccion.free).reduce((s, r) => s + r.conectados, 0));
+        ponCnt('cntClassic', porSeccion.classic.reduce((s, r) => s + r.conectados, 0));
+        ponCnt('cntArcade',  porSeccion.arcade.reduce((s, r) => s + r.conectados, 0));
+        ponCnt('cntFree',    porSeccion.free.reduce((s, r) => s + r.conectados, 0));
+        document.getElementById('gridOtras').innerHTML = porSeccion.otras.length
+            ? '<h2 class="section">Otras salas</h2><div class="grid">' + porSeccion.otras.map(cartaSala).join('') + '</div>' : '';
     }
-    // Contadores por layer (solo premium — Free tiene siempre sus layers).
-    const cntL = { 1: 0, 2: 0 };
-    for (const r of m.rooms) { if (r.price > 0) { const i = r.layerIdx || 1; cntL[i] = (cntL[i] || 0) + r.conectados; } }
-    ponCnt('cntLayer1', cntL[1] || 0);
-    ponCnt('cntLayer2', cntL[2] || 0);
-    // Filtrar premium por la layer activa. Free se muestra siempre entera.
-    const _l = layerActivo || 1;
-    const classicL = porSeccion.classic.filter(r => (r.layerIdx || 1) === _l);
-    const arcadeL  = porSeccion.arcade.filter(r => (r.layerIdx || 1) === _l);
-    pintarGrid('gridAll',     classicL.concat(arcadeL, porSeccion.free));
-    pintarGrid('gridClassic', classicL);
-    pintarGrid('gridArcade',  arcadeL);
-    pintarGrid('gridFree',    porSeccion.free);
-    ponCnt('cntAll',     classicL.concat(arcadeL, porSeccion.free).reduce((s, r) => s + r.conectados, 0));
-    ponCnt('cntClassic', porSeccion.classic.reduce((s, r) => s + r.conectados, 0));
-    ponCnt('cntArcade',  porSeccion.arcade.reduce((s, r) => s + r.conectados, 0));
-    ponCnt('cntFree',    porSeccion.free.reduce((s, r) => s + r.conectados, 0));
-    document.getElementById('gridOtras').innerHTML = porSeccion.otras.length
-        ? '<h2 class="section">Otras salas</h2><div class="grid">' + porSeccion.otras.map(cartaSala).join('') + '</div>' : '';
 
     rankData = m.ranking || [];
     renderRanking();

@@ -694,6 +694,17 @@ if (hostIpc) {
         log(`ADMIN restartMode=${p && p.mode} (reenviado): ${n} salas`);
     });
     hostIpc.handle('getRoomsSummary', () => buildRoomsSummary());
+    // Panel del Director controla las salas de este host: comandos por-sala
+    // reenviados + lista rica de salas (mismas entradas que su propio /hN/admin).
+    hostIpc.handle('adminRoomCmd', (p) => { applyRoomAdminCmd(p || {}); });
+    hostIpc.handle('getAdminRooms', () => buildAdminRoomList());
+    // Token de espectador emitido por ESTE host (specTokens es por proceso: uno
+    // del Director no valdría al conectar el espectador al WS del host).
+    hostIpc.handle('makeSpecToken', () => {
+        const tok = require('crypto').randomBytes(24).toString('hex');
+        specTokens.set(tok, Date.now() + 10 * 60 * 1000);
+        return { token: tok };
+    });
 }
 const directorProxy = hostIpc && {
     async checkKick(ip) {
@@ -818,6 +829,104 @@ function applyRestartMode(mode) {
         restartRoom(sala); n++;
     }
     return n;
+}
+// Comandos de admin de ámbito SALA/JUGADOR. Extraídos del switch del WS para poder
+// ejecutarlos también reenviados por IPC (el panel del Director controla las salas
+// de los hosts). Cada comando opera solo sobre `rooms`/clientes LOCALES: en el
+// Director son no-op (salas vacías) y el reenvío a todos los hosts es seguro —
+// el host que no tiene la sala/jugador simplemente no encuentra nada.
+const ROOM_ADMIN_CMDS = new Set(['kick', 'power', 'rules', 'forceStart', 'restart', 'kickAll', 'shutdown', 'encender']);
+function applyRoomAdminCmd(msg) {
+    if (msg.cmd === 'kick' && msg.playerId) {
+        const found = findClient(msg.playerId);
+        if (found) {
+            // Bloqueo por IP 30s: sin esto el jugador echado reentraba al
+            // instante (el kick solo cerraba el socket). Igual que kickAll.
+            if (found.cli.ip) kickedIps.set(found.cli.ip, Date.now() + KICKED_MS);
+            try { found.cli.ws.send(JSON.stringify({ t: 'kicked', secondsLeft: 30 })); } catch (e) {}
+            try { found.cli.ws.close(); } catch (e) {}
+            found.room.pendingRemovals.set(msg.playerId, 0);
+            logAdmin(found.room.key, 'Echó a un jugador', found.cli.name || '(sin nombre)');
+            log(`ADMIN expulsó a ${found.cli.name} de ${found.room.key} — IP bloqueada 30s`);
+        }
+    } else if (msg.cmd === 'power' && msg.playerId) {
+        const found = findClient(msg.playerId);
+        if (found) {
+            found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : [], true);
+            const nm = found.cli.name || '(sin nombre)';
+            if (msg.name === 'god') { logAdmin(found.room.key, 'Toggled GOD', nm); }
+            else if (msg.name === 'mass') { logAdmin(found.room.key, 'Puso masa ' + (msg.args && msg.args[0] || ''), nm); }
+            else logAdmin(found.room.key, 'Poder /' + msg.name, nm);
+            log(`ADMIN poder /${msg.name} a ${found.cli.name}`);
+        }
+    } else if (msg.cmd === 'rules' && msg.room) {
+        // Las reglas son por COMBO (afectan a todas sus layers). El panel
+        // puede mandar layerKey o comboKey; resolvemos al combo.
+        const sala0 = rooms.get(msg.room);
+        const ck = sala0 ? sala0.comboKey : msg.room;
+        const rules = rulesOf(ck); const r = msg.rules || {};
+        if (typeof r.speed === 'number') rules.speed = Math.max(0.25, Math.min(5, r.speed));
+        if (typeof r.food === 'number') rules.food = Math.max(0.25, Math.min(10, r.food));
+        if (typeof r.virus === 'number') rules.virus = Math.max(0, Math.min(10, r.virus));
+        if (typeof r.botsEnabled === 'boolean') rules.botsEnabled = r.botsEnabled;
+        if (typeof r.botCount === 'number') rules.botCount = Math.max(0, Math.min(200, r.botCount | 0));
+        if (typeof r.minReal === 'number') rules.minReal = Math.max(1, Math.min(50, r.minReal | 0));
+        if (typeof r.targetPop === 'number') rules.targetPop = Math.max(0, Math.min(60, r.targetPop | 0));
+        if (typeof r.maxPlayers === 'number') rules.maxPlayers = Math.max(1, Math.min(100, r.maxPlayers | 0));
+        rulesDirty = true;
+        // Aplicar en vivo a TODAS las layers del combo (speed/food/población).
+        for (const sala of rooms.values()) {
+            if (sala.comboKey !== ck) continue;
+            sala.sim.config.worldSettings.speed = rules.speed;
+            sala.sim.config.worldSettings.food = rules.food;
+            if (sala.state === 'playing') refillBots(sala);
+            if (sala.state === 'waiting') {
+                sendWaiting(sala);
+                armLobby(sala);
+            }
+        }
+        logAdmin(msg.room, 'Cambió reglas', '');
+        log(`ADMIN reglas en ${msg.room}: ${JSON.stringify(rules)}`);
+    } else if (msg.cmd === 'forceStart' && msg.room) {
+        const sala = rooms.get(msg.room);
+        if (sala && sala.state === 'waiting') { startMatch(sala); logAdmin(msg.room, 'Forzó el inicio', ''); log(`ADMIN forzó inicio de ${msg.room}`); }
+    } else if (msg.cmd === 'restart' && msg.room) {
+        const sala = rooms.get(msg.room);
+        if (sala) { restartRoom(sala); logAdmin(msg.room, 'Reinició la sala', ''); }
+    } else if (msg.cmd === 'kickAll' && msg.room) {
+        const sala = rooms.get(msg.room);
+        if (sala) {
+            const until = Date.now() + KICKED_MS;
+            for (const cli of sala.clients.values()) {
+                if (cli.ip) kickedIps.set(cli.ip, until);
+                try { cli.ws.send(JSON.stringify({ t: 'kicked', secondsLeft: 30 })); } catch (e) {}
+                try { cli.ws.close(); } catch (e) {}
+            }
+            logAdmin(msg.room, 'Echó a todos', sala.clients.size + ' IPs bloqueadas 30s');
+            log(`ADMIN vació la sala ${msg.room} — ${sala.clients.size} IPs bloqueadas 30s`);
+        }
+    } else if (msg.cmd === 'shutdown' && msg.room) {
+        const sala = rooms.get(msg.room);
+        if (sala) { shutdownRoom(sala, 'admin'); logAdmin(msg.room, 'Apagó la sala', ''); }
+    } else if (msg.cmd === 'encender' && msg.room) {
+        // Recrea una sala persistente que fue apagada (shutdownRoom la borra del Map).
+        const lk = msg.room;
+        if (!rooms.has(lk)) {
+            const parts = lk.split('_');
+            const mode = parts[0]; const price = parts.slice(1, -1).join('_');
+            // Reenviado a todos los hosts: solo el DUEÑO del combo puede crearla
+            // (crearla en el host equivocado rompe el reparto del shard-map).
+            if (PW_ROLE === 'host' && ownsCombo && !ownsCombo(mode, price)) return;
+            getOrCreateRoom(lk, mode, price);
+            logAdmin(lk, 'Encendió sala', '');
+            log(`ADMIN encendió sala: ${lk}`);
+        }
+    }
+}
+// Reenvío del Director a todos los hosts vivos (payload plano, sin la admin key).
+function relayRoomCmdToHosts(msg) {
+    const p = { cmd: msg.cmd, room: msg.room, playerId: msg.playerId, name: msg.name, args: msg.args, rules: msg.rules };
+    for (const h of hostProcs.values()) if (h.alive) h.ipc.notify('adminRoomCmd', p);
 }
 // Apaga/enciende TODAS las layers con ese idx (ej. todas las L2) EN ESTE PROCESO.
 // Devuelve { ok:true, n } o { ok:false, reason }.
@@ -1208,7 +1317,9 @@ if (PW_ROLE === 'director') {
 }
 
 // --- Estado para el panel de admin: una entrada por layer, agrupable por combo ---
-function buildAdminState() {
+// La lista de salas va aparte: en rol host también se sirve por IPC (getAdminRooms)
+// para que el panel del Director muestre y controle las salas de cada host.
+function buildAdminRoomList() {
     const now = Date.now();
     const list = [];
     const roomEntry = (key, comboKey, mode, roomName, layerIdx, room) => {
@@ -1270,6 +1381,10 @@ function buildAdminState() {
     for (const room of rooms.values()) {
         if (!keysSeen.has(room.key)) list.push(roomEntry(room.key, room.comboKey || room.key, room.mode, room.roomName, room.layerIdx || 1, room));
     }
+    return list;
+}
+function buildAdminState() {
+    const list = buildAdminRoomList();
     // Totales agregados: directamente desde roomStats (una entrada por combo).
     // Antes se sumaba iterando `list`, pero en rol director la lista de salas
     // propias está vacía y los totales salían a 0 aunque roomStats (que vive
@@ -1344,11 +1459,21 @@ function buildAdminState() {
 async function buildDirectorAdminState() {
     const base = buildAdminState();
     const summaries = await Promise.all([...hostProcs.values()].map(async (h) => {
-        const empty = { hostId: h.id, port: h.port, alive: false, salasOnline: 0, jugadores: 0, jugadoresReales: 0, rooms: [], perf: null };
+        const empty = { hostId: h.id, port: h.port, alive: false, salasOnline: 0, jugadores: 0, jugadoresReales: 0, rooms: [], adminRooms: [], perf: null };
         if (!h.alive) return empty;
         try {
-            const s = await h.ipc.request('getRoomsSummary', {});
-            return Object.assign({ port: h.port, alive: true }, s);
+            const [s, adminRooms] = await Promise.all([h.ipc.request('getRoomsSummary', {}), h.ipc.request('getAdminRooms', {})]);
+            // Las stats por combo viven AQUÍ (llegan por econ IPC): las del host van
+            // a 0. Se machacan con las del Director para que las cartas las muestren.
+            for (const e of adminRooms) {
+                e.hostId = h.id;
+                const st = statsOf(e.comboKey); const price = priceOf(e.roomName);
+                e.stats = {
+                    entradas: st.entradas, muertes: st.muertes, dinero: st.entradas * price,
+                    entradasReal: st.entradasReal || 0, muertesReal: st.muertesReal || 0, dineroReal: (st.entradasReal || 0) * price
+                };
+            }
+            return Object.assign({ port: h.port, alive: true, adminRooms }, s);
         } catch (e) { return empty; }
     }));
     let salasOnline = 0, jugadores = 0, jugadoresReales = 0;
@@ -1842,6 +1967,19 @@ wss.on('connection', (ws, req) => {
             if (!validKey && !SPEC_TOKEN_CMDS.has(msg.cmd)) { ws.send(JSON.stringify({ t: 'adminError' })); return; }
             // Token temporal para el espectador-control (10 min, single-use)
             if (msg.cmd === 'getSpecToken') {
+                // Con hostId (panel del Director espiando una sala de un host): el
+                // token debe emitirlo ESE host — el espectador conecta a su WS y los
+                // specTokens son por proceso. Se devuelve también el puerto para que
+                // el panel construya la URL en local (en prod usa el path /hN).
+                if (PW_ROLE === 'director' && typeof msg.hostId === 'number' && hostProcs.has(msg.hostId)) {
+                    const h = hostProcs.get(msg.hostId);
+                    if (h && h.alive) {
+                        h.ipc.request('makeSpecToken', {})
+                            .then(r => { if (r && r.token && ws.readyState === 1) ws.send(JSON.stringify({ t: 'specToken', token: r.token, hostId: msg.hostId, port: h.port })); })
+                            .catch(() => {});
+                    }
+                    return;
+                }
                 const tok = require('crypto').randomBytes(24).toString('hex');
                 specTokens.set(tok, Date.now() + 10*60*1000);
                 ws.send(JSON.stringify({ t: 'specToken', token: tok }));
@@ -1850,56 +1988,11 @@ wss.on('connection', (ws, req) => {
             if (msg.cmd === 'state') {
                 if (PW_ROLE === 'director') buildDirectorAdminState().then(state => ws.send(JSON.stringify(state)));
                 else ws.send(JSON.stringify(buildAdminState()));
-            } else if (msg.cmd === 'kick' && msg.playerId) {
-                const found = findClient(msg.playerId);
-                if (found) {
-                    // Bloqueo por IP 30s: sin esto el jugador echado reentraba al
-                    // instante (el kick solo cerraba el socket). Igual que kickAll.
-                    if (found.cli.ip) kickedIps.set(found.cli.ip, Date.now() + KICKED_MS);
-                    try { found.cli.ws.send(JSON.stringify({ t: 'kicked', secondsLeft: 30 })); } catch (e) {}
-                    try { found.cli.ws.close(); } catch (e) {}
-                    found.room.pendingRemovals.set(msg.playerId, 0);
-                    logAdmin(found.room.key, 'Echó a un jugador', found.cli.name || '(sin nombre)');
-                    log(`ADMIN expulsó a ${found.cli.name} de ${found.room.key} — IP bloqueada 30s`);
-                }
-            } else if (msg.cmd === 'power' && msg.playerId) {
-                const found = findClient(msg.playerId);
-                if (found) {
-                    found.room.sim.runCommand(msg.playerId, msg.name, Array.isArray(msg.args) ? msg.args.slice(0, 4) : [], true);
-                    const nm = found.cli.name || '(sin nombre)';
-                    if (msg.name === 'god') { logAdmin(found.room.key, 'Toggled GOD', nm); }
-                    else if (msg.name === 'mass') { logAdmin(found.room.key, 'Puso masa ' + (msg.args && msg.args[0] || ''), nm); }
-                    else logAdmin(found.room.key, 'Poder /' + msg.name, nm);
-                    log(`ADMIN poder /${msg.name} a ${found.cli.name}`);
-                }
-            } else if (msg.cmd === 'rules' && msg.room) {
-                // Las reglas son por COMBO (afectan a todas sus layers). El panel
-                // puede mandar layerKey o comboKey; resolvemos al combo.
-                const sala0 = rooms.get(msg.room);
-                const ck = sala0 ? sala0.comboKey : msg.room;
-                const rules = rulesOf(ck); const r = msg.rules || {};
-                if (typeof r.speed === 'number') rules.speed = Math.max(0.25, Math.min(5, r.speed));
-                if (typeof r.food === 'number') rules.food = Math.max(0.25, Math.min(10, r.food));
-                if (typeof r.virus === 'number') rules.virus = Math.max(0, Math.min(10, r.virus));
-                if (typeof r.botsEnabled === 'boolean') rules.botsEnabled = r.botsEnabled;
-                if (typeof r.botCount === 'number') rules.botCount = Math.max(0, Math.min(200, r.botCount | 0));
-                if (typeof r.minReal === 'number') rules.minReal = Math.max(1, Math.min(50, r.minReal | 0));
-                if (typeof r.targetPop === 'number') rules.targetPop = Math.max(0, Math.min(60, r.targetPop | 0));
-                if (typeof r.maxPlayers === 'number') rules.maxPlayers = Math.max(1, Math.min(100, r.maxPlayers | 0));
-                rulesDirty = true;
-                // Aplicar en vivo a TODAS las layers del combo (speed/food/población).
-                for (const sala of rooms.values()) {
-                    if (sala.comboKey !== ck) continue;
-                    sala.sim.config.worldSettings.speed = rules.speed;
-                    sala.sim.config.worldSettings.food = rules.food;
-                    if (sala.state === 'playing') refillBots(sala);
-                    if (sala.state === 'waiting') {
-                        sendWaiting(sala);
-                        armLobby(sala);
-                    }
-                }
-                logAdmin(msg.room, 'Cambió reglas', '');
-                log(`ADMIN reglas en ${msg.room}: ${JSON.stringify(rules)}`);
+            } else if (ROOM_ADMIN_CMDS.has(msg.cmd)) {
+                // Ámbito sala/jugador: local (en director es no-op, las salas viven
+                // en los hosts) + reenvío IPC a todos los hosts. El dueño actúa.
+                applyRoomAdminCmd(msg);
+                if (PW_ROLE === 'director') relayRoomCmdToHosts(msg);
             } else if (msg.cmd === 'setGlobal') {
                 if (typeof msg.arcadeRestartMs === 'number') arcadeRestartMs = Math.max(1000, Math.min(300000, msg.arcadeRestartMs | 0));
                 if (typeof msg.arcadeLobbyMs === 'number')  arcadeLobbyMs  = Math.max(0,    Math.min(120000, msg.arcadeLobbyMs  | 0));
@@ -1992,37 +2085,6 @@ wss.on('connection', (ws, req) => {
                         logAdmin('-', 'Encendió Layer ' + idx + ' premium', r.n + ' salas');
                         log(`ADMIN encendió Layer ${idx} premium: ${r.n} salas recreadas`);
                     }
-                }
-            } else if (msg.cmd === 'forceStart' && msg.room) {
-                const sala = rooms.get(msg.room);
-                if (sala && sala.state === 'waiting') { startMatch(sala); logAdmin(msg.room, 'Forzó el inicio', ''); log(`ADMIN forzó inicio de ${msg.room}`); }
-            } else if (msg.cmd === 'restart' && msg.room) {
-                const sala = rooms.get(msg.room);
-                if (sala) { restartRoom(sala); logAdmin(msg.room, 'Reinició la sala', ''); }
-            } else if (msg.cmd === 'kickAll' && msg.room) {
-                const sala = rooms.get(msg.room);
-                if (sala) {
-                    const until = Date.now() + KICKED_MS;
-                    for (const cli of sala.clients.values()) {
-                        if (cli.ip) kickedIps.set(cli.ip, until);
-                        try { cli.ws.send(JSON.stringify({ t: 'kicked', secondsLeft: 30 })); } catch (e) {}
-                        try { cli.ws.close(); } catch (e) {}
-                    }
-                    logAdmin(msg.room, 'Echó a todos', sala.clients.size + ' IPs bloqueadas 30s');
-                    log(`ADMIN vació la sala ${msg.room} — ${sala.clients.size} IPs bloqueadas 30s`);
-                }
-            } else if (msg.cmd === 'shutdown' && msg.room) {
-                const sala = rooms.get(msg.room);
-                if (sala) { shutdownRoom(sala, 'admin'); logAdmin(msg.room, 'Apagó la sala', ''); }
-            } else if (msg.cmd === 'encender' && msg.room) {
-                // Recrea una sala persistente que fue apagada (shutdownRoom la borra del Map).
-                const lk = msg.room;
-                if (!rooms.has(lk)) {
-                    const parts = lk.split('_');
-                    const mode = parts[0]; const price = parts.slice(1, -1).join('_');
-                    getOrCreateRoom(lk, mode, price);
-                    logAdmin(lk, 'Encendió sala', '');
-                    log(`ADMIN encendió sala: ${lk}`);
                 }
             } else if (msg.cmd === 'kickAllMode' && msg.mode) {
                 const n = applyKickAllMode(msg.mode);
