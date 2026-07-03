@@ -51,12 +51,25 @@
     .shake { animation: shake .4s; }
     @keyframes shake { 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
 
-    /* ===== Navbar (como la web) ===== */
+    /* ===== Layout: sidebar fija + contenido ===== */
     #app { display: none; }
-    header { display: flex; align-items: center; gap: 18px; height: var(--navbar-height); padding: 0 30px; background: rgba(0, 0, 0, 0.95); border-bottom: 1px solid var(--primary); position: sticky; top: 0; z-index: 20; }
-    header .htitle { font-size: 22px; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
-    header .htitle b { color: var(--primary); font-weight: 400; }
-    header .htag { font-family: 'Russo One'; font-size: 10px; color: #000; background: var(--primary); padding: 3px 10px; border-radius: 4px; letter-spacing: 2px; box-shadow: 0 0 12px var(--primary-dim); }
+    aside#side { position: fixed; top: 0; left: 0; bottom: 0; width: 232px; background: rgba(4, 7, 5, 0.97); border-right: 1px solid #1b241d; display: flex; flex-direction: column; z-index: 30; }
+    .brand { display: flex; align-items: center; gap: 13px; padding: 18px 20px 16px 20px; border-bottom: 1px solid #16201a; }
+    .brand .bt { font-size: 19px; color: #fff; text-transform: uppercase; letter-spacing: 2px; line-height: 1; }
+    .brand .bt b { color: var(--primary); font-weight: 400; }
+    .brand .bt span { display: inline-block; font-size: 8px; color: #000; background: var(--primary); border-radius: 3px; padding: 2px 7px; letter-spacing: 2px; margin-top: 7px; box-shadow: 0 0 10px var(--primary-dim); }
+    nav.side { flex: 1; overflow-y: auto; padding: 10px 12px 14px 12px; }
+    .ngroup { font-family: 'Russo One'; font-size: 8.5px; letter-spacing: 2.5px; color: #4c5a50; text-transform: uppercase; padding: 16px 10px 7px 10px; }
+    .nitem { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: transparent; border: 0; border-left: 2px solid transparent; border-radius: 8px; color: #97a29a; font-family: 'Russo One'; font-size: 11.5px; letter-spacing: 1.2px; text-transform: uppercase; padding: 11px 12px; cursor: pointer; transition: 0.2s; }
+    .nitem svg { width: 16px; height: 16px; flex: none; opacity: 0.75; }
+    .nitem:hover { color: #fff; background: rgba(255,255,255,0.04); }
+    .nitem.act { color: var(--primary); background: var(--primary-dim); border-left-color: var(--primary); text-shadow: 0 0 10px rgba(0,255,136,0.4); }
+    .nitem.act svg { opacity: 1; }
+    .sfoot { padding: 14px 16px; border-top: 1px solid #16201a; display: flex; gap: 10px; align-items: center; }
+    .sfoot .playlink { flex: 1; text-align: center; background: var(--primary); color: #04150c; font-family: 'Russo One'; font-size: 11px; padding: 8px 0; border-radius: 6px; text-decoration: none; letter-spacing: 1px; box-shadow: 0 0 14px var(--primary-dim); }
+    .content { margin-left: 232px; min-height: 100vh; }
+    header { display: flex; align-items: center; gap: 18px; height: var(--navbar-height); padding: 0 30px; background: rgba(0, 0, 0, 0.92); border-bottom: 1px solid #1b241d; position: sticky; top: 0; z-index: 20; }
+    header .ptitle { font-family: 'Russo One'; font-size: 15px; color: #fff; letter-spacing: 3px; text-transform: uppercase; }
     header .hmeta { margin-left: auto; display: flex; align-items: center; gap: 20px; color: var(--muted); font-size: 12px; }
     .live { display: inline-flex; align-items: center; gap: 7px; font-family: 'Russo One'; font-size: 11px; letter-spacing: 1px; color: var(--primary); text-transform: uppercase; }
     .live .d { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: pulse 1.6s infinite; }
@@ -66,14 +79,7 @@
 
     main { padding: 26px 30px 70px 30px; max-width: 1420px; margin: 0 auto; }
 
-    /* tabs: como los nav-links de la web */
-    nav.tabs { display: flex; gap: 30px; margin-bottom: 24px; border-bottom: 1px solid #222; }
-    nav.tabs button { background: transparent; border: 0; color: #666; font-family: 'Russo One'; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; padding: 12px 2px; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.25s; }
-    nav.tabs button:hover { color: #fff; text-shadow: 0 0 10px #fff; }
-    nav.tabs button.act { color: var(--primary); border-bottom-color: var(--primary); text-shadow: 0 0 12px rgba(0,255,136,0.5); }
-
     /* resumen */
-    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 28px; }
     .sumcard { --ac: #00ff88; --acdim: rgba(0,255,136,0.10); --acbr: rgba(0,255,136,0.30); position: relative; overflow: hidden; background: linear-gradient(165deg, rgba(14,20,15,0.97), rgba(7,9,8,0.97)); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; display: flex; gap: 15px; align-items: center; transition: 0.25s; }
     .sumcard::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--ac), transparent 70%); opacity: 0.9; }
     .sumcard:hover { border-color: var(--acbr); box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 22px var(--acdim); transform: translateY(-2px); }
@@ -218,7 +224,8 @@
     .ubar i { display: block; height: 100%; background: linear-gradient(90deg, rgba(0,255,136,0.45), var(--primary)); box-shadow: 0 0 10px var(--primary-dim); border-radius: 7px; transition: width .6s ease; }
 
     /* ===== Gráfico de barras vertical (salas más usadas) ===== */
-    .vchart { position: relative; background: var(--box); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px 18px 24px; }
+    .vchart { position: relative; background: var(--box); border: 1px solid var(--border); border-radius: 14px; padding: 46px 24px 18px 24px; }
+    .vtitle { position: absolute; top: 17px; left: 20px; font-family: 'Russo One'; font-size: 12px; letter-spacing: 2px; color: #fff; text-transform: uppercase; }
     .vlegend { position: absolute; top: 16px; right: 20px; display: flex; gap: 16px; font-family: 'Russo One'; font-size: 9px; letter-spacing: 1.5px; color: #888; text-transform: uppercase; z-index: 1; }
     .vlegend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
     .vplot { position: relative; display: flex; align-items: flex-end; gap: 18px; height: 195px; padding-top: 30px; border-bottom: 1px solid rgba(0,255,136,0.25); }
@@ -233,6 +240,33 @@
     .vlab .nm { display: block; font-family: 'Russo One'; font-size: 11.5px; color: #fff; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .vlab .md { display: block; font-size: 8.5px; color: #667; font-family: 'Russo One'; letter-spacing: 1.5px; margin-top: 2px; }
     .vlab .dn { display: block; font-size: 10.5px; color: var(--yellow); margin-top: 3px; }
+
+    /* ===== Dashboard ===== */
+    .dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .sumcard.dstat { flex-direction: column; align-items: stretch; gap: 12px; }
+    .sumcard.dstat .drow { display: flex; gap: 14px; align-items: center; }
+    .dspark { width: 100%; height: 36px; display: block; }
+    .panelcard { background: var(--box); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+    .panelhead { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .panelhead .pt { font-family: 'Russo One'; font-size: 12px; letter-spacing: 2px; color: #fff; text-transform: uppercase; }
+    .chip-row { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+    .schip { display: inline-flex; align-items: center; gap: 7px; background: #101510; border: 1px solid #242c25; color: #7b857e; border-radius: 20px; padding: 5px 12px; font-family: 'Russo One'; font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s; user-select: none; }
+    .schip i { width: 9px; height: 9px; border-radius: 50%; background: #444; }
+    .schip.on { color: #fff; border-color: var(--cc, var(--primary)); }
+    .schip.on i { background: var(--cc, var(--primary)); box-shadow: 0 0 8px var(--cc, var(--primary)); }
+    #bigChartWrap { position: relative; }
+    #bigChart { width: 100%; height: 260px; display: block; cursor: crosshair; }
+    #chartTip { position: absolute; pointer-events: none; background: rgba(8,12,9,0.97); border: 1px solid #2a352c; border-radius: 8px; padding: 8px 12px; font-size: 11px; color: #ccc; display: none; z-index: 5; box-shadow: 0 8px 20px rgba(0,0,0,0.5); white-space: nowrap; line-height: 1.7; }
+    #chartTip b { font-family: 'Russo One'; font-weight: 400; }
+    .dash-grid2 { display: grid; grid-template-columns: 1fr 1.5fr; gap: 16px; margin-top: 16px; align-items: start; }
+    @media (max-width: 1150px) { .dash-grid2 { grid-template-columns: 1fr; } }
+    .crow { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #131a15; }
+    .crow:last-child { border-bottom: 0; }
+    .crow .fl { font-size: 19px; width: 26px; text-align: center; flex: none; }
+    .crow .cinfo { flex: 1; min-width: 0; }
+    .crow .cname { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: #eee; margin-bottom: 5px; }
+    .crow .cname b { color: var(--primary); font-family: 'Russo One'; font-weight: 400; }
+    .crow .cname .pct { color: #66756b; font-size: 10px; margin-left: 8px; }
 
     /* ===== Salud del servidor: chips de métricas ===== */
     .hstats { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -292,33 +326,52 @@
 </div>
 
 <div id="app">
+    <aside id="side">
+        <div class="brand"><div class="pill-logo"></div><div class="bt russo">PILL <b>WARS</b><br><span>CONTROL</span></div></div>
+        <nav class="side">
+            <div class="ngroup" id="ngroupPanel">Panel</div>
+            <button id="tabBtn_dashboard" class="nitem act" onclick="verTab('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>Dashboard</button>
+            <button id="tabBtn_salas" class="nitem" onclick="verTab('salas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/></svg>Salas</button>
+            <button id="tabBtn_jugadores" class="nitem" onclick="verTab('jugadores')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M16 14.4c2.9.3 5.5 2.3 5.5 5.6"/></svg>Jugadores</button>
+            <div class="ngroup" id="ngroupDatos">Datos</div>
+            <button id="tabBtn_actividad" class="nitem" onclick="verTab('actividad')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2.5-7 5 14 2.5-7h4"/></svg>Actividad</button>
+            <div class="ngroup" id="ngroupSistema" style="display:none">Sistema</div>
+            <button id="tabBtn_ajustes" class="nitem" onclick="verTab('ajustes')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>Ajustes</button>
+            <button id="tabBtn_rendimiento" class="nitem" onclick="verTab('rendimiento')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19a9 9 0 1 1 14 0"/><path d="M12 14l4-5"/><circle cx="12" cy="14" r="1.5"/></svg>Rendimiento</button>
+        </nav>
+        <div class="sfoot">
+            <a href="/game/" target="_blank" class="playlink">▶ JUGAR</a>
+            <button class="lock-btn" onclick="bloquear()">Bloquear</button>
+        </div>
+    </aside>
+    <div class="content">
     <header>
-        <div class="pill-logo"></div>
-        <div class="htitle russo">PILL <b>WARS</b></div>
-        <span class="htag">CONTROL</span>
+        <span class="ptitle" id="pageTitle">Dashboard</span>
         <div class="hmeta">
             <span class="live"><span class="d"></span><span id="liveTxt">en vivo</span></span>
             <span id="metaInfo"></span>
-            <a href="/game/" target="_blank" style="background:var(--primary);color:#04150c;font-family:'Russo One';font-size:11px;padding:7px 14px;border-radius:6px;text-decoration:none;letter-spacing:1px">▶ JUGAR</a>
-            <button class="lock-btn" onclick="bloquear()">Bloquear</button>
         </div>
     </header>
     <main>
-        <div class="stats-toolbar" id="statsToolbar">
-            <label onclick="toggleRealOnly()"><span class="toggle-track" id="realOnlyToggle"></span> Solo reales</label>
-            <button class="reset-btn" onclick="resetStats()">Reset stats</button>
-            <button class="reset-btn" onclick="resetStatsAll()">Reset TODO</button>
+        <div id="tab_dashboard">
+            <div class="stats-toolbar" id="statsToolbar">
+                <label onclick="toggleRealOnly()"><span class="toggle-track" id="realOnlyToggle"></span> Solo reales</label>
+                <button class="reset-btn" onclick="resetStats()">Reset stats</button>
+                <button class="reset-btn" onclick="resetStatsAll()">Reset TODO</button>
+            </div>
+            <div class="dash-cards" id="dashCards"></div>
+            <div class="panelcard">
+                <div class="panelhead"><span class="pt">Actividad · por minuto</span><div class="chip-row" id="serieChips"></div></div>
+                <div id="bigChartWrap"><canvas id="bigChart" height="260"></canvas><div id="chartTip"></div></div>
+                <div class="hint" style="margin-top:10px">El servidor guarda una muestra por minuto (últimas 3 h, se resetea al reiniciar). Entradas, muertes y dinero son incrementos por minuto; conectados y activos, valores absolutos.</div>
+            </div>
+            <div class="dash-grid2">
+                <div class="panelcard"><div class="panelhead"><span class="pt">Jugadores por país</span></div><div id="dashPaises"></div></div>
+                <div id="usoSalas"></div>
+            </div>
         </div>
-        <div class="summary" id="summary"></div>
-        <nav class="tabs">
-            <button id="tabBtn_salas" class="act" onclick="verTab('salas')">Salas</button>
-            <button id="tabBtn_jugadores" onclick="verTab('jugadores')">Jugadores</button>
-            <button id="tabBtn_actividad" onclick="verTab('actividad')">Actividad</button>
-            <button id="tabBtn_ajustes" onclick="verTab('ajustes')" style="display:none">Ajustes</button>
-            <button id="tabBtn_rendimiento" onclick="verTab('rendimiento')" style="display:none">Rendimiento</button>
-        </nav>
 
-        <div id="tab_salas">
+        <div id="tab_salas" style="display:none">
             <!-- Controles globales de modo: en rol host se oculta entero (viven solo en /admin) -->
             <div id="controlGlobalBar" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:18px; background:#0d0d0d; border:1px solid #1e1e1e; border-radius:10px; padding:12px 16px;">
                 <span style="color:#555; font-size:11px; letter-spacing:1px; margin-right:4px;">CONTROL GLOBAL:</span>
@@ -399,8 +452,6 @@
                 <thead><tr><th></th><th>País</th><th></th><th style="width:32%"></th><th>Jugadores</th></tr></thead>
                 <tbody id="paisesCuerpo"></tbody>
             </table>
-            <h2 class="section">Salas más usadas</h2>
-            <div id="usoSalas"></div>
             <h2 class="section">Últimas conexiones</h2>
             <div class="usage" style="padding-top:8px">
                 <table class="hist"><tbody id="histCuerpo"></tbody></table>
@@ -479,6 +530,7 @@
         </div>
 
     </main>
+    </div>
 </div>
 
 <script>
@@ -498,7 +550,7 @@ const IC = {
     in: '<svg viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M10 3H5a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h5M14 7l5 5-5 5M19 12H8"/></svg>'
 };
 
-let ws = null, key = '', autorizado = false, tabActiva = 'salas';
+let ws = null, key = '', autorizado = false, tabActiva = 'dashboard';
 const expandidos = new Set();
 
 // Prefijo de path (Fase 4b): si el panel se abre en /hN/admin (host N detrás del
@@ -566,12 +618,15 @@ async function refrescarSalud() {
 }
 setInterval(refrescarSalud, 5000); refrescarSalud();
 
+const TAB_TITLES = { dashboard: 'Dashboard', salas: 'Salas', jugadores: 'Jugadores', actividad: 'Actividad', ajustes: 'Ajustes', rendimiento: 'Rendimiento' };
 function verTab(t) {
     tabActiva = t;
-    for (const x of ['salas', 'jugadores', 'actividad', 'ajustes', 'rendimiento']) {
+    for (const x of ['dashboard', 'salas', 'jugadores', 'actividad', 'ajustes', 'rendimiento']) {
         const tab = document.getElementById('tab_' + x); if (tab) tab.style.display = (x === t) ? 'block' : 'none';
         const btn = document.getElementById('tabBtn_' + x); if (btn) btn.classList.toggle('act', x === t);
     }
+    const pt = document.getElementById('pageTitle'); if (pt) pt.innerText = TAB_TITLES[t] || t;
+    if (t === 'dashboard') pedir();   // refresco inmediato para que las gráficas no esperen al poll
 }
 
 let modoActivo = 'all';   // vista por defecto: todas las salas juntas
@@ -1035,6 +1090,171 @@ function applySnapHzHost(hostId, hz) { send({ cmd: 'snapshotHz', hz, hostIds: [h
 function applyAoiHost(hostId, on) { send({ cmd: 'aoiToggle', on, hostIds: [hostId] }); setTimeout(pedir, 200); }
 function applyLayerHost(hostId, idx, active) { send({ cmd: 'setLayerActive', layerIdx: idx, active, hostIds: [hostId] }); setTimeout(pedir, 200); }
 
+// ===== Dashboard: tarjetas con sparkline + gráfica grande de actividad =====
+// El servidor manda `series`: una muestra/minuto con los totales acumulados
+// (últimas 3 h). Para entradas/muertes/dinero se dibuja el DELTA por minuto;
+// conectados/activos/salas son valores absolutos.
+const DASH_CARDS = [
+    { id: 'salas',    cls: '',          icon: 'room',  color: '#00ff88', label: 'salas con gente' },
+    { id: 'conect',   cls: 'ac-blue',   icon: 'users', color: '#4f9cff', label: 'conectados ahora' },
+    { id: 'activos',  cls: 'ac-purple', icon: 'clock', color: '#b07cf7', label: 'activos última hora' },
+    { id: 'unicos',   cls: 'ac-blue',   icon: 'door',  color: '#4f9cff', label: 'jugadores distintos', click: 'irAJugadores()', nospark: true },
+    { id: 'entradas', cls: '',          icon: 'in',    color: '#00ff88', label: 'entradas totales' },
+    { id: 'muertes',  cls: 'ac-red',    icon: 'skull', color: '#ff4d4d', label: 'muertes totales' },
+    { id: 'dinero',   cls: 'ac-yellow', icon: 'coin',  color: '#ffce3d', label: 'dinero generado' },
+];
+function buildDashCards() {
+    document.getElementById('dashCards').innerHTML = DASH_CARDS.map(c => `
+        <div class="sumcard dstat ${c.cls}${c.click ? ' clickable' : ''}"${c.click ? ` onclick="${c.click}" title="Ver jugadores por país"` : ''}>
+            <div class="drow"><span class="ico">${IC[c.icon]}</span><div><div class="v russo" id="dv_${c.id}">—</div><div class="k">${c.label}</div></div></div>
+            ${c.nospark ? '' : `<canvas class="dspark" id="dc_${c.id}" height="36"></canvas>`}
+        </div>`).join('');
+}
+function drawSpark(cv, data, color) {
+    if (!cv) return;
+    const W = cv.width = cv.clientWidth || 200, H = cv.height;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+    if (data.length < 2) return;
+    let max = 1; for (const v of data) if (v > max) max = v;
+    const step = W / (data.length - 1);
+    const y = v => H - 3 - (v / max) * (H - 8);
+    ctx.beginPath(); ctx.moveTo(0, H);
+    data.forEach((v, i) => ctx.lineTo(i * step, y(v)));
+    ctx.lineTo(W, H); ctx.closePath();
+    ctx.fillStyle = color + '18'; ctx.fill();
+    ctx.beginPath();
+    data.forEach((v, i) => i ? ctx.lineTo(i * step, y(v)) : ctx.moveTo(0, y(v)));
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+}
+// Valores de una serie: con "solo reales" activo usa la variante *Real si existe.
+function _serieVals(s, kBase, delta) {
+    const k = realOnly && (kBase === 'entradas' || kBase === 'muertes' || kBase === 'dinero') ? kBase + 'Real' : kBase;
+    const raw = s.map(x => x[k] || 0);
+    // slice(1) SIEMPRE (también en absolutas) para que todas queden alineadas con ts
+    return delta ? raw.slice(1).map((v, i) => Math.max(0, v - raw[i])) : raw.slice(1);
+}
+const BIG_SERIES = [
+    { key: 'entradas',   label: 'Entradas',   color: '#00ff88', delta: true },
+    { key: 'muertes',    label: 'Muertes',    color: '#ff4d4d', delta: true },
+    { key: 'dinero',     label: 'Dinero $',   color: '#ffce3d', delta: true },
+    { key: 'conectados', label: 'Conectados', color: '#4f9cff', delta: false },
+    { key: 'activos',    label: 'Activos 1h', color: '#b07cf7', delta: false },
+];
+const serieOn = new Set(['entradas', 'muertes', 'dinero']);
+function buildSerieChips() {
+    document.getElementById('serieChips').innerHTML = BIG_SERIES.map(s =>
+        `<span class="schip${serieOn.has(s.key) ? ' on' : ''}" id="chip_${s.key}" style="--cc:${s.color}" onclick="toggleSerie('${s.key}')"><i></i>${s.label}</span>`).join('');
+}
+function toggleSerie(k) {
+    if (serieOn.has(k)) { if (serieOn.size === 1) return; serieOn.delete(k); } else serieOn.add(k);
+    document.getElementById('chip_' + k).classList.toggle('on', serieOn.has(k));
+    drawBigChart();
+}
+let _bigCache = null;   // { ts: [...], series: [{key,label,color,vals}] }
+function updateBigData(m) {
+    const s = m.series || [];
+    _bigCache = s.length < 2 ? null : {
+        ts: s.slice(1).map(x => x.ts),
+        series: BIG_SERIES.map(d => Object.assign({}, d, { vals: _serieVals(s, d.key, d.delta) }))
+    };
+    drawBigChart();
+}
+function fmtHora(ts) { const d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function drawBigChart(hoverI) {
+    const cv = document.getElementById('bigChart'); if (!cv) return;
+    const W = cv.width = cv.clientWidth || 900, H = cv.height;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+    const PADT = 8, PADB = 22;
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) { const Y = PADT + (H - PADB - PADT) * i / 4; ctx.beginPath(); ctx.moveTo(0, Y); ctx.lineTo(W, Y); ctx.stroke(); }
+    if (!_bigCache) {
+        ctx.fillStyle = '#5a675e'; ctx.font = '12px Inter'; ctx.textAlign = 'center';
+        ctx.fillText('Recopilando datos… (el servidor guarda una muestra por minuto)', W / 2, H / 2);
+        return;
+    }
+    const ts = _bigCache.ts, n = ts.length;
+    const x = i => n > 1 ? i / (n - 1) * (W - 2) + 1 : W / 2;
+    ctx.fillStyle = '#5a675e'; ctx.font = '10px Inter';
+    const nl = Math.min(6, n);
+    for (let j = 0; j < nl; j++) {
+        const i = Math.round(j * (n - 1) / Math.max(1, nl - 1));
+        ctx.textAlign = j === 0 ? 'left' : (j === nl - 1 ? 'right' : 'center');
+        ctx.fillText(fmtHora(ts[i]), x(i), H - 7);
+    }
+    for (const sd of _bigCache.series) {
+        if (!serieOn.has(sd.key)) continue;
+        let max = 1; for (const v of sd.vals) if (v > max) max = v;
+        const y = v => (H - PADB) - (v / max) * (H - PADB - PADT - 6);
+        ctx.beginPath();
+        sd.vals.forEach((v, i) => i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(0), y(v)));
+        ctx.strokeStyle = sd.color; ctx.lineWidth = 2; ctx.shadowColor = sd.color; ctx.shadowBlur = 6;
+        ctx.stroke(); ctx.shadowBlur = 0;
+        ctx.lineTo(x(n - 1), H - PADB); ctx.lineTo(x(0), H - PADB); ctx.closePath();
+        ctx.fillStyle = sd.color + '14'; ctx.fill();
+        if (hoverI != null) { ctx.beginPath(); ctx.arc(x(hoverI), y(sd.vals[hoverI]), 3.5, 0, 7); ctx.fillStyle = sd.color; ctx.fill(); }
+    }
+    if (hoverI != null) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(x(hoverI), PADT); ctx.lineTo(x(hoverI), H - PADB); ctx.stroke(); ctx.setLineDash([]);
+    }
+}
+function renderDashPaises(m) {
+    const cont = document.getElementById('dashPaises'); if (!cont) return;
+    const ps = (m.paises || []).slice(0, 8);
+    const tot = (m.paises || []).reduce((s, p) => s + p.jugadores, 0) || 1;
+    const maxP = ps.length ? ps[0].jugadores : 1;
+    cont.innerHTML = ps.length ? ps.map(p => `
+        <div class="crow">
+            <span class="fl">${flag(p.code)}</span>
+            <div class="cinfo">
+                <div class="cname"><span>${esc(p.name)}<span class="pct">${Math.round(p.jugadores / tot * 100)}%</span></span><b>${num(p.jugadores)}</b></div>
+                <div class="ubar" style="height:7px"><i style="width:${Math.max(4, Math.round(p.jugadores / maxP * 100))}%"></i></div>
+            </div>
+        </div>`).join('') : '<div class="vacio">Sin conexiones registradas.</div>';
+}
+function updateDashboard(m, t, sConectados, sEntradas, sMuertes, sDinero) {
+    if (!document.getElementById('dv_salas')) { buildDashCards(); buildSerieChips(); }
+    const vals = {
+        salas: t.salasOnline, conect: sConectados, activos: num(t.activosHora || 0),
+        unicos: num(realOnly ? (t.jugadoresUnicosReal || 0) : t.jugadoresUnicos),
+        entradas: num(sEntradas), muertes: num(sMuertes), dinero: dinero(sDinero)
+    };
+    for (const k of Object.keys(vals)) { const el = document.getElementById('dv_' + k); if (el) el.innerText = vals[k]; }
+    if (tabActiva !== 'dashboard') return;   // canvas ocultos miden 0: no dibujar
+    const S = m.series || [];
+    const dsets = {
+        salas: S.map(v => v.salasOnline || 0).slice(1),
+        conect: S.map(v => v.conectados || 0).slice(1),
+        activos: S.map(v => v.activos || 0).slice(1),
+        entradas: _serieVals(S, 'entradas', true),
+        muertes: _serieVals(S, 'muertes', true),
+        dinero: _serieVals(S, 'dinero', true),
+    };
+    for (const c of DASH_CARDS) { if (!c.nospark && dsets[c.id]) drawSpark(document.getElementById('dc_' + c.id), dsets[c.id], c.color); }
+    updateBigData(m);
+    renderDashPaises(m);
+}
+// Hover de la gráfica grande: guía vertical + tooltip con los valores del minuto
+(function () {
+    const cv = document.getElementById('bigChart'), tip = document.getElementById('chartTip');
+    if (!cv || !tip) return;
+    cv.addEventListener('mousemove', e => {
+        if (!_bigCache) return;
+        const r = cv.getBoundingClientRect();
+        const n = _bigCache.ts.length;
+        const i = Math.max(0, Math.min(n - 1, Math.round((e.clientX - r.left) / r.width * (n - 1))));
+        drawBigChart(i);
+        tip.style.display = 'block';
+        tip.style.left = Math.min(e.clientX - r.left + 14, r.width - 160) + 'px';
+        tip.style.top = (e.clientY - r.top + 12) + 'px';
+        tip.innerHTML = `<b style="color:#8b968f">${fmtHora(_bigCache.ts[i])}</b><br>` +
+            _bigCache.series.filter(s => serieOn.has(s.key)).map(s => `<span style="color:${s.color}">●</span> ${s.label}: <b style="color:#fff">${num(s.vals[i])}</b>`).join('<br>');
+    });
+    cv.addEventListener('mouseleave', () => { tip.style.display = 'none'; drawBigChart(); });
+})();
+
 function render(m) {
     document.getElementById('liveTxt').innerText = 'en vivo';
     const role = m.role || 'mono';
@@ -1044,12 +1264,13 @@ function render(m) {
     //           override por host en Rendimiento). host: SOLO salas, sin nada global
     //           (todo eso vive en /admin). mono: exactamente como siempre.
     const soloSalas = (role === 'host');
-    document.getElementById('statsToolbar').style.display = soloSalas ? 'none' : '';
-    document.getElementById('summary').style.display = soloSalas ? 'none' : '';
+    document.getElementById('tabBtn_dashboard').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_jugadores').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_actividad').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_ajustes').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_rendimiento').style.display = soloSalas ? 'none' : '';
+    document.getElementById('ngroupDatos').style.display = soloSalas ? 'none' : '';
+    document.getElementById('ngroupSistema').style.display = soloSalas ? 'none' : '';
     document.getElementById('controlGlobalBar').style.display = soloSalas ? 'none' : '';
     if (soloSalas && tabActiva !== 'salas') verTab('salas');
     document.getElementById('hostCardsWrap').style.display = (role === 'director') ? '' : 'none';
@@ -1099,13 +1320,7 @@ function render(m) {
     const sMuertes = realOnly ? t.muertesReal : t.muertes;
     const sDinero = realOnly ? t.dineroReal : t.dinero;
     const sConectados = realOnly ? (t.jugadoresReales || 0) : t.jugadores;
-    document.getElementById('summary').innerHTML = `
-        <div class="sumcard"><span class="ico">${IC.room}</span><div><div class="v russo">${t.salasOnline}</div><div class="k">salas con gente</div></div></div>
-        <div class="sumcard ac-blue"><span class="ico">${IC.users}</span><div><div class="v russo">${sConectados}</div><div class="k">conectados ahora</div></div></div>
-        <div class="sumcard ac-purple clickable" onclick="irAJugadores()" title="Ver jugadores por país"><span class="ico">${IC.door}</span><div><div class="v russo">${num(realOnly ? (t.jugadoresUnicosReal || 0) : t.jugadoresUnicos)}</div><div class="k">jugadores distintos</div></div></div>
-        <div class="sumcard"><span class="ico">${IC.in}</span><div><div class="v russo">${num(sEntradas)}</div><div class="k">entradas totales</div></div></div>
-        <div class="sumcard ac-red"><span class="ico">${IC.skull}</span><div><div class="v russo">${num(sMuertes)}</div><div class="k">muertes totales</div></div></div>
-        <div class="sumcard ac-yellow"><span class="ico">${IC.coin}</span><div><div class="v russo">${dinero(sDinero)}</div><div class="k">dinero generado</div></div></div>`;
+    if (!soloSalas) updateDashboard(m, t, sConectados, sEntradas, sMuertes, sDinero);
 
     const porSeccion = { classic: [], arcade: [], free: [], otras: [] };
     for (const r of m.rooms) {
@@ -1173,6 +1388,7 @@ function render(m) {
     const maxE = usadas.length ? usadas[0].stats.entradas : 1;
     document.getElementById('usoSalas').innerHTML = usadas.length ? `
         <div class="vchart">
+            <span class="vtitle">Salas más usadas</span>
             <div class="vlegend"><span><i style="background:#00ff88"></i>Classic</span><span><i style="background:#4f9cff"></i>Arcade</span></div>
             <div class="vplot">${usadas.map(r => `
                 <div class="vcol" title="${esc(r.roomName)} ${r.mode.toUpperCase()} · ${num(r.stats.entradas)} entradas · ${dinero(r.stats.dinero)}">

@@ -1106,6 +1106,43 @@ function buildSnapshotFor(room, viewerId, box) {
         players, bots, viruses, ejected, projectiles
     };
 }
+// --- Dashboard: "activos última hora" + series temporales para las gráficas ---
+// Activos = jugadores únicos (nombre|ip) vistos en connLog en los últimos 60 min
+// (connLog ya excluye testers, así que es gente real). Series: una muestra por
+// minuto con los totales acumulados y los conectados del momento; el panel dibuja
+// la evolución con los deltas. Solo en RAM: se resetea al reiniciar el proceso.
+function activosUltimaHora() {
+    const desde = Date.now() - 3600000;
+    const vistos = new Set();
+    for (let i = connLog.length - 1; i >= 0; i--) {
+        const c = connLog[i];
+        if (new Date(c.fecha).getTime() < desde) break;
+        vistos.add((c.nombre || '') + '|' + c.ip);
+    }
+    return vistos.size;
+}
+const SERIES_MAX = 180;          // 3 h a 1 muestra/min
+const adminSeries = [];
+function sampleAdminSeries() {
+    let entradas = 0, muertes = 0, dinero = 0, entradasReal = 0, muertesReal = 0, dineroReal = 0;
+    for (const [ck, s] of Object.entries(roomStats)) {
+        const price = priceOf(ck);
+        entradas += s.entradas || 0; muertes += s.muertes || 0; dinero += (s.entradas || 0) * price;
+        entradasReal += s.entradasReal || 0; muertesReal += s.muertesReal || 0; dineroReal += (s.entradasReal || 0) * price;
+    }
+    adminSeries.push({
+        ts: Date.now(),
+        entradas, muertes, dinero, entradasReal, muertesReal, dineroReal,
+        conectados: [...rooms.values()].reduce((s, r) => s + r.clients.size, 0),
+        salasOnline: [...rooms.values()].filter(r => r.clients.size > 0).length,
+        activos: activosUltimaHora()
+    });
+    if (adminSeries.length > SERIES_MAX) adminSeries.shift();
+}
+// El Director no tiene salas propias: sus gráficas saldrían planas a 0.
+// (Cuando se despliegue el split, agregar por IPC igual que getRoomsSummary.)
+if (PW_ROLE !== 'director') { sampleAdminSeries(); setInterval(sampleAdminSeries, 60000); }
+
 // --- Estado para el panel de admin: una entrada por layer, agrupable por combo ---
 function buildAdminState() {
     const now = Date.now();
@@ -1213,7 +1250,9 @@ function buildAdminState() {
             jugadoresReales: [...rooms.values()].reduce((s, r) => { for (const c of r.clients.values()) if (!c.isTester) s++; return s; }, 0),
             jugadoresUnicos: Object.keys(playerStats).length,
             jugadoresUnicosReal: Object.values(playerStats).filter(p => p.isReal).length,
+            activosHora: activosUltimaHora(),
         },
+        series: adminSeries,
         rooms: list,
         ranking,
         rankingUpdatedAt: _rankingUpdatedAt,
