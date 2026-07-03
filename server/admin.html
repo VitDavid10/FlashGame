@@ -517,6 +517,17 @@
                 <button class="b verde mini" onclick="enviarAnuncio()">Send</button>
                 <span style="color:#666; font-size: 12px;">Shows a banner to ALL players connected right now.</span>
             </div>
+            <div class="usage" id="hostAssignPanel" style="display:none; padding: 18px 20px; flex-direction: column; gap: 12px;">
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <label style="font-weight:600">Room assignment per host:</label>
+                    <span style="color:#666; font-size: 12px;">Pick which host runs each room, or set it Off to hide it everywhere. Needs "Restart Server" to apply.</span>
+                </div>
+                <div id="hostAssignGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:8px 14px;"></div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="b verde mini" onclick="guardarHostAssign()">Save assignment</button>
+                    <span id="hostAssignMsg" style="color:#888;font-size:12px;"></span>
+                </div>
+            </div>
         </div>
 
         <div id="tab_rendimiento" style="display:none">
@@ -1224,6 +1235,53 @@ function applySnapHzHost(hostId, hz) { send({ cmd: 'snapshotHz', hz, hostIds: [h
 function applyAoiHost(hostId, on) { send({ cmd: 'aoiToggle', on, hostIds: [hostId] }); setTimeout(pedir, 200); }
 function applyLayerHost(hostId, idx, active) { send({ cmd: 'setLayerActive', layerIdx: idx, active, hostIds: [hostId] }); setTimeout(pedir, 200); }
 
+// ===== Asignación manual de combos por host (Settings, solo Director/mono) =====
+// combo = "mode_price" (ej. "classic_20$"); el mode nunca lleva "_" así que basta
+// con partir en el primer guion bajo.
+function _comboParts(combo) { const i = combo.indexOf('_'); return [combo.slice(0, i), combo.slice(i + 1)]; }
+let _hostAssignSig = '';
+function renderHostAssign(m) {
+    const panel = document.getElementById('hostAssignPanel');
+    const ha = m.hostAssign;
+    if (!ha) { panel.style.display = 'none'; return; }
+    panel.style.display = 'flex';
+    const sig = ha.hostCount + '|' + ha.combos.join(',');
+    if (sig !== _hostAssignSig) {
+        _hostAssignSig = sig;
+        const opts = ['<option value="">Off</option>']
+            .concat(Array.from({ length: ha.hostCount }, (_, h) => `<option value="${h}">Host ${h}</option>`)).join('');
+        document.getElementById('hostAssignGrid').innerHTML = ha.combos.map(combo => {
+            const [mode, price] = _comboParts(combo);
+            const label = (mode === 'classic' ? 'Classic' : 'Arcade') + ' · ' + price;
+            return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#111;border:1px solid #262626;border-radius:8px;padding:7px 12px;">
+                <span style="font-size:12px;color:#ccc;">${label}</span>
+                <select id="hostAssign_${combo}" style="background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:4px 8px;font-size:12px;">${opts}</select>
+            </div>`;
+        }).join('');
+    }
+    const saved = ha.saved || {};
+    let pending = false;
+    for (const combo of ha.combos) {
+        const sel = document.getElementById('hostAssign_' + combo);
+        if (!sel) continue;
+        const runningVal = Object.prototype.hasOwnProperty.call(ha.running, combo) ? ha.running[combo] : null;
+        const savedVal = Object.prototype.hasOwnProperty.call(saved, combo) ? saved[combo] : runningVal;
+        if (savedVal !== runningVal) pending = true;
+        if (document.activeElement !== sel) sel.value = (savedVal === null || savedVal === undefined) ? '' : String(savedVal);
+    }
+    const msg = document.getElementById('hostAssignMsg');
+    if (msg && msg.innerText.indexOf('Saved') === -1) msg.innerText = pending ? '⚠ Pending — restart the server to apply.' : '';
+}
+function guardarHostAssign() {
+    const assign = {};
+    for (const sel of document.querySelectorAll('[id^="hostAssign_"]')) {
+        assign[sel.id.slice('hostAssign_'.length)] = sel.value === '' ? null : parseInt(sel.value, 10);
+    }
+    send({ cmd: 'setHostAssign', assign });
+    document.getElementById('hostAssignMsg').innerText = 'Saved — restart the server to apply.';
+    setTimeout(pedir, 200);
+}
+
 // ===== Dashboard: tarjetas con sparkline + gráfica grande de actividad =====
 // El servidor manda `series`: una muestra/minuto con los totales acumulados
 // (últimas 3 h). Para entradas/muertes/dinero se dibuja el DELTA por minuto;
@@ -1543,6 +1601,7 @@ function render(m) {
         renderHostCards(m);
         renderHostTabs(m);
         renderPerfHosts(m);
+        renderHostAssign(m);
         const vivos = (m.hosts || []).filter(h => h.alive).length;
         document.getElementById('metaInfo').innerText = `min per room: ${m.minPlayers} players · ${vivos}/${(m.hosts || []).length} hosts alive`;
     } else {

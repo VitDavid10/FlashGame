@@ -43,4 +43,25 @@ function buildShardMap(modes, prices, hostCount) {
     return { comboToHost, hostToCombos };
 }
 
-module.exports = { listCombos, buildShardMap };
+// Aplica una asignación manual (combo → hostId) sobre el reparto automático de
+// buildShardMap. Pensada para el panel de admin: el operador elige a mano en qué
+// host vive cada combo, o lo desactiva del todo.
+//  - overrides: { [combo]: hostId } — combo ausente del objeto conserva el
+//    reparto automático de `base`; hostId null/fuera de rango = combo apagado
+//    (no lo posee ningún host: no se crea nunca y no aparece en ningún panel).
+// Devuelve la misma forma que buildShardMap: { comboToHost, hostToCombos }.
+function applyOverrides(base, overrides, hostCount) {
+    const comboToHost = new Map();
+    const hostToCombos = new Map();
+    for (let h = 0; h < hostCount; h++) hostToCombos.set(h, []);
+    for (const [combo, autoHost] of base.comboToHost) {
+        const has = overrides && Object.prototype.hasOwnProperty.call(overrides, combo);
+        const hostId = has ? overrides[combo] : autoHost;
+        if (hostId == null || !hostToCombos.has(hostId)) continue;   // apagado o host fuera de rango
+        comboToHost.set(combo, hostId);
+        hostToCombos.get(hostId).push(combo);
+    }
+    return { comboToHost, hostToCombos };
+}
+
+module.exports = { listCombos, buildShardMap, applyOverrides };

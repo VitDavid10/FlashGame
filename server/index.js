@@ -37,7 +37,7 @@ const solana = require('./solana.js');     // verificación de depósitos $PILL
 const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
-const { buildShardMap } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
+const { listCombos, buildShardMap, applyOverrides } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
 const { createIpc } = require('./cluster/ipc.js');             // request/response sobre fork (Fase 4)
 
 // --- Rol del proceso (Fase 4 split multiproceso) ---
@@ -122,7 +122,17 @@ const CATALOG_MODES = ['classic', 'arcade'];
 // Reparto de combos entre hosts (Fase 4). En 'mono' este proceso es dueño de TODOS
 // los combos; en 'host' solo de los que le asigna el shard-map (combo→hostId). El
 // matchmaker del Director usará el mismo mapa para enrutar al cliente al host correcto.
-const SHARD = buildShardMap(CATALOG_MODES, PRICES, PW_ROLE === 'mono' ? 1 : PW_HOST_COUNT);
+// HOSTASSIGN_FILE: asignación manual opcional desde el panel (director → host N).
+// La leen TODOS los procesos (director y cada host forkeado) al arrancar, así que
+// cambiarla requiere reiniciar el servidor para que los hosts reforkeados la recojan.
+const HOSTASSIGN_FILE = path.join(__dirname, 'hostassign.json');
+function loadHostAssign() { return loadJson(HOSTASSIGN_FILE, null); }
+const _hostAssignHostCount = PW_ROLE === 'mono' ? 1 : PW_HOST_COUNT;
+const SHARD = applyOverrides(
+    buildShardMap(CATALOG_MODES, PRICES, _hostAssignHostCount),
+    loadHostAssign(),
+    _hostAssignHostCount
+);
 const MY_HOST_ID = PW_ROLE === 'mono' ? 0 : PW_HOST_ID;
 function ownsCombo(mode, price) {
     // El Director no posee NINGÚN combo: sus salas viven en los hosts forkeados.
@@ -1482,6 +1492,15 @@ async function buildDirectorAdminState() {
     base.totales.salasOnline = salasOnline;
     base.totales.jugadores = jugadores;
     base.totales.jugadoresReales = jugadoresReales;
+    // Reparto de combos por host: lo que corre AHORA MISMO (SHARD, fijado al
+    // arrancar) más lo guardado en hostassign.json (puede diferir si se editó
+    // sin reiniciar todavía). El panel usa esto para el editor de asignación.
+    base.hostAssign = {
+        hostCount: PW_HOST_COUNT,
+        combos: listCombos(CATALOG_MODES, PRICES),
+        running: Object.fromEntries(SHARD.comboToHost),
+        saved: loadHostAssign()
+    };
     return base;
 }
 
@@ -2096,6 +2115,27 @@ wss.on('connection', (ws, req) => {
                 if (PW_ROLE === 'director') for (const h of hostProcs.values()) if (h.alive) h.ipc.notify('adminRestartMode', { mode: msg.mode });
                 logAdmin('-', `Reinició modo ${msg.mode}`, `${n} salas`);
                 log(`ADMIN restartMode=${msg.mode}: ${n} salas`);
+            } else if (msg.cmd === 'setHostAssign' && msg.assign && typeof msg.assign === 'object') {
+                // Asignación manual combo→host (panel Settings, solo Director/mono).
+                // Reemplaza hostassign.json entero: el cliente manda el estado completo
+                // de las 10 combos. Requiere "Restart Server" para que los hosts
+                // reforkeados (y este mismo proceso) recalculen SHARD con el nuevo mapa.
+                if (PW_ROLE !== 'host') {
+                    const hostCount = PW_ROLE === 'mono' ? 1 : PW_HOST_COUNT;
+                    const validCombos = new Set(listCombos(CATALOG_MODES, PRICES));
+                    const clean = {};
+                    for (const [combo, hostId] of Object.entries(msg.assign)) {
+                        if (!validCombos.has(combo)) continue;
+                        if (hostId === null) { clean[combo] = null; continue; }   // Off explícito: se guarda, no se omite
+                        const h = parseInt(hostId, 10);
+                        if (Number.isInteger(h) && h >= 0 && h < hostCount) clean[combo] = h;
+                    }
+                    const activos = Object.values(clean).filter(v => v !== null).length;
+                    fs.writeFile(HOSTASSIGN_FILE, JSON.stringify(clean, null, 2), () => {});
+                    logAdmin('-', 'Cambió la asignación de salas por host', activos + '/' + validCombos.size + ' combos activos');
+                    log('ADMIN guardó hostassign.json — hace falta reiniciar el servidor para aplicarlo');
+                    ws.send(JSON.stringify({ t: 'hostAssignSaved' }));
+                }
             } else if (msg.cmd === 'restartServer') {
                 // Solo el Director (o mono) puede autoreiniciarse desde aquí: un host del
                 // split corta partidas en curso de sus 5 combos sin previo aviso al panel
