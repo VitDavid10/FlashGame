@@ -1166,7 +1166,8 @@ function paisesConectados() {
     }
     return porPais;
 }
-const SERIES_MAX = 180;          // 3 h a 1 muestra/min
+const SAMPLE_MS = 15000;         // cadencia de la serie del dashboard (antes 60s: gráfica muy basta y tardaba minutos en verse)
+const SERIES_MAX = 720;          // 3 h a 1 muestra/15s
 const adminSeries = [];
 function sampleAdminSeries() {
     let entradas = 0, muertes = 0, dinero = 0, entradasReal = 0, muertesReal = 0, dineroReal = 0;
@@ -1201,9 +1202,9 @@ async function refreshDirAgg() {
 if (PW_ROLE === 'director') {
     const tick = () => refreshDirAgg().then(sampleAdminSeries);
     setTimeout(tick, 5000);   // primera muestra cuando los hosts ya han arrancado
-    setInterval(tick, 60000);
+    setInterval(tick, SAMPLE_MS);
 } else {
-    sampleAdminSeries(); setInterval(sampleAdminSeries, 60000);
+    sampleAdminSeries(); setInterval(sampleAdminSeries, SAMPLE_MS);
 }
 
 // --- Estado para el panel de admin: una entrada por layer, agrupable por combo ---

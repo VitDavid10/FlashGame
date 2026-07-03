@@ -87,10 +87,6 @@
     .sumcard.ac-purple { --ac: #b07cf7; --acdim: rgba(176,124,247,0.10); --acbr: rgba(176,124,247,0.30); }
     .sumcard.ac-yellow { --ac: #ffce3d; --acdim: rgba(255,206,61,0.10); --acbr: rgba(255,206,61,0.30); }
     .sumcard.ac-red { --ac: #ff4d4d; --acdim: rgba(255,77,77,0.10); --acbr: rgba(255,77,77,0.30); }
-    .sumcard .ico { width: 44px; height: 44px; border-radius: 12px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--acdim); border: 1px solid var(--acbr); }
-    .sumcard .ico svg { width: 22px; height: 22px; }
-    .sumcard .ico svg * { stroke: var(--ac); }
-    .sumcard .ico svg [fill]:not([fill="none"]) { fill: var(--ac); }
     .sumcard .v { font-size: 24px; color: var(--ac); text-shadow: 0 0 14px var(--acdim); line-height: 1.1; }
     .sumcard .k { color: var(--muted); font-size: 10px; margin-top: 4px; letter-spacing: 1.2px; text-transform: uppercase; font-family: 'Russo One'; }
     .stats-toolbar { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
@@ -250,7 +246,6 @@
     /* ===== Dashboard ===== */
     .dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 14px; margin-bottom: 18px; }
     .sumcard.dstat { flex-direction: column; align-items: stretch; gap: 12px; }
-    .sumcard.dstat .drow { display: flex; gap: 14px; align-items: center; }
     .dspark { width: 100%; height: 36px; display: block; }
     .panelcard { background: var(--box); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
     .panelhead { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -374,7 +369,7 @@
             <div class="panelcard">
                 <div class="panelhead"><span class="pt">Activity · per minute</span><div class="chip-row" id="serieChips"></div></div>
                 <div id="bigChartWrap"><canvas id="bigChart" height="260"></canvas><div id="chartTip"></div></div>
-                <div class="hint" style="margin-top:10px">The server stores one sample per minute (last 3 h, resets on restart). Entries, deaths and money are per-minute increments; online and active are absolute values.</div>
+                <div class="hint" style="margin-top:10px">The server stores one sample every 15s (last 3 h, resets on restart). Entries, deaths and money are shown as a per-minute rate; online and active are absolute values.</div>
             </div>
             <div class="dash-grid2">
                 <div class="panelcard">
@@ -388,7 +383,8 @@
             <div style="margin-top:16px"><div id="usoSalas"></div></div>
         </div>
 
-        <div id="tab_salas" style="display:none">
+        <div id="tab_salas">
+            <h2 class="section">Rooms</h2>
             <!-- Controles globales de modo: en rol host se oculta entero (viven solo en /admin) -->
             <div id="controlGlobalBar" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:18px; background:#0d0d0d; border:1px solid #1e1e1e; border-radius:10px; padding:12px 16px;">
                 <span style="color:#555; font-size:11px; letter-spacing:1px; margin-right:4px;">GLOBAL CONTROL:</span>
@@ -437,7 +433,7 @@
             </div>
         </div>
 
-        <div id="tab_jugadores" style="display:none">
+        <div id="tab_jugadores">
             <h2 class="section">Player ranking</h2>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;background:#111;border:1px solid #222;border-radius:10px;padding:12px 14px">
                 <span style="color:#aaa;font-size:12px">Compute ranking:</span>
@@ -557,7 +553,6 @@
 // Iconos SVG en la paleta del juego
 const IC = {
     users: '<svg viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M16 14.4c2.9.3 5.5 2.3 5.5 5.6"/></svg>',
-    room: '<svg viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/></svg>',
     skull: '<svg viewBox="0 0 24 24" fill="none" stroke="#ff2a2a" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 3 1.6 5.4 4 6.7V20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.3c2.4-1.3 4-3.8 4-6.7a8 8 0 0 0-8-8z"/><circle cx="9" cy="10" r="1.4" fill="#ff2a2a"/><circle cx="15" cy="10" r="1.4" fill="#ff2a2a"/></svg>',
     coin: '<svg viewBox="0 0 24 24" fill="none" stroke="#ffce3d" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1.1-1.8 2.5-1.8s2.5.8 2.5 1.8-1 1.6-2.5 2-2.5 1-2.5 2 1.1 1.8 2.5 1.8 2.5-.8 2.5-1.8"/></svg>',
     door: '<svg viewBox="0 0 24 24" fill="none" stroke="#b07cf7" stroke-width="2"><path d="M14 3h5a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-5M10 17l-5-5 5-5M5 12h11"/></svg>',
@@ -571,6 +566,10 @@ const IC = {
 };
 
 let ws = null, key = '', autorizado = false, tabActiva = 'dashboard';
+let hostOnlyView = false;   // rol host: solo Rooms, sin Dashboard/Players (ver render())
+const MAIN_GROUP_TABS = ['dashboard', 'salas', 'jugadores'];
+function mainVisible() { return !hostOnlyView && MAIN_GROUP_TABS.includes(tabActiva); }
+let _pendingScrollTab = null;   // scroll a una sección de Main, disparado en el próximo render() (ver verTab)
 const expandidos = new Set();
 
 // Prefijo de path (Fase 4b): si el panel se abre en /hN/admin (host N detrás del
@@ -640,12 +639,24 @@ setInterval(refrescarSalud, 5000); refrescarSalud();
 const TAB_TITLES = { dashboard: 'Dashboard', salas: 'Rooms', jugadores: 'Players', actividad: 'Activity', transactions: 'Transactions', ajustes: 'Settings', rendimiento: 'Performance' };
 function verTab(t) {
     tabActiva = t;
+    // Dashboard/Rooms/Players viven en una sola página scrolleable ("Main"): clicar
+    // cualquiera de los tres muestra los tres y hace scroll a la sección pedida.
+    // En rol host (solo Rooms) el grupo se reduce a esa única sección.
+    const group = hostOnlyView ? ['salas'] : MAIN_GROUP_TABS;
+    const showMain = group.includes(t);
     for (const x of ['dashboard', 'salas', 'jugadores', 'actividad', 'transactions', 'ajustes', 'rendimiento']) {
-        const tab = document.getElementById('tab_' + x); if (tab) tab.style.display = (x === t) ? 'block' : 'none';
+        const tab = document.getElementById('tab_' + x);
+        if (tab) tab.style.display = (showMain ? group.includes(x) : x === t) ? 'block' : 'none';
         const btn = document.getElementById('tabBtn_' + x); if (btn) btn.classList.toggle('act', x === t);
     }
     const pt = document.getElementById('pageTitle'); if (pt) pt.innerText = TAB_TITLES[t] || t;
-    if (t === 'dashboard') pedir();   // refresco inmediato para que las gráficas no esperen al poll
+    if (showMain) {
+        // El scroll se difiere al PRÓXIMO render(): pintarGrid() restaura el scroll
+        // anterior en cada poll (anti-jank de las cartas de sala) y si hacemos el
+        // scrollIntoView aquí mismo, esa restauración lo cancela antes de que se vea.
+        if (group.length > 1) _pendingScrollTab = t;
+        pedir();   // refresco inmediato para que las gráficas no esperen al poll
+    }
 }
 
 let modoActivo = 'all';   // vista por defecto: todas las salas juntas
@@ -1145,17 +1156,18 @@ function applyLayerHost(hostId, idx, active) { send({ cmd: 'setLayerActive', lay
 // (últimas 3 h). Para entradas/muertes/dinero se dibuja el DELTA por minuto;
 // conectados/activos/salas son valores absolutos.
 const DASH_CARDS = [
-    { id: 'salas',    cls: '',          icon: 'room',  color: '#00ff88', label: 'active rooms' },
-    { id: 'conect',   cls: 'ac-blue',   icon: 'users', color: '#4f9cff', label: 'online now' },
-    { id: 'activos',  cls: 'ac-purple', icon: 'clock', color: '#b07cf7', label: 'active last hour' },
-    { id: 'unicos',   cls: 'ac-blue',   icon: 'door',  color: '#4f9cff', label: 'unique players', click: "verTab('jugadores')" },
-    { id: 'muertes',  cls: 'ac-red',    icon: 'skull', color: '#ff4d4d', label: 'total deaths' },
-    { id: 'dinero',   cls: 'ac-yellow', icon: 'coin',  color: '#ffce3d', label: 'revenue' },
+    { id: 'salas',    cls: '',          color: '#00ff88', label: 'active rooms' },
+    { id: 'conect',   cls: 'ac-blue',   color: '#4f9cff', label: 'online now' },
+    { id: 'activos',  cls: 'ac-purple', color: '#b07cf7', label: 'active last hour' },
+    { id: 'unicos',   cls: 'ac-blue',   color: '#4f9cff', label: 'unique players', click: "verTab('jugadores')" },
+    { id: 'muertes',  cls: 'ac-red',    color: '#ff4d4d', label: 'total deaths' },
+    { id: 'dinero',   cls: 'ac-yellow', color: '#ffce3d', label: 'revenue' },
 ];
 function buildDashCards() {
     document.getElementById('dashCards').innerHTML = DASH_CARDS.map(c => `
         <div class="sumcard dstat ${c.cls}${c.click ? ' clickable' : ''}"${c.click ? ` onclick="${c.click}" title="Open player ranking"` : ''}>
-            <div class="drow"><span class="ico">${IC[c.icon]}</span><div><div class="v russo" id="dv_${c.id}">—</div><div class="k">${c.label}</div></div></div>
+            <div class="v russo" id="dv_${c.id}">—</div>
+            <div class="k">${c.label}</div>
             <canvas class="dspark" id="dc_${c.id}" height="36"></canvas>
         </div>`).join('');
 }
@@ -1182,7 +1194,14 @@ function _serieVals(s, kBase, delta) {
     const k = realOnly && REAL_VARIANT[kBase] ? REAL_VARIANT[kBase] : kBase;
     const raw = s.map(x => x[k] || 0);
     // slice(1) SIEMPRE (también en absolutas) para que todas queden alineadas con ts
-    return delta ? raw.slice(1).map((v, i) => Math.max(0, v - raw[i])) : raw.slice(1);
+    if (!delta) return raw.slice(1);
+    // Normalizado a ritmo "por minuto" según el tiempo real entre muestras (el
+    // servidor puede muestrear cada 15s): sin esto, al afinar la cadencia los
+    // deltas se verían 4x más pequeños y la etiqueta "per minute" mentiría.
+    return raw.slice(1).map((v, i) => {
+        const dt = s[i + 1].ts - s[i].ts;
+        return dt > 0 ? Math.max(0, Math.round((v - raw[i]) * 60000 / dt)) : 0;
+    });
 }
 const BIG_SERIES = [
     { key: 'entradas',   label: 'Entries',   color: '#00ff88', delta: true },
@@ -1221,7 +1240,7 @@ function drawBigChart(hoverI) {
     for (let i = 0; i <= 4; i++) { const Y = PADT + (H - PADB - PADT) * i / 4; ctx.beginPath(); ctx.moveTo(0, Y); ctx.lineTo(W, Y); ctx.stroke(); }
     if (!_bigCache) {
         ctx.fillStyle = '#5a675e'; ctx.font = '12px Inter'; ctx.textAlign = 'center';
-        ctx.fillText('Collecting data… (the server stores one sample per minute)', W / 2, H / 2);
+        ctx.fillText('Collecting data… (a sample lands every 15s)', W / 2, H / 2);
         return;
     }
     const ts = _bigCache.ts, n = ts.length;
@@ -1383,7 +1402,7 @@ function updateDashboard(m, t, sConectados, sEntradas, sMuertes, sDinero) {
     }
     if (!document.getElementById('pc_dash')) document.getElementById('dashPerf').innerHTML = _perfCardHtml('dash', 'SERVER', m.role === 'director' ? 'hosts average · live' : 'live monitoring', false);
     _histPush('dash', (perf.tick && perf.tick.p95) || 0, perf.netKBs || 0);
-    if (tabActiva !== 'dashboard') return;   // canvas ocultos miden 0: no dibujar
+    if (!mainVisible()) return;   // canvas oculto (tab Activity/Transactions/etc. o rol host): mide 0, no dibujar
     _updatePerfCard('dash', { alive: true, cpu: perf.cpu, tick: perf.tick, lag: perf.lag, netKBs: perf.netKBs,
         mrow: `<span><b>${perf.rssMB || 0}</b> MB RAM</span><span><b>${t.jugadores || 0}</b> online</span><span><b>${t.salasOnline || 0}</b> active rooms</span>`
             + (m.role === 'director' ? `<span><b>${hostsVivos.length}/${(m.hosts || []).length}</b> hosts alive</span>` : `<span>net <b>${m.snapshotHz || '—'} Hz</b></span><span>AOI <b>${m.aoiEnabled ? 'ON' : 'OFF'}</b></span>`) });
@@ -1429,6 +1448,7 @@ function render(m) {
     //           override por host en Rendimiento). host: SOLO salas, sin nada global
     //           (todo eso vive en /admin). mono: exactamente como siempre.
     const soloSalas = (role === 'host');
+    hostOnlyView = soloSalas;
     document.getElementById('tabBtn_dashboard').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_jugadores').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_actividad').style.display = soloSalas ? 'none' : '';
@@ -1558,6 +1578,14 @@ function render(m) {
     let hist = '';
     for (const h of m.historial) hist += `<tr><td>${fecha(h.fecha)}</td><td><b style="color:#ccc">${esc(h.nombre)}</b></td><td>${esc(h.ip)}</td><td>${esc(h.sala)}</td></tr>`;
     document.getElementById('histCuerpo').innerHTML = hist || '<tr><td class="vacio">No connections yet.</td></tr>';
+
+    if (_pendingScrollTab) {
+        // 'instant': con 'smooth' el poll de 750ms interrumpe la animación a medias
+        // (pintarGrid hace su propio scrollTo instantáneo cada vez que redibuja).
+        const el = document.getElementById('tab_' + _pendingScrollTab);
+        if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' });
+        _pendingScrollTab = null;
+    }
 }
 
 // Transactions: tabla de movimientos de dinero (entradas, premios, depósitos, retiros)
