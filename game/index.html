@@ -685,6 +685,37 @@
         .tooltip-title { color: #fff; font-family: 'Russo One'; font-size: 16px; margin: 0 0 5px 0; text-transform: uppercase; }
         .tooltip-divider { width: 40px; height: 3px; background: var(--gold); margin-bottom: 10px; }
         .tooltip-desc { color: #ccc; font-size: 11px; line-height: 1.4; margin-bottom: 15px; }
+        /* ===== TEXTURE PACK PIXEL: relieve pixel art en menús (mismos colores) ===== */
+        body.pixel-pack .login-box, body.pixel-pack .gameModalBox, body.pixel-pack .exit-box,
+        body.pixel-pack .mqp, body.pixel-pack #buffTable, body.pixel-pack .mode-desc,
+        body.pixel-pack #leaderboard, body.pixel-pack #oraclePanel, body.pixel-pack #missionsPanel,
+        body.pixel-pack .back-to-web, body.pixel-pack .mqp-btn {
+            border-radius: 0 !important; backdrop-filter: none !important;
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.07), inset -2px -2px 0 rgba(0,0,0,0.55) !important;
+        }
+        body.pixel-pack .login-box button, body.pixel-pack .q-btn, body.pixel-pack .ultra-btn,
+        body.pixel-pack .btn-play, body.pixel-pack .gm-btn, body.pixel-pack .btn-confirm,
+        body.pixel-pack .btn-cancel, body.pixel-pack .btn-sys, body.pixel-pack .mb-continue,
+        body.pixel-pack #gameWalletArea button, body.pixel-pack #skillChoiceOverlay button {
+            border-radius: 0 !important; clip-path: none !important;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.18), inset -2px -2px 0 rgba(0,0,0,0.45) !important;
+        }
+        body.pixel-pack .login-box button:active, body.pixel-pack .btn-play:active,
+        body.pixel-pack .gm-btn:active, body.pixel-pack #skillChoiceOverlay button:active {
+            transform: translate(2px, 2px) !important;
+            box-shadow: 1px 1px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(0,0,0,0.35) !important;
+        }
+        body.pixel-pack .ab-slot {
+            border-radius: 0 !important;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.12), inset -2px -2px 0 rgba(0,0,0,0.5) !important;
+        }
+        body.pixel-pack .ab-slot img, body.pixel-pack .buff-icon-img, body.pixel-pack #skillChoiceOverlay img { image-rendering: pixelated; }
+        body.pixel-pack input[type="text"], body.pixel-pack .gameModalBox input {
+            border-radius: 0 !important;
+            box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important;
+        }
+        body.pixel-pack .section-title { border-bottom: 2px solid #222; }
+        body.pixel-pack .sound-btn, body.pixel-pack .prizeRow.mine, body.pixel-pack .buff-icon-img { border-radius: 0 !important; }
     </style>
 </head>
 <body>
@@ -1156,6 +1187,7 @@
     // un sprite pixel art generado proceduralmente y escalado sin suavizado,
     // a resolución completa de pantalla. Solo render; físicas intactas.
     let pixelMode = localStorage.getItem('pw_pixel') === '1';
+    document.body.classList.toggle('pixel-pack', pixelMode);
     let enableEnemyFX = true;
     let serverEnemyFx = true;   // override global del server (admin): false = sin FX de enemigos para todos
     // Zoom base: ajuste LOCAL de tu navegador (lo pone el panel admin via localStorage,
@@ -1274,6 +1306,7 @@
         SoundManager.play('simpleselect'); pixelMode = !!on;
         localStorage.setItem('pw_pixel', pixelMode ? '1' : '0');
         const rp = document.querySelector('input[name="packMode"][value="' + (pixelMode ? 'pixel' : 'classic') + '"]'); if (rp) rp.checked = true;
+        document.body.classList.toggle('pixel-pack', pixelMode);
         resize();
     }
 
@@ -1524,11 +1557,29 @@
     // Cache por color/tamaño, mismo patrón que skinCache.
     const PIX_SCREEN_PX = 4;
     const PIX_FONT = "'VT323', monospace";
-    const PIX = { pill: new Map(), dot: new Map(), virus: new Map() };
+    const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map() };
     if (document.fonts && document.fonts.load) document.fonts.load("32px 'VT323'");
     const _pixProbe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     function pixRgb(col) { _pixProbe.clearRect(0, 0, 1, 1); _pixProbe.fillStyle = col; _pixProbe.fillRect(0, 0, 1, 1); const d = _pixProbe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
     function pixShade(rgb, amt) { const t = amt < 0 ? 0 : 255, a = Math.abs(amt); return 'rgb(' + rgb.map(v => Math.round(v + (t - v) * a)).join(',') + ')'; }
+
+    // Tile de fondo 100×100 (unidades de mundo, alineado con el grid clásico):
+    // base del tema + moteado sutil + línea de grid gruesa. Cache por tema.
+    function pixBgPattern() {
+        const bg = getComputedStyle(document.body).getPropertyValue('--bg-color').trim();
+        const gl = getComputedStyle(document.body).getPropertyValue('--grid-line').trim();
+        const key = bg + '|' + gl;
+        let p = PIX.bg.get(key); if (p) return p;
+        const t = document.createElement('canvas'); t.width = 100; t.height = 100;
+        const g = t.getContext('2d'), rgb = pixRgb(bg), claro = rgb[0] > 127;
+        g.fillStyle = bg; g.fillRect(0, 0, 100, 100);
+        g.fillStyle = pixShade(rgb, claro ? -0.04 : 0.05);
+        for (const s of [[12, 20], [52, 8], [80, 44], [28, 68], [64, 84]]) g.fillRect(s[0], s[1], 4, 4);
+        g.fillStyle = pixShade(rgb, claro ? -0.025 : 0.028);
+        for (const s of [[40, 36], [88, 72], [8, 88], [72, 16]]) g.fillRect(s[0], s[1], 4, 4);
+        g.fillStyle = gl; g.fillRect(0, 0, 100, 4); g.fillRect(0, 0, 4, 100);
+        p = ctx.createPattern(t, 'repeat'); PIX.bg.set(key, p); return p;
+    }
 
     function pixPillSprite(wL, cTop, cBot) {
         const key = wL + '|' + cTop + '|' + cBot;
@@ -1581,20 +1632,26 @@
         spr = document.createElement('canvas'); spr.width = dL; spr.height = dL;
         const g = spr.getContext('2d'), R = dL / 2 - 0.5;
         const rgbF = pixRgb(lerpColor('#9EE32D', '#a020f0', t)), rgbD = pixRgb(lerpColor('#3E8E11', '#501078', t));
-        const rr = (a) => R * (0.82 + 0.18 * (0.5 + 0.5 * Math.cos(a * 12)));
+        const teeth = dL >= 36 ? 16 : 12;   // los grandes tienen más dientes
+        const rr = (a) => R * (0.82 + 0.18 * (0.5 + 0.5 * Math.cos(a * teeth)));
         const inside = (x, y) => { if (x < 0 || y < 0 || x >= dL || y >= dL) return false; const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2; return Math.sqrt(dx * dx + dy * dy) <= rr(Math.atan2(dy, dx)); };
         for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
             if (!inside(x, y)) continue;
+            const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2, d = Math.sqrt(dx * dx + dy * dy);
             let col;
             if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = pixShade(rgbD, -0.15);
             else if (!inside(x + 2, y) || !inside(x, y + 2)) col = pixShade(rgbF, -0.3);
             else if (!inside(x - 2, y) || !inside(x, y - 2)) col = pixShade(rgbF, 0.3);
+            else if (dL >= 20 && Math.abs(d - R * 0.58) < Math.max(1, dL / 40)) col = 'rgb(' + rgbD.join(',') + ')';   // anillo interior
+            else if (dL >= 20 && d < R * 0.30) col = pixShade(rgbF, dx + dy < 0 ? -0.16 : -0.32);   // núcleo con media sombra
             else col = 'rgb(' + rgbF.join(',') + ')';
             g.fillStyle = col; g.fillRect(x, y, 1, 1);
         }
         g.fillStyle = 'rgba(0,0,0,0.25)';
-        const spots = [[0.38, 0.40], [0.62, 0.55], [0.45, 0.66]], sr = Math.max(1, Math.round(dL / 12));
+        const spots = [[0.36, 0.42], [0.62, 0.36], [0.58, 0.64]], sr = Math.max(1, Math.round(dL / 12));
         for (const s of spots) g.fillRect(Math.round(dL * s[0]), Math.round(dL * s[1]), sr, sr);
+        g.fillStyle = 'rgba(255,255,255,0.35)';
+        g.fillRect(Math.round(dL * 0.30), Math.round(dL * 0.24), Math.max(1, Math.round(dL / 10)), Math.max(1, Math.round(dL / 16)));
         PIX.virus.set(key, spr); return spr;
     }
 
@@ -3843,7 +3900,11 @@
         const p = me();
         let es = getViewScale(); ctx.save(); ctx.translate(width/2, height/2); ctx.scale(es, es); ctx.translate(-camera.x, -camera.y);
         let vL = camera.x - (width/2)/es - 100, vR = camera.x + (width/2)/es + 100, vT = camera.y - (height/2)/es - 100, vB = camera.y + (height/2)/es + 100;
-        ctx.lineWidth = 1; ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--grid-line'); let g = 100, sX = Math.floor(vL/g)*g, eX = Math.ceil(vR/g)*g, sY = Math.floor(vT/g)*g, eY = Math.ceil(vB/g)*g; ctx.beginPath(); for(let x = sX; x <= eX; x+=g) { ctx.moveTo(x, vT); ctx.lineTo(x, vB); } for(let y = sY; y <= eY; y+=g) { ctx.moveTo(vL, y); ctx.lineTo(vR, y); } ctx.stroke();
+        if (pixelMode) {
+            ctx.save(); ctx.fillStyle = pixBgPattern(); ctx.fillRect(vL, vT, vR - vL, vB - vT); ctx.restore();
+        } else {
+            ctx.lineWidth = 1; ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--grid-line'); let g = 100, sX = Math.floor(vL/g)*g, eX = Math.ceil(vR/g)*g, sY = Math.floor(vT/g)*g, eY = Math.ceil(vB/g)*g; ctx.beginPath(); for(let x = sX; x <= eX; x+=g) { ctx.moveTo(x, vT); ctx.lineTo(x, vB); } for(let y = sY; y <= eY; y+=g) { ctx.moveTo(vL, y); ctx.lineTo(vR, y); } ctx.stroke();
+        }
 
         ctx.save();
         if (pixelMode) {
@@ -3896,7 +3957,14 @@
                 if (pixelMode) {
                     const rw = v.r + 5, dL = Math.max(16, Math.min(56, Math.round(rw * 2 * es / PIX_SCREEN_PX / 2) * 2));
                     const t = v.damaged ? Math.min(1, Math.round(v.animTime * 4) / 4) : 0;
+                    // Giro cuantizado a pasos (16/vuelta), con fase y sentido propios de cada
+                    // virus (derivados de su posición) y más lento cuanto más grande.
+                    const seed = Math.abs((v.x * 7 + v.y * 13) | 0);
+                    const stepMs = 90 + (v.r | 0);
+                    const ang = ((Math.floor(performance.now() / stepMs) + seed) % 16) * (Math.PI / 8) * (seed % 2 ? 1 : -1);
+                    ctx.rotate(ang);
                     ctx.drawImage(pixVirusSprite(dL, t), -rw, -rw, rw * 2, rw * 2);
+                    ctx.rotate(-ang);
                 } else if (selectedQuality === 'high' || selectedQuality === 'normal') {
                     let grad = ctx.createRadialGradient(0, 0, v.r * 0.2, 0, 0, v.r); grad.addColorStop(0, '#ccff66'); grad.addColorStop(1, fillColor); ctx.fillStyle = grad; ctx.strokeStyle = strokeColor; ctx.lineWidth = 5; ctx.lineJoin = 'round';
                     ctx.beginPath(); const numSpikes = 20; for(let i=0; i<numSpikes; i++) { let angle = (Math.PI * 2 * i) / numSpikes; let nextAngle = (Math.PI * 2 * (i+1)) / numSpikes; let midAngle = (angle + nextAngle) / 2; let rOut = v.r + 5; let xOut = Math.cos(midAngle) * rOut; let yOut = Math.sin(midAngle) * rOut; let rIn = v.r - 5; let xIn = Math.cos(nextAngle) * rIn; let yIn = Math.sin(nextAngle) * rIn; if (i===0) ctx.moveTo(Math.cos(angle)*rIn, Math.sin(angle)*rIn); ctx.quadraticCurveTo(Math.cos(angle + (midAngle-angle)/2) * rOut, Math.sin(angle + (midAngle-angle)/2) * rOut, xOut, yOut); ctx.quadraticCurveTo(Math.cos(midAngle + (nextAngle-midAngle)/2) * rOut, Math.sin(midAngle + (nextAngle-midAngle)/2) * rOut, xIn, yIn); } ctx.closePath(); ctx.fill(); ctx.stroke();
