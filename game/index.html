@@ -910,6 +910,16 @@
                         </label>
                     </div>
 
+                    <div class="section-title" style="margin-top:15px;">Texture Pack</div>
+                    <div style="display:flex; gap:15px; margin-bottom:5px;">
+                        <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                            <input type="radio" name="packMode" value="classic" checked onclick="setPixelMode(false)"> Classic
+                        </label>
+                        <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                            <input type="radio" name="packMode" value="pixel" onclick="setPixelMode(true)"> Pixel
+                        </label>
+                    </div>
+
                     <button class="btn-play" id="btnEnterGame" onclick="startGame()">ENTER ARENA</button>
                     <button class="btn-play" id="btnPlayOnline" onclick="startOnlineGame()" style="background:#1a73e8; margin-top:6px;">PLAY ONLINE</button>
 
@@ -1142,6 +1152,12 @@
     let DRAW_LOD_THRESHOLD = 3; 
     let isLowQuality = false;
     let selectedQuality = 'normal';
+    // Texture pack "pixel" (Fase 0 del plan pixel art, ver PIXELART-PLAN.md):
+    // el backbuffer se renderiza a 1/PIXEL_FACTOR de resolución y el CSS lo
+    // reescala con image-rendering:pixelated. Solo render; físicas intactas.
+    let pixelMode = localStorage.getItem('pw_pixel') === '1';
+    const PIXEL_FACTOR = 3;
+    function pixScale() { return pixelMode ? PIXEL_FACTOR : 1; }
     let enableEnemyFX = true;
     let serverEnemyFx = true;   // override global del server (admin): false = sin FX de enemigos para todos
     // Zoom base: ajuste LOCAL de tu navegador (lo pone el panel admin via localStorage,
@@ -1254,6 +1270,13 @@
         if (mode === 'white') { root.style.setProperty('--bg-color', '#f0f0f0'); root.style.setProperty('--grid-line', 'rgba(0, 0, 0, 0.05)'); } 
         else if (mode === 'grey') { root.style.setProperty('--bg-color', '#2a2a2a'); root.style.setProperty('--grid-line', 'rgba(255, 255, 255, 0.03)'); } 
         else { root.style.setProperty('--bg-color', '#050505'); root.style.setProperty('--grid-line', 'rgba(255, 255, 255, 0.03)'); }
+    }
+
+    function setPixelMode(on) {
+        SoundManager.play('simpleselect'); pixelMode = !!on;
+        localStorage.setItem('pw_pixel', pixelMode ? '1' : '0');
+        const rp = document.querySelector('input[name="packMode"][value="' + (pixelMode ? 'pixel' : 'classic') + '"]'); if (rp) rp.checked = true;
+        resize();
     }
 
     // Constantes compartidas con la simulación
@@ -1851,8 +1874,9 @@
     function confirmExit() { document.getElementById('exitModal').style.display = 'none'; isLoggingOut = false; localStorage.removeItem('pillwars_save'); if(saveInterval) clearInterval(saveInterval); returnToMenu(); }
     function forceResetRoom() { if (!confirm("Reset current room state? (Only affects your local simulation)")) return; let roomKey = currentGameMode + '_' + currentServer; roomStates[roomKey] = null; roomTimers[roomKey] = 0; localStorage.removeItem('pillwars_save'); checkActiveRoomConfig(); }
 
-    function init() { 
-        SoundManager.init(); resize(); 
+    function init() {
+        SoundManager.init(); resize();
+        if (pixelMode) { const rp = document.querySelector('input[name="packMode"][value="pixel"]'); if (rp) rp.checked = true; }
         for(let i=1; i<=10; i++) { uiSlots[i] = document.getElementById('slot'+i); uiCounts[i] = document.getElementById('count'+i); uiOverlays[i] = document.getElementById('cd'+i); uiOverlaysActive[i] = document.getElementById('dur'+i); uiIcons[i] = document.getElementById('icon'+i); uiGcds[i] = document.getElementById('gcd'+i); } 
         els.skillOverlay.style.top = UI_PARAMS.skillSelectTop; window.addEventListener('resize', resize); 
         els.actionBar.addEventListener('mouseenter', () => isHoveringUI = true); els.actionBar.addEventListener('mouseleave', () => isHoveringUI = false);
@@ -1861,11 +1885,11 @@
         document.getElementById('specAdminPanel').addEventListener('mouseenter', () => isHoveringUI = true); document.getElementById('specAdminPanel').addEventListener('mouseleave', () => isHoveringUI = false);
         window.addEventListener('blur', () => { keys.w = false; keys.a = false; keys.s = false; keys.d = false; });
         window.addEventListener('beforeunload', () => { if (gameRunning && !isSpectating && myCells().length > 0) { saveSystem.save(); } });
-        window.addEventListener('mousedown', e => { if(isSpectating && !isHoveringUI) { isSpecDragging = true; lastSpecX = e.clientX; lastSpecY = e.clientY; } });
+        window.addEventListener('mousedown', e => { if(isSpectating && !isHoveringUI) { isSpecDragging = true; lastSpecX = e.clientX / pixScale(); lastSpecY = e.clientY / pixScale(); } });
         window.addEventListener('mouseup', () => { isSpecDragging = false; });
-        window.addEventListener('mousemove', e => { if(isHoveringUI || isLoggingOut) return; mouse.x = e.clientX; mouse.y = e.clientY; if (!isSpectating && !(keys.w || keys.a || keys.s || keys.d)) { inputMode = 'MOUSE'; } });
-        window.addEventListener('touchmove', e => { if (!gameRunning || isLoggingOut) return; e.preventDefault(); const t = e.touches[0]; mouse.x = t.clientX; mouse.y = t.clientY; inputMode = 'MOUSE'; }, {passive: false}); 
-        window.addEventListener('touchstart', e => { if(e.target.closest('.ab-slot, button, #loginOverlay, #resultOverlay, #skillChoiceOverlay, #exitGameBtn, #exitModal, .nav-btn')) return; const now = Date.now(); if (now - lastTapTime < 300) { splitPlayer(); e.preventDefault(); } else { if(e.touches[0] && !isLoggingOut){ mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; inputMode = 'MOUSE'; } } lastTapTime = now; }, {passive: false}); 
+        window.addEventListener('mousemove', e => { if(isHoveringUI || isLoggingOut) return; mouse.x = e.clientX / pixScale(); mouse.y = e.clientY / pixScale(); if (!isSpectating && !(keys.w || keys.a || keys.s || keys.d)) { inputMode = 'MOUSE'; } });
+        window.addEventListener('touchmove', e => { if (!gameRunning || isLoggingOut) return; e.preventDefault(); const t = e.touches[0]; mouse.x = t.clientX / pixScale(); mouse.y = t.clientY / pixScale(); inputMode = 'MOUSE'; }, {passive: false});
+        window.addEventListener('touchstart', e => { if(e.target.closest('.ab-slot, button, #loginOverlay, #resultOverlay, #skillChoiceOverlay, #exitGameBtn, #exitModal, .nav-btn')) return; const now = Date.now(); if (now - lastTapTime < 300) { splitPlayer(); e.preventDefault(); } else { if(e.touches[0] && !isLoggingOut){ mouse.x = e.touches[0].clientX / pixScale(); mouse.y = e.touches[0].clientY / pixScale(); inputMode = 'MOUSE'; } } lastTapTime = now; }, {passive: false});
         window.addEventListener('keydown', e => {
             if (!gameRunning) return;
             if (cmdBarOpen) { if (e.code === 'Escape') toggleCmdBar(false); else if (e.code === 'Enter' || e.code === 'NumpadEnter') submitCmd(); return; }
@@ -3757,7 +3781,7 @@
     }
 
     function drawMiniPill(f, scale) { let sR = f.r * scale; if (isLowQuality || sR < DRAW_LOD_THRESHOLD) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle||0); let w = f.r * 2, h = w * 2.0, r = w / 2; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, r); ctx.clip(); ctx.fillStyle = f.c1; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = f.c2; ctx.fillRect(-w/2, 0, w, h/2); ctx.restore(); } }
-    function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; scheduleAspectUpdate(); }
+    function resize() { const s = pixScale(); width = Math.round(window.innerWidth / s); height = Math.round(window.innerHeight / s); canvas.width = width; canvas.height = height; ctx.imageSmoothingEnabled = !pixelMode; canvas.style.imageRendering = pixelMode ? 'pixelated' : 'auto'; scheduleAspectUpdate(); }
     // Notifica al server el nuevo aspect ratio (debounced) para que AOI se ajuste.
     let _aspectTimer = null;
     function scheduleAspectUpdate() {
