@@ -550,7 +550,10 @@
                     </span>
                 </div>
                 <div id="assignZones"></div>
-                <span id="assignMsg" style="color:#888;font-size:12px;"></span>
+                <div id="assignMsgRow" style="display:none; align-items:center; gap:14px; flex-wrap:wrap;">
+                    <span id="assignMsg" style="color:var(--yellow);font-size:12px;"></span>
+                    <button class="b rojo mini" style="background:#3a0000; border-color:#660000;" onclick="restartServidor()" title="Restarts the Node process (pm2/systemd relaunches it)">Restart Server</button>
+                </div>
             </div>
         </div>
 
@@ -1342,6 +1345,8 @@ function renderRoomAssign(m) {
     const pb = document.getElementById('layerPlusBtn'); if (pb) pb.disabled = savedLayers >= maxLayers;
     const msg = document.getElementById('assignMsg');
     if (msg) msg.innerText = pending ? '⚠ Restart the server to apply pending changes (host / layer count). Layer on/off applies live.' : '';
+    const row = document.getElementById('assignMsgRow');
+    if (row) row.style.display = pending ? 'flex' : 'none';
 }
 function raDragStart(e, combo) { _raDragging = combo; e.dataTransfer.setData('text/plain', combo); e.dataTransfer.effectAllowed = 'move'; const c = document.getElementById('rachip_' + combo); if (c) c.classList.add('dragging'); }
 function raDragEnd() { const c = _raDragging && document.getElementById('rachip_' + _raDragging); if (c) c.classList.remove('dragging'); _raDragging = null; document.querySelectorAll('.ra-zone.over').forEach(z => z.classList.remove('over')); }
