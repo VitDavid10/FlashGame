@@ -97,6 +97,7 @@ async function spawnBot(i) {
   try { ws = new WebSocket(target); } catch { stats.errors++; return; }
 
   let inputTimer = null, pingTimer = null, lifeTimer = null;
+  const snapDecoder = proto.makeSnapDecoder();   // estado v4 por conexión (rehidrata ids)
   let mapSize = 4000;            // se actualiza con el welcome del servidor
   let tx = 0, ty = 0;            // objetivo actual (coordenadas del mundo)
   let counted = false;
@@ -125,9 +126,9 @@ async function spawnBot(i) {
 
   ws.on('open', () => {
     stats.connected++;
-    // bin:1 → snapshots binarios (~40% menos bytes que JSON). Reduce el coste de
-    // ws.send en el servidor cuando hay muchos bots, sin cambiar nada en el juego real.
-    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: genBotName(), colorBot: randColor(), colorTop: randColor(), tester: 'STRESS_TEST_DEVNET', bin: 1 }));
+    // bin:2 → snapshots binarios v4 (delta: ids/nombres viajan una vez por
+    // conexión), igual que el cliente real. Reduce bytes y coste de ws.send.
+    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: genBotName(), colorBot: randColor(), colorTop: randColor(), tester: 'STRESS_TEST_DEVNET', bin: 2 }));
     stats.messagesSent++;
 
     // Movimiento tipo NPC: dirigirse al destino; al acercarse, elegir otro.
@@ -173,7 +174,7 @@ async function spawnBot(i) {
     stats.messagesReceived++;
     stats.bytesReceived += data.length;   // bytes reales de wire (payload WS)
     let m;
-    if (isBinary) { try { m = proto.decodeSnap(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)); } catch { return; } }
+    if (isBinary) { try { m = snapDecoder(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)); } catch { return; } }
     else { try { m = JSON.parse(data); } catch { return; } }
     if (m.t === 'roomFull') { stats.rejected++; try { ws.close(); } catch {} return; }
     if (m.t === 'roomRestart') {

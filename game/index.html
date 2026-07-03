@@ -2204,6 +2204,9 @@
             this.duration = welcome.duration;
             this.config = { mode: welcome.mode, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 }, fx: { enabled: true, enemyFX: true } };
             this.foods = welcome.foods || [];
+            // El server ya no manda spikes (ángulos cosméticos aleatorios, ~60% del
+            // peso de cada food en el welcome): los genera el cliente al recibir.
+            for (const f of this.foods) { if (!f.spikes) { f.spikes = [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2]; } }
             this.viruses = []; this.enemies = []; this.ejectedMasses = []; this.projectiles = [];
             this.players = new Map();
             const skillState = {}; for (let i = 1; i <= 8; i++) skillState[i] = 0;
@@ -2257,7 +2260,7 @@
         }
         _applyEvents(evs) {
             for (const ev of evs) {
-                if (ev.type === 'foodRespawn') { const f = this.foods; if (ev.index < f.length) { f[ev.index] = f[f.length - 1]; f.pop(); } f.push(ev.food); }
+                if (ev.type === 'foodRespawn') { const f = this.foods; if (ev.index < f.length) { f[ev.index] = f[f.length - 1]; f.pop(); } if (!ev.food.spikes) ev.food.spikes = [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2]; f.push(ev.food); }
                 else {
                     if (ev.playerId === this.myId) ev.playerId = 'me';
                     if (ev.type === 'playerDied' && ev.playerId === 'me') { if (this._aliveSeen === false) continue; this._aliveSeen = false; }
@@ -2818,7 +2821,7 @@
         // ?bin=0 fuerza JSON para debug.
         const _binFlag = (new URLSearchParams(location.search)).get('bin') !== '0';
         const _aspect = (window.innerWidth && window.innerHeight) ? (window.innerWidth / window.innerHeight) : 1;
-        netState = { url: gameUrl, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 1 : 0, aspect: _aspect } };
+        netState = { url: gameUrl, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 2 : 0, aspect: _aspect } };
         setPlayBtnState(true, 'CONNECTING...');
         netConnect(false);
         // El lock se libera al recibir welcome/roomFull/payRequired/error desde el WS.
@@ -3145,6 +3148,9 @@
         const ws = new WebSocket(netState.url);
         ws.binaryType = 'arraybuffer';
         netState.ws = ws;
+        // Decoder binario con estado POR CONEXIÓN (v4 delta: rehidrata ids que el
+        // server manda solo la primera vez). Uno nuevo por WebSocket, siempre.
+        const snapDecoder = window.PillProto.makeSnapDecoder();
         // FINDING ROOM al conectar (localizando sala). En rejoin no: entra directo.
         if (!isResume) startFindingUX((netState.joinMsg && netState.joinMsg.mode) || currentGameMode || 'arcade');
         ws.onopen = () => {
@@ -3156,7 +3162,7 @@
             let msg;
             if (e.data instanceof ArrayBuffer) {
                 // Frame binario: solo snap por ahora (los demás van JSON).
-                try { msg = window.PillProto.decodeSnap(e.data); } catch (err) { return; }
+                try { msg = snapDecoder(e.data); } catch (err) { return; }
             } else {
                 try { msg = JSON.parse(e.data); } catch (err) { return; }
             }

@@ -27,12 +27,13 @@ function tickRoomOnce(room, now, ctx) {
         if (now >= deadline) {
             room.pendingRemovals.delete(pid);
             room.sim.removePlayer(pid);
+            if (room._pidx) room._pidx.delete(pid);   // libera el índice v4 (delta)
             for (const [tok, info] of ctx.resumeTokens) { if (info.playerId === pid) ctx.resumeTokens.delete(tok); }
         }
     }
     // muertos: retirarlos de la sim (su conexión queda de espectador)
     for (const [pid, deadline] of room.deadRemovals) {
-        if (now >= deadline) { room.deadRemovals.delete(pid); room.sim.removePlayer(pid); }
+        if (now >= deadline) { room.deadRemovals.delete(pid); room.sim.removePlayer(pid); if (room._pidx) room._pidx.delete(pid); }
     }
 
     if (room.clients.size === 0) {
@@ -285,7 +286,25 @@ function tickRoomOnce(room, now, ctx) {
             const snap = ctx.buildSnapshotFor(room, pid, box);
             // Binario: pasar el string ya hecho (snap.evs); JSON: el array (snap.ev).
             if (events.length) { if (cli.useBin) snap.evs = evStr; else snap.ev = events; }
-            cli.ws.send(cli.useBin ? ctx.proto.encodeSnap(snap) : JSON.stringify(snap));
+            if (cli.binV === 2) {
+                // v4 delta: id/nombre viajan UNA vez por cliente; después solo un
+                // índice u16 de sala. Asignación perezosa aquí (cubre join, restart
+                // y respawn sin depender del camino de entrada). Al reciclarse un
+                // índice (wrap del contador u16) se borra de los _seenP de todos:
+                // el próximo frame que lo incluya volverá a llevar el id completo.
+                let px = room._pidx || (room._pidx = new Map());
+                for (let i = 0; i < snap.players.length; i++) {
+                    const p = snap.players[i];
+                    if (!px.has(p.id)) {
+                        const n = room._pidxNext = ((room._pidxNext | 0) + 1) & 0xffff;
+                        for (const [, c] of room.clients) if (c._seenP) c._seenP.delete(n);
+                        px.set(p.id, n);
+                    }
+                }
+                cli.ws.send(ctx.proto.encodeSnapV4(snap, { myId: pid, seen: cli._seenP || (cli._seenP = new Set()), idx: px }));
+            } else {
+                cli.ws.send(cli.useBin ? ctx.proto.encodeSnap(snap) : JSON.stringify(snap));
+            }
         }
         if (room.spectators.size) {
             for (const sws of room.spectators) {

@@ -283,10 +283,12 @@ function createGameHost(deps) {
         const token = PillSim.uuid() + PillSim.uuid();
         resumeTokens.set(token, { roomKey: key, playerId });
         const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
-        // Opt-in al protocolo binario para snapshots (msg.bin === 1); eco en welcome.
-        const useBin = msg.bin === 1 || msg.bin === true;
+        // Opt-in al protocolo binario para snapshots: bin:1 = v3, bin:2 = v4
+        // (delta de identidades por conexión); eco en welcome (useBin/binV).
+        const binV = msg.bin === true ? 1 : Math.max(0, Math.min(2, msg.bin | 0));
+        const useBin = binV >= 1;
         const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
-        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, aspect, _spawned: false });
+        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, binV, aspect, _spawned: false });
         sendEcon(room.clients.get(playerId), room);
         director.recordEntry({ comboKey: ck, key, mode: room.mode, playerId, name, cid, ip, tester });
         if (room.state === 'playing') {
@@ -294,8 +296,8 @@ function createGameHost(deps) {
             // mandará 'ready'; ahí lo spawneamos con inmunidad (empieza al entrar).
             refillBots(room);
         }
-        ws.send(welcomeMsg(room, playerId, token, undefined, useBin ? { useBin: true } : null));
-        log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(ck)}${useBin ? ' [bin]' : ''}`);
+        ws.send(welcomeMsg(room, playerId, token, undefined, useBin ? { useBin: true, binV } : null));
+        log(`Jugador '${name}' (${ip}) entró en ${key} [${room.state}] — ${room.clients.size}/${minRealOf(ck)}${useBin ? ' [bin' + binV + ']' : ''}`);
         if (room.state === 'waiting') {
             sendWaiting(room);
             armLobby(room);
@@ -362,7 +364,16 @@ function createGameHost(deps) {
         const now = Date.now();
         if (room._foodsJson && now - (room._foodsJsonAt || 0) < 2000) return room._foodsJson;
         const foods = room.sim.foods;
-        room._foodsJson = JSON.stringify(foods);
+        // Solo lo que el cliente usa (x/y/r/c1), redondeado. El objeto entero del
+        // pool (doubles de 17 dígitos + spikes[4] + c2/angle/eaten) pesaba ~220B
+        // por food → ~1.7MB de welcome POR JOIN en classic (7.8k foods); esto ~45B.
+        // Los spikes (ángulos cosméticos aleatorios) los genera el cliente.
+        const parts = new Array(foods.length);
+        for (let i = 0; i < foods.length; i++) {
+            const f = foods[i];
+            parts[i] = '{"x":' + (Math.round(f.x * 10) / 10) + ',"y":' + (Math.round(f.y * 10) / 10) + ',"r":' + (Math.round(f.r * 10) / 10) + ',"c1":"' + f.c1 + '"}';
+        }
+        room._foodsJson = '[' + parts.join(',') + ']';
         room._foodsJsonAt = now;
         return room._foodsJson;
     }

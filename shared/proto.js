@@ -16,6 +16,20 @@
  *       u8 nSlots [u8 id, u8 uses]*,
  *       u8 nSs    [u8 i, u16 ms]*,
  *       u16 nCells [cellBin]*
+ *
+ * VER 4 (delta, opt-in con join bin:2, solo snaps AOI por-viewer): igual que
+ * v3 salvo la sección de players. Sobre TCP (orden+entrega garantizados) el
+ * server recuerda por conexión qué identidades ya mandó (cli._seenP) y el
+ * cliente las rehidrata con makeSnapDecoder() (estado por conexión):
+ *   u16 nPlayers
+ *     per player: u16 pidx (índice de sala; 0xFFFF = sin índice),
+ *       u8 flags (bit0 alive, bit1 hasId, bit2 isMe),
+ *       [idStr, nameStr]                      solo si hasId (1ª vez para ESTE cliente)
+ *       [u8 ks, u16 gcd, slots, ss]           solo si isMe (el cliente no usa los ajenos)
+ *       u16 nCells [cellBin]*
+ * Los snapshots FULL (muertos/espectadores/box null) siguen siendo v3: se
+ * comparten entre clientes con estados _seenP distintos. El decoder acepta
+ * frames v3 y v4 intercalados.
  *   u16 nBots
  *     per bot: cellBin, idStr, nameStr
  *   u16 nViruses
@@ -38,8 +52,10 @@
 'use strict';
 
 const VER = 3;
+const VER4 = 4;   // variante delta de la sección players (join bin:2)
 const FLAG_SKIN = 1, FLAG_IM = 2, FLAG_SP = 4, FLAG_MG = 8, FLAG_TP = 16;
 const FLAG_ALIVE = 1;
+const V4_ALIVE = 1, V4_HASID = 2, V4_ISME = 4;
 
 // Instancias compartidas: crear un TextEncoder/TextDecoder POR string (como
 // antes) aloca cientos de miles de objetos/s con AOI (un encode por id/nombre
@@ -160,13 +176,35 @@ function readCell(r) {
     return o;
 }
 
-function encodeSnap(snap) {
-    const w = new Writer();
-    w.u8(VER);
+// --- Piezas compartidas entre v3 y v4 ---
+function writeHead(w, ver, snap) {
+    w.u8(ver);
     w.u32(snap.time >>> 0);
     w.i32(snap.tl == null ? -1 : (snap.tl | 0));
     w.u32(snap.pot | 0);
     w.u16(Math.min(65535, snap.alv | 0));   // alive global (autoritativo, no AOI)
+}
+function writeSkills(w, p) {
+    w.u16(Math.max(0, Math.min(65535, p.gcd | 0)));
+    const slots = p.slots || [];
+    w.u8(Math.min(255, slots.length));
+    for (const s of slots) {
+        if (s && s.id) { w.u8(s.id & 0xff); w.u8(Math.min(255, s.u | 0)); }
+        else { w.u8(0); w.u8(0); }
+    }
+    const ss = p.ss || {};
+    const ssKeys = Object.keys(ss).slice(0, 255);
+    w.u8(ssKeys.length);
+    for (const k of ssKeys) { w.u8(parseInt(k, 10) & 0xff); w.u16(Math.min(65535, ss[k] | 0)); }
+}
+function writeCells(w, cells) {
+    w.u16(Math.min(65535, cells.length));
+    for (const c of cells) writeCell(w, c);
+}
+
+function encodeSnap(snap) {
+    const w = new Writer();
+    writeHead(w, VER, snap);
     // Players
     w.u16(snap.players.length);
     for (const p of snap.players) {
@@ -174,20 +212,43 @@ function encodeSnap(snap) {
         w.str(p.name || '');
         w.u8(Math.max(0, Math.min(255, p.ks | 0)));
         w.u8(p.alive ? FLAG_ALIVE : 0);
-        w.u16(Math.max(0, Math.min(65535, p.gcd | 0)));
-        const slots = p.slots || [];
-        w.u8(Math.min(255, slots.length));
-        for (const s of slots) {
-            if (s && s.id) { w.u8(s.id & 0xff); w.u8(Math.min(255, s.u | 0)); }
-            else { w.u8(0); w.u8(0); }
-        }
-        const ss = p.ss || {};
-        const ssKeys = Object.keys(ss).slice(0, 255);
-        w.u8(ssKeys.length);
-        for (const k of ssKeys) { w.u8(parseInt(k, 10) & 0xff); w.u16(Math.min(65535, ss[k] | 0)); }
-        w.u16(Math.min(65535, p.cells.length));
-        for (const c of p.cells) writeCell(w, c);
+        writeSkills(w, p);
+        writeCells(w, p.cells);
     }
+    writeWorldTail(w, snap);
+    return w.out();
+}
+
+// v4 delta (solo snaps AOI por-viewer). opts = { myId, seen: Set<pidx ya
+// mandados a ESTE cliente>, idx: Map<playerId → pidx de la sala> }. Muta
+// opts.seen al escribir: el send es síncrono justo después, y si la conexión
+// muere el estado muere con ella (se rehace en el próximo welcome).
+function encodeSnapV4(snap, opts) {
+    const w = new Writer();
+    writeHead(w, VER4, snap);
+    w.u16(snap.players.length);
+    for (const p of snap.players) {
+        const pidx = opts.idx.has(p.id) ? opts.idx.get(p.id) : 0xffff;
+        const isMe = p.id === opts.myId;
+        const hasId = pidx === 0xffff || !opts.seen.has(pidx);
+        w.u16(pidx);
+        w.u8((p.alive ? V4_ALIVE : 0) | (hasId ? V4_HASID : 0) | (isMe ? V4_ISME : 0));
+        if (hasId) {
+            w.str(p.id);
+            w.str(p.name || '');
+            if (pidx !== 0xffff) opts.seen.add(pidx);
+        }
+        if (isMe) {
+            w.u8(Math.max(0, Math.min(255, p.ks | 0)));
+            writeSkills(w, p);
+        }
+        writeCells(w, p.cells);
+    }
+    writeWorldTail(w, snap);
+    return w.out();
+}
+
+function writeWorldTail(w, snap) {
     // Bots
     w.u16(snap.bots.length);
     for (const b of snap.bots) {
@@ -229,18 +290,33 @@ function encodeSnap(snap) {
     // snap.evs = los mismos eventos ya stringificados UNA vez por sala/tick (son
     // idénticos para todos los viewers; sin esto se re-stringificaban por viewer).
     w.str(typeof snap.evs === 'string' ? snap.evs : ((snap.ev && snap.ev.length) ? JSON.stringify(snap.ev) : ''));
-    return w.out();
 }
 
-function decodeSnap(arrayBuffer) {
-    const r = new Reader(arrayBuffer);
-    const ver = r.u8();
-    if (ver !== VER) throw new Error('proto: versión ' + ver + ' no soportada');
-    const snap = { t: 'snap' };
+function readHead(r, snap) {
     snap.time = r.u32();
     const tl = r.i32(); snap.tl = (tl < 0) ? null : tl;
     snap.pot = r.u32();
     snap.alv = r.u16();
+}
+function readSkills(r, p) {
+    p.gcd = r.u16();
+    const nSlots = r.u8();
+    p.slots = [];
+    for (let j = 0; j < nSlots; j++) {
+        const sid = r.u8(), su = r.u8();
+        p.slots.push(sid === 0 ? 0 : { id: sid, u: su });
+    }
+    const nSs = r.u8();
+    p.ss = {};
+    for (let j = 0; j < nSs; j++) { const k = r.u8(); p.ss[k] = r.u16(); }
+}
+function readCells(r) {
+    const nCells = r.u16();
+    const cells = [];
+    for (let j = 0; j < nCells; j++) cells.push(readCell(r));
+    return cells;
+}
+function readPlayersV3(r, snap) {
     const nPlayers = r.u16();
     snap.players = [];
     for (let i = 0; i < nPlayers; i++) {
@@ -250,21 +326,71 @@ function decodeSnap(arrayBuffer) {
         p.ks = r.u8();
         const flags = r.u8();
         p.alive = !!(flags & FLAG_ALIVE);
-        p.gcd = r.u16();
-        const nSlots = r.u8();
-        p.slots = [];
-        for (let j = 0; j < nSlots; j++) {
-            const sid = r.u8(), su = r.u8();
-            p.slots.push(sid === 0 ? 0 : { id: sid, u: su });
-        }
-        const nSs = r.u8();
-        p.ss = {};
-        for (let j = 0; j < nSs; j++) { const k = r.u8(); p.ss[k] = r.u16(); }
-        const nCells = r.u16();
-        p.cells = [];
-        for (let j = 0; j < nCells; j++) p.cells.push(readCell(r));
+        readSkills(r, p);
+        p.cells = readCells(r);
         snap.players.push(p);
     }
+}
+
+function decodeSnap(arrayBuffer) {
+    const r = new Reader(arrayBuffer);
+    const ver = r.u8();
+    if (ver !== VER) throw new Error('proto: versión ' + ver + ' no soportada');
+    const snap = { t: 'snap' };
+    readHead(r, snap);
+    readPlayersV3(r, snap);
+    readWorldTail(r, snap);
+    return snap;
+}
+
+// Decoder con ESTADO por conexión para clientes bin:2. Acepta frames v3 y v4
+// intercalados (los full snapshots — muerto/espectador/box null — siguen
+// siendo v3). Rehidrata id/nombre desde el mapa pidx→identidad que el server
+// solo manda la primera vez (hasId). Crear uno NUEVO por cada WebSocket.
+function makeSnapDecoder() {
+    const idMap = new Map();   // pidx → { id, name }
+    return function (arrayBuffer) {
+        const r = new Reader(arrayBuffer);
+        const ver = r.u8();
+        const snap = { t: 'snap' };
+        readHead(r, snap);
+        if (ver === VER) {
+            readPlayersV3(r, snap);
+        } else if (ver === VER4) {
+            const nPlayers = r.u16();
+            snap.players = [];
+            for (let i = 0; i < nPlayers; i++) {
+                const p = {};
+                const pidx = r.u16();
+                const flags = r.u8();
+                p.alive = !!(flags & V4_ALIVE);
+                if (flags & V4_HASID) {
+                    p.id = r.str();
+                    p.name = r.str();
+                    if (pidx !== 0xffff) idMap.set(pidx, { id: p.id, name: p.name });
+                } else {
+                    const known = idMap.get(pidx);
+                    // Sin identidad conocida no debería pasar (TCP ordena); si
+                    // pasara, un id sintético evita romper el render del resto.
+                    p.id = known ? known.id : ('?' + pidx);
+                    p.name = known ? known.name : '';
+                }
+                if (flags & V4_ISME) {
+                    p.ks = r.u8();
+                    readSkills(r, p);
+                }
+                p.cells = readCells(r);
+                snap.players.push(p);
+            }
+        } else {
+            throw new Error('proto: versión ' + ver + ' no soportada');
+        }
+        readWorldTail(r, snap);
+        return snap;
+    };
+}
+
+function readWorldTail(r, snap) {
     const nBots = r.u16();
     snap.bots = [];
     for (let i = 0; i < nBots; i++) {
@@ -299,9 +425,8 @@ function decodeSnap(arrayBuffer) {
     }
     const evStr = r.str();
     snap.ev = evStr ? JSON.parse(evStr) : null;
-    return snap;
 }
 
-const api = { encodeSnap, decodeSnap, VER };
+const api = { encodeSnap, encodeSnapV4, decodeSnap, makeSnapDecoder, VER, VER4 };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 if (typeof window !== 'undefined') window.PillProto = api;
