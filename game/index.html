@@ -19,7 +19,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 
     <style>
         :root {
@@ -716,6 +716,29 @@
         }
         body.pixel-pack .section-title { border-bottom: 2px solid #222; }
         body.pixel-pack .sound-btn, body.pixel-pack .prizeRow.mine, body.pixel-pack .buff-icon-img { border-radius: 0 !important; }
+        /* ===== TEXTURE PACK PIXEL: HUD con fuente pixel de verdad (Press Start 2P) =====
+           ROOM/MASS/ALIVE, timer, TOP MASS y el panel de skills se actualizan cada
+           frame: no se pueden regenerar como canvas (coste), así que se resuelve
+           con un font-family de verdad + sombra dura (sin blur) en vez de bitmap. */
+        body.pixel-pack #ui, body.pixel-pack .hud-item, body.pixel-pack #timerDisplay,
+        body.pixel-pack #leaderboard, body.pixel-pack #leaderboard h3, body.pixel-pack .lb-item,
+        body.pixel-pack #killsSection, body.pixel-pack #killsVal, body.pixel-pack .gcd-badge,
+        body.pixel-pack .count-badge, body.pixel-pack .skill-tips {
+            font-family: 'Press Start 2P', monospace !important;
+        }
+        body.pixel-pack .hud-item { font-size: 9px !important; text-shadow: 1px 1px 0 #000 !important; border-radius: 0 !important; line-height: 1.8; }
+        body.pixel-pack #timerDisplay { font-size: 15px !important; text-shadow: 2px 2px 0 #000 !important; }
+        body.pixel-pack #leaderboard { border-radius: 0 !important; box-shadow: 3px 3px 0 rgba(0,0,0,.6); }
+        body.pixel-pack #leaderboard h3 { font-size: 9px !important; }
+        body.pixel-pack .lb-item { font-size: 8px !important; line-height: 2; }
+        body.pixel-pack #killsSection div:first-child { font-size: 8px !important; }
+        body.pixel-pack #killsVal { font-size: 16px !important; text-shadow: 2px 2px 0 #000 !important; }
+        body.pixel-pack .gcd-badge { font-size: 10px !important; text-shadow: 1px 1px 0 #000 !important; }
+        body.pixel-pack .count-badge { font-size: 6px !important; border-radius: 0 !important; padding: 2px 3px !important; }
+        body.pixel-pack .skill-tips { font-size: 9px !important; line-height: 1.8; }
+        /* Recuadro de select-skill mas pequeño (para que el icono no quede perdido
+           en un cuadrado vacio) y nombre con outline pixel mas legible. */
+        body.pixel-pack .skill-opt-btn { width: 92px !important; height: 92px !important; }
     </style>
 </head>
 <body>
@@ -1852,7 +1875,7 @@
             'box-shadow:6px 6px 0 rgba(0,0,0,.6)!important;animation:none}' +
             'body.pixel-pack .timer-bar{border-radius:0!important;height:12px;background:#111;border:2px solid #333;box-shadow:inset 2px 2px 0 rgba(0,0,0,.8)}' +
             'body.pixel-pack .timer-fill{border-radius:0!important;background:#ff3333!important;transition:width 1s steps(4)}' +
-            'body.pixel-pack .skill-opt-btn{border-radius:0!important;width:114px!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
+            'body.pixel-pack .skill-opt-btn{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
             'body.pixel-pack .skill-opt-btn.selected-choice{border-radius:0!important;box-shadow:0 0 0 2px #00ff88,4px 4px 0 rgba(0,0,0,.7)!important}' +
             'body.pixel-pack .skill-tips{color:#9aa;font-family:"VT323",monospace;font-size:14px}';
         document.head.appendChild(st);
@@ -3312,7 +3335,7 @@
         const old = document.getElementById('cdNum'); if (old) old.remove();
         const el = document.createElement('div'); el.id = 'cdNum';
         el.innerHTML = '<div class="cd-lbl">' + (label || 'MATCH STARTING') + '</div>';
-        if (pixelMode) { const cv = pixFancyText(String(n), 9, {}); cv.className = 'cd-n'; el.appendChild(cv); }
+        if (pixelMode) { const cv = pixFancyText(String(n), 9, { thin: true, glow: '#00ff88', glowBlur: 30, hd: 2 }); cv.className = 'cd-n'; el.appendChild(cv); }
         else { const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3, 5s) lo dispara quien llama, una vez al entrar en los 5s.
@@ -3937,7 +3960,7 @@
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
     function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const d1 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true }); const d2 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true }); d2.style.transform = 'scaleX(-1)'; wrap.appendChild(d1); wrap.appendChild(pixFancyText('SELECT A SKILL', 2, {})); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = 'SELECT A SKILL'; }
-        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nc = pixFancyText(SKILL_DEFS[id].name, 1, { plain: true, shade: '#b9c2cc' }); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
+        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name, fitPx = Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixFancyText(nm, fitPx, { plain: true, shade: '#b9c2cc', hd: 1 }); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
 
