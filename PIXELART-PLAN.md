@@ -9,15 +9,21 @@ render es un lector del estado. Todo el trabajo de este plan es cliente puro
 
 - [x] **F0 — Modo retro instantáneo** — DESCARTADA tras probarla: bajar la resolución
   del frame entero se ve "a mala resolución", no pixel art. Se sustituyó por F2.
-- [ ] **F1 — Paleta, fuente pixel y UI** (web principal + menús /game; la fuente
-  pixel en canvas ya está hecha como parte de F2)
+- [~] **F1 — Paleta, fuente pixel y UI** — PARCIAL: los menús de /game (login,
+  modales, leaderboard, oracle, misiones, botones, inputs, slots) ya tienen
+  relieve pixel art vía `body.pixel-pack` (bordes duros + sombra escalonada,
+  mismos colores). Falta: fuente pixel en la UI DOM, landing (`index.html`) e
+  iconos de `img/` convertidos.
 - [x] **F2 — Sprites del mundo** — HECHA en versión procedural: pills, comida,
   virus, proyectiles y masa eyectada se dibujan desde sprites pixel generados en
   código (contorno + sombreado + brillo), escalados sin suavizado a resolución
   completa. Los PNG de ChatGPT quedan como mejora opcional que se enchufa en los
   mismos puntos.
-- [ ] **F3 — Fondo y borde del mapa** (el borde ya tiene versión pixel sin glow;
-  falta el tile del fondo)
+- [x] **F3 — Fondo y borde del mapa** — HECHA: tile 100×100 cacheado por tema
+  (`pixBgPattern`, base + moteado sutil + grid grueso 4px) sustituye al grid de
+  líneas; el borde ya tenía versión pixel sin glow. Extra: virus con giro
+  cuantizado (16 pasos, fase/sentido por virus, más lento cuanto más grande) y
+  más detalle en los grandes (más dientes, anillo interior, núcleo, highlight).
 - [ ] **F4 — Animaciones y efectos** (explosión, partículas y textos ya tienen
   versión pixel; faltan imán/sprint refinados)
 - [ ] **F5 — Texture pack seleccionable definitivo + QA** (el toggle ya activa todo)
