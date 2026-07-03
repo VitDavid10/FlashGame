@@ -227,7 +227,7 @@
     .vplot::before { content: ''; position: absolute; left: 0; right: 0; top: 30px; bottom: 0; background: repeating-linear-gradient(to top, transparent 0, transparent 40px, rgba(255,255,255,0.05) 40px, rgba(255,255,255,0.05) 41px); pointer-events: none; }
     .vcol { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
     .vbar { --bc: #00ff88; --bc2: rgba(0,255,136,0.15); --bcg: rgba(0,255,136,0.35); position: relative; width: min(54px, 90%); min-height: 3px; border-radius: 7px 7px 2px 2px; background: linear-gradient(180deg, var(--bc), var(--bc2)); box-shadow: 0 0 18px var(--bcg), inset 0 1px 0 rgba(255,255,255,0.35); transition: height 0.5s ease, filter 0.2s; }
-    .vbar.arc { --bc: #4f9cff; --bc2: rgba(79,156,255,0.15); --bcg: rgba(79,156,255,0.35); }
+    .vbar.arc { --bc: #d4ff00; --bc2: rgba(212,255,0,0.15); --bcg: rgba(212,255,0,0.35); }
     .vcol:hover .vbar { filter: brightness(1.3); }
     .vbar .vval { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-family: 'Russo One'; font-size: 12px; color: var(--bc); text-shadow: 0 0 10px var(--bcg); white-space: nowrap; }
     .vlabels { display: flex; gap: 18px; margin-top: 10px; }
@@ -968,7 +968,7 @@ function _roomBadge(mode, r) {
 }
 function _roomsChart(mode, rooms) {
     if (!rooms.length) return '';
-    const col = mode === 'classic' ? '#00ff88' : '#4f9cff';
+    const col = mode === 'classic' ? '#00ff88' : '#d4ff00';
     const players = rooms.reduce((s, r) => s + (r.conectados || 0), 0);
     const live = rooms.filter(r => r.state === 'playing').length;
     const cap = rooms.reduce((s, r) => s + (r.maxReales || 0), 0);
@@ -1031,8 +1031,7 @@ function renderHostTabs(m) {
             <span class="state ${h.alive ? 'st-playing' : 'st-offline'}"><span class="d"></span>${h.alive ? 'ALIVE' : 'DOWN'}</span>
             <span style="color:#889;font-size:12px"><b style="color:#fff">${num(h.jugadores || 0)}</b> players</span>
             <span style="color:#889;font-size:12px"><b style="color:#fff">${h.salasOnline || 0}</b> rooms with people</span>
-            <span style="color:#889;font-size:12px">CPU <b style="color:${cpuColor(h.cpu || 0)}">${h.cpu != null ? h.cpu + '%' : '—'}</b></span>
-            <a class="b mini" href="/h${h.hostId}/admin" style="text-decoration:none;margin-left:auto" title="Direct panel served by this host process (works even if the Director is down)">Standalone panel</a>`;
+            <span style="color:#889;font-size:12px">CPU <b style="color:${cpuColor(h.cpu || 0)}">${h.cpu != null ? h.cpu + '%' : '—'}</b></span>`;
         const roomsH = h.adminRooms || [];
         pintarGrid('hostGrid_' + h.hostId + '_classic', roomsH.filter(r => r.mode === 'classic'));
         pintarGrid('hostGrid_' + h.hostId + '_arcade', roomsH.filter(r => r.mode === 'arcade'));
@@ -1628,7 +1627,7 @@ function render(m) {
     document.getElementById('usoSalas').innerHTML = usadas.length ? `
         <div class="vchart">
             <span class="vtitle">Top rooms</span>
-            <div class="vlegend"><span><i style="background:#00ff88"></i>Classic</span><span><i style="background:#4f9cff"></i>Arcade</span></div>
+            <div class="vlegend"><span><i style="background:#00ff88"></i>Classic</span><span><i style="background:#d4ff00"></i>Arcade</span></div>
             <div class="vplot">${usadas.map(r => `
                 <div class="vcol" title="${esc(r.roomName)} ${r.mode.toUpperCase()} · ${num(r.stats.entradas)} entries · ${dinero(r.stats.dinero)}">
                     <div class="vbar${r.mode === 'arcade' ? ' arc' : ''}" style="height:${Math.max(2, Math.round(r.stats.entradas / maxE * 100))}%"><span class="vval">${num(r.stats.entradas)}</span></div>
