@@ -9,11 +9,14 @@ render es un lector del estado. Todo el trabajo de este plan es cliente puro
 
 - [x] **F0 — Modo retro instantáneo** — DESCARTADA tras probarla: bajar la resolución
   del frame entero se ve "a mala resolución", no pixel art. Se sustituyó por F2.
-- [~] **F1 — Paleta, fuente pixel y UI** — PARCIAL: los menús de /game (login,
-  modales, leaderboard, oracle, misiones, botones, inputs, slots) ya tienen
-  relieve pixel art vía `body.pixel-pack` (bordes duros + sombra escalonada,
-  mismos colores). Falta: fuente pixel en la UI DOM, landing (`index.html`) e
-  iconos de `img/` convertidos.
+- [~] **F1 — Paleta, fuente pixel y UI** — PARCIAL: (a) los menús de /game (login,
+  modales, leaderboard, oracle, misiones, botones, inputs, slots) tienen relieve
+  pixel art vía `body.pixel-pack` (bordes duros + sombra escalonada, mismos
+  colores). (b) Fuente **bitmap pixel 5×7 procedural** (`PIXFONT` + `drawPixelText`
+  + `pixTextCanvas`, contorno 8-dir y sombra diagonal arcade) aplicada a: GO!
+  splash, número de cuenta atrás, textos flotantes (world + UI) y overlay de
+  skills (título "SELECT A SKILL" + nombres de skill). Falta: landing
+  (`index.html`), y decidir si más UI DOM pasa a bitmap o se queda en VT323.
 - [x] **F2 — Sprites del mundo** — HECHA en versión procedural: pills, comida,
   virus, proyectiles y masa eyectada se dibujan desde sprites pixel generados en
   código (contorno + sombreado + brillo), escalados sin suavizado a resolución
@@ -24,8 +27,10 @@ render es un lector del estado. Todo el trabajo de este plan es cliente puro
   líneas; el borde ya tenía versión pixel sin glow. Extra: virus con giro
   cuantizado (16 pasos, fase/sentido por virus, más lento cuanto más grande) y
   más detalle en los grandes (más dientes, anillo interior, núcleo, highlight).
-- [ ] **F4 — Animaciones y efectos** (explosión, partículas y textos ya tienen
-  versión pixel; faltan imán/sprint refinados)
+- [~] **F4 — Animaciones y efectos** — explosión, partículas y textos con versión
+  pixel; **escudo/inmunidad** rehecho: `pixShieldSprite` (heater pixel cacheado,
+  emblema de cruz) orbitando en pasos, upright (sin aliasing) y más rápido que las
+  4 badges vectoriales de antes. Faltan imán/sprint refinados.
 - [ ] **F5 — Texture pack seleccionable definitivo + QA** (el toggle ya activa todo)
 
 ## Puntos de anclaje en el código
