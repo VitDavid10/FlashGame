@@ -75,11 +75,26 @@ recomendado: de más rentable (poco esfuerzo, mucha ganancia) a más complejo.
   - Lag del event loop: p95 14-16 ms.
   - Conclusión: 1 proceso aguanta 600 conexiones cómodo con AOI+binario.
 
+### Fase 4b — Multiproceso real (Director + Hosts) ✅ (HECHA, EN PRODUCCIÓN)
+- `PW_ROLE` (`mono`/`director`/`host`): el Director no aloja salas propias
+  (dinero + matchmaking), cada Host aloja su reparto de combos según
+  `shard-map.js`. IPC padre↔hijos (`server/cluster/ipc.js`) para cobros,
+  cashouts, kicks y settings en vivo.
+- `/match` enruta al host correcto (puerto + path tras Caddy `/hN/*`); ORACLE
+  agrega stats de todos los hosts para el panel del Director; `/admin` por
+  host muestra solo sus propias salas.
+- Desplegado en el VPS con 2 hosts (2 núcleos) — ver capturas del panel
+  Rendimiento (HOST 0 / HOST 1). Escalar a más hosts es cambiar
+  `PW_HOST_COUNT` + más núcleos, sin tocar arquitectura.
+- Medido en el VPS: **600 jugadores va holgado**. Tick p95 por host ~8-9ms
+  con AOI apagado, ~30ms con AOI activo (el coste extra es el envío
+  per-viewer, estructural al diseño — ver perfil del commit `7736e45`).
+
 ## ⏳ Fases pendientes (para ser más pro)
 
-### Fase 5b — Multiproceso real (solo si hace falta)
-1 proceso aguanta 600 jugadores cómodos. Cuando el VPS empiece a saturar (~1500+),
-repartir las salas entre procesos vía `cluster` + gateway. NO urgente.
+Con Director+Hosts ya en producción, escalar más núcleos es solo subir
+`PW_HOST_COUNT`. Nada urgente en esta lista; son mejoras de calidad/observabilidad,
+no de capacidad.
 
 ### Extras "nivel pro" (cuando toque)
 - ✅ ~~**Delta compression**~~ — hecha (proto v4, join `bin:2`): la identidad de cada
@@ -114,8 +129,14 @@ repartir las salas entre procesos vía `cluster` + gateway. NO urgente.
   humano de script. Mitigable con heurísticas anti-bot, no eliminable del todo.
 
 ## Notas de capacidad (medido)
-- ~300 jugadores reales concurrentes → ~30 ms de ping, estable (zona cómoda del VPS 4 GB).
-- A partir de ~370 la latencia empieza a dispararse (el tick no termina en 25 ms).
-- Tope por defecto: **30 reales por sala × 10 salas = 300**, justo el techo cómodo.
+- **Con Director+2 Hosts en el VPS** (post Fase 4b + AOI real + delta v4): 600
+  jugadores va holgado. Tick p95 por host ~8-9ms con AOI apagado, ~30ms con
+  AOI activo — el extra es el coste per-viewer (build+send únicos por
+  jugador), estructural al diseño, no un cuello de botella a resolver con más
+  código (ver perfil del commit `7736e45`).
+- Escalar más allá: subir `PW_HOST_COUNT` + núcleos, sin cambios de código.
 - La fluidez la dan los **Hz**; el **ping** solo añade retraso (no causa tirones si es estable).
 - Lo que satura es la **bajada** (snapshots), no la **subida** (inputs ~30 Hz del cliente real).
+- Números antiguos (300 reales/~30ms ping, saturación a ~370) eran de **mono-proceso**
+  antes del split a Director+Hosts; obsoletos, se mantienen aquí solo como referencia
+  histórica de cuánto ganó el split.

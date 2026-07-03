@@ -2759,6 +2759,12 @@
     }
     async function startOnlineGame() {
         if (_joinInFlight) return;
+        // Protocolo binario ON por defecto (ahorra ~50% extra sobre AOI+JSON).
+        // ?bin=0 fuerza JSON para debug. Calculado ANTES del branch de REJOIN:
+        // sin esto, un rejoin tras recargar la página perdía el binario/delta
+        // para toda la sesión (el server no tiene con qué ecoarlo en el welcome).
+        const _binFlag = (new URLSearchParams(location.search)).get('bin') !== '0';
+        const _aspect = (window.innerWidth && window.innerHeight) ? (window.innerWidth / window.innerHeight) : 1;
         // REJOIN: si hay token vivo, reconectar a la partida en curso sin pagar.
         const rejoinInfo = Rejoin.get();
         if (rejoinInfo) {
@@ -2769,7 +2775,7 @@
                 url: rejoinInfo.url,
                 token: rejoinInfo.token,
                 attempts: 0,
-                joinMsg: { t: 'join', mode: rejoinInfo.mode, room: rejoinInfo.room, name: playerName, cid: Quests.cid }
+                joinMsg: { t: 'join', mode: rejoinInfo.mode, room: rejoinInfo.room, name: playerName, cid: Quests.cid, bin: _binFlag ? 2 : 0, aspect: _aspect }
             };
             netConnect(true);   // isResume=true: añade j.resume = token
             return;
@@ -2817,10 +2823,6 @@
                 }
             }
         } catch (e) { /* sin /match: seguir con la URL base (compat mono) */ }
-        // Protocolo binario ON por defecto (ahorra ~50% extra sobre AOI+JSON).
-        // ?bin=0 fuerza JSON para debug.
-        const _binFlag = (new URLSearchParams(location.search)).get('bin') !== '0';
-        const _aspect = (window.innerWidth && window.innerHeight) ? (window.innerWidth / window.innerHeight) : 1;
         netState = { url: gameUrl, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 2 : 0, aspect: _aspect } };
         setPlayBtnState(true, 'CONNECTING...');
         netConnect(false);

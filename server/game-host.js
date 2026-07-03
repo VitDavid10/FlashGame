@@ -222,10 +222,17 @@ function createGameHost(deps) {
                 const playerId = tok.playerId;
                 r.pendingRemovals.delete(playerId);
                 const p = r.sim.players.get(playerId);
-                r.clients.set(playerId, { ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume, opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop } });
-                ws.send(welcomeMsg(r, playerId, msg.resume));
+                // Mismo opt-in binario que un join normal: sin esto, un jugador que
+                // se reconecta (wifi/móvil inestable — el caso típico de resume)
+                // se quedaba en JSON sin AOI-binario ni delta v4 el resto de la
+                // sesión, aunque su cliente siguiera pidiendo bin:2.
+                const binV = msg.bin === true ? 1 : Math.max(0, Math.min(2, msg.bin | 0));
+                const useBin = binV >= 1;
+                const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
+                r.clients.set(playerId, { ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume, opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop }, useBin, binV, aspect });
+                ws.send(welcomeMsg(r, playerId, msg.resume, undefined, useBin ? { useBin: true, binV } : null));
                 refillBots(r);
-                log(`Jugador '${p.name}' RECONECTADO a ${r.key}`);
+                log(`Jugador '${p.name}' RECONECTADO a ${r.key}${useBin ? ' [bin' + binV + ']' : ''}`);
                 return { room: r, playerId };
             }
             ws.send(JSON.stringify({ t: 'resumeFail' }));
