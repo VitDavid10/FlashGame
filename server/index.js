@@ -223,7 +223,9 @@ function layerKeyOf(mode, roomName, layerIdx) { return mode + '_' + roomName + '
 // a mano — así "+ Add layer" no enciende de golpe 10 combos nuevos sin querer.
 const LAYERASSIGN_FILE = path.join(__dirname, 'layerassign.json');
 let layerEnabled = loadJson(LAYERASSIGN_FILE, {});
-function saveLayerEnabled() { fs.writeFile(LAYERASSIGN_FILE, JSON.stringify(layerEnabled), () => {}); }
+// Síncrono a propósito: el panel del Director relee este fichero en cada poll,
+// así una lectura inmediata tras el cambio no ve estado viejo (evita parpadeo).
+function saveLayerEnabled() { try { fs.writeFileSync(LAYERASSIGN_FILE, JSON.stringify(layerEnabled)); } catch (e) {} }
 function isLayerEnabled(mode, price, layerIdx) {
     const lk = layerKeyOf(mode, price, layerIdx);
     return Object.prototype.hasOwnProperty.call(layerEnabled, lk) ? layerEnabled[lk] !== false : layerIdx <= 2;
@@ -961,25 +963,31 @@ function relayRoomCmdToHosts(msg) {
     };
     for (const h of hostProcs.values()) if (h.alive) h.ipc.notify('adminRoomCmd', p);
 }
-// Apaga/enciende UNA layer de UN combo concreto EN ESTE PROCESO (solo si lo posee).
-// Persiste la elección (layerassign.json) para que sobreviva a reinicios. La Layer 1
-// no se puede apagar: un combo activo siempre necesita al menos una instancia.
-// Devuelve true si aplicó el cambio en ESTE proceso (para no loguear 3 veces lo
-// mismo cuando el Director reenvía el cmd a los dos hosts y solo uno es el dueño).
+// Apaga/enciende UNA layer de UN combo concreto. La Layer 1 no se puede apagar:
+// un combo activo siempre necesita al menos una instancia.
+// Persistencia y creación de sala van por separado:
+//  - Crear/destruir la sala: solo el proceso DUEÑO real del combo (mono, o el host
+//    al que el shard-map le asigna ese combo).
+//  - Persistir (layerassign.json): UN SOLO escritor, mono/director. Los hosts NO
+//    escriben (sus vistas parciales se pisarían entre sí); leen el fichero al
+//    arrancar y aplican en vivo lo que el Director les reenvía. Así también se
+//    guarda la config de un combo SIN asignar (off), lista para cuando se asigne.
+// Devuelve true en mono/director (el punto único donde loguear la acción admin;
+// en el host la creación/borrado de sala ya la registra getOrCreateRoom/shutdownRoom).
 function applySetLayerEnabled(mode, price, layerIdx, enabled) {
     if (!(layerIdx >= 1 && layerIdx <= LAYERS_PER_COMBO)) return false;
     if (layerIdx === 1 && !enabled) return false;
-    if (ownsCombo && !ownsCombo(mode, price)) return false;
+    const owner = !ownsCombo || ownsCombo(mode, price);
     const lk = layerKeyOf(mode, price, layerIdx);
-    if (enabled) {
-        getOrCreateRoom(lk, mode, price);
-    } else {
-        const r = rooms.get(lk);
-        if (r) shutdownRoom(r, 'admin');
+    if (owner) {
+        if (enabled) getOrCreateRoom(lk, mode, price);
+        else { const r = rooms.get(lk); if (r) shutdownRoom(r, 'admin'); }
     }
-    layerEnabled[lk] = enabled;
-    saveLayerEnabled();
-    return true;
+    if (PW_ROLE !== 'host') {
+        layerEnabled[lk] = enabled;
+        saveLayerEnabled();
+    }
+    return PW_ROLE !== 'host';
 }
 // Aplica un parche de ajustes "Ajustes" (no de rendimiento) recibido por IPC del
 // Director en un host. Mismos clamps que los cmd admin directos.
@@ -2124,7 +2132,9 @@ wss.on('connection', (ws, req) => {
                         if (Number.isInteger(h) && h >= 0 && h < hostCount) clean[combo] = h;
                     }
                     const activos = Object.values(clean).filter(v => v !== null).length;
-                    fs.writeFile(HOSTASSIGN_FILE, JSON.stringify(clean, null, 2), () => {});
+                    // Síncrono: el panel relee este fichero en el siguiente poll (evita
+                    // que un chip recién arrastrado "vuelva" por una lectura vieja).
+                    try { fs.writeFileSync(HOSTASSIGN_FILE, JSON.stringify(clean, null, 2)); } catch (e) {}
                     logAdmin('-', 'Cambió la asignación de salas por host', activos + '/' + validCombos.size + ' combos activos');
                     log('ADMIN guardó hostassign.json — hace falta reiniciar el servidor para aplicarlo');
                     ws.send(JSON.stringify({ t: 'hostAssignSaved' }));

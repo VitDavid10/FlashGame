@@ -116,6 +116,27 @@
     .modetab.arc:hover { color: #d4ff00; text-shadow: 0 0 10px #d4ff00; }
     .modetab.arc.act { color: #d4ff00; border-bottom-color: #d4ff00; text-shadow: 0 0 12px rgba(212,255,0,0.45); }
 
+    /* Reparto de salas por host (Settings): zonas drop + chips arrastrables */
+    .ra-zones { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .ra-hostrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+    .ra-zone { border: 1px dashed #2c2c2c; border-radius: 10px; padding: 10px 12px; min-height: 66px; background: #0d0d0d; transition: 0.15s; }
+    .ra-zone.over { border-color: var(--primary); border-style: solid; background: rgba(0,255,136,0.05); box-shadow: 0 0 16px var(--primary-dim); }
+    .ra-zone-head { font-family: 'Russo One'; font-size: 10px; letter-spacing: 1.5px; color: #6a6a6a; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .ra-zone-head b { color: #aaa; }
+    .ra-zone.off .ra-zone-head { color: #7a5a5a; }
+    .ra-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ra-chip { display: inline-flex; flex-direction: column; gap: 5px; background: #14140f; border: 1px solid #2a2a2a; border-top: 3px solid #444; border-radius: 8px; padding: 7px 10px; cursor: grab; user-select: none; transition: 0.15s; }
+    .ra-chip:hover { border-color: #555; box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+    .ra-chip.assigned { border-top-color: var(--primary); }
+    .ra-chip.dragging { opacity: 0.4; }
+    .ra-chip-name { font-size: 12px; color: #eee; font-family: 'Russo One'; letter-spacing: 0.5px; white-space: nowrap; }
+    .ra-pips { display: flex; gap: 4px; }
+    .ra-pip { font-size: 9px; font-family: 'Russo One'; letter-spacing: 0.5px; padding: 2px 6px; border-radius: 4px; border: 1px solid #333; color: #666; background: #0e0e0e; cursor: pointer; transition: 0.12s; }
+    .ra-pip.on { color: #061; background: var(--primary); border-color: var(--primary); }
+    .ra-pip.fixed { cursor: default; opacity: 0.85; }
+    .ra-pip:not(.fixed):hover { border-color: #777; color: #ccc; }
+    .ra-pip.on:not(.fixed):hover { color: #061; }
+
     /* Ranking de países */
     .ccode { display: inline-flex; min-width: 34px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 5px; background: #1a1a1a; border: 1px solid #2c2c2c; font-family: 'Russo One'; font-size: 10px; letter-spacing: 1px; color: var(--primary); }
 
@@ -517,28 +538,19 @@
                 <button class="b verde mini" onclick="enviarAnuncio()">Send</button>
                 <span style="color:#666; font-size: 12px;">Shows a banner to ALL players connected right now.</span>
             </div>
-            <div class="usage" id="layersPanel" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+            <div class="usage" id="roomAssignPanel" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;">
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                    <label style="font-weight:600">Layers per room:</label>
-                    <span style="color:#666; font-size: 12px;">Turn extra layers on/off per room — Layer 1 always runs, new layers start Off. Applies live.</span>
-                    <span style="margin-left:auto; display:flex; align-items:center; gap:10px;">
-                        <span id="layersCountLabel" style="color:#888;font-size:12px;"></span>
-                        <button class="b verde mini" id="addLayerBtn" onclick="addLayer()">+ Add layer</button>
+                    <label style="font-weight:600">Rooms, layers &amp; hosts:</label>
+                    <span id="roomAssignHint" style="color:#666; font-size: 12px;">Drag a room into a host to run it there; drag it to OFF to hide it everywhere. Click L1·L2… to turn its layers on/off.</span>
+                    <span style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+                        <span style="color:#888;font-size:12px;">Layers:</span>
+                        <button class="b mini" id="layerMinusBtn" onclick="changeLayers(-1)" style="min-width:30px;">−</button>
+                        <span id="layersCountLabel" style="color:#fff;font-size:12px;min-width:120px;text-align:center;"></span>
+                        <button class="b mini" id="layerPlusBtn" onclick="changeLayers(1)" style="min-width:30px;">+</button>
                     </span>
                 </div>
-                <div id="layersGrid"></div>
-                <span id="layersMsg" style="color:#888;font-size:12px;"></span>
-            </div>
-            <div class="usage" id="hostAssignPanel" style="display:none; padding: 18px 20px; flex-direction: column; gap: 12px;">
-                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                    <label style="font-weight:600">Room assignment per host:</label>
-                    <span style="color:#666; font-size: 12px;">Pick which host runs each room, or set it Off to hide it everywhere. Needs "Restart Server" to apply.</span>
-                </div>
-                <div id="hostAssignGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:8px 14px;"></div>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <button class="b verde mini" onclick="guardarHostAssign()">Save assignment</button>
-                    <span id="hostAssignMsg" style="color:#888;font-size:12px;"></span>
-                </div>
+                <div id="assignZones"></div>
+                <span id="assignMsg" style="color:#888;font-size:12px;"></span>
             </div>
         </div>
 
@@ -1233,104 +1245,142 @@ function applyAoiHost(hostId, on) { send({ cmd: 'aoiToggle', on, hostIds: [hostI
 // con partir en el primer guion bajo.
 function _comboParts(combo) { const i = combo.indexOf('_'); return [combo.slice(0, i), combo.slice(i + 1)]; }
 
-// ===== Layers por combo (Settings): agrupado por Layer, checkbox por combo =====
-let _layersSig = '';
-let _layersPerComboSavedLast = 2;
-function renderLayersPanel(m) {
+// ===== Reparto de salas (Settings): layers on/off + host por drag&drop =====
+// Un panel único: cada sala (combo) es un chip con pips L1·L2… (on/off en vivo).
+// En director los chips se arrastran a OFF / Host 0 / Host 1 (asignación, aplica
+// al reiniciar). En mono/host solo salen los chips con sus pips (sin hosts).
+let _raSig = '';
+let _raDragging = null;
+let _raLayersSaved = 2;
+function _raIsOn(layerEnabled, combo, L) {
+    const lk = combo + '_L' + L;
+    return Object.prototype.hasOwnProperty.call(layerEnabled, lk) ? layerEnabled[lk] !== false : (L <= 2);
+}
+function _raHostOf(ha, combo) {
+    const saved = ha.saved || {}, run = ha.running || {};
+    const v = Object.prototype.hasOwnProperty.call(saved, combo) ? saved[combo]
+            : (Object.prototype.hasOwnProperty.call(run, combo) ? run[combo] : null);
+    return (v === null || v === undefined) ? 'off' : String(v);
+}
+function _raChipHtml(combo, running, layerEnabled, hasHosts, assigned) {
+    let pips = '';
+    for (let L = 1; L <= running; L++) {
+        const on = _raIsOn(layerEnabled, combo, L), fixed = L === 1;
+        pips += `<span class="ra-pip${on ? ' on' : ''}${fixed ? ' fixed' : ''}" data-l="${L}"${fixed ? '' : ` onclick="raTogglePip(event,'${combo}',${L})"`}>L${L}</span>`;
+    }
+    return `<div class="ra-chip${assigned ? ' assigned' : ''}" id="rachip_${combo}" data-combo="${combo}"${hasHosts ? ` draggable="true" ondragstart="raDragStart(event,'${combo}')" ondragend="raDragEnd(event)"` : ''}>
+        <div class="ra-chip-name">${_raLabel(combo)}</div>
+        <div class="ra-pips">${pips}</div></div>`;
+}
+function _raLabel(combo) { const [mode, price] = _comboParts(combo); return (mode === 'classic' ? 'Classic' : 'Arcade') + ' · ' + price; }
+function renderRoomAssign(m) {
     const combos = m.combos || [];
     const running = m.layersPerCombo || 2;
-    const saved = m.layersPerComboSaved || running;
+    const savedLayers = m.layersPerComboSaved || running;
     const maxLayers = m.maxLayers || 4;
-    _layersPerComboSavedLast = saved;
-    const sig = saved + '|' + combos.join(',');
-    if (sig !== _layersSig) {
-        _layersSig = sig;
-        let html = '';
-        for (let L = 1; L <= saved; L++) {
-            const locked = L > running;
-            html += `<div style="margin-bottom:10px;">
-                <div style="font-family:'Russo One';font-size:11px;letter-spacing:1px;color:#888;margin-bottom:6px;">LAYER ${L}${L === 1 ? ' (always on)' : ''}${locked ? ' (pending restart)' : ''}</div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(160px,1fr));gap:6px 14px;">
-                    ${combos.map(combo => {
-                        const [mode, price] = _comboParts(combo);
-                        const label = (mode === 'classic' ? 'Classic' : 'Arcade') + ' · ' + price;
-                        const dis = (L === 1 || locked) ? 'disabled' : '';
-                        return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:${locked ? '#666' : '#ccc'};cursor:${dis ? 'default' : 'pointer'};">
-                            <input type="checkbox" id="layerChk_${combo}_L${L}" ${L === 1 ? 'checked' : ''} ${dis} onchange="toggleLayerChk('${mode}','${price}',${L},this.checked)">
-                            ${label}
-                        </label>`;
-                    }).join('')}
-                </div>
-            </div>`;
+    _raLayersSaved = savedLayers;
+    const ha = m.hostAssign;              // solo director
+    const hasHosts = !!ha;
+    const layerEnabled = m.layerEnabled || {};
+    const cont = document.getElementById('assignZones');
+    if (!cont) return;
+
+    // Estructura (zonas + chips): se reconstruye SOLO si cambia el nº de combos,
+    // hosts o layers en marcha — no en cada poll (para no romper un arrastre).
+    const sig = [hasHosts ? 'h' + ha.hostCount : 'mono', running, combos.join(',')].join('|');
+    if (sig !== _raSig) {
+        _raSig = sig;
+        if (hasHosts) {
+            let boxes = '';
+            for (let h = 0; h < ha.hostCount; h++) {
+                const chips = combos.filter(c => _raHostOf(ha, c) === String(h)).map(c => _raChipHtml(c, running, layerEnabled, true, true)).join('');
+                boxes += `<div class="ra-zone" id="razone_${h}" data-host="${h}" ondragover="raOver(event)" ondragleave="raLeave(event)" ondrop="raDrop(event,'${h}')">
+                    <div class="ra-zone-head">HOST <b>${h}</b></div><div class="ra-chips">${chips}</div></div>`;
+            }
+            const offChips = combos.filter(c => _raHostOf(ha, c) === 'off').map(c => _raChipHtml(c, running, layerEnabled, true, false)).join('');
+            cont.className = 'ra-zones';
+            cont.innerHTML = `<div class="ra-zone off" id="razone_off" data-host="off" ondragover="raOver(event)" ondragleave="raLeave(event)" ondrop="raDrop(event,'off')">
+                    <div class="ra-zone-head">OFF · not assigned <span style="color:#555;font-weight:400;letter-spacing:0">(rooms here don't run anywhere)</span></div>
+                    <div class="ra-chips">${offChips}</div></div>
+                <div class="ra-hostrow">${boxes}</div>`;
+        } else {
+            cont.className = '';
+            cont.innerHTML = `<div class="ra-zone"><div class="ra-chips">${combos.map(c => _raChipHtml(c, running, layerEnabled, false, true)).join('')}</div></div>`;
         }
-        document.getElementById('layersGrid').innerHTML = html;
     }
-    for (let L = 2; L <= saved; L++) {
-        for (const combo of combos) {
-            const chk = document.getElementById('layerChk_' + combo + '_L' + L);
-            if (!chk || document.activeElement === chk || L > running) continue;
-            const lk = combo + '_L' + L;
-            const enabled = Object.prototype.hasOwnProperty.call(m.layerEnabled || {}, lk) ? m.layerEnabled[lk] !== false : (L <= 2);
-            chk.checked = enabled;
+
+    // Refresco por poll: pips on/off + (director) posición del chip por su host
+    // guardado, sin tocar el que se esté arrastrando ahora mismo.
+    for (const combo of combos) {
+        const chip = document.getElementById('rachip_' + combo);
+        if (!chip) continue;
+        if (hasHosts && !_raDragging) {
+            const want = _raHostOf(ha, combo);
+            const zone = document.getElementById(want === 'off' ? 'razone_off' : 'razone_' + want);
+            const box = zone && zone.querySelector('.ra-chips');
+            if (box && chip.parentElement !== box) box.appendChild(chip);
+            chip.classList.toggle('assigned', want !== 'off');
+        }
+        chip.querySelectorAll('.ra-pip').forEach(pip => {
+            pip.classList.toggle('on', _raIsOn(layerEnabled, combo, parseInt(pip.dataset.l, 10)));
+        });
+    }
+
+    // Aviso de "pendiente de reinicio": host reasignado o nº de layers cambiado.
+    let pending = savedLayers !== running;
+    if (hasHosts) {
+        const saved = ha.saved || {}, run = ha.running || {};
+        for (const c of combos) {
+            const rv = Object.prototype.hasOwnProperty.call(run, c) ? run[c] : null;
+            const sv = Object.prototype.hasOwnProperty.call(saved, c) ? saved[c] : rv;
+            if ((sv == null ? null : sv) !== (rv == null ? null : rv)) pending = true;
         }
     }
     const lbl = document.getElementById('layersCountLabel');
-    if (lbl) lbl.innerText = saved + ' / ' + maxLayers + ' layers' + (saved !== running ? ' (restart pending)' : '');
-    const btn = document.getElementById('addLayerBtn');
-    if (btn) btn.disabled = saved >= maxLayers;
+    if (lbl) lbl.innerText = savedLayers + ' / ' + maxLayers + ' layers';
+    const mb = document.getElementById('layerMinusBtn'); if (mb) mb.disabled = savedLayers <= 1;
+    const pb = document.getElementById('layerPlusBtn'); if (pb) pb.disabled = savedLayers >= maxLayers;
+    const msg = document.getElementById('assignMsg');
+    if (msg) msg.innerText = pending ? '⚠ Restart the server to apply pending changes (host / layer count). Layer on/off applies live.' : '';
 }
-function toggleLayerChk(mode, price, layerIdx, enabled) {
-    send({ cmd: 'setLayerEnabled', mode, price, layerIdx, enabled });
-    setTimeout(pedir, 200);
+function raDragStart(e, combo) { _raDragging = combo; e.dataTransfer.setData('text/plain', combo); e.dataTransfer.effectAllowed = 'move'; const c = document.getElementById('rachip_' + combo); if (c) c.classList.add('dragging'); }
+function raDragEnd() { const c = _raDragging && document.getElementById('rachip_' + _raDragging); if (c) c.classList.remove('dragging'); _raDragging = null; document.querySelectorAll('.ra-zone.over').forEach(z => z.classList.remove('over')); }
+function raOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('over'); }
+function raLeave(e) { e.currentTarget.classList.remove('over'); }
+function raDrop(e, host) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('over');
+    const combo = e.dataTransfer.getData('text/plain') || _raDragging;
+    const chip = combo && document.getElementById('rachip_' + combo);
+    const box = e.currentTarget.querySelector('.ra-chips');
+    if (chip && box) { box.appendChild(chip); chip.classList.toggle('assigned', host !== 'off'); }
+    raSendAssign();
 }
-function addLayer() {
-    const n = Math.min(4, (_layersPerComboSavedLast || 2) + 1);
-    send({ cmd: 'setLayersPerCombo', n });
-    document.getElementById('layersMsg').innerText = 'Saved — restart the server to unlock Layer ' + n + '.';
-    setTimeout(pedir, 200);
-}
-
-// ===== Asignación manual de combos por host (Settings, solo Director/mono) =====
-let _hostAssignSig = '';
-function renderHostAssign(m) {
-    const panel = document.getElementById('hostAssignPanel');
-    const ha = m.hostAssign;
-    if (!ha) { panel.style.display = 'none'; return; }
-    panel.style.display = 'flex';
-    const sig = ha.hostCount + '|' + ha.combos.join(',');
-    if (sig !== _hostAssignSig) {
-        _hostAssignSig = sig;
-        const opts = ['<option value="">Off</option>']
-            .concat(Array.from({ length: ha.hostCount }, (_, h) => `<option value="${h}">Host ${h}</option>`)).join('');
-        document.getElementById('hostAssignGrid').innerHTML = ha.combos.map(combo => {
-            const [mode, price] = _comboParts(combo);
-            const label = (mode === 'classic' ? 'Classic' : 'Arcade') + ' · ' + price;
-            return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#111;border:1px solid #262626;border-radius:8px;padding:7px 12px;">
-                <span style="font-size:12px;color:#ccc;">${label}</span>
-                <select id="hostAssign_${combo}" style="background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:4px 8px;font-size:12px;">${opts}</select>
-            </div>`;
-        }).join('');
-    }
-    const saved = ha.saved || {};
-    let pending = false;
-    for (const combo of ha.combos) {
-        const sel = document.getElementById('hostAssign_' + combo);
-        if (!sel) continue;
-        const runningVal = Object.prototype.hasOwnProperty.call(ha.running, combo) ? ha.running[combo] : null;
-        const savedVal = Object.prototype.hasOwnProperty.call(saved, combo) ? saved[combo] : runningVal;
-        if (savedVal !== runningVal) pending = true;
-        if (document.activeElement !== sel) sel.value = (savedVal === null || savedVal === undefined) ? '' : String(savedVal);
-    }
-    const msg = document.getElementById('hostAssignMsg');
-    if (msg && msg.innerText.indexOf('Saved') === -1) msg.innerText = pending ? '⚠ Pending — restart the server to apply.' : '';
-}
-function guardarHostAssign() {
+function raSendAssign() {
     const assign = {};
-    for (const sel of document.querySelectorAll('[id^="hostAssign_"]')) {
-        assign[sel.id.slice('hostAssign_'.length)] = sel.value === '' ? null : parseInt(sel.value, 10);
-    }
+    document.querySelectorAll('#assignZones .ra-zone[data-host]').forEach(z => {
+        const host = z.dataset.host;
+        z.querySelectorAll('.ra-chip').forEach(ch => { assign[ch.dataset.combo] = (host === 'off') ? null : parseInt(host, 10); });
+    });
     send({ cmd: 'setHostAssign', assign });
-    document.getElementById('hostAssignMsg').innerText = 'Saved — restart the server to apply.';
+    setTimeout(pedir, 200);
+}
+function raTogglePip(e, combo, L) {
+    e.stopPropagation();
+    const [mode, price] = _comboParts(combo);
+    const enabled = !e.currentTarget.classList.contains('on');
+    e.currentTarget.classList.toggle('on', enabled);
+    send({ cmd: 'setLayerEnabled', mode, price, layerIdx: L, enabled });
+    setTimeout(pedir, 200);
+}
+function changeLayers(delta) {
+    const n = Math.max(1, Math.min(4, (_raLayersSaved || 2) + delta));
+    if (n === _raLayersSaved) return;
+    _raLayersSaved = n;   // optimista: permite clics rápidos sin esperar al poll
+    const lbl = document.getElementById('layersCountLabel'); if (lbl) lbl.innerText = n + ' / 4 layers';
+    const mb = document.getElementById('layerMinusBtn'); if (mb) mb.disabled = n <= 1;
+    const pb = document.getElementById('layerPlusBtn'); if (pb) pb.disabled = n >= 4;
+    send({ cmd: 'setLayersPerCombo', n });
     setTimeout(pedir, 200);
 }
 
@@ -1648,13 +1698,12 @@ function render(m) {
     document.getElementById('perfHosts').style.display = (role === 'director') ? '' : 'none';
     const ajustesNote = document.getElementById('ajustesHostsNote');
     if (ajustesNote) ajustesNote.innerText = (role === 'director') ? '(applies to all ' + (m.hosts ? m.hosts.length : 0) + ' hosts)' : '';
-    renderLayersPanel(m);
+    renderRoomAssign(m);
 
     if (role === 'director') {
         renderHostCards(m);
         renderHostTabs(m);
         renderPerfHosts(m);
-        renderHostAssign(m);
         const vivos = (m.hosts || []).filter(h => h.alive).length;
         document.getElementById('metaInfo').innerText = `min per room: ${m.minPlayers} players · ${vivos}/${(m.hosts || []).length} hosts alive`;
     } else {
