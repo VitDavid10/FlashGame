@@ -1717,15 +1717,24 @@
         ':': [0x00,0x04,0x04,0x00,0x04,0x04,0x00], '.': [0x00,0x00,0x00,0x00,0x00,0x06,0x06],
         ',': [0x00,0x00,0x00,0x00,0x06,0x04,0x08], '?': [0x0E,0x11,0x01,0x02,0x04,0x00,0x04],
         '$': [0x04,0x0F,0x14,0x0E,0x05,0x1E,0x04], '%': [0x18,0x19,0x02,0x04,0x08,0x13,0x03],
-        "'": [0x04,0x04,0x04,0x00,0x00,0x00,0x00],
+        "'": [0x04,0x04,0x04,0x00,0x00,0x00,0x00], '◆': [0x04,0x0E,0x1F,0x0E,0x04,0x00,0x00],
     };
-    function pixTextWidth(text, px) { const n = String(text).length; return n > 0 ? n * 6 * px - px : 0; }
-    function _pixTextBlocks(g, text, x, y, px, color) {
-        g.fillStyle = color; let cx = x;
+    // bold = glifo a rejilla doble + dilatación 1 (trazo 3 unidades, huecos interiores
+    // preservados): glifo 11×15, avance 13. shade = color de las filas inferiores
+    // (sombreado interno estilo cartel arcade).
+    function pixTextWidth(text, px, bold) { const n = String(text).length; return n > 0 ? (bold ? (13 * n - 2) : (6 * n - 1)) * px : 0; }
+    function _pixTextBlocks(g, text, x, y, px, color, bold, shade) {
+        const adv = (bold ? 13 : 6) * px; let cx = x;
         for (const ch of String(text).toUpperCase()) {
             const rows = PIXFONT[ch];
-            if (rows) for (let r = 0; r < 7; r++) { const bits = rows[r]; for (let c = 0; c < 5; c++) if (bits & (1 << (4 - c))) g.fillRect(cx + c * px, y + r * px, px, px); }
-            cx += 6 * px;
+            if (rows) for (let r = 0; r < 7; r++) {
+                g.fillStyle = (shade && r >= 5) ? shade : color; const bits = rows[r];
+                for (let c = 0; c < 5; c++) if (bits & (1 << (4 - c))) {
+                    if (bold) g.fillRect(cx + 2 * c * px, y + 2 * r * px, 3 * px, 3 * px);
+                    else g.fillRect(cx + c * px, y + r * px, px, px);
+                }
+            }
+            cx += adv;
         }
     }
     const _PIX_OUT8 = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
@@ -1733,16 +1742,63 @@
         if (outline) for (const o of _PIX_OUT8) _pixTextBlocks(g, text, x + o[0] * px, y + o[1] * px, px, outline);
         _pixTextBlocks(g, text, x, y, px, fill);
     }
-    // Canvas independiente con texto pixel (para overlays DOM: GO!, cuenta atrás).
-    // shadow = color de sombra diagonal abajo-derecha (estilo arcade), opcional.
-    function pixTextCanvas(text, px, fill, outline, shadow) {
-        const sh = shadow ? 2 : 0, w = pixTextWidth(text, px), pad = px;
-        const cv = document.createElement('canvas'); cv.width = w + pad * 2 + sh * px; cv.height = 7 * px + pad * 2 + sh * px;
+    // Canvas de texto pixel "premium" (para overlays DOM: GO!, cuenta atrás, títulos).
+    // Trazo bold + capas de contorno estilo cartel arcade: fill blanco con sombreado
+    // interno → tinta negra → halo verde brillante → halo verde oscuro. Opciones:
+    // fill/shade/ink/accent/dark (colores), plain (solo tinta, sin halos),
+    // sparkles (cruces decorativas en el padding).
+    function pixFancyText(text, px, o = {}) {
+        const fill = o.fill || '#fff', shade = o.shade || '#b9c2cc', ink = o.ink || '#000';
+        const accent = o.accent || '#00ff88', dark = o.dark || '#0a4a2a';
+        const layers = o.plain ? [[1, ink]] : [[4, dark], [2, accent], [1, ink]];
+        const pad = (layers[0][0] + (o.sparkles ? 4 : 0)) * px;
+        const cv = document.createElement('canvas');
+        cv.width = pixTextWidth(text, px, true) + pad * 2; cv.height = 15 * px + pad * 2;
         const g = cv.getContext('2d');
-        if (shadow) _pixTextBlocks(g, text, pad + sh * px, pad + sh * px, px, shadow);
-        drawPixelText(g, text, pad, pad, px, fill, outline);
+        for (const [d, col] of layers)
+            for (let dx = -d; dx <= d; dx++) for (let dy = -d; dy <= d; dy++)
+                _pixTextBlocks(g, text, pad + dx * px, pad + dy * px, px, col, true);
+        _pixTextBlocks(g, text, pad, pad, px, fill, true, shade);
+        if (o.sparkles) {
+            g.fillStyle = accent;
+            const sp = Math.max(2, Math.round(px * 0.75));
+            const spots = [[0.10, 0.10], [0.46, 0.04], [0.88, 0.12], [0.16, 0.90], [0.74, 0.94]];
+            for (let i = 0; i < Math.min(o.sparkles, spots.length); i++) {
+                const sx = Math.round(cv.width * spots[i][0]), sy = Math.round(cv.height * spots[i][1]);
+                g.fillRect(sx, sy - sp, sp, sp * 3); g.fillRect(sx - sp, sy, sp * 3, sp);
+            }
+        }
         cv.style.imageRendering = 'pixelated'; cv.style.display = 'block';
         return cv;
+    }
+
+    // Marco de panel pixel 9-slice (borde verde chamfer + línea interior + brackets
+    // de esquina), inyectado como border-image. Se genera una vez.
+    function ensurePixPanelCss() {
+        if (document.getElementById('pixPanelCss')) return;
+        const u = 4, S = 16 * u;
+        const cv = document.createElement('canvas'); cv.width = S; cv.height = S;
+        const g = cv.getContext('2d');
+        g.fillStyle = 'rgba(8,14,11,0.96)'; g.fillRect(0, 0, S, S);
+        g.fillStyle = '#00ff88';
+        g.fillRect(u, 0, S - 2 * u, u); g.fillRect(u, S - u, S - 2 * u, u);
+        g.fillRect(0, u, u, S - 2 * u); g.fillRect(S - u, u, u, S - 2 * u);
+        g.fillRect(u, u, u, u); g.fillRect(S - 2 * u, u, u, u); g.fillRect(u, S - 2 * u, u, u); g.fillRect(S - 2 * u, S - 2 * u, u, u);
+        for (const [bx, by, mx, my] of [[3, 3, 1, 1], [13, 3, -1, 1], [3, 13, 1, -1], [13, 13, -1, -1]]) {
+            g.fillRect(bx * u, by * u, 2 * u * mx, u * my); g.fillRect(bx * u, by * u, u * mx, 2 * u * my);
+        }
+        const st = document.createElement('style'); st.id = 'pixPanelCss';
+        st.textContent =
+            'body.pixel-pack .skill-choice-card{border:' + (5 * u) + 'px solid transparent;' +
+            'border-image:url(' + cv.toDataURL() + ') ' + (5 * u) + ' fill stretch;' +
+            'border-radius:0!important;background:transparent!important;' +
+            'box-shadow:6px 6px 0 rgba(0,0,0,.6)!important;animation:none}' +
+            'body.pixel-pack .timer-bar{border-radius:0!important;height:12px;background:#111;border:2px solid #333;box-shadow:inset 2px 2px 0 rgba(0,0,0,.8)}' +
+            'body.pixel-pack .timer-fill{border-radius:0!important;background:#ff3333!important;transition:width 1s steps(4)}' +
+            'body.pixel-pack .skill-opt-btn{border-radius:0!important;width:114px!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
+            'body.pixel-pack .skill-opt-btn.selected-choice{border-radius:0!important;box-shadow:0 0 0 2px #00ff88,4px 4px 0 rgba(0,0,0,.7)!important}' +
+            'body.pixel-pack .skill-tips{color:#9aa;font-family:"VT323",monospace;font-size:14px}';
+        document.head.appendChild(st);
     }
 
     // Versión pixel de drawCell: misma estructura (tp/sprint/inmunidad/flash/
@@ -3199,7 +3255,7 @@
         const old = document.getElementById('cdNum'); if (old) old.remove();
         const el = document.createElement('div'); el.id = 'cdNum';
         el.innerHTML = '<div class="cd-lbl">' + (label || 'MATCH STARTING') + '</div>';
-        if (pixelMode) { const cv = pixTextCanvas(String(n), 26, '#fff', '#000', '#00ff88'); cv.className = 'cd-n'; el.appendChild(cv); }
+        if (pixelMode) { const cv = pixFancyText(String(n), 9, {}); cv.className = 'cd-n'; el.appendChild(cv); }
         else { const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3, 5s) lo dispara quien llama, una vez al entrar en los 5s.
@@ -3747,7 +3803,7 @@
         const old = document.getElementById('goSplash'); if (old) old.remove();
         const el = document.createElement('div');
         el.id = 'goSplash';
-        if (pixelMode) { const cv = pixTextCanvas('GO!', 34, '#fff', '#000', '#00ff88'); cv.className = 'go-txt'; el.appendChild(cv); }
+        if (pixelMode) { const px = Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))); const cv = pixFancyText('GO!', px, { sparkles: 5 }); cv.className = 'go-txt'; el.appendChild(cv); }
         else el.innerHTML = '<div class="go-txt">GO!</div>';
         document.body.appendChild(el);
         SoundManager.play('go');
@@ -3823,8 +3879,8 @@
     // los 10s del pick). Centralizado para que el sonido se vaya tanto si eliges como
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
-    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { titleEl.innerHTML = ''; const tc = pixTextCanvas('SELECT A SKILL', 6, '#fff', '#000', '#00ff88'); tc.style.margin = '0 auto'; titleEl.appendChild(tc); } else titleEl.textContent = 'SELECT A SKILL'; }
-        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nc = pixTextCanvas(SKILL_DEFS[id].name, 4, '#fff', '#000'); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
+    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const d1 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true }); const d2 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true }); d2.style.transform = 'scaleX(-1)'; wrap.appendChild(d1); wrap.appendChild(pixFancyText('SELECT A SKILL', 2, {})); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = 'SELECT A SKILL'; }
+        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nc = pixFancyText(SKILL_DEFS[id].name, 1, { plain: true, shade: '#b9c2cc' }); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
 
