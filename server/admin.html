@@ -542,12 +542,6 @@
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <label style="font-weight:600">Rooms, layers &amp; hosts:</label>
                     <span id="roomAssignHint" style="color:#666; font-size: 12px;">Drag a room into a host to run it there; drag it to OFF to hide it everywhere. Click L1·L2… to turn its layers on/off.</span>
-                    <span style="margin-left:auto; display:flex; align-items:center; gap:8px;">
-                        <span style="color:#888;font-size:12px;">Layers:</span>
-                        <button class="b mini" id="layerMinusBtn" onclick="changeLayers(-1)" style="min-width:30px;">−</button>
-                        <span id="layersCountLabel" style="color:#fff;font-size:12px;min-width:120px;text-align:center;"></span>
-                        <button class="b mini" id="layerPlusBtn" onclick="changeLayers(1)" style="min-width:30px;">+</button>
-                    </span>
                 </div>
                 <div id="assignZones"></div>
                 <div id="assignMsgRow" style="display:none; align-items:center; gap:14px; flex-wrap:wrap;">
@@ -1254,7 +1248,6 @@ function _comboParts(combo) { const i = combo.indexOf('_'); return [combo.slice(
 // al reiniciar). En mono/host solo salen los chips con sus pips (sin hosts).
 let _raSig = '';
 let _raDragging = null;
-let _raLayersSaved = 2;
 function _raIsOn(layerEnabled, combo, L) {
     const lk = combo + '_L' + L;
     return Object.prototype.hasOwnProperty.call(layerEnabled, lk) ? layerEnabled[lk] !== false : (L <= 2);
@@ -1279,9 +1272,6 @@ function _raLabel(combo) { const [mode, price] = _comboParts(combo); return (mod
 function renderRoomAssign(m) {
     const combos = m.combos || [];
     const running = m.layersPerCombo || 2;
-    const savedLayers = m.layersPerComboSaved || running;
-    const maxLayers = m.maxLayers || 4;
-    _raLayersSaved = savedLayers;
     const ha = m.hostAssign;              // solo director
     const hasHosts = !!ha;
     const layerEnabled = m.layerEnabled || {};
@@ -1329,8 +1319,8 @@ function renderRoomAssign(m) {
         });
     }
 
-    // Aviso de "pendiente de reinicio": host reasignado o nº de layers cambiado.
-    let pending = savedLayers !== running;
+    // Aviso de "pendiente de reinicio": solo por host reasignado (layer on/off es en vivo).
+    let pending = false;
     if (hasHosts) {
         const saved = ha.saved || {}, run = ha.running || {};
         for (const c of combos) {
@@ -1339,12 +1329,8 @@ function renderRoomAssign(m) {
             if ((sv == null ? null : sv) !== (rv == null ? null : rv)) pending = true;
         }
     }
-    const lbl = document.getElementById('layersCountLabel');
-    if (lbl) lbl.innerText = savedLayers + ' / ' + maxLayers + ' layers';
-    const mb = document.getElementById('layerMinusBtn'); if (mb) mb.disabled = savedLayers <= 1;
-    const pb = document.getElementById('layerPlusBtn'); if (pb) pb.disabled = savedLayers >= maxLayers;
     const msg = document.getElementById('assignMsg');
-    if (msg) msg.innerText = pending ? '⚠ Restart the server to apply pending changes (host / layer count). Layer on/off applies live.' : '';
+    if (msg) msg.innerText = pending ? '⚠ Restart the server to apply the pending host reassignment. Layer on/off applies live.' : '';
     const row = document.getElementById('assignMsgRow');
     if (row) row.style.display = pending ? 'flex' : 'none';
 }
@@ -1378,17 +1364,6 @@ function raTogglePip(e, combo, L) {
     send({ cmd: 'setLayerEnabled', mode, price, layerIdx: L, enabled });
     setTimeout(pedir, 200);
 }
-function changeLayers(delta) {
-    const n = Math.max(1, Math.min(4, (_raLayersSaved || 2) + delta));
-    if (n === _raLayersSaved) return;
-    _raLayersSaved = n;   // optimista: permite clics rápidos sin esperar al poll
-    const lbl = document.getElementById('layersCountLabel'); if (lbl) lbl.innerText = n + ' / 4 layers';
-    const mb = document.getElementById('layerMinusBtn'); if (mb) mb.disabled = n <= 1;
-    const pb = document.getElementById('layerPlusBtn'); if (pb) pb.disabled = n >= 4;
-    send({ cmd: 'setLayersPerCombo', n });
-    setTimeout(pedir, 200);
-}
-
 // ===== Dashboard: tarjetas con sparkline + gráfica grande de actividad =====
 // El servidor manda `series`: una muestra/minuto con los totales acumulados
 // (últimas 3 h). Para entradas/muertes/dinero se dibuja el DELTA por minuto;

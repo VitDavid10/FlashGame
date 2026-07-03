@@ -73,11 +73,7 @@ let enemyFx  = (typeof _glob.enemyFx  === 'boolean') ? _glob.enemyFx : true;
 // el cliente lo aleja al crecer con su curva. Editable en vivo desde admin. Mayor = más cerca.
 const _clampZoom = v => Math.max(0.3, Math.min(4, v));
 let baseZoom = (typeof _glob.baseZoom === 'number') ? _clampZoom(_glob.baseZoom) : 1.4;
-// Nº de layers "guardado" desde el panel (botón + Add layer). Aparte de LAYERS_PER_COMBO
-// (el que corre AHORA, fijado al arrancar) para poder avisar "pendiente de reinicio"
-// sin perder el valor guardado cada vez que se toca otro ajuste global.
-let layersPerComboSaved = Math.max(1, Math.min(4, (_glob.layersPerCombo | 0) || 2));
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, layersPerCombo: layersPerComboSaved }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -210,12 +206,11 @@ const ROOM_CAPS = { classic: 35, arcade: 25 };
 // el matchmaker (pickLayer) te mete en L1 hasta LLENARLA (clients.size >= maxPlayers),
 // y solo entonces pasa a L2. NO hay umbral del 90%: es 100% estricto. Las layers
 // SON INVISIBLES para el cliente: solo ve "Free", "5$", etc. — el server decide.
-// MAX_LAYERS: tope duro de layers por combo (panel "+ Add layer"). LAYERS_PER_COMBO
-// es el nº de slots ACTUALMENTE desbloqueados (persistido en globalsettings.json,
-// editable desde Settings; requiere "Restart Server" para aplicarse, igual que el
-// reparto por host — está horneado en los bucles de arranque de cada proceso).
+// MAX_LAYERS: tope duro de layers por combo. Siempre desbloqueadas las 4 — L1 se
+// pre-crea al arrancar, L2+ se crean on-demand en pickLayer cuando la anterior se
+// llena (ver game-host.js). No consumen nada mientras no exista demanda real.
 const MAX_LAYERS = 4;
-const LAYERS_PER_COMBO = Math.max(1, Math.min(MAX_LAYERS, parseInt(process.env.LAYERS_PER_COMBO, 10) || layersPerComboSaved));
+const LAYERS_PER_COMBO = MAX_LAYERS;
 function comboKeyOf(mode, roomName) { return mode + '_' + roomName; }
 function layerKeyOf(mode, roomName, layerIdx) { return mode + '_' + roomName + '_L' + layerIdx; }
 // Habilitado por combo+layer (persistido en layerassign.json). Ausente = default:
@@ -1443,7 +1438,7 @@ function buildAdminState() {
         snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY),
         aoiEnabled: AOI_ENABLED,
         layersPerCombo: LAYERS_PER_COMBO,
-        layersPerComboSaved, maxLayers: MAX_LAYERS,
+        maxLayers: MAX_LAYERS,
         layerEnabled: Object.assign({}, layerEnabled),
         arcadeRestartMs, arcadeLobbyMs,
         sfxVol, musicVol, enemyFx, baseZoom,
@@ -2096,15 +2091,6 @@ wss.on('connection', (ws, req) => {
                     AOI_ENABLED = !AOI_ENABLED;
                     logAdmin('-', 'AOI ' + (AOI_ENABLED ? 'ACTIVADO' : 'DESACTIVADO'), '');
                     log(`ADMIN AOI: ${AOI_ENABLED ? 'ON' : 'OFF'}`);
-                }
-            } else if (msg.cmd === 'setLayersPerCombo' && typeof msg.n === 'number') {
-                // Sube (o baja) el tope de layers desbloqueadas. Requiere "Restart Server":
-                // LAYERS_PER_COMBO está horneado en los bucles de arranque de cada proceso.
-                if (PW_ROLE !== 'host') {
-                    layersPerComboSaved = Math.max(1, Math.min(MAX_LAYERS, msg.n | 0));
-                    saveGlobal();
-                    logAdmin('-', 'Cambió el nº de layers guardado', String(layersPerComboSaved));
-                    log(`ADMIN guardó layersPerCombo=${layersPerComboSaved} — hace falta reiniciar el servidor para aplicarlo`);
                 }
             } else if (msg.cmd === 'kickAllMode' && msg.mode) {
                 const n = applyKickAllMode(msg.mode);

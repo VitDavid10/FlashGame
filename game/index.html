@@ -2631,15 +2631,21 @@
                 if (rateEl) rateEl.textContent = Number(gamePillPerDollar).toLocaleString('en-US');
             }
             const cont = document.getElementById('oracleRows'); if (!cont) return;
-            // Barra L1..L4: un botón por layer desbloqueada (layersPerCombo, hasta 4).
-            const layersPerCombo = data.layersPerCombo || 2;
+            // Free queda fuera del oracle (priceUsd>0). Mostramos la layer elegida (default L1).
+            const roomsThisMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic') && r.priceUsd > 0);
+            // Barra L1..L4: solo layers que REALMENTE tienen sala creada (server solo
+            // manda un entry en r.layers si esa sala existe — L2+ se crean on-demand
+            // cuando la anterior se llena, no por tener layersPerCombo alto).
+            let layersSeen = 1;
+            for (const r of roomsThisMode) for (const L of (r.layers || [])) if (L.layerIdx > layersSeen) layersSeen = L.layerIdx;
             const layersBar = document.getElementById('oracleLayersBar');
             if (layersBar) {
-                if (_oracleLayersSig !== layersPerCombo) {
-                    _oracleLayersSig = layersPerCombo;
+                const sig = (currentGameMode || 'classic') + '|' + layersSeen;
+                if (_oracleLayersSig !== sig) {
+                    _oracleLayersSig = sig;
                     const hint = layersBar.querySelector('.oracle-layers-hint');
                     layersBar.innerHTML = '';
-                    for (let i = 1; i <= layersPerCombo; i++) {
+                    for (let i = 1; i <= layersSeen; i++) {
                         const b = document.createElement('button');
                         b.dataset.oraclelayer = String(i);
                         b.textContent = 'L' + i;
@@ -2648,13 +2654,12 @@
                         layersBar.appendChild(b);
                     }
                     if (hint) layersBar.appendChild(hint);
+                    if (window.oracleLayerView > layersSeen) setOracleLayer(1);
                 }
-                layersBar.style.display = layersPerCombo > 1 ? 'flex' : 'none';
-                if (layersPerCombo <= 1 && window.oracleLayerView !== 1) setOracleLayer(1);
+                layersBar.style.display = layersSeen > 1 ? 'flex' : 'none';
             }
             const lv = window.oracleLayerView || 1;
-            // Free queda fuera del oracle (priceUsd>0). Mostramos la layer elegida (default L1).
-            const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic') && r.priceUsd > 0).map(r => {
+            const rowsForMode = roomsThisMode.map(r => {
                 if (!r.layers) return r;
                 const L = r.layers.find(x => x.layerIdx === lv);
                 if (!L) return r;
