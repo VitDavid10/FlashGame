@@ -22,7 +22,7 @@ const { tickRoomOnce } = require('./room-loop.js');   // tick por sala (simulaci
 function createGameHost(deps) {
     const {
         rooms,
-        comboKeyOf, layerKeyOf, isLayerOffForPrice,
+        comboKeyOf, layerKeyOf, isLayerEnabled,
         rulesOf, minRealOf, targetPopOf, maxPlayersOf, lobbyMsOf,
         log, onRulesDirty,
         CATALOG_MODES, PRICES, LAYERS_PER_COMBO, ownsCombo,
@@ -106,7 +106,7 @@ function createGameHost(deps) {
             let r = rooms.get(key);
             if (!r) {
                 if (i === 1) continue;
-                if (isLayerOffForPrice(roomName, i)) continue;
+                if (!isLayerEnabled(mode, roomName, i)) continue;
                 r = getOrCreateRoom(key, mode, roomName);
                 log(`Lazy: creada ${key} porque L${i - 1} está llena`);
             }

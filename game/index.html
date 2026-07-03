@@ -1000,8 +1000,6 @@
                 <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
                 <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
                 <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
-                    <button data-oraclelayer="1" class="act" onclick="setOracleLayer(1)">L1</button>
-                    <button data-oraclelayer="2" onclick="setOracleLayer(2)">L2</button>
                     <span class="oracle-layers-hint">view a specific room layer (you can't choose which one you'll be assigned to)</span>
                 </div>
                 <div id="oracleRows" class="oracle-rows"></div>
@@ -2605,8 +2603,9 @@
     // El precio cambia cada 5 min (timer); los players/status se refrescan cada pocos
     // segundos para que se vea en vivo si la sala se llena.
     let _lastPillPerDollar = 0;
-    // Default L1. La barra solo se ve si L2 está ON en admin (activeLayers > 1).
+    // Default L1. La barra solo se ve si hay más de una layer desbloqueada (layersPerCombo > 1).
     window.oracleLayerView = 1;
+    let _oracleLayersSig = 0;
     function setOracleLayer(v) {
         window.oracleLayerView = v;
         document.querySelectorAll('[data-oraclelayer]').forEach(b => b.classList.toggle('act', b.dataset.oraclelayer === String(v)));
@@ -2632,17 +2631,28 @@
                 if (rateEl) rateEl.textContent = Number(gamePillPerDollar).toLocaleString('en-US');
             }
             const cont = document.getElementById('oracleRows'); if (!cont) return;
-            // Barra L1/L2: solo visible si L2 PREMIUM está ON en admin. Free siempre tiene
-            // sus 2 layers pero queda fuera del oracle (priceUsd=0), así que no influye.
-            const layerOff = data.layerOff || {};
-            const activeLayers = (data.layersPerCombo || 2) - Object.keys(layerOff).filter(k => layerOff[k]).length;
+            // Barra L1..L4: un botón por layer desbloqueada (layersPerCombo, hasta 4).
+            const layersPerCombo = data.layersPerCombo || 2;
             const layersBar = document.getElementById('oracleLayersBar');
             if (layersBar) {
-                layersBar.style.display = activeLayers > 1 ? 'flex' : 'none';
-                if (activeLayers <= 1 && window.oracleLayerView !== 1) setOracleLayer(1);
+                if (_oracleLayersSig !== layersPerCombo) {
+                    _oracleLayersSig = layersPerCombo;
+                    const hint = layersBar.querySelector('.oracle-layers-hint');
+                    layersBar.innerHTML = '';
+                    for (let i = 1; i <= layersPerCombo; i++) {
+                        const b = document.createElement('button');
+                        b.dataset.oraclelayer = String(i);
+                        b.textContent = 'L' + i;
+                        if (i === (window.oracleLayerView || 1)) b.classList.add('act');
+                        b.onclick = () => setOracleLayer(i);
+                        layersBar.appendChild(b);
+                    }
+                    if (hint) layersBar.appendChild(hint);
+                }
+                layersBar.style.display = layersPerCombo > 1 ? 'flex' : 'none';
+                if (layersPerCombo <= 1 && window.oracleLayerView !== 1) setOracleLayer(1);
             }
             const lv = window.oracleLayerView || 1;
-            const layersPerCombo = data.layersPerCombo || 2;
             // Free queda fuera del oracle (priceUsd>0). Mostramos la layer elegida (default L1).
             const rowsForMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic') && r.priceUsd > 0).map(r => {
                 if (!r.layers) return r;
@@ -2651,7 +2661,7 @@
                 return Object.assign({}, r, {
                     players: L.players, state: L.state, startIn: L.startIn,
                     restartIn: L.restartIn, endsIn: L.endsIn, key: L.key,
-                    cap: (r.cap || 30) / layersPerCombo,
+                    cap: (r.cap || 30) / (r.layers.length || 1),
                     layerLabel: 'L' + L.layerIdx,
                 });
             });

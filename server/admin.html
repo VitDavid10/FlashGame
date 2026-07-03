@@ -517,6 +517,18 @@
                 <button class="b verde mini" onclick="enviarAnuncio()">Send</button>
                 <span style="color:#666; font-size: 12px;">Shows a banner to ALL players connected right now.</span>
             </div>
+            <div class="usage" id="layersPanel" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <label style="font-weight:600">Layers per room:</label>
+                    <span style="color:#666; font-size: 12px;">Turn extra layers on/off per room — Layer 1 always runs, new layers start Off. Applies live.</span>
+                    <span style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+                        <span id="layersCountLabel" style="color:#888;font-size:12px;"></span>
+                        <button class="b verde mini" id="addLayerBtn" onclick="addLayer()">+ Add layer</button>
+                    </span>
+                </div>
+                <div id="layersGrid"></div>
+                <span id="layersMsg" style="color:#888;font-size:12px;"></span>
+            </div>
             <div class="usage" id="hostAssignPanel" style="display:none; padding: 18px 20px; flex-direction: column; gap: 12px;">
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <label style="font-weight:600">Room assignment per host:</label>
@@ -545,12 +557,6 @@
                         <option value="10">10 Hz (1 in 4 · minimum)</option>
                     </select>
                     <span style="color:#666; font-size: 12px;">Applies to ALL rooms instantly. Fewer Hz = less lag under load (the client interpolates).</span>
-                </div>
-                <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                    <label style="font-weight:600">Layer 2:</label>
-                    <button id="layerPowerBtn_2" class="b" onclick="toggleLayerPower(2)" title="Powers every Layer 2 room on/off. Powering off frees CPU. Only allowed when they are empty.">L2: ON</button>
-                    <span id="layerPowerHint" style="color:#777;font-size:12px;"></span>
-                    <span style="color:#666; font-size: 12px;">Powering off Layer 2 frees CPU. Only allowed when its rooms are empty.</span>
                 </div>
                 <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight:600">AOI (Area of Interest):</label>
@@ -725,15 +731,6 @@ function verLayer(n) {
     document.getElementById('layerBtn_2').classList.toggle('act', n === 2);
     pedir();
 }
-// Apaga/enciende una layer ENTERA (todas las salas de ese idx). Apagar libera
-// CPU. Solo se puede apagar si todas están vacías — el server rechaza si no.
-let _layerOff = {};
-function toggleLayerPower(idx) {
-    const isOff = !!_layerOff[idx];
-    send({ cmd: 'setLayerActive', layerIdx: idx, active: isOff });   // si está off → encender; si on → apagar
-    setTimeout(pedir, 200);
-}
-
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtSeg(s) { if (s < 60) return s + 's'; if (s < 3600) return Math.floor(s/60) + 'm'; return Math.floor(s/3600) + 'h' + Math.floor((s%3600)/60) + 'm'; }
 function fmtMs(ms) { const s = Math.ceil(ms / 1000); const m = Math.floor(s / 60); return (m < 10 ? '0' + m : m) + ':' + ((s % 60) < 10 ? '0' + (s % 60) : (s % 60)); }
@@ -1084,7 +1081,7 @@ function cpuColor(pct) { return pct > 80 ? '#ff6b6b' : pct > 50 ? '#ffce3d' : '#
 const PERF_HIST_MAX = 120;
 const PERF_BUDGET_MS = 25;   // presupuesto del tick a 40Hz: pasarse = lag
 const _perfHist = new Map(); // key ('dir'|hostId) → { tick: [], net: [] }
-const _perfLast = new Map(); // hostId → último perf {snapshotHz, aoiEnabled, layerOff}
+const _perfLast = new Map(); // hostId → último perf {snapshotHz, aoiEnabled}
 let _perfSig = '';
 function _hist(key) { let h = _perfHist.get(key); if (!h) { h = { tick: [], net: [] }; _perfHist.set(key, h); } return h; }
 function _histPush(key, tickP95, netKBs) { const h = _hist(key); h.tick.push(tickP95); h.net.push(netKBs); if (h.tick.length > PERF_HIST_MAX) { h.tick.shift(); h.net.shift(); } }
@@ -1168,11 +1165,9 @@ function _wireHostControls(id) {
         <select id="pchz_${id}" style="background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px">
             ${[40, 20, 13, 10].map(hz => `<option value="${hz}">${hz} Hz</option>`).join('')}
         </select>
-        <button class="b" id="pcaoi_${id}"></button>
-        <button class="b" id="pcl2_${id}"></button>`;
+        <button class="b" id="pcaoi_${id}"></button>`;
     document.getElementById('pchz_' + id).onchange = function () { applySnapHzHost(id, parseInt(this.value, 10)); };
     document.getElementById('pcaoi_' + id).onclick = () => { const p = _perfLast.get(id) || {}; applyAoiHost(id, !p.aoiEnabled); };
-    document.getElementById('pcl2_' + id).onclick = () => { const p = _perfLast.get(id) || {}; applyLayerHost(id, 2, !!(p.layerOff && p.layerOff[2])); };
 }
 
 function _updateHostControls(id, p) {
@@ -1180,9 +1175,6 @@ function _updateHostControls(id, p) {
     if (sel && document.activeElement !== sel) sel.value = String(p.snapshotHz || 40);
     const aoi = document.getElementById('pcaoi_' + id);
     if (aoi) { aoi.innerText = 'AOI: ' + (p.aoiEnabled ? 'ON — disable' : 'OFF — enable'); aoi.className = 'b ' + (p.aoiEnabled ? 'verde' : 'rojo'); }
-    const off2 = !!(p.layerOff && p.layerOff[2]);
-    const l2 = document.getElementById('pcl2_' + id);
-    if (l2) { l2.innerText = 'L2: ' + (off2 ? 'OFF — power on' : 'ON — power off'); l2.className = 'b ' + (off2 ? 'rojo' : 'verde'); }
 }
 
 function _updatePerfCard(key, d) {
@@ -1228,17 +1220,74 @@ function renderPerfHosts(m) {
         _updatePerfCard(h.hostId, Object.assign({ mrow: h.alive
             ? `<span><b>${h.jugadores || 0}</b> players (<b>${h.jugadoresReales || 0}</b> real)</span><span><b>${h.salasOnline || 0}</b> active rooms</span><span><b>${h.rssMB || 0}</b> MB RAM</span>`
             : `<span style="color:var(--accent);font-family:'Russo One';letter-spacing:1px">NO RESPONSE — auto-refork in progress</span>` }, h));
-        _updateHostControls(h.hostId, h.perf || { snapshotHz: 40, aoiEnabled: true, layerOff: {} });
+        _updateHostControls(h.hostId, h.perf || { snapshotHz: 40, aoiEnabled: true });
     }
 }
 function applySnapHzHost(hostId, hz) { send({ cmd: 'snapshotHz', hz, hostIds: [hostId] }); setTimeout(pedir, 200); }
 function applyAoiHost(hostId, on) { send({ cmd: 'aoiToggle', on, hostIds: [hostId] }); setTimeout(pedir, 200); }
-function applyLayerHost(hostId, idx, active) { send({ cmd: 'setLayerActive', layerIdx: idx, active, hostIds: [hostId] }); setTimeout(pedir, 200); }
 
-// ===== Asignación manual de combos por host (Settings, solo Director/mono) =====
 // combo = "mode_price" (ej. "classic_20$"); el mode nunca lleva "_" así que basta
 // con partir en el primer guion bajo.
 function _comboParts(combo) { const i = combo.indexOf('_'); return [combo.slice(0, i), combo.slice(i + 1)]; }
+
+// ===== Layers por combo (Settings): agrupado por Layer, checkbox por combo =====
+let _layersSig = '';
+let _layersPerComboSavedLast = 2;
+function renderLayersPanel(m) {
+    const combos = m.combos || [];
+    const running = m.layersPerCombo || 2;
+    const saved = m.layersPerComboSaved || running;
+    const maxLayers = m.maxLayers || 4;
+    _layersPerComboSavedLast = saved;
+    const sig = saved + '|' + combos.join(',');
+    if (sig !== _layersSig) {
+        _layersSig = sig;
+        let html = '';
+        for (let L = 1; L <= saved; L++) {
+            const locked = L > running;
+            html += `<div style="margin-bottom:10px;">
+                <div style="font-family:'Russo One';font-size:11px;letter-spacing:1px;color:#888;margin-bottom:6px;">LAYER ${L}${L === 1 ? ' (always on)' : ''}${locked ? ' (pending restart)' : ''}</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(160px,1fr));gap:6px 14px;">
+                    ${combos.map(combo => {
+                        const [mode, price] = _comboParts(combo);
+                        const label = (mode === 'classic' ? 'Classic' : 'Arcade') + ' · ' + price;
+                        const dis = (L === 1 || locked) ? 'disabled' : '';
+                        return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:${locked ? '#666' : '#ccc'};cursor:${dis ? 'default' : 'pointer'};">
+                            <input type="checkbox" id="layerChk_${combo}_L${L}" ${L === 1 ? 'checked' : ''} ${dis} onchange="toggleLayerChk('${mode}','${price}',${L},this.checked)">
+                            ${label}
+                        </label>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        }
+        document.getElementById('layersGrid').innerHTML = html;
+    }
+    for (let L = 2; L <= saved; L++) {
+        for (const combo of combos) {
+            const chk = document.getElementById('layerChk_' + combo + '_L' + L);
+            if (!chk || document.activeElement === chk || L > running) continue;
+            const lk = combo + '_L' + L;
+            const enabled = Object.prototype.hasOwnProperty.call(m.layerEnabled || {}, lk) ? m.layerEnabled[lk] !== false : (L <= 2);
+            chk.checked = enabled;
+        }
+    }
+    const lbl = document.getElementById('layersCountLabel');
+    if (lbl) lbl.innerText = saved + ' / ' + maxLayers + ' layers' + (saved !== running ? ' (restart pending)' : '');
+    const btn = document.getElementById('addLayerBtn');
+    if (btn) btn.disabled = saved >= maxLayers;
+}
+function toggleLayerChk(mode, price, layerIdx, enabled) {
+    send({ cmd: 'setLayerEnabled', mode, price, layerIdx, enabled });
+    setTimeout(pedir, 200);
+}
+function addLayer() {
+    const n = Math.min(4, (_layersPerComboSavedLast || 2) + 1);
+    send({ cmd: 'setLayersPerCombo', n });
+    document.getElementById('layersMsg').innerText = 'Saved — restart the server to unlock Layer ' + n + '.';
+    setTimeout(pedir, 200);
+}
+
+// ===== Asignación manual de combos por host (Settings, solo Director/mono) =====
 let _hostAssignSig = '';
 function renderHostAssign(m) {
     const panel = document.getElementById('hostAssignPanel');
@@ -1596,6 +1645,7 @@ function render(m) {
     document.getElementById('perfHosts').style.display = (role === 'director') ? '' : 'none';
     const ajustesNote = document.getElementById('ajustesHostsNote');
     if (ajustesNote) ajustesNote.innerText = (role === 'director') ? '(applies to all ' + (m.hosts ? m.hosts.length : 0) + ' hosts)' : '';
+    renderLayersPanel(m);
 
     if (role === 'director') {
         renderHostCards(m);
@@ -1614,20 +1664,11 @@ function render(m) {
         aoiBtn.innerText = m.aoiEnabled ? 'ON — disable' : 'OFF — enable';
         aoiBtn.className = 'b ' + (m.aoiEnabled ? 'verde' : 'rojo');
     }
-    // Estado del botón power Layer 2 (apaga/enciende todas las L2 a la vez).
-    _layerOff = m.layerOff || {};
-    const off2 = !!_layerOff[2];
-    const lpb = document.getElementById('layerPowerBtn_2');
-    if (lpb) {
-        lpb.innerText = off2 ? 'L2: OFF' : 'L2: ON';
-        lpb.className = 'b ' + (off2 ? 'rojo' : 'verde');
-    }
-    const lph = document.getElementById('layerPowerHint');
-    if (lph) lph.innerText = off2 ? 'L2 off — 0 sims, zero CPU cost.' : '';
-    // Barra de layer tabs: solo visible cuando L2 está ON (si solo hay L1 no hace falta)
+    // Barra de layer tabs: solo hace falta si hay más de una layer desbloqueada.
     const layerBar = document.getElementById('layerTabsBar');
-    if (layerBar) layerBar.style.display = off2 ? 'none' : '';
-    if (off2 && layerActivo === 2) verLayer(1);
+    const soloL1 = (m.layersPerCombo || 2) <= 1;
+    if (layerBar) layerBar.style.display = soloL1 ? 'none' : '';
+    if (soloL1 && layerActivo !== 1) verLayer(1);
     if (m.arcadeLobbyMs   != null && document.activeElement.id !== 'g_lobby')   document.getElementById('g_lobby').value   = Math.round(m.arcadeLobbyMs   / 1000);
     if (m.arcadeRestartMs != null && document.activeElement.id !== 'g_restart') document.getElementById('g_restart').value = Math.round(m.arcadeRestartMs / 1000);
     if (m.sfxVol != null && document.activeElement.id !== 'volSfx') { const v = Math.round(m.sfxVol * 100); document.getElementById('volSfx').value = v; document.getElementById('volSfxVal').innerText = v + '%'; }

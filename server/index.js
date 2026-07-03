@@ -73,7 +73,11 @@ let enemyFx  = (typeof _glob.enemyFx  === 'boolean') ? _glob.enemyFx : true;
 // el cliente lo aleja al crecer con su curva. Editable en vivo desde admin. Mayor = más cerca.
 const _clampZoom = v => Math.max(0.3, Math.min(4, v));
 let baseZoom = (typeof _glob.baseZoom === 'number') ? _clampZoom(_glob.baseZoom) : 1.4;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom }), () => {}); }
+// Nº de layers "guardado" desde el panel (botón + Add layer). Aparte de LAYERS_PER_COMBO
+// (el que corre AHORA, fijado al arrancar) para poder avisar "pendiente de reinicio"
+// sin perder el valor guardado cada vez que se toca otro ajuste global.
+let layersPerComboSaved = Math.max(1, Math.min(4, (_glob.layersPerCombo | 0) || 2));
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, layersPerCombo: layersPerComboSaved }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -185,10 +189,9 @@ function pushSettingsToHosts() {
     const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom };
     for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('settingsSync', patch); }
 }
-// "Rendimiento" SÍ admite override por host (comparar Hz/AOI/layers entre los
-// dos). hostIds opcional: si no se manda (o viene vacío), afecta a TODOS.
-// Devuelve [{hostId, ok, reason?}] — el único caso con reason es layerActive
-// bloqueado por salas no vacías.
+// "Rendimiento" SÍ admite override por host (comparar Hz/AOI entre los dos).
+// hostIds opcional: si no se manda (o viene vacío), afecta a TODOS.
+// Devuelve [{hostId, ok, reason?}].
 async function pushPerfToHosts(hostIds, patch) {
     const ids = (Array.isArray(hostIds) && hostIds.length) ? hostIds : [...hostProcs.keys()];
     return Promise.all(ids.map(async (id) => {
@@ -207,17 +210,28 @@ const ROOM_CAPS = { classic: 35, arcade: 25 };
 // el matchmaker (pickLayer) te mete en L1 hasta LLENARLA (clients.size >= maxPlayers),
 // y solo entonces pasa a L2. NO hay umbral del 90%: es 100% estricto. Las layers
 // SON INVISIBLES para el cliente: solo ve "Free", "5$", etc. — el server decide.
-// 2 layers × 2 modos × 5 precios = 20 salas pre-creadas al arrancar.
-const LAYERS_PER_COMBO = parseInt(process.env.LAYERS_PER_COMBO, 10) || 2;
+// MAX_LAYERS: tope duro de layers por combo (panel "+ Add layer"). LAYERS_PER_COMBO
+// es el nº de slots ACTUALMENTE desbloqueados (persistido en globalsettings.json,
+// editable desde Settings; requiere "Restart Server" para aplicarse, igual que el
+// reparto por host — está horneado en los bucles de arranque de cada proceso).
+const MAX_LAYERS = 4;
+const LAYERS_PER_COMBO = Math.max(1, Math.min(MAX_LAYERS, parseInt(process.env.LAYERS_PER_COMBO, 10) || layersPerComboSaved));
 function comboKeyOf(mode, roomName) { return mode + '_' + roomName; }
 function layerKeyOf(mode, roomName, layerIdx) { return mode + '_' + roomName + '_L' + layerIdx; }
-// Estado on/off por layerIdx. Si layerOff[i] === true, las salas PREMIUM de esa
-// layer no existen en rooms (sus sims borradas del Map → no consumen tick).
-// Las salas FREE NUNCA se apagan: siempre tienen sus N layers activas porque
-// son las que más gente atraen y deben mantener capacidad asegurada.
-const layerOff = {};
-function isLayerOffForPrice(price, layerIdx) {
-    return !!layerOff[layerIdx] && priceOf(price) > 0;
+// Habilitado por combo+layer (persistido en layerassign.json). Ausente = default:
+// L1/L2 encendidas (comportamiento de siempre), L3/L4 apagadas hasta que se activen
+// a mano — así "+ Add layer" no enciende de golpe 10 combos nuevos sin querer.
+const LAYERASSIGN_FILE = path.join(__dirname, 'layerassign.json');
+let layerEnabled = loadJson(LAYERASSIGN_FILE, {});
+function saveLayerEnabled() { fs.writeFile(LAYERASSIGN_FILE, JSON.stringify(layerEnabled), () => {}); }
+function isLayerEnabled(mode, price, layerIdx) {
+    const lk = layerKeyOf(mode, price, layerIdx);
+    return Object.prototype.hasOwnProperty.call(layerEnabled, lk) ? layerEnabled[lk] !== false : layerIdx <= 2;
+}
+function enabledLayerCount(mode, price) {
+    let n = 0;
+    for (let i = 1; i <= LAYERS_PER_COMBO; i++) if (isLayerEnabled(mode, price, i)) n++;
+    return n;
 }
 
 const rooms = new Map();   // layerKey → room
@@ -788,7 +802,7 @@ function registerHostHandlers(hostEntry) {
 // existentes (pickLayer/getOrCreateRoom/buildSim/initLayers) no cambien.
 const gameHost = createGameHost({
     rooms,
-    comboKeyOf, layerKeyOf, isLayerOffForPrice,
+    comboKeyOf, layerKeyOf, isLayerEnabled,
     rulesOf, minRealOf, targetPopOf, maxPlayersOf, lobbyMsOf,
     log,
     onRulesDirty: () => { rulesDirty = true; },
@@ -845,7 +859,7 @@ function applyRestartMode(mode) {
 // de los hosts). Cada comando opera solo sobre `rooms`/clientes LOCALES: en el
 // Director son no-op (salas vacías) y el reenvío a todos los hosts es seguro —
 // el host que no tiene la sala/jugador simplemente no encuentra nada.
-const ROOM_ADMIN_CMDS = new Set(['kick', 'power', 'rules', 'forceStart', 'restart', 'kickAll', 'shutdown', 'encender']);
+const ROOM_ADMIN_CMDS = new Set(['kick', 'power', 'rules', 'forceStart', 'restart', 'kickAll', 'shutdown', 'encender', 'setLayerEnabled']);
 function applyRoomAdminCmd(msg) {
     if (msg.cmd === 'kick' && msg.playerId) {
         const found = findClient(msg.playerId);
@@ -931,47 +945,41 @@ function applyRoomAdminCmd(msg) {
             logAdmin(lk, 'Encendió sala', '');
             log(`ADMIN encendió sala: ${lk}`);
         }
+    } else if (msg.cmd === 'setLayerEnabled' && msg.mode && msg.price != null && msg.layerIdx) {
+        if (applySetLayerEnabled(msg.mode, msg.price, msg.layerIdx | 0, !!msg.enabled)) {
+            const lk = layerKeyOf(msg.mode, msg.price, msg.layerIdx | 0);
+            logAdmin(lk, msg.enabled ? 'Encendió layer' : 'Apagó layer', '');
+            log(`ADMIN ${msg.enabled ? 'encendió' : 'apagó'} layer: ${lk}`);
+        }
     }
 }
 // Reenvío del Director a todos los hosts vivos (payload plano, sin la admin key).
 function relayRoomCmdToHosts(msg) {
-    const p = { cmd: msg.cmd, room: msg.room, playerId: msg.playerId, name: msg.name, args: msg.args, rules: msg.rules };
+    const p = {
+        cmd: msg.cmd, room: msg.room, playerId: msg.playerId, name: msg.name, args: msg.args, rules: msg.rules,
+        mode: msg.mode, price: msg.price, layerIdx: msg.layerIdx, enabled: msg.enabled
+    };
     for (const h of hostProcs.values()) if (h.alive) h.ipc.notify('adminRoomCmd', p);
 }
-// Apaga/enciende TODAS las layers con ese idx (ej. todas las L2) EN ESTE PROCESO.
-// Devuelve { ok:true, n } o { ok:false, reason }.
-function applySetLayerActive(idx, active) {
-    if (idx < 1 || idx > LAYERS_PER_COMBO) return { ok: false, reason: 'idx inválido' };
-    if (!active) {
-        // Apagar: solo si TODAS las salas premium de ese idx están vacías.
-        const targets = [];
-        let blocked = null;
-        for (const r of rooms.values()) {
-            if (r.layerIdx !== idx) continue;
-            if (priceOf(r.roomName) === 0) continue;   // Free intocable
-            if (r.clients.size > 0) { blocked = r.key; break; }
-            targets.push(r);
-        }
-        if (blocked) return { ok: false, reason: 'Hay jugadores en ' + blocked + '. Espera a que se vacíe.' };
-        for (const r of targets) {
-            rooms.delete(r.key);
-            for (const [tok, info] of resumeTokens) { if (info.roomKey === r.key) resumeTokens.delete(tok); }
-        }
-        layerOff[idx] = true;
-        return { ok: true, n: targets.length };
+// Apaga/enciende UNA layer de UN combo concreto EN ESTE PROCESO (solo si lo posee).
+// Persiste la elección (layerassign.json) para que sobreviva a reinicios. La Layer 1
+// no se puede apagar: un combo activo siempre necesita al menos una instancia.
+// Devuelve true si aplicó el cambio en ESTE proceso (para no loguear 3 veces lo
+// mismo cuando el Director reenvía el cmd a los dos hosts y solo uno es el dueño).
+function applySetLayerEnabled(mode, price, layerIdx, enabled) {
+    if (!(layerIdx >= 1 && layerIdx <= LAYERS_PER_COMBO)) return false;
+    if (layerIdx === 1 && !enabled) return false;
+    if (ownsCombo && !ownsCombo(mode, price)) return false;
+    const lk = layerKeyOf(mode, price, layerIdx);
+    if (enabled) {
+        getOrCreateRoom(lk, mode, price);
+    } else {
+        const r = rooms.get(lk);
+        if (r) shutdownRoom(r, 'admin');
     }
-    // Encender: recrear las layers PREMIUM de ese idx que pertenezcan a este proceso.
-    let n = 0;
-    for (const mode of CATALOG_MODES) {
-        for (const price of PRICES) {
-            if (priceOf(price) === 0) continue;   // Free ya existen
-            if (ownsCombo && !ownsCombo(mode, price)) continue;
-            getOrCreateRoom(layerKeyOf(mode, price, idx), mode, price);
-            n++;
-        }
-    }
-    layerOff[idx] = false;
-    return { ok: true, n };
+    layerEnabled[lk] = enabled;
+    saveLayerEnabled();
+    return true;
 }
 // Aplica un parche de ajustes "Ajustes" (no de rendimiento) recibido por IPC del
 // Director en un host. Mismos clamps que los cmd admin directos.
@@ -990,9 +998,6 @@ function applyPerfPatch(p) {
     if (!p) return { ok: true };
     if (typeof p.snapshotHz === 'number') SNAPSHOT_EVERY = hzToEvery(p.snapshotHz | 0);
     if (typeof p.aoiEnabled === 'boolean') AOI_ENABLED = p.aoiEnabled;
-    if (p.layerActive && typeof p.layerActive.idx === 'number') {
-        return applySetLayerActive(p.layerActive.idx | 0, !!p.layerActive.active);
-    }
     return { ok: true };
 }
 // Resumen ligero de este proceso para el fan-out que hace el Director (Fase 4b):
@@ -1022,7 +1027,7 @@ function buildRoomsSummary() {
         // proceso. tick/lag salen del ring buffer tickHist (últimos ~6s a 40Hz).
         tick: pStats(tickHist.total, tickHist.n), lag: pStats(tickHist.lag, tickHist.n),
         netKBs, rssMB: Math.round(process.memoryUsage().rss / 1048576),
-        perf: { snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY), aoiEnabled: AOI_ENABLED, layerOff: Object.assign({}, layerOff) },
+        perf: { snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY), aoiEnabled: AOI_ENABLED },
     };
 }
 
@@ -1380,7 +1385,7 @@ function buildAdminRoomList() {
             if (PW_ROLE === 'host' && ownsCombo && !ownsCombo(mode, price)) continue;
             const ck = comboKeyOf(mode, price);
             for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
-                if (isLayerOffForPrice(price, i)) continue;   // premium con layer apagada
+                if (!isLayerEnabled(mode, price, i)) continue;   // layer apagada para ESTE combo
                 const lk = layerKeyOf(mode, price, i);
                 keysSeen.add(lk);
                 list.push(roomEntry(lk, ck, mode, price, i, rooms.get(lk) || null));
@@ -1426,10 +1431,12 @@ function buildAdminState() {
         t: 'adminState',
         role: PW_ROLE,
         minPlayers: MIN_PLAYERS,
+        combos: listCombos(CATALOG_MODES, PRICES),
         snapshotHz: Math.round(TICK_HZ / SNAPSHOT_EVERY),
         aoiEnabled: AOI_ENABLED,
         layersPerCombo: LAYERS_PER_COMBO,
-        layerOff: Object.assign({}, layerOff),   // { 2: true } si L2 está apagada
+        layersPerComboSaved, maxLayers: MAX_LAYERS,
+        layerEnabled: Object.assign({}, layerEnabled),
         arcadeRestartMs, arcadeLobbyMs,
         sfxVol, musicVol, enemyFx, baseZoom,
         serverCpu: serverCpuPct,
@@ -1501,6 +1508,10 @@ async function buildDirectorAdminState() {
         running: Object.fromEntries(SHARD.comboToHost),
         saved: loadHostAssign()
     };
+    // El Director no aplica los cambios de layer (solo los hosts, dueños de sus
+    // combos): se relee el fichero para reflejar lo que el host que sí posee el
+    // combo acaba de guardar, en vez de la copia en memoria del propio Director.
+    base.layerEnabled = loadJson(LAYERASSIGN_FILE, {});
     return base;
 }
 
@@ -1665,12 +1676,12 @@ const httpServer = http.createServer(async (req, res) => {
                     list.push(entry || {
                         key: ck, mode, room: price, priceUsd: priceOf(price),
                         pillFee: entryFeePill(ck, null), locked: false, players: 0,
-                        needed: minRealOf(ck), cap: maxPlayersOf(ck) * LAYERS_PER_COMBO,
+                        needed: minRealOf(ck), cap: maxPlayersOf(ck) * enabledLayerCount(mode, price),
                         state: 'offline', startIn: null, restartIn: null, endsIn: null,
                         roomName: price, layers: [],
                     });
                 }
-                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff), sfxVol, musicVol, enemyFx, baseZoom }) };
+                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
             res.end(_roomsCache.body);
@@ -1686,7 +1697,7 @@ const httpServer = http.createServer(async (req, res) => {
             const ck = mode + '_' + price;
             const layers = [];
             for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
-                if (isLayerOffForPrice(price, i)) continue;
+                if (!isLayerEnabled(mode, price, i)) continue;
                 const r = rooms.get(layerKeyOf(mode, price, i));
                 if (!r) continue;
                 layers.push({
@@ -1711,7 +1722,7 @@ const httpServer = http.createServer(async (req, res) => {
                 locked: !!(pick && pick.clients.size > 0),
                 players,                                  // total del combo (todas las layers)
                 needed: minRealOf(ck),
-                cap: maxPlayersOf(ck) * LAYERS_PER_COMBO, // capacidad TOTAL del combo
+                cap: maxPlayersOf(ck) * enabledLayerCount(mode, price), // capacidad TOTAL del combo
                 state: pick ? pick.state : 'offline',
                 startIn: (pick && pick.startAt) ? Math.max(0, pick.startAt - now) : null,
                 restartIn: (pick && pick.state === 'ended' && pick.restartAt) ? Math.max(0, pick.restartAt - now) : null,
@@ -1721,7 +1732,7 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, layerOff: Object.assign({}, layerOff), sfxVol, musicVol, enemyFx, baseZoom }));
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom }));
         return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
@@ -2078,32 +2089,14 @@ wss.on('connection', (ws, req) => {
                     logAdmin('-', 'AOI ' + (AOI_ENABLED ? 'ACTIVADO' : 'DESACTIVADO'), '');
                     log(`ADMIN AOI: ${AOI_ENABLED ? 'ON' : 'OFF'}`);
                 }
-            } else if (msg.cmd === 'setLayerActive' && typeof msg.layerIdx === 'number') {
-                // Apaga/enciende TODAS las layers con ese idx (ej. todas las L2).
-                // Apagar: borra las salas del Map → dejan de consumir tick/RAM.
-                //         Solo permitido si TODAS están vacías (no se echa a nadie).
-                // Encender: las recrea con getOrCreateRoom (vuelven al matchmaker).
-                const idx = msg.layerIdx | 0;
-                const active = !!msg.active;
-                if (PW_ROLE === 'director') {
-                    logAdmin('-', `Layer ${idx} ${active ? 'ON' : 'OFF'} (hosts)`, '');
-                    log(`ADMIN setLayerActive idx=${idx} active=${active} (reenviado a hosts)`);
-                    pushPerfToHosts(msg.hostIds, { layerActive: { idx, active } }).then(async (results) => {
-                        const blocked = results.find(r => !r.ok);
-                        if (blocked) ws.send(JSON.stringify({ t: 'layerActionError', reason: `Host ${blocked.hostId}: ${blocked.reason}` }));
-                        ws.send(JSON.stringify(await buildDirectorAdminState()));
-                    });
-                } else {
-                    const r = applySetLayerActive(idx, active);
-                    if (!r.ok) {
-                        ws.send(JSON.stringify({ t: 'layerActionError', reason: r.reason }));
-                    } else if (!active) {
-                        logAdmin('-', 'Apagó Layer ' + idx + ' premium', r.n + ' salas');
-                        log(`ADMIN apagó Layer ${idx} premium: ${r.n} salas borradas (Free intocable)`);
-                    } else {
-                        logAdmin('-', 'Encendió Layer ' + idx + ' premium', r.n + ' salas');
-                        log(`ADMIN encendió Layer ${idx} premium: ${r.n} salas recreadas`);
-                    }
+            } else if (msg.cmd === 'setLayersPerCombo' && typeof msg.n === 'number') {
+                // Sube (o baja) el tope de layers desbloqueadas. Requiere "Restart Server":
+                // LAYERS_PER_COMBO está horneado en los bucles de arranque de cada proceso.
+                if (PW_ROLE !== 'host') {
+                    layersPerComboSaved = Math.max(1, Math.min(MAX_LAYERS, msg.n | 0));
+                    saveGlobal();
+                    logAdmin('-', 'Cambió el nº de layers guardado', String(layersPerComboSaved));
+                    log(`ADMIN guardó layersPerCombo=${layersPerComboSaved} — hace falta reiniciar el servidor para aplicarlo`);
                 }
             } else if (msg.cmd === 'kickAllMode' && msg.mode) {
                 const n = applyKickAllMode(msg.mode);

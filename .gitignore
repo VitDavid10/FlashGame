@@ -15,6 +15,7 @@ server/daily.json
 server/globalsettings.json
 server/faucet.json
 server/hostassign.json
+server/layerassign.json
 
 # Notas internas de desarrollo
 tasks/
