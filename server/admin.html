@@ -1056,7 +1056,10 @@ function renderHostTabs(m) {
             <span style="color:#889;font-size:12px"><b style="color:#fff">${num(h.jugadores || 0)}</b> players</span>
             <span style="color:#889;font-size:12px"><b style="color:#fff">${h.salasOnline || 0}</b> rooms with people</span>
             <span style="color:#889;font-size:12px">CPU <b style="color:${cpuColor(h.cpu || 0)}">${h.cpu != null ? h.cpu + '%' : '—'}</b></span>`;
-        const roomsH = h.adminRooms || [];
+        // Solo salas ENCENDIDAS: L1 siempre existe; L2+ solo aparece cuando el
+        // matchmaker la crea al llenarse la anterior. Las 'offline' (aún sin crear)
+        // no se pintan — nada de tarjetas grises con "Power on".
+        const roomsH = (h.adminRooms || []).filter(r => r.state !== 'offline');
         pintarGrid('hostGrid_' + h.hostId + '_classic', roomsH.filter(r => r.mode === 'classic'));
         pintarGrid('hostGrid_' + h.hostId + '_arcade', roomsH.filter(r => r.mode === 'arcade'));
     }
