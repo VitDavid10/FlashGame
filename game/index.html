@@ -2452,15 +2452,21 @@
             if (shouldShow) this.refresh();
         },
         async connect() {
-            const p = GameWallet.getProvider('phantom');
-            if (!p) { showSystemMsg('Install Phantom wallet to connect.', 'WALLET'); return; }
+            // Igual que App.Wallet en la web principal (varias wallets soportadas);
+            // antes solo probaba 'phantom' y quien usara Solflare/Backpack sin haber
+            // conectado antes en la web (el ensure() silencioso SÍ soporta las 3, por
+            // eso "solo desde la web" parecía funcionar) se quedaba sin poder conectar
+            // aquí. Prueba en orden y usa la primera wallet instalada que encuentre.
+            let name = null, p = null;
+            for (const n of ['phantom', 'solflare', 'backpack']) { const prov = GameWallet.getProvider(n); if (prov) { name = n; p = prov; break; } }
+            if (!p) { showSystemMsg('Install Phantom, Solflare or Backpack to connect.', 'WALLET'); return; }
             try {
                 const r = await p.connect();
                 const pk = (r && r.publicKey) ? r.publicKey : p.publicKey;
                 if (!pk) return;
                 await p.signMessage(new TextEncoder().encode('Sign in to PillWars'), 'utf8');
                 GameWallet.address = pk.toString(); GameWallet.provider = p;
-                try { localStorage.setItem('pw_wallet', 'phantom'); localStorage.setItem('pw_addr', pk.toString()); } catch (e) {}
+                try { localStorage.setItem('pw_wallet', name); localStorage.setItem('pw_addr', pk.toString()); } catch (e) {}
                 this.refresh();
             } catch (e) { showSystemMsg('Sign-in cancelled.', 'WALLET'); }
         },
@@ -3223,17 +3229,32 @@
                 cancelMatchmakingUX();
                 // La partida empieza → te mete directo (loading → GO). Sin FINDING/FOUND.
                 enterOnlineGame(ws, msg, false);
-            } else if (msg.t === 'noSlot') {
-                // Todas las layers del combo llenas (todas a tope reales).
-                // No se cobra pago: el server rechaza ANTES de tocar la firma.
-                restoreBtn(); try { ws.close(); } catch (err) {}
-                showSystemMsg('Room ' + (msg.roomName || '') + ' is at maximum capacity right now. No payment was taken. Try another room or wait a moment.', 'ROOM FULL');
-            } else if (msg.t === 'roomFull') {
-                restoreBtn(); try { ws.close(); } catch (err) {}
-                showSystemMsg('Room ' + (msg.roomName || '') + ' is full (max ' + (msg.max || '') + ' players). Try another room or come back in a moment.', 'ROOM FULL');
+            } else if (msg.t === 'noSlot' || msg.t === 'roomFull') {
+                // Todas las layers del combo están llenas o a punto de acabar en
+                // ESTE instante — condición transitoria del matchmaker, no un
+                // fallo real. El server no cierra el socket para esto: se
+                // reintenta solo sobre el MISMO ws mientras el jugador sigue
+                // tranquilo en el preview offline (el banner FINDING ROOM ya
+                // está en pantalla y sigue igual). Nada de popup ni de menú.
+                restoreBtn();
+                const retries = (netState._noSlotRetries = (netState._noSlotRetries || 0) + 1);
+                if (retries > 24) {   // ~60s reintentando en silencio; si sigue sin hueco, avisar de verdad
+                    showSystemMsg('Room ' + (msg.roomName || '') + ' is still full. Try another room in a moment.', 'ROOM FULL');
+                } else {
+                    setTimeout(() => {
+                        if (!netState || netState.ws !== ws || ws.readyState !== WebSocket.OPEN) return;
+                        ws.send(JSON.stringify(netState.joinMsg));
+                    }, 2500);
+                }
             } else if (msg.t === 'payRequired') {
-                restoreBtn(); try { ws.close(); } catch (err) {}
-                showSystemMsg('Entry payment could not be verified (' + (msg.reason || '') + '). Make sure you have enough in-GAME balance and try again.', 'PAYMENT REQUIRED');
+                // abandonNet (no showSystemMsg+close sueltos): cerrar el socket
+                // aquí disparaba ws.onclose, que --al no encontrar netState.token--
+                // pisaba este mensaje con "Could not resume the game." y encima
+                // volvía al menú por su cuenta. abandonNet ya deja netState=null
+                // ANTES de que el evento 'close' llegue, así que onclose no actúa.
+                try { ws.close(); } catch (err) {}
+                restoreBtn();
+                abandonNet('Entry payment could not be verified (' + (msg.reason || '') + '). Make sure you have enough in-GAME balance and try again.');
             } else if (msg.t === 'roomShorten') {
                 // Arcade con pocos jugadores: la sala se reinicia pronto. El top timer
                 // ya se acorta solo (snapshots) y el contador grande sale en los últimos 5s.
@@ -3516,16 +3537,27 @@
             // Tiempo de sala: local (roomTimers) u online (el servidor lo manda en cada snapshot)
             let tl, dur;
             if (sim.isRemote) { tl = sim.remainingMs(); if (tl == null) tl = 0; dur = sim.duration; }
-            else { tl = roomTimers[currentGameMode + '_' + currentServer] - Date.now(); dur = GAME_DURATION_MS; if (tl <= 0) { finishGameSuccess(); return; } }
+            else {
+                tl = roomTimers[currentGameMode + '_' + currentServer] - Date.now(); dur = GAME_DURATION_MS;
+                // practiceMode = preview offline mientras se busca partida real (FINDING
+                // ROOM/lobby): es un modo de pruebas sin límite de tiempo, no una partida
+                // de verdad. Sin esto, una búsqueda larga terminaba el preview solo con
+                // finishGameSuccess() al agotarse el reloj local de 3:50.
+                if (tl <= 0 && !practiceMode) { finishGameSuccess(); return; }
+            }
             // Últimos 5s: cuenta atrás grande estilo GO! (+ sonido 5s) y se oculta el contador normal.
-            if (tl > 0 && tl <= 5000 && !isSpectating) {
+            if (practiceMode) {
+                els.timer.innerText = "";
+            } else if (tl > 0 && tl <= 5000 && !isSpectating) {
                 els.timer.innerText = "";
                 if (!_endCdPlayed) { _endCdPlayed = true; SoundManager.play('contador'); }
                 showCountdownNumber(Math.ceil(tl / 1000), 'MATCH ENDING');
             } else {
                 let min = Math.floor(tl/60000), sec = Math.floor((tl%60000)/1000); els.timer.innerText = (min<10?"0"+min:min) + ":" + (sec<10?"0"+sec:sec);
             }
-            if(!isGodMode && !isSpectating && tl > 0) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = (pickTimer * 10) + "%"; if(pickTimer <= 0) { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } }
+            // tl negativo en preview (reloj local "vencido" sin partida real) no debe
+            // parar el pickup de skills: elapsed sigue creciendo bien más allá de dur.
+            if(!isGodMode && !isSpectating && (tl > 0 || practiceMode)) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = (pickTimer * 10) + "%"; if(pickTimer <= 0) { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } }
         } else { els.timer.innerText = ""; }
 
         if (isGodMode) { els.debugHud.style.display = 'block'; } else { els.debugHud.style.display = 'none'; }
