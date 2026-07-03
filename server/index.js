@@ -262,6 +262,19 @@ function logConnection(entry) {
     porPaisMap[g.code].ips.add(entry.ip);
 }
 
+// Log de transacciones de dinero (entradas pagadas, cashouts, premios, depósitos,
+// retiros). RAM (cap 500) + fichero, mismo patrón que adminLog. Vive donde vive el
+// warbank (mono/director): los hosts no mueven dinero directamente.
+const TXLOG_FILE = path.join(__dirname, 'transactions.log');
+let txLog = [];
+try { if (fs.existsSync(TXLOG_FILE)) txLog = fs.readFileSync(TXLOG_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean).slice(-500); } catch (e) {}
+function logTx(type, wallet, amount, detail) {
+    const entry = { fecha: new Date().toISOString(), type, wallet: wallet || '-', amount: amount | 0, detail: detail || '' };
+    txLog.push(entry);
+    if (txLog.length > 500) txLog = txLog.slice(-500);
+    fs.appendFile(TXLOG_FILE, JSON.stringify(entry) + '\n', () => {});
+}
+
 // Log de acciones de administración (god/masa/echar/reiniciar/...), por sala
 const ADMINLOG_FILE = path.join(__dirname, 'adminlog.log');
 let adminLog = [];
@@ -558,7 +571,7 @@ const directorLocal = {
             if (p.mode === 'classic' && p.carry > 0 && p.state === 'playing' && p.payWallet) {
                 const fee = Math.floor(p.carry * classicExitFeePct(p.kills) / 100);
                 const net = p.carry - fee;
-                if (net > 0) warbank.credit(p.payWallet, net);
+                if (net > 0) { warbank.credit(p.payWallet, net); logTx('cashout', p.payWallet, net, p.comboKey); }
                 log(`Cashout classic: ${p.payWallet.slice(0, 6)}… +${net} PILL (carry ${p.carry}, fee ${fee} descartado)`);
                 if (p.cid && p.kills >= 2) dailyquests.recordEvent(p.cid, 'classic_safe_exit', 1);
             }
@@ -566,6 +579,7 @@ const directorLocal = {
         // Reembolso de la entrada si la partida NO había empezado (paidFee>0 = no consumida).
         if (p.paidFee > 0 && p.payWallet && p.state === 'waiting') {
             warbank.credit(p.payWallet, p.paidFee);
+            logTx('refund', p.payWallet, p.paidFee, p.comboKey + ' (match never started)');
             log(`Reembolso de entrada (sala no empezó): ${p.payWallet.slice(0, 6)}… +${p.paidFee} PILL`);
         }
     },
@@ -603,6 +617,7 @@ const directorLocal = {
             if (warbank.getBalance(w) < fee) return { ok: false, reason: 'saldo WAR insuficiente', balance };
             warbank.debit(w, fee);
             warbank.creditDeposit(w, 0, sigKey);   // marca la firma como usada (anti-replay)
+            logTx('entry', w, -fee, key);
             logAdmin(key, 'Entrada pagada', w.slice(0, 6) + '… -' + fee + ' PILL');
             log(`Entrada pagada: ${w.slice(0, 6)}… -${fee} PILL → ${key}`);
             return { ok: true, payWallet: w, fee, tester };
@@ -615,6 +630,7 @@ const directorLocal = {
         const st_ = statsOf(comboKey); st_.entradas++; if (!tester) st_.entradasReal++; statsDirty = true;
         if (name && !tester) { const st = pstatOf(name); st.name = name; st.partidas++; st.lastSeen = new Date().toISOString(); st.lastIp = ip; st.isReal = true; playersDirty = true; }
         if (cid) dailyquests.recordEvent(cid, mode === 'classic' ? 'classic_match' : 'arcade_match', 1);
+        recentJoins.set((name || '') + '|' + ip, { ts: Date.now(), tester: !!tester });
         if (!tester) logConnection({ fecha: new Date().toISOString(), nombre: name || '(sin nombre)', ip, sala: key, id: playerId });
     },
 };
@@ -627,7 +643,7 @@ const directorLocal = {
 // Lo LOCAL de la partida (carry, pot, sendEcon, entryFeePill) NO vive aquí: es del Host.
 const econLocal = {
     // Único dinero persistente que cruza al Director: acredita saldo WAR.
-    credit(wallet, amount) { if (wallet && amount > 0) warbank.credit(wallet, amount); },
+    credit(wallet, amount) { if (wallet && amount > 0) { warbank.credit(wallet, amount); logTx('prize', wallet, amount, ''); } },
     // Muerte de un jugador: stats de la sala (combo) y del jugador.
     playerDeath(comboKey, tester, name) {
         const ds = statsOf(comboKey); ds.muertes++; if (!tester) ds.muertesReal++; statsDirty = true;
@@ -1111,18 +1127,22 @@ function buildSnapshotFor(room, viewerId, box) {
 // (connLog ya excluye testers, así que es gente real). Series: una muestra por
 // minuto con los totales acumulados y los conectados del momento; el panel dibuja
 // la evolución con los deltas. Solo en RAM: se resetea al reiniciar el proceso.
-function activosUltimaHora() {
+// Joins recientes EN RAM, incluidos testers/bots de stress (a diferencia de
+// connLog, que los excluye). El toggle "real only" del panel decide cuál mostrar.
+const recentJoins = new Map();   // (nombre|ip) → { ts, tester }
+function activosUltimaHora(includeTesters) {
     const desde = Date.now() - 3600000;
     const vistos = new Set();
-    for (let i = connLog.length - 1; i >= 0; i--) {
-        const c = connLog[i];
-        if (new Date(c.fecha).getTime() < desde) break;
-        vistos.add((c.nombre || '') + '|' + c.ip);
+    for (const [k, v] of recentJoins) {
+        if (v.ts < desde) { recentJoins.delete(k); continue; }   // poda perezosa
+        if (!includeTesters && v.tester) continue;
+        vistos.add(k);
     }
     // Los que siguen conectados también cuentan aunque entraran hace >1h
-    // (connLog solo registra el JOIN). Testers fuera, como en el propio log.
+    // (recentJoins solo registra el JOIN).
     for (const room of rooms.values()) for (const cli of room.clients.values()) {
-        if (!cli.isTester) vistos.add((cli.name || '') + '|' + cli.ip);
+        if (!includeTesters && cli.isTester) continue;
+        vistos.add((cli.name || '') + '|' + cli.ip);
     }
     return vistos.size;
 }
@@ -1150,7 +1170,10 @@ function sampleAdminSeries() {
         entradas, muertes, dinero, entradasReal, muertesReal, dineroReal,
         conectados: [...rooms.values()].reduce((s, r) => s + r.clients.size, 0),
         salasOnline: [...rooms.values()].filter(r => r.clients.size > 0).length,
-        activos: activosUltimaHora()
+        activos: activosUltimaHora(true),
+        activosReal: activosUltimaHora(false),
+        unicos: Object.keys(playerStats).length,
+        unicosReal: Object.values(playerStats).filter(p => p.isReal).length
     });
     if (adminSeries.length > SERIES_MAX) adminSeries.shift();
 }
@@ -1232,6 +1255,7 @@ function buildAdminState() {
     const ranking = _rankingCache;
     // Ranking de países: JUGADORES DISTINTOS (IPs únicas) por país, no entradas
     const paises = Object.values(porPaisMap)
+        .filter(p => p.code !== 'LOCAL')   // la red local no es un país: fuera del panel
         .map(p => ({ code: p.code, name: p.name, jugadores: p.ips.size }))
         .sort((a, b) => b.jugadores - a.jugadores);
     // Últimas conexiones: una sola entrada por IP (la más reciente)
@@ -1265,7 +1289,8 @@ function buildAdminState() {
             jugadoresReales: [...rooms.values()].reduce((s, r) => { for (const c of r.clients.values()) if (!c.isTester) s++; return s; }, 0),
             jugadoresUnicos: Object.keys(playerStats).length,
             jugadoresUnicosReal: Object.values(playerStats).filter(p => p.isReal).length,
-            activosHora: activosUltimaHora(),
+            activosHora: activosUltimaHora(true),
+            activosHoraReal: activosUltimaHora(false),
         },
         series: adminSeries,
         paisesNow: paisesConectados(),
@@ -1275,7 +1300,8 @@ function buildAdminState() {
         rankingStale: _rankingUpdatedAt === 0,
         paises,
         historial,
-        adminLog: adminLog.slice(-60).reverse()
+        adminLog: adminLog.slice(-60).reverse(),
+        transacciones: txLog.slice(-200).reverse()
     };
 }
 
@@ -1559,6 +1585,7 @@ const httpServer = http.createServer(async (req, res) => {
             if (!v.ok) { res.end(JSON.stringify({ ok: false, reason: v.reason || 'no verificado' })); return; }
             if (warbank.sigUsed(sig)) { res.end(JSON.stringify({ ok: false, reason: 'depósito ya acreditado' })); return; }
             const saldo = warbank.creditDeposit(wallet, v.amount, sig);
+            logTx('deposit', wallet, v.amount, 'on-chain ' + sig.slice(0, 8) + '…');
             logAdmin('-', 'Depósito $PILL', wallet.slice(0, 6) + '… +' + v.amount);
             log(`Depósito acreditado: ${wallet.slice(0, 6)}… +${v.amount} PILL → saldo ${saldo}`);
             res.end(JSON.stringify({ ok: true, credited: v.amount, warBalance: saldo }));
@@ -1591,11 +1618,13 @@ const httpServer = http.createServer(async (req, res) => {
             try {
                 const sig = await solana.withdraw(wallet, amount);
                 const saldo = warbank.getBalance(wallet);
+                logTx('withdraw', wallet, -amount, 'tx ' + sig.slice(0, 8) + '…');
                 logAdmin('-', 'Retiro $PILL', wallet.slice(0, 6) + '… -' + amount);
                 log(`Retiro: ${wallet.slice(0, 6)}… -${amount} PILL → saldo ${saldo} (tx ${sig.slice(0, 8)}…)`);
                 res.end(JSON.stringify({ ok: true, withdrawn: amount, warBalance: saldo, sig }));
             } catch (e) {
                 warbank.credit(wallet, amount);   // refund del saldo WAR si el envío falló
+                logTx('refund', wallet, amount, 'withdraw failed on-chain');
                 log(`Retiro FALLÓ (${wallet.slice(0, 6)}…): ${e.message} — saldo devuelto`);
                 res.end(JSON.stringify({ ok: false, reason: 'envío on-chain falló: ' + e.message }));
             }

@@ -118,7 +118,6 @@
 
     /* Ranking de países */
     .ccode { display: inline-flex; min-width: 34px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 5px; background: #1a1a1a; border: 1px solid #2c2c2c; font-family: 'Russo One'; font-size: 10px; letter-spacing: 1px; color: var(--primary); }
-    .flag { font-size: 16px; margin-right: 6px; vertical-align: -2px; }
 
     /* Toasts (avisos no bloqueantes) */
     #toasts { position: fixed; top: 80px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 360px; pointer-events: none; }
@@ -321,9 +320,9 @@
     <div class="login-card" id="loginCard">
         <div class="pill-logo grande"></div>
         <div class="login-title russo">PILL <b>WARS</b></div>
-        <div class="login-sub">Panel de control</div>
+        <div class="login-sub">Control Panel</div>
         <input id="key" type="password" placeholder="····" maxlength="32" autocomplete="off" onkeydown="if(event.key==='Enter')conectar()">
-        <button onclick="conectar()">Desbloquear</button>
+        <button onclick="conectar()">Unlock</button>
         <div id="loginError"></div>
     </div>
 </div>
@@ -332,51 +331,52 @@
     <aside id="side">
         <div class="brand"><div class="pill-logo"></div><div class="bt russo">PILL <b>WARS</b><br><span>CONTROL</span></div></div>
         <nav class="side">
-            <div class="ngroup" id="ngroupPanel">Panel</div>
+            <div class="ngroup" id="ngroupPanel">Main</div>
             <button id="tabBtn_dashboard" class="nitem act" onclick="verTab('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>Dashboard</button>
-            <button id="tabBtn_salas" class="nitem" onclick="verTab('salas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/></svg>Salas</button>
-            <button id="tabBtn_jugadores" class="nitem" onclick="verTab('jugadores')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M16 14.4c2.9.3 5.5 2.3 5.5 5.6"/></svg>Jugadores</button>
-            <div class="ngroup" id="ngroupDatos">Datos</div>
-            <button id="tabBtn_actividad" class="nitem" onclick="verTab('actividad')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2.5-7 5 14 2.5-7h4"/></svg>Actividad</button>
-            <div class="ngroup" id="ngroupSistema" style="display:none">Sistema</div>
-            <button id="tabBtn_ajustes" class="nitem" onclick="verTab('ajustes')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>Ajustes</button>
-            <button id="tabBtn_rendimiento" class="nitem" onclick="verTab('rendimiento')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19a9 9 0 1 1 14 0"/><path d="M12 14l4-5"/><circle cx="12" cy="14" r="1.5"/></svg>Rendimiento</button>
+            <button id="tabBtn_salas" class="nitem" onclick="verTab('salas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/></svg>Rooms</button>
+            <button id="tabBtn_jugadores" class="nitem" onclick="verTab('jugadores')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M16 14.4c2.9.3 5.5 2.3 5.5 5.6"/></svg>Players</button>
+            <div class="ngroup" id="ngroupDatos">Data</div>
+            <button id="tabBtn_actividad" class="nitem" onclick="verTab('actividad')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2.5-7 5 14 2.5-7h4"/></svg>Activity</button>
+            <button id="tabBtn_transactions" class="nitem" onclick="verTab('transactions')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10h13l-4-4M17 14H4l4 4"/></svg>Transactions</button>
+            <div class="ngroup" id="ngroupSistema" style="display:none">System</div>
+            <button id="tabBtn_ajustes" class="nitem" onclick="verTab('ajustes')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>Settings</button>
+            <button id="tabBtn_rendimiento" class="nitem" onclick="verTab('rendimiento')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19a9 9 0 1 1 14 0"/><path d="M12 14l4-5"/><circle cx="12" cy="14" r="1.5"/></svg>Performance</button>
         </nav>
         <div class="sfoot">
-            <a href="/game/" target="_blank" class="playlink">▶ JUGAR</a>
-            <button class="lock-btn" onclick="bloquear()">Bloquear</button>
+            <a href="/game/" target="_blank" class="playlink">PLAY</a>
+            <button class="lock-btn" onclick="bloquear()">Lock</button>
         </div>
     </aside>
     <div class="content">
     <header>
         <span class="ptitle" id="pageTitle">Dashboard</span>
         <div class="hmeta">
-            <span class="live"><span class="d"></span><span id="liveTxt">en vivo</span></span>
+            <span class="live"><span class="d"></span><span id="liveTxt">live</span></span>
             <span id="metaInfo"></span>
         </div>
     </header>
     <main>
         <div id="tab_dashboard">
             <div class="stats-toolbar" id="statsToolbar">
-                <label onclick="toggleRealOnly()"><span class="toggle-track" id="realOnlyToggle"></span> Solo reales</label>
+                <label onclick="toggleRealOnly()"><span class="toggle-track" id="realOnlyToggle"></span> Real only</label>
                 <button class="reset-btn" onclick="resetStats()">Reset stats</button>
-                <button class="reset-btn" onclick="resetStatsAll()">Reset TODO</button>
+                <button class="reset-btn" onclick="resetStatsAll()">Reset ALL</button>
             </div>
             <div class="dash-cards" id="dashCards"></div>
             <div id="dashPerf" style="margin-bottom:16px"></div>
             <div class="panelcard">
-                <div class="panelhead"><span class="pt">Actividad · por minuto</span><div class="chip-row" id="serieChips"></div></div>
+                <div class="panelhead"><span class="pt">Activity · per minute</span><div class="chip-row" id="serieChips"></div></div>
                 <div id="bigChartWrap"><canvas id="bigChart" height="260"></canvas><div id="chartTip"></div></div>
-                <div class="hint" style="margin-top:10px">El servidor guarda una muestra por minuto (últimas 3 h, se resetea al reiniciar). Entradas, muertes y dinero son incrementos por minuto; conectados y activos, valores absolutos.</div>
+                <div class="hint" style="margin-top:10px">The server stores one sample per minute (last 3 h, resets on restart). Entries, deaths and money are per-minute increments; online and active are absolute values.</div>
             </div>
             <div class="dash-grid2">
                 <div class="panelcard">
-                    <div class="panelhead"><span class="pt">Mapa mundial · jugadores</span>
-                        <span class="maplegend"><span><i style="background:#00ff88;box-shadow:0 0 6px #00ff88"></i>Conectados ahora</span><span><i style="background:rgba(0,255,136,0.45)"></i>Han jugado</span></span>
+                    <div class="panelhead"><span class="pt">World map · players</span>
+                        <span class="maplegend"><span><i style="background:#00ff88;box-shadow:0 0 6px #00ff88"></i>Online now</span><span><i style="background:rgba(0,255,136,0.45)"></i>Played before</span></span>
                     </div>
                     <div id="worldWrap" style="position:relative"><canvas id="worldMap" height="320"></canvas><div id="mapTip"></div></div>
                 </div>
-                <div class="panelcard"><div class="panelhead"><span class="pt">Jugadores por país</span></div><div id="dashPaises"></div></div>
+                <div class="panelcard"><div class="panelhead"><span class="pt">Players by country</span></div><div id="dashPaises"></div></div>
             </div>
             <div style="margin-top:16px"><div id="usoSalas"></div></div>
         </div>
@@ -384,16 +384,16 @@
         <div id="tab_salas" style="display:none">
             <!-- Controles globales de modo: en rol host se oculta entero (viven solo en /admin) -->
             <div id="controlGlobalBar" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:18px; background:#0d0d0d; border:1px solid #1e1e1e; border-radius:10px; padding:12px 16px;">
-                <span style="color:#555; font-size:11px; letter-spacing:1px; margin-right:4px;">CONTROL GLOBAL:</span>
-                <button class="b naranja mini" onclick="modoAction('classic','restart')" title="Reiniciar todas las salas classic">↺ Reiniciar Classic</button>
-                <button class="b naranja mini" onclick="modoAction('arcade','restart')" title="Reiniciar todas las salas arcade">↺ Reiniciar Arcade</button>
-                <button class="b naranja mini" onclick="modoAction('all','restart')" title="Reiniciar TODAS las salas">↺ Reiniciar Todo</button>
+                <span style="color:#555; font-size:11px; letter-spacing:1px; margin-right:4px;">GLOBAL CONTROL:</span>
+                <button class="b naranja mini" onclick="modoAction('classic','restart')" title="Restart every classic room">Restart Classic</button>
+                <button class="b naranja mini" onclick="modoAction('arcade','restart')" title="Restart every arcade room">Restart Arcade</button>
+                <button class="b naranja mini" onclick="modoAction('all','restart')" title="Restart ALL rooms">Restart All</button>
                 <span style="color:#333; margin:0 4px;">|</span>
-                <button class="b rojo mini" onclick="modoAction('classic','kick')" title="Echar a todos los jugadores de classic">✕ Kick Classic</button>
-                <button class="b rojo mini" onclick="modoAction('arcade','kick')" title="Echar a todos los jugadores de arcade">✕ Kick Arcade</button>
-                <button class="b rojo mini" onclick="modoAction('all','kick')" title="Echar a TODOS los jugadores">✕ Kick Todo</button>
+                <button class="b rojo mini" onclick="modoAction('classic','kick')" title="Kick every classic player">Kick Classic</button>
+                <button class="b rojo mini" onclick="modoAction('arcade','kick')" title="Kick every arcade player">Kick Arcade</button>
+                <button class="b rojo mini" onclick="modoAction('all','kick')" title="Kick ALL players">Kick All</button>
                 <span id="restartServidorSep" style="color:#333; margin:0 4px;">|</span>
-                <button id="restartServidorBtn" class="b rojo mini" style="background:#3a0000; border-color:#660000;" onclick="restartServidor()" title="Reinicia el proceso Node (pm2/systemd lo relanza)">⚠ Restart Servidor</button>
+                <button id="restartServidorBtn" class="b rojo mini" style="background:#3a0000; border-color:#660000;" onclick="restartServidor()" title="Restarts the Node process (pm2/systemd relaunches it)">Restart Server</button>
             </div>
             <!-- Director (Fase 4b): las salas viven en los hosts. Lista visual de
                  todas (nombre + ocupación) + accesos rápidos a cada panel de host. -->
@@ -403,7 +403,7 @@
             </div>
             <div id="roomsView">
                 <div class="modetabs">
-                    <button id="modeBtn_all" class="modetab act" onclick="verModo('all')">Todas <span id="cntAll" class="cnt cero">(0)</span></button>
+                    <button id="modeBtn_all" class="modetab act" onclick="verModo('all')">All <span id="cntAll" class="cnt cero">(0)</span></button>
                     <button id="modeBtn_classic" class="modetab" onclick="verModo('classic')">Classic <span id="cntClassic" class="cnt cero">(0)</span></button>
                     <button id="modeBtn_arcade" class="modetab" onclick="verModo('arcade')">Arcade <span id="cntArcade" class="cnt cero">(0)</span></button>
                     <button id="modeBtn_free" class="modetab" onclick="verModo('free')">Free <span id="cntFree" class="cnt cero">(0)</span></button>
@@ -416,12 +416,12 @@
                 <div class="grid" id="gridAll"></div>
                 <div class="grid" id="gridClassic" style="display:none"></div>
                 <div id="arcadeGlobalPanel" style="display:none; background:#0d1117; border:1px solid #1a73e8; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
-                    <div style="color:#4d9bff; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">⚙ Arcade Mode — Global Parameters</div>
+                    <div style="color:#4d9bff; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">Arcade Mode — Global Parameters</div>
                     <div style="display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap;">
                         <div><label style="color:#888;font-size:10px;display:block;margin-bottom:4px;">Lobby (s)</label><input type="number" step="1" min="0" max="120" id="g_lobby" value="20" style="width:70px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;"></div>
                         <div><label style="color:#888;font-size:10px;display:block;margin-bottom:4px;">Restart (s)</label><input type="number" step="1" min="1" max="300" id="g_restart" value="10" style="width:70px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;"></div>
-                        <button class="b verde mini" onclick="aplicarGlobal()" style="margin-bottom:1px;">Aplicar</button>
-                        <span style="color:#555;font-size:10px;">Se aplica a todas las salas arcade</span>
+                        <button class="b verde mini" onclick="aplicarGlobal()" style="margin-bottom:1px;">Apply</button>
+                        <span style="color:#555;font-size:10px;">Applies to every arcade room</span>
                     </div>
                 </div>
                 <div class="grid" id="gridArcade" style="display:none"></div>
@@ -431,108 +431,111 @@
         </div>
 
         <div id="tab_jugadores" style="display:none">
-            <h2 class="section">Ranking de jugadores</h2>
+            <h2 class="section">Player ranking</h2>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;background:#111;border:1px solid #222;border-radius:10px;padding:12px 14px">
-                <span style="color:#aaa;font-size:12px">Calcular ranking:</span>
-                <button class="b mini" type="button" onclick="actualizarRanking(false)">&#128100; Solo jugadores reales</button>
-                <button class="b mini" type="button" onclick="actualizarRanking(true)">&#129302; Incluir bots de test</button>
+                <span style="color:#aaa;font-size:12px">Compute ranking:</span>
+                <button class="b mini" type="button" onclick="actualizarRanking(false)">Real players only</button>
+                <button class="b mini" type="button" onclick="actualizarRanking(true)">Include test bots</button>
                 <span id="rankUpdatedAt" style="color:#555;font-size:11px;margin-left:4px"></span>
             </div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-                <input id="rankSearch" type="text" placeholder="Buscar nombre..." oninput="rankBuscar(this.value)"
+                <input id="rankSearch" type="text" placeholder="Search name..." oninput="rankBuscar(this.value)"
                     style="flex:1;min-width:180px;background:#111;color:#fff;border:1px solid #333;border-radius:8px;padding:9px 12px;font-size:13px">
-                <button class="b mini" type="button" onclick="rankSelTodosFiltrados()">Seleccionar resultados</button>
-                <button class="b mini" type="button" onclick="rankLimpiarSel()">Quitar selección</button>
-                <button class="b rojo mini" type="button" id="rankBtnBorrar" onclick="rankBorrarSel()">Borrar seleccionados</button>
+                <button class="b mini" type="button" onclick="rankSelTodosFiltrados()">Select results</button>
+                <button class="b mini" type="button" onclick="rankLimpiarSel()">Clear selection</button>
+                <button class="b rojo mini" type="button" id="rankBtnBorrar" onclick="rankBorrarSel()">Delete selected</button>
                 <span id="rankSelInfo" style="color:#888;font-size:12px"></span>
             </div>
             <table class="rank">
-                <thead><tr><th style="width:34px"></th><th></th><th>Jugador</th><th>Kills</th><th>Muertes</th><th>K / D</th><th>Partidas</th><th>Última vez</th><th>País</th><th></th></tr></thead>
+                <thead><tr><th style="width:34px"></th><th></th><th>Player</th><th>Kills</th><th>Deaths</th><th>K / D</th><th>Games</th><th>Last seen</th><th>Country</th><th></th></tr></thead>
                 <tbody id="rankCuerpo"></tbody>
             </table>
             <div id="rankPag" style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:14px"></div>
         </div>
 
         <div id="tab_actividad" style="display:none">
-            <h2 class="section">Salud del servidor</h2>
-            <div class="usage" id="healthBox" style="padding:18px 20px;font-family:'Inter',sans-serif;font-size:13px">Cargando…</div>
-
-            <h2 class="section" id="seccionJugadores">Jugadores por país</h2>
-            <table class="rank">
-                <thead><tr><th></th><th>País</th><th></th><th style="width:32%"></th><th>Jugadores</th></tr></thead>
-                <tbody id="paisesCuerpo"></tbody>
-            </table>
-            <h2 class="section">Últimas conexiones</h2>
+            <h2 class="section">Recent connections</h2>
             <div class="usage" style="padding-top:8px">
                 <table class="hist"><tbody id="histCuerpo"></tbody></table>
             </div>
-            <h2 class="section">Registro de acciones</h2>
+            <h2 class="section">Admin actions log</h2>
             <div class="usage" id="adminLog" style="padding-top:8px"></div>
+        </div>
+
+        <div id="tab_transactions" style="display:none">
+            <h2 class="section">All transactions</h2>
+            <table class="rank">
+                <thead><tr><th>Date</th><th>Type</th><th>Wallet</th><th style="text-align:right">Amount (PILL)</th><th>Detail</th></tr></thead>
+                <tbody id="txCuerpo"></tbody>
+            </table>
         </div>
 
         <div id="tab_ajustes" style="display:none">
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <button class="b rojo" onclick="resetearQuests()">Resetear quests de todos</button>
-                <span style="color:#666; font-size: 12px;">Borra el progreso de Daily Quests de todos los jugadores. Los récords de masa del ranking NO se tocan.</span>
+                <button class="b rojo" onclick="resetearQuests()">Reset everyone's quests</button>
+                <span style="color:#666; font-size: 12px;">Wipes Daily Quests progress for every player. Ranking mass records are NOT touched.</span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight:600">Volumen por defecto (cliente):</label>
+                <label style="font-weight:600">Default volume (client):</label>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="color:#888;font-size:12px;">Efectos</span>
+                    <span style="color:#888;font-size:12px;">SFX</span>
                     <input type="range" min="0" max="100" step="1" id="volSfx" oninput="document.getElementById('volSfxVal').innerText=this.value+'%'" style="width:130px;">
                     <span id="volSfxVal" style="color:#00ff88;font-size:12px;width:38px;">70%</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="color:#888;font-size:12px;">Música</span>
+                    <span style="color:#888;font-size:12px;">Music</span>
                     <input type="range" min="0" max="100" step="1" id="volMusic" oninput="document.getElementById('volMusicVal').innerText=this.value+'%'" style="width:130px;">
                     <span id="volMusicVal" style="color:#00ff88;font-size:12px;width:38px;">85%</span>
                 </div>
-                <button class="b verde mini" onclick="aplicarVolumenes()">Aplicar</button>
-                <span style="color:#666; font-size: 12px;">Volumen base que reciben los clientes. Cada jugador puede mutear/ajustar encima. Persiste entre reinicios. <span id="ajustesHostsNote"></span></span>
+                <button class="b verde mini" onclick="aplicarVolumenes()">Apply</button>
+                <span style="color:#666; font-size: 12px;">Base volume clients receive. Each player can mute/adjust on top. Persists across restarts. <span id="ajustesHostsNote"></span></span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight:600">Animaciones de enemigos (global):</label>
-                <button id="enemyFxBtn" class="b" onclick="toggleEnemyFx()">Cargando…</button>
-                <span style="color:#666; font-size: 12px;">OFF = NINGÚN cliente dibuja los efectos de los demás jugadores (alivia carga a todos). La tuya siempre se ve. Persiste y avisa en vivo.</span>
+                <label style="font-weight:600">Enemy animations (global):</label>
+                <button id="enemyFxBtn" class="b" onclick="toggleEnemyFx()">Loading…</button>
+                <span style="color:#666; font-size: 12px;">OFF = NO client draws other players' effects (lightens load for everyone). Your own is always visible. Persists and updates live.</span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight:600">Zoom base (GLOBAL, todos los jugadores):</label>
+                <label style="font-weight:600">Base zoom (GLOBAL, all players):</label>
                 <input type="number" step="0.1" min="0.3" max="4" id="baseZoom" style="width:80px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;">
-                <button class="b verde mini" onclick="aplicarZoom()">Aplicar</button>
+                <button class="b verde mini" onclick="aplicarZoom()">Apply</button>
                 <button class="b mini" onclick="resetZoom()">Reset</button>
-                <span style="color:#666; font-size: 12px;">Mayor = más cerca (1.4 por defecto). Solo afecta a ESTE navegador (testeo); se guarda en localStorage y se aplica en vivo si tienes el juego abierto en otra pestaña.</span>
+                <span style="color:#666; font-size: 12px;">Higher = closer (1.4 by default). Saved and applied live to players.</span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight:600">Anuncio a todos:</label>
-                <input type="text" id="announceText" maxlength="140" placeholder="Mensaje para todos los jugadores online…" style="flex:1;min-width:220px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px;font-size:13px;">
-                <button class="b verde mini" onclick="enviarAnuncio()">Enviar</button>
-                <span style="color:#666; font-size: 12px;">Manda un cartel a TODOS los jugadores conectados ahora mismo.</span>
+                <label style="font-weight:600">Announcement:</label>
+                <input type="text" id="announceText" maxlength="140" placeholder="Message for every online player…" style="flex:1;min-width:220px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px;font-size:13px;">
+                <button class="b verde mini" onclick="enviarAnuncio()">Send</button>
+                <span style="color:#666; font-size: 12px;">Shows a banner to ALL players connected right now.</span>
             </div>
         </div>
 
         <div id="tab_rendimiento" style="display:none">
+            <h2 class="section">Server health</h2>
+            <div class="usage" id="healthBox" style="padding:18px 20px;font-family:'Inter',sans-serif;font-size:13px">Loading…</div>
+            <h2 class="section">Controls</h2>
             <!-- mono/host: controles de siempre, sin selector de host -->
             <div id="perfMono">
                 <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                    <label style="font-weight:600">Frecuencia de red (snapshots):</label>
+                    <label style="font-weight:600">Network rate (snapshots):</label>
                     <select id="snapHzSel" onchange="aplicarSnapHz()" style="background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px">
-                        <option value="40">40 Hz (1 de cada 1 tick · máx. fluidez)</option>
-                        <option value="20">20 Hz (1 de cada 2 · menos carga)</option>
-                        <option value="13">13 Hz (1 de cada 3)</option>
-                        <option value="10">10 Hz (1 de cada 4 · mínimo)</option>
+                        <option value="40">40 Hz (every tick · max smoothness)</option>
+                        <option value="20">20 Hz (1 in 2 · lighter)</option>
+                        <option value="13">13 Hz (1 in 3)</option>
+                        <option value="10">10 Hz (1 in 4 · minimum)</option>
                     </select>
-                    <span style="color:#666; font-size: 12px;">Afecta a TODAS las salas al instante. Menos Hz = menos lag con mucha gente (el cliente interpola).</span>
+                    <span style="color:#666; font-size: 12px;">Applies to ALL rooms instantly. Fewer Hz = less lag under load (the client interpolates).</span>
                 </div>
                 <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight:600">Layer 2:</label>
-                    <button id="layerPowerBtn_2" class="b" onclick="toggleLayerPower(2)" title="Apaga/enciende todas las salas de Layer 2. Apagar libera CPU. Solo se puede apagar si están vacías.">⏻ L2: ON</button>
+                    <button id="layerPowerBtn_2" class="b" onclick="toggleLayerPower(2)" title="Powers every Layer 2 room on/off. Powering off frees CPU. Only allowed when they are empty.">L2: ON</button>
                     <span id="layerPowerHint" style="color:#777;font-size:12px;"></span>
-                    <span style="color:#666; font-size: 12px;">Apagar la Layer 2 libera CPU. Solo se puede apagar si están vacías.</span>
+                    <span style="color:#666; font-size: 12px;">Powering off Layer 2 frees CPU. Only allowed when its rooms are empty.</span>
                 </div>
                 <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight:600">AOI (Area of Interest):</label>
-                    <button id="aoiToggleBtn" class="b" onclick="toggleAoi()">Cargando…</button>
-                    <span style="color:#666; font-size: 12px;">Cada jugador recibe solo lo cercano a su píldora. Reduce tráfico ~5× y cierra el maphack.</span>
+                    <button id="aoiToggleBtn" class="b" onclick="toggleAoi()">Loading…</button>
+                    <span style="color:#666; font-size: 12px;">Each player only receives what is near their pill. Cuts traffic ~5× and kills the maphack.</span>
                 </div>
             </div>
             <!-- director: una fila de control POR HOST (override independiente) -->
@@ -570,7 +573,7 @@ const BASE_PATH = location.pathname.replace(/\/admin(\.html)?$/, '');
 
 function conectar() {
     key = document.getElementById('key').value;
-    if (!key) { errorLogin('Escribe la clave'); return; }
+    if (!key) { errorLogin('Enter the key'); return; }
     if (ws) { try { ws.close(); } catch(e){} }
     ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + BASE_PATH + '/');
     ws.onopen = () => pedir();
@@ -580,14 +583,14 @@ function conectar() {
             if (!autorizado) { autorizado = true; document.getElementById('loginOverlay').style.display = 'none'; document.getElementById('app').style.display = 'block'; }
             render(m);
         } else if (m.t === 'adminError') {
-            errorLogin('Clave incorrecta');
+            errorLogin('Wrong key');
         } else if (m.t === 'layerActionError') {
-            toast('<strong>No se puede</strong><br>' + esc(m.reason || ''), 'warn');
+            toast('<strong>Not allowed</strong><br>' + esc(m.reason || ''), 'warn');
         }
     };
     ws.onclose = () => {
-        document.getElementById('liveTxt').innerText = 'sin conexión';
-        if (!autorizado) errorLogin('Sin conexión con el servidor');
+        document.getElementById('liveTxt').innerText = 'offline';
+        if (!autorizado) errorLogin('No connection to the server');
         else setTimeout(conectar, 3000);
     };
 }
@@ -597,9 +600,8 @@ function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(Object.
 function pedir() { send({ cmd: 'state' }); }
 let realOnly = false;
 function toggleRealOnly() { realOnly = !realOnly; document.getElementById('realOnlyToggle').classList.toggle('on', realOnly); }
-function resetStats() { if (confirm('¿Resetear contadores de entradas, muertes y log de conexiones?\n(El ranking de jugadores se mantiene)')) { send({ cmd: 'resetStats', scope: 'counters' }); } }
-function resetStatsAll() { if (confirm('⚠️ ¿Resetear TODO: contadores + ranking + log?\nEsta acción no se puede deshacer.')) { send({ cmd: 'resetStats', scope: 'all' }); } }
-function irAJugadores() { verTab('actividad'); setTimeout(() => { const el = document.getElementById('seccionJugadores'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }
+function resetStats() { if (confirm('Reset entry/death counters and the connection log?\n(The player ranking is kept)')) { send({ cmd: 'resetStats', scope: 'counters' }); } }
+function resetStatsAll() { if (confirm('Reset EVERYTHING: counters + ranking + log?\nThis cannot be undone.')) { send({ cmd: 'resetStats', scope: 'all' }); } }
 // Refresco más rápido para que los cambios y el cronómetro se vean al instante
 setInterval(() => { if (autorizado) pedir(); }, 750);
 
@@ -617,7 +619,7 @@ async function refrescarSalud() {
                 <div class="hchip"><div class="hk">Uptime</div><div class="hv">${uptime}</div></div>
                 <div class="hchip"><div class="hk">Heap</div><div class="hv" style="color:${heapColor}">${h.heapMB} MB <small>/ ${h.heapTotalMB} MB</small></div></div>
                 <div class="hchip"><div class="hk">RSS</div><div class="hv">${h.rssMB} MB</div></div>
-                <div class="hchip"><div class="hk">Salas</div><div class="hv">${h.rooms}</div></div>
+                <div class="hchip"><div class="hk">Rooms</div><div class="hv">${h.rooms}</div></div>
                 <div class="hchip"><div class="hk">Sim players</div><div class="hv">${h.simPlayers}</div></div>
                 <div class="hchip"><div class="hk">Sim enemies</div><div class="hv">${h.simEnemies}</div></div>
             </div>
@@ -628,10 +630,10 @@ async function refrescarSalud() {
 }
 setInterval(refrescarSalud, 5000); refrescarSalud();
 
-const TAB_TITLES = { dashboard: 'Dashboard', salas: 'Salas', jugadores: 'Jugadores', actividad: 'Actividad', ajustes: 'Ajustes', rendimiento: 'Rendimiento' };
+const TAB_TITLES = { dashboard: 'Dashboard', salas: 'Rooms', jugadores: 'Players', actividad: 'Activity', transactions: 'Transactions', ajustes: 'Settings', rendimiento: 'Performance' };
 function verTab(t) {
     tabActiva = t;
-    for (const x of ['dashboard', 'salas', 'jugadores', 'actividad', 'ajustes', 'rendimiento']) {
+    for (const x of ['dashboard', 'salas', 'jugadores', 'actividad', 'transactions', 'ajustes', 'rendimiento']) {
         const tab = document.getElementById('tab_' + x); if (tab) tab.style.display = (x === t) ? 'block' : 'none';
         const btn = document.getElementById('tabBtn_' + x); if (btn) btn.classList.toggle('act', x === t);
     }
@@ -657,23 +659,23 @@ function verModo(m) {
     if (ltb) ltb.style.display = (m === 'free') ? 'none' : '';
 }
 function modoAction(mode, action) {
-    const labels = { classic: 'Classic', arcade: 'Arcade', all: 'TODAS las salas' };
+    const labels = { classic: 'Classic', arcade: 'Arcade', all: 'ALL rooms' };
     const label = labels[mode] || mode;
     if (action === 'kick') {
-        if (!confirm(`¿Echar a TODOS los jugadores de ${label}?`)) return;
+        if (!confirm(`Kick EVERY player from ${label}?`)) return;
         send({ cmd: 'kickAllMode', mode });
         toast(`Kick ${label}`, 'warn');
     } else if (action === 'restart') {
-        if (!confirm(`¿Reiniciar ${label}?`)) return;
+        if (!confirm(`Restart ${label}?`)) return;
         send({ cmd: 'restartMode', mode });
-        toast(`Reiniciando ${label}…`, 'warn');
+        toast(`Restarting ${label}…`, 'warn');
     }
     setTimeout(pedir, 300);
 }
 function restartServidor() {
-    if (!confirm('¿REINICIAR EL PROCESO DEL SERVIDOR?\n\npm2/systemd lo relanzará automáticamente.\nTodos los jugadores serán desconectados.')) return;
+    if (!confirm('RESTART THE SERVER PROCESS?\n\npm2/systemd will relaunch it automatically.\nEvery player will be disconnected.')) return;
     send({ cmd: 'restartServer' });
-    toast('<strong>⚠ Servidor reiniciándose…</strong><br>Reconectando en unos segundos', 'err');
+    toast('<strong>Server restarting…</strong><br>Reconnecting in a few seconds', 'err');
 }
 function verLayer(n) {
     layerActivo = n;
@@ -704,31 +706,24 @@ function toast(msg, kind) {
     c.appendChild(t);
     setTimeout(() => { t.style.transition = 'opacity 0.3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 3500);
 }
-// Banderita emoji a partir del código país (ej. 'ES' ->🇪🇸). LOCAL/?? ->planeta.
-function flag(code) {
-    if (!code || code === 'LOCAL' || code === '??') return '🌐';
-    const c = String(code).toUpperCase();
-    if (c.length !== 2) return '🌐';
-    return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65) + String.fromCodePoint(0x1F1E6 + c.charCodeAt(1) - 65);
-}
 function fecha(iso) { return iso ? String(iso).replace('T', ' ').slice(0, 16) : '-'; }
 
 // acciones
-function kick(id) { if (confirm('¿Expulsar a este jugador?')) { send({ cmd: 'kick', playerId: id }); toast('<strong>Jugador expulsado</strong>', 'warn'); setTimeout(pedir, 100); } }
-function god(id) { send({ cmd: 'power', playerId: id, name: 'god', args: [] }); toast('<strong>GOD aplicado</strong>', 'ok'); setTimeout(pedir, 100); }
-function masa(id) { const n = prompt('Nueva masa:', '50000'); if (n) { send({ cmd: 'power', playerId: id, name: 'mass', args: [n] }); toast('<strong>Masa puesta: ' + esc(n) + '</strong>', 'ok'); setTimeout(pedir, 100); } }
-function forzar(room) { send({ cmd: 'forceStart', room }); toast('<strong>Sala iniciada</strong><br>' + esc(room), 'ok'); setTimeout(pedir, 100); }
-function reiniciar(room) { if (confirm('¿Reiniciar la sala? Los que estén jugando verán "SALA REINICIADA" y podrán darle a TRY AGAIN.')) { send({ cmd: 'restart', room }); toast('<strong>Sala reiniciada</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 100); } }
-function vaciar(room) { if (confirm('¿Echar a TODOS los jugadores de la sala?')) { send({ cmd: 'kickAll', room }); toast('<strong>Sala vaciada</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 100); } }
-function apagar(room) { if (confirm('¿APAGAR la sala? Echa a todos y la destruye.')) { send({ cmd: 'shutdown', room }); toast('<strong>Sala apagada</strong><br>' + esc(room), 'err'); setTimeout(pedir, 100); } }
-function encender(room) { send({ cmd: 'encender', room }); toast('<strong>Sala encendida</strong><br>' + esc(room), 'ok'); setTimeout(pedir, 300); }
+function kick(id) { if (confirm('Kick this player?')) { send({ cmd: 'kick', playerId: id }); toast('<strong>Player kicked</strong>', 'warn'); setTimeout(pedir, 100); } }
+function god(id) { send({ cmd: 'power', playerId: id, name: 'god', args: [] }); toast('<strong>GOD applied</strong>', 'ok'); setTimeout(pedir, 100); }
+function masa(id) { const n = prompt('New mass:', '50000'); if (n) { send({ cmd: 'power', playerId: id, name: 'mass', args: [n] }); toast('<strong>Mass set: ' + esc(n) + '</strong>', 'ok'); setTimeout(pedir, 100); } }
+function forzar(room) { send({ cmd: 'forceStart', room }); toast('<strong>Room started</strong><br>' + esc(room), 'ok'); setTimeout(pedir, 100); }
+function reiniciar(room) { if (confirm('Restart the room? Players in it will see "ROOM RESTARTED" and can hit TRY AGAIN.')) { send({ cmd: 'restart', room }); toast('<strong>Room restarted</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 100); } }
+function vaciar(room) { if (confirm('Kick EVERY player from this room?')) { send({ cmd: 'kickAll', room }); toast('<strong>Room emptied</strong><br>' + esc(room), 'warn'); setTimeout(pedir, 100); } }
+function apagar(room) { if (confirm('POWER OFF the room? Kicks everyone and destroys it.')) { send({ cmd: 'shutdown', room }); toast('<strong>Room powered off</strong><br>' + esc(room), 'err'); setTimeout(pedir, 100); } }
+function encender(room) { send({ cmd: 'encender', room }); toast('<strong>Room powered on</strong><br>' + esc(room), 'ok'); setTimeout(pedir, 300); }
 function actualizarRanking(includeTesters) {
     send({ cmd: 'updateRanking', includeTesters });
-    document.getElementById('rankUpdatedAt').textContent = 'Calculando...';
+    document.getElementById('rankUpdatedAt').textContent = 'Computing…';
     setTimeout(pedir, 800);
 }
-function borrarRanking(playerKey, nombre) { if (confirm('¿Borrar a ' + nombre + ' del ranking? Sus estadísticas se eliminan en el servidor.')) { send({ cmd: 'deleteRanking', playerKey }); toast('<strong>Borrado del ranking</strong><br>' + esc(nombre), 'err'); setTimeout(pedir, 100); } }
-function resetearQuests() { if (confirm('¿RESETEAR las quests de TODOS los jugadores? Esta acción es irreversible.')) { send({ cmd: 'resetQuests' }); toast('<strong>Quests reseteadas</strong><br>Todos los jugadores empiezan de cero', 'warn'); setTimeout(pedir, 100); } }
+function borrarRanking(playerKey, nombre) { if (confirm('Delete ' + nombre + ' from the ranking? Their stats are removed on the server.')) { send({ cmd: 'deleteRanking', playerKey }); toast('<strong>Removed from ranking</strong><br>' + esc(nombre), 'err'); setTimeout(pedir, 100); } }
+function resetearQuests() { if (confirm('RESET quests for EVERY player? This cannot be undone.')) { send({ cmd: 'resetQuests' }); toast('<strong>Quests reset</strong><br>Every player starts from zero', 'warn'); setTimeout(pedir, 100); } }
 
 // --- Ranking: búsqueda, paginación (top 10/página) y borrado por selección ---
 let rankData = [], rankSearch = '', rankPage = 1, rankSel = new Set();
@@ -740,11 +735,11 @@ function rankSelTodosFiltrados() { for (const p of rankFiltrado()) rankSel.add(p
 function rankLimpiarSel() { rankSel.clear(); renderRanking(); }
 function rankIrPagina(n) { rankPage = n; renderRanking(); }
 function rankBorrarSel() {
-    if (!rankSel.size) { toast('No hay jugadores seleccionados', 'warn'); return; }
-    if (!confirm('¿Borrar ' + rankSel.size + ' jugador(es) del ranking? Es irreversible.')) return;
+    if (!rankSel.size) { toast('No players selected', 'warn'); return; }
+    if (!confirm('Delete ' + rankSel.size + ' player(s) from the ranking? This cannot be undone.')) return;
     const keys = [...rankSel];
     send({ cmd: 'deleteRankingMany', keys });
-    toast('<strong>Borrados</strong><br>' + keys.length + ' jugadores', 'err');
+    toast('<strong>Deleted</strong><br>' + keys.length + ' players', 'err');
     rankSel.clear(); setTimeout(pedir, 150);
 }
 function renderRanking() {
@@ -762,13 +757,13 @@ function renderRanking() {
             <td><span class="pos ${pos === 1 ? 'p1' : pos === 2 ? 'p2' : pos === 3 ? 'p3' : ''} russo">${pos}</span></td>
             <td><b style="color:#fff">${esc(p.name)}</b></td><td class="kills">${num(p.kills)}</td><td>${num(p.muertes)}</td><td>${kd}</td>
             <td>${num(p.partidas)}</td><td>${fecha(p.lastSeen)}</td>
-            <td title="${esc(p.paisName || '')}"><span class="flag">${flag(p.paisCode)}</span><span style="color:#aaa; font-size:10px;">${esc(p.paisCode || '??')}</span></td>
-            <td><button class="b rojo mini" onclick="borrarRanking('${esc(p.key)}','${esc(p.name)}')">Borrar</button></td>
+            <td title="${esc(p.paisName || '')}"><span class="ccode">${esc(p.paisCode || '??')}</span></td>
+            <td><button class="b rojo mini" onclick="borrarRanking('${esc(p.key)}','${esc(p.name)}')">Delete</button></td>
         </tr>`;
     });
-    document.getElementById('rankCuerpo').innerHTML = rank || `<tr><td colspan="10" class="vacio">${rankData.length ? 'Sin resultados para la búsqueda.' : 'Aún no hay jugadores con nombre registrados.'}</td></tr>`;
+    document.getElementById('rankCuerpo').innerHTML = rank || `<tr><td colspan="10" class="vacio">${rankData.length ? 'No results for this search.' : 'No named players registered yet.'}</td></tr>`;
     const info = document.getElementById('rankSelInfo');
-    if (info) info.innerText = `${filt.length} jugador(es)${rankSearch ? ' (de ' + rankData.length + ')' : ''} · ${rankSel.size} seleccionados`;
+    if (info) info.innerText = `${filt.length} player(s)${rankSearch ? ' (of ' + rankData.length + ')' : ''} · ${rankSel.size} selected`;
     document.getElementById('rankBtnBorrar').disabled = rankSel.size === 0;
     renderRankPag(totalPag);
 }
@@ -812,74 +807,74 @@ function aplicarReglas(roomKey) {
     setTimeout(pedir, 100);
 }
 
-const ESTADOS = { playing: ['EN JUEGO', 'st-playing', 's-playing'], waiting: ['LOBBY', 'st-waiting', 's-waiting'], ended: ['TERMINADA', 'st-ended', 's-ended'], offline: ['OFFLINE', 'st-offline', ''] };
+const ESTADOS = { playing: ['LIVE', 'st-playing', 's-playing'], waiting: ['LOBBY', 'st-waiting', 's-waiting'], ended: ['ENDED', 'st-ended', 's-ended'], offline: ['OFFLINE', 'st-offline', ''] };
 
 function cartaSala(r) {
     const [stTxt, stCls, cardCls] = ESTADOS[r.state] || ESTADOS.offline;
     const id = r.key;
     let timer = '';
-    if (r.state === 'playing' && r.tlMs != null) timer = `<div class="timerline">${IC.clock} Quedan ${fmtMs(r.tlMs)} de partida</div>`;
-    if (r.state === 'ended' && r.restartEnMs != null) timer = `<div class="timerline naranja">${IC.refresh} La sala se reinicia en ${Math.ceil(r.restartEnMs/1000)} s</div>`;
-    if (r.state === 'waiting' && r.startInMs != null) timer = `<div class="timerline azul">${IC.clock} La partida empieza en ${Math.ceil(r.startInMs/1000)} s (${r.conectados}/${r.needed})</div>`;
-    else if (r.state === 'waiting') timer = `<div class="timerline amarillo">${IC.users} En el lobby: ${r.conectados} de ${r.needed} necesarios</div>`;
+    if (r.state === 'playing' && r.tlMs != null) timer = `<div class="timerline">${IC.clock} ${fmtMs(r.tlMs)} left in this match</div>`;
+    if (r.state === 'ended' && r.restartEnMs != null) timer = `<div class="timerline naranja">${IC.refresh} Room restarts in ${Math.ceil(r.restartEnMs/1000)} s</div>`;
+    if (r.state === 'waiting' && r.startInMs != null) timer = `<div class="timerline azul">${IC.clock} Match starts in ${Math.ceil(r.startInMs/1000)} s (${r.conectados}/${r.needed})</div>`;
+    else if (r.state === 'waiting') timer = `<div class="timerline amarillo">${IC.users} In lobby: ${r.conectados} of ${r.needed} needed</div>`;
 
     let jugadores = '';
     if (expandidos.has(id) && r.players.length > 0) {
-        jugadores = `<div class="players-wrap"><table class="players"><thead><tr><th>Jugador</th><th>IP</th><th>Masa</th><th>Kills</th><th>Estado</th><th>Tiempo</th><th></th></tr></thead><tbody>` +
+        jugadores = `<div class="players-wrap"><table class="players"><thead><tr><th>Player</th><th>IP</th><th>Mass</th><th>Kills</th><th>Status</th><th>Time</th><th></th></tr></thead><tbody>` +
             r.players.map(p => `<tr>
-                <td><b>${esc(p.name) || '(sin nombre)'}</b></td><td>${esc(p.ip)}</td><td>${num(p.mass)}</td><td>${p.kills}</td>
-                <td>${p.god ? '<span class="tag god">GOD</span> ' : ''}${p.alive ? '<span class="tag vivo">VIVO</span>' : '<span class="tag muerto">ESPECT.</span>'}</td>
+                <td><b>${esc(p.name) || '(no name)'}</b></td><td>${esc(p.ip)}</td><td>${num(p.mass)}</td><td>${p.kills}</td>
+                <td>${p.god ? '<span class="tag god">GOD</span> ' : ''}${p.alive ? '<span class="tag vivo">ALIVE</span>' : '<span class="tag muerto">SPECT.</span>'}</td>
                 <td>${fmtSeg(p.conectadoSec)}</td>
                 <td style="white-space:nowrap; text-align:right">
-                    <button class="b morado mini" onclick="god('${esc(p.id)}')">${p.god ? 'Quitar God' : 'Dar God'}</button>
-                    <button class="b azul mini" onclick="masa('${esc(p.id)}')">Masa</button>
-                    <button class="b rojo mini" onclick="kick('${esc(p.id)}')">Echar</button>
+                    <button class="b morado mini" onclick="god('${esc(p.id)}')">${p.god ? 'Remove God' : 'Give God'}</button>
+                    <button class="b azul mini" onclick="masa('${esc(p.id)}')">Mass</button>
+                    <button class="b rojo mini" onclick="kick('${esc(p.id)}')">Kick</button>
                 </td>
             </tr>`).join('') + '</tbody></table></div>';
     } else if (expandidos.has(id)) {
-        jugadores = '<div class="vacio" style="padding:12px">Nadie conectado en esta sala.</div>';
+        jugadores = '<div class="vacio" style="padding:12px">No one connected in this room.</div>';
     }
 
     const rl = r.rules;
     return `<div class="room ${cardCls}${r.state === 'offline' ? ' empty' : ''}" id="card_${id}">
         <div class="room-head">
-            <div class="room-name russo">${esc(r.roomName)} <span style="font-size:13px;color:#777">L${r.layerIdx || 1}</span>${r.disabled ? ' <span style="font-size:11px;color:#ff6b6b;background:#3a1a1a;padding:2px 8px;border-radius:4px;letter-spacing:1px;margin-left:6px;">PAUSED</span>' : ''}<span class="meta">${r.mode.toUpperCase()} · ${r.price ? 'ENTRADA ' + r.price + '$' : 'GRATIS'}</span></div>
+            <div class="room-name russo">${esc(r.roomName)} <span style="font-size:13px;color:#777">L${r.layerIdx || 1}</span>${r.disabled ? ' <span style="font-size:11px;color:#ff6b6b;background:#3a1a1a;padding:2px 8px;border-radius:4px;letter-spacing:1px;margin-left:6px;">PAUSED</span>' : ''}<span class="meta">${r.mode.toUpperCase()} · ${r.price ? 'ENTRY ' + r.price + '$' : 'FREE'}</span></div>
             <span class="state ${stCls}"><span class="d"></span>${stTxt}</span>
         </div>
         <div class="room-body">
             <div class="statline">
-                <span class="players-chip" onclick="togglePlayers('${id}')"><span class="pdot ${r.conectados > 0 ? 'on' : ''}"></span>${r.conectados}/${r.maxReales != null ? r.maxReales : '-'} JUGADOR${r.conectados === 1 ? '' : 'ES'} <span style="color:#555">${expandidos.has(id) ? '&#9662;' : '&#9656;'}</span></span>
-                <span class="it" style="color:#00ff88" title="vivos">${IC.users} ${r.vivos != null ? r.vivos : 0} vivos</span>
-                <span class="it" style="color:#ff6b6b" title="muertos / espectando tras morir">${IC.skull} ${Math.max(0, (r.conectados || 0) - (r.vivos || 0))} muertos</span>
-                ${r.espectadores ? `<span class="it" style="color:#b07cf7" title="espectadores">${IC.door} ${r.espectadores} viendo</span>` : ''}
+                <span class="players-chip" onclick="togglePlayers('${id}')"><span class="pdot ${r.conectados > 0 ? 'on' : ''}"></span>${r.conectados}/${r.maxReales != null ? r.maxReales : '-'} PLAYER${r.conectados === 1 ? '' : 'S'} <span style="color:#555">${expandidos.has(id) ? '&#9662;' : '&#9656;'}</span></span>
+                <span class="it" style="color:#00ff88" title="alive">${IC.users} ${r.vivos != null ? r.vivos : 0} alive</span>
+                <span class="it" style="color:#ff6b6b" title="dead / spectating after dying">${IC.skull} ${Math.max(0, (r.conectados || 0) - (r.vivos || 0))} dead</span>
+                ${r.espectadores ? `<span class="it" style="color:#b07cf7" title="spectators">${IC.door} ${r.espectadores} watching</span>` : ''}
                 <span class="it">${IC.bot} ${r.bots} bots</span>
-                <span class="it">${IC.in} ${num(realOnly ? r.stats.entradasReal : r.stats.entradas)} entradas</span>
+                <span class="it">${IC.in} ${num(realOnly ? r.stats.entradasReal : r.stats.entradas)} entries</span>
                 <span class="it">${IC.skull} ${num(realOnly ? r.stats.muertesReal : r.stats.muertes)}</span>
                 <span class="it">${IC.coin} ${dinero(realOnly ? r.stats.dineroReal : r.stats.dinero)}</span>
             </div>
             ${timer}
             ${jugadores}
             <div class="rules">
-                <div><label>Velocidad</label><input type="number" step="0.25" min="0.25" max="5" id="r_speed_${id}" value="${rl.speed}"></div>
-                <div><label>Comida ×</label><input type="number" step="0.25" min="0.25" max="10" id="r_food_${id}" value="${rl.food}"></div>
+                <div><label>Speed</label><input type="number" step="0.25" min="0.25" max="5" id="r_speed_${id}" value="${rl.speed}"></div>
+                <div><label>Food ×</label><input type="number" step="0.25" min="0.25" max="10" id="r_food_${id}" value="${rl.food}"></div>
                 <div><label>Virus ×</label><input type="number" step="0.5" min="0" max="10" id="r_virus_${id}" value="${rl.virus}"></div>
                 <div><label>Bots</label><input type="number" step="1" min="0" max="200" id="r_botn_${id}" value="${rl.botCount}"></div>
-                <div><label>Mín. reales</label><input type="number" step="1" min="1" max="50" id="r_minreal_${id}" value="${rl.minReal != null ? rl.minReal : 5}"></div>
-                <div><label>Población</label><input type="number" step="1" min="0" max="60" id="r_pop_${id}" value="${rl.targetPop != null ? rl.targetPop : 10}"></div>
-                <div><label>Tope reales</label><input type="number" step="1" min="1" max="100" id="r_maxp_${id}" value="${rl.maxPlayers != null ? rl.maxPlayers : 30}"></div>
+                <div><label>Min. real</label><input type="number" step="1" min="1" max="50" id="r_minreal_${id}" value="${rl.minReal != null ? rl.minReal : 5}"></div>
+                <div><label>Population</label><input type="number" step="1" min="0" max="60" id="r_pop_${id}" value="${rl.targetPop != null ? rl.targetPop : 10}"></div>
+                <div><label>Max real</label><input type="number" step="1" min="1" max="100" id="r_maxp_${id}" value="${rl.maxPlayers != null ? rl.maxPlayers : 30}"></div>
             </div>
             <div class="ruleline">
-                <label class="chk"><input type="checkbox" id="r_botson_${id}" ${rl.botsEnabled ? 'checked' : ''}> bots activados</label>
-                <button class="b verde mini" onclick="aplicarReglas('${id}')">Aplicar</button>
-                <span class="hint">población = reales + bots de relleno (0 = sin relleno) · velocidad, comida y población al instante</span>
+                <label class="chk"><input type="checkbox" id="r_botson_${id}" ${rl.botsEnabled ? 'checked' : ''}> bots enabled</label>
+                <button class="b verde mini" onclick="aplicarReglas('${id}')">Apply</button>
+                <span class="hint">population = real + filler bots (0 = none) · speed, food and population apply instantly</span>
             </div>
             <div class="btns">
-                <button class="b verde" onclick="forzar('${id}')" ${r.state !== 'waiting' ? 'disabled' : ''}>${IC.play} Forzar inicio</button>
-                <button class="b azul" onclick="espectar('${r.mode}','${esc(r.roomName)}',${r.layerIdx || 1})" ${r.state !== 'playing' ? 'disabled' : ''}>${IC.users} Espectar L${r.layerIdx || 1}</button>
-                <button class="b naranja" onclick="reiniciar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.refresh} Reiniciar</button>
-                <button class="b" onclick="vaciar('${id}')" ${r.conectados === 0 ? 'disabled' : ''}>${IC.broom} Echar a todos</button>
-                <button class="b rojo" onclick="apagar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.power} Apagar</button>
-                ${r.state === 'offline' ? `<button class="b verde" onclick="encender('${id}')">${IC.play} Encender</button>` : ''}
+                <button class="b verde" onclick="forzar('${id}')" ${r.state !== 'waiting' ? 'disabled' : ''}>${IC.play} Force start</button>
+                <button class="b azul" onclick="espectar('${r.mode}','${esc(r.roomName)}',${r.layerIdx || 1})" ${r.state !== 'playing' ? 'disabled' : ''}>${IC.users} Spectate L${r.layerIdx || 1}</button>
+                <button class="b naranja" onclick="reiniciar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.refresh} Restart</button>
+                <button class="b" onclick="vaciar('${id}')" ${r.conectados === 0 ? 'disabled' : ''}>${IC.broom} Kick all</button>
+                <button class="b rojo" onclick="apagar('${id}')" ${r.state === 'offline' ? 'disabled' : ''}>${IC.power} Power off</button>
+                ${r.state === 'offline' ? `<button class="b verde" onclick="encender('${id}')">${IC.play} Power on</button>` : ''}
             </div>
         </div>
     </div>`;
@@ -892,21 +887,21 @@ function aplicarVolumenes() {
         sfxVol:   parseInt(document.getElementById('volSfx').value, 10) / 100,
         musicVol: parseInt(document.getElementById('volMusic').value, 10) / 100
     });
-    toast('<strong>Volumen aplicado</strong>', 'ok');
+    toast('<strong>Volume applied</strong>', 'ok');
     setTimeout(pedir, 100);
 }
 let _enemyFxOn = true;
-function toggleEnemyFx() { send({ cmd: 'setEnemyFx', on: !_enemyFxOn }); toast('<strong>Animaciones enemigos: ' + (!_enemyFxOn ? 'ON' : 'OFF') + '</strong>', 'ok'); setTimeout(pedir, 100); }
+function toggleEnemyFx() { send({ cmd: 'setEnemyFx', on: !_enemyFxOn }); toast('<strong>Enemy animations: ' + (!_enemyFxOn ? 'ON' : 'OFF') + '</strong>', 'ok'); setTimeout(pedir, 100); }
 function aplicarZoom() {
     const z = parseFloat(document.getElementById('baseZoom').value);
-    if (z > 0) { send({ cmd: 'setBaseZoom', value: z }); toast('<strong>Zoom base global: ' + z + '</strong><br>Todos los jugadores', 'ok'); setTimeout(pedir, 100); }
+    if (z > 0) { send({ cmd: 'setBaseZoom', value: z }); toast('<strong>Global base zoom: ' + z + '</strong><br>All players', 'ok'); setTimeout(pedir, 100); }
 }
-function resetZoom() { document.getElementById('baseZoom').value = '1.4'; send({ cmd: 'setBaseZoom', value: 1.4 }); toast('<strong>Zoom reseteado (1.4)</strong>', 'ok'); setTimeout(pedir, 100); }
+function resetZoom() { document.getElementById('baseZoom').value = '1.4'; send({ cmd: 'setBaseZoom', value: 1.4 }); toast('<strong>Zoom reset (1.4)</strong>', 'ok'); setTimeout(pedir, 100); }
 function enviarAnuncio() {
     const t = document.getElementById('announceText').value.trim();
-    if (!t) { toast('Escribe un mensaje', 'warn'); return; }
+    if (!t) { toast('Write a message', 'warn'); return; }
     send({ cmd: 'announce', text: t });
-    toast('<strong>Anuncio enviado</strong>', 'ok');
+    toast('<strong>Announcement sent</strong>', 'ok');
     document.getElementById('announceText').value = '';
 }
 function aplicarGlobal() {
@@ -926,7 +921,7 @@ function aplicarGlobal() {
 function renderHostCards(m) {
     const hosts = m.hosts || [];
     const links = document.getElementById('hostLinksBar');
-    if (links) links.innerHTML = hosts.map(h => `<a class="b mini" href="/h${h.hostId}/admin" style="text-decoration:none">Abrir Host ${h.hostId}${h.alive ? '' : ' (caído)'}</a>`).join('');
+    if (links) links.innerHTML = hosts.map(h => `<a class="b mini" href="/h${h.hostId}/admin" style="text-decoration:none">Open Host ${h.hostId}${h.alive ? '' : ' (down)'}</a>`).join('');
     const rows = [];
     for (const h of hosts) for (const r of (h.rooms || [])) rows.push(r);
     const cont = document.getElementById('hostCardsView');
@@ -935,9 +930,9 @@ function renderHostCards(m) {
         return `<div class="urow">
             <span class="nm russo">${esc(r.roomName)} <span>${r.mode.toUpperCase()} L${r.layerIdx || 1}</span></span>
             <div class="ubar"><i style="width:${Math.max(r.conectados > 0 ? 4 : 0, pct)}%"></i></div>
-            <span class="val">${r.conectados}${r.maxReales ? '/' + r.maxReales : ''} jugadores</span>
+            <span class="val">${r.conectados}${r.maxReales ? '/' + r.maxReales : ''} players</span>
         </div>`;
-    }).join('') : '<div class="usage vacio">Los hosts todavía no han reportado sus salas.</div>';
+    }).join('') : '<div class="usage vacio">Hosts have not reported their rooms yet.</div>';
 }
 function cpuColor(pct) { return pct > 80 ? '#ff6b6b' : pct > 50 ? '#ffce3d' : '#00ff88'; }
 
@@ -989,7 +984,7 @@ const _GAUGE_C = 282.74;   // circunferencia del anillo (2π·45)
 function _setGauge(key, p95, alive) {
     const c = document.getElementById('pcg_' + key), v = document.getElementById('pcgv_' + key), l = document.getElementById('pcgl_' + key);
     if (!c) return;
-    if (!alive) { c.style.strokeDashoffset = 0; c.setAttribute('stroke', '#ff2a2a'); v.innerText = '✕'; v.style.color = ''; l.innerText = 'HOST CAÍDO'; return; }
+    if (!alive) { c.style.strokeDashoffset = 0; c.setAttribute('stroke', '#ff2a2a'); v.innerText = 'X'; v.style.color = ''; l.innerText = 'HOST DOWN'; return; }
     const pct = Math.min(1, (p95 || 0) / PERF_BUDGET_MS);
     const col = _tickColor(p95 || 0);
     c.style.strokeDashoffset = _GAUGE_C * (1 - Math.max(0.015, pct));   // mínimo visible: un puntito
@@ -1016,8 +1011,8 @@ function _perfCardHtml(key, title, sub, isHost) {
                 <span id="pccput_${key}" style="font-size:11px;min-width:32px;text-align:right;color:var(--muted)">—</span>
             </div>
             <div class="sparkbox">
-                <div class="spark"><div class="lbl"><span>Tick p95 · techo 25ms</span><b id="pcst_${key}">—</b></div><canvas id="pcc1_${key}" width="520" height="76"></canvas></div>
-                <div class="spark"><div class="lbl"><span>Red · salida</span><b id="pcsn_${key}">—</b></div><canvas id="pcc2_${key}" width="520" height="76"></canvas></div>
+                <div class="spark"><div class="lbl"><span>Tick p95 · 25ms budget</span><b id="pcst_${key}">—</b></div><canvas id="pcc1_${key}" width="520" height="76"></canvas></div>
+                <div class="spark"><div class="lbl"><span>Net · out</span><b id="pcsn_${key}">—</b></div><canvas id="pcc2_${key}" width="520" height="76"></canvas></div>
             </div>
             <div class="mrow" id="pcm_${key}"></div>
             ${isHost ? `<div class="ctlrow" id="pcctl_${key}"></div>` : ''}
@@ -1044,10 +1039,10 @@ function _updateHostControls(id, p) {
     const sel = document.getElementById('pchz_' + id);
     if (sel && document.activeElement !== sel) sel.value = String(p.snapshotHz || 40);
     const aoi = document.getElementById('pcaoi_' + id);
-    if (aoi) { aoi.innerText = 'AOI: ' + (p.aoiEnabled ? 'ON — desactivar' : 'OFF — activar'); aoi.className = 'b ' + (p.aoiEnabled ? 'verde' : 'rojo'); }
+    if (aoi) { aoi.innerText = 'AOI: ' + (p.aoiEnabled ? 'ON — disable' : 'OFF — enable'); aoi.className = 'b ' + (p.aoiEnabled ? 'verde' : 'rojo'); }
     const off2 = !!(p.layerOff && p.layerOff[2]);
     const l2 = document.getElementById('pcl2_' + id);
-    if (l2) { l2.innerText = 'L2: ' + (off2 ? 'OFF — encender' : 'ON — apagar'); l2.className = 'b ' + (off2 ? 'rojo' : 'verde'); }
+    if (l2) { l2.innerText = 'L2: ' + (off2 ? 'OFF — power on' : 'ON — power off'); l2.className = 'b ' + (off2 ? 'rojo' : 'verde'); }
 }
 
 function _updatePerfCard(key, d) {
@@ -1078,21 +1073,21 @@ function renderPerfHosts(m) {
     const sig = 'd|' + hosts.map(h => h.hostId).join(',');
     if (sig !== _perfSig) {
         _perfSig = sig;
-        cont.innerHTML = _perfCardHtml('dir', 'DIRECTOR', 'sin salas propias · dinero + matchmaking', false)
+        cont.innerHTML = _perfCardHtml('dir', 'DIRECTOR', 'no own rooms · money + matchmaking', false)
             + hosts.map(h => _perfCardHtml(h.hostId, 'HOST ' + h.hostId, ':' + (h.port || '?'), true)).join('');
         for (const h of hosts) _wireHostControls(h.hostId);
     }
     _histPush('dir', (m.tick && m.tick.p95) || 0, m.netKBs || 0);
     _updatePerfCard('dir', { alive: true, cpu: m.serverCpu || 0, tick: m.tick, lag: m.lag, netKBs: m.netKBs || 0,
-        mrow: `<span><b>${m.rssMB || 0}</b> MB RAM</span><span><b>${hosts.filter(h => h.alive).length}/${hosts.length}</b> hosts vivos</span>` });
+        mrow: `<span><b>${m.rssMB || 0}</b> MB RAM</span><span><b>${hosts.filter(h => h.alive).length}/${hosts.length}</b> hosts alive</span>` });
     for (const h of hosts) {
         _perfLast.set(h.hostId, h.perf || {});
         // Un host caído no empuja muestras: su historial queda CONGELADO tal como
         // estaba al morir (más útil para el diagnóstico que una caída falsa a 0).
         if (h.alive) _histPush(h.hostId, (h.tick && h.tick.p95) || 0, h.netKBs || 0);
         _updatePerfCard(h.hostId, Object.assign({ mrow: h.alive
-            ? `<span><b>${h.jugadores || 0}</b> jugadores (<b>${h.jugadoresReales || 0}</b> reales)</span><span><b>${h.salasOnline || 0}</b> salas con gente</span><span><b>${h.rssMB || 0}</b> MB RAM</span>`
-            : `<span style="color:var(--accent);font-family:'Russo One';letter-spacing:1px">SIN RESPUESTA — reforkeo automático en marcha</span>` }, h));
+            ? `<span><b>${h.jugadores || 0}</b> players (<b>${h.jugadoresReales || 0}</b> real)</span><span><b>${h.salasOnline || 0}</b> active rooms</span><span><b>${h.rssMB || 0}</b> MB RAM</span>`
+            : `<span style="color:var(--accent);font-family:'Russo One';letter-spacing:1px">NO RESPONSE — auto-refork in progress</span>` }, h));
         _updateHostControls(h.hostId, h.perf || { snapshotHz: 40, aoiEnabled: true, layerOff: {} });
     }
 }
@@ -1105,18 +1100,18 @@ function applyLayerHost(hostId, idx, active) { send({ cmd: 'setLayerActive', lay
 // (últimas 3 h). Para entradas/muertes/dinero se dibuja el DELTA por minuto;
 // conectados/activos/salas son valores absolutos.
 const DASH_CARDS = [
-    { id: 'salas',    cls: '',          icon: 'room',  color: '#00ff88', label: 'salas con gente' },
-    { id: 'conect',   cls: 'ac-blue',   icon: 'users', color: '#4f9cff', label: 'conectados ahora' },
-    { id: 'activos',  cls: 'ac-purple', icon: 'clock', color: '#b07cf7', label: 'activos última hora' },
-    { id: 'unicos',   cls: 'ac-blue',   icon: 'door',  color: '#4f9cff', label: 'jugadores distintos', click: 'irAJugadores()', nospark: true },
-    { id: 'muertes',  cls: 'ac-red',    icon: 'skull', color: '#ff4d4d', label: 'muertes totales' },
-    { id: 'dinero',   cls: 'ac-yellow', icon: 'coin',  color: '#ffce3d', label: 'dinero generado' },
+    { id: 'salas',    cls: '',          icon: 'room',  color: '#00ff88', label: 'active rooms' },
+    { id: 'conect',   cls: 'ac-blue',   icon: 'users', color: '#4f9cff', label: 'online now' },
+    { id: 'activos',  cls: 'ac-purple', icon: 'clock', color: '#b07cf7', label: 'active last hour' },
+    { id: 'unicos',   cls: 'ac-blue',   icon: 'door',  color: '#4f9cff', label: 'unique players', click: "verTab('jugadores')" },
+    { id: 'muertes',  cls: 'ac-red',    icon: 'skull', color: '#ff4d4d', label: 'total deaths' },
+    { id: 'dinero',   cls: 'ac-yellow', icon: 'coin',  color: '#ffce3d', label: 'revenue' },
 ];
 function buildDashCards() {
     document.getElementById('dashCards').innerHTML = DASH_CARDS.map(c => `
-        <div class="sumcard dstat ${c.cls}${c.click ? ' clickable' : ''}"${c.click ? ` onclick="${c.click}" title="Ver jugadores por país"` : ''}>
+        <div class="sumcard dstat ${c.cls}${c.click ? ' clickable' : ''}"${c.click ? ` onclick="${c.click}" title="Open player ranking"` : ''}>
             <div class="drow"><span class="ico">${IC[c.icon]}</span><div><div class="v russo" id="dv_${c.id}">—</div><div class="k">${c.label}</div></div></div>
-            ${c.nospark ? '' : `<canvas class="dspark" id="dc_${c.id}" height="36"></canvas>`}
+            <canvas class="dspark" id="dc_${c.id}" height="36"></canvas>
         </div>`).join('');
 }
 function drawSpark(cv, data, color) {
@@ -1136,19 +1131,20 @@ function drawSpark(cv, data, color) {
     data.forEach((v, i) => i ? ctx.lineTo(i * step, y(v)) : ctx.moveTo(0, y(v)));
     ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
 }
-// Valores de una serie: con "solo reales" activo usa la variante *Real si existe.
+// Valores de una serie: con "real only" activo usa la variante *Real si existe.
+const REAL_VARIANT = { entradas: 'entradasReal', muertes: 'muertesReal', dinero: 'dineroReal', activos: 'activosReal', unicos: 'unicosReal' };
 function _serieVals(s, kBase, delta) {
-    const k = realOnly && (kBase === 'entradas' || kBase === 'muertes' || kBase === 'dinero') ? kBase + 'Real' : kBase;
+    const k = realOnly && REAL_VARIANT[kBase] ? REAL_VARIANT[kBase] : kBase;
     const raw = s.map(x => x[k] || 0);
     // slice(1) SIEMPRE (también en absolutas) para que todas queden alineadas con ts
     return delta ? raw.slice(1).map((v, i) => Math.max(0, v - raw[i])) : raw.slice(1);
 }
 const BIG_SERIES = [
-    { key: 'entradas',   label: 'Entradas',   color: '#00ff88', delta: true },
-    { key: 'muertes',    label: 'Muertes',    color: '#ff4d4d', delta: true },
-    { key: 'dinero',     label: 'Dinero $',   color: '#ffce3d', delta: true },
-    { key: 'conectados', label: 'Conectados', color: '#4f9cff', delta: false },
-    { key: 'activos',    label: 'Activos 1h', color: '#b07cf7', delta: false },
+    { key: 'entradas',   label: 'Entries',   color: '#00ff88', delta: true },
+    { key: 'muertes',    label: 'Deaths',    color: '#ff4d4d', delta: true },
+    { key: 'dinero',     label: 'Money $',   color: '#ffce3d', delta: true },
+    { key: 'conectados', label: 'Online',    color: '#4f9cff', delta: false },
+    { key: 'activos',    label: 'Active 1h', color: '#b07cf7', delta: false },
 ];
 const serieOn = new Set(['entradas', 'muertes', 'dinero']);
 function buildSerieChips() {
@@ -1180,7 +1176,7 @@ function drawBigChart(hoverI) {
     for (let i = 0; i <= 4; i++) { const Y = PADT + (H - PADB - PADT) * i / 4; ctx.beginPath(); ctx.moveTo(0, Y); ctx.lineTo(W, Y); ctx.stroke(); }
     if (!_bigCache) {
         ctx.fillStyle = '#5a675e'; ctx.font = '12px Inter'; ctx.textAlign = 'center';
-        ctx.fillText('Recopilando datos… (el servidor guarda una muestra por minuto)', W / 2, H / 2);
+        ctx.fillText('Collecting data… (the server stores one sample per minute)', W / 2, H / 2);
         return;
     }
     const ts = _bigCache.ts, n = ts.length;
@@ -1217,12 +1213,12 @@ function renderDashPaises(m) {
     const maxP = ps.length ? ps[0].jugadores : 1;
     cont.innerHTML = ps.length ? ps.map(p => `
         <div class="crow">
-            <span class="fl">${flag(p.code)}</span>
+            <span class="ccode" style="flex:none">${esc(p.code)}</span>
             <div class="cinfo">
-                <div class="cname"><span>${esc(p.name)}<span class="pct">${Math.round(p.jugadores / tot * 100)}%</span>${now[p.code] ? `<span style="color:#00ff88;font-size:10px;margin-left:8px">● ${now[p.code]} online</span>` : ''}</span><b>${num(p.jugadores)}</b></div>
+                <div class="cname"><span>${esc(p.name)}<span class="pct">${Math.round(p.jugadores / tot * 100)}%</span>${now[p.code] ? `<span style="color:#00ff88;font-size:10px;margin-left:8px">${now[p.code]} online</span>` : ''}</span><b>${num(p.jugadores)}</b></div>
                 <div class="ubar" style="height:7px"><i style="width:${Math.max(4, Math.round(p.jugadores / maxP * 100))}%"></i></div>
             </div>
-        </div>`).join('') : '<div class="vacio">Sin conexiones registradas.</div>';
+        </div>`).join('') : '<div class="vacio">No connections yet.</div>';
 }
 
 // ===== Mapa mundial de puntos (rejilla generada offline desde countries.geo.json) =====
@@ -1311,36 +1307,51 @@ function drawWorldMap(hoverCode) {
         tip.style.display = 'block';
         tip.style.left = Math.min(e.clientX - rc.left + 14, rc.width - 170) + 'px';
         tip.style.top = (e.clientY - rc.top + 12) + 'px';
-        tip.innerHTML = `<b style="color:#fff">${flag(code)} ${esc(_mapData.names[code] || code)}</b><br>` +
-            `<span style="color:#00ff88">●</span> ${num(j)} jugador${j === 1 ? '' : 'es'}` +
-            (n ? `<br><span style="color:#00ff88">●</span> <b style="color:#00ff88">${n} conectado${n === 1 ? '' : 's'} ahora</b>` : '');
+        tip.innerHTML = `<b style="color:#fff">${esc(_mapData.names[code] || code)}</b> <span class="ccode">${esc(code)}</span><br>` +
+            `${num(j)} player${j === 1 ? '' : 's'}` +
+            (n ? `<br><b style="color:#00ff88">${n} online now</b>` : '');
     });
     cv.addEventListener('mouseleave', () => { tip.style.display = 'none'; drawWorldMap(); });
 })();
 function updateDashboard(m, t, sConectados, sEntradas, sMuertes, sDinero) {
     if (!document.getElementById('dv_salas')) { buildDashCards(); buildSerieChips(); }
     const vals = {
-        salas: t.salasOnline, conect: sConectados, activos: num(t.activosHora || 0),
+        salas: t.salasOnline, conect: sConectados,
+        activos: num(realOnly ? (t.activosHoraReal || 0) : (t.activosHora || 0)),
         unicos: num(realOnly ? (t.jugadoresUnicosReal || 0) : t.jugadoresUnicos),
         muertes: num(sMuertes), dinero: dinero(sDinero)
     };
     for (const k of Object.keys(vals)) { const el = document.getElementById('dv_' + k); if (el) el.innerText = vals[k]; }
-    // Rendimiento del PROPIO proceso (mono o director), misma tarjeta que en la
-    // pestaña Rendimiento del split. El historial acumula aunque la pestaña esté oculta.
-    if (!document.getElementById('pc_dash')) document.getElementById('dashPerf').innerHTML = _perfCardHtml('dash', 'SERVIDOR', 'monitorización en vivo', false);
-    _histPush('dash', (m.tick && m.tick.p95) || 0, m.netKBs || 0);
+    // Tarjeta SERVER: en mono, el propio proceso; en director, la MEDIA de los
+    // hosts vivos (lo que importa: ellos corren las salas — el Director está ocioso).
+    let perf = { cpu: m.serverCpu || 0, tick: m.tick, lag: m.lag, netKBs: m.netKBs || 0, rssMB: m.rssMB || 0 };
+    const hostsVivos = (m.hosts || []).filter(h => h.alive);
+    if (m.role === 'director' && hostsVivos.length) {
+        const avg = f => Math.round(hostsVivos.reduce((s, h) => s + (f(h) || 0), 0) / hostsVivos.length * 10) / 10;
+        perf = {
+            cpu: avg(h => h.cpu),
+            tick: { p95: avg(h => h.tick && h.tick.p95) },
+            lag: { p95: avg(h => h.lag && h.lag.p95) },
+            netKBs: hostsVivos.reduce((s, h) => s + (h.netKBs || 0), 0),
+            rssMB: hostsVivos.reduce((s, h) => s + (h.rssMB || 0), 0)
+        };
+    }
+    if (!document.getElementById('pc_dash')) document.getElementById('dashPerf').innerHTML = _perfCardHtml('dash', 'SERVER', m.role === 'director' ? 'hosts average · live' : 'live monitoring', false);
+    _histPush('dash', (perf.tick && perf.tick.p95) || 0, perf.netKBs || 0);
     if (tabActiva !== 'dashboard') return;   // canvas ocultos miden 0: no dibujar
-    _updatePerfCard('dash', { alive: true, cpu: m.serverCpu || 0, tick: m.tick, lag: m.lag, netKBs: m.netKBs || 0,
-        mrow: `<span><b>${m.rssMB || 0}</b> MB RAM</span><span><b>${t.jugadores || 0}</b> conectados</span><span><b>${t.salasOnline || 0}</b> salas con gente</span><span>red <b>${m.snapshotHz || '—'} Hz</b></span><span>AOI <b>${m.aoiEnabled ? 'ON' : 'OFF'}</b></span>` });
+    _updatePerfCard('dash', { alive: true, cpu: perf.cpu, tick: perf.tick, lag: perf.lag, netKBs: perf.netKBs,
+        mrow: `<span><b>${perf.rssMB || 0}</b> MB RAM</span><span><b>${t.jugadores || 0}</b> online</span><span><b>${t.salasOnline || 0}</b> active rooms</span>`
+            + (m.role === 'director' ? `<span><b>${hostsVivos.length}/${(m.hosts || []).length}</b> hosts alive</span>` : `<span>net <b>${m.snapshotHz || '—'} Hz</b></span><span>AOI <b>${m.aoiEnabled ? 'ON' : 'OFF'}</b></span>`) });
     const S = m.series || [];
     const dsets = {
         salas: S.map(v => v.salasOnline || 0).slice(1),
         conect: S.map(v => v.conectados || 0).slice(1),
-        activos: S.map(v => v.activos || 0).slice(1),
+        activos: _serieVals(S, 'activos', false),
+        unicos: _serieVals(S, 'unicos', false),
         muertes: _serieVals(S, 'muertes', true),
         dinero: _serieVals(S, 'dinero', true),
     };
-    for (const c of DASH_CARDS) { if (!c.nospark && dsets[c.id]) drawSpark(document.getElementById('dc_' + c.id), dsets[c.id], c.color); }
+    for (const c of DASH_CARDS) { if (dsets[c.id]) drawSpark(document.getElementById('dc_' + c.id), dsets[c.id], c.color); }
     updateBigData(m);
     renderDashPaises(m);
     updateWorldMap(m);
@@ -1365,7 +1376,7 @@ function updateDashboard(m, t, sConectados, sEntradas, sMuertes, sDinero) {
 })();
 
 function render(m) {
-    document.getElementById('liveTxt').innerText = 'en vivo';
+    document.getElementById('liveTxt').innerText = 'live';
     const role = m.role || 'mono';
 
     // --- Fase 4b: qué se ve según el rol de ESTE proceso ---
@@ -1376,6 +1387,7 @@ function render(m) {
     document.getElementById('tabBtn_dashboard').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_jugadores').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_actividad').style.display = soloSalas ? 'none' : '';
+    document.getElementById('tabBtn_transactions').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_ajustes').style.display = soloSalas ? 'none' : '';
     document.getElementById('tabBtn_rendimiento').style.display = soloSalas ? 'none' : '';
     document.getElementById('ngroupDatos').style.display = soloSalas ? 'none' : '';
@@ -1387,21 +1399,21 @@ function render(m) {
     document.getElementById('perfMono').style.display = (role === 'director') ? 'none' : '';
     document.getElementById('perfHosts').style.display = (role === 'director') ? '' : 'none';
     const ajustesNote = document.getElementById('ajustesHostsNote');
-    if (ajustesNote) ajustesNote.innerText = (role === 'director') ? '(se aplica a los ' + (m.hosts ? m.hosts.length : 0) + ' hosts)' : '';
+    if (ajustesNote) ajustesNote.innerText = (role === 'director') ? '(applies to all ' + (m.hosts ? m.hosts.length : 0) + ' hosts)' : '';
 
     if (role === 'director') {
         renderHostCards(m);
         renderPerfHosts(m);
         const vivos = (m.hosts || []).filter(h => h.alive).length;
-        document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · ${vivos}/${(m.hosts || []).length} hosts vivos`;
+        document.getElementById('metaInfo').innerText = `min per room: ${m.minPlayers} players · ${vivos}/${(m.hosts || []).length} hosts alive`;
     } else {
-        document.getElementById('metaInfo').innerText = `mínimo por sala: ${m.minPlayers} jugadores · red ${m.snapshotHz}Hz · AOI ${m.aoiEnabled ? 'ON' : 'OFF'}`;
+        document.getElementById('metaInfo').innerText = `min per room: ${m.minPlayers} players · net ${m.snapshotHz}Hz · AOI ${m.aoiEnabled ? 'ON' : 'OFF'}`;
     }
 
     if (m.snapshotHz != null && document.activeElement.id !== 'snapHzSel') document.getElementById('snapHzSel').value = m.snapshotHz;
     const aoiBtn = document.getElementById('aoiToggleBtn');
     if (aoiBtn) {
-        aoiBtn.innerText = m.aoiEnabled ? 'ON — desactivar' : 'OFF — activar';
+        aoiBtn.innerText = m.aoiEnabled ? 'ON — disable' : 'OFF — enable';
         aoiBtn.className = 'b ' + (m.aoiEnabled ? 'verde' : 'rojo');
     }
     // Estado del botón power Layer 2 (apaga/enciende todas las L2 a la vez).
@@ -1409,11 +1421,11 @@ function render(m) {
     const off2 = !!_layerOff[2];
     const lpb = document.getElementById('layerPowerBtn_2');
     if (lpb) {
-        lpb.innerText = off2 ? '⏻ L2: OFF' : '⏻ L2: ON';
+        lpb.innerText = off2 ? 'L2: OFF' : 'L2: ON';
         lpb.className = 'b ' + (off2 ? 'rojo' : 'verde');
     }
     const lph = document.getElementById('layerPowerHint');
-    if (lph) lph.innerText = off2 ? 'L2 apagada — 0 sims, no consume CPU.' : '';
+    if (lph) lph.innerText = off2 ? 'L2 off — 0 sims, zero CPU cost.' : '';
     // Barra de layer tabs: solo visible cuando L2 está ON (si solo hay L1 no hace falta)
     const layerBar = document.getElementById('layerTabsBar');
     if (layerBar) layerBar.style.display = off2 ? 'none' : '';
@@ -1462,8 +1474,8 @@ function render(m) {
     renderRanking();
     const rankEl = document.getElementById('rankUpdatedAt');
     if (rankEl) {
-        if (m.rankingStale) rankEl.textContent = 'Sin calcular — pulsa un botón';
-        else if (m.rankingUpdatedAt) rankEl.textContent = 'Actualizado: ' + new Date(m.rankingUpdatedAt).toLocaleTimeString();
+        if (m.rankingStale) rankEl.textContent = 'Not computed — press a button';
+        else if (m.rankingUpdatedAt) rankEl.textContent = 'Updated: ' + new Date(m.rankingUpdatedAt).toLocaleTimeString();
     }
 
     // Registro de acciones de admin, agrupado por sala
@@ -1478,40 +1490,55 @@ function render(m) {
                 <span style="color:#ddd">${esc(a.accion)}</span>
                 ${a.objetivo ? `<span style="color:var(--primary)">${esc(a.objetivo)}</span>` : ''}
             </div>`).join('')}
-        </div>`).join('') : '<div class="vacio">Aún no se han hecho acciones de administración.</div>';
+        </div>`).join('') : '<div class="vacio">No admin actions yet.</div>';
 
-    let pais = '';
-    const maxPais = Math.max(1, ...(m.paises || []).map(p => p.jugadores || 0));
-    (m.paises || []).forEach((p, i) => {
-        pais += `<tr>
-            <td><span class="pos ${i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : ''} russo">${i + 1}</span></td>
-            <td><span class="flag">${flag(p.code)}</span><b style="color:#fff">${esc(p.name)}</b></td>
-            <td><span class="ccode">${esc(p.code)}</span></td>
-            <td><div class="ubar" style="height:9px"><i style="width:${Math.max(4, Math.round(p.jugadores / maxPais * 100))}%"></i></div></td>
-            <td class="kills">${num(p.jugadores)}</td>
-        </tr>`;
-    });
-    document.getElementById('paisesCuerpo').innerHTML = pais || '<tr><td colspan="5" class="vacio">Sin conexiones registradas.</td></tr>';
+    renderTransactions(m);
 
     const usadas = m.rooms.filter(r => r.stats.entradas > 0).sort((a, b) => b.stats.entradas - a.stats.entradas).slice(0, 10);
     const maxE = usadas.length ? usadas[0].stats.entradas : 1;
     document.getElementById('usoSalas').innerHTML = usadas.length ? `
         <div class="vchart">
-            <span class="vtitle">Salas más usadas</span>
+            <span class="vtitle">Top rooms</span>
             <div class="vlegend"><span><i style="background:#00ff88"></i>Classic</span><span><i style="background:#4f9cff"></i>Arcade</span></div>
             <div class="vplot">${usadas.map(r => `
-                <div class="vcol" title="${esc(r.roomName)} ${r.mode.toUpperCase()} · ${num(r.stats.entradas)} entradas · ${dinero(r.stats.dinero)}">
+                <div class="vcol" title="${esc(r.roomName)} ${r.mode.toUpperCase()} · ${num(r.stats.entradas)} entries · ${dinero(r.stats.dinero)}">
                     <div class="vbar${r.mode === 'arcade' ? ' arc' : ''}" style="height:${Math.max(2, Math.round(r.stats.entradas / maxE * 100))}%"><span class="vval">${num(r.stats.entradas)}</span></div>
                 </div>`).join('')}
             </div>
             <div class="vlabels">${usadas.map(r => `
                 <div class="vlab"><span class="nm">${esc(r.roomName)}</span><span class="md">${r.mode.toUpperCase()} · L${r.layerIdx || 1}</span><span class="dn">${dinero(r.stats.dinero)}</span></div>`).join('')}
             </div>
-        </div>` : '<div class="usage vacio">Sin actividad todavía.</div>';
+        </div>` : '<div class="usage vacio">No activity yet.</div>';
 
     let hist = '';
     for (const h of m.historial) hist += `<tr><td>${fecha(h.fecha)}</td><td><b style="color:#ccc">${esc(h.nombre)}</b></td><td>${esc(h.ip)}</td><td>${esc(h.sala)}</td></tr>`;
-    document.getElementById('histCuerpo').innerHTML = hist || '<tr><td class="vacio">Sin conexiones registradas.</td></tr>';
+    document.getElementById('histCuerpo').innerHTML = hist || '<tr><td class="vacio">No connections yet.</td></tr>';
+}
+
+// Transactions: tabla de movimientos de dinero (entradas, premios, depósitos, retiros)
+const TX_STYLE = {
+    entry:    ['ENTRY',    '#ff6b6b'],
+    cashout:  ['CASHOUT',  '#00ff88'],
+    prize:    ['PRIZE',    '#00ff88'],
+    refund:   ['REFUND',   '#ffce3d'],
+    deposit:  ['DEPOSIT',  '#4f9cff'],
+    withdraw: ['WITHDRAW', '#ff8c42'],
+};
+function renderTransactions(m) {
+    const cont = document.getElementById('txCuerpo'); if (!cont) return;
+    const txs = m.transacciones || [];
+    cont.innerHTML = txs.length ? txs.map(tx => {
+        const [label, color] = TX_STYLE[tx.type] || [String(tx.type || '?').toUpperCase(), '#aaa'];
+        const w = String(tx.wallet || '-');
+        const wShort = w.length > 12 ? w.slice(0, 4) + '…' + w.slice(-4) : w;
+        return `<tr>
+            <td style="color:#888">${fecha(tx.fecha)}</td>
+            <td><span class="tag" style="background:${color}22;color:${color}">${label}</span></td>
+            <td title="${esc(w)}" style="font-family:monospace;font-size:11.5px;color:#ccc">${esc(wShort)}</td>
+            <td style="text-align:right;font-family:'Russo One';color:${tx.amount >= 0 ? '#00ff88' : '#ff6b6b'}">${tx.amount >= 0 ? '+' : ''}${num(tx.amount)}</td>
+            <td style="color:#888">${esc(tx.detail || '')}</td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="5" class="vacio">No transactions yet. Paid entries, prizes, deposits and withdrawals will show up here.</td></tr>';
 }
 
 function pintarGrid(elId, salas) {
