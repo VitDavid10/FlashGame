@@ -128,12 +128,22 @@
     <div class="hint" style="margin:6px 0">Solo tiene efecto visible con "modo pixel" activo — en modo clásico el panel usa el estilo normal (verde fijo, sin textura). "APLICAR EN VIVO" no es una maqueta local: abre/reutiliza "UI del juego" y dispara el panel COMPLETO real con dos skills de verdad, para ver el acento tal cual queda.</div>
     <div class="row">
         <span class="ctrl">acento pixel-art <input type="color" id="skAccent" value="#00ff88"></span>
+        <span class="ctrl">fondo <input type="color" id="skBg" value="#080e0b"></span>
+        <span class="ctrl">opacidad fondo <input type="number" id="skBgAlpha" value="0.96" min="0" max="1" step="0.05"></span>
+        <span class="ctrl">grosor borde (px) <input type="number" id="skBorder" value="20" min="4" max="48" step="4"></span>
         <button class="secondary" id="skApplyLive">APLICAR EN VIVO (panel completo real)</button>
-        <button class="secondary" id="skCopyOpts">COPIAR (setPixPanelAccent)</button>
+        <button class="secondary" id="skCopyOpts">COPIAR (código)</button>
         <button class="secondary" id="skReset">restablecer</button>
     </div>
+    <div class="hint" style="margin:6px 0">"APLICAR EN VIVO" además GUARDA acento/fondo/grosor (localStorage) — vale también en partidas reales. "restablecer" vuelve a fábrica en el juego también.</div>
     <div id="skPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
     <div class="meta" id="skMeta"></div>
+</div>
+
+<div class="bannerCard" id="cartelLoading">
+    <h3>Pantalla de carga (título como imagen)</h3>
+    <div class="hint" style="margin:6px 0">Coloca <code>game/img/loading-title.png</code> y el juego la usará como título en vez del texto "PILLWARS" (con el mismo latido de brillo). Si falta, sale el texto de siempre — nunca rompe la carga. Sin más ajustes: la imagen se muestra tal cual, escalada al ancho.</div>
+    <div class="meta" id="loadTitleStatus">comprobando…</div>
 </div>
 </div>
 
@@ -156,6 +166,7 @@
 
 <script src="pixfont.js"></script>
 <script src="pixfont-hero.js"></script>
+<script src="cartel-hero.js"></script>
 <script>
     // ===== pestañas =====
     document.querySelectorAll('#tabs button').forEach(btn => {
@@ -248,8 +259,10 @@
           defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
         { id: 'skillTitle', label: 'Título "SELECT A SKILL"', text: 'SELECT A SKILL', px: 2, diamonds: true,
           defaults: { thin: false, plain: false, hd: 0, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
-        { id: 'skillName', label: 'Nombre de skill', text: 'VIRUS SHOT', px: 2,
+        { id: 'skillName', label: 'Nombre de skill (tarjetas del panel)', text: 'VIRUS SHOT', px: 2,
           defaults: { thin: false, plain: true, hd: 1, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'sysTitle', label: 'Título de modal de sistema (REJOIN EXPIRED, KICKED...)', text: 'REJOIN EXPIRED', px: 2, diamonds: true,
+          defaults: { thin: false, plain: false, hd: 1, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
         { id: 'gameOver', label: 'GAME OVER (overlay de muerte)', text: 'GAME OVER', px: 8,
           defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#ff3333', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
         { id: 'victory', label: 'VICTORY! (modal de premio classic)', text: 'VICTORY!', px: 8,
@@ -291,8 +304,12 @@
     // se pasa como opts directos.
     const FEATURES = {
         go:            { label: 'GO! (arranque de partida)', fire: (win, s) => win.showGoSplash(s.text, Object.assign({ px: s.px, dx: s.dx | 0, dy: s.dy | 0 }, labOptsFromState(s))) },
-        contador:      { label: 'Cuenta atrás (inicio/fin)', fire: (win, s) => { const opts = Object.assign({ px: s.px, dx: s.dx | 0, dy: s.dy | 0 }, labOptsFromState(s)); let n = 5; win.showCountdownNumber(n, TEXTS.cdStart, opts); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdStart, opts); }, 700); } },
-        skillTitle:    { label: 'Título del panel de skills', fire: (win, s) => { win.__pwLab.practiceFirstSkillDone = true; win.__pwLab.skillPanelTitle = s.text; win.showSkillChoice(Object.assign({ px: s.px }, labOptsFromState(s))); } },
+        contador:      { label: 'Cuenta atrás (inicio/fin)', fire: (win, s) => { const opts = Object.assign({ px: s.px, dx: s.dx | 0, dy: s.dy | 0 }, labOptsFromState(s)); let n = 5; win.showCountdownNumber(n, TEXTS.cdStart, opts); win.__pwLabCdTimer = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(win.__pwLabCdTimer); win.__pwLabCdTimer = null; return; } win.showCountdownNumber(n, TEXTS.cdStart, opts); }, 700); } },
+        skillTitle:    { label: 'Título del panel de skills', fire: (win, s) => { win.__pwLab.practiceFirstSkillDone = true; win.__pwLab.skillPanelTitle = s.text; win.closeSkillChoice(); win.showSkillChoice(Object.assign({ px: s.px, scale: s.scale || 1 }, labOptsFromState(s))); } },
+        // skillName/sysTitle: el estilo viaja por styleOverrides (title:true) — el
+        // juego ignora el texto (los nombres de skill y REJOIN/KICKED son suyos).
+        skillName:     { label: 'Nombre de skills (tarjetas del panel)', title: true, fire: (win) => { win.__pwLab.practiceFirstSkillDone = true; win.closeSkillChoice(); win.showSkillChoice(); } },
+        sysTitle:      { label: 'Título del modal de sistema (REJOIN/KICKED)', title: true, fire: (win) => win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle) },
         gameOver:      { label: 'GAME OVER (muerte)', title: true, fire: (win) => win.stopGame() },
         victory:       { label: 'VICTORY! (premio classic)', title: true, fire: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }) },
         cashout:       { label: 'CASHOUT (premio classic)', title: true, fire: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }) },
@@ -305,6 +322,7 @@
     // al pintar el título) y restaura los guardados después.
     function fireFeature(win, featureId, s) {
         const f = FEATURES[featureId]; if (!f) return;
+        closeAllOverlays(win);   // lo lanzado antes nunca bloquea el cuadro nuevo
         if (!f.title) { f.fire(win, s); return; }
         const merged = Object.assign({}, loadOverrides());
         merged[featureId] = ovFromState(s);
@@ -320,7 +338,7 @@
     const OVERRIDES_KEY = 'pw_style_overrides';
     function loadOverrides() { try { return JSON.parse(localStorage.getItem(OVERRIDES_KEY)) || {}; } catch (e) { return {}; } }
     function saveOverrides(all) { localStorage.setItem(OVERRIDES_KEY, JSON.stringify(all)); pushOverridesToGame(all); }
-    function ovFromState(s) { return { text: s.text, px: s.px, opts: labOptsFromState(s), dx: s.dx | 0, dy: s.dy | 0 }; }
+    function ovFromState(s) { const ov = { text: s.text, px: s.px, opts: labOptsFromState(s), dx: s.dx | 0, dy: s.dy | 0 }; if (s.scale && s.scale !== 1) ov.scale = s.scale; return ov; }
     function pushOverridesToGame(all) {
         if (gameWin && !gameWin.closed && gameWin.__pwLab) {
             gameWin.__pwLab.styleOverrides = all;
@@ -383,6 +401,11 @@
                     '<span class="ctrl">X <input type="number" class="bDx" min="-2000" max="2000" step="5"></span>' +
                     '<span class="ctrl">Y <input type="number" class="bDy" min="-2000" max="2000" step="5"></span>' +
                 '</fieldset>' +
+                // zoom fino: px es entero (el salto 1→2 dobla el tamaño); la escala
+                // continua interpola entre medias. Solo en los títulos con diamantes
+                // (panel de skills y modal de sistema), que son los que lo soportan.
+                (def.diamonds ? '<fieldset><legend>zoom fino (escala continua)</legend>' +
+                    '<span class="ctrl">× <input type="number" class="bScale" min="0.2" max="4" step="0.05"></span></fieldset>' : '') +
             '</div>' +
             '<div class="dark bOut"></div>' +
             '<div class="meta bMeta"></div>';
@@ -394,12 +417,14 @@
             sparkles: $('.bSparkles'), fill: $('.bFill'), shade: $('.bShade'),
             dx: $('.bDx'), dy: $('.bDy'),
         };
+        if ($('.bScale')) inputs.scale = $('.bScale');   // solo tarjetas con diamantes
         function applyStateToInputs(s) {
             inputs.text.value = s.text; inputs.px.value = s.px; inputs.font.value = s.font || '';
             inputs.thin.checked = s.thin; inputs.plain.checked = s.plain; inputs.hd.value = String(s.hd);
             inputs.glowOn.checked = s.glow; inputs.glowColor.value = s.glowColor; inputs.glowBlur.value = s.glowBlur;
             inputs.sparkles.value = s.sparkles; inputs.fill.value = s.fill; inputs.shade.value = s.shade;
             inputs.dx.value = s.dx | 0; inputs.dy.value = s.dy | 0;
+            if (inputs.scale) inputs.scale.value = s.scale || 1;
         }
         applyStateToInputs(state);
 
@@ -412,6 +437,7 @@
                 dx: parseInt(inputs.dx.value, 10) || 0, dy: parseInt(inputs.dy.value, 10) || 0,
             };
             if (inputs.font.value) st.font = inputs.font.value;
+            if (inputs.scale) st.scale = Math.max(0.2, Math.min(4, parseFloat(inputs.scale.value) || 1));
             return st;
         }
         function redraw() {
@@ -457,8 +483,9 @@
                 d2.style.transform = 'scaleX(-1)';
                 const r = renderFancyWithState(s.text, s);
                 wrap.appendChild(d1); wrap.appendChild(r.cv); wrap.appendChild(d2);
+                if (s.scale && s.scale !== 1) { wrap.style.transform = 'scale(' + s.scale + ')'; wrap.style.transformOrigin = 'left center'; }
                 out.appendChild(wrap);
-                $('.bMeta').textContent = r.mode + warn;
+                $('.bMeta').textContent = r.mode + (s.scale && s.scale !== 1 ? ' · escala ×' + s.scale : '') + warn;
             } else {
                 const r = renderFancyWithState(s.text, s);
                 out.appendChild(r.cv);
@@ -619,6 +646,23 @@
         // así que no se mueve sola. La vista "mapa entero" de antes sigue
         // disponible en la sección VISTA del panel flotante.
         win.__pwLabCam = { x: L.camera.x, y: L.camera.y };
+        // NADA jugable: los cuadros se lanzan solo para VERLOS. Se anulan los
+        // clicks/hovers dentro de los overlays (elegir skill, OK del modal,
+        // TRY AGAIN/SPECTATE/MENU, cerrar el premio, arrastrar slots de skill)
+        // y el teclado del juego (skills 1-0, WASD, TAB/Q, espacio). Cerrar y
+        // relanzar cada cuadro se hace siempre desde el panel LAB.
+        applyStyleTag(win, 'pwLabInertCss',
+            '#sysModal .exit-actions,#skillChoiceOverlay .skill-opt-btn,#resultOverlay button,' +
+            '#prizeModal button,#prizeModal .close,#exitModal,#actionBar,#exitGameBtn' +
+            '{pointer-events:none!important}');
+        if (!win.__pwLabKeyBlock) {
+            // captura en document: corta los handlers del juego (van por bubble en
+            // window) pero deja escribir en los inputs del panel LAB (acción por
+            // defecto, no depende de la propagación).
+            win.__pwLabKeyBlock = e => e.stopPropagation();
+            win.document.addEventListener('keydown', win.__pwLabKeyBlock, true);
+            win.document.addEventListener('keyup', win.__pwLabKeyBlock, true);
+        }
         buildFloatingPanel(win);
         win.__pwLabInited = true;
     }
@@ -896,7 +940,7 @@
                 r.appendChild(name);
                 const ov0 = loadOverrides()[fid] || {};
                 for (const [key, lbl, val] of [['px', 'px', ov0.px], ['dx', 'X', ov0.dx], ['dy', 'Y', ov0.dy]]) {
-                    if (fid === 'skillTitle' && key !== 'px') continue;   // el título del panel no se desplaza
+                    if ((fid === 'skillTitle' || fid === 'skillName' || fid === 'sysTitle') && key !== 'px') continue;   // van dentro de su cartel, no se desplazan
                     const lab = win.document.createElement('label');
                     lab.appendChild(win.document.createTextNode(lbl));
                     const i = win.document.createElement('input'); i.type = 'number';
@@ -939,28 +983,40 @@
     // Disparos "reales": cada uno hace EXACTAMENTE lo que hace el juego en ese
     // momento (con el estilo asignado si lo hay, o el de fábrica). Los usa el
     // panel flotante de la pestaña del juego y "VER EN UI" de "Asignar textos".
+    // Cierra TODO lo lanzado para ver (menos el banner, que es una tira aparte):
+    // cada disparo la llama primero, así nunca se queda un cuadro "atascado"
+    // debajo de otro y siempre se puede lanzar el siguiente. También corta el
+    // intervalo de la cuenta atrás si sigue corriendo.
+    function closeAllOverlays(win) {
+        if (win.__pwLabCdTimer) { win.clearInterval(win.__pwLabCdTimer); win.__pwLabCdTimer = null; }
+        win.__pwLab.els.result.style.display = 'none'; win.closeSkillChoice(); win.hideSystemMsg(); win.hideCountdownNumber();
+        const pm = win.document.getElementById('prizeModal'); if (pm) pm.style.display = 'none';
+        const go = win.document.getElementById('goSplash'); if (go) go.remove();
+    }
+    function labCountdown(win, label) {
+        let n = 5; win.showCountdownNumber(n, label);
+        win.__pwLabCdTimer = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(win.__pwLabCdTimer); win.__pwLabCdTimer = null; return; } win.showCountdownNumber(n, label); }, 700);
+    }
     const TRIGGERS = {
-        go: (win) => win.showGoSplash(),
-        contador: (win) => { let n = 5; win.showCountdownNumber(n, TEXTS.cdStart); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdStart); }, 700); },
-        contadorEnd: (win) => { let n = 5; win.showCountdownNumber(n, TEXTS.cdEnd); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdEnd); }, 700); },
-        skillTitle: (win) => { win.__pwLab.practiceFirstSkillDone = true; win.showSkillChoice(); },
-        gameOver: (win) => FEATURES.gameOver.fire(win),
-        victory: (win) => FEATURES.victory.fire(win),
-        cashout: (win) => FEATURES.cashout.fire(win),
-        matchEnded: (win) => FEATURES.matchEnded.fire(win),
-        matchFinished: (win) => FEATURES.matchFinished.fire(win),
-        roomRestarted: (win) => FEATURES.roomRestarted.fire(win),
+        go: (win) => { closeAllOverlays(win); win.showGoSplash(); },
+        contador: (win) => { closeAllOverlays(win); labCountdown(win, TEXTS.cdStart); },
+        contadorEnd: (win) => { closeAllOverlays(win); labCountdown(win, TEXTS.cdEnd); },
+        skillTitle: (win) => { closeAllOverlays(win); win.__pwLab.practiceFirstSkillDone = true; win.showSkillChoice(); },
+        skillName: (win) => TRIGGERS.skillTitle(win),
+        sysTitle: (win) => TRIGGERS.sysNotice(win),
+        gameOver: (win) => { closeAllOverlays(win); FEATURES.gameOver.fire(win); },
+        victory: (win) => { closeAllOverlays(win); FEATURES.victory.fire(win); },
+        cashout: (win) => { closeAllOverlays(win); FEATURES.cashout.fire(win); },
+        matchEnded: (win) => { closeAllOverlays(win); FEATURES.matchEnded.fire(win); },
+        matchFinished: (win) => { closeAllOverlays(win); FEATURES.matchFinished.fire(win); },
+        roomRestarted: (win) => { closeAllOverlays(win); FEATURES.roomRestarted.fire(win); },
         killGain: (win) => win.showKillGain(1500),
-        sysNotice: (win) => win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle),
-        sysKicked: (win) => win.showSystemMsg(TEXTS.kickedBody, TEXTS.kickedTitle),
+        sysNotice: (win) => { closeAllOverlays(win); win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle); },
+        sysKicked: (win) => { closeAllOverlays(win); win.showSystemMsg(TEXTS.kickedBody, TEXTS.kickedTitle); },
         bannerSearch: (win) => win.setLobbyBanner('<b>' + TEXTS.findingRoom + '</b> · JOINING THE BEST MATCH', 'search'),
         bannerFound: (win) => win.setLobbyBanner('<b>' + TEXTS.adminAnnounce + '</b>', 'found'),
         bannerOff: (win) => win.setLobbyBanner(null),
-        cerrar: (win) => {
-            win.__pwLab.els.result.style.display = 'none'; win.closeSkillChoice(); win.hideSystemMsg(); win.setLobbyBanner(null); win.hideCountdownNumber();
-            const pm = win.document.getElementById('prizeModal'); if (pm) pm.style.display = 'none';
-            const go = win.document.getElementById('goSplash'); if (go) go.remove();
-        },
+        cerrar: (win) => { closeAllOverlays(win); win.setLobbyBanner(null); },
     };
     function goToCarteles(anchorId) {
         document.querySelector('#tabs button[data-tab="carteles"]').click();
@@ -1143,25 +1199,38 @@
 
     // ===== Carteles: panel de selección de skill =====
     const SK_KEY = 'pw_fontlab_cartel_skill';
-    function loadSkAccent() {
-        try { const saved = JSON.parse(localStorage.getItem(SK_KEY)); if (saved && saved.accent) return saved.accent; } catch (e) {}
-        return '#00ff88';
+    function loadSkStyle() {
+        const d = { accent: '#00ff88', bg: '#080e0b', alpha: 0.96, borderPx: 20 };
+        try { const saved = JSON.parse(localStorage.getItem(SK_KEY)); if (saved) Object.assign(d, saved); } catch (e) {}
+        return d;
     }
-    const skAccent = document.getElementById('skAccent');
-    skAccent.value = loadSkAccent();
+    const skAccent = document.getElementById('skAccent'), skBg = document.getElementById('skBg');
+    const skBgAlpha = document.getElementById('skBgAlpha'), skBorder = document.getElementById('skBorder');
+    { const s = loadSkStyle(); skAccent.value = s.accent; skBg.value = s.bg; skBgAlpha.value = s.alpha; skBorder.value = s.borderPx; }
+    function skState() {
+        const a = parseFloat(skBgAlpha.value);
+        return { accent: skAccent.value, bg: skBg.value,
+            alpha: isNaN(a) ? 0.96 : Math.max(0, Math.min(1, a)),
+            borderPx: Math.max(4, Math.min(48, parseInt(skBorder.value, 10) || 20)) };
+    }
+    function hexToRgbaLocal(hex, alpha) {
+        const h = hex.replace('#', '');
+        return 'rgba(' + parseInt(h.substr(0, 2), 16) + ',' + parseInt(h.substr(2, 2), 16) + ',' + parseInt(h.substr(4, 2), 16) + ',' + alpha + ')';
+    }
 
-    // Solo vista previa del MARCO (color de borde + diamantes del título) — el
+    // Solo vista previa del MARCO (borde/fondo/grosor + diamantes del título) — el
     // panel completo con las 2 skills reales solo se ve de verdad disparándolo
     // en la pestaña del juego ("APLICAR EN VIVO"), no reimplementado aquí.
     function redrawSkPreview() {
-        localStorage.setItem(SK_KEY, JSON.stringify({ accent: skAccent.value }));
+        const s = skState();
+        localStorage.setItem(SK_KEY, JSON.stringify(s));
         const wrap = document.getElementById('skPreviewWrap'); wrap.innerHTML = '';
-        const shade = lerpColorLocal(skAccent.value, '#000000', 0.6);
+        const shade = lerpColorLocal(s.accent, '#000000', 0.6);
         const box = document.createElement('div');
-        box.style.cssText = 'width:280px;background:#0a0a0a;border:6px solid ' + skAccent.value + ';padding:20px;text-align:center;box-shadow:6px 6px 0 rgba(0,0,0,.6);';
+        box.style.cssText = 'width:280px;background:' + hexToRgbaLocal(s.bg, s.alpha) + ';border:' + s.borderPx + 'px solid ' + s.accent + ';padding:20px;text-align:center;box-shadow:6px 6px 0 rgba(0,0,0,.6);';
         const titleWrap = document.createElement('div'); titleWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
-        const d1 = pixFancyText('-◆', 2, { fill: skAccent.value, shade, plain: true });
-        const d2 = pixFancyText('-◆', 2, { fill: skAccent.value, shade, plain: true }); d2.style.transform = 'scaleX(-1)';
+        const d1 = pixFancyText('-◆', 2, { fill: s.accent, shade, plain: true });
+        const d2 = pixFancyText('-◆', 2, { fill: s.accent, shade, plain: true }); d2.style.transform = 'scaleX(-1)';
         titleWrap.appendChild(d1); titleWrap.appendChild(pixFancyText(labState('skillTitle').text, 2, {})); titleWrap.appendChild(d2);
         box.appendChild(titleWrap);
         wrap.appendChild(box);
@@ -1174,22 +1243,84 @@
         const rr = ar + amount * (br - ar), rg = ag + amount * (bg - ag), rb = ab + amount * (bb - ab);
         return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1);
     }
-    skAccent.addEventListener('input', redrawSkPreview);
+    [skAccent, skBg, skBgAlpha, skBorder].forEach(el => el.addEventListener('input', redrawSkPreview));
     HERO_READY_PROMISE.then(redrawSkPreview);
 
     document.getElementById('skApplyLive').onclick = () => {
+        const s = skState();
         runOnUi(win => {
-            win.setPixPanelAccent(skAccent.value);
+            win.setPixPanelAccent(s.accent);                      // persiste (pw_pixpanel_style)
+            win.setSkillPanelStyle(s.bg, s.alpha, s.borderPx);    // idem — vale en partidas reales
             if (!win.__pwLab.pixelMode) win.setPixelMode(true);
             FEATURES.skillTitle.fire(win, labState('skillTitle'));
         });
-        document.getElementById('skMeta').textContent = 'aplicado — panel completo con 2 skills reales disparado en la pestaña del juego.';
+        document.getElementById('skMeta').textContent = 'aplicado y guardado — panel completo con 2 skills reales disparado en la pestaña del juego.';
     };
     document.getElementById('skCopyOpts').onclick = () => {
-        const txt = "pixPanelAccent = " + JSON.stringify(skAccent.value) + ";";
+        const s = skState();
+        const txt = 'setPixPanelAccent(' + JSON.stringify(s.accent) + '); setSkillPanelStyle(' + JSON.stringify(s.bg) + ', ' + s.alpha + ', ' + s.borderPx + ');';
         navigator.clipboard.writeText(txt).then(() => { document.getElementById('skMeta').textContent = 'copiado: ' + txt; }).catch(() => { document.getElementById('skMeta').textContent = txt; });
     };
-    document.getElementById('skReset').onclick = () => { skAccent.value = '#00ff88'; redrawSkPreview(); };
+    document.getElementById('skReset').onclick = () => {
+        skAccent.value = '#00ff88'; skBg.value = '#080e0b'; skBgAlpha.value = 0.96; skBorder.value = 20; redrawSkPreview();
+        // vuelve a fábrica también en el juego: en caliente si la pestaña está
+        // abierta; si no, borrando lo persistido (la próxima carga sale de fábrica).
+        if (gameWin && !gameWin.closed && gameWin.setSkillPanelStyle) { gameWin.setPixPanelAccent('#00ff88'); gameWin.setSkillPanelStyle('#080e0b', 0.96, 20); }
+        else localStorage.removeItem('pw_pixpanel_style');
+        document.getElementById('skMeta').textContent = 'restablecido a fábrica (juego incluido).';
+    };
+
+    // ===== Carteles: imagen importada (atlas) por cartel =====
+    // Igual que las letras hero: si game/img/cartel-hero/<id>.png existe se puede
+    // usar como marco/fondo completo del cartel (ver LEEME.txt en esa carpeta).
+    // El selector fuerza imagen o procedural ('auto' = imagen si existe). Se
+    // persiste en pw_cartel_frame_style — el juego lo lee también en partidas
+    // reales; si la pestaña UI está abierta, se aplica en vivo al cambiarlo.
+    const FRAME_KEY = 'pw_cartel_frame_style';
+    function loadFrameStyles() {
+        const d = { lobbyBanner: 'auto', sysModal: 'auto', skillPanel: 'auto' };
+        try { const saved = JSON.parse(localStorage.getItem(FRAME_KEY)); if (saved) Object.assign(d, saved); } catch (e) {}
+        return d;
+    }
+    function setFrameStyle(id, pref) {
+        const all = loadFrameStyles(); all[id] = pref;
+        localStorage.setItem(FRAME_KEY, JSON.stringify(all));
+        if (gameWin && !gameWin.closed && gameWin.setCartelFrameStyle) gameWin.setCartelFrameStyle(id, pref);
+    }
+    const CARTEL_CARD = { lobbyBanner: 'cartelBanner', sysModal: 'cartelSysModal', skillPanel: 'cartelSkill' };
+    CARTEL_HERO_READY_PROMISE.then(() => {
+        const prefs = loadFrameStyles();
+        for (const [id, cardId] of Object.entries(CARTEL_CARD)) {
+            const card = document.getElementById(cardId);
+            const row = document.createElement('div'); row.className = 'row';
+            const ok = cartelHeroReady(id);
+            const tag = document.createElement('span');
+            tag.textContent = 'imagen importada (img/cartel-hero/' + id + '.png): ' + (ok ? '✓ cargada' : '✗ no encontrada');
+            tag.style.cssText = 'font-size:11px;padding:3px 9px;border:1px solid ' + (ok ? '#00ff88' : '#552222') + ';color:' + (ok ? '#00ff88' : '#ff6666');
+            const lab = document.createElement('span'); lab.className = 'ctrl'; lab.textContent = 'marco:';
+            const sel = document.createElement('select');
+            for (const [v, t] of [['auto', 'auto (imagen si existe)'], ['atlas', 'IMAGEN importada'], ['procedural', 'procedural (de fábrica)']]) {
+                const op = document.createElement('option'); op.value = v; op.textContent = t;
+                if (v === 'atlas' && !ok) { op.disabled = true; op.textContent = 'IMAGEN importada (falta el PNG)'; }
+                sel.appendChild(op);
+            }
+            sel.value = prefs[id];
+            sel.addEventListener('change', () => setFrameStyle(id, sel.value));
+            row.appendChild(tag); row.appendChild(lab); row.appendChild(sel);
+            if (id !== 'lobbyBanner') {
+                const note = document.createElement('span'); note.className = 'ctrl';
+                note.textContent = '(la imagen solo se ve con "modo pixel" activo)';
+                row.appendChild(note);
+            }
+            card.appendChild(row);
+        }
+        // pantalla de carga: solo comprobar si la imagen del título existe.
+        const st = document.getElementById('loadTitleStatus');
+        const img = new Image();
+        img.onload = () => { st.textContent = '✓ img/loading-title.png encontrada — se usa en vez del texto "PILLWARS".'; st.style.color = '#00ff88'; };
+        img.onerror = () => { st.textContent = '✗ img/loading-title.png no encontrada — la pantalla de carga usa el texto de siempre.'; };
+        img.src = 'img/loading-title.png';
+    });
 </script>
 </body>
 </html>

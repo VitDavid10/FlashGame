@@ -1,0 +1,21 @@
+/*
+ * Atlas de imagenes para los 3 carteles del juego (banner de lobby, modal de
+ * sistema, panel de seleccion de skill). Mismo patron que pixfont-hero.js: si
+ * el PNG existe en game/img/cartel-hero/<id>.png se usa como marco/fondo
+ * completo del cartel; si falta, el cartel sigue con su estilo procedural de
+ * siempre (CSS / canvas 9-slice). Ver LEEME.txt en esa carpeta.
+ */
+'use strict';
+
+const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel'];
+const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
+
+const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => { _cartelImg.set(id, img); resolve(); };
+    img.onerror = () => resolve();
+    img.src = 'img/cartel-hero/' + id + '.png';
+})));
+
+function cartelHeroReady(id) { return _cartelImg.has(id); }
+function cartelHeroUrl(id) { const img = _cartelImg.get(id); return img ? img.src : null; }

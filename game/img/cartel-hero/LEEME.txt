@@ -1,0 +1,27 @@
+Atlas de imagenes para los 3 carteles del juego (banner de lobby, modal de
+sistema, panel de seleccion de skill). Mismo mecanismo que el atlas de letras
+(game/img/font-hero): si el PNG existe se usa como marco/fondo completo del
+cartel; si falta, el cartel sigue usando su estilo procedural de siempre.
+
+Como anadir/sustituir un cartel:
+1. Dibuja el marco+fondo completo del cartel en PNG, incluyendo el borde
+   decorativo cerca de los bordes de la imagen (se usa como border-image:
+   las esquinas se preservan, los bordes se estiran).
+2. Trabaja sobre un lienzo CUADRADO (recomendado 256x256 o 512x512).
+   - sysModal.png y skillPanel.png se usan como border-image con recorte de
+     esquina FIJO de 30px: el dibujo del borde debe caber en los 30px
+     pegados a cada lado de la imagen (el centro se estira como fondo).
+   - lobbyBanner.png se estira ENTERO como fondo del banner (sin 9-slice),
+     asi que dibuja el marco ya integrado en la imagen.
+3. Guarda el archivo con el nombre exacto en esta carpeta:
+   lobbyBanner.png  -> tira superior (FINDING ROOM, ROOM FOUND, anuncios)
+   sysModal.png     -> modal de sistema (REJOIN EXPIRED, KICKED...)
+   skillPanel.png   -> panel de seleccion de skill
+4. Recarga font-preview.html -> pestana "Carteles": cada tarjeta tiene un
+   selector "estilo de marco" (auto / atlas / procedural). "auto" usa la
+   imagen en cuanto exista; "atlas" se deshabilita mostrando que archivo
+   falta si aun no lo has puesto.
+
+Nota: mientras falte el PNG de un cartel, ese cartel sigue con su estilo
+procedural (CSS / canvas 9-slice) de siempre — el juego nunca se rompe por
+una imagen que aun no existe.
