@@ -81,9 +81,12 @@
 </section>
 
 <section id="heroSection">
-    <h2>Atlas hero (imagen por letra) — GO! y contador</h2>
+    <h2>Atlas hero (imagen por letra) — GO!, contador y títulos de fin de partida</h2>
     <div class="hint">Coloca los PNG en <code>game/img/font-hero/&lt;LETRA&gt;.png</code> (spec en el LEEME.txt de esa carpeta) y recarga esta página. Mientras falte una letra de la palabra, ese cartel cae solo a la fuente procedural (igual que hará el juego cuando lo conectemos) — nunca se rompe.</div>
     <div class="row" id="heroStatus"></div>
+    <div class="row" id="heroQuick">
+        <span class="label" style="min-width:auto">textos rápidos:</span>
+    </div>
     <div class="row">
         <input type="text" id="hTxt" value="GO!" maxlength="20">
         <label>alto px <input type="number" id="hHeight" value="80" min="20" max="300"></label>
@@ -248,6 +251,17 @@
     }
     document.getElementById('hAdd').onclick = addHeroSample;
     document.getElementById('hTxt').addEventListener('keydown', e => { if (e.key === 'Enter') addHeroSample(); });
+
+    // textos reales que hoy salen en el juego en #resultTitle / GO! (ver
+    // game/index.html: stopGame, showResultsUI, showCountdownNumber).
+    const HERO_QUICK_TEXTS = ['GO!', 'GAME OVER', 'VICTORY!', 'MATCH FINISHED', 'CASHOUT', 'MATCH ENDED', 'ROOM RESTARTED'];
+    const quickRow = document.getElementById('heroQuick');
+    for (const t of HERO_QUICK_TEXTS) {
+        const b = document.createElement('button');
+        b.textContent = t; b.style.cssText = 'background:#1c2a20;color:#9ee32d;padding:4px 10px;font-size:11px';
+        b.onclick = () => { document.getElementById('hTxt').value = t; addHeroSample(); };
+        quickRow.appendChild(b);
+    }
 
     HERO_READY_PROMISE.then(() => {
         const statusEl = document.getElementById('heroStatus');

@@ -1,4 +1,6 @@
-Atlas de letras "hero" (carteles grandes: GO!, contador de cuenta atras).
+Atlas de letras "hero" (carteles grandes: GO!, contador de cuenta atras, y
+los titulos de fin de partida: GAME OVER, VICTORY!, MATCH FINISHED, CASHOUT,
+MATCH ENDED, ROOM RESTARTED).
 
 Como añadir/sustituir una letra:
 1. Dibuja o genera la letra en PNG, fondo transparente.
@@ -16,4 +18,19 @@ Como añadir/sustituir una letra:
    esa palabra sigue usando la fuente procedural (pixfont.js) como fallback,
    asi el juego nunca se rompe por un glifo que aun no existe.
 
-Caracteres que hacen falta ahora mismo: 0 1 2 3 4 5 6 7 8 9 G O !
+Caracteres que hacen falta ahora mismo:
+  0 1 2 3 4 5 6 7 8 9 (contador)
+  G O ! (GO!)
+  A M E V R (GAME OVER)
+  M A T C H F I N S E D (MATCH FINISHED)
+  V I C T O R Y ! (VICTORY!)
+  C A S H O U T (CASHOUT)
+  M A T C H E N D E D (MATCH ENDED)
+  R O O M R E S T A R T E D (ROOM RESTARTED)
+
+  -> unico total: 0-9, G O ! A M E V R T C H F I N S D Y U (28 glifos)
+
+Nota: estos titulos de fin de partida hoy NO usan la fuente pixel en el
+juego (son texto CSS normal). Tener las letras en el atlas es el primer
+paso; conectar el elemento del juego a esta fuente es un cambio aparte,
+pendiente hasta que el atlas este listo.

@@ -1,6 +1,8 @@
 /*
- * Atlas de letras "hero" para carteles grandes (GO!, contador). Cada glifo es
- * un PNG dibujado/generado a mano en game/img/font-hero/<CARACTER>.png (ver
+ * Atlas de letras "hero" para carteles grandes: GO!, contador, y los títulos
+ * de fin de partida (GAME OVER, VICTORY!, MATCH FINISHED, CASHOUT, MATCH
+ * ENDED, ROOM RESTARTED — todos comparten el mismo #resultTitle). Cada glifo
+ * es un PNG dibujado/generado a mano en game/img/font-hero/<CARACTER>.png (ver
  * LEEME.txt en esa carpeta). Mientras falte una letra, pixHeroReady() devuelve
  * false para ese texto y el llamador debe usar el fallback procedural de
  * pixfont.js (pixFancyText) — así el juego nunca depende de que el atlas esté
@@ -8,7 +10,8 @@
  */
 'use strict';
 
-const HERO_CANDIDATES = ['0','1','2','3','4','5','6','7','8','9','G','O','!'];
+const HERO_CANDIDATES = ['0','1','2','3','4','5','6','7','8','9',
+    'G','O','!','A','M','E','V','R','T','C','H','F','I','N','S','D','Y','U'];
 const _heroImg = new Map(); // char -> HTMLImageElement (solo si cargó bien)
 
 const HERO_READY_PROMISE = Promise.all(HERO_CANDIDATES.map(ch => new Promise(resolve => {
