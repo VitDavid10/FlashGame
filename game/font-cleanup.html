@@ -35,6 +35,7 @@
     <span class="ctrl">color de fondo a quitar <input type="color" id="keyColor" value="#ff00ff"></span>
     <span class="ctrl">tolerancia <input type="range" id="tolerance" min="0" max="150" value="60"><span id="tolVal">60</span></span>
     <span class="ctrl">margen recorte <input type="number" id="pad" value="2" min="0" max="20" style="width:50px"></span>
+    <span class="ctrl">alto final (px) <input type="number" id="outHeight" value="240" min="20" max="2000" style="width:60px"></span>
     <button id="process" disabled>PROCESAR</button>
 </div>
 
@@ -93,6 +94,20 @@
             if (dist < tol) px[i + 3] = 0;
             else if (dist < tol + 30) px[i + 3] = Math.round(px[i + 3] * (dist - tol) / 30);
         }
+        // descontaminar el halo: si la imagen ya venía con alfa parcial (o el
+        // paso anterior lo dejó así), el RGB del borde antialiaseado sigue
+        // siendo una mezcla con el color de fondo. Se deshace esa mezcla
+        // (unpremultiply) para que no quede un flequillo del color de fondo.
+        const clamp255 = v => v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
+        for (let i = 0; i < px.length; i += 4) {
+            const a = px[i + 3];
+            if (a > 0 && a < 255) {
+                const af = a / 255;
+                px[i]     = clamp255((px[i]     - kr * (1 - af)) / af);
+                px[i + 1] = clamp255((px[i + 1] - kg * (1 - af)) / af);
+                px[i + 2] = clamp255((px[i + 2] - kb * (1 - af)) / af);
+            }
+        }
         tctx.putImageData(data, 0, 0);
 
         // auto-recorte a la caja del contenido no transparente + margen.
@@ -106,10 +121,18 @@
         maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
         const cw = maxX - minX + 1, ch = maxY - minY + 1;
 
-        cvOut.width = cw; cvOut.height = ch;
-        ctxOut.clearRect(0, 0, cw, ch);
-        ctxOut.drawImage(tmp, minX, minY, cw, ch, 0, 0, cw, ch);
-        document.getElementById('outMeta').textContent = cw + ' x ' + ch + ' px';
+        // redimensiona a una altura de trabajo razonable (el original de la IA
+        // suele venir a cientos/miles de px, mucho más de lo que se ve en el
+        // juego — guardarlo tal cual pesaría innecesariamente).
+        const outH = Math.max(20, parseInt(document.getElementById('outHeight').value, 10) || 240);
+        const scale = Math.min(1, outH / ch);
+        const fw = Math.max(1, Math.round(cw * scale)), fh = Math.max(1, Math.round(ch * scale));
+
+        cvOut.width = fw; cvOut.height = fh;
+        ctxOut.clearRect(0, 0, fw, fh);
+        ctxOut.imageSmoothingEnabled = true; ctxOut.imageSmoothingQuality = 'high';
+        ctxOut.drawImage(tmp, minX, minY, cw, ch, 0, 0, fw, fh);
+        document.getElementById('outMeta').textContent = fw + ' x ' + fh + ' px (original recortado ' + cw + 'x' + ch + ')';
         cvOut.toBlob(b => { cleanedBlob = b; document.getElementById('save').disabled = false; }, 'image/png');
     }
     document.getElementById('process').onclick = process;
