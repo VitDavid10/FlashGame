@@ -2382,19 +2382,12 @@
         const ov = styleOverrides[id] || {};
         const text = ov.text || defText;
         el.innerHTML = '';
+        el.dataset.pwFeature = id;   // el laboratorio identifica qué feature pintó este título (modo editar)
         el.style.transform = (ov.dx || ov.dy) ? 'translate(' + (ov.dx | 0) + 'px,' + (ov.dy | 0) + 'px)' : '';
         if (pixelMode) {
             const px = ov.px || 4;
             const opts = ov.opts || { thin: true, hd: 2, glow: defColor, glowBlur: 24 };
-            let cv;
-            if (heroFontReady && pixHeroReady(text)) {
-                const o = {};
-                if (opts.sparkles) o.sparkles = opts.sparkles;
-                if (opts.glow) { o.glow = opts.glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 24; }
-                cv = pixHeroText(text, px * 15, o);
-            } else {
-                cv = pixFancyText(text, px, opts);
-            }
+            const cv = pixRenderText(text, px, opts).cv;
             cv.style.margin = '0 auto'; cv.style.display = 'block'; cv.style.maxWidth = '100%';
             el.appendChild(cv);
         } else {
@@ -3295,26 +3288,20 @@
             lblWrap.appendChild(pixFancyText(label, 2, lblOpts));
             el.appendChild(lblWrap);
             const px = opts.px || ov.px || 9;
-            let cv;
-            if (heroFontReady && pixHeroReady(String(n))) {
-                const o = {}; if (opts.sparkles) o.sparkles = opts.sparkles;
-                if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
-                cv = pixHeroText(String(n), px * 15, o);
-            } else {
-                const o = { thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
-                if (opts.plain) o.plain = true;
-                if (opts.fill) o.fill = opts.fill;
-                if (opts.shade) o.shade = opts.shade;
-                if (opts.sparkles) o.sparkles = opts.sparkles;
-                if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
-                cv = pixFancyText(String(n), px, o);
-            }
+            const o = { font: opts.font !== undefined ? opts.font : ov.font, thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
+            if (opts.plain) o.plain = true;
+            if (opts.fill) o.fill = opts.fill;
+            if (opts.shade) o.shade = opts.shade;
+            if (opts.sparkles) o.sparkles = opts.sparkles;
+            if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
+            const cv = pixRenderText(String(n), px, o).cv;
             cv.className = 'cd-n'; el.appendChild(cv);
         }
         else { el.innerHTML = '<div class="cd-lbl">' + label + '</div>'; const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3, 5s) lo dispara quien llama, una vez al entrar en los 5s.
-        setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
+        // En modo editar del laboratorio el número se queda fijo para poder arrastrarlo.
+        if (!window.__pwLabEditHold) setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
     }
     function hideCountdownNumber() { _lastCdNum = null; const el = document.getElementById('cdNum'); if (el) el.remove(); }
 
@@ -3887,27 +3874,28 @@
         if (pixelMode) {
             const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
             const sparkles = opts.sparkles != null ? opts.sparkles : 5;
-            let cv;
-            if (heroFontReady && pixHeroReady(text)) {
-                const th = pxOv ? pxOv * 15 : Math.max(60, Math.min(300, Math.round(width * 0.42)));
-                const o = {}; if (sparkles > 0) o.sparkles = sparkles;
-                if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : th * 0.3; }
-                cv = pixHeroText(text, th, o);
-            } else {
-                const px = pxOv || Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37)));
-                const o = { thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
-                if (opts.plain) o.plain = true;
-                if (opts.fill) o.fill = opts.fill;
-                if (opts.shade) o.shade = opts.shade;
-                if (sparkles > 0) o.sparkles = sparkles;
-                if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : px * 4; }
-                cv = pixFancyText(text, px, o);
-            }
+            // Tipo de letra elegible desde el laboratorio (opts.font / ov.font):
+            // atlas, normal 5×7, bold o bold HD. Sin él, auto (atlas si está).
+            const o = { font: opts.font !== undefined ? opts.font : ov.font, thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
+            if (opts.plain) o.plain = true;
+            if (opts.fill) o.fill = opts.fill;
+            if (opts.shade) o.shade = opts.shade;
+            if (sparkles > 0) o.sparkles = sparkles;
+            const font = pixResolveFont(text, o);
+            const px = pxOv || (font === 'atlas' ? Math.max(60, Math.min(300, Math.round(width * 0.42))) / 15 : Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))));
+            if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : (font === 'atlas' ? px * 15 * 0.3 : px * 4); }
+            const cv = pixRenderText(text, px, o).cv;
             cv.className = 'go-txt'; el.appendChild(cv);
         } else { const d = document.createElement('div'); d.className = 'go-txt'; d.textContent = text; el.appendChild(d); }
         document.body.appendChild(el);
-        SoundManager.play('go');
-        setTimeout(() => el.remove(), 1650);
+        if (window.__pwLabEditHold) {
+            // Modo editar del laboratorio: cartel fijo (sin animación que acabe
+            // en opacity 0, sin sonido, sin auto-borrado) para poder arrastrarlo.
+            const t = el.querySelector('.go-txt'); if (t) t.style.animation = 'none';
+        } else {
+            SoundManager.play('go');
+            setTimeout(() => el.remove(), 1650);
+        }
     }
 
     function enterOnlineGame(ws, msg, isResume) {
@@ -3981,7 +3969,7 @@
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
     // titleOpts (opcional, asignable desde el laboratorio): mismo esquema que
     // pixFancyText para el título "SELECT A SKILL". Sin él, look de siempre.
-    function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; const skOv = styleOverrides.skillTitle || {}; const skPx = (titleOpts && titleOpts.px) || skOv.px || 2; wrap.appendChild(d1); wrap.appendChild(pixFancyText(skillPanelTitle, skPx, titleOpts || skOv.opts || {})); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
+    function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; const skOv = styleOverrides.skillTitle || {}; const skPx = (titleOpts && titleOpts.px) || skOv.px || 2; wrap.appendChild(d1); wrap.appendChild(pixRenderText(skillPanelTitle, skPx, titleOpts || skOv.opts || {}).cv); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
         els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name, fitPx = Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixFancyText(nm, fitPx, { plain: true, shade: '#b9c2cc', hd: 1 }); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }

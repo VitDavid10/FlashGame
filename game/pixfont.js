@@ -144,3 +144,37 @@ function pixFancyText(text, px, o = {}) {
     cv.style.imageRendering = 'pixelated'; cv.style.display = 'block';
     return cv;
 }
+
+// ===== Render unificado con tipo de letra elegible =====
+// o.font: 'atlas' (sprites PNG de font-hero), 'normal' (5×7 con contorno),
+// 'bold' (11×15), 'boldhd' (Scale2x). Sin o.font = auto: atlas si TODAS las
+// letras del texto tienen sprite, si no bold/boldhd según o.hd. Si se pide
+// 'atlas' pero faltan letras, cae a bold (el llamador puede avisar con
+// pixHeroMissing). px = tamaño en unidades de fuente (altura final ≈ px*15).
+function pixResolveFont(text, o = {}) {
+    const heroOk = (typeof pixHeroReady === 'function') && pixHeroReady(text);
+    const f = o.font;
+    if (f === 'atlas') return heroOk ? 'atlas' : (o.hd > 0 ? 'boldhd' : 'bold');
+    if (f === 'normal' || f === 'bold' || f === 'boldhd') return f;
+    return heroOk ? 'atlas' : (o.hd > 0 ? 'boldhd' : 'bold');
+}
+function pixRenderText(text, px, o = {}) {
+    const font = pixResolveFont(text, o);
+    if (font === 'atlas') {
+        const ho = {};
+        if (o.sparkles) ho.sparkles = o.sparkles;
+        if (o.glow) { ho.glow = o.glow; if (o.glowBlur != null) ho.glowBlur = o.glowBlur; }
+        return { cv: pixHeroText(text, Math.round(px * 15), ho), mode: 'atlas' };
+    }
+    if (font === 'normal') {
+        const ipx = Math.max(1, Math.round(px));
+        const w = pixTextWidth(text, ipx) + ipx * 2, h = 7 * ipx + ipx * 2;
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        drawPixelText(cv.getContext('2d'), text, ipx, ipx, ipx, o.fill || '#fff', o.ink || '#000');
+        cv.style.imageRendering = 'pixelated'; cv.style.display = 'block';
+        return { cv, mode: 'normal 5×7' };
+    }
+    const po = Object.assign({}, o);
+    po.hd = (font === 'boldhd') ? Math.max(1, po.hd | 0) : 0;
+    return { cv: pixFancyText(text, Math.max(1, Math.round(px)), po), mode: po.hd ? 'bold HD' : 'bold' };
+}

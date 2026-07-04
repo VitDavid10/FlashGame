@@ -280,6 +280,7 @@
         const o = { thin: s.thin, plain: s.plain, fill: s.fill, shade: s.shade, sparkles: s.sparkles, glow: s.glow ? s.glowColor : false };
         if (s.hd > 0) o.hd = s.hd;
         if (s.glow) o.glowBlur = s.glowBlur;
+        if (s.font) o.font = s.font;   // tipo de letra elegido (atlas/normal/bold/boldhd); sin él, auto
         return o;
     }
     // FEATURES = todos los momentos del juego con texto asignable. Cualquier
@@ -337,18 +338,10 @@
         saveOverrides(all);
     }
 
+    // Mismo render que hará el juego: pixRenderText respeta el tipo de letra
+    // elegido en la tarjeta (o auto si no se eligió). Devuelve { cv, mode }.
     function renderFancyWithState(text, state) {
-        const atlasReady = pixHeroReady(text);
-        if (atlasReady) {
-            const o = {}; if (state.sparkles > 0) o.sparkles = state.sparkles;
-            if (state.glow) { o.glow = state.glowColor; o.glowBlur = state.glowBlur; }
-            return { cv: pixHeroText(text, state.px * 15, o), mode: 'atlas' };
-        }
-        const o = { plain: state.plain, thin: state.thin, fill: state.fill, shade: state.shade };
-        if (state.hd > 0) o.hd = state.hd;
-        if (state.sparkles > 0) o.sparkles = state.sparkles;
-        if (state.glow) { o.glow = state.glowColor; o.glowBlur = state.glowBlur; }
-        return { cv: pixFancyText(text, state.px, o), mode: 'procedural' };
+        return pixRenderText(text, state.px, labOptsFromState(state));
     }
 
     function buildFancyCard(def) {
@@ -359,6 +352,13 @@
             '<div class="row">' +
                 '<input type="text" class="bTxt" value="' + state.text + '" maxlength="30">' +
                 '<label>px <input type="number" class="bPx" value="' + state.px + '" min="1" max="16"></label>' +
+                '<span class="ctrl">letra <select class="bFont">' +
+                    '<option value="">auto (atlas si está, si no bold)</option>' +
+                    '<option value="atlas">ATLAS (sprites PNG)</option>' +
+                    '<option value="normal">NORMAL 5×7 (contorno)</option>' +
+                    '<option value="bold">BOLD 11×15</option>' +
+                    '<option value="boldhd">BOLD HD (Scale2x)</option>' +
+                '</select></span>' +
                 '<button class="secondary bReset">restablecer</button>' +
                 '<button class="secondary bCopy">copiar opciones</button>' +
                 (def.custom ? '<button class="secondary bDelete" style="color:#ff6666">ELIMINAR</button>' : '') +
@@ -389,13 +389,13 @@
 
         const $ = sel => card.querySelector(sel);
         const inputs = {
-            text: $('.bTxt'), px: $('.bPx'), thin: $('.bThin'), plain: $('.bPlain'), hd: $('.bHd'),
+            text: $('.bTxt'), px: $('.bPx'), font: $('.bFont'), thin: $('.bThin'), plain: $('.bPlain'), hd: $('.bHd'),
             glowOn: $('.bGlowOn'), glowColor: $('.bGlowColor'), glowBlur: $('.bGlowBlur'),
             sparkles: $('.bSparkles'), fill: $('.bFill'), shade: $('.bShade'),
             dx: $('.bDx'), dy: $('.bDy'),
         };
         function applyStateToInputs(s) {
-            inputs.text.value = s.text; inputs.px.value = s.px;
+            inputs.text.value = s.text; inputs.px.value = s.px; inputs.font.value = s.font || '';
             inputs.thin.checked = s.thin; inputs.plain.checked = s.plain; inputs.hd.value = String(s.hd);
             inputs.glowOn.checked = s.glow; inputs.glowColor.value = s.glowColor; inputs.glowBlur.value = s.glowBlur;
             inputs.sparkles.value = s.sparkles; inputs.fill.value = s.fill; inputs.shade.value = s.shade;
@@ -404,24 +404,52 @@
         applyStateToInputs(state);
 
         function currentState() {
-            return {
+            const st = {
                 text: inputs.text.value || def.text, px: Math.max(1, Math.min(16, parseInt(inputs.px.value, 10) || def.px)),
                 thin: inputs.thin.checked, plain: inputs.plain.checked, hd: parseInt(inputs.hd.value, 10),
                 glow: inputs.glowOn.checked, glowColor: inputs.glowColor.value, glowBlur: Math.max(0, parseInt(inputs.glowBlur.value, 10) || 0),
                 sparkles: Math.max(0, parseInt(inputs.sparkles.value, 10) || 0), fill: inputs.fill.value, shade: inputs.shade.value,
                 dx: parseInt(inputs.dx.value, 10) || 0, dy: parseInt(inputs.dy.value, 10) || 0,
             };
+            if (inputs.font.value) st.font = inputs.font.value;
+            return st;
         }
         function redraw() {
+            // Con letra ATLAS elegida: las letras sin sprite NO se pueden escribir —
+            // se quitan del texto al momento y se avisa en la línea meta.
+            let stripped = '';
+            if (inputs.font.value === 'atlas' && !def.multi) {
+                const miss = pixHeroMissing(inputs.text.value);
+                if (miss.length) {
+                    stripped = miss.join(' ');
+                    inputs.text.value = Array.from(inputs.text.value).filter(ch => !miss.includes(ch.toUpperCase())).join('');
+                }
+            }
             const s = currentState(); saveBannerState(def, s);
+            // La opción ATLAS del selector solo es elegible si el texto actual tiene
+            // todos sus sprites; si no, se deshabilita mostrando qué letras faltan.
+            const missNow = pixHeroMissing(def.multi ? def.multi.join('') : s.text);
+            const atlasOpt = inputs.font.querySelector('option[value="atlas"]');
+            atlasOpt.disabled = missNow.length > 0;
+            atlasOpt.textContent = missNow.length ? 'ATLAS (faltan: ' + missNow.join(' ') + ')' : 'ATLAS (sprites PNG)';
+            // Controles que no aplican según la letra que realmente se usa.
+            const resolved = pixResolveFont(def.multi ? def.multi[0] : s.text, labOptsFromState(s));
+            const offByFont = {
+                atlas:  [inputs.thin, inputs.plain, inputs.hd, inputs.fill, inputs.shade],
+                normal: [inputs.thin, inputs.plain, inputs.hd, inputs.shade, inputs.glowOn, inputs.glowColor, inputs.glowBlur, inputs.sparkles],
+                bold:   [inputs.hd],
+                boldhd: [],
+            }[resolved] || [];
+            for (const el of [inputs.thin, inputs.plain, inputs.hd, inputs.fill, inputs.shade, inputs.glowOn, inputs.glowColor, inputs.glowBlur, inputs.sparkles])
+                el.disabled = offByFont.includes(el);
             const out = $('.bOut'); out.innerHTML = '';
-            const isAtlas = pixHeroReady(def.multi ? def.multi[0] : s.text);
-            for (const el of [inputs.thin, inputs.plain, inputs.hd, inputs.fill, inputs.shade]) el.disabled = isAtlas && !def.multi;
+            const warn = stripped ? ' — letras sin sprite quitadas: ' + stripped : '';
             if (def.multi) {
                 const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;gap:14px;align-items:center';
-                for (const sample of def.multi) wrap.appendChild(renderFancyWithState(sample, s).cv);
+                let mode = '';
+                for (const sample of def.multi) { const r = renderFancyWithState(sample, s); mode = r.mode; wrap.appendChild(r.cv); }
                 out.appendChild(wrap);
-                $('.bMeta').textContent = 'px ' + s.px;
+                $('.bMeta').textContent = mode + ' · px ' + s.px + warn;
             } else if (def.diamonds) {
                 const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
                 const d1 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true });
@@ -430,11 +458,11 @@
                 const r = renderFancyWithState(s.text, s);
                 wrap.appendChild(d1); wrap.appendChild(r.cv); wrap.appendChild(d2);
                 out.appendChild(wrap);
-                $('.bMeta').textContent = r.mode;
+                $('.bMeta').textContent = r.mode + warn;
             } else {
                 const r = renderFancyWithState(s.text, s);
                 out.appendChild(r.cv);
-                $('.bMeta').textContent = r.mode + (isAtlas ? ' — trazo/plain/hd/colores no aplican (vienen del PNG)' : '');
+                $('.bMeta').textContent = r.mode + (resolved === 'atlas' ? ' — trazo/plain/hd/colores no aplican (vienen del PNG)' : '') + warn;
             }
         }
         for (const el of Object.values(inputs)) el.addEventListener('input', redraw);
@@ -565,6 +593,7 @@
     // sin partida real — solo el HUD estático sobre el mapa entero.
     function initStaticUi(win) {
         const L = win.__pwLab;
+        if (win.__pwLabEditHold) disableEditMode(win);   // reiniciar UI sale del modo editar
         // Bloquea returnToMenu(): un websocket/matchmaking pendiente puede
         // resolverse DESPUÉS de forzar el estado congelado y reabrir el menú.
         // (returnToMenu es function declaration ⇒ sí es propiedad de window.)
@@ -628,6 +657,108 @@
     function runOnUi(fn) {
         if (gameWin && !gameWin.closed && gameWin.__pwLabInited) { gameWin.focus(); fn(gameWin); return; }
         openUiWindow(fn, false);
+    }
+
+    // ===== MODO EDITAR (cuadrícula) dentro de la pestaña del juego =====
+    // Con el modo activo los carteles se quedan FIJOS (win.__pwLabEditHold: sin
+    // animación ni auto-borrado), sale una rejilla de referencia y cada cartel se
+    // puede ARRASTRAR (mueve dx/dy, snap 10px) o redimensionar con la RUEDA
+    // (px ±1). Todo se guarda en pw_style_overrides ⇒ vale en partidas reales.
+    const TITLE_DEFS = {
+        gameOver: ['GAME OVER', '#ff2a2a'], victory: ['VICTORY!', '#ffce3d'], cashout: ['CASHOUT', '#00ff88'],
+        matchEnded: ['MATCH ENDED', '#ffce3d'], matchFinished: ['MATCH FINISHED', '#00ff88'], roomRestarted: ['ROOM RESTARTED', '#ffcc00'],
+    };
+    const EDIT_DEFAULT_PX = { go: 8, contador: 9, skillTitle: 2, gameOver: 4, victory: 4, cashout: 4, matchEnded: 4, matchFinished: 4, roomRestarted: 4 };
+    let editState = null;   // listeners activos del modo editar (para poder quitarlos)
+
+    // Pinta el cartel de una feature de forma persistente (hold activo).
+    // Para los títulos usa el pintado directo (sin stopGame: ni sonido de muerte
+    // ni el retardo de 1.4s — aquí solo queremos el cartel en pantalla).
+    function editShow(win, fid) {
+        if (fid === 'go') win.showGoSplash();
+        else if (fid === 'contador') { win.hideCountdownNumber(); win.showCountdownNumber(5, TEXTS.cdStart); }
+        else if (fid === 'skillTitle') { win.closeSkillChoice(); win.__pwLab.practiceFirstSkillDone = true; win.showSkillChoice(); }
+        else if (fid === 'victory' || fid === 'cashout' || fid === 'matchEnded') FEATURES[fid].fire(win);
+        else if (TITLE_DEFS[fid]) { win.setOverlayTitle(win.__pwLab.els.resultTitle, fid, TITLE_DEFS[fid][0], TITLE_DEFS[fid][1]); win.showResultsUI(); }
+    }
+    // ¿Sobre qué cartel editable está el evento? Los títulos llevan
+    // data-pw-feature (lo pone setOverlayTitle en el juego).
+    function editTargetAt(e) {
+        const t = e.target;
+        if (!t || !t.closest) return null;
+        let el = t.closest('#goSplash'); if (el) return { fid: 'go', el };
+        el = t.closest('#cdNum'); if (el) return { fid: 'contador', el };
+        el = t.closest('#skillChoiceTitle'); if (el) return { fid: 'skillTitle', el, noDrag: true };
+        el = t.closest('#resultTitle, #prizeTitle'); if (el && el.dataset.pwFeature) return { fid: el.dataset.pwFeature, el };
+        return null;
+    }
+    function enableEditMode(win) {
+        if (win.__pwLabEditHold) return;
+        win.__pwLabEditHold = true;
+        applyStyleTag(win, 'pwLabEditCss',
+            '#goSplash .go-txt,#cdNum .cd-n,#cdNum .cd-lbl,#resultTitle,#prizeTitle{pointer-events:auto!important;cursor:move}' +
+            '#skillChoiceTitle{cursor:ns-resize}');
+        const grid = win.document.createElement('div'); grid.id = 'pwLabEditGrid';
+        grid.style.cssText = 'position:fixed;inset:0;z-index:45;pointer-events:none;' +
+            'background-image:linear-gradient(rgba(0,255,136,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.08) 1px,transparent 1px);' +
+            'background-size:20px 20px;';
+        win.document.body.appendChild(grid);
+        let drag = null;
+        const onDown = (e) => {
+            const t = editTargetAt(e); if (!t || t.noDrag) return;
+            const ov = loadOverrides()[t.fid] || {};
+            drag = { fid: t.fid, el: t.el, sx: e.clientX, sy: e.clientY, dx: ov.dx | 0, dy: ov.dy | 0, ndx: null, ndy: null };
+            e.preventDefault(); e.stopPropagation();
+        };
+        const onMove = (e) => {
+            if (!drag) return;
+            drag.ndx = Math.round((drag.dx + e.clientX - drag.sx) / 10) * 10;
+            drag.ndy = Math.round((drag.dy + e.clientY - drag.sy) / 10) * 10;
+            drag.el.style.transform = drag.fid === 'contador'
+                ? 'translate(' + drag.ndx + 'px,' + (-120 + drag.ndy) + 'px)'
+                : 'translate(' + drag.ndx + 'px,' + drag.ndy + 'px)';
+            e.preventDefault();
+        };
+        const onUp = () => {
+            if (!drag) return;
+            if (drag.ndx !== null) {
+                const all = loadOverrides(); const ov = all[drag.fid] || (all[drag.fid] = {});
+                ov.dx = drag.ndx; ov.dy = drag.ndy;
+                saveOverrides(all);
+            }
+            drag = null;
+        };
+        const onWheel = (e) => {
+            const t = editTargetAt(e); if (!t) return;
+            e.preventDefault(); e.stopPropagation();
+            const all = loadOverrides(); const ov = all[t.fid] || (all[t.fid] = {});
+            const cur = ov.px || EDIT_DEFAULT_PX[t.fid] || 4;
+            ov.px = Math.max(1, Math.min(20, cur + (e.deltaY < 0 ? 1 : -1)));
+            saveOverrides(all);
+            editShow(win, t.fid);   // repinta con el nuevo tamaño
+        };
+        win.document.addEventListener('mousedown', onDown, true);
+        win.document.addEventListener('mousemove', onMove, true);
+        win.document.addEventListener('mouseup', onUp, true);
+        win.document.addEventListener('wheel', onWheel, { capture: true, passive: false });
+        editState = { win, onDown, onMove, onUp, onWheel };
+    }
+    function disableEditMode(win) {
+        win.__pwLabEditHold = false;
+        if (editState) {
+            win.document.removeEventListener('mousedown', editState.onDown, true);
+            win.document.removeEventListener('mousemove', editState.onMove, true);
+            win.document.removeEventListener('mouseup', editState.onUp, true);
+            win.document.removeEventListener('wheel', editState.onWheel, true);
+            editState = null;
+        }
+        const g = win.document.getElementById('pwLabEditGrid'); if (g) g.remove();
+        const st = win.document.getElementById('pwLabEditCss'); if (st) st.remove();
+        TRIGGERS.cerrar(win);
+    }
+    function setEditMode(win, on) {
+        if (on) enableEditMode(win); else disableEditMode(win);
+        buildFloatingPanel(win);   // refresca el botón del modo y los inputs px/X/Y
     }
 
     // Panel flotante inyectado DENTRO de la pestaña del juego: un botón "LAB"
@@ -705,6 +836,20 @@
             z.value = win.__pwLab.camera.scale.toFixed(2);
             z.oninput = () => { const v = parseFloat(z.value); if (v > 0) win.__pwLab.camera.scale = v; };
             lab.appendChild(z); r.appendChild(lab);
+        }
+
+        // Modo editar: cuadrícula + carteles fijos arrastrables + rueda = tamaño.
+        r = section('EDITAR EN PANTALLA (cuadrícula)');
+        {
+            const info = win.document.createElement('div'); info.className = 'pwFeat';
+            info.textContent = 'activa el modo y fija un cartel con su botón: arrástralo para moverlo (rejilla 10px) y usa la rueda encima para el tamaño. Se guarda solo en la feature.';
+            r.appendChild(info);
+            const tBtn = btn(r, win.__pwLabEditHold ? '■ SALIR DEL MODO EDITAR' : '✎ ACTIVAR MODO EDITAR', () => setEditMode(win, !win.__pwLabEditHold));
+            if (win.__pwLabEditHold) { tBtn.style.background = '#00ff88'; tBtn.style.color = '#04140b'; }
+            const rowFix = win.document.createElement('div'); rowFix.className = 'pwRow'; panel.appendChild(rowFix);
+            const fixables = { go: 'GO!', contador: 'CONTADOR', skillTitle: 'SKILLS', gameOver: 'GAME OVER', victory: 'VICTORY', cashout: 'CASHOUT', matchEnded: 'MATCH ENDED', matchFinished: 'MATCH FINISHED', roomRestarted: 'ROOM RESTARTED' };
+            for (const [fid, lbl] of Object.entries(fixables))
+                btn(rowFix, lbl, () => { if (!win.__pwLabEditHold) setEditMode(win, true); editShow(win, fid); });
         }
 
         r = section('OVERLAYS DE PARTIDA');
