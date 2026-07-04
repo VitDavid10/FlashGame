@@ -1,0 +1,19 @@
+Atlas de letras "hero" (carteles grandes: GO!, contador de cuenta atras).
+
+Como añadir/sustituir una letra:
+1. Dibuja o genera la letra en PNG, fondo transparente.
+2. Recorta el PNG ajustado al glifo (sin margenes extra arriba/abajo/lados):
+   el sistema alinea todas las letras por el borde INFERIOR de la imagen
+   (la base de la letra), asi que un margen inferior desplaza la letra hacia
+   arriba respecto a las demas.
+3. Dibuja todas las letras sobre un lienzo de trabajo de la MISMA altura
+   (recomendado 200px de alto) antes de recortar, para que el grosor del
+   trazo sea proporcional y consistente entre letras.
+4. Guarda el archivo con el nombre exacto del caracter en esta carpeta:
+   G.png, O.png, !.png, 0.png, 1.png ... 9.png
+5. Recarga font-preview.html: la seccion "Atlas hero" te dice que letras
+   estan cargadas y cuales faltan. Mientras falte una letra de una palabra,
+   esa palabra sigue usando la fuente procedural (pixfont.js) como fallback,
+   asi el juego nunca se rompe por un glifo que aun no existe.
+
+Caracteres que hacen falta ahora mismo: 0 1 2 3 4 5 6 7 8 9 G O !

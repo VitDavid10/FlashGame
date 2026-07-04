@@ -80,6 +80,22 @@
     <div class="row"><span class="label">Textos flotantes</span><span class="dark" id="sFloat" style="display:inline-flex;gap:22px;align-items:center"></span></div>
 </section>
 
+<section id="heroSection">
+    <h2>Atlas hero (imagen por letra) — GO! y contador</h2>
+    <div class="hint">Coloca los PNG en <code>game/img/font-hero/&lt;LETRA&gt;.png</code> (spec en el LEEME.txt de esa carpeta) y recarga esta página. Mientras falte una letra de la palabra, ese cartel cae solo a la fuente procedural (igual que hará el juego cuando lo conectemos) — nunca se rompe.</div>
+    <div class="row" id="heroStatus"></div>
+    <div class="row">
+        <input type="text" id="hTxt" value="GO!" maxlength="20">
+        <label>alto px <input type="number" id="hHeight" value="80" min="20" max="300"></label>
+        <span class="ctrl"><label><input type="checkbox" id="hGlowOn" checked> glow</label></span>
+        <span class="ctrl">color <input type="color" id="hGlowColor" value="#00ff88"></span>
+        <span class="ctrl">blur <input type="number" id="hGlowBlur" value="24" min="0" max="200"></span>
+        <span class="ctrl">sparkles <input type="number" id="hSparkles" value="5" min="0" max="5"></span>
+        <button id="hAdd">AÑADIR</button>
+    </div>
+    <div id="heroOut"></div>
+</section>
+
 <section>
     <h2>Abecedario completo (todos los glifos de PIXFONT)</h2>
     <div class="row"><span class="label">Normal 5×7 + contorno</span><span class="dark" id="sAbcNormal"></span></div>
@@ -88,6 +104,7 @@
 </section>
 
 <script src="pixfont.js"></script>
+<script src="pixfont-hero.js"></script>
 <script>
     // --- helpers ---
     // canvas con drawPixelText (el render de los textos flotantes del mundo)
@@ -204,6 +221,45 @@
     document.getElementById('sAbcNormal').appendChild(abcBlock('normal'));
     document.getElementById('sAbcBold').appendChild(abcBlock('bold'));
     document.getElementById('sAbcHd').appendChild(abcBlock('hd'));
+
+    // --- atlas hero: estado de carga + probador con fallback automático ---
+    // heroOrFallback = la MISMA lógica que tendrá el juego cuando lo conectemos:
+    // si el atlas tiene todas las letras del texto, usa las imágenes; si falta
+    // alguna, usa pixFancyText (procedural) para que el cartel nunca desaparezca.
+    function heroOrFallback(text, targetH, o) {
+        if (pixHeroReady(text)) return { cv: pixHeroText(text, targetH, o), mode: 'atlas' };
+        const px = Math.max(1, Math.round(targetH / 15)); // equivalencia aprox. bold 11x15
+        return {
+            cv: pixFancyText(text, px, { thin: true, glow: o.glow, glowBlur: o.glowBlur, sparkles: o.sparkles, hd: 2 }),
+            mode: 'fallback procedural (falta: ' + pixHeroMissing(text).join(' ') + ')',
+        };
+    }
+    function addHeroSample() {
+        const t = document.getElementById('hTxt').value || 'GO!';
+        const h = Math.max(20, Math.min(300, parseInt(document.getElementById('hHeight').value, 10) || 80));
+        const o = { sparkles: parseInt(document.getElementById('hSparkles').value, 10) || 0 };
+        if (document.getElementById('hGlowOn').checked) { o.glow = document.getElementById('hGlowColor').value; o.glowBlur = parseInt(document.getElementById('hGlowBlur').value, 10) || 0; }
+        const r = heroOrFallback(t, h, o);
+        const item = document.createElement('div'); item.className = 'item';
+        const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = '"' + t + '" · alto ' + h + 'px · ' + r.mode;
+        const box = document.createElement('span'); box.className = 'dark'; box.appendChild(r.cv);
+        item.appendChild(meta); item.appendChild(box);
+        document.getElementById('heroOut').prepend(item);
+    }
+    document.getElementById('hAdd').onclick = addHeroSample;
+    document.getElementById('hTxt').addEventListener('keydown', e => { if (e.key === 'Enter') addHeroSample(); });
+
+    HERO_READY_PROMISE.then(() => {
+        const statusEl = document.getElementById('heroStatus');
+        for (const ch of HERO_CANDIDATES) {
+            const ok = !pixHeroMissing(ch).length;
+            const tag = document.createElement('span');
+            tag.textContent = ch + ' ' + (ok ? '✓' : '✗');
+            tag.style.cssText = 'padding:3px 9px;border:1px solid ' + (ok ? '#00ff88' : '#552222') + ';color:' + (ok ? '#00ff88' : '#ff6666') + ';font-size:12px';
+            statusEl.appendChild(tag);
+        }
+        addHeroSample(); // muestra "GO!" nada más cargar, con el estado actual del atlas
+    });
 </script>
 </body>
 </html>
