@@ -82,7 +82,7 @@
 
 <!-- ===================== PESTAÑA 2: TEXTOS ===================== -->
 <div id="panel-textos" class="panel">
-<div class="hint">Control TOTAL de cada texto que se dibuja como fuente pixel (letra: procedural con trazo/halo/colores, o sprites del atlas cuando existen — se avisa cuál se está usando). GO!, la cuenta atrás y "SELECT A SKILL" tienen botón <b>VER EN UI</b>: dispara el cuadro real en la pestaña del juego con estos mismos ajustes — no hay controles duplicados en ningún otro sitio para estos tres. El marco/fondo que los rodea se afina en "Carteles"; el copy de los mensajes que NO usan fuente pixel (banners, modales de sistema) va en "Asignar textos". Todo se guarda solo (localStorage); "copiar opciones" te da el objeto tal cual para pegarlo en el código.</div>
+<div class="hint">Crea aquí cada texto como quieras (letra procedural con trazo/halo/colores, o sprites del atlas cuando existen — se avisa cuál se está usando). GO!, la cuenta atrás y "SELECT A SKILL" tienen 3 botones: <b>VER EN UI</b> (probarlo una vez en la pestaña del juego), <b>ASIGNAR AL JUEGO</b> (el juego pasa a usar TU estilo siempre — partidas reales incluidas) y <b>QUITAR ASIGNACIÓN</b> (volver al de fábrica). El marco/fondo que los rodea se afina en "Carteles"; el copy de los mensajes sin fuente pixel (banners, modales) va en "Asignar textos".</div>
 <div id="bannerCards"></div>
 </div>
 
@@ -284,9 +284,33 @@
     // que no hay dos sitios distintos con controles de estilo para lo mismo.
     const LIVE_FIREABLE = {
         go: (win, s) => win.showGoSplash(s.text, labOptsFromState(s)),
-        contador: (win, s) => { let n = 5; const label = TEXTS.cdStart; win.showCountdownNumber(n, label, labOptsFromState(s)); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, label, labOptsFromState(s)); }, 700); },
-        skillTitle: (win, s) => { win.practiceFirstSkillDone = true; win.skillPanelTitle = s.text; win.showSkillChoice(labOptsFromState(s)); },
+        contador: (win, s) => { const opts = Object.assign({ px: s.px }, labOptsFromState(s)); let n = 5; win.showCountdownNumber(n, TEXTS.cdStart, opts); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdStart, opts); }, 700); },
+        skillTitle: (win, s) => { win.__pwLab.practiceFirstSkillDone = true; win.__pwLab.skillPanelTitle = s.text; win.showSkillChoice(labOptsFromState(s)); },
     };
+    // Guarda/borra el estilo de una tarjeta como el OFICIAL del juego (lo leen
+    // showGoSplash/showCountdownNumber/showSkillChoice vía styleOverrides, en
+    // partidas reales también). Si la pestaña del juego está abierta, se aplica
+    // en caliente sin recargar.
+    const OVERRIDES_KEY = 'pw_style_overrides';
+    function loadOverrides() { try { return JSON.parse(localStorage.getItem(OVERRIDES_KEY)) || {}; } catch (e) { return {}; } }
+    function pushOverridesToGame(all) {
+        if (gameWin && !gameWin.closed && gameWin.__pwLab) {
+            gameWin.__pwLab.styleOverrides = all;
+            gameWin.__pwLab.skillPanelTitle = (all.skillTitle && all.skillTitle.text) || 'SELECT A SKILL';
+        }
+    }
+    function assignToGame(id, s) {
+        const all = loadOverrides();
+        all[id] = { text: s.text, px: s.px, opts: labOptsFromState(s) };
+        localStorage.setItem(OVERRIDES_KEY, JSON.stringify(all));
+        pushOverridesToGame(all);
+    }
+    function unassignFromGame(id) {
+        const all = loadOverrides();
+        delete all[id];
+        localStorage.setItem(OVERRIDES_KEY, JSON.stringify(all));
+        pushOverridesToGame(all);
+    }
 
     function renderFancyWithState(text, state) {
         const atlasReady = pixHeroReady(text);
@@ -312,7 +336,7 @@
                 '<label>px <input type="number" class="bPx" value="' + state.px + '" min="1" max="16"></label>' +
                 '<button class="secondary bReset">restablecer</button>' +
                 '<button class="secondary bCopy">copiar opciones</button>' +
-                (LIVE_FIREABLE[def.id] ? '<button class="secondary bVer">VER EN UI</button>' : '') +
+                (LIVE_FIREABLE[def.id] ? '<button class="secondary bVer">VER EN UI</button><button class="bAsignar">ASIGNAR AL JUEGO</button><button class="secondary bQuitar">QUITAR ASIGNACIÓN</button>' : '') +
             '</div>' +
             '<div class="row">' +
                 '<fieldset><legend>trazo</legend>' +
@@ -391,7 +415,25 @@
             navigator.clipboard.writeText(txt).then(() => { $('.bMeta').textContent = 'copiado: ' + txt; }).catch(() => { $('.bMeta').textContent = txt; });
         };
         if (LIVE_FIREABLE[def.id]) {
+            const asgInfo = document.createElement('div'); asgInfo.className = 'meta';
+            card.appendChild(asgInfo);
+            const refreshAsgInfo = () => {
+                const ov = loadOverrides()[def.id];
+                asgInfo.textContent = ov
+                    ? '● ASIGNADO AL JUEGO: el juego (partidas reales incluidas) usa este estilo' + (ov.text ? ' — "' + ov.text + '"' : '') + '.'
+                    : '○ sin asignar: el juego usa su estilo de fábrica.';
+                asgInfo.style.color = ov ? '#00ff88' : '';
+            };
             $('.bVer').onclick = () => runOnUi(win => LIVE_FIREABLE[def.id](win, currentState()));
+            $('.bAsignar').onclick = () => {
+                const s = currentState();
+                assignToGame(def.id, s);
+                refreshAsgInfo();
+                // dispara el cuadro en la pestaña del juego para verlo aplicado
+                runOnUi(win => LIVE_FIREABLE[def.id](win, s));
+            };
+            $('.bQuitar').onclick = () => { unassignFromGame(def.id); refreshAsgInfo(); };
+            refreshAsgInfo();
         }
         redraw();
         return card;
@@ -427,9 +469,11 @@
     // ===================== PESTAÑA: UI DEL JUEGO (ventana aparte) =====================
     if (location.protocol === 'file:') document.getElementById('mapWarn').style.display = 'block';
 
-    // El juego vive en una pestaña real (window.open), no en un iframe: al ser
-    // mismo origen, sus funciones/variables son accesibles directamente desde aquí
-    // (win.showGoSplash(...), win.pixelMode = ...) sin tener que inyectar <script>.
+    // El juego vive en una pestaña real (window.open). Las FUNCIONES del juego
+    // (showGoSplash, startPracticeGame...) sí cuelgan de window, pero sus
+    // VARIABLES (sim, els, camera...) son let/const y NO — por eso index.html
+    // expone window.__pwLab, un puente con getters/setters a esas variables.
+    // Aquí siempre se accede a variables vía win.__pwLab, nunca vía win.X.
     let gameWin = null;
     function updateUiStatus() {
         const el = document.getElementById('mStatus');
@@ -441,48 +485,68 @@
     // y congela la sim al instante: sin bots/comida/virus, sin timers corriendo,
     // sin partida real — solo el HUD estático sobre el mapa entero.
     function initStaticUi(win) {
-        // Bloquea returnToMenu(): sin esto, un websocket/matchmaking pendiente de
-        // un intento anterior puede resolverse DESPUÉS de forzar el estado
-        // congelado (ws.onclose/onerror, timers de "FINDING ROOM"...) y reabrir
-        // el menú de modo por su cuenta. Es el único punto por el que se vuelve
-        // a mostrar el login/mode screen, así que se anula de raíz.
+        const L = win.__pwLab;
+        // Bloquea returnToMenu(): un websocket/matchmaking pendiente puede
+        // resolverse DESPUÉS de forzar el estado congelado y reabrir el menú.
+        // (returnToMenu es function declaration ⇒ sí es propiedad de window.)
         win.returnToMenu = () => {};
-        if (win.netState && win.netState.ws) { try { win.netState.ws.close(); } catch (e) {} win.netState = null; }
-        if (win._mmTimer) { win.clearInterval(win._mmTimer); win._mmTimer = null; }
+        if (L.netState && L.netState.ws) { try { L.netState.ws.close(); } catch (e) {} L.netState = null; }
+        if (L.mmTimer) { win.clearInterval(L.mmTimer); L.mmTimer = null; }
+        // Saltar la pantalla de selección de modo (capa negra fullscreen,
+        // z-index 50, solo se oculta al clicar un modo): mismo salto que hace
+        // el propio juego al entrar como espectador. ESTA era la pantalla
+        // "classic o arcade" que tapaba la UI al abrir en frío.
+        L.els.modeScreen.style.display = 'none';
+        L.els.modeScreen.style.pointerEvents = 'none';
+        L.els.loginOverlay.style.display = 'none';
         win.startPracticeGame('arcade');
-        win.sim.foods.length = 0; win.sim.enemies.length = 0; win.sim.viruses.length = 0;
-        win.sim.ejectedMasses.length = 0; win.sim.projectiles.length = 0;
-        win.sim.step = function () {}; win.sim.timeScale = 0;
-        win.nextSkillPickTime = Infinity;
+        const sim = L.sim;
+        sim.foods.length = 0; sim.enemies.length = 0; sim.viruses.length = 0;
+        sim.ejectedMasses.length = 0; sim.projectiles.length = 0;
+        sim.step = function () {}; sim.timeScale = 0;
+        L.nextSkillPickTime = Infinity;
         // Encaja todo el mapa en la ventana (con margen) en vez de la cámara
         // pegada al jugador — para ver el cartel de peligro completo alrededor.
-        const fit = Math.min(win.width, win.height) / (win.MAP_SIZE * 2.2);
-        win.camera.x = 0; win.camera.y = 0; win.camera.scale = Math.max(0.05, Math.min(2, fit));
+        const fit = Math.min(L.width, L.height) / (L.MAP_SIZE * 2.2);
+        L.camera.x = 0; L.camera.y = 0; L.camera.scale = Math.max(0.05, Math.min(2, fit));
         buildFloatingPanel(win);
+        win.__pwLabInited = true;
     }
-    function openUiWindow() {
-        if (gameWin && !gameWin.closed) { gameWin.focus(); initStaticUi(gameWin); updateUiStatus(); return; }
+    // Espera activa a que la pestaña esté de verdad lista (documento completo y
+    // puente definido). No usa el evento 'load': con window.open y caché local
+    // puede dispararse antes de registrar el listener y no llegar nunca.
+    function whenUiReady(fn) {
+        const ready = () => {
+            try { return gameWin && !gameWin.closed && gameWin.document.readyState === 'complete' && gameWin.__pwLab && typeof gameWin.startPracticeGame === 'function'; }
+            catch (e) { return false; }
+        };
+        if (ready()) { fn(gameWin); return; }
+        const t = setInterval(() => { if (ready()) { clearInterval(t); fn(gameWin); } }, 150);
+        setTimeout(() => clearInterval(t), 15000);
+    }
+    // forceInit=true (botones de esta pestaña): reinicia el estado congelado
+    // aunque ya estuviera abierto. afterInit: acción a ejecutar cuando esté listo.
+    function openUiWindow(afterInit, forceInit) {
+        const boot = (win) => {
+            if (forceInit || !win.__pwLabInited) initStaticUi(win);
+            updateUiStatus();
+            if (afterInit) afterInit(win);
+        };
+        if (gameWin && !gameWin.closed) { gameWin.focus(); whenUiReady(boot); return; }
         gameWin = window.open('index.html', 'pw_lab_ui');
         if (!gameWin) { alert('El navegador ha bloqueado la ventana nueva. Permite pop-ups para esta página e inténtalo de nuevo.'); return; }
-        gameWin.addEventListener('load', () => { initStaticUi(gameWin); updateUiStatus(); });
+        whenUiReady(boot);
         const poll = setInterval(() => { if (!gameWin || gameWin.closed) { clearInterval(poll); updateUiStatus(); } }, 1000);
         updateUiStatus();
     }
-    document.getElementById('mOpenUi').onclick = openUiWindow;
-    document.getElementById('mResetUi').onclick = () => {
-        if (!gameWin || gameWin.closed) { openUiWindow(); return; }
-        initStaticUi(gameWin); gameWin.focus();
-    };
+    document.getElementById('mOpenUi').onclick = () => openUiWindow(null, true);
+    document.getElementById('mResetUi').onclick = () => openUiWindow(null, true);
 
-    // Ejecuta fn(win) sobre la pestaña del juego, abriéndola/esperándola si hace
-    // falta (usado por "VER EN UI" y "aplicar en vivo" desde Asignar/Carteles).
+    // Ejecuta fn(win) sobre la pestaña del juego, abriéndola e inicializándola
+    // si hace falta (usado por "VER EN UI" y "aplicar en vivo").
     function runOnUi(fn) {
-        if (gameWin && !gameWin.closed && typeof gameWin.showGoSplash === 'function') { gameWin.focus(); fn(gameWin); return; }
-        openUiWindow();
-        const check = setInterval(() => {
-            if (gameWin && !gameWin.closed && typeof gameWin.showGoSplash === 'function') { clearInterval(check); gameWin.focus(); fn(gameWin); }
-        }, 150);
-        setTimeout(() => clearInterval(check), 10000);
+        if (gameWin && !gameWin.closed && gameWin.__pwLabInited) { gameWin.focus(); fn(gameWin); return; }
+        openUiWindow(fn, false);
     }
 
     // Panel flotante inyectado DENTRO de la pestaña del juego: un botón "LAB"
@@ -534,7 +598,7 @@
         colorField(r, 'fondo', '#050505', v => win.document.documentElement.style.setProperty('--bg-color', v));
         colorField(r, 'rejilla', '#ffffff', v => win.document.documentElement.style.setProperty('--grid-line', v));
         const pixLabel = win.document.createElement('label');
-        const pixInput = win.document.createElement('input'); pixInput.type = 'checkbox'; pixInput.checked = win.pixelMode;
+        const pixInput = win.document.createElement('input'); pixInput.type = 'checkbox'; pixInput.checked = win.__pwLab.pixelMode;
         pixInput.onchange = () => win.setPixelMode(pixInput.checked);
         pixLabel.appendChild(pixInput); pixLabel.appendChild(win.document.createTextNode('modo pixel'));
         r.appendChild(pixLabel);
@@ -595,11 +659,11 @@
         contadorEnd: (win) => { const s = labState('contador'); let n = 5; const label = TEXTS.cdEnd; win.showCountdownNumber(n, label, labOptsFromState(s)); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, label, labOptsFromState(s)); }, 700); },
         skill: (win) => LIVE_FIREABLE.skillTitle(win, labState('skillTitle')),
         gameOver: (win) => win.stopGame(),
-        victory: (win) => win.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }),
-        cashout: (win) => win.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }),
-        matchEnded: (win) => win.EconHUD.showPrize({ reason: 'arcadeEnd', myAmount: 300, pot: 1500, top: [{ pos: 1, name: 'Bot1', pct: 40, amount: 600, mine: false }, { pos: 2, name: 'me', pct: 20, amount: 300, mine: true }] }),
-        matchFinished: (win) => { win.els.resultTitle.innerText = 'MATCH FINISHED'; win.els.resultTitle.style.color = '#00ff88'; win.showResultsUI(); },
-        roomRestarted: (win) => { win.els.resultTitle.innerText = 'ROOM RESTARTED'; win.els.resultTitle.style.color = '#ffcc00'; win.showResultsUI(); },
+        victory: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }),
+        cashout: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }),
+        matchEnded: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'arcadeEnd', myAmount: 300, pot: 1500, top: [{ pos: 1, name: 'Bot1', pct: 40, amount: 600, mine: false }, { pos: 2, name: 'me', pct: 20, amount: 300, mine: true }] }),
+        matchFinished: (win) => { const els = win.__pwLab.els; els.resultTitle.innerText = 'MATCH FINISHED'; els.resultTitle.style.color = '#00ff88'; win.showResultsUI(); },
+        roomRestarted: (win) => { const els = win.__pwLab.els; els.resultTitle.innerText = 'ROOM RESTARTED'; els.resultTitle.style.color = '#ffcc00'; win.showResultsUI(); },
         killGain: (win) => win.showKillGain(1500),
         sysNotice: (win) => win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle),
         sysKicked: (win) => win.showSystemMsg(TEXTS.kickedBody, TEXTS.kickedTitle),
@@ -607,7 +671,7 @@
         bannerFound: (win) => win.setLobbyBanner('<b>' + TEXTS.adminAnnounce + '</b>', 'found'),
         bannerOff: (win) => win.setLobbyBanner(null),
         cerrar: (win) => {
-            win.els.result.style.display = 'none'; win.closeSkillChoice(); win.hideSystemMsg(); win.setLobbyBanner(null); win.hideCountdownNumber();
+            win.__pwLab.els.result.style.display = 'none'; win.closeSkillChoice(); win.hideSystemMsg(); win.setLobbyBanner(null); win.hideCountdownNumber();
             const pm = win.document.getElementById('prizeModal'); if (pm) pm.style.display = 'none';
             const go = win.document.getElementById('goSplash'); if (go) go.remove();
         },
@@ -826,7 +890,7 @@
     document.getElementById('skApplyLive').onclick = () => {
         runOnUi(win => {
             win.setPixPanelAccent(skAccent.value);
-            if (!win.pixelMode) win.setPixelMode(true);
+            if (!win.__pwLab.pixelMode) win.setPixelMode(true);
             LIVE_FIREABLE.skillTitle(win, labState('skillTitle'));
         });
         document.getElementById('skMeta').textContent = 'aplicado — panel completo con 2 skills reales disparado en la pestaña del juego.';

@@ -1223,7 +1223,36 @@
     // sistema en modo pixel): un único color para que ambos marcos, generados con
     // la misma textura 9-slice, se puedan retocar juntos desde el laboratorio.
     let pixPanelAccent = '#00ff88';
-    let skillPanelTitle = 'SELECT A SKILL';   // asignable desde el laboratorio (font-preview.html)
+    // Estilos ASIGNADOS desde el laboratorio (font-preview.html, pestaña Textos →
+    // "ASIGNAR AL JUEGO"). Mismo origen ⇒ mismo localStorage, así que aplican
+    // también a partidas reales. Por clave (go / contador / skillTitle):
+    // { text, px, opts } con opts en el esquema de pixFancyText. Sin entrada,
+    // el cartel usa su look de fábrica.
+    let styleOverrides = {};
+    try { styleOverrides = JSON.parse(localStorage.getItem('pw_style_overrides')) || {}; } catch (e) {}
+    let skillPanelTitle = (styleOverrides.skillTitle && styleOverrides.skillTitle.text) || 'SELECT A SKILL';
+    // Puente del laboratorio (font-preview.html abre esta página en otra pestaña).
+    // Las variables del juego son let/const — NO cuelgan de window — así que la
+    // otra pestaña no puede leerlas ni escribirlas directamente. Esto expone SOLO
+    // lo que el laboratorio necesita para congelar la sim y disparar cuadros; el
+    // juego no lo usa para nada. Los getters son perezosos: se evalúan al
+    // llamarlos, cuando todo lo de abajo ya está declarado.
+    window.__pwLab = {
+        get sim() { return sim; },
+        get els() { return els; },
+        get camera() { return camera; },
+        get width() { return width; },
+        get height() { return height; },
+        get MAP_SIZE() { return MAP_SIZE; },
+        get pixelMode() { return pixelMode; },
+        get EconHUD() { return EconHUD; },
+        get netState() { return netState; }, set netState(v) { netState = v; },
+        get mmTimer() { return _mmTimer; }, set mmTimer(v) { _mmTimer = v; },
+        set nextSkillPickTime(v) { nextSkillPickTime = v; },
+        set practiceFirstSkillDone(v) { practiceFirstSkillDone = v; },
+        set skillPanelTitle(v) { skillPanelTitle = v; },
+        set styleOverrides(v) { styleOverrides = v; },
+    };
     let enableEnemyFX = true;
     let serverEnemyFx = true;   // override global del server (admin): false = sin FX de enemigos para todos
     // Zoom base: ajuste LOCAL de tu navegador (lo pone el panel admin via localStorage,
@@ -3209,26 +3238,45 @@
     }
     // Número grande de cuenta atrás (9..1), estilo GO!. Se llama una vez por segundo.
     let _lastCdNum = null;
-    // opts (opcional, asignable desde el laboratorio): mismo esquema que
-    // pixFancyText. Sin opts, el look de siempre para el jugador real.
+    // opts (opcional): mismo esquema que pixFancyText. Sin opts usa el estilo
+    // ASIGNADO desde el laboratorio (styleOverrides.contador — uno solo para
+    // MATCH STARTING y MATCH ENDING) y, si no hay, el de fábrica. El dígito
+    // sale del atlas hero si sus sprites existen; si no, procedural.
     function showCountdownNumber(n, label, opts) {
         if (n === _lastCdNum) return; _lastCdNum = n;
-        opts = opts || {};
+        const ov = styleOverrides.contador || {};
+        opts = opts || ov.opts || {};
         ensureLobbyFx();
         const old = document.getElementById('cdNum'); if (old) old.remove();
         const el = document.createElement('div'); el.id = 'cdNum';
-        el.innerHTML = '<div class="cd-lbl">' + (label || 'MATCH STARTING') + '</div>';
+        label = label || 'MATCH STARTING';
+        const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
         if (pixelMode) {
-            const o = { thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
-            if (opts.plain) o.plain = true;
-            if (opts.fill) o.fill = opts.fill;
-            if (opts.shade) o.shade = opts.shade;
-            if (opts.sparkles) o.sparkles = opts.sparkles;
-            const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
-            if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
-            const cv = pixFancyText(String(n), opts.px || 9, o); cv.className = 'cd-n'; el.appendChild(cv);
+            // Etiqueta como cartel pixel encima del número (antes era texto CSS
+            // pequeño que se perdía al lado del dígito grande).
+            const lblWrap = document.createElement('div'); lblWrap.className = 'cd-lbl';
+            const lblOpts = { plain: true };
+            if (glow) { lblOpts.glow = glow; lblOpts.glowBlur = 8; }
+            lblWrap.appendChild(pixFancyText(label, 2, lblOpts));
+            el.appendChild(lblWrap);
+            const px = opts.px || ov.px || 9;
+            let cv;
+            if (heroFontReady && pixHeroReady(String(n))) {
+                const o = {}; if (opts.sparkles) o.sparkles = opts.sparkles;
+                if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
+                cv = pixHeroText(String(n), px * 15, o);
+            } else {
+                const o = { thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
+                if (opts.plain) o.plain = true;
+                if (opts.fill) o.fill = opts.fill;
+                if (opts.shade) o.shade = opts.shade;
+                if (opts.sparkles) o.sparkles = opts.sparkles;
+                if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
+                cv = pixFancyText(String(n), px, o);
+            }
+            cv.className = 'cd-n'; el.appendChild(cv);
         }
-        else { const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
+        else { el.innerHTML = '<div class="cd-lbl">' + label + '</div>'; const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3, 5s) lo dispara quien llama, una vez al entrar en los 5s.
         setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
@@ -3774,12 +3822,13 @@
 
     // Splash "GO!" estilo PillWars al arrancar la partida (entra grande, rebota y se
     // desvanece). Acompaña al inicio de la música y la liberación del control.
-    // opts (opcional, asignable desde el laboratorio): mismo esquema que
-    // pixFancyText (thin, plain, hd, fill, shade, glow, glowBlur, sparkles).
-    // Sin opts se mantiene el look de siempre para el jugador real.
+    // opts (opcional): mismo esquema que pixFancyText (thin, plain, hd, fill,
+    // shade, glow, glowBlur, sparkles). Sin argumentos usa el estilo ASIGNADO
+    // desde el laboratorio (styleOverrides.go) y, si no hay, el de fábrica.
     function showGoSplash(text, opts) {
-        text = text || 'GO!';
-        opts = opts || {};
+        const ov = styleOverrides.go || {};
+        text = text || ov.text || 'GO!';
+        opts = opts || ov.opts || {};
         if (!document.getElementById('goSplashCss')) {
             const st = document.createElement('style');
             st.id = 'goSplashCss';
@@ -3892,7 +3941,7 @@
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
     // titleOpts (opcional, asignable desde el laboratorio): mismo esquema que
     // pixFancyText para el título "SELECT A SKILL". Sin él, look de siempre.
-    function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; wrap.appendChild(d1); wrap.appendChild(pixFancyText(skillPanelTitle, 2, titleOpts || {})); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
+    function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; wrap.appendChild(d1); wrap.appendChild(pixFancyText(skillPanelTitle, 2, titleOpts || (styleOverrides.skillTitle && styleOverrides.skillTitle.opts) || {})); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
         els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name, fitPx = Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixFancyText(nm, fitPx, { plain: true, shade: '#b9c2cc', hd: 1 }); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
