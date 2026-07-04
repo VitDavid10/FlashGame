@@ -46,7 +46,9 @@
 
 <div id="tabs">
     <button data-tab="letras" class="active">Letras</button>
-    <button data-tab="carteles">Textos</button>
+    <button data-tab="textos">Textos</button>
+    <button data-tab="carteles">Carteles</button>
+    <button data-tab="asignar">Asignar textos</button>
     <button data-tab="mapa">UI del juego</button>
 </div>
 
@@ -79,13 +81,36 @@
 
 </div>
 
-<!-- ===================== PESTAÑA 2: CARTELES ===================== -->
-<div id="panel-carteles" class="panel">
-<div class="hint">Ajuste fino de los TEXTOS pixel sueltos (solo la tipografía, sin el panel que los rodea). Los cuadros enteros (panel de skills, mensajes de sistema, resultados…) se ven en la pestaña "UI del juego". Los ajustes se guardan solos (localStorage). "copiar opciones" te da el objeto de opciones tal cual para pegarlo en el código cuando decidas el estilo final.</div>
+<!-- ===================== PESTAÑA 2: TEXTOS ===================== -->
+<div id="panel-textos" class="panel">
+<div class="hint">Ajuste fino de los TEXTOS pixel sueltos (solo la tipografía, sin el panel que los rodea). Los cuadros enteros con fondo (panel de skills, mensajes de sistema…) se ven en "UI del juego"; su look de plantilla se ajusta en "Carteles" y su copy en "Asignar textos". Los ajustes se guardan solos (localStorage). "copiar opciones" te da el objeto de opciones tal cual para pegarlo en el código cuando decidas el estilo final.</div>
 <div id="bannerCards"></div>
 </div>
 
-<!-- ===================== PESTAÑA 3: MAPA EN VIVO ===================== -->
+<!-- ===================== PESTAÑA 3: CARTELES (plantilla visual) ===================== -->
+<div id="panel-carteles" class="panel">
+<div class="hint">Estilo visual del CUADRO que envuelve los mensajes de sistema (borde, halo, esquinas pixel). "modo pixel" en "UI del juego" ya activa el título con fuente pixel + diamantes automáticamente — aquí solo afinas color y brillo del marco. "aplicar en vivo" lo empuja al iframe de "UI del juego"; "copiar CSS" te da la regla para pegarla en <code>index.html</code> cuando decidas el look final.</div>
+<div class="bannerCard">
+    <h3>Modal de sistema (sysModal)</h3>
+    <div class="row">
+        <span class="ctrl">color de borde <input type="color" id="cBorderColor" value="#00ff88"></span>
+        <span class="ctrl">color de halo <input type="color" id="cGlowColor" value="#00ff88"></span>
+        <label>blur <input type="number" id="cGlowBlur" value="40" min="0" max="120"></label>
+        <button class="secondary" id="cApplyLive">APLICAR EN VIVO (iframe)</button>
+        <button class="secondary" id="cCopyCss">COPIAR CSS</button>
+    </div>
+    <div id="cartelPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
+    <div class="meta" id="cartelMeta"></div>
+</div>
+</div>
+
+<!-- ===================== PESTAÑA 4: ASIGNAR TEXTOS ===================== -->
+<div id="panel-asignar" class="panel">
+<div class="hint">El copy real de cada mensaje del juego (mismo texto por defecto que usa la partida). Edítalo aquí — se guarda solo — y pulsa "VER EN UI" para saltar a la pestaña "UI del juego" y disparar ese cuadro con tu texto. Si el juego aún no está cargado ahí, pulsa antes "MOSTRAR UI (ARCADE)".</div>
+<div id="textAssignCards"></div>
+</div>
+
+<!-- ===================== PESTAÑA 5: MAPA EN VIVO ===================== -->
 <div id="panel-mapa" class="panel">
 <div id="mapWarn">Estás abriendo esta página como archivo suelto (file://). Esta pestaña necesita servirla por HTTP (<code>node server/index.js</code> y entrar por <code>http://localhost:PUERTO/game/font-preview.html</code>) porque el navegador bloquea el acceso entre páginas locales sueltas.</div>
 <div class="hint">La UI real del juego sobre un FONDO ESTÁTICO: sin bots, sin comida, sin partida — solo la rejilla, tu píldora quieta y el HUD. Desde aquí lanzas cada cuadro entero (GO, contador, panel de skills, mensajes de sistema…) tal cual sale en la partida. "MOSTRAR UI" también resetea todo si algo se queda abierto.</div>
@@ -108,7 +133,8 @@
 <div class="row">
     <fieldset><legend>overlays de partida</legend>
         <button class="secondary" data-trigger="go">GO!</button>
-        <button class="secondary" data-trigger="contador">CONTADOR 5→1</button>
+        <button class="secondary" data-trigger="contador">CONTADOR (INICIO) 5→1</button>
+        <button class="secondary" data-trigger="contadorEnd">CONTADOR (FIN) 5→1</button>
         <button class="secondary" data-trigger="skill">PANEL DE SKILLS</button>
         <button class="secondary" data-trigger="killGain">KILL GAIN (+PILL)</button>
     </fieldset>
@@ -431,27 +457,132 @@
         );
     };
 
-    const TRIGGERS = {
-        go: "showGoSplash()",
-        contador: "(function(){ let n=5; showCountdownNumber(n,'MATCH STARTING'); const t=setInterval(()=>{ n--; if(n<1){clearInterval(t);return;} showCountdownNumber(n,'MATCH STARTING'); },700); })()",
-        skill: "practiceFirstSkillDone = true; showSkillChoice()",
-        gameOver: "stopGame()",
-        victory: "EconHUD.showPrize({reason:'victory', amount:500, carry:1200})",
-        cashout: "EconHUD.showPrize({reason:'cashout', amount:800, carry:1000, kills:6, feePct:10, fee:100})",
-        matchEnded: "EconHUD.showPrize({reason:'arcadeEnd', myAmount:300, pot:1500, top:[{pos:1,name:'Bot1',pct:40,amount:600,mine:false},{pos:2,name:'me',pct:20,amount:300,mine:true}]})",
-        matchFinished: "els.resultTitle.innerText='MATCH FINISHED'; els.resultTitle.style.color='#00ff88'; showResultsUI();",
-        roomRestarted: "els.resultTitle.innerText='ROOM RESTARTED'; els.resultTitle.style.color='#ffcc00'; showResultsUI();",
-        killGain: "showKillGain(1500)",
-        sysNotice: "showSystemMsg('The rejoin window has closed. Your slot was released and you need to enter again.', 'REJOIN EXPIRED')",
-        sysKicked: "showSystemMsg('You have been kicked by an administrator. Wait 30 seconds before rejoining.', 'KICKED')",
-        bannerSearch: "setLobbyBanner('<b>FINDING ROOM</b> · JOINING THE BEST MATCH', 'search')",
-        bannerFound: "setLobbyBanner('<b>SERVER RESTART IN 5 MINUTES</b>', 'found')",
-        bannerOff: "setLobbyBanner(null)",
-        cerrar: "els.result.style.display='none'; closeSkillChoice(); hideSystemMsg(); setLobbyBanner(null); hideCountdownNumber(); var _pm=document.getElementById('prizeModal'); if(_pm) _pm.style.display='none'; var _go=document.getElementById('goSplash'); if(_go) _go.remove();",
+    // ===== textos asignables: mismo copy que usa hoy el juego (ver index.html) =====
+    const TEXTS_KEY = 'pw_fontlab_texts';
+    const TEXTS_DEFAULTS = {
+        go: 'GO!',
+        cdStart: 'MATCH STARTING',
+        cdEnd: 'MATCH ENDING',
+        findingRoom: 'FINDING ROOM',
+        adminAnnounce: 'SERVER RESTART IN 5 MINUTES',
+        rejoinTitle: 'REJOIN EXPIRED',
+        rejoinBody: 'The rejoin window has closed. Your slot was released and you need to enter again.',
+        kickedTitle: 'KICKED',
+        kickedBody: 'You have been kicked by an administrator. Wait 30 seconds before rejoining.',
     };
+    function loadTexts() {
+        const t = Object.assign({}, TEXTS_DEFAULTS);
+        try { const saved = JSON.parse(localStorage.getItem(TEXTS_KEY)); if (saved) Object.assign(t, saved); } catch (e) {}
+        return t;
+    }
+    const TEXTS = loadTexts();
+    function saveTexts() { localStorage.setItem(TEXTS_KEY, JSON.stringify(TEXTS)); }
+
+    // Cada entrada genera el código a ejecutar DENTRO del iframe leyendo TEXTS en
+    // el momento del click (así "Asignar textos" y los botones de aquí comparten
+    // siempre el mismo valor, sin tener que sincronizar nada aparte).
+    const TRIGGERS = {
+        go: () => "showGoSplash(" + JSON.stringify(TEXTS.go) + ")",
+        contador: () => "(function(){ let n=5; showCountdownNumber(n," + JSON.stringify(TEXTS.cdStart) + "); const t=setInterval(()=>{ n--; if(n<1){clearInterval(t);return;} showCountdownNumber(n," + JSON.stringify(TEXTS.cdStart) + "); },700); })()",
+        contadorEnd: () => "(function(){ let n=5; showCountdownNumber(n," + JSON.stringify(TEXTS.cdEnd) + "); const t=setInterval(()=>{ n--; if(n<1){clearInterval(t);return;} showCountdownNumber(n," + JSON.stringify(TEXTS.cdEnd) + "); },700); })()",
+        skill: () => "practiceFirstSkillDone = true; showSkillChoice()",
+        gameOver: () => "stopGame()",
+        victory: () => "EconHUD.showPrize({reason:'victory', amount:500, carry:1200})",
+        cashout: () => "EconHUD.showPrize({reason:'cashout', amount:800, carry:1000, kills:6, feePct:10, fee:100})",
+        matchEnded: () => "EconHUD.showPrize({reason:'arcadeEnd', myAmount:300, pot:1500, top:[{pos:1,name:'Bot1',pct:40,amount:600,mine:false},{pos:2,name:'me',pct:20,amount:300,mine:true}]})",
+        matchFinished: () => "els.resultTitle.innerText='MATCH FINISHED'; els.resultTitle.style.color='#00ff88'; showResultsUI();",
+        roomRestarted: () => "els.resultTitle.innerText='ROOM RESTARTED'; els.resultTitle.style.color='#ffcc00'; showResultsUI();",
+        killGain: () => "showKillGain(1500)",
+        sysNotice: () => "showSystemMsg(" + JSON.stringify(TEXTS.rejoinBody) + ", " + JSON.stringify(TEXTS.rejoinTitle) + ")",
+        sysKicked: () => "showSystemMsg(" + JSON.stringify(TEXTS.kickedBody) + ", " + JSON.stringify(TEXTS.kickedTitle) + ")",
+        bannerSearch: () => "setLobbyBanner(" + JSON.stringify('<b>' + TEXTS.findingRoom + '</b> · JOINING THE BEST MATCH') + ", 'search')",
+        bannerFound: () => "setLobbyBanner(" + JSON.stringify('<b>' + TEXTS.adminAnnounce + '</b>') + ", 'found')",
+        bannerOff: () => "setLobbyBanner(null)",
+        cerrar: () => "els.result.style.display='none'; closeSkillChoice(); hideSystemMsg(); setLobbyBanner(null); hideCountdownNumber(); var _pm=document.getElementById('prizeModal'); if(_pm) _pm.style.display='none'; var _go=document.getElementById('goSplash'); if(_go) _go.remove();",
+    };
+    function fireTrigger(key) { runInGame(TRIGGERS[key]()); }
+    function goToUiTab() { document.querySelector('#tabs button[data-tab="mapa"]').click(); }
     document.querySelectorAll('[data-trigger]').forEach(btn => {
-        btn.onclick = () => runInGame(TRIGGERS[btn.dataset.trigger]);
+        btn.onclick = () => fireTrigger(btn.dataset.trigger);
     });
+
+    // ===================== PESTAÑA: ASIGNAR TEXTOS =====================
+    const TEXT_ASSIGN_DEFS = [
+        { label: 'GO! (splash de arranque)', fields: [{ key: 'go', kind: 'text' }], trigger: 'go' },
+        { label: 'Contador — etiqueta de inicio', fields: [{ key: 'cdStart', kind: 'text' }], trigger: 'contador' },
+        { label: 'Contador — etiqueta de fin', fields: [{ key: 'cdEnd', kind: 'text' }], trigger: 'contadorEnd' },
+        { label: 'Banner — buscando sala', fields: [{ key: 'findingRoom', kind: 'text' }], trigger: 'bannerSearch' },
+        { label: 'Banner — anuncio de admin', fields: [{ key: 'adminAnnounce', kind: 'text' }], trigger: 'bannerFound' },
+        { label: 'Modal de sistema — REJOIN EXPIRED', fields: [{ key: 'rejoinTitle', kind: 'text', small: 'título' }, { key: 'rejoinBody', kind: 'textarea', small: 'cuerpo' }], trigger: 'sysNotice' },
+        { label: 'Modal de sistema — KICKED', fields: [{ key: 'kickedTitle', kind: 'text', small: 'título' }, { key: 'kickedBody', kind: 'textarea', small: 'cuerpo' }], trigger: 'sysKicked' },
+    ];
+    function buildTextAssignCard(def) {
+        const card = document.createElement('div'); card.className = 'bannerCard';
+        const h = document.createElement('h3'); h.textContent = def.label; card.appendChild(h);
+        const row = document.createElement('div'); row.className = 'row'; row.style.alignItems = 'flex-start';
+        for (const f of def.fields) {
+            const wrap = document.createElement('label'); wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;flex:1;min-width:220px';
+            if (f.small) { const sm = document.createElement('span'); sm.className = 'label'; sm.textContent = f.small; wrap.appendChild(sm); }
+            const input = document.createElement(f.kind === 'textarea' ? 'textarea' : 'input');
+            if (f.kind !== 'textarea') input.type = 'text'; else { input.rows = 2; input.style.resize = 'vertical'; }
+            input.style.width = '100%'; input.style.boxSizing = 'border-box';
+            input.value = TEXTS[f.key];
+            input.addEventListener('input', () => { TEXTS[f.key] = input.value; saveTexts(); });
+            wrap.appendChild(input);
+            row.appendChild(wrap);
+        }
+        const btn = document.createElement('button'); btn.className = 'secondary'; btn.textContent = 'VER EN UI';
+        btn.style.alignSelf = 'flex-end';
+        btn.onclick = () => { goToUiTab(); fireTrigger(def.trigger); };
+        row.appendChild(btn);
+        card.appendChild(row);
+        return card;
+    }
+    const textAssignEl = document.getElementById('textAssignCards');
+    for (const def of TEXT_ASSIGN_DEFS) textAssignEl.appendChild(buildTextAssignCard(def));
+
+    // ===================== PESTAÑA: CARTELES (plantilla visual) =====================
+    const CARTEL_KEY = 'pw_fontlab_cartel_sysmodal';
+    function loadCartelStyle() {
+        const d = { border: '#00ff88', glow: '#00ff88', blur: 40 };
+        try { const saved = JSON.parse(localStorage.getItem(CARTEL_KEY)); if (saved) Object.assign(d, saved); } catch (e) {}
+        return d;
+    }
+    const cBorder = document.getElementById('cBorderColor'), cGlow = document.getElementById('cGlowColor'), cBlur = document.getElementById('cGlowBlur');
+    { const s = loadCartelStyle(); cBorder.value = s.border; cGlow.value = s.glow; cBlur.value = s.blur; }
+
+    function cartelCss() {
+        return '#sysModal .exit-box{border-color:' + cBorder.value + '!important;box-shadow:0 0 ' + cBlur.value + 'px ' + cGlow.value + '!important;}';
+    }
+    function redrawCartelPreview() {
+        const s = { border: cBorder.value, glow: cGlow.value, blur: cBlur.value };
+        localStorage.setItem(CARTEL_KEY, JSON.stringify(s));
+        const wrap = document.getElementById('cartelPreviewWrap');
+        wrap.innerHTML =
+            '<div style="width:320px;background:#111;border-radius:12px;padding:28px;text-align:center;' +
+            'border:1px solid ' + s.border + ';box-shadow:0 0 ' + s.blur + 'px ' + s.glow + ';">' +
+                '<div style="color:' + s.border + ';font-family:\'Russo One\',sans-serif;font-size:22px;text-shadow:0 0 14px ' + s.glow + ';">SAMPLE TITLE</div>' +
+                '<div style="color:#aaa;font-size:14px;margin:10px 0 20px;">This is a preview of the system modal body text.</div>' +
+                '<button style="width:100%;padding:12px;border:1px solid ' + s.border + ';background:transparent;color:' + s.border + ';font-family:\'Russo One\';border-radius:6px;">OK</button>' +
+            '</div>';
+    }
+    [cBorder, cGlow, cBlur].forEach(el => el.addEventListener('input', redrawCartelPreview));
+    redrawCartelPreview();
+
+    document.getElementById('cApplyLive').onclick = () => {
+        const css = cartelCss();
+        runInGame(
+            "(function(){ var old=document.getElementById('pwLabCartelCss'); if(old) old.remove();" +
+            "var st=document.createElement('style'); st.id='pwLabCartelCss'; st.textContent=" + JSON.stringify(css) + ";" +
+            "document.head.appendChild(st); })()"
+        );
+        goToUiTab();
+        document.getElementById('cartelMeta').textContent = 'aplicado en el iframe de "UI del juego" — abre un mensaje de sistema (REJOIN EXPIRED/KICKED) para verlo.';
+    };
+    document.getElementById('cCopyCss').onclick = () => {
+        const css = cartelCss();
+        navigator.clipboard.writeText(css).then(() => { document.getElementById('cartelMeta').textContent = 'copiado: ' + css; }).catch(() => { document.getElementById('cartelMeta').textContent = css; });
+    };
 </script>
 </body>
 </html>
