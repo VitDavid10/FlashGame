@@ -6,87 +6,58 @@
 <style>
     body { background: #050805; color: #cfd8d3; font-family: monospace; margin: 0; padding: 24px; }
     h1 { color: #00ff88; font-size: 18px; margin: 0 0 4px; }
-    .hint { color: #7a8a80; font-size: 12px; margin-bottom: 24px; }
+    .hint { color: #7a8a80; font-size: 12px; margin-bottom: 16px; max-width: 900px; }
     section { margin-bottom: 36px; }
     h2 { color: #9ee32d; font-size: 14px; border-bottom: 1px solid #1c2a20; padding-bottom: 4px; }
-    .row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin: 10px 0; }
+    .row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 8px 0; }
     .label { color: #7a8a80; font-size: 11px; min-width: 150px; }
-    .dark { background: #0a120d; padding: 10px; border: 1px solid #1c2a20; display: inline-block; }
+    .dark { background: #0a120d; padding: 10px; border: 1px solid #1c2a20; display: inline-block; min-height: 20px; }
     canvas { image-rendering: pixelated; display: block; }
-    /* probador */
-    #tester { background: #0a120d; border: 1px solid #1c2a20; padding: 14px; }
-    #tester input, #tester select { background: #050805; color: #cfd8d3; border: 1px solid #2a3a30; padding: 6px 8px; font-family: monospace; }
-    #tester input[type=text] { width: 260px; }
-    #tester input[type=number] { width: 55px; }
-    #tester input[type=color] { width: 40px; padding: 2px; height: 30px; }
-    #tester button { background: #00ff88; color: #04140b; border: none; padding: 6px 14px; font-family: monospace; font-weight: bold; cursor: pointer; }
-    #tester button:hover { background: #4dffaa; }
-    #testerOut .item { margin: 14px 0; }
-    #testerOut .meta { color: #7a8a80; font-size: 11px; margin-bottom: 4px; }
+    input, select, button { background: #0a120d; color: #cfd8d3; border: 1px solid #2a3a30; padding: 6px 8px; font-family: monospace; }
+    input[type=text] { width: 180px; }
+    input[type=number] { width: 55px; }
+    input[type=color] { width: 40px; padding: 2px; height: 30px; }
+    button { background: #00ff88; color: #04140b; font-weight: bold; cursor: pointer; border: none; }
+    button:hover { background: #4dffaa; }
+    button:disabled { background: #333; color: #777; cursor: not-allowed; }
+    button.secondary { background: #1c2a20; color: #9ee32d; }
     .ctrl { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #9aa; }
-    .ctrl input[type=number] { width: 50px; }
-    fieldset { border: 1px solid #1c2a20; border-radius: 0; }
+    fieldset { border: 1px solid #1c2a20; }
     legend { color: #7a8a80; font-size: 11px; padding: 0 6px; }
+    /* pestañas */
+    #tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #1c2a20; }
+    #tabs button { background: #0a120d; color: #7a8a80; border: 1px solid #1c2a20; border-bottom: none; padding: 10px 20px; font-size: 13px; }
+    #tabs button.active { background: #050805; color: #00ff88; border-color: #00ff88; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    /* tarjetas de cartel */
+    .bannerCard { background: #0a120d; border: 1px solid #1c2a20; padding: 12px; margin-bottom: 14px; }
+    .bannerCard h3 { margin: 0 0 8px; font-size: 13px; color: #cfd8d3; }
+    .bannerCard .meta { color: #7a8a80; font-size: 11px; margin-top: 6px; }
+    .bannerCard .disabledNote { color: #665; font-size: 10px; }
+    /* mapa en vivo */
+    #gameFrame { width: 100%; height: 68vh; border: 1px solid #1c2a20; background: #000; }
+    #mapWarn { display: none; background: #2a1010; border: 1px solid #7a2a2a; color: #ff9a9a; padding: 10px; margin-bottom: 14px; font-size: 12px; }
 </style>
 </head>
 <body>
 <h1>Laboratorio de fuente pixel</h1>
-<div class="hint">Usa exactamente el mismo código que el juego (<b>pixfont.js</b>). Cambia el alfabeto ahí y recarga esta página: lo que ves aquí es lo que sale en la partida.</div>
+<div class="hint">Todo aquí usa exactamente el mismo código que el juego (<b>pixfont.js</b> / <b>pixfont-hero.js</b>). Cambia el alfabeto o añade letras al atlas y recarga: lo que ves aquí es lo que sale en la partida.</div>
 
-<section id="tester">
-    <h2>Probador — pide el cartel que quieras</h2>
-    <div class="row">
-        <input type="text" id="tTxt" value="GAME OVER" maxlength="30">
-        <select id="tPreset">
-            <option value="titulo">TÍTULO (estilo GO!)</option>
-            <option value="contador">CONTADOR (5-4-3-2-1)</option>
-            <option value="panel">PANEL (SELECT A SKILL)</option>
-            <option value="plain">PLANO (nombre de skill)</option>
-            <option value="flotante">FLOTANTE (texto del mundo)</option>
-        </select>
-        <label>px <input type="number" id="tPx" value="6" min="1" max="14"></label>
-        <button id="tAdd">AÑADIR</button>
-        <button id="tClear" style="background:#333;color:#ccc">LIMPIAR</button>
-    </div>
-    <div class="row">
-        <fieldset><legend>trazo</legend>
-            <span class="ctrl"><label><input type="checkbox" id="tThin"> thin</label></span>
-            <span class="ctrl"><label><input type="checkbox" id="tPlain"> plain</label></span>
-            <span class="ctrl">hd <select id="tHd"><option value="0">0 (normal)</option><option value="1">1</option><option value="2">2</option></select></span>
-        </fieldset>
-        <fieldset><legend>halo (glow)</legend>
-            <span class="ctrl"><label><input type="checkbox" id="tGlowOn"> activo</label></span>
-            <span class="ctrl">color <input type="color" id="tGlowColor" value="#00ff88"></span>
-            <span class="ctrl">blur <input type="number" id="tGlowBlur" value="30" min="0" max="200"></span>
-        </fieldset>
-        <fieldset><legend>sparkles</legend>
-            <span class="ctrl">cantidad <input type="number" id="tSparkles" value="0" min="0" max="5"></span>
-        </fieldset>
-        <fieldset><legend>colores</legend>
-            <span class="ctrl">fill <input type="color" id="tFill" value="#ffffff"></span>
-            <span class="ctrl">shade <input type="color" id="tShade" value="#b9c2cc"></span>
-        </fieldset>
-    </div>
-    <div class="hint" id="tFlotHint" style="display:none">Modo FLOTANTE usa otro render (drawPixelText): solo aplican texto, px y el color "fill". El resto de controles se ignora.</div>
-    <div id="testerOut"></div>
-</section>
+<div id="tabs">
+    <button data-tab="letras" class="active">Letras</button>
+    <button data-tab="carteles">Carteles</button>
+    <button data-tab="mapa">Mapa en vivo</button>
+</div>
 
-<section>
-    <h2>Carteles reales del juego (mismas llamadas)</h2>
-    <div class="row"><span class="label">GO! (arranque)</span><span class="dark" id="sGo"></span></div>
-    <div class="row"><span class="label">Cuenta atrás</span><span class="dark" id="sCount" style="display:inline-flex;gap:14px;align-items:center"></span></div>
-    <div class="row"><span class="label">Título de skills</span><span class="dark" id="sSkillTitle"></span></div>
-    <div class="row"><span class="label">Nombres de skill</span><span class="dark" id="sSkillNames" style="display:inline-flex;gap:22px;align-items:center"></span></div>
-    <div class="row"><span class="label">Textos flotantes</span><span class="dark" id="sFloat" style="display:inline-flex;gap:22px;align-items:center"></span></div>
-</section>
+<!-- ===================== PESTAÑA 1: LETRAS ===================== -->
+<div id="panel-letras" class="panel active">
 
 <section id="heroSection">
-    <h2>Atlas hero (imagen por letra) — GO!, contador y títulos de fin de partida</h2>
-    <div class="hint">Coloca los PNG en <code>game/img/font-hero/&lt;LETRA&gt;.png</code> (spec en el LEEME.txt de esa carpeta) y recarga esta página. Mientras falte una letra de la palabra, ese cartel cae solo a la fuente procedural (igual que hará el juego cuando lo conectemos) — nunca se rompe.</div>
+    <h2>Atlas hero (imagen por letra)</h2>
+    <div class="hint">Coloca los PNG en <code>game/img/font-hero/&lt;LETRA&gt;.png</code> (spec en el LEEME.txt de esa carpeta) y recarga esta página.</div>
     <div class="row" id="heroStatus"></div>
-    <div class="row" id="heroQuick">
-        <span class="label" style="min-width:auto">textos rápidos:</span>
-    </div>
+    <div class="row" id="heroQuick"><span class="label" style="min-width:auto">textos rápidos:</span></div>
     <div class="row">
         <input type="text" id="hTxt" value="GO!" maxlength="20">
         <label>alto px <input type="number" id="hHeight" value="80" min="20" max="300"></label>
@@ -106,108 +77,72 @@
     <div class="row"><span class="label">Bold HD (Scale2x ×2)</span><span class="dark" id="sAbcHd"></span></div>
 </section>
 
+</div>
+
+<!-- ===================== PESTAÑA 2: CARTELES ===================== -->
+<div id="panel-carteles" class="panel">
+<div class="hint">Un panel por cartel real del juego. Los ajustes se guardan solos (localStorage) — recarga la página y los sigues viendo igual. "copiar opciones" te da el objeto de opciones tal cual para pegarlo en el código cuando decidas el estilo final.</div>
+<div id="bannerCards"></div>
+</div>
+
+<!-- ===================== PESTAÑA 3: MAPA EN VIVO ===================== -->
+<div id="panel-mapa" class="panel">
+<div id="mapWarn">Estás abriendo esta página como archivo suelto (file://). Esta pestaña necesita servirla por HTTP (<code>node server/index.js</code> y entrar por <code>http://localhost:PUERTO/game/font-preview.html</code>) porque el navegador bloquea el acceso entre páginas locales sueltas.</div>
+<div class="hint">Partida de práctica 100% local (bots, sin servidor real, sin pagar nada) para ver los carteles sobre el juego de verdad. Cambia el tema o dispara cualquier cartel cuando quieras.</div>
+
+<div class="row">
+    <button id="mStartArcade">INICIAR PRÁCTICA (ARCADE)</button>
+    <button id="mStartClassic">INICIAR PRÁCTICA (CLASSIC)</button>
+    <span class="ctrl"><label><input type="checkbox" id="mPixel" checked> modo pixel</label></span>
+</div>
+<div class="row">
+    <fieldset><legend>tema de fondo</legend>
+        <button class="secondary" data-theme="dark">oscuro</button>
+        <button class="secondary" data-theme="grey">gris</button>
+        <button class="secondary" data-theme="white">blanco</button>
+        <span class="ctrl">fondo <input type="color" id="mBg" value="#050505"></span>
+        <span class="ctrl">rejilla <input type="color" id="mGrid" value="#ffffff"></span>
+        <button class="secondary" id="mCustomTheme">aplicar personalizado</button>
+    </fieldset>
+</div>
+<div class="row">
+    <fieldset><legend>disparar cartel</legend>
+        <button class="secondary" data-trigger="go">GO!</button>
+        <button class="secondary" data-trigger="contador">CONTADOR 5→1</button>
+        <button class="secondary" data-trigger="skill">SELECT A SKILL</button>
+        <button class="secondary" data-trigger="gameOver">GAME OVER</button>
+        <button class="secondary" data-trigger="victory">VICTORY!</button>
+        <button class="secondary" data-trigger="cashout">CASHOUT</button>
+        <button class="secondary" data-trigger="matchEnded">MATCH ENDED</button>
+        <button class="secondary" data-trigger="matchFinished">MATCH FINISHED</button>
+        <button class="secondary" data-trigger="roomRestarted">ROOM RESTARTED</button>
+    </fieldset>
+</div>
+<iframe id="gameFrame" src="index.html"></iframe>
+</div>
+
 <script src="pixfont.js"></script>
 <script src="pixfont-hero.js"></script>
 <script>
-    // --- helpers ---
-    // canvas con drawPixelText (el render de los textos flotantes del mundo)
+    // ===== pestañas =====
+    document.querySelectorAll('#tabs button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    // ===== helpers compartidos =====
     function floatCanvas(text, px, color) {
         const w = pixTextWidth(text, px) + px * 2, h = 7 * px + px * 2;
         const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
         drawPixelText(cv.getContext('2d'), text, px, px, px, color, '#000');
         return cv;
     }
-    // presets = las llamadas literales que hace el juego en cada cartel, como
-    // datos (no funciones) para poder volcarlos a los controles editables.
-    // glowBlur: función de px porque en el juego "titulo" escala con el tamaño
-    // (px*4) y "contador" es fijo (30) — al elegir el preset se resuelve con el
-    // px actual y queda como número normal, editable a mano después.
-    const PRESET_DEFS = {
-        titulo:   { thin: true, plain: false, hd: 2, sparkles: 5, glow: true, glowColor: '#00ff88', glowBlur: px => px * 4, fill: '#ffffff', shade: '#b9c2cc' },
-        contador: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: () => 30,    fill: '#ffffff', shade: '#b9c2cc' },
-        panel:    { thin: false, plain: false, hd: 0, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: () => 30, fill: '#ffffff', shade: '#b9c2cc' },
-        plain:    { thin: false, plain: true,  hd: 1, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: () => 30, fill: '#ffffff', shade: '#b9c2cc' },
-        flotante: null, // caso especial: drawPixelText, no pixFancyText (solo texto+px+color)
-    };
 
-    const ctl = {
-        thin: document.getElementById('tThin'), plain: document.getElementById('tPlain'), hd: document.getElementById('tHd'),
-        glowOn: document.getElementById('tGlowOn'), glowColor: document.getElementById('tGlowColor'), glowBlur: document.getElementById('tGlowBlur'),
-        sparkles: document.getElementById('tSparkles'), fill: document.getElementById('tFill'), shade: document.getElementById('tShade'),
-        px: document.getElementById('tPx'), preset: document.getElementById('tPreset'), flotHint: document.getElementById('tFlotHint'),
-    };
-    // al elegir un preset: rellena los controles con SUS valores reales (los
-    // mismos que usa el juego), para partir de ahí y tocar solo lo que quieras.
-    function applyPresetToControls() {
-        const name = ctl.preset.value, def = PRESET_DEFS[name];
-        const isFlot = !def;
-        ctl.flotHint.style.display = isFlot ? '' : 'none';
-        for (const el of [ctl.thin, ctl.plain, ctl.hd, ctl.glowOn, ctl.glowColor, ctl.glowBlur, ctl.sparkles, ctl.shade]) el.disabled = isFlot;
-        if (isFlot) return;
-        const px = Math.max(1, Math.min(14, parseInt(ctl.px.value, 10) || 6));
-        ctl.thin.checked = def.thin; ctl.plain.checked = def.plain; ctl.hd.value = String(def.hd);
-        ctl.glowOn.checked = def.glow; ctl.glowColor.value = def.glowColor; ctl.glowBlur.value = def.glowBlur(px);
-        ctl.sparkles.value = def.sparkles; ctl.fill.value = def.fill; ctl.shade.value = def.shade;
-    }
-    ctl.preset.addEventListener('change', applyPresetToControls);
-    applyPresetToControls();
-
-    // --- probador ---
-    const out = document.getElementById('testerOut');
-    function renderFromControls(text, px) {
-        if (!PRESET_DEFS[ctl.preset.value]) return floatCanvas(text, px, ctl.fill.value); // flotante
-        const o = { plain: ctl.plain.checked, thin: ctl.thin.checked, fill: ctl.fill.value, shade: ctl.shade.value };
-        const hd = parseInt(ctl.hd.value, 10); if (hd > 0) o.hd = hd;
-        const sp = parseInt(ctl.sparkles.value, 10); if (sp > 0) o.sparkles = sp;
-        if (ctl.glowOn.checked) { o.glow = ctl.glowColor.value; o.glowBlur = Math.max(0, parseInt(ctl.glowBlur.value, 10) || 0); }
-        return pixFancyText(text, px, o);
-    }
-    function addSample() {
-        const t = document.getElementById('tTxt').value || 'GAME OVER';
-        const p = ctl.preset.value;
-        const px = Math.max(1, Math.min(14, parseInt(ctl.px.value, 10) || 6));
-        const item = document.createElement('div'); item.className = 'item';
-        const meta = document.createElement('div'); meta.className = 'meta';
-        meta.textContent = '"' + t + '" · preset ' + p + ' · px ' + px;
-        const box = document.createElement('span'); box.className = 'dark';
-        box.appendChild(renderFromControls(t, px));
-        item.appendChild(meta); item.appendChild(box);
-        out.prepend(item);
-    }
-    document.getElementById('tAdd').onclick = addSample;
-    document.getElementById('tTxt').addEventListener('keydown', e => { if (e.key === 'Enter') addSample(); });
-    document.getElementById('tClear').onclick = () => { out.innerHTML = ''; };
-
-    // presets fijos, solo para dibujar los "carteles reales" de abajo tal cual
-    // los llama el juego (independientes de lo que el usuario toque arriba).
-    const PRESETS = {
-        titulo:   (t, px) => pixFancyText(t, px, { sparkles: 5, thin: true, glow: '#00ff88', glowBlur: px * 4, hd: 2 }),
-        contador: (t, px) => pixFancyText(t, px, { thin: true, glow: '#00ff88', glowBlur: 30, hd: 2 }),
-        panel:    (t, px) => pixFancyText(t, px, {}),
-        plain:    (t, px) => pixFancyText(t, px, { plain: true, shade: '#b9c2cc', hd: 1 }),
-        flotante: (t, px) => floatCanvas(t, px, '#ccff00'),
-    };
-
-    // --- carteles reales ---
-    document.getElementById('sGo').appendChild(PRESETS.titulo('GO!', 10));
-    for (let n = 5; n >= 1; n--) document.getElementById('sCount').appendChild(PRESETS.contador(String(n), 6));
-    // título de skills: -◆ TITULO ◆- (como showSkillChoice)
-    {
-        const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
-        const d1 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true });
-        const d2 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true });
-        d2.style.transform = 'scaleX(-1)';
-        wrap.appendChild(d1); wrap.appendChild(pixFancyText('SELECT A SKILL', 2, {})); wrap.appendChild(d2);
-        document.getElementById('sSkillTitle').appendChild(wrap);
-    }
-    for (const nm of ['SPRINT', 'MAGNET', 'VIRUS SHOT']) {
-        const fitPx = Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2))));
-        document.getElementById('sSkillNames').appendChild(PRESETS.plain(nm, fitPx));
-    }
-    for (const [t, c] of [['+10', '#9ee32d'], ['-25', '#ff5555'], ['DOUBLE KILL!', '#ffd700']])
-        document.getElementById('sFloat').appendChild(floatCanvas(t, 4, c));
-
-    // --- abecedario ---
+    // ===================== PESTAÑA 1: LETRAS =====================
     const ABC = Object.keys(PIXFONT).filter(ch => ch !== ' ').join('');
     const LINES = ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', '0123456789', ABC.replace(/[A-Z0-9]/g, '')];
     function abcBlock(mode) {
@@ -216,7 +151,7 @@
             if (!line) continue;
             let cv;
             if (mode === 'normal') cv = floatCanvas(line, 3, '#9ee32d');
-            else cv = pixFancyText(line, mode === 'hd' ? 2 : 2, mode === 'hd' ? { plain: true, hd: 1 } : { plain: true, fill: '#9ee32d' });
+            else cv = pixFancyText(line, 2, mode === 'hd' ? { plain: true, hd: 1 } : { plain: true, fill: '#9ee32d' });
             box.appendChild(cv);
         }
         return box;
@@ -225,13 +160,9 @@
     document.getElementById('sAbcBold').appendChild(abcBlock('bold'));
     document.getElementById('sAbcHd').appendChild(abcBlock('hd'));
 
-    // --- atlas hero: estado de carga + probador con fallback automático ---
-    // heroOrFallback = la MISMA lógica que tendrá el juego cuando lo conectemos:
-    // si el atlas tiene todas las letras del texto, usa las imágenes; si falta
-    // alguna, usa pixFancyText (procedural) para que el cartel nunca desaparezca.
     function heroOrFallback(text, targetH, o) {
         if (pixHeroReady(text)) return { cv: pixHeroText(text, targetH, o), mode: 'atlas' };
-        const px = Math.max(1, Math.round(targetH / 15)); // equivalencia aprox. bold 11x15
+        const px = Math.max(1, Math.round(targetH / 15));
         return {
             cv: pixFancyText(text, px, { thin: true, glow: o.glow, glowBlur: o.glowBlur, sparkles: o.sparkles, hd: 2 }),
             mode: 'fallback procedural (falta: ' + pixHeroMissing(text).join(' ') + ')',
@@ -243,7 +174,7 @@
         const o = { sparkles: parseInt(document.getElementById('hSparkles').value, 10) || 0 };
         if (document.getElementById('hGlowOn').checked) { o.glow = document.getElementById('hGlowColor').value; o.glowBlur = parseInt(document.getElementById('hGlowBlur').value, 10) || 0; }
         const r = heroOrFallback(t, h, o);
-        const item = document.createElement('div'); item.className = 'item';
+        const item = document.createElement('div');
         const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = '"' + t + '" · alto ' + h + 'px · ' + r.mode;
         const box = document.createElement('span'); box.className = 'dark'; box.appendChild(r.cv);
         item.appendChild(meta); item.appendChild(box);
@@ -252,17 +183,14 @@
     document.getElementById('hAdd').onclick = addHeroSample;
     document.getElementById('hTxt').addEventListener('keydown', e => { if (e.key === 'Enter') addHeroSample(); });
 
-    // textos reales que hoy salen en el juego en #resultTitle / GO! (ver
-    // game/index.html: stopGame, showResultsUI, showCountdownNumber).
     const HERO_QUICK_TEXTS = ['GO!', 'GAME OVER', 'VICTORY!', 'MATCH FINISHED', 'CASHOUT', 'MATCH ENDED', 'ROOM RESTARTED'];
     const quickRow = document.getElementById('heroQuick');
     for (const t of HERO_QUICK_TEXTS) {
-        const b = document.createElement('button');
-        b.textContent = t; b.style.cssText = 'background:#1c2a20;color:#9ee32d;padding:4px 10px;font-size:11px';
+        const b = document.createElement('button'); b.className = 'secondary';
+        b.textContent = t; b.style.fontSize = '11px'; b.style.padding = '4px 10px';
         b.onclick = () => { document.getElementById('hTxt').value = t; addHeroSample(); };
         quickRow.appendChild(b);
     }
-
     HERO_READY_PROMISE.then(() => {
         const statusEl = document.getElementById('heroStatus');
         for (const ch of HERO_CANDIDATES) {
@@ -272,7 +200,220 @@
             tag.style.cssText = 'padding:3px 9px;border:1px solid ' + (ok ? '#00ff88' : '#552222') + ';color:' + (ok ? '#00ff88' : '#ff6666') + ';font-size:12px';
             statusEl.appendChild(tag);
         }
-        addHeroSample(); // muestra "GO!" nada más cargar, con el estado actual del atlas
+        addHeroSample();
+    });
+
+    // ===================== PESTAÑA 2: CARTELES =====================
+    // Un cartel real = un panel con sus propios controles, persistidos en
+    // localStorage. Los valores por defecto son los que usa hoy el juego
+    // (o, para los títulos de fin de partida que aún no pasan por la fuente
+    // pixel, un punto de partida razonable a partir de "titulo").
+    const BANNER_DEFS = [
+        { id: 'go', label: 'GO! (arranque)', text: 'GO!', px: 10,
+          defaults: { thin: true, plain: false, hd: 2, sparkles: 5, glow: true, glowColor: '#00ff88', glowBlur: 40, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'contador', label: 'Cuenta atrás (dígito)', text: '5', px: 9, multi: ['5', '4', '3', '2', '1'],
+          defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'skillTitle', label: 'Título "SELECT A SKILL"', text: 'SELECT A SKILL', px: 2, diamonds: true,
+          defaults: { thin: false, plain: false, hd: 0, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'skillName', label: 'Nombre de skill', text: 'VIRUS SHOT', px: 2,
+          defaults: { thin: false, plain: true, hd: 1, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'gameOver', label: 'GAME OVER (aún no usa fuente pixel en el juego)', text: 'GAME OVER', px: 8,
+          defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#ff3333', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'victory', label: 'VICTORY! (aún no usa fuente pixel en el juego)', text: 'VICTORY!', px: 8,
+          defaults: { thin: true, plain: false, hd: 2, sparkles: 3, glow: true, glowColor: '#ffce3d', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'matchFinished', label: 'MATCH FINISHED (aún no usa fuente pixel en el juego)', text: 'MATCH FINISHED', px: 6,
+          defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: 24, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'cashout', label: 'CASHOUT (aún no usa fuente pixel en el juego)', text: 'CASHOUT', px: 8,
+          defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'matchEnded', label: 'MATCH ENDED (aún no usa fuente pixel en el juego)', text: 'MATCH ENDED', px: 7,
+          defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#ffce3d', glowBlur: 26, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'roomRestarted', label: 'ROOM RESTARTED (aún no usa fuente pixel en el juego)', text: 'ROOM RESTARTED', px: 6,
+          defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#ffcc00', glowBlur: 24, fill: '#ffffff', shade: '#b9c2cc' } },
+        { id: 'custom', label: 'Otro texto (personalizado)', text: 'MY TEXT', px: 6,
+          defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: 24, fill: '#ffffff', shade: '#b9c2cc' } },
+    ];
+
+    function loadBannerState(def) {
+        const key = 'pw_fontlab_' + def.id;
+        const base = Object.assign({ text: def.text, px: def.px }, def.defaults);
+        try { const saved = JSON.parse(localStorage.getItem(key)); if (saved) return Object.assign(base, saved); } catch (e) {}
+        return base;
+    }
+    function saveBannerState(def, state) { localStorage.setItem('pw_fontlab_' + def.id, JSON.stringify(state)); }
+
+    function renderFancyWithState(text, state) {
+        const atlasReady = pixHeroReady(text);
+        if (atlasReady) {
+            const o = {}; if (state.sparkles > 0) o.sparkles = state.sparkles;
+            if (state.glow) { o.glow = state.glowColor; o.glowBlur = state.glowBlur; }
+            return { cv: pixHeroText(text, state.px * 15, o), mode: 'atlas' };
+        }
+        const o = { plain: state.plain, thin: state.thin, fill: state.fill, shade: state.shade };
+        if (state.hd > 0) o.hd = state.hd;
+        if (state.sparkles > 0) o.sparkles = state.sparkles;
+        if (state.glow) { o.glow = state.glowColor; o.glowBlur = state.glowBlur; }
+        return { cv: pixFancyText(text, state.px, o), mode: 'procedural' };
+    }
+
+    function buildFancyCard(def) {
+        const state = loadBannerState(def);
+        const card = document.createElement('div'); card.className = 'bannerCard';
+        card.innerHTML =
+            '<h3>' + def.label + '</h3>' +
+            '<div class="row">' +
+                '<input type="text" class="bTxt" value="' + state.text + '" maxlength="30">' +
+                '<label>px <input type="number" class="bPx" value="' + state.px + '" min="1" max="16"></label>' +
+                '<button class="secondary bReset">restablecer</button>' +
+                '<button class="secondary bCopy">copiar opciones</button>' +
+            '</div>' +
+            '<div class="row">' +
+                '<fieldset><legend>trazo</legend>' +
+                    '<span class="ctrl"><label><input type="checkbox" class="bThin"> thin</label></span>' +
+                    '<span class="ctrl"><label><input type="checkbox" class="bPlain"> plain</label></span>' +
+                    '<span class="ctrl">hd <select class="bHd"><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></span>' +
+                '</fieldset>' +
+                '<fieldset><legend>halo</legend>' +
+                    '<span class="ctrl"><label><input type="checkbox" class="bGlowOn"> activo</label></span>' +
+                    '<span class="ctrl">color <input type="color" class="bGlowColor"></span>' +
+                    '<span class="ctrl">blur <input type="number" class="bGlowBlur" min="0" max="200"></span>' +
+                '</fieldset>' +
+                '<fieldset><legend>sparkles</legend><span class="ctrl"><input type="number" class="bSparkles" min="0" max="5"></span></fieldset>' +
+                '<fieldset><legend>colores</legend>' +
+                    '<span class="ctrl">fill <input type="color" class="bFill"></span>' +
+                    '<span class="ctrl">shade <input type="color" class="bShade"></span>' +
+                '</fieldset>' +
+            '</div>' +
+            '<div class="dark bOut"></div>' +
+            '<div class="meta bMeta"></div>';
+
+        const $ = sel => card.querySelector(sel);
+        const inputs = {
+            text: $('.bTxt'), px: $('.bPx'), thin: $('.bThin'), plain: $('.bPlain'), hd: $('.bHd'),
+            glowOn: $('.bGlowOn'), glowColor: $('.bGlowColor'), glowBlur: $('.bGlowBlur'),
+            sparkles: $('.bSparkles'), fill: $('.bFill'), shade: $('.bShade'),
+        };
+        function applyStateToInputs(s) {
+            inputs.text.value = s.text; inputs.px.value = s.px;
+            inputs.thin.checked = s.thin; inputs.plain.checked = s.plain; inputs.hd.value = String(s.hd);
+            inputs.glowOn.checked = s.glow; inputs.glowColor.value = s.glowColor; inputs.glowBlur.value = s.glowBlur;
+            inputs.sparkles.value = s.sparkles; inputs.fill.value = s.fill; inputs.shade.value = s.shade;
+        }
+        applyStateToInputs(state);
+
+        function currentState() {
+            return {
+                text: inputs.text.value || def.text, px: Math.max(1, Math.min(16, parseInt(inputs.px.value, 10) || def.px)),
+                thin: inputs.thin.checked, plain: inputs.plain.checked, hd: parseInt(inputs.hd.value, 10),
+                glow: inputs.glowOn.checked, glowColor: inputs.glowColor.value, glowBlur: Math.max(0, parseInt(inputs.glowBlur.value, 10) || 0),
+                sparkles: Math.max(0, parseInt(inputs.sparkles.value, 10) || 0), fill: inputs.fill.value, shade: inputs.shade.value,
+            };
+        }
+        function redraw() {
+            const s = currentState(); saveBannerState(def, s);
+            const out = $('.bOut'); out.innerHTML = '';
+            const isAtlas = pixHeroReady(def.multi ? def.multi[0] : s.text);
+            for (const el of [inputs.thin, inputs.plain, inputs.hd, inputs.fill, inputs.shade]) el.disabled = isAtlas && !def.multi;
+            if (def.multi) {
+                const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;gap:14px;align-items:center';
+                for (const sample of def.multi) wrap.appendChild(renderFancyWithState(sample, s).cv);
+                out.appendChild(wrap);
+                $('.bMeta').textContent = 'px ' + s.px;
+            } else if (def.diamonds) {
+                const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
+                const d1 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true });
+                const d2 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true });
+                d2.style.transform = 'scaleX(-1)';
+                const r = renderFancyWithState(s.text, s);
+                wrap.appendChild(d1); wrap.appendChild(r.cv); wrap.appendChild(d2);
+                out.appendChild(wrap);
+                $('.bMeta').textContent = r.mode;
+            } else {
+                const r = renderFancyWithState(s.text, s);
+                out.appendChild(r.cv);
+                $('.bMeta').textContent = r.mode + (isAtlas ? ' — trazo/plain/hd/colores no aplican (vienen del PNG)' : '');
+            }
+        }
+        for (const el of Object.values(inputs)) el.addEventListener('input', redraw);
+        $('.bReset').onclick = () => { applyStateToInputs(Object.assign({ text: def.text, px: def.px }, def.defaults)); redraw(); };
+        $('.bCopy').onclick = () => {
+            const s = currentState(); const opts = { plain: s.plain, thin: s.thin, fill: s.fill, shade: s.shade };
+            if (s.hd > 0) opts.hd = s.hd; if (s.sparkles > 0) opts.sparkles = s.sparkles;
+            if (s.glow) { opts.glow = s.glowColor; opts.glowBlur = s.glowBlur; }
+            const txt = 'pixFancyText(' + JSON.stringify(s.text) + ', ' + s.px + ', ' + JSON.stringify(opts) + ')';
+            navigator.clipboard.writeText(txt).then(() => { $('.bMeta').textContent = 'copiado: ' + txt; }).catch(() => { $('.bMeta').textContent = txt; });
+        };
+        redraw();
+        return card;
+    }
+
+    function buildFloatCard() {
+        const key = 'pw_fontlab_floating';
+        let px = 4; try { const saved = JSON.parse(localStorage.getItem(key)); if (saved && saved.px) px = saved.px; } catch (e) {}
+        const card = document.createElement('div'); card.className = 'bannerCard';
+        card.innerHTML =
+            '<h3>Textos flotantes (mundo)</h3>' +
+            '<div class="row"><label>px <input type="number" class="fPx" value="' + px + '" min="1" max="12"></label></div>' +
+            '<div class="dark fOut" style="display:flex;gap:22px;align-items:center"></div>' +
+            '<div class="meta">Estos usan drawPixelText (fuente normal 5×7), no pixFancyText — solo px y color.</div>';
+        const input = card.querySelector('.fPx'), out = card.querySelector('.fOut');
+        function redraw() {
+            const p = Math.max(1, Math.min(12, parseInt(input.value, 10) || 4));
+            localStorage.setItem(key, JSON.stringify({ px: p }));
+            out.innerHTML = '';
+            for (const [t, c] of [['+10', '#9ee32d'], ['-25', '#ff5555'], ['DOUBLE KILL!', '#ffd700']]) out.appendChild(floatCanvas(t, p, c));
+        }
+        input.addEventListener('input', redraw);
+        redraw();
+        return card;
+    }
+
+    const bannerCardsEl = document.getElementById('bannerCards');
+    HERO_READY_PROMISE.then(() => {
+        for (const def of BANNER_DEFS) bannerCardsEl.appendChild(buildFancyCard(def));
+        bannerCardsEl.appendChild(buildFloatCard());
+    });
+
+    // ===================== PESTAÑA 3: MAPA EN VIVO =====================
+    if (location.protocol === 'file:') document.getElementById('mapWarn').style.display = 'block';
+
+    const gameFrame = document.getElementById('gameFrame');
+    function runInGame(code) {
+        const doc = gameFrame.contentDocument;
+        if (!doc || !doc.body) { alert('El juego aún no ha cargado dentro del iframe.'); return; }
+        const s = doc.createElement('script');
+        s.textContent = code;
+        doc.body.appendChild(s);
+        s.remove();
+    }
+
+    document.getElementById('mStartArcade').onclick = () => runInGame("startPracticeGame('arcade')");
+    document.getElementById('mStartClassic').onclick = () => runInGame("startPracticeGame('classic')");
+    document.getElementById('mPixel').addEventListener('change', e => runInGame('setPixelMode(' + (e.target.checked ? 'true' : 'false') + ')'));
+
+    document.querySelectorAll('[data-theme]').forEach(btn => {
+        btn.onclick = () => runInGame("setTheme('" + btn.dataset.theme + "')");
+    });
+    document.getElementById('mCustomTheme').onclick = () => {
+        const bg = document.getElementById('mBg').value, grid = document.getElementById('mGrid').value;
+        runInGame(
+            "document.documentElement.style.setProperty('--bg-color', '" + bg + "');" +
+            "document.documentElement.style.setProperty('--grid-line', '" + grid + "');"
+        );
+    };
+
+    const TRIGGERS = {
+        go: "showGoSplash()",
+        contador: "(function(){ let n=5; showCountdownNumber(n,'MATCH STARTING'); const t=setInterval(()=>{ n--; if(n<1){clearInterval(t);return;} showCountdownNumber(n,'MATCH STARTING'); },700); })()",
+        skill: "practiceFirstSkillDone = true; showSkillChoice()",
+        gameOver: "stopGame()",
+        victory: "EconHUD.showPrize({reason:'victory', amount:500, carry:1200})",
+        cashout: "EconHUD.showPrize({reason:'cashout', amount:800, carry:1000, kills:6, feePct:10, fee:100})",
+        matchEnded: "EconHUD.showPrize({reason:'arcadeEnd', myAmount:300, pot:1500, top:[{pos:1,name:'Bot1',pct:40,amount:600,mine:false},{pos:2,name:'me',pct:20,amount:300,mine:true}]})",
+        matchFinished: "els.resultTitle.innerText='MATCH FINISHED'; els.resultTitle.style.color='#00ff88'; showResultsUI();",
+        roomRestarted: "els.resultTitle.innerText='ROOM RESTARTED'; els.resultTitle.style.color='#ffcc00'; showResultsUI();",
+    };
+    document.querySelectorAll('[data-trigger]').forEach(btn => {
+        btn.onclick = () => runInGame(TRIGGERS[btn.dataset.trigger]);
     });
 </script>
 </body>
