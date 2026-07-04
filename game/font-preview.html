@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>PillWars — laboratorio de fuente pixel</title>
+<style>
+    body { background: #050805; color: #cfd8d3; font-family: monospace; margin: 0; padding: 24px; }
+    h1 { color: #00ff88; font-size: 18px; margin: 0 0 4px; }
+    .hint { color: #7a8a80; font-size: 12px; margin-bottom: 24px; }
+    section { margin-bottom: 36px; }
+    h2 { color: #9ee32d; font-size: 14px; border-bottom: 1px solid #1c2a20; padding-bottom: 4px; }
+    .row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin: 10px 0; }
+    .label { color: #7a8a80; font-size: 11px; min-width: 150px; }
+    .dark { background: #0a120d; padding: 10px; border: 1px solid #1c2a20; display: inline-block; }
+    canvas { image-rendering: pixelated; display: block; }
+    /* probador */
+    #tester { background: #0a120d; border: 1px solid #1c2a20; padding: 14px; }
+    #tester input, #tester select { background: #050805; color: #cfd8d3; border: 1px solid #2a3a30; padding: 6px 8px; font-family: monospace; }
+    #tester input[type=text] { width: 260px; }
+    #tester input[type=number] { width: 60px; }
+    #tester button { background: #00ff88; color: #04140b; border: none; padding: 6px 14px; font-family: monospace; font-weight: bold; cursor: pointer; }
+    #tester button:hover { background: #4dffaa; }
+    #testerOut .item { margin: 14px 0; }
+    #testerOut .meta { color: #7a8a80; font-size: 11px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<h1>Laboratorio de fuente pixel</h1>
+<div class="hint">Usa exactamente el mismo código que el juego (<b>pixfont.js</b>). Cambia el alfabeto ahí y recarga esta página: lo que ves aquí es lo que sale en la partida.</div>
+
+<section id="tester">
+    <h2>Probador — pide el cartel que quieras</h2>
+    <div class="row">
+        <input type="text" id="tTxt" value="GAME OVER" maxlength="30">
+        <select id="tPreset">
+            <option value="titulo">TÍTULO (estilo GO!)</option>
+            <option value="contador">CONTADOR (5-4-3-2-1)</option>
+            <option value="panel">PANEL (SELECT A SKILL)</option>
+            <option value="plain">PLANO (nombre de skill)</option>
+            <option value="flotante">FLOTANTE (texto del mundo)</option>
+        </select>
+        <label>px <input type="number" id="tPx" value="6" min="1" max="14"></label>
+        <button id="tAdd">AÑADIR</button>
+        <button id="tClear" style="background:#333;color:#ccc">LIMPIAR</button>
+    </div>
+    <div id="testerOut"></div>
+</section>
+
+<section>
+    <h2>Carteles reales del juego (mismas llamadas)</h2>
+    <div class="row"><span class="label">GO! (arranque)</span><span class="dark" id="sGo"></span></div>
+    <div class="row"><span class="label">Cuenta atrás</span><span class="dark" id="sCount" style="display:inline-flex;gap:14px;align-items:center"></span></div>
+    <div class="row"><span class="label">Título de skills</span><span class="dark" id="sSkillTitle"></span></div>
+    <div class="row"><span class="label">Nombres de skill</span><span class="dark" id="sSkillNames" style="display:inline-flex;gap:22px;align-items:center"></span></div>
+    <div class="row"><span class="label">Textos flotantes</span><span class="dark" id="sFloat" style="display:inline-flex;gap:22px;align-items:center"></span></div>
+</section>
+
+<section>
+    <h2>Abecedario completo (todos los glifos de PIXFONT)</h2>
+    <div class="row"><span class="label">Normal 5×7 + contorno</span><span class="dark" id="sAbcNormal"></span></div>
+    <div class="row"><span class="label">Bold 11×15 (plain)</span><span class="dark" id="sAbcBold"></span></div>
+    <div class="row"><span class="label">Bold HD (Scale2x ×2)</span><span class="dark" id="sAbcHd"></span></div>
+</section>
+
+<script src="pixfont.js"></script>
+<script>
+    // --- helpers ---
+    // canvas con drawPixelText (el render de los textos flotantes del mundo)
+    function floatCanvas(text, px, color) {
+        const w = pixTextWidth(text, px) + px * 2, h = 7 * px + px * 2;
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        drawPixelText(cv.getContext('2d'), text, px, px, px, color, '#000');
+        return cv;
+    }
+    // presets = las llamadas literales que hace el juego en cada cartel
+    const PRESETS = {
+        titulo:   (t, px) => pixFancyText(t, px, { sparkles: 5, thin: true, glow: '#00ff88', glowBlur: px * 4, hd: 2 }),
+        contador: (t, px) => pixFancyText(t, px, { thin: true, glow: '#00ff88', glowBlur: 30, hd: 2 }),
+        panel:    (t, px) => pixFancyText(t, px, {}),
+        plain:    (t, px) => pixFancyText(t, px, { plain: true, shade: '#b9c2cc', hd: 1 }),
+        flotante: (t, px) => floatCanvas(t, px, '#ccff00'),
+    };
+
+    // --- probador ---
+    const out = document.getElementById('testerOut');
+    function addSample() {
+        const t = document.getElementById('tTxt').value || 'GAME OVER';
+        const p = document.getElementById('tPreset').value;
+        const px = Math.max(1, Math.min(14, parseInt(document.getElementById('tPx').value, 10) || 6));
+        const item = document.createElement('div'); item.className = 'item';
+        const meta = document.createElement('div'); meta.className = 'meta';
+        meta.textContent = '"' + t + '" · preset ' + p + ' · px ' + px;
+        const box = document.createElement('span'); box.className = 'dark';
+        box.appendChild(PRESETS[p](t, px));
+        item.appendChild(meta); item.appendChild(box);
+        out.prepend(item);
+    }
+    document.getElementById('tAdd').onclick = addSample;
+    document.getElementById('tTxt').addEventListener('keydown', e => { if (e.key === 'Enter') addSample(); });
+    document.getElementById('tClear').onclick = () => { out.innerHTML = ''; };
+
+    // --- carteles reales ---
+    document.getElementById('sGo').appendChild(PRESETS.titulo('GO!', 10));
+    for (let n = 5; n >= 1; n--) document.getElementById('sCount').appendChild(PRESETS.contador(String(n), 6));
+    // título de skills: -◆ TITULO ◆- (como showSkillChoice)
+    {
+        const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
+        const d1 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true });
+        const d2 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true });
+        d2.style.transform = 'scaleX(-1)';
+        wrap.appendChild(d1); wrap.appendChild(pixFancyText('SELECT A SKILL', 2, {})); wrap.appendChild(d2);
+        document.getElementById('sSkillTitle').appendChild(wrap);
+    }
+    for (const nm of ['SPRINT', 'MAGNET', 'VIRUS SHOT']) {
+        const fitPx = Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2))));
+        document.getElementById('sSkillNames').appendChild(PRESETS.plain(nm, fitPx));
+    }
+    for (const [t, c] of [['+10', '#9ee32d'], ['-25', '#ff5555'], ['DOUBLE KILL!', '#ffd700']])
+        document.getElementById('sFloat').appendChild(floatCanvas(t, 4, c));
+
+    // --- abecedario ---
+    const ABC = Object.keys(PIXFONT).filter(ch => ch !== ' ').join('');
+    const LINES = ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', '0123456789', ABC.replace(/[A-Z0-9]/g, '')];
+    function abcBlock(mode) {
+        const box = document.createElement('div');
+        for (const line of LINES) {
+            if (!line) continue;
+            let cv;
+            if (mode === 'normal') cv = floatCanvas(line, 3, '#9ee32d');
+            else cv = pixFancyText(line, mode === 'hd' ? 2 : 2, mode === 'hd' ? { plain: true, hd: 1 } : { plain: true, fill: '#9ee32d' });
+            box.appendChild(cv);
+        }
+        return box;
+    }
+    document.getElementById('sAbcNormal').appendChild(abcBlock('normal'));
+    document.getElementById('sAbcBold').appendChild(abcBlock('bold'));
+    document.getElementById('sAbcHd').appendChild(abcBlock('hd'));
+</script>
+</body>
+</html>
