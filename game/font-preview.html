@@ -119,6 +119,13 @@
         <button class="secondary" id="cReset">restablecer</button>
     </div>
     <div class="hint" style="margin:6px 0">El título usa fuente pixel + diamantes solo con "modo pixel" activo en "UI del juego"; su color de acento es el mismo que el del panel de skills (abajo), porque comparten la misma textura de esquinas.</div>
+    <div class="row" style="border-top:1px solid #1c2a20;padding-top:10px;margin-top:4px">
+        <span class="label" style="min-width:auto;color:#9ee32d">MARCO PIXEL (el de la captura — modo pixel):</span>
+        <span class="ctrl">fondo <input type="color" id="sysBg" value="#080e0b"></span>
+        <span class="ctrl">opacidad fondo <input type="number" id="sysBgAlpha" value="0.96" min="0" max="1" step="0.05"></span>
+        <span class="ctrl">grosor borde (px) <input type="number" id="sysBorder" value="20" min="4" max="48" step="4"></span>
+        <button class="secondary" id="sysApplyPixel">APLICAR MARCO PIXEL EN VIVO</button>
+    </div>
     <div id="cartelPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
     <div class="meta" id="cartelMeta"></div>
 </div>
@@ -138,6 +145,11 @@
     <div class="hint" style="margin:6px 0">"APLICAR EN VIVO" además GUARDA acento/fondo/grosor (localStorage) — vale también en partidas reales. "restablecer" vuelve a fábrica en el juego también.</div>
     <div id="skPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
     <div class="meta" id="skMeta"></div>
+</div>
+
+<div class="bannerCard" id="cartelButtons">
+    <h3>Botones (skin pixel por imagen)</h3>
+    <div class="hint" style="margin:6px 0">Los botones de los carteles (OK del modal, CONTINUE del premio, tarjetas de skill, TRY AGAIN/SPECTATE/MENU) comparten un mismo skin. Con <code>game/img/cartel-hero/button.png</code> se pintan con esa imagen (marco+fondo) en vez del look de fábrica. Solo con "modo pixel" activo. El texto del botón se conserva encima.</div>
 </div>
 
 <div class="bannerCard" id="cartelLoading">
@@ -687,7 +699,7 @@
             if (afterInit) afterInit(win);
         };
         if (gameWin && !gameWin.closed) { gameWin.focus(); whenUiReady(boot); return; }
-        gameWin = window.open('index.html', 'pw_lab_ui');
+        gameWin = window.open('index.html?pwlab=1', 'pw_lab_ui');
         if (!gameWin) { alert('El navegador ha bloqueado la ventana nueva. Permite pop-ups para esta página e inténtalo de nuevo.'); return; }
         whenUiReady(boot);
         const poll = setInterval(() => { if (!gameWin || gameWin.closed) { clearInterval(poll); updateUiStatus(); } }, 1000);
@@ -1148,6 +1160,25 @@
     };
     document.getElementById('cReset').onclick = () => { cBorder.value = '#00ff88'; cGlow.value = '#00ff88'; cBlur.value = 40; cTitleSize.value = 24; cBodySize.value = 14; redrawCartelPreview(); };
 
+    // Marco PIXEL del modal de sistema (el de la captura): fondo/opacidad/grosor,
+    // persistidos en pw_pixpanel_style (campos sys*). Se cargan de ahí para no
+    // desincronizar con lo que el juego ya tiene guardado.
+    const sysBg = document.getElementById('sysBg'), sysBgAlpha = document.getElementById('sysBgAlpha'), sysBorder = document.getElementById('sysBorder');
+    (function loadSysPixel() {
+        try { const p = JSON.parse(localStorage.getItem('pw_pixpanel_style')); if (p) { if (p.sysBg) sysBg.value = p.sysBg; if (p.sysBgAlpha != null) sysBgAlpha.value = p.sysBgAlpha; if (p.sysBorderPx != null) sysBorder.value = p.sysBorderPx; } } catch (e) {}
+    })();
+    document.getElementById('sysApplyPixel').onclick = () => {
+        const a = parseFloat(sysBgAlpha.value), bp = parseInt(sysBorder.value, 10);
+        const alpha = isNaN(a) ? 0.96 : Math.max(0, Math.min(1, a));
+        const borderPx = Math.max(4, Math.min(48, isNaN(bp) ? 20 : bp));
+        runOnUi(win => {
+            win.setSysPanelStyle(sysBg.value, alpha, borderPx);
+            if (!win.__pwLab.pixelMode) win.setPixelMode(true);
+            TRIGGERS.sysNotice(win);
+        });
+        document.getElementById('cartelMeta').textContent = 'marco pixel aplicado y guardado — REJOIN EXPIRED disparado en la UI (vale en partidas reales).';
+    };
+
     // ===== Carteles: banner de lobby =====
     const LB_KEY = 'pw_fontlab_cartel_banner';
     function loadLbStyle() {
@@ -1278,7 +1309,7 @@
     // reales; si la pestaña UI está abierta, se aplica en vivo al cambiarlo.
     const FRAME_KEY = 'pw_cartel_frame_style';
     function loadFrameStyles() {
-        const d = { lobbyBanner: 'auto', sysModal: 'auto', skillPanel: 'auto' };
+        const d = { lobbyBanner: 'auto', sysModal: 'auto', skillPanel: 'auto', button: 'auto' };
         try { const saved = JSON.parse(localStorage.getItem(FRAME_KEY)); if (saved) Object.assign(d, saved); } catch (e) {}
         return d;
     }
@@ -1287,7 +1318,7 @@
         localStorage.setItem(FRAME_KEY, JSON.stringify(all));
         if (gameWin && !gameWin.closed && gameWin.setCartelFrameStyle) gameWin.setCartelFrameStyle(id, pref);
     }
-    const CARTEL_CARD = { lobbyBanner: 'cartelBanner', sysModal: 'cartelSysModal', skillPanel: 'cartelSkill' };
+    const CARTEL_CARD = { lobbyBanner: 'cartelBanner', sysModal: 'cartelSysModal', skillPanel: 'cartelSkill', button: 'cartelButtons' };
     CARTEL_HERO_READY_PROMISE.then(() => {
         const prefs = loadFrameStyles();
         for (const [id, cardId] of Object.entries(CARTEL_CARD)) {
@@ -1312,7 +1343,9 @@
                 note.textContent = '(la imagen solo se ve con "modo pixel" activo)';
                 row.appendChild(note);
             }
-            card.appendChild(row);
+            // justo debajo del <h3>, para que se vea sin bajar toda la tarjeta.
+            const h3 = card.querySelector('h3');
+            card.insertBefore(row, h3 ? h3.nextSibling : card.firstChild);
         }
         // pantalla de carga: solo comprobar si la imagen del título existe.
         const st = document.getElementById('loadTitleStatus');

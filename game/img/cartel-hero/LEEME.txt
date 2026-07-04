@@ -17,6 +17,10 @@ Como anadir/sustituir un cartel:
    lobbyBanner.png  -> tira superior (FINDING ROOM, ROOM FOUND, anuncios)
    sysModal.png     -> modal de sistema (REJOIN EXPIRED, KICKED...)
    skillPanel.png   -> panel de seleccion de skill
+   button.png       -> skin COMPARTIDO de los botones de todos los carteles
+                       (OK del modal, CONTINUE del premio, tarjetas de skill,
+                       TRY AGAIN/SPECTATE/MENU). border-image con recorte 20px;
+                       el texto del boton se conserva encima. Solo en modo pixel.
 4. Recarga font-preview.html -> pestana "Carteles": cada tarjeta tiene un
    selector "estilo de marco" (auto / atlas / procedural). "auto" usa la
    imagen en cuanto exista; "atlas" se deshabilita mostrando que archivo
