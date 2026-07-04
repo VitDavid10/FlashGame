@@ -82,7 +82,8 @@
 
 <!-- ===================== PESTAÑA 2: TEXTOS ===================== -->
 <div id="panel-textos" class="panel">
-<div class="hint">Crea aquí cada texto como quieras (letra procedural con trazo/halo/colores, o sprites del atlas cuando existen — se avisa cuál se está usando). GO!, la cuenta atrás y "SELECT A SKILL" tienen 3 botones: <b>VER EN UI</b> (probarlo una vez en la pestaña del juego), <b>ASIGNAR AL JUEGO</b> (el juego pasa a usar TU estilo siempre — partidas reales incluidas) y <b>QUITAR ASIGNACIÓN</b> (volver al de fábrica). El marco/fondo que los rodea se afina en "Carteles"; el copy de los mensajes sin fuente pixel (banners, modales) va en "Asignar textos".</div>
+<div class="hint">Crea aquí cada texto como quieras (letra procedural con trazo/halo/colores, o sprites del atlas cuando existen — se avisa cuál se está usando). Cada tarjeta tiene un selector <b>"feature destino"</b>: elige a qué momento del juego va este texto (GO! del arranque, cuenta atrás, GAME OVER, VICTORY!...) y pulsa <b>VER EN UI</b> (probarlo una vez), <b>ASIGNAR</b> (el juego pasa a usar TU texto y estilo siempre — partidas reales incluidas) o <b>QUITAR</b> (esa feature vuelve a fábrica). Con "＋ NUEVO TEXTO" creas textos desde cero y los asignas a cualquier feature (p. ej. un GO! nuevo para el arranque). El marco/fondo que los rodea se afina en "Carteles"; el copy de los mensajes sin fuente pixel (banners, modales) va en "Asignar textos".</div>
+<div class="row" style="margin-bottom:14px"><button id="btnNewText">＋ NUEVO TEXTO</button></div>
 <div id="bannerCards"></div>
 </div>
 
@@ -96,6 +97,7 @@
         <span class="ctrl">color por defecto <input type="color" id="lbColorDefault" value="#00ff88"></span>
         <span class="ctrl">color "buscando" (search) <input type="color" id="lbColorSearch" value="#4d9bff"></span>
         <span class="ctrl">color "encontrado" (found) <input type="color" id="lbColorFound" value="#00ff88"></span>
+        <span class="ctrl">tamaño letra <input type="number" id="lbFontSize" value="13" min="8" max="40"></span>
         <button class="secondary" id="lbApplyLive">APLICAR EN VIVO</button>
         <button class="secondary" id="lbCopyCss">COPIAR CSS</button>
         <button class="secondary" id="lbReset">restablecer</button>
@@ -110,6 +112,8 @@
         <span class="ctrl">color de borde <input type="color" id="cBorderColor" value="#00ff88"></span>
         <span class="ctrl">color de halo <input type="color" id="cGlowColor" value="#00ff88"></span>
         <label>blur <input type="number" id="cGlowBlur" value="40" min="0" max="120"></label>
+        <span class="ctrl">tamaño título <input type="number" id="cTitleSize" value="24" min="10" max="60"></span>
+        <span class="ctrl">tamaño cuerpo <input type="number" id="cBodySize" value="14" min="8" max="30"></span>
         <button class="secondary" id="cApplyLive">APLICAR EN VIVO</button>
         <button class="secondary" id="cCopyCss">COPIAR CSS</button>
         <button class="secondary" id="cReset">restablecer</button>
@@ -142,7 +146,7 @@
 <!-- ===================== PESTAÑA 5: UI DEL JUEGO (ventana aparte) ===================== -->
 <div id="panel-mapa" class="panel">
 <div id="mapWarn">Estás abriendo esta página como archivo suelto (file://). Esta pestaña necesita servirla por HTTP (<code>node server/index.js</code> y entrar por <code>http://localhost:PUERTO/game/font-preview.html</code>) porque el navegador bloquea el acceso entre páginas locales sueltas.</div>
-<div class="hint">Abre la UI real del juego en una PESTAÑA APARTE, con el mapa completo a la vista y un panel flotante (arriba a la derecha, botón "LAB") para disparar cada cuadro y cambiar tema desde ahí mismo. Nunca hay partida, bots ni modos — solo el HUD estático congelado. El panel flotante se puede ocultar/mostrar con su propio botón sin cerrar la pestaña.</div>
+<div class="hint">Abre la UI real del juego en una PESTAÑA APARTE, vista de PARTIDA (cámara sobre tu célula, zoom real — desde la sección VISTA del panel puedes pasar a mapa entero o ajustar el zoom) y un panel flotante (arriba a la derecha, botón "LAB") para disparar cada cuadro, cambiar tema y ajustar el tamaño/posición de cada feature desde ahí mismo. Nunca hay partida, bots ni modos — solo el HUD estático congelado. El panel flotante se puede ocultar/mostrar con su propio botón sin cerrar la pestaña.</div>
 <div class="row">
     <button id="mOpenUi">ABRIR UI DEL JUEGO (pestaña nueva)</button>
     <button class="secondary" id="mResetUi">REINICIAR AL ESTADO INICIAL</button>
@@ -246,17 +250,17 @@
           defaults: { thin: false, plain: false, hd: 0, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
         { id: 'skillName', label: 'Nombre de skill', text: 'VIRUS SHOT', px: 2,
           defaults: { thin: false, plain: true, hd: 1, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
-        { id: 'gameOver', label: 'GAME OVER (aún no usa fuente pixel en el juego)', text: 'GAME OVER', px: 8,
+        { id: 'gameOver', label: 'GAME OVER (overlay de muerte)', text: 'GAME OVER', px: 8,
           defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#ff3333', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
-        { id: 'victory', label: 'VICTORY! (aún no usa fuente pixel en el juego)', text: 'VICTORY!', px: 8,
+        { id: 'victory', label: 'VICTORY! (modal de premio classic)', text: 'VICTORY!', px: 8,
           defaults: { thin: true, plain: false, hd: 2, sparkles: 3, glow: true, glowColor: '#ffce3d', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
-        { id: 'matchFinished', label: 'MATCH FINISHED (aún no usa fuente pixel en el juego)', text: 'MATCH FINISHED', px: 6,
+        { id: 'matchFinished', label: 'MATCH FINISHED (fin de partida arcade)', text: 'MATCH FINISHED', px: 6,
           defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: 24, fill: '#ffffff', shade: '#b9c2cc' } },
-        { id: 'cashout', label: 'CASHOUT (aún no usa fuente pixel en el juego)', text: 'CASHOUT', px: 8,
+        { id: 'cashout', label: 'CASHOUT (modal de premio classic)', text: 'CASHOUT', px: 8,
           defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: 30, fill: '#ffffff', shade: '#b9c2cc' } },
-        { id: 'matchEnded', label: 'MATCH ENDED (aún no usa fuente pixel en el juego)', text: 'MATCH ENDED', px: 7,
+        { id: 'matchEnded', label: 'MATCH ENDED (modal de premio arcade)', text: 'MATCH ENDED', px: 7,
           defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#ffce3d', glowBlur: 26, fill: '#ffffff', shade: '#b9c2cc' } },
-        { id: 'roomRestarted', label: 'ROOM RESTARTED (aún no usa fuente pixel en el juego)', text: 'ROOM RESTARTED', px: 6,
+        { id: 'roomRestarted', label: 'ROOM RESTARTED (reinicio de sala)', text: 'ROOM RESTARTED', px: 6,
           defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#ffcc00', glowBlur: 24, fill: '#ffffff', shade: '#b9c2cc' } },
         { id: 'custom', label: 'Otro texto (personalizado)', text: 'MY TEXT', px: 6,
           defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: 24, fill: '#ffffff', shade: '#b9c2cc' } },
@@ -264,7 +268,7 @@
 
     function loadBannerState(def) {
         const key = 'pw_fontlab_' + def.id;
-        const base = Object.assign({ text: def.text, px: def.px }, def.defaults);
+        const base = Object.assign({ text: def.text, px: def.px, dx: 0, dy: 0 }, def.defaults);
         try { const saved = JSON.parse(localStorage.getItem(key)); if (saved) return Object.assign(base, saved); } catch (e) {}
         return base;
     }
@@ -278,21 +282,44 @@
         if (s.glow) o.glowBlur = s.glowBlur;
         return o;
     }
-    // Solo estos 3 ids son overlays reales del juego (el resto son muestras de
-    // tipografía sin equivalente disparable todavía) — "VER EN UI" y el panel
-    // flotante de "UI del juego" leen siempre este mismo estado guardado, así
-    // que no hay dos sitios distintos con controles de estilo para lo mismo.
-    const LIVE_FIREABLE = {
-        go: (win, s) => win.showGoSplash(s.text, labOptsFromState(s)),
-        contador: (win, s) => { const opts = Object.assign({ px: s.px }, labOptsFromState(s)); let n = 5; win.showCountdownNumber(n, TEXTS.cdStart, opts); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdStart, opts); }, 700); },
-        skillTitle: (win, s) => { win.__pwLab.practiceFirstSkillDone = true; win.__pwLab.skillPanelTitle = s.text; win.showSkillChoice(labOptsFromState(s)); },
+    // FEATURES = todos los momentos del juego con texto asignable. Cualquier
+    // tarjeta de la pestaña Textos puede asignarse a cualquiera de ellas (su
+    // selector "feature destino"). fire(win, s) dispara el cuadro en la pestaña
+    // del juego; para las de tipo `title` (títulos de resultado/premio) el estilo
+    // viaja por styleOverrides (así en partida real sale idéntico), para el resto
+    // se pasa como opts directos.
+    const FEATURES = {
+        go:            { label: 'GO! (arranque de partida)', fire: (win, s) => win.showGoSplash(s.text, Object.assign({ px: s.px, dx: s.dx | 0, dy: s.dy | 0 }, labOptsFromState(s))) },
+        contador:      { label: 'Cuenta atrás (inicio/fin)', fire: (win, s) => { const opts = Object.assign({ px: s.px, dx: s.dx | 0, dy: s.dy | 0 }, labOptsFromState(s)); let n = 5; win.showCountdownNumber(n, TEXTS.cdStart, opts); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdStart, opts); }, 700); } },
+        skillTitle:    { label: 'Título del panel de skills', fire: (win, s) => { win.__pwLab.practiceFirstSkillDone = true; win.__pwLab.skillPanelTitle = s.text; win.showSkillChoice(Object.assign({ px: s.px }, labOptsFromState(s))); } },
+        gameOver:      { label: 'GAME OVER (muerte)', title: true, fire: (win) => win.stopGame() },
+        victory:       { label: 'VICTORY! (premio classic)', title: true, fire: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }) },
+        cashout:       { label: 'CASHOUT (premio classic)', title: true, fire: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }) },
+        matchEnded:    { label: 'MATCH ENDED (premio arcade)', title: true, fire: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'arcadeEnd', myAmount: 300, pot: 1500, top: [{ pos: 1, name: 'Bot1', pct: 40, amount: 600, mine: false }, { pos: 2, name: 'me', pct: 20, amount: 300, mine: true }] }) },
+        matchFinished: { label: 'MATCH FINISHED (fin arcade)', title: true, fire: (win) => { win.setOverlayTitle(win.__pwLab.els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88'); win.showResultsUI(); } },
+        roomRestarted: { label: 'ROOM RESTARTED (reinicio de sala)', title: true, fire: (win) => { win.setOverlayTitle(win.__pwLab.els.resultTitle, 'roomRestarted', 'ROOM RESTARTED', '#ffcc00'); win.showResultsUI(); } },
     };
-    // Guarda/borra el estilo de una tarjeta como el OFICIAL del juego (lo leen
-    // showGoSplash/showCountdownNumber/showSkillChoice vía styleOverrides, en
-    // partidas reales también). Si la pestaña del juego está abierta, se aplica
-    // en caliente sin recargar.
+    // Dispara una feature en la pestaña del juego con el estado `s` de una tarjeta
+    // SIN guardarlo: para las `title` empuja overrides temporales (el juego los lee
+    // al pintar el título) y restaura los guardados después.
+    function fireFeature(win, featureId, s) {
+        const f = FEATURES[featureId]; if (!f) return;
+        if (!f.title) { f.fire(win, s); return; }
+        const merged = Object.assign({}, loadOverrides());
+        merged[featureId] = ovFromState(s);
+        if (win.__pwLab) win.__pwLab.styleOverrides = merged;
+        f.fire(win, s);
+        // stopGame pinta el título a los 1.4s — restaurar lo guardado después.
+        win.setTimeout(() => pushOverridesToGame(loadOverrides()), 2500);
+    }
+    // Guarda/borra el estilo de una tarjeta como el OFICIAL de una feature (lo
+    // leen showGoSplash/showCountdownNumber/showSkillChoice/setOverlayTitle vía
+    // styleOverrides, en partidas reales también). Si la pestaña del juego está
+    // abierta, se aplica en caliente sin recargar.
     const OVERRIDES_KEY = 'pw_style_overrides';
     function loadOverrides() { try { return JSON.parse(localStorage.getItem(OVERRIDES_KEY)) || {}; } catch (e) { return {}; } }
+    function saveOverrides(all) { localStorage.setItem(OVERRIDES_KEY, JSON.stringify(all)); pushOverridesToGame(all); }
+    function ovFromState(s) { return { text: s.text, px: s.px, opts: labOptsFromState(s), dx: s.dx | 0, dy: s.dy | 0 }; }
     function pushOverridesToGame(all) {
         if (gameWin && !gameWin.closed && gameWin.__pwLab) {
             gameWin.__pwLab.styleOverrides = all;
@@ -301,15 +328,13 @@
     }
     function assignToGame(id, s) {
         const all = loadOverrides();
-        all[id] = { text: s.text, px: s.px, opts: labOptsFromState(s) };
-        localStorage.setItem(OVERRIDES_KEY, JSON.stringify(all));
-        pushOverridesToGame(all);
+        all[id] = ovFromState(s);
+        saveOverrides(all);
     }
     function unassignFromGame(id) {
         const all = loadOverrides();
         delete all[id];
-        localStorage.setItem(OVERRIDES_KEY, JSON.stringify(all));
-        pushOverridesToGame(all);
+        saveOverrides(all);
     }
 
     function renderFancyWithState(text, state) {
@@ -336,7 +361,7 @@
                 '<label>px <input type="number" class="bPx" value="' + state.px + '" min="1" max="16"></label>' +
                 '<button class="secondary bReset">restablecer</button>' +
                 '<button class="secondary bCopy">copiar opciones</button>' +
-                (LIVE_FIREABLE[def.id] ? '<button class="secondary bVer">VER EN UI</button><button class="bAsignar">ASIGNAR AL JUEGO</button><button class="secondary bQuitar">QUITAR ASIGNACIÓN</button>' : '') +
+                (def.custom ? '<button class="secondary bDelete" style="color:#ff6666">ELIMINAR</button>' : '') +
             '</div>' +
             '<div class="row">' +
                 '<fieldset><legend>trazo</legend>' +
@@ -354,6 +379,10 @@
                     '<span class="ctrl">fill <input type="color" class="bFill"></span>' +
                     '<span class="ctrl">shade <input type="color" class="bShade"></span>' +
                 '</fieldset>' +
+                '<fieldset><legend>posición (desplazamiento en px de pantalla)</legend>' +
+                    '<span class="ctrl">X <input type="number" class="bDx" min="-2000" max="2000" step="5"></span>' +
+                    '<span class="ctrl">Y <input type="number" class="bDy" min="-2000" max="2000" step="5"></span>' +
+                '</fieldset>' +
             '</div>' +
             '<div class="dark bOut"></div>' +
             '<div class="meta bMeta"></div>';
@@ -363,12 +392,14 @@
             text: $('.bTxt'), px: $('.bPx'), thin: $('.bThin'), plain: $('.bPlain'), hd: $('.bHd'),
             glowOn: $('.bGlowOn'), glowColor: $('.bGlowColor'), glowBlur: $('.bGlowBlur'),
             sparkles: $('.bSparkles'), fill: $('.bFill'), shade: $('.bShade'),
+            dx: $('.bDx'), dy: $('.bDy'),
         };
         function applyStateToInputs(s) {
             inputs.text.value = s.text; inputs.px.value = s.px;
             inputs.thin.checked = s.thin; inputs.plain.checked = s.plain; inputs.hd.value = String(s.hd);
             inputs.glowOn.checked = s.glow; inputs.glowColor.value = s.glowColor; inputs.glowBlur.value = s.glowBlur;
             inputs.sparkles.value = s.sparkles; inputs.fill.value = s.fill; inputs.shade.value = s.shade;
+            inputs.dx.value = s.dx | 0; inputs.dy.value = s.dy | 0;
         }
         applyStateToInputs(state);
 
@@ -378,6 +409,7 @@
                 thin: inputs.thin.checked, plain: inputs.plain.checked, hd: parseInt(inputs.hd.value, 10),
                 glow: inputs.glowOn.checked, glowColor: inputs.glowColor.value, glowBlur: Math.max(0, parseInt(inputs.glowBlur.value, 10) || 0),
                 sparkles: Math.max(0, parseInt(inputs.sparkles.value, 10) || 0), fill: inputs.fill.value, shade: inputs.shade.value,
+                dx: parseInt(inputs.dx.value, 10) || 0, dy: parseInt(inputs.dy.value, 10) || 0,
             };
         }
         function redraw() {
@@ -414,26 +446,51 @@
             const txt = 'pixFancyText(' + JSON.stringify(s.text) + ', ' + s.px + ', ' + JSON.stringify(opts) + ')';
             navigator.clipboard.writeText(txt).then(() => { $('.bMeta').textContent = 'copiado: ' + txt; }).catch(() => { $('.bMeta').textContent = txt; });
         };
-        if (LIVE_FIREABLE[def.id]) {
+        // ===== feature destino: a qué momento del juego va este texto =====
+        // Cualquier tarjeta (incluidas las personalizadas) puede asignarse a
+        // cualquier feature — p. ej. crear un texto nuevo y ponerlo de GO!.
+        {
+            const asgRow = document.createElement('div'); asgRow.className = 'row';
+            const lab = document.createElement('span'); lab.className = 'ctrl'; lab.textContent = 'feature destino:';
+            const sel = document.createElement('select');
+            for (const [fid, f] of Object.entries(FEATURES)) {
+                const op = document.createElement('option'); op.value = fid; op.textContent = f.label;
+                sel.appendChild(op);
+            }
+            sel.value = FEATURES[def.id] ? def.id : 'go';
+            const bVer = document.createElement('button'); bVer.className = 'secondary'; bVer.textContent = 'VER EN UI';
+            const bAsignar = document.createElement('button'); bAsignar.textContent = 'ASIGNAR A LA FEATURE';
+            const bQuitar = document.createElement('button'); bQuitar.className = 'secondary'; bQuitar.textContent = 'QUITAR';
+            asgRow.appendChild(lab); asgRow.appendChild(sel); asgRow.appendChild(bVer); asgRow.appendChild(bAsignar); asgRow.appendChild(bQuitar);
+            card.appendChild(asgRow);
             const asgInfo = document.createElement('div'); asgInfo.className = 'meta';
             card.appendChild(asgInfo);
             const refreshAsgInfo = () => {
-                const ov = loadOverrides()[def.id];
+                const ov = loadOverrides()[sel.value];
                 asgInfo.textContent = ov
-                    ? '● ASIGNADO AL JUEGO: el juego (partidas reales incluidas) usa este estilo' + (ov.text ? ' — "' + ov.text + '"' : '') + '.'
-                    : '○ sin asignar: el juego usa su estilo de fábrica.';
+                    ? '● ' + FEATURES[sel.value].label + ': ASIGNADA (partidas reales incluidas)' + (ov.text ? ' — "' + ov.text + '"' : '') + (ov.px ? ' · px ' + ov.px : '') + '.'
+                    : '○ ' + FEATURES[sel.value].label + ': sin asignar, estilo de fábrica.';
                 asgInfo.style.color = ov ? '#00ff88' : '';
             };
-            $('.bVer').onclick = () => runOnUi(win => LIVE_FIREABLE[def.id](win, currentState()));
-            $('.bAsignar').onclick = () => {
+            sel.addEventListener('change', refreshAsgInfo);
+            bVer.onclick = () => runOnUi(win => fireFeature(win, sel.value, currentState()));
+            bAsignar.onclick = () => {
                 const s = currentState();
-                assignToGame(def.id, s);
+                assignToGame(sel.value, s);
                 refreshAsgInfo();
                 // dispara el cuadro en la pestaña del juego para verlo aplicado
-                runOnUi(win => LIVE_FIREABLE[def.id](win, s));
+                runOnUi(win => fireFeature(win, sel.value, s));
             };
-            $('.bQuitar').onclick = () => { unassignFromGame(def.id); refreshAsgInfo(); };
+            bQuitar.onclick = () => { unassignFromGame(sel.value); refreshAsgInfo(); };
             refreshAsgInfo();
+        }
+        if (def.custom) {
+            $('.bDelete').onclick = () => {
+                if (!confirm('¿Eliminar este texto personalizado?')) return;
+                removeCustomDef(def.id);
+                localStorage.removeItem('pw_fontlab_' + def.id);
+                card.remove();
+            };
         }
         redraw();
         return card;
@@ -460,8 +517,30 @@
         return card;
     }
 
+    // ===== textos personalizados: creados con "＋ NUEVO TEXTO", persistidos =====
+    // Solo se persiste la LISTA (id + número); el estado de estilo de cada uno va
+    // en su clave pw_fontlab_<id> como cualquier otra tarjeta.
+    const CUSTOM_LIST_KEY = 'pw_fontlab_custom_list';
+    function loadCustomList() { try { return JSON.parse(localStorage.getItem(CUSTOM_LIST_KEY)) || []; } catch (e) { return []; } }
+    function customDef(entry) {
+        return { id: entry.id, custom: true, label: 'Texto personalizado #' + entry.n + ' (asígnalo a la feature que quieras)', text: 'MY TEXT', px: 6,
+            defaults: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: 24, fill: '#ffffff', shade: '#b9c2cc' } };
+    }
+    function removeCustomDef(id) { localStorage.setItem(CUSTOM_LIST_KEY, JSON.stringify(loadCustomList().filter(e => e.id !== id))); }
+
     const bannerCardsEl = document.getElementById('bannerCards');
+    document.getElementById('btnNewText').onclick = () => {
+        const list = loadCustomList();
+        const n = (list.length ? Math.max.apply(null, list.map(e => e.n)) : 0) + 1;
+        const entry = { id: 'customText' + n, n };
+        list.push(entry);
+        localStorage.setItem(CUSTOM_LIST_KEY, JSON.stringify(list));
+        const card = buildFancyCard(customDef(entry));
+        bannerCardsEl.insertBefore(card, bannerCardsEl.firstChild);
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
     HERO_READY_PROMISE.then(() => {
+        for (const entry of loadCustomList()) bannerCardsEl.appendChild(buildFancyCard(customDef(entry)));
         for (const def of BANNER_DEFS) bannerCardsEl.appendChild(buildFancyCard(def));
         bannerCardsEl.appendChild(buildFloatCard());
     });
@@ -505,10 +584,12 @@
         sim.ejectedMasses.length = 0; sim.projectiles.length = 0;
         sim.step = function () {}; sim.timeScale = 0;
         L.nextSkillPickTime = Infinity;
-        // Encaja todo el mapa en la ventana (con margen) en vez de la cámara
-        // pegada al jugador — para ver el cartel de peligro completo alrededor.
-        const fit = Math.min(L.width, L.height) / (L.MAP_SIZE * 2.2);
-        L.camera.x = 0; L.camera.y = 0; L.camera.scale = Math.max(0.05, Math.min(2, fit));
+        // Vista de PARTIDA por defecto: la cámara queda como la deja
+        // startPracticeGame (centrada en tu célula, zoom 0.8 — lo mismo que ves
+        // en una partida real). Con timeScale=0 el lerp de cámara está congelado,
+        // así que no se mueve sola. La vista "mapa entero" de antes sigue
+        // disponible en la sección VISTA del panel flotante.
+        win.__pwLabCam = { x: L.camera.x, y: L.camera.y };
         buildFloatingPanel(win);
         win.__pwLabInited = true;
     }
@@ -566,6 +647,8 @@
             '#pwLabPanel button{background:#1c2a20;color:#9ee32d;border:1px solid #2a3a30;padding:5px 8px;font-family:monospace;font-size:10px;cursor:pointer;border-radius:3px}' +
             '#pwLabPanel button:hover{background:#2a3a30}' +
             '#pwLabPanel input[type=color]{width:26px;height:22px;padding:1px;border:1px solid #2a3a30;background:none;cursor:pointer}' +
+            '#pwLabPanel input[type=number]{width:46px;background:#0a120d;color:#cfd8d3;border:1px solid #2a3a30;font-family:monospace;font-size:10px;padding:2px 3px}' +
+            '#pwLabPanel .pwFeat{color:#7a8a80;font-size:10px;flex:0 0 100%;margin-top:2px}' +
             '#pwLabPanel label{display:flex;align-items:center;gap:4px;font-size:10px;color:#9aa}' +
             '#pwLabToggle{position:fixed;right:12px;top:12px;z-index:100000;background:#00ff88;color:#04140b;font-family:monospace;' +
             'font-weight:bold;font-size:11px;padding:7px 14px;border-radius:6px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);border:none;}';
@@ -603,11 +686,32 @@
         pixLabel.appendChild(pixInput); pixLabel.appendChild(win.document.createTextNode('modo pixel'));
         r.appendChild(pixLabel);
 
+        // Vista de la cámara congelada: PARTIDA = como en una partida real
+        // (célula centrada, zoom 0.8); MAPA ENTERO = el zoom-out de antes.
+        r = section('VISTA');
+        btn(r, 'PARTIDA', () => {
+            const c = win.__pwLabCam || { x: 0, y: 0 };
+            win.__pwLab.camera.x = c.x; win.__pwLab.camera.y = c.y; win.__pwLab.camera.scale = 0.8;
+        });
+        btn(r, 'MAPA ENTERO', () => {
+            const L2 = win.__pwLab;
+            const fit = Math.min(L2.width, L2.height) / (L2.MAP_SIZE * 2.2);
+            L2.camera.x = 0; L2.camera.y = 0; L2.camera.scale = Math.max(0.05, Math.min(2, fit));
+        });
+        {
+            const lab = win.document.createElement('label');
+            lab.appendChild(win.document.createTextNode('zoom'));
+            const z = win.document.createElement('input'); z.type = 'number'; z.step = '0.1'; z.min = '0.05'; z.max = '3';
+            z.value = win.__pwLab.camera.scale.toFixed(2);
+            z.oninput = () => { const v = parseFloat(z.value); if (v > 0) win.__pwLab.camera.scale = v; };
+            lab.appendChild(z); r.appendChild(lab);
+        }
+
         r = section('OVERLAYS DE PARTIDA');
         btn(r, 'GO!', () => TRIGGERS.go(win));
         btn(r, 'CONTADOR INICIO', () => TRIGGERS.contador(win));
         btn(r, 'CONTADOR FIN', () => TRIGGERS.contadorEnd(win));
-        btn(r, 'PANEL DE SKILLS', () => TRIGGERS.skill(win));
+        btn(r, 'PANEL DE SKILLS', () => TRIGGERS.skillTitle(win));
         btn(r, 'KILL GAIN', () => TRIGGERS.killGain(win));
 
         r = section('FIN DE PARTIDA');
@@ -624,6 +728,40 @@
         btn(r, 'FINDING ROOM', () => TRIGGERS.bannerSearch(win));
         btn(r, 'ANUNCIO ADMIN', () => TRIGGERS.bannerFound(win));
         btn(r, 'OCULTAR BANNER', () => TRIGGERS.bannerOff(win));
+
+        // Ajustes por feature: tamaño de letra (px de fuente pixel) y posición
+        // (desplazamiento X/Y en px de pantalla). Se guardan directamente en el
+        // override asignado (pw_style_overrides) conservando texto/estilo, así
+        // que valen también para partidas reales. Vacío = valor de fábrica.
+        r = section('TAMAÑO Y POSICIÓN POR FEATURE');
+        {
+            const note = win.document.createElement('div'); note.className = 'pwFeat';
+            note.textContent = 'px = tamaño letra · X/Y = desplazamiento · ▶ = probar · vacío = fábrica';
+            r.appendChild(note);
+            const patchOverride = (id, key, raw) => {
+                const all = loadOverrides();
+                const ov = all[id] || (all[id] = {});
+                const v = parseInt(raw, 10);
+                if (raw === '' || isNaN(v)) delete ov[key]; else ov[key] = v;
+                if (!Object.keys(ov).length) delete all[id];
+                saveOverrides(all);
+            };
+            for (const [fid, f] of Object.entries(FEATURES)) {
+                const name = win.document.createElement('div'); name.className = 'pwFeat'; name.textContent = f.label;
+                r.appendChild(name);
+                const ov0 = loadOverrides()[fid] || {};
+                for (const [key, lbl, val] of [['px', 'px', ov0.px], ['dx', 'X', ov0.dx], ['dy', 'Y', ov0.dy]]) {
+                    if (fid === 'skillTitle' && key !== 'px') continue;   // el título del panel no se desplaza
+                    const lab = win.document.createElement('label');
+                    lab.appendChild(win.document.createTextNode(lbl));
+                    const i = win.document.createElement('input'); i.type = 'number';
+                    i.value = (val == null) ? '' : val;
+                    i.oninput = () => patchOverride(fid, key, i.value);
+                    lab.appendChild(i); r.appendChild(lab);
+                }
+                btn(r, '▶', () => TRIGGERS[fid](win));
+            }
+        }
 
         r = section('LIMPIAR');
         btn(r, 'CERRAR CUADROS', () => TRIGGERS.cerrar(win));
@@ -653,17 +791,20 @@
     // Cada entrada llama DIRECTAMENTE a las funciones/variables de la pestaña del
     // juego (mismo origen, sin inyectar <script>) leyendo TEXTS en el momento del
     // click — "Asignar textos" y el panel flotante comparten siempre el mismo valor.
+    // Disparos "reales": cada uno hace EXACTAMENTE lo que hace el juego en ese
+    // momento (con el estilo asignado si lo hay, o el de fábrica). Los usa el
+    // panel flotante de la pestaña del juego y "VER EN UI" de "Asignar textos".
     const TRIGGERS = {
-        go: (win) => LIVE_FIREABLE.go(win, labState('go')),
-        contador: (win) => LIVE_FIREABLE.contador(win, labState('contador')),
-        contadorEnd: (win) => { const s = labState('contador'); let n = 5; const label = TEXTS.cdEnd; win.showCountdownNumber(n, label, labOptsFromState(s)); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, label, labOptsFromState(s)); }, 700); },
-        skill: (win) => LIVE_FIREABLE.skillTitle(win, labState('skillTitle')),
-        gameOver: (win) => win.stopGame(),
-        victory: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }),
-        cashout: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }),
-        matchEnded: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'arcadeEnd', myAmount: 300, pot: 1500, top: [{ pos: 1, name: 'Bot1', pct: 40, amount: 600, mine: false }, { pos: 2, name: 'me', pct: 20, amount: 300, mine: true }] }),
-        matchFinished: (win) => { const els = win.__pwLab.els; els.resultTitle.innerText = 'MATCH FINISHED'; els.resultTitle.style.color = '#00ff88'; win.showResultsUI(); },
-        roomRestarted: (win) => { const els = win.__pwLab.els; els.resultTitle.innerText = 'ROOM RESTARTED'; els.resultTitle.style.color = '#ffcc00'; win.showResultsUI(); },
+        go: (win) => win.showGoSplash(),
+        contador: (win) => { let n = 5; win.showCountdownNumber(n, TEXTS.cdStart); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdStart); }, 700); },
+        contadorEnd: (win) => { let n = 5; win.showCountdownNumber(n, TEXTS.cdEnd); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdEnd); }, 700); },
+        skillTitle: (win) => { win.__pwLab.practiceFirstSkillDone = true; win.showSkillChoice(); },
+        gameOver: (win) => FEATURES.gameOver.fire(win),
+        victory: (win) => FEATURES.victory.fire(win),
+        cashout: (win) => FEATURES.cashout.fire(win),
+        matchEnded: (win) => FEATURES.matchEnded.fire(win),
+        matchFinished: (win) => FEATURES.matchFinished.fire(win),
+        roomRestarted: (win) => FEATURES.roomRestarted.fire(win),
         killGain: (win) => win.showKillGain(1500),
         sysNotice: (win) => win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle),
         sysKicked: (win) => win.showSystemMsg(TEXTS.kickedBody, TEXTS.kickedTitle),
@@ -762,29 +903,32 @@
     // ===================== PESTAÑA: CARTELES (plantilla visual) =====================
     const CARTEL_KEY = 'pw_fontlab_cartel_sysmodal';
     function loadCartelStyle() {
-        const d = { border: '#00ff88', glow: '#00ff88', blur: 40 };
+        const d = { border: '#00ff88', glow: '#00ff88', blur: 40, tSize: 24, bSize: 14 };
         try { const saved = JSON.parse(localStorage.getItem(CARTEL_KEY)); if (saved) Object.assign(d, saved); } catch (e) {}
         return d;
     }
     const cBorder = document.getElementById('cBorderColor'), cGlow = document.getElementById('cGlowColor'), cBlur = document.getElementById('cGlowBlur');
-    { const s = loadCartelStyle(); cBorder.value = s.border; cGlow.value = s.glow; cBlur.value = s.blur; }
+    const cTitleSize = document.getElementById('cTitleSize'), cBodySize = document.getElementById('cBodySize');
+    { const s = loadCartelStyle(); cBorder.value = s.border; cGlow.value = s.glow; cBlur.value = s.blur; cTitleSize.value = s.tSize; cBodySize.value = s.bSize; }
 
     function cartelCss() {
-        return '#sysModal .exit-box{border-color:' + cBorder.value + '!important;box-shadow:0 0 ' + cBlur.value + 'px ' + cGlow.value + '!important;}';
+        return '#sysModal .exit-box{border-color:' + cBorder.value + '!important;box-shadow:0 0 ' + cBlur.value + 'px ' + cGlow.value + '!important;}' +
+            '#sysModal .exit-title{font-size:' + (parseInt(cTitleSize.value, 10) || 24) + 'px!important;}' +
+            '#sysModal .exit-desc{font-size:' + (parseInt(cBodySize.value, 10) || 14) + 'px!important;}';
     }
     function redrawCartelPreview() {
-        const s = { border: cBorder.value, glow: cGlow.value, blur: cBlur.value };
+        const s = { border: cBorder.value, glow: cGlow.value, blur: cBlur.value, tSize: parseInt(cTitleSize.value, 10) || 24, bSize: parseInt(cBodySize.value, 10) || 14 };
         localStorage.setItem(CARTEL_KEY, JSON.stringify(s));
         const wrap = document.getElementById('cartelPreviewWrap');
         wrap.innerHTML =
             '<div style="width:320px;background:#111;border-radius:12px;padding:28px;text-align:center;' +
             'border:1px solid ' + s.border + ';box-shadow:0 0 ' + s.blur + 'px ' + s.glow + ';">' +
-                '<div style="color:' + s.border + ';font-family:\'Russo One\',sans-serif;font-size:22px;text-shadow:0 0 14px ' + s.glow + ';">SAMPLE TITLE</div>' +
-                '<div style="color:#aaa;font-size:14px;margin:10px 0 20px;">This is a preview of the system modal body text.</div>' +
+                '<div style="color:' + s.border + ';font-family:\'Russo One\',sans-serif;font-size:' + s.tSize + 'px;text-shadow:0 0 14px ' + s.glow + ';">SAMPLE TITLE</div>' +
+                '<div style="color:#aaa;font-size:' + s.bSize + 'px;margin:10px 0 20px;">This is a preview of the system modal body text.</div>' +
                 '<button style="width:100%;padding:12px;border:1px solid ' + s.border + ';background:transparent;color:' + s.border + ';font-family:\'Russo One\';border-radius:6px;">OK</button>' +
             '</div>';
     }
-    [cBorder, cGlow, cBlur].forEach(el => el.addEventListener('input', redrawCartelPreview));
+    [cBorder, cGlow, cBlur, cTitleSize, cBodySize].forEach(el => el.addEventListener('input', redrawCartelPreview));
     redrawCartelPreview();
 
     function applyStyleTag(win, id, css) {
@@ -801,20 +945,21 @@
         const css = cartelCss();
         navigator.clipboard.writeText(css).then(() => { document.getElementById('cartelMeta').textContent = 'copiado: ' + css; }).catch(() => { document.getElementById('cartelMeta').textContent = css; });
     };
-    document.getElementById('cReset').onclick = () => { cBorder.value = '#00ff88'; cGlow.value = '#00ff88'; cBlur.value = 40; redrawCartelPreview(); };
+    document.getElementById('cReset').onclick = () => { cBorder.value = '#00ff88'; cGlow.value = '#00ff88'; cBlur.value = 40; cTitleSize.value = 24; cBodySize.value = 14; redrawCartelPreview(); };
 
     // ===== Carteles: banner de lobby =====
     const LB_KEY = 'pw_fontlab_cartel_banner';
     function loadLbStyle() {
-        const d = { def: '#00ff88', search: '#4d9bff', found: '#00ff88' };
+        const d = { def: '#00ff88', search: '#4d9bff', found: '#00ff88', size: 13 };
         try { const saved = JSON.parse(localStorage.getItem(LB_KEY)); if (saved) Object.assign(d, saved); } catch (e) {}
         return d;
     }
     const lbDef = document.getElementById('lbColorDefault'), lbSearch = document.getElementById('lbColorSearch'), lbFound = document.getElementById('lbColorFound');
-    { const s = loadLbStyle(); lbDef.value = s.def; lbSearch.value = s.search; lbFound.value = s.found; }
+    const lbFontSize = document.getElementById('lbFontSize');
+    { const s = loadLbStyle(); lbDef.value = s.def; lbSearch.value = s.search; lbFound.value = s.found; lbFontSize.value = s.size; }
 
     function lbCss() {
-        return '#lobbyBanner{border-color:' + lbDef.value + '!important;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px ' + lbDef.value + '55!important}' +
+        return '#lobbyBanner{font-size:' + (parseInt(lbFontSize.value, 10) || 13) + 'px!important;border-color:' + lbDef.value + '!important;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px ' + lbDef.value + '55!important}' +
             '#lobbyBanner .lb-dot{background:' + lbDef.value + '!important;box-shadow:0 0 10px ' + lbDef.value + '!important}' +
             '#lobbyBanner .lb-strong{color:' + lbDef.value + '!important}' +
             '#lobbyBanner.lb-search{border-color:' + lbSearch.value + '!important;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px ' + lbSearch.value + '55!important}' +
@@ -824,20 +969,20 @@
             '#lobbyBanner.lb-found .lb-dot{background:' + lbFound.value + '!important;box-shadow:0 0 10px ' + lbFound.value + '!important}';
     }
     function redrawLbPreview() {
-        const s = { def: lbDef.value, search: lbSearch.value, found: lbFound.value };
+        const s = { def: lbDef.value, search: lbSearch.value, found: lbFound.value, size: parseInt(lbFontSize.value, 10) || 13 };
         localStorage.setItem(LB_KEY, JSON.stringify(s));
         const wrap = document.getElementById('lbPreviewWrap'); wrap.innerHTML = '';
         const variants = [['por defecto', s.def, 'MATCH STARTING'], ['search', s.search, 'FINDING ROOM...'], ['found', s.found, 'ROOM FOUND']];
         for (const [name, color, txt] of variants) {
             const b = document.createElement('div');
             b.style.cssText = 'display:flex;align-items:center;gap:10px;background:rgba(8,12,10,.92);border:1px solid ' + color + ';color:#fff;' +
-                'padding:10px 22px;border-radius:11px;font-family:\'Russo One\',sans-serif;font-size:13px;letter-spacing:1px;' +
+                'padding:10px 22px;border-radius:11px;font-family:\'Russo One\',sans-serif;font-size:' + s.size + 'px;letter-spacing:1px;' +
                 'box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px ' + color + '55;';
             b.innerHTML = '<span style="width:9px;height:9px;border-radius:50%;background:' + color + ';box-shadow:0 0 10px ' + color + ';flex:0 0 auto"></span><span>' + txt + ' <span style="color:' + color + ';font-size:10px">(' + name + ')</span></span>';
             wrap.appendChild(b);
         }
     }
-    [lbDef, lbSearch, lbFound].forEach(el => el.addEventListener('input', redrawLbPreview));
+    [lbDef, lbSearch, lbFound, lbFontSize].forEach(el => el.addEventListener('input', redrawLbPreview));
     redrawLbPreview();
 
     document.getElementById('lbApplyLive').onclick = () => {
@@ -849,7 +994,7 @@
         const css = lbCss();
         navigator.clipboard.writeText(css).then(() => { document.getElementById('lbMeta').textContent = 'copiado: ' + css; }).catch(() => { document.getElementById('lbMeta').textContent = css; });
     };
-    document.getElementById('lbReset').onclick = () => { lbDef.value = '#00ff88'; lbSearch.value = '#4d9bff'; lbFound.value = '#00ff88'; redrawLbPreview(); };
+    document.getElementById('lbReset').onclick = () => { lbDef.value = '#00ff88'; lbSearch.value = '#4d9bff'; lbFound.value = '#00ff88'; lbFontSize.value = 13; redrawLbPreview(); };
 
     // ===== Carteles: panel de selección de skill =====
     const SK_KEY = 'pw_fontlab_cartel_skill';
@@ -891,7 +1036,7 @@
         runOnUi(win => {
             win.setPixPanelAccent(skAccent.value);
             if (!win.__pwLab.pixelMode) win.setPixelMode(true);
-            LIVE_FIREABLE.skillTitle(win, labState('skillTitle'));
+            FEATURES.skillTitle.fire(win, labState('skillTitle'));
         });
         document.getElementById('skMeta').textContent = 'aplicado — panel completo con 2 skills reales disparado en la pestaña del juego.';
     };

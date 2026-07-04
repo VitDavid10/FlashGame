@@ -1251,6 +1251,7 @@
         set nextSkillPickTime(v) { nextSkillPickTime = v; },
         set practiceFirstSkillDone(v) { practiceFirstSkillDone = v; },
         set skillPanelTitle(v) { skillPanelTitle = v; },
+        get styleOverrides() { return styleOverrides; },
         set styleOverrides(v) { styleOverrides = v; },
     };
     let enableEnemyFX = true;
@@ -2371,7 +2372,37 @@
         SoundManager.playMusic();
     }
 
-    function stopGame() { isSpectating = true; hideCountdownNumber(); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { els.resultTitle.innerText = "GAME OVER"; els.resultTitle.style.color = "#ff2a2a"; showResultsUI(); }, 1400); }
+    // Título de fin de partida (overlay de resultado o modal de premio) con fuente
+    // pixel cuando el modo pixel está activo. Honra el estilo ASIGNADO desde el
+    // laboratorio (styleOverrides[id] = { text, px, opts, dx, dy }); sin override
+    // usa un look pixel por defecto con el color del cartel de siempre. Sin modo
+    // pixel, texto CSS idéntico al de antes. dx/dy desplazan el título en px.
+    function setOverlayTitle(el, id, defText, defColor) {
+        if (!el) return;
+        const ov = styleOverrides[id] || {};
+        const text = ov.text || defText;
+        el.innerHTML = '';
+        el.style.transform = (ov.dx || ov.dy) ? 'translate(' + (ov.dx | 0) + 'px,' + (ov.dy | 0) + 'px)' : '';
+        if (pixelMode) {
+            const px = ov.px || 4;
+            const opts = ov.opts || { thin: true, hd: 2, glow: defColor, glowBlur: 24 };
+            let cv;
+            if (heroFontReady && pixHeroReady(text)) {
+                const o = {};
+                if (opts.sparkles) o.sparkles = opts.sparkles;
+                if (opts.glow) { o.glow = opts.glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 24; }
+                cv = pixHeroText(text, px * 15, o);
+            } else {
+                cv = pixFancyText(text, px, opts);
+            }
+            cv.style.margin = '0 auto'; cv.style.display = 'block'; cv.style.maxWidth = '100%';
+            el.appendChild(cv);
+        } else {
+            el.textContent = text;
+            el.style.color = defColor;
+        }
+    }
+    function stopGame() { isSpectating = true; hideCountdownNumber(); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI(); }, 1400); }
 
     // Botón SPECTATE del menú GAME OVER: online sigue la partida en curso, offline crea sim local.
     function onSpectateClick() {
@@ -2428,7 +2459,7 @@
         const isPaidArcade = currentServer && currentServer !== 'Free' && (currentGameMode === 'arcade' || currentGameMode === 'skills');
         const prizeOpen = isPaidArcade && document.getElementById('prizeModal').style.display === 'flex';
         if (!prizeOpen) {
-            els.resultTitle.innerText = "MATCH FINISHED"; els.resultTitle.style.color = "#00ff88";
+            setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88');
             showResultsUI();
         }
         const tb = document.getElementById('btnTryAgainOnline'); if (tb) tb.style.display = 'none';
@@ -2871,15 +2902,15 @@
             const fmt = n => Number(n || 0).toLocaleString('en-US');
             tbl.style.display = 'none'; tbl.innerHTML = '';
             if (msg.reason === 'victory') {
-                title.innerText = 'VICTORY!'; title.style.color = '#ffce3d';
+                setOverlayTitle(title, 'victory', 'VICTORY!', '#ffce3d');
                 amt.innerText = '+' + fmt(msg.amount) + ' $PILL';
                 sub.innerHTML = '5 KILLS · Total carry won: <b style="color:#00ff88">' + fmt(msg.carry) + '</b> $PILL';
             } else if (msg.reason === 'cashout') {
-                title.innerText = 'CASHOUT'; title.style.color = '#00ff88';
+                setOverlayTitle(title, 'cashout', 'CASHOUT', '#00ff88');
                 amt.innerText = '+' + fmt(msg.amount) + ' $PILL';
                 sub.innerHTML = msg.kills + ' kills · carry <b>' + fmt(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmt(msg.fee) + '</b>)';
             } else if (msg.reason === 'arcadeEnd') {
-                title.innerText = 'MATCH ENDED'; title.style.color = msg.myAmount > 0 ? '#ffce3d' : '#aaa';
+                setOverlayTitle(title, 'matchEnded', 'MATCH ENDED', msg.myAmount > 0 ? '#ffce3d' : '#aaa');
                 amt.innerText = msg.myAmount > 0 ? '+' + fmt(msg.myAmount) + ' $PILL' : 'Out of top 10';
                 sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmt(msg.pot) + '</b> $PILL';
                 tbl.style.display = 'block';
@@ -3249,6 +3280,10 @@
         ensureLobbyFx();
         const old = document.getElementById('cdNum'); if (old) old.remove();
         const el = document.createElement('div'); el.id = 'cdNum';
+        // Desplazamiento configurable desde el laboratorio. El CSS base ya sube el
+        // contador 120px, así que el offset se suma a ese -120 (dy=0 ⇒ como siempre).
+        const cdDx = (opts.dx != null ? opts.dx : ov.dx) | 0, cdDy = (opts.dy != null ? opts.dy : ov.dy) | 0;
+        if (cdDx || cdDy) el.style.transform = 'translate(' + cdDx + 'px,' + (-120 + cdDy) + 'px)';
         label = label || 'MATCH STARTING';
         const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
         if (pixelMode) {
@@ -3624,7 +3659,7 @@
                 if (sim && sim.isRemote && sim.ws === ws && gameRunning && !practiceMode) {
                     SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true;
                     els.skillOverlay.style.display = 'none'; isPickingSkill = false;
-                    els.resultTitle.innerText = 'ROOM RESTARTED'; els.resultTitle.style.color = '#ffcc00';
+                    setOverlayTitle(els.resultTitle, 'roomRestarted', 'ROOM RESTARTED', '#ffcc00');
                     showResultsUI();
                 }
             } else if (msg.t === 'matchStart') {
@@ -3844,17 +3879,22 @@
         const old = document.getElementById('goSplash'); if (old) old.remove();
         const el = document.createElement('div');
         el.id = 'goSplash';
+        // Tamaño (px de fuente pixel) y desplazamiento (dx/dy en px de pantalla)
+        // configurables desde el laboratorio; sin ellos, auto según viewport.
+        const pxOv = opts.px || ov.px || 0;
+        const dx = (opts.dx != null ? opts.dx : ov.dx) | 0, dy = (opts.dy != null ? opts.dy : ov.dy) | 0;
+        if (dx || dy) el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
         if (pixelMode) {
             const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
             const sparkles = opts.sparkles != null ? opts.sparkles : 5;
             let cv;
             if (heroFontReady && pixHeroReady(text)) {
-                const th = Math.max(60, Math.min(300, Math.round(width * 0.42)));
+                const th = pxOv ? pxOv * 15 : Math.max(60, Math.min(300, Math.round(width * 0.42)));
                 const o = {}; if (sparkles > 0) o.sparkles = sparkles;
                 if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : th * 0.3; }
                 cv = pixHeroText(text, th, o);
             } else {
-                const px = Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37)));
+                const px = pxOv || Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37)));
                 const o = { thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
                 if (opts.plain) o.plain = true;
                 if (opts.fill) o.fill = opts.fill;
@@ -3941,7 +3981,7 @@
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
     // titleOpts (opcional, asignable desde el laboratorio): mismo esquema que
     // pixFancyText para el título "SELECT A SKILL". Sin él, look de siempre.
-    function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; wrap.appendChild(d1); wrap.appendChild(pixFancyText(skillPanelTitle, 2, titleOpts || (styleOverrides.skillTitle && styleOverrides.skillTitle.opts) || {})); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
+    function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; const skOv = styleOverrides.skillTitle || {}; const skPx = (titleOpts && titleOpts.px) || skOv.px || 2; wrap.appendChild(d1); wrap.appendChild(pixFancyText(skillPanelTitle, skPx, titleOpts || skOv.opts || {})); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
         els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name, fitPx = Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixFancyText(nm, fitPx, { plain: true, shade: '#b9c2cc', hd: 1 }); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
