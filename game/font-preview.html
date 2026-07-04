@@ -17,11 +17,16 @@
     #tester { background: #0a120d; border: 1px solid #1c2a20; padding: 14px; }
     #tester input, #tester select { background: #050805; color: #cfd8d3; border: 1px solid #2a3a30; padding: 6px 8px; font-family: monospace; }
     #tester input[type=text] { width: 260px; }
-    #tester input[type=number] { width: 60px; }
+    #tester input[type=number] { width: 55px; }
+    #tester input[type=color] { width: 40px; padding: 2px; height: 30px; }
     #tester button { background: #00ff88; color: #04140b; border: none; padding: 6px 14px; font-family: monospace; font-weight: bold; cursor: pointer; }
     #tester button:hover { background: #4dffaa; }
     #testerOut .item { margin: 14px 0; }
     #testerOut .meta { color: #7a8a80; font-size: 11px; margin-bottom: 4px; }
+    .ctrl { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #9aa; }
+    .ctrl input[type=number] { width: 50px; }
+    fieldset { border: 1px solid #1c2a20; border-radius: 0; }
+    legend { color: #7a8a80; font-size: 11px; padding: 0 6px; }
 </style>
 </head>
 <body>
@@ -43,6 +48,26 @@
         <button id="tAdd">AÑADIR</button>
         <button id="tClear" style="background:#333;color:#ccc">LIMPIAR</button>
     </div>
+    <div class="row">
+        <fieldset><legend>trazo</legend>
+            <span class="ctrl"><label><input type="checkbox" id="tThin"> thin</label></span>
+            <span class="ctrl"><label><input type="checkbox" id="tPlain"> plain</label></span>
+            <span class="ctrl">hd <select id="tHd"><option value="0">0 (normal)</option><option value="1">1</option><option value="2">2</option></select></span>
+        </fieldset>
+        <fieldset><legend>halo (glow)</legend>
+            <span class="ctrl"><label><input type="checkbox" id="tGlowOn"> activo</label></span>
+            <span class="ctrl">color <input type="color" id="tGlowColor" value="#00ff88"></span>
+            <span class="ctrl">blur <input type="number" id="tGlowBlur" value="30" min="0" max="200"></span>
+        </fieldset>
+        <fieldset><legend>sparkles</legend>
+            <span class="ctrl">cantidad <input type="number" id="tSparkles" value="0" min="0" max="5"></span>
+        </fieldset>
+        <fieldset><legend>colores</legend>
+            <span class="ctrl">fill <input type="color" id="tFill" value="#ffffff"></span>
+            <span class="ctrl">shade <input type="color" id="tShade" value="#b9c2cc"></span>
+        </fieldset>
+    </div>
+    <div class="hint" id="tFlotHint" style="display:none">Modo FLOTANTE usa otro render (drawPixelText): solo aplican texto, px y el color "fill". El resto de controles se ignora.</div>
     <div id="testerOut"></div>
 </section>
 
@@ -72,7 +97,69 @@
         drawPixelText(cv.getContext('2d'), text, px, px, px, color, '#000');
         return cv;
     }
-    // presets = las llamadas literales que hace el juego en cada cartel
+    // presets = las llamadas literales que hace el juego en cada cartel, como
+    // datos (no funciones) para poder volcarlos a los controles editables.
+    // glowBlur: función de px porque en el juego "titulo" escala con el tamaño
+    // (px*4) y "contador" es fijo (30) — al elegir el preset se resuelve con el
+    // px actual y queda como número normal, editable a mano después.
+    const PRESET_DEFS = {
+        titulo:   { thin: true, plain: false, hd: 2, sparkles: 5, glow: true, glowColor: '#00ff88', glowBlur: px => px * 4, fill: '#ffffff', shade: '#b9c2cc' },
+        contador: { thin: true, plain: false, hd: 2, sparkles: 0, glow: true, glowColor: '#00ff88', glowBlur: () => 30,    fill: '#ffffff', shade: '#b9c2cc' },
+        panel:    { thin: false, plain: false, hd: 0, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: () => 30, fill: '#ffffff', shade: '#b9c2cc' },
+        plain:    { thin: false, plain: true,  hd: 1, sparkles: 0, glow: false, glowColor: '#00ff88', glowBlur: () => 30, fill: '#ffffff', shade: '#b9c2cc' },
+        flotante: null, // caso especial: drawPixelText, no pixFancyText (solo texto+px+color)
+    };
+
+    const ctl = {
+        thin: document.getElementById('tThin'), plain: document.getElementById('tPlain'), hd: document.getElementById('tHd'),
+        glowOn: document.getElementById('tGlowOn'), glowColor: document.getElementById('tGlowColor'), glowBlur: document.getElementById('tGlowBlur'),
+        sparkles: document.getElementById('tSparkles'), fill: document.getElementById('tFill'), shade: document.getElementById('tShade'),
+        px: document.getElementById('tPx'), preset: document.getElementById('tPreset'), flotHint: document.getElementById('tFlotHint'),
+    };
+    // al elegir un preset: rellena los controles con SUS valores reales (los
+    // mismos que usa el juego), para partir de ahí y tocar solo lo que quieras.
+    function applyPresetToControls() {
+        const name = ctl.preset.value, def = PRESET_DEFS[name];
+        const isFlot = !def;
+        ctl.flotHint.style.display = isFlot ? '' : 'none';
+        for (const el of [ctl.thin, ctl.plain, ctl.hd, ctl.glowOn, ctl.glowColor, ctl.glowBlur, ctl.sparkles, ctl.shade]) el.disabled = isFlot;
+        if (isFlot) return;
+        const px = Math.max(1, Math.min(14, parseInt(ctl.px.value, 10) || 6));
+        ctl.thin.checked = def.thin; ctl.plain.checked = def.plain; ctl.hd.value = String(def.hd);
+        ctl.glowOn.checked = def.glow; ctl.glowColor.value = def.glowColor; ctl.glowBlur.value = def.glowBlur(px);
+        ctl.sparkles.value = def.sparkles; ctl.fill.value = def.fill; ctl.shade.value = def.shade;
+    }
+    ctl.preset.addEventListener('change', applyPresetToControls);
+    applyPresetToControls();
+
+    // --- probador ---
+    const out = document.getElementById('testerOut');
+    function renderFromControls(text, px) {
+        if (!PRESET_DEFS[ctl.preset.value]) return floatCanvas(text, px, ctl.fill.value); // flotante
+        const o = { plain: ctl.plain.checked, thin: ctl.thin.checked, fill: ctl.fill.value, shade: ctl.shade.value };
+        const hd = parseInt(ctl.hd.value, 10); if (hd > 0) o.hd = hd;
+        const sp = parseInt(ctl.sparkles.value, 10); if (sp > 0) o.sparkles = sp;
+        if (ctl.glowOn.checked) { o.glow = ctl.glowColor.value; o.glowBlur = Math.max(0, parseInt(ctl.glowBlur.value, 10) || 0); }
+        return pixFancyText(text, px, o);
+    }
+    function addSample() {
+        const t = document.getElementById('tTxt').value || 'GAME OVER';
+        const p = ctl.preset.value;
+        const px = Math.max(1, Math.min(14, parseInt(ctl.px.value, 10) || 6));
+        const item = document.createElement('div'); item.className = 'item';
+        const meta = document.createElement('div'); meta.className = 'meta';
+        meta.textContent = '"' + t + '" · preset ' + p + ' · px ' + px;
+        const box = document.createElement('span'); box.className = 'dark';
+        box.appendChild(renderFromControls(t, px));
+        item.appendChild(meta); item.appendChild(box);
+        out.prepend(item);
+    }
+    document.getElementById('tAdd').onclick = addSample;
+    document.getElementById('tTxt').addEventListener('keydown', e => { if (e.key === 'Enter') addSample(); });
+    document.getElementById('tClear').onclick = () => { out.innerHTML = ''; };
+
+    // presets fijos, solo para dibujar los "carteles reales" de abajo tal cual
+    // los llama el juego (independientes de lo que el usuario toque arriba).
     const PRESETS = {
         titulo:   (t, px) => pixFancyText(t, px, { sparkles: 5, thin: true, glow: '#00ff88', glowBlur: px * 4, hd: 2 }),
         contador: (t, px) => pixFancyText(t, px, { thin: true, glow: '#00ff88', glowBlur: 30, hd: 2 }),
@@ -80,24 +167,6 @@
         plain:    (t, px) => pixFancyText(t, px, { plain: true, shade: '#b9c2cc', hd: 1 }),
         flotante: (t, px) => floatCanvas(t, px, '#ccff00'),
     };
-
-    // --- probador ---
-    const out = document.getElementById('testerOut');
-    function addSample() {
-        const t = document.getElementById('tTxt').value || 'GAME OVER';
-        const p = document.getElementById('tPreset').value;
-        const px = Math.max(1, Math.min(14, parseInt(document.getElementById('tPx').value, 10) || 6));
-        const item = document.createElement('div'); item.className = 'item';
-        const meta = document.createElement('div'); meta.className = 'meta';
-        meta.textContent = '"' + t + '" · preset ' + p + ' · px ' + px;
-        const box = document.createElement('span'); box.className = 'dark';
-        box.appendChild(PRESETS[p](t, px));
-        item.appendChild(meta); item.appendChild(box);
-        out.prepend(item);
-    }
-    document.getElementById('tAdd').onclick = addSample;
-    document.getElementById('tTxt').addEventListener('keydown', e => { if (e.key === 'Enter') addSample(); });
-    document.getElementById('tClear').onclick = () => { out.innerHTML = ''; };
 
     // --- carteles reales ---
     document.getElementById('sGo').appendChild(PRESETS.titulo('GO!', 10));
