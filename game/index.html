@@ -1224,6 +1224,10 @@
     // la misma textura 9-slice, se puedan retocar juntos desde el laboratorio.
     let pixPanelAccent = '#00ff88';
     let skillPanelTitle = 'SELECT A SKILL';   // asignable desde el laboratorio (font-preview.html)
+    // Estilo del splash GO! (asignable desde el laboratorio): antes iba fijo a
+    // fuego dentro de showGoSplash, sin forma de tocarlo desde fuera.
+    // glowBlur=0 = automático (proporcional al tamaño del splash).
+    let goGlowOn = true, goGlowColor = '#00ff88', goGlowBlur = 0, goSparkles = 5;
     let enableEnemyFX = true;
     let serverEnemyFx = true;   // override global del server (admin): false = sin FX de enemigos para todos
     // Zoom base: ajuste LOCAL de tu navegador (lo pone el panel admin via localStorage,
@@ -3780,9 +3784,10 @@
         const el = document.createElement('div');
         el.id = 'goSplash';
         if (pixelMode) {
+            const glowOpt = goGlowOn ? { glow: goGlowColor } : {};
             let cv;
-            if (heroFontReady && pixHeroReady(text)) { const th = Math.max(60, Math.min(300, Math.round(width * 0.42))); cv = pixHeroText(text, th, { sparkles: 5, glow: '#00ff88', glowBlur: th * 0.3 }); }
-            else { const px = Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))); cv = pixFancyText(text, px, { sparkles: 5, thin: true, glow: '#00ff88', glowBlur: px * 4, hd: 2 }); }
+            if (heroFontReady && pixHeroReady(text)) { const th = Math.max(60, Math.min(300, Math.round(width * 0.42))); if (goGlowOn) glowOpt.glowBlur = goGlowBlur > 0 ? goGlowBlur : th * 0.3; cv = pixHeroText(text, th, Object.assign({ sparkles: goSparkles }, glowOpt)); }
+            else { const px = Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))); if (goGlowOn) glowOpt.glowBlur = goGlowBlur > 0 ? goGlowBlur : px * 4; cv = pixFancyText(text, px, Object.assign({ sparkles: goSparkles, thin: true, hd: 2 }, glowOpt)); }
             cv.className = 'go-txt'; el.appendChild(cv);
         } else { const d = document.createElement('div'); d.className = 'go-txt'; d.textContent = text; el.appendChild(d); }
         document.body.appendChild(el);

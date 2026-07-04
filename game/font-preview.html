@@ -35,8 +35,7 @@
     .bannerCard h3 { margin: 0 0 8px; font-size: 13px; color: #cfd8d3; }
     .bannerCard .meta { color: #7a8a80; font-size: 11px; margin-top: 6px; }
     .bannerCard .disabledNote { color: #665; font-size: 10px; }
-    /* mapa en vivo */
-    #gameFrame { width: 100%; height: 68vh; border: 1px solid #1c2a20; background: #000; }
+    /* UI del juego (ventana aparte) */
     #mapWarn { display: none; background: #2a1010; border: 1px solid #7a2a2a; color: #ff9a9a; padding: 10px; margin-bottom: 14px; font-size: 12px; }
 </style>
 </head>
@@ -89,7 +88,7 @@
 
 <!-- ===================== PESTAÑA 3: CARTELES (plantilla visual) ===================== -->
 <div id="panel-carteles" class="panel">
-<div class="hint">El juego usa 3 marcos con fondo distintos — cada uno se afina por separado. "aplicar en vivo" lo empuja al iframe de "UI del juego" (ábrelo antes con "MOSTRAR UI"); "copiar CSS/opciones" te da lo necesario para pegarlo en <code>index.html</code> cuando decidas el look final.</div>
+<div class="hint">El juego usa 3 marcos con fondo distintos — cada uno se afina por separado. "aplicar en vivo" lo empuja a la pestaña "UI del juego" (la abre sola si hace falta); "copiar CSS/opciones" te da lo necesario para pegarlo en <code>index.html</code> cuando decidas el look final; "restablecer" vuelve a los valores de fábrica.</div>
 
 <div class="bannerCard" id="cartelBanner">
     <h3>Banner de lobby (tira superior: FINDING ROOM, ROOM FOUND, anuncios de admin...)</h3>
@@ -97,8 +96,9 @@
         <span class="ctrl">color por defecto <input type="color" id="lbColorDefault" value="#00ff88"></span>
         <span class="ctrl">color "buscando" (search) <input type="color" id="lbColorSearch" value="#4d9bff"></span>
         <span class="ctrl">color "encontrado" (found) <input type="color" id="lbColorFound" value="#00ff88"></span>
-        <button class="secondary" id="lbApplyLive">APLICAR EN VIVO (iframe)</button>
+        <button class="secondary" id="lbApplyLive">APLICAR EN VIVO</button>
         <button class="secondary" id="lbCopyCss">COPIAR CSS</button>
+        <button class="secondary" id="lbReset">restablecer</button>
     </div>
     <div id="lbPreviewWrap" style="padding:20px; background:#000; display:flex; flex-direction:column; gap:10px; align-items:center;"></div>
     <div class="meta" id="lbMeta"></div>
@@ -110,8 +110,9 @@
         <span class="ctrl">color de borde <input type="color" id="cBorderColor" value="#00ff88"></span>
         <span class="ctrl">color de halo <input type="color" id="cGlowColor" value="#00ff88"></span>
         <label>blur <input type="number" id="cGlowBlur" value="40" min="0" max="120"></label>
-        <button class="secondary" id="cApplyLive">APLICAR EN VIVO (iframe)</button>
+        <button class="secondary" id="cApplyLive">APLICAR EN VIVO</button>
         <button class="secondary" id="cCopyCss">COPIAR CSS</button>
+        <button class="secondary" id="cReset">restablecer</button>
     </div>
     <div class="hint" style="margin:6px 0">El título usa fuente pixel + diamantes solo con "modo pixel" activo en "UI del juego"; su color de acento es el mismo que el del panel de skills (abajo), porque comparten la misma textura de esquinas.</div>
     <div id="cartelPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
@@ -123,8 +124,9 @@
     <div class="hint" style="margin:6px 0">Solo tiene efecto visible con "modo pixel" activo — en modo clásico el panel usa el estilo normal (verde fijo, sin textura).</div>
     <div class="row">
         <span class="ctrl">acento pixel-art <input type="color" id="skAccent" value="#00ff88"></span>
-        <button class="secondary" id="skApplyLive">APLICAR EN VIVO (iframe)</button>
+        <button class="secondary" id="skApplyLive">APLICAR EN VIVO</button>
         <button class="secondary" id="skCopyOpts">COPIAR (setPixPanelAccent)</button>
+        <button class="secondary" id="skReset">restablecer</button>
     </div>
     <div id="skPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
     <div class="meta" id="skMeta"></div>
@@ -133,62 +135,19 @@
 
 <!-- ===================== PESTAÑA 4: ASIGNAR TEXTOS ===================== -->
 <div id="panel-asignar" class="panel">
-<div class="hint">El copy real de cada mensaje del juego (mismo texto por defecto que usa la partida). Edítalo aquí — se guarda solo — y pulsa "VER EN UI" para saltar a la pestaña "UI del juego" y disparar ese cuadro con tu texto. Si el juego aún no está cargado ahí, pulsa antes "MOSTRAR UI (ARCADE)".</div>
+<div class="hint">El copy real y el estilo (letra) de cada mensaje del juego (mismos valores por defecto que usa la partida). Edítalo aquí — se guarda solo — y pulsa "VER EN UI" para abrir/reutilizar la pestaña del juego y disparar ese cuadro con tus valores. "restablecer" (arriba de cada tarjeta) vuelve a los valores de fábrica.</div>
 <div id="textAssignCards"></div>
 </div>
 
-<!-- ===================== PESTAÑA 5: MAPA EN VIVO ===================== -->
+<!-- ===================== PESTAÑA 5: UI DEL JUEGO (ventana aparte) ===================== -->
 <div id="panel-mapa" class="panel">
 <div id="mapWarn">Estás abriendo esta página como archivo suelto (file://). Esta pestaña necesita servirla por HTTP (<code>node server/index.js</code> y entrar por <code>http://localhost:PUERTO/game/font-preview.html</code>) porque el navegador bloquea el acceso entre páginas locales sueltas.</div>
-<div class="hint">La UI real del juego sobre un FONDO ESTÁTICO: sin bots, sin comida, sin partida — solo la rejilla, tu píldora quieta y el HUD. Desde aquí lanzas cada cuadro entero (GO, contador, panel de skills, mensajes de sistema…) tal cual sale en la partida. "MOSTRAR UI" también resetea todo si algo se queda abierto.</div>
-
+<div class="hint">Abre la UI real del juego en una PESTAÑA APARTE, con el mapa completo a la vista y un panel flotante (arriba a la derecha, botón "LAB") para disparar cada cuadro y cambiar tema desde ahí mismo. Nunca hay partida, bots ni modos — solo el HUD estático congelado. El panel flotante se puede ocultar/mostrar con su propio botón sin cerrar la pestaña.</div>
 <div class="row">
-    <button id="mShowUiArcade">MOSTRAR UI (ARCADE)</button>
-    <button id="mShowUiClassic">MOSTRAR UI (CLASSIC)</button>
-    <span class="ctrl"><label><input type="checkbox" id="mPixel" checked> modo pixel</label></span>
+    <button id="mOpenUi">ABRIR UI DEL JUEGO (pestaña nueva)</button>
+    <button class="secondary" id="mResetUi">REINICIAR AL ESTADO INICIAL</button>
 </div>
-<div class="row">
-    <fieldset><legend>tema de fondo</legend>
-        <button class="secondary" data-theme="dark">oscuro</button>
-        <button class="secondary" data-theme="grey">gris</button>
-        <button class="secondary" data-theme="white">blanco</button>
-        <span class="ctrl">fondo <input type="color" id="mBg" value="#050505"></span>
-        <span class="ctrl">rejilla <input type="color" id="mGrid" value="#ffffff"></span>
-        <button class="secondary" id="mCustomTheme">aplicar personalizado</button>
-    </fieldset>
-</div>
-<div class="row">
-    <fieldset><legend>overlays de partida</legend>
-        <button class="secondary" data-trigger="go">GO!</button>
-        <button class="secondary" data-trigger="contador">CONTADOR (INICIO) 5→1</button>
-        <button class="secondary" data-trigger="contadorEnd">CONTADOR (FIN) 5→1</button>
-        <button class="secondary" data-trigger="skill">PANEL DE SKILLS</button>
-        <button class="secondary" data-trigger="killGain">KILL GAIN (+PILL)</button>
-    </fieldset>
-    <fieldset><legend>fin de partida</legend>
-        <button class="secondary" data-trigger="gameOver">GAME OVER</button>
-        <button class="secondary" data-trigger="victory">VICTORY!</button>
-        <button class="secondary" data-trigger="cashout">CASHOUT</button>
-        <button class="secondary" data-trigger="matchEnded">MATCH ENDED</button>
-        <button class="secondary" data-trigger="matchFinished">MATCH FINISHED</button>
-        <button class="secondary" data-trigger="roomRestarted">ROOM RESTARTED</button>
-    </fieldset>
-</div>
-<div class="row">
-    <fieldset><legend>mensajes de sistema (modal con fondo)</legend>
-        <button class="secondary" data-trigger="sysNotice">REJOIN EXPIRED</button>
-        <button class="secondary" data-trigger="sysKicked">KICKED</button>
-    </fieldset>
-    <fieldset><legend>banner de lobby (con fondo)</legend>
-        <button class="secondary" data-trigger="bannerSearch">FINDING ROOM</button>
-        <button class="secondary" data-trigger="bannerFound">ANUNCIO ADMIN</button>
-        <button class="secondary" data-trigger="bannerOff">OCULTAR BANNER</button>
-    </fieldset>
-    <fieldset><legend>limpiar</legend>
-        <button class="secondary" data-trigger="cerrar">CERRAR CUADROS</button>
-    </fieldset>
-</div>
-<iframe id="gameFrame" src="index.html"></iframe>
+<div class="meta" id="mStatus">todavía no se ha abierto ninguna pestaña.</div>
 </div>
 
 <script src="pixfont.js"></script>
@@ -443,51 +402,144 @@
         bannerCardsEl.appendChild(buildFloatCard());
     });
 
-    // ===================== PESTAÑA 3: MAPA EN VIVO =====================
+    // ===================== PESTAÑA: UI DEL JUEGO (ventana aparte) =====================
     if (location.protocol === 'file:') document.getElementById('mapWarn').style.display = 'block';
 
-    const gameFrame = document.getElementById('gameFrame');
-    function runInGame(code) {
-        const doc = gameFrame.contentDocument;
-        if (!doc || !doc.body) { alert('El juego aún no ha cargado dentro del iframe.'); return; }
-        const s = doc.createElement('script');
-        s.textContent = code;
-        doc.body.appendChild(s);
-        s.remove();
+    // El juego vive en una pestaña real (window.open), no en un iframe: al ser
+    // mismo origen, sus funciones/variables son accesibles directamente desde aquí
+    // (win.showGoSplash(...), win.pixelMode = ...) sin tener que inyectar <script>.
+    let gameWin = null;
+    function updateUiStatus() {
+        const el = document.getElementById('mStatus');
+        el.textContent = (gameWin && !gameWin.closed)
+            ? 'pestaña abierta — usa el botón "LAB" (arriba a la derecha, dentro de esa pestaña) para mostrar/ocultar el panel de overlays.'
+            : 'todavía no se ha abierto ninguna pestaña.';
     }
-
-    // UI estática: arranca la práctica local y la congela al instante — se vacían
-    // bots/comida/virus y sim.step pasa a no-op (nada se mueve, no hay eventos).
-    // timeScale=0 congela también el temporizador del panel de skills (pickTimer),
-    // y nextSkillPickTime=Infinity evita que el panel salte solo a los 30s.
-    function showStaticUi(mode) {
-        runInGame(
-            "startPracticeGame('" + mode + "');" +
-            "sim.foods.length = 0; sim.enemies.length = 0; sim.viruses.length = 0;" +
-            "sim.ejectedMasses.length = 0; sim.projectiles.length = 0;" +
-            "sim.step = function(){}; sim.timeScale = 0;" +
-            "nextSkillPickTime = Infinity;"
-        );
+    // Fuerza SIEMPRE arcade (tiene la UI más completa: barra de skills incluida)
+    // y congela la sim al instante: sin bots/comida/virus, sin timers corriendo,
+    // sin partida real — solo el HUD estático sobre el mapa entero.
+    function initStaticUi(win) {
+        win.startPracticeGame('arcade');
+        win.sim.foods.length = 0; win.sim.enemies.length = 0; win.sim.viruses.length = 0;
+        win.sim.ejectedMasses.length = 0; win.sim.projectiles.length = 0;
+        win.sim.step = function () {}; win.sim.timeScale = 0;
+        win.nextSkillPickTime = Infinity;
+        // Encaja todo el mapa en la ventana (con margen) en vez de la cámara
+        // pegada al jugador — para ver el cartel de peligro completo alrededor.
+        const fit = Math.min(win.width, win.height) / (win.MAP_SIZE * 2.2);
+        win.camera.x = 0; win.camera.y = 0; win.camera.scale = Math.max(0.05, Math.min(2, fit));
+        buildFloatingPanel(win);
     }
-    document.getElementById('mShowUiArcade').onclick = () => showStaticUi('arcade');
-    document.getElementById('mShowUiClassic').onclick = () => showStaticUi('classic');
-    document.getElementById('mPixel').addEventListener('change', e => runInGame('setPixelMode(' + (e.target.checked ? 'true' : 'false') + ')'));
-
-    document.querySelectorAll('[data-theme]').forEach(btn => {
-        btn.onclick = () => runInGame("setTheme('" + btn.dataset.theme + "')");
-    });
-    document.getElementById('mCustomTheme').onclick = () => {
-        const bg = document.getElementById('mBg').value, grid = document.getElementById('mGrid').value;
-        runInGame(
-            "document.documentElement.style.setProperty('--bg-color', '" + bg + "');" +
-            "document.documentElement.style.setProperty('--grid-line', '" + grid + "');"
-        );
+    function openUiWindow() {
+        if (gameWin && !gameWin.closed) { gameWin.focus(); initStaticUi(gameWin); updateUiStatus(); return; }
+        gameWin = window.open('index.html', 'pw_lab_ui');
+        if (!gameWin) { alert('El navegador ha bloqueado la ventana nueva. Permite pop-ups para esta página e inténtalo de nuevo.'); return; }
+        gameWin.addEventListener('load', () => { initStaticUi(gameWin); updateUiStatus(); });
+        const poll = setInterval(() => { if (!gameWin || gameWin.closed) { clearInterval(poll); updateUiStatus(); } }, 1000);
+        updateUiStatus();
+    }
+    document.getElementById('mOpenUi').onclick = openUiWindow;
+    document.getElementById('mResetUi').onclick = () => {
+        if (!gameWin || gameWin.closed) { openUiWindow(); return; }
+        initStaticUi(gameWin); gameWin.focus();
     };
+
+    // Ejecuta fn(win) sobre la pestaña del juego, abriéndola/esperándola si hace
+    // falta (usado por "VER EN UI" y "aplicar en vivo" desde Asignar/Carteles).
+    function runOnUi(fn) {
+        if (gameWin && !gameWin.closed && typeof gameWin.showGoSplash === 'function') { gameWin.focus(); fn(gameWin); return; }
+        openUiWindow();
+        const check = setInterval(() => {
+            if (gameWin && !gameWin.closed && typeof gameWin.showGoSplash === 'function') { clearInterval(check); gameWin.focus(); fn(gameWin); }
+        }, 150);
+        setTimeout(() => clearInterval(check), 10000);
+    }
+
+    // Panel flotante inyectado DENTRO de la pestaña del juego: un botón "LAB"
+    // siempre visible (arriba a la derecha) que muestra/oculta el resto. Se
+    // reconstruye cada vez que se abre/reinicia la UI para no arrastrar estado.
+    function ensureLabPanelCss(win) {
+        if (win.document.getElementById('pwLabPanelCss')) return;
+        const st = win.document.createElement('style');
+        st.id = 'pwLabPanelCss';
+        st.textContent =
+            '#pwLabPanel{position:fixed;right:12px;top:52px;z-index:99999;background:rgba(5,8,6,.94);border:1px solid #1c2a20;' +
+            'color:#cfd8d3;font-family:monospace;font-size:11px;padding:10px;width:300px;max-height:82vh;overflow:auto;' +
+            'box-shadow:0 8px 30px rgba(0,0,0,.6);}' +
+            '#pwLabPanel h4{margin:10px 0 5px;color:#9ee32d;font-size:11px;border-bottom:1px solid #1c2a20;padding-bottom:3px}' +
+            '#pwLabPanel h4:first-child{margin-top:0}' +
+            '#pwLabPanel .pwRow{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:4px}' +
+            '#pwLabPanel button{background:#1c2a20;color:#9ee32d;border:1px solid #2a3a30;padding:5px 8px;font-family:monospace;font-size:10px;cursor:pointer;border-radius:3px}' +
+            '#pwLabPanel button:hover{background:#2a3a30}' +
+            '#pwLabPanel input[type=color]{width:26px;height:22px;padding:1px;border:1px solid #2a3a30;background:none;cursor:pointer}' +
+            '#pwLabPanel label{display:flex;align-items:center;gap:4px;font-size:10px;color:#9aa}' +
+            '#pwLabToggle{position:fixed;right:12px;top:12px;z-index:100000;background:#00ff88;color:#04140b;font-family:monospace;' +
+            'font-weight:bold;font-size:11px;padding:7px 14px;border-radius:6px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);border:none;}';
+        win.document.head.appendChild(st);
+    }
+    function buildFloatingPanel(win) {
+        ensureLabPanelCss(win);
+        const oldP = win.document.getElementById('pwLabPanel'); if (oldP) oldP.remove();
+        const oldT = win.document.getElementById('pwLabToggle'); if (oldT) oldT.remove();
+
+        const toggle = win.document.createElement('button'); toggle.id = 'pwLabToggle'; toggle.textContent = 'LAB';
+        const panel = win.document.createElement('div'); panel.id = 'pwLabPanel';
+        toggle.onclick = () => { panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; };
+        win.document.body.appendChild(toggle);
+        win.document.body.appendChild(panel);
+
+        function section(title) { const h = win.document.createElement('h4'); h.textContent = title; panel.appendChild(h); const row = win.document.createElement('div'); row.className = 'pwRow'; panel.appendChild(row); return row; }
+        function btn(row, label, fn) { const b = win.document.createElement('button'); b.textContent = label; b.onclick = fn; row.appendChild(b); return b; }
+        function colorField(row, labelTxt, value, onChange) {
+            const lab = win.document.createElement('label');
+            lab.appendChild(win.document.createTextNode(labelTxt));
+            const i = win.document.createElement('input'); i.type = 'color'; i.value = value; i.oninput = () => onChange(i.value);
+            lab.appendChild(i); row.appendChild(lab); return i;
+        }
+
+        let r = section('TEMA');
+        btn(r, 'oscuro', () => win.setTheme('dark'));
+        btn(r, 'gris', () => win.setTheme('grey'));
+        btn(r, 'blanco', () => win.setTheme('white'));
+        colorField(r, 'fondo', '#050505', v => win.document.documentElement.style.setProperty('--bg-color', v));
+        colorField(r, 'rejilla', '#ffffff', v => win.document.documentElement.style.setProperty('--grid-line', v));
+        const pixLabel = win.document.createElement('label');
+        const pixInput = win.document.createElement('input'); pixInput.type = 'checkbox'; pixInput.checked = win.pixelMode;
+        pixInput.onchange = () => win.setPixelMode(pixInput.checked);
+        pixLabel.appendChild(pixInput); pixLabel.appendChild(win.document.createTextNode('modo pixel'));
+        r.appendChild(pixLabel);
+
+        r = section('OVERLAYS DE PARTIDA');
+        btn(r, 'GO!', () => TRIGGERS.go(win));
+        btn(r, 'CONTADOR INICIO', () => TRIGGERS.contador(win));
+        btn(r, 'CONTADOR FIN', () => TRIGGERS.contadorEnd(win));
+        btn(r, 'PANEL DE SKILLS', () => TRIGGERS.skill(win));
+        btn(r, 'KILL GAIN', () => TRIGGERS.killGain(win));
+
+        r = section('FIN DE PARTIDA');
+        btn(r, 'GAME OVER', () => TRIGGERS.gameOver(win));
+        btn(r, 'VICTORY!', () => TRIGGERS.victory(win));
+        btn(r, 'CASHOUT', () => TRIGGERS.cashout(win));
+        btn(r, 'MATCH ENDED', () => TRIGGERS.matchEnded(win));
+        btn(r, 'MATCH FINISHED', () => TRIGGERS.matchFinished(win));
+        btn(r, 'ROOM RESTARTED', () => TRIGGERS.roomRestarted(win));
+
+        r = section('SISTEMA Y BANNER');
+        btn(r, 'REJOIN EXPIRED', () => TRIGGERS.sysNotice(win));
+        btn(r, 'KICKED', () => TRIGGERS.sysKicked(win));
+        btn(r, 'FINDING ROOM', () => TRIGGERS.bannerSearch(win));
+        btn(r, 'ANUNCIO ADMIN', () => TRIGGERS.bannerFound(win));
+        btn(r, 'OCULTAR BANNER', () => TRIGGERS.bannerOff(win));
+
+        r = section('LIMPIAR');
+        btn(r, 'CERRAR CUADROS', () => TRIGGERS.cerrar(win));
+        btn(r, 'REINICIAR UI', () => initStaticUi(win));
+    }
 
     // ===== textos asignables: mismo copy que usa hoy el juego (ver index.html) =====
     const TEXTS_KEY = 'pw_fontlab_texts';
     const TEXTS_DEFAULTS = {
-        go: 'GO!',
+        go: 'GO!', goGlowOn: true, goGlowColor: '#00ff88', goGlowBlur: 0, goSparkles: 5,
         skillTitle: 'SELECT A SKILL',
         cdStart: 'MATCH STARTING',
         cdEnd: 'MATCH ENDING',
@@ -506,77 +558,106 @@
     const TEXTS = loadTexts();
     function saveTexts() { localStorage.setItem(TEXTS_KEY, JSON.stringify(TEXTS)); }
 
-    // Cada entrada genera el código a ejecutar DENTRO del iframe leyendo TEXTS en
-    // el momento del click (así "Asignar textos" y los botones de aquí comparten
-    // siempre el mismo valor, sin tener que sincronizar nada aparte).
+    // Cada entrada llama DIRECTAMENTE a las funciones/variables de la pestaña del
+    // juego (mismo origen, sin inyectar <script>) leyendo TEXTS en el momento del
+    // click — "Asignar textos" y el panel flotante comparten siempre el mismo valor.
     const TRIGGERS = {
-        go: () => "showGoSplash(" + JSON.stringify(TEXTS.go) + ")",
-        contador: () => "(function(){ let n=5; showCountdownNumber(n," + JSON.stringify(TEXTS.cdStart) + "); const t=setInterval(()=>{ n--; if(n<1){clearInterval(t);return;} showCountdownNumber(n," + JSON.stringify(TEXTS.cdStart) + "); },700); })()",
-        contadorEnd: () => "(function(){ let n=5; showCountdownNumber(n," + JSON.stringify(TEXTS.cdEnd) + "); const t=setInterval(()=>{ n--; if(n<1){clearInterval(t);return;} showCountdownNumber(n," + JSON.stringify(TEXTS.cdEnd) + "); },700); })()",
-        skill: () => "practiceFirstSkillDone = true; skillPanelTitle = " + JSON.stringify(TEXTS.skillTitle) + "; showSkillChoice()",
-        gameOver: () => "stopGame()",
-        victory: () => "EconHUD.showPrize({reason:'victory', amount:500, carry:1200})",
-        cashout: () => "EconHUD.showPrize({reason:'cashout', amount:800, carry:1000, kills:6, feePct:10, fee:100})",
-        matchEnded: () => "EconHUD.showPrize({reason:'arcadeEnd', myAmount:300, pot:1500, top:[{pos:1,name:'Bot1',pct:40,amount:600,mine:false},{pos:2,name:'me',pct:20,amount:300,mine:true}]})",
-        matchFinished: () => "els.resultTitle.innerText='MATCH FINISHED'; els.resultTitle.style.color='#00ff88'; showResultsUI();",
-        roomRestarted: () => "els.resultTitle.innerText='ROOM RESTARTED'; els.resultTitle.style.color='#ffcc00'; showResultsUI();",
-        killGain: () => "showKillGain(1500)",
-        sysNotice: () => "showSystemMsg(" + JSON.stringify(TEXTS.rejoinBody) + ", " + JSON.stringify(TEXTS.rejoinTitle) + ")",
-        sysKicked: () => "showSystemMsg(" + JSON.stringify(TEXTS.kickedBody) + ", " + JSON.stringify(TEXTS.kickedTitle) + ")",
-        bannerSearch: () => "setLobbyBanner(" + JSON.stringify('<b>' + TEXTS.findingRoom + '</b> · JOINING THE BEST MATCH') + ", 'search')",
-        bannerFound: () => "setLobbyBanner(" + JSON.stringify('<b>' + TEXTS.adminAnnounce + '</b>') + ", 'found')",
-        bannerOff: () => "setLobbyBanner(null)",
-        cerrar: () => "els.result.style.display='none'; closeSkillChoice(); hideSystemMsg(); setLobbyBanner(null); hideCountdownNumber(); var _pm=document.getElementById('prizeModal'); if(_pm) _pm.style.display='none'; var _go=document.getElementById('goSplash'); if(_go) _go.remove();",
+        go: (win) => { win.goGlowOn = TEXTS.goGlowOn; win.goGlowColor = TEXTS.goGlowColor; win.goGlowBlur = TEXTS.goGlowBlur; win.goSparkles = TEXTS.goSparkles; win.showGoSplash(TEXTS.go); },
+        contador: (win) => { let n = 5; win.showCountdownNumber(n, TEXTS.cdStart); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdStart); }, 700); },
+        contadorEnd: (win) => { let n = 5; win.showCountdownNumber(n, TEXTS.cdEnd); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdEnd); }, 700); },
+        skill: (win) => { win.practiceFirstSkillDone = true; win.skillPanelTitle = TEXTS.skillTitle; win.showSkillChoice(); },
+        gameOver: (win) => win.stopGame(),
+        victory: (win) => win.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }),
+        cashout: (win) => win.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }),
+        matchEnded: (win) => win.EconHUD.showPrize({ reason: 'arcadeEnd', myAmount: 300, pot: 1500, top: [{ pos: 1, name: 'Bot1', pct: 40, amount: 600, mine: false }, { pos: 2, name: 'me', pct: 20, amount: 300, mine: true }] }),
+        matchFinished: (win) => { win.els.resultTitle.innerText = 'MATCH FINISHED'; win.els.resultTitle.style.color = '#00ff88'; win.showResultsUI(); },
+        roomRestarted: (win) => { win.els.resultTitle.innerText = 'ROOM RESTARTED'; win.els.resultTitle.style.color = '#ffcc00'; win.showResultsUI(); },
+        killGain: (win) => win.showKillGain(1500),
+        sysNotice: (win) => win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle),
+        sysKicked: (win) => win.showSystemMsg(TEXTS.kickedBody, TEXTS.kickedTitle),
+        bannerSearch: (win) => win.setLobbyBanner('<b>' + TEXTS.findingRoom + '</b> · JOINING THE BEST MATCH', 'search'),
+        bannerFound: (win) => win.setLobbyBanner('<b>' + TEXTS.adminAnnounce + '</b>', 'found'),
+        bannerOff: (win) => win.setLobbyBanner(null),
+        cerrar: (win) => {
+            win.els.result.style.display = 'none'; win.closeSkillChoice(); win.hideSystemMsg(); win.setLobbyBanner(null); win.hideCountdownNumber();
+            const pm = win.document.getElementById('prizeModal'); if (pm) pm.style.display = 'none';
+            const go = win.document.getElementById('goSplash'); if (go) go.remove();
+        },
     };
-    function fireTrigger(key) { runInGame(TRIGGERS[key]()); }
-    function goToUiTab() { document.querySelector('#tabs button[data-tab="mapa"]').click(); }
     function goToCarteles(anchorId) {
         document.querySelector('#tabs button[data-tab="carteles"]').click();
         const el = document.getElementById(anchorId); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    document.querySelectorAll('[data-trigger]').forEach(btn => {
-        btn.onclick = () => fireTrigger(btn.dataset.trigger);
-    });
 
     // ===================== PESTAÑA: ASIGNAR TEXTOS =====================
     // "cartel" enlaza con la pestaña Carteles (el marco visual de ese mensaje —
     // fijo por sitio del código, no elegible por texto); "letra" describe qué
     // tipografía usa hoy ese texto en el juego (fija o afinable en Carteles/Textos).
     const TEXT_ASSIGN_DEFS = [
-        { label: 'GO! (splash de arranque)', fields: [{ key: 'go', kind: 'text' }], trigger: 'go', letra: 'atlas' },
-        { label: 'SELECT A SKILL (título del panel de skills)', fields: [{ key: 'skillTitle', kind: 'text' }], trigger: 'skill', cartel: { label: 'panel de skills', anchor: 'cartelSkill' }, letra: 'panel' },
-        { label: 'Contador — etiqueta de inicio', fields: [{ key: 'cdStart', kind: 'text' }], trigger: 'contador' },
-        { label: 'Contador — etiqueta de fin', fields: [{ key: 'cdEnd', kind: 'text' }], trigger: 'contadorEnd' },
-        { label: 'Banner — buscando sala', fields: [{ key: 'findingRoom', kind: 'text' }], trigger: 'bannerSearch', cartel: { label: 'banner de lobby', anchor: 'cartelBanner' } },
-        { label: 'Banner — anuncio de admin', fields: [{ key: 'adminAnnounce', kind: 'text' }], trigger: 'bannerFound', cartel: { label: 'banner de lobby', anchor: 'cartelBanner' } },
+        { label: 'GO! (splash de arranque)', fields: [
+            { key: 'go', kind: 'text', small: 'texto' },
+            { key: 'goGlowOn', kind: 'checkbox', small: 'glow' },
+            { key: 'goGlowColor', kind: 'color', small: 'color' },
+            { key: 'goGlowBlur', kind: 'number', small: 'blur (0=auto)' },
+            { key: 'goSparkles', kind: 'number', small: 'sparkles' },
+        ], trigger: 'go', letra: 'atlas' },
+        { label: 'SELECT A SKILL (título del panel de skills)', fields: [{ key: 'skillTitle', kind: 'text', small: 'texto' }], trigger: 'skill', cartel: { label: 'panel de skills', anchor: 'cartelSkill' }, letra: 'panel' },
+        { label: 'Contador — etiqueta de inicio', fields: [{ key: 'cdStart', kind: 'text', small: 'texto' }], trigger: 'contador' },
+        { label: 'Contador — etiqueta de fin', fields: [{ key: 'cdEnd', kind: 'text', small: 'texto' }], trigger: 'contadorEnd' },
+        { label: 'Banner — buscando sala', fields: [{ key: 'findingRoom', kind: 'text', small: 'texto' }], trigger: 'bannerSearch', cartel: { label: 'banner de lobby', anchor: 'cartelBanner' } },
+        { label: 'Banner — anuncio de admin', fields: [{ key: 'adminAnnounce', kind: 'text', small: 'texto' }], trigger: 'bannerFound', cartel: { label: 'banner de lobby', anchor: 'cartelBanner' } },
         { label: 'Modal de sistema — REJOIN EXPIRED', fields: [{ key: 'rejoinTitle', kind: 'text', small: 'título' }, { key: 'rejoinBody', kind: 'textarea', small: 'cuerpo' }], trigger: 'sysNotice', cartel: { label: 'modal de sistema', anchor: 'cartelSysModal' }, letra: 'panel' },
         { label: 'Modal de sistema — KICKED', fields: [{ key: 'kickedTitle', kind: 'text', small: 'título' }, { key: 'kickedBody', kind: 'textarea', small: 'cuerpo' }], trigger: 'sysKicked', cartel: { label: 'modal de sistema', anchor: 'cartelSysModal' }, letra: 'panel' },
     ];
     function buildTextAssignCard(def) {
         const card = document.createElement('div'); card.className = 'bannerCard';
-        const h = document.createElement('h3'); h.textContent = def.label; card.appendChild(h);
+        const head = document.createElement('div'); head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px';
+        const h = document.createElement('h3'); h.textContent = def.label; h.style.margin = '0';
+        const resetBtn = document.createElement('button'); resetBtn.className = 'secondary'; resetBtn.textContent = 'restablecer';
+        resetBtn.style.cssText = 'font-size:10px;padding:3px 8px;flex:0 0 auto';
+        head.appendChild(h); head.appendChild(resetBtn);
+        card.appendChild(head);
+
         const row = document.createElement('div'); row.className = 'row'; row.style.alignItems = 'flex-start';
+        const inputs = {};
         for (const f of def.fields) {
-            const wrap = document.createElement('label'); wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;flex:1;min-width:220px';
+            const compact = f.kind === 'checkbox' || f.kind === 'color' || f.kind === 'number';
+            const wrap = document.createElement('label');
+            wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;' + (compact ? 'min-width:70px' : 'flex:1;min-width:220px');
             if (f.small) { const sm = document.createElement('span'); sm.className = 'label'; sm.textContent = f.small; wrap.appendChild(sm); }
-            const input = document.createElement(f.kind === 'textarea' ? 'textarea' : 'input');
-            if (f.kind !== 'textarea') input.type = 'text'; else { input.rows = 2; input.style.resize = 'vertical'; }
-            input.style.width = '100%'; input.style.boxSizing = 'border-box';
-            input.value = TEXTS[f.key];
-            input.addEventListener('input', () => { TEXTS[f.key] = input.value; saveTexts(); });
+            let input;
+            if (f.kind === 'textarea') { input = document.createElement('textarea'); input.rows = 2; input.style.resize = 'vertical'; input.style.width = '100%'; }
+            else { input = document.createElement('input'); input.type = f.kind; if (!compact) input.style.width = '100%'; }
+            input.style.boxSizing = 'border-box';
+            if (f.kind === 'checkbox') input.checked = !!TEXTS[f.key]; else input.value = TEXTS[f.key];
+            input.addEventListener(f.kind === 'checkbox' ? 'change' : 'input', () => {
+                TEXTS[f.key] = f.kind === 'checkbox' ? input.checked : (f.kind === 'number' ? (Number(input.value) || 0) : input.value);
+                saveTexts();
+            });
+            inputs[f.key] = input;
             wrap.appendChild(input);
             row.appendChild(wrap);
         }
         const btn = document.createElement('button'); btn.className = 'secondary'; btn.textContent = 'VER EN UI';
         btn.style.alignSelf = 'flex-end';
-        btn.onclick = () => { goToUiTab(); fireTrigger(def.trigger); };
+        btn.onclick = () => runOnUi(win => TRIGGERS[def.trigger](win));
         row.appendChild(btn);
         card.appendChild(row);
+
+        resetBtn.onclick = () => {
+            for (const f of def.fields) {
+                TEXTS[f.key] = TEXTS_DEFAULTS[f.key];
+                const input = inputs[f.key];
+                if (f.kind === 'checkbox') input.checked = !!TEXTS[f.key]; else input.value = TEXTS[f.key];
+            }
+            saveTexts();
+        };
+
         // Letra: qué tipografía usa este texto hoy en el juego.
         if (def.letra === 'atlas') {
             const info = document.createElement('div'); info.className = 'meta';
             const ready = pixHeroReady(TEXTS.go);
-            info.textContent = 'letra: ' + (ready ? 'atlas (sprites únicos G/O/! ya cargados)' : 'fallback procedural (faltan letras del atlas para este texto)') + ' — modo pixel activado en "UI del juego".';
+            info.textContent = 'letra: ' + (ready ? 'atlas (sprites únicos G/O/! ya cargados) — el glow/sparkles de arriba se aplica igual sobre el sprite' : 'fallback procedural (faltan letras del atlas para este texto)') + '.';
             card.appendChild(info);
         } else if (def.letra === 'panel') {
             const info = document.createElement('div'); info.className = 'meta';
@@ -627,20 +708,21 @@
     [cBorder, cGlow, cBlur].forEach(el => el.addEventListener('input', redrawCartelPreview));
     redrawCartelPreview();
 
+    function applyStyleTag(win, id, css) {
+        const old = win.document.getElementById(id); if (old) old.remove();
+        const st = win.document.createElement('style'); st.id = id; st.textContent = css;
+        win.document.head.appendChild(st);
+    }
     document.getElementById('cApplyLive').onclick = () => {
         const css = cartelCss();
-        runInGame(
-            "(function(){ var old=document.getElementById('pwLabCartelCss'); if(old) old.remove();" +
-            "var st=document.createElement('style'); st.id='pwLabCartelCss'; st.textContent=" + JSON.stringify(css) + ";" +
-            "document.head.appendChild(st); })()"
-        );
-        goToUiTab();
-        document.getElementById('cartelMeta').textContent = 'aplicado en el iframe de "UI del juego" — abre un mensaje de sistema (REJOIN EXPIRED/KICKED) para verlo.';
+        runOnUi(win => applyStyleTag(win, 'pwLabCartelCss', css));
+        document.getElementById('cartelMeta').textContent = 'aplicado — dispara REJOIN EXPIRED/KICKED desde el panel flotante para verlo.';
     };
     document.getElementById('cCopyCss').onclick = () => {
         const css = cartelCss();
         navigator.clipboard.writeText(css).then(() => { document.getElementById('cartelMeta').textContent = 'copiado: ' + css; }).catch(() => { document.getElementById('cartelMeta').textContent = css; });
     };
+    document.getElementById('cReset').onclick = () => { cBorder.value = '#00ff88'; cGlow.value = '#00ff88'; cBlur.value = 40; redrawCartelPreview(); };
 
     // ===== Carteles: banner de lobby =====
     const LB_KEY = 'pw_fontlab_cartel_banner';
@@ -681,18 +763,14 @@
 
     document.getElementById('lbApplyLive').onclick = () => {
         const css = lbCss();
-        runInGame(
-            "(function(){ var old=document.getElementById('pwLabLobbyCss'); if(old) old.remove();" +
-            "var st=document.createElement('style'); st.id='pwLabLobbyCss'; st.textContent=" + JSON.stringify(css) + ";" +
-            "document.head.appendChild(st); })()"
-        );
-        goToUiTab();
-        document.getElementById('lbMeta').textContent = 'aplicado — dispara FINDING ROOM / ANUNCIO ADMIN desde "UI del juego" para verlo.';
+        runOnUi(win => applyStyleTag(win, 'pwLabLobbyCss', css));
+        document.getElementById('lbMeta').textContent = 'aplicado — dispara FINDING ROOM / ANUNCIO ADMIN desde el panel flotante para verlo.';
     };
     document.getElementById('lbCopyCss').onclick = () => {
         const css = lbCss();
         navigator.clipboard.writeText(css).then(() => { document.getElementById('lbMeta').textContent = 'copiado: ' + css; }).catch(() => { document.getElementById('lbMeta').textContent = css; });
     };
+    document.getElementById('lbReset').onclick = () => { lbDef.value = '#00ff88'; lbSearch.value = '#4d9bff'; lbFound.value = '#00ff88'; redrawLbPreview(); };
 
     // ===== Carteles: panel de selección de skill =====
     const SK_KEY = 'pw_fontlab_cartel_skill';
@@ -731,14 +809,14 @@
     HERO_READY_PROMISE.then(redrawSkPreview);
 
     document.getElementById('skApplyLive').onclick = () => {
-        runInGame('setPixPanelAccent(' + JSON.stringify(skAccent.value) + ')');
-        goToUiTab();
-        document.getElementById('skMeta').textContent = 'aplicado — activa "modo pixel" y dispara PANEL DE SKILLS (o un mensaje de sistema) para verlo.';
+        runOnUi(win => win.setPixPanelAccent(skAccent.value));
+        document.getElementById('skMeta').textContent = 'aplicado — activa "modo pixel" en el panel flotante y dispara PANEL DE SKILLS (o un mensaje de sistema) para verlo.';
     };
     document.getElementById('skCopyOpts').onclick = () => {
         const txt = "pixPanelAccent = " + JSON.stringify(skAccent.value) + ";";
         navigator.clipboard.writeText(txt).then(() => { document.getElementById('skMeta').textContent = 'copiado: ' + txt; }).catch(() => { document.getElementById('skMeta').textContent = txt; });
     };
+    document.getElementById('skReset').onclick = () => { skAccent.value = '#00ff88'; redrawSkPreview(); };
 </script>
 </body>
 </html>
