@@ -1224,10 +1224,6 @@
     // la misma textura 9-slice, se puedan retocar juntos desde el laboratorio.
     let pixPanelAccent = '#00ff88';
     let skillPanelTitle = 'SELECT A SKILL';   // asignable desde el laboratorio (font-preview.html)
-    // Estilo del splash GO! (asignable desde el laboratorio): antes iba fijo a
-    // fuego dentro de showGoSplash, sin forma de tocarlo desde fuera.
-    // glowBlur=0 = automático (proporcional al tamaño del splash).
-    let goGlowOn = true, goGlowColor = '#00ff88', goGlowBlur = 0, goSparkles = 5;
     let enableEnemyFX = true;
     let serverEnemyFx = true;   // override global del server (admin): false = sin FX de enemigos para todos
     // Zoom base: ajuste LOCAL de tu navegador (lo pone el panel admin via localStorage,
@@ -3213,13 +3209,25 @@
     }
     // Número grande de cuenta atrás (9..1), estilo GO!. Se llama una vez por segundo.
     let _lastCdNum = null;
-    function showCountdownNumber(n, label) {
+    // opts (opcional, asignable desde el laboratorio): mismo esquema que
+    // pixFancyText. Sin opts, el look de siempre para el jugador real.
+    function showCountdownNumber(n, label, opts) {
         if (n === _lastCdNum) return; _lastCdNum = n;
+        opts = opts || {};
         ensureLobbyFx();
         const old = document.getElementById('cdNum'); if (old) old.remove();
         const el = document.createElement('div'); el.id = 'cdNum';
         el.innerHTML = '<div class="cd-lbl">' + (label || 'MATCH STARTING') + '</div>';
-        if (pixelMode) { const cv = pixFancyText(String(n), 9, { thin: true, glow: '#00ff88', glowBlur: 30, hd: 2 }); cv.className = 'cd-n'; el.appendChild(cv); }
+        if (pixelMode) {
+            const o = { thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
+            if (opts.plain) o.plain = true;
+            if (opts.fill) o.fill = opts.fill;
+            if (opts.shade) o.shade = opts.shade;
+            if (opts.sparkles) o.sparkles = opts.sparkles;
+            const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
+            if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
+            const cv = pixFancyText(String(n), opts.px || 9, o); cv.className = 'cd-n'; el.appendChild(cv);
+        }
         else { const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3, 5s) lo dispara quien llama, una vez al entrar en los 5s.
@@ -3766,8 +3774,12 @@
 
     // Splash "GO!" estilo PillWars al arrancar la partida (entra grande, rebota y se
     // desvanece). Acompaña al inicio de la música y la liberación del control.
-    function showGoSplash(text) {
+    // opts (opcional, asignable desde el laboratorio): mismo esquema que
+    // pixFancyText (thin, plain, hd, fill, shade, glow, glowBlur, sparkles).
+    // Sin opts se mantiene el look de siempre para el jugador real.
+    function showGoSplash(text, opts) {
         text = text || 'GO!';
+        opts = opts || {};
         if (!document.getElementById('goSplashCss')) {
             const st = document.createElement('style');
             st.id = 'goSplashCss';
@@ -3784,10 +3796,24 @@
         const el = document.createElement('div');
         el.id = 'goSplash';
         if (pixelMode) {
-            const glowOpt = goGlowOn ? { glow: goGlowColor } : {};
+            const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
+            const sparkles = opts.sparkles != null ? opts.sparkles : 5;
             let cv;
-            if (heroFontReady && pixHeroReady(text)) { const th = Math.max(60, Math.min(300, Math.round(width * 0.42))); if (goGlowOn) glowOpt.glowBlur = goGlowBlur > 0 ? goGlowBlur : th * 0.3; cv = pixHeroText(text, th, Object.assign({ sparkles: goSparkles }, glowOpt)); }
-            else { const px = Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))); if (goGlowOn) glowOpt.glowBlur = goGlowBlur > 0 ? goGlowBlur : px * 4; cv = pixFancyText(text, px, Object.assign({ sparkles: goSparkles, thin: true, hd: 2 }, glowOpt)); }
+            if (heroFontReady && pixHeroReady(text)) {
+                const th = Math.max(60, Math.min(300, Math.round(width * 0.42)));
+                const o = {}; if (sparkles > 0) o.sparkles = sparkles;
+                if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : th * 0.3; }
+                cv = pixHeroText(text, th, o);
+            } else {
+                const px = Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37)));
+                const o = { thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
+                if (opts.plain) o.plain = true;
+                if (opts.fill) o.fill = opts.fill;
+                if (opts.shade) o.shade = opts.shade;
+                if (sparkles > 0) o.sparkles = sparkles;
+                if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : px * 4; }
+                cv = pixFancyText(text, px, o);
+            }
             cv.className = 'go-txt'; el.appendChild(cv);
         } else { const d = document.createElement('div'); d.className = 'go-txt'; d.textContent = text; el.appendChild(d); }
         document.body.appendChild(el);
@@ -3864,7 +3890,9 @@
     // los 10s del pick). Centralizado para que el sonido se vaya tanto si eliges como
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
-    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; wrap.appendChild(d1); wrap.appendChild(pixFancyText(skillPanelTitle, 2, {})); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
+    // titleOpts (opcional, asignable desde el laboratorio): mismo esquema que
+    // pixFancyText para el título "SELECT A SKILL". Sin él, look de siempre.
+    function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; wrap.appendChild(d1); wrap.appendChild(pixFancyText(skillPanelTitle, 2, titleOpts || {})); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
         els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name, fitPx = Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixFancyText(nm, fitPx, { plain: true, shade: '#b9c2cc', hd: 1 }); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }

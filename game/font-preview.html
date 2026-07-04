@@ -82,7 +82,7 @@
 
 <!-- ===================== PESTAÑA 2: TEXTOS ===================== -->
 <div id="panel-textos" class="panel">
-<div class="hint">Ajuste fino de los TEXTOS pixel sueltos (solo la tipografía, sin el panel que los rodea). Los cuadros enteros con fondo (panel de skills, mensajes de sistema…) se ven en "UI del juego"; su look de plantilla se ajusta en "Carteles" y su copy en "Asignar textos". Los ajustes se guardan solos (localStorage). "copiar opciones" te da el objeto de opciones tal cual para pegarlo en el código cuando decidas el estilo final.</div>
+<div class="hint">Control TOTAL de cada texto que se dibuja como fuente pixel (letra: procedural con trazo/halo/colores, o sprites del atlas cuando existen — se avisa cuál se está usando). GO!, la cuenta atrás y "SELECT A SKILL" tienen botón <b>VER EN UI</b>: dispara el cuadro real en la pestaña del juego con estos mismos ajustes — no hay controles duplicados en ningún otro sitio para estos tres. El marco/fondo que los rodea se afina en "Carteles"; el copy de los mensajes que NO usan fuente pixel (banners, modales de sistema) va en "Asignar textos". Todo se guarda solo (localStorage); "copiar opciones" te da el objeto tal cual para pegarlo en el código.</div>
 <div id="bannerCards"></div>
 </div>
 
@@ -121,10 +121,10 @@
 
 <div class="bannerCard" id="cartelSkill">
     <h3>Panel de selección de skill (marco pixel + diamantes)</h3>
-    <div class="hint" style="margin:6px 0">Solo tiene efecto visible con "modo pixel" activo — en modo clásico el panel usa el estilo normal (verde fijo, sin textura).</div>
+    <div class="hint" style="margin:6px 0">Solo tiene efecto visible con "modo pixel" activo — en modo clásico el panel usa el estilo normal (verde fijo, sin textura). "APLICAR EN VIVO" no es una maqueta local: abre/reutiliza "UI del juego" y dispara el panel COMPLETO real con dos skills de verdad, para ver el acento tal cual queda.</div>
     <div class="row">
         <span class="ctrl">acento pixel-art <input type="color" id="skAccent" value="#00ff88"></span>
-        <button class="secondary" id="skApplyLive">APLICAR EN VIVO</button>
+        <button class="secondary" id="skApplyLive">APLICAR EN VIVO (panel completo real)</button>
         <button class="secondary" id="skCopyOpts">COPIAR (setPixPanelAccent)</button>
         <button class="secondary" id="skReset">restablecer</button>
     </div>
@@ -135,7 +135,7 @@
 
 <!-- ===================== PESTAÑA 4: ASIGNAR TEXTOS ===================== -->
 <div id="panel-asignar" class="panel">
-<div class="hint">El copy real y el estilo (letra) de cada mensaje del juego (mismos valores por defecto que usa la partida). Edítalo aquí — se guarda solo — y pulsa "VER EN UI" para abrir/reutilizar la pestaña del juego y disparar ese cuadro con tus valores. "restablecer" (arriba de cada tarjeta) vuelve a los valores de fábrica.</div>
+<div class="hint">El copy real de los mensajes que NO se dibujan con fuente pixel (banners de lobby y modales de sistema — son texto/HTML normal, sin letra/trazo que ajustar). Para GO!, la cuenta atrás y "SELECT A SKILL" — que sí son fuente pixel con estilo completo — ve a la pestaña "Textos". Edítalo aquí — se guarda solo — y pulsa "VER EN UI" para abrir/reutilizar la pestaña del juego y disparar ese cuadro con tus valores. "restablecer" (arriba de cada tarjeta) vuelve a los valores de fábrica.</div>
 <div id="textAssignCards"></div>
 </div>
 
@@ -269,6 +269,24 @@
         return base;
     }
     function saveBannerState(def, state) { localStorage.setItem('pw_fontlab_' + def.id, JSON.stringify(state)); }
+    function labState(id) { return loadBannerState(BANNER_DEFS.find(d => d.id === id)); }
+    // Traduce el estado de una tarjeta (thin/plain/hd/glow/sparkles/colores) al
+    // mismo objeto de opciones que espera pixFancyText en el juego real.
+    function labOptsFromState(s) {
+        const o = { thin: s.thin, plain: s.plain, fill: s.fill, shade: s.shade, sparkles: s.sparkles, glow: s.glow ? s.glowColor : false };
+        if (s.hd > 0) o.hd = s.hd;
+        if (s.glow) o.glowBlur = s.glowBlur;
+        return o;
+    }
+    // Solo estos 3 ids son overlays reales del juego (el resto son muestras de
+    // tipografía sin equivalente disparable todavía) — "VER EN UI" y el panel
+    // flotante de "UI del juego" leen siempre este mismo estado guardado, así
+    // que no hay dos sitios distintos con controles de estilo para lo mismo.
+    const LIVE_FIREABLE = {
+        go: (win, s) => win.showGoSplash(s.text, labOptsFromState(s)),
+        contador: (win, s) => { let n = 5; const label = TEXTS.cdStart; win.showCountdownNumber(n, label, labOptsFromState(s)); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, label, labOptsFromState(s)); }, 700); },
+        skillTitle: (win, s) => { win.practiceFirstSkillDone = true; win.skillPanelTitle = s.text; win.showSkillChoice(labOptsFromState(s)); },
+    };
 
     function renderFancyWithState(text, state) {
         const atlasReady = pixHeroReady(text);
@@ -294,6 +312,7 @@
                 '<label>px <input type="number" class="bPx" value="' + state.px + '" min="1" max="16"></label>' +
                 '<button class="secondary bReset">restablecer</button>' +
                 '<button class="secondary bCopy">copiar opciones</button>' +
+                (LIVE_FIREABLE[def.id] ? '<button class="secondary bVer">VER EN UI</button>' : '') +
             '</div>' +
             '<div class="row">' +
                 '<fieldset><legend>trazo</legend>' +
@@ -371,6 +390,9 @@
             const txt = 'pixFancyText(' + JSON.stringify(s.text) + ', ' + s.px + ', ' + JSON.stringify(opts) + ')';
             navigator.clipboard.writeText(txt).then(() => { $('.bMeta').textContent = 'copiado: ' + txt; }).catch(() => { $('.bMeta').textContent = txt; });
         };
+        if (LIVE_FIREABLE[def.id]) {
+            $('.bVer').onclick = () => runOnUi(win => LIVE_FIREABLE[def.id](win, currentState()));
+        }
         redraw();
         return card;
     }
@@ -419,6 +441,14 @@
     // y congela la sim al instante: sin bots/comida/virus, sin timers corriendo,
     // sin partida real — solo el HUD estático sobre el mapa entero.
     function initStaticUi(win) {
+        // Bloquea returnToMenu(): sin esto, un websocket/matchmaking pendiente de
+        // un intento anterior puede resolverse DESPUÉS de forzar el estado
+        // congelado (ws.onclose/onerror, timers de "FINDING ROOM"...) y reabrir
+        // el menú de modo por su cuenta. Es el único punto por el que se vuelve
+        // a mostrar el login/mode screen, así que se anula de raíz.
+        win.returnToMenu = () => {};
+        if (win.netState && win.netState.ws) { try { win.netState.ws.close(); } catch (e) {} win.netState = null; }
+        if (win._mmTimer) { win.clearInterval(win._mmTimer); win._mmTimer = null; }
         win.startPracticeGame('arcade');
         win.sim.foods.length = 0; win.sim.enemies.length = 0; win.sim.viruses.length = 0;
         win.sim.ejectedMasses.length = 0; win.sim.projectiles.length = 0;
@@ -539,8 +569,6 @@
     // ===== textos asignables: mismo copy que usa hoy el juego (ver index.html) =====
     const TEXTS_KEY = 'pw_fontlab_texts';
     const TEXTS_DEFAULTS = {
-        go: 'GO!', goGlowOn: true, goGlowColor: '#00ff88', goGlowBlur: 0, goSparkles: 5,
-        skillTitle: 'SELECT A SKILL',
         cdStart: 'MATCH STARTING',
         cdEnd: 'MATCH ENDING',
         findingRoom: 'FINDING ROOM',
@@ -562,10 +590,10 @@
     // juego (mismo origen, sin inyectar <script>) leyendo TEXTS en el momento del
     // click — "Asignar textos" y el panel flotante comparten siempre el mismo valor.
     const TRIGGERS = {
-        go: (win) => { win.goGlowOn = TEXTS.goGlowOn; win.goGlowColor = TEXTS.goGlowColor; win.goGlowBlur = TEXTS.goGlowBlur; win.goSparkles = TEXTS.goSparkles; win.showGoSplash(TEXTS.go); },
-        contador: (win) => { let n = 5; win.showCountdownNumber(n, TEXTS.cdStart); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdStart); }, 700); },
-        contadorEnd: (win) => { let n = 5; win.showCountdownNumber(n, TEXTS.cdEnd); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, TEXTS.cdEnd); }, 700); },
-        skill: (win) => { win.practiceFirstSkillDone = true; win.skillPanelTitle = TEXTS.skillTitle; win.showSkillChoice(); },
+        go: (win) => LIVE_FIREABLE.go(win, labState('go')),
+        contador: (win) => LIVE_FIREABLE.contador(win, labState('contador')),
+        contadorEnd: (win) => { const s = labState('contador'); let n = 5; const label = TEXTS.cdEnd; win.showCountdownNumber(n, label, labOptsFromState(s)); const t = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(t); return; } win.showCountdownNumber(n, label, labOptsFromState(s)); }, 700); },
+        skill: (win) => LIVE_FIREABLE.skillTitle(win, labState('skillTitle')),
         gameOver: (win) => win.stopGame(),
         victory: (win) => win.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }),
         cashout: (win) => win.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }),
@@ -594,14 +622,6 @@
     // fijo por sitio del código, no elegible por texto); "letra" describe qué
     // tipografía usa hoy ese texto en el juego (fija o afinable en Carteles/Textos).
     const TEXT_ASSIGN_DEFS = [
-        { label: 'GO! (splash de arranque)', fields: [
-            { key: 'go', kind: 'text', small: 'texto' },
-            { key: 'goGlowOn', kind: 'checkbox', small: 'glow' },
-            { key: 'goGlowColor', kind: 'color', small: 'color' },
-            { key: 'goGlowBlur', kind: 'number', small: 'blur (0=auto)' },
-            { key: 'goSparkles', kind: 'number', small: 'sparkles' },
-        ], trigger: 'go', letra: 'atlas' },
-        { label: 'SELECT A SKILL (título del panel de skills)', fields: [{ key: 'skillTitle', kind: 'text', small: 'texto' }], trigger: 'skill', cartel: { label: 'panel de skills', anchor: 'cartelSkill' }, letra: 'panel' },
         { label: 'Contador — etiqueta de inicio', fields: [{ key: 'cdStart', kind: 'text', small: 'texto' }], trigger: 'contador' },
         { label: 'Contador — etiqueta de fin', fields: [{ key: 'cdEnd', kind: 'text', small: 'texto' }], trigger: 'contadorEnd' },
         { label: 'Banner — buscando sala', fields: [{ key: 'findingRoom', kind: 'text', small: 'texto' }], trigger: 'bannerSearch', cartel: { label: 'banner de lobby', anchor: 'cartelBanner' } },
@@ -654,12 +674,7 @@
         };
 
         // Letra: qué tipografía usa este texto hoy en el juego.
-        if (def.letra === 'atlas') {
-            const info = document.createElement('div'); info.className = 'meta';
-            const ready = pixHeroReady(TEXTS.go);
-            info.textContent = 'letra: ' + (ready ? 'atlas (sprites únicos G/O/! ya cargados) — el glow/sparkles de arriba se aplica igual sobre el sprite' : 'fallback procedural (faltan letras del atlas para este texto)') + '.';
-            card.appendChild(info);
-        } else if (def.letra === 'panel') {
+        if (def.letra === 'panel') {
             const info = document.createElement('div'); info.className = 'meta';
             info.textContent = 'letra: fuente pixel del juego, color de acento compartido con el marco (ver cartel abajo).';
             card.appendChild(info);
@@ -781,20 +796,20 @@
     const skAccent = document.getElementById('skAccent');
     skAccent.value = loadSkAccent();
 
+    // Solo vista previa del MARCO (color de borde + diamantes del título) — el
+    // panel completo con las 2 skills reales solo se ve de verdad disparándolo
+    // en la pestaña del juego ("APLICAR EN VIVO"), no reimplementado aquí.
     function redrawSkPreview() {
         localStorage.setItem(SK_KEY, JSON.stringify({ accent: skAccent.value }));
         const wrap = document.getElementById('skPreviewWrap'); wrap.innerHTML = '';
         const shade = lerpColorLocal(skAccent.value, '#000000', 0.6);
         const box = document.createElement('div');
         box.style.cssText = 'width:280px;background:#0a0a0a;border:6px solid ' + skAccent.value + ';padding:20px;text-align:center;box-shadow:6px 6px 0 rgba(0,0,0,.6);';
-        const titleWrap = document.createElement('div'); titleWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px';
+        const titleWrap = document.createElement('div'); titleWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
         const d1 = pixFancyText('-◆', 2, { fill: skAccent.value, shade, plain: true });
         const d2 = pixFancyText('-◆', 2, { fill: skAccent.value, shade, plain: true }); d2.style.transform = 'scaleX(-1)';
-        titleWrap.appendChild(d1); titleWrap.appendChild(pixFancyText(TEXTS.skillTitle || 'SELECT A SKILL', 2, {})); titleWrap.appendChild(d2);
+        titleWrap.appendChild(d1); titleWrap.appendChild(pixFancyText(labState('skillTitle').text, 2, {})); titleWrap.appendChild(d2);
         box.appendChild(titleWrap);
-        const opt = document.createElement('div'); opt.style.cssText = 'display:inline-block;border:2px solid ' + skAccent.value + ';padding:14px 20px;box-shadow:3px 3px 0 rgba(0,0,0,.7)';
-        opt.appendChild(pixFancyText('SAMPLE SKILL', 1, { plain: true, shade: '#b9c2cc', hd: 1 }));
-        box.appendChild(opt);
         wrap.appendChild(box);
     }
     // Mezcla de color simple (mismo criterio que lerpColor en index.html) para no
@@ -809,8 +824,12 @@
     HERO_READY_PROMISE.then(redrawSkPreview);
 
     document.getElementById('skApplyLive').onclick = () => {
-        runOnUi(win => win.setPixPanelAccent(skAccent.value));
-        document.getElementById('skMeta').textContent = 'aplicado — activa "modo pixel" en el panel flotante y dispara PANEL DE SKILLS (o un mensaje de sistema) para verlo.';
+        runOnUi(win => {
+            win.setPixPanelAccent(skAccent.value);
+            if (!win.pixelMode) win.setPixelMode(true);
+            LIVE_FIREABLE.skillTitle(win, labState('skillTitle'));
+        });
+        document.getElementById('skMeta').textContent = 'aplicado — panel completo con 2 skills reales disparado en la pestaña del juego.';
     };
     document.getElementById('skCopyOpts').onclick = () => {
         const txt = "pixPanelAccent = " + JSON.stringify(skAccent.value) + ";";
