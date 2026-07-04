@@ -89,9 +89,23 @@
 
 <!-- ===================== PESTAÑA 3: CARTELES (plantilla visual) ===================== -->
 <div id="panel-carteles" class="panel">
-<div class="hint">Estilo visual del CUADRO que envuelve los mensajes de sistema (borde, halo, esquinas pixel). "modo pixel" en "UI del juego" ya activa el título con fuente pixel + diamantes automáticamente — aquí solo afinas color y brillo del marco. "aplicar en vivo" lo empuja al iframe de "UI del juego"; "copiar CSS" te da la regla para pegarla en <code>index.html</code> cuando decidas el look final.</div>
-<div class="bannerCard">
-    <h3>Modal de sistema (sysModal)</h3>
+<div class="hint">El juego usa 3 marcos con fondo distintos — cada uno se afina por separado. "aplicar en vivo" lo empuja al iframe de "UI del juego" (ábrelo antes con "MOSTRAR UI"); "copiar CSS/opciones" te da lo necesario para pegarlo en <code>index.html</code> cuando decidas el look final.</div>
+
+<div class="bannerCard" id="cartelBanner">
+    <h3>Banner de lobby (tira superior: FINDING ROOM, ROOM FOUND, anuncios de admin...)</h3>
+    <div class="row">
+        <span class="ctrl">color por defecto <input type="color" id="lbColorDefault" value="#00ff88"></span>
+        <span class="ctrl">color "buscando" (search) <input type="color" id="lbColorSearch" value="#4d9bff"></span>
+        <span class="ctrl">color "encontrado" (found) <input type="color" id="lbColorFound" value="#00ff88"></span>
+        <button class="secondary" id="lbApplyLive">APLICAR EN VIVO (iframe)</button>
+        <button class="secondary" id="lbCopyCss">COPIAR CSS</button>
+    </div>
+    <div id="lbPreviewWrap" style="padding:20px; background:#000; display:flex; flex-direction:column; gap:10px; align-items:center;"></div>
+    <div class="meta" id="lbMeta"></div>
+</div>
+
+<div class="bannerCard" id="cartelSysModal">
+    <h3>Modal de sistema (REJOIN EXPIRED, KICKED...)</h3>
     <div class="row">
         <span class="ctrl">color de borde <input type="color" id="cBorderColor" value="#00ff88"></span>
         <span class="ctrl">color de halo <input type="color" id="cGlowColor" value="#00ff88"></span>
@@ -99,8 +113,21 @@
         <button class="secondary" id="cApplyLive">APLICAR EN VIVO (iframe)</button>
         <button class="secondary" id="cCopyCss">COPIAR CSS</button>
     </div>
+    <div class="hint" style="margin:6px 0">El título usa fuente pixel + diamantes solo con "modo pixel" activo en "UI del juego"; su color de acento es el mismo que el del panel de skills (abajo), porque comparten la misma textura de esquinas.</div>
     <div id="cartelPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
     <div class="meta" id="cartelMeta"></div>
+</div>
+
+<div class="bannerCard" id="cartelSkill">
+    <h3>Panel de selección de skill (marco pixel + diamantes)</h3>
+    <div class="hint" style="margin:6px 0">Solo tiene efecto visible con "modo pixel" activo — en modo clásico el panel usa el estilo normal (verde fijo, sin textura).</div>
+    <div class="row">
+        <span class="ctrl">acento pixel-art <input type="color" id="skAccent" value="#00ff88"></span>
+        <button class="secondary" id="skApplyLive">APLICAR EN VIVO (iframe)</button>
+        <button class="secondary" id="skCopyOpts">COPIAR (setPixPanelAccent)</button>
+    </div>
+    <div id="skPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
+    <div class="meta" id="skMeta"></div>
 </div>
 </div>
 
@@ -461,6 +488,7 @@
     const TEXTS_KEY = 'pw_fontlab_texts';
     const TEXTS_DEFAULTS = {
         go: 'GO!',
+        skillTitle: 'SELECT A SKILL',
         cdStart: 'MATCH STARTING',
         cdEnd: 'MATCH ENDING',
         findingRoom: 'FINDING ROOM',
@@ -485,7 +513,7 @@
         go: () => "showGoSplash(" + JSON.stringify(TEXTS.go) + ")",
         contador: () => "(function(){ let n=5; showCountdownNumber(n," + JSON.stringify(TEXTS.cdStart) + "); const t=setInterval(()=>{ n--; if(n<1){clearInterval(t);return;} showCountdownNumber(n," + JSON.stringify(TEXTS.cdStart) + "); },700); })()",
         contadorEnd: () => "(function(){ let n=5; showCountdownNumber(n," + JSON.stringify(TEXTS.cdEnd) + "); const t=setInterval(()=>{ n--; if(n<1){clearInterval(t);return;} showCountdownNumber(n," + JSON.stringify(TEXTS.cdEnd) + "); },700); })()",
-        skill: () => "practiceFirstSkillDone = true; showSkillChoice()",
+        skill: () => "practiceFirstSkillDone = true; skillPanelTitle = " + JSON.stringify(TEXTS.skillTitle) + "; showSkillChoice()",
         gameOver: () => "stopGame()",
         victory: () => "EconHUD.showPrize({reason:'victory', amount:500, carry:1200})",
         cashout: () => "EconHUD.showPrize({reason:'cashout', amount:800, carry:1000, kills:6, feePct:10, fee:100})",
@@ -502,19 +530,27 @@
     };
     function fireTrigger(key) { runInGame(TRIGGERS[key]()); }
     function goToUiTab() { document.querySelector('#tabs button[data-tab="mapa"]').click(); }
+    function goToCarteles(anchorId) {
+        document.querySelector('#tabs button[data-tab="carteles"]').click();
+        const el = document.getElementById(anchorId); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
     document.querySelectorAll('[data-trigger]').forEach(btn => {
         btn.onclick = () => fireTrigger(btn.dataset.trigger);
     });
 
     // ===================== PESTAÑA: ASIGNAR TEXTOS =====================
+    // "cartel" enlaza con la pestaña Carteles (el marco visual de ese mensaje —
+    // fijo por sitio del código, no elegible por texto); "letra" describe qué
+    // tipografía usa hoy ese texto en el juego (fija o afinable en Carteles/Textos).
     const TEXT_ASSIGN_DEFS = [
-        { label: 'GO! (splash de arranque)', fields: [{ key: 'go', kind: 'text' }], trigger: 'go' },
+        { label: 'GO! (splash de arranque)', fields: [{ key: 'go', kind: 'text' }], trigger: 'go', letra: 'atlas' },
+        { label: 'SELECT A SKILL (título del panel de skills)', fields: [{ key: 'skillTitle', kind: 'text' }], trigger: 'skill', cartel: { label: 'panel de skills', anchor: 'cartelSkill' }, letra: 'panel' },
         { label: 'Contador — etiqueta de inicio', fields: [{ key: 'cdStart', kind: 'text' }], trigger: 'contador' },
         { label: 'Contador — etiqueta de fin', fields: [{ key: 'cdEnd', kind: 'text' }], trigger: 'contadorEnd' },
-        { label: 'Banner — buscando sala', fields: [{ key: 'findingRoom', kind: 'text' }], trigger: 'bannerSearch' },
-        { label: 'Banner — anuncio de admin', fields: [{ key: 'adminAnnounce', kind: 'text' }], trigger: 'bannerFound' },
-        { label: 'Modal de sistema — REJOIN EXPIRED', fields: [{ key: 'rejoinTitle', kind: 'text', small: 'título' }, { key: 'rejoinBody', kind: 'textarea', small: 'cuerpo' }], trigger: 'sysNotice' },
-        { label: 'Modal de sistema — KICKED', fields: [{ key: 'kickedTitle', kind: 'text', small: 'título' }, { key: 'kickedBody', kind: 'textarea', small: 'cuerpo' }], trigger: 'sysKicked' },
+        { label: 'Banner — buscando sala', fields: [{ key: 'findingRoom', kind: 'text' }], trigger: 'bannerSearch', cartel: { label: 'banner de lobby', anchor: 'cartelBanner' } },
+        { label: 'Banner — anuncio de admin', fields: [{ key: 'adminAnnounce', kind: 'text' }], trigger: 'bannerFound', cartel: { label: 'banner de lobby', anchor: 'cartelBanner' } },
+        { label: 'Modal de sistema — REJOIN EXPIRED', fields: [{ key: 'rejoinTitle', kind: 'text', small: 'título' }, { key: 'rejoinBody', kind: 'textarea', small: 'cuerpo' }], trigger: 'sysNotice', cartel: { label: 'modal de sistema', anchor: 'cartelSysModal' }, letra: 'panel' },
+        { label: 'Modal de sistema — KICKED', fields: [{ key: 'kickedTitle', kind: 'text', small: 'título' }, { key: 'kickedBody', kind: 'textarea', small: 'cuerpo' }], trigger: 'sysKicked', cartel: { label: 'modal de sistema', anchor: 'cartelSysModal' }, letra: 'panel' },
     ];
     function buildTextAssignCard(def) {
         const card = document.createElement('div'); card.className = 'bannerCard';
@@ -536,10 +572,32 @@
         btn.onclick = () => { goToUiTab(); fireTrigger(def.trigger); };
         row.appendChild(btn);
         card.appendChild(row);
+        // Letra: qué tipografía usa este texto hoy en el juego.
+        if (def.letra === 'atlas') {
+            const info = document.createElement('div'); info.className = 'meta';
+            const ready = pixHeroReady(TEXTS.go);
+            info.textContent = 'letra: ' + (ready ? 'atlas (sprites únicos G/O/! ya cargados)' : 'fallback procedural (faltan letras del atlas para este texto)') + ' — modo pixel activado en "UI del juego".';
+            card.appendChild(info);
+        } else if (def.letra === 'panel') {
+            const info = document.createElement('div'); info.className = 'meta';
+            info.textContent = 'letra: fuente pixel del juego, color de acento compartido con el marco (ver cartel abajo).';
+            card.appendChild(info);
+        }
+        // Cartel: marco visual de este mensaje (enlaza a la pestaña Carteles).
+        if (def.cartel) {
+            const line = document.createElement('div'); line.className = 'meta';
+            line.style.display = 'flex'; line.style.alignItems = 'center'; line.style.gap = '8px';
+            const span = document.createElement('span'); span.textContent = 'cartel: ' + def.cartel.label;
+            const jump = document.createElement('button'); jump.className = 'secondary'; jump.textContent = 'AJUSTAR CARTEL';
+            jump.style.fontSize = '10px'; jump.style.padding = '3px 8px';
+            jump.onclick = () => goToCarteles(def.cartel.anchor);
+            line.appendChild(span); line.appendChild(jump);
+            card.appendChild(line);
+        }
         return card;
     }
     const textAssignEl = document.getElementById('textAssignCards');
-    for (const def of TEXT_ASSIGN_DEFS) textAssignEl.appendChild(buildTextAssignCard(def));
+    HERO_READY_PROMISE.then(() => { for (const def of TEXT_ASSIGN_DEFS) textAssignEl.appendChild(buildTextAssignCard(def)); });
 
     // ===================== PESTAÑA: CARTELES (plantilla visual) =====================
     const CARTEL_KEY = 'pw_fontlab_cartel_sysmodal';
@@ -582,6 +640,104 @@
     document.getElementById('cCopyCss').onclick = () => {
         const css = cartelCss();
         navigator.clipboard.writeText(css).then(() => { document.getElementById('cartelMeta').textContent = 'copiado: ' + css; }).catch(() => { document.getElementById('cartelMeta').textContent = css; });
+    };
+
+    // ===== Carteles: banner de lobby =====
+    const LB_KEY = 'pw_fontlab_cartel_banner';
+    function loadLbStyle() {
+        const d = { def: '#00ff88', search: '#4d9bff', found: '#00ff88' };
+        try { const saved = JSON.parse(localStorage.getItem(LB_KEY)); if (saved) Object.assign(d, saved); } catch (e) {}
+        return d;
+    }
+    const lbDef = document.getElementById('lbColorDefault'), lbSearch = document.getElementById('lbColorSearch'), lbFound = document.getElementById('lbColorFound');
+    { const s = loadLbStyle(); lbDef.value = s.def; lbSearch.value = s.search; lbFound.value = s.found; }
+
+    function lbCss() {
+        return '#lobbyBanner{border-color:' + lbDef.value + '!important;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px ' + lbDef.value + '55!important}' +
+            '#lobbyBanner .lb-dot{background:' + lbDef.value + '!important;box-shadow:0 0 10px ' + lbDef.value + '!important}' +
+            '#lobbyBanner .lb-strong{color:' + lbDef.value + '!important}' +
+            '#lobbyBanner.lb-search{border-color:' + lbSearch.value + '!important;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px ' + lbSearch.value + '55!important}' +
+            '#lobbyBanner.lb-search .lb-dot{background:' + lbSearch.value + '!important;box-shadow:0 0 10px ' + lbSearch.value + '!important}' +
+            '#lobbyBanner.lb-search .lb-strong{color:' + lbSearch.value + '!important}' +
+            '#lobbyBanner.lb-found{border-color:' + lbFound.value + '!important;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 22px ' + lbFound.value + '!important}' +
+            '#lobbyBanner.lb-found .lb-dot{background:' + lbFound.value + '!important;box-shadow:0 0 10px ' + lbFound.value + '!important}';
+    }
+    function redrawLbPreview() {
+        const s = { def: lbDef.value, search: lbSearch.value, found: lbFound.value };
+        localStorage.setItem(LB_KEY, JSON.stringify(s));
+        const wrap = document.getElementById('lbPreviewWrap'); wrap.innerHTML = '';
+        const variants = [['por defecto', s.def, 'MATCH STARTING'], ['search', s.search, 'FINDING ROOM...'], ['found', s.found, 'ROOM FOUND']];
+        for (const [name, color, txt] of variants) {
+            const b = document.createElement('div');
+            b.style.cssText = 'display:flex;align-items:center;gap:10px;background:rgba(8,12,10,.92);border:1px solid ' + color + ';color:#fff;' +
+                'padding:10px 22px;border-radius:11px;font-family:\'Russo One\',sans-serif;font-size:13px;letter-spacing:1px;' +
+                'box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px ' + color + '55;';
+            b.innerHTML = '<span style="width:9px;height:9px;border-radius:50%;background:' + color + ';box-shadow:0 0 10px ' + color + ';flex:0 0 auto"></span><span>' + txt + ' <span style="color:' + color + ';font-size:10px">(' + name + ')</span></span>';
+            wrap.appendChild(b);
+        }
+    }
+    [lbDef, lbSearch, lbFound].forEach(el => el.addEventListener('input', redrawLbPreview));
+    redrawLbPreview();
+
+    document.getElementById('lbApplyLive').onclick = () => {
+        const css = lbCss();
+        runInGame(
+            "(function(){ var old=document.getElementById('pwLabLobbyCss'); if(old) old.remove();" +
+            "var st=document.createElement('style'); st.id='pwLabLobbyCss'; st.textContent=" + JSON.stringify(css) + ";" +
+            "document.head.appendChild(st); })()"
+        );
+        goToUiTab();
+        document.getElementById('lbMeta').textContent = 'aplicado — dispara FINDING ROOM / ANUNCIO ADMIN desde "UI del juego" para verlo.';
+    };
+    document.getElementById('lbCopyCss').onclick = () => {
+        const css = lbCss();
+        navigator.clipboard.writeText(css).then(() => { document.getElementById('lbMeta').textContent = 'copiado: ' + css; }).catch(() => { document.getElementById('lbMeta').textContent = css; });
+    };
+
+    // ===== Carteles: panel de selección de skill =====
+    const SK_KEY = 'pw_fontlab_cartel_skill';
+    function loadSkAccent() {
+        try { const saved = JSON.parse(localStorage.getItem(SK_KEY)); if (saved && saved.accent) return saved.accent; } catch (e) {}
+        return '#00ff88';
+    }
+    const skAccent = document.getElementById('skAccent');
+    skAccent.value = loadSkAccent();
+
+    function redrawSkPreview() {
+        localStorage.setItem(SK_KEY, JSON.stringify({ accent: skAccent.value }));
+        const wrap = document.getElementById('skPreviewWrap'); wrap.innerHTML = '';
+        const shade = lerpColorLocal(skAccent.value, '#000000', 0.6);
+        const box = document.createElement('div');
+        box.style.cssText = 'width:280px;background:#0a0a0a;border:6px solid ' + skAccent.value + ';padding:20px;text-align:center;box-shadow:6px 6px 0 rgba(0,0,0,.6);';
+        const titleWrap = document.createElement('div'); titleWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px';
+        const d1 = pixFancyText('-◆', 2, { fill: skAccent.value, shade, plain: true });
+        const d2 = pixFancyText('-◆', 2, { fill: skAccent.value, shade, plain: true }); d2.style.transform = 'scaleX(-1)';
+        titleWrap.appendChild(d1); titleWrap.appendChild(pixFancyText(TEXTS.skillTitle || 'SELECT A SKILL', 2, {})); titleWrap.appendChild(d2);
+        box.appendChild(titleWrap);
+        const opt = document.createElement('div'); opt.style.cssText = 'display:inline-block;border:2px solid ' + skAccent.value + ';padding:14px 20px;box-shadow:3px 3px 0 rgba(0,0,0,.7)';
+        opt.appendChild(pixFancyText('SAMPLE SKILL', 1, { plain: true, shade: '#b9c2cc', hd: 1 }));
+        box.appendChild(opt);
+        wrap.appendChild(box);
+    }
+    // Mezcla de color simple (mismo criterio que lerpColor en index.html) para no
+    // depender del juego cargado en el iframe al pintar la vista previa local.
+    function lerpColorLocal(a, b, amount) {
+        const ah = parseInt(a.replace('#', ''), 16), ar = ah >> 16, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+        const bh = parseInt(b.replace('#', ''), 16), br = bh >> 16, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+        const rr = ar + amount * (br - ar), rg = ag + amount * (bg - ag), rb = ab + amount * (bb - ab);
+        return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1);
+    }
+    skAccent.addEventListener('input', redrawSkPreview);
+    HERO_READY_PROMISE.then(redrawSkPreview);
+
+    document.getElementById('skApplyLive').onclick = () => {
+        runInGame('setPixPanelAccent(' + JSON.stringify(skAccent.value) + ')');
+        goToUiTab();
+        document.getElementById('skMeta').textContent = 'aplicado — activa "modo pixel" y dispara PANEL DE SKILLS (o un mensaje de sistema) para verlo.';
+    };
+    document.getElementById('skCopyOpts').onclick = () => {
+        const txt = "pixPanelAccent = " + JSON.stringify(skAccent.value) + ";";
+        navigator.clipboard.writeText(txt).then(() => { document.getElementById('skMeta').textContent = 'copiado: ' + txt; }).catch(() => { document.getElementById('skMeta').textContent = txt; });
     };
 </script>
 </body>
