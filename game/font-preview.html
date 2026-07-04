@@ -46,8 +46,8 @@
 
 <div id="tabs">
     <button data-tab="letras" class="active">Letras</button>
-    <button data-tab="carteles">Carteles</button>
-    <button data-tab="mapa">Mapa en vivo</button>
+    <button data-tab="carteles">Textos</button>
+    <button data-tab="mapa">UI del juego</button>
 </div>
 
 <!-- ===================== PESTAÑA 1: LETRAS ===================== -->
@@ -81,18 +81,18 @@
 
 <!-- ===================== PESTAÑA 2: CARTELES ===================== -->
 <div id="panel-carteles" class="panel">
-<div class="hint">Un panel por cartel real del juego. Los ajustes se guardan solos (localStorage) — recarga la página y los sigues viendo igual. "copiar opciones" te da el objeto de opciones tal cual para pegarlo en el código cuando decidas el estilo final.</div>
+<div class="hint">Ajuste fino de los TEXTOS pixel sueltos (solo la tipografía, sin el panel que los rodea). Los cuadros enteros (panel de skills, mensajes de sistema, resultados…) se ven en la pestaña "UI del juego". Los ajustes se guardan solos (localStorage). "copiar opciones" te da el objeto de opciones tal cual para pegarlo en el código cuando decidas el estilo final.</div>
 <div id="bannerCards"></div>
 </div>
 
 <!-- ===================== PESTAÑA 3: MAPA EN VIVO ===================== -->
 <div id="panel-mapa" class="panel">
 <div id="mapWarn">Estás abriendo esta página como archivo suelto (file://). Esta pestaña necesita servirla por HTTP (<code>node server/index.js</code> y entrar por <code>http://localhost:PUERTO/game/font-preview.html</code>) porque el navegador bloquea el acceso entre páginas locales sueltas.</div>
-<div class="hint">Partida de práctica 100% local (bots, sin servidor real, sin pagar nada) para ver los carteles sobre el juego de verdad. Cambia el tema o dispara cualquier cartel cuando quieras.</div>
+<div class="hint">La UI real del juego sobre un FONDO ESTÁTICO: sin bots, sin comida, sin partida — solo la rejilla, tu píldora quieta y el HUD. Desde aquí lanzas cada cuadro entero (GO, contador, panel de skills, mensajes de sistema…) tal cual sale en la partida. "MOSTRAR UI" también resetea todo si algo se queda abierto.</div>
 
 <div class="row">
-    <button id="mStartArcade">INICIAR PRÁCTICA (ARCADE)</button>
-    <button id="mStartClassic">INICIAR PRÁCTICA (CLASSIC)</button>
+    <button id="mShowUiArcade">MOSTRAR UI (ARCADE)</button>
+    <button id="mShowUiClassic">MOSTRAR UI (CLASSIC)</button>
     <span class="ctrl"><label><input type="checkbox" id="mPixel" checked> modo pixel</label></span>
 </div>
 <div class="row">
@@ -106,16 +106,33 @@
     </fieldset>
 </div>
 <div class="row">
-    <fieldset><legend>disparar cartel</legend>
+    <fieldset><legend>overlays de partida</legend>
         <button class="secondary" data-trigger="go">GO!</button>
         <button class="secondary" data-trigger="contador">CONTADOR 5→1</button>
-        <button class="secondary" data-trigger="skill">SELECT A SKILL</button>
+        <button class="secondary" data-trigger="skill">PANEL DE SKILLS</button>
+        <button class="secondary" data-trigger="killGain">KILL GAIN (+PILL)</button>
+    </fieldset>
+    <fieldset><legend>fin de partida</legend>
         <button class="secondary" data-trigger="gameOver">GAME OVER</button>
         <button class="secondary" data-trigger="victory">VICTORY!</button>
         <button class="secondary" data-trigger="cashout">CASHOUT</button>
         <button class="secondary" data-trigger="matchEnded">MATCH ENDED</button>
         <button class="secondary" data-trigger="matchFinished">MATCH FINISHED</button>
         <button class="secondary" data-trigger="roomRestarted">ROOM RESTARTED</button>
+    </fieldset>
+</div>
+<div class="row">
+    <fieldset><legend>mensajes de sistema (modal con fondo)</legend>
+        <button class="secondary" data-trigger="sysNotice">REJOIN EXPIRED</button>
+        <button class="secondary" data-trigger="sysKicked">KICKED</button>
+    </fieldset>
+    <fieldset><legend>banner de lobby (con fondo)</legend>
+        <button class="secondary" data-trigger="bannerSearch">FINDING ROOM</button>
+        <button class="secondary" data-trigger="bannerFound">ANUNCIO ADMIN</button>
+        <button class="secondary" data-trigger="bannerOff">OCULTAR BANNER</button>
+    </fieldset>
+    <fieldset><legend>limpiar</legend>
+        <button class="secondary" data-trigger="cerrar">CERRAR CUADROS</button>
     </fieldset>
 </div>
 <iframe id="gameFrame" src="index.html"></iframe>
@@ -386,8 +403,21 @@
         s.remove();
     }
 
-    document.getElementById('mStartArcade').onclick = () => runInGame("startPracticeGame('arcade')");
-    document.getElementById('mStartClassic').onclick = () => runInGame("startPracticeGame('classic')");
+    // UI estática: arranca la práctica local y la congela al instante — se vacían
+    // bots/comida/virus y sim.step pasa a no-op (nada se mueve, no hay eventos).
+    // timeScale=0 congela también el temporizador del panel de skills (pickTimer),
+    // y nextSkillPickTime=Infinity evita que el panel salte solo a los 30s.
+    function showStaticUi(mode) {
+        runInGame(
+            "startPracticeGame('" + mode + "');" +
+            "sim.foods.length = 0; sim.enemies.length = 0; sim.viruses.length = 0;" +
+            "sim.ejectedMasses.length = 0; sim.projectiles.length = 0;" +
+            "sim.step = function(){}; sim.timeScale = 0;" +
+            "nextSkillPickTime = Infinity;"
+        );
+    }
+    document.getElementById('mShowUiArcade').onclick = () => showStaticUi('arcade');
+    document.getElementById('mShowUiClassic').onclick = () => showStaticUi('classic');
     document.getElementById('mPixel').addEventListener('change', e => runInGame('setPixelMode(' + (e.target.checked ? 'true' : 'false') + ')'));
 
     document.querySelectorAll('[data-theme]').forEach(btn => {
@@ -411,6 +441,13 @@
         matchEnded: "EconHUD.showPrize({reason:'arcadeEnd', myAmount:300, pot:1500, top:[{pos:1,name:'Bot1',pct:40,amount:600,mine:false},{pos:2,name:'me',pct:20,amount:300,mine:true}]})",
         matchFinished: "els.resultTitle.innerText='MATCH FINISHED'; els.resultTitle.style.color='#00ff88'; showResultsUI();",
         roomRestarted: "els.resultTitle.innerText='ROOM RESTARTED'; els.resultTitle.style.color='#ffcc00'; showResultsUI();",
+        killGain: "showKillGain(1500)",
+        sysNotice: "showSystemMsg('The rejoin window has closed. Your slot was released and you need to enter again.', 'REJOIN EXPIRED')",
+        sysKicked: "showSystemMsg('You have been kicked by an administrator. Wait 30 seconds before rejoining.', 'KICKED')",
+        bannerSearch: "setLobbyBanner('<b>FINDING ROOM</b> · JOINING THE BEST MATCH', 'search')",
+        bannerFound: "setLobbyBanner('<b>SERVER RESTART IN 5 MINUTES</b>', 'found')",
+        bannerOff: "setLobbyBanner(null)",
+        cerrar: "els.result.style.display='none'; closeSkillChoice(); hideSystemMsg(); setLobbyBanner(null); hideCountdownNumber(); var _pm=document.getElementById('prizeModal'); if(_pm) _pm.style.display='none'; var _go=document.getElementById('goSplash'); if(_go) _go.remove();",
     };
     document.querySelectorAll('[data-trigger]').forEach(btn => {
         btn.onclick = () => runInGame(TRIGGERS[btn.dataset.trigger]);
