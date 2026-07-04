@@ -1276,6 +1276,27 @@
         if (borderPx != null) sysPanelBorderPx = borderPx;
         persistPanelStyle(); buildPixPanelCss();
     }
+    // Escala GLOBAL de cada cartel (agranda/reduce el cartel entero, texto
+    // incluido) — transform:scale sobre el contenedor, sin tocar el layout.
+    // Persistida ⇒ vale en partidas reales. El banner conserva su translateX(-50%).
+    let cartelScale = { lobbyBanner: 1, sysModal: 1, skillPanel: 1 };
+    try { const _cs = JSON.parse(localStorage.getItem('pw_cartel_scale')); if (_cs) Object.assign(cartelScale, _cs); } catch (e) {}
+    function applyCartelScaleCss() {
+        const old = document.getElementById('pwCartelScaleCss'); if (old) old.remove();
+        const s = cartelScale;
+        const st = document.createElement('style'); st.id = 'pwCartelScaleCss';
+        st.textContent =
+            (s.lobbyBanner && s.lobbyBanner !== 1 ? '#lobbyBanner{transform:translateX(-50%) scale(' + s.lobbyBanner + ')!important;transform-origin:top center}' : '') +
+            (s.sysModal && s.sysModal !== 1 ? '#sysModal .exit-box{transform:scale(' + s.sysModal + ');transform-origin:center}' : '') +
+            (s.skillPanel && s.skillPanel !== 1 ? '.skill-choice-card{transform:scale(' + s.skillPanel + ');transform-origin:top center}' : '');
+        document.head.appendChild(st);
+    }
+    function setCartelScale(id, scale) {
+        cartelScale[id] = scale || 1;
+        localStorage.setItem('pw_cartel_scale', JSON.stringify(cartelScale));
+        applyCartelScaleCss();
+    }
+    applyCartelScaleCss();
     // Preferencia de marco por cartel: 'auto' (imagen importada si existe, si no
     // procedural), 'atlas' (forzar imagen) o 'procedural' (forzar el look de
     // siempre). Ver cartel-hero.js. Persiste en localStorage para partidas reales.
@@ -3577,16 +3598,19 @@
     // El título respeta el modo pixel (igual que GO!/contador/panel de skills);
     // el cuerpo se queda en texto normal porque una frase larga en fuente pixel
     // deja de leerse bien (el atlas solo se usa para textos cortos en todo el juego).
-    function showSystemMsg(message, title) {
+    // key (opcional): identifica el modal ('rejoin' | 'kicked' | ...) para que
+    // cada uno tenga tamaño de título/cuerpo PROPIO. Se busca styleOverrides
+    // ['sys_'+key]; si no hay, cae a styleOverrides.sysTitle (común). Así REJOIN
+    // y KICKED pueden ir distintos sin afectarse.
+    function showSystemMsg(message, title, key) {
         const m = document.getElementById('sysModal');
         const titleEl = document.getElementById('sysModalTitle');
         const t = title || 'NOTICE';
+        const ov = (key && styleOverrides['sys_' + key]) || styleOverrides.sysTitle || {};
         if (pixelMode) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';
-            // Estilo asignable desde el laboratorio (styleOverrides.sysTitle):
-            // px / letra / escala continua del título pixel; sin él, auto-ajuste.
-            const ov = styleOverrides.sysTitle || {};
+            // px / letra / escala continua del título pixel; sin override, auto-ajuste.
             const fitPx = ov.px || Math.max(1, Math.min(3, Math.floor(330 / (13 * t.length - 2))));
             const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
             if (ov.scale && ov.scale !== 1) { wrap.style.transform = 'scale(' + ov.scale + ')'; wrap.style.transformOrigin = 'center'; }
@@ -3596,7 +3620,9 @@
             wrap.appendChild(d1); wrap.appendChild(pixRenderText(t, fitPx, ov.opts || { hd: 1 }).cv); wrap.appendChild(d2);
             titleEl.appendChild(wrap);
         } else titleEl.textContent = t;
-        document.getElementById('sysModalDesc').innerText = message;
+        const descEl = document.getElementById('sysModalDesc');
+        descEl.innerText = message;
+        descEl.style.fontSize = ov.bodyPx ? ov.bodyPx + 'px' : '';   // tamaño de cuerpo propio del modal
         m.style.display = 'flex';
         try { SoundManager.play('little'); } catch (e) {}
     }
@@ -3836,7 +3862,7 @@
                 // Ventana de REJOIN cerrada (>30s o sala ya reiniciada).
                 Rejoin.clear();
                 netState.token = null; try { ws.close(); } catch (err) {}
-                showSystemMsg('The rejoin window has closed. Your slot was released and you need to enter again.', 'REJOIN EXPIRED');
+                showSystemMsg('The rejoin window has closed. Your slot was released and you need to enter again.', 'REJOIN EXPIRED', 'rejoin');
             } else if (msg.t === 'kicked') {
                 window.__kicked = true;
                 window.__kickedSeconds = (msg.secondsLeft | 0) || 30;
@@ -3844,7 +3870,7 @@
                 // Reentro rechazado durante la ventana de bloqueo del admin.
                 const s = (msg.secondsLeft | 0) || 30;
                 if (gameRunning) abandonNet('You were kicked. Wait ' + s + ' seconds before rejoining.');
-                else showSystemMsg('You were kicked. Wait ' + s + ' seconds before rejoining.', 'KICKED');
+                else showSystemMsg('You were kicked. Wait ' + s + ' seconds before rejoining.', 'KICKED', 'kicked');
                 try { ws.close(); } catch (e) {}
             } else if (msg.t === 'matchEnd') {
                 // Marcar fin de partida SÍNCRONO al recibirlo: así el lobbyPreview
@@ -4096,7 +4122,14 @@
     // titleOpts (opcional, asignable desde el laboratorio): mismo esquema que
     // pixFancyText para el título "SELECT A SKILL". Sin él, look de siempre.
     function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; const skOv = styleOverrides.skillTitle || {}; const skPx = (titleOpts && titleOpts.px) || skOv.px || 2; const skScale = (titleOpts && titleOpts.scale) || skOv.scale || 1; wrap.style.transform = 'scale(' + skScale + ')'; wrap.style.transformOrigin = 'center'; wrap.appendChild(d1); wrap.appendChild(pixRenderText(skillPanelTitle, skPx, titleOpts || skOv.opts || {}).cv); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
-        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name; const nmOv = styleOverrides.skillName || {}; const fitPx = nmOv.px || Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixRenderText(nm, fitPx, nmOv.opts || { plain: true, shade: '#b9c2cc', hd: 1 }).cv; nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); }); els.skillOverlay.style.display = 'flex'; }
+        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name; const nmOv = styleOverrides.skillName || {}; const fitPx = nmOv.px || Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixRenderText(nm, fitPx, nmOv.opts || { plain: true, shade: '#b9c2cc', hd: 1 }).cv; nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
+        // Texto interior ("tips"): editable desde el laboratorio (styleOverrides.skillTips
+        // = { text, px, opts }). Con px/opts y modo pixel se dibuja con la fuente
+        // pixel PLANA (como los nombres); si no, texto CSS normal. Sin override,
+        // el copy y estilo de fábrica del HTML.
+        const tipsEl = document.querySelector('#skillChoiceOverlay .skill-tips');
+        if (tipsEl) { const tOv = styleOverrides.skillTips; tipsEl.innerHTML = ''; if (tOv && pixelMode && (tOv.px || tOv.opts)) { tipsEl.appendChild(pixRenderText(tOv.text || 'PRESS [TAB] TO SWITCH - [Q] TO SELECT', tOv.px || 1, tOv.opts || { plain: true, shade: '#b9c2cc', hd: 1 }).cv); } else { tipsEl.textContent = (tOv && tOv.text) || 'PRESS [TAB] TO SWITCH - [Q] TO SELECT'; } }
+        els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
 

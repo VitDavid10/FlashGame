@@ -78,6 +78,13 @@
     <div class="row"><span class="label">Bold HD (Scale2x ×2)</span><span class="dark" id="sAbcHd"></span></div>
 </section>
 
+<section>
+    <h2>Estilos de texto PLANO del juego (para elegir en carteles/textos)</h2>
+    <div class="hint">Cada tarjeta usa el MISMO render que el juego (pixRenderText / pixFancyText). El nombre entre paréntesis es la "letra" que se elige en Textos y en el panel de skills (Carteles). El de nombres de skill que te gusta es <b>PLANA + HD</b>.</div>
+    <div class="row"><input type="text" id="styTxt" value="PILLWARS 123" maxlength="24"><label>px <input type="number" id="styPx" value="2" min="1" max="6"></label></div>
+    <div id="styList"></div>
+</section>
+
 </div>
 
 <!-- ===================== PESTAÑA 2: TEXTOS ===================== -->
@@ -148,6 +155,20 @@
         <button class="secondary" id="skReset">restablecer</button>
     </div>
     <div class="hint" style="margin:6px 0">"APLICAR EN VIVO" además GUARDA acento/fondo/grosor (localStorage) — vale también en partidas reales. "restablecer" vuelve a fábrica en el juego también.</div>
+    <div class="row" style="border-top:1px solid #1c2a20;padding-top:10px;margin-top:4px">
+        <span class="label" style="min-width:auto;color:#9ee32d">TEXTO INTERIOR (tips — el texto plano de abajo):</span>
+        <input type="text" id="skTipsText" value="PRESS [TAB] TO SWITCH - [Q] TO SELECT" maxlength="60" style="width:280px">
+        <span class="ctrl">px <input type="number" id="skTipsPx" value="1" min="1" max="6"></span>
+        <span class="ctrl">letra <select id="skTipsFont">
+            <option value="plain">PLANA (plain, la que te gusta)</option>
+            <option value="thin">FINA (thin, halo)</option>
+            <option value="bold">BOLD (placa+halo)</option>
+            <option value="normal">NORMAL 5×7 (contorno)</option>
+        </select></span>
+        <button class="secondary" id="skTipsApply">APLICAR TEXTO INTERIOR</button>
+        <button class="secondary" id="skTipsReset">restablecer texto</button>
+    </div>
+    <div class="hint" style="margin:6px 0">El preview de abajo muestra el PANEL COMPLETO (título + 2 tarjetas de skill con su nombre + tips), para ver si alguna letra se sale. Los nombres de skill se afinan en Textos → "Nombre de skill".</div>
     <div id="skPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
     <div class="meta" id="skMeta"></div>
 </div>
@@ -220,6 +241,33 @@
     document.getElementById('sAbcNormal').appendChild(abcBlock('normal'));
     document.getElementById('sAbcBold').appendChild(abcBlock('bold'));
     document.getElementById('sAbcHd').appendChild(abcBlock('hd'));
+
+    // Lista de estilos de texto PLANO: mismo pixRenderText que el juego, para que
+    // el usuario vea cuál es cuál y qué "letra" elegir en carteles/textos.
+    const PLAIN_STYLES = [
+        { name: 'PLANA + HD (nombres de skill — la que te gusta)', font: '', opts: { plain: true, shade: '#b9c2cc', hd: 1 } },
+        { name: 'PLANA (solo tinta, sin halo)', font: '', opts: { plain: true } },
+        { name: 'FINA (thin: tinta + halo accent)', font: '', opts: { thin: true, hd: 1 } },
+        { name: 'BOLD (placa oscura + accent + tinta)', font: '', opts: { hd: 1 } },
+        { name: 'BOLD HD (Scale2x, más detalle)', font: '', opts: { hd: 2 } },
+        { name: 'NORMAL 5×7 (contorno fino)', font: 'normal', opts: { font: 'normal' } },
+    ];
+    function redrawPlainStyles() {
+        const txt = document.getElementById('styTxt').value || 'PILLWARS 123';
+        const px = Math.max(1, Math.min(6, parseInt(document.getElementById('styPx').value, 10) || 2));
+        const list = document.getElementById('styList'); list.innerHTML = '';
+        for (const st of PLAIN_STYLES) {
+            const rowEl = document.createElement('div'); rowEl.className = 'row';
+            const lab = document.createElement('span'); lab.className = 'label'; lab.style.minWidth = '340px'; lab.textContent = st.name;
+            const box = document.createElement('span'); box.className = 'dark';
+            box.appendChild(pixRenderText(txt, px, st.opts).cv);
+            rowEl.appendChild(lab); rowEl.appendChild(box);
+            list.appendChild(rowEl);
+        }
+    }
+    document.getElementById('styTxt').addEventListener('input', redrawPlainStyles);
+    document.getElementById('styPx').addEventListener('input', redrawPlainStyles);
+    HERO_READY_PROMISE.then(redrawPlainStyles);
 
     function heroOrFallback(text, targetH, o) {
         if (pixHeroReady(text)) return { cv: pixHeroText(text, targetH, o), mode: 'atlas' };
@@ -1228,6 +1276,46 @@
         document.getElementById('cartelMeta').textContent = 'marco pixel aplicado y guardado — REJOIN EXPIRED disparado en la UI (vale en partidas reales).';
     };
 
+    // ===== Modal de sistema: tamaño de TÍTULO y CUERPO por-modal =====
+    // REJOIN y KICKED comparten cartel pero pueden ir con tamaños distintos:
+    // styleOverrides.sys_<key> = { px (título pixel), bodyPx (cuerpo) }. El juego
+    // lo lee en showSystemMsg (partidas reales incluidas); sin él, cae a sysTitle.
+    (function buildPerModalSizes() {
+        const card = document.getElementById('cartelSysModal');
+        const box = document.createElement('div');
+        box.style.cssText = 'border-top:1px solid #1c2a20;padding-top:10px;margin-top:4px';
+        const h = document.createElement('div'); h.className = 'label'; h.style.cssText = 'min-width:auto;color:#9ee32d;margin-bottom:6px';
+        h.textContent = 'TAMAÑO POR MODAL (cada uno independiente):';
+        box.appendChild(h);
+        const modals = [{ key: 'rejoin', label: 'REJOIN EXPIRED', trig: 'sysNotice' }, { key: 'kicked', label: 'KICKED', trig: 'sysKicked' }];
+        for (const md of modals) {
+            const ov = loadOverrides()['sys_' + md.key] || {};
+            const row = document.createElement('div'); row.className = 'row';
+            const name = document.createElement('span'); name.className = 'ctrl'; name.style.minWidth = '130px'; name.textContent = md.label;
+            row.appendChild(name);
+            const mk = (lbl, k, val) => {
+                const w = document.createElement('span'); w.className = 'ctrl';
+                w.appendChild(document.createTextNode(lbl + ' '));
+                const i = document.createElement('input'); i.type = 'number'; i.min = '1'; i.max = '60'; i.value = (val == null ? '' : val); i.placeholder = 'fáb';
+                i.addEventListener('input', () => {
+                    const all = loadOverrides(); const o = all['sys_' + md.key] || (all['sys_' + md.key] = {});
+                    const v = parseInt(i.value, 10);
+                    if (i.value === '' || isNaN(v)) delete o[k]; else o[k] = v;
+                    if (!Object.keys(o).length) delete all['sys_' + md.key];
+                    saveOverrides(all);
+                });
+                w.appendChild(i); row.appendChild(w);
+            };
+            mk('título px', 'px', ov.px);
+            mk('cuerpo px', 'bodyPx', ov.bodyPx);
+            const ver = document.createElement('button'); ver.className = 'secondary'; ver.textContent = 'VER EN UI';
+            ver.onclick = () => runOnUi(win => TRIGGERS[md.trig](win));
+            row.appendChild(ver);
+            box.appendChild(row);
+        }
+        card.appendChild(box);
+    })();
+
     // ===== Carteles: banner de lobby =====
     const LB_KEY = 'pw_fontlab_cartel_banner';
     function loadLbStyle() {
@@ -1298,21 +1386,53 @@
         return 'rgba(' + parseInt(h.substr(0, 2), 16) + ',' + parseInt(h.substr(2, 2), 16) + ',' + parseInt(h.substr(4, 2), 16) + ',' + alpha + ')';
     }
 
-    // Solo vista previa del MARCO (borde/fondo/grosor + diamantes del título) — el
-    // panel completo con las 2 skills reales solo se ve de verdad disparándolo
-    // en la pestaña del juego ("APLICAR EN VIVO"), no reimplementado aquí.
+    // Texto interior (tips): inputs + estado. Traduce la letra elegida al mismo
+    // objeto de opts que espera pixRenderText (misma familia que el juego).
+    const skTipsText = document.getElementById('skTipsText'), skTipsPx = document.getElementById('skTipsPx'), skTipsFont = document.getElementById('skTipsFont');
+    (function loadTips() { try { const o = loadOverrides().skillTips; if (o) { if (o.text) skTipsText.value = o.text; if (o.px) skTipsPx.value = o.px; if (o.opts) skTipsFont.value = o.opts.font === 'normal' ? 'normal' : o.opts.plain ? 'plain' : o.opts.thin ? 'thin' : 'bold'; } } catch (e) {} })();
+    function tipsOptsFromFont(font) {
+        return font === 'plain' ? { plain: true, shade: '#b9c2cc', hd: 1 }
+            : font === 'thin' ? { thin: true, hd: 1 }
+            : font === 'normal' ? { font: 'normal' }
+            : { hd: 1 };
+    }
+    function skTipsState() {
+        return { text: skTipsText.value || 'PRESS [TAB] TO SWITCH - [Q] TO SELECT',
+            px: Math.max(1, Math.min(6, parseInt(skTipsPx.value, 10) || 1)), opts: tipsOptsFromFont(skTipsFont.value) };
+    }
+
+    // Preview del PANEL COMPLETO: marco + título con diamantes + 2 tarjetas de
+    // skill (icono + nombre, con el estilo de la feature skillName) + tips. Sirve
+    // para ver de un vistazo si alguna letra se sale del cartel.
     function redrawSkPreview() {
         const s = skState();
         localStorage.setItem(SK_KEY, JSON.stringify(s));
         const wrap = document.getElementById('skPreviewWrap'); wrap.innerHTML = '';
         const shade = lerpColorLocal(s.accent, '#000000', 0.6);
         const box = document.createElement('div');
-        box.style.cssText = 'width:280px;background:' + hexToRgbaLocal(s.bg, s.alpha) + ';border:' + s.borderPx + 'px solid ' + s.accent + ';padding:20px;text-align:center;box-shadow:6px 6px 0 rgba(0,0,0,.6);';
+        box.style.cssText = 'width:440px;max-width:100%;background:' + hexToRgbaLocal(s.bg, s.alpha) + ';border:' + s.borderPx + 'px solid ' + s.accent + ';padding:24px;text-align:center;box-shadow:6px 6px 0 rgba(0,0,0,.6);';
         const titleWrap = document.createElement('div'); titleWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
         const d1 = pixFancyText('-◆', 2, { fill: s.accent, shade, plain: true });
         const d2 = pixFancyText('-◆', 2, { fill: s.accent, shade, plain: true }); d2.style.transform = 'scaleX(-1)';
-        titleWrap.appendChild(d1); titleWrap.appendChild(pixFancyText(labState('skillTitle').text, 2, {})); titleWrap.appendChild(d2);
+        const skTitleSt = labState('skillTitle');
+        titleWrap.appendChild(d1); titleWrap.appendChild(pixRenderText(skTitleSt.text, skTitleSt.px, labOptsFromState(skTitleSt)).cv); titleWrap.appendChild(d2);
+        if (skTitleSt.scale && skTitleSt.scale !== 1) { titleWrap.style.transform = 'scale(' + skTitleSt.scale + ')'; titleWrap.style.transformOrigin = 'center'; }
         box.appendChild(titleWrap);
+        // 2 tarjetas de skill (nombres de ejemplo, uno largo para probar overflow).
+        const nmSt = labState('skillName');
+        const cards = document.createElement('div'); cards.style.cssText = 'display:flex;gap:30px;justify-content:center;margin-top:20px';
+        for (const nm of [nmSt.text || 'VIRUS SHOT', 'IMMORTALITY FIELD']) {
+            const c = document.createElement('div'); c.style.cssText = 'width:100px;height:100px;background:#222;border:2px solid #555;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible';
+            const icon = document.createElement('div'); icon.style.cssText = 'width:44px;height:44px;background:#333;margin-bottom:8px';
+            const fitPx = nmSt.px || Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2))));
+            c.appendChild(icon); c.appendChild(pixRenderText(nm, fitPx, labOptsFromState(nmSt)).cv);
+            cards.appendChild(c);
+        }
+        box.appendChild(cards);
+        // tips
+        const tp = skTipsState(); const tips = document.createElement('div'); tips.style.cssText = 'margin-top:16px;display:flex;justify-content:center';
+        tips.appendChild(pixRenderText(tp.text, tp.px, tp.opts).cv);
+        box.appendChild(tips);
         wrap.appendChild(box);
     }
     // Mezcla de color simple (mismo criterio que lerpColor en index.html) para no
@@ -1323,8 +1443,22 @@
         const rr = ar + amount * (br - ar), rg = ag + amount * (bg - ag), rb = ab + amount * (bb - ab);
         return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1);
     }
-    [skAccent, skBg, skBgAlpha, skBorder].forEach(el => el.addEventListener('input', redrawSkPreview));
+    [skAccent, skBg, skBgAlpha, skBorder, skTipsText, skTipsPx, skTipsFont].forEach(el => el.addEventListener('input', redrawSkPreview));
     HERO_READY_PROMISE.then(redrawSkPreview);
+
+    // Texto interior (tips): guarda styleOverrides.skillTips y lo dispara en la UI.
+    document.getElementById('skTipsApply').onclick = () => {
+        const tp = skTipsState();
+        const all = loadOverrides(); all.skillTips = { text: tp.text, px: tp.px, opts: tp.opts };
+        saveOverrides(all);   // persiste + empuja a la pestaña del juego (styleOverrides.skillTips)
+        runOnUi(win => { if (!win.__pwLab.pixelMode) win.setPixelMode(true); FEATURES.skillTitle.fire(win, labState('skillTitle')); });
+        document.getElementById('skMeta').textContent = 'texto interior aplicado y guardado — panel disparado en la UI.';
+    };
+    document.getElementById('skTipsReset').onclick = () => {
+        skTipsText.value = 'PRESS [TAB] TO SWITCH - [Q] TO SELECT'; skTipsPx.value = 1; skTipsFont.value = 'plain';
+        unassignFromGame('skillTips'); redrawSkPreview();
+        document.getElementById('skMeta').textContent = 'texto interior restablecido a fábrica.';
+    };
 
     document.getElementById('skApplyLive').onclick = () => {
         const s = skState();
@@ -1367,6 +1501,19 @@
         localStorage.setItem(FRAME_KEY, JSON.stringify(all));
         if (gameWin && !gameWin.closed && gameWin.setCartelFrameStyle) gameWin.setCartelFrameStyle(id, pref);
     }
+    // Escala global por cartel: persistida en pw_cartel_scale (mismo origen que el
+    // juego). Aplica en vivo si la UI está abierta.
+    const SCALE_KEY = 'pw_cartel_scale';
+    function loadCartelScales() {
+        const d = { lobbyBanner: 1, sysModal: 1, skillPanel: 1 };
+        try { const s = JSON.parse(localStorage.getItem(SCALE_KEY)); if (s) Object.assign(d, s); } catch (e) {}
+        return d;
+    }
+    function setCartelScale(id, scale) {
+        const all = loadCartelScales(); all[id] = scale;
+        localStorage.setItem(SCALE_KEY, JSON.stringify(all));
+        if (gameWin && !gameWin.closed && gameWin.setCartelScale) gameWin.setCartelScale(id, scale);
+    }
     const CARTEL_CARD = { lobbyBanner: 'cartelBanner', sysModal: 'cartelSysModal', skillPanel: 'cartelSkill', button: 'cartelButtons' };
     CARTEL_HERO_READY_PROMISE.then(() => {
         const prefs = loadFrameStyles();
@@ -1391,6 +1538,19 @@
                 const note = document.createElement('span'); note.className = 'ctrl';
                 note.textContent = '(la imagen solo se ve con "modo pixel" activo)';
                 row.appendChild(note);
+            }
+            // Escala GLOBAL del cartel (agranda/reduce el cartel entero) — para los
+            // 3 marcos, no para 'button'. Aplica en vivo y persiste (pw_cartel_scale).
+            if (id !== 'button') {
+                const sc = document.createElement('span'); sc.className = 'ctrl';
+                sc.appendChild(document.createTextNode('tamaño del cartel (escala ×) '));
+                const si = document.createElement('input'); si.type = 'number'; si.min = '0.3'; si.max = '3'; si.step = '0.05';
+                si.value = loadCartelScales()[id] || 1;
+                si.addEventListener('input', () => {
+                    const v = Math.max(0.3, Math.min(3, parseFloat(si.value) || 1));
+                    setCartelScale(id, v);
+                });
+                sc.appendChild(si); row.appendChild(sc);
             }
             // justo debajo del <h3>, para que se vea sin bajar toda la tarjeta.
             const h3 = card.querySelector('h3');
