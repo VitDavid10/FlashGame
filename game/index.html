@@ -1434,6 +1434,19 @@
         applyUiEditor();
     }
     applyUiEditor();
+    // El laboratorio (font-preview.html) edita pw_ui_editor/pw_style_overrides
+    // en OTRA pestaña (misma partida real vía window.open) — el evento 'storage'
+    // solo llega a pestañas DISTINTAS de la que escribió, así que una partida ya
+    // abierta se entera aquí de los cambios sin tener que recargarla a mano.
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'pw_ui_editor') {
+            try { uiEditor = JSON.parse(e.newValue) || {}; } catch (err) { uiEditor = {}; }
+            applyUiEditor();
+        } else if (e.key === 'pw_style_overrides') {
+            try { styleOverrides = JSON.parse(e.newValue) || {}; } catch (err) { styleOverrides = {}; }
+            skillPanelTitle = (styleOverrides.skillTitle && styleOverrides.skillTitle.text) || 'SELECT A SKILL';
+        }
+    });
     // Preferencia de marco por cartel: 'auto' (imagen importada si existe, si no
     // procedural), 'atlas' (forzar imagen) o 'procedural' (forzar el look de
     // siempre). Ver cartel-hero.js. Persiste en localStorage para partidas reales.
