@@ -158,6 +158,14 @@ function pixResolveFont(text, o = {}) {
     if (f === 'normal' || f === 'bold' || f === 'boldhd') return f;
     return heroOk ? 'atlas' : (o.hd > 0 ? 'boldhd' : 'bold');
 }
+// Escala CONTINUA de un canvas de texto pixel (zoom fino): el px de la fuente
+// es entero (1→2 dobla el tamaño); esto interpola entre medias escalando el
+// canvas por CSS (image-rendering:pixelated ⇒ sigue nítido). Compartido por el
+// juego y el laboratorio para que el preview y la partida escalen igual.
+function pixApplyScale(cv, scale) {
+    if (scale && scale !== 1) { cv.style.width = Math.round(cv.width * scale) + 'px'; cv.style.height = 'auto'; }
+    return cv;
+}
 function pixRenderText(text, px, o = {}) {
     const font = pixResolveFont(text, o);
     if (font === 'atlas') {

@@ -2510,7 +2510,7 @@
         if (pixelMode) {
             const px = ov.px || 4;
             const opts = ov.opts || { thin: true, hd: 2, glow: defColor, glowBlur: 24 };
-            const cv = pixRenderText(text, px, opts).cv;
+            const cv = pixApplyScale(pixRenderText(text, px, opts).cv, ov.scale || 1);
             cv.style.margin = '0 auto'; cv.style.display = 'block'; cv.style.maxWidth = '100%';
             el.appendChild(cv);
         } else {
@@ -3429,7 +3429,7 @@
             if (opts.shade) o.shade = opts.shade;
             if (opts.sparkles) o.sparkles = opts.sparkles;
             if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
-            const cv = pixRenderText(String(n), px, o).cv;
+            const cv = pixApplyScale(pixRenderText(String(n), px, o).cv, opts.scale || ov.scale || 1);
             cv.className = 'cd-n'; el.appendChild(cv);
         }
         else { el.innerHTML = '<div class="cd-lbl">' + label + '</div>'; const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
@@ -4036,7 +4036,7 @@
             const font = pixResolveFont(text, o);
             const px = pxOv || (font === 'atlas' ? Math.max(60, Math.min(300, Math.round(width * 0.42))) / 15 : Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))));
             if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : (font === 'atlas' ? px * 15 * 0.3 : px * 4); }
-            const cv = pixRenderText(text, px, o).cv;
+            const cv = pixApplyScale(pixRenderText(text, px, o).cv, opts.scale || ov.scale || 1);
             cv.className = 'go-txt'; el.appendChild(cv);
         } else { const d = document.createElement('div'); d.className = 'go-txt'; d.textContent = text; el.appendChild(d); }
         document.body.appendChild(el);
@@ -4122,13 +4122,25 @@
     // titleOpts (opcional, asignable desde el laboratorio): mismo esquema que
     // pixFancyText para el título "SELECT A SKILL". Sin él, look de siempre.
     function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; const skOv = styleOverrides.skillTitle || {}; const skPx = (titleOpts && titleOpts.px) || skOv.px || 2; const skScale = (titleOpts && titleOpts.scale) || skOv.scale || 1; wrap.style.transform = 'scale(' + skScale + ')'; wrap.style.transformOrigin = 'center'; wrap.appendChild(d1); wrap.appendChild(pixRenderText(skillPanelTitle, skPx, titleOpts || skOv.opts || {}).cv); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
-        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name; const nmOv = styleOverrides.skillName || {}; const fitPx = nmOv.px || Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixRenderText(nm, fitPx, nmOv.opts || { plain: true, shade: '#b9c2cc', hd: 1 }).cv; nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
+        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name; const nmOv = styleOverrides.skillName || {}; const fitPx = nmOv.px || Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixApplyScale(pixRenderText(nm, fitPx, nmOv.opts || { plain: true, shade: '#b9c2cc', hd: 1 }).cv, nmOv.scale || 1); nc.style.margin = '4px auto 0'; div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
         // Texto interior ("tips"): editable desde el laboratorio (styleOverrides.skillTips
-        // = { text, px, opts }). Con px/opts y modo pixel se dibuja con la fuente
-        // pixel PLANA (como los nombres); si no, texto CSS normal. Sin override,
-        // el copy y estilo de fábrica del HTML.
+        // = { text, px, scale, opts }). Letras: 'vt323' (la TTF pixel de fábrica —
+        // texto DOM, px = font-size) o cualquier fuente canvas del juego (plana/
+        // fina/bold/normal, con zoom fino). Sin override, el copy y look de fábrica.
         const tipsEl = document.querySelector('#skillChoiceOverlay .skill-tips');
-        if (tipsEl) { const tOv = styleOverrides.skillTips; tipsEl.innerHTML = ''; if (tOv && pixelMode && (tOv.px || tOv.opts)) { tipsEl.appendChild(pixRenderText(tOv.text || 'PRESS [TAB] TO SWITCH - [Q] TO SELECT', tOv.px || 1, tOv.opts || { plain: true, shade: '#b9c2cc', hd: 1 }).cv); } else { tipsEl.textContent = (tOv && tOv.text) || 'PRESS [TAB] TO SWITCH - [Q] TO SELECT'; } }
+        if (tipsEl) {
+            const tOv = styleOverrides.skillTips; tipsEl.innerHTML = ''; tipsEl.style.removeProperty('font-size');
+            const tTxt = (tOv && tOv.text) || 'PRESS [TAB] TO SWITCH - [Q] TO SELECT';
+            const isVt = !tOv || !tOv.opts || tOv.opts.font === 'vt323';
+            if (pixelMode && tOv && !isVt) {
+                const tc = pixApplyScale(pixRenderText(tTxt, tOv.px || 1, tOv.opts).cv, tOv.scale || 1);
+                tc.style.margin = '0 auto'; tipsEl.appendChild(tc);
+            } else {
+                tipsEl.textContent = tTxt;
+                // px = font-size del VT323 (la regla de fábrica lleva !important en móvil)
+                if (tOv && tOv.px) tipsEl.style.setProperty('font-size', tOv.px + 'px', 'important');
+            }
+        }
         els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }

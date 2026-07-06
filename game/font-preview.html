@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <title>PillWars — laboratorio de fuente pixel</title>
+<!-- VT323: la TTF pixel que usa el juego para textos DOM (tips del panel de
+     skills, HUD pixel). Cargada aquí para que los previews salgan idénticos. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Russo+One&display=swap" rel="stylesheet">
 <style>
     body { background: #050805; color: #cfd8d3; font-family: monospace; margin: 0; padding: 24px; }
     h1 { color: #00ff88; font-size: 18px; margin: 0 0 4px; }
@@ -158,16 +162,19 @@
     <div class="row" style="border-top:1px solid #1c2a20;padding-top:10px;margin-top:4px">
         <span class="label" style="min-width:auto;color:#9ee32d">TEXTO INTERIOR (tips — el texto plano de abajo):</span>
         <input type="text" id="skTipsText" value="PRESS [TAB] TO SWITCH - [Q] TO SELECT" maxlength="60" style="width:280px">
-        <span class="ctrl">px <input type="number" id="skTipsPx" value="1" min="1" max="6"></span>
+        <span class="ctrl">px <input type="number" id="skTipsPx" value="14" min="1" max="60"></span>
         <span class="ctrl">letra <select id="skTipsFont">
-            <option value="plain">PLANA (plain, la que te gusta)</option>
-            <option value="thin">FINA (thin, halo)</option>
-            <option value="bold">BOLD (placa+halo)</option>
-            <option value="normal">NORMAL 5×7 (contorno)</option>
+            <option value="vt323">VT323 (la de fábrica — TTF pixel)</option>
+            <option value="plain">PLANA canvas (como nombres de skill)</option>
+            <option value="thin">FINA canvas (thin, halo)</option>
+            <option value="bold">BOLD canvas (placa+halo)</option>
+            <option value="normal">NORMAL 5×7 canvas (contorno)</option>
         </select></span>
+        <span class="ctrl">zoom × <input type="number" id="skTipsScale" value="1" min="0.2" max="4" step="0.05"></span>
         <button class="secondary" id="skTipsApply">APLICAR TEXTO INTERIOR</button>
         <button class="secondary" id="skTipsReset">restablecer texto</button>
     </div>
+    <div class="hint" style="margin:6px 0">px con VT323 = tamaño de letra en píxeles de pantalla (fábrica: 14). px con las letras canvas = unidades de fuente pixel (1-6) — usa el zoom × para afinar entre medias.</div>
     <div class="hint" style="margin:6px 0">El preview de abajo muestra el PANEL COMPLETO (título + 2 tarjetas de skill con su nombre + tips), para ver si alguna letra se sale. Los nombres de skill se afinan en Textos → "Nombre de skill".</div>
     <div id="skPreviewWrap" style="padding:20px; background:#000; display:flex; justify-content:center;"></div>
     <div class="meta" id="skMeta"></div>
@@ -245,12 +252,13 @@
     // Lista de estilos de texto PLANO: mismo pixRenderText que el juego, para que
     // el usuario vea cuál es cuál y qué "letra" elegir en carteles/textos.
     const PLAIN_STYLES = [
-        { name: 'PLANA + HD (nombres de skill — la que te gusta)', font: '', opts: { plain: true, shade: '#b9c2cc', hd: 1 } },
-        { name: 'PLANA (solo tinta, sin halo)', font: '', opts: { plain: true } },
-        { name: 'FINA (thin: tinta + halo accent)', font: '', opts: { thin: true, hd: 1 } },
-        { name: 'BOLD (placa oscura + accent + tinta)', font: '', opts: { hd: 1 } },
-        { name: 'BOLD HD (Scale2x, más detalle)', font: '', opts: { hd: 2 } },
-        { name: 'NORMAL 5×7 (contorno fino)', font: 'normal', opts: { font: 'normal' } },
+        { name: 'VT323 (TTF pixel — tips "PRESS [TAB]...", texto DOM)', vt323: true },
+        { name: 'PLANA + HD (nombres de skill)', opts: { plain: true, shade: '#b9c2cc', hd: 1 } },
+        { name: 'PLANA (solo tinta, sin halo)', opts: { plain: true } },
+        { name: 'FINA (thin: tinta + halo accent)', opts: { thin: true, hd: 1 } },
+        { name: 'BOLD (placa oscura + accent + tinta)', opts: { hd: 1 } },
+        { name: 'BOLD HD (Scale2x, más detalle)', opts: { hd: 2 } },
+        { name: 'NORMAL 5×7 (contorno fino)', opts: { font: 'normal' } },
     ];
     function redrawPlainStyles() {
         const txt = document.getElementById('styTxt').value || 'PILLWARS 123';
@@ -260,7 +268,13 @@
             const rowEl = document.createElement('div'); rowEl.className = 'row';
             const lab = document.createElement('span'); lab.className = 'label'; lab.style.minWidth = '340px'; lab.textContent = st.name;
             const box = document.createElement('span'); box.className = 'dark';
-            box.appendChild(pixRenderText(txt, px, st.opts).cv);
+            if (st.vt323) {
+                const sp = document.createElement('span');
+                sp.style.cssText = 'font-family:"VT323",monospace;color:#9aa;font-size:' + (px * 10) + 'px;letter-spacing:1px';
+                sp.textContent = txt; box.appendChild(sp);
+            } else {
+                box.appendChild(pixRenderText(txt, px, st.opts).cv);
+            }
             rowEl.appendChild(lab); rowEl.appendChild(box);
             list.appendChild(rowEl);
         }
@@ -368,13 +382,13 @@
     // viaja por styleOverrides (así en partida real sale idéntico), para el resto
     // se pasa como opts directos.
     const FEATURES = {
-        go:            { label: 'GO! (arranque de partida)', fire: (win, s) => win.showGoSplash(s.text, Object.assign({ px: s.px, dx: s.dx | 0, dy: s.dy | 0 }, labOptsFromState(s))) },
-        contador:      { label: 'Cuenta atrás (inicio/fin)', fire: (win, s) => { const opts = Object.assign({ px: s.px, dx: s.dx | 0, dy: s.dy | 0 }, labOptsFromState(s)); let n = 5; win.showCountdownNumber(n, TEXTS.cdStart, opts); win.__pwLabCdTimer = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(win.__pwLabCdTimer); win.__pwLabCdTimer = null; return; } win.showCountdownNumber(n, TEXTS.cdStart, opts); }, 700); } },
+        go:            { label: 'GO! (arranque de partida)', fire: (win, s) => win.showGoSplash(s.text, Object.assign({ px: s.px, dx: s.dx | 0, dy: s.dy | 0, scale: s.scale || 1 }, labOptsFromState(s))) },
+        contador:      { label: 'Cuenta atrás (inicio/fin)', fire: (win, s) => { const opts = Object.assign({ px: s.px, dx: s.dx | 0, dy: s.dy | 0, scale: s.scale || 1 }, labOptsFromState(s)); let n = 5; win.showCountdownNumber(n, TEXTS.cdStart, opts); win.__pwLabCdTimer = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(win.__pwLabCdTimer); win.__pwLabCdTimer = null; return; } win.showCountdownNumber(n, TEXTS.cdStart, opts); }, 700); } },
         skillTitle:    { label: 'Título del panel de skills', fire: (win, s) => { win.__pwLab.practiceFirstSkillDone = true; win.__pwLab.skillPanelTitle = s.text; win.closeSkillChoice(); win.showSkillChoice(Object.assign({ px: s.px, scale: s.scale || 1 }, labOptsFromState(s))); } },
         // skillName/sysTitle: el estilo viaja por styleOverrides (title:true) — el
         // juego ignora el texto (los nombres de skill y REJOIN/KICKED son suyos).
         skillName:     { label: 'Nombre de skills (tarjetas del panel)', title: true, fire: (win) => { win.__pwLab.practiceFirstSkillDone = true; win.closeSkillChoice(); win.showSkillChoice(); } },
-        sysTitle:      { label: 'Título del modal de sistema (REJOIN/KICKED)', title: true, fire: (win) => win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle) },
+        sysTitle:      { label: 'Título del modal de sistema (REJOIN/KICKED)', title: true, fire: (win) => win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle, 'rejoin') },
         gameOver:      { label: 'GAME OVER (muerte)', title: true, fire: (win) => win.stopGame() },
         victory:       { label: 'VICTORY! (premio classic)', title: true, fire: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }) },
         cashout:       { label: 'CASHOUT (premio classic)', title: true, fire: (win) => win.__pwLab.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }) },
@@ -467,10 +481,10 @@
                     '<span class="ctrl">Y <input type="number" class="bDy" min="-2000" max="2000" step="5"></span>' +
                 '</fieldset>' +
                 // zoom fino: px es entero (el salto 1→2 dobla el tamaño); la escala
-                // continua interpola entre medias. Solo en los títulos con diamantes
-                // (panel de skills y modal de sistema), que son los que lo soportan.
-                (def.diamonds ? '<fieldset><legend>zoom fino (escala continua)</legend>' +
-                    '<span class="ctrl">× <input type="number" class="bScale" min="0.2" max="4" step="0.05"></span></fieldset>' : '') +
+                // continua interpola entre medias. Disponible en TODAS las features
+                // (GO!, contador, títulos, nombres de skill, modal de sistema).
+                '<fieldset><legend>zoom fino (escala continua)</legend>' +
+                    '<span class="ctrl">× <input type="number" class="bScale" min="0.2" max="4" step="0.05"></span></fieldset>' +
             '</div>' +
             '<div class="dark bOut"></div>' +
             '<div class="meta bMeta"></div>';
@@ -482,7 +496,7 @@
             sparkles: $('.bSparkles'), fill: $('.bFill'), shade: $('.bShade'),
             dx: $('.bDx'), dy: $('.bDy'),
         };
-        if ($('.bScale')) inputs.scale = $('.bScale');   // solo tarjetas con diamantes
+        inputs.scale = $('.bScale');
         function applyStateToInputs(s) {
             inputs.text.value = s.text; inputs.px.value = s.px; inputs.font.value = s.font || '';
             inputs.thin.checked = s.thin; inputs.plain.checked = s.plain; inputs.hd.value = String(s.hd);
@@ -538,9 +552,9 @@
             if (def.multi) {
                 const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;gap:14px;align-items:center';
                 let mode = '';
-                for (const sample of def.multi) { const r = renderFancyWithState(sample, s); mode = r.mode; wrap.appendChild(r.cv); }
+                for (const sample of def.multi) { const r = renderFancyWithState(sample, s); mode = r.mode; wrap.appendChild(pixApplyScale(r.cv, s.scale)); }
                 out.appendChild(wrap);
-                $('.bMeta').textContent = mode + ' · px ' + s.px + warn;
+                $('.bMeta').textContent = mode + ' · px ' + s.px + (s.scale && s.scale !== 1 ? ' · escala ×' + s.scale : '') + warn;
             } else if (def.diamonds) {
                 const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
                 const d1 = pixFancyText('-◆', 2, { fill: '#00ff88', shade: '#0abf6a', plain: true });
@@ -553,8 +567,8 @@
                 $('.bMeta').textContent = r.mode + (s.scale && s.scale !== 1 ? ' · escala ×' + s.scale : '') + warn;
             } else {
                 const r = renderFancyWithState(s.text, s);
-                out.appendChild(r.cv);
-                $('.bMeta').textContent = r.mode + (resolved === 'atlas' ? ' — trazo/plain/hd/colores no aplican (vienen del PNG)' : '') + warn;
+                out.appendChild(pixApplyScale(r.cv, s.scale));
+                $('.bMeta').textContent = r.mode + (s.scale && s.scale !== 1 ? ' · escala ×' + s.scale : '') + (resolved === 'atlas' ? ' — trazo/plain/hd/colores no aplican (vienen del PNG)' : '') + warn;
             }
         }
         for (const el of Object.values(inputs)) el.addEventListener('input', redraw);
@@ -961,6 +975,21 @@
                 btn(rowFix, lbl, () => { if (!win.__pwLabEditHold) setEditMode(win, true); editShow(win, fid); });
         }
 
+        // Escala global de cada cartel, también desde aquí (además de Carteles):
+        // lo cambias y disparas el cuadro para verlo en contexto real.
+        r = section('TAMAÑO DE CARTELES (escala ×)');
+        {
+            const scales = loadCartelScales();
+            for (const [cid, lbl] of [['lobbyBanner', 'banner'], ['sysModal', 'modal'], ['skillPanel', 'skills']]) {
+                const lab = win.document.createElement('label');
+                lab.appendChild(win.document.createTextNode(lbl));
+                const i = win.document.createElement('input'); i.type = 'number'; i.step = '0.05'; i.min = '0.3'; i.max = '3';
+                i.value = scales[cid] || 1;
+                i.oninput = () => { const v = parseFloat(i.value); if (v > 0) setCartelScale(cid, Math.max(0.3, Math.min(3, v))); };
+                lab.appendChild(i); r.appendChild(lab);
+            }
+        }
+
         r = section('OVERLAYS DE PARTIDA');
         btn(r, 'GO!', () => TRIGGERS.go(win));
         btn(r, 'CONTADOR INICIO', () => TRIGGERS.contador(win));
@@ -1076,8 +1105,8 @@
         matchFinished: (win) => { closeAllOverlays(win); FEATURES.matchFinished.fire(win); },
         roomRestarted: (win) => { closeAllOverlays(win); FEATURES.roomRestarted.fire(win); },
         killGain: (win) => win.showKillGain(1500),
-        sysNotice: (win) => { closeAllOverlays(win); win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle); },
-        sysKicked: (win) => { closeAllOverlays(win); win.showSystemMsg(TEXTS.kickedBody, TEXTS.kickedTitle); },
+        sysNotice: (win) => { closeAllOverlays(win); win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle, 'rejoin'); },
+        sysKicked: (win) => { closeAllOverlays(win); win.showSystemMsg(TEXTS.kickedBody, TEXTS.kickedTitle, 'kicked'); },
         bannerSearch: (win) => win.setLobbyBanner('<b>' + TEXTS.findingRoom + '</b> · JOINING THE BEST MATCH', 'search'),
         bannerFound: (win) => win.setLobbyBanner('<b>' + TEXTS.adminAnnounce + '</b>', 'found'),
         bannerOff: (win) => win.setLobbyBanner(null),
@@ -1247,21 +1276,33 @@
         const borderUnits = Math.max(1, Math.round(borderPx / u));
         return { url: cv.toDataURL(), px: borderUnits * u };
     }
+    // Preview del marco pixel con los valores REALES que usará el juego: tamaños
+    // por modal (sys_rejoin / sys_kicked, editable abajo con su propio selector),
+    // estilo de título asignado (sysTitle) y escala global del cartel.
+    let sysPreviewModal = 'rejoin';   // qué modal muestra el preview
     function redrawSysPixPreview() {
         const s = sysPixState();
         const frame = pixFrameDataUrl(s.accent, s.bg, s.alpha, s.borderPx);
         const shade = lerpColorLocal(s.accent, '#000000', 0.6);
         const wrap = document.getElementById('cartelPixPreviewWrap'); wrap.innerHTML = '';
+        const all = loadOverrides();
+        const ov = all['sys_' + sysPreviewModal] || all.sysTitle || {};
+        const t = sysPreviewModal === 'rejoin' ? TEXTS.rejoinTitle : TEXTS.kickedTitle;
+        const bodyTxt = sysPreviewModal === 'rejoin' ? TEXTS.rejoinBody : TEXTS.kickedBody;
+        const fitPx = ov.px || Math.max(1, Math.min(3, Math.floor(330 / (13 * t.length - 2))));
         const box = document.createElement('div');
         box.style.cssText = 'width:300px;border:' + frame.px + 'px solid transparent;border-image:url(' + frame.url + ') ' + frame.px + ' fill stretch;box-shadow:6px 6px 0 rgba(0,0,0,.6);padding:18px;text-align:center;';
         const titleWrap = document.createElement('div'); titleWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
-        const d1 = pixFancyText('-◆', 2, { fill: s.accent, shade, plain: true });
-        const d2 = pixFancyText('-◆', 2, { fill: s.accent, shade, plain: true }); d2.style.transform = 'scaleX(-1)';
-        titleWrap.appendChild(d1); titleWrap.appendChild(pixFancyText('KICKED', 2, { hd: 1 })); titleWrap.appendChild(d2);
-        const body = document.createElement('div'); body.style.cssText = 'color:#aaa;font-size:12px;margin:12px 0;font-family:sans-serif'; body.textContent = 'You have been kicked by an administrator.';
+        if (ov.scale && ov.scale !== 1) { titleWrap.style.transform = 'scale(' + ov.scale + ')'; titleWrap.style.transformOrigin = 'center'; }
+        const d1 = pixFancyText('-◆', fitPx, { fill: s.accent, shade, plain: true });
+        const d2 = pixFancyText('-◆', fitPx, { fill: s.accent, shade, plain: true }); d2.style.transform = 'scaleX(-1)';
+        titleWrap.appendChild(d1); titleWrap.appendChild(pixRenderText(t, fitPx, ov.opts || { hd: 1 }).cv); titleWrap.appendChild(d2);
+        const body = document.createElement('div'); body.style.cssText = 'color:#aaa;font-size:' + (ov.bodyPx || 14) + 'px;margin:12px 0;font-family:sans-serif'; body.textContent = bodyTxt;
         const btn = document.createElement('div'); btn.style.cssText = 'border:1px solid ' + s.accent + ';color:' + s.accent + ';padding:8px;font-family:"Russo One",sans-serif;font-size:13px';
         btn.textContent = 'OK';
         box.appendChild(titleWrap); box.appendChild(body); box.appendChild(btn);
+        const gsc = loadCartelScales().sysModal || 1;
+        if (gsc !== 1) { box.style.transform = 'scale(' + gsc + ')'; box.style.transformOrigin = 'top center'; }
         wrap.appendChild(box);
     }
     [sysAccent, sysBg, sysBgAlpha, sysBorder].forEach(el => el.addEventListener('input', redrawSysPixPreview));
@@ -1293,21 +1334,27 @@
             const row = document.createElement('div'); row.className = 'row';
             const name = document.createElement('span'); name.className = 'ctrl'; name.style.minWidth = '130px'; name.textContent = md.label;
             row.appendChild(name);
-            const mk = (lbl, k, val) => {
+            const mk = (lbl, k, val, isFloat) => {
                 const w = document.createElement('span'); w.className = 'ctrl';
                 w.appendChild(document.createTextNode(lbl + ' '));
-                const i = document.createElement('input'); i.type = 'number'; i.min = '1'; i.max = '60'; i.value = (val == null ? '' : val); i.placeholder = 'fáb';
+                const i = document.createElement('input'); i.type = 'number'; i.min = isFloat ? '0.2' : '1'; i.max = isFloat ? '4' : '60'; if (isFloat) i.step = '0.05';
+                i.value = (val == null ? '' : val); i.placeholder = 'fáb';
                 i.addEventListener('input', () => {
                     const all = loadOverrides(); const o = all['sys_' + md.key] || (all['sys_' + md.key] = {});
-                    const v = parseInt(i.value, 10);
+                    const v = isFloat ? parseFloat(i.value) : parseInt(i.value, 10);
                     if (i.value === '' || isNaN(v)) delete o[k]; else o[k] = v;
                     if (!Object.keys(o).length) delete all['sys_' + md.key];
                     saveOverrides(all);
+                    sysPreviewModal = md.key; redrawSysPixPreview();   // el preview de arriba lo refleja al momento
                 });
                 w.appendChild(i); row.appendChild(w);
             };
             mk('título px', 'px', ov.px);
+            mk('zoom título ×', 'scale', ov.scale, true);
             mk('cuerpo px', 'bodyPx', ov.bodyPx);
+            const pv = document.createElement('button'); pv.className = 'secondary'; pv.textContent = 'PREVIEW';
+            pv.onclick = () => { sysPreviewModal = md.key; redrawSysPixPreview(); };
+            row.appendChild(pv);
             const ver = document.createElement('button'); ver.className = 'secondary'; ver.textContent = 'VER EN UI';
             ver.onclick = () => runOnUi(win => TRIGGERS[md.trig](win));
             row.appendChild(ver);
@@ -1348,6 +1395,8 @@
                 'padding:10px 22px;border-radius:11px;font-family:\'Russo One\',sans-serif;font-size:' + s.size + 'px;letter-spacing:1px;' +
                 'box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 16px ' + color + '55;';
             b.innerHTML = '<span style="width:9px;height:9px;border-radius:50%;background:' + color + ';box-shadow:0 0 10px ' + color + ';flex:0 0 auto"></span><span>' + txt + ' <span style="color:' + color + ';font-size:10px">(' + name + ')</span></span>';
+            const gsc = loadCartelScales().lobbyBanner || 1;
+            if (gsc !== 1) { b.style.transform = 'scale(' + gsc + ')'; b.style.transformOrigin = 'center'; }
             wrap.appendChild(b);
         }
     }
@@ -1388,17 +1437,23 @@
 
     // Texto interior (tips): inputs + estado. Traduce la letra elegida al mismo
     // objeto de opts que espera pixRenderText (misma familia que el juego).
-    const skTipsText = document.getElementById('skTipsText'), skTipsPx = document.getElementById('skTipsPx'), skTipsFont = document.getElementById('skTipsFont');
-    (function loadTips() { try { const o = loadOverrides().skillTips; if (o) { if (o.text) skTipsText.value = o.text; if (o.px) skTipsPx.value = o.px; if (o.opts) skTipsFont.value = o.opts.font === 'normal' ? 'normal' : o.opts.plain ? 'plain' : o.opts.thin ? 'thin' : 'bold'; } } catch (e) {} })();
+    const skTipsText = document.getElementById('skTipsText'), skTipsPx = document.getElementById('skTipsPx');
+    const skTipsFont = document.getElementById('skTipsFont'), skTipsScale = document.getElementById('skTipsScale');
+    (function loadTips() { try { const o = loadOverrides().skillTips; if (o) { if (o.text) skTipsText.value = o.text; if (o.px) skTipsPx.value = o.px; if (o.scale) skTipsScale.value = o.scale; if (o.opts) skTipsFont.value = o.opts.font === 'vt323' ? 'vt323' : o.opts.font === 'normal' ? 'normal' : o.opts.plain ? 'plain' : o.opts.thin ? 'thin' : 'bold'; } } catch (e) {} })();
     function tipsOptsFromFont(font) {
-        return font === 'plain' ? { plain: true, shade: '#b9c2cc', hd: 1 }
+        return font === 'vt323' ? { font: 'vt323' }
+            : font === 'plain' ? { plain: true, shade: '#b9c2cc', hd: 1 }
             : font === 'thin' ? { thin: true, hd: 1 }
             : font === 'normal' ? { font: 'normal' }
             : { hd: 1 };
     }
     function skTipsState() {
+        const vt = skTipsFont.value === 'vt323';
+        const maxPx = vt ? 60 : 6;
         return { text: skTipsText.value || 'PRESS [TAB] TO SWITCH - [Q] TO SELECT',
-            px: Math.max(1, Math.min(6, parseInt(skTipsPx.value, 10) || 1)), opts: tipsOptsFromFont(skTipsFont.value) };
+            px: Math.max(1, Math.min(maxPx, parseInt(skTipsPx.value, 10) || (vt ? 14 : 1))),
+            scale: Math.max(0.2, Math.min(4, parseFloat(skTipsScale.value) || 1)),
+            opts: tipsOptsFromFont(skTipsFont.value) };
     }
 
     // Preview del PANEL COMPLETO: marco + título con diamantes + 2 tarjetas de
@@ -1425,14 +1480,23 @@
             const c = document.createElement('div'); c.style.cssText = 'width:100px;height:100px;background:#222;border:2px solid #555;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible';
             const icon = document.createElement('div'); icon.style.cssText = 'width:44px;height:44px;background:#333;margin-bottom:8px';
             const fitPx = nmSt.px || Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2))));
-            c.appendChild(icon); c.appendChild(pixRenderText(nm, fitPx, labOptsFromState(nmSt)).cv);
+            c.appendChild(icon); c.appendChild(pixApplyScale(pixRenderText(nm, fitPx, labOptsFromState(nmSt)).cv, nmSt.scale));
             cards.appendChild(c);
         }
         box.appendChild(cards);
-        // tips
+        // tips: VT323 = texto DOM idéntico al juego; letras canvas = pixRenderText + zoom
         const tp = skTipsState(); const tips = document.createElement('div'); tips.style.cssText = 'margin-top:16px;display:flex;justify-content:center';
-        tips.appendChild(pixRenderText(tp.text, tp.px, tp.opts).cv);
+        if (tp.opts.font === 'vt323') {
+            const sp = document.createElement('span');
+            sp.style.cssText = 'font-family:"VT323",monospace;color:#9aa;font-size:' + tp.px + 'px;letter-spacing:1px';
+            sp.textContent = tp.text; tips.appendChild(sp);
+        } else {
+            tips.appendChild(pixApplyScale(pixRenderText(tp.text, tp.px, tp.opts).cv, tp.scale));
+        }
         box.appendChild(tips);
+        // escala global del cartel (la misma que aplica el juego vía pw_cartel_scale)
+        const gsc = loadCartelScales().skillPanel || 1;
+        if (gsc !== 1) { box.style.transform = 'scale(' + gsc + ')'; box.style.transformOrigin = 'top center'; }
         wrap.appendChild(box);
     }
     // Mezcla de color simple (mismo criterio que lerpColor en index.html) para no
@@ -1443,19 +1507,19 @@
         const rr = ar + amount * (br - ar), rg = ag + amount * (bg - ag), rb = ab + amount * (bb - ab);
         return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1);
     }
-    [skAccent, skBg, skBgAlpha, skBorder, skTipsText, skTipsPx, skTipsFont].forEach(el => el.addEventListener('input', redrawSkPreview));
+    [skAccent, skBg, skBgAlpha, skBorder, skTipsText, skTipsPx, skTipsFont, skTipsScale].forEach(el => el.addEventListener('input', redrawSkPreview));
     HERO_READY_PROMISE.then(redrawSkPreview);
 
     // Texto interior (tips): guarda styleOverrides.skillTips y lo dispara en la UI.
     document.getElementById('skTipsApply').onclick = () => {
         const tp = skTipsState();
-        const all = loadOverrides(); all.skillTips = { text: tp.text, px: tp.px, opts: tp.opts };
+        const all = loadOverrides(); all.skillTips = { text: tp.text, px: tp.px, scale: tp.scale, opts: tp.opts };
         saveOverrides(all);   // persiste + empuja a la pestaña del juego (styleOverrides.skillTips)
         runOnUi(win => { if (!win.__pwLab.pixelMode) win.setPixelMode(true); FEATURES.skillTitle.fire(win, labState('skillTitle')); });
         document.getElementById('skMeta').textContent = 'texto interior aplicado y guardado — panel disparado en la UI.';
     };
     document.getElementById('skTipsReset').onclick = () => {
-        skTipsText.value = 'PRESS [TAB] TO SWITCH - [Q] TO SELECT'; skTipsPx.value = 1; skTipsFont.value = 'plain';
+        skTipsText.value = 'PRESS [TAB] TO SWITCH - [Q] TO SELECT'; skTipsPx.value = 14; skTipsFont.value = 'vt323'; skTipsScale.value = 1;
         unassignFromGame('skillTips'); redrawSkPreview();
         document.getElementById('skMeta').textContent = 'texto interior restablecido a fábrica.';
     };
@@ -1546,9 +1610,11 @@
                 sc.appendChild(document.createTextNode('tamaño del cartel (escala ×) '));
                 const si = document.createElement('input'); si.type = 'number'; si.min = '0.3'; si.max = '3'; si.step = '0.05';
                 si.value = loadCartelScales()[id] || 1;
+                const redrawOf = { lobbyBanner: redrawLbPreview, sysModal: redrawSysPixPreview, skillPanel: redrawSkPreview };
                 si.addEventListener('input', () => {
                     const v = Math.max(0.3, Math.min(3, parseFloat(si.value) || 1));
                     setCartelScale(id, v);
+                    if (redrawOf[id]) redrawOf[id]();   // el preview de la tarjeta lo refleja al momento
                 });
                 sc.appendChild(si); row.appendChild(sc);
             }
