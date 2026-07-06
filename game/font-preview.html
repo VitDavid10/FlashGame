@@ -120,6 +120,7 @@
 <div class="bannerCard" id="cartelSysModal">
     <h3>Modal de sistema (REJOIN EXPIRED, KICKED...)</h3>
     <div class="row">
+        <span class="label" style="min-width:auto;color:#9ee32d">MARCO CLÁSICO (modo normal, sin pixel):</span>
         <span class="ctrl">color de borde <input type="color" id="cBorderColor" value="#00ff88"></span>
         <span class="ctrl">color de halo <input type="color" id="cGlowColor" value="#00ff88"></span>
         <label>blur <input type="number" id="cGlowBlur" value="40" min="0" max="120"></label>
@@ -160,6 +161,15 @@
     </div>
     <div class="hint" style="margin:6px 0">"APLICAR EN VIVO" además GUARDA acento/fondo/grosor (localStorage) — vale también en partidas reales. "restablecer" vuelve a fábrica en el juego también.</div>
     <div class="row" style="border-top:1px solid #1c2a20;padding-top:10px;margin-top:4px">
+        <span class="label" style="min-width:auto;color:#9ee32d">DISEÑO DEL PANEL (vacío = fábrica):</span>
+        <span class="ctrl">tarjeta px <input type="number" id="skCardPx" min="40" max="240" placeholder="100"></span>
+        <span class="ctrl">icono px <input type="number" id="skIconPx" min="16" max="160" placeholder="50"></span>
+        <span class="ctrl">separación tarjetas <input type="number" id="skGap" min="0" max="120" placeholder="30"></span>
+        <span class="ctrl">título→tarjetas <input type="number" id="skOptsTop" min="0" max="120" placeholder="20"></span>
+        <span class="ctrl">tarjetas→tips <input type="number" id="skTipsTop" min="0" max="120" placeholder="10"></span>
+        <button class="secondary" id="skLayoutReset">restablecer diseño</button>
+    </div>
+    <div class="row">
         <span class="label" style="min-width:auto;color:#9ee32d">TEXTO INTERIOR (tips — el texto plano de abajo):</span>
         <input type="text" id="skTipsText" value="PRESS [TAB] TO SWITCH - [Q] TO SELECT" maxlength="60" style="width:280px">
         <span class="ctrl">px <input type="number" id="skTipsPx" value="14" min="1" max="60"></span>
@@ -224,6 +234,9 @@
     });
 
     // ===== helpers compartidos =====
+    // Debounce para los redraws de previews: pintar canvas pixel con glow es caro;
+    // sin esto, cada tecla redibuja todo y la página se siente lenta.
+    function debounce(fn, ms) { let t = null; return function () { clearTimeout(t); t = setTimeout(fn, ms || 80); }; }
     function floatCanvas(text, px, color) {
         const w = pixTextWidth(text, px) + px * 2, h = 7 * px + px * 2;
         const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
@@ -279,8 +292,9 @@
             list.appendChild(rowEl);
         }
     }
-    document.getElementById('styTxt').addEventListener('input', redrawPlainStyles);
-    document.getElementById('styPx').addEventListener('input', redrawPlainStyles);
+    const redrawPlainDebounced = debounce(redrawPlainStyles);
+    document.getElementById('styTxt').addEventListener('input', redrawPlainDebounced);
+    document.getElementById('styPx').addEventListener('input', redrawPlainDebounced);
     HERO_READY_PROMISE.then(redrawPlainStyles);
 
     function heroOrFallback(text, targetH, o) {
@@ -571,7 +585,8 @@
                 $('.bMeta').textContent = r.mode + (s.scale && s.scale !== 1 ? ' · escala ×' + s.scale : '') + (resolved === 'atlas' ? ' — trazo/plain/hd/colores no aplican (vienen del PNG)' : '') + warn;
             }
         }
-        for (const el of Object.values(inputs)) el.addEventListener('input', redraw);
+        const redrawDebounced = debounce(redraw);
+        for (const el of Object.values(inputs)) el.addEventListener('input', redrawDebounced);
         $('.bReset').onclick = () => { applyStateToInputs(Object.assign({ text: def.text, px: def.px }, def.defaults)); redraw(); };
         $('.bCopy').onclick = () => {
             const s = currentState(); const opts = { plain: s.plain, thin: s.thin, fill: s.fill, shade: s.shade };
@@ -1305,7 +1320,8 @@
         if (gsc !== 1) { box.style.transform = 'scale(' + gsc + ')'; box.style.transformOrigin = 'top center'; }
         wrap.appendChild(box);
     }
-    [sysAccent, sysBg, sysBgAlpha, sysBorder].forEach(el => el.addEventListener('input', redrawSysPixPreview));
+    const redrawSysPixDebounced = debounce(redrawSysPixPreview);
+    [sysAccent, sysBg, sysBgAlpha, sysBorder].forEach(el => el.addEventListener('input', redrawSysPixDebounced));
     HERO_READY_PROMISE.then(redrawSysPixPreview);
     document.getElementById('sysApplyPixel').onclick = () => {
         const s = sysPixState();
@@ -1400,7 +1416,8 @@
             wrap.appendChild(b);
         }
     }
-    [lbDef, lbSearch, lbFound, lbFontSize].forEach(el => el.addEventListener('input', redrawLbPreview));
+    const redrawLbDebounced = debounce(redrawLbPreview);
+    [lbDef, lbSearch, lbFound, lbFontSize].forEach(el => el.addEventListener('input', redrawLbDebounced));
     redrawLbPreview();
 
     document.getElementById('lbApplyLive').onclick = () => {
@@ -1456,16 +1473,45 @@
             opts: tipsOptsFromFont(skTipsFont.value) };
     }
 
-    // Preview del PANEL COMPLETO: marco + título con diamantes + 2 tarjetas de
-    // skill (icono + nombre, con el estilo de la feature skillName) + tips. Sirve
-    // para ver de un vistazo si alguna letra se sale del cartel.
+    // Diseño del panel (styleOverrides.skillLayout): tamaño de tarjeta/icono y
+    // separaciones. Vacío = fábrica. Lo lee el juego en showSkillChoice.
+    const skCardPx = document.getElementById('skCardPx'), skIconPx = document.getElementById('skIconPx');
+    const skGap = document.getElementById('skGap'), skOptsTop = document.getElementById('skOptsTop'), skTipsTop = document.getElementById('skTipsTop');
+    (function loadSkillLayout() {
+        const L = loadOverrides().skillLayout || {};
+        if (L.cardPx) skCardPx.value = L.cardPx; if (L.iconPx) skIconPx.value = L.iconPx;
+        if (L.gap != null) skGap.value = L.gap; if (L.optsTop != null) skOptsTop.value = L.optsTop; if (L.tipsTop != null) skTipsTop.value = L.tipsTop;
+    })();
+    function saveSkillLayout() {
+        const L = {};
+        const rd = (el, k, min, max) => { const v = parseInt(el.value, 10); if (el.value !== '' && !isNaN(v)) L[k] = Math.max(min, Math.min(max, v)); };
+        rd(skCardPx, 'cardPx', 40, 240); rd(skIconPx, 'iconPx', 16, 160);
+        rd(skGap, 'gap', 0, 120); rd(skOptsTop, 'optsTop', 0, 120); rd(skTipsTop, 'tipsTop', 0, 120);
+        const all = loadOverrides();
+        if (Object.keys(L).length) all.skillLayout = L; else delete all.skillLayout;
+        saveOverrides(all);
+    }
+    function skillLayoutVals() {
+        const L = loadOverrides().skillLayout || {};
+        // defaults = los del juego en MODO PIXEL (tarjeta 92px, no los 100 del clásico)
+        return { cardPx: L.cardPx || 92, iconPx: L.iconPx || 50, gap: L.gap != null ? L.gap : 30, optsTop: L.optsTop != null ? L.optsTop : 20, tipsTop: L.tipsTop != null ? L.tipsTop : 10 };
+    }
+
+    // Preview del PANEL COMPLETO — réplica 1:1 del panel real en modo pixel:
+    // mismo ancho (500px de overlay, padding 30), mismo marco 9-slice con
+    // brackets (pixFrameDataUrl = el canvas del juego), tarjetas con icono y
+    // nombre DENTRO (misma fórmula de auto-ajuste), barra de tiempo y tips.
     function redrawSkPreview() {
         const s = skState();
         localStorage.setItem(SK_KEY, JSON.stringify(s));
+        const L = skillLayoutVals();
         const wrap = document.getElementById('skPreviewWrap'); wrap.innerHTML = '';
         const shade = lerpColorLocal(s.accent, '#000000', 0.6);
+        const frame = pixFrameDataUrl(s.accent, s.bg, s.alpha, s.borderPx);
         const box = document.createElement('div');
-        box.style.cssText = 'width:440px;max-width:100%;background:' + hexToRgbaLocal(s.bg, s.alpha) + ';border:' + s.borderPx + 'px solid ' + s.accent + ';padding:24px;text-align:center;box-shadow:6px 6px 0 rgba(0,0,0,.6);';
+        box.style.cssText = 'width:500px;max-width:100%;box-sizing:border-box;border:' + frame.px + 'px solid transparent;' +
+            'border-image:url(' + frame.url + ') ' + frame.px + ' fill stretch;box-shadow:6px 6px 0 rgba(0,0,0,.6);padding:30px;text-align:center;';
+        // título (mismo pintado que showSkillChoice: diamantes px 2 + estilo asignado)
         const titleWrap = document.createElement('div'); titleWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
         const d1 = pixFancyText('-◆', 2, { fill: s.accent, shade, plain: true });
         const d2 = pixFancyText('-◆', 2, { fill: s.accent, shade, plain: true }); d2.style.transform = 'scaleX(-1)';
@@ -1473,19 +1519,25 @@
         titleWrap.appendChild(d1); titleWrap.appendChild(pixRenderText(skTitleSt.text, skTitleSt.px, labOptsFromState(skTitleSt)).cv); titleWrap.appendChild(d2);
         if (skTitleSt.scale && skTitleSt.scale !== 1) { titleWrap.style.transform = 'scale(' + skTitleSt.scale + ')'; titleWrap.style.transformOrigin = 'center'; }
         box.appendChild(titleWrap);
-        // 2 tarjetas de skill (nombres de ejemplo, uno largo para probar overflow).
+        // tarjetas de skill (una con el nombre editable de Textos, otra corta real)
         const nmSt = labState('skillName');
-        const cards = document.createElement('div'); cards.style.cssText = 'display:flex;gap:30px;justify-content:center;margin-top:20px';
-        for (const nm of [nmSt.text || 'VIRUS SHOT', 'IMMORTALITY FIELD']) {
-            const c = document.createElement('div'); c.style.cssText = 'width:100px;height:100px;background:#222;border:2px solid #555;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible';
-            const icon = document.createElement('div'); icon.style.cssText = 'width:44px;height:44px;background:#333;margin-bottom:8px';
+        const cards = document.createElement('div'); cards.style.cssText = 'display:flex;gap:' + L.gap + 'px;justify-content:center;margin-top:' + L.optsTop + 'px';
+        let first = true;
+        for (const nm of [nmSt.text || 'VIRUS SHOT', 'PLUS']) {
+            const c = document.createElement('div');
+            c.style.cssText = 'width:' + L.cardPx + 'px;height:' + L.cardPx + 'px;background:#222;border:2px solid ' + (first ? '#fff' : '#555') + ';' +
+                'display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible;flex:0 0 auto' +
+                (first ? ';box-shadow:0 0 0 2px ' + s.accent + ',4px 4px 0 rgba(0,0,0,.7)' : '');
+            const icon = document.createElement('div'); icon.style.cssText = 'width:' + L.iconPx + 'px;height:' + L.iconPx + 'px;background:#333;margin-bottom:8px;flex:0 0 auto';
             const fitPx = nmSt.px || Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2))));
-            c.appendChild(icon); c.appendChild(pixApplyScale(pixRenderText(nm, fitPx, labOptsFromState(nmSt)).cv, nmSt.scale));
-            cards.appendChild(c);
+            const nc = pixApplyScale(pixRenderText(nm, fitPx, labOptsFromState(nmSt)).cv, nmSt.scale);
+            nc.style.margin = '4px auto 0';
+            c.appendChild(icon); c.appendChild(nc);
+            cards.appendChild(c); first = false;
         }
         box.appendChild(cards);
-        // tips: VT323 = texto DOM idéntico al juego; letras canvas = pixRenderText + zoom
-        const tp = skTipsState(); const tips = document.createElement('div'); tips.style.cssText = 'margin-top:16px;display:flex;justify-content:center';
+        // tips (VT323 = texto DOM idéntico al juego; letras canvas = pixRenderText + zoom)
+        const tp = skTipsState(); const tips = document.createElement('div'); tips.style.cssText = 'margin-top:' + L.tipsTop + 'px;display:flex;justify-content:center';
         if (tp.opts.font === 'vt323') {
             const sp = document.createElement('span');
             sp.style.cssText = 'font-family:"VT323",monospace;color:#9aa;font-size:' + tp.px + 'px;letter-spacing:1px';
@@ -1494,6 +1546,10 @@
             tips.appendChild(pixApplyScale(pixRenderText(tp.text, tp.px, tp.opts).cv, tp.scale));
         }
         box.appendChild(tips);
+        // barra de tiempo (estilo pixel del juego: 12px, borde #333, relleno rojo)
+        const bar = document.createElement('div'); bar.style.cssText = 'margin-top:15px;height:12px;background:#111;border:2px solid #333;box-shadow:inset 2px 2px 0 rgba(0,0,0,.8)';
+        const fill = document.createElement('div'); fill.style.cssText = 'height:100%;width:70%;background:#ff3333';
+        bar.appendChild(fill); box.appendChild(bar);
         // escala global del cartel (la misma que aplica el juego vía pw_cartel_scale)
         const gsc = loadCartelScales().skillPanel || 1;
         if (gsc !== 1) { box.style.transform = 'scale(' + gsc + ')'; box.style.transformOrigin = 'top center'; }
@@ -1507,7 +1563,16 @@
         const rr = ar + amount * (br - ar), rg = ag + amount * (bg - ag), rb = ab + amount * (bb - ab);
         return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1);
     }
-    [skAccent, skBg, skBgAlpha, skBorder, skTipsText, skTipsPx, skTipsFont, skTipsScale].forEach(el => el.addEventListener('input', redrawSkPreview));
+    const redrawSkDebounced = debounce(redrawSkPreview);
+    [skAccent, skBg, skBgAlpha, skBorder, skTipsText, skTipsPx, skTipsFont, skTipsScale].forEach(el => el.addEventListener('input', redrawSkDebounced));
+    // diseño del panel: guardar el override + refrescar el preview con cada cambio
+    const onLayoutInput = debounce(() => { saveSkillLayout(); redrawSkPreview(); });
+    [skCardPx, skIconPx, skGap, skOptsTop, skTipsTop].forEach(el => el.addEventListener('input', onLayoutInput));
+    document.getElementById('skLayoutReset').onclick = () => {
+        [skCardPx, skIconPx, skGap, skOptsTop, skTipsTop].forEach(el => { el.value = ''; });
+        saveSkillLayout(); redrawSkPreview();
+        document.getElementById('skMeta').textContent = 'diseño del panel restablecido a fábrica.';
+    };
     HERO_READY_PROMISE.then(redrawSkPreview);
 
     // Texto interior (tips): guarda styleOverrides.skillTips y lo dispara en la UI.
