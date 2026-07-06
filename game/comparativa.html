@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>PillWars — comparativa CLASSIC ↔ PIXEL</title>
+<style>
+    body { margin: 0; background: #050805; color: #cfd8d3; font-family: monospace; display: flex; height: 100vh; overflow: hidden; }
+    /* ===== barra lateral: catálogo de elementos ===== */
+    #side { width: 265px; flex: 0 0 265px; overflow-y: auto; border-right: 1px solid #1c2a20; padding: 12px; box-sizing: border-box; }
+    #side h1 { color: #00ff88; font-size: 15px; margin: 0 0 4px; }
+    #side .hint { color: #7a8a80; font-size: 10px; line-height: 1.5; margin-bottom: 10px; }
+    #side h4 { color: #9ee32d; font-size: 11px; margin: 14px 0 6px; border-bottom: 1px solid #1c2a20; padding-bottom: 3px; }
+    #side button { display: inline-block; margin: 2px 2px; background: #0a120d; color: #cfd8d3; border: 1px solid #2a3a30; padding: 5px 8px; font-family: monospace; font-size: 11px; cursor: pointer; }
+    #side button:hover { border-color: #00ff88; color: #00ff88; }
+    #side button:disabled { opacity: 0.4; cursor: wait; }
+    /* PX = tiene versión pixel propia · = idéntico en ambos modos */
+    .tag { font-size: 9px; padding: 0 3px; margin-left: 4px; border: 1px solid; }
+    .tag.px { color: #00ff88; border-color: #00ff88; }
+    .tag.eq { color: #777; border-color: #555; }
+    #status { font-size: 10px; color: #ffce3d; margin: 8px 0; }
+    label.ctl { font-size: 10px; color: #9aa; display: inline-flex; align-items: center; gap: 4px; margin: 2px; }
+    label.ctl input { width: 55px; background: #0a120d; color: #cfd8d3; border: 1px solid #2a3a30; font-family: monospace; }
+    /* ===== panes ===== */
+    #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    #panes { flex: 1; display: flex; min-height: 0; }
+    .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; border-left: 1px solid #1c2a20; }
+    .pane .head { padding: 5px 10px; font-size: 12px; letter-spacing: 2px; flex: 0 0 auto; }
+    .pane.classic .head { color: #9aa; background: #0a0f0c; }
+    .pane.pixel .head { color: #00ff88; background: #0a140d; }
+    .pane .stage { flex: 1; position: relative; overflow: hidden; background: #000; }
+    .pane iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 810px; border: 0; transform-origin: top left; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<div id="side">
+    <h1>COMPARATIVA<br>CLASSIC ↔ PIXEL</h1>
+    <div class="hint">
+        Dos copias del juego REAL congeladas (mismo mundo, misma semilla): izquierda texture pack
+        <b>Classic</b>, derecha <b>Pixel</b>. Cada botón dispara el elemento en AMBAS a la vez.
+        Usa los mismos overrides del laboratorio (textos, carteles, atlas). Sonido silenciado.<br>
+        <span class="tag px">PX</span> tiene versión pixel propia ·
+        <span class="tag eq">=</span> idéntico en ambos modos (de momento).
+    </div>
+    <div id="status">cargando los dos juegos…</div>
+    <div id="groups"></div>
+</div>
+
+<div id="main">
+    <div id="panes">
+        <div class="pane classic"><div class="head">CLASSIC (modo normal)</div><div class="stage"><iframe id="fA" src="index.html?pwlab=1"></iframe></div></div>
+        <div class="pane pixel"><div class="head">PIXEL (texture pack)</div><div class="stage"><iframe id="fB" src="index.html?pwlab=1"></iframe></div></div>
+    </div>
+</div>
+
+<script>
+'use strict';
+const NATIVE_W = 1440, NATIVE_H = 810;
+
+// ===== textos del laboratorio (mismo copy que usa "Asignar textos") =====
+const TEXTS_DEFAULTS = {
+    cdStart: 'MATCH STARTING', cdEnd: 'MATCH ENDING',
+    findingRoom: 'FINDING ROOM', adminAnnounce: 'SERVER RESTART IN 5 MINUTES',
+    rejoinTitle: 'REJOIN EXPIRED', rejoinBody: 'The rejoin window has closed. Your slot was released and you need to enter again.',
+    kickedTitle: 'KICKED', kickedBody: 'You have been kicked by an administrator. Wait 30 seconds before rejoining.',
+};
+function labTexts() {
+    const t = Object.assign({}, TEXTS_DEFAULTS);
+    try { Object.assign(t, JSON.parse(localStorage.getItem('pw_fontlab_texts')) || {}); } catch (e) {}
+    return t;
+}
+
+// ===== silenciar el juego y recordar el pack real del usuario =====
+const origPixel = localStorage.getItem('pw_pixel');
+localStorage.setItem('pillwars_muted', 'true');
+localStorage.setItem('pillwars_music_muted', 'true');
+
+// ===== escala de los iframes (1440×810 nativos → caben en media pantalla) =====
+function fit() {
+    document.querySelectorAll('.pane .stage').forEach(st => {
+        const s = Math.min(st.clientWidth / NATIVE_W, st.clientHeight / NATIVE_H);
+        st.querySelector('iframe').style.transform = 'scale(' + s + ')';
+    });
+}
+window.addEventListener('resize', fit);
+
+// ===== RNG con semilla: mismo mundo y mismas elecciones aleatorias en ambos =====
+function withSeed(win, seed, fn) {
+    const M = win.Math, orig = M.random; let s = seed >>> 0;
+    M.random = function () { s |= 0; s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    try { fn(); } finally { M.random = orig; }
+}
+
+// ===== arranque de cada copia (mismo patrón que initStaticUi del laboratorio,
+// pero SIN vaciar el mundo: comida/virus/bots congelados sirven para comparar
+// los sprites pixel del mundo) =====
+const frames = [
+    { el: document.getElementById('fA'), pixel: false, win: null },
+    { el: document.getElementById('fB'), pixel: true, win: null },
+];
+let ready = false;
+
+function initFrame(win, pixel) {
+    const L = win.__pwLab;
+    win.returnToMenu = function () {};
+    if (L.netState && L.netState.ws) { try { L.netState.ws.close(); } catch (e) {} L.netState = null; }
+    if (L.mmTimer) { win.clearInterval(L.mmTimer); L.mmTimer = null; }
+    L.els.modeScreen.style.display = 'none';
+    L.els.loginOverlay.style.display = 'none';
+    // los menús están ocultos con !important por ?pwlab — esta regla (más
+    // específica) los deja mostrar con la clase pwShow
+    const st = win.document.createElement('style');
+    st.textContent = 'html #modeScreen.pwShow{display:flex!important;pointer-events:none!important}' +
+                     'html #loginOverlay.pwShow{display:flex!important;pointer-events:none!important}';
+    win.document.body.appendChild(st);
+    withSeed(win, 1234, () => win.startPracticeGame('arcade'));
+    const sim = L.sim;
+    sim.step = function () {}; sim.timeScale = 0;
+    L.nextSkillPickTime = Infinity;
+    win.__cmpCam = { x: L.camera.x, y: L.camera.y };
+    win.setPixelMode(pixel);
+    // teclado del juego fuera (por si un iframe coge foco)
+    win.document.addEventListener('keydown', e => e.stopPropagation(), true);
+    win.document.addEventListener('keyup', e => e.stopPropagation(), true);
+}
+
+function whenReady(fr, fn) {
+    const ok = () => { try { return fr.el.contentWindow && fr.el.contentWindow.document.readyState === 'complete' && fr.el.contentWindow.__pwLab && typeof fr.el.contentWindow.startPracticeGame === 'function'; } catch (e) { return false; } };
+    const t = setInterval(() => { if (ok()) { clearInterval(t); fn(fr.el.contentWindow); } }, 150);
+    setTimeout(() => clearInterval(t), 20000);
+}
+
+let pending = frames.length;
+frames.forEach(fr => whenReady(fr, win => {
+    fr.win = win;
+    initFrame(win, fr.pixel);
+    if (--pending === 0) {
+        // el pack real del usuario no cambia por abrir la comparativa
+        if (origPixel === null) localStorage.removeItem('pw_pixel'); else localStorage.setItem('pw_pixel', origPixel);
+        setTimeout(() => { forBoth(closeAll); ready = true; document.getElementById('status').textContent = 'listo — dispara elementos desde el catálogo.'; }, 900);
+    }
+}));
+fit();
+
+function forBoth(fn) {
+    const seed = (Date.now() & 0xffff) || 1;
+    frames.forEach(fr => { if (!fr.win) return; try { withSeed(fr.win, seed, () => fn(fr.win)); } catch (e) { console.error(e); } });
+}
+
+// ===== helpers sobre una copia del juego =====
+function closeAll(win) {
+    if (win.__cmpCd) { win.clearInterval(win.__cmpCd); win.__cmpCd = null; }
+    const d = win.document, L = win.__pwLab;
+    L.els.result.style.display = 'none';
+    try { win.closeSkillChoice(); } catch (e) {}
+    try { win.hideSystemMsg(); } catch (e) {}
+    try { win.hideCountdownNumber(); } catch (e) {}
+    try { win.setLobbyBanner(null); } catch (e) {}
+    for (const id of ['prizeModal', 'gameDepositModal', 'exitModal', 'mobileBlock', 'cmdBar', 'specAdminPanel', 'buffTable']) {
+        const el = d.getElementById(id); if (el) el.style.display = 'none';
+    }
+    const go = d.getElementById('goSplash'); if (go) go.remove();
+    d.getElementById('botsBanner').classList.remove('show');
+    d.getElementById('pentakillBanner').style.display = 'none';
+    d.getElementById('killGainStack').innerHTML = '';
+    d.getElementById('skill-tooltip').style.display = 'none';
+    d.getElementById('econHud').style.display = 'none';
+    d.getElementById('waitHud').style.display = 'none';
+    L.els.modeScreen.classList.remove('pwShow', 'hover-arcade', 'hover-classic');
+    d.getElementById('mqpArcade').classList.remove('open');
+    d.getElementById('mqpClassic').classList.remove('open');
+    L.els.loginOverlay.classList.remove('pwShow');
+    try { win.GameWalletUI.setVisible(false); } catch (e) {}
+}
+
+function showModeScreen(win, quests) {
+    closeAll(win);
+    const d = win.document, L = win.__pwLab, ms = L.els.modeScreen;
+    ms.classList.add('pwShow', 'quests-ready');
+    d.getElementById('panelArcade').classList.remove('expanded', 'hidden');
+    d.getElementById('panelClassic').classList.remove('expanded', 'hidden');
+    d.getElementById('contentArcade').style.opacity = '1';
+    d.getElementById('contentClassic').style.opacity = '0.7';
+    const dv = d.querySelector('.diagonal-divider'); if (dv) dv.style.opacity = '1';
+    ms.classList.add(quests === 'classic' ? 'hover-classic' : 'hover-arcade');
+    if (quests) d.getElementById(quests === 'classic' ? 'mqpClassic' : 'mqpArcade').classList.add('open');
+}
+
+function showRoomMenu(win, m) {
+    closeAll(win);
+    const d = win.document, L = win.__pwLab, lo = L.els.loginOverlay;
+    lo.classList.toggle('bg-arcade', m === 'arcade');
+    lo.classList.toggle('bg-classic', m === 'classic');
+    d.getElementById('arcadeGuidePanel').style.display = m === 'arcade' ? 'flex' : 'none';
+    d.getElementById('classicGuidePanel').style.display = m === 'classic' ? 'flex' : 'none';
+    const t = L.els.selectedModeTitle;
+    t.innerText = m === 'arcade' ? 'ARCADE MODE' : 'CLASSIC MODE';
+    t.style.color = m === 'arcade' ? '#ccff00' : '#00ffaa';
+    for (const id of ['oraclePanel', 'missionsPanel']) { const p = d.getElementById(id); p.classList.remove('classic', 'arcade'); p.classList.add(m === 'arcade' ? 'arcade' : 'classic'); }
+    const back = d.querySelector('#loginOverlay .back-icon');
+    if (back) { back.classList.toggle('back-mode-arcade', m === 'arcade'); back.classList.toggle('back-mode-classic', m === 'classic'); }
+    if (m === 'arcade') try { win.initArcadeGuide(); } catch (e) {}
+    lo.classList.add('pwShow');
+    try { win.GameWalletUI.setVisible(true, m); } catch (e) {}
+}
+
+function countdown(win, label) {
+    closeAll(win);
+    let n = 5; win.showCountdownNumber(n, label);
+    win.__cmpCd = win.setInterval(() => { n--; if (n < 1) { win.clearInterval(win.__cmpCd); win.__cmpCd = null; return; } win.showCountdownNumber(n, label); }, 700);
+}
+
+// ===== catálogo =====
+// px:true = tiene versión pixel propia (CSS pixel-pack / fuente pixel / marco cartel)
+const GROUPS = [
+    ['VISTA Y MUNDO', [
+        ['Vista partida', true, w => { const c = w.__cmpCam || { x: 0, y: 0 }; w.__pwLab.camera.x = c.x; w.__pwLab.camera.y = c.y; w.__pwLab.camera.scale = 0.8; }],
+        ['Mapa entero', true, w => { const L = w.__pwLab; const f = Math.min(L.width, L.height) / (L.MAP_SIZE * 2.2); L.camera.x = 0; L.camera.y = 0; L.camera.scale = Math.max(0.05, Math.min(2, f)); }],
+        ['Vaciar mundo', null, w => { const s = w.__pwLab.sim; s.foods.length = 0; s.viruses.length = 0; s.enemies.length = 0; s.ejectedMasses.length = 0; s.projectiles.length = 0; }],
+        ['Tema oscuro', true, w => w.setTheme('dark')],
+        ['Tema gris', true, w => w.setTheme('grey')],
+        ['Tema blanco', true, w => w.setTheme('white')],
+    ]],
+    ['MENÚS', [
+        ['Pantalla de modos', true, w => showModeScreen(w)],
+        ['+ quests ARCADE', true, w => showModeScreen(w, 'arcade')],
+        ['+ quests CLASSIC', true, w => showModeScreen(w, 'classic')],
+        ['Menú de sala ARCADE', true, w => showRoomMenu(w, 'arcade')],
+        ['Menú de sala CLASSIC', true, w => showRoomMenu(w, 'classic')],
+        ['Volver al HUD', null, w => closeAll(w)],
+    ]],
+    ['HUD DE PARTIDA', [
+        ['HUD + barra de skills', true, w => {
+            closeAll(w); const d = w.document;
+            d.getElementById('actionBar').style.display = 'flex';
+            ['icon-shot', 'icon-sprint', 'icon-tp', 'icon-magnet', 'icon-shield'].forEach((c, i) => { d.getElementById('icon' + (i + 1)).className = 'skill-icon ' + c; });
+            const c1 = d.getElementById('count1'); c1.style.display = 'block'; c1.innerText = '3';
+            d.getElementById('gcd2').innerText = '2';
+            d.getElementById('cd2').style.height = '60%';
+            d.getElementById('dur3').style.height = '40%';
+            d.getElementById('exitGameBtn').style.display = 'flex';
+        }],
+        ['CARRY $PILL (econ)', true, w => { const d = w.document; d.getElementById('econHud').style.display = 'block'; d.getElementById('econVal').innerText = '1,250'; }],
+        ['NEXT MATCH (espera)', true, w => { const d = w.document; d.getElementById('waitHud').style.display = 'block'; d.getElementById('waitTimer').innerText = '0:12'; }],
+        ['ACTIVE BUFFS', true, w => {
+            const d = w.document; d.getElementById('buffTable').style.display = 'block';
+            d.getElementById('buff-list-content').innerHTML =
+                '<div class="buff-row"><img class="buff-icon-img" src="../img/inmune.png"><div class="buff-time">8s</div></div>' +
+                '<div class="buff-row"><img class="buff-icon-img" src="../img/sprint.png"><div class="buff-time">3s</div></div>';
+        }],
+        ['Wallet (CONNECT/DEPOSIT)', true, w => {
+            const d = w.document;
+            try { w.GameWalletUI.setVisible(true, 'classic'); } catch (e) {}
+            d.getElementById('gameWalletArea').style.display = 'flex';
+            d.getElementById('gwBalBox').style.display = 'flex';
+            d.getElementById('gwBalValue').innerText = '125,000';
+            d.getElementById('gwDeposit').style.display = 'inline-block';
+        }],
+        ['Banner bots 🤖', false, w => w.document.getElementById('botsBanner').classList.add('show')],
+        ['Pentakill: faltan 2', false, w => { const b = w.document.getElementById('pentakillBanner'); b.innerText = '2 KILLS TO PENTAKILL'; b.className = 'almost'; b.id = 'pentakillBanner'; b.classList.add('almost'); b.style.display = 'block'; }],
+        ['Pentakill: falta 1', false, w => { const b = w.document.getElementById('pentakillBanner'); b.innerText = '★ 1 MORE KILL TO WIN ★'; b.classList.remove('almost'); b.classList.add('final'); b.style.display = 'block'; }],
+        ['Kill gain (+$PILL)', false, w => w.showKillGain(1500)],
+        ['Texto flotante UI', true, w => w.spawnFloatingText('SHIELD ACTIVE', '#a020f0')],
+        ['Texto flotante mundo', true, w => w.spawnFloatingText('RESPAWNING', '#ffcc00', true)],
+        ['Barra de comandos', false, w => w.document.getElementById('cmdBar').style.display = 'block'],
+        ['Tooltip de skill', false, w => {
+            const d = w.document, tt = d.getElementById('skill-tooltip');
+            d.getElementById('tooltip-icon').src = '../img/clon.png';
+            d.getElementById('tooltip-bg').style.backgroundImage = "url('../img/clon.png')";
+            d.getElementById('tooltip-title').innerText = 'CLON';
+            d.getElementById('tooltip-desc').innerText = 'THE FARMER. Shoots a mass projectile. If it hits a VIRUS, it clones it and grants you a NEW SKILL card.';
+            tt.style.left = '58%'; tt.style.top = '35%'; tt.style.display = 'flex';
+        }],
+    ]],
+    ['OVERLAYS DE PARTIDA', [
+        ['GO!', true, w => { closeAll(w); w.showGoSplash(); }],
+        ['Contador INICIO', true, w => countdown(w, labTexts().cdStart)],
+        ['Contador FIN', true, w => countdown(w, labTexts().cdEnd)],
+        ['Panel de skills', true, w => { closeAll(w); w.__pwLab.practiceFirstSkillDone = true; w.showSkillChoice(); }],
+    ]],
+    ['FIN DE PARTIDA', [
+        ['GAME OVER', true, w => { closeAll(w); w.stopGame(); }],
+        ['VICTORY!', true, w => { closeAll(w); w.__pwLab.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }); }],
+        ['CASHOUT', true, w => { closeAll(w); w.__pwLab.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }); }],
+        ['MATCH ENDED', true, w => { closeAll(w); w.__pwLab.EconHUD.showPrize({ reason: 'arcadeEnd', myAmount: 300, pot: 1500, top: [{ pos: 1, name: 'Bot1', pct: 40, amount: 600, mine: false }, { pos: 2, name: 'me', pct: 20, amount: 300, mine: true }] }); }],
+        ['MATCH FINISHED', true, w => { closeAll(w); w.setOverlayTitle(w.__pwLab.els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88'); w.showResultsUI(); }],
+        ['ROOM RESTARTED', true, w => { closeAll(w); w.setOverlayTitle(w.__pwLab.els.resultTitle, 'roomRestarted', 'ROOM RESTARTED', '#ffcc00'); w.showResultsUI(); }],
+    ]],
+    ['SISTEMA Y MODALES', [
+        ['REJOIN EXPIRED', true, w => { const t = labTexts(); closeAll(w); w.showSystemMsg(t.rejoinBody, t.rejoinTitle, 'rejoin'); }],
+        ['KICKED', true, w => { const t = labTexts(); closeAll(w); w.showSystemMsg(t.kickedBody, t.kickedTitle, 'kicked'); }],
+        ['LEAVE ARENA? (salir)', true, w => { closeAll(w); const m = w.document.getElementById('exitModal'); try { w.toggleExitModal(); } catch (e) {} if (m.style.display !== 'flex') m.style.display = 'flex'; }],
+        ['Deposit $PILL', true, w => { closeAll(w); w.document.getElementById('gameDepositModal').style.display = 'flex'; }],
+        ['Bloqueo móvil', true, w => { closeAll(w); w.document.getElementById('mobileBlock').style.display = 'flex'; }],
+        ['Panel espectador admin', false, w => {
+            closeAll(w); const d = w.document;
+            d.getElementById('specRoomLabel').innerText = 'classic_5$_L1';
+            d.getElementById('specPlayers').innerHTML = '<div style="color:#ccc;font-size:10px;padding:3px 0;border-bottom:1px solid #222">Player1 <span style="color:#00ff88">2400</span></div><div style="color:#ccc;font-size:10px;padding:3px 0;border-bottom:1px solid #222">Bot7 <span style="color:#00ff88">910</span></div>';
+            d.getElementById('specLog').innerHTML = '<div style="color:#888">12:01 Player1 killed Bot7</div><div style="color:#888">12:00 room restarted</div>';
+            d.getElementById('specAdminPanel').style.display = 'block';
+        }],
+    ]],
+    ['BANNER DE LOBBY', [
+        ['FINDING ROOM', true, w => w.setLobbyBanner('<b>' + labTexts().findingRoom + '</b> · JOINING THE BEST MATCH', 'search')],
+        ['ROOM FOUND', true, w => w.setLobbyBanner('<b>ROOM FOUND</b>', 'found')],
+        ['Anuncio de admin', true, w => w.setLobbyBanner('<b>' + labTexts().adminAnnounce + '</b>', 'found')],
+        ['Ocultar banner', null, w => w.setLobbyBanner(null)],
+    ]],
+    ['LIMPIAR', [
+        ['CERRAR TODO', null, w => closeAll(w)],
+        ['Recargar comparativa', null, null],
+    ]],
+];
+
+const groupsEl = document.getElementById('groups');
+for (const [title, items] of GROUPS) {
+    const h = document.createElement('h4'); h.textContent = title; groupsEl.appendChild(h);
+    for (const [label, hasPx, fn] of items) {
+        const b = document.createElement('button');
+        b.textContent = label;
+        if (hasPx === true) { const t = document.createElement('span'); t.className = 'tag px'; t.textContent = 'PX'; b.appendChild(t); }
+        if (hasPx === false) { const t = document.createElement('span'); t.className = 'tag eq'; t.textContent = '='; b.appendChild(t); }
+        b.onclick = () => {
+            if (!fn) { location.reload(); return; }
+            if (!ready) return;
+            forBoth(fn);
+        };
+        groupsEl.appendChild(b);
+    }
+    if (title === 'VISTA Y MUNDO') {
+        const lab = document.createElement('label'); lab.className = 'ctl';
+        lab.appendChild(document.createTextNode('zoom ×'));
+        const z = document.createElement('input'); z.type = 'number'; z.step = '0.1'; z.min = '0.05'; z.max = '3'; z.value = '0.8';
+        z.oninput = () => { const v = parseFloat(z.value); if (v > 0) forBoth(w => { w.__pwLab.camera.scale = v; }); };
+        lab.appendChild(z); groupsEl.appendChild(lab);
+    }
+}
+</script>
+</body>
+</html>
