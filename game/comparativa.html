@@ -256,14 +256,14 @@ const GROUPS = [
             d.getElementById('gwBalValue').innerText = '125,000';
             d.getElementById('gwDeposit').style.display = 'inline-block';
         }],
-        ['Banner bots 🤖', false, w => w.document.getElementById('botsBanner').classList.add('show')],
-        ['Pentakill: faltan 2', false, w => { const b = w.document.getElementById('pentakillBanner'); b.innerText = '2 KILLS TO PENTAKILL'; b.className = 'almost'; b.id = 'pentakillBanner'; b.classList.add('almost'); b.style.display = 'block'; }],
-        ['Pentakill: falta 1', false, w => { const b = w.document.getElementById('pentakillBanner'); b.innerText = '★ 1 MORE KILL TO WIN ★'; b.classList.remove('almost'); b.classList.add('final'); b.style.display = 'block'; }],
-        ['Kill gain (+$PILL)', false, w => w.showKillGain(1500)],
+        ['Banner bots 🤖', true, w => w.document.getElementById('botsBanner').classList.add('show')],
+        ['Pentakill: faltan 2', true, w => { const b = w.document.getElementById('pentakillBanner'); b.innerText = '2 KILLS TO PENTAKILL'; b.className = 'almost'; b.id = 'pentakillBanner'; b.classList.add('almost'); b.style.display = 'block'; }],
+        ['Pentakill: falta 1', true, w => { const b = w.document.getElementById('pentakillBanner'); b.innerText = '★ 1 MORE KILL TO WIN ★'; b.classList.remove('almost'); b.classList.add('final'); b.style.display = 'block'; }],
+        ['Kill gain (+$PILL)', true, w => w.showKillGain(1500)],
         ['Texto flotante UI', true, w => w.spawnFloatingText('SHIELD ACTIVE', '#a020f0')],
         ['Texto flotante mundo', true, w => w.spawnFloatingText('RESPAWNING', '#ffcc00', true)],
-        ['Barra de comandos', false, w => w.document.getElementById('cmdBar').style.display = 'block'],
-        ['Tooltip de skill', false, w => {
+        ['Barra de comandos', true, w => w.document.getElementById('cmdBar').style.display = 'block'],
+        ['Tooltip de skill', true, w => {
             const d = w.document, tt = d.getElementById('skill-tooltip');
             d.getElementById('tooltip-icon').src = '../img/clon.png';
             d.getElementById('tooltip-bg').style.backgroundImage = "url('../img/clon.png')";
@@ -292,7 +292,7 @@ const GROUPS = [
         ['LEAVE ARENA? (salir)', true, w => { closeAll(w); const m = w.document.getElementById('exitModal'); try { w.toggleExitModal(); } catch (e) {} if (m.style.display !== 'flex') m.style.display = 'flex'; }],
         ['Deposit $PILL', true, w => { closeAll(w); w.document.getElementById('gameDepositModal').style.display = 'flex'; }],
         ['Bloqueo móvil', true, w => { closeAll(w); w.document.getElementById('mobileBlock').style.display = 'flex'; }],
-        ['Panel espectador admin', false, w => {
+        ['Panel espectador admin', true, w => {
             closeAll(w); const d = w.document;
             d.getElementById('specRoomLabel').innerText = 'classic_5$_L1';
             d.getElementById('specPlayers').innerHTML = '<div style="color:#ccc;font-size:10px;padding:3px 0;border-bottom:1px solid #222">Player1 <span style="color:#00ff88">2400</span></div><div style="color:#ccc;font-size:10px;padding:3px 0;border-bottom:1px solid #222">Bot7 <span style="color:#00ff88">910</span></div>';

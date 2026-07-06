@@ -739,6 +739,37 @@
         /* Recuadro de select-skill mas pequeño (para que el icono no quede perdido
            en un cuadrado vacio) y nombre con outline pixel mas legible. */
         body.pixel-pack .skill-opt-btn { width: 92px !important; height: 92px !important; }
+        /* ===== TEXTURE PACK PIXEL: elementos restantes (banners, kill gain,
+           barra de comandos, tooltip de skill, panel de espectador) — mismo
+           recetario que el resto del pack: bordes duros, sombra escalonada sin
+           blur, Press Start 2P para rotulos y VT323 para texto corrido. ===== */
+        body.pixel-pack #botsBanner, body.pixel-pack #pentakillBanner {
+            border-radius: 0 !important; backdrop-filter: none !important;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.65), inset 2px 2px 0 rgba(255,255,255,0.07), inset -2px -2px 0 rgba(0,0,0,0.55) !important;
+            font-family: 'Press Start 2P', monospace !important;
+        }
+        body.pixel-pack #botsBanner { font-size: 10px !important; text-shadow: 1px 1px 0 #000 !important; }
+        body.pixel-pack #pentakillBanner { font-size: 13px !important; letter-spacing: 2px !important; text-shadow: 2px 2px 0 #000 !important; }
+        body.pixel-pack .kill-gain { font-family: 'Press Start 2P', monospace !important; font-size: 15px !important; text-shadow: 2px 2px 0 #000, 4px 4px 0 rgba(0,0,0,0.5) !important; }
+        body.pixel-pack #cmdBar input {
+            border-radius: 0 !important; font-family: 'VT323', monospace !important; font-size: 17px !important;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important;
+        }
+        body.pixel-pack .skill-tooltip {
+            border-radius: 0 !important; backdrop-filter: none !important;
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.07) !important;
+        }
+        body.pixel-pack .tooltip-img-container { border-radius: 0 !important; }
+        body.pixel-pack .tooltip-icon-main { filter: none !important; image-rendering: pixelated; }
+        body.pixel-pack .tooltip-title { font-family: 'Press Start 2P', monospace !important; font-size: 11px !important; text-shadow: 1px 1px 0 #000; }
+        body.pixel-pack .tooltip-desc { font-family: 'VT323', monospace !important; font-size: 15px !important; line-height: 1.25 !important; }
+        body.pixel-pack #specAdminPanel { font-family: 'Press Start 2P', monospace !important; box-shadow: 6px 0 0 rgba(0,0,0,0.6) !important; }
+        body.pixel-pack #specAdminPanel > div:first-child { font-size: 11px !important; text-shadow: 1px 1px 0 #000 !important; }
+        body.pixel-pack #specAdminPanel button {
+            border-radius: 0 !important; font-family: 'Press Start 2P', monospace !important; font-size: 9px !important;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.12), inset -2px -2px 0 rgba(0,0,0,0.45) !important;
+        }
+        body.pixel-pack #specPlayers, body.pixel-pack #specLog { font-family: 'VT323', monospace !important; font-size: 13px !important; }
     </style>
 </head>
 <body>
@@ -1302,10 +1333,13 @@
     // tiene un id; el editor del laboratorio guarda { dx, dy, s, hide } por id en
     // pw_ui_editor y aquí se convierte en CSS (transform/display con !important
     // para ganar a cualquier skin). Se aplica al arrancar ⇒ vale en partidas reales.
+    // Debe estar sincronizado con VPARTS en font-preview.html (mismos ids).
     const UI_EDITOR_PARTS = {
         skillPanel:   { sel: '#skillChoiceOverlay', base: 'translateX(-50%)' },
         skillTitle:   { sel: '#skillChoiceTitle' },
         skillOptions: { sel: '#skillOptionsContainer' },
+        skillCard1:   { sel: '#skillOptionsContainer .skill-opt-btn:nth-child(1)' },
+        skillCard2:   { sel: '#skillOptionsContainer .skill-opt-btn:nth-child(2)' },
         skillNames:   { sel: '#skillChoiceOverlay .skill-opt-btn canvas, #skillChoiceOverlay .skill-opt-name' },
         skillIcons:   { sel: '#skillChoiceOverlay .skill-opt-icon' },
         skillTips:    { sel: '#skillChoiceOverlay .skill-tips' },
@@ -1315,8 +1349,19 @@
         sysBody:      { sel: '#sysModalDesc' },
         sysOk:        { sel: '#sysModal .exit-actions' },
         lobbyBanner:  { sel: '#lobbyBanner', base: 'translateX(-50%)' },
+        lobbyText:    { sel: '#lobbyBanner > span:not(.lb-dot)' },
+        goSplash:     { sel: '#goSplash' },
+        cdNum:        { sel: '#cdNum', base: 'translateY(-120px)' },
+        cdLbl:        { sel: '#cdNum .cd-lbl' },
+        cdDigit:      { sel: '#cdNum .cd-n' },
         resultTitle:  { sel: '#resultTitle' },
+        resultText:   { sel: '#myResult' },
+        resultBtns:   { sel: '#resultOverlay .result-box button' },
         resultBox:    { sel: '#resultOverlay .result-box' },
+        prizeTitle:   { sel: '#prizeTitle' },
+        prizeAmount:  { sel: '#prizeAmount' },
+        prizeSub:     { sel: '#prizeSubtitle' },
+        prizeBtn:     { sel: '#prizeModal .gm-btn' },
         prizeBox:     { sel: '#prizeModal .gameModalBox' },
     };
     let uiEditor = {};
