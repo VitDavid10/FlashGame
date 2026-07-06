@@ -895,8 +895,201 @@
         TRIGGERS.cerrar(win);
     }
     function setEditMode(win, on) {
+        if (on && win.__pwVisualOn) setVisualMode(win, false);   // exclusivos
         if (on) enableEditMode(win); else disableEditMode(win);
         buildFloatingPanel(win);   // refresca el botón del modo y los inputs px/X/Y
+    }
+
+    // ===== EDITOR VISUAL (tipo Paint): clic en cualquier parte y editarla ahí =====
+    // Cada parte (título, tarjetas, barra, botón OK, panel entero...) se puede
+    // ARRASTRAR (mover), escalar con la RUEDA o con los botones −/+ del inspector
+    // (panel a la IZQUIERDA), ocultar, cambiar de fuente y de fondo. Todo se guarda
+    // en pw_ui_editor / overrides ⇒ vale en partidas reales. Sin números X/Y.
+    const VPARTS = [
+        { id: 'skillTitle',   sel: '#skillChoiceTitle',                    label: 'Título del panel',  fontKey: 'skillTitle', fire: 'skill' },
+        { id: 'skillNames',   sel: '#skillChoiceOverlay .skill-opt-btn canvas, #skillChoiceOverlay .skill-opt-name', label: 'Nombres de skill', fontKey: 'skillName', fire: 'skill' },
+        { id: 'skillIcons',   sel: '#skillChoiceOverlay .skill-opt-icon',  label: 'Iconos de skill',   fire: 'skill' },
+        { id: 'skillOptions', sel: '#skillOptionsContainer',               label: 'Tarjetas (las 2)',  fire: 'skill' },
+        { id: 'skillTips',    sel: '#skillChoiceOverlay .skill-tips',      label: 'Texto inferior',    fontKey: 'skillTips', vt: true, fire: 'skill' },
+        { id: 'skillBar',     sel: '#skillChoiceOverlay .timer-bar',       label: 'Barra de tiempo',   fire: 'skill' },
+        { id: 'skillPanel',   sel: '#skillChoiceOverlay',                  label: 'Panel de skills (entero)', fire: 'skill', bg: 'skill' },
+        { id: 'sysTitle',     sel: '#sysModalTitle',                       label: 'Título del modal',  fontKey: 'sysTitle', fire: 'sys' },
+        { id: 'sysBody',      sel: '#sysModalDesc',                        label: 'Cuerpo del modal',  fire: 'sys' },
+        { id: 'sysOk',        sel: '#sysModal .exit-actions',              label: 'Botón OK',          fire: 'sys' },
+        { id: 'sysBox',       sel: '#sysModal .exit-box',                  label: 'Modal (entero)',    fire: 'sys', bg: 'sys' },
+        { id: 'lobbyBanner',  sel: '#lobbyBanner',                         label: 'Banner superior',   fire: 'banner' },
+        { id: 'resultTitle',  sel: '#resultTitle',                         label: 'Título de resultado', fire: 'result' },
+        { id: 'resultBox',    sel: '#resultOverlay .result-box',           label: 'Cuadro de resultado', fire: 'result' },
+        { id: 'prizeBox',     sel: '#prizeModal .gameModalBox',            label: 'Modal de premio',   fire: 'prize' },
+    ];
+    const VFIRE = {
+        skill:  (win) => { win.__pwLab.practiceFirstSkillDone = true; win.closeSkillChoice(); win.showSkillChoice(); },
+        sys:    (win) => win.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle, 'rejoin'),
+        banner: (win) => win.setLobbyBanner('<b>' + TEXTS.findingRoom + '</b> · JOINING THE BEST MATCH', 'search'),
+        result: (win) => { win.setOverlayTitle(win.__pwLab.els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88'); win.showResultsUI(); },
+        prize:  (win) => win.__pwLab.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }),
+    };
+    const VFONT_LIST = [['vt323', 'VT323'], ['plana', 'PLANA'], ['fina', 'FINA'], ['bold', 'BOLD'], ['normal', '5×7']];
+    let visState = null;   // { win, part, el, drag, handlers }
+    function vGetEd(id) { try { return (JSON.parse(localStorage.getItem('pw_ui_editor')) || {})[id] || {}; } catch (e) { return {}; } }
+    function vHitPart(win, e) {
+        if (!e.target || !e.target.closest) return null;
+        if (e.target.closest('#pwInspector, #pwLabPanel, #pwLabToggle, #pwVisHl')) return null;
+        for (const p of VPARTS) { const el = e.target.closest(p.sel); if (el) return { part: p, el }; }
+        return null;
+    }
+    function vPlaceHl(win) {
+        const hl = win.document.getElementById('pwVisHl'); if (!hl || !visState || !visState.part) return;
+        const el = win.document.querySelector(visState.part.sel);
+        if (!el) { hl.style.display = 'none'; return; }
+        const r = el.getBoundingClientRect();
+        if (!r.width && !r.height) { hl.style.display = 'none'; return; }
+        hl.style.cssText = 'position:fixed;pointer-events:none;z-index:100001;border:2px dashed #00e0ff;background:rgba(0,224,255,.06);display:block;' +
+            'left:' + (r.left - 3) + 'px;top:' + (r.top - 3) + 'px;width:' + (r.width + 6) + 'px;height:' + (r.height + 6) + 'px';
+    }
+    function vSelect(win, part) {
+        visState.part = part;
+        vPlaceHl(win);
+        vRenderInspector(win);
+    }
+    function vRenderInspector(win) {
+        const box = win.document.getElementById('pwInspector'); if (!box) return;
+        box.innerHTML = '';
+        const mk = (tag, css, txt) => { const el = win.document.createElement(tag); if (css) el.style.cssText = css; if (txt != null) el.textContent = txt; return el; };
+        const btn = (parent, label, fn, prim) => { const b = mk('button'); b.textContent = label; b.style.cssText = 'background:' + (prim ? '#00e0ff;color:#03222a' : '#1c2a20;color:#9ee32d') + ';border:1px solid #2a3a30;padding:6px 9px;font-family:monospace;font-size:11px;cursor:pointer;border-radius:3px'; b.onclick = fn; parent.appendChild(b); return b; };
+        const h = mk('div', 'color:#00e0ff;font-weight:bold;font-size:12px;margin-bottom:8px', '🎨 EDITOR VISUAL');
+        box.appendChild(h);
+        if (!visState.part) {
+            box.appendChild(mk('div', 'color:#9aa;font-size:11px;margin-bottom:8px', 'Haz clic en cualquier parte de un cartel para editarla. O ábrelo desde aquí:'));
+            let lastFire = null;
+            for (const p of VPARTS) {
+                if (p.fire !== lastFire) { lastFire = p.fire; box.appendChild(mk('div', 'color:#7a8a80;font-size:10px;margin:8px 0 4px;border-bottom:1px solid #1c2a20', { skill: 'PANEL DE SKILLS', sys: 'MODAL DE SISTEMA', banner: 'BANNER', result: 'RESULTADO', prize: 'PREMIO' }[p.fire])); }
+                const row = mk('div', 'margin-bottom:3px');
+                btn(row, p.label, () => { VFIRE[p.fire](win); win.setTimeout(() => vSelect(win, p), 150); });
+                box.appendChild(row);
+            }
+            return;
+        }
+        const p = visState.part;
+        const head = mk('div', 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px');
+        head.appendChild(mk('span', 'color:#fff;font-size:12px;font-weight:bold', p.label));
+        btn(head, '✕', () => { visState.part = null; const hl = win.document.getElementById('pwVisHl'); if (hl) hl.style.display = 'none'; vRenderInspector(win); });
+        box.appendChild(head);
+        box.appendChild(mk('div', 'color:#7a8a80;font-size:10px;margin-bottom:8px', '↔ arrástralo en pantalla para moverlo · rueda encima = tamaño'));
+        // TAMAÑO: −/+ visuales
+        const st0 = vGetEd(p.id);
+        const rowT = mk('div', 'display:flex;gap:6px;align-items:center;margin-bottom:8px');
+        rowT.appendChild(mk('span', 'color:#9aa;font-size:11px', 'Tamaño'));
+        const val = mk('span', 'color:#fff;font-size:11px;min-width:44px;text-align:center', '×' + (st0.s || 1));
+        const step = (d) => { const st = vGetEd(p.id); const s = Math.max(0.2, Math.min(4, Math.round(((st.s || 1) + d) * 100) / 100)); win.setUiEditorPart(p.id, { s }); val.textContent = '×' + s; vPlaceHl(win); };
+        btn(rowT, '−', () => step(-0.1)); rowT.appendChild(val); btn(rowT, '+', () => step(0.1));
+        box.appendChild(rowT);
+        // FUENTE (si la parte tiene texto pixel re-renderizable)
+        if (p.fontKey) {
+            box.appendChild(mk('div', 'color:#9aa;font-size:11px;margin-bottom:4px', 'Fuente'));
+            const rowF = mk('div', 'display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px');
+            for (const [f, lbl] of VFONT_LIST) {
+                if (f === 'vt323' && !p.vt) continue;
+                btn(rowF, lbl, () => {
+                    const all = loadOverrides(); const o = all[p.fontKey] || (all[p.fontKey] = {});
+                    o.opts = tipsOptsFromFont(f === 'plana' ? 'plain' : f === 'fina' ? 'thin' : f);
+                    // px de los tips: VT323 usa px de pantalla (~14), las canvas 1-6 —
+                    // al cambiar de familia se ajusta para no salir gigante/diminuto.
+                    if (p.fontKey === 'skillTips') { if (f === 'vt323') { if (!o.px || o.px < 7) o.px = 14; } else if (o.px > 6) o.px = 1; }
+                    saveOverrides(all);
+                    VFIRE[p.fire](win); win.setTimeout(() => vPlaceHl(win), 150);
+                });
+            }
+            box.appendChild(rowF);
+        }
+        // FONDO / ACENTO (solo carteles enteros con marco pixel propio)
+        if (p.bg) {
+            const rowB = mk('div', 'display:flex;gap:8px;align-items:center;margin-bottom:8px');
+            const mkColor = (lbl, init, fn) => {
+                const w = mk('label', 'display:flex;align-items:center;gap:4px;color:#9aa;font-size:11px', lbl);
+                const i = win.document.createElement('input'); i.type = 'color'; i.value = init;
+                i.style.cssText = 'width:26px;height:22px;padding:1px;border:1px solid #2a3a30;background:none;cursor:pointer';
+                i.oninput = () => { fn(i.value); win.setTimeout(() => vPlaceHl(win), 100); };
+                w.appendChild(i); rowB.appendChild(w);
+            };
+            let pps = {}; try { pps = JSON.parse(localStorage.getItem('pw_pixpanel_style')) || {}; } catch (e) {}
+            if (p.bg === 'skill') {
+                mkColor('fondo', pps.bg || '#080e0b', v => win.setSkillPanelStyle(v, null, null));
+                mkColor('acento', pps.accent || '#00ff88', v => { win.setPixPanelAccent(v); VFIRE.skill(win); });
+            } else {
+                mkColor('fondo', pps.sysBg || '#080e0b', v => win.setSysPanelStyle(null, v, null, null));
+                mkColor('acento', pps.sysAccent || '#00ff88', v => { win.setSysPanelStyle(v, null, null, null); VFIRE.sys(win); });
+            }
+            box.appendChild(rowB);
+        }
+        // OCULTAR / CENTRAR / RESTABLECER
+        const rowA = mk('div', 'display:flex;gap:6px;flex-wrap:wrap');
+        const hideBtn = btn(rowA, st0.hide ? 'MOSTRAR' : 'OCULTAR', () => {
+            const st = vGetEd(p.id); win.setUiEditorPart(p.id, { hide: !st.hide });
+            hideBtn.textContent = !st.hide ? 'MOSTRAR' : 'OCULTAR'; vPlaceHl(win);
+        });
+        btn(rowA, 'CENTRAR', () => { win.setUiEditorPart(p.id, { dx: 0, dy: 0 }); vPlaceHl(win); });
+        btn(rowA, 'RESTABLECER', () => { win.setUiEditorPart(p.id, null); val.textContent = '×1'; hideBtn.textContent = 'OCULTAR'; vPlaceHl(win); });
+        box.appendChild(rowA);
+    }
+    function setVisualMode(win, on) {
+        if (on && win.__pwLabEditHold && !win.__pwVisualOn) disableEditMode(win);   // exclusivos
+        if (on === !!win.__pwVisualOn) { buildFloatingPanel(win); return; }
+        if (on) {
+            win.__pwVisualOn = true; win.__pwLabEditHold = true;
+            // pisa el CSS inerte del laboratorio: en modo visual las partes deben recibir clics
+            applyStyleTag(win, 'pwVisCss',
+                VPARTS.map(p => p.sel).join(',') + '{pointer-events:auto!important;cursor:move}' );
+            const hl = win.document.createElement('div'); hl.id = 'pwVisHl'; hl.style.display = 'none';
+            win.document.body.appendChild(hl);
+            const insp = win.document.createElement('div'); insp.id = 'pwInspector';
+            insp.style.cssText = 'position:fixed;left:12px;top:52px;z-index:100000;background:rgba(5,8,6,.96);border:1px solid #00e0ff44;' +
+                'color:#cfd8d3;font-family:monospace;font-size:11px;padding:12px;width:230px;max-height:82vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.6)';
+            win.document.body.appendChild(insp);
+            const onDown = (e) => {
+                if (e.target.closest && e.target.closest('#pwInspector, #pwLabPanel, #pwLabToggle')) return;
+                const hit = vHitPart(win, e); if (!hit) return;
+                e.preventDefault(); e.stopPropagation();
+                if (!visState.part || visState.part.id !== hit.part.id) vSelect(win, hit.part);
+                const st = vGetEd(hit.part.id);
+                visState.drag = { sx: e.clientX, sy: e.clientY, dx: st.dx | 0, dy: st.dy | 0 };
+            };
+            const onMove = (e) => {
+                if (!visState || !visState.drag || !visState.part) return;
+                const d = visState.drag;
+                win.setUiEditorPart(visState.part.id, { dx: d.dx + e.clientX - d.sx, dy: d.dy + e.clientY - d.sy });
+                vPlaceHl(win); e.preventDefault();
+            };
+            const onUp = () => { if (visState) visState.drag = null; };
+            const onClick = (e) => { if (e.target.closest && e.target.closest('#pwInspector, #pwLabPanel, #pwLabToggle')) return; if (vHitPart(win, e)) { e.preventDefault(); e.stopPropagation(); } };
+            const onWheel = (e) => {
+                const hit = vHitPart(win, e); if (!hit || !visState.part || hit.part.id !== visState.part.id) return;
+                e.preventDefault(); e.stopPropagation();
+                const st = vGetEd(visState.part.id);
+                const s = Math.max(0.2, Math.min(4, Math.round(((st.s || 1) + (e.deltaY < 0 ? 0.05 : -0.05)) * 100) / 100));
+                win.setUiEditorPart(visState.part.id, { s }); vPlaceHl(win); vRenderInspector(win);
+            };
+            win.document.addEventListener('mousedown', onDown, true);
+            win.document.addEventListener('mousemove', onMove, true);
+            win.document.addEventListener('mouseup', onUp, true);
+            win.document.addEventListener('click', onClick, true);
+            win.document.addEventListener('wheel', onWheel, { capture: true, passive: false });
+            visState = { win, part: null, drag: null, handlers: { onDown, onMove, onUp, onClick, onWheel } };
+            vRenderInspector(win);
+        } else {
+            win.__pwVisualOn = false; win.__pwLabEditHold = false;
+            if (visState && visState.handlers) {
+                const H = visState.handlers;
+                win.document.removeEventListener('mousedown', H.onDown, true);
+                win.document.removeEventListener('mousemove', H.onMove, true);
+                win.document.removeEventListener('mouseup', H.onUp, true);
+                win.document.removeEventListener('click', H.onClick, true);
+                win.document.removeEventListener('wheel', H.onWheel, true);
+            }
+            visState = null;
+            for (const id of ['pwVisCss', 'pwVisHl', 'pwInspector']) { const el = win.document.getElementById(id); if (el) el.remove(); }
+        }
+        buildFloatingPanel(win);
     }
 
     // Panel flotante inyectado DENTRO de la pestaña del juego: un botón "LAB"
@@ -943,7 +1136,19 @@
             lab.appendChild(i); row.appendChild(lab); return i;
         }
 
-        let r = section('TEMA');
+        // Editor visual: LA forma simple de editar — clic en cualquier parte del
+        // cartel y herramientas a la izquierda (mover arrastrando, rueda = tamaño,
+        // fuente/fondo/ocultar con botones). Sin px ni X/Y.
+        let r = section('🎨 EDITOR VISUAL');
+        {
+            const vBtn = btn(r, win.__pwVisualOn ? '■ CERRAR EDITOR VISUAL' : '🎨 ABRIR EDITOR VISUAL', () => setVisualMode(win, !win.__pwVisualOn));
+            if (win.__pwVisualOn) { vBtn.style.background = '#00e0ff'; vBtn.style.color = '#03222a'; }
+            const info = win.document.createElement('div'); info.className = 'pwFeat';
+            info.textContent = 'clic en cualquier parte de un cartel → editarla ahí mismo (mover, tamaño, fuente, fondo, ocultar). Nada desaparece mientras esté activo.';
+            r.appendChild(info);
+        }
+
+        r = section('TEMA');
         btn(r, 'oscuro', () => win.setTheme('dark'));
         btn(r, 'gris', () => win.setTheme('grey'));
         btn(r, 'blanco', () => win.setTheme('white'));

@@ -1297,6 +1297,50 @@
         applyCartelScaleCss();
     }
     applyCartelScaleCss();
+    // ===== Editor visual (laboratorio): mover/escalar/ocultar POR PARTE =====
+    // Cada parte editable de un cartel (título, tarjetas, barra, botón OK...)
+    // tiene un id; el editor del laboratorio guarda { dx, dy, s, hide } por id en
+    // pw_ui_editor y aquí se convierte en CSS (transform/display con !important
+    // para ganar a cualquier skin). Se aplica al arrancar ⇒ vale en partidas reales.
+    const UI_EDITOR_PARTS = {
+        skillPanel:   { sel: '#skillChoiceOverlay', base: 'translateX(-50%)' },
+        skillTitle:   { sel: '#skillChoiceTitle' },
+        skillOptions: { sel: '#skillOptionsContainer' },
+        skillNames:   { sel: '#skillChoiceOverlay .skill-opt-btn canvas, #skillChoiceOverlay .skill-opt-name' },
+        skillIcons:   { sel: '#skillChoiceOverlay .skill-opt-icon' },
+        skillTips:    { sel: '#skillChoiceOverlay .skill-tips' },
+        skillBar:     { sel: '#skillChoiceOverlay .timer-bar' },
+        sysBox:       { sel: '#sysModal .exit-box' },
+        sysTitle:     { sel: '#sysModalTitle' },
+        sysBody:      { sel: '#sysModalDesc' },
+        sysOk:        { sel: '#sysModal .exit-actions' },
+        lobbyBanner:  { sel: '#lobbyBanner', base: 'translateX(-50%)' },
+        resultTitle:  { sel: '#resultTitle' },
+        resultBox:    { sel: '#resultOverlay .result-box' },
+        prizeBox:     { sel: '#prizeModal .gameModalBox' },
+    };
+    let uiEditor = {};
+    try { const _ue = JSON.parse(localStorage.getItem('pw_ui_editor')); if (_ue) uiEditor = _ue; } catch (e) {}
+    function applyUiEditor() {
+        const old = document.getElementById('pwUiEditorCss'); if (old) old.remove();
+        let css = '';
+        for (const [id, st] of Object.entries(uiEditor)) {
+            const part = UI_EDITOR_PARTS[id]; if (!part || !st) continue;
+            const tr = (part.base || '') + ' translate(' + (st.dx | 0) + 'px,' + (st.dy | 0) + 'px) scale(' + (st.s || 1) + ')';
+            css += part.sel + '{transform:' + tr + '!important;transform-origin:center' + (st.hide ? ';display:none!important' : '') + '}';
+        }
+        if (!css) return;
+        const stl = document.createElement('style'); stl.id = 'pwUiEditorCss'; stl.textContent = css;
+        document.head.appendChild(stl);
+    }
+    // patch = { dx?, dy?, s?, hide? } (merge) · null = restablecer la parte.
+    function setUiEditorPart(id, patch) {
+        if (patch === null) delete uiEditor[id];
+        else uiEditor[id] = Object.assign(uiEditor[id] || {}, patch);
+        localStorage.setItem('pw_ui_editor', JSON.stringify(uiEditor));
+        applyUiEditor();
+    }
+    applyUiEditor();
     // Preferencia de marco por cartel: 'auto' (imagen importada si existe, si no
     // procedural), 'atlas' (forzar imagen) o 'procedural' (forzar el look de
     // siempre). Ver cartel-hero.js. Persiste en localStorage para partidas reales.
