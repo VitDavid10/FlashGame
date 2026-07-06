@@ -11,12 +11,10 @@ automatico):
   clon.png  shoot.png  sprint.png  tp.png
   iman.png  inmune.png big.png     random.png
 
-Como regenerarlos desde un original de IA (fondo negro solido, glow del color
-propio del icono que puede llegar hasta el borde):
+Como regenerarlos desde un original de IA (fondo negro solido):
 1. Guarda el original en game/img/skill-icons-pixel/raw/<nombre>.png.
-2. El procesado hace: fondo negro puro -> alpha (sin muestrear esquinas,
-   asumido 0,0,0 directamente porque el glow a veces llega hasta el borde),
-   SIN recortar al contenido (son iconos cuadrados pensados para verse
-   centrados en un slot cuadrado — recortar rompería el encuadre), solo
-   reescalado a 256x256.
+2. El procesado es SOLO un reescalado bicubico a 256x256. El fondo negro se
+   conserva a proposito: los iconos classic (img/*.png) son cuadrados con el
+   negro incluido y el pixel-pack debe verse igual de encuadrado (quitarles
+   el fondo los deja "circulares" por el glow).
 3. Guarda el resultado en game/img/skill-icons-pixel/<nombre>.png.
