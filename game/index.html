@@ -770,6 +770,47 @@
             box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.12), inset -2px -2px 0 rgba(0,0,0,0.45) !important;
         }
         body.pixel-pack #specPlayers, body.pixel-pack #specLog { font-family: 'VT323', monospace !important; font-size: 13px !important; }
+        /* ===== TEXTURE PACK PIXEL: pantalla de seleccion de modo =====
+           Fondo posterizado en bandas duras + grid gordo, rotulos Press Start 2P
+           y texto corrido VT323, divisor diagonal en escalera de peldanos, y
+           titulos ARCADE/CLASSIC desde sprite PNG (img/mode-title/) con fallback
+           a texto Press Start 2P mientras el PNG no exista (onerror del img). */
+        body.pixel-pack .mode-arcade {
+            background-image: linear-gradient(rgba(204, 255, 0, 0.07) 3px, transparent 3px), linear-gradient(90deg, rgba(204, 255, 0, 0.07) 3px, transparent 3px), linear-gradient(135deg, var(--arcade-bg-1) 0%, var(--arcade-bg-1) 28%, #111600 28%, #111600 52%, #090c00 52%, #090c00 76%, #000 76%);
+            background-size: 26px 26px, 26px 26px, 100% 100%;
+        }
+        body.pixel-pack .mode-classic {
+            background-image: linear-gradient(rgba(0, 255, 136, 0.07) 3px, transparent 3px), linear-gradient(90deg, rgba(0, 255, 136, 0.07) 3px, transparent 3px), linear-gradient(135deg, #000 0%, #000 24%, #001009 24%, #001009 48%, #00190e 48%, #00190e 72%, var(--classic-bg-1) 72%);
+            background-size: 26px 26px, 26px 26px, 100% 100%;
+        }
+        body.pixel-pack .diagonal-divider {
+            top: 0; height: 100%; width: 200px; margin-left: -100px;
+            transform: none !important; box-shadow: none !important;
+            transition: left 1.2s steps(16);
+            filter: drop-shadow(0 0 10px #fff);
+            clip-path: polygon(100% 0%,100% 6.25%,93.93% 6.25%,93.93% 12.5%,87.87% 12.5%,87.87% 18.75%,81.8% 18.75%,81.8% 25%,75.73% 25%,75.73% 31.25%,69.67% 31.25%,69.67% 37.5%,63.6% 37.5%,63.6% 43.75%,57.53% 43.75%,57.53% 50%,51.47% 50%,51.47% 56.25%,45.4% 56.25%,45.4% 62.5%,39.33% 62.5%,39.33% 68.75%,33.27% 68.75%,33.27% 75%,27.2% 75%,27.2% 81.25%,21.13% 81.25%,21.13% 87.5%,15.07% 87.5%,15.07% 93.75%,9% 93.75%,9% 100%,0% 100%,0% 93.75%,6.07% 93.75%,6.07% 87.5%,12.13% 87.5%,12.13% 81.25%,18.2% 81.25%,18.2% 75%,24.27% 75%,24.27% 68.75%,30.33% 68.75%,30.33% 62.5%,36.4% 62.5%,36.4% 56.25%,42.47% 56.25%,42.47% 50%,48.53% 50%,48.53% 43.75%,54.6% 43.75%,54.6% 37.5%,60.67% 37.5%,60.67% 31.25%,66.73% 31.25%,66.73% 25%,72.8% 25%,72.8% 18.75%,78.87% 18.75%,78.87% 12.5%,84.93% 12.5%,84.93% 6.25%,91% 6.25%,91% 0%);
+        }
+        body.pixel-pack #modeScreen.hover-arcade .diagonal-divider { filter: drop-shadow(0 0 10px #ccff00); }
+        body.pixel-pack #modeScreen.hover-classic .diagonal-divider { filter: drop-shadow(0 0 10px #00ff88); }
+        body.pixel-pack .mode-sub { font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 3px; }
+        body.pixel-pack .mode-title { font-family: 'Press Start 2P', monospace; font-size: 42px; letter-spacing: 0; text-shadow: 4px 4px 0 rgba(0,0,0,0.85); }
+        .mode-title .mt-img { display: none; height: 100px; width: auto; }
+        .mode-classic .mt-img { height: 86px; }
+        body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: drop-shadow(5px 5px 0 rgba(0,0,0,0.55)); }
+        body.pixel-pack .mode-title:not(.no-img) .mt-txt { display: none; }
+        body.pixel-pack .mode-desc { font-family: 'VT323', monospace; font-size: 19px; line-height: 1.35; border: 2px dashed rgba(255,255,255,0.28); }
+        body.pixel-pack .mqp { border: 2px dashed rgba(255,255,255,0.22); }
+        body.pixel-pack .mqp.classic { border-left: 3px solid #00ffaa; }
+        body.pixel-pack .mqp.arcade { border-right: 3px solid #ccff00; }
+        body.pixel-pack .back-to-web, body.pixel-pack .mqp-btn, body.pixel-pack .mqp-head { font-family: 'Press Start 2P', monospace; font-size: 9px; }
+        body.pixel-pack .mqp-btn .dot { border-radius: 0; }
+        body.pixel-pack .mqp-foot { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px; }
+        body.pixel-pack .mqp-q .n { font-family: 'Press Start 2P', monospace; font-size: 12px; }
+        body.pixel-pack .mqp-q .t { font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 1.6; letter-spacing: 0; }
+        body.pixel-pack .mqp-q .v { font-family: 'Press Start 2P', monospace; font-size: 8px; }
+        body.pixel-pack .mqp-bar { border-radius: 0; height: 6px; background: rgba(255,255,255,0.08); box-shadow: inset 1px 1px 0 rgba(0,0,0,0.6); }
+        body.pixel-pack .mqp-bar i { transition: width 0.4s steps(8); }
+        body.pixel-pack .mqp-q .tip { border-radius: 0; font-family: 'VT323', monospace; font-size: 14px; letter-spacing: 0; }
     </style>
 </head>
 <body>
@@ -912,7 +953,7 @@
         <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
             <div id="contentArcade" class="mode-content">
                 <div class="mode-sub">ROGUELIKE MECHANICS</div>
-                <div class="mode-title">ARCADE</div>
+                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img" src="img/mode-title/ARCADE.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NORMAL MAP. TIME: <span class="highlight">3:50</span>.<br>
                     START EMPTY. <span class="highlight">PICK SKILLS</span> EVERY 30S.<br>
@@ -923,7 +964,7 @@
         <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
             <div id="contentClassic" class="mode-content">
                 <div class="mode-sub">STANDARD MODE</div>
-                <div class="mode-title">CLASSIC</div>
+                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img" src="img/mode-title/CLASSIC.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NO TIMER. <span class="highlight">HUGE MAP (x2)</span>.<br>
                     ONLY <span class="highlight">SHOOT</span> SKILL (KEY 1).<br>

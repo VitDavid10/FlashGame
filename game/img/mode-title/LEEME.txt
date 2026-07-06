@@ -1,0 +1,13 @@
+Titulos pixel-art de la pantalla de seleccion de modo (ARCADE.png, CLASSIC.png).
+
+Solo se usan con el texture pack pixel activo (pw_pixel=1): el <img class="mt-img">
+de cada .mode-title los carga; si el PNG no existe, el onerror activa el fallback
+de texto Press Start 2P (clase .no-img), asi que borrar un PNG nunca rompe nada.
+
+Como regenerarlos desde un original de IA (fondo oscuro con grid, sin transparencia):
+1. Guarda el original en game/img/font-hero/raw/<NOMBRE>.png.
+2. El procesado hace: estimar color de fondo desde las esquinas -> fondo a alpha
+   (des-componiendo el halo de glow) -> recorte al glifo -> reescalado bicubico
+   a 200px de alto (2x del tamano CSS, que es 100px ARCADE / 86px CLASSIC).
+3. Umbrales usados: ARCADE T0=28 T1=90; CLASSIC T0=45 T1=110 + filtro de tonos
+   calidos (el original traia glow naranja que habia que descartar).
