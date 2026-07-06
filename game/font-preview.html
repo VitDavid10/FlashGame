@@ -907,7 +907,8 @@
     // en pw_ui_editor / overrides ⇒ vale en partidas reales. Sin números X/Y.
     const VPARTS = [
         { id: 'skillTitle',   sel: '#skillChoiceTitle',                    label: 'Título del panel',  fontKey: 'skillTitle', fire: 'skill' },
-        { id: 'skillNames',   sel: '#skillChoiceOverlay .skill-opt-btn canvas, #skillChoiceOverlay .skill-opt-name', label: 'Nombres de skill', fontKey: 'skillName', fire: 'skill' },
+        { id: 'skillName1',   sel: '#skillChoiceOverlay .skill-opt-btn:nth-child(1) canvas, #skillChoiceOverlay .skill-opt-btn:nth-child(1) .skill-opt-name', label: 'Nombre skill (tarjeta 1)', fontKey: 'skillName', fire: 'skill' },
+        { id: 'skillName2',   sel: '#skillChoiceOverlay .skill-opt-btn:nth-child(2) canvas, #skillChoiceOverlay .skill-opt-btn:nth-child(2) .skill-opt-name', label: 'Nombre skill (tarjeta 2)', fontKey: 'skillName', fire: 'skill' },
         { id: 'skillIcons',   sel: '#skillChoiceOverlay .skill-opt-icon',  label: 'Iconos de skill',   fire: 'skill' },
         { id: 'skillOptions', sel: '#skillOptionsContainer',               label: 'Tarjetas (las 2)',  fire: 'skill' },
         { id: 'skillTips',    sel: '#skillChoiceOverlay .skill-tips',      label: 'Texto inferior',    fontKey: 'skillTips', vt: true, fire: 'skill' },
@@ -1735,7 +1736,10 @@
                 (first ? ';box-shadow:0 0 0 2px ' + s.accent + ',4px 4px 0 rgba(0,0,0,.7)' : '');
             const icon = document.createElement('div'); icon.style.cssText = 'width:' + L.iconPx + 'px;height:' + L.iconPx + 'px;background:#333;margin-bottom:8px;flex:0 0 auto';
             const fitPx = nmSt.px || Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2))));
-            const nc = pixApplyScale(pixRenderText(nm, fitPx, labOptsFromState(nmSt)).cv, nmSt.scale);
+            // font forzado a boldhd (igual que showSkillChoice en index.html): si no,
+            // el auto-resolve prefiere atlas para nombres cuyas letras ya existen
+            // (p.ej. "VIRUS SHOT") y boldhd para el resto ("PLUS"), mezclando fuentes.
+            const nc = pixApplyScale(pixRenderText(nm, fitPx, Object.assign({}, labOptsFromState(nmSt), { font: 'boldhd' })).cv, nmSt.scale);
             nc.style.margin = '4px auto 0';
             c.appendChild(icon); c.appendChild(nc);
             cards.appendChild(c); first = false;
