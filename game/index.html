@@ -1274,6 +1274,7 @@
 <script src="pixfont.js"></script>
 <script src="pixfont-hero.js"></script>
 <script src="cartel-hero.js"></script>
+<script src="skill-icons-pixel.js"></script>
 <script>
     // --- La lógica de juego vive en shared/sim.js (PillSim); aquí queda
     // --- presentación: render, cámara, input, menús, HUD y sonido. ---
@@ -1731,8 +1732,9 @@
 
             this.dom.title.innerText = data.name;
             this.dom.desc.innerText = data.desc;
-            this.dom.icon.src = data.icon;
-            this.dom.bg.style.backgroundImage = `url('${data.icon}')`;
+            const iconUrl = skillIconUrl(id, data.icon);
+            this.dom.icon.src = iconUrl;
+            this.dom.bg.style.backgroundImage = `url('${iconUrl}')`;
 
             const card = e.currentTarget;
             const rect = card.getBoundingClientRect();
@@ -4320,7 +4322,7 @@
         let gcdText = globalCD > 0 ? (globalCD/1000).toFixed(1) : ""; for(let i=1; i<=10; i++) { if(uiGcds[i]) uiGcds[i].innerText = gcdText; }
 
         let activeBuffs = []; if (p) { if (p.skillState[3] > 0) activeBuffs.push({id: 3, time: p.skillState[3]}); if (p.skillState[5] > 0) activeBuffs.push({id: 5, time: p.skillState[5]}); if (p.skillState[6] > 0) activeBuffs.push({id: 6, time: p.skillState[6]}); }
-        if(activeBuffs.length > 0) { els.buffTable.style.display = 'block'; let buffHtml = ""; const buffImages = { 3: '../img/sprint.png', 5: '../img/iman.png', 6: '../img/inmune.png' }; activeBuffs.forEach(buff => { let seconds = Math.ceil(buff.time / 1000); let imgSrc = buffImages[buff.id] || ''; buffHtml += `<div class="buff-row"><img src="${imgSrc}" class="buff-icon-img" onerror="this.style.display='none'"><span class="buff-time">${seconds}s</span></div>`; }); els.buffList.innerHTML = buffHtml; } else { els.buffTable.style.display = 'none'; }
+        if(activeBuffs.length > 0) { els.buffTable.style.display = 'block'; let buffHtml = ""; const buffImages = { 3: '../img/sprint.png', 5: '../img/iman.png', 6: '../img/inmune.png' }; activeBuffs.forEach(buff => { let seconds = Math.ceil(buff.time / 1000); let imgSrc = skillIconUrl(buff.id, buffImages[buff.id] || ''); buffHtml += `<div class="buff-row"><img src="${imgSrc}" class="buff-icon-img" onerror="this.style.display='none'"><span class="buff-time">${seconds}s</span></div>`; }); els.buffList.innerHTML = buffHtml; } else { els.buffTable.style.display = 'none'; }
 
         if (currentGameMode === 'arcade' || currentGameMode === 'skills') {
             // Tiempo de sala: local (roomTimers) u online (el servidor lo manda en cada snapshot)

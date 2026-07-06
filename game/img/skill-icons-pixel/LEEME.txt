@@ -1,0 +1,22 @@
+Iconos pixel-art de las 8 skills, solo activos con el texture pack pixel
+(pw_pixel=1): barra de habilidades, rejilla de seleccion, tarjetas de skill al
+subir de nivel, tooltip y los iconos de buff activo (sprint/iman/inmune).
+
+Mismo mecanismo que game/img/cartel-hero (ver skill-icons-pixel.js): si el PNG
+de una skill falta, esa skill en concreto sigue con su icono clasico de
+siempre — el juego nunca se rompe por un icono ausente.
+
+Nombres (mismos que los iconos clasicos en game/img/, para que el mapeo sea
+automatico):
+  clon.png  shoot.png  sprint.png  tp.png
+  iman.png  inmune.png big.png     random.png
+
+Como regenerarlos desde un original de IA (fondo negro solido, glow del color
+propio del icono que puede llegar hasta el borde):
+1. Guarda el original en game/img/skill-icons-pixel/raw/<nombre>.png.
+2. El procesado hace: fondo negro puro -> alpha (sin muestrear esquinas,
+   asumido 0,0,0 directamente porque el glow a veces llega hasta el borde),
+   SIN recortar al contenido (son iconos cuadrados pensados para verse
+   centrados en un slot cuadrado — recortar rompería el encuadre), solo
+   reescalado a 256x256.
+3. Guarda el resultado en game/img/skill-icons-pixel/<nombre>.png.
