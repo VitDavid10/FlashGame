@@ -19,7 +19,7 @@
     <!-- FUENTES -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
     
     <style>
         /* --- VARIABLES & RESET --- */
@@ -576,9 +576,105 @@ body.trailer-open #page-content{
             .section-title { font-size: 32px; }
             .section-container { padding: 60px 20px; }
         }
+
+        /* ===== TEXTURE PACK PIXEL (landing) =====
+           Mismo recetario que el pack de /game: bordes duros (radius 0), sombras
+           escalonadas sin blur, sin backdrop-filter, Press Start 2P para rotulos
+           y VT323 para texto corrido. Se activa con body.pixel-pack, ligado al
+           mismo localStorage pw_pixel que el selector "Texture Pack" del juego. */
+        /* rotulos */
+        body.pixel-pack .big-title { font-family: 'Press Start 2P', monospace; font-size: 52px; text-shadow: 5px 5px 0 #063e26, 10px 10px 0 rgba(0,0,0,0.55); }
+        body.pixel-pack .big-subtitle { font-family: 'Press Start 2P', monospace; font-size: 14px; letter-spacing: 5px; }
+        body.pixel-pack .brand-name { font-family: 'Press Start 2P', monospace; font-size: 17px; }
+        body.pixel-pack .section-title { font-family: 'Press Start 2P', monospace; font-size: 26px; text-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
+        body.pixel-pack .feature-text h3 { font-family: 'Press Start 2P', monospace; font-size: 22px; line-height: 1.3; }
+        body.pixel-pack .skills-section h2, body.pixel-pack .battle-modes-container h2 { font-family: 'Press Start 2P', monospace !important; font-size: 24px !important; }
+        body.pixel-pack .mode-card h4 { font-family: 'Press Start 2P', monospace; font-size: 16px; }
+        body.pixel-pack .modal-title, body.pixel-pack .dq-summary .info .ti { font-family: 'Press Start 2P', monospace; font-size: 13px; }
+        body.pixel-pack .nav-link, body.pixel-pack .dropbtn { font-family: 'Press Start 2P', monospace; font-size: 10px; }
+        body.pixel-pack .ticker-item { font-family: 'Press Start 2P', monospace; font-size: 9px; }
+        body.pixel-pack .skill-name, body.pixel-pack .dq-title, body.pixel-pack .tooltip-title,
+        body.pixel-pack .widget-title, body.pixel-pack .lb-head { font-family: 'Press Start 2P', monospace; }
+        body.pixel-pack .tooltip-title { font-size: 11px; }
+        body.pixel-pack .skill-name { font-size: 8px; }
+        body.pixel-pack .lb-head { font-size: 9px; }
+        /* texto corrido */
+        body.pixel-pack .feature-text p, body.pixel-pack .mode-card p, body.pixel-pack .mode-oracle-info,
+        body.pixel-pack .dq-desc, body.pixel-pack .dq-subtitle, body.pixel-pack .tooltip-desc,
+        body.pixel-pack .intro-text { font-family: 'VT323', monospace; }
+        body.pixel-pack .feature-text p, body.pixel-pack .mode-card p { font-size: 19px; }
+        body.pixel-pack .mode-oracle-info, body.pixel-pack .dq-subtitle { font-size: 18px; }
+        body.pixel-pack .dq-desc { font-size: 15px; }
+        body.pixel-pack .tooltip-desc { font-size: 15px; line-height: 1.25; }
+        /* paneles y tarjetas: esquinas rectas + sombra dura */
+        body.pixel-pack .side-widget, body.pixel-pack .widget-row, body.pixel-pack .mode-card,
+        body.pixel-pack .video-card, body.pixel-pack .trailer-box:not(.active), body.pixel-pack .full-width-img,
+        body.pixel-pack .ca-box, body.pixel-pack .lb-wrap, body.pixel-pack .dq-summary, body.pixel-pack .dq-card,
+        body.pixel-pack .modal-box, body.pixel-pack .dropdown-box, body.pixel-pack .wallet-option,
+        body.pixel-pack .skill-tooltip, body.pixel-pack .tooltip-img-container, body.pixel-pack .placeholder-box {
+            border-radius: 0 !important; backdrop-filter: none !important;
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.06), inset -2px -2px 0 rgba(0,0,0,0.5) !important;
+        }
+        body.pixel-pack .navbar { backdrop-filter: none !important; border-bottom: 2px solid rgba(0,255,136,0.4); }
+        body.pixel-pack .modal-overlay { backdrop-filter: none !important; }
+        /* botones */
+        body.pixel-pack .btn-play, body.pixel-pack .btn-connect, body.pixel-pack .btn-deposit,
+        body.pixel-pack .btn-withdraw, body.pixel-pack .claim-pill, body.pixel-pack .dq-btn,
+        body.pixel-pack .cmodal-btn, body.pixel-pack .lb-pag button, body.pixel-pack .modal-box button {
+            border-radius: 0 !important; clip-path: none !important;
+            font-family: 'Press Start 2P', monospace !important; font-size: 11px !important;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.18), inset -2px -2px 0 rgba(0,0,0,0.45) !important;
+        }
+        body.pixel-pack .btn-play:active, body.pixel-pack .btn-connect:active, body.pixel-pack .cmodal-btn:active,
+        body.pixel-pack .dq-btn.unlocked:active, body.pixel-pack .claim-pill:active {
+            transform: translate(2px, 2px) !important;
+            box-shadow: 1px 1px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(0,0,0,0.35) !important;
+        }
+        body.pixel-pack .category-tag, body.pixel-pack .dq-tag, body.pixel-pack .copy-tag,
+        body.pixel-pack .cmodal-field { border-radius: 0 !important; }
+        body.pixel-pack .lb-c-pos { border-radius: 0 !important; }
+        body.pixel-pack .dq-bar, body.pixel-pack .dq-bar i { border-radius: 0 !important; }
+        /* logo y cursor: pill cuadrada estilo sprite */
+        body.pixel-pack .logo-pill { border-radius: 0; box-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
+        body.pixel-pack #custom-cursor { border-radius: 0; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
+        /* imagenes/iconos reescalados sin suavizado */
+        body.pixel-pack .skill-icon, body.pixel-pack .dd-icon, body.pixel-pack .wallet-option img,
+        body.pixel-pack .tooltip-icon-main, body.pixel-pack .feature-images img,
+        body.pixel-pack .full-width-img img { image-rendering: pixelated; }
+        /* boton flotante para alternar el pack (compartido con el juego via pw_pixel) */
+        #pixelToggle {
+            position: fixed; bottom: 18px; right: 18px; z-index: 10000;
+            background: rgba(8,12,8,0.92); color: var(--primary); border: 1px solid var(--primary);
+            border-radius: 8px; padding: 10px 16px; font-family: 'Russo One', sans-serif; font-size: 11px;
+            letter-spacing: 2px; text-transform: uppercase; cursor: pointer !important; transition: 0.2s;
+        }
+        #pixelToggle:hover { background: var(--primary); color: #04150c; box-shadow: 0 0 18px rgba(0,255,136,0.5); }
+        body.pixel-pack #pixelToggle {
+            border-radius: 0; font-family: 'Press Start 2P', monospace; font-size: 9px;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.18);
+        }
     </style>
 </head>
 <body>
+
+    <!-- Texture pack pixel: mismo flag pw_pixel que el selector del juego (mismo
+         origen ⇒ mismo localStorage). Se aplica antes de pintar nada para evitar
+         el "flash" de estilos clasicos, y el boton flotante lo alterna en vivo. -->
+    <script>
+        if (localStorage.getItem('pw_pixel') === '1') document.body.classList.add('pixel-pack');
+        function togglePixelPack() {
+            const on = !document.body.classList.contains('pixel-pack');
+            document.body.classList.toggle('pixel-pack', on);
+            localStorage.setItem('pw_pixel', on ? '1' : '0');
+            updatePixelToggleLabel();
+        }
+        function updatePixelToggleLabel() {
+            const b = document.getElementById('pixelToggle');
+            if (b) b.textContent = 'PIXEL: ' + (document.body.classList.contains('pixel-pack') ? 'ON' : 'OFF');
+        }
+        document.addEventListener('DOMContentLoaded', updatePixelToggleLabel);
+    </script>
+    <button id="pixelToggle" onclick="togglePixelPack()">PIXEL: OFF</button>
 
     <div id="custom-cursor"></div>
     <div id="page-content">
