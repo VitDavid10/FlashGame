@@ -710,6 +710,12 @@
             box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.12), inset -2px -2px 0 rgba(0,0,0,0.5) !important;
         }
         body.pixel-pack .ab-slot img, body.pixel-pack .buff-icon-img, body.pixel-pack #skillChoiceOverlay img { image-rendering: pixelated; }
+        /* Los iconos de skill son <div> con background-image (no <img>), asi que
+           la regla de arriba no los alcanza: sin esto se reescalan con suavizado
+           pese al texture pack pixel. */
+        body.pixel-pack .grid-skill-icon, body.pixel-pack .skill-opt-icon, body.pixel-pack .skill-icon {
+            image-rendering: pixelated;
+        }
         body.pixel-pack input[type="text"], body.pixel-pack .gameModalBox input {
             border-radius: 0 !important;
             box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important;
