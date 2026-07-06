@@ -634,9 +634,14 @@ body.trailer-open #page-content{
         body.pixel-pack .cmodal-field { border-radius: 0 !important; }
         body.pixel-pack .lb-c-pos { border-radius: 0 !important; }
         body.pixel-pack .dq-bar, body.pixel-pack .dq-bar i { border-radius: 0 !important; }
-        /* logo y cursor: pill cuadrada estilo sprite */
-        body.pixel-pack .logo-pill { border-radius: 0; box-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
-        body.pixel-pack #custom-cursor { border-radius: 0; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
+        /* logo y cursor: pill en pixel art DE VERDAD — mismo algoritmo que
+           pixPillSprite del juego (contorno, sombra, costura, brillo), pintada
+           por JS como background-image. Se quita el degradado/borde CSS. */
+        body.pixel-pack .logo-pill, body.pixel-pack #custom-cursor {
+            border: none !important; border-radius: 0 !important; box-shadow: none !important;
+            background: transparent; background-size: 100% 100% !important; background-repeat: no-repeat !important;
+            image-rendering: pixelated;
+        }
         /* imagenes/iconos reescalados sin suavizado */
         body.pixel-pack .skill-icon, body.pixel-pack .dd-icon, body.pixel-pack .wallet-option img,
         body.pixel-pack .tooltip-icon-main, body.pixel-pack .feature-images img,
@@ -667,12 +672,44 @@ body.trailer-open #page-content{
             document.body.classList.toggle('pixel-pack', on);
             localStorage.setItem('pw_pixel', on ? '1' : '0');
             updatePixelToggleLabel();
+            applyPixelPill();
         }
         function updatePixelToggleLabel() {
             const b = document.getElementById('pixelToggle');
             if (b) b.textContent = 'PIXEL: ' + (document.body.classList.contains('pixel-pack') ? 'ON' : 'OFF');
         }
-        document.addEventListener('DOMContentLoaded', updatePixelToggleLabel);
+        // Pill pixel-art para el cursor y el logo: port 1:1 de pixPillSprite
+        // (game/index.html) — capsula pintada pixel a pixel a resolucion logica
+        // baja (contorno oscuro, banda de sombra abajo-dcha, costura entre
+        // mitades, banda de luz arriba-izda y highlight) y escalada sin
+        // suavizado. Blanco arriba + verde abajo, como la pill de la marca.
+        function pixPillUrl(wL, hL, rgbT, rgbB) {
+            const cv = document.createElement('canvas'); cv.width = wL; cv.height = hL;
+            const g = cv.getContext('2d'), R = wL / 2, half = Math.floor(hL / 2);
+            const shade = (rgb, amt) => { const t = amt < 0 ? 0 : 255, a = Math.abs(amt); return 'rgb(' + rgb.map(v => Math.round(v + (t - v) * a)).join(',') + ')'; };
+            const inside = (x, y) => { if (x < 0 || y < 0 || x >= wL || y >= hL) return false; const cy = Math.min(Math.max(y + 0.5, R), hL - R); const dx = x + 0.5 - R, dy = y + 0.5 - cy; return dx * dx + dy * dy <= (R - 0.1) * (R - 0.1); };
+            for (let y = 0; y < hL; y++) for (let x = 0; x < wL; x++) {
+                if (!inside(x, y)) continue;
+                const rgb = y < half ? rgbT : rgbB;
+                let col;
+                if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = shade(rgb, -0.55);
+                else if (!inside(x + 2, y) || !inside(x, y + 2)) col = shade(rgb, -0.25);
+                else if (y === half || y === half - 1) col = shade(rgb, -0.18);
+                else if (!inside(x - 2, y) || !inside(x, y - 2)) col = shade(rgb, 0.18);
+                else col = 'rgb(' + rgb.join(',') + ')';
+                g.fillStyle = col; g.fillRect(x, y, 1, 1);
+            }
+            const hs = Math.max(1, Math.round(wL / 6));
+            g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(Math.round(wL * 0.22), Math.round(hL * 0.14), hs, hs);
+            return cv.toDataURL();
+        }
+        function applyPixelPill() {
+            const on = document.body.classList.contains('pixel-pack');
+            // 8×15 logico sobre 24×44 de pantalla ≈ pixel gordo de 3px, como el juego
+            const url = on ? 'url(' + pixPillUrl(8, 15, [255, 255, 255], [0, 255, 136]) + ')' : '';
+            document.querySelectorAll('#custom-cursor, .logo-pill').forEach(el => { el.style.backgroundImage = url; });
+        }
+        document.addEventListener('DOMContentLoaded', () => { updatePixelToggleLabel(); applyPixelPill(); });
     </script>
     <button id="pixelToggle" onclick="togglePixelPack()">PIXEL: OFF</button>
 
