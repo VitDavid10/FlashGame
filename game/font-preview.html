@@ -1741,6 +1741,9 @@
             // (p.ej. "VIRUS SHOT") y boldhd para el resto ("PLUS"), mezclando fuentes.
             const nc = pixApplyScale(pixRenderText(nm, fitPx, Object.assign({}, labOptsFromState(nmSt), { font: 'boldhd' })).cv, nmSt.scale);
             nc.style.margin = '4px auto 0';
+            // mismo tope que showSkillChoice: el nombre nunca más ancho que la tarjeta
+            const ncW = parseInt(nc.style.width, 10) || nc.width;
+            if (ncW > L.cardPx - 8) { nc.style.width = (L.cardPx - 8) + 'px'; nc.style.height = 'auto'; }
             c.appendChild(icon); c.appendChild(nc);
             cards.appendChild(c); first = false;
         }
