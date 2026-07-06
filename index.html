@@ -586,6 +586,20 @@ body.trailer-open #page-content{
         body.pixel-pack .big-title { font-family: 'Press Start 2P', monospace; font-size: 52px; text-shadow: 5px 5px 0 #063e26, 10px 10px 0 rgba(0,0,0,0.55); }
         body.pixel-pack .big-subtitle { font-family: 'Press Start 2P', monospace; font-size: 14px; letter-spacing: 5px; }
         body.pixel-pack .brand-name { font-family: 'Press Start 2P', monospace; font-size: 17px; }
+        /* ===== TEXTURE PACK PIXEL: hero/brand/boton por sprite PNG (img/pixel-hero/)
+           con fallback al texto/estilo procedural de siempre si el PNG no existe
+           (onerror del img añade .no-img al contenedor — mismo mecanismo que los
+           titulos ARCADE/CLASSIC del juego). ===== */
+        .hero-img, .bn-img { display: none; image-rendering: pixelated; }
+        body.pixel-pack .hero-main-content:not(.no-img) .hero-img { display: inline-block; height: 150px; width: auto; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); }
+        body.pixel-pack .hero-main-content:not(.no-img) .hero-txt { display: none; }
+        body.pixel-pack .brand-name:not(.no-img) .bn-img { display: inline-block; height: 22px; width: auto; vertical-align: middle; }
+        body.pixel-pack .brand-name:not(.no-img) .bn-txt { display: none; }
+        body.pixel-pack.has-play-img .btn-play {
+            background: transparent !important; box-shadow: none !important; clip-path: none !important; border: none !important;
+            background-image: url('img/pixel-hero/play-now.png') !important; background-size: 100% 100% !important; background-repeat: no-repeat !important;
+        }
+        body.pixel-pack.has-play-img .btn-play .bp-txt { visibility: hidden; }
         body.pixel-pack .section-title { font-family: 'Press Start 2P', monospace; font-size: 26px; text-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
         body.pixel-pack .feature-text h3 { font-family: 'Press Start 2P', monospace; font-size: 22px; line-height: 1.3; }
         body.pixel-pack .skills-section h2, body.pixel-pack .battle-modes-container h2 { font-family: 'Press Start 2P', monospace !important; font-size: 24px !important; }
@@ -710,6 +724,10 @@ body.trailer-open #page-content{
             document.querySelectorAll('#custom-cursor, .logo-pill').forEach(el => { el.style.backgroundImage = url; });
         }
         document.addEventListener('DOMContentLoaded', () => { updatePixelToggleLabel(); applyPixelPill(); });
+        // Sprite del boton PLAY NOW (img/pixel-hero/play-now.png): solo se activa
+        // en pixel-pack si el PNG carga bien (.has-play-img en body); si falta,
+        // el boton se queda con el estilo procedural de siempre.
+        (() => { const img = new Image(); img.onload = () => document.body.classList.add('has-play-img'); img.src = 'img/pixel-hero/play-now.png'; })();
     </script>
     <button id="pixelToggle" onclick="togglePixelPack()">PIXEL: OFF</button>
 
@@ -721,11 +739,11 @@ body.trailer-open #page-content{
         <div class="nav-left">
             <div class="brand-container">
                 <div class="logo-pill"></div>
-                <span class="brand-name">PILLWARS</span>
+                <span class="brand-name"><span class="bn-txt">PILLWARS</span><img class="bn-img" src="img/pixel-hero/brand.png" alt="" onerror="this.closest('.brand-name').classList.add('no-img')"></span>
             </div>
-            
+
             <div class="nav-links-container">
-                <button class="btn-play" onclick="window.location.href='game/'">PLAY NOW</button>
+                <button class="btn-play" onclick="window.location.href='game/'"><span class="bp-txt">PLAY NOW</span></button>
                 <a href="#hero" class="nav-link">GAME</a>
                 <a href="#quest" class="nav-link">QUESTS</a>
                 <a href="#shop" class="nav-link">STORE</a>
@@ -770,8 +788,11 @@ body.trailer-open #page-content{
     <div class="hero-video-wrapper" id="hero">
         <video autoplay muted loop playsinline class="hero-video"><source src="https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-a-green-grid-996-large.mp4" type="video/mp4"></video>
         <div class="hero-main-content">
-            <h1 class="big-title">PILLWARS</h1>
-            <div class="big-subtitle">THE CRYPTO ARENA</div>
+            <div class="hero-txt">
+                <h1 class="big-title">PILLWARS</h1>
+                <div class="big-subtitle">THE CRYPTO ARENA</div>
+            </div>
+            <img class="hero-img" src="img/pixel-hero/hero-title.png" alt="PillWars — The Crypto Arena" onerror="this.closest('.hero-main-content').classList.add('no-img')">
         </div>
     </div>
 

@@ -1,0 +1,26 @@
+Assets pixel-art de la landing (index.html), solo activos con el texture pack
+pixel (pw_pixel=1): boton PLAY NOW, titulo hero (PILLWARS + THE CRYPTO ARENA)
+y el logo PILLWARS pequeno de la navbar.
+
+Mismo mecanismo que game/img/font-hero: si el PNG falta, cada elemento cae
+solo en su estilo procedural de siempre (fuente Press Start 2P) — la web
+nunca se rompe por un asset ausente.
+
+Archivos:
+  play-now.png  -> background-image del boton .btn-play (stretch 100% 100%,
+                   el texto real queda oculto detras via visibility:hidden).
+                   Deteccion de carga por JS (new Image().onload agrega
+                   .has-play-img al body), porque un background-image no
+                   tiene onerror en CSS.
+  hero-title.png -> sustituye .big-title + .big-subtitle juntos (un solo
+                    <img>, fallback con onerror -> clase .no-img).
+  brand.png      -> sustituye el <span class="brand-name"> de la navbar
+                     (mismo patron onerror -> .no-img).
+
+Como regenerarlos desde un original de IA (fondo negro solido o con grid
+tenue, sin transparencia):
+1. Guarda el original en img/pixel-hero/raw/<NOMBRE>.png.
+2. El procesado hace: estimar color de fondo desde las esquinas -> fondo a
+   alpha (con feather para el halo de glow) -> recorte al contenido opaco ->
+   reescalado bicubico a una altura fija (200px play-now/brand, 400px hero).
+3. Guarda el resultado en img/pixel-hero/<nombre-en-minuscula>.png.
