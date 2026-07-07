@@ -742,16 +742,14 @@
         body.pixel-pack .gcd-badge { font-size: 10px !important; text-shadow: 1px 1px 0 #000 !important; }
         body.pixel-pack .count-badge { font-size: 6px !important; border-radius: 0 !important; padding: 2px 3px !important; }
         body.pixel-pack .skill-tips { font-size: 9px !important; line-height: 1.8; }
-        /* Tarjetas de select-skill como la referencia: tarjeta grande con el icono
-           centrado dentro del marco (button.png) y el nombre FUERA, debajo del marco.
-           El nombre va absoluto (top:100%) para no deformar el layout de la tarjeta. */
-        body.pixel-pack #skillChoiceOverlay { width: 460px; }
-        body.pixel-pack .skill-choice-card { padding: 22px 24px; }
-        body.pixel-pack .skill-opt-btn { width: 124px !important; height: 124px !important; position: relative; overflow: visible; }
-        body.pixel-pack .skill-opt-icon { width: 56px !important; height: 56px !important; margin-bottom: 0 !important; }
-        body.pixel-pack .skill-opt-name-px { position: absolute; top: 100%; left: 0; right: 0; margin-top: 6px; font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; text-shadow: 2px 2px 0 #000; text-align: center; pointer-events: none; }
-        body.pixel-pack .skill-options { margin-bottom: 38px; }
-        body.pixel-pack #skillChoiceTitle { font-family: 'Press Start 2P', monospace !important; font-size: 17px !important; text-shadow: 3px 3px 0 #000; letter-spacing: 1px; }
+        /* Tarjetas de select-skill: icono solo (sin nombre debajo) dentro del
+           marco (button.png), a tamaño parejo con el panel classic. */
+        body.pixel-pack #skillChoiceOverlay { width: 380px; }
+        body.pixel-pack .skill-choice-card { padding: 16px 18px; }
+        body.pixel-pack .skill-opt-btn { width: 90px !important; height: 90px !important; }
+        body.pixel-pack .skill-opt-icon { width: 42px !important; height: 42px !important; margin-bottom: 0 !important; }
+        body.pixel-pack .skill-options { margin-bottom: 4px; gap: 18px !important; }
+        body.pixel-pack #skillChoiceTitle { font-family: 'Press Start 2P', monospace !important; font-size: 14px !important; text-shadow: 2px 2px 0 #000; letter-spacing: 1px; }
         /* ===== TEXTURE PACK PIXEL: elementos restantes (banners, kill gain,
            barra de comandos, tooltip de skill, panel de espectador) — mismo
            recetario que el resto del pack: bordes duros, sombra escalonada sin
@@ -1326,7 +1324,7 @@
     // de sistema, que conserva su look de fábrica). Persisten en localStorage —
     // asignados desde "Carteles" en el laboratorio, valen también en partidas
     // reales, no solo mientras esa pestaña está abierta.
-    let skillPanelBg = '#080e0b', skillPanelBgAlpha = 0.96, skillPanelBorderPx = 20;
+    let skillPanelBg = '#080e0b', skillPanelBgAlpha = 0.96, skillPanelBorderPx = 12;
     // El modal de sistema (REJOIN EXPIRED / KICKED) tiene su PROPIO fondo/grosor
     // de marco pixel — antes iban fijos ('#080e0b', 0.96, 20). Ahora se afinan
     // desde "Carteles" igual que el panel de skill.
@@ -1987,7 +1985,7 @@
             'body.pixel-pack .timer-fill{border-radius:0!important;transition:none!important;' +
             'background:repeating-linear-gradient(90deg,rgba(0,0,0,.55) 0 2px,transparent 2px 16px),linear-gradient(#ff6b5c,#c81f1f)!important}' +
             'body.pixel-pack .skill-opt-btn{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
-            'body.pixel-pack .skill-tips{color:#ffcc00!important;font-family:"Press Start 2P",monospace!important;font-size:10px!important;text-shadow:2px 2px 0 #000;animation:none;opacity:1}' +
+            'body.pixel-pack .skill-tips{color:#ffcc00!important;font-family:"Press Start 2P",monospace!important;font-size:8px!important;letter-spacing:0!important;white-space:nowrap;text-shadow:2px 2px 0 #000;animation:none;opacity:1}' +
             _btnImgRule();
         document.head.appendChild(st);
     }
@@ -4196,7 +4194,7 @@
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
     function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) ensurePixPanelCss(); titleEl.textContent = 'SELECT A SKILL'; }
-        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = document.createElement('div'); nm.className = 'skill-opt-name-px'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
+        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (!pixelMode) { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
         // Texto interior ("tips"): copy de fábrica; en pixel-pack el CSS lo pinta
         // amarillo con Press Start 2P (regla en buildPixPanelCss).
         const tipsEl = document.querySelector('#skillChoiceOverlay .skill-tips');
