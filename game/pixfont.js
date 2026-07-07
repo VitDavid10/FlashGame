@@ -1,7 +1,7 @@
 /*
  * Fuente bitmap pixel del juego (PIXFONT 5x7 + render normal/bold/HD Scale2x
  * + pixFancyText para carteles). Compartida entre game/index.html y
- * game/font-preview.html: cambiar el alfabeto aqui afecta a ambos.
+ * game/comparativa.html: cambiar el alfabeto aqui afecta a ambos.
  * Extraida tal cual de game/index.html (sin cambios de logica).
  */
 // ===== Fuente bitmap pixel 5×7 (procedural, sin assets) =====

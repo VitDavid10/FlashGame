@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <title>PillWars — comparativa CLASSIC ↔ PIXEL</title>
+<!-- VT323: la TTF pixel que usa el juego para textos DOM (tips del panel de
+     skills, HUD pixel). Cargada aquí para que la galería de estilos salga idéntica. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <style>
     body { margin: 0; background: #050805; color: #cfd8d3; font-family: monospace; display: flex; height: 100vh; overflow: hidden; }
     /* ===== barra lateral: catálogo de elementos ===== */
@@ -29,6 +33,28 @@
     .pane.pixel .head { color: #00ff88; background: #0a140d; }
     .pane .stage { flex: 1; position: relative; overflow: hidden; background: #000; }
     .pane iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 810px; border: 0; transform-origin: top left; pointer-events: none; }
+    /* ===== sección LETRAS (atlas hero, abecedario, estilos) ===== */
+    #letters { flex: 0 0 auto; border-top: 1px solid #1c2a20; background: #050805; }
+    #lettersHead { padding: 7px 12px; font-size: 12px; letter-spacing: 2px; color: #9ee32d; cursor: pointer; user-select: none; }
+    #lettersHead:hover { color: #00ff88; }
+    #lettersBody { display: none; max-height: 45vh; overflow-y: auto; padding: 0 16px 16px; }
+    #letters.open #lettersBody { display: block; }
+    #lettersBody h2 { color: #9ee32d; font-size: 13px; border-bottom: 1px solid #1c2a20; padding-bottom: 4px; margin: 18px 0 8px; }
+    #lettersBody .hint { color: #7a8a80; font-size: 11px; margin-bottom: 8px; }
+    #lettersBody .row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 8px 0; }
+    #lettersBody .label { color: #7a8a80; font-size: 11px; min-width: 150px; }
+    #lettersBody .dark { background: #0a120d; padding: 10px; border: 1px solid #1c2a20; display: inline-block; min-height: 20px; }
+    #lettersBody .meta { color: #7a8a80; font-size: 11px; margin-top: 6px; }
+    #lettersBody canvas { image-rendering: pixelated; display: block; }
+    #lettersBody input { background: #0a120d; color: #cfd8d3; border: 1px solid #2a3a30; padding: 6px 8px; font-family: monospace; }
+    #lettersBody input[type=text] { width: 180px; }
+    #lettersBody input[type=number] { width: 55px; }
+    #lettersBody input[type=color] { width: 40px; padding: 2px; height: 30px; }
+    #lettersBody .ctrl { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #9aa; }
+    #lettersBody button.go { background: #00ff88; color: #04140b; font-weight: bold; cursor: pointer; border: none; padding: 6px 10px; font-family: monospace; }
+    #lettersBody button.go:hover { background: #4dffaa; }
+    #lettersBody button.quick { background: #1c2a20; color: #9ee32d; border: none; cursor: pointer; font-family: monospace; font-size: 11px; padding: 4px 10px; }
+    #lettersBody button.quick:hover { color: #00ff88; }
 </style>
 </head>
 <body>
@@ -38,7 +64,8 @@
     <div class="hint">
         Dos copias del juego REAL congeladas (mismo mundo, misma semilla): izquierda texture pack
         <b>Classic</b>, derecha <b>Pixel</b>. Cada botón dispara el elemento en AMBAS a la vez.
-        Usa los mismos overrides del laboratorio (textos, carteles, atlas). Sonido silenciado.<br>
+        Sonido silenciado. Abajo, la sección <b>LETRAS</b> muestra el atlas hero, el abecedario
+        y los estilos de texto del juego.<br>
         <span class="tag px">PX</span> tiene versión pixel propia ·
         <span class="tag eq">=</span> idéntico en ambos modos (de momento).
     </div>
@@ -51,24 +78,50 @@
         <div class="pane classic"><div class="head">CLASSIC (modo normal)</div><div class="stage"><iframe id="fA" src="index.html?pwlab=1"></iframe></div></div>
         <div class="pane pixel"><div class="head">PIXEL (texture pack)</div><div class="stage"><iframe id="fB" src="index.html?pwlab=1"></iframe></div></div>
     </div>
+    <div id="letters">
+        <div id="lettersHead">▸ LETRAS — atlas hero, abecedario y estilos</div>
+        <div id="lettersBody">
+            <h2>Atlas hero (imagen por letra)</h2>
+            <div class="hint">Coloca los PNG en <code>game/img/font-hero/&lt;LETRA&gt;.png</code> (spec en el LEEME.txt de esa carpeta) y recarga esta página.</div>
+            <div class="row" id="heroStatus"></div>
+            <div class="row" id="heroQuick"><span class="label" style="min-width:auto">textos rápidos:</span></div>
+            <div class="row">
+                <input type="text" id="hTxt" value="GO!" maxlength="20">
+                <label class="ctrl">alto px <input type="number" id="hHeight" value="80" min="20" max="300"></label>
+                <span class="ctrl"><label><input type="checkbox" id="hGlowOn" checked> glow</label></span>
+                <span class="ctrl">color <input type="color" id="hGlowColor" value="#00ff88"></span>
+                <span class="ctrl">blur <input type="number" id="hGlowBlur" value="24" min="0" max="200"></span>
+                <span class="ctrl">sparkles <input type="number" id="hSparkles" value="5" min="0" max="5"></span>
+                <button class="go" id="hAdd">AÑADIR</button>
+            </div>
+            <div id="heroOut"></div>
+
+            <h2>Abecedario completo (todos los glifos de PIXFONT)</h2>
+            <div class="row"><span class="label">Normal 5×7 + contorno</span><span class="dark" id="sAbcNormal"></span></div>
+            <div class="row"><span class="label">Bold 11×15 (plain)</span><span class="dark" id="sAbcBold"></span></div>
+            <div class="row"><span class="label">Bold HD (Scale2x ×2)</span><span class="dark" id="sAbcHd"></span></div>
+
+            <h2>Estilos de texto plano del juego</h2>
+            <div class="hint">Cada fila usa el MISMO render que el juego (pixRenderText / pixFancyText). El de nombres de skill es <b>PLANA + HD</b>.</div>
+            <div class="row"><input type="text" id="styTxt" value="PILLWARS 123" maxlength="24"><label class="ctrl">px <input type="number" id="styPx" value="2" min="1" max="6"></label></div>
+            <div id="styList"></div>
+        </div>
+    </div>
 </div>
 
+<script src="pixfont.js"></script>
+<script src="pixfont-hero.js"></script>
 <script>
 'use strict';
 const NATIVE_W = 1440, NATIVE_H = 810;
 
-// ===== textos del laboratorio (mismo copy que usa "Asignar textos") =====
-const TEXTS_DEFAULTS = {
+// ===== textos de los carteles (mismo copy que usa el juego) =====
+const TEXTS = {
     cdStart: 'MATCH STARTING', cdEnd: 'MATCH ENDING',
     findingRoom: 'FINDING ROOM', adminAnnounce: 'SERVER RESTART IN 5 MINUTES',
     rejoinTitle: 'REJOIN EXPIRED', rejoinBody: 'The rejoin window has closed. Your slot was released and you need to enter again.',
     kickedTitle: 'KICKED', kickedBody: 'You have been kicked by an administrator. Wait 30 seconds before rejoining.',
 };
-function labTexts() {
-    const t = Object.assign({}, TEXTS_DEFAULTS);
-    try { Object.assign(t, JSON.parse(localStorage.getItem('pw_fontlab_texts')) || {}); } catch (e) {}
-    return t;
-}
 
 // ===== silenciar el juego y recordar el pack real del usuario =====
 const origPixel = localStorage.getItem('pw_pixel');
@@ -91,9 +144,9 @@ function withSeed(win, seed, fn) {
     try { fn(); } finally { M.random = orig; }
 }
 
-// ===== arranque de cada copia (mismo patrón que initStaticUi del laboratorio,
-// pero SIN vaciar el mundo: comida/virus/bots congelados sirven para comparar
-// los sprites pixel del mundo) =====
+// ===== arranque de cada copia (congela la UI del juego SIN vaciar el mundo:
+// comida/virus/bots congelados sirven para comparar los sprites pixel del
+// mundo) =====
 const frames = [
     { el: document.getElementById('fA'), pixel: false, win: null },
     { el: document.getElementById('fB'), pixel: true, win: null },
@@ -274,8 +327,8 @@ const GROUPS = [
     ]],
     ['OVERLAYS DE PARTIDA', [
         ['GO!', true, w => { closeAll(w); w.showGoSplash(); }],
-        ['Contador INICIO', true, w => countdown(w, labTexts().cdStart)],
-        ['Contador FIN', true, w => countdown(w, labTexts().cdEnd)],
+        ['Contador INICIO', true, w => countdown(w, TEXTS.cdStart)],
+        ['Contador FIN', true, w => countdown(w, TEXTS.cdEnd)],
         ['Panel de skills', true, w => { closeAll(w); w.__pwLab.practiceFirstSkillDone = true; w.showSkillChoice(); }],
     ]],
     ['FIN DE PARTIDA', [
@@ -287,8 +340,8 @@ const GROUPS = [
         ['ROOM RESTARTED', true, w => { closeAll(w); w.setOverlayTitle(w.__pwLab.els.resultTitle, 'roomRestarted', 'ROOM RESTARTED', '#ffcc00'); w.showResultsUI(); }],
     ]],
     ['SISTEMA Y MODALES', [
-        ['REJOIN EXPIRED', true, w => { const t = labTexts(); closeAll(w); w.showSystemMsg(t.rejoinBody, t.rejoinTitle, 'rejoin'); }],
-        ['KICKED', true, w => { const t = labTexts(); closeAll(w); w.showSystemMsg(t.kickedBody, t.kickedTitle, 'kicked'); }],
+        ['REJOIN EXPIRED', true, w => { closeAll(w); w.showSystemMsg(TEXTS.rejoinBody, TEXTS.rejoinTitle, 'rejoin'); }],
+        ['KICKED', true, w => { closeAll(w); w.showSystemMsg(TEXTS.kickedBody, TEXTS.kickedTitle, 'kicked'); }],
         ['LEAVE ARENA? (salir)', true, w => { closeAll(w); const m = w.document.getElementById('exitModal'); try { w.toggleExitModal(); } catch (e) {} if (m.style.display !== 'flex') m.style.display = 'flex'; }],
         ['Deposit $PILL', true, w => { closeAll(w); w.document.getElementById('gameDepositModal').style.display = 'flex'; }],
         ['Bloqueo móvil', true, w => { closeAll(w); w.document.getElementById('mobileBlock').style.display = 'flex'; }],
@@ -301,9 +354,9 @@ const GROUPS = [
         }],
     ]],
     ['BANNER DE LOBBY', [
-        ['FINDING ROOM', true, w => w.setLobbyBanner('<b>' + labTexts().findingRoom + '</b> · JOINING THE BEST MATCH', 'search')],
+        ['FINDING ROOM', true, w => w.setLobbyBanner('<b>' + TEXTS.findingRoom + '</b> · JOINING THE BEST MATCH', 'search')],
         ['ROOM FOUND', true, w => w.setLobbyBanner('<b>ROOM FOUND</b>', 'found')],
-        ['Anuncio de admin', true, w => w.setLobbyBanner('<b>' + labTexts().adminAnnounce + '</b>', 'found')],
+        ['Anuncio de admin', true, w => w.setLobbyBanner('<b>' + TEXTS.adminAnnounce + '</b>', 'found')],
         ['Ocultar banner', null, w => w.setLobbyBanner(null)],
     ]],
     ['LIMPIAR', [
@@ -335,6 +388,122 @@ for (const [title, items] of GROUPS) {
         lab.appendChild(z); groupsEl.appendChild(lab);
     }
 }
+
+// ===================== SECCIÓN LETRAS (atlas hero, abecedario, estilos) =====================
+// Mismo render que el juego (pixfont.js / pixfont-hero.js) — lo que se ve aquí
+// es exactamente lo que sale en la partida.
+document.getElementById('lettersHead').onclick = () => {
+    const box = document.getElementById('letters');
+    box.classList.toggle('open');
+    document.getElementById('lettersHead').textContent =
+        (box.classList.contains('open') ? '▾' : '▸') + ' LETRAS — atlas hero, abecedario y estilos';
+    fit();   // los panes cambian de alto al abrir/cerrar
+};
+
+// Debounce para los redraws: pintar canvas pixel con glow es caro.
+function debounce(fn, ms) { let t = null; return function () { clearTimeout(t); t = setTimeout(fn, ms || 80); }; }
+function floatCanvas(text, px, color) {
+    const w = pixTextWidth(text, px) + px * 2, h = 7 * px + px * 2;
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    drawPixelText(cv.getContext('2d'), text, px, px, px, color, '#000');
+    return cv;
+}
+
+// --- abecedario completo ---
+const ABC = Object.keys(PIXFONT).filter(ch => ch !== ' ').join('');
+const LINES = ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', '0123456789', ABC.replace(/[A-Z0-9]/g, '')];
+function abcBlock(mode) {
+    const box = document.createElement('div');
+    for (const line of LINES) {
+        if (!line) continue;
+        let cv;
+        if (mode === 'normal') cv = floatCanvas(line, 3, '#9ee32d');
+        else cv = pixFancyText(line, 2, mode === 'hd' ? { plain: true, hd: 1 } : { plain: true, fill: '#9ee32d' });
+        box.appendChild(cv);
+    }
+    return box;
+}
+document.getElementById('sAbcNormal').appendChild(abcBlock('normal'));
+document.getElementById('sAbcBold').appendChild(abcBlock('bold'));
+document.getElementById('sAbcHd').appendChild(abcBlock('hd'));
+
+// --- galería de estilos de texto plano: mismo pixRenderText que el juego ---
+const PLAIN_STYLES = [
+    { name: 'VT323 (TTF pixel — tips "PRESS [TAB]...", texto DOM)', vt323: true },
+    { name: 'PLANA + HD (nombres de skill)', opts: { plain: true, shade: '#b9c2cc', hd: 1 } },
+    { name: 'PLANA (solo tinta, sin halo)', opts: { plain: true } },
+    { name: 'FINA (thin: tinta + halo accent)', opts: { thin: true, hd: 1 } },
+    { name: 'BOLD (placa oscura + accent + tinta)', opts: { hd: 1 } },
+    { name: 'BOLD HD (Scale2x, más detalle)', opts: { hd: 2 } },
+    { name: 'NORMAL 5×7 (contorno fino)', opts: { font: 'normal' } },
+];
+function redrawPlainStyles() {
+    const txt = document.getElementById('styTxt').value || 'PILLWARS 123';
+    const px = Math.max(1, Math.min(6, parseInt(document.getElementById('styPx').value, 10) || 2));
+    const list = document.getElementById('styList'); list.innerHTML = '';
+    for (const st of PLAIN_STYLES) {
+        const rowEl = document.createElement('div'); rowEl.className = 'row';
+        const lab = document.createElement('span'); lab.className = 'label'; lab.style.minWidth = '340px'; lab.textContent = st.name;
+        const box = document.createElement('span'); box.className = 'dark';
+        if (st.vt323) {
+            const sp = document.createElement('span');
+            sp.style.cssText = 'font-family:"VT323",monospace;color:#9aa;font-size:' + (px * 10) + 'px;letter-spacing:1px';
+            sp.textContent = txt; box.appendChild(sp);
+        } else {
+            box.appendChild(pixRenderText(txt, px, st.opts).cv);
+        }
+        rowEl.appendChild(lab); rowEl.appendChild(box);
+        list.appendChild(rowEl);
+    }
+}
+const redrawPlainDebounced = debounce(redrawPlainStyles);
+document.getElementById('styTxt').addEventListener('input', redrawPlainDebounced);
+document.getElementById('styPx').addEventListener('input', redrawPlainDebounced);
+HERO_READY_PROMISE.then(redrawPlainStyles);
+
+// --- atlas hero: estado por letra + generador de muestras ---
+function heroOrFallback(text, targetH, o) {
+    if (pixHeroReady(text)) return { cv: pixHeroText(text, targetH, o), mode: 'atlas' };
+    const px = Math.max(1, Math.round(targetH / 15));
+    return {
+        cv: pixFancyText(text, px, { thin: true, glow: o.glow, glowBlur: o.glowBlur, sparkles: o.sparkles, hd: 2 }),
+        mode: 'fallback procedural (falta: ' + pixHeroMissing(text).join(' ') + ')',
+    };
+}
+function addHeroSample() {
+    const t = document.getElementById('hTxt').value || 'GO!';
+    const h = Math.max(20, Math.min(300, parseInt(document.getElementById('hHeight').value, 10) || 80));
+    const o = { sparkles: parseInt(document.getElementById('hSparkles').value, 10) || 0 };
+    if (document.getElementById('hGlowOn').checked) { o.glow = document.getElementById('hGlowColor').value; o.glowBlur = parseInt(document.getElementById('hGlowBlur').value, 10) || 0; }
+    const r = heroOrFallback(t, h, o);
+    const item = document.createElement('div');
+    const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = '"' + t + '" · alto ' + h + 'px · ' + r.mode;
+    const box = document.createElement('span'); box.className = 'dark'; box.appendChild(r.cv);
+    item.appendChild(meta); item.appendChild(box);
+    document.getElementById('heroOut').prepend(item);
+}
+document.getElementById('hAdd').onclick = addHeroSample;
+document.getElementById('hTxt').addEventListener('keydown', e => { if (e.key === 'Enter') addHeroSample(); });
+
+const HERO_QUICK_TEXTS = ['GO!', 'GAME OVER', 'VICTORY!', 'MATCH FINISHED', 'CASHOUT', 'MATCH ENDED', 'ROOM RESTARTED'];
+const quickRow = document.getElementById('heroQuick');
+for (const t of HERO_QUICK_TEXTS) {
+    const b = document.createElement('button'); b.className = 'quick';
+    b.textContent = t;
+    b.onclick = () => { document.getElementById('hTxt').value = t; addHeroSample(); };
+    quickRow.appendChild(b);
+}
+HERO_READY_PROMISE.then(() => {
+    const statusEl = document.getElementById('heroStatus');
+    for (const ch of HERO_CANDIDATES) {
+        const ok = !pixHeroMissing(ch).length;
+        const tag = document.createElement('span');
+        tag.textContent = ch + ' ' + (ok ? '✓' : '✗');
+        tag.style.cssText = 'padding:3px 9px;border:1px solid ' + (ok ? '#00ff88' : '#552222') + ';color:' + (ok ? '#00ff88' : '#ff6666') + ';font-size:12px';
+        statusEl.appendChild(tag);
+    }
+    addHeroSample();
+});
 </script>
 </body>
 </html>

@@ -13,8 +13,8 @@ Como añadir/sustituir una letra:
    trazo sea proporcional y consistente entre letras.
 4. Guarda el archivo con el nombre exacto del caracter en esta carpeta:
    G.png, O.png, !.png, 0.png, 1.png ... 9.png
-5. Recarga font-preview.html: la seccion "Atlas hero" te dice que letras
-   estan cargadas y cuales faltan. Mientras falte una letra de una palabra,
+5. Recarga comparativa.html -> seccion "LETRAS" (abajo): el estado del
+   atlas hero te dice que letras estan cargadas y cuales faltan. Mientras falte una letra de una palabra,
    esa palabra sigue usando la fuente procedural (pixfont.js) como fallback,
    asi el juego nunca se rompe por un glifo que aun no existe.
 

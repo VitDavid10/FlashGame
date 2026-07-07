@@ -820,11 +820,12 @@
 </head>
 <body>
 
-    <!-- Modo PREVIEW del laboratorio (font-preview.html abre index.html?pwlab=1):
-         oculta la pantalla de modos y el login EN TIEMPO DE PARSEO, antes de que
-         se puedan clicar. Cierra la carrera por la que, mientras el laboratorio
-         terminaba de congelar la UI, un clic en ARCADE/CLASSIC te metía en una
-         partida local. initStaticUi (en font-preview) hace el resto. -->
+    <!-- Modo PREVIEW de la comparativa (comparativa.html carga index.html?pwlab=1
+         en sus iframes): oculta la pantalla de modos y el login EN TIEMPO DE
+         PARSEO, antes de que se puedan clicar. Cierra la carrera por la que,
+         mientras la comparativa terminaba de congelar la UI, un clic en
+         ARCADE/CLASSIC te metía en una partida local. initFrame (en
+         comparativa.html) hace el resto. -->
     <script>
         if (location.search.indexOf('pwlab') !== -1) {
             document.documentElement.setAttribute('data-pwlab', '1');
@@ -1375,93 +1376,9 @@
         applyCartelScaleCss();
     }
     applyCartelScaleCss();
-    // ===== Editor visual (laboratorio): mover/escalar/ocultar POR PARTE =====
-    // Cada parte editable de un cartel (título, tarjetas, barra, botón OK...)
-    // tiene un id; el editor del laboratorio guarda { dx, dy, s, hide } por id en
-    // pw_ui_editor y aquí se convierte en CSS (transform/display con !important
-    // para ganar a cualquier skin). Se aplica al arrancar ⇒ vale en partidas reales.
-    // Debe estar sincronizado con VPARTS en font-preview.html (mismos ids).
-    const UI_EDITOR_PARTS = {
-        skillPanel:   { sel: '#skillChoiceOverlay', base: 'translateX(-50%)' },
-        skillTitle:   { sel: '#skillChoiceTitle' },
-        skillOptions: { sel: '#skillOptionsContainer' },
-        skillCard1:   { sel: '#skillOptionsContainer .skill-opt-btn:nth-child(1)' },
-        skillCard2:   { sel: '#skillOptionsContainer .skill-opt-btn:nth-child(2)' },
-        skillName1:   { sel: '#skillChoiceOverlay .skill-opt-btn:nth-child(1) canvas, #skillChoiceOverlay .skill-opt-btn:nth-child(1) .skill-opt-name' },
-        skillName2:   { sel: '#skillChoiceOverlay .skill-opt-btn:nth-child(2) canvas, #skillChoiceOverlay .skill-opt-btn:nth-child(2) .skill-opt-name' },
-        skillIcons:   { sel: '#skillChoiceOverlay .skill-opt-icon' },
-        skillTips:    { sel: '#skillChoiceOverlay .skill-tips' },
-        skillBar:     { sel: '#skillChoiceOverlay .timer-bar' },
-        sysBox:       { sel: '#sysModal .exit-box' },
-        sysTitle:     { sel: '#sysModalTitle' },
-        sysBody:      { sel: '#sysModalDesc' },
-        sysOk:        { sel: '#sysModal .exit-actions' },
-        lobbyBanner:  { sel: '#lobbyBanner', base: 'translateX(-50%)' },
-        lobbyText:    { sel: '#lobbyBanner > span:not(.lb-dot)' },
-        goSplash:     { sel: '#goSplash' },
-        cdNum:        { sel: '#cdNum', base: 'translateY(-120px)' },
-        cdLbl:        { sel: '#cdNum .cd-lbl' },
-        cdDigit:      { sel: '#cdNum .cd-n' },
-        resultTitle:  { sel: '#resultTitle' },
-        resultText:   { sel: '#myResult' },
-        resultBtns:   { sel: '#resultOverlay .result-box button' },
-        resultBox:    { sel: '#resultOverlay .result-box' },
-        prizeTitle:   { sel: '#prizeTitle' },
-        prizeAmount:  { sel: '#prizeAmount' },
-        prizeSub:     { sel: '#prizeSubtitle' },
-        prizeBtn:     { sel: '#prizeModal .gm-btn' },
-        prizeBox:     { sel: '#prizeModal .gameModalBox' },
-    };
-    let uiEditor = {};
-    try { const _ue = JSON.parse(localStorage.getItem('pw_ui_editor')); if (_ue) uiEditor = _ue; } catch (e) {}
-    function applyUiEditor() {
-        const old = document.getElementById('pwUiEditorCss'); if (old) old.remove();
-        let css = '';
-        for (const [id, st] of Object.entries(uiEditor)) {
-            const part = UI_EDITOR_PARTS[id]; if (!part || !st) continue;
-            const tr = (part.base || '') + ' translate(' + (st.dx | 0) + 'px,' + (st.dy | 0) + 'px) scale(' + (st.s || 1) + ')';
-            css += part.sel + '{transform:' + tr + '!important;transform-origin:center' + (st.hide ? ';display:none!important' : '') + '}';
-        }
-        if (!css) return;
-        const stl = document.createElement('style'); stl.id = 'pwUiEditorCss'; stl.textContent = css;
-        document.head.appendChild(stl);
-    }
-    // patch = { dx?, dy?, s?, hide? } (merge) · null = restablecer la parte.
-    function setUiEditorPart(id, patch) {
-        if (patch === null) delete uiEditor[id];
-        else uiEditor[id] = Object.assign(uiEditor[id] || {}, patch);
-        localStorage.setItem('pw_ui_editor', JSON.stringify(uiEditor));
-        applyUiEditor();
-    }
-    applyUiEditor();
-    // El laboratorio (font-preview.html) edita pw_ui_editor/pw_style_overrides
-    // en OTRA pestaña (misma partida real vía window.open) — el evento 'storage'
-    // solo llega a pestañas DISTINTAS de la que escribió, así que una partida ya
-    // abierta se entera aquí de los cambios sin tener que recargarla a mano.
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'pw_ui_editor') {
-            try { uiEditor = JSON.parse(e.newValue) || {}; } catch (err) { uiEditor = {}; }
-            applyUiEditor();
-        } else if (e.key === 'pw_style_overrides') {
-            try { styleOverrides = JSON.parse(e.newValue) || {}; } catch (err) { styleOverrides = {}; }
-            skillPanelTitle = (styleOverrides.skillTitle && styleOverrides.skillTitle.text) || 'SELECT A SKILL';
-        }
-    });
-    // Preferencia de marco por cartel: 'auto' (imagen importada si existe, si no
-    // procedural), 'atlas' (forzar imagen) o 'procedural' (forzar el look de
-    // siempre). Ver cartel-hero.js. Persiste en localStorage para partidas reales.
-    let cartelFrameStyle = { lobbyBanner: 'auto', sysModal: 'auto', skillPanel: 'auto', button: 'auto' };
-    try { const _cfs = JSON.parse(localStorage.getItem('pw_cartel_frame_style')); if (_cfs) Object.assign(cartelFrameStyle, _cfs); } catch (e) {}
-    function cartelUsesAtlas(id) {
-        const pref = cartelFrameStyle[id] || 'auto';
-        if (pref === 'procedural') return false;
-        return cartelHeroReady(id);   // 'atlas' y 'auto' se comportan igual: usar si existe
-    }
-    function setCartelFrameStyle(id, pref) {
-        cartelFrameStyle[id] = pref;
-        localStorage.setItem('pw_cartel_frame_style', JSON.stringify(cartelFrameStyle));
-        buildPixPanelCss(); applyLobbyBannerFrame();
-    }
+    // Marco de cada cartel: si tiene imagen importada (cartel-hero.js) se usa;
+    // si no, el marco procedural de siempre.
+    function cartelUsesAtlas(id) { return cartelHeroReady(id); }
     function _hexA(hex, alpha) {
         const h = (hex || '#080e0b').replace('#', '');
         const r = parseInt(h.substr(0, 2), 16) || 0, g = parseInt(h.substr(2, 2), 16) || 0, b = parseInt(h.substr(4, 2), 16) || 0;
@@ -1470,20 +1387,13 @@
     // El PNG de un cartel puede tardar en cargar (fetch async) — si el juego ya
     // pintó el frame procedural antes de que termine, se reconstruye aquí.
     CARTEL_HERO_READY_PROMISE.then(() => { if (document.getElementById('pixPanelCss')) buildPixPanelCss(); applyLobbyBannerFrame(); });
-    // Estilos ASIGNADOS desde el laboratorio (font-preview.html, pestaña Textos →
-    // "ASIGNAR AL JUEGO"). Mismo origen ⇒ mismo localStorage, así que aplican
-    // también a partidas reales. Por clave (go / contador / skillTitle):
-    // { text, px, opts } con opts en el esquema de pixFancyText. Sin entrada,
-    // el cartel usa su look de fábrica.
-    let styleOverrides = {};
-    try { styleOverrides = JSON.parse(localStorage.getItem('pw_style_overrides')) || {}; } catch (e) {}
-    let skillPanelTitle = (styleOverrides.skillTitle && styleOverrides.skillTitle.text) || 'SELECT A SKILL';
-    // Puente del laboratorio (font-preview.html abre esta página en otra pestaña).
-    // Las variables del juego son let/const — NO cuelgan de window — así que la
-    // otra pestaña no puede leerlas ni escribirlas directamente. Esto expone SOLO
-    // lo que el laboratorio necesita para congelar la sim y disparar cuadros; el
-    // juego no lo usa para nada. Los getters son perezosos: se evalúan al
-    // llamarlos, cuando todo lo de abajo ya está declarado.
+    // Puente de la comparativa (comparativa.html carga esta página en iframes
+    // con ?pwlab=1). Las variables del juego son let/const — NO cuelgan de
+    // window — así que la otra página no puede leerlas ni escribirlas
+    // directamente. Esto expone SOLO lo que la comparativa necesita para
+    // congelar la sim y disparar cuadros; el juego no lo usa para nada. Los
+    // getters son perezosos: se evalúan al llamarlos, cuando todo lo de abajo
+    // ya está declarado.
     window.__pwLab = {
         get sim() { return sim; },
         get els() { return els; },
@@ -1497,9 +1407,6 @@
         get mmTimer() { return _mmTimer; }, set mmTimer(v) { _mmTimer = v; },
         set nextSkillPickTime(v) { nextSkillPickTime = v; },
         set practiceFirstSkillDone(v) { practiceFirstSkillDone = v; },
-        set skillPanelTitle(v) { skillPanelTitle = v; },
-        get styleOverrides() { return styleOverrides; },
-        set styleOverrides(v) { styleOverrides = v; },
     };
     let enableEnemyFX = true;
     let serverEnemyFx = true;   // override global del server (admin): false = sin FX de enemigos para todos
@@ -2003,7 +1910,7 @@
     }
 
     // ===== Fuente bitmap pixel (PIXFONT, drawPixelText, pixFancyText, HD) =====
-    // Movida a pixfont.js (compartida con font-preview.html para iterar el alfabeto).
+    // Movida a pixfont.js (compartida con comparativa.html para ver el alfabeto).
 
     // Marco de un cartel 9-slice: canvas generado (borde chamfer + brackets de
     // esquina) o, si hay imagen importada para ese id (cartel-hero.js) y la
@@ -2647,25 +2554,19 @@
     }
 
     // Título de fin de partida (overlay de resultado o modal de premio) con fuente
-    // pixel cuando el modo pixel está activo. Honra el estilo ASIGNADO desde el
-    // laboratorio (styleOverrides[id] = { text, px, opts, dx, dy }); sin override
-    // usa un look pixel por defecto con el color del cartel de siempre. Sin modo
-    // pixel, texto CSS idéntico al de antes. dx/dy desplazan el título en px.
+    // pixel cuando el modo pixel está activo (look pixel con el color del cartel
+    // de siempre). Sin modo pixel, texto CSS idéntico al de antes. El id
+    // identifica el cartel (gameOver / victory / cashout / matchEnded /
+    // matchFinished / roomRestarted) para poder darle estilo propio.
     function setOverlayTitle(el, id, defText, defColor) {
         if (!el) return;
-        const ov = styleOverrides[id] || {};
-        const text = ov.text || defText;
         el.innerHTML = '';
-        el.dataset.pwFeature = id;   // el laboratorio identifica qué feature pintó este título (modo editar)
-        el.style.transform = (ov.dx || ov.dy) ? 'translate(' + (ov.dx | 0) + 'px,' + (ov.dy | 0) + 'px)' : '';
         if (pixelMode) {
-            const px = ov.px || 4;
-            const opts = ov.opts || { thin: true, hd: 2, glow: defColor, glowBlur: 24 };
-            const cv = pixApplyScale(pixRenderText(text, px, opts).cv, ov.scale || 1);
+            const cv = pixRenderText(defText, 4, { thin: true, hd: 2, glow: defColor, glowBlur: 24 }).cv;
             cv.style.margin = '0 auto'; cv.style.display = 'block'; cv.style.maxWidth = '100%';
             el.appendChild(cv);
         } else {
-            el.textContent = text;
+            el.textContent = defText;
             el.style.color = defColor;
         }
     }
@@ -3548,20 +3449,18 @@
     }
     // Número grande de cuenta atrás (9..1), estilo GO!. Se llama una vez por segundo.
     let _lastCdNum = null;
-    // opts (opcional): mismo esquema que pixFancyText. Sin opts usa el estilo
-    // ASIGNADO desde el laboratorio (styleOverrides.contador — uno solo para
-    // MATCH STARTING y MATCH ENDING) y, si no hay, el de fábrica. El dígito
-    // sale del atlas hero si sus sprites existen; si no, procedural.
+    // opts (opcional): mismo esquema que pixFancyText. Sin opts, el estilo de
+    // fábrica. El dígito sale del atlas hero si sus sprites existen; si no,
+    // procedural.
     function showCountdownNumber(n, label, opts) {
         if (n === _lastCdNum) return; _lastCdNum = n;
-        const ov = styleOverrides.contador || {};
-        opts = opts || ov.opts || {};
+        opts = opts || {};
         ensureLobbyFx();
         const old = document.getElementById('cdNum'); if (old) old.remove();
         const el = document.createElement('div'); el.id = 'cdNum';
-        // Desplazamiento configurable desde el laboratorio. El CSS base ya sube el
-        // contador 120px, así que el offset se suma a ese -120 (dy=0 ⇒ como siempre).
-        const cdDx = (opts.dx != null ? opts.dx : ov.dx) | 0, cdDy = (opts.dy != null ? opts.dy : ov.dy) | 0;
+        // Desplazamiento opcional. El CSS base ya sube el contador 120px, así que
+        // el offset se suma a ese -120 (dy=0 ⇒ como siempre).
+        const cdDx = opts.dx | 0, cdDy = opts.dy | 0;
         if (cdDx || cdDy) el.style.transform = 'translate(' + cdDx + 'px,' + (-120 + cdDy) + 'px)';
         label = label || 'MATCH STARTING';
         const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
@@ -3573,21 +3472,20 @@
             if (glow) { lblOpts.glow = glow; lblOpts.glowBlur = 8; }
             lblWrap.appendChild(pixFancyText(label, 2, lblOpts));
             el.appendChild(lblWrap);
-            const px = opts.px || ov.px || 9;
-            const o = { font: opts.font !== undefined ? opts.font : ov.font, thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
+            const px = opts.px || 9;
+            const o = { font: opts.font, thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
             if (opts.plain) o.plain = true;
             if (opts.fill) o.fill = opts.fill;
             if (opts.shade) o.shade = opts.shade;
             if (opts.sparkles) o.sparkles = opts.sparkles;
             if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
-            const cv = pixApplyScale(pixRenderText(String(n), px, o).cv, opts.scale || ov.scale || 1);
+            const cv = pixApplyScale(pixRenderText(String(n), px, o).cv, opts.scale || 1);
             cv.className = 'cd-n'; el.appendChild(cv);
         }
         else { el.innerHTML = '<div class="cd-lbl">' + label + '</div>'; const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3, 5s) lo dispara quien llama, una vez al entrar en los 5s.
-        // En modo editar del laboratorio el número se queda fijo para poder arrastrarlo.
-        if (!window.__pwLabEditHold) setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
+        setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
     }
     function hideCountdownNumber() { _lastCdNum = null; const el = document.getElementById('cdNum'); if (el) el.remove(); }
 
@@ -3749,31 +3647,27 @@
     // El título respeta el modo pixel (igual que GO!/contador/panel de skills);
     // el cuerpo se queda en texto normal porque una frase larga en fuente pixel
     // deja de leerse bien (el atlas solo se usa para textos cortos en todo el juego).
-    // key (opcional): identifica el modal ('rejoin' | 'kicked' | ...) para que
-    // cada uno tenga tamaño de título/cuerpo PROPIO. Se busca styleOverrides
-    // ['sys_'+key]; si no hay, cae a styleOverrides.sysTitle (común). Así REJOIN
-    // y KICKED pueden ir distintos sin afectarse.
+    // key (opcional): identifica el modal ('rejoin' | 'kicked' | ...) por si un
+    // cartel concreto necesita estilo propio en el futuro.
     function showSystemMsg(message, title, key) {
         const m = document.getElementById('sysModal');
         const titleEl = document.getElementById('sysModalTitle');
         const t = title || 'NOTICE';
-        const ov = (key && styleOverrides['sys_' + key]) || styleOverrides.sysTitle || {};
         if (pixelMode) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';
-            // px / letra / escala continua del título pixel; sin override, auto-ajuste.
-            const fitPx = ov.px || Math.max(1, Math.min(3, Math.floor(330 / (13 * t.length - 2))));
+            // px del título pixel: auto-ajuste al ancho del modal.
+            const fitPx = Math.max(1, Math.min(3, Math.floor(330 / (13 * t.length - 2))));
             const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px';
-            if (ov.scale && ov.scale !== 1) { wrap.style.transform = 'scale(' + ov.scale + ')'; wrap.style.transformOrigin = 'center'; }
             const d1 = pixFancyText('-◆', fitPx, { fill: sysPanelAccent, shade: lerpColor(sysPanelAccent, '#000000', 0.6), plain: true });
             const d2 = pixFancyText('-◆', fitPx, { fill: sysPanelAccent, shade: lerpColor(sysPanelAccent, '#000000', 0.6), plain: true });
             d2.style.transform = 'scaleX(-1)';
-            wrap.appendChild(d1); wrap.appendChild(pixRenderText(t, fitPx, ov.opts || { hd: 1 }).cv); wrap.appendChild(d2);
+            wrap.appendChild(d1); wrap.appendChild(pixRenderText(t, fitPx, { hd: 1 }).cv); wrap.appendChild(d2);
             titleEl.appendChild(wrap);
         } else titleEl.textContent = t;
         const descEl = document.getElementById('sysModalDesc');
         descEl.innerText = message;
-        descEl.style.fontSize = ov.bodyPx ? ov.bodyPx + 'px' : '';   // tamaño de cuerpo propio del modal
+        descEl.style.fontSize = '';
         m.style.display = 'flex';
         try { SoundManager.play('little'); } catch (e) {}
     }
@@ -4148,12 +4042,10 @@
     // Splash "GO!" estilo PillWars al arrancar la partida (entra grande, rebota y se
     // desvanece). Acompaña al inicio de la música y la liberación del control.
     // opts (opcional): mismo esquema que pixFancyText (thin, plain, hd, fill,
-    // shade, glow, glowBlur, sparkles). Sin argumentos usa el estilo ASIGNADO
-    // desde el laboratorio (styleOverrides.go) y, si no hay, el de fábrica.
+    // shade, glow, glowBlur, sparkles). Sin argumentos usa el estilo de fábrica.
     function showGoSplash(text, opts) {
-        const ov = styleOverrides.go || {};
-        text = text || ov.text || 'GO!';
-        opts = opts || ov.opts || {};
+        text = text || 'GO!';
+        opts = opts || {};
         if (!document.getElementById('goSplashCss')) {
             const st = document.createElement('style');
             st.id = 'goSplashCss';
@@ -4170,16 +4062,16 @@
         const el = document.createElement('div');
         el.id = 'goSplash';
         // Tamaño (px de fuente pixel) y desplazamiento (dx/dy en px de pantalla)
-        // configurables desde el laboratorio; sin ellos, auto según viewport.
-        const pxOv = opts.px || ov.px || 0;
-        const dx = (opts.dx != null ? opts.dx : ov.dx) | 0, dy = (opts.dy != null ? opts.dy : ov.dy) | 0;
+        // opcionales; sin ellos, auto según viewport.
+        const pxOv = opts.px || 0;
+        const dx = opts.dx | 0, dy = opts.dy | 0;
         if (dx || dy) el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
         if (pixelMode) {
             const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
             const sparkles = opts.sparkles != null ? opts.sparkles : 5;
-            // Tipo de letra elegible desde el laboratorio (opts.font / ov.font):
-            // atlas, normal 5×7, bold o bold HD. Sin él, auto (atlas si está).
-            const o = { font: opts.font !== undefined ? opts.font : ov.font, thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
+            // Tipo de letra (opts.font): atlas, normal 5×7, bold o bold HD.
+            // Sin él, auto (atlas si está).
+            const o = { font: opts.font, thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
             if (opts.plain) o.plain = true;
             if (opts.fill) o.fill = opts.fill;
             if (opts.shade) o.shade = opts.shade;
@@ -4187,18 +4079,12 @@
             const font = pixResolveFont(text, o);
             const px = pxOv || (font === 'atlas' ? Math.max(60, Math.min(300, Math.round(width * 0.42))) / 15 : Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))));
             if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : (font === 'atlas' ? px * 15 * 0.3 : px * 4); }
-            const cv = pixApplyScale(pixRenderText(text, px, o).cv, opts.scale || ov.scale || 1);
+            const cv = pixApplyScale(pixRenderText(text, px, o).cv, opts.scale || 1);
             cv.className = 'go-txt'; el.appendChild(cv);
         } else { const d = document.createElement('div'); d.className = 'go-txt'; d.textContent = text; el.appendChild(d); }
         document.body.appendChild(el);
-        if (window.__pwLabEditHold) {
-            // Modo editar del laboratorio: cartel fijo (sin animación que acabe
-            // en opacity 0, sin sonido, sin auto-borrado) para poder arrastrarlo.
-            const t = el.querySelector('.go-txt'); if (t) t.style.animation = 'none';
-        } else {
-            SoundManager.play('go');
-            setTimeout(() => el.remove(), 1650);
-        }
+        SoundManager.play('go');
+        setTimeout(() => el.remove(), 1650);
     }
 
     function enterOnlineGame(ws, msg, isResume) {
@@ -4270,45 +4156,13 @@
     // los 10s del pick). Centralizado para que el sonido se vaya tanto si eliges como
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
-    // Diseño del panel de skills, editable desde el laboratorio
-    // (styleOverrides.skillLayout): tamaño de tarjeta e icono, separación entre
-    // tarjetas, título→tarjetas y hasta los tips. Todo opcional — sin el campo,
-    // el valor de fábrica del CSS. Se aplica como style tag para pisar el CSS base.
-    function applySkillLayout() {
-        const old = document.getElementById('pwSkillLayoutCss'); if (old) old.remove();
-        const L = styleOverrides.skillLayout; if (!L) return;
-        let css = '';
-        // !important: el modo pixel trae su propio width 92px !important (línea
-        // ~741) — el override del laboratorio debe ganar a todos los skins.
-        if (L.cardPx) css += '#skillChoiceOverlay .skill-opt-btn{width:' + L.cardPx + 'px!important;height:' + L.cardPx + 'px!important}';
-        if (L.iconPx) css += '#skillChoiceOverlay .skill-opt-icon{width:' + L.iconPx + 'px!important;height:' + L.iconPx + 'px!important}';
-        if (L.gap != null || L.optsTop != null) css += '#skillChoiceOverlay .skill-options{' + (L.gap != null ? 'gap:' + L.gap + 'px!important;' : '') + (L.optsTop != null ? 'margin-top:' + L.optsTop + 'px!important;' : '') + '}';
-        if (L.tipsTop != null) css += '#skillChoiceOverlay .skill-tips{margin-top:' + L.tipsTop + 'px!important}';
-        if (!css) return;
-        const st = document.createElement('style'); st.id = 'pwSkillLayoutCss'; st.textContent = css;
-        document.head.appendChild(st);
-    }
-    // titleOpts (opcional, asignable desde el laboratorio): mismo esquema que
-    // pixFancyText para el título "SELECT A SKILL". Sin él, look de siempre.
-    function showSkillChoice(titleOpts) { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; applySkillLayout(); let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; const skOv = styleOverrides.skillTitle || {}; const skPx = (titleOpts && titleOpts.px) || skOv.px || 2; const skScale = (titleOpts && titleOpts.scale) || skOv.scale || 1; wrap.style.transform = 'scale(' + skScale + ')'; wrap.style.transformOrigin = 'center'; wrap.appendChild(d1); wrap.appendChild(pixRenderText(skillPanelTitle, skPx, titleOpts || skOv.opts || {}).cv); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = skillPanelTitle; }
-        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name; const nmOv = styleOverrides.skillName || {}; const fitPx = nmOv.px || Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nmOpts = Object.assign({ plain: true, shade: '#b9c2cc', hd: 1 }, nmOv.opts, { font: 'boldhd' }); const nc = pixApplyScale(pixRenderText(nm, fitPx, nmOpts).cv, nmOv.scale || 1); nc.style.margin = '4px auto 0'; const cardW = (styleOverrides.skillLayout && styleOverrides.skillLayout.cardPx) || 92; const ncW = parseInt(nc.style.width, 10) || nc.width; if (ncW > cardW - 8) { nc.style.width = (cardW - 8) + 'px'; nc.style.height = 'auto'; } div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
-        // Texto interior ("tips"): editable desde el laboratorio (styleOverrides.skillTips
-        // = { text, px, scale, opts }). Letras: 'vt323' (la TTF pixel de fábrica —
-        // texto DOM, px = font-size) o cualquier fuente canvas del juego (plana/
-        // fina/bold/normal, con zoom fino). Sin override, el copy y look de fábrica.
+    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px'; const shade = lerpColor(pixPanelAccent, '#000000', 0.6); const d1 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); const d2 = pixFancyText('-◆', 2, { fill: pixPanelAccent, shade, plain: true }); d2.style.transform = 'scaleX(-1)'; wrap.appendChild(d1); wrap.appendChild(pixRenderText('SELECT A SKILL', 2, {}).cv); wrap.appendChild(d2); titleEl.appendChild(wrap); } else titleEl.textContent = 'SELECT A SKILL'; }
+        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name; const fitPx = Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixRenderText(nm, fitPx, { plain: true, shade: '#b9c2cc', hd: 1, font: 'boldhd' }).cv; nc.style.margin = '4px auto 0'; const cardW = 92; const ncW = parseInt(nc.style.width, 10) || nc.width; if (ncW > cardW - 8) { nc.style.width = (cardW - 8) + 'px'; nc.style.height = 'auto'; } div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
+        // Texto interior ("tips"): copy y look de fábrica (VT323 vía CSS).
         const tipsEl = document.querySelector('#skillChoiceOverlay .skill-tips');
         if (tipsEl) {
-            const tOv = styleOverrides.skillTips; tipsEl.innerHTML = ''; tipsEl.style.removeProperty('font-size');
-            const tTxt = (tOv && tOv.text) || 'PRESS [TAB] TO SWITCH - [Q] TO SELECT';
-            const isVt = !tOv || !tOv.opts || tOv.opts.font === 'vt323';
-            if (pixelMode && tOv && !isVt) {
-                const tc = pixApplyScale(pixRenderText(tTxt, tOv.px || 1, tOv.opts).cv, tOv.scale || 1);
-                tc.style.margin = '0 auto'; tipsEl.appendChild(tc);
-            } else {
-                tipsEl.textContent = tTxt;
-                // px = font-size del VT323 (la regla de fábrica lleva !important en móvil)
-                if (tOv && tOv.px) tipsEl.style.setProperty('font-size', tOv.px + 'px', 'important');
-            }
+            tipsEl.innerHTML = ''; tipsEl.style.removeProperty('font-size');
+            tipsEl.textContent = 'PRESS [TAB] TO SWITCH - [Q] TO SELECT';
         }
         els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }

@@ -21,10 +21,8 @@ Como anadir/sustituir un cartel:
                        (OK del modal, CONTINUE del premio, tarjetas de skill,
                        TRY AGAIN/SPECTATE/MENU). border-image con recorte 20px;
                        el texto del boton se conserva encima. Solo en modo pixel.
-4. Recarga font-preview.html -> pestana "Carteles": cada tarjeta tiene un
-   selector "estilo de marco" (auto / atlas / procedural). "auto" usa la
-   imagen en cuanto exista; "atlas" se deshabilita mostrando que archivo
-   falta si aun no lo has puesto.
+4. Recarga el juego (o comparativa.html para ver Classic y Pixel a la vez):
+   la imagen se usa automaticamente en cuanto existe con ese nombre.
 
 Nota: mientras falte el PNG de un cartel, ese cartel sigue con su estilo
 procedural (CSS / canvas 9-slice) de siempre — el juego nunca se rompe por
