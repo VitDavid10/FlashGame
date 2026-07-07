@@ -11,7 +11,7 @@
 // premio, tarjetas de skill, TRY AGAIN/SPECTATE/MENU). Si existe button.png se
 // usa como marco+fondo (border-image) de todos ellos; si falta, look de fábrica.
 const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-square', 'game-over', 'pill', 'spectate', 'backtomenu', 'try-again',
-    'menu-gris', 'warning', 'secure-cashout', 'cancel', 'exit-now', 'start-cashout'];
+    'menu-gris', 'warning', 'secure-cashout', 'cancel', 'exit-now', 'start-cashout', 'skill-slot'];
 const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
 
 const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {

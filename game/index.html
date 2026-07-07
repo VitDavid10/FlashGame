@@ -2002,7 +2002,9 @@
         if (!cartelUsesAtlas('menu-gris')) return '';
         let css = 'body.pixel-pack #exitModal .exit-box{border:none!important;border-radius:0!important;width:420px;padding:44px 48px;' +
             'background:transparent url(' + cartelHeroUrl('menu-gris') + ') center/100% 100% no-repeat!important;' +
-            'image-rendering:pixelated;box-shadow:none!important}';
+            'image-rendering:pixelated;box-shadow:none!important}' +
+            // solo el texto de dentro del panel en fuente pixel (los botones no se tocan)
+            'body.pixel-pack #exitModal .exit-desc{font-family:"Press Start 2P",monospace;font-size:9px;line-height:2;letter-spacing:0}';
         if (cartelUsesAtlas('cancel')) {
             css += 'body.pixel-pack #exitModal .btn-cancel{border:none!important;border-radius:0!important;box-shadow:none!important;' +
                 'background:transparent url(' + cartelHeroUrl('cancel') + ') center/100% 100% no-repeat!important;' +
@@ -2028,6 +2030,17 @@
         }
         return css;
     }
+    // Barra de skills (action bar): cada slot usa skill-slot.png (marco dorado
+    // sobre ladrillo) estirado entero, igual que las tarjetas de skill con
+    // button.png. El contenedor pierde su fondo/borde propios para que los
+    // huecos entre slots dejen ver el ladrillo de cada tile, no un rectangulo
+    // oscuro detras.
+    function _actionBarRule() {
+        if (!cartelUsesAtlas('skill-slot')) return '';
+        return 'body.pixel-pack #actionBar{background:transparent!important;border:none!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important}' +
+            'body.pixel-pack .ab-slot{border:none!important;border-radius:0!important;box-shadow:none!important;' +
+            'background:transparent url(' + cartelHeroUrl('skill-slot') + ') center/100% 100% no-repeat!important;image-rendering:pixelated}';
+    }
     function buildPixPanelCss() {
         const old = document.getElementById('pixPanelCss'); if (old) old.remove();
         const st = document.createElement('style'); st.id = 'pixPanelCss';
@@ -2043,7 +2056,7 @@
             'background:repeating-linear-gradient(90deg,rgba(0,0,0,.55) 0 2px,transparent 2px 16px),linear-gradient(#ff6b5c,#c81f1f)!important}' +
             'body.pixel-pack .skill-opt-btn{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
             'body.pixel-pack .skill-tips{color:#ffcc00!important;font-family:"Press Start 2P",monospace!important;font-size:8px!important;letter-spacing:0!important;white-space:nowrap;text-shadow:2px 2px 0 #000;animation:none;opacity:1}' +
-            _btnImgRule() + _resultOverlayRule() + _exitModalRule();
+            _btnImgRule() + _resultOverlayRule() + _exitModalRule() + _actionBarRule();
         document.head.appendChild(st);
     }
     function ensurePixPanelCss() { if (!document.getElementById('pixPanelCss')) buildPixPanelCss(); }
