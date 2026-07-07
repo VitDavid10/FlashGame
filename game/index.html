@@ -827,6 +827,18 @@
             background: #000 url('img/mode-title/hover2.png') center/cover no-repeat;
             image-rendering: pixelated;
         }
+        /* Version ANIMADA (hover1/hover2.mp4): el video vive bajo los paneles
+           (z1 < z2) y solo se muestra el del lado elegido; los paneles pasan a
+           cristal (el elegido transparente, el otro con velo oscuro que hace de
+           brightness sobre el video a traves de su clip-path). Los !important
+           pisan las reglas de PNG de arriba cuando el video esta listo. */
+        .mode-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 1; pointer-events: none; }
+        body.pixel-pack.has-hover-video #modeScreen.hover-arcade #modeVideo1 { display: block; }
+        body.pixel-pack.has-hover-video #modeScreen.hover-classic #modeVideo2 { display: block; }
+        body.pixel-pack.has-hover-video #modeScreen.hover-arcade .mode-panel,
+        body.pixel-pack.has-hover-video #modeScreen.hover-classic .mode-panel { background: rgba(0,0,0,0.45) !important; }
+        body.pixel-pack.has-hover-video #modeScreen.hover-arcade .mode-arcade,
+        body.pixel-pack.has-hover-video #modeScreen.hover-classic .mode-classic { background: transparent !important; }
         body.pixel-pack .mode-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 2px; }
         body.pixel-pack .mode-title { font-family: 'Press Start 2P', monospace; font-size: 29px; letter-spacing: 0; text-shadow: 3px 3px 0 rgba(0,0,0,0.85); }
         /* Tamano por ANCHO fijo (312/332px = el hueco que ocupaban los carteles
@@ -999,6 +1011,12 @@
             </svg>
             <span>BACK TO SITE</span>
         </a>
+        <!-- Escenas ANIMADAS del astronauta (mp4, version en movimiento de
+             hover1/hover2.png): capa bajo los paneles; cuando cargan, los
+             paneles se vuelven cristal (CSS .has-hover-video) y el video se ve
+             a traves de sus clip-path. Si fallan, quedan los PNG estaticos. -->
+        <video id="modeVideo1" class="mode-video" src="img/mode-title/hover1.mp4" muted loop playsinline preload="auto"></video>
+        <video id="modeVideo2" class="mode-video" src="img/mode-title/hover2.mp4" muted loop playsinline preload="auto"></video>
         <div class="diagonal-divider"></div>
         <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
             <div id="contentArcade" class="mode-content">
@@ -2251,7 +2269,31 @@
             im.onload = () => { if (++loaded === 2) { document.body.classList.add('has-hover-bg'); modeFxStart(); } };
             im.src = 'img/mode-title/hover' + n.slice(-1) + '.png';
         });
+        // version animada: si AMBOS mp4 cargan, los paneles pasan a cristal y
+        // se ve el video en vez del PNG (si fallan, el PNG sigue de fallback)
+        let vloaded = 0;
+        ['modeVideo1', 'modeVideo2'].forEach(id => {
+            const v = document.getElementById(id);
+            if (!v) return;
+            v.addEventListener('loadeddata', () => { if (++vloaded === 2) { document.body.classList.add('has-hover-video'); modeFxSyncVideo(); } }, { once: true });
+        });
     })();
+    // Reproduce SOLO el video del lado elegido y pausa el otro (y ambos al
+    // salir del menu): decodificar dos mp4 en bucle de fondo seria tirar GPU.
+    function modeFxSyncVideo() {
+        if (!document.body.classList.contains('has-hover-video')) return;
+        const ms = els.modeScreen;
+        const visible = pixelMode && ms && ms.style.display !== 'none' && ms.offsetWidth > 0;
+        const conf = [['modeVideo1', 'hover-arcade'], ['modeVideo2', 'hover-classic']];
+        for (const [id, cls] of conf) {
+            const v = document.getElementById(id);
+            if (!v) continue;
+            if (visible && ms.classList.contains(cls)) { if (v.paused) v.play().catch(() => {}); }
+            else if (!v.paused) v.pause();
+        }
+    }
+    // pestana oculta -> Chrome congela el mp4; al volver a ser visible se relanza
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) modeFxSyncVideo(); });
     // Geometria del rayo en fracciones del PNG (1408x736, cover): x = impacto
     // contra la diagonal, mx = boca del canon del astronauta. hover1 dispara a
     // la derecha (0.359 -> 0.721) y hover2 a la izquierda (0.717 -> 0.234).
@@ -2266,7 +2308,8 @@
     }
     function modeFxMapFrac(w, h, fx, fy) {
         // mapea una fraccion de imagen a pantalla con background-size:cover
-        const ia = MODEFX_IMPACT.imgAspect;
+        // (si hay video activo, con el aspect real del mp4 en vez del PNG)
+        const ia = modeFx.aspect || MODEFX_IMPACT.imgAspect;
         if (w / h < ia) { const dw = h * ia; return { x: fx * dw - (dw - w) / 2, y: fy * h }; }
         const dh = w / ia; return { x: fx * w, y: fy * dh - (dh - h) / 2 };
     }
@@ -2297,6 +2340,7 @@
         if (!modeFxActive()) {
             modeFx.raf = 0; modeFx.pills.length = 0;
             if (modeFx.g) modeFx.g.clearRect(0, 0, modeFx.cv.width, modeFx.cv.height);
+            modeFxSyncVideo();   // pausa los mp4 al salir del menu
             return;
         }
         const cv = modeFx.cv, g = modeFx.g;
@@ -2304,6 +2348,12 @@
         if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
         const dt = Math.min(0.05, (now - modeFx.lastT) / 1000); modeFx.lastT = now;
         const side = els.modeScreen.classList.contains('hover-arcade') ? 'arcade' : 'classic';
+        // aspect de la escena visible (mp4 si esta activo, PNG si no)
+        modeFx.aspect = 0;
+        if (document.body.classList.contains('has-hover-video')) {
+            const v = document.getElementById(side === 'arcade' ? 'modeVideo1' : 'modeVideo2');
+            if (v && v.videoWidth) modeFx.aspect = v.videoWidth / v.videoHeight;
+        }
         // punto de contacto rayo-diagonal: la x viene del DOM (posicion real de
         // la linea, tambien en mitad de la transicion); fallback al punto del PNG
         const fSide = MODEFX_IMPACT[side];
@@ -2379,12 +2429,14 @@
         // (re)arranca el FX de pildoras aunque sea el mismo modo: al volver al
         // menu la clase hover-* persiste y el early-return de abajo se lo comia
         modeFxStart();
+        modeFxSyncVideo();
         if (lastHoveredMode === m) return;   // mismo modo: no flickear ni resetear nada
         lastHoveredMode = m;
         try { localStorage.setItem('pw_lastMode', m); } catch(e) {}
         if (m === 'classic') { els.modeScreen.classList.add('hover-classic'); els.modeScreen.classList.remove('hover-arcade'); }
         else if (m === 'arcade') { els.modeScreen.classList.add('hover-arcade'); els.modeScreen.classList.remove('hover-classic'); }
         modeFxStart();
+        modeFxSyncVideo();
         updateModeQuestsUI();
         els.modeScreen.classList.remove('quests-ready');
         document.querySelectorAll('.mqp.open').forEach(el => { if (!el.classList.contains(m)) el.classList.remove('open'); });
