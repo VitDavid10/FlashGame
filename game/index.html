@@ -807,9 +807,12 @@
         }
         /* Divisor: en pixel se usa la misma linea diagonal del modo clasico
            (el zigzag de peldanos de antes tapaba el impacto del rayo de las
-           escenas hover1/hover2), pero engordada al grosor del laser del
-           dibujo (~18px en pantalla, medido sobre hover1.png con cover). */
-        body.pixel-pack .diagonal-divider { width: 18px; margin-left: -6px; }
+           escenas hover1/hover2), pero con el GROSOR y COLOR del laser del
+           dibujo: ~22px en pantalla y dorado #ffdf55 / verde #66f05a (medidos
+           sobre el rayo de hover1/hover2.png). */
+        body.pixel-pack .diagonal-divider { width: 22px; margin-left: -8px; }
+        body.pixel-pack #modeScreen.hover-arcade .diagonal-divider { background: #ffdf55; box-shadow: 0 0 40px #ffdf55; }
+        body.pixel-pack #modeScreen.hover-classic .diagonal-divider { background: #66f05a; box-shadow: 0 0 40px #66f05a; }
         /* Fondos de hover con la escena del astronauta (hover1/hover2.png): la
            MISMA imagen a pantalla completa en ambos paneles — cada panel la
            muestra por su clip-path, asi la escena es continua a traves de la
@@ -2325,13 +2328,13 @@
         }
         g.clearRect(0, 0, w, h);
         // Brillo del rayo del canon: neon pulsante sobre el laser horneado en el
-        // PNG, con EXACTAMENTE el color de la linea diagonal de su lado (#ccff00
-        // arcade / #00ff88 classic) y llegando hasta tocarla, con un estallido
-        // de luz en el punto de contacto. Se dibuja debajo de las pildoras.
+        // PNG, del MISMO color que el propio laser del dibujo (dorado #ffdf55 /
+        // verde #66f05a, igual que la diagonal en pixel) y llegando hasta
+        // tocarla, con un estallido de luz en el punto de contacto.
         {
             const a = muzzle, b = contact;
             const pulse = 0.75 + 0.25 * Math.sin(now / 170);
-            const col = side === 'arcade' ? '204,255,0' : '0,255,136';
+            const col = side === 'arcade' ? '255,223,85' : '102,240,90';
             g.save();
             g.globalCompositeOperation = 'lighter';
             g.lineCap = 'round';
