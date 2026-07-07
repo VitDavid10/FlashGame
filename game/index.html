@@ -836,6 +836,17 @@
 </head>
 <body>
 
+    <!-- Aplica pixel-pack ANTES de pintar nada: sin esto, todo el HTML que
+         viene a continuación (menu, HUD, botones) se parsea y pinta primero
+         con el look classic de fábrica, y solo cambia a pixel cuando el
+         script grande de más abajo termina de cargar (tarda porque antes
+         esperan varios <script src> externos) — de ahí el "sale en classic
+         unos segundos". Repetido más abajo para fijar la variable pixelMode
+         que usa el resto del juego; repetir el toggle es inofensivo. -->
+    <script>
+        try { document.body.classList.toggle('pixel-pack', localStorage.getItem('pw_pixel') === '1'); } catch(e) {}
+    </script>
+
     <!-- Modo PREVIEW de la comparativa (comparativa.html carga index.html?pwlab=1
          en sus iframes): oculta la pantalla de modos y el login EN TIEMPO DE
          PARSEO, antes de que se puedan clicar. Cierra la carrera por la que,
