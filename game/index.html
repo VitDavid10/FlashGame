@@ -2039,7 +2039,11 @@
         if (!cartelUsesAtlas('skill-slot')) return '';
         return 'body.pixel-pack #actionBar{background:transparent!important;border:none!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important}' +
             'body.pixel-pack .ab-slot{border:none!important;border-radius:0!important;box-shadow:none!important;' +
-            'background:transparent url(' + cartelHeroUrl('skill-slot') + ') center/100% 100% no-repeat!important;image-rendering:pixelated}';
+            'background:transparent url(' + cartelHeroUrl('skill-slot') + ') center/100% 100% no-repeat!important;image-rendering:pixelated}' +
+            // el .skill-icon llena el slot con un background-color (#333/#111) y
+            // opacity .9 que tapaba el marco del PNG: fuera color de fondo, y el
+            // icono encogido para que quede dentro del marco (no encima)
+            'body.pixel-pack .ab-slot .skill-icon{background-color:transparent!important;opacity:1;background-size:68%}';
     }
     function buildPixPanelCss() {
         const old = document.getElementById('pixPanelCss'); if (old) old.remove();
