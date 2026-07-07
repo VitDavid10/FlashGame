@@ -2657,7 +2657,12 @@
             const carryFmt = carry.toLocaleString('en-US');
             const killColor = kills >= 5 ? '#ff4444' : kills >= 1 ? '#ffce3d' : '#888';
             const pillIcon = (pixelMode && cartelUsesAtlas('pill')) ? `<img src="${cartelHeroUrl('pill')}" style="height:1em;vertical-align:-0.2em;margin-right:4px;image-rendering:pixelated;">` : '';
-            els.myResult.innerHTML = `<span style="color:${killColor}">${kills} KILL${kills !== 1 ? 'S' : ''}</span><br><span style="color:#ffce3d;font-size:22px;">${carryFmt} ${pillIcon}<span style="font-size:14px;color:#888;">$PILL</span></span>`;
+            // En arcade de pago el carry no se usa (la economia va por el POT
+            // compartido, que se reparte via 'prize' solo si sobrevives) — si
+            // mueres sin cobrar, carry siempre es 0 y mostrar "0 $PILL" confunde.
+            const isArcadeMode = currentGameMode === 'arcade' || currentGameMode === 'skills';
+            const pillLine = (isArcadeMode && carry === 0) ? '' : `<br><span style="color:#ffce3d;font-size:22px;">${carryFmt} ${pillIcon}<span style="font-size:14px;color:#888;">$PILL</span></span>`;
+            els.myResult.innerHTML = `<span style="color:${killColor}">${kills} KILL${kills !== 1 ? 'S' : ''}</span>${pillLine}`;
             els.myResult.style.color = '';
         } else {
             let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}];
