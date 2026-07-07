@@ -1197,7 +1197,7 @@
             
             <button class="btn-play" id="btnTryAgainOnline" onclick="tryAgainOnline()" style="display:none; background:var(--primary); color:#04150c; margin-bottom:10px;">TRY AGAIN</button>
             <button class="btn-spectate" onclick="onSpectateClick()" style="margin-bottom: 10px;">SPECTATE</button>
-            <button class="btn-play" onclick="returnToMenu()">BACK TO MENU</button>
+            <button class="btn-play" id="btnBackToMenu" onclick="returnToMenu()">BACK TO MENU</button>
         </div>
     </div>
 
@@ -1971,6 +1971,28 @@
             'border-image:url(' + cartelHeroUrl('button') + ') 95 fill stretch!important;' +
             'border-radius:0!important;background:transparent!important;clip-path:none!important;box-shadow:none!important}';
     }
+    // Pantalla de fin de partida: marco cuadrado propio (menu-square.png, mismo
+    // acento/fondo que el panel de skills) y los botones SPECTATE/BACK TO MENU
+    // con su arte ya horneado (banner + texto), pisando el generico de _btnImgRule.
+    function _resultOverlayRule() {
+        let css = 'body.pixel-pack ' + _pixFrameRule('.result-box', skillPanelBorderPx, skillPanelBg, skillPanelBgAlpha, 'menu-square');
+        if (cartelUsesAtlas('try-again')) {
+            css += 'body.pixel-pack #btnTryAgainOnline{border:none!important;border-radius:0!important;clip-path:none!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('try-again') + ') center/100% 100% no-repeat!important;' +
+                'aspect-ratio:1061/139;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
+        }
+        if (cartelUsesAtlas('spectate')) {
+            css += 'body.pixel-pack .btn-spectate{border:none!important;border-radius:0!important;clip-path:none!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('spectate') + ') center/100% 100% no-repeat!important;' +
+                'aspect-ratio:747/111;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
+        }
+        if (cartelUsesAtlas('backtomenu')) {
+            css += 'body.pixel-pack #btnBackToMenu{border:none!important;border-radius:0!important;clip-path:none!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('backtomenu') + ') center/100% 100% no-repeat!important;' +
+                'aspect-ratio:744/98;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
+        }
+        return css;
+    }
     function buildPixPanelCss() {
         const old = document.getElementById('pixPanelCss'); if (old) old.remove();
         const st = document.createElement('style'); st.id = 'pixPanelCss';
@@ -1986,7 +2008,7 @@
             'background:repeating-linear-gradient(90deg,rgba(0,0,0,.55) 0 2px,transparent 2px 16px),linear-gradient(#ff6b5c,#c81f1f)!important}' +
             'body.pixel-pack .skill-opt-btn{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
             'body.pixel-pack .skill-tips{color:#ffcc00!important;font-family:"Press Start 2P",monospace!important;font-size:8px!important;letter-spacing:0!important;white-space:nowrap;text-shadow:2px 2px 0 #000;animation:none;opacity:1}' +
-            _btnImgRule();
+            _btnImgRule() + _resultOverlayRule();
         document.head.appendChild(st);
     }
     function ensurePixPanelCss() { if (!document.getElementById('pixPanelCss')) buildPixPanelCss(); }
@@ -2583,7 +2605,20 @@
     function setOverlayTitle(el, id, defText, defColor) {
         if (!el) return;
         el.innerHTML = '';
-        if (pixelMode) {
+        // Asegura el stylesheet del pixel-pack: si el jugador muere sin haber
+        // abierto antes el panel de skills (unico sitio que lo generaba hasta
+        // ahora), el marco/botones del cartel de fin de partida se quedarian
+        // sin su arte (skillPanel, button, menu-square...).
+        if (pixelMode) ensurePixPanelCss();
+        // GAME OVER tiene arte propio (game-over.png, letras rojas planas): se usa
+        // entero en vez del atlas de letras (que sale blanco/verde, pensado para
+        // los demas titulos de fin de partida).
+        if (pixelMode && id === 'gameOver' && cartelUsesAtlas('game-over')) {
+            const img = document.createElement('img');
+            img.src = cartelHeroUrl('game-over');
+            img.style.cssText = 'display:block;margin:0 auto;width:72%;height:auto;image-rendering:pixelated;';
+            el.appendChild(img);
+        } else if (pixelMode) {
             const cv = pixRenderText(defText, 4, { thin: true, hd: 2, glow: defColor, glowBlur: 24 }).cv;
             cv.style.margin = '0 auto'; cv.style.display = 'block'; cv.style.maxWidth = '100%';
             el.appendChild(cv);
@@ -2621,7 +2656,8 @@
             const carry = EconHUD.carry || 0;
             const carryFmt = carry.toLocaleString('en-US');
             const killColor = kills >= 5 ? '#ff4444' : kills >= 1 ? '#ffce3d' : '#888';
-            els.myResult.innerHTML = `<span style="color:${killColor}">${kills} KILL${kills !== 1 ? 'S' : ''}</span><br><span style="color:#ffce3d;font-size:22px;">${carryFmt} <span style="font-size:14px;color:#888;">$PILL</span></span>`;
+            const pillIcon = (pixelMode && cartelUsesAtlas('pill')) ? `<img src="${cartelHeroUrl('pill')}" style="height:1em;vertical-align:-0.2em;margin-right:4px;image-rendering:pixelated;">` : '';
+            els.myResult.innerHTML = `<span style="color:${killColor}">${kills} KILL${kills !== 1 ? 'S' : ''}</span><br><span style="color:#ffce3d;font-size:22px;">${carryFmt} ${pillIcon}<span style="font-size:14px;color:#888;">$PILL</span></span>`;
             els.myResult.style.color = '';
         } else {
             let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}];
