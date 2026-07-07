@@ -2054,10 +2054,14 @@
     function _hudRule() {
         let css = '';
         if (cartelUsesAtlas('top-mass')) {
+            // OJO: padding en % se resuelve contra el ancho del PADRE (viewport),
+            // asi que aqui todo va en px sobre un panel de tamano fijo 210x282
+            // (misma proporcion que el PNG 601x808; la lista empieza en y=122).
             css += 'body.pixel-pack #leaderboard{border:none!important;border-radius:0!important;box-shadow:none!important;' +
                 'background:transparent url(' + cartelHeroUrl('top-mass') + ') center/100% 100% no-repeat!important;' +
-                'image-rendering:pixelated;width:190px;aspect-ratio:601/808;box-sizing:border-box;padding:20.5% 8% 5%}' +
+                'image-rendering:pixelated;width:210px;height:282px;box-sizing:border-box;padding:44px 16px 12px}' +
                 'body.pixel-pack #leaderboard h3{display:none}' +
+                'body.pixel-pack .lb-item span{white-space:nowrap}' +
                 'body.pixel-pack .lb-item span:last-child{color:#ffe97a}';
         }
         if (cartelUsesAtlas('kills')) {
