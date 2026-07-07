@@ -2249,9 +2249,10 @@
             im.src = 'img/mode-title/hover' + n.slice(-1) + '.png';
         });
     })();
-    // Punto de impacto del rayo, en fracciones del PNG (1408x736, cover):
-    // hover1 (dispara a la derecha) explota en x=0.721; hover2 en x=0.234.
-    const MODEFX_IMPACT = { arcade: { x: 0.721, y: 0.70 }, classic: { x: 0.234, y: 0.70 }, imgAspect: 1408 / 736 };
+    // Geometria del rayo en fracciones del PNG (1408x736, cover): x = impacto
+    // contra la diagonal, mx = boca del canon del astronauta. hover1 dispara a
+    // la derecha (0.359 -> 0.721) y hover2 a la izquierda (0.717 -> 0.234).
+    const MODEFX_IMPACT = { arcade: { x: 0.721, y: 0.70, mx: 0.359 }, classic: { x: 0.234, y: 0.70, mx: 0.717 }, imgAspect: 1408 / 736 };
     const MODEFX_COLORS = [['#ff3b30', '#ffffff'], ['#1a73e8', '#ffffff'], ['#ffce3d', '#ffffff'], ['#00ff88', '#0a1a10'], ['#cc00ff', '#ffffff'], ['#ff8c00', '#ffffff']];
     const modeFx = { cv: null, g: null, pills: [], raf: 0, lastSpawn: 0, lastT: 0 };
     function modeFxActive() {
@@ -2260,12 +2261,13 @@
         if (!ms || ms.style.display === 'none' || !ms.offsetWidth) return false;
         return ms.classList.contains('hover-arcade') || ms.classList.contains('hover-classic');
     }
-    function modeFxImpactPoint(w, h, side) {
-        // mapea la fraccion de imagen a pantalla con background-size:cover
-        const f = MODEFX_IMPACT[side], ia = MODEFX_IMPACT.imgAspect;
-        if (w / h < ia) { const dw = h * ia; return { x: f.x * dw - (dw - w) / 2, y: f.y * h }; }
-        const dh = w / ia; return { x: f.x * w, y: f.y * dh - (dh - h) / 2 };
+    function modeFxMapFrac(w, h, fx, fy) {
+        // mapea una fraccion de imagen a pantalla con background-size:cover
+        const ia = MODEFX_IMPACT.imgAspect;
+        if (w / h < ia) { const dw = h * ia; return { x: fx * dw - (dw - w) / 2, y: fy * h }; }
+        const dh = w / ia; return { x: fx * w, y: fy * dh - (dh - h) / 2 };
     }
+    function modeFxImpactPoint(w, h, side) { const f = MODEFX_IMPACT[side]; return modeFxMapFrac(w, h, f.x, f.y); }
     function modeFxStart() {
         if (modeFx.raf || !modeFxActive()) return;
         if (!modeFx.cv) {
@@ -2306,6 +2308,25 @@
             }
         }
         g.clearRect(0, 0, w, h);
+        // Brillo del rayo del canon: neon pulsante sobre el laser horneado en el
+        // PNG, mismo look que el glow de la linea diagonal (nucleo blanco + halo
+        // del color del lado). Se dibuja debajo de las pildoras.
+        {
+            const f = MODEFX_IMPACT[side];
+            const a = modeFxMapFrac(w, h, f.mx, f.y), b = modeFxImpactPoint(w, h, side);
+            const pulse = 0.75 + 0.25 * Math.sin(now / 170);
+            const col = side === 'arcade' ? '255,238,80' : '80,255,140';
+            g.save();
+            g.globalCompositeOperation = 'lighter';
+            g.lineCap = 'round';
+            g.shadowColor = 'rgb(' + col + ')'; g.shadowBlur = 28 * pulse;
+            g.strokeStyle = 'rgba(' + col + ',' + (0.5 * pulse).toFixed(3) + ')'; g.lineWidth = 13;
+            g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+            g.shadowBlur = 12 * pulse;
+            g.strokeStyle = 'rgba(255,255,255,' + (0.45 * pulse).toFixed(3) + ')'; g.lineWidth = 4;
+            g.stroke();
+            g.restore();
+        }
         g.imageSmoothingEnabled = false;
         for (let i = modeFx.pills.length - 1; i >= 0; i--) {
             const p = modeFx.pills[i];
