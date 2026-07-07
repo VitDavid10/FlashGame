@@ -2045,6 +2045,40 @@
             // icono encogido para que quede dentro del marco (no encima)
             'body.pixel-pack .ab-slot .skill-icon{background-color:transparent!important;opacity:1;background-size:68%}';
     }
+    // HUD derecho con arte propio: panel TOP MASS (marco verde con titulo
+    // horneado, la lista es HTML encima), caja KILLS separada debajo (rotulo
+    // horneado, el numero es HTML encima) y los 3 botones de arriba (x/song/
+    // sonido) con su PNG en vez del circulo+svg. Todo estirado 100% como los
+    // demas carteles. Los % de padding salen de las proporciones del PNG
+    // (601x808, la lista empieza en y=122).
+    function _hudRule() {
+        let css = '';
+        if (cartelUsesAtlas('top-mass')) {
+            css += 'body.pixel-pack #leaderboard{border:none!important;border-radius:0!important;box-shadow:none!important;' +
+                'background:transparent url(' + cartelHeroUrl('top-mass') + ') center/100% 100% no-repeat!important;' +
+                'image-rendering:pixelated;width:190px;aspect-ratio:601/808;box-sizing:border-box;padding:20.5% 8% 5%}' +
+                'body.pixel-pack #leaderboard h3{display:none}' +
+                'body.pixel-pack .lb-item span:last-child{color:#ffe97a}';
+        }
+        if (cartelUsesAtlas('kills')) {
+            css += 'body.pixel-pack #killsSection{position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%);' +
+                'width:70%;aspect-ratio:326/206;border:none!important;margin:0!important;padding:0!important;' +
+                'background:transparent url(' + cartelHeroUrl('kills') + ') center/100% 100% no-repeat;image-rendering:pixelated}' +
+                'body.pixel-pack #killsSection div:first-child{display:none!important}' +
+                'body.pixel-pack #killsVal{position:absolute;left:0;right:0;top:56%;transform:translateY(-50%);text-align:center;' +
+                'font-size:24px!important;color:#ff3b30!important;text-shadow:0 0 10px rgba(255,60,45,.75),2px 2px 0 #000!important}';
+        }
+        const hudBtns = [['x', '#exitGameBtn'], ['song', '#musicToggle'], ['sonido', '#soundToggle']];
+        for (const [id, sel] of hudBtns) {
+            if (!cartelUsesAtlas(id)) continue;
+            css += 'body.pixel-pack ' + sel + '{border:none!important;border-radius:0!important;' +
+                'background:transparent url(' + cartelHeroUrl(id) + ') center/100% 100% no-repeat!important;image-rendering:pixelated}' +
+                'body.pixel-pack ' + sel + '>svg{display:none}' +
+                'body.pixel-pack ' + sel + ':hover{filter:brightness(1.2)}';
+        }
+        if (css) css += 'body.pixel-pack .sound-btn.muted{filter:grayscale(.7) brightness(.65)}';
+        return css;
+    }
     function buildPixPanelCss() {
         const old = document.getElementById('pixPanelCss'); if (old) old.remove();
         const st = document.createElement('style'); st.id = 'pixPanelCss';
@@ -2060,7 +2094,7 @@
             'background:repeating-linear-gradient(90deg,rgba(0,0,0,.55) 0 2px,transparent 2px 16px),linear-gradient(#ff6b5c,#c81f1f)!important}' +
             'body.pixel-pack .skill-opt-btn{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
             'body.pixel-pack .skill-tips{color:#ffcc00!important;font-family:"Press Start 2P",monospace!important;font-size:8px!important;letter-spacing:0!important;white-space:nowrap;text-shadow:2px 2px 0 #000;animation:none;opacity:1}' +
-            _btnImgRule() + _resultOverlayRule() + _exitModalRule() + _actionBarRule();
+            _btnImgRule() + _resultOverlayRule() + _exitModalRule() + _actionBarRule() + _hudRule();
         document.head.appendChild(st);
     }
     function ensurePixPanelCss() { if (!document.getElementById('pixPanelCss')) buildPixPanelCss(); }
