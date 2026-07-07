@@ -4,10 +4,15 @@ Solo se usan con el texture pack pixel activo (pw_pixel=1): el <img class="mt-im
 de cada .mode-title los carga; si el PNG no existe, el onerror activa el fallback
 de texto Press Start 2P (clase .no-img), asi que borrar un PNG nunca rompe nada.
 
-Como regenerarlos desde un original de IA (fondo oscuro con grid, sin transparencia):
+El tamano en pantalla se fija por ANCHO en CSS (312px ARCADE / 332px CLASSIC,
+height auto): asi cualquier arte nuevo ocupa siempre el mismo hueco aunque
+cambien las proporciones de las letras, y no se sale de la diagonal.
+
+Como regenerarlos desde un original de IA (fondo blanco solido, sin transparencia):
 1. Guarda el original en game/img/font-hero/raw/<NOMBRE>.png.
-2. El procesado hace: estimar color de fondo desde las esquinas -> fondo a alpha
-   (des-componiendo el halo de glow) -> recorte al glifo -> reescalado bicubico
-   a 200px de alto (2x del tamano CSS, que es 100px ARCADE / 86px CLASSIC).
-3. Umbrales usados: ARCADE T0=28 T1=90; CLASSIC T0=45 T1=110 + filtro de tonos
-   calidos (el original traia glow naranja que habia que descartar).
+2. El procesado (arte v2, jul-2026) hace: fondo por MODA de histograma de toda
+   la imagen -> alpha por DISTANCIA al fondo con rampa T0=10..T1=70 (d<=T0
+   transparente, d>=T1 opaco con color original INTACTO, entre medias rampa +
+   des-matte solo del borde) -> recorte al glifo -> bicubico a 200px de alto.
+   OJO: no usar "alpha = 255 - min(R,G,B)" global: a los dorados (B bajo) les
+   vacia el canal azul y deja el cuerpo semitransparente/apagado.
