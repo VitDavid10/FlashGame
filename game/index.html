@@ -1918,7 +1918,7 @@
     function _pixFrameRule(selector, borderPx, bgHex, bgAlpha, atlasId, accent) {
         if (cartelUsesAtlas(atlasId)) {
             return selector + '{border:' + borderPx + 'px solid transparent;' +
-                'border-image:url(' + cartelHeroUrl(atlasId) + ') 30 fill stretch;' +
+                'border-image:url(' + cartelHeroUrl(atlasId) + ') 60 fill stretch;' +
                 'border-radius:0!important;background:transparent!important;' +
                 'box-shadow:6px 6px 0 rgba(0,0,0,.6)!important;animation:none}';
         }
