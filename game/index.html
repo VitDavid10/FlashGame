@@ -733,6 +733,17 @@
             font-family: 'Press Start 2P', monospace !important;
         }
         body.pixel-pack .hud-item { font-size: 9px !important; text-shadow: 1px 1px 0 #000 !important; border-radius: 0 !important; line-height: 1.8; }
+        /* ROOM/MASS/ALIVE: mismo halo verde neon que el marco de TOP MASS, y el
+           valor de cada uno en dorado como los numeros de esa lista. */
+        body.pixel-pack #hudRoom, body.pixel-pack #hudMass, body.pixel-pack #hudAlive {
+            border-color: rgba(0,255,136,.55) !important;
+            box-shadow: 0 0 10px rgba(0,255,136,.5), 3px 3px 0 rgba(0,0,0,.6) !important;
+            text-shadow: 0 0 6px rgba(0,255,136,.85), 1px 1px 0 #000 !important;
+        }
+        body.pixel-pack #roomName, body.pixel-pack #score, body.pixel-pack #enemyCount {
+            color: #ffe97a !important;
+            text-shadow: 0 0 6px rgba(255,206,61,.8), 1px 1px 0 #000 !important;
+        }
         body.pixel-pack #timerDisplay { font-size: 15px !important; text-shadow: 2px 2px 0 #000 !important; }
         body.pixel-pack #leaderboard { border-radius: 0 !important; box-shadow: 3px 3px 0 rgba(0,0,0,.6); }
         body.pixel-pack #leaderboard h3 { font-size: 9px !important; }
@@ -1206,9 +1217,9 @@
             <span id="waitLabel" style="color:#9bbfff; font-size:11px; letter-spacing:1.2px;">NEXT MATCH</span>
             <span id="waitTimer" class="hud-val" style="color:#fff; margin-left:6px;">--</span>
         </div>
-        <div class="hud-item">ROOM: <span id="roomName" class="hud-val">5$</span></div>
-        <div class="hud-item">MASS: <span id="score" class="hud-val">0</span></div>
-        <div class="hud-item">ALIVE: <span id="enemyCount" class="hud-val">0</span></div>
+        <div class="hud-item" id="hudRoom">ROOM: <span id="roomName" class="hud-val">5$</span></div>
+        <div class="hud-item" id="hudMass">MASS: <span id="score" class="hud-val">0</span></div>
+        <div class="hud-item" id="hudAlive">ALIVE: <span id="enemyCount" class="hud-val">0</span></div>
         <div class="hud-item econ-hud" id="econHud" style="display:none;border-color:rgba(255,206,61,0.5)">
             <span id="econLabel">CARRY</span>: <span id="econVal" class="hud-val" style="color:#ffce3d">0</span> <span style="color:#888;font-size:11px">$PILL</span>
         </div>
