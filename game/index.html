@@ -2268,6 +2268,16 @@
         const dh = w / ia; return { x: fx * w, y: fy * dh - (dh - h) / 2 };
     }
     function modeFxImpactPoint(w, h, side) { const f = MODEFX_IMPACT[side]; return modeFxMapFrac(w, h, f.x, f.y); }
+    // x real de la linea diagonal a la altura y (rotate(10deg) sobre su centro),
+    // leida del DOM cada frame: asi el rayo la TOCA siempre, incluso mientras
+    // la diagonal se desliza durante la transicion de 1.2s al cambiar de lado.
+    function modeFxDividerX(y) {
+        const d = document.querySelector('.diagonal-divider');
+        if (!d) return null;
+        const r = d.getBoundingClientRect();
+        const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+        return cx + Math.tan(10 * Math.PI / 180) * (cy - y);
+    }
     function modeFxStart() {
         if (modeFx.raf || !modeFxActive()) return;
         if (!modeFx.cv) {
@@ -2291,10 +2301,16 @@
         if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
         const dt = Math.min(0.05, (now - modeFx.lastT) / 1000); modeFx.lastT = now;
         const side = els.modeScreen.classList.contains('hover-arcade') ? 'arcade' : 'classic';
+        // punto de contacto rayo-diagonal: la x viene del DOM (posicion real de
+        // la linea, tambien en mitad de la transicion); fallback al punto del PNG
+        const fSide = MODEFX_IMPACT[side];
+        const muzzle = modeFxMapFrac(w, h, fSide.mx, fSide.y);
+        const divX = modeFxDividerX(muzzle.y);
+        const contact = divX != null ? { x: divX, y: muzzle.y } : modeFxImpactPoint(w, h, side);
         // rafaga de pildoras desde el impacto cada ~600ms
         if (now - modeFx.lastSpawn > 600 && modeFx.pills.length < 36) {
             modeFx.lastSpawn = now;
-            const p0 = modeFxImpactPoint(w, h, side);
+            const p0 = contact;
             for (let i = 0; i < 3; i++) {
                 const ang = Math.random() * Math.PI * 2, spd = 70 + Math.random() * 160;
                 const cols = MODEFX_COLORS[(Math.random() * MODEFX_COLORS.length) | 0];
@@ -2309,13 +2325,13 @@
         }
         g.clearRect(0, 0, w, h);
         // Brillo del rayo del canon: neon pulsante sobre el laser horneado en el
-        // PNG, mismo look que el glow de la linea diagonal (nucleo blanco + halo
-        // del color del lado). Se dibuja debajo de las pildoras.
+        // PNG, con EXACTAMENTE el color de la linea diagonal de su lado (#ccff00
+        // arcade / #00ff88 classic) y llegando hasta tocarla, con un estallido
+        // de luz en el punto de contacto. Se dibuja debajo de las pildoras.
         {
-            const f = MODEFX_IMPACT[side];
-            const a = modeFxMapFrac(w, h, f.mx, f.y), b = modeFxImpactPoint(w, h, side);
+            const a = muzzle, b = contact;
             const pulse = 0.75 + 0.25 * Math.sin(now / 170);
-            const col = side === 'arcade' ? '255,238,80' : '80,255,140';
+            const col = side === 'arcade' ? '204,255,0' : '0,255,136';
             g.save();
             g.globalCompositeOperation = 'lighter';
             g.lineCap = 'round';
@@ -2325,6 +2341,14 @@
             g.shadowBlur = 12 * pulse;
             g.strokeStyle = 'rgba(255,255,255,' + (0.45 * pulse).toFixed(3) + ')'; g.lineWidth = 4;
             g.stroke();
+            // estallido en el contacto con la diagonal
+            const rr = 30 * (0.8 + 0.3 * Math.sin(now / 110));
+            const rad = g.createRadialGradient(b.x, b.y, 0, b.x, b.y, rr);
+            rad.addColorStop(0, 'rgba(255,255,255,' + (0.85 * pulse).toFixed(3) + ')');
+            rad.addColorStop(0.35, 'rgba(' + col + ',' + (0.55 * pulse).toFixed(3) + ')');
+            rad.addColorStop(1, 'rgba(' + col + ',0)');
+            g.fillStyle = rad;
+            g.beginPath(); g.arc(b.x, b.y, rr, 0, Math.PI * 2); g.fill();
             g.restore();
         }
         g.imageSmoothingEnabled = false;
