@@ -805,9 +805,11 @@
             background-image: linear-gradient(rgba(0, 255, 136, 0.07) 3px, transparent 3px), linear-gradient(90deg, rgba(0, 255, 136, 0.07) 3px, transparent 3px), linear-gradient(135deg, #000 0%, #000 24%, #001009 24%, #001009 48%, #00190e 48%, #00190e 72%, var(--classic-bg-1) 72%);
             background-size: 26px 26px, 26px 26px, 100% 100%;
         }
-        /* Divisor: en pixel se usa la misma linea diagonal FINA del modo clasico
+        /* Divisor: en pixel se usa la misma linea diagonal del modo clasico
            (el zigzag de peldanos de antes tapaba el impacto del rayo de las
-           escenas hover1/hover2 y era demasiado gordo). */
+           escenas hover1/hover2), pero engordada al grosor del laser del
+           dibujo (~18px en pantalla, medido sobre hover1.png con cover). */
+        body.pixel-pack .diagonal-divider { width: 18px; margin-left: -6px; }
         /* Fondos de hover con la escena del astronauta (hover1/hover2.png): la
            MISMA imagen a pantalla completa en ambos paneles — cada panel la
            muestra por su clip-path, asi la escena es continua a traves de la
