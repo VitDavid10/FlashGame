@@ -4054,12 +4054,11 @@
                 '#goSplash .go-txt{font-family:\'Russo One\',sans-serif;font-size:clamp(120px,26vw,300px);line-height:1;color:#fff;' +
                 '-webkit-text-stroke:4px #000;text-shadow:0 0 30px #00ff88,0 0 70px #00ff88,0 6px 0 rgba(0,0,0,.5);' +
                 'animation:goPop 1.6s cubic-bezier(.2,1.4,.3,1) forwards}' +
-                // Imagen "GO!" del atlas hero (game/img/GO!.png): ancho responsive calibrado
-                // para ocupar lo mismo que el texto CSS del modo classic (513px de 1440
-                // de viewport ⇒ misma proporción vw). Fondo negro del PNG + screen ⇒
-                // desaparece y solo queda el brillo, sin necesitar recorte de alfa.
+                // Imagen "GO!" (game/img/GO!.png, con transparencia real recortada al
+                // brillo). Ancho responsive calibrado para ocupar lo mismo que el texto
+                // CSS del modo classic (513px de 1440 de viewport ⇒ misma proporción vw).
                 '#goSplash .go-img{display:block;width:clamp(205px,44.5vw,513px);height:auto;' +
-                'mix-blend-mode:screen;animation:goPop 1.6s cubic-bezier(.2,1.4,.3,1) forwards}' +
+                'animation:goPop 1.6s cubic-bezier(.2,1.4,.3,1) forwards}' +
                 '@keyframes goPop{0%{transform:scale(.2);opacity:0}14%{transform:scale(1.15);opacity:1}24%{transform:scale(1)}' +
                 '80%{transform:scale(1);opacity:1}100%{transform:scale(1.4);opacity:0}}';
             document.head.appendChild(st);
