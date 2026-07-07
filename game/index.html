@@ -742,9 +742,14 @@
         body.pixel-pack .gcd-badge { font-size: 10px !important; text-shadow: 1px 1px 0 #000 !important; }
         body.pixel-pack .count-badge { font-size: 6px !important; border-radius: 0 !important; padding: 2px 3px !important; }
         body.pixel-pack .skill-tips { font-size: 9px !important; line-height: 1.8; }
-        /* Recuadro de select-skill mas pequeño (para que el icono no quede perdido
-           en un cuadrado vacio) y nombre con outline pixel mas legible. */
-        body.pixel-pack .skill-opt-btn { width: 92px !important; height: 92px !important; }
+        /* Tarjetas de select-skill como la referencia: tarjeta grande con el icono
+           centrado dentro del marco (button.png) y el nombre FUERA, debajo del marco.
+           El nombre va absoluto (top:100%) para no deformar el layout de la tarjeta. */
+        body.pixel-pack .skill-opt-btn { width: 140px !important; height: 140px !important; position: relative; overflow: visible; }
+        body.pixel-pack .skill-opt-icon { width: 64px !important; height: 64px !important; margin-bottom: 0 !important; }
+        body.pixel-pack .skill-opt-name-px { position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px; font-family: 'Press Start 2P', monospace; font-size: 12px; color: #fff; text-shadow: 2px 2px 0 #000; text-align: center; pointer-events: none; }
+        body.pixel-pack .skill-options { margin-bottom: 44px; }
+        body.pixel-pack #skillChoiceTitle { font-family: 'Press Start 2P', monospace !important; font-size: 20px !important; text-shadow: 3px 3px 0 #000; letter-spacing: 1px; }
         /* ===== TEXTURE PACK PIXEL: elementos restantes (banners, kill gain,
            barra de comandos, tooltip de skill, panel de espectador) — mismo
            recetario que el resto del pack: bordes duros, sombra escalonada sin
@@ -1978,7 +1983,7 @@
             'body.pixel-pack .timer-fill{border-radius:0!important;transition:none!important;' +
             'background:repeating-linear-gradient(90deg,rgba(0,0,0,.55) 0 2px,transparent 2px 16px),linear-gradient(#ff6b5c,#c81f1f)!important}' +
             'body.pixel-pack .skill-opt-btn{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
-            'body.pixel-pack .skill-tips{color:#9aa;font-family:"VT323",monospace;font-size:14px}' +
+            'body.pixel-pack .skill-tips{color:#ffcc00!important;font-family:"Press Start 2P",monospace!important;font-size:12px!important;text-shadow:2px 2px 0 #000;animation:none;opacity:1}' +
             _btnImgRule();
         document.head.appendChild(st);
     }
@@ -4186,9 +4191,10 @@
     // los 10s del pick). Centralizado para que el sonido se vaya tanto si eliges como
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
-    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) { ensurePixPanelCss(); titleEl.innerHTML = ''; const tc = pixRenderText('SELECT A SKILL', 2, { plain: true, shade: '#b9c2cc', hd: 1 }).cv; tc.style.margin = '0 auto'; tc.style.display = 'block'; titleEl.appendChild(tc); } else titleEl.textContent = 'SELECT A SKILL'; }
-        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = SKILL_DEFS[id].name; const fitPx = Math.max(1, Math.min(3, Math.floor(84 / (13 * nm.length - 2)))); const nc = pixRenderText(nm, fitPx, { plain: true, shade: '#b9c2cc', hd: 1, font: 'boldhd' }).cv; nc.style.margin = '4px auto 0'; const cardW = 92; const ncW = parseInt(nc.style.width, 10) || nc.width; if (ncW > cardW - 8) { nc.style.width = (cardW - 8) + 'px'; nc.style.height = 'auto'; } div.appendChild(nc); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
-        // Texto interior ("tips"): copy y look de fábrica (VT323 vía CSS).
+    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) ensurePixPanelCss(); titleEl.textContent = 'SELECT A SKILL'; }
+        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (pixelMode) { const nm = document.createElement('div'); nm.className = 'skill-opt-name-px'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } else { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
+        // Texto interior ("tips"): copy de fábrica; en pixel-pack el CSS lo pinta
+        // amarillo con Press Start 2P (regla en buildPixPanelCss).
         const tipsEl = document.querySelector('#skillChoiceOverlay .skill-tips');
         if (tipsEl) {
             tipsEl.innerHTML = ''; tipsEl.style.removeProperty('font-size');
