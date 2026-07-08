@@ -2294,15 +2294,10 @@
     }
     // pestana oculta -> Chrome congela el mp4; al volver a ser visible se relanza
     document.addEventListener('visibilitychange', () => { if (!document.hidden) modeFxSyncVideo(); });
-    // Geometria del rayo en fracciones de la escena: x = impacto contra la
-    // diagonal (solo fallback si no se puede leer la diagonal del DOM), mx =
-    // boca del canon. Dos sets: PNG estatico (1408x736) y mp4 animado
-    // (1280x720, el rayo va en y=0.688 y los astronautas estan en otro sitio).
-    const MODEFX_IMPACT = {
-        arcade: { x: 0.721, y: 0.70, mx: 0.359 }, classic: { x: 0.234, y: 0.70, mx: 0.717 },
-        videoArcade: { x: 0.721, y: 0.688, mx: 0.344 }, videoClassic: { x: 0.234, y: 0.688, mx: 0.742 },
-        imgAspect: 1408 / 736
-    };
+    // Geometria del rayo en fracciones del PNG (1408x736, cover): x = impacto
+    // contra la diagonal, mx = boca del canon del astronauta. hover1 dispara a
+    // la derecha (0.359 -> 0.721) y hover2 a la izquierda (0.717 -> 0.234).
+    const MODEFX_IMPACT = { arcade: { x: 0.721, y: 0.70, mx: 0.359 }, classic: { x: 0.234, y: 0.70, mx: 0.717 }, imgAspect: 1408 / 736 };
     const MODEFX_COLORS = [['#ff3b30', '#ffffff'], ['#1a73e8', '#ffffff'], ['#ffce3d', '#ffffff'], ['#00ff88', '#0a1a10'], ['#cc00ff', '#ffffff'], ['#ff8c00', '#ffffff']];
     const modeFx = { cv: null, g: null, pills: [], raf: 0, lastSpawn: 0, lastT: 0 };
     function modeFxActive() {
@@ -2360,9 +2355,8 @@
             if (v && v.videoWidth) modeFx.aspect = v.videoWidth / v.videoHeight;
         }
         // punto de contacto rayo-diagonal: la x viene del DOM (posicion real de
-        // la linea, tambien en mitad de la transicion); fallback al punto del PNG.
-        // Con video activo (modeFx.aspect fijado arriba) se usan SUS fracciones.
-        const fSide = MODEFX_IMPACT[modeFx.aspect ? (side === 'arcade' ? 'videoArcade' : 'videoClassic') : side];
+        // la linea, tambien en mitad de la transicion); fallback al punto del PNG
+        const fSide = MODEFX_IMPACT[side];
         const muzzle = modeFxMapFrac(w, h, fSide.mx, fSide.y);
         const divX = modeFxDividerX(muzzle.y);
         const contact = divX != null ? { x: divX, y: muzzle.y } : modeFxImpactPoint(w, h, side);
