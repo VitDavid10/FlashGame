@@ -219,24 +219,36 @@ function closeAll(win) {
     d.getElementById('skill-tooltip').style.display = 'none';
     d.getElementById('econHud').style.display = 'none';
     d.getElementById('waitHud').style.display = 'none';
-    L.els.modeScreen.classList.remove('pwShow', 'hover-arcade', 'hover-classic');
+    L.els.modeScreen.classList.remove('pwShow', 'hover-arcade', 'hover-classic', 'quests-ready');
     d.getElementById('mqpArcade').classList.remove('open');
     d.getElementById('mqpClassic').classList.remove('open');
     L.els.loginOverlay.classList.remove('pwShow');
     try { win.GameWalletUI.setVisible(false); } catch (e) {}
 }
 
-function showModeScreen(win, quests) {
+function showModeScreen(win, side) {
     closeAll(win);
     const d = win.document, L = win.__pwLab, ms = L.els.modeScreen;
-    ms.classList.add('pwShow', 'quests-ready');
+    // El FX del menú (modeFxActive en index.html) exige display inline ≠ 'none';
+    // mostrar/ocultar lo gobiernan la regla pwlab + la clase pwShow.
+    ms.style.display = '';
     d.getElementById('panelArcade').classList.remove('expanded', 'hidden');
     d.getElementById('panelClassic').classList.remove('expanded', 'hidden');
-    d.getElementById('contentArcade').style.opacity = '1';
-    d.getElementById('contentClassic').style.opacity = '0.7';
-    const dv = d.querySelector('.diagonal-divider'); if (dv) dv.style.opacity = '1';
-    ms.classList.add(quests === 'classic' ? 'hover-classic' : 'hover-arcade');
-    if (quests) d.getElementById(quests === 'classic' ? 'mqpClassic' : 'mqpArcade').classList.add('open');
+    // Opacidades inline fuera: posición/opacidad de contenidos y diagonal las
+    // lleva el CSS hover-* actual del juego (igual que en la primera carga real).
+    d.getElementById('contentArcade').style.opacity = '';
+    d.getElementById('contentClassic').style.opacity = '';
+    const dv = d.querySelector('.diagonal-divider'); if (dv) dv.style.opacity = '';
+    ms.classList.add('pwShow');
+    if (side) {
+        // Estado hover real del juego: clases hover-* + quests abiertas (en el
+        // juego el panel se abre solo a los 0.7s de hover) + FX del menú
+        // (escena astronauta + rayo + píldoras; solo actúa en el pane pixel).
+        ms.classList.add('quests-ready', side === 'classic' ? 'hover-classic' : 'hover-arcade');
+        try { win.updateModeQuestsUI(); } catch (e) {}
+        d.getElementById(side === 'classic' ? 'mqpClassic' : 'mqpArcade').classList.add('open');
+        try { win.modeFxStart(); } catch (e) {}
+    }
 }
 
 function showRoomMenu(win, m) {
@@ -253,6 +265,7 @@ function showRoomMenu(win, m) {
     const back = d.querySelector('#loginOverlay .back-icon');
     if (back) { back.classList.toggle('back-mode-arcade', m === 'arcade'); back.classList.toggle('back-mode-classic', m === 'classic'); }
     if (m === 'arcade') try { win.initArcadeGuide(); } catch (e) {}
+    try { win.refreshOracle(); } catch (e) {}   // igual que selectMode: estado real de salas
     lo.classList.add('pwShow');
     try { win.GameWalletUI.setVisible(true, m); } catch (e) {}
 }
@@ -275,9 +288,9 @@ const GROUPS = [
         ['Tema blanco', true, w => w.setTheme('white')],
     ]],
     ['MENÚS', [
-        ['Pantalla de modos', true, w => showModeScreen(w)],
-        ['+ quests ARCADE', true, w => showModeScreen(w, 'arcade')],
-        ['+ quests CLASSIC', true, w => showModeScreen(w, 'classic')],
+        ['Modos (neutral)', true, w => showModeScreen(w)],
+        ['Modos hover ARCADE', true, w => showModeScreen(w, 'arcade')],
+        ['Modos hover CLASSIC', true, w => showModeScreen(w, 'classic')],
         ['Menú de sala ARCADE', true, w => showRoomMenu(w, 'arcade')],
         ['Menú de sala CLASSIC', true, w => showRoomMenu(w, 'classic')],
         ['Volver al HUD', null, w => closeAll(w)],
