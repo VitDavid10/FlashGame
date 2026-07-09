@@ -21,7 +21,9 @@ render es un lector del estado. Todo el trabajo de este plan es cliente puro
   border-image) para la skill-choice-card, timer bar y botones. (d) **Iconos de
   skills pixel HECHOS**: los 8 PNG en `game/img/skill-icons-pixel/` enchufados
   vía `skill-icons-pixel.js` (barra, rejilla, tarjetas, tooltip —icono y fondo—
-  y buffs activos), con fallback al icono clásico si falta el PNG. Falta:
+  y buffs activos), con fallback al icono clásico si falta el PNG. Reprocesados
+  (10-07-2026) con downscale real 16×16 + upscale nearest (antes bicúbico liso
+  a 256, el pixel no se apreciaba a los ~40-50px del HUD; ahora sí). Falta:
   landing (`index.html`), aplicar el marco bracket a más paneles (modales,
   leaderboard) y el logo PILLWARS del splash.
 - [x] **F2 — Sprites del mundo** — HECHA en versión procedural: pills, comida,
@@ -45,8 +47,13 @@ render es un lector del estado. Todo el trabajo de este plan es cliente puro
 Checklist acordada con David; cada ítem se verifica lado a lado en
 `game/comparativa.html` (grupo entre paréntesis):
 
-- [ ] **Modos hover CLASSIC/ARCADE** — rematar la versión pixel del menú de
-  modos con lado elegido (MENÚS → "Modos hover …").
+- [x] **Modos hover CLASSIC/ARCADE** (10-07-2026, versión 0) — sustituidos los
+  fondos `hover1/hover2.png` + sus mp4 (se veían borrosos al reescalar) por una
+  escena dibujada pixel a pixel en canvas (`modeFxDrawScene`): cielo en bandas,
+  2 planetas, skyline con ventanas parpadeantes, 2 ovnis a la deriva, letrero
+  neon, suelo ajedrez en perspectiva, astronauta con bob de 1px y rayo con
+  llama ondulante hasta la diagonal — nitidez perfecta a cualquier resolución.
+  Pendiente de que David dé el visto bueno visual (MENÚS → "Modos hover …").
 - [ ] **Menús de sala CLASSIC/ARCADE** — versión pixel propia del login/sala,
   no solo el CSS genérico de `body.pixel-pack` (MENÚS → "Menú de sala …").
 - [ ] **Carteles pentakill (los dos)** — "2 KILLS TO PENTAKILL" y
@@ -57,11 +64,10 @@ Checklist acordada con David; cada ítem se verifica lado a lado en
   interior de cada uno se rediseña (FIN DE PARTIDA + SISTEMA Y MODALES).
 - [ ] **Banners de lobby** — FINDING ROOM, ROOM FOUND y anuncio de admin
   (BANNER DE LOBBY).
-- [ ] *(Opcional, decisión pendiente)* **Reprocesar iconos de skills con píxel
-  más gordo**: el procesado actual es reescalado bicúbico 256×256 del original
-  IA y a 40-60px en pantalla el pixel apenas se aprecia. Alternativa: reducir
-  primero a 32×32/48×48 nearest y reescalar nearest, píxel visible a cualquier
-  tamaño (regenerar desde `game/img/skill-icons-pixel/raw/`).
+- [x] ~~Reprocesar iconos de skills con píxel más gordo~~ — hecho (10-07-2026):
+  downscale 16×16 nearest + upscale nearest a 256×256, sustituye el bicúbico
+  liso anterior. Comparado en collage a 16/20/24/32 lógicos, 16 fue el que dio
+  bloques limpios y reconocibles a la vez (ver commit `8749973`).
 
 ## Puntos de anclaje en el código
 
