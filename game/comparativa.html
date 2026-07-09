@@ -311,8 +311,8 @@ const GROUPS = [
         ['ACTIVE BUFFS', true, w => {
             const d = w.document; d.getElementById('buffTable').style.display = 'block';
             d.getElementById('buff-list-content').innerHTML =
-                '<div class="buff-row"><img class="buff-icon-img" src="../img/inmune.png"><div class="buff-time">8s</div></div>' +
-                '<div class="buff-row"><img class="buff-icon-img" src="../img/sprint.png"><div class="buff-time">3s</div></div>';
+                '<div class="buff-row"><img class="buff-icon-img" src="' + w.skillIconUrl(6, '../img/inmune.png') + '"><div class="buff-time">8s</div></div>' +
+                '<div class="buff-row"><img class="buff-icon-img" src="' + w.skillIconUrl(3, '../img/sprint.png') + '"><div class="buff-time">3s</div></div>';
         }],
         ['Wallet (CONNECT/DEPOSIT)', true, w => {
             const d = w.document;
@@ -331,8 +331,10 @@ const GROUPS = [
         ['Barra de comandos', true, w => w.document.getElementById('cmdBar').style.display = 'block'],
         ['Tooltip de skill', true, w => {
             const d = w.document, tt = d.getElementById('skill-tooltip');
-            d.getElementById('tooltip-icon').src = '../img/clon.png';
-            d.getElementById('tooltip-bg').style.backgroundImage = "url('../img/clon.png')";
+            // como el juego: icono pixel si el pane esta en pixel-pack (skillIconUrl)
+            const url = w.skillIconUrl(1, '../img/clon.png');
+            d.getElementById('tooltip-icon').src = url;
+            d.getElementById('tooltip-bg').style.backgroundImage = "url('" + url + "')";
             d.getElementById('tooltip-title').innerText = 'CLON';
             d.getElementById('tooltip-desc').innerText = 'THE FARMER. Shoots a mass projectile. If it hits a VIRUS, it clones it and grants you a NEW SKILL card.';
             tt.style.left = '58%'; tt.style.top = '35%'; tt.style.display = 'flex';

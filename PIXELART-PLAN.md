@@ -18,10 +18,12 @@ render es un lector del estado. Todo el trabajo de este plan es cliente puro
   skills (título "SELECT A SKILL" + nombres de skill). (c) Versión "premium"
   multicapa (`pixFancyText`: bold 11×15, sombreado interno, tinta + halo verde +
   placa oscura + sparkles) y marco 9-slice con brackets (`ensurePixPanelCss`,
-  border-image) para la skill-choice-card, timer bar y botones. Falta: landing
-  (`index.html`), aplicar el marco bracket a más paneles (modales, leaderboard),
-  y los PNG del usuario (logo PILLWARS splash, iconos de skills) que se enchufan
-  tal cual, sin recortes.
+  border-image) para la skill-choice-card, timer bar y botones. (d) **Iconos de
+  skills pixel HECHOS**: los 8 PNG en `game/img/skill-icons-pixel/` enchufados
+  vía `skill-icons-pixel.js` (barra, rejilla, tarjetas, tooltip —icono y fondo—
+  y buffs activos), con fallback al icono clásico si falta el PNG. Falta:
+  landing (`index.html`), aplicar el marco bracket a más paneles (modales,
+  leaderboard) y el logo PILLWARS del splash.
 - [x] **F2 — Sprites del mundo** — HECHA en versión procedural: pills, comida,
   virus, proyectiles y masa eyectada se dibujan desde sprites pixel generados en
   código (contorno + sombreado + brillo), escalados sin suavizado a resolución
@@ -37,6 +39,29 @@ render es un lector del estado. Todo el trabajo de este plan es cliente puro
   emblema de cruz) orbitando en pasos, upright (sin aliasing) y más rápido que las
   4 badges vectoriales de antes. Faltan imán/sprint refinados.
 - [ ] **F5 — Texture pack seleccionable definitivo + QA** (el toggle ya activa todo)
+
+## Pendientes concretos (10-07-2026)
+
+Checklist acordada con David; cada ítem se verifica lado a lado en
+`game/comparativa.html` (grupo entre paréntesis):
+
+- [ ] **Modos hover CLASSIC/ARCADE** — rematar la versión pixel del menú de
+  modos con lado elegido (MENÚS → "Modos hover …").
+- [ ] **Menús de sala CLASSIC/ARCADE** — versión pixel propia del login/sala,
+  no solo el CSS genérico de `body.pixel-pack` (MENÚS → "Menú de sala …").
+- [ ] **Carteles pentakill (los dos)** — "2 KILLS TO PENTAKILL" y
+  "★ 1 MORE KILL TO WIN ★" (HUD DE PARTIDA → "Pentakill: …").
+- [ ] **Overlays de resultado con el marco verde del GAME OVER** — reutilizar
+  ese panel como base común en VICTORY, CASHOUT, MATCH ENDED, MATCH FINISHED y
+  ROOM RESTARTED, y en los modales REJOIN EXPIRED, KICKED y DEPOSIT; el
+  interior de cada uno se rediseña (FIN DE PARTIDA + SISTEMA Y MODALES).
+- [ ] **Banners de lobby** — FINDING ROOM, ROOM FOUND y anuncio de admin
+  (BANNER DE LOBBY).
+- [ ] *(Opcional, decisión pendiente)* **Reprocesar iconos de skills con píxel
+  más gordo**: el procesado actual es reescalado bicúbico 256×256 del original
+  IA y a 40-60px en pantalla el pixel apenas se aprecia. Alternativa: reducir
+  primero a 32×32/48×48 nearest y reescalar nearest, píxel visible a cualquier
+  tamaño (regenerar desde `game/img/skill-icons-pixel/raw/`).
 
 ## Puntos de anclaje en el código
 
