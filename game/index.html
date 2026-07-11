@@ -823,6 +823,12 @@
         #modeSceneCv { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; image-rendering: pixelated; display: none; }
         body.pixel-pack.has-hover-scene #modeScreen #modeSceneCv { display: block; }
         body.pixel-pack.has-hover-scene #modeScreen .mode-panel { background: rgba(0,0,0,0.45) !important; }
+        /* Titulos ARCADE/CLASSIC bien marcados sobre la escena: sin la
+           transparencia heredada de .mode-content (0.9/0.7 los dejaba
+           "lavados") y con sombra dura + halo oscuro que los despega del rayo
+           y del cielo. */
+        body.pixel-pack.has-hover-scene #modeScreen .mode-content { opacity: 1 !important; }
+        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
         body.pixel-pack.has-hover-scene #modeScreen.hover-arcade .mode-arcade,
         body.pixel-pack.has-hover-scene #modeScreen.hover-classic .mode-classic { background: transparent !important; }
         body.pixel-pack .mode-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 2px; }
@@ -2251,11 +2257,13 @@
     // Geometria del rayo en fracciones de PANTALLA (la escena llena el canvas):
     // x = impacto fallback, mx = boca del canon (el astronauta se dibuja
     // partiendo de ella, asi glow y sprite siempre casan).
-    // Geometria: los DOS astronautas viven en la escena (mxA izquierda/arcade,
-    // mxB derecha/classic) y disparan a la vez; el choque cae en la diagonal.
-    const MODEFX_IMPACT = { mxA: 0.18, mxB: 0.82, y: 0.70 };
+    // Geometria: los DOS astronautas viven en la escena (A izquierda/arcade,
+    // B derecha/classic) y disparan a la vez; el choque cae en la diagonal.
+    // En neutral estan bien separados; al elegir modo se recolocan SUAVE hacia
+    // el centro (posiciones de antes) para no tapar los paneles de quests.
+    const MODEFX_IMPACT = { neutral: [0.18, 0.82], hover: [0.365, 0.635], y: 0.70 };
     const MODEFX_COLORS = [['#ff3b30', '#ffffff'], ['#1a73e8', '#ffffff'], ['#ffce3d', '#ffffff'], ['#00ff88', '#0a1a10'], ['#cc00ff', '#ffffff'], ['#ff8c00', '#ffffff']];
-    const modeFx = { cv: null, g: null, pills: [], raf: 0, lastSpawn: 0, lastT: 0 };
+    const modeFx = { cv: null, g: null, pills: [], sparks: [], raf: 0, lastSpawn: 0, lastT: 0, burstT: 0, axA: 0.18, axB: 0.82 };
     function modeFxActive() {
         // La escena corre SIEMPRE que el menu pixel este visible (tambien en
         // neutral, con los dos astronautas disparandose); el punto de choque
@@ -2393,55 +2401,29 @@
         g.fillStyle = '#123c22'; g.fillRect(0, hz - 2, W, 1);
         g.fillStyle = '#2fae5c'; g.fillRect(0, hz - 1, W, 1);
         g.fillStyle = '#7dffb0'; for (let x = 0; x < W; x += 3) g.fillRect(x, hz - 1, 1, 1);
-        // suelo: plaza de baldosas oscuras con perspectiva real (Mode-7),
-        // juntas convergentes, borde iluminado por baldosa, moteado y grietas,
-        // reflejos de neon ondulados bajo el horizonte (pixel a pixel via
-        // ImageData, horneado una vez)
+        // suelo: NEGRO puro; solo los reflejos de neon ondulados que caen del
+        // horizonte y el resplandor verde de la ciudad (pedido por David: las
+        // "lineas sinusoidales" si, baldosas no)
         {
             const FH = H - hz;
             const img = g.createImageData(W, FH);
             const dt2 = img.data;
-            const h2 = (x, y) => ((((Math.imul(x, 374761393) + Math.imul(y, 668265263)) ^ 0x5bf03635) >>> 0) % 1000) / 1000;
-            const tileA = [24, 28, 44], tileB = [18, 21, 34], edgeHi = [58, 66, 94], seamC = [7, 8, 13];
-            const mixC = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-            for (let y = 0; y < FH; y++) {
-                const dDist = y + 6, t = y / FH;
-                const z = 46 * 34 / dDist;
-                for (let x = 0; x < W; x++) {
-                    const wx = (x - W / 2) * 46 / dDist / 6;
-                    const tu = wx / 22 * 6, tv = z / 22;
-                    const cu = Math.floor(tu), cvv = Math.floor(tv);
-                    const fu = tu - cu, fv = tv - cvv;
-                    const v = h2(cu, cvv);
-                    let c = mixC(mixC(tileA, tileB, v), [0, 0, 0], (1 - t) * 0.55);
-                    const sw = 0.05 + 0.04 * t;
-                    if (fu < sw || fv < sw * 1.4) c = mixC(seamC, c, (1 - t) * 0.5);
-                    else if (fv > 1 - sw * 2.2 && t > 0.15) c = mixC(c, edgeHi, (0.2 + 0.5 * v) * t * 0.8);
-                    else {
-                        const s = h2(x * 3 + cu, y * 7 + cvv);
-                        if (s > 0.94) c = mixC(c, edgeHi, 0.45);
-                        else if (s < 0.05) c = mixC(c, seamC, 0.5);
-                        if (v > 0.82 && fu > 0.3 && fu < 0.7 && fv > 0.3 && fv < 0.6 && h2(cu * 3, cvv * 5) > 0.5) c = mixC(c, seamC, 0.35);
-                    }
-                    const i4 = (y * W + x) * 4;
-                    dt2[i4] = c[0]; dt2[i4 + 1] = c[1]; dt2[i4 + 2] = c[2]; dt2[i4 + 3] = 255;
-                }
-            }
+            for (let i = 3; i < dt2.length; i += 4) dt2[i] = 255;   // negro opaco
             const blend = (x, y, col, a) => {
                 if (x < 0 || x >= W || y < 0 || y >= FH) return;
                 const i4 = (y * W + x) * 4;
                 dt2[i4] += (col[0] - dt2[i4]) * a; dt2[i4 + 1] += (col[1] - dt2[i4 + 1]) * a; dt2[i4 + 2] += (col[2] - dt2[i4 + 2]) * a;
             };
             const NEON = [[58, 240, 126], [57, 214, 232], [224, 112, 220], [255, 210, 61], [255, 90, 160]];
-            for (let i = 0; i < 26; i++) {
+            for (let i = 0; i < 30; i++) {
                 const x0 = 4 + Math.floor(R() * (W - 8));
                 const col = NEON[(R() * NEON.length) | 0];
-                const ln = 14 + Math.floor(R() * 28);
+                const ln = 16 + Math.floor(R() * 34);
                 const wdt = R() < 0.33 ? 2 : 1;
                 for (let y = 0; y < Math.min(ln, FH); y++) {
                     if (y % 2 === 1 && y > 8) continue;
                     const xx = x0 + Math.round(Math.sin(y * 0.7 + i) * 1.4);
-                    const a = (1 - y / ln) * 0.5;
+                    const a = (1 - y / ln) * 0.55;
                     for (let k = 0; k < wdt; k++) blend(xx + k, y, col, a);
                 }
             }
@@ -2579,7 +2561,7 @@
             }
         }
     }
-    function modeFxDrawScene(w, h, contactScreenX, now) {
+    function modeFxDrawScene(w, h, contactScreenX, fxA, fxB, now) {
         const sc = modeScene;
         const H = 270, W = Math.max(240, Math.round(w / h * H));
         if (!sc.cv) {
@@ -2597,8 +2579,9 @@
         }
         const step = Math.floor(now / 90);
         const cx = Math.round(contactScreenX / w * W);
-        if (step === sc.step && cx === sc.cx) return;
-        sc.step = step; sc.cx = cx;
+        const mxA = Math.round(fxA * W), mxB = Math.round(fxB * W);
+        if (step === sc.step && cx === sc.cx && mxA === sc.mxA && mxB === sc.mxB) return;
+        sc.step = step; sc.cx = cx; sc.mxA = mxA; sc.mxB = mxB;
         const g = sc.g;
         g.drawImage(sc.base, 0, 0);
         // estrellas titilando (las grandes con destello en cruz)
@@ -2635,10 +2618,8 @@
         _msUfo(g, W + 15 - ((step * 2 + 90) % (W + 30)), Math.round(H * 0.17), '#ff9ad9', '#ffe9a8', step);
         _msSign(g, sc.sign.x, sc.sign.y, step);
         // duelo permanente: los dos astronautas disparan a la vez y el choque
-        // de los rayos cae donde este la diagonal (60% neutral, 75%/25% hover)
+        // de los rayos cae donde este la diagonal (clampeado entre ambos)
         const beamY = Math.round(MODEFX_IMPACT.y * H);
-        const mxA = Math.round(MODEFX_IMPACT.mxA * W);
-        const mxB = Math.round(MODEFX_IMPACT.mxB * W);
         _msBeam(g, mxA, cx, beamY, true, 1, step);
         _msBeam(g, cx, mxB, beamY, false, -1, step);
         // choque de energia: chispas de ambos colores + nucleo blanco
@@ -2686,7 +2667,7 @@
     }
     function modeFxTick(now) {
         if (!modeFxActive()) {
-            modeFx.raf = 0; modeFx.pills.length = 0;
+            modeFx.raf = 0; modeFx.pills.length = 0; modeFx.sparks.length = 0; modeFx.burstT = 0;
             if (modeFx.g) modeFx.g.clearRect(0, 0, modeFx.cv.width, modeFx.cv.height);
             modeScene.step = -1;   // fuerza redibujo de la escena al volver
             return;
@@ -2695,24 +2676,34 @@
         const w = els.modeScreen.clientWidth, h = els.modeScreen.clientHeight;
         if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
         const dt = Math.min(0.05, (now - modeFx.lastT) / 1000); modeFx.lastT = now;
+        // recolocacion suave de los astronautas segun el estado del menu
+        const cl = els.modeScreen.classList;
+        const hovered = cl.contains('hover-arcade') || cl.contains('hover-classic');
+        const tgt = MODEFX_IMPACT[hovered ? 'hover' : 'neutral'];
+        const ease = Math.min(1, dt * 5);
+        modeFx.axA += (tgt[0] - modeFx.axA) * ease;
+        modeFx.axB += (tgt[1] - modeFx.axB) * ease;
+        const beamYs = MODEFX_IMPACT.y * h;
+        const muzzleA = { x: modeFx.axA * w, y: beamYs };
+        const muzzleB = { x: modeFx.axB * w, y: beamYs };
         // punto de contacto rayo-diagonal: la x viene del DOM (posicion real de
         // la linea, tambien en mitad de la transicion); fallback a la fraccion
-        // del estado actual (neutral 60%, hover 75%/25%)
-        const cl = els.modeScreen.classList;
+        // del estado actual. Clampeado para que el choque quede siempre ENTRE
+        // los dos canones (en hover la diagonal puede quedar detras del rival:
+        // el rayo ganador le estalla en la cara, no a su espalda).
         const frac = cl.contains('hover-arcade') ? 0.75 : cl.contains('hover-classic') ? 0.25 : 0.60;
-        const beamYs = MODEFX_IMPACT.y * h;
-        const muzzleA = { x: MODEFX_IMPACT.mxA * w, y: beamYs };
-        const muzzleB = { x: MODEFX_IMPACT.mxB * w, y: beamYs };
         const divX = modeFxDividerX(beamYs);
-        const contact = { x: divX != null ? divX : frac * w, y: beamYs };
+        const contact = { x: Math.max(muzzleA.x + 50, Math.min(muzzleB.x - 50, divX != null ? divX : frac * w)), y: beamYs };
         // escena pixel-art de fondo (canvas propio bajo los paneles)
-        modeFxDrawScene(w, h, contact.x, now);
-        // rafaga de pildoras desde el impacto cada ~600ms
+        modeFxDrawScene(w, h, contact.x, modeFx.axA, modeFx.axB, now);
+        // rafaga de pildoras desde el impacto cada ~600ms, con onda expansiva
+        // y chispas para que se NOTE que nacen del choque de los rayos
         if (now - modeFx.lastSpawn > 600 && modeFx.pills.length < 36) {
             modeFx.lastSpawn = now;
+            modeFx.burstT = now;
             const p0 = contact;
             for (let i = 0; i < 3; i++) {
-                const ang = Math.random() * Math.PI * 2, spd = 70 + Math.random() * 160;
+                const ang = Math.random() * Math.PI * 2, spd = 90 + Math.random() * 180;
                 const cols = MODEFX_COLORS[(Math.random() * MODEFX_COLORS.length) | 0];
                 const wL = 10 + 2 * ((Math.random() * 4) | 0);   // 10..16 px logicos
                 modeFx.pills.push({
@@ -2720,6 +2711,14 @@
                     rot: Math.random() * Math.PI * 2, vr: (Math.random() - 0.5) * 4,
                     spr: pixPillSprite(wL, cols[0], cols[1]), scale: 2.2 + Math.random() * 1.4,
                     life: 0, ttl: 4.5 + Math.random() * 2
+                });
+            }
+            for (let i = 0; i < 10; i++) {
+                const ang = Math.random() * Math.PI * 2, spd = 260 + Math.random() * 340;
+                modeFx.sparks.push({
+                    x: p0.x, y: p0.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+                    life: 0, ttl: 0.3 + Math.random() * 0.2,
+                    col: ['#ffffff', '#ffd94d', '#66f05a'][i % 3]
                 });
             }
         }
@@ -2752,6 +2751,28 @@
             g.fillStyle = rad;
             g.beginPath(); g.arc(contact.x, contact.y, rr, 0, Math.PI * 2); g.fill();
             g.restore();
+        }
+        // onda expansiva del nacimiento de pildoras + chispas radiales
+        if (modeFx.burstT) {
+            const bt = (now - modeFx.burstT) / 450;
+            if (bt < 1) {
+                g.save();
+                g.globalCompositeOperation = 'lighter';
+                g.strokeStyle = 'rgba(255,255,255,' + (0.7 * (1 - bt)).toFixed(3) + ')';
+                g.lineWidth = 3 + 6 * (1 - bt);
+                g.beginPath(); g.arc(contact.x, contact.y, 10 + bt * 85, 0, Math.PI * 2); g.stroke();
+                g.restore();
+            }
+        }
+        for (let i = modeFx.sparks.length - 1; i >= 0; i--) {
+            const s = modeFx.sparks[i];
+            s.life += dt;
+            if (s.life > s.ttl) { modeFx.sparks.splice(i, 1); continue; }
+            s.x += s.vx * dt; s.y += s.vy * dt;
+            g.globalAlpha = 1 - s.life / s.ttl;
+            g.fillStyle = s.col;
+            g.fillRect(s.x - 2, s.y - 2, 4, 4);
+            g.globalAlpha = 1;
         }
         g.imageSmoothingEnabled = false;
         for (let i = modeFx.pills.length - 1; i >= 0; i--) {
