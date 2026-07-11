@@ -24,3 +24,10 @@ tenue, sin transparencia):
    alpha (con feather para el halo de glow) -> recorte al contenido opaco ->
    reescalado bicubico a una altura fija (200px play-now/brand, 400px hero).
 3. Guarda el resultado en img/pixel-hero/<nombre-en-minuscula>.png.
+
+hero-title.png v2 (jul-2026): regenerado desde raw/HERO-TITLE-v2.jpg (fondo
+NEGRO con cuadricula tenue, no blanco). La cuadricula llega a distancia ~45
+del fondo, asi que la rampa de alpha usa T0=55 T1=140 (por debajo de 55 fuera:
+mata la cuadricula sin tocar el glow verde, que llega a ~440). Agujeros
+cerrados <=1500px se rellenan a opaco; las bolsas grandes de fondo encerradas
+por el contorno del glow se dejan transparentes.

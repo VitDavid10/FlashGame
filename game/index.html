@@ -2438,10 +2438,14 @@
         // estrellas (algunas grandes, con destello en cruz al titilar)
         const stars = [];
         for (let i = 0; i < 170; i++) stars.push({ x: (R() * W) | 0, y: (R() * hz * 0.8) | 0, c: ['#ffffff', '#ffe9a8', '#a8ffd9', '#e8b5ff'][(R() * 4) | 0], ph: (R() * 9) | 0, big: R() < 0.14 });
-        const sign = { x: Math.round(W * 0.62), y: hz - Math.round(H * 0.26) };
+        // -6: el cartel crecio de 15 a 21 de alto; se ancla arriba para que
+        // el borde inferior quede donde estaba (crece hacia arriba y derecha)
+        const sign = { x: Math.round(W * 0.62), y: hz - Math.round(H * 0.26) - 6 };
         return { cv, hz, stars, winks, ants, sign };
     }
-    // Astronauta 32x41 dibujado a mano y pintado a resolucion 1:1 con la
+    // Astronauta 32x41 dibujado a mano — desde jul-2026 es el FALLBACK: solo
+    // se ve si los PNG de David (img/mode-title/astro-arcade/classic.png) no
+    // cargan. Se pinta a resolucion 1:1 con la
     // escena (mismo grano de pixel que el fondo, como en los HD-2D). Postura
     // de tiro (pierna adelantada), antena con luz, rim-light cian, visor con
     // banda de reflejo. Los pixeles 'a'/'A' son el ACENTO del lado: dorado el
@@ -2514,8 +2518,10 @@
         g.fillStyle = lightC; g.fillRect(x + 1 + (step % 5), y + 1, 1, 1);
     }
     function _msSign(g, x, y, step) {
-        // valla neon: marco de bombillas en persecucion + pill + puntos de carga
-        const SW = 22, SH = 15;
+        // valla neon (ampliada a 28x21): marco de bombillas en persecucion +
+        // la pill de la MARCA girada a la izquierda (-30 grados, blanca arriba
+        // / verde abajo, como el cursor/logo de la portada) + puntos de carga
+        const SW = 28, SH = 21;
         g.fillStyle = '#26081f'; g.fillRect(x, y, SW, SH);
         g.fillStyle = '#0d0410'; g.fillRect(x + 1, y + 1, SW - 2, SH - 2);
         const per = [];
@@ -2528,17 +2534,30 @@
             g.fillStyle = on ? '#ff5aa0' : '#5a1c3c';
             g.fillRect(p[0], p[1], 1, 1);
         });
-        // pill blanca/verde inclinada con brillo
-        const px = x + 5, py = y + 2;
-        g.fillStyle = '#101018'; g.fillRect(px - 1, py + 1, 14, 6);
-        g.fillStyle = '#e8eef6'; g.fillRect(px, py + 2, 6, 4);
-        g.fillStyle = '#2ee06a'; g.fillRect(px + 6, py + 2, 6, 4);
-        g.fillStyle = '#ffffff'; g.fillRect(px + 1, py + 2, 2, 1);
+        // capsula logica 7x13 rasterizada pixel a pixel ya rotada (nada de
+        // drawImage con angulo: cada pixel se decide en coords locales de la
+        // pill — contorno oscuro, costura entre mitades y sombra del borde)
+        const PW = 7, PH = 13, R = PW / 2, th = -Math.PI / 6, ct = Math.cos(th), st = Math.sin(th);
+        const ccx = x + Math.round(SW / 2), ccy = y + 9;   // centro, dejando sitio a los puntos
+        for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) {
+            const lx = ct * dx + st * dy + R, ly = -st * dx + ct * dy + PH / 2;
+            const cy2 = Math.min(Math.max(ly, R), PH - R);
+            const d = R - Math.hypot(lx - R, ly - cy2);   // profundidad dentro de la capsula
+            if (d < 0.15) continue;
+            let col;
+            if (d < 1.1) col = '#101018';
+            else if (ly >= PH / 2 - 1 && ly < PH / 2) col = '#b9c6d8';
+            else if (ly < PH / 2) col = '#f2f6fc';
+            else col = d < 2.1 ? '#1da84e' : '#2ee06a';
+            g.fillStyle = col; g.fillRect(ccx + dx, ccy + dy, 1, 1);
+        }
+        // glint blanco en la mitad clara (arriba-izquierda, girado con la pill)
+        g.fillStyle = '#ffffff'; g.fillRect(ccx - 3, ccy - 2, 1, 1); g.fillRect(ccx - 2, ccy - 3, 1, 1);
         // puntos de "carga" animados bajo la pill
         const lit = step % 4;
         for (let i = 0; i < 3; i++) {
             g.fillStyle = i < lit ? '#ffd23d' : '#5a4a20';
-            g.fillRect(x + 7 + i * 3, y + SH - 4, 2, 2);
+            g.fillRect(x + Math.round(SW / 2) - 4 + i * 3, y + SH - 3, 2, 2);
         }
     }
     function _msBeam(g, x0, x1, y, yellow, dir, step) {
@@ -2574,8 +2593,21 @@
             const cv = document.createElement('canvas'); cv.id = 'modeSceneCv';
             els.modeScreen.insertBefore(cv, els.modeScreen.firstChild);
             sc.cv = cv; sc.g = cv.getContext('2d');
-            sc.astroA = _msAstro('gold');    // duelista de ARCADE
-            sc.astroB = _msAstro('green');   // duelista de CLASSIC
+            // duelistas: {img, mx/my: boca del canon en el sprite, sx: centro
+            // de la sombra respecto a la boca}. Arrancan con el dibujado a
+            // mano (el de CLASSIC se hornea YA espejado: canon a la izquierda)
+            // y si cargan los PNG de David (astro-arcade/astro-classic, 64px,
+            // cada uno mirando ya hacia su lado) los sustituyen en caliente.
+            sc.astroA = { img: _msAstro('gold'), mx: 31, my: 20, sx: -19 };
+            const mir = document.createElement('canvas'); mir.width = 32; mir.height = _MS_ASTRO.length;
+            const mg = mir.getContext('2d');
+            mg.translate(32, 0); mg.scale(-1, 1); mg.drawImage(_msAstro('green'), 0, 0);
+            sc.astroB = { img: mir, mx: 1, my: 20, sx: 19 };
+            [['astroA', 'img/mode-title/astro-arcade.png', 45, 32, -31], ['astroB', 'img/mode-title/astro-classic.png', 10, 33, 29]].forEach(([k, src, mx, my, sx]) => {
+                const im = new Image();
+                im.onload = () => { sc[k] = { img: im, mx, my, sx }; sc.step = -1; };
+                im.src = src;
+            });
             document.body.classList.add('has-hover-scene');
         }
         if (sc.W !== W || sc.H !== H) {
@@ -2654,16 +2686,20 @@
             g.fillStyle = '#ffffff'; g.fillRect(mxB - 2, beamY - 1, 2, 3);
             g.fillStyle = '#ff7ad9'; g.fillRect(mxB - 3, beamY - 2, 1, 5);
         }
-        // astronautas 32x41 a resolucion 1:1 (boca del canon en (31,20));
-        // cada uno con su acento: dorado ARCADE (izq), verde CLASSIC (der)
+        // astronautas a resolucion 1:1, anclados por la boca del canon:
+        // el pixel (mx,my) del sprite cae exactamente en (mxA/mxB, beamY),
+        // asi el rayo nace del canon sea cual sea el arte cargado
         const bobA = (step % 8 < 4) ? 0 : 1;
         const bobB = ((step + 4) % 8 < 4) ? 0 : 1;
         g.imageSmoothingEnabled = false;
-        g.fillStyle = 'rgba(0,0,0,0.35)';
-        if (showA) g.fillRect(mxA - 30, beamY - 20 + 41, 18, 1);
-        if (showB) g.fillRect(mxB + 13, beamY - 20 + 41, 18, 1);
-        if (showA) g.drawImage(sc.astroA, mxA - 31, beamY - 20 + bobA);
-        if (showB) { g.save(); g.translate(mxB + 31, beamY - 20 + bobB); g.scale(-1, 1); g.drawImage(sc.astroB, 0, 0); g.restore(); }
+        const drawAstro = (a, mx, bob) => {
+            const sw = Math.max(14, Math.round(a.img.width * 0.35));
+            g.fillStyle = 'rgba(0,0,0,0.35)';
+            g.fillRect(Math.round(mx + a.sx - sw / 2), beamY - a.my + a.img.height, sw, 1);
+            g.drawImage(a.img, mx - a.mx, beamY - a.my + bob);
+        };
+        if (showA) drawAstro(sc.astroA, mxA, bobA);
+        if (showB) drawAstro(sc.astroB, mxB, bobB);
     }
     function modeFxStart() {
         if (modeFx.raf || !modeFxActive()) return;
@@ -2722,11 +2758,11 @@
             for (let i = 0; i < 3; i++) {
                 const ang = Math.random() * Math.PI * 2, spd = 90 + Math.random() * 180;
                 const cols = MODEFX_COLORS[(Math.random() * MODEFX_COLORS.length) | 0];
-                const wL = 10 + 2 * ((Math.random() * 4) | 0);   // 10..16 px logicos
+                const wL = 6 + 2 * ((Math.random() * 8) | 0);   // 6..20 px logicos: de mini a gorda
                 modeFx.pills.push({
                     x: p0.x, y: p0.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 30,
                     rot: Math.random() * Math.PI * 2, vr: (Math.random() - 0.5) * 4,
-                    spr: pixPillSprite(wL, cols[0], cols[1]), scale: 2.2 + Math.random() * 1.4,
+                    spr: pixPillSprite(wL, cols[0], cols[1]), scale: 1.6 + Math.random() * 2.0,
                     life: 0, ttl: 4.5 + Math.random() * 2
                 });
             }
@@ -2810,18 +2846,21 @@
             g.globalAlpha = 1;
         }
         g.imageSmoothingEnabled = false;
-        // cajas de las letras (logos+descripcion y paneles de quests): las
-        // pildoras rebotan en ellas y NUNCA tapan los textos
+        // zonas de las letras: titulo+descripcion se protegen con un CIRCULO
+        // (cubre tambien las esquinas: ninguna pildora roza las letras) y los
+        // paneles de quests con caja. Ambos se inflan con el radio REAL de
+        // cada pildora (antes margen fijo de 16px y las gordas asomaban).
         const cvR = cv.getBoundingClientRect();
-        const boxes = [];
+        const boxes = [], circles = [];
         for (const id of ['contentArcade', 'contentClassic', 'mqpArcade', 'mqpClassic']) {
             const el = document.getElementById(id);
             if (!el || !el.offsetWidth) continue;
             const st = getComputedStyle(el);
             if (st.display === 'none' || parseFloat(st.opacity) < 0.05) continue;
             const r = el.getBoundingClientRect();
-            const inf = 16;   // media pildora de margen
-            boxes.push({ x0: r.left - cvR.left - inf, y0: r.top - cvR.top - inf, x1: r.right - cvR.left + inf, y1: r.bottom - cvR.top + inf });
+            const x0 = r.left - cvR.left, y0 = r.top - cvR.top, x1 = r.right - cvR.left, y1 = r.bottom - cvR.top;
+            if (id === 'contentArcade' || id === 'contentClassic') circles.push({ cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, r: Math.hypot(x1 - x0, y1 - y0) / 2 + 4 });
+            else boxes.push({ x0, y0, x1, y1 });
         }
         for (let i = modeFx.pills.length - 1; i >= 0; i--) {
             const p = modeFx.pills[i];
@@ -2829,15 +2868,28 @@
             if (p.life > p.ttl) { modeFx.pills.splice(i, 1); continue; }
             p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
             p.vy += 14 * dt;                       // gravedad muy suave
+            const pr = p.spr.height * p.scale / 2;   // radio visual de ESTA pildora (rota: alto/2)
+            for (const c of circles) {
+                const dx = p.x - c.cx, dy = p.y - c.cy, rr = c.r + pr;
+                if (dx * dx + dy * dy < rr * rr) {
+                    // rebote radial: reflejar la velocidad sobre la normal + chispita
+                    const d = Math.sqrt(dx * dx + dy * dy) || 1, nx = dx / d, ny = dy / d;
+                    p.x = c.cx + nx * rr; p.y = c.cy + ny * rr;
+                    const dot = p.vx * nx + p.vy * ny;
+                    if (dot < 0) { p.vx = (p.vx - 2 * dot * nx) * 0.7; p.vy = (p.vy - 2 * dot * ny) * 0.7; }
+                    p.vr = -p.vr;
+                    if (modeFx.sparks.length < 40) modeFx.sparks.push({ x: p.x, y: p.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0, ttl: 0.25, col: '#ffffff' });
+                }
+            }
             for (const bx of boxes) {
-                if (p.x > bx.x0 && p.x < bx.x1 && p.y > bx.y0 && p.y < bx.y1) {
+                if (p.x > bx.x0 - pr && p.x < bx.x1 + pr && p.y > bx.y0 - pr && p.y < bx.y1 + pr) {
                     // rebote por el eje de menor penetracion + chispita
-                    const dl = p.x - bx.x0, dr = bx.x1 - p.x, du = p.y - bx.y0, db = bx.y1 - p.y;
+                    const dl = p.x - (bx.x0 - pr), dr = (bx.x1 + pr) - p.x, du = p.y - (bx.y0 - pr), db = (bx.y1 + pr) - p.y;
                     const mn = Math.min(dl, dr, du, db);
-                    if (mn === dl) { p.x = bx.x0; if (p.vx > 0) p.vx *= -0.7; }
-                    else if (mn === dr) { p.x = bx.x1; if (p.vx < 0) p.vx *= -0.7; }
-                    else if (mn === du) { p.y = bx.y0; if (p.vy > 0) p.vy *= -0.7; }
-                    else { p.y = bx.y1; if (p.vy < 0) p.vy *= -0.7; }
+                    if (mn === dl) { p.x = bx.x0 - pr; if (p.vx > 0) p.vx *= -0.7; }
+                    else if (mn === dr) { p.x = bx.x1 + pr; if (p.vx < 0) p.vx *= -0.7; }
+                    else if (mn === du) { p.y = bx.y0 - pr; if (p.vy > 0) p.vy *= -0.7; }
+                    else { p.y = bx.y1 + pr; if (p.vy < 0) p.vy *= -0.7; }
                     p.vr = -p.vr;
                     if (modeFx.sparks.length < 40) modeFx.sparks.push({ x: p.x, y: p.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0, ttl: 0.25, col: '#ffffff' });
                 }

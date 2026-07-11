@@ -1,4 +1,14 @@
-Titulos pixel-art de la pantalla de seleccion de modo (ARCADE.png, CLASSIC.png).
+Titulos pixel-art de la pantalla de seleccion de modo (ARCADE.png, CLASSIC.png)
+y sprites de los astronautas duelistas de la escena (astro-arcade.png dorado,
+mirando a la derecha / astro-classic.png verde, mirando a la izquierda).
+
+Astronautas (jul-2026): 64px de alto, se dibujan 1:1 en el canvas de la escena
+anclados por la boca del canon — arcade (45,32), classic (10,33), coordenadas
+horneadas en game/index.html. Si el PNG falta, cae al astronauta procedural
+dibujado a mano (_MS_ASTRO). Originales de IA en raw/astronauta-*.jpg (fondo
+blanco); procesado: fondo a alpha por distancia (T0=10 T1=70, des-matte del
+borde, agujeros <=1500px rellenos), recorte, lanczos a 64px y alpha endurecido
+a 0/255 (umbral 120) para que el borde sea pixel-perfect en la escena.
 
 Solo se usan con el texture pack pixel activo (pw_pixel=1): el <img class="mt-img">
 de cada .mode-title los carga; si el PNG no existe, el onerror activa el fallback
