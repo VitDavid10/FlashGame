@@ -821,10 +821,8 @@
            transparente y el otro con velo oscuro — su clip-path recorta el
            velo, la escena es continua a traves de la diagonal. */
         #modeSceneCv { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; image-rendering: pixelated; display: none; }
-        body.pixel-pack.has-hover-scene #modeScreen.hover-arcade #modeSceneCv,
-        body.pixel-pack.has-hover-scene #modeScreen.hover-classic #modeSceneCv { display: block; }
-        body.pixel-pack.has-hover-scene #modeScreen.hover-arcade .mode-panel,
-        body.pixel-pack.has-hover-scene #modeScreen.hover-classic .mode-panel { background: rgba(0,0,0,0.45) !important; }
+        body.pixel-pack.has-hover-scene #modeScreen #modeSceneCv { display: block; }
+        body.pixel-pack.has-hover-scene #modeScreen .mode-panel { background: rgba(0,0,0,0.45) !important; }
         body.pixel-pack.has-hover-scene #modeScreen.hover-arcade .mode-arcade,
         body.pixel-pack.has-hover-scene #modeScreen.hover-classic .mode-classic { background: transparent !important; }
         body.pixel-pack .mode-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 2px; }
@@ -2253,18 +2251,19 @@
     // Geometria del rayo en fracciones de PANTALLA (la escena llena el canvas):
     // x = impacto fallback, mx = boca del canon (el astronauta se dibuja
     // partiendo de ella, asi glow y sprite siempre casan).
-    const MODEFX_IMPACT = { arcade: { x: 0.72, y: 0.70, mx: 0.365 }, classic: { x: 0.28, y: 0.70, mx: 0.635 } };
+    // Geometria: los DOS astronautas viven en la escena (mxA izquierda/arcade,
+    // mxB derecha/classic) y disparan a la vez; el choque cae en la diagonal.
+    const MODEFX_IMPACT = { mxA: 0.18, mxB: 0.82, y: 0.70 };
     const MODEFX_COLORS = [['#ff3b30', '#ffffff'], ['#1a73e8', '#ffffff'], ['#ffce3d', '#ffffff'], ['#00ff88', '#0a1a10'], ['#cc00ff', '#ffffff'], ['#ff8c00', '#ffffff']];
     const modeFx = { cv: null, g: null, pills: [], raf: 0, lastSpawn: 0, lastT: 0 };
     function modeFxActive() {
+        // La escena corre SIEMPRE que el menu pixel este visible (tambien en
+        // neutral, con los dos astronautas disparandose); el punto de choque
+        // sigue a la diagonal (60% neutral, 75%/25% con lado elegido).
         const ms = els.modeScreen;
         if (!pixelMode) return false;
-        if (!ms || ms.style.display === 'none' || !ms.offsetWidth) return false;
-        return ms.classList.contains('hover-arcade') || ms.classList.contains('hover-classic');
+        return !!(ms && ms.style.display !== 'none' && ms.offsetWidth);
     }
-    // la escena llena la pantalla: fraccion -> pixel, mapeo directo
-    function modeFxMapFrac(w, h, fx, fy) { return { x: fx * w, y: fy * h }; }
-    function modeFxImpactPoint(w, h, side) { const f = MODEFX_IMPACT[side]; return modeFxMapFrac(w, h, f.x, f.y); }
     // x real de la linea diagonal a la altura y (rotate(10deg) sobre su centro),
     // leida del DOM cada frame: asi el rayo la TOCA siempre, incluso mientras
     // la diagonal se desliza durante la transicion de 1.2s al cambiar de lado.
@@ -2394,42 +2393,60 @@
         g.fillStyle = '#123c22'; g.fillRect(0, hz - 2, W, 1);
         g.fillStyle = '#2fae5c'; g.fillRect(0, hz - 1, W, 1);
         g.fillStyle = '#7dffb0'; for (let x = 0; x < W; x += 3) g.fillRect(x, hz - 1, 1, 1);
-        // suelo synthwave: plano degradado + grid neon con perspectiva real
-        // (punto de fuga en el centro del horizonte, verticales convergentes
-        // y horizontales con espaciado exponencial que se funden a lo lejos)
+        // suelo: plaza de baldosas oscuras con perspectiva real (Mode-7),
+        // juntas convergentes, borde iluminado por baldosa, moteado y grietas,
+        // reflejos de neon ondulados bajo el horizonte (pixel a pixel via
+        // ImageData, horneado una vez)
         {
             const FH = H - hz;
-            const mixA = (a, b, t) => [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)];
-            const rgbS = c => 'rgb(' + c.join(',') + ')';
-            const baseNear = [5, 22, 13], baseFar = [9, 40, 23];
-            const lineNear = [46, 224, 106], lineFar = [14, 70, 40], coreC = [125, 255, 176];
+            const img = g.createImageData(W, FH);
+            const dt2 = img.data;
+            const h2 = (x, y) => ((((Math.imul(x, 374761393) + Math.imul(y, 668265263)) ^ 0x5bf03635) >>> 0) % 1000) / 1000;
+            const tileA = [24, 28, 44], tileB = [18, 21, 34], edgeHi = [58, 66, 94], seamC = [7, 8, 13];
+            const mixC = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
             for (let y = 0; y < FH; y++) {
-                g.fillStyle = rgbS(mixA(baseFar, baseNear, y / FH));
-                g.fillRect(0, hz + y, W, 1);
-            }
-            g.fillStyle = 'rgba(255,255,255,0.05)';
-            for (let y = 0; y < FH; y++) for (let x = (y * 3) % 7; x < W; x += 7) { if (((x * 13 + y * 7) % 3) === 0) g.fillRect(x, hz + y, 1, 1); }
-            let dd = 2.6, yy = 2.0;
-            while (yy < FH) {
-                const ly = Math.round(yy), t = ly / FH;
-                const col = mixA(lineFar, lineNear, Math.min(1, t * 1.3));
-                g.fillStyle = rgbS(col); g.fillRect(0, hz + ly, W, 1);
-                if (t > 0.4) { g.fillStyle = rgbS(mixA(col, coreC, 0.5)); for (let x = 0; x < W; x += 2) g.fillRect(x, hz + ly, 1, 1); }
-                dd *= 1.45; yy += dd;
-            }
-            for (let k = -13; k <= 13; k++) {
-                for (let y = 2; y < FH; y++) {
-                    const t = y / FH;
-                    if (t < 0.10) continue;
-                    if (t < 0.30 && (y % 2 === 0)) continue;
-                    if (t < 0.30 && Math.abs(k) > 8) continue;
-                    const ix = Math.round(W / 2 + k * 26 * (y + 6) / (FH + 6));
-                    if (ix < 0 || ix >= W) continue;
-                    const col = mixA(lineFar, lineNear, Math.min(1, t * 1.2));
-                    g.fillStyle = rgbS(t > 0.55 && Math.abs(k) < 9 ? mixA(col, coreC, 0.35) : col);
-                    g.fillRect(ix, hz + y, 1, 1);
+                const dDist = y + 6, t = y / FH;
+                const z = 46 * 34 / dDist;
+                for (let x = 0; x < W; x++) {
+                    const wx = (x - W / 2) * 46 / dDist / 6;
+                    const tu = wx / 22 * 6, tv = z / 22;
+                    const cu = Math.floor(tu), cvv = Math.floor(tv);
+                    const fu = tu - cu, fv = tv - cvv;
+                    const v = h2(cu, cvv);
+                    let c = mixC(mixC(tileA, tileB, v), [0, 0, 0], (1 - t) * 0.55);
+                    const sw = 0.05 + 0.04 * t;
+                    if (fu < sw || fv < sw * 1.4) c = mixC(seamC, c, (1 - t) * 0.5);
+                    else if (fv > 1 - sw * 2.2 && t > 0.15) c = mixC(c, edgeHi, (0.2 + 0.5 * v) * t * 0.8);
+                    else {
+                        const s = h2(x * 3 + cu, y * 7 + cvv);
+                        if (s > 0.94) c = mixC(c, edgeHi, 0.45);
+                        else if (s < 0.05) c = mixC(c, seamC, 0.5);
+                        if (v > 0.82 && fu > 0.3 && fu < 0.7 && fv > 0.3 && fv < 0.6 && h2(cu * 3, cvv * 5) > 0.5) c = mixC(c, seamC, 0.35);
+                    }
+                    const i4 = (y * W + x) * 4;
+                    dt2[i4] = c[0]; dt2[i4 + 1] = c[1]; dt2[i4 + 2] = c[2]; dt2[i4 + 3] = 255;
                 }
             }
+            const blend = (x, y, col, a) => {
+                if (x < 0 || x >= W || y < 0 || y >= FH) return;
+                const i4 = (y * W + x) * 4;
+                dt2[i4] += (col[0] - dt2[i4]) * a; dt2[i4 + 1] += (col[1] - dt2[i4 + 1]) * a; dt2[i4 + 2] += (col[2] - dt2[i4 + 2]) * a;
+            };
+            const NEON = [[58, 240, 126], [57, 214, 232], [224, 112, 220], [255, 210, 61], [255, 90, 160]];
+            for (let i = 0; i < 26; i++) {
+                const x0 = 4 + Math.floor(R() * (W - 8));
+                const col = NEON[(R() * NEON.length) | 0];
+                const ln = 14 + Math.floor(R() * 28);
+                const wdt = R() < 0.33 ? 2 : 1;
+                for (let y = 0; y < Math.min(ln, FH); y++) {
+                    if (y % 2 === 1 && y > 8) continue;
+                    const xx = x0 + Math.round(Math.sin(y * 0.7 + i) * 1.4);
+                    const a = (1 - y / ln) * 0.5;
+                    for (let k = 0; k < wdt; k++) blend(xx + k, y, col, a);
+                }
+            }
+            for (let y = 0; y < 3; y++) { const a = [0.35, 0.18, 0.08][y]; for (let x = 0; x < W; x++) blend(x, y, [58, 240, 126], a); }
+            g.putImageData(img, 0, hz);
         }
         // scanlines sutiles
         g.fillStyle = 'rgba(0,0,0,0.07)';
@@ -2440,39 +2457,64 @@
         const sign = { x: Math.round(W * 0.62), y: hz - Math.round(H * 0.26) };
         return { cv, hz, stars, winks, ants, sign };
     }
-    // Astronauta 24x26 dibujado a mano (se pinta a escala 2 = 48x52 logicos).
-    // La boca del canon (pixel 'w') esta en (23, 14) del sprite: el sprite se
-    // coloca de modo que caiga EXACTO en la fraccion mx que usa el glow del rayo.
+    // Astronauta 32x40 dibujado a mano y pintado a resolucion 1:1 con la
+    // escena (mismo grano de pixel que el fondo, como en los HD-2D). Contorno
+    // azul oscuro (no negro), traje con 5 tonos, rim-light cian en la espalda,
+    // visor con banda de reflejo y rifle de dos manos con celdas de energia.
+    // La boca del canon (pixel 'w') esta en (31, 19) del sprite.
     const _MS_ASTRO = [
-        '......OOOOOO............',
-        '....OOWWWWWWOO..........',
-        '...OWWWWWWWWWWO.........',
-        '..OWWWOvvvvvvOO.........',
-        '..OWWOvggvvvvvvO........',
-        '..OWWOvgvvvvvvvO........',
-        '..OWWOvvvvvvffvO........',
-        '..OWWWOvvvvvvvO.........',
-        '...OWWWOOOOOOO..........',
-        '...OOWWWWWWWTO..........',
-        '..OBOWWWWWWWWTO.........',
-        '.ObBOWWWWWWWWTO.........',
-        '.ObBOWWWccWWWTO.OOOO....',
-        '.ObBOWWWccWWWOOOGGGGOO..',
-        '.ObBOWWWWWWWSGGGGDDDGGGw',
-        '.ObBOWWWWWWWSGGGGGGGGGO.',
-        '.ObBOWWWWWWWSOOOGGOOO...',
-        '.ObBOWWWWWWWTO..OGO.....',
-        '..OOWWWWWWWWTO..OOO.....',
-        '...OWWWWWWWWO...........',
-        '...OWSSWWSSWO...........',
-        '...OWSOWWOSWO...........',
-        '...OWSO..OSWO...........',
-        '...OWSO..OSWO...........',
-        '...OJJO..OJJO...........',
-        '..OJJJO..OJJJO..........'];
-    const _MS_PAL = { O: '#101018', W: '#e8eef6', T: '#c2cbd8', S: '#97a3b4', B: '#8791a1', b: '#5a6372', v: '#16233c', g: '#9fe0ff', f: '#f2a054', G: '#e05ae0', D: '#7e2b96', J: '#39424f', c: '#ffd23d', w: '#ffffff' };
+        '...........KKKKKKKK.............',
+        '.........KKWWWWWWWWKK...........',
+        '........KWWWWWWWWWWWWK..........',
+        '.......KWWWWWWWWWWWWWWK.........',
+        '......KWWWWWKKKKKKKKWWK.........',
+        '.....KWWWWKKvvvvvvvvKWWK........',
+        '.....KWWWKvvVVvvvvvvvKWK........',
+        '....KRWWKvVVgghvvvvvvvKK........',
+        '....KRWWKvVghvvvvvvvvvvK........',
+        '....KRWWKvVgvvvvvvvvfffK........',
+        '....KRWWKvvvvvvvvvvvffvK........',
+        '....KRWWWKvvvvvvvvvffvK.........',
+        '.....KWWWWKvvvvvvvvvvK..........',
+        '.....KWWWWWKKKKKKKKKK...........',
+        '......KTWWWWWWWWWWK.............',
+        '.....KKTTWWWWWWWWWWKK...........',
+        '...KKBBKTWWWWWWWWWWWWK..........',
+        '..KBBbbKWWWWWWWWWWWWWWK...KKKK..',
+        '.KBbbddKWWWWWccWWWWWWSKKKKMMMMKK',
+        '.KBbbddKWWWWWccWWWWWSMMMMEEEEEEw',
+        '.KBbbddKWWWWWWWWWWWSKMMMMMMMMMK.',
+        '.KBbbddKWWWWWWWWWWSKKKKMMMKKK...',
+        '.KBbbddKWWWWWWWWWSK..KmmMK......',
+        '.KBbbddKTWWWWWWWWK...KmMK.......',
+        '.KBbbddKTWWWWWWWK....KKK........',
+        '..KbddKTTWWWWWWK................',
+        '...KKKKTWWWWWWWK................',
+        '....KTTWWWWWWWWK................',
+        '....KTWWWWWWWWWK................',
+        '....KTWSSSSSSWTK................',
+        '....KWSSKKKKSSWK................',
+        '....KWSK...KSSWK................',
+        '....KWSK...KSSWK................',
+        '....KsSK....KsSK................',
+        '....KsSK....KsSK................',
+        '....KjjK....KjjK................',
+        '...KJjjK....KJjjK...............',
+        '...KJJJKK...KJJJKK..............',
+        '..KJJJJJK..KJJJJJK..............',
+        '..KKKKKKK..KKKKKKK..............'];
+    const _MS_PAL = {
+        K: '#141726',
+        W: '#f4f6fb', T: '#d3dae8', S: '#a8b3ca', s: '#7b869f', u: '#59637a',
+        R: '#86ecff', r: '#4ab8d8',
+        v: '#0d1830', V: '#1c3054', g: '#7fd4f6', h: '#ffffff', f: '#f6a45a',
+        M: '#3b4361', m: '#6d7794', n: '#aab3cc',
+        E: '#ff5ae0', e: '#a12b96',
+        B: '#b9c2d4', b: '#8d97ac', d: '#626c82',
+        J: '#414a63', j: '#5d6880', c: '#ffd23d', w: '#ffffff'
+    };
     function _msAstro() {
-        const cv = document.createElement('canvas'); cv.width = 24; cv.height = _MS_ASTRO.length;
+        const cv = document.createElement('canvas'); cv.width = 32; cv.height = _MS_ASTRO.length;
         const g = cv.getContext('2d');
         _MS_ASTRO.forEach((row, y) => { for (let x = 0; x < row.length; x++) { if (row[x] !== '.') { g.fillStyle = _MS_PAL[row[x]]; g.fillRect(x, y, 1, 1); } } });
         return cv;
@@ -2516,29 +2558,28 @@
         const edge = yellow ? '#b87700' : '#187f28';
         const mid = yellow ? '#ffd94d' : '#66f05a';
         const core = yellow ? '#fff6bf' : '#eaffe2';
-        // rayo gordo: borde + cuerpo + nucleo + linea blanca central
-        g.fillStyle = edge; g.fillRect(x0, y - 3, x1 - x0, 7);
-        g.fillStyle = mid; g.fillRect(x0, y - 2, x1 - x0, 5);
-        g.fillStyle = core; g.fillRect(x0, y - 1, x1 - x0, 3);
+        // rayo a escala del rifle (sprite 1:1): borde + cuerpo + nucleo blanco
+        g.fillStyle = edge; g.fillRect(x0, y - 2, x1 - x0, 5);
+        g.fillStyle = mid; g.fillRect(x0, y - 1, x1 - x0, 3);
         g.fillStyle = '#ffffff'; g.fillRect(x0, y, x1 - x0, 1);
         // llama ondulante en los bordes
         for (let x = x0; x < x1 - 1; x += 3) {
             const k = (Math.round(x / 3) + step) % 5;
-            if (k === 0) { g.fillStyle = mid; g.fillRect(x, y - 4, 3, 1); g.fillStyle = edge; g.fillRect(x + 1, y - 5, 1, 1); }
-            else if (k === 1) { g.fillStyle = mid; g.fillRect(x, y + 4, 3, 1); g.fillStyle = edge; g.fillRect(x - 1, y + 5, 1, 1); }
-            else if (k === 3) { g.fillStyle = edge; g.fillRect(x, y - 4, 1, 1); g.fillRect(x + 1, y + 4, 1, 1); }
+            if (k === 0) { g.fillStyle = mid; g.fillRect(x, y - 3, 2, 1); g.fillStyle = edge; g.fillRect(x + 1, y - 4, 1, 1); }
+            else if (k === 1) { g.fillStyle = mid; g.fillRect(x, y + 3, 2, 1); g.fillStyle = edge; g.fillRect(x - 1, y + 4, 1, 1); }
+            else if (k === 3) { g.fillStyle = edge; g.fillRect(x, y - 3, 1, 1); g.fillRect(x + 1, y + 3, 1, 1); }
         }
         // pulsos de energia viajando hacia el impacto
         const ph = (step * 4) % 26;
         for (let k = 0; k < Math.ceil((x1 - x0) / 26) + 1; k++) {
-            const px = dir > 0 ? x0 + ph + k * 26 : x1 - 4 - ph - k * 26;
-            if (px > x0 && px + 4 < x1) {
-                g.fillStyle = core; g.fillRect(px - 1, y - 1, 6, 3);
-                g.fillStyle = '#ffffff'; g.fillRect(px, y - 2, 4, 5);
+            const px = dir > 0 ? x0 + ph + k * 26 : x1 - 3 - ph - k * 26;
+            if (px > x0 && px + 3 < x1) {
+                g.fillStyle = core; g.fillRect(px - 1, y - 1, 5, 3);
+                g.fillStyle = '#ffffff'; g.fillRect(px, y - 1, 3, 3);
             }
         }
     }
-    function modeFxDrawScene(w, h, side, contactScreenX, now) {
+    function modeFxDrawScene(w, h, contactScreenX, now) {
         const sc = modeScene;
         const H = 270, W = Math.max(240, Math.round(w / h * H));
         if (!sc.cv) {
@@ -2556,8 +2597,8 @@
         }
         const step = Math.floor(now / 90);
         const cx = Math.round(contactScreenX / w * W);
-        if (step === sc.step && side === sc.side && cx === sc.cx) return;
-        sc.step = step; sc.side = side; sc.cx = cx;
+        if (step === sc.step && cx === sc.cx) return;
+        sc.step = step; sc.cx = cx;
         const g = sc.g;
         g.drawImage(sc.base, 0, 0);
         // estrellas titilando (las grandes con destello en cruz)
@@ -2593,33 +2634,43 @@
         _msUfo(g, ((step + 40) % (W + 30)) - 15, Math.round(H * 0.10), '#7ef07e', '#b9ffdd', step);
         _msUfo(g, W + 15 - ((step * 2 + 90) % (W + 30)), Math.round(H * 0.17), '#ff9ad9', '#ffe9a8', step);
         _msSign(g, sc.sign.x, sc.sign.y, step);
-        const f = MODEFX_IMPACT[side];
-        const beamY = Math.round(f.y * H);
-        const mirror = side === 'classic';
-        const mxL = Math.round(f.mx * W);
-        _msBeam(g, mirror ? cx : mxL, mirror ? mxL : cx, beamY, side === 'arcade', mirror ? -1 : 1, step);
-        // chispas y estallido en el punto de impacto
+        // duelo permanente: los dos astronautas disparan a la vez y el choque
+        // de los rayos cae donde este la diagonal (60% neutral, 75%/25% hover)
+        const beamY = Math.round(MODEFX_IMPACT.y * H);
+        const mxA = Math.round(MODEFX_IMPACT.mxA * W);
+        const mxB = Math.round(MODEFX_IMPACT.mxB * W);
+        _msBeam(g, mxA, cx, beamY, true, 1, step);
+        _msBeam(g, cx, mxB, beamY, false, -1, step);
+        // choque de energia: chispas de ambos colores + nucleo blanco
         {
             const rr = 3 + (step % 4) * 2;
-            g.fillStyle = 'rgba(255,255,255,' + (0.7 - (step % 4) * 0.15).toFixed(2) + ')';
-            for (let t = 0.4; t < 6.283; t += 0.785) g.fillRect(Math.round(cx + Math.cos(t) * rr), Math.round(beamY + Math.sin(t) * rr), 1, 1);
+            const cols = ['#fff6bf', '#eaffe2', '#ffffff'];
+            let ci = 0;
+            for (let t = 0.4; t < 6.283; t += 0.785) {
+                g.fillStyle = cols[(ci++) % 3];
+                g.fillRect(Math.round(cx + Math.cos(t) * rr), Math.round(beamY + Math.sin(t) * rr), 1, 1);
+            }
             g.fillStyle = '#ffffff'; g.fillRect(cx - 1, beamY - 1, 3, 3);
+            g.fillStyle = (step % 2) ? '#ffd94d' : '#66f05a';
+            g.fillRect(cx - 2, beamY, 1, 1); g.fillRect(cx + 2, beamY, 1, 1);
         }
-        // fogonazo en la boca del canon
+        // fogonazos alternos en las dos bocas
         if (step % 2 === 0) {
-            g.fillStyle = '#ffffff'; g.fillRect(mxL + (mirror ? -2 : 0), beamY - 1, 2, 3);
-            g.fillStyle = '#ff7ad9';
-            g.fillRect(mxL + (mirror ? -3 : 2), beamY - 2, 1, 5);
-            g.fillRect(mxL + (mirror ? -4 : 3), beamY - 1, 1, 3);
+            g.fillStyle = '#ffffff'; g.fillRect(mxA, beamY - 1, 2, 3);
+            g.fillStyle = '#ff7ad9'; g.fillRect(mxA + 2, beamY - 2, 1, 5);
+        } else {
+            g.fillStyle = '#ffffff'; g.fillRect(mxB - 2, beamY - 1, 2, 3);
+            g.fillStyle = '#ff7ad9'; g.fillRect(mxB - 3, beamY - 2, 1, 5);
         }
-        // astronauta (24x26 a escala 2; boca del canon en (23,14) del sprite)
-        const bob = (step % 8 < 4) ? 0 : 1;
-        const ay = beamY - 28 + bob;
+        // astronautas 32x40 a resolucion 1:1 (boca del canon en (31,19))
+        const bobA = (step % 8 < 4) ? 0 : 1;
+        const bobB = ((step + 4) % 8 < 4) ? 0 : 1;
         g.imageSmoothingEnabled = false;
         g.fillStyle = 'rgba(0,0,0,0.35)';
-        g.fillRect(mirror ? mxL + 16 : mxL - 42, ay + 52, 26, 2);
-        if (!mirror) g.drawImage(sc.astro, mxL - 46, ay, 48, 52);
-        else { g.save(); g.translate(mxL + 46, ay); g.scale(-1, 1); g.drawImage(sc.astro, 0, 0, 48, 52); g.restore(); }
+        g.fillRect(mxA - 29, beamY - 19 + 40, 17, 1);
+        g.fillRect(mxB + 13, beamY - 19 + 40, 17, 1);
+        g.drawImage(sc.astro, mxA - 31, beamY - 19 + bobA);
+        g.save(); g.translate(mxB + 31, beamY - 19 + bobB); g.scale(-1, 1); g.drawImage(sc.astro, 0, 0); g.restore();
     }
     function modeFxStart() {
         if (modeFx.raf || !modeFxActive()) return;
@@ -2644,15 +2695,18 @@
         const w = els.modeScreen.clientWidth, h = els.modeScreen.clientHeight;
         if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
         const dt = Math.min(0.05, (now - modeFx.lastT) / 1000); modeFx.lastT = now;
-        const side = els.modeScreen.classList.contains('hover-arcade') ? 'arcade' : 'classic';
         // punto de contacto rayo-diagonal: la x viene del DOM (posicion real de
-        // la linea, tambien en mitad de la transicion); fallback a la fraccion fija
-        const fSide = MODEFX_IMPACT[side];
-        const muzzle = modeFxMapFrac(w, h, fSide.mx, fSide.y);
-        const divX = modeFxDividerX(muzzle.y);
-        const contact = divX != null ? { x: divX, y: muzzle.y } : modeFxImpactPoint(w, h, side);
+        // la linea, tambien en mitad de la transicion); fallback a la fraccion
+        // del estado actual (neutral 60%, hover 75%/25%)
+        const cl = els.modeScreen.classList;
+        const frac = cl.contains('hover-arcade') ? 0.75 : cl.contains('hover-classic') ? 0.25 : 0.60;
+        const beamYs = MODEFX_IMPACT.y * h;
+        const muzzleA = { x: MODEFX_IMPACT.mxA * w, y: beamYs };
+        const muzzleB = { x: MODEFX_IMPACT.mxB * w, y: beamYs };
+        const divX = modeFxDividerX(beamYs);
+        const contact = { x: divX != null ? divX : frac * w, y: beamYs };
         // escena pixel-art de fondo (canvas propio bajo los paneles)
-        modeFxDrawScene(w, h, side, contact.x, now);
+        modeFxDrawScene(w, h, contact.x, now);
         // rafaga de pildoras desde el impacto cada ~600ms
         if (now - modeFx.lastSpawn > 600 && modeFx.pills.length < 36) {
             modeFx.lastSpawn = now;
@@ -2675,26 +2729,28 @@
         // verde #66f05a, igual que la diagonal en pixel) y llegando hasta
         // tocarla, con un estallido de luz en el punto de contacto.
         {
-            const a = muzzle, b = contact;
             const pulse = 0.75 + 0.25 * Math.sin(now / 170);
-            const col = side === 'arcade' ? '255,223,85' : '102,240,90';
             g.save();
             g.globalCompositeOperation = 'lighter';
             g.lineCap = 'round';
-            g.shadowColor = 'rgb(' + col + ')'; g.shadowBlur = 28 * pulse;
-            g.strokeStyle = 'rgba(' + col + ',' + (0.5 * pulse).toFixed(3) + ')'; g.lineWidth = 13;
-            g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
-            g.shadowBlur = 12 * pulse;
-            g.strokeStyle = 'rgba(255,255,255,' + (0.45 * pulse).toFixed(3) + ')'; g.lineWidth = 4;
-            g.stroke();
-            // estallido en el contacto con la diagonal
-            const rr = 30 * (0.8 + 0.3 * Math.sin(now / 110));
-            const rad = g.createRadialGradient(b.x, b.y, 0, b.x, b.y, rr);
-            rad.addColorStop(0, 'rgba(255,255,255,' + (0.85 * pulse).toFixed(3) + ')');
-            rad.addColorStop(0.35, 'rgba(' + col + ',' + (0.55 * pulse).toFixed(3) + ')');
-            rad.addColorStop(1, 'rgba(' + col + ',0)');
+            // dos rayos enfrentados: dorado (arcade, izq) y verde (classic, der)
+            for (const [a, col] of [[muzzleA, '255,223,85'], [muzzleB, '102,240,90']]) {
+                g.shadowColor = 'rgb(' + col + ')'; g.shadowBlur = 24 * pulse;
+                g.strokeStyle = 'rgba(' + col + ',' + (0.45 * pulse).toFixed(3) + ')'; g.lineWidth = 10;
+                g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(contact.x, contact.y); g.stroke();
+                g.shadowBlur = 10 * pulse;
+                g.strokeStyle = 'rgba(255,255,255,' + (0.4 * pulse).toFixed(3) + ')'; g.lineWidth = 3;
+                g.stroke();
+            }
+            // estallido blanco del choque sobre la diagonal
+            const rr = 32 * (0.8 + 0.3 * Math.sin(now / 110));
+            const rad = g.createRadialGradient(contact.x, contact.y, 0, contact.x, contact.y, rr);
+            rad.addColorStop(0, 'rgba(255,255,255,' + (0.9 * pulse).toFixed(3) + ')');
+            rad.addColorStop(0.35, 'rgba(255,223,85,' + (0.35 * pulse).toFixed(3) + ')');
+            rad.addColorStop(0.65, 'rgba(102,240,90,' + (0.3 * pulse).toFixed(3) + ')');
+            rad.addColorStop(1, 'rgba(255,255,255,0)');
             g.fillStyle = rad;
-            g.beginPath(); g.arc(b.x, b.y, rr, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.arc(contact.x, contact.y, rr, 0, Math.PI * 2); g.fill();
             g.restore();
         }
         g.imageSmoothingEnabled = false;

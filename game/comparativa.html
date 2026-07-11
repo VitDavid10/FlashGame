@@ -242,13 +242,14 @@ function showModeScreen(win, side) {
     ms.classList.add('pwShow');
     if (side) {
         // Estado hover real del juego: clases hover-* + quests abiertas (en el
-        // juego el panel se abre solo a los 0.7s de hover) + FX del menú
-        // (escena astronauta + rayo + píldoras; solo actúa en el pane pixel).
+        // juego el panel se abre solo a los 0.7s de hover).
         ms.classList.add('quests-ready', side === 'classic' ? 'hover-classic' : 'hover-arcade');
         try { win.updateModeQuestsUI(); } catch (e) {}
         d.getElementById(side === 'classic' ? 'mqpClassic' : 'mqpArcade').classList.add('open');
-        try { win.modeFxStart(); } catch (e) {}
     }
+    // FX del menú (duelo de astronautas + choque en la diagonal): corre SIEMPRE
+    // que el menú esté visible, también en neutral; solo actúa en el pane pixel.
+    try { win.modeFxStart(); } catch (e) {}
 }
 
 function showRoomMenu(win, m) {
