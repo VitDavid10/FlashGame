@@ -292,7 +292,9 @@
         #modeScreen.hover-classic #contentClassic { left: 50%; transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
         
         .mode-title { font-family: 'Russo One'; font-size: 70px; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 2px; text-shadow: 0 0 30px rgba(0,0,0,0.9); transition: all 0.4s; }
-        .mode-desc { font-size: 14px; color: #fff; margin-bottom: 25px; font-weight: 500; line-height: 1.6; text-shadow: 0 2px 4px #000; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
+        /* Descripcion SIN caja: texto plano integrado bajo el logo, con sombra
+           dura + halo oscuro para que se lea sobre la escena. */
+        .mode-desc { font-size: 14px; color: #fff; margin-bottom: 25px; font-weight: 500; line-height: 1.6; text-shadow: 0 2px 4px #000, 0 0 12px rgba(0,0,0,0.85); }
         .highlight { color: #fff; font-weight: 800; }
         .mode-sub { font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Russo One';}
         .mode-classic .mode-title { color: #00ffaa; }
@@ -840,7 +842,7 @@
         .mode-classic .mt-img { width: 332px; }
         body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
         body.pixel-pack .mode-title:not(.no-img) .mt-txt { display: none; }
-        body.pixel-pack .mode-desc { font-family: 'VT323', monospace; font-size: 13px; line-height: 1.35; border: 2px dashed rgba(255,255,255,0.28); }
+        body.pixel-pack .mode-desc { font-family: 'VT323', monospace; font-size: 13px; line-height: 1.35; }
         body.pixel-pack .mqp { border: 2px dashed rgba(255,255,255,0.22); }
         body.pixel-pack .mqp.classic { border-left: 3px solid #00ffaa; }
         body.pixel-pack .mqp.arcade { border-right: 3px solid #ccff00; }
@@ -2561,7 +2563,7 @@
             }
         }
     }
-    function modeFxDrawScene(w, h, contactScreenX, fxA, fxB, now) {
+    function modeFxDrawScene(w, h, side, contactScreenX, fxA, fxB, now) {
         const sc = modeScene;
         const H = 270, W = Math.max(240, Math.round(w / h * H));
         if (!sc.cv) {
@@ -2580,8 +2582,8 @@
         const step = Math.floor(now / 90);
         const cx = Math.round(contactScreenX / w * W);
         const mxA = Math.round(fxA * W), mxB = Math.round(fxB * W);
-        if (step === sc.step && cx === sc.cx && mxA === sc.mxA && mxB === sc.mxB) return;
-        sc.step = step; sc.cx = cx; sc.mxA = mxA; sc.mxB = mxB;
+        if (step === sc.step && cx === sc.cx && mxA === sc.mxA && mxB === sc.mxB && side === sc.side) return;
+        sc.step = step; sc.cx = cx; sc.mxA = mxA; sc.mxB = mxB; sc.side = side;
         const g = sc.g;
         g.drawImage(sc.base, 0, 0);
         // estrellas titilando (las grandes con destello en cruz)
@@ -2617,15 +2619,18 @@
         _msUfo(g, ((step + 40) % (W + 30)) - 15, Math.round(H * 0.10), '#7ef07e', '#b9ffdd', step);
         _msUfo(g, W + 15 - ((step * 2 + 90) % (W + 30)), Math.round(H * 0.17), '#ff9ad9', '#ffe9a8', step);
         _msSign(g, sc.sign.x, sc.sign.y, step);
-        // duelo permanente: los dos astronautas disparan a la vez y el choque
-        // de los rayos cae donde este la diagonal (clampeado entre ambos)
+        // neutral: duelo de los dos astronautas con choque en la diagonal.
+        // hover: SOLO el astronauta del lado elegido, disparando a la diagonal.
         const beamY = Math.round(MODEFX_IMPACT.y * H);
-        _msBeam(g, mxA, cx, beamY, true, 1, step);
-        _msBeam(g, cx, mxB, beamY, false, -1, step);
-        // choque de energia: chispas de ambos colores + nucleo blanco
+        const showA = side !== 'classic', showB = side !== 'arcade';
+        if (showA) _msBeam(g, mxA, cx, beamY, true, 1, step);
+        if (showB) _msBeam(g, cx, mxB, beamY, false, -1, step);
+        // impacto: chispas del color de los rayos activos + nucleo blanco
         {
             const rr = 3 + (step % 4) * 2;
-            const cols = ['#fff6bf', '#eaffe2', '#ffffff'];
+            const cols = side === 'arcade' ? ['#fff6bf', '#ffd94d', '#ffffff']
+                : side === 'classic' ? ['#eaffe2', '#66f05a', '#ffffff']
+                : ['#fff6bf', '#eaffe2', '#ffffff'];
             let ci = 0;
             for (let t = 0.4; t < 6.283; t += 0.785) {
                 g.fillStyle = cols[(ci++) % 3];
@@ -2635,11 +2640,12 @@
             g.fillStyle = (step % 2) ? '#ffd94d' : '#66f05a';
             g.fillRect(cx - 2, beamY, 1, 1); g.fillRect(cx + 2, beamY, 1, 1);
         }
-        // fogonazos alternos en las dos bocas
-        if (step % 2 === 0) {
+        // fogonazos en las bocas activas
+        if (showA && step % 2 === 0) {
             g.fillStyle = '#ffffff'; g.fillRect(mxA, beamY - 1, 2, 3);
             g.fillStyle = '#ff7ad9'; g.fillRect(mxA + 2, beamY - 2, 1, 5);
-        } else {
+        }
+        if (showB && step % 2 === (showA ? 1 : 0)) {
             g.fillStyle = '#ffffff'; g.fillRect(mxB - 2, beamY - 1, 2, 3);
             g.fillStyle = '#ff7ad9'; g.fillRect(mxB - 3, beamY - 2, 1, 5);
         }
@@ -2648,10 +2654,10 @@
         const bobB = ((step + 4) % 8 < 4) ? 0 : 1;
         g.imageSmoothingEnabled = false;
         g.fillStyle = 'rgba(0,0,0,0.35)';
-        g.fillRect(mxA - 29, beamY - 19 + 40, 17, 1);
-        g.fillRect(mxB + 13, beamY - 19 + 40, 17, 1);
-        g.drawImage(sc.astro, mxA - 31, beamY - 19 + bobA);
-        g.save(); g.translate(mxB + 31, beamY - 19 + bobB); g.scale(-1, 1); g.drawImage(sc.astro, 0, 0); g.restore();
+        if (showA) g.fillRect(mxA - 29, beamY - 19 + 40, 17, 1);
+        if (showB) g.fillRect(mxB + 13, beamY - 19 + 40, 17, 1);
+        if (showA) g.drawImage(sc.astro, mxA - 31, beamY - 19 + bobA);
+        if (showB) { g.save(); g.translate(mxB + 31, beamY - 19 + bobB); g.scale(-1, 1); g.drawImage(sc.astro, 0, 0); g.restore(); }
     }
     function modeFxStart() {
         if (modeFx.raf || !modeFxActive()) return;
@@ -2676,10 +2682,12 @@
         const w = els.modeScreen.clientWidth, h = els.modeScreen.clientHeight;
         if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
         const dt = Math.min(0.05, (now - modeFx.lastT) / 1000); modeFx.lastT = now;
-        // recolocacion suave de los astronautas segun el estado del menu
+        // estado: neutral = duelo de los dos; hover = SOLO el astronauta del
+        // lado elegido, con su rayo llegando hasta la diagonal
         const cl = els.modeScreen.classList;
-        const hovered = cl.contains('hover-arcade') || cl.contains('hover-classic');
-        const tgt = MODEFX_IMPACT[hovered ? 'hover' : 'neutral'];
+        const side = cl.contains('hover-arcade') ? 'arcade' : cl.contains('hover-classic') ? 'classic' : 'neutral';
+        // recolocacion suave segun el estado del menu
+        const tgt = MODEFX_IMPACT[side === 'neutral' ? 'neutral' : 'hover'];
         const ease = Math.min(1, dt * 5);
         modeFx.axA += (tgt[0] - modeFx.axA) * ease;
         modeFx.axB += (tgt[1] - modeFx.axB) * ease;
@@ -2688,14 +2696,17 @@
         const muzzleB = { x: modeFx.axB * w, y: beamYs };
         // punto de contacto rayo-diagonal: la x viene del DOM (posicion real de
         // la linea, tambien en mitad de la transicion); fallback a la fraccion
-        // del estado actual. Clampeado para que el choque quede siempre ENTRE
-        // los dos canones (en hover la diagonal puede quedar detras del rival:
-        // el rayo ganador le estalla en la cara, no a su espalda).
-        const frac = cl.contains('hover-arcade') ? 0.75 : cl.contains('hover-classic') ? 0.25 : 0.60;
+        // del estado actual. En neutral se clampa entre los dos canones; en
+        // hover solo por delante del canon que dispara.
+        const frac = side === 'arcade' ? 0.75 : side === 'classic' ? 0.25 : 0.60;
         const divX = modeFxDividerX(beamYs);
-        const contact = { x: Math.max(muzzleA.x + 50, Math.min(muzzleB.x - 50, divX != null ? divX : frac * w)), y: beamYs };
+        let cxs = divX != null ? divX : frac * w;
+        if (side === 'neutral') cxs = Math.max(muzzleA.x + 50, Math.min(muzzleB.x - 50, cxs));
+        else if (side === 'arcade') cxs = Math.max(muzzleA.x + 50, cxs);
+        else cxs = Math.min(muzzleB.x - 50, cxs);
+        const contact = { x: cxs, y: beamYs };
         // escena pixel-art de fondo (canvas propio bajo los paneles)
-        modeFxDrawScene(w, h, contact.x, modeFx.axA, modeFx.axB, now);
+        modeFxDrawScene(w, h, side, contact.x, modeFx.axA, modeFx.axB, now);
         // rafaga de pildoras desde el impacto cada ~600ms, con onda expansiva
         // y chispas para que se NOTE que nacen del choque de los rayos
         if (now - modeFx.lastSpawn > 600 && modeFx.pills.length < 36) {
@@ -2732,8 +2743,11 @@
             g.save();
             g.globalCompositeOperation = 'lighter';
             g.lineCap = 'round';
-            // dos rayos enfrentados: dorado (arcade, izq) y verde (classic, der)
-            for (const [a, col] of [[muzzleA, '255,223,85'], [muzzleB, '102,240,90']]) {
+            // glow de los rayos activos: dorado (arcade, izq) y/o verde (classic, der)
+            const glows = side === 'arcade' ? [[muzzleA, '255,223,85']]
+                : side === 'classic' ? [[muzzleB, '102,240,90']]
+                : [[muzzleA, '255,223,85'], [muzzleB, '102,240,90']];
+            for (const [a, col] of glows) {
                 g.shadowColor = 'rgb(' + col + ')'; g.shadowBlur = 24 * pulse;
                 g.strokeStyle = 'rgba(' + col + ',' + (0.45 * pulse).toFixed(3) + ')'; g.lineWidth = 10;
                 g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(contact.x, contact.y); g.stroke();
@@ -2755,7 +2769,7 @@
         // onda expansiva del nacimiento de pildoras + chispas radiales
         if (modeFx.burstT) {
             const bt = (now - modeFx.burstT) / 450;
-            if (bt < 1) {
+            if (bt >= 0 && bt < 1) {
                 g.save();
                 g.globalCompositeOperation = 'lighter';
                 g.strokeStyle = 'rgba(255,255,255,' + (0.7 * (1 - bt)).toFixed(3) + ')';
