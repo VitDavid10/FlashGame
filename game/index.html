@@ -2534,25 +2534,16 @@
             g.fillStyle = on ? '#ff5aa0' : '#5a1c3c';
             g.fillRect(p[0], p[1], 1, 1);
         });
-        // capsula logica 7x13 rasterizada pixel a pixel ya rotada (nada de
-        // drawImage con angulo: cada pixel se decide en coords locales de la
-        // pill — contorno oscuro, costura entre mitades y sombra del borde)
-        const PW = 7, PH = 13, R = PW / 2, th = -Math.PI / 6, ct = Math.cos(th), st = Math.sin(th);
-        const ccx = x + Math.round(SW / 2), ccy = y + 9;   // centro, dejando sitio a los puntos
-        for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) {
-            const lx = ct * dx + st * dy + R, ly = -st * dx + ct * dy + PH / 2;
-            const cy2 = Math.min(Math.max(ly, R), PH - R);
-            const d = R - Math.hypot(lx - R, ly - cy2);   // profundidad dentro de la capsula
-            if (d < 0.15) continue;
-            let col;
-            if (d < 1.1) col = '#101018';
-            else if (ly >= PH / 2 - 1 && ly < PH / 2) col = '#b9c6d8';
-            else if (ly < PH / 2) col = '#f2f6fc';
-            else col = d < 2.1 ? '#1da84e' : '#2ee06a';
-            g.fillStyle = col; g.fillRect(ccx + dx, ccy + dy, 1, 1);
+        // pill de la marca SIMPLE: el mismo sprite limpio del juego
+        // (pixPillSprite 6x12, blanca arriba / verde abajo) con un cizallado
+        // suave de columnas para el giro a la izquierda — a este tamano un
+        // rotado de verdad se emborrona, el cizallado queda nitido
+        const spr = pixPillSprite(6, '#f4f6fb', '#2ee06a');
+        const px0 = x + Math.round(SW / 2) - 3, py0 = y + 4;
+        for (let c2 = 0; c2 < 6; c2++) {
+            const dy2 = Math.round((c2 - 2.5) * 0.5);   // -1,-1,0,0,1,1
+            g.drawImage(spr, c2, 0, 1, spr.height, px0 + c2, py0 + dy2, 1, spr.height);
         }
-        // glint blanco en la mitad clara (arriba-izquierda, girado con la pill)
-        g.fillStyle = '#ffffff'; g.fillRect(ccx - 3, ccy - 2, 1, 1); g.fillRect(ccx - 2, ccy - 3, 1, 1);
         // puntos de "carga" animados bajo la pill
         const lit = step % 4;
         for (let i = 0; i < 3; i++) {
