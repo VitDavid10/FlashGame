@@ -2519,8 +2519,8 @@
     }
     function _msSign(g, x, y, step) {
         // valla neon (ampliada a 28x21): marco de bombillas en persecucion +
-        // la pill de la MARCA girada a la izquierda (-30 grados, blanca arriba
-        // / verde abajo, como el cursor/logo de la portada) + puntos de carga
+        // la pill de la MARCA recta (blanca arriba / verde abajo, como el
+        // cursor/logo de la portada) + puntos de carga
         const SW = 28, SH = 21;
         g.fillStyle = '#26081f'; g.fillRect(x, y, SW, SH);
         g.fillStyle = '#0d0410'; g.fillRect(x + 1, y + 1, SW - 2, SH - 2);
@@ -2535,15 +2535,9 @@
             g.fillRect(p[0], p[1], 1, 1);
         });
         // pill de la marca SIMPLE: el mismo sprite limpio del juego
-        // (pixPillSprite 6x12, blanca arriba / verde abajo) con un cizallado
-        // suave de columnas para el giro a la izquierda — a este tamano un
-        // rotado de verdad se emborrona, el cizallado queda nitido
+        // (pixPillSprite 6x12, blanca arriba / verde abajo), recta, sin girar
         const spr = pixPillSprite(6, '#f4f6fb', '#2ee06a');
-        const px0 = x + Math.round(SW / 2) - 3, py0 = y + 4;
-        for (let c2 = 0; c2 < 6; c2++) {
-            const dy2 = Math.round((c2 - 2.5) * 0.5);   // -1,-1,0,0,1,1
-            g.drawImage(spr, c2, 0, 1, spr.height, px0 + c2, py0 + dy2, 1, spr.height);
-        }
+        g.drawImage(spr, x + Math.round(SW / 2) - 3, y + 4);
         // puntos de "carga" animados bajo la pill
         const lit = step % 4;
         for (let i = 0; i < 3; i++) {
