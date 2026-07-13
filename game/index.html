@@ -815,7 +815,7 @@
         body.pixel-pack .diagonal-divider { width: 22px; margin-left: -8px; }
         body.pixel-pack #modeScreen.hover-arcade .diagonal-divider { background: #ffdf55; box-shadow: 0 0 40px #ffdf55; }
         body.pixel-pack #modeScreen.hover-classic .diagonal-divider { background: #66f05a; box-shadow: 0 0 40px #66f05a; }
-        /* Escena del astronauta DIBUJADA pixel a pixel (canvas #modeSceneCv a
+        /* Escena de los portales DIBUJADA pixel a pixel (canvas #modeSceneCv a
            ~480x270 logicos bajo los paneles, z1<z2; ver modeFxDrawScene). Nada
            de mp4/PNG reescalados: nitidez perfecta a cualquier resolucion. El
            canvas se estira con image-rendering:pixelated. Cuando existe
@@ -1005,7 +1005,7 @@
             </svg>
             <span>BACK TO SITE</span>
         </a>
-        <!-- La escena del astronauta se dibuja pixel a pixel en un canvas a
+        <!-- La escena de los portales se dibuja pixel a pixel en un canvas a
              baja resolucion (#modeSceneCv, creado por JS y reescalado sin
              suavizado): ver modeFxDrawScene. Sustituye a los mp4/PNG, que
              quedaban borrosos al reescalar. -->
@@ -2251,15 +2251,15 @@
         if (m !== lastHoveredMode) SoundManager.play('hover');
     }
     // --- FX del menu de modos: escena pixel-art dibujada a mano + pildoras ---
-    // La escena (cielo, skyline neon, suelo ajedrez, astronauta y rayo) se
+    // La escena (cielo, skyline neon, suelo ajedrez, portales y rayos) se
     // dibuja pixel a pixel en un canvas a ~320x180 y se estira sin suavizado:
     // nitidez total, sin mp4/PNG borrosos. El canvas de pildoras (encima de
     // los paneles) usa pixPillSprite, los mismos sprites del juego. Todo corre
     // solo mientras el menu esta visible con un lado seleccionado.
     // Geometria del rayo en fracciones de PANTALLA (la escena llena el canvas):
-    // x = impacto fallback, mx = boca del canon (el astronauta se dibuja
-    // partiendo de ella, asi glow y sprite siempre casan).
-    // Geometria: los DOS astronautas viven en la escena (A izquierda/arcade,
+    // x = impacto fallback, mx = centro del portal (el rayo nace de su grieta
+    // central, asi glow y portal siempre casan).
+    // Geometria: los DOS portales viven en la escena (A izquierda/arcade,
     // B derecha/classic) y disparan a la vez; el choque cae en la diagonal.
     // En neutral estan bien separados; al elegir modo se recolocan SUAVE hacia
     // el centro (posiciones de antes) para no tapar los paneles de quests.
@@ -2268,7 +2268,7 @@
     const modeFx = { cv: null, g: null, pills: [], sparks: [], raf: 0, lastSpawn: 0, lastT: 0, burstT: 0, axA: 0.18, axB: 0.82 };
     function modeFxActive() {
         // La escena corre SIEMPRE que el menu pixel este visible (tambien en
-        // neutral, con los dos astronautas disparandose); el punto de choque
+        // neutral, con los dos portales disparandose); el punto de choque
         // sigue a la diagonal (60% neutral, 75%/25% con lado elegido).
         const ms = els.modeScreen;
         if (!pixelMode) return false;
@@ -2292,9 +2292,9 @@
     // (ritmo pixel-art) se anaden encima las capas vivas: estrellas titilando
     // (las grandes con destello en cruz), estrella fugaz, ovnis, ventanas y
     // luces de antena que parpadean, valla neon con luces en persecucion, rayo
-    // con llama ondulante y pulsos, chispas de impacto, fogonazo y astronauta
+    // con llama ondulante y pulsos, chispas de impacto y portales de energia
     // con bob de 1px.
-    const modeScene = { cv: null, g: null, W: 0, H: 0, base: null, hz: 0, stars: [], winks: [], ants: [], sign: null, astroA: null, astroB: null, step: -1, side: '', cx: -1 };
+    const modeScene = { cv: null, g: null, W: 0, H: 0, base: null, hz: 0, stars: [], winks: [], ants: [], sign: null, step: -1, side: '', cx: -1 };
     function _msRand(seed) { let a = seed >>> 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
     function _msMix(a, b, t) { return 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',') + ')'; }
     function _msPlanet(g, cx, cy, r, rgb, R, ring) {
@@ -2443,73 +2443,77 @@
         const sign = { x: Math.round(W * 0.62), y: hz - Math.round(H * 0.26) - 6 };
         return { cv, hz, stars, winks, ants, sign };
     }
-    // Astronauta 32x41 dibujado a mano — desde jul-2026 es el FALLBACK: solo
-    // se ve si los PNG de David (img/mode-title/astro-arcade/classic.png) no
-    // cargan. Se pinta a resolucion 1:1 con la
-    // escena (mismo grano de pixel que el fondo, como en los HD-2D). Postura
-    // de tiro (pierna adelantada), antena con luz, rim-light cian, visor con
-    // banda de reflejo. Los pixeles 'a'/'A' son el ACENTO del lado: dorado el
-    // de ARCADE, verde el de CLASSIC (antena, panel de pecho, celdas del
-    // rifle, franja de la mochila) — asi cada duelista viste su modo.
-    // La boca del canon (pixel 'w') esta en (31, 20) del sprite.
-    const _MS_ASTRO = [
-        '..........aK....................',
-        '..........KK....................',
-        '..........KKKKKKK...............',
-        '.........KWWWWWWWKK.............',
-        '.......KKWWWWWWWWWWK............',
-        '......KWWWWWWWWWWWWWK...........',
-        '......KWWWWKKKKKKKKWWK..........',
-        '.....KWWWKKvvvvvvvvKWWK.........',
-        '.....KWWKvvVVvvvvvvvKWK.........',
-        '....KRWWKvVgghvvvvvvvKK.........',
-        '....KRWWKvVghvvvvvvvvvK.........',
-        '....KRWWKvVgvvvvvvvfffK.........',
-        '....KRWWKvvvvvvvvvvffvK.........',
-        '.....KWWWKvvvvvvvvvvvK..........',
-        '.....KWWWWKKKKKKKKKK............',
-        '......KTWWWWWWWWWWK.............',
-        '.....KKTTWWWWWWWWWWKK...........',
-        '...KKBBKTWWWWWWWWWWWWK..........',
-        '..KBBbbKWWWWWWWWWWWWWWK...KKKK..',
-        '.KBbbddKWWWWWaaWWWWWWSKKKKMMMMKK',
-        '.KBbbddKWWWWWaaWWWWWSMMMMaaaaaaw',
-        '.KBbbddKWWWWWWWWWWWSKMMMMMMMMMK.',
-        '.KBbbddKWWWWWWWWWWSKKKKMMMKKK...',
-        '.KBbbAdKWWWWWWWWWSK..KmmMK......',
-        '.KBbbAdKTWWWWWWWWK...KmMK.......',
-        '.KBbbddKTWWWWWWWK....KKK........',
-        '..KbddKTTWWWWWWK................',
-        '...KKKKTWWWWWWWK................',
-        '....KTTWWWWWWWWK................',
-        '....KTWWWWWWWWWK................',
-        '....KTWSSSSSSWTK................',
-        '...KWSSKKKKKSSWK................',
-        '...KWSK....KSSWWK...............',
-        '...KWSK.....KSSWWK..............',
-        '...KsSK......KsSWK..............',
-        '...KsSK......KsSK...............',
-        '...KjjK......KjjK...............',
-        '..KJjjK......KJjjK..............',
-        '..KJJJKK.....KJJJKK.............',
-        '.KJJJJJK....KJJJJJK.............',
-        '.KKKKKKK....KKKKKKK.............'];
-    const _MS_PAL = {
-        K: '#141726',
-        W: '#f4f6fb', T: '#d3dae8', S: '#a8b3ca', s: '#7b869f', u: '#59637a',
-        R: '#86ecff', r: '#4ab8d8',
-        v: '#0d1830', V: '#1c3054', g: '#7fd4f6', h: '#ffffff', f: '#f6a45a',
-        M: '#3b4361', m: '#6d7794', n: '#aab3cc',
-        B: '#b9c2d4', b: '#8d97ac', d: '#626c82',
-        J: '#414a63', j: '#5d6880', w: '#ffffff'
-    };
-    const _MS_ACCENTS = { gold: { a: '#ffd23d', A: '#a87c14' }, green: { a: '#3af07e', A: '#168442' } };
-    function _msAstro(accent) {
-        const pal = Object.assign({}, _MS_PAL, _MS_ACCENTS[accent]);
-        const cv = document.createElement('canvas'); cv.width = 32; cv.height = _MS_ASTRO.length;
-        const g = cv.getContext('2d');
-        _MS_ASTRO.forEach((row, y) => { for (let x = 0; x < row.length; x++) { if (row[x] !== '.') { g.fillStyle = pal[row[x]]; g.fillRect(x, y, 1, 1); } } });
-        return cv;
+    // Portal de energia dibujado a codigo, del COLOR de su rayo (dorado el de
+    // ARCADE, verde el de CLASSIC): anillo eliptico "de canto" con luces en
+    // persecucion (eco de la valla neon), interior de void con remolino de
+    // particulas absorbidas, grieta central de la que NACE el rayo, flare en
+    // la boca, chispas expulsadas y reflejo de neon en el suelo. (x, y) es el
+    // centro del portal; el rayo sale de ahi hacia dir (+1 derecha / -1 izq).
+    function _msPortal(g, x, y, yellow, dir, step) {
+        const edge = yellow ? '#b87700' : '#187f28';
+        const mid = yellow ? '#ffd94d' : '#66f05a';
+        const core = yellow ? '#fff6bf' : '#eaffe2';
+        const voidC = yellow ? '#180f03' : '#03140a';
+        const deep = yellow ? '#5a4010' : '#0c4018';
+        const rx = 6, ry = 16;
+        const cy = y + ((step % 8 < 4) ? 0 : 1);   // bob de 1px, flota
+        // halo exterior: motas que respiran alrededor del anillo
+        g.fillStyle = deep;
+        for (let i = 0; i < 12; i++) {
+            const t = i / 12 * 6.283 + step * 0.1;
+            const br = 2 + ((i + step) % 3);
+            g.fillRect(Math.round(x + Math.cos(t) * (rx + br)), Math.round(cy + Math.sin(t) * (ry + br)), 1, 1);
+        }
+        // interior: void oscuro que tapa el fondo (y el tramo de rayo que cruza)
+        g.fillStyle = voidC;
+        for (let yy = -ry + 1; yy <= ry - 1; yy++) {
+            const hw = Math.max(1, Math.round((rx - 1) * Math.sqrt(1 - (yy / ry) * (yy / ry))));
+            g.fillRect(x - hw, cy + yy, hw * 2 + 1, 1);
+        }
+        // remolino: 2 brazos de particulas cayendo en espiral hacia el centro
+        for (let k = 0; k < 8; k++) {
+            const t = step * 0.45 + k * 0.75;
+            const rr = 1 - k / 9;
+            const sx = Math.round(Math.cos(t) * (rx - 2) * rr), sy = Math.round(Math.sin(t) * (ry - 3) * rr);
+            g.fillStyle = k < 2 ? mid : deep;
+            g.fillRect(x + sx, cy + sy, 1, 1);
+            g.fillRect(x - sx, cy - sy, 1, 1);
+        }
+        // grieta central de energia: columna que late; de aqui nace el rayo
+        const gl = 5 + (step % 3);
+        g.fillStyle = mid; g.fillRect(x, cy - gl, 1, gl * 2 + 1);
+        g.fillStyle = '#ffffff'; g.fillRect(x, cy - 1, 1, 3);
+        // anillo: trazo continuo oscuro + 24 lamparas fijas con brillo en
+        // persecucion (mismo lenguaje que las bombillas de la valla)
+        g.fillStyle = edge;
+        for (let i = 0; i < 80; i++) {
+            const t = i / 80 * 6.283;
+            g.fillRect(Math.round(x + Math.cos(t) * rx), Math.round(cy + Math.sin(t) * ry), 1, 1);
+        }
+        for (let i = 0; i < 24; i++) {
+            const t = i / 24 * 6.283;
+            const k = ((i + step) % 24 + 24) % 24;
+            if (k >= 7) continue;
+            g.fillStyle = k < 2 ? core : mid;
+            g.fillRect(Math.round(x + Math.cos(t) * rx), Math.round(cy + Math.sin(t) * ry), 1, 1);
+        }
+        // boca del rayo: flare blanco pegado al anillo, parpadeando
+        if (step % 2 === 0) {
+            g.fillStyle = '#ffffff'; g.fillRect(x + dir * rx, cy - 1, 2, 3);
+            g.fillStyle = core; g.fillRect(x + dir * (rx + 2), cy - 2, 1, 5);
+        }
+        // chispas escupidas hacia el rayo (deterministas: sin estado extra)
+        g.fillStyle = mid;
+        for (let i = 0; i < 3; i++) {
+            const ph = (step * 2 + i * 7) % 12;
+            g.fillRect(x + dir * (rx + 2 + ph), cy - 5 + ((i * 5 + step) % 11), 1, 1);
+        }
+        // reflejo de neon del portal en el suelo
+        g.globalAlpha = 0.35; g.fillStyle = mid;
+        g.fillRect(x - 5, y + ry + 3, 11, 1);
+        g.globalAlpha = 0.15;
+        g.fillRect(x - 7, y + ry + 4, 15, 1);
+        g.globalAlpha = 1;
     }
     function _msUfo(g, x, y, domeC, lightC, step) {
         g.fillStyle = domeC; g.fillRect(x + 2, y - 2, 3, 1); g.fillRect(x + 1, y - 1, 5, 1);
@@ -2517,6 +2521,32 @@
         g.fillStyle = '#101018'; g.fillRect(x - 1, y, 1, 2); g.fillRect(x + 7, y, 1, 2);
         g.fillStyle = lightC; g.fillRect(x + 1 + (step % 5), y + 1, 1, 1);
     }
+    // Pill de la marca del cartel: capsula girada -30 grados como el logo y
+    // el cursor de la portada, blanca arriba / verde abajo. Mapa de pixeles
+    // fijo generado por SDF de capsula con el MISMO sombreado que
+    // pixPillSprite (contorno -55, sombra -25, banda central -18, luz +18,
+    // brillo blanco en la tapa): rotar el sprite 6x12 en runtime emborrona
+    // (anti-aliasing del navegador) o lo mutila (nearest-neighbor a ese
+    // tamano), asi que se hornea dibujado a mano.
+    const _MS_SIGN_PILL = [
+        '....KK........',
+        '...KxSK.......',
+        '..KxWWSK......',
+        '..KhWWWSK.....',
+        '..KhWWWSK.....',
+        '..KSWWWWSK....',
+        '...KhWTTdk....',
+        '....KTmmGdk...',
+        '....kmGGGGdk..',
+        '.....kgGGGdk..',
+        '.....kdGGGdk..',
+        '......kdGGdk..',
+        '.......kddk...',
+        '........kk....'];
+    const _MS_SIGN_PILL_PAL = {
+        K: '#6e6f71', S: '#b7b9bc', T: '#c8cace', h: '#f6f8fc', W: '#f4f6fb', x: '#ffffff',
+        k: '#156530', d: '#23a850', m: '#26b857', g: '#54e685', G: '#2ee06a'
+    };
     function _msSign(g, x, y, step) {
         // valla neon (ampliada a 28x21): marco de bombillas en persecucion +
         // la pill de la MARCA recta (blanca arriba / verde abajo, como el
@@ -2534,10 +2564,14 @@
             g.fillStyle = on ? '#ff5aa0' : '#5a1c3c';
             g.fillRect(p[0], p[1], 1, 1);
         });
-        // pill de la marca SIMPLE: el mismo sprite limpio del juego
-        // (pixPillSprite 6x12, blanca arriba / verde abajo), recta, sin girar
-        const spr = pixPillSprite(6, '#f4f6fb', '#2ee06a');
-        g.drawImage(spr, x + Math.round(SW / 2) - 3, y + 4);
+        // pill de la MARCA girada -30 grados como el logo/cursor de la portada
+        _MS_SIGN_PILL.forEach((row, ry) => {
+            for (let rx = 0; rx < row.length; rx++) {
+                if (row[rx] === '.') continue;
+                g.fillStyle = _MS_SIGN_PILL_PAL[row[rx]];
+                g.fillRect(x + 7 + rx, y + 2 + ry, 1, 1);
+            }
+        });
         // puntos de "carga" animados bajo la pill
         const lit = step % 4;
         for (let i = 0; i < 3; i++) {
@@ -2578,21 +2612,6 @@
             const cv = document.createElement('canvas'); cv.id = 'modeSceneCv';
             els.modeScreen.insertBefore(cv, els.modeScreen.firstChild);
             sc.cv = cv; sc.g = cv.getContext('2d');
-            // duelistas: {img, mx/my: boca del canon en el sprite, sx: centro
-            // de la sombra respecto a la boca}. Arrancan con el dibujado a
-            // mano (el de CLASSIC se hornea YA espejado: canon a la izquierda)
-            // y si cargan los PNG de David (astro-arcade/astro-classic, 64px,
-            // cada uno mirando ya hacia su lado) los sustituyen en caliente.
-            sc.astroA = { img: _msAstro('gold'), mx: 31, my: 20, sx: -19 };
-            const mir = document.createElement('canvas'); mir.width = 32; mir.height = _MS_ASTRO.length;
-            const mg = mir.getContext('2d');
-            mg.translate(32, 0); mg.scale(-1, 1); mg.drawImage(_msAstro('green'), 0, 0);
-            sc.astroB = { img: mir, mx: 1, my: 20, sx: 19 };
-            [['astroA', 'img/mode-title/astro-arcade.png', 45, 32, -31], ['astroB', 'img/mode-title/astro-classic.png', 10, 33, 29]].forEach(([k, src, mx, my, sx]) => {
-                const im = new Image();
-                im.onload = () => { sc[k] = { img: im, mx, my, sx }; sc.step = -1; };
-                im.src = src;
-            });
             document.body.classList.add('has-hover-scene');
         }
         if (sc.W !== W || sc.H !== H) {
@@ -2641,8 +2660,8 @@
         _msUfo(g, ((step + 40) % (W + 30)) - 15, Math.round(H * 0.10), '#7ef07e', '#b9ffdd', step);
         _msUfo(g, W + 15 - ((step * 2 + 90) % (W + 30)), Math.round(H * 0.17), '#ff9ad9', '#ffe9a8', step);
         _msSign(g, sc.sign.x, sc.sign.y, step);
-        // neutral: duelo de los dos astronautas con choque en la diagonal.
-        // hover: SOLO el astronauta del lado elegido, disparando a la diagonal.
+        // neutral: duelo de los dos portales con choque en la diagonal.
+        // hover: SOLO el portal del lado elegido, disparando a la diagonal.
         const beamY = Math.round(MODEFX_IMPACT.y * H);
         const showA = side !== 'classic', showB = side !== 'arcade';
         if (showA) _msBeam(g, mxA, cx, beamY, true, 1, step);
@@ -2662,29 +2681,11 @@
             g.fillStyle = (step % 2) ? '#ffd94d' : '#66f05a';
             g.fillRect(cx - 2, beamY, 1, 1); g.fillRect(cx + 2, beamY, 1, 1);
         }
-        // fogonazos en las bocas activas
-        if (showA && step % 2 === 0) {
-            g.fillStyle = '#ffffff'; g.fillRect(mxA, beamY - 1, 2, 3);
-            g.fillStyle = '#ff7ad9'; g.fillRect(mxA + 2, beamY - 2, 1, 5);
-        }
-        if (showB && step % 2 === (showA ? 1 : 0)) {
-            g.fillStyle = '#ffffff'; g.fillRect(mxB - 2, beamY - 1, 2, 3);
-            g.fillStyle = '#ff7ad9'; g.fillRect(mxB - 3, beamY - 2, 1, 5);
-        }
-        // astronautas a resolucion 1:1, anclados por la boca del canon:
-        // el pixel (mx,my) del sprite cae exactamente en (mxA/mxB, beamY),
-        // asi el rayo nace del canon sea cual sea el arte cargado
-        const bobA = (step % 8 < 4) ? 0 : 1;
-        const bobB = ((step + 4) % 8 < 4) ? 0 : 1;
-        g.imageSmoothingEnabled = false;
-        const drawAstro = (a, mx, bob) => {
-            const sw = Math.max(14, Math.round(a.img.width * 0.35));
-            g.fillStyle = 'rgba(0,0,0,0.35)';
-            g.fillRect(Math.round(mx + a.sx - sw / 2), beamY - a.my + a.img.height, sw, 1);
-            g.drawImage(a.img, mx - a.mx, beamY - a.my + bob);
-        };
-        if (showA) drawAstro(sc.astroA, mxA, bobA);
-        if (showB) drawAstro(sc.astroB, mxB, bobB);
+        // portales ENCIMA del arranque de su rayo: el void interior tapa el
+        // tramo que cruza el anillo y el rayo parece nacer de la grieta
+        // central. El B va desfasado medio ciclo para que no floten al unisono.
+        if (showA) _msPortal(g, mxA, beamY, true, 1, step);
+        if (showB) _msPortal(g, mxB, beamY, false, -1, step + 4);
     }
     function modeFxStart() {
         if (modeFx.raf || !modeFxActive()) return;
@@ -2709,7 +2710,7 @@
         const w = els.modeScreen.clientWidth, h = els.modeScreen.clientHeight;
         if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
         const dt = Math.min(0.05, (now - modeFx.lastT) / 1000); modeFx.lastT = now;
-        // estado: neutral = duelo de los dos; hover = SOLO el astronauta del
+        // estado: neutral = duelo de los dos; hover = SOLO el portal del
         // lado elegido, con su rayo llegando hasta la diagonal
         const cl = els.modeScreen.classList;
         const side = cl.contains('hover-arcade') ? 'arcade' : cl.contains('hover-classic') ? 'classic' : 'neutral';
