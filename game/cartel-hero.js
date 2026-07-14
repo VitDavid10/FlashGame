@@ -12,7 +12,11 @@
 // usa como marco+fondo (border-image) de todos ellos; si falta, look de fábrica.
 const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-square', 'game-over', 'pill', 'spectate', 'backtomenu', 'try-again',
     'menu-gris', 'warning', 'secure-cashout', 'cancel', 'exit-now', 'start-cashout', 'skill-slot',
-    'top-mass', 'kills', 'x', 'song', 'sonido'];
+    'top-mass', 'kills', 'x', 'song', 'sonido',
+    // Contador de inicio (rotulo + digitos con glow) y premio VICTORY/CASHOUT
+    // (titulos, panel verde fino y boton CONTINUE horneado).
+    'match-starting', 'cd-1', 'cd-2', 'cd-3', 'cd-4', 'cd-5',
+    'victory', 'cashout', 'continue', 'prize-panel'];
 const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
 
 const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {

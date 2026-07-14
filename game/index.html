@@ -2138,6 +2138,33 @@
         if (css) css += 'body.pixel-pack .sound-btn.muted{filter:grayscale(.7) brightness(.65)}';
         return css;
     }
+    // Modal de premio VICTORY/CASHOUT (clase .prize-hero puesta por showPrize):
+    // marco verde fino (prize-panel.png, 9-slice como los demas carteles),
+    // boton CONTINUE con su PNG horneado, y cantidad/subtitulo en fuente pixel.
+    // La cantidad (.pw-amt-pix) replica la letra/color de las kills del GAME
+    // OVER (gris con bisel duro) + icono de $PILL inline (pill.png).
+    function _prizeRule() {
+        let css = '';
+        if (cartelUsesAtlas('prize-panel')) {
+            css += 'body.pixel-pack ' + _pixFrameRule('#prizeModal .gameModalBox.prize-hero', 14, '#000', 1, 'prize-panel') +
+                'body.pixel-pack #prizeModal .gameModalBox.prize-hero{padding:30px 28px 26px}';
+        }
+        if (cartelUsesAtlas('continue')) {
+            css += 'body.pixel-pack .prize-hero .gm-btn{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('continue') + ') center/100% 100% no-repeat!important;' +
+                'aspect-ratio:828/124;width:80%!important;display:block;margin:14px auto 0;padding:0!important;' +
+                'image-rendering:pixelated;color:transparent!important;text-shadow:none!important}' +
+                'body.pixel-pack .prize-hero .gm-btn:hover{filter:brightness(1.15);box-shadow:none!important}';
+        }
+        css += 'body.pixel-pack #prizeAmount.pw-amt-pix{font-family:"Press Start 2P",monospace!important;font-size:19px!important;' +
+            'color:#c8cdd2!important;text-shadow:3px 3px 0 rgba(0,0,0,.65)!important;line-height:1.4}' +
+            'body.pixel-pack #prizeAmount.pw-amt-pix .pw-pill-ico{height:1em;vertical-align:-0.12em;margin:0 4px;image-rendering:pixelated}' +
+            'body.pixel-pack .prize-hero #prizeSubtitle{font-family:"Press Start 2P",monospace;font-size:8px;line-height:1.9;letter-spacing:0}' +
+            // GAME OVER: la linea de kills/$PILL del overlay de resultado con la
+            // misma fuente pixel (es la referencia de estilo de .pw-amt-pix).
+            'body.pixel-pack #myResult{font-family:"Press Start 2P",monospace!important;font-size:13px!important;line-height:2}';
+        return css;
+    }
     function buildPixPanelCss() {
         const old = document.getElementById('pixPanelCss'); if (old) old.remove();
         const st = document.createElement('style'); st.id = 'pixPanelCss';
@@ -2153,7 +2180,7 @@
             'background:repeating-linear-gradient(90deg,rgba(0,0,0,.55) 0 2px,transparent 2px 16px),linear-gradient(#ff6b5c,#c81f1f)!important}' +
             'body.pixel-pack .skill-opt-btn{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
             'body.pixel-pack .skill-tips{color:#ffcc00!important;font-family:"Press Start 2P",monospace!important;font-size:8px!important;letter-spacing:0!important;white-space:nowrap;text-shadow:2px 2px 0 #000;animation:none;opacity:1}' +
-            _btnImgRule() + _resultOverlayRule() + _exitModalRule() + _actionBarRule() + _hudRule();
+            _btnImgRule() + _resultOverlayRule() + _exitModalRule() + _actionBarRule() + _hudRule() + _prizeRule();
         document.head.appendChild(st);
     }
     function ensurePixPanelCss() { if (!document.getElementById('pixPanelCss')) buildPixPanelCss(); }
@@ -3493,12 +3520,13 @@
         // ahora), el marco/botones del cartel de fin de partida se quedarian
         // sin su arte (skillPanel, button, menu-square...).
         if (pixelMode) ensurePixPanelCss();
-        // GAME OVER tiene arte propio (game-over.png, letras rojas planas): se usa
-        // entero en vez del atlas de letras (que sale blanco/verde, pensado para
-        // los demas titulos de fin de partida).
-        if (pixelMode && id === 'gameOver' && cartelUsesAtlas('game-over')) {
+        // GAME OVER, VICTORY y CASHOUT tienen arte propio (PNG del titulo
+        // entero en cartel-hero): se usa tal cual en vez del atlas de letras
+        // (pensado para los demas titulos de fin de partida).
+        const heroArt = { gameOver: 'game-over', victory: 'victory', cashout: 'cashout' }[id];
+        if (pixelMode && heroArt && cartelUsesAtlas(heroArt)) {
             const img = document.createElement('img');
-            img.src = cartelHeroUrl('game-over');
+            img.src = cartelHeroUrl(heroArt);
             img.style.cssText = 'display:block;margin:0 auto;width:72%;height:auto;image-rendering:pixelated;';
             el.appendChild(img);
         } else if (pixelMode) {
@@ -4015,13 +4043,27 @@
             const title = document.getElementById('prizeTitle'), amt = document.getElementById('prizeAmount'), sub = document.getElementById('prizeSubtitle'), tbl = document.getElementById('prizeTable');
             const fmt = n => Number(n || 0).toLocaleString('en-US');
             tbl.style.display = 'none'; tbl.innerHTML = '';
+            // VICTORY/CASHOUT en pixel: panel verde fino propio (prize-panel.png)
+            // + cantidad con la misma letra/color que las kills del GAME OVER y
+            // el icono de $PILL (pill.png). El resto de razones, look de siempre.
+            const isHero = msg.reason === 'victory' || msg.reason === 'cashout';
+            m.querySelector('.gameModalBox').classList.toggle('prize-hero',
+                isHero && pixelMode && cartelUsesAtlas('prize-panel'));
+            amt.classList.remove('pw-amt-pix');
+            const setAmt = amount => {
+                if (isHero && pixelMode) {
+                    const ico = cartelUsesAtlas('pill') ? '<img class="pw-pill-ico" src="' + cartelHeroUrl('pill') + '">' : '';
+                    amt.innerHTML = '+' + fmt(amount) + ' ' + ico + '$PILL';
+                    amt.classList.add('pw-amt-pix');
+                } else amt.innerText = '+' + fmt(amount) + ' $PILL';
+            };
             if (msg.reason === 'victory') {
                 setOverlayTitle(title, 'victory', 'VICTORY!', '#ffce3d');
-                amt.innerText = '+' + fmt(msg.amount) + ' $PILL';
+                setAmt(msg.amount);
                 sub.innerHTML = '5 KILLS · Total carry won: <b style="color:#00ff88">' + fmt(msg.carry) + '</b> $PILL';
             } else if (msg.reason === 'cashout') {
                 setOverlayTitle(title, 'cashout', 'CASHOUT', '#00ff88');
-                amt.innerText = '+' + fmt(msg.amount) + ' $PILL';
+                setAmt(msg.amount);
                 sub.innerHTML = msg.kills + ' kills · carry <b>' + fmt(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmt(msg.fee) + '</b>)';
             } else if (msg.reason === 'arcadeEnd') {
                 setOverlayTitle(title, 'matchEnded', 'MATCH ENDED', msg.myAmount > 0 ? '#ffce3d' : '#aaa');
@@ -4412,21 +4454,42 @@
         const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
         if (pixelMode) {
             // Etiqueta como cartel pixel encima del número (antes era texto CSS
-            // pequeño que se perdía al lado del dígito grande).
+            // pequeño que se perdía al lado del dígito grande). MATCH STARTING
+            // tiene su PNG horneado (match-starting.png, con glow); el resto de
+            // etiquetas (MATCH ENDING...) siguen con la fuente procedural.
             const lblWrap = document.createElement('div'); lblWrap.className = 'cd-lbl';
-            const lblOpts = { plain: true };
-            if (glow) { lblOpts.glow = glow; lblOpts.glowBlur = 8; }
-            lblWrap.appendChild(pixFancyText(label, 2, lblOpts));
+            if (label === 'MATCH STARTING' && cartelUsesAtlas('match-starting')) {
+                const li = document.createElement('img');
+                li.src = cartelHeroUrl('match-starting');
+                li.style.cssText = 'display:block;height:64px;width:auto;image-rendering:pixelated;';
+                lblWrap.appendChild(li);
+            } else {
+                const lblOpts = { plain: true };
+                if (glow) { lblOpts.glow = glow; lblOpts.glowBlur = 8; }
+                lblWrap.appendChild(pixFancyText(label, 2, lblOpts));
+            }
             el.appendChild(lblWrap);
-            const px = opts.px || 9;
-            const o = { font: opts.font, thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
-            if (opts.plain) o.plain = true;
-            if (opts.fill) o.fill = opts.fill;
-            if (opts.shade) o.shade = opts.shade;
-            if (opts.sparkles) o.sparkles = opts.sparkles;
-            if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
-            const cv = pixApplyScale(pixRenderText(String(n), px, o).cv, opts.scale || 1);
-            cv.className = 'cd-n'; el.appendChild(cv);
+            // Dígitos 5..1 con su PNG horneado (cd-N.png, glow verde) al tamaño
+            // del contador procedural de antes (~190px de alto con glow). Si el
+            // llamador pide un look custom (font/fill/plain) o el dígito no
+            // tiene PNG (6+), fuente procedural como siempre.
+            if (n >= 1 && n <= 5 && !opts.font && !opts.fill && !opts.plain && cartelUsesAtlas('cd-' + n)) {
+                const ni = document.createElement('img');
+                ni.src = cartelHeroUrl('cd-' + n);
+                ni.className = 'cd-n';
+                ni.style.cssText = 'height:190px;width:auto;image-rendering:pixelated;';
+                el.appendChild(ni);
+            } else {
+                const px = opts.px || 9;
+                const o = { font: opts.font, thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
+                if (opts.plain) o.plain = true;
+                if (opts.fill) o.fill = opts.fill;
+                if (opts.shade) o.shade = opts.shade;
+                if (opts.sparkles) o.sparkles = opts.sparkles;
+                if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : 30; }
+                const cv = pixApplyScale(pixRenderText(String(n), px, o).cv, opts.scale || 1);
+                cv.className = 'cd-n'; el.appendChild(cv);
+            }
         }
         else { el.innerHTML = '<div class="cd-lbl">' + label + '</div>'; const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
