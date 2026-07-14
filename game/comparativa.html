@@ -226,8 +226,10 @@ function closeAll(win) {
     try { win.GameWalletUI.setVisible(false); } catch (e) {}
 }
 
-function showModeScreen(win, side) {
+function showModeScreen(win, side, ver) {
     closeAll(win);
+    // v2 = fondo de partida tintado por modo (sin portales); v1 por defecto
+    try { win.setModeSceneVersion(ver || 1); } catch (e) {}
     const d = win.document, L = win.__pwLab, ms = L.els.modeScreen;
     // El FX del menú (modeFxActive en index.html) exige display inline ≠ 'none';
     // mostrar/ocultar lo gobiernan la regla pwlab + la clase pwShow.
@@ -292,6 +294,9 @@ const GROUPS = [
         ['Modos (neutral)', true, w => showModeScreen(w)],
         ['Modos hover ARCADE', true, w => showModeScreen(w, 'arcade')],
         ['Modos hover CLASSIC', true, w => showModeScreen(w, 'classic')],
+        ['Modos v2 (neutral)', true, w => showModeScreen(w, null, 2)],
+        ['Modos v2 hover ARCADE', true, w => showModeScreen(w, 'arcade', 2)],
+        ['Modos v2 hover CLASSIC', true, w => showModeScreen(w, 'classic', 2)],
         ['Menú de sala ARCADE', true, w => showRoomMenu(w, 'arcade')],
         ['Menú de sala CLASSIC', true, w => showRoomMenu(w, 'classic')],
         ['Volver al HUD', null, w => closeAll(w)],

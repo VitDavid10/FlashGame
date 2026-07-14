@@ -2687,6 +2687,76 @@
         if (showA) _msPortal(g, mxA, beamY, true, 1, step);
         if (showB) _msPortal(g, mxB, beamY, false, -1, step + 4);
     }
+    // ===== v2 del menu de modos: fondo de PARTIDA tintado por modo =====
+    // Sustituye la escena de portales por el fondo del juego real (el tile de
+    // grid de pixBgPattern) partido por la diagonal: mitad arcade tintada de
+    // lima #ccff00 y mitad classic de teal #00ffaa. Sin skyline, rayos ni
+    // pildoras. Se activa con setModeSceneVersion(2); la comparativa la
+    // dispara desde los botones "Modos v2 ..." (pendiente de visto bueno).
+    let modeSceneVer = 1;
+    function setModeSceneVersion(v) {
+        modeSceneVer = v === 2 ? 2 : 1;
+        // W/H a 0: fuerza el rebuild de la escena que entre (v1 necesita su
+        // base horneada — v2 no la construye y drawImage(null) petaria).
+        modeScene.W = 0; modeScene.H = 0;
+        modeScene.step = -1; modeScene.v2Key = '';
+        modeFx.pills.length = 0; modeFx.sparks.length = 0;
+    }
+    function _msV2Tile(hex) {
+        if (!modeScene.v2Tiles) modeScene.v2Tiles = new Map();
+        let t = modeScene.v2Tiles.get(hex); if (t) return t;
+        // Tile 26x26 lowres (~1 celda de grid de partida en pantalla): base
+        // oscura tintada del color del modo, moteado sutil (mismas posiciones
+        // relativas que pixBgPattern) y linea de grid de 1px lowres, que
+        // reescalada queda gorda como la del tile del juego.
+        const rgb = pixRgb(hex);
+        const cv = document.createElement('canvas'); cv.width = 26; cv.height = 26;
+        const g = cv.getContext('2d');
+        const sh = f => 'rgb(' + rgb.map(v => Math.round(v * f)).join(',') + ')';
+        g.fillStyle = sh(0.07); g.fillRect(0, 0, 26, 26);
+        g.fillStyle = sh(0.13);
+        for (const s of [[3, 5], [13, 2], [21, 11], [7, 18], [17, 22]]) g.fillRect(s[0], s[1], 1, 1);
+        g.fillStyle = sh(0.10);
+        for (const s of [[10, 9], [23, 19], [2, 23], [19, 4]]) g.fillRect(s[0], s[1], 1, 1);
+        g.fillStyle = sh(0.30); g.fillRect(0, 0, 26, 1); g.fillRect(0, 0, 1, 26);
+        t = { cv, pat: null };
+        modeScene.v2Tiles.set(hex, t); return t;
+    }
+    function modeFxDrawSceneV2(w, h, side) {
+        const sc = modeScene;
+        const H = 270, W = Math.max(240, Math.round(w / h * H));
+        if (!sc.cv) {   // mismo canvas #modeSceneCv que la escena v1
+            const cv = document.createElement('canvas'); cv.id = 'modeSceneCv';
+            els.modeScreen.insertBefore(cv, els.modeScreen.firstChild);
+            sc.cv = cv; sc.g = cv.getContext('2d');
+            document.body.classList.add('has-hover-scene');
+        }
+        if (sc.W !== W || sc.H !== H) {
+            sc.W = W; sc.H = H; sc.cv.width = W; sc.cv.height = H;
+            sc.step = -1; sc.v2Key = '';
+        }
+        // Diagonal REAL del DOM (sigue la transicion CSS del hover); fallback
+        // a la fraccion del estado con la misma inclinacion de 10 grados.
+        const tan = Math.tan(10 * Math.PI / 180);
+        const cxs = (side === 'arcade' ? 0.75 : side === 'classic' ? 0.25 : 0.60) * w;
+        const xT = modeFxDividerX(0), xB = modeFxDividerX(h);
+        const topX = Math.round((xT != null ? xT : cxs + tan * h / 2) / w * W);
+        const botX = Math.round((xB != null ? xB : cxs - tan * h / 2) / w * W);
+        const key = W + '|' + topX + '|' + botX;
+        if (key === sc.v2Key) return;   // solo redibuja si la diagonal se movio
+        sc.v2Key = key;
+        const g = sc.g;
+        const tA = _msV2Tile('#ccff00'), tB = _msV2Tile('#00ffaa');
+        if (!tA.pat) tA.pat = g.createPattern(tA.cv, 'repeat');
+        if (!tB.pat) tB.pat = g.createPattern(tB.cv, 'repeat');
+        // Relleno por filas: la diagonal queda en escalera de pixeles (sin
+        // antialiasing); la linea gorda de la diagonal la pone el DOM encima.
+        for (let y = 0; y < H; y++) {
+            const xd = Math.max(0, Math.min(W, Math.round(topX + (botX - topX) * y / H)));
+            g.fillStyle = tA.pat; g.fillRect(0, y, xd, 1);
+            g.fillStyle = tB.pat; g.fillRect(xd, y, W - xd, 1);
+        }
+    }
     function modeFxStart() {
         if (modeFx.raf || !modeFxActive()) return;
         if (!modeFx.cv) {
@@ -2714,6 +2784,16 @@
         // lado elegido, con su rayo llegando hasta la diagonal
         const cl = els.modeScreen.classList;
         const side = cl.contains('hover-arcade') ? 'arcade' : cl.contains('hover-classic') ? 'classic' : 'neutral';
+        // v2: solo el fondo de partida tintado, partido por la diagonal. Sin
+        // portales, rayos ni pildoras; el RAF sigue vivo para perseguir la
+        // diagonal durante las transiciones CSS del hover.
+        if (modeSceneVer === 2) {
+            modeFxDrawSceneV2(w, h, side);
+            if (modeFx.pills.length || modeFx.sparks.length) { modeFx.pills.length = 0; modeFx.sparks.length = 0; }
+            g.clearRect(0, 0, w, h);
+            modeFx.raf = requestAnimationFrame(modeFxTick);
+            return;
+        }
         // recolocacion suave segun el estado del menu
         const tgt = MODEFX_IMPACT[side === 'neutral' ? 'neutral' : 'hover'];
         const ease = Math.min(1, dt * 5);
