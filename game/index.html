@@ -2146,8 +2146,12 @@
     function _prizeRule() {
         let css = '';
         if (cartelUsesAtlas('prize-panel')) {
-            css += 'body.pixel-pack ' + _pixFrameRule('#prizeModal .gameModalBox.prize-hero', 14, '#000', 1, 'prize-panel') +
-                'body.pixel-pack #prizeModal .gameModalBox.prize-hero{padding:30px 28px 26px}';
+            // El panel verde fino (menu_green_victory_cashout) va ENTERO estirado
+            // como fondo — el 9-slice comprimia el marco ondulado y no se
+            // reconocia el diseño (mismo motivo que el modal de salida).
+            css += 'body.pixel-pack #prizeModal .gameModalBox.prize-hero{border:none!important;border-radius:0!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
+                'image-rendering:pixelated;max-width:470px;padding:34px 40px 30px}';
         }
         if (cartelUsesAtlas('continue')) {
             css += 'body.pixel-pack .prize-hero .gm-btn{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
@@ -2163,6 +2167,32 @@
             // GAME OVER: la linea de kills/$PILL del overlay de resultado con la
             // misma fuente pixel (es la referencia de estilo de .pw-amt-pix).
             'body.pixel-pack #myResult{font-family:"Press Start 2P",monospace!important;font-size:13px!important;line-height:2}';
+        // X de cierre pixel para los gameModal (VICTORY/CASHOUT/MATCH ENDED y
+        // el deposit): sustituye la x gris de texto por el PNG.
+        if (cartelUsesAtlas('close-x')) {
+            css += 'body.pixel-pack .gameModalBox .close{color:transparent!important;width:22px;height:21px;' +
+                'background:url(' + cartelHeroUrl('close-x') + ') center/contain no-repeat;image-rendering:pixelated}' +
+                'body.pixel-pack .gameModalBox .close:hover{filter:brightness(1.4)}';
+        }
+        // Titulo DEPOSIT horneado en el modal de deposito.
+        if (cartelUsesAtlas('deposit')) {
+            css += 'body.pixel-pack #gameDepositModal .gameModalBox>h3{color:transparent!important;height:44px;' +
+                'background:url(' + cartelHeroUrl('deposit') + ') center/contain no-repeat;image-rendering:pixelated}';
+        }
+        // Boton OK del modal de sistema (KICKED/REJOIN EXPIRED...) horneado.
+        if (cartelUsesAtlas('ok')) {
+            css += 'body.pixel-pack .btn-sys{border:none!important;border-image:none!important;border-radius:0!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('ok') + ') center/100% 100% no-repeat!important;' +
+                'aspect-ratio:622/81;width:52%;padding:0!important;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}' +
+                'body.pixel-pack .btn-sys:hover{filter:brightness(1.15)}';
+        }
+        // Bloqueo movil: el arte DESKTOP RECOMMENDED entero sustituye a
+        // icono+titulo+descripcion (el boton CONTINUE ANYWAY se queda).
+        if (cartelUsesAtlas('desktop-block')) {
+            css += 'body.pixel-pack #mobileBlock .mb-icon,body.pixel-pack #mobileBlock .mb-title,body.pixel-pack #mobileBlock .mb-desc{display:none}' +
+                'body.pixel-pack #mobileBlock::before{content:"";width:min(92vw,560px);aspect-ratio:701/387;' +
+                'background:url(' + cartelHeroUrl('desktop-block') + ') center/contain no-repeat;image-rendering:pixelated}';
+        }
         return css;
     }
     function buildPixPanelCss() {
@@ -3520,14 +3550,21 @@
         // ahora), el marco/botones del cartel de fin de partida se quedarian
         // sin su arte (skillPanel, button, menu-square...).
         if (pixelMode) ensurePixPanelCss();
-        // GAME OVER, VICTORY y CASHOUT tienen arte propio (PNG del titulo
-        // entero en cartel-hero): se usa tal cual en vez del atlas de letras
-        // (pensado para los demas titulos de fin de partida).
-        const heroArt = { gameOver: 'game-over', victory: 'victory', cashout: 'cashout' }[id];
-        if (pixelMode && heroArt && cartelUsesAtlas(heroArt)) {
+        // Titulos con arte propio (PNG del titulo entero en cartel-hero): se
+        // usan tal cual en vez del atlas de letras. Cada uno con su ancho
+        // dentro del cartel (VICTORY/CASHOUT mas contenidos que GAME OVER).
+        const heroArt = {
+            gameOver: { art: 'game-over', w: 72 },
+            victory: { art: 'victory', w: 52 },
+            cashout: { art: 'cashout', w: 52 },
+            matchFinished: { art: 'match-finished', w: 82 },
+            matchEnded: { art: 'match-ended', w: 78 },
+            roomRestarted: { art: 'room-restarted', w: 82 },
+        }[id];
+        if (pixelMode && heroArt && cartelUsesAtlas(heroArt.art)) {
             const img = document.createElement('img');
-            img.src = cartelHeroUrl(heroArt);
-            img.style.cssText = 'display:block;margin:0 auto;width:72%;height:auto;image-rendering:pixelated;';
+            img.src = cartelHeroUrl(heroArt.art);
+            img.style.cssText = 'display:block;margin:0 auto;width:' + heroArt.w + '%;height:auto;image-rendering:pixelated;';
             el.appendChild(img);
         } else if (pixelMode) {
             const cv = pixRenderText(defText, 4, { thin: true, hd: 2, glow: defColor, glowBlur: 24 }).cv;
@@ -4662,7 +4699,17 @@
         const m = document.getElementById('sysModal');
         const titleEl = document.getElementById('sysModalTitle');
         const t = title || 'NOTICE';
-        if (pixelMode) {
+        // KICKED y REJOIN EXPIRED tienen su titulo horneado (cartel-hero); el
+        // resto de titulos del modal de sistema siguen con la fuente procedural.
+        const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired' }[t];
+        if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {
+            ensurePixPanelCss();
+            titleEl.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = cartelHeroUrl(sysArt);
+            img.style.cssText = 'display:block;margin:0 auto;width:62%;height:auto;image-rendering:pixelated;';
+            titleEl.appendChild(img);
+        } else if (pixelMode) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';
             // px del título pixel: auto-ajuste al ancho del modal.
