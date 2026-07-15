@@ -4491,11 +4491,11 @@
             "#lobbyBanner.lb-search .lb-strong{color:#9bbfff}" +
             "#lobbyBanner.lb-found{border-color:#00ff88;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 22px rgba(0,255,136,.5)}" +
             // Modo pixel: recuadro estilo ranking (marco neon del TOP MASS: borde
-            // duro + halo del color + sombra pixel) y texto en fuente pixel.
+            // duro + halo verde + sombra pixel; azul mientras busca sala) y texto
+            // en fuente pixel.
             "#lobbyBanner.lb-pix{border-radius:0;padding:7px 16px;background:rgba(6,10,8,.92);backdrop-filter:none;" +
-            "border:2px solid rgba(255,255,255,.7);box-shadow:0 0 12px rgba(255,255,255,.35),3px 3px 0 rgba(0,0,0,.6)}" +
+            "border:2px solid rgba(0,255,136,.7);box-shadow:0 0 12px rgba(0,255,136,.5),3px 3px 0 rgba(0,0,0,.6)}" +
             "#lobbyBanner.lb-pix.lb-search{border-color:rgba(77,155,255,.8);box-shadow:0 0 12px rgba(77,155,255,.55),3px 3px 0 rgba(0,0,0,.6)}" +
-            "#lobbyBanner.lb-pix.lb-found{border-color:rgba(0,255,136,.8);box-shadow:0 0 14px rgba(0,255,136,.6),3px 3px 0 rgba(0,0,0,.6)}" +
             "@keyframes lbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}" +
             "#cdNum{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none;transform:translateY(-120px)}" +
             "#cdNum .cd-lbl{font-family:'Russo One',sans-serif;font-size:13px;letter-spacing:4px;color:#00ff88;text-shadow:0 0 10px #00ff88;opacity:.9}" +
@@ -4526,15 +4526,21 @@
         // y el banner no volvería a salir (pasaba al salir de una sala y entrar a otra).
         if (!texto) { b.className = ''; hideCountdownNumber(); return; }
         b.style.display = '';   // por si quedó algún inline antiguo
-        // Modo pixel: texto en fuente pixel (la de TOP MASS, atlas font-hero)
-        // con relleno+glow del color del estado — azul buscando, verde found/
-        // anuncios, blanco esperando — dentro del recuadro estilo ranking (.lb-pix).
+        // Modo pixel: texto con la misma letra y color que el titulo TOP MASS
+        // del ranking (verde claro + glow; azul mientras busca sala) dentro del
+        // recuadro estilo ranking (.lb-pix).
         if (pixelMode && typeof pixFancyText === 'function') {
             const plain = texto.replace(/<[^>]*>/g, '').replace(/·/g, '-').replace(/\s+/g, ' ').trim().toUpperCase();
-            const color = type === 'search' ? '#4d9bff' : (type === 'found' ? '#00ff88' : '#ffffff');
-            b.className = 'show lb-pix' + (type === 'search' ? ' lb-search' : (type === 'found' ? ' lb-found' : ''));
+            const search = type === 'search';
+            const cv = pixFancyText(plain, 1, {
+                plain: true,
+                fill: search ? '#9cc4ff' : '#7df29b',
+                shade: search ? '#4577c2' : '#38b168',
+                glow: search ? '#4d9bff' : '#00ff88',
+                glowBlur: 6
+            });
+            b.className = 'show lb-pix' + (search ? ' lb-search' : '');
             b.innerHTML = '';
-            const cv = pixFancyText(plain, 1, { plain: true, fill: color, glow: color, glowBlur: 6 });
             cv.style.display = 'block';
             b.appendChild(cv);
             return;
