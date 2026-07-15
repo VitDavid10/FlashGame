@@ -20,7 +20,11 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // Titulos de fin de partida y modales de sistema, boton OK, X de cierre
     // de los gameModal y arte del bloqueo movil.
     'match-finished', 'room-restarted', 'match-ended', 'kicked', 'rejoin-expired',
-    'deposit', 'ok', 'close-x', 'desktop-block'];
+    'deposit', 'ok', 'close-x', 'desktop-block',
+    // Banners horneados con texto completo (recortes de David): aviso de
+    // pentakill (3/4 kills), anuncio de restart y matchmaking. El bloom se
+    // pone por CSS (drop-shadow del color de cada cartel), no en el PNG.
+    'pentakill-2', 'one-more-kill', 'server-restart', 'room-found', 'finding-room'];
 const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
 
 const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {
