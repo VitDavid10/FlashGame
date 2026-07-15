@@ -5373,8 +5373,20 @@
                 if (isSpecDragging) { let es = getViewScale(); let dx = (mouse.x - lastSpecX) / es; let dy = (mouse.y - lastSpecY) / es; camera.x -= dx * 1.5; camera.y -= dy * 1.5; lastSpecX = mouse.x; lastSpecY = mouse.y; }
             }
         } else {
-            const cells = myCells(); let tx=0, ty=0, totalR=0, n=cells.length; cells.forEach(c => { tx+=c.x; ty+=c.y; totalR+=c.r; });
-            if(n > 0) { camera.x += ((tx/n) - camera.x) * 0.05 * timeScale; camera.y += ((ty/n) - camera.y) * 0.05 * timeScale; let effR = Math.max(INITIAL_RADIUS, totalR / Math.pow(n, 0.4)); let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / effR, ZOOM_CONFIG.exponent); targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale)); camera.scale += (targetScale - camera.scale) * 0.05 * timeScale; }
+            const cells = myCells(); let tx=0, ty=0, totalR=0, maxR=0, n=cells.length; cells.forEach(c => { tx+=c.x; ty+=c.y; totalR+=c.r; if (c.r > maxR) maxR = c.r; });
+            if(n > 0) {
+                camera.x += ((tx/n) - camera.x) * 0.05 * timeScale; camera.y += ((ty/n) - camera.y) * 0.05 * timeScale;
+                let effR = Math.max(INITIAL_RADIUS, totalR / Math.pow(n, 0.4));
+                let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / effR, ZOOM_CONFIG.exponent);
+                // Red de seguridad: por muy grande que seas, tu célula mayor nunca
+                // ocupa más del ~55% del lado corto de la pantalla (la curva de
+                // potencia sola se aplana y a masas enormes el cuerpo desbordaba).
+                const viewFactor = Math.max(width / BASE_WIDTH, height / BASE_HEIGHT);
+                const fitCap = 0.275 * Math.min(width, height) / (maxR * viewFactor);
+                targetScale = Math.min(targetScale, fitCap);
+                targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale));
+                camera.scale += (targetScale - camera.scale) * 0.05 * timeScale;
+            }
         }
 
         // 5) Efectos visuales locales
