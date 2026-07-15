@@ -2159,7 +2159,9 @@
             css += 'body.pixel-pack #prizeModal .gameModalBox.prize-hero{border:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
                 'image-rendering:pixelated;max-width:470px;aspect-ratio:990/613;display:flex;flex-direction:column;justify-content:center;padding:40px 44px 36px}' +
-                'body.pixel-pack .prize-hero #prizeSubtitle{margin-bottom:0!important}';
+                'body.pixel-pack .prize-hero #prizeSubtitle{margin-bottom:0!important}' +
+                // VICTORY/CASHOUT: el titulo un pelin mas arriba (solo visual, no afecta al flujo)
+                'body.pixel-pack .prize-hero:not(.prize-tall) h3{transform:translateY(-8px)}';
         }
         // MATCH ENDED (arcadeEnd): variante alta del marco verde — la tabla del
         // top-10 marca la altura, asi que sin aspect-ratio ni centrado flex.
