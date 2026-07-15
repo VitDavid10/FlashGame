@@ -3650,12 +3650,10 @@
         if (saveInterval) clearInterval(saveInterval);
         localStorage.removeItem('pillwars_save');
         hideGameHUD();
-        // Sala de pago en arcade: el server ya mandó 'prize' (reparto del bote) ANTES
-        // de 'matchEnd', y ese modal (prizeModal) ya está abierto con las ganancias
-        // reales. Abrir aquí TAMBIÉN el overlay viejo duplicaba el resultado (con el
-        // carry ya vaciado al pot → mostraba otra cantidad, parecía un segundo ranking).
-        const isPaidArcade = currentServer && currentServer !== 'Free' && (currentGameMode === 'arcade' || currentGameMode === 'skills');
-        const prizeOpen = isPaidArcade && document.getElementById('prizeModal').style.display === 'flex';
+        // Si el modal del premio (VICTORY/CASHOUT/MATCH ENDED) ya está abierto,
+        // NO abrir también el overlay MATCH FINISHED: duplicaba el resultado
+        // (dos carteles a la vez). Aplica a cualquier sala y modo.
+        const prizeOpen = document.getElementById('prizeModal').style.display === 'flex';
         if (!prizeOpen) {
             setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88');
             showResultsUI();
