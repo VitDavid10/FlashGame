@@ -356,7 +356,8 @@ const GROUPS = [
         ['GAME OVER', true, w => { closeAll(w); w.stopGame(); }],
         ['VICTORY!', true, w => { closeAll(w); w.__pwLab.EconHUD.showPrize({ reason: 'victory', amount: 500, carry: 1200 }); }],
         ['CASHOUT', true, w => { closeAll(w); w.__pwLab.EconHUD.showPrize({ reason: 'cashout', amount: 800, carry: 1000, kills: 6, feePct: 10, fee: 100 }); }],
-        ['MATCH ENDED', true, w => { closeAll(w); w.__pwLab.EconHUD.showPrize({ reason: 'arcadeEnd', myAmount: 300, pot: 1500, top: [{ pos: 1, name: 'Bot1', pct: 40, amount: 600, mine: false }, { pos: 2, name: 'me', pct: 20, amount: 300, mine: true }] }); }],
+        // Reparto real del server (room-loop.js): top 10 con curva 35/20/13/9/7/5/4/3/2.5/1.5
+        ['MATCH ENDED', true, w => { closeAll(w); const pot = 5000, pesos = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5], nombres = ['NEO', 'me', 'VIPER', 'GHOST', 'PIXEL', 'DOC', 'RAVEN', 'TANK', 'LUNA', 'ZED']; const top = pesos.map((p, i) => ({ pos: i + 1, name: nombres[i], pct: p, amount: Math.floor(pot * p / 100), mine: i === 1 })); w.__pwLab.EconHUD.showPrize({ reason: 'arcadeEnd', myAmount: top[1].amount, pot, top }); }],
         ['MATCH FINISHED', true, w => { closeAll(w); w.setOverlayTitle(w.__pwLab.els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88'); w.showResultsUI(); }],
         ['ROOM RESTARTED', true, w => { closeAll(w); w.setOverlayTitle(w.__pwLab.els.resultTitle, 'roomRestarted', 'ROOM RESTARTED', '#ffcc00'); w.showResultsUI(); }],
     ]],

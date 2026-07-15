@@ -16,7 +16,7 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // Contador de inicio (rotulo + digitos con glow) y premio VICTORY/CASHOUT
     // (titulos, panel verde fino y boton CONTINUE horneado).
     'match-starting', 'cd-1', 'cd-2', 'cd-3', 'cd-4', 'cd-5',
-    'victory', 'cashout', 'continue', 'prize-panel',
+    'victory', 'cashout', 'continue', 'prize-panel', 'prize-panel-tall',
     // Titulos de fin de partida y modales de sistema, boton OK, X de cierre
     // de los gameModal y arte del bloqueo movil.
     'match-finished', 'room-restarted', 'match-ended', 'kicked', 'rejoin-expired',

@@ -2161,6 +2161,13 @@
                 'image-rendering:pixelated;max-width:470px;aspect-ratio:990/613;display:flex;flex-direction:column;justify-content:center;padding:40px 44px 36px}' +
                 'body.pixel-pack .prize-hero #prizeSubtitle{margin-bottom:0!important}';
         }
+        // MATCH ENDED (arcadeEnd): variante alta del marco verde — la tabla del
+        // top-10 marca la altura, asi que sin aspect-ratio ni centrado flex.
+        if (cartelUsesAtlas('prize-panel-tall')) {
+            css += 'body.pixel-pack #prizeModal .gameModalBox.prize-tall{aspect-ratio:auto;display:block;' +
+                'background-image:url(' + cartelHeroUrl('prize-panel-tall') + ')!important;padding:44px 48px 40px}' +
+                'body.pixel-pack .prize-tall #prizeSubtitle{margin-bottom:10px!important}';
+        }
         if (cartelUsesAtlas('continue')) {
             css += 'body.pixel-pack .prize-hero .gm-btn{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('continue') + ') center/100% 100% no-repeat!important;' +
@@ -4102,13 +4109,17 @@
             tbl.style.display = 'none'; tbl.innerHTML = '';
             // VICTORY/CASHOUT en pixel: panel verde fino propio (prize-panel.png)
             // + cantidad con la misma letra/color que las kills del GAME OVER y
-            // el icono de $PILL (pill.png). El resto de razones, look de siempre.
+            // el icono de $PILL (pill.png). MATCH ENDED (arcadeEnd) igual pero
+            // con la variante alta del marco (prize-panel-tall, lleva el top-10).
             const isHero = msg.reason === 'victory' || msg.reason === 'cashout';
-            m.querySelector('.gameModalBox').classList.toggle('prize-hero',
-                isHero && pixelMode && cartelUsesAtlas('prize-panel'));
+            const isArcadeEnd = msg.reason === 'arcadeEnd';
+            const usePix = (isHero || isArcadeEnd) && pixelMode;
+            const box = m.querySelector('.gameModalBox');
+            box.classList.toggle('prize-hero', usePix && cartelUsesAtlas('prize-panel'));
+            box.classList.toggle('prize-tall', isArcadeEnd && pixelMode && cartelUsesAtlas('prize-panel-tall'));
             amt.classList.remove('pw-amt-pix');
             const setAmt = amount => {
-                if (isHero && pixelMode) {
+                if (usePix) {
                     const ico = cartelUsesAtlas('pill') ? '<img class="pw-pill-ico" src="' + cartelHeroUrl('pill') + '">' : '';
                     amt.innerHTML = '+' + fmt(amount) + ' ' + ico + '$PILL';
                     amt.classList.add('pw-amt-pix');
@@ -4124,7 +4135,7 @@
                 sub.innerHTML = msg.kills + ' kills · carry <b>' + fmt(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmt(msg.fee) + '</b>)';
             } else if (msg.reason === 'arcadeEnd') {
                 setOverlayTitle(title, 'matchEnded', 'MATCH ENDED', msg.myAmount > 0 ? '#ffce3d' : '#aaa');
-                amt.innerText = msg.myAmount > 0 ? '+' + fmt(msg.myAmount) + ' $PILL' : 'Out of top 10';
+                if (msg.myAmount > 0) setAmt(msg.myAmount); else amt.innerText = 'Out of top 10';
                 sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmt(msg.pot) + '</b> $PILL';
                 tbl.style.display = 'block';
                 tbl.innerHTML = (msg.top || []).map(t =>
