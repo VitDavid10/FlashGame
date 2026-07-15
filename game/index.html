@@ -586,7 +586,7 @@
             100% { opacity: 0; transform: translateY(-60px) scale(0.95); }
         }
         /* Pentakill warning: banner arriba pulsando cuando faltan 1-2 kills */
-        #pentakillBanner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9997; padding: 14px 36px; background: rgba(20,4,4,0.92); backdrop-filter: blur(8px); border: 2px solid #ff2a2a; border-radius: 12px; font-family: 'Russo One', sans-serif; font-size: 18px; letter-spacing: 4px; text-transform: uppercase; color: #fff; box-shadow: 0 0 30px rgba(255,42,42,0.55); white-space: nowrap; display: none; pointer-events: none; animation: pentakillPulse 0.8s ease-in-out infinite; }
+        #pentakillBanner { position: fixed; top: 48px; left: 50%; transform: translateX(-50%); z-index: 9997; padding: 14px 36px; background: rgba(20,4,4,0.92); backdrop-filter: blur(8px); border: 2px solid #ff2a2a; border-radius: 12px; font-family: 'Russo One', sans-serif; font-size: 18px; letter-spacing: 4px; text-transform: uppercase; color: #fff; box-shadow: 0 0 30px rgba(255,42,42,0.55); white-space: nowrap; display: none; pointer-events: none; animation: pentakillPulse 0.8s ease-in-out infinite; }
         #pentakillBanner.almost { background: rgba(28,28,4,0.92); border-color: #ffce3d; color: #ffce3d; box-shadow: 0 0 26px rgba(255,206,61,0.45); }
         #pentakillBanner.final { color: #ff5544; }
         /* Cartel horneado (pixel): la imagen trae marco+texto, fuera la caja procedural */
@@ -1344,7 +1344,10 @@
     const WORLD_CONFIG = PillSim.WORLD_CONFIG;
 
     let worldSettings = { map: 1, food: 1, virus: 1, speed: 1 };
-    const ZOOM_CONFIG = { baseScale: 1.4, exponent: 0.3, minScale: 0.05, maxScale: 2.0 };
+    // exponent: cuanto se aleja la camara al crecer (r^exponent). Con 0.3 los
+    // grandes no se veian el cuerpo entero; 0.45 da mas vision a masas altas
+    // sin cambiar el zoom de spawn (INITIAL_RADIUS/effR = 1 al nacer).
+    const ZOOM_CONFIG = { baseScale: 1.4, exponent: 0.45, minScale: 0.05, maxScale: 2.0 };
     const UI_PARAMS = { skillSelectTop: "5%" };
     const MUSIC_VOLUME = 0.15;
     const MUSIC_START_DELAY = 1400;
@@ -4474,7 +4477,12 @@
             "#lobbyBanner.lb-search .lb-dot{background:#4d9bff;box-shadow:0 0 10px #4d9bff}" +
             "#lobbyBanner.lb-search .lb-strong{color:#9bbfff}" +
             "#lobbyBanner.lb-found{border-color:#00ff88;box-shadow:0 6px 24px rgba(0,0,0,.55),0 0 22px rgba(0,255,136,.5)}" +
-            "#lobbyBanner.lb-hero{background:transparent!important;border:none!important;box-shadow:none!important;backdrop-filter:none!important;padding:0!important}" +
+            // Modo pixel: recuadro estilo ranking (marco neon del TOP MASS: borde
+            // duro + halo del color + sombra pixel) y texto en fuente pixel.
+            "#lobbyBanner.lb-pix{border-radius:0;padding:7px 16px;background:rgba(6,10,8,.92);backdrop-filter:none;" +
+            "border:2px solid rgba(255,255,255,.7);box-shadow:0 0 12px rgba(255,255,255,.35),3px 3px 0 rgba(0,0,0,.6)}" +
+            "#lobbyBanner.lb-pix.lb-search{border-color:rgba(77,155,255,.8);box-shadow:0 0 12px rgba(77,155,255,.55),3px 3px 0 rgba(0,0,0,.6)}" +
+            "#lobbyBanner.lb-pix.lb-found{border-color:rgba(0,255,136,.8);box-shadow:0 0 14px rgba(0,255,136,.6),3px 3px 0 rgba(0,0,0,.6)}" +
             "@keyframes lbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}" +
             "#cdNum{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none;transform:translateY(-120px)}" +
             "#cdNum .cd-lbl{font-family:'Russo One',sans-serif;font-size:13px;letter-spacing:4px;color:#00ff88;text-shadow:0 0 10px #00ff88;opacity:.9}" +
@@ -4503,29 +4511,21 @@
         // Importante: controlar visibilidad SOLO por clase. Si pusiéramos
         // b.style.display='none' al ocultar, ese inline ganaría a .show{display:flex}
         // y el banner no volvería a salir (pasaba al salir de una sala y entrar a otra).
-        if (!texto) { b.className = ''; b.dataset.hero = ''; hideCountdownNumber(); return; }
+        if (!texto) { b.className = ''; hideCountdownNumber(); return; }
         b.style.display = '';   // por si quedó algún inline antiguo
-        // Cartel horneado (pixel) para los textos con recorte propio: FINDING
-        // ROOM, ROOM FOUND y el anuncio SERVER RESTART IN 5 MINUTES. La imagen
-        // trae marco+texto; el bloom va por drop-shadow del color del cartel.
-        // Si es el mismo cartel que ya está puesto, no se reescribe (FINDING
-        // ROOM se rellama cada 400ms por los puntos y la img parpadearía).
-        if (pixelMode) {
-            const plain = texto.replace(/<[^>]*>/g, '').trim().toUpperCase();
-            let hero = null, glow = null;
-            if (plain.startsWith('FINDING ROOM') && cartelUsesAtlas('finding-room')) { hero = 'finding-room'; glow = '#4d9bff'; }
-            else if (plain.startsWith('ROOM FOUND') && cartelUsesAtlas('room-found')) { hero = 'room-found'; glow = '#00ff88'; }
-            else if (plain.startsWith('SERVER RESTART IN 5 MIN') && cartelUsesAtlas('server-restart')) { hero = 'server-restart'; glow = '#00ff88'; }
-            if (hero) {
-                if (b.dataset.hero !== hero) {
-                    b.dataset.hero = hero;
-                    b.innerHTML = _bannerHeroImg(hero, glow);
-                }
-                b.className = 'show lb-hero';
-                return;
-            }
+        // Modo pixel: texto en fuente pixel (la de TOP MASS, atlas font-hero)
+        // con relleno+glow del color del estado — azul buscando, verde found/
+        // anuncios, blanco esperando — dentro del recuadro estilo ranking (.lb-pix).
+        if (pixelMode && typeof pixFancyText === 'function') {
+            const plain = texto.replace(/<[^>]*>/g, '').replace(/·/g, '-').replace(/\s+/g, ' ').trim().toUpperCase();
+            const color = type === 'search' ? '#4d9bff' : (type === 'found' ? '#00ff88' : '#ffffff');
+            b.className = 'show lb-pix' + (type === 'search' ? ' lb-search' : (type === 'found' ? ' lb-found' : ''));
+            b.innerHTML = '';
+            const cv = pixFancyText(plain, 1, { plain: true, fill: color, glow: color, glowBlur: 6 });
+            cv.style.display = 'block';
+            b.appendChild(cv);
+            return;
         }
-        b.dataset.hero = '';
         b.className = 'show' + (type === 'search' ? ' lb-search' : (type === 'found' ? ' lb-found' : ''));
         b.innerHTML = '<span class="lb-dot"></span><span>' + texto.replace(/<b>/g, '<b class="lb-strong">') + '</span>';
     }
