@@ -2155,7 +2155,7 @@
             // + subtitulo) va centrado entre el titulo y el CONTINUE.
             css += 'body.pixel-pack #prizeModal .gameModalBox.prize-hero{border:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
-                'image-rendering:pixelated;max-width:470px;aspect-ratio:990/613;display:flex;flex-direction:column;padding:36px 44px 32px}' +
+                'image-rendering:pixelated;max-width:470px;aspect-ratio:990/613;display:flex;flex-direction:column;padding:52px 44px 46px}' +
                 'body.pixel-pack .prize-hero #prizeAmount{margin-top:auto!important}' +
                 'body.pixel-pack .prize-hero #prizeSubtitle{margin-bottom:auto!important}';
         }
@@ -4117,7 +4117,7 @@
             if (msg.reason === 'victory') {
                 setOverlayTitle(title, 'victory', 'VICTORY!', '#ffce3d');
                 setAmt(msg.amount);
-                sub.innerHTML = '5 KILLS · Total carry won: <b style="color:#00ff88">' + fmt(msg.carry) + '</b> $PILL';
+                sub.innerHTML = '5 KILLS · Total carry won:<br><b style="color:#00ff88">' + fmt(msg.carry) + '</b> $PILL';
             } else if (msg.reason === 'cashout') {
                 setOverlayTitle(title, 'cashout', 'CASHOUT', '#00ff88');
                 setAmt(msg.amount);
