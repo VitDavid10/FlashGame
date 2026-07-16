@@ -1849,7 +1849,7 @@
     // Cache por color/tamaño, mismo patrón que skinCache.
     const PIX_SCREEN_PX = 4;
     const PIX_FONT = "'VT323', monospace";
-    const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map() };
+    const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map(), ring: new Map() };
     if (document.fonts && document.fonts.load) document.fonts.load("32px 'VT323'");
     const _pixProbe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     function pixRgb(col) { _pixProbe.clearRect(0, 0, 1, 1); _pixProbe.fillStyle = col; _pixProbe.fillRect(0, 0, 1, 1); const d = _pixProbe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
@@ -1973,6 +1973,33 @@
         g.fillRect(cx - Math.floor(t / 2), cy - arm, t, arm * 2);
         g.fillRect(cx - arm, cy - Math.floor(t / 2), arm * 2, t);
         PIX.shield.set(sW, spr); return spr;
+    }
+
+    // Anillo de píldora pixel art (aro de las skills SPRINT/SHIELD): banda de
+    // grosor fijo siguiendo el contorno de la cápsula, con bisel (borde
+    // exterior oscuro / interior claro). Cache por tamaño lógico + color.
+    function pixRingSprite(wL, col) {
+        const key = wL + '|' + col;
+        let spr = PIX.ring.get(key); if (spr) return spr;
+        if (PIX.ring.size > 200) PIX.ring.clear();
+        const hL = Math.round(wL * PILL_RATIO), R = wL / 2;
+        spr = document.createElement('canvas'); spr.width = wL; spr.height = hL;
+        const g = spr.getContext('2d'), rgb = pixRgb(col);
+        const t = Math.max(2, Math.round(wL / 8));
+        const dist = (x, y) => { const cy = Math.min(Math.max(y + 0.5, R), hL - R); const dx = x + 0.5 - R, dy = y + 0.5 - cy; return Math.sqrt(dx * dx + dy * dy); };
+        const inRing = (x, y) => { if (x < 0 || y < 0 || x >= wL || y >= hL) return false; const d = dist(x, y); return d <= R - 0.1 && d >= R - 0.1 - t; };
+        for (let y = 0; y < hL; y++) for (let x = 0; x < wL; x++) {
+            if (!inRing(x, y)) continue;
+            let c2;
+            if (!inRing(x - 1, y) && dist(x - 1, y) > R - 0.1) c2 = pixShade(rgb, -0.4);
+            else if (!inRing(x + 1, y) && dist(x + 1, y) > R - 0.1) c2 = pixShade(rgb, -0.4);
+            else if (!inRing(x, y - 1) && dist(x, y - 1) > R - 0.1) c2 = pixShade(rgb, -0.4);
+            else if (!inRing(x, y + 1) && dist(x, y + 1) > R - 0.1) c2 = pixShade(rgb, -0.4);
+            else if (!inRing(x, y + 1) || !inRing(x + 1, y)) c2 = pixShade(rgb, 0.28);
+            else c2 = 'rgb(' + rgb.join(',') + ')';
+            g.fillStyle = c2; g.fillRect(x, y, 1, 1);
+        }
+        PIX.ring.set(key, spr); return spr;
     }
 
     // ===== Fuente bitmap pixel (PIXFONT, drawPixelText, pixFancyText, HD) =====
@@ -2258,19 +2285,31 @@
         ctx.save(); ctx.globalAlpha = alpha; const drawEffects = !c.isBot || enableEnemyFX;
         ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4);
         const pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2;
-        if (c.sprintTime > 0 && drawEffects) { ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)'; ctx.lineWidth = Math.max(3, c.r * 0.14); ctx.beginPath(); ctx.roundRect(-pW/2 - 6, -pH/2 - 6, pW + 12, pH + 12, rBox + 6); ctx.stroke(); }
+        // Resolución lógica compartida por los sprites de efectos (misma fórmula
+        // que el cuerpo). Los aros de SPRINT/SHIELD son sprites de anillo pixel
+        // (pixRingSprite) y los escudos se dibujan sin suavizado y a píxel
+        // entero: el escalado fraccional con smoothing de antes doblaba el
+        // coste del frame con muchas células con escudo.
+        const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
+        if (c.sprintTime > 0 && drawEffects) {
+            const pulse = 6 + 3 * (Math.floor(performance.now() / 150) % 2);
+            ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW/2 - pulse, -pH/2 - pulse, pW + pulse * 2, pH + pulse * 2);
+        }
         if (c.immuneTime > 0 && drawEffects) {
-            const gap = c.r * 0.1; ctx.strokeStyle = '#a020f0'; ctx.lineWidth = Math.max(3, c.r * 0.1); ctx.beginPath(); ctx.roundRect(-pW/2 - gap, -pH/2 - gap, pW + gap*2, pH + gap*2, rBox + gap); ctx.stroke();
+            const gap = c.r * 0.1;
+            ctx.drawImage(pixRingSprite(wLfx, '#a020f0'), -pW/2 - gap, -pH/2 - gap, pW + gap * 2, pH + gap * 2);
             // 4 escudos heater pixel orbitando en pasos (upright, sin rotar), con leve pulso.
             const step = Math.floor(performance.now() / 150), time = step * 0.125;
             const shieldWorld = Math.max(10, c.r * 0.55), sW = Math.max(8, Math.min(28, Math.round(shieldWorld * getViewScale() / PIX_SCREEN_PX)));
             const spr = pixShieldSprite(sW), sh = spr.height / spr.width * shieldWorld;
             const rx = pW / 2 + gap + shieldWorld * 0.5, ry = pH / 2 + gap + shieldWorld * 0.5;
             const pulse = 1 + 0.08 * (step % 2);
+            const prevSmooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
             for (let i = 0; i < 4; i++) {
-                const angle = time + (i * (Math.PI / 2)), dw = shieldWorld * pulse, dh = sh * pulse;
-                ctx.drawImage(spr, Math.cos(angle) * rx - dw / 2, Math.sin(angle) * ry - dh / 2, dw, dh);
+                const angle = time + (i * (Math.PI / 2)), dw = Math.round(shieldWorld * pulse), dh = Math.round(sh * pulse);
+                ctx.drawImage(spr, Math.round(Math.cos(angle) * rx - dw / 2), Math.round(Math.sin(angle) * ry - dh / 2), dw, dh);
             }
+            ctx.imageSmoothingEnabled = prevSmooth;
         }
         if (c.flashTime > 0 && c.flashColor && drawEffects) { ctx.save(); ctx.globalAlpha = 0.35 * alpha; ctx.fillStyle = c.flashColor; ctx.beginPath(); ctx.roundRect(-pW/2 - 8, -pH/2 - 8, pW + 16, pH + 16, rBox + 8); ctx.fill(); ctx.restore(); }
         const skinImg = getSkinImage(c.skinUrl);
