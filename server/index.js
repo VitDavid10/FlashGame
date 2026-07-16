@@ -73,7 +73,13 @@ let enemyFx  = (typeof _glob.enemyFx  === 'boolean') ? _glob.enemyFx : true;
 // el cliente lo aleja al crecer con su curva. Editable en vivo desde admin. Mayor = más cerca.
 const _clampZoom = v => Math.max(0.3, Math.min(4, v));
 let baseZoom = (typeof _glob.baseZoom === 'number') ? _clampZoom(_glob.baseZoom) : 1.4;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom }), () => {}); }
+// Exponente de la curva de zoom (cuanto se aleja la camara al crecer, r^exp —
+// menor = zoom-out mas lento). Editable en vivo desde admin junto al zoom
+// base; el AOI (mas abajo) usa el MISMO valor para replicar la caja visible
+// del cliente, así que un desajuste aquí abre pop-in o maphack parcial.
+const _clampZoomExp = v => Math.max(0.05, Math.min(0.6, v));
+let zoomExp = (typeof _glob.zoomExp === 'number') ? _clampZoomExp(_glob.zoomExp) : 0.22;
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -182,7 +188,7 @@ function killHosts() {
 // animaciones, zoom, tiempos de arcade) — se guardan aquí y se empujan a TODOS
 // los hosts por notify (fire-and-forget, no hace falta confirmación).
 function pushSettingsToHosts() {
-    const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom };
+    const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp };
     for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('settingsSync', patch); }
 }
 // "Rendimiento" SÍ admite override por host (comparar Hz/AOI entre los dos).
@@ -790,7 +796,7 @@ function registerHostHandlers(hostEntry) {
     // Rate actual del oráculo para el cache del host recién forkeado.
     ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR });
     // Ajustes actuales (volumen/animaciones/zoom/tiempos) para el host recién forkeado.
-    ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom });
+    ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp });
 }
 
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
@@ -994,6 +1000,7 @@ function applySettingsPatch(p) {
     if (typeof p.musicVol === 'number') musicVol = _clamp01(p.musicVol);
     if (typeof p.enemyFx === 'boolean') { enemyFx = p.enemyFx; for (const r of rooms.values()) broadcast(r, { t: 'enemyFx', on: enemyFx }); }
     if (typeof p.baseZoom === 'number') { baseZoom = _clampZoom(p.baseZoom); for (const r of rooms.values()) broadcast(r, { t: 'baseZoom', value: baseZoom }); }
+    if (typeof p.zoomExp === 'number') { zoomExp = _clampZoomExp(p.zoomExp); for (const r of rooms.values()) broadcast(r, { t: 'zoomExp', value: zoomExp }); }
 }
 // Aplica un parche de "Rendimiento" recibido por IPC (puede ir dirigido a un
 // subconjunto de hosts — ver pushPerfToHosts).
@@ -1051,8 +1058,8 @@ function cellData(c) {
 //  - cierra el maphack (un cliente modificado no puede dibujar lo que no recibe)
 //
 // La caja REPLICA la cámara real del cliente (ZOOM_CONFIG en game/index.html):
-//   effR  = max(10, Σradios / nCeldas^0.4)                ← radio efectivo multi-celda
-//   scale = clamp(baseZoom · (10/effR)^0.3, 0.05, 2.0)    ← zoom de la cámara
+//   effR  = max(10, Σradios / nCeldas^0.4)                  ← radio efectivo multi-celda
+//   scale = clamp(baseZoom · (10/effR)^zoomExp, 0.05, 2.0)  ← zoom de la cámara
 //   media pantalla visible en px de mundo = (altoPantalla/2) / scale
 // La fórmula antigua ((1800 + r·18)·1.3) crecía LINEAL con el radio mientras la
 // cámara real se aleja con potencia 0.3: divergen tanto que a radio ~90 la caja
@@ -1070,7 +1077,7 @@ function cellData(c) {
 let AOI_ENABLED = process.env.AOI !== '0';   // ON por defecto; AOI=0 para apagar
 const AOI_VIEW_HALF_H = 720;    // media ALTURA de pantalla de referencia (cubre hasta 1440px CSS de alto)
 const AOI_MARGIN = 1.35;        // margen: interpolación + retardo del pan de cámara
-const AOI_ZOOM_EXP = 0.3;       // = ZOOM_CONFIG.exponent del cliente
+// AOI_ZOOM_EXP ya no es constante: usa la variable `zoomExp` (arriba), = ZOOM_CONFIG.exponent del cliente.
 const AOI_SCALE_MIN = 0.05, AOI_SCALE_MAX = 2.0;   // = ZOOM_CONFIG min/maxScale
 const AOI_SCALE_LERP = 0.075;   // ≈ el lerp 0.05/frame del cliente (60fps), traducido a 40Hz
 const AOI_FULL_FRAC = 0.9;      // caja ≥90% del mapa en ambos ejes → full compartido
@@ -1087,7 +1094,7 @@ function aoiBoxFor(p, aspect, mapSize) {
     const n = cells.length;
     cx /= n; cy /= n;   // la cámara del cliente centra en la media SIMPLE de las celdas
     const effR = Math.max(10, totR / Math.pow(n, 0.4));
-    let target = baseZoom * Math.pow(10 / effR, AOI_ZOOM_EXP);
+    let target = baseZoom * Math.pow(10 / effR, zoomExp);
     if (target < AOI_SCALE_MIN) target = AOI_SCALE_MIN; else if (target > AOI_SCALE_MAX) target = AOI_SCALE_MAX;
     // Réplica del suavizado de cámara (el cliente arranca la cámara en 0.8).
     if (p._aoiScale == null) p._aoiScale = 0.8;
@@ -1441,7 +1448,7 @@ function buildAdminState() {
         maxLayers: MAX_LAYERS,
         layerEnabled: Object.assign({}, layerEnabled),
         arcadeRestartMs, arcadeLobbyMs,
-        sfxVol, musicVol, enemyFx, baseZoom,
+        sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
         serverCpu: serverCpuPct,
         // Monitorización del PROPIO proceso (la tarjeta del Director en el panel).
         tick: pStats(tickHist.total, tickHist.n), lag: pStats(tickHist.lag, tickHist.n),
@@ -1684,7 +1691,7 @@ const httpServer = http.createServer(async (req, res) => {
                         roomName: price, layers: [],
                     });
                 }
-                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom }) };
+                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
             res.end(_roomsCache.body);
@@ -1735,7 +1742,7 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom }));
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp }));
         return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
@@ -2056,6 +2063,17 @@ wss.on('connection', (ws, req) => {
                 if (PW_ROLE === 'director') pushSettingsToHosts();
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global zoom base: ${baseZoom}`);
+            } else if (msg.cmd === 'setZoomExp') {
+                if (typeof msg.value === 'number') zoomExp = _clampZoomExp(msg.value);
+                saveGlobal();
+                // Aplicar en vivo a todos los jugadores online (y espectadores) de ESTE proceso.
+                // El AOI (aoiBoxFor) lee `zoomExp` directamente, así que la caja que se
+                // sirve a cada cliente se actualiza sola en el siguiente tick — no hace
+                // falta reenviar nada aparte del zoomExp al cliente.
+                for (const r of rooms.values()) broadcast(r, { t: 'zoomExp', value: zoomExp });
+                if (PW_ROLE === 'director') pushSettingsToHosts();
+                ws.send(JSON.stringify(buildAdminState()));
+                log(`Global zoom exponent: ${zoomExp}`);
             } else if (msg.cmd === 'announce') {
                 const text = (typeof msg.text === 'string') ? msg.text.slice(0, 140) : '';
                 if (text) {

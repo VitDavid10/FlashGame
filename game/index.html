@@ -1344,13 +1344,13 @@
     const WORLD_CONFIG = PillSim.WORLD_CONFIG;
 
     let worldSettings = { map: 1, food: 1, virus: 1, speed: 1 };
-    // exponent: cuanto se aleja la camara al crecer (r^exponent) — MENOR
-    // exponente = zoom-out mas lento/suave segun ganas masa (el spawn no
-    // cambia, solo cambia el ritmo). 0.3 era el original pero se alejaba
-    // demasiado rapido creciendo; 0.22 mantiene la vista mas cerca durante
-    // mas tiempo. El caso "soy enorme y no me veo el cuerpo" lo cubre aparte
-    // el fit-cap de la camara (la celula mayor nunca pasa del ~55% del lado
-    // corto de la pantalla, ver updateGame).
+    // baseScale/exponent son los valores de FÁBRICA; el admin los puede cambiar
+    // en vivo (msg.t === 'baseZoom' / 'zoomExp', o al pollear /api/rooms —
+    // ver refreshOracle). exponent: cuanto se aleja la camara al crecer
+    // (r^exponent) — MENOR exponente = zoom-out mas lento/suave segun ganas
+    // masa (el spawn no cambia, solo cambia el ritmo). El caso "soy enorme y
+    // no me veo el cuerpo" lo cubre aparte el fit-cap de la camara (la celula
+    // mayor nunca pasa del ~55% del lado corto de la pantalla, ver updateGame).
     const ZOOM_CONFIG = { baseScale: 1.4, exponent: 0.22, minScale: 0.05, maxScale: 2.0 };
     const UI_PARAMS = { skillSelectTop: "5%" };
     const MUSIC_VOLUME = 0.15;
@@ -4283,6 +4283,8 @@
             if (typeof data.enemyFx === 'boolean') applyEnemyFx(data.enemyFx);
             // Zoom base global del server (admin): zoom al spawnear, se aleja al crecer.
             if (typeof data.baseZoom === 'number' && data.baseZoom > 0) ZOOM_CONFIG.baseScale = data.baseZoom;
+            // Exponente global del zoom (admin): ritmo del zoom-out al ganar masa.
+            if (typeof data.zoomExp === 'number' && data.zoomExp > 0) ZOOM_CONFIG.exponent = data.zoomExp;
             const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
             // Reset del timer solo si el precio realmente cambió (cada 5 min en servidor).
             if (newRate !== _lastPillPerDollar) {
@@ -5064,6 +5066,8 @@
                 applyEnemyFx(!!msg.on);   // admin cambió las animaciones de enemigos en vivo
             } else if (msg.t === 'baseZoom') {
                 if (typeof msg.value === 'number' && msg.value > 0) ZOOM_CONFIG.baseScale = msg.value;   // admin cambió el zoom base en vivo
+            } else if (msg.t === 'zoomExp') {
+                if (typeof msg.value === 'number' && msg.value > 0) ZOOM_CONFIG.exponent = msg.value;   // admin cambió el exponente de zoom en vivo
             } else if (msg.t === 'announce') {
                 // Anuncio del admin a todos: cartel destacado + sonido.
                 setLobbyBanner('<b>' + (msg.text || '') + '</b>', 'found');

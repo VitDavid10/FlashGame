@@ -533,6 +533,13 @@
                 <span style="color:#666; font-size: 12px;">Higher = closer (1.4 by default). Saved and applied live to players.</span>
             </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Zoom exponent (GLOBAL, all players):</label>
+                <input type="number" step="0.02" min="0.05" max="0.6" id="zoomExp" style="width:80px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;">
+                <button class="b verde mini" onclick="aplicarZoomExp()">Apply</button>
+                <button class="b mini" onclick="resetZoomExp()">Reset</button>
+                <span style="color:#666; font-size: 12px;">How fast the camera pulls back as players grow (0.22 by default). Lower = stays closer while growing.</span>
+            </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <label style="font-weight:600">Announcement:</label>
                 <input type="text" id="announceText" maxlength="140" placeholder="Message for every online player…" style="flex:1;min-width:220px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px;font-size:13px;">
                 <button class="b verde mini" onclick="enviarAnuncio()">Send</button>
@@ -953,6 +960,11 @@ function aplicarZoom() {
     if (z > 0) { send({ cmd: 'setBaseZoom', value: z }); toast('<strong>Global base zoom: ' + z + '</strong><br>All players', 'ok'); setTimeout(pedir, 100); }
 }
 function resetZoom() { document.getElementById('baseZoom').value = '1.4'; send({ cmd: 'setBaseZoom', value: 1.4 }); toast('<strong>Zoom reset (1.4)</strong>', 'ok'); setTimeout(pedir, 100); }
+function aplicarZoomExp() {
+    const e = parseFloat(document.getElementById('zoomExp').value);
+    if (e > 0) { send({ cmd: 'setZoomExp', value: e }); toast('<strong>Global zoom exponent: ' + e + '</strong><br>All players', 'ok'); setTimeout(pedir, 100); }
+}
+function resetZoomExp() { document.getElementById('zoomExp').value = '0.22'; send({ cmd: 'setZoomExp', value: 0.22 }); toast('<strong>Zoom exponent reset (0.22)</strong>', 'ok'); setTimeout(pedir, 100); }
 function enviarAnuncio() {
     const t = document.getElementById('announceText').value.trim();
     if (!t) { toast('Write a message', 'warn'); return; }
@@ -1707,6 +1719,7 @@ function render(m) {
     if (m.musicVol != null && document.activeElement.id !== 'volMusic') { const v = Math.round(m.musicVol * 100); document.getElementById('volMusic').value = v; document.getElementById('volMusicVal').innerText = v + '%'; }
     if (typeof m.enemyFx === 'boolean') { _enemyFxOn = m.enemyFx; const b = document.getElementById('enemyFxBtn'); if (b) { b.innerText = m.enemyFx ? 'ON' : 'OFF'; b.className = 'b ' + (m.enemyFx ? 'verde' : 'rojo'); } }
     if (typeof m.baseZoom === 'number' && document.activeElement.id !== 'baseZoom') { const bz = document.getElementById('baseZoom'); if (bz) bz.value = m.baseZoom; }
+    if (typeof m.zoomExp === 'number' && document.activeElement.id !== 'zoomExp') { const ze = document.getElementById('zoomExp'); if (ze) ze.value = m.zoomExp; }
     const t = m.totales;
     const sEntradas = realOnly ? t.entradasReal : t.entradas;
     const sMuertes = realOnly ? t.muertesReal : t.muertes;
