@@ -1344,10 +1344,11 @@
     const WORLD_CONFIG = PillSim.WORLD_CONFIG;
 
     let worldSettings = { map: 1, food: 1, virus: 1, speed: 1 };
-    // exponent: cuanto se aleja la camara al crecer (r^exponent). Con 0.3 los
-    // grandes no se veian el cuerpo entero; 0.45 da mas vision a masas altas
-    // sin cambiar el zoom de spawn (INITIAL_RADIUS/effR = 1 al nacer).
-    const ZOOM_CONFIG = { baseScale: 1.4, exponent: 0.45, minScale: 0.05, maxScale: 2.0 };
+    // exponent: cuanto se aleja la camara al crecer (r^exponent). 0.3 es el
+    // feel original; el caso "soy enorme y no me veo el cuerpo" no lo arregla
+    // el exponente sino el fit-cap de la camara (la celula mayor nunca pasa
+    // del ~55% del lado corto de la pantalla, ver updateGame).
+    const ZOOM_CONFIG = { baseScale: 1.4, exponent: 0.3, minScale: 0.05, maxScale: 2.0 };
     const UI_PARAMS = { skillSelectTop: "5%" };
     const MUSIC_VOLUME = 0.15;
     const MUSIC_START_DELAY = 1400;
