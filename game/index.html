@@ -385,8 +385,11 @@
         .oracle-layers button:hover { color: #fff; border-color: #555; }
         .oracle-layers button.act { background: var(--primary, #00ff88); color: #000; border-color: var(--primary, #00ff88); }
         .oracle-layers-hint { color: #555; font-size: 9px; letter-spacing: 0.5px; margin-left: 4px; flex: 1; }
-        .oracle-row { display: grid; grid-template-columns: 56px 1fr auto 14px; gap: 10px; align-items: center; padding: 10px 0; font-family: 'Russo One'; font-size: 12px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); }
+        .oracle-row { display: grid; grid-template-columns: 56px 1fr auto 14px; gap: 10px; align-items: center; padding: 10px 6px; font-family: 'Russo One'; font-size: 12px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); cursor: pointer; border-left: 2px solid transparent; transition: background 0.15s; }
         .oracle-row:first-of-type { border-top: 0; }
+        .oracle-row:hover { background: rgba(255,255,255,0.05); }
+        .oracle-row.sel { background: rgba(0,255,136,0.08); border-left-color: var(--primary); }
+        .oracle-row.sel .oroom { color: var(--primary); }
         .oracle-row .oroom { color: #fff; font-size: 14px; }
         .oracle-row .opill { color: #ffce3d; font-size: 12px; font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
         .oracle-row .ostatuslabel { color: #666; font-size: 10px; letter-spacing: 1px; text-align: right; white-space: nowrap; }
@@ -425,9 +428,6 @@
         /* En modo ARCADE: el neon verde por defecto pasa a amarillo arcade en login-box, section titles, srv-btn, mqp-arcade etc. */
         #loginOverlay.bg-arcade .login-box { border-color: #ccff00; box-shadow: 0 0 50px rgba(204, 255, 0, 0.18); }
         #loginOverlay.bg-arcade .section-title { color: #ccff00; }
-        #loginOverlay.bg-arcade .srv-btn.selected { background: #ccff00; color: #000; border-color: #ccff00; }
-        #loginOverlay.bg-arcade .srv-btn.free { border-color: #ccff00; color: #ccff00; }
-        #loginOverlay.bg-arcade .srv-btn.free.selected { color: #000; }
         #loginOverlay.bg-arcade .arcade-objective span[style*="--primary"],
         #loginOverlay.bg-arcade [style*="color:var(--primary)"],
         #loginOverlay.bg-arcade [style*="color: var(--primary)"] { color: #ccff00 !important; }
@@ -552,12 +552,6 @@
         h1 { margin: 0 0 5px 0; color: #fff; font-family: 'Russo One'; font-size: 28px; text-transform: uppercase; }
         #selectedModeTitle { font-family: 'Russo One'; font-size: 18px; text-transform: uppercase; margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #333; letter-spacing: 2px; }
         .section-title { font-family: 'Russo One'; font-size: 10px; color: var(--primary); text-transform: uppercase; margin: 10px 0 5px; text-align: left; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 2px; }
-        .server-selector { display: flex; gap: 5px; margin-bottom: 5px; }
-        .srv-btn { flex: 1; padding: 8px 0; background: #111; border: 1px solid #333; border-radius: 4px; cursor: pointer; font-weight: 700; color: #666; transition: 0.2s; font-family: 'Inter'; font-size: 12px; }
-        .srv-btn:hover { border-color: var(--primary); color: #fff; }
-        .srv-btn.selected { background: var(--primary); color: #000; border-color: var(--primary); }
-        .srv-btn.free { border-color: var(--primary); color: var(--primary); }
-        .srv-btn.free.selected { color: #000; }
         .style-type-selector { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; display:none; }
         .style-type-selector label { font-size: 12px; font-weight: 600; color: #aaa; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         .color-pickers { display: flex; gap: 10px; margin-bottom: 15px; background: #151515; padding: 10px; border-radius: 6px; border: 1px solid #333; }
@@ -604,6 +598,29 @@
         }
         .btn-play { width: 100%; padding: 12px; margin-top: 10px; background: var(--accent); color: white; border: none; font-family: 'Russo One'; font-size: 18px; letter-spacing: 1px; clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
         .btn-play:hover { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 20px rgba(255, 42, 42, 0.4); }
+
+        /* ===== Menu nuevo: pildora interactiva + SETTINGS + popups pixel ===== */
+        .pill-preview-wrap { text-align: center; margin-bottom: 4px; }
+        #menuPillCanvas { width: 100%; max-width: 320px; image-rendering: pixelated; cursor: pointer; display: inline-block; }
+        .btn-settings { width: 100%; padding: 9px; margin-top: 8px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.06); transition: 0.15s; text-transform: uppercase; }
+        .btn-settings:hover { color: #fff; border-color: #4a525c; filter: brightness(1.2); }
+        .pw-modal { display: none; position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; }
+        .pw-modal-box { background: #0d0f12; border: 3px solid #2a2f36; box-shadow: 0 0 0 3px #000, 8px 8px 0 rgba(0,0,0,0.65), inset 2px 2px 0 rgba(255,255,255,0.05); padding: 28px 30px; width: 360px; max-width: 92vw; text-align: center; image-rendering: pixelated; }
+        .pw-modal-title { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 #000; letter-spacing: 1px; margin-bottom: 22px; line-height: 1.8; }
+        .pw-big-btn { display: block; width: 100%; padding: 16px 0; margin-top: 6px; border: 3px solid #000; font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.7); letter-spacing: 1px; cursor: pointer; box-shadow: 4px 4px 0 rgba(0,0,0,0.7), inset 3px 3px 0 rgba(255,255,255,0.22), inset -3px -3px 0 rgba(0,0,0,0.35); transition: 0.12s; text-transform: uppercase; }
+        .pw-big-btn:hover:not(:disabled) { filter: brightness(1.18); transform: translate(-1px,-1px); box-shadow: 5px 5px 0 rgba(0,0,0,0.7), inset 3px 3px 0 rgba(255,255,255,0.22), inset -3px -3px 0 rgba(0,0,0,0.35); }
+        .pw-big-btn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.7), inset 3px 3px 0 rgba(0,0,0,0.3); }
+        .pw-big-btn:disabled { filter: grayscale(0.6) brightness(0.7); cursor: wait; }
+        .pw-big-btn.offline { background: linear-gradient(#ff5a4e, #c11f14); }
+        .pw-big-btn.online { background: linear-gradient(#3f8ef7, #1450b4); }
+        .pw-big-btn.free { background: linear-gradient(#2ee27a, #0f8f46); }
+        .pw-big-btn.room { background: linear-gradient(#3a4048, #1a1e24); }
+        .pw-btn-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 1px; margin: 6px 0 12px; }
+        .pw-room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .pw-room-grid .pw-big-btn { margin-top: 0; padding: 14px 0; }
+        .pw-room-grid .pw-big-btn.free { grid-column: 1 / -1; }
+        .pw-modal-cancel { margin-top: 14px; padding: 8px 22px; background: transparent; border: 2px solid #3a4048; color: #8a939e; font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
+        .pw-modal-cancel:hover { color: #fff; border-color: #6a737e; }
         .btn-reset { width: 100%; padding: 6px; margin-top: 5px; background: transparent; border: 1px dashed #333; color: #555; font-size: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-reset:hover { border-color: var(--primary); color: var(--primary); }
         
@@ -1000,6 +1017,75 @@
         </div>
     </div>
 
+    <!-- Popup PLAY: elegir OFFLINE (practica vs bots) u ONLINE. Los ids
+         btnEnterGame/btnPlayOnline se conservan: checkActiveRoomConfig (RESUME
+         GAME), setPlayBtnState (CONNECTING...) y Rejoin los siguen usando. -->
+    <div id="playChoiceModal" class="pw-modal">
+        <div class="pw-modal-box">
+            <div class="pw-modal-title">CHOOSE HOW TO PLAY</div>
+            <button class="pw-big-btn offline" id="btnEnterGame" onclick="choosePlay('offline')" onmouseenter="SoundManager.playSimpleHover()">PLAY OFFLINE</button>
+            <div class="pw-btn-sub">PRACTICE VS BOTS · NO WAGER</div>
+            <button class="pw-big-btn online" id="btnPlayOnline" onclick="choosePlay('online')" onmouseenter="SoundManager.playSimpleHover()">PLAY ONLINE</button>
+            <div class="pw-btn-sub">REAL PLAYERS · REAL ROOMS</div>
+            <button class="pw-modal-cancel" onclick="closePlayChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- Popup de sala: aparece al darle a PLAY si no elegiste sala en ROOM PRICES -->
+    <div id="roomChoiceModal" class="pw-modal">
+        <div class="pw-modal-box">
+            <div class="pw-modal-title">SELECT A ROOM</div>
+            <div class="pw-room-grid">
+                <button class="pw-big-btn free" onclick="chooseRoomFromModal('Free')" onmouseenter="SoundManager.playSimpleHover()">FREE</button>
+                <button class="pw-big-btn room" onclick="chooseRoomFromModal('5$')" onmouseenter="SoundManager.playSimpleHover()">$5</button>
+                <button class="pw-big-btn room" onclick="chooseRoomFromModal('10$')" onmouseenter="SoundManager.playSimpleHover()">$10</button>
+                <button class="pw-big-btn room" onclick="chooseRoomFromModal('20$')" onmouseenter="SoundManager.playSimpleHover()">$20</button>
+                <button class="pw-big-btn room" onclick="chooseRoomFromModal('50$')" onmouseenter="SoundManager.playSimpleHover()">$50</button>
+            </div>
+            <div class="pw-btn-sub">YOU CAN ALSO PICK ONE IN THE ROOM · PRICES PANEL</div>
+            <button class="pw-modal-cancel" onclick="closeRoomChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- SETTINGS: calidad grafica, tema de mapa y texture pack (antes en el menu) -->
+    <div id="settingsModal" class="pw-modal">
+        <div class="pw-modal-box">
+            <div class="pw-modal-title">SETTINGS</div>
+            <div class="section-title">Graphics Quality</div>
+            <div class="quality-buttons">
+                <button class="q-btn" id="qHigh" onclick="setQuality('high')">HIGH</button>
+                <button class="q-btn selected" id="qNormal" onclick="setQuality('normal')">NORMAL</button>
+                <button class="q-btn" id="qLow" onclick="setQuality('low')">LOW</button>
+            </div>
+            <button id="qUltra" class="ultra-btn" onclick="setQuality('ultra')">ULTRA LOW (FASTEST)</button>
+
+            <div class="section-title" style="margin-top:15px;">Map Theme</div>
+            <div style="display:flex; gap:15px; margin-bottom:5px;">
+                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                    <input type="radio" name="themeMode" value="dark" checked onclick="setTheme('dark')"> Dark
+                </label>
+                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                    <input type="radio" name="themeMode" value="grey" onclick="setTheme('grey')"> Grey
+                </label>
+                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                    <input type="radio" name="themeMode" value="white" onclick="setTheme('white')"> White
+                </label>
+            </div>
+
+            <div class="section-title" style="margin-top:15px;">Texture Pack</div>
+            <div style="display:flex; gap:15px; margin-bottom:5px;">
+                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                    <input type="radio" name="packMode" value="classic" checked onclick="setPixelMode(false)"> Classic
+                </label>
+                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                    <input type="radio" name="packMode" value="pixel" onclick="setPixelMode(true)"> Pixel
+                </label>
+            </div>
+
+            <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
+        </div>
+    </div>
+
     <div id="modeScreen">
         <a href="../" class="back-to-web" title="Back to PillWars site" onclick="event.stopPropagation();">
             <svg viewBox="-2 -2 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1063,69 +1149,28 @@
 
             <div class="login-content-wrapper">
                 <div class="login-left">
-                    <div class="section-title">1. Room Select (Token amount depends on $PILL price)</div>
-                    <div class="server-selector">
-                        <button class="srv-btn selected" onclick="selectServer('5$', this)">5$</button>
-                        <button class="srv-btn" onclick="selectServer('10$', this)">10$</button>
-                        <button class="srv-btn" onclick="selectServer('20$', this)">20$</button>
-                        <button class="srv-btn" onclick="selectServer('50$', this)">50$</button>
+                    <!-- Pildora grande interactiva: se pinta con los MISMOS sprites del
+                         juego (pixPillSprite) en un canvas. Click en cada mitad abre el
+                         color picker correspondiente; debajo, nombre y colores. -->
+                    <div class="pill-preview-wrap">
+                        <canvas id="menuPillCanvas" width="320" height="250" title="Click a half to change its color"></canvas>
                     </div>
-                    <!-- FREE ROOM BELOW PAYMENT ROOMS -->
-                    <button class="srv-btn free" style="width:100%; margin-bottom:5px;" onclick="selectServer('Free', this)">PRACTICE (FREE)</button>
-                    
-                    <div class="section-title">2. Character</div>
                     <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
                     <div class="style-type-selector" style="display:none;">
                         <label><input type="radio" name="styleMode" value="color" checked onclick="toggleStyleUI()"> Colors</label>
                         <label><input type="radio" name="styleMode" value="skin" onclick="toggleStyleUI()"> Skin URL</label>
                     </div>
-                    
+
+                    <input type="text" id="playerNameInput" placeholder="Enter Nickname..." maxlength="12">
                     <div id="colorPickersContainer" class="color-pickers">
                         <div class="cp-group"><label>Top</label><input type="color" id="colTop" value="#c0c8d0"></div>
                         <div class="cp-group"><label>Base</label><input type="color" id="colBot" value="#00ff44"></div>
                     </div>
-                    
+
                     <div id="skinInputContainer" style="display:none;"></div>
 
-                    <div class="section-title">3. Nickname</div>
-                    <input type="text" id="playerNameInput" placeholder="Enter Nickname..." maxlength="12">
-                    
-                    <div class="section-title" style="margin-top:15px;">Graphics Quality</div>
-                    <div class="quality-buttons">
-                        <button class="q-btn" id="qHigh" onclick="setQuality('high')">HIGH</button>
-                        <button class="q-btn selected" id="qNormal" onclick="setQuality('normal')">NORMAL</button>
-                        <button class="q-btn" id="qLow" onclick="setQuality('low')">LOW</button>
-                    </div>
-
-                    <div class="section-title" style="margin-top:15px;">Map Theme</div>
-                    <div style="display:flex; gap:15px; margin-bottom:5px;">
-                        <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                            <input type="radio" name="themeMode" value="dark" checked onclick="setTheme('dark')"> Dark
-                        </label>
-                        <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                            <input type="radio" name="themeMode" value="grey" onclick="setTheme('grey')"> Grey
-                        </label>
-                        <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                            <input type="radio" name="themeMode" value="white" onclick="setTheme('white')"> White
-                        </label>
-                    </div>
-
-                    <div class="section-title" style="margin-top:15px;">Texture Pack</div>
-                    <div style="display:flex; gap:15px; margin-bottom:5px;">
-                        <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                            <input type="radio" name="packMode" value="classic" checked onclick="setPixelMode(false)"> Classic
-                        </label>
-                        <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                            <input type="radio" name="packMode" value="pixel" onclick="setPixelMode(true)"> Pixel
-                        </label>
-                    </div>
-
-                    <button class="btn-play" id="btnEnterGame" onclick="startGame()">ENTER ARENA</button>
-                    <button class="btn-play" id="btnPlayOnline" onclick="startOnlineGame()" style="background:#1a73e8; margin-top:6px;">PLAY ONLINE</button>
-
-                    <button id="qUltra" class="ultra-btn" onclick="setQuality('ultra')">
-                        ⚡ ULTRA LOW (FASTEST) ⚡
-                    </button>
+                    <button class="btn-play" id="btnPlay" onclick="openPlayChoice()">PLAY</button>
+                    <button class="btn-settings" onclick="openSettings()">SETTINGS</button>
                 </div>
 
                 <div class="login-right" id="arcadeGuidePanel" style="display:none;">
@@ -1623,7 +1668,9 @@
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     const els = { modeScreen: document.getElementById('modeScreen'), loginOverlay: document.getElementById('loginOverlay'), selectedModeTitle: document.getElementById('selectedModeTitle'), playerNameInput: document.getElementById('playerNameInput'), botsToggle: document.getElementById('botsToggle'), botCountInput: document.getElementById('botCountInput'), botRespawnToggle: document.getElementById('botRespawnToggle'), godModeToggle: document.getElementById('godModeToggle'), enemyCount: document.getElementById('enemyCount'), score: document.getElementById('score'), room: document.getElementById('roomName'), lbList: document.getElementById('lb-list'), timer: document.getElementById('timerDisplay'), result: document.getElementById('resultOverlay'), resultTitle: document.getElementById('resultTitle'), gameOver: document.getElementById('gameOverMsg'), winnerList: document.getElementById('winnerList'), myResult: document.getElementById('myResult'), debugHud: document.getElementById('debugHud'), fpsVal: document.getElementById('fpsVal'), speedVal: document.getElementById('speedVal'), skillOverlay: document.getElementById('skillChoiceOverlay'), skillOpts: document.getElementById('skillOptionsContainer'), skillTimer: document.getElementById('skillTimerFill'), actionBar: document.getElementById('actionBar'), buffTable: document.getElementById('buffTable'), buffList: document.getElementById('buff-list-content') };
 
-    let currentGameMode = 'classic', currentServer = "5$", width, height, gameRunning = false, isGodMode = false, isSpectating = false;
+    // currentServer arranca en null: la sala se elige de forma discreta en el
+    // panel ROOM · PRICES, o el popup la pide al darle a PLAY.
+    let currentGameMode = 'classic', currentServer = null, width, height, gameRunning = false, isGodMode = false, isSpectating = false;
     let serverLeaderboard = null;   // ranking de la sala entera que manda el server (online); null = usar cálculo local (offline)
     let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
     let camera = { x: 0, y: 0, scale: 0.8 }, mouse = { x: 0, y: 0 }, inputMode = 'MOUSE', keys = { w: false, a: false, s: false, d: false, f: false }, botConfig = { enabled: true, count: 25, respawn: true };
@@ -3370,15 +3417,86 @@
     function toggleStyleUI() { const m = document.querySelector('input[name="styleMode"]:checked').value; document.getElementById('colorPickersContainer').style.display = (m === 'color') ? 'flex' : 'none'; document.getElementById('skinInputContainer').style.display = (m === 'skin') ? 'block' : 'none'; }
     function toggleBotOptions() { const isChecked = document.getElementById('botsToggle').checked; document.getElementById('botOptionsGroup').style.opacity = isChecked ? "1" : "0.3"; document.getElementById('botOptionsGroup').style.pointerEvents = isChecked ? "auto" : "none"; }
 
-    function selectServer(a, b) {
+    // Seleccion de sala desde el panel ROOM · PRICES (o el popup de sala).
+    // Devuelve false si no se pudo (movil + sala de pago).
+    function selectRoom(a) {
         // En móvil (warning aceptado) solo se permite la sala FREE; las de pago requieren PC/Mac.
         if (document.body.classList.contains('mobile-allowed') && a !== 'Free') {
             SoundManager.play('cd');
             alert('Paid rooms require a PC/Mac. Free room is available on mobile.');
+            return false;
+        }
+        SoundManager.play('simpleselect'); gameRunning = false; currentServer = a;
+        document.querySelectorAll('.oracle-row').forEach(row => row.classList.toggle('sel', row.dataset.server === a));
+        checkActiveRoomConfig();
+        if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode);
+        return true;
+    }
+
+    // --- Popup PLAY (offline/online) + popup de sala si aun no hay elegida ---
+    let _pendingPlayKind = null;
+    function openPlayChoice() {
+        // Ventana de REJOIN viva: entrar directo a la partida en curso, sin popup.
+        if (typeof Rejoin !== 'undefined' && Rejoin.get()) { startOnlineGame(); return; }
+        SoundManager.play('simpleselect');
+        document.getElementById('playChoiceModal').style.display = 'flex';
+    }
+    function closePlayChoice() { document.getElementById('playChoiceModal').style.display = 'none'; }
+    function choosePlay(kind) {
+        closePlayChoice();
+        if (!currentServer) {
+            _pendingPlayKind = kind;
+            document.getElementById('roomChoiceModal').style.display = 'flex';
             return;
         }
-        SoundManager.play('simpleselect'); gameRunning = false; currentServer = a; document.querySelectorAll('.srv-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode);
+        runPlay(kind);
     }
+    function runPlay(kind) { if (kind === 'online') startOnlineGame(); else startGame(); }
+    function closeRoomChoice() { _pendingPlayKind = null; document.getElementById('roomChoiceModal').style.display = 'none'; }
+    function chooseRoomFromModal(a) {
+        if (!selectRoom(a)) return;
+        document.getElementById('roomChoiceModal').style.display = 'none';
+        const kind = _pendingPlayKind; _pendingPlayKind = null;
+        if (kind) runPlay(kind);
+    }
+    function openSettings() { SoundManager.play('simpleselect'); document.getElementById('settingsModal').style.display = 'flex'; }
+    function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+
+    // --- Pildora interactiva del menu: MISMOS sprites del juego (pixPillSprite),
+    // con el nombre encima como en partida. Click en cada mitad abre su picker. ---
+    function renderMenuPill() {
+        const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
+        const g = cv.getContext('2d');
+        const W = cv.width, H = cv.height;
+        g.clearRect(0, 0, W, H);
+        g.imageSmoothingEnabled = false;
+        const cTop = document.getElementById('colTop').value, cBot = document.getElementById('colBot').value;
+        const spr = pixPillSprite(48, cTop, cBot);
+        // Rotada -45º como en el juego; cabe en el canvas contando la rotacion.
+        const pW = Math.min(W, H) * 0.92, pH = pW * PILL_RATIO;
+        g.save();
+        g.translate(W / 2, H / 2 + 14);
+        g.rotate(-Math.PI / 4);
+        g.drawImage(spr, -pW / 2, -pH / 2, pW, pH);
+        g.restore();
+        const name = document.getElementById('playerNameInput').value.trim() || 'PLAYER';
+        g.font = "30px " + PIX_FONT; g.textAlign = 'center'; g.textBaseline = 'top';
+        g.strokeStyle = '#000'; g.lineWidth = 5; g.fillStyle = '#FFF';
+        g.strokeText(name, W / 2, 4); g.fillText(name, W / 2, 4);
+    }
+    (function initMenuPill() {
+        const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
+        cv.addEventListener('click', e => {
+            const r = cv.getBoundingClientRect();
+            const dx = (e.clientX - r.left) * (cv.width / r.width) - cv.width / 2;
+            const dy = (e.clientY - r.top) * (cv.height / r.height) - (cv.height / 2 + 14);
+            // La pildora esta rotada -45º: la mitad "top" queda arriba-izquierda.
+            document.getElementById(dx + dy < 0 ? 'colTop' : 'colBot').click();
+        });
+        ['colTop', 'colBot', 'playerNameInput'].forEach(id => document.getElementById(id).addEventListener('input', renderMenuPill));
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderMenuPill);
+        renderMenuPill();
+    })();
     function toggleExitModal() {
         if(!gameRunning) return;
         const modal = document.getElementById('exitModal'); const btn = document.getElementById('btnConfirmExit'); const title = document.getElementById('exitModalTitle'); const desc = document.getElementById('exitModalDesc');
@@ -3720,8 +3838,8 @@
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
         if (btn) {
-            if (saveSystem.hasSaveForRoom(currentGameMode, currentServer)) { btn.innerText = "RESUME GAME"; btn.style.background = "#ffd700"; btn.style.color = "#000"; }
-            else { btn.innerText = "ENTER ARENA"; btn.style.background = "var(--accent)"; btn.style.color = "#fff"; }
+            if (currentServer && saveSystem.hasSaveForRoom(currentGameMode, currentServer)) { btn.innerText = "RESUME GAME"; btn.style.background = "#ffd700"; btn.style.color = "#000"; }
+            else { btn.innerText = "PLAY OFFLINE"; btn.style.background = ""; btn.style.color = ""; }
         }
         MAX_BOT_CELLS = (currentGameMode === 'classic') ? 8 : 16;
     }
@@ -4295,8 +4413,9 @@
                 if (rateEl) rateEl.textContent = Number(gamePillPerDollar).toLocaleString('en-US');
             }
             const cont = document.getElementById('oracleRows'); if (!cont) return;
-            // Free queda fuera del oracle (priceUsd>0). Mostramos la layer elegida (default L1).
-            const roomsThisMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic') && r.priceUsd > 0);
+            // Todas las salas del modo, FREE incluida (es seleccionable como las de pago).
+            // Mostramos la layer elegida (default L1).
+            const roomsThisMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic'));
             // Barra L1..L4: solo layers que REALMENTE tienen sala creada (server solo
             // manda un entry en r.layers si esa sala existe — L2+ se crean on-demand
             // cuando la anterior se llena, no por tener layersPerCombo alto).
@@ -4366,8 +4485,10 @@
                 const label = (ending || ended || counting)
                     ? `<span class="ostartin${ending ? ' ending-label' : ''}" data-key="${r.key}" data-prefix="${prefix}">${prefix}${secsLeft}s</span>`
                     : 'STATUS';
-                return `<div class="oracle-row">
-                    <span class="oroom">${r.priceUsd === 0 ? 'Free' : '$' + r.priceUsd}</span>
+                // Fila clicable: seleccion discreta de sala (roomName = 'Free' | '5$'...).
+                const srvName = r.priceUsd === 0 ? 'Free' : r.priceUsd + '$';
+                return `<div class="oracle-row${currentServer === srvName ? ' sel' : ''}" data-server="${srvName}" onclick="selectRoom('${srvName}')">
+                    <span class="oroom">${r.priceUsd === 0 ? 'FREE' : '$' + r.priceUsd}</span>
                     <span class="opill">${fee}</span>
                     <span class="ostatuslabel">${label}</span>
                     <span class="ostatus ${cls}" title="${title}"></span>
@@ -4439,8 +4560,10 @@
     function setPlayBtnState(busy, label) {
         const btn = document.getElementById('btnPlayOnline');
         const btnLocal = document.getElementById('btnEnterGame');
+        const btnMain = document.getElementById('btnPlay');
         if (btn) { btn.disabled = !!busy; btn.innerText = busy ? (label || 'CONNECTING...') : 'PLAY ONLINE'; }
         if (btnLocal) { btnLocal.disabled = !!busy; }
+        if (btnMain) { btnMain.disabled = !!busy; btnMain.innerText = busy ? (label || 'CONNECTING...') : 'PLAY'; }
     }
     async function startOnlineGame() {
         if (_joinInFlight) return;
@@ -4677,19 +4800,37 @@
         },
         refreshButton() {
             const btn = document.getElementById('btnPlayOnline');
-            if (!btn) return;
+            const btnMain = document.getElementById('btnPlay');
             const r = this.get();
-            if (r) {
-                const left = Math.max(0, Math.ceil((r.expiresAt - Date.now()) / 1000));
-                btn.style.background = '#ffce3d';
-                btn.style.color = '#04150c';
-                btn.innerText = 'REJOIN (' + left + 's)';
-                btn.dataset.rejoin = '1';
-            } else if (btn.dataset.rejoin) {
-                btn.style.background = '#1a73e8';
-                btn.style.color = '';
-                btn.innerText = 'PLAY ONLINE';
-                btn.dataset.rejoin = '';
+            if (btn) {
+                if (r) {
+                    const left = Math.max(0, Math.ceil((r.expiresAt - Date.now()) / 1000));
+                    btn.style.background = '#ffce3d';
+                    btn.style.color = '#04150c';
+                    btn.innerText = 'REJOIN (' + left + 's)';
+                    btn.dataset.rejoin = '1';
+                } else if (btn.dataset.rejoin) {
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    btn.innerText = 'PLAY ONLINE';
+                    btn.dataset.rejoin = '';
+                }
+            }
+            // El boton PLAY principal tambien refleja el rejoin (openPlayChoice
+            // entra directo online si hay ventana viva).
+            if (btnMain) {
+                if (r) {
+                    const left = Math.max(0, Math.ceil((r.expiresAt - Date.now()) / 1000));
+                    btnMain.style.background = '#ffce3d';
+                    btnMain.style.color = '#04150c';
+                    btnMain.innerText = 'REJOIN (' + left + 's)';
+                    btnMain.dataset.rejoin = '1';
+                } else if (btnMain.dataset.rejoin) {
+                    btnMain.style.background = '';
+                    btnMain.style.color = '';
+                    btnMain.innerText = 'PLAY';
+                    btnMain.dataset.rejoin = '';
+                }
             }
         }
     };
@@ -4933,13 +5074,11 @@
     }
 
     function netConnect(isResume) {
-        const btn = document.getElementById('btnPlayOnline');
         const tryBtn = document.getElementById('btnTryAgainOnline');
-        if (!isResume) { btn.disabled = true; btn.innerText = 'CONNECTING...'; }
+        if (!isResume) setPlayBtnState(true, 'CONNECTING...');
         const restoreBtn = () => {
-            btn.disabled = false; btn.innerText = 'PLAY ONLINE';
+            setPlayBtnState(false);   // restaura tambien el PLAY principal del menu
             if (tryBtn) { tryBtn.disabled = false; tryBtn.innerText = 'TRY AGAIN'; }
-            const btnLocal = document.getElementById('btnEnterGame'); if (btnLocal) btnLocal.disabled = false;
             _joinInFlight = false;
         };
         let joined = false;
