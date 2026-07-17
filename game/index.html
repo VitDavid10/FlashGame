@@ -356,8 +356,10 @@
         .menu-row { display: flex; flex-direction: row; gap: 24px; align-items: flex-start; max-width: 100%; }
 
         /* Columna derecha: dos bloques iguales (oracle arriba, missions/skins abajo).
-           Misma animación slideUp que el login-box para que se muevan juntos al abrir. */
-        .menu-right-col { width: 430px; max-width: 38vw; z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
+           Misma animación slideUp que el login-box para que se muevan juntos al abrir.
+           Tamano propio en CSS, independiente del menu central (no se sincroniza
+           por JS con nada): mas ancha y mas alta que antes. */
+        .menu-right-col { width: 480px; max-width: 40vw; height: 90vh; min-height: 740px; z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
         #oraclePanel, #missionsPanel { flex: 1; min-height: 0; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 14px; padding: 20px 24px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); display: flex; flex-direction: column; overflow: hidden; }
         #oraclePanel.classic { border: 1px solid rgba(0,255,170,0.3); }
         #oraclePanel.arcade  { border: 1px solid rgba(204,255,0,0.3); }
@@ -599,8 +601,7 @@
         .btn-play:hover { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 20px rgba(255, 42, 42, 0.4); }
 
         /* ===== Menu nuevo: pildora interactiva + SETTINGS + popups pixel ===== */
-        .pill-preview-wrap { text-align: center; margin-bottom: 4px; }
-        #menuPillCanvas { width: 100%; max-width: 400px; image-rendering: pixelated; cursor: pointer; display: inline-block; }
+        #menuPillCanvas { width: 100%; max-width: 400px; image-rendering: pixelated; display: block; margin: 0 auto; }
         .btn-settings { width: 100%; padding: 9px; margin-top: 8px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.06); transition: 0.15s; text-transform: uppercase; }
         .btn-settings:hover { color: #fff; border-color: #4a525c; filter: brightness(1.2); }
         .pw-modal { display: none; position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; }
@@ -632,15 +633,20 @@
         #playerNameInput.name-subtle:focus { outline: none; border-bottom-color: var(--primary) !important; }
         #playerNameInput.name-subtle::placeholder { color: #4a525c; }
 
-        /* Paleta de colores de la pildora (tipo Paint, por usuario) */
-        .pill-preview-wrap { position: relative; }
-        .pill-palette { position: absolute; left: 50%; transform: translateX(-50%); bottom: -6px; z-index: 20; background: #0d0f12; border: 3px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.07); padding: 10px 12px; width: 250px; }
-        .pal-title { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; text-shadow: 1px 1px 0 #000; margin-bottom: 8px; letter-spacing: 1px; text-align: center; }
-        .pal-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
-        .pal-swatch { aspect-ratio: 1; border: 2px solid #000; box-shadow: inset 2px 2px 0 rgba(255,255,255,0.25), inset -2px -2px 0 rgba(0,0,0,0.35); cursor: pointer; padding: 0; }
+        /* Escenario de la pildora: paleta TOP arriba-derecha, pildora en medio,
+           paleta BASE abajo-izquierda — posiciones fijas como en el boceto,
+           ambas siempre visibles (no popup). */
+        .pill-stage { display: flex; flex-direction: column; }
+        .pal-block.pal-top { align-self: flex-end; margin-bottom: 2px; }
+        .pal-block.pal-bottom { align-self: flex-start; margin-top: 2px; }
+        .pal-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; width: 168px; }
+        /* Swatches = <input type=color> nativos: click abre el picker del sistema
+           y lo que elijas sustituye ese color tanto en la paleta como en la pildora. */
+        .pal-swatch { -webkit-appearance: none; appearance: none; aspect-ratio: 1; border: 2px solid #000; box-shadow: inset 2px 2px 0 rgba(255,255,255,0.25), inset -2px -2px 0 rgba(0,0,0,0.35); cursor: pointer; padding: 0; background: none; }
+        .pal-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+        .pal-swatch::-webkit-color-swatch { border: none; }
+        .pal-swatch::-moz-color-swatch { border: none; }
         .pal-swatch:hover { transform: translate(-1px,-1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.25); }
-        .pal-swatch.custom { background: #1a1e24; color: #fff; font-family: 'Press Start 2P', monospace; font-size: 10px; line-height: 1; display: flex; align-items: center; justify-content: center; }
-        .pal-hint { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: #4a525c; margin-top: 8px; text-align: center; line-height: 1.8; }
 
         /* Carteles pixel de la columna derecha (ROOM PRICES / DAILY QUESTS):
            marco grueso + tornillos en las esquinas superiores. Placeholder
@@ -1253,15 +1259,18 @@
             <div id="gameOverMsg" style="display:none; color:#ff2a2a; font-weight:bold; margin-bottom:10px;">GAME OVER</div>
 
             <div class="login-left">
-                <!-- Pildora grande interactiva: se pinta con los MISMOS sprites del
-                     juego (pixPillSprite) en un canvas. Click en cada mitad abre la
-                     paleta de colores (personalizable por usuario, tipo Paint). -->
-                <div class="pill-preview-wrap">
-                    <canvas id="menuPillCanvas" width="400" height="360" title="Click a half to pick its color"></canvas>
-                    <div id="pillPalette" class="pill-palette" style="display:none;">
-                        <div class="pal-title" id="palTitle">TOP COLOR</div>
-                        <div class="pal-grid" id="palGrid"></div>
-                        <div class="pal-hint">RIGHT-CLICK A SLOT TO REPLACE IT WITH A CUSTOM COLOR</div>
+                <!-- Escenario de la pildora: paleta TOP arriba-derecha, pildora en
+                     medio (MISMOS sprites del juego, pixPillSprite), paleta BASE
+                     abajo-izquierda. Ambas siempre visibles (tipo Paint), 12 colores
+                     compartidos y personalizables: click en un swatch = picker nativo
+                     para cambiarlo a lo que quieras, sin boton "+" aparte. -->
+                <div class="pill-stage">
+                    <div class="pal-block pal-top">
+                        <div class="pal-grid" id="palGridTop"></div>
+                    </div>
+                    <canvas id="menuPillCanvas" width="400" height="360"></canvas>
+                    <div class="pal-block pal-bottom">
+                        <div class="pal-grid" id="palGridBottom"></div>
                     </div>
                 </div>
                 <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
@@ -1273,12 +1282,11 @@
                 <!-- Nombre sutil: solo una linea de texto bajo la pildora -->
                 <input type="text" id="playerNameInput" class="name-subtle" placeholder="TYPE YOUR NAME" maxlength="12" autocomplete="off" spellcheck="false">
 
-                <!-- Inputs nativos ocultos: el resto del juego lee colTop/colBot de
-                     aqui; la paleta los escribe. palettePicker es el "custom". -->
+                <!-- Inputs nativos ocultos: el resto del juego lee colTop/colBot de aqui;
+                     las paletas los escriben. -->
                 <div id="colorPickersContainer" style="display:none;">
                     <input type="color" id="colTop" value="#c0c8d0">
                     <input type="color" id="colBot" value="#00ff44">
-                    <input type="color" id="palettePicker" value="#ff0000">
                 </div>
 
                 <div id="skinInputContainer" style="display:none;"></div>
@@ -3505,61 +3513,37 @@
     function closeFeatures() { document.getElementById('featuresModal').style.display = 'none'; }
 
     // --- Paleta de colores de la pildora (tipo Paint, por usuario) ---
-    // 12 slots editables persistidos + CUSTOM. Click en una mitad de la pildora
-    // abre la paleta para esa mitad; click derecho en un slot lo sobreescribe
-    // con un color propio (localStorage), como la paleta de Paint.
+    // 12 colores compartidos, persistidos, mostrados en dos rejillas siempre
+    // visibles (arriba = TOP, abajo = BASE). Cada swatch es un <input
+    // type=color> real: click abre el picker nativo del sistema y lo que
+    // elijas sustituye ESE color en la paleta (para las dos rejillas, ya que
+    // comparten el mismo array) y se aplica al momento a esa mitad. Un solo
+    // gesto para elegir Y personalizar — sin boton "+" aparte.
     const PAL_KEY = 'pw_palette';
     const PAL_DEFAULT = ['#ffffff', '#c0c8d0', '#4a525c', '#ff2a2a', '#ff8c00', '#ffce3d', '#00ff44', '#00ffaa', '#1a73e8', '#66ccff', '#cc00ff', '#ff69b4'];
     let palColors = PAL_DEFAULT.slice();
     try { const s = JSON.parse(localStorage.getItem(PAL_KEY)); if (Array.isArray(s) && s.length === PAL_DEFAULT.length) palColors = s; } catch (e) {}
-    let palHalf = 'colTop';    // input destino ('colTop' | 'colBot')
-    let palEditIdx = null;     // slot en edicion via click derecho (null = custom suelto)
     function savePalette() { try { localStorage.setItem(PAL_KEY, JSON.stringify(palColors)); } catch (e) {} }
-    function renderPalette() {
-        const grid = document.getElementById('palGrid'); if (!grid) return;
+    function renderPaletteGrid(gridId, half) {
+        const grid = document.getElementById(gridId); if (!grid) return;
         grid.innerHTML = '';
         palColors.forEach((c, i) => {
-            const b = document.createElement('button');
-            b.className = 'pal-swatch'; b.style.background = c; b.title = c;
-            b.onclick = () => applyPalColor(c);
-            b.oncontextmenu = (e) => { e.preventDefault(); palEditIdx = i; document.getElementById('palettePicker').click(); };
-            grid.appendChild(b);
+            const inp = document.createElement('input');
+            inp.type = 'color'; inp.className = 'pal-swatch'; inp.value = c; inp.title = c;
+            inp.addEventListener('input', () => {
+                palColors[i] = inp.value; savePalette();
+                document.getElementById(half).value = inp.value;
+                renderMenuPill(); renderPalette();
+                SoundManager.play('simpleselect');
+            });
+            grid.appendChild(inp);
         });
-        const custom = document.createElement('button');
-        custom.className = 'pal-swatch custom'; custom.textContent = '+'; custom.title = 'Custom color';
-        custom.onclick = () => { palEditIdx = null; document.getElementById('palettePicker').click(); };
-        grid.appendChild(custom);
     }
-    function applyPalColor(c) {
-        document.getElementById(palHalf).value = c;
-        renderMenuPill();
-        closePalette();
-        SoundManager.play('simpleselect');
-    }
-    function openPalette(half) {
-        palHalf = half;
-        document.getElementById('palTitle').textContent = half === 'colTop' ? 'TOP COLOR' : 'BASE COLOR';
-        renderPalette();
-        document.getElementById('pillPalette').style.display = 'block';
-    }
-    function closePalette() { const p = document.getElementById('pillPalette'); if (p) p.style.display = 'none'; }
-    (function initPalette() {
-        const picker = document.getElementById('palettePicker'); if (!picker) return;
-        picker.addEventListener('input', () => {
-            if (palEditIdx != null) { palColors[palEditIdx] = picker.value; savePalette(); renderPalette(); }
-            document.getElementById(palHalf).value = picker.value;
-            renderMenuPill();
-        });
-        // Click fuera de la paleta (y fuera de la pildora) → cerrarla.
-        document.addEventListener('mousedown', (e) => {
-            const p = document.getElementById('pillPalette');
-            if (!p || p.style.display === 'none') return;
-            if (!e.target.closest('#pillPalette') && e.target.id !== 'menuPillCanvas') closePalette();
-        });
-    })();
+    function renderPalette() { renderPaletteGrid('palGridTop', 'colTop'); renderPaletteGrid('palGridBottom', 'colBot'); }
+    renderPalette();
 
     // --- Pildora interactiva del menu: MISMOS sprites del juego (pixPillSprite),
-    // con el nombre encima como en partida. Click en cada mitad abre su picker. ---
+    // con el nombre encima como en partida. ---
     function renderMenuPill() {
         const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
         const g = cv.getContext('2d');
@@ -3586,13 +3570,6 @@
     }
     (function initMenuPill() {
         const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
-        cv.addEventListener('click', e => {
-            const r = cv.getBoundingClientRect();
-            const dx = (e.clientX - r.left) * (cv.width / r.width) - cv.width / 2;
-            const dy = (e.clientY - r.top) * (cv.height / r.height) - (cv.height / 2 + 18);
-            // La pildora esta rotada -45º: la mitad "top" queda arriba-izquierda.
-            openPalette(dx + dy < 0 ? 'colTop' : 'colBot');
-        });
         ['colTop', 'colBot', 'playerNameInput'].forEach(id => document.getElementById(id).addEventListener('input', renderMenuPill));
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderMenuPill);
         renderMenuPill();
@@ -5925,20 +5902,8 @@
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
     function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); let savedMode = 'classic'; try { savedMode = localStorage.getItem('pw_lastMode') || 'classic'; } catch(e) {} setHoverMode(savedMode); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; SoundManager.playMenuMusic(2000); }
 
-    // Sincroniza la altura de la columna lateral (oracle+missions) con el menú central
-    // PILLWARS. Resuelve el desfase de top/bottom: garantiza alineación pixel-perfect.
-    function syncSidePanelHeight() {
-        const lb = document.querySelector('.login-box');
-        const col = document.querySelector('.menu-right-col');
-        if (!lb || !col) return;
-        // Los carteles no encogen con el menu central (ya no es una caja):
-        // altura minima propia del 78% del viewport.
-        const h = Math.max(lb.getBoundingClientRect().height, Math.round(window.innerHeight * 0.78));
-        if (h > 0) col.style.height = h + 'px';
-    }
-    window.addEventListener('resize', syncSidePanelHeight);
-    new MutationObserver(syncSidePanelHeight).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
-    setInterval(syncSidePanelHeight, 600);   // por si el contenido del menú cambia (classic/arcade)
+    // ROOM PRICES / DAILY QUESTS son independientes del menu central: su tamano
+    // vive solo en CSS (.menu-right-col), sin JS sincronizando alturas con nada.
 
     // Espectador puro desde el panel de control: ?spectate=SALA&mode=MODO&server=wss://...
     // Mira la partida en curso sin jugar; cámara libre arrastrable por el mapa.
