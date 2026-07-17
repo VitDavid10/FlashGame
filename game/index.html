@@ -425,21 +425,20 @@
         .skins-soon .ss-big { font-size: 28px; color: #777; margin-bottom: 10px; }
         #loginOverlay.bg-classic { background-image: linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(135deg, var(--classic-bg-1) 0%, #000 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
         #loginOverlay.bg-arcade { background-image: linear-gradient(rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(135deg, #000 0%, var(--arcade-bg-1) 100%); background-size: 50px 50px, 50px 50px, 100% 100%; }
-        /* En modo ARCADE: el neon verde por defecto pasa a amarillo arcade en login-box, section titles, srv-btn, mqp-arcade etc. */
-        #loginOverlay.bg-arcade .login-box { border-color: #ccff00; box-shadow: 0 0 50px rgba(204, 255, 0, 0.18); }
+        /* En modo ARCADE: el neon verde por defecto pasa a amarillo arcade en section titles, mqp-arcade etc. */
         #loginOverlay.bg-arcade .section-title { color: #ccff00; }
         #loginOverlay.bg-arcade .arcade-objective span[style*="--primary"],
         #loginOverlay.bg-arcade [style*="color:var(--primary)"],
         #loginOverlay.bg-arcade [style*="color: var(--primary)"] { color: #ccff00 !important; }
         
+        /* Sin caja: titulo, pildora y botones flotan libres sobre el fondo
+           (como el boceto). El contenedor solo aporta layout. */
         .login-box {
-            background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary);
-            box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px;
-            border-radius: 12px; text-align: center; width: 520px;
+            background: transparent; border: none; box-shadow: none;
+            padding: 20px; text-align: center; width: 460px;
             max-width: 95%; display: flex; flex-direction: column;
-            animation: slideUp 0.4s ease-out; position: relative; 
-            overflow: visible; transition: width 0.3s ease; 
-            max-height: 95vh;
+            animation: slideUp 0.4s ease-out; position: relative;
+            overflow: visible; max-height: 95vh;
         }
         
         .login-left { width: 100%; text-align: left; }
@@ -601,7 +600,7 @@
 
         /* ===== Menu nuevo: pildora interactiva + SETTINGS + popups pixel ===== */
         .pill-preview-wrap { text-align: center; margin-bottom: 4px; }
-        #menuPillCanvas { width: 100%; max-width: 320px; image-rendering: pixelated; cursor: pointer; display: inline-block; }
+        #menuPillCanvas { width: 100%; max-width: 400px; image-rendering: pixelated; cursor: pointer; display: inline-block; }
         .btn-settings { width: 100%; padding: 9px; margin-top: 8px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.06); transition: 0.15s; text-transform: uppercase; }
         .btn-settings:hover { color: #fff; border-color: #4a525c; filter: brightness(1.2); }
         .pw-modal { display: none; position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; }
@@ -737,7 +736,7 @@
         .tooltip-divider { width: 40px; height: 3px; background: var(--gold); margin-bottom: 10px; }
         .tooltip-desc { color: #ccc; font-size: 11px; line-height: 1.4; margin-bottom: 15px; }
         /* ===== TEXTURE PACK PIXEL: relieve pixel art en menús (mismos colores) ===== */
-        body.pixel-pack .login-box, body.pixel-pack .gameModalBox, body.pixel-pack .exit-box,
+        body.pixel-pack .gameModalBox, body.pixel-pack .exit-box,
         body.pixel-pack .mqp, body.pixel-pack #buffTable, body.pixel-pack .mode-desc,
         body.pixel-pack #leaderboard, body.pixel-pack #oraclePanel, body.pixel-pack #missionsPanel,
         body.pixel-pack .back-to-web, body.pixel-pack .mqp-btn {
@@ -1258,7 +1257,7 @@
                      juego (pixPillSprite) en un canvas. Click en cada mitad abre la
                      paleta de colores (personalizable por usuario, tipo Paint). -->
                 <div class="pill-preview-wrap">
-                    <canvas id="menuPillCanvas" width="320" height="250" title="Click a half to pick its color"></canvas>
+                    <canvas id="menuPillCanvas" width="400" height="360" title="Click a half to pick its color"></canvas>
                     <div id="pillPalette" class="pill-palette" style="display:none;">
                         <div class="pal-title" id="palTitle">TOP COLOR</div>
                         <div class="pal-grid" id="palGrid"></div>
@@ -3400,7 +3399,6 @@
             document.querySelector('.diagonal-divider').style.opacity = '0'; 
         } catch(e){}
 
-        const loginBox = document.querySelector('.login-box');
         const splitSelect = document.getElementById('botSplitLimit');
         const backIcon = document.querySelector('#loginOverlay .back-icon');
         if (backIcon) { backIcon.classList.toggle('back-mode-classic', m === 'classic'); backIcon.classList.toggle('back-mode-arcade', m === 'arcade'); }
@@ -3421,7 +3419,6 @@
             els.loginOverlay.classList.add('bg-classic');
             document.getElementById('arcadeGuidePanel').style.display = 'none';
             document.getElementById('classicGuidePanel').style.display = 'flex';
-            loginBox.style.width = '520px';
             if(splitSelect) splitSelect.value = "8";
         } else {
             document.getElementById('panelArcade').classList.add('expanded');
@@ -3433,7 +3430,6 @@
             els.loginOverlay.classList.add('bg-arcade');
             document.getElementById('arcadeGuidePanel').style.display = 'flex';
             document.getElementById('classicGuidePanel').style.display = 'none';
-            loginBox.style.width = '520px';
             initArcadeGuide();
             if(splitSelect) splitSelect.value = "4";
         }
@@ -3571,25 +3567,29 @@
         g.clearRect(0, 0, W, H);
         g.imageSmoothingEnabled = false;
         const cTop = document.getElementById('colTop').value, cBot = document.getElementById('colBot').value;
-        const spr = pixPillSprite(48, cTop, cBot);
-        // Rotada -45º como en el juego; cabe en el canvas contando la rotacion.
-        const pW = Math.min(W, H) * 0.92, pH = pW * PILL_RATIO;
+        const spr = pixPillSprite(40, cTop, cBot);
+        // Rotada -45º como en el juego. Tamano calculado para que la caja
+        // rotada ENTERA quepa en el canvas (extensión por eje de un rect
+        // pW×pH rotado 45º = (pW+pH)/2·cos45), dejando sitio al nombre arriba.
+        const cy = H / 2 + 18;
+        const maxHalf = Math.min(W / 2 - 6, Math.min(cy - 42, H - cy) - 6);
+        const pW = maxHalf / ((1 + PILL_RATIO) * Math.SQRT1_2 / 2), pH = pW * PILL_RATIO;
         g.save();
-        g.translate(W / 2, H / 2 + 14);
+        g.translate(W / 2, cy);
         g.rotate(-Math.PI / 4);
         g.drawImage(spr, -pW / 2, -pH / 2, pW, pH);
         g.restore();
         const name = document.getElementById('playerNameInput').value.trim() || 'PLAYER';
-        g.font = "30px " + PIX_FONT; g.textAlign = 'center'; g.textBaseline = 'top';
+        g.font = "34px " + PIX_FONT; g.textAlign = 'center'; g.textBaseline = 'top';
         g.strokeStyle = '#000'; g.lineWidth = 5; g.fillStyle = '#FFF';
-        g.strokeText(name, W / 2, 4); g.fillText(name, W / 2, 4);
+        g.strokeText(name, W / 2, 2); g.fillText(name, W / 2, 2);
     }
     (function initMenuPill() {
         const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
         cv.addEventListener('click', e => {
             const r = cv.getBoundingClientRect();
             const dx = (e.clientX - r.left) * (cv.width / r.width) - cv.width / 2;
-            const dy = (e.clientY - r.top) * (cv.height / r.height) - (cv.height / 2 + 14);
+            const dy = (e.clientY - r.top) * (cv.height / r.height) - (cv.height / 2 + 18);
             // La pildora esta rotada -45º: la mitad "top" queda arriba-izquierda.
             openPalette(dx + dy < 0 ? 'colTop' : 'colBot');
         });
@@ -5931,7 +5931,9 @@
         const lb = document.querySelector('.login-box');
         const col = document.querySelector('.menu-right-col');
         if (!lb || !col) return;
-        const h = lb.getBoundingClientRect().height;
+        // Los carteles no encogen con el menu central (ya no es una caja):
+        // altura minima propia del 78% del viewport.
+        const h = Math.max(lb.getBoundingClientRect().height, Math.round(window.innerHeight * 0.78));
         if (h > 0) col.style.height = h + 'px';
     }
     window.addEventListener('resize', syncSidePanelHeight);
