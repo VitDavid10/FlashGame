@@ -435,15 +435,14 @@
         .login-box {
             background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary);
             box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px;
-            border-radius: 12px; text-align: center; width: 850px;
+            border-radius: 12px; text-align: center; width: 520px;
             max-width: 95%; display: flex; flex-direction: column;
             animation: slideUp 0.4s ease-out; position: relative; 
             overflow: visible; transition: width 0.3s ease; 
             max-height: 95vh;
         }
         
-        .login-content-wrapper { display: flex; gap: 30px; width: 100%; margin-top: 10px; text-align: left; }
-        .login-left { flex: 1; min-width: 320px; }
+        .login-left { width: 100%; text-align: left; }
         .login-right { flex: 1; background: rgba(0,0,0,0.3); border-left: 1px solid #333; padding-left: 20px; display: flex; flex-direction: column; }
         
         details.advanced-settings { position: relative; margin: -5px 0 10px 0; }
@@ -550,12 +549,13 @@
         .back-icon.back-mode-arcade { border-color: rgba(204,255,0,0.5); color: #ccff00; }
         .back-icon.back-mode-arcade:hover { background: #ccff00; color: #04150c; border-color: #ccff00; box-shadow: 0 0 22px rgba(204,255,0,0.55); }
         h1 { margin: 0 0 5px 0; color: #fff; font-family: 'Russo One'; font-size: 28px; text-transform: uppercase; }
-        #selectedModeTitle { font-family: 'Russo One'; font-size: 18px; text-transform: uppercase; margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #333; letter-spacing: 2px; }
+        /* Cabecera del menu: titulo PILLWARS <MODO> + 2 frases a la derecha */
+        .menu-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #222; text-align: left; }
+        #selectedModeTitle { font-family: 'Press Start 2P', monospace; font-size: 16px; text-transform: uppercase; margin: 0; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; line-height: 1.6; white-space: nowrap; }
+        .mode-blurb { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; text-align: right; line-height: 2.1; letter-spacing: 0.5px; padding-top: 3px; }
         .section-title { font-family: 'Russo One'; font-size: 10px; color: var(--primary); text-transform: uppercase; margin: 10px 0 5px; text-align: left; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 2px; }
         .style-type-selector { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; display:none; }
         .style-type-selector label { font-size: 12px; font-weight: 600; color: #aaa; cursor: pointer; display: flex; align-items: center; gap: 5px; }
-        .color-pickers { display: flex; gap: 10px; margin-bottom: 15px; background: #151515; padding: 10px; border-radius: 6px; border: 1px solid #333; }
-        .cp-group { flex: 1; display: flex; flex-direction: column; }
         input[type="color"] { border: none; width: 100%; height: 30px; cursor: pointer; background: none; padding: 0;}
         input[type="text"] { width: 100%; padding: 10px; font-size: 13px; border: 1px solid #333; border-radius: 6px; text-align: center; background: #000; color: #fff; box-sizing: border-box; }
         
@@ -621,6 +621,36 @@
         .pw-room-grid .pw-big-btn.free { grid-column: 1 / -1; }
         .pw-modal-cancel { margin-top: 14px; padding: 8px 22px; background: transparent; border: 2px solid #3a4048; color: #8a939e; font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
         .pw-modal-cancel:hover { color: #fff; border-color: #6a737e; }
+
+        /* FEATURES: modal ancho con los paneles de guia de cada modo dentro */
+        .pw-modal-box.features { width: 720px; max-width: 94vw; max-height: 88vh; overflow-y: auto; text-align: left; }
+        .pw-modal-box.features .pw-modal-title { text-align: center; }
+        .pw-modal-box.features .login-right { border-left: none; padding-left: 0; background: transparent; }
+        .pw-modal-box.features .pw-modal-cancel { display: block; margin: 14px auto 0; }
+
+        /* Nombre sutil bajo la pildora: una linea de texto, sin caja */
+        #playerNameInput.name-subtle { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 2px dashed #2a2f36 !important; border-radius: 0 !important; font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; letter-spacing: 1px; padding: 8px 4px 6px; text-transform: uppercase; width: 70%; margin: 2px auto 10px; display: block; }
+        #playerNameInput.name-subtle:focus { outline: none; border-bottom-color: var(--primary) !important; }
+        #playerNameInput.name-subtle::placeholder { color: #4a525c; }
+
+        /* Paleta de colores de la pildora (tipo Paint, por usuario) */
+        .pill-preview-wrap { position: relative; }
+        .pill-palette { position: absolute; left: 50%; transform: translateX(-50%); bottom: -6px; z-index: 20; background: #0d0f12; border: 3px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.07); padding: 10px 12px; width: 250px; }
+        .pal-title { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; text-shadow: 1px 1px 0 #000; margin-bottom: 8px; letter-spacing: 1px; text-align: center; }
+        .pal-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+        .pal-swatch { aspect-ratio: 1; border: 2px solid #000; box-shadow: inset 2px 2px 0 rgba(255,255,255,0.25), inset -2px -2px 0 rgba(0,0,0,0.35); cursor: pointer; padding: 0; }
+        .pal-swatch:hover { transform: translate(-1px,-1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.25); }
+        .pal-swatch.custom { background: #1a1e24; color: #fff; font-family: 'Press Start 2P', monospace; font-size: 10px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+        .pal-hint { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: #4a525c; margin-top: 8px; text-align: center; line-height: 1.8; }
+
+        /* Carteles pixel de la columna derecha (ROOM PRICES / DAILY QUESTS):
+           marco grueso + tornillos en las esquinas superiores. Placeholder
+           hecho a mano hasta tener el arte definitivo. */
+        #oraclePanel, #missionsPanel { position: relative; border: 3px solid #000 !important; background: #0e1310 !important; }
+        #oraclePanel::before, #missionsPanel::before, #oraclePanel::after, #missionsPanel::after { content: ''; position: absolute; top: 7px; width: 7px; height: 7px; background: #565f6a; border: 2px solid #000; box-shadow: inset 1px 1px 0 rgba(255,255,255,0.5); }
+        #oraclePanel::before, #missionsPanel::before { left: 7px; }
+        #oraclePanel::after, #missionsPanel::after { right: 7px; }
+        .menu-side-head { font-family: 'Press Start 2P', monospace !important; font-size: 11px !important; letter-spacing: 1px !important; text-shadow: 2px 2px 0 #000; }
         .btn-reset { width: 100%; padding: 6px; margin-top: 5px; background: transparent; border: 1px dashed #333; color: #555; font-size: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-reset:hover { border-color: var(--primary); color: var(--primary); }
         
@@ -886,7 +916,8 @@
          unos segundos". Repetido más abajo para fijar la variable pixelMode
          que usa el resto del juego; repetir el toggle es inofensivo. -->
     <script>
-        try { document.body.classList.toggle('pixel-pack', localStorage.getItem('pw_pixel') === '1'); } catch(e) {}
+        // Pixel art SIEMPRE: el look classic ya no existe como opcion.
+        document.body.classList.add('pixel-pack');
     </script>
 
     <!-- Modo PREVIEW de la comparativa (comparativa.html carga index.html?pwlab=1
@@ -1072,17 +1103,89 @@
                 </label>
             </div>
 
-            <div class="section-title" style="margin-top:15px;">Texture Pack</div>
-            <div style="display:flex; gap:15px; margin-bottom:5px;">
-                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                    <input type="radio" name="packMode" value="classic" checked onclick="setPixelMode(false)"> Classic
-                </label>
-                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                    <input type="radio" name="packMode" value="pixel" onclick="setPixelMode(true)"> Pixel
-                </label>
+            <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
+        </div>
+    </div>
+
+    <!-- FEATURES: toda la info del modo (skills database, economia, guias).
+         Los paneles conservan sus ids; selectMode decide cual se ve. -->
+    <div id="featuresModal" class="pw-modal">
+        <div class="pw-modal-box features">
+            <div class="pw-modal-title">FEATURES</div>
+
+            <div class="login-right" id="arcadeGuidePanel" style="display:none;">
+                <div style="font-family:'Russo One'; color:#ccff00; font-size:20px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">ARCADE FEATURES</div>
+                <div class="arcade-objective">
+                    <span style="color:var(--primary);">ROGUELIKE MODE:</span> EAT FOOD, VIRUSES & ENEMIES LIKE CLASSIC, BUT WITH <span style="color:#fff;">SKILLS</span>.
+                    <br><br>
+                    DRAFT NEW POWERS EVERY <span style="color:#fff;">30s</span> TO DOMINATE THE ARENA.
+                    <br><br>
+                    <span style="color:#ffd700;">$PILL ECONOMY:</span> THE <span style="color:var(--accent)">TOP 10</span> PLAYERS SPLIT THE MATCH REVENUE.
+                    <br>
+                    <span style="color:#888; font-size:10px; font-style:italic;">(PRACTICE FREE HERE UNLIMITED TIMES BEFORE WAGERING)</span>
+                </div>
+                <div class="skills-grid-title">SKILLS DATABASE</div>
+                <div class="skills-grid" id="skillsGrid"></div>
+
+                <!-- TARJETA INFERIOR CON ALTURA FIJA PARA EVITAR SALTOS -->
+                <div class="skill-info-card" id="skillInfoCard">
+                    <div class="card-header"><span id="cardSkillName">SELECT A SKILL</span></div>
+                    <div class="card-video-box">
+                        <video id="cardSkillVideo" class="card-video-player" autoplay loop muted playsinline></video>
+                    </div>
+                    <div id="cardSkillDesc" style="border-top: 1px solid #333; padding-top: 8px;">
+                        Description area...
+                    </div>
+                </div>
+
+                <div id="secretSkinPanel" style="display:none; margin-top: 15px; border-top: 1px solid #333; padding-top: 10px; text-align: center; animation: fadeIn 0.5s;">
+                    <div style="color:#ffd700; font-family:'Russo One'; font-size:12px; margin-bottom:5px;">✨ SECRET SKIN UNLOCKED ✨</div>
+                    <input type="text" id="secretSkinInput" value="https://upload.wikimedia.org/wikipedia/en/5/5f/Original_Doge_meme.jpg" placeholder="Paste Image URL..." style="width:100%; padding: 8px; font-size:11px; background:#000; border:1px solid #ffd700; color:#fff; border-radius:4px; box-sizing:border-box;">
+                    <div style="font-size:9px; color:#aaa; margin-top:3px;">Clear text to revert to colors</div>
+                </div>
             </div>
 
-            <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
+            <div class="login-right" id="classicGuidePanel" style="display:none;">
+                <div style="font-family:'Russo One'; color:#00ffaa; font-size:20px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">CLASSIC ECONOMY</div>
+                <div class="arcade-objective" style="border-color: #00ffaa;">
+                    <span style="color:#00ffaa;">PURE SKILL:</span> EAT CELLS, SPLIT (SPACE), FARM VIRUSES (GAIN MASS, GET SPLIT). NO SKILLS.
+                    <br><br>
+                    <span style="color:#fff;">OBJECTIVE:</span> ELIMINATE <span style="color:var(--accent)">5 PLAYERS</span> (PENTAKILL) TO MAXIMIZE PROFIT.
+                    <br><br>
+                    <span style="color:#ffd700;">$PILL ECONOMY:</span>
+                    <ul style="margin:5px 0 10px 20px; padding:0; color:#ccc;">
+                        <li>KILL 1 = BREAK EVEN (Recover Entry)</li>
+                        <li>KILL 5 = <span style="color:var(--primary)">MAX ROI ($$$)</span></li>
+                    </ul>
+                     <span style="color:#888; font-size:10px; font-style:italic;">(PRACTICE FREE HERE UNLIMITED TIMES BEFORE WAGERING)</span>
+                </div>
+                <div class="skill-info-card" style="border-color: #00ffaa;">
+                    <div class="card-header" style="color:#00ffaa;">EXIT RULES</div>
+                    <div class="card-desc" style="color:#fff; font-size:11px;">
+                        <div class="card-lines" style="border-color:#00ffaa;"></div>
+                        <span style="color:var(--accent);">KILLS &lt; 1:</span> 20% PENALTY FEE.
+                        <br>
+                        <span style="color:#ffce3d;">KILLS &lt; 2:</span> 10% PENALTY FEE.
+                        <br>
+                        <span style="color:var(--primary);">KILLS 2+:</span> 0% PENALTY FEE (SAFE EXIT).
+                        <br><br>
+                        <span style="color:#ffd700; font-weight:bold;">ANTI-COMBAT LOG:</span> STAND STILL <span style="color:#fff;">5s</span> TO LOGOUT SAFELY. NO TIMER.
+                        <div class="card-lines-bottom" style="border-color:#00ffaa;"></div>
+                    </div>
+                </div>
+
+                <!-- VIDEO CORREGIDO (../video) -->
+                <div class="split-guide-box">
+                    <video id="guideVideo" class="split-video" src="../video/Split.mp4" autoplay loop muted playsinline></video>
+                    <div class="split-explanation" id="guideText">
+                        <span style="color:#00ffaa; font-weight:bold;">THE SPLIT (SPACE):</span>
+                        <br>Essential for killing. You launch half your mass forward to eat enemies or escape. High risk, high reward. You can split into up to 16 pieces.
+                    </div>
+                    <button class="guide-next-arrow" type="button" onclick="nextGuide(event)">❯</button>
+                </div>
+            </div>
+
+            <button class="pw-modal-cancel" onclick="closeFeatures()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
     </div>
 
@@ -1143,108 +1246,49 @@
       </div>
       <div class="menu-row">
         <div class="login-box">
-            <h1>PillWars</h1>
-            <h2 id="selectedModeTitle">MODE SELECTED</h2>
+            <!-- Cabecera: titulo del modo + 2 frases breves a la derecha -->
+            <div class="menu-head-row">
+                <h1 id="selectedModeTitle">PILLWARS</h1>
+                <div class="mode-blurb" id="modeBlurb"></div>
+            </div>
             <div id="gameOverMsg" style="display:none; color:#ff2a2a; font-weight:bold; margin-bottom:10px;">GAME OVER</div>
 
-            <div class="login-content-wrapper">
-                <div class="login-left">
-                    <!-- Pildora grande interactiva: se pinta con los MISMOS sprites del
-                         juego (pixPillSprite) en un canvas. Click en cada mitad abre el
-                         color picker correspondiente; debajo, nombre y colores. -->
-                    <div class="pill-preview-wrap">
-                        <canvas id="menuPillCanvas" width="320" height="250" title="Click a half to change its color"></canvas>
-                    </div>
-                    <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
-                    <div class="style-type-selector" style="display:none;">
-                        <label><input type="radio" name="styleMode" value="color" checked onclick="toggleStyleUI()"> Colors</label>
-                        <label><input type="radio" name="styleMode" value="skin" onclick="toggleStyleUI()"> Skin URL</label>
-                    </div>
-
-                    <input type="text" id="playerNameInput" placeholder="Enter Nickname..." maxlength="12">
-                    <div id="colorPickersContainer" class="color-pickers">
-                        <div class="cp-group"><label>Top</label><input type="color" id="colTop" value="#c0c8d0"></div>
-                        <div class="cp-group"><label>Base</label><input type="color" id="colBot" value="#00ff44"></div>
-                    </div>
-
-                    <div id="skinInputContainer" style="display:none;"></div>
-
-                    <button class="btn-play" id="btnPlay" onclick="openPlayChoice()">PLAY</button>
-                    <button class="btn-settings" onclick="openSettings()">SETTINGS</button>
-                </div>
-
-                <div class="login-right" id="arcadeGuidePanel" style="display:none;">
-                    <div style="font-family:'Russo One'; color:#ccff00; font-size:20px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">ARCADE FEATURES</div>
-                    <div class="arcade-objective">
-                        <span style="color:var(--primary);">ROGUELIKE MODE:</span> EAT FOOD, VIRUSES & ENEMIES LIKE CLASSIC, BUT WITH <span style="color:#fff;">SKILLS</span>.
-                        <br><br>
-                        DRAFT NEW POWERS EVERY <span style="color:#fff;">30s</span> TO DOMINATE THE ARENA.
-                        <br><br>
-                        <span style="color:#ffd700;">$PILL ECONOMY:</span> THE <span style="color:var(--accent)">TOP 10</span> PLAYERS SPLIT THE MATCH REVENUE.
-                        <br>
-                        <span style="color:#888; font-size:10px; font-style:italic;">(PRACTICE FREE HERE UNLIMITED TIMES BEFORE WAGERING)</span>
-                    </div>
-                    <div class="skills-grid-title">SKILLS DATABASE</div>
-                    <div class="skills-grid" id="skillsGrid"></div>
-                    
-                    <!-- TARJETA INFERIOR CON ALTURA FIJA PARA EVITAR SALTOS -->
-                    <div class="skill-info-card" id="skillInfoCard">
-                        <div class="card-header"><span id="cardSkillName">SELECT A SKILL</span></div>
-                        <div class="card-video-box">
-                            <video id="cardSkillVideo" class="card-video-player" autoplay loop muted playsinline></video>
-                        </div>
-                        <div id="cardSkillDesc" style="border-top: 1px solid #333; padding-top: 8px;">
-                            Description area...
-                        </div>
-                    </div>
-
-                    <div id="secretSkinPanel" style="display:none; margin-top: 15px; border-top: 1px solid #333; padding-top: 10px; text-align: center; animation: fadeIn 0.5s;">
-                        <div style="color:#ffd700; font-family:'Russo One'; font-size:12px; margin-bottom:5px;">✨ SECRET SKIN UNLOCKED ✨</div>
-                        <input type="text" id="secretSkinInput" value="https://upload.wikimedia.org/wikipedia/en/5/5f/Original_Doge_meme.jpg" placeholder="Paste Image URL..." style="width:100%; padding: 8px; font-size:11px; background:#000; border:1px solid #ffd700; color:#fff; border-radius:4px; box-sizing:border-box;">
-                        <div style="font-size:9px; color:#aaa; margin-top:3px;">Clear text to revert to colors</div>
+            <div class="login-left">
+                <!-- Pildora grande interactiva: se pinta con los MISMOS sprites del
+                     juego (pixPillSprite) en un canvas. Click en cada mitad abre la
+                     paleta de colores (personalizable por usuario, tipo Paint). -->
+                <div class="pill-preview-wrap">
+                    <canvas id="menuPillCanvas" width="320" height="250" title="Click a half to pick its color"></canvas>
+                    <div id="pillPalette" class="pill-palette" style="display:none;">
+                        <div class="pal-title" id="palTitle">TOP COLOR</div>
+                        <div class="pal-grid" id="palGrid"></div>
+                        <div class="pal-hint">RIGHT-CLICK A SLOT TO REPLACE IT WITH A CUSTOM COLOR</div>
                     </div>
                 </div>
-
-                <div class="login-right" id="classicGuidePanel" style="display:none;">
-                    <div style="font-family:'Russo One'; color:#00ffaa; font-size:20px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">CLASSIC ECONOMY</div>
-                    <div class="arcade-objective" style="border-color: #00ffaa;">
-                        <span style="color:#00ffaa;">PURE SKILL:</span> EAT CELLS, SPLIT (SPACE), FARM VIRUSES (GAIN MASS, GET SPLIT). NO SKILLS.
-                        <br><br>
-                        <span style="color:#fff;">OBJECTIVE:</span> ELIMINATE <span style="color:var(--accent)">5 PLAYERS</span> (PENTAKILL) TO MAXIMIZE PROFIT.
-                        <br><br>
-                        <span style="color:#ffd700;">$PILL ECONOMY:</span>
-                        <ul style="margin:5px 0 10px 20px; padding:0; color:#ccc;">
-                            <li>KILL 1 = BREAK EVEN (Recover Entry)</li>
-                            <li>KILL 5 = <span style="color:var(--primary)">MAX ROI ($$$)</span></li>
-                        </ul>
-                         <span style="color:#888; font-size:10px; font-style:italic;">(PRACTICE FREE HERE UNLIMITED TIMES BEFORE WAGERING)</span>
-                    </div>
-                    <div class="skill-info-card" style="border-color: #00ffaa;">
-                        <div class="card-header" style="color:#00ffaa;">EXIT RULES</div>
-                        <div class="card-desc" style="color:#fff; font-size:11px;">
-                            <div class="card-lines" style="border-color:#00ffaa;"></div>
-                            <span style="color:var(--accent);">KILLS &lt; 1:</span> 20% PENALTY FEE.
-                            <br>
-                            <span style="color:#ffce3d;">KILLS &lt; 2:</span> 10% PENALTY FEE.
-                            <br>
-                            <span style="color:var(--primary);">KILLS 2+:</span> 0% PENALTY FEE (SAFE EXIT).
-                            <br><br>
-                            <span style="color:#ffd700; font-weight:bold;">ANTI-COMBAT LOG:</span> STAND STILL <span style="color:#fff;">5s</span> TO LOGOUT SAFELY. NO TIMER.
-                            <div class="card-lines-bottom" style="border-color:#00ffaa;"></div>
-                        </div>
-                    </div>
-
-                    <!-- VIDEO CORREGIDO (../video) -->
-                    <div class="split-guide-box">
-                        <video id="guideVideo" class="split-video" src="../video/Split.mp4" autoplay loop muted playsinline></video>
-                        <div class="split-explanation" id="guideText">
-                            <span style="color:#00ffaa; font-weight:bold;">THE SPLIT (SPACE):</span>
-                            <br>Essential for killing. You launch half your mass forward to eat enemies or escape. High risk, high reward. You can split into up to 16 pieces.
-                        </div>
-                        <button class="guide-next-arrow" type="button" onclick="nextGuide(event)">❯</button>
-                    </div>
+                <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
+                <div class="style-type-selector" style="display:none;">
+                    <label><input type="radio" name="styleMode" value="color" checked onclick="toggleStyleUI()"> Colors</label>
+                    <label><input type="radio" name="styleMode" value="skin" onclick="toggleStyleUI()"> Skin URL</label>
                 </div>
+
+                <!-- Nombre sutil: solo una linea de texto bajo la pildora -->
+                <input type="text" id="playerNameInput" class="name-subtle" placeholder="TYPE YOUR NAME" maxlength="12" autocomplete="off" spellcheck="false">
+
+                <!-- Inputs nativos ocultos: el resto del juego lee colTop/colBot de
+                     aqui; la paleta los escribe. palettePicker es el "custom". -->
+                <div id="colorPickersContainer" style="display:none;">
+                    <input type="color" id="colTop" value="#c0c8d0">
+                    <input type="color" id="colBot" value="#00ff44">
+                    <input type="color" id="palettePicker" value="#ff0000">
+                </div>
+
+                <div id="skinInputContainer" style="display:none;"></div>
+
+                <button class="btn-play" id="btnPlay" onclick="openPlayChoice()">PLAY</button>
+                <button class="btn-settings" onclick="openSettings()">SETTINGS</button>
+                <button class="btn-settings" onclick="openFeatures()">FEATURES</button>
             </div>
+
         </div>
 
         <!-- Columna derecha: dos bloques iguales (ROOM PRICES arriba, MISSIONS/SKINS abajo) -->
@@ -1411,8 +1455,9 @@
     // Texture pack "pixel" (ver PIXELART-PLAN.md): cada objeto se dibuja desde
     // un sprite pixel art generado proceduralmente y escalado sin suavizado,
     // a resolución completa de pantalla. Solo render; físicas intactas.
-    let pixelMode = localStorage.getItem('pw_pixel') === '1';
-    document.body.classList.toggle('pixel-pack', pixelMode);
+    // Pixel art SIEMPRE (el modo classic ya no existe; la clase se aplica en el
+    // script temprano del <body> para evitar el flash del look antiguo).
+    const pixelMode = true;
     // Atlas hero (sprites únicos por letra, ver pixfont-hero.js): se prefiere sobre
     // la fuente procedural en cuanto sus imágenes cargan, letra por letra según lo
     // que haya en game/img/font-hero/. Mientras falte alguna, se sigue usando el
@@ -1631,18 +1676,14 @@
 
     function setTheme(mode) {
         const root = document.documentElement;
-        if (mode === 'white') { root.style.setProperty('--bg-color', '#f0f0f0'); root.style.setProperty('--grid-line', 'rgba(0, 0, 0, 0.05)'); } 
-        else if (mode === 'grey') { root.style.setProperty('--bg-color', '#2a2a2a'); root.style.setProperty('--grid-line', 'rgba(255, 255, 255, 0.03)'); } 
+        if (mode === 'white') { root.style.setProperty('--bg-color', '#f0f0f0'); root.style.setProperty('--grid-line', 'rgba(0, 0, 0, 0.05)'); }
+        else if (mode === 'grey') { root.style.setProperty('--bg-color', '#2a2a2a'); root.style.setProperty('--grid-line', 'rgba(255, 255, 255, 0.03)'); }
         else { root.style.setProperty('--bg-color', '#050505'); root.style.setProperty('--grid-line', 'rgba(255, 255, 255, 0.03)'); }
     }
 
-    function setPixelMode(on) {
-        SoundManager.play('simpleselect'); pixelMode = !!on;
-        localStorage.setItem('pw_pixel', pixelMode ? '1' : '0');
-        const rp = document.querySelector('input[name="packMode"][value="' + (pixelMode ? 'pixel' : 'classic') + '"]'); if (rp) rp.checked = true;
-        document.body.classList.toggle('pixel-pack', pixelMode);
-        resize();
-    }
+    // Compat: comparativa.html llama a setPixelMode() en sus iframes. El modo
+    // classic ya no existe (pixel siempre), asi que es un no-op.
+    window.setPixelMode = function () {};
 
     // Constantes compartidas con la simulación
     const SKILL_PARAMS = PillSim.SKILL_PARAMS, SKILL_DEFS = PillSim.SKILL_DEFS;
@@ -3369,30 +3410,33 @@
         const missionsPanel = document.getElementById('missionsPanel');
         if (oraclePanel) { oraclePanel.classList.remove('classic','arcade'); oraclePanel.classList.add(m === 'arcade' ? 'arcade' : 'classic'); }
         if (missionsPanel) { missionsPanel.classList.remove('classic','arcade'); missionsPanel.classList.add(m === 'arcade' ? 'arcade' : 'classic'); }
+        const blurb = document.getElementById('modeBlurb');
         if (m === 'classic') {
             document.getElementById('panelClassic').classList.add('expanded');
             document.getElementById('panelArcade').classList.add('hidden');
-            els.selectedModeTitle.innerText = "CLASSIC MODE";
+            els.selectedModeTitle.innerText = "PILLWARS CLASSIC";
             els.selectedModeTitle.style.color = "#00ffaa";
+            if (blurb) blurb.innerHTML = 'PURE CELL-EATING. NO TIMER, HUGE MAP.<br>5 KILLS = MAX PROFIT. CASH OUT ANYTIME.';
             els.loginOverlay.classList.remove('bg-arcade');
             els.loginOverlay.classList.add('bg-classic');
-            document.getElementById('arcadeGuidePanel').style.display = 'none'; 
-            document.getElementById('classicGuidePanel').style.display = 'flex'; 
-            loginBox.style.width = '850px'; 
+            document.getElementById('arcadeGuidePanel').style.display = 'none';
+            document.getElementById('classicGuidePanel').style.display = 'flex';
+            loginBox.style.width = '520px';
             if(splitSelect) splitSelect.value = "8";
-        } else { 
-            document.getElementById('panelArcade').classList.add('expanded'); 
-            document.getElementById('panelClassic').classList.add('hidden'); 
-            els.selectedModeTitle.innerText = "ARCADE MODE"; 
-            els.selectedModeTitle.style.color = "#ccff00"; 
-            els.loginOverlay.classList.remove('bg-classic'); 
-            els.loginOverlay.classList.add('bg-arcade'); 
-            document.getElementById('arcadeGuidePanel').style.display = 'flex'; 
-            document.getElementById('classicGuidePanel').style.display = 'none'; 
-            loginBox.style.width = '850px'; 
-            initArcadeGuide(); 
+        } else {
+            document.getElementById('panelArcade').classList.add('expanded');
+            document.getElementById('panelClassic').classList.add('hidden');
+            els.selectedModeTitle.innerText = "PILLWARS ARCADE";
+            els.selectedModeTitle.style.color = "#ccff00";
+            if (blurb) blurb.innerHTML = 'ROGUELIKE ARENA — DRAFT SKILLS EVERY 30S.<br>REACH THE TOP 10 AND SPLIT THE POT.';
+            els.loginOverlay.classList.remove('bg-classic');
+            els.loginOverlay.classList.add('bg-arcade');
+            document.getElementById('arcadeGuidePanel').style.display = 'flex';
+            document.getElementById('classicGuidePanel').style.display = 'none';
+            loginBox.style.width = '520px';
+            initArcadeGuide();
             if(splitSelect) splitSelect.value = "4";
-        } 
+        }
         
         if(splitSelect) MAX_BOT_CELLS = parseInt(splitSelect.value); 
         
@@ -3461,6 +3505,62 @@
     }
     function openSettings() { SoundManager.play('simpleselect'); document.getElementById('settingsModal').style.display = 'flex'; }
     function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+    function openFeatures() { SoundManager.play('simpleselect'); document.getElementById('featuresModal').style.display = 'flex'; }
+    function closeFeatures() { document.getElementById('featuresModal').style.display = 'none'; }
+
+    // --- Paleta de colores de la pildora (tipo Paint, por usuario) ---
+    // 12 slots editables persistidos + CUSTOM. Click en una mitad de la pildora
+    // abre la paleta para esa mitad; click derecho en un slot lo sobreescribe
+    // con un color propio (localStorage), como la paleta de Paint.
+    const PAL_KEY = 'pw_palette';
+    const PAL_DEFAULT = ['#ffffff', '#c0c8d0', '#4a525c', '#ff2a2a', '#ff8c00', '#ffce3d', '#00ff44', '#00ffaa', '#1a73e8', '#66ccff', '#cc00ff', '#ff69b4'];
+    let palColors = PAL_DEFAULT.slice();
+    try { const s = JSON.parse(localStorage.getItem(PAL_KEY)); if (Array.isArray(s) && s.length === PAL_DEFAULT.length) palColors = s; } catch (e) {}
+    let palHalf = 'colTop';    // input destino ('colTop' | 'colBot')
+    let palEditIdx = null;     // slot en edicion via click derecho (null = custom suelto)
+    function savePalette() { try { localStorage.setItem(PAL_KEY, JSON.stringify(palColors)); } catch (e) {} }
+    function renderPalette() {
+        const grid = document.getElementById('palGrid'); if (!grid) return;
+        grid.innerHTML = '';
+        palColors.forEach((c, i) => {
+            const b = document.createElement('button');
+            b.className = 'pal-swatch'; b.style.background = c; b.title = c;
+            b.onclick = () => applyPalColor(c);
+            b.oncontextmenu = (e) => { e.preventDefault(); palEditIdx = i; document.getElementById('palettePicker').click(); };
+            grid.appendChild(b);
+        });
+        const custom = document.createElement('button');
+        custom.className = 'pal-swatch custom'; custom.textContent = '+'; custom.title = 'Custom color';
+        custom.onclick = () => { palEditIdx = null; document.getElementById('palettePicker').click(); };
+        grid.appendChild(custom);
+    }
+    function applyPalColor(c) {
+        document.getElementById(palHalf).value = c;
+        renderMenuPill();
+        closePalette();
+        SoundManager.play('simpleselect');
+    }
+    function openPalette(half) {
+        palHalf = half;
+        document.getElementById('palTitle').textContent = half === 'colTop' ? 'TOP COLOR' : 'BASE COLOR';
+        renderPalette();
+        document.getElementById('pillPalette').style.display = 'block';
+    }
+    function closePalette() { const p = document.getElementById('pillPalette'); if (p) p.style.display = 'none'; }
+    (function initPalette() {
+        const picker = document.getElementById('palettePicker'); if (!picker) return;
+        picker.addEventListener('input', () => {
+            if (palEditIdx != null) { palColors[palEditIdx] = picker.value; savePalette(); renderPalette(); }
+            document.getElementById(palHalf).value = picker.value;
+            renderMenuPill();
+        });
+        // Click fuera de la paleta (y fuera de la pildora) → cerrarla.
+        document.addEventListener('mousedown', (e) => {
+            const p = document.getElementById('pillPalette');
+            if (!p || p.style.display === 'none') return;
+            if (!e.target.closest('#pillPalette') && e.target.id !== 'menuPillCanvas') closePalette();
+        });
+    })();
 
     // --- Pildora interactiva del menu: MISMOS sprites del juego (pixPillSprite),
     // con el nombre encima como en partida. Click en cada mitad abre su picker. ---
@@ -3491,7 +3591,7 @@
             const dx = (e.clientX - r.left) * (cv.width / r.width) - cv.width / 2;
             const dy = (e.clientY - r.top) * (cv.height / r.height) - (cv.height / 2 + 14);
             // La pildora esta rotada -45º: la mitad "top" queda arriba-izquierda.
-            document.getElementById(dx + dy < 0 ? 'colTop' : 'colBot').click();
+            openPalette(dx + dy < 0 ? 'colTop' : 'colBot');
         });
         ['colTop', 'colBot', 'playerNameInput'].forEach(id => document.getElementById(id).addEventListener('input', renderMenuPill));
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderMenuPill);
@@ -3554,7 +3654,6 @@
 
     function init() {
         SoundManager.init(); resize();
-        if (pixelMode) { const rp = document.querySelector('input[name="packMode"][value="pixel"]'); if (rp) rp.checked = true; }
         for(let i=1; i<=10; i++) { uiSlots[i] = document.getElementById('slot'+i); uiCounts[i] = document.getElementById('count'+i); uiOverlays[i] = document.getElementById('cd'+i); uiOverlaysActive[i] = document.getElementById('dur'+i); uiIcons[i] = document.getElementById('icon'+i); uiGcds[i] = document.getElementById('gcd'+i); } 
         els.skillOverlay.style.top = UI_PARAMS.skillSelectTop; window.addEventListener('resize', resize); 
         els.actionBar.addEventListener('mouseenter', () => isHoveringUI = true); els.actionBar.addEventListener('mouseleave', () => isHoveringUI = false);
