@@ -361,7 +361,9 @@
            Misma animación slideUp que el login-box para que se muevan juntos al abrir.
            Tamano propio en CSS, independiente del menu central (no se sincroniza
            por JS con nada): mas ancha y mas alta que antes. */
-        .menu-right-col { width: 480px; max-width: 40vw; height: 90vh; min-height: 740px; z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
+        /* Bajados un poco (que no queden por encima del titulo) y sin min-height
+           fijo: en pantallas bajas desbordaba y el cartel inferior salia cortado. */
+        .menu-right-col { width: 480px; max-width: 40vw; margin-top: 46px; height: calc(90vh - 46px); z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
         #oraclePanel, #missionsPanel { flex: 1; min-height: 0; background: rgba(8,12,8,0.92); backdrop-filter: blur(6px); border-radius: 14px; padding: 20px 24px; box-shadow: 0 10px 35px rgba(0,0,0,0.55); display: flex; flex-direction: column; overflow: hidden; }
         #oraclePanel.classic { border: 1px solid rgba(0,255,170,0.3); }
         #oraclePanel.arcade  { border: 1px solid rgba(204,255,0,0.3); }
@@ -443,6 +445,9 @@
             max-width: 95%; display: flex; flex-direction: column;
             animation: slideUp 0.4s ease-out; position: relative;
             overflow: visible; max-height: 95vh;
+            /* Por encima de la columna de carteles (z61): un boton movido con el
+               editor de layout hacia esa zona seguiria recibiendo los clicks. */
+            z-index: 62;
         }
         
         .login-left { width: 100%; text-align: left; }
@@ -556,7 +561,7 @@
            Sin lineas ni cajas — flota libre como el resto. */
         .menu-head-row { display: flex; align-items: center; justify-content: flex-start; gap: 22px; margin-bottom: 14px; text-align: left; width: max-content; max-width: 60vw; }
         #selectedModeTitle { font-family: 'Press Start 2P', monospace; font-size: 24px; text-transform: uppercase; margin: 0; letter-spacing: 1px; text-shadow: 3px 3px 0 #000, 6px 6px 0 rgba(0,0,0,0.4); line-height: 1.35; white-space: nowrap; }
-        .mode-blurb { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; text-align: left; line-height: 2.1; letter-spacing: 0.5px; }
+        .mode-blurb { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; text-align: left; line-height: 2.1; letter-spacing: 0.5px; white-space: nowrap; }
         .section-title { font-family: 'Russo One'; font-size: 10px; color: var(--primary); text-transform: uppercase; margin: 10px 0 5px; text-align: left; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 2px; }
         .style-type-selector { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; display:none; }
         .style-type-selector label { font-size: 12px; font-weight: 600; color: #aaa; cursor: pointer; display: flex; align-items: center; gap: 5px; }
@@ -605,7 +610,10 @@
 
         /* ===== Menu nuevo: pildora interactiva + SETTINGS + popups pixel ===== */
         #menuPillCanvas { width: 100%; max-width: 400px; image-rendering: pixelated; display: block; margin: 0 auto; }
-        .btn-settings { width: 100%; padding: 9px; margin-top: 8px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.06); transition: 0.15s; text-transform: uppercase; }
+        .btn-settings { width: 100%; padding: 9px; margin-top: 8px; background: #14171c; color: #c8cdd2; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.06); transition: 0.15s; text-transform: uppercase; }
+        /* Los 3 botones del menu alineados con la misma separacion */
+        .login-left .btn-play { margin-top: 14px; }
+        .login-left .btn-settings { margin-top: 8px; }
         .btn-settings:hover { color: #fff; border-color: #4a525c; filter: brightness(1.2); }
         .pw-modal { display: none; position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; }
         .pw-modal-box { background: #0d0f12; border: 3px solid #2a2f36; box-shadow: 0 0 0 3px #000, 8px 8px 0 rgba(0,0,0,0.65), inset 2px 2px 0 rgba(255,255,255,0.05); padding: 28px 30px; width: 360px; max-width: 92vw; text-align: center; image-rendering: pixelated; }
@@ -2181,7 +2189,8 @@
         // Botones rectangulares (OK del modal, CONTINUE, TRY AGAIN...): ahí sí
         // 9-slice, con recorte 95 que cubre el bracket de esquina completo.
         const sel = 'body.pixel-pack .btn-sys, body.pixel-pack .gm-btn,' +
-            'body.pixel-pack .btn-play, body.pixel-pack .btn-spectate';
+            'body.pixel-pack .btn-play, body.pixel-pack .btn-spectate,' +
+            'body.pixel-pack .btn-settings';
         return card + sel + '{border:16px solid transparent!important;' +
             'border-image:url(' + cartelHeroUrl('button') + ') 95 fill stretch!important;' +
             'border-radius:0!important;background:transparent!important;clip-path:none!important;box-shadow:none!important}';
@@ -3451,7 +3460,7 @@
             document.getElementById('panelArcade').classList.add('hidden');
             els.selectedModeTitle.innerText = "PILLWARS CLASSIC";
             els.selectedModeTitle.style.color = "#00ffaa";
-            if (blurb) blurb.innerHTML = 'PURE CELL-EATING. NO TIMER, HUGE MAP.<br>5 KILLS = MAX PROFIT. CASH OUT ANYTIME.';
+            if (blurb) blurb.innerHTML = 'PURE CELL-EATING — NO TIMER, 5 KILLS = MAX PROFIT.';
             els.loginOverlay.classList.remove('bg-arcade');
             els.loginOverlay.classList.add('bg-classic');
             document.getElementById('arcadeGuidePanel').style.display = 'none';
@@ -3462,7 +3471,7 @@
             document.getElementById('panelClassic').classList.add('hidden');
             els.selectedModeTitle.innerText = "PILLWARS ARCADE";
             els.selectedModeTitle.style.color = "#ccff00";
-            if (blurb) blurb.innerHTML = 'ROGUELIKE ARENA — DRAFT SKILLS EVERY 30S.<br>REACH THE TOP 10 AND SPLIT THE POT.';
+            if (blurb) blurb.innerHTML = 'ROGUELIKE ARENA — DRAFT SKILLS EVERY 30S, TOP 10 SPLIT THE POT.';
             els.loginOverlay.classList.remove('bg-classic');
             els.loginOverlay.classList.add('bg-arcade');
             document.getElementById('arcadeGuidePanel').style.display = 'flex';
@@ -3660,7 +3669,9 @@
             g.drawImage(sprNew, -pW / 2, -pH / 2, pW, pH);
         }
         g.restore();
-        const name = document.getElementById('playerNameInput').value.trim() || 'PLAYER';
+        // En MAYUSCULAS: el input del nombre se muestra uppercase (CSS), asi la
+        // pildora coincide siempre con lo que se ve escrito.
+        const name = (document.getElementById('playerNameInput').value.trim() || 'PLAYER').toUpperCase();
         g.font = "34px " + PIX_FONT; g.textAlign = 'center'; g.textBaseline = 'top';
         g.strokeStyle = '#000'; g.lineWidth = 5; g.fillStyle = '#FFF';
         g.strokeText(name, W / 2, 2); g.fillText(name, W / 2, 2);
