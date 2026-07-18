@@ -611,9 +611,32 @@
         /* ===== Menu nuevo: pildora interactiva + SETTINGS + popups pixel ===== */
         #menuPillCanvas { width: 100%; max-width: 400px; image-rendering: pixelated; display: block; margin: 0 auto; }
         .btn-settings { width: 100%; padding: 9px; margin-top: 8px; background: #14171c; color: #c8cdd2; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.06); transition: 0.15s; text-transform: uppercase; }
-        /* Los 3 botones del menu alineados con la misma separacion */
-        .login-left .btn-play { margin-top: 14px; }
-        .login-left .btn-settings { margin-top: 8px; }
+        /* Los 3 botones del menu: arte pixel plano (sin texto horneado) de la
+           carpeta base — rojo para PLAY, azul SETTINGS, verde FEATURES. El
+           selector con body.pixel-pack gana al border-image generico que
+           _btnImgRule aplica a .btn-play en el stylesheet runtime. */
+        body.pixel-pack .login-left .btn-play, .login-left .btn-play {
+            border: none !important; border-image: none !important; border-radius: 0 !important;
+            clip-path: none !important; box-shadow: none !important;
+            background: transparent url('img/cartel-hero/btn-plain-red.png') center/100% 100% no-repeat !important;
+            image-rendering: pixelated; aspect-ratio: 744/98; width: 100%;
+            font-family: 'Press Start 2P', monospace; font-size: 16px; color: #fff;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.65); padding: 0; margin-top: 14px;
+        }
+        body.pixel-pack .login-left .btn-settings, .login-left .btn-settings {
+            border: none !important; border-image: none !important; border-radius: 0 !important;
+            clip-path: none !important; box-shadow: none !important;
+            background: transparent url('img/cartel-hero/btn-plain-blue.png') center/100% 100% no-repeat !important;
+            image-rendering: pixelated; aspect-ratio: 747/111; width: 82%;
+            font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.65); padding: 0; margin: 8px auto 0; display: block;
+        }
+        body.pixel-pack .login-left #btnFeatures, .login-left #btnFeatures {
+            background-image: url('img/cartel-hero/btn-plain-green.png') !important;
+            aspect-ratio: 828/124;
+        }
+        .login-left .btn-play:hover:not(:disabled), .login-left .btn-settings:hover { filter: brightness(1.15); color: #fff; }
+        .login-left .btn-play:disabled { filter: grayscale(0.6) brightness(0.75); }
         .btn-settings:hover { color: #fff; border-color: #4a525c; filter: brightness(1.2); }
         .pw-modal { display: none; position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; }
         .pw-modal-box { background: #0d0f12; border: 3px solid #2a2f36; box-shadow: 0 0 0 3px #000, 8px 8px 0 rgba(0,0,0,0.65), inset 2px 2px 0 rgba(255,255,255,0.05); padding: 28px 30px; width: 360px; max-width: 92vw; text-align: center; image-rendering: pixelated; }
@@ -640,7 +663,7 @@
         .pw-modal-box.features .pw-modal-cancel { display: block; margin: 14px auto 0; }
 
         /* Nombre sutil bajo la pildora: una linea de texto, sin caja */
-        #playerNameInput.name-subtle { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 2px dashed #2a2f36 !important; border-radius: 0 !important; font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; letter-spacing: 1px; padding: 8px 4px 6px; text-transform: uppercase; width: 70%; margin: 2px auto 10px; display: block; }
+        #playerNameInput.name-subtle { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 2px dashed #2a2f36 !important; border-radius: 0 !important; font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; letter-spacing: 1px; padding: 8px 4px 6px; width: 70%; margin: 2px auto 10px; display: block; }
         #playerNameInput.name-subtle:focus { outline: none; border-bottom-color: var(--primary) !important; }
         #playerNameInput.name-subtle::placeholder { color: #4a525c; }
 
@@ -2189,8 +2212,7 @@
         // Botones rectangulares (OK del modal, CONTINUE, TRY AGAIN...): ahí sí
         // 9-slice, con recorte 95 que cubre el bracket de esquina completo.
         const sel = 'body.pixel-pack .btn-sys, body.pixel-pack .gm-btn,' +
-            'body.pixel-pack .btn-play, body.pixel-pack .btn-spectate,' +
-            'body.pixel-pack .btn-settings';
+            'body.pixel-pack .btn-play, body.pixel-pack .btn-spectate';
         return card + sel + '{border:16px solid transparent!important;' +
             'border-image:url(' + cartelHeroUrl('button') + ') 95 fill stretch!important;' +
             'border-radius:0!important;background:transparent!important;clip-path:none!important;box-shadow:none!important}';
@@ -3669,9 +3691,9 @@
             g.drawImage(sprNew, -pW / 2, -pH / 2, pW, pH);
         }
         g.restore();
-        // En MAYUSCULAS: el input del nombre se muestra uppercase (CSS), asi la
-        // pildora coincide siempre con lo que se ve escrito.
-        const name = (document.getElementById('playerNameInput').value.trim() || 'PLAYER').toUpperCase();
+        // Tal cual se escribe (mayusculas Y minusculas), igual que el input lo
+        // muestra y que el nombre en partida.
+        const name = document.getElementById('playerNameInput').value.trim() || 'PLAYER';
         g.font = "34px " + PIX_FONT; g.textAlign = 'center'; g.textBaseline = 'top';
         g.strokeStyle = '#000'; g.lineWidth = 5; g.fillStyle = '#FFF';
         g.strokeText(name, W / 2, 2); g.fillText(name, W / 2, 2);
@@ -3737,7 +3759,12 @@
         for (const key in LAYOUT_ELS) {
             const el = document.querySelector(LAYOUT_ELS[key]); if (!el) continue;
             const t = menuLayout[key];
-            el.style.transform = t ? 'translate(' + (t.x || 0) + 'px,' + (t.y || 0) + 'px) scale(' + (t.s || 1) + ')' : '';
+            // Propiedades translate/scale (NO transform): asi el efecto de
+            // pulsacion pixel-pack (button:active { transform } !important) se
+            // COMPONE con el layout en vez de pisarlo — antes, al pulsar un
+            // boton movido, saltaba a su posicion original y se perdia el click.
+            el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '';
+            el.style.scale = t ? String(t.s || 1) : '';
         }
     }
     function layoutTarget(e) {
