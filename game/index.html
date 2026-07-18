@@ -367,10 +367,10 @@
         /* Fondo + marco de piedra: PNG de David via _pixFrameRule/quest-panel
            (JS, ver buildPixPanelCss) — border-image no admite !important en
            shorthand, así que el resto solo aporta layout. */
-        /* Padding reducido (antes 20px 24px dejaba demasiado hueco entre el
-           texto y el marco, y encogia tanto el area util que las listas
-           desbordaban y sacaban el scrollbar feo de Windows). */
-        #oraclePanel, #missionsPanel { position: relative; flex: 1; min-height: 0; padding: 10px 14px; display: flex; flex-direction: column; overflow: hidden; }
+        /* El marco (panel) solo aporta el border-image + recorte; el padding y
+           el layout viven en .cartel-inner, que es lo que ahora se mueve/escala
+           por separado desde el editor de layout (SETTINGS -> EDIT LAYOUT). */
+        #oraclePanel, #missionsPanel { position: relative; flex: 1; min-height: 0; overflow: hidden; }
         /* Oscurecido sutil sobre el fondo del cartel (el interior del PNG se
            veia algo mas claro que la referencia): capa encima del border-image,
            debajo del contenido real (que va despues en el DOM). */
@@ -379,7 +379,11 @@
            claro pegado al borde). Se extiende un poco por debajo del marco
            para que no quede ningun hueco sin oscurecer. */
         #oraclePanel::before, #missionsPanel::before { content: ''; position: absolute; inset: -6px; background: rgba(0,0,0,0.16); pointer-events: none; z-index: 0; }
-        #oraclePanel > *, #missionsPanel > * { position: relative; z-index: 1; }
+        /* Padding reducido (antes 20px 24px dejaba demasiado hueco entre el
+           texto y el marco, y encogia tanto el area util que las listas
+           desbordaban y sacaban el scrollbar feo de Windows). height:100% para
+           que por defecto (sin editar) ocupe todo el cartel, igual que antes. */
+        .cartel-inner { position: relative; z-index: 1; height: 100%; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; overflow: hidden; }
         .menu-side-head { font-family: 'Russo One'; font-size: 14px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
         #oraclePanel.classic .menu-side-head { color: #00ffaa; }
         #oraclePanel.arcade  .menu-side-head { color: #ccff00; }
@@ -1375,36 +1379,45 @@
         <div class="menu-right-col">
             <!-- Bloque ORACLE: descripción + precio del token + tabla de salas -->
             <div id="oraclePanel" class="classic">
-                <div class="menu-side-head"><span>ROOM · PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
-                <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
-                <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
-                <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
-                    <span class="oracle-layers-hint">view a specific room layer (you can't choose which one you'll be assigned to)</span>
+                <!-- Cuadrado interior: editable por separado del marco de piedra
+                     (SETTINGS -> EDIT LAYOUT), asi se puede ajustar el tamano/
+                     posicion del contenido sin mover el cartel entero. -->
+                <div class="cartel-inner" id="oracleInner">
+                    <div class="menu-side-head"><span>ROOM · PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
+                    <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
+                    <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
+                    <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
+                        <span class="oracle-layers-hint">view a specific room layer (you can't choose which one you'll be assigned to)</span>
+                    </div>
+                    <div id="oracleRows" class="oracle-rows"></div>
                 </div>
-                <div id="oracleRows" class="oracle-rows"></div>
             </div>
 
             <!-- Bloque MISSIONS / SKINS: carrusel con flecha -->
             <div id="missionsPanel" class="classic">
-                <div class="menu-side-head">
-                    <span id="sidePanelTitle">DAILY QUESTS</span>
-                    <span style="display:flex; align-items:center; gap:10px;">
-                        <span id="sidePanelExtra" style="font-size:11px;letter-spacing:1px;"><span id="missionsDone">0</span>/5 · <span id="missionsSp">0</span> SP</span>
-                        <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
-                    </span>
-                </div>
-                <div id="sidePanelMissions"><div id="missionsList"></div></div>
-                <div id="sidePanelSkins" style="display:none">
-                    <div class="skins-soon">
-                        <div class="ss-big" style="color:#ffce3d">★</div>
-                        <div style="font-family:'Russo One'; font-size:11px; color:#888; letter-spacing:2px">SKIN POINTS</div>
-                        <div style="font-family:'Russo One'; font-size:32px; color:#ffce3d; text-shadow:0 0 12px rgba(255,206,61,0.4); margin:4px 0 14px;">
-                            <span id="skinPointsValue">0</span> <span style="font-size:13px; color:#888">SP</span>
-                        </div>
-                        <div style="color:#666; font-size:11px; text-align:center; line-height:1.5; padding: 0 8px;">Earn SP by completing daily quests.<br>Catalog coming soon.</div>
+                <!-- Cuadrado interior: editable por separado del marco de piedra
+                     (SETTINGS -> EDIT LAYOUT). -->
+                <div class="cartel-inner" id="missionsInner">
+                    <div class="menu-side-head">
+                        <span id="sidePanelTitle">DAILY QUESTS</span>
+                        <span style="display:flex; align-items:center; gap:10px;">
+                            <span id="sidePanelExtra" style="font-size:11px;letter-spacing:1px;"><span id="missionsDone">0</span>/5 · <span id="missionsSp">0</span> SP</span>
+                            <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
+                        </span>
                     </div>
+                    <div id="sidePanelMissions"><div id="missionsList"></div></div>
+                    <div id="sidePanelSkins" style="display:none">
+                        <div class="skins-soon">
+                            <div class="ss-big" style="color:#ffce3d">★</div>
+                            <div style="font-family:'Russo One'; font-size:11px; color:#888; letter-spacing:2px">SKIN POINTS</div>
+                            <div style="font-family:'Russo One'; font-size:32px; color:#ffce3d; text-shadow:0 0 12px rgba(255,206,61,0.4); margin:4px 0 14px;">
+                                <span id="skinPointsValue">0</span> <span style="font-size:13px; color:#888">SP</span>
+                            </div>
+                            <div style="color:#666; font-size:11px; text-align:center; line-height:1.5; padding: 0 8px;">Earn SP by completing daily quests.<br>Catalog coming soon.</div>
+                        </div>
+                    </div>
+                    <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span></div>
                 </div>
-                <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span></div>
             </div>
         </div>
       </div>
@@ -3773,10 +3786,13 @@
     // resetear ese elemento, ESC o DONE = salir. Persiste por usuario
     // (localStorage) y se aplica como transform sin tocar el flujo del layout.
     const LAYOUT_KEY = 'pw_menu_layout';
+    // roomsInner/questsInner apuntan al CONTENIDO de cada cartel (.cartel-inner),
+    // no al marco de piedra: el marco se queda fijo en su sitio de la columna;
+    // lo que se mueve/escala es lo de dentro (el "cuadrado interior").
     const LAYOUT_ELS = {
         title: '#selectedModeTitle', blurb: '#modeBlurb', pill: '.pill-stage',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
-        features: '#btnFeatures', rooms: '#oraclePanel', quests: '#missionsPanel',
+        features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
     };
     let menuLayout = {};
     try { menuLayout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { menuLayout = {}; }
