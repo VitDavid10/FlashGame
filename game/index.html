@@ -374,7 +374,11 @@
         /* Oscurecido sutil sobre el fondo del cartel (el interior del PNG se
            veia algo mas claro que la referencia): capa encima del border-image,
            debajo del contenido real (que va despues en el DOM). */
-        #oraclePanel::before, #missionsPanel::before { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,0.16); pointer-events: none; z-index: 0; }
+        /* inset negativo (no 0): a 0 quedaba un hairline claro justo donde el
+           overlay terminaba y el marco de piedra empezaba (un "cuadrado" mas
+           claro pegado al borde). Se extiende un poco por debajo del marco
+           para que no quede ningun hueco sin oscurecer. */
+        #oraclePanel::before, #missionsPanel::before { content: ''; position: absolute; inset: -6px; background: rgba(0,0,0,0.16); pointer-events: none; z-index: 0; }
         #oraclePanel > *, #missionsPanel > * { position: relative; z-index: 1; }
         .menu-side-head { font-family: 'Russo One'; font-size: 14px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
         #oraclePanel.classic .menu-side-head { color: #00ffaa; }
