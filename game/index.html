@@ -2452,10 +2452,16 @@
             // ROOM PRICES / DAILY QUESTS: marco de piedra + fondo (arte de David).
             // bgHex = verde medio muestreado del propio PNG (respaldo bajo el
             // border-image, ver comentario en _pixFrameRule).
+            // slice=30 (no 90): a 90 el recorte de esquina incluia de mas —
+            // el grosor real de piedra plana en el PNG es ~30px, asi que el
+            // resto (30-90) era interior verde colado dentro del marco,
+            // formando una franja verde entre la piedra y el contenido. A 30
+            // el recorte es (casi) solo piedra: las esquinas pierden parte
+            // del adorno grande, pero el marco queda limpio.
             // Dos llamadas (no selector con coma): "body.pixel-pack A, B{}" dejaría
             // a B fuera del scope de body.pixel-pack (la coma corta el selector).
-            'body.pixel-pack ' + _pixFrameRule('#oraclePanel', 28, '#2d3e2e', 1, 'quest-panel', null, 90) +
-            'body.pixel-pack ' + _pixFrameRule('#missionsPanel', 28, '#2d3e2e', 1, 'quest-panel', null, 90) +
+            'body.pixel-pack ' + _pixFrameRule('#oraclePanel', 28, '#2d3e2e', 1, 'quest-panel', null, 30) +
+            'body.pixel-pack ' + _pixFrameRule('#missionsPanel', 28, '#2d3e2e', 1, 'quest-panel', null, 30) +
             'body.pixel-pack .btn-sys{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
             'body.pixel-pack .timer-bar{border-radius:0!important;height:18px;background:#111;border:2px solid #333;box-shadow:inset 2px 2px 0 rgba(0,0,0,.8)}' +
             // muescas: raya oscura repetida cada 16px sobre un degradado rojo (bevel
@@ -3786,13 +3792,18 @@
     // resetear ese elemento, ESC o DONE = salir. Persiste por usuario
     // (localStorage) y se aplica como transform sin tocar el flujo del layout.
     const LAYOUT_KEY = 'pw_menu_layout';
-    // roomsInner/questsInner apuntan al CONTENIDO de cada cartel (.cartel-inner),
-    // no al marco de piedra: el marco se queda fijo en su sitio de la columna;
-    // lo que se mueve/escala es lo de dentro (el "cuadrado interior").
+    // roomsInner/questsInner apuntan al CONTENIDO de cada cartel (.cartel-inner);
+    // rooms/quests apuntan al marco entero (#oraclePanel/#missionsPanel). Los
+    // dos son editables por separado y no chocan: .cartel-inner NO cubre la
+    // franja del borde (28px de marco), asi que un click ahi solo hace
+    // match con el marco. Los *Inner van ANTES en el objeto: un click dentro
+    // del contenido debe resolver al interior (closest() encuentra primero
+    // lo mas anidado SOLO si se comprueba antes en el bucle de layoutTarget).
     const LAYOUT_ELS = {
         title: '#selectedModeTitle', blurb: '#modeBlurb', pill: '.pill-stage',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
+        rooms: '#oraclePanel', quests: '#missionsPanel',
     };
     let menuLayout = {};
     try { menuLayout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { menuLayout = {}; }
