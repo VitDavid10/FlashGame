@@ -641,21 +641,21 @@
             border: none !important; border-image: none !important; border-radius: 0 !important;
             clip-path: none !important; box-shadow: none !important;
             background: transparent url('img/cartel-hero/btn-plain-red.png') center/100% 100% no-repeat !important;
-            image-rendering: pixelated; aspect-ratio: 15/2; width: 100%;
+            image-rendering: pixelated; aspect-ratio: 15/2; width: 68%;
             font-family: 'Press Start 2P', monospace; font-size: 16px; color: #fff;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.65); padding: 0; margin-top: 14px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.65); padding: 0; margin: 14px auto 0; display: block;
         }
         body.pixel-pack .login-left .btn-settings, .login-left .btn-settings {
             border: none !important; border-image: none !important; border-radius: 0 !important;
             clip-path: none !important; box-shadow: none !important;
             background: transparent url('img/cartel-hero/btn-plain-blue.png') center/100% 100% no-repeat !important;
-            image-rendering: pixelated; aspect-ratio: 15/2; width: 100%;
+            image-rendering: pixelated; aspect-ratio: 15/2; width: 68%;
             font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.65); padding: 0; margin: 8px auto 0; display: block;
         }
-        body.pixel-pack .login-left #btnFeatures, .login-left #btnFeatures {
-            background-image: url('img/cartel-hero/btn-plain-green.png') !important;
-        }
+        /* FEATURES oculto a peticion de David (queda registrado en el editor
+           de layout por si se reactiva mas adelante). */
+        .login-left #btnFeatures { display: none; }
         .login-left .btn-play:hover:not(:disabled), .login-left .btn-settings:hover { filter: brightness(1.15); color: #fff; }
         .login-left .btn-play:disabled { filter: grayscale(0.6) brightness(0.75); }
         .btn-settings:hover { color: #fff; border-color: #4a525c; filter: brightness(1.2); }
