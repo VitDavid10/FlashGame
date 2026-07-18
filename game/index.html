@@ -353,7 +353,9 @@
         #loginOverlay, #resultOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 60; }
         /* Wrapper flex con baseline alignment: el login-box marca el tope/abajo,
            la columna se anclla a su top/bottom vía sticky pseudo-clip (JS sync). */
-        .menu-row { display: flex; flex-direction: row; gap: 24px; align-items: flex-start; max-width: 100%; }
+        .menu-row { display: flex; flex-direction: row; gap: 110px; align-items: flex-start; max-width: 100%; position: relative; z-index: 1; }
+        /* Fondo pixel del menu: canvas a baja resolucion estirado sin suavizado */
+        #loginBgCv { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; }
 
         /* Columna derecha: dos bloques iguales (oracle arriba, missions/skins abajo).
            Misma animación slideUp que el login-box para que se muevan juntos al abrir.
@@ -550,10 +552,11 @@
         .back-icon.back-mode-arcade { border-color: rgba(204,255,0,0.5); color: #ccff00; }
         .back-icon.back-mode-arcade:hover { background: #ccff00; color: #04150c; border-color: #ccff00; box-shadow: 0 0 22px rgba(204,255,0,0.55); }
         h1 { margin: 0 0 5px 0; color: #fff; font-family: 'Russo One'; font-size: 28px; text-transform: uppercase; }
-        /* Cabecera del menu: titulo PILLWARS <MODO> + 2 frases a la derecha */
-        .menu-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #222; text-align: left; }
-        #selectedModeTitle { font-family: 'Press Start 2P', monospace; font-size: 16px; text-transform: uppercase; margin: 0; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; line-height: 1.6; white-space: nowrap; }
-        .mode-blurb { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; text-align: right; line-height: 2.1; letter-spacing: 0.5px; padding-top: 3px; }
+        /* Cabecera del menu: titulo grande a la izquierda, descripcion al lado.
+           Sin lineas ni cajas — flota libre como el resto. */
+        .menu-head-row { display: flex; align-items: center; justify-content: flex-start; gap: 22px; margin-bottom: 14px; text-align: left; width: max-content; max-width: 60vw; }
+        #selectedModeTitle { font-family: 'Press Start 2P', monospace; font-size: 24px; text-transform: uppercase; margin: 0; letter-spacing: 1px; text-shadow: 3px 3px 0 #000, 6px 6px 0 rgba(0,0,0,0.4); line-height: 1.35; white-space: nowrap; }
+        .mode-blurb { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; text-align: left; line-height: 2.1; letter-spacing: 0.5px; }
         .section-title { font-family: 'Russo One'; font-size: 10px; color: var(--primary); text-transform: uppercase; margin: 10px 0 5px; text-align: left; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 2px; }
         .style-type-selector { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; display:none; }
         .style-type-selector label { font-size: 12px; font-weight: 600; color: #aaa; cursor: pointer; display: flex; align-items: center; gap: 5px; }
@@ -633,20 +636,19 @@
         #playerNameInput.name-subtle:focus { outline: none; border-bottom-color: var(--primary) !important; }
         #playerNameInput.name-subtle::placeholder { color: #4a525c; }
 
-        /* Escenario de la pildora: paleta TOP arriba-derecha, pildora en medio,
-           paleta BASE abajo-izquierda — posiciones fijas como en el boceto,
-           ambas siempre visibles (no popup). */
-        .pill-stage { display: flex; flex-direction: column; }
-        .pal-block.pal-top { align-self: flex-end; margin-bottom: 2px; }
-        .pal-block.pal-bottom { align-self: flex-start; margin-top: 2px; }
-        .pal-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; width: 168px; }
-        /* Swatches = <input type=color> nativos: click abre el picker del sistema
-           y lo que elijas sustituye ese color tanto en la paleta como en la pildora. */
-        .pal-swatch { -webkit-appearance: none; appearance: none; aspect-ratio: 1; border: 2px solid #000; box-shadow: inset 2px 2px 0 rgba(255,255,255,0.25), inset -2px -2px 0 rgba(0,0,0,0.35); cursor: pointer; padding: 0; background: none; }
-        .pal-swatch::-webkit-color-swatch-wrapper { padding: 0; }
-        .pal-swatch::-webkit-color-swatch { border: none; }
-        .pal-swatch::-moz-color-swatch { border: none; }
-        .pal-swatch:hover { transform: translate(-1px,-1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.25); }
+        /* Paleta popup: pequena y refinada, solo visible al clicar una mitad
+           de la pildora. 11 colores + casilla PICK (elegir color libre). */
+        .pill-stage { position: relative; }
+        .pill-palette { position: absolute; z-index: 20; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 7px; }
+        .pill-palette.pal-top { top: 16px; right: 0; }
+        .pill-palette.pal-bottom { bottom: 6px; left: 0; }
+        .pal-grid { display: grid; grid-template-columns: repeat(6, 20px); gap: 4px; }
+        .pal-swatch { width: 20px; height: 20px; border: 2px solid #000; box-shadow: inset 1px 1px 0 rgba(255,255,255,0.3); cursor: pointer; padding: 0; }
+        .pal-swatch:hover { transform: translate(-1px,-1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.6), inset 1px 1px 0 rgba(255,255,255,0.3); }
+        .pal-swatch.pick { background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+        .pill-palette.assigning .pal-swatch:not(.pick) { animation: palBlink 0.7s steps(2) infinite; }
+        @keyframes palBlink { 50% { outline: 2px solid #fff; outline-offset: -1px; } }
+        .pal-hint { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: #8a939e; margin-top: 6px; text-align: center; letter-spacing: 0.5px; }
 
         /* Carteles pixel de la columna derecha (ROOM PRICES / DAILY QUESTS):
            marco grueso + tornillos en las esquinas superiores. Placeholder
@@ -1244,6 +1246,10 @@
     </div>
 
     <div id="loginOverlay">
+      <!-- Fondo pixel-art del menu: patron dibujado a baja resolucion y
+           reescalado sin suavizado (mismo rollo que la escena de modos y el
+           grid del juego). Se repinta con el tinte del modo en selectMode. -->
+      <canvas id="loginBgCv"></canvas>
       <div class="back-icon" onclick="goBackToModes()">
           <svg viewBox="-2 -2 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -1265,12 +1271,13 @@
                      compartidos y personalizables: click en un swatch = picker nativo
                      para cambiarlo a lo que quieras, sin boton "+" aparte. -->
                 <div class="pill-stage">
-                    <div class="pal-block pal-top">
-                        <div class="pal-grid" id="palGridTop"></div>
-                    </div>
-                    <canvas id="menuPillCanvas" width="400" height="360"></canvas>
-                    <div class="pal-block pal-bottom">
-                        <div class="pal-grid" id="palGridBottom"></div>
+                    <canvas id="menuPillCanvas" width="400" height="360" title="Click a half to pick its color"></canvas>
+                    <!-- Paleta popup: solo aparece al clicar una mitad de la pildora.
+                         11 colores + casilla PICK (elegir color): el color elegido se
+                         aplica y puedes clicar un slot para guardarlo ahi. -->
+                    <div id="pillPalette" class="pill-palette" style="display:none;">
+                        <div class="pal-grid" id="palGrid"></div>
+                        <div class="pal-hint" id="palHint" style="display:none;">CLICK A SLOT TO SAVE IT</div>
                     </div>
                 </div>
                 <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
@@ -1287,6 +1294,7 @@
                 <div id="colorPickersContainer" style="display:none;">
                     <input type="color" id="colTop" value="#c0c8d0">
                     <input type="color" id="colBot" value="#00ff44">
+                    <input type="color" id="palettePicker" value="#ff0000">
                 </div>
 
                 <div id="skinInputContainer" style="display:none;"></div>
@@ -3442,8 +3450,11 @@
             if(splitSelect) splitSelect.value = "4";
         }
         
-        if(splitSelect) MAX_BOT_CELLS = parseInt(splitSelect.value); 
-        
+        if(splitSelect) MAX_BOT_CELLS = parseInt(splitSelect.value);
+
+        // Fondo pixel del menu con el tinte del modo
+        try { paintLoginBg(m); } catch(e) {}
+
         // Asegurar que la configuración se cargue
         try { checkActiveRoomConfig(); } catch(e) { console.error("Error loading room config", e); }
         
@@ -3512,38 +3523,83 @@
     function openFeatures() { SoundManager.play('simpleselect'); document.getElementById('featuresModal').style.display = 'flex'; }
     function closeFeatures() { document.getElementById('featuresModal').style.display = 'none'; }
 
-    // --- Paleta de colores de la pildora (tipo Paint, por usuario) ---
-    // 12 colores compartidos, persistidos, mostrados en dos rejillas siempre
-    // visibles (arriba = TOP, abajo = BASE). Cada swatch es un <input
-    // type=color> real: click abre el picker nativo del sistema y lo que
-    // elijas sustituye ESE color en la paleta (para las dos rejillas, ya que
-    // comparten el mismo array) y se aplica al momento a esa mitad. Un solo
-    // gesto para elegir Y personalizar — sin boton "+" aparte.
+    // --- Paleta de la pildora (popup pequeno, tipo Paint refinado) ---
+    // 11 colores persistidos + casilla PICK (arcoiris). Click en una mitad de la
+    // pildora abre el popup junto a esa mitad; click en un color lo aplica con
+    // barrido; PICK abre el picker nativo — el color elegido se aplica en vivo
+    // y queda "en mano": clicando uno de los 11 slots lo guardas ahi (parpadean
+    // mientras). Click fuera cierra y cancela.
     const PAL_KEY = 'pw_palette';
-    const PAL_DEFAULT = ['#ffffff', '#c0c8d0', '#4a525c', '#ff2a2a', '#ff8c00', '#ffce3d', '#00ff44', '#00ffaa', '#1a73e8', '#66ccff', '#cc00ff', '#ff69b4'];
+    const PAL_DEFAULT = ['#ffffff', '#c0c8d0', '#4a525c', '#ff2a2a', '#ff8c00', '#ffce3d', '#00ff44', '#00ffaa', '#1a73e8', '#66ccff', '#cc00ff'];
     let palColors = PAL_DEFAULT.slice();
-    try { const s = JSON.parse(localStorage.getItem(PAL_KEY)); if (Array.isArray(s) && s.length === PAL_DEFAULT.length) palColors = s; } catch (e) {}
+    try {
+        const s = JSON.parse(localStorage.getItem(PAL_KEY));
+        if (Array.isArray(s) && s.length) { palColors = s.slice(0, 11); while (palColors.length < 11) palColors.push(PAL_DEFAULT[palColors.length]); }
+    } catch (e) {}
+    let palHalf = 'colTop';   // mitad activa ('colTop' | 'colBot')
+    let palAssign = null;     // color "en mano" tras PICK, pendiente de guardar en un slot
     function savePalette() { try { localStorage.setItem(PAL_KEY, JSON.stringify(palColors)); } catch (e) {} }
-    function renderPaletteGrid(gridId, half) {
-        const grid = document.getElementById(gridId); if (!grid) return;
+    function renderPalette() {
+        const grid = document.getElementById('palGrid'); if (!grid) return;
         grid.innerHTML = '';
         palColors.forEach((c, i) => {
-            const inp = document.createElement('input');
-            inp.type = 'color'; inp.className = 'pal-swatch'; inp.value = c; inp.title = c;
-            inp.addEventListener('input', () => {
-                palColors[i] = inp.value; savePalette();
-                document.getElementById(half).value = inp.value;
-                renderMenuPill(); renderPalette();
-                SoundManager.play('simpleselect');
-            });
-            grid.appendChild(inp);
+            const b = document.createElement('button');
+            b.className = 'pal-swatch'; b.style.background = c; b.title = c;
+            b.onclick = () => {
+                if (palAssign) { palColors[i] = palAssign; savePalette(); setAssignMode(null); renderPalette(); }
+                else { applyPillColor(c); closePalette(); }
+            };
+            grid.appendChild(b);
         });
+        const pick = document.createElement('button');
+        pick.className = 'pal-swatch pick'; pick.title = 'Pick any color';
+        pick.onclick = () => document.getElementById('palettePicker').click();
+        grid.appendChild(pick);
     }
-    function renderPalette() { renderPaletteGrid('palGridTop', 'colTop'); renderPaletteGrid('palGridBottom', 'colBot'); }
-    renderPalette();
+    function setAssignMode(color) {
+        palAssign = color;
+        const pal = document.getElementById('pillPalette');
+        if (pal) pal.classList.toggle('assigning', !!color);
+        const hint = document.getElementById('palHint');
+        if (hint) hint.style.display = color ? 'block' : 'none';
+    }
+    function applyPillColor(c) {
+        const inp = document.getElementById(palHalf);
+        startPillSweep(palHalf, inp.value, c);
+        inp.value = c;
+        SoundManager.play('simpleselect');
+    }
+    function openPalette(half) {
+        palHalf = half;
+        const pal = document.getElementById('pillPalette');
+        pal.classList.toggle('pal-top', half === 'colTop');
+        pal.classList.toggle('pal-bottom', half === 'colBot');
+        setAssignMode(null);
+        renderPalette();
+        pal.style.display = 'block';
+    }
+    function closePalette() { const p = document.getElementById('pillPalette'); if (p) { p.style.display = 'none'; setAssignMode(null); } }
+    (function initPalette() {
+        const picker = document.getElementById('palettePicker'); if (!picker) return;
+        // 'input' = preview en vivo mientras arrastras en el picker nativo;
+        // 'change' = color confirmado → queda en mano para asignarlo a un slot.
+        picker.addEventListener('input', () => { document.getElementById(palHalf).value = picker.value; });
+        picker.addEventListener('change', () => { setAssignMode(picker.value); });
+        document.addEventListener('mousedown', (e) => {
+            const p = document.getElementById('pillPalette');
+            if (!p || p.style.display === 'none') return;
+            if (!e.target.closest('#pillPalette') && e.target.id !== 'menuPillCanvas') closePalette();
+        });
+    })();
 
     // --- Pildora interactiva del menu: MISMOS sprites del juego (pixPillSprite),
-    // con el nombre encima como en partida. ---
+    // nombre encima como en partida, bob de reposo sutil y barrido al cambiar
+    // de color. Se repinta por rAF solo mientras el login esta visible. ---
+    const PILL_SWEEP_MS = 380;
+    let pillSweep = null;   // { half, from, t0 }
+    function startPillSweep(half, fromColor, toColor) {
+        if (fromColor !== toColor) pillSweep = { half, from: fromColor, t0: performance.now() };
+    }
     function renderMenuPill() {
         const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
         const g = cv.getContext('2d');
@@ -3551,17 +3607,33 @@
         g.clearRect(0, 0, W, H);
         g.imageSmoothingEnabled = false;
         const cTop = document.getElementById('colTop').value, cBot = document.getElementById('colBot').value;
-        const spr = pixPillSprite(40, cTop, cBot);
+        const now = performance.now();
         // Rotada -45º como en el juego. Tamano calculado para que la caja
         // rotada ENTERA quepa en el canvas (extensión por eje de un rect
-        // pW×pH rotado 45º = (pW+pH)/2·cos45), dejando sitio al nombre arriba.
-        const cy = H / 2 + 18;
-        const maxHalf = Math.min(W / 2 - 6, Math.min(cy - 42, H - cy) - 6);
+        // pW×pH rotado 45º = (pW+pH)/2·cos45), con sitio para nombre y bob.
+        const cyBase = H / 2 + 18;
+        const bob = Math.round(Math.sin(now / 650) * 3);   // reposo: ±3px a pixel entero
+        const maxHalf = Math.min(W / 2 - 6, Math.min(cyBase - 42, H - cyBase) - 6) - 3;
         const pW = maxHalf / ((1 + PILL_RATIO) * Math.SQRT1_2 / 2), pH = pW * PILL_RATIO;
         g.save();
-        g.translate(W / 2, cy);
+        g.translate(W / 2, cyBase + bob);
         g.rotate(-Math.PI / 4);
-        g.drawImage(spr, -pW / 2, -pH / 2, pW, pH);
+        if (pillSweep && (now - pillSweep.t0) >= PILL_SWEEP_MS) pillSweep = null;
+        const sprNew = pixPillSprite(40, cTop, cBot);
+        if (pillSweep) {
+            // Barrido: color viejo debajo, el nuevo entra con un clip que avanza
+            // a lo largo de la pildora en pasos de 8px (look pixel, no fundido).
+            const t = (now - pillSweep.t0) / PILL_SWEEP_MS;
+            const oldTop = pillSweep.half === 'colTop' ? pillSweep.from : cTop;
+            const oldBot = pillSweep.half === 'colBot' ? pillSweep.from : cBot;
+            g.drawImage(pixPillSprite(40, oldTop, oldBot), -pW / 2, -pH / 2, pW, pH);
+            const stepW = Math.ceil(pW * t / 8) * 8;
+            g.save(); g.beginPath(); g.rect(-pW / 2, -pH / 2, stepW, pH); g.clip();
+            g.drawImage(sprNew, -pW / 2, -pH / 2, pW, pH);
+            g.restore();
+        } else {
+            g.drawImage(sprNew, -pW / 2, -pH / 2, pW, pH);
+        }
         g.restore();
         const name = document.getElementById('playerNameInput').value.trim() || 'PLAYER';
         g.font = "34px " + PIX_FONT; g.textAlign = 'center'; g.textBaseline = 'top';
@@ -3570,10 +3642,46 @@
     }
     (function initMenuPill() {
         const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
-        ['colTop', 'colBot', 'playerNameInput'].forEach(id => document.getElementById(id).addEventListener('input', renderMenuPill));
+        cv.addEventListener('click', e => {
+            const r = cv.getBoundingClientRect();
+            const dx = (e.clientX - r.left) * (cv.width / r.width) - cv.width / 2;
+            const dy = (e.clientY - r.top) * (cv.height / r.height) - (cv.height / 2 + 18);
+            // La pildora esta rotada -45º: la mitad "top" queda arriba-izquierda.
+            openPalette(dx + dy < 0 ? 'colTop' : 'colBot');
+        });
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderMenuPill);
         renderMenuPill();
+        // rAF solo pinta con el login visible (bob + barrido); en partida no gasta.
+        (function pillLoop() {
+            requestAnimationFrame(pillLoop);
+            const lo = document.getElementById('loginOverlay');
+            if (lo && lo.style.display === 'flex') renderMenuPill();
+        })();
     })();
+
+    // --- Fondo pixel del menu: patron a baja resolucion (dithering + rejilla
+    // como el fondo del juego) estirado sin suavizado. Tinte segun el modo. ---
+    function paintLoginBg(mode) {
+        const cv = document.getElementById('loginBgCv'); if (!cv) return;
+        const W = 320, H = 180;
+        cv.width = W; cv.height = H;
+        const g = cv.getContext('2d');
+        g.fillStyle = '#050705'; g.fillRect(0, 0, W, H);
+        const t = mode === 'arcade' ? [204, 255, 0] : [0, 255, 136];
+        // Dithering determinista: motas sutiles del tinte y blancas
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            const h = (x * 7349 + y * 9151) % 997;
+            if (h < 8) { g.fillStyle = 'rgba(' + t[0] + ',' + t[1] + ',' + t[2] + ',0.06)'; g.fillRect(x, y, 1, 1); }
+            else if (h < 11) { g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x, y, 1, 1); }
+        }
+        // Rejilla pixel (como el grid del juego)
+        g.fillStyle = 'rgba(' + t[0] + ',' + t[1] + ',' + t[2] + ',0.07)';
+        for (let x = 0; x < W; x += 16) g.fillRect(x, 0, 1, H);
+        for (let y = 0; y < H; y += 16) g.fillRect(0, y, W, 1);
+        // Bandas oscuras arriba/abajo (viñeta pixel)
+        g.fillStyle = 'rgba(0,0,0,0.35)';
+        g.fillRect(0, 0, W, 5); g.fillRect(0, H - 5, W, 5);
+    }
     function toggleExitModal() {
         if(!gameRunning) return;
         const modal = document.getElementById('exitModal'); const btn = document.getElementById('btnConfirmExit'); const title = document.getElementById('exitModalTitle'); const desc = document.getElementById('exitModalDesc');
