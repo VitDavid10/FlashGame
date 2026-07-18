@@ -650,6 +650,17 @@
         @keyframes palBlink { 50% { outline: 2px solid #fff; outline-offset: -1px; } }
         .pal-hint { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: #8a939e; margin-top: 6px; text-align: center; letter-spacing: 0.5px; }
 
+        /* Editor de layout del menu: cada elemento se puede arrastrar (mover)
+           y escalar con la rueda; el resultado se guarda por usuario. */
+        body.layout-editing .menu-editable { outline: 2px dashed rgba(255,255,255,0.55); outline-offset: 3px; cursor: move !important; transition: none !important; }
+        body.layout-editing .menu-editable:hover { outline-color: #00ff88; }
+        body.layout-editing .menu-editable * { pointer-events: none; }
+        #layoutEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 120; display: flex; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
+        #layoutEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 0.5px; }
+        #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
+        #layoutEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
+        #layoutEditBar .leb-btn.done { background: #0f8f46; color: #fff; border-color: #000; }
+
         /* Carteles pixel de la columna derecha (ROOM PRICES / DAILY QUESTS):
            marco grueso + tornillos en las esquinas superiores. Placeholder
            hecho a mano hasta tener el arte definitivo. */
@@ -1110,8 +1121,18 @@
                 </label>
             </div>
 
+            <div class="section-title" style="margin-top:15px;">Menu Layout</div>
+            <button class="btn-settings" style="margin-top:6px;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
+
             <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
+    </div>
+
+    <!-- Barra del editor de layout del menu: visible solo en modo edicion -->
+    <div id="layoutEditBar" style="display:none;">
+        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
+        <button class="leb-btn done" onclick="exitLayoutEdit()">DONE</button>
     </div>
 
     <!-- FEATURES: toda la info del modo (skills database, economia, guias).
@@ -1300,8 +1321,8 @@
                 <div id="skinInputContainer" style="display:none;"></div>
 
                 <button class="btn-play" id="btnPlay" onclick="openPlayChoice()">PLAY</button>
-                <button class="btn-settings" onclick="openSettings()">SETTINGS</button>
-                <button class="btn-settings" onclick="openFeatures()">FEATURES</button>
+                <button class="btn-settings" id="btnSettings" onclick="openSettings()">SETTINGS</button>
+                <button class="btn-settings" id="btnFeatures" onclick="openFeatures()">FEATURES</button>
             </div>
 
         </div>
@@ -3612,9 +3633,13 @@
         // rotada ENTERA quepa en el canvas (extensión por eje de un rect
         // pW×pH rotado 45º = (pW+pH)/2·cos45), con sitio para nombre y bob.
         const cyBase = H / 2 + 18;
-        const bob = Math.round(Math.sin(now / 650) * 3);   // reposo: ±3px a pixel entero
+        // Reposo vivo: bob ±3px a ritmo agil (~2.4s de ciclo) + respiracion
+        // sutil en contrafase (squash & stretch 1.5%) — cuantizado a pixel.
+        const bob = Math.round(Math.sin(now / 380) * 3);
+        const breath = 0.015 * Math.sin(now / 380 + 1.4);
         const maxHalf = Math.min(W / 2 - 6, Math.min(cyBase - 42, H - cyBase) - 6) - 3;
-        const pW = maxHalf / ((1 + PILL_RATIO) * Math.SQRT1_2 / 2), pH = pW * PILL_RATIO;
+        const pW0 = maxHalf / ((1 + PILL_RATIO) * Math.SQRT1_2 / 2);
+        const pW = Math.round(pW0 * (1 + breath)), pH = Math.round(pW0 * PILL_RATIO * (1 - breath));
         g.save();
         g.translate(W / 2, cyBase + bob);
         g.rotate(-Math.PI / 4);
@@ -3682,6 +3707,84 @@
         g.fillStyle = 'rgba(0,0,0,0.35)';
         g.fillRect(0, 0, W, 5); g.fillRect(0, H - 5, W, 5);
     }
+
+    // --- Editor de layout del menu: mueve y escala cada elemento a tu gusto ---
+    // SETTINGS → EDIT LAYOUT. Arrastrar = mover, rueda = escalar, doble click =
+    // resetear ese elemento, ESC o DONE = salir. Persiste por usuario
+    // (localStorage) y se aplica como transform sin tocar el flujo del layout.
+    const LAYOUT_KEY = 'pw_menu_layout';
+    const LAYOUT_ELS = {
+        title: '#selectedModeTitle', blurb: '#modeBlurb', pill: '.pill-stage',
+        name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
+        features: '#btnFeatures', rooms: '#oraclePanel', quests: '#missionsPanel',
+    };
+    let menuLayout = {};
+    try { menuLayout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { menuLayout = {}; }
+    let layoutEditing = false, layoutDrag = null;
+    function saveMenuLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(menuLayout)); } catch (e) {} }
+    function applyMenuLayout() {
+        for (const key in LAYOUT_ELS) {
+            const el = document.querySelector(LAYOUT_ELS[key]); if (!el) continue;
+            const t = menuLayout[key];
+            el.style.transform = t ? 'translate(' + (t.x || 0) + 'px,' + (t.y || 0) + 'px) scale(' + (t.s || 1) + ')' : '';
+        }
+    }
+    function layoutTarget(e) {
+        for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
+        return null;
+    }
+    function enterLayoutEdit() {
+        layoutEditing = true;
+        document.body.classList.add('layout-editing');
+        for (const key in LAYOUT_ELS) { const el = document.querySelector(LAYOUT_ELS[key]); if (el) el.classList.add('menu-editable'); }
+        document.getElementById('layoutEditBar').style.display = 'flex';
+    }
+    function exitLayoutEdit() {
+        layoutEditing = false; layoutDrag = null;
+        document.body.classList.remove('layout-editing');
+        document.querySelectorAll('.menu-editable').forEach(el => el.classList.remove('menu-editable'));
+        document.getElementById('layoutEditBar').style.display = 'none';
+        saveMenuLayout();
+    }
+    function resetMenuLayout() { menuLayout = {}; saveMenuLayout(); applyMenuLayout(); }
+    (function initLayoutEdit() {
+        applyMenuLayout();
+        document.addEventListener('pointerdown', (e) => {
+            if (!layoutEditing || e.target.closest('#layoutEditBar')) return;
+            const t = layoutTarget(e); if (!t) return;
+            const cur = menuLayout[t.key] || { x: 0, y: 0, s: 1 };
+            layoutDrag = { key: t.key, startX: e.clientX, startY: e.clientY, baseX: cur.x || 0, baseY: cur.y || 0 };
+            e.preventDefault(); e.stopPropagation();
+        }, true);
+        window.addEventListener('pointermove', (e) => {
+            if (!layoutEditing || !layoutDrag) return;
+            const cur = menuLayout[layoutDrag.key] = menuLayout[layoutDrag.key] || { x: 0, y: 0, s: 1 };
+            cur.x = layoutDrag.baseX + (e.clientX - layoutDrag.startX);
+            cur.y = layoutDrag.baseY + (e.clientY - layoutDrag.startY);
+            applyMenuLayout();
+        });
+        window.addEventListener('pointerup', () => { if (layoutDrag) { layoutDrag = null; saveMenuLayout(); } });
+        document.addEventListener('wheel', (e) => {
+            if (!layoutEditing) return;
+            const t = layoutTarget(e); if (!t) return;
+            e.preventDefault();
+            const cur = menuLayout[t.key] = menuLayout[t.key] || { x: 0, y: 0, s: 1 };
+            cur.s = Math.min(3, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? 1.06 : 1 / 1.06)));
+            applyMenuLayout(); saveMenuLayout();
+        }, { passive: false, capture: true });
+        document.addEventListener('dblclick', (e) => {
+            if (!layoutEditing) return;
+            const t = layoutTarget(e); if (!t) return;
+            delete menuLayout[t.key]; applyMenuLayout(); saveMenuLayout();
+            e.preventDefault();
+        }, true);
+        // En modo edicion los clicks no disparan botones/inputs del menu
+        document.addEventListener('click', (e) => {
+            if (!layoutEditing || e.target.closest('#layoutEditBar')) return;
+            e.preventDefault(); e.stopPropagation();
+        }, true);
+        window.addEventListener('keydown', (e) => { if (layoutEditing && e.code === 'Escape') exitLayoutEdit(); });
+    })();
     function toggleExitModal() {
         if(!gameRunning) return;
         const modal = document.getElementById('exitModal'); const btn = document.getElementById('btnConfirmExit'); const title = document.getElementById('exitModalTitle'); const desc = document.getElementById('exitModalDesc');
