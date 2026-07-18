@@ -25,7 +25,11 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // pentakill (3/4 kills). El bloom se pone por CSS (drop-shadow del color),
     // no en el PNG. Los del lobby (finding/found/announce) van con fuente
     // pixel + recuadro estilo ranking, sin PNG.
-    'pentakill-2', 'one-more-kill'];
+    'pentakill-2', 'one-more-kill',
+    // Marco de piedra + fondo de los carteles ROOM · PRICES / DAILY QUESTS del
+    // menu (contenido dinamico: solo el marco+fondo va en la imagen, el texto
+    // se sigue pintando con HTML/CSS encima).
+    'quest-panel'];
 const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
 
 const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {
