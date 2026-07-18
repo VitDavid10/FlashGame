@@ -706,7 +706,14 @@
            y escalar con la rueda; el resultado se guarda por usuario. */
         body.layout-editing .menu-editable { outline: 2px dashed rgba(255,255,255,0.55); outline-offset: 3px; cursor: move !important; transition: none !important; }
         body.layout-editing .menu-editable:hover { outline-color: #00ff88; }
-        body.layout-editing .menu-editable * { pointer-events: none; }
+        /* OJO: nada de "pointer-events:none" en los hijos aqui. Un cartel tiene
+           DOS editables anidados (el marco #missionsPanel Y su contenido
+           #missionsInner dentro): bloquear el pointer-events de TODOS los
+           descendientes de un .menu-editable apagaba tambien el interior (y el
+           boton de cambiar pestaña) cuando el marco es el que esta marcado
+           como editable. layoutTarget() ya resuelve bien el anidado via
+           closest(), y el listener de 'click' de mas abajo ya evita que se
+           disparen botones mientras se edita — no hace falta pointer-events. */
         #layoutEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 120; display: flex; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
         #layoutEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 0.5px; }
         #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
@@ -2458,10 +2465,13 @@
             // formando una franja verde entre la piedra y el contenido. A 30
             // el recorte es (casi) solo piedra: las esquinas pierden parte
             // del adorno grande, pero el marco queda limpio.
+            // borderPx 28->18: con el recorte limpio (sin verde diluyendolo) el
+            // mismo grosor de antes se veia mas ancho/solido — se compensa
+            // adelgazando el anillo renderizado.
             // Dos llamadas (no selector con coma): "body.pixel-pack A, B{}" dejaría
             // a B fuera del scope de body.pixel-pack (la coma corta el selector).
-            'body.pixel-pack ' + _pixFrameRule('#oraclePanel', 28, '#2d3e2e', 1, 'quest-panel', null, 30) +
-            'body.pixel-pack ' + _pixFrameRule('#missionsPanel', 28, '#2d3e2e', 1, 'quest-panel', null, 30) +
+            'body.pixel-pack ' + _pixFrameRule('#oraclePanel', 18, '#2d3e2e', 1, 'quest-panel', null, 30) +
+            'body.pixel-pack ' + _pixFrameRule('#missionsPanel', 18, '#2d3e2e', 1, 'quest-panel', null, 30) +
             'body.pixel-pack .btn-sys{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
             'body.pixel-pack .timer-bar{border-radius:0!important;height:18px;background:#111;border:2px solid #333;box-shadow:inset 2px 2px 0 rgba(0,0,0,.8)}' +
             // muescas: raya oscura repetida cada 16px sobre un degradado rojo (bevel
