@@ -353,7 +353,7 @@
         #loginOverlay, #resultOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 60; }
         /* Wrapper flex con baseline alignment: el login-box marca el tope/abajo,
            la columna se anclla a su top/bottom vía sticky pseudo-clip (JS sync). */
-        .menu-row { display: flex; flex-direction: row; gap: 110px; align-items: flex-start; max-width: 100%; position: relative; z-index: 1; }
+        .menu-row { display: flex; flex-direction: row; gap: 70px; align-items: flex-start; max-width: 100%; position: relative; z-index: 1; }
         /* Fondo pixel del menu: canvas a baja resolucion estirado sin suavizado */
         #loginBgCv { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; }
 
@@ -362,8 +362,12 @@
            Tamano propio en CSS, independiente del menu central (no se sincroniza
            por JS con nada): mas ancha y mas alta que antes. */
         /* Bajados un poco (que no queden por encima del titulo) y sin min-height
-           fijo: en pantallas bajas desbordaba y el cartel inferior salia cortado. */
-        .menu-right-col { width: 480px; max-width: 40vw; margin-top: 46px; height: calc(90vh - 46px); z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
+           fijo: en pantallas bajas desbordaba y el cartel inferior salia cortado.
+           Lo mas grande que cabe: ancho/alto ampliados al maximo razonable, y
+           flex-shrink:0 para que no se encoja compitiendo con la columna
+           izquierda (el max-width en vw sigue de red de seguridad en pantallas
+           estrechas). */
+        .menu-right-col { width: 640px; max-width: 46vw; flex-shrink: 0.6; margin-top: 30px; height: calc(94vh - 30px); z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
         /* Fondo + marco de piedra: PNG de David via _pixFrameRule/quest-panel
            (JS, ver buildPixPanelCss) — border-image no admite !important en
            shorthand, así que el resto solo aporta layout. */
@@ -462,7 +466,7 @@
             padding: 20px; text-align: center; width: 460px;
             max-width: 95%; display: flex; flex-direction: column;
             animation: slideUp 0.4s ease-out; position: relative;
-            overflow: visible; max-height: 95vh;
+            overflow: visible; max-height: 95vh; flex-shrink: 2;
             /* Por encima de la columna de carteles (z61): un boton movido con el
                editor de layout hacia esa zona seguiria recibiendo los clicks. */
             z-index: 62;
