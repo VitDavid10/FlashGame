@@ -5879,6 +5879,17 @@
     // los 10s del pick). Centralizado para que el sonido se vaya tanto si eliges como
     // si el panel desaparece por cualquier otra razón (muerte, respawn, reset...).
     function closeSkillChoice() { isPickingSkill = false; els.skillOverlay.style.display = 'none'; SoundManager.stop('timer'); }
+    // Cuantiza el ancho del contador de skill a muescas ENTERAS (16px, la
+    // misma medida del repeating-linear-gradient de .timer-fill en
+    // buildPixPanelCss) — sin esto la barra encogia pixel a pixel cada frame
+    // y la ultima muesca se veia recortada a media asta ("una raya continua")
+    // en vez de barritas que desaparecen de golpe una a una.
+    const TIMER_NOTCH_PX = 16;
+    function quantizeTimerWidth(progress01) {
+        const barPx = els.skillTimer.parentElement.clientWidth || 1;
+        const notches = Math.max(1, Math.round(barPx / TIMER_NOTCH_PX));
+        return (Math.ceil(progress01 * notches) / notches) * 100;
+    }
     function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) ensurePixPanelCss(); titleEl.textContent = 'SELECT A SKILL'; }
         els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (!pixelMode) { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
         // Texto interior ("tips"): copy de fábrica; en pixel-pack el CSS lo pinta
@@ -5946,7 +5957,7 @@
             }
             // tl negativo en preview (reloj local "vencido" sin partida real) no debe
             // parar el pickup de skills: elapsed sigue creciendo bien más allá de dur.
-            if(!isGodMode && !isSpectating && (tl > 0 || practiceMode)) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = (pickTimer * 10) + "%"; if(pickTimer <= 0) { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } }
+            if(!isGodMode && !isSpectating && (tl > 0 || practiceMode)) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = quantizeTimerWidth(Math.max(0, pickTimer) / 10) + "%"; if(pickTimer <= 0) { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } }
         } else { els.timer.innerText = ""; }
 
         if (isGodMode) { els.debugHud.style.display = 'block'; } else { els.debugHud.style.display = 'none'; }
