@@ -1087,7 +1087,6 @@
                 <button type="button" onclick="GameWalletUI.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
             </div>
             <button class="gm-btn" id="gdConfirm" onclick="GameWalletUI.deposit()">Deposit to GAME</button>
-            <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.5">One signature. Used to enter paid rooms.</p>
         </div>
     </div>
 
@@ -1184,6 +1183,17 @@
             <button class="btn-settings" style="margin-top:6px;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
 
             <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
+        </div>
+    </div>
+
+    <!-- Selector de wallet (mismas 3 opciones que la pagina principal) -->
+    <div id="walletPickerModal" class="pw-modal">
+        <div class="pw-modal-box">
+            <div class="pw-modal-title">CONNECT WALLET</div>
+            <button class="pw-big-btn room" onclick="GameWalletUI.connectWith('phantom')" onmouseenter="SoundManager.playSimpleHover()">PHANTOM</button>
+            <button class="pw-big-btn room" onclick="GameWalletUI.connectWith('backpack')" onmouseenter="SoundManager.playSimpleHover()">BACKPACK</button>
+            <button class="pw-big-btn room" onclick="GameWalletUI.connectWith('solflare')" onmouseenter="SoundManager.playSimpleHover()">SOLFLARE</button>
+            <button class="pw-modal-cancel" onclick="document.getElementById('walletPickerModal').style.display='none'" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
     </div>
 
@@ -2427,10 +2437,19 @@
         }
         // Modal de deposito con el mismo marco verde del premio (entero
         // estirado, sin 9-slice) y el boton de confirmar con el OK horneado.
+        // Padding: titulo un pelin mas abajo (44 arriba) y el OK mas pegado al
+        // borde inferior (18 abajo), a peticion de David.
         if (cartelUsesAtlas('prize-panel')) {
             css += 'body.pixel-pack #gameDepositModal .gameModalBox{border:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
-                'image-rendering:pixelated;padding:36px 44px 32px}';
+                'image-rendering:pixelated;padding:44px 44px 18px}' +
+                // "In wallet / In GAME / Amount" tambien un poco mas abajo
+                'body.pixel-pack #gameDepositModal .gm-row:first-of-type{margin-top:10px}';
+            // WALLET REQUIRED / CONNECT ERROR: mismo marco verde del premio en
+            // el modal de sistema (la clase sys-green la pone showSystemMsg).
+            css += 'body.pixel-pack #sysModal .exit-box.sys-green{border:none!important;border-image:none!important;border-radius:0!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
+                'image-rendering:pixelated;padding:40px 44px 30px;width:430px}';
         }
         if (cartelUsesAtlas('ok')) {
             css += 'body.pixel-pack #gameDepositModal .gm-btn{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
@@ -4587,15 +4606,19 @@
             a.style.setProperty('--mode-color', color);
             if (shouldShow) this.refresh();
         },
-        async connect() {
-            // Igual que App.Wallet en la web principal (varias wallets soportadas);
-            // antes solo probaba 'phantom' y quien usara Solflare/Backpack sin haber
-            // conectado antes en la web (el ensure() silencioso SÍ soporta las 3, por
-            // eso "solo desde la web" parecía funcionar) se quedaba sin poder conectar
-            // aquí. Prueba en orden y usa la primera wallet instalada que encuentre.
-            let name = null, p = null;
-            for (const n of ['phantom', 'solflare', 'backpack']) { const prov = GameWallet.getProvider(n); if (prov) { name = n; p = prov; break; } }
-            if (!p) { showSystemMsg('Install Phantom, Solflare or Backpack to connect.', 'WALLET'); return; }
+        connect() {
+            // Como en la web principal: selector con las 3 wallets para que el
+            // usuario ELIJA. Antes se conectaba a la primera instalada que se
+            // encontrara (orden fijo phantom→solflare→backpack): si tenias
+            // Phantom instalada pero usabas otra, saltaba el error de firma
+            // cancelada SIEMPRE y nunca veias el selector.
+            SoundManager.play('simpleselect');
+            document.getElementById('walletPickerModal').style.display = 'flex';
+        },
+        async connectWith(name) {
+            document.getElementById('walletPickerModal').style.display = 'none';
+            const p = GameWallet.getProvider(name);
+            if (!p) { showSystemMsg(name.charAt(0).toUpperCase() + name.slice(1) + ' is not installed. Install it or pick another wallet.', 'CONNECT ERROR'); return; }
             try {
                 const r = await p.connect();
                 const pk = (r && r.publicKey) ? r.publicKey : p.publicKey;
@@ -4604,7 +4627,7 @@
                 GameWallet.address = pk.toString(); GameWallet.provider = p;
                 try { localStorage.setItem('pw_wallet', name); localStorage.setItem('pw_addr', pk.toString()); } catch (e) {}
                 this.refresh();
-            } catch (e) { showSystemMsg('Sign-in cancelled.', 'WALLET'); }
+            } catch (e) { showSystemMsg('Sign-in was cancelled or the wallet refused the connection. Please try again.', 'CONNECT ERROR'); }
         },
         async openDeposit() {
             if (!GameWallet.address) { this.connect(); return; }
@@ -5350,15 +5373,19 @@
         const m = document.getElementById('sysModal');
         const titleEl = document.getElementById('sysModalTitle');
         const t = title || 'NOTICE';
-        // KICKED y REJOIN EXPIRED tienen su titulo horneado (cartel-hero); el
-        // resto de titulos del modal de sistema siguen con la fuente procedural.
-        const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired' }[t];
+        // KICKED, REJOIN EXPIRED y los de wallet tienen su titulo horneado
+        // (cartel-hero); el resto siguen con la fuente procedural.
+        const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error' }[t];
+        // Los carteles de wallet usan el marco verde del premio (prize-panel)
+        // en vez del marco estandar del modal de sistema.
+        const box = m.querySelector('.exit-box');
+        if (box) box.classList.toggle('sys-green', t === 'WALLET REQUIRED' || t === 'CONNECT ERROR');
         if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';
             const img = document.createElement('img');
             img.src = cartelHeroUrl(sysArt);
-            img.style.cssText = 'display:block;margin:0 auto;width:62%;height:auto;image-rendering:pixelated;';
+            img.style.cssText = 'display:block;margin:0 auto;width:' + (t === 'WALLET REQUIRED' || t === 'CONNECT ERROR' ? '86%' : '62%') + ';height:auto;image-rendering:pixelated;';
             titleEl.appendChild(img);
         } else if (pixelMode) {
             ensurePixPanelCss();

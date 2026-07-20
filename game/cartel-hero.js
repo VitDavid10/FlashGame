@@ -29,7 +29,9 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // Marco de piedra + fondo de los carteles ROOM · PRICES / DAILY QUESTS del
     // menu (contenido dinamico: solo el marco+fondo va en la imagen, el texto
     // se sigue pintando con HTML/CSS encima).
-    'quest-panel'];
+    'quest-panel',
+    // Titulos horneados de los modales de wallet (marco verde del premio).
+    'wallet-required', 'connect-error'];
 const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
 
 const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {
