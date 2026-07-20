@@ -32,7 +32,9 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     'quest-panel',
     // Titulos horneados de los modales de wallet (marco verde del premio) y
     // del selector de wallet (CONNECT WALLET en blanco).
-    'wallet-required', 'connect-error', 'deposit-failed', 'connect-wallet'];
+    'wallet-required', 'connect-error', 'deposit-failed', 'connect-wallet',
+    // X de cierre roja (arte de David, recortada de fondo magenta).
+    'close-x-red'];
 const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
 
 const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {
