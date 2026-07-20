@@ -30,8 +30,9 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // menu (contenido dinamico: solo el marco+fondo va en la imagen, el texto
     // se sigue pintando con HTML/CSS encima).
     'quest-panel',
-    // Titulos horneados de los modales de wallet (marco verde del premio).
-    'wallet-required', 'connect-error', 'deposit-failed'];
+    // Titulos horneados de los modales de wallet (marco verde del premio) y
+    // del selector de wallet (CONNECT WALLET en blanco).
+    'wallet-required', 'connect-error', 'deposit-failed', 'connect-wallet'];
 const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
 
 const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {

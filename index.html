@@ -490,7 +490,7 @@ body.trailer-open #page-content{
         #deposit-modal .modal-box, #withdraw-modal .modal-box, #msg-modal .modal-box {
             border: none; border-radius: 0; box-shadow: none;
             background: transparent url('game/img/cartel-hero/prize-panel.png') center/100% 100% no-repeat;
-            image-rendering: pixelated; padding: 44px 44px 26px;
+            image-rendering: pixelated; padding: 44px 44px 40px;
         }
         #deposit-modal .modal-title { color: transparent; height: 44px; margin-bottom: 10px;
             background: url('game/img/cartel-hero/deposit.png') center/contain no-repeat; image-rendering: pixelated; }
@@ -509,6 +509,24 @@ body.trailer-open #page-content{
         #deposit-modal .modal-close, #withdraw-modal .modal-close { color: transparent; width: 22px; height: 21px;
             background: url('game/img/cartel-hero/close-x.png') center/contain no-repeat; image-rendering: pixelated; }
         #deposit-modal .modal-close:hover, #withdraw-modal .modal-close:hover { filter: brightness(1.4); }
+
+        /* CONNECT WALLET: identico al selector de dentro del juego — recuadro
+           menu-gris, titulo con la imagen de David y botones grises planos. */
+        #wallet-modal .modal-box { border: none; border-radius: 0; box-shadow: none;
+            background: transparent url('game/img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
+            image-rendering: pixelated; padding: 52px 44px 40px; }
+        #wallet-modal .modal-title { color: transparent; font-size: 0; height: 46px; margin: 0 auto 26px; width: 82%;
+            background: url('game/img/cartel-hero/connect-wallet.png') center/contain no-repeat; image-rendering: pixelated; }
+        #wallet-modal .wallet-option { border: none; border-radius: 0; box-shadow: none;
+            background: transparent url('game/img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat;
+            image-rendering: pixelated; height: 52px; margin: 14px auto 0; width: 88%;
+            display: flex; align-items: center; justify-content: center; gap: 14px; padding: 0; transform: none; }
+        #wallet-modal .wallet-option:hover { background-color: transparent; border: none; transform: none; filter: brightness(1.2); }
+        #wallet-modal .wallet-option img { width: 32px; height: 32px; border-radius: 6px; }
+        #wallet-modal .wallet-option span { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65); text-transform: uppercase; }
+        #wallet-modal .modal-close { color: transparent; width: 22px; height: 21px;
+            background: url('game/img/cartel-hero/close-x.png') center/contain no-repeat; image-rendering: pixelated; }
+        #wallet-modal .modal-close:hover { filter: brightness(1.4); }
 
         .wallet-option { 
             display: flex; align-items: center; gap: 15px; background: #111; border: 1px solid #333; 
@@ -1466,7 +1484,10 @@ body.trailer-open #page-content{
 
             // Aviso con el estilo del sitio (sustituye a alert)
             Msg: {
-                show: (title, text) => { DOM.msgTitle.innerText = title || 'Notice'; DOM.msgText.innerText = text || ''; DOM.msgModal.style.display = 'flex'; },
+                // Cierra deposit/withdraw antes de mostrarse: con los marcos PNG
+                // (fondo del box transparente por las esquinas) un aviso encima
+                // de otro modal abierto se veia superpuesto al cartel anterior.
+                show: (title, text) => { DOM.depositModal.style.display = 'none'; DOM.withdrawModal.style.display = 'none'; DOM.msgTitle.innerText = title || 'Notice'; DOM.msgText.innerText = text || ''; DOM.msgModal.style.display = 'flex'; },
                 close: () => { DOM.msgModal.style.display = 'none'; }
             },
 
