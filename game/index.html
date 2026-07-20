@@ -180,6 +180,11 @@
             letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s;
         }
         #gameWalletArea button:hover { background: var(--mode-color, #00ff88); color: #04150c; box-shadow: 0 0 18px color-mix(in srgb, var(--mode-color, #00ff88) 45%, transparent); }
+        /* Desplegable del DEPOSIT (hover): WITHDRAW y DISCONNECT debajo */
+        #gwDepositWrap { position: relative; display: inline-block; }
+        #gwDropdown { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 101; min-width: 100%; }
+        #gwDepositWrap:hover #gwDropdown { display: block; }
+        #gwDropdown button { display: block; width: 100%; margin-top: 4px; background: rgba(8,12,8,0.95); white-space: nowrap; }
 
         /* Modales del juego (deposit + prize) en el estilo del juego */
         .gameModal { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 250; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.2s; }
@@ -682,7 +687,16 @@
            rectangulo plano) con texto/iconos grandes y mas separacion; titulo
            CONNECT WALLET (imagen de David) algo mas abajo y CANCEL mas cerca
            de los botones para que el conjunto quede centrado. */
-        .pw-modal-box.wallet-picker { border: none; box-shadow: none; background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat; image-rendering: pixelated; padding: 52px 44px 40px; }
+        .pw-modal-box.wallet-picker, .pw-modal-box.room-picker { border: none; box-shadow: none; background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat; image-rendering: pixelated; padding: 52px 44px 40px; }
+        .room-picker .wp-title { display: block; width: 74%; height: auto; margin: 0 auto 22px; image-rendering: pixelated; }
+        /* Colores por rareza de las salas del popup: $5 azul, $10 epico,
+           $20 legendario (dorado), $50 mitico (anaranjado) */
+        .pw-big-btn.r5 { background: linear-gradient(#3f8ef7, #1450b4); }
+        .pw-big-btn.r10 { background: linear-gradient(#b45cff, #6a1fb4); }
+        .pw-big-btn.r20 { background: linear-gradient(#ffd94e, #b8860b); }
+        .pw-big-btn.r50 { background: linear-gradient(#ff9d3f, #c85a10); }
+        /* CANCEL del popup de salas: boton gris plano */
+        .room-picker .wp-cancel { margin-top: 16px; font-size: 11px; height: 46px; width: 62%; }
         .wallet-picker .wp-title { display: block; width: 82%; height: auto; margin: 0 auto 26px; image-rendering: pixelated; }
         .pw-big-btn.wp-btn { border: none; box-shadow: none; background: transparent url('img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat; image-rendering: pixelated; height: 52px; width: 88%; margin: 14px auto 0; padding: 0; display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 13px; }
         .pw-big-btn.wp-btn img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
@@ -1082,7 +1096,14 @@
     <div id="gameWalletArea">
         <div id="gwBalBox"><span style="color:var(--primary)">in GAME:</span> <b id="gwBalValue">—</b> <span style="color:var(--primary)">$PILL</span></div>
         <button id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
-        <button id="gwDeposit" onclick="GameWalletUI.openDeposit()" style="display:none">DEPOSIT</button>
+        <!-- DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT -->
+        <div id="gwDepositWrap" style="display:none">
+            <button id="gwDeposit" onclick="GameWalletUI.openDeposit()">DEPOSIT</button>
+            <div id="gwDropdown">
+                <button onclick="GameWalletUI.openWithdraw()">WITHDRAW</button>
+                <button onclick="GameWalletUI.disconnect()">DISCONNECT</button>
+            </div>
+        </div>
     </div>
 
     <!-- Deposit modal del juego -->
@@ -1099,6 +1120,22 @@
                 <button type="button" onclick="GameWalletUI.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
             </div>
             <button class="gm-btn" id="gdConfirm" onclick="GameWalletUI.deposit()">Deposit to GAME</button>
+        </div>
+    </div>
+
+    <!-- Withdraw en el juego: mismo flujo y look que el de la web -->
+    <div id="gameWithdrawModal" class="gameModal">
+        <div class="gameModalBox">
+            <span class="close" onclick="GameWalletUI.closeWithdraw()">×</span>
+            <h3>Withdraw $PILL</h3>
+            <div class="gm-row" style="margin-bottom:14px"><span>In GAME</span><b id="gwdGame" style="color:#ffce3d">—</b></div>
+            <label>Amount</label>
+            <div style="position:relative">
+                <input id="gwdAmount" type="text" inputmode="numeric" autocomplete="off" placeholder="amount to withdraw" style="padding-right:60px"
+                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <button type="button" onclick="GameWalletUI.fillMaxWithdraw()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+            </div>
+            <button class="gm-btn" id="gwdConfirm" onclick="GameWalletUI.withdraw()">Withdraw to wallet</button>
         </div>
     </div>
 
@@ -1150,19 +1187,22 @@
         </div>
     </div>
 
-    <!-- Popup de sala: aparece al darle a PLAY si no elegiste sala en ROOM PRICES -->
+    <!-- Popup de sala: aparece al darle a PLAY si no elegiste sala en ROOM
+         PRICES. Recuadro menu-gris, titulo PNG de David y colores por rareza:
+         FREE verde, $5 azul, $10 epico (morado), $20 legendario (dorado),
+         $50 mitico (anaranjado). -->
     <div id="roomChoiceModal" class="pw-modal">
-        <div class="pw-modal-box">
-            <div class="pw-modal-title">SELECT A ROOM</div>
+        <div class="pw-modal-box room-picker">
+            <img class="wp-title" src="img/cartel-hero/select-a-room.png" alt="SELECT A ROOM">
             <div class="pw-room-grid">
                 <button class="pw-big-btn free" onclick="chooseRoomFromModal('Free')" onmouseenter="SoundManager.playSimpleHover()">FREE</button>
-                <button class="pw-big-btn room" onclick="chooseRoomFromModal('5$')" onmouseenter="SoundManager.playSimpleHover()">$5</button>
-                <button class="pw-big-btn room" onclick="chooseRoomFromModal('10$')" onmouseenter="SoundManager.playSimpleHover()">$10</button>
-                <button class="pw-big-btn room" onclick="chooseRoomFromModal('20$')" onmouseenter="SoundManager.playSimpleHover()">$20</button>
-                <button class="pw-big-btn room" onclick="chooseRoomFromModal('50$')" onmouseenter="SoundManager.playSimpleHover()">$50</button>
+                <button class="pw-big-btn r5" onclick="chooseRoomFromModal('5$')" onmouseenter="SoundManager.playSimpleHover()">$5</button>
+                <button class="pw-big-btn r10" onclick="chooseRoomFromModal('10$')" onmouseenter="SoundManager.playSimpleHover()">$10</button>
+                <button class="pw-big-btn r20" onclick="chooseRoomFromModal('20$')" onmouseenter="SoundManager.playSimpleHover()">$20</button>
+                <button class="pw-big-btn r50" onclick="chooseRoomFromModal('50$')" onmouseenter="SoundManager.playSimpleHover()">$50</button>
             </div>
             <div class="pw-btn-sub">YOU CAN ALSO PICK ONE IN THE ROOM · PRICES PANEL</div>
-            <button class="pw-modal-cancel" onclick="closeRoomChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
+            <button class="pw-big-btn wp-btn wp-cancel" onclick="closeRoomChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
     </div>
 
@@ -1854,9 +1894,18 @@
         try { cid = localStorage.getItem('pw_cid'); if (!cid) { cid = uuid().replace(/-/g, '').slice(0, 24); localStorage.setItem('pw_cid', cid); } } catch (e) { cid = 'guest-' + Math.random().toString(36).slice(2, 12); }
         // Por partida: kills (classic), skills usadas (arcade), pico de masa
         let match = null;
+        // Contador de kills del HUD, SEPARADO de `match` (que es solo para
+        // quests): antes el HUD dependia de match y fallaba doble — tras un
+        // fin de partida (endMatch('matchEnd') NO anula match) los kills de la
+        // partida anterior seguian sumando en la siguiente pantalla, y en
+        // caminos sin startMatch (rejoin, preview de practica) match era null
+        // y reportKill no pintaba nada.
+        let hudKills = 0;
+        function _paintKills() { const el = document.getElementById('killsVal'); if (el) el.textContent = hudKills; }
+        function resetKills() { hudKills = 0; _paintKills(); }
         function startMatch(mode, online) {
             match = { mode, online, kills: 0, skillsUsed: 0, peakMass: 0, alive: true, reportedOnline: false, reportedGame: false, reportedSurvive: false, reportedSkill: false };
-            const el = document.getElementById('killsVal'); if (el) el.textContent = '0';
+            resetKills();
         }
         function endMatch(reason) {
             if (!match) return;
@@ -1871,7 +1920,7 @@
             match = null;
         }
         // Hooks no-op por compatibilidad — todo se cuenta server-side ahora.
-        function reportKill() { if (match) { match.kills++; const el = document.getElementById('killsVal'); if (el) el.textContent = match.kills; } }
+        function reportKill() { if (match) match.kills++; hudKills++; _paintKills(); }
         function reportSkill() {}
         function reportMass() {}
         function reportDeath() { if (match) match.alive = false; }
@@ -1887,7 +1936,7 @@
                 }
             } finally { sending = false; }
         }
-        return { cid, startMatch, endMatch, reportKill, reportSkill, reportMass, reportDeath, flushArcadeSkills };
+        return { cid, startMatch, endMatch, reportKill, reportSkill, reportMass, reportDeath, flushArcadeSkills, resetKills };
     })();
     let explosions = []; // efecto visual local; el resto del mundo vive en sim.*
 
@@ -2455,11 +2504,14 @@
         // Padding: titulo un pelin mas abajo (44 arriba) y el OK mas pegado al
         // borde inferior (18 abajo), a peticion de David.
         if (cartelUsesAtlas('prize-panel')) {
-            css += 'body.pixel-pack #gameDepositModal .gameModalBox{border:none!important;border-radius:0!important;' +
+            css += 'body.pixel-pack #gameDepositModal .gameModalBox,body.pixel-pack #gameWithdrawModal .gameModalBox{border:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
                 'image-rendering:pixelated;padding:44px 44px 40px}' +
                 // "In wallet / In GAME / Amount" tambien un poco mas abajo
-                'body.pixel-pack #gameDepositModal .gm-row:first-of-type{margin-top:10px}';
+                'body.pixel-pack #gameDepositModal .gm-row:first-of-type,body.pixel-pack #gameWithdrawModal .gm-row:first-of-type{margin-top:10px}' +
+                // Titulo del withdraw (sin arte horneado): fuente pixel
+                'body.pixel-pack #gameWithdrawModal .gameModalBox>h3{font-family:"Press Start 2P",monospace!important;font-size:15px!important;' +
+                'color:#c8cdd2!important;text-shadow:2px 2px 0 rgba(0,0,0,.65);line-height:1.6}';
             // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED: mismo marco verde
             // del premio en el modal de sistema (la clase sys-green la pone
             // showSystemMsg).
@@ -2468,11 +2520,11 @@
                 'image-rendering:pixelated;padding:40px 44px 46px;width:430px}';
         }
         if (cartelUsesAtlas('ok')) {
-            css += 'body.pixel-pack #gameDepositModal .gm-btn{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
+            css += 'body.pixel-pack #gameDepositModal .gm-btn,body.pixel-pack #gameWithdrawModal .gm-btn{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('ok') + ') center/100% 100% no-repeat!important;' +
                 'aspect-ratio:622/81;width:58%!important;display:block;margin:16px auto 0;padding:0!important;' +
                 'image-rendering:pixelated;color:transparent!important;text-shadow:none!important}' +
-                'body.pixel-pack #gameDepositModal .gm-btn:hover{filter:brightness(1.15);box-shadow:none!important}';
+                'body.pixel-pack #gameDepositModal .gm-btn:hover,body.pixel-pack #gameWithdrawModal .gm-btn:hover{filter:brightness(1.15);box-shadow:none!important}';
         }
         // Boton OK del modal de sistema (KICKED/REJOIN EXPIRED...) horneado.
         if (cartelUsesAtlas('ok')) {
@@ -3643,6 +3695,9 @@
     function openPlayChoice() {
         // Ventana de REJOIN viva: entrar directo a la partida en curso, sin popup.
         if (typeof Rejoin !== 'undefined' && Rejoin.get()) { startOnlineGame(); return; }
+        // Sala de PAGO ya elegida: directo a online, sin preguntar offline
+        // (practicar no aplica a una sala de pago). FREE o sin sala → popup.
+        if (currentServer && currentServer !== 'Free') { SoundManager.play('simpleselect'); startOnlineGame(); return; }
         SoundManager.play('simpleselect');
         document.getElementById('playChoiceModal').style.display = 'flex';
     }
@@ -4599,7 +4654,7 @@
         fmt(n) { return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }); },
         async refresh() {
             const balBox = document.getElementById('gwBalBox'), balVal = document.getElementById('gwBalValue');
-            const conn = document.getElementById('gwConnect'), dep = document.getElementById('gwDeposit');
+            const conn = document.getElementById('gwConnect'), dep = document.getElementById('gwDepositWrap');
             if (!GameWallet.address) { await GameWallet.ensure(); }
             if (GameWallet.address) {
                 conn.style.display = 'none'; dep.style.display = 'inline-block';
@@ -4663,6 +4718,39 @@
             } catch (e) {}
         },
         closeDeposit() { document.getElementById('gameDepositModal').style.display = 'none'; },
+        // --- Withdraw dentro del juego: mismo flujo que App.Withdraw en la web
+        // (firma de mensaje + POST /api/withdraw contra el saldo in-GAME) ---
+        openWithdraw() {
+            document.getElementById('gameWithdrawModal').style.display = 'flex';
+            document.getElementById('gwdGame').innerText = this.fmt(this.gameBalance) + ' $PILL';
+        },
+        closeWithdraw() { document.getElementById('gameWithdrawModal').style.display = 'none'; },
+        fillMaxWithdraw() { document.getElementById('gwdAmount').value = String(Math.floor(this.gameBalance || 0)); },
+        async withdraw() {
+            const amt = Math.max(1, parseInt(document.getElementById('gwdAmount').value, 10) || 0);
+            if (amt > (this.gameBalance || 0)) { showSystemMsg('You only have ' + this.fmt(this.gameBalance) + ' $PILL in GAME. Lower the amount.', 'WITHDRAW FAILED'); return; }
+            const btn = document.getElementById('gwdConfirm'); const old = btn.innerText; btn.disabled = true; btn.innerText = 'Sign in wallet...';
+            try {
+                const ts = Date.now();
+                const message = 'PillWars withdraw ' + amt + ' PILL @ ' + ts;
+                const res = await GameWallet.provider.signMessage(new TextEncoder().encode(message), 'utf8');
+                const sigBytes = res && res.signature ? res.signature : res;
+                btn.innerText = 'Withdrawing...';
+                const r = await (await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: GameWallet.address, amount: amt, ts, message, signature: Array.from(sigBytes) }) })).json();
+                if (!r.ok) throw new Error(r.reason || 'withdraw failed');
+                this.closeWithdraw();
+                this.refresh();
+                showSystemMsg(this.fmt(amt) + ' $PILL sent back to your wallet.', 'WITHDRAW COMPLETE');
+            } catch (e) { showSystemMsg((e.message || String(e)).slice(0, 140), 'WITHDRAW FAILED'); }
+            btn.disabled = false; btn.innerText = old;
+        },
+        // Desconecta la wallet del juego (y olvida la sesion recordada)
+        disconnect() {
+            try { if (GameWallet.provider && GameWallet.provider.disconnect) GameWallet.provider.disconnect(); } catch (e) {}
+            GameWallet.address = null; GameWallet.provider = null;
+            try { localStorage.removeItem('pw_wallet'); localStorage.removeItem('pw_addr'); } catch (e) {}
+            this.refresh();
+        },
         fillMax() {
             if (this.walletBalance != null) document.getElementById('gdAmount').value = String(this.walletBalance);
         },
@@ -5352,6 +5440,7 @@
 
     function startPracticeGame(mode) {
         practiceMode = true;
+        Quests.resetKills();   // el preview no arrastra los kills de la partida anterior
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
         const botCount = 25;
         const baseSize = (mode === 'classic') ? WORLD_CONFIG.classic.size : WORLD_CONFIG.arcade.size;
@@ -5398,10 +5487,10 @@
         const t = title || 'NOTICE';
         // KICKED, REJOIN EXPIRED y los de wallet tienen su titulo horneado
         // (cartel-hero); el resto siguen con la fuente procedural.
-        const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error', 'DEPOSIT FAILED': 'deposit-failed' }[t];
+        const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error', 'DEPOSIT FAILED': 'deposit-failed', 'PAYMENT CANCELLED': 'payment-cancelled' }[t];
         // Los carteles de wallet usan el marco verde del premio (prize-panel)
         // en vez del marco estandar del modal de sistema.
-        const green = t === 'WALLET REQUIRED' || t === 'CONNECT ERROR' || t === 'DEPOSIT FAILED';
+        const green = t === 'WALLET REQUIRED' || t === 'CONNECT ERROR' || t === 'DEPOSIT FAILED' || t === 'PAYMENT CANCELLED';
         const box = m.querySelector('.exit-box');
         if (box) box.classList.toggle('sys-green', green);
         if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {
