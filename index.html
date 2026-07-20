@@ -471,8 +471,12 @@ body.trailer-open #page-content{
             text-align: center; animation: slideUp 0.3s ease-out; margin: 20px;
         }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .modal-close { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #666; font-weight: bold; }
-        .modal-close:hover { color: #fff; }
+        /* X pixel roja generada por canvas (pixelXUrl, mas abajo) — no imagen
+           importada: el asset close-x.png se veia mal en este contexto. */
+        .modal-close { position: absolute; top: 15px; right: 20px; width: 22px; height: 22px;
+            color: transparent; font-size: 0; background-repeat: no-repeat; background-position: center;
+            background-size: contain; image-rendering: pixelated; opacity: 0.9; }
+        .modal-close:hover { opacity: 1; filter: brightness(1.25); }
         .modal-title { font-family: 'Russo One'; color: #fff; font-size: 20px; margin-bottom: 25px; text-transform: uppercase; }
 
         /* Campos del modal de contacto */
@@ -513,9 +517,6 @@ body.trailer-open #page-content{
         /* MAX y cualquier otro boton dentro de estos modales: sin bevel del pack */
         #deposit-modal .modal-box button, #withdraw-modal .modal-box button, #msg-modal .modal-box button { box-shadow: none !important; }
         #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field { border-radius: 0 !important; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important; }
-        #deposit-modal .modal-close, #withdraw-modal .modal-close { color: transparent; width: 22px; height: 21px;
-            background: url('game/img/cartel-hero/close-x.png') center/contain no-repeat; image-rendering: pixelated; }
-        #deposit-modal .modal-close:hover, #withdraw-modal .modal-close:hover { filter: brightness(1.4); }
 
         /* CONNECT WALLET: identico al selector de dentro del juego — recuadro
            menu-gris, titulo con la imagen de David y botones grises planos. */
@@ -531,9 +532,6 @@ body.trailer-open #page-content{
         #wallet-modal .wallet-option:hover { background-color: transparent !important; border: none !important; transform: none; filter: brightness(1.2); }
         #wallet-modal .wallet-option img { width: 32px; height: 32px; border-radius: 6px; }
         #wallet-modal .wallet-option span { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65); text-transform: uppercase; }
-        #wallet-modal .modal-close { color: transparent; width: 22px; height: 21px;
-            background: url('game/img/cartel-hero/close-x.png') center/contain no-repeat; image-rendering: pixelated; }
-        #wallet-modal .modal-close:hover { filter: brightness(1.4); }
 
         .wallet-option { 
             display: flex; align-items: center; gap: 15px; background: #111; border: 1px solid #333; 
@@ -712,37 +710,37 @@ body.trailer-open #page-content{
         body.pixel-pack .skill-icon, body.pixel-pack .dd-icon, body.pixel-pack .wallet-option img,
         body.pixel-pack .tooltip-icon-main, body.pixel-pack .feature-images img,
         body.pixel-pack .full-width-img img { image-rendering: pixelated; }
-        /* boton flotante para alternar el pack (compartido con el juego via pw_pixel) */
-        #pixelToggle {
-            position: fixed; bottom: 18px; right: 18px; z-index: 10000;
-            background: rgba(8,12,8,0.92); color: var(--primary); border: 1px solid var(--primary);
-            border-radius: 8px; padding: 10px 16px; font-family: 'Russo One', sans-serif; font-size: 11px;
-            letter-spacing: 2px; text-transform: uppercase; cursor: pointer !important; transition: 0.2s;
-        }
-        #pixelToggle:hover { background: var(--primary); color: #04150c; box-shadow: 0 0 18px rgba(0,255,136,0.5); }
-        body.pixel-pack #pixelToggle {
-            border-radius: 0; font-family: 'Press Start 2P', monospace; font-size: 9px;
-            box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.18);
-        }
     </style>
 </head>
-<body>
+<body class="pixel-pack">
 
-    <!-- Texture pack pixel: mismo flag pw_pixel que el selector del juego (mismo
-         origen ⇒ mismo localStorage). Se aplica antes de pintar nada para evitar
-         el "flash" de estilos clasicos, y el boton flotante lo alterna en vivo. -->
+    <!-- Texture pack pixel: SIEMPRE activo (antes era un toggle ON/OFF con
+         localStorage pw_pixel; ahora el look pixel es el unico, sin opcion
+         de quitarlo — la clase va directa en <body>). -->
     <script>
-        if (localStorage.getItem('pw_pixel') === '1') document.body.classList.add('pixel-pack');
-        function togglePixelPack() {
-            const on = !document.body.classList.contains('pixel-pack');
-            document.body.classList.toggle('pixel-pack', on);
-            localStorage.setItem('pw_pixel', on ? '1' : '0');
-            updatePixelToggleLabel();
-            applyPixelPill();
+        // X de cierre pixel roja (generada por canvas, no imagen importada):
+        // grid logico pequeño con dos trazos diagonales + sombreado de borde,
+        // igual que el resto de sprites pixel de esta pagina (ver pixPillUrl).
+        function pixelXUrl(wl, half) {
+            const cv = document.createElement('canvas'); cv.width = wl; cv.height = wl;
+            const g = cv.getContext('2d');
+            const isX = (x, y) => {
+                const cx = x + 0.5, cy = y + 0.5;
+                const d1 = Math.abs(cx - cy) / Math.SQRT2;
+                const d2 = Math.abs(cx + cy - wl) / Math.SQRT2;
+                return d1 <= half || d2 <= half;
+            };
+            for (let y = 0; y < wl; y++) for (let x = 0; x < wl; x++) {
+                if (!isX(x, y)) continue;
+                const edge = !isX(x - 1, y) || !isX(x + 1, y) || !isX(x, y - 1) || !isX(x, y + 1);
+                g.fillStyle = edge ? '#7a0f0f' : '#ff3b3b';
+                g.fillRect(x, y, 1, 1);
+            }
+            return cv.toDataURL('image/png');
         }
-        function updatePixelToggleLabel() {
-            const b = document.getElementById('pixelToggle');
-            if (b) b.textContent = 'PIXEL: ' + (document.body.classList.contains('pixel-pack') ? 'ON' : 'OFF');
+        function applyPixelCloseX() {
+            const url = 'url(' + pixelXUrl(12, 1.3) + ')';
+            document.querySelectorAll('.modal-close').forEach(el => { el.style.backgroundImage = url; });
         }
         // Pill pixel-art para el cursor y el logo: port 1:1 de pixPillSprite
         // (game/index.html) — capsula pintada pixel a pixel a resolucion logica
@@ -770,18 +768,16 @@ body.trailer-open #page-content{
             return cv.toDataURL();
         }
         function applyPixelPill() {
-            const on = document.body.classList.contains('pixel-pack');
             // 8×15 logico sobre 24×44 de pantalla ≈ pixel gordo de 3px, como el juego
-            const url = on ? 'url(' + pixPillUrl(8, 15, [255, 255, 255], [0, 255, 136]) + ')' : '';
+            const url = 'url(' + pixPillUrl(8, 15, [255, 255, 255], [0, 255, 136]) + ')';
             document.querySelectorAll('#custom-cursor, .logo-pill').forEach(el => { el.style.backgroundImage = url; });
         }
-        document.addEventListener('DOMContentLoaded', () => { updatePixelToggleLabel(); applyPixelPill(); });
+        document.addEventListener('DOMContentLoaded', () => { applyPixelPill(); applyPixelCloseX(); });
         // Sprite del boton PLAY NOW (img/pixel-hero/play-now.png): solo se activa
         // en pixel-pack si el PNG carga bien (.has-play-img en body); si falta,
         // el boton se queda con el estilo procedural de siempre.
         (() => { const img = new Image(); img.onload = () => document.body.classList.add('has-play-img'); img.src = 'img/pixel-hero/play-now.png'; })();
     </script>
-    <button id="pixelToggle" onclick="togglePixelPack()">PIXEL: OFF</button>
 
     <div id="custom-cursor"></div>
     <div id="page-content">
