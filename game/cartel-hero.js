@@ -20,7 +20,7 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // Titulos de fin de partida y modales de sistema, boton OK, X de cierre
     // de los gameModal y arte del bloqueo movil.
     'match-finished', 'room-restarted', 'match-ended', 'kicked', 'rejoin-expired',
-    'deposit', 'ok', 'close-x', 'desktop-block',
+    'deposit', 'ok', 'desktop-block',
     // Banners horneados con texto completo (recortes de David): aviso de
     // pentakill (3/4 kills). El bloom se pone por CSS (drop-shadow del color),
     // no en el PNG. Los del lobby (finding/found/announce) van con fuente

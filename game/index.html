@@ -2437,10 +2437,12 @@
             // misma fuente pixel (es la referencia de estilo de .pw-amt-pix).
             'body.pixel-pack #myResult{font-family:"Press Start 2P",monospace!important;font-size:13px!important;line-height:2}';
         // X de cierre pixel para los gameModal (VICTORY/CASHOUT/MATCH ENDED y
-        // el deposit): sustituye la x gris de texto por el PNG.
-        if (cartelUsesAtlas('close-x')) {
+        // el deposit): sustituye la x gris de texto por el PNG. Siempre la roja
+        // (close-x-red, arte de David) — la gris (close-x) ya no se usa en
+        // ningun sitio, quitada del atlas.
+        if (cartelUsesAtlas('close-x-red')) {
             css += 'body.pixel-pack .gameModalBox .close{color:transparent!important;width:22px;height:21px;' +
-                'background:url(' + cartelHeroUrl('close-x') + ') center/contain no-repeat;image-rendering:pixelated}' +
+                'background:url(' + cartelHeroUrl('close-x-red') + ') center/contain no-repeat;image-rendering:pixelated}' +
                 'body.pixel-pack .gameModalBox .close:hover{filter:brightness(1.4)}';
         }
         // Titulo DEPOSIT horneado en el modal de deposito.
