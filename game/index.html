@@ -677,6 +677,12 @@
         .pw-modal-cancel { margin-top: 14px; padding: 8px 22px; background: transparent; border: 2px solid #3a4048; color: #8a939e; font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
         .pw-modal-cancel:hover { color: #fff; border-color: #6a737e; }
 
+        /* Selector de wallet: recuadro menu-gris + botones grises planos con icono */
+        .pw-modal-box.wallet-picker { border: none; box-shadow: none; background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat; image-rendering: pixelated; padding: 40px 44px 34px; }
+        .pw-big-btn.wp-btn { border: none; box-shadow: none; background: transparent url('img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat; image-rendering: pixelated; aspect-ratio: 487/160; width: 78%; margin: 6px auto 0; padding: 0; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 12px; }
+        .pw-big-btn.wp-btn img { width: 24px; height: 24px; border-radius: 5px; object-fit: cover; }
+        .pw-big-btn.wp-btn:hover:not(:disabled) { filter: brightness(1.2); transform: none; box-shadow: none; }
+
         /* FEATURES: modal ancho con los paneles de guia de cada modo dentro */
         .pw-modal-box.features { width: 720px; max-width: 94vw; max-height: 88vh; overflow-y: auto; text-align: left; }
         .pw-modal-box.features .pw-modal-title { text-align: center; }
@@ -1186,13 +1192,14 @@
         </div>
     </div>
 
-    <!-- Selector de wallet (mismas 3 opciones que la pagina principal) -->
+    <!-- Selector de wallet (mismas 3 opciones que la pagina principal):
+         recuadro menu-gris + botones grises planos con el icono de cada una -->
     <div id="walletPickerModal" class="pw-modal">
-        <div class="pw-modal-box">
+        <div class="pw-modal-box wallet-picker">
             <div class="pw-modal-title">CONNECT WALLET</div>
-            <button class="pw-big-btn room" onclick="GameWalletUI.connectWith('phantom')" onmouseenter="SoundManager.playSimpleHover()">PHANTOM</button>
-            <button class="pw-big-btn room" onclick="GameWalletUI.connectWith('backpack')" onmouseenter="SoundManager.playSimpleHover()">BACKPACK</button>
-            <button class="pw-big-btn room" onclick="GameWalletUI.connectWith('solflare')" onmouseenter="SoundManager.playSimpleHover()">SOLFLARE</button>
+            <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('phantom')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://i.imgur.com/esN0veD.png" alt="">PHANTOM</button>
+            <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('backpack')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="">BACKPACK</button>
+            <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('solflare')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="">SOLFLARE</button>
             <button class="pw-modal-cancel" onclick="document.getElementById('walletPickerModal').style.display='none'" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
     </div>
@@ -2442,14 +2449,15 @@
         if (cartelUsesAtlas('prize-panel')) {
             css += 'body.pixel-pack #gameDepositModal .gameModalBox{border:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
-                'image-rendering:pixelated;padding:44px 44px 18px}' +
+                'image-rendering:pixelated;padding:44px 44px 26px}' +
                 // "In wallet / In GAME / Amount" tambien un poco mas abajo
                 'body.pixel-pack #gameDepositModal .gm-row:first-of-type{margin-top:10px}';
-            // WALLET REQUIRED / CONNECT ERROR: mismo marco verde del premio en
-            // el modal de sistema (la clase sys-green la pone showSystemMsg).
+            // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED: mismo marco verde
+            // del premio en el modal de sistema (la clase sys-green la pone
+            // showSystemMsg).
             css += 'body.pixel-pack #sysModal .exit-box.sys-green{border:none!important;border-image:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
-                'image-rendering:pixelated;padding:40px 44px 30px;width:430px}';
+                'image-rendering:pixelated;padding:40px 44px 36px;width:430px}';
         }
         if (cartelUsesAtlas('ok')) {
             css += 'body.pixel-pack #gameDepositModal .gm-btn{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
@@ -4634,6 +4642,7 @@
             document.getElementById('gameDepositModal').style.display = 'flex';
             document.getElementById('gdGame').innerText = this.fmt(this.gameBalance) + ' $PILL';
             document.getElementById('gdWallet').innerText = '—';
+            this.walletBalance = null;   // desconocido hasta que el RPC conteste
             // Lee saldo wallet on-chain (RPC) — devnet
             try {
                 const RPC = location.protocol === 'https:' ? 'https://api.devnet.solana.com' : 'https://api.devnet.solana.com';
@@ -4641,17 +4650,23 @@
                 const res = await fetch(RPC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenAccountsByOwner', params: [GameWallet.address, { mint: MINT }, { encoding: 'jsonParsed' }] }) });
                 const data = await res.json();
                 const amt = data.result && data.result.value && data.result.value[0] ? data.result.value[0].account.data.parsed.info.tokenAmount.uiAmountString : '0';
+                this.walletBalance = Math.floor(parseFloat(amt) || 0);
                 document.getElementById('gdWallet').innerText = this.fmt(amt) + ' $PILL';
             } catch (e) {}
         },
         closeDeposit() { document.getElementById('gameDepositModal').style.display = 'none'; },
         fillMax() {
-            const raw = (document.getElementById('gdWallet').innerText || '').replace(/[^\d]/g, '');
-            if (raw) document.getElementById('gdAmount').value = raw;
+            if (this.walletBalance != null) document.getElementById('gdAmount').value = String(this.walletBalance);
         },
         async deposit() {
             if (!window.PillChain) { showSystemMsg('Wallet module not loaded yet.', 'WALLET'); return; }
             const amt = Math.max(1, parseInt(document.getElementById('gdAmount').value, 10) || 0);
+            // No dejar firmar un deposito de mas tokens de los que hay en la
+            // wallet (si el RPC contesto; si no, la cadena lo rechazara igual).
+            if (this.walletBalance != null && amt > this.walletBalance) {
+                showSystemMsg('You only have ' + this.fmt(this.walletBalance) + ' $PILL in your wallet. Lower the amount.', 'DEPOSIT FAILED');
+                return;
+            }
             const btn = document.getElementById('gdConfirm'); const old = btn.innerText; btn.disabled = true; btn.innerText = 'Sign in wallet...';
             try {
                 const sig = await window.PillChain.deposit(amt);
@@ -5375,17 +5390,18 @@
         const t = title || 'NOTICE';
         // KICKED, REJOIN EXPIRED y los de wallet tienen su titulo horneado
         // (cartel-hero); el resto siguen con la fuente procedural.
-        const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error' }[t];
+        const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error', 'DEPOSIT FAILED': 'deposit-failed' }[t];
         // Los carteles de wallet usan el marco verde del premio (prize-panel)
         // en vez del marco estandar del modal de sistema.
+        const green = t === 'WALLET REQUIRED' || t === 'CONNECT ERROR' || t === 'DEPOSIT FAILED';
         const box = m.querySelector('.exit-box');
-        if (box) box.classList.toggle('sys-green', t === 'WALLET REQUIRED' || t === 'CONNECT ERROR');
+        if (box) box.classList.toggle('sys-green', green);
         if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';
             const img = document.createElement('img');
             img.src = cartelHeroUrl(sysArt);
-            img.style.cssText = 'display:block;margin:0 auto;width:' + (t === 'WALLET REQUIRED' || t === 'CONNECT ERROR' ? '86%' : '62%') + ';height:auto;image-rendering:pixelated;';
+            img.style.cssText = 'display:block;margin:0 auto;width:' + (green ? '86%' : '62%') + ';height:auto;image-rendering:pixelated;';
             titleEl.appendChild(img);
         } else if (pixelMode) {
             ensurePixPanelCss();

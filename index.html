@@ -484,6 +484,32 @@ body.trailer-open #page-content{
         .cmodal-btn:hover { filter: brightness(1.1); box-shadow: 0 0 18px rgba(0,255,136,0.4); }
         .cmodal-btn:disabled { opacity: 0.6; cursor: default; }
 
+        /* ===== Deposit / Withdraw / avisos: MISMO look pixel que en el juego
+           (marco verde del premio, titulo DEPOSIT horneado, boton OK con arte).
+           Siempre activos, sin depender del texture pack de la web. ===== */
+        #deposit-modal .modal-box, #withdraw-modal .modal-box, #msg-modal .modal-box {
+            border: none; border-radius: 0; box-shadow: none;
+            background: transparent url('game/img/cartel-hero/prize-panel.png') center/100% 100% no-repeat;
+            image-rendering: pixelated; padding: 44px 44px 26px;
+        }
+        #deposit-modal .modal-title { color: transparent; height: 44px; margin-bottom: 10px;
+            background: url('game/img/cartel-hero/deposit.png') center/contain no-repeat; image-rendering: pixelated; }
+        #withdraw-modal .modal-title, #msg-modal .modal-title {
+            font-family: 'Press Start 2P', monospace; font-size: 14px; color: #c8cdd2;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.65); margin-bottom: 16px; line-height: 1.6; }
+        #deposit-modal .cmodal-btn, #withdraw-modal .cmodal-btn, #msg-modal .cmodal-btn {
+            border: none; border-radius: 0; box-shadow: none;
+            background: transparent url('game/img/cartel-hero/ok.png') center/100% 100% no-repeat;
+            aspect-ratio: 622/81; width: 58%; display: block; margin: 16px auto 0; padding: 0;
+            image-rendering: pixelated; color: transparent; text-shadow: none;
+        }
+        #deposit-modal .cmodal-btn:hover, #withdraw-modal .cmodal-btn:hover, #msg-modal .cmodal-btn:hover { filter: brightness(1.15); box-shadow: none; }
+        #deposit-modal .cmodal-btn:disabled, #withdraw-modal .cmodal-btn:disabled { filter: grayscale(0.6) brightness(0.75); opacity: 1; }
+        #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field { border-radius: 0; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05); }
+        #deposit-modal .modal-close, #withdraw-modal .modal-close { color: transparent; width: 22px; height: 21px;
+            background: url('game/img/cartel-hero/close-x.png') center/contain no-repeat; image-rendering: pixelated; }
+        #deposit-modal .modal-close:hover, #withdraw-modal .modal-close:hover { filter: brightness(1.4); }
+
         .wallet-option { 
             display: flex; align-items: center; gap: 15px; background: #111; border: 1px solid #333; 
             padding: 15px 20px; border-radius: 8px; margin-bottom: 12px; transition: 0.2s; 
@@ -1030,7 +1056,6 @@ body.trailer-open #page-content{
                 <button type="button" onclick="App.Deposit.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
             </div>
             <button class="cmodal-btn" id="deposit-confirm" onclick="App.Deposit.confirm()">Deposit to GAME</button>
-            <p style="font-size:11px;color:#666;margin-top:12px;line-height:1.5">You'll sign one transaction. The amount moves to your in-GAME balance, used to enter paid rooms.</p>
         </div>
     </div>
 
@@ -1047,7 +1072,6 @@ body.trailer-open #page-content{
                 <button type="button" onclick="App.Withdraw.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
             </div>
             <button class="cmodal-btn" id="withdraw-confirm" onclick="App.Withdraw.confirm()">Withdraw to wallet</button>
-            <p style="font-size:11px;color:#666;margin-top:12px;line-height:1.5">Sends $PILL from your in-GAME balance back to your connected wallet.</p>
         </div>
     </div>
 
@@ -1464,6 +1488,9 @@ body.trailer-open #page-content{
                     const w = App.Wallet.address;
                     if (!w) return;
                     const amt = Math.max(1, parseInt(DOM.depositAmount.value, 10) || 0);
+                    // No dejar firmar un deposito de mas tokens de los que hay en la wallet
+                    const walletBal = parseInt((App.Wallet.pillBal || '').replace(/[^\d]/g, ''), 10);
+                    if (!isNaN(walletBal) && amt > walletBal) { App.Msg.show('Deposit failed', 'You only have ' + walletBal.toLocaleString('en-US') + ' $PILL in your wallet. Lower the amount.'); return; }
                     if (!window.PillChain) { App.Msg.show('Please wait', 'Wallet module still loading, try again in a moment.'); return; }
                     DOM.depositConfirm.disabled = true; const old = DOM.depositConfirm.innerText; DOM.depositConfirm.innerText = 'Depositing...';
                     try {
