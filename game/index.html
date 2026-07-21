@@ -467,8 +467,10 @@
         @keyframes capfullPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
         /* Quitada la descripcion de encima: #missionsList reparte el hueco que
            dejaba libre entre las 5 quests (igual que .oracle-rows con las
-           salas), en vez de dejarlo vacio al fondo. */
-        #sidePanelMissions { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+           salas), en vez de dejarlo vacio al fondo. margin-top compensa el
+           hueco que antes ponia esa descripcion entre el titulo y la lista
+           (sin ella, la primera quest quedaba pegada al "DAILY QUESTS"). */
+        #sidePanelMissions { flex: 1; overflow-y: auto; display: flex; flex-direction: column; margin-top: 10px; }
         #missionsList { flex: 1; display: flex; flex-direction: column; }
         #missionsList .mqp-q { flex: 1 0 auto; }
 
