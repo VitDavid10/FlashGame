@@ -1025,6 +1025,13 @@
            velo, la escena es continua a traves de la diagonal. */
         #modeSceneCv { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; image-rendering: pixelated; display: none; }
         body.pixel-pack.has-hover-scene #modeScreen #modeSceneCv { display: block; }
+        /* Hasta que el canvas dinámico está listo (has-hover-scene, que el JS
+           añade al crear #modeSceneCv y pintar el primer frame), el selector se
+           mantiene en NEGRO: nada del layout estático (paneles/textos/divisor) se
+           ve. Así en F5 no aparece nunca el "menú antiguo" sin cuadrícula ni
+           comida — negro un instante y luego el selector real de golpe. */
+        body.pixel-pack:not(.has-hover-scene) #modeScreen .mode-panel,
+        body.pixel-pack:not(.has-hover-scene) #modeScreen .diagonal-divider { opacity: 0; }
         body.pixel-pack.has-hover-scene #modeScreen .mode-panel { background: rgba(0,0,0,0.45) !important; }
         /* Titulos ARCADE/CLASSIC bien marcados sobre la escena: sin la
            transparencia heredada de .mode-content (0.9/0.7 los dejaba
@@ -3963,11 +3970,15 @@
         try { checkActiveRoomConfig(); } catch(e) { console.error("Error loading room config", e); }
         
         // Usar setTimeout para cambiar de pantalla despues de la animacion
-        setTimeout(() => { 
-            els.modeScreen.style.display = 'none'; 
-            els.loginOverlay.style.display = 'flex'; 
+        setTimeout(() => {
+            // Repinta el fondo del login con la deco YA reubicada a huecos, con el
+            // login todavía oculto: así aparece colocada de golpe, sin que se vea
+            // el reacomodo (el selector movió la deco durante estos 1200ms).
+            try { paintLoginBg(m); } catch(e) {}
+            els.modeScreen.style.display = 'none';
+            els.loginOverlay.style.display = 'flex';
             els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
-        }, 1200); 
+        }, 1200);
     }
 
     function goBackToModes() {
