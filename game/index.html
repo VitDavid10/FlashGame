@@ -3321,7 +3321,7 @@
             t: Math.random()
         };
     }
-    function stepMenuDeco(w, h, now) {
+    function stepMenuDeco(w, h, now, move) {
         // Reescala posiciones si el canvas activo tiene otro tamaño lowres
         // (selector de modo y login no miden lo mismo en "pixeles" internos).
         if (menuDeco.w && (menuDeco.w !== w || menuDeco.h !== h)) {
@@ -3334,6 +3334,12 @@
         if (menuDeco.items.length > want) menuDeco.items.length = want;
         const dt = menuDeco.lastT ? Math.min(0.05, (now - menuDeco.lastT) / 1000) : 0.016;
         menuDeco.lastT = now;
+        // `move === false` (menús concretos: login/selección de sala y sus
+        // submenús) congela la deco: se sigue repoblando/reescalando para que al
+        // volver al selector no haya salto, pero las partículas no avanzan — así
+        // no hay comida moviéndose en cada menú concreto. El selector de modo
+        // llama sin el flag → sigue en movimiento.
+        if (move === false) return;
         for (const p of menuDeco.items) {
             p.x += p.vx * dt; p.y += p.vy * dt;
             if (p.x < -16) p.x = w + 16; else if (p.x > w + 16) p.x = -16;
@@ -4133,7 +4139,7 @@
         if (!tile.pat) tile.pat = g.createPattern(tile.cv, 'repeat');
         g.fillStyle = tile.pat;
         g.fillRect(0, 0, W, H);
-        stepMenuDeco(W, H, performance.now());
+        stepMenuDeco(W, H, performance.now(), false);   // login: comida quieta
         drawMenuDeco(g, W, H);
     }
     // rAF continuo: mientras el login este visible, repinta tile+deco cada
