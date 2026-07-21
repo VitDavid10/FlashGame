@@ -1247,7 +1247,7 @@
                 <button class="pw-big-btn r20" onclick="chooseRoomFromModal('20$')" onmouseenter="SoundManager.playSimpleHover()">$20</button>
                 <button class="pw-big-btn r50" onclick="chooseRoomFromModal('50$')" onmouseenter="SoundManager.playSimpleHover()">$50</button>
             </div>
-            <div class="pw-btn-sub">YOU CAN ALSO PICK ONE IN THE ROOM · PRICES PANEL</div>
+            <div class="pw-btn-sub">ROOM PRICES BY ORACLE</div>
             <button class="pw-big-btn wp-btn wp-cancel" onclick="closeRoomChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
     </div>
@@ -2610,22 +2610,28 @@
             css += 'body.pixel-pack #gameDepositModal .gameModalBox>h3{color:transparent!important;height:44px;' +
                 'background:url(' + cartelHeroUrl('deposit') + ') center/contain no-repeat;image-rendering:pixelated}';
         }
-        // Modal de deposito con el mismo marco verde del premio (entero
-        // estirado, sin 9-slice) y el boton de confirmar con el OK horneado.
+        // Modal de deposito/retiro con el marco gris (menu-gris, el mismo del
+        // selector de wallet/sala — todo lo de wallet/deposit va en gris, a
+        // peticion de David) y el boton de confirmar con el OK horneado.
         // Padding: titulo un pelin mas abajo (44 arriba) y el OK mas pegado al
         // borde inferior (18 abajo), a peticion de David.
-        if (cartelUsesAtlas('prize-panel')) {
+        if (cartelUsesAtlas('menu-gris')) {
             css += 'body.pixel-pack #gameDepositModal .gameModalBox,body.pixel-pack #gameWithdrawModal .gameModalBox{border:none!important;border-radius:0!important;' +
-                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('menu-gris') + ') center/100% 100% no-repeat!important;' +
                 'image-rendering:pixelated;padding:44px 44px 40px}' +
                 // "In wallet / In GAME / Amount" tambien un poco mas abajo
                 'body.pixel-pack #gameDepositModal .gm-row:first-of-type,body.pixel-pack #gameWithdrawModal .gm-row:first-of-type{margin-top:10px}' +
                 // Titulo del withdraw (sin arte horneado): fuente pixel
                 'body.pixel-pack #gameWithdrawModal .gameModalBox>h3{font-family:"Press Start 2P",monospace!important;font-size:15px!important;' +
-                'color:#c8cdd2!important;text-shadow:2px 2px 0 rgba(0,0,0,.65);line-height:1.6}';
-            // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED: mismo marco verde
-            // del premio en el modal de sistema (la clase sys-green la pone
-            // showSystemMsg).
+                'color:#c8cdd2!important;text-shadow:2px 2px 0 rgba(0,0,0,.65);line-height:1.6}' +
+                // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED: mismo marco gris
+                // en el modal de sistema (la clase sys-gray la pone showSystemMsg).
+                'body.pixel-pack #sysModal .exit-box.sys-gray{border:none!important;border-image:none!important;border-radius:0!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('menu-gris') + ') center/100% 100% no-repeat!important;' +
+                'image-rendering:pixelated;padding:40px 44px 46px;width:430px}';
+        }
+        // PAYMENT CANCELLED: se queda con el marco verde del premio (sin tocar).
+        if (cartelUsesAtlas('prize-panel')) {
             css += 'body.pixel-pack #sysModal .exit-box.sys-green{border:none!important;border-image:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
                 'image-rendering:pixelated;padding:40px 44px 46px;width:430px}';
@@ -5590,17 +5596,19 @@
         // KICKED, REJOIN EXPIRED y los de wallet tienen su titulo horneado
         // (cartel-hero); el resto siguen con la fuente procedural.
         const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error', 'DEPOSIT FAILED': 'deposit-failed', 'PAYMENT CANCELLED': 'payment-cancelled' }[t];
-        // Los carteles de wallet usan el marco verde del premio (prize-panel)
-        // en vez del marco estandar del modal de sistema.
-        const green = t === 'WALLET REQUIRED' || t === 'CONNECT ERROR' || t === 'DEPOSIT FAILED' || t === 'PAYMENT CANCELLED';
+        // PAYMENT CANCELLED sigue con el marco verde del premio (prize-panel).
+        // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED pasan al marco gris
+        // (menu-gris, el mismo del selector de wallet/sala) a peticion de David.
+        const green = t === 'PAYMENT CANCELLED';
+        const gray = t === 'WALLET REQUIRED' || t === 'CONNECT ERROR' || t === 'DEPOSIT FAILED';
         const box = m.querySelector('.exit-box');
-        if (box) box.classList.toggle('sys-green', green);
+        if (box) { box.classList.toggle('sys-green', green); box.classList.toggle('sys-gray', gray); }
         if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';
             const img = document.createElement('img');
             img.src = cartelHeroUrl(sysArt);
-            img.style.cssText = 'display:block;margin:0 auto;width:' + (green ? '86%' : '62%') + ';height:auto;image-rendering:pixelated;';
+            img.style.cssText = 'display:block;margin:0 auto;width:' + ((green || gray) ? '86%' : '62%') + ';height:auto;image-rendering:pixelated;';
             titleEl.appendChild(img);
         } else if (pixelMode) {
             ensurePixPanelCss();
