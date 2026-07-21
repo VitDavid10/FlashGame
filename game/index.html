@@ -3365,7 +3365,9 @@
                 // Mismo virus giratorio que la partida: giro cuantizado (16 pasos/
                 // vuelta), más lento cuanto más grande, con fase/sentido propios
                 // (p.seed). Gira siempre, incluso congelado en su sitio.
-                const spr = pixVirusSprite(Math.max(6, Math.round(p.size)), p.t);
+                // t=0 → verde del juego (virus normal); sin el tinte morado que
+                // metía el `p.t` aleatorio (eso pintaba virus de otros colores).
+                const spr = pixVirusSprite(Math.max(6, Math.round(p.size)), 0);
                 const seed = p.seed || 0;
                 const stepMs = 90 + (p.size | 0);
                 const ang = ((Math.floor(now / stepMs) + seed) % 16) * (Math.PI / 8) * (seed % 2 ? 1 : -1);
