@@ -268,34 +268,36 @@
         .back-to-web:hover svg { transform: translateX(-3px); }
         .mode-panel { position: absolute; top: 0; bottom: 0; width: 100%; transition: clip-path 1.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.85s; cursor: pointer; display: flex; flex-direction: column; justify-content: center; padding: 0 10%; box-sizing: border-box; }
         
+        /* Sin estado "neutral": la base YA es el aspecto de ARCADE (antes era
+           un tercer punto intermedio 65/55%, distinto de hover-arcade Y de
+           hover-classic — eso es lo que se veia de golpe, sin transicion, en
+           cada F5 antes de que el JS metiera la clase hover-arcade). Con la
+           base = arcade, el flash inicial (antes de que corra el JS) ya
+           coincide con el modo real, y .hover-classic sigue siendo el unico
+           override que hace falta. */
         .mode-arcade {
             background-image: linear-gradient(rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(204, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(135deg, var(--arcade-bg-1) 0%, #000 100%);
-            background-size: 50px 50px, 50px 50px, 100% 100%; clip-path: polygon(0 0, 65% 0, 55% 100%, 0 100%); left: 0; z-index: 2; align-items: flex-start; text-align: left;
+            background-size: 50px 50px, 50px 50px, 100% 100%; clip-path: polygon(0 0, 80% 0, 70% 100%, 0 100%); filter: brightness(1.2); left: 0; z-index: 2; align-items: flex-start; text-align: left;
         }
         .mode-classic {
             background-image: linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1px, transparent 1px), linear-gradient(135deg, #000 0%, var(--classic-bg-1) 100%);
-            background-size: 50px 50px, 50px 50px, 100% 100%; clip-path: polygon(65% 0, 100% 0, 100% 100%, 55% 100%); right: 0; z-index: 2; align-items: flex-end; text-align: right;
+            background-size: 50px 50px, 50px 50px, 100% 100%; clip-path: polygon(80% 0, 100% 0, 100% 100%, 70% 100%); filter: brightness(0.5); right: 0; z-index: 2; align-items: flex-end; text-align: right;
         }
-        /* HOVER EFFECTS DESKTOP */
-        #modeScreen.hover-arcade .mode-arcade { clip-path: polygon(0 0, 80% 0, 70% 100%, 0 100%); filter: brightness(1.2); }
-        #modeScreen.hover-arcade .mode-classic { clip-path: polygon(80% 0, 100% 0, 100% 100%, 70% 100%); filter: brightness(0.5); }
+        /* HOVER EFFECTS DESKTOP: solo hace falta el override de CLASSIC */
         #modeScreen.hover-classic .mode-arcade { clip-path: polygon(0 0, 30% 0, 20% 100%, 0 100%); filter: brightness(0.5); }
         #modeScreen.hover-classic .mode-classic { clip-path: polygon(30% 0, 100% 0, 100% 100%, 20% 100%); filter: brightness(1.2); }
-        
-        .diagonal-divider { position: absolute; top: -10%; width: 6px; height: 120%; background: #fff; z-index: 10; box-shadow: 0 0 40px #fff, 0 0 10px #fff; pointer-events: none; transition: left 1.2s cubic-bezier(0.4, 0, 0.2, 1); transform: rotate(10deg); left: 60%; }
-        #modeScreen.hover-arcade .diagonal-divider { left: 75%; background: #ccff00; box-shadow: 0 0 40px #ccff00; }
+
+        .diagonal-divider { position: absolute; top: -10%; width: 6px; height: 120%; background: #ccff00; z-index: 10; box-shadow: 0 0 40px #ccff00; pointer-events: none; transition: left 1.2s cubic-bezier(0.4, 0, 0.2, 1); transform: rotate(10deg); left: 75%; }
         #modeScreen.hover-classic .diagonal-divider { left: 25%; background: #00ff88; box-shadow: 0 0 40px #00ff88; }
-        
+
         .mode-content { position: absolute; top: 50%; transform: translateY(-50%); transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); max-width: 500px; opacity: 0.9; pointer-events: none; }
-        #contentArcade { text-align: left; left: 32.5%; transform: translate(-50%, -50%) scale(1.1); }
-        #contentClassic { text-align: right; left: 82.5%; transform: translate(-50%, -50%) scale(0.8); opacity: 0.7; }
-        
-        /* HOVER CONTENT POSITIONS */
-        #modeScreen.hover-arcade #contentArcade { left: 50%; transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-        #modeScreen.hover-arcade #contentClassic { left: 85%; transform: translate(-50%, -50%) scale(0.8) translateX(30px); opacity: 0.7; }
+        #contentArcade { text-align: left; left: 50%; transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+        #contentClassic { text-align: right; left: 85%; transform: translate(-50%, -50%) scale(0.8) translateX(30px); opacity: 0.7; }
+
+        /* HOVER CONTENT POSITIONS: solo hace falta el override de CLASSIC */
         #modeScreen.hover-classic #contentArcade { left: 15%; transform: translate(-50%, -50%) scale(0.8) translateX(-30px); opacity: 0.7; }
         #modeScreen.hover-classic #contentClassic { left: 50%; transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-        
+
         .mode-title { font-family: 'Russo One'; font-size: 70px; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 2px; text-shadow: 0 0 30px rgba(0,0,0,0.9); transition: all 0.4s; }
         /* Descripcion SIN caja: texto plano integrado bajo el logo, con sombra
            dura + halo oscuro para que se lea sobre la escena. */
@@ -1020,8 +1022,7 @@
            como relleno solido. */
         body.pixel-pack .diagonal-divider { width: 22px; margin-left: -8px; opacity: 1;
             background: repeating-linear-gradient(97deg, #565650 0px, #6b6b62 3px, #3a3a34 5px, #78786c 9px, #2c2c27 12px, #57574f 15px);
-            box-shadow: inset 3px 0 0 rgba(0,0,0,0.55), inset -3px 0 0 rgba(255,255,255,0.08); }
-        body.pixel-pack #modeScreen.hover-arcade .diagonal-divider { box-shadow: inset 3px 0 0 rgba(0,0,0,0.55), inset -3px 0 0 rgba(255,255,255,0.08), 0 0 26px rgba(255,223,85,0.65); }
+            box-shadow: inset 3px 0 0 rgba(0,0,0,0.55), inset -3px 0 0 rgba(255,255,255,0.08), 0 0 26px rgba(255,223,85,0.65); }
         body.pixel-pack #modeScreen.hover-classic .diagonal-divider { box-shadow: inset 3px 0 0 rgba(0,0,0,0.55), inset -3px 0 0 rgba(255,255,255,0.08), 0 0 26px rgba(102,240,90,0.65); }
         /* Escena de los portales DIBUJADA pixel a pixel (canvas #modeSceneCv a
            ~480x270 logicos bajo los paneles, z1<z2; ver modeFxDrawScene). Nada
@@ -1039,7 +1040,7 @@
            y del cielo. */
         body.pixel-pack.has-hover-scene #modeScreen .mode-content { opacity: 1 !important; }
         body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
-        body.pixel-pack.has-hover-scene #modeScreen.hover-arcade .mode-arcade,
+        body.pixel-pack.has-hover-scene #modeScreen:not(.hover-classic) .mode-arcade,
         body.pixel-pack.has-hover-scene #modeScreen.hover-classic .mode-classic { background: transparent !important; }
         body.pixel-pack .mode-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 2px; }
         body.pixel-pack .mode-title { font-family: 'Press Start 2P', monospace; font-size: 29px; letter-spacing: 0; text-shadow: 3px 3px 0 rgba(0,0,0,0.85); }
