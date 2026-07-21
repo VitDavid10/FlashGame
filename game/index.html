@@ -4158,10 +4158,19 @@
     try { menuLayout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { menuLayout = {}; }
     let layoutEditing = false, layoutDrag = null;
     function saveMenuLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(menuLayout)); } catch (e) {} }
+    // titlePw/titleWord son el MISMO nodo del DOM para arcade y classic (el
+    // contenido se cambia via innerHTML en setSelectedModeTitleArt), asi que
+    // una sola entrada de layout los movia a la vez en los dos modos. Estas
+    // dos claves se guardan con el modo actual anexado (titlePw_arcade vs
+    // titlePw_classic) para que el ajuste de uno no toque al otro.
+    const MODE_SCOPED_LAYOUT_KEYS = new Set(['titlePw', 'titleWord']);
+    function layoutStoreKey(key) {
+        return MODE_SCOPED_LAYOUT_KEYS.has(key) ? key + '_' + (currentGameMode || 'classic') : key;
+    }
     function applyMenuLayout() {
         for (const key in LAYOUT_ELS) {
             const el = document.querySelector(LAYOUT_ELS[key]); if (!el) continue;
-            const t = menuLayout[key];
+            const t = menuLayout[layoutStoreKey(key)];
             // Propiedades translate/scale (NO transform): asi el efecto de
             // pulsacion pixel-pack (button:active { transform } !important) se
             // COMPONE con el layout en vez de pisarlo — antes, al pulsar un
@@ -4193,8 +4202,9 @@
         document.addEventListener('pointerdown', (e) => {
             if (!layoutEditing || e.target.closest('#layoutEditBar')) return;
             const t = layoutTarget(e); if (!t) return;
-            const cur = menuLayout[t.key] || { x: 0, y: 0, s: 1 };
-            layoutDrag = { key: t.key, startX: e.clientX, startY: e.clientY, baseX: cur.x || 0, baseY: cur.y || 0 };
+            const sk = layoutStoreKey(t.key);
+            const cur = menuLayout[sk] || { x: 0, y: 0, s: 1 };
+            layoutDrag = { key: sk, startX: e.clientX, startY: e.clientY, baseX: cur.x || 0, baseY: cur.y || 0 };
             e.preventDefault(); e.stopPropagation();
         }, true);
         window.addEventListener('pointermove', (e) => {
@@ -4209,7 +4219,8 @@
             if (!layoutEditing) return;
             const t = layoutTarget(e); if (!t) return;
             e.preventDefault();
-            const cur = menuLayout[t.key] = menuLayout[t.key] || { x: 0, y: 0, s: 1 };
+            const sk = layoutStoreKey(t.key);
+            const cur = menuLayout[sk] = menuLayout[sk] || { x: 0, y: 0, s: 1 };
             // 1.015 (1.5%) en vez de 1.06 (6%): con el paso viejo era dificil
             // cuadrar dos elementos al MISMO tamano (se pasaba de largo entre
             // un tick y el siguiente). Shift+rueda = paso grande (1.06) para
@@ -4221,7 +4232,7 @@
         document.addEventListener('dblclick', (e) => {
             if (!layoutEditing) return;
             const t = layoutTarget(e); if (!t) return;
-            delete menuLayout[t.key]; applyMenuLayout(); saveMenuLayout();
+            delete menuLayout[layoutStoreKey(t.key)]; applyMenuLayout(); saveMenuLayout();
             e.preventDefault();
         }, true);
         // En modo edicion los clicks no disparan botones/inputs del menu
