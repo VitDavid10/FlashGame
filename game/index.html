@@ -3800,7 +3800,7 @@
     // de modo. Si algun PNG no carga, cae al texto de siempre (fallback).
     function setSelectedModeTitleArt(mode, fallbackText) {
         const el = els.selectedModeTitle;
-        const wordSrc = 'img/mode-title/' + (mode === 'arcade' ? 'ARCADE.png' : 'CLASSIC.png');
+        const wordSrc = 'img/mode-title/' + (mode === 'arcade' ? 'ARCADE-word.png' : 'CLASSIC-word.png');
         const pwSrc = 'img/mode-title/PILLWARS-' + mode + '.png';
         el.innerHTML = '<img src="' + pwSrc + '" alt="PILLWARS" style="height:1em;vertical-align:middle;image-rendering:pixelated;" onerror="this.closest(\'#selectedModeTitle\').innerText=\'' + fallbackText + '\'">' +
             ' <img src="' + wordSrc + '" alt="" style="height:1.2em;vertical-align:middle;image-rendering:pixelated;" onerror="this.closest(\'#selectedModeTitle\').innerText=\'' + fallbackText + '\'">';
