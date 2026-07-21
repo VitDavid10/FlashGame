@@ -553,9 +553,9 @@
                         <span id="mdFoodVal" style="color:#00ff88;font-size:12px;width:24px;">16</span>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <span style="color:#888;font-size:12px;">Virus chance</span>
-                        <input type="range" min="0" max="100" step="1" id="mdVirus" oninput="document.getElementById('mdVirusVal').innerText=this.value+'%'" style="width:110px;">
-                        <span id="mdVirusVal" style="color:#00ff88;font-size:12px;width:30px;">10%</span>
+                        <span style="color:#888;font-size:12px;">Virus count</span>
+                        <input type="range" min="1" max="10" step="1" id="mdVirus" oninput="document.getElementById('mdVirusVal').innerText=this.value" style="width:110px;">
+                        <span id="mdVirusVal" style="color:#00ff88;font-size:12px;width:30px;">3</span>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;">
                         <span style="color:#888;font-size:12px;">Pill bob</span>
@@ -1001,7 +1001,7 @@ function aplicarMenuDeco() {
     send({ cmd: 'setMenuDeco',
         gridSize: parseInt(document.getElementById('mdGrid').value, 10),
         foodDensity: parseInt(document.getElementById('mdFood').value, 10),
-        virusChance: parseInt(document.getElementById('mdVirus').value, 10) / 100,
+        virusCount: parseInt(document.getElementById('mdVirus').value, 10),
         pillBobPx: parseInt(document.getElementById('mdPillBob').value, 10),
         cartelBobPx: parseInt(document.getElementById('mdCartelBob').value, 10)
     });
@@ -1765,7 +1765,7 @@ function render(m) {
     if (typeof m.zoomExp === 'number' && document.activeElement.id !== 'zoomExp') { const ze = document.getElementById('zoomExp'); if (ze) ze.value = m.zoomExp; }
     if (typeof m.menuDecoGridSize === 'number' && document.activeElement.id !== 'mdGrid') { const el = document.getElementById('mdGrid'); if (el) { el.value = m.menuDecoGridSize; document.getElementById('mdGridVal').innerText = m.menuDecoGridSize + 'px'; } }
     if (typeof m.menuDecoFoodDensity === 'number' && document.activeElement.id !== 'mdFood') { const el = document.getElementById('mdFood'); if (el) { el.value = m.menuDecoFoodDensity; document.getElementById('mdFoodVal').innerText = m.menuDecoFoodDensity; } }
-    if (typeof m.menuDecoVirusChance === 'number' && document.activeElement.id !== 'mdVirus') { const v = Math.round(m.menuDecoVirusChance * 100); const el = document.getElementById('mdVirus'); if (el) { el.value = v; document.getElementById('mdVirusVal').innerText = v + '%'; } }
+    if (typeof m.menuDecoVirusCount === 'number' && document.activeElement.id !== 'mdVirus') { const v = m.menuDecoVirusCount; const el = document.getElementById('mdVirus'); if (el) { el.value = v; document.getElementById('mdVirusVal').innerText = v; } }
     if (typeof m.menuDecoPillBobPx === 'number' && document.activeElement.id !== 'mdPillBob') { const el = document.getElementById('mdPillBob'); if (el) { el.value = m.menuDecoPillBobPx; document.getElementById('mdPillBobVal').innerText = m.menuDecoPillBobPx + 'px'; } }
     if (typeof m.menuDecoCartelBobPx === 'number' && document.activeElement.id !== 'mdCartelBob') { const el = document.getElementById('mdCartelBob'); if (el) { el.value = m.menuDecoCartelBobPx; document.getElementById('mdCartelBobVal').innerText = m.menuDecoCartelBobPx + 'px'; } }
     const t = m.totales;
