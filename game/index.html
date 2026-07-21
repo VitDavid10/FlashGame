@@ -4079,10 +4079,15 @@
         // modeFxDrawSceneV2): sin esto la fila/columna del borde quedaba a
         // medias en vez de cuadricula entera. W sale del aspect ratio REAL
         // de la ventana (antes 320x180 fijo, que no encajaba en pantallas de
-        // otra proporcion).
+        // otra proporcion). Base 270 (NO 180, que llevaba antes): tiene que
+        // ser la MISMA base que modeFxDrawSceneV2 — las dos pantallas cubren
+        // el 100% del viewport, asi que si aqui uso menos filas para la misma
+        // altura real, cada "celda" sale mas grande que en el selector de
+        // modo aunque gridSize sea igual (justo el bug que reportó David: la
+        // cuadricula del login se veia a mas zoom que la del selector).
         const gs = Math.max(6, menuDecoSettings.gridSize | 0);
         const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
-        const H = Math.max(gs, Math.round(180 / gs) * gs);
+        const H = Math.max(gs, Math.round(270 / gs) * gs);
         const W = Math.max(gs, Math.round((vw / vh * H) / gs) * gs);
         if (cv.width !== W) cv.width = W;
         if (cv.height !== H) cv.height = H;
