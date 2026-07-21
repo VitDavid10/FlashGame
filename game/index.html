@@ -398,8 +398,11 @@
            propiedad "transform" (no "translate"): el editor de layout mueve
            estos mismos paneles con el.style.translate/scale, que es una
            propiedad CSS distinta e independiente, asi que no chocan.
-           missionsPanel desfasado medio ciclo para que no boten al unisono. */
-        @keyframes cartelBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+           missionsPanel desfasado medio ciclo para que no boten al unisono.
+           --cartel-bob-px (custom property, default 3): amplitud editable en
+           vivo desde SETTINGS -> VISUALS (admin), ver applyMenuDecoToCss(). */
+        :root { --cartel-bob-px: 3px; }
+        @keyframes cartelBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(calc(-1 * var(--cartel-bob-px))); } }
         #missionsPanel { animation-delay: 1.6s; }
         /* Video a todo el panel (mismo aspect-ratio, asi que el cover-fit del
            canvas ya no recorta), por debajo del contenido (.cartel-inner, z1). */
@@ -1283,6 +1286,24 @@
 
             <div class="section-title" style="margin-top:15px;">Menu Layout</div>
             <button class="btn-settings" style="margin-top:6px;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
+
+            <!-- Admin: densidad de la food/virus decorativos del fondo del menu y
+                 amplitud del bob (pildora / carteles), por separado. Codigo igual
+                 al que ya usaba unlockSettings (1234), solo para no exponer estos
+                 sliders a cualquiera que abra SETTINGS. -->
+            <div class="section-title" style="margin-top:15px;">Menu Visuals <span style="color:#666;font-size:9px;">(admin)</span></div>
+            <div id="visualsLock" style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+                <input type="password" id="visualsPass" placeholder="ADMIN CODE" style="flex:1;background:#0a0d10;border:2px solid #2a2f36;color:#c8cdd2;padding:9px;font-family:'Press Start 2P',monospace;font-size:9px;">
+                <button class="btn-settings" style="width:auto;padding:9px 14px;margin-top:0;" onclick="unlockVisuals()">UNLOCK</button>
+            </div>
+            <div id="visualsControls" style="display:none;margin-top:8px;">
+                <label style="display:block;color:#aaa;font-size:10px;margin-bottom:4px;">Background food density: <span id="vdFoodVal">16</span></label>
+                <input type="range" id="vdFood" min="0" max="40" step="1" style="width:100%;" oninput="updateMenuDecoSetting('foodDensity', this.value, 'vdFoodVal')">
+                <label style="display:block;color:#aaa;font-size:10px;margin:10px 0 4px;">Pill bob: <span id="vdPillVal">3</span>px</label>
+                <input type="range" id="vdPill" min="0" max="10" step="1" style="width:100%;" oninput="updateMenuDecoSetting('pillBobPx', this.value, 'vdPillVal')">
+                <label style="display:block;color:#aaa;font-size:10px;margin:10px 0 4px;">Cartel bob: <span id="vdCartelVal">3</span>px</label>
+                <input type="range" id="vdCartel" min="0" max="10" step="1" style="width:100%;" oninput="updateMenuDecoSetting('cartelBobPx', this.value, 'vdCartelVal')">
+            </div>
 
             <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
@@ -3271,9 +3292,82 @@
         t = { cv, pat: null };
         modeScene.v2Tiles.set(hex, t); return t;
     }
-    // (El fondo del login se pinta en el canvas #loginBgCv via paintLoginBg(),
-    // que tapa cualquier background-image CSS de #loginOverlay — el ajuste
-    // real para que sea igual al selector de modo esta ahi, no aqui.)
+    // ===== Decoracion de fondo del menu: food + virus atravesando el mapa =====
+    // Comparten UN SOLO estado (menuDeco) entre el selector de modo y el login
+    // para que al pasar de uno a otro las particulas sigan su camino sin saltar
+    // (misma decoracion "de fondo", solo cambia el canvas donde se pintan).
+    // Densidad y tamaño configurables desde el panel local del juego (ver
+    // SETTINGS -> VISUALS), guardado en localStorage (pw_menu_deco).
+    const MENU_DECO_KEY = 'pw_menu_deco';
+    const menuDecoSettings = Object.assign({ foodDensity: 16, virusChance: 0.1, pillBobPx: 3, cartelBobPx: 3 },
+        (() => { try { return JSON.parse(localStorage.getItem(MENU_DECO_KEY)) || {}; } catch (e) { return {}; } })());
+    function saveMenuDecoSettings() { try { localStorage.setItem(MENU_DECO_KEY, JSON.stringify(menuDecoSettings)); } catch (e) {} }
+    // cartelBobPx vive en CSS (custom property, la lee @keyframes cartelBob);
+    // pillBobPx lo lee directo renderMenuPill() de menuDecoSettings, no hace
+    // falta aplicarlo aparte.
+    function applyMenuDecoCss() {
+        document.documentElement.style.setProperty('--cartel-bob-px', menuDecoSettings.cartelBobPx + 'px');
+    }
+    applyMenuDecoCss();
+    // SETTINGS -> Menu Visuals (admin): mismo codigo "1234" que ya usaba el
+    // unlockSettings original de esta pantalla.
+    function unlockVisuals() {
+        const pass = document.getElementById('visualsPass').value;
+        if (pass !== '1234') { document.getElementById('visualsPass').value = ''; alert('WRONG CODE'); return; }
+        document.getElementById('visualsLock').style.display = 'none';
+        document.getElementById('visualsControls').style.display = 'block';
+        document.getElementById('vdFood').value = menuDecoSettings.foodDensity;
+        document.getElementById('vdFoodVal').textContent = menuDecoSettings.foodDensity;
+        document.getElementById('vdPill').value = menuDecoSettings.pillBobPx;
+        document.getElementById('vdPillVal').textContent = menuDecoSettings.pillBobPx;
+        document.getElementById('vdCartel').value = menuDecoSettings.cartelBobPx;
+        document.getElementById('vdCartelVal').textContent = menuDecoSettings.cartelBobPx;
+    }
+    function updateMenuDecoSetting(key, val, labelId) {
+        menuDecoSettings[key] = Number(val);
+        document.getElementById(labelId).textContent = val;
+        saveMenuDecoSettings();
+        applyMenuDecoCss();
+    }
+    const MENU_DECO_FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
+    const menuDeco = { items: [], w: 0, h: 0, lastT: 0 };
+    function menuDecoSpawn(w, h) {
+        const isVirus = Math.random() < menuDecoSettings.virusChance;
+        const ang = Math.random() * Math.PI * 2;
+        const spd = isVirus ? (4 + Math.random() * 5) : (7 + Math.random() * 9);
+        return {
+            x: Math.random() * w, y: Math.random() * h,
+            vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, isVirus,
+            size: isVirus ? (9 + Math.random() * 5) : (3 + Math.random() * 3),
+            col: MENU_DECO_FOOD_COLORS[(Math.random() * MENU_DECO_FOOD_COLORS.length) | 0],
+            t: Math.random()
+        };
+    }
+    function stepMenuDeco(w, h, now) {
+        // Reescala posiciones si el canvas activo tiene otro tamaño lowres
+        // (selector de modo y login no miden lo mismo en "pixeles" internos).
+        if (menuDeco.w && (menuDeco.w !== w || menuDeco.h !== h)) {
+            const sx = w / menuDeco.w, sy = h / menuDeco.h;
+            for (const p of menuDeco.items) { p.x *= sx; p.y *= sy; }
+        }
+        menuDeco.w = w; menuDeco.h = h;
+        const want = Math.max(0, menuDecoSettings.foodDensity | 0);
+        while (menuDeco.items.length < want) menuDeco.items.push(menuDecoSpawn(w, h));
+        if (menuDeco.items.length > want) menuDeco.items.length = want;
+        const dt = menuDeco.lastT ? Math.min(0.05, (now - menuDeco.lastT) / 1000) : 0.016;
+        menuDeco.lastT = now;
+        for (const p of menuDeco.items) {
+            p.x += p.vx * dt; p.y += p.vy * dt;
+            if (p.x < -16) p.x = w + 16; else if (p.x > w + 16) p.x = -16;
+            if (p.y < -16) p.y = h + 16; else if (p.y > h + 16) p.y = -16;
+        }
+    }
+    function drawMenuDeco(g, w, h) {
+        for (const p of menuDeco.items) {
+            const spr = p.isVirus ? pixVirusSprite(Math.max(6, Math.round(p.size)), p.t) : pixDotSprite(Math.max(2, Math.round(p.size)), p.col, 'f');
+            g.drawImage(spr, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        }
+    }
     function modeFxDrawSceneV2(w, h, side) {
         const sc = modeScene;
         const H = 270, W = Math.max(240, Math.round(w / h * H));
@@ -3294,20 +3388,22 @@
         const xT = modeFxDividerX(0), xB = modeFxDividerX(h);
         const topX = Math.round((xT != null ? xT : cxs + tan * h / 2) / w * W);
         const botX = Math.round((xB != null ? xB : cxs - tan * h / 2) / w * W);
-        const key = W + '|' + topX + '|' + botX;
-        if (key === sc.v2Key) return;   // solo redibuja si la diagonal se movio
-        sc.v2Key = key;
+        sc.v2Key = W + '|' + topX + '|' + botX;
         const g = sc.g;
         const tA = _msV2Tile('#ccff00'), tB = _msV2Tile('#00ffaa');
         if (!tA.pat) tA.pat = g.createPattern(tA.cv, 'repeat');
         if (!tB.pat) tB.pat = g.createPattern(tB.cv, 'repeat');
         // Relleno por filas: la diagonal queda en escalera de pixeles (sin
         // antialiasing); la linea gorda de la diagonal la pone el DOM encima.
+        // Se repinta cada frame (antes solo si se movia la diagonal): hace
+        // falta para que la food/virus decorativos de encima no dejen rastro.
         for (let y = 0; y < H; y++) {
             const xd = Math.max(0, Math.min(W, Math.round(topX + (botX - topX) * y / H)));
             g.fillStyle = tA.pat; g.fillRect(0, y, xd, 1);
             g.fillStyle = tB.pat; g.fillRect(xd, y, W - xd, 1);
         }
+        stepMenuDeco(W, H, performance.now());
+        drawMenuDeco(g, W, H);
     }
     function modeFxStart() {
         if (modeFx.raf || !modeFxActive()) return;
@@ -3935,9 +4031,10 @@
         // rotada ENTERA quepa en el canvas (extensión por eje de un rect
         // pW×pH rotado 45º = (pW+pH)/2·cos45), con sitio para nombre y bob.
         const cyBase = H / 2 + 18;
-        // Reposo vivo: bob ±3px a ritmo agil (~2.4s de ciclo) + respiracion
-        // sutil en contrafase (squash & stretch 1.5%) — cuantizado a pixel.
-        const bob = Math.round(Math.sin(now / 380) * 3);
+        // Reposo vivo: bob a ritmo agil (~2.4s de ciclo) + respiracion sutil en
+        // contrafase (squash & stretch 1.5%) — cuantizado a pixel. Amplitud
+        // editable en vivo desde SETTINGS -> VISUALS (admin), default ±3px.
+        const bob = Math.round(Math.sin(now / 380) * menuDecoSettings.pillBobPx);
         const breath = 0.015 * Math.sin(now / 380 + 1.4);
         const maxHalf = Math.min(W / 2 - 6, Math.min(cyBase - 42, H - cyBase) - 6) - 3;
         const pW0 = maxHalf / ((1 + PILL_RATIO) * Math.SQRT1_2 / 2);
@@ -3992,10 +4089,13 @@
     // selector de modo (_msV2Tile, ver mas arriba) — antes cada pantalla
     // dibujaba su propio patron (dithering+rejilla aqui, moteado+rejilla alla)
     // y aunque se parecian no eran iguales. Tinte segun el modo. ---
+    let _loginBgMode = 'classic';
     function paintLoginBg(mode) {
         const cv = document.getElementById('loginBgCv'); if (!cv) return;
+        _loginBgMode = mode;
         const W = 320, H = 180;
-        cv.width = W; cv.height = H;
+        if (cv.width !== W) cv.width = W;
+        if (cv.height !== H) cv.height = H;
         const g = cv.getContext('2d');
         g.imageSmoothingEnabled = false;
         const hex = mode === 'arcade' ? '#ccff00' : '#00ffaa';
@@ -4003,7 +4103,17 @@
         if (!tile.pat) tile.pat = g.createPattern(tile.cv, 'repeat');
         g.fillStyle = tile.pat;
         g.fillRect(0, 0, W, H);
+        stepMenuDeco(W, H, performance.now());
+        drawMenuDeco(g, W, H);
     }
+    // rAF continuo: mientras el login este visible, repinta tile+deco cada
+    // frame (para que la food/virus atraviesen el fondo tambien aqui, igual
+    // que en el selector de modo — mismo estado compartido, ver menuDeco).
+    (function loginBgLoop() {
+        requestAnimationFrame(loginBgLoop);
+        const lo = document.getElementById('loginOverlay');
+        if (lo && lo.style.display === 'flex') paintLoginBg(_loginBgMode);
+    })();
 
     // --- Editor de layout del menu: mueve y escala cada elemento a tu gusto ---
     // SETTINGS → EDIT LAYOUT. Arrastrar = mover, rueda = escalar, doble click =
