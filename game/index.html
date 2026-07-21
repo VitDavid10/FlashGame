@@ -3271,23 +3271,9 @@
         t = { cv, pat: null };
         modeScene.v2Tiles.set(hex, t); return t;
     }
-    // Fondo del login (ARCADE/CLASSIC, tras darle a PLAY en el selector de
-    // modo) = EXACTAMENTE el mismo tile que pinta la v2 del selector de modo
-    // (mismo canvas de _msV2Tile, mismo color por modo), en vez del degradado
-    // diagonal + rejilla que llevaba antes — a peticion de David, para que no
-    // se note el salto de fondo al entrar. background-size en vh: el tile son
-    // 26 "pixeles" de la escena v2, que en esa pantalla ocupa 270 filas de
-    // alto de viewport (ver modeFxDrawSceneV2), asi que cada pixel del tile
-    // mide 1/270 de alto de pantalla -> 26/270 = 9.63vh por tile.
-    (function applyLoginBgFromModeTile() {
-        const tC = _msV2Tile('#00ffaa').cv.toDataURL();
-        const tA = _msV2Tile('#ccff00').cv.toDataURL();
-        const st = document.createElement('style'); st.id = 'loginBgV2Css';
-        st.textContent =
-            '#loginOverlay.bg-classic{background-image:url(' + tC + ')!important;background-size:9.63vh 9.63vh!important;image-rendering:pixelated}' +
-            '#loginOverlay.bg-arcade{background-image:url(' + tA + ')!important;background-size:9.63vh 9.63vh!important;image-rendering:pixelated}';
-        document.head.appendChild(st);
-    })();
+    // (El fondo del login se pinta en el canvas #loginBgCv via paintLoginBg(),
+    // que tapa cualquier background-image CSS de #loginOverlay — el ajuste
+    // real para que sea igual al selector de modo esta ahi, no aqui.)
     function modeFxDrawSceneV2(w, h, side) {
         const sc = modeScene;
         const H = 270, W = Math.max(240, Math.round(w / h * H));
@@ -4002,28 +3988,21 @@
         })();
     })();
 
-    // --- Fondo pixel del menu: patron a baja resolucion (dithering + rejilla
-    // como el fondo del juego) estirado sin suavizado. Tinte segun el modo. ---
+    // --- Fondo pixel del menu: EXACTAMENTE el mismo tile que pinta la v2 del
+    // selector de modo (_msV2Tile, ver mas arriba) — antes cada pantalla
+    // dibujaba su propio patron (dithering+rejilla aqui, moteado+rejilla alla)
+    // y aunque se parecian no eran iguales. Tinte segun el modo. ---
     function paintLoginBg(mode) {
         const cv = document.getElementById('loginBgCv'); if (!cv) return;
         const W = 320, H = 180;
         cv.width = W; cv.height = H;
         const g = cv.getContext('2d');
-        g.fillStyle = '#050705'; g.fillRect(0, 0, W, H);
-        const t = mode === 'arcade' ? [204, 255, 0] : [0, 255, 136];
-        // Dithering determinista: motas sutiles del tinte y blancas
-        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-            const h = (x * 7349 + y * 9151) % 997;
-            if (h < 8) { g.fillStyle = 'rgba(' + t[0] + ',' + t[1] + ',' + t[2] + ',0.06)'; g.fillRect(x, y, 1, 1); }
-            else if (h < 11) { g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x, y, 1, 1); }
-        }
-        // Rejilla pixel (como el grid del juego)
-        g.fillStyle = 'rgba(' + t[0] + ',' + t[1] + ',' + t[2] + ',0.07)';
-        for (let x = 0; x < W; x += 16) g.fillRect(x, 0, 1, H);
-        for (let y = 0; y < H; y += 16) g.fillRect(0, y, W, 1);
-        // Bandas oscuras arriba/abajo (viñeta pixel)
-        g.fillStyle = 'rgba(0,0,0,0.35)';
-        g.fillRect(0, 0, W, 5); g.fillRect(0, H - 5, W, 5);
+        g.imageSmoothingEnabled = false;
+        const hex = mode === 'arcade' ? '#ccff00' : '#00ffaa';
+        const tile = _msV2Tile(hex);
+        if (!tile.pat) tile.pat = g.createPattern(tile.cv, 'repeat');
+        g.fillStyle = tile.pat;
+        g.fillRect(0, 0, W, H);
     }
 
     // --- Editor de layout del menu: mueve y escala cada elemento a tu gusto ---
@@ -4875,7 +4854,7 @@
                 this.closeWithdraw();
                 this.refresh();
                 showSystemMsg(this.fmt(amt) + ' $PILL sent back to your wallet.', 'WITHDRAW COMPLETE');
-            } catch (e) { showSystemMsg((e.message || String(e)).slice(0, 140), 'WITHDRAW FAILED'); }
+            } catch (e) { showSystemMsg(walletErrText(e), 'WITHDRAW FAILED'); }
             btn.disabled = false; btn.innerText = old;
         },
         // Desconecta la wallet del juego (y olvida la sesion recordada)
@@ -4906,7 +4885,7 @@
                 this.closeDeposit();
                 this.refresh();
                 showSystemMsg(this.fmt(amt) + ' $PILL added to your in-GAME balance.', 'DEPOSIT COMPLETE');
-            } catch (e) { showSystemMsg((e.message || String(e)).slice(0, 140), 'DEPOSIT FAILED'); }
+            } catch (e) { showSystemMsg(walletErrText(e), 'DEPOSIT FAILED'); }
             btn.disabled = false; btn.innerText = old;
         }
     };
@@ -5609,6 +5588,20 @@
         gameRunning = true;
     }
 
+    // Texto de error de la wallet SIEMPRE en ingles: el mensaje que devuelve
+    // la extension (Phantom/Backpack/...) o el RPC de Solana viene en el
+    // idioma del sistema/extension del usuario (ej. "Aprobacion denegada" en
+    // vez de "Approval denied" si el navegador esta en español) — nunca se
+    // muestra el texto crudo del proveedor, solo un mapeo fijo a ingles.
+    function walletErrText(e) {
+        const raw = String((e && e.message) || e || '').toLowerCase();
+        if (e && (e.code === 4001 || e.code === -32003)) return 'You rejected the request in your wallet.';
+        if (/reject|denegad|declin|cancel/i.test(raw)) return 'You rejected the request in your wallet.';
+        if (/insufficient|balance|fondos|saldo/i.test(raw)) return 'Insufficient balance for this transaction.';
+        if (/timeout|expired|expirad/i.test(raw)) return 'The wallet request timed out. Please try again.';
+        if (/network|fetch|conexion|connection/i.test(raw)) return 'Network error talking to the wallet. Please try again.';
+        return 'Something went wrong completing the transaction. Please try again.';
+    }
     // Aviso de sistema con el estilo del juego (sustituye a alert()). Siempre en inglés.
     // El título respeta el modo pixel (igual que GO!/contador/panel de skills);
     // el cuerpo se queda en texto normal porque una frase larga en fuente pixel
