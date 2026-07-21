@@ -3794,10 +3794,12 @@
     });
     
     // Titulo "PILLWARS ARCADE"/"PILLWARS CLASSIC" del login (h1 #selectedModeTitle):
-    // arte de David (PILLWARS-<modo>.png + <MODO>.png, mismo alto, uno al lado
-    // del otro) en vez del texto Press Start 2P — a peticion de David, "dentro
-    // del modo" (esta pantalla, tras elegir ARCADE/CLASSIC), no en el selector
-    // de modo. Si algun PNG no carga, cae al texto de siempre (fallback).
+    // arte de David (PILLWARS-<modo>.png + <MODO>.png) en vez del texto Press
+    // Start 2P — a peticion de David, "dentro del modo" (esta pantalla, tras
+    // elegir ARCADE/CLASSIC), no en el selector de modo. Dos <img> separadas
+    // (recuadro LOGICO: cada palabra es su propio elemento, no una imagen
+    // pegada) pero SIN caja/borde/fondo visual — David lo aclaro explicitamente.
+    // Si algun PNG no carga, cae al texto de siempre (fallback).
     function setSelectedModeTitleArt(mode, fallbackText) {
         const el = els.selectedModeTitle;
         const wordSrc = 'img/mode-title/' + (mode === 'arcade' ? 'ARCADE-word.png' : 'CLASSIC-word.png');
