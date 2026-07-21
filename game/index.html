@@ -3313,15 +3313,15 @@
         const isVirus = Math.random() < menuDecoSettings.virusChance;
         const ang = Math.random() * Math.PI * 2;
         const spd = isVirus ? (4 + Math.random() * 5) : (7 + Math.random() * 9);
-        // Comida pequeña (3-6). Virus = 10× la comida, la MISMA proporción que en
-        // la partida (VIRUS_RADIUS 70 vs food r ~7). A ese tamaño el sprite ya
-        // dibuja su anillo interior y el "ojo" central (detalle que solo aparece
-        // a partir de dL≈20), igual que se ve el virus en el juego.
+        // Comida pequeña variable (3-6). TODOS los virus con el mismo tamaño: 30
+        // (el mínimo del rango grande que tenían, 3×10). Sigue siendo grande vs la
+        // comida (~como el juego) y a ese tamaño el sprite dibuja su anillo
+        // interior y el "ojo" central, igual que se ve el virus en la partida.
         const base = 3 + Math.random() * 3;
         return {
             x: Math.random() * w, y: Math.random() * h,
             vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, isVirus,
-            size: isVirus ? base * 10 : base,
+            size: isVirus ? 30 : base,
             col: MENU_DECO_FOOD_COLORS[(Math.random() * MENU_DECO_FOOD_COLORS.length) | 0],
             t: Math.random(),
             // Semilla fija por virus → fase y sentido de giro estables (si se
@@ -3387,18 +3387,18 @@
             }
         }
     }
-    // Rects (en el espacio lowres del canvas activo) de los elementos del menú
-    // que pueden TAPAR la deco. Se usa al congelar (menús concretos): una
-    // partícula tapada por cualquiera de ellos sigue avanzando hasta despejarlo,
-    // en vez de quedarse quieta a medias debajo. Reusa LAYOUT_ELS (títulos,
-    // blurb, píldora, nombre, botones y carteles) → "todo lo que tape".
+    // Solo estos elementos "retienen" la deco al congelar: el título, el
+    // subtítulo y la zona de la píldora. Una partícula tapada por ellos sigue
+    // avanzando hasta despejarlos (no se queda quieta a medias debajo). Detrás de
+    // cualquier otra cosa (nombre, botones, carteles) la deco se para en el sitio
+    // de inmediato. Rects en el espacio lowres del canvas activo.
+    const MENU_DECO_OBSTACLES = ['#modeTitlePw', '#modeTitleWord', '#modeBlurb', '.pill-stage'];
     function menuDecoObstacleRects(W, H) {
-        if (typeof LAYOUT_ELS === 'undefined') return null;
         const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
         const sx = W / vw, sy = H / vh;
         const rects = [];
-        for (const key in LAYOUT_ELS) {
-            const el = document.querySelector(LAYOUT_ELS[key]); if (!el) continue;
+        for (const sel of MENU_DECO_OBSTACLES) {
+            const el = document.querySelector(sel); if (!el) continue;
             const r = el.getBoundingClientRect();
             if (r.width <= 0 || r.height <= 0) continue;
             rects.push({ x: r.left * sx, y: r.top * sy, w: r.width * sx, h: r.height * sy });
