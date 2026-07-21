@@ -1510,7 +1510,7 @@
                             <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                         </span>
                     </div>
-                    <div class="oracle-desc">Complete 3 of 5 quests to unlock Telegram access. SP earned go toward skins — catalog coming soon.</div>
+                    <div class="oracle-desc" id="missionsDesc">Complete 3 of 5 quests to unlock Telegram access.</div>
                     <div id="sidePanelMissions"><div id="missionsList"></div></div>
                     <div id="sidePanelSkins" style="display:none">
                         <div class="skins-soon">
@@ -5117,6 +5117,7 @@
         document.getElementById('sidePanelSkins').style.display = sidePanelTab === 'skins' ? 'block' : 'none';
         document.getElementById('sidePanelTitle').textContent = sidePanelTab === 'missions' ? 'MISSIONS' : 'SKINS';
         document.getElementById('sidePanelExtra').style.display = sidePanelTab === 'missions' ? 'inline-block' : 'none';
+        document.getElementById('missionsDesc').style.display = sidePanelTab === 'missions' ? 'block' : 'none';
         document.getElementById('dot-missions').classList.toggle('act', sidePanelTab === 'missions');
         document.getElementById('dot-skins').classList.toggle('act', sidePanelTab === 'skins');
         try { SoundManager.play('simpleselect'); } catch (e) {}
