@@ -368,10 +368,14 @@
            por JS con nada): mas ancha y mas alta que antes. */
         /* Bajados un poco (que no queden por encima del titulo) y sin min-height
            fijo: en pantallas bajas desbordaba y el cartel inferior salia cortado. */
-        /* El alto de cada cartel sale de su ancho (aspect-ratio), asi que la
-           columna puede sobrar altura: justify-content:center la reparte arriba
-           y abajo en vez de dejar todo el hueco al final. */
-        .menu-right-col { width: 480px; max-width: 40vw; margin-top: 46px; height: calc(90vh - 46px); z-index: 61; display: flex; flex-direction: column; justify-content: center; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
+        /* El alto de cada cartel sale de su ancho (aspect-ratio), asi que el
+           ancho de la columna tiene que estar capado TAMBIEN por la altura
+           disponible: si no, en pantallas anchas y bajas los dos carteles
+           sumaban mas que la columna y se salian por arriba (encima de la barra
+           del juego). (90vh - 46 de margen - 20 de gap) / 2 = alto por cartel,
+           x1.0518 (ratio del cartel) = su ancho maximo.
+           justify-content:center reparte el hueco que sobre cuando manda 480px. */
+        .menu-right-col { width: min(480px, 40vw, calc((90vh - 66px) * 0.5259)); margin-top: 46px; height: calc(90vh - 46px); z-index: 61; display: flex; flex-direction: column; justify-content: center; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
         /* El cartel entero (marco de piedra + interior) es el video animado de
            David, pintado en el <canvas class="quest-video-bg"> — el panel solo
            aporta layout; el padding y el contenido viven en .cartel-inner, que
@@ -410,10 +414,27 @@
 
         /* Oracle: descripción + precio centrado + lista de salas */
         .oracle-desc { color: #999; font-family: 'Inter',sans-serif; font-size: 10px; line-height: 1.35; margin-bottom: 5px; flex-shrink: 0; }
+        /* La descripcion de DAILY QUESTS va SIEMPRE en una sola linea: el cuerpo
+           se ata al ancho del cartel (cqw) para que encoja lo justo en vez de
+           partirse en dos. 2cqw es el maximo medido que aun cabe entero (el
+           texto mide 48.9em de ancho); el min() la deja en 10px en cuanto el
+           cartel es lo bastante ancho, que es el caso normal. */
+        #missionsInner { container-type: inline-size; }
+        #missionsInner .oracle-desc { white-space: nowrap; font-size: min(10px, 2cqw); }
         .oracle-rate { text-align: center; padding: 3px 0 4px; border-top: 1px dashed rgba(255,206,61,0.2); border-bottom: 1px dashed rgba(255,206,61,0.2); margin-bottom: 2px; flex-shrink: 0; }
         .oracle-rate .or-amt { font-family: 'Russo One'; font-size: 18px; color: #ffce3d; text-shadow: 0 0 16px rgba(255,206,61,0.35); }
         .oracle-rate .or-unit { font-family: 'Russo One'; font-size: 11px; color: #888; letter-spacing: 1px; }
-        .oracle-rows { overflow-y: auto; flex: 1; }
+        /* Las filas se reparten el hueco libre (flex:1) en vez de amontonarse
+           arriba dejando un vacio al final: separacion automatica y sin espacio
+           muerto, sea cual sea el numero de salas. */
+        .oracle-rows { overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+        .oracle-row { flex: 1 0 auto; }
+        /* DAILY QUESTS del cartel lateral (NO el desplegable .mqp de arriba,
+           que conserva su tamano): mas compactas para que las 5 quepan sin
+           barra de scroll ahora que el alto util es el de la pantalla verde. */
+        #missionsList .mqp-q { padding: 3px 0; }
+        #missionsList .mqp-q .n { font-size: 13px; }
+        #missionsList .mqp-bar { margin-top: 2px; }
         /* Scrollbar fino y con el tema, en vez del grueso gris de Windows por
            si el contenido no llega a caber entero (ventanas bajas). */
         .oracle-rows, #sidePanelMissions { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.25) transparent; }
