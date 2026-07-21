@@ -1297,7 +1297,9 @@
                 <button class="btn-settings" style="width:auto;padding:9px 14px;margin-top:0;" onclick="unlockVisuals()">UNLOCK</button>
             </div>
             <div id="visualsControls" style="display:none;margin-top:8px;">
-                <label style="display:block;color:#aaa;font-size:10px;margin-bottom:4px;">Background food density: <span id="vdFoodVal">16</span></label>
+                <label style="display:block;color:#aaa;font-size:10px;margin-bottom:4px;">Grid size (lower = more/smaller squares): <span id="vdGridVal">18</span>px</label>
+                <input type="range" id="vdGrid" min="8" max="34" step="1" style="width:100%;" oninput="updateMenuDecoSetting('gridSize', this.value, 'vdGridVal')">
+                <label style="display:block;color:#aaa;font-size:10px;margin:10px 0 4px;">Background food density: <span id="vdFoodVal">16</span></label>
                 <input type="range" id="vdFood" min="0" max="40" step="1" style="width:100%;" oninput="updateMenuDecoSetting('foodDensity', this.value, 'vdFoodVal')">
                 <label style="display:block;color:#aaa;font-size:10px;margin:10px 0 4px;">Pill bob: <span id="vdPillVal">3</span>px</label>
                 <input type="range" id="vdPill" min="0" max="10" step="1" style="width:100%;" oninput="updateMenuDecoSetting('pillBobPx', this.value, 'vdPillVal')">
@@ -3273,24 +3275,28 @@
         modeFx.pills.length = 0; modeFx.sparks.length = 0;
     }
     function _msV2Tile(hex) {
+        const size = Math.max(6, menuDecoSettings.gridSize | 0);
+        const key = hex + '|' + size;
         if (!modeScene.v2Tiles) modeScene.v2Tiles = new Map();
-        let t = modeScene.v2Tiles.get(hex); if (t) return t;
-        // Tile 26x26 lowres (~1 celda de grid de partida en pantalla): base
-        // oscura tintada del color del modo, moteado sutil (mismas posiciones
-        // relativas que pixBgPattern) y linea de grid de 1px lowres, que
-        // reescalada queda gorda como la del tile del juego.
+        let t = modeScene.v2Tiles.get(key); if (t) return t;
+        // Tile lowres (~1 celda de grid de partida en pantalla): base oscura
+        // tintada del color del modo, moteado sutil (posiciones relativas
+        // escaladas al tamaño de celda, editable desde SETTINGS -> VISUALS) y
+        // linea de grid de 1px lowres, que reescalada queda gorda como la del
+        // tile del juego.
         const rgb = pixRgb(hex);
-        const cv = document.createElement('canvas'); cv.width = 26; cv.height = 26;
+        const cv = document.createElement('canvas'); cv.width = size; cv.height = size;
         const g = cv.getContext('2d');
         const sh = f => 'rgb(' + rgb.map(v => Math.round(v * f)).join(',') + ')';
-        g.fillStyle = sh(0.07); g.fillRect(0, 0, 26, 26);
+        g.fillStyle = sh(0.07); g.fillRect(0, 0, size, size);
+        const sp = (fx, fy) => [Math.round(fx * size), Math.round(fy * size)];
         g.fillStyle = sh(0.13);
-        for (const s of [[3, 5], [13, 2], [21, 11], [7, 18], [17, 22]]) g.fillRect(s[0], s[1], 1, 1);
+        for (const s of [[0.12, 0.19], [0.5, 0.08], [0.81, 0.42], [0.27, 0.69], [0.65, 0.85]]) { const p = sp(...s); g.fillRect(p[0], p[1], 1, 1); }
         g.fillStyle = sh(0.10);
-        for (const s of [[10, 9], [23, 19], [2, 23], [19, 4]]) g.fillRect(s[0], s[1], 1, 1);
-        g.fillStyle = sh(0.30); g.fillRect(0, 0, 26, 1); g.fillRect(0, 0, 1, 26);
+        for (const s of [[0.38, 0.35], [0.88, 0.73], [0.08, 0.88], [0.73, 0.15]]) { const p = sp(...s); g.fillRect(p[0], p[1], 1, 1); }
+        g.fillStyle = sh(0.30); g.fillRect(0, 0, size, 1); g.fillRect(0, 0, 1, size);
         t = { cv, pat: null };
-        modeScene.v2Tiles.set(hex, t); return t;
+        modeScene.v2Tiles.set(key, t); return t;
     }
     // ===== Decoracion de fondo del menu: food + virus atravesando el mapa =====
     // Comparten UN SOLO estado (menuDeco) entre el selector de modo y el login
@@ -3299,7 +3305,7 @@
     // Densidad y tamaño configurables desde el panel local del juego (ver
     // SETTINGS -> VISUALS), guardado en localStorage (pw_menu_deco).
     const MENU_DECO_KEY = 'pw_menu_deco';
-    const menuDecoSettings = Object.assign({ foodDensity: 16, virusChance: 0.1, pillBobPx: 3, cartelBobPx: 3 },
+    const menuDecoSettings = Object.assign({ foodDensity: 16, virusChance: 0.1, pillBobPx: 3, cartelBobPx: 3, gridSize: 18 },
         (() => { try { return JSON.parse(localStorage.getItem(MENU_DECO_KEY)) || {}; } catch (e) { return {}; } })());
     function saveMenuDecoSettings() { try { localStorage.setItem(MENU_DECO_KEY, JSON.stringify(menuDecoSettings)); } catch (e) {} }
     // cartelBobPx vive en CSS (custom property, la lee @keyframes cartelBob);
@@ -3316,6 +3322,8 @@
         if (pass !== '1234') { document.getElementById('visualsPass').value = ''; alert('WRONG CODE'); return; }
         document.getElementById('visualsLock').style.display = 'none';
         document.getElementById('visualsControls').style.display = 'block';
+        document.getElementById('vdGrid').value = menuDecoSettings.gridSize;
+        document.getElementById('vdGridVal').textContent = menuDecoSettings.gridSize;
         document.getElementById('vdFood').value = menuDecoSettings.foodDensity;
         document.getElementById('vdFoodVal').textContent = menuDecoSettings.foodDensity;
         document.getElementById('vdPill').value = menuDecoSettings.pillBobPx;
@@ -3370,7 +3378,11 @@
     }
     function modeFxDrawSceneV2(w, h, side) {
         const sc = modeScene;
-        const H = 270, W = Math.max(240, Math.round(w / h * H));
+        const gs = Math.max(6, menuDecoSettings.gridSize | 0);
+        // H/W redondeados a multiplos EXACTOS de gs: sin esto la ultima fila/
+        // columna de celdas del tile quedaba cortada a la mitad en el borde.
+        const H = Math.max(gs, Math.round(270 / gs) * gs);
+        const W = Math.max(gs, Math.round(Math.max(240, w / h * H) / gs) * gs);
         if (!sc.cv) {   // mismo canvas #modeSceneCv que la escena v1
             const cv = document.createElement('canvas'); cv.id = 'modeSceneCv';
             els.modeScreen.insertBefore(cv, els.modeScreen.firstChild);
@@ -4093,7 +4105,15 @@
     function paintLoginBg(mode) {
         const cv = document.getElementById('loginBgCv'); if (!cv) return;
         _loginBgMode = mode;
-        const W = 320, H = 180;
+        // H/W redondeados a multiplos EXACTOS de gridSize (igual que
+        // modeFxDrawSceneV2): sin esto la fila/columna del borde quedaba a
+        // medias en vez de cuadricula entera. W sale del aspect ratio REAL
+        // de la ventana (antes 320x180 fijo, que no encajaba en pantallas de
+        // otra proporcion).
+        const gs = Math.max(6, menuDecoSettings.gridSize | 0);
+        const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
+        const H = Math.max(gs, Math.round(180 / gs) * gs);
+        const W = Math.max(gs, Math.round((vw / vh * H) / gs) * gs);
         if (cv.width !== W) cv.width = W;
         if (cv.height !== H) cv.height = H;
         const g = cv.getContext('2d');
