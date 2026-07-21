@@ -368,21 +368,36 @@
            por JS con nada): mas ancha y mas alta que antes. */
         /* Bajados un poco (que no queden por encima del titulo) y sin min-height
            fijo: en pantallas bajas desbordaba y el cartel inferior salia cortado. */
-        .menu-right-col { width: 480px; max-width: 40vw; margin-top: 46px; height: calc(90vh - 46px); z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
+        /* El alto de cada cartel sale de su ancho (aspect-ratio), asi que la
+           columna puede sobrar altura: justify-content:center la reparte arriba
+           y abajo en vez de dejar todo el hueco al final. */
+        .menu-right-col { width: 480px; max-width: 40vw; margin-top: 46px; height: calc(90vh - 46px); z-index: 61; display: flex; flex-direction: column; justify-content: center; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
         /* El cartel entero (marco de piedra + interior) es el video animado de
            David, pintado en el <canvas class="quest-video-bg"> — el panel solo
            aporta layout; el padding y el contenido viven en .cartel-inner, que
-           se mueve/escala por separado desde SETTINGS -> EDIT LAYOUT. */
-        #oraclePanel, #missionsPanel { position: relative; z-index: 0; flex: 1; min-height: 0; overflow: hidden; }
-        /* Video estirado a todo el panel (como hacia el border-image del PNG),
-           por debajo del contenido (.cartel-inner, z-index 1). */
+           se mueve/escala por separado desde SETTINGS -> EDIT LAYOUT.
+           aspect-ratio = el del cartel/video (812/772 = 976/928): sin el, el
+           cover-fit del canvas recortaba ~24px por lado y el cartel se veia
+           estirado. Manda el ANCHO (100% de la columna) y el alto sale del
+           ratio — al reves (alto fijo, ancho derivado) el cartel se salia por
+           la derecha en cuanto la columna era mas estrecha que 1.052x el alto. */
+        #oraclePanel, #missionsPanel { position: relative; z-index: 0; flex: none; overflow: hidden;
+            width: 100%; aspect-ratio: 812 / 772; }
+        /* Video a todo el panel (mismo aspect-ratio, asi que el cover-fit del
+           canvas ya no recorta), por debajo del contenido (.cartel-inner, z1). */
         .quest-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-        /* Padding reducido (antes 20px 24px dejaba demasiado hueco entre el
-           texto y el marco, y encogia tanto el area util que las listas
-           desbordaban y sacaban el scrollbar feo de Windows). height:100% para
-           que por defecto (sin editar) ocupe todo el cartel, igual que antes. */
-        .cartel-inner { position: relative; z-index: 1; height: 100%; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; overflow: hidden; }
-        .menu-side-head { font-family: 'Russo One'; font-size: 14px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        /* Cuadrado exactamente sobre la "pantalla" verde del cartel: los % salen
+           de medir el rect interior en cartel nuevo.png (812x772 → x 51..748,
+           y 59..526). El 31.7% inferior queda fuera a proposito: ahi van los
+           cohetes del cartel. */
+        .cartel-inner { position: absolute; z-index: 1; inset: 7.64% 7.76% 31.74% 6.28%; box-sizing: border-box; padding: 0 6px; display: flex; flex-direction: column; overflow: hidden; }
+        /* Tamanos/margenes ajustados a la baja al cuadrar el contenido con la
+           "pantalla" verde del cartel: el alto util paso de ~360 a ~200px (el
+           31.7% inferior del cartel son los cohetes), y con los valores de antes
+           la tabla de salas se cortaba a la mitad. */
+        /* nowrap: "DAILY QUESTS" + contador + flecha se partia en dos lineas al
+           estrecharse el inner (el head cabe justo). */
+        .menu-side-head { font-family: 'Russo One'; font-size: 12px; letter-spacing: 1.5px; color: #888; text-transform: uppercase; margin-bottom: 7px; display: flex; align-items: center; justify-content: space-between; gap: 8px; white-space: nowrap; flex-shrink: 0; }
         #oraclePanel.classic .menu-side-head { color: #00ffaa; }
         #oraclePanel.arcade  .menu-side-head { color: #ccff00; }
         #missionsPanel.classic .menu-side-head { color: #00ffaa; }
@@ -394,10 +409,10 @@
         #missionsPanel.arcade  #sidePanelExtra { color: #ccff00 !important; }
 
         /* Oracle: descripción + precio centrado + lista de salas */
-        .oracle-desc { color: #999; font-family: 'Inter',sans-serif; font-size: 11.5px; line-height: 1.5; margin-bottom: 14px; flex-shrink: 0; }
-        .oracle-rate { text-align: center; padding: 10px 0 14px; border-top: 1px dashed rgba(255,206,61,0.2); border-bottom: 1px dashed rgba(255,206,61,0.2); margin-bottom: 6px; flex-shrink: 0; }
-        .oracle-rate .or-amt { font-family: 'Russo One'; font-size: 30px; color: #ffce3d; text-shadow: 0 0 16px rgba(255,206,61,0.35); }
-        .oracle-rate .or-unit { font-family: 'Russo One'; font-size: 13px; color: #888; letter-spacing: 1px; }
+        .oracle-desc { color: #999; font-family: 'Inter',sans-serif; font-size: 10px; line-height: 1.35; margin-bottom: 5px; flex-shrink: 0; }
+        .oracle-rate { text-align: center; padding: 3px 0 4px; border-top: 1px dashed rgba(255,206,61,0.2); border-bottom: 1px dashed rgba(255,206,61,0.2); margin-bottom: 2px; flex-shrink: 0; }
+        .oracle-rate .or-amt { font-family: 'Russo One'; font-size: 18px; color: #ffce3d; text-shadow: 0 0 16px rgba(255,206,61,0.35); }
+        .oracle-rate .or-unit { font-family: 'Russo One'; font-size: 11px; color: #888; letter-spacing: 1px; }
         .oracle-rows { overflow-y: auto; flex: 1; }
         /* Scrollbar fino y con el tema, en vez del grueso gris de Windows por
            si el contenido no llega a caber entero (ventanas bajas). */
@@ -411,12 +426,12 @@
         .oracle-layers button:hover { color: #fff; border-color: #555; }
         .oracle-layers button.act { background: var(--primary, #00ff88); color: #000; border-color: var(--primary, #00ff88); }
         .oracle-layers-hint { color: #555; font-size: 9px; letter-spacing: 0.5px; margin-left: 4px; flex: 1; }
-        .oracle-row { display: grid; grid-template-columns: 56px 1fr auto 14px; gap: 10px; align-items: center; padding: 7px 6px; font-family: 'Russo One'; font-size: 12px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); cursor: pointer; border-left: 2px solid transparent; transition: background 0.15s; }
+        .oracle-row { display: grid; grid-template-columns: 52px 1fr auto 12px; gap: 8px; align-items: center; padding: 3px 5px; font-family: 'Russo One'; font-size: 11px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); cursor: pointer; border-left: 2px solid transparent; transition: background 0.15s; }
         .oracle-row:first-of-type { border-top: 0; }
         .oracle-row:hover { background: rgba(255,255,255,0.05); }
         .oracle-row.sel { background: rgba(0,255,136,0.08); border-left-color: var(--primary); }
         .oracle-row.sel .oroom { color: var(--primary); }
-        .oracle-row .oroom { color: #fff; font-size: 14px; }
+        .oracle-row .oroom { color: #fff; font-size: 12.5px; }
         .oracle-row .opill { color: #ffce3d; font-size: 12px; font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
         .oracle-row .ostatuslabel { color: #666; font-size: 10px; letter-spacing: 1px; text-align: right; white-space: nowrap; }
         .oracle-row .ostatus { width: 11px; height: 11px; border-radius: 50%; }
@@ -434,7 +449,7 @@
         /* Carrusel del panel inferior (MISSIONS ↔ SKINS) */
         .side-tabs-arrow { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-family: 'Russo One'; font-size: 12px; line-height: 18px; padding: 0; transition: 0.2s; }
         .side-tabs-arrow:hover { background: currentColor; color: #04150c; }
-        .side-tabs-dots { display: flex; gap: 5px; justify-content: center; margin-top: 10px; }
+        .side-tabs-dots { display: flex; gap: 5px; justify-content: center; margin-top: 5px; flex-shrink: 0; }
         .side-tabs-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: 0.2s; }
         .side-tabs-dots span.act { background: currentColor; box-shadow: 0 0 6px currentColor; }
         #missionsPanel.classic .side-tabs-dots span.act, #missionsPanel.classic .side-tabs-arrow { color: #00ffaa; }
@@ -1470,7 +1485,7 @@
                     <div class="menu-side-head">
                         <span id="sidePanelTitle">DAILY QUESTS</span>
                         <span style="display:flex; align-items:center; gap:10px;">
-                            <span id="sidePanelExtra" style="font-size:11px;letter-spacing:1px;"><span id="missionsDone">0</span>/5 · <span id="missionsSp">0</span> SP</span>
+                            <span id="sidePanelExtra" style="font-size:10px;letter-spacing:0.5px;"><span id="missionsDone">0</span>/5 · <span id="missionsSp">0</span> SP</span>
                             <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                         </span>
                     </div>
@@ -1500,17 +1515,36 @@
     <video id="questPanelVideoSrc" src="video/quest-panel.mp4" autoplay muted loop playsinline
         style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;"></video>
     <script>
-        // Pinta el frame actual del video en cada canvas de fondo, estirado a
-        // todo el panel (como hacia el border-image del PNG que sustituye), y
-        // quita el magenta con el mismo chroma-key que game/font-cleanup.html
-        // (distancia euclidea + banda de transicion suave para no dejar borde
-        // magenta duro).
+        // Pinta el frame actual del video en cada canvas de fondo, con cover-fit
+        // (escala uniforme + recorte, como object-fit:cover — nada de estirar
+        // en un solo eje, que es lo que deformaba el cuadro) y quita el magenta
+        // por hue+saturacion (no por distancia RGB): el video viene comprimido
+        // y el borde entre el magenta y el metal gris del aparato central sale
+        // mezclado (subsampling de croma del H.264), con un tono lila que la
+        // distancia RGB simple no pillaba sin comerse tambien los grises reales.
+        // Hue+sat separa bien "es magenta" de "es gris/verde real" porque los
+        // grises tienen saturacion casi nula pase lo que pase de luminancia.
         (function () {
-            var KEY = [160, 69, 161], TOL = 55, SOFT = 30;
+            var KEY_HUE = 299, KEY_SAT = 0.571;
             var src = document.getElementById('questPanelVideoSrc');
             var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg')];
+            function keyness(r, g, b) {
+                var max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
+                var sat = max > 0 ? delta / max : 0;
+                if (sat < 0.18 || delta === 0) return 0;
+                var hue;
+                if (max === r) hue = 60 * (((g - b) / delta) % 6);
+                else if (max === g) hue = 60 * (((b - r) / delta) + 2);
+                else hue = 60 * (((r - g) / delta) + 4);
+                if (hue < 0) hue += 360;
+                var hueDiff = Math.abs(hue - KEY_HUE); if (hueDiff > 180) hueDiff = 360 - hueDiff;
+                var hueScore = Math.max(0, 1 - hueDiff / 45);
+                var satScore = Math.max(0, Math.min(1, (sat - 0.18) / (KEY_SAT - 0.18)));
+                return hueScore * satScore;
+            }
             function frame() {
                 if (src.readyState >= 2 && src.videoWidth) {
+                    var vw = src.videoWidth, vh = src.videoHeight;
                     for (var i = 0; i < canvases.length; i++) {
                         var cv = canvases[i];
                         var w = cv.clientWidth, h = cv.clientHeight;
@@ -1518,14 +1552,16 @@
                         if (cv.width !== w) cv.width = w;
                         if (cv.height !== h) cv.height = h;
                         var ctx = cv.getContext('2d');
+                        ctx.imageSmoothingEnabled = false;
+                        var scale = Math.max(w / vw, h / vh);
+                        var dw = vw * scale, dh = vh * scale;
                         ctx.clearRect(0, 0, w, h);
-                        ctx.drawImage(src, 0, 0, w, h);
+                        ctx.drawImage(src, (w - dw) / 2, (h - dh) / 2, dw, dh);
                         var img = ctx.getImageData(0, 0, w, h), px = img.data;
                         for (var p = 0; p < px.length; p += 4) {
-                            var dr = px[p] - KEY[0], dg = px[p + 1] - KEY[1], db = px[p + 2] - KEY[2];
-                            var dist = Math.sqrt(dr * dr + dg * dg + db * db);
-                            if (dist < TOL) px[p + 3] = 0;
-                            else if (dist < TOL + SOFT) px[p + 3] = Math.round(px[p + 3] * (dist - TOL) / SOFT);
+                            var k = keyness(px[p], px[p + 1], px[p + 2]);
+                            if (k > 0.4) px[p + 3] = 0;
+                            else if (k > 0.15) px[p + 3] = Math.round(px[p + 3] * (1 - (k - 0.15) / 0.25));
                         }
                         ctx.putImageData(img, 0, 0);
                     }
