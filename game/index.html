@@ -465,7 +465,12 @@
         .oracle-row .ostartin { color: #4d9bff; font-size: 11px; font-weight: bold; font-variant-numeric: tabular-nums; }
         .oracle-row .ostartin.ending-label { color: #ff8c00; }
         @keyframes capfullPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
-        #sidePanelMissions { flex: 1; overflow-y: auto; }
+        /* Quitada la descripcion de encima: #missionsList reparte el hueco que
+           dejaba libre entre las 5 quests (igual que .oracle-rows con las
+           salas), en vez de dejarlo vacio al fondo. */
+        #sidePanelMissions { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+        #missionsList { flex: 1; display: flex; flex-direction: column; }
+        #missionsList .mqp-q { flex: 1 0 auto; }
 
         /* Carrusel del panel inferior (MISSIONS ↔ SKINS) */
         .side-tabs-arrow { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-family: 'Russo One'; font-size: 12px; line-height: 18px; padding: 0; transition: 0.2s; }
@@ -1510,7 +1515,6 @@
                             <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                         </span>
                     </div>
-                    <div class="oracle-desc" id="missionsDesc">Complete 3 of 5 quests to unlock Telegram access.</div>
                     <div id="sidePanelMissions"><div id="missionsList"></div></div>
                     <div id="sidePanelSkins" style="display:none">
                         <div class="skins-soon">
@@ -5117,7 +5121,6 @@
         document.getElementById('sidePanelSkins').style.display = sidePanelTab === 'skins' ? 'block' : 'none';
         document.getElementById('sidePanelTitle').textContent = sidePanelTab === 'missions' ? 'MISSIONS' : 'SKINS';
         document.getElementById('sidePanelExtra').style.display = sidePanelTab === 'missions' ? 'inline-block' : 'none';
-        document.getElementById('missionsDesc').style.display = sidePanelTab === 'missions' ? 'block' : 'none';
         document.getElementById('dot-missions').classList.toggle('act', sidePanelTab === 'missions');
         document.getElementById('dot-skins').classList.toggle('act', sidePanelTab === 'skins');
         try { SoundManager.play('simpleselect'); } catch (e) {}
