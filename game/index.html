@@ -3796,16 +3796,22 @@
     // Titulo "PILLWARS ARCADE"/"PILLWARS CLASSIC" del login (h1 #selectedModeTitle):
     // arte de David (PILLWARS-<modo>.png + <MODO>.png) en vez del texto Press
     // Start 2P — a peticion de David, "dentro del modo" (esta pantalla, tras
-    // elegir ARCADE/CLASSIC), no en el selector de modo. Dos <img> separadas
-    // (recuadro LOGICO: cada palabra es su propio elemento, no una imagen
-    // pegada) pero SIN caja/borde/fondo visual — David lo aclaro explicitamente.
+    // elegir ARCADE/CLASSIC), no en el selector de modo. Recuadro LOGICO (sin
+    // borde/fondo visual, David lo aclaro): dos <span> con id propio
+    // (#modeTitlePw / #modeTitleWord) para que EDIT LAYOUT pueda mover/escalar
+    // PILLWARS y ARCADE/CLASSIC POR SEPARADO (antes eran una sola entrada
+    // "title" que los movia juntos). line-height:0 en el span para que el
+    // recuadro de EDIT LAYOUT (outline) se ajuste pegado a la imagen, sin el
+    // hueco que dejaba arriba el line-height por defecto del h1 (24px/1.35).
     // Si algun PNG no carga, cae al texto de siempre (fallback).
     function setSelectedModeTitleArt(mode, fallbackText) {
         const el = els.selectedModeTitle;
         const wordSrc = 'img/mode-title/' + (mode === 'arcade' ? 'ARCADE-word.png' : 'CLASSIC-word.png');
         const pwSrc = 'img/mode-title/PILLWARS-' + mode + '.png';
-        el.innerHTML = '<img src="' + pwSrc + '" alt="PILLWARS" style="height:1em;vertical-align:middle;image-rendering:pixelated;" onerror="this.closest(\'#selectedModeTitle\').innerText=\'' + fallbackText + '\'">' +
-            ' <img src="' + wordSrc + '" alt="" style="height:1.2em;vertical-align:middle;image-rendering:pixelated;" onerror="this.closest(\'#selectedModeTitle\').innerText=\'' + fallbackText + '\'">';
+        const fb = 'this.closest(\'#selectedModeTitle\').innerText=\'' + fallbackText + '\'';
+        el.innerHTML =
+            '<span id="modeTitlePw" style="display:inline-block;line-height:0;vertical-align:middle;"><img src="' + pwSrc + '" alt="PILLWARS" style="display:block;height:24px;image-rendering:pixelated;" onerror="' + fb + '"></span>' +
+            ' <span id="modeTitleWord" style="display:inline-block;line-height:0;vertical-align:middle;"><img src="' + wordSrc + '" alt="" style="display:block;height:29px;image-rendering:pixelated;" onerror="' + fb + '"></span>';
     }
     function selectMode(m) {
         SoundManager.stop('hover');
@@ -4137,7 +4143,7 @@
     // del contenido debe resolver al interior (closest() encuentra primero
     // lo mas anidado SOLO si se comprueba antes en el bucle de layoutTarget).
     const LAYOUT_ELS = {
-        title: '#selectedModeTitle', blurb: '#modeBlurb', pill: '.pill-stage',
+        titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
         rooms: '#oraclePanel', quests: '#missionsPanel',
