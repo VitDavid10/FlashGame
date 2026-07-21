@@ -3318,10 +3318,14 @@
             vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, isVirus,
             size: isVirus ? (9 + Math.random() * 5) : (3 + Math.random() * 3),
             col: MENU_DECO_FOOD_COLORS[(Math.random() * MENU_DECO_FOOD_COLORS.length) | 0],
-            t: Math.random()
+            t: Math.random(),
+            // Semilla fija por virus → fase y sentido de giro estables (si se
+            // derivara de x/y, el giro saltaría al trasladarse). Igual que en el
+            // juego (ver render de sim.viruses), aquí el giro es siempre-activo.
+            seed: (Math.random() * 1000) | 0
         };
     }
-    function stepMenuDeco(w, h, now, move) {
+    function stepMenuDeco(w, h, now, move, obstacles) {
         // Reescala posiciones si el canvas activo tiene otro tamaño lowres
         // (selector de modo y login no miden lo mismo en "pixeles" internos).
         if (menuDeco.w && (menuDeco.w !== w || menuDeco.h !== h)) {
@@ -3334,23 +3338,65 @@
         if (menuDeco.items.length > want) menuDeco.items.length = want;
         const dt = menuDeco.lastT ? Math.min(0.05, (now - menuDeco.lastT) / 1000) : 0.016;
         menuDeco.lastT = now;
-        // `move === false` (menús concretos: login/selección de sala y sus
-        // submenús) congela la deco: se sigue repoblando/reescalando para que al
-        // volver al selector no haya salto, pero las partículas no avanzan — así
-        // no hay comida moviéndose en cada menú concreto. El selector de modo
-        // llama sin el flag → sigue en movimiento.
-        if (move === false) return;
+        // `move === false` (menús concretos: login/selección de sala): la deco se
+        // congela, PERO las partículas tapadas por un elemento del menú (obstacles)
+        // siguen avanzando hasta despejarlo — así no queda comida quieta asomando
+        // a medias bajo un título/botón/cartel. El resto no se mueve. El selector
+        // de modo llama sin `move` → todo en movimiento. (El giro de los virus va
+        // aparte, en drawMenuDeco, y sigue activo aunque estén congelados.)
         for (const p of menuDeco.items) {
+            if (move === false) {
+                const s = p.size;   // margen = radio: sigue mientras cualquier parte quede tapada
+                let covered = false;
+                if (obstacles) for (const r of obstacles) {
+                    if (p.x >= r.x - s && p.x <= r.x + r.w + s && p.y >= r.y - s && p.y <= r.y + r.h + s) { covered = true; break; }
+                }
+                if (!covered) continue;
+            }
             p.x += p.vx * dt; p.y += p.vy * dt;
             if (p.x < -16) p.x = w + 16; else if (p.x > w + 16) p.x = -16;
             if (p.y < -16) p.y = h + 16; else if (p.y > h + 16) p.y = -16;
         }
     }
     function drawMenuDeco(g, w, h) {
+        const now = performance.now();
         for (const p of menuDeco.items) {
-            const spr = p.isVirus ? pixVirusSprite(Math.max(6, Math.round(p.size)), p.t) : pixDotSprite(Math.max(2, Math.round(p.size)), p.col, 'f');
-            g.drawImage(spr, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+            if (p.isVirus) {
+                // Mismo virus giratorio que la partida: giro cuantizado (16 pasos/
+                // vuelta), más lento cuanto más grande, con fase/sentido propios
+                // (p.seed). Gira siempre, incluso congelado en su sitio.
+                const spr = pixVirusSprite(Math.max(6, Math.round(p.size)), p.t);
+                const seed = p.seed || 0;
+                const stepMs = 90 + (p.size | 0);
+                const ang = ((Math.floor(now / stepMs) + seed) % 16) * (Math.PI / 8) * (seed % 2 ? 1 : -1);
+                g.save();
+                g.translate(p.x, p.y);
+                g.rotate(ang);
+                g.drawImage(spr, -p.size / 2, -p.size / 2, p.size, p.size);
+                g.restore();
+            } else {
+                const spr = pixDotSprite(Math.max(2, Math.round(p.size)), p.col, 'f');
+                g.drawImage(spr, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+            }
         }
+    }
+    // Rects (en el espacio lowres del canvas activo) de los elementos del menú
+    // que pueden TAPAR la deco. Se usa al congelar (menús concretos): una
+    // partícula tapada por cualquiera de ellos sigue avanzando hasta despejarlo,
+    // en vez de quedarse quieta a medias debajo. Reusa LAYOUT_ELS (títulos,
+    // blurb, píldora, nombre, botones y carteles) → "todo lo que tape".
+    function menuDecoObstacleRects(W, H) {
+        if (typeof LAYOUT_ELS === 'undefined') return null;
+        const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
+        const sx = W / vw, sy = H / vh;
+        const rects = [];
+        for (const key in LAYOUT_ELS) {
+            const el = document.querySelector(LAYOUT_ELS[key]); if (!el) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width <= 0 || r.height <= 0) continue;
+            rects.push({ x: r.left * sx, y: r.top * sy, w: r.width * sx, h: r.height * sy });
+        }
+        return rects;
     }
     function modeFxDrawSceneV2(w, h, side) {
         const sc = modeScene;
@@ -4139,7 +4185,9 @@
         if (!tile.pat) tile.pat = g.createPattern(tile.cv, 'repeat');
         g.fillStyle = tile.pat;
         g.fillRect(0, 0, W, H);
-        stepMenuDeco(W, H, performance.now(), false);   // login: comida quieta
+        // login: deco congelada salvo lo tapado por elementos del menú, que
+        // sigue avanzando hasta despejarlos (ver stepMenuDeco).
+        stepMenuDeco(W, H, performance.now(), false, menuDecoObstacleRects(W, H));
         drawMenuDeco(g, W, H);
     }
     // rAF continuo: mientras el login este visible, repinta tile+deco cada

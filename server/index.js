@@ -84,7 +84,7 @@ let zoomExp = (typeof _glob.zoomExp === 'number') ? _clampZoomExp(_glob.zoomExp)
 // admin, el cliente los lee de /api/rooms (mismo canal que sfxVol/baseZoom
 // de arriba) porque el menu ya hace polling ahi para el ORACLE de salas.
 const _clampN = (v, lo, hi, def) => (typeof v === 'number' && !isNaN(v)) ? Math.max(lo, Math.min(hi, v)) : def;
-let menuDecoFoodDensity = _clampN(_glob.menuDecoFoodDensity, 0, 60, 16);
+let menuDecoFoodDensity = _clampN(_glob.menuDecoFoodDensity, 0, 150, 16);
 let menuDecoVirusChance = _clampN(_glob.menuDecoVirusChance, 0, 1, 0.1);
 let menuDecoPillBobPx = _clampN(_glob.menuDecoPillBobPx, 0, 12, 3);
 let menuDecoCartelBobPx = _clampN(_glob.menuDecoCartelBobPx, 0, 12, 3);
@@ -1013,7 +1013,7 @@ function applySettingsPatch(p) {
     if (typeof p.enemyFx === 'boolean') { enemyFx = p.enemyFx; for (const r of rooms.values()) broadcast(r, { t: 'enemyFx', on: enemyFx }); }
     if (typeof p.baseZoom === 'number') { baseZoom = _clampZoom(p.baseZoom); for (const r of rooms.values()) broadcast(r, { t: 'baseZoom', value: baseZoom }); }
     if (typeof p.zoomExp === 'number') { zoomExp = _clampZoomExp(p.zoomExp); for (const r of rooms.values()) broadcast(r, { t: 'zoomExp', value: zoomExp }); }
-    if (typeof p.menuDecoFoodDensity === 'number') menuDecoFoodDensity = _clampN(p.menuDecoFoodDensity, 0, 60, menuDecoFoodDensity);
+    if (typeof p.menuDecoFoodDensity === 'number') menuDecoFoodDensity = _clampN(p.menuDecoFoodDensity, 0, 150, menuDecoFoodDensity);
     if (typeof p.menuDecoVirusChance === 'number') menuDecoVirusChance = _clampN(p.menuDecoVirusChance, 0, 1, menuDecoVirusChance);
     if (typeof p.menuDecoPillBobPx === 'number') menuDecoPillBobPx = _clampN(p.menuDecoPillBobPx, 0, 12, menuDecoPillBobPx);
     if (typeof p.menuDecoCartelBobPx === 'number') menuDecoCartelBobPx = _clampN(p.menuDecoCartelBobPx, 0, 12, menuDecoCartelBobPx);
@@ -2099,7 +2099,7 @@ wss.on('connection', (ws, req) => {
                 // pildora/carteles, tamano de rejilla) — misma mecanica que
                 // setVolumes/setBaseZoom, pero sin broadcast a salas en curso
                 // (solo lo lee el menu, vía /api/rooms, antes de entrar a jugar).
-                if (typeof msg.foodDensity === 'number') menuDecoFoodDensity = _clampN(msg.foodDensity, 0, 60, menuDecoFoodDensity);
+                if (typeof msg.foodDensity === 'number') menuDecoFoodDensity = _clampN(msg.foodDensity, 0, 150, menuDecoFoodDensity);
                 if (typeof msg.virusChance === 'number') menuDecoVirusChance = _clampN(msg.virusChance, 0, 1, menuDecoVirusChance);
                 if (typeof msg.pillBobPx === 'number') menuDecoPillBobPx = _clampN(msg.pillBobPx, 0, 12, menuDecoPillBobPx);
                 if (typeof msg.cartelBobPx === 'number') menuDecoCartelBobPx = _clampN(msg.cartelBobPx, 0, 12, menuDecoCartelBobPx);
