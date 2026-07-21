@@ -369,21 +369,14 @@
         /* Bajados un poco (que no queden por encima del titulo) y sin min-height
            fijo: en pantallas bajas desbordaba y el cartel inferior salia cortado. */
         .menu-right-col { width: 480px; max-width: 40vw; margin-top: 46px; height: calc(90vh - 46px); z-index: 61; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
-        /* Fondo + marco de piedra: PNG de David via _pixFrameRule/quest-panel
-           (JS, ver buildPixPanelCss) — border-image no admite !important en
-           shorthand, así que el resto solo aporta layout. */
-        /* El marco (panel) solo aporta el border-image + recorte; el padding y
-           el layout viven en .cartel-inner, que es lo que ahora se mueve/escala
-           por separado desde el editor de layout (SETTINGS -> EDIT LAYOUT). */
-        #oraclePanel, #missionsPanel { position: relative; flex: 1; min-height: 0; overflow: hidden; }
-        /* Oscurecido sutil sobre el fondo del cartel (el interior del PNG se
-           veia algo mas claro que la referencia): capa encima del border-image,
-           debajo del contenido real (que va despues en el DOM). */
-        /* inset negativo (no 0): a 0 quedaba un hairline claro justo donde el
-           overlay terminaba y el marco de piedra empezaba (un "cuadrado" mas
-           claro pegado al borde). Se extiende un poco por debajo del marco
-           para que no quede ningun hueco sin oscurecer. */
-        #oraclePanel::before, #missionsPanel::before { content: ''; position: absolute; inset: -6px; background: rgba(0,0,0,0.16); pointer-events: none; z-index: 0; }
+        /* El cartel entero (marco de piedra + interior) es el video animado de
+           David, pintado en el <canvas class="quest-video-bg"> — el panel solo
+           aporta layout; el padding y el contenido viven en .cartel-inner, que
+           se mueve/escala por separado desde SETTINGS -> EDIT LAYOUT. */
+        #oraclePanel, #missionsPanel { position: relative; z-index: 0; flex: 1; min-height: 0; overflow: hidden; }
+        /* Video estirado a todo el panel (como hacia el border-image del PNG),
+           por debajo del contenido (.cartel-inner, z-index 1). */
+        .quest-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
         /* Padding reducido (antes 20px 24px dejaba demasiado hueco entre el
            texto y el marco, y encogia tanto el area util que las listas
            desbordaban y sacaban el scrollbar feo de Windows). height:100% para
@@ -1453,6 +1446,7 @@
         <div class="menu-right-col">
             <!-- Bloque ORACLE: descripción + precio del token + tabla de salas -->
             <div id="oraclePanel" class="classic">
+                <canvas class="quest-video-bg" id="oracleVideoBg"></canvas>
                 <!-- Cuadrado interior: editable por separado del marco de piedra
                      (SETTINGS -> EDIT LAYOUT), asi se puede ajustar el tamano/
                      posicion del contenido sin mover el cartel entero. -->
@@ -1469,6 +1463,7 @@
 
             <!-- Bloque MISSIONS / SKINS: carrusel con flecha -->
             <div id="missionsPanel" class="classic">
+                <canvas class="quest-video-bg" id="missionsVideoBg"></canvas>
                 <!-- Cuadrado interior: editable por separado del marco de piedra
                      (SETTINGS -> EDIT LAYOUT). -->
                 <div class="cartel-inner" id="missionsInner">
@@ -1497,6 +1492,49 @@
         </div>
       </div>
     </div>
+
+    <!-- Fuente oculta del video del cartel quest-panel (grok-video de David,
+         grabado con fondo magenta a proposito para poder quitarlo por canvas
+         igual que font-cleanup.html). No se pinta directamente: solo alimenta
+         de frames a los <canvas class="quest-video-bg"> de cada panel. -->
+    <video id="questPanelVideoSrc" src="video/quest-panel.mp4" autoplay muted loop playsinline
+        style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;"></video>
+    <script>
+        // Pinta el frame actual del video en cada canvas de fondo, estirado a
+        // todo el panel (como hacia el border-image del PNG que sustituye), y
+        // quita el magenta con el mismo chroma-key que game/font-cleanup.html
+        // (distancia euclidea + banda de transicion suave para no dejar borde
+        // magenta duro).
+        (function () {
+            var KEY = [160, 69, 161], TOL = 55, SOFT = 30;
+            var src = document.getElementById('questPanelVideoSrc');
+            var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg')];
+            function frame() {
+                if (src.readyState >= 2 && src.videoWidth) {
+                    for (var i = 0; i < canvases.length; i++) {
+                        var cv = canvases[i];
+                        var w = cv.clientWidth, h = cv.clientHeight;
+                        if (!w || !h) continue;
+                        if (cv.width !== w) cv.width = w;
+                        if (cv.height !== h) cv.height = h;
+                        var ctx = cv.getContext('2d');
+                        ctx.clearRect(0, 0, w, h);
+                        ctx.drawImage(src, 0, 0, w, h);
+                        var img = ctx.getImageData(0, 0, w, h), px = img.data;
+                        for (var p = 0; p < px.length; p += 4) {
+                            var dr = px[p] - KEY[0], dg = px[p + 1] - KEY[1], db = px[p + 2] - KEY[2];
+                            var dist = Math.sqrt(dr * dr + dg * dg + db * db);
+                            if (dist < TOL) px[p + 3] = 0;
+                            else if (dist < TOL + SOFT) px[p + 3] = Math.round(px[p + 3] * (dist - TOL) / SOFT);
+                        }
+                        ctx.putImageData(img, 0, 0);
+                    }
+                }
+                requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+        })();
+    </script>
 
     <div id="resultOverlay">
         <div class="result-box">
@@ -2548,22 +2586,12 @@
         st.textContent =
             'body.pixel-pack ' + _pixFrameRule('.skill-choice-card', skillPanelBorderPx, skillPanelBg, skillPanelBgAlpha, 'skillPanel') +
             'body.pixel-pack ' + _pixFrameRule('#sysModal .exit-box', sysPanelBorderPx, sysPanelBg, sysPanelBgAlpha, 'sysModal', sysPanelAccent) +
-            // ROOM PRICES / DAILY QUESTS: marco de piedra + fondo (arte de David).
-            // bgHex = verde medio muestreado del propio PNG (respaldo bajo el
-            // border-image, ver comentario en _pixFrameRule).
-            // slice=30 (no 90): a 90 el recorte de esquina incluia de mas —
-            // el grosor real de piedra plana en el PNG es ~30px, asi que el
-            // resto (30-90) era interior verde colado dentro del marco,
-            // formando una franja verde entre la piedra y el contenido. A 30
-            // el recorte es (casi) solo piedra: las esquinas pierden parte
-            // del adorno grande, pero el marco queda limpio.
-            // borderPx 28->18: con el recorte limpio (sin verde diluyendolo) el
-            // mismo grosor de antes se veia mas ancho/solido — se compensa
-            // adelgazando el anillo renderizado.
-            // Dos llamadas (no selector con coma): "body.pixel-pack A, B{}" dejaría
-            // a B fuera del scope de body.pixel-pack (la coma corta el selector).
-            'body.pixel-pack ' + _pixFrameRule('#oraclePanel', 18, '#2d3e2e', 1, 'quest-panel', null, 30) +
-            'body.pixel-pack ' + _pixFrameRule('#missionsPanel', 18, '#2d3e2e', 1, 'quest-panel', null, 30) +
+            // ROOM PRICES / DAILY QUESTS: el cartel entero (marco de piedra
+            // incluido) es ahora el video animado de David, pintado en el
+            // <canvas class="quest-video-bg"> de cada panel — ya no hay
+            // border-image de quest-panel.png aqui.
+            'body.pixel-pack #oraclePanel,body.pixel-pack #missionsPanel{border:none!important;border-image:none!important;' +
+            'border-radius:0!important;background:transparent!important;box-shadow:none!important;animation:none}' +
             'body.pixel-pack .btn-sys{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
             'body.pixel-pack .timer-bar{border-radius:0!important;height:18px;background:#111;border:2px solid #333;box-shadow:inset 2px 2px 0 rgba(0,0,0,.8)}' +
             // muescas: raya oscura repetida cada 16px sobre un degradado rojo (bevel
