@@ -310,6 +310,10 @@
 
         /* --- BOTÓN "DAILY QUESTS" + PANEL DESPLEGABLE --- */
         .mqp-btn { position: absolute; top: 22%; z-index: 35; display: none; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); font-family: 'Russo One'; font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; cursor: pointer; user-select: none; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
+        /* Quitado del selector de modo a peticion de David (el panel DAILY
+           QUESTS del login, en el cartel lateral, ya cubre esto): !important
+           por encima de las reglas de abajo que lo mostraban en hover. */
+        .mqp-btn, .mqp { display: none !important; }
         #modeScreen.hover-arcade.quests-ready .mqp-btn.arcade { display: inline-flex; }
         #modeScreen.hover-classic.quests-ready .mqp-btn.classic { display: inline-flex; }
         .mqp-btn:hover { transform: translateY(-2px); filter: brightness(1.15); }
@@ -2605,11 +2609,6 @@
                 'background:url(' + cartelHeroUrl('close-x-red') + ') center/contain no-repeat;image-rendering:pixelated}' +
                 'body.pixel-pack .gameModalBox .close:hover{filter:brightness(1.4)}';
         }
-        // Titulo DEPOSIT horneado en el modal de deposito.
-        if (cartelUsesAtlas('deposit')) {
-            css += 'body.pixel-pack #gameDepositModal .gameModalBox>h3{color:transparent!important;height:44px;' +
-                'background:url(' + cartelHeroUrl('deposit') + ') center/contain no-repeat;image-rendering:pixelated}';
-        }
         // Modal de deposito/retiro con el marco gris (menu-gris, el mismo del
         // selector de wallet/sala — todo lo de wallet/deposit va en gris, a
         // peticion de David) y el boton de confirmar con el OK horneado.
@@ -2621,8 +2620,9 @@
                 'image-rendering:pixelated;padding:44px 44px 40px}' +
                 // "In wallet / In GAME / Amount" tambien un poco mas abajo
                 'body.pixel-pack #gameDepositModal .gm-row:first-of-type,body.pixel-pack #gameWithdrawModal .gm-row:first-of-type{margin-top:10px}' +
-                // Titulo del withdraw (sin arte horneado): fuente pixel
-                'body.pixel-pack #gameWithdrawModal .gameModalBox>h3{font-family:"Press Start 2P",monospace!important;font-size:15px!important;' +
+                // Titulo del deposit/withdraw (sin arte horneado, como pidio
+                // David): fuente pixel para los dos igual.
+                'body.pixel-pack #gameDepositModal .gameModalBox>h3,body.pixel-pack #gameWithdrawModal .gameModalBox>h3{font-family:"Press Start 2P",monospace!important;font-size:15px!important;' +
                 'color:#c8cdd2!important;text-shadow:2px 2px 0 rgba(0,0,0,.65);line-height:1.6}' +
                 // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED: mismo marco gris
                 // en el modal de sistema (la clase sys-gray la pone showSystemMsg).
@@ -2636,14 +2636,23 @@
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
                 'image-rendering:pixelated;padding:40px 44px 46px;width:430px}';
         }
-        if (cartelUsesAtlas('ok')) {
+        // Boton OK gris (ok-gris, arte de David): solo en deposit/withdraw y
+        // los mensajes de wallet en gris (sys-gray) — el resto sigue con el
+        // OK verde normal.
+        if (cartelUsesAtlas('ok-gris')) {
             css += 'body.pixel-pack #gameDepositModal .gm-btn,body.pixel-pack #gameWithdrawModal .gm-btn{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
-                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('ok') + ') center/100% 100% no-repeat!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('ok-gris') + ') center/100% 100% no-repeat!important;' +
                 'aspect-ratio:622/81;width:58%!important;display:block;margin:16px auto 0;padding:0!important;' +
                 'image-rendering:pixelated;color:transparent!important;text-shadow:none!important}' +
-                'body.pixel-pack #gameDepositModal .gm-btn:hover,body.pixel-pack #gameWithdrawModal .gm-btn:hover{filter:brightness(1.15);box-shadow:none!important}';
+                'body.pixel-pack #gameDepositModal .gm-btn:hover,body.pixel-pack #gameWithdrawModal .gm-btn:hover{filter:brightness(1.15);box-shadow:none!important}' +
+                // Mismos resets que la regla verde de abajo (border/border-image/
+                // box-shadow): sin ellos el border-image generico de _btnImgRule()
+                // (button.png, 9-slice) se queda pintado encima y tapa el fondo.
+                'body.pixel-pack #sysModal .exit-box.sys-gray .btn-sys{border:none!important;border-image:none!important;border-radius:0!important;' +
+                'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('ok-gris') + ') center/100% 100% no-repeat!important}';
         }
-        // Boton OK del modal de sistema (KICKED/REJOIN EXPIRED...) horneado.
+        // Boton OK verde del modal de sistema (KICKED/REJOIN EXPIRED/PAYMENT
+        // CANCELLED...) horneado — .sys-gray lo pisa con el gris de arriba.
         if (cartelUsesAtlas('ok')) {
             css += 'body.pixel-pack .btn-sys{border:none!important;border-image:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('ok') + ') center/100% 100% no-repeat!important;' +
@@ -3262,6 +3271,23 @@
         t = { cv, pat: null };
         modeScene.v2Tiles.set(hex, t); return t;
     }
+    // Fondo del login (ARCADE/CLASSIC, tras darle a PLAY en el selector de
+    // modo) = EXACTAMENTE el mismo tile que pinta la v2 del selector de modo
+    // (mismo canvas de _msV2Tile, mismo color por modo), en vez del degradado
+    // diagonal + rejilla que llevaba antes — a peticion de David, para que no
+    // se note el salto de fondo al entrar. background-size en vh: el tile son
+    // 26 "pixeles" de la escena v2, que en esa pantalla ocupa 270 filas de
+    // alto de viewport (ver modeFxDrawSceneV2), asi que cada pixel del tile
+    // mide 1/270 de alto de pantalla -> 26/270 = 9.63vh por tile.
+    (function applyLoginBgFromModeTile() {
+        const tC = _msV2Tile('#00ffaa').cv.toDataURL();
+        const tA = _msV2Tile('#ccff00').cv.toDataURL();
+        const st = document.createElement('style'); st.id = 'loginBgV2Css';
+        st.textContent =
+            '#loginOverlay.bg-classic{background-image:url(' + tC + ')!important;background-size:9.63vh 9.63vh!important;image-rendering:pixelated}' +
+            '#loginOverlay.bg-arcade{background-image:url(' + tA + ')!important;background-size:9.63vh 9.63vh!important;image-rendering:pixelated}';
+        document.head.appendChild(st);
+    })();
     function modeFxDrawSceneV2(w, h, side) {
         const sc = modeScene;
         const H = 270, W = Math.max(240, Math.round(w / h * H));

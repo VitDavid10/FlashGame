@@ -34,7 +34,11 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // del selector de wallet (CONNECT WALLET en blanco).
     'wallet-required', 'connect-error', 'deposit-failed', 'connect-wallet', 'payment-cancelled',
     // X de cierre roja (arte de David, recortada de fondo magenta).
-    'close-x-red'];
+    'close-x-red',
+    // OK gris (arte de David, recortado de un checker de transparencia
+    // guardado como jpg): solo para los modales/mensajes de wallet que usan
+    // el marco gris (menu-gris) — el resto de OK siguen con el verde.
+    'ok-gris'];
 const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
 
 const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {
