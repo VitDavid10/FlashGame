@@ -1015,15 +1015,7 @@
            escenas hover1/hover2), pero con el GROSOR y COLOR del laser del
            dibujo: ~22px en pantalla y dorado #ffdf55 / verde #66f05a (medidos
            sobre el rayo de hover1/hover2.png). */
-        /* Grieta de piedra en vez del rayo de neon plano: gradiente repetido a
-           bandas irregulares (gris piedra claro/oscuro) simulando una fractura
-           rocosa, opaco (sin dejar ver el fondo a traves) — el brillo de color
-           por modo se queda solo como resplandor a los lados (box-shadow), no
-           como relleno solido. */
-        body.pixel-pack .diagonal-divider { width: 22px; margin-left: -8px; opacity: 1;
-            background: repeating-linear-gradient(97deg, #565650 0px, #6b6b62 3px, #3a3a34 5px, #78786c 9px, #2c2c27 12px, #57574f 15px);
-            box-shadow: inset 3px 0 0 rgba(0,0,0,0.55), inset -3px 0 0 rgba(255,255,255,0.08), 0 0 26px rgba(255,223,85,0.65); }
-        body.pixel-pack #modeScreen.hover-classic .diagonal-divider { box-shadow: inset 3px 0 0 rgba(0,0,0,0.55), inset -3px 0 0 rgba(255,255,255,0.08), 0 0 26px rgba(102,240,90,0.65); }
+        body.pixel-pack .diagonal-divider { width: 22px; margin-left: -8px; }
         /* Escena de los portales DIBUJADA pixel a pixel (canvas #modeSceneCv a
            ~480x270 logicos bajo los paneles, z1<z2; ver modeFxDrawScene). Nada
            de mp4/PNG reescalados: nitidez perfecta a cualquier resolucion. El
@@ -6756,6 +6748,15 @@
     }
 
     initMenuState(); init();
+    // Red de seguridad: modeFxActive() exige modeScreen.offsetWidth>0 (ya con
+    // layout hecho). Si initMenuState() corre ANTES de que el navegador termine
+    // el primer layout (variaba segun cache/velocidad de carga: "cuando
+    // reinicio sale el fondo antiguo" que reportaba David), modeFxStart()
+    // fallaba en silencio, el canvas #modeSceneCv nunca se creaba, y el
+    // selector se quedaba con el fondo CSS viejo (sin food/virus ni cuadricula
+    // nueva) para toda la sesion — nada lo reintentaba despues. Un rAF de mas
+    // le da tiempo al layout y reintenta.
+    requestAnimationFrame(() => { if (!modeFx.raf) modeFxStart(); });
     if (!startRemoteSpectator()) { /* arranque normal con menú */ }
 </script>
 
