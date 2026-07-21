@@ -3344,19 +3344,20 @@
         const dt = menuDeco.lastT ? Math.min(0.05, (now - menuDeco.lastT) / 1000) : 0.016;
         menuDeco.lastT = now;
         // `move === false` (menús concretos: login/selección de sala): la deco se
-        // congela, PERO las partículas tapadas por un elemento del menú (obstacles)
-        // siguen avanzando hasta despejarlo — así no queda comida quieta asomando
-        // a medias bajo un título/botón/cartel. El resto no se mueve. El selector
-        // de modo llama sin `move` → todo en movimiento. (El giro de los virus va
-        // aparte, en drawMenuDeco, y sigue activo aunque estén congelados.)
+        // CONGELA. Además, cualquier partícula que quede sobre un elemento del menú
+        // (obstacles) salta UNA vez a un hueco libre y ahí se queda quieta — así el
+        // menú aparece limpio, con la deco repartida solo por las zonas vacías. Al
+        // volver al selector (sin `move`) reanudan el movimiento desde ese hueco.
+        // (El giro de los virus va aparte, en drawMenuDeco, y sigue activo.)
         for (const p of menuDeco.items) {
             if (move === false) {
-                const s = p.size;   // margen = radio: sigue mientras cualquier parte quede tapada
-                let covered = false;
-                if (obstacles) for (const r of obstacles) {
-                    if (p.x >= r.x - s && p.x <= r.x + r.w + s && p.y >= r.y - s && p.y <= r.y + r.h + s) { covered = true; break; }
+                if (menuDecoCovered(p.x, p.y, p.size, obstacles)) {
+                    for (let i = 0; i < 30; i++) {
+                        const nx = Math.random() * w, ny = Math.random() * h;
+                        if (!menuDecoCovered(nx, ny, p.size, obstacles)) { p.x = nx; p.y = ny; break; }
+                    }
                 }
-                if (!covered) continue;
+                continue;   // congelada (esté donde esté)
             }
             p.x += p.vx * dt; p.y += p.vy * dt;
             if (p.x < -16) p.x = w + 16; else if (p.x > w + 16) p.x = -16;
@@ -3387,23 +3388,36 @@
             }
         }
     }
-    // Solo estos elementos "retienen" la deco al congelar: el título, el
-    // subtítulo y la zona de la píldora. Una partícula tapada por ellos sigue
-    // avanzando hasta despejarlos (no se queda quieta a medias debajo). Detrás de
-    // cualquier otra cosa (nombre, botones, carteles) la deco se para en el sitio
-    // de inmediato. Rects en el espacio lowres del canvas activo.
-    const MENU_DECO_OBSTACLES = ['#modeTitlePw', '#modeTitleWord', '#modeBlurb', '.pill-stage'];
+    // Rects (espacio lowres del canvas) de TODOS los elementos del menú (título,
+    // subtítulo, píldora, nombre, botones, carteles) — reusa LAYOUT_ELS. Al
+    // congelar, cualquier partícula que caiga sobre uno de ellos se reubica a un
+    // hueco libre (ver stepMenuDeco): el menú queda limpio, con la deco solo en
+    // las zonas vacías.
+    // Botones de la barra superior que LAYOUT_ELS no incluye (audio + wallet):
+    // también cuentan como "menú" a evitar → "ni botones ni nada".
+    const MENU_DECO_EXTRA_OBSTACLES = ['#musicToggle', '#gameWalletArea'];
     function menuDecoObstacleRects(W, H) {
+        if (typeof LAYOUT_ELS === 'undefined') return null;
         const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
         const sx = W / vw, sy = H / vh;
         const rects = [];
-        for (const sel of MENU_DECO_OBSTACLES) {
-            const el = document.querySelector(sel); if (!el) continue;
+        const push = (el) => {
+            if (!el) return;
             const r = el.getBoundingClientRect();
-            if (r.width <= 0 || r.height <= 0) continue;
+            if (r.width <= 0 || r.height <= 0) return;
             rects.push({ x: r.left * sx, y: r.top * sy, w: r.width * sx, h: r.height * sy });
-        }
+        };
+        for (const key in LAYOUT_ELS) push(document.querySelector(LAYOUT_ELS[key]));
+        for (const sel of MENU_DECO_EXTRA_OBSTACLES) push(document.querySelector(sel));
         return rects;
+    }
+    // ¿El punto (x,y) con margen s cae sobre algún elemento del menú?
+    function menuDecoCovered(x, y, s, obstacles) {
+        if (!obstacles) return false;
+        for (const r of obstacles) {
+            if (x >= r.x - s && x <= r.x + r.w + s && y >= r.y - s && y <= r.y + r.h + s) return true;
+        }
+        return false;
     }
     function modeFxDrawSceneV2(w, h, side) {
         const sc = modeScene;
