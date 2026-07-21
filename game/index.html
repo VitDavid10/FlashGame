@@ -3812,6 +3812,12 @@
         el.innerHTML =
             '<span id="modeTitlePw" style="display:inline-block;line-height:0;vertical-align:middle;"><img src="' + pwSrc + '" alt="PILLWARS" style="display:block;height:24px;image-rendering:pixelated;" onerror="' + fb + '"></span>' +
             ' <span id="modeTitleWord" style="display:inline-block;line-height:0;vertical-align:middle;"><img src="' + wordSrc + '" alt="" style="display:block;height:29px;image-rendering:pixelated;" onerror="' + fb + '"></span>';
+        // innerHTML destruye y recrea #modeTitlePw/#modeTitleWord: sin esto,
+        // el ajuste guardado en EDIT LAYOUT (translate/scale, inline en el
+        // nodo viejo) se perdia cada vez que se cambiaba/reentraba de modo —
+        // el bug de "no se guarda" que reporto David. Se reaplica aqui sobre
+        // los nodos nuevos.
+        if (typeof applyMenuLayout === 'function') applyMenuLayout();
     }
     function selectMode(m) {
         SoundManager.stop('hover');
@@ -4204,7 +4210,12 @@
             const t = layoutTarget(e); if (!t) return;
             e.preventDefault();
             const cur = menuLayout[t.key] = menuLayout[t.key] || { x: 0, y: 0, s: 1 };
-            cur.s = Math.min(3, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? 1.06 : 1 / 1.06)));
+            // 1.015 (1.5%) en vez de 1.06 (6%): con el paso viejo era dificil
+            // cuadrar dos elementos al MISMO tamano (se pasaba de largo entre
+            // un tick y el siguiente). Shift+rueda = paso grande (1.06) para
+            // moverse rapido cuando la precision no importa.
+            const step = e.shiftKey ? 1.06 : 1.015;
+            cur.s = Math.min(3, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
             applyMenuLayout(); saveMenuLayout();
         }, { passive: false, capture: true });
         document.addEventListener('dblclick', (e) => {
