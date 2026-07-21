@@ -3214,9 +3214,9 @@
     // Sustituye la escena de portales por el fondo del juego real (el tile de
     // grid de pixBgPattern) partido por la diagonal: mitad arcade tintada de
     // lima #ccff00 y mitad classic de teal #00ffaa. Sin skyline, rayos ni
-    // pildoras. Se activa con setModeSceneVersion(2); la comparativa la
-    // dispara desde los botones "Modos v2 ..." (pendiente de visto bueno).
-    let modeSceneVer = 1;
+    // pildoras. v2 dada por buena por David: es la version activa por
+    // defecto (setModeSceneVersion(1) la devuelve a la escena de portales).
+    let modeSceneVer = 2;
     function setModeSceneVersion(v) {
         modeSceneVer = v === 2 ? 2 : 1;
         // W/H a 0: fuerza el rebuild de la escena que entre (v1 necesita su
