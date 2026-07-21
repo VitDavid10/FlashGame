@@ -1287,26 +1287,6 @@
             <div class="section-title" style="margin-top:15px;">Menu Layout</div>
             <button class="btn-settings" style="margin-top:6px;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
 
-            <!-- Admin: densidad de la food/virus decorativos del fondo del menu y
-                 amplitud del bob (pildora / carteles), por separado. Codigo igual
-                 al que ya usaba unlockSettings (1234), solo para no exponer estos
-                 sliders a cualquiera que abra SETTINGS. -->
-            <div class="section-title" style="margin-top:15px;">Menu Visuals <span style="color:#666;font-size:9px;">(admin)</span></div>
-            <div id="visualsLock" style="display:flex;gap:8px;align-items:center;margin-top:6px;">
-                <input type="password" id="visualsPass" placeholder="ADMIN CODE" style="flex:1;background:#0a0d10;border:2px solid #2a2f36;color:#c8cdd2;padding:9px;font-family:'Press Start 2P',monospace;font-size:9px;">
-                <button class="btn-settings" style="width:auto;padding:9px 14px;margin-top:0;" onclick="unlockVisuals()">UNLOCK</button>
-            </div>
-            <div id="visualsControls" style="display:none;margin-top:8px;">
-                <label style="display:block;color:#aaa;font-size:10px;margin-bottom:4px;">Grid size (lower = more/smaller squares): <span id="vdGridVal">18</span>px</label>
-                <input type="range" id="vdGrid" min="8" max="34" step="1" style="width:100%;" oninput="updateMenuDecoSetting('gridSize', this.value, 'vdGridVal')">
-                <label style="display:block;color:#aaa;font-size:10px;margin:10px 0 4px;">Background food density: <span id="vdFoodVal">16</span></label>
-                <input type="range" id="vdFood" min="0" max="40" step="1" style="width:100%;" oninput="updateMenuDecoSetting('foodDensity', this.value, 'vdFoodVal')">
-                <label style="display:block;color:#aaa;font-size:10px;margin:10px 0 4px;">Pill bob: <span id="vdPillVal">3</span>px</label>
-                <input type="range" id="vdPill" min="0" max="10" step="1" style="width:100%;" oninput="updateMenuDecoSetting('pillBobPx', this.value, 'vdPillVal')">
-                <label style="display:block;color:#aaa;font-size:10px;margin:10px 0 4px;">Cartel bob: <span id="vdCartelVal">3</span>px</label>
-                <input type="range" id="vdCartel" min="0" max="10" step="1" style="width:100%;" oninput="updateMenuDecoSetting('cartelBobPx', this.value, 'vdCartelVal')">
-            </div>
-
             <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
     </div>
@@ -3315,27 +3295,17 @@
         document.documentElement.style.setProperty('--cartel-bob-px', menuDecoSettings.cartelBobPx + 'px');
     }
     applyMenuDecoCss();
-    // SETTINGS -> Menu Visuals (admin): mismo codigo "1234" que ya usaba el
-    // unlockSettings original de esta pantalla.
-    function unlockVisuals() {
-        const pass = document.getElementById('visualsPass').value;
-        if (pass !== '1234') { document.getElementById('visualsPass').value = ''; alert('WRONG CODE'); return; }
-        document.getElementById('visualsLock').style.display = 'none';
-        document.getElementById('visualsControls').style.display = 'block';
-        document.getElementById('vdGrid').value = menuDecoSettings.gridSize;
-        document.getElementById('vdGridVal').textContent = menuDecoSettings.gridSize;
-        document.getElementById('vdFood').value = menuDecoSettings.foodDensity;
-        document.getElementById('vdFoodVal').textContent = menuDecoSettings.foodDensity;
-        document.getElementById('vdPill').value = menuDecoSettings.pillBobPx;
-        document.getElementById('vdPillVal').textContent = menuDecoSettings.pillBobPx;
-        document.getElementById('vdCartel').value = menuDecoSettings.cartelBobPx;
-        document.getElementById('vdCartelVal').textContent = menuDecoSettings.cartelBobPx;
-    }
-    function updateMenuDecoSetting(key, val, labelId) {
-        menuDecoSettings[key] = Number(val);
-        document.getElementById(labelId).textContent = val;
-        saveMenuDecoSettings();
-        applyMenuDecoCss();
+    // Aplica el patch de /api/rooms (ver refreshOracle): foodDensity/virusChance/
+    // pillBobPx/cartelBobPx/gridSize vienen del panel admin REAL (server/admin.html
+    // -> Ajustes -> Menu Visuals), no de un panel local — asi todos los jugadores
+    // ven la misma decoracion, editable en vivo sin tocar el cliente.
+    function applyMenuDecoFromServer(data) {
+        let changed = false;
+        for (const k of ['foodDensity', 'virusChance', 'pillBobPx', 'cartelBobPx', 'gridSize']) {
+            const v = data['menuDeco' + k[0].toUpperCase() + k.slice(1)];
+            if (typeof v === 'number' && menuDecoSettings[k] !== v) { menuDecoSettings[k] = v; changed = true; }
+        }
+        if (changed) { saveMenuDecoSettings(); applyMenuDecoCss(); }
     }
     const MENU_DECO_FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
     const menuDeco = { items: [], w: 0, h: 0, lastT: 0 };
@@ -5174,6 +5144,8 @@
             if (typeof data.baseZoom === 'number' && data.baseZoom > 0) ZOOM_CONFIG.baseScale = data.baseZoom;
             // Exponente global del zoom (admin): ritmo del zoom-out al ganar masa.
             if (typeof data.zoomExp === 'number' && data.zoomExp > 0) ZOOM_CONFIG.exponent = data.zoomExp;
+            // Decoracion del fondo del menu (food/virus, bob, tamano de rejilla): admin.
+            applyMenuDecoFromServer(data);
             const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
             // Reset del timer solo si el precio realmente cambió (cada 5 min en servidor).
             if (newRate !== _lastPillPerDollar) {

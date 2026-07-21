@@ -79,7 +79,17 @@ let baseZoom = (typeof _glob.baseZoom === 'number') ? _clampZoom(_glob.baseZoom)
 // del cliente, así que un desajuste aquí abre pop-in o maphack parcial.
 const _clampZoomExp = v => Math.max(0.05, Math.min(0.6, v));
 let zoomExp = (typeof _glob.zoomExp === 'number') ? _clampZoomExp(_glob.zoomExp) : 0.22;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp }), () => {}); }
+// Decoracion cosmetica del fondo del menu (food/virus flotando + bob de la
+// pildora/carteles + tamano de celda de la rejilla): editable en vivo desde
+// admin, el cliente los lee de /api/rooms (mismo canal que sfxVol/baseZoom
+// de arriba) porque el menu ya hace polling ahi para el ORACLE de salas.
+const _clampN = (v, lo, hi, def) => (typeof v === 'number' && !isNaN(v)) ? Math.max(lo, Math.min(hi, v)) : def;
+let menuDecoFoodDensity = _clampN(_glob.menuDecoFoodDensity, 0, 60, 16);
+let menuDecoVirusChance = _clampN(_glob.menuDecoVirusChance, 0, 1, 0.1);
+let menuDecoPillBobPx = _clampN(_glob.menuDecoPillBobPx, 0, 12, 3);
+let menuDecoCartelBobPx = _clampN(_glob.menuDecoCartelBobPx, 0, 12, 3);
+let menuDecoGridSize = _clampN(_glob.menuDecoGridSize, 8, 40, 18);
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, menuDecoFoodDensity, menuDecoVirusChance, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -188,7 +198,8 @@ function killHosts() {
 // animaciones, zoom, tiempos de arcade) — se guardan aquí y se empujan a TODOS
 // los hosts por notify (fire-and-forget, no hace falta confirmación).
 function pushSettingsToHosts() {
-    const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp };
+    const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
+        menuDecoFoodDensity, menuDecoVirusChance, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize };
     for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('settingsSync', patch); }
 }
 // "Rendimiento" SÍ admite override por host (comparar Hz/AOI entre los dos).
@@ -796,7 +807,8 @@ function registerHostHandlers(hostEntry) {
     // Rate actual del oráculo para el cache del host recién forkeado.
     ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR });
     // Ajustes actuales (volumen/animaciones/zoom/tiempos) para el host recién forkeado.
-    ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp });
+    ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
+        menuDecoFoodDensity, menuDecoVirusChance, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize });
 }
 
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
@@ -1001,6 +1013,11 @@ function applySettingsPatch(p) {
     if (typeof p.enemyFx === 'boolean') { enemyFx = p.enemyFx; for (const r of rooms.values()) broadcast(r, { t: 'enemyFx', on: enemyFx }); }
     if (typeof p.baseZoom === 'number') { baseZoom = _clampZoom(p.baseZoom); for (const r of rooms.values()) broadcast(r, { t: 'baseZoom', value: baseZoom }); }
     if (typeof p.zoomExp === 'number') { zoomExp = _clampZoomExp(p.zoomExp); for (const r of rooms.values()) broadcast(r, { t: 'zoomExp', value: zoomExp }); }
+    if (typeof p.menuDecoFoodDensity === 'number') menuDecoFoodDensity = _clampN(p.menuDecoFoodDensity, 0, 60, menuDecoFoodDensity);
+    if (typeof p.menuDecoVirusChance === 'number') menuDecoVirusChance = _clampN(p.menuDecoVirusChance, 0, 1, menuDecoVirusChance);
+    if (typeof p.menuDecoPillBobPx === 'number') menuDecoPillBobPx = _clampN(p.menuDecoPillBobPx, 0, 12, menuDecoPillBobPx);
+    if (typeof p.menuDecoCartelBobPx === 'number') menuDecoCartelBobPx = _clampN(p.menuDecoCartelBobPx, 0, 12, menuDecoCartelBobPx);
+    if (typeof p.menuDecoGridSize === 'number') menuDecoGridSize = _clampN(p.menuDecoGridSize, 8, 40, menuDecoGridSize);
 }
 // Aplica un parche de "Rendimiento" recibido por IPC (puede ir dirigido a un
 // subconjunto de hosts — ver pushPerfToHosts).
@@ -1449,6 +1466,7 @@ function buildAdminState() {
         layerEnabled: Object.assign({}, layerEnabled),
         arcadeRestartMs, arcadeLobbyMs,
         sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
+        menuDecoFoodDensity, menuDecoVirusChance, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize,
         serverCpu: serverCpuPct,
         // Monitorización del PROPIO proceso (la tarjeta del Director en el panel).
         tick: pStats(tickHist.total, tickHist.n), lag: pStats(tickHist.lag, tickHist.n),
@@ -1691,7 +1709,8 @@ const httpServer = http.createServer(async (req, res) => {
                         roomName: price, layers: [],
                     });
                 }
-                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp }) };
+                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
+                    menuDecoFoodDensity, menuDecoVirusChance, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
             res.end(_roomsCache.body);
@@ -1742,7 +1761,8 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp }));
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
+            menuDecoFoodDensity, menuDecoVirusChance, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize }));
         return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
@@ -2074,6 +2094,20 @@ wss.on('connection', (ws, req) => {
                 if (PW_ROLE === 'director') pushSettingsToHosts();
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global zoom exponent: ${zoomExp}`);
+            } else if (msg.cmd === 'setMenuDeco') {
+                // Decoracion cosmetica del fondo del menu (food/virus, bob de
+                // pildora/carteles, tamano de rejilla) — misma mecanica que
+                // setVolumes/setBaseZoom, pero sin broadcast a salas en curso
+                // (solo lo lee el menu, vía /api/rooms, antes de entrar a jugar).
+                if (typeof msg.foodDensity === 'number') menuDecoFoodDensity = _clampN(msg.foodDensity, 0, 60, menuDecoFoodDensity);
+                if (typeof msg.virusChance === 'number') menuDecoVirusChance = _clampN(msg.virusChance, 0, 1, menuDecoVirusChance);
+                if (typeof msg.pillBobPx === 'number') menuDecoPillBobPx = _clampN(msg.pillBobPx, 0, 12, menuDecoPillBobPx);
+                if (typeof msg.cartelBobPx === 'number') menuDecoCartelBobPx = _clampN(msg.cartelBobPx, 0, 12, menuDecoCartelBobPx);
+                if (typeof msg.gridSize === 'number') menuDecoGridSize = _clampN(msg.gridSize, 8, 40, menuDecoGridSize);
+                saveGlobal();
+                if (PW_ROLE === 'director') pushSettingsToHosts();
+                ws.send(JSON.stringify(buildAdminState()));
+                log(`Global menu visuals: food=${menuDecoFoodDensity} virus=${menuDecoVirusChance} pillBob=${menuDecoPillBobPx}px cartelBob=${menuDecoCartelBobPx}px grid=${menuDecoGridSize}px`);
             } else if (msg.cmd === 'announce') {
                 const text = (typeof msg.text === 'string') ? msg.text.slice(0, 140) : '';
                 if (text) {

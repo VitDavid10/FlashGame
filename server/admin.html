@@ -539,6 +539,38 @@
                 <button class="b mini" onclick="resetZoomExp()">Reset</button>
                 <span style="color:#666; font-size: 12px;">How fast the camera pulls back as players grow (0.22 by default). Lower = stays closer while growing.</span>
             </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+                <label style="font-weight:600">Menu visuals (GLOBAL, all players) — decorative food/virus + panel bob on the login/mode-select screens:</label>
+                <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="color:#888;font-size:12px;">Grid size</span>
+                        <input type="range" min="8" max="34" step="1" id="mdGrid" oninput="document.getElementById('mdGridVal').innerText=this.value+'px'" style="width:110px;">
+                        <span id="mdGridVal" style="color:#00ff88;font-size:12px;width:34px;">18px</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="color:#888;font-size:12px;">Food density</span>
+                        <input type="range" min="0" max="60" step="1" id="mdFood" oninput="document.getElementById('mdFoodVal').innerText=this.value" style="width:110px;">
+                        <span id="mdFoodVal" style="color:#00ff88;font-size:12px;width:24px;">16</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="color:#888;font-size:12px;">Virus chance</span>
+                        <input type="range" min="0" max="100" step="1" id="mdVirus" oninput="document.getElementById('mdVirusVal').innerText=this.value+'%'" style="width:110px;">
+                        <span id="mdVirusVal" style="color:#00ff88;font-size:12px;width:30px;">10%</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="color:#888;font-size:12px;">Pill bob</span>
+                        <input type="range" min="0" max="12" step="1" id="mdPillBob" oninput="document.getElementById('mdPillBobVal').innerText=this.value+'px'" style="width:110px;">
+                        <span id="mdPillBobVal" style="color:#00ff88;font-size:12px;width:24px;">3px</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="color:#888;font-size:12px;">Cartel bob</span>
+                        <input type="range" min="0" max="12" step="1" id="mdCartelBob" oninput="document.getElementById('mdCartelBobVal').innerText=this.value+'px'" style="width:110px;">
+                        <span id="mdCartelBobVal" style="color:#00ff88;font-size:12px;width:24px;">3px</span>
+                    </div>
+                    <button class="b verde mini" onclick="aplicarMenuDeco()">Apply</button>
+                </div>
+                <span style="color:#666; font-size: 12px;">Grid size: lower = more/smaller squares (less zoom). Saved and applied live — players see it next time their menu polls room status (~every few seconds).</span>
+            </div>
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <label style="font-weight:600">Announcement:</label>
                 <input type="text" id="announceText" maxlength="140" placeholder="Message for every online player…" style="flex:1;min-width:220px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:6px 10px;font-size:13px;">
@@ -965,6 +997,17 @@ function aplicarZoomExp() {
     if (e > 0) { send({ cmd: 'setZoomExp', value: e }); toast('<strong>Global zoom exponent: ' + e + '</strong><br>All players', 'ok'); setTimeout(pedir, 100); }
 }
 function resetZoomExp() { document.getElementById('zoomExp').value = '0.22'; send({ cmd: 'setZoomExp', value: 0.22 }); toast('<strong>Zoom exponent reset (0.22)</strong>', 'ok'); setTimeout(pedir, 100); }
+function aplicarMenuDeco() {
+    send({ cmd: 'setMenuDeco',
+        gridSize: parseInt(document.getElementById('mdGrid').value, 10),
+        foodDensity: parseInt(document.getElementById('mdFood').value, 10),
+        virusChance: parseInt(document.getElementById('mdVirus').value, 10) / 100,
+        pillBobPx: parseInt(document.getElementById('mdPillBob').value, 10),
+        cartelBobPx: parseInt(document.getElementById('mdCartelBob').value, 10)
+    });
+    toast('<strong>Menu visuals applied</strong><br>All players', 'ok');
+    setTimeout(pedir, 100);
+}
 function enviarAnuncio() {
     const t = document.getElementById('announceText').value.trim();
     if (!t) { toast('Write a message', 'warn'); return; }
@@ -1720,6 +1763,11 @@ function render(m) {
     if (typeof m.enemyFx === 'boolean') { _enemyFxOn = m.enemyFx; const b = document.getElementById('enemyFxBtn'); if (b) { b.innerText = m.enemyFx ? 'ON' : 'OFF'; b.className = 'b ' + (m.enemyFx ? 'verde' : 'rojo'); } }
     if (typeof m.baseZoom === 'number' && document.activeElement.id !== 'baseZoom') { const bz = document.getElementById('baseZoom'); if (bz) bz.value = m.baseZoom; }
     if (typeof m.zoomExp === 'number' && document.activeElement.id !== 'zoomExp') { const ze = document.getElementById('zoomExp'); if (ze) ze.value = m.zoomExp; }
+    if (typeof m.menuDecoGridSize === 'number' && document.activeElement.id !== 'mdGrid') { const el = document.getElementById('mdGrid'); if (el) { el.value = m.menuDecoGridSize; document.getElementById('mdGridVal').innerText = m.menuDecoGridSize + 'px'; } }
+    if (typeof m.menuDecoFoodDensity === 'number' && document.activeElement.id !== 'mdFood') { const el = document.getElementById('mdFood'); if (el) { el.value = m.menuDecoFoodDensity; document.getElementById('mdFoodVal').innerText = m.menuDecoFoodDensity; } }
+    if (typeof m.menuDecoVirusChance === 'number' && document.activeElement.id !== 'mdVirus') { const v = Math.round(m.menuDecoVirusChance * 100); const el = document.getElementById('mdVirus'); if (el) { el.value = v; document.getElementById('mdVirusVal').innerText = v + '%'; } }
+    if (typeof m.menuDecoPillBobPx === 'number' && document.activeElement.id !== 'mdPillBob') { const el = document.getElementById('mdPillBob'); if (el) { el.value = m.menuDecoPillBobPx; document.getElementById('mdPillBobVal').innerText = m.menuDecoPillBobPx + 'px'; } }
+    if (typeof m.menuDecoCartelBobPx === 'number' && document.activeElement.id !== 'mdCartelBob') { const el = document.getElementById('mdCartelBob'); if (el) { el.value = m.menuDecoCartelBobPx; document.getElementById('mdCartelBobVal').innerText = m.menuDecoCartelBobPx + 'px'; } }
     const t = m.totales;
     const sEntradas = realOnly ? t.entradasReal : t.entradas;
     const sMuertes = realOnly ? t.muertesReal : t.muertes;
