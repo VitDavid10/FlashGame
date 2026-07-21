@@ -386,7 +386,17 @@
            ratio — al reves (alto fijo, ancho derivado) el cartel se salia por
            la derecha en cuanto la columna era mas estrecha que 1.052x el alto. */
         #oraclePanel, #missionsPanel { position: relative; z-index: 0; flex: none; overflow: hidden;
-            width: 100%; aspect-ratio: 812 / 772; }
+            width: 100%; aspect-ratio: 812 / 772;
+            animation: cartelBob 3.2s ease-in-out infinite; }
+        /* Balanceo muy sutil (+-3px, igual de leve que el bob de la pildora del
+           login) en el propio panel: mueve video+texto juntos porque es un
+           transform del contenedor entero, no de una capa suelta. Usa la
+           propiedad "transform" (no "translate"): el editor de layout mueve
+           estos mismos paneles con el.style.translate/scale, que es una
+           propiedad CSS distinta e independiente, asi que no chocan.
+           missionsPanel desfasado medio ciclo para que no boten al unisono. */
+        @keyframes cartelBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+        #missionsPanel { animation-delay: 1.6s; }
         /* Video a todo el panel (mismo aspect-ratio, asi que el cover-fit del
            canvas ya no recorta), por debajo del contenido (.cartel-inner, z1). */
         .quest-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
@@ -2652,9 +2662,10 @@
             // ROOM PRICES / DAILY QUESTS: el cartel entero (marco de piedra
             // incluido) es ahora el video animado de David, pintado en el
             // <canvas class="quest-video-bg"> de cada panel — ya no hay
-            // border-image de quest-panel.png aqui.
+            // border-image de quest-panel.png aqui. Sin "animation:none": mataria
+            // el bob sutil (@keyframes cartelBob) que llevan estos paneles.
             'body.pixel-pack #oraclePanel,body.pixel-pack #missionsPanel{border:none!important;border-image:none!important;' +
-            'border-radius:0!important;background:transparent!important;box-shadow:none!important;animation:none}' +
+            'border-radius:0!important;background:transparent!important;box-shadow:none!important}' +
             'body.pixel-pack .btn-sys{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.7),inset 2px 2px 0 rgba(255,255,255,.12)}' +
             'body.pixel-pack .timer-bar{border-radius:0!important;height:18px;background:#111;border:2px solid #333;box-shadow:inset 2px 2px 0 rgba(0,0,0,.8)}' +
             // muescas: raya oscura repetida cada 16px sobre un degradado rojo (bevel
