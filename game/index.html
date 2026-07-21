@@ -890,7 +890,7 @@
         .tooltip-desc { color: #ccc; font-size: 11px; line-height: 1.4; margin-bottom: 15px; }
         /* ===== TEXTURE PACK PIXEL: relieve pixel art en menús (mismos colores) ===== */
         body.pixel-pack .gameModalBox, body.pixel-pack .exit-box,
-        body.pixel-pack .mqp, body.pixel-pack #buffTable, body.pixel-pack .mode-desc,
+        body.pixel-pack .mqp, body.pixel-pack #buffTable,
         body.pixel-pack #leaderboard, body.pixel-pack #oraclePanel, body.pixel-pack #missionsPanel,
         body.pixel-pack .back-to-web, body.pixel-pack .mqp-btn {
             border-radius: 0 !important; backdrop-filter: none !important;
@@ -3285,7 +3285,7 @@
     // Densidad y tamaño configurables desde el panel local del juego (ver
     // SETTINGS -> VISUALS), guardado en localStorage (pw_menu_deco).
     const MENU_DECO_KEY = 'pw_menu_deco';
-    const menuDecoSettings = Object.assign({ foodDensity: 16, virusChance: 0.1, pillBobPx: 3, cartelBobPx: 3, gridSize: 18 },
+    const menuDecoSettings = Object.assign({ foodDensity: 16, virusChance: 0.1, pillBobPx: 3, cartelBobPx: 3, gridSize: 24 },
         (() => { try { return JSON.parse(localStorage.getItem(MENU_DECO_KEY)) || {}; } catch (e) { return {}; } })());
     function saveMenuDecoSettings() { try { localStorage.setItem(MENU_DECO_KEY, JSON.stringify(menuDecoSettings)); } catch (e) {} }
     // cartelBobPx vive en CSS (custom property, la lee @keyframes cartelBob);
