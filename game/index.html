@@ -1013,9 +1013,16 @@
            escenas hover1/hover2), pero con el GROSOR y COLOR del laser del
            dibujo: ~22px en pantalla y dorado #ffdf55 / verde #66f05a (medidos
            sobre el rayo de hover1/hover2.png). */
-        body.pixel-pack .diagonal-divider { width: 22px; margin-left: -8px; }
-        body.pixel-pack #modeScreen.hover-arcade .diagonal-divider { background: #ffdf55; box-shadow: 0 0 40px #ffdf55; }
-        body.pixel-pack #modeScreen.hover-classic .diagonal-divider { background: #66f05a; box-shadow: 0 0 40px #66f05a; }
+        /* Grieta de piedra en vez del rayo de neon plano: gradiente repetido a
+           bandas irregulares (gris piedra claro/oscuro) simulando una fractura
+           rocosa, opaco (sin dejar ver el fondo a traves) — el brillo de color
+           por modo se queda solo como resplandor a los lados (box-shadow), no
+           como relleno solido. */
+        body.pixel-pack .diagonal-divider { width: 22px; margin-left: -8px; opacity: 1;
+            background: repeating-linear-gradient(97deg, #565650 0px, #6b6b62 3px, #3a3a34 5px, #78786c 9px, #2c2c27 12px, #57574f 15px);
+            box-shadow: inset 3px 0 0 rgba(0,0,0,0.55), inset -3px 0 0 rgba(255,255,255,0.08); }
+        body.pixel-pack #modeScreen.hover-arcade .diagonal-divider { box-shadow: inset 3px 0 0 rgba(0,0,0,0.55), inset -3px 0 0 rgba(255,255,255,0.08), 0 0 26px rgba(255,223,85,0.65); }
+        body.pixel-pack #modeScreen.hover-classic .diagonal-divider { box-shadow: inset 3px 0 0 rgba(0,0,0,0.55), inset -3px 0 0 rgba(255,255,255,0.08), 0 0 26px rgba(102,240,90,0.65); }
         /* Escena de los portales DIBUJADA pixel a pixel (canvas #modeSceneCv a
            ~480x270 logicos bajo los paneles, z1<z2; ver modeFxDrawScene). Nada
            de mp4/PNG reescalados: nitidez perfecta a cualquier resolucion. El
@@ -3375,14 +3382,23 @@
         const tA = _msV2Tile('#ccff00'), tB = _msV2Tile('#00ffaa');
         if (!tA.pat) tA.pat = g.createPattern(tA.cv, 'repeat');
         if (!tB.pat) tB.pat = g.createPattern(tB.cv, 'repeat');
-        // Relleno por filas: la diagonal queda en escalera de pixeles (sin
-        // antialiasing); la linea gorda de la diagonal la pone el DOM encima.
-        // Se repinta cada frame (antes solo si se movia la diagonal): hace
-        // falta para que la food/virus decorativos de encima no dejen rastro.
-        for (let y = 0; y < H; y++) {
-            const xd = Math.max(0, Math.min(W, Math.round(topX + (botX - topX) * y / H)));
-            g.fillStyle = tA.pat; g.fillRect(0, y, xd, 1);
-            g.fillStyle = tB.pat; g.fillRect(xd, y, W - xd, 1);
+        // Relleno por TRAMOS (no por fila): la diagonal es una pendiente suave,
+        // asi que xd solo cambia cada varias filas — agrupar las filas con el
+        // mismo xd en un solo fillRect reduce esto de ~540 draw calls/frame
+        // (2 por cada una de las 270 filas) a un puñado, que es lo que se
+        // repinta CADA FRAME ahora que la food/virus de encima lo exige (antes
+        // solo se pintaba si la diagonal se movia). Sigue en escalera de
+        // pixeles (sin antialiasing): no se usa clip/path, solo se agrupan
+        // filas identicas.
+        g.fillStyle = tA.pat; g.fillRect(0, 0, W, H);
+        g.fillStyle = tB.pat;
+        let runY = 0, runXd = Math.max(0, Math.min(W, Math.round(topX)));
+        for (let y = 1; y <= H; y++) {
+            const xd = y < H ? Math.max(0, Math.min(W, Math.round(topX + (botX - topX) * y / H))) : -1;
+            if (xd !== runXd) {
+                g.fillRect(runXd, runY, W - runXd, y - runY);
+                runY = y; runXd = xd;
+            }
         }
         stepMenuDeco(W, H, performance.now());
         drawMenuDeco(g, W, H);
@@ -6647,7 +6663,11 @@
 
     const fpsInterval = 1000 / 60; let then = performance.now();
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
-    function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); let savedMode = 'classic'; try { savedMode = localStorage.getItem('pw_lastMode') || 'classic'; } catch(e) {} setHoverMode(savedMode); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; SoundManager.playMenuMusic(2000); }
+    // Sin estado "neutral" (los dos portales a la vez): el selector de modo
+    // arranca SIEMPRE en ARCADE, a peticion de David — ya no restaura el
+    // ultimo modo usado (pw_lastMode se sigue guardando por si hace falta
+    // en el futuro, pero initMenuState ya no lo lee).
+    function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); setHoverMode('arcade'); document.getElementById('contentArcade').style.opacity = '1'; document.getElementById('contentClassic').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; SoundManager.playMenuMusic(2000); }
 
     // ROOM PRICES / DAILY QUESTS son independientes del menu central: su tamano
     // vive solo en CSS (.menu-right-col), sin JS sincronizando alturas con nada.
