@@ -3793,6 +3793,18 @@
         }, 500);
     });
     
+    // Titulo "PILLWARS ARCADE"/"PILLWARS CLASSIC" del login (h1 #selectedModeTitle):
+    // arte de David (PILLWARS-<modo>.png + <MODO>.png, mismo alto, uno al lado
+    // del otro) en vez del texto Press Start 2P — a peticion de David, "dentro
+    // del modo" (esta pantalla, tras elegir ARCADE/CLASSIC), no en el selector
+    // de modo. Si algun PNG no carga, cae al texto de siempre (fallback).
+    function setSelectedModeTitleArt(mode, fallbackText) {
+        const el = els.selectedModeTitle;
+        const wordSrc = 'img/mode-title/' + (mode === 'arcade' ? 'ARCADE.png' : 'CLASSIC.png');
+        const pwSrc = 'img/mode-title/PILLWARS-' + mode + '.png';
+        el.innerHTML = '<img src="' + pwSrc + '" alt="PILLWARS" style="height:1em;vertical-align:middle;image-rendering:pixelated;" onerror="this.closest(\'#selectedModeTitle\').innerText=\'' + fallbackText + '\'">' +
+            ' <img src="' + wordSrc + '" alt="" style="height:1.2em;vertical-align:middle;image-rendering:pixelated;" onerror="this.closest(\'#selectedModeTitle\').innerText=\'' + fallbackText + '\'">';
+    }
     function selectMode(m) {
         SoundManager.stop('hover');
         SoundManager.play('select');
@@ -3824,7 +3836,7 @@
         if (m === 'classic') {
             document.getElementById('panelClassic').classList.add('expanded');
             document.getElementById('panelArcade').classList.add('hidden');
-            els.selectedModeTitle.innerText = "PILLWARS CLASSIC";
+            setSelectedModeTitleArt('classic', 'PILLWARS CLASSIC');
             els.selectedModeTitle.style.color = "#00ffaa";
             if (blurb) blurb.innerHTML = 'PURE CELL-EATING — NO TIMER, 5 KILLS = MAX PROFIT.';
             els.loginOverlay.classList.remove('bg-arcade');
@@ -3835,7 +3847,7 @@
         } else {
             document.getElementById('panelArcade').classList.add('expanded');
             document.getElementById('panelClassic').classList.add('hidden');
-            els.selectedModeTitle.innerText = "PILLWARS ARCADE";
+            setSelectedModeTitleArt('arcade', 'PILLWARS ARCADE');
             els.selectedModeTitle.style.color = "#ccff00";
             if (blurb) blurb.innerHTML = 'ROGUELIKE ARENA — DRAFT SKILLS EVERY 30S, TOP 10 SPLIT THE POT.';
             els.loginOverlay.classList.remove('bg-classic');
