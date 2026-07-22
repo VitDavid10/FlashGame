@@ -89,7 +89,10 @@ let menuDecoVirusCount = _clampN(_glob.menuDecoVirusCount, 1, 10, 3);
 let menuDecoPillBobPx = _clampN(_glob.menuDecoPillBobPx, 0, 12, 3);
 let menuDecoCartelBobPx = _clampN(_glob.menuDecoCartelBobPx, 0, 12, 3);
 let menuDecoGridSize = _clampN(_glob.menuDecoGridSize, 8, 40, 24);
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize }), () => {}); }
+// Layout del menú (posición/escala de cada elemento editable), GLOBAL: lo sube el
+// cliente desde EDIT LAYOUT → "Guardar para todos", se difunde en /api/rooms.
+let menuLayout = (_glob.menuLayout && typeof _glob.menuLayout === 'object') ? _glob.menuLayout : {};
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuLayout }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -1710,7 +1713,7 @@ const httpServer = http.createServer(async (req, res) => {
                     });
                 }
                 _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
-                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize }) };
+                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuLayout }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
             res.end(_roomsCache.body);
@@ -1762,8 +1765,40 @@ const httpServer = http.createServer(async (req, res) => {
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
-            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize }));
+            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuLayout }));
         return;
+    }
+    // --- Layout del menú GLOBAL: el cliente lo sube desde EDIT LAYOUT → "Guardar
+    // para todos". Sin auth (herramienta de diseño temporal). Se persiste y se
+    // difunde a todos por /api/rooms. ---
+    if (urlPath === '/api/menu-layout') {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' });
+            res.end(); return;
+        }
+        if (req.method === 'POST') {
+            let body = ''; let abortado = false;
+            req.on('data', c => { if (abortado) return; body += c; if (body.length > 65536) { abortado = true; res.writeHead(413); res.end('Payload too large'); req.destroy(); } });
+            req.on('end', () => {
+                if (abortado) return;
+                let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
+                const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
+                if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
+                // Sanea: solo claves con {x,y,s} numéricos (evita basura arbitraria).
+                const clean = {};
+                for (const k of Object.keys(lay).slice(0, 40)) {
+                    const t = lay[k]; if (!t || typeof t !== 'object') continue;
+                    clean[String(k).slice(0, 40)] = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
+                }
+                menuLayout = clean; saveGlobal();
+                if (PW_ROLE === 'director') _roomsCache = null;   // fuerza refresco del cache agregado
+                log(`Menu layout GLOBAL actualizado (${Object.keys(clean).length} elementos)`);
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
+            });
+            return;
+        }
+        res.writeHead(405, { 'Access-Control-Allow-Origin': '*' }); res.end(); return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
     if (urlPath === '/api/fees') {

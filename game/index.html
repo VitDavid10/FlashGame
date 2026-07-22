@@ -1314,6 +1314,7 @@
     <div id="layoutEditBar" style="display:none;">
         <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
         <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
+        <button class="leb-btn" onclick="saveLayoutGlobal(this)">SAVE FOR ALL</button>
         <button class="leb-btn done" onclick="exitLayoutEdit()">DONE</button>
     </div>
 
@@ -3321,6 +3322,15 @@
             if (typeof v === 'number' && menuDecoSettings[k] !== v) { menuDecoSettings[k] = v; changed = true; }
         }
         if (changed) { saveMenuDecoSettings(); applyMenuDecoCss(); }
+        // Layout GLOBAL del menú (EDIT LAYOUT → "Guardar para todos"): se aplica a
+        // todos, salvo mientras TÚ estás editando (para no pisar tu edición). Solo
+        // si cambió, para no repintar cada poll.
+        try {
+            if (data.menuLayout && typeof data.menuLayout === 'object' && !layoutEditing &&
+                JSON.stringify(data.menuLayout) !== JSON.stringify(menuLayout)) {
+                menuLayout = data.menuLayout; saveMenuLayout(); applyMenuLayout();
+            }
+        } catch (e) {}
     }
     const MENU_DECO_FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
     const menuDeco = { items: [], w: 0, h: 0, lastT: 0 };
@@ -4424,6 +4434,20 @@
         invalidateLoginUIRects();   // el layout cambió → recalcular zonas prohibidas
     }
     function resetMenuLayout() { menuLayout = {}; saveMenuLayout(); applyMenuLayout(); }
+    // Sube el layout actual al servidor → se vuelve GLOBAL para todos (se difunde
+    // por /api/rooms). Sin auth: herramienta de diseño temporal (quitar el editor
+    // cuando la UI esté fijada).
+    async function saveLayoutGlobal(btn) {
+        saveMenuLayout();
+        const orig = btn ? btn.textContent : '';
+        if (btn) { btn.textContent = 'SAVING...'; btn.disabled = true; }
+        let ok = false;
+        try {
+            const r = await fetch('/api/menu-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout: menuLayout }) });
+            ok = (await r.json()).ok === true;
+        } catch (e) {}
+        if (btn) { btn.textContent = ok ? 'SAVED ✓' : 'ERROR'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600); }
+    }
     (function initLayoutEdit() {
         applyMenuLayout();
         document.addEventListener('pointerdown', (e) => {
