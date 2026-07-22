@@ -3412,12 +3412,15 @@
             if (p.x < -16) p.x = w + 16; else if (p.x > w + 16) p.x = -16;
             if (p.y < -16) p.y = h + 16; else if (p.y > h + 16) p.y = -16;
         }
-        menuDecoSeparateViruses(virusMinDist);   // separación entre virus (≈500px)
-        // Rebote de virus contra las zonas prohibidas (UI del login) al FINAL, tras
-        // la separación: así cada frame termina con los virus FUERA de la UI (si la
-        // separación empujó a alguno hacia dentro, aquí se corrige). Cambian de
-        // dirección al tocar una zona → nunca la cruzan.
-        if (bounceRects && bounceRects.length) for (const p of menuDeco.items) if (p.isVirus) menuDecoBounce(p, bounceRects);
+        // Separación entre virus (≈500px) y rebote en la UI: SOLO cuando se mueven
+        // (selector). En el login (move===false) los virus están congelados en sus
+        // huecos y NO se tocan — si no, el empuje suave de 500px los movería sin
+        // parar (dos virus a <500px se separan cada frame) y se verían moviéndose
+        // al entrar al menú, aunque ya estén en zona segura.
+        if (move !== false) {
+            menuDecoSeparateViruses(virusMinDist);
+            if (bounceRects && bounceRects.length) for (const p of menuDeco.items) if (p.isVirus) menuDecoBounce(p, bounceRects);
+        }
     }
     // Coloca `v` separado de los demás virus: primero intenta la distancia
     // deseada (500px); si no cabe (muchos virus), al menos que no se solape.
