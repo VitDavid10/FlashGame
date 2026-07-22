@@ -3344,7 +3344,7 @@
             seed: (Math.random() * 1000) | 0
         };
     }
-    function stepMenuDeco(w, h, now, move, obstacles) {
+    function stepMenuDeco(w, h, now, move, obstacles, bounceRects) {
         // Reescala posiciones si el canvas activo tiene otro tamaño lowres
         // (selector de modo y login no miden lo mismo en "pixeles" internos).
         if (menuDeco.w && (menuDeco.w !== w || menuDeco.h !== h)) {
@@ -3369,7 +3369,7 @@
             else if (!p.isVirus && nFood > wantFood) { menuDeco.items.splice(i, 1); nFood--; }
         }
         while (nFood < wantFood) { menuDeco.items.push(menuDecoSpawn(w, h, false)); nFood++; }
-        while (nVirus < wantVirus) { const v = menuDecoSpawn(w, h, true); menuDecoPlaceApart(v, w, h, virusMinDist); menuDeco.items.push(v); nVirus++; }
+        while (nVirus < wantVirus) { const v = menuDecoSpawn(w, h, true); menuDecoPlaceApart(v, w, h, virusMinDist, bounceRects); menuDeco.items.push(v); nVirus++; }
         const dt = menuDeco.lastT ? Math.min(0.05, (now - menuDeco.lastT) / 1000) : 0.016;
         menuDeco.lastT = now;
         // `move === false` (menús concretos: login/selección de sala): la deco se
@@ -3380,10 +3380,18 @@
         // (El giro de los virus va aparte, en drawMenuDeco, y sigue activo.)
         for (const p of menuDeco.items) {
             if (move === false) {
-                if (menuDecoCovered(p.x, p.y, p.size, obstacles)) {
-                    for (let i = 0; i < 30; i++) {
+                // Congelado (login): la COMIDA que cae sobre la UI salta a un hueco;
+                // los VIRUS se quedan DONDE ESTÁN — ya evitaron la UI del login (por
+                // el rebote del selector), así que están en zona segura.
+                // Cualquier partícula (comida o virus) que quede sobre la UI del
+                // login salta a un hueco libre; las que ya están a salvo —los virus,
+                // por el rebote del selector— se quedan DONDE ESTABAN. Así ninguna
+                // queda sobre la UI aunque la medición desde el selector no fuera
+                // exacta (elementos que solo aparecen al elegir modo, rects solapados).
+                if (menuDecoCovered(p.x, p.y, p.size / 2, obstacles)) {
+                    for (let i = 0; i < 80; i++) {
                         const nx = Math.random() * w, ny = Math.random() * h;
-                        if (!menuDecoCovered(nx, ny, p.size, obstacles)) { p.x = nx; p.y = ny; break; }
+                        if (!menuDecoCovered(nx, ny, p.size / 2, obstacles)) { p.x = nx; p.y = ny; break; }
                     }
                 }
                 continue;   // congelada (esté donde esté)
@@ -3393,14 +3401,25 @@
             if (p.y < -16) p.y = h + 16; else if (p.y > h + 16) p.y = -16;
         }
         menuDecoSeparateViruses(virusMinDist);   // separación entre virus (≈500px)
+        // Rebote de virus contra las zonas prohibidas (UI del login) al FINAL, tras
+        // la separación: así cada frame termina con los virus FUERA de la UI (si la
+        // separación empujó a alguno hacia dentro, aquí se corrige). Cambian de
+        // dirección al tocar una zona → nunca la cruzan.
+        if (bounceRects && bounceRects.length) for (const p of menuDeco.items) if (p.isVirus) menuDecoBounce(p, bounceRects);
     }
     // Coloca `v` separado de los demás virus: primero intenta la distancia
     // deseada (500px); si no cabe (muchos virus), al menos que no se solape.
-    function menuDecoPlaceApart(v, w, h, desired) {
+    function menuDecoPlaceApart(v, w, h, desired, bounceRects) {
+        const inUI = () => {
+            if (!bounceRects) return false;
+            const r = v.size / 2;
+            for (const b of bounceRects) { if (!(v.x + r <= b.x || v.x - r >= b.x + b.w || v.y + r <= b.y || v.y - r >= b.y + b.h)) return true; }
+            return false;
+        };
         const tryPlace = (dist) => {
-            for (let i = 0; i < 60; i++) {
-                let ok = true;
-                for (const p of menuDeco.items) {
+            for (let i = 0; i < 80; i++) {
+                let ok = !inUI();
+                if (ok) for (const p of menuDeco.items) {
                     if (!p.isVirus || p === v) continue;
                     if (Math.hypot(p.x - v.x, p.y - v.y) < dist) { ok = false; break; }
                 }
@@ -3438,6 +3457,46 @@
             }
         }
     }
+    // Rebote AABB de un virus contra las zonas prohibidas: si su círculo entra en
+    // un rect, lo saca por el lado de menor penetración e invierte esa componente
+    // de velocidad (cambia de dirección), para que nunca cruce la UI.
+    function menuDecoBounce(p, rects) {
+        const r = p.size / 2;
+        for (const b of rects) {
+            if (p.x + r <= b.x || p.x - r >= b.x + b.w || p.y + r <= b.y || p.y - r >= b.y + b.h) continue;
+            const penL = (p.x + r) - b.x, penR = (b.x + b.w) - (p.x - r);
+            const penT = (p.y + r) - b.y, penB = (b.y + b.h) - (p.y - r);
+            const m = Math.min(penL, penR, penT, penB);
+            if (m === penL) { p.x = b.x - r; if (p.vx > 0) p.vx = -p.vx; }
+            else if (m === penR) { p.x = b.x + b.w + r; if (p.vx < 0) p.vx = -p.vx; }
+            else if (m === penT) { p.y = b.y - r; if (p.vy > 0) p.vy = -p.vy; }
+            else { p.y = b.y + b.h + r; if (p.vy < 0) p.vy = -p.vy; }
+        }
+    }
+    // Rects (coords de viewport) de la UI del LOGIN, medidos AUNQUE el login esté
+    // oculto (se le da layout un instante, sin mostrarlo). Cacheados; se invalidan
+    // al cambiar el tamaño de ventana o al editar el layout.
+    let _loginUIRects = null;
+    function loginUIViewportRects() {
+        if (_loginUIRects) return _loginUIRects;
+        if (typeof LAYOUT_ELS === 'undefined') return [];
+        const lo = els.loginOverlay;
+        const hidden = !lo || getComputedStyle(lo).display === 'none';
+        let saved = null;
+        if (lo && hidden) { saved = { d: lo.style.display, v: lo.style.visibility }; lo.style.visibility = 'hidden'; lo.style.display = 'flex'; }
+        const sels = [...Object.values(LAYOUT_ELS), '#musicToggle', '#gameWalletArea'];
+        const rects = [];
+        for (const sel of sels) {
+            const el = document.querySelector(sel); if (!el) continue;
+            const rc = el.getBoundingClientRect();
+            if (rc.width > 0 && rc.height > 0) rects.push({ x: rc.left, y: rc.top, w: rc.width, h: rc.height });
+        }
+        if (lo && hidden && saved) { lo.style.display = saved.d || 'none'; lo.style.visibility = saved.v || ''; }
+        _loginUIRects = rects;
+        return rects;
+    }
+    function invalidateLoginUIRects() { _loginUIRects = null; }
+    window.addEventListener('resize', invalidateLoginUIRects);
     function drawMenuDeco(g, w, h) {
         const now = performance.now();
         for (const p of menuDeco.items) {
@@ -3540,7 +3599,12 @@
                 runY = y; runXd = xd;
             }
         }
-        stepMenuDeco(W, H, performance.now());
+        // Zonas prohibidas para los virus: la UI del LOGIN (aunque aún no se vea),
+        // proyectada al canvas del selector. Rebotan en ellas → al pasar al login
+        // ya están fuera de la UI.
+        const _vw = window.innerWidth || 1280, _vh = window.innerHeight || 720;
+        const _bounce = loginUIViewportRects().map(r => ({ x: r.x * W / _vw, y: r.y * H / _vh, w: r.w * W / _vw, h: r.h * H / _vh }));
+        stepMenuDeco(W, H, performance.now(), undefined, null, _bounce);
         drawMenuDeco(g, W, H);
     }
     function modeFxStart() {
@@ -4357,6 +4421,7 @@
         document.querySelectorAll('.menu-editable').forEach(el => el.classList.remove('menu-editable'));
         document.getElementById('layoutEditBar').style.display = 'none';
         saveMenuLayout();
+        invalidateLoginUIRects();   // el layout cambió → recalcular zonas prohibidas
     }
     function resetMenuLayout() { menuLayout = {}; saveMenuLayout(); applyMenuLayout(); }
     (function initLayoutEdit() {
