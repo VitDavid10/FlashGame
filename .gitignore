@@ -26,3 +26,16 @@ cloudflared.exe
 
 # Claves SECRETAS de Solana (NUNCA subir) — la del token de devnet
 scripts/.devnet-authority.json
+
+# Dumps de arte / IA sueltos en la raíz (staging local).
+# El juego solo carga desde img/, game/img/, snd/, video/.
+/*.png
+/*.jpg
+/*.jpeg
+/*.mp4
+/*.webm
+/*.gif
+
+# Scripts temporales de limpieza local
+_cleanup_*.py
+_cleanup_*.txt
