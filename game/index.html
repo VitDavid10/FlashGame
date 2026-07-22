@@ -3325,8 +3325,10 @@
         // Layout GLOBAL del menú (EDIT LAYOUT → "Guardar para todos"): se aplica a
         // todos, salvo mientras TÚ estás editando (para no pisar tu edición). Solo
         // si cambió, para no repintar cada poll.
+        // IMPORTANTE: un global VACÍO ({}) NO pisa tu layout local — si nadie ha
+        // guardado un layout global, cada uno conserva el suyo de localStorage.
         try {
-            if (data.menuLayout && typeof data.menuLayout === 'object' && !layoutEditing &&
+            if (data.menuLayout && typeof data.menuLayout === 'object' && Object.keys(data.menuLayout).length > 0 && !layoutEditing &&
                 JSON.stringify(data.menuLayout) !== JSON.stringify(menuLayout)) {
                 menuLayout = data.menuLayout; saveMenuLayout(); applyMenuLayout();
             }
