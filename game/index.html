@@ -3356,6 +3356,11 @@
         // controlados por SEPARADO desde admin (antes era un total con % de virus).
         const wantFood = Math.max(0, menuDecoSettings.foodDensity | 0);
         const wantVirus = Math.max(0, Math.min(10, menuDecoSettings.virusCount | 0));
+        // Separación deseada entre virus: 500 px de PANTALLA, convertidos al
+        // espacio lowres del canvas (w interno ↔ ancho del viewport). Si hay
+        // demasiados virus para que quepan a esa distancia, se separan lo máximo
+        // posible (nunca se solapan igualmente, por el nivel "duro" de abajo).
+        const virusMinDist = 500 * (w / (window.innerWidth || 1280));
         let nFood = 0, nVirus = 0;
         for (const p of menuDeco.items) { if (p.isVirus) nVirus++; else nFood++; }
         for (let i = menuDeco.items.length - 1; i >= 0 && (nFood > wantFood || nVirus > wantVirus); i--) {
@@ -3364,7 +3369,7 @@
             else if (!p.isVirus && nFood > wantFood) { menuDeco.items.splice(i, 1); nFood--; }
         }
         while (nFood < wantFood) { menuDeco.items.push(menuDecoSpawn(w, h, false)); nFood++; }
-        while (nVirus < wantVirus) { const v = menuDecoSpawn(w, h, true); menuDecoPlaceApart(v, w, h); menuDeco.items.push(v); nVirus++; }
+        while (nVirus < wantVirus) { const v = menuDecoSpawn(w, h, true); menuDecoPlaceApart(v, w, h, virusMinDist); menuDeco.items.push(v); nVirus++; }
         const dt = menuDeco.lastT ? Math.min(0.05, (now - menuDeco.lastT) / 1000) : 0.016;
         menuDeco.lastT = now;
         // `move === false` (menús concretos: login/selección de sala): la deco se
@@ -3387,38 +3392,49 @@
             if (p.x < -16) p.x = w + 16; else if (p.x > w + 16) p.x = -16;
             if (p.y < -16) p.y = h + 16; else if (p.y > h + 16) p.y = -16;
         }
-        menuDecoSeparateViruses();   // los virus nunca se solapan entre sí
+        menuDecoSeparateViruses(virusMinDist);   // separación entre virus (≈500px)
     }
-    // Coloca `v` en un punto separado de los demás virus (rechazo por muestreo).
-    function menuDecoPlaceApart(v, w, h) {
-        for (let i = 0; i < 40; i++) {
-            let ok = true;
-            for (const p of menuDeco.items) {
-                if (!p.isVirus || p === v) continue;
-                if (Math.hypot(p.x - v.x, p.y - v.y) < (p.size + v.size) / 2 + 6) { ok = false; break; }
+    // Coloca `v` separado de los demás virus: primero intenta la distancia
+    // deseada (500px); si no cabe (muchos virus), al menos que no se solape.
+    function menuDecoPlaceApart(v, w, h, desired) {
+        const tryPlace = (dist) => {
+            for (let i = 0; i < 60; i++) {
+                let ok = true;
+                for (const p of menuDeco.items) {
+                    if (!p.isVirus || p === v) continue;
+                    if (Math.hypot(p.x - v.x, p.y - v.y) < dist) { ok = false; break; }
+                }
+                if (ok) return true;
+                v.x = Math.random() * w; v.y = Math.random() * h;
             }
-            if (ok) return;
-            v.x = Math.random() * w; v.y = Math.random() * h;
-        }
+            return false;
+        };
+        if (!tryPlace(desired)) tryPlace((v.size) + 6);
     }
-    // Separa cualquier par de virus que se solape: los empuja a la distancia
-    // mínima (radios + margen) y rebota la componente de velocidad que los
-    // acercaba, para que "nunca se junten" ni queden pegados al cruzarse.
-    function menuDecoSeparateViruses() {
+    // Mantiene los virus separados: nivel DURO (radios+margen) para que nunca se
+    // solapen, y nivel SUAVE que los empuja hacia la distancia deseada (500px de
+    // pantalla). Si no caben tantos a 500px, quedan lo más lejos posible.
+    function menuDecoSeparateViruses(desired) {
         const vir = [];
         for (const p of menuDeco.items) if (p.isVirus) vir.push(p);
         for (let a = 0; a < vir.length; a++) {
             for (let b = a + 1; b < vir.length; b++) {
                 const p = vir[a], q = vir[b];
                 let dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
-                const min = (p.size + q.size) / 2 + 6;
-                if (d === 0) { q.x += min; continue; }
-                if (d >= min) continue;
-                const push = (min - d) / 2, ux = dx / d, uy = dy / d;
-                p.x -= ux * push; p.y -= uy * push;
-                q.x += ux * push; q.y += uy * push;
-                const pvn = p.vx * ux + p.vy * uy; if (pvn > 0) { p.vx -= 2 * pvn * ux; p.vy -= 2 * pvn * uy; }
-                const qvn = q.vx * ux + q.vy * uy; if (qvn < 0) { q.vx -= 2 * qvn * ux; q.vy -= 2 * qvn * uy; }
+                if (d === 0) { dx = 1; dy = 0; d = 1; }
+                const ux = dx / d, uy = dy / d;
+                const hard = (p.size + q.size) / 2 + 6;
+                if (d < hard) {
+                    const push = (hard - d) / 2;
+                    p.x -= ux * push; p.y -= uy * push;
+                    q.x += ux * push; q.y += uy * push;
+                    const pvn = p.vx * ux + p.vy * uy; if (pvn > 0) { p.vx -= 2 * pvn * ux; p.vy -= 2 * pvn * uy; }
+                    const qvn = q.vx * ux + q.vy * uy; if (qvn < 0) { q.vx -= 2 * qvn * ux; q.vy -= 2 * qvn * uy; }
+                } else if (d < desired) {
+                    const push = (desired - d) * 0.06;   // suave: sin saltos bruscos
+                    p.x -= ux * push; p.y -= uy * push;
+                    q.x += ux * push; q.y += uy * push;
+                }
             }
         }
     }
@@ -6706,15 +6722,19 @@
             let avgX = 0, avgY = 0, maxR = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= p.cells.length; avgY /= p.cells.length; let magnetRad = SKILL_PARAMS.magnetRange + maxR;
             let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(avgX, avgY);
             for(let i=0; i<3; i++) { let offset = i * 0.3, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); }
-            // Video del imán (alpha) sobre la píldora, tamaño comparable a la píldora.
-            ensureMagnetFxPlaying();
-            if (magnetFxVideo.readyState >= 2) { const s = maxR * 2.8; ctx.drawImage(magnetFxVideo, -s, -s, s * 2, s * 2); }
             ctx.restore();
         }
 
         [...sim.enemies, ...myCells()].sort((a,b) => a.r - b.r).forEach(e => { if (e.x + e.r > vL && e.x - e.r < vR && e.y + e.r > vT && e.y - e.r < vB) {
             drawCell(e); if (e.isBot && e.magnetTime > 0 && enableEnemyFX) { let magnetRad = SKILL_PARAMS.magnetRange + e.r; let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(e.x, e.y); for(let i=0; i<3; i++) { let offset = i * 0.33, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore(); }
         }});
+
+        // Video del imán (alpha) ENCIMA de la píldora, tamaño comparable a la píldora.
+        if (p && p.skillState[5] > 0 && p.cells.length > 0) {
+            let avgX = 0, avgY = 0, maxR = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= p.cells.length; avgY /= p.cells.length;
+            ensureMagnetFxPlaying();
+            if (magnetFxVideo.readyState >= 2) { const s = maxR * 1.9; ctx.save(); ctx.translate(avgX, avgY); ctx.drawImage(magnetFxVideo, -s, -s, s * 2, s * 2); ctx.restore(); }
+        }
 
         ctx.save();
         sim.viruses.forEach(v => {
