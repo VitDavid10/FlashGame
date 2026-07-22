@@ -3506,23 +3506,43 @@
             if (scoped.has(sel)) continue;
             pushEl(document.querySelector(sel));
         }
-        for (const baseKey of ['titlePw', 'titleWord']) {
-            const el = document.querySelector(LAYOUT_ELS[baseKey]); if (!el) continue;
-            const savedTr = el.style.translate, savedSc = el.style.scale;
+        // El título del login (#modeTitlePw/#modeTitleWord) NO existe en el selector
+        // —se crea al elegir modo—, así que lo generamos temporalmente en su
+        // contenedor (#selectedModeTitle) con el arte de cada modo y su layout
+        // scoped, medimos su zona y restauramos. Sin esto no había zona para el
+        // título y los virus pasaban justo por ahí.
+        const titleEl = els.selectedModeTitle;
+        let titleMeasured = false;
+        if (titleEl) {
+            const savedHTML = titleEl.innerHTML;
             for (const m of ['arcade', 'classic']) {
-                const t = menuLayout[baseKey + '_' + m];
-                el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '';
-                el.style.scale = t ? String(t.s || 1) : '';
-                pushEl(el);
+                titleEl.innerHTML =
+                    '<span id="modeTitlePw" style="display:inline-block;line-height:0;vertical-align:middle;"><img src="img/mode-title/PILLWARS-' + m + '.png" style="display:block;height:24px;image-rendering:pixelated;"></span>' +
+                    ' <span id="modeTitleWord" style="display:inline-block;line-height:0;vertical-align:middle;"><img src="img/mode-title/' + (m === 'arcade' ? 'ARCADE' : 'CLASSIC') + '-word.png" style="display:block;height:29px;image-rendering:pixelated;"></span>';
+                for (const baseKey of ['titlePw', 'titleWord']) {
+                    const el = titleEl.querySelector(LAYOUT_ELS[baseKey]); if (!el) continue;
+                    const t = menuLayout[baseKey + '_' + m];
+                    el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '';
+                    el.style.scale = t ? String(t.s || 1) : '';
+                    const rc = el.getBoundingClientRect();
+                    if (rc.width > 0 && rc.height > 0) { rects.push({ x: rc.left, y: rc.top, w: rc.width, h: rc.height }); titleMeasured = true; }
+                }
             }
-            el.style.translate = savedTr; el.style.scale = savedSc;
+            titleEl.innerHTML = savedHTML;   // restaura el título original (con sus estilos inline)
         }
         if (lo && hidden && saved) { lo.style.display = saved.d || 'none'; lo.style.visibility = saved.v || ''; }
-        _loginUIRects = rects;
+        // Solo cachea si el título ya tenía tamaño (imágenes cargadas); si no, se
+        // reintenta el próximo frame hasta que carguen.
+        if (titleMeasured) _loginUIRects = rects;
         return rects;
     }
     function invalidateLoginUIRects() { _loginUIRects = null; }
     window.addEventListener('resize', invalidateLoginUIRects);
+    // Precarga el arte del título del login: loginUIViewportRects lo inyecta para
+    // medir su zona desde el selector, y si no está en caché el <img> mide 0 (no
+    // habría zona y los virus pasarían por el título). Al cargar, invalida el cache
+    // para remedir ya con las imágenes disponibles.
+    ['PILLWARS-arcade', 'PILLWARS-classic', 'ARCADE-word', 'CLASSIC-word'].forEach(s => { const i = new Image(); i.onload = invalidateLoginUIRects; i.src = 'img/mode-title/' + s + '.png'; });
     function drawMenuDeco(g, w, h) {
         const now = performance.now();
         for (const p of menuDeco.items) {
