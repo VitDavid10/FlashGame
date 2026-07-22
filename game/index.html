@@ -5920,6 +5920,10 @@
     // key (opcional): identifica el modal ('rejoin' | 'kicked' | ...) por si un
     // cartel concreto necesita estilo propio en el futuro.
     function showSystemMsg(message, title, key) {
+        // Un pop-up a la vez: al salir un aviso (KICKED, REJOIN EXPIRED, PAYMENT
+        // CANCELLED, DEPOSIT FAILED…) se cierran los modales abiertos —sobre todo
+        // DEPOSIT/WITHDRAW— para que no se apilen carteles uno encima de otro.
+        ['gameDepositModal', 'gameWithdrawModal', 'walletPickerModal', 'playChoiceModal', 'roomChoiceModal', 'settingsModal', 'featuresModal'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         const m = document.getElementById('sysModal');
         const titleEl = document.getElementById('sysModalTitle');
         const t = title || 'NOTICE';
