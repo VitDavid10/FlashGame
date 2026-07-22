@@ -3496,12 +3496,26 @@
         const hidden = !lo || getComputedStyle(lo).display === 'none';
         let saved = null;
         if (lo && hidden) { saved = { d: lo.style.display, v: lo.style.visibility }; lo.style.visibility = 'hidden'; lo.style.display = 'flex'; }
-        const sels = [...Object.values(LAYOUT_ELS), '#musicToggle', '#gameWalletArea'];
         const rects = [];
-        for (const sel of sels) {
-            const el = document.querySelector(sel); if (!el) continue;
-            const rc = el.getBoundingClientRect();
-            if (rc.width > 0 && rc.height > 0) rects.push({ x: rc.left, y: rc.top, w: rc.width, h: rc.height });
+        const pushEl = (el) => { if (!el) return; const rc = el.getBoundingClientRect(); if (rc.width > 0 && rc.height > 0) rects.push({ x: rc.left, y: rc.top, w: rc.width, h: rc.height }); };
+        // El título (modeTitlePw/modeTitleWord) tiene layout SCOPED por modo
+        // (titlePw_arcade vs titlePw_classic): se mide aparte, en AMBOS modos, para
+        // que el virus evite su zona sea cual sea el modo que elijas. El resto, una vez.
+        const scoped = new Set(['#modeTitlePw', '#modeTitleWord']);
+        for (const sel of [...Object.values(LAYOUT_ELS), '#musicToggle', '#gameWalletArea']) {
+            if (scoped.has(sel)) continue;
+            pushEl(document.querySelector(sel));
+        }
+        for (const baseKey of ['titlePw', 'titleWord']) {
+            const el = document.querySelector(LAYOUT_ELS[baseKey]); if (!el) continue;
+            const savedTr = el.style.translate, savedSc = el.style.scale;
+            for (const m of ['arcade', 'classic']) {
+                const t = menuLayout[baseKey + '_' + m];
+                el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '';
+                el.style.scale = t ? String(t.s || 1) : '';
+                pushEl(el);
+            }
+            el.style.translate = savedTr; el.style.scale = savedSc;
         }
         if (lo && hidden && saved) { lo.style.display = saved.d || 'none'; lo.style.visibility = saved.v || ''; }
         _loginUIRects = rects;
@@ -4432,6 +4446,7 @@
             el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '';
             el.style.scale = t ? String(t.s || 1) : '';
         }
+        invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
     }
     function layoutTarget(e) {
         for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
