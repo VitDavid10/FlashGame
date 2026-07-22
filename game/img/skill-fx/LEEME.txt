@@ -1,0 +1,9 @@
+Sprite sheets de FX sobre la píldora (sprint / inmune / imán).
+
+Origen: stills Grok Imagine en raw/*.jpg
+Build:  python tools/build_skill_fx_sheets.py
+Salida: *-sheet.png (8 frames x 128px horizontal) y *-icon.png
+
+El cliente (game/index.html) carga img/skill-fx/<key>-sheet.png y los
+dibuja encima de la píldora mientras dura el buff. Si el PNG no carga,
+cae al FX procedural/video anterior.

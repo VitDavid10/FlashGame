@@ -2236,13 +2236,46 @@
     const skinCache = new Map();
     function getSkinImage(url) { if (!url) return null; if (!skinCache.has(url)) { const img = new Image(); img.src = url; skinCache.set(url, img); } return skinCache.get(url); }
 
-    // Video con canal alpha del efecto IMÁN (fondo blanco recortado). Se dibuja
-    // sobre la píldora mientras el buff MAGNET está activo.
+    // Video legacy del imán (fallback si falla el sprite sheet).
     const magnetFxVideo = document.createElement('video');
     magnetFxVideo.src = '../img/iman-fx.webm';
     magnetFxVideo.loop = true; magnetFxVideo.muted = true; magnetFxVideo.playsInline = true;
     magnetFxVideo.preload = 'auto';
     function ensureMagnetFxPlaying() { if (magnetFxVideo.paused) { const pr = magnetFxVideo.play(); if (pr && pr.catch) pr.catch(() => {}); } }
+
+    // Sprite sheets animados (Grok Imagine stills -> tools/build_skill_fx_sheets.py).
+    // Horizontal strip: N frames de SxS. Se dibujan ENCIMA de la píldora al
+    // activar sprint / inmune / imán.
+    const SKILL_FX_FRAME = 128, SKILL_FX_FRAMES = 8, SKILL_FX_FPS = 12;
+    const SKILL_FX = {
+        iman:   { img: new Image(), ready: false },
+        inmune: { img: new Image(), ready: false },
+        sprint: { img: new Image(), ready: false }
+    };
+    (function loadSkillFxSheets() {
+        Object.keys(SKILL_FX).forEach(key => {
+            const e = SKILL_FX[key];
+            e.img.decoding = 'async';
+            e.img.onload = () => { e.ready = e.img.naturalWidth > 0; };
+            e.img.onerror = () => { e.ready = false; };
+            e.img.src = 'img/skill-fx/' + key + '-sheet.png';
+        });
+    })();
+    function skillFxFrameIndex() {
+        return Math.floor(performance.now() / (1000 / SKILL_FX_FPS)) % SKILL_FX_FRAMES;
+    }
+    /** Dibuja un frame del sheet centrado en (x,y) con diámetro world `size`. */
+    function drawSkillFxSheet(ctx, key, x, y, size) {
+        const e = SKILL_FX[key];
+        if (!e || !e.ready) return false;
+        const f = skillFxFrameIndex();
+        const S = SKILL_FX_FRAME;
+        const prev = ctx.imageSmoothingEnabled;
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(e.img, f * S, 0, S, S, x - size / 2, y - size / 2, size, size);
+        ctx.imageSmoothingEnabled = prev;
+        return true;
+    }
 
     // --- PIXEL PACK: sprites procedurales ---
     // Cada objeto se genera pixel a pixel en un canvas offscreen a resolución
@@ -2731,14 +2764,14 @@
         // entero: el escalado fraccional con smoothing de antes doblaba el
         // coste del frame con muchas células con escudo.
         const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-        if (c.sprintTime > 0 && drawEffects) {
+        // Aros procedurales solo como fallback si el sheet no cargó.
+        if (c.sprintTime > 0 && drawEffects && !SKILL_FX.sprint.ready) {
             const pulse = 6 + 3 * (Math.floor(performance.now() / 150) % 2);
             ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW/2 - pulse, -pH/2 - pulse, pW + pulse * 2, pH + pulse * 2);
         }
-        if (c.immuneTime > 0 && drawEffects) {
+        if (c.immuneTime > 0 && drawEffects && !SKILL_FX.inmune.ready) {
             const gap = c.r * 0.1;
             ctx.drawImage(pixRingSprite(wLfx, '#a020f0'), -pW/2 - gap, -pH/2 - gap, pW + gap * 2, pH + gap * 2);
-            // 4 escudos heater pixel orbitando en pasos (upright, sin rotar), con leve pulso.
             const step = Math.floor(performance.now() / 150), time = step * 0.125;
             const shieldWorld = Math.max(10, c.r * 0.55), sW = Math.max(8, Math.min(28, Math.round(shieldWorld * getViewScale() / PIX_SCREEN_PX)));
             const spr = pixShieldSprite(sW), sh = spr.height / spr.width * shieldWorld;
@@ -2760,7 +2793,13 @@
         } else {
             const wL = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
             ctx.drawImage(pixPillSprite(wL, c.colorTop, c.colorBot), -pW/2, -pH/2, pW, pH);
-            if (c.immuneTime > 0 && drawEffects) { ctx.save(); ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip(); ctx.fillStyle = 'rgba(160, 32, 240, 0.4)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); ctx.restore(); }
+            if (c.immuneTime > 0 && drawEffects && !SKILL_FX.inmune.ready) { ctx.save(); ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip(); ctx.fillStyle = 'rgba(160, 32, 240, 0.4)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); ctx.restore(); }
+        }
+        // FX Grok (sprite sheet) encima de la píldora, alineado a su rotación.
+        if (drawEffects) {
+            const fxD = Math.max(pW, pH) * 1.45;
+            if (c.sprintTime > 0) drawSkillFxSheet(ctx, 'sprint', 0, 0, fxD);
+            if (c.immuneTime > 0) drawSkillFxSheet(ctx, 'inmune', 0, 0, fxD * 1.05);
         }
         ctx.restore();
         if (c.particles.length > 0 && drawEffects) {
@@ -6878,11 +6917,22 @@
             drawCell(e); if (e.isBot && e.magnetTime > 0 && enableEnemyFX) { let magnetRad = SKILL_PARAMS.magnetRange + e.r; let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(e.x, e.y); for(let i=0; i<3; i++) { let offset = i * 0.33, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore(); }
         }});
 
-        // Video del imán (alpha) ENCIMA de la píldora, tamaño comparable a la píldora.
+        // FX imán ENCIMA de la píldora (sprite sheet animado; fallback video legacy).
         if (p && p.skillState[5] > 0 && p.cells.length > 0) {
             let avgX = 0, avgY = 0, maxR = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= p.cells.length; avgY /= p.cells.length;
-            ensureMagnetFxPlaying();
-            if (magnetFxVideo.readyState >= 2) { const s = maxR * 1.9; ctx.save(); ctx.translate(avgX, avgY); ctx.drawImage(magnetFxVideo, -s, -s, s * 2, s * 2); ctx.restore(); }
+            const s = maxR * 2.2;
+            if (!drawSkillFxSheet(ctx, 'iman', avgX, avgY, s * 2)) {
+                ensureMagnetFxPlaying();
+                if (magnetFxVideo.readyState >= 2) { ctx.save(); ctx.translate(avgX, avgY); ctx.drawImage(magnetFxVideo, -s, -s, s * 2, s * 2); ctx.restore(); }
+            }
+        }
+        // Bots con imán: mismo icono animado sobre su célula.
+        if (enableEnemyFX) {
+            sim.enemies.forEach(e => {
+                if (e.isBot && e.magnetTime > 0) {
+                    drawSkillFxSheet(ctx, 'iman', e.x, e.y, e.r * 4.2);
+                }
+            });
         }
 
         ctx.save();
