@@ -3611,6 +3611,17 @@
                 runY = y; runXd = xd;
             }
         }
+        // Línea de cierre derecha (zona classic) e inferior (partida por la diagonal
+        // en y=H: izquierda arcade, derecha classic): el tile solo pinta la línea
+        // arriba/izquierda de cada celda, así que sin esto la última fila/columna
+        // del grid quedaba sin borde por abajo y por la derecha.
+        {
+            const lineCol = (hex) => { const rgb = pixRgb(hex); return 'rgb(' + rgb.map(v => Math.round(v * 0.30)).join(',') + ')'; };
+            const xBot = Math.max(0, Math.min(W, Math.round(botX)));
+            g.fillStyle = lineCol('#00ffaa'); g.fillRect(W - 1, 0, 1, H);
+            g.fillStyle = lineCol('#ccff00'); g.fillRect(0, H - 1, xBot, 1);
+            g.fillStyle = lineCol('#00ffaa'); g.fillRect(xBot, H - 1, W - xBot, 1);
+        }
         // Zonas prohibidas para los virus: la UI del LOGIN (aunque aún no se vea),
         // proyectada al canvas del selector. Rebotan en ellas → al pasar al login
         // ya están fuera de la UI.
@@ -4360,6 +4371,11 @@
         if (!tile.pat) tile.pat = g.createPattern(tile.cv, 'repeat');
         g.fillStyle = tile.pat;
         g.fillRect(0, 0, W, H);
+        // Línea de cierre en el borde DERECHO e INFERIOR: el tile solo dibuja la
+        // línea arriba/izquierda de cada celda, así que sin esto la última fila/
+        // columna queda sin borde. Con esto la cuadrícula termina exacta en los 4
+        // lados (celdas completas para centrar el título con EDIT LAYOUT).
+        { const rgb = pixRgb(hex); g.fillStyle = 'rgb(' + rgb.map(v => Math.round(v * 0.30)).join(',') + ')'; g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1); }
         // login: deco congelada salvo lo tapado por elementos del menú, que
         // sigue avanzando hasta despejarlos (ver stepMenuDeco).
         stepMenuDeco(W, H, performance.now(), false, menuDecoObstacleRects(W, H));
