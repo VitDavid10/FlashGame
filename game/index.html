@@ -2235,6 +2235,14 @@
     const skinCache = new Map();
     function getSkinImage(url) { if (!url) return null; if (!skinCache.has(url)) { const img = new Image(); img.src = url; skinCache.set(url, img); } return skinCache.get(url); }
 
+    // Video con canal alpha del efecto IMÁN (fondo blanco recortado). Se dibuja
+    // sobre la píldora mientras el buff MAGNET está activo.
+    const magnetFxVideo = document.createElement('video');
+    magnetFxVideo.src = '../img/iman-fx.webm';
+    magnetFxVideo.loop = true; magnetFxVideo.muted = true; magnetFxVideo.playsInline = true;
+    magnetFxVideo.preload = 'auto';
+    function ensureMagnetFxPlaying() { if (magnetFxVideo.paused) { const pr = magnetFxVideo.play(); if (pr && pr.catch) pr.catch(() => {}); } }
+
     // --- PIXEL PACK: sprites procedurales ---
     // Cada objeto se genera pixel a pixel en un canvas offscreen a resolución
     // lógica baja (contorno oscuro, banda de sombra, brillo) y se escala SIN
@@ -6617,7 +6625,7 @@
                     if (ev.id === 'godmass') { spawnFloatingText("GOD MODE MASS", "#00FF00"); SoundManager.play('big'); }
                     else if (ev.id === 3) { spawnFloatingText("+ SPEED", "#00FFFF"); SoundManager.play('sprint'); }
                     else if (ev.id === 4) { SoundManager.play('tp'); }
-                    else if (ev.id === 5) { spawnFloatingText("+ MAGNET POWER", "#A020F0"); SoundManager.play('iman'); }
+                    else if (ev.id === 5) { spawnFloatingText("+ MAGNET POWER", "#2882FF"); SoundManager.play('iman'); }
                     else if (ev.id === 6) { spawnFloatingText("IMMUNITY", "#FFD700"); SoundManager.play('shield'); }
                     else if (ev.id === 7) { spawnFloatingText("MASS UP", "#00FF00"); SoundManager.play('big'); }
                     else if (ev.id === 8) { if (ev.win) { spawnFloatingText("LUCKY! +MASS", "#00FF00"); SoundManager.play('big'); } else { spawnFloatingText("UNLUCKY! -MASS", "#FF0000"); SoundManager.play('little'); } }
@@ -6697,11 +6705,15 @@
         if (p && p.skillState[5] > 0 && p.cells.length > 0) {
             let avgX = 0, avgY = 0, maxR = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= p.cells.length; avgY /= p.cells.length; let magnetRad = SKILL_PARAMS.magnetRange + maxR;
             let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(avgX, avgY);
-            for(let i=0; i<3; i++) { let offset = i * 0.3, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(160, 32, 240, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore();
+            for(let i=0; i<3; i++) { let offset = i * 0.3, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); }
+            // Video del imán (alpha) sobre la píldora, tamaño comparable a la píldora.
+            ensureMagnetFxPlaying();
+            if (magnetFxVideo.readyState >= 2) { const s = maxR * 2.8; ctx.drawImage(magnetFxVideo, -s, -s, s * 2, s * 2); }
+            ctx.restore();
         }
 
         [...sim.enemies, ...myCells()].sort((a,b) => a.r - b.r).forEach(e => { if (e.x + e.r > vL && e.x - e.r < vR && e.y + e.r > vT && e.y - e.r < vB) {
-            drawCell(e); if (e.isBot && e.magnetTime > 0 && enableEnemyFX) { let magnetRad = SKILL_PARAMS.magnetRange + e.r; let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(e.x, e.y); for(let i=0; i<3; i++) { let offset = i * 0.33, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(160, 32, 240, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore(); }
+            drawCell(e); if (e.isBot && e.magnetTime > 0 && enableEnemyFX) { let magnetRad = SKILL_PARAMS.magnetRange + e.r; let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(e.x, e.y); for(let i=0; i<3; i++) { let offset = i * 0.33, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore(); }
         }});
 
         ctx.save();
