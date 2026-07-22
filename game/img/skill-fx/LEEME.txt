@@ -1,9 +1,10 @@
-Sprite sheets de FX sobre la píldora (sprint / inmune / imán).
+Stills / sheets Grok Imagine (iman/inmune/sprint) — APARCADOS.
 
-Origen: stills Grok Imagine en raw/*.jpg
-Build:  python tools/build_skill_fx_sheets.py
-Salida: *-sheet.png (8 frames x 128px horizontal) y *-icon.png
+No se cargan en partida: no pegan con el pack pixel (pegote + corte sucio).
+El FX activo es procedural en game/index.html:
+  - sprint: aros dorados + rayos pixBoltSprite (estela)
+  - inmune: aro + campo dashed (sin escudos orbitando)
+  - iman: ondas azules (+ webm legacy opcional)
 
-El cliente (game/index.html) carga img/skill-fx/<key>-sheet.png y los
-dibuja encima de la píldora mientras dura el buff. Si el PNG no carga,
-cae al FX procedural/video anterior.
+raw/*.jpg y *-sheet.png se conservan por si se reutilizan con estilo pixel.
+Build experimental: python tools/build_skill_fx_sheets.py

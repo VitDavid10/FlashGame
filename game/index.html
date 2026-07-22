@@ -2236,55 +2236,24 @@
     const skinCache = new Map();
     function getSkinImage(url) { if (!url) return null; if (!skinCache.has(url)) { const img = new Image(); img.src = url; skinCache.set(url, img); } return skinCache.get(url); }
 
-    // Video legacy del imán (fallback si falla el sprite sheet).
-    const magnetFxVideo = document.createElement('video');
-    magnetFxVideo.src = '../img/iman-fx.webm';
-    magnetFxVideo.loop = true; magnetFxVideo.muted = true; magnetFxVideo.playsInline = true;
-    magnetFxVideo.preload = 'auto';
-    function ensureMagnetFxPlaying() { if (magnetFxVideo.paused) { const pr = magnetFxVideo.play(); if (pr && pr.catch) pr.catch(() => {}); } }
+    // Video legacy del imán (opcional, alpha bajo; las ondas azules ya marcan el buff).
+        const magnetFxVideo = document.createElement('video');
+        magnetFxVideo.src = '../img/iman-fx.webm';
+        magnetFxVideo.loop = true; magnetFxVideo.muted = true; magnetFxVideo.playsInline = true;
+        magnetFxVideo.preload = 'auto';
+        function ensureMagnetFxPlaying() { if (magnetFxVideo.paused) { const pr = magnetFxVideo.play(); if (pr && pr.catch) pr.catch(() => {}); } }
 
-    // Sprite sheets animados (Grok Imagine stills -> tools/build_skill_fx_sheets.py).
-    // Horizontal strip: N frames de SxS. Se dibujan ENCIMA de la píldora al
-    // activar sprint / inmune / imán.
-    const SKILL_FX_FRAME = 128, SKILL_FX_FRAMES = 8, SKILL_FX_FPS = 12;
-    const SKILL_FX = {
-        iman:   { img: new Image(), ready: false },
-        inmune: { img: new Image(), ready: false },
-        sprint: { img: new Image(), ready: false }
-    };
-    (function loadSkillFxSheets() {
-        Object.keys(SKILL_FX).forEach(key => {
-            const e = SKILL_FX[key];
-            e.img.decoding = 'async';
-            e.img.onload = () => { e.ready = e.img.naturalWidth > 0; };
-            e.img.onerror = () => { e.ready = false; };
-            e.img.src = 'img/skill-fx/' + key + '-sheet.png';
-        });
-    })();
-    function skillFxFrameIndex() {
-        return Math.floor(performance.now() / (1000 / SKILL_FX_FPS)) % SKILL_FX_FRAMES;
-    }
-    /** Dibuja un frame del sheet centrado en (x,y) con diámetro world `size`. */
-    function drawSkillFxSheet(ctx, key, x, y, size) {
-        const e = SKILL_FX[key];
-        if (!e || !e.ready) return false;
-        const f = skillFxFrameIndex();
-        const S = SKILL_FX_FRAME;
-        const prev = ctx.imageSmoothingEnabled;
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(e.img, f * S, 0, S, S, x - size / 2, y - size / 2, size, size);
-        ctx.imageSmoothingEnabled = prev;
-        return true;
-    }
+        // Skill FX: solo procedural pixel (aros, rayos, campo). Los sheets Grok de
+        // game/img/skill-fx/ quedaron aparcados — no pegan con el pack pixel.
 
-    // --- PIXEL PACK: sprites procedurales ---
-    // Cada objeto se genera pixel a pixel en un canvas offscreen a resolución
-    // lógica baja (contorno oscuro, banda de sombra, brillo) y se escala SIN
-    // suavizado, de modo que el "píxel gordo" mide ~PIX_SCREEN_PX en pantalla.
-    // Cache por color/tamaño, mismo patrón que skinCache.
-    const PIX_SCREEN_PX = 4;
-    const PIX_FONT = "'VT323', monospace";
-    const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map(), ring: new Map() };
+        // --- PIXEL PACK: sprites procedurales ---
+        // Cada objeto se genera pixel a pixel en un canvas offscreen a resolución
+        // lógica baja (contorno oscuro, banda de sombra, brillo) y se escala SIN
+        // suavizado, de modo que el "píxel gordo" mide ~PIX_SCREEN_PX en pantalla.
+        // Cache por color/tamaño, mismo patrón que skinCache.
+        const PIX_SCREEN_PX = 4;
+        const PIX_FONT = "'VT323', monospace";
+        const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map(), ring: new Map(), bolt: new Map() };
     if (document.fonts && document.fonts.load) document.fonts.load("32px 'VT323'");
     const _pixProbe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     function pixRgb(col) { _pixProbe.clearRect(0, 0, 1, 1); _pixProbe.fillStyle = col; _pixProbe.fillRect(0, 0, 1, 1); const d = _pixProbe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
@@ -2411,31 +2380,164 @@
     }
 
     // Anillo de píldora pixel art (aro de las skills SPRINT/SHIELD): banda de
-    // grosor fijo siguiendo el contorno de la cápsula, con bisel (borde
-    // exterior oscuro / interior claro). Cache por tamaño lógico + color.
-    function pixRingSprite(wL, col) {
-        const key = wL + '|' + col;
-        let spr = PIX.ring.get(key); if (spr) return spr;
-        if (PIX.ring.size > 200) PIX.ring.clear();
-        const hL = Math.round(wL * PILL_RATIO), R = wL / 2;
-        spr = document.createElement('canvas'); spr.width = wL; spr.height = hL;
-        const g = spr.getContext('2d'), rgb = pixRgb(col);
-        const t = Math.max(2, Math.round(wL / 8));
-        const dist = (x, y) => { const cy = Math.min(Math.max(y + 0.5, R), hL - R); const dx = x + 0.5 - R, dy = y + 0.5 - cy; return Math.sqrt(dx * dx + dy * dy); };
-        const inRing = (x, y) => { if (x < 0 || y < 0 || x >= wL || y >= hL) return false; const d = dist(x, y); return d <= R - 0.1 && d >= R - 0.1 - t; };
-        for (let y = 0; y < hL; y++) for (let x = 0; x < wL; x++) {
-            if (!inRing(x, y)) continue;
-            let c2;
-            if (!inRing(x - 1, y) && dist(x - 1, y) > R - 0.1) c2 = pixShade(rgb, -0.4);
-            else if (!inRing(x + 1, y) && dist(x + 1, y) > R - 0.1) c2 = pixShade(rgb, -0.4);
-            else if (!inRing(x, y - 1) && dist(x, y - 1) > R - 0.1) c2 = pixShade(rgb, -0.4);
-            else if (!inRing(x, y + 1) && dist(x, y + 1) > R - 0.1) c2 = pixShade(rgb, -0.4);
-            else if (!inRing(x, y + 1) || !inRing(x + 1, y)) c2 = pixShade(rgb, 0.28);
-            else c2 = 'rgb(' + rgb.join(',') + ')';
-            g.fillStyle = c2; g.fillRect(x, y, 1, 1);
+        // grosor fijo siguiendo el contorno de la cápsula, con bisel (borde
+        // exterior oscuro / interior claro). Cache por tamaño lógico + color.
+        // dashed=true deja huecos tipo "campo de fuerza" (inmune).
+        function pixRingSprite(wL, col, dashed) {
+            const key = wL + '|' + col + (dashed ? '|d' : '');
+            let spr = PIX.ring.get(key); if (spr) return spr;
+            if (PIX.ring.size > 200) PIX.ring.clear();
+            const hL = Math.round(wL * PILL_RATIO), R = wL / 2;
+            spr = document.createElement('canvas'); spr.width = wL; spr.height = hL;
+            const g = spr.getContext('2d'), rgb = pixRgb(col);
+            const t = Math.max(2, Math.round(wL / (dashed ? 10 : 8)));
+            const dist = (x, y) => { const cy = Math.min(Math.max(y + 0.5, R), hL - R); const dx = x + 0.5 - R, dy = y + 0.5 - cy; return Math.sqrt(dx * dx + dy * dy); };
+            const inRing = (x, y) => {
+                if (x < 0 || y < 0 || x >= wL || y >= hL) return false;
+                const d = dist(x, y);
+                if (!(d <= R - 0.1 && d >= R - 0.1 - t)) return false;
+                if (!dashed) return true;
+                // 8 segmentos: ángulo alrededor del centro de la cápsula.
+                const cy = Math.min(Math.max(y + 0.5, R), hL - R);
+                let ang = Math.atan2(y + 0.5 - cy, x + 0.5 - R);
+                if (ang < 0) ang += Math.PI * 2;
+                const seg = (ang / (Math.PI * 2)) * 8;
+                return (seg % 1) < 0.62;
+            };
+            for (let y = 0; y < hL; y++) for (let x = 0; x < wL; x++) {
+                if (!inRing(x, y)) continue;
+                let c2;
+                if (!inRing(x - 1, y) && dist(x - 1, y) > R - 0.1) c2 = pixShade(rgb, -0.4);
+                else if (!inRing(x + 1, y) && dist(x + 1, y) > R - 0.1) c2 = pixShade(rgb, -0.4);
+                else if (!inRing(x, y - 1) && dist(x, y - 1) > R - 0.1) c2 = pixShade(rgb, -0.4);
+                else if (!inRing(x, y + 1) && dist(x, y + 1) > R - 0.1) c2 = pixShade(rgb, -0.4);
+                else if (!inRing(x, y + 1) || !inRing(x + 1, y)) c2 = pixShade(rgb, 0.28);
+                else c2 = 'rgb(' + rgb.join(',') + ')';
+                g.fillStyle = c2; g.fillRect(x, y, 1, 1);
+            }
+            PIX.ring.set(key, spr); return spr;
         }
-        PIX.ring.set(key, spr); return spr;
-    }
+
+        // Rayo pixel (sprint): zigzag con contorno oscuro, naranja y núcleo oro/blanco.
+        // Variantes 0..2 para no repetir el mismo glifo. Cache por frame.
+        function pixBoltSprite(frame) {
+            const f = ((frame % 3) + 3) % 3;
+            let spr = PIX.bolt.get(f); if (spr) return spr;
+            // Máscaras 11×16 (columna = x). 0 vacío, 1 outline, 2 mid, 3 hot, 4 core.
+            const masks = [
+                [
+                    '....222....',
+                    '...2332....',
+                    '..23332....',
+                    '..3343.....',
+                    '.2332......',
+                    '.3343......',
+                    '2334432....',
+                    '.2334332...',
+                    '..223343...',
+                    '....2332...',
+                    '....3343...',
+                    '...2332....',
+                    '..2332.....',
+                    '.2332......',
+                    '.332.......',
+                    '22.........'
+                ],
+                [
+                    '.....222...',
+                    '....2332...',
+                    '...23332...',
+                    '...3343....',
+                    '..2332.....',
+                    '.233443....',
+                    '.3344332...',
+                    '23322332...',
+                    '.22..334...',
+                    '....2332...',
+                    '...23343...',
+                    '..2332.....',
+                    '.2332......',
+                    '.332.......',
+                    '232........',
+                    '22.........'
+                ],
+                [
+                    '...222.....',
+                    '..2332.....',
+                    '.23332.....',
+                    '.3343......',
+                    '2332.......',
+                    '33432......',
+                    '2334432....',
+                    '.2233432...',
+                    '...23343...',
+                    '...2332....',
+                    '..2332.....',
+                    '.23343.....',
+                    '.33432.....',
+                    '2332.......',
+                    '332........',
+                    '22.........'
+                ]
+            ];
+            const rows = masks[f], W = rows[0].length, H = rows.length;
+            spr = document.createElement('canvas'); spr.width = W + 2; spr.height = H + 2;
+            const g = spr.getContext('2d');
+            const cols = {
+                '1': '#2a1408',
+                '2': '#8a3200',
+                '3': '#ff8a00',
+                '4': '#ffe84a',
+                '5': '#fffce0'
+            };
+            // Expande mid→outline vecinos vacíos para contorno 1px.
+            const grid = rows.map(r => r.split(''));
+            const out = [];
+            for (let y = 0; y < H + 2; y++) {
+                out[y] = [];
+                for (let x = 0; x < W + 2; x++) out[y][x] = '0';
+            }
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                const ch = grid[y][x];
+                if (ch === '.' || ch === '0') continue;
+                out[y + 1][x + 1] = ch;
+            }
+            for (let y = 1; y <= H; y++) for (let x = 1; x <= W; x++) {
+                if (out[y][x] !== '0') continue;
+                let near = false;
+                for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    const v = out[y + dy][x + dx];
+                    if (v !== '0') { near = true; break; }
+                }
+                if (near) out[y][x] = '1';
+            }
+            // Núcleo: alguna celda '4' sube a '5' en el centro del trazo.
+            for (let y = 0; y < H + 2; y++) for (let x = 0; x < W + 2; x++) {
+                if (out[y][x] === '4' && (x + y) % 3 === 0) out[y][x] = '5';
+                const ch = out[y][x];
+                if (ch === '0') continue;
+                g.fillStyle = cols[ch] || '#ff8a00';
+                g.fillRect(x, y, 1, 1);
+            }
+            PIX.bolt.set(f, spr); return spr;
+        }
+
+        /** Dibuja un rayo pixel centrado en (0,0) del ctx actual (ya translateado). */
+        function drawPixBolt(ctx, p, cellR, alpha) {
+            const spr = pixBoltSprite(Math.floor((p.rot || 0) / 40) % 3);
+            const life = Math.max(0, Math.min(1, p.life));
+            const base = Math.max(12, Math.min(48, cellR * 0.7)) * (p.scale > 1 ? Math.min(1.6, 0.85 + p.scale * 0.08) : 1);
+            const sz = base * (0.65 + 0.45 * life);
+            const prev = ctx.imageSmoothingEnabled;
+            ctx.imageSmoothingEnabled = false;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(((p.rot || 0) * Math.PI) / 180);
+            ctx.globalAlpha = Math.ceil(life * 4) / 4 * alpha;
+            ctx.drawImage(spr, -sz * 0.45, -sz * 0.5, sz * 0.9, sz);
+            ctx.restore();
+            ctx.imageSmoothingEnabled = prev;
+        }
 
     // ===== Fuente bitmap pixel (PIXFONT, drawPixelText, pixFancyText, HD) =====
     // Movida a pixfont.js (compartida con comparativa.html para ver el alfabeto).
@@ -2758,60 +2860,61 @@
         ctx.save(); ctx.globalAlpha = alpha; const drawEffects = !c.isBot || enableEnemyFX;
         ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4);
         const pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2;
-        // Resolución lógica compartida por los sprites de efectos (misma fórmula
-        // que el cuerpo). Los aros de SPRINT/SHIELD son sprites de anillo pixel
-        // (pixRingSprite) y los escudos se dibujan sin suavizado y a píxel
-        // entero: el escalado fraccional con smoothing de antes doblaba el
-        // coste del frame con muchas células con escudo.
-        const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-        // Aros procedurales solo como fallback si el sheet no cargó.
-        if (c.sprintTime > 0 && drawEffects && !SKILL_FX.sprint.ready) {
-            const pulse = 6 + 3 * (Math.floor(performance.now() / 150) % 2);
-            ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW/2 - pulse, -pH/2 - pulse, pW + pulse * 2, pH + pulse * 2);
-        }
-        if (c.immuneTime > 0 && drawEffects && !SKILL_FX.inmune.ready) {
-            const gap = c.r * 0.1;
-            ctx.drawImage(pixRingSprite(wLfx, '#a020f0'), -pW/2 - gap, -pH/2 - gap, pW + gap * 2, pH + gap * 2);
-            const step = Math.floor(performance.now() / 150), time = step * 0.125;
-            const shieldWorld = Math.max(10, c.r * 0.55), sW = Math.max(8, Math.min(28, Math.round(shieldWorld * getViewScale() / PIX_SCREEN_PX)));
-            const spr = pixShieldSprite(sW), sh = spr.height / spr.width * shieldWorld;
-            const rx = pW / 2 + gap + shieldWorld * 0.5, ry = pH / 2 + gap + shieldWorld * 0.5;
-            const pulse = 1 + 0.08 * (step % 2);
-            const prevSmooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-            for (let i = 0; i < 4; i++) {
-                const angle = time + (i * (Math.PI / 2)), dw = Math.round(shieldWorld * pulse), dh = Math.round(sh * pulse);
-                ctx.drawImage(spr, Math.round(Math.cos(angle) * rx - dw / 2), Math.round(Math.sin(angle) * ry - dh / 2), dw, dh);
-            }
-            ctx.imageSmoothingEnabled = prevSmooth;
-        }
-        if (c.flashTime > 0 && c.flashColor && drawEffects) { ctx.save(); ctx.globalAlpha = 0.35 * alpha; ctx.fillStyle = c.flashColor; ctx.beginPath(); ctx.roundRect(-pW/2 - 8, -pH/2 - 8, pW + 16, pH + 16, rBox + 8); ctx.fill(); ctx.restore(); }
-        const skinImg = getSkinImage(c.skinUrl);
-        if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
-            ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip();
-            try { ctx.drawImage(skinImg, -pW/2, -pH/2, pW, pH); } catch (e) {}
-            if (c.immuneTime > 0 && drawEffects) { ctx.fillStyle = 'rgba(160, 32, 240, 0.4)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); }
-        } else {
-            const wL = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-            ctx.drawImage(pixPillSprite(wL, c.colorTop, c.colorBot), -pW/2, -pH/2, pW, pH);
-            if (c.immuneTime > 0 && drawEffects && !SKILL_FX.inmune.ready) { ctx.save(); ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip(); ctx.fillStyle = 'rgba(160, 32, 240, 0.4)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); ctx.restore(); }
-        }
-        // FX Grok (sprite sheet) encima de la píldora, alineado a su rotación.
-        if (drawEffects) {
-            const fxD = Math.max(pW, pH) * 1.45;
-            if (c.sprintTime > 0) drawSkillFxSheet(ctx, 'sprint', 0, 0, fxD);
-            if (c.immuneTime > 0) drawSkillFxSheet(ctx, 'inmune', 0, 0, fxD * 1.05);
-        }
-        ctx.restore();
-        if (c.particles.length > 0 && drawEffects) {
-            ctx.save(); ctx.translate(c.x, c.y);
-            c.particles.forEach(p => {
-                ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = Math.ceil(Math.max(0, p.life) * 4) / 4 * alpha;
-                if (p.type === 'BOLT') { ctx.scale(p.scale, p.scale); ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(0, 0); ctx.lineTo(-2, 2); ctx.lineTo(5, 5); ctx.stroke(); }
-                else { ctx.font = `${Math.max(18, c.r / 1.3)}px ${PIX_FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.fillText("+", 0, 0); } else { ctx.fillStyle = '#ff0000'; ctx.fillText("-", 0, 0); } }
+        // Resolución lógica de aros (misma fórmula que el cuerpo). Sin smoothing.
+                const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
+                const prevSmoothFx = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+                // SPRINT: aro dorado con pulso 2-step + aro exterior fino.
+                if (c.sprintTime > 0 && drawEffects) {
+                    const step = Math.floor(performance.now() / 120) % 2;
+                    const pulse = 3 + 4 * step;
+                    ctx.globalAlpha = alpha * (0.85 + 0.15 * step);
+                    ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW/2 - pulse, -pH/2 - pulse, pW + pulse * 2, pH + pulse * 2);
+                    const pulse2 = pulse + 5 + step * 2;
+                    ctx.globalAlpha = alpha * 0.45;
+                    ctx.drawImage(pixRingSprite(wLfx, '#ffe84a'), -pW/2 - pulse2, -pH/2 - pulse2, pW + pulse2 * 2, pH + pulse2 * 2);
+                    ctx.globalAlpha = alpha;
+                }
+                // INMUNE: campo de fuerza (aro sólido + aro dashed exterior). Sin escudos orbitando.
+                if (c.immuneTime > 0 && drawEffects) {
+                    const step = Math.floor(performance.now() / 160) % 2;
+                    const gap = c.r * (0.08 + 0.03 * step);
+                    ctx.globalAlpha = alpha * 0.95;
+                    ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW/2 - gap, -pH/2 - gap, pW + gap * 2, pH + gap * 2);
+                    const gap2 = gap + c.r * 0.18;
+                    ctx.globalAlpha = alpha * (0.55 + 0.2 * step);
+                    ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW/2 - gap2, -pH/2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
+                    ctx.globalAlpha = alpha;
+                }
+                ctx.imageSmoothingEnabled = prevSmoothFx;
+                if (c.flashTime > 0 && c.flashColor && drawEffects) { ctx.save(); ctx.globalAlpha = 0.35 * alpha; ctx.fillStyle = c.flashColor; ctx.beginPath(); ctx.roundRect(-pW/2 - 8, -pH/2 - 8, pW + 16, pH + 16, rBox + 8); ctx.fill(); ctx.restore(); }
+                const skinImg = getSkinImage(c.skinUrl);
+                if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
+                    ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip();
+                    try { ctx.drawImage(skinImg, -pW/2, -pH/2, pW, pH); } catch (e) {}
+                    if (c.immuneTime > 0 && drawEffects) { ctx.fillStyle = 'rgba(160, 32, 240, 0.22)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); }
+                    if (c.sprintTime > 0 && drawEffects) { ctx.fillStyle = 'rgba(255, 200, 40, 0.12)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); }
+                } else {
+                    const wL = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
+                    ctx.drawImage(pixPillSprite(wL, c.colorTop, c.colorBot), -pW/2, -pH/2, pW, pH);
+                    if (c.immuneTime > 0 && drawEffects) { ctx.save(); ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip(); ctx.fillStyle = 'rgba(160, 32, 240, 0.22)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); ctx.restore(); }
+                    if (c.sprintTime > 0 && drawEffects) { ctx.save(); ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip(); ctx.fillStyle = 'rgba(255, 200, 40, 0.12)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); ctx.restore(); }
+                }
                 ctx.restore();
-            });
-            ctx.restore();
-        }
+                if (c.particles.length > 0 && drawEffects) {
+                    ctx.save(); ctx.translate(c.x, c.y);
+                    c.particles.forEach(p => {
+                        if (p.type === 'BOLT') {
+                            drawPixBolt(ctx, p, c.r, alpha);
+                        } else {
+                            ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = Math.ceil(Math.max(0, p.life) * 4) / 4 * alpha;
+                            ctx.font = `${Math.max(18, c.r / 1.3)}px ${PIX_FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                            if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.fillText("+", 0, 0); }
+                            else { ctx.fillStyle = '#ff0000'; ctx.fillText("-", 0, 0); }
+                            ctx.restore();
+                        }
+                    });
+                    ctx.restore();
+                }
         if (c.name) { ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3; const fSize = Math.max(14, c.r / 1.1); ctx.font = `${fSize}px ${PIX_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); }
         ctx.restore();
     }
@@ -6917,23 +7020,14 @@
             drawCell(e); if (e.isBot && e.magnetTime > 0 && enableEnemyFX) { let magnetRad = SKILL_PARAMS.magnetRange + e.r; let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(e.x, e.y); for(let i=0; i<3; i++) { let offset = i * 0.33, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore(); }
         }});
 
-        // FX imán ENCIMA de la píldora (sprite sheet animado; fallback video legacy).
-        if (p && p.skillState[5] > 0 && p.cells.length > 0) {
-            let avgX = 0, avgY = 0, maxR = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= p.cells.length; avgY /= p.cells.length;
-            const s = maxR * 2.2;
-            if (!drawSkillFxSheet(ctx, 'iman', avgX, avgY, s * 2)) {
-                ensureMagnetFxPlaying();
-                if (magnetFxVideo.readyState >= 2) { ctx.save(); ctx.translate(avgX, avgY); ctx.drawImage(magnetFxVideo, -s, -s, s * 2, s * 2); ctx.restore(); }
-            }
-        }
-        // Bots con imán: mismo icono animado sobre su célula.
-        if (enableEnemyFX) {
-            sim.enemies.forEach(e => {
-                if (e.isBot && e.magnetTime > 0) {
-                    drawSkillFxSheet(ctx, 'iman', e.x, e.y, e.r * 4.2);
+        // FX imán legacy (webm opcional). Las ondas azules de arriba ya marcan el buff;
+                // el sticker Grok se retiró por no pegar con el pack pixel.
+                if (p && p.skillState[5] > 0 && p.cells.length > 0) {
+                    let avgX = 0, avgY = 0, maxR = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= p.cells.length; avgY /= p.cells.length;
+                    const s = maxR * 2.2;
+                    ensureMagnetFxPlaying();
+                    if (magnetFxVideo.readyState >= 2) { ctx.save(); ctx.translate(avgX, avgY); ctx.globalAlpha = 0.55; ctx.drawImage(magnetFxVideo, -s, -s, s * 2, s * 2); ctx.restore(); }
                 }
-            });
-        }
 
         ctx.save();
         sim.viruses.forEach(v => {
