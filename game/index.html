@@ -2635,7 +2635,7 @@
                 /**
                                                  * FX de buffs sobre una célula.
                                                  * - Sprint/inmune: SIEMPRE visibles (rivales online/offline).
-                                                 * - Sprint: aro dorado + rayitos pixel fijos en la píldora (sin saltar al girar).
+                                                 * - Sprint: aro dorado + pops ⚡ tipo +/- fijos alrededor (sin girar el glifo).
                                                  * - Inmune: aros + escudo (sin partículas).
                                                  * - Imán: ondas + partículas azules en el radio (sin icono).
                                                  */
@@ -2651,18 +2651,18 @@
                                                     const prev = ctx.imageSmoothingEnabled;
                                                     ctx.imageSmoothingEnabled = false;
 
-                                                    // --- SPRINT: aro dorado + rayitos pixel fijos alrededor de la píldora ---
+                                                    // --- SPRINT: aro dorado + pops ⚡ tipo +/- fijos alrededor de la píldora ---
                                                                                                         if (c.sprintTime > 0 && showAura) {
                                                                                                             ctx.save();
                                                                                                             ctx.translate(c.x, c.y);
-                                                                                                            // Mismo giro que el cuerpo: los rayos NO saltan al moverte ni al panear.
                                                                                                             ctx.rotate(-Math.PI / 4);
                                                                                                             const step = Math.floor(now / 220) % 2;
                                                                                                             const pulse = 5 + 2 * step;
                                                                                                             ctx.globalAlpha = alpha;
                                                                                                             ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
-                                                                                                            drawSprintBoltsFixed(ctx, c.r, pW, pH, alpha, now, showExtra ? 6 : 5);
                                                                                                             ctx.restore();
+                                                                                                            // Pops en world-space: distribución fija, glifo DERECHO (no gira).
+                                                                                                            drawSprintPopsAround(ctx, c, pW, pH, alpha, now, showExtra ? 6 : 5);
                                                                                                         }
 
                                                     // --- INMUNE: aros + escudo (sin partículas) ---
@@ -2708,108 +2708,51 @@
                                                 }
 
                                                 /**
-                                                                                                 * Rayitos sprint pixel-art anclados a la píldora.
-                                                                                                 * - Distribución fija en elipse (no siguen velocidad ni cámara).
-                                                                                                 * - Slots equiespaciados + tamaño acotado => no se solapan.
-                                                                                                 * - Animación lenta (bob/parpadeo suave).
-                                                                                                 * ctx ya en espacio local de la píldora (translate+rotate).
+                                                                                                 * Pops de sprint = mismo estilo que +/- (texto pixel dorado ⚡),
+                                                                                                 * repartidos fijos por el contorno de la píldora.
+                                                                                                 * No siguen la velocidad ni giran el glifo; solo un bob/alpha suave.
                                                                                                  */
-                                                                                                function drawSprintBoltsFixed(ctx, cellR, pW, pH, alpha, now, nWant) {
+                                                                                                function drawSprintPopsAround(ctx, c, pW, pH, alpha, now, nWant) {
                                                                                                     const n = Math.max(4, Math.min(7, nWant | 0));
-                                                                                                    const boltWorld = Math.max(10, Math.min(22, cellR * 0.42));
-                                                                                                    const rx = pW * 0.58 + boltWorld * 0.15;
-                                                                                                    const ry = pH * 0.58 + boltWorld * 0.15;
-                                                                                                    const minDist = boltWorld * 1.35;
+                                                                                                    const fSize = Math.max(14, Math.min(34, c.r / 1.45));
+                                                                                                    // Elipse del contorno en espacio local de la píldora (antes del giro -45°)
+                                                                                                    const rx = pW * 0.62 + fSize * 0.2;
+                                                                                                    const ry = pH * 0.62 + fSize * 0.2;
+                                                                                                    // Separación mínima en arco ≈ tamaño del glifo
                                                                                                     const circ = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)));
-                                                                                                    const maxByDist = Math.max(3, Math.floor(circ / minDist));
-                                                                                                    const count = Math.min(n, maxByDist);
+                                                                                                    const minArc = fSize * 1.35;
+                                                                                                    const count = Math.min(n, Math.max(3, Math.floor(circ / minArc)));
 
-                                                                                                    const prev = ctx.imageSmoothingEnabled;
-                                                                                                    ctx.imageSmoothingEnabled = false;
-                                                                                                    const drift = now / 9000;
+                                                                                                    // Giro de la píldora (mismo que el cuerpo)
+                                                                                                    const ca = Math.cos(-Math.PI / 4), sa = Math.sin(-Math.PI / 4);
+
+                                                                                                    ctx.save();
+                                                                                                    ctx.font = `${Math.round(fSize)}px ${PIX_FONT}`;
+                                                                                                    ctx.textAlign = 'center';
+                                                                                                    ctx.textBaseline = 'middle';
+                                                                                                    ctx.lineJoin = 'round';
+                                                                                                    ctx.lineWidth = Math.max(2, Math.round(fSize / 8));
+                                                                                                    ctx.strokeStyle = '#000';
+                                                                                                    ctx.fillStyle = '#FFD700';
 
                                                                                                     for (let i = 0; i < count; i++) {
-                                                                                                        const base = (i / count) * Math.PI * 2 + drift;
-                                                                                                        const bob = 1 + 0.035 * Math.sin(now / 850 + i * 1.7);
-                                                                                                        const x = Math.cos(base) * rx * bob;
-                                                                                                        const y = Math.sin(base) * ry * bob;
-                                                                                                        const tw = 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(now / 650 + i * 2.1));
-                                                                                                        const spr = pixSprintBoltSprite(i % 3);
-                                                                                                        const sc = boltWorld / Math.max(spr.width, spr.height);
-                                                                                                        const dw = spr.width * sc, dh = spr.height * sc;
-                                                                                                        const rot = base + Math.PI / 2;
-                                                                                                        ctx.save();
-                                                                                                        ctx.translate(x, y);
-                                                                                                        ctx.rotate(rot);
+                                                                                                        // Ángulo FIJO por slot (sin drift que haga “girar” el patrón)
+                                                                                                        const ang = (i / count) * Math.PI * 2;
+                                                                                                        // Bob radial muy suave
+                                                                                                        const bob = 1 + 0.03 * Math.sin(now / 1100 + i * 1.3);
+                                                                                                        const lx = Math.cos(ang) * rx * bob;
+                                                                                                        const ly = Math.sin(ang) * ry * bob;
+                                                                                                        // A world offset (píldora rotada -45°)
+                                                                                                        const wx = c.x + lx * ca - ly * sa;
+                                                                                                        const wy = c.y + lx * sa + ly * ca;
+                                                                                                        const tw = 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(now / 900 + i * 1.9));
                                                                                                         ctx.globalAlpha = alpha * tw;
-                                                                                                        ctx.drawImage(spr, -dw / 2, -dh / 2, dw, dh);
-                                                                                                        ctx.restore();
+                                                                                                        // Glifo upright (no rotate): igual que los + / -
+                                                                                                        ctx.strokeText('⚡', wx, wy);
+                                                                                                        ctx.fillText('⚡', wx, wy);
                                                                                                     }
                                                                                                     ctx.globalAlpha = alpha;
-                                                                                                    ctx.imageSmoothingEnabled = prev;
-                                                                                                }
-
-                                                                                                /** Sprite rayo pixel multicolor (oro/naranja/blanco/contorno). 3 variantes. */
-                                                                                                function pixSprintBoltSprite(frame) {
-                                                                                                    const f = ((frame % 3) + 3) % 3;
-                                                                                                    if (!PIX.bolt) PIX.bolt = new Map();
-                                                                                                    let spr = PIX.bolt.get('s' + f);
-                                                                                                    if (spr) return spr;
-                                                                                                    const masks = [
-                                                                                                        [
-                                                                                                            '..233....', '.23443...', '..3443...', '..2332...',
-                                                                                                            '.2343....', '23443....', '.233443..', '..22343..',
-                                                                                                            '...2343..', '...2332..', '..2343...', '.2332....',
-                                                                                                            '.332.....', '22.......'
-                                                                                                        ],
-                                                                                                        [
-                                                                                                            '...233...', '..23443..', '..3443...', '.2332....',
-                                                                                                            '.23443...', '234432...', '.233443..', '..22.343.',
-                                                                                                            '....2332.', '...2343..', '..2332...', '.2332....',
-                                                                                                            '.332.....', '22.......'
-                                                                                                        ],
-                                                                                                        [
-                                                                                                            '.233.....', '.2343....', '23443....', '.3443....',
-                                                                                                            '.2332....', '234432...', '2334432..', '.223443..',
-                                                                                                            '..23343..', '..2332...', '.2343....', '.2332....',
-                                                                                                            '2332.....', '32.......'
-                                                                                                        ]
-                                                                                                    ];
-                                                                                                    const rows = masks[f], W = rows[0].length, H = rows.length;
-                                                                                                    spr = document.createElement('canvas');
-                                                                                                    spr.width = W + 2; spr.height = H + 2;
-                                                                                                    const g = spr.getContext('2d');
-                                                                                                    const cols = {
-                                                                                                        '1': '#2a1800', '2': '#a86a00', '3': '#ffb000',
-                                                                                                        '4': '#ffe14a', '5': '#fff6c8'
-                                                                                                    };
-                                                                                                    const out = [];
-                                                                                                    for (let y = 0; y < H + 2; y++) {
-                                                                                                        out[y] = [];
-                                                                                                        for (let x = 0; x < W + 2; x++) out[y][x] = '0';
-                                                                                                    }
-                                                                                                    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-                                                                                                        const ch = rows[y][x];
-                                                                                                        if (ch === '.') continue;
-                                                                                                        out[y + 1][x + 1] = ch;
-                                                                                                    }
-                                                                                                    for (let y = 1; y <= H; y++) for (let x = 1; x <= W; x++) {
-                                                                                                        if (out[y][x] !== '0') continue;
-                                                                                                        let near = false;
-                                                                                                        for (let dy = -1; dy <= 1 && !near; dy++)
-                                                                                                            for (let dx = -1; dx <= 1; dx++)
-                                                                                                                if (out[y + dy][x + dx] !== '0') { near = true; break; }
-                                                                                                        if (near) out[y][x] = '1';
-                                                                                                    }
-                                                                                                    for (let y = 0; y < H + 2; y++) for (let x = 0; x < W + 2; x++) {
-                                                                                                        if (out[y][x] === '4' && ((x + y) % 2 === 0)) out[y][x] = '5';
-                                                                                                        const ch = out[y][x];
-                                                                                                        if (ch === '0') continue;
-                                                                                                        g.fillStyle = cols[ch] || '#ffb000';
-                                                                                                        g.fillRect(x, y, 1, 1);
-                                                                                                    }
-                                                                                                    PIX.bolt.set('s' + f, spr);
-                                                                                                    return spr;
+                                                                                                    ctx.restore();
                                                                                                 }
 
                                 /** Partículas azules del imán en un radio (sin dibujo de herradura). */
