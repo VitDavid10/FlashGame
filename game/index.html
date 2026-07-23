@@ -2387,60 +2387,60 @@
         // cruz verde. Canvas transparente fuera de la silueta (sin fondo relleno).
         // Cache por tamaño lógico; se dibuja upright sin smoothing.
         function pixShieldSprite(sW) {
-            // Clave v2: rediseño más detallado sin relleno rectangular detrás.
-            const key = sW + '|v2';
-            let spr = PIX.shield.get(key); if (spr) return spr;
-            // Resolución interna un poco mayor para más detalle al escalar nearest.
-            const scale = sW < 16 ? 2 : 1;
-            const W = Math.max(12, sW * scale);
-            const H = Math.round(W * 1.35);
-            spr = document.createElement('canvas'); spr.width = W; spr.height = H;
-            const g = spr.getContext('2d');
-            const rgb = pixRgb('#b44cff');
-            // Silueta heater: ancha arriba, punta abajo (bordes redondeados por muestreo).
-            const halfW = (y) => {
-                const t = y / Math.max(1, H - 1);
-                if (t < 0.08) return (W / 2) * (t / 0.08) * 0.92; // hombro superior
-                if (t < 0.38) return W / 2 * 0.92;
-                const u = (t - 0.38) / 0.62;
-                return (W / 2) * 0.92 * (1 - u * u);
-            };
-            const inside = (x, y) => {
-                if (x < 0 || y < 0 || x >= W || y >= H) return false;
-                return Math.abs(x + 0.5 - W / 2) <= halfW(y) - 0.15;
-            };
-            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-                if (!inside(x, y)) continue;
-                const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
-                const edge2 = !inside(x - 1, y - 1) || !inside(x + 1, y + 1);
-                let col;
-                if (edge) col = '#2a0a40';
-                else if (edge2 && !inside(x + 1, y + 1)) col = pixShade(rgb, -0.35);
-                else if (!inside(x - 1, y - 1)) col = pixShade(rgb, 0.35);
-                else {
-                    // Bandas sutiles de volumen
-                    const band = ((x + y) % 5 === 0) ? 0.08 : 0;
-                    col = pixShade(rgb, band);
+                    // v3: más tonos de morado + cruz grande con sombra/brillo
+                    const key = sW + '|v3';
+                    let spr = PIX.shield.get(key); if (spr) return spr;
+                    const scale = sW < 18 ? 2 : 1;
+                    const W = Math.max(14, sW * scale);
+                    const H = Math.round(W * 1.38);
+                    spr = document.createElement('canvas'); spr.width = W; spr.height = H;
+                    const g = spr.getContext('2d');
+                    const mid = [139, 47, 214];
+                    const halfW = (y) => {
+                        const t = y / Math.max(1, H - 1);
+                        if (t < 0.07) return (W / 2) * (t / 0.07) * 0.93;
+                        if (t < 0.36) return W / 2 * 0.93;
+                        const u = (t - 0.36) / 0.64;
+                        return (W / 2) * 0.93 * (1 - u * u);
+                    };
+                    const inside = (x, y) => {
+                        if (x < 0 || y < 0 || x >= W || y >= H) return false;
+                        return Math.abs(x + 0.5 - W / 2) <= halfW(y) - 0.12;
+                    };
+                    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                        if (!inside(x, y)) continue;
+                        const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+                        let col;
+                        if (edge) col = '#2a0a40';
+                        else if (!inside(x + 1, y + 1)) col = '#501078';          // sombra BR
+                        else if (!inside(x - 1, y - 1)) col = '#d080ff';        // luz TL
+                        else if (!inside(x + 1, y) || !inside(x, y + 1)) col = '#8b2fd6';
+                        else {
+                            // volumen interior
+                            const ny = y / H, nx = x / W;
+                            if (nx + ny < 0.85) col = '#b44cff';
+                            else col = '#8b2fd6';
+                        }
+                        g.fillStyle = col;
+                        g.fillRect(x, y, 1, 1);
+                    }
+                    // Cruz grande (~1/3 del ancho)
+                    const cx = Math.round(W / 2), cy = Math.round(H * 0.40);
+                    const t = Math.max(3, Math.round(W / 5.5));
+                    const arm = Math.max(4, Math.round(W / 2.8));
+                    const paintCross = (col, dx, dy) => {
+                        g.fillStyle = col;
+                        g.fillRect(cx - Math.floor(t / 2) + dx, cy - arm + dy, t, arm * 2);
+                        g.fillRect(cx - arm + dx, cy - Math.floor(t / 2) + dy, arm * 2, t);
+                    };
+                    paintCross('#0a4028', 1, 1);
+                    paintCross('#00c864', 0, 0);
+                    // brillo superior de la cruz
+                    g.fillStyle = '#50ffa0';
+                    g.fillRect(cx - Math.floor(t / 2), cy - arm, t, Math.max(2, Math.round(arm * 0.35)));
+                    g.fillRect(cx - arm, cy - Math.floor(t / 2), arm * 2, Math.max(1, Math.round(t * 0.35)));
+                    PIX.shield.set(key, spr); return spr;
                 }
-                g.fillStyle = col;
-                g.fillRect(x, y, 1, 1);
-            }
-            // Cruz / plus de curación (más nítida)
-            const cx = Math.round(W / 2), cy = Math.round(H * 0.40);
-            const t = Math.max(2, Math.round(W / 9));
-            const arm = Math.max(3, Math.round(W / 3.6));
-            // sombra cruz
-            g.fillStyle = '#0a4028';
-            g.fillRect(cx - Math.floor(t / 2) + 1, cy - arm + 1, t, arm * 2);
-            g.fillRect(cx - arm + 1, cy - Math.floor(t / 2) + 1, arm * 2, t);
-            g.fillStyle = '#00ff88';
-            g.fillRect(cx - Math.floor(t / 2), cy - arm, t, arm * 2);
-            g.fillRect(cx - arm, cy - Math.floor(t / 2), arm * 2, t);
-            // brillo 1px en cruz
-            g.fillStyle = '#b6ffd9';
-            g.fillRect(cx - Math.floor(t / 2), cy - arm, Math.max(1, Math.floor(t / 2)), 2);
-            PIX.shield.set(key, spr); return spr;
-        }
 
     // Anillo de píldora pixel art (aro de las skills SPRINT/SHIELD): banda de
         // grosor fijo siguiendo el contorno de la cápsula, con bisel (borde
