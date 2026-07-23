@@ -221,7 +221,7 @@
             let isSprinting = this.sprintTime > 0;
             if (isSprinting) speedMult *= SKILL_PARAMS.sprintSpeedMult;
 
-            if (isSprinting && Math.random() < 0.45) this.spawnParticles(sim, 'BOLT');
+            if (isSprinting && Math.random() < 0.18) this.spawnParticles(sim, 'BOLT');
             if (speedMult < 0.2) speedMult = 0.2;
             if (Math.abs(this.boostX) > 0.1 || Math.abs(this.boostY) > 0.1) { this.boostX *= Math.pow(0.9, timeScale); this.boostY *= Math.pow(0.9, timeScale); } else { this.boostX = 0; this.boostY = 0; }
             let dx = 0, dy = 0;
@@ -254,21 +254,23 @@
         spawnParticles(sim, type) {
                     if (!sim.config.fx.enabled) return;
                     if (this.isBot && !sim.config.fx.enemyFX) return;
-                    let count = (type === 'BOLT') ? (Math.floor(Math.random() * 2) + 2) : (Math.floor(Math.random() * 3) + 4);
+                    let count = (type === 'BOLT') ? 1 : (Math.floor(Math.random() * 3) + 4);
                                 let scale = 1;
                                 for (let i = 0; i < count; i++) {
                                     let angle = Math.random() * Math.PI * 2;
                                     // Mismo origen que +/-: por TODO el cuerpo (no solo el borde)
-                                    let offset = this.r * Math.random() * 0.85;
-                                    let vy = (type === 'PLUS' || type === 'BOLT') ? -(Math.random() * 2 + 1) : (Math.random() * 2 + 1);
+                                    let offset = this.r * Math.random() * 0.75;
+                                    // BOLT más lento que los +++ (popup chill)
+                                    let vy = (type === 'PLUS') ? -(Math.random() * 2 + 1)
+                                        : (type === 'BOLT') ? -(Math.random() * 0.7 + 0.35)
+                                        : (Math.random() * 2 + 1);
                                     if (type === 'BOLT') {
-                                        // Popup idéntico a +++: flotan hacia arriba desde dentro de la píldora
                                         this.particles.push({
                                             x: Math.cos(angle) * offset,
                                             y: Math.sin(angle) * offset,
-                                            vx: (Math.random() - 0.5) * 1.6,
+                                            vx: (Math.random() - 0.5) * 0.55,
                                             vy: vy,
-                                            life: 1.0,
+                                            life: 1.15,
                                             type: type,
                                             rot: 0,
                                             scale: 1
