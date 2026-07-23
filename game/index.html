@@ -2254,6 +2254,38 @@
         const PIX_SCREEN_PX = 4;
         const PIX_FONT = "'VT323', monospace";
         const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map(), ring: new Map(), bolt: new Map(), magnet: null };
+
+    // Iconos pixel de pops (+ / - / rayo / escudo). Pequeños, sin fondo.
+    // Fallback a texto/procedural si el PNG no carga.
+    const FX_POP = {
+        plus:   { img: new Image(), ready: false },
+        minus:  { img: new Image(), ready: false },
+        bolt:   { img: new Image(), ready: false },
+        shield: { img: new Image(), ready: false }
+    };
+    (function loadFxPops() {
+        Object.keys(FX_POP).forEach(k => {
+            const e = FX_POP[k];
+            e.img.decoding = 'async';
+            e.img.onload = () => { e.ready = e.img.naturalWidth > 0; };
+            e.img.onerror = () => { e.ready = false; };
+            e.img.src = 'img/fx-pops/' + k + '.png';
+        });
+    })();
+    /** Dibuja un pop (+/-/bolt) centrado en (0,0) del ctx actual. */
+    function drawFxPop(ctx, kind, size, alphaMul) {
+        const e = FX_POP[kind];
+        const a = (alphaMul == null) ? 1 : alphaMul;
+        if (e && e.ready) {
+            const prev = ctx.imageSmoothingEnabled;
+            ctx.imageSmoothingEnabled = false;
+            ctx.globalAlpha *= a;
+            ctx.drawImage(e.img, -size / 2, -size / 2, size, size);
+            ctx.imageSmoothingEnabled = prev;
+            return true;
+        }
+        return false;
+    }
     if (document.fonts && document.fonts.load) document.fonts.load("32px 'VT323'");
     const _pixProbe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     function pixRgb(col) { _pixProbe.clearRect(0, 0, 1, 1); _pixProbe.fillStyle = col; _pixProbe.fillRect(0, 0, 1, 1); const d = _pixProbe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
@@ -2635,7 +2667,7 @@
                 /**
                                                  * FX de buffs sobre una célula.
                                                  * - Sprint/inmune: SIEMPRE visibles (rivales online/offline).
-                                                 * - Sprint: aro dorado + pops ⚡ tipo +/- fijos alrededor (sin girar el glifo).
+                                                 * - Sprint: aro dorado + pops de rayo flotantes tipo +++ (por todo el cuerpo).
                                                  * - Inmune: aros + escudo (sin partículas).
                                                  * - Imán: ondas + partículas azules en el radio (sin icono).
                                                  */
@@ -2651,7 +2683,7 @@
                                                     const prev = ctx.imageSmoothingEnabled;
                                                     ctx.imageSmoothingEnabled = false;
 
-                                                    // --- SPRINT: aro dorado + pops ⚡ tipo +/- fijos alrededor de la píldora ---
+                                                    // --- SPRINT: aro dorado + pops de rayo tipo +++ (partículas del sim / client) ---
                                                                                                         if (c.sprintTime > 0 && showAura) {
                                                                                                             ctx.save();
                                                                                                             ctx.translate(c.x, c.y);
@@ -2661,8 +2693,8 @@
                                                                                                             ctx.globalAlpha = alpha;
                                                                                                             ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
                                                                                                             ctx.restore();
-                                                                                                            // Pops en world-space: distribución fija, glifo DERECHO (no gira).
-                                                                                                            drawSprintPopsAround(ctx, c, pW, pH, alpha, now, showExtra ? 6 : 5);
+                                                                                                            // Online (sin sim particles): emitir pops client-side como +++
+                                                                                                            ensureSprintBoltPops(c, now, showExtra);
                                                                                                         }
 
                                                     // --- INMUNE: aros + escudo (sin partículas) ---
@@ -2684,19 +2716,24 @@
                                                         ctx.fill();
                                                         ctx.restore();
 
-                                                        const shWorld = Math.max(14, Math.min(42, c.r * 0.62));
-                                                        const sW = Math.max(12, Math.min(32, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
-                                                        const spr = pixShieldSprite(sW);
-                                                        const bob = Math.sin(now / 180) * (c.r * 0.05);
-                                                        const glow = 1 + 0.08 * (Math.floor(now / 130) % 2);
-                                                        const dw = shWorld * glow, dh = (spr.height / spr.width) * dw;
-                                                        const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
-                                                        ctx.save();
-                                                        ctx.globalAlpha = alpha;
-                                                        ctx.imageSmoothingEnabled = false;
-                                                        ctx.drawImage(spr, Math.round(sx - dw / 2), Math.round(sy - dh / 2), Math.round(dw), Math.round(dh));
-                                                        ctx.restore();
-                                                    }
+                                                        // Escudo: icono pixel si hay; si no, procedural
+                                                                                                                const shWorld = Math.max(14, Math.min(42, c.r * 0.62));
+                                                                                                                const bob = Math.sin(now / 180) * (c.r * 0.05);
+                                                                                                                const glow = 1 + 0.08 * (Math.floor(now / 130) % 2);
+                                                                                                                const dw = shWorld * glow;
+                                                                                                                const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
+                                                                                                                ctx.save();
+                                                                                                                ctx.translate(sx, sy);
+                                                                                                                ctx.globalAlpha = alpha;
+                                                                                                                if (!drawFxPop(ctx, 'shield', dw, 1)) {
+                                                                                                                    const sW = Math.max(12, Math.min(32, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
+                                                                                                                    const spr = pixShieldSprite(sW);
+                                                                                                                    const dh = (spr.height / spr.width) * dw;
+                                                                                                                    ctx.imageSmoothingEnabled = false;
+                                                                                                                    ctx.drawImage(spr, -dw / 2, -dh / 2, dw, dh);
+                                                                                                                }
+                                                                                                                ctx.restore();
+                                                                                                            }
 
                                                     // --- IMÁN por celda (rivales/bots): solo partículas en radio ---
                                                     if (c.magnetTime > 0 && showExtra && !isSelf) {
@@ -2708,51 +2745,45 @@
                                                 }
 
                                                 /**
-                                                                                                 * Pops de sprint = mismo estilo que +/- (texto pixel dorado ⚡),
-                                                                                                 * repartidos fijos por el contorno de la píldora.
-                                                                                                 * No siguen la velocidad ni giran el glifo; solo un bob/alpha suave.
+                                                                                                 * Emite pops de rayo como los +++ (flotan hacia arriba desde
+                                                                                                 * dentro de la píldora). Offline ya lo hace sim.js; aquí cubre
+                                                                                                 * online y densifica un poco el look.
                                                                                                  */
-                                                                                                function drawSprintPopsAround(ctx, c, pW, pH, alpha, now, nWant) {
-                                                                                                    const n = Math.max(4, Math.min(7, nWant | 0));
-                                                                                                    const fSize = Math.max(14, Math.min(34, c.r / 1.45));
-                                                                                                    // Elipse del contorno en espacio local de la píldora (antes del giro -45°)
-                                                                                                    const rx = pW * 0.62 + fSize * 0.2;
-                                                                                                    const ry = pH * 0.62 + fSize * 0.2;
-                                                                                                    // Separación mínima en arco ≈ tamaño del glifo
-                                                                                                    const circ = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)));
-                                                                                                    const minArc = fSize * 1.35;
-                                                                                                    const count = Math.min(n, Math.max(3, Math.floor(circ / minArc)));
-
-                                                                                                    // Giro de la píldora (mismo que el cuerpo)
-                                                                                                    const ca = Math.cos(-Math.PI / 4), sa = Math.sin(-Math.PI / 4);
-
-                                                                                                    ctx.save();
-                                                                                                    ctx.font = `${Math.round(fSize)}px ${PIX_FONT}`;
-                                                                                                    ctx.textAlign = 'center';
-                                                                                                    ctx.textBaseline = 'middle';
-                                                                                                    ctx.lineJoin = 'round';
-                                                                                                    ctx.lineWidth = Math.max(2, Math.round(fSize / 8));
-                                                                                                    ctx.strokeStyle = '#000';
-                                                                                                    ctx.fillStyle = '#FFD700';
-
-                                                                                                    for (let i = 0; i < count; i++) {
-                                                                                                        // Ángulo FIJO por slot (sin drift que haga “girar” el patrón)
-                                                                                                        const ang = (i / count) * Math.PI * 2;
-                                                                                                        // Bob radial muy suave
-                                                                                                        const bob = 1 + 0.03 * Math.sin(now / 1100 + i * 1.3);
-                                                                                                        const lx = Math.cos(ang) * rx * bob;
-                                                                                                        const ly = Math.sin(ang) * ry * bob;
-                                                                                                        // A world offset (píldora rotada -45°)
-                                                                                                        const wx = c.x + lx * ca - ly * sa;
-                                                                                                        const wy = c.y + lx * sa + ly * ca;
-                                                                                                        const tw = 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(now / 900 + i * 1.9));
-                                                                                                        ctx.globalAlpha = alpha * tw;
-                                                                                                        // Glifo upright (no rotate): igual que los + / -
-                                                                                                        ctx.strokeText('⚡', wx, wy);
-                                                                                                        ctx.fillText('⚡', wx, wy);
+                                                                                                function ensureSprintBoltPops(c, now, showExtra) {
+                                                                                                    if (!c.particles) c.particles = [];
+                                                                                                    const remote = !!(sim && sim.isRemote);
+                                                                                                    // Online no tiene spawn del sim: emitir aquí.
+                                                                                                    // Offline: el sim ya spawnea; solo un refuerzo suave.
+                                                                                                    const gap = remote ? (showExtra ? 45 : 70) : (showExtra ? 90 : 130);
+                                                                                                    if (!c._lastBoltPop) c._lastBoltPop = 0;
+                                                                                                    if (now - c._lastBoltPop >= gap) {
+                                                                                                        c._lastBoltPop = now;
+                                                                                                        const n = remote ? (showExtra ? 3 : 2) : 1;
+                                                                                                        for (let i = 0; i < n; i++) {
+                                                                                                            const ang = Math.random() * Math.PI * 2;
+                                                                                                            const off = c.r * Math.random() * 0.85;
+                                                                                                            c.particles.push({
+                                                                                                                x: Math.cos(ang) * off,
+                                                                                                                y: Math.sin(ang) * off,
+                                                                                                                vx: (Math.random() - 0.5) * 1.6,
+                                                                                                                vy: -(Math.random() * 2 + 1),
+                                                                                                                life: 1.0,
+                                                                                                                type: 'BOLT',
+                                                                                                                rot: 0,
+                                                                                                                scale: 1
+                                                                                                            });
+                                                                                                        }
                                                                                                     }
-                                                                                                    ctx.globalAlpha = alpha;
-                                                                                                    ctx.restore();
+                                                                                                    // Tick client-side en online (el sim remoto no mueve particles)
+                                                                                                    if (remote) {
+                                                                                                        for (let i = c.particles.length - 1; i >= 0; i--) {
+                                                                                                            const p = c.particles[i];
+                                                                                                            p.life -= 0.05;
+                                                                                                            p.x += p.vx;
+                                                                                                            p.y += p.vy;
+                                                                                                            if (p.life <= 0) c.particles.splice(i, 1);
+                                                                                                        }
+                                                                                                    }
                                                                                                 }
 
                                 /** Partículas azules del imán en un radio (sin dibujo de herradura). */
@@ -3146,19 +3177,40 @@
             ctx.restore();
             // Buff FX (aros, rayos, escudo, imán por celda) — online y offline
             drawCellBuffFx(ctx, c, alpha);
-            // +/- particles (no bolts; bolts van en buff fx)
-            if (c.particles && c.particles.length > 0) {
-                ctx.save(); ctx.translate(c.x, c.y);
-                c.particles.forEach(p => {
-                    if (p.type === 'BOLT') return;
-                    ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = Math.ceil(Math.max(0, p.life) * 4) / 4 * alpha;
-                    ctx.font = `${Math.max(18, c.r / 1.3)}px ${PIX_FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                    if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.fillText("+", 0, 0); }
-                    else { ctx.fillStyle = '#ff0000'; ctx.fillText("-", 0, 0); }
-                    ctx.restore();
-                });
-                ctx.restore();
-            }
+            // Pops de masa / sprint: mismo sistema de partículas (+++ / --- / ⚡)
+                        if (c.particles && c.particles.length > 0) {
+                            ctx.save(); ctx.translate(c.x, c.y);
+                            c.particles.forEach(p => {
+                                ctx.save();
+                                ctx.translate(p.x, p.y);
+                                const lifeA = Math.ceil(Math.max(0, p.life) * 4) / 4 * alpha;
+                                ctx.globalAlpha = lifeA;
+                                const sz = Math.max(14, Math.min(36, c.r / 1.35));
+                                if (p.type === 'BOLT') {
+                                    if (!drawFxPop(ctx, 'bolt', sz, 1)) {
+                                        ctx.font = `${Math.round(sz)}px ${PIX_FONT}`;
+                                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                                        ctx.lineWidth = Math.max(2, Math.round(sz / 8));
+                                        ctx.strokeStyle = '#000'; ctx.fillStyle = '#FFD700';
+                                        ctx.strokeText('⚡', 0, 0); ctx.fillText('⚡', 0, 0);
+                                    }
+                                } else if (p.type === 'PLUS') {
+                                    if (!drawFxPop(ctx, 'plus', sz, 1)) {
+                                        ctx.font = `${Math.round(sz)}px ${PIX_FONT}`;
+                                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                                        ctx.fillStyle = '#00ff00'; ctx.fillText('+', 0, 0);
+                                    }
+                                } else {
+                                    if (!drawFxPop(ctx, 'minus', sz * 0.9, 1)) {
+                                        ctx.font = `${Math.round(sz)}px ${PIX_FONT}`;
+                                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                                        ctx.fillStyle = '#ff0000'; ctx.fillText('-', 0, 0);
+                                    }
+                                }
+                                ctx.restore();
+                            });
+                            ctx.restore();
+                        }
             if (c.name) {
                 ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
                 const fSize = Math.max(14, c.r / 1.1); ctx.font = `${fSize}px ${PIX_FONT}`;

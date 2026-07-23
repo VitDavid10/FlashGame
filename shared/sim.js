@@ -221,7 +221,7 @@
             let isSprinting = this.sprintTime > 0;
             if (isSprinting) speedMult *= SKILL_PARAMS.sprintSpeedMult;
 
-            if (isSprinting && Math.random() < 0.08) this.spawnParticles(sim, 'BOLT');
+            if (isSprinting && Math.random() < 0.45) this.spawnParticles(sim, 'BOLT');
             if (speedMult < 0.2) speedMult = 0.2;
             if (Math.abs(this.boostX) > 0.1 || Math.abs(this.boostY) > 0.1) { this.boostX *= Math.pow(0.9, timeScale); this.boostY *= Math.pow(0.9, timeScale); } else { this.boostX = 0; this.boostY = 0; }
             let dx = 0, dy = 0;
@@ -254,28 +254,29 @@
         spawnParticles(sim, type) {
                     if (!sim.config.fx.enabled) return;
                     if (this.isBot && !sim.config.fx.enemyFX) return;
-                    let count = (type === 'BOLT') ? 1 : (Math.floor(Math.random() * 3) + 4); let scale = (type === 'BOLT') ? Math.max(1, this.r / 15) : 1;
-                    for (let i = 0; i < count; i++) {
-                        let angle = Math.random() * Math.PI * 2; let offset = this.r * Math.random(); let vy = (type === 'PLUS') ? -(Math.random() * 2 + 1) : (Math.random() * 2 + 1);
-                        if (type === 'BOLT') {
-                                                    // Pocas pops suaves (el look principal son rayos fijos en el cliente).
-                                                    const spx = this.vx + this.boostX, spy = this.vy + this.boostY;
-                                                    const sp = Math.hypot(spx, spy);
-                                                    if (sp > 0.15) angle = Math.atan2(spy, spx) + Math.PI + (Math.random() - 0.5) * 0.5;
-                                                    const edge = this.r * (0.7 + Math.random() * 0.35);
-                                                    this.particles.push({
-                                                        x: Math.cos(angle) * edge,
-                                                        y: Math.sin(angle) * edge,
-                                                        vx: Math.cos(angle) * (0.35 + Math.random() * 0.45),
-                                                        vy: Math.sin(angle) * (0.35 + Math.random() * 0.45) - 0.25,
-                                                        life: 1.0,
-                                                        type: type,
-                                                        rot: 0,
-                                                        scale: scale
-                                                    });
-                                                }
-                        else { this.particles.push({ x: Math.cos(angle) * offset, y: Math.sin(angle) * offset, vx: (Math.random() - 0.5) * 2, vy: vy, life: 1.0, type: type, rot: Math.random() * 360, scale: 1 }); }
-                    }
+                    let count = (type === 'BOLT') ? (Math.floor(Math.random() * 2) + 2) : (Math.floor(Math.random() * 3) + 4);
+                                let scale = 1;
+                                for (let i = 0; i < count; i++) {
+                                    let angle = Math.random() * Math.PI * 2;
+                                    // Mismo origen que +/-: por TODO el cuerpo (no solo el borde)
+                                    let offset = this.r * Math.random() * 0.85;
+                                    let vy = (type === 'PLUS' || type === 'BOLT') ? -(Math.random() * 2 + 1) : (Math.random() * 2 + 1);
+                                    if (type === 'BOLT') {
+                                        // Popup idéntico a +++: flotan hacia arriba desde dentro de la píldora
+                                        this.particles.push({
+                                            x: Math.cos(angle) * offset,
+                                            y: Math.sin(angle) * offset,
+                                            vx: (Math.random() - 0.5) * 1.6,
+                                            vy: vy,
+                                            life: 1.0,
+                                            type: type,
+                                            rot: 0,
+                                            scale: 1
+                                        });
+                                    } else {
+                                        this.particles.push({ x: Math.cos(angle) * offset, y: Math.sin(angle) * offset, vx: (Math.random() - 0.5) * 2, vy: vy, life: 1.0, type: type, rot: Math.random() * 360, scale: 1 });
+                                    }
+                                }
                 }
 
         botAI(sim, delta) {

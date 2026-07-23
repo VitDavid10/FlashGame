@@ -1,0 +1,11 @@
+Iconos pixel pequeños para pops de buff / masa (sin fondo).
+
+  plus.png    — + verde (mass up)
+  minus.png   — - rojo (mass down)
+  bolt.png    — rayo dorado (sprint)
+  shield.png  — escudo morado (inmune)
+
+Origen: Grok Imagine → recorte fondo + nearest 32×32.
+raw/ guarda los PNG originales de Imagine.
+
+Uso: game/index.html (FX_POP). Si falta un PNG, cae a texto/procedural.
