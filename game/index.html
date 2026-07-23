@@ -2907,7 +2907,10 @@
     // acento/fondo que el panel de skills) y los botones SPECTATE/BACK TO MENU
     // con su arte ya horneado (banner + texto), pisando el generico de _btnImgRule.
     function _resultOverlayRule() {
-        let css = 'body.pixel-pack ' + _pixFrameRule('.result-box', skillPanelBorderPx, skillPanelBg, skillPanelBgAlpha, 'menu-square');
+        // bgAlpha 0 (fondo transparente): el interior lo rellena el propio centro
+        // negro de menu-square.png (border-image fill), así que las esquinas
+        // redondeadas dejan de mostrar el rectángulo casi-negro sobre el juego.
+        let css = 'body.pixel-pack ' + _pixFrameRule('.result-box', skillPanelBorderPx, skillPanelBg, 0, 'menu-square');
         if (cartelUsesAtlas('try-again')) {
             css += 'body.pixel-pack #btnTryAgainOnline{border:none!important;border-radius:0!important;clip-path:none!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('try-again') + ') center/100% 100% no-repeat!important;' +
