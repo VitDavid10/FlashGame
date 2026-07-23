@@ -258,24 +258,22 @@
                     for (let i = 0; i < count; i++) {
                         let angle = Math.random() * Math.PI * 2; let offset = this.r * Math.random(); let vy = (type === 'PLUS') ? -(Math.random() * 2 + 1) : (Math.random() * 2 + 1);
                         if (type === 'BOLT') {
-                            // Estela detrás del movimiento (si hay velocidad); si no, radial.
-                            const spx = this.vx + this.boostX, spy = this.vy + this.boostY;
-                            const sp = Math.hypot(spx, spy);
-                            if (sp > 0.15) angle = Math.atan2(spy, spx) + Math.PI + (Math.random() - 0.5) * 0.9;
-                            const edge = this.r * (0.75 + Math.random() * 0.35);
-                            // rot: el glifo del rayo apunta en la dirección de la estela (hacia atrás).
-                            const rot = (angle * 180 / Math.PI) + 90;
-                            this.particles.push({
-                                x: Math.cos(angle) * edge,
-                                y: Math.sin(angle) * edge,
-                                vx: Math.cos(angle) * (2.2 + Math.random() * 2),
-                                vy: Math.sin(angle) * (2.2 + Math.random() * 2),
-                                life: 0.75 + Math.random() * 0.25,
-                                type: type,
-                                rot: rot,
-                                scale: scale
-                            });
-                        }
+                                                    // Estela detrás del movimiento; flotación tipo +/- (no rayo-stroke).
+                                                    const spx = this.vx + this.boostX, spy = this.vy + this.boostY;
+                                                    const sp = Math.hypot(spx, spy);
+                                                    if (sp > 0.15) angle = Math.atan2(spy, spx) + Math.PI + (Math.random() - 0.5) * 0.9;
+                                                    const edge = this.r * (0.55 + Math.random() * 0.55);
+                                                    this.particles.push({
+                                                        x: Math.cos(angle) * edge,
+                                                        y: Math.sin(angle) * edge,
+                                                        vx: Math.cos(angle) * (1.2 + Math.random() * 1.6) + (Math.random() - 0.5) * 0.8,
+                                                        vy: Math.sin(angle) * (1.2 + Math.random() * 1.6) - (0.4 + Math.random() * 0.8),
+                                                        life: 0.85 + Math.random() * 0.25,
+                                                        type: type,
+                                                        rot: 0,
+                                                        scale: scale
+                                                    });
+                                                }
                         else { this.particles.push({ x: Math.cos(angle) * offset, y: Math.sin(angle) * offset, vx: (Math.random() - 0.5) * 2, vy: vy, life: 1.0, type: type, rot: Math.random() * 360, scale: 1 }); }
                     }
                 }

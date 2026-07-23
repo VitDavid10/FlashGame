@@ -2633,168 +2633,128 @@
                 }
 
                 /**
-                                 * FX de buffs sobre una célula.
-                                 * - Sprint/inmune: SIEMPRE visibles (rivales online/offline).
-                                 * - Sprint: estilo clásico = aro dorado + rayitos stroke (no stickers gordos).
-                                 * - Inmune: aros + escudo pixel sin fondo + partículas.
-                                 * - Imán: SOLO partículas azules en el radio (sin dibujo de herradura).
-                                 */
-                                function drawCellBuffFx(ctx, c, alpha) {
-                                    const isSelf = c.id === 'me' || (!c.isBot && sim && !sim.isRemote);
-                                    const showAura = true;
-                                    const showExtra = isSelf || !c.isBot || enableEnemyFX;
-                                    if (!showAura && !showExtra) return;
+                                                 * FX de buffs sobre una célula.
+                                                 * - Sprint/inmune: SIEMPRE visibles (rivales online/offline).
+                                                 * - Sprint: aro dorado + “rayitos” como los +/- (texto pixel dorado).
+                                                 * - Inmune: aros + escudo (sin partículas).
+                                                 * - Imán: ondas + partículas azules en el radio (sin icono).
+                                                 */
+                                                function drawCellBuffFx(ctx, c, alpha) {
+                                                    const isSelf = c.id === 'me' || (!c.isBot && sim && !sim.isRemote);
+                                                    const showAura = true;
+                                                    const showExtra = isSelf || !c.isBot || enableEnemyFX;
+                                                    if (!showAura && !showExtra) return;
 
-                                    const now = performance.now();
-                                    const pW = c.r * 2.0, pH = pW * PILL_RATIO;
-                                    const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-                                    const prev = ctx.imageSmoothingEnabled;
-                                    ctx.imageSmoothingEnabled = false;
+                                                    const now = performance.now();
+                                                    const pW = c.r * 2.0, pH = pW * PILL_RATIO;
+                                                    const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
+                                                    const prev = ctx.imageSmoothingEnabled;
+                                                    ctx.imageSmoothingEnabled = false;
 
-                                    // --- SPRINT: aro dorado clásico + rayitos simples (stroke) ---
-                                    if (c.sprintTime > 0 && showAura) {
-                                        ctx.save();
-                                        ctx.translate(c.x, c.y);
-                                        ctx.rotate(-Math.PI / 4);
-                                        const step = Math.floor(now / 150) % 2;
-                                        const pulse = 6 + 3 * step;
-                                        ctx.globalAlpha = alpha;
-                                        ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
-                                        ctx.restore();
+                                                    // --- SPRINT: aro dorado + rayitos tipo +/- (texto pixel) ---
+                                                    if (c.sprintTime > 0 && showAura) {
+                                                        ctx.save();
+                                                        ctx.translate(c.x, c.y);
+                                                        ctx.rotate(-Math.PI / 4);
+                                                        const step = Math.floor(now / 150) % 2;
+                                                        const pulse = 6 + 3 * step;
+                                                        ctx.globalAlpha = alpha;
+                                                        ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
+                                                        ctx.restore();
 
-                                        // Rayitos: partículas del sim + unos pocos cosméticos (estilo viejo, stroke)
-                                        ctx.save();
-                                        ctx.translate(c.x, c.y);
-                                        const parts = c.particles || [];
-                                        for (let i = 0; i < parts.length; i++) {
-                                            if (parts[i].type === 'BOLT') drawClassicBolt(ctx, parts[i], c.r, alpha);
-                                        }
-                                        // Refuerzo online/offline: pocos rayitos (no enjambre)
-                                        const nBolt = showExtra ? 3 : 2;
-                                        const vx = c.vx || 0, vy = c.vy || 0;
-                                        const sp = Math.hypot(vx, vy);
-                                        const baseAng = sp > 0.12 ? Math.atan2(vy, vx) + Math.PI : now / 400;
-                                        for (let i = 0; i < nBolt; i++) {
-                                            const h = fxHash(c.x, c.y, i + Math.floor(now / 110));
-                                            const h2 = fxHash(c.y, c.x, i * 2.4 + Math.floor(now / 110));
-                                            const life = 0.5 + 0.5 * (1 - ((now / 160 + h) % 1));
-                                            const ang = baseAng + (h - 0.5) * 0.9 + (sp < 0.12 ? i * 2.1 : 0);
-                                            const dist = c.r * (0.85 + h2 * 0.45);
-                                            drawClassicBolt(ctx, {
-                                                x: Math.cos(ang) * dist,
-                                                y: Math.sin(ang) * dist,
-                                                rot: (ang * 180 / Math.PI) + 90,
-                                                life: life,
-                                                scale: Math.max(1, c.r / 18)
-                                            }, c.r, alpha);
-                                        }
-                                        ctx.restore();
-                                    }
+                                                        // Misma familia visual que PLUS/MINUS: glifo pixel con stroke negro
+                                                        ctx.save();
+                                                        ctx.translate(c.x, c.y);
+                                                        const parts = c.particles || [];
+                                                        for (let i = 0; i < parts.length; i++) {
+                                                            if (parts[i].type === 'BOLT') drawSprintPop(ctx, parts[i], c.r, alpha);
+                                                        }
+                                                        // Cosméticos online/offline (pocos), mismo estilo
+                                                        const nBolt = showExtra ? 4 : 3;
+                                                        const vx = c.vx || 0, vy = c.vy || 0;
+                                                        const sp = Math.hypot(vx, vy);
+                                                        const baseAng = sp > 0.12 ? Math.atan2(vy, vx) + Math.PI : now / 500;
+                                                        for (let i = 0; i < nBolt; i++) {
+                                                            const h = fxHash(c.x, c.y, i + Math.floor(now / 120));
+                                                            const h2 = fxHash(c.y, c.x, i * 2.4 + Math.floor(now / 120));
+                                                            const life = 0.45 + 0.55 * (1 - ((now / 180 + h) % 1));
+                                                            const ang = baseAng + (h - 0.5) * 1.0 + (sp < 0.12 ? i * 1.7 : 0);
+                                                            const dist = c.r * (0.55 + h2 * 0.9 + (1 - life) * 0.35);
+                                                            drawSprintPop(ctx, {
+                                                                x: Math.cos(ang) * dist,
+                                                                y: Math.sin(ang) * dist,
+                                                                life: life,
+                                                                scale: 1
+                                                            }, c.r, alpha);
+                                                        }
+                                                        ctx.restore();
+                                                    }
 
-                                    // --- INMUNE: aros + escudo sin fondo feo + partículas ---
-                                    if (c.immuneTime > 0 && showAura) {
-                                        ctx.save();
-                                        ctx.translate(c.x, c.y);
-                                        ctx.rotate(-Math.PI / 4);
-                                        const step = Math.floor(now / 160) % 2;
-                                        const gap = c.r * (0.08 + 0.03 * step);
-                                        ctx.globalAlpha = alpha * 0.95;
-                                        ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
-                                        const gap2 = gap + c.r * 0.16;
-                                        ctx.globalAlpha = alpha * (0.5 + 0.25 * step);
-                                        ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
-                                        // tinte suave en cuerpo (sin rectángulos de “fondo”)
-                                        ctx.globalAlpha = alpha * 0.16;
-                                        ctx.fillStyle = '#a020f0';
-                                        ctx.beginPath();
-                                        ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
-                                        ctx.fill();
-                                        ctx.restore();
+                                                    // --- INMUNE: aros + escudo (sin partículas) ---
+                                                    if (c.immuneTime > 0 && showAura) {
+                                                        ctx.save();
+                                                        ctx.translate(c.x, c.y);
+                                                        ctx.rotate(-Math.PI / 4);
+                                                        const step = Math.floor(now / 160) % 2;
+                                                        const gap = c.r * (0.08 + 0.03 * step);
+                                                        ctx.globalAlpha = alpha * 0.95;
+                                                        ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
+                                                        const gap2 = gap + c.r * 0.16;
+                                                        ctx.globalAlpha = alpha * (0.5 + 0.25 * step);
+                                                        ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
+                                                        ctx.globalAlpha = alpha * 0.16;
+                                                        ctx.fillStyle = '#a020f0';
+                                                        ctx.beginPath();
+                                                        ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
+                                                        ctx.fill();
+                                                        ctx.restore();
 
-                                        // Escudo mini upright — solo el sprite (transparente fuera), sin glow rect
-                                        const shWorld = Math.max(14, Math.min(42, c.r * 0.62));
-                                        const sW = Math.max(12, Math.min(32, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
-                                        const spr = pixShieldSprite(sW);
-                                        const bob = Math.sin(now / 180) * (c.r * 0.05);
-                                        const glow = 1 + 0.08 * (Math.floor(now / 130) % 2);
-                                        const dw = shWorld * glow, dh = (spr.height / spr.width) * dw;
-                                        const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
-                                        ctx.save();
-                                        ctx.globalAlpha = alpha;
-                                        ctx.imageSmoothingEnabled = false;
-                                        ctx.drawImage(spr, Math.round(sx - dw / 2), Math.round(sy - dh / 2), Math.round(dw), Math.round(dh));
-                                        ctx.restore();
+                                                        const shWorld = Math.max(14, Math.min(42, c.r * 0.62));
+                                                        const sW = Math.max(12, Math.min(32, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
+                                                        const spr = pixShieldSprite(sW);
+                                                        const bob = Math.sin(now / 180) * (c.r * 0.05);
+                                                        const glow = 1 + 0.08 * (Math.floor(now / 130) % 2);
+                                                        const dw = shWorld * glow, dh = (spr.height / spr.width) * dw;
+                                                        const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
+                                                        ctx.save();
+                                                        ctx.globalAlpha = alpha;
+                                                        ctx.imageSmoothingEnabled = false;
+                                                        ctx.drawImage(spr, Math.round(sx - dw / 2), Math.round(sy - dh / 2), Math.round(dw), Math.round(dh));
+                                                        ctx.restore();
+                                                    }
 
-                                        // Partículas violeta (las que gustan)
-                                        const nSpark = showExtra ? 7 : 4;
-                                        ctx.save();
-                                        for (let i = 0; i < nSpark; i++) {
-                                            const h = fxHash(c.x + 1, c.y, i + Math.floor(now / 100));
-                                            const h2 = fxHash(c.y + 2, c.x, i * 2.7 + Math.floor(now / 100));
-                                            const ang = h * Math.PI * 2 + now / 700;
-                                            const dist = c.r * (0.95 + h2 * 0.55);
-                                            const px = c.x + Math.cos(ang) * dist;
-                                            const py = c.y + Math.sin(ang) * dist;
-                                            const sz = 2 + Math.floor(h2 * 3);
-                                            const a = alpha * (0.4 + 0.6 * ((Math.sin(now / 90 + i) + 1) / 2));
-                                            ctx.globalAlpha = a;
-                                            ctx.fillStyle = h > 0.5 ? '#e0a0ff' : '#a020f0';
-                                            ctx.fillRect(Math.round(px - sz / 2), Math.round(py - sz / 2), sz, sz);
-                                            if (h > 0.7) {
-                                                ctx.fillStyle = '#ffffff';
-                                                ctx.fillRect(Math.round(px - 1), Math.round(py - 1), 2, 2);
-                                            }
-                                        }
-                                        ctx.restore();
-                                    }
+                                                    // --- IMÁN por celda (rivales/bots): solo partículas en radio ---
+                                                    if (c.magnetTime > 0 && showExtra && !isSelf) {
+                                                        const mR = ((typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.magnetRange) ? SKILL_PARAMS.magnetRange : 200) + c.r;
+                                                        drawMagnetParticles(ctx, c.x, c.y, mR, alpha, c.x + c.y);
+                                                    }
 
-                                    // --- IMÁN por celda (rivales/bots): solo partículas en radio, sin icono ---
-                                    if (c.magnetTime > 0 && showExtra && !isSelf) {
-                                        const mR = ((typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.magnetRange) ? SKILL_PARAMS.magnetRange : 200) + c.r;
-                                        drawMagnetParticles(ctx, c.x, c.y, mR, alpha, c.x + c.y);
-                                    }
+                                                    ctx.imageSmoothingEnabled = prev;
+                                                }
 
-                                    ctx.imageSmoothingEnabled = prev;
-                                }
-
-                                /** Rayito clásico (stroke zigzag dorado + reborde oscuro). Más natural que el sticker. */
-                                function drawClassicBolt(ctx, p, cellR, alpha) {
-                                    const life = Math.max(0, Math.min(1, p.life == null ? 1 : p.life));
-                                    const sc = Math.max(0.85, Math.min(2.2, (p.scale || 1) * (0.75 + 0.35 * life)));
-                                    const len = Math.max(10, Math.min(28, cellR * 0.55)) * sc;
-                                    ctx.save();
-                                    ctx.translate(p.x, p.y);
-                                    ctx.rotate(((p.rot || 0) * Math.PI) / 180);
-                                    ctx.globalAlpha = Math.ceil(life * 4) / 4 * alpha;
-                                    ctx.lineCap = 'square';
-                                    ctx.lineJoin = 'miter';
-                                    // reborde
-                                    ctx.strokeStyle = '#3a2200';
-                                    ctx.lineWidth = 4;
-                                    ctx.beginPath();
-                                    ctx.moveTo(0, -len * 0.45);
-                                    ctx.lineTo(len * 0.18, -len * 0.1);
-                                    ctx.lineTo(-len * 0.08, len * 0.05);
-                                    ctx.lineTo(len * 0.22, len * 0.45);
-                                    ctx.stroke();
-                                    // núcleo oro
-                                    ctx.strokeStyle = '#FFD700';
-                                    ctx.lineWidth = 2;
-                                    ctx.beginPath();
-                                    ctx.moveTo(0, -len * 0.45);
-                                    ctx.lineTo(len * 0.18, -len * 0.1);
-                                    ctx.lineTo(-len * 0.08, len * 0.05);
-                                    ctx.lineTo(len * 0.22, len * 0.45);
-                                    ctx.stroke();
-                                    // punta clara
-                                    ctx.strokeStyle = '#fff3a0';
-                                    ctx.lineWidth = 1;
-                                    ctx.beginPath();
-                                    ctx.moveTo(0, -len * 0.45);
-                                    ctx.lineTo(len * 0.12, -len * 0.18);
-                                    ctx.stroke();
-                                    ctx.restore();
-                                }
+                                                /**
+                                                 * Rayito de sprint al estilo de los +/- de masa:
+                                                 * texto pixel (VT323) dorado con contorno negro.
+                                                 * Usa ⚡; si el glifo no pinta bien, cae a "Z".
+                                                 */
+                                                function drawSprintPop(ctx, p, cellR, alpha) {
+                                                    const life = Math.max(0, Math.min(1, p.life == null ? 1 : p.life));
+                                                    const fSize = Math.max(14, Math.min(42, (cellR / 1.35) * (p.scale > 1 ? Math.min(1.4, 0.9 + p.scale * 0.05) : 1)));
+                                                    ctx.save();
+                                                    ctx.translate(p.x, p.y);
+                                                    ctx.globalAlpha = Math.ceil(life * 4) / 4 * alpha;
+                                                    ctx.font = `${Math.round(fSize)}px ${PIX_FONT}`;
+                                                    ctx.textAlign = 'center';
+                                                    ctx.textBaseline = 'middle';
+                                                    ctx.lineJoin = 'round';
+                                                    ctx.lineWidth = Math.max(2, Math.round(fSize / 8));
+                                                    ctx.strokeStyle = '#000';
+                                                    ctx.fillStyle = '#FFD700';
+                                                    const glyph = '⚡';
+                                                    ctx.strokeText(glyph, 0, 0);
+                                                    ctx.fillText(glyph, 0, 0);
+                                                    ctx.restore();
+                                                }
 
                                 /** Partículas azules del imán en un radio (sin dibujo de herradura). */
                                 function drawMagnetParticles(ctx, x, y, radius, alpha, seed) {
@@ -3232,8 +3192,12 @@
             ctx.save(); ctx.translate(c.x, c.y);
             c.particles.forEach(p => {
                 ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = p.life * alpha;
-                if (p.type === 'BOLT') { ctx.scale(p.scale, p.scale); ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 3; ctx.shadowColor = '#FFF'; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(0, 0); ctx.lineTo(-2, 2); ctx.lineTo(5, 5); ctx.stroke(); }
-                else { ctx.font = `bold ${Math.max(16, c.r/1.5)}px Russo One`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 5; ctx.fillText("+", 0, 0); } else { ctx.fillStyle = '#ff0000'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5; ctx.fillText("-", 0, 0); } }
+                if (p.type === 'BOLT') {
+                                    ctx.font = `${Math.max(16, c.r / 1.4)}px Russo One`;
+                                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                                    ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.fillStyle = '#FFD700';
+                                    ctx.strokeText('⚡', 0, 0); ctx.fillText('⚡', 0, 0);
+                                } else { ctx.font = `bold ${Math.max(16, c.r/1.5)}px Russo One`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 5; ctx.fillText("+", 0, 0); } else { ctx.fillStyle = '#ff0000'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5; ctx.fillText("-", 0, 0); } }
                 ctx.restore();
             });
             ctx.restore();
