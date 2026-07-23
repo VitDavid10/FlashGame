@@ -246,9 +246,11 @@
 
             let maxAllowed = speedMult * 1.2, currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy); if (currentSpeed > maxAllowed) { let ratio = maxAllowed / currentSpeed; this.vx *= ratio; this.vy *= ratio; }
             this.x += (this.vx + this.boostX) * timeScale; this.y += (this.vy + this.boostY) * timeScale;
-            // Solo el CENTRO queda dentro del mapa: el cuerpo puede asomar por el borde,
-            // así las píldoras grandes llegan a las esquinas y nadie puede esconderse ahí.
-            let limit = sim.mapSize; this.x = Math.max(Math.min(this.x, limit), -limit); this.y = Math.max(Math.min(this.y, limit), -limit);
+            // El cuerpo se queda dentro del mapa; solo asoma ~10% por el borde.
+            // eff = media diagonal de la cápsula (r ancho, r*PILL_RATIO alto) rotada 45°.
+            const eff = this.r * (1 + PILL_RATIO) * 0.7071;
+            let limit = Math.max(0, sim.mapSize - eff * 0.9);
+            this.x = Math.max(Math.min(this.x, limit), -limit); this.y = Math.max(Math.min(this.y, limit), -limit);
         }
 
         spawnParticles(sim, type) {

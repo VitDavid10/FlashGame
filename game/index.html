@@ -2446,14 +2446,15 @@
         // grosor fijo siguiendo el contorno de la cápsula, con bisel (borde
         // exterior oscuro / interior claro). Cache por tamaño lógico + color.
         // dashed=true deja huecos tipo "campo de fuerza" (inmune).
-        function pixRingSprite(wL, col, dashed) {
-            const key = wL + '|' + col + (dashed ? '|d' : '');
+        function pixRingSprite(wL, col, dashed, thickDiv) {
+            const div = thickDiv || (dashed ? 10 : 8);
+            const key = wL + '|' + col + (dashed ? '|d' : '') + '|' + div;
             let spr = PIX.ring.get(key); if (spr) return spr;
             if (PIX.ring.size > 200) PIX.ring.clear();
             const hL = Math.round(wL * PILL_RATIO), R = wL / 2;
             spr = document.createElement('canvas'); spr.width = wL; spr.height = hL;
             const g = spr.getContext('2d'), rgb = pixRgb(col);
-            const t = Math.max(2, Math.round(wL / (dashed ? 10 : 8)));
+            const t = Math.max(2, Math.round(wL / div));
             const dist = (x, y) => { const cy = Math.min(Math.max(y + 0.5, R), hL - R); const dx = x + 0.5 - R, dy = y + 0.5 - cy; return Math.sqrt(dx * dx + dy * dy); };
             const inRing = (x, y) => {
                 if (x < 0 || y < 0 || x >= wL || y >= hL) return false;
@@ -2691,7 +2692,7 @@
                                                                                                             const step = Math.floor(now / 220) % 2;
                                                                                                             const pulse = 5 + 2 * step;
                                                                                                             ctx.globalAlpha = alpha;
-                                                                                                            ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
+                                                                                                            ctx.drawImage(pixRingSprite(wLfx, '#FFD700', false, 16), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
                                                                                                             ctx.restore();
                                                                                                             // Online (sin sim particles): emitir pops client-side como +++
                                                                                                             ensureSprintBoltPops(c, now, showExtra);
@@ -3841,15 +3842,10 @@
         // (El giro de los virus va aparte, en drawMenuDeco, y sigue activo.)
         for (const p of menuDeco.items) {
             if (move === false) {
-                // Congelado (login): la COMIDA que cae sobre la UI salta a un hueco;
-                // los VIRUS se quedan DONDE ESTÁN — ya evitaron la UI del login (por
-                // el rebote del selector), así que están en zona segura.
-                // Cualquier partícula (comida o virus) que quede sobre la UI del
-                // login salta a un hueco libre; las que ya están a salvo —los virus,
-                // por el rebote del selector— se quedan DONDE ESTABAN. Así ninguna
-                // queda sobre la UI aunque la medición desde el selector no fuera
-                // exacta (elementos que solo aparecen al elegir modo, rects solapados).
-                if (menuDecoCovered(p.x, p.y, p.size / 2, obstacles)) {
+                // Congelado (login): solo la COMIDA que cae sobre la UI salta a un
+                // hueco (es pequeña y no se nota). Los VIRUS se quedan DONDE ESTÁN
+                // aunque queden sobre la UI: teletransportarlos se veía muy raro.
+                if (!p.isVirus && menuDecoCovered(p.x, p.y, p.size / 2, obstacles)) {
                     for (let i = 0; i < 80; i++) {
                         const nx = Math.random() * w, ny = Math.random() * h;
                         if (!menuDecoCovered(nx, ny, p.size / 2, obstacles)) { p.x = nx; p.y = ny; break; }
