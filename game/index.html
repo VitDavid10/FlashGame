@@ -2351,33 +2351,64 @@
         PIX.virus.set(key, spr); return spr;
     }
 
-    // Escudo heater pixel (más alto que ancho). Contorno oscuro 1px, cuerpo morado
-    // con luz arriba-izquierda / sombra abajo-derecha, y emblema de cruz. Cache por
-    // tamaño lógico (queda upright, nunca se rota, para que sea pixel-perfect).
-    function pixShieldSprite(sW) {
-        let spr = PIX.shield.get(sW); if (spr) return spr;
-        const sH = Math.round(sW * 1.2);
-        spr = document.createElement('canvas'); spr.width = sW; spr.height = sH;
-        const g = spr.getContext('2d'), rgb = pixRgb('#a020f0');
-        // media-anchura del heater por fila: recto arriba, punta abajo.
-        const halfW = (y) => { const t = y / (sH - 1); return t < 0.32 ? sW / 2 : (sW / 2) * (1 - ((t - 0.32) / 0.68) * ((t - 0.32) / 0.68)); };
-        const inside = (x, y) => { if (x < 0 || y < 0 || x >= sW || y >= sH) return false; return Math.abs(x + 0.5 - sW / 2) <= halfW(y); };
-        for (let y = 0; y < sH; y++) for (let x = 0; x < sW; x++) {
-            if (!inside(x, y)) continue;
-            let col;
-            if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = pixShade(rgb, -0.55);
-            else if (!inside(x + 1, y + 1)) col = pixShade(rgb, -0.28);
-            else if (!inside(x - 1, y - 1)) col = pixShade(rgb, 0.3);
-            else col = 'rgb(' + rgb.join(',') + ')';
-            g.fillStyle = col; g.fillRect(x, y, 1, 1);
+    // Escudo heater pixel (buff inmune). Contorno oscuro, cuerpo morado con bisel,
+        // cruz verde. Canvas transparente fuera de la silueta (sin fondo relleno).
+        // Cache por tamaño lógico; se dibuja upright sin smoothing.
+        function pixShieldSprite(sW) {
+            // Clave v2: rediseño más detallado sin relleno rectangular detrás.
+            const key = sW + '|v2';
+            let spr = PIX.shield.get(key); if (spr) return spr;
+            // Resolución interna un poco mayor para más detalle al escalar nearest.
+            const scale = sW < 16 ? 2 : 1;
+            const W = Math.max(12, sW * scale);
+            const H = Math.round(W * 1.35);
+            spr = document.createElement('canvas'); spr.width = W; spr.height = H;
+            const g = spr.getContext('2d');
+            const rgb = pixRgb('#b44cff');
+            // Silueta heater: ancha arriba, punta abajo (bordes redondeados por muestreo).
+            const halfW = (y) => {
+                const t = y / Math.max(1, H - 1);
+                if (t < 0.08) return (W / 2) * (t / 0.08) * 0.92; // hombro superior
+                if (t < 0.38) return W / 2 * 0.92;
+                const u = (t - 0.38) / 0.62;
+                return (W / 2) * 0.92 * (1 - u * u);
+            };
+            const inside = (x, y) => {
+                if (x < 0 || y < 0 || x >= W || y >= H) return false;
+                return Math.abs(x + 0.5 - W / 2) <= halfW(y) - 0.15;
+            };
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                if (!inside(x, y)) continue;
+                const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+                const edge2 = !inside(x - 1, y - 1) || !inside(x + 1, y + 1);
+                let col;
+                if (edge) col = '#2a0a40';
+                else if (edge2 && !inside(x + 1, y + 1)) col = pixShade(rgb, -0.35);
+                else if (!inside(x - 1, y - 1)) col = pixShade(rgb, 0.35);
+                else {
+                    // Bandas sutiles de volumen
+                    const band = ((x + y) % 5 === 0) ? 0.08 : 0;
+                    col = pixShade(rgb, band);
+                }
+                g.fillStyle = col;
+                g.fillRect(x, y, 1, 1);
+            }
+            // Cruz / plus de curación (más nítida)
+            const cx = Math.round(W / 2), cy = Math.round(H * 0.40);
+            const t = Math.max(2, Math.round(W / 9));
+            const arm = Math.max(3, Math.round(W / 3.6));
+            // sombra cruz
+            g.fillStyle = '#0a4028';
+            g.fillRect(cx - Math.floor(t / 2) + 1, cy - arm + 1, t, arm * 2);
+            g.fillRect(cx - arm + 1, cy - Math.floor(t / 2) + 1, arm * 2, t);
+            g.fillStyle = '#00ff88';
+            g.fillRect(cx - Math.floor(t / 2), cy - arm, t, arm * 2);
+            g.fillRect(cx - arm, cy - Math.floor(t / 2), arm * 2, t);
+            // brillo 1px en cruz
+            g.fillStyle = '#b6ffd9';
+            g.fillRect(cx - Math.floor(t / 2), cy - arm, Math.max(1, Math.floor(t / 2)), 2);
+            PIX.shield.set(key, spr); return spr;
         }
-        // emblema: cruz verde (mismo acento que antes).
-        g.fillStyle = '#00ff88';
-        const cx = Math.round(sW / 2), cy = Math.round(sH * 0.42), t = Math.max(1, Math.round(sW / 10)), arm = Math.max(2, Math.round(sW / 4));
-        g.fillRect(cx - Math.floor(t / 2), cy - arm, t, arm * 2);
-        g.fillRect(cx - arm, cy - Math.floor(t / 2), arm * 2, t);
-        PIX.shield.set(sW, spr); return spr;
-    }
 
     // Anillo de píldora pixel art (aro de las skills SPRINT/SHIELD): banda de
         // grosor fijo siguiendo el contorno de la cápsula, con bisel (borde
@@ -2602,199 +2633,223 @@
                 }
 
                 /**
-                 * FX de buffs sobre una célula. Sprint/inmune: SIEMPRE visibles (aura legible
-                 * para rivales online/offline). Imán fancy: propio siempre; bots si enableEnemyFX.
-                 * Partículas cosméticas client-side (no dependen del sim del server).
-                 */
-                function drawCellBuffFx(ctx, c, alpha) {
-                                    // Propio: id 'me' (online) o no-bot en partida local.
+                                 * FX de buffs sobre una célula.
+                                 * - Sprint/inmune: SIEMPRE visibles (rivales online/offline).
+                                 * - Sprint: estilo clásico = aro dorado + rayitos stroke (no stickers gordos).
+                                 * - Inmune: aros + escudo pixel sin fondo + partículas.
+                                 * - Imán: SOLO partículas azules en el radio (sin dibujo de herradura).
+                                 */
+                                function drawCellBuffFx(ctx, c, alpha) {
                                     const isSelf = c.id === 'me' || (!c.isBot && sim && !sim.isRemote);
-                                    // Auras sprint/inmune: todos las ven (rivales sepan que está activo).
                                     const showAura = true;
-                                    // Extra (imán icono + más partículas): propio, otros jugadores, o bots si FX on.
                                     const showExtra = isSelf || !c.isBot || enableEnemyFX;
-                    if (!showAura && !showExtra) return;
+                                    if (!showAura && !showExtra) return;
 
-                    const now = performance.now();
-                    const pW = c.r * 2.0, pH = pW * PILL_RATIO;
-                    const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-                    const prev = ctx.imageSmoothingEnabled;
-                    ctx.imageSmoothingEnabled = false;
+                                    const now = performance.now();
+                                    const pW = c.r * 2.0, pH = pW * PILL_RATIO;
+                                    const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
+                                    const prev = ctx.imageSmoothingEnabled;
+                                    ctx.imageSmoothingEnabled = false;
 
-                    // --- SPRINT aura + rayos ---
-                    if (c.sprintTime > 0 && showAura) {
-                        ctx.save();
-                        ctx.translate(c.x, c.y);
-                        ctx.rotate(-Math.PI / 4);
-                        const step = Math.floor(now / 110) % 2;
-                        const pulse = 3 + 5 * step;
-                        ctx.globalAlpha = alpha * (0.9 + 0.1 * step);
-                        ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
-                        const pulse2 = pulse + 6 + step * 2;
-                        ctx.globalAlpha = alpha * 0.4;
-                        ctx.drawImage(pixRingSprite(wLfx, '#ffe84a'), -pW / 2 - pulse2, -pH / 2 - pulse2, pW + pulse2 * 2, pH + pulse2 * 2);
-                        // tinte cuerpo
-                        ctx.globalAlpha = alpha * 0.14;
-                        ctx.fillStyle = '#ffd700';
-                        ctx.beginPath();
-                        ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
-                        ctx.fill();
-                        ctx.restore();
+                                    // --- SPRINT: aro dorado clásico + rayitos simples (stroke) ---
+                                    if (c.sprintTime > 0 && showAura) {
+                                        ctx.save();
+                                        ctx.translate(c.x, c.y);
+                                        ctx.rotate(-Math.PI / 4);
+                                        const step = Math.floor(now / 150) % 2;
+                                        const pulse = 6 + 3 * step;
+                                        ctx.globalAlpha = alpha;
+                                        ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
+                                        ctx.restore();
 
-                        // Rayos: sim particles (offline) + cosméticos client (online y refuerzo)
-                        ctx.save();
-                        ctx.translate(c.x, c.y);
-                        const parts = c.particles || [];
-                        for (let i = 0; i < parts.length; i++) {
-                            if (parts[i].type === 'BOLT') drawPixBolt(ctx, parts[i], c.r, alpha);
-                        }
-                        // Cosméticos: estela detrás (o radial si no hay vel)
-                        const vx = c.vx || 0, vy = c.vy || 0;
-                        const sp = Math.hypot(vx, vy);
-                        const baseAng = sp > 0.12 ? Math.atan2(vy, vx) + Math.PI : 0;
-                        const nBolt = showExtra ? 6 : 4;
-                        for (let i = 0; i < nBolt; i++) {
-                            const h = fxHash(c.x, c.y, i + Math.floor(now / 90));
-                            const h2 = fxHash(c.y, c.x, i * 3.1 + Math.floor(now / 90));
-                            const life = 0.45 + 0.55 * ((1 - ((now / 140 + h) % 1)));
-                            const ang = baseAng + (h - 0.5) * 1.1 + (sp < 0.12 ? i * (Math.PI * 2 / nBolt) : 0);
-                            const dist = c.r * (0.7 + h2 * 0.7);
-                            drawPixBolt(ctx, {
-                                x: Math.cos(ang) * dist,
-                                y: Math.sin(ang) * dist,
-                                rot: (ang * 180 / Math.PI) + 90,
-                                life: life,
-                                scale: 1 + h * 0.5
-                            }, c.r, alpha * (showExtra ? 1 : 0.85));
-                        }
-                        ctx.restore();
-                    }
-
-                    // --- INMUNE aura + escudo mini + partículas ---
-                    if (c.immuneTime > 0 && showAura) {
-                        ctx.save();
-                        ctx.translate(c.x, c.y);
-                        ctx.rotate(-Math.PI / 4);
-                        const step = Math.floor(now / 150) % 2;
-                        const gap = c.r * (0.08 + 0.03 * step);
-                        ctx.globalAlpha = alpha * 0.95;
-                        ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
-                        const gap2 = gap + c.r * 0.16;
-                        ctx.globalAlpha = alpha * (0.5 + 0.25 * step);
-                        ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
-                        ctx.globalAlpha = alpha * 0.2;
-                        ctx.fillStyle = '#a020f0';
-                        ctx.beginPath();
-                        ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
-                        ctx.fill();
-                        ctx.restore();
-
-                        // Escudo pequeño upright que “brilla” (pulse scale + bob)
-                        const shWorld = Math.max(12, Math.min(36, c.r * 0.55));
-                        const sW = Math.max(10, Math.min(28, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
-                        const spr = pixShieldBuffSprite(sW);
-                        const bob = Math.sin(now / 180) * (c.r * 0.06);
-                        const glow = 1 + 0.12 * (Math.floor(now / 120) % 2);
-                        const dw = shWorld * glow, dh = (spr.height / spr.width) * dw;
-                        const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
-                        ctx.save();
-                        ctx.globalAlpha = alpha * 0.35;
-                        ctx.fillStyle = '#d080ff';
-                        ctx.fillRect(Math.round(sx - dw * 0.7), Math.round(sy - dh * 0.7), Math.round(dw * 1.4), Math.round(dh * 1.4));
-                        ctx.globalAlpha = alpha;
-                        ctx.drawImage(spr, Math.round(sx - dw / 2), Math.round(sy - dh / 2), Math.round(dw), Math.round(dh));
-                        ctx.restore();
-
-                        // Partículas violeta
-                        const nSpark = showExtra ? 7 : 4;
-                        ctx.save();
-                        for (let i = 0; i < nSpark; i++) {
-                            const h = fxHash(c.x + 1, c.y, i + Math.floor(now / 100));
-                            const h2 = fxHash(c.y + 2, c.x, i * 2.7 + Math.floor(now / 100));
-                            const ang = h * Math.PI * 2 + now / 700;
-                            const dist = c.r * (0.9 + h2 * 0.5);
-                            const px = c.x + Math.cos(ang) * dist;
-                            const py = c.y + Math.sin(ang) * dist;
-                            const sz = 2 + Math.floor(h2 * 3);
-                            const a = alpha * (0.4 + 0.6 * ((Math.sin(now / 90 + i) + 1) / 2));
-                            ctx.globalAlpha = a;
-                            ctx.fillStyle = h > 0.5 ? '#e0a0ff' : '#a020f0';
-                            ctx.fillRect(Math.round(px - sz / 2), Math.round(py - sz / 2), sz, sz);
-                            if (h > 0.7) {
-                                ctx.fillStyle = '#ffffff';
-                                ctx.fillRect(Math.round(px - 1), Math.round(py - 1), 2, 2);
-                            }
-                        }
-                        ctx.restore();
-                    }
-
-                    // --- IMÁN por celda: rivales/bots (el propio usa drawPlayerMagnetFx del cluster) ---
-                                        if (c.magnetTime > 0 && showExtra && !isSelf) {
-                                            drawMagnetIconFx(ctx, c.x, c.y - c.r * PILL_RATIO - Math.max(10, c.r * 0.35), Math.max(16, Math.min(40, c.r * 0.9)), alpha, c.x + c.y);
+                                        // Rayitos: partículas del sim + unos pocos cosméticos (estilo viejo, stroke)
+                                        ctx.save();
+                                        ctx.translate(c.x, c.y);
+                                        const parts = c.particles || [];
+                                        for (let i = 0; i < parts.length; i++) {
+                                            if (parts[i].type === 'BOLT') drawClassicBolt(ctx, parts[i], c.r, alpha);
                                         }
+                                        // Refuerzo online/offline: pocos rayitos (no enjambre)
+                                        const nBolt = showExtra ? 3 : 2;
+                                        const vx = c.vx || 0, vy = c.vy || 0;
+                                        const sp = Math.hypot(vx, vy);
+                                        const baseAng = sp > 0.12 ? Math.atan2(vy, vx) + Math.PI : now / 400;
+                                        for (let i = 0; i < nBolt; i++) {
+                                            const h = fxHash(c.x, c.y, i + Math.floor(now / 110));
+                                            const h2 = fxHash(c.y, c.x, i * 2.4 + Math.floor(now / 110));
+                                            const life = 0.5 + 0.5 * (1 - ((now / 160 + h) % 1));
+                                            const ang = baseAng + (h - 0.5) * 0.9 + (sp < 0.12 ? i * 2.1 : 0);
+                                            const dist = c.r * (0.85 + h2 * 0.45);
+                                            drawClassicBolt(ctx, {
+                                                x: Math.cos(ang) * dist,
+                                                y: Math.sin(ang) * dist,
+                                                rot: (ang * 180 / Math.PI) + 90,
+                                                life: life,
+                                                scale: Math.max(1, c.r / 18)
+                                            }, c.r, alpha);
+                                        }
+                                        ctx.restore();
+                                    }
 
-                    ctx.imageSmoothingEnabled = prev;
-                }
+                                    // --- INMUNE: aros + escudo sin fondo feo + partículas ---
+                                    if (c.immuneTime > 0 && showAura) {
+                                        ctx.save();
+                                        ctx.translate(c.x, c.y);
+                                        ctx.rotate(-Math.PI / 4);
+                                        const step = Math.floor(now / 160) % 2;
+                                        const gap = c.r * (0.08 + 0.03 * step);
+                                        ctx.globalAlpha = alpha * 0.95;
+                                        ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
+                                        const gap2 = gap + c.r * 0.16;
+                                        ctx.globalAlpha = alpha * (0.5 + 0.25 * step);
+                                        ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
+                                        // tinte suave en cuerpo (sin rectángulos de “fondo”)
+                                        ctx.globalAlpha = alpha * 0.16;
+                                        ctx.fillStyle = '#a020f0';
+                                        ctx.beginPath();
+                                        ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
+                                        ctx.fill();
+                                        ctx.restore();
 
-                /** Imán azul/blanco vibrando + chispas azules. (x,y) centro del icono world. */
-                function drawMagnetIconFx(ctx, x, y, size, alpha, seed) {
-                    const now = performance.now();
-                    const vib = (Math.floor(now / 50) % 2) ? 1.5 : -1.5;
-                    const vibY = Math.sin(now / 40) * 1.2;
-                    const spr = pixMagnetSprite();
-                    const prev = ctx.imageSmoothingEnabled;
-                    ctx.imageSmoothingEnabled = false;
-                    ctx.save();
-                    ctx.translate(x + vib, y + vibY);
-                    // glow
-                    ctx.globalAlpha = alpha * 0.35;
-                    ctx.fillStyle = '#2080ff';
-                    ctx.fillRect(Math.round(-size * 0.65), Math.round(-size * 0.65), Math.round(size * 1.3), Math.round(size * 1.3));
-                    ctx.globalAlpha = alpha;
-                    ctx.drawImage(spr, Math.round(-size / 2), Math.round(-size / 2), Math.round(size), Math.round(size));
-                    ctx.restore();
-                    // partículas hacia el imán
-                    for (let i = 0; i < 8; i++) {
-                        const h = fxHash(seed, i, Math.floor(now / 70));
-                        const h2 = fxHash(i, seed, Math.floor(now / 70) + 1);
-                        const ang = h * Math.PI * 2;
-                        const dist = size * (0.7 + (1 - ((now / 200 + h2) % 1)) * 1.4);
-                        const px = x + Math.cos(ang) * dist;
-                        const py = y + Math.sin(ang) * dist;
-                        const sz = 2 + (h2 > 0.5 ? 2 : 0);
-                        ctx.globalAlpha = alpha * (0.35 + 0.55 * (1 - dist / (size * 2.2)));
-                        ctx.fillStyle = h > 0.55 ? '#a0e8ff' : '#1a8cff';
-                        ctx.fillRect(Math.round(px), Math.round(py), sz, sz);
-                    }
-                    ctx.globalAlpha = alpha;
-                    ctx.imageSmoothingEnabled = prev;
-                }
+                                        // Escudo mini upright — solo el sprite (transparente fuera), sin glow rect
+                                        const shWorld = Math.max(14, Math.min(42, c.r * 0.62));
+                                        const sW = Math.max(12, Math.min(32, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
+                                        const spr = pixShieldSprite(sW);
+                                        const bob = Math.sin(now / 180) * (c.r * 0.05);
+                                        const glow = 1 + 0.08 * (Math.floor(now / 130) % 2);
+                                        const dw = shWorld * glow, dh = (spr.height / spr.width) * dw;
+                                        const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
+                                        ctx.save();
+                                        ctx.globalAlpha = alpha;
+                                        ctx.imageSmoothingEnabled = false;
+                                        ctx.drawImage(spr, Math.round(sx - dw / 2), Math.round(sy - dh / 2), Math.round(dw), Math.round(dh));
+                                        ctx.restore();
 
-                /** Ondas + imán central del cluster propio (skill 5). */
-                function drawPlayerMagnetFx(ctx, cells, alpha) {
-                    if (!cells || !cells.length) return;
-                    let avgX = 0, avgY = 0, maxR = 0;
-                    for (let i = 0; i < cells.length; i++) {
-                        avgX += cells[i].x; avgY += cells[i].y;
-                        if (cells[i].r > maxR) maxR = cells[i].r;
-                    }
-                    avgX /= cells.length; avgY /= cells.length;
-                    const magnetRad = ((typeof PillSim !== 'undefined' && PillSim.SKILL_PARAMS) ? PillSim.SKILL_PARAMS.magnetRange : 200) + maxR;
-                    const timeLoop = (performance.now() / 1000) % 1;
-                    ctx.save();
-                    ctx.translate(avgX, avgY);
-                    for (let i = 0; i < 3; i++) {
-                        const offset = i * 0.3, t = (timeLoop + offset) % 1;
-                        let radius = magnetRad * (1 - t), opacity = t;
-                        ctx.beginPath();
-                        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-                        ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.45 * alpha})`;
-                        ctx.lineWidth = 2 + opacity * 3;
-                        ctx.stroke();
-                    }
-                    ctx.restore();
-                    drawMagnetIconFx(ctx, avgX, avgY, Math.max(22, Math.min(52, maxR * 1.1)), alpha, avgX + avgY);
-                }
+                                        // Partículas violeta (las que gustan)
+                                        const nSpark = showExtra ? 7 : 4;
+                                        ctx.save();
+                                        for (let i = 0; i < nSpark; i++) {
+                                            const h = fxHash(c.x + 1, c.y, i + Math.floor(now / 100));
+                                            const h2 = fxHash(c.y + 2, c.x, i * 2.7 + Math.floor(now / 100));
+                                            const ang = h * Math.PI * 2 + now / 700;
+                                            const dist = c.r * (0.95 + h2 * 0.55);
+                                            const px = c.x + Math.cos(ang) * dist;
+                                            const py = c.y + Math.sin(ang) * dist;
+                                            const sz = 2 + Math.floor(h2 * 3);
+                                            const a = alpha * (0.4 + 0.6 * ((Math.sin(now / 90 + i) + 1) / 2));
+                                            ctx.globalAlpha = a;
+                                            ctx.fillStyle = h > 0.5 ? '#e0a0ff' : '#a020f0';
+                                            ctx.fillRect(Math.round(px - sz / 2), Math.round(py - sz / 2), sz, sz);
+                                            if (h > 0.7) {
+                                                ctx.fillStyle = '#ffffff';
+                                                ctx.fillRect(Math.round(px - 1), Math.round(py - 1), 2, 2);
+                                            }
+                                        }
+                                        ctx.restore();
+                                    }
+
+                                    // --- IMÁN por celda (rivales/bots): solo partículas en radio, sin icono ---
+                                    if (c.magnetTime > 0 && showExtra && !isSelf) {
+                                        const mR = ((typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.magnetRange) ? SKILL_PARAMS.magnetRange : 200) + c.r;
+                                        drawMagnetParticles(ctx, c.x, c.y, mR, alpha, c.x + c.y);
+                                    }
+
+                                    ctx.imageSmoothingEnabled = prev;
+                                }
+
+                                /** Rayito clásico (stroke zigzag dorado + reborde oscuro). Más natural que el sticker. */
+                                function drawClassicBolt(ctx, p, cellR, alpha) {
+                                    const life = Math.max(0, Math.min(1, p.life == null ? 1 : p.life));
+                                    const sc = Math.max(0.85, Math.min(2.2, (p.scale || 1) * (0.75 + 0.35 * life)));
+                                    const len = Math.max(10, Math.min(28, cellR * 0.55)) * sc;
+                                    ctx.save();
+                                    ctx.translate(p.x, p.y);
+                                    ctx.rotate(((p.rot || 0) * Math.PI) / 180);
+                                    ctx.globalAlpha = Math.ceil(life * 4) / 4 * alpha;
+                                    ctx.lineCap = 'square';
+                                    ctx.lineJoin = 'miter';
+                                    // reborde
+                                    ctx.strokeStyle = '#3a2200';
+                                    ctx.lineWidth = 4;
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, -len * 0.45);
+                                    ctx.lineTo(len * 0.18, -len * 0.1);
+                                    ctx.lineTo(-len * 0.08, len * 0.05);
+                                    ctx.lineTo(len * 0.22, len * 0.45);
+                                    ctx.stroke();
+                                    // núcleo oro
+                                    ctx.strokeStyle = '#FFD700';
+                                    ctx.lineWidth = 2;
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, -len * 0.45);
+                                    ctx.lineTo(len * 0.18, -len * 0.1);
+                                    ctx.lineTo(-len * 0.08, len * 0.05);
+                                    ctx.lineTo(len * 0.22, len * 0.45);
+                                    ctx.stroke();
+                                    // punta clara
+                                    ctx.strokeStyle = '#fff3a0';
+                                    ctx.lineWidth = 1;
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, -len * 0.45);
+                                    ctx.lineTo(len * 0.12, -len * 0.18);
+                                    ctx.stroke();
+                                    ctx.restore();
+                                }
+
+                                /** Partículas azules del imán en un radio (sin dibujo de herradura). */
+                                function drawMagnetParticles(ctx, x, y, radius, alpha, seed) {
+                                    const now = performance.now();
+                                    const prev = ctx.imageSmoothingEnabled;
+                                    ctx.imageSmoothingEnabled = false;
+                                    const n = 18;
+                                    for (let i = 0; i < n; i++) {
+                                        const h = fxHash(seed, i, Math.floor(now / 65));
+                                        const h2 = fxHash(i * 1.7, seed, Math.floor(now / 65) + 3);
+                                        const ang = h * Math.PI * 2 + now / 900;
+                                        // Fluyen hacia el centro desde ~radio del imán
+                                        const t = (now / 550 + h2) % 1;
+                                        const dist = radius * (0.15 + (1 - t) * 0.85);
+                                        const px = x + Math.cos(ang) * dist;
+                                        const py = y + Math.sin(ang) * dist;
+                                        const sz = 2 + (h2 > 0.55 ? 2 : 0) + (t < 0.25 ? 1 : 0);
+                                        const a = alpha * (0.25 + 0.65 * (1 - t));
+                                        ctx.globalAlpha = a;
+                                        ctx.fillStyle = h > 0.55 ? '#a0e8ff' : (h > 0.25 ? '#1a8cff' : '#4db8ff');
+                                        ctx.fillRect(Math.round(px), Math.round(py), sz, sz);
+                                        if (h > 0.82) {
+                                            ctx.fillStyle = '#ffffff';
+                                            ctx.fillRect(Math.round(px), Math.round(py), 1, 1);
+                                        }
+                                    }
+                                    ctx.globalAlpha = alpha;
+                                    ctx.imageSmoothingEnabled = prev;
+                                }
+
+                                /** Ondas del imán + partículas en el radio (cluster propio). Sin icono. */
+                                function drawPlayerMagnetFx(ctx, cells, alpha) {
+                                    if (!cells || !cells.length) return;
+                                    let avgX = 0, avgY = 0, maxR = 0;
+                                    for (let i = 0; i < cells.length; i++) {
+                                        avgX += cells[i].x; avgY += cells[i].y;
+                                        if (cells[i].r > maxR) maxR = cells[i].r;
+                                    }
+                                    avgX /= cells.length; avgY /= cells.length;
+                                    const magnetRad = ((typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.magnetRange) ? SKILL_PARAMS.magnetRange : 200) + maxR;
+                                    const timeLoop = (performance.now() / 1000) % 1;
+                                    ctx.save();
+                                    ctx.translate(avgX, avgY);
+                                    for (let i = 0; i < 3; i++) {
+                                        const offset = i * 0.3, t = (timeLoop + offset) % 1;
+                                        const radius = magnetRad * (1 - t), opacity = t;
+                                        ctx.beginPath();
+                                        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                                        ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.45 * alpha})`;
+                                        ctx.lineWidth = 2 + opacity * 3;
+                                        ctx.stroke();
+                                    }
+                                    ctx.restore();
+                                    drawMagnetParticles(ctx, avgX, avgY, magnetRad, alpha, avgX + avgY);
+                                }
 
     // ===== Fuente bitmap pixel (PIXFONT, drawPixelText, pixFancyText, HD) =====
     // Movida a pixfont.js (compartida con comparativa.html para ver el alfabeto).
