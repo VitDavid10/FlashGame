@@ -39,3 +39,7 @@ scripts/.devnet-authority.json
 # Scripts temporales de limpieza local
 _cleanup_*.py
 _cleanup_*.txt
+
+# Chatbot backend: claves y datos de usuarios (PII), nunca en git
+chatbot-backend/.env
+chatbot-backend/emails.json
