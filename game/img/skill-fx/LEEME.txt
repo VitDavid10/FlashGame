@@ -1,10 +1,11 @@
-Stills / sheets Grok Imagine (iman/inmune/sprint) — APARCADOS.
+FX de buffs (sprint / inmune / imán) — procedural pixel en game/index.html.
 
-No se cargan en partida: no pegan con el pack pixel (pegote + corte sucio).
-El FX activo es procedural en game/index.html:
-  - sprint: aros dorados + rayos pixBoltSprite (estela)
-  - inmune: aro + campo dashed (sin escudos orbitando)
-  - iman: ondas azules (+ webm legacy opcional)
+- Sprint: aros dorados + rayos pixBoltSprite (reborde) + estela cosmética
+- Inmune: aro + campo dashed + escudo mini brillante + partículas
+- Imán: herradura azul/blanco vibrando + ondas + partículas
 
-raw/*.jpg y *-sheet.png se conservan por si se reutilizan con estilo pixel.
+Sprint e inmune: aura SIEMPRE visible en rivales (online/offline) para leer el buff.
+Partículas cosméticas son client-side (no dependen del FX del server).
+
+Sheets Grok en raw/ y *-sheet.png: aparcados (no path caliente).
 Build experimental: python tools/build_skill_fx_sheets.py

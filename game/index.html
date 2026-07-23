@@ -2253,7 +2253,7 @@
         // Cache por color/tamaño, mismo patrón que skinCache.
         const PIX_SCREEN_PX = 4;
         const PIX_FONT = "'VT323', monospace";
-        const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map(), ring: new Map(), bolt: new Map() };
+        const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map(), ring: new Map(), bolt: new Map(), magnet: null };
     if (document.fonts && document.fonts.load) document.fonts.load("32px 'VT323'");
     const _pixProbe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     function pixRgb(col) { _pixProbe.clearRect(0, 0, 1, 1); _pixProbe.fillStyle = col; _pixProbe.fillRect(0, 0, 1, 1); const d = _pixProbe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
@@ -2418,126 +2418,383 @@
             PIX.ring.set(key, spr); return spr;
         }
 
-        // Rayo pixel (sprint): zigzag con contorno oscuro, naranja y núcleo oro/blanco.
-        // Variantes 0..2 para no repetir el mismo glifo. Cache por frame.
-        function pixBoltSprite(frame) {
-            const f = ((frame % 3) + 3) % 3;
-            let spr = PIX.bolt.get(f); if (spr) return spr;
-            // Máscaras 11×16 (columna = x). 0 vacío, 1 outline, 2 mid, 3 hot, 4 core.
-            const masks = [
-                [
-                    '....222....',
-                    '...2332....',
-                    '..23332....',
-                    '..3343.....',
-                    '.2332......',
-                    '.3343......',
-                    '2334432....',
-                    '.2334332...',
-                    '..223343...',
-                    '....2332...',
-                    '....3343...',
-                    '...2332....',
-                    '..2332.....',
-                    '.2332......',
-                    '.332.......',
-                    '22.........'
-                ],
-                [
-                    '.....222...',
-                    '....2332...',
-                    '...23332...',
-                    '...3343....',
-                    '..2332.....',
-                    '.233443....',
-                    '.3344332...',
-                    '23322332...',
-                    '.22..334...',
-                    '....2332...',
-                    '...23343...',
-                    '..2332.....',
-                    '.2332......',
-                    '.332.......',
-                    '232........',
-                    '22.........'
-                ],
-                [
-                    '...222.....',
-                    '..2332.....',
-                    '.23332.....',
-                    '.3343......',
-                    '2332.......',
-                    '33432......',
-                    '2334432....',
-                    '.2233432...',
-                    '...23343...',
-                    '...2332....',
-                    '..2332.....',
-                    '.23343.....',
-                    '.33432.....',
-                    '2332.......',
-                    '332........',
-                    '22.........'
-                ]
-            ];
-            const rows = masks[f], W = rows[0].length, H = rows.length;
-            spr = document.createElement('canvas'); spr.width = W + 2; spr.height = H + 2;
-            const g = spr.getContext('2d');
-            const cols = {
-                '1': '#2a1408',
-                '2': '#8a3200',
-                '3': '#ff8a00',
-                '4': '#ffe84a',
-                '5': '#fffce0'
-            };
-            // Expande mid→outline vecinos vacíos para contorno 1px.
-            const grid = rows.map(r => r.split(''));
-            const out = [];
-            for (let y = 0; y < H + 2; y++) {
-                out[y] = [];
-                for (let x = 0; x < W + 2; x++) out[y][x] = '0';
-            }
-            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-                const ch = grid[y][x];
-                if (ch === '.' || ch === '0') continue;
-                out[y + 1][x + 1] = ch;
-            }
-            for (let y = 1; y <= H; y++) for (let x = 1; x <= W; x++) {
-                if (out[y][x] !== '0') continue;
-                let near = false;
-                for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) {
-                    const v = out[y + dy][x + dx];
-                    if (v !== '0') { near = true; break; }
+        // Rayo pixel (sprint) dorado: zigzag más grueso, reborde oscuro 1px, núcleo
+                // blanco/oro. 3 variantes. Cache por frame.
+                function pixBoltSprite(frame) {
+                    const f = ((frame % 3) + 3) % 3;
+                    let spr = PIX.bolt.get(f); if (spr) return spr;
+                    // 13×18 — más cuerpo y reborde legible al escalar.
+                    // dígitos: 2 mid oro oscuro, 3 hot, 4 core; outline auto = 1
+                    const masks = [
+                        [
+                            '.....222.....',
+                            '....2332.....',
+                            '...23332.....',
+                            '...33443.....',
+                            '..233443.....',
+                            '..33443......',
+                            '.2334432.....',
+                            '.33444332....',
+                            '233444332....',
+                            '.23344332....',
+                            '..2233443....',
+                            '....23332....',
+                            '....33443....',
+                            '...23332.....',
+                            '..23332......',
+                            '.23332.......',
+                            '.3332........',
+                            '222..........'
+                        ],
+                        [
+                            '......222....',
+                            '.....2332....',
+                            '....23332....',
+                            '....33443....',
+                            '...233443....',
+                            '..2334443....',
+                            '.23344432....',
+                            '.33444332....',
+                            '233322332....',
+                            '.22..33443...',
+                            '....23332....',
+                            '...233443....',
+                            '..23332......',
+                            '.23332.......',
+                            '.3343........',
+                            '2332.........',
+                            '332..........',
+                            '22...........'
+                        ],
+                        [
+                            '....222......',
+                            '...2332......',
+                            '..23332......',
+                            '.233443......',
+                            '.33443.......',
+                            '2334432......',
+                            '33444432.....',
+                            '233444332....',
+                            '.22334432....',
+                            '...233443....',
+                            '...23332.....',
+                            '..23332......',
+                            '.233443......',
+                            '.334432......',
+                            '23332........',
+                            '3343.........',
+                            '332..........',
+                            '22...........'
+                        ]
+                    ];
+                    const rows = masks[f], W = rows[0].length, H = rows.length;
+                    spr = document.createElement('canvas'); spr.width = W + 2; spr.height = H + 2;
+                    const g = spr.getContext('2d');
+                    // Paleta dorada (sprint)
+                    const cols = {
+                        '1': '#3a2200',
+                        '2': '#b8860b',
+                        '3': '#ffd700',
+                        '4': '#ffe866',
+                        '5': '#fff8d0'
+                    };
+                    const out = [];
+                    for (let y = 0; y < H + 2; y++) { out[y] = []; for (let x = 0; x < W + 2; x++) out[y][x] = '0'; }
+                    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                        const ch = rows[y][x];
+                        if (ch === '.' || ch === '0') continue;
+                        out[y + 1][x + 1] = ch;
+                    }
+                    // Reborde 1px (y segundo anillo suave con 2→1 en bordes del fill)
+                    for (let y = 1; y <= H; y++) for (let x = 1; x <= W; x++) {
+                        if (out[y][x] !== '0') continue;
+                        let near = false;
+                        for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) {
+                            if (out[y + dy][x + dx] !== '0') { near = true; break; }
+                        }
+                        if (near) out[y][x] = '1';
+                    }
+                    for (let y = 0; y < H + 2; y++) for (let x = 0; x < W + 2; x++) {
+                        if (out[y][x] === '4' && ((x + y) % 2 === 0)) out[y][x] = '5';
+                        const ch = out[y][x];
+                        if (ch === '0') continue;
+                        g.fillStyle = cols[ch] || '#ffd700';
+                        g.fillRect(x, y, 1, 1);
+                    }
+                    PIX.bolt.set(f, spr); return spr;
                 }
-                if (near) out[y][x] = '1';
-            }
-            // Núcleo: alguna celda '4' sube a '5' en el centro del trazo.
-            for (let y = 0; y < H + 2; y++) for (let x = 0; x < W + 2; x++) {
-                if (out[y][x] === '4' && (x + y) % 3 === 0) out[y][x] = '5';
-                const ch = out[y][x];
-                if (ch === '0') continue;
-                g.fillStyle = cols[ch] || '#ff8a00';
-                g.fillRect(x, y, 1, 1);
-            }
-            PIX.bolt.set(f, spr); return spr;
-        }
 
-        /** Dibuja un rayo pixel centrado en (0,0) del ctx actual (ya translateado). */
-        function drawPixBolt(ctx, p, cellR, alpha) {
-            const spr = pixBoltSprite(Math.floor((p.rot || 0) / 40) % 3);
-            const life = Math.max(0, Math.min(1, p.life));
-            const base = Math.max(12, Math.min(48, cellR * 0.7)) * (p.scale > 1 ? Math.min(1.6, 0.85 + p.scale * 0.08) : 1);
-            const sz = base * (0.65 + 0.45 * life);
-            const prev = ctx.imageSmoothingEnabled;
-            ctx.imageSmoothingEnabled = false;
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.rotate(((p.rot || 0) * Math.PI) / 180);
-            ctx.globalAlpha = Math.ceil(life * 4) / 4 * alpha;
-            ctx.drawImage(spr, -sz * 0.45, -sz * 0.5, sz * 0.9, sz);
-            ctx.restore();
-            ctx.imageSmoothingEnabled = prev;
-        }
+                /** Rayo pixel (ctx ya puede estar en world; usa p.x/p.y locales o world). */
+                function drawPixBolt(ctx, p, cellR, alpha) {
+                    const spr = pixBoltSprite(Math.floor((p.rot || 0) / 40) % 3);
+                    const life = Math.max(0, Math.min(1, p.life == null ? 1 : p.life));
+                    const base = Math.max(14, Math.min(56, cellR * 0.85)) * (p.scale > 1 ? Math.min(1.7, 0.85 + p.scale * 0.08) : 1);
+                    const sz = base * (0.7 + 0.4 * life);
+                    const prev = ctx.imageSmoothingEnabled;
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(((p.rot || 0) * Math.PI) / 180);
+                    ctx.globalAlpha = Math.ceil(life * 4) / 4 * alpha;
+                    ctx.drawImage(spr, -sz * 0.45, -sz * 0.5, sz * 0.9, sz);
+                    ctx.restore();
+                    ctx.imageSmoothingEnabled = prev;
+                }
+
+                // Imán herradura pixel: azul + blanco (clásico rojo/blanco → cool). Cache único.
+                function pixMagnetSprite() {
+                    if (PIX.magnet) return PIX.magnet;
+                    // 16×16 — U magnet. B=blue pole, W=white pole, D=dark outline, M=metal
+                    const rows = [
+                                            '..DDDD..DDDD..',
+                                            '.DBBBD.DWWWD..',
+                                            'DBBBBD.DWWWWD.',
+                                            'DBBBD...DWWWD.',
+                                            'DBBD.....DWWD.',
+                                            'DBBD.....DWWD.',
+                                            'DBBD.....DWWD.',
+                                            'DBBD.....DWWD.',
+                                            'DBBD.....DWWD.',
+                                            'DBBBD...DWWWD.',
+                                            'DBBBBD.DWWWWD.',
+                                            '.DBBBDDDWWWD..',
+                                            '..DBBMMMWWD...',
+                                            '...DMMMMMD....',
+                                            '....DMMMD.....',
+                                            '.....DDD......'
+                                        ];
+                                        const W = 14, H = rows.length;
+                    const spr = document.createElement('canvas'); spr.width = W; spr.height = H;
+                    const g = spr.getContext('2d');
+                    const map = {
+                        '.': null,
+                        'D': '#0a1a2e',
+                        'B': '#1a8cff',
+                        'W': '#f4f8ff',
+                        'M': '#4aa3ff'
+                    };
+                    // slight highlight on B/W
+                    for (let y = 0; y < H; y++) {
+                        const row = rows[y].padEnd(W, '.');
+                        for (let x = 0; x < W; x++) {
+                            const ch = row[x];
+                            let col = map[ch];
+                            if (!col) continue;
+                            if (ch === 'B' && (x + y) % 3 === 0) col = '#5ec8ff';
+                            if (ch === 'W' && (x + y) % 4 === 0) col = '#ffffff';
+                            g.fillStyle = col;
+                            g.fillRect(x, y, 1, 1);
+                        }
+                    }
+                    PIX.magnet = spr;
+                    return spr;
+                }
+
+                // Escudo mini pixel (heater) — reusa cache PIX.shield; brillo se aplica al dibujar.
+                function pixShieldBuffSprite(sW) {
+                    return pixShieldSprite(sW);
+                }
+
+                // Hash estable 0..1 a partir de coords + semilla (partículas cosméticas online/offline).
+                function fxHash(x, y, s) {
+                    const n = Math.sin(x * 12.9898 + y * 78.233 + s * 45.164) * 43758.5453;
+                    return n - Math.floor(n);
+                }
+
+                /**
+                 * FX de buffs sobre una célula. Sprint/inmune: SIEMPRE visibles (aura legible
+                 * para rivales online/offline). Imán fancy: propio siempre; bots si enableEnemyFX.
+                 * Partículas cosméticas client-side (no dependen del sim del server).
+                 */
+                function drawCellBuffFx(ctx, c, alpha) {
+                                    // Propio: id 'me' (online) o no-bot en partida local.
+                                    const isSelf = c.id === 'me' || (!c.isBot && sim && !sim.isRemote);
+                                    // Auras sprint/inmune: todos las ven (rivales sepan que está activo).
+                                    const showAura = true;
+                                    // Extra (imán icono + más partículas): propio, otros jugadores, o bots si FX on.
+                                    const showExtra = isSelf || !c.isBot || enableEnemyFX;
+                    if (!showAura && !showExtra) return;
+
+                    const now = performance.now();
+                    const pW = c.r * 2.0, pH = pW * PILL_RATIO;
+                    const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
+                    const prev = ctx.imageSmoothingEnabled;
+                    ctx.imageSmoothingEnabled = false;
+
+                    // --- SPRINT aura + rayos ---
+                    if (c.sprintTime > 0 && showAura) {
+                        ctx.save();
+                        ctx.translate(c.x, c.y);
+                        ctx.rotate(-Math.PI / 4);
+                        const step = Math.floor(now / 110) % 2;
+                        const pulse = 3 + 5 * step;
+                        ctx.globalAlpha = alpha * (0.9 + 0.1 * step);
+                        ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
+                        const pulse2 = pulse + 6 + step * 2;
+                        ctx.globalAlpha = alpha * 0.4;
+                        ctx.drawImage(pixRingSprite(wLfx, '#ffe84a'), -pW / 2 - pulse2, -pH / 2 - pulse2, pW + pulse2 * 2, pH + pulse2 * 2);
+                        // tinte cuerpo
+                        ctx.globalAlpha = alpha * 0.14;
+                        ctx.fillStyle = '#ffd700';
+                        ctx.beginPath();
+                        ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
+                        ctx.fill();
+                        ctx.restore();
+
+                        // Rayos: sim particles (offline) + cosméticos client (online y refuerzo)
+                        ctx.save();
+                        ctx.translate(c.x, c.y);
+                        const parts = c.particles || [];
+                        for (let i = 0; i < parts.length; i++) {
+                            if (parts[i].type === 'BOLT') drawPixBolt(ctx, parts[i], c.r, alpha);
+                        }
+                        // Cosméticos: estela detrás (o radial si no hay vel)
+                        const vx = c.vx || 0, vy = c.vy || 0;
+                        const sp = Math.hypot(vx, vy);
+                        const baseAng = sp > 0.12 ? Math.atan2(vy, vx) + Math.PI : 0;
+                        const nBolt = showExtra ? 6 : 4;
+                        for (let i = 0; i < nBolt; i++) {
+                            const h = fxHash(c.x, c.y, i + Math.floor(now / 90));
+                            const h2 = fxHash(c.y, c.x, i * 3.1 + Math.floor(now / 90));
+                            const life = 0.45 + 0.55 * ((1 - ((now / 140 + h) % 1)));
+                            const ang = baseAng + (h - 0.5) * 1.1 + (sp < 0.12 ? i * (Math.PI * 2 / nBolt) : 0);
+                            const dist = c.r * (0.7 + h2 * 0.7);
+                            drawPixBolt(ctx, {
+                                x: Math.cos(ang) * dist,
+                                y: Math.sin(ang) * dist,
+                                rot: (ang * 180 / Math.PI) + 90,
+                                life: life,
+                                scale: 1 + h * 0.5
+                            }, c.r, alpha * (showExtra ? 1 : 0.85));
+                        }
+                        ctx.restore();
+                    }
+
+                    // --- INMUNE aura + escudo mini + partículas ---
+                    if (c.immuneTime > 0 && showAura) {
+                        ctx.save();
+                        ctx.translate(c.x, c.y);
+                        ctx.rotate(-Math.PI / 4);
+                        const step = Math.floor(now / 150) % 2;
+                        const gap = c.r * (0.08 + 0.03 * step);
+                        ctx.globalAlpha = alpha * 0.95;
+                        ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
+                        const gap2 = gap + c.r * 0.16;
+                        ctx.globalAlpha = alpha * (0.5 + 0.25 * step);
+                        ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
+                        ctx.globalAlpha = alpha * 0.2;
+                        ctx.fillStyle = '#a020f0';
+                        ctx.beginPath();
+                        ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
+                        ctx.fill();
+                        ctx.restore();
+
+                        // Escudo pequeño upright que “brilla” (pulse scale + bob)
+                        const shWorld = Math.max(12, Math.min(36, c.r * 0.55));
+                        const sW = Math.max(10, Math.min(28, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
+                        const spr = pixShieldBuffSprite(sW);
+                        const bob = Math.sin(now / 180) * (c.r * 0.06);
+                        const glow = 1 + 0.12 * (Math.floor(now / 120) % 2);
+                        const dw = shWorld * glow, dh = (spr.height / spr.width) * dw;
+                        const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
+                        ctx.save();
+                        ctx.globalAlpha = alpha * 0.35;
+                        ctx.fillStyle = '#d080ff';
+                        ctx.fillRect(Math.round(sx - dw * 0.7), Math.round(sy - dh * 0.7), Math.round(dw * 1.4), Math.round(dh * 1.4));
+                        ctx.globalAlpha = alpha;
+                        ctx.drawImage(spr, Math.round(sx - dw / 2), Math.round(sy - dh / 2), Math.round(dw), Math.round(dh));
+                        ctx.restore();
+
+                        // Partículas violeta
+                        const nSpark = showExtra ? 7 : 4;
+                        ctx.save();
+                        for (let i = 0; i < nSpark; i++) {
+                            const h = fxHash(c.x + 1, c.y, i + Math.floor(now / 100));
+                            const h2 = fxHash(c.y + 2, c.x, i * 2.7 + Math.floor(now / 100));
+                            const ang = h * Math.PI * 2 + now / 700;
+                            const dist = c.r * (0.9 + h2 * 0.5);
+                            const px = c.x + Math.cos(ang) * dist;
+                            const py = c.y + Math.sin(ang) * dist;
+                            const sz = 2 + Math.floor(h2 * 3);
+                            const a = alpha * (0.4 + 0.6 * ((Math.sin(now / 90 + i) + 1) / 2));
+                            ctx.globalAlpha = a;
+                            ctx.fillStyle = h > 0.5 ? '#e0a0ff' : '#a020f0';
+                            ctx.fillRect(Math.round(px - sz / 2), Math.round(py - sz / 2), sz, sz);
+                            if (h > 0.7) {
+                                ctx.fillStyle = '#ffffff';
+                                ctx.fillRect(Math.round(px - 1), Math.round(py - 1), 2, 2);
+                            }
+                        }
+                        ctx.restore();
+                    }
+
+                    // --- IMÁN por celda: rivales/bots (el propio usa drawPlayerMagnetFx del cluster) ---
+                                        if (c.magnetTime > 0 && showExtra && !isSelf) {
+                                            drawMagnetIconFx(ctx, c.x, c.y - c.r * PILL_RATIO - Math.max(10, c.r * 0.35), Math.max(16, Math.min(40, c.r * 0.9)), alpha, c.x + c.y);
+                                        }
+
+                    ctx.imageSmoothingEnabled = prev;
+                }
+
+                /** Imán azul/blanco vibrando + chispas azules. (x,y) centro del icono world. */
+                function drawMagnetIconFx(ctx, x, y, size, alpha, seed) {
+                    const now = performance.now();
+                    const vib = (Math.floor(now / 50) % 2) ? 1.5 : -1.5;
+                    const vibY = Math.sin(now / 40) * 1.2;
+                    const spr = pixMagnetSprite();
+                    const prev = ctx.imageSmoothingEnabled;
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.save();
+                    ctx.translate(x + vib, y + vibY);
+                    // glow
+                    ctx.globalAlpha = alpha * 0.35;
+                    ctx.fillStyle = '#2080ff';
+                    ctx.fillRect(Math.round(-size * 0.65), Math.round(-size * 0.65), Math.round(size * 1.3), Math.round(size * 1.3));
+                    ctx.globalAlpha = alpha;
+                    ctx.drawImage(spr, Math.round(-size / 2), Math.round(-size / 2), Math.round(size), Math.round(size));
+                    ctx.restore();
+                    // partículas hacia el imán
+                    for (let i = 0; i < 8; i++) {
+                        const h = fxHash(seed, i, Math.floor(now / 70));
+                        const h2 = fxHash(i, seed, Math.floor(now / 70) + 1);
+                        const ang = h * Math.PI * 2;
+                        const dist = size * (0.7 + (1 - ((now / 200 + h2) % 1)) * 1.4);
+                        const px = x + Math.cos(ang) * dist;
+                        const py = y + Math.sin(ang) * dist;
+                        const sz = 2 + (h2 > 0.5 ? 2 : 0);
+                        ctx.globalAlpha = alpha * (0.35 + 0.55 * (1 - dist / (size * 2.2)));
+                        ctx.fillStyle = h > 0.55 ? '#a0e8ff' : '#1a8cff';
+                        ctx.fillRect(Math.round(px), Math.round(py), sz, sz);
+                    }
+                    ctx.globalAlpha = alpha;
+                    ctx.imageSmoothingEnabled = prev;
+                }
+
+                /** Ondas + imán central del cluster propio (skill 5). */
+                function drawPlayerMagnetFx(ctx, cells, alpha) {
+                    if (!cells || !cells.length) return;
+                    let avgX = 0, avgY = 0, maxR = 0;
+                    for (let i = 0; i < cells.length; i++) {
+                        avgX += cells[i].x; avgY += cells[i].y;
+                        if (cells[i].r > maxR) maxR = cells[i].r;
+                    }
+                    avgX /= cells.length; avgY /= cells.length;
+                    const magnetRad = ((typeof PillSim !== 'undefined' && PillSim.SKILL_PARAMS) ? PillSim.SKILL_PARAMS.magnetRange : 200) + maxR;
+                    const timeLoop = (performance.now() / 1000) % 1;
+                    ctx.save();
+                    ctx.translate(avgX, avgY);
+                    for (let i = 0; i < 3; i++) {
+                        const offset = i * 0.3, t = (timeLoop + offset) % 1;
+                        let radius = magnetRad * (1 - t), opacity = t;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.45 * alpha})`;
+                        ctx.lineWidth = 2 + opacity * 3;
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                    drawMagnetIconFx(ctx, avgX, avgY, Math.max(22, Math.min(52, maxR * 1.1)), alpha, avgX + avgY);
+                }
 
     // ===== Fuente bitmap pixel (PIXFONT, drawPixelText, pixFancyText, HD) =====
     // Movida a pixfont.js (compartida con comparativa.html para ver el alfabeto).
@@ -2852,72 +3109,51 @@
     // aunque el panel/modal esté abierto en ese momento.
     function setPixPanelAccent(color) { pixPanelAccent = color || '#00ff88'; persistPanelStyle(); buildPixPanelCss(); }
 
-    // Versión pixel de drawCell: misma estructura (tp/sprint/inmunidad/flash/
-    // partículas/nombre) pero sin shadowBlur, con el cuerpo desde sprite y
-    // la órbita de escudos cuantizada a pasos.
-    function drawCellPixel(c) {
-        let alpha = 1; if (c.tpPhase === 1) alpha = Math.max(0, c.tpTimer / 500); else if (c.tpPhase === 2) alpha = Math.max(0, 1 - (c.tpTimer / 500));
-        ctx.save(); ctx.globalAlpha = alpha; const drawEffects = !c.isBot || enableEnemyFX;
-        ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4);
-        const pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2;
-        // Resolución lógica de aros (misma fórmula que el cuerpo). Sin smoothing.
-                const wLfx = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-                const prevSmoothFx = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-                // SPRINT: aro dorado con pulso 2-step + aro exterior fino.
-                if (c.sprintTime > 0 && drawEffects) {
-                    const step = Math.floor(performance.now() / 120) % 2;
-                    const pulse = 3 + 4 * step;
-                    ctx.globalAlpha = alpha * (0.85 + 0.15 * step);
-                    ctx.drawImage(pixRingSprite(wLfx, '#FFD700'), -pW/2 - pulse, -pH/2 - pulse, pW + pulse * 2, pH + pulse * 2);
-                    const pulse2 = pulse + 5 + step * 2;
-                    ctx.globalAlpha = alpha * 0.45;
-                    ctx.drawImage(pixRingSprite(wLfx, '#ffe84a'), -pW/2 - pulse2, -pH/2 - pulse2, pW + pulse2 * 2, pH + pulse2 * 2);
-                    ctx.globalAlpha = alpha;
-                }
-                // INMUNE: campo de fuerza (aro sólido + aro dashed exterior). Sin escudos orbitando.
-                if (c.immuneTime > 0 && drawEffects) {
-                    const step = Math.floor(performance.now() / 160) % 2;
-                    const gap = c.r * (0.08 + 0.03 * step);
-                    ctx.globalAlpha = alpha * 0.95;
-                    ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW/2 - gap, -pH/2 - gap, pW + gap * 2, pH + gap * 2);
-                    const gap2 = gap + c.r * 0.18;
-                    ctx.globalAlpha = alpha * (0.55 + 0.2 * step);
-                    ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW/2 - gap2, -pH/2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
-                    ctx.globalAlpha = alpha;
-                }
-                ctx.imageSmoothingEnabled = prevSmoothFx;
-                if (c.flashTime > 0 && c.flashColor && drawEffects) { ctx.save(); ctx.globalAlpha = 0.35 * alpha; ctx.fillStyle = c.flashColor; ctx.beginPath(); ctx.roundRect(-pW/2 - 8, -pH/2 - 8, pW + 16, pH + 16, rBox + 8); ctx.fill(); ctx.restore(); }
-                const skinImg = getSkinImage(c.skinUrl);
-                if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
-                    ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip();
-                    try { ctx.drawImage(skinImg, -pW/2, -pH/2, pW, pH); } catch (e) {}
-                    if (c.immuneTime > 0 && drawEffects) { ctx.fillStyle = 'rgba(160, 32, 240, 0.22)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); }
-                    if (c.sprintTime > 0 && drawEffects) { ctx.fillStyle = 'rgba(255, 200, 40, 0.12)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); }
-                } else {
-                    const wL = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-                    ctx.drawImage(pixPillSprite(wL, c.colorTop, c.colorBot), -pW/2, -pH/2, pW, pH);
-                    if (c.immuneTime > 0 && drawEffects) { ctx.save(); ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip(); ctx.fillStyle = 'rgba(160, 32, 240, 0.22)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); ctx.restore(); }
-                    if (c.sprintTime > 0 && drawEffects) { ctx.save(); ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip(); ctx.fillStyle = 'rgba(255, 200, 40, 0.12)'; ctx.fillRect(-pW/2, -pH/2, pW, pH); ctx.restore(); }
-                }
-                ctx.restore();
-                if (c.particles.length > 0 && drawEffects) {
-                    ctx.save(); ctx.translate(c.x, c.y);
-                    c.particles.forEach(p => {
-                        if (p.type === 'BOLT') {
-                            drawPixBolt(ctx, p, c.r, alpha);
-                        } else {
-                            ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = Math.ceil(Math.max(0, p.life) * 4) / 4 * alpha;
-                            ctx.font = `${Math.max(18, c.r / 1.3)}px ${PIX_FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                            if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.fillText("+", 0, 0); }
-                            else { ctx.fillStyle = '#ff0000'; ctx.fillText("-", 0, 0); }
-                            ctx.restore();
-                        }
-                    });
+    // Versión pixel de drawCell: cuerpo + flash + nombre; buffs (sprint/inmune/imán)
+        // van por drawCellBuffFx (aura siempre visible para rivales; partículas client-side).
+        function drawCellPixel(c) {
+            let alpha = 1; if (c.tpPhase === 1) alpha = Math.max(0, c.tpTimer / 500); else if (c.tpPhase === 2) alpha = Math.max(0, 1 - (c.tpTimer / 500));
+            ctx.save(); ctx.globalAlpha = alpha;
+            const drawEffects = true; // auras de buff las ven todos; el detalle lo filtra drawCellBuffFx
+            ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4);
+            const pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2;
+            if (c.flashTime > 0 && c.flashColor && drawEffects) {
+                ctx.save(); ctx.globalAlpha = 0.35 * alpha; ctx.fillStyle = c.flashColor;
+                ctx.beginPath(); ctx.roundRect(-pW/2 - 8, -pH/2 - 8, pW + 16, pH + 16, rBox + 8); ctx.fill(); ctx.restore();
+            }
+            const skinImg = getSkinImage(c.skinUrl);
+            if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
+                ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip();
+                try { ctx.drawImage(skinImg, -pW/2, -pH/2, pW, pH); } catch (e) {}
+            } else {
+                const wL = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
+                ctx.drawImage(pixPillSprite(wL, c.colorTop, c.colorBot), -pW/2, -pH/2, pW, pH);
+            }
+            ctx.restore();
+            // Buff FX (aros, rayos, escudo, imán por celda) — online y offline
+            drawCellBuffFx(ctx, c, alpha);
+            // +/- particles (no bolts; bolts van en buff fx)
+            if (c.particles && c.particles.length > 0) {
+                ctx.save(); ctx.translate(c.x, c.y);
+                c.particles.forEach(p => {
+                    if (p.type === 'BOLT') return;
+                    ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = Math.ceil(Math.max(0, p.life) * 4) / 4 * alpha;
+                    ctx.font = `${Math.max(18, c.r / 1.3)}px ${PIX_FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.fillText("+", 0, 0); }
+                    else { ctx.fillStyle = '#ff0000'; ctx.fillText("-", 0, 0); }
                     ctx.restore();
-                }
-        if (c.name) { ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3; const fSize = Math.max(14, c.r / 1.1); ctx.font = `${fSize}px ${PIX_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); }
-        ctx.restore();
-    }
+                });
+                ctx.restore();
+            }
+            if (c.name) {
+                ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+                const fSize = Math.max(14, c.r / 1.1); ctx.font = `${fSize}px ${PIX_FONT}`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+                ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5);
+                ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5);
+            }
+            ctx.restore();
+        }
 
     function drawCell(c) {
         if (pixelMode) return drawCellPixel(c);
@@ -7009,25 +7245,17 @@
 
         explosions.forEach(e => e.draw());
 
-        if (p && p.skillState[5] > 0 && p.cells.length > 0) {
-            let avgX = 0, avgY = 0, maxR = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= p.cells.length; avgY /= p.cells.length; let magnetRad = SKILL_PARAMS.magnetRange + maxR;
-            let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(avgX, avgY);
-            for(let i=0; i<3; i++) { let offset = i * 0.3, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); }
-            ctx.restore();
-        }
+        // Magnet del jugador se dibuja DESPUÉS de las células (encima).
+                [...sim.enemies, ...myCells()].sort((a,b) => a.r - b.r).forEach(e => { if (e.x + e.r > vL && e.x - e.r < vR && e.y + e.r > vT && e.y - e.r < vB) {
+                    drawCell(e);
+                }});
 
-        [...sim.enemies, ...myCells()].sort((a,b) => a.r - b.r).forEach(e => { if (e.x + e.r > vL && e.x - e.r < vR && e.y + e.r > vT && e.y - e.r < vB) {
-            drawCell(e); if (e.isBot && e.magnetTime > 0 && enableEnemyFX) { let magnetRad = SKILL_PARAMS.magnetRange + e.r; let timeLoop = (performance.now() / 1000) % 1; ctx.save(); ctx.translate(e.x, e.y); for(let i=0; i<3; i++) { let offset = i * 0.33, t = (timeLoop + offset) % 1, radius = magnetRad * t, opacity = 1 - t; radius = magnetRad - radius; opacity = 1 - opacity; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.5})`; ctx.lineWidth = 2 + (opacity * 3); ctx.stroke(); } ctx.restore(); }
-        }});
-
-        // FX imán legacy (webm opcional). Las ondas azules de arriba ya marcan el buff;
-                // el sticker Grok se retiró por no pegar con el pack pixel.
+                // Magnet cluster propio: ondas + herradura (online skillState / offline igual).
                 if (p && p.skillState[5] > 0 && p.cells.length > 0) {
-                    let avgX = 0, avgY = 0, maxR = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; if(c.r > maxR) maxR = c.r; }); avgX /= p.cells.length; avgY /= p.cells.length;
-                    const s = maxR * 2.2;
-                    ensureMagnetFxPlaying();
-                    if (magnetFxVideo.readyState >= 2) { ctx.save(); ctx.translate(avgX, avgY); ctx.globalAlpha = 0.55; ctx.drawImage(magnetFxVideo, -s, -s, s * 2, s * 2); ctx.restore(); }
+                    drawPlayerMagnetFx(ctx, p.cells, 1);
                 }
+
+                // (buffs por celda: drawCellBuffFx dentro de drawCellPixel)
 
         ctx.save();
         sim.viruses.forEach(v => {
