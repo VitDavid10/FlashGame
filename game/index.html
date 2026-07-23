@@ -3202,7 +3202,7 @@
                                                                 ctx.globalAlpha = lifeA;
                                                                 // Rayos más grandes que +/- ; +/- un poco más contenidos
                                                                 const szBolt = Math.max(22, Math.min(52, c.r * 0.95));
-                                                                const szPop = Math.max(14, Math.min(36, c.r / 1.35));
+                                                                const szPop = Math.max(20, Math.min(50, c.r * 0.9));
                                                                 if (p.type === 'BOLT') {
                                                                     if (!drawFxPop(ctx, 'bolt', szBolt, 1)) {
                                                                         ctx.font = `${Math.round(szBolt * 0.85)}px ${PIX_FONT}`;
@@ -3218,7 +3218,7 @@
                                                                         ctx.fillStyle = '#00ff00'; ctx.fillText('+', 0, 0);
                                                                     }
                                                                 } else {
-                                                                    if (!drawFxPop(ctx, 'minus', szPop * 0.9, 1)) {
+                                                                    if (!drawFxPop(ctx, 'minus', szPop, 1)) {
                                                                         ctx.font = `${Math.round(szPop)}px ${PIX_FONT}`;
                                                                         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                                                                         ctx.fillStyle = '#ff0000'; ctx.fillText('-', 0, 0);
@@ -3265,7 +3265,7 @@
                                     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                                     ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.fillStyle = '#FFD700';
                                     ctx.strokeText('⚡', 0, 0); ctx.fillText('⚡', 0, 0);
-                                } else { ctx.font = `bold ${Math.max(16, c.r/1.5)}px Russo One`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 5; ctx.fillText("+", 0, 0); } else { ctx.fillStyle = '#ff0000'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5; ctx.fillText("-", 0, 0); } }
+                                } else { ctx.font = `bold ${Math.max(20, c.r/1.4)}px Russo One`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 5; ctx.fillText("+", 0, 0); } else { ctx.fillStyle = '#ff0000'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5; ctx.fillText("-", 0, 0); } }
                 ctx.restore();
             });
             ctx.restore();

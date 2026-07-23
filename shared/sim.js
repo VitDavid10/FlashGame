@@ -214,7 +214,8 @@
             if (this.magnetTime > 0) { this.magnetTime -= delta; if (this.magnetTime < 0) this.magnetTime = 0; }
             if (this.sprintTime > 0) { this.sprintTime -= delta; if (this.sprintTime < 0) this.sprintTime = 0; }
 
-            for (let i = this.particles.length - 1; i >= 0; i--) { let p = this.particles[i]; p.life -= 0.05 * timeScale; p.y += p.vy * timeScale; p.x += p.vx * timeScale; if (p.life <= 0) this.particles.splice(i, 1); }
+            // +/- duran más en pantalla que el rayo (decaen más despacio) para que se aprecien mejor.
+            for (let i = this.particles.length - 1; i >= 0; i--) { let p = this.particles[i]; p.life -= (p.type === 'BOLT' ? 0.05 : 0.03) * timeScale; p.y += p.vy * timeScale; p.x += p.vx * timeScale; if (p.life <= 0) this.particles.splice(i, 1); }
             let effectiveR = Math.max(this.groupMaxR, this.r, 20);
             let baseSpeed = VELOC_BASE * (sim.config.worldSettings.speed || 1);
             let speedMult = baseSpeed * 10.0 * Math.pow(effectiveR, -0.46);
