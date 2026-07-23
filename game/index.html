@@ -2851,14 +2851,13 @@
         if (cartelUsesAtlas(atlasId)) {
             // Sin sombra dura: el PNG del marco es irregular (transparente por
             // fuera) y la sombra rectangular asomaba como una franja negra.
-            // Fondo = bgHex/bgAlpha (antes 'transparent' fijo): de respaldo bajo
-            // el border-image, por si el redondeo del 9-slice deja una linea de
-            // 1px sin cubrir en el limite del slice — con 'transparent' esa linea
-            // dejaba ver el fondo casi negro de la pagina; con el tono del propio
-            // cartel, la linea (si aparece) se camufla en vez de verse negra.
+            // Fondo transparente: el interior lo rellena el propio centro (opaco)
+            // del PNG vía 'fill', así que las esquinas redondeadas dejan de mostrar
+            // el rectángulo casi-negro sobre el fondo. (bgHex/bgAlpha se ignoran en
+            // esta rama.)
             return selector + '{border:' + borderPx + 'px solid transparent;' +
                 'border-image:url(' + cartelHeroUrl(atlasId) + ') ' + (slice || 60) + ' fill stretch;' +
-                'border-radius:0!important;background:' + _hexA(bgHex, bgAlpha) + '!important;' +
+                'border-radius:0!important;background:transparent!important;' +
                 'box-shadow:none!important;animation:none}';
         }
         const u = 4, S = 16 * u;
@@ -2907,10 +2906,7 @@
     // acento/fondo que el panel de skills) y los botones SPECTATE/BACK TO MENU
     // con su arte ya horneado (banner + texto), pisando el generico de _btnImgRule.
     function _resultOverlayRule() {
-        // bgAlpha 0 (fondo transparente): el interior lo rellena el propio centro
-        // negro de menu-square.png (border-image fill), así que las esquinas
-        // redondeadas dejan de mostrar el rectángulo casi-negro sobre el juego.
-        let css = 'body.pixel-pack ' + _pixFrameRule('.result-box', skillPanelBorderPx, skillPanelBg, 0, 'menu-square');
+        let css = 'body.pixel-pack ' + _pixFrameRule('.result-box', skillPanelBorderPx, skillPanelBg, skillPanelBgAlpha, 'menu-square');
         if (cartelUsesAtlas('try-again')) {
             css += 'body.pixel-pack #btnTryAgainOnline{border:none!important;border-radius:0!important;clip-path:none!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('try-again') + ') center/100% 100% no-repeat!important;' +
@@ -3813,6 +3809,17 @@
             seed: (Math.random() * 1000) | 0
         };
     }
+    // Barrera fija donde NINGÚN virus puede entrar (ni un píxel), definida sobre la
+    // rejilla del fondo del menú (28 columnas × 14 filas, 1-indexada). Se da en
+    // fracciones de w/h, así queda anclada al título + columna de PLAY en cualquier
+    // resolución. Zona A: cols 8-21 filas 2-3. Zona B: cols 11-18 filas 4-11.
+    function menuNoVirusZones(w, h) {
+        const cx = c => (c - 1) / 28 * w, cy = r => (r - 1) / 14 * h;
+        return [
+            { x: cx(8),  y: cy(2), w: cx(22) - cx(8),  h: cy(4)  - cy(2) },
+            { x: cx(11), y: cy(4), w: cx(19) - cx(11), h: cy(12) - cy(4) },
+        ];
+    }
     function stepMenuDeco(w, h, now, move, obstacles, bounceRects) {
         // Reescala posiciones si el canvas activo tiene otro tamaño lowres
         // (selector de modo y login no miden lo mismo en "pixeles" internos).
@@ -3830,6 +3837,10 @@
         // demasiados virus para que quepan a esa distancia, se separan lo máximo
         // posible (nunca se solapan igualmente, por el nivel "duro" de abajo).
         const virusMinDist = 500 * (w / (window.innerWidth || 1280));
+        // Barreras de los virus = UI del menú (bounceRects) + zonas prohibidas fijas
+        // del título/columna de PLAY. Se usan tanto al colocar (spawn) como al rebotar.
+        const virusBarriers = (bounceRects && bounceRects.length)
+            ? bounceRects.concat(menuNoVirusZones(w, h)) : menuNoVirusZones(w, h);
         let nFood = 0, nVirus = 0;
         for (const p of menuDeco.items) { if (p.isVirus) nVirus++; else nFood++; }
         for (let i = menuDeco.items.length - 1; i >= 0 && (nFood > wantFood || nVirus > wantVirus); i--) {
@@ -3838,7 +3849,7 @@
             else if (!p.isVirus && nFood > wantFood) { menuDeco.items.splice(i, 1); nFood--; }
         }
         while (nFood < wantFood) { menuDeco.items.push(menuDecoSpawn(w, h, false)); nFood++; }
-        while (nVirus < wantVirus) { const v = menuDecoSpawn(w, h, true); menuDecoPlaceApart(v, w, h, virusMinDist, bounceRects); menuDeco.items.push(v); nVirus++; }
+        while (nVirus < wantVirus) { const v = menuDecoSpawn(w, h, true); menuDecoPlaceApart(v, w, h, virusMinDist, virusBarriers); menuDeco.items.push(v); nVirus++; }
         const dt = menuDeco.lastT ? Math.min(0.05, (now - menuDeco.lastT) / 1000) : 0.016;
         menuDeco.lastT = now;
         // `move === false` (menús concretos: login/selección de sala): la deco se
@@ -3872,7 +3883,7 @@
         // al entrar al menú, aunque ya estén en zona segura.
         if (move !== false) {
             menuDecoSeparateViruses(virusMinDist);
-            if (bounceRects && bounceRects.length) for (const p of menuDeco.items) if (p.isVirus) menuDecoBounce(p, bounceRects);
+            for (const p of menuDeco.items) if (p.isVirus) menuDecoBounce(p, virusBarriers);
         }
     }
     // Coloca `v` separado de los demás virus: primero intenta la distancia
