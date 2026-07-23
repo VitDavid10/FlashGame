@@ -367,6 +367,16 @@
         .menu-row { display: flex; flex-direction: row; gap: 110px; align-items: flex-start; max-width: 100%; position: relative; z-index: 1; }
         /* Fondo pixel del menu: canvas a baja resolucion estirado sin suavizado */
         #loginBgCv { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; filter: brightness(var(--menu-bg-bright, 1)); }
+        /* Zonas sin virus: siempre presentes (el rebote lee su rect), invisibles
+           salvo en EDIT LAYOUT. Posición por defecto = rejilla 28×14 (col 8-21/fila
+           2-3 y col 11-18/fila 4-11). pointer-events solo en el asa, para no tapar
+           los elementos editables de debajo (título, PLAY...). */
+        .no-virus-zone { position: fixed; z-index: 58; pointer-events: none; box-sizing: border-box; border: 2px solid transparent; background: transparent; }
+        body.layout-editing .no-virus-zone { z-index: 100; border-color: #ff2a2a; background: rgba(255,42,42,0.14); box-shadow: 0 0 0 1px rgba(0,0,0,0.5) inset; }
+        #noVirusZoneA { left: 25%; top: 7.143%; width: 50%; height: 14.286%; }
+        #noVirusZoneB { left: 35.714%; top: 21.429%; width: 28.571%; height: 57.143%; }
+        .nvz-handle { position: absolute; top: -1px; left: -1px; display: none; pointer-events: auto; cursor: move; background: #ff2a2a; color: #fff; font: 10px 'Russo One', sans-serif; letter-spacing: 1px; padding: 2px 6px; }
+        body.layout-editing .nvz-handle { display: inline-block; }
 
         /* Columna derecha: dos bloques iguales (oracle arriba, missions/skins abajo).
            Misma animación slideUp que el login-box para que se muevan juntos al abrir.
@@ -1701,6 +1711,12 @@
     </div>
 
     <canvas id="gameCanvas"></canvas>
+
+    <!-- Zonas donde NINGÚN virus del fondo del menú puede entrar. Invisibles salvo
+         en EDIT LAYOUT (rojo), donde se pueden mover/escalar como el resto. El
+         rebote de virus (menuNoVirusZones) lee la posición REAL de estos divs. -->
+    <div id="noVirusZoneA" class="no-virus-zone"><span class="nvz-handle">NO-VIRUS A</span></div>
+    <div id="noVirusZoneB" class="no-virus-zone"><span class="nvz-handle">NO-VIRUS B</span></div>
 
     <!-- TOOLTIP HTML (FLOTANTE) -->
     <div id="skill-tooltip" class="skill-tooltip">
@@ -3809,11 +3825,20 @@
             seed: (Math.random() * 1000) | 0
         };
     }
-    // Barrera fija donde NINGÚN virus puede entrar (ni un píxel), definida sobre la
-    // rejilla del fondo del menú (28 columnas × 14 filas, 1-indexada). Se da en
-    // fracciones de w/h, así queda anclada al título + columna de PLAY en cualquier
-    // resolución. Zona A: cols 8-21 filas 2-3. Zona B: cols 11-18 filas 4-11.
+    // Barrera donde NINGÚN virus puede entrar (ni un píxel). Se lee de los divs
+    // #noVirusZoneA/B (editables desde EDIT LAYOUT: mover/escalar), proyectando su
+    // rect de viewport al espacio lowres del canvas (w×h). Si aún no existen, cae a
+    // la rejilla 28×14: zona A cols 8-21/filas 2-3, zona B cols 11-18/filas 4-11.
     function menuNoVirusZones(w, h) {
+        const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
+        const out = [];
+        for (const id of ['noVirusZoneA', 'noVirusZoneB']) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) out.push({ x: r.left * w / vw, y: r.top * h / vh, w: r.width * w / vw, h: r.height * h / vh });
+        }
+        if (out.length) return out;
         const cx = c => (c - 1) / 28 * w, cy = r => (r - 1) / 14 * h;
         return [
             { x: cx(8),  y: cy(2), w: cx(22) - cx(8),  h: cy(4)  - cy(2) },
@@ -3969,8 +3994,10 @@
         // (titlePw_arcade vs titlePw_classic): se mide aparte, en AMBOS modos, para
         // que el virus evite su zona sea cual sea el modo que elijas. El resto, una vez.
         const scoped = new Set(['#modeTitlePw', '#modeTitleWord']);
+        // Las zonas sin virus NO son UI: su rebote lo gestiona menuNoVirusZones.
+        const zoneSel = new Set(['#noVirusZoneA', '#noVirusZoneB']);
         for (const sel of [...Object.values(LAYOUT_ELS), '#musicToggle', '#gameWalletArea']) {
-            if (scoped.has(sel)) continue;
+            if (scoped.has(sel) || zoneSel.has(sel)) continue;
             pushEl(document.querySelector(sel));
         }
         // El título del login (#modeTitlePw/#modeTitleWord) NO existe en el selector
@@ -4053,7 +4080,7 @@
             if (r.width <= 0 || r.height <= 0) return;
             rects.push({ x: r.left * sx, y: r.top * sy, w: r.width * sx, h: r.height * sy });
         };
-        for (const key in LAYOUT_ELS) push(document.querySelector(LAYOUT_ELS[key]));
+        for (const key in LAYOUT_ELS) { if (LAYOUT_ZONE_KEYS.has(key)) continue; push(document.querySelector(LAYOUT_ELS[key])); }
         for (const sel of MENU_DECO_EXTRA_OBSTACLES) push(document.querySelector(sel));
         return rects;
     }
@@ -4908,7 +4935,12 @@
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
         rooms: '#oraclePanel', quests: '#missionsPanel',
+        zoneA: '#noVirusZoneA', zoneB: '#noVirusZoneB',
     };
+    // Zonas sin virus: editables por el mismo sistema de layout, pero NO son
+    // "obstáculos de UI" (ni rebote de comida ni reubicación) — solo las lee
+    // menuNoVirusZones para el rebote de virus. Se saltan en las otras funciones.
+    const LAYOUT_ZONE_KEYS = new Set(['zoneA', 'zoneB']);
     let menuLayout = {};
     try { menuLayout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { menuLayout = {}; }
     let layoutEditing = false, layoutDrag = null;
