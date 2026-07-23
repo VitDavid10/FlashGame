@@ -3751,7 +3751,7 @@
     // Densidad y tamaño configurables desde el panel local del juego (ver
     // SETTINGS -> VISUALS), guardado en localStorage (pw_menu_deco).
     const MENU_DECO_KEY = 'pw_menu_deco';
-    const menuDecoSettings = Object.assign({ foodDensity: 16, virusCount: 3, pillBobPx: 3, cartelBobPx: 3, gridSize: 24 },
+    const menuDecoSettings = Object.assign({ foodDensity: 16, virusCount: 3, pillBobPx: 3, cartelBobPx: 3, gridSize: 24, virusTP: false },
         (() => { try { return JSON.parse(localStorage.getItem(MENU_DECO_KEY)) || {}; } catch (e) { return {}; } })());
     function saveMenuDecoSettings() { try { localStorage.setItem(MENU_DECO_KEY, JSON.stringify(menuDecoSettings)); } catch (e) {} }
     // cartelBobPx vive en CSS (custom property, la lee @keyframes cartelBob);
@@ -3771,6 +3771,7 @@
             const v = data['menuDeco' + k[0].toUpperCase() + k.slice(1)];
             if (typeof v === 'number' && menuDecoSettings[k] !== v) { menuDecoSettings[k] = v; changed = true; }
         }
+        if (typeof data.menuDecoVirusTP === 'boolean' && menuDecoSettings.virusTP !== data.menuDecoVirusTP) { menuDecoSettings.virusTP = data.menuDecoVirusTP; changed = true; }
         if (changed) { saveMenuDecoSettings(); applyMenuDecoCss(); }
         // Layout GLOBAL del menú (EDIT LAYOUT → "Guardar para todos"): se aplica a
         // todos, salvo mientras TÚ estás editando (para no pisar tu edición). Solo
@@ -3842,10 +3843,11 @@
         // (El giro de los virus va aparte, en drawMenuDeco, y sigue activo.)
         for (const p of menuDeco.items) {
             if (move === false) {
-                // Congelado (login): solo la COMIDA que cae sobre la UI salta a un
-                // hueco (es pequeña y no se nota). Los VIRUS se quedan DONDE ESTÁN
-                // aunque queden sobre la UI: teletransportarlos se veía muy raro.
-                if (!p.isVirus && menuDecoCovered(p.x, p.y, p.size / 2, obstacles)) {
+                // Congelado (login): la COMIDA que cae sobre la UI salta a un hueco
+                // (es pequeña y no se nota). Los VIRUS se quedan DONDE ESTÁN aunque
+                // queden sobre la UI (teletransportarlos se veía muy raro), salvo que
+                // se active virusTP desde SETTINGS -> VISUALS (admin).
+                if ((!p.isVirus || menuDecoSettings.virusTP) && menuDecoCovered(p.x, p.y, p.size / 2, obstacles)) {
                     for (let i = 0; i < 80; i++) {
                         const nx = Math.random() * w, ny = Math.random() * h;
                         if (!menuDecoCovered(nx, ny, p.size / 2, obstacles)) { p.x = nx; p.y = ny; break; }

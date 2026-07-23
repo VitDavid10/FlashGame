@@ -567,6 +567,9 @@
                         <input type="range" min="0" max="12" step="1" id="mdCartelBob" oninput="document.getElementById('mdCartelBobVal').innerText=this.value+'px'" style="width:110px;">
                         <span id="mdCartelBobVal" style="color:#00ff88;font-size:12px;width:24px;">3px</span>
                     </div>
+                    <label style="display:flex;align-items:center;gap:6px;color:#888;font-size:12px;cursor:pointer;">
+                        <input type="checkbox" id="mdVirusTP"> Virus TP off titles
+                    </label>
                     <button class="b verde mini" onclick="aplicarMenuDeco()">Apply</button>
                 </div>
                 <span style="color:#666; font-size: 12px;">Grid size: lower = more/smaller squares (less zoom). Saved and applied live — players see it next time their menu polls room status (~every few seconds).</span>
@@ -1003,7 +1006,8 @@ function aplicarMenuDeco() {
         foodDensity: parseInt(document.getElementById('mdFood').value, 10),
         virusCount: parseInt(document.getElementById('mdVirus').value, 10),
         pillBobPx: parseInt(document.getElementById('mdPillBob').value, 10),
-        cartelBobPx: parseInt(document.getElementById('mdCartelBob').value, 10)
+        cartelBobPx: parseInt(document.getElementById('mdCartelBob').value, 10),
+        virusTP: document.getElementById('mdVirusTP').checked
     });
     toast('<strong>Menu visuals applied</strong><br>All players', 'ok');
     setTimeout(pedir, 100);
@@ -1768,6 +1772,7 @@ function render(m) {
     if (typeof m.menuDecoVirusCount === 'number' && document.activeElement.id !== 'mdVirus') { const v = m.menuDecoVirusCount; const el = document.getElementById('mdVirus'); if (el) { el.value = v; document.getElementById('mdVirusVal').innerText = v; } }
     if (typeof m.menuDecoPillBobPx === 'number' && document.activeElement.id !== 'mdPillBob') { const el = document.getElementById('mdPillBob'); if (el) { el.value = m.menuDecoPillBobPx; document.getElementById('mdPillBobVal').innerText = m.menuDecoPillBobPx + 'px'; } }
     if (typeof m.menuDecoCartelBobPx === 'number' && document.activeElement.id !== 'mdCartelBob') { const el = document.getElementById('mdCartelBob'); if (el) { el.value = m.menuDecoCartelBobPx; document.getElementById('mdCartelBobVal').innerText = m.menuDecoCartelBobPx + 'px'; } }
+    if (typeof m.menuDecoVirusTP === 'boolean' && document.activeElement.id !== 'mdVirusTP') { const el = document.getElementById('mdVirusTP'); if (el) el.checked = m.menuDecoVirusTP; }
     const t = m.totales;
     const sEntradas = realOnly ? t.entradasReal : t.entradas;
     const sMuertes = realOnly ? t.muertesReal : t.muertes;
