@@ -366,7 +366,7 @@
            la columna se anclla a su top/bottom vía sticky pseudo-clip (JS sync). */
         .menu-row { display: flex; flex-direction: row; gap: 110px; align-items: flex-start; max-width: 100%; position: relative; z-index: 1; }
         /* Fondo pixel del menu: canvas a baja resolucion estirado sin suavizado */
-        #loginBgCv { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; }
+        #loginBgCv { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; filter: brightness(var(--menu-bg-bright, 1)); }
 
         /* Columna derecha: dos bloques iguales (oracle arriba, missions/skins abajo).
            Misma animación slideUp que el login-box para que se muevan juntos al abrir.
@@ -1023,7 +1023,7 @@
            (body.has-hover-scene) los paneles pasan a cristal: el elegido
            transparente y el otro con velo oscuro — su clip-path recorta el
            velo, la escena es continua a traves de la diagonal. */
-        #modeSceneCv { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; image-rendering: pixelated; display: none; }
+        #modeSceneCv { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; image-rendering: pixelated; display: none; filter: brightness(var(--menu-bg-bright, 1)); }
         body.pixel-pack.has-hover-scene #modeScreen #modeSceneCv { display: block; }
         /* Hasta que el canvas dinámico está listo (has-hover-scene, que el JS
            añade al crear #modeSceneCv y pintar el primer frame), el selector se
@@ -3751,7 +3751,7 @@
     // Densidad y tamaño configurables desde el panel local del juego (ver
     // SETTINGS -> VISUALS), guardado en localStorage (pw_menu_deco).
     const MENU_DECO_KEY = 'pw_menu_deco';
-    const menuDecoSettings = Object.assign({ foodDensity: 16, virusCount: 3, pillBobPx: 3, cartelBobPx: 3, gridSize: 24, virusTP: false },
+    const menuDecoSettings = Object.assign({ foodDensity: 16, virusCount: 3, pillBobPx: 3, cartelBobPx: 3, gridSize: 24, virusTP: false, dimPct: 0 },
         (() => { try { return JSON.parse(localStorage.getItem(MENU_DECO_KEY)) || {}; } catch (e) { return {}; } })());
     function saveMenuDecoSettings() { try { localStorage.setItem(MENU_DECO_KEY, JSON.stringify(menuDecoSettings)); } catch (e) {} }
     // cartelBobPx vive en CSS (custom property, la lee @keyframes cartelBob);
@@ -3759,6 +3759,8 @@
     // falta aplicarlo aparte.
     function applyMenuDecoCss() {
         document.documentElement.style.setProperty('--cartel-bob-px', menuDecoSettings.cartelBobPx + 'px');
+        const dim = Math.max(0, Math.min(80, menuDecoSettings.dimPct | 0));
+        document.documentElement.style.setProperty('--menu-bg-bright', (1 - dim / 100).toFixed(3));
     }
     applyMenuDecoCss();
     // Aplica el patch de /api/rooms (ver refreshOracle): foodDensity/virusCount/
@@ -3772,6 +3774,7 @@
             if (typeof v === 'number' && menuDecoSettings[k] !== v) { menuDecoSettings[k] = v; changed = true; }
         }
         if (typeof data.menuDecoVirusTP === 'boolean' && menuDecoSettings.virusTP !== data.menuDecoVirusTP) { menuDecoSettings.virusTP = data.menuDecoVirusTP; changed = true; }
+        if (typeof data.menuDecoDimPct === 'number' && menuDecoSettings.dimPct !== data.menuDecoDimPct) { menuDecoSettings.dimPct = data.menuDecoDimPct; changed = true; }
         if (changed) { saveMenuDecoSettings(); applyMenuDecoCss(); }
         // Layout GLOBAL del menú (EDIT LAYOUT → "Guardar para todos"): se aplica a
         // todos, salvo mientras TÚ estás editando (para no pisar tu edición). Solo
