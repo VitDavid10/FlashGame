@@ -90,7 +90,18 @@ const CASOS = [
   { g:'Fin de partida', n:'ROOM RESTARTED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['roomRestarted','ROOM RESTARTED','#ffcc00'] },
   { g:'Fin de partida', n:'VICTORY!',       sup:'prizeModal', art:1, prize:{ reason:'victory',  amount:250000, carry:180000 } },
   { g:'Fin de partida', n:'CASHOUT',        sup:'prizeModal', art:1, prize:{ reason:'cashout',  amount:40000,  carry:50000  } },
-  { g:'Fin de partida', n:'MATCH ENDED',    sup:'prizeModal', art:1, prize:{ reason:'arcadeEnd', amount:120000, carry:90000 } },
+  { g:'Fin de partida', n:'MATCH ENDED',    sup:'prizeModal', art:1, prize:{ reason:'arcadeEnd', myAmount:120000, pot:500000, top:[
+    { pos:1, name:'CryptoKid',     pct:25, amount:125000 },
+    { pos:2, name:'xX_Reaper_Xx',  pct:19, amount:95000  },
+    { pos:3, name:'You',           pct:24, amount:120000, mine:true },
+    { pos:4, name:'MoonPill',      pct:11, amount:55000  },
+    { pos:5, name:'DegenDave',     pct:7,  amount:35000  },
+    { pos:6, name:'satoshi_fan',   pct:5,  amount:25000  },
+    { pos:7, name:'PillPusher99',  pct:3,  amount:15000  },
+    { pos:8, name:'nova_gg',       pct:2,  amount:10000  },
+    { pos:9, name:'zenon',         pct:2,  amount:10000  },
+    { pos:10, name:'RektRoyalty',  pct:2,  amount:10000  },
+  ] } },
   { g:'Fin de partida', n:'SELECT A SKILL', sup:'skillChoiceOverlay', art:0, show:'skillChoiceOverlay' },
 
   { g:'Wallet', n:'DEPOSIT',        sup:'gameDepositModal',  art:0, show:'gameDepositModal' },
@@ -243,9 +254,16 @@ function clonar(c) {
 
   // El envoltorio hereda el id del modal (#sysModal, #prizeModal, #gameDepositModal...)
   // para que las reglas "#modal .caja..." del pixel-pack sigan encontrando un
-  // ancestro con ese id, aunque el clon ya no cuelgue del modal real.
+  // ancestro con ese id, aunque el clon ya no cuelgue del modal real. Pero ese
+  // mismo id tambien trae el CSS base del propio overlay (pantalla completa,
+  // fondo negro, backdrop-filter) — hay que anularlo o cada cartel abierto
+  // tapa la pantalla entera de negro. Solo queremos el id, no su aspecto.
   const host = d.createElement('div');
   host.id = c.sup;
+  host.style.cssText = 'all:unset;display:block!important;position:static!important;' +
+    'width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;' +
+    'margin:0!important;padding:0!important;background:none!important;backdrop-filter:none!important;' +
+    '-webkit-backdrop-filter:none!important;animation:none!important;transform:none!important;z-index:auto!important;';
   host.appendChild(clon);
   return host;
 }
