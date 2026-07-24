@@ -5330,6 +5330,12 @@
             el.textContent = defText;
             el.style.color = defColor;
         }
+        // Espaciado afinado del CARTEL concreto, no del modal: GAME OVER y MATCH
+        // FINISHED comparten #resultTitle pero cada uno lleva su ajuste. Igual
+        // con VICTORY / CASHOUT / MATCH ENDED dentro del modal de premio.
+        const supDe = { gameOver: 'resultOverlay', matchFinished: 'resultOverlay', roomRestarted: 'resultOverlay',
+            victory: 'prizeModal', cashout: 'prizeModal', matchEnded: 'prizeModal' }[id];
+        if (supDe) applyCartelSurface(supDe, CARTEL_LAYOUT[supDe + '#' + id] || CARTEL_LAYOUT[supDe]);
     }
     function stopGame() { isSpectating = true; hideCountdownNumber(); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI(); }, 1400); }
 
@@ -6628,8 +6634,9 @@
         descEl.style.fontSize = '';
         // Este modal se repinta entero en cada aviso, asi que hay que volver a
         // poner el espaciado afinado (carteles-layout.json) que se acaba de
-        // limpiar con la linea de arriba.
-        applyCartelSurface('sysModal', CARTEL_LAYOUT.sysModal);
+        // limpiar con la linea de arriba. Va por AVISO ('sysModal#KICKED'), no
+        // por modal: cada uno se afina por separado aunque compartan el DOM.
+        applyCartelSurface('sysModal', CARTEL_LAYOUT['sysModal#' + t] || CARTEL_LAYOUT.sysModal);
         m.style.display = 'flex';
         try { SoundManager.play('little'); } catch (e) {}
     }

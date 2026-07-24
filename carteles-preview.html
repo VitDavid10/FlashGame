@@ -110,7 +110,21 @@ const OCULTABLES = ['sysModal','exitModal','resultOverlay','prizeModal','skillCh
                     'roomChoiceModal','settingsModal','featuresModal'];
 const CLAVE_POS = 'pw_carteles_editor_pos';
 
-const LAYOUT = {};              // superficie -> {parte: {x,y,s}}   (esto SI va al juego)
+/*
+ * Clave de guardado de un cartel. Varios carteles comparten el mismo DOM (los
+ * 13 avisos son el mismo #sysModal; GAME OVER y MATCH FINISHED el mismo
+ * #resultTitle), pero cada uno se afina POR SEPARADO — de ahi 'modal#variante'.
+ * El juego resuelve la misma clave al pintar: showSystemMsg por su titulo y
+ * setOverlayTitle por su id.
+ */
+function claveDe(c) {
+  if (c.sys)   return 'sysModal#' + c.sys[1];
+  if (c.res)   return 'resultOverlay#' + c.res[0];
+  if (c.prize) return 'prizeModal#' + (c.prize.reason === 'arcadeEnd' ? 'matchEnded' : c.prize.reason);
+  return c.sup;
+}
+
+const LAYOUT = {};              // clave de cartel -> {parte: {x,y,s}}   (esto SI va al juego)
 const POS = JSON.parse(localStorage.getItem(CLAVE_POS) || '{}');  // ficha -> {x,y} (solo editor)
 const ABIERTOS = new Map();     // indice de CASOS -> elemento ficha
 const frame = document.getElementById('game');
@@ -173,6 +187,11 @@ function clonar(c) {
   const sup = w.CARTEL_SURFACES[c.sup];
   const box = d.querySelector(sup.box);
   if (!box) return null;
+  // Medir AHORA, con el cartel puesto por el juego: muchas cajas sacan su
+  // tamano del overlay que las centra (ancho en %, flex). Fuera de ahi el clon
+  // colapsa o se estira — KICKED pasaba de 518 a 382 px. Se clava en px para
+  // que salga exactamente igual que en el juego.
+  const medida = box.getBoundingClientRect();
 
   // 2. Marcar las piezas ANTES de clonar: los selectores son por id y en el
   //    clon los ids se quitan (duplicarlos romperia el documento).
@@ -199,10 +218,22 @@ function clonar(c) {
   clon.querySelectorAll('*').forEach(e => {
     for (const a of [...e.attributes]) if (a.name.startsWith('on')) e.removeAttribute(a.name);
   });
-  // El clon deja de depender de donde lo pusiera el CSS del overlay.
+  // El clon deja de depender de donde lo pusiera el CSS del overlay, pero
+  // conserva su tamano exacto. overflow visible para que una pieza escalada
+  // hacia fuera se siga viendo entera.
   clon.style.setProperty('position', 'static', 'important');
   clon.style.setProperty('margin', '0', 'important');
   clon.style.setProperty('transform', 'none', 'important');
+  // border-box porque la medida viene de getBoundingClientRect (incluye padding
+  // y borde) y varias de estas cajas son content-box: sin esto el clon se hace
+  // el doble del padding mas grande.
+  clon.style.setProperty('box-sizing', 'border-box', 'important');
+  clon.style.setProperty('width', Math.round(medida.width) + 'px', 'important');
+  clon.style.setProperty('height', Math.round(medida.height) + 'px', 'important');
+  clon.style.setProperty('max-width', 'none', 'important');
+  clon.style.setProperty('min-width', '0', 'important');
+  clon.style.setProperty('flex', 'none', 'important');
+  clon.style.setProperty('overflow', 'visible', 'important');
 
   OCULTABLES.forEach(id => { const e = d.getElementById(id); if (e) e.style.display = 'none'; });
   return clon;
@@ -232,8 +263,8 @@ function abrir(i) {
 
   cab.querySelector('.x').onclick = ev => { ev.stopPropagation(); cerrar(i); };
   arrastrarFicha(cab, ficha, c.n);
-  prepararPiezas(ficha, c.sup);
-  aplicar(c.sup);
+  prepararPiezas(ficha, claveDe(c));
+  aplicar(claveDe(c));
 }
 
 function cerrar(i) {
@@ -263,20 +294,20 @@ function arrastrarFicha(cab, ficha, clave) {
 }
 
 // --- Mover / escalar cada pieza (esto SI va al juego) --------------------
-function valor(sup, parte) {
-  const v = (LAYOUT[sup] = LAYOUT[sup] || {});
+function valor(clave, parte) {
+  const v = (LAYOUT[clave] = LAYOUT[clave] || {});
   return (v[parte] = v[parte] || { x: 0, y: 0, s: 1 });
 }
 
-// Repinta todas las fichas abiertas de esa superficie: los 13 avisos comparten
-// 'sysModal', asi que tocar uno tiene que verse en todos a la vez.
-function aplicar(sup) {
+// Repinta solo la ficha de ese cartel: cada uno lleva su propio ajuste aunque
+// comparta el DOM con otros.
+function aplicar(clave) {
   for (const [i, ficha] of ABIERTOS) {
-    if (CASOS[i].sup !== sup) continue;
+    if (claveDe(CASOS[i]) !== clave) continue;
     for (const p of PARTES) {
       const el = ficha.querySelector('[data-ce="' + p + '"]');
       if (!el) continue;
-      const t = (LAYOUT[sup] || {})[p];
+      const t = (LAYOUT[clave] || {})[p];
       if (!t) { el.style.removeProperty('transform'); continue; }
       el.style.setProperty('transform', 'translate(' + t.x + 'px,' + t.y + 'px) scale(' + t.s + ')', 'important');
       el.style.setProperty('transform-origin', 'center', 'important');
@@ -284,7 +315,7 @@ function aplicar(sup) {
   }
 }
 
-function prepararPiezas(ficha, sup) {
+function prepararPiezas(ficha, clave) {
   const d = W().document;
   for (const p of PARTES) {
     const el = ficha.querySelector('[data-ce="' + p + '"]');
@@ -296,23 +327,23 @@ function prepararPiezas(ficha, sup) {
 
     el.addEventListener('mousedown', e => {
       e.preventDefault(); e.stopPropagation();
-      const v = valor(sup, p), x0 = e.clientX, y0 = e.clientY, vx = v.x, vy = v.y;
-      const mover = ev => { v.x = Math.round(vx + ev.clientX - x0); v.y = Math.round(vy + ev.clientY - y0); aplicar(sup); };
+      const v = valor(clave, p), x0 = e.clientX, y0 = e.clientY, vx = v.x, vy = v.y;
+      const mover = ev => { v.x = Math.round(vx + ev.clientX - x0); v.y = Math.round(vy + ev.clientY - y0); aplicar(clave); };
       const soltar = () => { d.removeEventListener('mousemove', mover); d.removeEventListener('mouseup', soltar); sucio(); };
       d.addEventListener('mousemove', mover); d.addEventListener('mouseup', soltar);
     });
 
     el.addEventListener('wheel', e => {
       e.preventDefault(); e.stopPropagation();
-      const v = valor(sup, p);
+      const v = valor(clave, p);
       v.s = Math.max(0.2, Math.min(5, Math.round((v.s + (e.deltaY < 0 ? 0.05 : -0.05)) * 100) / 100));
-      aplicar(sup); sucio();
+      aplicar(clave); sucio();
     }, { passive: false });
 
     el.addEventListener('dblclick', e => {
       e.preventDefault(); e.stopPropagation();
-      if (LAYOUT[sup]) delete LAYOUT[sup][p];
-      aplicar(sup); sucio();
+      if (LAYOUT[clave]) delete LAYOUT[clave][p];
+      aplicar(clave); sucio();
     });
   }
 }
@@ -333,7 +364,7 @@ async function guardar() {
 
 function resetTodo() {
   for (const k of Object.keys(LAYOUT)) delete LAYOUT[k];
-  new Set([...ABIERTOS.keys()].map(i => CASOS[i].sup)).forEach(aplicar);
+  new Set([...ABIERTOS.keys()].map(i => claveDe(CASOS[i]))).forEach(aplicar);
   sucio();
 }
 
