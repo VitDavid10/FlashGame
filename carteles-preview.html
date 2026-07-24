@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>PillWars — carteles de los pop-ups de sistema</title>
+<style>
+  :root { --ok:#00ff88; --no:#ff5b5b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#0b0f0d; color:#dfe6e2; font:14px/1.5 system-ui,sans-serif; display:flex; height:100vh; overflow:hidden; }
+  aside { width:300px; flex:none; background:#0f1512; border-right:1px solid #223; padding:16px; overflow-y:auto; }
+  h1 { font-size:15px; margin:0 0 4px; letter-spacing:1px; }
+  h2 { font-size:11px; text-transform:uppercase; letter-spacing:2px; color:#7d8a84; margin:20px 0 8px; }
+  p.sub { font-size:12px; color:#7d8a84; margin:0 0 8px; }
+  button.t { display:block; width:100%; text-align:left; margin:0 0 6px; padding:9px 11px; border:1px solid #2a3a33;
+             background:#141b18; color:#dfe6e2; font:600 12px/1.2 monospace; letter-spacing:.5px; cursor:pointer; border-radius:4px; }
+  button.t:hover { border-color:#3d5b4e; background:#1a2420; }
+  button.t.on { border-color:var(--ok); background:#12251c; color:var(--ok); }
+  button.t small { display:block; font-weight:400; letter-spacing:0; color:#6d7a74; margin-top:3px; text-transform:none; }
+  button.t.on small { color:#5b8f74; }
+  .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:7px; vertical-align:1px; }
+  .dot.no { background:var(--no); } .dot.ok { background:var(--ok); }
+  main { flex:1; display:flex; flex-direction:column; min-width:0; }
+  .bar { padding:10px 16px; border-bottom:1px solid #223; display:flex; gap:14px; align-items:center; font-size:12px; color:#9fb0a8; }
+  .bar b { color:#dfe6e2; font:600 13px monospace; letter-spacing:1px; }
+  .bar .tag { border:1px solid #2a3a33; border-radius:3px; padding:2px 7px; font-size:11px; }
+  .stage { flex:1; position:relative; overflow:hidden; background:#000; }
+  iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .hint { padding:8px 16px; border-top:1px solid #223; font-size:11px; color:#6d7a74; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Pop-ups de sistema</h1>
+  <p class="sub">Render real: el juego corre en el iframe y se le llama a <code>showSystemMsg()</code>.</p>
+
+  <h2><span class="dot no"></span>Sin cartel horneado (7)</h2>
+  <div id="listNo"></div>
+
+  <h2><span class="dot ok"></span>Con cartel horneado (6)</h2>
+  <div id="listOk"></div>
+</aside>
+
+<main>
+  <div class="bar">
+    <b id="curTitle">—</b>
+    <span class="tag" id="tagArt">—</span>
+    <span class="tag" id="tagFrame">—</span>
+    <span class="tag" id="tagW">—</span>
+  </div>
+  <div class="stage"><iframe id="game" src="game/index.html"></iframe></div>
+  <div class="hint">Si el iframe se queda en negro, recarga la página (el juego tarda un par de segundos en cargar el atlas de carteles).</div>
+</main>
+
+<script>
+// Los 13 titulos que pasan hoy por showSystemMsg(), con el mensaje real de cada
+// sitio de llamada (game/index.html) para que el cuerpo se vea como en produccion.
+const CASOS = [
+  // --- sin arte horneado: caen al titulo en fuente pixel + marco verde procedural
+  { t:'NOTICE',               art:0, msg:'Something happened. This is the default system notice.', where:'default de showSystemMsg / abandonNet()' },
+  { t:'WITHDRAW FAILED',      art:0, msg:'You only have 12,500 $PILL in GAME. Lower the amount.', where:'retiro: saldo insuficiente o error' },
+  { t:'WITHDRAW COMPLETE',    art:0, msg:'40,000 $PILL sent back to your wallet.',                where:'retiro OK' },
+  { t:'DEPOSIT COMPLETE',     art:0, msg:'50,000 $PILL added to your in-GAME balance.',           where:'deposito OK' },
+  { t:'INSUFFICIENT BALANCE', art:0, msg:'Not enough in-GAME balance. Entry costs 50,000 $PILL and you have 12,500. Use the DEPOSIT button to add more.', where:'entrada a sala de pago' },
+  { t:'CONNECTION FAILED',    art:0, msg:"Couldn't connect to the server. Please try again in a moment.", where:'join que no conecta' },
+  { t:'WALLET',               art:0, msg:'Wallet module not loaded yet.',                          where:'PillChain sin cargar' },
+  // --- con arte horneado
+  { t:'KICKED',            art:1, msg:'You were kicked. Wait 30 seconds before rejoining.',                          where:'kick del servidor' },
+  { t:'REJOIN EXPIRED',    art:1, msg:'The rejoin window has closed. Your slot was released and you need to enter again.', where:'ventana de rejoin cerrada' },
+  { t:'WALLET REQUIRED',   art:1, msg:'Connect your wallet first on the home page, then come back to play paid rooms.', where:'sala de pago sin wallet' },
+  { t:'CONNECT ERROR',     art:1, msg:'Phantom is not installed. Install it or pick another wallet.',                 where:'conexion de wallet' },
+  { t:'DEPOSIT FAILED',    art:1, msg:'You only have 8,000 $PILL in your wallet. Lower the amount.',                  where:'deposito fallido' },
+  { t:'PAYMENT CANCELLED', art:1, msg:'You must sign the entry payment to join a paid room.',                         where:'firma de entrada rechazada' },
+];
+
+const frame = document.getElementById('game');
+let actual = 0;
+
+function pinta() {
+  CASOS.forEach((c, i) => c.btn.classList.toggle('on', i === actual));
+  const c = CASOS[actual];
+  document.getElementById('curTitle').textContent = c.t;
+  const w = frame.contentWindow;
+  if (!w || typeof w.showSystemMsg !== 'function') return;
+  w.showSystemMsg(c.msg, c.t);
+  // Lee del DOM real como queda: titulo (PNG vs fuente pixel), marco y ancho.
+  const d = w.document;
+  const box = d.querySelector('#sysModal .exit-box');
+  const img = d.querySelector('#sysModalTitle img');
+  const bg = (w.getComputedStyle(box).backgroundImage || '').match(/cartel-hero\/([\w-]+)\.png/);
+  document.getElementById('tagArt').textContent   = img ? 'titulo: ' + img.src.split('/').pop() : 'titulo: fuente pixel';
+  document.getElementById('tagFrame').textContent = 'marco: ' + (bg ? bg[1] + '.png' : 'verde procedural');
+  document.getElementById('tagW').textContent     = 'ancho: ' + Math.round(box.getBoundingClientRect().width) + 'px';
+}
+
+CASOS.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.className = 't';
+  b.innerHTML = '<span class="dot ' + (c.art ? 'ok' : 'no') + '"></span>' + c.t + '<small>' + c.where + '</small>';
+  b.onclick = () => { actual = i; pinta(); };
+  c.btn = b;
+  document.getElementById(c.art ? 'listOk' : 'listNo').appendChild(b);
+});
+
+// Espera a que el juego cargue el atlas de carteles antes del primer disparo,
+// si no los que tienen PNG se verian con la fuente pixel de fallback.
+frame.addEventListener('load', () => {
+  const w = frame.contentWindow;
+  const arranca = () => pinta();
+  if (w.CARTEL_HERO_READY_PROMISE) w.CARTEL_HERO_READY_PROMISE.then(arranca);
+  else setTimeout(arranca, 1500);
+});
+
+// Flechas arriba/abajo para ir pasando carteles.
+addEventListener('keydown', e => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  e.preventDefault();
+  actual = (actual + (e.key === 'ArrowDown' ? 1 : CASOS.length - 1)) % CASOS.length;
+  pinta();
+});
+</script>
+</body>
+</html>
