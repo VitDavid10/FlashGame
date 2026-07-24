@@ -1820,17 +1820,22 @@ const httpServer = http.createServer(async (req, res) => {
             let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
             const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
             if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
-            // Sanea: solo las props conocidas y en rango, para no escribir basura
-            // arbitraria en un fichero que acaba commiteado.
-            const PROPS = { padT: [0, 200], padB: [0, 200], padX: [0, 200], gapTitle: [0, 120], gapText: [0, 120], fontSize: [6, 48], titleW: [10, 100] };
+            // Sanea: cada cartel es {title|desc|actions: {x, y, s}} y nada mas,
+            // para no escribir basura arbitraria en un fichero que se commitea.
+            const PARTES = ['title', 'desc', 'actions'];
+            const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
             const clean = {};
             for (const k of Object.keys(lay).slice(0, 40)) {
                 const src = lay[k]; if (!src || typeof src !== 'object') continue;
                 const dst = {};
-                for (const p of Object.keys(PROPS)) {
-                    if (src[p] == null) continue;
-                    const n = Number(src[p]); if (!isFinite(n)) continue;
-                    dst[p] = Math.max(PROPS[p][0], Math.min(PROPS[p][1], Math.round(n)));
+                for (const p of PARTES) {
+                    const t = src[p]; if (!t || typeof t !== 'object') continue;
+                    const x = Number(t.x), y = Number(t.y), s = Number(t.s);
+                    dst[p] = {
+                        x: isFinite(x) ? clamp(Math.round(x), -600, 600) : 0,
+                        y: isFinite(y) ? clamp(Math.round(y), -600, 600) : 0,
+                        s: isFinite(s) && s > 0 ? clamp(Math.round(s * 100) / 100, 0.2, 5) : 1,
+                    };
                 }
                 if (Object.keys(dst).length) clean[String(k).slice(0, 40)] = dst;
             }

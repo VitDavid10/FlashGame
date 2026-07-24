@@ -2,86 +2,74 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>PillWars — carteles y pop-ups</title>
+<title>PillWars — editor de carteles</title>
 <style>
   :root { --ok:#00ff88; --no:#ff5b5b; --line:#233029; }
   * { box-sizing: border-box; }
   body { margin:0; background:#0b0f0d; color:#dfe6e2; font:13px/1.5 system-ui,sans-serif; display:flex; height:100vh; overflow:hidden; }
 
-  aside { width:270px; flex:none; background:#0f1512; border-right:1px solid var(--line); padding:14px; overflow-y:auto; }
+  aside { width:250px; flex:none; background:#0f1512; border-right:1px solid var(--line); padding:14px; overflow-y:auto; }
   h1 { font-size:14px; margin:0 0 3px; letter-spacing:1px; }
-  p.sub { font-size:11px; color:#7d8a84; margin:0 0 14px; }
-  h2 { font-size:10px; text-transform:uppercase; letter-spacing:2px; color:#7d8a84; margin:16px 0 7px; border-bottom:1px solid var(--line); padding-bottom:4px; }
-  button.t { display:block; width:100%; text-align:left; margin:0 0 4px; padding:7px 9px; border:1px solid #2a3a33;
+  p.sub { font-size:11px; color:#7d8a84; margin:0 0 12px; }
+  h2 { font-size:10px; text-transform:uppercase; letter-spacing:2px; color:#7d8a84; margin:15px 0 6px; border-bottom:1px solid var(--line); padding-bottom:4px; }
+  button.t { display:block; width:100%; text-align:left; margin:0 0 4px; padding:6px 9px; border:1px solid #2a3a33;
              background:#141b18; color:#dfe6e2; font:600 11px/1.25 monospace; letter-spacing:.4px; cursor:pointer; border-radius:3px; }
-  button.t:hover { border-color:#3d5b4e; background:#1a2420; }
+  button.t:hover { border-color:#3d5b4e; }
   button.t.on { border-color:var(--ok); background:#12251c; color:var(--ok); }
   .dot { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:6px; vertical-align:1px; }
   .dot.no { background:var(--no); } .dot.ok { background:var(--ok); }
 
   main { flex:1; display:flex; flex-direction:column; min-width:0; }
-  .bar { padding:8px 14px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:11px; color:#9fb0a8; }
-  .bar b { color:#dfe6e2; font:600 12px monospace; letter-spacing:1px; }
-  .tag { border:1px solid #2a3a33; border-radius:3px; padding:1px 6px; font-size:10px; }
+  .bar { padding:8px 14px; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .bar .hint { font-size:11px; color:#7d8a84; margin-right:auto; }
+  .bar button { padding:6px 13px; border:1px solid #2a3a33; background:#141b18; color:#dfe6e2; font:600 11px monospace;
+                letter-spacing:1px; cursor:pointer; border-radius:3px; }
+  .bar button.save { border-color:var(--ok); color:var(--ok); }
+  .bar button:hover { border-color:#3d5b4e; }
+  #estado { font-size:11px; color:#7d8a84; }
   .stage { flex:1; position:relative; overflow:hidden; background:#000; }
   iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
-
-  .edit { flex:none; border-top:1px solid var(--line); background:#0f1512; padding:10px 14px 12px; }
-  .rows { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:5px 18px; }
-  .row { display:flex; align-items:center; gap:8px; }
-  .row label { width:96px; flex:none; font-size:11px; color:#9fb0a8; }
-  .row input[type=range] { flex:1; min-width:60px; accent-color:var(--ok); }
-  .row output { width:42px; flex:none; text-align:right; font:600 11px monospace; color:var(--ok); }
-  .row.off { opacity:.32; pointer-events:none; }
-  .acts { display:flex; gap:8px; margin-top:10px; align-items:center; }
-  .acts button { padding:6px 14px; border:1px solid #2a3a33; background:#141b18; color:#dfe6e2; font:600 11px monospace;
-                 letter-spacing:1px; cursor:pointer; border-radius:3px; }
-  .acts button.save { border-color:var(--ok); color:var(--ok); }
-  .acts button.save:hover { background:#12251c; }
-  .acts button:hover { border-color:#3d5b4e; }
-  #estado { font-size:11px; color:#7d8a84; }
 </style>
 </head>
 <body>
 <aside>
-  <h1>Carteles y pop-ups</h1>
-  <p class="sub">Render real: el juego corre en el iframe.<br>Los sliders lo modifican en vivo.</p>
+  <h1>Editor de carteles</h1>
+  <p class="sub">Click = abrir/cerrar.<br>Puedes tener los que quieras a la vez.</p>
   <div id="lista"></div>
 </aside>
 
 <main>
   <div class="bar">
-    <b id="curTitle">—</b>
-    <span class="tag" id="tagArt">—</span>
-    <span class="tag" id="tagFrame">—</span>
-    <span class="tag" id="tagW">—</span>
+    <span class="hint">
+      Arrastra la <b>cabecera</b> para mover el cartel · Arrastra <b>titulo / texto / botones</b> para colocarlos ·
+      <b>Rueda</b> encima = tamano · <b>Doble click</b> = reset de esa pieza
+    </span>
+    <button class="save" onclick="guardar()">GUARDAR</button>
+    <button onclick="resetTodo()">RESET TODO</button>
+    <button onclick="cerrarTodos()">CERRAR TODOS</button>
+    <span id="estado">cargando el juego...</span>
   </div>
   <div class="stage"><iframe id="game" src="game/index.html"></iframe></div>
-  <div class="edit">
-    <div class="rows" id="sliders"></div>
-    <div class="acts">
-      <button class="save" onclick="guardar()">GUARDAR EN EL JUEGO</button>
-      <button onclick="resetActual()">RESET ESTE</button>
-      <button onclick="resetTodo()">RESET TODO</button>
-      <span id="estado">↑↓ para cambiar de cartel</span>
-    </div>
-  </div>
 </main>
 
 <script>
 /*
- * Editor de espaciado de los carteles. Los valores viven en LAYOUT (keyed por
- * superficie, las de game/carteles-layout.js) y se aplican en vivo llamando a
- * applyCartelSurface() DENTRO del iframe, que es donde estan los elementos.
- * GUARDAR los manda a POST /api/carteles-layout, que escribe
- * game/carteles-layout.json — un fichero del repo, asi que va en el commit.
+ * Editor de carteles. Los pop-ups se editan como CLONES dentro del iframe:
+ *
+ *  - Clones y no los originales porque el juego tiene UN solo #sysModal en el
+ *    DOM; para ver 13 avisos a la vez no hay otra. De paso los clones no llevan
+ *    listeners, asi que ningun boton puede disparar logica del juego.
+ *  - Dentro del iframe y no aqui porque asi heredan todo el CSS del juego
+ *    (pixel-pack, marcos horneados, fuentes) y se ven exactamente igual.
+ *  - En una capa propia a pantalla completa: las reglas del juego (un cartel a
+ *    la vez, posicion centrada fija) no pintan nada en un editor.
+ *
+ * Lo que se guarda de cada cartel es {title|desc|actions: {x, y, s}} — mismo
+ * esquema que el editor de layout del menu. La posicion de la FICHA en el
+ * lienzo es solo del editor y vive en localStorage, no viaja al juego.
  */
 
-// Cada entrada = un cartel concreto que se puede mostrar. `sup` es la clave de
-// superficie (varias entradas pueden compartirla: los 13 avisos de sistema son
-// todos 'sysModal'), `art` marca si el titulo ya tiene PNG horneado.
 const CASOS = [
-  // --- Avisos de sistema -------------------------------------------------
   { g:'Sistema · avisos', n:'NOTICE',               sup:'sysModal', art:0, sys:['Something happened. This is the default system notice.','NOTICE'] },
   { g:'Sistema · avisos', n:'WITHDRAW FAILED',      sup:'sysModal', art:0, sys:['You only have 12,500 $PILL in GAME. Lower the amount.','WITHDRAW FAILED'] },
   { g:'Sistema · avisos', n:'WITHDRAW COMPLETE',    sup:'sysModal', art:0, sys:['40,000 $PILL sent back to your wallet.','WITHDRAW COMPLETE'] },
@@ -97,142 +85,236 @@ const CASOS = [
   { g:'Sistema · avisos', n:'PAYMENT CANCELLED',    sup:'sysModal', art:1, sys:['You must sign the entry payment to join a paid room.','PAYMENT CANCELLED'] },
   { g:'Sistema · avisos', n:'LEAVE ARENA?',         sup:'exitModal', art:0, show:'exitModal' },
 
-  // --- Fin de partida ----------------------------------------------------
   { g:'Fin de partida', n:'GAME OVER',      sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'] },
   { g:'Fin de partida', n:'MATCH FINISHED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['matchFinished','MATCH FINISHED','#00ff88'] },
   { g:'Fin de partida', n:'ROOM RESTARTED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['roomRestarted','ROOM RESTARTED','#ffcc00'] },
   { g:'Fin de partida', n:'VICTORY!',       sup:'prizeModal', art:1, prize:{ reason:'victory',  amount:250000, carry:180000 } },
   { g:'Fin de partida', n:'CASHOUT',        sup:'prizeModal', art:1, prize:{ reason:'cashout',  amount:40000,  carry:50000  } },
-  { g:'Fin de partida', n:'MATCH ENDED (arcade)', sup:'prizeModal', art:1, prize:{ reason:'arcadeEnd', amount:120000, carry:90000 } },
+  { g:'Fin de partida', n:'MATCH ENDED',    sup:'prizeModal', art:1, prize:{ reason:'arcadeEnd', amount:120000, carry:90000 } },
   { g:'Fin de partida', n:'SELECT A SKILL', sup:'skillChoiceOverlay', art:0, show:'skillChoiceOverlay' },
 
-  // --- Wallet ------------------------------------------------------------
   { g:'Wallet', n:'DEPOSIT',        sup:'gameDepositModal',  art:0, show:'gameDepositModal' },
   { g:'Wallet', n:'WITHDRAW',       sup:'gameWithdrawModal', art:0, show:'gameWithdrawModal' },
   { g:'Wallet', n:'CONNECT WALLET', sup:'walletPickerModal', art:1, show:'walletPickerModal' },
 
-  // --- Menu --------------------------------------------------------------
   { g:'Menu', n:'CHOOSE HOW TO PLAY', sup:'playChoiceModal', art:0, show:'playChoiceModal' },
   { g:'Menu', n:'SELECT A ROOM',      sup:'roomChoiceModal', art:1, show:'roomChoiceModal' },
   { g:'Menu', n:'SETTINGS',           sup:'settingsModal',   art:0, show:'settingsModal' },
   { g:'Menu', n:'FEATURES',           sup:'featuresModal',   art:0, show:'featuresModal' },
 ];
 
-// Sliders: prop -> [etiqueta, min, max]. Coinciden con las props saneadas por
-// el endpoint (server/index.js, /api/carteles-layout).
-const PROPS = {
-  padT:     ['Padding arriba', 0, 120],
-  padB:     ['Padding abajo',  0, 120],
-  padX:     ['Padding lados',  0, 120],
-  gapTitle: ['Titulo → texto', 0, 80],
-  gapText:  ['Texto → botones',0, 80],
-  fontSize: ['Tamano texto',   6, 32],
-  titleW:   ['Ancho titulo %', 10, 100],
-};
-
+const PARTES = ['title', 'desc', 'actions'];
+const ETIQUETA = { title: 'TITULO', desc: 'TEXTO', actions: 'BOTONES' };
 const OCULTABLES = ['sysModal','exitModal','resultOverlay','prizeModal','skillChoiceOverlay',
                     'gameDepositModal','gameWithdrawModal','walletPickerModal','playChoiceModal',
                     'roomChoiceModal','settingsModal','featuresModal'];
+const CLAVE_POS = 'pw_carteles_editor_pos';
 
-const LAYOUT = {};            // superficie -> {prop: valor}
-let actual = 0, listo = false;
+const LAYOUT = {};              // superficie -> {parte: {x,y,s}}   (esto SI va al juego)
+const POS = JSON.parse(localStorage.getItem(CLAVE_POS) || '{}');  // ficha -> {x,y} (solo editor)
+const ABIERTOS = new Map();     // indice de CASOS -> elemento ficha
 const frame = document.getElementById('game');
 const W = () => frame.contentWindow;
+let layer = null;
 
-// --- Mostrar un cartel en el iframe -------------------------------------
-function mostrar(c) {
+function estado(txt, color) {
+  const e = document.getElementById('estado');
+  e.textContent = txt; e.style.color = color || '#7d8a84';
+}
+const sucio = () => estado('sin guardar', '#ffce3d');
+
+// --- La capa del editor, dentro del iframe ------------------------------
+function crearCapa() {
+  const d = W().document;
+  const css = d.createElement('style');
+  css.textContent = `
+    #ceLayer{position:fixed;inset:0;z-index:99999;background:#0b0f0d;overflow:auto;
+      background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+      background-size:32px 32px}
+    .ce-ficha{position:absolute;min-width:120px}
+    .ce-cab{display:flex;align-items:center;gap:8px;padding:3px 8px;background:#12251c;border:1px solid #00ff88;
+      color:#00ff88;font:600 10px/1.6 monospace;letter-spacing:1px;cursor:move;user-select:none;white-space:nowrap}
+    .ce-cab .x{margin-left:auto;cursor:pointer;padding:0 3px;color:#ff5b5b}
+    .ce-cuerpo{position:relative}
+    .ce-parte{outline:1px dashed rgba(0,255,136,.4);outline-offset:2px;cursor:move}
+    .ce-parte:hover{outline:1px solid #00ff88;background:rgba(0,255,136,.06)}
+    .ce-parte.sel{outline:1px solid #ffce3d}
+    .ce-tag{position:absolute;top:-9px;left:0;font:600 7px/1 monospace;letter-spacing:1px;color:#00ff88;
+      background:#0b0f0d;padding:1px 3px;pointer-events:none;opacity:0;transition:.15s}
+    .ce-parte:hover .ce-tag{opacity:1}
+  `;
+  d.head.appendChild(css);
+  layer = d.createElement('div');
+  layer.id = 'ceLayer';
+  d.body.appendChild(layer);
+  // Nada de lo que haya dentro de un clon puede ejecutar logica del juego:
+  // aqui "volver al menu" o la X solo deben quitar el cartel, no navegar.
+  ['click', 'mousedown', 'mouseup', 'submit', 'keydown'].forEach(ev => {
+    layer.addEventListener(ev, e => {
+      if (e.target.closest('.ce-cab')) return;         // la cabecera sí es nuestra
+      if (ev === 'click' || ev === 'submit') { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+  });
+}
+
+// --- Clonar un cartel ----------------------------------------------------
+function clonar(c) {
   const w = W(), d = w.document;
+  // 1. Que el juego lo pinte de verdad (arte, clases, textos reales).
   OCULTABLES.forEach(id => { const e = d.getElementById(id); if (e) e.style.display = 'none'; });
   if (c.sys)        w.showSystemMsg(c.sys[0], c.sys[1]);
   else if (c.prize) w.cartelDevShowPrize(c.prize);
   else {
     const e = d.getElementById(c.show);
     if (e) e.style.display = 'flex';
-    // GAME OVER / MATCH FINISHED / ROOM RESTARTED comparten #resultTitle: se
-    // pinta con la misma funcion que usa el juego, para ver el arte real.
     if (c.res) w.setOverlayTitle(d.getElementById('resultTitle'), c.res[0], c.res[1], c.res[2]);
   }
-}
 
-// --- Info leida del DOM real --------------------------------------------
-function refrescarInfo(c) {
-  const w = W(), d = w.document;
   const sup = w.CARTEL_SURFACES[c.sup];
-  const box = sup && d.querySelector(sup.box);
-  const tEl = sup && sup.title && d.querySelector(sup.title);
-  const img = tEl && (tEl.tagName === 'IMG' ? tEl : tEl.querySelector('img'));
-  const bg = box ? (w.getComputedStyle(box).backgroundImage || '').match(/cartel-hero\/([\w-]+)\.png/) : null;
-  document.getElementById('curTitle').textContent = c.n;
-  document.getElementById('tagArt').textContent   = img ? 'titulo: ' + img.src.split('/').pop() : 'titulo: fuente/texto';
-  document.getElementById('tagFrame').textContent = 'marco: ' + (bg ? bg[1] + '.png' : 'procedural');
-  document.getElementById('tagW').textContent     = box ? 'caja: ' + Math.round(box.getBoundingClientRect().width) + 'px' : 'caja: —';
-}
+  const box = d.querySelector(sup.box);
+  if (!box) return null;
 
-// --- Sliders -------------------------------------------------------------
-function construirSliders() {
-  const cont = document.getElementById('sliders');
-  cont.innerHTML = '';
-  for (const p of Object.keys(PROPS)) {
-    const [lab, min, max] = PROPS[p];
-    const row = document.createElement('div');
-    row.className = 'row'; row.dataset.prop = p;
-    row.innerHTML = '<label>' + lab + '</label>' +
-      '<input type="range" min="' + min + '" max="' + max + '" step="1">' +
-      '<output>—</output>';
-    const inp = row.querySelector('input'), out = row.querySelector('output');
-    inp.oninput = () => {
-      out.textContent = inp.value;
-      const sup = CASOS[actual].sup;
-      (LAYOUT[sup] = LAYOUT[sup] || {})[p] = +inp.value;
-      // applyCartelLayout (y no applyCartelSurface) para que el juego se quede
-      // con NUESTRO objeto: showSystemMsg repinta el modal y reaplica desde su
-      // propio CARTEL_LAYOUT, que si no seguiria siendo el del JSON en disco.
-      W().applyCartelLayout(LAYOUT);
-      if (CASOS[actual].sys) mostrar(CASOS[actual]);   // el titulo del sysModal se repinta en cada llamada
-      refrescarInfo(CASOS[actual]);
-      estado('sin guardar', '#ffce3d');
-    };
-    cont.appendChild(row);
+  // 2. Marcar las piezas ANTES de clonar: los selectores son por id y en el
+  //    clon los ids se quitan (duplicarlos romperia el documento).
+  const originales = {};
+  for (const p of PARTES) {
+    const el = sup[p] && d.querySelector(sup[p]);
+    if (el) { el.setAttribute('data-ce', p); originales[p] = el; }
   }
+  const clon = box.cloneNode(true);
+  for (const p of PARTES) if (originales[p]) originales[p].removeAttribute('data-ce');
+
+  // 3. Los <canvas> se clonan EN BLANCO (los titulos procedurales son canvas),
+  //    hay que repintarlos copiando los pixeles del original.
+  const src = box.querySelectorAll('canvas'), dst = clon.querySelectorAll('canvas');
+  for (let i = 0; i < dst.length && i < src.length; i++) {
+    try {
+      dst[i].width = src[i].width; dst[i].height = src[i].height;
+      dst[i].getContext('2d').drawImage(src[i], 0, 0);
+    } catch (e) {}
+  }
+  // 4. Fuera ids (duplicados) y fuera handlers inline.
+  clon.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+  clon.removeAttribute('id');
+  clon.querySelectorAll('*').forEach(e => {
+    for (const a of [...e.attributes]) if (a.name.startsWith('on')) e.removeAttribute(a.name);
+  });
+  // El clon deja de depender de donde lo pusiera el CSS del overlay.
+  clon.style.setProperty('position', 'static', 'important');
+  clon.style.setProperty('margin', '0', 'important');
+  clon.style.setProperty('transform', 'none', 'important');
+
+  OCULTABLES.forEach(id => { const e = d.getElementById(id); if (e) e.style.display = 'none'; });
+  return clon;
 }
 
-// Rellena los sliders con lo que hay: el valor guardado si existe, y si no el
-// valor real que tiene ahora mismo el elemento (para partir de lo de fabrica).
-function sincronizarSliders(c) {
-  const w = W(), d = w.document, sup = w.CARTEL_SURFACES[c.sup];
-  const box = sup && d.querySelector(sup.box);
-  const tEl = sup && sup.title && d.querySelector(sup.title);
-  const dEl = sup && sup.desc && d.querySelector(sup.desc);
-  const img = tEl && (tEl.tagName === 'IMG' ? tEl : tEl.querySelector('img'));
-  const v = LAYOUT[c.sup] || {};
-  const px = (el, prop) => (el ? Math.round(parseFloat(w.getComputedStyle(el)[prop]) || 0) : null);
-  const real = {
-    padT: px(box, 'paddingTop'), padB: px(box, 'paddingBottom'), padX: px(box, 'paddingLeft'),
-    gapTitle: px(tEl, 'marginBottom'), gapText: px(dEl, 'marginBottom'), fontSize: px(dEl, 'fontSize'),
-    titleW: img && box ? Math.round(img.getBoundingClientRect().width / box.getBoundingClientRect().width * 100) : null,
-  };
-  document.querySelectorAll('.row').forEach(row => {
-    const p = row.dataset.prop, inp = row.querySelector('input'), out = row.querySelector('output');
-    const disponible = real[p] != null && (p !== 'titleW' || !!img);
-    row.classList.toggle('off', !disponible);
-    const val = v[p] != null ? v[p] : real[p];
-    if (val == null) { out.textContent = 'n/a'; return; }
-    inp.value = val; out.textContent = val;
+// --- Abrir / cerrar ------------------------------------------------------
+function abrir(i) {
+  const c = CASOS[i], d = W().document;
+  const clon = clonar(c);
+  if (!clon) { estado('no se pudo abrir ' + c.n, '#ff5b5b'); return; }
+
+  const ficha = d.createElement('div');
+  ficha.className = 'ce-ficha';
+  const cab = d.createElement('div');
+  cab.className = 'ce-cab';
+  cab.innerHTML = '<span>' + c.n + '</span><span class="x">✕</span>';
+  const cuerpo = d.createElement('div');
+  cuerpo.className = 'ce-cuerpo';
+  cuerpo.appendChild(clon);
+  ficha.appendChild(cab); ficha.appendChild(cuerpo);
+
+  const p = POS[c.n] || { x: 30 + (ABIERTOS.size % 3) * 340, y: 30 + Math.floor(ABIERTOS.size / 3) * 300 };
+  ficha.style.left = p.x + 'px'; ficha.style.top = p.y + 'px';
+  layer.appendChild(ficha);
+  ABIERTOS.set(i, ficha);
+  CASOS[i].btn.classList.add('on');
+
+  cab.querySelector('.x').onclick = ev => { ev.stopPropagation(); cerrar(i); };
+  arrastrarFicha(cab, ficha, c.n);
+  prepararPiezas(ficha, c.sup);
+  aplicar(c.sup);
+}
+
+function cerrar(i) {
+  const f = ABIERTOS.get(i);
+  if (f) f.remove();
+  ABIERTOS.delete(i);
+  CASOS[i].btn.classList.remove('on');
+}
+function cerrarTodos() { [...ABIERTOS.keys()].forEach(cerrar); }
+
+// --- Mover la ficha entera por el lienzo (solo editor) -------------------
+function arrastrarFicha(cab, ficha, clave) {
+  cab.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('x')) return;
+    e.preventDefault(); e.stopPropagation();
+    const x0 = e.clientX, y0 = e.clientY;
+    const l0 = parseFloat(ficha.style.left) || 0, t0 = parseFloat(ficha.style.top) || 0;
+    const d = W().document;
+    const mover = ev => { ficha.style.left = (l0 + ev.clientX - x0) + 'px'; ficha.style.top = (t0 + ev.clientY - y0) + 'px'; };
+    const soltar = () => {
+      d.removeEventListener('mousemove', mover); d.removeEventListener('mouseup', soltar);
+      POS[clave] = { x: parseFloat(ficha.style.left) || 0, y: parseFloat(ficha.style.top) || 0 };
+      localStorage.setItem(CLAVE_POS, JSON.stringify(POS));
+    };
+    d.addEventListener('mousemove', mover); d.addEventListener('mouseup', soltar);
   });
 }
 
-function pinta() {
-  if (!listo) return;
-  CASOS.forEach((c, i) => c.btn.classList.toggle('on', i === actual));
-  const c = CASOS[actual];
-  mostrar(c);
-  refrescarInfo(c);
-  sincronizarSliders(c);
+// --- Mover / escalar cada pieza (esto SI va al juego) --------------------
+function valor(sup, parte) {
+  const v = (LAYOUT[sup] = LAYOUT[sup] || {});
+  return (v[parte] = v[parte] || { x: 0, y: 0, s: 1 });
 }
 
-function estado(txt, color) {
-  const e = document.getElementById('estado');
-  e.textContent = txt; e.style.color = color || '#7d8a84';
+// Repinta todas las fichas abiertas de esa superficie: los 13 avisos comparten
+// 'sysModal', asi que tocar uno tiene que verse en todos a la vez.
+function aplicar(sup) {
+  for (const [i, ficha] of ABIERTOS) {
+    if (CASOS[i].sup !== sup) continue;
+    for (const p of PARTES) {
+      const el = ficha.querySelector('[data-ce="' + p + '"]');
+      if (!el) continue;
+      const t = (LAYOUT[sup] || {})[p];
+      if (!t) { el.style.removeProperty('transform'); continue; }
+      el.style.setProperty('transform', 'translate(' + t.x + 'px,' + t.y + 'px) scale(' + t.s + ')', 'important');
+      el.style.setProperty('transform-origin', 'center', 'important');
+    }
+  }
+}
+
+function prepararPiezas(ficha, sup) {
+  const d = W().document;
+  for (const p of PARTES) {
+    const el = ficha.querySelector('[data-ce="' + p + '"]');
+    if (!el) continue;
+    el.classList.add('ce-parte');
+    const tag = d.createElement('span');
+    tag.className = 'ce-tag'; tag.textContent = ETIQUETA[p];
+    el.appendChild(tag);
+
+    el.addEventListener('mousedown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const v = valor(sup, p), x0 = e.clientX, y0 = e.clientY, vx = v.x, vy = v.y;
+      const mover = ev => { v.x = Math.round(vx + ev.clientX - x0); v.y = Math.round(vy + ev.clientY - y0); aplicar(sup); };
+      const soltar = () => { d.removeEventListener('mousemove', mover); d.removeEventListener('mouseup', soltar); sucio(); };
+      d.addEventListener('mousemove', mover); d.addEventListener('mouseup', soltar);
+    });
+
+    el.addEventListener('wheel', e => {
+      e.preventDefault(); e.stopPropagation();
+      const v = valor(sup, p);
+      v.s = Math.max(0.2, Math.min(5, Math.round((v.s + (e.deltaY < 0 ? 0.05 : -0.05)) * 100) / 100));
+      aplicar(sup); sucio();
+    }, { passive: false });
+
+    el.addEventListener('dblclick', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (LAYOUT[sup]) delete LAYOUT[sup][p];
+      aplicar(sup); sucio();
+    });
+  }
 }
 
 // --- Guardar / reset -----------------------------------------------------
@@ -245,21 +327,14 @@ async function guardar() {
     });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'error');
-    estado('guardado en game/carteles-layout.json (' + j.count + ' carteles) — commitea para subirlo', '#00ff88');
-  } catch (e) {
-    estado('no se pudo guardar: ' + e.message, '#ff5b5b');
-  }
+    estado('guardado en game/carteles-layout.json (' + j.count + ') — commitea para subirlo', '#00ff88');
+  } catch (e) { estado('no se pudo guardar: ' + e.message, '#ff5b5b'); }
 }
 
-function resetActual() {
-  delete LAYOUT[CASOS[actual].sup];
-  frame.contentWindow.location.reload();
-  estado('recargando...', '#9fb0a8');
-}
 function resetTodo() {
   for (const k of Object.keys(LAYOUT)) delete LAYOUT[k];
-  frame.contentWindow.location.reload();
-  estado('recargando...', '#9fb0a8');
+  new Set([...ABIERTOS.keys()].map(i => CASOS[i].sup)).forEach(aplicar);
+  sucio();
 }
 
 // --- Barra lateral -------------------------------------------------------
@@ -271,28 +346,18 @@ function resetTodo() {
     const b = document.createElement('button');
     b.className = 't';
     b.innerHTML = '<span class="dot ' + (c.art ? 'ok' : 'no') + '"></span>' + c.n;
-    b.onclick = () => { actual = i; pinta(); };
+    b.onclick = () => (ABIERTOS.has(i) ? cerrar(i) : abrir(i));
     c.btn = b; cont.appendChild(b);
   });
 })();
-construirSliders();
 
 frame.addEventListener('load', () => {
-  // CARTELES_READY = atlas de carteles cargado + carteles-layout.json leido.
   W().CARTELES_READY.then(guardado => {
-    Object.assign(LAYOUT, guardado || {});
-    listo = true;
-    pinta();
-    estado('↑↓ para cambiar de cartel');
+    Object.assign(LAYOUT, JSON.parse(JSON.stringify(guardado || {})));
+    crearCapa();
+    abrir(7);   // KICKED de arranque, para no empezar con el lienzo vacio
+    estado('listo');
   });
-});
-
-addEventListener('keydown', e => {
-  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-  if (e.target.tagName === 'INPUT') return;
-  e.preventDefault();
-  actual = (actual + (e.key === 'ArrowDown' ? 1 : CASOS.length - 1)) % CASOS.length;
-  pinta();
 });
 </script>
 </body>

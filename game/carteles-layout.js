@@ -81,34 +81,27 @@ const CARTEL_SURFACES = {
 // Valores afinados (los del JSON). Vacio = todo de fabrica.
 let CARTEL_LAYOUT = {};
 
-// Aplica un solo cartel. Solo toca las propiedades presentes en `v`, para que
-// un cartel a medio afinar conserve de fabrica lo que no se ha tocado.
+// Las tres piezas que se pueden mover/escalar en cada cartel.
+const CARTEL_PARTES = ['title', 'desc', 'actions'];
+
+// Aplica un cartel. Cada pieza guarda {x, y, s} — desplazamiento en px y escala,
+// el mismo esquema que el editor de layout del menu. Una pieza sin entrada se
+// queda exactamente donde la deja su CSS de siempre.
 function applyCartelSurface(key, v) {
     const s = CARTEL_SURFACES[key];
-    if (!s || !v) return;
-    const box = document.querySelector(s.box);
-    if (box) {
-        const cs = getComputedStyle(box);
-        const t = v.padT != null ? v.padT : parseFloat(cs.paddingTop) || 0;
-        const b = v.padB != null ? v.padB : parseFloat(cs.paddingBottom) || 0;
-        const x = v.padX != null ? v.padX : parseFloat(cs.paddingLeft) || 0;
-        if (v.padT != null || v.padB != null || v.padX != null) {
-            box.style.setProperty('padding', t + 'px ' + x + 'px ' + b + 'px', 'important');
-        }
-    }
-    const title = s.title && document.querySelector(s.title);
-    if (title) {
-        if (v.gapTitle != null) title.style.setProperty('margin-bottom', v.gapTitle + 'px', 'important');
-        // titleW solo tiene sentido si el titulo es arte horneado.
-        if (v.titleW != null) {
-            const img = title.tagName === 'IMG' ? title : title.querySelector('img');
-            if (img) img.style.setProperty('width', v.titleW + '%', 'important');
-        }
-    }
-    const desc = s.desc && document.querySelector(s.desc);
-    if (desc) {
-        if (v.gapText != null) desc.style.setProperty('margin-bottom', v.gapText + 'px', 'important');
-        if (v.fontSize != null) desc.style.setProperty('font-size', v.fontSize + 'px', 'important');
+    if (!s) return;
+    for (const parte of CARTEL_PARTES) {
+        const sel = s[parte];
+        if (!sel) continue;
+        const el = document.querySelector(sel);
+        if (!el) continue;
+        const t = v && v[parte];
+        if (!t) { el.style.removeProperty('transform'); continue; }
+        const x = +t.x || 0, y = +t.y || 0, sc = (typeof t.s === 'number' && t.s > 0) ? t.s : 1;
+        // translate + scale y no margenes: mover una pieza no debe reflotar a
+        // las de al lado, que es justo lo que hace tocar el margin.
+        el.style.setProperty('transform', 'translate(' + x + 'px,' + y + 'px) scale(' + sc + ')', 'important');
+        el.style.setProperty('transform-origin', 'center', 'important');
     }
 }
 
@@ -117,13 +110,9 @@ function applyCartelLayout(layout) {
     for (const k of Object.keys(CARTEL_LAYOUT)) applyCartelSurface(k, CARTEL_LAYOUT[k]);
 }
 
-// Ancho del titulo horneado de un cartel, si el editor lo ha fijado. Lo
-// consulta showSystemMsg(), que reescribe el style del <img> en cada llamada y
-// se cargaria el inline puesto por applyCartelSurface.
-function cartelTitleW(key) {
-    const v = CARTEL_LAYOUT[key];
-    return v && v.titleW != null ? v.titleW + '%' : null;
-}
+// El ancho del titulo horneado ya no se toca aqui: el tamano se ajusta con la
+// escala de la pieza `title` (rueda del raton en el editor).
+function cartelTitleW() { return null; }
 
 // Carga el JSON afinado. Si no existe (404) o esta vacio se sigue de fabrica.
 const CARTEL_LAYOUT_READY = fetch('carteles-layout.json', { cache: 'no-cache' })
