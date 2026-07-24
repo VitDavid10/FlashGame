@@ -41,7 +41,7 @@
 <main>
   <div class="bar">
     <span class="hint">
-      Arrastra la <b>cabecera</b> para mover el cartel · Arrastra <b>titulo / texto / botones</b> para colocarlos ·
+      Arrastra el <b>cartel</b> para moverlo · Arrastra <b>titulo / texto / botones</b> para colocarlos ·
       <b>Rueda</b> encima = tamano · <b>Doble click</b> = reset de esa pieza
     </span>
     <button class="save" onclick="guardar()">GUARDAR</button>
@@ -145,11 +145,7 @@ function crearCapa() {
     #ceLayer{position:fixed;inset:0;z-index:99999;background:#0b0f0d;overflow:auto;
       background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
       background-size:32px 32px}
-    .ce-ficha{position:absolute;min-width:120px}
-    .ce-cab{display:flex;align-items:center;gap:8px;padding:3px 8px;background:#12251c;border:1px solid #00ff88;
-      color:#00ff88;font:600 10px/1.6 monospace;letter-spacing:1px;cursor:move;user-select:none;white-space:nowrap}
-    .ce-cab .x{margin-left:auto;cursor:pointer;padding:0 3px;color:#ff5b5b}
-    .ce-cuerpo{position:relative}
+    .ce-ficha{position:absolute;cursor:move;user-select:none}
     .ce-parte{outline:1px dashed rgba(0,255,136,.4);outline-offset:2px;cursor:move}
     .ce-parte:hover{outline:1px solid #00ff88;background:rgba(0,255,136,.06)}
     .ce-parte.sel{outline:1px solid #ffce3d}
@@ -162,12 +158,9 @@ function crearCapa() {
   layer.id = 'ceLayer';
   d.body.appendChild(layer);
   // Nada de lo que haya dentro de un clon puede ejecutar logica del juego:
-  // aqui "volver al menu" o la X solo deben quitar el cartel, no navegar.
-  ['click', 'mousedown', 'mouseup', 'submit', 'keydown'].forEach(ev => {
-    layer.addEventListener(ev, e => {
-      if (e.target.closest('.ce-cab')) return;         // la cabecera sí es nuestra
-      if (ev === 'click' || ev === 'submit') { e.preventDefault(); e.stopPropagation(); }
-    }, true);
+  // aqui "volver al menu" o la X de un cartel no deben navegar a ningun sitio.
+  ['click', 'submit'].forEach(ev => {
+    layer.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }, true);
   });
 }
 
@@ -245,15 +238,11 @@ function abrir(i) {
   const clon = clonar(c);
   if (!clon) { estado('no se pudo abrir ' + c.n, '#ff5b5b'); return; }
 
+  // El cartel y nada mas: se arrastra agarrandolo por cualquier hueco suyo que
+  // no sea una pieza (esas se mueven solas). Para cerrarlo, su boton en la lista.
   const ficha = d.createElement('div');
   ficha.className = 'ce-ficha';
-  const cab = d.createElement('div');
-  cab.className = 'ce-cab';
-  cab.innerHTML = '<span>' + c.n + '</span><span class="x">✕</span>';
-  const cuerpo = d.createElement('div');
-  cuerpo.className = 'ce-cuerpo';
-  cuerpo.appendChild(clon);
-  ficha.appendChild(cab); ficha.appendChild(cuerpo);
+  ficha.appendChild(clon);
 
   const p = POS[c.n] || { x: 30 + (ABIERTOS.size % 3) * 340, y: 30 + Math.floor(ABIERTOS.size / 3) * 300 };
   ficha.style.left = p.x + 'px'; ficha.style.top = p.y + 'px';
@@ -261,8 +250,7 @@ function abrir(i) {
   ABIERTOS.set(i, ficha);
   CASOS[i].btn.classList.add('on');
 
-  cab.querySelector('.x').onclick = ev => { ev.stopPropagation(); cerrar(i); };
-  arrastrarFicha(cab, ficha, c.n);
+  arrastrarFicha(ficha, c.n);
   prepararPiezas(ficha, claveDe(c));
   aplicar(claveDe(c));
 }
@@ -276,9 +264,10 @@ function cerrar(i) {
 function cerrarTodos() { [...ABIERTOS.keys()].forEach(cerrar); }
 
 // --- Mover la ficha entera por el lienzo (solo editor) -------------------
-function arrastrarFicha(cab, ficha, clave) {
-  cab.addEventListener('mousedown', e => {
-    if (e.target.classList.contains('x')) return;
+function arrastrarFicha(ficha, clave) {
+  // Sin capturar: las piezas paran la propagacion en su propio mousedown, asi
+  // que aqui solo llegan los clicks en el hueco libre del cartel.
+  ficha.addEventListener('mousedown', e => {
     e.preventDefault(); e.stopPropagation();
     const x0 = e.clientX, y0 = e.clientY;
     const l0 = parseFloat(ficha.style.left) || 0, t0 = parseFloat(ficha.style.top) || 0;
