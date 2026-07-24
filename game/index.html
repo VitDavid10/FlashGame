@@ -1736,6 +1736,7 @@
 <script src="pixfont.js"></script>
 <script src="pixfont-hero.js"></script>
 <script src="cartel-hero.js"></script>
+<script src="carteles-layout.js"></script>
 <script src="skill-icons-pixel.js"></script>
 <script>
     // --- La lógica de juego vive en shared/sim.js (PillSim); aquí queda
@@ -1850,6 +1851,10 @@
     // El PNG de un cartel puede tardar en cargar (fetch async) — si el juego ya
     // pintó el frame procedural antes de que termine, se reconstruye aquí.
     CARTEL_HERO_READY_PROMISE.then(() => { if (document.getElementById('pixPanelCss')) buildPixPanelCss(); applyLobbyBannerFrame(); });
+    // Espaciado afinado de los carteles (carteles-layout.json, editado desde
+    // carteles-preview.html). Se aplica DESPUES del pixel-pack: son estilos
+    // inline, asi que ganan al CSS !important del pack.
+    Promise.all([CARTEL_HERO_READY_PROMISE, CARTEL_LAYOUT_READY]).then(() => applyCartelLayout());
     // Genera el stylesheet pixel-pack YA en el arranque (si el modo pixel está
     // activo) en vez de esperar a la primera muerte/modal — antes de esto, el
     // HUD (leaderboard, action bar, botones de sonido...) se veía con el look
@@ -6591,7 +6596,7 @@
             // El marco verde es mas ancho que el procedural viejo, asi que el
             // titulo horneado va a menos % para no crecer de golpe; REJOIN
             // EXPIRED un pelin mas grande que KICKED (lo pidio David).
-            const w = { 'KICKED': '52%', 'REJOIN EXPIRED': '64%' }[t] || ((green || gray) ? '86%' : '62%');
+            const w = cartelTitleW('sysModal') || { 'KICKED': '52%', 'REJOIN EXPIRED': '64%' }[t] || ((green || gray) ? '86%' : '62%');
             img.style.cssText = 'display:block;margin:0 auto;width:' + w + ';height:auto;image-rendering:pixelated;';
             titleEl.appendChild(img);
         } else if (pixelMode) {

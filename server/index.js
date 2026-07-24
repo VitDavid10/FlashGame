@@ -1804,6 +1804,48 @@ const httpServer = http.createServer(async (req, res) => {
         }
         res.writeHead(405, { 'Access-Control-Allow-Origin': '*' }); res.end(); return;
     }
+    /* --- Espaciado de los carteles: lo escribe carteles-preview.html (editor de
+     * diseño) en game/carteles-layout.json, un fichero del repo que viaja en el
+     * commit. SOLO desde localhost: es una herramienta de desarrollo, nadie de
+     * fuera debe poder escribir en el disco del servidor. --- */
+    if (urlPath === '/api/carteles-layout') {
+        const ip = String((req.socket && req.socket.remoteAddress) || '');
+        const esLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+        if (!esLocal) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'solo localhost' })); return; }
+        if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
+        let body = '', abortado = false;
+        req.on('data', c => { if (abortado) return; body += c; if (body.length > 65536) { abortado = true; res.writeHead(413); res.end('Payload too large'); req.destroy(); } });
+        req.on('end', () => {
+            if (abortado) return;
+            let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
+            const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
+            if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
+            // Sanea: solo las props conocidas y en rango, para no escribir basura
+            // arbitraria en un fichero que acaba commiteado.
+            const PROPS = { padT: [0, 200], padB: [0, 200], padX: [0, 200], gapTitle: [0, 120], gapText: [0, 120], fontSize: [6, 48], titleW: [10, 100] };
+            const clean = {};
+            for (const k of Object.keys(lay).slice(0, 40)) {
+                const src = lay[k]; if (!src || typeof src !== 'object') continue;
+                const dst = {};
+                for (const p of Object.keys(PROPS)) {
+                    if (src[p] == null) continue;
+                    const n = Number(src[p]); if (!isFinite(n)) continue;
+                    dst[p] = Math.max(PROPS[p][0], Math.min(PROPS[p][1], Math.round(n)));
+                }
+                if (Object.keys(dst).length) clean[String(k).slice(0, 40)] = dst;
+            }
+            const destino = path.join(__dirname, '..', 'game', 'carteles-layout.json');
+            try {
+                fs.writeFileSync(destino, JSON.stringify(clean, null, 2) + '\n');
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: e.message })); return;
+            }
+            log(`Carteles layout guardado en game/carteles-layout.json (${Object.keys(clean).length} carteles)`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
+        });
+        return;
+    }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
     if (urlPath === '/api/fees') {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
