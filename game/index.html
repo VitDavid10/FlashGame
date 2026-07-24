@@ -6571,11 +6571,16 @@
         // KICKED, REJOIN EXPIRED y los de wallet tienen su titulo horneado
         // (cartel-hero); el resto siguen con la fuente procedural.
         const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error', 'DEPOSIT FAILED': 'deposit-failed', 'PAYMENT CANCELLED': 'payment-cancelled' }[t];
-        // PAYMENT CANCELLED sigue con el marco verde del premio (prize-panel).
-        // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED pasan al marco gris
-        // (menu-gris, el mismo del selector de wallet/sala) a peticion de David.
-        const green = t === 'PAYMENT CANCELLED';
-        const gray = t === 'WALLET REQUIRED' || t === 'CONNECT ERROR' || t === 'DEPOSIT FAILED';
+        // Marco de cada aviso (peticion de David):
+        //   verde (prize-panel) -> KICKED y REJOIN EXPIRED, los avisos de partida.
+        //   gris (menu-gris)    -> todo lo de wallet/dinero/conexion, el mismo
+        //                          marco del selector de wallet y del deposit.
+        //   NOTICE (y cualquier titulo no listado) se queda con el verde
+        //   procedural de siempre.
+        const green = t === 'KICKED' || t === 'REJOIN EXPIRED';
+        const gray = ['WALLET REQUIRED', 'CONNECT ERROR', 'DEPOSIT FAILED', 'PAYMENT CANCELLED',
+            'WITHDRAW FAILED', 'WITHDRAW COMPLETE', 'DEPOSIT COMPLETE',
+            'INSUFFICIENT BALANCE', 'CONNECTION FAILED', 'WALLET'].includes(t);
         const box = m.querySelector('.exit-box');
         if (box) { box.classList.toggle('sys-green', green); box.classList.toggle('sys-gray', gray); }
         if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {
@@ -6583,7 +6588,11 @@
             titleEl.innerHTML = '';
             const img = document.createElement('img');
             img.src = cartelHeroUrl(sysArt);
-            img.style.cssText = 'display:block;margin:0 auto;width:' + ((green || gray) ? '86%' : '62%') + ';height:auto;image-rendering:pixelated;';
+            // El marco verde es mas ancho que el procedural viejo, asi que el
+            // titulo horneado va a menos % para no crecer de golpe; REJOIN
+            // EXPIRED un pelin mas grande que KICKED (lo pidio David).
+            const w = { 'KICKED': '52%', 'REJOIN EXPIRED': '64%' }[t] || ((green || gray) ? '86%' : '62%');
+            img.style.cssText = 'display:block;margin:0 auto;width:' + w + ';height:auto;image-rendering:pixelated;';
             titleEl.appendChild(img);
         } else if (pixelMode) {
             ensurePixPanelCss();
