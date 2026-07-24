@@ -3103,6 +3103,15 @@
                 // David): fuente pixel para los dos igual.
                 'body.pixel-pack #gameDepositModal .gameModalBox>h3,body.pixel-pack #gameWithdrawModal .gameModalBox>h3{font-family:"Press Start 2P",monospace!important;font-size:15px!important;' +
                 'color:#c8cdd2!important;text-shadow:2px 2px 0 rgba(0,0,0,.65);line-height:1.6}' +
+                // Y el resto del contenido igual (lo pidio David: "en deposit y
+                // withdraw si debe usarse en todo"): filas, etiquetas, el input
+                // de cantidad y el boton MAX. El gm-btn no entra: su rotulo es
+                // arte horneado (ok-gris) con el texto en transparente.
+                'body.pixel-pack #gameDepositModal .gm-row,body.pixel-pack #gameWithdrawModal .gm-row,' +
+                'body.pixel-pack #gameDepositModal label,body.pixel-pack #gameWithdrawModal label{font-family:"Press Start 2P",monospace!important;font-size:9px!important;line-height:1.9;letter-spacing:0}' +
+                'body.pixel-pack #gameDepositModal input,body.pixel-pack #gameWithdrawModal input{font-family:"Press Start 2P",monospace!important;font-size:11px!important;letter-spacing:0}' +
+                'body.pixel-pack #gameDepositModal .gm-row button,body.pixel-pack #gameWithdrawModal .gm-row button,' +
+                'body.pixel-pack #gameDepositModal input+button,body.pixel-pack #gameWithdrawModal input+button{font-family:"Press Start 2P",monospace!important;font-size:8px!important;letter-spacing:0}' +
                 // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED: mismo marco gris
                 // en el modal de sistema (la clase sys-gray la pone showSystemMsg).
                 'body.pixel-pack #sysModal .exit-box.sys-gray{border:none!important;border-image:none!important;border-radius:0!important;' +
