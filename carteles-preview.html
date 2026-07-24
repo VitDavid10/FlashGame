@@ -142,10 +142,16 @@ function crearCapa() {
   const d = W().document;
   const css = d.createElement('style');
   css.textContent = `
-    #ceLayer{position:fixed;inset:0;z-index:99999;background:#0b0f0d;overflow:auto;
+    #ceLayer{position:fixed;inset:0;z-index:99990;background:#0b0f0d;
       background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
       background-size:32px 32px}
-    .ce-ficha{position:absolute;cursor:move;user-select:none}
+    /* Cada overlay del juego pasa a ser un lienzo transparente que NO tapa a los
+       demas: asi el CSS del juego (que va scopeado a '#sysModal .exit-box' y
+       compania) sigue alcanzando a los clones que cuelgan de el. */
+    .ce-host{display:block!important;position:fixed!important;top:0!important;left:0!important;
+      width:100%!important;height:100%!important;background:none!important;backdrop-filter:none!important;
+      animation:none!important;overflow:visible!important;pointer-events:none!important;z-index:99991!important}
+    .ce-ficha{position:absolute;cursor:move;user-select:none;pointer-events:auto}
     .ce-parte{outline:1px dashed rgba(0,255,136,.4);outline-offset:2px;cursor:move}
     .ce-parte:hover{outline:1px solid #00ff88;background:rgba(0,255,136,.06)}
     .ce-parte.sel{outline:1px solid #ffce3d}
@@ -186,8 +192,9 @@ function clonar(c) {
   // que salga exactamente igual que en el juego.
   const medida = box.getBoundingClientRect();
 
-  // 2. Marcar las piezas ANTES de clonar: los selectores son por id y en el
-  //    clon los ids se quitan (duplicarlos romperia el documento).
+  // 2. Marcar las piezas ANTES de clonar: los selectores de sup[p] son por id
+  //    y no sobreviven al clonado tal cual, asi que se localizan aqui y se
+  //    marcan con data-ce (eso si persiste en el clon).
   const originales = {};
   for (const p of PARTES) {
     const el = sup[p] && d.querySelector(sup[p]);
@@ -205,9 +212,13 @@ function clonar(c) {
       dst[i].getContext('2d').drawImage(src[i], 0, 0);
     } catch (e) {}
   }
-  // 4. Fuera ids (duplicados) y fuera handlers inline.
-  clon.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
-  clon.removeAttribute('id');
+  // 4. Fuera handlers inline. Los ids SI se conservan: el pixel-pack tiene
+  //    reglas horneadas por id exacto (#btnBackToMenu, #myResult...) y por
+  //    ancestro ("#sysModal .exit-box.sys-green", "#prizeModal .gameModalBox"...)
+  //    — quitarlos dejaba el cartel sin su arte. Duplicarlos no rompe nada:
+  //    el CSS estiliza a todos los que matchean y getElementById() sigue
+  //    devolviendo el original porque va antes en el documento que el layer
+  //    del editor.
   clon.querySelectorAll('*').forEach(e => {
     for (const a of [...e.attributes]) if (a.name.startsWith('on')) e.removeAttribute(a.name);
   });
@@ -229,7 +240,14 @@ function clonar(c) {
   clon.style.setProperty('overflow', 'visible', 'important');
 
   OCULTABLES.forEach(id => { const e = d.getElementById(id); if (e) e.style.display = 'none'; });
-  return clon;
+
+  // El envoltorio hereda el id del modal (#sysModal, #prizeModal, #gameDepositModal...)
+  // para que las reglas "#modal .caja..." del pixel-pack sigan encontrando un
+  // ancestro con ese id, aunque el clon ya no cuelgue del modal real.
+  const host = d.createElement('div');
+  host.id = c.sup;
+  host.appendChild(clon);
+  return host;
 }
 
 // --- Abrir / cerrar ------------------------------------------------------
