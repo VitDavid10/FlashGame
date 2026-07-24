@@ -84,6 +84,10 @@ const CASOS = [
   { g:'Sistema · avisos', n:'DEPOSIT FAILED',       sup:'sysModal', art:1, sys:['You only have 8,000 $PILL in your wallet. Lower the amount.','DEPOSIT FAILED'] },
   { g:'Sistema · avisos', n:'PAYMENT CANCELLED',    sup:'sysModal', art:1, sys:['You must sign the entry payment to join a paid room.','PAYMENT CANCELLED'] },
   { g:'Sistema · avisos', n:'LEAVE ARENA?',         sup:'exitModal', art:0, show:'exitModal' },
+  { g:'Sistema · avisos', n:'STOP SPECTATING?',     sup:'exitModal', art:0, exit:["You're just watching this match. Leave to return to the menu.", 'STOP SPECTATING?', null, 'BACK TO MENU'] },
+  { g:'Sistema · avisos', n:'LEAVE LOBBY?',         sup:'exitModal', art:0, exit:["The match has not started yet.<br><span style='color:#00ff88; font-weight:bold;'>Your entry will be refunded to your in-game balance.</span>", 'LEAVE LOBBY?', null, 'LEAVE'] },
+  { g:'Sistema · avisos', n:'WARNING: FORFEIT?',    sup:'exitModal', art:1, exit:["You will lose <span style='color:#ff2a2a'>100% of the PILLS</span> used to enter (they go to the prize pot).<br>Are you sure?", 'WARNING: FORFEIT?', 'warning', 'EXIT NOW'] },
+  { g:'Sistema · avisos', n:'SECURE CASHOUT',       sup:'exitModal', art:1, exit:['You have <span style="color:#fff">2 Kills</span>.<br><span style="color:#00ff88; font-weight:bold;">SAFE EXIT: 0% FEE (2+ kills)</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>', 'SECURE CASHOUT', 'secure-cashout', 'START CASHOUT (5s)'] },
 
   { g:'Fin de partida', n:'GAME OVER',      sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'] },
   { g:'Fin de partida', n:'MATCH FINISHED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['matchFinished','MATCH FINISHED','#00ff88'] },
@@ -132,6 +136,7 @@ function claveDe(c) {
   if (c.sys)   return 'sysModal#' + c.sys[1];
   if (c.res)   return 'resultOverlay#' + c.res[0];
   if (c.prize) return 'prizeModal#' + (c.prize.reason === 'arcadeEnd' ? 'matchEnded' : c.prize.reason);
+  if (c.exit)  return 'exitModal#' + c.exit[1];
   return c.sup;
 }
 
@@ -188,6 +193,20 @@ function clonar(c) {
   OCULTABLES.forEach(id => { const e = d.getElementById(id); if (e) e.style.display = 'none'; });
   if (c.sys)        w.showSystemMsg(c.sys[0], c.sys[1]);
   else if (c.prize) w.cartelDevShowPrize(c.prize);
+  else if (c.exit) {
+    // Mismo pintado que toggleExitModal(), pero sin sus guardas de estado
+    // real (gameRunning, isSpectating, currentGameMode...) — aqui el texto y
+    // el titulo (imagen horneada si hay atlas, texto si no) se ponen a mano.
+    const [desc, titulo, png, boton] = c.exit;
+    const modal = d.getElementById('exitModal');
+    const t = d.getElementById('exitModalTitle'), ds = d.getElementById('exitModalDesc'), btn = d.getElementById('btnConfirmExit');
+    modal.style.display = 'flex';
+    if (png && w.cartelUsesAtlas(png)) {
+      t.innerHTML = '<img src="' + w.cartelHeroUrl(png) + '" alt="' + titulo + '" style="display:block;margin:0 auto;width:92%;height:auto;image-rendering:pixelated;">';
+    } else t.innerText = titulo;
+    ds.innerHTML = desc;
+    btn.innerText = boton;
+  }
   else {
     const e = d.getElementById(c.show);
     if (e) e.style.display = 'flex';
