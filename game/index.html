@@ -2955,8 +2955,11 @@
         let css = 'body.pixel-pack #exitModal .exit-box{border:none!important;border-radius:0!important;width:420px;padding:44px 48px;' +
             'background:transparent url(' + cartelHeroUrl('menu-gris') + ') center/100% 100% no-repeat!important;' +
             'image-rendering:pixelated;box-shadow:none!important}' +
-            // solo el texto de dentro del panel en fuente pixel (los botones no se tocan)
-            'body.pixel-pack #exitModal .exit-desc{font-family:"Press Start 2P",monospace;font-size:9px;line-height:2;letter-spacing:0}';
+            // solo el texto de dentro del panel en fuente pixel (los botones no se tocan).
+            // Mismo tratamiento para el cuerpo de los avisos de sistema (a David
+            // le gusta esta y la queria en todos): medido, el mensaje mas largo
+            // (INSUFFICIENT BALANCE) cabe en 3 lineas sin desbordar la caja.
+            'body.pixel-pack #exitModal .exit-desc,body.pixel-pack #sysModal .exit-desc{font-family:"Press Start 2P",monospace;font-size:9px;line-height:2;letter-spacing:0}';
         if (cartelUsesAtlas('cancel')) {
             css += 'body.pixel-pack #exitModal .btn-cancel{border:none!important;border-radius:0!important;box-shadow:none!important;' +
                 'background:transparent url(' + cartelHeroUrl('cancel') + ') center/100% 100% no-repeat!important;' +
@@ -6614,6 +6617,10 @@
         const descEl = document.getElementById('sysModalDesc');
         descEl.innerText = message;
         descEl.style.fontSize = '';
+        // Este modal se repinta entero en cada aviso, asi que hay que volver a
+        // poner el espaciado afinado (carteles-layout.json) que se acaba de
+        // limpiar con la linea de arriba.
+        applyCartelSurface('sysModal', CARTEL_LAYOUT.sysModal);
         m.style.display = 'flex';
         try { SoundManager.play('little'); } catch (e) {}
     }

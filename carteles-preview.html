@@ -184,7 +184,10 @@ function construirSliders() {
       out.textContent = inp.value;
       const sup = CASOS[actual].sup;
       (LAYOUT[sup] = LAYOUT[sup] || {})[p] = +inp.value;
-      W().applyCartelSurface(sup, LAYOUT[sup]);
+      // applyCartelLayout (y no applyCartelSurface) para que el juego se quede
+      // con NUESTRO objeto: showSystemMsg repinta el modal y reaplica desde su
+      // propio CARTEL_LAYOUT, que si no seguiria siendo el del JSON en disco.
+      W().applyCartelLayout(LAYOUT);
       if (CASOS[actual].sys) mostrar(CASOS[actual]);   // el titulo del sysModal se repinta en cada llamada
       refrescarInfo(CASOS[actual]);
       estado('sin guardar', '#ffce3d');
