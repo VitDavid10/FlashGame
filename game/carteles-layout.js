@@ -127,6 +127,7 @@ const CARTEL_LAYOUT_READY = fetch('carteles-layout.json', { cache: 'no-cache' })
  * Los cuerpos se evaluan al llamarlos, por eso pueden referirse a cosas del
  * script inline de index.html que aun no existen cuando se define esto. */
 window.CARTEL_SURFACES = CARTEL_SURFACES;
+window.cartelTitleFit = cartelTitleFit;
 window.CARTELES_READY = Promise.all([
     typeof CARTEL_HERO_READY_PROMISE !== 'undefined' ? CARTEL_HERO_READY_PROMISE : null,
     CARTEL_LAYOUT_READY,

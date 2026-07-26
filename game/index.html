@@ -3114,9 +3114,12 @@
                 'body.pixel-pack #gameDepositModal input+button,body.pixel-pack #gameWithdrawModal input+button{font-family:"Press Start 2P",monospace!important;font-size:8px!important;letter-spacing:0}' +
                 // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED: mismo marco gris
                 // en el modal de sistema (la clase sys-gray la pone showSystemMsg).
+                // 470 y no 430 como el verde: los avisos de wallet son los de
+                // titulo mas largo (WITHDRAW COMPLETE, INSUFFICIENT BALANCE) y
+                // con 430 no cabian sin encoger la letra respecto a los demas.
                 'body.pixel-pack #sysModal .exit-box.sys-gray{border:none!important;border-image:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('menu-gris') + ') center/100% 100% no-repeat!important;' +
-                'image-rendering:pixelated;padding:40px 44px 46px;width:430px}';
+                'image-rendering:pixelated;padding:40px 44px 46px;width:470px}';
         }
         // PAYMENT CANCELLED: se queda con el marco verde del premio (sin tocar).
         if (cartelUsesAtlas('prize-panel')) {
@@ -5073,13 +5076,17 @@
         // en pixel-pack; texto CSS de siempre en los demas casos.
         const setTitle = (text, pngId) => {
             if (pixelMode && pngId && cartelUsesAtlas(pngId)) {
+                // 26px de mayuscula (no 35 como los avisos): es el tamano al que
+                // ya estaban WARNING y SECURE CASHOUT, que son los mas largos y
+                // marcan el techo de esta caja (420-96 = 324 de interior).
+                const w = cartelTitleFit(pngId, 26, 324, 92) || '92%';
                 title.innerHTML = '<img src="' + cartelHeroUrl(pngId) + '" alt="' + text + '" ' +
-                    'style="display:block;margin:0 auto;width:92%;height:auto;image-rendering:pixelated;">';
+                    'style="display:block;margin:0 auto;width:' + w + ';height:auto;image-rendering:pixelated;">';
             } else title.innerText = text;
         };
         // Espectando: no eres jugador, no aplica nada de carry/kills/fees. Modal simple.
         if (isSpectating && onlineSpectator) {
-            setTitle("STOP SPECTATING?");
+            setTitle("STOP SPECTATING?", 'stop-spectating');
             desc.innerHTML = "You're just watching this match. Leave to return to the menu.";
             btn.onclick = confirmExit; btn.innerText = "BACK TO MENU";
             return;
@@ -5088,7 +5095,7 @@
         // sin hablar de fees ni kills (no aplica todavía).
         const enLobby = practiceMode || (netState && netState.token && !sim);
         if (enLobby) {
-            setTitle("LEAVE LOBBY?");
+            setTitle("LEAVE LOBBY?", 'leave-lobby');
             desc.innerHTML = "The match has not started yet.<br><span style='color:#00ff88; font-weight:bold;'>Your entry will be refunded to your in-game balance.</span>";
             btn.onclick = confirmExit; btn.innerText = "LEAVE";
             return;
@@ -6593,7 +6600,9 @@
         const t = title || 'NOTICE';
         // KICKED, REJOIN EXPIRED y los de wallet tienen su titulo horneado
         // (cartel-hero); el resto siguen con la fuente procedural.
-        const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error', 'DEPOSIT FAILED': 'deposit-failed', 'PAYMENT CANCELLED': 'payment-cancelled' }[t];
+        const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error', 'DEPOSIT FAILED': 'deposit-failed', 'PAYMENT CANCELLED': 'payment-cancelled',
+            'NOTICE': 'notice', 'WALLET': 'wallet', 'WITHDRAW FAILED': 'withdraw-failed', 'WITHDRAW COMPLETE': 'withdraw-complete',
+            'DEPOSIT COMPLETE': 'deposit-complete', 'INSUFFICIENT BALANCE': 'insufficient-balance', 'CONNECTION FAILED': 'connection-failed' }[t];
         // Marco de cada aviso (peticion de David):
         //   verde (prize-panel) -> KICKED y REJOIN EXPIRED, los avisos de partida.
         //   gris (menu-gris)    -> todo lo de wallet/dinero/conexion, el mismo
@@ -6611,10 +6620,13 @@
             titleEl.innerHTML = '';
             const img = document.createElement('img');
             img.src = cartelHeroUrl(sysArt);
-            // El marco verde es mas ancho que el procedural viejo, asi que el
-            // titulo horneado va a menos % para no crecer de golpe; REJOIN
-            // EXPIRED un pelin mas grande que KICKED (lo pidio David).
-            const w = cartelTitleW('sysModal') || { 'KICKED': '52%', 'REJOIN EXPIRED': '64%' }[t] || ((green || gray) ? '86%' : '62%');
+            // KICKED y REJOIN EXPIRED llevan su ancho a mano (los afino David);
+            // el resto se calcula para que la letra salga del mismo tamano en
+            // todos. El ancho interior depende del marco: gris 470-88, verde
+            // 430-88, procedural 320-60.
+            const w = cartelTitleW('sysModal') || { 'KICKED': '52%', 'REJOIN EXPIRED': '64%' }[t]
+                || cartelTitleFit(sysArt, 35, gray ? 382 : (green ? 342 : 260), 92)
+                || ((green || gray) ? '86%' : '62%');
             img.style.cssText = 'display:block;margin:0 auto;width:' + w + ';height:auto;image-rendering:pixelated;';
             titleEl.appendChild(img);
         } else if (pixelMode) {

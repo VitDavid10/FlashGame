@@ -70,22 +70,22 @@
  */
 
 const CASOS = [
-  { g:'Sistema · avisos', n:'NOTICE',               sup:'sysModal', art:0, sys:['Something happened. This is the default system notice.','NOTICE'] },
-  { g:'Sistema · avisos', n:'WITHDRAW FAILED',      sup:'sysModal', art:0, sys:['You only have 12,500 $PILL in GAME. Lower the amount.','WITHDRAW FAILED'] },
-  { g:'Sistema · avisos', n:'WITHDRAW COMPLETE',    sup:'sysModal', art:0, sys:['40,000 $PILL sent back to your wallet.','WITHDRAW COMPLETE'] },
-  { g:'Sistema · avisos', n:'DEPOSIT COMPLETE',     sup:'sysModal', art:0, sys:['50,000 $PILL added to your in-GAME balance.','DEPOSIT COMPLETE'] },
-  { g:'Sistema · avisos', n:'INSUFFICIENT BALANCE', sup:'sysModal', art:0, sys:['Not enough in-GAME balance. Entry costs 50,000 $PILL and you have 12,500. Use the DEPOSIT button to add more.','INSUFFICIENT BALANCE'] },
-  { g:'Sistema · avisos', n:'CONNECTION FAILED',    sup:'sysModal', art:0, sys:["Couldn't connect to the server. Please try again in a moment.",'CONNECTION FAILED'] },
-  { g:'Sistema · avisos', n:'WALLET',               sup:'sysModal', art:0, sys:['Wallet module not loaded yet.','WALLET'] },
+  { g:'Sistema · avisos', n:'NOTICE',               sup:'sysModal', art:1, sys:['Something happened. This is the default system notice.','NOTICE'] },
+  { g:'Sistema · avisos', n:'WITHDRAW FAILED',      sup:'sysModal', art:1, sys:['You only have 12,500 $PILL in GAME. Lower the amount.','WITHDRAW FAILED'] },
+  { g:'Sistema · avisos', n:'WITHDRAW COMPLETE',    sup:'sysModal', art:1, sys:['40,000 $PILL sent back to your wallet.','WITHDRAW COMPLETE'] },
+  { g:'Sistema · avisos', n:'DEPOSIT COMPLETE',     sup:'sysModal', art:1, sys:['50,000 $PILL added to your in-GAME balance.','DEPOSIT COMPLETE'] },
+  { g:'Sistema · avisos', n:'INSUFFICIENT BALANCE', sup:'sysModal', art:1, sys:['Not enough in-GAME balance. Entry costs 50,000 $PILL and you have 12,500. Use the DEPOSIT button to add more.','INSUFFICIENT BALANCE'] },
+  { g:'Sistema · avisos', n:'CONNECTION FAILED',    sup:'sysModal', art:1, sys:["Couldn't connect to the server. Please try again in a moment.",'CONNECTION FAILED'] },
+  { g:'Sistema · avisos', n:'WALLET',               sup:'sysModal', art:1, sys:['Wallet module not loaded yet.','WALLET'] },
   { g:'Sistema · avisos', n:'KICKED',               sup:'sysModal', art:1, sys:['You were kicked. Wait 30 seconds before rejoining.','KICKED'] },
   { g:'Sistema · avisos', n:'REJOIN EXPIRED',       sup:'sysModal', art:1, sys:['The rejoin window has closed. Your slot was released and you need to enter again.','REJOIN EXPIRED'] },
   { g:'Sistema · avisos', n:'WALLET REQUIRED',      sup:'sysModal', art:1, sys:['Connect your wallet first on the home page, then come back to play paid rooms.','WALLET REQUIRED'] },
   { g:'Sistema · avisos', n:'CONNECT ERROR',        sup:'sysModal', art:1, sys:['Phantom is not installed. Install it or pick another wallet.','CONNECT ERROR'] },
   { g:'Sistema · avisos', n:'DEPOSIT FAILED',       sup:'sysModal', art:1, sys:['You only have 8,000 $PILL in your wallet. Lower the amount.','DEPOSIT FAILED'] },
   { g:'Sistema · avisos', n:'PAYMENT CANCELLED',    sup:'sysModal', art:1, sys:['You must sign the entry payment to join a paid room.','PAYMENT CANCELLED'] },
-  { g:'Sistema · avisos', n:'LEAVE ARENA?',         sup:'exitModal', art:0, show:'exitModal' },
-  { g:'Sistema · avisos', n:'STOP SPECTATING?',     sup:'exitModal', art:0, exit:["You're just watching this match. Leave to return to the menu.", 'STOP SPECTATING?', null, 'BACK TO MENU'] },
-  { g:'Sistema · avisos', n:'LEAVE LOBBY?',         sup:'exitModal', art:0, exit:["The match has not started yet.<br><span style='color:#00ff88; font-weight:bold;'>Your entry will be refunded to your in-game balance.</span>", 'LEAVE LOBBY?', null, 'LEAVE'] },
+  { g:'Sistema · avisos', n:'LEAVE ARENA?',         sup:'exitModal', art:1, exit:['You are about to leave the arena.<br>Are you sure?', 'LEAVE ARENA?', 'leave-arena', 'EXIT'] },
+  { g:'Sistema · avisos', n:'STOP SPECTATING?',     sup:'exitModal', art:1, exit:["You're just watching this match. Leave to return to the menu.", 'STOP SPECTATING?', 'stop-spectating', 'BACK TO MENU'] },
+  { g:'Sistema · avisos', n:'LEAVE LOBBY?',         sup:'exitModal', art:1, exit:["The match has not started yet.<br><span style='color:#00ff88; font-weight:bold;'>Your entry will be refunded to your in-game balance.</span>", 'LEAVE LOBBY?', 'leave-lobby', 'LEAVE'] },
   { g:'Sistema · avisos', n:'WARNING: FORFEIT?',    sup:'exitModal', art:1, exit:["You will lose <span style='color:#ff2a2a'>100% of the PILLS</span> used to enter (they go to the prize pot).<br>Are you sure?", 'WARNING: FORFEIT?', 'warning', 'EXIT NOW'] },
   { g:'Sistema · avisos', n:'SECURE CASHOUT',       sup:'exitModal', art:1, exit:['You have <span style="color:#fff">2 Kills</span>.<br><span style="color:#00ff88; font-weight:bold;">SAFE EXIT: 0% FEE (2+ kills)</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>', 'SECURE CASHOUT', 'secure-cashout', 'START CASHOUT (5s)'] },
 
@@ -202,7 +202,10 @@ function clonar(c) {
     const t = d.getElementById('exitModalTitle'), ds = d.getElementById('exitModalDesc'), btn = d.getElementById('btnConfirmExit');
     modal.style.display = 'flex';
     if (png && w.cartelUsesAtlas(png)) {
-      t.innerHTML = '<img src="' + w.cartelHeroUrl(png) + '" alt="' + titulo + '" style="display:block;margin:0 auto;width:92%;height:auto;image-rendering:pixelated;">';
+      // Mismo ancho calculado que usa setTitle() en el juego: si aqui fuera
+      // otro, el editor mentiria sobre como se ve el cartel de verdad.
+      const ancho = w.cartelTitleFit(png, 26, 324, 92) || '92%';
+      t.innerHTML = '<img src="' + w.cartelHeroUrl(png) + '" alt="' + titulo + '" style="display:block;margin:0 auto;width:' + ancho + ';height:auto;image-rendering:pixelated;">';
     } else t.innerText = titulo;
     ds.innerHTML = desc;
     btn.innerText = boton;
