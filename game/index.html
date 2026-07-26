@@ -2923,11 +2923,25 @@
             'border-image:url(' + cartelHeroUrl('button') + ') 95 fill stretch!important;' +
             'border-radius:0!important;background:transparent!important;clip-path:none!important;box-shadow:none!important}';
     }
-    // Pantalla de fin de partida: marco cuadrado propio (menu-square.png, mismo
-    // acento/fondo que el panel de skills) y los botones SPECTATE/BACK TO MENU
-    // con su arte ya horneado (banner + texto), pisando el generico de _btnImgRule.
+    // Pantalla de fin de partida (GAME OVER / MATCH FINISHED / ROOM RESTARTED):
+    // el mismo panel verde fino que VICTORY/CASHOUT, no el marco cuadrado de
+    // menu-square que traia antes — al lado del de premio desentonaba. Va
+    // ENTERO estirado como fondo y no en 9-slice por lo de siempre: el 9-slice
+    // comprime el marco ondulado y deja de reconocerse el dibujo.
+    // Los botones SPECTATE/BACK TO MENU llevan su arte horneado (banner +
+    // texto), pisando el generico de _btnImgRule.
     function _resultOverlayRule() {
-        let css = 'body.pixel-pack ' + _pixFrameRule('.result-box', skillPanelBorderPx, skillPanelBg, skillPanelBgAlpha, 'menu-square');
+        let css = cartelUsesAtlas('prize-panel')
+            ? 'body.pixel-pack .result-box{border:none!important;border-radius:0!important;box-shadow:none!important;' +
+              'background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
+              // min-height con la proporcion del PNG (470 * 613/990) en vez de
+              // aspect-ratio fijo: aqui el contenido manda (el titulo, la linea
+              // de kills y hasta 3 botones si sale TRY AGAIN) y con la altura
+              // clavada se salia de la caja. Asi el marco parte de su
+              // proporcion y solo se estira lo que le pida el contenido.
+              'image-rendering:pixelated;width:470px;max-width:470px;min-height:291px;' +
+              'display:flex;flex-direction:column;justify-content:center;padding:40px 44px 36px}'
+            : 'body.pixel-pack ' + _pixFrameRule('.result-box', skillPanelBorderPx, skillPanelBg, skillPanelBgAlpha, 'menu-square');
         if (cartelUsesAtlas('try-again')) {
             css += 'body.pixel-pack #btnTryAgainOnline{border:none!important;border-radius:0!important;clip-path:none!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('try-again') + ') center/100% 100% no-repeat!important;' +
@@ -6609,7 +6623,9 @@
         //                          marco del selector de wallet y del deposit.
         //   NOTICE (y cualquier titulo no listado) se queda con el verde
         //   procedural de siempre.
-        const green = t === 'KICKED' || t === 'REJOIN EXPIRED';
+        // NOTICE incluido: es el titulo por defecto de cualquier aviso sin uno
+        // propio, y con el marco procedural viejo cantaba al lado del resto.
+        const green = t === 'KICKED' || t === 'REJOIN EXPIRED' || t === 'NOTICE';
         const gray = ['WALLET REQUIRED', 'CONNECT ERROR', 'DEPOSIT FAILED', 'PAYMENT CANCELLED',
             'WITHDRAW FAILED', 'WITHDRAW COMPLETE', 'DEPOSIT COMPLETE',
             'INSUFFICIENT BALANCE', 'CONNECTION FAILED', 'WALLET'].includes(t);
@@ -6620,11 +6636,11 @@
             titleEl.innerHTML = '';
             const img = document.createElement('img');
             img.src = cartelHeroUrl(sysArt);
-            // KICKED y REJOIN EXPIRED llevan su ancho a mano (los afino David);
-            // el resto se calcula para que la letra salga del mismo tamano en
-            // todos. El ancho interior depende del marco: gris 470-88, verde
-            // 430-88, procedural 320-60.
-            const w = cartelTitleW('sysModal') || { 'KICKED': '52%', 'REJOIN EXPIRED': '64%' }[t]
+            // Todos por la misma regla, para que la letra salga del mismo
+            // tamano en todos (KICKED y REJOIN EXPIRED llevaban un ancho a mano
+            // de cuando cada aviso iba por libre). El ancho interior depende
+            // del marco: gris 470-88, verde 430-88, procedural 320-60.
+            const w = cartelTitleW('sysModal')
                 || cartelTitleFit(sysArt, 35, gray ? 382 : (green ? 342 : 260), 92)
                 || ((green || gray) ? '86%' : '62%');
             img.style.cssText = 'display:block;margin:0 auto;width:' + w + ';height:auto;image-rendering:pixelated;';
