@@ -12,10 +12,12 @@ Archivos:
                     raw/PLAY-NOW-HERO.jpg (fondo blanco -> alpha, rampa 40/110).
   official-contract.png -> cartel "OFFICIAL CONTRACT ADDRESS" que va bajo el
                     PLAY NOW del hero (<img id="heroCaSign">), 140px de alto.
-                    Su original trae fondo NEGRO, pero ahi solo se vacia lo de
-                    FUERA del marco (flood fill desde las esquinas): el interior
-                    oscuro es parte del cartel y se conserva.
-  play-now.png  -> background-image del boton .btn-play (stretch 100% 100%,
+  copy-contract.png -> cartel del contrato, con el boton COPY ya dibujado en el
+                    arte; el contrato (o "Not Live Yet") lo escribe el CSS
+                    encima, a la izquierda del COPY. 180px de alto.
+  play-now.png  -> YA NO SE USA (el boton PLAY NOW de la navbar se quito en
+                    jul-2026; solo queda el del centro del hero).
+                    Era el background-image del boton .btn-play (stretch 100% 100%,
                    el texto real queda oculto detras via visibility:hidden).
                    Deteccion de carga por JS (new Image().onload agrega
                    .has-play-img al body), porque un background-image no
@@ -32,6 +34,13 @@ tenue, sin transparencia):
    alpha (con feather para el halo de glow) -> recorte al contenido opaco ->
    reescalado bicubico a una altura fija (200px play-now/brand, 400px hero).
 3. Guarda el resultado en img/pixel-hero/<nombre-en-minuscula>.png.
+
+OJO con el paso 2: la rampa de alpha se aplica SOLO a la region de fondo
+CONECTADA a las esquinas (flood fill), no a todo el que se parezca al color de
+fondo. Sin eso, en el PLAY NOW (fondo blanco Y letras blancas) las letras se
+volvian transparentes y el boton se veia con el texto negro. Lo mismo sirve
+para los carteles verdes: su interior es tan oscuro como el fondo de fuera,
+y asi solo se vacia lo de fuera del marco.
 
 hero-title.png v2 (jul-2026): regenerado desde raw/HERO-TITLE-v2.jpg (fondo
 NEGRO con cuadricula tenue, no blanco). La cuadricula llega a distancia ~45

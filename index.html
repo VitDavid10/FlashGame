@@ -76,7 +76,7 @@
         .navbar, .navbar *, footer, footer *, .modal-overlay, .modal-box, .modal-box * { cursor: default !important; }
         .navbar a, .navbar button, .wallet-option, footer a, .modal-close { cursor: pointer !important; }
         /* El trailer box ahora tiene cursor pointer manejado abajo */
-        .btn-play, .ca-box, .skill-card, .video-card, .full-width-img { cursor: none; }
+        .ca-box, .skill-card, .video-card, .full-width-img { cursor: none; }
         /* Excepcion para trailer cuando esta activo para usar controles */
         .trailer-box.active { cursor: default !important; }
 
@@ -99,15 +99,6 @@
         .nav-links-container { 
             display: flex; gap: 30px; margin-left: 20px; align-items: center; 
         }
-
-        .btn-play {
-            background: var(--accent); padding: 10px 35px; font-size: 16px; color: white; 
-            text-transform: uppercase; font-weight: 900; border: none;
-            clip-path: polygon(0 0, 100% 0, 100% 70%, 90% 100%, 0 100%);
-            transition: 0.2s; letter-spacing: 1px; box-shadow: 0 0 15px rgba(255, 42, 42, 0.4);
-            white-space: nowrap; cursor: pointer !important;
-        }
-        .btn-play:hover { transform: scale(1.05); filter: brightness(1.2); }
 
         .nav-link { font-size: 14px; font-weight: 900; color: #666; text-transform: uppercase; letter-spacing: 1px; font-family: 'Russo One'; text-decoration: none; white-space: nowrap; }
         .nav-link:hover { color: #fff; text-shadow: 0 0 10px #fff; }
@@ -169,13 +160,43 @@
            verde de abajo = este wrapper). Va DETRAS del contenido para que las
            pildoras pasen por debajo del titulo. */
         #heroDecoCv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; image-rendering: pixelated; pointer-events: none; }
+        #heroPlayHint {
+            position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); z-index: 3;
+            font-family: 'Press Start 2P', monospace; font-size: 8px; color: #8effc9; letter-spacing: .5px;
+            background: rgba(0,0,0,0.75); border: 2px solid rgba(0,255,136,0.5); padding: 9px 14px; pointer-events: none;
+        }
         .hero-main-content { z-index: 2; text-align: center; padding: 0 20px; margin-top: 60px; }
         /* PLAY NOW del hero, cartel del contrato y el contrato: apilados bajo el
            titulo. Los cuatro se mueven/escalan desde EDIT (ver LandingLayout). */
-        .hero-play { display: block; margin: 26px auto 0; height: 84px; width: auto; image-rendering: pixelated; cursor: pointer !important; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .2s; }
+        .hero-play-row { display: flex; align-items: center; justify-content: center; gap: 46px; margin-top: 26px; }
+        .hero-play { display: block; height: 84px; width: auto; image-rendering: pixelated; cursor: pointer !important; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .2s; }
         .hero-play:hover { filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.15); }
+        /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
+           Al clicarla se esconde y toma el control la pill del canvas. */
+        #heroPickMe { cursor: pointer !important; user-select: none; }
+        #heroPickMe.playing { visibility: hidden; }
+        .pick-me-label {
+            font-family: 'Press Start 2P', monospace; font-size: 11px; color: #aaffdd;
+            text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
+            margin-bottom: 6px; white-space: nowrap; animation: pickMeGlow 1.4s ease-in-out infinite;
+        }
+        @keyframes pickMeGlow { 50% { opacity: .55; } }
+        .pick-me-pill { display: block; margin: 0 auto; image-rendering: pixelated; }
+        #heroPickMe:hover .pick-me-pill { filter: brightness(1.25); }
         .hero-ca-sign { display: block; margin: 34px auto 0; height: 52px; width: auto; image-rendering: pixelated; }
-        .hero-ca { margin-top: 10px; }
+        /* Cartel de copiar: la imagen manda el tamaño y el texto del contrato va
+           encima, dentro del marco y a la izquierda del COPY que ya trae el arte. */
+        .hero-ca { position: relative; display: inline-block; margin-top: 12px; cursor: pointer !important; }
+        .hero-ca img { display: block; height: 64px; width: auto; image-rendering: pixelated; }
+        .hero-ca:hover img { filter: brightness(1.15); }
+        .hero-ca .ca-text {
+            position: absolute; left: 6.5%; top: 50%; transform: translateY(-50%);
+            width: 53%; text-align: left; font-family: 'Press Start 2P', monospace;
+            font-size: 10px; line-height: 1.35; color: #55ffb0; text-shadow: 0 0 8px rgba(0,255,136,0.75);
+            word-break: break-all; overflow: hidden;
+        }
+        /* Sin el PNG del cartel, el texto vuelve a su caja de siempre. */
+        .hero-ca.no-img .ca-text { position: static; transform: none; width: auto; display: inline-block; padding: 14px 22px; border: 2px solid var(--primary); }
         #hero-copy-feedback { font-size: 11px; color: var(--primary); height: 15px; margin-top: 5px; }
         .big-title { font-size: 90px; font-family: 'Russo One'; color: #fff; text-shadow: 0 0 30px var(--primary); margin: 0; line-height: 1; }
         .big-subtitle { font-size: 24px; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 8px; margin-top: 10px; }
@@ -604,16 +625,6 @@ body.trailer-open #page-content{
             }
             .nav-links-container::-webkit-scrollbar { display: none; }
 
-            /* EL BOTÓN PLAY VERSIÓN MINI PARA MÓVIL */
-            .btn-play { 
-                width: auto !important; 
-                text-align: center;
-                font-size: 11px; 
-                padding: 6px 16px; 
-                flex-shrink: 0; 
-                box-shadow: 0 0 10px rgba(255, 42, 42, 0.4);
-            }
-            
             .nav-link { font-size: 12px; }
 
             /* Wallet y Socials al final */
@@ -670,12 +681,6 @@ body.trailer-open #page-content{
         body.pixel-pack .hero-main-content:not(.no-img) .hero-txt { display: none; }
         body.pixel-pack .brand-name:not(.no-img) .bn-img { display: inline-block; height: 44px; width: auto; vertical-align: middle; }
         body.pixel-pack .brand-name:not(.no-img) .bn-txt { display: none; }
-        body.pixel-pack.has-play-img .btn-play {
-            background: transparent !important; box-shadow: none !important; clip-path: none !important; border: none !important;
-            background-image: url('img/pixel-hero/play-now.png') !important; background-size: 100% 100% !important; background-repeat: no-repeat !important;
-            filter: brightness(1.35) saturate(1.3);
-        }
-        body.pixel-pack.has-play-img .btn-play .bp-txt { visibility: hidden; }
         body.pixel-pack .section-title { font-family: 'Press Start 2P', monospace; font-size: 26px; text-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
         body.pixel-pack .feature-text h3 { font-family: 'Press Start 2P', monospace; font-size: 22px; line-height: 1.3; }
         body.pixel-pack .skills-section h2, body.pixel-pack .battle-modes-container h2 { font-family: 'Press Start 2P', monospace !important; font-size: 24px !important; }
@@ -708,14 +713,14 @@ body.trailer-open #page-content{
         body.pixel-pack .navbar { backdrop-filter: none !important; border-bottom: 2px solid rgba(0,255,136,0.4); }
         body.pixel-pack .modal-overlay { backdrop-filter: none !important; }
         /* botones */
-        body.pixel-pack .btn-play, body.pixel-pack .btn-connect, body.pixel-pack .btn-deposit,
+        body.pixel-pack .btn-connect, body.pixel-pack .btn-deposit,
         body.pixel-pack .btn-withdraw, body.pixel-pack .claim-pill, body.pixel-pack .dq-btn,
         body.pixel-pack .cmodal-btn, body.pixel-pack .lb-pag button, body.pixel-pack .modal-box button {
             border-radius: 0 !important; clip-path: none !important;
             font-family: 'Press Start 2P', monospace !important; font-size: 11px !important;
             box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.18), inset -2px -2px 0 rgba(0,0,0,0.45) !important;
         }
-        body.pixel-pack .btn-play:active, body.pixel-pack .btn-connect:active, body.pixel-pack .cmodal-btn:active,
+        body.pixel-pack .btn-connect:active, body.pixel-pack .cmodal-btn:active,
         body.pixel-pack .dq-btn.unlocked:active, body.pixel-pack .claim-pill:active {
             transform: translate(2px, 2px) !important;
             box-shadow: 1px 1px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(0,0,0,0.35) !important;
@@ -816,10 +821,6 @@ body.trailer-open #page-content{
             document.querySelectorAll('#custom-cursor, .logo-pill').forEach(el => { el.style.backgroundImage = url; });
         }
         document.addEventListener('DOMContentLoaded', () => { applyPixelPill(); applyPixelCloseX(); });
-        // Sprite del boton PLAY NOW (img/pixel-hero/play-now.png): solo se activa
-        // en pixel-pack si el PNG carga bien (.has-play-img en body); si falta,
-        // el boton se queda con el estilo procedural de siempre.
-        (() => { const img = new Image(); img.onload = () => document.body.classList.add('has-play-img'); img.src = 'img/pixel-hero/play-now.png'; })();
     </script>
 
     <div id="custom-cursor"></div>
@@ -834,7 +835,6 @@ body.trailer-open #page-content{
             </div>
 
             <div class="nav-links-container">
-                <button class="btn-play" onclick="window.location.href='game/'"><span class="bp-txt">PLAY NOW</span></button>
                 <a href="#hero" class="nav-link">GAME</a>
                 <a href="#quest" class="nav-link">QUESTS</a>
                 <a href="#shop" class="nav-link">STORE</a>
@@ -884,18 +884,29 @@ body.trailer-open #page-content{
          que pinta heroDecoCv junto con la comida/virus/pildoras. -->
     <div class="hero-video-wrapper" id="hero">
         <canvas id="heroDecoCv"></canvas>
+        <div id="heroPlayHint" style="display:none;">MOUSE = MOVE &nbsp;·&nbsp; SPACE = SPLIT &nbsp;·&nbsp; ESC = EXIT</div>
         <div class="hero-main-content">
             <div class="hero-txt">
                 <h1 class="big-title">PILLWARS</h1>
                 <div class="big-subtitle">THE CRYPTO ARENA</div>
             </div>
             <img class="hero-img" id="heroTitle" src="img/pixel-hero/hero-title.png" alt="PillWars — The Crypto Arena" onerror="this.closest('.hero-main-content').classList.add('no-img')">
-            <img class="hero-play" id="heroPlayNow" src="img/pixel-hero/play-now-hero.png" alt="PLAY NOW" onclick="window.location.href='game/'" onerror="this.style.display='none'">
+            <div class="hero-play-row">
+                <!-- Pildora jugable: al clicarla tomas el control de una pill
+                     dentro del hero (ver HeroPlay en el script del final). -->
+                <div id="heroPickMe" title="Take control">
+                    <div class="pick-me-label">PICK ME!</div>
+                    <canvas class="pick-me-pill" width="86" height="86"></canvas>
+                </div>
+                <img class="hero-play" id="heroPlayNow" src="img/pixel-hero/play-now-hero.png" alt="PLAY NOW" onclick="window.location.href='game/'" onerror="this.style.display='none'">
+            </div>
             <img class="hero-ca-sign" id="heroCaSign" src="img/pixel-hero/official-contract.png" alt="OFFICIAL CONTRACT ADDRESS" onerror="this.style.display='none'">
             <div id="heroCaWrap">
-                <div class="ca-box hero-ca" onclick="App.UI.copyCA()">
-                    <span class="ca-text">Not Live Yet</span>
-                    <span class="copy-tag">COPY</span>
+                <!-- Cartel de David con el COPY ya dibujado: el contrato (o
+                     "Not Live Yet") se escribe encima, alineado a la izquierda. -->
+                <div class="hero-ca" onclick="App.UI.copyCA()">
+                    <img src="img/pixel-hero/copy-contract.png" alt="" onerror="this.closest('.hero-ca').classList.add('no-img')">
+                    <span class="ca-text" id="hero-ca-text">Not Live Yet</span>
                 </div>
                 <div id="hero-copy-feedback"></div>
             </div>
@@ -2119,90 +2130,262 @@ function toggleTrailerMode() {
             SPR.pill.set(key, spr); return spr;
         }
 
-        // --- Tile del fondo: mismo recetario que _msV2Tile del juego. La celda
-        // sigue midiendo 50px en pantalla; se pinta a 25 px logicos y se escala
-        // x2 sin suavizar, asi que cada "pixel" mide 2px y la linea de rejilla
-        // queda gorda como en el menu. ---
+        // --- Tile del fondo: NEGRO como el de siempre, pero con el acabado
+        // pixel del juego (moteado sutil + linea de rejilla gorda en vez del
+        // degradado de 1.5px). La celda sigue midiendo 50px en pantalla: se
+        // pinta a 25 px logicos y se escala x2 sin suavizar, asi que cada
+        // "pixel" del fondo mide 2px. ---
         const PIX = 2;                    // px de pantalla por pixel logico
         const CELL = 50 / PIX;            // 25 px logicos = los cuadrados de 50px de siempre
-        const TINT = '#00ff88';
+        const GRID_LINE = 'rgb(0,40,22)';  // verde muy apagado, como el degradado que habia
         const tile = (() => {
-            const rgb = pixRgb(TINT);
             const cv = document.createElement('canvas'); cv.width = CELL; cv.height = CELL;
             const g = cv.getContext('2d');
-            const sh = f => 'rgb(' + rgb.map(v => Math.round(v * f)).join(',') + ')';
-            g.fillStyle = sh(0.07); g.fillRect(0, 0, CELL, CELL);
+            g.fillStyle = '#050505'; g.fillRect(0, 0, CELL, CELL);
             const sp = (fx, fy) => [Math.round(fx * CELL), Math.round(fy * CELL)];
-            g.fillStyle = sh(0.13);
+            g.fillStyle = '#101010';
             for (const s of [[0.12, 0.19], [0.5, 0.08], [0.81, 0.42], [0.27, 0.69], [0.65, 0.85]]) { const p = sp(s[0], s[1]); g.fillRect(p[0], p[1], 1, 1); }
-            g.fillStyle = sh(0.10);
+            g.fillStyle = '#0b0b0b';
             for (const s of [[0.38, 0.35], [0.88, 0.73], [0.08, 0.88], [0.73, 0.15]]) { const p = sp(s[0], s[1]); g.fillRect(p[0], p[1], 1, 1); }
-            g.fillStyle = sh(0.30); g.fillRect(0, 0, CELL, 1); g.fillRect(0, 0, 1, CELL);
+            g.fillStyle = GRID_LINE; g.fillRect(0, 0, CELL, 1); g.fillRect(0, 0, 1, CELL);
             return cv;
         })();
         document.body.style.setProperty('--pix-tile', 'url(' + tile.toDataURL() + ')');
 
-        // --- Poblacion de la deco (en px LOGICOS: x2 para pantalla) ---
+        // ===== ESCENA DEL HERO (coordenadas LOGICAS: x2 para pantalla) =====
+        // Comida y virus QUIETOS (como en el menu del juego: los virus solo
+        // giran). Las pildoras NPC se desplazan con rumbo, no flotando: van a
+        // por un objetivo girando poco a poco, y de vez en cuando el objetivo
+        // esta fuera del cuadro, asi que salen y vuelven a entrar. Y una pill
+        // JUGABLE que toma el control al clicar en "PICK ME!".
         const FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
-        const N_FOOD = 26, N_VIRUS = 3, N_PILL = 7;
+        const PILL_COLORS = ['#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d', '#ff5533', '#b46cff'];
+        const N_FOOD = 120, N_VIRUS = 4, N_NPC = 7;
+        const VIRUS_R = 30;               // radio logico (60 de diametro = 120px de pantalla)
         const rnd = (a, b) => a + Math.random() * (b - a);
-        function spawn(w, h, kind) {
-            const ang = Math.random() * Math.PI * 2;
-            const p = { kind, x: Math.random() * w, y: Math.random() * h, seed: (Math.random() * 1000) | 0 };
-            if (kind === 'virus') { p.size = 60; p.spd = rnd(8, 18); }
-            else if (kind === 'pill') {
-                p.size = Math.round(rnd(14, 44));           // ancho: pildoras de distintos tamaños
-                p.spd = rnd(10, 32);
-                p.top = '#ffffff';
-                p.bot = FOOD_COLORS[(Math.random() * FOOD_COLORS.length) | 0];
-                p.rot = -Math.PI / 4 + rnd(-0.35, 0.35);    // tumbadas ~45º como en partida
-            } else { p.size = rnd(6, 12); p.spd = rnd(14, 32); p.col = FOOD_COLORS[(Math.random() * FOOD_COLORS.length) | 0]; }
-            p.vx = Math.cos(ang) * p.spd; p.vy = Math.sin(ang) * p.spd;
-            return p;
+        const pick = a => a[(Math.random() * a.length) | 0];
+
+        const scene = { food: [], virus: [], npcs: [], w: 0, h: 0, last: 0 };
+
+        function newFood(w, h) { return { x: Math.random() * w, y: Math.random() * h, r: rnd(3, 6), col: pick(FOOD_COLORS) }; }
+        function newNpc(w, h) {
+            const r = Math.round(rnd(9, 26));   // mitad del ancho de la pill
+            return {
+                x: Math.random() * w, y: Math.random() * h, r,
+                dir: Math.random() * Math.PI * 2, tx: 0, ty: 0,
+                top: '#ffffff', bot: pick(PILL_COLORS),
+            };
         }
-        const deco = { items: [], w: 0, h: 0, last: 0 };
-        function stepDeco(w, h, now) {
-            if (deco.w && (deco.w !== w || deco.h !== h)) {
-                const sx = w / deco.w, sy = h / deco.h;
-                for (const p of deco.items) { p.x *= sx; p.y *= sy; }
-            }
-            if (!deco.items.length) {
-                for (let i = 0; i < N_FOOD; i++) deco.items.push(spawn(w, h, 'food'));
-                for (let i = 0; i < N_VIRUS; i++) deco.items.push(spawn(w, h, 'virus'));
-                for (let i = 0; i < N_PILL; i++) deco.items.push(spawn(w, h, 'pill'));
-            }
-            deco.w = w; deco.h = h;
-            const dt = deco.last ? Math.min(0.05, (now - deco.last) / 1000) : 0.016;
-            deco.last = now;
-            for (const p of deco.items) {
-                p.x += p.vx * dt; p.y += p.vy * dt;
-                // Sale entero por un borde y vuelve a entrar por el opuesto.
-                const m = p.kind === 'pill' ? p.size * PILL_RATIO : p.size;
-                if (p.x < -m) p.x = w + m; else if (p.x > w + m) p.x = -m;
-                if (p.y < -m) p.y = h + m; else if (p.y > h + m) p.y = -m;
+        // Objetivo del NPC: 1 de cada 3 veces, un punto FUERA del cuadro (asi se
+        // sale y luego reaparece por un borde). El resto, un punto de dentro.
+        function npcRetarget(n, w, h) {
+            if (Math.random() < 0.34) {
+                const m = 220;
+                const side = (Math.random() * 4) | 0;
+                n.tx = side === 0 ? -m : side === 1 ? w + m : Math.random() * w;
+                n.ty = side === 2 ? -m : side === 3 ? h + m : Math.random() * h;
+            } else {
+                n.tx = rnd(w * 0.05, w * 0.95); n.ty = rnd(h * 0.05, h * 0.95);
             }
         }
-        function drawDeco(g, now) {
-            // Los sprites se pintan a la MITAD de su tamaño logico y se estiran al
-            // doble: asi el pixel del bicho mide lo mismo que el del fondo.
-            for (const p of deco.items) {
-                if (p.kind === 'virus') {
-                    const spr = pixVirusSprite(Math.max(8, Math.round(p.size / 2)));
-                    const stepMs = 90 + (p.size | 0);
-                    const ang = ((Math.floor(now / stepMs) + p.seed) % 16) * (Math.PI / 8) * (p.seed % 2 ? 1 : -1);
-                    g.save(); g.translate(p.x, p.y); g.rotate(ang);
-                    g.drawImage(spr, -p.size / 2, -p.size / 2, p.size, p.size); g.restore();
-                } else if (p.kind === 'pill') {
-                    const spr = pixPillSprite(Math.max(6, Math.round(p.size / 2)), p.top, p.bot);
-                    const pw = p.size, ph = p.size * PILL_RATIO;
-                    g.save(); g.translate(p.x, p.y); g.rotate(p.rot);
-                    g.drawImage(spr, -pw / 2, -ph / 2, pw, ph); g.restore();
-                } else {
-                    const spr = pixDotSprite(Math.max(3, Math.round(p.size / 2)), p.col);
-                    g.drawImage(spr, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        // Velocidad segun tamaño, como en el juego: cuanto mas gorda, mas lenta.
+        // Las NPC pasean; la del jugador va bastante mas rapida (si no, cruzar el
+        // cuadro se hacia eterno).
+        const npcSpeed = r => 55 * Math.pow(11 / r, 0.42);
+        const playerSpeed = r => 130 * Math.pow(13 / r, 0.36);
+
+        // Rects (en coords logicas del canvas) de la UI del hero + la franja de
+        // navbar/ticker. Comida y virus estan QUIETOS, asi que uno que caiga
+        // encima del titulo o del cartel se queda ahi molestando: se colocan
+        // fuera de estas zonas. Las pills NPC si pasan por encima (se mueven).
+        function heroUiRects() {
+            const rc = cv.getBoundingClientRect();
+            if (!rc.width || !rc.height) return [];
+            const sx = cv.width / rc.width, sy = cv.height / rc.height;
+            const out = [{ x: 0, y: 0, w: cv.width, h: 120 * sy }];   // navbar + ticker
+            for (const sel of ['#heroTitle', '#heroPlayNow', '#heroPickMe', '#heroCaSign', '#heroCaWrap']) {
+                const el = document.querySelector(sel); if (!el) continue;
+                const b = el.getBoundingClientRect();
+                if (b.width <= 0 || b.height <= 0) continue;
+                out.push({ x: (b.left - rc.left) * sx, y: (b.top - rc.top) * sy, w: b.width * sx, h: b.height * sy });
+            }
+            return out;
+        }
+        const covered = (x, y, rad, rects) => rects.some(b => x + rad > b.x && x - rad < b.x + b.w && y + rad > b.y && y - rad < b.y + b.h);
+        function placeFree(make, rects, tries) {
+            let o = make();
+            for (let t = 0; t < tries && covered(o.x, o.y, o.r || VIRUS_R, rects); t++) o = make();
+            return o;
+        }
+
+        function buildScene(w, h) {
+            scene.food.length = 0; scene.virus.length = 0; scene.npcs.length = 0;
+            const zonas = scene.zonas = heroUiRects();
+            for (let i = 0; i < N_FOOD; i++) scene.food.push(placeFree(() => newFood(w, h), zonas, 40));
+            // Virus repartidos, sin solaparse entre ellos y fuera de la UI.
+            for (let i = 0; i < N_VIRUS; i++) {
+                let v;
+                for (let t = 0; t < 120; t++) {
+                    v = { x: rnd(VIRUS_R, w - VIRUS_R), y: rnd(VIRUS_R, h - VIRUS_R), seed: (Math.random() * 1000) | 0 };
+                    if (!covered(v.x, v.y, VIRUS_R * 1.2, zonas) && scene.virus.every(o => Math.hypot(o.x - v.x, o.y - v.y) > VIRUS_R * 4)) break;
+                }
+                scene.virus.push(v);
+            }
+            for (let i = 0; i < N_NPC; i++) { const n = newNpc(w, h); npcRetarget(n, w, h); scene.npcs.push(n); }
+        }
+
+        function stepScene(w, h, dt) {
+            for (const n of scene.npcs) {
+                const want = Math.atan2(n.ty - n.y, n.tx - n.x);
+                // Giro LIMITADO hacia el objetivo (1.4 rad/s): trazan curvas
+                // suaves en vez de cambiar de rumbo de golpe.
+                let d = ((want - n.dir + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+                const max = 1.4 * dt;
+                n.dir += Math.max(-max, Math.min(max, d));
+                const sp = npcSpeed(n.r);
+                n.x += Math.cos(n.dir) * sp * dt; n.y += Math.sin(n.dir) * sp * dt;
+                if (Math.hypot(n.tx - n.x, n.ty - n.y) < 30) npcRetarget(n, w, h);
+                // Fuera del cuadro del todo -> reaparece por un borde al azar.
+                const m = n.r * (1 + PILL_RATIO);
+                if (n.x < -m || n.x > w + m || n.y < -m || n.y > h + m) {
+                    const side = (Math.random() * 4) | 0;
+                    n.x = side === 0 ? -m : side === 1 ? w + m : Math.random() * w;
+                    n.y = side === 2 ? -m : side === 3 ? h + m : Math.random() * h;
+                    npcRetarget(n, w, h);
+                    n.dir = Math.atan2(n.ty - n.y, n.tx - n.x);
                 }
             }
+            HeroPlay.step(w, h, dt);
         }
+
+        function drawPill(g, x, y, r, rot, top, bot) {
+            // El sprite se pinta a la MITAD de su tamaño logico y se estira al
+            // doble: asi el pixel del bicho mide lo mismo que el del fondo.
+            const spr = pixPillSprite(Math.max(6, Math.round(r)), top, bot);
+            const pw = r * 2, ph = pw * PILL_RATIO;
+            g.save(); g.translate(x, y); g.rotate(rot);
+            g.drawImage(spr, -pw / 2, -ph / 2, pw, ph); g.restore();
+        }
+
+        function drawScene(g, now) {
+            for (const f of scene.food) {
+                const spr = pixDotSprite(Math.max(3, Math.round(f.r)), f.col);
+                g.drawImage(spr, f.x - f.r, f.y - f.r, f.r * 2, f.r * 2);
+            }
+            for (const v of scene.virus) {
+                // Giro cuantizado de siempre (16 pasos por vuelta), en el sitio.
+                const spr = pixVirusSprite(VIRUS_R);
+                const ang = ((Math.floor(now / 110) + v.seed) % 16) * (Math.PI / 8) * (v.seed % 2 ? 1 : -1);
+                g.save(); g.translate(v.x, v.y); g.rotate(ang);
+                g.drawImage(spr, -VIRUS_R, -VIRUS_R, VIRUS_R * 2, VIRUS_R * 2); g.restore();
+            }
+            // Las pills van tumbadas hacia donde avanzan (el sprite apunta a -Y).
+            for (const n of scene.npcs) drawPill(g, n.x, n.y, n.r, n.dir + Math.PI / 2, n.top, n.bot);
+            HeroPlay.draw(g);
+        }
+
+        // ===== PILL JUGABLE ("PICK ME!") =====
+        // Al clicar la pildora del hero tomas el control de una dentro del
+        // cuadro: raton para moverte, comes comida (creces), los virus te parten
+        // si eres mayor que ellos y ESPACIO hace split, como en el juego. Las
+        // pills NPC no interactuan contigo, solo pasan.
+        const HeroPlay = {
+            cells: null, top: '#ffffff', bot: '#00ffaa',
+            mx: 0, my: 0, w: 0, h: 0,
+            START_R: 13, MAX_CELLS: 8, MERGE_MS: 9000, SPLIT_CD: 320, lastSplit: 0,
+            get active() { return !!this.cells; },
+            start(x, y) {
+                this.cells = [{ x, y, r: this.START_R, vx: 0, vy: 0, merge: 0 }];
+                this.mx = x; this.my = y;
+                document.getElementById('heroPickMe').classList.add('playing');
+                document.getElementById('heroPlayHint').style.display = 'block';
+            },
+            stop() {
+                this.cells = null;
+                document.getElementById('heroPickMe').classList.remove('playing');
+                document.getElementById('heroPlayHint').style.display = 'none';
+            },
+            // Raton en coordenadas logicas del canvas.
+            aim(clientX, clientY) {
+                const r = cv.getBoundingClientRect();
+                this.mx = (clientX - r.left) * (cv.width / r.width);
+                this.my = (clientY - r.top) * (cv.height / r.height);
+            },
+            split() {
+                const now = performance.now();
+                if (!this.cells || now - this.lastSplit < this.SPLIT_CD) return;
+                this.lastSplit = now;
+                const nuevas = [];
+                for (const c of this.cells) {
+                    if (this.cells.length + nuevas.length >= this.MAX_CELLS || c.r < 9) continue;
+                    const nr = c.r / Math.SQRT2;   // area a la mitad
+                    c.r = nr; c.merge = now + this.MERGE_MS;
+                    const a = Math.atan2(this.my - c.y, this.mx - c.x);
+                    nuevas.push({ x: c.x, y: c.y, r: nr, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, merge: now + this.MERGE_MS });
+                }
+                this.cells.push(...nuevas);
+            },
+            step(w, h, dt) {
+                this.w = w; this.h = h;
+                if (!this.cells) return;
+                const now = performance.now();
+                for (const c of this.cells) {
+                    const dx = this.mx - c.x, dy = this.my - c.y, d = Math.hypot(dx, dy);
+                    if (d > 1) {
+                        const sp = playerSpeed(c.r) * Math.min(1, d / 40);
+                        c.x += dx / d * sp * dt; c.y += dy / d * sp * dt;
+                    }
+                    // Impulso del split, que se va frenando.
+                    c.x += c.vx * dt; c.y += c.vy * dt;
+                    c.vx *= Math.pow(0.02, dt); c.vy *= Math.pow(0.02, dt);
+                    c.x = Math.max(c.r, Math.min(w - c.r, c.x));
+                    c.y = Math.max(c.r, Math.min(h - c.r, c.y));
+                    // Comer: la comida se repone en otro sitio, siempre hay de sobra.
+                    for (const f of scene.food) {
+                        if (Math.hypot(f.x - c.x, f.y - c.y) > c.r) continue;
+                        c.r = Math.sqrt(c.r * c.r + f.r * f.r * 2.2);
+                        Object.assign(f, placeFree(() => newFood(w, h), scene.zonas || [], 30));
+                    }
+                }
+                // Virus: si eres mayor que el, te parte en varias celdas.
+                for (const v of scene.virus) {
+                    for (const c of this.cells) {
+                        if (c.r <= VIRUS_R * 0.62) continue;
+                        if (Math.hypot(v.x - c.x, v.y - c.y) > c.r + VIRUS_R * 0.4) continue;
+                        const trozos = Math.min(4, this.MAX_CELLS - this.cells.length + 1);
+                        if (trozos < 2) continue;
+                        const nr = c.r / Math.sqrt(trozos);
+                        c.r = nr; c.merge = now + this.MERGE_MS;
+                        for (let i = 1; i < trozos; i++) {
+                            const a = Math.random() * Math.PI * 2;
+                            this.cells.push({ x: c.x, y: c.y, r: nr, vx: Math.cos(a) * 230, vy: Math.sin(a) * 230, merge: now + this.MERGE_MS });
+                        }
+                    }
+                }
+                // Separacion entre celdas propias; ya fusionables -> se juntan.
+                for (let i = 0; i < this.cells.length; i++) for (let k = i + 1; k < this.cells.length; k++) {
+                    const a = this.cells[i], b = this.cells[k];
+                    let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
+                    const min = a.r + b.r;
+                    if (d >= min) continue;
+                    if (now > a.merge && now > b.merge) {
+                        a.r = Math.sqrt(a.r * a.r + b.r * b.r); this.cells.splice(k, 1); k--; continue;
+                    }
+                    const push = (min - d) / 2;
+                    a.x -= dx / d * push; a.y -= dy / d * push;
+                    b.x += dx / d * push; b.y += dy / d * push;
+                }
+            },
+            draw(g) {
+                if (!this.cells) return;
+                for (const c of this.cells) {
+                    const rot = -Math.PI / 4;   // tumbada 45º como en partida
+                    drawPill(g, c.x, c.y, c.r, rot, this.top, this.bot);
+                }
+            },
+        };
+
+        window.HeroPlay = HeroPlay;   // para poder trastear/depurar desde consola
 
         const cv = document.getElementById('heroDecoCv');
         const host = document.getElementById('hero');
@@ -2220,11 +2403,14 @@ function toggleTrailerMode() {
             g.fillStyle = pat; g.fillRect(0, 0, W, H);
             // El tile solo pinta la linea arriba/izquierda de cada celda: sin esto
             // la ultima fila y columna del cuadro quedarian sin cerrar.
-            const rgb = pixRgb(TINT);
-            g.fillStyle = 'rgb(' + rgb.map(v => Math.round(v * 0.30)).join(',') + ')';
-            g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
-            stepDeco(W, H, now);
-            drawDeco(g, now);
+            g.fillStyle = GRID_LINE; g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
+            // Al cambiar de tamaño el cuadro se rehace: la comida y los virus son
+            // fijos, reescalarlos los dejaria pegados a los bordes.
+            if (scene.w !== W || scene.h !== H) { scene.w = W; scene.h = H; buildScene(W, H); }
+            const dt = scene.last ? Math.min(0.05, (now - scene.last) / 1000) : 0.016;
+            scene.last = now;
+            stepScene(W, H, dt);
+            drawScene(g, now);
         }
         // Solo gasta rAF con el hero a la vista (al hacer scroll se para).
         let heroVisible = true;
@@ -2232,6 +2418,38 @@ function toggleTrailerMode() {
             new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(host);
         }
         (function loop(t) { requestAnimationFrame(loop); if (heroVisible) paintHero(t || performance.now()); })();
+        // En el primer frame las imagenes del hero aun no han cargado y sus rects
+        // miden 0: sin esto la comida y los virus se colocarian encima.
+        const rebuildScene = () => { scene.w = 0; };
+        window.addEventListener('load', rebuildScene);
+
+        // Pill del DOM ("PICK ME!"): mismo sprite y misma inclinacion de 45º con
+        // la que se ven las pills en partida.
+        (() => {
+            const pc = document.querySelector('#heroPickMe .pick-me-pill');
+            if (!pc) return;
+            const g = pc.getContext('2d');
+            g.imageSmoothingEnabled = false;
+            const pw = 34, ph = pw * PILL_RATIO;
+            g.translate(pc.width / 2, pc.height / 2); g.rotate(-Math.PI / 4);
+            g.drawImage(pixPillSprite(17, HeroPlay.top, HeroPlay.bot), -pw / 2, -ph / 2, pw, ph);
+        })();
+
+        const pickMe = document.getElementById('heroPickMe');
+        if (pickMe) pickMe.addEventListener('click', (e) => {
+            if (document.body.classList.contains('layout-editing')) return;
+            const b = pickMe.getBoundingClientRect(), r = cv.getBoundingClientRect();
+            HeroPlay.aim(b.left + b.width / 2, b.top + b.height / 2);
+            HeroPlay.start((b.left + b.width / 2 - r.left) * (cv.width / r.width),
+                           (b.top + b.height / 2 - r.top) * (cv.height / r.height));
+            e.stopPropagation();
+        });
+        host.addEventListener('pointermove', (e) => { if (HeroPlay.active) HeroPlay.aim(e.clientX, e.clientY); });
+        window.addEventListener('keydown', (e) => {
+            if (!HeroPlay.active) return;
+            if (e.code === 'Space') { e.preventDefault(); HeroPlay.split(); }
+            else if (e.code === 'Escape') HeroPlay.stop();
+        });
 
         // ===== EDITOR DE LAYOUT DEL HERO (TEMPORAL) =====
         // Mismo mecanismo que EDIT LAYOUT del menu del juego: arrastrar = mover,
@@ -2241,7 +2459,8 @@ function toggleTrailerMode() {
         // barra, este bloque y el endpoint cuando el diseño quede fijado.
         const LAYOUT_KEY = 'pw_landing_layout';
         const LAYOUT_ELS = {
-            title: '#heroTitle', play: '#heroPlayNow', caSign: '#heroCaSign', ca: '#heroCaWrap',
+            title: '#heroTitle', play: '#heroPlayNow', pickMe: '#heroPickMe',
+            caSign: '#heroCaSign', ca: '#heroCaWrap',
         };
         let layout = {};
         try { layout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { layout = {}; }
@@ -2275,6 +2494,7 @@ function toggleTrailerMode() {
                 document.querySelectorAll('.hero-editable').forEach(el => el.classList.remove('hero-editable'));
                 document.getElementById('layoutEditBar').style.display = 'none';
                 save();
+                rebuildScene();   // la UI se movio -> recolocar comida y virus
             },
             resetAll() { layout = {}; save(); apply(); },
             async saveGlobal(btn) {
