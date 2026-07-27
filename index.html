@@ -185,25 +185,28 @@
            que el rotulo PICK ME (sin el parpadeo). */
         .hero-sub {
             display: none; font-family: 'Press Start 2P', monospace; font-size: 15px;
-            letter-spacing: 6px; color: #aaffdd; margin-top: 14px; white-space: nowrap;
+            letter-spacing: 6px; color: #aaffdd; margin-top: 6px; white-space: nowrap;
             text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
         }
         .hero-ca-sign { display: block; margin: 34px auto 0; height: 52px; width: auto; image-rendering: pixelated; }
         /* Cartel de copiar: la imagen manda el tamaño y el texto del contrato va
            encima, dentro del marco y a la izquierda del COPY que ya trae el arte. */
         .hero-ca { position: relative; display: inline-block; margin-top: 12px; cursor: pointer !important; }
-        .hero-ca img { display: block; height: 64px; width: auto; image-rendering: pixelated; }
+        /* 52px, los MISMOS que .hero-ca-sign: los dos salen del mismo PNG
+           (879x140, trazo de marco de 9px), asi que a alturas distintas el marco
+           de arriba salia un 23% mas fino y 76px mas estrecho que este. */
+        .hero-ca img { display: block; height: 52px; width: auto; image-rendering: pixelated; }
         .hero-ca:hover img { filter: brightness(1.15); }
         .hero-ca .ca-text {
             position: absolute; left: 5.5%; top: 50%; transform: translateY(-50%);
             width: 72%; text-align: left; font-family: 'Press Start 2P', monospace;
-            font-size: 10px; line-height: 1.35; color: #55ffb0; text-shadow: 0 0 8px rgba(0,255,136,0.75);
+            font-size: 8px; line-height: 1.35; color: #55ffb0; text-shadow: 0 0 8px rgba(0,255,136,0.75);
             word-break: break-all; overflow: hidden;
         }
         .hero-ca .ca-copy {
             position: absolute; right: 5%; top: 50%; transform: translateY(-50%);
-            font-family: 'Press Start 2P', monospace; font-size: 9px; color: #0a1a12;
-            background: var(--primary); padding: 6px 9px; box-shadow: 0 0 10px rgba(0,255,136,0.55);
+            font-family: 'Press Start 2P', monospace; font-size: 7px; color: #0a1a12;
+            background: var(--primary); padding: 5px 7px; box-shadow: 0 0 10px rgba(0,255,136,0.55);
         }
         .hero-ca:hover .ca-copy { background: #aaffdd; }
         /* Sin el PNG del cartel, el texto vuelve a su caja de siempre. */
@@ -2191,6 +2194,7 @@ function toggleTrailerMode() {
         const pick = a => a[(Math.random() * a.length) | 0];
         // Las NPC pasean: mas gordas, mas lentas (misma idea que en partida).
         const npcSpeed = r => 55 * Math.pow(11 / r, 0.42);
+        const GIRO_MAX = 3.0;              // rad/s: lo rapido que una pill puede virar
 
         const scene = { food: [], virus: [], npcs: [], w: 0, h: 0, last: 0 };
 
@@ -2201,14 +2205,16 @@ function toggleTrailerMode() {
         // (titulo y PLAY NOW) apartandose por arriba o por abajo.
         function newNpc(w, h) {
             const r = Math.round(rnd(9, 26));
+            const ang = rnd(-0.30, 0.30);     // rumbo propio, siempre hacia la derecha
             return {
                 x: Math.random() * w, y: Math.random() * h, r,
-                ang: rnd(-0.30, 0.30),        // rumbo propio, siempre hacia la derecha
+                ang,
                 spdMul: rnd(0.7, 1.45),       // unas van mas lanzadas que otras
                 wobA: rnd(0.10, 0.45),        // amplitud de la ondulacion (rad)
                 wobF: rnd(0.25, 0.75),        // y su frecuencia
                 wobP: Math.random() * Math.PI * 2,
-                dir: 0,
+                dir: ang,                     // nace ya apuntando a su rumbo (el giro es gradual)
+                esq: false,                   // esta esquivando una zona de la UI
                 top: '#ffffff', bot: pick(PILL_COLORS),
             };
         }
@@ -2279,9 +2285,15 @@ function toggleTrailerMode() {
             scene.t = (scene.t || 0) + dt;
             for (const n of scene.npcs) {
                 // Rumbo = su angulo + su ondulacion + la esquiva de la UI.
-                let dir = n.ang + Math.sin(scene.t * n.wobF + n.wobP) * n.wobA;
-                dir += esquiva(n);
-                n.dir = dir;
+                const objetivo = n.ang + Math.sin(scene.t * n.wobF + n.wobP) * n.wobA + esquiva(n);
+                // El rumbo se PERSIGUE, no se teletransporta: la esquiva salta de
+                // golpe al entrar/salir de una zona, y como el sprite se pinta
+                // tumbado hacia n.dir, esos saltos se veian como giros secos de
+                // 40-70 grados encadenados (la pill "girando como loca" al pasar
+                // cerca del titulo).
+                const paso = GIRO_MAX * dt;
+                n.dir += Math.max(-paso, Math.min(paso, objetivo - n.dir));
+                const dir = n.dir;
                 const sp = npcSpeed(n.r) * n.spdMul;
                 n.x += Math.cos(dir) * sp * dt; n.y += Math.sin(dir) * sp * dt;
                 const m = n.r * (1 + PILL_RATIO);
@@ -2293,10 +2305,14 @@ function toggleTrailerMode() {
         // mira bastante por delante y se aparta hacia el borde mas cercano, con
         // mas fuerza cuanto mas cerca esta. Devuelve el incremento de angulo.
         function esquiva(n) {
-            const rects = scene.evitar; if (!rects || !rects.length) return 0;
-            const mV = n.r * 1.2 + 22;             // margen vertical
+            const rects = scene.evitar; if (!rects || !rects.length) { n.esq = false; return 0; }
+            // La banda se ENSANCHA mientras la pill ya esta esquivando: sin esa
+            // histeresis su propio desvio la sacaba del rango, dejaba de esquivar,
+            // el bamboleo la volvia a meter, y asi frame tras frame — de ahi los
+            // tirones repetidos al pasar cerca del titulo.
+            const mV = n.r * 1.2 + 22 + (n.esq ? 34 : 0);
             const mira = n.r + 210;                // cuanto mira por delante
-            let giro = 0;
+            let giro = 0, tocando = false;
             for (const b of rects) {
                 const arriba = b.y - mV, abajo = b.y + b.h + mV;
                 if (n.y < arriba || n.y > abajo) continue;   // pasa por fuera
@@ -2306,7 +2322,9 @@ function toggleTrailerMode() {
                 const urgencia = falta <= 0 ? 1 : 1 - falta / mira;
                 const porArriba = (n.y - arriba) < (abajo - n.y);
                 giro += (porArriba ? -1 : 1) * (0.55 + 0.75 * urgencia);
+                tocando = true;
             }
+            n.esq = tocando;
             return Math.max(-1.25, Math.min(1.25, giro));
         }
         // Zonas que se tocan se funden en una sola: si no, una pill metida entre
@@ -2564,6 +2582,9 @@ function toggleTrailerMode() {
         // Alejarse del cuadro: el contenido se encoge y el canvas gana espacio
         // logico (mas escena a la vista), como si la camara subiera.
         function setHeroZoom(z) {
+            // Idempotente: apply() lo llama en cada frame de arrastre del editor,
+            // y rehacer la escena ahi recolocaria la comida a cada pixel.
+            if (z === heroZoom) return;
             heroZoom = z;
             const c = document.querySelector('.hero-main-content');
             if (c) c.style.scale = z === 1 ? '' : String(z);
@@ -2612,8 +2633,9 @@ function toggleTrailerMode() {
         };
         let layout = {};
         try { layout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { layout = {}; }
-        let editing = false, drag = null, zoomIdx = 0;
+        let editing = false, drag = null;
         const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
+        const ZOOM_PASOS = [1, 0.8, 0.6, 0.45];
         function apply() {
             for (const key in LAYOUT_ELS) {
                 const el = document.querySelector(LAYOUT_ELS[key]); if (!el) continue;
@@ -2623,6 +2645,14 @@ function toggleTrailerMode() {
                 el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '';
                 el.style.scale = t ? String(t.s || 1) : '';
             }
+            // El zoom es parte del layout, como las posiciones: se guarda y lo ve
+            // todo el mundo, no solo quien esta editando.
+            setHeroZoom(layout.zoom || 1);
+        }
+        // Texto del boton acorde al zoom guardado (al entrar en EDIT y al ciclar).
+        function syncZoomBtn() {
+            const zb = document.getElementById('lebZoom');
+            if (zb) zb.textContent = 'ZOOM ' + Math.round((layout.zoom || 1) * 100) + '%';
         }
         function target(e) {
             for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
@@ -2634,6 +2664,7 @@ function toggleTrailerMode() {
                 document.body.classList.add('layout-editing');
                 for (const key in LAYOUT_ELS) { const el = document.querySelector(LAYOUT_ELS[key]); if (el) el.classList.add('hero-editable'); }
                 document.getElementById('layoutEditBar').style.display = 'flex';
+                syncZoomBtn();
                 document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
             },
             exit() {
@@ -2644,20 +2675,18 @@ function toggleTrailerMode() {
                 document.body.classList.remove('layout-editing');
                 document.querySelectorAll('.hero-editable').forEach(el => el.classList.remove('hero-editable'));
                 document.getElementById('layoutEditBar').style.display = 'none';
-                // El zoom es solo para mirar mientras editas: al salir, al 100%.
-                zoomIdx = 0; setHeroZoom(1);
-                const zb = document.getElementById('lebZoom'); if (zb) zb.textContent = 'ZOOM 100%';
                 save();
                 rebuildScene();   // la UI se movio -> recolocar comida y virus
             },
-            resetAll() { layout = {}; save(); apply(); },
-            // Zoom out del cuadro entero para ver la composicion de golpe. Es
-            // solo una vista del editor: no se guarda ni afecta al layout.
+            resetAll() { layout = {}; save(); apply(); syncZoomBtn(); },
+            // Zoom del cuadro entero. NO es solo una vista del editor: se guarda
+            // con el resto del layout y se queda al salir con DONE.
             zoom(btn) {
-                const pasos = [1, 0.8, 0.6, 0.45];
-                zoomIdx = (zoomIdx + 1) % pasos.length;
-                setHeroZoom(pasos[zoomIdx]);
-                if (btn) btn.textContent = 'ZOOM ' + Math.round(pasos[zoomIdx] * 100) + '%';
+                const idx = (ZOOM_PASOS.indexOf(layout.zoom || 1) + 1) % ZOOM_PASOS.length;
+                layout.zoom = ZOOM_PASOS[idx];
+                save();
+                setHeroZoom(layout.zoom);
+                syncZoomBtn();
             },
             async saveGlobal(btn) {
                 save();

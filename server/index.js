@@ -1829,7 +1829,12 @@ const httpServer = http.createServer(async (req, res) => {
                 const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
                 if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
                 const clean = {};
+                // `zoom` es un numero suelto (el zoom del cuadro entero), no una
+                // caja {x,y,s}: sin este caso aparte el saneado de abajo lo tiraba
+                // y el zoom no llegaba a guardarse para todos.
+                if (typeof lay.zoom === 'number' && lay.zoom > 0) clean.zoom = Math.min(1, Math.max(0.2, lay.zoom));
                 for (const k of Object.keys(lay).slice(0, 40)) {
+                    if (k === 'zoom') continue;
                     const t = lay[k]; if (!t || typeof t !== 'object') continue;
                     clean[String(k).slice(0, 40)] = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
                 }
