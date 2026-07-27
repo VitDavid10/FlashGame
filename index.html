@@ -160,11 +160,6 @@
            verde de abajo = este wrapper). Va DETRAS del contenido para que las
            pildoras pasen por debajo del titulo. */
         #heroDecoCv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; image-rendering: pixelated; pointer-events: none; }
-        #heroPlayHint {
-            position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); z-index: 3;
-            font-family: 'Press Start 2P', monospace; font-size: 8px; color: #8effc9; letter-spacing: .5px;
-            background: rgba(0,0,0,0.75); border: 2px solid rgba(0,255,136,0.5); padding: 9px 14px; pointer-events: none;
-        }
         .hero-main-content { z-index: 2; text-align: center; padding: 0 20px; margin-top: 60px; }
         /* PLAY NOW del hero, cartel del contrato y el contrato: apilados bajo el
            titulo. Los cuatro se mueven/escalan desde EDIT (ver LandingLayout). */
@@ -190,13 +185,19 @@
         .hero-ca img { display: block; height: 64px; width: auto; image-rendering: pixelated; }
         .hero-ca:hover img { filter: brightness(1.15); }
         .hero-ca .ca-text {
-            position: absolute; left: 6.5%; top: 50%; transform: translateY(-50%);
-            width: 53%; text-align: left; font-family: 'Press Start 2P', monospace;
+            position: absolute; left: 5.5%; top: 50%; transform: translateY(-50%);
+            width: 72%; text-align: left; font-family: 'Press Start 2P', monospace;
             font-size: 10px; line-height: 1.35; color: #55ffb0; text-shadow: 0 0 8px rgba(0,255,136,0.75);
             word-break: break-all; overflow: hidden;
         }
+        .hero-ca .ca-copy {
+            position: absolute; right: 5%; top: 50%; transform: translateY(-50%);
+            font-family: 'Press Start 2P', monospace; font-size: 9px; color: #0a1a12;
+            background: var(--primary); padding: 6px 9px; box-shadow: 0 0 10px rgba(0,255,136,0.55);
+        }
+        .hero-ca:hover .ca-copy { background: #aaffdd; }
         /* Sin el PNG del cartel, el texto vuelve a su caja de siempre. */
-        .hero-ca.no-img .ca-text { position: static; transform: none; width: auto; display: inline-block; padding: 14px 22px; border: 2px solid var(--primary); }
+        .hero-ca.no-img .ca-text, .hero-ca.no-img .ca-copy { position: static; transform: none; width: auto; display: inline-block; padding: 14px 22px; border: 2px solid var(--primary); }
         #hero-copy-feedback { font-size: 11px; color: var(--primary); height: 15px; margin-top: 5px; }
         .big-title { font-size: 90px; font-family: 'Russo One'; color: #fff; text-shadow: 0 0 30px var(--primary); margin: 0; line-height: 1; }
         .big-subtitle { font-size: 24px; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 8px; margin-top: 10px; }
@@ -884,7 +885,6 @@ body.trailer-open #page-content{
          que pinta heroDecoCv junto con la comida/virus/pildoras. -->
     <div class="hero-video-wrapper" id="hero">
         <canvas id="heroDecoCv"></canvas>
-        <div id="heroPlayHint" style="display:none;">MOUSE = MOVE &nbsp;·&nbsp; SPACE = SPLIT &nbsp;·&nbsp; ESC = EXIT</div>
         <div class="hero-main-content">
             <div class="hero-txt">
                 <h1 class="big-title">PILLWARS</h1>
@@ -902,11 +902,13 @@ body.trailer-open #page-content{
             </div>
             <img class="hero-ca-sign" id="heroCaSign" src="img/pixel-hero/official-contract.png" alt="OFFICIAL CONTRACT ADDRESS" onerror="this.style.display='none'">
             <div id="heroCaWrap">
-                <!-- Cartel de David con el COPY ya dibujado: el contrato (o
-                     "Not Live Yet") se escribe encima, alineado a la izquierda. -->
+                <!-- Mismo marco que el cartel de arriba pero con el interior
+                     vaciado (raw/CONTRACT-BOX.png): dentro va el contrato, o
+                     "Not Live Yet" mientras no haya, y la etiqueta COPY. -->
                 <div class="hero-ca" onclick="App.UI.copyCA()">
-                    <img src="img/pixel-hero/copy-contract.png" alt="" onerror="this.closest('.hero-ca').classList.add('no-img')">
+                    <img src="img/pixel-hero/contract-box.png" alt="" onerror="this.closest('.hero-ca').classList.add('no-img')">
                     <span class="ca-text" id="hero-ca-text">Not Live Yet</span>
+                    <span class="ca-copy">COPY</span>
                 </div>
                 <div id="hero-copy-feedback"></div>
             </div>
@@ -1221,6 +1223,7 @@ body.trailer-open #page-content{
     <!-- TEMPORAL: barra del editor de layout del hero (boton EDIT de la navbar) -->
     <div id="layoutEditBar" style="display:none;">
         <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <button class="leb-btn" id="lebZoom" onclick="LandingLayout.zoom(this)">ZOOM 100%</button>
         <button class="leb-btn" onclick="LandingLayout.resetAll()">RESET ALL</button>
         <button class="leb-btn" onclick="LandingLayout.saveGlobal(this)">SAVE FOR ALL</button>
         <button class="leb-btn done" onclick="LandingLayout.exit()">DONE</button>
@@ -2136,6 +2139,9 @@ function toggleTrailerMode() {
         // pinta a 25 px logicos y se escala x2 sin suavizar, asi que cada
         // "pixel" del fondo mide 2px. ---
         const PIX = 2;                    // px de pantalla por pixel logico
+        // Zoom del cuadro (solo lo toca el boton ZOOM del editor): <1 = alejarse,
+        // el contenido se encoge y cabe mas escena. 1 = vista normal.
+        let heroZoom = 1;
         const CELL = 50 / PIX;            // 25 px logicos = los cuadrados de 50px de siempre
         const GRID_LINE = 'rgb(0,40,22)';  // verde muy apagado, como el degradado que habia
         const tile = (() => {
@@ -2168,25 +2174,21 @@ function toggleTrailerMode() {
         const scene = { food: [], virus: [], npcs: [], w: 0, h: 0, last: 0 };
 
         function newFood(w, h) { return { x: Math.random() * w, y: Math.random() * h, r: rnd(3, 6), col: pick(FOOD_COLORS) }; }
+        // Todas las pills cruzan el cuadro en la MISMA direccion (ligeramente en
+        // diagonal): entran por un lado y salen por el contrario, como un
+        // desfile de fondo. Cada una con su tamaño y su velocidad.
+        const NPC_DIR = -0.14;   // rad: casi horizontal hacia la derecha
         function newNpc(w, h) {
             const r = Math.round(rnd(9, 26));   // mitad del ancho de la pill
-            return {
-                x: Math.random() * w, y: Math.random() * h, r,
-                dir: Math.random() * Math.PI * 2, tx: 0, ty: 0,
-                top: '#ffffff', bot: pick(PILL_COLORS),
-            };
+            return { x: Math.random() * w, y: Math.random() * h, r, top: '#ffffff', bot: pick(PILL_COLORS) };
         }
-        // Objetivo del NPC: 1 de cada 3 veces, un punto FUERA del cuadro (asi se
-        // sale y luego reaparece por un borde). El resto, un punto de dentro.
-        function npcRetarget(n, w, h) {
-            if (Math.random() < 0.34) {
-                const m = 220;
-                const side = (Math.random() * 4) | 0;
-                n.tx = side === 0 ? -m : side === 1 ? w + m : Math.random() * w;
-                n.ty = side === 2 ? -m : side === 3 ? h + m : Math.random() * h;
-            } else {
-                n.tx = rnd(w * 0.05, w * 0.95); n.ty = rnd(h * 0.05, h * 0.95);
-            }
+        // Reaparece por el borde de ENTRADA (el opuesto a donde apunta NPC_DIR),
+        // a una altura al azar, para que el desfile no se agote.
+        function npcRespawn(n, w, h) {
+            const m = n.r * (1 + PILL_RATIO);
+            n.x = -m; n.y = rnd(-h * 0.15, h * 1.15);
+            n.r = Math.round(rnd(9, 26));
+            n.bot = pick(PILL_COLORS);
         }
         // Velocidad segun tamaño, como en el juego: cuanto mas gorda, mas lenta.
         // Las NPC pasean; la del jugador va bastante mas rapida (si no, cruzar el
@@ -2222,38 +2224,27 @@ function toggleTrailerMode() {
             scene.food.length = 0; scene.virus.length = 0; scene.npcs.length = 0;
             const zonas = scene.zonas = heroUiRects();
             for (let i = 0; i < N_FOOD; i++) scene.food.push(placeFree(() => newFood(w, h), zonas, 40));
-            // Virus repartidos, sin solaparse entre ellos y fuera de la UI.
+            // Virus repartidos, sin solaparse entre ellos y fuera de la UI. Si
+            // para alguno no hay hueco, se queda sin poner: un virus de menos no
+            // se nota, uno encima del PLAY NOW si.
             for (let i = 0; i < N_VIRUS; i++) {
-                let v;
-                for (let t = 0; t < 120; t++) {
-                    v = { x: rnd(VIRUS_R, w - VIRUS_R), y: rnd(VIRUS_R, h - VIRUS_R), seed: (Math.random() * 1000) | 0 };
-                    if (!covered(v.x, v.y, VIRUS_R * 1.2, zonas) && scene.virus.every(o => Math.hypot(o.x - v.x, o.y - v.y) > VIRUS_R * 4)) break;
+                for (let t = 0; t < 300; t++) {
+                    const v = { x: rnd(VIRUS_R, w - VIRUS_R), y: rnd(VIRUS_R, h - VIRUS_R), seed: (Math.random() * 1000) | 0 };
+                    if (covered(v.x, v.y, VIRUS_R * 1.4, zonas)) continue;
+                    if (!scene.virus.every(o => Math.hypot(o.x - v.x, o.y - v.y) > VIRUS_R * 3)) continue;
+                    scene.virus.push(v); break;
                 }
-                scene.virus.push(v);
             }
-            for (let i = 0; i < N_NPC; i++) { const n = newNpc(w, h); npcRetarget(n, w, h); scene.npcs.push(n); }
+            for (let i = 0; i < N_NPC; i++) scene.npcs.push(newNpc(w, h));
         }
 
         function stepScene(w, h, dt) {
+            const dx = Math.cos(NPC_DIR), dy = Math.sin(NPC_DIR);
             for (const n of scene.npcs) {
-                const want = Math.atan2(n.ty - n.y, n.tx - n.x);
-                // Giro LIMITADO hacia el objetivo (1.4 rad/s): trazan curvas
-                // suaves en vez de cambiar de rumbo de golpe.
-                let d = ((want - n.dir + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-                const max = 1.4 * dt;
-                n.dir += Math.max(-max, Math.min(max, d));
                 const sp = npcSpeed(n.r);
-                n.x += Math.cos(n.dir) * sp * dt; n.y += Math.sin(n.dir) * sp * dt;
-                if (Math.hypot(n.tx - n.x, n.ty - n.y) < 30) npcRetarget(n, w, h);
-                // Fuera del cuadro del todo -> reaparece por un borde al azar.
+                n.x += dx * sp * dt; n.y += dy * sp * dt;
                 const m = n.r * (1 + PILL_RATIO);
-                if (n.x < -m || n.x > w + m || n.y < -m || n.y > h + m) {
-                    const side = (Math.random() * 4) | 0;
-                    n.x = side === 0 ? -m : side === 1 ? w + m : Math.random() * w;
-                    n.y = side === 2 ? -m : side === 3 ? h + m : Math.random() * h;
-                    npcRetarget(n, w, h);
-                    n.dir = Math.atan2(n.ty - n.y, n.tx - n.x);
-                }
+                if (n.x > w + m || n.y < -h * 0.3 || n.y > h * 1.3) npcRespawn(n, w, h);
             }
             HeroPlay.step(w, h, dt);
         }
@@ -2280,7 +2271,7 @@ function toggleTrailerMode() {
                 g.drawImage(spr, -VIRUS_R, -VIRUS_R, VIRUS_R * 2, VIRUS_R * 2); g.restore();
             }
             // Las pills van tumbadas hacia donde avanzan (el sprite apunta a -Y).
-            for (const n of scene.npcs) drawPill(g, n.x, n.y, n.r, n.dir + Math.PI / 2, n.top, n.bot);
+            for (const n of scene.npcs) drawPill(g, n.x, n.y, n.r, NPC_DIR + Math.PI / 2, n.top, n.bot);
             HeroPlay.draw(g);
         }
 
@@ -2292,18 +2283,17 @@ function toggleTrailerMode() {
         const HeroPlay = {
             cells: null, top: '#ffffff', bot: '#00ffaa',
             mx: 0, my: 0, w: 0, h: 0,
-            START_R: 13, MAX_CELLS: 8, MERGE_MS: 9000, SPLIT_CD: 320, lastSplit: 0,
+            // MAX_R: tope de tamaño; sin el, en un rato la pill se come el cuadro.
+            START_R: 13, MAX_R: 52, MAX_CELLS: 8, MERGE_MS: 9000, SPLIT_CD: 320, lastSplit: 0,
             get active() { return !!this.cells; },
             start(x, y) {
                 this.cells = [{ x, y, r: this.START_R, vx: 0, vy: 0, merge: 0 }];
                 this.mx = x; this.my = y;
                 document.getElementById('heroPickMe').classList.add('playing');
-                document.getElementById('heroPlayHint').style.display = 'block';
             },
             stop() {
                 this.cells = null;
                 document.getElementById('heroPickMe').classList.remove('playing');
-                document.getElementById('heroPlayHint').style.display = 'none';
             },
             // Raton en coordenadas logicas del canvas.
             aim(clientX, clientY) {
@@ -2343,8 +2333,20 @@ function toggleTrailerMode() {
                     // Comer: la comida se repone en otro sitio, siempre hay de sobra.
                     for (const f of scene.food) {
                         if (Math.hypot(f.x - c.x, f.y - c.y) > c.r) continue;
-                        c.r = Math.sqrt(c.r * c.r + f.r * f.r * 2.2);
+                        c.r = Math.min(this.MAX_R, Math.sqrt(c.r * c.r + f.r * f.r * 2.2));
                         Object.assign(f, placeFree(() => newFood(w, h), scene.zonas || [], 30));
+                    }
+                }
+                // Pills del desfile: te las puedes comer si eres bastante mayor
+                // que ellas (ellas nunca te comen a ti). La que cae vuelve a
+                // entrar por el lado de siempre.
+                for (const n of scene.npcs) {
+                    for (const c of this.cells) {
+                        if (c.r < n.r * 1.15) continue;
+                        if (Math.hypot(n.x - c.x, n.y - c.y) > c.r) continue;
+                        c.r = Math.min(this.MAX_R, Math.sqrt(c.r * c.r + n.r * n.r));
+                        npcRespawn(n, w, h);
+                        break;
                     }
                 }
                 // Virus: si eres mayor que el, te parte en varias celdas.
@@ -2392,9 +2394,13 @@ function toggleTrailerMode() {
         let pat = null;
         function paintHero(now) {
             if (!cv || !host) return;
-            const rw = host.clientWidth, rh = host.clientHeight;
+            // Del rect, no de clientWidth: con el zoom del editor el tamaño real
+            // en pantalla no coincide con el de layout y el canvas saldria a
+            // otra resolucion (rejilla y bichos con el pixel de otro tamaño).
+            const rc = host.getBoundingClientRect();
+            const rw = rc.width, rh = rc.height;
             if (rw <= 0 || rh <= 0) return;
-            const W = Math.max(CELL, Math.round(rw / PIX)), H = Math.max(CELL, Math.round(rh / PIX));
+            const W = Math.max(CELL, Math.round(rw / (PIX * heroZoom))), H = Math.max(CELL, Math.round(rh / (PIX * heroZoom)));
             if (cv.width !== W) cv.width = W;
             if (cv.height !== H) cv.height = H;
             const g = cv.getContext('2d');
@@ -2422,6 +2428,15 @@ function toggleTrailerMode() {
         // miden 0: sin esto la comida y los virus se colocarian encima.
         const rebuildScene = () => { scene.w = 0; };
         window.addEventListener('load', rebuildScene);
+        // Alejarse del cuadro: el contenido se encoge y el canvas gana espacio
+        // logico (mas escena a la vista), como si la camara subiera.
+        function setHeroZoom(z) {
+            heroZoom = z;
+            const c = document.querySelector('.hero-main-content');
+            if (c) c.style.scale = z === 1 ? '' : String(z);
+            rebuildScene();
+            paintHero(performance.now());   // repinta ya, sin esperar al frame
+        }
 
         // Pill del DOM ("PICK ME!"): mismo sprite y misma inclinacion de 45º con
         // la que se ven las pills en partida.
@@ -2464,7 +2479,7 @@ function toggleTrailerMode() {
         };
         let layout = {};
         try { layout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { layout = {}; }
-        let editing = false, drag = null;
+        let editing = false, drag = null, zoomIdx = 0;
         const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
         function apply() {
             for (const key in LAYOUT_ELS) {
@@ -2493,10 +2508,21 @@ function toggleTrailerMode() {
                 document.body.classList.remove('layout-editing');
                 document.querySelectorAll('.hero-editable').forEach(el => el.classList.remove('hero-editable'));
                 document.getElementById('layoutEditBar').style.display = 'none';
+                // El zoom es solo para mirar mientras editas: al salir, al 100%.
+                zoomIdx = 0; setHeroZoom(1);
+                const zb = document.getElementById('lebZoom'); if (zb) zb.textContent = 'ZOOM 100%';
                 save();
                 rebuildScene();   // la UI se movio -> recolocar comida y virus
             },
             resetAll() { layout = {}; save(); apply(); },
+            // Zoom out del cuadro entero para ver la composicion de golpe. Es
+            // solo una vista del editor: no se guarda ni afecta al layout.
+            zoom(btn) {
+                const pasos = [1, 0.8, 0.6, 0.45];
+                zoomIdx = (zoomIdx + 1) % pasos.length;
+                setHeroZoom(pasos[zoomIdx]);
+                if (btn) btn.textContent = 'ZOOM ' + Math.round(pasos[zoomIdx] * 100) + '%';
+            },
             async saveGlobal(btn) {
                 save();
                 const orig = btn ? btn.textContent : '';
@@ -2521,8 +2547,8 @@ function toggleTrailerMode() {
         window.addEventListener('pointermove', (e) => {
             if (!editing || !drag) return;
             const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
-            cur.x = drag.baseX + (e.clientX - drag.startX);
-            cur.y = drag.baseY + (e.clientY - drag.startY);
+            cur.x = drag.baseX + (e.clientX - drag.startX) / heroZoom;
+            cur.y = drag.baseY + (e.clientY - drag.startY) / heroZoom;
             apply();
         });
         window.addEventListener('pointerup', () => { if (drag) { drag = null; save(); } });

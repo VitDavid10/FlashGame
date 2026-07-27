@@ -12,9 +12,13 @@ Archivos:
                     raw/PLAY-NOW-HERO.jpg (fondo blanco -> alpha, rampa 40/110).
   official-contract.png -> cartel "OFFICIAL CONTRACT ADDRESS" que va bajo el
                     PLAY NOW del hero (<img id="heroCaSign">), 140px de alto.
-  copy-contract.png -> cartel del contrato, con el boton COPY ya dibujado en el
-                    arte; el contrato (o "Not Live Yet") lo escribe el CSS
-                    encima, a la izquierda del COPY. 180px de alto.
+  contract-box.png -> caja del contrato: el MISMO marco que official-contract
+                    pero con el interior vaciado. El texto de dentro se borro
+                    por componentes conexas (la que toca el borde es el marco,
+                    el resto son letras) rellenando cada columna con el fondo de
+                    la fila limpia mas cercana, para conservar el degradado del
+                    glow. Fuente: raw/CONTRACT-BOX.png. El contrato (o "Not Live
+                    Yet") y la etiqueta COPY los pone el CSS encima.
   play-now.png  -> YA NO SE USA (el boton PLAY NOW de la navbar se quito en
                     jul-2026; solo queda el del centro del hero).
                     Era el background-image del boton .btn-play (stretch 100% 100%,
