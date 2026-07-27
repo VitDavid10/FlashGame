@@ -35,17 +35,31 @@
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        /* CUADRICULA VERDE GLOBAL */
+        /* Sin este color en <html>, el fondo de <body> se PROPAGA al lienzo raiz
+           y ahi el image-rendering de <body> ya no cuenta: la cuadricula saldria
+           suavizada (borrosa) en vez de pixelada. Con html pintado, el fondo de
+           body se queda en su propia caja y si respeta el pixelated. */
+        html { background-color: var(--bg-dark); }
+        /* CUADRICULA VERDE GLOBAL — misma celda de 50px de SIEMPRE, pero con el
+           tile pixel del juego (base tintada + moteado + linea de rejilla gorda)
+           en vez de los dos degradados de 1.5px. Lo genera el JS del hero y lo
+           deja en --pix-tile; hasta entonces se ven los degradados de fallback. */
         body {
             margin: 0; padding: 0; background-color: var(--bg-dark);
-            background-image: 
+            background-image: var(--pix-tile, none),
                 linear-gradient(rgba(0, 255, 136, 0.05) 1.5px, transparent 1.5px),
                 linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1.5px, transparent 1.5px);
-            background-size: 50px 50px; 
+            background-size: 50px 50px;
             color: #e0e0e0; font-family: 'Inter', sans-serif;
             overflow-x: hidden; scroll-behavior: smooth;
             cursor: none; /* Por defecto para PC */
+            image-rendering: pixelated;   /* el tile se escala sin suavizar */
         }
+        /* image-rendering SE HEREDA: sin esto, el pixelated de <body> llegaria a
+           TODAS las imagenes de la pagina (capturas, iconos de wallet, tooltips).
+           Las que si deben verse pixeladas lo piden por su propia clase mas
+           abajo (.hero-img, .skill-icon, #heroDecoCv...), que gana a este reset. */
+        img, canvas, video { image-rendering: auto; }
 
         /* CURSOR PERSONALIZADO (SOLO PC) */
         #custom-cursor {
@@ -150,8 +164,19 @@
 
         /* HERO */
         .hero-video-wrapper { position: relative; width: 100%; height: 100vh; min-height: 500px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--primary); }
-        .hero-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; filter: brightness(0.5); }
+        /* Deco del hero: mismo fondo pixel + comida/virus/pildoras del juego,
+           confinados al "cuadro" (de la linea verde de la navbar a la linea
+           verde de abajo = este wrapper). Va DETRAS del contenido para que las
+           pildoras pasen por debajo del titulo. */
+        #heroDecoCv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; image-rendering: pixelated; pointer-events: none; }
         .hero-main-content { z-index: 2; text-align: center; padding: 0 20px; margin-top: 60px; }
+        /* PLAY NOW del hero, cartel del contrato y el contrato: apilados bajo el
+           titulo. Los cuatro se mueven/escalan desde EDIT (ver LandingLayout). */
+        .hero-play { display: block; margin: 26px auto 0; height: 84px; width: auto; image-rendering: pixelated; cursor: pointer !important; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .2s; }
+        .hero-play:hover { filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.15); }
+        .hero-ca-sign { display: block; margin: 34px auto 0; height: 52px; width: auto; image-rendering: pixelated; }
+        .hero-ca { margin-top: 10px; }
+        #hero-copy-feedback { font-size: 11px; color: var(--primary); height: 15px; margin-top: 5px; }
         .big-title { font-size: 90px; font-family: 'Russo One'; color: #fff; text-shadow: 0 0 30px var(--primary); margin: 0; line-height: 1; }
         .big-subtitle { font-size: 24px; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 8px; margin-top: 10px; }
 
@@ -711,6 +736,19 @@ body.trailer-open #page-content{
         body.pixel-pack .skill-icon, body.pixel-pack .dd-icon, body.pixel-pack .wallet-option img,
         body.pixel-pack .tooltip-icon-main, body.pixel-pack .feature-images img,
         body.pixel-pack .full-width-img img { image-rendering: pixelated; }
+
+        /* ===== EDITOR DE LAYOUT DEL HERO (boton EDIT de la navbar) — TEMPORAL:
+           herramienta de diseño para colocar titulo/PLAY NOW/cartel/contrato.
+           Quitar el boton, esta hoja y LandingLayout cuando quede fijado. ===== */
+        body.layout-editing .hero-editable { outline: 2px dashed rgba(255,255,255,0.55); outline-offset: 3px; cursor: move !important; transition: none !important; }
+        body.layout-editing .hero-editable:hover { outline-color: var(--primary); }
+        #layoutEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 100001; display: flex; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
+        #layoutEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 0.5px; }
+        #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer !important; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
+        #layoutEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
+        #layoutEditBar .leb-btn.done { background: #0f8f46; color: #fff; border-color: #000; }
+        #btnLandingEdit { background: none; border: none; padding: 0; color: #ff9c3d; cursor: pointer !important; }
+        #btnLandingEdit:hover { color: #fff; text-shadow: 0 0 10px #ff9c3d; }
     </style>
 </head>
 <body class="pixel-pack">
@@ -801,6 +839,10 @@ body.trailer-open #page-content{
                 <a href="#quest" class="nav-link">QUESTS</a>
                 <a href="#shop" class="nav-link">STORE</a>
                 <a href="#ranking" class="nav-link">LEADERBOARD</a>
+                <!-- TEMPORAL: editor de posicion/tamaño de los elementos del hero.
+                     Quitar (junto con LandingLayout y /api/landing-layout) cuando
+                     el diseño quede fijado. -->
+                <button class="nav-link" id="btnLandingEdit" onclick="LandingLayout.enter()">EDIT</button>
             </div>
         </div>
 
@@ -838,14 +880,25 @@ body.trailer-open #page-content{
     </div>
 
     <!-- HERO -->
+    <!-- El video de rejilla verde (mixkit) se cambio por el fondo pixel del juego,
+         que pinta heroDecoCv junto con la comida/virus/pildoras. -->
     <div class="hero-video-wrapper" id="hero">
-        <video autoplay muted loop playsinline class="hero-video"><source src="https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-a-green-grid-996-large.mp4" type="video/mp4"></video>
+        <canvas id="heroDecoCv"></canvas>
         <div class="hero-main-content">
             <div class="hero-txt">
                 <h1 class="big-title">PILLWARS</h1>
                 <div class="big-subtitle">THE CRYPTO ARENA</div>
             </div>
-            <img class="hero-img" src="img/pixel-hero/hero-title.png" alt="PillWars — The Crypto Arena" onerror="this.closest('.hero-main-content').classList.add('no-img')">
+            <img class="hero-img" id="heroTitle" src="img/pixel-hero/hero-title.png" alt="PillWars — The Crypto Arena" onerror="this.closest('.hero-main-content').classList.add('no-img')">
+            <img class="hero-play" id="heroPlayNow" src="img/pixel-hero/play-now-hero.png" alt="PLAY NOW" onclick="window.location.href='game/'" onerror="this.style.display='none'">
+            <img class="hero-ca-sign" id="heroCaSign" src="img/pixel-hero/official-contract.png" alt="OFFICIAL CONTRACT ADDRESS" onerror="this.style.display='none'">
+            <div id="heroCaWrap">
+                <div class="ca-box hero-ca" onclick="App.UI.copyCA()">
+                    <span class="ca-text">Not Live Yet</span>
+                    <span class="copy-tag">COPY</span>
+                </div>
+                <div id="hero-copy-feedback"></div>
+            </div>
         </div>
     </div>
 
@@ -1154,6 +1207,14 @@ body.trailer-open #page-content{
         </div>
     </div>
 
+    <!-- TEMPORAL: barra del editor de layout del hero (boton EDIT de la navbar) -->
+    <div id="layoutEditBar" style="display:none;">
+        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <button class="leb-btn" onclick="LandingLayout.resetAll()">RESET ALL</button>
+        <button class="leb-btn" onclick="LandingLayout.saveGlobal(this)">SAVE FOR ALL</button>
+        <button class="leb-btn done" onclick="LandingLayout.exit()">DONE</button>
+    </div>
+
     <script>
         const DOM = {
             cursor: document.getElementById('custom-cursor'),
@@ -1323,9 +1384,12 @@ body.trailer-open #page-content{
                     });
                 },
                 copyCA: () => {
+                    // Dos cajas de contrato (la del hero y la de la seccion de
+                    // abajo): el aviso de copiado se pinta en las dos.
+                    const fbs = [DOM.copyFeedback, document.getElementById('hero-copy-feedback')].filter(Boolean);
                     navigator.clipboard.writeText(DOM.caText.innerText).then(() => {
-                        DOM.copyFeedback.innerText = "COPIED TO CLIPBOARD!";
-                        setTimeout(() => DOM.copyFeedback.innerText = "", 2000);
+                        fbs.forEach(f => f.innerText = "COPIED TO CLIPBOARD!");
+                        setTimeout(() => fbs.forEach(f => f.innerText = ""), 2000);
                     });
                 },
                 
@@ -1962,6 +2026,318 @@ function toggleTrailerMode() {
         window.PillChain = { deposit, getWarBalance, creditDeposit };
         // Si la wallet ya estaba conectada al cargar el módulo, refresca el saldo WAR.
         if (window.App && window.App.Wallet && window.App.Wallet.address) window.App.Market.fetchWar(window.App.Wallet.address);
+    </script>
+
+    <!-- ===== FONDO PIXEL DE LA PAGINA + DECO DEL HERO =====
+         El fondo de la landing pasa a ser el MISMO tile pixel del menu del juego
+         (_msV2Tile: base tintada + moteado + linea de rejilla gorda), respetando
+         la celda de 50px que ya tenia la web. Dentro del "cuadro" del hero (de la
+         linea verde de la navbar a la linea verde de abajo) atraviesan comida,
+         virus y pildoras de distintos tamaños con los sprites del juego, entrando
+         y saliendo por los bordes. El canvas va DETRAS del contenido: las
+         pildoras pasan por debajo del titulo. -->
+    <script>
+    (() => {
+        'use strict';
+        // --- Sprites pixel: port de game/index.html (pixDotSprite / pixVirusSprite
+        // / pixPillSprite) para que la deco sea exactamente la del juego. ---
+        const PILL_RATIO = 2.0;
+        const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+        function pixRgb(col) { probe.clearRect(0, 0, 1, 1); probe.fillStyle = col; probe.fillRect(0, 0, 1, 1); const d = probe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
+        function pixShade(rgb, amt) { const t = amt < 0 ? 0 : 255, a = Math.abs(amt); return 'rgb(' + rgb.map(v => Math.round(v + (t - v) * a)).join(',') + ')'; }
+        const SPR = { dot: new Map(), virus: new Map(), pill: new Map() };
+
+        function pixDotSprite(dL, col) {
+            const key = dL + '|' + col;
+            let spr = SPR.dot.get(key); if (spr) return spr;
+            spr = document.createElement('canvas'); spr.width = dL; spr.height = dL;
+            const g = spr.getContext('2d'), rgb = pixRgb(col), R = dL / 2;
+            const inside = (x, y) => { if (x < 0 || y < 0 || x >= dL || y >= dL) return false; const dx = x + 0.5 - R, dy = y + 0.5 - R; return dx * dx + dy * dy <= (R - 0.1) * (R - 0.1); };
+            for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
+                if (!inside(x, y)) continue;
+                let c2;
+                if (dL >= 6 && (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1))) c2 = pixShade(rgb, -0.5);
+                else if (x + y > dL) c2 = pixShade(rgb, -0.22);
+                else c2 = 'rgb(' + rgb.join(',') + ')';
+                g.fillStyle = c2; g.fillRect(x, y, 1, 1);
+            }
+            g.fillStyle = 'rgba(255,255,255,0.55)'; const hp = Math.max(1, Math.floor(dL / 5));
+            g.fillRect(Math.floor(dL * 0.25), Math.floor(dL * 0.25), hp, hp);
+            SPR.dot.set(key, spr); return spr;
+        }
+
+        // Virus verde del juego (t=0: sin el tinte morado de las variantes).
+        function pixVirusSprite(dL) {
+            let spr = SPR.virus.get(dL); if (spr) return spr;
+            spr = document.createElement('canvas'); spr.width = dL; spr.height = dL;
+            const g = spr.getContext('2d'), R = dL / 2 - 0.5;
+            const rgbF = pixRgb('#9EE32D'), rgbD = pixRgb('#3E8E11');
+            const teeth = dL >= 36 ? 16 : 12;
+            const rr = (a) => R * (0.82 + 0.18 * (0.5 + 0.5 * Math.cos(a * teeth)));
+            const inside = (x, y) => { if (x < 0 || y < 0 || x >= dL || y >= dL) return false; const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2; return Math.sqrt(dx * dx + dy * dy) <= rr(Math.atan2(dy, dx)); };
+            for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
+                if (!inside(x, y)) continue;
+                const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2, d = Math.sqrt(dx * dx + dy * dy);
+                let col;
+                if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = pixShade(rgbD, -0.15);
+                else if (!inside(x + 2, y) || !inside(x, y + 2)) col = pixShade(rgbF, -0.3);
+                else if (!inside(x - 2, y) || !inside(x, y - 2)) col = pixShade(rgbF, 0.3);
+                else if (dL >= 20 && Math.abs(d - R * 0.58) < Math.max(1, dL / 40)) col = 'rgb(' + rgbD.join(',') + ')';
+                else if (dL >= 20 && d < R * 0.30) col = pixShade(rgbF, dx + dy < 0 ? -0.16 : -0.32);
+                else col = 'rgb(' + rgbF.join(',') + ')';
+                g.fillStyle = col; g.fillRect(x, y, 1, 1);
+            }
+            g.fillStyle = 'rgba(0,0,0,0.25)';
+            const spots = [[0.36, 0.42], [0.62, 0.36], [0.58, 0.64]], sr = Math.max(1, Math.round(dL / 12));
+            for (const s of spots) g.fillRect(Math.round(dL * s[0]), Math.round(dL * s[1]), sr, sr);
+            g.fillStyle = 'rgba(255,255,255,0.35)';
+            g.fillRect(Math.round(dL * 0.30), Math.round(dL * 0.24), Math.max(1, Math.round(dL / 10)), Math.max(1, Math.round(dL / 16)));
+            SPR.virus.set(dL, spr); return spr;
+        }
+
+        function pixPillSprite(wL, cTop, cBot) {
+            const key = wL + '|' + cTop + '|' + cBot;
+            let spr = SPR.pill.get(key); if (spr) return spr;
+            const hL = Math.round(wL * PILL_RATIO), R = wL / 2;
+            spr = document.createElement('canvas'); spr.width = wL; spr.height = hL;
+            const g = spr.getContext('2d'), rgbT = pixRgb(cTop), rgbB = pixRgb(cBot);
+            const inside = (x, y) => { if (x < 0 || y < 0 || x >= wL || y >= hL) return false; const cy = Math.min(Math.max(y + 0.5, R), hL - R); const dx = x + 0.5 - R, dy = y + 0.5 - cy; return dx * dx + dy * dy <= (R - 0.1) * (R - 0.1); };
+            const half = Math.floor(hL / 2);
+            for (let y = 0; y < hL; y++) for (let x = 0; x < wL; x++) {
+                if (!inside(x, y)) continue;
+                const rgb = y < half ? rgbT : rgbB;
+                let col;
+                if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = pixShade(rgb, -0.55);
+                else if (!inside(x + 2, y) || !inside(x, y + 2)) col = pixShade(rgb, -0.25);
+                else if (y === half || y === half - 1) col = pixShade(rgb, -0.18);
+                else if (!inside(x - 2, y) || !inside(x, y - 2)) col = pixShade(rgb, 0.18);
+                else col = 'rgb(' + rgb.join(',') + ')';
+                g.fillStyle = col; g.fillRect(x, y, 1, 1);
+            }
+            const hs = Math.max(1, Math.round(wL / 6));
+            g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(Math.round(wL * 0.22), Math.round(hL * 0.14), hs, hs);
+            SPR.pill.set(key, spr); return spr;
+        }
+
+        // --- Tile del fondo: mismo recetario que _msV2Tile del juego. La celda
+        // sigue midiendo 50px en pantalla; se pinta a 25 px logicos y se escala
+        // x2 sin suavizar, asi que cada "pixel" mide 2px y la linea de rejilla
+        // queda gorda como en el menu. ---
+        const PIX = 2;                    // px de pantalla por pixel logico
+        const CELL = 50 / PIX;            // 25 px logicos = los cuadrados de 50px de siempre
+        const TINT = '#00ff88';
+        const tile = (() => {
+            const rgb = pixRgb(TINT);
+            const cv = document.createElement('canvas'); cv.width = CELL; cv.height = CELL;
+            const g = cv.getContext('2d');
+            const sh = f => 'rgb(' + rgb.map(v => Math.round(v * f)).join(',') + ')';
+            g.fillStyle = sh(0.07); g.fillRect(0, 0, CELL, CELL);
+            const sp = (fx, fy) => [Math.round(fx * CELL), Math.round(fy * CELL)];
+            g.fillStyle = sh(0.13);
+            for (const s of [[0.12, 0.19], [0.5, 0.08], [0.81, 0.42], [0.27, 0.69], [0.65, 0.85]]) { const p = sp(s[0], s[1]); g.fillRect(p[0], p[1], 1, 1); }
+            g.fillStyle = sh(0.10);
+            for (const s of [[0.38, 0.35], [0.88, 0.73], [0.08, 0.88], [0.73, 0.15]]) { const p = sp(s[0], s[1]); g.fillRect(p[0], p[1], 1, 1); }
+            g.fillStyle = sh(0.30); g.fillRect(0, 0, CELL, 1); g.fillRect(0, 0, 1, CELL);
+            return cv;
+        })();
+        document.body.style.setProperty('--pix-tile', 'url(' + tile.toDataURL() + ')');
+
+        // --- Poblacion de la deco (en px LOGICOS: x2 para pantalla) ---
+        const FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
+        const N_FOOD = 26, N_VIRUS = 3, N_PILL = 7;
+        const rnd = (a, b) => a + Math.random() * (b - a);
+        function spawn(w, h, kind) {
+            const ang = Math.random() * Math.PI * 2;
+            const p = { kind, x: Math.random() * w, y: Math.random() * h, seed: (Math.random() * 1000) | 0 };
+            if (kind === 'virus') { p.size = 60; p.spd = rnd(8, 18); }
+            else if (kind === 'pill') {
+                p.size = Math.round(rnd(14, 44));           // ancho: pildoras de distintos tamaños
+                p.spd = rnd(10, 32);
+                p.top = '#ffffff';
+                p.bot = FOOD_COLORS[(Math.random() * FOOD_COLORS.length) | 0];
+                p.rot = -Math.PI / 4 + rnd(-0.35, 0.35);    // tumbadas ~45º como en partida
+            } else { p.size = rnd(6, 12); p.spd = rnd(14, 32); p.col = FOOD_COLORS[(Math.random() * FOOD_COLORS.length) | 0]; }
+            p.vx = Math.cos(ang) * p.spd; p.vy = Math.sin(ang) * p.spd;
+            return p;
+        }
+        const deco = { items: [], w: 0, h: 0, last: 0 };
+        function stepDeco(w, h, now) {
+            if (deco.w && (deco.w !== w || deco.h !== h)) {
+                const sx = w / deco.w, sy = h / deco.h;
+                for (const p of deco.items) { p.x *= sx; p.y *= sy; }
+            }
+            if (!deco.items.length) {
+                for (let i = 0; i < N_FOOD; i++) deco.items.push(spawn(w, h, 'food'));
+                for (let i = 0; i < N_VIRUS; i++) deco.items.push(spawn(w, h, 'virus'));
+                for (let i = 0; i < N_PILL; i++) deco.items.push(spawn(w, h, 'pill'));
+            }
+            deco.w = w; deco.h = h;
+            const dt = deco.last ? Math.min(0.05, (now - deco.last) / 1000) : 0.016;
+            deco.last = now;
+            for (const p of deco.items) {
+                p.x += p.vx * dt; p.y += p.vy * dt;
+                // Sale entero por un borde y vuelve a entrar por el opuesto.
+                const m = p.kind === 'pill' ? p.size * PILL_RATIO : p.size;
+                if (p.x < -m) p.x = w + m; else if (p.x > w + m) p.x = -m;
+                if (p.y < -m) p.y = h + m; else if (p.y > h + m) p.y = -m;
+            }
+        }
+        function drawDeco(g, now) {
+            // Los sprites se pintan a la MITAD de su tamaño logico y se estiran al
+            // doble: asi el pixel del bicho mide lo mismo que el del fondo.
+            for (const p of deco.items) {
+                if (p.kind === 'virus') {
+                    const spr = pixVirusSprite(Math.max(8, Math.round(p.size / 2)));
+                    const stepMs = 90 + (p.size | 0);
+                    const ang = ((Math.floor(now / stepMs) + p.seed) % 16) * (Math.PI / 8) * (p.seed % 2 ? 1 : -1);
+                    g.save(); g.translate(p.x, p.y); g.rotate(ang);
+                    g.drawImage(spr, -p.size / 2, -p.size / 2, p.size, p.size); g.restore();
+                } else if (p.kind === 'pill') {
+                    const spr = pixPillSprite(Math.max(6, Math.round(p.size / 2)), p.top, p.bot);
+                    const pw = p.size, ph = p.size * PILL_RATIO;
+                    g.save(); g.translate(p.x, p.y); g.rotate(p.rot);
+                    g.drawImage(spr, -pw / 2, -ph / 2, pw, ph); g.restore();
+                } else {
+                    const spr = pixDotSprite(Math.max(3, Math.round(p.size / 2)), p.col);
+                    g.drawImage(spr, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+                }
+            }
+        }
+
+        const cv = document.getElementById('heroDecoCv');
+        const host = document.getElementById('hero');
+        let pat = null;
+        function paintHero(now) {
+            if (!cv || !host) return;
+            const rw = host.clientWidth, rh = host.clientHeight;
+            if (rw <= 0 || rh <= 0) return;
+            const W = Math.max(CELL, Math.round(rw / PIX)), H = Math.max(CELL, Math.round(rh / PIX));
+            if (cv.width !== W) cv.width = W;
+            if (cv.height !== H) cv.height = H;
+            const g = cv.getContext('2d');
+            g.imageSmoothingEnabled = false;
+            if (!pat) pat = g.createPattern(tile, 'repeat');
+            g.fillStyle = pat; g.fillRect(0, 0, W, H);
+            // El tile solo pinta la linea arriba/izquierda de cada celda: sin esto
+            // la ultima fila y columna del cuadro quedarian sin cerrar.
+            const rgb = pixRgb(TINT);
+            g.fillStyle = 'rgb(' + rgb.map(v => Math.round(v * 0.30)).join(',') + ')';
+            g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
+            stepDeco(W, H, now);
+            drawDeco(g, now);
+        }
+        // Solo gasta rAF con el hero a la vista (al hacer scroll se para).
+        let heroVisible = true;
+        if (host && window.IntersectionObserver) {
+            new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(host);
+        }
+        (function loop(t) { requestAnimationFrame(loop); if (heroVisible) paintHero(t || performance.now()); })();
+
+        // ===== EDITOR DE LAYOUT DEL HERO (TEMPORAL) =====
+        // Mismo mecanismo que EDIT LAYOUT del menu del juego: arrastrar = mover,
+        // rueda = escalar, doble click = resetear uno, ESC/DONE = salir. Se guarda
+        // por usuario en localStorage y, con SAVE FOR ALL, en el servidor
+        // (/api/landing-layout) para que lo vean todos. Quitar el boton EDIT, la
+        // barra, este bloque y el endpoint cuando el diseño quede fijado.
+        const LAYOUT_KEY = 'pw_landing_layout';
+        const LAYOUT_ELS = {
+            title: '#heroTitle', play: '#heroPlayNow', caSign: '#heroCaSign', ca: '#heroCaWrap',
+        };
+        let layout = {};
+        try { layout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { layout = {}; }
+        let editing = false, drag = null;
+        const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
+        function apply() {
+            for (const key in LAYOUT_ELS) {
+                const el = document.querySelector(LAYOUT_ELS[key]); if (!el) continue;
+                const t = layout[key];
+                // translate/scale (no `transform`) para no pisar los transform de
+                // los :hover/:active que ya tienen algunos elementos.
+                el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '';
+                el.style.scale = t ? String(t.s || 1) : '';
+            }
+        }
+        function target(e) {
+            for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
+            return null;
+        }
+        const LandingLayout = {
+            enter() {
+                editing = true;
+                document.body.classList.add('layout-editing');
+                for (const key in LAYOUT_ELS) { const el = document.querySelector(LAYOUT_ELS[key]); if (el) el.classList.add('hero-editable'); }
+                document.getElementById('layoutEditBar').style.display = 'flex';
+                document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
+            },
+            exit() {
+                editing = false; drag = null;
+                document.body.classList.remove('layout-editing');
+                document.querySelectorAll('.hero-editable').forEach(el => el.classList.remove('hero-editable'));
+                document.getElementById('layoutEditBar').style.display = 'none';
+                save();
+            },
+            resetAll() { layout = {}; save(); apply(); },
+            async saveGlobal(btn) {
+                save();
+                const orig = btn ? btn.textContent : '';
+                if (btn) { btn.textContent = 'SAVING...'; btn.disabled = true; }
+                let ok = false;
+                try {
+                    const r = await fetch('/api/landing-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout }) });
+                    ok = (await r.json()).ok === true;
+                } catch (e) {}
+                if (btn) { btn.textContent = ok ? 'SAVED ✓' : 'ERROR'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600); }
+            },
+        };
+        window.LandingLayout = LandingLayout;
+
+        document.addEventListener('pointerdown', (e) => {
+            if (!editing || e.target.closest('#layoutEditBar')) return;
+            const t = target(e); if (!t) return;
+            const cur = layout[t.key] || { x: 0, y: 0, s: 1 };
+            drag = { key: t.key, startX: e.clientX, startY: e.clientY, baseX: cur.x || 0, baseY: cur.y || 0 };
+            e.preventDefault(); e.stopPropagation();
+        }, true);
+        window.addEventListener('pointermove', (e) => {
+            if (!editing || !drag) return;
+            const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
+            cur.x = drag.baseX + (e.clientX - drag.startX);
+            cur.y = drag.baseY + (e.clientY - drag.startY);
+            apply();
+        });
+        window.addEventListener('pointerup', () => { if (drag) { drag = null; save(); } });
+        document.addEventListener('wheel', (e) => {
+            if (!editing) return;
+            const t = target(e); if (!t) return;
+            e.preventDefault();
+            const cur = layout[t.key] = layout[t.key] || { x: 0, y: 0, s: 1 };
+            const step = e.shiftKey ? 1.06 : 1.015;   // shift = paso grande
+            cur.s = Math.min(3, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
+            apply(); save();
+        }, { passive: false, capture: true });
+        document.addEventListener('dblclick', (e) => {
+            if (!editing) return;
+            const t = target(e); if (!t) return;
+            delete layout[t.key]; apply(); save(); e.preventDefault();
+        }, true);
+        // En modo edicion los clicks no disparan PLAY NOW ni el copiar del contrato
+        document.addEventListener('click', (e) => {
+            if (!editing || e.target.closest('#layoutEditBar')) return;
+            e.preventDefault(); e.stopPropagation();
+        }, true);
+        window.addEventListener('keydown', (e) => { if (editing && e.code === 'Escape') LandingLayout.exit(); });
+
+        apply();
+        // Layout GLOBAL del servidor: pisa al local salvo que este vacio (nadie ha
+        // guardado todavia) o que TU estes editando ahora mismo.
+        fetch('/api/landing-layout', { cache: 'no-store' })
+            .then(r => r.json())
+            .then(d => {
+                if (editing || !d || !d.layout || !Object.keys(d.layout).length) return;
+                layout = d.layout; save(); apply();
+            })
+            .catch(() => {});
+    })();
     </script>
 </body>
 </html>

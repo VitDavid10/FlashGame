@@ -94,7 +94,11 @@ let menuDecoDimPct = _clampN(_glob.menuDecoDimPct, 0, 80, 0);
 // Layout del menú (posición/escala de cada elemento editable), GLOBAL: lo sube el
 // cliente desde EDIT LAYOUT → "Guardar para todos", se difunde en /api/rooms.
 let menuLayout = (_glob.menuLayout && typeof _glob.menuLayout === 'object') ? _glob.menuLayout : {};
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuLayout }), () => {}); }
+// Lo mismo para el HERO de la landing (título, PLAY NOW, cartel del contrato y
+// contrato): lo sube el botón EDIT de index.html. Va APARTE de menuLayout para
+// que las dos herramientas no se pisen la una a la otra.
+let landingLayout = (_glob.landingLayout && typeof _glob.landingLayout === 'object') ? _glob.landingLayout : {};
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuLayout, landingLayout }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -1797,6 +1801,40 @@ const httpServer = http.createServer(async (req, res) => {
                 menuLayout = clean; saveGlobal();
                 if (PW_ROLE === 'director') _roomsCache = null;   // fuerza refresco del cache agregado
                 log(`Menu layout GLOBAL actualizado (${Object.keys(clean).length} elementos)`);
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
+            });
+            return;
+        }
+        res.writeHead(405, { 'Access-Control-Allow-Origin': '*' }); res.end(); return;
+    }
+    // --- Layout del HERO de la landing (index.html → botón EDIT). Mismo trato
+    // que /api/menu-layout: sin auth, herramienta de diseño TEMPORAL. Aquí sí
+    // hay GET porque la landing no consulta /api/rooms. ---
+    if (urlPath === '/api/landing-layout') {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
+            res.end(); return;
+        }
+        if (req.method === 'GET') {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ layout: landingLayout })); return;
+        }
+        if (req.method === 'POST') {
+            let body = ''; let abortado = false;
+            req.on('data', c => { if (abortado) return; body += c; if (body.length > 65536) { abortado = true; res.writeHead(413); res.end('Payload too large'); req.destroy(); } });
+            req.on('end', () => {
+                if (abortado) return;
+                let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
+                const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
+                if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
+                const clean = {};
+                for (const k of Object.keys(lay).slice(0, 40)) {
+                    const t = lay[k]; if (!t || typeof t !== 'object') continue;
+                    clean[String(k).slice(0, 40)] = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
+                }
+                landingLayout = clean; saveGlobal();
+                log(`Landing layout GLOBAL actualizado (${Object.keys(clean).length} elementos)`);
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                 res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
             });

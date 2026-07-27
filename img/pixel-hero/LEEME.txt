@@ -7,6 +7,14 @@ solo en su estilo procedural de siempre (fuente Press Start 2P) — la web
 nunca se rompe por un asset ausente.
 
 Archivos:
+  play-now-hero.png -> boton PLAY NOW grande del centro del hero (<img
+                    id="heroPlayNow">). Horneado a 260px de alto desde
+                    raw/PLAY-NOW-HERO.jpg (fondo blanco -> alpha, rampa 40/110).
+  official-contract.png -> cartel "OFFICIAL CONTRACT ADDRESS" que va bajo el
+                    PLAY NOW del hero (<img id="heroCaSign">), 140px de alto.
+                    Su original trae fondo NEGRO, pero ahi solo se vacia lo de
+                    FUERA del marco (flood fill desde las esquinas): el interior
+                    oscuro es parte del cartel y se conserva.
   play-now.png  -> background-image del boton .btn-play (stretch 100% 100%,
                    el texto real queda oculto detras via visibility:hidden).
                    Deteccion de carga por JS (new Image().onload agrega
