@@ -59,6 +59,14 @@ color se des-premultiplica ((pix - (1-a)*fondo)/a), asi el glow queda blanco
 de verdad sobre el negro del hero en vez de un halo rosa. Alturas: 400px
 hero-title, 200px brand.
 
+Diferencia entre los dos: el hero SI lleva el halo (rampa entera, recorte a
+alpha>0.06); el de la navbar NO, porque ahi el glow ensucia la barra. Para
+quitarlo se recorta la rampa (t0=0.62, t1=0.88) y se recorta la caja a
+alpha>0.5: queda solo la letra con su borde. Ojo, el color se des-premultiplica
+con la cobertura REAL, no con la recortada, o el borde saldria gris.
+Como sin halo la caja es toda letra, el CSS de la navbar bajo de 44px a 32px:
+a 44 el rotulo salia un tercio mas grande que la version con glow.
+
 hero-title.png v2 (jul-2026): regenerado desde raw/HERO-TITLE-v2.jpg (fondo
 NEGRO con cuadricula tenue, no blanco). La cuadricula llega a distancia ~45
 del fondo, asi que la rampa de alpha usa T0=55 T1=140 (por debajo de 55 fuera:

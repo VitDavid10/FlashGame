@@ -692,7 +692,10 @@ body.trailer-open #page-content{
         body.pixel-pack .hero-main-content:not(.no-img) .hero-img { display: inline-block; height: 120px; width: auto; filter: drop-shadow(0 0 16px rgba(0,255,136,0.6)) drop-shadow(0 0 38px rgba(0,255,136,0.35)) drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.08); }
         body.pixel-pack .hero-main-content:not(.no-img) .hero-sub { display: block; }
         body.pixel-pack .hero-main-content:not(.no-img) .hero-txt { display: none; }
-        body.pixel-pack .brand-name:not(.no-img) .bn-img { display: inline-block; height: 44px; width: auto; vertical-align: middle; }
+        /* 32px, no 44: el PNG de la navbar va SIN glow, asi que su caja es toda
+           letra. Con los 44 de la version con halo el rotulo salia un tercio mas
+           grande y se comia el hueco de los nav-links. */
+        body.pixel-pack .brand-name:not(.no-img) .bn-img { display: inline-block; height: 32px; width: auto; vertical-align: middle; }
         body.pixel-pack .brand-name:not(.no-img) .bn-txt { display: none; }
         body.pixel-pack .section-title { font-family: 'Press Start 2P', monospace; font-size: 26px; text-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
         body.pixel-pack .feature-text h3 { font-family: 'Press Start 2P', monospace; font-size: 22px; line-height: 1.3; }
