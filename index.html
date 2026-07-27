@@ -178,6 +178,9 @@
         @keyframes pickMeGlow { 50% { opacity: .55; } }
         .pick-me-pill { display: block; margin: 0 auto; image-rendering: pixelated; }
         #heroPickMe:hover .pick-me-pill { filter: brightness(1.25); }
+        /* Titulo devorado por la pill jugable: se va, pero sigue ocupando su
+           hueco para que no salte el resto del hero. Vuelve al soltar el control. */
+        .hero-img.eaten { opacity: 0; transition: opacity .25s; pointer-events: none; }
         .hero-ca-sign { display: block; margin: 34px auto 0; height: 52px; width: auto; image-rendering: pixelated; }
         /* Cartel de copiar: la imagen manda el tamaño y el texto del contrato va
            encima, dentro del marco y a la izquierda del COPY que ya trae el arte. */
@@ -2160,56 +2163,70 @@ function toggleTrailerMode() {
 
         // ===== ESCENA DEL HERO (coordenadas LOGICAS: x2 para pantalla) =====
         // Comida y virus QUIETOS (como en el menu del juego: los virus solo
-        // giran). Las pildoras NPC se desplazan con rumbo, no flotando: van a
-        // por un objetivo girando poco a poco, y de vez en cuando el objetivo
-        // esta fuera del cuadro, asi que salen y vuelven a entrar. Y una pill
-        // JUGABLE que toma el control al clicar en "PICK ME!".
+        // giran). Las pildoras NPC cruzan el cuadro hacia la derecha, cada una
+        // con su rumbo y su ondulacion, esquivando el titulo y el PLAY NOW. Y
+        // una pill JUGABLE que toma el control al clicar en "PICK ME!".
         const FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
         const PILL_COLORS = ['#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d', '#ff5533', '#b46cff'];
         const N_FOOD = 120, N_VIRUS = 4, N_NPC = 7;
         const VIRUS_R = 30;               // radio logico (60 de diametro = 120px de pantalla)
         const rnd = (a, b) => a + Math.random() * (b - a);
         const pick = a => a[(Math.random() * a.length) | 0];
+        // Las NPC pasean: mas gordas, mas lentas (misma idea que en partida).
+        const npcSpeed = r => 55 * Math.pow(11 / r, 0.42);
 
         const scene = { food: [], virus: [], npcs: [], w: 0, h: 0, last: 0 };
 
         function newFood(w, h) { return { x: Math.random() * w, y: Math.random() * h, r: rnd(3, 6), col: pick(FOOD_COLORS) }; }
-        // Todas las pills cruzan el cuadro en la MISMA direccion (ligeramente en
-        // diagonal): entran por un lado y salen por el contrario, como un
-        // desfile de fondo. Cada una con su tamaño y su velocidad.
-        const NPC_DIR = -0.14;   // rad: casi horizontal hacia la derecha
+        // Todas las pills cruzan el cuadro hacia la DERECHA, pero cada una a su
+        // manera: su propio angulo, su propia velocidad y una ondulacion suave
+        // con fase y amplitud distintas. Ademas esquivan las zonas de la UI
+        // (titulo y PLAY NOW) apartandose por arriba o por abajo.
         function newNpc(w, h) {
-            const r = Math.round(rnd(9, 26));   // mitad del ancho de la pill
-            return { x: Math.random() * w, y: Math.random() * h, r, top: '#ffffff', bot: pick(PILL_COLORS) };
+            const r = Math.round(rnd(9, 26));
+            return {
+                x: Math.random() * w, y: Math.random() * h, r,
+                ang: rnd(-0.30, 0.30),        // rumbo propio, siempre hacia la derecha
+                spdMul: rnd(0.7, 1.45),       // unas van mas lanzadas que otras
+                wobA: rnd(0.10, 0.45),        // amplitud de la ondulacion (rad)
+                wobF: rnd(0.25, 0.75),        // y su frecuencia
+                wobP: Math.random() * Math.PI * 2,
+                dir: 0,
+                top: '#ffffff', bot: pick(PILL_COLORS),
+            };
         }
-        // Reaparece por el borde de ENTRADA (el opuesto a donde apunta NPC_DIR),
-        // a una altura al azar, para que el desfile no se agote.
+        // Reaparece por la izquierda, a una altura al azar, con otro tamaño y
+        // color: el desfile no se agota aunque te las comas.
         function npcRespawn(n, w, h) {
-            const m = n.r * (1 + PILL_RATIO);
-            n.x = -m; n.y = rnd(-h * 0.15, h * 1.15);
-            n.r = Math.round(rnd(9, 26));
-            n.bot = pick(PILL_COLORS);
+            const nuevo = newNpc(w, h);
+            Object.assign(n, nuevo);
+            n.x = -n.r * (1 + PILL_RATIO);
+            n.y = rnd(-h * 0.1, h * 1.1);
         }
-        // Velocidad segun tamaño, como en el juego: cuanto mas gorda, mas lenta.
-        // Las NPC pasean; la del jugador va bastante mas rapida (si no, cruzar el
-        // cuadro se hacia eterno).
-        const npcSpeed = r => 55 * Math.pow(11 / r, 0.42);
-        const playerSpeed = r => 130 * Math.pow(13 / r, 0.36);
 
         // Rects (en coords logicas del canvas) de la UI del hero + la franja de
         // navbar/ticker. Comida y virus estan QUIETOS, asi que uno que caiga
         // encima del titulo o del cartel se queda ahi molestando: se colocan
-        // fuera de estas zonas. Las pills NPC si pasan por encima (se mueven).
-        function heroUiRects() {
+        // fuera de estas zonas. `evitar` es el subconjunto que ademas esquivan
+        // las pills al pasar (titulo y PLAY NOW).
+        const UI_SELS = ['#heroTitle', '#heroPlayNow', '#heroPickMe', '#heroCaSign', '#heroCaWrap'];
+        const UI_EVITAR = ['#heroTitle', '#heroPlayNow'];
+        function logicRect(el) {
             const rc = cv.getBoundingClientRect();
-            if (!rc.width || !rc.height) return [];
+            if (!rc.width || !rc.height) return null;
+            const b = el.getBoundingClientRect();
+            if (b.width <= 0 || b.height <= 0) return null;
             const sx = cv.width / rc.width, sy = cv.height / rc.height;
-            const out = [{ x: 0, y: 0, w: cv.width, h: 120 * sy }];   // navbar + ticker
-            for (const sel of ['#heroTitle', '#heroPlayNow', '#heroPickMe', '#heroCaSign', '#heroCaWrap']) {
+            return { x: (b.left - rc.left) * sx, y: (b.top - rc.top) * sy, w: b.width * sx, h: b.height * sy };
+        }
+        function heroUiRects(sels, conBarra) {
+            const out = [];
+            const rc = cv.getBoundingClientRect();
+            if (conBarra && rc.height) out.push({ x: 0, y: 0, w: cv.width, h: 120 * (cv.height / rc.height) });
+            for (const sel of sels) {
                 const el = document.querySelector(sel); if (!el) continue;
-                const b = el.getBoundingClientRect();
-                if (b.width <= 0 || b.height <= 0) continue;
-                out.push({ x: (b.left - rc.left) * sx, y: (b.top - rc.top) * sy, w: b.width * sx, h: b.height * sy });
+                if (sel === '#heroTitle' && scene.tituloComido) continue;
+                const r = logicRect(el); if (r) out.push(r);
             }
             return out;
         }
@@ -2222,31 +2239,79 @@ function toggleTrailerMode() {
 
         function buildScene(w, h) {
             scene.food.length = 0; scene.virus.length = 0; scene.npcs.length = 0;
-            const zonas = scene.zonas = heroUiRects();
+            const zonas = scene.zonas = heroUiRects(UI_SELS, true);
+            scene.evitar = fundeRects(heroUiRects(UI_EVITAR, false), 40);
             for (let i = 0; i < N_FOOD; i++) scene.food.push(placeFree(() => newFood(w, h), zonas, 40));
             // Virus repartidos, sin solaparse entre ellos y fuera de la UI. Si
             // para alguno no hay hueco, se queda sin poner: un virus de menos no
             // se nota, uno encima del PLAY NOW si.
-            for (let i = 0; i < N_VIRUS; i++) {
-                for (let t = 0; t < 300; t++) {
-                    const v = { x: rnd(VIRUS_R, w - VIRUS_R), y: rnd(VIRUS_R, h - VIRUS_R), seed: (Math.random() * 1000) | 0 };
-                    if (covered(v.x, v.y, VIRUS_R * 1.4, zonas)) continue;
-                    if (!scene.virus.every(o => Math.hypot(o.x - v.x, o.y - v.y) > VIRUS_R * 3)) continue;
-                    scene.virus.push(v); break;
-                }
-            }
+            for (let i = 0; i < N_VIRUS; i++) spawnVirus(w, h);
             for (let i = 0; i < N_NPC; i++) scene.npcs.push(newNpc(w, h));
+        }
+        function spawnVirus(w, h) {
+            for (let t = 0; t < 300; t++) {
+                const v = { x: rnd(VIRUS_R, w - VIRUS_R), y: rnd(VIRUS_R, h - VIRUS_R), seed: (Math.random() * 1000) | 0 };
+                if (covered(v.x, v.y, VIRUS_R * 1.4, scene.zonas || [])) continue;
+                if (!scene.virus.every(o => Math.hypot(o.x - v.x, o.y - v.y) > VIRUS_R * 3)) continue;
+                scene.virus.push(v); return v;
+            }
+            return null;
         }
 
         function stepScene(w, h, dt) {
-            const dx = Math.cos(NPC_DIR), dy = Math.sin(NPC_DIR);
+            scene.t = (scene.t || 0) + dt;
             for (const n of scene.npcs) {
-                const sp = npcSpeed(n.r);
-                n.x += dx * sp * dt; n.y += dy * sp * dt;
+                // Rumbo = su angulo + su ondulacion + la esquiva de la UI.
+                let dir = n.ang + Math.sin(scene.t * n.wobF + n.wobP) * n.wobA;
+                dir += esquiva(n);
+                n.dir = dir;
+                const sp = npcSpeed(n.r) * n.spdMul;
+                n.x += Math.cos(dir) * sp * dt; n.y += Math.sin(dir) * sp * dt;
                 const m = n.r * (1 + PILL_RATIO);
-                if (n.x > w + m || n.y < -h * 0.3 || n.y > h * 1.3) npcRespawn(n, w, h);
+                if (n.x > w + m || n.y < -h * 0.35 || n.y > h * 1.35) npcRespawn(n, w, h);
             }
             HeroPlay.step(w, h, dt);
+        }
+        // Desvio vertical para no cruzar por encima del titulo ni del PLAY NOW:
+        // mira bastante por delante y se aparta hacia el borde mas cercano, con
+        // mas fuerza cuanto mas cerca esta. Devuelve el incremento de angulo.
+        function esquiva(n) {
+            const rects = scene.evitar; if (!rects || !rects.length) return 0;
+            const mV = n.r * 1.2 + 22;             // margen vertical
+            const mira = n.r + 210;                // cuanto mira por delante
+            let giro = 0;
+            for (const b of rects) {
+                const arriba = b.y - mV, abajo = b.y + b.h + mV;
+                if (n.y < arriba || n.y > abajo) continue;   // pasa por fuera
+                if (n.x - n.r > b.x + b.w) continue;         // ya la dejo atras
+                const falta = b.x - (n.x + n.r);
+                if (falta > mira) continue;                  // aun lejos
+                const urgencia = falta <= 0 ? 1 : 1 - falta / mira;
+                const porArriba = (n.y - arriba) < (abajo - n.y);
+                giro += (porArriba ? -1 : 1) * (0.55 + 0.75 * urgencia);
+            }
+            return Math.max(-1.25, Math.min(1.25, giro));
+        }
+        // Zonas que se tocan se funden en una sola: si no, una pill metida entre
+        // el titulo y el PLAY NOW recibe "sube" de una y "baja" de la otra, se
+        // anulan y acaba cruzando por en medio.
+        function fundeRects(rects, margen) {
+            const out = rects.map(r => ({ ...r }));
+            for (let cambio = true; cambio;) {
+                cambio = false;
+                for (let i = 0; i < out.length && !cambio; i++)
+                    for (let k = i + 1; k < out.length && !cambio; k++) {
+                        const a = out[i], b = out[k];
+                        if (a.x + a.w + margen < b.x || b.x + b.w + margen < a.x) continue;
+                        if (a.y + a.h + margen < b.y || b.y + b.h + margen < a.y) continue;
+                        const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+                        a.w = Math.max(a.x + a.w, b.x + b.w) - x;
+                        a.h = Math.max(a.y + a.h, b.y + b.h) - y;
+                        a.x = x; a.y = y;
+                        out.splice(k, 1); cambio = true;
+                    }
+            }
+            return out;
         }
 
         function drawPill(g, x, y, r, rot, top, bot) {
@@ -2271,29 +2336,47 @@ function toggleTrailerMode() {
                 g.drawImage(spr, -VIRUS_R, -VIRUS_R, VIRUS_R * 2, VIRUS_R * 2); g.restore();
             }
             // Las pills van tumbadas hacia donde avanzan (el sprite apunta a -Y).
-            for (const n of scene.npcs) drawPill(g, n.x, n.y, n.r, NPC_DIR + Math.PI / 2, n.top, n.bot);
+            for (const n of scene.npcs) drawPill(g, n.x, n.y, n.r, n.dir + Math.PI / 2, n.top, n.bot);
             HeroPlay.draw(g);
         }
 
         // ===== PILL JUGABLE ("PICK ME!") =====
-        // Al clicar la pildora del hero tomas el control de una dentro del
-        // cuadro: raton para moverte, comes comida (creces), los virus te parten
-        // si eres mayor que ellos y ESPACIO hace split, como en el juego. Las
-        // pills NPC no interactuan contigo, solo pasan.
+        // Mecanicas portadas de shared/sim.js (velocidad, split, merge, virus)
+        // con las MISMAS formulas; solo cambian los umbrales de tamaño, porque
+        // el cuadro del hero es mucho mas pequeño que el mapa de una partida.
+        const G = {
+            VELOC_BASE: 1.4, TICK: 40,          // el juego simula a 40 Hz
+            SPLIT_FORCE: 65, SPLIT_CD: 1000, MAX_CELLS: 16,
+            BASE_MERGE_TIME: 15000, MERGE_MASS_FACTOR: 0.225,
+        };
+        // px/tick -> logicos/s, igual que en partida: 10 * VELOC_BASE * r^-0.46,
+        // con el radio efectivo del GRUPO (todas las celdas van al mismo paso).
+        const playerSpeed = rEff => G.VELOC_BASE * 10 * Math.pow(Math.max(rEff, 20), -0.46) * G.TICK;
+        const massOf = r => Math.PI * r * (r * PILL_RATIO);
+        const mergeTime = r => G.BASE_MERGE_TIME + massOf(r) * G.MERGE_MASS_FACTOR;
+
         const HeroPlay = {
             cells: null, top: '#ffffff', bot: '#00ffaa',
-            mx: 0, my: 0, w: 0, h: 0,
-            // MAX_R: tope de tamaño; sin el, en un rato la pill se come el cuadro.
-            START_R: 13, MAX_R: 52, MAX_CELLS: 8, MERGE_MS: 9000, SPLIT_CD: 320, lastSplit: 0,
+            mx: 0, my: 0, w: 0, h: 0, lastSplit: 0,
+            // Escala del hero: se empieza mas gordo y se parte antes que en
+            // partida (r>=35 sobre 10 iniciales no da juego en este cuadro).
+            START_R: 16, SPLIT_MIN_R: 30, MAX_R: 75,
             get active() { return !!this.cells; },
+            newCell(x, y, r, now) { return { x, y, r, boostX: 0, boostY: 0, born: now }; },
             start(x, y) {
-                this.cells = [{ x, y, r: this.START_R, vx: 0, vy: 0, merge: 0 }];
+                const now = performance.now();
+                this.cells = [this.newCell(x, y, this.START_R, now)];
                 this.mx = x; this.my = y;
                 document.getElementById('heroPickMe').classList.add('playing');
             },
             stop() {
                 this.cells = null;
                 document.getElementById('heroPickMe').classList.remove('playing');
+                if (scene.tituloComido) {   // el titulo vuelve al salir
+                    scene.tituloComido = false;
+                    document.getElementById('heroTitle').classList.remove('eaten');
+                    rebuildScene();
+                }
             },
             // Raton en coordenadas logicas del canvas.
             aim(clientX, clientY) {
@@ -2301,77 +2384,112 @@ function toggleTrailerMode() {
                 this.mx = (clientX - r.left) * (cv.width / r.width);
                 this.my = (clientY - r.top) * (cv.height / r.height);
             },
+            // Igual que performSplit del juego: mitad de area, la nueva nace a
+            // dos radios en la direccion del raton y sale con un empujon que se
+            // frena al 0.9 por tick.
+            performSplit(c, ang, now) {
+                const nr = c.r / 1.414;
+                c.r = nr; c.born = now;
+                const s = this.newCell(c.x + Math.cos(ang) * nr * 2, c.y + Math.sin(ang) * nr * 2, nr, now);
+                s.boostX = Math.cos(ang) * G.SPLIT_FORCE * G.TICK;
+                s.boostY = Math.sin(ang) * G.SPLIT_FORCE * G.TICK;
+                this.cells.push(s);
+            },
             split() {
                 const now = performance.now();
-                if (!this.cells || now - this.lastSplit < this.SPLIT_CD) return;
-                this.lastSplit = now;
-                const nuevas = [];
-                for (const c of this.cells) {
-                    if (this.cells.length + nuevas.length >= this.MAX_CELLS || c.r < 9) continue;
-                    const nr = c.r / Math.SQRT2;   // area a la mitad
-                    c.r = nr; c.merge = now + this.MERGE_MS;
-                    const a = Math.atan2(this.my - c.y, this.mx - c.x);
-                    nuevas.push({ x: c.x, y: c.y, r: nr, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, merge: now + this.MERGE_MS });
+                if (!this.cells || now - this.lastSplit < G.SPLIT_CD) return;
+                let hecho = false;
+                for (let i = this.cells.length - 1; i >= 0; i--) {
+                    const c = this.cells[i];
+                    if (c.r < this.SPLIT_MIN_R || this.cells.length >= G.MAX_CELLS) continue;
+                    this.performSplit(c, Math.atan2(this.my - c.y, this.mx - c.x), now);
+                    hecho = true;
                 }
-                this.cells.push(...nuevas);
+                if (hecho) this.lastSplit = now;
             },
+            // Split en direcciones al azar, como triggerRandomSplit (virus).
+            randomSplit(now) {
+                const n = this.cells.length;
+                for (let i = 0; i < n; i++) {
+                    const c = this.cells[i];
+                    if (c.r < this.SPLIT_MIN_R || this.cells.length >= G.MAX_CELLS) continue;
+                    this.performSplit(c, Math.random() * Math.PI * 2, now);
+                }
+            },
+            grow(c, masaExtra) { c.r = Math.min(this.MAX_R, Math.sqrt((massOf(c.r) + masaExtra) / (Math.PI * PILL_RATIO))); },
             step(w, h, dt) {
                 this.w = w; this.h = h;
                 if (!this.cells) return;
                 const now = performance.now();
+                const grupoR = Math.max(...this.cells.map(c => c.r));
+                const sp = playerSpeed(grupoR);
+                const frena = Math.pow(0.9, dt * G.TICK);   // decaimiento del empujon del split
                 for (const c of this.cells) {
                     const dx = this.mx - c.x, dy = this.my - c.y, d = Math.hypot(dx, dy);
-                    if (d > 1) {
-                        const sp = playerSpeed(c.r) * Math.min(1, d / 40);
-                        c.x += dx / d * sp * dt; c.y += dy / d * sp * dt;
+                    let vx = 0, vy = 0;
+                    if (d > 5) {
+                        vx = dx / d * sp; vy = dy / d * sp;
+                        if (d < 40) { const b = d / 40; vx *= b; vy *= b; }   // "aparca" sin vibrar
                     }
-                    // Impulso del split, que se va frenando.
-                    c.x += c.vx * dt; c.y += c.vy * dt;
-                    c.vx *= Math.pow(0.02, dt); c.vy *= Math.pow(0.02, dt);
+                    c.x += (vx + c.boostX) * dt; c.y += (vy + c.boostY) * dt;
+                    c.boostX *= frena; c.boostY *= frena;
+                    if (Math.abs(c.boostX) < 1) c.boostX = 0;
+                    if (Math.abs(c.boostY) < 1) c.boostY = 0;
                     c.x = Math.max(c.r, Math.min(w - c.r, c.x));
                     c.y = Math.max(c.r, Math.min(h - c.r, c.y));
                     // Comer: la comida se repone en otro sitio, siempre hay de sobra.
                     for (const f of scene.food) {
                         if (Math.hypot(f.x - c.x, f.y - c.y) > c.r) continue;
-                        c.r = Math.min(this.MAX_R, Math.sqrt(c.r * c.r + f.r * f.r * 2.2));
+                        this.grow(c, massOf(f.r) * 2.2);
                         Object.assign(f, placeFree(() => newFood(w, h), scene.zonas || [], 30));
                     }
                 }
                 // Pills del desfile: te las puedes comer si eres bastante mayor
-                // que ellas (ellas nunca te comen a ti). La que cae vuelve a
-                // entrar por el lado de siempre.
+                // que ellas (ellas nunca te comen a ti).
                 for (const n of scene.npcs) {
                     for (const c of this.cells) {
                         if (c.r < n.r * 1.15) continue;
                         if (Math.hypot(n.x - c.x, n.y - c.y) > c.r) continue;
-                        c.r = Math.min(this.MAX_R, Math.sqrt(c.r * c.r + n.r * n.r));
+                        this.grow(c, massOf(n.r));
                         npcRespawn(n, w, h);
                         break;
                     }
                 }
-                // Virus: si eres mayor que el, te parte en varias celdas.
-                for (const v of scene.virus) {
-                    for (const c of this.cells) {
-                        if (c.r <= VIRUS_R * 0.62) continue;
-                        if (Math.hypot(v.x - c.x, v.y - c.y) > c.r + VIRUS_R * 0.4) continue;
-                        const trozos = Math.min(4, this.MAX_CELLS - this.cells.length + 1);
-                        if (trozos < 2) continue;
-                        const nr = c.r / Math.sqrt(trozos);
-                        c.r = nr; c.merge = now + this.MERGE_MS;
-                        for (let i = 1; i < trozos; i++) {
-                            const a = Math.random() * Math.PI * 2;
-                            this.cells.push({ x: c.x, y: c.y, r: nr, vx: Math.cos(a) * 230, vy: Math.sin(a) * 230, merge: now + this.MERGE_MS });
-                        }
+                // El TITULO tambien se come, si la pill es 1.5 veces mas alta
+                // que el. Desaparece hasta que sueltas el control (stop()).
+                if (!scene.tituloComido) {
+                    const el = document.getElementById('heroTitle');
+                    const rt = el && el.offsetParent ? logicRect(el) : null;
+                    if (rt) for (const c of this.cells) {
+                        if (c.r * 2 * PILL_RATIO < rt.h * 1.5) continue;
+                        if (c.x + c.r < rt.x || c.x - c.r > rt.x + rt.w || c.y + c.r < rt.y || c.y - c.r > rt.y + rt.h) continue;
+                        scene.tituloComido = true;
+                        el.classList.add('eaten');
+                        this.grow(c, massOf(rt.h / 2));
+                        rebuildScene();       // sin titulo hay hueco nuevo para la deco
+                        break;
                     }
                 }
-                // Separacion entre celdas propias; ya fusionables -> se juntan.
+                // Virus: te parte en varias, el virus desaparece y sale otro en
+                // otro sitio (igual que handleVirusCollision).
+                for (let i = scene.virus.length - 1; i >= 0; i--) {
+                    const v = scene.virus[i];
+                    const c = this.cells.find(c => c.r > VIRUS_R * 0.62 && Math.hypot(v.x - c.x, v.y - c.y) < c.r + VIRUS_R * 0.4);
+                    if (!c) continue;
+                    scene.virus.splice(i, 1);
+                    this.randomSplit(now);
+                    spawnVirus(w, h);
+                }
+                // Entre celdas propias: se apartan, y si las dos ya pueden
+                // fusionarse se juntan sumando masa (como resolveCellCollision).
                 for (let i = 0; i < this.cells.length; i++) for (let k = i + 1; k < this.cells.length; k++) {
                     const a = this.cells[i], b = this.cells[k];
                     let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
                     const min = a.r + b.r;
                     if (d >= min) continue;
-                    if (now > a.merge && now > b.merge) {
-                        a.r = Math.sqrt(a.r * a.r + b.r * b.r); this.cells.splice(k, 1); k--; continue;
+                    if (now - a.born > mergeTime(a.r) && now - b.born > mergeTime(b.r)) {
+                        a.r = Math.min(this.MAX_R, Math.sqrt((massOf(a.r) + massOf(b.r)) / (Math.PI * PILL_RATIO)));
+                        this.cells.splice(k, 1); k--; continue;
                     }
                     const push = (min - d) / 2;
                     a.x -= dx / d * push; a.y -= dy / d * push;
@@ -2380,14 +2498,12 @@ function toggleTrailerMode() {
             },
             draw(g) {
                 if (!this.cells) return;
-                for (const c of this.cells) {
-                    const rot = -Math.PI / 4;   // tumbada 45º como en partida
-                    drawPill(g, c.x, c.y, c.r, rot, this.top, this.bot);
-                }
+                for (const c of this.cells) drawPill(g, c.x, c.y, c.r, -Math.PI / 4, this.top, this.bot);
             },
         };
 
-        window.HeroPlay = HeroPlay;   // para poder trastear/depurar desde consola
+        // Enganche para trastear/depurar la escena desde la consola.
+        window.Hero = { play: HeroPlay, scene, step: stepScene, paint: (t) => paintHero(t || performance.now()) };
 
         const cv = document.getElementById('heroDecoCv');
         const host = document.getElementById('hero');
@@ -2504,6 +2620,9 @@ function toggleTrailerMode() {
                 document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
             },
             exit() {
+                // Guarda para todos AL SALIR: la barra desaparece con DONE, asi
+                // que pulsar SAVE FOR ALL despues era imposible.
+                this.saveGlobal(null);
                 editing = false; drag = null;
                 document.body.classList.remove('layout-editing');
                 document.querySelectorAll('.hero-editable').forEach(el => el.classList.remove('hero-editable'));
