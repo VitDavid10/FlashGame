@@ -1891,7 +1891,10 @@
     let enableEnemySnd = true;
 
     const SoundManager = {
-        muted: false, musicMuted: false,
+        // La musica del MENU y la de PARTIDA se silencian por separado: mutear
+        // el menu no te deja la partida muda (ni al reves). El boton #musicToggle
+        // actua sobre la que suene en ese contexto (activeMusic).
+        muted: false, musicMuted: false, menuMusicMuted: false, activeMusic: 'menu',
         lastCdTime: 0, lastKillTime: 0, lastSplitTime: 0, lastSimpleHoverTime: 0, lastFloatKillTime: 0,
         // CORREGIDO: Rutas a sonidos con ../
         sounds: { 
@@ -1910,9 +1913,16 @@
         init: function() {
             if(localStorage.getItem('pillwars_muted') === 'true') { this.muted = true; document.getElementById('soundToggle').classList.add('muted'); }
             this.music.loop = true; this.menuMusic.loop = true; this.applyMusicVolume();
-            if(localStorage.getItem('pillwars_music_muted') === 'true') { this.musicMuted = true; this.music.muted = true; this.menuMusic.muted = true; document.getElementById('musicToggle').classList.add('muted'); }
-            else { document.getElementById('musicToggle').classList.remove('muted'); }
+            this.musicMuted = localStorage.getItem('pillwars_music_muted') === 'true';
+            this.menuMusicMuted = localStorage.getItem('pillwars_menu_music_muted') === 'true';
+            this.music.muted = this.musicMuted; this.menuMusic.muted = this.menuMusicMuted;
+            this.syncMusicBtn();
             for(let key in this.sounds) { this.sounds[key].load(); } this.music.load(); this.menuMusic.load();
+        },
+        // El icono del boton refleja el mute de la musica que toca ahora mismo.
+        syncMusicBtn: function() {
+            const btn = document.getElementById('musicToggle'); if (!btn) return;
+            btn.classList.toggle('muted', this.activeMusic === 'game' ? this.musicMuted : this.menuMusicMuted);
         },
         toggleSFX: function() { 
             this.muted = !this.muted; const btn = document.getElementById('soundToggle'); 
@@ -1920,11 +1930,16 @@
             else { btn.classList.remove('muted'); localStorage.setItem('pillwars_muted', 'false'); } 
         },
         toggleMusic: function() {
-            this.musicMuted = !this.musicMuted; this.music.muted = this.musicMuted; this.menuMusic.muted = this.musicMuted; const btn = document.getElementById('musicToggle');
-            if (this.musicMuted) { btn.classList.add('muted'); localStorage.setItem('pillwars_music_muted', 'true'); }
-            else { btn.classList.remove('muted'); localStorage.setItem('pillwars_music_muted', 'false'); }
-            if (!this.musicMuted && gameRunning && !isSpectating && !this.startTimer) { this.music.play().catch(e=>{}); }
-            if (!this.musicMuted && !gameRunning) { this.menuMusic.play().catch(e=>{}); }
+            if (this.activeMusic === 'game') {
+                this.musicMuted = !this.musicMuted; this.music.muted = this.musicMuted;
+                localStorage.setItem('pillwars_music_muted', this.musicMuted ? 'true' : 'false');
+                if (!this.musicMuted && gameRunning && !isSpectating && !this.startTimer) { this.music.play().catch(e=>{}); }
+            } else {
+                this.menuMusicMuted = !this.menuMusicMuted; this.menuMusic.muted = this.menuMusicMuted;
+                localStorage.setItem('pillwars_menu_music_muted', this.menuMusicMuted ? 'true' : 'false');
+                if (!this.menuMusicMuted) { this.menuMusic.play().catch(e=>{}); }
+            }
+            this.syncMusicBtn();
         },
         setVolume: function(val) { const v = parseFloat(val); this.music.volume = v; this.menuMusic.volume = Math.min(1, v * 1.875); },
         // Recalcula el volumen de la música aplicando el master del servidor.
@@ -1954,10 +1969,10 @@
         playKill: function() { const now = Date.now(); if (now - this.lastKillTime < 150) return; this.lastKillTime = now; const snd = Math.random() < 0.5 ? 'kill1' : 'kill2'; this.play(snd); },
         playFloatKill: function() { const now = Date.now(); if (now - this.lastFloatKillTime < 200) return; this.lastFloatKillTime = now; this.play('floatkill'); },
         playSplit: function() { const now = Date.now(); if (now - this.lastSplitTime < 150) return; this.lastSplitTime = now; this.play('split'); },
-        playMusic: function() { if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
+        playMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
         stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; },
-        playMenuMusic: function(delayMs) { if(this.musicMuted) return; this.stopMusic(); clearTimeout(this._menuMusicTimer); const d = (typeof delayMs === 'number') ? delayMs : 0; this._menuMusicTimer = setTimeout(() => { if(!this.musicMuted) this.menuMusic.play().catch(e=>{}); }, d); },
-        stopMenuMusic: function() { clearTimeout(this._menuMusicTimer); this.menuMusic.pause(); this.menuMusic.currentTime = 0; }
+        playMenuMusic: function(delayMs) { this.activeMusic = 'menu'; this.syncMusicBtn(); if(this.menuMusicMuted) return; this.stopMusic(); clearTimeout(this._menuMusicTimer); const d = (typeof delayMs === 'number') ? delayMs : 0; this._menuMusicTimer = setTimeout(() => { if(!this.menuMusicMuted) this.menuMusic.play().catch(e=>{}); }, d); },
+        stopMenuMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); clearTimeout(this._menuMusicTimer); this.menuMusic.pause(); this.menuMusic.currentTime = 0; }
     };
 
     function enableAudioContext() { document.removeEventListener('click', enableAudioContext); document.removeEventListener('keydown', enableAudioContext); document.removeEventListener('touchstart', enableAudioContext); }
@@ -5379,6 +5394,11 @@
     function hideSpectatorBar() { onlineSpectator = false; }
     function showResultsUI() {
         hideSpectatorBar();
+        // Si moriste con el modal gris de salir abierto (o con el cashout en
+        // marcha), se cierra solo: manda el cartel de resultado.
+        document.getElementById('exitModal').style.display = 'none';
+        if (logoutTimer) { clearInterval(logoutTimer); logoutTimer = null; }
+        isLoggingOut = false;
         document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none';
         document.getElementById('exitGameBtn').style.display = 'none';
         const isPaid = currentServer && currentServer !== 'Free';

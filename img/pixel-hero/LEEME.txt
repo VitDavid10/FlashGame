@@ -26,8 +26,10 @@ Archivos:
                    Deteccion de carga por JS (new Image().onload agrega
                    .has-play-img al body), porque un background-image no
                    tiene onerror en CSS.
-  hero-title.png -> sustituye .big-title + .big-subtitle juntos (un solo
-                    <img>, fallback con onerror -> clase .no-img).
+  hero-title.png -> solo la palabra PILLWARS (sustituye .big-title; fallback
+                    con onerror -> clase .no-img). THE CRYPTO ARENA ya NO va
+                    horneado: es .hero-sub, texto con la misma fuente/neon que
+                    el rotulo PICK ME.
   brand.png      -> sustituye el <span class="brand-name"> de la navbar
                      (mismo patron onerror -> .no-img).
 
@@ -45,6 +47,17 @@ fondo. Sin eso, en el PLAY NOW (fondo blanco Y letras blancas) las letras se
 volvian transparentes y el boton se veia con el texto negro. Lo mismo sirve
 para los carteles verdes: su interior es tan oscuro como el fondo de fuera,
 y asi solo se vacia lo de fuera del marco.
+
+hero-title.png + brand.png v3 (jul-2026): los DOS salen del mismo original,
+raw/PILLWARS-v3.jpg (PILLWARS blanco con glow sobre MAGENTA solido). Aqui el
+key es cromatico, no por luminancia: el fondo se detecta con "tiene tinte
+magenta" (r-g>20 y b-g>12), que pilla el halo del glow pero no las letras
+blancas ni su sombra gris 3D. Por eso NO hace falta flood fill — y ademas asi
+se vacian tambien los huecos cerrados de la P, la A y la R. El alpha sale de
+cuanto blanco lleva mezclado el pixel ((g - g_fondo)/(255 - g_fondo)) y el
+color se des-premultiplica ((pix - (1-a)*fondo)/a), asi el glow queda blanco
+de verdad sobre el negro del hero en vez de un halo rosa. Alturas: 400px
+hero-title, 200px brand.
 
 hero-title.png v2 (jul-2026): regenerado desde raw/HERO-TITLE-v2.jpg (fondo
 NEGRO con cuadricula tenue, no blanco). La cuadricula llega a distancia ~45

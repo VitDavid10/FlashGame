@@ -180,7 +180,14 @@
         #heroPickMe:hover .pick-me-pill { filter: brightness(1.25); }
         /* Titulo devorado por la pill jugable: se va, pero sigue ocupando su
            hueco para que no salte el resto del hero. Vuelve al soltar el control. */
-        .hero-img.eaten { opacity: 0; transition: opacity .25s; pointer-events: none; }
+        .hero-title-wrap.eaten { opacity: 0; transition: opacity .25s; pointer-events: none; }
+        /* THE CRYPTO ARENA bajo el PILLWARS pixel: misma fuente y mismo neon
+           que el rotulo PICK ME (sin el parpadeo). */
+        .hero-sub {
+            display: none; font-family: 'Press Start 2P', monospace; font-size: 15px;
+            letter-spacing: 6px; color: #aaffdd; margin-top: 14px; white-space: nowrap;
+            text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
+        }
         .hero-ca-sign { display: block; margin: 34px auto 0; height: 52px; width: auto; image-rendering: pixelated; }
         /* Cartel de copiar: la imagen manda el tamaño y el texto del contrato va
            encima, dentro del marco y a la izquierda del COPY que ya trae el arte. */
@@ -646,6 +653,7 @@ body.trailer-open #page-content{
             
             .big-title { font-size: 48px; }
             .big-subtitle { font-size: 16px; letter-spacing: 4px; }
+            .hero-sub { font-size: 9px; letter-spacing: 3px; margin-top: 10px; }
             
             .main-layout { flex-direction: column; margin-top: 80px; } /* Menos margen top */
             .trailer-box { aspect-ratio: 16/9; width: 100%; }
@@ -681,7 +689,8 @@ body.trailer-open #page-content{
            (onerror del img añade .no-img al contenedor — mismo mecanismo que los
            titulos ARCADE/CLASSIC del juego). ===== */
         .hero-img, .bn-img { display: none; image-rendering: pixelated; }
-        body.pixel-pack .hero-main-content:not(.no-img) .hero-img { display: inline-block; height: 150px; width: auto; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.1) contrast(1.35) saturate(0.85); }
+        body.pixel-pack .hero-main-content:not(.no-img) .hero-img { display: inline-block; height: 120px; width: auto; filter: drop-shadow(0 0 16px rgba(0,255,136,0.6)) drop-shadow(0 0 38px rgba(0,255,136,0.35)) drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.08); }
+        body.pixel-pack .hero-main-content:not(.no-img) .hero-sub { display: block; }
         body.pixel-pack .hero-main-content:not(.no-img) .hero-txt { display: none; }
         body.pixel-pack .brand-name:not(.no-img) .bn-img { display: inline-block; height: 44px; width: auto; vertical-align: middle; }
         body.pixel-pack .brand-name:not(.no-img) .bn-txt { display: none; }
@@ -893,7 +902,12 @@ body.trailer-open #page-content{
                 <h1 class="big-title">PILLWARS</h1>
                 <div class="big-subtitle">THE CRYPTO ARENA</div>
             </div>
-            <img class="hero-img" id="heroTitle" src="img/pixel-hero/hero-title.png" alt="PillWars — The Crypto Arena" onerror="this.closest('.hero-main-content').classList.add('no-img')">
+            <!-- Titulo pixel: el PNG solo trae PILLWARS; THE CRYPTO ARENA va
+                 debajo como texto, con la misma fuente/neon que el PICK ME. -->
+            <div id="heroTitleWrap" class="hero-title-wrap">
+                <img class="hero-img" id="heroTitle" src="img/pixel-hero/hero-title.png" alt="PillWars" onerror="this.closest('.hero-main-content').classList.add('no-img')">
+                <div class="hero-sub">THE CRYPTO ARENA</div>
+            </div>
             <div class="hero-play-row">
                 <!-- Pildora jugable: al clicarla tomas el control de una pill
                      dentro del hero (ver HeroPlay en el script del final). -->
@@ -2209,8 +2223,8 @@ function toggleTrailerMode() {
         // encima del titulo o del cartel se queda ahi molestando: se colocan
         // fuera de estas zonas. `evitar` es el subconjunto que ademas esquivan
         // las pills al pasar (titulo y PLAY NOW).
-        const UI_SELS = ['#heroTitle', '#heroPlayNow', '#heroPickMe', '#heroCaSign', '#heroCaWrap'];
-        const UI_EVITAR = ['#heroTitle', '#heroPlayNow'];
+        const UI_SELS = ['#heroTitleWrap', '#heroPlayNow', '#heroPickMe', '#heroCaSign', '#heroCaWrap'];
+        const UI_EVITAR = ['#heroTitleWrap', '#heroPlayNow'];
         function logicRect(el) {
             const rc = cv.getBoundingClientRect();
             if (!rc.width || !rc.height) return null;
@@ -2225,7 +2239,7 @@ function toggleTrailerMode() {
             if (conBarra && rc.height) out.push({ x: 0, y: 0, w: cv.width, h: 120 * (cv.height / rc.height) });
             for (const sel of sels) {
                 const el = document.querySelector(sel); if (!el) continue;
-                if (sel === '#heroTitle' && scene.tituloComido) continue;
+                if (sel === '#heroTitleWrap' && scene.tituloComido) continue;
                 const r = logicRect(el); if (r) out.push(r);
             }
             return out;
@@ -2374,7 +2388,7 @@ function toggleTrailerMode() {
                 document.getElementById('heroPickMe').classList.remove('playing');
                 if (scene.tituloComido) {   // el titulo vuelve al salir
                     scene.tituloComido = false;
-                    document.getElementById('heroTitle').classList.remove('eaten');
+                    document.getElementById('heroTitleWrap').classList.remove('eaten');
                     rebuildScene();
                 }
             },
@@ -2464,7 +2478,7 @@ function toggleTrailerMode() {
                         if (c.r * 2 * PILL_RATIO < rt.h * 1.5) continue;
                         if (c.x + c.r < rt.x || c.x - c.r > rt.x + rt.w || c.y + c.r < rt.y || c.y - c.r > rt.y + rt.h) continue;
                         scene.tituloComido = true;
-                        el.classList.add('eaten');
+                        el.closest('.hero-title-wrap').classList.add('eaten');
                         this.grow(c, massOf(rt.h / 2));
                         rebuildScene();       // sin titulo hay hueco nuevo para la deco
                         break;
@@ -2590,7 +2604,7 @@ function toggleTrailerMode() {
         // barra, este bloque y el endpoint cuando el diseño quede fijado.
         const LAYOUT_KEY = 'pw_landing_layout';
         const LAYOUT_ELS = {
-            title: '#heroTitle', play: '#heroPlayNow', pickMe: '#heroPickMe',
+            title: '#heroTitleWrap', play: '#heroPlayNow', pickMe: '#heroPickMe',
             caSign: '#heroCaSign', ca: '#heroCaWrap',
         };
         let layout = {};
