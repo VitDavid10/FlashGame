@@ -65,6 +65,10 @@ function createGameHost(deps) {
                 tickCount: 0, lastTick: Date.now(), emptySince: 0,
                 endsAt: null, restartAt: null, startAt: null,
                 pendingRemovals: new Map(),
+                // Jugadores desconectados en ventana de rejoin: su estado ECONÓMICO
+                // (carry, entrada, wallet…) queda aquí congelado mientras su célula
+                // sigue viva en la sim. Ver parkPlayer/settleParked.
+                parked: new Map(),
                 deadRemovals: new Map(),
                 spectators: new Set(),
                 persistent: true,
@@ -164,6 +168,14 @@ function createGameHost(deps) {
             }
             return;
         }
+        if (msg.t === 'leave') {
+            // El jugador pulsó EXIT: marca la salida como VOLUNTARIA para que el 'close'
+            // que viene detrás liquide al instante en vez de aparcar el dinero 30s
+            // esperando un rejoin que no va a llegar.
+            const cli = room.clients.get(playerId);
+            if (cli) cli._leaving = true;
+            return;
+        }
         if (msg.t === 'input') {
             const input = (typeof msg.tx === 'number' && typeof msg.ty === 'number') ? { tx: msg.tx, ty: msg.ty } : null;
             room.sim.setInput(playerId, input);
@@ -207,6 +219,54 @@ function createGameHost(deps) {
         return sala;
     }
 
+    // ===================================================================
+    // Aparcado económico de los desconectados (ventana de rejoin)
+    // ===================================================================
+    // Un socket que se cae NO es una salida: mientras dure RESUME_GRACE_MS la célula
+    // sigue viva en la sim y el jugador puede volver. Antes se liquidaba (cashout /
+    // reembolso) en el mismo instante del 'close' y el resume recreaba el cliente sin
+    // NADA económico: volvías con carry 0, sin wallet (el reparto del TOP arcade te
+    // pagaba 0), sin cid y sin isTester. Y restaurar esos campos sin más habría pagado
+    // DOS veces lo mismo, o peor: desconectar → cobrar → volver con tu masa intacta →
+    // farmear → repetir, saltándose el exit fee, que es justo lo que paga salir.
+    //
+    // Ahora el dinero se CONGELA aquí hasta que se sabe si vuelve:
+    //   - vuelve            → se le devuelve tal cual (nada se pagó, nada se duplica)
+    //   - expira la gracia  → settleParked liquida como si acabara de salir
+    //   - lo matan mientras → su carry pasa al matador / al bote como el de cualquiera
+    //   - sale a propósito  → el cliente manda {t:'leave'} y se liquida al instante
+    function parkPlayer(room, playerId, cli) {
+        room.parked.set(playerId, {
+            name: cli.name || '', isTester: !!cli.isTester,
+            carry: cli.carry | 0, payWallet: cli.payWallet || null,
+            paidFee: cli.paidFee | 0, entryFee: cli.entryFee | 0, cid: cli.cid || null,
+            // Estado de la sala al DESCONECTAR: es el que decide si la entrada se
+            // reembolsa ("la partida no había empezado"). Si la sala arranca mientras
+            // estás fuera, tu célula nunca llegó a spawnear: la entrada sigue siendo
+            // reembolsable. wasAlive/kills/peak sí se recalculan al liquidar.
+            state: room.state,
+            _mass50: !!cli._mass50, _mass100: !!cli._mass100,
+        });
+    }
+
+    // Liquida a un aparcado (gracia expirada, sala apagada…) y lo saca del Map.
+    // wasAlive/kills/peak salen de la sim EN ESTE MOMENTO, no de cuando se fue: si le
+    // comieron la célula durante la gracia, sale como muerto y su carry ya se lo llevó
+    // el matador (room-loop lo trata como víctima normal).
+    function settleParked(room, playerId) {
+        const pk = room.parked.get(playerId);
+        if (!pk) return;
+        room.parked.delete(playerId);
+        const pj = room.sim.players.get(playerId);
+        director.onPlayerLeave({
+            mode: room.mode, comboKey: room.comboKey, state: pk.state,
+            name: pk.name, isTester: pk.isTester, carry: pk.carry | 0,
+            payWallet: pk.payWallet, paidFee: pk.paidFee | 0, cid: pk.cid,
+            peak: (pj && pj.peakMass) ? Math.floor(pj.peakMass) : 0,
+            wasAlive: !!(pj && pj.alive), kills: pj ? (pj.killStreak | 0) : 0,
+        });
+    }
+
     // Entrada de un jugador (join/resume). Es del Host porque en el split real el WS
     // lo posee el Host. Orquesta: matchmaking (pickLayer) + sim (addPlayer) + welcome/
     // lobby, y delega en el Director todo lo económico/stats (kick, precio, cobro,
@@ -229,8 +289,28 @@ function createGameHost(deps) {
                 const binV = msg.bin === true ? 1 : Math.max(0, Math.min(2, msg.bin | 0));
                 const useBin = binV >= 1;
                 const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
-                r.clients.set(playerId, { ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume, opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop }, useBin, binV, aspect });
+                // Estado económico congelado al desconectar: vuelve INTACTO. Sin esto el
+                // reconectado se quedaba con carry undefined (que en classic convertía su
+                // carry en NaN a la primera kill) y sin payWallet/cid/isTester, así que no
+                // cobraba el reparto, perdía las quests y ensuciaba las stats reales.
+                const pk = r.parked.get(playerId);
+                r.parked.delete(playerId);
+                r.clients.set(playerId, {
+                    ws, ip, name: (pk && pk.name) || p.name, joinedAt: Date.now(), token: msg.resume,
+                    opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop }, useBin, binV, aspect,
+                    cid: pk ? pk.cid : null, isTester: pk ? pk.isTester : false,
+                    payWallet: pk ? pk.payWallet : null, carry: pk ? (pk.carry | 0) : 0,
+                    paidFee: pk ? (pk.paidFee | 0) : 0, entryFee: pk ? (pk.entryFee | 0) : 0,
+                    _mass50: !!(pk && pk._mass50), _mass100: !!(pk && pk._mass100),
+                    // Ya spawneado: el cliente NO manda 'ready' al reconectar (solo en
+                    // entrada nueva). Marcarlo evita que un 'ready' tardío lo respawnee
+                    // y le borre la masa que acaba de recuperar.
+                    _spawned: true,
+                });
                 ws.send(welcomeMsg(r, playerId, msg.resume, undefined, useBin ? { useBin: true, binV } : null));
+                // Repinta carry/bote/entrada en el HUD: tras un rejoin con recarga de
+                // página el cliente arranca a 0 y nadie se lo volvía a contar.
+                sendEcon(r.clients.get(playerId), r);
                 refillBots(r);
                 log(`Jugador '${p.name}' RECONECTADO a ${r.key}${useBin ? ' [bin' + binV + ']' : ''}`);
                 return { room: r, playerId };
@@ -295,7 +375,11 @@ function createGameHost(deps) {
         const binV = msg.bin === true ? 1 : Math.max(0, Math.min(2, msg.bin | 0));
         const useBin = binV >= 1;
         const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
-        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, binV, aspect, _spawned: false });
+        // paidFee = entrada AÚN reembolsable (startMatch la pone a 0 al consumirla).
+        // entryFee = lo que pagó, informativo y ya nunca cambia: es lo que el cartel de
+        // GAME OVER de arcade enseña como "YOU LOST". Estaban fusionados en paidFee y
+        // por eso cualquier sendEcon posterior al arranque borraba la cifra del cartel.
+        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, entryFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, binV, aspect, _spawned: false });
         sendEcon(room.clients.get(playerId), room);
         director.recordEntry({ comboKey: ck, key, mode: room.mode, playerId, name, cid, ip, tester });
         if (room.state === 'playing') {
@@ -319,27 +403,40 @@ function createGameHost(deps) {
     // ocurre en el proceso dueño del socket. El Host limpia espectador/sim/lobby y
     // calcula los datos autoritativos (wasAlive, kills) desde SU sim; toda la lógica
     // económica/stats la delega a director.onPlayerLeave (frontera de deltas).
+    //
+    // OJO con el dinero: solo se liquida aquí si la salida es VOLUNTARIA (el cliente
+    // mandó {t:'leave'} antes de cerrar) o si ya no queda célula a la que volver. Un
+    // socket que se cae sin más se APARCA: el dinero se congela hasta que expira la
+    // gracia de rejoin (ver parkPlayer/settleParked).
     function handleClose(ws, room, playerId, spectatorRoom) {
         if (spectatorRoom) {
             spectatorRoom.spectators.delete(ws);
         }
         if (room && playerId && room.clients.get(playerId) && room.clients.get(playerId).ws === ws) {
             const cli = room.clients.get(playerId);
-            // wasAlive/kills/peak desde la fuente autoritativa: la sim.
             const pj = room.sim.players.get(playerId);
-            const wasAlive = !!(pj && pj.alive);
-            const kills = pj ? (pj.killStreak | 0) : 0;
-            const peak = (pj && pj.peakMass) ? Math.floor(pj.peakMass) : 0;
-            // Frontera de deltas de la SALIDA: datos planos → misma llamada local o IPC.
-            director.onPlayerLeave({
-                mode: room.mode, comboKey: room.comboKey, state: room.state,
-                name: cli.name || '', isTester: !!cli.isTester, carry: cli.carry | 0,
-                payWallet: cli.payWallet || null, paidFee: cli.paidFee | 0,
-                cid: cli.cid || null, peak, wasAlive, kills,
-            });
             room.clients.delete(playerId);
-            if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
-            log(`Jugador ${playerId} desconectado de ${room.key} — quedan ${room.clients.size}`);
+            if (cli._leaving || !pj) {
+                // Salida a propósito (o sin célula que recuperar): se liquida ya, para
+                // que el saldo aparezca en el menú al instante, y el cuerpo se retira en
+                // el siguiente tick — dejarlo 30s regalaba una entrada virtual a quien
+                // se lo comiera, con el jugador ya cobrado.
+                director.onPlayerLeave({
+                    mode: room.mode, comboKey: room.comboKey, state: room.state,
+                    name: cli.name || '', isTester: !!cli.isTester, carry: cli.carry | 0,
+                    payWallet: cli.payWallet || null, paidFee: cli.paidFee | 0,
+                    cid: cli.cid || null,
+                    peak: (pj && pj.peakMass) ? Math.floor(pj.peakMass) : 0,
+                    wasAlive: !!(pj && pj.alive), kills: pj ? (pj.killStreak | 0) : 0,
+                });
+                room.parked.delete(playerId);
+                room.pendingRemovals.set(playerId, 0);
+                for (const [tok, info] of resumeTokens) { if (info.playerId === playerId) resumeTokens.delete(tok); }
+            } else {
+                parkPlayer(room, playerId, cli);
+                if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
+            }
+            log(`Jugador ${playerId} ${cli._leaving ? 'salió de' : 'desconectado de'} ${room.key} — quedan ${room.clients.size}`);
             if (room.state === 'waiting') { sendWaiting(room); armLobby(room); }   // cancela la cuenta atrás si baja del mínimo
             refillBots(room);   // un bot cubre el hueco (y se retira si el jugador reconecta)
         }
@@ -504,6 +601,13 @@ function createGameHost(deps) {
         for (const cli of room.clients.values()) {
             try { cli.ws.close(); } catch (e) {}
         }
+        // Los desconectados en ventana de rejoin también tenían dinero encima: la
+        // partida se anula para ellos igual, así que se les devuelve su carry antes de
+        // vaciar el Map (si no, se esfumaba al limpiar pendingRemovals más abajo).
+        for (const pk of room.parked.values()) {
+            if (pk.carry > 0 && pk.payWallet) director.refundEntry({ wallet: pk.payWallet, amount: pk.carry, comboKey: room.comboKey });
+        }
+        room.parked.clear();
         // room.clients se vacía vía ws.on('close'); no esperamos a eso para pasar a waiting
         room.state = 'waiting';
         room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false; room._shortened = false; room.pentas = 0;
@@ -518,6 +622,9 @@ function createGameHost(deps) {
             try { cli.ws.send(JSON.stringify({ t: 'kicked' })); } catch (e) {}
             try { cli.ws.close(); } catch (e) {}
         }
+        // La sala desaparece: los aparcados ya no tienen dónde volver, se liquidan aquí
+        // o su dinero se iría con el Map.
+        for (const pid of [...room.parked.keys()]) settleParked(room, pid);
         rooms.delete(room.key);
         for (const [tok, info] of resumeTokens) { if (info.roomKey === room.key) resumeTokens.delete(tok); }
         log(`Sala apagada (${motivo}): ${room.key}`);
@@ -535,7 +642,7 @@ function createGameHost(deps) {
 
     return {
         buildSim, getOrCreateRoom, pickLayer, initLayers, tickRooms,
-        handleInput, handleClose, handleJoin, handleSpectate,
+        handleInput, handleClose, handleJoin, handleSpectate, settleParked,
         broadcast, sendWaiting, welcomeMsg, refillBots, tickGradualBots,
         armLobby, startMatch, restartRoom, shutdownRoom, resolveQuickJoin,
     };

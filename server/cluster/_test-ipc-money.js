@@ -102,8 +102,20 @@ async function scenarioA() {
     const b1 = await warBalance();
     check(`warbank del Director debitado (${START_BALANCE} → ${b1})`, b1 === START_BALANCE - FEE);
 
-    // 2) Reembolso: cerrar el socket con la sala aún en waiting → la entrada vuelve
+    // 2) Caída del socket SIN avisar: no es una salida. El dinero se congela durante la
+    // ventana de rejoin en vez de liquidarse, o volver duplicaría el pago.
     if (j1._ws) j1._ws.close();
+    await sleep(1500);
+    const bFrozen = await warBalance();
+    check(`caída sin avisar: la entrada NO se devuelve todavía (sigue en ${bFrozen})`, bFrozen === START_BALANCE - FEE, String(bFrozen));
+
+    // 2b) Vuelve con su token: recupera la plaza y la entrada sigue siendo suya (sin
+    // pagar otra vez). Al salir a propósito ({t:'leave'}), ahí sí se reembolsa.
+    const jr = await tryJoin(match.port, { t: 'join', resume: j1.token });
+    check('rejoin con token → welcome (sin volver a cobrar)', jr.t === 'welcome', JSON.stringify({ t: jr.t }));
+    const bResume = await warBalance();
+    check('el rejoin no cobra ni devuelve nada', bResume === START_BALANCE - FEE, String(bResume));
+    if (jr._ws) { jr._ws.send(JSON.stringify({ t: 'leave' })); jr._ws.close(); }
     await sleep(1500);
     const b2 = await warBalance();
     check(`reembolso vía IPC al salir sin empezar (${b1} → ${b2})`, b2 === START_BALANCE);
