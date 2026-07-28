@@ -2241,9 +2241,6 @@ function toggleTrailerMode() {
         })();
 
         const scene = { food: [], virus: [], npcs: [], w: 0, h: 0, last: 0 };
-        // Raton dentro del cuadro del hero (ver stepScene). En tactil no hay
-        // raton que meter ni sacar, asi que ahi el desfile va siempre.
-        let heroHover = !window.matchMedia('(hover: hover)').matches;
 
         function newFood(w, h) { return { x: Math.random() * w, y: Math.random() * h, r: rnd(3, 6), col: pick(FOOD_COLORS) }; }
         // Todas las pills cruzan el cuadro hacia la DERECHA, pero cada una a su
@@ -2316,6 +2313,24 @@ function toggleTrailerMode() {
             scene.evitar = fundeRects(heroUiRects(UI_EVITAR, false), 40);
         }
 
+        // Recalcula las zonas y reubica SOLO lo que haya quedado debajo de la UI,
+        // dejando en su sitio todo lo demas. Es lo que toca cuando cambian los
+        // rects pero no el cuadro: al acabar de cargar las imagenes del hero
+        // (hasta entonces miden 0 y no estorban a nadie).
+        function reubicaTapados() {
+            refreshZonas();
+            const z = scene.zonas, w = scene.w, h = scene.h;
+            if (!w || !h) return;
+            for (const f of scene.food)
+                if (covered(f.x, f.y, f.r, z)) Object.assign(f, placeFree(() => newFood(w, h), z, 40));
+            for (let i = scene.virus.length - 1; i >= 0; i--) {
+                const v = scene.virus[i];
+                if (!covered(v.x, v.y, VIRUS_R * 1.4, z)) continue;
+                scene.virus.splice(i, 1);
+                spawnVirus(w, h);
+            }
+        }
+
         function buildScene(w, h) {
             scene.food.length = 0; scene.virus.length = 0; scene.npcs.length = 0;
             const zonas = scene.zonas = heroUiRects(UI_SELS, true);
@@ -2338,10 +2353,6 @@ function toggleTrailerMode() {
         }
 
         function stepScene(w, h, dt) {
-            // El desfile SOLO avanza con el raton dentro del hero. Fuera, se
-            // congela donde este (los virus siguen girando: eso lo pinta
-            // drawScene con el reloj, no depende de este paso).
-            if (!heroHover) { HeroPlay.step(w, h, dt); return; }
             scene.t = (scene.t || 0) + dt;
             for (const n of scene.npcs) {
                 // Rumbo = su angulo + su ondulacion + la esquiva de la UI.
@@ -2646,10 +2657,17 @@ function toggleTrailerMode() {
             new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(host);
         }
         (function loop(t) { requestAnimationFrame(loop); if (heroVisible) paintHero(t || performance.now()); })();
-        // En el primer frame las imagenes del hero aun no han cargado y sus rects
-        // miden 0: sin esto la comida y los virus se colocarian encima.
         const rebuildScene = () => { scene.w = 0; };
-        window.addEventListener('load', rebuildScene);
+        // En el primer frame las imagenes del hero aun no han cargado y sus rects
+        // miden 0, asi que la comida y los virus se colocan tambien donde luego
+        // estaran. Al acabar la carga NO se rehace la escena entera (eso era lo
+        // que hacia saltar todo de sitio a media carga): solo se recolocan los
+        // que se hayan quedado debajo de la UI. Las fuentes web llegan mas tarde
+        // que las imagenes y mueven un poco los rects, de ahi el segundo repaso.
+        window.addEventListener('load', () => {
+            reubicaTapados();
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(reubicaTapados);
+        });
         // Alejarse del cuadro: el contenido se encoge y el canvas gana espacio
         // logico (mas escena a la vista), como si la camara subiera.
         function setHeroZoom(z) {
@@ -2685,8 +2703,6 @@ function toggleTrailerMode() {
             e.stopPropagation();
         });
         host.addEventListener('pointermove', (e) => { if (HeroPlay.active) HeroPlay.aim(e.clientX, e.clientY); });
-        host.addEventListener('pointerenter', () => { heroHover = true; });
-        host.addEventListener('pointerleave', () => { heroHover = false; });
         window.addEventListener('keydown', (e) => {
             if (!HeroPlay.active) return;
             if (e.code === 'Space') { e.preventDefault(); HeroPlay.split(); }
@@ -2749,7 +2765,7 @@ function toggleTrailerMode() {
                 document.querySelectorAll('.hero-editable').forEach(el => el.classList.remove('hero-editable'));
                 document.getElementById('layoutEditBar').style.display = 'none';
                 save();
-                rebuildScene();   // la UI se movio -> recolocar comida y virus
+                reubicaTapados();   // la UI se movio -> recolocar solo lo que tape
             },
             resetAll() { layout = {}; save(); apply(); syncZoomBtn(); },
             // Zoom del cuadro entero. NO es solo una vista del editor: se guarda
