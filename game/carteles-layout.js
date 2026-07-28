@@ -144,7 +144,7 @@ window.CARTELES_READY = Promise.all([
 window.cartelDevShowPrize = msg => EconHUD.showPrize(msg);
 /*
  * Texto de un cartel de fin de partida TAL CUAL lo pinta el juego. El editor
- * pone el estado (sala, modo, kills, carry/entrada, puesto) y llama a la MISMA
+ * pone el estado (sala, modo, kills, carry/entrada) y llama a la MISMA
  * textoResultado() que corre en partida: asi no hay una copia del markup en el
  * editor que se quede vieja y acabe mintiendo sobre como se ve el cartel.
  * Solo para carteles-preview.html (ahi el juego nunca esta en partida).
@@ -153,7 +153,6 @@ window.cartelDevResultText = st => {
     document.getElementById('killsVal').innerText = st.kills | 0;
     currentServer = st.server || 'Free';
     currentGameMode = st.mode || 'classic';
-    _miPuesto = st.top || null;
     EconHUD.carry = st.carry | 0;
     EconHUD.entry = st.entry | 0;
     return textoResultado(st.tipo, st.extra);

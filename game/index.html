@@ -2056,11 +2056,6 @@
     // panel ROOM · PRICES, o el popup la pide al darle a PLAY.
     let currentGameMode = 'classic', currentServer = null, width, height, gameRunning = false, isGodMode = false, isSpectating = false;
     let serverLeaderboard = null;   // ranking de la sala entera que manda el server (online); null = usar cálculo local (offline)
-    // Último puesto que ocupabas VIVO. Al morir tu masa es 0 y te caes del
-    // ranking, así que el cartel de GAME OVER de arcade enseña este. Online el
-    // server solo manda el top 10: si nunca entraste, se queda a null y el
-    // cartel enseña solo las kills en vez de inventarse un puesto.
-    let _miPuesto = null;
     let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
     let camera = { x: 0, y: 0, scale: 0.8 }, mouse = { x: 0, y: 0 }, inputMode = 'MOUSE', keys = { w: false, a: false, s: false, d: false, f: false }, botConfig = { enabled: true, count: 25, respawn: true };
 
@@ -5281,7 +5276,6 @@
         b._hideTimer = setTimeout(() => { b.classList.remove('show'); }, 3500);
     }
     function startGame() {
-        _miPuesto = null;
         SoundManager.play('select'); SoundManager.stopMenuMusic(); SoundManager.playMusic(); showBotsBanner();
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
         playerName = document.getElementById('playerNameInput').value.trim() || "";
@@ -5459,8 +5453,8 @@
     // hacía que GAME OVER pareciera que te llevabas el dinero que acababas de
     // perder, y que MATCH FINISHED hablara de PILL en salas donde no hay:
     //   gameOver      classic de pago → lo que PIERDES (tu carry se lo lleva quien te mató)
-    //   gameOver      arcade de pago  → kills, el puesto en el que caíste y lo que PIERDES
-    //   gameOver      Free / offline  → kills (+ puesto en arcade)
+    //   gameOver      arcade de pago  → kills y lo que PIERDES (tu entrada, ya en el bote)
+    //   gameOver      Free / offline  → kills
     //   matchFinished (solo sale en Free y offline, ahí no hay PILL) → kills
     //   roomRestarted → lo que se te devuelve por anular la partida
     //
@@ -5477,11 +5471,9 @@
         }
         if (tipo === 'gameOver') {
             const perdido = (typeof EconHUD !== 'undefined' && (esArcade ? EconHUD.entry : EconHUD.carry)) | 0;
-            // En Free/offline no hay nada que perder, así que solo kills (y puesto).
-            const linePerdida = (dePago && perdido > 0) ? '<br>' + lineaPill(perdido, 'YOU LOST') : '';
-            if (esArcade) return lineaKills(kills) +
-                (_miPuesto ? `<br><span style="color:#ccc;font-size:15px;">TOP ${_miPuesto}</span>` : '') + linePerdida;
-            return lineaKills(kills) + linePerdida;
+            // En Free/offline no hay nada que perder, así que solo las kills.
+            if (dePago && perdido > 0) return lineaKills(kills) + '<br>' + lineaPill(perdido, 'YOU LOST');
+            return lineaKills(kills);
         }
         return lineaKills(kills);   // matchFinished
     }
@@ -5517,7 +5509,7 @@
             showResultsUI('matchFinished');
         }
     }
-    function returnToMenu() { serverLeaderboard = null; _miPuesto = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function returnToMenu() { serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
@@ -6299,7 +6291,6 @@
         if (btnMain) { btnMain.disabled = !!busy; btnMain.innerText = busy ? (label || 'CONNECTING...') : 'PLAY'; }
     }
     async function startOnlineGame() {
-        _miPuesto = null;
         if (_joinInFlight) return;
         // Protocolo binario ON por defecto (ahorra ~50% extra sobre AOI+JSON).
         // ?bin=0 fuerza JSON para debug. Calculado ANTES del branch de REJOIN:
@@ -7615,11 +7606,6 @@
             for (let b of botMap.values()) all.push(b);
             all.sort((a,b) => b.mass - a.mass);
         }
-        // Puesto mientras sigues vivo, para el GAME OVER de arcade. Si ya no
-        // apareces (muerto, o fuera del top 10 online) se conserva el último.
-        const iYo = all.findIndex(e => e.isMe);
-        if (iYo >= 0 && all[iYo].mass > 0) _miPuesto = iYo + 1;
-
         let html = "";
         for (let i=0; i<Math.min(10, all.length); i++) {
             let pl = all[i];

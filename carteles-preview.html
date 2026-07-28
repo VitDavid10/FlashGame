@@ -92,17 +92,15 @@ const CASOS = [
   // Todos llevan TRY AGAIN (tambien offline desde jul-2026). `st` es el estado
   // de partida que se le pasa a cartelDevResultText(): el texto bajo el titulo
   // lo pinta la MISMA textoResultado() del juego, asi el editor no puede mentir.
-  // GAME OVER sale en cuatro sabores porque el texto cambia con modo y sala; el
-  // AJUSTE que guardan es el mismo (resultOverlay#gameOver), que es todo lo que
-  // el juego sabe distinguir: mover uno mueve los cuatro, a proposito.
-  { g:'Fin de partida', n:'GAME OVER · CLASSIC PAGO', sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
+  // GAME OVER solo tiene dos formas: de pago (kills + lo que pierdes) y
+  // Free/offline (solo kills). Classic y arcade se ven IGUAL — cambia de donde
+  // sale la cantidad (carry vs entrada), no el cartel. El AJUSTE es el mismo
+  // para los dos (resultOverlay#gameOver), que es todo lo que el juego sabe
+  // distinguir: mover uno mueve el otro, a proposito.
+  { g:'Fin de partida', n:'GAME OVER · PAGO',         sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
     st:{ tipo:'gameOver', mode:'classic', server:'5$', kills:3, carry:12000 } },
-  { g:'Fin de partida', n:'GAME OVER · ARCADE PAGO',  sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
-    st:{ tipo:'gameOver', mode:'arcade', server:'5$', kills:3, top:4, entry:50000 } },
-  { g:'Fin de partida', n:'GAME OVER · CLASSIC FREE', sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
+  { g:'Fin de partida', n:'GAME OVER · FREE/OFFLINE', sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
     st:{ tipo:'gameOver', mode:'classic', server:'Free', kills:3 } },
-  { g:'Fin de partida', n:'GAME OVER · ARCADE FREE',  sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
-    st:{ tipo:'gameOver', mode:'arcade', server:'Free', kills:3, top:4 } },
   { g:'Fin de partida', n:'MATCH FINISHED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['matchFinished','MATCH FINISHED','#00ff88'],
     st:{ tipo:'matchFinished', mode:'classic', server:'Free', kills:3 } },
   { g:'Fin de partida', n:'ROOM RESTARTED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['roomRestarted','ROOM RESTARTED','#ffcc00'],
