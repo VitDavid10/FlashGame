@@ -1886,15 +1886,21 @@ const httpServer = http.createServer(async (req, res) => {
             let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
             const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
             if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
-            // Sanea: cada cartel es {title|desc|actions: {x, y, s}} y nada mas,
-            // para no escribir basura arbitraria en un fichero que se commitea.
-            const PARTES = ['title', 'desc', 'actions'];
+            // Sanea: cada cartel es {pieza: {x, y, s}} y nada mas, para no
+            // escribir basura arbitraria en un fichero que se commitea. Los
+            // NOMBRES de pieza NO se listan aqui: los declara cada cartel en
+            // CARTEL_SURFACES (game/carteles-layout.js) y el cliente es el
+            // unico que los conoce — con una lista fija aqui, cada pieza nueva
+            // (tryAgain/spectate/backToMenu...) se guardaba en silencio en la
+            // nada. Se validan por forma: identificador corto, valores
+            // numericos acotados y un tope de piezas por cartel.
+            const esPieza = p => /^[a-zA-Z][a-zA-Z0-9]{0,23}$/.test(p);
             const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
             const clean = {};
             for (const k of Object.keys(lay).slice(0, 40)) {
                 const src = lay[k]; if (!src || typeof src !== 'object') continue;
                 const dst = {};
-                for (const p of PARTES) {
+                for (const p of Object.keys(src).filter(esPieza).slice(0, 12)) {
                     const t = src[p]; if (!t || typeof t !== 'object') continue;
                     const x = Number(t.x), y = Number(t.y), s = Number(t.s);
                     dst[p] = {

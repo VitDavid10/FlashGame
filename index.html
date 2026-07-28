@@ -790,6 +790,41 @@ body.trailer-open #page-content{
         #btnLandingEdit { background: none; border: none; padding: 0; color: #ff9c3d; cursor: pointer !important; }
         #btnLandingEdit:hover { color: #fff; text-shadow: 0 0 10px #ff9c3d; }
     </style>
+    <!-- Layout HORNEADO del hero (el que estaba guardado en el servidor el
+         28-jul-2026). Vive AQUI, en el <head>, y no en el script del final:
+         se convierte en CSS antes de que el navegador pinte nada, asi que el
+         hero sale ya colocado en el primer fotograma. Puesto abajo con el
+         resto del JS se veia medio segundo el hero de fabrica (titulo y
+         cartel en otro sitio, sin el zoom) y luego el salto a su posicion.
+         LandingLayout lo lee de window para no tener dos copias. -->
+    <script>
+    window.HERO_LAYOUT_ELS = {
+        title: '#heroTitleWrap', play: '#heroPlayNow', pickMe: '#heroPickMe',
+        caSign: '#heroCaSign', ca: '#heroCaWrap',
+    };
+    window.HERO_LAYOUT_HORNEADO = {
+        zoom: 0.8,
+        title:  { x: 23,     y: -120.75, s: 1.23175573069396 },
+        ca:     { x: 17.25,  y: 127.75,  s: 0.8363874218953965 },
+        caSign: { x: 19.75,  y: 136,     s: 0.8616672317221851 },
+        play:   { x: -58.5,  y: -4.5,    s: 1.2880203308689964 },
+        pickMe: { x: -444.5, y: -7.25,   s: 2.4798680723250732 },
+    };
+    (function () {
+        const L = window.HERO_LAYOUT_HORNEADO, SEL = window.HERO_LAYOUT_ELS;
+        // translate/scale (no `transform`): son las mismas propiedades que usa
+        // LandingLayout, asi sus estilos inline pisan esto sin pelearse con los
+        // transform de los :hover.
+        let css = '.hero-main-content{scale:' + (L.zoom || 1) + '}';
+        for (const k in SEL) {
+            const t = L[k]; if (!t) continue;
+            css += SEL[k] + '{translate:' + (t.x || 0) + 'px ' + (t.y || 0) + 'px;scale:' + (t.s || 1) + '}';
+        }
+        const st = document.createElement('style');
+        st.id = 'heroLayoutHorneado'; st.textContent = css;
+        document.head.appendChild(st);
+    })();
+    </script>
 </head>
 <body class="pixel-pack">
 
@@ -2685,8 +2720,10 @@ function toggleTrailerMode() {
             // y rehacer la escena ahi recolocaria la comida a cada pixel.
             if (z === heroZoom) return;
             heroZoom = z;
+            // Siempre explicito (nunca ''), por lo mismo que en apply(): el CSS
+            // horneado del <head> ya trae el zoom y vaciar el inline lo devolveria.
             const c = document.querySelector('.hero-main-content');
-            if (c) c.style.scale = z === 1 ? '' : String(z);
+            if (c) c.style.scale = String(z);
             rebuildScene();
             paintHero(performance.now());   // repinta ya, sin esperar al frame
         }
@@ -2728,22 +2765,11 @@ function toggleTrailerMode() {
         // (/api/landing-layout) para que lo vean todos. Quitar el boton EDIT, la
         // barra, este bloque y el endpoint cuando el diseño quede fijado.
         const LAYOUT_KEY = 'pw_landing_layout';
-        const LAYOUT_ELS = {
-            title: '#heroTitleWrap', play: '#heroPlayNow', pickMe: '#heroPickMe',
-            caSign: '#heroCaSign', ca: '#heroCaWrap',
-        };
-        // Layout HORNEADO (el que estaba guardado en el servidor el 28-jul-2026).
-        // Va en el codigo para que el hero salga YA colocado en el primer pintado:
-        // antes arrancaba de fabrica y saltaba a su sitio cuando respondia
-        // /api/landing-layout — el "al hacer F5 se mueve todo".
-        const LAYOUT_HORNEADO = {
-            zoom: 0.8,
-            title:  { x: 23,     y: -120.75, s: 1.23175573069396 },
-            ca:     { x: 17.25,  y: 127.75,  s: 0.8363874218953965 },
-            caSign: { x: 19.75,  y: 136,     s: 0.8616672317221851 },
-            play:   { x: -58.5,  y: -4.5,    s: 1.2880203308689964 },
-            pickMe: { x: -444.5, y: -7.25,   s: 2.4798680723250732 },
-        };
+        // Los dos viven en el <head> (ver el <script> de HERO_LAYOUT_HORNEADO):
+        // alli el horneado se convierte en CSS antes del primer pintado, para
+        // que el hero no salga de fabrica y salte al colocarse.
+        const LAYOUT_ELS = window.HERO_LAYOUT_ELS;
+        const LAYOUT_HORNEADO = window.HERO_LAYOUT_HORNEADO;
         let layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO));
         let editing = false, drag = null;
         const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
@@ -2754,8 +2780,11 @@ function toggleTrailerMode() {
                 const t = layout[key];
                 // translate/scale (no `transform`) para no pisar los transform de
                 // los :hover/:active que ya tienen algunos elementos.
-                el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '';
-                el.style.scale = t ? String(t.s || 1) : '';
+                // Sin pieza se escribe el neutro EXPLICITO, no cadena vacia:
+                // vaciarlo devolveria el mando al CSS horneado del <head> y
+                // RESET ALL no resetearia nada.
+                el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '0px 0px';
+                el.style.scale = String(t ? (t.s || 1) : 1);
             }
             // El zoom es parte del layout, como las posiciones: se guarda y lo ve
             // todo el mundo, no solo quien esta editando.
