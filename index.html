@@ -2819,7 +2819,10 @@ function toggleTrailerMode() {
                 save();
                 reubicaTapados();   // la UI se movio -> recolocar solo lo que tape
             },
-            resetAll() { layout = {}; save(); apply(); syncZoomBtn(); },
+            // RESET vuelve al layout HORNEADO, que es el diseño bueno — no al
+            // de fabrica (todo a cero y sin zoom), que ya no es un estado al
+            // que se quiera volver desde aqui.
+            resetAll() { layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO)); save(); apply(); syncZoomBtn(); },
             // Zoom del cuadro entero. NO es solo una vista del editor: se guarda
             // con el resto del layout y se queda al salir con DONE.
             zoom(btn) {
@@ -2870,7 +2873,10 @@ function toggleTrailerMode() {
         document.addEventListener('dblclick', (e) => {
             if (!editing) return;
             const t = target(e); if (!t) return;
-            delete layout[t.key]; apply(); save(); e.preventDefault();
+            // Mismo criterio que RESET ALL: la pieza vuelve a su sitio horneado.
+            const h = LAYOUT_HORNEADO[t.key];
+            layout[t.key] = h ? JSON.parse(JSON.stringify(h)) : { x: 0, y: 0, s: 1 };
+            apply(); save(); e.preventDefault();
         }, true);
         // En modo edicion los clicks no disparan PLAY NOW ni el copiar del contrato
         document.addEventListener('click', (e) => {
