@@ -14,7 +14,8 @@
  *   - módulos: warbank, dailyquests, proto
  *   - funciones puras: log, logAdmin, broadcast, restartRoom, startMatch,
  *     tickGradualBots, buildSnapshotFor, aoiBoxFor, pstatOf, statsOf,
- *     questsOf, addToPot, sendEcon, entryFeePill, flushPeakMass, minRealOf
+ *     questsOf, addToPot, sendEcon, entryFeePill, flushPeakMass, minRealOf,
+ *     settleParked (liquida al desconectado cuya ventana de rejoin expiró)
  *   - estado mutable: resumeTokens (Map), flags ({stats, players, quests})
  *   - getters dinámicos: aoiEnabled, snapshotEvery, arcadeRestartMs
  *   - constantes: DEAD_REMOVE_MS, EMPTY_ROOM_TTL, WS_BACKPRESSURE_MAX
@@ -26,6 +27,9 @@ function tickRoomOnce(room, now, ctx) {
         if (room.clients.has(pid)) { room.pendingRemovals.delete(pid); continue; }
         if (now >= deadline) {
             room.pendingRemovals.delete(pid);
+            // No volvió: ahora sí se ha ido de verdad. Se liquida ANTES de borrarlo de
+            // la sim, que es de donde salen wasAlive/kills/peak.
+            if (ctx.settleParked) ctx.settleParked(room, pid);
             room.sim.removePlayer(pid);
             if (room._pidx) room._pidx.delete(pid);   // libera el índice v4 (delta)
             for (const [tok, info] of ctx.resumeTokens) { if (info.playerId === pid) ctx.resumeTokens.delete(tok); }
@@ -70,6 +74,13 @@ function tickRoomOnce(room, now, ctx) {
     }
     if (room.state !== 'playing') return { stepMs, snapMs, sendMs };
 
+    // Un jugador desconectado en ventana de rejoin sigue teniendo célula viva y dinero
+    // encima: está en room.parked, no en room.clients. Para todo lo ECONÓMICO cuenta
+    // como uno más (si le comen, su carry pasa al matador; si mata, lo cobra), o ese
+    // dinero se destruiría en vez de cambiar de manos. Los payloads aparcados no tienen
+    // ws — los cli.ws.send que los tocan ya van dentro de try/catch.
+    const cliOf = (id) => room.clients.get(id) || (room.parked ? room.parked.get(id) : null) || null;
+
     // Backfill gradual de bots (se acerca al objetivo a razón de +1 cada ~2s)
     ctx.tickGradualBots(room, now);
 
@@ -110,6 +121,9 @@ function tickRoomOnce(room, now, ctx) {
         let payoutMsg = null;
         if (room.mode !== 'classic') {
             for (const cli of room.clients.values()) { if (cli.carry > 0) { ctx.addToPot(room, cli.carry); cli.carry = 0; } }
+            // Los desconectados en gracia aportan igual: su entrada ya estaba en juego y
+            // si no, se quemaría al liquidarlos (el cashout del carry es solo de classic).
+            if (room.parked) for (const pk of room.parked.values()) { if (pk.carry > 0) { ctx.addToPot(room, pk.carry); pk.carry = 0; } }
         }
         if (room.mode !== 'classic' && (room.pot || 0) > 0) {
             const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
@@ -120,7 +134,10 @@ function tickRoomOnce(room, now, ctx) {
             const top = [];
             for (let i = 0; i < Math.min(10, ranking.length); i++) {
                 const pj = ranking[i];
-                const cli = room.clients.get(pj.id);
+                // cliOf: un aparcado que quedó en el TOP cobra su parte — su carry entró
+                // al bote como el de todos. El mensaje 'prize' no le llega (no tiene ws),
+                // pero el PILL sí: el bucle de envío de abajo va sobre room.clients.
+                const cli = cliOf(pj.id);
                 const parte = Math.floor(totalPot * PESOS[i] / 100);
                 if (cli && cli.payWallet && parte > 0) ctx.econ.credit(cli.payWallet, parte);
                 // Daily: terminar top 5 en arcade
@@ -160,30 +177,27 @@ function tickRoomOnce(room, now, ctx) {
     const events = room.sim.drainEvents();
     for (const ev of events) {
         if (ev.type === 'playerDied') {
-            const dCli_ = room.clients.get(ev.playerId);
+            const dCli_ = cliOf(ev.playerId);
             const dTest_ = dCli_ && dCli_.isTester;
             const pj = room.sim.players.get(ev.playerId);
             ctx.econ.playerDeath(room.comboKey, dTest_, pj && pj.name);
-            ctx.econ.peakMassFlush(room, ev.playerId, room.clients.get(ev.playerId));
+            ctx.econ.peakMassFlush(room, ev.playerId, dCli_);
             // ARCADE: cada muerte llena el bote (entrada del muerto va al bote).
             if (room.mode !== 'classic') {
-                const dCli = room.clients.get(ev.playerId);
-                if (dCli && dCli.carry > 0) { ctx.addToPot(room, dCli.carry); dCli.carry = 0; }
+                if (dCli_ && dCli_.carry > 0) { ctx.addToPot(room, dCli_.carry); dCli_.carry = 0; }
                 else ctx.addToPot(room, ctx.entryFeePill(room.comboKey, room.pillRate));   // bot: su entrada al bote
             }
             // Q2 también cuenta al morir online (jugaste la partida hasta el final aunque te eliminaran)
-            const cliD = room.clients.get(ev.playerId);
-            if (cliD && cliD.cid) ctx.econ.questOnlineMatch(cliD.cid);
+            if (dCli_ && dCli_.cid) ctx.econ.questOnlineMatch(dCli_.cid);
             if (!room.deadRemovals.has(ev.playerId)) room.deadRemovals.set(ev.playerId, now + ctx.DEAD_REMOVE_MS);
         } else if (ev.type === 'botKilled') {
             const killer = room.sim.players.get(ev.playerId);
-            const cliKiller_ = room.clients.get(ev.playerId);
-            ctx.econ.botKill(killer && killer.name, cliKiller_ && cliKiller_.isTester);
+            const cliK = cliOf(ev.playerId);
+            ctx.econ.botKill(killer && killer.name, cliK && cliK.isTester);
             // Pentakills acumulados de la sala (panel admin): se cuenta el momento
             // exacto de llegar a 5 (=== y no >=, para no recontar en la kill 6, 7...).
             if (room.mode === 'classic' && ev.streak === 5) room.pentas = (room.pentas | 0) + 1;
             // Las kills contra bots cuentan para Q2 (los bots simulan jugadores reales)
-            const cliK = room.clients.get(ev.playerId);
             if (cliK && cliK.cid) {
                 ctx.econ.questOnlineMatch(cliK.cid);
                 // Daily: cada kill cuenta. Mass milestones se chequean al alcanzarlos.
@@ -198,7 +212,7 @@ function tickRoomOnce(room, now, ctx) {
             // CLASSIC: el matador recibe carry de la víctima directamente (humano o bot virtual).
             // No hay "pot" en classic — todo es carry, más simple y coherente con "pure skill".
             if (cliK && room.mode === 'classic') {
-                const victimCli = ev.victimId ? room.clients.get(ev.victimId) : null;
+                const victimCli = ev.victimId ? cliOf(ev.victimId) : null;
                 let gain = 0;
                 if (victimCli && victimCli.carry > 0) {
                     gain = victimCli.carry; victimCli.carry = 0;
