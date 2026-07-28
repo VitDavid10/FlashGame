@@ -2096,14 +2096,33 @@ const httpServer = http.createServer(async (req, res) => {
     // Nunca servir carpetas privadas (datos con IPs, código de servidor, repo, notas)
     const top = path.relative(ROOT, filePath).replace(/\\/g, '/').split('/')[0].toLowerCase();
     if (['server', '.git', 'node_modules', 'tasks', '.claude', 'memory'].includes(top)) { res.writeHead(403); res.end('Forbidden'); return; }
-    fs.stat(filePath, (err, st) => {
-        if (!err && st.isDirectory()) filePath = path.join(filePath, 'index.html');
+    // 'no-cache' NO significa "no guardes": significa "pregunta antes de usarlo".
+    // Lo que faltaba era el Last-Modified para poder contestar 304 y no reenviar
+    // el fichero entero — sin él, cada F5 se volvía a bajar TODO el arte del
+    // juego (~15 MB entre carteles e iconos de skill). El código (html/js) sigue
+    // revalidando igual, así que un cambio se ve al instante como siempre.
+    const no404 = () => { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); };
+    let yaDir = false;
+    const servir = () => fs.stat(filePath, (err, st) => {
+        if (err) return no404();
+        if (st.isDirectory()) {
+            if (yaDir) return no404();
+            yaDir = true; filePath = path.join(filePath, 'index.html'); return servir();
+        }
+        const lastMod = st.mtime.toUTCString();
+        const desde = Date.parse(req.headers['if-modified-since'] || '');
+        // mtime a segundos: If-Modified-Since no tiene milisegundos.
+        if (!isNaN(desde) && desde >= Math.floor(st.mtimeMs / 1000) * 1000) {
+            res.writeHead(304, { 'Cache-Control': 'no-cache', 'Last-Modified': lastMod });
+            res.end(); return;
+        }
         fs.readFile(filePath, (e2, data) => {
-            if (e2) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); return; }
-            res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+            if (e2) return no404();
+            res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'Last-Modified': lastMod });
             res.end(data);
         });
     });
+    servir();
 });
 
 const wss = new WebSocketServer({ server: httpServer });

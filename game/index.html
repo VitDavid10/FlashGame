@@ -1849,9 +1849,10 @@
     CARTEL_HERO_READY_PROMISE.then(() => { if (document.getElementById('pixPanelCss')) buildPixPanelCss(); applyLobbyBannerFrame(); });
     // Red de seguridad de la carga diferida (ver cartel-hero.js): normalmente la
     // dispara selectMode, pero hay caminos que no pasan por ahi (bloqueo movil,
-    // ?pwlab) y ademas conviene tenerlo ya descargado antes de elegir modo. A los
-    // 3s de que la pagina termine, con el menu ya pintado y sin robarle ancho.
-    window.addEventListener('load', () => setTimeout(() => { cartelHeroLoad(); skillIconLoad(); }, 3000));
+    // ?pwlab) y ademas conviene tenerlo descargado antes de elegir modo si te lo
+    // piensas. 10s desde que se ve la pantalla de modos (que es desde el arranque):
+    // para entonces la pagina ya termino y no le roba ancho de banda a nadie.
+    setTimeout(() => { cartelHeroLoad(); skillIconLoad(); }, 10000);
     // Espaciado afinado de los carteles (carteles-layout.json, editado desde
     // carteles-preview.html). Se aplica DESPUES del pixel-pack: son estilos
     // inline, asi que ganan al CSS !important del pack.
