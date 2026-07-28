@@ -1062,8 +1062,12 @@
         /* Tamano por ANCHO fijo (312/332px = el hueco que ocupaban los carteles
            v1 a 68/59px de alto): el arte v2 tiene letras mas anchas y con height
            fijo se salia de la diagonal ARCADE/CLASSIC. */
-        .mode-title .mt-img { display: none; width: 312px; height: auto; }
-        .mode-classic .mt-img { width: 332px; }
+        /* aspect-ratio = las medidas EXACTAS del PNG. Aqui el ancho es fijo y
+           el ALTO es auto, asi que sin la proporcion declarada el titulo mide
+           cero de alto hasta que llega la imagen: la descripcion de debajo
+           arrancaba subida y bajaba de golpe al cargar. */
+        .mode-title .mt-img { display: none; width: 312px; height: auto; aspect-ratio: 800 / 130; }
+        .mode-classic .mt-img { width: 332px; aspect-ratio: 800 / 128; }
         body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
         body.pixel-pack .mode-title:not(.no-img) .mt-txt { display: none; }
         body.pixel-pack .mode-desc { font-family: 'VT323', monospace; font-size: 13px; line-height: 1.35; }
@@ -4224,9 +4228,19 @@
         // ya están fuera de la UI.
         const _vw = window.innerWidth || 1280, _vh = window.innerHeight || 720;
         const _bounce = loginUIViewportRects().map(r => ({ x: r.x * W / _vw, y: r.y * H / _vh, w: r.w * W / _vw, h: r.h * H / _vh }));
-        stepMenuDeco(W, H, performance.now(), undefined, null, _bounce);
+        // La deco (comida y virus que cruzan el fondo) es lo unico que se mueve
+        // en el selector v2: hasta que no ha cargado todo va CONGELADA
+        // (move=false, el mismo mecanismo que usa el login), asi no se ve
+        // cruzando por delante de unos titulos que todavia se estan colocando.
+        // menuDeco.lastT se sigue actualizando cada frame, asi que al soltarla
+        // el primer paso es uno normal y no salta de golpe.
+        stepMenuDeco(W, H, performance.now(), modeFxListo ? undefined : false, null, _bounce);
         drawMenuDeco(g, W, H);
     }
+    // El movimiento del selector no empieza hasta que ha cargado TODO (imagenes
+    // de los titulos y fuentes): hasta entonces modeFxTick pinta con dt 0.
+    // Lo suelta arrancaModeFx(), mas abajo.
+    let modeFxListo = false;
     function modeFxStart() {
         if (modeFx.raf || !modeFxActive()) return;
         if (!modeFx.cv) {
@@ -4249,7 +4263,12 @@
         const cv = modeFx.cv, g = modeFx.g;
         const w = els.modeScreen.clientWidth, h = els.modeScreen.clientHeight;
         if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-        const dt = Math.min(0.05, (now - modeFx.lastT) / 1000); modeFx.lastT = now;
+        // Mientras el selector se carga la escena se PINTA pero no avanza
+        // (dt 0): nada de ver los portales y las pildoras moviendose sobre unos
+        // titulos que aun se estan colocando. Al soltarlo, lastT ya viene del
+        // frame anterior, asi que el primer paso es normal — no se acumula el
+        // tiempo parado ni da el salto de golpe. Ver modeFxListo.
+        const dt = modeFxListo ? Math.min(0.05, (now - modeFx.lastT) / 1000) : 0; modeFx.lastT = now;
         // estado: neutral = duelo de los dos; hover = SOLO el portal del
         // lado elegido, con su rayo llegando hasta la diagonal
         const cl = els.modeScreen.classList;
@@ -4444,6 +4463,14 @@
     }
     // arranca ya si el menu carga con un lado restaurado (pw_lastMode)
     modeFxStart();
+    const arrancaModeFx = () => { modeFxListo = true; modeFx.lastT = performance.now(); };
+    const cargaModeFx = () => {
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(arrancaModeFx);
+        else arrancaModeFx();
+    };
+    if (document.readyState === 'complete') cargaModeFx();
+    else window.addEventListener('load', cargaModeFx);
+    setTimeout(arrancaModeFx, 4000);   // red de seguridad: nunca congelado del todo
     let _questsHoverTimer = null;
     function setHoverMode(m, mouseY) {
         if (mouseY !== undefined && mouseY < MODE_DEAD_ZONE_PX) return;

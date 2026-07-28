@@ -164,7 +164,7 @@
         /* PLAY NOW del hero, cartel del contrato y el contrato: apilados bajo el
            titulo. Los cuatro se mueven/escalan desde EDIT (ver LandingLayout). */
         .hero-play-row { display: flex; align-items: center; justify-content: center; gap: 46px; margin-top: 26px; }
-        .hero-play { display: block; height: 84px; width: auto; image-rendering: pixelated; cursor: pointer !important; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .2s; }
+        .hero-play { display: block; height: 84px; width: auto; aspect-ratio: 800 / 169; image-rendering: pixelated; cursor: pointer !important; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .2s; }
         .hero-play:hover { filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.15); }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
@@ -204,14 +204,14 @@
             letter-spacing: 6px; color: #aaffdd; margin-top: 6px; white-space: nowrap;
             text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
         }
-        .hero-ca-sign { display: block; margin: 34px auto 0; height: 52px; width: auto; image-rendering: pixelated; }
+        .hero-ca-sign { display: block; margin: 34px auto 0; height: 52px; width: auto; aspect-ratio: 660 / 105; image-rendering: pixelated; }
         /* Cartel de copiar: la imagen manda el tamaño y el texto del contrato va
            encima, dentro del marco y a la izquierda del COPY que ya trae el arte. */
         .hero-ca { position: relative; display: inline-block; margin-top: 12px; cursor: pointer !important; }
         /* 52px, los MISMOS que .hero-ca-sign: los dos salen del mismo PNG
            (879x140, trazo de marco de 9px), asi que a alturas distintas el marco
            de arriba salia un 23% mas fino y 76px mas estrecho que este. */
-        .hero-ca img { display: block; height: 52px; width: auto; image-rendering: pixelated; }
+        .hero-ca img { display: block; height: 52px; width: auto; aspect-ratio: 660 / 105; image-rendering: pixelated; }
         .hero-ca:hover img { filter: brightness(1.15); }
         .hero-ca .ca-text {
             position: absolute; left: 5.5%; top: 50%; transform: translateY(-50%);
@@ -707,7 +707,15 @@ body.trailer-open #page-content{
            con fallback al texto/estilo procedural de siempre si el PNG no existe
            (onerror del img añade .no-img al contenedor — mismo mecanismo que los
            titulos ARCADE/CLASSIC del juego). ===== */
+        /* aspect-ratio = las medidas EXACTAS del PNG. Con `height` fijo y
+           `width:auto`, hasta que la imagen no llega el navegador no sabe lo
+           que ocupa de ancho y le reserva CERO: el hero se pintaba con el
+           titulo colapsado y daba el tiron al terminar de bajar los 385 KB.
+           Con la proporcion declarada el hueco esta hecho desde el primer
+           fotograma y la imagen aparece dentro, sin mover nada. */
         .hero-img, .bn-img { display: none; image-rendering: pixelated; }
+        .hero-img { aspect-ratio: 1200 / 243; }   /* hero-title.png */
+        .bn-img   { aspect-ratio: 640 / 97; }     /* brand.png (navbar) */
         body.pixel-pack .hero-main-content:not(.no-img) .hero-img { display: inline-block; height: 120px; width: auto; filter: drop-shadow(0 0 16px rgba(0,255,136,0.6)) drop-shadow(0 0 38px rgba(0,255,136,0.35)) drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.08); }
         body.pixel-pack .hero-main-content:not(.no-img) .hero-sub { display: block; }
         body.pixel-pack .hero-main-content:not(.no-img) .hero-txt { display: none; }
@@ -2691,11 +2699,20 @@ function toggleTrailerMode() {
             // Al cambiar de tamaño el cuadro se rehace: la comida y los virus son
             // fijos, reescalarlos los dejaria pegados a los bordes.
             if (scene.w !== W || scene.h !== H) { scene.w = W; scene.h = H; buildScene(W, H); }
-            const dt = scene.last ? Math.min(0.05, (now - scene.last) / 1000) : 0.016;
-            scene.last = now;
+            // Mientras el hero se carga la escena se PINTA pero no avanza (dt 0):
+            // asi no se ve la comida y las pildoras moviendose por un cuadro que
+            // todavia se esta colocando, ni el tiron de reubicaTapados() a media
+            // carrera. En cuanto esta todo, scene.last vuelve a 0 y el primer
+            // paso es uno normal (0.016) — no se acumula el tiempo parado, que
+            // es lo que daria el salto de golpe al arrancar.
+            const dt = !heroListo ? 0 : (scene.last ? Math.min(0.05, (now - scene.last) / 1000) : 0.016);
+            scene.last = heroListo ? now : 0;
             stepScene(W, H, dt);
             drawScene(g, now);
         }
+        // El movimiento del hero (comida, virus, pildoras) no arranca hasta que
+        // ha cargado TODO: imagenes y fuentes. Ver el dt de paintHero.
+        let heroListo = false;
         // Solo gasta rAF con el hero a la vista (al hacer scroll se para).
         let heroVisible = true;
         if (host && window.IntersectionObserver) {
@@ -2709,10 +2726,20 @@ function toggleTrailerMode() {
         // que hacia saltar todo de sitio a media carga): solo se recolocan los
         // que se hayan quedado debajo de la UI. Las fuentes web llegan mas tarde
         // que las imagenes y mueven un poco los rects, de ahi el segundo repaso.
-        window.addEventListener('load', () => {
+        // Y el ultimo paso de la carga es soltar el movimiento: primero se
+        // recoloca todo con el cuadro ya definitivo (con la escena quieta, asi
+        // que no se ve ningun tiron) y solo entonces empieza a moverse.
+        const arrancaHero = () => { if (heroListo) return; reubicaTapados(); heroListo = true; };
+        const cargaHero = () => {
             reubicaTapados();
-            if (document.fonts && document.fonts.ready) document.fonts.ready.then(reubicaTapados);
-        });
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(arrancaHero);
+            else arrancaHero();
+        };
+        if (document.readyState === 'complete') cargaHero();
+        else window.addEventListener('load', cargaHero);
+        // Red de seguridad: una imagen que no llega nunca no puede dejar el hero
+        // congelado para siempre.
+        setTimeout(arrancaHero, 4000);
         // Alejarse del cuadro: el contenido se encoge y el canvas gana espacio
         // logico (mas escena a la vista), como si la camara subiera.
         function setHeroZoom(z) {
