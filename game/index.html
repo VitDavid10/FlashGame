@@ -2954,8 +2954,12 @@
     // menu-square que traia antes — al lado del de premio desentonaba. Va
     // ENTERO estirado como fondo y no en 9-slice por lo de siempre: el 9-slice
     // comprime el marco ondulado y deja de reconocerse el dibujo.
-    // Los botones SPECTATE/BACK TO MENU llevan su arte horneado (banner +
-    // texto), pisando el generico de _btnImgRule.
+    // Los botones TRY AGAIN/SPECTATE/BACK TO MENU llevan su arte horneado
+    // (banner + texto), pisando el generico de _btnImgRule. Los PNG van
+    // recortados al pixel y con alfa (nada de marco negro alrededor): la caja
+    // del boton mide justo lo que el banner, asi no tapa al de al lado ni
+    // estorba al colocarlos en el editor de carteles. Ojo: el aspect-ratio son
+    // las medidas EXACTAS del PNG — si se cambia el arte, hay que cambiarlo.
     function _resultOverlayRule() {
         let css = cartelUsesAtlas('prize-panel')
             ? 'body.pixel-pack .result-box{border:none!important;border-radius:0!important;box-shadow:none!important;' +
@@ -2971,17 +2975,17 @@
         if (cartelUsesAtlas('try-again')) {
             css += 'body.pixel-pack #btnTryAgainOnline{border:none!important;border-radius:0!important;clip-path:none!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('try-again') + ') center/100% 100% no-repeat!important;' +
-                'aspect-ratio:1082/139;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
+                'aspect-ratio:1048/118;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
         }
         if (cartelUsesAtlas('spectate')) {
             css += 'body.pixel-pack .btn-spectate{border:none!important;border-radius:0!important;clip-path:none!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('spectate') + ') center/100% 100% no-repeat!important;' +
-                'aspect-ratio:747/111;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
+                'aspect-ratio:723/77;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
         }
         if (cartelUsesAtlas('backtomenu')) {
             css += 'body.pixel-pack #btnBackToMenu{border:none!important;border-radius:0!important;clip-path:none!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('backtomenu') + ') center/100% 100% no-repeat!important;' +
-                'aspect-ratio:744/98;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
+                'aspect-ratio:723/76;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
         }
         return css;
     }
