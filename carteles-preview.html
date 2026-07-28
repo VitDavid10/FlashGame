@@ -89,15 +89,24 @@ const CASOS = [
   { g:'Sistema · avisos', n:'WARNING: FORFEIT?',    sup:'exitModal', art:1, exit:["You will lose <span style='color:#ff2a2a'>100% of the PILLS</span> used to enter (they go to the prize pot).<br>Are you sure?", 'WARNING: FORFEIT?', 'warning', 'EXIT NOW'] },
   { g:'Sistema · avisos', n:'SECURE CASHOUT',       sup:'exitModal', art:1, exit:['You have <span style="color:#fff">2 Kills</span>.<br><span style="color:#00ff88; font-weight:bold;">SAFE EXIT: 0% FEE (2+ kills)</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>', 'SECURE CASHOUT', 'secure-cashout', 'START CASHOUT (5s)'] },
 
-  // Los tres llevan TRY AGAIN (tambien offline desde jul-2026). `txt` es el
-  // texto que el juego pinta bajo el titulo en cada uno — mismo criterio que
-  // textoResultado() en game/index.html, para que el editor no mienta:
-  //   GAME OVER classic de pago -> kills + lo que PIERDES
-  //   MATCH FINISHED            -> solo kills (solo sale en Free/offline)
-  //   ROOM RESTARTED            -> lo que se te devuelve al anular la partida
-  { g:'Fin de partida', n:'GAME OVER',      sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],           txt:['3 KILLS', 'YOU LOST', 12000] },
-  { g:'Fin de partida', n:'MATCH FINISHED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['matchFinished','MATCH FINISHED','#00ff88'], txt:['3 KILLS'] },
-  { g:'Fin de partida', n:'ROOM RESTARTED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['roomRestarted','ROOM RESTARTED','#ffcc00'], txt:[null, 'REFUNDED', 5000] },
+  // Todos llevan TRY AGAIN (tambien offline desde jul-2026). `st` es el estado
+  // de partida que se le pasa a cartelDevResultText(): el texto bajo el titulo
+  // lo pinta la MISMA textoResultado() del juego, asi el editor no puede mentir.
+  // GAME OVER sale en cuatro sabores porque el texto cambia con modo y sala; el
+  // AJUSTE que guardan es el mismo (resultOverlay#gameOver), que es todo lo que
+  // el juego sabe distinguir: mover uno mueve los cuatro, a proposito.
+  { g:'Fin de partida', n:'GAME OVER · CLASSIC PAGO', sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
+    st:{ tipo:'gameOver', mode:'classic', server:'5$', kills:3, carry:12000 } },
+  { g:'Fin de partida', n:'GAME OVER · ARCADE PAGO',  sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
+    st:{ tipo:'gameOver', mode:'arcade', server:'5$', kills:3, top:4, entry:50000 } },
+  { g:'Fin de partida', n:'GAME OVER · CLASSIC FREE', sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
+    st:{ tipo:'gameOver', mode:'classic', server:'Free', kills:3 } },
+  { g:'Fin de partida', n:'GAME OVER · ARCADE FREE',  sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'],
+    st:{ tipo:'gameOver', mode:'arcade', server:'Free', kills:3, top:4 } },
+  { g:'Fin de partida', n:'MATCH FINISHED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['matchFinished','MATCH FINISHED','#00ff88'],
+    st:{ tipo:'matchFinished', mode:'classic', server:'Free', kills:3 } },
+  { g:'Fin de partida', n:'ROOM RESTARTED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['roomRestarted','ROOM RESTARTED','#ffcc00'],
+    st:{ tipo:'roomRestarted', mode:'classic', server:'5$', kills:0, extra:{ refunded:5000 } } },
   { g:'Fin de partida', n:'VICTORY!',       sup:'prizeModal', art:1, prize:{ reason:'victory',  amount:250000, carry:180000 } },
   { g:'Fin de partida', n:'CASHOUT',        sup:'prizeModal', art:1, prize:{ reason:'cashout',  amount:40000,  carry:50000  } },
   { g:'Fin de partida', n:'MATCH ENDED',    sup:'prizeModal', art:1, prize:{ reason:'arcadeEnd', myAmount:120000, pot:500000, top:[
@@ -124,8 +133,12 @@ const CASOS = [
   { g:'Menu', n:'FEATURES',           sup:'featuresModal',   art:0, show:'featuresModal' },
 ];
 
-const PARTES = ['title', 'desc', 'actions'];
-const ETIQUETA = { title: 'TITULO', desc: 'TEXTO', actions: 'BOTONES' };
+// Las piezas de cada cartel las decide el juego (cartelPartesDe): title/desc/
+// actions por defecto, y las que declare en CARTEL_SURFACES.partes — el de fin
+// de partida ademas parte los botones en tres.
+const ETIQUETA = { title: 'TITULO', desc: 'TEXTO', actions: 'BOTONES',
+                   tryAgain: 'TRY AGAIN', spectate: 'SPECTATE', backToMenu: 'BACK TO MENU' };
+const partesDe = sup => W().cartelPartesDe(W().CARTEL_SURFACES[sup]);
 const OCULTABLES = ['sysModal','exitModal','resultOverlay','prizeModal','skillChoiceOverlay',
                     'gameDepositModal','gameWithdrawModal','walletPickerModal','playChoiceModal',
                     'roomChoiceModal','settingsModal','featuresModal'];
@@ -223,19 +236,9 @@ function clonar(c) {
       w.setOverlayTitle(d.getElementById('resultTitle'), c.res[0], c.res[1], c.res[2]);
       // El juego rellena el resultado al acabar la partida y aqui salia vacio:
       // se afinaba el hueco SIN ese texto y luego, en el juego, aparecia en
-      // medio de lo ya colocado. Se pinta el caso real mas alto de cada cartel.
+      // medio de lo ya colocado. Lo pinta el juego con su propia funcion.
       const res = d.getElementById('myResult');
-      if (res && c.txt) {
-        const [kills, etiqueta, cantidad] = c.txt;
-        const ico = w.cartelUsesAtlas('pill')
-          ? '<img src="' + w.cartelHeroUrl('pill') + '" style="height:1em;vertical-align:-0.2em;margin-right:4px;image-rendering:pixelated;">' : '';
-        const lineas = [];
-        if (kills) lineas.push('<span style="color:#ffce3d">' + kills + '</span>');
-        if (cantidad) lineas.push('<span style="color:#ffce3d;font-size:22px;">' + etiqueta + ' ' +
-          cantidad.toLocaleString('en-US') + ' ' + ico + '<span style="font-size:14px;color:#888;">$PILL</span></span>');
-        res.innerHTML = lineas.join('<br>');
-        res.style.color = '';
-      }
+      if (res && c.st) { res.innerHTML = w.cartelDevResultText(c.st); res.style.color = ''; }
       // TRY AGAIN sale en los tres (online y offline).
       const tb = d.getElementById('btnTryAgainOnline');
       if (tb) tb.style.display = 'block';
@@ -255,12 +258,12 @@ function clonar(c) {
   //    y no sobreviven al clonado tal cual, asi que se localizan aqui y se
   //    marcan con data-ce (eso si persiste en el clon).
   const originales = {};
-  for (const p of PARTES) {
+  for (const p of w.cartelPartesDe(sup)) {
     const el = sup[p] && d.querySelector(sup[p]);
     if (el) { el.setAttribute('data-ce', p); originales[p] = el; }
   }
   const clon = box.cloneNode(true);
-  for (const p of PARTES) if (originales[p]) originales[p].removeAttribute('data-ce');
+  for (const p of Object.keys(originales)) originales[p].removeAttribute('data-ce');
 
   // 3. Los <canvas> se clonan EN BLANCO (los titulos procedurales son canvas),
   //    hay que repintarlos copiando los pixeles del original.
@@ -335,7 +338,7 @@ function abrir(i) {
   CASOS[i].btn.classList.add('on');
 
   arrastrarFicha(ficha, c.n);
-  prepararPiezas(ficha, claveDe(c));
+  prepararPiezas(ficha, claveDe(c), c.sup);
   aplicar(claveDe(c));
 }
 
@@ -377,7 +380,7 @@ function valor(clave, parte) {
 function aplicar(clave) {
   for (const [i, ficha] of ABIERTOS) {
     if (claveDe(CASOS[i]) !== clave) continue;
-    for (const p of PARTES) {
+    for (const p of partesDe(CASOS[i].sup)) {
       const el = ficha.querySelector('[data-ce="' + p + '"]');
       if (!el) continue;
       const t = (LAYOUT[clave] || {})[p];
@@ -388,9 +391,9 @@ function aplicar(clave) {
   }
 }
 
-function prepararPiezas(ficha, clave) {
+function prepararPiezas(ficha, clave, sup) {
   const d = W().document;
-  for (const p of PARTES) {
+  for (const p of partesDe(sup)) {
     const el = ficha.querySelector('[data-ce="' + p + '"]');
     if (!el) continue;
     el.classList.add('ce-parte');

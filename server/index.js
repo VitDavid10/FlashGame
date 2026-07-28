@@ -425,7 +425,10 @@ function classicExitFeePct(kills) { if (kills >= 2) return 0; if (kills >= 1) re
 // Mueve `amount` PILL al "bote" interno de la sala (off-chain, en memoria).
 function addToPot(room, amount) { if (amount > 0) room.pot = (room.pot || 0) + amount; }
 // Notifica al cliente su carry actual y el bote de la sala (para el HUD del juego).
-function sendEcon(cli, room) { if (cli && cli.ws && cli.ws.readyState === 1) try { cli.ws.send(JSON.stringify({ t: 'econ', carry: cli.carry | 0, pot: room.pot | 0 })); } catch (e) {} }
+// `entry` = lo que pagó por entrar. El cliente lo necesita para el cartel GAME
+// OVER de arcade ("YOU LOST <entrada>"): ahí no hay carry, lo que pierdes es la
+// entrada que ya está en el bote.
+function sendEcon(cli, room) { if (cli && cli.ws && cli.ws.readyState === 1) try { cli.ws.send(JSON.stringify({ t: 'econ', carry: cli.carry | 0, pot: room.pot | 0, entry: cli.paidFee | 0 })); } catch (e) {} }
 function pstatOf(name) {
     const k = String(name).toLowerCase();
     if (!playerStats[k]) playerStats[k] = { name: name, partidas: 0, kills: 0, muertes: 0, bestMass: 0, lastSeen: null, lastIp: null };

@@ -38,9 +38,13 @@ const CARTEL_SURFACES = {
     },
     resultOverlay: {
         label: 'Fin de partida (GAME OVER / MATCH FINISHED...)', grupo: 'Fin de partida',
-        // actions = los TRES botones (TRY AGAIN / SPECTATE / BACK TO MENU) en su
-        // bloque, no solo el SPECTATE: se mueven y escalan juntos.
-        box: '#resultOverlay .result-box', title: '#resultTitle', desc: '#myResult', actions: '#resultOverlay .result-actions',
+        box: '#resultOverlay .result-box', title: '#resultTitle', desc: '#myResult',
+        // `actions` mueve el BLOQUE de los tres botones; tryAgain/spectate/
+        // backToMenu afinan cada uno por separado dentro del bloque (se suman:
+        // el boton lleva el desplazamiento del bloque mas el suyo).
+        actions: '#resultOverlay .result-actions',
+        tryAgain: '#btnTryAgainOnline', spectate: '#resultOverlay .btn-spectate', backToMenu: '#btnBackToMenu',
+        partes: ['title', 'desc', 'actions', 'tryAgain', 'spectate', 'backToMenu'],
     },
     prizeModal: {
         label: 'Premio (VICTORY / CASHOUT)', grupo: 'Fin de partida',
@@ -83,8 +87,10 @@ const CARTEL_SURFACES = {
 // Valores afinados (los del JSON). Vacio = todo de fabrica.
 let CARTEL_LAYOUT = {};
 
-// Las tres piezas que se pueden mover/escalar en cada cartel.
+// Las piezas que se pueden mover/escalar en un cartel. Un cartel puede declarar
+// su propia lista en `partes` (el de fin de partida parte los botones en tres).
 const CARTEL_PARTES = ['title', 'desc', 'actions'];
+function cartelPartesDe(s) { return (s && s.partes) || CARTEL_PARTES; }
 
 // Aplica un cartel. Cada pieza guarda {x, y, s} — desplazamiento en px y escala,
 // el mismo esquema que el editor de layout del menu. Una pieza sin entrada se
@@ -92,7 +98,7 @@ const CARTEL_PARTES = ['title', 'desc', 'actions'];
 function applyCartelSurface(key, v) {
     const s = CARTEL_SURFACES[key];
     if (!s) return;
-    for (const parte of CARTEL_PARTES) {
+    for (const parte of cartelPartesDe(s)) {
         const sel = s[parte];
         if (!sel) continue;
         const el = document.querySelector(sel);
@@ -129,9 +135,26 @@ const CARTEL_LAYOUT_READY = fetch('carteles-layout.json', { cache: 'no-cache' })
  * Los cuerpos se evaluan al llamarlos, por eso pueden referirse a cosas del
  * script inline de index.html que aun no existen cuando se define esto. */
 window.CARTEL_SURFACES = CARTEL_SURFACES;
+window.cartelPartesDe = cartelPartesDe;
 window.cartelTitleFit = cartelTitleFit;
 window.CARTELES_READY = Promise.all([
     typeof CARTEL_HERO_READY_PROMISE !== 'undefined' ? CARTEL_HERO_READY_PROMISE : null,
     CARTEL_LAYOUT_READY,
 ]).then(() => CARTEL_LAYOUT);
 window.cartelDevShowPrize = msg => EconHUD.showPrize(msg);
+/*
+ * Texto de un cartel de fin de partida TAL CUAL lo pinta el juego. El editor
+ * pone el estado (sala, modo, kills, carry/entrada, puesto) y llama a la MISMA
+ * textoResultado() que corre en partida: asi no hay una copia del markup en el
+ * editor que se quede vieja y acabe mintiendo sobre como se ve el cartel.
+ * Solo para carteles-preview.html (ahi el juego nunca esta en partida).
+ */
+window.cartelDevResultText = st => {
+    document.getElementById('killsVal').innerText = st.kills | 0;
+    currentServer = st.server || 'Free';
+    currentGameMode = st.mode || 'classic';
+    _miPuesto = st.top || null;
+    EconHUD.carry = st.carry | 0;
+    EconHUD.entry = st.entry | 0;
+    return textoResultado(st.tipo, st.extra);
+};

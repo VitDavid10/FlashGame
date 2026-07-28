@@ -5459,10 +5459,14 @@
     // hacía que GAME OVER pareciera que te llevabas el dinero que acababas de
     // perder, y que MATCH FINISHED hablara de PILL en salas donde no hay:
     //   gameOver      classic de pago → lo que PIERDES (tu carry se lo lleva quien te mató)
-    //   gameOver      arcade          → kills y el puesto en el que caíste
-    //   gameOver      Free / offline  → kills
+    //   gameOver      arcade de pago  → kills, el puesto en el que caíste y lo que PIERDES
+    //   gameOver      Free / offline  → kills (+ puesto en arcade)
     //   matchFinished (solo sale en Free y offline, ahí no hay PILL) → kills
     //   roomRestarted → lo que se te devuelve por anular la partida
+    //
+    // Lo que pierdes NO es lo mismo en los dos modos: en classic te comen y el
+    // que te come se queda tu carry (entrada + lo robado); en arcade tu entrada
+    // ya está en el bote desde que entras, así que pierdes exactamente eso.
     function textoResultado(tipo, extra) {
         const kills = parseInt(document.getElementById('killsVal').innerText, 10) || 0;
         const dePago = currentServer && currentServer !== 'Free';
@@ -5472,12 +5476,12 @@
             return dev > 0 ? lineaPill(dev, 'REFUNDED') : lineaKills(kills);
         }
         if (tipo === 'gameOver') {
-            if (esArcade) return lineaKills(kills) + (_miPuesto ? `<br><span style="color:#ccc;font-size:15px;">TOP ${_miPuesto}</span>` : '');
-            // Classic: mueres y tu carry (entrada + lo robado) se lo lleva el que
-            // te comió. En Free no hay nada que perder, así que solo las kills.
-            const perdido = (typeof EconHUD !== 'undefined' && EconHUD.carry) | 0;
-            if (dePago && perdido > 0) return lineaKills(kills) + '<br>' + lineaPill(perdido, 'YOU LOST');
-            return lineaKills(kills);
+            const perdido = (typeof EconHUD !== 'undefined' && (esArcade ? EconHUD.entry : EconHUD.carry)) | 0;
+            // En Free/offline no hay nada que perder, así que solo kills (y puesto).
+            const linePerdida = (dePago && perdido > 0) ? '<br>' + lineaPill(perdido, 'YOU LOST') : '';
+            if (esArcade) return lineaKills(kills) +
+                (_miPuesto ? `<br><span style="color:#ccc;font-size:15px;">TOP ${_miPuesto}</span>` : '') + linePerdida;
+            return lineaKills(kills) + linePerdida;
         }
         return lineaKills(kills);   // matchFinished
     }
@@ -5523,7 +5527,7 @@
         }
         MAX_BOT_CELLS = (currentGameMode === 'classic') ? 8 : 16;
     }
-    function hideGameHUD() { document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; document.getElementById('econHud').style.display='none'; } updatePentakillHint(0); }
+    function hideGameHUD() { document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; EconHUD.entry=0; document.getElementById('econHud').style.display='none'; } updatePentakillHint(0); }
     // El split también vive en la sim: solo encolamos la acción con el objetivo del ratón.
     function splitPlayer() {
         if (!gameRunning || !sim || isSpectating) return;
@@ -5975,11 +5979,14 @@
 
     // HUD del juego: actualiza carry/bote y muestra popup de premios al ganar.
     const EconHUD = {
-        mode: null, carry: 0, pot: 0,
+        mode: null, carry: 0, pot: 0, entry: 0,
         setMode(m) { this.mode = m; },
-        update(carry, pot) {
+        update(carry, pot, entry) {
             if (carry != null) this.carry = carry;
             if (pot != null) this.pot = pot;
+            // entry = la entrada pagada; no se pinta en el HUD, la usa el cartel
+            // de GAME OVER de arcade.
+            if (entry != null) this.entry = entry;
             const el = document.getElementById('econHud'), lbl = document.getElementById('econLabel'), val = document.getElementById('econVal');
             if (!el) return;
             const isClassic = currentGameMode === 'classic';
@@ -6999,7 +7006,7 @@
                 SoundManager.play('alert');
                 setTimeout(() => { if (gameRunning && !practiceMode) setLobbyBanner(null); }, 6000);
             } else if (msg.t === 'econ') {
-                EconHUD.update(msg.carry, msg.pot);
+                EconHUD.update(msg.carry, msg.pot, msg.entry);
             } else if (msg.t === 'killGain') {
                 showKillGain(msg.amount);
             } else if (msg.t === 'prize') {
