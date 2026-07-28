@@ -158,6 +158,7 @@ function claveDe(c) {
 }
 
 const LAYOUT = {};              // clave de cartel -> {parte: {x,y,s}}   (esto SI va al juego)
+let BASE_OK = false;            // el JSON de partida se leyo bien (si no, no se deja guardar)
 const POS = JSON.parse(localStorage.getItem(CLAVE_POS) || '{}');  // ficha -> {x,y} (solo editor)
 const ABIERTOS = new Map();     // indice de CASOS -> elemento ficha
 const frame = document.getElementById('game');
@@ -424,11 +425,15 @@ function prepararPiezas(ficha, clave, sup) {
 
 // --- Guardar / reset -----------------------------------------------------
 async function guardar() {
+  if (!BASE_OK) { estado('no se guarda: el editor no pudo leer el layout de partida y borraria lo afinado', '#ff5b5b'); return; }
   estado('guardando...', '#9fb0a8');
   try {
     const r = await fetch('/api/carteles-layout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ layout: LAYOUT }),
+      // full: el editor partio del JSON completo, asi que este payload ES el
+      // estado entero y el server puede reemplazar (es lo que hace que borrar
+      // una pieza con doble click se propague). Sin full, el server fusiona.
+      body: JSON.stringify({ layout: LAYOUT, full: true }),
     });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'error');
@@ -463,9 +468,17 @@ frame.addEventListener('load', () => {
   if (typeof W().cartelHeroLoad === 'function') W().cartelHeroLoad();
   W().CARTELES_READY.then(guardado => {
     Object.assign(LAYOUT, JSON.parse(JSON.stringify(guardado || {})));
+    // Si el JSON no se pudo leer, LAYOUT esta vacio y guardar borraria todos los
+    // carteles afinados. Antes esto pasaba en silencio ("listo" en gris) y era la
+    // causa del "a veces se resetea": se bloquea GUARDAR y se dice por que.
+    BASE_OK = typeof W().cartelLayoutOk === 'function' ? W().cartelLayoutOk() : false;
     crearCapa();
     abrir(7);   // KICKED de arranque, para no empezar con el lienzo vacio
-    estado('listo');
+    if (BASE_OK) estado('listo — ' + Object.keys(LAYOUT).length + ' carteles afinados cargados', '#00ff88');
+    else {
+      document.querySelector('.bar button.save').disabled = true;
+      estado('NO se pudo leer carteles-layout.json — guardar esta bloqueado (recarga con el server de Node en marcha)', '#ff5b5b');
+    }
   });
 });
 </script>

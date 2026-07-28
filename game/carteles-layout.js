@@ -123,10 +123,16 @@ function applyCartelLayout(layout) {
 function cartelTitleW() { return null; }
 
 // Carga el JSON afinado. Si no existe (404) o esta vacio se sigue de fabrica.
+// CARTEL_LAYOUT_OK dice si la carga fue BUENA de verdad. Para jugar da igual
+// (sin JSON los carteles salen de fabrica y ya), pero el editor lo necesita: si
+// guarda creyendo que partia de lo afinado cuando en realidad partia de {}, el
+// guardado se lleva por delante todos los carteles que no hayas tocado en esa
+// sesion. Ese era el "a veces se resetea": el fallo se tragaba en silencio.
+let CARTEL_LAYOUT_OK = false;
 const CARTEL_LAYOUT_READY = fetch('carteles-layout.json', { cache: 'no-cache' })
-    .then(r => (r.ok ? r.json() : {}))
-    .catch(() => ({}))
-    .then(j => { CARTEL_LAYOUT = j && typeof j === 'object' ? j : {}; return CARTEL_LAYOUT; });
+    .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+    .then(j => { CARTEL_LAYOUT = j && typeof j === 'object' ? j : {}; CARTEL_LAYOUT_OK = true; return CARTEL_LAYOUT; })
+    .catch(() => { CARTEL_LAYOUT = {}; CARTEL_LAYOUT_OK = false; return CARTEL_LAYOUT; });
 
 /* --- Puente para carteles-preview.html -------------------------------------
  * El editor vive fuera del juego (lo carga en un iframe) y necesita llegar a
@@ -141,6 +147,8 @@ window.CARTELES_READY = Promise.all([
     typeof CARTEL_HERO_READY_PROMISE !== 'undefined' ? CARTEL_HERO_READY_PROMISE : null,
     CARTEL_LAYOUT_READY,
 ]).then(() => CARTEL_LAYOUT);
+// El editor pregunta por esto antes de dejar guardar (ver CARTEL_LAYOUT_OK).
+window.cartelLayoutOk = () => CARTEL_LAYOUT_OK;
 window.cartelDevShowPrize = msg => EconHUD.showPrize(msg);
 /*
  * Texto de un cartel de fin de partida TAL CUAL lo pinta el juego. El editor

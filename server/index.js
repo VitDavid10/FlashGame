@@ -1912,14 +1912,26 @@ const httpServer = http.createServer(async (req, res) => {
                 if (Object.keys(dst).length) clean[String(k).slice(0, 40)] = dst;
             }
             const destino = path.join(__dirname, '..', 'game', 'carteles-layout.json');
+            // Red de seguridad contra el borrado accidental: solo se REEMPLAZA el
+            // fichero si el editor declara `full` (partio del JSON completo, asi que
+            // su payload es el estado entero y un cartel ausente significa borrado).
+            // Sin esa declaracion se FUSIONA por cartel: un editor que arranco con el
+            // layout a medias ya no puede llevarse por delante los carteles que no
+            // toco en esa sesion, que era el "a veces se resetea".
+            let salida = clean;
+            if (!payload.full) {
+                let previo = {};
+                try { const p = JSON.parse(fs.readFileSync(destino, 'utf8')); if (p && typeof p === 'object') previo = p; } catch (e) {}
+                salida = Object.assign({}, previo, clean);
+            }
             try {
-                fs.writeFileSync(destino, JSON.stringify(clean, null, 2) + '\n');
+                fs.writeFileSync(destino, JSON.stringify(salida, null, 2) + '\n');
             } catch (e) {
                 res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: e.message })); return;
             }
-            log(`Carteles layout guardado en game/carteles-layout.json (${Object.keys(clean).length} carteles)`);
+            log(`Carteles layout guardado en game/carteles-layout.json (${Object.keys(salida).length} carteles, ${payload.full ? 'reemplazo' : 'fusion'})`);
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
+            res.end(JSON.stringify({ ok: true, count: Object.keys(salida).length }));
         });
         return;
     }

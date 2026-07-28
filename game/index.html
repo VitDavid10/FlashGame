@@ -3012,7 +3012,16 @@
             css += 'body.pixel-pack #exitModal .btn-cancel{border:none!important;border-radius:0!important;box-shadow:none!important;' +
                 'background:transparent url(' + cartelHeroUrl('cancel') + ') center/100% 100% no-repeat!important;' +
                 'aspect-ratio:509/201;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}' +
-                'body.pixel-pack #exitModal .btn-cancel:hover{filter:brightness(1.15)}';
+                'body.pixel-pack #exitModal .btn-cancel:hover{filter:brightness(1.15)}' +
+                // CHOOSE HOW TO PLAY con el MISMO boton CANCEL horneado que el modal
+                // de salida, en vez del recuadro CSS plano. Ancho acotado: el
+                // pw-modal-cancel es un boton estrecho y el PNG, a lo ancho del
+                // cartel, se veria enorme al lado de PLAY OFFLINE/ONLINE.
+                'body.pixel-pack #playChoiceModal .pw-modal-cancel{border:none!important;box-shadow:none!important;padding:0!important;' +
+                'background:transparent url(' + cartelHeroUrl('cancel') + ') center/100% 100% no-repeat!important;' +
+                'aspect-ratio:509/201;width:46%;display:block;margin:14px auto 0;' +
+                'image-rendering:pixelated;color:transparent!important;text-shadow:none!important}' +
+                'body.pixel-pack #playChoiceModal .pw-modal-cancel:hover{filter:brightness(1.15);border:none!important}';
         }
         if (cartelUsesAtlas('start-cashout')) {
             // banner rojo SIN texto horneado: el rotulo (START CASHOUT (5s) /
@@ -3160,6 +3169,19 @@
                 'body.pixel-pack #gameDepositModal input,body.pixel-pack #gameWithdrawModal input{font-family:"Press Start 2P",monospace!important;font-size:11px!important;letter-spacing:0}' +
                 'body.pixel-pack #gameDepositModal .gm-row button,body.pixel-pack #gameWithdrawModal .gm-row button,' +
                 'body.pixel-pack #gameDepositModal input+button,body.pixel-pack #gameWithdrawModal input+button{font-family:"Press Start 2P",monospace!important;font-size:8px!important;letter-spacing:0}' +
+                // ...y en el GRIS del cartel, no en el verde del tema. La etiqueta
+                // "Amount" y el boton MAX eran los dos unicos #00ff88 que quedaban
+                // dentro del marco gris y cantaban. Mismo gris que el CANCEL de los
+                // pop-ups (#8a939e sobre borde #3a4048). El MAX lleva !important
+                // porque su color va en el style inline del propio boton.
+                'body.pixel-pack #gameDepositModal label,body.pixel-pack #gameWithdrawModal label{color:#8a939e!important}' +
+                'body.pixel-pack #gameDepositModal input+button,body.pixel-pack #gameWithdrawModal input+button{color:#8a939e!important;border-color:#3a4048!important}' +
+                'body.pixel-pack #gameDepositModal input+button:hover,body.pixel-pack #gameWithdrawModal input+button:hover{color:#fff!important;border-color:#6a737e!important}' +
+                // SETTINGS con el mismo cartel gris que el resto de pop-ups (era el
+                // unico que se quedaba con la caja CSS plana #0d0f12).
+                'body.pixel-pack #settingsModal .pw-modal-box{border:none!important;border-radius:0!important;box-shadow:none!important;' +
+                'background:transparent url(' + cartelHeroUrl('menu-gris') + ') center/100% 100% no-repeat!important;' +
+                'image-rendering:pixelated;padding:48px 44px 40px}' +
                 // WALLET REQUIRED / CONNECT ERROR / DEPOSIT FAILED: mismo marco gris
                 // en el modal de sistema (la clase sys-gray la pone showSystemMsg).
                 // 470 y no 430 como el verde: los avisos de wallet son los de
