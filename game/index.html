@@ -2272,12 +2272,10 @@
     const skinCache = new Map();
     function getSkinImage(url) { if (!url) return null; if (!skinCache.has(url)) { const img = new Image(); img.src = url; skinCache.set(url, img); } return skinCache.get(url); }
 
-    // Video legacy del imán (opcional, alpha bajo; las ondas azules ya marcan el buff).
-        const magnetFxVideo = document.createElement('video');
-        magnetFxVideo.src = '../img/iman-fx.webm';
-        magnetFxVideo.loop = true; magnetFxVideo.muted = true; magnetFxVideo.playsInline = true;
-        magnetFxVideo.preload = 'auto';
-        function ensureMagnetFxPlaying() { if (magnetFxVideo.paused) { const pr = magnetFxVideo.play(); if (pr && pr.catch) pr.catch(() => {}); } }
+    // El video legacy del imán (img/iman-fx.webm) se quitó: nadie lo dibujaba ya
+        // — las ondas azules procedurales marcan el buff — pero seguía con
+        // preload='auto', o sea 3 MB descargados en cada carga del juego para nada.
+        // El .webm sigue en img/ por si se quiere recuperar el efecto.
 
         // Skill FX: solo procedural pixel (aros, rayos, campo). Los sheets Grok de
         // game/img/skill-fx/ quedaron aparcados — no pegan con el pack pixel.
