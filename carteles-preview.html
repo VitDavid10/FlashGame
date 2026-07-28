@@ -89,9 +89,13 @@ const CASOS = [
   { g:'Sistema · avisos', n:'WARNING: FORFEIT?',    sup:'exitModal', art:1, exit:["You will lose <span style='color:#ff2a2a'>100% of the PILLS</span> used to enter (they go to the prize pot).<br>Are you sure?", 'WARNING: FORFEIT?', 'warning', 'EXIT NOW'] },
   { g:'Sistema · avisos', n:'SECURE CASHOUT',       sup:'exitModal', art:1, exit:['You have <span style="color:#fff">2 Kills</span>.<br><span style="color:#00ff88; font-weight:bold;">SAFE EXIT: 0% FEE (2+ kills)</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>', 'SECURE CASHOUT', 'secure-cashout', 'START CASHOUT (5s)'] },
 
-  { g:'Fin de partida', n:'GAME OVER',      sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'] },
+  // retry:1 = ese cartel sale con el boton TRY AGAIN. GAME OVER solo lo lleva
+  // online (offline/practica no, ver showResultsUI); ROOM RESTARTED solo existe
+  // online, asi que siempre; MATCH FINISHED NUNCA — finishGameSuccess lo oculta
+  // a proposito aunque estes online.
+  { g:'Fin de partida', n:'GAME OVER',      sup:'resultOverlay', art:1, show:'resultOverlay', res:['gameOver','GAME OVER','#ff2a2a'], retry:1 },
   { g:'Fin de partida', n:'MATCH FINISHED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['matchFinished','MATCH FINISHED','#00ff88'] },
-  { g:'Fin de partida', n:'ROOM RESTARTED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['roomRestarted','ROOM RESTARTED','#ffcc00'] },
+  { g:'Fin de partida', n:'ROOM RESTARTED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['roomRestarted','ROOM RESTARTED','#ffcc00'], retry:1 },
   { g:'Fin de partida', n:'VICTORY!',       sup:'prizeModal', art:1, prize:{ reason:'victory',  amount:250000, carry:180000 } },
   { g:'Fin de partida', n:'CASHOUT',        sup:'prizeModal', art:1, prize:{ reason:'cashout',  amount:40000,  carry:50000  } },
   { g:'Fin de partida', n:'MATCH ENDED',    sup:'prizeModal', art:1, prize:{ reason:'arcadeEnd', myAmount:120000, pot:500000, top:[
@@ -215,11 +219,10 @@ function clonar(c) {
     if (e) e.style.display = 'flex';
     if (c.res) {
       w.setOverlayTitle(d.getElementById('resultTitle'), c.res[0], c.res[1], c.res[2]);
-      // El juego rellena el resultado y saca el TRY AGAIN al acabar la partida,
-      // y aqui salian vacios: se afinaba el hueco SIN ese texto y luego, en el
-      // juego, aparecia en medio de lo ya colocado. Se pinta el caso real mas
-      // alto — sala de pago online: dos lineas de resultado y el boton extra
-      // (TRY AGAIN solo sale online). Mismo markup que showResultsUI().
+      // El juego rellena el resultado al acabar la partida y aqui salia vacio:
+      // se afinaba el hueco SIN ese texto y luego, en el juego, aparecia en
+      // medio de lo ya colocado. Se pinta el caso real mas alto — sala de pago:
+      // dos lineas de resultado. Mismo markup que showResultsUI().
       const res = d.getElementById('myResult');
       if (res) {
         const ico = w.cartelUsesAtlas('pill')
@@ -230,7 +233,7 @@ function clonar(c) {
         res.style.color = '';
       }
       const tb = d.getElementById('btnTryAgainOnline');
-      if (tb) tb.style.display = 'block';
+      if (tb) tb.style.display = c.retry ? 'block' : 'none';
     }
   }
 
