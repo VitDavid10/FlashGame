@@ -636,6 +636,17 @@ const directorLocal = {
         }
     },
 
+    // Devolución por partida ANULADA (el admin reinicia la sala en marcha): el
+    // jugador recupera lo que llevaba encima (su carry, que arranca siendo su
+    // entrada). Va por aquí y no por econ.credit para que quede en el log de
+    // transacciones como 'refund'. Ver restartRoom() en game-host.js.
+    refundEntry(p) {
+        if (!p || !p.wallet || !(p.amount > 0)) return;
+        warbank.credit(p.wallet, p.amount);
+        logTx('refund', p.wallet, p.amount, (p.comboKey || '') + ' (room restarted)');
+        log(`Reembolso por reinicio de sala: ${p.wallet.slice(0, 6)}… +${p.amount} PILL`);
+    },
+
     // IP echada por admin en los últimos 30s → bloqueada para cualquier sala.
     // Devuelve {secondsLeft} si está bloqueada, o null.
     checkKick(ip) {
@@ -775,6 +786,7 @@ const directorProxy = hostIpc && {
     },
     recordEntry(payload) { hostIpc.notify('recordEntry', payload); },
     onPlayerLeave(payload) { hostIpc.notify('onPlayerLeave', payload); },
+    refundEntry(payload) { hostIpc.notify('refundEntry', payload); },
 };
 const econProxy = hostIpc && {
     credit(wallet, amount) { if (wallet && amount > 0) hostIpc.notify('econ.credit', { wallet, amount }); },
@@ -809,6 +821,7 @@ function registerHostHandlers(hostEntry) {
     // notify — hechos consumados (stats, premios ya decididos por la partida)
     ipc.handle('recordEntry', (p) => directorLocal.recordEntry(p));
     ipc.handle('onPlayerLeave', (p) => directorLocal.onPlayerLeave(p));
+    ipc.handle('refundEntry', (p) => directorLocal.refundEntry(p));
     ipc.handle('econ.credit', (p) => econLocal.credit(p.wallet, p.amount));
     ipc.handle('econ.playerDeath', (p) => econLocal.playerDeath(p.comboKey, p.tester, p.name));
     ipc.handle('econ.botKill', (p) => econLocal.botKill(p.name, p.tester));

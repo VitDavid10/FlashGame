@@ -487,8 +487,20 @@ function createGameHost(deps) {
         // 30 dentro tras cada arcade → otros que esperaban fuera no tenían chance. Ahora
         // todos salen y el lobby se llena desde 0. El cliente ve roomRestart + close y
         // muestra TRY AGAIN; el stress-bot reentra solo tras su delay aleatorio.
+        // La partida queda ANULADA, asi que se devuelve a cada jugador lo que
+        // llevaba encima: su carry, que empieza siendo su entrada y en classic
+        // crece con lo que le quita a los que mata. Se pone a 0 ANTES de cerrar
+        // el socket para que onPlayerLeave no lo pague otra vez como cashout —
+        // seria pagar dos veces lo mismo. El que ya estaba muerto lleva 0 (su
+        // carry se lo quedo quien lo mato, o se fue al bote en arcade).
         const closed = room.clients.size;
-        broadcast(room, { t: 'roomRestart' });
+        for (const cli of room.clients.values()) {
+            const devuelto = cli.carry | 0;
+            cli.carry = 0; cli.paidFee = 0;
+            if (devuelto > 0 && cli.payWallet) director.refundEntry({ wallet: cli.payWallet, amount: devuelto, comboKey: room.comboKey });
+            // Cada uno recibe SU cantidad: el cartel ROOM RESTARTED la enseña.
+            try { if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify({ t: 'roomRestart', refunded: devuelto })); } catch (e) {}
+        }
         for (const cli of room.clients.values()) {
             try { cli.ws.close(); } catch (e) {}
         }

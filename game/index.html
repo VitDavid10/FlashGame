@@ -638,6 +638,12 @@
         .guide-next-arrow:hover { color: #00ffaa; transform: scale(1.2); }
 
         @media (max-height: 700px) { .grid-skill-icon { width: 40px; height: 40px; } }
+        /* Bloque de los tres botones del cartel de resultado (lo mueve el editor
+           de carteles como una pieza). flex-column y no un div a secas: asi los
+           botones quedan EXACTAMENTE donde estaban cuando colgaban directos de
+           .result-box, que tambien es flex-column — con un div normal el bloque
+           bajaba 11px. */
+        .result-actions { display: flex; flex-direction: column; }
         .result-box { background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary); box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px 30px; border-radius: 12px; text-align: center; width: 380px; animation: slideUp 0.4s ease-out; position: relative; max-height: 95vh; overflow-y: auto; }
         @keyframes slideUp { from {transform:translateY(20px); opacity:0;} to {transform:translateY(0); opacity:1;} }
         .back-icon { position: absolute; top: 22px; left: 24px; z-index: 65; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border: 1px solid rgba(0,255,136,0.35); border-radius: 8px; color: #00ff88; cursor: pointer; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); user-select: none; }
@@ -1642,9 +1648,14 @@
             <h1 style="color:var(--primary);" id="resultTitle">MATCH FINISHED</h1>
             <div id="myResult" style="margin: 20px 0; font-family:'Russo One'; font-size:18px;"></div>
             
-            <button class="btn-play" id="btnTryAgainOnline" onclick="tryAgainOnline()" style="display:none; background:var(--primary); color:#04150c; margin-bottom:10px;">TRY AGAIN</button>
-            <button class="btn-spectate" onclick="onSpectateClick()" style="margin-bottom: 10px;">SPECTATE</button>
-            <button class="btn-play" id="btnBackToMenu" onclick="returnToMenu()">BACK TO MENU</button>
+            <!-- Los tres botones en un bloque: asi el editor de carteles los
+                 mueve/escala juntos (antes la pieza "BOTONES" era solo el
+                 SPECTATE y los otros dos no se podian tocar). -->
+            <div class="result-actions">
+                <button class="btn-play" id="btnTryAgainOnline" onclick="tryAgainOnline()" style="display:none; background:var(--primary); color:#04150c; margin-bottom:10px;">TRY AGAIN</button>
+                <button class="btn-spectate" onclick="onSpectateClick()" style="margin-bottom: 10px;">SPECTATE</button>
+                <button class="btn-play" id="btnBackToMenu" onclick="returnToMenu()">BACK TO MENU</button>
+            </div>
         </div>
     </div>
 
@@ -2045,6 +2056,11 @@
     // panel ROOM · PRICES, o el popup la pide al darle a PLAY.
     let currentGameMode = 'classic', currentServer = null, width, height, gameRunning = false, isGodMode = false, isSpectating = false;
     let serverLeaderboard = null;   // ranking de la sala entera que manda el server (online); null = usar cálculo local (offline)
+    // Último puesto que ocupabas VIVO. Al morir tu masa es 0 y te caes del
+    // ranking, así que el cartel de GAME OVER de arcade enseña este. Online el
+    // server solo manda el top 10: si nunca entraste, se queda a null y el
+    // cartel enseña solo las kills en vez de inventarse un puesto.
+    let _miPuesto = null;
     let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
     let camera = { x: 0, y: 0, scale: 0.8 }, mouse = { x: 0, y: 0 }, inputMode = 'MOUSE', keys = { w: false, a: false, s: false, d: false, f: false }, botConfig = { enabled: true, count: 25, respawn: true };
 
@@ -5265,6 +5281,7 @@
         b._hideTimer = setTimeout(() => { b.classList.remove('show'); }, 3500);
     }
     function startGame() {
+        _miPuesto = null;
         SoundManager.play('select'); SoundManager.stopMenuMusic(); SoundManager.playMusic(); showBotsBanner();
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
         playerName = document.getElementById('playerNameInput').value.trim() || "";
@@ -5409,7 +5426,7 @@
             victory: 'prizeModal', cashout: 'prizeModal', matchEnded: 'prizeModal' }[id];
         if (supDe) applyCartelSurface(supDe, CARTEL_LAYOUT[supDe + '#' + id] || CARTEL_LAYOUT[supDe]);
     }
-    function stopGame() { isSpectating = true; hideCountdownNumber(); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI(); }, 1400); }
+    function stopGame() { isSpectating = true; hideCountdownNumber(); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI('gameOver'); }, 1400); }
 
     // Botón SPECTATE del menú GAME OVER: online sigue la partida en curso, offline crea sim local.
     function onSpectateClick() {
@@ -5428,38 +5445,55 @@
         document.getElementById('exitGameBtn').style.display = 'flex';
     }
     function hideSpectatorBar() { onlineSpectator = false; }
-    function showResultsUI() {
+    // Línea de PILL con su icono, del mismo tamaño/color en los tres carteles.
+    function lineaPill(cantidad, etiqueta) {
+        const ico = (pixelMode && cartelUsesAtlas('pill')) ? `<img src="${cartelHeroUrl('pill')}" style="height:1em;vertical-align:-0.2em;margin-right:4px;image-rendering:pixelated;">` : '';
+        return `<span style="color:#ffce3d;font-size:22px;">${etiqueta ? etiqueta + ' ' : ''}${Number(cantidad || 0).toLocaleString('en-US')} ${ico}<span style="font-size:14px;color:#888;">$PILL</span></span>`;
+    }
+    function lineaKills(kills) {
+        const col = kills >= 5 ? '#ff4444' : kills >= 1 ? '#ffce3d' : '#888';
+        return `<span style="color:${col}">${kills} KILL${kills !== 1 ? 'S' : ''}</span>`;
+    }
+    // Texto bajo el título de cada cartel de fin de partida. Cada uno cuenta una
+    // cosa DISTINTA — antes los tres enseñaban lo mismo (kills + carry) y eso
+    // hacía que GAME OVER pareciera que te llevabas el dinero que acababas de
+    // perder, y que MATCH FINISHED hablara de PILL en salas donde no hay:
+    //   gameOver      classic de pago → lo que PIERDES (tu carry se lo lleva quien te mató)
+    //   gameOver      arcade          → kills y el puesto en el que caíste
+    //   gameOver      Free / offline  → kills
+    //   matchFinished (solo sale en Free y offline, ahí no hay PILL) → kills
+    //   roomRestarted → lo que se te devuelve por anular la partida
+    function textoResultado(tipo, extra) {
+        const kills = parseInt(document.getElementById('killsVal').innerText, 10) || 0;
+        const dePago = currentServer && currentServer !== 'Free';
+        const esArcade = currentGameMode === 'arcade' || currentGameMode === 'skills';
+        if (tipo === 'roomRestarted') {
+            const dev = (extra && extra.refunded) | 0;
+            return dev > 0 ? lineaPill(dev, 'REFUNDED') : lineaKills(kills);
+        }
+        if (tipo === 'gameOver') {
+            if (esArcade) return lineaKills(kills) + (_miPuesto ? `<br><span style="color:#ccc;font-size:15px;">TOP ${_miPuesto}</span>` : '');
+            // Classic: mueres y tu carry (entrada + lo robado) se lo lleva el que
+            // te comió. En Free no hay nada que perder, así que solo las kills.
+            const perdido = (typeof EconHUD !== 'undefined' && EconHUD.carry) | 0;
+            if (dePago && perdido > 0) return lineaKills(kills) + '<br>' + lineaPill(perdido, 'YOU LOST');
+            return lineaKills(kills);
+        }
+        return lineaKills(kills);   // matchFinished
+    }
+    function showResultsUI(tipo, extra) {
         hideSpectatorBar();
         // Si moriste con el modal gris de salir abierto (o con el cashout en
         // marcha), se cierra solo: manda el cartel de resultado.
         document.getElementById('exitModal').style.display = 'none';
         if (logoutTimer) { clearInterval(logoutTimer); logoutTimer = null; }
         isLoggingOut = false;
-        document.getElementById('btnTryAgainOnline').style.display = (typeof netState !== 'undefined' && netState) ? 'block' : 'none';
+        // TRY AGAIN también offline: sin conexión relanza la partida local con
+        // los mismos ajustes (ver tryAgainOnline).
+        document.getElementById('btnTryAgainOnline').style.display = 'block';
         document.getElementById('exitGameBtn').style.display = 'none';
-        const isPaid = currentServer && currentServer !== 'Free';
-        if (isPaid && typeof EconHUD !== 'undefined') {
-            const kills = parseInt(document.getElementById('killsVal').innerText, 10) || 0;
-            const carry = EconHUD.carry || 0;
-            const carryFmt = carry.toLocaleString('en-US');
-            const killColor = kills >= 5 ? '#ff4444' : kills >= 1 ? '#ffce3d' : '#888';
-            const pillIcon = (pixelMode && cartelUsesAtlas('pill')) ? `<img src="${cartelHeroUrl('pill')}" style="height:1em;vertical-align:-0.2em;margin-right:4px;image-rendering:pixelated;">` : '';
-            // En arcade de pago el carry no se usa (la economia va por el POT
-            // compartido, que se reparte via 'prize' solo si sobrevives) — si
-            // mueres sin cobrar, carry siempre es 0 y mostrar "0 $PILL" confunde.
-            const isArcadeMode = currentGameMode === 'arcade' || currentGameMode === 'skills';
-            const pillLine = (isArcadeMode && carry === 0) ? '' : `<br><span style="color:#ffce3d;font-size:22px;">${carryFmt} ${pillIcon}<span style="font-size:14px;color:#888;">$PILL</span></span>`;
-            els.myResult.innerHTML = `<span style="color:${killColor}">${kills} KILL${kills !== 1 ? 'S' : ''}</span>${pillLine}`;
-            els.myResult.style.color = '';
-        } else {
-            let all = [{name: me() ? me().name : playerName, m: 0, isMe: true}];
-            myCells().forEach(c => all[0].m += c.mass);
-            if (sim) sim.enemies.forEach(e => all.push({name: e.name, m: e.mass, isMe: false}));
-            all.sort((a,b) => b.m - a.m);
-            const myRank = all.findIndex(e => e.isMe) + 1;
-            els.myResult.innerText = (myRank > 0 && myRank <= 3) ? `YOU WERE TOP ${myRank}!` : `FINISHED RANK: ${myRank}`;
-            els.myResult.style.color = (myRank > 0 && myRank <= 3) ? '#00ff88' : '#ccc';
-        }
+        els.myResult.innerHTML = textoResultado(tipo, extra);
+        els.myResult.style.color = '';
         els.result.style.display = 'flex';
         hideGameHUD();
     }
@@ -5476,11 +5510,10 @@
         const prizeOpen = document.getElementById('prizeModal').style.display === 'flex';
         if (!prizeOpen) {
             setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88');
-            showResultsUI();
+            showResultsUI('matchFinished');
         }
-        const tb = document.getElementById('btnTryAgainOnline'); if (tb) tb.style.display = 'none';
     }
-    function returnToMenu() { serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function returnToMenu() { serverLeaderboard = null; _miPuesto = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
@@ -6259,6 +6292,7 @@
         if (btnMain) { btnMain.disabled = !!busy; btnMain.innerText = busy ? (label || 'CONNECTING...') : 'PLAY'; }
     }
     async function startOnlineGame() {
+        _miPuesto = null;
         if (_joinInFlight) return;
         // Protocolo binario ON por defecto (ahorra ~50% extra sobre AOI+JSON).
         // ?bin=0 fuerza JSON para debug. Calculado ANTES del branch de REJOIN:
@@ -6730,9 +6764,19 @@
 
     // TRY AGAIN tras morir / fin de partida / reinicio: vuelve a entrar a la
     // MISMA sala sin pasar por el menú (nuevo join con los mismos datos).
+    // Offline (o práctica): relanza la partida local con los mismos ajustes, sin
+    // pagar ni firmar nada. Antes el botón ni siquiera salía sin conexión.
     async function tryAgainOnline() {
         if (_joinInFlight) return;
-        if (!netState || !netState.joinMsg) { returnToMenu(); return; }
+        if (!netState || !netState.joinMsg) {
+            if (sim && sim.isRemote) { returnToMenu(); return; }
+            els.result.style.display = 'none';
+            els.skillOverlay.style.display = 'none'; isPickingSkill = false;
+            practiceMode = false; sim = null; gameRunning = false; isSpectating = false;
+            if (saveInterval) clearInterval(saveInterval);
+            startGame();
+            return;
+        }
         _joinInFlight = true;
         const tryBtn = document.getElementById('btnTryAgainOnline');
         if (tryBtn) { tryBtn.disabled = true; tryBtn.innerText = 'SIGNING...'; }
@@ -6889,7 +6933,9 @@
                     SoundManager.stopMusic(); SoundManager.stop('timer'); isSpectating = true;
                     els.skillOverlay.style.display = 'none'; isPickingSkill = false;
                     setOverlayTitle(els.resultTitle, 'roomRestarted', 'ROOM RESTARTED', '#ffcc00');
-                    showResultsUI();
+                    // El server devuelve lo que llevabas encima al anular la partida
+                    // y manda la cantidad aquí (ver restartRoom en game-host.js).
+                    showResultsUI('roomRestarted', { refunded: msg.refunded | 0 });
                 }
             } else if (msg.t === 'matchStart') {
                 if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; }
@@ -7562,6 +7608,10 @@
             for (let b of botMap.values()) all.push(b);
             all.sort((a,b) => b.mass - a.mass);
         }
+        // Puesto mientras sigues vivo, para el GAME OVER de arcade. Si ya no
+        // apareces (muerto, o fuera del top 10 online) se conserva el último.
+        const iYo = all.findIndex(e => e.isMe);
+        if (iYo >= 0 && all[iYo].mass > 0) _miPuesto = iYo + 1;
 
         let html = "";
         for (let i=0; i<Math.min(10, all.length); i++) {

@@ -38,7 +38,9 @@ const CARTEL_SURFACES = {
     },
     resultOverlay: {
         label: 'Fin de partida (GAME OVER / MATCH FINISHED...)', grupo: 'Fin de partida',
-        box: '#resultOverlay .result-box', title: '#resultTitle', desc: '#myResult', actions: '#resultOverlay .btn-spectate',
+        // actions = los TRES botones (TRY AGAIN / SPECTATE / BACK TO MENU) en su
+        // bloque, no solo el SPECTATE: se mueven y escalan juntos.
+        box: '#resultOverlay .result-box', title: '#resultTitle', desc: '#myResult', actions: '#resultOverlay .result-actions',
     },
     prizeModal: {
         label: 'Premio (VICTORY / CASHOUT)', grupo: 'Fin de partida',
