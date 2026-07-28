@@ -179,8 +179,24 @@
         .pick-me-pill { display: block; margin: 0 auto; image-rendering: pixelated; }
         #heroPickMe:hover .pick-me-pill { filter: brightness(1.25); }
         /* Titulo devorado por la pill jugable: se va, pero sigue ocupando su
-           hueco para que no salte el resto del hero. Vuelve al soltar el control. */
-        .hero-title-wrap.eaten { opacity: 0; transition: opacity .25s; pointer-events: none; }
+           hueco para que no salte el resto del hero. Vuelve al soltar el control.
+           Se anima con `transform`, no con translate/scale, porque esas dos las
+           usa el editor de layout (LandingLayout) y se pisarian. */
+        .hero-title-wrap.eaten { animation: heroTitleEaten .42s cubic-bezier(.5, -0.2, .75, .2) forwards; pointer-events: none; }
+        .hero-title-wrap.vuelve { animation: heroTitleVuelve .34s cubic-bezier(.2, 1.5, .5, 1); }
+        @keyframes heroTitleEaten {
+            0%   { transform: none;                        opacity: 1; filter: none; }
+            30%  { transform: scale(1.05);                 opacity: 1; filter: brightness(2.4); }
+            100% { transform: scale(.12) skewX(14deg);     opacity: 0; filter: brightness(3); }
+        }
+        @keyframes heroTitleVuelve {
+            0%   { transform: scale(.35); opacity: 0; }
+            100% { transform: none;       opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .hero-title-wrap.eaten { animation: none; opacity: 0; }
+            .hero-title-wrap.vuelve { animation: none; }
+        }
         /* THE CRYPTO ARENA bajo el PILLWARS pixel: misma fuente y mismo neon
            que el rotulo PICK ME (sin el parpadeo). */
         .hero-sub {
@@ -2196,7 +2212,38 @@ function toggleTrailerMode() {
         const npcSpeed = r => 55 * Math.pow(11 / r, 0.42);
         const GIRO_MAX = 3.0;              // rad/s: lo rapido que una pill puede virar
 
+        // Sonido del mini-juego del hero: los MISMOS clips que en partida, pero a
+        // la MITAD de volumen — esto es una landing, no un juego a pantalla
+        // completa. Solo suena mientras tienes el control de la pill, y para
+        // entonces el navegador ya tiene el gesto del usuario (el click de PICK
+        // ME), asi que el autoplay no lo bloquea. Los clips no se descargan hasta
+        // que empiezas a jugar (preload=none + heroSnd.carga()).
+        const HERO_VOL = 0.5;
+        const heroSnd = (() => {
+            const clips = {}, ultimo = {};
+            for (const n of ['kill1', 'kill2', 'split', 'virus', 'big']) {
+                const a = new Audio('snd/' + n + '.mp3');
+                a.volume = HERO_VOL; a.preload = 'none';
+                clips[n] = a;
+            }
+            // Antirrebote POR clip: comerte tres pills en el mismo frame no debe
+            // disparar el sonido tres veces (mismo criterio que playKill del juego).
+            const f = (n, minMs = 150) => {
+                const a = clips[n]; if (!a) return;
+                const t = performance.now();
+                if (t - (ultimo[n] || 0) < minMs) return;
+                ultimo[n] = t;
+                try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {}
+            };
+            f.carga = () => { for (const n in clips) { clips[n].preload = 'auto'; clips[n].load(); } };
+            f.kill = () => f(Math.random() < 0.5 ? 'kill1' : 'kill2');
+            return f;
+        })();
+
         const scene = { food: [], virus: [], npcs: [], w: 0, h: 0, last: 0 };
+        // Raton dentro del cuadro del hero (ver stepScene). En tactil no hay
+        // raton que meter ni sacar, asi que ahi el desfile va siempre.
+        let heroHover = !window.matchMedia('(hover: hover)').matches;
 
         function newFood(w, h) { return { x: Math.random() * w, y: Math.random() * h, r: rnd(3, 6), col: pick(FOOD_COLORS) }; }
         // Todas las pills cruzan el cuadro hacia la DERECHA, pero cada una a su
@@ -2260,6 +2307,15 @@ function toggleTrailerMode() {
             return o;
         }
 
+        // Solo recalcula las zonas prohibidas, sin tocar lo que ya hay en el
+        // cuadro. Es lo que hace falta cuando la UI cambia (te comes el titulo):
+        // rebuildScene() vaciaba comida, virus Y desfile, y se veia toda la
+        // escena saltar de golpe en el momento del bocado.
+        function refreshZonas() {
+            scene.zonas = heroUiRects(UI_SELS, true);
+            scene.evitar = fundeRects(heroUiRects(UI_EVITAR, false), 40);
+        }
+
         function buildScene(w, h) {
             scene.food.length = 0; scene.virus.length = 0; scene.npcs.length = 0;
             const zonas = scene.zonas = heroUiRects(UI_SELS, true);
@@ -2282,6 +2338,10 @@ function toggleTrailerMode() {
         }
 
         function stepScene(w, h, dt) {
+            // El desfile SOLO avanza con el raton dentro del hero. Fuera, se
+            // congela donde este (los virus siguen girando: eso lo pinta
+            // drawScene con el reloj, no depende de este paso).
+            if (!heroHover) { HeroPlay.step(w, h, dt); return; }
             scene.t = (scene.t || 0) + dt;
             for (const n of scene.npcs) {
                 // Rumbo = su angulo + su ondulacion + la esquiva de la UI.
@@ -2402,6 +2462,7 @@ function toggleTrailerMode() {
                 const now = performance.now();
                 this.cells = [this.newCell(x, y, this.START_R, now)];
                 this.mx = x; this.my = y;
+                heroSnd.carga();
                 document.getElementById('heroPickMe').classList.add('playing');
             },
             stop() {
@@ -2409,8 +2470,13 @@ function toggleTrailerMode() {
                 document.getElementById('heroPickMe').classList.remove('playing');
                 if (scene.tituloComido) {   // el titulo vuelve al salir
                     scene.tituloComido = false;
-                    document.getElementById('heroTitleWrap').classList.remove('eaten');
-                    rebuildScene();
+                    const wrap = document.getElementById('heroTitleWrap');
+                    wrap.classList.remove('eaten');
+                    // Sin esto reaparece de golpe: `eaten` es una animacion con
+                    // forwards, y al quitarla el estilo salta al base sin transicion.
+                    wrap.classList.add('vuelve');
+                    wrap.addEventListener('animationend', () => wrap.classList.remove('vuelve'), { once: true });
+                    refreshZonas();
                 }
             },
             // Raton en coordenadas logicas del canvas.
@@ -2440,7 +2506,7 @@ function toggleTrailerMode() {
                     this.performSplit(c, Math.atan2(this.my - c.y, this.mx - c.x), now);
                     hecho = true;
                 }
-                if (hecho) this.lastSplit = now;
+                if (hecho) { this.lastSplit = now; heroSnd('split'); }
             },
             // Split en direcciones al azar, como triggerRandomSplit (virus).
             randomSplit(now) {
@@ -2486,6 +2552,7 @@ function toggleTrailerMode() {
                         if (c.r < n.r * 1.15) continue;
                         if (Math.hypot(n.x - c.x, n.y - c.y) > c.r) continue;
                         this.grow(c, massOf(n.r));
+                        heroSnd.kill();
                         npcRespawn(n, w, h);
                         break;
                     }
@@ -2499,9 +2566,12 @@ function toggleTrailerMode() {
                         if (c.r * 2 * PILL_RATIO < rt.h * 1.5) continue;
                         if (c.x + c.r < rt.x || c.x - c.r > rt.x + rt.w || c.y + c.r < rt.y || c.y - c.r > rt.y + rt.h) continue;
                         scene.tituloComido = true;
-                        el.closest('.hero-title-wrap').classList.add('eaten');
+                        const wrap = el.closest('.hero-title-wrap');
+                        wrap.classList.remove('vuelve');
+                        wrap.classList.add('eaten');
                         this.grow(c, massOf(rt.h / 2));
-                        rebuildScene();       // sin titulo hay hueco nuevo para la deco
+                        heroSnd('big');
+                        refreshZonas();       // sin titulo hay hueco nuevo para la deco
                         break;
                     }
                 }
@@ -2513,6 +2583,7 @@ function toggleTrailerMode() {
                     if (!c) continue;
                     scene.virus.splice(i, 1);
                     this.randomSplit(now);
+                    heroSnd('virus');
                     spawnVirus(w, h);
                 }
                 // Entre celdas propias: se apartan, y si las dos ya pueden
@@ -2614,6 +2685,8 @@ function toggleTrailerMode() {
             e.stopPropagation();
         });
         host.addEventListener('pointermove', (e) => { if (HeroPlay.active) HeroPlay.aim(e.clientX, e.clientY); });
+        host.addEventListener('pointerenter', () => { heroHover = true; });
+        host.addEventListener('pointerleave', () => { heroHover = false; });
         window.addEventListener('keydown', (e) => {
             if (!HeroPlay.active) return;
             if (e.code === 'Space') { e.preventDefault(); HeroPlay.split(); }
