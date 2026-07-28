@@ -2246,15 +2246,22 @@ function toggleTrailerMode() {
         const scene = { food: [], virus: [], npcs: [], w: 0, h: 0, last: 0 };
 
         function newFood(w, h) { return { x: Math.random() * w, y: Math.random() * h, r: rnd(3, 6), col: pick(FOOD_COLORS) }; }
+        // Altura al azar DENTRO de la mitad libre (por debajo de la banda
+        // prohibida). Nacer arriba y bajar esquivando se veia como un embudo de
+        // pills cayendo en diagonal; naciendo ya abajo, cruzan rectas.
+        function yLibre(h, r) {
+            const desde = (scene.banda ? scene.banda.fondo : 0) + r * 1.3 + 24;
+            return desde >= h * 1.05 ? rnd(desde, desde + h * 0.15) : rnd(desde, h * 1.05);
+        }
         // Todas las pills cruzan el cuadro hacia la DERECHA, pero cada una a su
         // manera: su propio angulo, su propia velocidad y una ondulacion suave
-        // con fase y amplitud distintas. Ademas esquivan las zonas de la UI
-        // (titulo y PLAY NOW) apartandose por arriba o por abajo.
+        // con fase y amplitud distintas. Ademas esquivan la banda prohibida
+        // (titulo, subtitulo, botones y todo lo que quede por encima).
         function newNpc(w, h) {
             const r = Math.round(rnd(9, 26));
             const ang = rnd(-0.30, 0.30);     // rumbo propio, siempre hacia la derecha
             return {
-                x: Math.random() * w, y: Math.random() * h, r,
+                x: Math.random() * w, y: yLibre(h, r), r,
                 ang,
                 spdMul: rnd(0.7, 1.45),       // unas van mas lanzadas que otras
                 wobA: rnd(0.10, 0.45),        // amplitud de la ondulacion (rad)
@@ -2271,7 +2278,7 @@ function toggleTrailerMode() {
             const nuevo = newNpc(w, h);
             Object.assign(n, nuevo);
             n.x = -n.r * (1 + PILL_RATIO);
-            n.y = rnd(-h * 0.1, h * 1.1);
+            n.y = yLibre(h, n.r);
         }
 
         // Rects (en coords logicas del canvas) de la UI del hero + la franja de
@@ -2280,7 +2287,6 @@ function toggleTrailerMode() {
         // fuera de estas zonas. `evitar` es el subconjunto que ademas esquivan
         // las pills al pasar (titulo y PLAY NOW).
         const UI_SELS = ['#heroTitleWrap', '#heroPlayNow', '#heroPickMe', '#heroCaSign', '#heroCaWrap'];
-        const UI_EVITAR = ['#heroTitleWrap', '#heroPlayNow'];
         function logicRect(el) {
             const rc = cv.getBoundingClientRect();
             if (!rc.width || !rc.height) return null;
@@ -2300,6 +2306,26 @@ function toggleTrailerMode() {
             }
             return out;
         }
+        // Media parte de arriba del cuadro: PROHIBIDA para las pills del desfile.
+        // Va del borde superior hasta debajo del PLAY NOW, pasando por el titulo
+        // (que incluye THE CRYPTO ARENA dentro del wrap), asi que no se ve
+        // ninguna pill ni por encima del titulo ni cruzandolo a el, al subtitulo
+        // o a los botones. De ahi para abajo (cartel del contrato, contrato) van
+        // libres. Es UNA banda y no un rect por elemento a proposito: dos zonas
+        // sueltas dejaban un pasillo entre medias por el que se colaban.
+        function bandaProhibida() {
+            const rc = cv.getBoundingClientRect();
+            if (!rc.height) return null;
+            let fondo = 120 * (cv.height / rc.height);          // navbar + ticker
+            for (const sel of ['#heroTitleWrap', '.hero-play-row']) {
+                if (sel === '#heroTitleWrap' && scene.tituloComido) continue;
+                const el = document.querySelector(sel); if (!el) continue;
+                const r = logicRect(el); if (r) fondo = Math.max(fondo, r.y + r.h);
+            }
+            // Se desborda por los lados y por arriba: una pill que entre por el
+            // borde ya nace dentro de la zona y sale hacia abajo desde el principio.
+            return { x: -1e4, y: -1e4, w: cv.width + 2e4, h: 1e4 + fondo, fondo };
+        }
         const covered = (x, y, rad, rects) => rects.some(b => x + rad > b.x && x - rad < b.x + b.w && y + rad > b.y && y - rad < b.y + b.h);
         function placeFree(make, rects, tries) {
             let o = make();
@@ -2313,7 +2339,7 @@ function toggleTrailerMode() {
         // escena saltar de golpe en el momento del bocado.
         function refreshZonas() {
             scene.zonas = heroUiRects(UI_SELS, true);
-            scene.evitar = fundeRects(heroUiRects(UI_EVITAR, false), 40);
+            scene.banda = bandaProhibida();
         }
 
         // Recalcula las zonas y reubica SOLO lo que haya quedado debajo de la UI,
@@ -2337,7 +2363,7 @@ function toggleTrailerMode() {
         function buildScene(w, h) {
             scene.food.length = 0; scene.virus.length = 0; scene.npcs.length = 0;
             const zonas = scene.zonas = heroUiRects(UI_SELS, true);
-            scene.evitar = fundeRects(heroUiRects(UI_EVITAR, false), 40);
+            scene.banda = bandaProhibida();
             for (let i = 0; i < N_FOOD; i++) scene.food.push(placeFree(() => newFood(w, h), zonas, 40));
             // Virus repartidos, sin solaparse entre ellos y fuera de la UI. Si
             // para alguno no hay hueco, se queda sin poner: un virus de menos no
@@ -2375,52 +2401,20 @@ function toggleTrailerMode() {
             }
             HeroPlay.step(w, h, dt);
         }
-        // Desvio vertical para no cruzar por encima del titulo ni del PLAY NOW:
-        // mira bastante por delante y se aparta hacia el borde mas cercano, con
-        // mas fuerza cuanto mas cerca esta. Devuelve el incremento de angulo.
+        // Desvio vertical para que ninguna pill entre en la banda prohibida (ver
+        // bandaProhibida): siempre hacia ABAJO, que es el unico lado libre, y con
+        // mas fuerza cuanto mas metida esta. Devuelve el incremento de angulo.
+        // El limite se ENSANCHA mientras la pill ya esta esquivando: sin esa
+        // histeresis su propio desvio la sacaba del rango, dejaba de esquivar, el
+        // bamboleo la volvia a meter, y asi frame tras frame — de ahi los tirones
+        // repetidos al pasar cerca del titulo.
         function esquiva(n) {
-            const rects = scene.evitar; if (!rects || !rects.length) { n.esq = false; return 0; }
-            // La banda se ENSANCHA mientras la pill ya esta esquivando: sin esa
-            // histeresis su propio desvio la sacaba del rango, dejaba de esquivar,
-            // el bamboleo la volvia a meter, y asi frame tras frame — de ahi los
-            // tirones repetidos al pasar cerca del titulo.
-            const mV = n.r * 1.2 + 22 + (n.esq ? 34 : 0);
-            const mira = n.r + 210;                // cuanto mira por delante
-            let giro = 0, tocando = false;
-            for (const b of rects) {
-                const arriba = b.y - mV, abajo = b.y + b.h + mV;
-                if (n.y < arriba || n.y > abajo) continue;   // pasa por fuera
-                if (n.x - n.r > b.x + b.w) continue;         // ya la dejo atras
-                const falta = b.x - (n.x + n.r);
-                if (falta > mira) continue;                  // aun lejos
-                const urgencia = falta <= 0 ? 1 : 1 - falta / mira;
-                const porArriba = (n.y - arriba) < (abajo - n.y);
-                giro += (porArriba ? -1 : 1) * (0.55 + 0.75 * urgencia);
-                tocando = true;
-            }
-            n.esq = tocando;
-            return Math.max(-1.25, Math.min(1.25, giro));
-        }
-        // Zonas que se tocan se funden en una sola: si no, una pill metida entre
-        // el titulo y el PLAY NOW recibe "sube" de una y "baja" de la otra, se
-        // anulan y acaba cruzando por en medio.
-        function fundeRects(rects, margen) {
-            const out = rects.map(r => ({ ...r }));
-            for (let cambio = true; cambio;) {
-                cambio = false;
-                for (let i = 0; i < out.length && !cambio; i++)
-                    for (let k = i + 1; k < out.length && !cambio; k++) {
-                        const a = out[i], b = out[k];
-                        if (a.x + a.w + margen < b.x || b.x + b.w + margen < a.x) continue;
-                        if (a.y + a.h + margen < b.y || b.y + b.h + margen < a.y) continue;
-                        const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
-                        a.w = Math.max(a.x + a.w, b.x + b.w) - x;
-                        a.h = Math.max(a.y + a.h, b.y + b.h) - y;
-                        a.x = x; a.y = y;
-                        out.splice(k, 1); cambio = true;
-                    }
-            }
-            return out;
+            const b = scene.banda; if (!b) { n.esq = false; return 0; }
+            const limite = b.fondo + n.r * 1.2 + 22 + (n.esq ? 34 : 0);
+            if (n.y > limite) { n.esq = false; return 0; }
+            n.esq = true;
+            const urgencia = Math.min(1, (limite - n.y) / Math.max(1, limite));
+            return 0.55 + 0.75 * urgencia;
         }
 
         function drawPill(g, x, y, r, rot, top, bot) {

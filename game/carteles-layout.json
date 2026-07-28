@@ -1,1 +1,86 @@
-{}
+{
+  "resultOverlay#gameOver": {
+    "title": {
+      "x": -3,
+      "y": 28,
+      "s": 1.1
+    },
+    "actions": {
+      "x": 1,
+      "y": 10,
+      "s": 1
+    }
+  },
+  "resultOverlay#roomRestarted": {
+    "title": {
+      "x": 5,
+      "y": 24,
+      "s": 1.1
+    },
+    "actions": {
+      "x": 0,
+      "y": 11,
+      "s": 1
+    }
+  },
+  "resultOverlay#matchFinished": {
+    "title": {
+      "x": 1,
+      "y": 22,
+      "s": 1
+    },
+    "actions": {
+      "x": -2,
+      "y": 11,
+      "s": 1
+    }
+  },
+  "sysModal#KICKED": {
+    "title": {
+      "x": 0,
+      "y": 0,
+      "s": 0.95
+    },
+    "desc": {
+      "x": 3,
+      "y": 5,
+      "s": 1
+    },
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 0.95
+    }
+  },
+  "prizeModal#victory": {
+    "desc": {
+      "x": 8,
+      "y": 1,
+      "s": 1
+    },
+    "actions": {
+      "x": -1,
+      "y": 12,
+      "s": 1
+    }
+  },
+  "prizeModal#matchEnded": {
+    "title": {
+      "x": 0,
+      "y": 0,
+      "s": 0.95
+    },
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 0.85
+    }
+  },
+  "prizeModal#cashout": {
+    "actions": {
+      "x": 1,
+      "y": 11,
+      "s": 1
+    }
+  }
+}

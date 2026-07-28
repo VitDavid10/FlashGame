@@ -213,7 +213,25 @@ function clonar(c) {
   else {
     const e = d.getElementById(c.show);
     if (e) e.style.display = 'flex';
-    if (c.res) w.setOverlayTitle(d.getElementById('resultTitle'), c.res[0], c.res[1], c.res[2]);
+    if (c.res) {
+      w.setOverlayTitle(d.getElementById('resultTitle'), c.res[0], c.res[1], c.res[2]);
+      // El juego rellena el resultado y saca el TRY AGAIN al acabar la partida,
+      // y aqui salian vacios: se afinaba el hueco SIN ese texto y luego, en el
+      // juego, aparecia en medio de lo ya colocado. Se pinta el caso real mas
+      // alto — sala de pago online: dos lineas de resultado y el boton extra
+      // (TRY AGAIN solo sale online). Mismo markup que showResultsUI().
+      const res = d.getElementById('myResult');
+      if (res) {
+        const ico = w.cartelUsesAtlas('pill')
+          ? '<img src="' + w.cartelHeroUrl('pill') + '" style="height:1em;vertical-align:-0.2em;margin-right:4px;image-rendering:pixelated;">' : '';
+        res.innerHTML = '<span style="color:#ffce3d">3 KILLS</span>' +
+          '<br><span style="color:#ffce3d;font-size:22px;">12,000 ' + ico +
+          '<span style="font-size:14px;color:#888;">$PILL</span></span>';
+        res.style.color = '';
+      }
+      const tb = d.getElementById('btnTryAgainOnline');
+      if (tb) tb.style.display = 'block';
+    }
   }
 
   const sup = w.CARTEL_SURFACES[c.sup];
@@ -430,6 +448,10 @@ function resetTodo() {
 })();
 
 frame.addEventListener('load', () => {
+  // El juego ya no pide el arte de los carteles al arrancar (carga diferida,
+  // ver game/cartel-hero.js): la dispara al elegir modo o a los 10s. Aqui hace
+  // falta YA, o el editor se queda 10 segundos en "cargando".
+  if (typeof W().cartelHeroLoad === 'function') W().cartelHeroLoad();
   W().CARTELES_READY.then(guardado => {
     Object.assign(LAYOUT, JSON.parse(JSON.stringify(guardado || {})));
     crearCapa();
