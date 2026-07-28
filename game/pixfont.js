@@ -146,17 +146,17 @@ function pixFancyText(text, px, o = {}) {
 }
 
 // ===== Render unificado con tipo de letra elegible =====
-// o.font: 'atlas' (sprites PNG de font-hero), 'normal' (5×7 con contorno),
-// 'bold' (11×15), 'boldhd' (Scale2x). Sin o.font = auto: atlas si TODAS las
-// letras del texto tienen sprite, si no bold/boldhd según o.hd. Si se pide
-// 'atlas' pero faltan letras, cae a bold (el llamador puede avisar con
-// pixHeroMissing). px = tamaño en unidades de fuente (altura final ≈ px*15).
+// o.font: 'normal' (5×7 con contorno), 'bold' (11×15), 'boldhd' (Scale2x). Sin
+// o.font = auto: bold/boldhd según o.hd. px = tamaño en unidades de fuente
+// (altura final ≈ px*15).
+// (Hubo un cuarto tipo, 'atlas', que componía el texto con un PNG por letra
+// (game/img/font-hero). Se quitó: todos los títulos grandes del juego —GO!,
+// cuenta atrás, fin de partida, avisos— ya tienen su propio PNG horneado en
+// cartel-hero, así que el atlas no llegaba a dibujarse nunca.)
 function pixResolveFont(text, o = {}) {
-    const heroOk = (typeof pixHeroReady === 'function') && pixHeroReady(text);
     const f = o.font;
-    if (f === 'atlas') return heroOk ? 'atlas' : (o.hd > 0 ? 'boldhd' : 'bold');
     if (f === 'normal' || f === 'bold' || f === 'boldhd') return f;
-    return heroOk ? 'atlas' : (o.hd > 0 ? 'boldhd' : 'bold');
+    return o.hd > 0 ? 'boldhd' : 'bold';
 }
 // Escala CONTINUA de un canvas de texto pixel (zoom fino): el px de la fuente
 // es entero (1→2 dobla el tamaño); esto interpola entre medias escalando el
@@ -168,12 +168,6 @@ function pixApplyScale(cv, scale) {
 }
 function pixRenderText(text, px, o = {}) {
     const font = pixResolveFont(text, o);
-    if (font === 'atlas') {
-        const ho = {};
-        if (o.sparkles) ho.sparkles = o.sparkles;
-        if (o.glow) { ho.glow = o.glow; if (o.glowBlur != null) ho.glowBlur = o.glowBlur; }
-        return { cv: pixHeroText(text, Math.round(px * 15), ho), mode: 'atlas' };
-    }
     if (font === 'normal') {
         const ipx = Math.max(1, Math.round(px));
         const w = pixTextWidth(text, ipx) + ipx * 2, h = 7 * ipx + ipx * 2;

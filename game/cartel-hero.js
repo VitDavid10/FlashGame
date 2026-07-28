@@ -46,12 +46,24 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     'ok-gris'];
 const _cartelImg = new Map();   // id -> HTMLImageElement (solo si cargo bien)
 
-const CARTEL_HERO_READY_PROMISE = Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => { _cartelImg.set(id, img); resolve(); };
-    img.onerror = () => resolve();
-    img.src = 'img/cartel-hero/' + id + '.png';
-})));
+/*
+ * La descarga NO arranca al parsear el script: son ~9 MB que la pantalla de
+ * seleccion ARCADE/CLASSIC no necesita, y pedirlos ahi dejaba el menu esperando.
+ * Los dispara cartelHeroLoad() desde index.html (al elegir modo, y como red de
+ * seguridad unos segundos despues de que la pagina termine de cargar, para los
+ * caminos que no pasan por ahi: bloqueo movil, ?pwlab...).
+ * CARTEL_HERO_READY_PROMISE se comporta igual que antes para quien la espera:
+ * resuelve cuando estan todas, solo que empieza mas tarde.
+ */
+let _cartelHeroGo = null;
+const CARTEL_HERO_READY_PROMISE = new Promise(r => { _cartelHeroGo = r; }).then(() =>
+    Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => { _cartelImg.set(id, img); resolve(); };
+        img.onerror = () => resolve();
+        img.src = 'img/cartel-hero/' + id + '.png';
+    }))));
+function cartelHeroLoad() { const go = _cartelHeroGo; if (go) { _cartelHeroGo = null; go(); } }
 
 function cartelHeroReady(id) { return _cartelImg.has(id); }
 function cartelHeroUrl(id) { const img = _cartelImg.get(id); return img ? img.src : null; }

@@ -1302,7 +1302,10 @@
             </div>
 
             <div class="section-title" style="margin-top:15px;">Menu Layout</div>
-            <button class="btn-settings" style="margin-top:6px;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
+            <!-- OCULTO: el layout del menu ya esta fijado (MENU_LAYOUT_HORNEADO).
+                 Solo reaparece si se enciende "Layout editors" en el panel admin,
+                 que llega en el campo layoutEdit de /api/rooms. -->
+            <button class="btn-settings" id="btnEditLayout" style="margin-top:6px;display:none;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
 
             <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
@@ -1734,7 +1737,6 @@
 <script src="../shared/sim.js"></script>
 <script src="../shared/proto.js"></script>
 <script src="pixfont.js"></script>
-<script src="pixfont-hero.js"></script>
 <script src="cartel-hero.js"></script>
 <script src="carteles-layout.js"></script>
 <script src="skill-icons-pixel.js"></script>
@@ -1769,12 +1771,6 @@
     // Pixel art SIEMPRE (el modo classic ya no existe; la clase se aplica en el
     // script temprano del <body> para evitar el flash del look antiguo).
     const pixelMode = true;
-    // Atlas hero (sprites únicos por letra, ver pixfont-hero.js): se prefiere sobre
-    // la fuente procedural en cuanto sus imágenes cargan, letra por letra según lo
-    // que haya en game/img/font-hero/. Mientras falte alguna, se sigue usando el
-    // fallback procedural para ese texto (nunca bloquea el splash de arranque).
-    let heroFontReady = false;
-    HERO_READY_PROMISE.then(() => { heroFontReady = true; });
     // Acento de los "carteles" pixel-art (panel de skills + título del modal de
     // sistema en modo pixel): un único color para que ambos marcos, generados con
     // la misma textura 9-slice, se puedan retocar juntos desde el laboratorio.
@@ -1851,6 +1847,11 @@
     // El PNG de un cartel puede tardar en cargar (fetch async) — si el juego ya
     // pintó el frame procedural antes de que termine, se reconstruye aquí.
     CARTEL_HERO_READY_PROMISE.then(() => { if (document.getElementById('pixPanelCss')) buildPixPanelCss(); applyLobbyBannerFrame(); });
+    // Red de seguridad de la carga diferida (ver cartel-hero.js): normalmente la
+    // dispara selectMode, pero hay caminos que no pasan por ahi (bloqueo movil,
+    // ?pwlab) y ademas conviene tenerlo ya descargado antes de elegir modo. A los
+    // 3s de que la pagina termine, con el menu ya pintado y sin robarle ancho.
+    window.addEventListener('load', () => setTimeout(() => { cartelHeroLoad(); skillIconLoad(); }, 3000));
     // Espaciado afinado de los carteles (carteles-layout.json, editado desde
     // carteles-preview.html). Se aplica DESPUES del pixel-pack: son estilos
     // inline, asi que ganan al CSS !important del pack.
@@ -3840,15 +3841,20 @@
         if (changed) { saveMenuDecoSettings(); applyMenuDecoCss(); }
         // Layout GLOBAL del menú (EDIT LAYOUT → "Guardar para todos"): se aplica a
         // todos, salvo mientras TÚ estás editando (para no pisar tu edición). Solo
-        // si cambió, para no repintar cada poll.
-        // IMPORTANTE: un global VACÍO ({}) NO pisa tu layout local — si nadie ha
-        // guardado un layout global, cada uno conserva el suyo de localStorage.
+        // si DIFIERE del que ya hay, que de arranque es el horneado en el código
+        // (MENU_LAYOUT_HORNEADO) — así el menú no da el salto al primer poll.
+        // IMPORTANTE: un global VACÍO ({}) NO pisa nada.
         try {
             if (data.menuLayout && typeof data.menuLayout === 'object' && Object.keys(data.menuLayout).length > 0 && !layoutEditing &&
-                JSON.stringify(data.menuLayout) !== JSON.stringify(menuLayout)) {
+                !mismoMenuLayout(data.menuLayout, menuLayout)) {
                 menuLayout = data.menuLayout; saveMenuLayout(); applyMenuLayout();
             }
         } catch (e) {}
+        // Interruptor de los editores de layout (panel admin → Menu visuals).
+        if (typeof data.layoutEdit === 'boolean') {
+            const b = document.getElementById('btnEditLayout');
+            if (b) b.style.display = data.layoutEdit ? '' : 'none';
+        }
     }
     const MENU_DECO_FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
     const menuDeco = { items: [], w: 0, h: 0, lastT: 0 };
@@ -4638,6 +4644,9 @@
         if (typeof applyMenuLayout === 'function') applyMenuLayout();
     }
     function selectMode(m) {
+        // Arte pesado (carteles y iconos de skill): aqui es donde empieza a
+        // pedirse, ver cartel-hero.js. La pantalla de modos no lo necesita.
+        cartelHeroLoad(); skillIconLoad();
         SoundManager.stop('hover');
         SoundManager.play('select');
         ignoreNextHover = true;
@@ -4988,8 +4997,37 @@
     // "obstáculos de UI" (ni rebote de comida ni reubicación) — solo las lee
     // menuNoVirusZones para el rebote de virus. Se saltan en las otras funciones.
     const LAYOUT_ZONE_KEYS = new Set(['zoneA', 'zoneB']);
-    let menuLayout = {};
-    try { menuLayout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { menuLayout = {}; }
+    // Layout HORNEADO (el que estaba guardado en el servidor el 28-jul-2026). Va
+    // en el codigo para que el menu salga YA colocado en el primer pintado: antes
+    // arrancaba de fabrica y saltaba a su sitio cuando respondia /api/rooms — el
+    // "al hacer F5 se mueve todo". El de localStorage ya no se lee al arrancar
+    // (solo lo escribe el editor mientras editas).
+    const MENU_LAYOUT_HORNEADO = {
+        titlePw_classic:   { x: 170,  y: 16,   s: 2.7522689647375245 },
+        titleWord_classic: { x: 449,  y: 19,   s: 2.2679439840192406 },
+        titlePw_arcade:    { x: 198,  y: 18,   s: 2.7522689647375245 },
+        titleWord_arcade:  { x: 454,  y: 17,   s: 2.3364925909362215 },
+        blurb:             { x: -115, y: 85,   s: 1.4509453541079567 },
+        pill:              { x: 263,  y: 130,  s: 1.1098449129017791 },
+        name:              { x: 256,  y: 116,  s: 1 },
+        play:              { x: 261,  y: 137,  s: 1.429502811929022 },
+        settings:          { x: 257,  y: 146,  s: 1.4083771546098733 },
+        rooms:             { x: -863, y: 217,  s: 1.5399805127988688 },
+        roomsInner:        { x: 0,    y: 2,    s: 0.9421842302867248 },
+        quests:            { x: 263,  y: -199, s: 1.5630802204908512 },
+        questsInner:       { x: 0,    y: 1,    s: 0.9282603254056407 },
+        zoneB:             { x: -2,   y: 18,   s: 1 },
+    };
+    let menuLayout = JSON.parse(JSON.stringify(MENU_LAYOUT_HORNEADO));
+    // Mismo layout sin depender del orden de las claves (el horneado se escribe a
+    // mano, el del servidor llega como se guardo).
+    function mismoMenuLayout(a, b) {
+        const na = o => JSON.stringify(Object.keys(o || {}).sort().map(k => {
+            const v = o[k];
+            return (v && typeof v === 'object') ? [k, +v.x || 0, +v.y || 0, +v.s || 1] : [k, v];
+        }));
+        return na(a) === na(b);
+    }
     let layoutEditing = false, layoutDrag = null;
     function saveMenuLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(menuLayout)); } catch (e) {} }
     // titlePw/titleWord son el MISMO nodo del DOM para arcade y classic (el
@@ -5340,8 +5378,7 @@
         // ahora), el marco/botones del cartel de fin de partida se quedarian
         // sin su arte (skillPanel, button, menu-square...).
         if (pixelMode) ensurePixPanelCss();
-        // Titulos con arte propio (PNG del titulo entero en cartel-hero): se
-        // usan tal cual en vez del atlas de letras. Cada uno con su ancho
+        // Titulos con arte propio (PNG del titulo entero en cartel-hero). Cada uno con su ancho
         // dentro del cartel (VICTORY/CASHOUT mas contenidos que GAME OVER).
         const heroArt = {
             gameOver: { art: 'game-over', w: 72 },
@@ -6369,8 +6406,8 @@
     // Número grande de cuenta atrás (9..1), estilo GO!. Se llama una vez por segundo.
     let _lastCdNum = null;
     // opts (opcional): mismo esquema que pixFancyText. Sin opts, el estilo de
-    // fábrica. El dígito sale del atlas hero si sus sprites existen; si no,
-    // procedural.
+    // fábrica. El dígito sale de su PNG horneado (cd-N.png) y, si falta, de la
+    // fuente procedural.
     function showCountdownNumber(n, label, opts) {
         if (n === _lastCdNum) return; _lastCdNum = n;
         opts = opts || {};
@@ -6619,7 +6656,7 @@
     // Aviso de sistema con el estilo del juego (sustituye a alert()). Siempre en inglés.
     // El título respeta el modo pixel (igual que GO!/contador/panel de skills);
     // el cuerpo se queda en texto normal porque una frase larga en fuente pixel
-    // deja de leerse bien (el atlas solo se usa para textos cortos en todo el juego).
+    // deja de leerse bien (la fuente pixel solo se usa para textos cortos en todo el juego).
     // key (opcional): identifica el modal ('rejoin' | 'kicked' | ...) por si un
     // cartel concreto necesita estilo propio en el futuro.
     function showSystemMsg(message, title, key) {
@@ -7091,16 +7128,14 @@
         function renderProceduralGo() {
             const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
             const sparkles = opts.sparkles != null ? opts.sparkles : 5;
-            // Tipo de letra (opts.font): atlas, normal 5×7, bold o bold HD.
-            // Sin él, auto (atlas si está).
+            // Tipo de letra (opts.font): normal 5×7, bold o bold HD. Sin él, auto.
             const o = { font: opts.font, thin: opts.thin !== undefined ? opts.thin : true, hd: opts.hd != null ? opts.hd : 2 };
             if (opts.plain) o.plain = true;
             if (opts.fill) o.fill = opts.fill;
             if (opts.shade) o.shade = opts.shade;
             if (sparkles > 0) o.sparkles = sparkles;
-            const font = pixResolveFont(text, o);
-            const px = pxOv || (font === 'atlas' ? Math.max(60, Math.min(300, Math.round(width * 0.42))) / 15 : Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37))));
-            if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : (font === 'atlas' ? px * 15 * 0.3 : px * 4); }
+            const px = pxOv || Math.max(5, Math.min(13, Math.floor(width * 0.5 / 37)));
+            if (glow) { o.glow = glow; o.glowBlur = opts.glowBlur != null ? opts.glowBlur : px * 4; }
             const cv = pixApplyScale(pixRenderText(text, px, o).cv, opts.scale || 1);
             cv.className = 'go-txt'; el.appendChild(cv);
         }

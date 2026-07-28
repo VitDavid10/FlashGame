@@ -1,57 +1,19 @@
-Atlas de letras "hero" (carteles grandes: GO!, contador de cuenta atras, y
-los titulos de fin de partida: GAME OVER, VICTORY!, MATCH FINISHED, CASHOUT,
-MATCH ENDED, ROOM RESTARTED).
+ATLAS DE LETRAS: ELIMINADO (jul-2026)
+=====================================
 
-Como añadir/sustituir una letra:
-1. Dibuja o genera la letra en PNG, fondo transparente.
-2. Recorta el PNG ajustado al glifo (sin margenes extra arriba/abajo/lados):
-   el sistema alinea todas las letras por el borde INFERIOR de la imagen
-   (la base de la letra), asi que un margen inferior desplaza la letra hacia
-   arriba respecto a las demas.
-3. Dibuja todas las letras sobre un lienzo de trabajo de la MISMA altura
-   (recomendado 200px de alto) antes de recortar, para que el grosor del
-   trazo sea proporcional y consistente entre letras.
-4. Guarda el archivo con el nombre exacto del caracter en esta carpeta:
-   G.png, O.png, !.png, 0.png, 1.png ... 9.png
-5. Recarga comparativa.html -> seccion "LETRAS" (abajo): el estado del
-   atlas hero te dice que letras estan cargadas y cuales faltan. Mientras falte una letra de una palabra,
-   esa palabra sigue usando la fuente procedural (pixfont.js) como fallback,
-   asi el juego nunca se rompe por un glifo que aun no existe.
+Aqui vivia un PNG por letra que componia los titulos grandes del juego
+(GO!, cuenta atras, GAME OVER/VICTORY/...) con pixHeroText (game/pixfont-hero.js).
 
-Caracteres que hacen falta ahora mismo:
-  0 1 2 3 4 5 6 7 8 9 (contador)
-  G O ! (GO!)
-  A M E V R (GAME OVER)
-  M A T C H F I N S E D (MATCH FINISHED)
-  V I C T O R Y ! (VICTORY!)
-  C A S H O U T (CASHOUT)
-  M A T C H E N D E D (MATCH ENDED)
-  R O O M R E S T A R T E D (ROOM RESTARTED)
+Se quito porque ya no se dibujaba NUNCA: todos esos titulos tienen su propio
+PNG horneado en game/img/cartel-hero/ (GO!.png, cd-1..cd-5.png, game-over.png,
+victory.png, cashout.png, match-finished.png, match-ended.png,
+room-restarted.png y los titulos de los avisos). El atlas solo entraba como
+fallback y, con sus 28 caracteres, ni siquiera cubria los textos que quedaban.
+Eran 1.9 MB que se pedian en cada arranque para nada.
 
-  -> unico total: 0-9, G O ! A M E V R T C H F I N S D Y U (28 glifos)
+Lo unico que queda es raw/: los originales grandes de esas letras y el arte
+fuente de otras cosas (raw/ARCADE.png y raw/CLASSIC.png son el origen de los
+titulos de modo, ver game/img/mode-title/LEEME.txt). No lo carga el juego.
 
-Nota: estos titulos de fin de partida hoy NO usan la fuente pixel en el
-juego (son texto CSS normal). Tener las letras en el atlas es el primer
-paso; conectar el elemento del juego a esta fuente es un cambio aparte,
-pendiente hasta que el atlas este listo.
-
-RESOLUCION (jul-2026): los PNG de esta carpeta estan horneados a 360px de ALTO
-(el ancho, el que salga; cada glifo conserva su proporcion, que es lo unico
-que mira pixHeroText). Los originales grandes siguen en raw/ (944x1088).
-
-Por que 360: pixHeroText recibe targetH = px*15, y el techo lo pone el splash
-en index.html (Math.min(300, ...)), asi que 300px es el tamano maximo al que
-se pinta un glifo. 360 deja margen por encima de ese techo.
-
-Por que NO dejarlos a ~970px como estaban: pesaban 12.2 MB entre los 24, se
-pedian TODOS de golpe al arrancar (Promise.all en pixfont-hero.js) y dejaban
-la seleccion ARCADE/CLASSIC esperando varios segundos, componiendose a trozos
-segun iban llegando las letras. Ahora son 1.9 MB.
-
-Y ademas se ve MEJOR: pixHeroText dibuja con imageSmoothingEnabled=false, o
-sea NEAREST, y reducir 970px -> 300px con nearest deja los bordes con
-escalones irregulares. Rehornear a 360 con Lanczos y que el nearest solo haga
-360->300 da un borde mucho mas limpio.
-
-Si algun dia se sube ese techo de 300px, hay que rehornear desde raw/ a una
-altura mayor.
+Si algun dia se quiere recuperar el atlas: esta en el historico de git, en el
+commit que borro esta carpeta.

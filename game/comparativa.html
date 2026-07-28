@@ -33,7 +33,7 @@
     .pane.pixel .head { color: #00ff88; background: #0a140d; }
     .pane .stage { flex: 1; position: relative; overflow: hidden; background: #000; }
     .pane iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 810px; border: 0; transform-origin: top left; pointer-events: none; }
-    /* ===== sección LETRAS (atlas hero, abecedario, estilos) ===== */
+    /* ===== sección LETRAS (abecedario, estilos) ===== */
     #letters { flex: 0 0 auto; border-top: 1px solid #1c2a20; background: #050805; }
     #lettersHead { padding: 7px 12px; font-size: 12px; letter-spacing: 2px; color: #9ee32d; cursor: pointer; user-select: none; }
     #lettersHead:hover { color: #00ff88; }
@@ -64,7 +64,7 @@
     <div class="hint">
         Dos copias del juego REAL congeladas (mismo mundo, misma semilla): izquierda texture pack
         <b>Classic</b>, derecha <b>Pixel</b>. Cada botón dispara el elemento en AMBAS a la vez.
-        Sonido silenciado. Abajo, la sección <b>LETRAS</b> muestra el atlas hero, el abecedario
+        Sonido silenciado. Abajo, la sección <b>LETRAS</b> muestra el abecedario
         y los estilos de texto del juego.<br>
         <span class="tag px">PX</span> tiene versión pixel propia ·
         <span class="tag eq">=</span> idéntico en ambos modos (de momento).
@@ -79,23 +79,8 @@
         <div class="pane pixel"><div class="head">PIXEL (texture pack)</div><div class="stage"><iframe id="fB" src="index.html?pwlab=1"></iframe></div></div>
     </div>
     <div id="letters">
-        <div id="lettersHead">▸ LETRAS — atlas hero, abecedario y estilos</div>
+        <div id="lettersHead">▸ LETRAS — abecedario y estilos</div>
         <div id="lettersBody">
-            <h2>Atlas hero (imagen por letra)</h2>
-            <div class="hint">Coloca los PNG en <code>game/img/font-hero/&lt;LETRA&gt;.png</code> (spec en el LEEME.txt de esa carpeta) y recarga esta página.</div>
-            <div class="row" id="heroStatus"></div>
-            <div class="row" id="heroQuick"><span class="label" style="min-width:auto">textos rápidos:</span></div>
-            <div class="row">
-                <input type="text" id="hTxt" value="GO!" maxlength="20">
-                <label class="ctrl">alto px <input type="number" id="hHeight" value="80" min="20" max="300"></label>
-                <span class="ctrl"><label><input type="checkbox" id="hGlowOn" checked> glow</label></span>
-                <span class="ctrl">color <input type="color" id="hGlowColor" value="#00ff88"></span>
-                <span class="ctrl">blur <input type="number" id="hGlowBlur" value="24" min="0" max="200"></span>
-                <span class="ctrl">sparkles <input type="number" id="hSparkles" value="5" min="0" max="5"></span>
-                <button class="go" id="hAdd">AÑADIR</button>
-            </div>
-            <div id="heroOut"></div>
-
             <h2>Abecedario completo (todos los glifos de PIXFONT)</h2>
             <div class="row"><span class="label">Normal 5×7 + contorno</span><span class="dark" id="sAbcNormal"></span></div>
             <div class="row"><span class="label">Bold 11×15 (plain)</span><span class="dark" id="sAbcBold"></span></div>
@@ -110,7 +95,6 @@
 </div>
 
 <script src="pixfont.js"></script>
-<script src="pixfont-hero.js"></script>
 <script>
 'use strict';
 const NATIVE_W = 1440, NATIVE_H = 810;
@@ -411,14 +395,14 @@ for (const [title, items] of GROUPS) {
     }
 }
 
-// ===================== SECCIÓN LETRAS (atlas hero, abecedario, estilos) =====================
+// ===================== SECCIÓN LETRAS (abecedario, estilos) =====================
 // Mismo render que el juego (pixfont.js / pixfont-hero.js) — lo que se ve aquí
 // es exactamente lo que sale en la partida.
 document.getElementById('lettersHead').onclick = () => {
     const box = document.getElementById('letters');
     box.classList.toggle('open');
     document.getElementById('lettersHead').textContent =
-        (box.classList.contains('open') ? '▾' : '▸') + ' LETRAS — atlas hero, abecedario y estilos';
+        (box.classList.contains('open') ? '▾' : '▸') + ' LETRAS — abecedario y estilos';
     fit();   // los panes cambian de alto al abrir/cerrar
 };
 
@@ -481,51 +465,7 @@ function redrawPlainStyles() {
 const redrawPlainDebounced = debounce(redrawPlainStyles);
 document.getElementById('styTxt').addEventListener('input', redrawPlainDebounced);
 document.getElementById('styPx').addEventListener('input', redrawPlainDebounced);
-HERO_READY_PROMISE.then(redrawPlainStyles);
-
-// --- atlas hero: estado por letra + generador de muestras ---
-function heroOrFallback(text, targetH, o) {
-    if (pixHeroReady(text)) return { cv: pixHeroText(text, targetH, o), mode: 'atlas' };
-    const px = Math.max(1, Math.round(targetH / 15));
-    return {
-        cv: pixFancyText(text, px, { thin: true, glow: o.glow, glowBlur: o.glowBlur, sparkles: o.sparkles, hd: 2 }),
-        mode: 'fallback procedural (falta: ' + pixHeroMissing(text).join(' ') + ')',
-    };
-}
-function addHeroSample() {
-    const t = document.getElementById('hTxt').value || 'GO!';
-    const h = Math.max(20, Math.min(300, parseInt(document.getElementById('hHeight').value, 10) || 80));
-    const o = { sparkles: parseInt(document.getElementById('hSparkles').value, 10) || 0 };
-    if (document.getElementById('hGlowOn').checked) { o.glow = document.getElementById('hGlowColor').value; o.glowBlur = parseInt(document.getElementById('hGlowBlur').value, 10) || 0; }
-    const r = heroOrFallback(t, h, o);
-    const item = document.createElement('div');
-    const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = '"' + t + '" · alto ' + h + 'px · ' + r.mode;
-    const box = document.createElement('span'); box.className = 'dark'; box.appendChild(r.cv);
-    item.appendChild(meta); item.appendChild(box);
-    document.getElementById('heroOut').prepend(item);
-}
-document.getElementById('hAdd').onclick = addHeroSample;
-document.getElementById('hTxt').addEventListener('keydown', e => { if (e.key === 'Enter') addHeroSample(); });
-
-const HERO_QUICK_TEXTS = ['GO!', 'GAME OVER', 'VICTORY!', 'MATCH FINISHED', 'CASHOUT', 'MATCH ENDED', 'ROOM RESTARTED'];
-const quickRow = document.getElementById('heroQuick');
-for (const t of HERO_QUICK_TEXTS) {
-    const b = document.createElement('button'); b.className = 'quick';
-    b.textContent = t;
-    b.onclick = () => { document.getElementById('hTxt').value = t; addHeroSample(); };
-    quickRow.appendChild(b);
-}
-HERO_READY_PROMISE.then(() => {
-    const statusEl = document.getElementById('heroStatus');
-    for (const ch of HERO_CANDIDATES) {
-        const ok = !pixHeroMissing(ch).length;
-        const tag = document.createElement('span');
-        tag.textContent = ch + ' ' + (ok ? '✓' : '✗');
-        tag.style.cssText = 'padding:3px 9px;border:1px solid ' + (ok ? '#00ff88' : '#552222') + ';color:' + (ok ? '#00ff88' : '#ff6666') + ';font-size:12px';
-        statusEl.appendChild(tag);
-    }
-    addHeroSample();
-});
+redrawPlainStyles();
 </script>
 </body>
 </html>

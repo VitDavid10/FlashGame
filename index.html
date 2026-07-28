@@ -874,10 +874,11 @@ body.trailer-open #page-content{
                 <a href="#quest" class="nav-link">QUESTS</a>
                 <a href="#shop" class="nav-link">STORE</a>
                 <a href="#ranking" class="nav-link">LEADERBOARD</a>
-                <!-- TEMPORAL: editor de posicion/tamaño de los elementos del hero.
-                     Quitar (junto con LandingLayout y /api/landing-layout) cuando
-                     el diseño quede fijado. -->
-                <button class="nav-link" id="btnLandingEdit" onclick="LandingLayout.enter()">EDIT</button>
+                <!-- Editor de posicion/tamaño de los elementos del hero. OCULTO:
+                     el diseño ya esta fijado (LAYOUT_HORNEADO). Solo reaparece si
+                     se enciende "Layout editors" en el panel admin, que llega en
+                     el campo `edit` de /api/landing-layout. -->
+                <button class="nav-link" id="btnLandingEdit" style="display:none;" onclick="LandingLayout.enter()">EDIT</button>
             </div>
         </div>
 
@@ -2221,7 +2222,7 @@ function toggleTrailerMode() {
         const HERO_VOL = 0.5;
         const heroSnd = (() => {
             const clips = {}, ultimo = {};
-            for (const n of ['kill1', 'kill2', 'split', 'virus', 'big']) {
+            for (const n of ['kill1', 'split', 'virus', 'big']) {
                 const a = new Audio('snd/' + n + '.mp3');
                 a.volume = HERO_VOL; a.preload = 'none';
                 clips[n] = a;
@@ -2236,7 +2237,9 @@ function toggleTrailerMode() {
                 try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {}
             };
             f.carga = () => { for (const n in clips) { clips[n].preload = 'auto'; clips[n].load(); } };
-            f.kill = () => f(Math.random() < 0.5 ? 'kill1' : 'kill2');
+            // Solo kill1: el sorteo kill1/kill2 pedia un snd/kill2.mp3 que NO
+            // existe, asi que la mitad de las veces comerse una pill no sonaba.
+            f.kill = () => f('kill1');
             return f;
         })();
 
@@ -2469,9 +2472,22 @@ function toggleTrailerMode() {
             START_R: 16, SPLIT_MIN_R: 30, MAX_R: 75,
             get active() { return !!this.cells; },
             newCell(x, y, r, now) { return { x, y, r, boostX: 0, boostY: 0, born: now }; },
+            // Radio de arranque = el tamaño con el que SE VE la pill del DOM
+            // ("PICK ME"), medido en vivo. El layout global la escala (x2.48 hoy),
+            // asi que un START_R fijo hacia que al clicarla apareciera una pill de
+            // otro tamaño que la que acabas de pulsar.
+            startR() {
+                const pc = document.querySelector('#heroPickMe .pick-me-pill');
+                const rc = cv.getBoundingClientRect();
+                if (!pc || !rc.width || !cv.width) return this.START_R;
+                const escala = pc.getBoundingClientRect().width / pc.width;   // layout x zoom del hero
+                const unidad = rc.width / cv.width;                           // px de pantalla por unidad logica
+                if (!escala || !unidad) return this.START_R;
+                return Math.max(6, PICK_ME_PILL_W * escala / 2 / unidad);
+            },
             start(x, y) {
                 const now = performance.now();
-                this.cells = [this.newCell(x, y, this.START_R, now)];
+                this.cells = [this.newCell(x, y, this.startR(), now)];
                 this.mx = x; this.my = y;
                 heroSnd.carga();
                 document.getElementById('heroPickMe').classList.add('playing');
@@ -2682,13 +2698,15 @@ function toggleTrailerMode() {
         }
 
         // Pill del DOM ("PICK ME!"): mismo sprite y misma inclinacion de 45º con
-        // la que se ven las pills en partida.
+        // la que se ven las pills en partida. El ancho lo comparte HeroPlay.startR()
+        // para spawnear una pill del mismo tamaño que esta.
+        const PICK_ME_PILL_W = 34;
         (() => {
             const pc = document.querySelector('#heroPickMe .pick-me-pill');
             if (!pc) return;
             const g = pc.getContext('2d');
             g.imageSmoothingEnabled = false;
-            const pw = 34, ph = pw * PILL_RATIO;
+            const pw = PICK_ME_PILL_W, ph = pw * PILL_RATIO;
             g.translate(pc.width / 2, pc.height / 2); g.rotate(-Math.PI / 4);
             g.drawImage(pixPillSprite(17, HeroPlay.top, HeroPlay.bot), -pw / 2, -ph / 2, pw, ph);
         })();
@@ -2720,8 +2738,19 @@ function toggleTrailerMode() {
             title: '#heroTitleWrap', play: '#heroPlayNow', pickMe: '#heroPickMe',
             caSign: '#heroCaSign', ca: '#heroCaWrap',
         };
-        let layout = {};
-        try { layout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch (e) { layout = {}; }
+        // Layout HORNEADO (el que estaba guardado en el servidor el 28-jul-2026).
+        // Va en el codigo para que el hero salga YA colocado en el primer pintado:
+        // antes arrancaba de fabrica y saltaba a su sitio cuando respondia
+        // /api/landing-layout — el "al hacer F5 se mueve todo".
+        const LAYOUT_HORNEADO = {
+            zoom: 0.8,
+            title:  { x: 23,     y: -120.75, s: 1.23175573069396 },
+            ca:     { x: 17.25,  y: 127.75,  s: 0.8363874218953965 },
+            caSign: { x: 19.75,  y: 136,     s: 0.8616672317221851 },
+            play:   { x: -58.5,  y: -4.5,    s: 1.2880203308689964 },
+            pickMe: { x: -444.5, y: -7.25,   s: 2.4798680723250732 },
+        };
+        let layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO));
         let editing = false, drag = null;
         const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
         const ZOOM_PASOS = [1, 0.8, 0.6, 0.45];
@@ -2828,12 +2857,25 @@ function toggleTrailerMode() {
         window.addEventListener('keydown', (e) => { if (editing && e.code === 'Escape') LandingLayout.exit(); });
 
         apply();
-        // Layout GLOBAL del servidor: pisa al local salvo que este vacio (nadie ha
-        // guardado todavia) o que TU estes editando ahora mismo.
+        // Mismo objeto sin depender del orden de las claves (el horneado se
+        // escribe a mano, el del servidor llega como se guardo).
+        const mismoLayout = (a, b) => {
+            const na = o => JSON.stringify(Object.keys(o || {}).sort().map(k => {
+                const v = o[k];
+                return (v && typeof v === 'object') ? [k, +v.x || 0, +v.y || 0, +v.s || 1] : [k, v];
+            }));
+            return na(a) === na(b);
+        };
+        // Layout GLOBAL del servidor: solo se aplica si DIFIERE del horneado, o
+        // sea, si alguien ha guardado uno nuevo con SAVE FOR ALL. Si coincide no
+        // se repinta nada y el hero no da el salto al acabar de cargar.
+        // El flag `edit` (admin -> Menu visuals) es lo que devuelve el boton EDIT.
         fetch('/api/landing-layout', { cache: 'no-store' })
             .then(r => r.json())
             .then(d => {
+                if (d && d.edit) { const b = document.getElementById('btnLandingEdit'); if (b) b.style.display = ''; }
                 if (editing || !d || !d.layout || !Object.keys(d.layout).length) return;
+                if (mismoLayout(d.layout, layout)) return;
                 layout = d.layout; save(); apply();
             })
             .catch(() => {});

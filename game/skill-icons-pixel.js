@@ -15,12 +15,17 @@ const SKILL_ICON_CLASS = { clon: 'icon-clon', shoot: 'icon-shot', sprint: 'icon-
 const SKILL_ICON_KEY_BY_ID = { 1: 'clon', 2: 'shoot', 3: 'sprint', 4: 'tp', 5: 'iman', 6: 'inmune', 7: 'big', 8: 'random' };
 const _skillIconImg = new Map(); // key -> HTMLImageElement (solo si cargo bien)
 
-const SKILL_ICON_READY_PROMISE = Promise.all(Object.keys(SKILL_ICON_CLASS).map(key => new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => { _skillIconImg.set(key, img); resolve(); };
-    img.onerror = () => resolve();
-    img.src = 'img/skill-icons-pixel/' + key + '.png';
-})));
+// Igual que cartel-hero.js: ~5.9 MB que solo hacen falta dentro de la partida,
+// asi que la descarga no arranca al parsear — la dispara skillIconLoad().
+let _skillIconGo = null;
+const SKILL_ICON_READY_PROMISE = new Promise(r => { _skillIconGo = r; }).then(() =>
+    Promise.all(Object.keys(SKILL_ICON_CLASS).map(key => new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => { _skillIconImg.set(key, img); resolve(); };
+        img.onerror = () => resolve();
+        img.src = 'img/skill-icons-pixel/' + key + '.png';
+    }))));
+function skillIconLoad() { const go = _skillIconGo; if (go) { _skillIconGo = null; go(); } }
 
 // URL a usar para el <img>/background-image de un icono de skill (tooltip,
 // buffs activos): pixel si estamos en pixel-pack y el PNG cargo, si no el
