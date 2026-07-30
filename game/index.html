@@ -4125,9 +4125,11 @@
         // (MENU_LAYOUT_HORNEADO) — así el menú no da el salto al primer poll.
         // IMPORTANTE: un global VACÍO ({}) NO pisa nada.
         try {
-            if (data.menuLayout && typeof data.menuLayout === 'object' && Object.keys(data.menuLayout).length > 0 && !layoutEditing &&
-                !mismoMenuLayout(data.menuLayout, menuLayout)) {
-                menuLayout = data.menuLayout; saveMenuLayout(); applyMenuLayout();
+            if (data.menuLayout && typeof data.menuLayout === 'object' && Object.keys(data.menuLayout).length > 0 && !layoutEditing) {
+                // Se migra ANTES de comparar: si no, un global con la clave plana
+                // pareceria distinto del local ya migrado en cada poll.
+                const entrante = migrateScopedLayout(JSON.parse(JSON.stringify(data.menuLayout)));
+                if (!mismoMenuLayout(entrante, menuLayout)) { menuLayout = entrante; saveMenuLayout(); applyMenuLayout(); }
             }
         } catch (e) {}
         // Interruptor de los editores de layout (panel admin → Menu visuals).
@@ -5338,7 +5340,11 @@
         titleWord_classic: { x: 460,  y: 19,   s: 2.2679439840192406 },
         titlePw_arcade:    { x: 224,  y: 18,   s: 2.7522689647375245 },
         titleWord_arcade:  { x: 453,  y: 17,   s: 2.3364925909362215 },
-        blurb:             { x: -115, y: 85,   s: 1.4509453541079567 },
+        // El subtitulo (blurb) tambien es scoped por modo: el texto de arcade es
+        // mas largo que el de classic y cada uno va en un sitio distinto. Los dos
+        // arrancan del valor compartido de antes; a partir de aqui se mueven solos.
+        blurb_classic:     { x: -115, y: 85,   s: 1.4509453541079567 },
+        blurb_arcade:      { x: -115, y: 85,   s: 1.4509453541079567 },
         pill:              { x: 263,  y: 130,  s: 1.1098449129017791 },
         name:              { x: 256,  y: 116,  s: 1 },
         play:              { x: 261,  y: 137,  s: 1.429502811929022 },
@@ -5361,14 +5367,29 @@
     }
     let layoutEditing = false, layoutDrag = null;
     function saveMenuLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(menuLayout)); } catch (e) {} }
-    // titlePw/titleWord son el MISMO nodo del DOM para arcade y classic (el
-    // contenido se cambia via innerHTML en setSelectedModeTitleArt), asi que
-    // una sola entrada de layout los movia a la vez en los dos modos. Estas
-    // dos claves se guardan con el modo actual anexado (titlePw_arcade vs
+    // titlePw/titleWord/blurb son el MISMO nodo del DOM para arcade y classic (el
+    // contenido se cambia via innerHTML en setSelectedModeTitleArt / selectMode),
+    // asi que una sola entrada de layout los movia a la vez en los dos modos.
+    // Estas claves se guardan con el modo actual anexado (titlePw_arcade vs
     // titlePw_classic) para que el ajuste de uno no toque al otro.
-    const MODE_SCOPED_LAYOUT_KEYS = new Set(['titlePw', 'titleWord']);
+    const MODE_SCOPED_LAYOUT_KEYS = new Set(['titlePw', 'titleWord', 'blurb']);
     function layoutStoreKey(key) {
         return MODE_SCOPED_LAYOUT_KEYS.has(key) ? key + '_' + (currentGameMode || 'classic') : key;
+    }
+    // Layouts guardados ANTES de que una clave pasara a ser scoped (el global del
+    // servidor y el localStorage de cada uno) traen la clave plana. Sin esto el
+    // elemento se quedaria sin colocar en los dos modos hasta que alguien
+    // reguardara: se reparte el valor plano a los dos modos y se tira la plana.
+    function migrateScopedLayout(l) {
+        if (!l || typeof l !== 'object') return l;
+        for (const key of MODE_SCOPED_LAYOUT_KEYS) {
+            if (!l[key]) continue;
+            for (const m of ['classic', 'arcade']) {
+                if (!l[key + '_' + m]) l[key + '_' + m] = { ...l[key] };
+            }
+            delete l[key];
+        }
+        return l;
     }
     function applyMenuLayout() {
         for (const key in LAYOUT_ELS) {
