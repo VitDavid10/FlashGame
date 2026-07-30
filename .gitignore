@@ -47,3 +47,7 @@ chatbot-backend/emails.json
 # Originales sin pixelizar de los assets del menu (scripts/pixelize-assets.py
 # los guarda para poder re-aplicar con otro --unit sin degradar el PNG)
 *.png.orig
+
+# Cache de Python de los scripts de assets
+__pycache__/
+*.pyc

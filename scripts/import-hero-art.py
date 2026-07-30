@@ -84,6 +84,11 @@ TRABAJOS = [
     ('game/img/mode-title/raw/CLASSIC-word-v3.jpg',     'game/img/mode-title/CLASSIC.png',          'croma', None, True),
     # El cartel se recorta al contenido pero NO se reencuadra: el CSS situa la
     # pantalla verde con porcentajes del alto total (.cartel-inner).
+    #
+    # OJO: el PNG versionado lleva ademas una cuantizacion a 64 colores que NO
+    # hace este script (410 -> 249 KB, error medio 1.35/255 que el promediado de
+    # la rejilla del canvas se come igual). Si se re-aplica aqui, el fichero
+    # engorda otra vez: hay que volver a cuantizarlo o descartar el cambio.
     ('game/img/cartel-hero/raw/quest-panel-v2.jpg',     'game/img/cartel-hero/quest-panel-v2.png',  'croma', None, True),
 ]
 
