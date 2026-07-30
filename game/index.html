@@ -1087,6 +1087,48 @@
            background-image, que se apila SOBRE el background-color sin pisarlo. */
         body.pixel-pack .mqp-bar i { transition: width 0.4s steps(8); background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.55) 0 2px, transparent 2px 10px); }
         body.pixel-pack .mqp-q .tip { border-radius: 0; font-family: 'VT323', monospace; font-size: 14px; letter-spacing: 0; }
+
+        /* ===== Titulo del login (PILLWARS + ARCADE/CLASSIC, PNG de David):
+           llevaba sombra negra pura, asi que quedaba pegado ENCIMA de la
+           escena en vez de dentro de ella. Escalon duro en verde muy oscuro
+           (no negro) + halo del color del modo = el titulo lo ilumina la
+           misma luz que el resto del menu. Los offsets van en 1px porque
+           EDIT LAYOUT escala el span que envuelve la imagen x2.75 (ver
+           MENU_LAYOUT_HORNEADO), y el filtro se escala con el. ===== */
+        body.pixel-pack #modeTitlePw img,
+        body.pixel-pack #modeTitleWord img {
+            filter: drop-shadow(1px 1px 0 #06210f) drop-shadow(1px 1px 0 rgba(0,0,0,0.5)) drop-shadow(0 0 5px rgba(0,255,136,0.32));
+        }
+        #loginOverlay.bg-arcade #modeTitlePw img,
+        #loginOverlay.bg-arcade #modeTitleWord img {
+            filter: drop-shadow(1px 1px 0 #1c2606) drop-shadow(1px 1px 0 rgba(0,0,0,0.5)) drop-shadow(0 0 5px rgba(204,255,0,0.32));
+        }
+
+        /* ===== Tipografia de los carteles laterales (ROOM · PRICES y DAILY
+           QUESTS): la regla del pixel pack — rotulos en Press Start 2P, texto
+           corrido en VT323 — no habia llegado aqui, seguian en Inter y Russo
+           One. Era lo que rompia la cohesion con el resto del menu. Los px
+           bajan bastante porque Press Start 2P es monoespaciada y cuadrada:
+           al mismo font-size ocupa casi el doble de ancho que Russo One. ===== */
+        body.pixel-pack .oracle-desc { font-family: 'VT323', monospace; font-size: 13px; line-height: 1.15; }
+        body.pixel-pack .oracle-layers-hint { font-family: 'VT323', monospace; font-size: 12px; }
+        body.pixel-pack .oracle-rate .or-amt { font-family: 'Press Start 2P', monospace; font-size: 13px; text-shadow: 2px 2px 0 #000; }
+        body.pixel-pack .oracle-rate .or-unit { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 0; }
+        body.pixel-pack .oracle-row { font-family: 'Press Start 2P', monospace; font-size: 9px; }
+        body.pixel-pack .oracle-row .oroom { font-size: 9px; }
+        body.pixel-pack .oracle-row .opill { font-size: 9px; }
+        body.pixel-pack .oracle-row .ostatuslabel { font-size: 7px; letter-spacing: 0; }
+        body.pixel-pack .oracle-row .ostartin { font-size: 8px; font-weight: normal; }
+        body.pixel-pack .oracle-layers button { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 0; }
+        body.pixel-pack .side-tabs-arrow { font-family: 'Press Start 2P', monospace; font-size: 8px; }
+        body.pixel-pack .skins-soon { font-family: 'Press Start 2P', monospace; font-size: 9px; }
+        body.pixel-pack .skins-soon .ss-big { font-size: 18px; }
+        body.pixel-pack .mqp-head { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px; }
+        body.pixel-pack .mqp-q .n { font-family: 'Press Start 2P', monospace; }
+        body.pixel-pack #missionsList .mqp-q .n { font-size: 10px; }
+        body.pixel-pack .mqp-q .t { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 0; line-height: 1.35; }
+        body.pixel-pack .mqp-q .v { font-family: 'Press Start 2P', monospace; font-size: 8px; }
+        body.pixel-pack .mqp-foot { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -1599,10 +1641,26 @@
         // distancia RGB simple no pillaba sin comerse tambien los grises reales.
         // Hue+sat separa bien "es magenta" de "es gris/verde real" porque los
         // grises tienen saturacion casi nula pase lo que pase de luminancia.
+        // PIX_UNIT: lado en px de pantalla del bloque de pixel del cartel. El
+        // frame no se pinta al tamano del canvas y ya (eso daba filas de pixel
+        // de grosor irregular, porque el cover-fit escala por un factor
+        // fraccionario y el nearest reparte el resto como puede): se pinta
+        // primero en una rejilla de w/PIX_UNIT x h/PIX_UNIT y se sube x2 con el
+        // suavizado apagado. Asi todos los bloques miden 2px exactos y el
+        // cartel casa en densidad con el resto del pixel art (el mismo valor
+        // que usa scripts/pixelize-assets.py para el titulo y los botones: si
+        // se cambia uno hay que cambiar el otro). De paso el croma pasa a
+        // recorrer 1/4 de los pixeles y sale mas limpio: al reducir SI
+        // se promedia (imageSmoothingEnabled=true en el temporal), lo que se
+        // come el ruido de compresion H.264 que ensuciaba el borde magenta.
         (function () {
-            var KEY_HUE = 299, KEY_SAT = 0.571;
+            var KEY_HUE = 299, KEY_SAT = 0.571, PIX_UNIT = 2;
             var src = document.getElementById('questPanelVideoSrc');
             var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg')];
+            // Un temporal por cartel: los dos no miden lo mismo (cada uno tiene
+            // su escala en EDIT LAYOUT), y compartir uno obligaria a
+            // redimensionarlo dos veces por frame.
+            var grids = canvases.map(function () { return document.createElement('canvas'); });
             function keyness(r, g, b) {
                 var max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
                 var sat = max > 0 ? delta / max : 0;
@@ -1622,23 +1680,43 @@
                     var vw = src.videoWidth, vh = src.videoHeight;
                     for (var i = 0; i < canvases.length; i++) {
                         var cv = canvases[i];
-                        var w = cv.clientWidth, h = cv.clientHeight;
-                        if (!w || !h) continue;
+                        if (!cv.clientWidth || !cv.clientHeight) continue;
+                        // El cartel va escalado por EDIT LAYOUT (scale ~1.54), y
+                        // clientWidth NO lo incluye: si se pinta a clientWidth el
+                        // navegador estira el canvas despues y la rejilla vuelve a
+                        // deformarse (bloques de 2px pasando a 3.08px repartidos
+                        // como se pueda). Se dimensiona al rect REAL, asi un pixel
+                        // del canvas es un pixel de pantalla y el bloque sale
+                        // exacto. El rect se mide siempre porque el scale puede
+                        // cambiar sin que cambie clientWidth.
+                        var rect = cv.getBoundingClientRect();
+                        var w = Math.max(1, Math.round(rect.width)), h = Math.max(1, Math.round(rect.height));
                         if (cv.width !== w) cv.width = w;
                         if (cv.height !== h) cv.height = h;
                         var ctx = cv.getContext('2d');
-                        ctx.imageSmoothingEnabled = false;
-                        var scale = Math.max(w / vw, h / vh);
+                        // Rejilla: un pixel del temporal = un bloque de PIX_UNIT
+                        // en pantalla. ceil para que al subir sobre el canvas no
+                        // quede una franja sin pintar en el borde.
+                        var gd = grids[i], gw = Math.max(1, Math.ceil(w / PIX_UNIT)), gh = Math.max(1, Math.ceil(h / PIX_UNIT));
+                        if (gd.width !== gw) gd.width = gw;
+                        if (gd.height !== gh) gd.height = gh;
+                        var gctx = gd.getContext('2d');
+                        gctx.imageSmoothingEnabled = true;   // promediar AL REDUCIR: mata el ruido del codec
+                        var scale = Math.max(gw / vw, gh / vh);
                         var dw = vw * scale, dh = vh * scale;
-                        ctx.clearRect(0, 0, w, h);
-                        ctx.drawImage(src, (w - dw) / 2, (h - dh) / 2, dw, dh);
-                        var img = ctx.getImageData(0, 0, w, h), px = img.data;
+                        gctx.clearRect(0, 0, gw, gh);
+                        gctx.drawImage(src, (gw - dw) / 2, (gh - dh) / 2, dw, dh);
+                        var img = gctx.getImageData(0, 0, gw, gh), px = img.data;
                         for (var p = 0; p < px.length; p += 4) {
                             var k = keyness(px[p], px[p + 1], px[p + 2]);
                             if (k > 0.4) px[p + 3] = 0;
                             else if (k > 0.15) px[p + 3] = Math.round(px[p + 3] * (1 - (k - 0.15) / 0.25));
                         }
-                        ctx.putImageData(img, 0, 0);
+                        gctx.putImageData(img, 0, 0);
+                        // Subida con nearest: bloques de PIX_UNIT exactos.
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.clearRect(0, 0, w, h);
+                        ctx.drawImage(gd, 0, 0, gw, gh, 0, 0, gw * PIX_UNIT, gh * PIX_UNIT);
                     }
                 }
                 requestAnimationFrame(frame);
