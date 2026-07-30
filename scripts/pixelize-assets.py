@@ -58,7 +58,9 @@ ASSETS = [
     # Selector de modo: aqui el CSS fija el ANCHO (312px arcade, 332px classic),
     # asi que el factor sale de ahi y no del alto.
     ('game/img/mode-title/ARCADE.png',            0.3900, 0.3900),
-    ('game/img/mode-title/CLASSIC.png',           0.3820, 0.3820),
+    # CLASSIC.png del selector volvio al arte v3 (895x183, contra 869x163 del
+    # v4): 332 / 895 = 0.3709.
+    ('game/img/mode-title/CLASSIC.png',           0.3709, 0.3709),
 ]
 
 

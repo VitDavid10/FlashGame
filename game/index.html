@@ -1067,7 +1067,10 @@
            declarada el titulo mide cero de alto hasta que llega la imagen: la
            descripcion de debajo arrancaba subida y bajaba de golpe al cargar. */
         .mode-title .mt-img { display: none; width: 312px; height: auto; aspect-ratio: 800 / 161; }
-        .mode-classic .mt-img { width: 332px; aspect-ratio: 869 / 163; }
+        /* CLASSIC del selector en v3 (895x183): distinto arte que el ARCADE de
+           al lado (v4, 800x161) y que el CLASSIC-word.png del login (v4),
+           asi que su aspect-ratio va aparte. */
+        .mode-classic .mt-img { width: 332px; aspect-ratio: 895 / 183; }
         /* ===== Correccion tonal del arte v4, distinta por modo. El v4 viene
            apagado (el ARCADE perdio un 18% de luminancia respecto al anterior y
            se lee oliva en vez de oro), asi que se le estira el rango por CSS.
