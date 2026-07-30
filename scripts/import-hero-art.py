@@ -69,6 +69,13 @@ TRABAJOS = [
     ('game/img/mode-title/raw/ARCADE-word-v3.jpg',      'game/img/mode-title/ARCADE-word.png',      'croma', None, True),
     ('game/img/mode-title/raw/PILLWARS-classic-v3.jpg', 'game/img/mode-title/PILLWARS-classic.png', 'croma', None, True),
     ('game/img/mode-title/raw/CLASSIC-word-v3.jpg',     'game/img/mode-title/CLASSIC-word.png',     'croma', None, True),
+    # Mismo arte, segundo destino: los titulos del SELECTOR de modo (la pantalla
+    # de antes del login). Van en ficheros aparte de los -word porque el CSS los
+    # pinta a otro tamano — ancho fijo de 312/332px en vez de alto fijo — y la
+    # rejilla de pixel se calcula contra el tamano de render, asi que el mismo
+    # PNG no sirve para los dos sitios.
+    ('game/img/mode-title/raw/ARCADE-word-v3.jpg',      'game/img/mode-title/ARCADE.png',           'croma', None, True),
+    ('game/img/mode-title/raw/CLASSIC-word-v3.jpg',     'game/img/mode-title/CLASSIC.png',          'croma', None, True),
     # El cartel se recorta al contenido pero NO se reencuadra: el CSS situa la
     # pantalla verde con porcentajes del alto total (.cartel-inner).
     ('game/img/cartel-hero/raw/quest-panel-v2.jpg',     'game/img/cartel-hero/quest-panel-v2.png',  'croma', None, True),

@@ -55,6 +55,12 @@ ASSETS = [
     ('game/img/mode-title/ARCADE-word.png',       0.3643, 0.3643),
     ('game/img/mode-title/PILLWARS-classic.png',  0.3649, 0.3649),
     ('game/img/mode-title/CLASSIC-word.png',      0.3614, 0.3614),
+    # Selector de modo: aqui el CSS fija el ANCHO (312px arcade, 332px classic),
+    # asi que el factor sale de ahi y no del alto.
+    #   ARCADE   312 / 872 = 0.3578
+    #   CLASSIC  332 / 894 = 0.3714
+    ('game/img/mode-title/ARCADE.png',            0.3578, 0.3578),
+    ('game/img/mode-title/CLASSIC.png',           0.3714, 0.3714),
 ]
 
 

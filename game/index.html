@@ -1066,8 +1066,12 @@
            el ALTO es auto, asi que sin la proporcion declarada el titulo mide
            cero de alto hasta que llega la imagen: la descripcion de debajo
            arrancaba subida y bajaba de golpe al cargar. */
-        .mode-title .mt-img { display: none; width: 312px; height: auto; aspect-ratio: 800 / 130; }
-        .mode-classic .mt-img { width: 332px; aspect-ratio: 800 / 128; }
+        /* Medidas del arte v3 (sin halo). El ancho se conserva — 312 y 332,
+           los mismos de antes — pero el arte nuevo es mas cuadrado por letra
+           (ratio 4.69 y 4.91 contra 6.15 y 6.25 del de roca), asi que a igual
+           ancho el titulo pasa de 51 a 67px de alto. */
+        .mode-title .mt-img { display: none; width: 312px; height: auto; aspect-ratio: 872 / 186; }
+        .mode-classic .mt-img { width: 332px; aspect-ratio: 894 / 182; }
         body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
         body.pixel-pack .mode-title:not(.no-img) .mt-txt { display: none; }
         body.pixel-pack .mode-desc { font-family: 'VT323', monospace; font-size: 13px; line-height: 1.35; }
