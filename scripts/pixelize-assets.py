@@ -56,7 +56,9 @@ ASSETS = [
     # PILLWARS-classic.png volvio a v3 (995x182, contra 880x138 del v4):
     # 66.05 / 182 = 0.3629.
     ('game/img/mode-title/PILLWARS-classic.png',  0.3629, 0.3629),
-    ('game/img/mode-title/CLASSIC-word.png',      0.4035, 0.4035),
+    # CLASSIC-word.png volvio a v3 (895x183, contra 869x163 del v4):
+    # 29 * 2.26794 = 65.77 / 183 = 0.3594.
+    ('game/img/mode-title/CLASSIC-word.png',      0.3594, 0.3594),
     # Selector de modo: aqui el CSS fija el ANCHO (312px arcade, 332px classic),
     # asi que el factor sale de ahi y no del alto.
     ('game/img/mode-title/ARCADE.png',            0.3900, 0.3900),
