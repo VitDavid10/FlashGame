@@ -1088,7 +1088,7 @@
            y los dos antes de las sombras, para que corrijan la imagen y no el
            halo. ===== */
         .mode-arcade .mt-img  { --mt-contrast: 1.3; --mt-bright: 1;    --mt-glow-a: rgba(204,255,0,0.65); --mt-glow-b: rgba(204,255,0,0.32); }
-        .mode-classic .mt-img { --mt-contrast: 1.3; --mt-bright: 0.92; --mt-glow-a: rgba(0,255,170,0.65); --mt-glow-b: rgba(0,255,170,0.32); }
+        .mode-classic .mt-img { --mt-contrast: 1.3; --mt-bright: 0.85; --mt-glow-a: rgba(0,255,170,0.65); --mt-glow-b: rgba(0,255,170,0.32); }
         body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
 
         /* ===== Glow de entrada al selector: el titulo de cada modo se enciende
@@ -1149,7 +1149,7 @@
            El arcade va sin tocar el brillo, ahi el problema era el contrario. */
         body.pixel-pack #modeTitlePw img,
         body.pixel-pack #modeTitleWord img {
-            filter: brightness(0.92) contrast(1.3) drop-shadow(0 0 6px rgba(0,255,136,0.6)) drop-shadow(0 0 14px rgba(0,255,136,0.35)) drop-shadow(2px 2px 0 rgba(0,0,0,0.5));
+            filter: brightness(0.85) contrast(1.3) drop-shadow(0 0 6px rgba(0,255,136,0.6)) drop-shadow(0 0 14px rgba(0,255,136,0.35)) drop-shadow(2px 2px 0 rgba(0,0,0,0.5));
         }
         #loginOverlay.bg-arcade #modeTitlePw img,
         #loginOverlay.bg-arcade #modeTitleWord img {
