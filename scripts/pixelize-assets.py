@@ -53,7 +53,9 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = [
     ('game/img/mode-title/PILLWARS-arcade.png',   0.4787, 0.4787),
     ('game/img/mode-title/ARCADE-word.png',       0.4209, 0.4209),
-    ('game/img/mode-title/PILLWARS-classic.png',  0.4787, 0.4787),
+    # PILLWARS-classic.png volvio a v3 (995x182, contra 880x138 del v4):
+    # 66.05 / 182 = 0.3629.
+    ('game/img/mode-title/PILLWARS-classic.png',  0.3629, 0.3629),
     ('game/img/mode-title/CLASSIC-word.png',      0.4035, 0.4035),
     # Selector de modo: aqui el CSS fija el ANCHO (312px arcade, 332px classic),
     # asi que el factor sale de ahi y no del alto.

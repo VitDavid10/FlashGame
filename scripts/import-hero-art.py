@@ -66,7 +66,10 @@ TRABAJOS = [
     # normal basta.
     ('game/img/mode-title/raw/PILLWARS-arcade-v4.jpg',  'game/img/mode-title/PILLWARS-arcade.png',  'croma', None, True),
     ('game/img/mode-title/raw/ARCADE-word-v4.jpg',      'game/img/mode-title/ARCADE-word.png',      'croma', None, True),
-    ('game/img/mode-title/raw/PILLWARS-classic-v4.jpg', 'game/img/mode-title/PILLWARS-classic.png', 'croma', None, True),
+    # PILLWARS-classic.png (el del LOGIN) tambien vuelve a v3, a peticion de
+    # David — igual que CLASSIC.png del selector. CLASSIC-word.png (la palabra
+    # de al lado en el mismo login) se queda en v4.
+    ('game/img/mode-title/raw/PILLWARS-classic-v3.jpg', 'game/img/mode-title/PILLWARS-classic.png', 'croma', None, True),
     ('game/img/mode-title/raw/CLASSIC-word-v4.jpg',     'game/img/mode-title/CLASSIC-word.png',     'croma', None, True),
     # Titulos del SELECTOR de modo (la pantalla de antes del login). Van en
     # ficheros aparte de los -word porque el CSS los pinta a otro tamano —
