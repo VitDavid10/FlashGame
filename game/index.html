@@ -5265,8 +5265,14 @@
         // las de antes ARCADE quedaba pegado a PILLWARS (0.6px de hueco) y
         // CLASSIC separado 72px. Objetivo: ~24px de hueco, el gap de
         // .menu-head-row, y el conjunto centrado en el viewport.
-        titlePw_classic:   { x: 222,  y: 16,   s: 2.7522689647375245 },
-        titleWord_classic: { x: 426,  y: 19,   s: 2.2679439840192406 },
+        // PILLWARS de classic un 8% mas grande (David lo queria un poco mayor
+        // que la palabra del modo). El scale va desde el CENTRO del elemento,
+        // asi que su x no se toca: crece 14px hacia cada lado y basta con
+        // apartar CLASSIC otros 14 para conservar el hueco de 24px. Efecto
+        // secundario bueno: al crecer, su linea base baja de 153.9 a 156.5 y
+        // queda a ras de la de CLASSIC (156.8), que antes iba 2.9px desfasada.
+        titlePw_classic:   { x: 222,  y: 16,   s: 2.9724504819165265 },
+        titleWord_classic: { x: 440,  y: 19,   s: 2.2679439840192406 },
         titlePw_arcade:    { x: 204,  y: 18,   s: 2.7522689647375245 },
         titleWord_arcade:  { x: 433,  y: 17,   s: 2.3364925909362215 },
         blurb:             { x: -115, y: 85,   s: 1.4509453541079567 },
