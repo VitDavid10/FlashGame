@@ -51,14 +51,14 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # se quedan sin rejilla — el degradado suave escala mejor que una rejilla mal
 # encajada.
 ASSETS = [
-    ('game/img/mode-title/PILLWARS-arcade.png',   0.3629, 0.3629),
-    ('game/img/mode-title/ARCADE-word.png',       0.3723, 0.3723),
-    ('game/img/mode-title/PILLWARS-classic.png',  0.3629, 0.3629),
-    ('game/img/mode-title/CLASSIC-word.png',      0.3594, 0.3594),
+    ('game/img/mode-title/PILLWARS-arcade.png',   0.4787, 0.4787),
+    ('game/img/mode-title/ARCADE-word.png',       0.4209, 0.4209),
+    ('game/img/mode-title/PILLWARS-classic.png',  0.4787, 0.4787),
+    ('game/img/mode-title/CLASSIC-word.png',      0.4035, 0.4035),
     # Selector de modo: aqui el CSS fija el ANCHO (312px arcade, 332px classic),
     # asi que el factor sale de ahi y no del alto.
-    ('game/img/mode-title/ARCADE.png',            0.3594, 0.3594),
-    ('game/img/mode-title/CLASSIC.png',           0.3709, 0.3709),
+    ('game/img/mode-title/ARCADE.png',            0.3900, 0.3900),
+    ('game/img/mode-title/CLASSIC.png',           0.3820, 0.3820),
 ]
 
 

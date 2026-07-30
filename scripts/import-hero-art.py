@@ -59,24 +59,22 @@ ANCHO_BORDE = 3                     # px de franja donde se des-mezcla el croma
 #
 # origen -> (destino, modo, rango de tono, recortar al contenido)
 TRABAJOS = [
-    # v3 = David los rehizo SIN halo, y eso permite volver al croma normal. El
-    # corte por tono era un mal necesario mientras el halo venia horneado, pero
-    # se llevaba por delante un 20% del contorno de las letras (medido: pixeles
-    # del rango ancho de tono que el rango estricto tiraba), y la rejilla de 2px
-    # convertia cada mordisco de 1px en un bloque de 5-6px. De ahi que el titulo
-    # saliera roido. Con las v3 el croma conserva el borde entero: la perdida
-    # baja al 0.6% en arcade y al 0.2% en classic.
-    ('game/img/mode-title/raw/PILLWARS-arcade-v3.jpg',  'game/img/mode-title/PILLWARS-arcade.png',  'croma', None, True),
-    ('game/img/mode-title/raw/ARCADE-word-v3.jpg',      'game/img/mode-title/ARCADE-word.png',      'croma', None, True),
-    ('game/img/mode-title/raw/PILLWARS-classic-v3.jpg', 'game/img/mode-title/PILLWARS-classic.png', 'croma', None, True),
-    ('game/img/mode-title/raw/CLASSIC-word-v3.jpg',     'game/img/mode-title/CLASSIC-word.png',     'croma', None, True),
+    # v4, el arte vigente. Vuelve a traer halo horneado (medido, el anillo del
+    # borde desplaza el tono: 62->95 en arcade y 159->184 en classic), pero ya no
+    # hace falta el corte por tono que tanto contorno se llevaba: la des-mezcla
+    # del borde resta el croma en vez de descartar pixeles, asi que el croma
+    # normal basta.
+    ('game/img/mode-title/raw/PILLWARS-arcade-v4.jpg',  'game/img/mode-title/PILLWARS-arcade.png',  'croma', None, True),
+    ('game/img/mode-title/raw/ARCADE-word-v4.jpg',      'game/img/mode-title/ARCADE-word.png',      'croma', None, True),
+    ('game/img/mode-title/raw/PILLWARS-classic-v4.jpg', 'game/img/mode-title/PILLWARS-classic.png', 'croma', None, True),
+    ('game/img/mode-title/raw/CLASSIC-word-v4.jpg',     'game/img/mode-title/CLASSIC-word.png',     'croma', None, True),
     # Mismo arte, segundo destino: los titulos del SELECTOR de modo (la pantalla
     # de antes del login). Van en ficheros aparte de los -word porque el CSS los
     # pinta a otro tamano — ancho fijo de 312/332px en vez de alto fijo — y la
     # rejilla de pixel se calcula contra el tamano de render, asi que el mismo
     # PNG no sirve para los dos sitios.
-    ('game/img/mode-title/raw/ARCADE-word-v3.jpg',      'game/img/mode-title/ARCADE.png',           'croma', None, True),
-    ('game/img/mode-title/raw/CLASSIC-word-v3.jpg',     'game/img/mode-title/CLASSIC.png',          'croma', None, True),
+    ('game/img/mode-title/raw/ARCADE-word-v4.jpg',      'game/img/mode-title/ARCADE.png',           'croma', None, True),
+    ('game/img/mode-title/raw/CLASSIC-word-v4.jpg',     'game/img/mode-title/CLASSIC.png',          'croma', None, True),
     # El cartel se recorta al contenido pero NO se reencuadra: el CSS situa la
     # pantalla verde con porcentajes del alto total (.cartel-inner).
     ('game/img/cartel-hero/raw/quest-panel-v2.jpg',     'game/img/cartel-hero/quest-panel-v2.png',  'croma', None, True),
@@ -213,9 +211,17 @@ def recortar(im, margen=0):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--corte', type=float, default=0.22,
-                    help='umbral de croma (modo croma): bajo deja cerco rosa, '
-                         'alto se come el borde (default 0.22)')
+    # 0.65 es el valor con el que estan generados los assets del repo: ahora que
+    # el borde se des-mezcla en vez de descartarse, conviene el corte ALTO, que
+    # es el que conserva mas contorno. Por debajo de 0.35 no cambia el resultado
+    # (el rosa ya lo quita la des-mezcla) y por encima de 0.70 deja de recortar
+    # el fondo, porque el magenta del jpg no llega a esa fraccion en toda la
+    # imagen. El default estaba en 0.22 y hacia que reproducir con el script
+    # diera assets distintos a los versionados.
+    ap.add_argument('--corte', type=float, default=0.65,
+                    help='fraccion de croma a partir de la cual el pixel se '
+                         'descarta: bajo se come el borde, muy alto deja de '
+                         'recortar el fondo (default 0.65)')
     ap.add_argument('--sat-min', type=float, default=0.20,
                     help='saturacion minima (modo hue) para no colar grises (default 0.20)')
     ap.add_argument('--list', action='store_true', help='solo informa, no escribe')

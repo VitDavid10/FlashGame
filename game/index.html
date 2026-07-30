@@ -1062,17 +1062,41 @@
         /* Tamano por ANCHO fijo (312/332px = el hueco que ocupaban los carteles
            v1 a 68/59px de alto): el arte v2 tiene letras mas anchas y con height
            fijo se salia de la diagonal ARCADE/CLASSIC. */
-        /* aspect-ratio = las medidas EXACTAS del PNG. Aqui el ancho es fijo y
-           el ALTO es auto, asi que sin la proporcion declarada el titulo mide
-           cero de alto hasta que llega la imagen: la descripcion de debajo
-           arrancaba subida y bajaba de golpe al cargar. */
-        /* Medidas del arte v3 (sin halo). El ancho se conserva — 312 y 332,
-           los mismos de antes — pero el arte nuevo es mas cuadrado por letra
-           (ratio 4.69 y 4.91 contra 6.15 y 6.25 del de roca), asi que a igual
-           ancho el titulo pasa de 51 a 67px de alto. */
-        .mode-title .mt-img { display: none; width: 312px; height: auto; aspect-ratio: 872 / 186; }
-        .mode-classic .mt-img { width: 332px; aspect-ratio: 894 / 182; }
+        /* aspect-ratio = las medidas EXACTAS del PNG de cada modo (arte v4). Aqui
+           el ancho es fijo y el ALTO es auto, asi que sin la proporcion
+           declarada el titulo mide cero de alto hasta que llega la imagen: la
+           descripcion de debajo arrancaba subida y bajaba de golpe al cargar. */
+        .mode-title .mt-img { display: none; width: 312px; height: auto; aspect-ratio: 800 / 161; }
+        .mode-classic .mt-img { width: 332px; aspect-ratio: 869 / 163; }
         body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+
+        /* ===== Glow de entrada al selector: el titulo de cada modo se enciende
+           con su color al aparecer la pantalla y se queda con el brillo bajo.
+           Los tres drop-shadow estan en TODOS los pasos y solo cambia el radio:
+           si un paso tuviera distinto numero de sombras, el navegador no
+           interpola y el efecto saltaria de golpe en vez de encenderse. El color
+           va por custom property, que si se resuelve dentro del filter. ===== */
+        .mode-arcade .mt-img  { --mt-glow-a: rgba(204,255,0,0.65);  --mt-glow-b: rgba(204,255,0,0.32); }
+        .mode-classic .mt-img { --mt-glow-a: rgba(0,255,170,0.65);  --mt-glow-b: rgba(0,255,170,0.32); }
+        @keyframes modeTitleGlowIn {
+            0%   { filter: drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+            55%  { filter: drop-shadow(0 0 26px var(--mt-glow-a)) drop-shadow(0 0 58px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+            100% { filter: drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+        }
+        /* both: se queda en el 100% en vez de volver al filter de la regla base. */
+        body.pixel-pack .mode-title:not(.no-img) .mt-img { animation: modeTitleGlowIn 1.15s cubic-bezier(0.2,0.7,0.3,1) both; }
+        /* Con escena de hover la sombra base es mas dura (el titulo pelea con el
+           rayo y el cielo), asi que ahi el glow se monta sobre ESA. */
+        @keyframes modeTitleGlowInScene {
+            0%   { filter: drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+            55%  { filter: drop-shadow(0 0 26px var(--mt-glow-a)) drop-shadow(0 0 58px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+            100% { filter: drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+        }
+        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { animation: modeTitleGlowInScene 1.15s cubic-bezier(0.2,0.7,0.3,1) both; }
+        @media (prefers-reduced-motion: reduce) {
+            body.pixel-pack .mode-title:not(.no-img) .mt-img,
+            body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { animation-duration: 0.01s; }
+        }
         body.pixel-pack .mode-title:not(.no-img) .mt-txt { display: none; }
         body.pixel-pack .mode-desc { font-family: 'VT323', monospace; font-size: 13px; line-height: 1.35; }
         body.pixel-pack .mqp { border: 2px dashed rgba(255,255,255,0.22); }
@@ -5211,10 +5235,15 @@
         // dejan el hueco en ~24px (el gap de .menu-head-row) y el titulo
         // centrado en el viewport. La y y la escala no se tocan: el alto en
         // pantalla no cambio, lo fija el height inline del img.
-        titlePw_classic:   { x: 243,  y: 16,   s: 2.7522689647375245 },
-        titleWord_classic: { x: 446,  y: 19,   s: 2.2679439840192406 },
-        titlePw_arcade:    { x: 246,  y: 18,   s: 2.7522689647375245 },
-        titleWord_arcade:  { x: 452,  y: 17,   s: 2.3364925909362215 },
+        // x remedidas en el DOM para el arte v4, que es bastante mas ancho por
+        // letra que el anterior (PILLWARS pasa de 363 a 421px en pantalla). Con
+        // las de antes ARCADE quedaba pegado a PILLWARS (0.6px de hueco) y
+        // CLASSIC separado 72px. Objetivo: ~24px de hueco, el gap de
+        // .menu-head-row, y el conjunto centrado en el viewport.
+        titlePw_classic:   { x: 217,  y: 16,   s: 2.7522689647375245 },
+        titleWord_classic: { x: 448,  y: 19,   s: 2.2679439840192406 },
+        titlePw_arcade:    { x: 224,  y: 18,   s: 2.7522689647375245 },
+        titleWord_arcade:  { x: 453,  y: 17,   s: 2.3364925909362215 },
         blurb:             { x: -115, y: 85,   s: 1.4509453541079567 },
         pill:              { x: 263,  y: 130,  s: 1.1098449129017791 },
         name:              { x: 256,  y: 116,  s: 1 },
