@@ -5382,7 +5382,11 @@
             // un tick y el siguiente). Shift+rueda = paso grande (1.06) para
             // moverse rapido cuando la precision no importa.
             const step = e.shiftKey ? 1.06 : 1.015;
-            cur.s = Math.min(3, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
+            // Tope 6 y no 3: los titulos del login se pintan con un height base
+            // de 24/29px, asi que ya de partida necesitan un scale cercano a 3
+            // para su tamano normal — el PILLWARS de classic estaba en 2.97 y
+            // chocaba con el techo al primer tick, sin poder agrandarse mas.
+            cur.s = Math.min(6, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
             applyMenuLayout(); saveMenuLayout();
         }, { passive: false, capture: true });
         document.addEventListener('dblclick', (e) => {
