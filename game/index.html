@@ -1058,6 +1058,20 @@
         body.pixel-pack.has-hover-scene #modeScreen:not(.hover-classic) .mode-arcade,
         body.pixel-pack.has-hover-scene #modeScreen.hover-classic .mode-classic { background: transparent !important; }
         body.pixel-pack .mode-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 2px; }
+        /* ROGUELIKE MECHANICS / STANDARD MODE con el color de su modo y
+           encendidos, en vez del gris #888 de antes. Mismo esquema que el glow
+           del titulo: sombra dura primero (en text-shadow la primera capa se
+           pinta ENCIMA, y asi el texto se despega del fondo) y detras dos
+           halos, uno cerrado y otro amplio. Radios cortos porque el rotulo es
+           de 7px: con los del titulo el texto se emborronaba. */
+        body.pixel-pack .mode-arcade .mode-sub {
+            color: #ccff00;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 6px rgba(204,255,0,0.75), 0 0 14px rgba(204,255,0,0.45);
+        }
+        body.pixel-pack .mode-classic .mode-sub {
+            color: #00ffaa;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 6px rgba(0,255,170,0.75), 0 0 14px rgba(0,255,170,0.45);
+        }
         body.pixel-pack .mode-title { font-family: 'Press Start 2P', monospace; font-size: 29px; letter-spacing: 0; text-shadow: 3px 3px 0 rgba(0,0,0,0.85); }
         /* Tamano por ANCHO fijo (312/332px = el hueco que ocupaban los carteles
            v1 a 68/59px de alto): el arte v2 tiene letras mas anchas y con height
