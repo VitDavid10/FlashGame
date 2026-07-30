@@ -89,6 +89,11 @@ let menuDecoVirusCount = _clampN(_glob.menuDecoVirusCount, 1, 10, 3);
 let menuDecoPillBobPx = _clampN(_glob.menuDecoPillBobPx, 0, 12, 3);
 let menuDecoCartelBobPx = _clampN(_glob.menuDecoCartelBobPx, 0, 12, 3);
 let menuDecoGridSize = _clampN(_glob.menuDecoGridSize, 8, 40, 24);
+// Intensidad de los glows del menu, en % del valor de diseno (100 = tal cual,
+// 0 = apagado). Dos por separado: el del selector manda en el titulo
+// ARCADE/CLASSIC y su rotulo; el del blurb, en el subtitulo de dentro del menu.
+let menuDecoSelectorGlowPct = _clampN(_glob.menuDecoSelectorGlowPct, 0, 300, 100);
+let menuDecoBlurbGlowPct = _clampN(_glob.menuDecoBlurbGlowPct, 0, 300, 100);
 let menuDecoVirusTP = (typeof _glob.menuDecoVirusTP === 'boolean') ? _glob.menuDecoVirusTP : false;
 let menuDecoDimPct = _clampN(_glob.menuDecoDimPct, 0, 80, 0);
 // Layout del menú (posición/escala de cada elemento editable), GLOBAL: lo sube el
@@ -103,7 +108,7 @@ let landingLayout = (_glob.landingLayout && typeof _glob.landingLayout === 'obje
 // el diseño ya está fijado en el código de cada página. Se enciende desde el
 // panel admin cuando haya que retocarlo.
 let layoutEdit = (typeof _glob.layoutEdit === 'boolean') ? _glob.layoutEdit : false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, layoutEdit, menuLayout, landingLayout }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit, menuLayout, landingLayout }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -213,7 +218,7 @@ function killHosts() {
 // los hosts por notify (fire-and-forget, no hace falta confirmación).
 function pushSettingsToHosts() {
     const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
-        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, layoutEdit };
+        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit };
     for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('settingsSync', patch); }
 }
 // "Rendimiento" SÍ admite override por host (comparar Hz/AOI entre los dos).
@@ -838,7 +843,7 @@ function registerHostHandlers(hostEntry) {
     ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR });
     // Ajustes actuales (volumen/animaciones/zoom/tiempos) para el host recién forkeado.
     ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
-        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, layoutEdit });
+        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit });
 }
 
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
@@ -1499,7 +1504,7 @@ function buildAdminState() {
         layerEnabled: Object.assign({}, layerEnabled),
         arcadeRestartMs, arcadeLobbyMs,
         sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
-        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct,
+        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct,
         layoutEdit,
         serverCpu: serverCpuPct,
         // Monitorización del PROPIO proceso (la tarjeta del Director en el panel).
@@ -1744,7 +1749,7 @@ const httpServer = http.createServer(async (req, res) => {
                     });
                 }
                 _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
-                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, layoutEdit, menuLayout }) };
+                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit, menuLayout }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
             res.end(_roomsCache.body);
@@ -1796,7 +1801,7 @@ const httpServer = http.createServer(async (req, res) => {
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp,
-            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, layoutEdit, menuLayout }));
+            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit, menuLayout }));
         return;
     }
     // --- Layout del menú GLOBAL: el cliente lo sube desde EDIT LAYOUT → "Guardar
@@ -2281,6 +2286,8 @@ wss.on('connection', (ws, req) => {
                 if (typeof msg.pillBobPx === 'number') menuDecoPillBobPx = _clampN(msg.pillBobPx, 0, 12, menuDecoPillBobPx);
                 if (typeof msg.cartelBobPx === 'number') menuDecoCartelBobPx = _clampN(msg.cartelBobPx, 0, 12, menuDecoCartelBobPx);
                 if (typeof msg.gridSize === 'number') menuDecoGridSize = _clampN(msg.gridSize, 8, 40, menuDecoGridSize);
+                if (typeof msg.selectorGlowPct === 'number') menuDecoSelectorGlowPct = _clampN(msg.selectorGlowPct, 0, 300, menuDecoSelectorGlowPct);
+                if (typeof msg.blurbGlowPct === 'number') menuDecoBlurbGlowPct = _clampN(msg.blurbGlowPct, 0, 300, menuDecoBlurbGlowPct);
                 if (typeof msg.virusTP === 'boolean') menuDecoVirusTP = msg.virusTP;
                 if (typeof msg.dimPct === 'number') menuDecoDimPct = _clampN(msg.dimPct, 0, 80, menuDecoDimPct);
                 // Interruptor de los editores de layout (landing + menu del juego).
@@ -2288,7 +2295,7 @@ wss.on('connection', (ws, req) => {
                 saveGlobal();
                 if (PW_ROLE === 'director') pushSettingsToHosts();
                 ws.send(JSON.stringify(buildAdminState()));
-                log(`Global menu visuals: food=${menuDecoFoodDensity} virus=${menuDecoVirusCount} pillBob=${menuDecoPillBobPx}px cartelBob=${menuDecoCartelBobPx}px grid=${menuDecoGridSize}px virusTP=${menuDecoVirusTP} dim=${menuDecoDimPct}% layoutEdit=${layoutEdit}`);
+                log(`Global menu visuals: food=${menuDecoFoodDensity} virus=${menuDecoVirusCount} pillBob=${menuDecoPillBobPx}px cartelBob=${menuDecoCartelBobPx}px grid=${menuDecoGridSize}px virusTP=${menuDecoVirusTP} dim=${menuDecoDimPct}% selGlow=${menuDecoSelectorGlowPct}% blurbGlow=${menuDecoBlurbGlowPct}% layoutEdit=${layoutEdit}`);
             } else if (msg.cmd === 'announce') {
                 const text = (typeof msg.text === 'string') ? msg.text.slice(0, 140) : '';
                 if (text) {

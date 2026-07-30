@@ -413,7 +413,12 @@
            missionsPanel desfasado medio ciclo para que no boten al unisono.
            --cartel-bob-px (custom property, default 3): amplitud editable en
            vivo desde SETTINGS -> VISUALS (admin), ver applyMenuDecoToCss(). */
-        :root { --cartel-bob-px: 3px; }
+        /* --sel-glow / --blurb-glow: multiplicadores del radio de los glows,
+           editables en vivo desde el admin (Menu Visuals). 1 = el valor de
+           diseno, 0 = glow apagado. Van por separado a proposito: uno manda en
+           TODO el selector (titulo ARCADE/CLASSIC y su rotulo de encima) y el
+           otro solo en el subtitulo de dentro del menu. */
+        :root { --cartel-bob-px: 3px; --sel-glow: 1; --blurb-glow: 1; }
         @keyframes cartelBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(calc(-1 * var(--cartel-bob-px))); } }
         #missionsPanel { animation-delay: 1.6s; }
         /* Video a todo el panel (mismo aspect-ratio, asi que el cover-fit del
@@ -666,11 +671,11 @@
            detras dos halos. Radios cortos, que el rotulo es de 7px. */
         #loginOverlay.bg-classic .mode-blurb {
             color: #00ffaa;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 6px rgba(0,255,170,0.7), 0 0 14px rgba(0,255,170,0.4);
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 calc(6px * var(--blurb-glow)) rgba(0,255,170,0.7), 0 0 calc(14px * var(--blurb-glow)) rgba(0,255,170,0.4);
         }
         #loginOverlay.bg-arcade .mode-blurb {
             color: #ccff00;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 6px rgba(204,255,0,0.7), 0 0 14px rgba(204,255,0,0.4);
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 calc(6px * var(--blurb-glow)) rgba(204,255,0,0.7), 0 0 calc(14px * var(--blurb-glow)) rgba(204,255,0,0.4);
         }
         .section-title { font-family: 'Russo One'; font-size: 10px; color: var(--primary); text-transform: uppercase; margin: 10px 0 5px; text-align: left; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 2px; }
         .style-type-selector { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; display:none; }
@@ -1078,11 +1083,11 @@
            de 7px: con los del titulo el texto se emborronaba. */
         body.pixel-pack .mode-arcade .mode-sub {
             color: #ccff00;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 6px rgba(204,255,0,0.75), 0 0 14px rgba(204,255,0,0.45);
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 calc(6px * var(--sel-glow)) rgba(204,255,0,0.75), 0 0 calc(14px * var(--sel-glow)) rgba(204,255,0,0.45);
         }
         body.pixel-pack .mode-classic .mode-sub {
             color: #00ffaa;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 6px rgba(0,255,170,0.75), 0 0 14px rgba(0,255,170,0.45);
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 calc(6px * var(--sel-glow)) rgba(0,255,170,0.75), 0 0 calc(14px * var(--sel-glow)) rgba(0,255,170,0.45);
         }
         body.pixel-pack .mode-title { font-family: 'Press Start 2P', monospace; font-size: 29px; letter-spacing: 0; text-shadow: 3px 3px 0 rgba(0,0,0,0.85); }
         /* Tamano por ANCHO fijo (312/332px = el hueco que ocupaban los carteles
@@ -1137,7 +1142,7 @@
            al recargar se viera raro. ===== */
         @keyframes modeTitleGlowIn {
             from { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
-            to   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+            to   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 calc(13px * var(--sel-glow)) var(--mt-glow-a)) drop-shadow(0 0 calc(30px * var(--sel-glow)) var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
         }
         /* both: se queda en el `to` en vez de volver al filter de la regla base. */
         body.pixel-pack .mode-title:not(.no-img) .mt-img.lista { animation: modeTitleGlowIn 0.9s ease-out both; }
@@ -1145,7 +1150,7 @@
            rayo y el cielo), asi que ahi el glow se monta sobre ESA. */
         @keyframes modeTitleGlowInScene {
             from { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
-            to   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+            to   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 calc(13px * var(--sel-glow)) var(--mt-glow-a)) drop-shadow(0 0 calc(30px * var(--sel-glow)) var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
         }
         body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img.lista { animation: modeTitleGlowInScene 0.9s ease-out both; }
         @media (prefers-reduced-motion: reduce) {
@@ -4084,7 +4089,7 @@
     // Densidad y tamaño configurables desde el panel local del juego (ver
     // SETTINGS -> VISUALS), guardado en localStorage (pw_menu_deco).
     const MENU_DECO_KEY = 'pw_menu_deco';
-    const menuDecoSettings = Object.assign({ foodDensity: 16, virusCount: 3, pillBobPx: 3, cartelBobPx: 3, gridSize: 24, virusTP: false, dimPct: 0 },
+    const menuDecoSettings = Object.assign({ foodDensity: 16, virusCount: 3, pillBobPx: 3, cartelBobPx: 3, gridSize: 24, virusTP: false, dimPct: 0, selectorGlowPct: 100, blurbGlowPct: 100 },
         (() => { try { return JSON.parse(localStorage.getItem(MENU_DECO_KEY)) || {}; } catch (e) { return {}; } })());
     function saveMenuDecoSettings() { try { localStorage.setItem(MENU_DECO_KEY, JSON.stringify(menuDecoSettings)); } catch (e) {} }
     // cartelBobPx vive en CSS (custom property, la lee @keyframes cartelBob);
@@ -4094,6 +4099,11 @@
         document.documentElement.style.setProperty('--cartel-bob-px', menuDecoSettings.cartelBobPx + 'px');
         const dim = Math.max(0, Math.min(80, menuDecoSettings.dimPct | 0));
         document.documentElement.style.setProperty('--menu-bg-bright', (1 - dim / 100).toFixed(3));
+        // Glows: el admin los da en % (100 = el valor de diseno) y el CSS los
+        // usa como multiplicador del radio, de ahi el /100.
+        const glow = (v, def) => (Math.max(0, Math.min(300, (typeof v === 'number' ? v : def) | 0)) / 100).toFixed(3);
+        document.documentElement.style.setProperty('--sel-glow', glow(menuDecoSettings.selectorGlowPct, 100));
+        document.documentElement.style.setProperty('--blurb-glow', glow(menuDecoSettings.blurbGlowPct, 100));
     }
     applyMenuDecoCss();
     // Aplica el patch de /api/rooms (ver refreshOracle): foodDensity/virusCount/
@@ -4102,7 +4112,7 @@
     // ven la misma decoracion, editable en vivo sin tocar el cliente.
     function applyMenuDecoFromServer(data) {
         let changed = false;
-        for (const k of ['foodDensity', 'virusCount', 'pillBobPx', 'cartelBobPx', 'gridSize']) {
+        for (const k of ['foodDensity', 'virusCount', 'pillBobPx', 'cartelBobPx', 'gridSize', 'selectorGlowPct', 'blurbGlowPct']) {
             const v = data['menuDeco' + k[0].toUpperCase() + k.slice(1)];
             if (typeof v === 'number' && menuDecoSettings[k] !== v) { menuDecoSettings[k] = v; changed = true; }
         }

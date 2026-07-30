@@ -567,6 +567,16 @@
                         <input type="range" min="0" max="12" step="1" id="mdCartelBob" oninput="document.getElementById('mdCartelBobVal').innerText=this.value+'px'" style="width:110px;">
                         <span id="mdCartelBobVal" style="color:#00ff88;font-size:12px;width:24px;">3px</span>
                     </div>
+                    <div style="display:flex;align-items:center;gap:8px;" title="Glow de ARCADE y CLASSIC en el selector de modo (titulo y el rotulo de encima). 100% = valor de diseno, 0% = apagado.">
+                        <span style="color:#888;font-size:12px;">Selector glow</span>
+                        <input type="range" min="0" max="300" step="10" id="mdSelGlow" oninput="document.getElementById('mdSelGlowVal').innerText=this.value+'%'" style="width:110px;">
+                        <span id="mdSelGlowVal" style="color:#00ff88;font-size:12px;width:38px;">100%</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;" title="Glow del subtitulo de dentro del menu (el texto bajo PILLWARS ARCADE / CLASSIC). Independiente del anterior.">
+                        <span style="color:#888;font-size:12px;">Subtitle glow</span>
+                        <input type="range" min="0" max="300" step="10" id="mdBlurbGlow" oninput="document.getElementById('mdBlurbGlowVal').innerText=this.value+'%'" style="width:110px;">
+                        <span id="mdBlurbGlowVal" style="color:#00ff88;font-size:12px;width:38px;">100%</span>
+                    </div>
                     <label style="display:flex;align-items:center;gap:6px;color:#888;font-size:12px;cursor:pointer;">
                         <input type="checkbox" id="mdVirusTP"> Virus TP off titles
                     </label>
@@ -1015,6 +1025,8 @@ function aplicarMenuDeco() {
         virusCount: parseInt(document.getElementById('mdVirus').value, 10),
         pillBobPx: parseInt(document.getElementById('mdPillBob').value, 10),
         cartelBobPx: parseInt(document.getElementById('mdCartelBob').value, 10),
+        selectorGlowPct: parseInt(document.getElementById('mdSelGlow').value, 10),
+        blurbGlowPct: parseInt(document.getElementById('mdBlurbGlow').value, 10),
         virusTP: document.getElementById('mdVirusTP').checked,
         dimPct: parseInt(document.getElementById('mdDim').value, 10),
         layoutEdit: document.getElementById('mdLayoutEdit').checked
@@ -1782,6 +1794,8 @@ function render(m) {
     if (typeof m.menuDecoVirusCount === 'number' && document.activeElement.id !== 'mdVirus') { const v = m.menuDecoVirusCount; const el = document.getElementById('mdVirus'); if (el) { el.value = v; document.getElementById('mdVirusVal').innerText = v; } }
     if (typeof m.menuDecoPillBobPx === 'number' && document.activeElement.id !== 'mdPillBob') { const el = document.getElementById('mdPillBob'); if (el) { el.value = m.menuDecoPillBobPx; document.getElementById('mdPillBobVal').innerText = m.menuDecoPillBobPx + 'px'; } }
     if (typeof m.menuDecoCartelBobPx === 'number' && document.activeElement.id !== 'mdCartelBob') { const el = document.getElementById('mdCartelBob'); if (el) { el.value = m.menuDecoCartelBobPx; document.getElementById('mdCartelBobVal').innerText = m.menuDecoCartelBobPx + 'px'; } }
+    if (typeof m.menuDecoSelectorGlowPct === 'number' && document.activeElement.id !== 'mdSelGlow') { const el = document.getElementById('mdSelGlow'); if (el) { el.value = m.menuDecoSelectorGlowPct; document.getElementById('mdSelGlowVal').innerText = m.menuDecoSelectorGlowPct + '%'; } }
+    if (typeof m.menuDecoBlurbGlowPct === 'number' && document.activeElement.id !== 'mdBlurbGlow') { const el = document.getElementById('mdBlurbGlow'); if (el) { el.value = m.menuDecoBlurbGlowPct; document.getElementById('mdBlurbGlowVal').innerText = m.menuDecoBlurbGlowPct + '%'; } }
     if (typeof m.menuDecoVirusTP === 'boolean' && document.activeElement.id !== 'mdVirusTP') { const el = document.getElementById('mdVirusTP'); if (el) el.checked = m.menuDecoVirusTP; }
     if (typeof m.layoutEdit === 'boolean' && document.activeElement.id !== 'mdLayoutEdit') { const el = document.getElementById('mdLayoutEdit'); if (el) el.checked = m.layoutEdit; }
     if (typeof m.menuDecoDimPct === 'number' && document.activeElement.id !== 'mdDim') { const el = document.getElementById('mdDim'); if (el) { el.value = m.menuDecoDimPct; document.getElementById('mdDimVal').innerText = m.menuDecoDimPct + '%'; } }
