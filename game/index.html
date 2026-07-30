@@ -32,6 +32,11 @@
             --gold: #ffcc00;
         }
         html, body { touch-action: none; overflow: hidden; height: 100%; width: 100%; }
+        /* ARTE NO ARRASTRABLE: el drag nativo del navegador dejaba coger los PNG
+           de los titulos (ARCADE, CLASSIC, PILLWARS del login, carteles...) y
+           moverlos/copiarlos por la pantalla. El menu contextual sobre ellos lo
+           corta el JS de mas abajo. */
+        img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; user-select: none; }
         
         body {
             margin: 0; background-color: var(--bg-color);
@@ -1233,6 +1238,14 @@
         body.pixel-pack .mqp-q .v { font-family: 'Press Start 2P', monospace; font-size: 8px; }
         body.pixel-pack .mqp-foot { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; }
     </style>
+    <!-- Los PNG de los titulos (ARCADE/CLASSIC, PILLWARS del login) y de los
+         carteles no se arrastran ni se copian con el menu contextual. El CSS
+         -webkit-user-drag no lo respeta Firefox: el dragstart es el que corta
+         el arrastre de verdad en todos. -->
+    <script>
+        document.addEventListener('dragstart', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
+        document.addEventListener('contextmenu', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
+    </script>
 </head>
 <body>
 

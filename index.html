@@ -61,6 +61,12 @@
            abajo (.hero-img, .skill-icon, #heroDecoCv...), que gana a este reset. */
         img, canvas, video { image-rendering: auto; }
 
+        /* ARTE NO ARRASTRABLE: el drag nativo del navegador dejaba coger el PNG
+           del titulo (PILLWARS, PLAY NOW, carteles...) y moverlo/copiarlo por la
+           pantalla. Los <img> dejan de responder al arrastre y a la seleccion;
+           el menu contextual sobre ellos lo corta el JS de mas abajo. */
+        img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; user-select: none; }
+
         /* CURSOR PERSONALIZADO (SOLO PC) */
         #custom-cursor {
             position: fixed; top: 0; left: 0; width: 24px; height: 44px;
@@ -798,6 +804,13 @@ body.trailer-open #page-content{
         #btnLandingEdit { background: none; border: none; padding: 0; color: #ff9c3d; cursor: pointer !important; }
         #btnLandingEdit:hover { color: #fff; text-shadow: 0 0 10px #ff9c3d; }
     </style>
+    <!-- El PNG del titulo/carteles no se arrastra ni se copia con el menu
+         contextual. El CSS -webkit-user-drag no lo respeta Firefox: el
+         dragstart es el que corta el arrastre de verdad en todos. -->
+    <script>
+        document.addEventListener('dragstart', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
+        document.addEventListener('contextmenu', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
+    </script>
     <!-- Layout HORNEADO del hero (el que estaba guardado en el servidor el
          28-jul-2026). Vive AQUI, en el <head>, y no en el script del final:
          se convierte en CSS antes de que el navegador pinte nada, asi que el
