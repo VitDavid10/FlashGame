@@ -50,15 +50,26 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # se veia en pantalla. Mientras no haya un asset pensado para su tamano real,
 # se quedan sin rejilla — el degradado suave escala mejor que una rejilla mal
 # encajada.
+# Cuarto valor OPCIONAL: fuerza el lado del bloque en px nativos en vez de
+# deducirlo de la escala. Hace falta porque el redondeo de unit/escala es
+# fragil cerca del .5 y dos assets casi identicos acaban con rejillas muy
+# distintas. Paso justo con los titulos de CLASSIC, que salen del MISMO jpg y
+# se ven casi al mismo tamano:
+#     login     2 / 0.3594 = 5.565 -> 6   ->  rejilla 149x30
+#     selector  2 / 0.3709 = 5.392 -> 5   ->  rejilla 179x36
+# 0.01 de diferencia en la escala, el redondeo cae a lados opuestos del 5.5 y
+# el del login se quedaba con un 20% menos de resolucion — se le veian los
+# bordes mucho mas toscos que al de fuera. Con el bloque fijado a 5 los tres
+# CLASSIC quedan en ~1.8 px de bloque en pantalla.
 ASSETS = [
     ('game/img/mode-title/PILLWARS-arcade.png',   0.4787, 0.4787),
     ('game/img/mode-title/ARCADE-word.png',       0.4209, 0.4209),
     # PILLWARS-classic.png volvio a v3 (995x182, contra 880x138 del v4):
-    # 66.05 / 182 = 0.3629.
-    ('game/img/mode-title/PILLWARS-classic.png',  0.3629, 0.3629),
+    # 66.05 / 182 = 0.3629. Bloque fijado a 5 (deduciria 6: 2/0.3629 = 5.51).
+    ('game/img/mode-title/PILLWARS-classic.png',  0.3629, 0.3629, 5),
     # CLASSIC-word.png volvio a v3 (895x183, contra 869x163 del v4):
-    # 29 * 2.26794 = 65.77 / 183 = 0.3594.
-    ('game/img/mode-title/CLASSIC-word.png',      0.3594, 0.3594),
+    # 29 * 2.26794 = 65.77 / 183 = 0.3594. Bloque fijado a 5, ver arriba.
+    ('game/img/mode-title/CLASSIC-word.png',      0.3594, 0.3594, 5),
     # Selector de modo: aqui el CSS fija el ANCHO (312px arcade, 332px classic),
     # asi que el factor sale de ahi y no del alto.
     ('game/img/mode-title/ARCADE.png',            0.3900, 0.3900),
@@ -116,13 +127,15 @@ def perforar(im, lum_max, area_min):
     return huecos
 
 
-def pixelize(path_in, path_out, kx, ky, unit, colors, alpha_cut, hole_lum, hole_area):
+def pixelize(path_in, path_out, kx, ky, unit, colors, alpha_cut, hole_lum, hole_area,
+             bloque=None):
     im = Image.open(path_in).convert('RGBA')
     w, h = im.size
 
-    # Lado del bloque en px NATIVOS para que en pantalla mida `unit`.
-    bx = max(1, round(unit / kx))
-    by = max(1, round(unit / ky))
+    # Lado del bloque en px NATIVOS para que en pantalla mida `unit`, salvo que
+    # venga fijado a mano (ver el comentario de ASSETS).
+    bx = bloque or max(1, round(unit / kx))
+    by = bloque or max(1, round(unit / ky))
     gw, gh = max(1, w // bx), max(1, h // by)
 
     # Reducir promediando (BOX): elige el color representativo del bloque y se
@@ -177,12 +190,14 @@ def main():
     ap.add_argument('--apply', action='store_true', help='sobrescribe el asset (guarda copia .orig)')
     args = ap.parse_args()
 
-    missing = [p for p, _, _ in ASSETS if not os.path.exists(os.path.join(REPO, p))]
+    missing = [e[0] for e in ASSETS if not os.path.exists(os.path.join(REPO, e[0]))]
     if missing:
         print('No encontrados:\n  ' + '\n  '.join(missing), file=sys.stderr)
         return 1
 
-    for rel, kx, ky in ASSETS:
+    for entrada in ASSETS:
+        rel, kx, ky = entrada[:3]
+        bloque = entrada[3] if len(entrada) > 3 else None
         src = os.path.join(REPO, rel)
         if args.apply:
             orig = src + '.orig'
@@ -196,7 +211,8 @@ def main():
 
         bx, by, gw, gh, huecos = pixelize(src_read, dst, kx, ky, args.unit, args.colors,
                                           args.alpha_cut, args.hole_lum,
-                                          args.hole_area if args.hole_area > 0 else 10 ** 9)
+                                          args.hole_area if args.hole_area > 0 else 10 ** 9,
+                                          bloque)
         print('%-42s bloque %dx%d px nativos -> %.1fx%.1f en pantalla   rejilla %dx%d   huecos vaciados: %d'
               % (os.path.basename(rel), bx, by, bx * kx, by * ky, gw, gh, huecos))
 
