@@ -1054,7 +1054,7 @@
            "lavados") y con sombra dura + halo oscuro que los despega del rayo
            y del cielo. */
         body.pixel-pack.has-hover-scene #modeScreen .mode-content { opacity: 1 !important; }
-        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { filter: contrast(1.3) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
         body.pixel-pack.has-hover-scene #modeScreen:not(.hover-classic) .mode-arcade,
         body.pixel-pack.has-hover-scene #modeScreen.hover-classic .mode-classic { background: transparent !important; }
         body.pixel-pack .mode-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 2px; }
@@ -1068,14 +1068,54 @@
            descripcion de debajo arrancaba subida y bajaba de golpe al cargar. */
         .mode-title .mt-img { display: none; width: 312px; height: auto; aspect-ratio: 800 / 161; }
         .mode-classic .mt-img { width: 332px; aspect-ratio: 869 / 163; }
-        /* contrast(1.3): el arte v4 viene apagado (el ARCADE perdio un 18% de
-           luminancia respecto al anterior), asi que se le estira el rango tonal
-           por CSS. 1.3 es el techo util — medido, sube el rango de 109 a 139 en
-           arcade y de 96 a 124 en classic sin quemar UN SOLO pixel; con brillo
-           1.06 encima ya se quema el 17.7% del arcade, y saturate lleva el
-           arcade de 0.83 a 1.00, o sea clipping de color y adios gradaciones.
-           Va primero en la cadena para que afecte a la imagen y no a la sombra. */
-        body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: contrast(1.3) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+        /* ===== Correccion tonal del arte v4, distinta por modo. El v4 viene
+           apagado (el ARCADE perdio un 18% de luminancia respecto al anterior y
+           se lee oliva en vez de oro), asi que se le estira el rango por CSS.
+
+           1.3 es el techo del contraste: sube el rango de 109 a 139 en arcade y
+           de 96 a 124 en classic sin quemar un solo pixel. Subir el brillo por
+           encima quema el 17.7% del arcade, y saturate lo lleva de 0.83 a 1.00
+           (clipping de color, adios gradaciones).
+
+           En CLASSIC el contraste solo dejaba las letras demasiado iluminadas:
+           el percentil 95 de luminancia subia de 167 a 179. Con brightness 0.92
+           delante, el rango sigue subiendo (96 -> 113) pero los claros bajan a
+           162, por DEBAJO del original. Mas contraste y menos iluminado a la
+           vez. El arcade no lo necesita, ahi el problema era el contrario.
+
+           Van en custom properties para poder meterlas tambien en el keyframe
+           del glow sin duplicarlo por modo. Orden: brillo antes que contraste,
+           y los dos antes de las sombras, para que corrijan la imagen y no el
+           halo. ===== */
+        .mode-arcade .mt-img  { --mt-contrast: 1.3; --mt-bright: 1;    --mt-glow-a: rgba(204,255,0,0.65); --mt-glow-b: rgba(204,255,0,0.32); }
+        .mode-classic .mt-img { --mt-contrast: 1.3; --mt-bright: 0.92; --mt-glow-a: rgba(0,255,170,0.65); --mt-glow-b: rgba(0,255,170,0.32); }
+        body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+
+        /* ===== Glow de entrada al selector: el titulo de cada modo se enciende
+           con su color al aparecer la pantalla y se queda con el brillo bajo.
+           Todos los pasos llevan el MISMO numero de funciones en el filter y
+           solo cambia el radio de los dos primeros drop-shadow: si un paso
+           tuviera distinta cantidad, el navegador no interpola y el efecto
+           saltaria de golpe en vez de encenderse. ===== */
+        @keyframes modeTitleGlowIn {
+            0%   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+            55%  { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 26px var(--mt-glow-a)) drop-shadow(0 0 58px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+            100% { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+        }
+        /* both: se queda en el 100% en vez de volver al filter de la regla base. */
+        body.pixel-pack .mode-title:not(.no-img) .mt-img { animation: modeTitleGlowIn 1.15s cubic-bezier(0.2,0.7,0.3,1) both; }
+        /* Con escena de hover la sombra base es mas dura (el titulo pelea con el
+           rayo y el cielo), asi que ahi el glow se monta sobre ESA. */
+        @keyframes modeTitleGlowInScene {
+            0%   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+            55%  { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 26px var(--mt-glow-a)) drop-shadow(0 0 58px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+            100% { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+        }
+        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { animation: modeTitleGlowInScene 1.15s cubic-bezier(0.2,0.7,0.3,1) both; }
+        @media (prefers-reduced-motion: reduce) {
+            body.pixel-pack .mode-title:not(.no-img) .mt-img,
+            body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { animation-duration: 0.01s; }
+        }
         body.pixel-pack .mode-title:not(.no-img) .mt-txt { display: none; }
         body.pixel-pack .mode-desc { font-family: 'VT323', monospace; font-size: 13px; line-height: 1.35; }
         body.pixel-pack .mqp { border: 2px dashed rgba(255,255,255,0.22); }
@@ -1104,9 +1144,12 @@
            que en pantalla acaban midiendo lo mismo que en el hero: 6*2.75~16 y
            14*2.75~38. El color cambia con el modo, que es lo que el hero no
            puede hacer al venir horneado. ===== */
+        /* brightness 0.92 solo en classic, por lo mismo que en el selector: el
+           contraste a secas le subia los claros de 167 a 179 y quedaba lavado.
+           El arcade va sin tocar el brillo, ahi el problema era el contrario. */
         body.pixel-pack #modeTitlePw img,
         body.pixel-pack #modeTitleWord img {
-            filter: contrast(1.3) drop-shadow(0 0 6px rgba(0,255,136,0.6)) drop-shadow(0 0 14px rgba(0,255,136,0.35)) drop-shadow(2px 2px 0 rgba(0,0,0,0.5));
+            filter: brightness(0.92) contrast(1.3) drop-shadow(0 0 6px rgba(0,255,136,0.6)) drop-shadow(0 0 14px rgba(0,255,136,0.35)) drop-shadow(2px 2px 0 rgba(0,0,0,0.5));
         }
         #loginOverlay.bg-arcade #modeTitlePw img,
         #loginOverlay.bg-arcade #modeTitleWord img {
