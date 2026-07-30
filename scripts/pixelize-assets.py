@@ -36,11 +36,18 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # (ruta, escala_x, escala_y) — factor con el que el juego pinta el asset.
 # titulo: height inline (24px / 29px sobre PNG de 100 / 120) x scale del layout.
 # botones: background-size 100% 100%, que estira cada eje por su cuenta.
+# El arte nuevo de los titulos (import-hero-art.py) es mas alto que el de roca
+# que sustituye, asi que los factores bajaron: el alto en pantalla lo fija el
+# html (24px / 29px) por la escala del layout, y el nativo es el del recorte.
+#   PILLWARS  24 * 2.75227 = 66.05 / 191 = 0.3458
+#   ARCADE    29 * 2.33649 = 67.76 / 186 = 0.3643
+#   PILLWARS  24 * 2.75227 = 66.05 / 183 = 0.3609   (classic)
+#   CLASSIC   29 * 2.26794 = 65.77 / 184 = 0.3575
 ASSETS = [
-    ('game/img/mode-title/PILLWARS-arcade.png',   0.6605, 0.6610),
-    ('game/img/mode-title/ARCADE-word.png',       0.5646, 0.5650),
-    ('game/img/mode-title/PILLWARS-classic.png',  0.6605, 0.6605),
-    ('game/img/mode-title/CLASSIC-word.png',      0.5481, 0.5481),
+    ('game/img/mode-title/PILLWARS-arcade.png',   0.3458, 0.3458),
+    ('game/img/mode-title/ARCADE-word.png',       0.3643, 0.3643),
+    ('game/img/mode-title/PILLWARS-classic.png',  0.3609, 0.3609),
+    ('game/img/mode-title/CLASSIC-word.png',      0.3575, 0.3575),
     ('game/img/cartel-hero/btn-plain-red.png',    0.6083, 0.6930),
     ('game/img/cartel-hero/btn-plain-blue.png',   0.6001, 0.6312),
 ]
@@ -144,7 +151,13 @@ def main():
     ap.add_argument('--colors', type=int, default=24, help='colores por asset (default 24)')
     ap.add_argument('--alpha-cut', type=int, default=128, help='umbral de alfa duro (default 128)')
     ap.add_argument('--hole-lum', type=int, default=70, help='luz por debajo de la cual un pixel cuenta como agujero (default 70)')
-    ap.add_argument('--hole-area', type=int, default=60, help='area minima en px del ORIGINAL para vaciar un agujero; 0 lo desactiva (default 60)')
+    # Desactivado por defecto: hacia falta para el arte de roca, que traia las
+    # tripas de las letras RELLENAS de oscuro. El arte nuevo ya las trae
+    # transparentes (el arcade da 0 huecos), y en los titulos verdes el canto
+    # oscuro cae por debajo del umbral de luz y se perforaba solo — 35 falsos
+    # positivos en PILLWARS-classic. Se deja disponible por si vuelve a hacer
+    # falta con un asset nuevo.
+    ap.add_argument('--hole-area', type=int, default=0, help='area minima en px del ORIGINAL para vaciar un agujero; 0 lo desactiva (default 0)')
     ap.add_argument('--out', default='game/img/_pix', help='directorio de previsualizacion')
     ap.add_argument('--apply', action='store_true', help='sobrescribe el asset (guarda copia .orig)')
     args = ap.parse_args()

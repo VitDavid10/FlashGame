@@ -1625,11 +1625,15 @@
       </div>
     </div>
 
-    <!-- Fuente oculta del video del cartel quest-panel (grok-video de David,
-         grabado con fondo magenta a proposito para poder quitarlo por canvas
-         igual que font-cleanup.html). No se pinta directamente: solo alimenta
-         de frames a los <canvas class="quest-video-bg"> de cada panel. -->
-    <video id="questPanelVideoSrc" src="video/quest-panel.mp4" autoplay muted loop playsinline
+    <!-- Fuente oculta del cartel quest-panel (arte de David, con fondo magenta
+         a proposito para poder quitarlo por canvas igual que font-cleanup.html).
+         No se pinta directamente: solo alimenta a los <canvas
+         class="quest-video-bg"> de cada panel.
+
+         Ahora mismo la fuente es la IMAGEN (quest-panel-v2.png): el cartel
+         nuevo esta hecho en estatico. El video sigue aqui y el bucle lo
+         soporta — para volver a el basta poner USAR_VIDEO = true abajo. -->
+    <video id="questPanelVideoSrc" data-src="video/quest-panel.mp4" muted loop playsinline
         style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;"></video>
     <script>
         // Pinta el frame actual del video en cada canvas de fondo, con cover-fit
@@ -1655,12 +1659,52 @@
         // come el ruido de compresion H.264 que ensuciaba el borde magenta.
         (function () {
             var KEY_HUE = 299, KEY_SAT = 0.571, PIX_UNIT = 2;
-            var src = document.getElementById('questPanelVideoSrc');
+            // false = cartel estatico (quest-panel-v2.png). true = el video de
+            // siempre. Lo unico que cambia es de donde salen los frames y cada
+            // cuanto hay que repintar; el croma, la rejilla y el tinte son los
+            // mismos para los dos.
+            var USAR_VIDEO = false;
+            // Tinte de la PIEDRA por modo. Solo entra en los pixeles poco
+            // saturados (la piedra gris y el aparato metalico): las llamas de
+            // los cohetes y la pantalla verde tienen saturacion alta y quedan
+            // intactas. Los multiplicadores conservan la luminancia
+            // (0.299R+0.587G+0.114B ~ 1), asi que giran el TONO sin aclarar ni
+            // oscurecer el cartel — el mismo truco que hace bonito el degradado
+            // del titulo classic.
+            // Comparado con la mitad de fuerza, que dejaba el classic casi igual
+            // que sin tinte. Con estos la piedra se lee como arenisca dorada en
+            // arcade y como piedra verde fria en classic, sin irse a chillon.
+            // Luminancia resultante 1.035 y 0.976: +-3.5%, no se nota.
+            var TINTES = {
+                arcade:  [1.30, 1.04, 0.32],   // piedra calida, hacia el amarillo del modo
+                classic: [0.64, 1.17, 0.86],   // piedra fria, hacia el verde del modo
+            };
+            var TINTE_SAT_MAX = 0.35;   // por encima de esto el pixel ya tiene color propio
+            var video = document.getElementById('questPanelVideoSrc');
+            var imagen = new Image();
+            if (USAR_VIDEO) {
+                // El src va aqui y no en el html: con el cartel estatico, el mp4
+                // son 1 MB que no hacen falta y el navegador se los bajaba igual.
+                video.src = video.getAttribute('data-src');
+                video.play().catch(function () {});
+            } else {
+                imagen.src = 'img/cartel-hero/quest-panel-v2.png';
+            }
             var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg')];
             // Un temporal por cartel: los dos no miden lo mismo (cada uno tiene
             // su escala en EDIT LAYOUT), y compartir uno obligaria a
             // redimensionarlo dos veces por frame.
             var grids = canvases.map(function () { return document.createElement('canvas'); });
+            // Con imagen no hace falta repintar a 60fps: solo cuando cambia algo
+            // que afecte al resultado (tamano del canvas o modo, que cambia el
+            // tinte). Esta es la huella de lo ultimo pintado en cada canvas.
+            var pintado = ['', ''];
+            function modoDe(cv) {
+                var p = cv.parentElement;
+                // Del DOM y no de currentGameMode: esta IIFE corre antes de que
+                // el script grande declare esa variable.
+                return (p && p.classList.contains('arcade')) ? 'arcade' : 'classic';
+            }
             function keyness(r, g, b) {
                 var max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
                 var sat = max > 0 ? delta / max : 0;
@@ -1676,8 +1720,13 @@
                 return hueScore * satScore;
             }
             function frame() {
-                if (src.readyState >= 2 && src.videoWidth) {
-                    var vw = src.videoWidth, vh = src.videoHeight;
+                var fuente = USAR_VIDEO ? video : imagen;
+                var lista = USAR_VIDEO
+                    ? (video.readyState >= 2 && video.videoWidth)
+                    : (imagen.complete && imagen.naturalWidth);
+                if (lista) {
+                    var vw = USAR_VIDEO ? video.videoWidth : imagen.naturalWidth;
+                    var vh = USAR_VIDEO ? video.videoHeight : imagen.naturalHeight;
                     for (var i = 0; i < canvases.length; i++) {
                         var cv = canvases[i];
                         if (!cv.clientWidth || !cv.clientHeight) continue;
@@ -1691,6 +1740,12 @@
                         // cambiar sin que cambie clientWidth.
                         var rect = cv.getBoundingClientRect();
                         var w = Math.max(1, Math.round(rect.width)), h = Math.max(1, Math.round(rect.height));
+                        var modo = modoDe(cv);
+                        // Con imagen fija, repintar 60 veces por segundo lo mismo
+                        // es tirar CPU: solo se repinta si cambio el tamano o el
+                        // modo (que cambia el tinte). Con video, siempre.
+                        if (!USAR_VIDEO && pintado[i] === w + 'x' + h + ':' + modo) continue;
+                        pintado[i] = w + 'x' + h + ':' + modo;
                         if (cv.width !== w) cv.width = w;
                         if (cv.height !== h) cv.height = h;
                         var ctx = cv.getContext('2d');
@@ -1705,12 +1760,31 @@
                         var scale = Math.max(gw / vw, gh / vh);
                         var dw = vw * scale, dh = vh * scale;
                         gctx.clearRect(0, 0, gw, gh);
-                        gctx.drawImage(src, (gw - dw) / 2, (gh - dh) / 2, dw, dh);
+                        gctx.drawImage(fuente, (gw - dw) / 2, (gh - dh) / 2, dw, dh);
                         var img = gctx.getImageData(0, 0, gw, gh), px = img.data;
+                        var t = TINTES[modo];
                         for (var p = 0; p < px.length; p += 4) {
-                            var k = keyness(px[p], px[p + 1], px[p + 2]);
-                            if (k > 0.4) px[p + 3] = 0;
-                            else if (k > 0.15) px[p + 3] = Math.round(px[p + 3] * (1 - (k - 0.15) / 0.25));
+                            // El PNG ya trae el magenta recortado (lo hizo
+                            // scripts/import-hero-art.py), asi que casi todo el
+                            // borde entra aqui ya transparente: saltarselo es
+                            // ~16% menos de trabajo. Con video no sobra nada
+                            // porque ahi el magenta llega opaco.
+                            if (px[p + 3] === 0) continue;
+                            var r = px[p], g = px[p + 1], b = px[p + 2];
+                            var k = keyness(r, g, b);
+                            if (k > 0.4) { px[p + 3] = 0; continue; }
+                            if (k > 0.15) px[p + 3] = Math.round(px[p + 3] * (1 - (k - 0.15) / 0.25));
+                            // Tinte de la piedra: cuanto mas gris el pixel, mas
+                            // tinte. Un pixel ya coloreado (llama, pantalla
+                            // verde) tiene sat alta y no se toca.
+                            var mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+                            var mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+                            var sat = mx > 0 ? (mx - mn) / mx : 0;
+                            if (sat >= TINTE_SAT_MAX) continue;
+                            var f = (TINTE_SAT_MAX - sat) / TINTE_SAT_MAX;
+                            px[p]     = Math.min(255, r * (1 + (t[0] - 1) * f));
+                            px[p + 1] = Math.min(255, g * (1 + (t[1] - 1) * f));
+                            px[p + 2] = Math.min(255, b * (1 + (t[2] - 1) * f));
                         }
                         gctx.putImageData(img, 0, 0);
                         // Subida con nearest: bloques de PIX_UNIT exactos.
@@ -5124,10 +5198,17 @@
     // "al hacer F5 se mueve todo". El de localStorage ya no se lee al arrancar
     // (solo lo escribe el editor mientras editas).
     const MENU_LAYOUT_HORNEADO = {
-        titlePw_classic:   { x: 170,  y: 16,   s: 2.7522689647375245 },
-        titleWord_classic: { x: 449,  y: 19,   s: 2.2679439840192406 },
-        titlePw_arcade:    { x: 198,  y: 18,   s: 2.7522689647375245 },
-        titleWord_arcade:  { x: 454,  y: 17,   s: 2.3364925909362215 },
+        // x recolocada al cambiar el arte de roca por el nuevo (mas estrecho
+        // por letra): con los valores viejos quedaba un hueco de 80px en arcade
+        // y 100px en classic entre PILLWARS y la palabra del modo, y el
+        // conjunto descentrado hacia la izquierda. Medido en el DOM, estos
+        // dejan el hueco en ~24px (el gap de .menu-head-row) y el titulo
+        // centrado en el viewport. La y y la escala no se tocan: el alto en
+        // pantalla no cambio, lo fija el height inline del img.
+        titlePw_classic:   { x: 243,  y: 16,   s: 2.7522689647375245 },
+        titleWord_classic: { x: 446,  y: 19,   s: 2.2679439840192406 },
+        titlePw_arcade:    { x: 248,  y: 18,   s: 2.7522689647375245 },
+        titleWord_arcade:  { x: 447,  y: 17,   s: 2.3364925909362215 },
         blurb:             { x: -115, y: 85,   s: 1.4509453541079567 },
         pill:              { x: 263,  y: 130,  s: 1.1098449129017791 },
         name:              { x: 256,  y: 116,  s: 1 },

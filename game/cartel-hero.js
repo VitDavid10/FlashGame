@@ -26,10 +26,12 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // no en el PNG. Los del lobby (finding/found/announce) van con fuente
     // pixel + recuadro estilo ranking, sin PNG.
     'pentakill-2', 'one-more-kill',
-    // Marco de piedra + fondo de los carteles ROOM · PRICES / DAILY QUESTS del
-    // menu (contenido dinamico: solo el marco+fondo va en la imagen, el texto
-    // se sigue pintando con HTML/CSS encima).
-    'quest-panel',
+    // ROOM · PRICES / DAILY QUESTS: el marco de piedra ya NO se pide por aqui.
+    // Esos dos carteles los pinta el <canvas class="quest-video-bg"> desde
+    // quest-panel-v2.png (ver el bucle en index.html), asi que 'quest-panel'
+    // se quedaba descargando 851 KB que nadie usaba: no habia ni un
+    // cartelUsesAtlas('quest-panel') vivo y el border-image estaba anulado
+    // expresamente en buildPixPanelCss.
     // Titulos horneados de los modales de wallet (marco verde del premio) y
     // del selector de wallet (CONNECT WALLET en blanco).
     'wallet-required', 'connect-error', 'deposit-failed', 'connect-wallet', 'payment-cancelled',
