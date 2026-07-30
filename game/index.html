@@ -660,6 +660,18 @@
         .menu-head-row { display: flex; align-items: center; justify-content: flex-start; gap: 22px; margin-bottom: 14px; text-align: left; width: max-content; max-width: 60vw; }
         #selectedModeTitle { font-family: 'Press Start 2P', monospace; font-size: 24px; text-transform: uppercase; margin: 0; letter-spacing: 1px; text-shadow: 3px 3px 0 #000, 6px 6px 0 rgba(0,0,0,0.4); line-height: 1.35; white-space: nowrap; }
         .mode-blurb { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; text-align: left; line-height: 2.1; letter-spacing: 0.5px; white-space: nowrap; }
+        /* El blurb de debajo del titulo, con el color de su modo y encendido,
+           igual que el ROGUELIKE MECHANICS / STANDARD MODE del selector. Mismo
+           orden: sombra dura primero (se pinta encima y despega el texto) y
+           detras dos halos. Radios cortos, que el rotulo es de 7px. */
+        #loginOverlay.bg-classic .mode-blurb {
+            color: #00ffaa;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 6px rgba(0,255,170,0.7), 0 0 14px rgba(0,255,170,0.4);
+        }
+        #loginOverlay.bg-arcade .mode-blurb {
+            color: #ccff00;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 6px rgba(204,255,0,0.7), 0 0 14px rgba(204,255,0,0.4);
+        }
         .section-title { font-family: 'Russo One'; font-size: 10px; color: var(--primary); text-transform: uppercase; margin: 10px 0 5px; text-align: left; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 2px; }
         .style-type-selector { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; display:none; }
         .style-type-selector label { font-size: 12px; font-weight: 600; color: #aaa; cursor: pointer; display: flex; align-items: center; gap: 5px; }
@@ -1109,32 +1121,49 @@
         body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
 
         /* ===== Glow de entrada al selector: el titulo de cada modo se enciende
-           con su color al aparecer la pantalla y se queda con el brillo bajo.
+           con su color al aparecer la pantalla y se queda ahi.
            Todos los pasos llevan el MISMO numero de funciones en el filter y
            solo cambia el radio de los dos primeros drop-shadow: si un paso
            tuviera distinta cantidad, el navegador no interpola y el efecto
-           saltaria de golpe en vez de encenderse. ===== */
+           saltaria de golpe en vez de encenderse.
+
+           SIN paso intermedio: antes habia uno al 55% que subia a 26/58px para
+           bajar luego a 13/30, y ese rebote se veia como un fogonazo al entrar.
+           Ahora sube directo al valor final.
+
+           La animacion espera a que la imagen haya cargado (clase .lista, que
+           pone el onload del <img>). Sin eso arrancaba con el hueco vacio y el
+           titulo aparecia a mitad del encendido, que era el otro motivo de que
+           al recargar se viera raro. ===== */
         @keyframes modeTitleGlowIn {
-            0%   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
-            55%  { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 26px var(--mt-glow-a)) drop-shadow(0 0 58px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
-            100% { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+            from { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
+            to   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
         }
-        /* both: se queda en el 100% en vez de volver al filter de la regla base. */
-        body.pixel-pack .mode-title:not(.no-img) .mt-img { animation: modeTitleGlowIn 1.15s cubic-bezier(0.2,0.7,0.3,1) both; }
+        /* both: se queda en el `to` en vez de volver al filter de la regla base. */
+        body.pixel-pack .mode-title:not(.no-img) .mt-img.lista { animation: modeTitleGlowIn 0.9s ease-out both; }
         /* Con escena de hover la sombra base es mas dura (el titulo pelea con el
            rayo y el cielo), asi que ahi el glow se monta sobre ESA. */
         @keyframes modeTitleGlowInScene {
-            0%   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
-            55%  { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 26px var(--mt-glow-a)) drop-shadow(0 0 58px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
-            100% { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+            from { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+            to   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 13px var(--mt-glow-a)) drop-shadow(0 0 30px var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
         }
-        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { animation: modeTitleGlowInScene 1.15s cubic-bezier(0.2,0.7,0.3,1) both; }
+        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img.lista { animation: modeTitleGlowInScene 0.9s ease-out both; }
         @media (prefers-reduced-motion: reduce) {
-            body.pixel-pack .mode-title:not(.no-img) .mt-img,
-            body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { animation-duration: 0.01s; }
+            body.pixel-pack .mode-title:not(.no-img) .mt-img.lista,
+            body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img.lista { animation-duration: 0.01s; }
         }
         body.pixel-pack .mode-title:not(.no-img) .mt-txt { display: none; }
-        body.pixel-pack .mode-desc { font-family: 'VT323', monospace; font-size: 13px; line-height: 1.35; }
+        /* El mini resumen iba en VT323 mientras el rotulo de encima del titulo
+           (.mode-sub) va en Press Start 2P, y se notaba que no eran del mismo
+           sitio. Pasa a Press Start 2P para que las tres lineas de texto del
+           panel hablen el mismo idioma. 7px como el .mode-sub: es
+           monoespaciada y cuadrada, asi que al mismo font-size ocupa casi el
+           doble que VT323 — a 13px no cabria ni una linea. line-height alto
+           porque a este cuerpo las tres lineas se pegan, y letter-spacing 0
+           porque con 0.5px la linea larga de ARCADE se iba a 315px sobre 312
+           disponibles y se habria partido en cuanto la ventana fuera un poco
+           mas estrecha. */
+        body.pixel-pack .mode-desc { font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 2.2; letter-spacing: 0; }
         body.pixel-pack .mqp { border: 2px dashed rgba(255,255,255,0.22); }
         body.pixel-pack .mqp.classic { border-left: 3px solid #00ffaa; }
         body.pixel-pack .mqp.arcade { border-right: 3px solid #ccff00; }
@@ -1549,7 +1578,7 @@
         <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
             <div id="contentArcade" class="mode-content">
                 <div class="mode-sub">ROGUELIKE MECHANICS</div>
-                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img" src="img/mode-title/ARCADE.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img" src="img/mode-title/ARCADE.png" alt="" onload="this.classList.add('lista')" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NORMAL MAP. TIME: <span class="highlight">3:50</span>.<br>
                     START EMPTY. <span class="highlight">PICK SKILLS</span> EVERY 30S.<br>
@@ -1560,7 +1589,7 @@
         <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
             <div id="contentClassic" class="mode-content">
                 <div class="mode-sub">STANDARD MODE</div>
-                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img" src="img/mode-title/CLASSIC.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img" src="img/mode-title/CLASSIC.png" alt="" onload="this.classList.add('lista')" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NO TIMER. <span class="highlight">HUGE MAP (x2)</span>.<br>
                     ONLY <span class="highlight">SHOOT</span> SKILL (KEY 1).<br>
@@ -4331,6 +4360,11 @@
     // habría zona y los virus pasarían por el título). Al cargar, invalida el cache
     // para remedir ya con las imágenes disponibles.
     ['PILLWARS-arcade', 'PILLWARS-classic', 'ARCADE-word', 'CLASSIC-word'].forEach(s => { const i = new Image(); i.onload = invalidateLoginUIRects; i.src = 'img/mode-title/' + s + '.png'; });
+    // Red de seguridad del glow del selector: la clase .lista (que dispara la
+    // animacion) la pone el onload del <img>, pero si la imagen ya estaba
+    // completa ese evento no vuelve a saltar y el titulo se quedaria sin
+    // encender para siempre. Aqui se repasa por si acaso.
+    document.querySelectorAll('.mode-title .mt-img').forEach(i => { if (i.complete && i.naturalWidth) i.classList.add('lista'); });
     function drawMenuDeco(g, w, h) {
         const now = performance.now();
         for (const p of menuDeco.items) {
