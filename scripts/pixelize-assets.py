@@ -39,17 +39,22 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # El arte nuevo de los titulos (import-hero-art.py) es mas alto que el de roca
 # que sustituye, asi que los factores bajaron: el alto en pantalla lo fija el
 # html (24px / 29px) por la escala del layout, y el nativo es el del recorte.
-#   PILLWARS  24 * 2.75227 = 66.05 / 191 = 0.3458
+#   PILLWARS  24 * 2.75227 = 66.05 / 185 = 0.3571
 #   ARCADE    29 * 2.33649 = 67.76 / 186 = 0.3643
-#   PILLWARS  24 * 2.75227 = 66.05 / 183 = 0.3609   (classic)
-#   CLASSIC   29 * 2.26794 = 65.77 / 184 = 0.3575
+#   PILLWARS  24 * 2.75227 = 66.05 / 181 = 0.3649   (classic)
+#   CLASSIC   29 * 2.26794 = 65.77 / 182 = 0.3614
+#
+# Los botones NO estan aqui a proposito. Se pintan con background-size:100% 100%,
+# que estira cada eje por su cuenta (0.61 en x, 0.69 en y), y de ahi salian
+# bloques de 1.8x2.1 px: ni cuadrados ni enteros, o sea el borde aserrado que
+# se veia en pantalla. Mientras no haya un asset pensado para su tamano real,
+# se quedan sin rejilla — el degradado suave escala mejor que una rejilla mal
+# encajada.
 ASSETS = [
-    ('game/img/mode-title/PILLWARS-arcade.png',   0.3458, 0.3458),
+    ('game/img/mode-title/PILLWARS-arcade.png',   0.3571, 0.3571),
     ('game/img/mode-title/ARCADE-word.png',       0.3643, 0.3643),
-    ('game/img/mode-title/PILLWARS-classic.png',  0.3609, 0.3609),
-    ('game/img/mode-title/CLASSIC-word.png',      0.3575, 0.3575),
-    ('game/img/cartel-hero/btn-plain-red.png',    0.6083, 0.6930),
-    ('game/img/cartel-hero/btn-plain-blue.png',   0.6001, 0.6312),
+    ('game/img/mode-title/PILLWARS-classic.png',  0.3649, 0.3649),
+    ('game/img/mode-title/CLASSIC-word.png',      0.3614, 0.3614),
 ]
 
 

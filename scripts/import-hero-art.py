@@ -58,10 +58,17 @@ KEY_HUE, KEY_SAT = 299.0, 0.571     # los mismos que game/index.html
 #
 # origen -> (destino, modo, rango de tono, recortar al contenido)
 TRABAJOS = [
-    ('game/img/mode-title/raw/PILLWARS-arcade-v2.jpg',  'game/img/mode-title/PILLWARS-arcade.png',  'hue', (36, 70), True),
-    ('game/img/mode-title/raw/ARCADE-word-v2.jpg',      'game/img/mode-title/ARCADE-word.png',      'hue', (36, 70), True),
-    ('game/img/mode-title/raw/PILLWARS-classic-v2.jpg', 'game/img/mode-title/PILLWARS-classic.png', 'hue', (130, 170), True),
-    ('game/img/mode-title/raw/CLASSIC-word-v2.jpg',     'game/img/mode-title/CLASSIC-word.png',     'hue', (130, 170), True),
+    # v3 = David los rehizo SIN halo, y eso permite volver al croma normal. El
+    # corte por tono era un mal necesario mientras el halo venia horneado, pero
+    # se llevaba por delante un 20% del contorno de las letras (medido: pixeles
+    # del rango ancho de tono que el rango estricto tiraba), y la rejilla de 2px
+    # convertia cada mordisco de 1px en un bloque de 5-6px. De ahi que el titulo
+    # saliera roido. Con las v3 el croma conserva el borde entero: la perdida
+    # baja al 0.6% en arcade y al 0.2% en classic.
+    ('game/img/mode-title/raw/PILLWARS-arcade-v3.jpg',  'game/img/mode-title/PILLWARS-arcade.png',  'croma', None, True),
+    ('game/img/mode-title/raw/ARCADE-word-v3.jpg',      'game/img/mode-title/ARCADE-word.png',      'croma', None, True),
+    ('game/img/mode-title/raw/PILLWARS-classic-v3.jpg', 'game/img/mode-title/PILLWARS-classic.png', 'croma', None, True),
+    ('game/img/mode-title/raw/CLASSIC-word-v3.jpg',     'game/img/mode-title/CLASSIC-word.png',     'croma', None, True),
     # El cartel se recorta al contenido pero NO se reencuadra: el CSS situa la
     # pantalla verde con porcentajes del alto total (.cartel-inner).
     ('game/img/cartel-hero/raw/quest-panel-v2.jpg',     'game/img/cartel-hero/quest-panel-v2.png',  'croma', None, True),
