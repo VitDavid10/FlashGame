@@ -1093,19 +1093,21 @@
         body.pixel-pack .mqp-q .tip { border-radius: 0; font-family: 'VT323', monospace; font-size: 14px; letter-spacing: 0; }
 
         /* ===== Titulo del login (PILLWARS + ARCADE/CLASSIC, PNG de David):
-           llevaba sombra negra pura, asi que quedaba pegado ENCIMA de la
-           escena en vez de dentro de ella. Escalon duro en verde muy oscuro
-           (no negro) + halo del color del modo = el titulo lo ilumina la
-           misma luz que el resto del menu. Los offsets van en 1px porque
-           EDIT LAYOUT escala el span que envuelve la imagen x2.75 (ver
-           MENU_LAYOUT_HORNEADO), y el filtro se escala con el. ===== */
+           mismo brillo que el PILLWARS del hero de la web (ver .hero-img en
+           index.html): dos glows del color del modo, uno cerrado y otro
+           amplio, sombra dura y un punto de brightness. Las medidas van
+           divididas por 2.75 porque EDIT LAYOUT escala el span que envuelve la
+           imagen (ver MENU_LAYOUT_HORNEADO) y el filtro se escala con el, asi
+           que en pantalla acaban midiendo lo mismo que en el hero: 6*2.75~16 y
+           14*2.75~38. El color cambia con el modo, que es lo que el hero no
+           puede hacer al venir horneado. ===== */
         body.pixel-pack #modeTitlePw img,
         body.pixel-pack #modeTitleWord img {
-            filter: drop-shadow(1px 1px 0 #06210f) drop-shadow(1px 1px 0 rgba(0,0,0,0.5)) drop-shadow(0 0 5px rgba(0,255,136,0.32));
+            filter: drop-shadow(0 0 6px rgba(0,255,136,0.6)) drop-shadow(0 0 14px rgba(0,255,136,0.35)) drop-shadow(2px 2px 0 rgba(0,0,0,0.5)) brightness(1.08);
         }
         #loginOverlay.bg-arcade #modeTitlePw img,
         #loginOverlay.bg-arcade #modeTitleWord img {
-            filter: drop-shadow(1px 1px 0 #1c2606) drop-shadow(1px 1px 0 rgba(0,0,0,0.5)) drop-shadow(0 0 5px rgba(204,255,0,0.32));
+            filter: drop-shadow(0 0 6px rgba(204,255,0,0.6)) drop-shadow(0 0 14px rgba(204,255,0,0.35)) drop-shadow(2px 2px 0 rgba(0,0,0,0.5)) brightness(1.08);
         }
 
         /* ===== Tipografia de los carteles laterales (ROOM · PRICES y DAILY
@@ -5211,8 +5213,8 @@
         // pantalla no cambio, lo fija el height inline del img.
         titlePw_classic:   { x: 243,  y: 16,   s: 2.7522689647375245 },
         titleWord_classic: { x: 446,  y: 19,   s: 2.2679439840192406 },
-        titlePw_arcade:    { x: 248,  y: 18,   s: 2.7522689647375245 },
-        titleWord_arcade:  { x: 447,  y: 17,   s: 2.3364925909362215 },
+        titlePw_arcade:    { x: 246,  y: 18,   s: 2.7522689647375245 },
+        titleWord_arcade:  { x: 452,  y: 17,   s: 2.3364925909362215 },
         blurb:             { x: -115, y: 85,   s: 1.4509453541079567 },
         pill:              { x: 263,  y: 130,  s: 1.1098449129017791 },
         name:              { x: 256,  y: 116,  s: 1 },

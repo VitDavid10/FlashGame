@@ -21,12 +21,13 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 KEY_HUE, KEY_SAT = 299.0, 0.571     # los mismos que game/index.html
+ANCHO_BORDE = 3                     # px de franja donde se des-mezcla el croma
 
 # Dos formas de aislar la pieza del fondo magenta:
 #
@@ -108,13 +109,71 @@ def keyness(a):
     return np.where((sat < 0.18) | (delta == 0), 0.0, k)
 
 
-def descromar(im, corte):
-    """RGBA con el magenta fuera. `corte` alto = mas agresivo, se come el borde."""
-    a = np.asarray(im.convert('RGB')).astype(int)
-    k = keyness(a)
-    alpha = np.where(k >= corte, 0, 255).astype(np.uint8)
-    out = np.dstack([np.asarray(im.convert('RGB')), alpha])
-    return Image.fromarray(out, 'RGBA')
+def color_fondo(a):
+    """RGB medio del croma. Estos jpg lo traen plano (desviacion de 1 a 5 sobre
+    255), asi que la media lo describe bien y se puede usar para des-mezclar."""
+    r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+    fondo = (r > g + 40) & (b > g + 30)
+    if not fondo.any():
+        return None
+    return a[fondo].mean(axis=0)
+
+
+def descromar(im, corte, suprimir=True):
+    """RGBA con el magenta fuera, des-mezclando el borde.
+
+    El alfa duro solo decide dentro/fuera, y eso no basta para el borde: ahi el
+    pixel es una MEZCLA de letra y fondo, asi que con el corte bajo se pierde
+    contorno y con el corte alto queda un anillo rosa. Los dos males que se
+    vieron en pantalla, y en jpg es peor porque la compresion promedia el color
+    en bloques de 2x2 y ensancha esa franja.
+
+    Asi que en vez de decidir, se des-mezcla. Si el pixel es
+        P = L*(1-a) + F*a
+    con F el color del croma (conocido y plano en estos jpg), la letra se
+    recupera con L = (P - F*a) / (1-a). Es la supresion de derrame de toda la
+    vida del chroma key.
+
+    La clave es estimar `a` bien. La keyness NO sirve: esta calibrada con
+    KEY_HUE=299 (el magenta del video viejo) y el de estos jpg es 322, asi que
+    en el fondo puro se queda en ~0.49 en vez de 1 — usarla como `a` metia mas
+    rosa del que quitaba. Se usa la distancia RGB al color del fondo, que si es
+    proporcional a la mezcla: 0 en fondo puro, maxima en letra pura.
+    """
+    rgb = np.asarray(im.convert('RGB')).astype(float)
+    F = color_fondo(rgb)
+    if F is None:
+        k = keyness(rgb.astype(int))
+        return Image.fromarray(np.dstack([
+            rgb.astype(np.uint8), np.where(k >= corte, 0, 255).astype(np.uint8)]), 'RGBA')
+
+    dist = np.sqrt(((rgb - F) ** 2).sum(axis=2))
+    # Escala: la distancia tipica de un pixel de letra al fondo. El percentil 90
+    # de las distancias grandes, para no calibrar con un pixel extremo.
+    lejos = dist[dist > np.percentile(dist, 60)]
+    D = np.percentile(lejos, 90) if len(lejos) else dist.max()
+    a_est = np.clip(1 - dist / max(D, 1e-6), 0, 1)
+
+    # Alfa: fuera lo que es mayoritariamente fondo. `corte` es ahora la fraccion
+    # de fondo a partir de la cual el pixel se descarta.
+    alpha = np.where(a_est >= corte, 0, 255).astype(np.uint8)
+
+    out = rgb.copy()
+    if suprimir:
+        # Solo la FRANJA del borde, no todo el interior. Aplicandolo a todo
+        # pixel con algo de a_est, el dorado perdia su componente roja legitima
+        # y se iba a limon: la distancia al fondo no es cero ni en el interior
+        # de la letra, asi que ahi restaba magenta que no existia. La mezcla
+        # real solo ocurre pegada al recorte, y con morfologia se acota exacto.
+        fuera = Image.fromarray(((alpha == 0) * 255).astype(np.uint8), 'L')
+        vecino = np.asarray(fuera.filter(ImageFilter.MaxFilter(2 * ANCHO_BORDE + 1))) > 128
+        borde = vecino & (alpha > 0) & (a_est > 0.01)
+        # Tope 0.9: divide por 0.1 como mucho, si no los pixeles casi-fondo
+        # explotan al reescalar.
+        av = np.clip(a_est, 0, 0.9)[borde][:, None]
+        out[borde] = np.clip((rgb[borde] - F * av) / (1 - av), 0, 255)
+
+    return Image.fromarray(np.dstack([out.astype(np.uint8), alpha]), 'RGBA')
 
 
 def por_tono(im, lo, hi, sat_min):
