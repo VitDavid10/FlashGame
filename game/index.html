@@ -2572,7 +2572,7 @@
         // Cache por color/tamaño, mismo patrón que skinCache.
         const PIX_SCREEN_PX = 4;
         const PIX_FONT = "'VT323', monospace";
-        const PIX = { pill: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map(), ring: new Map(), bolt: new Map(), magnet: null };
+        const PIX = { pill: new Map(), pillR: new Map(), dot: new Map(), virus: new Map(), bg: new Map(), shield: new Map(), ring: new Map(), bolt: new Map(), magnet: null };
 
     // Iconos pixel de pops (+ / - / rayo / escudo). Pequeños, sin fondo.
     // Fallback a texto/procedural si el PNG no carga.
@@ -2651,6 +2651,61 @@
         const hs = Math.max(1, Math.round(wL / 6));
         g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(Math.round(wL * 0.22), Math.round(hL * 0.14), hs, hs);
         PIX.pill.set(key, spr); return spr;
+    }
+
+    // Pill pixel YA ORIENTADA. El sprite se genera con la capsula girada dentro
+    // de un lienzo cuadrado, asi se dibuja SIN ctx.rotate() y cada pixel cae
+    // cuadrado sobre el grid de pantalla; rotar el sprite en runtime lo mutila
+    // (bordes dentados, contorno roto), el mismo motivo por el que la pill del
+    // cartel se hornea a mano. Sombreado deliberadamente corto: 3 tonos de
+    // cuerpo por mitad (luz / base / sombra) con luz direccional constante EN
+    // PANTALLA (arriba-izquierda) + rim de luz de 1px siguiendo la curva
+    // iluminada + sombra proyectada abajo-derecha. Nada de brillos sueltos.
+    // Devuelve { cv, S, SH }: la capsula ocupa el cuadrado SxS centrado en S/2,
+    // y el lienzo mide (S+SH) por el faldon de la sombra.
+    const PIX_ROT_STEP = Math.PI * 2 / 16;   // angulos cacheados (22.5 grados)
+    function pixPillSpriteRot(wL, cTop, cBot, ang) {
+        const qa = Math.round(ang / PIX_ROT_STEP) * PIX_ROT_STEP;
+        const key = wL + '|' + Math.round(qa / PIX_ROT_STEP) + '|' + cTop + '|' + cBot;
+        let o = PIX.pillR.get(key); if (o) return o;
+        if (PIX.pillR.size > 500) PIX.pillR.clear();
+        const hL = Math.round(wL * PILL_RATIO), R = wL / 2, seg = hL / 2 - R, RI = R - 0.1;
+        const c = Math.cos(qa), s = Math.sin(qa);
+        const S = Math.ceil(Math.max(wL * Math.abs(c) + hL * Math.abs(s), wL * Math.abs(s) + hL * Math.abs(c))) + 2;
+        const SH = Math.max(1, Math.round(wL / 7));   // desplazamiento de la sombra
+        const W = S + SH;
+        const cv = document.createElement('canvas'); cv.width = W; cv.height = W;
+        const g = cv.getContext('2d'), rgbT = pixRgb(cTop), rgbB = pixRgb(cBot);
+        const img = g.createImageData(W, W), px = img.data;
+        const sd = (x, y) => { const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c; const cy = ly < -seg ? -seg : ly > seg ? seg : ly; return Math.hypot(lx, ly - cy); };
+        const inside = (x, y) => (x < 0 || y < 0 || x >= S || y >= S) ? false : sd(x, y) <= RI;
+        for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (inside(x, y)) { const i = (((y + SH) * W + x + SH) << 2); px[i + 3] = 82; }
+        const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
+        const seamW = wL <= 10 ? 0.8 : 1.2;
+        for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+            if (!inside(x, y)) continue;
+            const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
+            const rgb = ly < 0 ? rgbT : rgbB;
+            const cy = ly < -seg ? -seg : ly > seg ? seg : ly;
+            const d = Math.hypot(lx, ly - cy) / R;                       // 0 centro .. 1 borde
+            let nx = lx, ny = ly - cy; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+            const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY; // -1 sombra .. 1 luz
+            let amt;
+            if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) amt = -0.55;   // contorno
+            else if (Math.abs(ly) < seamW) amt = -0.18;                  // costura entre mitades
+            else if (d > 0.70 && ndl > 0.45) amt = 0.30;                 // rim de luz siguiendo la curva
+            else if (d > 0.78 && ndl < -0.45) amt = -0.16;               // reborde en sombra, fino
+            else amt = 0;                                                // cuerpo: color plano
+            const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * W + x) << 2);
+            px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
+        }
+        g.putImageData(img, 0, 0);
+        o = { cv: cv, S: S, SH: SH }; PIX.pillR.set(key, o); return o;
+    }
+    /** Dibuja una pill orientada centrada en (cx, cy) del mundo, con eje largo `ang`. */
+    function drawPixPillRot(ctx, cx, cy, pW, wL, cTop, cBot, ang) {
+        const o = pixPillSpriteRot(wL, cTop, cBot, ang), u = pW / wL;
+        ctx.drawImage(o.cv, cx - o.S / 2 * u, cy - o.S / 2 * u, (o.S + o.SH) * u, (o.S + o.SH) * u);
     }
 
     function pixDotSprite(dL, col, kind) {
@@ -3511,21 +3566,23 @@
             let alpha = 1; if (c.tpPhase === 1) alpha = Math.max(0, c.tpTimer / 500); else if (c.tpPhase === 2) alpha = Math.max(0, 1 - (c.tpTimer / 500));
             ctx.save(); ctx.globalAlpha = alpha;
             const drawEffects = true; // auras de buff las ven todos; el detalle lo filtra drawCellBuffFx
-            ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4);
             const pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2;
             if (c.flashTime > 0 && c.flashColor && drawEffects) {
-                ctx.save(); ctx.globalAlpha = 0.35 * alpha; ctx.fillStyle = c.flashColor;
+                ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4);
+                ctx.globalAlpha = 0.35 * alpha; ctx.fillStyle = c.flashColor;
                 ctx.beginPath(); ctx.roundRect(-pW/2 - 8, -pH/2 - 8, pW + 16, pH + 16, rBox + 8); ctx.fill(); ctx.restore();
             }
             const skinImg = getSkinImage(c.skinUrl);
             if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
+                ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4);
                 ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip();
                 try { ctx.drawImage(skinImg, -pW/2, -pH/2, pW, pH); } catch (e) {}
+                ctx.restore();
             } else {
+                // Sprite ya girado -45: sin ctx.rotate() los pixeles caen cuadrados
                 const wL = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-                ctx.drawImage(pixPillSprite(wL, c.colorTop, c.colorBot), -pW/2, -pH/2, pW, pH);
+                drawPixPillRot(ctx, c.x, c.y, pW, wL, c.colorTop, c.colorBot, -Math.PI / 4);
             }
-            ctx.restore();
             // Buff FX (aros, rayos, escudo, imán por celda) — online y offline
             drawCellBuffFx(ctx, c, alpha);
             // Pops de masa / sprint: mismo sistema de partículas (+++ / --- / ⚡)
@@ -5199,26 +5256,32 @@
         const bob = Math.round(Math.sin(now / 380) * menuDecoSettings.pillBobPx);
         const breath = 0.015 * Math.sin(now / 380 + 1.4);
         const maxHalf = Math.min(W / 2 - 6, Math.min(cyBase - 42, H - cyBase) - 6) - 3;
-        const pW0 = maxHalf / ((1 + PILL_RATIO) * Math.SQRT1_2 / 2);
+        // Sprite ya girado -45 (los pixeles caen cuadrados); solo el clip del
+        // barrido se rota, para que avance a lo largo del eje de la pildora.
+        // El sprite ya trae la caja diagonal + el faldon de sombra, asi que el
+        // tamano se calcula con su propio lado, no con la extension del rect.
+        if (pillSweep && (now - pillSweep.t0) >= PILL_SWEEP_MS) pillSweep = null;
+        const oNew = pixPillSpriteRot(40, cTop, cBot, -Math.PI / 4);
+        const pW0 = maxHalf * 40 / (oNew.S / 2 + oNew.SH);
         const pW = Math.round(pW0 * (1 + breath)), pH = Math.round(pW0 * PILL_RATIO * (1 - breath));
         g.save();
         g.translate(W / 2, cyBase + bob);
-        g.rotate(-Math.PI / 4);
-        if (pillSweep && (now - pillSweep.t0) >= PILL_SWEEP_MS) pillSweep = null;
-        const sprNew = pixPillSprite(40, cTop, cBot);
+        const u = pW / 40, dx0 = -oNew.S / 2 * u, dw = (oNew.S + oNew.SH) * u;
         if (pillSweep) {
             // Barrido: color viejo debajo, el nuevo entra con un clip que avanza
             // a lo largo de la pildora en pasos de 8px (look pixel, no fundido).
             const t = (now - pillSweep.t0) / PILL_SWEEP_MS;
             const oldTop = pillSweep.half === 'colTop' ? pillSweep.from : cTop;
             const oldBot = pillSweep.half === 'colBot' ? pillSweep.from : cBot;
-            g.drawImage(pixPillSprite(40, oldTop, oldBot), -pW / 2, -pH / 2, pW, pH);
+            g.drawImage(pixPillSpriteRot(40, oldTop, oldBot, -Math.PI / 4).cv, dx0, dx0, dw, dw);
             const stepW = Math.ceil(pW * t / 8) * 8;
-            g.save(); g.beginPath(); g.rect(-pW / 2, -pH / 2, stepW, pH); g.clip();
-            g.drawImage(sprNew, -pW / 2, -pH / 2, pW, pH);
+            g.save(); g.rotate(-Math.PI / 4);
+            g.beginPath(); g.rect(-pW / 2, -pH / 2, stepW, pH); g.clip();
+            g.rotate(Math.PI / 4);
+            g.drawImage(oNew.cv, dx0, dx0, dw, dw);
             g.restore();
         } else {
-            g.drawImage(sprNew, -pW / 2, -pH / 2, pW, pH);
+            g.drawImage(oNew.cv, dx0, dx0, dw, dw);
         }
         g.restore();
         // Tal cual se escribe (mayusculas Y minusculas), igual que el input lo
@@ -7927,7 +7990,7 @@
         floatingTexts.forEach(ft => ft.draw(ctx)); ctx.restore(); uiTexts.forEach(ut => ut.draw(ctx));
     }
 
-    function drawMiniPill(f, scale) { if (pixelMode) { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle || 0); const w = f.r * 2, h = w * 2.0, wL = Math.max(4, Math.min(16, Math.round(w * scale / PIX_SCREEN_PX / 2) * 2)); ctx.drawImage(pixPillSprite(wL, f.c1, f.c2), -w/2, -h/2, w, h); ctx.restore(); return; } let sR = f.r * scale; if (isLowQuality || sR < DRAW_LOD_THRESHOLD) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle||0); let w = f.r * 2, h = w * 2.0, r = w / 2; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, r); ctx.clip(); ctx.fillStyle = f.c1; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = f.c2; ctx.fillRect(-w/2, 0, w, h/2); ctx.restore(); } }
+    function drawMiniPill(f, scale) { if (pixelMode) { const w = f.r * 2, wL = Math.max(4, Math.min(16, Math.round(w * scale / PIX_SCREEN_PX / 2) * 2)); drawPixPillRot(ctx, f.x, f.y, w, wL, f.c1, f.c2, f.angle || 0); return; } let sR = f.r * scale; if (isLowQuality || sR < DRAW_LOD_THRESHOLD) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle||0); let w = f.r * 2, h = w * 2.0, r = w / 2; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, r); ctx.clip(); ctx.fillStyle = f.c1; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = f.c2; ctx.fillRect(-w/2, 0, w, h/2); ctx.restore(); } }
     function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; ctx.imageSmoothingEnabled = !pixelMode; scheduleAspectUpdate(); }
     // Notifica al server el nuevo aspect ratio (debounced) para que AOI se ajuste.
     let _aspectTimer = null;
