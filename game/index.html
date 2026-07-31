@@ -2688,6 +2688,7 @@
         if (SH) for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (inside(x, y)) { const i = (((y + SH) * W + x + SH) << 2); px[i + 3] = 82; }
         const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
         const seamW = wL <= 10 ? 0.8 : 1.2;
+        const kD = wL / 38;   // los grosores de `detailed` se midieron sobre una pill de 38px
         for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
             if (!inside(x, y)) continue;
             const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
@@ -2696,37 +2697,46 @@
             const d = Math.hypot(lx, ly - cy) / R;                       // 0 centro .. 1 borde
             let nx = lx, ny = ly - cy; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
             const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY; // -1 sombra .. 1 luz
-            // En las TAPAS redondas (|ly| > seg) el umbral de angulo baja, para que
-            // la banda recorra la punta entera en vez de morir a media curva y
-            // "meterse para adentro". En los tramos rectos se mantiene el umbral
-            // alto: siguen limpios, igual que antes. Solo en detailed.
-            const onCap = detailed && Math.abs(ly) > seg;
-            const thrL = onCap ? 0.13 : 0.45, thrL2 = onCap ? 0.10 : 0.30;
-            const thrD = onCap ? -0.13 : -0.45, thrD2 = onCap ? -0.10 : -0.28;
-            // Bandas mas finas (pegadas al borde) SOLO en detailed; en partida se
-            // quedan con el grosor de siempre.
-            const dL = detailed ? 0.85 : 0.70, dD = detailed ? 0.88 : 0.78;
             let amt;
-            if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) amt = -0.55;   // contorno
+            if (detailed) {
+                // Modelo sacado midiendo pixel a pixel la referencia de David
+                // (paleta, grosores y forma leidos de su imagen):
+                //  - NADA de contorno negro: el reborde es el PROPIO color de la
+                //    mitad oscurecido (x0.72), asi cada mitad lleva el suyo.
+                //  - Grosor DIRECCIONAL: ~1px en el lado iluminado y ~3px en el de
+                //    sombra (en la referencia va de 1.0 a 3.2 bloques). Al medirse
+                //    por distancia al borde real, recorre el contorno entero,
+                //    puntas redondas incluidas.
+                //  - Rim claro de 1px justo dentro del borde mas iluminado.
+                //  - Costura oscurecida entre mitades y cuerpo plano.
+                const edge = RI - Math.hypot(lx, ly - cy);       // px hasta el borde
+                const rw = (1.0 + 1.1 * (1 - ndl)) * kD;         // reborde: fino en luz, grueso en sombra
+                if (Math.abs(ly) < 1.4 * kD) amt = -0.28;        // costura
+                else if (edge < 1.0 * kD && ndl > 0.55) amt = 0.22;   // rim de luz
+                else if (edge < rw) amt = -0.28;                 // reborde
+                else amt = 0;                                    // cuerpo plano
+            }
+            else if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) amt = -0.55;   // contorno
             else if (Math.abs(ly) < seamW) amt = -0.18;                  // costura entre mitades
-            else if (d > dL && ndl > thrL) amt = 0.30;                   // rim de luz siguiendo la curva
-            else if (detailed && d > 0.78 && d <= dL && ndl > thrL2) amt = 0.13;    // graduacion, tambien fina
-            else if (d > dD && ndl < thrD) amt = -0.16;                  // reborde en sombra, fino
-            else if (detailed && d > 0.80 && d <= dD && ndl < thrD2) amt = -0.07;   // graduacion fina hacia la sombra
+            else if (d > 0.70 && ndl > 0.45) amt = 0.30;                 // rim de luz siguiendo la curva
+            else if (d > 0.78 && ndl < -0.45) amt = -0.16;               // reborde en sombra, fino
             else amt = 0;                                                // cuerpo: color plano
             const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * W + x) << 2);
             px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
         }
         if (detailed) {
-            // Brillo especular: mancha suave en la esquina de luz (arriba-izq),
-            // se funde con el tono ya sombreado de cada pixel (respeta el color
-            // de la mitad y el rim ya pintado, no lo tapa con blanco plano).
-            const gx = S * 0.30, gy = S * 0.24, gr = Math.max(2, wL * 0.16);
+            // Brillo: rombo pixel DURO (lados rectos, sin degradado), como en la
+            // referencia. Se situa en coordenadas LOCALES de la capsula — hacia el
+            // lado iluminado y hacia la punta de la mitad de arriba — y luego se
+            // rota con ella, asi cae siempre en el mismo sitio del dibujo. Se funde
+            // sobre el tono ya pintado, respetando el color de la mitad.
+            const glx = -0.42 * R, gly = -0.50 * (seg + R);
+            const gx = S / 2 + (glx * c - gly * s), gy = S / 2 + (glx * s + gly * c);
+            const gr = Math.max(2, Math.round(wL * 0.15));
             for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
                 if (!inside(x, y)) continue;
-                const dgx = x + 0.5 - gx, dgy = y + 0.5 - gy, gd = Math.hypot(dgx, dgy) / gr;
-                if (gd >= 1) continue;
-                const a = (1 - gd) * 0.4, i = ((y * W + x) << 2);
+                if (Math.abs(x + 0.5 - gx) + Math.abs(y + 0.5 - gy) > gr) continue;
+                const a = 0.30, i = ((y * W + x) << 2);
                 px[i] += (255 - px[i]) * a; px[i + 1] += (255 - px[i + 1]) * a; px[i + 2] += (255 - px[i + 2]) * a;
             }
         }
