@@ -2664,9 +2664,13 @@
     // Devuelve { cv, S, SH }: la capsula ocupa el cuadrado SxS centrado en S/2,
     // y el lienzo mide (S+SH) por el faldon de la sombra.
     const PIX_ROT_STEP = Math.PI * 2 / 16;   // angulos cacheados (22.5 grados)
-    function pixPillSpriteRot(wL, cTop, cBot, ang) {
+    // detailed=true anade bandas de sombreado extra (transicion mas redondeada)
+    // y un brillo especular en la esquina de luz. Solo para pildoras grandes
+    // (preview del menu, de momento) - opt-in explicito para no tocar el look
+    // de las pildoras pequenas en partida.
+    function pixPillSpriteRot(wL, cTop, cBot, ang, detailed) {
         const qa = Math.round(ang / PIX_ROT_STEP) * PIX_ROT_STEP;
-        const key = wL + '|' + Math.round(qa / PIX_ROT_STEP) + '|' + cTop + '|' + cBot;
+        const key = wL + '|' + Math.round(qa / PIX_ROT_STEP) + '|' + cTop + '|' + cBot + (detailed ? '|d' : '');
         let o = PIX.pillR.get(key); if (o) return o;
         if (PIX.pillR.size > 500) PIX.pillR.clear();
         const hL = Math.round(wL * PILL_RATIO), R = wL / 2, seg = hL / 2 - R, RI = R - 0.1;
@@ -2694,10 +2698,25 @@
             if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) amt = -0.55;   // contorno
             else if (Math.abs(ly) < seamW) amt = -0.18;                  // costura entre mitades
             else if (d > 0.70 && ndl > 0.45) amt = 0.30;                 // rim de luz siguiendo la curva
+            else if (detailed && d > 0.40 && ndl > 0.30) amt = 0.13;     // graduacion suave hacia el rim
             else if (d > 0.78 && ndl < -0.45) amt = -0.16;               // reborde en sombra, fino
+            else if (detailed && d > 0.45 && ndl < -0.28) amt = -0.07;   // graduacion suave hacia la sombra
             else amt = 0;                                                // cuerpo: color plano
             const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * W + x) << 2);
             px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
+        }
+        if (detailed) {
+            // Brillo especular: mancha suave en la esquina de luz (arriba-izq),
+            // se funde con el tono ya sombreado de cada pixel (respeta el color
+            // de la mitad y el rim ya pintado, no lo tapa con blanco plano).
+            const gx = S * 0.30, gy = S * 0.24, gr = Math.max(2, wL * 0.16);
+            for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+                if (!inside(x, y)) continue;
+                const dgx = x + 0.5 - gx, dgy = y + 0.5 - gy, gd = Math.hypot(dgx, dgy) / gr;
+                if (gd >= 1) continue;
+                const a = (1 - gd) * 0.4, i = ((y * W + x) << 2);
+                px[i] += (255 - px[i]) * a; px[i + 1] += (255 - px[i + 1]) * a; px[i + 2] += (255 - px[i + 2]) * a;
+            }
         }
         g.putImageData(img, 0, 0);
         o = { cv: cv, S: S, SH: SH }; PIX.pillR.set(key, o); return o;
@@ -5261,7 +5280,7 @@
         // El sprite ya trae la caja diagonal + el faldon de sombra, asi que el
         // tamano se calcula con su propio lado, no con la extension del rect.
         if (pillSweep && (now - pillSweep.t0) >= PILL_SWEEP_MS) pillSweep = null;
-        const oNew = pixPillSpriteRot(40, cTop, cBot, -Math.PI / 4);
+        const oNew = pixPillSpriteRot(40, cTop, cBot, -Math.PI / 4, true);
         const pW0 = maxHalf * 40 / (oNew.S / 2 + oNew.SH);
         const pW = Math.round(pW0 * (1 + breath)), pH = Math.round(pW0 * PILL_RATIO * (1 - breath));
         g.save();
@@ -5273,7 +5292,7 @@
             const t = (now - pillSweep.t0) / PILL_SWEEP_MS;
             const oldTop = pillSweep.half === 'colTop' ? pillSweep.from : cTop;
             const oldBot = pillSweep.half === 'colBot' ? pillSweep.from : cBot;
-            g.drawImage(pixPillSpriteRot(40, oldTop, oldBot, -Math.PI / 4).cv, dx0, dx0, dw, dw);
+            g.drawImage(pixPillSpriteRot(40, oldTop, oldBot, -Math.PI / 4, true).cv, dx0, dx0, dw, dw);
             const stepW = Math.ceil(pW * t / 8) * 8;
             g.save(); g.rotate(-Math.PI / 4);
             g.beginPath(); g.rect(-pW / 2, -pH / 2, stepW, pH); g.clip();
