@@ -2676,14 +2676,16 @@
         const hL = Math.round(wL * PILL_RATIO), R = wL / 2, seg = hL / 2 - R, RI = R - 0.1;
         const c = Math.cos(qa), s = Math.sin(qa);
         const S = Math.ceil(Math.max(wL * Math.abs(c) + hL * Math.abs(s), wL * Math.abs(s) + hL * Math.abs(c))) + 2;
-        const SH = Math.max(1, Math.round(wL / 7));   // desplazamiento de la sombra
+        // detailed: sin faldon de sombra proyectada — nada de sombra FUERA de la
+        // pildora. El resto (partida) conserva la suya.
+        const SH = detailed ? 0 : Math.max(1, Math.round(wL / 7));   // desplazamiento de la sombra
         const W = S + SH;
         const cv = document.createElement('canvas'); cv.width = W; cv.height = W;
         const g = cv.getContext('2d'), rgbT = pixRgb(cTop), rgbB = pixRgb(cBot);
         const img = g.createImageData(W, W), px = img.data;
         const sd = (x, y) => { const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c; const cy = ly < -seg ? -seg : ly > seg ? seg : ly; return Math.hypot(lx, ly - cy); };
         const inside = (x, y) => (x < 0 || y < 0 || x >= S || y >= S) ? false : sd(x, y) <= RI;
-        for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (inside(x, y)) { const i = (((y + SH) * W + x + SH) << 2); px[i + 3] = 82; }
+        if (SH) for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (inside(x, y)) { const i = (((y + SH) * W + x + SH) << 2); px[i + 3] = 82; }
         const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
         const seamW = wL <= 10 ? 0.8 : 1.2;
         for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
@@ -2694,13 +2696,23 @@
             const d = Math.hypot(lx, ly - cy) / R;                       // 0 centro .. 1 borde
             let nx = lx, ny = ly - cy; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
             const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY; // -1 sombra .. 1 luz
+            // En las TAPAS redondas (|ly| > seg) el umbral de angulo baja, para que
+            // la banda recorra la punta entera en vez de morir a media curva y
+            // "meterse para adentro". En los tramos rectos se mantiene el umbral
+            // alto: siguen limpios, igual que antes. Solo en detailed.
+            const onCap = detailed && Math.abs(ly) > seg;
+            const thrL = onCap ? 0.13 : 0.45, thrL2 = onCap ? 0.10 : 0.30;
+            const thrD = onCap ? -0.13 : -0.45, thrD2 = onCap ? -0.10 : -0.28;
+            // Bandas mas finas (pegadas al borde) SOLO en detailed; en partida se
+            // quedan con el grosor de siempre.
+            const dL = detailed ? 0.85 : 0.70, dD = detailed ? 0.88 : 0.78;
             let amt;
             if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) amt = -0.55;   // contorno
             else if (Math.abs(ly) < seamW) amt = -0.18;                  // costura entre mitades
-            else if (d > 0.85 && ndl > 0.45) amt = 0.30;                 // rim de luz, fino, pegado al borde
-            else if (detailed && d > 0.78 && d <= 0.85 && ndl > 0.30) amt = 0.13;   // graduacion, tambien fina
-            else if (d > 0.88 && ndl < -0.45) amt = -0.16;               // reborde en sombra, fino
-            else if (detailed && d > 0.80 && d <= 0.88 && ndl < -0.28) amt = -0.07; // graduacion fina hacia la sombra
+            else if (d > dL && ndl > thrL) amt = 0.30;                   // rim de luz siguiendo la curva
+            else if (detailed && d > 0.78 && d <= dL && ndl > thrL2) amt = 0.13;    // graduacion, tambien fina
+            else if (d > dD && ndl < thrD) amt = -0.16;                  // reborde en sombra, fino
+            else if (detailed && d > 0.80 && d <= dD && ndl < thrD2) amt = -0.07;   // graduacion fina hacia la sombra
             else amt = 0;                                                // cuerpo: color plano
             const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * W + x) << 2);
             px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
