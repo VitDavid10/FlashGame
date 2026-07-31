@@ -2664,15 +2664,13 @@
     // Devuelve { cv, S, SH }: la capsula ocupa el cuadrado SxS centrado en S/2,
     // y el lienzo mide (S+SH) por el faldon de la sombra.
     const PIX_ROT_STEP = Math.PI * 2 / 16;   // angulos cacheados (22.5 grados)
-    // detailed=true: look de pildora GRANDE (preview del menu + celdas gordas en
-        // partida). Modelo medido sobre image-1785474655526.webp de David:
+        // detailed=true: look de pildora GRANDE (preview del menu + celdas gordas).
+        // Modelo medido sobre game/img/refs/pill-detailed-ref.webp:
         //  - cuerpo plano por mitad (sin contorno negro)
-        //  - 3 bandas de reborde en el PROPIO color, grosor DIRECCIONAL (fino en
-        //    luz, grueso en sombra) que envuelven la punta redonda
-        //  - rim de luz 1px en el borde iluminado
-        //  - costura entre mitades
-        //  - brillo especular en ROMBO duro (manhattan) casi blanco
-        // Sin detailed se mantiene el look corto de las pildoras pequenas.
+        //  - 3 bandas de reborde en el PROPIO color, grosor DIRECCIONAL
+        //  - rim de luz en el borde iluminado (antes del reborde oscuro)
+        //  - costura entre mitades + brillo en ROMBO duro (manhattan)
+        // Sin detailed: look corto de las pildoras pequenas en partida.
         function pixPillSpriteRot(wL, cTop, cBot, ang, detailed) {
             const qa = Math.round(ang / PIX_ROT_STEP) * PIX_ROT_STEP;
             const key = wL + '|' + Math.round(qa / PIX_ROT_STEP) + '|' + cTop + '|' + cBot + (detailed ? '|d2' : '');
@@ -2681,61 +2679,57 @@
             const hL = Math.round(wL * PILL_RATIO), R = wL / 2, seg = hL / 2 - R, RI = R - 0.1;
             const c = Math.cos(qa), s = Math.sin(qa);
             const S = Math.ceil(Math.max(wL * Math.abs(c) + hL * Math.abs(s), wL * Math.abs(s) + hL * Math.abs(c))) + 2;
-            // detailed: sin faldon de sombra proyectada — nada de sombra FUERA de la
-            // pildora. El resto (partida) conserva la suya.
-            const SH = detailed ? 0 : Math.max(1, Math.round(wL / 7));   // desplazamiento de la sombra
+            // detailed: sin faldon de sombra proyectada fuera de la pildora.
+            const SH = detailed ? 0 : Math.max(1, Math.round(wL / 7));
             const W = S + SH;
             const cv = document.createElement('canvas'); cv.width = W; cv.height = W;
             const g = cv.getContext('2d'), rgbT = pixRgb(cTop), rgbB = pixRgb(cBot);
             const img = g.createImageData(W, W), px = img.data;
-            const sd = (x, y) => { const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c; const cy = ly < -seg ? -seg : ly > seg ? seg : ly; return Math.hypot(lx, ly - cy); };
+            const sd = (x, y) => {
+                const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
+                const cy = ly < -seg ? -seg : ly > seg ? seg : ly;
+                return Math.hypot(lx, ly - cy);
+            };
             const inside = (x, y) => (x < 0 || y < 0 || x >= S || y >= S) ? false : sd(x, y) <= RI;
-            if (SH) for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (inside(x, y)) { const i = (((y + SH) * W + x + SH) << 2); px[i + 3] = 82; }
+            if (SH) for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (inside(x, y)) {
+                const i = (((y + SH) * W + x + SH) << 2); px[i + 3] = 82;
+            }
             const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
             const seamW = wL <= 10 ? 0.8 : 1.2;
-            // Escala de grosores: la ref se midio a ~38-46 px de ancho logico.
-            const kD = wL / 38;
+            const kD = wL / 38;   // grosores medidos sobre pill ~38-46 px
             for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
                 if (!inside(x, y)) continue;
                 const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
                 const rgb = ly < 0 ? rgbT : rgbB;
                 const cy = ly < -seg ? -seg : ly > seg ? seg : ly;
                 const rad = Math.hypot(lx, ly - cy);
-                const d = rad / R;                       // 0 centro .. 1 borde
+                const d = rad / R;
                 let nx = lx, ny = ly - cy; const nl = rad || 1; nx /= nl; ny /= nl;
                 const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY; // -1 sombra .. 1 luz
                 let amt;
                 if (detailed) {
-                    // u = 0 luz plena .. 1 sombra plena. El grosor de cada banda
-                                        // crece con u: en la punta de sombra de la ref hay ~3 bandas
-                                        // (rim oscuro + media + suave) que suman ~0.30-0.40 R; en el
-                                        // lado iluminado casi solo queda 1px de reborde + rim claro.
-                                        const edge = RI - rad;                              // px al borde
-                                        const u = Math.max(0, Math.min(1, (1 - ndl) * 0.5));
-                                        // Anchos medidos contra image-1785474655526 (B≈12 → wL≈46):
-                                        // en punta de sombra el cascaron oscuro llega a ~0.35 R.
-                                        const w1 = (1.05 + 1.7 * u) * kD;                   // rim mas oscuro
-                                        const w2 = (2.6 + 4.2 * u) * kD;                    // banda media
-                                        const w3 = (4.2 + 6.8 * u) * kD;                    // media-suave (crescente)
-                                        if (Math.abs(ly) < 1.45 * kD) amt = -0.30;          // costura
-                                        else if (edge < w1) amt = -0.44;                    // reborde oscuro (propio color)
-                                        else if (edge < w2) amt = -0.30;                    // banda media
-                                        else if (u > 0.18 && edge < w3) amt = -0.15;        // media-suave solo en sombra
-                                        else if (ndl > 0.55 && edge < 1.25 * kD) amt = 0.30; // rim de luz
-                                        else amt = 0;                                      // cuerpo plano
-                }
-                else if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) amt = -0.55;   // contorno
-                else if (Math.abs(ly) < seamW) amt = -0.18;                  // costura entre mitades
-                else if (d > 0.70 && ndl > 0.45) amt = 0.30;                 // rim de luz siguiendo la curva
-                else if (d > 0.78 && ndl < -0.45) amt = -0.16;               // reborde en sombra, fino
-                else amt = 0;                                                // cuerpo: color plano
+                    // u=0 luz .. 1 sombra. Bandas crecen en la punta de sombra (~0.35 R).
+                    const edge = RI - rad;
+                    const u = Math.max(0, Math.min(1, (1 - ndl) * 0.5));
+                    const w1 = (1.05 + 1.7 * u) * kD;
+                    const w2 = (2.6 + 4.2 * u) * kD;
+                    const w3 = (4.2 + 6.8 * u) * kD;
+                    if (Math.abs(ly) < 1.45 * kD) amt = -0.30;                      // costura
+                    else if (ndl > 0.55 && edge < 1.25 * kD) amt = 0.30;             // rim de luz primero
+                    else if (edge < w1) amt = -0.44;                                // reborde oscuro
+                    else if (edge < w2) amt = -0.30;                                // banda media
+                    else if (u > 0.18 && edge < w3) amt = -0.15;                    // media-suave (sombra)
+                    else amt = 0;
+                } else if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) amt = -0.55;
+                else if (Math.abs(ly) < seamW) amt = -0.18;
+                else if (d > 0.70 && ndl > 0.45) amt = 0.30;
+                else if (d > 0.78 && ndl < -0.45) amt = -0.16;
+                else amt = 0;
                 const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * W + x) << 2);
                 px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
             }
             if (detailed) {
-                // Brillo: rombo manhattan DURO (casi blanco en el nucleo, un poco
-                // mas suave en el borde del rombo). Coordenadas LOCALES de la
-                // capsula — punta iluminada de la mitad de arriba — y rota con ella.
+                // Rombo manhattan duro en coords locales (punta iluminada mitad top).
                 const glx = -0.40 * R, gly = -0.48 * (seg + R);
                 const gx = S / 2 + (glx * c - gly * s), gy = S / 2 + (glx * s + gly * c);
                 const gr = Math.max(2, Math.round(wL * 0.145));
@@ -2751,9 +2745,7 @@
             g.putImageData(img, 0, 0);
             o = { cv: cv, S: S, SH: SH }; PIX.pillR.set(key, o); return o;
         }
-        /** Dibuja una pill orientada centrada en (cx, cy) del mundo, con eje largo `ang`.
-         *  detailed se activa solo en pildoras con suficiente resolucion logica para
-         *  que las 3 bandas + rombo se lean (preview y celdas grandes en partida). */
+        /** Pill orientada en (cx,cy). detailed = preview / celdas con wL alto. */
         function drawPixPillRot(ctx, cx, cy, pW, wL, cTop, cBot, ang, detailed) {
             const o = pixPillSpriteRot(wL, cTop, cBot, ang, !!detailed), u = pW / wL;
             ctx.drawImage(o.cv, cx - o.S / 2 * u, cy - o.S / 2 * u, (o.S + o.SH) * u, (o.S + o.SH) * u);
@@ -3631,7 +3623,7 @@
                 ctx.restore();
             } else {
                 // Sprite ya girado -45: sin ctx.rotate() los pixeles caen cuadrados.
-                                // detailed (>=28 px logicos): mismo look que el preview/ref de David.
+                                // detailed (>=28 px logicos): mismo look que el preview/ref.
                                 const wL = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
                                 drawPixPillRot(ctx, c.x, c.y, pW, wL, c.colorTop, c.colorBot, -Math.PI / 4, wL >= 28);
             }
@@ -5313,7 +5305,7 @@
         // El sprite ya trae la caja diagonal + el faldon de sombra, asi que el
         // tamano se calcula con su propio lado, no con la extension del rect.
         if (pillSweep && (now - pillSweep.t0) >= PILL_SWEEP_MS) pillSweep = null;
-                // 48 px logicos: bastante resolucion para las 3 bandas + rombo de la ref.
+                // 48 px logicos: resolucion para las 3 bandas + rombo de la ref.
                 const MENU_PILL_WL = 48;
                 const oNew = pixPillSpriteRot(MENU_PILL_WL, cTop, cBot, -Math.PI / 4, true);
                 const pW0 = maxHalf * MENU_PILL_WL / (oNew.S / 2 + oNew.SH);
@@ -5322,22 +5314,21 @@
                 g.translate(W / 2, cyBase + bob);
                 const u = pW / MENU_PILL_WL, dx0 = -oNew.S / 2 * u, dw = (oNew.S + oNew.SH) * u;
                 if (pillSweep) {
-                    // Barrido: color viejo debajo, el nuevo entra con un clip que avanza
-                    // a lo largo de la pildora en pasos de 8px (look pixel, no fundido).
+                    // Barrido: color viejo debajo, el nuevo entra con clip en pasos de 8px.
                     const t = (now - pillSweep.t0) / PILL_SWEEP_MS;
                     const oldTop = pillSweep.half === 'colTop' ? pillSweep.from : cTop;
                     const oldBot = pillSweep.half === 'colBot' ? pillSweep.from : cBot;
                     g.drawImage(pixPillSpriteRot(MENU_PILL_WL, oldTop, oldBot, -Math.PI / 4, true).cv, dx0, dx0, dw, dw);
-            const stepW = Math.ceil(pW * t / 8) * 8;
-            g.save(); g.rotate(-Math.PI / 4);
-            g.beginPath(); g.rect(-pW / 2, -pH / 2, stepW, pH); g.clip();
-            g.rotate(Math.PI / 4);
-            g.drawImage(oNew.cv, dx0, dx0, dw, dw);
-            g.restore();
-        } else {
-            g.drawImage(oNew.cv, dx0, dx0, dw, dw);
-        }
-        g.restore();
+                    const stepW = Math.ceil(pW * t / 8) * 8;
+                    g.save(); g.rotate(-Math.PI / 4);
+                    g.beginPath(); g.rect(-pW / 2, -pH / 2, stepW, pH); g.clip();
+                    g.rotate(Math.PI / 4);
+                    g.drawImage(oNew.cv, dx0, dx0, dw, dw);
+                    g.restore();
+                } else {
+                    g.drawImage(oNew.cv, dx0, dx0, dw, dw);
+                }
+                g.restore();
         // Tal cual se escribe (mayusculas Y minusculas), igual que el input lo
         // muestra y que el nombre en partida.
         const name = document.getElementById('playerNameInput').value.trim() || 'PLAYER';
