@@ -2697,10 +2697,10 @@
             let amt;
             if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) amt = -0.55;   // contorno
             else if (Math.abs(ly) < seamW) amt = -0.18;                  // costura entre mitades
-            else if (d > 0.70 && ndl > 0.45) amt = 0.30;                 // rim de luz siguiendo la curva
-            else if (detailed && d > 0.40 && ndl > 0.30) amt = 0.13;     // graduacion suave hacia el rim
-            else if (d > 0.78 && ndl < -0.45) amt = -0.16;               // reborde en sombra, fino
-            else if (detailed && d > 0.45 && ndl < -0.28) amt = -0.07;   // graduacion suave hacia la sombra
+            else if (d > 0.85 && ndl > 0.45) amt = 0.30;                 // rim de luz, fino, pegado al borde
+            else if (detailed && d > 0.78 && d <= 0.85 && ndl > 0.30) amt = 0.13;   // graduacion, tambien fina
+            else if (d > 0.88 && ndl < -0.45) amt = -0.16;               // reborde en sombra, fino
+            else if (detailed && d > 0.80 && d <= 0.88 && ndl < -0.28) amt = -0.07; // graduacion fina hacia la sombra
             else amt = 0;                                                // cuerpo: color plano
             const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * W + x) << 2);
             px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
