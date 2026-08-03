@@ -6,10 +6,11 @@
  *   - CARTEL_SURFACES describe cada pop-up: donde esta su caja, su titulo, su
  *     texto y su fila de botones. Es la UNICA lista que hay que tocar para
  *     anadir un cartel nuevo al editor.
- *   - carteles-layout.json guarda los valores ya afinados. Es un fichero del
- *     repo: lo escribe el editor via POST /api/carteles-layout (bloqueado a
- *     localhost) y viaja en el commit, asi que lo que afinas en local es lo que
- *     acaba en produccion.
+ *   - carteles-layout.json (repo) son los valores de fabrica, y encima se aplica
+ *     lo que devuelve GET /api/carteles-layout, que es lo ultimo que guardo el
+ *     editor (POST con ADMIN_KEY). Ese override lo guarda el servidor en
+ *     globalsettings.json, fuera de git, para que deploy/update.sh no se lo
+ *     lleve por delante al hacer `git reset --hard`.
  *   - applyCartelLayout() los aplica como estilos INLINE. Tiene que ser inline
  *     porque el pixel-pack mete su CSS con !important y se generaria una pelea
  *     de especificidad; inline + important gana siempre.
@@ -122,11 +123,28 @@ function applyCartelLayout(layout) {
 // escala de la pieza `title` (rueda del raton en el editor).
 function cartelTitleW() { return null; }
 
-// Carga el JSON afinado. Si no existe (404) o esta vacio se sigue de fabrica.
-const CARTEL_LAYOUT_READY = fetch('carteles-layout.json', { cache: 'no-cache' })
+// Carga los valores afinados. Dos fuentes, y el override del servidor manda:
+//   carteles-layout.json   -> fabrica, viaja en el repo.
+//   GET /api/carteles-layout -> lo ultimo guardado desde el editor, vive en
+//                               globalsettings.json (fuera de git) y por eso
+//                               sobrevive a `git reset --hard` del update.
+// Si cualquiera de las dos falla (404, juego abierto sin servidor...) se usa la
+// otra; si fallan las dos, cada cartel se queda con su espaciado de fabrica.
+const _cartelJSON = url => fetch(url, { cache: 'no-cache' })
     .then(r => (r.ok ? r.json() : {}))
     .catch(() => ({}))
-    .then(j => { CARTEL_LAYOUT = j && typeof j === 'object' ? j : {}; return CARTEL_LAYOUT; });
+    .then(j => (j && typeof j === 'object' ? j : {}));
+
+const CARTEL_LAYOUT_READY = Promise.all([
+    _cartelJSON('carteles-layout.json'),
+    _cartelJSON('/api/carteles-layout'),
+]).then(([fabrica, override]) => {
+    // Merge por CARTEL (no por pieza): el editor guarda siempre el cartel
+    // entero, asi que una entrada del override sustituye a la de fabrica. Los
+    // carteles que el override no toca siguen con lo horneado en el repo.
+    CARTEL_LAYOUT = Object.assign({}, fabrica, override);
+    return CARTEL_LAYOUT;
+});
 
 /* --- Puente para carteles-preview.html -------------------------------------
  * El editor vive fuera del juego (lo carga en un iframe) y necesita llegar a

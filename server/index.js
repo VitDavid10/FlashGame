@@ -103,12 +103,19 @@ let menuLayout = (_glob.menuLayout && typeof _glob.menuLayout === 'object') ? _g
 // contrato): lo sube el botón EDIT de index.html. Va APARTE de menuLayout para
 // que las dos herramientas no se pisen la una a la otra.
 let landingLayout = (_glob.landingLayout && typeof _glob.landingLayout === 'object') ? _glob.landingLayout : {};
+// Espaciado afinado de los carteles/pop-ups del juego (lo sube carteles-preview.html).
+// Vive AQUI y no en game/carteles-layout.json porque ese fichero es del repo y
+// deploy/update.sh hace `git reset --hard`: cada actualización del juego borraba
+// lo editado en producción. globalsettings.json está en .gitignore, así que
+// sobrevive. El JSON del repo se queda como valores de fábrica y esto se aplica
+// encima (ver game/carteles-layout.js).
+let cartelesLayout = (_glob.cartelesLayout && typeof _glob.cartelesLayout === 'object') ? _glob.cartelesLayout : {};
 // Interruptor de los DOS editores de layout (botón EDIT de la landing y
 // SETTINGS → EDIT LAYOUT del juego). Apagado = ni siquiera aparecen los botones:
 // el diseño ya está fijado en el código de cada página. Se enciende desde el
 // panel admin cuando haya que retocarlo.
 let layoutEdit = (typeof _glob.layoutEdit === 'boolean') ? _glob.layoutEdit : false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit, menuLayout, landingLayout }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit, menuLayout, landingLayout, cartelesLayout }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -1876,19 +1883,28 @@ const httpServer = http.createServer(async (req, res) => {
         res.writeHead(405, { 'Access-Control-Allow-Origin': '*' }); res.end(); return;
     }
     /* --- Espaciado de los carteles: lo escribe carteles-preview.html (editor de
-     * diseño) en game/carteles-layout.json, un fichero del repo que viaja en el
-     * commit. SOLO desde localhost: es una herramienta de desarrollo, nadie de
-     * fuera debe poder escribir en el disco del servidor. --- */
+     * diseño) y lo lee el juego al arrancar (GET). Se guarda en
+     * globalsettings.json, NO en game/carteles-layout.json: ese es del repo y
+     * deploy/update.sh hace `git reset --hard origin/main`, así que cada
+     * actualización se llevaba por delante lo afinado en producción.
+     * El POST va protegido con la misma ADMIN_KEY que /admin: el check de "solo
+     * localhost" que había antes no servía detrás de Caddy (reverse_proxy
+     * conecta a Node por loopback, así que TODO el tráfico externo llegaba
+     * como 127.0.0.1 y el check pasaba siempre). El GET es público: es lo que
+     * pinta el juego. --- */
     if (urlPath === '/api/carteles-layout') {
-        const ip = String((req.socket && req.socket.remoteAddress) || '');
-        const esLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
-        if (!esLocal) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'solo localhost' })); return; }
+        if (req.method === 'GET') {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(cartelesLayout));
+            return;
+        }
         if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
         let body = '', abortado = false;
         req.on('data', c => { if (abortado) return; body += c; if (body.length > 65536) { abortado = true; res.writeHead(413); res.end('Payload too large'); req.destroy(); } });
         req.on('end', () => {
             if (abortado) return;
             let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
+            if (payload.key !== ADMIN_KEY) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad key' })); return; }
             const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
             if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
             // Sanea: cada cartel es {pieza: {x, y, s}} y nada mas, para no
@@ -1916,13 +1932,8 @@ const httpServer = http.createServer(async (req, res) => {
                 }
                 if (Object.keys(dst).length) clean[String(k).slice(0, 40)] = dst;
             }
-            const destino = path.join(__dirname, '..', 'game', 'carteles-layout.json');
-            try {
-                fs.writeFileSync(destino, JSON.stringify(clean, null, 2) + '\n');
-            } catch (e) {
-                res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: e.message })); return;
-            }
-            log(`Carteles layout guardado en game/carteles-layout.json (${Object.keys(clean).length} carteles)`);
+            cartelesLayout = clean; saveGlobal();
+            log(`Carteles layout guardado en globalsettings.json (${Object.keys(clean).length} carteles)`);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
         });

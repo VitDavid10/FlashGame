@@ -29,16 +29,34 @@
   #estado { font-size:11px; color:#7d8a84; }
   .stage { flex:1; position:relative; overflow:hidden; background:#000; }
   iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+
+  #loginOverlay { position:fixed; inset:0; background:#0b0f0d; display:flex; align-items:center; justify-content:center; z-index:999; flex-direction:column; gap:10px; }
+  #loginOverlay .card { width:220px; text-align:center; }
+  #loginOverlay h1 { font-size:13px; margin-bottom:14px; }
+  #loginOverlay input { width:100%; box-sizing:border-box; padding:8px 10px; background:#141b18; border:1px solid #2a3a33; color:#dfe6e2; font:13px monospace; border-radius:3px; text-align:center; letter-spacing:2px; }
+  #loginOverlay input:focus { outline:none; border-color:#3d5b4e; }
+  #loginOverlay button { width:100%; margin-top:8px; padding:8px; border:1px solid var(--ok); background:#12251c; color:var(--ok); font:600 11px monospace; letter-spacing:1px; cursor:pointer; border-radius:3px; }
+  #loginOverlay button:hover { background:#173629; }
+  #loginError { font-size:11px; color:var(--no); min-height:14px; margin-top:6px; }
 </style>
 </head>
 <body>
-<aside>
+<div id="loginOverlay">
+  <div class="card">
+    <h1>Editor de carteles — clave de admin</h1>
+    <input id="adminKeyInput" type="password" placeholder="····" maxlength="32" autocomplete="off" onkeydown="if(event.key==='Enter')desbloquear()">
+    <button onclick="desbloquear()">Unlock</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<aside style="display:none" id="asideApp">
   <h1>Editor de carteles</h1>
   <p class="sub">Click = abrir/cerrar.<br>Puedes tener los que quieras a la vez.</p>
   <div id="lista"></div>
 </aside>
 
-<main>
+<main style="display:none" id="mainApp">
   <div class="bar">
     <span class="hint">
       Arrastra el <b>cartel</b> para moverlo · Arrastra <b>titulo / texto / botones</b> para colocarlos ·
@@ -52,6 +70,17 @@
   <div class="stage"><iframe id="game" src="game/index.html"></iframe></div>
 </main>
 
+<script>
+let ADMIN_KEY = '';
+function desbloquear() {
+  const v = document.getElementById('adminKeyInput').value;
+  if (!v) { document.getElementById('loginError').textContent = 'Introduce la clave'; return; }
+  ADMIN_KEY = v;
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('asideApp').style.display = 'block';
+  document.getElementById('mainApp').style.display = 'flex';
+}
+</script>
 <script>
 /*
  * Editor de carteles. Los pop-ups se editan como CLONES dentro del iframe:
@@ -428,11 +457,22 @@ async function guardar() {
   try {
     const r = await fetch('/api/carteles-layout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ layout: LAYOUT }),
+      body: JSON.stringify({ layout: LAYOUT, key: ADMIN_KEY }),
     });
     const j = await r.json();
-    if (!j.ok) throw new Error(j.error || 'error');
-    estado('guardado en game/carteles-layout.json (' + j.count + ') — commitea para subirlo', '#00ff88');
+    if (!j.ok) {
+      if (r.status === 403) {
+        // Clave incorrecta: se pide de nuevo, no se pierde el layout en memoria.
+        document.getElementById('asideApp').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'none';
+        document.getElementById('loginError').textContent = 'Clave incorrecta';
+        document.getElementById('adminKeyInput').value = '';
+        document.getElementById('loginOverlay').style.display = 'flex';
+        document.getElementById('adminKeyInput').focus();
+      }
+      throw new Error(j.error || 'error');
+    }
+    estado('guardado en el servidor (' + j.count + ' carteles) — aguanta las actualizaciones', '#00ff88');
   } catch (e) { estado('no se pudo guardar: ' + e.message, '#ff5b5b'); }
 }
 

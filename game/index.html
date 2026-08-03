@@ -1076,7 +1076,10 @@
            "lavados") y con sombra dura + halo oscuro que los despega del rayo
            y del cielo. */
         body.pixel-pack.has-hover-scene #modeScreen .mode-content { opacity: 1 !important; }
-        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
+        /* Con escena de hover la sombra base es mas dura (el titulo pelea con el
+           rayo y el cielo), asi que el glow de color se monta sobre ESA. Mismo
+           criterio que la regla base: luz constante, sin encendido de entrada. */
+        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 calc(13px * var(--sel-glow)) var(--mt-glow-a)) drop-shadow(0 0 calc(30px * var(--sel-glow)) var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
         body.pixel-pack.has-hover-scene #modeScreen:not(.hover-classic) .mode-arcade,
         body.pixel-pack.has-hover-scene #modeScreen.hover-classic .mode-classic { background: transparent !important; }
         body.pixel-pack .mode-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 2px; }
@@ -1128,39 +1131,15 @@
            halo. ===== */
         .mode-arcade .mt-img  { --mt-contrast: 1.3; --mt-bright: 1;    --mt-glow-a: rgba(204,255,0,0.65); --mt-glow-b: rgba(204,255,0,0.32); }
         .mode-classic .mt-img { --mt-contrast: 1.3; --mt-bright: 0.85; --mt-glow-a: rgba(0,255,170,0.65); --mt-glow-b: rgba(0,255,170,0.32); }
-        body.pixel-pack .mode-title:not(.no-img) .mt-img { display: inline-block; filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
-
-        /* ===== Glow de entrada al selector: el titulo de cada modo se enciende
-           con su color al aparecer la pantalla y se queda ahi.
-           Todos los pasos llevan el MISMO numero de funciones en el filter y
-           solo cambia el radio de los dos primeros drop-shadow: si un paso
-           tuviera distinta cantidad, el navegador no interpola y el efecto
-           saltaria de golpe en vez de encenderse.
-
-           SIN paso intermedio: antes habia uno al 55% que subia a 26/58px para
-           bajar luego a 13/30, y ese rebote se veia como un fogonazo al entrar.
-           Ahora sube directo al valor final.
-
-           La animacion espera a que la imagen haya cargado (clase .lista, que
-           pone el onload del <img>). Sin eso arrancaba con el hueco vacio y el
-           titulo aparecia a mitad del encendido, que era el otro motivo de que
-           al recargar se viera raro. ===== */
-        @keyframes modeTitleGlowIn {
-            from { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
-            to   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 calc(13px * var(--sel-glow)) var(--mt-glow-a)) drop-shadow(0 0 calc(30px * var(--sel-glow)) var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55)); }
-        }
-        /* both: se queda en el `to` en vez de volver al filter de la regla base. */
-        body.pixel-pack .mode-title:not(.no-img) .mt-img.lista { animation: modeTitleGlowIn 0.9s ease-out both; }
-        /* Con escena de hover la sombra base es mas dura (el titulo pelea con el
-           rayo y el cielo), asi que ahi el glow se monta sobre ESA. */
-        @keyframes modeTitleGlowInScene {
-            from { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 0 var(--mt-glow-a))    drop-shadow(0 0 0 var(--mt-glow-b))    drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
-            to   { filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 calc(13px * var(--sel-glow)) var(--mt-glow-a)) drop-shadow(0 0 calc(30px * var(--sel-glow)) var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(0,0,0,0.95)); }
-        }
-        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img.lista { animation: modeTitleGlowInScene 0.9s ease-out both; }
-        @media (prefers-reduced-motion: reduce) {
-            body.pixel-pack .mode-title:not(.no-img) .mt-img.lista,
-            body.pixel-pack.has-hover-scene .mode-title:not(.no-img) .mt-img.lista { animation-duration: 0.01s; }
+        /* ===== Glow del titulo de cada modo: CONSTANTE, sin encendido de
+           entrada. Antes habia una animacion (modeTitleGlowIn) que arrancaba
+           con radio 0 y subia al valor final en 0.9s: al cargar el selector los
+           titulos se veian apagados y se encendian a la vista. Ahora el filter
+           final va directo en la regla base, asi que el titulo tiene la misma
+           luz desde el primer frame en que se ve. ===== */
+        body.pixel-pack .mode-title:not(.no-img) .mt-img {
+            display: inline-block;
+            filter: brightness(var(--mt-bright)) contrast(var(--mt-contrast)) drop-shadow(0 0 calc(13px * var(--sel-glow)) var(--mt-glow-a)) drop-shadow(0 0 calc(30px * var(--sel-glow)) var(--mt-glow-b)) drop-shadow(4px 4px 0 rgba(0,0,0,0.55));
         }
         body.pixel-pack .mode-title:not(.no-img) .mt-txt { display: none; }
         /* El mini resumen iba en VT323 mientras el rotulo de encima del titulo
@@ -1596,7 +1575,7 @@
         <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
             <div id="contentArcade" class="mode-content">
                 <div class="mode-sub">ROGUELIKE MECHANICS</div>
-                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img" src="img/mode-title/ARCADE.png" alt="" onload="this.classList.add('lista')" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img" src="img/mode-title/ARCADE.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NORMAL MAP. TIME: <span class="highlight">3:50</span>.<br>
                     START EMPTY. <span class="highlight">PICK SKILLS</span> EVERY 30S.<br>
@@ -1607,7 +1586,7 @@
         <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
             <div id="contentClassic" class="mode-content">
                 <div class="mode-sub">STANDARD MODE</div>
-                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img" src="img/mode-title/CLASSIC.png" alt="" onload="this.classList.add('lista')" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img" src="img/mode-title/CLASSIC.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NO TIMER. <span class="highlight">HUGE MAP (x2)</span>.<br>
                     ONLY <span class="highlight">SHOOT</span> SKILL (KEY 1).<br>
@@ -4486,11 +4465,6 @@
     // habría zona y los virus pasarían por el título). Al cargar, invalida el cache
     // para remedir ya con las imágenes disponibles.
     ['PILLWARS-arcade', 'PILLWARS-classic', 'ARCADE-word', 'CLASSIC-word'].forEach(s => { const i = new Image(); i.onload = invalidateLoginUIRects; i.src = 'img/mode-title/' + s + '.png'; });
-    // Red de seguridad del glow del selector: la clase .lista (que dispara la
-    // animacion) la pone el onload del <img>, pero si la imagen ya estaba
-    // completa ese evento no vuelve a saltar y el titulo se quedaria sin
-    // encender para siempre. Aqui se repasa por si acaso.
-    document.querySelectorAll('.mode-title .mt-img').forEach(i => { if (i.complete && i.naturalWidth) i.classList.add('lista'); });
     function drawMenuDeco(g, w, h) {
         const now = performance.now();
         for (const p of menuDeco.items) {
