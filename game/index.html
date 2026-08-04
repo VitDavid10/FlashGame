@@ -2643,8 +2643,6 @@
     // Devuelve { cv, S, SH }: la capsula ocupa el cuadrado SxS centrado en S/2,
     // y el lienzo mide (S+SH) por el faldon de la sombra.
     const PIX_ROT_STEP = Math.PI * 2 / 16;   // angulos cacheados (22.5 grados)
-    // Ancho logico a partir del cual la pildora usa el look grande (detailed).
-    const PIX_PILL_DETAIL_WL = 14;
         // detailed=true: look de pildora GRANDE (preview del menu + celdas gordas).
         // Modelo medido sobre game/img/refs/pill-detailed-ref.webp:
         //  - cuerpo plano por mitad (sin contorno negro)
@@ -3609,14 +3607,13 @@
                 ctx.restore();
             } else {
                 // Sprite ya girado -45: sin ctx.rotate() los pixeles caen cuadrados.
-                                // El look grande (mismo del preview) entra desde wL 14. Estaba
-                                // en 28 y practicamente no se veia en partida: con el zoom de
-                                // camara real, wL 28 pide radio ~60 (6x el inicial), asi que
-                                // casi todo el rato se veia el look corto. A 14 el detalle ya
-                                // se lee (r~24) y por debajo manda el contorno de 1px, que es
-                                // lo unico que hace legible una pildora diminuta.
+                                // SIEMPRE el look grande, sin umbral por tamano (lo pidio David).
+                                // Antes entraba a partir de cierto wL y convivian dos dibujos
+                                // distintos en la misma partida; ahora la pildora es la misma
+                                // desde que naces. Las pildoras de COMIDA siguen con el look
+                                // corto (drawMiniPill), que ahi son de 4-16 px logicos.
                                 const wL = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-                                drawPixPillRot(ctx, c.x, c.y, pW, wL, c.colorTop, c.colorBot, -Math.PI / 4, wL >= PIX_PILL_DETAIL_WL);
+                                drawPixPillRot(ctx, c.x, c.y, pW, wL, c.colorTop, c.colorBot, -Math.PI / 4, true);
             }
             // Buff FX (aros, rayos, escudo, imán por celda) — online y offline
             drawCellBuffFx(ctx, c, alpha);
