@@ -2643,6 +2643,10 @@
     // Devuelve { cv, S, SH }: la capsula ocupa el cuadrado SxS centrado en S/2,
     // y el lienzo mide (S+SH) por el faldon de la sombra.
     const PIX_ROT_STEP = Math.PI * 2 / 16;   // angulos cacheados (22.5 grados)
+    // Destinos de mezcla del sombreado. El rim de luz va a un gris neutro (el
+    // mismo #c8cdd2 de la UI) en vez de a blanco: asi el borde iluminado se
+    // marca sin dejar la curva clara que se comia el color de la mitad.
+    const PIX_NEGRO = [0, 0, 0], PIX_BLANCO = [255, 255, 255], PIX_RIM = [200, 205, 210];
         // detailed=true: look de pildora GRANDE (preview del menu + celdas gordas).
         // Modelo medido sobre game/img/refs/pill-detailed-ref.webp:
         //  - cuerpo plano por mitad (sin contorno negro)
@@ -2685,7 +2689,7 @@
                 const d = rad / R;
                 let nx = lx, ny = ly - cy; const nl = rad || 1; nx /= nl; ny /= nl;
                 const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY; // -1 sombra .. 1 luz
-                let amt;
+                let amt, rim = false;
                 if (detailed) {
                     // u=0 luz .. 1 sombra. Bandas crecen en la punta de sombra (~0.35 R).
                     const edge = RI - rad;
@@ -2694,7 +2698,7 @@
                     const w2 = (2.6 + 4.2 * u) * kD;
                     const w3 = (4.2 + 6.8 * u) * kD;
                     if (Math.abs(ly) < 1.45 * kD) amt = -0.30;                      // costura
-                    else if (ndl > 0.55 && edge < 1.25 * kD) amt = 0.30;             // rim de luz primero
+                    else if (ndl > 0.55 && edge < 1.25 * kD) { amt = 0.30; rim = true; }  // rim de luz primero
                     else if (edge < w1) amt = -0.44;                                // reborde oscuro
                     else if (edge < w2) amt = -0.30;                                // banda media
                     else if (u > 0.18 && edge < w3) amt = -0.15;                    // media-suave (sombra)
@@ -2704,8 +2708,13 @@
                 else if (d > 0.70 && ndl > 0.45) amt = 0.30;
                 else if (d > 0.78 && ndl < -0.45) amt = -0.16;
                 else amt = 0;
-                const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * W + x) << 2);
-                px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
+                // El rim tira hacia GRIS y no hacia blanco (a peticion de David: la
+                // curva clara de arriba cantaba, sobre todo en las mitades ya
+                // claras, donde el blanco la dejaba casi lavada). El resto de
+                // pasos sigue mezclando a negro (amt<0) o a blanco (amt>0).
+                const a = Math.abs(amt), i = ((y * W + x) << 2);
+                const dst = rim ? PIX_RIM : (amt < 0 ? PIX_NEGRO : PIX_BLANCO);
+                px[i] = rgb[0] + (dst[0] - rgb[0]) * a; px[i + 1] = rgb[1] + (dst[1] - rgb[1]) * a; px[i + 2] = rgb[2] + (dst[2] - rgb[2]) * a; px[i + 3] = 255;
             }
             if (detailed) {
                 // Rombo manhattan duro en coords locales (punta iluminada mitad top).
