@@ -844,6 +844,15 @@
             width: 100%; height: 100%;
             filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55));
         }
+        /* Fuego: el video recortado (1002x722) trae el cartel Y la llama. Va
+           DEBAJO del marco, alineado arriba y con el mismo ancho, asi que su
+           cartel queda tapado por el PNG (que es mas nitido, sin compresion) y
+           lo unico que asoma es la llama de abajo.
+           Alto = (722/1002) / (447/950) = 153.2% del contenedor. */
+        .pal-fire {
+            position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none;
+            width: 100%; height: 153.2%;
+        }
         .pal-slots { position: absolute; inset: 0; z-index: 1; }
         .pal-swatch {
             position: absolute; border: 0; padding: 0; cursor: pointer;
@@ -1681,11 +1690,14 @@
                      marco + la placa de abajo para elegir un color libre.
                      Va FUERA de .pill-stage: dentro heredaba el translate/scale de la
                      pildora en EDIT LAYOUT y no se podia colocar por separado.
-                     Dos capas: los colores debajo y el marco encima, pintado en
-                     canvas para que reciba el tinte del modo (el mismo que los
-                     carteles grandes). -->
+                     Tres capas: los colores debajo, el fuego animado (video) en
+                     medio y el marco encima. Las dos capas pintadas van en canvas
+                     para recibir el tinte del modo, el mismo que los carteles
+                     grandes; la llama se libra del tinte por su propia
+                     saturacion, no hace falta tratarla aparte. -->
                 <div id="pillPalette" class="pill-palette" style="display:none;">
                     <div class="pal-slots" id="palGrid"></div>
+                    <canvas class="pal-fire" id="palFire"></canvas>
                     <canvas class="pal-frame" id="palFrame"></canvas>
                     <button class="pal-pick" id="palPick" type="button" title="Pick any color"></button>
                     <div class="pal-hint" id="palHint" style="display:none;">CLICK A SLOT TO SAVE IT</div>
@@ -1837,8 +1849,17 @@
             // un background de CSS plano al lado de los carteles grandes.
             var imagenPal = new Image();
             imagenPal.src = 'img/cartel-hero/palette.png';
-            var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg'), document.getElementById('palFrame')];
-            var fuentes = [null, null, imagenPal];   // null = la fuente comun (video/imagen de los carteles grandes)
+            // Y el fuego de la paleta sale de su propio video (paleta-fuego.mp4,
+            // 1.1s en bucle). Entra por el mismo sitio, asi que tambien se le
+            // quita el magenta y se le tiñe la piedra — pero de ese video solo
+            // se ve la llama: el resto queda debajo del PNG del marco.
+            var videoPal = document.createElement('video');
+            videoPal.muted = true; videoPal.loop = true; videoPal.playsInline = true;
+            videoPal.src = 'video/paleta-fuego.mp4';
+            videoPal.play().catch(function () {});
+            var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg'), document.getElementById('palFrame'), document.getElementById('palFire')];
+            // null = la fuente comun de los carteles grandes. Si no, {el, video}.
+            var fuentes = [null, null, { el: imagenPal, video: false }, { el: videoPal, video: true }];
             // Un temporal por cartel: no miden lo mismo (cada uno tiene su escala
             // en EDIT LAYOUT), y compartir uno obligaria a redimensionarlo varias
             // veces por frame.
@@ -1846,12 +1867,12 @@
             // Con imagen no hace falta repintar a 60fps: solo cuando cambia algo
             // que afecte al resultado (tamano del canvas o modo, que cambia el
             // tinte). Esta es la huella de lo ultimo pintado en cada canvas.
-            var pintado = ['', '', ''];
+            var pintado = ['', '', '', ''];
             function modoDe(cv) {
                 // La paleta no cuelga de un panel con clase de modo, asi que su
                 // modo lo marca el fondo del propio login. Los carteles grandes
                 // siguen mirando SOLO a su panel, como siempre.
-                if (cv.id === 'palFrame') {
+                if (cv.id === 'palFrame' || cv.id === 'palFire') {
                     var ov = document.getElementById('loginOverlay');
                     return (ov && ov.classList.contains('bg-arcade')) ? 'arcade' : 'classic';
                 }
@@ -1881,8 +1902,8 @@
                         // Cada canvas puede traer su propia fuente; los que no
                         // (los dos carteles grandes) usan la comun.
                         var propia = fuentes[i];
-                        var esVideo = propia ? false : USAR_VIDEO;
-                        var fuente = propia || (USAR_VIDEO ? video : imagen);
+                        var esVideo = propia ? propia.video : USAR_VIDEO;
+                        var fuente = propia ? propia.el : (USAR_VIDEO ? video : imagen);
                         var lista = esVideo
                             ? (fuente.readyState >= 2 && fuente.videoWidth)
                             : (fuente.complete && fuente.naturalWidth);
