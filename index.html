@@ -2150,12 +2150,12 @@ function toggleTrailerMode() {
     (() => {
         'use strict';
         // --- Sprites pixel: port de game/index.html (pixDotSprite / pixVirusSprite
-        // / pixPillSprite) para que la deco sea exactamente la del juego. ---
+        // / pixPillSpriteRot) para que la deco sea exactamente la del juego. ---
         const PILL_RATIO = 2.0;
         const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
         function pixRgb(col) { probe.clearRect(0, 0, 1, 1); probe.fillStyle = col; probe.fillRect(0, 0, 1, 1); const d = probe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
         function pixShade(rgb, amt) { const t = amt < 0 ? 0 : 255, a = Math.abs(amt); return 'rgb(' + rgb.map(v => Math.round(v + (t - v) * a)).join(',') + ')'; }
-        const SPR = { dot: new Map(), virus: new Map(), pill: new Map() };
+        const SPR = { dot: new Map(), virus: new Map(), pillRot: new Map() };
 
         function pixDotSprite(dL, col) {
             const key = dL + '|' + col;
@@ -2205,28 +2205,71 @@ function toggleTrailerMode() {
             SPR.virus.set(dL, spr); return spr;
         }
 
-        function pixPillSprite(wL, cTop, cBot) {
-            const key = wL + '|' + cTop + '|' + cBot;
-            let spr = SPR.pill.get(key); if (spr) return spr;
-            const hL = Math.round(wL * PILL_RATIO), R = wL / 2;
-            spr = document.createElement('canvas'); spr.width = wL; spr.height = hL;
-            const g = spr.getContext('2d'), rgbT = pixRgb(cTop), rgbB = pixRgb(cBot);
-            const inside = (x, y) => { if (x < 0 || y < 0 || x >= wL || y >= hL) return false; const cy = Math.min(Math.max(y + 0.5, R), hL - R); const dx = x + 0.5 - R, dy = y + 0.5 - cy; return dx * dx + dy * dy <= (R - 0.1) * (R - 0.1); };
-            const half = Math.floor(hL / 2);
-            for (let y = 0; y < hL; y++) for (let x = 0; x < wL; x++) {
+        /* --- Pill YA ORIENTADA, port 1:1 de pixPillSpriteRot() del juego (rama
+         * detailed). El hero es una parte jugable, asi que sus pills tienen que
+         * ser EXACTAMENTE las de partida: cuerpo plano por mitad, tres bandas de
+         * reborde en el propio color con grosor direccional (fino en la parte
+         * iluminada, gordo en la punta de sombra), costura entre mitades y
+         * brillo en rombo duro. Sin contorno negro y sin sombra proyectada.
+         *
+         * El sprite se hornea girado dentro de un lienzo cuadrado y se dibuja SIN
+         * ctx.rotate(): rotando en runtime los pixeles caen torcidos y el
+         * contorno se rompe. El angulo se cuantiza a 16 pasos (22.5 grados),
+         * igual que ya hace el virus de esta misma escena. --- */
+        const PIX_ROT_STEP = Math.PI * 2 / 16;
+        function pixPillSpriteRot(wL, cTop, cBot, ang) {
+            const qa = Math.round(ang / PIX_ROT_STEP) * PIX_ROT_STEP;
+            const key = wL + '|' + Math.round(qa / PIX_ROT_STEP) + '|' + cTop + '|' + cBot;
+            let o = SPR.pillRot.get(key); if (o) return o;
+            if (SPR.pillRot.size > 500) SPR.pillRot.clear();
+            const hL = Math.round(wL * PILL_RATIO), R = wL / 2, seg = hL / 2 - R, RI = R - 0.1;
+            const c = Math.cos(qa), s = Math.sin(qa);
+            const S = Math.ceil(Math.max(wL * Math.abs(c) + hL * Math.abs(s), wL * Math.abs(s) + hL * Math.abs(c))) + 2;
+            const cv = document.createElement('canvas'); cv.width = S; cv.height = S;
+            const g = cv.getContext('2d'), rgbT = pixRgb(cTop), rgbB = pixRgb(cBot);
+            const img = g.createImageData(S, S), px = img.data;
+            const sd = (x, y) => {
+                const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
+                const cy = ly < -seg ? -seg : ly > seg ? seg : ly;
+                return Math.hypot(lx, ly - cy);
+            };
+            const inside = (x, y) => (x < 0 || y < 0 || x >= S || y >= S) ? false : sd(x, y) <= RI;
+            const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
+            const kD = wL / 38;           // grosores medidos sobre pill ~38-46 px
+            for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
                 if (!inside(x, y)) continue;
-                const rgb = y < half ? rgbT : rgbB;
-                let col;
-                if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = pixShade(rgb, -0.55);
-                else if (!inside(x + 2, y) || !inside(x, y + 2)) col = pixShade(rgb, -0.25);
-                else if (y === half || y === half - 1) col = pixShade(rgb, -0.18);
-                else if (!inside(x - 2, y) || !inside(x, y - 2)) col = pixShade(rgb, 0.18);
-                else col = 'rgb(' + rgb.join(',') + ')';
-                g.fillStyle = col; g.fillRect(x, y, 1, 1);
+                const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
+                const rgb = ly < 0 ? rgbT : rgbB;
+                const cy = ly < -seg ? -seg : ly > seg ? seg : ly;
+                const rad = Math.hypot(lx, ly - cy);
+                let nx = lx, ny = ly - cy; const nl = rad || 1; nx /= nl; ny /= nl;
+                const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY;   // -1 sombra .. 1 luz
+                const edge = RI - rad;
+                const u = Math.max(0, Math.min(1, (1 - ndl) * 0.5));           // 0 luz .. 1 sombra
+                const w1 = (1.05 + 1.7 * u) * kD, w2 = (2.6 + 4.2 * u) * kD, w3 = (4.2 + 6.8 * u) * kD;
+                let amt;
+                if (Math.abs(ly) < 1.45 * kD) amt = -0.30;                     // costura
+                else if (edge < w1) amt = -0.44;                               // reborde
+                else if (edge < w2) amt = -0.30;                               // banda media
+                else if (u > 0.18 && edge < w3) amt = -0.15;                   // media-suave (sombra)
+                else amt = 0;
+                const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * S + x) << 2);
+                px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
             }
-            const hs = Math.max(1, Math.round(wL / 6));
-            g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(Math.round(wL * 0.22), Math.round(hL * 0.14), hs, hs);
-            SPR.pill.set(key, spr); return spr;
+            // Brillo en rombo manhattan, en coordenadas locales de la capsula.
+            const glx = -0.40 * R, gly = -0.48 * (seg + R);
+            const gx = S / 2 + (glx * c - gly * s), gy = S / 2 + (glx * s + gly * c);
+            const gr = Math.max(2, Math.round(wL * 0.145));
+            for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+                if (!inside(x, y)) continue;
+                const md = Math.abs(x + 0.5 - gx) + Math.abs(y + 0.5 - gy);
+                if (md > gr) continue;
+                const a = md <= gr * 0.45 ? 0.95 : md <= gr * 0.75 ? 0.78 : 0.50;
+                const i = ((y * S + x) << 2);
+                px[i] += (255 - px[i]) * a; px[i + 1] += (255 - px[i + 1]) * a; px[i + 2] += (255 - px[i + 2]) * a;
+            }
+            g.putImageData(img, 0, 0);
+            o = { cv: cv, S: S }; SPR.pillRot.set(key, o); return o;
         }
 
         // --- Tile del fondo: NEGRO como el de siempre, pero con el acabado
@@ -2474,12 +2517,13 @@ function toggleTrailerMode() {
         }
 
         function drawPill(g, x, y, r, rot, top, bot) {
-            // El sprite se pinta a la MITAD de su tamaño logico y se estira al
-            // doble: asi el pixel del bicho mide lo mismo que el del fondo.
-            const spr = pixPillSprite(Math.max(6, Math.round(r)), top, bot);
-            const pw = r * 2, ph = pw * PILL_RATIO;
-            g.save(); g.translate(x, y); g.rotate(rot);
-            g.drawImage(spr, -pw / 2, -ph / 2, pw, ph); g.restore();
+            // El sprite se hornea a la MITAD del tamaño en pantalla y se estira al
+            // doble: asi el pixel del bicho mide lo mismo que el del fondo. Ya
+            // viene girado, por eso no hay ctx.rotate() aqui.
+            const wL = Math.max(6, Math.round(r));
+            const o = pixPillSpriteRot(wL, top, bot, rot);
+            const u = (r * 2) / wL;
+            g.drawImage(o.cv, x - o.S / 2 * u, y - o.S / 2 * u, o.S * u, o.S * u);
         }
 
         function drawScene(g, now) {
@@ -2686,7 +2730,7 @@ function toggleTrailerMode() {
         };
 
         // Enganche para trastear/depurar la escena desde la consola.
-        window.Hero = { play: HeroPlay, scene, step: stepScene, paint: (t) => paintHero(t || performance.now()) };
+        window.Hero = { play: HeroPlay, scene, step: stepScene, paint: (t) => paintHero(t || performance.now()), pillSprite: pixPillSpriteRot };
 
         const cv = document.getElementById('heroDecoCv');
         const host = document.getElementById('hero');
@@ -2777,9 +2821,11 @@ function toggleTrailerMode() {
             if (!pc) return;
             const g = pc.getContext('2d');
             g.imageSmoothingEnabled = false;
-            const pw = PICK_ME_PILL_W, ph = pw * PILL_RATIO;
-            g.translate(pc.width / 2, pc.height / 2); g.rotate(-Math.PI / 4);
-            g.drawImage(pixPillSprite(17, HeroPlay.top, HeroPlay.bot), -pw / 2, -ph / 2, pw, ph);
+            // Mismo sprite pre-girado que las pills de la escena: el PICK ME es la
+            // pill que vas a controlar, tiene que ser la misma.
+            const o = pixPillSpriteRot(17, HeroPlay.top, HeroPlay.bot, -Math.PI / 4);
+            const u = PICK_ME_PILL_W / 17;
+            g.drawImage(o.cv, pc.width / 2 - o.S / 2 * u, pc.height / 2 - o.S / 2 * u, o.S * u, o.S * u);
         })();
 
         const pickMe = document.getElementById('heroPickMe');
