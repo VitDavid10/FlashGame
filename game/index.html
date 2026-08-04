@@ -2643,6 +2643,9 @@
     // Devuelve { cv, S, SH }: la capsula ocupa el cuadrado SxS centrado en S/2,
     // y el lienzo mide (S+SH) por el faldon de la sombra.
     const PIX_ROT_STEP = Math.PI * 2 / 16;   // angulos cacheados (22.5 grados)
+    // Ancho logico hasta el que las bandas del sombreado crecen a ritmo normal, y
+    // a que ritmo lo hacen por encima. Ver el calculo de kD en pixPillSpriteRot.
+    const PIX_BAND_REF = 24, PIX_BAND_SLOW = 0.40;
         // detailed=true: look de pildora GRANDE (preview del menu + celdas gordas).
         // Modelo medido sobre game/img/refs/pill-detailed-ref.webp:
         //  - cuerpo plano por mitad (sin contorno negro)
@@ -2675,14 +2678,15 @@
             }
             const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
             const seamW = wL <= 10 ? 0.8 : 1.2;
-            // Grosores medidos sobre pill ~38-46 px. Hasta ahi crecen 1:1 con el
-            // tamano; por encima se FRENAN a menos de la mitad de ritmo. Con el
-            // crecimiento lineal de antes las bandas se quedaban siempre en el
-            // mismo % del radio (la de sombra, un 58%), y en las pildoras gordas
-            // eso se traducia en un sombron enorme: a wL 64 medía 18 px. Ahora
-            // se queda en 13 y la pill grande respira. Por debajo de 38 no
-            // cambia nada.
-            const kR = wL / 38, kD = kR <= 1 ? kR : 1 + (kR - 1) * 0.45;
+            // Grosores medidos sobre pill ~38-46 px. Crecen 1:1 solo hasta
+            // PIX_BAND_REF y a partir de ahi al 40%. Con el crecimiento lineal de
+            // antes cada banda se quedaba siempre en el MISMO % del radio (la de
+            // sombra, un 58%): en pequeno no se veia porque no llegaba a un pixel,
+            // pero en una pill gorda era un sombron que se comia el cuerpo. Con el
+            // freno desde 24, a wL 38 la sombra baja al 45% del radio y a wL 64 al
+            // 36%. Por debajo de 24 no cambia ni un pixel.
+            const kR = wL / 38, kB = PIX_BAND_REF / 38;
+            const kD = kR <= kB ? kR : kB + (kR - kB) * PIX_BAND_SLOW;
             for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
                 if (!inside(x, y)) continue;
                 const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;

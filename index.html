@@ -2217,6 +2217,9 @@ function toggleTrailerMode() {
          * contorno se rompe. El angulo se cuantiza a 16 pasos (22.5 grados),
          * igual que ya hace el virus de esta misma escena. --- */
         const PIX_ROT_STEP = Math.PI * 2 / 16;
+        // Los mismos que el juego: hasta que ancho logico crecen las bandas a
+        // ritmo normal, y a que ritmo lo hacen por encima.
+        const PIX_BAND_REF = 24, PIX_BAND_SLOW = 0.40;
         function pixPillSpriteRot(wL, cTop, cBot, ang) {
             const qa = Math.round(ang / PIX_ROT_STEP) * PIX_ROT_STEP;
             const key = wL + '|' + Math.round(qa / PIX_ROT_STEP) + '|' + cTop + '|' + cBot;
@@ -2235,9 +2238,11 @@ function toggleTrailerMode() {
             };
             const inside = (x, y) => (x < 0 || y < 0 || x >= S || y >= S) ? false : sd(x, y) <= RI;
             const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
-            // Grosores medidos sobre pill ~38-46 px; por encima se frenan para
-            // que la pill gorda no acabe con un sombron. Mismo calculo que el juego.
-            const kR = wL / 38, kD = kR <= 1 ? kR : 1 + (kR - 1) * 0.45;
+            // Grosores medidos sobre pill ~38-46 px; crecen 1:1 solo hasta
+            // PIX_BAND_REF y luego se frenan, para que la pill gorda no acabe con
+            // un sombron. Mismo calculo que el juego.
+            const kR = wL / 38, kB = PIX_BAND_REF / 38;
+            const kD = kR <= kB ? kR : kB + (kR - kB) * PIX_BAND_SLOW;
             for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
                 if (!inside(x, y)) continue;
                 const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
