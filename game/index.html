@@ -2675,7 +2675,14 @@
             }
             const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
             const seamW = wL <= 10 ? 0.8 : 1.2;
-            const kD = wL / 38;   // grosores medidos sobre pill ~38-46 px
+            // Grosores medidos sobre pill ~38-46 px. Hasta ahi crecen 1:1 con el
+            // tamano; por encima se FRENAN a menos de la mitad de ritmo. Con el
+            // crecimiento lineal de antes las bandas se quedaban siempre en el
+            // mismo % del radio (la de sombra, un 58%), y en las pildoras gordas
+            // eso se traducia en un sombron enorme: a wL 64 medía 18 px. Ahora
+            // se queda en 13 y la pill grande respira. Por debajo de 38 no
+            // cambia nada.
+            const kR = wL / 38, kD = kR <= 1 ? kR : 1 + (kR - 1) * 0.45;
             for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
                 if (!inside(x, y)) continue;
                 const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;

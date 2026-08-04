@@ -2235,7 +2235,9 @@ function toggleTrailerMode() {
             };
             const inside = (x, y) => (x < 0 || y < 0 || x >= S || y >= S) ? false : sd(x, y) <= RI;
             const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
-            const kD = wL / 38;           // grosores medidos sobre pill ~38-46 px
+            // Grosores medidos sobre pill ~38-46 px; por encima se frenan para
+            // que la pill gorda no acabe con un sombron. Mismo calculo que el juego.
+            const kR = wL / 38, kD = kR <= 1 ? kR : 1 + (kR - 1) * 0.45;
             for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
                 if (!inside(x, y)) continue;
                 const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
