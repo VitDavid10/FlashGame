@@ -552,7 +552,10 @@
             z-index: 62;
         }
         
-        .login-left { width: 100%; text-align: left; }
+        /* position:relative para que la paleta (absolute) se ancle AQUI y no en
+           .pill-stage: dentro de la pildora heredaba su translate/scale de EDIT
+           LAYOUT y no habia forma de moverla por separado. */
+        .login-left { width: 100%; text-align: left; position: relative; }
         .login-right { flex: 1; background: rgba(0,0,0,0.3); border-left: 1px solid #333; padding-left: 20px; display: flex; flex-direction: column; }
         
         details.advanced-settings { position: relative; margin: -5px 0 10px 0; }
@@ -831,13 +834,14 @@
             position: absolute; z-index: 20; left: 50%; bottom: -6px;
             width: 300px; margin-left: -150px; aspect-ratio: 950 / 447;
         }
-        /* El marco, encima de los colores. La luz es la MISMA en classic y en
-           arcade (sombra dura neutra, sin glow de color): igual que los carteles
-           grandes, que tampoco cambian de tono con el modo. */
-        .pill-palette::after {
-            content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
-            background: var(--pal-frame, none) center/100% 100% no-repeat;
-            image-rendering: pixelated;
+        /* El marco va en un <canvas> y no en un background: asi lo pinta el mismo
+           bucle que los carteles grandes (ROOM · PRICES / DAILY QUESTS) y recibe
+           el TINTE del modo — piedra dorada en arcade, verde fria en classic.
+           Con un background de CSS no habia forma de teñir solo la piedra sin
+           tocar los colores de las ventanas. */
+        .pal-frame {
+            position: absolute; inset: 0; z-index: 2; pointer-events: none;
+            width: 100%; height: 100%;
             filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55));
         }
         .pal-slots { position: absolute; inset: 0; z-index: 1; }
@@ -1671,15 +1675,20 @@
                      para cambiarlo a lo que quieras, sin boton "+" aparte. -->
                 <div class="pill-stage">
                     <canvas id="menuPillCanvas" width="400" height="360" title="Click a half to pick its color"></canvas>
-                    <!-- Paleta: UN cartel unico (palette.png), aparece al clicar una
-                         mitad de la pildora y esa es la mitad que se pinta. 10 colores
-                         en las ventanas del marco + la placa de abajo para elegir un
-                         color libre, que luego puedes guardar en la ventana que quieras. -->
-                    <div id="pillPalette" class="pill-palette" style="display:none;">
-                        <div class="pal-slots" id="palGrid"></div>
-                        <button class="pal-pick" id="palPick" type="button" title="Pick any color"></button>
-                        <div class="pal-hint" id="palHint" style="display:none;">CLICK A SLOT TO SAVE IT</div>
-                    </div>
+                </div>
+                <!-- Paleta: UN cartel unico, aparece al clicar una mitad de la pildora
+                     y esa es la mitad que se pinta. 10 colores en las ventanas del
+                     marco + la placa de abajo para elegir un color libre.
+                     Va FUERA de .pill-stage: dentro heredaba el translate/scale de la
+                     pildora en EDIT LAYOUT y no se podia colocar por separado.
+                     Dos capas: los colores debajo y el marco encima, pintado en
+                     canvas para que reciba el tinte del modo (el mismo que los
+                     carteles grandes). -->
+                <div id="pillPalette" class="pill-palette" style="display:none;">
+                    <div class="pal-slots" id="palGrid"></div>
+                    <canvas class="pal-frame" id="palFrame"></canvas>
+                    <button class="pal-pick" id="palPick" type="button" title="Pick any color"></button>
+                    <div class="pal-hint" id="palHint" style="display:none;">CLICK A SLOT TO SAVE IT</div>
                 </div>
                 <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
                 <div class="style-type-selector" style="display:none;">
@@ -1822,16 +1831,30 @@
             } else {
                 imagen.src = 'img/cartel-hero/quest-panel-v2.png';
             }
-            var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg')];
-            // Un temporal por cartel: los dos no miden lo mismo (cada uno tiene
-            // su escala en EDIT LAYOUT), y compartir uno obligaria a
-            // redimensionarlo dos veces por frame.
+            // La paleta de la pildora entra por aqui con su PROPIA fuente
+            // (palette.png): asi hereda gratis el croma y, sobre todo, el tinte
+            // por modo — que es lo que la hacia desentonar cuando se pintaba con
+            // un background de CSS plano al lado de los carteles grandes.
+            var imagenPal = new Image();
+            imagenPal.src = 'img/cartel-hero/palette.png';
+            var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg'), document.getElementById('palFrame')];
+            var fuentes = [null, null, imagenPal];   // null = la fuente comun (video/imagen de los carteles grandes)
+            // Un temporal por cartel: no miden lo mismo (cada uno tiene su escala
+            // en EDIT LAYOUT), y compartir uno obligaria a redimensionarlo varias
+            // veces por frame.
             var grids = canvases.map(function () { return document.createElement('canvas'); });
             // Con imagen no hace falta repintar a 60fps: solo cuando cambia algo
             // que afecte al resultado (tamano del canvas o modo, que cambia el
             // tinte). Esta es la huella de lo ultimo pintado en cada canvas.
-            var pintado = ['', ''];
+            var pintado = ['', '', ''];
             function modoDe(cv) {
+                // La paleta no cuelga de un panel con clase de modo, asi que su
+                // modo lo marca el fondo del propio login. Los carteles grandes
+                // siguen mirando SOLO a su panel, como siempre.
+                if (cv.id === 'palFrame') {
+                    var ov = document.getElementById('loginOverlay');
+                    return (ov && ov.classList.contains('bg-arcade')) ? 'arcade' : 'classic';
+                }
                 var p = cv.parentElement;
                 // Del DOM y no de currentGameMode: esta IIFE corre antes de que
                 // el script grande declare esa variable.
@@ -1852,15 +1875,20 @@
                 return hueScore * satScore;
             }
             function frame() {
-                var fuente = USAR_VIDEO ? video : imagen;
-                var lista = USAR_VIDEO
-                    ? (video.readyState >= 2 && video.videoWidth)
-                    : (imagen.complete && imagen.naturalWidth);
-                if (lista) {
-                    var vw = USAR_VIDEO ? video.videoWidth : imagen.naturalWidth;
-                    var vh = USAR_VIDEO ? video.videoHeight : imagen.naturalHeight;
-                    for (var i = 0; i < canvases.length; i++) {
+                for (var i = 0; i < canvases.length; i++) {
                         var cv = canvases[i];
+                        if (!cv) continue;
+                        // Cada canvas puede traer su propia fuente; los que no
+                        // (los dos carteles grandes) usan la comun.
+                        var propia = fuentes[i];
+                        var esVideo = propia ? false : USAR_VIDEO;
+                        var fuente = propia || (USAR_VIDEO ? video : imagen);
+                        var lista = esVideo
+                            ? (fuente.readyState >= 2 && fuente.videoWidth)
+                            : (fuente.complete && fuente.naturalWidth);
+                        if (!lista) continue;
+                        var vw = esVideo ? fuente.videoWidth : fuente.naturalWidth;
+                        var vh = esVideo ? fuente.videoHeight : fuente.naturalHeight;
                         if (!cv.clientWidth || !cv.clientHeight) continue;
                         // El cartel va escalado por EDIT LAYOUT (scale ~1.54), y
                         // clientWidth NO lo incluye: si se pinta a clientWidth el
@@ -1876,7 +1904,7 @@
                         // Con imagen fija, repintar 60 veces por segundo lo mismo
                         // es tirar CPU: solo se repinta si cambio el tamano o el
                         // modo (que cambia el tinte). Con video, siempre.
-                        if (!USAR_VIDEO && pintado[i] === w + 'x' + h + ':' + modo) continue;
+                        if (!esVideo && pintado[i] === w + 'x' + h + ':' + modo) continue;
                         pintado[i] = w + 'x' + h + ':' + modo;
                         if (cv.width !== w) cv.width = w;
                         if (cv.height !== h) cv.height = h;
@@ -1923,7 +1951,6 @@
                         ctx.imageSmoothingEnabled = false;
                         ctx.clearRect(0, 0, w, h);
                         ctx.drawImage(gd, 0, 0, gw, gh, 0, 0, gw * PIX_UNIT, gh * PIX_UNIT);
-                    }
                 }
                 requestAnimationFrame(frame);
             }
@@ -5328,14 +5355,8 @@
     function closePalette() { const p = document.getElementById('pillPalette'); if (p) { p.style.display = 'none'; setAssignMode(null); } }
     (function initPalette() {
         const picker = document.getElementById('palettePicker'); if (!picker) return;
-        // El marco del cartel sale del atlas de carteles (palette.png). Si el PNG
-        // no esta, --pal-frame se queda sin poner y el cartel no pinta marco: los
-        // colores siguen ahi y la paleta funciona igual.
-        CARTEL_HERO_READY_PROMISE.then(() => {
-            if (!cartelUsesAtlas('palette')) return;
-            const pal = document.getElementById('pillPalette');
-            if (pal) pal.style.setProperty('--pal-frame', 'url(' + cartelHeroUrl('palette') + ')');
-        });
+        // El marco lo pinta el bucle de los carteles grandes en #palFrame (ahi
+        // recibe el tinte del modo), no hace falta cargarlo desde aqui.
         // La placa de abajo del arte abre el selector de color del sistema.
         const pick = document.getElementById('palPick');
         if (pick) pick.onclick = () => picker.click();
