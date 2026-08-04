@@ -807,19 +807,54 @@
         #playerNameInput.name-subtle:focus { outline: none; border-bottom-color: var(--primary) !important; }
         #playerNameInput.name-subtle::placeholder { color: #4a525c; }
 
-        /* Paleta popup: pequena y refinada, solo visible al clicar una mitad
-           de la pildora. 11 colores + casilla PICK (elegir color libre). */
+        /* ===== Paleta de la pildora: UN SOLO cartel (arte de David,
+           palette.png) en vez de los dos popups que habia antes. La mitad que se
+           pinta la sigue eligiendo el click en la pildora, no el sitio del
+           cartel.
+
+           El PNG es un marco de piedra con 10 VENTANAS transparentes: los
+           colores van DEBAJO (.pal-slots, z-index 1) y asoman por los agujeros,
+           con el marco encima (::after, z-index 2, pointer-events:none para que
+           los clicks lleguen a los swatches). Asi el marco nunca queda tapado
+           por un swatch mal encajado.
+
+           Las medidas salen de medir los huecos en el propio PNG (950x447):
+           rejilla regular de 5x2, primer hueco en 8.42%/15.88%, paso de 17.48%
+           en X y 35.35% en Y, hueco de 13.68%x29.08%. Van en % para que todo
+           siga encajando al escalar el cartel desde EDIT LAYOUT. ===== */
         .pill-stage { position: relative; }
-        .pill-palette { position: absolute; z-index: 20; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 7px; }
-        .pill-palette.pal-top { top: 16px; right: 0; }
-        .pill-palette.pal-bottom { bottom: 6px; left: 0; }
-        .pal-grid { display: grid; grid-template-columns: repeat(6, 20px); gap: 4px; }
-        .pal-swatch { width: 20px; height: 20px; border: 2px solid #000; box-shadow: inset 1px 1px 0 rgba(255,255,255,0.3); cursor: pointer; padding: 0; }
-        .pal-swatch:hover { transform: translate(-1px,-1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.6), inset 1px 1px 0 rgba(255,255,255,0.3); }
-        .pal-swatch.pick { background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
-        .pill-palette.assigning .pal-swatch:not(.pick) { animation: palBlink 0.7s steps(2) infinite; }
+        /* Centrado con margin y NO con transform: applyMenuLayout mueve y escala
+           con las propiedades translate/scale, que se componen ANTES que
+           transform — un translateX(-50%) aqui se recalcularia sobre el elemento
+           ya escalado y el cartel se descolocaria al tocar el zoom en EDIT LAYOUT. */
+        .pill-palette {
+            position: absolute; z-index: 20; left: 50%; bottom: -6px;
+            width: 300px; margin-left: -150px; aspect-ratio: 950 / 447;
+        }
+        /* El marco, encima de los colores. La luz es la MISMA en classic y en
+           arcade (sombra dura neutra, sin glow de color): igual que los carteles
+           grandes, que tampoco cambian de tono con el modo. */
+        .pill-palette::after {
+            content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+            background: var(--pal-frame, none) center/100% 100% no-repeat;
+            image-rendering: pixelated;
+            filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55));
+        }
+        .pal-slots { position: absolute; inset: 0; z-index: 1; }
+        .pal-swatch {
+            position: absolute; border: 0; padding: 0; cursor: pointer;
+            width: 13.68%; height: 29.08%;
+        }
+        .pal-swatch:hover { filter: brightness(1.25); }
+        /* Placa central de abajo del arte = elegir un color libre. */
+        .pal-pick {
+            position: absolute; z-index: 3; border: 0; padding: 0; cursor: pointer;
+            background: transparent; left: 37.47%; top: 85.68%; width: 24.21%; height: 11.86%;
+        }
+        .pal-pick:hover { background: rgba(255,255,255,0.16); }
+        .pill-palette.assigning .pal-swatch { animation: palBlink 0.7s steps(2) infinite; }
         @keyframes palBlink { 50% { outline: 2px solid #fff; outline-offset: -1px; } }
-        .pal-hint { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: #8a939e; margin-top: 6px; text-align: center; letter-spacing: 0.5px; }
+        .pal-hint { position: absolute; left: 0; right: 0; top: 101%; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: #8a939e; text-align: center; letter-spacing: 0.5px; }
 
         /* Editor de layout del menu: cada elemento se puede arrastrar (mover)
            y escalar con la rueda; el resultado se guarda por usuario. */
@@ -1636,11 +1671,13 @@
                      para cambiarlo a lo que quieras, sin boton "+" aparte. -->
                 <div class="pill-stage">
                     <canvas id="menuPillCanvas" width="400" height="360" title="Click a half to pick its color"></canvas>
-                    <!-- Paleta popup: solo aparece al clicar una mitad de la pildora.
-                         11 colores + casilla PICK (elegir color): el color elegido se
-                         aplica y puedes clicar un slot para guardarlo ahi. -->
+                    <!-- Paleta: UN cartel unico (palette.png), aparece al clicar una
+                         mitad de la pildora y esa es la mitad que se pinta. 10 colores
+                         en las ventanas del marco + la placa de abajo para elegir un
+                         color libre, que luego puedes guardar en la ventana que quieras. -->
                     <div id="pillPalette" class="pill-palette" style="display:none;">
-                        <div class="pal-grid" id="palGrid"></div>
+                        <div class="pal-slots" id="palGrid"></div>
+                        <button class="pal-pick" id="palPick" type="button" title="Pick any color"></button>
                         <div class="pal-hint" id="palHint" style="display:none;">CLICK A SLOT TO SAVE IT</div>
                     </div>
                 </div>
@@ -5235,11 +5272,17 @@
     // y queda "en mano": clicando uno de los 11 slots lo guardas ahi (parpadean
     // mientras). Click fuera cierra y cancela.
     const PAL_KEY = 'pw_palette';
-    const PAL_DEFAULT = ['#ffffff', '#c0c8d0', '#4a525c', '#ff2a2a', '#ff8c00', '#ffce3d', '#00ff44', '#00ffaa', '#1a73e8', '#66ccff', '#cc00ff'];
+    // 10 colores: los que caben en las ventanas del cartel (5x2). Antes eran 11
+    // + una casilla PICK; ahora el color libre sale de la placa de abajo del
+    // arte, asi que la rejilla es justo de 10.
+    const PAL_SLOTS = 10;
+    const PAL_DEFAULT = ['#ffffff', '#c0c8d0', '#ff2a2a', '#ff8c00', '#ffce3d', '#00ff44', '#00ffaa', '#1a73e8', '#66ccff', '#cc00ff'];
+    // Rejilla de ventanas MEDIDA sobre palette.png (950x447), en % del cartel.
+    const PAL_X0 = 8.42, PAL_DX = 17.48, PAL_Y0 = 15.88, PAL_DY = 35.35;
     let palColors = PAL_DEFAULT.slice();
     try {
         const s = JSON.parse(localStorage.getItem(PAL_KEY));
-        if (Array.isArray(s) && s.length) { palColors = s.slice(0, 11); while (palColors.length < 11) palColors.push(PAL_DEFAULT[palColors.length]); }
+        if (Array.isArray(s) && s.length) { palColors = s.slice(0, PAL_SLOTS); while (palColors.length < PAL_SLOTS) palColors.push(PAL_DEFAULT[palColors.length]); }
     } catch (e) {}
     let palHalf = 'colTop';   // mitad activa ('colTop' | 'colBot')
     let palAssign = null;     // color "en mano" tras PICK, pendiente de guardar en un slot
@@ -5249,17 +5292,16 @@
         grid.innerHTML = '';
         palColors.forEach((c, i) => {
             const b = document.createElement('button');
-            b.className = 'pal-swatch'; b.style.background = c; b.title = c;
+            b.className = 'pal-swatch'; b.type = 'button'; b.style.background = c; b.title = c;
+            // Cada swatch va colocado en SU ventana del marco (fila de 5).
+            b.style.left = (PAL_X0 + (i % 5) * PAL_DX) + '%';
+            b.style.top = (PAL_Y0 + Math.floor(i / 5) * PAL_DY) + '%';
             b.onclick = () => {
                 if (palAssign) { palColors[i] = palAssign; savePalette(); setAssignMode(null); renderPalette(); }
                 else { applyPillColor(c); closePalette(); }
             };
             grid.appendChild(b);
         });
-        const pick = document.createElement('button');
-        pick.className = 'pal-swatch pick'; pick.title = 'Pick any color';
-        pick.onclick = () => document.getElementById('palettePicker').click();
-        grid.appendChild(pick);
     }
     function setAssignMode(color) {
         palAssign = color;
@@ -5274,11 +5316,11 @@
         inp.value = c;
         SoundManager.play('simpleselect');
     }
+    // El cartel es UNO y siempre sale en el mismo sitio: lo que decide que mitad
+    // se pinta es la mitad de la pildora que hayas clicado (palHalf).
     function openPalette(half) {
         palHalf = half;
         const pal = document.getElementById('pillPalette');
-        pal.classList.toggle('pal-top', half === 'colTop');
-        pal.classList.toggle('pal-bottom', half === 'colBot');
         setAssignMode(null);
         renderPalette();
         pal.style.display = 'block';
@@ -5286,6 +5328,17 @@
     function closePalette() { const p = document.getElementById('pillPalette'); if (p) { p.style.display = 'none'; setAssignMode(null); } }
     (function initPalette() {
         const picker = document.getElementById('palettePicker'); if (!picker) return;
+        // El marco del cartel sale del atlas de carteles (palette.png). Si el PNG
+        // no esta, --pal-frame se queda sin poner y el cartel no pinta marco: los
+        // colores siguen ahi y la paleta funciona igual.
+        CARTEL_HERO_READY_PROMISE.then(() => {
+            if (!cartelUsesAtlas('palette')) return;
+            const pal = document.getElementById('pillPalette');
+            if (pal) pal.style.setProperty('--pal-frame', 'url(' + cartelHeroUrl('palette') + ')');
+        });
+        // La placa de abajo del arte abre el selector de color del sistema.
+        const pick = document.getElementById('palPick');
+        if (pick) pick.onclick = () => picker.click();
         // 'input' = preview en vivo mientras arrastras en el picker nativo;
         // 'change' = color confirmado → queda en mano para asignarlo a un slot.
         picker.addEventListener('input', () => { document.getElementById(palHalf).value = picker.value; });
@@ -5442,6 +5495,7 @@
     // lo mas anidado SOLO si se comprueba antes en el bucle de layoutTarget).
     const LAYOUT_ELS = {
         titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
+        palette: '#pillPalette',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
         rooms: '#oraclePanel', quests: '#missionsPanel',
@@ -5556,11 +5610,18 @@
         layoutEditing = true;
         document.body.classList.add('layout-editing');
         for (const key in LAYOUT_ELS) { const el = document.querySelector(LAYOUT_ELS[key]); if (el) el.classList.add('menu-editable'); }
+        // La paleta solo se ve al clicar una mitad de la pildora, asi que en el
+        // editor no habria nada que agarrar: se fuerza visible mientras dure la
+        // edicion y se devuelve a su estado al salir.
+        const pal = document.getElementById('pillPalette');
+        if (pal) { pal._layoutPrevDisplay = pal.style.display; pal.style.display = 'block'; }
         document.getElementById('layoutEditBar').style.display = 'flex';
     }
     function exitLayoutEdit() {
         layoutEditing = false; layoutDrag = null;
         document.body.classList.remove('layout-editing');
+        const pal = document.getElementById('pillPalette');
+        if (pal && pal._layoutPrevDisplay !== undefined) { pal.style.display = pal._layoutPrevDisplay; delete pal._layoutPrevDisplay; }
         document.querySelectorAll('.menu-editable').forEach(el => el.classList.remove('menu-editable'));
         document.getElementById('layoutEditBar').style.display = 'none';
         saveMenuLayout();

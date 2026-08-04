@@ -42,6 +42,11 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     'leave-arena', 'leave-lobby', 'stop-spectating',
     // X de cierre roja (arte de David, recortada de fondo magenta).
     'close-x-red',
+    // Paleta de colores de la pildora del menu: marco de piedra con 10 ventanas
+    // TRANSPARENTES (los colores se pintan detras y asoman por ellas) y la placa
+    // de abajo como boton de color libre. Arte de David, recortado del mismo
+    // fondo magenta.
+    'palette',
     // OK gris (arte de David, recortado de un checker de transparencia
     // guardado como jpg): solo para los modales/mensajes de wallet que usan
     // el marco gris (menu-gris) — el resto de OK siguen con el verde.
