@@ -539,6 +539,20 @@
                 <button class="b mini" onclick="resetZoomExp()">Reset</button>
                 <span style="color:#666; font-size: 12px;">How fast the camera pulls back as players grow (0.22 by default). Lower = stays closer while growing.</span>
             </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Pill shading — reference size (GLOBAL, all players):</label>
+                <input type="number" step="1" min="6" max="64" id="pillBandRef" style="width:80px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;">
+                <button class="b verde mini" onclick="aplicarPillBandRef()">Apply</button>
+                <button class="b mini" onclick="resetPillBandRef()">Reset</button>
+                <span style="color:#666; font-size: 12px;">Logical width up to which the shading bands grow at normal rate (24 by default). Lower = the slowdown kicks in sooner, on smaller pills too.</span>
+            </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Pill shading — growth past reference (GLOBAL, all players):</label>
+                <input type="number" step="0.05" min="0.05" max="1" id="pillBandSlow" style="width:80px;background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;">
+                <button class="b verde mini" onclick="aplicarPillBandSlow()">Apply</button>
+                <button class="b mini" onclick="resetPillBandSlow()">Reset</button>
+                <span style="color:#666; font-size: 12px;">Rate the bands keep growing past the reference size (0.40 by default, i.e. 40%). Lower = fat pills stay flatter/less shaded. 1 = no slowdown.</span>
+            </div>
             <div class="usage" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
                 <label style="font-weight:600">Menu visuals (GLOBAL, all players) — decorative food/virus + panel bob on the login/mode-select screens:</label>
                 <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
@@ -1018,6 +1032,16 @@ function aplicarZoomExp() {
     if (e > 0) { send({ cmd: 'setZoomExp', value: e }); toast('<strong>Global zoom exponent: ' + e + '</strong><br>All players', 'ok'); setTimeout(pedir, 100); }
 }
 function resetZoomExp() { document.getElementById('zoomExp').value = '0.22'; send({ cmd: 'setZoomExp', value: 0.22 }); toast('<strong>Zoom exponent reset (0.22)</strong>', 'ok'); setTimeout(pedir, 100); }
+function aplicarPillBandRef() {
+    const v = parseInt(document.getElementById('pillBandRef').value, 10);
+    if (v > 0) { send({ cmd: 'setPillBandRef', value: v }); toast('<strong>Pill shading reference: ' + v + '</strong><br>All players', 'ok'); setTimeout(pedir, 100); }
+}
+function resetPillBandRef() { document.getElementById('pillBandRef').value = '24'; send({ cmd: 'setPillBandRef', value: 24 }); toast('<strong>Pill shading reference reset (24)</strong>', 'ok'); setTimeout(pedir, 100); }
+function aplicarPillBandSlow() {
+    const v = parseFloat(document.getElementById('pillBandSlow').value);
+    if (v > 0) { send({ cmd: 'setPillBandSlow', value: v }); toast('<strong>Pill shading growth: ' + v + '</strong><br>All players', 'ok'); setTimeout(pedir, 100); }
+}
+function resetPillBandSlow() { document.getElementById('pillBandSlow').value = '0.4'; send({ cmd: 'setPillBandSlow', value: 0.4 }); toast('<strong>Pill shading growth reset (0.4)</strong>', 'ok'); setTimeout(pedir, 100); }
 function aplicarMenuDeco() {
     send({ cmd: 'setMenuDeco',
         gridSize: parseInt(document.getElementById('mdGrid').value, 10),
@@ -1789,6 +1813,8 @@ function render(m) {
     if (typeof m.enemyFx === 'boolean') { _enemyFxOn = m.enemyFx; const b = document.getElementById('enemyFxBtn'); if (b) { b.innerText = m.enemyFx ? 'ON' : 'OFF'; b.className = 'b ' + (m.enemyFx ? 'verde' : 'rojo'); } }
     if (typeof m.baseZoom === 'number' && document.activeElement.id !== 'baseZoom') { const bz = document.getElementById('baseZoom'); if (bz) bz.value = m.baseZoom; }
     if (typeof m.zoomExp === 'number' && document.activeElement.id !== 'zoomExp') { const ze = document.getElementById('zoomExp'); if (ze) ze.value = m.zoomExp; }
+    if (typeof m.pillBandRef === 'number' && document.activeElement.id !== 'pillBandRef') { const el = document.getElementById('pillBandRef'); if (el) el.value = m.pillBandRef; }
+    if (typeof m.pillBandSlow === 'number' && document.activeElement.id !== 'pillBandSlow') { const el = document.getElementById('pillBandSlow'); if (el) el.value = m.pillBandSlow; }
     if (typeof m.menuDecoGridSize === 'number' && document.activeElement.id !== 'mdGrid') { const el = document.getElementById('mdGrid'); if (el) { el.value = m.menuDecoGridSize; document.getElementById('mdGridVal').innerText = m.menuDecoGridSize + 'px'; } }
     if (typeof m.menuDecoFoodDensity === 'number' && document.activeElement.id !== 'mdFood') { const el = document.getElementById('mdFood'); if (el) { el.value = m.menuDecoFoodDensity; document.getElementById('mdFoodVal').innerText = m.menuDecoFoodDensity; } }
     if (typeof m.menuDecoVirusCount === 'number' && document.activeElement.id !== 'mdVirus') { const v = m.menuDecoVirusCount; const el = document.getElementById('mdVirus'); if (el) { el.value = v; document.getElementById('mdVirusVal').innerText = v; } }

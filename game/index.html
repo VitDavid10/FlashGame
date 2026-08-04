@@ -2644,8 +2644,18 @@
     // y el lienzo mide (S+SH) por el faldon de la sombra.
     const PIX_ROT_STEP = Math.PI * 2 / 16;   // angulos cacheados (22.5 grados)
     // Ancho logico hasta el que las bandas del sombreado crecen a ritmo normal, y
-    // a que ritmo lo hacen por encima. Ver el calculo de kD en pixPillSpriteRot.
-    const PIX_BAND_REF = 24, PIX_BAND_SLOW = 0.40;
+    // a que ritmo lo hacen por encima (ver el calculo de kD en pixPillSpriteRot).
+    // GLOBAL editable en vivo desde admin (mismo canal que baseZoom/zoomExp: llega
+    // por /api/rooms al entrar y por ws mientras se juega). Al cambiar hay que
+    // vaciar la cache de sprites (PIX.pillR): sus keys no incluyen estos valores,
+    // asi que sin el clear las pildoras ya dibujadas se quedarian con el grosor
+    // viejo hasta que el tamano o el color cambiaran.
+    let PIX_BAND_REF = 24, PIX_BAND_SLOW = 0.40;
+    // Solo vacian la cache si el valor CAMBIA de verdad: refreshOracle llama a
+    // estas dos en cada poll (varias veces por minuto) y sin el filtro se
+    // tirarian a la basura sprites recien generados sin necesidad.
+    function setPixBandRef(v) { if (typeof v === 'number' && v > 0 && v !== PIX_BAND_REF) { PIX_BAND_REF = v; PIX.pillR.clear(); } }
+    function setPixBandSlow(v) { if (typeof v === 'number' && v > 0 && v !== PIX_BAND_SLOW) { PIX_BAND_SLOW = v; PIX.pillR.clear(); } }
         // detailed=true: look de pildora GRANDE (preview del menu + celdas gordas).
         // Modelo medido sobre game/img/refs/pill-detailed-ref.webp:
         //  - cuerpo plano por mitad (sin contorno negro)
@@ -6585,6 +6595,10 @@
             if (typeof data.baseZoom === 'number' && data.baseZoom > 0) ZOOM_CONFIG.baseScale = data.baseZoom;
             // Exponente global del zoom (admin): ritmo del zoom-out al ganar masa.
             if (typeof data.zoomExp === 'number' && data.zoomExp > 0) ZOOM_CONFIG.exponent = data.zoomExp;
+            // Sombreado de la pildora grande (admin): desde que tamano frenan las
+            // bandas y a que ritmo.
+            setPixBandRef(data.pillBandRef);
+            setPixBandSlow(data.pillBandSlow);
             // Decoracion del fondo del menu (food/virus, bob, tamano de rejilla): admin.
             applyMenuDecoFromServer(data);
             const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
@@ -7450,6 +7464,10 @@
                 if (typeof msg.value === 'number' && msg.value > 0) ZOOM_CONFIG.baseScale = msg.value;   // admin cambió el zoom base en vivo
             } else if (msg.t === 'zoomExp') {
                 if (typeof msg.value === 'number' && msg.value > 0) ZOOM_CONFIG.exponent = msg.value;   // admin cambió el exponente de zoom en vivo
+            } else if (msg.t === 'pillBandRef') {
+                setPixBandRef(msg.value);   // admin cambió el sombreado de la pildora en vivo
+            } else if (msg.t === 'pillBandSlow') {
+                setPixBandSlow(msg.value);
             } else if (msg.t === 'announce') {
                 // Anuncio del admin a todos: cartel destacado + sonido.
                 setLobbyBanner('<b>' + (msg.text || '') + '</b>', 'found');
