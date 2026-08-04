@@ -2219,7 +2219,9 @@ function toggleTrailerMode() {
         const PIX_ROT_STEP = Math.PI * 2 / 16;
         // Los mismos que el juego: hasta que ancho logico crecen las bandas a
         // ritmo normal, y a que ritmo lo hacen por encima.
-        const PIX_BAND_REF = 24, PIX_BAND_SLOW = 0.40;
+        // REF mas bajo que el del juego (24): las pills del hero son mas
+        // pequenas de base y a David le gusta que frenen desde antes.
+        const PIX_BAND_REF = 6, PIX_BAND_SLOW = 0.40;
         function pixPillSpriteRot(wL, cTop, cBot, ang) {
             const qa = Math.round(ang / PIX_ROT_STEP) * PIX_ROT_STEP;
             const key = wL + '|' + Math.round(qa / PIX_ROT_STEP) + '|' + cTop + '|' + cBot;
