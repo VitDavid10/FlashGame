@@ -2547,8 +2547,12 @@ function toggleTrailerMode() {
                 g.save(); g.translate(v.x, v.y); g.rotate(ang);
                 g.drawImage(spr, -VIRUS_R, -VIRUS_R, VIRUS_R * 2, VIRUS_R * 2); g.restore();
             }
-            // Las pills van tumbadas hacia donde avanzan (el sprite apunta a -Y).
-            for (const n of scene.npcs) drawPill(g, n.x, n.y, n.r, n.dir + Math.PI / 2, n.top, n.bot);
+            // Angulo FIJO (el mismo -45º de la pill jugable y de todo el resto del
+            // juego), no el rumbo de cada NPC: con n.dir + PI/2 el sprite giraba
+            // sobre si mismo cada vez que la ondulacion o la esquiva de la UI
+            // cambiaban su rumbo, y eso se veia como una pildora dando vueltas
+            // sin parar. Ahora se desliza sin rotar, como en la seleccion de modo.
+            for (const n of scene.npcs) drawPill(g, n.x, n.y, n.r, -Math.PI / 4, n.top, n.bot);
             HeroPlay.draw(g);
         }
 
