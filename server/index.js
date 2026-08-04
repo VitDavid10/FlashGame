@@ -1839,10 +1839,15 @@ const httpServer = http.createServer(async (req, res) => {
                 const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
                 if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
                 // Sanea: solo claves con {x,y,s} numéricos (evita basura arbitraria).
+                // `b` (intensidad del halo del título, ALT+rueda en EDIT LAYOUT) es
+                // OPCIONAL: solo la traen los títulos, y si no viene no se escribe
+                // para no llenar el layout de ceros.
                 const clean = {};
                 for (const k of Object.keys(lay).slice(0, 40)) {
                     const t = lay[k]; if (!t || typeof t !== 'object') continue;
-                    clean[String(k).slice(0, 40)] = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
+                    const e = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
+                    if (typeof t.b === 'number' && isFinite(t.b)) e.b = Math.max(0, Math.min(4, t.b));
+                    clean[String(k).slice(0, 40)] = e;
                 }
                 menuLayout = clean; saveGlobal();
                 if (PW_ROLE === 'director') _roomsCache = null;   // fuerza refresco del cache agregado
