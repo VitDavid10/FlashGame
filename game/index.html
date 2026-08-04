@@ -3355,8 +3355,6 @@
                 // amarillo), y .btn-play:hover (regla generica del boton PLAY
                 // del login, no pensada para este) le mete brightness(1.2): el
                 // amarillo se va a casi blanco y el texto blanco desaparece.
-                // Aqui se anula esa aclarada; el scale + el resplandor rojo del
-                // hover generico se quedan (dan el feedback sin tocar el texto).
                 'body.pixel-pack #btnTryAgainOnline:hover{filter:none!important}';
         }
         if (cartelUsesAtlas('spectate')) {
@@ -3369,6 +3367,20 @@
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('backtomenu') + ') center/100% 100% no-repeat!important;' +
                 'aspect-ratio:723/76;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}';
         }
+        /* Los tres botones llevan su rotulo HORNEADO en el PNG, asi que cualquier
+           escalado les deforma las letras. El hover generico (.btn-play:hover /
+           .btn-spectate:hover) les mete scale(1.02), y como .btn-play trae
+           `transition: 0.2s` sobre TODAS las propiedades, ese 2% no entra de
+           golpe: se interpola durante 200 ms. Con image-rendering:pixelated cada
+           fotograma remuestrea el sprite con un factor distinto (1.000, 1.004,
+           1.011... 1.02), asi que los pixeles de las letras cambian de grosor
+           fotograma a fotograma — el texto "baila" al pasar el raton por encima.
+           Se les quita el escalado y la transicion; el translate(2px,2px) del
+           :active se queda, que es un desplazamiento de pixeles ENTEROS (no
+           deforma nada) y es el mismo feedback de pulsado que el resto de
+           botones del pixel-pack. */
+        css += 'body.pixel-pack #btnTryAgainOnline,body.pixel-pack .btn-spectate,body.pixel-pack #btnBackToMenu{transition:none!important}' +
+            'body.pixel-pack #btnTryAgainOnline:hover,body.pixel-pack .btn-spectate:hover,body.pixel-pack #btnBackToMenu:hover{transform:none!important}';
         return css;
     }
     // Modal de salida (ESC): marco gris (menu-gris.png) estirado entero como
