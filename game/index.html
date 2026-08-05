@@ -169,8 +169,18 @@
         #exitGameBtn:hover { background: rgba(255, 50, 50, 0.2); border-color: #f00; color: #fff; }
 
         /* Wallet area en el juego: dos cajas separadas (saldo / botones) arriba-derecha.
-           Solo visible en menú de modo. El color del botón toma --mode-color del modo activo. */
-        #gameWalletArea { position: absolute; top: 20px; right: 175px; z-index: 100; display: none; align-items: center; gap: 10px; font-family: 'Russo One',sans-serif; }
+           Solo visible en menú de modo. El color del botón toma --mode-color del modo activo.
+           ===== Cada pieza en su SITIO FIJO =====
+           Antes era una fila flex: CONNECT y DEPOSIT eran hermanos, asi que al
+           conectar (CONNECT se oculta y sale DEPOSIT) el que quedaba SALTABA al
+           hueco del otro, y encima el translate del editor se sumaba a ese salto
+           — de ahi que los colocaras y luego se movieran solos. Ahora el area es
+           un punto de anclaje (0x0) y los tres hijos van en absoluto: CONNECT y
+           DEPOSIT comparten sitio (nunca se ven a la vez) y no se enteran de si
+           el otro esta o no. Lo que muevas se queda donde lo pongas. */
+        #gameWalletArea { position: absolute; top: 20px; right: 175px; z-index: 100; display: none; width: 0; height: 0; font-family: 'Russo One',sans-serif; }
+        #gwConnect, #gwDepositWrap { position: absolute; top: 18px; right: 0; }
+        #gwBalBox { position: absolute; top: 0; right: 160px; }
         /* ===== Barra de wallet =====
            El recuadro azul (ingame-bar.png) va VACIO: se le borro el texto que
            traia horneado, y "IN GAME:", la cantidad y "$PILL" se escriben aqui
@@ -192,7 +202,7 @@
             display: none; align-items: center; justify-content: flex-start;
             width: 360px; height: 76px;
             background: var(--gw-bar, none) center/100% 100% no-repeat;
-            image-rendering: pixelated; position: relative;
+            image-rendering: pixelated;
             padding: 0 12px; box-sizing: border-box; gap: 5px;
         }
         /* El cuerpo de letra sale de --gw-font: se ajusta en vivo con
@@ -246,8 +256,11 @@
            entero y la sombra desaparecia al pasar el raton. */
         #gameWalletArea button:hover { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
         #gameWalletArea button:active { transform: translate(2px, 2px); }
-        /* Desplegable del DEPOSIT (hover): WITHDRAW y DISCONNECT debajo */
-        #gwDepositWrap { position: relative; display: inline-block; }
+        /* Desplegable del DEPOSIT (hover): WITHDRAW y DISCONNECT debajo.
+           El wrap va en absoluto (ver #gameWalletArea): absolute tambien es
+           contenedor de posicionamiento, asi que el desplegable sigue colgando
+           de el igual que con el relative de antes. */
+        #gwDepositWrap { display: inline-block; }
         #gwDropdown { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 101; min-width: 100%; }
         #gwDepositWrap:hover #gwDropdown { display: block; }
         #gwDropdown button { display: grid; margin-top: 4px; white-space: nowrap; }
@@ -873,26 +886,60 @@
             background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
             image-rendering: pixelated; padding: 46px 42px 34px;
         }
-        .play-picker .pw-big-btn, .settings-box .q-btn, .settings-box .ultra-btn {
+        /* body.pixel-pack va DELANTE en todos los selectores de botón: sin él,
+           "body.pixel-pack .q-btn" (0,2,1) le ganaba a ".settings-box .q-btn"
+           (0,2,0) y su box-shadow !important seguia dibujando el bisel del boton
+           viejo POR DEBAJO del arte. Con body.pixel-pack delante empatamos en
+           especificidad y manda el orden: estas reglas van despues. */
+        body.pixel-pack .play-picker .pw-big-btn,
+        body.pixel-pack .settings-box .q-btn, body.pixel-pack .settings-box .ultra-btn,
+        body.pixel-pack .settings-box .btn-settings, .play-picker .pw-big-btn,
+        .settings-box .q-btn, .settings-box .ultra-btn, .settings-box .btn-settings {
             border: none !important; border-image: none !important; border-radius: 0 !important;
-            box-shadow: none !important; image-rendering: pixelated;
+            box-shadow: none !important; clip-path: none !important; image-rendering: pixelated;
             background: transparent url('img/cartel-hero/wallet-btn-blue.png') center/100% 100% no-repeat;
             color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
-            font-family: 'Press Start 2P', monospace;
+            font-family: 'Press Start 2P', monospace; letter-spacing: 0;
         }
-        /* Rojo = la accion principal (PLAY OFFLINE) y la calidad activa */
-        .play-picker .pw-big-btn.offline, .settings-box .q-btn.selected, .settings-box .ultra-btn.selected {
+        /* Rojo = la accion principal (PLAY OFFLINE) */
+        body.pixel-pack .play-picker .pw-big-btn.offline, .play-picker .pw-big-btn.offline {
             background-image: url('img/cartel-hero/wallet-btn-red.png');
         }
+        /* SETTINGS va TODO en gris (lo pidio David): mismo boton plano que el
+           CANCEL para calidad, tema de mapa y EDIT LAYOUT. Sin color que
+           distinga, el activo se marca subiendo el brillo y apagando los otros. */
+        body.pixel-pack .settings-box .q-btn, body.pixel-pack .settings-box .ultra-btn,
+        body.pixel-pack .settings-box .btn-settings,
+        .settings-box .q-btn, .settings-box .ultra-btn, .settings-box .btn-settings {
+            background-image: url('img/cartel-hero/btn-plain-grey.png');
+            filter: brightness(0.78); color: #d7dade;
+        }
+        body.pixel-pack .settings-box .q-btn.selected, body.pixel-pack .settings-box .ultra-btn.selected,
+        .settings-box .q-btn.selected, .settings-box .ultra-btn.selected {
+            filter: brightness(1.12); color: #fff;
+        }
         .play-picker .pw-big-btn { height: 56px; width: 88%; margin: 4px auto 0; padding: 0; font-size: 13px; }
-        .settings-box .q-btn { padding: 0; height: 38px; font-size: 10px; font-weight: 400; }
-        .settings-box .ultra-btn { padding: 0; height: 34px; font-size: 8px; font-weight: 400; }
-        .play-picker .pw-big-btn:hover:not(:disabled), .settings-box .q-btn:hover, .settings-box .ultra-btn:hover {
-            filter: brightness(1.15); transform: none; box-shadow: none !important;
+        .settings-box .quality-buttons { gap: 8px; margin-bottom: 4px; }
+        .settings-box .q-btn { padding: 0; height: 40px; font-size: 10px; font-weight: 400; }
+        .settings-box .ultra-btn { padding: 0; height: 36px; font-size: 8px; font-weight: 400; margin-top: 8px; }
+        .settings-box .btn-settings { padding: 0; height: 40px; font-size: 10px; width: 100%; }
+        .play-picker .pw-big-btn:hover:not(:disabled) {
+            filter: brightness(1.15); transform: none; box-shadow: none !important; color: #fff;
+        }
+        body.pixel-pack .settings-box .q-btn:hover, body.pixel-pack .settings-box .ultra-btn:hover,
+        body.pixel-pack .settings-box .btn-settings:hover,
+        .settings-box .q-btn:hover, .settings-box .ultra-btn:hover, .settings-box .btn-settings:hover {
+            filter: brightness(1.3); transform: none; box-shadow: none !important;
             background-color: transparent; border-color: transparent; color: #fff;
         }
         .play-picker .pw-big-btn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: none !important; }
         .play-picker .pw-big-btn:disabled { filter: grayscale(0.6) brightness(0.7); }
+        /* Rotulos de seccion (GRAPHICS QUALITY / MAP THEME / MENU LAYOUT) en
+           gris: el verde del tema desentonaba dentro del cartel gris. */
+        .settings-box .section-title {
+            color: #9aa2ac !important; font-family: 'Press Start 2P', monospace; font-size: 8px;
+            border-bottom-color: #2b3037 !important; margin: 16px 0 8px; letter-spacing: 0;
+        }
         /* CANCEL / CLOSE horneado: el rotulo va en el PNG */
         .play-picker .pw-modal-cancel, .settings-box .pw-modal-cancel {
             border: none; box-shadow: none; padding: 0; width: 58%; aspect-ratio: 509/201;
@@ -1625,16 +1672,12 @@
             <button id="qUltra" class="ultra-btn" onclick="setQuality('ultra')">ULTRA LOW (FASTEST)</button>
 
             <div class="section-title" style="margin-top:15px;">Map Theme</div>
-            <div style="display:flex; gap:15px; margin-bottom:5px;">
-                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                    <input type="radio" name="themeMode" value="dark" checked onclick="setTheme('dark')"> Dark
-                </label>
-                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                    <input type="radio" name="themeMode" value="grey" onclick="setTheme('grey')"> Grey
-                </label>
-                <label style="color:#aaa; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                    <input type="radio" name="themeMode" value="white" onclick="setTheme('white')"> White
-                </label>
+            <!-- Tres botones iguales que HIGH/NORMAL/LOW (antes eran radios, que
+                 desentonaban con el resto del cartel). -->
+            <div class="quality-buttons">
+                <button class="q-btn selected" id="tDark" onclick="setTheme('dark')">DARK</button>
+                <button class="q-btn" id="tGrey" onclick="setTheme('grey')">GREY</button>
+                <button class="q-btn" id="tWhite" onclick="setTheme('white')">WHITE</button>
             </div>
 
             <div class="section-title" style="margin-top:15px;">Menu Layout</div>
@@ -2494,14 +2537,21 @@
 
     function setQuality(mode) {
         SoundManager.play('simpleselect'); selectedQuality = mode;
-        document.querySelectorAll('.q-btn, .ultra-btn').forEach(b => b.classList.remove('selected'));
-        if(mode === 'ultra') document.getElementById('qUltra').classList.add('selected');
-        else if(mode === 'high') document.getElementById('qHigh').classList.add('selected');
-        else if(mode === 'normal') document.getElementById('qNormal').classList.add('selected');
-        else if(mode === 'low') document.getElementById('qLow').classList.add('selected');
+        // Por id y no por clase: los botones de Map Theme comparten .q-btn pero
+        // llevan su propia seleccion (setTheme), y un querySelectorAll('.q-btn')
+        // se los llevaba por delante.
+        const porModo = { high: 'qHigh', normal: 'qNormal', low: 'qLow', ultra: 'qUltra' };
+        for (const id of Object.values(porModo)) {
+            const b = document.getElementById(id);
+            if (b) b.classList.toggle('selected', id === porModo[mode]);
+        }
     }
 
     function setTheme(mode) {
+        for (const [id, m] of [['tDark','dark'], ['tGrey','grey'], ['tWhite','white']]) {
+            const b = document.getElementById(id);
+            if (b) b.classList.toggle('selected', m === mode);
+        }
         const root = document.documentElement;
         if (mode === 'white') { root.style.setProperty('--bg-color', '#f0f0f0'); root.style.setProperty('--grid-line', 'rgba(0, 0, 0, 0.05)'); }
         else if (mode === 'grey') { root.style.setProperty('--bg-color', '#2a2a2a'); root.style.setProperty('--grid-line', 'rgba(255, 255, 255, 0.03)'); }
@@ -4506,7 +4556,10 @@
             if (data.menuLayout && typeof data.menuLayout === 'object' && Object.keys(data.menuLayout).length > 0 && !layoutEditing) {
                 // Se migra ANTES de comparar: si no, un global con la clave plana
                 // pareceria distinto del local ya migrado en cada poll.
-                const entrante = migrateScopedLayout(JSON.parse(JSON.stringify(data.menuLayout)));
+                // fundirLayoutGlobal deja intactas las claves que TU has movido
+                // a mano (ver layoutMine): sin eso el global las borraba en cada
+                // poll y las piezas volvian solas a su sitio.
+                const entrante = fundirLayoutGlobal(migrateScopedLayout(JSON.parse(JSON.stringify(data.menuLayout))));
                 if (!mismoMenuLayout(entrante, menuLayout)) { menuLayout = entrante; saveMenuLayout(); applyMenuLayout(); }
             }
         } catch (e) {}
@@ -4711,7 +4764,7 @@
         const zoneSel = new Set(['#noVirusZoneA', '#noVirusZoneB']);
         for (const sel of [...Object.values(LAYOUT_ELS), '#musicToggle', '#gameWalletArea']) {
             if (scoped.has(sel) || zoneSel.has(sel)) continue;
-            pushEl(document.querySelector(sel));
+            document.querySelectorAll(sel).forEach(pushEl);
         }
         // El título del login (#modeTitlePw/#modeTitleWord) NO existe en el selector
         // —se crea al elegir modo—, así que lo generamos temporalmente en su
@@ -4793,7 +4846,7 @@
             if (r.width <= 0 || r.height <= 0) return;
             rects.push({ x: r.left * sx, y: r.top * sy, w: r.width * sx, h: r.height * sy });
         };
-        for (const key in LAYOUT_ELS) { if (LAYOUT_ZONE_KEYS.has(key)) continue; push(document.querySelector(LAYOUT_ELS[key])); }
+        for (const key in LAYOUT_ELS) { if (LAYOUT_ZONE_KEYS.has(key)) continue; document.querySelectorAll(LAYOUT_ELS[key]).forEach(push); }
         for (const sel of MENU_DECO_EXTRA_OBSTACLES) push(document.querySelector(sel));
         return rects;
     }
@@ -5764,9 +5817,12 @@
     const LAYOUT_ELS = {
         titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
         palette: '#pillPalette', colorPicker: '#colorPicker', palHint: '#palHint',
-        // Barra de saldo y botones de wallet: cada uno por separado para poder
-        // ajustarles tamaño y sitio sin tocar los otros.
-        walletBar: '#gwBalBox', walletDeposit: '#gwDepositWrap', walletConnect: '#gwConnect',
+        // Barra de saldo y botones de wallet. CONNECT y DEPOSIT comparten UNA
+        // sola entrada (el valor es una lista de selectores): ocupan el mismo
+        // hueco — nunca se ven a la vez — y David los quiere siempre en el mismo
+        // sitio, asi que colocar uno coloca el otro. Con dos entradas separadas
+        // habia que cuadrarlos a mano y se solapaban en el editor.
+        walletBar: '#gwBalBox', walletBtn: '#gwConnect, #gwDepositWrap',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
         rooms: '#oraclePanel', quests: '#missionsPanel',
@@ -5841,6 +5897,24 @@
         return na(a) === na(b);
     }
     let layoutEditing = false, layoutDrag = null;
+    // ===== Claves TOCADAS a mano en esta maquina =====
+    // El poll de /api/rooms reemplaza menuLayout ENTERO por el global del
+    // servidor. Como el global no trae las piezas nuevas (la barra IN GAME y
+    // los botones de wallet), todo lo que se ajustaba de ellas se borraba al
+    // salir del editor: colocabas DEPOSIT/CONNECT y al rato volvian solos a su
+    // sitio. Ahora las claves que has tocado TU mandan sobre el global hasta
+    // que le des a SAVE FOR ALL (que las sube y ya son de todos) o a RESET ALL.
+    const LAYOUT_MINE_KEY = 'pw_menu_layout_mine';
+    let layoutMine = new Set();
+    try { const m = JSON.parse(localStorage.getItem(LAYOUT_MINE_KEY) || '[]'); if (Array.isArray(m)) layoutMine = new Set(m); } catch (e) {}
+    function saveLayoutMine() { try { localStorage.setItem(LAYOUT_MINE_KEY, JSON.stringify([...layoutMine])); } catch (e) {} }
+    function marcarLayoutMio(storeKey) { if (!layoutMine.has(storeKey)) { layoutMine.add(storeKey); saveLayoutMine(); } }
+    // Global entrante + lo mio por encima.
+    function fundirLayoutGlobal(entrante) {
+        const out = JSON.parse(JSON.stringify(entrante));
+        for (const k of layoutMine) { if (menuLayout[k]) out[k] = JSON.parse(JSON.stringify(menuLayout[k])); else delete out[k]; }
+        return out;
+    }
     function saveMenuLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(menuLayout)); } catch (e) {} }
     // titlePw/titleWord/blurb son el MISMO nodo del DOM para arcade y classic (el
     // contenido se cambia via innerHTML en setSelectedModeTitleArt / selectMode),
@@ -5866,9 +5940,26 @@
         }
         return l;
     }
+    // De arranque manda el horneado (asi el menu sale ya colocado sin esperar al
+    // primer poll), PERO las claves que tocaste tu se recuperan del localStorage:
+    // sin esto un F5 las perdia y el global volvia a colocarlo todo.
+    // Va AQUI y no junto a layoutMine: migrateScopedLayout lee
+    // MODE_SCOPED_LAYOUT_KEYS, que es un const declarado mas abajo — llamarla
+    // antes petaba por zona muerta temporal y el catch se lo tragaba en silencio.
+    if (layoutMine.size) {
+        try {
+            const guardado = migrateScopedLayout(JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}'));
+            for (const k of layoutMine) {
+                if (guardado && guardado[k]) menuLayout[k] = guardado[k];
+                else delete menuLayout[k];
+            }
+        } catch (e) {}
+    }
     function applyMenuLayout() {
         for (const key in LAYOUT_ELS) {
-            const el = document.querySelector(LAYOUT_ELS[key]); if (!el) continue;
+          // querySelectorAll y no querySelector: una clave puede gobernar VARIOS
+          // elementos (walletBtn = CONNECT + DEPOSIT, que van siempre juntos).
+          for (const el of document.querySelectorAll(LAYOUT_ELS[key])) {
             const t = menuLayout[layoutStoreKey(key)];
             // Propiedades translate/scale (NO transform): asi el efecto de
             // pulsacion pixel-pack (button:active { transform } !important) se
@@ -5895,6 +5986,7 @@
                 if (t && typeof t.f === 'number') el.style.setProperty('--gw-font', t.f + 'px');
                 else el.style.removeProperty('--gw-font');
             }
+          }
         }
         invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
     }
@@ -5905,7 +5997,7 @@
     function enterLayoutEdit() {
         layoutEditing = true;
         document.body.classList.add('layout-editing');
-        for (const key in LAYOUT_ELS) { const el = document.querySelector(LAYOUT_ELS[key]); if (el) el.classList.add('menu-editable'); }
+        for (const key in LAYOUT_ELS) document.querySelectorAll(LAYOUT_ELS[key]).forEach(el => el.classList.add('menu-editable'));
         // La paleta, el selector de color y el aviso de guardado solo se ven al
         // clicar (y el aviso ni eso), asi que en el editor no habria nada que
         // agarrar: se fuerzan visibles mientras dure la edicion y se devuelven a
@@ -5919,13 +6011,16 @@
         // La barra de saldo y los botones de wallet solo salen con la cartera
         // conectada; en el editor se enseñan igual para poder colocarlos, con un
         // saldo de muestra para ver como queda la cifra mas larga.
+        // CONNECT se queda OCULTO: comparte hueco y entrada de layout con
+        // DEPOSIT, asi que enseñarlo solo pondria un boton encima del otro —
+        // moviendo DEPOSIT se mueve CONNECT igual.
         const wa = document.getElementById('gameWalletArea');
         if (wa) { wa._layoutPrevDisplay = wa.style.display; wa.style.display = 'flex'; }
         for (const id of ['gwBalBox', 'gwDepositWrap', 'gwConnect']) {
             const el = document.getElementById(id);
             if (!el) continue;
             el._layoutPrevDisplay = el.style.display;
-            el.style.display = id === 'gwBalBox' ? 'inline-flex' : 'inline-block';
+            el.style.display = id === 'gwConnect' ? 'none' : (id === 'gwBalBox' ? 'flex' : 'block');
         }
         const bal = document.getElementById('gwBalValue');
         if (bal && !bal.textContent.trim()) bal.textContent = '999,999,999';
@@ -5946,7 +6041,9 @@
         saveMenuLayout();
         invalidateLoginUIRects();   // el layout cambió → recalcular zonas prohibidas
     }
-    function resetMenuLayout() { menuLayout = {}; saveMenuLayout(); applyMenuLayout(); }
+    // RESET ALL vuelve a cero Y suelta las claves propias: a partir de aqui
+    // manda otra vez el global del servidor.
+    function resetMenuLayout() { menuLayout = {}; layoutMine.clear(); saveLayoutMine(); saveMenuLayout(); applyMenuLayout(); }
     // Sube el layout actual al servidor → se vuelve GLOBAL para todos (se difunde
     // por /api/rooms). Sin auth: herramienta de diseño temporal (quitar el editor
     // cuando la UI esté fijada).
@@ -5958,6 +6055,9 @@
         try {
             const r = await fetch('/api/menu-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout: menuLayout }) });
             ok = (await r.json()).ok === true;
+            // Ya son de todos: se sueltan las claves propias para no quedarse
+            // pegado a una version local del layout que ya subiste.
+            if (ok) { layoutMine.clear(); saveLayoutMine(); }
         } catch (e) {}
         if (btn) { btn.textContent = ok ? 'SAVED ✓' : 'ERROR'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600); }
     }
@@ -5976,6 +6076,7 @@
             const cur = menuLayout[layoutDrag.key] = menuLayout[layoutDrag.key] || { x: 0, y: 0, s: 1 };
             cur.x = layoutDrag.baseX + (e.clientX - layoutDrag.startX);
             cur.y = layoutDrag.baseY + (e.clientY - layoutDrag.startY);
+            marcarLayoutMio(layoutDrag.key);
             applyMenuLayout();
         });
         window.addEventListener('pointerup', () => { if (layoutDrag) { layoutDrag = null; saveMenuLayout(); } });
@@ -5985,6 +6086,7 @@
             e.preventDefault();
             const sk = layoutStoreKey(t.key);
             const cur = menuLayout[sk] = menuLayout[sk] || { x: 0, y: 0, s: 1 };
+            marcarLayoutMio(sk);
             // ALT+rueda = intensidad del halo del titulo en vez del tamano. 0 lo
             // apaga del todo y 4 es el tope; el paso de 0.1 es fino porque el
             // efecto se nota mucho entre 0.5 y 1.5, que es donde se va a estar.
@@ -6032,7 +6134,10 @@
         document.addEventListener('dblclick', (e) => {
             if (!layoutEditing) return;
             const t = layoutTarget(e); if (!t) return;
-            delete menuLayout[layoutStoreKey(t.key)]; applyMenuLayout(); saveMenuLayout();
+            // Resetear uno tambien cuenta como "tocado a mano": si no, el global
+            // se lo devolvia en el siguiente poll.
+            const sk = layoutStoreKey(t.key);
+            delete menuLayout[sk]; marcarLayoutMio(sk); applyMenuLayout(); saveMenuLayout();
             e.preventDefault();
         }, true);
         // En modo edicion los clicks no disparan botones/inputs del menu
