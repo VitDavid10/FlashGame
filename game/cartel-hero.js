@@ -47,9 +47,6 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // de abajo como boton de color libre. Arte de David, recortado del mismo
     // fondo magenta.
     'palette',
-    // Selector grande de color: 12 grupos de 3x3 = 108 tonos, ya pintados en el
-    // arte (las zonas clicables van encima, ver CP_COLORS en index.html).
-    'color-picker',
     // Barra de wallet: CONNECT con el rotulo horneado, el rojo VACIO que
     // comparten DEPOSIT/WITHDRAW/DISCONNECT (el texto va por CSS encima), el
     // azul de PLAY ONLINE y la barra del saldo (IN GAME: ... $PILL horneados,
