@@ -198,10 +198,13 @@
            encima, por eso conservan font/color. */
         #gameWalletArea button {
             background: transparent; border: 0; padding: 0; cursor: pointer;
-            font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 0;
-            color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.55); text-transform: uppercase;
+            font-family: 'Press Start 2P', monospace; font-size: 13px; letter-spacing: 0;
+            color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase;
             image-rendering: pixelated; display: grid; place-items: center;
         }
+        /* DISCONNECT es la palabra mas larga de las tres y a 13px se salia del
+           boton: solo esa baja de cuerpo, las otras dos se quedan grandes. */
+        #gameWalletArea #gwDropdown button:last-child { font-size: 10px; }
         /* Con el id a secas NO basta: "#gameWalletArea button" (id + tipo) tiene
            mas especificidad que "#gwDeposit" (id) y su background:transparent
            ganaba, dejando los botones sin arte. */
@@ -6572,8 +6575,8 @@
     // Anchos de los glifos ya recortados (todos miden 104 de alto menos el punto,
     // 32x43). Se usan para saber cuanto ocupa una cifra SIN esperar a que carguen
     // las imagenes ni medir el DOM imagen a imagen.
-    const PIXNUM_W = { '0': 72, '1': 53, '2': 69, '3': 69, '4': 65, '5': 74, '6': 69, '7': 67, '8': 72, '9': 69 };
-    const PIXNUM_H = 104, PIXDOT_W = 32, PIXDOT_H = 43, PIXDOT_ESC = 0.41;
+    const PIXNUM_W = { '0': 71, '1': 53, '2': 69, '3': 69, '4': 65, '5': 74, '6': 69, '7': 67, '8': 72, '9': 69 };
+    const PIXNUM_H = 102, PIXDOT_W = 32, PIXDOT_H = 43, PIXDOT_ESC = 0.42;
     const PIXNUM_GAP = 0.025;     // separacion, en fraccion del ancho del hueco
     const PIXNUM_ALTO = 0.25;     // alto de diseño = el del rotulo horneado
     function renderPixAmount(el, texto) {
@@ -6601,7 +6604,9 @@
         const W = el.clientWidth, padre = el.parentElement;
         if (W > 0 && rel > 0 && padre) {
             const hDiseno = padre.clientHeight * PIXNUM_ALTO;
-            const hCabe = (W - Math.max(0, n - 1) * W * PIXNUM_GAP) / rel;
+            // 0.94 y no 1: llenar el hueco al ras dejaba la cifra pegada a los
+            // rotulos horneados de los lados.
+            const hCabe = (W * 0.94 - Math.max(0, n - 1) * W * PIXNUM_GAP) / rel;
             el.style.height = Math.max(1, Math.min(hDiseno, hCabe)) + 'px';
         }
     }
