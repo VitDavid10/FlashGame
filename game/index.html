@@ -223,7 +223,10 @@
         #gameWalletArea #gwConnect {
             width: 150px; aspect-ratio: 769 / 202;
             background: var(--gw-connect, none) center/100% 100% no-repeat;
-            color: transparent;   /* el rotulo va en el PNG */
+            /* El rotulo va en el PNG: color transparent no basta, el
+               text-shadow de la regla base NO depende del color de relleno y
+               seguia dibujando un "CONNECT" negro encima del arte. */
+            color: transparent; text-shadow: none;
         }
         #gameWalletArea #gwDeposit, #gameWalletArea #gwDropdown button {
             width: 150px; aspect-ratio: 1797 / 473;
