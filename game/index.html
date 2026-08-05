@@ -176,12 +176,14 @@
            traia horneado, y "IN GAME:", la cantidad y "$PILL" se escriben aqui
            con la fuente pixel del juego. Asi casan con el resto del menu y no
            dependen del arte. ===== */
+        /* 300px y no 232: con "IN GAME:" (80px) + la cantidad mas larga (110px) +
+           "$PILL" (50px) hacen falta 240px de texto, y en 232 no cabia. */
         #gwBalBox {
             display: none; align-items: center; justify-content: space-between;
-            width: 232px; aspect-ratio: 1814 / 459;
+            width: 300px; aspect-ratio: 1814 / 459;
             background: var(--gw-bar, none) center/100% 100% no-repeat;
             image-rendering: pixelated; position: relative;
-            padding: 0 7%; box-sizing: border-box; gap: 4%;
+            padding: 0 4%; box-sizing: border-box; gap: 1.5%;
         }
         #gwBalBox .gw-lbl {
             font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff;
@@ -190,8 +192,11 @@
         /* La cantidad va con la MISMA fuente que los rotulos (lo pidio David):
            los glifos sueltos que habia antes desentonaban al lado del texto del
            resto del menu. */
+        /* Sin min-width:0 a proposito: con el, el flex encogia esta caja por
+           debajo de su texto y la cantidad se salia por encima de "$PILL" — eso
+           era lo que hacia que las letras se juntaran. */
         #gwBalValue {
-            flex: 1; min-width: 0; text-align: right;
+            flex: 1 1 auto; text-align: right;
             font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
@@ -5681,6 +5686,9 @@
     const LAYOUT_ELS = {
         titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
         palette: '#pillPalette', colorPicker: '#colorPicker', palHint: '#palHint',
+        // Barra de saldo y botones de wallet: cada uno por separado para poder
+        // ajustarles tamaño y sitio sin tocar los otros.
+        walletBar: '#gwBalBox', walletDeposit: '#gwDepositWrap', walletConnect: '#gwConnect',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
         rooms: '#oraclePanel', quests: '#missionsPanel',
@@ -5813,16 +5821,31 @@
             el._layoutPrevDisplay = el.style.display;
             el.style.display = 'block';
         }
+        // La barra de saldo y los botones de wallet solo salen con la cartera
+        // conectada; en el editor se enseñan igual para poder colocarlos, con un
+        // saldo de muestra para ver como queda la cifra mas larga.
+        const wa = document.getElementById('gameWalletArea');
+        if (wa) { wa._layoutPrevDisplay = wa.style.display; wa.style.display = 'flex'; }
+        for (const id of ['gwBalBox', 'gwDepositWrap', 'gwConnect']) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            el._layoutPrevDisplay = el.style.display;
+            el.style.display = id === 'gwBalBox' ? 'inline-flex' : 'inline-block';
+        }
+        const bal = document.getElementById('gwBalValue');
+        if (bal && !bal.textContent.trim()) bal.textContent = '999,999,999';
         renderColorPicker();
         document.getElementById('layoutEditBar').style.display = 'flex';
     }
     function exitLayoutEdit() {
         layoutEditing = false; layoutDrag = null;
         document.body.classList.remove('layout-editing');
-        for (const id of ['pillPalette', 'colorPicker', 'palHint']) {
+        for (const id of ['pillPalette', 'colorPicker', 'palHint', 'gameWalletArea', 'gwBalBox', 'gwDepositWrap', 'gwConnect']) {
             const el = document.getElementById(id);
             if (el && el._layoutPrevDisplay !== undefined) { el.style.display = el._layoutPrevDisplay; delete el._layoutPrevDisplay; }
         }
+        // El saldo real lo repone GameWalletUI.refresh en cuanto toque.
+        if (!GameWallet.address) { const bal = document.getElementById('gwBalValue'); if (bal) bal.textContent = ''; }
         document.querySelectorAll('.menu-editable').forEach(el => el.classList.remove('menu-editable'));
         document.getElementById('layoutEditBar').style.display = 'none';
         saveMenuLayout();
