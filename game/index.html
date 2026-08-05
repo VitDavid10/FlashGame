@@ -248,7 +248,10 @@
             color: transparent; text-shadow: none;
         }
         #gameWalletArea #gwDeposit, #gameWalletArea #gwDropdown button {
-            width: 150px; aspect-ratio: 1784 / 464;
+            /* aspect-ratio del recorte SIN el contorno negro (David se lo quito
+               el mismo): la caja util encoge al quitar el marco, por eso pasa
+               de 1784/464 a esto. */
+            width: 150px; aspect-ratio: 1724 / 403;
             background: var(--gw-red, none) center/100% 100% no-repeat;
         }
         /* brightness se SUMA al drop-shadow de la regla base (filter acumula
@@ -348,14 +351,19 @@
            IN GAME (el PNG no trae texto horneado).
            210x68 (aspect real 3136/1008 = 3.111): medido en el DOM, "BACK TO
            SITE" en Press Start 2P a 9px + 2px de letter-spacing ocupa 132px —
-           a 180x58 (lo primero que probé) se salia 8px por la derecha. */
+           a 180x58 (lo primero que probé) se salia 8px por la derecha.
+           image-rendering:auto (mismo motivo que .back-icon: body trae
+           -webkit-optimize-contrast heredable, quitar la propiedad no basta).
+           El arte trae scanlines finas que a este tamaño se ven moire con
+           nearest-neighbor; back-to-site.png ya viene pre-reducido (840x272,
+           no los 3136x1008 originales) con un filtro suave. */
         .back-to-web {
             position: absolute; top: 22px; left: 24px; z-index: 200;
             display: flex; align-items: center;
             height: 68px; width: 210px; box-sizing: border-box;
             padding: 0 14px 0 66px;
             background: url('img/cartel-hero/back-to-site.png') center/100% 100% no-repeat;
-            image-rendering: pixelated;
+            image-rendering: auto;
             color: #fff; font-family: 'Russo One',sans-serif; font-size: 11px; letter-spacing: 2px;
             text-transform: uppercase; text-decoration: none; white-space: nowrap;
             cursor: pointer; transition: filter 0.2s, transform 0.2s;
@@ -753,8 +761,23 @@
            (back-arrow.png) en vez del icono SVG + caja verde de antes. El PNG
            ya trae su propio marco, asi que aqui solo queda tamaño y posicion;
            sin fondo/borde/color propios (serian el rectangulo viejo asomando
-           detras del arte nuevo). Mismos 44x44 y sitio de siempre. */
-        .back-icon { position: absolute; top: 22px; left: 24px; z-index: 65; width: 44px; height: 44px; aspect-ratio: 1024/1007; background: url('img/cartel-hero/back-arrow.png') center/100% 100% no-repeat; image-rendering: pixelated; cursor: pointer; transition: filter 0.2s, transform 0.2s; user-select: none; }
+           detras del arte nuevo). Mismos 44x44 de antes.
+           top:18 y no 22: medido en el DOM, .sound-btn son 40x40 reales (el
+           borde de 1px del CSS base lo quita el skin pixel-pack) en top:20,
+           centro en y=40. Con 22 el centro de este quedaba en y=44 — se
+           notaba comparado con ellos.
+           SIN image-rendering:pixelated: el arte trae una textura fina de
+           scanlines (bandas horizontales de 1-2px) que a este tamaño tan
+           pequeño el nearest-neighbor de "pixelated" convierte en moire (se
+           veia "raro" de lejos y bien al hacer zoom). back-arrow.png ya viene
+           pre-reducido con un filtro suave (176x173, no los 1024x1007
+           originales) asi que el ultimo escalado del navegador es solo 4x y
+           con el render normal (bilinear) no vuelve a aparecer el moire. */
+        /* image-rendering es HEREDABLE y body ya trae -webkit-optimize-contrast
+           (pixelado) para el resto del arte del juego: quitar la propiedad
+           aqui no bastaba, seguia heredandolo. auto de verdad hace falta para
+           que el navegador aplique su escalado suave de siempre. */
+        .back-icon { position: absolute; top: 18px; left: 24px; z-index: 65; width: 44px; height: 44px; aspect-ratio: 176/173; background: url('img/cartel-hero/back-arrow.png') center/100% 100% no-repeat; image-rendering: auto; cursor: pointer; transition: filter 0.2s, transform 0.2s; user-select: none; }
         .back-icon:hover { filter: brightness(1.15); transform: translateX(-2px); }
         /* selectMode() sigue poniendo back-mode-classic/back-mode-arcade (linea
            ~5440): antes recoloreaban el borde por modo (verde/amarillo), el
@@ -3786,8 +3809,13 @@
         const hudBtns = [['x', '#exitGameBtn'], ['song', '#musicToggle'], ['sonido', '#soundToggle']];
         for (const [id, sel] of hudBtns) {
             if (!cartelUsesAtlas(id)) continue;
+            // x.png trae scanlines finas y ya viene pre-reducido (168x165, no
+            // el 1024x1007 original) para evitar el moire de nearest-neighbor
+            // a este tamaño (mismo motivo que .back-icon/.back-to-web) — por
+            // eso es el unico de los tres sin pixelated.
+            const rend = id === 'x' ? '' : 'image-rendering:pixelated;';
             css += 'body.pixel-pack ' + sel + '{border:none!important;border-radius:0!important;' +
-                'background:transparent url(' + cartelHeroUrl(id) + ') center/100% 100% no-repeat!important;image-rendering:pixelated}' +
+                'background:transparent url(' + cartelHeroUrl(id) + ') center/100% 100% no-repeat!important;' + rend + '}' +
                 'body.pixel-pack ' + sel + '>svg{display:none}' +
                 'body.pixel-pack ' + sel + ':hover{filter:brightness(1.2)}';
         }
