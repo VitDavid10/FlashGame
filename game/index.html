@@ -171,25 +171,56 @@
         /* Wallet area en el juego: dos cajas separadas (saldo / botones) arriba-derecha.
            Solo visible en menú de modo. El color del botón toma --mode-color del modo activo. */
         #gameWalletArea { position: absolute; top: 20px; right: 175px; z-index: 100; display: none; align-items: center; gap: 10px; font-family: 'Russo One',sans-serif; }
+        /* ===== Barra de wallet con el arte de David =====
+           El saldo va sobre ingame-bar.png (el rotulo "IN GAME:" y "$PILL" estan
+           HORNEADOS en la imagen) y la cantidad se compone con los digitos
+           sueltos de game/img/pixnum — de ahi que aqui no haya ni fuente ni
+           color: lo pinta todo el arte. Ver renderPixAmount(). ===== */
         #gwBalBox {
-            display: none; align-items: center; gap: 6px; padding: 8px 14px;
-            background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4);
-            border-radius: 8px; backdrop-filter: blur(4px); font-size: 12px; color: #ffce3d;
-            text-shadow: 0 0 8px rgba(255,206,61,0.25); white-space: nowrap;
+            display: none; align-items: center; justify-content: center;
+            width: 232px; aspect-ratio: 1814 / 459;
+            background: var(--gw-bar, none) center/100% 100% no-repeat;
+            image-rendering: pixelated; position: relative;
         }
-        #gwBalBox b { color: #fff; }
-        /* Botones (CONNECT/DEPOSIT) con el mismo tamaño/forma que el de la web pública */
+        /* Hueco libre entre "IN GAME:" y "$PILL", MEDIDO sobre el propio PNG
+           (1814x459): el tramo sin texto va de x=732 a x=1287, o sea left 40.35%
+           y right 29%. La cifra se pone del mismo alto que el rotulo horneado
+           (115 px = 25% del PNG) y centrada en el, que esta a media altura. */
+        #gwBalValue {
+            position: absolute; left: 41%; right: 29.5%; top: 50%; transform: translateY(-50%);
+            display: flex; align-items: flex-end; justify-content: flex-end; gap: 2.5%;
+            height: 25%;
+        }
+        #gwBalValue img { height: 100%; width: auto; image-rendering: pixelated; display: block; }
+        #gwBalValue img.pix-dot { height: 41%; }   /* el punto es mas bajo: se alinea abajo */
+        /* Botones de wallet: cada uno es su PNG estirado. CONNECT trae el rotulo
+           horneado; los otros tres comparten el rojo vacio y llevan el texto
+           encima, por eso conservan font/color. */
         #gameWalletArea button {
-            background: transparent; border: 1px solid var(--mode-color, #00ff88); color: var(--mode-color, #00ff88);
-            border-radius: 8px; padding: 8px 16px; font-family: 'Russo One'; font-size: 12px;
-            letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.2s;
+            background: transparent; border: 0; padding: 0; cursor: pointer;
+            font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 0;
+            color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.55); text-transform: uppercase;
+            image-rendering: pixelated; display: grid; place-items: center;
         }
-        #gameWalletArea button:hover { background: var(--mode-color, #00ff88); color: #04150c; box-shadow: 0 0 18px color-mix(in srgb, var(--mode-color, #00ff88) 45%, transparent); }
+        /* Con el id a secas NO basta: "#gameWalletArea button" (id + tipo) tiene
+           mas especificidad que "#gwDeposit" (id) y su background:transparent
+           ganaba, dejando los botones sin arte. */
+        #gameWalletArea #gwConnect {
+            width: 150px; aspect-ratio: 769 / 202;
+            background: var(--gw-connect, none) center/100% 100% no-repeat;
+            color: transparent;   /* el rotulo va en el PNG */
+        }
+        #gameWalletArea #gwDeposit, #gameWalletArea #gwDropdown button {
+            width: 150px; aspect-ratio: 1797 / 473;
+            background: var(--gw-red, none) center/100% 100% no-repeat;
+        }
+        #gameWalletArea button:hover { filter: brightness(1.15); }
+        #gameWalletArea button:active { transform: translate(2px, 2px); }
         /* Desplegable del DEPOSIT (hover): WITHDRAW y DISCONNECT debajo */
         #gwDepositWrap { position: relative; display: inline-block; }
         #gwDropdown { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 101; min-width: 100%; }
         #gwDepositWrap:hover #gwDropdown { display: block; }
-        #gwDropdown button { display: block; width: 100%; margin-top: 4px; background: rgba(8,12,8,0.95); white-space: nowrap; }
+        #gwDropdown button { display: grid; margin-top: 4px; white-space: nowrap; }
 
         /* Modales del juego (deposit + prize) en el estilo del juego */
         .gameModal { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 250; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.2s; }
@@ -1372,7 +1403,9 @@
 
     <!-- Wallet en el juego: caja de saldo + botón connect/deposit aparte. Solo visible en menú de modo. -->
     <div id="gameWalletArea">
-        <div id="gwBalBox"><span style="color:var(--primary)">in GAME:</span> <b id="gwBalValue">—</b> <span style="color:var(--primary)">$PILL</span></div>
+        <!-- "IN GAME:" y "$PILL" vienen horneados en el arte; aqui solo va la
+             cantidad, compuesta con los digitos de game/img/pixnum. -->
+        <div id="gwBalBox"><span id="gwBalValue"></span></div>
         <button id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
         <!-- DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT -->
         <div id="gwDepositWrap" style="display:none">
@@ -5443,9 +5476,20 @@
         // recibe el tinte del modo), no hace falta cargarlo desde aqui.
         // El arte del selector grande si: es un background normal.
         CARTEL_HERO_READY_PROMISE.then(() => {
-            if (!cartelUsesAtlas('color-picker')) return;
-            const cp = document.getElementById('colorPicker');
-            if (cp) cp.style.setProperty('--cp-art', 'url(' + cartelHeroUrl('color-picker') + ')');
+            if (cartelUsesAtlas('color-picker')) {
+                const cp = document.getElementById('colorPicker');
+                if (cp) cp.style.setProperty('--cp-art', 'url(' + cartelHeroUrl('color-picker') + ')');
+            }
+            // Arte de la barra de wallet. Las variables van en #gameWalletArea y
+            // las heredan los botones; si algun PNG falta, su regla se queda sin
+            // fondo y el boton sigue funcionando (solo pierde el arte).
+            const wa = document.getElementById('gameWalletArea');
+            if (wa) {
+                const pon = (v, id) => { if (cartelUsesAtlas(id)) wa.style.setProperty(v, 'url(' + cartelHeroUrl(id) + ')'); };
+                pon('--gw-connect', 'wallet-connect');
+                pon('--gw-red', 'wallet-btn-red');
+                pon('--gw-bar', 'ingame-bar');
+            }
         });
         // La placa de abajo del arte abre el selector grande.
         const pick = document.getElementById('palPick');
@@ -6519,6 +6563,48 @@
             } catch (e) { return false; }
         }
     };
+    /* Cantidad pintada con los digitos de David (game/img/pixnum). Los 10
+     * glifos miden exactamente lo mismo de alto (104 px) una vez recortados, asi
+     * que basta con darles la misma altura y se alinean solos; el punto es mas
+     * bajo y va pegado abajo (de ahi el align-items:flex-end del contenedor).
+     * Las comas de los miles NO se pintan: no hay glifo para ellas y meter una
+     * coma de texto entre digitos de arte cantaba, asi que se quitan. */
+    // Anchos de los glifos ya recortados (todos miden 104 de alto menos el punto,
+    // 32x43). Se usan para saber cuanto ocupa una cifra SIN esperar a que carguen
+    // las imagenes ni medir el DOM imagen a imagen.
+    const PIXNUM_W = { '0': 72, '1': 53, '2': 69, '3': 69, '4': 65, '5': 74, '6': 69, '7': 67, '8': 72, '9': 69 };
+    const PIXNUM_H = 104, PIXDOT_W = 32, PIXDOT_H = 43, PIXDOT_ESC = 0.41;
+    const PIXNUM_GAP = 0.025;     // separacion, en fraccion del ancho del hueco
+    const PIXNUM_ALTO = 0.25;     // alto de diseño = el del rotulo horneado
+    function renderPixAmount(el, texto) {
+        if (!el) return;
+        const s = String(texto).replace(/,/g, '');
+        if (el.dataset.pix === s) return;   // no rehacer el DOM si no cambio
+        el.dataset.pix = s;
+        el.innerHTML = '';
+        let rel = 0, n = 0;   // ancho total en unidades de "alto de linea"
+        for (const ch of s) {
+            const nombre = ch === '.' ? 'dot' : (ch >= '0' && ch <= '9' ? ch : null);
+            if (!nombre) continue;
+            rel += nombre === 'dot' ? (PIXDOT_W / PIXDOT_H) * PIXDOT_ESC : PIXNUM_W[ch] / PIXNUM_H;
+            n++;
+            const img = document.createElement('img');
+            img.src = 'img/pixnum/' + nombre + '.png';
+            if (nombre === 'dot') img.className = 'pix-dot';
+            img.alt = ch;
+            el.appendChild(img);
+        }
+        // Con muchos digitos la cifra no cabe en el hueco y se comeria los
+        // rotulos horneados: se encoge lo justo para entrar, nunca por encima
+        // del tamaño de diseño.
+        el.style.height = '';
+        const W = el.clientWidth, padre = el.parentElement;
+        if (W > 0 && rel > 0 && padre) {
+            const hDiseno = padre.clientHeight * PIXNUM_ALTO;
+            const hCabe = (W - Math.max(0, n - 1) * W * PIXNUM_GAP) / rel;
+            el.style.height = Math.max(1, Math.min(hDiseno, hCabe)) + 'px';
+        }
+    }
     // UI de wallet en el juego: panel arriba-derecha, deposit modal, balance "in GAME"
     const GameWalletUI = {
         gameBalance: 0,
@@ -6530,7 +6616,7 @@
             if (GameWallet.address) {
                 conn.style.display = 'none'; dep.style.display = 'inline-block';
                 try { this.gameBalance = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
-                if (balVal) balVal.innerText = this.fmt(this.gameBalance);
+                if (balVal) renderPixAmount(balVal, this.fmt(this.gameBalance));
                 if (balBox) balBox.style.display = 'inline-flex';
             } else {
                 conn.style.display = 'inline-block'; dep.style.display = 'none';

@@ -50,6 +50,11 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // Selector grande de color: 12 grupos de 3x3 = 108 tonos, ya pintados en el
     // arte (las zonas clicables van encima, ver CP_COLORS en index.html).
     'color-picker',
+    // Barra de wallet: CONNECT con el rotulo horneado, el rojo VACIO que
+    // comparten DEPOSIT/WITHDRAW/DISCONNECT (el texto va por CSS encima), el
+    // azul de PLAY ONLINE y la barra del saldo (IN GAME: ... $PILL horneados,
+    // la cantidad se compone con los digitos de img/pixnum).
+    'wallet-connect', 'wallet-btn-red', 'btn-azul', 'ingame-bar',
     // OK gris (arte de David, recortado de un checker de transparencia
     // guardado como jpg): solo para los modales/mensajes de wallet que usan
     // el marco gris (menu-gris) — el resto de OK siguen con el verde.
