@@ -341,10 +341,26 @@
 
         /* --- MODE SCREEN (DESKTOP DEFAULT) --- */
         #modeScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; display: flex; overflow: hidden; background: #000; transition: opacity 0.5s; }
-        .back-to-web { position: absolute; top: 22px; left: 24px; z-index: 200; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border: 1px solid rgba(0,255,136,0.35); border-radius: 8px; color: #00ff88; font-family: 'Russo One',sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; cursor: pointer; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
-        .back-to-web:hover { background: #00ff88; color: #04150c; border-color: #00ff88; box-shadow: 0 0 22px rgba(0,255,136,0.55); transform: translateX(-2px); }
-        .back-to-web svg { transition: transform 0.25s; }
-        .back-to-web:hover svg { transform: translateX(-3px); }
+        /* Boton "BACK TO SITE": arte de David (back-to-site.png, la flecha ya
+           viene dibujada a la izquierda), estirado ENTERO a tamaño uniforme
+           (mismo factor en ancho y alto — no distorsiona el marco) y el
+           rotulo escrito encima con la fuente pixel del menu, igual que
+           IN GAME (el PNG no trae texto horneado).
+           210x68 (aspect real 3136/1008 = 3.111): medido en el DOM, "BACK TO
+           SITE" en Press Start 2P a 9px + 2px de letter-spacing ocupa 132px —
+           a 180x58 (lo primero que probé) se salia 8px por la derecha. */
+        .back-to-web {
+            position: absolute; top: 22px; left: 24px; z-index: 200;
+            display: flex; align-items: center;
+            height: 68px; width: 210px; box-sizing: border-box;
+            padding: 0 14px 0 66px;
+            background: url('img/cartel-hero/back-to-site.png') center/100% 100% no-repeat;
+            image-rendering: pixelated;
+            color: #fff; font-family: 'Russo One',sans-serif; font-size: 11px; letter-spacing: 2px;
+            text-transform: uppercase; text-decoration: none; white-space: nowrap;
+            cursor: pointer; transition: filter 0.2s, transform 0.2s;
+        }
+        .back-to-web:hover { filter: brightness(1.15); transform: translateX(-2px); }
         .mode-panel { position: absolute; top: 0; bottom: 0; width: 100%; transition: clip-path 1.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.85s; cursor: pointer; display: flex; flex-direction: column; justify-content: center; padding: 0 10%; box-sizing: border-box; }
         
         /* Sin estado "neutral": la base YA es el aspecto de ARCADE (antes era
@@ -733,14 +749,16 @@
         .result-actions { display: flex; flex-direction: column; }
         .result-box { background: rgba(10, 15, 10, 0.95); border: 1px solid var(--primary); box-shadow: 0 0 50px rgba(0, 255, 136, 0.15); padding: 20px 30px; border-radius: 12px; text-align: center; width: 380px; animation: slideUp 0.4s ease-out; position: relative; max-height: 95vh; overflow-y: auto; }
         @keyframes slideUp { from {transform:translateY(20px); opacity:0;} to {transform:translateY(0); opacity:1;} }
-        .back-icon { position: absolute; top: 22px; left: 24px; z-index: 65; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); border: 1px solid rgba(0,255,136,0.35); border-radius: 8px; color: #00ff88; cursor: pointer; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); user-select: none; }
-        .back-icon:hover { background: #00ff88; color: #04150c; border-color: #00ff88; box-shadow: 0 0 22px rgba(0,255,136,0.55); transform: translateX(-2px); }
-        .back-icon svg { transition: transform 0.25s; }
-        .back-icon:hover svg { transform: translateX(-3px); }
-        .back-icon.back-mode-classic { border-color: rgba(0,255,170,0.5); color: #00ffaa; }
-        .back-icon.back-mode-classic:hover { background: #00ffaa; color: #04150c; border-color: #00ffaa; box-shadow: 0 0 22px rgba(0,255,170,0.55); }
-        .back-icon.back-mode-arcade { border-color: rgba(204,255,0,0.5); color: #ccff00; }
-        .back-icon.back-mode-arcade:hover { background: #ccff00; color: #04150c; border-color: #ccff00; box-shadow: 0 0 22px rgba(204,255,0,0.55); }
+        /* Flecha de "volver al selector de modos": arte de David
+           (back-arrow.png) en vez del icono SVG + caja verde de antes. El PNG
+           ya trae su propio marco, asi que aqui solo queda tamaño y posicion;
+           sin fondo/borde/color propios (serian el rectangulo viejo asomando
+           detras del arte nuevo). Mismos 44x44 y sitio de siempre. */
+        .back-icon { position: absolute; top: 22px; left: 24px; z-index: 65; width: 44px; height: 44px; aspect-ratio: 1024/1007; background: url('img/cartel-hero/back-arrow.png') center/100% 100% no-repeat; image-rendering: pixelated; cursor: pointer; transition: filter 0.2s, transform 0.2s; user-select: none; }
+        .back-icon:hover { filter: brightness(1.15); transform: translateX(-2px); }
+        /* selectMode() sigue poniendo back-mode-classic/back-mode-arcade (linea
+           ~5440): antes recoloreaban el borde por modo (verde/amarillo), el
+           arte nuevo es fijo y ya no las necesita — se dejan sin regla aqui. */
         h1 { margin: 0 0 5px 0; color: #fff; font-family: 'Russo One'; font-size: 28px; text-transform: uppercase; }
         /* Cabecera del menu: titulo grande a la izquierda, descripcion al lado.
            Sin lineas ni cajas — flota libre como el resto. */
@@ -1064,6 +1082,9 @@
         #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
         #layoutEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
         #layoutEditBar .leb-btn.done { background: #0f8f46; color: #fff; border-color: #000; }
+        #layoutEditBar .leb-group { display: flex; align-items: center; gap: 5px; padding-left: 10px; border-left: 1px solid #2a2f36; }
+        #layoutEditBar .leb-label { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #6a737e; letter-spacing: 0.5px; }
+        #layoutEditBar .leb-btn.leb-sm { padding: 5px 10px; font-size: 10px; }
 
         /* Carteles ROOM PRICES / DAILY QUESTS: marco de piedra + fondo (PNG de
            David, quest-panel.png) via _pixFrameRule en buildPixPanelCss. */
@@ -1154,11 +1175,14 @@
         .tooltip-title { color: #fff; font-family: 'Russo One'; font-size: 16px; margin: 0 0 5px 0; text-transform: uppercase; }
         .tooltip-divider { width: 40px; height: 3px; background: var(--gold); margin-bottom: 10px; }
         .tooltip-desc { color: #ccc; font-size: 11px; line-height: 1.4; margin-bottom: 15px; }
-        /* ===== TEXTURE PACK PIXEL: relieve pixel art en menús (mismos colores) ===== */
+        /* ===== TEXTURE PACK PIXEL: relieve pixel art en menús (mismos colores) =====
+           .back-to-web YA NO entra aqui: es el PNG de David (back-to-site.png)
+           con su propio marco horneado, y este bisel rectangular asomaba por
+           detras (mismo motivo que #gameWalletArea button, ver mas abajo). */
         body.pixel-pack .gameModalBox, body.pixel-pack .exit-box,
         body.pixel-pack .mqp, body.pixel-pack #buffTable,
         body.pixel-pack #leaderboard, body.pixel-pack #oraclePanel, body.pixel-pack #missionsPanel,
-        body.pixel-pack .back-to-web, body.pixel-pack .mqp-btn {
+        body.pixel-pack .mqp-btn {
             border-radius: 0 !important; backdrop-filter: none !important;
             box-shadow: 6px 6px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.07), inset -2px -2px 0 rgba(0,0,0,0.55) !important;
         }
@@ -1705,6 +1729,21 @@
     <!-- Barra del editor de layout del menu: visible solo en modo edicion -->
     <div id="layoutEditBar" style="display:none;">
         <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW / TEXT SIZE (IN GAME) &nbsp;·&nbsp; CTRL+WHEEL = WIDTH (IN GAME) &nbsp;·&nbsp; CTRL+SHIFT+WHEEL = HEIGHT &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <!-- Botones sueltos para el texto/ancho de IN GAME: el gesto de rueda
+             (ALT / CTRL+rueda) depende de acertar el punto exacto con el raton
+             y de que el navegador no se coma la combinacion (CTRL+rueda hace
+             zoom de pagina si el puntero se sale un pixel de la caja). Estos
+             botones hacen lo mismo sin depender de puntería. -->
+        <span class="leb-group">
+            <span class="leb-label">IN GAME TXT</span>
+            <button class="leb-btn leb-sm" onclick="bumpWalletFont(-1)">−</button>
+            <button class="leb-btn leb-sm" onclick="bumpWalletFont(1)">+</button>
+        </span>
+        <span class="leb-group">
+            <span class="leb-label">IN GAME WIDTH</span>
+            <button class="leb-btn leb-sm" onclick="bumpWalletWidth(-10)">−</button>
+            <button class="leb-btn leb-sm" onclick="bumpWalletWidth(10)">+</button>
+        </span>
         <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
         <button class="leb-btn" onclick="saveLayoutGlobal(this)">SAVE FOR ALL</button>
         <button class="leb-btn done" onclick="exitLayoutEdit()">DONE</button>
@@ -1793,10 +1832,9 @@
     </div>
 
     <div id="modeScreen">
+        <!-- El arte de back-to-site.png ya trae la flecha dibujada a la izquierda:
+             sin SVG, solo el rotulo (el PNG no trae texto horneado). -->
         <a href="../" class="back-to-web" title="Back to PillWars site" onclick="event.stopPropagation();">
-            <svg viewBox="-2 -2 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
             <span>BACK TO SITE</span>
         </a>
         <!-- La escena de los portales se dibuja pixel a pixel en un canvas a
@@ -1846,11 +1884,8 @@
            reescalado sin suavizado (mismo rollo que la escena de modos y el
            grid del juego). Se repinta con el tinte del modo en selectMode. -->
       <canvas id="loginBgCv"></canvas>
-      <div class="back-icon" onclick="goBackToModes()">
-          <svg viewBox="-2 -2 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-      </div>
+      <!-- El arte de back-arrow.png ya trae dibujada la flecha: sin SVG dentro. -->
+      <div class="back-icon" onclick="goBackToModes()"></div>
       <div class="menu-row">
         <div class="login-box">
             <!-- Cabecera: titulo del modo + 2 frases breves a la derecha -->
@@ -6011,16 +6046,19 @@
         // La barra de saldo y los botones de wallet solo salen con la cartera
         // conectada; en el editor se enseñan igual para poder colocarlos, con un
         // saldo de muestra para ver como queda la cifra mas larga.
-        // CONNECT se queda OCULTO: comparte hueco y entrada de layout con
-        // DEPOSIT, asi que enseñarlo solo pondria un boton encima del otro —
-        // moviendo DEPOSIT se mueve CONNECT igual.
+        // CONNECT y DEPOSIT se enseñan LOS DOS a la vez (David los quiere
+        // siempre en el mismo sitio y quiere verlo): comparten entrada de
+        // layout, asi que salen exactamente superpuestos — eso es lo correcto,
+        // no un fallo. CONNECT medio transparente para distinguir cual es cual
+        // sin esconder ninguno.
         const wa = document.getElementById('gameWalletArea');
         if (wa) { wa._layoutPrevDisplay = wa.style.display; wa.style.display = 'flex'; }
         for (const id of ['gwBalBox', 'gwDepositWrap', 'gwConnect']) {
             const el = document.getElementById(id);
             if (!el) continue;
             el._layoutPrevDisplay = el.style.display;
-            el.style.display = id === 'gwConnect' ? 'none' : (id === 'gwBalBox' ? 'flex' : 'block');
+            el.style.display = id === 'gwBalBox' ? 'flex' : 'block';
+            if (id === 'gwConnect') el.style.opacity = '0.55';
         }
         const bal = document.getElementById('gwBalValue');
         if (bal && !bal.textContent.trim()) bal.textContent = '999,999,999';
@@ -6034,12 +6072,36 @@
             const el = document.getElementById(id);
             if (el && el._layoutPrevDisplay !== undefined) { el.style.display = el._layoutPrevDisplay; delete el._layoutPrevDisplay; }
         }
-        // El saldo real lo repone GameWalletUI.refresh en cuanto toque.
+        const gwc = document.getElementById('gwConnect');
+        if (gwc) gwc.style.opacity = '';
+        // El display que se restaura arriba (_layoutPrevDisplay) es una FOTO de
+        // antes de entrar al editor: si mientras tanto conectaste/desconectaste
+        // la wallet, esa foto ya no vale. refresh() lo deja correcto al momento
+        // en vez de esperar al siguiente tick de los 6s del setInterval.
         if (!GameWallet.address) { const bal = document.getElementById('gwBalValue'); if (bal) bal.textContent = ''; }
+        if (typeof GameWalletUI !== 'undefined') GameWalletUI.refresh();
         document.querySelectorAll('.menu-editable').forEach(el => el.classList.remove('menu-editable'));
         document.getElementById('layoutEditBar').style.display = 'none';
         saveMenuLayout();
         invalidateLoginUIRects();   // el layout cambió → recalcular zonas prohibidas
+    }
+    // Botones sueltos IN GAME TXT/WIDTH (ver #layoutEditBar): mismo efecto que
+    // ALT+rueda / CTRL+rueda sobre la caja, pero sin depender de acertar el
+    // punto exacto con el raton ni de que el navegador no se coma la
+    // combinacion (CTRL+rueda fuera de la caja hace zoom de pagina).
+    function bumpWalletFont(delta) {
+        const el = document.querySelector(LAYOUT_ELS.walletBar); if (!el) return;
+        const cur = menuLayout.walletBar = menuLayout.walletBar || { x: 0, y: 0, s: 1 };
+        const base = typeof cur.f === 'number' ? cur.f : (parseFloat(getComputedStyle(el).getPropertyValue('--gw-font')) || 13);
+        cur.f = Math.round(Math.min(48, Math.max(6, base + delta)) * 10) / 10;
+        marcarLayoutMio('walletBar'); applyMenuLayout(); saveMenuLayout();
+    }
+    function bumpWalletWidth(delta) {
+        const el = document.querySelector(LAYOUT_ELS.walletBar); if (!el) return;
+        const cur = menuLayout.walletBar = menuLayout.walletBar || { x: 0, y: 0, s: 1 };
+        const base = typeof cur.w === 'number' ? cur.w : el.getBoundingClientRect().width;
+        cur.w = Math.max(40, Math.min(900, base + delta));
+        marcarLayoutMio('walletBar'); applyMenuLayout(); saveMenuLayout();
     }
     // RESET ALL vuelve a cero Y suelta las claves propias: a partir de aqui
     // manda otra vez el global del servidor.
@@ -6852,7 +6914,15 @@
         async refresh() {
             const balBox = document.getElementById('gwBalBox'), balVal = document.getElementById('gwBalValue');
             const conn = document.getElementById('gwConnect'), dep = document.getElementById('gwDepositWrap');
+            // GameWallet.ensure() de abajo es async: si esto se llama justo al
+            // entrar al menu (setVisible → refresh), la funcion queda en pausa
+            // ahi y el resto (los display de conn/dep/balBox) se ejecuta MAS
+            // TARDE, cuando quiza ya estas en SETTINGS -> EDIT LAYOUT. Sin este
+            // corte, ese "mas tarde" pisaba lo que el editor acababa de forzar
+            // visible (por eso CONNECT/DEPOSIT o la barra IN GAME desaparecian
+            // solos, o "saltaban", nada mas abrir el editor).
             if (!GameWallet.address) { await GameWallet.ensure(); }
+            if (layoutEditing) return;
             if (GameWallet.address) {
                 conn.style.display = 'none'; dep.style.display = 'inline-block';
                 try { this.gameBalance = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
