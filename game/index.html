@@ -171,16 +171,11 @@
         /* Wallet area en el juego: dos cajas separadas (saldo / botones) arriba-derecha.
            Solo visible en menú de modo. El color del botón toma --mode-color del modo activo. */
         #gameWalletArea { position: absolute; top: 20px; right: 175px; z-index: 100; display: none; align-items: center; gap: 10px; font-family: 'Russo One',sans-serif; }
-        /* ===== Barra de wallet con el arte de David =====
-           El saldo va sobre ingame-bar.png (el rotulo "IN GAME:" y "$PILL" estan
-           HORNEADOS en la imagen) y la cantidad se compone con los digitos
-           sueltos de game/img/pixnum — de ahi que aqui no haya ni fuente ni
-           color: lo pinta todo el arte. Ver renderPixAmount(). ===== */
-        /* El recuadro azul va VACIO (a los rotulos que traia horneados se les
-           borro el texto): "IN GAME:" y "$PILL" se escriben aqui con la fuente
-           pixel del juego, que es lo que pidio David — asi casan con el resto
-           del menu y no dependen del arte. En medio, la cantidad con sus
-           digitos. */
+        /* ===== Barra de wallet =====
+           El recuadro azul (ingame-bar.png) va VACIO: se le borro el texto que
+           traia horneado, y "IN GAME:", la cantidad y "$PILL" se escriben aqui
+           con la fuente pixel del juego. Asi casan con el resto del menu y no
+           dependen del arte. ===== */
         #gwBalBox {
             display: none; align-items: center; justify-content: space-between;
             width: 232px; aspect-ratio: 1814 / 459;
@@ -192,12 +187,14 @@
             font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
+        /* La cantidad va con la MISMA fuente que los rotulos (lo pidio David):
+           los glifos sueltos que habia antes desentonaban al lado del texto del
+           resto del menu. */
         #gwBalValue {
-            flex: 1; min-width: 0; height: 26%;
-            display: flex; align-items: flex-end; justify-content: flex-end; gap: 2.5%;
+            flex: 1; min-width: 0; text-align: right;
+            font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
-        #gwBalValue img { height: 100%; width: auto; image-rendering: pixelated; display: block; }
-        #gwBalValue img.pix-dot { height: 42%; }   /* el punto es mas bajo: se alinea abajo */
         /* Botones de wallet: cada uno es su PNG estirado. CONNECT trae el rotulo
            horneado; los otros tres comparten el rojo vacio y llevan el texto
            encima, por eso conservan font/color. */
@@ -917,17 +914,18 @@
            EDIT LAYOUT, igual que la paleta. ===== */
         .color-picker {
             position: absolute; left: 50%; bottom: -6px; margin-left: -170px;
-            z-index: 40; width: 340px; aspect-ratio: 924 / 868;
+            z-index: 40; width: 340px; aspect-ratio: 924 / 683;
         }
         .cp-frame {
             position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1;
             pointer-events: none; filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55));
         }
-        /* Area util = el interior verde del cartel, medido sobre el PNG: la
-           piedra ocupa un 4.5% por los lados y un 5% arriba; abajo se deja mas
-           hueco porque ahi estan el aparato central y los cohetes. */
+        /* Area util con AIRE respecto a la estructura: el interior verde empieza
+           en el 4.5% por los lados y el 6.4% arriba, y las plataformas de abajo
+           ocupan desde el 92%. Los margenes van por encima de esos valores para
+           que ningun cuadro llegue a tocar la piedra. */
         .cp-cells {
-            position: absolute; left: 8%; right: 8%; top: 7%; bottom: 29%; z-index: 2;
+            position: absolute; left: 9.5%; right: 9.5%; top: 11%; bottom: 15%; z-index: 2;
             display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(3, 1fr);
             gap: 4%;
         }
@@ -1930,11 +1928,12 @@
             // un background de CSS plano al lado de los carteles grandes.
             var imagenPal = new Image();
             imagenPal.src = 'img/cartel-hero/palette.png';
-            // El selector de color usa el marco de piedra de los carteles
-            // grandes, pero en su version ESTATICA: aqui no pinta nada tenerlo
-            // animado y asi no se repinta 60 veces por segundo.
+            // El selector usa el mismo marco de piedra pero SIN los cohetes
+            // (panel-liso.png = el cartel cortado justo antes de las llamas):
+            // aqui el fuego no pinta nada, y de paso el recorte deja una
+            // proporcion (1.35) que le va mejor a la rejilla de 4x3.
             var imagenCartel = new Image();
-            imagenCartel.src = 'img/cartel-hero/quest-panel-v2.png';
+            imagenCartel.src = 'img/cartel-hero/panel-liso.png';
             var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg'), document.getElementById('palFrame'), document.getElementById('cpFrame')];
             // null = la fuente comun de los carteles grandes. Si no, {el, video}.
             var fuentes = [null, null, { el: imagenPal, video: false }, { el: imagenCartel, video: false }];
@@ -6599,50 +6598,6 @@
             } catch (e) { return false; }
         }
     };
-    /* Cantidad pintada con los digitos de David (game/img/pixnum). Los 10
-     * glifos miden exactamente lo mismo de alto (104 px) una vez recortados, asi
-     * que basta con darles la misma altura y se alinean solos; el punto es mas
-     * bajo y va pegado abajo (de ahi el align-items:flex-end del contenedor).
-     * Las comas de los miles NO se pintan: no hay glifo para ellas y meter una
-     * coma de texto entre digitos de arte cantaba, asi que se quitan. */
-    // Anchos de los glifos ya recortados (todos miden 104 de alto menos el punto,
-    // 32x43). Se usan para saber cuanto ocupa una cifra SIN esperar a que carguen
-    // las imagenes ni medir el DOM imagen a imagen.
-    const PIXNUM_W = { '0': 71, '1': 53, '2': 69, '3': 69, '4': 65, '5': 74, '6': 69, '7': 67, '8': 72, '9': 69 };
-    const PIXNUM_H = 102, PIXDOT_W = 32, PIXDOT_H = 43, PIXDOT_ESC = 0.42;
-    const PIXNUM_GAP = 0.025;     // separacion, en fraccion del ancho del hueco
-    const PIXNUM_ALTO = 0.25;     // alto de diseño = el del rotulo horneado
-    function renderPixAmount(el, texto) {
-        if (!el) return;
-        const s = String(texto).replace(/,/g, '');
-        if (el.dataset.pix === s) return;   // no rehacer el DOM si no cambio
-        el.dataset.pix = s;
-        el.innerHTML = '';
-        let rel = 0, n = 0;   // ancho total en unidades de "alto de linea"
-        for (const ch of s) {
-            const nombre = ch === '.' ? 'dot' : (ch >= '0' && ch <= '9' ? ch : null);
-            if (!nombre) continue;
-            rel += nombre === 'dot' ? (PIXDOT_W / PIXDOT_H) * PIXDOT_ESC : PIXNUM_W[ch] / PIXNUM_H;
-            n++;
-            const img = document.createElement('img');
-            img.src = 'img/pixnum/' + nombre + '.png';
-            if (nombre === 'dot') img.className = 'pix-dot';
-            img.alt = ch;
-            el.appendChild(img);
-        }
-        // Con muchos digitos la cifra no cabe en el hueco y se comeria los
-        // rotulos horneados: se encoge lo justo para entrar, nunca por encima
-        // del tamaño de diseño.
-        el.style.height = '';
-        const W = el.clientWidth, padre = el.parentElement;
-        if (W > 0 && rel > 0 && padre) {
-            const hDiseno = padre.clientHeight * PIXNUM_ALTO;
-            // 0.94 y no 1: llenar el hueco al ras dejaba la cifra pegada a los
-            // rotulos horneados de los lados.
-            const hCabe = (W * 0.94 - Math.max(0, n - 1) * W * PIXNUM_GAP) / rel;
-            el.style.height = Math.max(1, Math.min(hDiseno, hCabe)) + 'px';
-        }
-    }
     // UI de wallet en el juego: panel arriba-derecha, deposit modal, balance "in GAME"
     const GameWalletUI = {
         gameBalance: 0,
@@ -6654,7 +6609,7 @@
             if (GameWallet.address) {
                 conn.style.display = 'none'; dep.style.display = 'inline-block';
                 try { this.gameBalance = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
-                if (balVal) renderPixAmount(balVal, this.fmt(this.gameBalance));
+                if (balVal) balVal.textContent = this.fmt(this.gameBalance);
                 if (balBox) balBox.style.display = 'inline-flex';
             } else {
                 conn.style.display = 'inline-block'; dep.style.display = 'none';
