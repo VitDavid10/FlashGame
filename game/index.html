@@ -165,6 +165,12 @@
         
         #soundToggle { right: 20px; }
         #musicToggle { right: 70px; }
+        /* En el selector ARCADE/CLASSIC no se muestran: solo en login y partida.
+           :has(#modeScreen) sin display:none = estamos eligiendo modo. */
+        body:has(#modeScreen:not([style*="display: none"]):not([style*="display:none"])) #soundToggle,
+        body:has(#modeScreen:not([style*="display: none"]):not([style*="display:none"])) #musicToggle {
+            display: none !important;
+        }
         #exitGameBtn { right: 120px; border-color: #522; color: #f55; display: none; }
         #exitGameBtn:hover { background: rgba(255, 50, 50, 0.2); border-color: #f00; color: #fff; }
 
@@ -1747,10 +1753,9 @@
             </div>
 
             <div class="section-title" style="margin-top:15px;">Menu Layout</div>
-            <!-- OCULTO: el layout del menu ya esta fijado (MENU_LAYOUT_HORNEADO).
-                 Solo reaparece si se enciende "Layout editors" en el panel admin,
-                 que llega en el campo layoutEdit de /api/rooms. -->
-            <button class="btn-settings" id="btnEditLayout" style="margin-top:6px;display:none;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
+            <!-- EDIT LAYOUT visible: hace falta para escalar el texto de IN GAME
+                 (ALT+rueda / botones IN GAME TXT) y colocar barra/botones wallet. -->
+            <button class="btn-settings" id="btnEditLayout" style="margin-top:6px;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
 
             <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
