@@ -222,26 +222,33 @@
         }
         /* Botones de wallet: cada uno es su PNG estirado. CONNECT trae el rotulo
            horneado; los otros tres comparten el rojo vacio y llevan el texto
-           encima, por eso conservan font/color. */
+           encima, por eso conservan font/color.
+           Sin background-color del user-agent (en algunos navegadores el
+           <button> pinta blanco detras del PNG y se ve un rectangulo claro). */
         #gameWalletArea button {
-            background: transparent; border: 0; padding: 0; cursor: pointer;
-            font-family: 'Press Start 2P', monospace; font-size: 13px; letter-spacing: 0;
+            background-color: transparent !important;
+            background-image: none;
+            border: 0; padding: 0; cursor: pointer;
+            font-family: 'Press Start 2P', monospace; font-size: 13px !important; letter-spacing: 0;
             color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase;
             image-rendering: pixelated; display: grid; place-items: center;
             /* drop-shadow y no box-shadow: sigue el CONTORNO del PNG (la pildora),
                no el rectangulo del elemento — el box-shadow de antes se salia por
                las esquinas curvas. */
             filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
+            -webkit-appearance: none; appearance: none;
         }
-        /* DISCONNECT es la palabra mas larga de las tres y a 13px se salia del
-           boton: solo esa baja de cuerpo, las otras dos se quedan grandes. */
-        #gameWalletArea #gwDropdown button:last-child { font-size: 10px; }
+        /* Misma fuente y mismo ancho en DEPOSIT / WITHDRAW / DISCONNECT.
+           Antes DISCONNECT bajaba a 10px; ahora los tres van a 13px y el boton
+           es lo bastante ancho para la palabra mas larga (queda hueco en las
+           cortas, centrado). */
         /* Con el id a secas NO basta: "#gameWalletArea button" (id + tipo) tiene
            mas especificidad que "#gwDeposit" (id) y su background:transparent
            ganaba, dejando los botones sin arte. */
         #gameWalletArea #gwConnect {
-            width: 150px; aspect-ratio: 766 / 200;
+            width: 190px; aspect-ratio: 766 / 200;
             background: var(--gw-connect, none) center/100% 100% no-repeat;
+            background-color: transparent !important;
             /* El rotulo va en el PNG: color transparent no basta, el
                text-shadow de la regla base NO depende del color de relleno y
                seguia dibujando un "CONNECT" negro encima del arte. */
@@ -250,9 +257,11 @@
         #gameWalletArea #gwDeposit, #gameWalletArea #gwDropdown button {
             /* aspect-ratio del recorte SIN el contorno negro (David se lo quito
                el mismo): la caja util encoge al quitar el marco, por eso pasa
-               de 1784/464 a esto. */
-            width: 150px; aspect-ratio: 1724 / 403;
+               de 1784/464 a esto. Ancho 190: cabe DISCONNECT a 13px. */
+            width: 190px; aspect-ratio: 1724 / 403;
             background: var(--gw-red, none) center/100% 100% no-repeat;
+            background-color: transparent !important;
+            font-size: 13px !important;
         }
         /* brightness se SUMA al drop-shadow de la regla base (filter acumula
            funciones); si aqui solo pusiera brightness, sustituiria el filter
@@ -363,10 +372,14 @@
             height: 68px; width: 210px; box-sizing: border-box;
             padding: 0 14px 0 66px;
             background: url('img/cartel-hero/back-to-site.png') center/100% 100% no-repeat;
-            image-rendering: auto;
-            color: #fff; font-family: 'Russo One',sans-serif; font-size: 11px; letter-spacing: 2px;
+            image-rendering: pixelated;
+            color: #fff; font-family: 'Press Start 2P', monospace !important; font-size: 9px !important; letter-spacing: 0;
             text-transform: uppercase; text-decoration: none; white-space: nowrap;
             cursor: pointer; transition: filter 0.2s, transform 0.2s;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
+        }
+        .back-to-web span {
+            font-family: 'Press Start 2P', monospace !important; font-size: 9px !important; letter-spacing: 0;
         }
         .back-to-web:hover { filter: brightness(1.15); transform: translateX(-2px); }
         .mode-panel { position: absolute; top: 0; bottom: 0; width: 100%; transition: clip-path 1.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.85s; cursor: pointer; display: flex; flex-direction: column; justify-content: center; padding: 0 10%; box-sizing: border-box; }
@@ -1606,18 +1619,22 @@
         </div>
     </div>
 
-    <!-- Deposit modal del juego -->
+    <!-- Deposit modal del juego.
+         .gm-body agrupa filas/labels/input para poder mover/escalar ese bloque
+         entero desde carteles-preview (pieza desc). -->
     <div id="gameDepositModal" class="gameModal">
         <div class="gameModalBox">
             <span class="close" onclick="GameWalletUI.closeDeposit()">×</span>
             <h3>Deposit $PILL</h3>
-            <div class="gm-row"><span>In wallet</span><b id="gdWallet" style="color:#c8cdd2">—</b></div>
-            <div class="gm-row" style="margin-bottom:14px"><span>In GAME</span><b id="gdGame" style="color:#c8cdd2">—</b></div>
-            <label>Amount</label>
-            <div style="position:relative">
-                <input id="gdAmount" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 50000" value="50000" style="padding-right:60px"
-                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-                <button type="button" onclick="GameWalletUI.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid #c8cdd2;color:#c8cdd2;font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+            <div class="gm-body">
+                <div class="gm-row"><span>In wallet</span><b id="gdWallet" style="color:#c8cdd2">—</b></div>
+                <div class="gm-row" style="margin-bottom:14px"><span>In GAME</span><b id="gdGame" style="color:#c8cdd2">—</b></div>
+                <label>Amount</label>
+                <div style="position:relative">
+                    <input id="gdAmount" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 50000" value="50000" style="padding-right:60px"
+                           oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                    <button type="button" onclick="GameWalletUI.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid #c8cdd2;color:#c8cdd2;font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+                </div>
             </div>
             <button class="gm-btn" id="gdConfirm" onclick="GameWalletUI.deposit()">Deposit to GAME</button>
         </div>
@@ -1628,12 +1645,14 @@
         <div class="gameModalBox">
             <span class="close" onclick="GameWalletUI.closeWithdraw()">×</span>
             <h3>Withdraw $PILL</h3>
-            <div class="gm-row" style="margin-bottom:14px"><span>In GAME</span><b id="gwdGame" style="color:#c8cdd2">—</b></div>
-            <label>Amount</label>
-            <div style="position:relative">
-                <input id="gwdAmount" type="text" inputmode="numeric" autocomplete="off" placeholder="amount to withdraw" style="padding-right:60px"
-                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-                <button type="button" onclick="GameWalletUI.fillMaxWithdraw()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid #c8cdd2;color:#c8cdd2;font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+            <div class="gm-body">
+                <div class="gm-row" style="margin-bottom:14px"><span>In GAME</span><b id="gwdGame" style="color:#c8cdd2">—</b></div>
+                <label>Amount</label>
+                <div style="position:relative">
+                    <input id="gwdAmount" type="text" inputmode="numeric" autocomplete="off" placeholder="amount to withdraw" style="padding-right:60px"
+                           oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                    <button type="button" onclick="GameWalletUI.fillMaxWithdraw()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid #c8cdd2;color:#c8cdd2;font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+                </div>
             </div>
             <button class="gm-btn" id="gwdConfirm" onclick="GameWalletUI.withdraw()">Withdraw to wallet</button>
         </div>
@@ -3863,14 +3882,13 @@
             // GAME OVER: la linea de kills/$PILL del overlay de resultado con la
             // misma fuente pixel (es la referencia de estilo de .pw-amt-pix).
             'body.pixel-pack #myResult{font-family:"Press Start 2P",monospace!important;font-size:13px!important;line-height:2}';
-        // X de cierre pixel para los gameModal (VICTORY/CASHOUT/MATCH ENDED y
-        // el deposit): sustituye la x gris de texto por el PNG. Siempre la roja
-        // (close-x-red, arte de David) — la gris (close-x) ya no se usa en
-        // ningun sitio, quitada del atlas.
-        if (cartelUsesAtlas('close-x-red')) {
-            css += 'body.pixel-pack .gameModalBox .close{color:transparent!important;width:22px;height:21px;' +
-                'background:url(' + cartelHeroUrl('close-x-red') + ') center/contain no-repeat;image-rendering:pixelated}' +
-                'body.pixel-pack .gameModalBox .close:hover{filter:brightness(1.4)}';
+        // X de cierre pixel para los gameModal (deposit/withdraw y premio):
+        // solo x.png (arte de David en cartel-hero). Antes usaba close-x-red.
+        if (cartelUsesAtlas('x')) {
+            css += 'body.pixel-pack .gameModalBox .close{color:transparent!important;width:26px;height:26px;' +
+                'background:url(' + cartelHeroUrl('x') + ') center/contain no-repeat;image-rendering:pixelated;' +
+                'display:inline-block;line-height:0;overflow:hidden}' +
+                'body.pixel-pack .gameModalBox .close:hover{filter:brightness(1.2)}';
         }
         // Modal de deposito/retiro con el marco gris (menu-gris, el mismo del
         // selector de wallet/sala — todo lo de wallet/deposit va en gris, a

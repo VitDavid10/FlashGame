@@ -56,34 +56,37 @@ const CARTEL_SURFACES = {
         box: '#skillChoiceOverlay .skill-choice-card', title: '#skillChoiceTitle', desc: '#skillChoiceOverlay .skill-tips', actions: '#skillChoiceOverlay .skill-options',
     },
     gameDepositModal: {
-        label: 'DEPOSIT', grupo: 'Wallet',
-        box: '#gameDepositModal .gameModalBox', title: '#gameDepositModal h3', desc: '#gameDepositModal label', actions: '#gdConfirm',
-    },
-    gameWithdrawModal: {
-        label: 'WITHDRAW', grupo: 'Wallet',
-        box: '#gameWithdrawModal .gameModalBox', title: '#gameWithdrawModal h3', desc: '#gameWithdrawModal label', actions: '#gwdConfirm',
-    },
-    walletPickerModal: {
-        label: 'CONNECT WALLET', grupo: 'Wallet',
-        box: '#walletPickerModal .pw-modal-box', title: '#walletPickerModal .wp-title', desc: null, actions: '#walletPickerModal .pw-modal-cancel',
-    },
-    playChoiceModal: {
-        label: 'CHOOSE HOW TO PLAY', grupo: 'Menu',
-        box: '#playChoiceModal .pw-modal-box', title: '#playChoiceModal .pw-modal-title', desc: '#playChoiceModal .pw-btn-sub', actions: '#playChoiceModal .pw-modal-cancel',
-    },
-    roomChoiceModal: {
-        label: 'SELECT A ROOM', grupo: 'Menu',
-        box: '#roomChoiceModal .pw-modal-box', title: '#roomChoiceModal .wp-title', desc: '#roomChoiceModal .pw-btn-sub', actions: '#roomChoiceModal .wp-cancel',
-    },
-    settingsModal: {
-        label: 'SETTINGS', grupo: 'Menu',
-        box: '#settingsModal .pw-modal-box', title: '#settingsModal .pw-modal-title', desc: '#settingsModal .section-title', actions: '#settingsModal .pw-modal-cancel',
-    },
-    featuresModal: {
-        label: 'FEATURES', grupo: 'Menu',
-        box: '#featuresModal .pw-modal-box', title: '#featuresModal .pw-modal-title', desc: null, actions: '#featuresModal .pw-modal-cancel',
-    },
-};
+            label: 'DEPOSIT', grupo: 'Wallet',
+            // desc = .gm-body: "In wallet", "In GAME", Amount e input (escalables
+            // juntos en carteles-preview). Antes solo apuntaba a label y no se
+            // podia tocar el texto de las filas.
+            box: '#gameDepositModal .gameModalBox', title: '#gameDepositModal h3', desc: '#gameDepositModal .gm-body', actions: '#gdConfirm',
+        },
+        gameWithdrawModal: {
+            label: 'WITHDRAW', grupo: 'Wallet',
+            box: '#gameWithdrawModal .gameModalBox', title: '#gameWithdrawModal h3', desc: '#gameWithdrawModal .gm-body', actions: '#gwdConfirm',
+        },
+        walletPickerModal: {
+            label: 'CONNECT WALLET', grupo: 'Wallet',
+            box: '#walletPickerModal .pw-modal-box', title: '#walletPickerModal .wp-title', desc: null, actions: '#walletPickerModal .pw-modal-cancel',
+        },
+        playChoiceModal: {
+            label: 'CHOOSE HOW TO PLAY', grupo: 'Menu',
+            box: '#playChoiceModal .pw-modal-box', title: '#playChoiceModal .pw-modal-title', desc: '#playChoiceModal .pw-btn-sub', actions: '#playChoiceModal .pw-modal-cancel',
+        },
+        roomChoiceModal: {
+            label: 'SELECT A ROOM', grupo: 'Menu',
+            box: '#roomChoiceModal .pw-modal-box', title: '#roomChoiceModal .wp-title', desc: '#roomChoiceModal .pw-btn-sub', actions: '#roomChoiceModal .wp-cancel',
+        },
+        settingsModal: {
+            label: 'SETTINGS', grupo: 'Menu',
+            box: '#settingsModal .pw-modal-box', title: '#settingsModal .pw-modal-title', desc: '#settingsModal .section-title', actions: '#settingsModal .pw-modal-cancel',
+        },
+        featuresModal: {
+            label: 'FEATURES', grupo: 'Menu',
+            box: '#featuresModal .pw-modal-box', title: '#featuresModal .pw-modal-title', desc: null, actions: '#featuresModal .pw-modal-cancel',
+        },
+    };
 
 // Valores afinados (los del JSON). Vacio = todo de fabrica.
 let CARTEL_LAYOUT = {};
