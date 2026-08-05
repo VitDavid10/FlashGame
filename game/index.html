@@ -176,29 +176,38 @@
            traia horneado, y "IN GAME:", la cantidad y "$PILL" se escriben aqui
            con la fuente pixel del juego. Asi casan con el resto del menu y no
            dependen del arte. ===== */
-        /* 300px y no 232: con "IN GAME:" (80px) + la cantidad mas larga (110px) +
-           "$PILL" (50px) hacen falta 240px de texto, y en 232 no cabia. */
         /* justify-content:space-between + flex:1 en el valor dejaba "IN GAME:"
            pegado al borde izquierdo y la cifra pegada a "$PILL" por el otro
            lado: el hueco vacio quedaba JUSTO entre el rotulo y el numero, que es
            lo que se veia como un hueco enorme. Ahora todo va apretado a la
            izquierda con gaps pequeños e iguales entre los tres. */
+        /* 360x76 y letra de 13px: el texto mas largo ("IN GAME: 999,999,999
+           $PILL" = 24 caracteres) ocupa 24x13 + los dos gaps + el padding =
+           346px. A 300px solo cabia a 10px, que es lo que se veia diminuto
+           dentro del recuadro. Ancho, alto y cuerpo de letra son ajustables en
+           vivo desde SETTINGS -> EDIT LAYOUT (CTRL / CTRL+SHIFT / ALT + rueda).
+           Padding en px y no en %: el % se resuelve contra el ANCHO DEL PADRE,
+           asi que no acompañaba al estirar la caja. */
         #gwBalBox {
             display: none; align-items: center; justify-content: flex-start;
-            width: 300px; height: 76px;
+            width: 360px; height: 76px;
             background: var(--gw-bar, none) center/100% 100% no-repeat;
             image-rendering: pixelated; position: relative;
-            padding: 0 4%; box-sizing: border-box; gap: 5px;
+            padding: 0 12px; box-sizing: border-box; gap: 5px;
         }
+        /* El cuerpo de letra sale de --gw-font: se ajusta en vivo con
+           ALT+rueda desde SETTINGS -> EDIT LAYOUT (a 10px el texto ocupaba una
+           esquina del recuadro y quedaba ridiculo). El default de 13px es el
+           punto de partida; lo que se guarde manda. */
         #gwBalBox .gw-lbl {
-            font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff;
+            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px); color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
         /* La cantidad va con la MISMA fuente que los rotulos (lo pidio David):
            los glifos sueltos que habia antes desentonaban al lado del texto del
            resto del menu. */
         #gwBalValue {
-            font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff;
+            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px); color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
         /* Botones de wallet: cada uno es su PNG estirado. CONNECT trae el rotulo
@@ -221,7 +230,7 @@
            mas especificidad que "#gwDeposit" (id) y su background:transparent
            ganaba, dejando los botones sin arte. */
         #gameWalletArea #gwConnect {
-            width: 150px; aspect-ratio: 769 / 202;
+            width: 150px; aspect-ratio: 766 / 200;
             background: var(--gw-connect, none) center/100% 100% no-repeat;
             /* El rotulo va en el PNG: color transparent no basta, el
                text-shadow de la regla base NO depende del color de relleno y
@@ -229,7 +238,7 @@
             color: transparent; text-shadow: none;
         }
         #gameWalletArea #gwDeposit, #gameWalletArea #gwDropdown button {
-            width: 150px; aspect-ratio: 1797 / 473;
+            width: 150px; aspect-ratio: 1784 / 464;
             background: var(--gw-red, none) center/100% 100% no-repeat;
         }
         /* brightness se SUMA al drop-shadow de la regla base (filter acumula
@@ -850,6 +859,48 @@
         .pw-big-btn.wp-btn img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
         .pw-big-btn.wp-btn:hover:not(:disabled) { filter: brightness(1.2); transform: none; box-shadow: none; }
         .wallet-picker .pw-modal-cancel { margin-top: 20px; }
+
+        /* ===== Popups PLAY y SETTINGS =====
+           Mismo marco gris (menu-gris) que deposit/withdraw y el selector de
+           salas, y los botones con el arte de David: el rojo vacio de DEPOSIT
+           y su gemelo en azul. El CANCEL/CLOSE pasa a ser el PNG horneado
+           (cancel.png), asi que su texto va en transparente.
+           Los selectores llevan .play-picker/.settings-box (3 clases) para
+           ganarle a los .pw-big-btn.offline/.online de arriba, y ademas
+           !important donde pisan al bisel de body.pixel-pack. */
+        .pw-modal-box.play-picker, .pw-modal-box.settings-box {
+            border: none; box-shadow: none;
+            background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
+            image-rendering: pixelated; padding: 46px 42px 34px;
+        }
+        .play-picker .pw-big-btn, .settings-box .q-btn, .settings-box .ultra-btn {
+            border: none !important; border-image: none !important; border-radius: 0 !important;
+            box-shadow: none !important; image-rendering: pixelated;
+            background: transparent url('img/cartel-hero/wallet-btn-blue.png') center/100% 100% no-repeat;
+            color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
+            font-family: 'Press Start 2P', monospace;
+        }
+        /* Rojo = la accion principal (PLAY OFFLINE) y la calidad activa */
+        .play-picker .pw-big-btn.offline, .settings-box .q-btn.selected, .settings-box .ultra-btn.selected {
+            background-image: url('img/cartel-hero/wallet-btn-red.png');
+        }
+        .play-picker .pw-big-btn { height: 56px; width: 88%; margin: 4px auto 0; padding: 0; font-size: 13px; }
+        .settings-box .q-btn { padding: 0; height: 38px; font-size: 10px; font-weight: 400; }
+        .settings-box .ultra-btn { padding: 0; height: 34px; font-size: 8px; font-weight: 400; }
+        .play-picker .pw-big-btn:hover:not(:disabled), .settings-box .q-btn:hover, .settings-box .ultra-btn:hover {
+            filter: brightness(1.15); transform: none; box-shadow: none !important;
+            background-color: transparent; border-color: transparent; color: #fff;
+        }
+        .play-picker .pw-big-btn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: none !important; }
+        .play-picker .pw-big-btn:disabled { filter: grayscale(0.6) brightness(0.7); }
+        /* CANCEL / CLOSE horneado: el rotulo va en el PNG */
+        .play-picker .pw-modal-cancel, .settings-box .pw-modal-cancel {
+            border: none; box-shadow: none; padding: 0; width: 58%; aspect-ratio: 509/201;
+            display: block; margin: 18px auto 0; image-rendering: pixelated;
+            background: transparent url('img/cartel-hero/cancel.png') center/100% 100% no-repeat;
+            color: transparent; text-shadow: none;
+        }
+        .play-picker .pw-modal-cancel:hover, .settings-box .pw-modal-cancel:hover { filter: brightness(1.2); color: transparent; }
 
         /* FEATURES: modal ancho con los paneles de guia de cada modo dentro */
         .pw-modal-box.features { width: 720px; max-width: 94vw; max-height: 88vh; overflow-y: auto; text-align: left; }
@@ -1532,7 +1583,7 @@
          btnEnterGame/btnPlayOnline se conservan: checkActiveRoomConfig (RESUME
          GAME), setPlayBtnState (CONNECTING...) y Rejoin los siguen usando. -->
     <div id="playChoiceModal" class="pw-modal">
-        <div class="pw-modal-box">
+        <div class="pw-modal-box play-picker">
             <div class="pw-modal-title">CHOOSE HOW TO PLAY</div>
             <button class="pw-big-btn offline" id="btnEnterGame" onclick="choosePlay('offline')" onmouseenter="SoundManager.playSimpleHover()">PLAY OFFLINE</button>
             <div class="pw-btn-sub">PRACTICE VS BOTS · NO WAGER</div>
@@ -1563,7 +1614,7 @@
 
     <!-- SETTINGS: calidad grafica, tema de mapa y texture pack (antes en el menu) -->
     <div id="settingsModal" class="pw-modal">
-        <div class="pw-modal-box">
+        <div class="pw-modal-box settings-box">
             <div class="pw-modal-title">SETTINGS</div>
             <div class="section-title">Graphics Quality</div>
             <div class="quality-buttons">
@@ -1610,7 +1661,7 @@
 
     <!-- Barra del editor de layout del menu: visible solo en modo edicion -->
     <div id="layoutEditBar" style="display:none;">
-        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW &nbsp;·&nbsp; CTRL+WHEEL = WIDTH (IN GAME) &nbsp;·&nbsp; CTRL+SHIFT+WHEEL = HEIGHT &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW / TEXT SIZE (IN GAME) &nbsp;·&nbsp; CTRL+WHEEL = WIDTH (IN GAME) &nbsp;·&nbsp; CTRL+SHIFT+WHEEL = HEIGHT &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
         <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
         <button class="leb-btn" onclick="saveLayoutGlobal(this)">SAVE FOR ALL</button>
         <button class="leb-btn done" onclick="exitLayoutEdit()">DONE</button>
@@ -3729,6 +3780,9 @@
                 // arte horneado (ok-gris) con el texto en transparente.
                 'body.pixel-pack #gameDepositModal .gm-row,body.pixel-pack #gameWithdrawModal .gm-row,' +
                 'body.pixel-pack #gameDepositModal label,body.pixel-pack #gameWithdrawModal label{font-family:"Press Start 2P",monospace!important;font-size:9px!important;line-height:1.9;letter-spacing:0}' +
+                // El rotulo "Amount" heredaba el verde de .gameModalBox label:
+                // en el marco gris cantaba. Gris como el resto del modal.
+                'body.pixel-pack #gameDepositModal label,body.pixel-pack #gameWithdrawModal label{color:#c8cdd2!important}' +
                 'body.pixel-pack #gameDepositModal input,body.pixel-pack #gameWithdrawModal input{font-family:"Press Start 2P",monospace!important;font-size:11px!important;letter-spacing:0}' +
                 'body.pixel-pack #gameDepositModal .gm-row button,body.pixel-pack #gameWithdrawModal .gm-row button,' +
                 'body.pixel-pack #gameDepositModal input+button,body.pixel-pack #gameWithdrawModal input+button{font-family:"Press Start 2P",monospace!important;font-size:8px!important;letter-spacing:0}' +
@@ -5703,6 +5757,10 @@
     // fondo (background-image estirable), no sprites de pixel art que se
     // deformarian al perder la proporcion.
     const LAYOUT_RESIZABLE = new Set(['walletBar']);
+    // Elementos cuyo TEXTO se escala aparte de la caja (ALT+rueda): la barra
+    // IN GAME lleva su rotulo por CSS encima del PNG, y el cuerpo de letra que
+    // le cuadre depende de lo que se haya estirado la caja.
+    const LAYOUT_FONT_SCALABLE = new Set(['walletBar']);
     const LAYOUT_ELS = {
         titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
         palette: '#pillPalette', colorPicker: '#colorPicker', palHint: '#palHint',
@@ -5772,9 +5830,13 @@
     function mismoMenuLayout(a, b) {
         const na = o => JSON.stringify(Object.keys(o || {}).sort().map(k => {
             const v = o[k];
-            // El halo (b) entra en la comparacion: sin el, un layout global que
-            // solo cambiara el glow se veria "igual" y no llegaria a aplicarse.
-            return (v && typeof v === 'object') ? [k, +v.x || 0, +v.y || 0, +v.s || 1, typeof v.b === 'number' ? v.b : null] : [k, v];
+            // El halo (b), el tamano de caja (w/h) y el cuerpo de letra (f)
+            // entran en la comparacion: sin ellos, un layout global que solo
+            // cambiara uno de esos se veria "igual" y no llegaria a aplicarse.
+            const num = x => typeof x === 'number' ? x : null;
+            return (v && typeof v === 'object')
+                ? [k, +v.x || 0, +v.y || 0, +v.s || 1, num(v.b), num(v.w), num(v.h), num(v.f)]
+                : [k, v];
         }));
         return na(a) === na(b);
     }
@@ -5826,6 +5888,12 @@
             if (LAYOUT_RESIZABLE.has(key)) {
                 el.style.width = (t && typeof t.w === 'number') ? t.w + 'px' : '';
                 el.style.height = (t && typeof t.h === 'number') ? t.h + 'px' : '';
+            }
+            // f = cuerpo de letra en px del texto de dentro (ALT+rueda). Lo lee
+            // el CSS por --gw-font; sin valor guardado manda el default.
+            if (LAYOUT_FONT_SCALABLE.has(key)) {
+                if (t && typeof t.f === 'number') el.style.setProperty('--gw-font', t.f + 'px');
+                else el.style.removeProperty('--gw-font');
             }
         }
         invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
@@ -5921,7 +5989,19 @@
             // apaga del todo y 4 es el tope; el paso de 0.1 es fino porque el
             // efecto se nota mucho entre 0.5 y 1.5, que es donde se va a estar.
             if (e.altKey) {
-                cur.b = Math.min(4, Math.max(0, Math.round(((typeof cur.b === 'number' ? cur.b : 1) + (e.deltaY < 0 ? 0.1 : -0.1)) * 100) / 100));
+                // En las cajas con texto propio (IN GAME) ALT+rueda es el
+                // CUERPO DE LETRA, no el halo: ahi no hay titulo que iluminar.
+                if (LAYOUT_FONT_SCALABLE.has(t.key)) {
+                    // 13 = el default del CSS (--gw-font): sin valor guardado la
+                    // custom property no esta declarada en el elemento y
+                    // getPropertyValue devuelve '', asi que el primer tick tiene
+                    // que partir del mismo 13 que se esta viendo.
+                    const base = typeof cur.f === 'number' ? cur.f :
+                        parseFloat(getComputedStyle(t.el).getPropertyValue('--gw-font')) || 13;
+                    cur.f = Math.round(Math.min(48, Math.max(6, base + (e.deltaY < 0 ? 1 : -1))) * 10) / 10;
+                } else {
+                    cur.b = Math.min(4, Math.max(0, Math.round(((typeof cur.b === 'number' ? cur.b : 1) + (e.deltaY < 0 ? 0.1 : -0.1)) * 100) / 100));
+                }
                 applyMenuLayout(); saveMenuLayout();
                 return;
             }
