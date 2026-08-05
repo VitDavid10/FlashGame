@@ -47,6 +47,9 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // de abajo como boton de color libre. Arte de David, recortado del mismo
     // fondo magenta.
     'palette',
+    // Selector grande de color: 12 grupos de 3x3 = 108 tonos, ya pintados en el
+    // arte (las zonas clicables van encima, ver CP_COLORS en index.html).
+    'color-picker',
     // OK gris (arte de David, recortado de un checker de transparencia
     // guardado como jpg): solo para los modales/mensajes de wallet que usan
     // el marco gris (menu-gris) — el resto de OK siguen con el verde.

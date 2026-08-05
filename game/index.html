@@ -860,6 +860,24 @@
         @keyframes palBlink { 50% { outline: 2px solid #fff; outline-offset: -1px; } }
         .pal-hint { position: absolute; left: 0; right: 0; top: 101%; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: #8a939e; text-align: center; letter-spacing: 0.5px; }
 
+        /* ===== Selector de color grande: 12 grupos de 3x3 (108 tonos).
+           El arte ya trae los colores pintados, asi que aqui solo hay zonas
+           transparentes clicables colocadas sobre cada subcelda. Medidas sacadas
+           del propio PNG (899x691): grupos en 6.674%/8.104% con paso 22.581% y
+           29.378%, y cada grupo mide 19.244% x 25.181% — dentro, las 9 subceldas
+           se reparten a tercios. Va fixed y centrado porque es un popup puntual:
+           asi no depende de donde este colocada la paleta en EDIT LAYOUT. ===== */
+        .color-picker {
+            position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            z-index: 300; width: min(560px, 86vw); aspect-ratio: 899 / 691;
+            background: var(--cp-art, #1c2333) center/100% 100% no-repeat;
+            image-rendering: pixelated;
+            box-shadow: 0 0 0 3px #000, 6px 6px 0 rgba(0,0,0,0.55);
+        }
+        .cp-cells { position: absolute; inset: 0; }
+        .cp-cell { position: absolute; border: 0; padding: 0; background: transparent; cursor: pointer; }
+        .cp-cell:hover { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px rgba(0,0,0,0.6); }
+
         /* Editor de layout del menu: cada elemento se puede arrastrar (mover)
            y escalar con la rueda; el resultado se guarda por usuario. */
         body.layout-editing .menu-editable { outline: 2px dashed rgba(255,255,255,0.55); outline-offset: 3px; cursor: move !important; transition: none !important; }
@@ -1695,6 +1713,14 @@
                     <button class="pal-pick" id="palPick" type="button" title="Pick any color"></button>
                     <div class="pal-hint" id="palHint" style="display:none;">CLICK A SLOT TO SAVE IT</div>
                 </div>
+                <!-- Selector de color grande (arte de David): 12 grupos de 3x3 =
+                     108 tonos. Los colores estan PINTADOS en el PNG, asi que
+                     encima solo van zonas transparentes que saben a que color
+                     corresponden — la misma idea que la paleta, pero al reves:
+                     alli el arte pone el marco y los colores van detras. -->
+                <div id="colorPicker" class="color-picker" style="display:none;">
+                    <div class="cp-cells" id="cpCells"></div>
+                </div>
                 <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
                 <div class="style-type-selector" style="display:none;">
                     <label><input type="radio" name="styleMode" value="color" checked onclick="toggleStyleUI()"> Colors</label>
@@ -1709,7 +1735,6 @@
                 <div id="colorPickersContainer" style="display:none;">
                     <input type="color" id="colTop" value="#c0c8d0">
                     <input type="color" id="colBot" value="#00ff44">
-                    <input type="color" id="palettePicker" value="#ff0000">
                 </div>
 
                 <div id="skinInputContainer" style="display:none;"></div>
@@ -5315,6 +5340,26 @@
     const PAL_DEFAULT = ['#ffffff', '#c0c8d0', '#ff2a2a', '#ff8c00', '#ffce3d', '#00ff44', '#00ffaa', '#1a73e8', '#66ccff', '#cc00ff'];
     // Rejilla de ventanas MEDIDA sobre palette.png (950x447), en % del cartel.
     const PAL_X0 = 8.42, PAL_DX = 17.48, PAL_Y0 = 15.88, PAL_DY = 35.35;
+    /* --- Selector grande (color-picker.png): 12 grupos de 3x3 = 108 tonos.
+     * Los colores estan LEIDOS del propio arte (el centro de cada subcelda), no
+     * inventados, asi que el color que se aplica es exactamente el que se ve.
+     * La rejilla tambien sale medida del PNG (899x691). --- */
+    const CP_X0 = 6.674, CP_DX = 22.581, CP_W = 19.244;
+    const CP_Y0 = 8.104, CP_DY = 29.378, CP_H = 25.181;
+    const CP_COLORS = [
+        ['#fdfdcb','#fff8b7','#ffef97','#ffe983','#ffe063','#ffda4e','#ffd133','#fecb18','#ffc102'],
+        ['#ffcc33','#ffba30','#ffa932','#ff9232','#fd8330','#ff702e','#fd5f2f','#fe4c2e','#ff3930'],
+        ['#ffb0dd','#ff99d1','#fe85c8','#ff6ebd','#ff57ae','#fe40a2','#ff2b9a','#fe178b','#ed017f'],
+        ['#ffa5b4','#f98fa3','#f67a94','#eb6683','#e45374','#e03b63','#d92854','#d31545','#cb0034'],
+        ['#d1f6ff','#b8f2ff','#9fecfc','#85e7ff','#68e4fe','#50dbfc','#34d8fe','#1ed0fe','#00ccff'],
+        ['#67feff','#58ecee','#4dd9d8','#3fc7c7','#33b3b6','#25a29e','#1b8d8d','#107a78','#016867'],
+        ['#32ccfe','#2cb2ef','#2699ea','#207fdb','#1a68cd','#144dc1','#0c33b2','#081ba5','#00019a'],
+        ['#9d4ccd','#9043c3','#8538b8','#752ea4','#67269a','#5c1c8c','#4e1381','#3f0c73','#320066'],
+        ['#98e89f','#87d792','#74c684','#60b677','#4da666','#38955c','#23874b','#12753e','#006634'],
+        ['#bfc180','#acae6d','#9b9d5c','#8a8b4f','#797a3e','#686930','#55561d','#44450c','#333301'],
+        ['#da9c61','#c28b55','#ae7a4b','#98673f','#80573b','#6a452b','#543425','#3e2216','#27120d'],
+        ['#d5e3f0','#bdcbd8','#a6b3c4','#8f9cad','#778495','#626f80','#4b5869','#334051','#1c293a'],
+    ];
     let palColors = PAL_DEFAULT.slice();
     try {
         const s = JSON.parse(localStorage.getItem(PAL_KEY));
@@ -5362,18 +5407,57 @@
         pal.style.display = 'block';
     }
     function closePalette() { const p = document.getElementById('pillPalette'); if (p) { p.style.display = 'none'; setAssignMode(null); } }
+
+    // --- Selector grande de color (108 tonos del arte) ---
+    // Una zona clicable por subcelda; el color no se lee del pixel en runtime,
+    // va en CP_COLORS (extraido del PNG), asi que no hace falta ni canvas ni
+    // esperar a que la imagen cargue para poder elegir.
+    function renderColorPicker() {
+        const cont = document.getElementById('cpCells'); if (!cont || cont.childElementCount) return;
+        CP_COLORS.forEach((grupo, gi) => {
+            const gx = CP_X0 + (gi % 4) * CP_DX, gy = CP_Y0 + Math.floor(gi / 4) * CP_DY;
+            grupo.forEach((c, ci) => {
+                const b = document.createElement('button');
+                b.className = 'cp-cell'; b.type = 'button'; b.title = c;
+                b.style.left = (gx + (ci % 3) * CP_W / 3) + '%';
+                b.style.top = (gy + Math.floor(ci / 3) * CP_H / 3) + '%';
+                b.style.width = (CP_W / 3) + '%';
+                b.style.height = (CP_H / 3) + '%';
+                // Aplica el color a la mitad activa y ademas lo deja "en mano":
+                // asi se puede guardar en una ventana de la paleta sin volver a
+                // abrir el selector.
+                b.onclick = () => { applyPillColor(c); closeColorPicker(); setAssignMode(c); };
+                cont.appendChild(b);
+            });
+        });
+    }
+    function openColorPicker() {
+        const cp = document.getElementById('colorPicker'); if (!cp) return;
+        renderColorPicker();
+        cp.style.display = 'block';
+    }
+    function closeColorPicker() { const cp = document.getElementById('colorPicker'); if (cp) cp.style.display = 'none'; }
+
     (function initPalette() {
-        const picker = document.getElementById('palettePicker'); if (!picker) return;
         // El marco lo pinta el bucle de los carteles grandes en #palFrame (ahi
         // recibe el tinte del modo), no hace falta cargarlo desde aqui.
-        // La placa de abajo del arte abre el selector de color del sistema.
+        // El arte del selector grande si: es un background normal.
+        CARTEL_HERO_READY_PROMISE.then(() => {
+            if (!cartelUsesAtlas('color-picker')) return;
+            const cp = document.getElementById('colorPicker');
+            if (cp) cp.style.setProperty('--cp-art', 'url(' + cartelHeroUrl('color-picker') + ')');
+        });
+        // La placa de abajo del arte abre el selector grande.
         const pick = document.getElementById('palPick');
-        if (pick) pick.onclick = () => picker.click();
-        // 'input' = preview en vivo mientras arrastras en el picker nativo;
-        // 'change' = color confirmado → queda en mano para asignarlo a un slot.
-        picker.addEventListener('input', () => { document.getElementById(palHalf).value = picker.value; });
-        picker.addEventListener('change', () => { setAssignMode(picker.value); });
+        if (pick) pick.onclick = (e) => { e.stopPropagation(); openColorPicker(); };
         document.addEventListener('mousedown', (e) => {
+            // El selector se cierra solo al clicar fuera; mientras esta abierto NO
+            // se cierra la paleta, que es donde se va a guardar el color elegido.
+            const cp = document.getElementById('colorPicker');
+            if (cp && cp.style.display !== 'none') {
+                if (!e.target.closest('#colorPicker')) closeColorPicker();
+                return;
+            }
             const p = document.getElementById('pillPalette');
             if (!p || p.style.display === 'none') return;
             if (!e.target.closest('#pillPalette') && e.target.id !== 'menuPillCanvas') closePalette();
