@@ -178,12 +178,17 @@
            dependen del arte. ===== */
         /* 300px y no 232: con "IN GAME:" (80px) + la cantidad mas larga (110px) +
            "$PILL" (50px) hacen falta 240px de texto, y en 232 no cabia. */
+        /* justify-content:space-between + flex:1 en el valor dejaba "IN GAME:"
+           pegado al borde izquierdo y la cifra pegada a "$PILL" por el otro
+           lado: el hueco vacio quedaba JUSTO entre el rotulo y el numero, que es
+           lo que se veia como un hueco enorme. Ahora todo va apretado a la
+           izquierda con gaps pequeños e iguales entre los tres. */
         #gwBalBox {
-            display: none; align-items: center; justify-content: space-between;
-            width: 300px; aspect-ratio: 1814 / 459;
+            display: none; align-items: center; justify-content: flex-start;
+            width: 300px; height: 76px;
             background: var(--gw-bar, none) center/100% 100% no-repeat;
             image-rendering: pixelated; position: relative;
-            padding: 0 4%; box-sizing: border-box; gap: 1.5%;
+            padding: 0 4%; box-sizing: border-box; gap: 5px;
         }
         #gwBalBox .gw-lbl {
             font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff;
@@ -192,11 +197,7 @@
         /* La cantidad va con la MISMA fuente que los rotulos (lo pidio David):
            los glifos sueltos que habia antes desentonaban al lado del texto del
            resto del menu. */
-        /* Sin min-width:0 a proposito: con el, el flex encogia esta caja por
-           debajo de su texto y la cantidad se salia por encima de "$PILL" — eso
-           era lo que hacia que las letras se juntaran. */
         #gwBalValue {
-            flex: 1 1 auto; text-align: right;
             font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
@@ -208,6 +209,10 @@
             font-family: 'Press Start 2P', monospace; font-size: 13px; letter-spacing: 0;
             color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase;
             image-rendering: pixelated; display: grid; place-items: center;
+            /* drop-shadow y no box-shadow: sigue el CONTORNO del PNG (la pildora),
+               no el rectangulo del elemento — el box-shadow de antes se salia por
+               las esquinas curvas. */
+            filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
         }
         /* DISCONNECT es la palabra mas larga de las tres y a 13px se salia del
            boton: solo esa baja de cuerpo, las otras dos se quedan grandes. */
@@ -224,7 +229,10 @@
             width: 150px; aspect-ratio: 1797 / 473;
             background: var(--gw-red, none) center/100% 100% no-repeat;
         }
-        #gameWalletArea button:hover { filter: brightness(1.15); }
+        /* brightness se SUMA al drop-shadow de la regla base (filter acumula
+           funciones); si aqui solo pusiera brightness, sustituiria el filter
+           entero y la sombra desaparecia al pasar el raton. */
+        #gameWalletArea button:hover { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
         #gameWalletArea button:active { transform: translate(2px, 2px); }
         /* Desplegable del DEPOSIT (hover): WITHDRAW y DISCONNECT debajo */
         #gwDepositWrap { position: relative; display: inline-block; }
@@ -1053,10 +1061,14 @@
             border-radius: 0 !important; backdrop-filter: none !important;
             box-shadow: 6px 6px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.07), inset -2px -2px 0 rgba(0,0,0,0.55) !important;
         }
+        /* #gameWalletArea button SE QUITA de aqui: este bisel es un rectangulo
+           pixel pensado para botones de color plano, y los de wallet ahora son
+           PNG con forma de pildora — el rectangulo asomaba por las esquinas
+           curvas del arte, como un cartel viejo debajo del nuevo. */
         body.pixel-pack .login-box button, body.pixel-pack .q-btn, body.pixel-pack .ultra-btn,
         body.pixel-pack .btn-play, body.pixel-pack .gm-btn, body.pixel-pack .btn-confirm,
         body.pixel-pack .btn-cancel, body.pixel-pack .btn-sys, body.pixel-pack .mb-continue,
-        body.pixel-pack #gameWalletArea button, body.pixel-pack #skillChoiceOverlay button {
+        body.pixel-pack #skillChoiceOverlay button {
             border-radius: 0 !important; clip-path: none !important;
             box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.18), inset -2px -2px 0 rgba(0,0,0,0.45) !important;
         }
@@ -1595,7 +1607,7 @@
 
     <!-- Barra del editor de layout del menu: visible solo en modo edicion -->
     <div id="layoutEditBar" style="display:none;">
-        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW &nbsp;·&nbsp; CTRL+WHEEL = WIDTH (IN GAME) &nbsp;·&nbsp; CTRL+SHIFT+WHEEL = HEIGHT &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
         <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
         <button class="leb-btn" onclick="saveLayoutGlobal(this)">SAVE FOR ALL</button>
         <button class="leb-btn done" onclick="exitLayoutEdit()">DONE</button>
@@ -5683,6 +5695,11 @@
     // match con el marco. Los *Inner van ANTES en el objeto: un click dentro
     // del contenido debe resolver al interior (closest() encuentra primero
     // lo mas anidado SOLO si se comprueba antes en el bucle de layoutTarget).
+    // Elementos que se redimensionan en ANCHO y ALTO por separado (CTRL+rueda /
+    // CTRL+SHIFT+rueda) en vez del escalado uniforme de siempre: son cajas de
+    // fondo (background-image estirable), no sprites de pixel art que se
+    // deformarian al perder la proporcion.
+    const LAYOUT_RESIZABLE = new Set(['walletBar']);
     const LAYOUT_ELS = {
         titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
         palette: '#pillPalette', colorPicker: '#colorPicker', palHint: '#palHint',
@@ -5800,6 +5817,13 @@
             // manda el default del CSS (1 = el diseno de siempre).
             if (t && typeof t.b === 'number') el.style.setProperty('--title-glow', String(t.b));
             else el.style.removeProperty('--title-glow');
+            // w/h = ancho y alto en px, independientes del escalado uniforme.
+            // Solo los elementos de LAYOUT_RESIZABLE los leen; sin valor guardado
+            // se quitan y manda el tamaño de fabrica del CSS.
+            if (LAYOUT_RESIZABLE.has(key)) {
+                el.style.width = (t && typeof t.w === 'number') ? t.w + 'px' : '';
+                el.style.height = (t && typeof t.h === 'number') ? t.h + 'px' : '';
+            }
         }
         invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
     }
@@ -5895,6 +5919,18 @@
             // efecto se nota mucho entre 0.5 y 1.5, que es donde se va a estar.
             if (e.altKey) {
                 cur.b = Math.min(4, Math.max(0, Math.round(((typeof cur.b === 'number' ? cur.b : 1) + (e.deltaY < 0 ? 0.1 : -0.1)) * 100) / 100));
+                applyMenuLayout(); saveMenuLayout();
+                return;
+            }
+            // CTRL+rueda = ANCHO, CTRL+SHIFT+rueda = ALTO, solo en las cajas de
+            // LAYOUT_RESIZABLE (fondos estirables, no sprites). El punto de
+            // partida es el tamaño REAL en pantalla (medido, no un valor fijo de
+            // fabrica) para que el primer tick no salte de tamaño.
+            if (e.ctrlKey && LAYOUT_RESIZABLE.has(t.key)) {
+                const b = t.el.getBoundingClientRect();
+                const stepR = e.shiftKey ? 1.05 : 1.02;
+                if (e.shiftKey) cur.h = Math.max(20, Math.min(400, (typeof cur.h === 'number' ? cur.h : b.height) * (e.deltaY < 0 ? stepR : 1 / stepR)));
+                else cur.w = Math.max(40, Math.min(900, (typeof cur.w === 'number' ? cur.w : b.width) * (e.deltaY < 0 ? stepR : 1 / stepR)));
                 applyMenuLayout(); saveMenuLayout();
                 return;
             }
