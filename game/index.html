@@ -1029,10 +1029,24 @@
             color: transparent; text-shadow: none;
         }
         .play-picker .pw-modal-cancel:hover, .settings-box .pw-modal-cancel:hover { filter: brightness(1.2); color: transparent; }
-        /* El CLOSE de SETTINGS quedaba pegado al borde de abajo del cartel: el
-           marco del PNG se come parte del padding de 34px, asi que el hueco real
-           era la mitad de lo que dice el CSS. Sube 12px. */
-        .settings-box .pw-modal-cancel { margin-top: 6px; }
+        /* El de SETTINGS es el UNICO que dice CLOSE y no CANCEL, asi que no
+           puede usar cancel.png (trae "CANCEL" horneado). Va con la placa gris
+           lisa (close-btn.png, mismo recorte 509x201) y el rotulo escrito por
+           CSS: hay que devolverle el color y la sombra que la regla de arriba
+           apaga para los horneados. Un pelin mas pequeno que el CANCEL y
+           pegado al boton de encima. */
+        .settings-box .pw-modal-cancel {
+            background-image: url('img/cartel-hero/close-btn.png');
+            width: 50%; margin-top: 4px;
+            color: #d7dade; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
+            font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 0;
+        }
+        .settings-box .pw-modal-cancel:hover { color: #fff; }
+        /* El aire de debajo del CLOSE lo pone el padding del cartel, NO el
+           margen del boton: asi el hueco es el mismo se quite o no la fila de
+           EDIT LAYOUT (que no va a estar en el juego final). Con los 34px de
+           antes el boton quedaba pegado al borde de abajo. */
+        .pw-modal-box.settings-box { padding-bottom: 56px; }
 
         /* FEATURES: modal ancho con los paneles de guia de cada modo dentro */
         .pw-modal-box.features { width: 720px; max-width: 94vw; max-height: 88vh; overflow-y: auto; text-align: left; }

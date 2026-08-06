@@ -1842,11 +1842,21 @@ const httpServer = http.createServer(async (req, res) => {
                 // `b` (intensidad del halo del título, ALT+rueda en EDIT LAYOUT) es
                 // OPCIONAL: solo la traen los títulos, y si no viene no se escribe
                 // para no llenar el layout de ceros.
+                // f/w/h son igual de opcionales que `b` y se guardan con los MISMOS
+                // topes que aplica el editor en el cliente: f = cuerpo de letra
+                // (ALT+rueda / los botones TXT), w y h = ancho y alto de la barra
+                // IN GAME (CTRL / CTRL+SHIFT+rueda). Antes se tiraban aquí: podías
+                // ajustar la letra, ver el cambio, pulsar SAVE FOR ALL y al recargar
+                // volvía al tamaño de fábrica — el ajuste no sobrevivía al servidor.
                 const clean = {};
+                const opc = (v, min, max) => (typeof v === 'number' && isFinite(v)) ? Math.max(min, Math.min(max, v)) : null;
                 for (const k of Object.keys(lay).slice(0, 40)) {
                     const t = lay[k]; if (!t || typeof t !== 'object') continue;
                     const e = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
                     if (typeof t.b === 'number' && isFinite(t.b)) e.b = Math.max(0, Math.min(4, t.b));
+                    const f = opc(t.f, 6, 48); if (f !== null) e.f = f;
+                    const w = opc(t.w, 40, 900); if (w !== null) e.w = w;
+                    const h = opc(t.h, 20, 400); if (h !== null) e.h = h;
                     clean[String(k).slice(0, 40)] = e;
                 }
                 menuLayout = clean; saveGlobal();
