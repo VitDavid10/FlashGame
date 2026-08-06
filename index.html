@@ -877,16 +877,17 @@ body.trailer-open #page-content{
         caSign: '#heroCaSign', ca: '#heroCaWrap',
         // Navbar: wallet, PILL, iconos sociales. SIN valor horneado (parten del
         // CSS de fabrica, sin transform) — quedan neutros hasta que se editen.
-        // Orden de mas anidado a menos anidado (target() resuelve por el
-        // PRIMER key que matchee via closest(), asi que lo mas especifico va
-        // primero): el rotulo de texto esta DENTRO del boton, que esta DENTRO
-        // de su caja wb-box. Sin este orden, clicar el texto siempre
-        // resolveria a la caja entera y el texto nunca seria editable aparte
-        // (igual que gw-btn-txt/gwConnect en /game).
-        walletBtnTxt: '#wallet-btn-txt', walletDepositTxt: '#wallet-deposit-txt',
-        walletWithdrawTxt: '#wallet-withdraw-txt', walletDisconnectTxt: '#wallet-disconnect-txt',
-        walletWithdraw: '#wallet-withdraw-box', walletDisconnect: '#wallet-disconnect-box',
-        walletDeposit: '#wallet-deposit-wrap', walletBtn: '#wallet-btn-box',
+        // walletBtn/walletBtnTxt son claves COMPARTIDAS (selector con comas,
+        // igual que '#gwConnect, #gwDepositWrap' en /game): CONNECT, DEPOSIT,
+        // WITHDRAW y DISCONNECT son los mismos 4 botones que nunca se ven
+        // todos a la vez (CONNECT vs los otros tres), asi que tocar uno debe
+        // mover/escalar los cuatro de golpe — si no, cada uno se quedaba con
+        // su propio tamaño y se descuadraban entre si.
+        // walletBtnTxt va ANTES que walletBtn en el orden: el rotulo esta
+        // DENTRO del boton, y target() resuelve por el primer key que
+        // matchee via closest(), asi que el mas especifico va primero.
+        walletBtnTxt: '#wallet-btn-txt, #wallet-deposit-txt, #wallet-withdraw-txt, #wallet-disconnect-txt',
+        walletBtn: '#wallet-btn-box, #wallet-deposit-wrap, #wallet-withdraw-box, #wallet-disconnect-box',
         walletBal: '#wallet-bal-box', pillDropdown: '#pill-dropdown',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
     };
@@ -2940,15 +2941,21 @@ function toggleTrailerMode() {
         const ZOOM_PASOS = [1, 0.8, 0.6, 0.45];
         function apply() {
             for (const key in LAYOUT_ELS) {
-                const el = document.querySelector(LAYOUT_ELS[key]); if (!el) continue;
+                // querySelectorAll y no querySelector: una clave puede gobernar
+                // VARIOS elementos a la vez (walletBtn = los 4 botones de wallet,
+                // que comparten selector con comas). Sin esto solo se movia el
+                // PRIMERO que matcheara y los demas se quedaban quietos.
+                const els = document.querySelectorAll(LAYOUT_ELS[key]); if (!els.length) continue;
                 const t = layout[key];
                 // translate/scale (no `transform`) para no pisar los transform de
                 // los :hover/:active que ya tienen algunos elementos.
                 // Sin pieza se escribe el neutro EXPLICITO, no cadena vacia:
                 // vaciarlo devolveria el mando al CSS horneado del <head> y
                 // RESET ALL no resetearia nada.
-                el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '0px 0px';
-                el.style.scale = String(t ? (t.s || 1) : 1);
+                for (const el of els) {
+                    el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '0px 0px';
+                    el.style.scale = String(t ? (t.s || 1) : 1);
+                }
             }
             // El zoom es parte del layout, como las posiciones: se guarda y lo ve
             // todo el mundo, no solo quien esta editando.
@@ -2967,7 +2974,7 @@ function toggleTrailerMode() {
             enter() {
                 editing = true;
                 document.body.classList.add('layout-editing');
-                for (const key in LAYOUT_ELS) { const el = document.querySelector(LAYOUT_ELS[key]); if (el) el.classList.add('hero-editable'); }
+                for (const key in LAYOUT_ELS) { document.querySelectorAll(LAYOUT_ELS[key]).forEach(el => el.classList.add('hero-editable')); }
                 document.getElementById('layoutEditBar').style.display = 'flex';
                 syncZoomBtn();
                 document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
@@ -3021,7 +3028,7 @@ function toggleTrailerMode() {
         // .hero-main-content, asi que no llevan el scale de heroZoom: dividir
         // su arrastre por heroZoom haria que el raton y el elemento se
         // desincronizaran (heroZoom por defecto es 0.8).
-        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletDepositTxt', 'walletWithdrawTxt', 'walletDisconnectTxt', 'walletWithdraw', 'walletDisconnect', 'walletDeposit', 'walletBtn', 'walletBal', 'pillDropdown', 'twitterIcon', 'telegramIcon']);
+        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'pillDropdown', 'twitterIcon', 'telegramIcon']);
         window.addEventListener('pointermove', (e) => {
             if (!editing || !drag) return;
             const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
