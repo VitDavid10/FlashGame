@@ -132,8 +132,8 @@
             background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4);
             border-radius: 8px; backdrop-filter: blur(4px); white-space: nowrap;
         }
-        .wallet-bal-box .wl-lbl { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
-        .wallet-bal-box .wl-val { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
+        .wallet-bal-box .wl-lbl { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
+        .wallet-bal-box .wl-val { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
 
         /* Reset completo del button nativo (igual que #gameWalletArea button en
            /game): sin esto el navegador pinta su propio chroma (recuadro negro)
@@ -144,7 +144,7 @@
             background-color: transparent !important;
             width: 190px; aspect-ratio: 1724 / 403; border: 0; margin: 0; padding: 0;
             box-sizing: border-box; color: #fff;
-            font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: 0; text-transform: uppercase;
+            font-family: 'Press Start 2P', monospace; font-size: 13px; letter-spacing: 0; text-transform: uppercase;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
             cursor: pointer; transition: 0.2s; image-rendering: auto;
             display: grid; place-items: center;
@@ -774,14 +774,18 @@ body.trailer-open #page-content{
         body.pixel-pack .navbar { backdrop-filter: none !important; border-bottom: 2px solid rgba(0,255,136,0.4); }
         body.pixel-pack .modal-overlay { backdrop-filter: none !important; }
         /* botones */
-        body.pixel-pack .btn-connect, body.pixel-pack .btn-deposit,
-        body.pixel-pack .btn-withdraw, body.pixel-pack .claim-pill, body.pixel-pack .dq-btn,
+        /* .btn-connect/.btn-deposit/.btn-withdraw/.btn-disconnect FUERA de esta
+           regla: son la pildora roja transparente de /game, y este box-shadow
+           rectangular con !important se veia como un recuadro negro solido
+           detras del hueco transparente del PNG. Su look pixel ya lo trae el
+           propio PNG + el drop-shadow del filter, igual que en /game. */
+        body.pixel-pack .claim-pill, body.pixel-pack .dq-btn,
         body.pixel-pack .cmodal-btn, body.pixel-pack .lb-pag button, body.pixel-pack .modal-box button {
             border-radius: 0 !important; clip-path: none !important;
             font-family: 'Press Start 2P', monospace !important; font-size: 11px !important;
             box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.18), inset -2px -2px 0 rgba(0,0,0,0.45) !important;
         }
-        body.pixel-pack .btn-connect:active, body.pixel-pack .cmodal-btn:active,
+        body.pixel-pack .cmodal-btn:active,
         body.pixel-pack .dq-btn.unlocked:active, body.pixel-pack .claim-pill:active {
             transform: translate(2px, 2px) !important;
             box-shadow: 1px 1px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(0,0,0,0.35) !important;
