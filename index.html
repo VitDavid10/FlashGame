@@ -39,7 +39,8 @@
            y ahi el image-rendering de <body> ya no cuenta: la cuadricula saldria
            suavizada (borrosa) en vez de pixelada. Con html pintado, el fondo de
            body se queda en su propia caja y si respeta el pixelated. */
-        html { background-color: var(--bg-dark); }
+        html { background-color: var(--bg-dark); scrollbar-width: none; }
+        html::-webkit-scrollbar { display: none; }
         /* CUADRICULA VERDE GLOBAL — misma celda de 50px de SIEMPRE, pero con el
            tile pixel del juego (base tintada + moteado + linea de rejilla gorda)
            en vez de los dos degradados de 1.5px. Lo genera el JS del hero y lo
