@@ -5751,7 +5751,7 @@
             b.style.left = (PAL_X0 + (i % 5) * PAL_DX) + '%';
             b.style.top = (PAL_Y0 + Math.floor(i / 5) * PAL_DY) + '%';
             b.onclick = () => {
-                if (palAssign) { palColors[i] = palAssign; savePalette(); setAssignMode(null); renderPalette(); closePalette(); }
+                if (palAssign) { palColors[i] = palAssign; savePalette(); setAssignMode(null); renderPalette(); setTimeout(closePalette, 200); }
                 else { applyPillColor(c); closePalette(); }
             };
             grid.appendChild(b);
