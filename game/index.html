@@ -285,6 +285,14 @@
                hereda del wrap). */
             font-size: var(--gw-font, 13px) !important;
         }
+        /* El rotulo dentro del boton, como pieza suelta: se mueve y se escala
+           sin tocar la caja del boton (clave walletBtnTxt). Mismo montaje que
+           #gwBalInner dentro del recuadro azul. inline-block porque translate y
+           scale no aplican a las cajas inline. */
+        #gameWalletArea .gw-btn-txt {
+            display: inline-block; line-height: 1;
+            font-size: var(--gw-font, 13px);
+        }
         /* brightness se SUMA al drop-shadow de la regla base (filter acumula
            funciones); si aqui solo pusiera brightness, sustituiria el filter
            entero y la sombra desaparecia al pasar el raton. */
@@ -1037,16 +1045,23 @@
            pegado al boton de encima. */
         .settings-box .pw-modal-cancel {
             background-image: url('img/cartel-hero/close-btn.png');
-            width: 50%; margin-top: 4px;
+            width: 50%;
             color: #d7dade; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
             font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 0;
+            /* CLOSE centrado entre lo que tenga encima y el borde INTERIOR del
+               marco: 28px de hueco por arriba y los mismos 28 por abajo. El
+               padding es 44 y no 28 porque el marco del PNG se come ~16px por
+               ese lado (6px transparentes + 23px de marco del arte de 1360x802,
+               que a esta escala son ~13). Como el hueco de arriba es un margen
+               del boton y el de abajo el padding del cartel, la cuenta sale
+               igual haya EDIT LAYOUT encima o los botones de tema — que es lo
+               que hace falta, porque esa fila no va a estar en el juego final.
+               Es aproximado: el marco escala con el alto del cartel, asi que si
+               el cartel encoge mucho el borde se afina unos pixeles. */
+            margin-top: 28px;
         }
         .settings-box .pw-modal-cancel:hover { color: #fff; }
-        /* El aire de debajo del CLOSE lo pone el padding del cartel, NO el
-           margen del boton: asi el hueco es el mismo se quite o no la fila de
-           EDIT LAYOUT (que no va a estar en el juego final). Con los 34px de
-           antes el boton quedaba pegado al borde de abajo. */
-        .pw-modal-box.settings-box { padding-bottom: 56px; }
+        .pw-modal-box.settings-box { padding-bottom: 44px; }
 
         /* FEATURES: modal ancho con los paneles de guia de cada modo dentro */
         .pw-modal-box.features { width: 720px; max-width: 94vw; max-height: 88vh; overflow-y: auto; text-align: left; }
@@ -1653,13 +1668,18 @@
         <!-- El arte del recuadro va VACIO: los rotulos se escriben aqui con la
              fuente pixel y en medio va la cantidad (digitos de game/img/pixnum). -->
         <div id="gwBalBox"><span id="gwBalInner"><span class="gw-lbl">IN GAME:</span><span id="gwBalValue"></span><span class="gw-lbl">$PILL</span></span></div>
-        <button id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
+        <!-- El rotulo de cada boton va en su propio <span>: es una pieza de
+             layout aparte (walletBtnTxt), igual que el contenido del recuadro
+             azul, para poder moverlo/escalarlo DENTRO del boton sin tocar el
+             tamano del boton. Los cuatro comparten clave, asi que se ajustan a
+             la vez y no se descuadran entre ellos. -->
+        <button id="gwConnect" onclick="GameWalletUI.connect()"><span class="gw-btn-txt">CONNECT</span></button>
         <!-- DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT -->
         <div id="gwDepositWrap" style="display:none">
-            <button id="gwDeposit" onclick="GameWalletUI.openDeposit()">DEPOSIT</button>
+            <button id="gwDeposit" onclick="GameWalletUI.openDeposit()"><span class="gw-btn-txt">DEPOSIT</span></button>
             <div id="gwDropdown">
-                <button onclick="GameWalletUI.openWithdraw()">WITHDRAW</button>
-                <button onclick="GameWalletUI.disconnect()">DISCONNECT</button>
+                <button onclick="GameWalletUI.openWithdraw()"><span class="gw-btn-txt">WITHDRAW</span></button>
+                <button onclick="GameWalletUI.disconnect()"><span class="gw-btn-txt">DISCONNECT</span></button>
             </div>
         </div>
     </div>
@@ -1826,11 +1846,12 @@
             <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBarTxt', 1)">+</button>
         </span>
         <!-- Un solo control para los CUATRO botones de wallet: comparten la
-             clave walletBtn, asi que nunca se descuadran entre ellos. -->
+             clave walletBtnTxt, asi que nunca se descuadran entre ellos. Toca
+             SOLO la letra; la caja del boton no se mueve. -->
         <span class="leb-group">
             <span class="leb-label">WALLET BTN TXT</span>
-            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtn', -1)">−</button>
-            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtn', 1)">+</button>
+            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtnTxt', -1)">−</button>
+            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtnTxt', 1)">+</button>
         </span>
         <span class="leb-group">
             <span class="leb-label">IN GAME WIDTH</span>
@@ -5948,7 +5969,7 @@
     // walletBtn son los CUATRO botones (CONNECT/DEPOSIT/WITHDRAW/DISCONNECT):
     // comparten una sola clave, asi que se ajustan todos de golpe y no hay forma
     // de que uno se quede con letra distinta.
-    const LAYOUT_FONT_SCALABLE = new Set(['walletBar', 'walletBarTxt', 'walletBtn']);
+    const LAYOUT_FONT_SCALABLE = new Set(['walletBar', 'walletBarTxt', 'walletBtn', 'walletBtnTxt']);
     const LAYOUT_ELS = {
         titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
         palette: '#pillPalette', colorPicker: '#colorPicker', palHint: '#palHint',
@@ -5961,7 +5982,7 @@
         // con la PRIMERA clave que casa, asi que apuntando al texto se agarra el
         // texto y apuntando al hueco de la barra (arriba/abajo del rotulo, o los
         // margenes) se agarra el recuadro.
-        walletBarTxt: '#gwBalInner',
+        walletBarTxt: '#gwBalInner', walletBtnTxt: '#gameWalletArea .gw-btn-txt',
         walletBar: '#gwBalBox', walletBtn: '#gwConnect, #gwDepositWrap',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
@@ -7142,6 +7163,9 @@
                 return;
             }
             const btn = document.getElementById('gdConfirm'); const old = btn.innerText; btn.disabled = true; btn.innerText = 'Sign in wallet...';
+            // finally y no despues del catch: si algo lanzaba fuera del try (o
+            // una promesa no resolvia nunca) el boton se quedaba en gris para
+            // siempre y habia que recargar para poder reintentar.
             try {
                 const sig = await window.PillChain.deposit(amt);
                 btn.innerText = 'Depositing...';
@@ -7151,7 +7175,7 @@
                 this.refresh();
                 showSystemMsg(this.fmt(amt) + ' $PILL added to your in-GAME balance.', 'DEPOSIT COMPLETE');
             } catch (e) { showSystemMsg(walletErrText(e), 'DEPOSIT FAILED'); }
-            btn.disabled = false; btn.innerText = old;
+            finally { btn.disabled = false; btn.innerText = old; }
         }
     };
 
@@ -7879,6 +7903,8 @@
         // se arregla solo esperando, asi que se dice con esas palabras en vez
         // del "algo ha ido mal" de siempre.
         if (/429|too many|cuota|rate limit/i.test(raw)) return 'The Solana network is rate-limiting us right now. Wait a minute and try again.';
+        if (/blockhash/i.test(raw)) return 'The Solana network dropped the transaction (stale blockhash). Try again.';
+        if (/timeout: wallet/i.test(raw)) return "Your wallet didn't respond. Open the extension, close any pending request and try again.";
         if (/^rpc:|rpc error|no encontrada|not found/i.test(raw)) return "Couldn't reach the Solana network. Wait a moment and try again.";
         if (/timeout|expired|expirad|abort/i.test(raw)) return 'The request timed out after 15s. Please try again.';
         if (/network|fetch|conexion|connection/i.test(raw)) return 'Network error talking to the wallet. Please try again.';
@@ -8965,11 +8991,25 @@
         }
         tx.add(createTransferInstruction(fromAta, toAta, owner, raw));
         tx.feePayer = owner;
-        try { tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash; }
+        // 'finalized' y no el 'confirmed' de la conexion: con confirmed el hash
+        // puede ser de un bloque tan reciente que el nodo que recibe el
+        // sendTransaction todavia no lo ha visto, y contesta -32002 "Blockhash
+        // not found" aunque la transaccion sea correcta. El finalized es unos
+        // segundos mas viejo pero lo conoce todo el cluster.
+        try { tx.recentBlockhash = (await conn.getLatestBlockhash('finalized')).blockhash; }
         catch (e) { throw new Error('rpc: ' + ((e && e.message) || e)); }
+        // La firma la hace la EXTENSION, no el RPC: aqui no valen los 15s (hay
+        // que leer y aprobar). Pero sin ningun tope, una wallet que no responde
+        // dejaba la promesa colgada para siempre y el boton de depositar
+        // bloqueado hasta recargar la pagina.
+        const conTope = (p, ms, que) => Promise.race([p, new Promise((_, rej) =>
+            setTimeout(() => rej(new Error('timeout: ' + que)), ms))]);
         let sig;
-        if (W.provider.signAndSendTransaction) { const r = await W.provider.signAndSendTransaction(tx); sig = r.signature || r; }
-        else { const signed = await W.provider.signTransaction(tx); sig = await conn.sendRawTransaction(signed.serialize()); }
+        if (W.provider.signAndSendTransaction) { const r = await conTope(W.provider.signAndSendTransaction(tx), 60000, 'wallet'); sig = r.signature || r; }
+        else {
+            const signed = await conTope(W.provider.signTransaction(tx), 60000, 'wallet');
+            sig = await conn.sendRawTransaction(signed.serialize());
+        }
         // Firmada y enviada: a partir de aqui el dinero YA salio. Si la
         // confirmacion tarda mas de los 15s no se lanza error — se devuelve la
         // firma igual y la verdad la pone el servidor, que lee la tx on-chain.
