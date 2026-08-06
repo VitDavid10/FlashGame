@@ -1420,6 +1420,10 @@ body.trailer-open #page-content{
     <!-- TEMPORAL: barra del editor de layout del hero (boton EDIT de la navbar) -->
     <div id="layoutEditBar" style="display:none;">
         <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <div style="display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid #2a2f36;">
+            <label style="font-family:'Press Start 2P', monospace; font-size:7px; color:#6a737e;">NAVBAR:</label>
+            <input type="color" id="navbarColorPicker" style="width:32px; height:32px; border:1px solid #2a2f36; cursor:pointer;" />
+        </div>
         <button class="leb-btn" id="lebZoom" onclick="LandingLayout.zoom(this)">ZOOM 100%</button>
         <button class="leb-btn" onclick="LandingLayout.resetAll()">RESET ALL</button>
         <button class="leb-btn" onclick="LandingLayout.saveGlobal(this)">SAVE FOR ALL</button>
@@ -3065,6 +3069,22 @@ function toggleTrailerMode() {
             },
         };
         window.LandingLayout = LandingLayout;
+
+        // Navbar color picker
+        const navbarColorPicker = document.getElementById('navbarColorPicker');
+        if (navbarColorPicker) {
+            const savedColor = localStorage.getItem('pw_navbar_color') || '#000000';
+            navbarColorPicker.value = savedColor.startsWith('rgba') ? '#000000' : savedColor;
+            document.documentElement.style.setProperty('--navbar-bg', savedColor);
+            navbarColorPicker.addEventListener('change', (e) => {
+                const hex = e.target.value;
+                const rgb = parseInt(hex.slice(1), 16);
+                const r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
+                const rgba = `rgba(${r}, ${g}, ${b}, 0.7)`;
+                document.documentElement.style.setProperty('--navbar-bg', rgba);
+                localStorage.setItem('pw_navbar_color', rgba);
+            });
+        }
 
         document.addEventListener('pointerdown', (e) => {
             if (!editing || e.target.closest('#layoutEditBar')) return;
