@@ -1813,8 +1813,6 @@
                 <button class="q-btn selected" id="qNormal" onclick="setQuality('normal')">NORMAL</button>
                 <button class="q-btn" id="qLow" onclick="setQuality('low')">LOW</button>
             </div>
-            <button id="qUltra" class="ultra-btn" onclick="setQuality('ultra')">ULTRA LOW (FASTEST)</button>
-
             <div class="section-title" style="margin-top:15px;">Map Theme</div>
             <!-- Tres botones iguales que HIGH/NORMAL/LOW (antes eran radios, que
                  desentonaban con el resto del cartel). -->
@@ -1824,12 +1822,7 @@
                 <button class="q-btn" id="tWhite" onclick="setTheme('white')">WHITE</button>
             </div>
 
-            <div class="section-title" style="margin-top:15px;">Menu Layout</div>
-            <!-- EDIT LAYOUT visible: hace falta para escalar el texto de IN GAME
-                 (ALT+rueda / botones IN GAME TXT) y colocar barra/botones wallet. -->
-            <button class="btn-settings" id="btnEditLayout" style="margin-top:6px;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
-
-            <button class="pw-modal-cancel" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
+            <button class="pw-modal-cancel" style="margin-top:15px;" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
     </div>
 
