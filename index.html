@@ -894,7 +894,9 @@ body.trailer-open #page-content{
         // matchee via closest(), asi que el mas especifico va primero.
         walletBtnTxt: '#wallet-btn-txt, #wallet-deposit-txt, #wallet-withdraw-txt, #wallet-disconnect-txt',
         walletBtn: '#wallet-btn-box, #wallet-deposit-box, #wallet-withdraw-box, #wallet-disconnect-box',
-        walletBal: '#wallet-bal-box', pillDropdown: '#pill-dropdown',
+        // pillDropdown QUITADO: se movio al lado de EDIT (fuera del grupo de
+        // wallet) precisamente para que no dependa de ningun x/y editable.
+        walletBal: '#wallet-bal-box',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
     };
     window.HERO_LAYOUT_HORNEADO = {
@@ -1020,19 +1022,23 @@ body.trailer-open #page-content{
                      se enciende "Layout editors" en el panel admin, que llega en
                      el campo `edit` de /api/landing-layout. -->
                 <button class="nav-link" id="btnLandingEdit" style="display:none;" onclick="LandingLayout.enter()">EDIT</button>
+                <!-- $PILL al lado de EDIT: se saca del grupo editable (no es
+                     clave de HERO_LAYOUT_ELS), asi que siempre esta aqui, fijo,
+                     y no depende de ningun x/y guardado que se pudiera haber
+                     descolocado por error. -->
+                <div class="dropdown" id="pill-dropdown">
+                    <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
+                    <div class="dropdown-content">
+                        <div class="dropdown-box">
+                            <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon"> Chart</a>
+                            <a href="https://pump.fun target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="nav-dropdown-group">
-            <div class="dropdown" id="pill-dropdown">
-                <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
-                <div class="dropdown-content">
-                    <div class="dropdown-box">
-                        <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon"> Chart</a>
-                        <a href="https://pump.fun target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
-                    </div>
-                </div>
-            </div>
             <!-- Wallet: mismo montaje que /game (gameWalletArea). Balance IN GAME +
                  CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT) cuando ya
                  estas conectado. -->
@@ -3071,7 +3077,7 @@ function toggleTrailerMode() {
         // .hero-main-content, asi que no llevan el scale de heroZoom: dividir
         // su arrastre por heroZoom haria que el raton y el elemento se
         // desincronizaran (heroZoom por defecto es 0.8).
-        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'pillDropdown', 'twitterIcon', 'telegramIcon']);
+        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon']);
         window.addEventListener('pointermove', (e) => {
             if (!editing || !drag) return;
             const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
