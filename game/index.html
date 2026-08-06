@@ -1113,16 +1113,23 @@
         #palReset { left: 65.89%; }
         .pill-palette.assigning .pal-swatch { animation: palBlink 0.7s steps(2) infinite; }
         @keyframes palBlink { 50% { outline: 2px solid #fff; outline-offset: -1px; } }
-        /* Aviso de "guarda el color en una ventana". Estaba a 5.5px y en gris:
-           no se leia. Sube de cuerpo, pasa a blanco sobre una placa oscura y se
-           coloca por separado desde EDIT LAYOUT. */
+        /* Aviso de "guarda el color en una ventana". Sin placa: mismo idioma que
+           los rotulos ARCADE/CLASSIC del selector (Press Start 2P, sombra dura
+           delante para despegarlo del fondo y detras dos halos del color del
+           modo). El color lo pone la clase bg-arcade/bg-classic del overlay,
+           igual que el resto del login. Se coloca por separado desde EDIT
+           LAYOUT. */
         .pal-hint {
             position: absolute; left: 50%; bottom: -34px; margin-left: -110px; width: 220px;
-            font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff;
-            text-align: center; letter-spacing: 0.5px; line-height: 1.5;
-            background: rgba(6,10,8,0.88); padding: 6px 8px; box-sizing: border-box;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.8); z-index: 45;
-            box-shadow: 0 0 0 2px #000, 3px 3px 0 rgba(0,0,0,0.5);
+            font-family: 'Press Start 2P', monospace; font-size: 8px;
+            text-align: center; letter-spacing: 1px; line-height: 1.5;
+            padding: 6px 8px; box-sizing: border-box; z-index: 45;
+            color: #00ffaa;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 calc(6px * var(--sel-glow, 1)) rgba(0,255,170,0.75), 0 0 calc(14px * var(--sel-glow, 1)) rgba(0,255,170,0.45);
+        }
+        #loginOverlay.bg-arcade .pal-hint {
+            color: #ccff00;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 calc(6px * var(--sel-glow, 1)) rgba(204,255,0,0.75), 0 0 calc(14px * var(--sel-glow, 1)) rgba(204,255,0,0.45);
         }
 
         /* ===== Selector de color grande: 12 grupos de 3x3 (108 tonos).
@@ -5738,12 +5745,20 @@
             grid.appendChild(b);
         });
     }
+    // El aviso solo se ve cuando hay un color EN MANO y no estas dentro del
+    // selector grande: al volver a abrir los 108 tonos desaparece y vuelve a
+    // salir en cuanto eliges color (o cierras el selector sin tocar nada).
+    function updateHint() {
+        const hint = document.getElementById('palHint'); if (!hint) return;
+        const cp = document.getElementById('colorPicker');
+        const cpOpen = cp && cp.style.display !== 'none';
+        hint.style.display = (palAssign && !cpOpen) ? 'block' : 'none';
+    }
     function setAssignMode(color) {
         palAssign = color;
         const pal = document.getElementById('pillPalette');
         if (pal) pal.classList.toggle('assigning', !!color);
-        const hint = document.getElementById('palHint');
-        if (hint) hint.style.display = color ? 'block' : 'none';
+        updateHint();
     }
     function applyPillColor(c) {
         const inp = document.getElementById(palHalf);
@@ -5795,8 +5810,15 @@
         const cp = document.getElementById('colorPicker'); if (!cp) return;
         renderColorPicker();
         cp.style.display = 'block';
+        updateHint();
     }
-    function closeColorPicker() { const cp = document.getElementById('colorPicker'); if (cp) cp.style.display = 'none'; }
+    function closeColorPicker() { const cp = document.getElementById('colorPicker'); if (cp) cp.style.display = 'none'; updateHint(); }
+    // La placa de PICK abre Y cierra: si ya estan los 108 tonos a la vista,
+    // volver a pulsarla los quita sin obligarte a elegir ningun color.
+    function toggleColorPicker() {
+        const cp = document.getElementById('colorPicker');
+        if (cp && cp.style.display !== 'none') closeColorPicker(); else openColorPicker();
+    }
 
     (function initPalette() {
         // El marco lo pinta el bucle de los carteles grandes en #palFrame (ahi
@@ -5815,7 +5837,7 @@
         // Las dos placas de abajo del arte: la izquierda abre el selector
         // grande, la derecha resetea la paleta.
         const pickL = document.getElementById('palPickL');
-        if (pickL) pickL.onclick = (e) => { e.stopPropagation(); openColorPicker(); };
+        if (pickL) pickL.onclick = (e) => { e.stopPropagation(); toggleColorPicker(); };
         const rst = document.getElementById('palReset');
         if (rst) rst.onclick = (e) => { e.stopPropagation(); resetPalette(); };
         document.addEventListener('mousedown', (e) => {
@@ -5826,7 +5848,10 @@
             // se cierra la paleta, que es donde se va a guardar el color elegido.
             const cp = document.getElementById('colorPicker');
             if (cp && cp.style.display !== 'none') {
-                if (!e.target.closest('#colorPicker')) closeColorPicker();
+                // La placa de PICK se deja pasar: la cierra su propio onclick
+                // (toggle). Si la cerrase aqui el mousedown, el click de despues
+                // la volveria a abrir al instante.
+                if (!e.target.closest('#colorPicker') && !e.target.closest('#palPickL')) closeColorPicker();
                 return;
             }
             const p = document.getElementById('pillPalette');
