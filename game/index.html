@@ -2324,6 +2324,22 @@
             }
             requestAnimationFrame(frame);
         })();
+        // Deshacer zoom del navegador: Ctrl++/-- solo escala el HTML
+        // inversamente, manteniendo el layout fijo. Asi el juego no se
+        // descoloca al hacer zoom.
+        (function preventBrowserZoom() {
+            let lastZoom = 1;
+            const checkZoom = () => {
+                const currentZoom = Math.round(window.outerWidth / window.innerWidth * 100) / 100;
+                if (Math.abs(currentZoom - lastZoom) > 0.01) {
+                    document.documentElement.style.zoom = 1 / currentZoom;
+                    lastZoom = currentZoom;
+                }
+            };
+            window.addEventListener('resize', checkZoom, false);
+            window.addEventListener('load', checkZoom, false);
+            setTimeout(checkZoom, 500);
+        })();
     </script>
 
     <div id="resultOverlay">
