@@ -1120,6 +1120,23 @@
             background: transparent; left: 37.47%; top: 85.68%; width: 24.21%; height: 11.86%;
         }
         .pal-pick:hover { background: rgba(255,255,255,0.16); }
+        /* Las dos placas de piedra que flanquean a la central, en la misma fila
+           de abajo del arte: PICK (abrir el selector grande) y RESET (devolver
+           las 10 ventanas a los colores de fabrica). Los % salen de medir los
+           bloques del PNG de 950x447 — la izquierda va de 8.74% a 31.04% y la
+           derecha de 69.79% a 90.64%; se ajustan a 22% de ancho centrados en
+           19.9% y 80.1%, simetricos respecto al centro del cartel.
+           El arte no trae rotulos, asi que el texto va por CSS. */
+        .pal-btn {
+            position: absolute; z-index: 3; border: 0; padding: 0; cursor: pointer;
+            background: transparent; top: 85.68%; height: 11.86%;
+            font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: 0;
+            color: #cfe6d6; text-shadow: 1px 1px 0 rgba(0,0,0,0.85);
+            display: grid; place-items: center;
+        }
+        .pal-btn:hover { background: rgba(255,255,255,0.16); color: #fff; }
+        #palPickL { left: 8.9%; width: 22%; }
+        #palReset { left: 69.1%; width: 22%; }
         .pill-palette.assigning .pal-swatch { animation: palBlink 0.7s steps(2) infinite; }
         @keyframes palBlink { 50% { outline: 2px solid #fff; outline-offset: -1px; } }
         /* Aviso de "guarda el color en una ventana". Estaba a 5.5px y en gris:
@@ -2030,7 +2047,9 @@
                 <div id="pillPalette" class="pill-palette" style="display:none;">
                     <div class="pal-slots" id="palGrid"></div>
                     <canvas class="pal-frame" id="palFrame"></canvas>
+                    <button class="pal-btn" id="palPickL" type="button" title="Pick any color">PICK</button>
                     <button class="pal-pick" id="palPick" type="button" title="Pick any color"></button>
+                    <button class="pal-btn" id="palReset" type="button" title="Reset the palette to its default colors">RESET</button>
                 </div>
                 <!-- Fuera de la paleta para poder moverlo por separado en EDIT
                      LAYOUT (dentro heredaba su posicion y su escala). -->
@@ -3900,10 +3919,17 @@
         const hudBtns = [['x', '#exitGameBtn'], ['song', '#musicToggle'], ['sonido', '#soundToggle']];
         for (const [id, sel] of hudBtns) {
             if (!cartelUsesAtlas(id)) continue;
-            // x.png trae scanlines finas y ya viene pre-reducido (168x165, no
-            // el 1024x1007 original) para evitar el moire de nearest-neighbor
-            // a este tamaño (mismo motivo que .back-icon/.back-to-web) — por
-            // eso es el unico de los tres sin pixelated.
+            // x.png trae scanlines finas y ya viene pre-reducido para evitar el
+            // moire de nearest-neighbor a este tamaño (mismo motivo que
+            // .back-icon/.back-to-web) — por eso es el unico de los tres sin
+            // pixelated. Va a 80x80 = EXACTAMENTE el doble de los 40x40 del
+            // boton: asi el navegador solo reduce 2x (limpio) y en pantallas
+            // retina sale 1:1. Antes estaba a 168x165, que obligaba a un
+            // 4,2x con factor no entero y emborronaba la X y el marco.
+            // Se genera desde el original de 1024x1007 PREMULTIPLICANDO el alfa
+            // (si no, el filtro mezcla color con los pixeles transparentes y
+            // deja halo oscuro) y con un unsharp suave para que el contorno de
+            // la X y los tres escalones del marco no se pierdan al reducir.
             const rend = id === 'x' ? '' : 'image-rendering:pixelated;';
             css += 'body.pixel-pack ' + sel + '{border:none!important;border-radius:0!important;' +
                 'background:transparent url(' + cartelHeroUrl(id) + ') center/100% 100% no-repeat!important;' + rend + '}' +
@@ -5749,6 +5775,13 @@
         pal.style.display = 'block';
     }
     function closePalette() { const p = document.getElementById('pillPalette'); if (p) { p.style.display = 'none'; setAssignMode(null); } }
+    // RESET de la paleta: las 10 ventanas vuelven a los colores de fabrica. No
+    // toca el color que lleve puesto la pildora, solo los guardados.
+    function resetPalette() {
+        palColors = PAL_DEFAULT.slice();
+        savePalette(); setAssignMode(null); renderPalette();
+        SoundManager.play('simpleselect');
+    }
 
     // --- Selector grande de color (108 tonos del arte) ---
     // Una zona clicable por subcelda; el color no se lee del pixel en runtime,
@@ -5794,9 +5827,14 @@
                 pon('--gw-bar', 'ingame-bar');
             }
         });
-        // La placa de abajo del arte abre el selector grande.
-        const pick = document.getElementById('palPick');
-        if (pick) pick.onclick = (e) => { e.stopPropagation(); openColorPicker(); };
+        // Las placas de abajo del arte: las dos de la izquierda (la central y la
+        // lateral) abren el selector grande, la de la derecha resetea la paleta.
+        for (const id of ['palPick', 'palPickL']) {
+            const b = document.getElementById(id);
+            if (b) b.onclick = (e) => { e.stopPropagation(); openColorPicker(); };
+        }
+        const rst = document.getElementById('palReset');
+        if (rst) rst.onclick = (e) => { e.stopPropagation(); resetPalette(); };
         document.addEventListener('mousedown', (e) => {
             // Mientras se edita el layout no se cierra nada: los tres elementos
             // estan a la vista justo para poder colocarlos.
@@ -6617,7 +6655,13 @@
             victory: 'prizeModal', cashout: 'prizeModal', matchEnded: 'prizeModal' }[id];
         if (supDe) applyCartelSurface(supDe, CARTEL_LAYOUT[supDe + '#' + id] || CARTEL_LAYOUT[supDe]);
     }
-    function stopGame() { isSpectating = true; hideCountdownNumber(); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); setTimeout(() => { setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI('gameOver'); }, 1400); }
+    // El cartel de GAME OVER sale 1,4s despues de morir (da tiempo a ver la
+    // explosion). Ese retardo se quedaba suelto: si en ese hueco salias al menu,
+    // el temporizador disparaba igual y pintaba GAME OVER / TRY AGAIN ENCIMA de
+    // la pantalla de seleccion. Ahora se guarda para poder cancelarlo desde
+    // returnToMenu, y ademas el callback comprueba que sigues en partida.
+    let deathResultTimer = null;
+    function stopGame() { isSpectating = true; hideCountdownNumber(); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); if (deathResultTimer) clearTimeout(deathResultTimer); deathResultTimer = setTimeout(() => { deathResultTimer = null; if (!gameRunning) return; setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI('gameOver'); }, 1400); }
 
     // Botón SPECTATE del menú GAME OVER: online sigue la partida en curso, offline crea sim local.
     function onSpectateClick() {
@@ -6706,7 +6750,7 @@
             showResultsUI('matchFinished');
         }
     }
-    function returnToMenu() { serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function returnToMenu() { if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
@@ -8959,14 +9003,18 @@
     const MINT = 'Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r';
     const TREASURY = '4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN';
     const DECIMALS = 6;
-    // Tope UNICO para todo lo que hable con el RPC. Sin esto, cada peticion se
-    // quedaba colgada al ritmo del navegador y confirmTransaction esperaba los
-    // 60s de fabrica de web3.js: el aviso de error tardaba mas de un minuto en
-    // salir. 15s es de sobra para devnet cuando responde.
-    const RPC_TIMEOUT_MS = 15000;
+    // Topes del RPC. Antes eran 15s para TODO, y como el camino del deposito
+    // encadena tres llamadas (leer la cuenta del treasury, pedir el blockhash y
+    // confirmar), el peor caso sumaba 45s + los reintentos del servidor: por eso
+    // el error tardaba un minuto en salir con el boton en gris. Las LECTURAS
+    // bajan a 6s (si devnet no contesta en 6s no va a contestar), y solo la
+    // confirmacion conserva un margen mayor porque ahi ya hay una transaccion
+    // enviada y esperar merece la pena. Peor caso hasta el error: ~18s.
+    const RPC_TIMEOUT_MS = 6000;
+    const CONFIRM_TIMEOUT_MS = 12000;
     const fetchConTope = (url, opts) => fetch(url, Object.assign({}, opts, { signal: AbortSignal.timeout(RPC_TIMEOUT_MS) }));
     const nuevaConexion = () => new Connection(RPC, {
-        commitment: 'confirmed', confirmTransactionInitialTimeout: RPC_TIMEOUT_MS, fetch: fetchConTope,
+        commitment: 'confirmed', confirmTransactionInitialTimeout: CONFIRM_TIMEOUT_MS, fetch: fetchConTope,
     });
     async function deposit(amount) {
         const W = window.GameWallet;
@@ -9005,17 +9053,26 @@
         const conTope = (p, ms, que) => Promise.race([p, new Promise((_, rej) =>
             setTimeout(() => rej(new Error('timeout: ' + que)), ms))]);
         let sig;
-        if (W.provider.signAndSendTransaction) { const r = await conTope(W.provider.signAndSendTransaction(tx), 60000, 'wallet'); sig = r.signature || r; }
-        else {
+        // signTransaction PRIMERO y signAndSendTransaction solo como respaldo.
+        // signAndSendTransaction envia por el RPC DE LA WALLET, que apunta al
+        // cluster que tenga elegido la extension — normalmente mainnet. Nuestro
+        // blockhash es de DEVNET, asi que ese nodo no lo conoce y responde
+        // -32002 "Blockhash not found" por muy correcta que sea la transaccion.
+        // Firmando aqui y enviando por `conn` la transaccion va al mismo cluster
+        // del que salio el blockhash, que es la unica forma de que cuadre.
+        if (W.provider.signTransaction) {
             const signed = await conTope(W.provider.signTransaction(tx), 60000, 'wallet');
             sig = await conn.sendRawTransaction(signed.serialize());
+        } else {
+            const r = await conTope(W.provider.signAndSendTransaction(tx), 60000, 'wallet');
+            sig = r.signature || r;
         }
         // Firmada y enviada: a partir de aqui el dinero YA salio. Si la
         // confirmacion tarda mas de los 15s no se lanza error — se devuelve la
         // firma igual y la verdad la pone el servidor, que lee la tx on-chain.
         // Lanzar aqui dejaba al jugador sin acreditar un deposito ya pagado.
         try { await conn.confirmTransaction(sig, 'confirmed'); }
-        catch (e) { console.warn('[deposit] confirmacion no llego en ' + RPC_TIMEOUT_MS + 'ms, se acredita por firma:', e); }
+        catch (e) { console.warn('[deposit] confirmacion no llego en ' + CONFIRM_TIMEOUT_MS + 'ms, se acredita por firma:', e); }
         return sig;
     }
     // El servidor verifica la tx leyendola on-chain. Si la pide antes de que el
@@ -9026,7 +9083,7 @@
     async function creditDeposit(wallet, sig) {
         let ultimo = { ok: false, reason: 'sin respuesta' };
         for (let i = 0; i < 3; i++) {
-            if (i) await new Promise(r => setTimeout(r, 3000));
+            if (i) await new Promise(r => setTimeout(r, 2000));
             try {
                 const r = await fetch('/api/deposit', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
