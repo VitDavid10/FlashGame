@@ -5811,7 +5811,8 @@
                 // Aplica el color a la mitad activa y ademas lo deja "en mano":
                 // asi se puede guardar en una ventana de la paleta sin volver a
                 // abrir el selector.
-                b.onclick = () => { applyPillColor(c); closeColorPicker(); setAssignMode(c); };
+                // Espera a que termine el barrido de color (PILL_SWEEP_MS=380ms) y luego cierra el selector.
+                b.onclick = () => { applyPillColor(c); setAssignMode(c); setTimeout(closeColorPicker, 400); };
                 g.appendChild(b);
             });
             cont.appendChild(g);
