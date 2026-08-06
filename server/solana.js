@@ -26,11 +26,20 @@ const TREASURY_OWNER = process.env.PILL_TREASURY || tok.authority || '';
 
 function pillToRaw(pill) { return BigInt(Math.round(pill)) * (10n ** BigInt(DECIMALS)); }
 
+// Tope de espera del RPC. Sin él, un devnet que no contesta dejaba la petición
+// colgada hasta el timeout del socket (minutos) y el jugador se quedaba mirando
+// el botón "Depositing..." sin saber si había fallado.
+const RPC_TIMEOUT_MS = 15000;
+
 async function rpc(method, params) {
     const res = await fetch(RPC, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+        signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
     });
+    // 429 (cuota del RPC público agotada) y 5xx no traen JSON-RPC válido: sin
+    // esto el res.json() petaba con un error de parseo que no decía nada.
+    if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 429 ? ' (cuota del RPC agotada, espera un poco)' : ''));
     const j = await res.json();
     if (j.error) throw new Error(j.error.message || 'RPC error');
     return j.result;

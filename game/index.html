@@ -208,7 +208,11 @@
             display: none; align-items: center; justify-content: flex-start;
             width: 360px; height: 76px;
             background: var(--gw-bar, none) center/100% 100% no-repeat;
-            image-rendering: pixelated;
+            /* Mismo motivo que los botones (ver #gameWalletArea button): el arte
+               es de 1761x409 y aqui se pinta a 360x76 — casi 5 veces mas
+               pequeno. Con pixelated el borde negro fino se comia filas enteras
+               y aparecia y desaparecia segun el ancho. */
+            image-rendering: auto;
             padding: 0 12px; box-sizing: border-box;
         }
         /* El CONTENIDO del recuadro azul es una pieza de layout aparte
@@ -240,9 +244,16 @@
             background-color: transparent !important;
             background-image: none;
             border: 0; padding: 0; cursor: pointer;
-            font-family: 'Press Start 2P', monospace; font-size: 13px !important; letter-spacing: 0;
+            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px) !important; letter-spacing: 0;
             color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase;
-            image-rendering: pixelated; display: grid; place-items: center;
+            /* image-rendering AUTO, no pixelated. El PNG es de 1724x403 y aqui
+               se pinta a 190x44: pixelated (nearest-neighbor) tira 8 de cada 9
+               pixeles, y lo primero que se pierde es el bisel claro de arriba y
+               la sombra de abajo — el boton salia PLANO y por eso se veia de
+               otro rojo que el PLAY, que usa un PNG de 735x86 a 447x60 (apenas
+               reduce). El relleno es el mismo color en los dos archivos
+               (246,42,45 vs 247,43,44). pixelated solo ayuda al AMPLIAR. */
+            image-rendering: auto; display: grid; place-items: center;
             /* drop-shadow y no box-shadow: sigue el CONTORNO del PNG (la pildora),
                no el rectangulo del elemento — el box-shadow de antes se salia por
                las esquinas curvas. */
@@ -268,7 +279,11 @@
             width: 190px; aspect-ratio: 1724 / 403;
             background: var(--gw-red, none) center/100% 100% no-repeat;
             background-color: transparent !important;
-            font-size: 13px !important;
+            /* --gw-font la escribe el editor sobre la clave walletBtn, que
+               gobierna #gwConnect Y #gwDepositWrap: un solo ajuste cambia el
+               cuerpo de letra de los CUATRO botones a la vez (el dropdown lo
+               hereda del wrap). */
+            font-size: var(--gw-font, 13px) !important;
         }
         /* brightness se SUMA al drop-shadow de la regla base (filter acumula
            funciones); si aqui solo pusiera brightness, sustituiria el filter
@@ -1014,6 +1029,10 @@
             color: transparent; text-shadow: none;
         }
         .play-picker .pw-modal-cancel:hover, .settings-box .pw-modal-cancel:hover { filter: brightness(1.2); color: transparent; }
+        /* El CLOSE de SETTINGS quedaba pegado al borde de abajo del cartel: el
+           marco del PNG se come parte del padding de 34px, asi que el hueco real
+           era la mitad de lo que dice el CSS. Sube 12px. */
+        .settings-box .pw-modal-cancel { margin-top: 6px; }
 
         /* FEATURES: modal ancho con los paneles de guia de cada modo dentro */
         .pw-modal-box.features { width: 720px; max-width: 94vw; max-height: 88vh; overflow-y: auto; text-align: left; }
@@ -1789,8 +1808,15 @@
              botones hacen lo mismo sin depender de puntería. -->
         <span class="leb-group">
             <span class="leb-label">IN GAME TXT</span>
-            <button class="leb-btn leb-sm" onclick="bumpWalletFont(-1)">−</button>
-            <button class="leb-btn leb-sm" onclick="bumpWalletFont(1)">+</button>
+            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBarTxt', -1)">−</button>
+            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBarTxt', 1)">+</button>
+        </span>
+        <!-- Un solo control para los CUATRO botones de wallet: comparten la
+             clave walletBtn, asi que nunca se descuadran entre ellos. -->
+        <span class="leb-group">
+            <span class="leb-label">WALLET BTN TXT</span>
+            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtn', -1)">−</button>
+            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtn', 1)">+</button>
         </span>
         <span class="leb-group">
             <span class="leb-label">IN GAME WIDTH</span>
@@ -5905,7 +5931,10 @@
     // IN GAME lleva su rotulo por CSS encima del PNG, y el cuerpo de letra que
     // le cuadre depende de lo que se haya estirado la caja. walletBarTxt es el
     // contenido de esa barra, que ademas se mueve y escala por su cuenta.
-    const LAYOUT_FONT_SCALABLE = new Set(['walletBar', 'walletBarTxt']);
+    // walletBtn son los CUATRO botones (CONNECT/DEPOSIT/WITHDRAW/DISCONNECT):
+    // comparten una sola clave, asi que se ajustan todos de golpe y no hay forma
+    // de que uno se quede con letra distinta.
+    const LAYOUT_FONT_SCALABLE = new Set(['walletBar', 'walletBarTxt', 'walletBtn']);
     const LAYOUT_ELS = {
         titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
         palette: '#pillPalette', colorPicker: '#colorPicker', palHint: '#palHint',
@@ -6151,15 +6180,16 @@
     // ALT+rueda / CTRL+rueda sobre la caja, pero sin depender de acertar el
     // punto exacto con el raton ni de que el navegador no se coma la
     // combinacion (CTRL+rueda fuera de la caja hace zoom de pagina).
-    // El cuerpo de letra se guarda en walletBarTxt (el contenido), no en la
-    // barra: es lo que se esta tocando, y ademas es el que manda si los dos
-    // tienen valor (la custom property del hijo pisa a la del padre).
-    function bumpWalletFont(delta) {
-        const el = document.querySelector(LAYOUT_ELS.walletBarTxt); if (!el) return;
-        const cur = menuLayout.walletBarTxt = menuLayout.walletBarTxt || { x: 0, y: 0, s: 1 };
+    // El cuerpo de letra de cualquier clave de LAYOUT_FONT_SCALABLE. El de la
+    // barra se guarda en walletBarTxt (el contenido) y no en la caja: es lo que
+    // se esta tocando, y ademas es el que manda si los dos tienen valor (la
+    // custom property del hijo pisa a la del padre).
+    function bumpLayoutFont(key, delta) {
+        const el = document.querySelector(LAYOUT_ELS[key]); if (!el) return;
+        const cur = menuLayout[key] = menuLayout[key] || { x: 0, y: 0, s: 1 };
         const base = typeof cur.f === 'number' ? cur.f : (parseFloat(getComputedStyle(el).getPropertyValue('--gw-font')) || 13);
         cur.f = Math.round(Math.min(48, Math.max(6, base + delta)) * 10) / 10;
-        marcarLayoutMio('walletBarTxt'); applyMenuLayout(); saveMenuLayout();
+        marcarLayoutMio(key); applyMenuLayout(); saveMenuLayout();
     }
     function bumpWalletWidth(delta) {
         const el = document.querySelector(LAYOUT_ELS.walletBar); if (!el) return;
@@ -7042,7 +7072,9 @@
             try {
                 const RPC = location.protocol === 'https:' ? 'https://api.devnet.solana.com' : 'https://api.devnet.solana.com';
                 const MINT = 'Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r';
-                const res = await fetch(RPC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenAccountsByOwner', params: [GameWallet.address, { mint: MINT }, { encoding: 'jsonParsed' }] }) });
+                // 15s de tope: si devnet no contesta, el modal se abre igual con
+                // el saldo de wallet en "—" en vez de quedarse pidiendolo.
+                const res = await fetch(RPC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenAccountsByOwner', params: [GameWallet.address, { mint: MINT }, { encoding: 'jsonParsed' }] }), signal: AbortSignal.timeout(15000) });
                 const data = await res.json();
                 const amt = data.result && data.result.value && data.result.value[0] ? data.result.value[0].account.data.parsed.info.tokenAmount.uiAmountString : '0';
                 this.walletBalance = Math.floor(parseFloat(amt) || 0);
@@ -7823,10 +7855,18 @@
     // muestra el texto crudo del proveedor, solo un mapeo fijo a ingles.
     function walletErrText(e) {
         const raw = String((e && e.message) || e || '').toLowerCase();
+        // El texto crudo NO se enseña, pero sin verlo en algun sitio no hay
+        // forma de saber si el que falla es el RPC, la extension o el servidor.
+        console.warn('[wallet]', e);
         if (e && (e.code === 4001 || e.code === -32003)) return 'You rejected the request in your wallet.';
         if (/reject|denegad|declin|cancel/i.test(raw)) return 'You rejected the request in your wallet.';
         if (/insufficient|balance|fondos|saldo/i.test(raw)) return 'Insufficient balance for this transaction.';
-        if (/timeout|expired|expirad/i.test(raw)) return 'The wallet request timed out. Please try again.';
+        // 429 = cuota del RPC publico de devnet agotada. Es lo que mas falla y
+        // se arregla solo esperando, asi que se dice con esas palabras en vez
+        // del "algo ha ido mal" de siempre.
+        if (/429|too many|cuota|rate limit/i.test(raw)) return 'The Solana network is rate-limiting us right now. Wait a minute and try again.';
+        if (/^rpc:|rpc error|no encontrada|not found/i.test(raw)) return "Couldn't reach the Solana network. Wait a moment and try again.";
+        if (/timeout|expired|expirad|abort/i.test(raw)) return 'The request timed out after 15s. Please try again.';
         if (/network|fetch|conexion|connection/i.test(raw)) return 'Network error talking to the wallet. Please try again.';
         return 'Something went wrong completing the transaction. Please try again.';
     }
@@ -8873,16 +8913,25 @@
 <!-- Depósito de $PILL desde el juego: mismo módulo ESM que la web (web3.js + spl-token) -->
 <script type="module">
     import { Connection, PublicKey, Transaction } from 'https://esm.sh/@solana/web3.js@1.95.3';
-    import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount }
+    import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount, TokenAccountNotFoundError }
         from 'https://esm.sh/@solana/spl-token@0.4.8?deps=@solana/web3.js@1.95.3';
     const RPC = 'https://api.devnet.solana.com';
     const MINT = 'Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r';
     const TREASURY = '4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN';
     const DECIMALS = 6;
+    // Tope UNICO para todo lo que hable con el RPC. Sin esto, cada peticion se
+    // quedaba colgada al ritmo del navegador y confirmTransaction esperaba los
+    // 60s de fabrica de web3.js: el aviso de error tardaba mas de un minuto en
+    // salir. 15s es de sobra para devnet cuando responde.
+    const RPC_TIMEOUT_MS = 15000;
+    const fetchConTope = (url, opts) => fetch(url, Object.assign({}, opts, { signal: AbortSignal.timeout(RPC_TIMEOUT_MS) }));
+    const nuevaConexion = () => new Connection(RPC, {
+        commitment: 'confirmed', confirmTransactionInitialTimeout: RPC_TIMEOUT_MS, fetch: fetchConTope,
+    });
     async function deposit(amount) {
         const W = window.GameWallet;
         if (!W || !W.address || !W.provider) throw new Error('Connect your wallet first');
-        const conn = new Connection(RPC, 'confirmed');
+        const conn = nuevaConexion();
         const owner = new PublicKey(W.address);
         const mint = new PublicKey(MINT);
         const treasury = new PublicKey(TREASURY);
@@ -8890,20 +8939,50 @@
         const fromAta = await getAssociatedTokenAddress(mint, owner);
         const toAta = await getAssociatedTokenAddress(mint, treasury);
         const tx = new Transaction();
+        // SOLO "la cuenta no existe" justifica crearla. Antes cualquier fallo
+        // caia en el mismo catch: si el RPC contestaba 429 o tardaba, se metia
+        // la instruccion de crear una ATA de treasury que YA existe y la
+        // transaccion entera se caia on-chain — el "falla el RPC" al depositar.
         try { await getAccount(conn, toAta); }
-        catch (e) { tx.add(createAssociatedTokenAccountInstruction(owner, toAta, treasury, mint)); }
+        catch (e) {
+            if (e instanceof TokenAccountNotFoundError || (e && e.name === 'TokenAccountNotFoundError')) {
+                tx.add(createAssociatedTokenAccountInstruction(owner, toAta, treasury, mint));
+            } else throw new Error('rpc: ' + ((e && e.message) || e));
+        }
         tx.add(createTransferInstruction(fromAta, toAta, owner, raw));
         tx.feePayer = owner;
-        tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
+        try { tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash; }
+        catch (e) { throw new Error('rpc: ' + ((e && e.message) || e)); }
         let sig;
         if (W.provider.signAndSendTransaction) { const r = await W.provider.signAndSendTransaction(tx); sig = r.signature || r; }
         else { const signed = await W.provider.signTransaction(tx); sig = await conn.sendRawTransaction(signed.serialize()); }
-        await conn.confirmTransaction(sig, 'confirmed');
+        // Firmada y enviada: a partir de aqui el dinero YA salio. Si la
+        // confirmacion tarda mas de los 15s no se lanza error — se devuelve la
+        // firma igual y la verdad la pone el servidor, que lee la tx on-chain.
+        // Lanzar aqui dejaba al jugador sin acreditar un deposito ya pagado.
+        try { await conn.confirmTransaction(sig, 'confirmed'); }
+        catch (e) { console.warn('[deposit] confirmacion no llego en ' + RPC_TIMEOUT_MS + 'ms, se acredita por firma:', e); }
         return sig;
     }
+    // El servidor verifica la tx leyendola on-chain. Si la pide antes de que el
+    // RPC la tenga indexada contesta "tx no encontrada": eso NO es un fallo del
+    // deposito, solo que se ha llegado pronto. Se reintenta dos veces (el
+    // endpoint admite 5 peticiones por minuto y por IP). Cualquier otra razon se
+    // devuelve tal cual, sin gastar reintentos.
     async function creditDeposit(wallet, sig) {
-        const r = await fetch('/api/deposit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet, sig }) });
-        return r.json();
+        let ultimo = { ok: false, reason: 'sin respuesta' };
+        for (let i = 0; i < 3; i++) {
+            if (i) await new Promise(r => setTimeout(r, 3000));
+            try {
+                const r = await fetch('/api/deposit', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet, sig }), signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+                });
+                ultimo = await r.json();
+            } catch (e) { ultimo = { ok: false, reason: 'server: ' + ((e && e.message) || e) }; }
+            if (ultimo.ok || !/no encontrada/i.test(String(ultimo.reason || ''))) return ultimo;
+        }
+        return ultimo;
     }
     window.PillChain = { deposit, creditDeposit };
     window.GameWallet = GameWallet;   // expone GameWallet para el módulo
