@@ -5739,6 +5739,7 @@
     } catch (e) {}
     let palHalf = 'colTop';   // mitad activa ('colTop' | 'colBot')
     let palAssign = null;     // color "en mano" tras PICK, pendiente de guardar en un slot
+    let assignTimeout = null; // autoclose de 2s si no guardas en un slot
     function savePalette() { try { localStorage.setItem(PAL_KEY, JSON.stringify(palColors)); } catch (e) {} }
     function renderPalette() {
         const grid = document.getElementById('palGrid'); if (!grid) return;
@@ -5750,7 +5751,7 @@
             b.style.left = (PAL_X0 + (i % 5) * PAL_DX) + '%';
             b.style.top = (PAL_Y0 + Math.floor(i / 5) * PAL_DY) + '%';
             b.onclick = () => {
-                if (palAssign) { palColors[i] = palAssign; savePalette(); setAssignMode(null); renderPalette(); }
+                if (palAssign) { palColors[i] = palAssign; savePalette(); setAssignMode(null); renderPalette(); closePalette(); }
                 else { applyPillColor(c); closePalette(); }
             };
             grid.appendChild(b);
@@ -5769,6 +5770,11 @@
         palAssign = color;
         const pal = document.getElementById('pillPalette');
         if (pal) pal.classList.toggle('assigning', !!color);
+        // Autoclose: 2s sin guardar en un slot → cierra todo.
+        if (assignTimeout) clearTimeout(assignTimeout);
+        if (color) {
+            assignTimeout = setTimeout(() => { closePalette(); }, 2000);
+        }
         updateHint();
     }
     function applyPillColor(c) {
@@ -5786,7 +5792,7 @@
         renderPalette();
         pal.style.display = 'block';
     }
-    function closePalette() { const p = document.getElementById('pillPalette'); if (p) { p.style.display = 'none'; setAssignMode(null); } }
+    function closePalette() { if (assignTimeout) clearTimeout(assignTimeout); const p = document.getElementById('pillPalette'); if (p) { p.style.display = 'none'; setAssignMode(null); } }
     // RESET de la paleta: las 10 ventanas vuelven a los colores de fabrica. No
     // toca el color que lleve puesto la pildora, solo los guardados.
     function resetPalette() {
@@ -5811,8 +5817,7 @@
                 // Aplica el color a la mitad activa y ademas lo deja "en mano":
                 // asi se puede guardar en una ventana de la paleta sin volver a
                 // abrir el selector.
-                // Espera a que termine el barrido de color (PILL_SWEEP_MS=380ms) y luego cierra el selector.
-                b.onclick = () => { applyPillColor(c); setAssignMode(c); setTimeout(closeColorPicker, 400); };
+                b.onclick = () => { applyPillColor(c); setAssignMode(c); closeColorPicker(); };
                 g.appendChild(b);
             });
             cont.appendChild(g);
