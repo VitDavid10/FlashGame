@@ -191,7 +191,7 @@
         .wb-txt { display: inline-block; line-height: 1; }
 
         /* DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT debajo. */
-        .wallet-deposit-wrap { display: none; position: relative; }
+        .wallet-deposit-wrap { display: none; position: relative; flex-shrink: 0; }
         .wallet-dropdown-content { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 1002; }
         .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
         .wallet-dropdown-content .wb-box { margin-top: 4px; }
@@ -887,7 +887,7 @@ body.trailer-open #page-content{
         // DENTRO del boton, y target() resuelve por el primer key que
         // matchee via closest(), asi que el mas especifico va primero.
         walletBtnTxt: '#wallet-btn-txt, #wallet-deposit-txt, #wallet-withdraw-txt, #wallet-disconnect-txt',
-        walletBtn: '#wallet-btn-box, #wallet-deposit-wrap, #wallet-withdraw-box, #wallet-disconnect-box',
+        walletBtn: '#wallet-btn-box, #wallet-deposit-box, #wallet-withdraw-box, #wallet-disconnect-box',
         walletBal: '#wallet-bal-box', pillDropdown: '#pill-dropdown',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
     };
@@ -900,7 +900,18 @@ body.trailer-open #page-content{
         pickMe: { x: -444.5, y: -7.25,   s: 2.4798680723250732 },
     };
     (function () {
-        const L = window.HERO_LAYOUT_HORNEADO, SEL = window.HERO_LAYOUT_ELS;
+        // El horneado es el diseño BUENO de fabrica, pero si ESTE usuario ya
+        // edito y guardo algo (pw_landing_layout en localStorage — wallet,
+        // PILL, iconos...) eso manda por encima: sin esto, el primer frame
+        // salía con el sitio de fabrica y saltaba al bueno en cuanto el script
+        // de abajo corria (localStorage es sincrono, así que se puede leer
+        // aqui mismo, ANTES del primer pintado, igual que el horneado).
+        const L = Object.assign({}, window.HERO_LAYOUT_HORNEADO);
+        try {
+            const guardado = JSON.parse(localStorage.getItem('pw_landing_layout') || '{}');
+            Object.assign(L, guardado);
+        } catch (e) {}
+        const SEL = window.HERO_LAYOUT_ELS;
         // translate/scale (no `transform`): son las mismas propiedades que usa
         // LandingLayout, asi sus estilos inline pisan esto sin pelearse con los
         // transform de los :hover.
@@ -1008,7 +1019,7 @@ body.trailer-open #page-content{
 
         <div class="nav-dropdown-group">
             <div class="dropdown" id="pill-dropdown">
-                <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading... ▾</span>
+                <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
                 <div class="dropdown-content">
                     <div class="dropdown-box">
                         <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon"> Chart</a>
@@ -1022,8 +1033,13 @@ body.trailer-open #page-content{
             <div class="wallet-area" id="wallet-area">
                 <div class="wallet-bal-box" id="wallet-bal-box"><span class="wl-lbl">IN GAME:</span><span class="wl-val" id="wallet-bal-value">0</span><span class="wl-lbl">$PILL</span></div>
                 <div class="wb-box" id="wallet-btn-box"><button class="btn-connect" onclick="App.Wallet.toggle()" id="wallet-btn"><span class="wb-txt" id="wallet-btn-txt">CONNECT</span></button></div>
-                <div class="wb-box wallet-deposit-wrap" id="wallet-deposit-wrap">
-                    <button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()"><span class="wb-txt" id="wallet-deposit-txt">DEPOSIT</span></button>
+                <!-- wallet-deposit-wrap YA NO se escala/mueve el mismo: es solo el
+                     ancla (position:relative) para el desplegable. Si tambien
+                     llevara su propio transform, se SUMARIA con el de su hijo
+                     wallet-deposit-box (estan anidados) y DEPOSIT saldria
+                     doblemente escalado/movido respecto a WITHDRAW/DISCONNECT. -->
+                <div class="wallet-deposit-wrap" id="wallet-deposit-wrap">
+                    <div class="wb-box" id="wallet-deposit-box"><button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()"><span class="wb-txt" id="wallet-deposit-txt">DEPOSIT</span></button></div>
                     <div class="wallet-dropdown-content">
                         <div class="wb-box" id="wallet-withdraw-box"><button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()"><span class="wb-txt" id="wallet-withdraw-txt">WITHDRAW</span></button></div>
                         <div class="wb-box" id="wallet-disconnect-box"><button class="btn-disconnect" id="disconnect-btn" onclick="App.Wallet.disconnect()"><span class="wb-txt" id="wallet-disconnect-txt">DISCONNECT</span></button></div>
@@ -1873,7 +1889,7 @@ body.trailer-open #page-content{
                 updateTicker: async () => {
                     // En devnet no hay mercado (DexScreener es de mainnet): solo dejamos "$PILL".
                     if (App.Config.Cluster === 'devnet') {
-                        if (DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span> &nbsp; ▾`;
+                        if (DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span>`;
                         return;
                     }
                     try {
@@ -1889,7 +1905,7 @@ body.trailer-open #page-content{
 
                         if(DOM.widgetMcap) DOM.widgetMcap.innerHTML = mcap;
                         if(DOM.widgetVol) DOM.widgetVol.innerHTML = vol; 
-                        if(DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span> &nbsp; $${price} ▾`;
+                        if(DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span> &nbsp; $${price}`;
 
                         const col = chg >= 0 ? '#00ff88' : '#ff4747';
                         const sign = chg >= 0 ? '+' : '';
@@ -2935,7 +2951,23 @@ function toggleTrailerMode() {
         // que el hero no salga de fabrica y salte al colocarse.
         const LAYOUT_ELS = window.HERO_LAYOUT_ELS;
         const LAYOUT_HORNEADO = window.HERO_LAYOUT_HORNEADO;
+        // FALTABA fusionar el guardado local aqui: sin esto, `layout` arrancaba
+        // SIEMPRE en el horneado puro y el primer apply() de mas abajo BORRABA
+        // el CSS que el <head> acababa de hornear con tu edicion, dejando el
+        // sitio de fabrica hasta que llegaba la respuesta async del fetch a
+        // /api/landing-layout (de ahi el salto/parpadeo).
         let layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO));
+        // teniaLocal: si YA habia algo guardado en este navegador antes de
+        // cargar. Se usa mas abajo para que el layout GLOBAL del servidor
+        // (SAVE FOR ALL de otra sesion) nunca pise una edicion local que aun
+        // no se ha subido — sin este guard, el fetch de mas abajo detectaba
+        // la diferencia y BORRABA la edicion local en cuanto llegaba la
+        // respuesta, aunque fuera mas nueva que la del servidor.
+        const teniaLocal = !!localStorage.getItem(LAYOUT_KEY);
+        try {
+            const guardado = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
+            Object.assign(layout, guardado);
+        } catch (e) {}
         let editing = false, drag = null;
         const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
         const ZOOM_PASOS = [1, 0.8, 0.6, 0.45];
@@ -3080,7 +3112,7 @@ function toggleTrailerMode() {
             .then(r => r.json())
             .then(d => {
                 if (d && d.edit) { const b = document.getElementById('btnLandingEdit'); if (b) b.style.display = ''; }
-                if (editing || !d || !d.layout || !Object.keys(d.layout).length) return;
+                if (editing || teniaLocal || !d || !d.layout || !Object.keys(d.layout).length) return;
                 if (mismoLayout(d.layout, layout)) return;
                 layout = d.layout; save(); apply();
             })
