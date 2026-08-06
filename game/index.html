@@ -460,7 +460,7 @@
         .mqp.arcade { left: 30px; border: 1px solid rgba(204,255,0,0.25); border-right: 3px solid #ccff00; }
         /* Solo se ve si está abierto Y estás en su lado del menú (al cambiar de modo se oculta sin perder el estado abierto) */
         #modeScreen.hover-classic .mqp.classic.open, #modeScreen.hover-arcade .mqp.arcade.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
-        .mqp-head { font-family: 'Russo One'; font-size: 11px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+        .mqp-head { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
         .mqp.classic .mqp-head .pill { color: #00ffaa; }
         .mqp.arcade .mqp-head .pill { color: #ccff00; }
         .mqp-q { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.06); }
@@ -869,7 +869,7 @@
             0%, 100% { transform: scale(1); }
             50%      { transform: scale(1.18); }
         }
-        .btn-play { width: 100%; padding: 12px; margin-top: 10px; background: var(--accent); color: white; border: none; font-family: 'Russo One'; font-size: 18px; letter-spacing: 1px; clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+        .btn-play { width: 100%; padding: 12px; margin-top: 10px; background: var(--accent); color: white; border: none; font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: 1px; clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
         .btn-play:hover { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 20px rgba(255, 42, 42, 0.4); }
 
         /* ===== Menu nuevo: pildora interactiva + SETTINGS + popups pixel ===== */
@@ -2070,6 +2070,7 @@
                 <button class="btn-play" id="btnPlay" onclick="openPlayChoice()">PLAY</button>
                 <button class="btn-settings" id="btnSettings" onclick="openSettings()">SETTINGS</button>
                 <button class="btn-settings" id="btnFeatures" onclick="openFeatures()">FEATURES</button>
+                <div id="pillLabel" style="font-size:32px; color:#ffce3d; font-weight:bold; text-align:center; margin-top:16px; text-shadow:0 0 18px rgba(255,206,61,0.5);">$PILL</div>
             </div>
 
         </div>
@@ -6064,7 +6065,7 @@
         walletBarTxt: '#gwBalInner', walletBtnTxt: '#gameWalletArea .gw-btn-txt',
         walletBar: '#gwBalBox', walletBtn: '#gwConnect, #gwDepositWrap',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
-        features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
+        features: '#btnFeatures', pillLabel: '#pillLabel', roomsInner: '#oracleInner', questsInner: '#missionsInner',
         rooms: '#oraclePanel', quests: '#missionsPanel',
         zoneA: '#noVirusZoneA', zoneB: '#noVirusZoneB',
     };
@@ -6114,6 +6115,7 @@
         name:              { x: 256,  y: 116,  s: 1 },
         play:              { x: 261,  y: 137,  s: 1.429502811929022 },
         settings:          { x: 257,  y: 146,  s: 1.4083771546098733 },
+        pillLabel:         { x: 256,  y: 162,  s: 1 },
         rooms:             { x: -863, y: 217,  s: 1.5399805127988688 },
         roomsInner:        { x: 0,    y: 2,    s: 0.9421842302867248 },
         quests:            { x: 263,  y: -199, s: 1.5630802204908512 },
