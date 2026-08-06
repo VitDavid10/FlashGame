@@ -129,7 +129,11 @@
         .dropdown-box { background: #111; border: 1px solid #333; border-radius: 6px; overflow: hidden; box-shadow: 0 10px 30px #000; }
         .dropdown-content a { padding: 12px 16px; font-size: 13px; font-weight: 600; color: #ccc; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid #222; }
         .dropdown-content a:hover { background: #222; color: var(--primary); }
-        .dropdown:hover .dropdown-content { display: block; }
+        /* body:not(.layout-editing): en EDIT LAYOUT el hover NO debe abrir
+           este desplegable — se interponia sobre otros elementos (p.ej. PILL
+           quedaba tapado y no se podia agarrar) mientras se intentaba mover
+           o escalar algo cerca. */
+        body:not(.layout-editing) .dropdown:hover .dropdown-content { display: block; }
         .dd-icon { width: 18px; height: 18px; border-radius: 50%; }
 
         /* Area wallet: mismo estilo que en /game (gameWalletArea). Balance IN
@@ -193,7 +197,9 @@
         /* DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT debajo. */
         .wallet-deposit-wrap { display: none; position: relative; flex-shrink: 0; }
         .wallet-dropdown-content { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 1002; }
-        .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
+        /* Igual que el dropdown de $PILL: en EDIT LAYOUT no se abre solo con
+           el hover, tapaba otros elementos y no dejaba agarrarlos. */
+        body:not(.layout-editing) .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
         .wallet-dropdown-content .wb-box { margin-top: 4px; }
 
         /* --- TICKER --- */
