@@ -2324,22 +2324,19 @@
             }
             requestAnimationFrame(frame);
         })();
-        // Deshacer zoom del navegador: Ctrl++/-- solo escala el HTML
-        // inversamente, manteniendo el layout fijo. Asi el juego no se
-        // descoloca al hacer zoom.
-        (function preventBrowserZoom() {
-            let lastZoom = 1;
-            const checkZoom = () => {
-                const currentZoom = Math.round(window.outerWidth / window.innerWidth * 100) / 100;
-                if (Math.abs(currentZoom - lastZoom) > 0.01) {
-                    document.documentElement.style.zoom = 1 / currentZoom;
-                    lastZoom = currentZoom;
-                }
-            };
-            window.addEventListener('resize', checkZoom, false);
-            window.addEventListener('load', checkZoom, false);
-            setTimeout(checkZoom, 500);
-        })();
+        // Bloquear zoom del navegador completamente: Ctrl++/-- no hace nada
+        document.addEventListener('wheel', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Tambien bloquear los shortcuts de zoom
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '0')) {
+                e.preventDefault();
+            }
+        });
     </script>
 
     <div id="resultOverlay">
