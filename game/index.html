@@ -1120,9 +1120,10 @@
            igual que el resto del login. Se coloca por separado desde EDIT
            LAYOUT. */
         .pal-hint {
-            position: absolute; left: 50%; bottom: -34px; margin-left: -110px; width: 220px;
+            position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%);
+            width: max-content; white-space: nowrap;
             font-family: 'Press Start 2P', monospace; font-size: 8px;
-            text-align: center; letter-spacing: 1px; line-height: 1.5;
+            text-align: center; letter-spacing: 1px;
             padding: 6px 8px; box-sizing: border-box; z-index: 45;
             color: #00ffaa;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.85), 0 0 calc(6px * var(--sel-glow, 1)) rgba(0,255,170,0.75), 0 0 calc(14px * var(--sel-glow, 1)) rgba(0,255,170,0.45);
@@ -1157,6 +1158,15 @@
         }
         .cp-group { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); box-shadow: 0 0 0 2px rgba(0,0,0,0.55); }
         .cp-cell { border: 0; padding: 0; cursor: pointer; }
+        /* La placa central de abajo del marco (panel-liso.png) ya esta en el
+           arte, entre las dos filas de remaches: se aprovecha como boton de
+           CERRAR el selector y volver a la paleta de menos colores. Medida
+           sobre el PNG de 924x683 (placa de x=343 a x=580, y=605 a 650). */
+        .cp-close {
+            position: absolute; z-index: 3; border: 0; padding: 0; cursor: pointer;
+            background: transparent; left: 37.1%; width: 25.8%; top: 88.6%; height: 6.6%;
+        }
+        .cp-close:hover { background: rgba(255,255,255,0.16); }
         /* Marca del color bajo el raton: un recuadro blanco LIMPIO por fuera de
            la celda. El inset de antes pintaba el borde por DENTRO, comiendose el
            color justo donde lo estas mirando y dejando esa sombra rara sobre el
@@ -2040,6 +2050,7 @@
                 <div id="colorPicker" class="color-picker" style="display:none;">
                     <canvas class="cp-frame" id="cpFrame"></canvas>
                     <div class="cp-cells" id="cpCells"></div>
+                    <button class="cp-close" id="cpClose" type="button" title="Back to the palette"></button>
                 </div>
                 <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
                 <div class="style-type-selector" style="display:none;">
@@ -5840,6 +5851,8 @@
         if (pickL) pickL.onclick = (e) => { e.stopPropagation(); toggleColorPicker(); };
         const rst = document.getElementById('palReset');
         if (rst) rst.onclick = (e) => { e.stopPropagation(); resetPalette(); };
+        const cpClose = document.getElementById('cpClose');
+        if (cpClose) cpClose.onclick = (e) => { e.stopPropagation(); closeColorPicker(); };
         document.addEventListener('mousedown', (e) => {
             // Mientras se edita el layout no se cierra nada: los tres elementos
             // estan a la vista justo para poder colocarlos.
