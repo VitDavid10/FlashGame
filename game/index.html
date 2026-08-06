@@ -6028,6 +6028,7 @@
     // resetear ese elemento, ESC o DONE = salir. Persiste por usuario
     // (localStorage) y se aplica como transform sin tocar el flujo del layout.
     const LAYOUT_KEY = 'pw_menu_layout';
+    const LAYOUT_BACKUP_KEY = 'pw_menu_layout_backup'; // Backup por si el servidor pierde datos
     // roomsInner/questsInner apuntan al CONTENIDO de cada cartel (.cartel-inner);
     // rooms/quests apuntan al marco entero (#oraclePanel/#missionsPanel). Los
     // dos son editables por separado y no chocan: .cartel-inner NO cubre la
@@ -6157,7 +6158,13 @@
         for (const k of layoutMine) { if (menuLayout[k]) out[k] = JSON.parse(JSON.stringify(menuLayout[k])); else delete out[k]; }
         return out;
     }
-    function saveMenuLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(menuLayout)); } catch (e) {} }
+    function saveMenuLayout() {
+        try {
+            localStorage.setItem(LAYOUT_KEY, JSON.stringify(menuLayout));
+            // Backup: por si el servidor pierde datos al reiniciar
+            localStorage.setItem(LAYOUT_BACKUP_KEY, JSON.stringify(menuLayout));
+        } catch (e) {}
+    }
     // titlePw/titleWord/blurb son el MISMO nodo del DOM para arcade y classic (el
     // contenido se cambia via innerHTML en setSelectedModeTitleArt / selectMode),
     // asi que una sola entrada de layout los movia a la vez en los dos modos.
@@ -6190,7 +6197,12 @@
     // antes petaba por zona muerta temporal y el catch se lo tragaba en silencio.
     if (layoutMine.size) {
         try {
-            const guardado = migrateScopedLayout(JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}'));
+            // Intenta cargar desde localStorage. Si está vacío, usa el backup.
+            let stored = localStorage.getItem(LAYOUT_KEY);
+            if (!stored || stored === '{}') {
+                stored = localStorage.getItem(LAYOUT_BACKUP_KEY);
+            }
+            const guardado = migrateScopedLayout(JSON.parse(stored || '{}'));
             for (const k of layoutMine) {
                 if (guardado && guardado[k]) menuLayout[k] = guardado[k];
                 else delete menuLayout[k];
