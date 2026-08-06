@@ -47,13 +47,14 @@ const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-squ
     // de abajo como boton de color libre. Arte de David, recortado del mismo
     // fondo magenta.
     'palette',
-    // Barra de wallet: CONNECT con el rotulo horneado, el rojo VACIO que
-    // comparten DEPOSIT/WITHDRAW/DISCONNECT (el texto va por CSS encima), el
-    // azul de PLAY ONLINE y la barra del saldo (IN GAME: ... $PILL horneados,
-    // la cantidad se compone con los digitos de img/pixnum).
+    // Barra de wallet: el rojo VACIO que comparten CONNECT/DEPOSIT/WITHDRAW/
+    // DISCONNECT (el texto va por CSS encima), el azul de PLAY ONLINE y la
+    // barra del saldo (recuadro vacio; IN GAME: ... $PILL se escriben por CSS).
+    // wallet-connect.png (el rojo con "CONNECT" horneado) ya no se usa: CONNECT
+    // pasa a compartir recuadro con DEPOSIT.
     // wallet-btn-blue = el mismo rojo pero en azul (PLAY ONLINE del popup de
     // PLAY y los botones de calidad de SETTINGS).
-    'wallet-connect', 'wallet-btn-red', 'wallet-btn-blue', 'btn-azul', 'ingame-bar',
+    'wallet-btn-red', 'wallet-btn-blue', 'btn-azul', 'ingame-bar',
     // OK gris (arte de David, recortado de un checker de transparencia
     // guardado como jpg): solo para los modales/mensajes de wallet que usan
     // el marco gris (menu-gris) — el resto de OK siguen con el verde.

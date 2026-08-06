@@ -209,8 +209,13 @@
             width: 360px; height: 76px;
             background: var(--gw-bar, none) center/100% 100% no-repeat;
             image-rendering: pixelated;
-            padding: 0 12px; box-sizing: border-box; gap: 5px;
+            padding: 0 12px; box-sizing: border-box;
         }
+        /* El CONTENIDO del recuadro azul es una pieza de layout aparte
+           (walletBarTxt): se mueve, se escala y se le cambia el cuerpo de letra
+           SIN tocar el recuadro. Antes el texto iba suelto dentro de la caja y
+           solo se podia recolocar estirando la caja entera. */
+        #gwBalInner { display: flex; align-items: center; gap: 5px; }
         /* El cuerpo de letra sale de --gw-font: se ajusta en vivo con
            ALT+rueda desde SETTINGS -> EDIT LAYOUT (a 10px el texto ocupaba una
            esquina del recuadro y quedaba ridiculo). El default de 13px es el
@@ -226,9 +231,9 @@
             font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px); color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
-        /* Botones de wallet: cada uno es su PNG estirado. CONNECT trae el rotulo
-           horneado; los otros tres comparten el rojo vacio y llevan el texto
-           encima, por eso conservan font/color.
+        /* Botones de wallet: los CUATRO (CONNECT / DEPOSIT / WITHDRAW /
+           DISCONNECT) comparten el mismo rojo vacio y llevan el texto escrito
+           encima por CSS.
            Sin background-color del user-agent (en algunos navegadores el
            <button> pinta blanco detras del PNG y se ve un rectangulo claro). */
         #gameWalletArea button {
@@ -244,22 +249,18 @@
             filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
             -webkit-appearance: none; appearance: none;
         }
-        /* Misma fuente y mismo ancho en DEPOSIT / WITHDRAW / DISCONNECT.
-           Antes DISCONNECT bajaba a 10px; ahora los tres van a 13px y el boton
-           es lo bastante ancho para la palabra mas larga (queda hueco en las
-           cortas, centrado). */
+        /* Misma fuente y mismo ancho en CONNECT / DEPOSIT / WITHDRAW /
+           DISCONNECT. Antes DISCONNECT bajaba a 10px; ahora los cuatro van a
+           13px y el boton es lo bastante ancho para la palabra mas larga (queda
+           hueco en las cortas, centrado). */
         /* Con el id a secas NO basta: "#gameWalletArea button" (id + tipo) tiene
            mas especificidad que "#gwDeposit" (id) y su background:transparent
            ganaba, dejando los botones sin arte. */
-        #gameWalletArea #gwConnect {
-            width: 190px; aspect-ratio: 766 / 200;
-            background: var(--gw-connect, none) center/100% 100% no-repeat;
-            background-color: transparent !important;
-            /* El rotulo va en el PNG: color transparent no basta, el
-               text-shadow de la regla base NO depende del color de relleno y
-               seguia dibujando un "CONNECT" negro encima del arte. */
-            color: transparent; text-shadow: none;
-        }
+        /* CONNECT va con EL MISMO recuadro que DEPOSIT (el rojo vacio) y el
+           rotulo escrito por CSS. Antes usaba wallet-connect.png con el texto
+           horneado: distinta proporcion de caja y distinta letra que los otros
+           tres, se notaba al cambiar de uno a otro. */
+        #gameWalletArea #gwConnect,
         #gameWalletArea #gwDeposit, #gameWalletArea #gwDropdown button {
             /* aspect-ratio del recorte SIN el contorno negro (David se lo quito
                el mismo): la caja util encoge al quitar el marco, por eso pasa
@@ -994,6 +995,11 @@
         }
         .play-picker .pw-big-btn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: none !important; }
         .play-picker .pw-big-btn:disabled { filter: grayscale(0.6) brightness(0.7); }
+        /* El rotulo SETTINGS quedaba pegado al borde de arriba del cartel gris
+           (el marco del PNG se come parte del padding). Se baja 16px y se le
+           quita otro tanto por debajo para que el resto del contenido no se
+           desplace. */
+        .settings-box .pw-modal-title { margin-top: 16px; margin-bottom: 12px; }
         /* Rotulos de seccion (GRAPHICS QUALITY / MAP THEME / MENU LAYOUT) en
            gris: el verde del tema desentonaba dentro del cartel gris. */
         .settings-box .section-title {
@@ -1613,7 +1619,7 @@
     <div id="gameWalletArea">
         <!-- El arte del recuadro va VACIO: los rotulos se escriben aqui con la
              fuente pixel y en medio va la cantidad (digitos de game/img/pixnum). -->
-        <div id="gwBalBox"><span class="gw-lbl">IN GAME:</span><span id="gwBalValue"></span><span class="gw-lbl">$PILL</span></div>
+        <div id="gwBalBox"><span id="gwBalInner"><span class="gw-lbl">IN GAME:</span><span id="gwBalValue"></span><span class="gw-lbl">$PILL</span></span></div>
         <button id="gwConnect" onclick="GameWalletUI.connect()">CONNECT</button>
         <!-- DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT -->
         <div id="gwDepositWrap" style="display:none">
@@ -1775,7 +1781,7 @@
 
     <!-- Barra del editor de layout del menu: visible solo en modo edicion -->
     <div id="layoutEditBar" style="display:none;">
-        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW / TEXT SIZE (IN GAME) &nbsp;·&nbsp; CTRL+WHEEL = WIDTH (IN GAME) &nbsp;·&nbsp; CTRL+SHIFT+WHEEL = HEIGHT &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW / TEXT SIZE (IN GAME) &nbsp;·&nbsp; CTRL+WHEEL = WIDTH (IN GAME) &nbsp;·&nbsp; CTRL+SHIFT+WHEEL = HEIGHT &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE &nbsp;·&nbsp; EL TEXTO DE IN GAME SE AGARRA APARTE DEL RECUADRO</span>
         <!-- Botones sueltos para el texto/ancho de IN GAME: el gesto de rueda
              (ALT / CTRL+rueda) depende de acertar el punto exacto con el raton
              y de que el navegador no se coma la combinacion (CTRL+rueda hace
@@ -5723,7 +5729,6 @@
             const wa = document.getElementById('gameWalletArea');
             if (wa) {
                 const pon = (v, id) => { if (cartelUsesAtlas(id)) wa.style.setProperty(v, 'url(' + cartelHeroUrl(id) + ')'); };
-                pon('--gw-connect', 'wallet-connect');
                 pon('--gw-red', 'wallet-btn-red');
                 pon('--gw-bar', 'ingame-bar');
             }
@@ -5898,8 +5903,9 @@
     const LAYOUT_RESIZABLE = new Set(['walletBar']);
     // Elementos cuyo TEXTO se escala aparte de la caja (ALT+rueda): la barra
     // IN GAME lleva su rotulo por CSS encima del PNG, y el cuerpo de letra que
-    // le cuadre depende de lo que se haya estirado la caja.
-    const LAYOUT_FONT_SCALABLE = new Set(['walletBar']);
+    // le cuadre depende de lo que se haya estirado la caja. walletBarTxt es el
+    // contenido de esa barra, que ademas se mueve y escala por su cuenta.
+    const LAYOUT_FONT_SCALABLE = new Set(['walletBar', 'walletBarTxt']);
     const LAYOUT_ELS = {
         titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
         palette: '#pillPalette', colorPicker: '#colorPicker', palHint: '#palHint',
@@ -5908,6 +5914,11 @@
         // hueco — nunca se ven a la vez — y David los quiere siempre en el mismo
         // sitio, asi que colocar uno coloca el otro. Con dos entradas separadas
         // habia que cuadrarlos a mano y se solapaban en el editor.
+        // walletBarTxt va ANTES que walletBar a proposito: layoutTarget se queda
+        // con la PRIMERA clave que casa, asi que apuntando al texto se agarra el
+        // texto y apuntando al hueco de la barra (arriba/abajo del rotulo, o los
+        // margenes) se agarra el recuadro.
+        walletBarTxt: '#gwBalInner',
         walletBar: '#gwBalBox', walletBtn: '#gwConnect, #gwDepositWrap',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
@@ -6140,12 +6151,15 @@
     // ALT+rueda / CTRL+rueda sobre la caja, pero sin depender de acertar el
     // punto exacto con el raton ni de que el navegador no se coma la
     // combinacion (CTRL+rueda fuera de la caja hace zoom de pagina).
+    // El cuerpo de letra se guarda en walletBarTxt (el contenido), no en la
+    // barra: es lo que se esta tocando, y ademas es el que manda si los dos
+    // tienen valor (la custom property del hijo pisa a la del padre).
     function bumpWalletFont(delta) {
-        const el = document.querySelector(LAYOUT_ELS.walletBar); if (!el) return;
-        const cur = menuLayout.walletBar = menuLayout.walletBar || { x: 0, y: 0, s: 1 };
+        const el = document.querySelector(LAYOUT_ELS.walletBarTxt); if (!el) return;
+        const cur = menuLayout.walletBarTxt = menuLayout.walletBarTxt || { x: 0, y: 0, s: 1 };
         const base = typeof cur.f === 'number' ? cur.f : (parseFloat(getComputedStyle(el).getPropertyValue('--gw-font')) || 13);
         cur.f = Math.round(Math.min(48, Math.max(6, base + delta)) * 10) / 10;
-        marcarLayoutMio('walletBar'); applyMenuLayout(); saveMenuLayout();
+        marcarLayoutMio('walletBarTxt'); applyMenuLayout(); saveMenuLayout();
     }
     function bumpWalletWidth(delta) {
         const el = document.querySelector(LAYOUT_ELS.walletBar); if (!el) return;
