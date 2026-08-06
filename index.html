@@ -147,12 +147,15 @@
            /game): sin esto el navegador pinta su propio chroma (recuadro negro)
            por detras/alrededor del PNG y el texto no queda centrado igual en
            los cuatro botones. */
+        /* Tamaño real: 190px * escala guardada en pw_menu_layout.walletBtn
+           (0.8746) = 166px. La letra usa pw_menu_layout.walletBtnTxt.f = 17px.
+           Son los valores que David ajusto a mano con ALT+rueda en /game. */
         .btn-connect, .btn-deposit, .btn-withdraw, .btn-disconnect {
             background: url('game/img/cartel-hero/wallet-btn-red.png') center/100% 100% no-repeat;
             background-color: transparent !important;
-            width: 190px; aspect-ratio: 1724 / 403; border: 0; margin: 0; padding: 0;
+            width: 166px; aspect-ratio: 1724 / 403; border: 0; margin: 0; padding: 0;
             box-sizing: border-box; color: #fff;
-            font-family: 'Press Start 2P', monospace; font-size: 13px; letter-spacing: 0; text-transform: uppercase;
+            font-family: 'Press Start 2P', monospace; font-size: 17px; letter-spacing: 0; text-transform: uppercase;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
             cursor: pointer; transition: 0.2s; image-rendering: auto;
             display: grid; place-items: center;
