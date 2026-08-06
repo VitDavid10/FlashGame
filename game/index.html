@@ -188,44 +188,29 @@
         #gwConnect, #gwDepositWrap { position: absolute; top: 18px; right: 0; }
         #gwBalBox { position: absolute; top: 0; right: 160px; }
         /* ===== Barra de wallet =====
-           El recuadro azul (ingame-bar.png) va VACIO: se le borro el texto que
-           traia horneado, y "IN GAME:", la cantidad y "$PILL" se escriben aqui
-           con la fuente pixel del juego. Asi casan con el resto del menu y no
-           dependen del arte. ===== */
-        /* justify-content:space-between + flex:1 en el valor dejaba "IN GAME:"
-           pegado al borde izquierdo y la cifra pegada a "$PILL" por el otro
-           lado: el hueco vacio quedaba JUSTO entre el rotulo y el numero, que es
-           lo que se veia como un hueco enorme. Ahora todo va apretado a la
-           izquierda con gaps pequeños e iguales entre los tres. */
-        /* 360x76 y letra de 13px: el texto mas largo ("IN GAME: 999,999,999
-           $PILL" = 24 caracteres) ocupa 24x13 + los dos gaps + el padding =
-           346px. A 300px solo cabia a 10px, que es lo que se veia diminuto
-           dentro del recuadro. Ancho, alto y cuerpo de letra son ajustables en
-           vivo desde SETTINGS -> EDIT LAYOUT (CTRL / CTRL+SHIFT / ALT + rueda).
-           Padding en px y no en %: el % se resuelve contra el ANCHO DEL PADRE,
-           asi que no acompañaba al estirar la caja. */
+           SIN el recuadro azul (ingame-bar.png). Vuelve la caja de antes: fondo
+           oscuro translucido con un filo dorado, redondeada, y el ancho lo pone
+           el CONTENIDO — que es justo lo que hacia falta, porque con la caja de
+           360px fija el texto se salia por la derecha en cuanto depositabas una
+           cifra larga ("IN GAME: 27,360,550 $PILL"). Ahora la caja crece con el
+           numero y siempre queda igual de ajustada.
+           La fuente pixel SI se queda (el resto del menu va en pixel y el cuerpo
+           de letra es ajustable desde EDIT LAYOUT con --gw-font). ===== */
         #gwBalBox {
             display: none; align-items: center; justify-content: flex-start;
-            width: 360px; height: 76px;
-            background: var(--gw-bar, none) center/100% 100% no-repeat;
-            /* Mismo motivo que los botones (ver #gameWalletArea button): el arte
-               es de 1761x409 y aqui se pinta a 360x76 — casi 5 veces mas
-               pequeno. Con pixelated el borde negro fino se comia filas enteras
-               y aparecia y desaparecia segun el ancho. */
-            image-rendering: auto;
-            padding: 0 12px; box-sizing: border-box;
+            padding: 8px 14px; box-sizing: border-box;
+            background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4);
+            border-radius: 8px; backdrop-filter: blur(4px); white-space: nowrap;
         }
-        /* El CONTENIDO del recuadro azul es una pieza de layout aparte
-           (walletBarTxt): se mueve, se escala y se le cambia el cuerpo de letra
-           SIN tocar el recuadro. Antes el texto iba suelto dentro de la caja y
-           solo se podia recolocar estirando la caja entera. */
+        /* El CONTENIDO de la caja es una pieza de layout aparte (walletBarTxt):
+           se mueve, se escala y se le cambia el cuerpo de letra sin tocar la
+           caja. */
         #gwBalInner { display: flex; align-items: center; gap: 5px; }
         /* El cuerpo de letra sale de --gw-font: se ajusta en vivo con
-           ALT+rueda desde SETTINGS -> EDIT LAYOUT (a 10px el texto ocupaba una
-           esquina del recuadro y quedaba ridiculo). El default de 13px es el
+           ALT+rueda desde SETTINGS -> EDIT LAYOUT. El default de 13px es el
            punto de partida; lo que se guarde manda. */
         #gwBalBox .gw-lbl {
-            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px); color: #fff;
+            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px); color: #ffce3d;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
         /* La cantidad va con la MISMA fuente que los rotulos (lo pidio David):
@@ -315,7 +300,12 @@
         .gameModalBox .close:hover { color:#fff; }
         .gameModalBox label { display:block; text-align:left; font-family:'Russo One'; font-size:11px; color:var(--primary); margin: 10px 0 5px; letter-spacing:1px; }
         .gameModalBox input { width:100%; background:#111; border:1px solid #333; border-radius:8px; color:#fff; font-family:'Inter'; font-size:14px; padding:10px 12px; outline:none; box-sizing:border-box; }
-        .gameModalBox input:focus { border-color: var(--primary); }
+        /* El foco del Amount iba con --primary (el verde del tema) y desentonaba
+           dentro del cartel gris de deposit/withdraw: pasa al mismo gris claro
+           que usan los rotulos del marco. selection incluida — el azul del
+           navegador cantaba igual que el verde. */
+        .gameModalBox input:focus { border-color: #8a939e; }
+        .gameModalBox input::selection { background: #4b5560; color: #fff; }
         .gameModalBox .gm-btn { width:100%; padding:12px; background: var(--primary); color:#04150c; border:none; border-radius:8px; font-family:'Russo One'; font-size:14px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; margin-top:14px; transition:0.2s; }
         .gameModalBox .gm-btn:hover { filter: brightness(1.1); box-shadow: 0 0 18px rgba(0,255,136,0.4); }
         .gameModalBox .gm-btn:disabled { opacity: 0.6; cursor:default; }
@@ -383,33 +373,26 @@
 
         /* --- MODE SCREEN (DESKTOP DEFAULT) --- */
         #modeScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; display: flex; overflow: hidden; background: #000; transition: opacity 0.5s; }
-        /* Boton "BACK TO SITE": arte de David (back-to-site.png, la flecha ya
-           viene dibujada a la izquierda), estirado ENTERO a tamaño uniforme
-           (mismo factor en ancho y alto — no distorsiona el marco) y el
-           rotulo escrito encima con la fuente pixel del menu, igual que
-           IN GAME (el PNG no trae texto horneado).
-           210x68 (aspect real 3136/1008 = 3.111): medido en el DOM, "BACK TO
-           SITE" en Press Start 2P a 9px + 2px de letter-spacing ocupa 132px —
-           a 180x58 (lo primero que probé) se salia 8px por la derecha.
-           image-rendering:auto (mismo motivo que .back-icon: body trae
-           -webkit-optimize-contrast heredable, quitar la propiedad no basta).
-           El arte trae scanlines finas que a este tamaño se ven moire con
-           nearest-neighbor; back-to-site.png ya viene pre-reducido (840x272,
-           no los 3136x1008 originales) con un filtro suave. */
+        /* Volver a la web: SOLO la flecha roja, la misma pieza y el mismo tamaño
+           que la de volver al selector de modos (.back-icon). Antes era la placa
+           ancha de back-to-site.png con el rotulo "BACK TO SITE" encima; el
+           rotulo se quita y con el la placa, asi las dos flechas de "atras" del
+           juego son iguales.
+           image-rendering:auto igual que .back-icon: el arte trae scanlines
+           finas que a 44px hacen moire con nearest-neighbor, y como body hereda
+           -webkit-optimize-contrast no basta con no poner la propiedad. */
         .back-to-web {
-            position: absolute; top: 22px; left: 24px; z-index: 200;
-            display: flex; align-items: center;
-            height: 68px; width: 210px; box-sizing: border-box;
-            padding: 0 14px 0 66px;
-            background: url('img/cartel-hero/back-to-site.png') center/100% 100% no-repeat;
-            image-rendering: pixelated;
-            color: #fff; font-family: 'Press Start 2P', monospace !important; font-size: 9px !important; letter-spacing: 0;
-            text-transform: uppercase; text-decoration: none; white-space: nowrap;
+            position: absolute; top: 18px; left: 24px; z-index: 200;
+            display: block; width: 44px; height: 44px; aspect-ratio: 176/173;
+            background: url('img/cartel-hero/back-arrow.png') center/100% 100% no-repeat;
+            image-rendering: auto; text-decoration: none;
             cursor: pointer; transition: filter 0.2s, transform 0.2s;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
         }
+        /* El rotulo ya no se pinta: la flecha del arte se explica sola. Se deja
+           en el HTML para los lectores de pantalla. */
         .back-to-web span {
-            font-family: 'Press Start 2P', monospace !important; font-size: 9px !important; letter-spacing: 0;
+            position: absolute; width: 1px; height: 1px; overflow: hidden;
+            clip-path: inset(50%); white-space: nowrap;
         }
         .back-to-web:hover { filter: brightness(1.15); transform: translateX(-2px); }
         .mode-panel { position: absolute; top: 0; bottom: 0; width: 100%; transition: clip-path 1.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.85s; cursor: pointer; display: flex; flex-direction: column; justify-content: center; padding: 0 10%; box-sizing: border-box; }
@@ -1114,29 +1097,20 @@
             width: 13.68%; height: 29.08%;
         }
         .pal-swatch:hover { filter: brightness(1.25); }
-        /* Placa central de abajo del arte = elegir un color libre. */
-        .pal-pick {
-            position: absolute; z-index: 3; border: 0; padding: 0; cursor: pointer;
-            background: transparent; left: 37.47%; top: 85.68%; width: 24.21%; height: 11.86%;
-        }
-        .pal-pick:hover { background: rgba(255,255,255,0.16); }
-        /* Las dos placas de piedra que flanquean a la central, en la misma fila
-           de abajo del arte: PICK (abrir el selector grande) y RESET (devolver
-           las 10 ventanas a los colores de fabrica). Los % salen de medir los
-           bloques del PNG de 950x447 — la izquierda va de 8.74% a 31.04% y la
-           derecha de 69.79% a 90.64%; se ajustan a 22% de ancho centrados en
-           19.9% y 80.1%, simetricos respecto al centro del cartel.
-           El arte no trae rotulos, asi que el texto va por CSS. */
+        /* Las DOS placas de abajo del arte: la izquierda abre el selector de
+           color y la derecha resetea la paleta. SIN rotulo, manda el arte.
+           Antes habia UNA sola placa en el centro; se ha movido a estas dos
+           posiciones en el PROPIO PNG (el centro pasa a ser fila de piedra
+           normal), asi que las dos son literalmente la misma pieza que estaba
+           en medio. En el arte de 950x447 van de x=85 y x=626, 240 de ancho, y
+           de y=383 a 441: de ahi salen estos porcentajes. */
         .pal-btn {
             position: absolute; z-index: 3; border: 0; padding: 0; cursor: pointer;
-            background: transparent; top: 85.68%; height: 11.86%;
-            font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: 0;
-            color: #cfe6d6; text-shadow: 1px 1px 0 rgba(0,0,0,0.85);
-            display: grid; place-items: center;
+            background: transparent; top: 85.68%; height: 12.98%; width: 25.26%;
         }
-        .pal-btn:hover { background: rgba(255,255,255,0.16); color: #fff; }
-        #palPickL { left: 8.9%; width: 22%; }
-        #palReset { left: 69.1%; width: 22%; }
+        .pal-btn:hover { background: rgba(255,255,255,0.16); }
+        #palPickL { left: 8.95%; }
+        #palReset { left: 65.89%; }
         .pill-palette.assigning .pal-swatch { animation: palBlink 0.7s steps(2) infinite; }
         @keyframes palBlink { 50% { outline: 2px solid #fff; outline-offset: -1px; } }
         /* Aviso de "guarda el color en una ventana". Estaba a 5.5px y en gris:
@@ -1176,7 +1150,12 @@
         }
         .cp-group { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); box-shadow: 0 0 0 2px rgba(0,0,0,0.55); }
         .cp-cell { border: 0; padding: 0; cursor: pointer; }
-        .cp-cell:hover { box-shadow: inset 0 0 0 2px #fff; position: relative; z-index: 3; }
+        /* Marca del color bajo el raton: un recuadro blanco LIMPIO por fuera de
+           la celda. El inset de antes pintaba el borde por DENTRO, comiendose el
+           color justo donde lo estas mirando y dejando esa sombra rara sobre el
+           tono; ademas al ser inset se veia distinto en las celdas del borde del
+           grupo, que ya llevan el contorno negro del .cp-group. */
+        .cp-cell:hover { outline: 2px solid #fff; outline-offset: -1px; position: relative; z-index: 3; }
 
         /* Editor de layout del menu: cada elemento se puede arrastrar (mover)
            y escalar con la rueda; el resultado se guarda por usuario. */
@@ -1851,7 +1830,7 @@
 
     <!-- Barra del editor de layout del menu: visible solo en modo edicion -->
     <div id="layoutEditBar" style="display:none;">
-        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW / TEXT SIZE (IN GAME) &nbsp;·&nbsp; CTRL+WHEEL = WIDTH (IN GAME) &nbsp;·&nbsp; CTRL+SHIFT+WHEEL = HEIGHT &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE &nbsp;·&nbsp; EL TEXTO DE IN GAME SE AGARRA APARTE DEL RECUADRO</span>
+        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW / TEXT SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE &nbsp;·&nbsp; EL TEXTO DE IN GAME Y EL DE LOS BOTONES SE AGARRAN APARTE DE SU CAJA</span>
         <!-- Botones sueltos para el texto/ancho de IN GAME: el gesto de rueda
              (ALT / CTRL+rueda) depende de acertar el punto exacto con el raton
              y de que el navegador no se coma la combinacion (CTRL+rueda hace
@@ -1869,11 +1848,6 @@
             <span class="leb-label">WALLET BTN TXT</span>
             <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtnTxt', -1)">−</button>
             <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtnTxt', 1)">+</button>
-        </span>
-        <span class="leb-group">
-            <span class="leb-label">IN GAME WIDTH</span>
-            <button class="leb-btn leb-sm" onclick="bumpWalletWidth(-10)">−</button>
-            <button class="leb-btn leb-sm" onclick="bumpWalletWidth(10)">+</button>
         </span>
         <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
         <button class="leb-btn" onclick="saveLayoutGlobal(this)">SAVE FOR ALL</button>
@@ -1963,8 +1937,8 @@
     </div>
 
     <div id="modeScreen">
-        <!-- El arte de back-to-site.png ya trae la flecha dibujada a la izquierda:
-             sin SVG, solo el rotulo (el PNG no trae texto horneado). -->
+        <!-- Solo la flecha roja (el mismo arte que la de volver al selector de
+             modos). El texto queda oculto, solo para lectores de pantalla. -->
         <a href="../" class="back-to-web" title="Back to PillWars site" onclick="event.stopPropagation();">
             <span>BACK TO SITE</span>
         </a>
@@ -2047,9 +2021,8 @@
                 <div id="pillPalette" class="pill-palette" style="display:none;">
                     <div class="pal-slots" id="palGrid"></div>
                     <canvas class="pal-frame" id="palFrame"></canvas>
-                    <button class="pal-btn" id="palPickL" type="button" title="Pick any color">PICK</button>
-                    <button class="pal-pick" id="palPick" type="button" title="Pick any color"></button>
-                    <button class="pal-btn" id="palReset" type="button" title="Reset the palette to its default colors">RESET</button>
+                    <button class="pal-btn" id="palPickL" type="button" title="Pick any color"></button>
+                    <button class="pal-btn" id="palReset" type="button" title="Reset the palette to its default colors"></button>
                 </div>
                 <!-- Fuera de la paleta para poder moverlo por separado en EDIT
                      LAYOUT (dentro heredaba su posicion y su escala). -->
@@ -3982,9 +3955,16 @@
             'body.pixel-pack #myResult{font-family:"Press Start 2P",monospace!important;font-size:13px!important;line-height:2}';
         // X de cierre pixel para los gameModal (deposit/withdraw y premio):
         // solo x.png (arte de David en cartel-hero). Antes usaba close-x-red.
-        if (cartelUsesAtlas('x')) {
+        // close-x-red y no x.png: x.png es el boton CUADRADO del HUD (marco de
+        // piedra incluido) y como aspa de cerrar un modal quedaba enorme. El PNG
+        // va a 52x52 = el DOBLE exacto de los 26 a los que se pinta, asi que el
+        // navegador solo reduce 2x y con pixelated cae pixel a pixel sin bordes
+        // sucios. (El original traia FONDO BLANCO opaco, no transparente: se le
+        // quito por flood fill desde los bordes — no habia ni un blanco
+        // interior, asi que el aspa no pierde nada.)
+        if (cartelUsesAtlas('close-x-red')) {
             css += 'body.pixel-pack .gameModalBox .close{color:transparent!important;width:26px;height:26px;' +
-                'background:url(' + cartelHeroUrl('x') + ') center/contain no-repeat;image-rendering:pixelated;' +
+                'background:url(' + cartelHeroUrl('close-x-red') + ') center/100% 100% no-repeat;image-rendering:pixelated;' +
                 'display:inline-block;line-height:0;overflow:hidden}' +
                 'body.pixel-pack .gameModalBox .close:hover{filter:brightness(1.2)}';
         }
@@ -5566,7 +5546,11 @@
         SoundManager.play('select');
         ignoreNextHover = true;
         currentGameMode = m;
-        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);   // wallet area solo al seleccionar modo
+        // La wallet (IN GAME + CONNECT/DEPOSIT) NO se enseña aqui: se enseña
+        // abajo, junto con el resto del menu. Aqui salia al instante mientras la
+        // transicion de paneles seguia corriendo, asi que durante 1,2s eran lo
+        // UNICO visible sobre la pantalla de modos — parecia que cargaban antes
+        // que todo lo demas.
         if (typeof refreshOracle === 'function') refreshOracle();   // refresca status de salas para el nuevo modo
         
         // Bloquear interacción durante transición
@@ -5630,6 +5614,8 @@
             try { paintLoginBg(m); } catch(e) {}
             els.modeScreen.style.display = 'none';
             els.loginOverlay.style.display = 'flex';
+            // La wallet entra AQUI, con el menu ya montado (ver arriba).
+            if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
             els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
         }, 1200);
     }
@@ -5824,15 +5810,12 @@
             if (wa) {
                 const pon = (v, id) => { if (cartelUsesAtlas(id)) wa.style.setProperty(v, 'url(' + cartelHeroUrl(id) + ')'); };
                 pon('--gw-red', 'wallet-btn-red');
-                pon('--gw-bar', 'ingame-bar');
             }
         });
-        // Las placas de abajo del arte: las dos de la izquierda (la central y la
-        // lateral) abren el selector grande, la de la derecha resetea la paleta.
-        for (const id of ['palPick', 'palPickL']) {
-            const b = document.getElementById(id);
-            if (b) b.onclick = (e) => { e.stopPropagation(); openColorPicker(); };
-        }
+        // Las dos placas de abajo del arte: la izquierda abre el selector
+        // grande, la derecha resetea la paleta.
+        const pickL = document.getElementById('palPickL');
+        if (pickL) pickL.onclick = (e) => { e.stopPropagation(); openColorPicker(); };
         const rst = document.getElementById('palReset');
         if (rst) rst.onclick = (e) => { e.stopPropagation(); resetPalette(); };
         document.addEventListener('mousedown', (e) => {
@@ -5999,7 +5982,10 @@
     // CTRL+SHIFT+rueda) en vez del escalado uniforme de siempre: son cajas de
     // fondo (background-image estirable), no sprites de pixel art que se
     // deformarian al perder la proporcion.
-    const LAYOUT_RESIZABLE = new Set(['walletBar']);
+    // Vacio desde que la barra IN GAME dejo de tener recuadro fijo: su ancho lo
+    // pone el texto, y forzarle uno a mano es justo lo que hacia que la cifra
+    // se saliera por la derecha al depositar.
+    const LAYOUT_RESIZABLE = new Set();
     // Elementos cuyo TEXTO se escala aparte de la caja (ALT+rueda): la barra
     // IN GAME lleva su rotulo por CSS encima del PNG, y el cuerpo de letra que
     // le cuadre depende de lo que se haya estirado la caja. walletBarTxt es el
@@ -6263,13 +6249,6 @@
         const base = typeof cur.f === 'number' ? cur.f : (parseFloat(getComputedStyle(el).getPropertyValue('--gw-font')) || 13);
         cur.f = Math.round(Math.min(48, Math.max(6, base + delta)) * 10) / 10;
         marcarLayoutMio(key); applyMenuLayout(); saveMenuLayout();
-    }
-    function bumpWalletWidth(delta) {
-        const el = document.querySelector(LAYOUT_ELS.walletBar); if (!el) return;
-        const cur = menuLayout.walletBar = menuLayout.walletBar || { x: 0, y: 0, s: 1 };
-        const base = typeof cur.w === 'number' ? cur.w : el.getBoundingClientRect().width;
-        cur.w = Math.max(40, Math.min(900, base + delta));
-        marcarLayoutMio('walletBar'); applyMenuLayout(); saveMenuLayout();
     }
     // RESET ALL vuelve a cero Y suelta las claves propias: a partir de aqui
     // manda otra vez el global del servidor.
@@ -7207,6 +7186,11 @@
                 return;
             }
             const btn = document.getElementById('gdConfirm'); const old = btn.innerText; btn.disabled = true; btn.innerText = 'Sign in wallet...';
+            // A los 5s el boton vuelve a estar disponible AUNQUE la operacion
+            // siga en marcha. Mandar una transaccion de mas no rompe nada (el
+            // servidor acredita por firma y rechaza las repetidas), y esperar
+            // con el boton muerto a que una wallet atascada conteste es peor.
+            const liberar = setTimeout(() => { btn.disabled = false; btn.innerText = old; }, 5000);
             // finally y no despues del catch: si algo lanzaba fuera del try (o
             // una promesa no resolvia nunca) el boton se quedaba en gris para
             // siempre y habia que recargar para poder reintentar.
@@ -7219,7 +7203,7 @@
                 this.refresh();
                 showSystemMsg(this.fmt(amt) + ' $PILL added to your in-GAME balance.', 'DEPOSIT COMPLETE');
             } catch (e) { showSystemMsg(walletErrText(e), 'DEPOSIT FAILED'); }
-            finally { btn.disabled = false; btn.innerText = old; }
+            finally { clearTimeout(liberar); btn.disabled = false; btn.innerText = old; }
         }
     };
 
