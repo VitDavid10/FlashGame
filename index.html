@@ -107,7 +107,7 @@
             display: flex; gap: 30px; margin-left: 20px; align-items: center; 
         }
 
-        .nav-link { font-size: 12px; font-weight: 900; color: #666; text-transform: uppercase; letter-spacing: 1px; font-family: 'Press Start 2P', monospace; text-decoration: none; white-space: nowrap; }
+        .nav-link { font-size: 12px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; font-family: 'Press Start 2P', monospace; text-decoration: none; white-space: nowrap; }
         .nav-link:hover { color: #fff; text-shadow: 0 0 10px #fff; }
 
         .nav-dropdown-group { display: flex; gap: 20px; align-items: center; }
@@ -125,7 +125,8 @@
 
         .dropdown { position: relative; display: flex; align-items: center; height: 100%; }
         .dropbtn { font-weight: 800; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 8px; }
-        .dropdown-content { display: none; position: absolute; top: 100%; right: 0; min-width: 180px; padding-top: 15px; z-index: 100000; pointer-events: auto; }
+        .dropdown { position: relative; }
+        .dropdown-content { display: none; position: fixed; z-index: 100000; pointer-events: auto; padding-top: 8px; min-width: 180px; }
         .dropdown-box { background: #111; border: 1px solid #333; border-radius: 6px; overflow: hidden; box-shadow: 0 10px 30px #000; }
         .dropdown-content a { padding: 12px 16px; font-size: 13px; font-weight: 600; color: #ccc; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid #222; }
         .dropdown-content a:hover { background: #222; color: var(--primary); }
@@ -440,7 +441,7 @@ body.trailer-open #page-content{
             transition: 0.3s ease; flex-wrap: wrap; justify-content: center;
         }
         .ca-box:hover { border-color: var(--primary); background: #111; box-shadow: 0 0 15px rgba(0,255,136,0.2); }
-        .ca-text { font-family: monospace; color: #ccc; font-size: 16px; word-break: break-all; }
+        .ca-text { font-family: monospace; color: #ccc; font-size: 16px; white-space: nowrap; overflow-x: auto; }
         .copy-tag { background: var(--primary); color: #000; font-size: 10px; font-weight: 900; padding: 4px 10px; border-radius: 4px; flex-shrink: 0;}
 
         /* SKILLS SECTION */
@@ -3084,6 +3085,20 @@ function toggleTrailerMode() {
                 document.documentElement.style.setProperty('--navbar-bg', rgba);
                 localStorage.setItem('pw_navbar_color', rgba);
             });
+        }
+
+        // Posicionamiento dinámico del dropdown de $PILL
+        const pillDropdown = document.getElementById('pill-dropdown');
+        const dropdownContent = pillDropdown ? pillDropdown.querySelector('.dropdown-content') : null;
+        if (pillDropdown && dropdownContent) {
+            const positionDropdown = () => {
+                const rect = pillDropdown.getBoundingClientRect();
+                dropdownContent.style.top = (rect.bottom) + 'px';
+                dropdownContent.style.right = (window.innerWidth - rect.right) + 'px';
+            };
+            pillDropdown.addEventListener('mouseenter', positionDropdown);
+            window.addEventListener('scroll', positionDropdown);
+            window.addEventListener('resize', positionDropdown);
         }
 
         document.addEventListener('pointerdown', (e) => {
