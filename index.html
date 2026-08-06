@@ -143,17 +143,35 @@
         .wallet-bal-box .wl-lbl { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
         .wallet-bal-box .wl-val { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
 
+        /* Caja del tamaño FINAL (166x38.8, = 190x44.4 * escala 0.8746) que SI
+           ocupa hueco en el flex: dentro va el boton a su tamaño nativo con
+           `scale`, position:absolute para que no infle el layout con el
+           tamaño sin escalar. */
+        .wb-box { width: 166.17px; height: 38.83px; position: relative; flex-shrink: 0; }
+        .wb-box .btn-connect, .wb-box .btn-deposit, .wb-box .btn-withdraw, .wb-box .btn-disconnect {
+            position: absolute; left: 0; top: 0; transform-origin: top left;
+        }
+
         /* Reset completo del button nativo (igual que #gameWalletArea button en
            /game): sin esto el navegador pinta su propio chroma (recuadro negro)
            por detras/alrededor del PNG y el texto no queda centrado igual en
            los cuatro botones. */
-        /* Tamaño real: 190px * escala guardada en pw_menu_layout.walletBtn
-           (0.8746) = 166px. La letra usa pw_menu_layout.walletBtnTxt.f = 17px.
-           Son los valores que David ajusto a mano con ALT+rueda en /game. */
+        /* IMPORTANTE: el ancho de CAJA se queda en 190px (el nativo del PNG) y
+           el tamaño final (166px visual) sale de la propiedad CSS `scale`, NO
+           de cambiar `width`. Es la MISMA tecnica que usa /game (menuLayout
+           aplica el.style.scale, nunca toca el width): si en vez de eso se
+           encoge el width, el navegador tiene que RE-RASTERIZAR el
+           background-image al nuevo tamaño antes del filter:drop-shadow, y
+           eso deja un borde/halo negro feo alrededor de la pildora que en
+           /game no se ve porque ahi el PNG se pinta siempre a su tamaño
+           nativo y el encogido es solo un scale de composicion en la GPU.
+           Escala real: pw_menu_layout.walletBtn.s = 0.8746. Letra:
+           pw_menu_layout.walletBtnTxt.f = 17px. */
         .btn-connect, .btn-deposit, .btn-withdraw, .btn-disconnect {
             background: url('game/img/cartel-hero/wallet-btn-red.png') center/100% 100% no-repeat;
             background-color: transparent !important;
-            width: 166px; aspect-ratio: 1724 / 403; border: 0; margin: 0; padding: 0;
+            width: 190px; aspect-ratio: 1724 / 403; scale: 0.8745922401980181;
+            border: 0; margin: 0; padding: 0;
             box-sizing: border-box; color: #fff;
             font-family: 'Press Start 2P', monospace; font-size: 17px; letter-spacing: 0; text-transform: uppercase;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
@@ -170,7 +188,7 @@
         .wallet-deposit-wrap { display: none; position: relative; }
         .wallet-dropdown-content { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 1002; }
         .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
-        .wallet-dropdown-content button { margin-top: 4px; }
+        .wallet-dropdown-content .wb-box { margin-top: 4px; }
 
         /* --- TICKER --- */
         .ticker-wrap {
@@ -984,12 +1002,12 @@ body.trailer-open #page-content{
                  estas conectado. -->
             <div class="wallet-area" id="wallet-area">
                 <div class="wallet-bal-box" id="wallet-bal-box"><span class="wl-lbl">IN GAME:</span><span class="wl-val" id="wallet-bal-value">0</span><span class="wl-lbl">$PILL</span></div>
-                <button class="btn-connect" onclick="App.Wallet.toggle()" id="wallet-btn">CONNECT</button>
-                <div class="wallet-deposit-wrap" id="wallet-deposit-wrap">
+                <div class="wb-box"><button class="btn-connect" onclick="App.Wallet.toggle()" id="wallet-btn">CONNECT</button></div>
+                <div class="wb-box wallet-deposit-wrap" id="wallet-deposit-wrap">
                     <button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()">DEPOSIT</button>
                     <div class="wallet-dropdown-content">
-                        <button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()">WITHDRAW</button>
-                        <button class="btn-disconnect" id="disconnect-btn" onclick="App.Wallet.disconnect()">DISCONNECT</button>
+                        <div class="wb-box"><button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()">WITHDRAW</button></div>
+                        <div class="wb-box"><button class="btn-disconnect" id="disconnect-btn" onclick="App.Wallet.disconnect()">DISCONNECT</button></div>
                     </div>
                 </div>
             </div>
