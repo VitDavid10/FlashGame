@@ -1425,6 +1425,7 @@ body.trailer-open #page-content{
             cursor: document.getElementById('custom-cursor'),
             walletModal: document.getElementById('wallet-modal'),
             walletBtn: document.getElementById('wallet-btn'),
+            walletBtnBox: document.getElementById('wallet-btn-box'),
             footer: document.getElementById('main-footer'),
             depositBtn: document.getElementById('deposit-btn'),
             depositModal: document.getElementById('deposit-modal'),
@@ -1676,7 +1677,11 @@ body.trailer-open #page-content{
                 },
                 // Cambia de CONNECT a DEPOSIT+balance (o al reves), igual que en /game.
                 setConnectedUI: (connected) => {
-                    DOM.walletBtn.style.display = connected ? 'none' : '';
+                    // La CAJA (wb-box), no solo el boton de dentro: ocultando solo
+                    // el <button> el wrapper de 166x39 se quedaba vacio pero
+                    // VISIBLE (con su outline de EDIT LAYOUT), un hueco fantasma
+                    // entre $PILL y DEPOSIT que estorbaba para agarrar $PILL.
+                    DOM.walletBtnBox.style.display = connected ? 'none' : '';
                     DOM.walletDepositWrap.style.display = connected ? 'block' : 'none';
                     DOM.walletBalBox.style.display = connected ? 'flex' : 'none';
                 },
