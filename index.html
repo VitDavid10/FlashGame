@@ -122,36 +122,34 @@
         .dropdown:hover .dropdown-content { display: block; }
         .dd-icon { width: 18px; height: 18px; border-radius: 50%; }
 
-        .btn-deposit { display: none; background: url('game/img/cartel-hero/wallet-btn-red.png') center/100% 100% no-repeat; background-color: transparent !important; width: 190px; aspect-ratio: 1724 / 403; border: none; color: #fff; font-family: 'Press Start 2P', monospace; font-size: 12px; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-right: 10px; }
-        .btn-deposit:hover { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
-        .btn-deposit:active { transform: translate(2px, 2px); }
-        .btn-withdraw { display: none; background: url('game/img/cartel-hero/wallet-btn-red.png') center/100% 100% no-repeat; background-color: transparent !important; width: 190px; aspect-ratio: 1724 / 403; border: none; color: #fff; font-family: 'Press Start 2P', monospace; font-size: 12px; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-right: 10px; }
-        .btn-withdraw:hover { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
-        .btn-withdraw:active { transform: translate(2px, 2px); }
-        /* Faucet de testnet: recuadro pill (redondo) con solo texto dentro, alineado a
-           la derecha justo bajo la barra de wallet (no empuja el hero). Solo con wallet. */
-        .claim-zone { display: none; position: absolute; top: calc(var(--navbar-height) + 40px); right: 30px; z-index: 950; gap: 14px; align-items: center; }
-        .claim-zone.show { display: flex; }
-        .claim-pill { padding: 9px 20px; border-radius: 999px; font-family: 'Russo One'; font-size: 12px; letter-spacing: .5px; text-transform: uppercase; cursor: pointer; color: var(--primary); background: rgba(0,255,136,.06); border: 1.5px solid var(--primary); box-shadow: 0 0 12px var(--primary-dim), inset 0 0 10px rgba(0,255,136,.06); transition: transform .18s, background .18s, box-shadow .18s, color .18s; opacity: 0; }
-        .claim-zone.show .claim-pill { opacity: 1; animation: claimRise .5s ease; }
-        .claim-zone.show .claim-pill:nth-child(2) { animation-delay: .1s; }
-        .claim-pill:hover { background: var(--primary); color: #04150c; box-shadow: 0 0 20px var(--primary); transform: translateY(-1px); }
-        .claim-pill:disabled { opacity: .55; cursor: default; filter: grayscale(.35); transform: none; }
-        .claim-pill-sol { color: #b98cff; border-color: #9945ff; background: rgba(153,69,255,.08); box-shadow: 0 0 12px rgba(153,69,255,.28), inset 0 0 10px rgba(153,69,255,.1); }
-        .claim-pill-sol:hover { background: #9945ff; color: #fff; box-shadow: 0 0 20px #9945ff; }
-        @keyframes claimRise { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-        
-        .btn-connect {
+        /* Area wallet: mismo estilo que en /game (gameWalletArea). Balance IN
+           GAME + CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT)
+           cuando ya estas conectado. */
+        .wallet-area { display: flex; align-items: center; gap: 10px; position: relative; }
+        .wallet-bal-box {
+            display: none; align-items: center; gap: 5px;
+            padding: 8px 14px; box-sizing: border-box;
+            background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4);
+            border-radius: 8px; backdrop-filter: blur(4px); white-space: nowrap;
+        }
+        .wallet-bal-box .wl-lbl { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
+        .wallet-bal-box .wl-val { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
+
+        .btn-connect, .btn-deposit, .btn-withdraw, .btn-disconnect {
             background: url('game/img/cartel-hero/wallet-btn-red.png') center/100% 100% no-repeat; background-color: transparent !important;
             width: 190px; aspect-ratio: 1724 / 403; border: none; color: #fff;
             font-family: 'Press Start 2P', monospace; font-size: 12px; text-transform: uppercase;
-            cursor: pointer; transition: 0.2s;
+            cursor: pointer; transition: 0.2s; filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
             z-index: 1001; position: relative; white-space: nowrap;
         }
-        .btn-connect:hover { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
-        .btn-connect:active { transform: translate(2px, 2px); }
-        .btn-disconnect { background: rgba(255, 42, 42, 0.1); border: 1px solid #ff4747; color: #ff4747; }
-        .btn-disconnect:hover { background: #ff4747; color: white; box-shadow: 0 0 20px rgba(255, 42, 42, 0.6); }
+        .btn-connect:hover, .btn-deposit:hover, .btn-withdraw:hover, .btn-disconnect:hover { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
+        .btn-connect:active, .btn-deposit:active, .btn-withdraw:active, .btn-disconnect:active { transform: translate(2px, 2px); }
+
+        /* DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT debajo. */
+        .wallet-deposit-wrap { display: none; position: relative; }
+        .wallet-dropdown-content { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 1002; }
+        .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
+        .wallet-dropdown-content button { display: block; margin-top: 4px; }
 
         /* --- TICKER --- */
         .ticker-wrap {
@@ -951,8 +949,6 @@ body.trailer-open #page-content{
                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 11.944 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
                 </svg>
             </a>
-            <button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()">DEPOSIT</button>
-            <button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()">WITHDRAW</button>
             <div class="dropdown">
                 <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading... ▾</span>
                 <div class="dropdown-content">
@@ -962,18 +958,25 @@ body.trailer-open #page-content{
                     </div>
                 </div>
             </div>
-            <button class="btn-connect" onclick="App.Wallet.toggle()" id="wallet-btn">CONNECT WALLET</button>
+            <!-- Wallet: mismo montaje que /game (gameWalletArea). Balance IN GAME +
+                 CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT) cuando ya
+                 estas conectado. -->
+            <div class="wallet-area" id="wallet-area">
+                <div class="wallet-bal-box" id="wallet-bal-box"><span class="wl-lbl">IN GAME:</span><span class="wl-val" id="wallet-bal-value">0</span><span class="wl-lbl">$PILL</span></div>
+                <button class="btn-connect" onclick="App.Wallet.toggle()" id="wallet-btn">CONNECT</button>
+                <div class="wallet-deposit-wrap" id="wallet-deposit-wrap">
+                    <button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()">DEPOSIT</button>
+                    <div class="wallet-dropdown-content">
+                        <button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()">WITHDRAW</button>
+                        <button class="btn-disconnect" id="disconnect-btn" onclick="App.Wallet.disconnect()">DISCONNECT</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </nav>
 
     <!-- TICKER -->
     <div class="ticker-wrap" id="ticker-wrap"><div class="ticker"><div class="ticker-item">Loading Market Data...</div></div></div>
-
-    <!-- Faucet de testnet: texto de claim bajo la barra de wallet (solo con wallet conectada). -->
-    <div class="claim-zone" id="claim-zone">
-        <button class="claim-pill" id="claim-pill-btn" onclick="App.Claim.pill()">CLAIM TESTNET TOKENS</button>
-        <button class="claim-pill claim-pill-sol" id="claim-sol-btn" onclick="App.Claim.sol()">CLAIM 0.005 SOL</button>
-    </div>
 
     <!-- HERO -->
     <!-- El video de rejilla verde (mixkit) se cambio por el fondo pixel del juego,
@@ -1217,8 +1220,8 @@ body.trailer-open #page-content{
          <a href="#">PlayBook</a>
          <a href="#" onclick="openContact(); return false;">Contact</a>
          <a href="/privacy.html">Privacy</a>
-         <a href="#" onclick="App.Faucet.claimTokens(); return false;">Claim Testnet $PILL</a>
-         <a href="#" onclick="App.Faucet.claimGas(); return false;">Claim Testnet Gas</a>
+         <a href="#" id="claim-pill-btn" onclick="App.Claim.pill(); return false;">Claim Testnet $PILL</a>
+         <a href="#" id="claim-sol-btn" onclick="App.Claim.sol(); return false;">Claim Testnet Gas</a>
         </p>
     </footer>
         
@@ -1344,7 +1347,10 @@ body.trailer-open #page-content{
             depWalletBal: document.getElementById('dep-wallet-bal'),
             depWarBal: document.getElementById('dep-war-bal'),
             withdrawBtn: document.getElementById('withdraw-btn'),
-            claimZone: document.getElementById('claim-zone'),
+            disconnectBtn: document.getElementById('disconnect-btn'),
+            walletBalBox: document.getElementById('wallet-bal-box'),
+            walletBalValue: document.getElementById('wallet-bal-value'),
+            walletDepositWrap: document.getElementById('wallet-deposit-wrap'),
             claimPillBtn: document.getElementById('claim-pill-btn'),
             claimSolBtn: document.getElementById('claim-sol-btn'),
             withdrawModal: document.getElementById('withdraw-modal'),
@@ -1580,8 +1586,13 @@ body.trailer-open #page-content{
                     return null;
                 },
                 toggle: () => {
-                    if (App.Wallet.address) App.Wallet.disconnect();
-                    else DOM.walletModal.style.display = 'flex';
+                    DOM.walletModal.style.display = 'flex';
+                },
+                // Cambia de CONNECT a DEPOSIT+balance (o al reves), igual que en /game.
+                setConnectedUI: (connected) => {
+                    DOM.walletBtn.style.display = connected ? 'none' : '';
+                    DOM.walletDepositWrap.style.display = connected ? 'block' : 'none';
+                    DOM.walletBalBox.style.display = connected ? 'flex' : 'none';
                 },
                 closeModal: () => { DOM.walletModal.style.display = 'none'; },
                 connect: async (name, silent) => {
@@ -1597,14 +1608,10 @@ body.trailer-open #page-content{
                         await provider.signMessage(new TextEncoder().encode("Sign in to PillWars"), "utf8");
                         App.Wallet.address = pk.toString();
                         App.Wallet.provider = provider;
-                        DOM.walletBtn.innerText = "DISCONNECT " + App.Wallet.address.slice(0, 4) + '...';
-                        DOM.walletBtn.classList.add('btn-disconnect');
+                        App.Wallet.setConnectedUI(true);
                         try { localStorage.setItem('pw_wallet', name); localStorage.setItem('pw_addr', App.Wallet.address); } catch (e) {}
                         App.Market.fetchBalance(App.Wallet.address);
                         App.Market.fetchWar(App.Wallet.address);
-                        DOM.depositBtn.style.display = 'inline-block';
-                        DOM.withdrawBtn.style.display = 'inline-block';
-                    DOM.claimZone.style.display = 'flex'; DOM.claimZone.classList.remove('show'); void DOM.claimZone.offsetWidth; DOM.claimZone.classList.add('show');
                         App.Wallet.startAutoRefresh();
                     } catch (err) {
                         console.error(err);
@@ -1618,11 +1625,7 @@ body.trailer-open #page-content{
                     let name, addr; try { name = localStorage.getItem('pw_wallet'); addr = localStorage.getItem('pw_addr'); } catch (e) {}
                     if (!name || !addr) return;
                     App.Wallet.address = addr;
-                    DOM.walletBtn.innerText = "DISCONNECT " + addr.slice(0, 4) + '...';
-                    DOM.walletBtn.classList.add('btn-disconnect');
-                    DOM.depositBtn.style.display = 'inline-block';
-                    DOM.withdrawBtn.style.display = 'inline-block';
-                    DOM.claimZone.style.display = 'flex'; DOM.claimZone.classList.remove('show'); void DOM.claimZone.offsetWidth; DOM.claimZone.classList.add('show');
+                    App.Wallet.setConnectedUI(true);
                 },
                 // Reconexión silenciosa al recargar (si ya autorizaste antes la wallet)
                 eagerConnect: async () => {
@@ -1636,11 +1639,7 @@ body.trailer-open #page-content{
                         if (!pk) return;
                         App.Wallet.address = pk.toString();
                         App.Wallet.provider = provider;
-                        DOM.walletBtn.innerText = "DISCONNECT " + App.Wallet.address.slice(0, 4) + '...';
-                        DOM.walletBtn.classList.add('btn-disconnect');
-                        DOM.depositBtn.style.display = 'inline-block';
-                        DOM.withdrawBtn.style.display = 'inline-block';
-                    DOM.claimZone.style.display = 'flex'; DOM.claimZone.classList.remove('show'); void DOM.claimZone.offsetWidth; DOM.claimZone.classList.add('show');
+                        App.Wallet.setConnectedUI(true);
                         App.Market.fetchBalance(App.Wallet.address);
                         App.Market.fetchWar(App.Wallet.address);
                         App.Wallet.startAutoRefresh();
@@ -1662,11 +1661,7 @@ body.trailer-open #page-content{
                     try { localStorage.removeItem('pw_wallet'); localStorage.removeItem('pw_addr'); } catch (e) {}
                     App.Wallet.address = null;
                     App.Wallet.provider = null;
-                    DOM.walletBtn.innerText = "CONNECT WALLET";
-                    DOM.walletBtn.classList.remove('btn-disconnect');
-                    DOM.depositBtn.style.display = 'none';
-                    DOM.withdrawBtn.style.display = 'none';
-                    DOM.claimZone.style.display = 'none'; DOM.claimZone.classList.remove('show');
+                    App.Wallet.setConnectedUI(false);
                 }
             },
 
@@ -1783,7 +1778,6 @@ body.trailer-open #page-content{
             },
 
             Market: {
-                // Saldos: se muestran SOLO en los modales (la barra queda limpia).
                 fetchWar: async (wallet) => {
                     if (!window.PillChain || !wallet) return;
                     try {
@@ -1792,6 +1786,8 @@ body.trailer-open #page-content{
                         App.Wallet.warBal = txt;
                         if (DOM.depWarBal) DOM.depWarBal.innerText = txt;
                         if (DOM.wdWarBal) DOM.wdWarBal.innerText = txt;
+                        // Balance IN GAME en la barra, mismo montaje que /game.
+                        if (DOM.walletBalValue) DOM.walletBalValue.innerText = Number(pill).toLocaleString('en-US', { maximumFractionDigits: 0 });
                     } catch (e) {}
                 },
                 fetchBalance: async (wallet) => {
