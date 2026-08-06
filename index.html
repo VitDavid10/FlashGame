@@ -135,11 +135,21 @@
         .wallet-bal-box .wl-lbl { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
         .wallet-bal-box .wl-val { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
 
+        /* Reset completo del button nativo (igual que #gameWalletArea button en
+           /game): sin esto el navegador pinta su propio chroma (recuadro negro)
+           por detras/alrededor del PNG y el texto no queda centrado igual en
+           los cuatro botones. */
         .btn-connect, .btn-deposit, .btn-withdraw, .btn-disconnect {
-            background: url('game/img/cartel-hero/wallet-btn-red.png') center/100% 100% no-repeat; background-color: transparent !important;
-            width: 190px; aspect-ratio: 1724 / 403; border: none; color: #fff;
-            font-family: 'Press Start 2P', monospace; font-size: 12px; text-transform: uppercase;
-            cursor: pointer; transition: 0.2s; filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
+            background: url('game/img/cartel-hero/wallet-btn-red.png') center/100% 100% no-repeat;
+            background-color: transparent !important;
+            width: 190px; aspect-ratio: 1724 / 403; border: 0; margin: 0; padding: 0;
+            box-sizing: border-box; color: #fff;
+            font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: 0; text-transform: uppercase;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
+            cursor: pointer; transition: 0.2s; image-rendering: auto;
+            display: grid; place-items: center;
+            filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
+            -webkit-appearance: none; appearance: none;
             z-index: 1001; position: relative; white-space: nowrap;
         }
         .btn-connect:hover, .btn-deposit:hover, .btn-withdraw:hover, .btn-disconnect:hover { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
@@ -149,7 +159,7 @@
         .wallet-deposit-wrap { display: none; position: relative; }
         .wallet-dropdown-content { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 1002; }
         .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
-        .wallet-dropdown-content button { display: block; margin-top: 4px; }
+        .wallet-dropdown-content button { margin-top: 4px; }
 
         /* --- TICKER --- */
         .ticker-wrap {
