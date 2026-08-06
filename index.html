@@ -89,7 +89,7 @@
 
         /* --- NAVBAR --- */
         .navbar {
-            display: flex; align-items: center; height: var(--navbar-height); background: rgba(0, 0, 0, 0.95); 
+            display: flex; align-items: center; height: var(--navbar-height); background: var(--navbar-bg, rgba(0, 0, 0, 0.7)); 
             backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0, 255, 136, 0.2);
             padding: 0 30px; position: fixed; top: 0; width: 100%; z-index: 1000;
             justify-content: space-between; transition: all 0.3s ease;
@@ -125,7 +125,7 @@
 
         .dropdown { position: relative; display: flex; align-items: center; height: 100%; }
         .dropbtn { font-weight: 800; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 8px; }
-        .dropdown-content { display: none; position: absolute; top: 100%; right: 0; min-width: 180px; padding-top: 15px; z-index: 1003; }
+        .dropdown-content { display: none; position: absolute; top: 100%; right: 0; min-width: 180px; padding-top: 15px; z-index: 100000; pointer-events: auto; }
         .dropdown-box { background: #111; border: 1px solid #333; border-radius: 6px; overflow: hidden; box-shadow: 0 10px 30px #000; }
         .dropdown-content a { padding: 12px 16px; font-size: 13px; font-weight: 600; color: #ccc; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid #222; }
         .dropdown-content a:hover { background: #222; color: var(--primary); }
@@ -1099,10 +1099,10 @@ body.trailer-open #page-content{
             <div id="heroCaWrap">
                 <!-- Mismo marco que el cartel de arriba pero con el interior
                      vaciado (raw/CONTRACT-BOX.png): dentro va el contrato, o
-                     "Not Live Yet" mientras no haya, y la etiqueta COPY. -->
+                     "2xY5QjZaNGFXQiePsZPz4YFEwqxQvzN1ALqHNyQWpump" mientras no haya, y la etiqueta COPY. -->
                 <div class="hero-ca" onclick="App.UI.copyCA()">
                     <img src="img/pixel-hero/contract-box.png" alt="" onerror="this.closest('.hero-ca').classList.add('no-img')">
-                    <span class="ca-text" id="hero-ca-text">Not Live Yet</span>
+                    <span class="ca-text" id="hero-ca-text">2xY5QjZaNGFXQiePsZPz4YFEwqxQvzN1ALqHNyQWpump</span>
                     <span class="ca-copy">COPY</span>
                 </div>
                 <div id="hero-copy-feedback"></div>
@@ -1210,7 +1210,7 @@ body.trailer-open #page-content{
                 <span class="category-tag" style="margin-bottom: 15px; display: inline-block;">OFFICIAL CONTRACT ADDRESS</span>
                 <br>
                 <div class="ca-box" onclick="App.UI.copyCA()">
-                    <span class="ca-text" id="ca-text">Not Live Yet</span>
+                    <span class="ca-text" id="ca-text">2xY5QjZaNGFXQiePsZPz4YFEwqxQvzN1ALqHNyQWpump</span>
                     <span class="copy-tag">COPY</span>
                 </div>
                 <div id="copy-feedback" style="font-size:11px; color:var(--primary); height:15px; margin-top:5px;"></div>
