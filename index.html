@@ -690,7 +690,9 @@ body.trailer-open #page-content{
             .nav-dropdown-group { justify-content: space-between; width: 100%; margin-top: 5px;}
             .dropbtn span { display: none; } 
             .dropbtn { font-size: 12px; }
-            .btn-connect { padding: 6px 12px; font-size: 10px; }
+            /* .btn-connect ya no es un boton de texto plano (usa la misma pildora
+               PNG que deposit/withdraw/disconnect): sin esta regla, en movil
+               CONNECT se quedaba con letra mas pequeña que los otros tres. */
 
             /* Ticker ajustado visualmente por defecto (el script lo perfeccionará) */
             .ticker-wrap { position: fixed; top: 90px; z-index: 900; } 
