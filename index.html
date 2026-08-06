@@ -184,6 +184,10 @@
         }
         .btn-connect:hover, .btn-deposit:hover, .btn-withdraw:hover, .btn-disconnect:hover { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
         .btn-connect:active, .btn-deposit:active, .btn-withdraw:active, .btn-disconnect:active { transform: translate(2px, 2px); }
+        /* El rotulo va en su propio <span>, igual que .gw-btn-txt en /game: se
+           mueve/escala DENTRO del boton sin tocar el tamaño de la caja.
+           inline-block porque translate/scale no aplican a cajas inline. */
+        .wb-txt { display: inline-block; line-height: 1; }
 
         /* DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT debajo. */
         .wallet-deposit-wrap { display: none; position: relative; }
@@ -872,9 +876,14 @@ body.trailer-open #page-content{
         caSign: '#heroCaSign', ca: '#heroCaWrap',
         // Navbar: wallet, PILL, iconos sociales. SIN valor horneado (parten del
         // CSS de fabrica, sin transform) — quedan neutros hasta que se editen.
-        // walletWithdraw/walletDisconnect van ANTES que walletDeposit: estan
-        // anidados dentro de su wrap, y target() resuelve por el primer key
-        // que matchee, asi que el mas especifico tiene que ir primero.
+        // Orden de mas anidado a menos anidado (target() resuelve por el
+        // PRIMER key que matchee via closest(), asi que lo mas especifico va
+        // primero): el rotulo de texto esta DENTRO del boton, que esta DENTRO
+        // de su caja wb-box. Sin este orden, clicar el texto siempre
+        // resolveria a la caja entera y el texto nunca seria editable aparte
+        // (igual que gw-btn-txt/gwConnect en /game).
+        walletBtnTxt: '#wallet-btn-txt', walletDepositTxt: '#wallet-deposit-txt',
+        walletWithdrawTxt: '#wallet-withdraw-txt', walletDisconnectTxt: '#wallet-disconnect-txt',
         walletWithdraw: '#wallet-withdraw-box', walletDisconnect: '#wallet-disconnect-box',
         walletDeposit: '#wallet-deposit-wrap', walletBtn: '#wallet-btn-box',
         walletBal: '#wallet-bal-box', pillDropdown: '#pill-dropdown',
@@ -1010,12 +1019,12 @@ body.trailer-open #page-content{
                  estas conectado. -->
             <div class="wallet-area" id="wallet-area">
                 <div class="wallet-bal-box" id="wallet-bal-box"><span class="wl-lbl">IN GAME:</span><span class="wl-val" id="wallet-bal-value">0</span><span class="wl-lbl">$PILL</span></div>
-                <div class="wb-box" id="wallet-btn-box"><button class="btn-connect" onclick="App.Wallet.toggle()" id="wallet-btn">CONNECT</button></div>
+                <div class="wb-box" id="wallet-btn-box"><button class="btn-connect" onclick="App.Wallet.toggle()" id="wallet-btn"><span class="wb-txt" id="wallet-btn-txt">CONNECT</span></button></div>
                 <div class="wb-box wallet-deposit-wrap" id="wallet-deposit-wrap">
-                    <button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()">DEPOSIT</button>
+                    <button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()"><span class="wb-txt" id="wallet-deposit-txt">DEPOSIT</span></button>
                     <div class="wallet-dropdown-content">
-                        <div class="wb-box" id="wallet-withdraw-box"><button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()">WITHDRAW</button></div>
-                        <div class="wb-box" id="wallet-disconnect-box"><button class="btn-disconnect" id="disconnect-btn" onclick="App.Wallet.disconnect()">DISCONNECT</button></div>
+                        <div class="wb-box" id="wallet-withdraw-box"><button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()"><span class="wb-txt" id="wallet-withdraw-txt">WITHDRAW</span></button></div>
+                        <div class="wb-box" id="wallet-disconnect-box"><button class="btn-disconnect" id="disconnect-btn" onclick="App.Wallet.disconnect()"><span class="wb-txt" id="wallet-disconnect-txt">DISCONNECT</span></button></div>
                     </div>
                 </div>
             </div>
@@ -3011,7 +3020,7 @@ function toggleTrailerMode() {
         // .hero-main-content, asi que no llevan el scale de heroZoom: dividir
         // su arrastre por heroZoom haria que el raton y el elemento se
         // desincronizaran (heroZoom por defecto es 0.8).
-        const NAVBAR_KEYS = new Set(['walletWithdraw', 'walletDisconnect', 'walletDeposit', 'walletBtn', 'walletBal', 'pillDropdown', 'twitterIcon', 'telegramIcon']);
+        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletDepositTxt', 'walletWithdrawTxt', 'walletDisconnectTxt', 'walletWithdraw', 'walletDisconnect', 'walletDeposit', 'walletBtn', 'walletBal', 'pillDropdown', 'twitterIcon', 'telegramIcon']);
         window.addEventListener('pointermove', (e) => {
             if (!editing || !drag) return;
             const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
