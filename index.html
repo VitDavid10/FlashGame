@@ -19,8 +19,17 @@
     <!-- FUENTES -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&display=swap" rel="stylesheet">
+    <!-- Press Start 2P por separado con display=optional: la usan los
+         nav-links (GAME/QUESTS/STORE/LEADERBOARD), que van en la MISMA fila
+         flex que el dropdown de $PILL. Con swap, el texto aparece primero con
+         la fuente de reserva (mas ancha/estrecha) y al llegar la fuente real
+         se reflowea la fila entera, empujando $PILL a otra posicion -> el
+         "salto" que se veia en cada F5. optional evita ese swap tardio: si la
+         fuente no esta lista casi al instante (cache), se queda con la de
+         reserva TODA la carga en vez de cambiar a medio camino. -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=optional" rel="stylesheet">
+
     <style>
         /* --- VARIABLES & RESET --- */
         :root {
@@ -122,7 +131,7 @@
         .icon-btn:hover { filter: brightness(1.2); }
         #twitter-icon-btn { background: url('game/img/cartel-hero/icon-twitter.png') center/100% 100% no-repeat; transition: transform 0.3s, filter 0.3s; image-rendering: auto; }
         #twitter-icon-btn:hover { transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(29, 155, 240, 0.6)); }
-        #telegram-icon-btn { background: url('game/img/cartel-hero/icon-telegram.png') center/100% 100% no-repeat; }
+        #telegram-icon-btn { background: url('game/img/cartel-hero/icon-telegram.png') center/100% 100% no-repeat; image-rendering: auto; }
 
         .dropdown { position: relative; display: flex; align-items: center; height: 100%; }
         .dropbtn { font-weight: 800; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 8px; }
@@ -933,6 +942,27 @@ body.trailer-open #page-content{
         const st = document.createElement('style');
         st.id = 'heroLayoutHorneado'; st.textContent = css;
         document.head.appendChild(st);
+    })();
+    (function () {
+        // Color de la navbar: se aplica AQUI (antes del primer pintado, igual
+        // que el layout de arriba) para que no se vea un flash del color de
+        // fabrica antes de saltar al guardado. Fuerza SIEMPRE opacidad total:
+        // si el navegador tiene un valor viejo guardado en formato
+        // rgba(r,g,b,0.7) de antes de que la navbar pasara a ser solida, lo
+        // reescribe a rgb(r,g,b) sin alfa (y regraba localStorage) para que
+        // deje de verse el contenido por debajo.
+        try {
+            let color = localStorage.getItem('pw_navbar_color');
+            if (color) {
+                const m = color.match(/rgba?\(([^)]+)\)/);
+                if (m) {
+                    const partes = m[1].split(',').map(s => s.trim());
+                    color = 'rgb(' + partes[0] + ', ' + partes[1] + ', ' + partes[2] + ')';
+                    localStorage.setItem('pw_navbar_color', color);
+                }
+                document.documentElement.style.setProperty('--navbar-bg', color);
+            }
+        } catch (e) {}
     })();
     </script>
 </head>
@@ -3072,12 +3102,20 @@ function toggleTrailerMode() {
         };
         window.LandingLayout = LandingLayout;
 
-        // Navbar color picker
+        // Navbar color picker. La aplicacion real (CSS var + saneo de valores
+        // rgba viejos) ya paso en el <head> antes del primer pintado; aqui
+        // solo hace falta reflejar el color actual en el <input type=color>
+        // (que exige hex, asi que un rgb(...) saneado se convierte primero).
         const navbarColorPicker = document.getElementById('navbarColorPicker');
         if (navbarColorPicker) {
             const savedColor = localStorage.getItem('pw_navbar_color') || '#000000';
-            navbarColorPicker.value = savedColor.startsWith('rgb') ? '#000000' : savedColor;
-            document.documentElement.style.setProperty('--navbar-bg', savedColor);
+            const m = savedColor.match(/rgb\(([^)]+)\)/);
+            if (m) {
+                const [r, g, b] = m[1].split(',').map(s => parseInt(s.trim(), 10));
+                navbarColorPicker.value = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+            } else {
+                navbarColorPicker.value = savedColor;
+            }
             navbarColorPicker.addEventListener('change', (e) => {
                 document.documentElement.style.setProperty('--navbar-bg', e.target.value);
                 localStorage.setItem('pw_navbar_color', e.target.value);
