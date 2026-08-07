@@ -1894,10 +1894,16 @@ const httpServer = http.createServer(async (req, res) => {
                 // caja {x,y,s}: sin este caso aparte el saneado de abajo lo tiraba
                 // y el zoom no llegaba a guardarse para todos.
                 if (typeof lay.zoom === 'number' && lay.zoom > 0) clean.zoom = Math.min(1, Math.max(0.2, lay.zoom));
+                // `f` = cuerpo de letra (ALT+rueda en el editor de la landing).
+                // Mismo trato que en /api/menu-layout: sin esto se tiraba aqui y
+                // el ajuste no sobrevivia a SAVE FOR ALL.
+                const opc = (v, min, max) => (typeof v === 'number' && isFinite(v)) ? Math.max(min, Math.min(max, v)) : null;
                 for (const k of Object.keys(lay).slice(0, 40)) {
                     if (k === 'zoom') continue;
                     const t = lay[k]; if (!t || typeof t !== 'object') continue;
-                    clean[String(k).slice(0, 40)] = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
+                    const e = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
+                    const f = opc(t.f, 6, 48); if (f !== null) e.f = f;
+                    clean[String(k).slice(0, 40)] = e;
                 }
                 landingLayout = clean; saveGlobal();
                 log(`Landing layout GLOBAL actualizado (${Object.keys(clean).length} elementos)`);

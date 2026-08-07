@@ -164,9 +164,15 @@
            .wallet-bal-box no esta en esa lista, por eso conserva el redondeo y
            el blur — esto es lo que iguala a los dos. */
         #pill-dropdown .dropdown-box { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px !important; overflow: hidden; backdrop-filter: blur(4px) !important; }
-        .dropdown-content a { padding: 12px 16px; font-family: 'Press Start 2P', monospace; font-size: 13px; color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid rgba(255,206,61,0.25); }
+        /* --pw-font: cuerpo de letra ajustable desde EDIT LAYOUT con ALT+rueda
+           sobre el desplegable (clave pillMenu). Sin valor guardado manda el 13. */
+        .dropdown-content a { padding: 12px 16px; font-family: 'Press Start 2P', monospace; font-size: var(--pw-font, 13px); color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid rgba(255,206,61,0.25); }
         .dropdown-content a:last-child { border-bottom: 0; }
         .dropdown-content a:hover { background: rgba(255,206,61,0.12); color: #fff; }
+        /* En EDIT LAYOUT el desplegable se queda abierto: si no, no hay forma de
+           agarrarlo (solo aparece al pasar el raton, y el hover esta apagado
+           mientras se edita). */
+        body.layout-editing #pill-dropdown .dropdown-content { display: block; }
         /* body:not(.layout-editing): en EDIT LAYOUT el hover NO debe abrir
            este desplegable — se interponia sobre otros elementos (p.ej. PILL
            quedaba tapado y no se podia agarrar) mientras se intentaba mover
@@ -309,29 +315,40 @@
             letter-spacing: 6px; color: #aaffdd; margin-top: 6px; white-space: nowrap;
             text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
         }
-        .hero-ca-sign { display: block; margin: 34px auto 0; height: 52px; width: auto; aspect-ratio: 660 / 105; image-rendering: pixelated; }
-        /* Cartel de copiar: la imagen manda el tamaño y el texto del contrato va
-           encima, dentro del marco y a la izquierda del COPY que ya trae el arte. */
-        .hero-ca { position: relative; display: inline-block; margin-top: 12px; cursor: pointer !important; }
-        /* 52px, los MISMOS que .hero-ca-sign: los dos salen del mismo PNG
-           (879x140, trazo de marco de 9px), asi que a alturas distintas el marco
-           de arriba salia un 23% mas fino y 76px mas estrecho que este. */
-        .hero-ca img { display: block; height: 52px; width: auto; aspect-ratio: 660 / 105; image-rendering: pixelated; }
-        .hero-ca:hover img { filter: brightness(1.15); }
+        /* ===== Rotulo + caja del contrato =====
+           Mismo formato que la barra IN GAME (.wallet-bal-box) y el desplegable
+           de $PILL: fondo negro translucido, filo dorado, esquinas de 8px, blur
+           y Press Start 2P. Son cajas de CSS, no PNGs de ancho fijo, asi que el
+           ancho lo pone el contenido y el contrato entra ENTERO en una linea
+           (nowrap, sin el word-break/overflow:hidden que antes lo cortaba).
+           El cuerpo de letra sale de --pw-font, que escribe el editor de layout
+           (ALT+rueda); el COPY va proporcional al del contrato. */
+        .hero-ca-sign {
+            display: inline-block; margin: 34px auto 0; padding: 8px 14px; box-sizing: border-box;
+            background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4);
+            border-radius: 8px; backdrop-filter: blur(4px); white-space: nowrap;
+            font-family: 'Press Start 2P', monospace; font-size: var(--pw-font, 13px);
+            color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); line-height: 1;
+        }
+        .hero-ca {
+            display: inline-flex; align-items: center; gap: 12px; margin-top: 12px;
+            padding: 8px 14px; box-sizing: border-box; cursor: pointer !important;
+            background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4);
+            border-radius: 8px; backdrop-filter: blur(4px); white-space: nowrap;
+            transition: border-color .2s;
+        }
+        .hero-ca:hover { border-color: rgba(255,206,61,0.8); }
         .hero-ca .ca-text {
-            position: absolute; left: 5.5%; top: 50%; transform: translateY(-50%);
-            width: 72%; text-align: left; font-family: 'Press Start 2P', monospace;
-            font-size: 8px; line-height: 1.35; color: #55ffb0; text-shadow: 0 0 8px rgba(0,255,136,0.75);
-            word-break: break-all; overflow: hidden;
+            font-family: 'Press Start 2P', monospace; font-size: var(--pw-font, 11px);
+            color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
         .hero-ca .ca-copy {
-            position: absolute; right: 5%; top: 50%; transform: translateY(-50%);
-            font-family: 'Press Start 2P', monospace; font-size: 7px; color: #0a1a12;
-            background: var(--primary); padding: 5px 7px; box-shadow: 0 0 10px rgba(0,255,136,0.55);
+            font-family: 'Press Start 2P', monospace; font-size: calc(var(--pw-font, 11px) * 0.8);
+            color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); line-height: 1;
+            border: 1px solid rgba(255,206,61,0.55); border-radius: 4px; padding: 5px 8px;
+            transition: background .2s, color .2s;
         }
-        .hero-ca:hover .ca-copy { background: #aaffdd; }
-        /* Sin el PNG del cartel, el texto vuelve a su caja de siempre. */
-        .hero-ca.no-img .ca-text, .hero-ca.no-img .ca-copy { position: static; transform: none; width: auto; display: inline-block; padding: 14px 22px; border: 2px solid var(--primary); }
+        .hero-ca:hover .ca-copy { background: rgba(255,206,61,0.18); color: #fff; }
         #hero-copy-feedback { font-size: 11px; color: var(--primary); height: 15px; margin-top: 5px; }
         .big-title { font-size: 90px; font-family: 'Russo One'; color: #fff; text-shadow: 0 0 30px var(--primary); margin: 0; line-height: 1; }
         .big-subtitle { font-size: 24px; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 8px; margin-top: 10px; }
@@ -971,6 +988,13 @@ body.trailer-open #page-content{
         // matchee via closest(), asi que el mas especifico va primero.
         walletBtnTxt: '#wallet-btn-txt, #wallet-deposit-txt, #wallet-withdraw-txt, #wallet-disconnect-txt',
         walletBtn: '#wallet-btn-box, #wallet-deposit-box, #wallet-withdraw-box, #wallet-disconnect-box',
+        // pillMenu (el desplegable CHART / BUY $PILL) va ANTES que pillDropdown
+        // por lo mismo que walletBtnTxt: esta DENTRO de el, y target() se queda
+        // con la primera clave que casa via closest(). Asi apuntando al
+        // desplegable se agarra el desplegable, y apuntando al rotulo $PILL se
+        // agarra el conjunto. En EDIT LAYOUT el desplegable se queda abierto
+        // (ver la regla body.layout-editing de mas abajo) para poder tocarlo.
+        pillMenu: '#pill-dropdown .dropdown-content',
         pillDropdown: '#pill-dropdown',
         walletBal: '#wallet-bal-box',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
@@ -1204,13 +1228,17 @@ body.trailer-open #page-content{
                 </div>
                 <img class="hero-play" id="heroPlayNow" src="img/pixel-hero/play-now-hero.png" alt="PLAY NOW" onclick="window.location.href='game/'" onerror="this.style.display='none'">
             </div>
-            <img class="hero-ca-sign" id="heroCaSign" src="img/pixel-hero/official-contract.png" alt="OFFICIAL CONTRACT ADDRESS" onerror="this.style.display='none'">
+            <!-- Rotulo y caja del contrato: los dos con el MISMO formato que la
+                 barra IN GAME / el desplegable de $PILL (fondo negro
+                 translucido, filo dorado, Press Start 2P). Antes cada uno era un
+                 PNG distinto (official-contract.png y contract-box.png) con el
+                 texto encimado dentro de un marco de ancho fijo, y ahi el
+                 contrato no cabia: la caja daba 157px para 352px de texto, asi
+                 que salia cortado. Al ser ahora cajas de CSS, el ancho lo pone
+                 el contenido y entra entero en una linea. -->
+            <div class="hero-ca-sign" id="heroCaSign">OFFICIAL CONTRACT ADDRESS</div>
             <div id="heroCaWrap">
-                <!-- Mismo marco que el cartel de arriba pero con el interior
-                     vaciado (raw/CONTRACT-BOX.png): dentro va el contrato, o
-                     "2xY5QjZaNGFXQiePsZPz4YFEwqxQvzN1ALqHNyQWpump" mientras no haya, y la etiqueta COPY. -->
-                <div class="hero-ca" onclick="App.UI.copyCA()">
-                    <img src="img/pixel-hero/contract-box.png" alt="" onerror="this.closest('.hero-ca').classList.add('no-img')">
+                <div class="hero-ca" onclick="App.UI.copyCA()" title="Copy contract address">
                     <span class="ca-text" id="hero-ca-text">2xY5QjZaNGFXQiePsZPz4YFEwqxQvzN1ALqHNyQWpump</span>
                     <span class="ca-copy">COPY</span>
                 </div>
@@ -1534,7 +1562,7 @@ body.trailer-open #page-content{
 
     <!-- TEMPORAL: barra del editor de layout del hero (boton EDIT de la navbar) -->
     <div id="layoutEditBar" style="display:none;">
-        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TEXT SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
         <div style="display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid #2a2f36;">
             <label style="font-family:'Press Start 2P', monospace; font-size:7px; color:#6a737e;">NAVBAR:</label>
             <input type="color" id="navbarColorPicker" style="width:32px; height:32px; border:1px solid #2a2f36; cursor:pointer;" />
@@ -3142,6 +3170,12 @@ function toggleTrailerMode() {
                 for (const el of els) {
                     el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '0px 0px';
                     el.style.scale = String(t ? (t.s || 1) : 1);
+                    // Cuerpo de letra (ALT+rueda). Va por la custom property
+                    // --pw-font, que es lo que leen los font-size del CSS; sin
+                    // valor guardado se quita la property y manda el default del
+                    // CSS. Mismo mecanismo que --gw-font en game/index.html.
+                    if (t && typeof t.f === 'number') el.style.setProperty('--pw-font', t.f + 'px');
+                    else el.style.removeProperty('--pw-font');
                 }
             }
             // El zoom es parte del layout, como las posiciones: se guarda y lo ve
@@ -3257,14 +3291,26 @@ function toggleTrailerMode() {
             apply();
         });
         window.addEventListener('pointerup', () => { if (drag) { drag = null; save(); } });
+        // Cuerpo de letra por defecto de cada clave que admite ALT+rueda: el
+        // mismo numero que el fallback de var(--pw-font, N) en su CSS. Hace
+        // falta porque al leer --pw-font sin valor guardado no devuelve nada.
+        const FONT_DEFAULTS = { pillMenu: 13, caSign: 13, ca: 11 };
         document.addEventListener('wheel', (e) => {
             if (!editing) return;
             const t = target(e); if (!t) return;
             e.preventDefault();
             const cur = layout[t.key] = layout[t.key] || { x: 0, y: 0, s: 1 };
-            const step = e.shiftKey ? 1.06 : 1.015;   // shift = paso grande
-            cur.s = Math.min(3, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
             marcarLayoutMio(t.key);
+            // ALT+rueda = cuerpo de letra en vez de tamaño (igual que en el
+            // editor del juego). Solo en las claves que tienen --pw-font.
+            if (e.altKey && FONT_DEFAULTS[t.key]) {
+                const base = typeof cur.f === 'number' ? cur.f
+                    : (parseFloat(getComputedStyle(t.el).getPropertyValue('--pw-font')) || FONT_DEFAULTS[t.key]);
+                cur.f = Math.round(Math.min(48, Math.max(6, base + (e.deltaY < 0 ? 1 : -1))) * 10) / 10;
+            } else {
+                const step = e.shiftKey ? 1.06 : 1.015;   // shift = paso grande
+                cur.s = Math.min(3, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
+            }
             apply(); save();
         }, { passive: false, capture: true });
         document.addEventListener('dblclick', (e) => {
@@ -3298,7 +3344,10 @@ function toggleTrailerMode() {
             const norm = o => [...keys].sort().map(k => {
                 if (k === 'zoom') return [k, (o && typeof o[k] === 'number') ? o[k] : 1];
                 const v = (o && o[k]) || {};
-                return [k, +v.x || 0, +v.y || 0, +v.s || 1];
+                // `f` (cuerpo de letra) entra en la comparacion: sin el, un
+                // layout que solo cambiara el tamaño de letra se veria "igual"
+                // y no llegaria a aplicarse.
+                return [k, +v.x || 0, +v.y || 0, +v.s || 1, typeof v.f === 'number' ? v.f : null];
             });
             return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
         };
