@@ -19,16 +19,7 @@
     <!-- FUENTES -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&display=swap" rel="stylesheet">
-    <!-- Press Start 2P por separado con display=optional: la usan los
-         nav-links (GAME/QUESTS/STORE/LEADERBOARD), que van en la MISMA fila
-         flex que el dropdown de $PILL. Con swap, el texto aparece primero con
-         la fuente de reserva (mas ancha/estrecha) y al llegar la fuente real
-         se reflowea la fila entera, empujando $PILL a otra posicion -> el
-         "salto" que se veia en cada F5. optional evita ese swap tardio: si la
-         fuente no esta lista casi al instante (cache), se queda con la de
-         reserva TODA la carga en vez de cambiar a medio camino. -->
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=optional" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 
     <style>
         /* --- VARIABLES & RESET --- */
@@ -116,7 +107,7 @@
             display: flex; gap: 30px; margin-left: 20px; align-items: center; 
         }
 
-        .nav-link { font-size: 12px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; font-family: 'Press Start 2P', monospace; text-decoration: none; white-space: nowrap; }
+        .nav-link { font-size: 14px; font-weight: 900; color: #666; text-transform: uppercase; letter-spacing: 1px; font-family: 'Russo One'; text-decoration: none; white-space: nowrap; }
         .nav-link:hover { color: #fff; text-shadow: 0 0 10px #fff; }
 
         .nav-dropdown-group { display: flex; gap: 20px; align-items: center; }
