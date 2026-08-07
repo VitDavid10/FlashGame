@@ -88,8 +88,16 @@
         .trailer-box.active { cursor: default !important; }
 
         /* --- NAVBAR --- */
+        /* Semi-transparente pero SIEMPRE constante: el color elegido (--navbar-bg)
+           se mezcla contra --bg-dark (el fondo fijo de la pagina, #050505) en vez
+           de contra lo que haya detras en el DOM real. Dos capas de background en
+           el MISMO elemento se componen entre si sin dejar ver lo que hay debajo
+           del navbar -> sigue bloqueando el scroll (opaco de verdad), pero como la
+           capa de arriba lleva alfa, el resultado se VE transparente/tintado sin
+           que cambie nunca segun lo que pase por debajo al hacer scroll. */
         .navbar {
-            display: flex; align-items: center; height: var(--navbar-height); background: var(--navbar-bg, rgb(0, 0, 0));
+            display: flex; align-items: center; height: var(--navbar-height);
+            background: linear-gradient(var(--navbar-bg, rgba(0, 0, 0, 0.78)), var(--navbar-bg, rgba(0, 0, 0, 0.78))), var(--bg-dark);
             border-bottom: 1px solid rgba(0, 255, 136, 0.2);
             padding: 0 30px; position: fixed; top: 0; width: 100%; z-index: 1000;
             justify-content: space-between; transition: all 0.3s ease;
@@ -122,7 +130,8 @@
         .icon-btn:hover { filter: brightness(1.2); }
         #twitter-icon-btn { background: url('game/img/cartel-hero/icon-twitter.png') center/100% 100% no-repeat; transition: transform 0.3s, filter 0.3s; image-rendering: auto; }
         #twitter-icon-btn:hover { transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(29, 155, 240, 0.6)); }
-        #telegram-icon-btn { background: url('game/img/cartel-hero/icon-telegram.png') center/100% 100% no-repeat; image-rendering: auto; }
+        #telegram-icon-btn { background: url('game/img/cartel-hero/icon-telegram.png') center/100% 100% no-repeat; transition: transform 0.3s, filter 0.3s; image-rendering: auto; }
+        #telegram-icon-btn:hover { transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(38, 165, 228, 0.6)); }
 
         .dropdown { position: relative; display: flex; align-items: center; height: 100%; }
         .dropbtn { font-weight: 800; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 8px; }
@@ -937,21 +946,21 @@ body.trailer-open #page-content{
     (function () {
         // Color de la navbar: se aplica AQUI (antes del primer pintado, igual
         // que el layout de arriba) para que no se vea un flash del color de
-        // fabrica antes de saltar al guardado. Fuerza SIEMPRE opacidad total:
-        // si el navegador tiene un valor viejo guardado en formato
-        // rgba(r,g,b,0.7) de antes de que la navbar pasara a ser solida, lo
-        // reescribe a rgb(r,g,b) sin alfa (y regraba localStorage) para que
-        // deje de verse el contenido por debajo.
+        // fabrica antes de saltar al guardado. localStorage guarda SIEMPRE un
+        // hex opaco (lo que exporta el <input type=color>, que no tiene canal
+        // alfa); el toque semi-transparente lo pone este alfa fijo al vuelo,
+        // igual que hace el script tardio de mas abajo al reaccionar al
+        // picker. Ver el comentario de .navbar: el alfa mezcla contra
+        // --bg-dark (capas de background en el mismo elemento), no contra el
+        // contenido real de la pagina, asi que sigue sin dejar ver lo que
+        // pasa por debajo al hacer scroll.
+        const NAVBAR_ALPHA = 0.78;
         try {
-            let color = localStorage.getItem('pw_navbar_color');
-            if (color) {
-                const m = color.match(/rgba?\(([^)]+)\)/);
-                if (m) {
-                    const partes = m[1].split(',').map(s => s.trim());
-                    color = 'rgb(' + partes[0] + ', ' + partes[1] + ', ' + partes[2] + ')';
-                    localStorage.setItem('pw_navbar_color', color);
-                }
-                document.documentElement.style.setProperty('--navbar-bg', color);
+            const hex = localStorage.getItem('pw_navbar_color');
+            if (hex && /^#[0-9a-f]{6}$/i.test(hex)) {
+                const rgb = parseInt(hex.slice(1), 16);
+                const r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
+                document.documentElement.style.setProperty('--navbar-bg', 'rgba(' + r + ',' + g + ',' + b + ',' + NAVBAR_ALPHA + ')');
             }
         } catch (e) {}
     })();
@@ -3093,23 +3102,30 @@ function toggleTrailerMode() {
         };
         window.LandingLayout = LandingLayout;
 
-        // Navbar color picker. La aplicacion real (CSS var + saneo de valores
-        // rgba viejos) ya paso en el <head> antes del primer pintado; aqui
-        // solo hace falta reflejar el color actual en el <input type=color>
-        // (que exige hex, asi que un rgb(...) saneado se convierte primero).
+        // Navbar color picker. localStorage guarda el hex TAL CUAL lo exporta
+        // el <input type=color> (opaco, sin alfa); el alfa que da el efecto
+        // semi-transparente lo pone SIEMPRE este script (y el mismo bloque en
+        // el <head>, para el primer pintado) al escribir --navbar-bg, no el
+        // valor guardado.
+        const NAVBAR_ALPHA = 0.78;
         const navbarColorPicker = document.getElementById('navbarColorPicker');
         if (navbarColorPicker) {
-            const savedColor = localStorage.getItem('pw_navbar_color') || '#000000';
-            const m = savedColor.match(/rgb\(([^)]+)\)/);
+            let savedColor = localStorage.getItem('pw_navbar_color') || '#000000';
+            // Migra valores viejos en formato rgb()/rgba() (de antes de que
+            // el picker guardara hex) al hex que el <input type=color> exige.
+            const m = savedColor.match(/rgba?\(([^)]+)\)/);
             if (m) {
                 const [r, g, b] = m[1].split(',').map(s => parseInt(s.trim(), 10));
-                navbarColorPicker.value = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-            } else {
-                navbarColorPicker.value = savedColor;
+                savedColor = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+                localStorage.setItem('pw_navbar_color', savedColor);
             }
+            navbarColorPicker.value = savedColor;
             navbarColorPicker.addEventListener('change', (e) => {
-                document.documentElement.style.setProperty('--navbar-bg', e.target.value);
-                localStorage.setItem('pw_navbar_color', e.target.value);
+                const hex = e.target.value;
+                const rgb = parseInt(hex.slice(1), 16);
+                const r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
+                document.documentElement.style.setProperty('--navbar-bg', 'rgba(' + r + ',' + g + ',' + b + ',' + NAVBAR_ALPHA + ')');
+                localStorage.setItem('pw_navbar_color', hex);
             });
         }
 
