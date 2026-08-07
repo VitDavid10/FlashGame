@@ -1050,20 +1050,25 @@ body.trailer-open #page-content{
                 <span class="brand-name"><span class="bn-txt">PILLWARS</span><img class="bn-img" src="img/pixel-hero/brand.png" alt="" onerror="this.closest('.brand-name').classList.add('no-img')"></span>
             </div>
 
+            <!-- min-width por enlace = (nº de letras x 1.1em). Reserva el hueco
+                 EXACTO que ocupara el texto con Press Start 2P ya cargada, asi
+                 que mientras se usa la fuente de reserva (mas estrecha) la fila
+                 NO cambia de ancho y $PILL -que va detras, en esta misma fila
+                 flex- no se desplaza cuando la fuente termina de cargar.
+                 En em (no px) para que siga cuadrando si cambia el font-size
+                 (movil, pixel-pack...). Medido: 1.1em por caracter. -->
             <div class="nav-links-container">
-                <a href="#hero" class="nav-link">GAME</a>
-                <a href="#quest" class="nav-link">QUESTS</a>
-                <a href="#shop" class="nav-link">STORE</a>
-                <a href="#ranking" class="nav-link">LEADERBOARD</a>
-                <!-- Editor de posicion/tamaño de los elementos del hero. OCULTO:
-                     el diseño ya esta fijado (LAYOUT_HORNEADO). Solo reaparece si
-                     se enciende "Layout editors" en el panel admin, que llega en
-                     el campo `edit` de /api/landing-layout. -->
-                <button class="nav-link" id="btnLandingEdit" style="display:none;" onclick="LandingLayout.enter()">EDIT</button>
-                <!-- $PILL al lado de EDIT: se saca del grupo editable (no es
-                     clave de HERO_LAYOUT_ELS), asi que siempre esta aqui, fijo,
-                     y no depende de ningun x/y guardado que se pudiera haber
-                     descolocado por error. -->
+                <a href="#hero" class="nav-link" style="min-width:4.4em">GAME</a>
+                <a href="#quest" class="nav-link" style="min-width:6.6em">QUESTS</a>
+                <a href="#shop" class="nav-link" style="min-width:5.5em">STORE</a>
+                <a href="#ranking" class="nav-link" style="min-width:12.1em">LEADERBOARD</a>
+                <!-- $PILL va ANTES del boton EDIT a proposito. Los dos son
+                     items de esta fila flex, asi que todo lo que se muestre u
+                     oculte DELANTE de $PILL lo desplaza: con EDIT delante,
+                     encender/apagar "Layout editors" en el admin lo movia 74px
+                     (medido) y descuadraba la posicion que se hubiera guardado.
+                     Detras ya no le afecta, y siguen quedando uno al lado del
+                     otro igual que antes. -->
                 <div class="dropdown" id="pill-dropdown">
                     <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
                     <div class="dropdown-content">
@@ -1073,6 +1078,11 @@ body.trailer-open #page-content{
                         </div>
                     </div>
                 </div>
+                <!-- Editor de posicion/tamaño de los elementos del hero. OCULTO:
+                     el diseño ya esta fijado (LAYOUT_HORNEADO). Solo reaparece si
+                     se enciende "Layout editors" en el panel admin, que llega en
+                     el campo `edit` de /api/landing-layout. -->
+                <button class="nav-link" id="btnLandingEdit" style="display:none;" onclick="LandingLayout.enter()">EDIT</button>
             </div>
         </div>
 
