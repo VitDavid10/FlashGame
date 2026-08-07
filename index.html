@@ -658,26 +658,41 @@ body.trailer-open #page-content{
         .cmodal-btn:hover { filter: brightness(1.1); box-shadow: 0 0 18px rgba(0,255,136,0.4); }
         .cmodal-btn:disabled { opacity: 0.6; cursor: default; }
 
-        /* ===== Deposit / Withdraw / avisos: MISMO look pixel que en el juego
-           (marco verde del premio, titulo DEPOSIT horneado, boton OK con arte).
-           Siempre activos, sin depender del texture pack de la web. Los
-           !important son necesarios: las reglas bevel de body.pixel-pack
+        /* ===== Deposit / Withdraw / avisos de wallet =====
+           MISMO cartel que dentro de /game, no una version parecida: marco gris
+           (menu-gris), titulo en fuente pixel sin arte horneado, boton OK gris
+           (ok-gris) y todo el contenido -filas, etiquetas, input, MAX- en Press
+           Start 2P. Portado tal cual de las reglas que genera buildPixPanelCss()
+           en game/index.html (bloques `menu-gris` y `ok-gris`): antes esta pagina
+           se habia quedado en la version VERDE antigua (prize-panel + ok.png +
+           deposit.png horneado), que es la que el juego ya no usa.
+           Si se cambia el cartel de deposit/withdraw en el juego, hay que tocarlo
+           tambien aqui: son dos copias, no una compartida.
+           Los !important son necesarios: las reglas bevel de body.pixel-pack
            (.modal-box / .cmodal-btn / .modal-box button) tambien llevan
            !important y pintaban un recuadro de sombra dura detras del marco
            PNG y alrededor de los botones OK/MAX. ===== */
         #deposit-modal .modal-box, #withdraw-modal .modal-box, #msg-modal .modal-box {
             border: none !important; border-radius: 0 !important; box-shadow: none !important;
-            background: transparent url('game/img/cartel-hero/prize-panel.png') center/100% 100% no-repeat !important;
+            background: transparent url('game/img/cartel-hero/menu-gris.png') center/100% 100% no-repeat !important;
             image-rendering: pixelated; padding: 44px 44px 40px;
         }
-        #deposit-modal .modal-title { color: transparent; height: 44px; margin-bottom: 10px;
-            background: url('game/img/cartel-hero/deposit.png') center/contain no-repeat; image-rendering: pixelated; }
-        #withdraw-modal .modal-title, #msg-modal .modal-title {
-            font-family: 'Press Start 2P', monospace; font-size: 14px; color: #c8cdd2;
+        #deposit-modal .modal-title, #withdraw-modal .modal-title, #msg-modal .modal-title {
+            font-family: 'Press Start 2P', monospace; font-size: 15px; color: #c8cdd2;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.65); margin-bottom: 16px; line-height: 1.6; }
+        /* Filas "In wallet / In GAME" + etiqueta "Amount": mismo cuerpo que el
+           juego. La etiqueta pierde el verde de .cmodal-label — sobre el marco
+           gris cantaba. */
+        #deposit-modal .gm-row, #withdraw-modal .gm-row,
+        #deposit-modal .cmodal-label, #withdraw-modal .cmodal-label {
+            font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1.9; letter-spacing: 0; }
+        #deposit-modal .cmodal-label, #withdraw-modal .cmodal-label { color: #c8cdd2; }
+        #deposit-modal .gm-row:first-of-type, #withdraw-modal .gm-row:first-of-type { margin-top: 10px; }
+        #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field {
+            font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 0; }
         #deposit-modal .cmodal-btn, #withdraw-modal .cmodal-btn, #msg-modal .cmodal-btn {
             border: none !important; border-radius: 0 !important; box-shadow: none !important;
-            background: transparent url('game/img/cartel-hero/ok.png') center/100% 100% no-repeat !important;
+            background: transparent url('game/img/cartel-hero/ok-gris.png') center/100% 100% no-repeat !important;
             aspect-ratio: 622/81; width: 58%; display: block; margin: 16px auto 0; padding: 0;
             image-rendering: pixelated; color: transparent !important; text-shadow: none;
         }
@@ -686,6 +701,10 @@ body.trailer-open #page-content{
         #deposit-modal .cmodal-btn:disabled, #withdraw-modal .cmodal-btn:disabled { filter: grayscale(0.6) brightness(0.75); opacity: 1; }
         /* MAX y cualquier otro boton dentro de estos modales: sin bevel del pack */
         #deposit-modal .modal-box button, #withdraw-modal .modal-box button, #msg-modal .modal-box button { box-shadow: none !important; }
+        /* !important: body.pixel-pack .modal-box button fuerza 11px con
+           !important y dejaba el MAX mas grande que en el juego (8px). */
+        #deposit-modal .modal-box .max-btn, #withdraw-modal .modal-box .max-btn {
+            font-family: 'Press Start 2P', monospace !important; font-size: 8px !important; letter-spacing: 0; }
         #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field { border-radius: 0 !important; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important; }
 
         /* CONNECT WALLET: identico al selector de dentro del juego — recuadro
@@ -1402,13 +1421,16 @@ body.trailer-open #page-content{
         <div class="modal-box">
             <span class="modal-close" onclick="App.Deposit.close()">×</span>
             <div class="modal-title">Deposit $PILL</div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:4px"><span>In wallet</span><b id="dep-wallet-bal" style="color:var(--primary)">—</b></div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In GAME</span><b id="dep-war-bal" style="color:#ffce3d">—</b></div>
+            <!-- .gm-row: mismo nombre y mismo aspecto que las filas del cartel de
+                 /game. Los colores van en gris (#c8cdd2), como alli, en vez del
+                 verde/ambar que llevaban aqui. -->
+            <div class="gm-row" style="display:flex;justify-content:space-between;color:#888;margin-bottom:4px"><span>In wallet</span><b id="dep-wallet-bal" style="color:#c8cdd2">—</b></div>
+            <div class="gm-row" style="display:flex;justify-content:space-between;color:#888;margin-bottom:16px"><span>In GAME</span><b id="dep-war-bal" style="color:#c8cdd2">—</b></div>
             <label class="cmodal-label">Amount</label>
             <div style="position:relative">
                 <input id="deposit-amount" class="cmodal-field" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 50000" value="50000" style="padding-right:60px"
                        oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-                <button type="button" onclick="App.Deposit.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+                <button type="button" class="max-btn" onclick="App.Deposit.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid #c8cdd2;color:#c8cdd2;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
             </div>
             <button class="cmodal-btn" id="deposit-confirm" onclick="App.Deposit.confirm()">Deposit to GAME</button>
         </div>
@@ -1419,12 +1441,12 @@ body.trailer-open #page-content{
         <div class="modal-box">
             <span class="modal-close" onclick="App.Withdraw.close()">×</span>
             <div class="modal-title">Withdraw $PILL</div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:16px"><span>In GAME</span><b id="wd-war-bal" style="color:#ffce3d">—</b></div>
+            <div class="gm-row" style="display:flex;justify-content:space-between;color:#888;margin-bottom:16px"><span>In GAME</span><b id="wd-war-bal" style="color:#c8cdd2">—</b></div>
             <label class="cmodal-label">Amount</label>
             <div style="position:relative">
                 <input id="withdraw-amount" class="cmodal-field" type="text" inputmode="numeric" autocomplete="off" placeholder="amount to withdraw" style="padding-right:60px"
                        oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-                <button type="button" onclick="App.Withdraw.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--primary);color:var(--primary);font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+                <button type="button" class="max-btn" onclick="App.Withdraw.fillMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid #c8cdd2;color:#c8cdd2;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
             </div>
             <button class="cmodal-btn" id="withdraw-confirm" onclick="App.Withdraw.confirm()">Withdraw to wallet</button>
         </div>
