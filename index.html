@@ -954,6 +954,11 @@ body.trailer-open #page-content{
         #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer !important; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
         #layoutEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
         #layoutEditBar .leb-btn.done { background: #0f8f46; color: #fff; border-color: #000; }
+        /* Grupos de −/+ del cuerpo de letra. Mismos valores que en el editor
+           de /game (#layoutEditBar .leb-group / .leb-label / .leb-btn.leb-sm). */
+        #layoutEditBar .leb-group { display: flex; align-items: center; gap: 5px; padding-left: 10px; border-left: 1px solid #2a2f36; }
+        #layoutEditBar .leb-label { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #6a737e; letter-spacing: 0.5px; }
+        #layoutEditBar .leb-btn.leb-sm { padding: 5px 10px; font-size: 10px; }
         #btnLandingEdit { background: none; border: none; padding: 0; color: #ff9c3d; cursor: pointer !important; }
         #btnLandingEdit:hover { color: #fff; text-shadow: 0 0 10px #ff9c3d; }
     </style>
@@ -1563,6 +1568,27 @@ body.trailer-open #page-content{
     <!-- TEMPORAL: barra del editor de layout del hero (boton EDIT de la navbar) -->
     <div id="layoutEditBar" style="display:none;">
         <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TEXT SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
+        <!-- Botones sueltos para el cuerpo de letra. Tocan SOLO el texto: el
+             icono del desplegable, el padding y el hueco entre elementos no se
+             mueven (para eso esta la rueda a secas, que escala la pieza
+             entera). Van aparte porque el gesto ALT+rueda depende de acertar el
+             punto con el raton y de que el navegador no se coma la combinacion
+             — mismo motivo que los −/+ del editor de /game. -->
+        <span class="leb-group">
+            <span class="leb-label">$PILL MENU TXT</span>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('pillMenu', -1)">−</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('pillMenu', 1)">+</button>
+        </span>
+        <span class="leb-group">
+            <span class="leb-label">CA SIGN TXT</span>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('caSign', -1)">−</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('caSign', 1)">+</button>
+        </span>
+        <span class="leb-group">
+            <span class="leb-label">CONTRACT TXT</span>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('ca', -1)">−</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('ca', 1)">+</button>
+        </span>
         <div style="display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid #2a2f36;">
             <label style="font-family:'Press Start 2P', monospace; font-size:7px; color:#6a737e;">NAVBAR:</label>
             <input type="color" id="navbarColorPicker" style="width:32px; height:32px; border:1px solid #2a2f36; cursor:pointer;" />
@@ -3216,6 +3242,20 @@ function toggleTrailerMode() {
             // que se quiera volver desde aqui. Suelta ademas las claves propias:
             // a partir de aqui vuelve a mandar el global del servidor.
             resetAll() { layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO)); layoutMine.clear(); saveLayoutMine(); save(); apply(); syncZoomBtn(); },
+            // Cuerpo de letra de una pieza (botones −/+ de la barra). Toca SOLO
+            // el texto: escribe `f`, que apply() vuelca en --pw-font, y los
+            // font-size del CSS lo leen. El icono del desplegable, el padding y
+            // los huecos van en px fijos, asi que no se enteran — para cambiar
+            // la pieza entera esta la rueda, que escala.
+            // Mismo criterio que bumpLayoutFont() en game/index.html.
+            bumpFont(key, delta) {
+                const el = document.querySelector(LAYOUT_ELS[key]); if (!el) return;
+                const cur = layout[key] = layout[key] || { x: 0, y: 0, s: 1 };
+                const base = typeof cur.f === 'number' ? cur.f
+                    : (parseFloat(getComputedStyle(el).getPropertyValue('--pw-font')) || FONT_DEFAULTS[key] || 13);
+                cur.f = Math.round(Math.min(48, Math.max(6, base + delta)) * 10) / 10;
+                marcarLayoutMio(key); apply(); save();
+            },
             // Zoom del cuadro entero. NO es solo una vista del editor: se guarda
             // con el resto del layout y se queda al salir con DONE.
             zoom(btn) {
