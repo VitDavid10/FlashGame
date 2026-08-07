@@ -3016,19 +3016,36 @@ function toggleTrailerMode() {
         // sitio de fabrica hasta que llegaba la respuesta async del fetch a
         // /api/landing-layout (de ahi el salto/parpadeo).
         let layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO));
-        // teniaLocal: si YA habia algo guardado en este navegador antes de
-        // cargar. Se usa mas abajo para que el layout GLOBAL del servidor
-        // (SAVE FOR ALL de otra sesion) nunca pise una edicion local que aun
-        // no se ha subido — sin este guard, el fetch de mas abajo detectaba
-        // la diferencia y BORRABA la edicion local en cuanto llegaba la
-        // respuesta, aunque fuera mas nueva que la del servidor.
-        const teniaLocal = !!localStorage.getItem(LAYOUT_KEY);
         try {
             const guardado = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
             Object.assign(layout, guardado);
         } catch (e) {}
         let editing = false, drag = null;
         const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
+        // ===== Claves TOCADAS a mano en esta maquina =====
+        // Mismo mecanismo que EDIT LAYOUT del menu del juego (game/index.html,
+        // LAYOUT_MINE_KEY). Antes, la primera vez que este navegador cargaba la
+        // pagina SIN ediciones propias, el fetch de mas abajo copiaba el layout
+        // del servidor entero a localStorage -> a partir de ahi este navegador
+        // quedaba "con local guardado" para siempre y DEJABA DE VER cualquier
+        // actualizacion futura del servidor (SAVE FOR ALL de otra sesion, o
+        // simplemente que alguien reordenara algo), aunque el admin activara o
+        // desactivara el editor: el toggle no tiene nada que ver, el problema
+        // era que el navegador se habia quedado pegado a una foto vieja.
+        // Ahora solo las claves que TU has tocado a mano mandan sobre el global;
+        // el resto siempre se actualiza con lo ultimo del servidor.
+        const LAYOUT_MINE_KEY = 'pw_landing_layout_mine';
+        let layoutMine = new Set();
+        try { const m = JSON.parse(localStorage.getItem(LAYOUT_MINE_KEY) || '[]'); if (Array.isArray(m)) layoutMine = new Set(m); } catch (e) {}
+        function saveLayoutMine() { try { localStorage.setItem(LAYOUT_MINE_KEY, JSON.stringify([...layoutMine])); } catch (e) {} }
+        function marcarLayoutMio(key) { if (!layoutMine.has(key)) { layoutMine.add(key); saveLayoutMine(); } }
+        // Global entrante + lo mio por encima (misma logica que
+        // fundirLayoutGlobal en game/index.html).
+        function fundirLayoutGlobal(entrante) {
+            const out = JSON.parse(JSON.stringify(entrante));
+            for (const k of layoutMine) { if (layout[k]) out[k] = JSON.parse(JSON.stringify(layout[k])); else delete out[k]; }
+            return out;
+        }
         const ZOOM_PASOS = [1, 0.8, 0.6, 0.45];
         function apply() {
             for (const key in LAYOUT_ELS) {
@@ -3083,8 +3100,9 @@ function toggleTrailerMode() {
             },
             // RESET vuelve al layout HORNEADO, que es el diseño bueno — no al
             // de fabrica (todo a cero y sin zoom), que ya no es un estado al
-            // que se quiera volver desde aqui.
-            resetAll() { layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO)); save(); apply(); syncZoomBtn(); },
+            // que se quiera volver desde aqui. Suelta ademas las claves propias:
+            // a partir de aqui vuelve a mandar el global del servidor.
+            resetAll() { layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO)); layoutMine.clear(); saveLayoutMine(); save(); apply(); syncZoomBtn(); },
             // Zoom del cuadro entero. NO es solo una vista del editor: se guarda
             // con el resto del layout y se queda al salir con DONE.
             zoom(btn) {
@@ -3102,6 +3120,9 @@ function toggleTrailerMode() {
                 try {
                     const r = await fetch('/api/landing-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout }) });
                     ok = (await r.json()).ok === true;
+                    // Ya son de todos: se sueltan las claves propias para no
+                    // quedarse pegado a una version local del layout que ya subiste.
+                    if (ok) { layoutMine.clear(); saveLayoutMine(); }
                 } catch (e) {}
                 if (btn) { btn.textContent = ok ? 'SAVED ✓' : 'ERROR'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600); }
             },
@@ -3167,6 +3188,7 @@ function toggleTrailerMode() {
             const z = NAVBAR_KEYS.has(drag.key) ? 1 : heroZoom;
             cur.x = drag.baseX + (e.clientX - drag.startX) / z;
             cur.y = drag.baseY + (e.clientY - drag.startY) / z;
+            marcarLayoutMio(drag.key);
             apply();
         });
         window.addEventListener('pointerup', () => { if (drag) { drag = null; save(); } });
@@ -3177,6 +3199,7 @@ function toggleTrailerMode() {
             const cur = layout[t.key] = layout[t.key] || { x: 0, y: 0, s: 1 };
             const step = e.shiftKey ? 1.06 : 1.015;   // shift = paso grande
             cur.s = Math.min(3, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
+            marcarLayoutMio(t.key);
             apply(); save();
         }, { passive: false, capture: true });
         document.addEventListener('dblclick', (e) => {
@@ -3185,6 +3208,7 @@ function toggleTrailerMode() {
             // Mismo criterio que RESET ALL: la pieza vuelve a su sitio horneado.
             const h = LAYOUT_HORNEADO[t.key];
             layout[t.key] = h ? JSON.parse(JSON.stringify(h)) : { x: 0, y: 0, s: 1 };
+            marcarLayoutMio(t.key);
             apply(); save(); e.preventDefault();
         }, true);
         // En modo edicion los clicks no disparan PLAY NOW ni el copiar del contrato
@@ -3213,21 +3237,26 @@ function toggleTrailerMode() {
             });
             return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
         };
-        // Layout GLOBAL del servidor: solo se aplica si DIFIERE del horneado, o
-        // sea, si alguien ha guardado uno nuevo con SAVE FOR ALL. Si coincide no
-        // se repinta nada y el hero no da el salto al acabar de cargar.
-        // El flag `edit` (admin -> Menu visuals) es lo que devuelve el boton EDIT.
+        // Layout GLOBAL del servidor: SIEMPRE manda para las claves que este
+        // navegador no ha tocado a mano (fundirLayoutGlobal), asi que un
+        // SAVE FOR ALL de otra sesion (o del admin) se ve aqui sin depender de
+        // si este navegador tenia algo guardado de antes — el `edit` on/off del
+        // panel admin (Layout editors) NO participa en esto, solo decide si se
+        // muestra el boton EDIT. Solo se repinta si el resultado difiere de
+        // verdad, para no dar el salto al acabar de cargar cuando coincide.
         fetch('/api/landing-layout', { cache: 'no-store' })
             .then(r => r.json())
             .then(d => {
                 if (d && d.edit) { const b = document.getElementById('btnLandingEdit'); if (b) b.style.display = ''; }
-                if (editing || teniaLocal || !d || !d.layout || !Object.keys(d.layout).length) return;
-                if (mismoLayout(d.layout, layout)) return;
+                if (editing || !d || !d.layout || !Object.keys(d.layout).length) return;
                 // Fusionado sobre el horneado (no reemplazo directo): si el
                 // servidor guardo su layout antes de que existiera una clave
                 // nueva, esa clave se queda con su default horneado en vez de
-                // desaparecer del todo.
-                layout = Object.assign(JSON.parse(JSON.stringify(LAYOUT_HORNEADO)), d.layout);
+                // desaparecer del todo. Encima, las claves tocadas a mano en
+                // ESTA maquina (layoutMine) se conservan tal cual.
+                const entrante = fundirLayoutGlobal(Object.assign(JSON.parse(JSON.stringify(LAYOUT_HORNEADO)), d.layout));
+                if (mismoLayout(entrante, layout)) return;
+                layout = entrante;
                 save(); apply();
             })
             .catch(() => {});
