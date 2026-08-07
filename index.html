@@ -139,10 +139,19 @@
         #telegram-icon-btn { background: url('game/img/cartel-hero/icon-telegram.png') center/100% 100% no-repeat; transition: transform 0.3s, filter 0.3s; image-rendering: auto; }
         #telegram-icon-btn:hover { transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(38, 165, 228, 0.6)); }
 
-        .dropdown { position: relative; display: flex; align-items: center; height: 100%; }
+        /* z-index en el PROPIO .dropdown, no solo en el desplegable: el editor de
+           layout le pone translate/scale, y eso le crea un stacking context —
+           asi que el z-index del hijo queda ATRAPADO dentro y no puede competir
+           con la barra de wallet (.wallet-bal-box, z-index 1001), que lo tapaba
+           al conectar. El z-index tiene que ir aqui para ganar de verdad. */
+        .dropdown { position: relative; display: flex; align-items: center; height: 100%; z-index: 1005; }
         .dropbtn { font-weight: 800; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 8px; }
-        .dropdown { position: relative; }
-        .dropdown-content { display: none; position: fixed; z-index: 100000; pointer-events: auto; padding-top: 8px; min-width: 180px; }
+        /* absolute (no fixed): asi el desplegable cuelga del propio .dropdown y
+           lo SIGUE cuando el editor de layout mueve el $PILL de sitio. Con fixed
+           el translate del padre pasaba a ser su containing block, de modo que
+           las coordenadas de viewport que se le calculaban quedaban desplazadas
+           dos veces y aparecia fuera de sitio. */
+        .dropdown-content { display: none; position: absolute; top: 100%; right: 0; z-index: 1; pointer-events: auto; padding-top: 8px; min-width: 180px; }
         .dropdown-box { background: #111; border: 1px solid #333; border-radius: 6px; overflow: hidden; box-shadow: 0 10px 30px #000; }
         .dropdown-content a { padding: 12px 16px; font-size: 13px; font-weight: 600; color: #ccc; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid #222; }
         .dropdown-content a:hover { background: #222; color: var(--primary); }
@@ -245,7 +254,6 @@
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
         #heroPickMe { cursor: pointer !important; user-select: none; }
-        #heroPickMe.playing { visibility: hidden; }
         .pick-me-label {
             font-family: 'Press Start 2P', monospace; font-size: 11px; color: #aaffdd;
             text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
@@ -253,7 +261,16 @@
         }
         @keyframes pickMeGlow { 50% { opacity: .55; } }
         .pick-me-pill { display: block; margin: 0 auto; image-rendering: pixelated; }
-        #heroPickMe:hover .pick-me-pill { filter: brightness(1.25); }
+        #heroPickMe:hover .pick-me-pill { filter: brightness(1.06); }
+        /* Mientras juegas, en el hueco del PICK ME! se lee ESC TO LEAVE (la tecla
+           que suelta el control). La pill de aqui se oculta con visibility, NO con
+           display: asi sigue ocupando su sitio y el rotulo no se mueve — la pill
+           que se ve entonces es la del canvas, que es la que llevas. */
+        .esc-to-leave { display: none; }
+        #heroPickMe.playing .pick-me-label:not(.esc-to-leave) { display: none; }
+        #heroPickMe.playing .esc-to-leave { display: block; }
+        #heroPickMe.playing .pick-me-pill { visibility: hidden; }
+        #heroPickMe.playing { cursor: default !important; }
         /* Titulo devorado por la pill jugable: se va, pero sigue ocupando su
            hueco para que no salte el resto del hero. Vuelve al soltar el control.
            Se anima con `transform`, no con translate/scale, porque esas dos las
@@ -1139,6 +1156,7 @@ body.trailer-open #page-content{
                      dentro del hero (ver HeroPlay en el script del final). -->
                 <div id="heroPickMe" title="Take control">
                     <div class="pick-me-label">PICK ME!</div>
+                    <div class="pick-me-label esc-to-leave">ESC TO LEAVE</div>
                     <canvas class="pick-me-pill" width="86" height="86"></canvas>
                 </div>
                 <img class="hero-play" id="heroPlayNow" src="img/pixel-hero/play-now-hero.png" alt="PLAY NOW" onclick="window.location.href='game/'" onerror="this.style.display='none'">
@@ -2995,6 +3013,8 @@ function toggleTrailerMode() {
         const pickMe = document.getElementById('heroPickMe');
         if (pickMe) pickMe.addEventListener('click', (e) => {
             if (document.body.classList.contains('layout-editing')) return;
+            // Ya jugando: aqui pone ESC TO LEAVE, no debe relanzar la partida.
+            if (HeroPlay.active) return;
             const b = pickMe.getBoundingClientRect(), r = cv.getBoundingClientRect();
             HeroPlay.aim(b.left + b.width / 2, b.top + b.height / 2);
             HeroPlay.start((b.left + b.width / 2 - r.left) * (cv.width / r.width),
@@ -3164,20 +3184,6 @@ function toggleTrailerMode() {
                 document.documentElement.style.setProperty('--navbar-bg', 'rgba(' + r + ',' + g + ',' + b + ',' + NAVBAR_ALPHA + ')');
                 localStorage.setItem('pw_navbar_color', hex);
             });
-        }
-
-        // Posicionamiento dinámico del dropdown de $PILL
-        const pillDropdown = document.getElementById('pill-dropdown');
-        const dropdownContent = pillDropdown ? pillDropdown.querySelector('.dropdown-content') : null;
-        if (pillDropdown && dropdownContent) {
-            const positionDropdown = () => {
-                const rect = pillDropdown.getBoundingClientRect();
-                dropdownContent.style.top = (rect.bottom) + 'px';
-                dropdownContent.style.right = (window.innerWidth - rect.right) + 'px';
-            };
-            pillDropdown.addEventListener('mouseenter', positionDropdown);
-            window.addEventListener('scroll', positionDropdown);
-            window.addEventListener('resize', positionDropdown);
         }
 
         document.addEventListener('pointerdown', (e) => {
