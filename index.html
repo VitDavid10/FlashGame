@@ -721,6 +721,18 @@ body.trailer-open #page-content{
         #wallet-modal .wallet-option:hover { background-color: transparent !important; border: none !important; transform: none; filter: brightness(1.2); }
         #wallet-modal .wallet-option img { width: 32px; height: 32px; border-radius: 6px; }
         #wallet-modal .wallet-option span { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65); text-transform: uppercase; }
+        /* CANCEL del pie: mismos valores que .pw-modal-cancel + la variante
+           .wallet-picker (margin-top 20px) de game/index.html. font-size y
+           box-shadow con !important porque las reglas bevel de
+           body.pixel-pack (.modal-box button) los pisan con !important. */
+        #wallet-modal .pw-modal-cancel {
+            display: block; margin: 20px auto 0; padding: 8px 22px; background: transparent;
+            border: 2px solid #3a4048 !important; border-radius: 0 !important; color: #8a939e;
+            font-family: 'Press Start 2P', monospace !important; font-size: 9px !important;
+            letter-spacing: 1px; cursor: pointer; text-transform: uppercase;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.6) !important;
+        }
+        #wallet-modal .pw-modal-cancel:hover { color: #fff; border-color: #6a737e !important; }
 
         .wallet-option { 
             display: flex; align-items: center; gap: 15px; background: #111; border: 1px solid #333; 
@@ -1403,16 +1415,19 @@ body.trailer-open #page-content{
     </footer>
         
     </div>
-    <!-- WALLET MODAL -->
+    <!-- WALLET MODAL
+         Mismo cartel que el selector de wallet de /game (#walletPickerModal):
+         sin aspa de cerrar arriba y con un CANCEL al pie, que es como esta
+         alli. Se sigue pudiendo cerrar clicando fuera del recuadro. -->
     <div id="wallet-modal" class="modal-overlay">
         <div class="modal-box">
-            <span class="modal-close" onclick="App.Wallet.closeModal()">×</span>
             <div class="modal-title">Connect Wallet</div>
             <div class="wallet-option" onclick="App.Wallet.connect('phantom')">
                 <img src="https://i.imgur.com/esN0veD.png" alt="Phantom"><span>Phantom</span>
             </div>
             <div class="wallet-option" onclick="App.Wallet.connect('backpack')"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="Backpack"><span>Backpack</span></div>
             <div class="wallet-option" onclick="App.Wallet.connect('solflare')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="Solflare"><span>Solflare</span></div>
+            <button class="pw-modal-cancel" onclick="App.Wallet.closeModal()">CANCEL</button>
         </div>
     </div>
 
