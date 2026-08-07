@@ -871,7 +871,11 @@ body.trailer-open #page-content{
         .hero-img, .bn-img { display: none; image-rendering: pixelated; }
         .hero-img { aspect-ratio: 1200 / 243; }   /* hero-title.png */
         .bn-img   { aspect-ratio: 640 / 97; }     /* brand.png (navbar) */
-        body.pixel-pack .hero-main-content:not(.no-img) .hero-img { display: inline-block; height: 120px; width: auto; filter: drop-shadow(0 0 16px rgba(0,255,136,0.6)) drop-shadow(0 0 38px rgba(0,255,136,0.35)) drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.08); }
+        /* --pw-glow: multiplicador del radio de los dos halos del titulo,
+           editable desde EDIT LAYOUT (grupo TITLE GLOW) y guardado en el layout
+           junto a la posicion y la escala. 1 = el valor de diseño, 0 = sin halo.
+           Mismo mecanismo que --title-glow en game/index.html. */
+        body.pixel-pack .hero-main-content:not(.no-img) .hero-img { display: inline-block; height: 120px; width: auto; filter: drop-shadow(0 0 calc(16px * var(--pw-glow, 1)) rgba(0,255,136,0.6)) drop-shadow(0 0 calc(38px * var(--pw-glow, 1)) rgba(0,255,136,0.35)) drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.08); }
         body.pixel-pack .hero-main-content:not(.no-img) .hero-sub { display: block; }
         body.pixel-pack .hero-main-content:not(.no-img) .hero-txt { display: none; }
         /* 32px, no 44: el PNG de la navbar va SIN glow, asi que su caja es toda
@@ -949,7 +953,9 @@ body.trailer-open #page-content{
            Quitar el boton, esta hoja y LandingLayout cuando quede fijado. ===== */
         body.layout-editing .hero-editable { outline: 2px dashed rgba(255,255,255,0.55); outline-offset: 3px; cursor: move !important; transition: none !important; }
         body.layout-editing .hero-editable:hover { outline-color: var(--primary); }
-        #layoutEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 100001; display: flex; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
+        /* flex-wrap + max-width: con los grupos de −/+ la barra ya no cabe de
+           una linea en 1280px, y sin envolver se salia por los lados. */
+        #layoutEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 100001; display: flex; flex-wrap: wrap; justify-content: center; max-width: 96vw; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
         #layoutEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 0.5px; }
         #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer !important; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
         #layoutEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
@@ -1588,6 +1594,25 @@ body.trailer-open #page-content{
             <span class="leb-label">CONTRACT TXT</span>
             <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('ca', -1)">−</button>
             <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('ca', 1)">+</button>
+        </span>
+        <!-- Caja del $PILL: la agranda SIN tocar su texto. Sirve para que el
+             boton llegue hasta el desplegable y no se pierda el hover al bajar
+             el raton (su caja de fabrica mide 50x10 y el menu cuelga 170px a la
+             izquierda, asi que en diagonal te salias de los dos). -->
+        <span class="leb-group">
+            <span class="leb-label">$PILL BOX W</span>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('pillDropdown', 'w', -10)">−</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('pillDropdown', 'w', 10)">+</button>
+        </span>
+        <span class="leb-group">
+            <span class="leb-label">$PILL BOX H</span>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('pillDropdown', 'h', -5)">−</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('pillDropdown', 'h', 5)">+</button>
+        </span>
+        <span class="leb-group">
+            <span class="leb-label">TITLE GLOW</span>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpGlow('title', -0.1)">−</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpGlow('title', 0.1)">+</button>
         </span>
         <div style="display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid #2a2f36;">
             <label style="font-family:'Press Start 2P', monospace; font-size:7px; color:#6a737e;">NAVBAR:</label>
@@ -3179,6 +3204,11 @@ function toggleTrailerMode() {
             for (const k of layoutMine) { if (layout[k]) out[k] = JSON.parse(JSON.stringify(layout[k])); else delete out[k]; }
             return out;
         }
+        // Claves cuya CAJA se puede estirar en px (w/h) aparte del escalado
+        // uniforme. Solo el $PILL: su caja mide 50x10 y el desplegable cuelga
+        // 170px a su izquierda, asi que al bajar el raton en diagonal se salia
+        // de los dos y el menu se cerraba. Ensanchandola se cubre ese camino.
+        const LAYOUT_RESIZABLE = new Set(['pillDropdown']);
         const ZOOM_PASOS = [1, 0.8, 0.6, 0.45];
         function apply() {
             for (const key in LAYOUT_ELS) {
@@ -3202,6 +3232,19 @@ function toggleTrailerMode() {
                     // CSS. Mismo mecanismo que --gw-font en game/index.html.
                     if (t && typeof t.f === 'number') el.style.setProperty('--pw-font', t.f + 'px');
                     else el.style.removeProperty('--pw-font');
+                    // b = intensidad del halo (grupo TITLE GLOW). Lo lee el CSS
+                    // por --pw-glow; hoy solo lo usa el titulo del hero.
+                    if (t && typeof t.b === 'number') el.style.setProperty('--pw-glow', String(t.b));
+                    else el.style.removeProperty('--pw-glow');
+                    // w/h = ancho y alto en px, aparte del escalado uniforme.
+                    // Solo en las claves de LAYOUT_RESIZABLE: sirve para agrandar
+                    // la CAJA de un elemento sin tocar su texto (p.ej. el $PILL,
+                    // cuya caja de 50x10 dejaba un hueco por el que se perdia el
+                    // hover al bajar en diagonal hacia el desplegable).
+                    if (LAYOUT_RESIZABLE.has(key)) {
+                        el.style.width = (t && typeof t.w === 'number') ? t.w + 'px' : '';
+                        el.style.height = (t && typeof t.h === 'number') ? t.h + 'px' : '';
+                    }
                 }
             }
             // El zoom es parte del layout, como las posiciones: se guarda y lo ve
@@ -3256,6 +3299,26 @@ function toggleTrailerMode() {
                 cur.f = Math.round(Math.min(48, Math.max(6, base + delta)) * 10) / 10;
                 marcarLayoutMio(key); apply(); save();
             },
+            // Halo del titulo. 1 = el diseño de siempre, 0 = sin halo.
+            bumpGlow(key, delta) {
+                const el = document.querySelector(LAYOUT_ELS[key]); if (!el) return;
+                const cur = layout[key] = layout[key] || { x: 0, y: 0, s: 1 };
+                const base = typeof cur.b === 'number' ? cur.b
+                    : (parseFloat(getComputedStyle(el).getPropertyValue('--pw-glow')) || 1);
+                cur.b = Math.round(Math.min(4, Math.max(0, base + delta)) * 10) / 10;
+                marcarLayoutMio(key); apply(); save();
+            },
+            // Ancho/alto de la CAJA en px, sin tocar el texto ni el escalado.
+            // El punto de partida es el tamaño REAL medido en pantalla (no un
+            // valor de fabrica) para que el primer toque no de un salto.
+            bumpSize(key, dim, delta) {
+                const el = document.querySelector(LAYOUT_ELS[key]); if (!el || !LAYOUT_RESIZABLE.has(key)) return;
+                const cur = layout[key] = layout[key] || { x: 0, y: 0, s: 1 };
+                const r = el.getBoundingClientRect();
+                if (dim === 'w') cur.w = Math.round(Math.min(900, Math.max(20, (typeof cur.w === 'number' ? cur.w : r.width) + delta)));
+                else cur.h = Math.round(Math.min(400, Math.max(10, (typeof cur.h === 'number' ? cur.h : r.height) + delta)));
+                marcarLayoutMio(key); apply(); save();
+            },
             // Zoom del cuadro entero. NO es solo una vista del editor: se guarda
             // con el resto del layout y se queda al salir con DONE.
             zoom(btn) {
@@ -3308,6 +3371,30 @@ function toggleTrailerMode() {
                 localStorage.setItem('pw_navbar_color', hex);
             });
         }
+
+        // El desplegable de $PILL no se cierra en cuanto sales: espera un poco.
+        // Con :hover puro, en cuanto el raton pisaba un pixel que no fuera ni el
+        // boton ni el menu se cerraba de golpe — y eso pasa siempre que el menu
+        // se mueve de sitio con el editor (clave pillMenu), porque entonces
+        // entre los dos queda un hueco real que el padding-top ya no cubre.
+        // Medido: con el menu desplazado 30px, el camino en diagonal del boton
+        // al menu cae sobre la navbar y el hover se rompe.
+        // El retardo cubre ese trayecto vengas por donde vengas, sin depender de
+        // que la caja del boton llegue justo hasta el menu.
+        (function () {
+            const pill = document.getElementById('pill-dropdown');
+            const menu = pill && pill.querySelector('.dropdown-content');
+            if (!pill || !menu) return;
+            let cierre = null;
+            const abrir = () => { clearTimeout(cierre); menu.style.display = 'block'; };
+            // removeProperty y no display:none: asi vuelve a mandar el CSS (el
+            // :hover normal y la regla que lo deja abierto en EDIT LAYOUT).
+            const cerrar = () => { clearTimeout(cierre); cierre = setTimeout(() => menu.style.removeProperty('display'), 320); };
+            for (const el of [pill, menu]) {
+                el.addEventListener('mouseenter', () => { if (!editing) abrir(); });
+                el.addEventListener('mouseleave', () => { if (!editing) cerrar(); });
+            }
+        })();
 
         document.addEventListener('pointerdown', (e) => {
             if (!editing || e.target.closest('#layoutEditBar')) return;
@@ -3384,10 +3471,11 @@ function toggleTrailerMode() {
             const norm = o => [...keys].sort().map(k => {
                 if (k === 'zoom') return [k, (o && typeof o[k] === 'number') ? o[k] : 1];
                 const v = (o && o[k]) || {};
-                // `f` (cuerpo de letra) entra en la comparacion: sin el, un
-                // layout que solo cambiara el tamaño de letra se veria "igual"
-                // y no llegaria a aplicarse.
-                return [k, +v.x || 0, +v.y || 0, +v.s || 1, typeof v.f === 'number' ? v.f : null];
+                // f (letra), b (halo) y w/h (caja) entran en la comparacion: sin
+                // ellos, un layout que solo cambiara uno de esos se veria
+                // "igual" y no llegaria a aplicarse.
+                const num = x => typeof x === 'number' ? x : null;
+                return [k, +v.x || 0, +v.y || 0, +v.s || 1, num(v.f), num(v.b), num(v.w), num(v.h)];
             });
             return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
         };
