@@ -89,8 +89,8 @@
 
         /* --- NAVBAR --- */
         .navbar {
-            display: flex; align-items: center; height: var(--navbar-height); background: var(--navbar-bg, rgba(0, 0, 0, 0.7)); 
-            backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+            display: flex; align-items: center; height: var(--navbar-height); background: var(--navbar-bg, rgb(0, 0, 0));
+            border-bottom: 1px solid rgba(0, 255, 136, 0.2);
             padding: 0 30px; position: fixed; top: 0; width: 100%; z-index: 1000;
             justify-content: space-between; transition: all 0.3s ease;
         }
@@ -3076,15 +3076,11 @@ function toggleTrailerMode() {
         const navbarColorPicker = document.getElementById('navbarColorPicker');
         if (navbarColorPicker) {
             const savedColor = localStorage.getItem('pw_navbar_color') || '#000000';
-            navbarColorPicker.value = savedColor.startsWith('rgba') ? '#000000' : savedColor;
+            navbarColorPicker.value = savedColor.startsWith('rgb') ? '#000000' : savedColor;
             document.documentElement.style.setProperty('--navbar-bg', savedColor);
             navbarColorPicker.addEventListener('change', (e) => {
-                const hex = e.target.value;
-                const rgb = parseInt(hex.slice(1), 16);
-                const r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
-                const rgba = `rgba(${r}, ${g}, ${b}, 0.7)`;
-                document.documentElement.style.setProperty('--navbar-bg', rgba);
-                localStorage.setItem('pw_navbar_color', rgba);
+                document.documentElement.style.setProperty('--navbar-bg', e.target.value);
+                localStorage.setItem('pw_navbar_color', e.target.value);
             });
         }
 
