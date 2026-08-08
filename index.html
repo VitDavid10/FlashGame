@@ -269,6 +269,15 @@
         .hero-play-row { display: flex; align-items: center; justify-content: center; gap: 46px; margin-top: 26px; }
         .hero-play { display: block; height: 84px; width: auto; aspect-ratio: 1856 / 560; image-rendering: pixelated; cursor: pointer !important; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .2s; }
         .hero-play:hover { filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.15); }
+        /* PLAY NOW de la navbar: oculto mientras el hero esta a la vista (ya
+           hay uno ahi dentro), aparece al hacer scroll y salir de el (ver el
+           IntersectionObserver mas abajo). En EDIT LAYOUT se fuerza visible
+           siempre, si no no habria forma de agarrarlo con el hero fuera de
+           pantalla. Posicion/tamaño se mueven desde EDIT como el resto (clave
+           navPlay en HERO_LAYOUT_ELS). */
+        .nav-play-now { display: none; height: 30px; width: auto; aspect-ratio: 1856 / 560; image-rendering: pixelated; cursor: pointer !important; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); flex-shrink: 0; transition: filter .2s; }
+        .nav-play-now:hover { filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)) brightness(1.15); }
+        body.nav-play-visible .nav-play-now, body.layout-editing .nav-play-now { display: block; }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
         #heroPickMe { cursor: pointer !important; user-select: none; }
@@ -1009,6 +1018,7 @@ body.trailer-open #page-content{
         pillDropdown: '#pill-dropdown',
         walletBal: '#wallet-bal-box',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
+        navPlay: '#navPlayNow',
     };
     window.HERO_LAYOUT_HORNEADO = {
         zoom: 0.8,
@@ -1182,6 +1192,9 @@ body.trailer-open #page-content{
         </div>
 
         <div class="nav-dropdown-group">
+            <!-- PLAY NOW de la navbar: solo se ve fuera del hero (o siempre en
+                 EDIT LAYOUT). Misma imagen que el del hero, ya sin fringe. -->
+            <img class="nav-play-now" id="navPlayNow" src="img/pixel-hero/play-now-hero.png" alt="PLAY NOW" onclick="window.location.href='game/'" onerror="this.style.display='none'">
             <!-- Wallet: mismo montaje que /game (gameWalletArea). Balance IN GAME +
                  CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT) cuando ya
                  estas conectado. -->
@@ -1618,6 +1631,10 @@ body.trailer-open #page-content{
             <label style="font-family:'Press Start 2P', monospace; font-size:7px; color:#6a737e;">NAVBAR:</label>
             <input type="color" id="navbarColorPicker" style="width:32px; height:32px; border:1px solid #2a2f36; cursor:pointer;" />
         </div>
+        <!-- Ciclo de 3 fuentes para TODOS los .category-tag de la pagina a la
+             vez (CORE MECHANICS, RISK & REWARD, STANDARD EXPERIENCE...): la de
+             siempre (Inter), Press Start 2P o VT323. -->
+        <button class="leb-btn" id="lebTagFont" onclick="LandingLayout.cycleTagFont(this)">TAG FONT: DEFAULT</button>
         <button class="leb-btn" id="lebZoom" onclick="LandingLayout.zoom(this)">ZOOM 100%</button>
         <button class="leb-btn" onclick="LandingLayout.resetAll()">RESET ALL</button>
         <button class="leb-btn" onclick="LandingLayout.saveGlobal(this)">SAVE FOR ALL</button>
@@ -3210,6 +3227,22 @@ function toggleTrailerMode() {
         // de los dos y el menu se cerraba. Ensanchandola se cubre ese camino.
         const LAYOUT_RESIZABLE = new Set(['pillDropdown']);
         const ZOOM_PASOS = [1, 0.8, 0.6, 0.45];
+        // Ciclo de fuente para TODOS los .category-tag a la vez (CORE MECHANICS,
+        // RISK & REWARD, STANDARD EXPERIENCE...). No va por LAYOUT_ELS (esa
+        // clase matchea varios elementos sueltos por toda la pagina, no una
+        // sola pieza que mover/escalar) — se guarda como top-level en `layout`,
+        // igual que `zoom`.
+        const TAG_FONTS = [
+            { id: 'default', label: 'DEFAULT', ff: '' },
+            { id: 'press', label: 'PRESS START 2P', ff: "'Press Start 2P', monospace" },
+            { id: 'vt323', label: 'VT323', ff: "'VT323', monospace" },
+        ];
+        function applyTagFont() {
+            const f = TAG_FONTS.find(x => x.id === layout.tagFont) || TAG_FONTS[0];
+            document.querySelectorAll('.category-tag').forEach(el => {
+                if (f.ff) el.style.fontFamily = f.ff; else el.style.removeProperty('font-family');
+            });
+        }
         function apply() {
             for (const key in LAYOUT_ELS) {
                 // querySelectorAll y no querySelector: una clave puede gobernar
@@ -3250,11 +3283,18 @@ function toggleTrailerMode() {
             // El zoom es parte del layout, como las posiciones: se guarda y lo ve
             // todo el mundo, no solo quien esta editando.
             setHeroZoom(layout.zoom || 1);
+            applyTagFont();
         }
         // Texto del boton acorde al zoom guardado (al entrar en EDIT y al ciclar).
         function syncZoomBtn() {
             const zb = document.getElementById('lebZoom');
             if (zb) zb.textContent = 'ZOOM ' + Math.round((layout.zoom || 1) * 100) + '%';
+        }
+        function syncTagFontBtn() {
+            const btn = document.getElementById('lebTagFont');
+            if (!btn) return;
+            const f = TAG_FONTS.find(x => x.id === layout.tagFont) || TAG_FONTS[0];
+            btn.textContent = 'TAG FONT: ' + f.label;
         }
         function target(e) {
             for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
@@ -3267,6 +3307,7 @@ function toggleTrailerMode() {
                 for (const key in LAYOUT_ELS) { document.querySelectorAll(LAYOUT_ELS[key]).forEach(el => el.classList.add('hero-editable')); }
                 document.getElementById('layoutEditBar').style.display = 'flex';
                 syncZoomBtn();
+                syncTagFontBtn();
                 document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
             },
             exit() {
@@ -3284,7 +3325,14 @@ function toggleTrailerMode() {
             // de fabrica (todo a cero y sin zoom), que ya no es un estado al
             // que se quiera volver desde aqui. Suelta ademas las claves propias:
             // a partir de aqui vuelve a mandar el global del servidor.
-            resetAll() { layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO)); layoutMine.clear(); saveLayoutMine(); save(); apply(); syncZoomBtn(); },
+            resetAll() { layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO)); layoutMine.clear(); saveLayoutMine(); save(); apply(); syncZoomBtn(); syncTagFontBtn(); },
+            // Ciclo DEFAULT -> PRESS START 2P -> VT323 -> DEFAULT para todos los
+            // .category-tag de golpe.
+            cycleTagFont() {
+                const curIdx = Math.max(0, TAG_FONTS.findIndex(x => x.id === layout.tagFont));
+                layout.tagFont = TAG_FONTS[(curIdx + 1) % TAG_FONTS.length].id;
+                applyTagFont(); syncTagFontBtn(); save();
+            },
             // Cuerpo de letra de una pieza (botones −/+ de la barra). Toca SOLO
             // el texto: escribe `f`, que apply() vuelca en --pw-font, y los
             // font-size del CSS lo leen. El icono del desplegable, el padding y
@@ -3407,7 +3455,7 @@ function toggleTrailerMode() {
         // .hero-main-content, asi que no llevan el scale de heroZoom: dividir
         // su arrastre por heroZoom haria que el raton y el elemento se
         // desincronizaran (heroZoom por defecto es 0.8).
-        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon']);
+        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon', 'navPlay']);
         window.addEventListener('pointermove', (e) => {
             if (!editing || !drag) return;
             const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
@@ -3456,6 +3504,18 @@ function toggleTrailerMode() {
         }, true);
         window.addEventListener('keydown', (e) => { if (editing && e.code === 'Escape') LandingLayout.exit(); });
 
+        // PLAY NOW de la navbar: visible solo cuando el hero (que ya trae el
+        // suyo) sale de la pantalla al hacer scroll.
+        (function () {
+            const hero = document.getElementById('hero');
+            if (!hero || !('IntersectionObserver' in window)) return;
+            const io = new IntersectionObserver(
+                (entries) => document.body.classList.toggle('nav-play-visible', !entries[0].isIntersecting),
+                { threshold: 0 }
+            );
+            io.observe(hero);
+        })();
+
         apply();
         // Mismo objeto sin depender del orden de las claves (el horneado se
         // escribe a mano, el del servidor llega como se guardo). Compara la
@@ -3470,6 +3530,7 @@ function toggleTrailerMode() {
             const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
             const norm = o => [...keys].sort().map(k => {
                 if (k === 'zoom') return [k, (o && typeof o[k] === 'number') ? o[k] : 1];
+                if (k === 'tagFont') return [k, (o && o[k]) || 'default'];
                 const v = (o && o[k]) || {};
                 // f (letra), b (halo) y w/h (caja) entran en la comparacion: sin
                 // ellos, un layout que solo cambiara uno de esos se veria
