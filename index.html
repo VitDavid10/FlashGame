@@ -552,7 +552,10 @@ body.trailer-open #page-content{
             transform: scale(1.1); z-index: 10;
         }
         
-        .skill-icon { width: 40px; height: 40px; margin-bottom: 12px; }
+        /* Mismo criterio que .tooltip-icon-main: 64px es el tamaño nativo del
+           pixel art, y pixelated evita que el navegador lo difumine al
+           reescalarlo desde EDIT (clave skillIcon, comun a las 8). */
+        .skill-icon { width: 64px; height: 64px; margin-bottom: 12px; image-rendering: pixelated; }
         .skill-name { font-size: 10px; font-weight: 900; color: #666; font-family: 'Russo One'; letter-spacing: 1px; }
         
         /* --- TOOLTIP FLOTANTE --- */
@@ -575,7 +578,20 @@ body.trailer-open #page-content{
             position: absolute; width: 100%; height: 100%; 
             background-size: cover; background-position: center; opacity: 0.3; filter: blur(5px);
         }
-        .tooltip-icon-main { width: 50px; height: 50px; z-index: 2; filter: drop-shadow(0 0 10px var(--gold)); }
+        /* 64px = el tamaño NATIVO del arte (los PNG son pixel art de 64x64), asi
+           que a 1x cada pixel del dibujo cae en un pixel de pantalla y sale
+           nitido. Al escalar desde EDIT, los multiplos enteros (2x = 128px,
+           3x = 192px) son los que quedan perfectos. */
+        .tooltip-icon-main { width: 64px; height: 64px; z-index: 2; filter: drop-shadow(0 0 10px var(--gold)); image-rendering: pixelated; }
+        /* El icono NO se sale de la caja de la imagen: la caja ya es
+           overflow:hidden, asi que al agrandarlo se recorta por los lados en
+           vez de invadir el texto. */
+        /* EDIT LAYOUT (claves tooltipIcon/skillTooltip): fuera de edicion el
+           tooltip solo aparece al hacer hover y no recibe el raton (por eso
+           pointer-events:none arriba, para no robarle el hover a la card de
+           al lado). En edicion se fuerza visible y clicable para poder
+           arrastrarlo/escalarlo sin depender del hover. */
+        body.layout-editing #skill-tooltip { display: flex !important; pointer-events: auto !important; }
 
         .tooltip-content { padding: 15px; }
         .tooltip-title { color: #fff; font-family: 'Russo One'; font-size: 16px; margin: 0 0 5px 0; text-transform: uppercase; }
@@ -1041,6 +1057,23 @@ body.trailer-open #page-content{
         walletBal: '#wallet-bal-box',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
         navPlay: '#navPlayNow',
+        // Tooltip flotante de las skills (el cuadro que sale al pasar el
+        // raton por SHOT/SPRINT/...). tooltipIcon va ANTES que skillTooltip
+        // por lo mismo que pillMenu/walletBtnTxt: el icono esta DENTRO del
+        // cuadro, asi que la clave mas especifica tiene que ir primero para
+        // que target() la agarre a ELLA y no al cuadro entero. En EDIT LAYOUT
+        // se fuerza visible (ver la regla body.layout-editing mas abajo):
+        // normalmente solo aparece al hacer hover sobre una skill.
+        tooltipIcon: '#tooltip-icon',
+        skillTooltip: '#skill-tooltip',
+        // Rejilla de skills (SHOT, SPRINT, BLINK...). Claves COMPARTIDAS: el
+        // selector casa con las 8, y apply() usa querySelectorAll, asi que
+        // tocar una las mueve/escala TODAS a la vez — que es justo lo que se
+        // quiere aqui (si cada una tuviera su tamaño la fila se descuadra).
+        // skillIcon va ANTES que skillCard por lo de siempre: el icono esta
+        // DENTRO de la card y target() se queda con la primera clave que casa.
+        skillIcon: '.skill-icon',
+        skillCard: '.skill-card',
     };
     window.HERO_LAYOUT_HORNEADO = {
         zoom: 0.8,
@@ -3331,6 +3364,21 @@ function toggleTrailerMode() {
                 syncZoomBtn();
                 syncTagFontBtn();
                 document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
+                // El tooltip de skills normalmente solo aparece con el hover de
+                // una skill-card. Aqui se rellena a mano (la regla
+                // body.layout-editing de mas arriba lo fuerza visible) para
+                // poder agarrarlo sin tener que mantener el raton encima.
+                // Se le da una posicion FIJA en pantalla en vez de la que
+                // calcula renderTooltip (relativa a la card, que esta mucho
+                // mas abajo y quedaria fuera de la vista): al ser position
+                // fixed se queda ahi mientras se baja a la zona de skills.
+                const skillCard = document.querySelector('.skill-card');
+                if (skillCard && window.App && App.UI && App.UI.renderTooltip) {
+                    App.UI.renderTooltip({ currentTarget: skillCard }, 'clone');
+                    const tt = document.getElementById('skill-tooltip');
+                    tt.style.left = Math.max(10, window.innerWidth - 300) + 'px';
+                    tt.style.top = '90px';
+                }
             },
             exit() {
                 // Guarda para todos AL SALIR: la barra desaparece con DONE, asi
@@ -3340,6 +3388,9 @@ function toggleTrailerMode() {
                 document.body.classList.remove('layout-editing');
                 document.querySelectorAll('.hero-editable').forEach(el => el.classList.remove('hero-editable'));
                 document.getElementById('layoutEditBar').style.display = 'none';
+                // El tooltip de skills se forzo visible para poder editarlo
+                // (ver enter()): al salir, que vuelva a depender del hover.
+                if (window.App && App.UI && App.UI.hideSkill) App.UI.hideSkill();
                 save();
                 reubicaTapados();   // la UI se movio -> recolocar solo lo que tape
             },
@@ -3477,7 +3528,7 @@ function toggleTrailerMode() {
         // .hero-main-content, asi que no llevan el scale de heroZoom: dividir
         // su arrastre por heroZoom haria que el raton y el elemento se
         // desincronizaran (heroZoom por defecto es 0.8).
-        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon', 'navPlay']);
+        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon', 'navPlay', 'tooltipIcon', 'skillTooltip', 'skillIcon', 'skillCard']);
         window.addEventListener('pointermove', (e) => {
             if (!editing || !drag) return;
             const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
@@ -3492,6 +3543,11 @@ function toggleTrailerMode() {
         // mismo numero que el fallback de var(--pw-font, N) en su CSS. Hace
         // falta porque al leer --pw-font sin valor guardado no devuelve nada.
         const FONT_DEFAULTS = { pillMenu: 13, caSign: 13, ca: 11 };
+        // Tope de escala por clave. El general (3) se queda corto en los iconos
+        // de skills: el del tooltip a 3x mide 192px dentro de una caja de
+        // ~246px, asi que ni siquiera llega a tocar los lados para recortarse.
+        const SCALE_MAX_DEFAULT = 3;
+        const SCALE_MAX = { skillIcon: 8, skillCard: 8, tooltipIcon: 8, skillTooltip: 8 };
         document.addEventListener('wheel', (e) => {
             if (!editing) return;
             const t = target(e); if (!t) return;
@@ -3506,7 +3562,8 @@ function toggleTrailerMode() {
                 cur.f = Math.round(Math.min(48, Math.max(6, base + (e.deltaY < 0 ? 1 : -1))) * 10) / 10;
             } else {
                 const step = e.shiftKey ? 1.06 : 1.015;   // shift = paso grande
-                cur.s = Math.min(3, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
+                const max = SCALE_MAX[t.key] || SCALE_MAX_DEFAULT;
+                cur.s = Math.min(max, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
             }
             apply(); save();
         }, { passive: false, capture: true });
