@@ -267,7 +267,13 @@
         /* PLAY NOW del hero, cartel del contrato y el contrato: apilados bajo el
            titulo. Los cuatro se mueven/escalan desde EDIT (ver LandingLayout). */
         .hero-play-row { display: flex; align-items: center; justify-content: center; gap: 46px; margin-top: 26px; }
-        .hero-play { display: block; height: 84px; width: auto; aspect-ratio: 1856 / 560; image-rendering: pixelated; cursor: pointer !important; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .2s; }
+        /* Sin pixelated: el PNG no es rejilla dura de verdad (tiene antialiasing
+           suave "estilo pixel"), y forzar nearest-neighbor sobre un filter
+           animado en :hover hacia que Chrome re-muestreara la imagen en cada
+           frame de la transicion -> se veian los "pixeles" temblando/moviendose.
+           image-rendering: auto (el default de la pagina) escala suave y no
+           tiene ese problema. */
+        .hero-play { display: block; height: 84px; width: auto; aspect-ratio: 1856 / 560; cursor: pointer !important; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .2s; }
         .hero-play:hover { filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.15); }
         /* PLAY NOW de la navbar: oculto mientras el hero esta a la vista (ya
            hay uno ahi dentro), aparece al hacer scroll y salir de el (ver el
@@ -275,7 +281,10 @@
            siempre, si no no habria forma de agarrarlo con el hero fuera de
            pantalla. Posicion/tamaño se mueven desde EDIT como el resto (clave
            navPlay en HERO_LAYOUT_ELS). */
-        .nav-play-now { display: none; height: 30px; width: auto; aspect-ratio: 1856 / 560; image-rendering: pixelated; cursor: pointer !important; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); flex-shrink: 0; transition: filter .2s; }
+        /* Sin pixelated: mismo motivo que .hero-play — a 30px de alto el
+           nearest-neighbor aliasea una fila del borde antialiased en una linea
+           clara visible, y con el filter animado en :hover "tiembla". */
+        .nav-play-now { display: none; height: 30px; width: auto; aspect-ratio: 1856 / 560; cursor: pointer !important; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); flex-shrink: 0; transition: filter .2s; }
         .nav-play-now:hover { filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)) brightness(1.15); }
         body.nav-play-visible .nav-play-now, body.layout-editing .nav-play-now { display: block; }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
