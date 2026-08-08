@@ -484,11 +484,12 @@ body.trailer-open #page-content{
             margin-bottom: 15px;
             display: inline-block;
             box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 1px 1px 0 rgba(255,255,255,0.15), inset -1px -1px 0 rgba(0,0,0,0.35);
-            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease;
+            transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
         }
+        /* filter y no un color solido: asi cada tag conserva SU color (verde,
+           dorado en ARCADE...) en vez de virar siempre a verde en hover. */
         .category-tag:hover {
-            color: #001a0f;
-            background: var(--primary);
+            filter: brightness(1.35);
             box-shadow: 4px 4px 0 rgba(0,0,0,0.6), inset 1px 1px 0 rgba(255,255,255,0.35), inset -1px -1px 0 rgba(0,0,0,0.25);
             transform: translate(-1px, -1px);
         }
@@ -515,12 +516,15 @@ body.trailer-open #page-content{
         .mode-oracle-info { color: #888; font-size: 16px; max-width: 800px; margin: 0 auto 50px auto; line-height: 1.6; }
         
         .modes-grid { display: flex; gap: 30px; margin-bottom: 50px; flex-wrap: wrap;}
-        .mode-card { 
-            flex: 1; min-width: 300px; background: rgba(20,20,20,0.5); border: 1px solid #333; border-radius: 12px; 
-            padding: 40px; text-align: left; transition: 0.3s ease; 
+        .mode-card {
+            flex: 1; min-width: 300px; background: rgba(20,20,20,0.5); border: 2px solid #333; border-radius: 0;
+            padding: 40px; text-align: left; transition: 0.3s ease; box-shadow: 4px 4px 0 rgba(0,0,0,0.55);
         }
-        .mode-card:hover { border-color: var(--primary); background: #111; box-shadow: 0 0 20px rgba(0,255,136,0.1); }
-        .mode-card.special { border-color: var(--accent); } 
+        .mode-card:hover { background: #111; }
+        .mode-card.classic { border-color: var(--primary); }
+        .mode-card.classic:hover { box-shadow: 4px 4px 0 rgba(0,0,0,0.55), 0 0 20px rgba(0,255,136,0.15); }
+        .mode-card.special { border-color: #ffce3d; }
+        .mode-card.special:hover { box-shadow: 4px 4px 0 rgba(0,0,0,0.55), 0 0 20px rgba(255,206,61,0.18); }
         .mode-card h4 { font-family: 'Russo One'; font-size: 30px; color: #fff; margin: 10px 0; }
         .mode-card p { color: #aaa; font-size: 15px; line-height: 1.6; }
 
@@ -645,10 +649,10 @@ body.trailer-open #page-content{
         .dq-btn.unlocked { background: var(--primary); border-color: var(--primary); color: #04150c; cursor: pointer; box-shadow: 0 0 20px rgba(0,255,136,0.3); }
         .dq-btn.unlocked:hover { filter: brightness(1.1); }
         .dq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; width: 100%; max-width: 980px; }
-        .dq-card { background: rgba(10,15,10,0.7); border: 1px solid #1a1a1a; border-left: 3px solid #555; border-radius: 12px; padding: 18px 20px; transition: 0.25s; cursor: default; }
-        .dq-card:hover { border-color: var(--primary); background: #111; box-shadow: 0 0 20px rgba(0,255,136,0.1); transform: translateY(-2px); }
-        .dq-card.done:hover { box-shadow: 0 0 22px rgba(0,255,136,0.18); }
-        .dq-card.prog:hover { border-color: #ffce3d; box-shadow: 0 0 20px rgba(255,206,61,0.12); }
+        .dq-card { background: rgba(10,15,10,0.7); border: 2px solid #1a1a1a; border-left: 4px solid #555; border-radius: 0; padding: 18px 20px; transition: 0.25s; cursor: default; box-shadow: 3px 3px 0 rgba(0,0,0,0.5); }
+        .dq-card:hover { border-color: var(--primary); background: #111; box-shadow: 3px 3px 0 rgba(0,0,0,0.5), 0 0 20px rgba(0,255,136,0.1); transform: translateY(-2px); }
+        .dq-card.done:hover { box-shadow: 3px 3px 0 rgba(0,0,0,0.5), 0 0 22px rgba(0,255,136,0.18); }
+        .dq-card.prog:hover { border-color: #ffce3d; box-shadow: 3px 3px 0 rgba(0,0,0,0.5), 0 0 20px rgba(255,206,61,0.12); }
         .dq-card.done { border-color: rgba(0,255,136,0.35); border-left-color: var(--primary); }
         .dq-card.prog { border-left-color: #ffce3d; }
         .dq-card-h { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
@@ -1373,13 +1377,13 @@ body.trailer-open #page-content{
             <p class="mode-oracle-info">To enter the arena, you must use <b>$PILL</b> tokens. Our Oracle updates entry costs every 5 minutes to ensure fair competition regardless of price volatility.</p>
             
             <div class="modes-grid">
-                <div class="mode-card">
+                <div class="mode-card classic">
                     <span class="category-tag">STANDARD EXPERIENCE</span>
                     <h4>CLASSIC</h4>
                     <p>The legendary browser experience. A massive open map with no time limits. Only basic mechanics: splitting and shooting. Rule the lobby by mass.</p>
                 </div>
                 <div class="mode-card special">
-                    <span class="category-tag" style="background:rgba(255, 42, 42, 0.1); border-color: rgba(255, 42, 42, 0.3); color:var(--accent)">ROGUELIKE EVOLUTION</span>
+                    <span class="category-tag" style="background:rgba(255, 206, 61, 0.1); border-color: #ffce3d; color:#ffce3d">ROGUELIKE EVOLUTION</span>
                     <h4>ARCADE</h4>
                     <p>High-stakes action in 3:50 minute matches. Start from scratch and evolve your pill by choosing Randomized Skills every 30 seconds.</p>
                 </div>
