@@ -1857,6 +1857,9 @@ const httpServer = http.createServer(async (req, res) => {
                     const f = opc(t.f, 6, 48); if (f !== null) e.f = f;
                     const w = opc(t.w, 40, 900); if (w !== null) e.w = w;
                     const h = opc(t.h, 20, 400); if (h !== null) e.h = h;
+                    // ff = fuente elegida para el mini-parrafo ROOM · PRICES
+                    // (DEFAULT/PRESS START 2P/VT323, boton del editor).
+                    if (['default', 'press', 'vt323'].includes(t.ff)) e.ff = t.ff;
                     clean[String(k).slice(0, 40)] = e;
                 }
                 menuLayout = clean; saveGlobal();
@@ -1894,12 +1897,16 @@ const httpServer = http.createServer(async (req, res) => {
                 // caja {x,y,s}: sin este caso aparte el saneado de abajo lo tiraba
                 // y el zoom no llegaba a guardarse para todos.
                 if (typeof lay.zoom === 'number' && lay.zoom > 0) clean.zoom = Math.min(1, Math.max(0.2, lay.zoom));
+                // tagFont = fuente elegida para TODOS los .category-tag a la vez
+                // (DEFAULT/PRESS START 2P/VT323, boton TAG FONT del editor). Igual
+                // que zoom, es un valor suelto, no una caja {x,y,s}.
+                if (['default', 'press', 'vt323'].includes(lay.tagFont)) clean.tagFont = lay.tagFont;
                 // f = cuerpo de letra, b = halo del titulo, w/h = caja en px.
                 // Mismo trato que en /api/menu-layout: sin esto se tiraban aqui
                 // y los ajustes no sobrevivian a SAVE FOR ALL.
                 const opc = (v, min, max) => (typeof v === 'number' && isFinite(v)) ? Math.max(min, Math.min(max, v)) : null;
                 for (const k of Object.keys(lay).slice(0, 40)) {
-                    if (k === 'zoom') continue;
+                    if (k === 'zoom' || k === 'tagFont') continue;
                     const t = lay[k]; if (!t || typeof t !== 'object') continue;
                     const e = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
                     const f = opc(t.f, 6, 48); if (f !== null) e.f = f;

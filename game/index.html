@@ -1863,6 +1863,10 @@
             <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtnTxt', -1)">−</button>
             <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtnTxt', 1)">+</button>
         </span>
+        <!-- Ciclo de fuente del mini-parrafo ROOM · PRICES: DEFAULT (Inter) /
+             PRESS START 2P / VT323. Pensado para poder usar VT323 en pixel-pack
+             en vez de Press Start 2P a 8px, dificil de leer en frase larga. -->
+        <button class="leb-btn" id="lebRoomsDescFont" onclick="cycleRoomsDescFont()">ROOM DESC FONT: DEFAULT</button>
         <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
         <button class="leb-btn" onclick="saveLayoutGlobal(this)">SAVE FOR ALL</button>
         <button class="leb-btn done" onclick="exitLayoutEdit()">DONE</button>
@@ -6049,9 +6053,21 @@
     // comparten una sola clave, asi que se ajustan todos de golpe y no hay forma
     // de que uno se quede con letra distinta.
     const LAYOUT_FONT_SCALABLE = new Set(['walletBar', 'walletBarTxt', 'walletBtn', 'walletBtnTxt']);
+    // roomsDesc = el mini-parrafo "The on-chain oracle re-prices..." dentro de
+    // ROOM · PRICES. Unico elemento que admite CICLO de tipografia (no tamaño):
+    // DEFAULT (Inter) / PRESS START 2P / VT323 — pensado para poder pasarlo a
+    // VT323 en modo pixel-pack, donde Press Start 2P a 8px es dificil de leer
+    // en una frase larga.
+    const LAYOUT_FONT_FAMILY_SCALABLE = new Set(['roomsDesc']);
+    const ROOMS_DESC_FONTS = [
+        { id: 'default', label: 'DEFAULT', ff: '' },
+        { id: 'press', label: 'PRESS START 2P', ff: "'Press Start 2P', monospace" },
+        { id: 'vt323', label: 'VT323', ff: "'VT323', monospace" },
+    ];
     const LAYOUT_ELS = {
         titlePw: '#modeTitlePw', titleWord: '#modeTitleWord', blurb: '#modeBlurb', pill: '.pill-stage',
         palette: '#pillPalette', colorPicker: '#colorPicker', palHint: '#palHint',
+        roomsDesc: '#oracleInner .oracle-desc',
         // Barra de saldo y botones de wallet. CONNECT y DEPOSIT comparten UNA
         // sola entrada (el valor es una lista de selectores): ocupan el mismo
         // hueco — nunca se ven a la vez — y David los quiere siempre en el mismo
@@ -6132,7 +6148,7 @@
             // cambiara uno de esos se veria "igual" y no llegaria a aplicarse.
             const num = x => typeof x === 'number' ? x : null;
             return (v && typeof v === 'object')
-                ? [k, +v.x || 0, +v.y || 0, +v.s || 1, num(v.b), num(v.w), num(v.h), num(v.f)]
+                ? [k, +v.x || 0, +v.y || 0, +v.s || 1, num(v.b), num(v.w), num(v.h), num(v.f), v.ff || null]
                 : [k, v];
         }));
         return na(a) === na(b);
@@ -6238,6 +6254,14 @@
                 if (t && typeof t.f === 'number') el.style.setProperty('--gw-font', t.f + 'px');
                 else el.style.removeProperty('--gw-font');
             }
+            // ff = id de la fuente elegida (ciclo DEFAULT/PRESS START 2P/VT323).
+            // Se guarda el id (lo que sanea el servidor), no el font-family CSS
+            // crudo, y se resuelve aqui contra ROOMS_DESC_FONTS.
+            if (LAYOUT_FONT_FAMILY_SCALABLE.has(key)) {
+                const fdef = t && t.ff ? ROOMS_DESC_FONTS.find(x => x.id === t.ff) : null;
+                if (fdef && fdef.ff) el.style.fontFamily = fdef.ff;
+                else el.style.removeProperty('font-family');
+            }
           }
         }
         invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
@@ -6281,6 +6305,7 @@
         if (bal && !bal.textContent.trim()) bal.textContent = '999,999,999';
         renderColorPicker();
         document.getElementById('layoutEditBar').style.display = 'flex';
+        syncRoomsDescFontBtn();
     }
     function exitLayoutEdit() {
         layoutEditing = false; layoutDrag = null;
@@ -6317,9 +6342,25 @@
         cur.f = Math.round(Math.min(48, Math.max(6, base + delta)) * 10) / 10;
         marcarLayoutMio(key); applyMenuLayout(); saveMenuLayout();
     }
+    // Ciclo DEFAULT -> PRESS START 2P -> VT323 -> DEFAULT del mini-parrafo
+    // ROOM · PRICES (unico elemento en LAYOUT_FONT_FAMILY_SCALABLE).
+    function cycleRoomsDescFont() {
+        const key = 'roomsDesc';
+        const cur = menuLayout[key] = menuLayout[key] || { x: 0, y: 0, s: 1 };
+        const curIdx = Math.max(0, ROOMS_DESC_FONTS.findIndex(x => x.id === cur.ff));
+        cur.ff = ROOMS_DESC_FONTS[(curIdx + 1) % ROOMS_DESC_FONTS.length].id;
+        marcarLayoutMio(key); applyMenuLayout(); saveMenuLayout();
+        syncRoomsDescFontBtn();
+    }
+    function syncRoomsDescFontBtn() {
+        const btn = document.getElementById('lebRoomsDescFont'); if (!btn) return;
+        const cur = menuLayout['roomsDesc'];
+        const f = ROOMS_DESC_FONTS.find(x => x.id === (cur && cur.ff)) || ROOMS_DESC_FONTS[0];
+        btn.textContent = 'ROOM DESC FONT: ' + f.label;
+    }
     // RESET ALL vuelve a cero Y suelta las claves propias: a partir de aqui
     // manda otra vez el global del servidor.
-    function resetMenuLayout() { menuLayout = {}; layoutMine.clear(); saveLayoutMine(); saveMenuLayout(); applyMenuLayout(); }
+    function resetMenuLayout() { menuLayout = {}; layoutMine.clear(); saveLayoutMine(); saveMenuLayout(); applyMenuLayout(); syncRoomsDescFontBtn(); }
     // Sube el layout actual al servidor → se vuelve GLOBAL para todos (se difunde
     // por /api/rooms). Sin auth: herramienta de diseño temporal (quitar el editor
     // cuando la UI esté fijada).
