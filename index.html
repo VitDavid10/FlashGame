@@ -470,18 +470,26 @@ body.trailer-open #page-content{
         .feature-block.reverse { flex-direction: row-reverse; }
         .feature-text { flex: 1.2; }
         
-        .category-tag { 
-            color: var(--primary); 
+        .category-tag {
+            color: var(--primary);
             background: rgba(0, 255, 136, 0.1);
-            border: 1px solid rgba(0, 255, 136, 0.2);
+            border: 2px solid var(--primary);
             padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 11px; 
-            font-weight: 900; 
-            letter-spacing: 2px; 
-            text-transform: uppercase; 
-            margin-bottom: 15px; 
-            display: inline-block; 
+            border-radius: 0;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            display: inline-block;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 1px 1px 0 rgba(255,255,255,0.15), inset -1px -1px 0 rgba(0,0,0,0.35);
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease;
+        }
+        .category-tag:hover {
+            color: #001a0f;
+            background: var(--primary);
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.6), inset 1px 1px 0 rgba(255,255,255,0.35), inset -1px -1px 0 rgba(0,0,0,0.25);
+            transform: translate(-1px, -1px);
         }
 
         .feature-text h3 { font-family: 'Russo One'; font-size: 42px; color: #fff; margin: 15px 0; line-height: 1; }
