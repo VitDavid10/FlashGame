@@ -2368,7 +2368,7 @@
         <div class="hud-item" id="hudMass">MASS: <span id="score" class="hud-val">0</span></div>
         <div class="hud-item" id="hudAlive">ALIVE: <span id="enemyCount" class="hud-val">0</span></div>
         <div class="hud-item econ-hud" id="econHud" style="display:none;border-color:rgba(255,206,61,0.5)">
-            <span id="econLabel">CARRY</span>: <span id="econVal" class="hud-val" style="color:#ffce3d">0</span> <span style="color:#888;font-size:11px">$PILL</span>
+            <span id="econLabel">CARRY</span>: <span id="econVal" class="hud-val" style="color:#ffce3d">0</span> <span id="econUnit" style="color:#888;font-size:11px">$PILL</span>
         </div>
         <div class="hud-item" id="debugHud" style="display:none;">FPS: <span id="fpsVal" style="color:#fff">0</span> | SPD: <span id="speedVal" style="color:#fff">0</span></div>
         <div class="hud-item" id="netHud" style="display:none;">PING: <span id="pingVal" style="color:#fff">--</span>ms | SNAPS: <span id="snapsVal" style="color:#fff">--</span>/s | JIT: <span id="jitVal" style="color:#fff">--</span>ms | FPS: <span id="netFpsVal" style="color:#fff">--</span></div>
@@ -6769,6 +6769,7 @@
     function hideSpectatorBar() { onlineSpectator = false; }
     // Línea de PILL con su icono, del mismo tamaño/color en los tres carteles.
     function lineaPill(cantidad, etiqueta) {
+        if (MONEY_IN_USD && pillRate > 0) return `<span style="color:#ffce3d;font-size:22px;">${etiqueta ? etiqueta + ' ' : ''}${fmtMoney(cantidad)}</span>`;
         const ico = (pixelMode && cartelUsesAtlas('pill')) ? `<img src="${cartelHeroUrl('pill')}" style="height:1em;vertical-align:-0.2em;margin-right:4px;image-rendering:pixelated;">` : '';
         return `<span style="color:#ffce3d;font-size:22px;">${etiqueta ? etiqueta + ' ' : ''}${Number(cantidad || 0).toLocaleString('en-US')} ${ico}<span style="font-size:14px;color:#888;">$PILL</span></span>`;
     }
@@ -7315,6 +7316,19 @@
         }
     };
 
+    // Unidad monetaria que ve el jugador. El servidor lleva TODO en PILL, pero se
+    // pinta en $ para que se entienda sin saber qué vale el token (mismo idioma que
+    // los precios de sala: 5$/10$/20$/50$). `pillRate` = PILL por $1, lo manda el
+    // servidor en 'econ' y queda bloqueado al entrar en la sala, así que las
+    // cantidades de una misma partida son coherentes entre sí.
+    // Con MONEY_IN_USD = false se vuelve a mostrar en $PILL (cuando el token exista).
+    const MONEY_IN_USD = true;
+    let pillRate = 0;
+    function fmtMoney(pill) {
+        const n = Number(pill || 0);
+        if (MONEY_IN_USD && pillRate > 0) return '$' + (n / pillRate).toLocaleString('en-US', { maximumFractionDigits: 2 });
+        return n.toLocaleString('en-US') + ' $PILL';
+    }
     // HUD del juego: actualiza carry/bote y muestra popup de premios al ganar.
     const EconHUD = {
         mode: null, carry: 0, pot: 0, entry: 0,
@@ -7332,7 +7346,10 @@
             if (!show) { el.style.display = 'none'; return; }
             el.style.display = 'inline-block';
             lbl.innerText = isClassic ? 'CARRY' : 'POT';
-            val.innerText = Number(isClassic ? this.carry : this.pot).toLocaleString('en-US');
+            val.innerText = fmtMoney(isClassic ? this.carry : this.pot);
+            // fmtMoney ya trae el símbolo cuando va en $, así que sobra el sufijo.
+            const unit = document.getElementById('econUnit');
+            if (unit) unit.style.display = (MONEY_IN_USD && pillRate > 0) ? 'none' : '';
         },
         showPrize(msg) {
             const m = document.getElementById('prizeModal');
@@ -7350,28 +7367,30 @@
             box.classList.toggle('prize-hero', usePix && cartelUsesAtlas('prize-panel'));
             box.classList.toggle('prize-tall', isArcadeEnd && pixelMode && cartelUsesAtlas('prize-panel-tall'));
             amt.classList.remove('pw-amt-pix');
+            const enUsd = MONEY_IN_USD && pillRate > 0;
             const setAmt = amount => {
                 if (usePix) {
-                    const ico = cartelUsesAtlas('pill') ? '<img class="pw-pill-ico" src="' + cartelHeroUrl('pill') + '">' : '';
-                    amt.innerHTML = '+' + fmt(amount) + ' ' + ico + '$PILL';
+                    // El icono de píldora solo acompaña a la cifra en PILL; en $ sobra.
+                    const ico = (!enUsd && cartelUsesAtlas('pill')) ? '<img class="pw-pill-ico" src="' + cartelHeroUrl('pill') + '">' : '';
+                    amt.innerHTML = '+' + (enUsd ? fmtMoney(amount) : fmt(amount) + ' ' + ico + '$PILL');
                     amt.classList.add('pw-amt-pix');
-                } else amt.innerText = '+' + fmt(amount) + ' $PILL';
+                } else amt.innerText = '+' + fmtMoney(amount);
             };
             if (msg.reason === 'victory') {
                 setOverlayTitle(title, 'victory', 'VICTORY!', '#ffce3d');
                 setAmt(msg.amount);
-                sub.innerHTML = '5 KILLS · Total carry won:<br><b style="color:#00ff88">' + fmt(msg.carry) + '</b> $PILL';
+                sub.innerHTML = '5 KILLS · Total carry won:<br><b style="color:#00ff88">' + fmtMoney(msg.carry) + '</b>';
             } else if (msg.reason === 'cashout') {
                 setOverlayTitle(title, 'cashout', 'CASHOUT', '#00ff88');
                 setAmt(msg.amount);
-                sub.innerHTML = msg.kills + ' kills · carry <b>' + fmt(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmt(msg.fee) + '</b>)';
+                sub.innerHTML = msg.kills + ' kills · carry <b>' + fmtMoney(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmtMoney(msg.fee) + '</b>)';
             } else if (msg.reason === 'arcadeEnd') {
                 setOverlayTitle(title, 'matchEnded', 'MATCH ENDED', msg.myAmount > 0 ? '#ffce3d' : '#aaa');
                 if (msg.myAmount > 0) setAmt(msg.myAmount); else amt.innerText = 'Out of top 10';
-                sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmt(msg.pot) + '</b> $PILL';
+                sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmtMoney(msg.pot) + '</b>';
                 tbl.style.display = 'block';
                 tbl.innerHTML = (msg.top || []).map(t =>
-                    `<div class="prizeRow ${t.mine ? 'mine' : ''}"><span class="pos">#${t.pos}</span><span class="name">${esc(t.name || '—')}</span><span class="pct">${t.pct}%</span><span class="amt">${fmt(t.amount)}</span></div>`
+                    `<div class="prizeRow ${t.mine ? 'mine' : ''}"><span class="pos">#${t.pos}</span><span class="name">${esc(t.name || '—')}</span><span class="pct">${t.pct}%</span><span class="amt">${fmtMoney(t.amount)}</span></div>`
                 ).join('');
             }
             m.style.display = 'flex';
@@ -7379,14 +7398,14 @@
             setTimeout(() => GameWalletUI.refresh(), 800);
         }
     };
-    // Floating "+X $PILL" en naranja al matar (solo classic). Aparece sobre el HUD y sube.
+    // Floating "+$X" en naranja al matar (solo classic). Aparece sobre el HUD y sube.
     function showKillGain(amount) {
         if (!amount || amount <= 0) return;
         const stack = document.getElementById('killGainStack');
         if (!stack) return;
         const el = document.createElement('div');
         el.className = 'kill-gain';
-        el.innerText = '+' + Number(amount).toLocaleString('en-US') + ' $PILL';
+        el.innerText = '+' + fmtMoney(amount);
         stack.appendChild(el);
         setTimeout(() => { try { el.remove(); } catch (e) {} }, 2000);
     }
@@ -8361,6 +8380,7 @@
                 SoundManager.play('alert');
                 setTimeout(() => { if (gameRunning && !practiceMode) setLobbyBanner(null); }, 6000);
             } else if (msg.t === 'econ') {
+                if (msg.rate > 0) pillRate = msg.rate;
                 EconHUD.update(msg.carry, msg.pot, msg.entry);
             } else if (msg.t === 'killGain') {
                 showKillGain(msg.amount);

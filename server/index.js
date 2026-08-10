@@ -449,7 +449,9 @@ function addToPot(room, amount) { if (amount > 0) room.pot = (room.pot || 0) + a
 // `entry` = lo que pagó por entrar. El cliente lo necesita para el cartel GAME
 // OVER de arcade ("YOU LOST <entrada>"): ahí no hay carry, lo que pierdes es la
 // entrada que ya está en el bote.
-function sendEcon(cli, room) { if (cli && cli.ws && cli.ws.readyState === 1) try { cli.ws.send(JSON.stringify({ t: 'econ', carry: cli.carry | 0, pot: room.pot | 0, entry: cli.paidFee | 0 })); } catch (e) {} }
+// `rate` = PILL por $1 bloqueado en esta sala. El cliente lo necesita para pintar
+// las cantidades en $ (el servidor sigue llevando toda la economía en PILL).
+function sendEcon(cli, room) { if (cli && cli.ws && cli.ws.readyState === 1) try { cli.ws.send(JSON.stringify({ t: 'econ', carry: cli.carry | 0, pot: room.pot | 0, entry: cli.paidFee | 0, rate: roomRate(room) })); } catch (e) {} }
 function pstatOf(name) {
     const k = String(name).toLowerCase();
     if (!playerStats[k]) playerStats[k] = { name: name, partidas: 0, kills: 0, muertes: 0, bestMass: 0, lastSeen: null, lastIp: null };
