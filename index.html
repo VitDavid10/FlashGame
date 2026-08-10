@@ -34,11 +34,14 @@
             --primary-dim: rgba(0, 255, 136, 0.1);
             --accent: #ff2a2a;
             --gold: #ffcc00;
-            /* Verde-azulado (teal) SOLO para el modo CLASSIC — distinto del
+            /* Verde-esmeralda SOLO para el modo CLASSIC — distinto del
                --primary de marca que ya usan category-tag, dq-tag, el bloque
                SPLIT, etc., para que un vistazo distinga "verde de la pagina"
-               de "verde tematizado de Classic". */
-            --classic-accent: #00e0c6;
+               de "verde tematizado de Classic". Sacado del propio logo
+               CLASSIC (game/img/mode-title/PILLWARS-classic.png, tono medio
+               dominante del degradado), no inventado: asi encaja con el arte
+               que ya existe para ese modo en vez de otro verde cualquiera. */
+            --classic-accent: #4fcd92;
             --bg-dark: #050505; 
             --glass-bg: rgba(20, 20, 20, 0.6); 
             --glass-border: rgba(255, 255, 255, 0.1);
@@ -520,6 +523,15 @@ body.trailer-open #page-content{
             color: var(--fb-accent); opacity: 0.14; pointer-events: none; user-select: none;
         }
         .feature-block.reverse .fb-num { left: auto; right: 40px; }
+        /* En los bloques SIN .reverse el numero cae justo detras del arranque
+           del tag+titulo (los dos empiezan en el mismo borde izquierdo) y se
+           veia pegado/feo. En vez de tocar el numero, se separa el tag y el
+           titulo un poco a la derecha para que quede hueco entre los dos. Los
+           .reverse no lo necesitan: ahi el numero cae del lado del texto pero
+           lejos de donde arranca (el texto ocupa la mitad derecha del bloque,
+           mucho mas adentro que el numero pegado al borde). */
+        .feature-block:not(.reverse) .feature-text .category-tag,
+        .feature-block:not(.reverse) .feature-text h3 { margin-left: 38px; }
         /* La etiqueta y el titulo heredan el color del bloque. */
         .feature-block .category-tag { color: var(--fb-accent); border-color: var(--fb-accent); background: var(--fb-accent-soft); }
         .feature-block.reverse { flex-direction: row-reverse; }
@@ -586,8 +598,8 @@ body.trailer-open #page-content{
            "generico" de la pagina. Aqui usa un verde-azulado propio, distinto
            al del resto (ARCADE ya tenia lo suyo en dorado). */
         .mode-card.classic { border-color: var(--classic-accent); }
-        .mode-card.classic:hover { box-shadow: 4px 4px 0 rgba(0,0,0,0.55), 0 0 20px rgba(0,224,198,0.18); }
-        .mode-card.classic .category-tag { color: var(--classic-accent); border-color: var(--classic-accent); background: rgba(0,224,198,0.1); }
+        .mode-card.classic:hover { box-shadow: 4px 4px 0 rgba(0,0,0,0.55), 0 0 20px rgba(79,205,146,0.22); }
+        .mode-card.classic .category-tag { color: var(--classic-accent); border-color: var(--classic-accent); background: rgba(79,205,146,0.12); }
         .mode-card.special { border-color: #ffce3d; }
         .mode-card.special:hover { box-shadow: 4px 4px 0 rgba(0,0,0,0.55), 0 0 20px rgba(255,206,61,0.18); }
         .mode-card h4 { font-family: 'Russo One'; font-size: 30px; color: #fff; margin: 10px 0; }
@@ -969,6 +981,11 @@ body.trailer-open #page-content{
             .feature-block::before, .feature-block::after { width: 16px; height: 16px; }
             .feature-text { text-align: center; }
             .feature-text h3 { font-size: 28px; }
+            /* El margen que separa tag/titulo del numero en desktop (num
+               pegado a la izquierda) descuadraria el centrado en movil, donde
+               el numero ya se movio abajo-derecha y no hace falta hueco. */
+            .feature-block:not(.reverse) .feature-text .category-tag,
+            .feature-block:not(.reverse) .feature-text h3 { margin-left: 0; }
             .feature-images { width: 100%; }
             
             .battle-modes-container { padding: 30px 20px; }
