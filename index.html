@@ -500,10 +500,13 @@ body.trailer-open #page-content{
         }
         .feature-block::before { top: 10px; left: 10px; border-top: 4px solid var(--fb-accent); border-left: 4px solid var(--fb-accent); }
         .feature-block::after { bottom: 10px; right: 10px; border-bottom: 4px solid var(--fb-accent); border-right: 4px solid var(--fb-accent); }
-        /* Numero de seccion, muy tenue, detras del contenido. */
+        /* Numero de seccion, tenue, detras del contenido. Con top negativo caia
+           JUSTO contra el borde superior (y el overflow:hidden del bloque lo
+           recortaba en seco ahi mismo) — separado del borde y con mas opacidad
+           para que se note sin ser el opacity 0.07 de antes, casi invisible. */
         .fb-num {
-            position: absolute; top: -22px; right: 28px; font-family: 'Russo One'; font-size: 150px; line-height: 1;
-            color: var(--fb-accent); opacity: 0.07; pointer-events: none; user-select: none;
+            position: absolute; top: 22px; right: 40px; font-family: 'Russo One'; font-size: 130px; line-height: 1;
+            color: var(--fb-accent); opacity: 0.14; pointer-events: none; user-select: none;
         }
         /* La etiqueta y el titulo heredan el color del bloque. */
         .feature-block .category-tag { color: var(--fb-accent); border-color: var(--fb-accent); background: var(--fb-accent-soft); }
@@ -941,7 +944,7 @@ body.trailer-open #page-content{
             .feature-block, .feature-block.reverse {
                 flex-direction: column-reverse; padding: 30px; gap: 20px;
             }
-            .fb-num { font-size: 78px; top: -12px; right: 14px; }
+            .fb-num { font-size: 70px; top: 12px; right: 16px; }
             .feature-block::before, .feature-block::after { width: 16px; height: 16px; }
             .feature-text { text-align: center; }
             .feature-text h3 { font-size: 28px; }
@@ -1401,13 +1404,16 @@ body.trailer-open #page-content{
                 </video>
             </div>
 
-            <!-- Panel de stats. ACTIVE PLAYERS sale de /api/rooms (suma de
-                 jugadores de todos los combos); mcap/volumen los rellena
-                 App.Market.updateTicker con los datos de Dexscreener. La ultima
-                 fila enlaza a la wallet que paga los premios (REWARDS_WALLET en
-                 el JS de abajo) para que cualquiera pueda verificar el reparto. -->
+            <!-- Panel de stats. ACTIVE PLAYERS y MONEY EARNED salen de
+                 /api/publicstats (App.Market.fetchPublicStats): jugadores reales
+                 distintos en 24h y dinero real movido, misma metodologia
+                 "real only" que usa el panel admin, sin bots de stress test.
+                 mcap/volumen los rellena App.Market.updateTicker con los datos
+                 de Dexscreener. La ultima fila enlaza a la wallet que paga los
+                 premios (App.Config.Treasury) para que cualquiera pueda
+                 verificar el reparto desde fuera. -->
             <div class="side-widget">
-                <div class="widget-row"><div class="widget-title">ACTIVE PLAYERS</div><div class="widget-val live" id="widget-players">—</div></div>
+                <div class="widget-row"><div class="widget-title">ACTIVE PLAYERS (24H)</div><div class="widget-val live" id="widget-players">—</div></div>
                 <div class="widget-row"><div class="widget-title">$PILL MARKET CAP</div><div class="widget-val" id="widget-mcap">Loading...</div></div>
                 <div class="widget-row gold"><div class="widget-title">VOLUME 24H</div><div class="widget-val" id="widget-vol">Loading...</div></div>
                 <a class="widget-row gold" id="widget-earned-link" href="#" target="_blank" rel="noopener">
@@ -2222,18 +2228,22 @@ body.trailer-open #page-content{
             },
 
             Market: {
-                // ACTIVE PLAYERS: /api/rooms devuelve un entry por combo
-                // (modo × precio) con `players` ya agregado de todas sus layers,
-                // asi que el total online es la suma. Mismo endpoint publico que
-                // usa el menu del juego, sin auth y con CORS abierto.
-                fetchPlayers: async () => {
-                    if (!DOM.widgetPlayers) return;
+                // ACTIVE PLAYERS (jugadores reales distintos en las ultimas 24h,
+                // sin bots de stress test) y MONEY EARNED (entradas reales x precio
+                // de sala, acumulado) salen del mismo /api/publicstats — misma
+                // metodologia real-only que usa el panel admin internamente
+                // (activePlayers24h / totalRevenueReal en server/index.js), sin
+                // exponer wallets, IPs ni nombres, solo los dos numeros derivados.
+                fetchPublicStats: async () => {
                     try {
-                        const r = await fetch('/api/rooms', { cache: 'no-store' });
+                        const r = await fetch('/api/publicstats', { cache: 'no-store' });
                         const data = await r.json();
-                        const total = (data.rooms || []).reduce((s, room) => s + (room.players || 0), 0);
-                        DOM.widgetPlayers.innerText = total.toLocaleString('en-US');
-                    } catch (e) { DOM.widgetPlayers.innerText = '—'; }
+                        if (DOM.widgetPlayers) DOM.widgetPlayers.innerText = Number(data.activePlayers || 0).toLocaleString('en-US');
+                        if (DOM.widgetEarned) DOM.widgetEarned.innerText = Number(data.revenue || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+                    } catch (e) {
+                        if (DOM.widgetPlayers) DOM.widgetPlayers.innerText = '—';
+                        if (DOM.widgetEarned) DOM.widgetEarned.innerText = '—';
+                    }
                 },
                 // Enlace de MONEY EARNED al explorador de la wallet que paga los
                 // premios. Sale de App.Config (Treasury + Cluster), asi que al
@@ -2277,8 +2287,8 @@ body.trailer-open #page-content{
                     // que con el panel de 4 stats se lee como si estuviera roto.
                     if (App.Config.Cluster === 'devnet') {
                         if (DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span>`;
-                        if (DOM.widgetMcap) DOM.widgetMcap.innerText = 'PRE-LAUNCH';
-                        if (DOM.widgetVol) DOM.widgetVol.innerText = 'PRE-LAUNCH';
+                        if (DOM.widgetMcap) DOM.widgetMcap.innerText = '—';
+                        if (DOM.widgetVol) DOM.widgetVol.innerText = '—';
                         return;
                     }
                     try {
@@ -2367,12 +2377,12 @@ function toggleTrailerMode() {
         App.UI.init();
         App.Market.updateTicker();
         App.Market.initStatsLink();
-        App.Market.fetchPlayers();
+        App.Market.fetchPublicStats();
         App.Wallet.restoreUI();      // pinta "conectado" al instante (sin parpadeo en F5)
         App.Wallet.eagerConnect();   // confirma la sesión en silencio (o revierte si ya no vale)
         setInterval(App.Market.updateTicker, 30000);
-        // ACTIVE PLAYERS cambia mucho mas rapido que el mercado: refresco propio.
-        setInterval(App.Market.fetchPlayers, 10000);
+        // ACTIVE PLAYERS (24h) / MONEY EARNED son contadores lentos: cada minuto.
+        setInterval(App.Market.fetchPublicStats, 60000);
 
         // DAILY QUESTS: anonymous identity shared with game (pw_cid) + /api/dailyquests
         (function () {

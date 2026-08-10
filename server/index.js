@@ -1363,6 +1363,38 @@ function activosUltimaHora(includeTesters) {
     }
     return vistos.size;
 }
+// Igual que activosUltimaHora pero a 24h, para el widget publico de la landing.
+// recentJoins solo cubre ~1h (se poda a esa ventana), así que aquí se usa
+// connLog en su lugar: ya viene filtrado a jugadores reales (logConnection
+// solo se llama con `!tester`, ver recordEntry) y se persiste a disco con
+// retención de LOG_RETENTION_DAYS (60 por defecto), de sobra para 24h.
+function activePlayers24h() {
+    const desde = Date.now() - 86400000;
+    const vistos = new Set();
+    for (let i = connLog.length - 1; i >= 0; i--) {
+        const e = connLog[i];
+        const t = new Date(e.fecha).getTime();
+        if (isNaN(t) || t < desde) break; // connLog está en orden cronologico: en cuanto sale de ventana, para
+        vistos.add((e.nombre || '') + '|' + e.ip);
+    }
+    // Los que siguen conectados ahora mismo también cuentan, aunque entraran
+    // hace más de 24h (partida larga sin límite de tiempo en modo Classic).
+    for (const room of rooms.values()) for (const cli of room.clients.values()) {
+        if (cli.isTester) continue;
+        vistos.add((cli.name || '') + '|' + cli.ip);
+    }
+    return vistos.size;
+}
+// Dinero real movido (entradas de jugadores reales × precio de la sala),
+// SIN contar los bots de stress test. Misma formula que dineroReal en
+// sampleAdminSeries — la fuente de verdad del panel admin — solo que aquí se
+// calcula bajo demanda para el endpoint público en vez de muestrearse cada
+// SAMPLE_MS. Es el total acumulado desde que existe roomStats (no resetea).
+function totalRevenueReal() {
+    let total = 0;
+    for (const [ck, s] of Object.entries(roomStats)) total += (s.entradasReal || 0) * priceOf(ck);
+    return total;
+}
 // Conectados AHORA por país (para el mapa del dashboard). Pocos clientes → barato.
 function paisesConectados() {
     const porPais = {};
@@ -1727,6 +1759,30 @@ const httpServer = http.createServer(async (req, res) => {
         } else {
             res.end(JSON.stringify({ ok: false, reason: 'combo de otro host, pregunta al director' }));
         }
+        return;
+    }
+    // --- Stats públicas para la landing (widget ACTIVE PLAYERS / MONEY EARNED) ---
+    // Solo dos números derivados, nada de wallets, IPs ni nombres de jugador.
+    // En rol director las salas viven en los hosts (Fase 4b): fan-out HTTP
+    // interno y SUMA simple, igual criterio que _dirAgg.conectados — no dedup
+    // entre hosts (un jugador que entrara a dos price-tiers distintos el mismo
+    // día contaría dos veces; caso raro, aceptable para un contador informativo).
+    if (urlPath === '/api/publicstats') {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        if (PW_ROLE === 'director') {
+            let activePlayers = 0, revenue = 0;
+            await Promise.all([...hostProcs.values()].map(async (h) => {
+                if (!h.alive) return;
+                try {
+                    const r = await fetch(`http://localhost:${h.port}/api/publicstats`);
+                    const j = await r.json();
+                    activePlayers += j.activePlayers || 0; revenue += j.revenue || 0;
+                } catch (e) { /* host caído: no suma, no rompe */ }
+            }));
+            res.end(JSON.stringify({ activePlayers, revenue }));
+            return;
+        }
+        res.end(JSON.stringify({ activePlayers: activePlayers24h(), revenue: totalRevenueReal() }));
         return;
     }
     // --- Daily quests: 4 retos del día + progreso del clientId + saldo skin points ---
