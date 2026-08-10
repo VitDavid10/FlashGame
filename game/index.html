@@ -844,7 +844,7 @@
         #botsBanner { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(8,12,8,0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0,255,136,0.4); border-radius: 10px; padding: 12px 28px; font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #00ff88; box-shadow: 0 0 30px rgba(0,255,136,0.2); white-space: nowrap; transition: top 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s; opacity: 0; pointer-events: none; }
         #botsBanner.show { top: 22px; opacity: 1; }
         #killGainStack { position: fixed; top: 90px; left: 50%; transform: translateX(-50%); z-index: 9998; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
-        .kill-gain { font-family: 'Russo One', sans-serif; font-size: 22px; letter-spacing: 2px; color: #ff9933; text-shadow: 0 0 14px rgba(255,153,51,0.85), 0 2px 6px rgba(0,0,0,0.85); animation: killGainFloat 2s cubic-bezier(0.2,0.7,0.3,1) forwards; }
+        .kill-gain { font-family: 'Russo One', sans-serif; font-size: 44px; letter-spacing: 2px; color: #ff9933; text-shadow: 0 0 26px rgba(255,153,51,0.9), 0 0 10px rgba(255,153,51,0.7), 0 3px 8px rgba(0,0,0,0.9); animation: killGainFloat 2s cubic-bezier(0.2,0.7,0.3,1) forwards; }
         @keyframes killGainFloat {
             0%   { opacity: 0; transform: translateY(20px) scale(0.7); }
             12%  { opacity: 1; transform: translateY(0) scale(1.1); }
@@ -1378,7 +1378,7 @@
         }
         body.pixel-pack #botsBanner { font-size: 10px !important; text-shadow: 1px 1px 0 #000 !important; }
         body.pixel-pack #pentakillBanner { font-size: 13px !important; letter-spacing: 2px !important; text-shadow: 2px 2px 0 #000 !important; }
-        body.pixel-pack .kill-gain { font-family: 'Press Start 2P', monospace !important; font-size: 15px !important; text-shadow: 2px 2px 0 #000, 4px 4px 0 rgba(0,0,0,0.5) !important; }
+        body.pixel-pack .kill-gain { font-family: 'Press Start 2P', monospace !important; font-size: 30px !important; text-shadow: 4px 4px 0 #000, 8px 8px 0 rgba(0,0,0,0.5) !important; }
         body.pixel-pack #cmdBar input {
             border-radius: 0 !important; font-family: 'VT323', monospace !important; font-size: 17px !important;
             box-shadow: 4px 4px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important;
