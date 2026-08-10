@@ -30,10 +30,15 @@
     <style>
         /* --- VARIABLES & RESET --- */
         :root {
-            --primary: #00ff88; 
-            --primary-dim: rgba(0, 255, 136, 0.1); 
+            --primary: #00ff88;
+            --primary-dim: rgba(0, 255, 136, 0.1);
             --accent: #ff2a2a;
             --gold: #ffcc00;
+            /* Verde-azulado (teal) SOLO para el modo CLASSIC — distinto del
+               --primary de marca que ya usan category-tag, dq-tag, el bloque
+               SPLIT, etc., para que un vistazo distinga "verde de la pagina"
+               de "verde tematizado de Classic". */
+            --classic-accent: #00e0c6;
             --bg-dark: #050505; 
             --glass-bg: rgba(20, 20, 20, 0.6); 
             --glass-border: rgba(255, 255, 255, 0.1);
@@ -503,11 +508,18 @@ body.trailer-open #page-content{
         /* Numero de seccion, tenue, detras del contenido. Con top negativo caia
            JUSTO contra el borde superior (y el overflow:hidden del bloque lo
            recortaba en seco ahi mismo) — separado del borde y con mas opacidad
-           para que se note sin ser el opacity 0.07 de antes, casi invisible. */
+           para que se note sin ser el opacity 0.07 de antes, casi invisible.
+           Por defecto va pegado al lado del TEXTO, que en un bloque normal
+           (sin .reverse) es el izquierdo: .feature-block.reverse invierte el
+           orden visual (video a la izquierda, texto a la derecha), asi que el
+           numero se mueve al lado derecho SOLO en esos bloques. Antes iba fijo
+           a la derecha en los tres, y en 01/03 (sin reverse) caia detras del
+           video en vez de detras del texto — chocaba visualmente con el clip. */
         .fb-num {
-            position: absolute; top: 22px; right: 40px; font-family: 'Russo One'; font-size: 130px; line-height: 1;
+            position: absolute; top: 22px; left: 40px; font-family: 'Russo One'; font-size: 130px; line-height: 1;
             color: var(--fb-accent); opacity: 0.14; pointer-events: none; user-select: none;
         }
+        .feature-block.reverse .fb-num { left: auto; right: 40px; }
         /* La etiqueta y el titulo heredan el color del bloque. */
         .feature-block .category-tag { color: var(--fb-accent); border-color: var(--fb-accent); background: var(--fb-accent-soft); }
         .feature-block.reverse { flex-direction: row-reverse; }
@@ -569,8 +581,13 @@ body.trailer-open #page-content{
             padding: 40px; text-align: left; transition: 0.3s ease; box-shadow: 4px 4px 0 rgba(0,0,0,0.55);
         }
         .mode-card:hover { background: #111; }
-        .mode-card.classic { border-color: var(--primary); }
-        .mode-card.classic:hover { box-shadow: 4px 4px 0 rgba(0,0,0,0.55), 0 0 20px rgba(0,255,136,0.15); }
+        /* CLASSIC usaba el mismo verde de marca (--primary) que category-tag,
+           feature-block SPLIT, dq-tag, etc. — no se distinguia del verde
+           "generico" de la pagina. Aqui usa un verde-azulado propio, distinto
+           al del resto (ARCADE ya tenia lo suyo en dorado). */
+        .mode-card.classic { border-color: var(--classic-accent); }
+        .mode-card.classic:hover { box-shadow: 4px 4px 0 rgba(0,0,0,0.55), 0 0 20px rgba(0,224,198,0.18); }
+        .mode-card.classic .category-tag { color: var(--classic-accent); border-color: var(--classic-accent); background: rgba(0,224,198,0.1); }
         .mode-card.special { border-color: #ffce3d; }
         .mode-card.special:hover { box-shadow: 4px 4px 0 rgba(0,0,0,0.55), 0 0 20px rgba(255,206,61,0.18); }
         .mode-card h4 { font-family: 'Russo One'; font-size: 30px; color: #fff; margin: 10px 0; }
@@ -944,7 +961,11 @@ body.trailer-open #page-content{
             .feature-block, .feature-block.reverse {
                 flex-direction: column-reverse; padding: 30px; gap: 20px;
             }
-            .fb-num { font-size: 70px; top: 12px; right: 16px; }
+            /* En movil TODOS los bloques apilan el video arriba y el texto
+               abajo (column-reverse, ver arriba) sea o no .reverse — el
+               numero se ancla abajo/derecha (detras del texto) en vez de
+               arriba (detras del video) en los dos casos. */
+            .fb-num, .feature-block.reverse .fb-num { left: auto; right: 16px; top: auto; bottom: 12px; font-size: 70px; }
             .feature-block::before, .feature-block::after { width: 16px; height: 16px; }
             .feature-text { text-align: center; }
             .feature-text h3 { font-size: 28px; }
