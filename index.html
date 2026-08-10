@@ -447,6 +447,27 @@
      puntualmente y no necesita precálculo. */
 }
 
+/* La pagina se ve como con el zoom del navegador al 90%, que es como la
+   quiere David: zoom es exactamente esa propiedad, puesta de serie.
+   - Va aqui y no en body/html a proposito: #custom-cursor cuelga del body,
+     fuera de #page-content, y se coloca con las coordenadas del raton sin
+     escalar; dentro del zoom se iria desalineando.
+   - zoom SI se puede poner aqui pese al aviso de arriba: no crea containing
+     block, que es lo que rompia el position:fixed de la navbar con
+     transform/filter/will-change.
+   - Solo en pantallas grandes: en movil encoger el texto un 10% no le hace
+     ningun favor a nadie. */
+@media (min-width: 1200px) {
+  #page-content { zoom: .9; }
+  /* Los modales cuelgan del body, fuera de #page-content (se sacan de ahi
+     para que no les entre el blur del modo cine), asi que hay que darles el
+     zoom aparte o se verian un 11% mas grandes que la pagina. Los centra el
+     CSS, no coordenadas, asi que escalarlos es seguro.
+     #custom-cursor y #skill-tooltip se quedan FUERA: esos si se colocan con
+     las coordenadas del raton, y escalados se irian desalineando. */
+  body > .modal-overlay { zoom: .9; }
+}
+
 body.trailer-open #page-content{
   filter: blur(10px);
 }
@@ -2064,7 +2085,11 @@ body.trailer-open #page-content{
                             if (targetSection) {
                                 const navbarEl = document.querySelector('.navbar');
                                 const tickerEl = document.querySelector('.ticker-wrap');
-                                const offset = (navbarEl ? navbarEl.offsetHeight : 0) + (tickerEl ? tickerEl.offsetHeight : 0);
+                                // getBoundingClientRect y no offsetHeight: con el zoom
+                                // de #page-content, offsetHeight da la altura SIN
+                                // escalar y el rect de abajo si viene escalado; mezclar
+                                // las dos dejaba el ancla 11px descuadrada.
+                                const offset = (navbarEl ? navbarEl.getBoundingClientRect().height : 0) + (tickerEl ? tickerEl.getBoundingClientRect().height : 0);
                                 const top = targetSection.getBoundingClientRect().top + window.scrollY - offset;
                                 window.scrollTo({ top, behavior: 'smooth' });
                             }
