@@ -458,18 +458,57 @@ body.trailer-open #page-content{
 
         /* ------------------------------------- */
 
-        .side-widget { flex: 1; min-width: 280px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 25px; display: flex; flex-direction: column; gap: 20px; backdrop-filter: blur(10px); width: 100%; }
-        .widget-row { background: rgba(0,0,0,0.4); padding: 20px; border-radius: 8px; text-align: center; border-left: 4px solid var(--primary); }
+        .side-widget { flex: 1; min-width: 280px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px; backdrop-filter: blur(10px); width: 100%; }
+        /* Cuatro filas de stats en el MISMO alto que el trailer (16/9): flex:1 en
+           cada fila reparte ese alto a partes iguales, asi que el panel no se
+           desborda al pasar de 2 a 4 filas. En movil la columna es de alto
+           automatico y cada fila vuelve a medir por su contenido. */
+        .widget-row { flex: 1; background: rgba(0,0,0,0.4); padding: 12px 16px; border-radius: 8px; text-align: center; border-left: 4px solid var(--primary); display: flex; flex-direction: column; justify-content: center; }
+        .widget-row.gold { border-left-color: var(--gold); }
         .widget-title { color: #666; font-size: 11px; letter-spacing: 2px; font-weight: 800; text-transform: uppercase; }
-        .widget-val { font-size: 20px; font-weight: 700; color: #fff; margin-top: 5px; }
+        .widget-val { font-size: 20px; font-weight: 700; color: #fff; margin-top: 4px; }
+        .widget-val.live { color: var(--primary); }
+        /* MONEY EARNED: la fila ENTERA es un enlace al explorador de la wallet que
+           paga los premios, para que el reparto se pueda auditar desde fuera. */
+        a.widget-row { text-decoration: none; transition: 0.2s ease; }
+        a.widget-row:hover { background: rgba(255,204,0,0.07); box-shadow: 0 0 18px rgba(255,204,0,0.12); }
+        .widget-hint { font-size: 9px; letter-spacing: 2px; color: #5a5a5a; margin-top: 5px; text-transform: uppercase; font-weight: 800; }
+        a.widget-row:hover .widget-hint { color: var(--gold); }
 
+        /* Los tres bloques de mecanica usaban EXACTAMENTE el mismo marco (caja
+           redondeada + borde verde), asi que se leian como la misma plantilla
+           repetida tres veces. Ahora cada uno lleva su propio color en
+           --fb-accent y el marco habla el mismo idioma que .mode-card: esquina
+           recta y sombra dura sin blur. Las escuadras de las esquinas y el
+           numero grande del fondo los diferencian de un vistazo. */
         .feature-block {
-            display: flex; gap: 50px; align-items: center; margin-bottom: 40px; padding: 60px; border-radius: 20px;
-            background: rgba(10, 10, 10, 0.4); border: 2px solid var(--primary); width: 100%; max-width: 1200px;
+            --fb-accent: var(--primary);
+            --fb-accent-soft: rgba(0, 255, 136, 0.08);
+            position: relative; overflow: hidden;
+            display: flex; gap: 50px; align-items: center; margin-bottom: 40px; padding: 60px; border-radius: 0;
+            background: linear-gradient(135deg, var(--fb-accent-soft), rgba(10, 10, 10, 0.55) 45%);
+            border: 2px solid var(--fb-accent); width: 100%; max-width: 1200px;
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.55);
             backdrop-filter: blur(2px);
         }
+        /* Verde acido = el color real de los virus en el juego (pixVirusSprite). */
+        .feature-block.fb-virus { --fb-accent: #9ee32d; --fb-accent-soft: rgba(158, 227, 45, 0.08); }
+        .feature-block.fb-viral { --fb-accent: var(--gold); --fb-accent-soft: rgba(255, 204, 0, 0.08); }
+        /* Escuadras en L: dos esquinas opuestas marcadas con el color del bloque. */
+        .feature-block::before, .feature-block::after {
+            content: ''; position: absolute; width: 26px; height: 26px; pointer-events: none;
+        }
+        .feature-block::before { top: 10px; left: 10px; border-top: 4px solid var(--fb-accent); border-left: 4px solid var(--fb-accent); }
+        .feature-block::after { bottom: 10px; right: 10px; border-bottom: 4px solid var(--fb-accent); border-right: 4px solid var(--fb-accent); }
+        /* Numero de seccion, muy tenue, detras del contenido. */
+        .fb-num {
+            position: absolute; top: -22px; right: 28px; font-family: 'Russo One'; font-size: 150px; line-height: 1;
+            color: var(--fb-accent); opacity: 0.07; pointer-events: none; user-select: none;
+        }
+        /* La etiqueta y el titulo heredan el color del bloque. */
+        .feature-block .category-tag { color: var(--fb-accent); border-color: var(--fb-accent); background: var(--fb-accent-soft); }
         .feature-block.reverse { flex-direction: row-reverse; }
-        .feature-text { flex: 1.2; }
+        .feature-text { flex: 1.2; position: relative; }
         
         .category-tag {
             color: var(--primary);
@@ -498,17 +537,23 @@ body.trailer-open #page-content{
         .feature-text p { color: #888; line-height: 1.6; font-size: 16px; margin-bottom: 15px; }
         .feature-images { flex: 1; display: flex; gap: 15px; width: 100%; justify-content: center; }
 
-        .video-card { 
-            background: #000; border: 1px solid #222; border-radius: 12px; 
-            width: 100%; aspect-ratio: 16/9; display: flex; align-items: center; 
-            justify-content: center; overflow: hidden; transition: 0.3s ease; 
+        .video-card {
+            background: #000; border: 2px solid rgba(255,255,255,0.08); border-radius: 0;
+            width: 100%; aspect-ratio: 16/9; display: flex; align-items: center;
+            justify-content: center; overflow: hidden; transition: 0.3s ease;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
         }
-        .video-card:hover { border-color: var(--primary); background: #111; box-shadow: 0 0 20px rgba(0,255,136,0.1); }
+        /* El marco del video se enciende con el color de SU bloque. */
+        .feature-block .video-card:hover { border-color: var(--fb-accent); background: #111; box-shadow: 4px 4px 0 rgba(0,0,0,0.5), 0 0 22px var(--fb-accent-soft); }
         .video-card video { width: 100%; height: 100%; object-fit: cover; }
 
+        /* Envolvia .mode-card, que ya iban con esquina recta, dentro de un marco
+           redondeado de 24px: al pasar los bloques de mecanica a esquina recta la
+           mezcla cantaba mas todavia. Mismo marco que el resto. */
         .battle-modes-container {
-            border: 2px solid var(--primary); background: rgba(15, 15, 15, 0.3); 
-            border-radius: 24px; padding: 60px; text-align: center; margin: 80px 0; width: 100%; max-width: 1200px;
+            border: 2px solid var(--primary); background: rgba(15, 15, 15, 0.3);
+            border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55);
+            padding: 60px; text-align: center; margin: 80px 0; width: 100%; max-width: 1200px;
             backdrop-filter: blur(2px);
         }
         .battle-modes-container h2 { font-family: 'Russo One'; font-size: 56px; color: #fff; margin: 0; text-transform: uppercase; }
@@ -612,9 +657,15 @@ body.trailer-open #page-content{
         .full-width-img video { width: 100%; display: block; object-fit: cover; transition: opacity 0.3s; }
 
         .section-container { padding: 100px 20px; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; position: relative; }
-        #quest { background: radial-gradient(circle at top, #0a1a0a, #000); }
-        #shop { background: linear-gradient(180deg, #020202 0%, #150515 100%); }
-        #ranking { background: linear-gradient(0deg, #050505 0%, #051015 100%); border-bottom: 1px solid #222; }
+        /* Estos fondos eran colores planos y OPACOS: tapaban la cuadricula pixel
+           del body, que es lo que da textura al resto de la pagina, y por eso las
+           secciones de abajo se veian sosas comparadas con el hero. Ahora son un
+           velo translucido con un halo del color de cada seccion, asi que la
+           rejilla se sigue viendo por debajo. El morado del shop, que ademas se
+           salia de la paleta verde/dorada de la marca, pasa a dorado. */
+        #quest { background: radial-gradient(ellipse at 50% 0%, rgba(0,255,136,0.13), rgba(5,5,5,0.80) 55%, rgba(5,5,5,0.92)); }
+        #shop { background: radial-gradient(ellipse at 50% 0%, rgba(255,204,0,0.10), rgba(5,5,5,0.80) 55%, rgba(5,5,5,0.92)); }
+        #ranking { background: radial-gradient(ellipse at 50% 100%, rgba(0,255,136,0.10), rgba(5,5,5,0.80) 55%, rgba(5,5,5,0.92)); border-bottom: 1px solid #222; }
         .lb-pag { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 22px; }
         .lb-pag button { background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 7px 12px; font-family: 'Russo One'; font-size: 12px; cursor: pointer; transition: 0.2s; min-width: 36px; }
         .lb-pag button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
@@ -630,7 +681,10 @@ body.trailer-open #page-content{
         #ranking .lb-c-name, #ranking .lb-c-kills, #ranking .lb-c-mass { font-size: 14px; }
         #ranking .lb-pag { margin-top: 14px; }
         .section-title { font-size: 48px; font-family: 'Russo One'; margin-bottom: 50px; text-transform: uppercase; text-align: center; }
-        .placeholder-box { width: 100%; max-width: 700px; height: 300px; border: 2px dashed #333; background: rgba(0,0,0,0.4); border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #444; }
+        /* Caja "proximamente" del shop: esquina recta y dorado, en linea con el
+           resto de tarjetas. Antes iba en rojo (--accent) sobre el fondo morado,
+           dos colores que no estan en la paleta de la marca. */
+        .placeholder-box { width: 100%; max-width: 700px; height: 300px; border: 2px dashed rgba(255,204,0,0.35); background: rgba(0,0,0,0.4); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #6a5a2a; font-family: 'Russo One'; letter-spacing: 2px; }
 
         /* Leaderboard "Global Elite" */
         .lb-wrap { width: 100%; max-width: 980px; background: rgba(10,10,10,0.7); border: 1px solid rgba(0,255,136,0.18); border-radius: 18px; padding: 18px 20px 22px; box-shadow: 0 10px 50px rgba(0,0,0,0.5); }
@@ -647,12 +701,16 @@ body.trailer-open #page-content{
         .lb-c-mass { color: #ffce3d; font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
 
         /* DAILY QUESTS */
-        .dq-tag { display: inline-block; font-family: 'Russo One', sans-serif; font-size: 11px; letter-spacing: 4px; color: var(--primary); padding: 5px 14px; border: 1px solid rgba(0,255,136,0.3); border-radius: 20px; text-transform: uppercase; background: rgba(0,255,136,0.05); }
+        /* Daily Quests iba con esquinas redondeadas y bordes de 1px, el unico
+           bloque de la pagina que no seguia el lenguaje arcade de .mode-card /
+           .dq-card (esquina recta + sombra dura). Igualado aqui. */
+        .dq-tag { display: inline-block; font-family: 'Russo One', sans-serif; font-size: 11px; letter-spacing: 4px; color: var(--primary); padding: 6px 14px; border: 2px solid var(--primary); border-radius: 0; text-transform: uppercase; background: rgba(0,255,136,0.08); box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
         .dq-subtitle { color: #888; font-size: 15px; margin: 10px 0 30px; text-align: center; max-width: 640px; }
         .dq-subtitle b { color: var(--primary); font-weight: 600; }
-        .dq-summary { width: 100%; max-width: 980px; background: rgba(10,15,10,0.7); border: 1px solid rgba(0,255,136,0.18); border-radius: 16px; padding: 22px 26px; margin-bottom: 26px; display: flex; align-items: center; gap: 22px; }
+        .dq-summary { width: 100%; max-width: 980px; background: rgba(10,15,10,0.7); border: 2px solid rgba(0,255,136,0.35); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55); padding: 22px 26px; margin-bottom: 26px; display: flex; align-items: center; gap: 22px; }
         .dq-ring { position: relative; width: 90px; height: 90px; flex: none; }
         .dq-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        #dq-ring-fill { filter: drop-shadow(0 0 5px rgba(0,255,136,0.75)); }
         .dq-ring .num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Russo One'; }
         .dq-ring .num span:first-child { font-size: 24px; color: var(--primary); }
         .dq-ring .num span:first-child em { font-style: normal; color: #555; }
@@ -661,8 +719,8 @@ body.trailer-open #page-content{
         .dq-summary .info .ti { font-family: 'Russo One'; color: #fff; font-size: 18px; letter-spacing: 1px; margin-bottom: 4px; }
         .dq-summary .info .sub { color: #888; font-size: 13px; }
         .dq-summary .info .sub.ok { color: var(--primary); }
-        .dq-btn { flex: none; font-family: 'Russo One'; font-size: 13px; letter-spacing: 1px; padding: 13px 24px; border-radius: 8px; text-transform: uppercase; cursor: not-allowed; background: #222; border: 1px solid #333; color: #666; transition: 0.2s; text-decoration: none; display: inline-block; }
-        .dq-btn.unlocked { background: var(--primary); border-color: var(--primary); color: #04150c; cursor: pointer; box-shadow: 0 0 20px rgba(0,255,136,0.3); }
+        .dq-btn { flex: none; font-family: 'Russo One'; font-size: 13px; letter-spacing: 1px; padding: 13px 24px; border-radius: 0; text-transform: uppercase; cursor: not-allowed; background: #222; border: 2px solid #333; color: #666; transition: 0.2s; text-decoration: none; display: inline-block; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
+        .dq-btn.unlocked { background: var(--primary); border-color: var(--primary); color: #04150c; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), 0 0 20px rgba(0,255,136,0.3); }
         .dq-btn.unlocked:hover { filter: brightness(1.1); }
         .dq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; width: 100%; max-width: 980px; }
         .dq-card { background: rgba(10,15,10,0.7); border: 2px solid #1a1a1a; border-left: 4px solid #555; border-radius: 0; padding: 18px 20px; transition: 0.25s; cursor: default; box-shadow: 3px 3px 0 rgba(0,0,0,0.5); }
@@ -677,7 +735,7 @@ body.trailer-open #page-content{
         .dq-card.prog .dq-num { color: #ffce3d; }
         .dq-title { font-family: 'Russo One'; color: #fff; font-size: 13px; letter-spacing: 1px; line-height: 1.3; margin-bottom: 4px; }
         .dq-desc { color: #888; font-size: 12px; line-height: 1.5; }
-        .dq-bar { height: 5px; background: #111; border-radius: 3px; overflow: hidden; }
+        .dq-bar { height: 6px; background: #0b0b0b; border: 1px solid #000; border-radius: 0; overflow: hidden; }
         .dq-bar i { display: block; height: 100%; background: #555; transition: width 0.4s; }
         .dq-card.done .dq-bar i { background: var(--primary); }
         .dq-card.prog .dq-bar i { background: #ffce3d; }
@@ -880,9 +938,11 @@ body.trailer-open #page-content{
             .trailer-box { aspect-ratio: 16/9; width: 100%; }
             .side-widget { width: 100%; }
             
-            .feature-block, .feature-block.reverse { 
+            .feature-block, .feature-block.reverse {
                 flex-direction: column-reverse; padding: 30px; gap: 20px;
             }
+            .fb-num { font-size: 78px; top: -12px; right: 14px; }
+            .feature-block::before, .feature-block::after { width: 16px; height: 16px; }
             .feature-text { text-align: center; }
             .feature-text h3 { font-size: 28px; }
             .feature-images { width: 100%; }
@@ -1341,9 +1401,20 @@ body.trailer-open #page-content{
                 </video>
             </div>
 
+            <!-- Panel de stats. ACTIVE PLAYERS sale de /api/rooms (suma de
+                 jugadores de todos los combos); mcap/volumen los rellena
+                 App.Market.updateTicker con los datos de Dexscreener. La ultima
+                 fila enlaza a la wallet que paga los premios (REWARDS_WALLET en
+                 el JS de abajo) para que cualquiera pueda verificar el reparto. -->
             <div class="side-widget">
-                <div class="widget-row"><div class="widget-title">MARKET CAP</div><div class="widget-val" id="widget-mcap">Loading...</div></div>
-                <div class="widget-row"><div class="widget-title">VOLUME</div><div class="widget-val" id="widget-vol">Loading...</div></div>
+                <div class="widget-row"><div class="widget-title">ACTIVE PLAYERS</div><div class="widget-val live" id="widget-players">—</div></div>
+                <div class="widget-row"><div class="widget-title">$PILL MARKET CAP</div><div class="widget-val" id="widget-mcap">Loading...</div></div>
+                <div class="widget-row gold"><div class="widget-title">VOLUME 24H</div><div class="widget-val" id="widget-vol">Loading...</div></div>
+                <a class="widget-row gold" id="widget-earned-link" href="#" target="_blank" rel="noopener">
+                    <div class="widget-title">MONEY EARNED</div>
+                    <div class="widget-val" id="widget-earned">—</div>
+                    <div class="widget-hint">VIEW REWARDS WALLET ↗</div>
+                </a>
             </div>
         </div>
 
@@ -1353,7 +1424,8 @@ body.trailer-open #page-content{
         </div>
 
         <!-- SECCION 1 (SPLIT) - AUTOPLAY ACTIVADO -->
-        <div class="feature-block reveal">
+        <div class="feature-block fb-split reveal">
+            <span class="fb-num">01</span>
             <div class="feature-text">
                 <span class="category-tag">CORE MECHANICS</span>
                 <h3>THE SPLIT<br>EXECUTION</h3>
@@ -1370,7 +1442,8 @@ body.trailer-open #page-content{
         </div>
 
         <!-- SECCION 2 (VIRUS) - AUTOPLAY ACTIVADO -->
-        <div class="feature-block reverse reveal">
+        <div class="feature-block fb-virus reverse reveal">
+            <span class="fb-num">02</span>
             <div class="feature-text">
                 <span class="category-tag">RISK & REWARD</span>
                 <h3>TACTICAL<br>VIRAL WARFARE</h3>
@@ -1387,7 +1460,8 @@ body.trailer-open #page-content{
         </div>
 
         <!-- SECCION 3 (SHOOT / VIRAL BALLISTICS) - AUTOPLAY ACTIVADO -->
-        <div class="feature-block reveal">
+        <div class="feature-block fb-viral reveal">
+            <span class="fb-num">03</span>
             <div class="feature-text">
                 <span class="category-tag">OFFENSIVE STRATEGY</span>
                 <h3>VIRAL<br>BALLISTICS</h3>
@@ -1499,7 +1573,7 @@ body.trailer-open #page-content{
     </div>
     <div id="shop" class="section-container">
         <h1 class="section-title holo-text">Skin Shop</h1>
-        <div class="placeholder-box" style="border-color: var(--accent);"><h3>NFT MARKETPLACE</h3></div>
+        <div class="placeholder-box"><h3>NFT MARKETPLACE</h3></div>
     </div>
     <div id="ranking" class="section-container">
         <h1 class="section-title holo-text">Global Elite</h1>
@@ -1727,7 +1801,10 @@ body.trailer-open #page-content{
             tickerWrap: document.getElementById('ticker-wrap'),
             navbar: document.getElementById('main-navbar'),
             widgetMcap: document.getElementById('widget-mcap'),
-            widgetVol: document.getElementById('widget-vol'), 
+            widgetVol: document.getElementById('widget-vol'),
+            widgetPlayers: document.getElementById('widget-players'),
+            widgetEarned: document.getElementById('widget-earned'),
+            widgetEarnedLink: document.getElementById('widget-earned-link'),
             priceBtn: document.getElementById('price-btn'),
             caText: document.getElementById("ca-text"),
             copyFeedback: document.getElementById("copy-feedback"),
@@ -2145,6 +2222,27 @@ body.trailer-open #page-content{
             },
 
             Market: {
+                // ACTIVE PLAYERS: /api/rooms devuelve un entry por combo
+                // (modo × precio) con `players` ya agregado de todas sus layers,
+                // asi que el total online es la suma. Mismo endpoint publico que
+                // usa el menu del juego, sin auth y con CORS abierto.
+                fetchPlayers: async () => {
+                    if (!DOM.widgetPlayers) return;
+                    try {
+                        const r = await fetch('/api/rooms', { cache: 'no-store' });
+                        const data = await r.json();
+                        const total = (data.rooms || []).reduce((s, room) => s + (room.players || 0), 0);
+                        DOM.widgetPlayers.innerText = total.toLocaleString('en-US');
+                    } catch (e) { DOM.widgetPlayers.innerText = '—'; }
+                },
+                // Enlace de MONEY EARNED al explorador de la wallet que paga los
+                // premios. Sale de App.Config (Treasury + Cluster), asi que al
+                // pasar a mainnet se actualiza solo con el resto de la config.
+                initStatsLink: () => {
+                    if (!DOM.widgetEarnedLink) return;
+                    const q = App.Config.Cluster === 'devnet' ? '?cluster=devnet' : '';
+                    DOM.widgetEarnedLink.href = `https://solscan.io/account/${App.Config.Treasury}${q}`;
+                },
                 fetchWar: async (wallet) => {
                     if (!window.PillChain || !wallet) return;
                     try {
@@ -2175,8 +2273,12 @@ body.trailer-open #page-content{
                 },
                 updateTicker: async () => {
                     // En devnet no hay mercado (DexScreener es de mainnet): solo dejamos "$PILL".
+                    // Las filas de mercado se quedaban en "Loading..." para siempre,
+                    // que con el panel de 4 stats se lee como si estuviera roto.
                     if (App.Config.Cluster === 'devnet') {
                         if (DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span>`;
+                        if (DOM.widgetMcap) DOM.widgetMcap.innerText = 'PRE-LAUNCH';
+                        if (DOM.widgetVol) DOM.widgetVol.innerText = 'PRE-LAUNCH';
                         return;
                     }
                     try {
@@ -2264,9 +2366,13 @@ function toggleTrailerMode() {
         window.App = App;   // exponer App para el módulo ESM de blockchain (PillChain)
         App.UI.init();
         App.Market.updateTicker();
+        App.Market.initStatsLink();
+        App.Market.fetchPlayers();
         App.Wallet.restoreUI();      // pinta "conectado" al instante (sin parpadeo en F5)
         App.Wallet.eagerConnect();   // confirma la sesión en silencio (o revierte si ya no vale)
         setInterval(App.Market.updateTicker, 30000);
+        // ACTIVE PLAYERS cambia mucho mas rapido que el mercado: refresco propio.
+        setInterval(App.Market.fetchPlayers, 10000);
 
         // DAILY QUESTS: anonymous identity shared with game (pw_cid) + /api/dailyquests
         (function () {
