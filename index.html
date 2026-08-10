@@ -508,30 +508,27 @@ body.trailer-open #page-content{
         }
         .feature-block::before { top: 10px; left: 10px; border-top: 4px solid var(--fb-accent); border-left: 4px solid var(--fb-accent); }
         .feature-block::after { bottom: 10px; right: 10px; border-bottom: 4px solid var(--fb-accent); border-right: 4px solid var(--fb-accent); }
-        /* Numero de seccion, tenue, detras del contenido. Con top negativo caia
-           JUSTO contra el borde superior (y el overflow:hidden del bloque lo
-           recortaba en seco ahi mismo) — separado del borde y con mas opacidad
-           para que se note sin ser el opacity 0.07 de antes, casi invisible.
-           Por defecto va pegado al lado del TEXTO, que en un bloque normal
-           (sin .reverse) es el izquierdo: .feature-block.reverse invierte el
-           orden visual (video a la izquierda, texto a la derecha), asi que el
-           numero se mueve al lado derecho SOLO en esos bloques. Antes iba fijo
-           a la derecha en los tres, y en 01/03 (sin reverse) caia detras del
-           video en vez de detras del texto — chocaba visualmente con el clip. */
+        /* Numero de seccion, tenue, detras del contenido, anclado al borde
+           del BLOQUE (no del texto): al lado del texto por defecto (izquierda
+           en bloques sin .reverse), al otro lado en .reverse. */
         .fb-num {
             position: absolute; top: 22px; left: 40px; font-family: 'Russo One'; font-size: 130px; line-height: 1;
             color: var(--fb-accent); opacity: 0.14; pointer-events: none; user-select: none;
         }
         .feature-block.reverse .fb-num { left: auto; right: 40px; }
-        /* En los bloques SIN .reverse el numero cae justo detras del arranque
-           del tag+titulo (los dos empiezan en el mismo borde izquierdo) y se
-           veia pegado/feo. En vez de tocar el numero, se separa el tag y el
-           titulo un poco a la derecha para que quede hueco entre los dos. Los
-           .reverse no lo necesitan: ahi el numero cae del lado del texto pero
-           lejos de donde arranca (el texto ocupa la mitad derecha del bloque,
-           mucho mas adentro que el numero pegado al borde). */
+        /* El tag y el titulo se empujan hasta el borde derecho de LA COLUMNA
+           DE TEXTO (no un valor fijo en px: margin-left:auto + width
+           shrink-to-fit los lleva justo al final, se adapte lo que se adapte
+           el ancho del texto). Asi dejan sitio de sobra al numero, que se
+           queda quieto en el borde del bloque. Solo en los bloques sin
+           .reverse: en el .reverse el numero ya cae lejos de donde arranca
+           el texto (el texto ocupa la mitad derecha del bloque), no hace
+           falta tocar nada ahi. El parrafo se queda alineado a la izquierda,
+           como el resto del texto corrido. */
         .feature-block:not(.reverse) .feature-text .category-tag,
-        .feature-block:not(.reverse) .feature-text h3 { margin-left: 38px; }
+        .feature-block:not(.reverse) .feature-text h3 {
+            display: table; margin-left: auto; margin-right: 0; text-align: right;
+        }
         /* La etiqueta y el titulo heredan el color del bloque. */
         .feature-block .category-tag { color: var(--fb-accent); border-color: var(--fb-accent); background: var(--fb-accent-soft); }
         .feature-block.reverse { flex-direction: row-reverse; }
@@ -981,11 +978,13 @@ body.trailer-open #page-content{
             .feature-block::before, .feature-block::after { width: 16px; height: 16px; }
             .feature-text { text-align: center; }
             .feature-text h3 { font-size: 28px; }
-            /* El margen que separa tag/titulo del numero en desktop (num
-               pegado a la izquierda) descuadraria el centrado en movil, donde
-               el numero ya se movio abajo-derecha y no hace falta hueco. */
+            /* El empuje a la derecha de tag/titulo es cosa de desktop (deja
+               hueco al numero pegado al borde del bloque); en movil el texto
+               vuelve a estar centrado como el resto. */
             .feature-block:not(.reverse) .feature-text .category-tag,
-            .feature-block:not(.reverse) .feature-text h3 { margin-left: 0; }
+            .feature-block:not(.reverse) .feature-text h3 {
+                display: inline-block; margin-left: 0; text-align: center;
+            }
             .feature-images { width: 100%; }
             
             .battle-modes-container { padding: 30px 20px; }
