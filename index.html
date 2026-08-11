@@ -2277,17 +2277,23 @@ body.trailer-open #page-content{
                         const armarFoco = () => focusables.forEach(el => el.classList.add('rv-anim'));
                         requestAnimationFrame(() => requestAnimationFrame(armarFoco));
                         setTimeout(armarFoco, 300);
-                        // Cuando un bloque enfoca (.rv-focus), cargar videos dentro
+                        // Cuando un bloque enfoca: cargar videos + mostrar todo el contenido interior
                         const mutObserver = new MutationObserver(mutations => {
                             mutations.forEach(mut => {
                                 if (mut.type === 'attributes' && mut.attributeName === 'class') {
                                     const el = mut.target;
                                     if (el.classList.contains('rv-focus')) {
+                                        // Reproducir videos
                                         const videos = el.querySelectorAll('video');
                                         videos.forEach(v => v.play?.().catch(() => {}));
+                                        // Mostrar contenido interior (texto, imágenes, etc.)
+                                        const rvs = el.querySelectorAll('.rv');
+                                        rvs.forEach(rv => rv.classList.add('rv-in'));
                                     } else {
+                                        // Pausar videos
                                         const videos = el.querySelectorAll('video');
                                         videos.forEach(v => v.pause?.());
+                                        // Ocultar contenido si no está fijo
                                     }
                                 }
                             });
