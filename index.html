@@ -944,22 +944,6 @@ body.trailer-open #page-content{
             }
         }
 
-        /* Para no quedarte a medias entre dos bloques: el scroll se acomoda solo
-           al mas cercano. proximity y NO mandatory — con mandatory no podrias
-           pararte donde tu quisieras; asi puedes, y si no lo haces te centra el
-           bloque. Va aparte del @supports de arriba: el snap no tiene nada que
-           ver con las animaciones por scroll y funciona en todos.
-           Solo en desktop: en movil los bloques se apilan y pasan de largo la
-           altura de la pantalla, centrarlos los cortaria por los dos lados. */
-        @media (min-width: 1200px) and (prefers-reduced-motion: no-preference) {
-            html { scroll-snap-type: y proximity; }
-            .feature-block, .battle-modes-container { scroll-snap-align: center; }
-            /* Si la ventana es mas baja que el bloque largo, deja de centrarlo:
-               no cabe, y el snap solo conseguiria cortarlo. */
-            @media (max-height: 740px) {
-                .battle-modes-container { scroll-snap-align: none; }
-            }
-        }
 
         .modal-overlay { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
@@ -2243,6 +2227,47 @@ body.trailer-open #page-content{
                             });
                             rvFrameObserver.observe(block);
                         });
+
+                        // Encuadre al parar de scrollear. Antes esto era
+                        // scroll-snap de CSS y salia forzado: te reajustaba
+                        // SIEMPRE, tambien al volver hacia arriba, y no te dejaba
+                        // pararte donde tu querias. Aqui solo termina de encuadrar
+                        // un bloque si ya lo tenias casi encuadrado, y UNA vez por
+                        // bloque: pasado ese, ya no te vuelve a mover en toda la
+                        // sesion. No es para colocarte, es para rematar el gesto.
+                        if (window.innerWidth >= 1200) {
+                            const snapDone = new WeakSet();
+                            let snapping = false;
+                            const snapTargets = [...document.querySelectorAll('.feature-block, .battle-modes-container')];
+                            const trySnap = () => {
+                                if (snapping) return;
+                                const mid = window.innerHeight / 2;
+                                let best = null, bestDist = Infinity;
+                                for (const el of snapTargets) {
+                                    const r = el.getBoundingClientRect();
+                                    // uno mas alto que la pantalla no se puede centrar
+                                    if (snapDone.has(el) || r.height > window.innerHeight) continue;
+                                    const d = Math.abs((r.top + r.bottom) / 2 - mid);
+                                    if (d < bestDist) { bestDist = d; best = el; }
+                                }
+                                if (!best) return;
+                                // Ya centrado: se da por hecho y no se toca mas.
+                                if (bestDist < 12) { snapDone.add(best); return; }
+                                // Lejos: te paraste ahi porque quisiste.
+                                if (bestDist > window.innerHeight * 0.12) return;
+                                snapDone.add(best);
+                                snapping = true;
+                                const r = best.getBoundingClientRect();
+                                window.scrollTo({ top: window.scrollY + (r.top + r.bottom) / 2 - mid, behavior: 'smooth' });
+                                // El propio scroll suave dispara otro scrollend.
+                                setTimeout(() => { snapping = false; }, 800);
+                            };
+                            if ('onscrollend' in window) {
+                                window.addEventListener('scrollend', trySnap);
+                            } else {
+                                let t; window.addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(trySnap, 150); });
+                            }
+                        }
                     }
                 },
                 setupVideoHover: () => {
