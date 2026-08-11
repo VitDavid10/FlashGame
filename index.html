@@ -845,9 +845,12 @@ body.trailer-open #page-content{
         /* El bloque entero (marco, borde, fondo) tampoco esta ahi de entrada:
            destaparlos todos al cargar dejaba cajas vacias esperando por
            delante, que parecen un fallo de carga. Entra el marco primero y
-           sus piezas van cayendo despues, cada una a su altura. */
-        .reveal { opacity: 0; scale: .99; transition: opacity .5s ease-out, scale .5s ease-out; }
-        .reveal.active { opacity: 1; scale: 1; }
+           sus piezas van cayendo despues, cada una a su altura.
+           Solo toca opacity: el scale es cosa del foco (.rv-focusable), y si
+           .reveal.active lo fijara en 1 ganaria por especificidad y ningun
+           bloque podria encoger al perder el foco. */
+        .reveal { opacity: 0; transition: opacity .5s ease-out; }
+        .reveal.active { opacity: 1; }
 
         .rv { opacity: 0; }
         .rv-in {
@@ -918,33 +921,24 @@ body.trailer-open #page-content{
                     to   { scale: 1.10; translate: 0 3.5%; }
                 }
 
-                /* FOCO. El bloque que tienes en el centro se ve entero y a su
-                   tamaño; los de arriba y abajo se apagan y encogen, como el
-                   carrusel de las apps del movil. Al ir atado a la POSICION y no
-                   al tiempo esto es reversible solo: sales por arriba y el
-                   bloque se apaga, vuelves y se enciende otra vez.
-                   El tramo 35-65% va plano a proposito: es el sitio donde se
-                   lee, y ahi tiene que estar a plena luz y sin encoger.
-                   Solo con .active: la animacion fija opacity y anularia el
-                   .reveal{opacity:0} que tapa el bloque hasta que le toca.
-                   fill-mode none y no both: con both, el primer fotograma se
-                   aplica estando aun fuera del rango y se cargaba la entrada. */
-                .feature-block.active, .battle-modes-container.active,
-                .skills-grid, .intro-text.active {
-                    animation-name: blockFocus; animation-timing-function: linear;
-                    animation-fill-mode: none; animation-timeline: view();
-                    animation-range: cover;
-                }
-                /* El centro se queda en scale 1 y son los lados los que bajan:
-                   escalar por encima de 1 emborrona el texto justo donde se
-                   lee, y el contraste sale igual de grande poniendolo abajo. */
-                @keyframes blockFocus {
-                    0%   { opacity: .10; scale: .82; }
-                    35%  { opacity: 1;   scale: 1; }
-                    65%  { opacity: 1;   scale: 1; }
-                    100% { opacity: .10; scale: .82; }
-                }
             }
+        }
+
+        /* FOCO: el que esta en el centro se ve entero y a su tamaño, el resto
+           apagado y encogido. Es un cambio de ESTADO (o eres el del centro o
+           no) y no una rampa pegada al scroll: hacerlo gradual segun la
+           posicion, con todo creciendo y menguando a la vez, marea.
+           El apagado va con filter y no con opacity a proposito: opacity ya la
+           usa .reveal para tapar el bloque hasta que le toca entrar, y una
+           pisaria a la otra. El JS reparte .rv-focus (ver App.UI.init). */
+        .rv-focusable { filter: brightness(.4); scale: .86; }
+        .rv-focusable.rv-focus { filter: none; scale: 1; }
+        /* La transicion entra un frame despues de repartir las clases (.rv-anim,
+           lo pone el JS): si estuviera desde el principio, al cargar veriais
+           apagarse la pagina en 0.45s en vez de estar ya apagada. */
+        .rv-focusable.rv-anim { transition: filter .45s ease, scale .45s ease; }
+        @media (prefers-reduced-motion: reduce) {
+            .rv-focusable { filter: none; scale: 1; transition: none; }
         }
 
 
@@ -2230,6 +2224,46 @@ body.trailer-open #page-content{
                             });
                             rvFrameObserver.observe(block);
                         });
+                    }
+
+                    // FOCO: se enciende el que esta en el centro y se apagan los
+                    // demas (ver .rv-focusable en el CSS). Se vigila una banda
+                    // estrecha en mitad de la pantalla; el que la pisa toma el
+                    // relevo, y si no la pisa nadie se queda el ultimo, para que
+                    // nunca este todo apagado a la vez.
+                    // Se agrupa por bloque visual y no por pieza: el trailer y el
+                    // panel de mcap van lado a lado, encender solo uno de los dos
+                    // no tendria ningun sentido, asi que enfoca .main-layout.
+                    if (!rvReduced && 'IntersectionObserver' in window) {
+                        const focusables = [...document.querySelectorAll(
+                            '.main-layout, .intro-text, .feature-block, .battle-modes-container,' +
+                            '.skills-grid, #quest, #shop, #ranking'
+                        )];
+                        focusables.forEach(el => el.classList.add('rv-focusable'));
+                        let focused = null;
+                        const distAlCentro = e => {
+                            const r = e.boundingClientRect;
+                            return Math.abs((r.top + r.bottom) / 2 - window.innerHeight / 2);
+                        };
+                        const focusObs = new IntersectionObserver(entries => {
+                            const dentro = entries.filter(e => e.isIntersecting);
+                            if (!dentro.length) return;
+                            // Si entran varios de golpe, manda el mas centrado.
+                            const mejor = dentro.reduce((a, b) => distAlCentro(b) < distAlCentro(a) ? b : a);
+                            if (mejor.target === focused) return;
+                            if (focused) focused.classList.remove('rv-focus');
+                            focused = mejor.target;
+                            focused.classList.add('rv-focus');
+                        }, { rootMargin: '-45% 0px -45% 0px' });
+                        focusables.forEach(el => focusObs.observe(el));
+                        // La transicion, un frame despues: si no, lo primero que
+                        // se ve al abrir es la pagina apagandose. El setTimeout
+                        // es la red: si la pestaña abre en segundo plano no hay
+                        // frames, el rAF no llega y los cambios de foco se
+                        // quedarian secos para siempre.
+                        const armarFoco = () => focusables.forEach(el => el.classList.add('rv-anim'));
+                        requestAnimationFrame(() => requestAnimationFrame(armarFoco));
+                        setTimeout(armarFoco, 300);
                     }
                 },
                 setupVideoHover: () => {
