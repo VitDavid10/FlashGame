@@ -10,7 +10,8 @@
     "token:devnet": "node scripts/create-devnet-token.js",
     "pill:send": "node scripts/send-pill.js",
     "sol:send": "node scripts/send-sol.js",
-    "test:deposit": "node scripts/test-deposit.js"
+    "test:deposit": "node scripts/test-deposit.js",
+    "design:dump": "node scripts/dump-design-layout.js"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.8",
