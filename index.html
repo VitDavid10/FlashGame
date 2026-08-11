@@ -1618,7 +1618,7 @@ body.trailer-open #page-content{
             </div>
         </div>
 
-        <div class="intro-text reveal" style="text-align: center; margin-bottom: 80px;">
+        <div class="intro-text" style="text-align: center; margin-bottom: 80px;">
             <h2 class="holo-text" style="font-size: 42px; text-transform: uppercase;">EAT. GROW. PROFIT.</h2>
             <p style="max-width: 900px; margin: 0 auto; color: #888; line-height: 1.6; font-size: 18px;">PillWars brings back the addictive chaos of classic browser games like Agar.io. Enter the arena, devour smaller pills, and grow your mass to dominate the map. But size isn't everything; master your special abilities to outsmart your opponents. Learn more below:</p>
         </div>
@@ -2122,9 +2122,6 @@ body.trailer-open #page-content{
                     // esperando su propio turno, con un hueco en medio.
                     // [selector, variante, retardo base (ms), paso entre hermanos]
                     const RV_MAP = [
-                        ['.main-layout', [
-                            [':scope > *', 'up', 0, 20],
-                        ]],
                         ['.feature-block', [
                             ['.fb-num', 'fade', 0, 0],
                             ['.feature-text > *', 'text', 80, 100],
@@ -2139,13 +2136,16 @@ body.trailer-open #page-content{
                             [':scope > h2', 'up', 0, 0],
                             ['.skill-card', 'pop', 60, 55],
                         ]],
-                        ['.intro-text', [
-                            [':scope > h2, :scope > p', 'up', 0, 0],
-                            ['.full-width-img', 'curtain', 180, 0],
-                        ]],
                     ];
                     const rvBlocks = [...document.querySelectorAll('.reveal')];
                     const rvReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    // Ya a la vista sin haber scrolleado (pantallas bajas, zoom
+                    // del navegador...): que entre ya en vez de dejarlo esperando
+                    // a que cruce un centro al que ya esta pegado desde el load.
+                    const enViewport = el => {
+                        const r = el.getBoundingClientRect();
+                        return r.bottom > 0 && r.top < window.innerHeight;
+                    };
 
                     if (rvReduced || !('IntersectionObserver' in window)) {
                         rvBlocks.forEach(b => b.classList.add('active'));
@@ -2212,10 +2212,12 @@ body.trailer-open #page-content{
                                 // grupo); cuando esa cruza el centro, entran todas.
                                 if (items.length) {
                                     rvGroup.set(items[0], items);
-                                    rvObserver.observe(items[0]);
+                                    if (enViewport(items[0])) items.forEach(rvEnter);
+                                    else rvObserver.observe(items[0]);
                                 }
                             });
-                            rvFrameObserver.observe(block);
+                            if (enViewport(block)) block.classList.add('active');
+                            else rvFrameObserver.observe(block);
                         });
                     }
 
@@ -2224,30 +2226,19 @@ body.trailer-open #page-content{
                     // estrecha en mitad de la pantalla; el que la pisa toma el
                     // relevo, y si no la pisa nadie se queda el ultimo, para que
                     // nunca este todo apagado a la vez.
-                    // Se agrupa por bloque visual y no por pieza: el trailer y el
-                    // panel de mcap van lado a lado, encender solo uno de los dos
-                    // no tendria ningun sentido, asi que enfoca .main-layout.
+                    // El trailer, el panel de mcap y el EAT. GROW. PROFIT. quedan
+                    // fuera a proposito: van pegados al hero y siempre visibles,
+                    // apagarlos y encenderlos no aportaba nada.
                     if (!rvReduced && 'IntersectionObserver' in window) {
-                        // Unidades de foco: cajas que se encienden JUNTAS. El
-                        // trailer, el panel de mcap y el EAT. GROW. PROFIT. son
-                        // una sola cosa para quien lee, aunque en el DOM sean dos
-                        // hermanas; encender una y dejar la otra apagada partia
-                        // por la mitad algo que va seguido.
-                        const FOCUS_UNITS = [
-                            ['.main-layout', '.content-container > .intro-text'],
-                        ];
-                        // Y estas, cada una por su cuenta.
                         const FOCUS_SOLO = '.feature-block, .battle-modes-container, .skills-grid,' +
                                            '.skills-section .intro-text, #quest, #shop, #ranking';
                         const unidadDe = new WeakMap();
                         const focusables = [];
-                        const registrar = els => {
-                            const u = els.filter(Boolean);
-                            if (!u.length) return;
-                            u.forEach(e => { unidadDe.set(e, u); e.classList.add('rv-focusable'); focusables.push(e); });
-                        };
-                        FOCUS_UNITS.forEach(sels => registrar(sels.map(s => document.querySelector(s))));
-                        document.querySelectorAll(FOCUS_SOLO).forEach(e => { if (!unidadDe.has(e)) registrar([e]); });
+                        document.querySelectorAll(FOCUS_SOLO).forEach(e => {
+                            unidadDe.set(e, [e]);
+                            e.classList.add('rv-focusable');
+                            focusables.push(e);
+                        });
 
                         let focusUnit = null;
                         const distAlCentro = e => {
@@ -2266,6 +2257,18 @@ body.trailer-open #page-content{
                             focusUnit.forEach(e => e.classList.add('rv-focus'));
                         }, { rootMargin: '-45% 0px -45% 0px' });
                         focusables.forEach(el => focusObs.observe(el));
+                        // Si al cargar ya hay alguno a la vista sin scroll, que
+                        // se encienda ya en vez de esperar a que cruce la banda.
+                        const yaVisibles = focusables.filter(enViewport);
+                        if (yaVisibles.length) {
+                            const distElCentro = el => {
+                                const r = el.getBoundingClientRect();
+                                return Math.abs((r.top + r.bottom) / 2 - window.innerHeight / 2);
+                            };
+                            const mejor = yaVisibles.reduce((a, b) => distElCentro(b) < distElCentro(a) ? b : a);
+                            focusUnit = unidadDe.get(mejor);
+                            focusUnit.forEach(e => e.classList.add('rv-focus'));
+                        }
                         // La transicion, un frame despues: si no, lo primero que
                         // se ve al abrir es la pagina apagandose. El setTimeout
                         // es la red: si la pestaña abre en segundo plano no hay
