@@ -935,11 +935,14 @@ body.trailer-open #page-content{
                     animation-fill-mode: none; animation-timeline: view();
                     animation-range: cover;
                 }
+                /* El centro se queda en scale 1 y son los lados los que bajan:
+                   escalar por encima de 1 emborrona el texto justo donde se
+                   lee, y el contraste sale igual de grande poniendolo abajo. */
                 @keyframes blockFocus {
-                    0%   { opacity: .12; scale: .93; }
+                    0%   { opacity: .10; scale: .82; }
                     35%  { opacity: 1;   scale: 1; }
                     65%  { opacity: 1;   scale: 1; }
-                    100% { opacity: .12; scale: .93; }
+                    100% { opacity: .10; scale: .82; }
                 }
             }
         }
@@ -2227,47 +2230,6 @@ body.trailer-open #page-content{
                             });
                             rvFrameObserver.observe(block);
                         });
-
-                        // Encuadre al parar de scrollear. Antes esto era
-                        // scroll-snap de CSS y salia forzado: te reajustaba
-                        // SIEMPRE, tambien al volver hacia arriba, y no te dejaba
-                        // pararte donde tu querias. Aqui solo termina de encuadrar
-                        // un bloque si ya lo tenias casi encuadrado, y UNA vez por
-                        // bloque: pasado ese, ya no te vuelve a mover en toda la
-                        // sesion. No es para colocarte, es para rematar el gesto.
-                        if (window.innerWidth >= 1200) {
-                            const snapDone = new WeakSet();
-                            let snapping = false;
-                            const snapTargets = [...document.querySelectorAll('.feature-block, .battle-modes-container')];
-                            const trySnap = () => {
-                                if (snapping) return;
-                                const mid = window.innerHeight / 2;
-                                let best = null, bestDist = Infinity;
-                                for (const el of snapTargets) {
-                                    const r = el.getBoundingClientRect();
-                                    // uno mas alto que la pantalla no se puede centrar
-                                    if (snapDone.has(el) || r.height > window.innerHeight) continue;
-                                    const d = Math.abs((r.top + r.bottom) / 2 - mid);
-                                    if (d < bestDist) { bestDist = d; best = el; }
-                                }
-                                if (!best) return;
-                                // Ya centrado: se da por hecho y no se toca mas.
-                                if (bestDist < 12) { snapDone.add(best); return; }
-                                // Lejos: te paraste ahi porque quisiste.
-                                if (bestDist > window.innerHeight * 0.12) return;
-                                snapDone.add(best);
-                                snapping = true;
-                                const r = best.getBoundingClientRect();
-                                window.scrollTo({ top: window.scrollY + (r.top + r.bottom) / 2 - mid, behavior: 'smooth' });
-                                // El propio scroll suave dispara otro scrollend.
-                                setTimeout(() => { snapping = false; }, 800);
-                            };
-                            if ('onscrollend' in window) {
-                                window.addEventListener('scrollend', trySnap);
-                            } else {
-                                let t; window.addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(trySnap, 150); });
-                            }
-                        }
                     }
                 },
                 setupVideoHover: () => {
