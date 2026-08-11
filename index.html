@@ -46,6 +46,26 @@
             --glass-bg: rgba(20, 20, 20, 0.6); 
             --glass-border: rgba(255, 255, 255, 0.1);
             --navbar-height: 80px;
+            /* DOS medidas, no una. La ancha es para lo que lleva imagen o video
+               (bloques de mecanica, BATTLE MODES, skills, trailer); la estrecha
+               para los paneles de datos de abajo (quests, ranking, shop), que
+               con la ancha se descuadran: .dq-grid es auto-fit minmax(280px) y
+               a 1200 pasa de 3 columnas a 4, dejando las 5 quests en 4+1 en vez
+               de 3+2. Antes cada bloque repetia su numero suelto (1200 / 980 /
+               700), asi que no habia forma de moverlos a la vez. Solo se cambian
+               aqui y en el @media de 1500px. */
+            --contenido: 1200px;
+            --contenido-panel: 980px;
+            --gutter: 20px;
+            /* Gris del texto secundario. Los que habia (#444, #555, #666) dan
+               2.09, 2.73 y 3.55 a 1 contra el fondo #050505: por debajo del 4.5
+               que pide WCAG AA para texto normal, y el #444 ni llega a la mitad.
+               #888 da 5.75 y ya se usaba en la pagina, asi que no mete un tono
+               nuevo en la paleta. Los #444/#555 que quedan sueltos por el CSS son
+               DECORACION (el numero gigante de fondo de cada quest, el filo
+               izquierdo de las tarjetas, el relleno de las barras de progreso):
+               esos no son texto y no les aplica el minimo. */
+            --txt-mute: #888;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
@@ -381,7 +401,7 @@
 
         .content-container { padding: 100px 20px; display: flex; flex-direction: column; align-items: center; z-index: 5; position: relative; }
         
-        .main-layout { display: flex; width: 100%; max-width: 1200px; gap: 30px; margin-bottom: 80px; flex-wrap: wrap; }
+        .main-layout { display: flex; width: 100%; max-width: var(--contenido); gap: 30px; margin-bottom: 80px; flex-wrap: wrap; }
 
         /* --- ESTILOS MODO CINE (TRAILER) --- */
         .trailer-box { 
@@ -505,14 +525,14 @@ body.trailer-open #page-content{
            automatico y cada fila vuelve a medir por su contenido. */
         .widget-row { flex: 1; background: rgba(0,0,0,0.4); padding: 12px 16px; border-radius: 8px; text-align: center; border-left: 4px solid var(--primary); display: flex; flex-direction: column; justify-content: center; }
         .widget-row.gold { border-left-color: var(--gold); }
-        .widget-title { color: #666; font-size: 11px; letter-spacing: 2px; font-weight: 800; text-transform: uppercase; }
+        .widget-title { color: var(--txt-mute); font-size: 11px; letter-spacing: 2px; font-weight: 800; text-transform: uppercase; }
         .widget-val { font-size: 18px; font-weight: 700; color: #fff; margin-top: 4px; }
         .widget-val.live { color: var(--primary); }
         /* MONEY EARNED: la fila ENTERA es un enlace al explorador de la wallet que
            paga los premios, para que el reparto se pueda auditar desde fuera. */
         a.widget-row { text-decoration: none; transition: 0.2s ease; }
         a.widget-row:hover { background: rgba(255,204,0,0.07); box-shadow: 0 0 18px rgba(255,204,0,0.12); }
-        .widget-hint { font-size: 9px; letter-spacing: 2px; color: #5a5a5a; margin-top: 5px; text-transform: uppercase; font-weight: 800; }
+        .widget-hint { font-size: 9px; letter-spacing: 2px; color: var(--txt-mute); margin-top: 5px; text-transform: uppercase; font-weight: 800; }
         a.widget-row:hover .widget-hint { color: var(--gold); }
 
         /* Los tres bloques de mecanica usaban EXACTAMENTE el mismo marco (caja
@@ -527,7 +547,7 @@ body.trailer-open #page-content{
             position: relative; overflow: hidden;
             display: flex; gap: 50px; align-items: center; margin-bottom: 40px; padding: 60px; border-radius: 0;
             background: linear-gradient(135deg, var(--fb-accent-soft), rgba(10, 10, 10, 0.55) 45%);
-            border: 2px solid var(--fb-accent); width: 100%; max-width: 1200px;
+            border: 2px solid var(--fb-accent); width: 100%; max-width: var(--contenido);
             box-shadow: 6px 6px 0 rgba(0,0,0,0.55);
             backdrop-filter: blur(2px);
         }
@@ -609,7 +629,7 @@ body.trailer-open #page-content{
         .battle-modes-container {
             border: 2px solid var(--primary); background: rgba(15, 15, 15, 0.3);
             border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55);
-            padding: 60px; text-align: center; margin: 80px 0; width: 100%; max-width: 1200px;
+            padding: 60px; text-align: center; margin: 80px 0; width: 100%; max-width: var(--contenido);
             backdrop-filter: blur(2px);
         }
         .battle-modes-container h2 { font-family: 'Russo One'; font-size: 52px; color: #fff; margin: 0; text-transform: uppercase; }
@@ -644,8 +664,14 @@ body.trailer-open #page-content{
         .copy-tag { background: var(--primary); color: #000; font-size: 10px; font-weight: 900; padding: 4px 10px; border-radius: 4px; flex-shrink: 0;}
 
         /* SKILLS SECTION */
-        .skills-section { width: 100%; max-width: 1200px; margin: 0 auto; text-align: center; }
-        .skills-grid { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 50px; }
+        .skills-section { width: 100%; max-width: var(--contenido); margin: 0 auto; text-align: center; }
+        /* Rejilla explicita en vez de flex-wrap: con el wrap, en cuanto la fila
+           se quedaba corta por poco caian SIETE arriba y GAMBLE sola debajo. Con
+           un numero fijo de columnas por tramo las ocho se reparten siempre en
+           filas iguales (8, 4+4, 2+2+2+2) y no puede quedar ninguna huerfana. */
+        .skills-grid { display: grid; grid-template-columns: repeat(8, auto); justify-content: center; gap: 12px; margin-top: 50px; }
+        @media (max-width: 1100px) { .skills-grid { grid-template-columns: repeat(4, auto); } }
+        @media (max-width: 620px)  { .skills-grid { grid-template-columns: repeat(2, auto); } }
         
         .skill-card { 
             background: rgba(10, 10, 10, 0.8); border: 2px solid #222; width: 110px; height: 110px; 
@@ -662,7 +688,7 @@ body.trailer-open #page-content{
            pixel art, y pixelated evita que el navegador lo difumine al
            reescalarlo desde EDIT (clave skillIcon, comun a las 8). */
         .skill-icon { width: 64px; height: 64px; margin-bottom: 12px; image-rendering: pixelated; }
-        .skill-name { font-size: 10px; font-weight: 900; color: #666; font-family: 'Russo One'; letter-spacing: 1px; }
+        .skill-name { font-size: 10px; font-weight: 900; color: var(--txt-mute); font-family: 'Russo One'; letter-spacing: 1px; }
         
         /* --- TOOLTIP FLOTANTE --- */
         .skill-tooltip {
@@ -723,15 +749,24 @@ body.trailer-open #page-content{
            que se gana va al VIDEO, no al texto: el parrafo se queda en sus
            ~60 caracteres por linea (pasado eso se lee peor) y el video sube
            de 466 a ~660px. */
+        /* El PLAY NOW de la navbar lleva `translate: -694px` desde EDIT LAYOUT:
+           un desplazamiento en px fijos que lo coloca bien en pantalla ancha,
+           pero que al estrecharse la ventana lo arrastra sobre el logo (a 1440
+           lo pisa 26px; a 961, los 219 enteros — encima de PILLWARS). Por debajo
+           de 1500 se anula y vuelve a su sitio del flex, junto a CONNECT, donde
+           no puede chocar con nada. Medido: a partir de 1467 ya no habia solape,
+           1500 es el corte que ya usa la hoja mas abajo. */
+        @media (max-width: 1499px) { #navPlayNow { translate: none !important; } }
+
         @media (min-width: 1500px) {
-            .feature-block, .battle-modes-container, .skills-section { max-width: 1440px; }
+            :root { --contenido: 1440px; }
             .feature-block { gap: 70px; }
             .feature-text { flex: 1; }
             .feature-images { flex: 1.15; }
             .full-width-img { max-width: 1240px; }
         }
 
-        .section-container { padding: 100px 20px; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; position: relative; }
+        .section-container { padding: 100px var(--gutter); border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; position: relative; }
         /* Estos fondos eran colores planos y OPACOS: tapaban la cuadricula pixel
            del body, que es lo que da textura al resto de la pagina, y por eso las
            secciones de abajo se veian sosas comparadas con el hero. Ahora son un
@@ -746,7 +781,7 @@ body.trailer-open #page-content{
         .lb-pag button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
         .lb-pag button.active { background: var(--primary); color: #04150c; border-color: var(--primary); }
         .lb-pag button:disabled { opacity: 0.35; cursor: default; }
-        .lb-pag span { color: #555; padding: 0 2px; }
+        .lb-pag span { color: var(--txt-mute); padding: 0 2px; }
         /* Global Elite compacto: que las 10 filas + paginación quepan sin scroll */
         #ranking { padding-top: 66px; padding-bottom: 40px; }
         #ranking .section-title { margin-bottom: 22px; }
@@ -759,12 +794,12 @@ body.trailer-open #page-content{
         /* Caja "proximamente" del shop: esquina recta y dorado, en linea con el
            resto de tarjetas. Antes iba en rojo (--accent) sobre el fondo morado,
            dos colores que no estan en la paleta de la marca. */
-        .placeholder-box { width: 100%; max-width: 700px; height: 300px; border: 2px dashed rgba(255,204,0,0.35); background: rgba(0,0,0,0.4); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #6a5a2a; font-family: 'Russo One'; letter-spacing: 2px; }
+        .placeholder-box { width: 100%; max-width: var(--contenido-panel); height: 300px; border: 2px dashed rgba(255,204,0,0.35); background: rgba(0,0,0,0.4); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #6a5a2a; font-family: 'Russo One'; letter-spacing: 2px; }
 
         /* Leaderboard "Global Elite" */
-        .lb-wrap { width: 100%; max-width: 980px; background: rgba(10,10,10,0.7); border: 1px solid rgba(0,255,136,0.18); border-radius: 18px; padding: 18px 20px 22px; box-shadow: 0 10px 50px rgba(0,0,0,0.5); }
+        .lb-wrap { width: 100%; max-width: var(--contenido-panel); background: rgba(10,10,10,0.7); border: 1px solid rgba(0,255,136,0.18); border-radius: 18px; padding: 18px 20px 22px; box-shadow: 0 10px 50px rgba(0,0,0,0.5); }
         .lb-head, .lb-row { display: grid; grid-template-columns: 64px 1.5fr 1fr 0.7fr 0.8fr 0.7fr 0.7fr 1fr; gap: 10px; align-items: center; padding: 11px 14px; font-family: 'Inter', sans-serif; font-size: 14px; }
-        .lb-head { color: #666; font-family: 'Russo One'; font-weight: 400; font-size: 11px; letter-spacing: 2px; border-bottom: 1px solid #1c1c1c; margin-bottom: 4px; }
+        .lb-head { color: var(--txt-mute); font-family: 'Russo One'; font-weight: 400; font-size: 11px; letter-spacing: 2px; border-bottom: 1px solid #1c1c1c; margin-bottom: 4px; }
         .lb-row { border-bottom: 1px solid #141414; transition: 0.2s; }
         .lb-row:hover { background: rgba(0,255,136,0.04); }
         .lb-c-pos { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: 'Russo One'; font-size: 14px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #999; }
@@ -782,22 +817,22 @@ body.trailer-open #page-content{
         .dq-tag { display: inline-block; font-family: 'Russo One', sans-serif; font-size: 11px; letter-spacing: 4px; color: var(--primary); padding: 6px 14px; border: 2px solid var(--primary); border-radius: 0; text-transform: uppercase; background: rgba(0,255,136,0.08); box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
         .dq-subtitle { color: #888; font-size: 15px; margin: 10px 0 30px; text-align: center; max-width: 640px; }
         .dq-subtitle b { color: var(--primary); font-weight: 600; }
-        .dq-summary { width: 100%; max-width: 980px; background: rgba(10,15,10,0.7); border: 2px solid rgba(0,255,136,0.35); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55); padding: 22px 26px; margin-bottom: 26px; display: flex; align-items: center; gap: 22px; }
+        .dq-summary { width: 100%; max-width: var(--contenido-panel); background: rgba(10,15,10,0.7); border: 2px solid rgba(0,255,136,0.35); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55); padding: 22px 26px; margin-bottom: 26px; display: flex; align-items: center; gap: 22px; }
         .dq-ring { position: relative; width: 90px; height: 90px; flex: none; }
         .dq-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
         #dq-ring-fill { filter: drop-shadow(0 0 5px rgba(0,255,136,0.75)); }
         .dq-ring .num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Russo One'; }
         .dq-ring .num span:first-child { font-size: 24px; color: var(--primary); }
-        .dq-ring .num span:first-child em { font-style: normal; color: #555; }
-        .dq-ring .num span:last-child { font-size: 9px; color: #666; letter-spacing: 1px; }
+        .dq-ring .num span:first-child em { font-style: normal; color: #666; }
+        .dq-ring .num span:last-child { font-size: 9px; color: var(--txt-mute); letter-spacing: 1px; }
         .dq-summary .info { flex: 1; }
         .dq-summary .info .ti { font-family: 'Russo One'; color: #fff; font-size: 18px; letter-spacing: 1px; margin-bottom: 4px; }
         .dq-summary .info .sub { color: #888; font-size: 13px; }
         .dq-summary .info .sub.ok { color: var(--primary); }
-        .dq-btn { flex: none; font-family: 'Russo One'; font-size: 13px; letter-spacing: 1px; padding: 13px 24px; border-radius: 0; text-transform: uppercase; cursor: not-allowed; background: #222; border: 2px solid #333; color: #666; transition: 0.2s; text-decoration: none; display: inline-block; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
+        .dq-btn { flex: none; font-family: 'Russo One'; font-size: 13px; letter-spacing: 1px; padding: 13px 24px; border-radius: 0; text-transform: uppercase; cursor: not-allowed; background: #222; border: 2px solid #333; color: var(--txt-mute); transition: 0.2s; text-decoration: none; display: inline-block; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
         .dq-btn.unlocked { background: var(--primary); border-color: var(--primary); color: #04150c; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), 0 0 20px rgba(0,255,136,0.3); }
         .dq-btn.unlocked:hover { filter: brightness(1.1); }
-        .dq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; width: 100%; max-width: 980px; }
+        .dq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; width: 100%; max-width: var(--contenido-panel); }
         .dq-card { background: rgba(10,15,10,0.7); border: 2px solid #1a1a1a; border-left: 4px solid #555; border-radius: 0; padding: 18px 20px; transition: 0.25s; cursor: default; box-shadow: 3px 3px 0 rgba(0,0,0,0.5); }
         .dq-card:hover { border-color: var(--primary); background: #111; box-shadow: 3px 3px 0 rgba(0,0,0,0.5), 0 0 20px rgba(0,255,136,0.1); transform: translateY(-2px); }
         .dq-card.done:hover { box-shadow: 3px 3px 0 rgba(0,0,0,0.5), 0 0 22px rgba(0,255,136,0.18); }
@@ -805,7 +840,7 @@ body.trailer-open #page-content{
         .dq-card.done { border-color: rgba(0,255,136,0.35); border-left-color: var(--primary); }
         .dq-card.prog { border-left-color: #ffce3d; }
         .dq-card-h { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
-        .dq-num { font-family: 'Russo One'; font-size: 26px; color: #444; line-height: 1; letter-spacing: 1px; min-width: 38px; }
+        .dq-num { font-family: 'Russo One'; font-size: 26px; color: #666; line-height: 1; letter-spacing: 1px; min-width: 38px; }
         .dq-card.done .dq-num { color: var(--primary); }
         .dq-card.prog .dq-num { color: #ffce3d; }
         .dq-title { font-family: 'Russo One'; color: #fff; font-size: 13px; letter-spacing: 1px; line-height: 1.3; margin-bottom: 4px; }
@@ -814,13 +849,13 @@ body.trailer-open #page-content{
         .dq-bar i { display: block; height: 100%; background: #555; transition: width 0.4s; }
         .dq-card.done .dq-bar i { background: var(--primary); }
         .dq-card.prog .dq-bar i { background: #ffce3d; }
-        .dq-foot { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: #666; font-family: 'Russo One'; letter-spacing: 1px; }
+        .dq-foot { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--txt-mute); font-family: 'Russo One'; letter-spacing: 1px; }
         .dq-card.done .dq-foot .state { color: var(--primary); }
         .dq-card.prog .dq-foot .state { color: #ffce3d; }
         .lb-c-deaths, .lb-c-kd, .lb-c-games { color: #ccc; font-variant-numeric: tabular-nums; }
         .lb-c-country { color: #ccc; }
         .lb-flag { font-size: 18px; margin-right: 7px; vertical-align: -2px; }
-        .lb-empty { padding: 50px 0; text-align: center; color: #555; font-family: 'Russo One'; font-size: 14px; letter-spacing: 2px; }
+        .lb-empty { padding: 50px 0; text-align: center; color: var(--txt-mute); font-family: 'Russo One'; font-size: 14px; letter-spacing: 2px; }
         @media (max-width: 720px) {
             .lb-head { display: none; }
             .lb-row { grid-template-columns: 56px 1fr; gap: 6px; }
@@ -829,10 +864,10 @@ body.trailer-open #page-content{
         }
 
         footer { 
-            padding: 60px; text-align: center; background: #020202; border-top: none; font-size: 12px; color: #444; 
+            padding: 60px; text-align: center; background: #020202; border-top: none; font-size: 12px; color: var(--txt-mute); 
             position: relative; z-index: 50; 
         }
-        footer a { color: #666; margin: 0 15px; text-decoration: none; font-weight: 800; display: inline-block; padding: 5px;}
+        footer a { color: var(--txt-mute); margin: 0 15px; text-decoration: none; font-weight: 800; display: inline-block; padding: 5px;}
         footer a:hover { color: var(--primary); }
 
         /* ── REVEAL AL SCROLL ──────────────────────────────────────────────
@@ -1060,6 +1095,51 @@ body.trailer-open #page-content{
             :root { --navbar-height: auto; } /* Altura automática en móvil */
             body { cursor: auto !important; }
             #custom-cursor { display: none !important; }
+
+            /* ===== HERO EN MOVIL =====
+               El sitio de cada pieza del hero sale de EDIT LAYOUT, que guarda
+               desplazamientos en PIXELES FIJOS medidos en un monitor grande y
+               los aplica igual a cualquier pantalla. En 375px de ancho eso
+               dejaba el documento en 449px (74 de scroll horizontal, tapado por
+               el overflow-x:hidden del body): el titulo se pintaba a 584px de
+               ancho empezando en x=-86 (recortado por los dos lados) y la
+               pildora PICK ME! acababa en x=-385, entera fuera de pantalla.
+               Aqui se anulan esos desplazamientos y cada pieza se mide en % del
+               ancho disponible. El !important es necesario: el layout llega como
+               estilo INLINE desde /api/landing-layout y no hay forma de ganarle
+               desde la hoja. */
+            #heroTitleWrap, #heroPlayNow, #heroCaSign, #heroCaWrap, #navPlayNow {
+                translate: none !important; scale: 1 !important;
+            }
+            .hero-main-content { scale: 1 !important; margin-top: 30px; padding: 0 14px; }
+            /* La pildora jugable pide raton: en tactil no se puede llevar, y su
+               sitio esta calculado en px de escritorio. Fuera en movil. */
+            #heroPickMe { display: none !important; }
+            /* height fija + width auto -> a 120px de alto el titulo pide 592px
+               de ancho pase lo que pase. Al reves (ancho al 100%, alto libre)
+               entra siempre y conserva la proporcion. */
+            body.pixel-pack .hero-main-content:not(.no-img) .hero-img {
+                height: auto !important; width: 100% !important;
+            }
+            .hero-play { height: auto; width: min(70vw, 260px); }
+            .hero-play-row { gap: 0; margin-top: 18px; }
+            /* El contrato son 44 caracteres en una fuente monoespaciada: en una
+               sola linea no cabe en ningun movil. Se deja partir. */
+            .hero-ca { max-width: 100%; flex-wrap: wrap; justify-content: center; gap: 8px; }
+            .hero-ca .ca-text { white-space: normal; word-break: break-all; font-size: 9px; }
+
+            /* La OTRA caja del contrato (la de mitad de pagina, .ca-box) tenia
+               `white-space: nowrap` con `overflow-x: auto`: los 44 caracteres
+               pedian 386px y en 375 de ancho eso era lo que estiraba el
+               documento hasta 449 (74px de scroll lateral en toda la pagina,
+               escondido por el overflow-x:hidden del body). Partiendola cabe. */
+            .ca-box { max-width: 100%; }
+            .ca-text { white-space: normal; word-break: break-all; font-size: 12px; overflow-x: visible; }
+            /* La fila del resumen de quests es flex en una linea: el boton
+               LOCKED, con `flex: none`, se salia 23px por la derecha. */
+            .dq-summary { flex-wrap: wrap; justify-content: center; text-align: center; }
+            .dq-btn { flex: none; }
+            .hero-ca-sign { max-width: 100%; white-space: normal; font-size: 10px; }
             
             .navbar { 
                 flex-direction: column; 
@@ -1165,7 +1245,15 @@ body.trailer-open #page-content{
            titulo colapsado y daba el tiron al terminar de bajar los 385 KB.
            Con la proporcion declarada el hueco esta hecho desde el primer
            fotograma y la imagen aparece dentro, sin mover nada. */
-        .hero-img, .bn-img { display: none; image-rendering: pixelated; }
+        /* Sin pixelated, por el MISMO motivo que .hero-play (ver su comentario):
+           estos dos PNG no son rejilla dura, son arte "estilo pixel" con los
+           bordes suavizados — medido, el 85% de sus rachas de color son de 1px.
+           Y encima se pintan MUY por debajo de su tamaño nativo (hero-title.png
+           es de 1200px de ancho y se ve a ~490), asi que el vecino mas cercano
+           de `pixelated` tiene que tirar 3 de cada 5 columnas: los bordes salen
+           dentados y el halo a bandas. El escalado normal del navegador es el
+           que corresponde aqui. */
+        .hero-img, .bn-img { display: none; image-rendering: auto; }
         .hero-img { aspect-ratio: 1200 / 243; }   /* hero-title.png */
         .bn-img   { aspect-ratio: 640 / 97; }     /* brand.png (navbar) */
         /* --pw-glow: multiplicador del radio de los dos halos del titulo,
@@ -2657,19 +2745,28 @@ body.trailer-open #page-content{
                     } catch (e) { set('Net Err'); }
                 },
                 updateTicker: async () => {
-                    // En devnet no hay mercado (DexScreener es de mainnet): solo dejamos "$PILL".
-                    // Las filas de mercado se quedaban en "Loading..." para siempre,
-                    // que con el panel de 4 stats se lee como si estuviera roto.
-                    if (App.Config.Cluster === 'devnet') {
+                    // Sin datos de mercado la barra se quedaba con el "Loading
+                    // Market Data..." del HTML PARA SIEMPRE — y es lo primero
+                    // que se lee al entrar, en todas las pantallas, asi que la
+                    // web entera parecia a medio cargar. Pasaba por tres vias
+                    // distintas (devnet, token sin par en DexScreener, y fallo
+                    // de red) y ninguna tocaba el ticker. Ahora las tres pasan
+                    // por aqui: si no hay mercado que enseñar, no se enseña la
+                    // barra. El hueco no queda cojo porque .ticker-wrap es
+                    // position:fixed y el offset de los anclas se calcula con
+                    // su altura real (0 al ocultarse).
+                    const sinMercado = () => {
+                        if (DOM.tickerWrap) DOM.tickerWrap.style.display = 'none';
                         if (DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span>`;
                         if (DOM.widgetMcap) DOM.widgetMcap.innerText = '—';
                         if (DOM.widgetVol) DOM.widgetVol.innerText = '—';
-                        return;
-                    }
+                    };
+                    // En devnet no hay mercado (DexScreener es de mainnet).
+                    if (App.Config.Cluster === 'devnet') { sinMercado(); return; }
                     try {
                         const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${App.Config.Token}`);
                         const data = await res.json();
-                        if (!data.pairs || data.pairs.length === 0) return;
+                        if (!data.pairs || data.pairs.length === 0) { sinMercado(); return; }
 
                         const p = data.pairs[0];
                         const price = parseFloat(p.priceUsd).toFixed(6);
@@ -2690,8 +2787,9 @@ body.trailer-open #page-content{
                                       <div class="ticker-item">VOL: <b style="color:gold;">${vol}</b></div>
                                       <div class="ticker-item">TRENDING #1</div>`;
                         
-                        DOM.ticker.innerHTML = item + item + item; 
-                    } catch (e) { console.log("Market data unavailable"); }
+                        DOM.ticker.innerHTML = item + item + item;
+                        if (DOM.tickerWrap) DOM.tickerWrap.style.display = '';
+                    } catch (e) { sinMercado(); console.log("Market data unavailable"); }
                 }
             }
         };
@@ -2787,7 +2885,7 @@ function toggleTrailerMode() {
 
             function render(quests) {
                 if (!Array.isArray(quests) || !quests.length) {
-                    grid.innerHTML = "<div style=\"color:#555;font-family:Russo One,sans-serif;font-size:13px;letter-spacing:2px;padding:30px 0;text-align:center;\">LOADING QUESTS...</div>";
+                    grid.innerHTML = "<div style=\"color:#888;font-family:Russo One,sans-serif;font-size:13px;letter-spacing:2px;padding:30px 0;text-align:center;\">LOADING QUESTS...</div>";
                     return;
                 }
                 var completed = 0;
@@ -2886,7 +2984,7 @@ function toggleTrailerMode() {
                         <span class="lb-c-deaths">${p.muertes.toLocaleString('en-US')}</span>
                         <span class="lb-c-kd">${kd}</span>
                         <span class="lb-c-games">${p.partidas.toLocaleString('en-US')}</span>
-                        <span class="lb-c-country" title="${esc(p.paisName || '')}"><span class="lb-flag">${flag(p.paisCode)}</span>${esc(p.paisCode || '??')}</span>
+                        <span class="lb-c-country" title="${esc(p.paisName || p.paisCode || '')}"><span class="lb-flag">${flag(p.paisCode)}</span></span>
                     </div>`;
                 }).join('');
                 renderPag(totalPag);
