@@ -918,20 +918,46 @@ body.trailer-open #page-content{
                     to   { scale: 1.10; translate: 0 3.5%; }
                 }
 
-                /* Y no se cortan en seco al salir por arriba: en el ultimo tramo,
-                   con el bloque ya leido, se apagan y se van al fondo.
+                /* FOCO. El bloque que tienes en el centro se ve entero y a su
+                   tamaño; los de arriba y abajo se apagan y encogen, como el
+                   carrusel de las apps del movil. Al ir atado a la POSICION y no
+                   al tiempo esto es reversible solo: sales por arriba y el
+                   bloque se apaga, vuelves y se enciende otra vez.
+                   El tramo 35-65% va plano a proposito: es el sitio donde se
+                   lee, y ahi tiene que estar a plena luz y sin encoger.
                    Solo con .active: la animacion fija opacity y anularia el
-                   .reveal{opacity:0} que tapa el bloque hasta que el JS lo suelta. */
-                /* fill-mode none y no both: con both, el primer fotograma
-                   (opacity 1) se aplica ya fuera del rango y se cargaba la
-                   transicion de entrada del marco. Sin fill, la animacion solo
-                   manda dentro de su tramo de salida. */
-                .feature-block.active, .battle-modes-container.active, .skills-grid {
-                    animation-name: blockExit; animation-timing-function: linear;
+                   .reveal{opacity:0} que tapa el bloque hasta que le toca.
+                   fill-mode none y no both: con both, el primer fotograma se
+                   aplica estando aun fuera del rango y se cargaba la entrada. */
+                .feature-block.active, .battle-modes-container.active,
+                .skills-grid, .intro-text.active {
+                    animation-name: blockFocus; animation-timing-function: linear;
                     animation-fill-mode: none; animation-timeline: view();
-                    animation-range: exit 55% exit 100%;
+                    animation-range: cover;
                 }
-                @keyframes blockExit { from { opacity: 1; scale: 1; } to { opacity: .25; scale: .965; } }
+                @keyframes blockFocus {
+                    0%   { opacity: .12; scale: .93; }
+                    35%  { opacity: 1;   scale: 1; }
+                    65%  { opacity: 1;   scale: 1; }
+                    100% { opacity: .12; scale: .93; }
+                }
+            }
+        }
+
+        /* Para no quedarte a medias entre dos bloques: el scroll se acomoda solo
+           al mas cercano. proximity y NO mandatory — con mandatory no podrias
+           pararte donde tu quisieras; asi puedes, y si no lo haces te centra el
+           bloque. Va aparte del @supports de arriba: el snap no tiene nada que
+           ver con las animaciones por scroll y funciona en todos.
+           Solo en desktop: en movil los bloques se apilan y pasan de largo la
+           altura de la pantalla, centrarlos los cortaria por los dos lados. */
+        @media (min-width: 1200px) and (prefers-reduced-motion: no-preference) {
+            html { scroll-snap-type: y proximity; }
+            .feature-block, .battle-modes-container { scroll-snap-align: center; }
+            /* Si la ventana es mas baja que el bloque largo, deja de centrarlo:
+               no cabe, y el snap solo conseguiria cortarlo. */
+            @media (max-height: 740px) {
+                .battle-modes-container { scroll-snap-align: none; }
             }
         }
 
