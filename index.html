@@ -854,9 +854,9 @@ body.trailer-open #page-content{
 
         .rv { opacity: 0; }
         .rv-in {
-            animation-name: rvUp; animation-duration: .85s; animation-fill-mode: both;
+            animation-name: rvUp; animation-duration: .25s; animation-fill-mode: both;
             animation-delay: var(--rv-d, 0ms);
-            animation-timing-function: cubic-bezier(.16, 1, .3, 1); /* expo-out */
+            animation-timing-function: cubic-bezier(.25, .46, .45, .94); /* ease-out suave */
             animation-timeline: auto; /* la entrada va por tiempo, no por scroll */
             will-change: opacity, translate, scale, filter;
         }
@@ -877,9 +877,9 @@ body.trailer-open #page-content{
         /* Telon: el gameplay grande del final se levanta de abajo arriba. */
         @keyframes rvCurtain { from { opacity: 0; clip-path: inset(100% 0 0 0); scale: 1.04; } to { opacity: 1; clip-path: inset(0 0 0 0); scale: 1; } }
 
-        .rv-in[data-rv="fade"]    { animation-name: rvFade; animation-duration: .9s; }
-        .rv-in[data-rv="pop"]     { animation-name: rvPop; animation-duration: .7s; animation-timing-function: cubic-bezier(.34, 1.56, .64, 1); }
-        .rv-in[data-rv="curtain"] { animation-name: rvCurtain; animation-duration: 1s; }
+        .rv-in[data-rv="fade"]    { animation-name: rvFade; animation-duration: .25s; }
+        .rv-in[data-rv="pop"]     { animation-name: rvPop; animation-duration: .25s; animation-timing-function: cubic-bezier(.25, .46, .45, .94); }
+        .rv-in[data-rv="curtain"] { animation-name: rvCurtain; animation-duration: .25s; }
         /* En los bloques de mecanica cada mitad entra desde SU lado; en los
            .reverse (video a la izquierda, texto a la derecha) se cambian. */
         .feature-block:not(.reverse) .rv-in[data-rv="text"]  { animation-name: rvLeft; }
