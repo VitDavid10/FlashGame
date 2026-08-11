@@ -842,8 +842,12 @@ body.trailer-open #page-content{
            aparecer entero de golpe. Al terminar cada animacion el JS suelta
            las clases y el elemento vuelve a su estado natural, con lo que los
            :hover con transform/transition de siempre siguen intactos. */
-        .reveal { opacity: 0; }
-        .reveal.active { opacity: 1; }
+        /* El bloque entero (marco, borde, fondo) tampoco esta ahi de entrada:
+           destaparlos todos al cargar dejaba cajas vacias esperando por
+           delante, que parecen un fallo de carga. Entra el marco primero y
+           sus piezas van cayendo despues, cada una a su altura. */
+        .reveal { opacity: 0; scale: .99; transition: opacity .5s ease-out, scale .5s ease-out; }
+        .reveal.active { opacity: 1; scale: 1; }
 
         .rv { opacity: 0; }
         .rv-in {
@@ -918,9 +922,13 @@ body.trailer-open #page-content{
                    con el bloque ya leido, se apagan y se van al fondo.
                    Solo con .active: la animacion fija opacity y anularia el
                    .reveal{opacity:0} que tapa el bloque hasta que el JS lo suelta. */
+                /* fill-mode none y no both: con both, el primer fotograma
+                   (opacity 1) se aplica ya fuera del rango y se cargaba la
+                   transicion de entrada del marco. Sin fill, la animacion solo
+                   manda dentro de su tramo de salida. */
                 .feature-block.active, .battle-modes-container.active, .skills-grid {
                     animation-name: blockExit; animation-timing-function: linear;
-                    animation-fill-mode: both; animation-timeline: view();
+                    animation-fill-mode: none; animation-timeline: view();
                     animation-range: exit 55% exit 100%;
                 }
                 @keyframes blockExit { from { opacity: 1; scale: 1; } to { opacity: .25; scale: .965; } }
@@ -2162,10 +2170,26 @@ body.trailer-open #page-content{
                                 // animationend, el elemento se quedaria invisible.
                                 setTimeout(() => done({ target: el }), 2500);
                                 el.classList.add('rv-in');
+                                // Y su bloque, por si el observador del marco se
+                                // hubiese quedado atras: una pieza nunca puede
+                                // entrar dentro de un contenedor todavia tapado.
+                                const own = el.closest('.reveal');
+                                if (own) own.classList.add('active');
                             });
                             // -35% abajo: la pieza no entra al asomar por el borde,
                             // sino cuando ya esta en el tercio bueno de la pantalla.
                         }, { rootMargin: '0px 0px -35% 0px' });
+
+                        // El marco entra un poco antes que sus piezas (-12% contra
+                        // el -35% de arriba): primero llega el bloque, y ya dentro
+                        // se va montando el contenido.
+                        const rvFrameObserver = new IntersectionObserver((entries, obs) => {
+                            entries.forEach(e => {
+                                if (!e.isIntersecting) return;
+                                obs.unobserve(e.target);
+                                e.target.classList.add('active');
+                            });
+                        }, { rootMargin: '0px 0px -12% 0px' });
 
                         rvBlocks.forEach(block => {
                             const rule = RV_MAP.find(([sel]) => block.matches(sel));
@@ -2181,9 +2205,7 @@ body.trailer-open #page-content{
                                         rvObserver.observe(el);
                                     });
                             });
-                            // El contenedor se destapa ya: quien esconde el contenido
-                            // hasta su momento es .rv, pieza a pieza.
-                            block.classList.add('active');
+                            rvFrameObserver.observe(block);
                         });
                     }
                 },
