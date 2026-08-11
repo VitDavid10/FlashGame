@@ -2122,6 +2122,9 @@ body.trailer-open #page-content{
                     // esperando su propio turno, con un hueco en medio.
                     // [selector, variante, retardo base (ms), paso entre hermanos]
                     const RV_MAP = [
+                        ['.main-layout', [
+                            [':scope > *', 'up', 0, 20],
+                        ]],
                         ['.feature-block', [
                             ['.fb-num', 'fade', 0, 0],
                             ['.feature-text > *', 'text', 80, 100],
@@ -2137,7 +2140,7 @@ body.trailer-open #page-content{
                             ['.skill-card', 'pop', 60, 55],
                         ]],
                         ['.intro-text', [
-                            [':scope > h2, :scope > p', 'up', 0, 120],
+                            [':scope > h2, :scope > p', 'up', 0, 0],
                             ['.full-width-img', 'curtain', 180, 0],
                         ]],
                     ];
