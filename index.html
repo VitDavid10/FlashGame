@@ -2235,12 +2235,28 @@ body.trailer-open #page-content{
                     // panel de mcap van lado a lado, encender solo uno de los dos
                     // no tendria ningun sentido, asi que enfoca .main-layout.
                     if (!rvReduced && 'IntersectionObserver' in window) {
-                        const focusables = [...document.querySelectorAll(
-                            '.main-layout, .intro-text, .feature-block, .battle-modes-container,' +
-                            '.skills-grid, #quest, #shop, #ranking'
-                        )];
-                        focusables.forEach(el => el.classList.add('rv-focusable'));
-                        let focused = null;
+                        // Unidades de foco: cajas que se encienden JUNTAS. El
+                        // trailer, el panel de mcap y el EAT. GROW. PROFIT. son
+                        // una sola cosa para quien lee, aunque en el DOM sean dos
+                        // hermanas; encender una y dejar la otra apagada partia
+                        // por la mitad algo que va seguido.
+                        const FOCUS_UNITS = [
+                            ['.main-layout', '.content-container > .intro-text'],
+                        ];
+                        // Y estas, cada una por su cuenta.
+                        const FOCUS_SOLO = '.feature-block, .battle-modes-container, .skills-grid,' +
+                                           '.skills-section .intro-text, #quest, #shop, #ranking';
+                        const unidadDe = new WeakMap();
+                        const focusables = [];
+                        const registrar = els => {
+                            const u = els.filter(Boolean);
+                            if (!u.length) return;
+                            u.forEach(e => { unidadDe.set(e, u); e.classList.add('rv-focusable'); focusables.push(e); });
+                        };
+                        FOCUS_UNITS.forEach(sels => registrar(sels.map(s => document.querySelector(s))));
+                        document.querySelectorAll(FOCUS_SOLO).forEach(e => { if (!unidadDe.has(e)) registrar([e]); });
+
+                        let focusUnit = null;
                         const distAlCentro = e => {
                             const r = e.boundingClientRect;
                             return Math.abs((r.top + r.bottom) / 2 - window.innerHeight / 2);
@@ -2248,12 +2264,13 @@ body.trailer-open #page-content{
                         const focusObs = new IntersectionObserver(entries => {
                             const dentro = entries.filter(e => e.isIntersecting);
                             if (!dentro.length) return;
-                            // Si entran varios de golpe, manda el mas centrado.
+                            // Si entran varias de golpe, manda la mas centrada.
                             const mejor = dentro.reduce((a, b) => distAlCentro(b) < distAlCentro(a) ? b : a);
-                            if (mejor.target === focused) return;
-                            if (focused) focused.classList.remove('rv-focus');
-                            focused = mejor.target;
-                            focused.classList.add('rv-focus');
+                            const u = unidadDe.get(mejor.target);
+                            if (!u || u === focusUnit) return;
+                            if (focusUnit) focusUnit.forEach(e => e.classList.remove('rv-focus'));
+                            focusUnit = u;
+                            focusUnit.forEach(e => e.classList.add('rv-focus'));
                         }, { rootMargin: '-45% 0px -45% 0px' });
                         focusables.forEach(el => focusObs.observe(el));
                         // La transicion, un frame despues: si no, lo primero que
