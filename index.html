@@ -65,6 +65,30 @@
                DECORACION (el numero gigante de fondo de cada quest, el filo
                izquierdo de las tarjetas, el relleno de las barras de progreso):
                esos no son texto y no les aplica el minimo. */
+            /* ===== ESCALA TIPOGRAFICA =====
+               Habia 27 cuerpos de letra sueltos por la hoja, muchos separados
+               por un solo pixel (12 y 13, 15 y 16, 18 y 19 y 20, 24 y 26). Esa
+               diferencia no se lee como jerarquia, se lee como descuido, y sobre
+               todo no habia forma de reafinar la pagina entera sin ir regla por
+               regla: son 111 declaraciones.
+               Once pasos, elegidos entre los valores que ya dominaban, de modo
+               que ningun texto se mueve mas de 2px de donde estaba. La ganancia
+               no es que hoy se vea distinto (casi no se ve): es que a partir de
+               ahora se afina desde aqui.
+               NO es una escala por familia a proposito: Press Start 2P ocupa
+               mucho mas que VT323 al mismo cuerpo, asi que el paso de cada
+               rotulo sale de lo que ya medida, no de su papel. */
+            --fs-1:    9px;   /* rotulos diminutos */
+            --fs-2:   12px;   /* metadatos, celdas, nav */
+            --fs-3:   15px;   /* texto secundario */
+            --fs-4:   18px;   /* cuerpo */
+            --fs-5:   24px;   /* titulos de bloque */
+            --fs-6:   30px;   /* titulos de seccion pequeños */
+            --fs-7:   42px;   /* titulos de seccion */
+            --fs-8:   50px;   /* display */
+            --fs-9:   70px;   /* numeracion gigante de fondo */
+            --fs-10:  90px;
+            --fs-11: 130px;   /* titulo del hero cuando cae al texto */
             --txt-mute: #888;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -143,13 +167,13 @@
             background: linear-gradient(180deg, #fff 50%, var(--primary) 50%);
             transform: rotate(-30deg); box-shadow: 0 0 25px var(--primary); border: 2px solid #000;
         }
-        .brand-name { font-family: 'Russo One'; font-size: 32px; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
+        .brand-name { font-family: 'Russo One'; font-size: var(--fs-6); color: #fff; text-transform: uppercase; letter-spacing: 2px; }
 
         .nav-links-container { 
             display: flex; gap: 30px; margin-left: 20px; align-items: center; 
         }
 
-        .nav-link { font-size: 14px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; font-family: 'Russo One'; text-decoration: none; white-space: nowrap; }
+        .nav-link { font-size: var(--fs-3); font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; font-family: 'Russo One'; text-decoration: none; white-space: nowrap; }
         .nav-link:hover { color: #fff; text-shadow: 0 0 10px #fff; }
 
         .nav-dropdown-group { display: flex; gap: 20px; align-items: center; }
@@ -173,7 +197,7 @@
            con la barra de wallet (.wallet-bal-box, z-index 1001), que lo tapaba
            al conectar. El z-index tiene que ir aqui para ganar de verdad. */
         .dropdown { position: relative; display: flex; align-items: center; height: 100%; z-index: 1005; }
-        .dropbtn { font-weight: 800; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .dropbtn { font-weight: 800; font-size: var(--fs-3); color: #fff; display: flex; align-items: center; gap: 8px; }
         /* absolute (no fixed): asi el desplegable cuelga del propio .dropdown y
            lo SIGUE cuando el editor de layout mueve el $PILL de sitio. Con fixed
            el translate del padre pasaba a ser su containing block, de modo que
@@ -218,8 +242,8 @@
             background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4);
             border-radius: 8px; backdrop-filter: blur(4px); white-space: nowrap;
         }
-        .wallet-bal-box .wl-lbl { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
-        .wallet-bal-box .wl-val { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
+        .wallet-bal-box .wl-lbl { font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
+        .wallet-bal-box .wl-val { font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); }
 
         /* Caja del tamaño FINAL (166x38.8, = 190x44.4 * escala 0.8746) que SI
            ocupa hueco en el flex: dentro va el boton a su tamaño nativo con
@@ -251,7 +275,7 @@
             width: 190px; aspect-ratio: 1724 / 403; scale: 0.8745922401980181;
             border: 0; margin: 0; padding: 0;
             box-sizing: border-box; color: #fff;
-            font-family: 'Press Start 2P', monospace; font-size: 17px; letter-spacing: 0; text-transform: uppercase;
+            font-family: 'Press Start 2P', monospace; font-size: var(--fs-4); letter-spacing: 0; text-transform: uppercase;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
             cursor: pointer; transition: 0.2s; image-rendering: auto;
             display: grid; place-items: center;
@@ -281,7 +305,7 @@
             overflow: hidden; z-index: 900; display: flex; align-items: center; transition: top 0.3s ease;
         }
         .ticker { display: flex; animation: ticker 40s linear infinite; white-space: nowrap; }
-        .ticker-item { padding: 0 30px; font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+        .ticker-item { padding: 0 30px; font-size: var(--fs-2); font-weight: 600; color: #888; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
         @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
         /* HERO */
@@ -319,7 +343,7 @@
            Al clicarla se esconde y toma el control la pill del canvas. */
         #heroPickMe { cursor: pointer !important; user-select: none; }
         .pick-me-label {
-            font-family: 'Press Start 2P', monospace; font-size: 11px; color: #aaffdd;
+            font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); color: #aaffdd;
             text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
             margin-bottom: 6px; white-space: nowrap; animation: pickMeGlow 1.4s ease-in-out infinite;
         }
@@ -357,7 +381,7 @@
         /* THE CRYPTO ARENA bajo el PILLWARS pixel: misma fuente y mismo neon
            que el rotulo PICK ME (sin el parpadeo). */
         .hero-sub {
-            display: none; font-family: 'Press Start 2P', monospace; font-size: 15px;
+            display: none; font-family: 'Press Start 2P', monospace; font-size: var(--fs-3);
             letter-spacing: 6px; color: #aaffdd; margin-top: 6px; white-space: nowrap;
             text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
         }
@@ -395,9 +419,9 @@
             transition: background .2s, color .2s;
         }
         .hero-ca:hover .ca-copy { background: rgba(255,206,61,0.18); color: #fff; }
-        #hero-copy-feedback { font-family: 'Press Start 2P', monospace !important; font-size: 11px !important; color: #ffce3d !important; text-shadow: 2px 2px 0 rgba(0,0,0,0.75) !important; height: 15px; margin-top: 12px; }
-        .big-title { font-size: 90px; font-family: 'Russo One'; color: #fff; text-shadow: 0 0 30px var(--primary); margin: 0; line-height: 1; }
-        .big-subtitle { font-size: 20px; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 8px; margin-top: 10px; }
+        #hero-copy-feedback { font-family: 'Press Start 2P', monospace !important; font-size: var(--fs-2) !important; color: #ffce3d !important; text-shadow: 2px 2px 0 rgba(0,0,0,0.75) !important; height: 15px; margin-top: 12px; }
+        .big-title { font-size: var(--fs-10); font-family: 'Russo One'; color: #fff; text-shadow: 0 0 30px var(--primary); margin: 0; line-height: 1; }
+        .big-subtitle { font-size: var(--fs-4); color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 8px; margin-top: 10px; }
 
         .content-container { padding: 100px 20px; display: flex; flex-direction: column; align-items: center; z-index: 5; position: relative; }
         
@@ -430,7 +454,7 @@
             transition: opacity 0.3s;
             white-space: nowrap;
         }
-        .trailer-hint span { font-family: 'Russo One', sans-serif; color: #fff; font-size: 12px; letter-spacing: 1px; }
+        .trailer-hint span { font-family: 'Russo One', sans-serif; color: #fff; font-size: var(--fs-2); letter-spacing: 1px; }
 
         .trailer-box:hover video { opacity: 1; }
         .trailer-box:hover { border-color: var(--primary); box-shadow: 0 0 30px rgba(0,255,136,0.2); }
@@ -525,14 +549,14 @@ body.trailer-open #page-content{
            automatico y cada fila vuelve a medir por su contenido. */
         .widget-row { flex: 1; background: rgba(0,0,0,0.4); padding: 12px 16px; border-radius: 8px; text-align: center; border-left: 4px solid var(--primary); display: flex; flex-direction: column; justify-content: center; }
         .widget-row.gold { border-left-color: var(--gold); }
-        .widget-title { color: var(--txt-mute); font-size: 11px; letter-spacing: 2px; font-weight: 800; text-transform: uppercase; }
-        .widget-val { font-size: 18px; font-weight: 700; color: #fff; margin-top: 4px; }
+        .widget-title { color: var(--txt-mute); font-size: var(--fs-2); letter-spacing: 2px; font-weight: 800; text-transform: uppercase; }
+        .widget-val { font-size: var(--fs-4); font-weight: 700; color: #fff; margin-top: 4px; }
         .widget-val.live { color: var(--primary); }
         /* MONEY EARNED: la fila ENTERA es un enlace al explorador de la wallet que
            paga los premios, para que el reparto se pueda auditar desde fuera. */
         a.widget-row { text-decoration: none; transition: 0.2s ease; }
         a.widget-row:hover { background: rgba(255,204,0,0.07); box-shadow: 0 0 18px rgba(255,204,0,0.12); }
-        .widget-hint { font-size: 9px; letter-spacing: 2px; color: var(--txt-mute); margin-top: 5px; text-transform: uppercase; font-weight: 800; }
+        .widget-hint { font-size: var(--fs-1); letter-spacing: 2px; color: var(--txt-mute); margin-top: 5px; text-transform: uppercase; font-weight: 800; }
         a.widget-row:hover .widget-hint { color: var(--gold); }
 
         /* Los tres bloques de mecanica usaban EXACTAMENTE el mismo marco (caja
@@ -564,7 +588,7 @@ body.trailer-open #page-content{
            del BLOQUE (no del texto): al lado del texto por defecto (izquierda
            en bloques sin .reverse), al otro lado en .reverse. */
         .fb-num {
-            position: absolute; top: 22px; left: 40px; font-family: 'Russo One'; font-size: 130px; line-height: 1;
+            position: absolute; top: 22px; left: 40px; font-family: 'Russo One'; font-size: var(--fs-11); line-height: 1;
             color: var(--fb-accent); opacity: 0.14; pointer-events: none; user-select: none;
         }
         .feature-block.reverse .fb-num { left: auto; right: 40px; }
@@ -592,7 +616,7 @@ body.trailer-open #page-content{
             border: 2px solid var(--primary);
             padding: 6px 12px;
             border-radius: 0;
-            font-size: 11px;
+            font-size: var(--fs-2);
             font-weight: 900;
             letter-spacing: 2px;
             text-transform: uppercase;
@@ -609,8 +633,8 @@ body.trailer-open #page-content{
             transform: translate(-1px, -1px);
         }
 
-        .feature-text h3 { font-family: 'Russo One'; font-size: 40px; color: #fff; margin: 15px 0; line-height: 1; }
-        .feature-text p { color: #888; line-height: 1.6; font-size: 16px; margin-bottom: 15px; }
+        .feature-text h3 { font-family: 'Russo One'; font-size: var(--fs-7); color: #fff; margin: 15px 0; line-height: 1; }
+        .feature-text p { color: #888; line-height: 1.6; font-size: var(--fs-3); margin-bottom: 15px; }
         .feature-images { flex: 1; display: flex; gap: 15px; width: 100%; justify-content: center; }
 
         .video-card {
@@ -632,9 +656,9 @@ body.trailer-open #page-content{
             padding: 60px; text-align: center; margin: 80px 0; width: 100%; max-width: var(--contenido);
             backdrop-filter: blur(2px);
         }
-        .battle-modes-container h2 { font-family: 'Russo One'; font-size: 52px; color: #fff; margin: 0; text-transform: uppercase; }
-        .powered-by { color: var(--primary); font-family: 'Russo One'; font-size: 18px; letter-spacing: 3px; margin-bottom: 25px; display: block; }
-        .mode-oracle-info { color: #888; font-size: 16px; max-width: 800px; margin: 0 auto 50px auto; line-height: 1.6; }
+        .battle-modes-container h2 { font-family: 'Russo One'; font-size: var(--fs-8); color: #fff; margin: 0; text-transform: uppercase; }
+        .powered-by { color: var(--primary); font-family: 'Russo One'; font-size: var(--fs-4); letter-spacing: 3px; margin-bottom: 25px; display: block; }
+        .mode-oracle-info { color: #888; font-size: var(--fs-3); max-width: 800px; margin: 0 auto 50px auto; line-height: 1.6; }
         
         .modes-grid { display: flex; gap: 30px; margin-bottom: 50px; flex-wrap: wrap;}
         .mode-card {
@@ -651,8 +675,8 @@ body.trailer-open #page-content{
         .mode-card.classic .category-tag { color: var(--classic-accent); border-color: var(--classic-accent); background: rgba(79,205,146,0.12); }
         .mode-card.special { border-color: #ffce3d; }
         .mode-card.special:hover { box-shadow: 4px 4px 0 rgba(0,0,0,0.55), 0 0 20px rgba(255,206,61,0.18); }
-        .mode-card h4 { font-family: 'Russo One'; font-size: 24px; color: #fff; margin: 10px 0; }
-        .mode-card p { color: #aaa; font-size: 15px; line-height: 1.6; }
+        .mode-card h4 { font-family: 'Russo One'; font-size: var(--fs-5); color: #fff; margin: 10px 0; }
+        .mode-card p { color: #aaa; font-size: var(--fs-3); line-height: 1.6; }
 
         .ca-box {
             background: #000; border: 1px solid #333; padding: 18px 30px; border-radius: 8px;
@@ -660,8 +684,8 @@ body.trailer-open #page-content{
             transition: 0.3s ease; flex-wrap: wrap; justify-content: center;
         }
         .ca-box:hover { border-color: var(--primary); background: #111; box-shadow: 0 0 15px rgba(0,255,136,0.2); }
-        .ca-text { font-family: monospace; color: #ccc; font-size: 16px; white-space: nowrap; overflow-x: auto; }
-        .copy-tag { background: var(--primary); color: #000; font-size: 10px; font-weight: 900; padding: 4px 10px; border-radius: 4px; flex-shrink: 0;}
+        .ca-text { font-family: monospace; color: #ccc; font-size: var(--fs-3); white-space: nowrap; overflow-x: auto; }
+        .copy-tag { background: var(--primary); color: #000; font-size: var(--fs-1); font-weight: 900; padding: 4px 10px; border-radius: 4px; flex-shrink: 0;}
 
         /* SKILLS SECTION */
         .skills-section { width: 100%; max-width: var(--contenido); margin: 0 auto; text-align: center; }
@@ -688,7 +712,7 @@ body.trailer-open #page-content{
            pixel art, y pixelated evita que el navegador lo difumine al
            reescalarlo desde EDIT (clave skillIcon, comun a las 8). */
         .skill-icon { width: 64px; height: 64px; margin-bottom: 12px; image-rendering: pixelated; }
-        .skill-name { font-size: 10px; font-weight: 900; color: var(--txt-mute); font-family: 'Russo One'; letter-spacing: 1px; }
+        .skill-name { font-size: var(--fs-1); font-weight: 900; color: var(--txt-mute); font-family: 'Russo One'; letter-spacing: 1px; }
         
         /* --- TOOLTIP FLOTANTE --- */
         .skill-tooltip {
@@ -726,12 +750,12 @@ body.trailer-open #page-content{
         body.layout-editing #skill-tooltip { display: flex !important; pointer-events: auto !important; }
 
         .tooltip-content { padding: 15px; }
-        .tooltip-title { color: #fff; font-family: 'Russo One'; font-size: 16px; margin: 0 0 5px 0; text-transform: uppercase; }
+        .tooltip-title { color: #fff; font-family: 'Russo One'; font-size: var(--fs-3); margin: 0 0 5px 0; text-transform: uppercase; }
         .tooltip-divider { width: 40px; height: 3px; background: var(--gold); margin-bottom: 10px; }
-        .tooltip-desc { color: #ccc; font-size: 11px; line-height: 1.4; margin-bottom: 15px; }
+        .tooltip-desc { color: #ccc; font-size: var(--fs-2); line-height: 1.4; margin-bottom: 15px; }
         
         .tooltip-mode { 
-            display: flex; align-items: center; gap: 6px; font-size: 9px; font-weight: bold; margin-top: 4px; 
+            display: flex; align-items: center; gap: 6px; font-size: var(--fs-1); font-weight: bold; margin-top: 4px; 
             font-family: 'Russo One'; letter-spacing: 0.5px;
         }
         .mode-arcade-tag { color: #ccff00; }
@@ -777,7 +801,7 @@ body.trailer-open #page-content{
         #shop { background: radial-gradient(ellipse at 50% 0%, rgba(255,204,0,0.10), rgba(5,5,5,0.80) 55%, rgba(5,5,5,0.92)); }
         #ranking { background: radial-gradient(ellipse at 50% 100%, rgba(0,255,136,0.10), rgba(5,5,5,0.80) 55%, rgba(5,5,5,0.92)); border-bottom: 1px solid #222; }
         .lb-pag { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 22px; }
-        .lb-pag button { background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 7px 12px; font-family: 'Russo One'; font-size: 12px; cursor: pointer; transition: 0.2s; min-width: 36px; }
+        .lb-pag button { background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 7px 12px; font-family: 'Russo One'; font-size: var(--fs-2); cursor: pointer; transition: 0.2s; min-width: 36px; }
         .lb-pag button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
         .lb-pag button.active { background: var(--primary); color: #04150c; border-color: var(--primary); }
         .lb-pag button:disabled { opacity: 0.35; cursor: default; }
@@ -786,11 +810,11 @@ body.trailer-open #page-content{
         #ranking { padding-top: 66px; padding-bottom: 40px; }
         #ranking .section-title { margin-bottom: 22px; }
         #ranking .lb-wrap { padding: 14px 18px 16px; }
-        #ranking .lb-head, #ranking .lb-row { padding: 7px 14px; font-size: 13px; }
-        #ranking .lb-c-pos { width: 30px; height: 30px; font-size: 12px; }
-        #ranking .lb-c-name, #ranking .lb-c-kills, #ranking .lb-c-mass { font-size: 14px; }
+        #ranking .lb-head, #ranking .lb-row { padding: 7px 14px; font-size: var(--fs-2); }
+        #ranking .lb-c-pos { width: 30px; height: 30px; font-size: var(--fs-2); }
+        #ranking .lb-c-name, #ranking .lb-c-kills, #ranking .lb-c-mass { font-size: var(--fs-3); }
         #ranking .lb-pag { margin-top: 14px; }
-        .section-title { font-size: 40px; font-family: 'Russo One'; margin-bottom: 50px; text-transform: uppercase; text-align: center; }
+        .section-title { font-size: var(--fs-7); font-family: 'Russo One'; margin-bottom: 50px; text-transform: uppercase; text-align: center; }
         /* Caja "proximamente" del shop: esquina recta y dorado, en linea con el
            resto de tarjetas. Antes iba en rojo (--accent) sobre el fondo morado,
            dos colores que no estan en la paleta de la marca. */
@@ -798,38 +822,38 @@ body.trailer-open #page-content{
 
         /* Leaderboard "Global Elite" */
         .lb-wrap { width: 100%; max-width: var(--contenido-panel); background: rgba(10,10,10,0.7); border: 1px solid rgba(0,255,136,0.18); border-radius: 18px; padding: 18px 20px 22px; box-shadow: 0 10px 50px rgba(0,0,0,0.5); }
-        .lb-head, .lb-row { display: grid; grid-template-columns: 64px 1.5fr 1fr 0.7fr 0.8fr 0.7fr 0.7fr 1fr; gap: 10px; align-items: center; padding: 11px 14px; font-family: 'Inter', sans-serif; font-size: 14px; }
-        .lb-head { color: var(--txt-mute); font-family: 'Russo One'; font-weight: 400; font-size: 11px; letter-spacing: 2px; border-bottom: 1px solid #1c1c1c; margin-bottom: 4px; }
+        .lb-head, .lb-row { display: grid; grid-template-columns: 64px 1.5fr 1fr 0.7fr 0.8fr 0.7fr 0.7fr 1fr; gap: 10px; align-items: center; padding: 11px 14px; font-family: 'Inter', sans-serif; font-size: var(--fs-3); }
+        .lb-head { color: var(--txt-mute); font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-2); letter-spacing: 2px; border-bottom: 1px solid #1c1c1c; margin-bottom: 4px; }
         .lb-row { border-bottom: 1px solid #141414; transition: 0.2s; }
         .lb-row:hover { background: rgba(0,255,136,0.04); }
-        .lb-c-pos { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: 'Russo One'; font-size: 14px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #999; }
+        .lb-c-pos { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: 'Russo One'; font-size: var(--fs-3); background: #1a1a1a; border: 1px solid #2a2a2a; color: #999; }
         .lb-row.p1 .lb-c-pos { background: linear-gradient(180deg,#ffd54a,#b8860b); border: 0; color: #2b2000; box-shadow: 0 0 14px rgba(255,213,74,0.4); }
         .lb-row.p2 .lb-c-pos { background: linear-gradient(180deg,#e0e6ee,#8a95a5); border: 0; color: #1c222c; }
         .lb-row.p3 .lb-c-pos { background: linear-gradient(180deg,#e29c66,#8c5523); border: 0; color: #2b1a07; }
-        .lb-c-name { color: #fff; font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lb-c-kills { color: var(--primary); font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
-        .lb-c-mass { color: #ffce3d; font-family: 'Russo One'; font-weight: 400; font-size: 15px; }
+        .lb-c-name { color: #fff; font-weight: 700; font-size: var(--fs-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lb-c-kills { color: var(--primary); font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-3); }
+        .lb-c-mass { color: #ffce3d; font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-3); }
 
         /* DAILY QUESTS */
         /* Daily Quests iba con esquinas redondeadas y bordes de 1px, el unico
            bloque de la pagina que no seguia el lenguaje arcade de .mode-card /
            .dq-card (esquina recta + sombra dura). Igualado aqui. */
-        .dq-tag { display: inline-block; font-family: 'Russo One', sans-serif; font-size: 11px; letter-spacing: 4px; color: var(--primary); padding: 6px 14px; border: 2px solid var(--primary); border-radius: 0; text-transform: uppercase; background: rgba(0,255,136,0.08); box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
-        .dq-subtitle { color: #888; font-size: 15px; margin: 10px 0 30px; text-align: center; max-width: 640px; }
+        .dq-tag { display: inline-block; font-family: 'Russo One', sans-serif; font-size: var(--fs-2); letter-spacing: 4px; color: var(--primary); padding: 6px 14px; border: 2px solid var(--primary); border-radius: 0; text-transform: uppercase; background: rgba(0,255,136,0.08); box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
+        .dq-subtitle { color: #888; font-size: var(--fs-3); margin: 10px 0 30px; text-align: center; max-width: 640px; }
         .dq-subtitle b { color: var(--primary); font-weight: 600; }
         .dq-summary { width: 100%; max-width: var(--contenido-panel); background: rgba(10,15,10,0.7); border: 2px solid rgba(0,255,136,0.35); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55); padding: 22px 26px; margin-bottom: 26px; display: flex; align-items: center; gap: 22px; }
         .dq-ring { position: relative; width: 90px; height: 90px; flex: none; }
         .dq-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
         #dq-ring-fill { filter: drop-shadow(0 0 5px rgba(0,255,136,0.75)); }
         .dq-ring .num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Russo One'; }
-        .dq-ring .num span:first-child { font-size: 24px; color: var(--primary); }
+        .dq-ring .num span:first-child { font-size: var(--fs-5); color: var(--primary); }
         .dq-ring .num span:first-child em { font-style: normal; color: #666; }
-        .dq-ring .num span:last-child { font-size: 9px; color: var(--txt-mute); letter-spacing: 1px; }
+        .dq-ring .num span:last-child { font-size: var(--fs-1); color: var(--txt-mute); letter-spacing: 1px; }
         .dq-summary .info { flex: 1; }
-        .dq-summary .info .ti { font-family: 'Russo One'; color: #fff; font-size: 18px; letter-spacing: 1px; margin-bottom: 4px; }
-        .dq-summary .info .sub { color: #888; font-size: 13px; }
+        .dq-summary .info .ti { font-family: 'Russo One'; color: #fff; font-size: var(--fs-4); letter-spacing: 1px; margin-bottom: 4px; }
+        .dq-summary .info .sub { color: #888; font-size: var(--fs-2); }
         .dq-summary .info .sub.ok { color: var(--primary); }
-        .dq-btn { flex: none; font-family: 'Russo One'; font-size: 13px; letter-spacing: 1px; padding: 13px 24px; border-radius: 0; text-transform: uppercase; cursor: not-allowed; background: #222; border: 2px solid #333; color: var(--txt-mute); transition: 0.2s; text-decoration: none; display: inline-block; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
+        .dq-btn { flex: none; font-family: 'Russo One'; font-size: var(--fs-2); letter-spacing: 1px; padding: 13px 24px; border-radius: 0; text-transform: uppercase; cursor: not-allowed; background: #222; border: 2px solid #333; color: var(--txt-mute); transition: 0.2s; text-decoration: none; display: inline-block; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
         .dq-btn.unlocked { background: var(--primary); border-color: var(--primary); color: #04150c; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), 0 0 20px rgba(0,255,136,0.3); }
         .dq-btn.unlocked:hover { filter: brightness(1.1); }
         .dq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; width: 100%; max-width: var(--contenido-panel); }
@@ -840,31 +864,31 @@ body.trailer-open #page-content{
         .dq-card.done { border-color: rgba(0,255,136,0.35); border-left-color: var(--primary); }
         .dq-card.prog { border-left-color: #ffce3d; }
         .dq-card-h { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
-        .dq-num { font-family: 'Russo One'; font-size: 26px; color: #666; line-height: 1; letter-spacing: 1px; min-width: 38px; }
+        .dq-num { font-family: 'Russo One'; font-size: var(--fs-5); color: #666; line-height: 1; letter-spacing: 1px; min-width: 38px; }
         .dq-card.done .dq-num { color: var(--primary); }
         .dq-card.prog .dq-num { color: #ffce3d; }
-        .dq-title { font-family: 'Russo One'; color: #fff; font-size: 13px; letter-spacing: 1px; line-height: 1.3; margin-bottom: 4px; }
-        .dq-desc { color: #888; font-size: 12px; line-height: 1.5; }
+        .dq-title { font-family: 'Russo One'; color: #fff; font-size: var(--fs-2); letter-spacing: 1px; line-height: 1.3; margin-bottom: 4px; }
+        .dq-desc { color: #888; font-size: var(--fs-2); line-height: 1.5; }
         .dq-bar { height: 6px; background: #0b0b0b; border: 1px solid #000; border-radius: 0; overflow: hidden; }
         .dq-bar i { display: block; height: 100%; background: #555; transition: width 0.4s; }
         .dq-card.done .dq-bar i { background: var(--primary); }
         .dq-card.prog .dq-bar i { background: #ffce3d; }
-        .dq-foot { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--txt-mute); font-family: 'Russo One'; letter-spacing: 1px; }
+        .dq-foot { display: flex; justify-content: space-between; margin-top: 6px; font-size: var(--fs-1); color: var(--txt-mute); font-family: 'Russo One'; letter-spacing: 1px; }
         .dq-card.done .dq-foot .state { color: var(--primary); }
         .dq-card.prog .dq-foot .state { color: #ffce3d; }
         .lb-c-deaths, .lb-c-kd, .lb-c-games { color: #ccc; font-variant-numeric: tabular-nums; }
         .lb-c-country { color: #ccc; }
-        .lb-flag { font-size: 18px; margin-right: 7px; vertical-align: -2px; }
-        .lb-empty { padding: 50px 0; text-align: center; color: var(--txt-mute); font-family: 'Russo One'; font-size: 14px; letter-spacing: 2px; }
+        .lb-flag { font-size: var(--fs-4); margin-right: 7px; vertical-align: -2px; }
+        .lb-empty { padding: 50px 0; text-align: center; color: var(--txt-mute); font-family: 'Russo One'; font-size: var(--fs-3); letter-spacing: 2px; }
         @media (max-width: 720px) {
             .lb-head { display: none; }
             .lb-row { grid-template-columns: 56px 1fr; gap: 6px; }
-            .lb-c-deaths, .lb-c-kd, .lb-c-games, .lb-c-country { grid-column: 2; color: #888; font-size: 12px; }
+            .lb-c-deaths, .lb-c-kd, .lb-c-games, .lb-c-country { grid-column: 2; color: #888; font-size: var(--fs-2); }
             .lb-c-kills { grid-column: 2; }
         }
 
         footer { 
-            padding: 60px; text-align: center; background: #020202; border-top: none; font-size: 12px; color: var(--txt-mute); 
+            padding: 60px; text-align: center; background: #020202; border-top: none; font-size: var(--fs-2); color: var(--txt-mute); 
             position: relative; z-index: 50; 
         }
         footer a { color: var(--txt-mute); margin: 0 15px; text-decoration: none; font-weight: 800; display: inline-block; padding: 5px;}
@@ -995,14 +1019,14 @@ body.trailer-open #page-content{
             background-repeat: no-repeat; background-position: center; background-size: contain;
             image-rendering: pixelated; opacity: 0.9; }
         .modal-close:hover { opacity: 1; filter: brightness(1.25); }
-        .modal-title { font-family: 'Russo One'; color: #fff; font-size: 20px; margin-bottom: 25px; text-transform: uppercase; }
+        .modal-title { font-family: 'Russo One'; color: #fff; font-size: var(--fs-4); margin-bottom: 25px; text-transform: uppercase; }
 
         /* Campos del modal de contacto */
-        .cmodal-label { display: block; text-align: left; font-family: 'Russo One'; font-size: 11px; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin: 10px 0 5px; }
-        .cmodal-field { width: 100%; background: #111; border: 1px solid #333; border-radius: 8px; color: #fff; font-family: 'Inter', sans-serif; font-size: 14px; padding: 11px 13px; outline: none; }
+        .cmodal-label { display: block; text-align: left; font-family: 'Russo One'; font-size: var(--fs-2); color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin: 10px 0 5px; }
+        .cmodal-field { width: 100%; background: #111; border: 1px solid #333; border-radius: 8px; color: #fff; font-family: 'Inter', sans-serif; font-size: var(--fs-3); padding: 11px 13px; outline: none; }
         .cmodal-field:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(0,255,136,0.2); }
         .cmodal-field textarea, textarea.cmodal-field { resize: vertical; }
-        .cmodal-btn { width: 100%; padding: 12px; background: var(--primary); color: #04150c; border: none; font-family: 'Russo One'; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; border-radius: 8px; cursor: pointer; margin-top: 14px; transition: 0.2s; }
+        .cmodal-btn { width: 100%; padding: 12px; background: var(--primary); color: #04150c; border: none; font-family: 'Russo One'; font-size: var(--fs-3); letter-spacing: 1px; text-transform: uppercase; border-radius: 8px; cursor: pointer; margin-top: 14px; transition: 0.2s; }
         .cmodal-btn:hover { filter: brightness(1.1); box-shadow: 0 0 18px rgba(0,255,136,0.4); }
         .cmodal-btn:disabled { opacity: 0.6; cursor: default; }
 
@@ -1026,18 +1050,18 @@ body.trailer-open #page-content{
             image-rendering: pixelated; padding: 44px 44px 40px;
         }
         #deposit-modal .modal-title, #withdraw-modal .modal-title, #msg-modal .modal-title {
-            font-family: 'Press Start 2P', monospace; font-size: 15px; color: #c8cdd2;
+            font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); color: #c8cdd2;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.65); margin-bottom: 16px; line-height: 1.6; }
         /* Filas "In wallet / In GAME" + etiqueta "Amount": mismo cuerpo que el
            juego. La etiqueta pierde el verde de .cmodal-label — sobre el marco
            gris cantaba. */
         #deposit-modal .gm-row, #withdraw-modal .gm-row,
         #deposit-modal .cmodal-label, #withdraw-modal .cmodal-label {
-            font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1.9; letter-spacing: 0; }
+            font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); line-height: 1.9; letter-spacing: 0; }
         #deposit-modal .cmodal-label, #withdraw-modal .cmodal-label { color: #c8cdd2; }
         #deposit-modal .gm-row:first-of-type, #withdraw-modal .gm-row:first-of-type { margin-top: 10px; }
         #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field {
-            font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 0; }
+            font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); letter-spacing: 0; }
         #deposit-modal .cmodal-btn, #withdraw-modal .cmodal-btn, #msg-modal .cmodal-btn {
             border: none !important; border-radius: 0 !important; box-shadow: none !important;
             background: transparent url('game/img/cartel-hero/ok-gris.png') center/100% 100% no-repeat !important;
@@ -1052,7 +1076,7 @@ body.trailer-open #page-content{
         /* !important: body.pixel-pack .modal-box button fuerza 11px con
            !important y dejaba el MAX mas grande que en el juego (8px). */
         #deposit-modal .modal-box .max-btn, #withdraw-modal .modal-box .max-btn {
-            font-family: 'Press Start 2P', monospace !important; font-size: 8px !important; letter-spacing: 0; }
+            font-family: 'Press Start 2P', monospace !important; font-size: var(--fs-1) !important; letter-spacing: 0; }
         #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field { border-radius: 0 !important; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important; }
 
         /* CONNECT WALLET: identico al selector de dentro del juego — recuadro
@@ -1068,7 +1092,7 @@ body.trailer-open #page-content{
             display: flex; align-items: center; justify-content: center; gap: 14px; padding: 0; transform: none; }
         #wallet-modal .wallet-option:hover { background-color: transparent !important; border: none !important; transform: none; filter: brightness(1.2); }
         #wallet-modal .wallet-option img { width: 32px; height: 32px; border-radius: 6px; }
-        #wallet-modal .wallet-option span { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65); text-transform: uppercase; }
+        #wallet-modal .wallet-option span { font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65); text-transform: uppercase; }
         /* CANCEL del pie: mismos valores que .pw-modal-cancel + la variante
            .wallet-picker (margin-top 20px) de game/index.html. font-size y
            box-shadow con !important porque las reglas bevel de
@@ -1076,7 +1100,7 @@ body.trailer-open #page-content{
         #wallet-modal .pw-modal-cancel {
             display: block; margin: 20px auto 0; padding: 8px 22px; background: transparent;
             border: 2px solid #3a4048 !important; border-radius: 0 !important; color: #8a939e;
-            font-family: 'Press Start 2P', monospace !important; font-size: 9px !important;
+            font-family: 'Press Start 2P', monospace !important; font-size: var(--fs-1) !important;
             letter-spacing: 1px; cursor: pointer; text-transform: uppercase;
             box-shadow: 3px 3px 0 rgba(0,0,0,0.6) !important;
         }
@@ -1088,7 +1112,7 @@ body.trailer-open #page-content{
         }
         .wallet-option:hover { background: #1a1a1a; border-color: var(--primary); transform: translateX(5px); }
         .wallet-option img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
-        .wallet-option span { font-weight: 700; color: #e0e0e0; font-size: 15px; }
+        .wallet-option span { font-weight: 700; color: #e0e0e0; font-size: var(--fs-3); }
 
         /* --- MOBILE OPTIMIZATIONS FIXED --- */
         @media (max-width: 768px) {
@@ -1126,7 +1150,7 @@ body.trailer-open #page-content{
             /* El contrato son 44 caracteres en una fuente monoespaciada: en una
                sola linea no cabe en ningun movil. Se deja partir. */
             .hero-ca { max-width: 100%; flex-wrap: wrap; justify-content: center; gap: 8px; }
-            .hero-ca .ca-text { white-space: normal; word-break: break-all; font-size: 9px; }
+            .hero-ca .ca-text { white-space: normal; word-break: break-all; font-size: var(--fs-1); }
 
             /* La OTRA caja del contrato (la de mitad de pagina, .ca-box) tenia
                `white-space: nowrap` con `overflow-x: auto`: los 44 caracteres
@@ -1134,12 +1158,12 @@ body.trailer-open #page-content{
                documento hasta 449 (74px de scroll lateral en toda la pagina,
                escondido por el overflow-x:hidden del body). Partiendola cabe. */
             .ca-box { max-width: 100%; }
-            .ca-text { white-space: normal; word-break: break-all; font-size: 12px; overflow-x: visible; }
+            .ca-text { white-space: normal; word-break: break-all; font-size: var(--fs-2); overflow-x: visible; }
             /* La fila del resumen de quests es flex en una linea: el boton
                LOCKED, con `flex: none`, se salia 23px por la derecha. */
             .dq-summary { flex-wrap: wrap; justify-content: center; text-align: center; }
             .dq-btn { flex: none; }
-            .hero-ca-sign { max-width: 100%; white-space: normal; font-size: 10px; }
+            .hero-ca-sign { max-width: 100%; white-space: normal; font-size: var(--fs-1); }
             
             .navbar { 
                 flex-direction: column; 
@@ -1172,12 +1196,12 @@ body.trailer-open #page-content{
             }
             .nav-links-container::-webkit-scrollbar { display: none; }
 
-            .nav-link { font-size: 12px; }
+            .nav-link { font-size: var(--fs-2); }
 
             /* Wallet y Socials al final */
             .nav-dropdown-group { justify-content: space-between; width: 100%; margin-top: 5px;}
             .dropbtn span { display: none; } 
-            .dropbtn { font-size: 12px; }
+            .dropbtn { font-size: var(--fs-2); }
             /* .btn-connect ya no es un boton de texto plano (usa la misma pildora
                PNG que deposit/withdraw/disconnect): sin esta regla, en movil
                CONNECT se quedaba con letra mas pequeña que los otros tres. */
@@ -1189,9 +1213,9 @@ body.trailer-open #page-content{
             .hero-video-wrapper { padding-top: 0; height: 100vh; }
             .hero-main-content { margin-top: 0; }
             
-            .big-title { font-size: 48px; }
-            .big-subtitle { font-size: 14px; letter-spacing: 4px; }
-            .hero-sub { font-size: 9px; letter-spacing: 3px; margin-top: 10px; }
+            .big-title { font-size: var(--fs-8); }
+            .big-subtitle { font-size: var(--fs-3); letter-spacing: 4px; }
+            .hero-sub { font-size: var(--fs-1); letter-spacing: 3px; margin-top: 10px; }
             
             .main-layout { flex-direction: column; margin-top: 80px; } /* Menos margen top */
             .trailer-box { aspect-ratio: 16/9; width: 100%; }
@@ -1204,10 +1228,10 @@ body.trailer-open #page-content{
                abajo (column-reverse, ver arriba) sea o no .reverse — el
                numero se ancla abajo/derecha (detras del texto) en vez de
                arriba (detras del video) en los dos casos. */
-            .fb-num, .feature-block.reverse .fb-num { left: auto; right: 16px; top: auto; bottom: 12px; font-size: 70px; }
+            .fb-num, .feature-block.reverse .fb-num { left: auto; right: 16px; top: auto; bottom: 12px; font-size: var(--fs-9); }
             .feature-block::before, .feature-block::after { width: 16px; height: 16px; }
             .feature-text { text-align: center; }
-            .feature-text h3 { font-size: 26px; }
+            .feature-text h3 { font-size: var(--fs-5); }
             /* El empuje a la derecha de tag/titulo es cosa de desktop (deja
                hueco al numero pegado al borde del bloque); en movil el texto
                vuelve a estar centrado como el resto. */
@@ -1218,11 +1242,11 @@ body.trailer-open #page-content{
             .feature-images { width: 100%; }
             
             .battle-modes-container { padding: 30px 20px; }
-            .battle-modes-container h2 { font-size: 28px; }
+            .battle-modes-container h2 { font-size: var(--fs-6); }
             .modes-grid { flex-direction: column; }
             
-            .skills-section h2 { font-size: 26px; }
-            .section-title { font-size: 28px; }
+            .skills-section h2 { font-size: var(--fs-5); }
+            .section-title { font-size: var(--fs-6); }
             .section-container { padding: 60px 20px; }
         }
 
@@ -1232,9 +1256,9 @@ body.trailer-open #page-content{
            y VT323 para texto corrido. Se activa con body.pixel-pack, ligado al
            mismo localStorage pw_pixel que el selector "Texture Pack" del juego. */
         /* rotulos */
-        body.pixel-pack .big-title { font-family: 'Press Start 2P', monospace; font-size: 52px; text-shadow: 5px 5px 0 #063e26, 10px 10px 0 rgba(0,0,0,0.55); }
-        body.pixel-pack .big-subtitle { font-family: 'Press Start 2P', monospace; font-size: 14px; letter-spacing: 5px; }
-        body.pixel-pack .brand-name { font-family: 'Press Start 2P', monospace; font-size: 17px; }
+        body.pixel-pack .big-title { font-family: 'Press Start 2P', monospace; font-size: var(--fs-8); text-shadow: 5px 5px 0 #063e26, 10px 10px 0 rgba(0,0,0,0.55); }
+        body.pixel-pack .big-subtitle { font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); letter-spacing: 5px; }
+        body.pixel-pack .brand-name { font-family: 'Press Start 2P', monospace; font-size: var(--fs-4); }
         /* ===== TEXTURE PACK PIXEL: hero/brand/boton por sprite PNG (img/pixel-hero/)
            con fallback al texto/estilo procedural de siempre si el PNG no existe
            (onerror del img añade .no-img al contenedor — mismo mecanismo que los
@@ -1268,26 +1292,26 @@ body.trailer-open #page-content{
            grande y se comia el hueco de los nav-links. */
         body.pixel-pack .brand-name:not(.no-img) .bn-img { display: inline-block; height: 32px; width: auto; vertical-align: middle; }
         body.pixel-pack .brand-name:not(.no-img) .bn-txt { display: none; }
-        body.pixel-pack .section-title { font-family: 'Press Start 2P', monospace; font-size: 26px; text-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
-        body.pixel-pack .feature-text h3 { font-family: 'Press Start 2P', monospace; font-size: 22px; line-height: 1.3; }
-        body.pixel-pack .skills-section h2, body.pixel-pack .battle-modes-container h2 { font-family: 'Press Start 2P', monospace !important; font-size: 24px !important; }
-        body.pixel-pack .mode-card h4 { font-family: 'Press Start 2P', monospace; font-size: 16px; }
-        body.pixel-pack .modal-title, body.pixel-pack .dq-summary .info .ti { font-family: 'Press Start 2P', monospace; font-size: 13px; }
-        body.pixel-pack .nav-link, body.pixel-pack .dropbtn { font-family: 'Press Start 2P', monospace; font-size: 10px; }
-        body.pixel-pack .ticker-item { font-family: 'Press Start 2P', monospace; font-size: 9px; }
+        body.pixel-pack .section-title { font-family: 'Press Start 2P', monospace; font-size: var(--fs-5); text-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
+        body.pixel-pack .feature-text h3 { font-family: 'Press Start 2P', monospace; font-size: var(--fs-5); line-height: 1.3; }
+        body.pixel-pack .skills-section h2, body.pixel-pack .battle-modes-container h2 { font-family: 'Press Start 2P', monospace !important; font-size: var(--fs-5) !important; }
+        body.pixel-pack .mode-card h4 { font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); }
+        body.pixel-pack .modal-title, body.pixel-pack .dq-summary .info .ti { font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); }
+        body.pixel-pack .nav-link, body.pixel-pack .dropbtn { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); }
+        body.pixel-pack .ticker-item { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); }
         body.pixel-pack .skill-name, body.pixel-pack .dq-title, body.pixel-pack .tooltip-title,
         body.pixel-pack .widget-title, body.pixel-pack .lb-head { font-family: 'Press Start 2P', monospace; }
-        body.pixel-pack .tooltip-title { font-size: 11px; }
-        body.pixel-pack .skill-name { font-size: 8px; }
-        body.pixel-pack .lb-head { font-size: 9px; }
+        body.pixel-pack .tooltip-title { font-size: var(--fs-2); }
+        body.pixel-pack .skill-name { font-size: var(--fs-1); }
+        body.pixel-pack .lb-head { font-size: var(--fs-1); }
         /* texto corrido */
         body.pixel-pack .feature-text p, body.pixel-pack .mode-card p, body.pixel-pack .mode-oracle-info,
         body.pixel-pack .dq-desc, body.pixel-pack .dq-subtitle, body.pixel-pack .tooltip-desc,
         body.pixel-pack .intro-text { font-family: 'VT323', monospace; }
-        body.pixel-pack .feature-text p, body.pixel-pack .mode-card p { font-size: 19px; }
-        body.pixel-pack .mode-oracle-info, body.pixel-pack .dq-subtitle { font-size: 18px; }
-        body.pixel-pack .dq-desc { font-size: 15px; }
-        body.pixel-pack .tooltip-desc { font-size: 15px; line-height: 1.25; }
+        body.pixel-pack .feature-text p, body.pixel-pack .mode-card p { font-size: var(--fs-4); }
+        body.pixel-pack .mode-oracle-info, body.pixel-pack .dq-subtitle { font-size: var(--fs-4); }
+        body.pixel-pack .dq-desc { font-size: var(--fs-3); }
+        body.pixel-pack .tooltip-desc { font-size: var(--fs-3); line-height: 1.25; }
         /* paneles y tarjetas: esquinas rectas + sombra dura */
         body.pixel-pack .side-widget, body.pixel-pack .widget-row, body.pixel-pack .mode-card,
         body.pixel-pack .video-card, body.pixel-pack .trailer-box:not(.active), body.pixel-pack .full-width-img,
@@ -1308,7 +1332,7 @@ body.trailer-open #page-content{
         body.pixel-pack .claim-pill, body.pixel-pack .dq-btn,
         body.pixel-pack .cmodal-btn, body.pixel-pack .lb-pag button, body.pixel-pack .modal-box button {
             border-radius: 0 !important; clip-path: none !important;
-            font-family: 'Press Start 2P', monospace !important; font-size: 11px !important;
+            font-family: 'Press Start 2P', monospace !important; font-size: var(--fs-2) !important;
             box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(255,255,255,0.18), inset -2px -2px 0 rgba(0,0,0,0.45) !important;
         }
         body.pixel-pack .cmodal-btn:active,
@@ -1341,15 +1365,15 @@ body.trailer-open #page-content{
         /* flex-wrap + max-width: con los grupos de −/+ la barra ya no cabe de
            una linea en 1280px, y sin envolver se salia por los lados. */
         #layoutEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 100001; display: flex; flex-wrap: wrap; justify-content: center; max-width: 96vw; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
-        #layoutEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 0.5px; }
-        #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer !important; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
+        #layoutEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: #8a939e; letter-spacing: 0.5px; }
+        #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); cursor: pointer !important; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
         #layoutEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
         #layoutEditBar .leb-btn.done { background: #0f8f46; color: #fff; border-color: #000; }
         /* Grupos de −/+ del cuerpo de letra. Mismos valores que en el editor
            de /game (#layoutEditBar .leb-group / .leb-label / .leb-btn.leb-sm). */
         #layoutEditBar .leb-group { display: flex; align-items: center; gap: 5px; padding-left: 10px; border-left: 1px solid #2a2f36; }
-        #layoutEditBar .leb-label { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #6a737e; letter-spacing: 0.5px; }
-        #layoutEditBar .leb-btn.leb-sm { padding: 5px 10px; font-size: 10px; }
+        #layoutEditBar .leb-label { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: #6a737e; letter-spacing: 0.5px; }
+        #layoutEditBar .leb-btn.leb-sm { padding: 5px 10px; font-size: var(--fs-1); }
         #btnLandingEdit { background: none; border: none; padding: 0; color: #ff9c3d; cursor: pointer !important; }
         #btnLandingEdit:hover { color: #fff; text-shadow: 0 0 10px #ff9c3d; }
     </style>
@@ -1707,8 +1731,8 @@ body.trailer-open #page-content{
         </div>
 
         <div class="intro-text" style="text-align: center; margin-bottom: 80px;">
-            <h2 class="holo-text" style="font-size: 42px; text-transform: uppercase;">EAT. GROW. PROFIT.</h2>
-            <p style="max-width: 900px; margin: 0 auto; color: #888; line-height: 1.6; font-size: 18px;">PillWars brings back the addictive chaos of classic browser games like Agar.io. Enter the arena, devour smaller pills, and grow your mass to dominate the map. But size isn't everything; master your special abilities to outsmart your opponents. Learn more below:</p>
+            <h2 class="holo-text" style="font-size: var(--fs-7); text-transform: uppercase;">EAT. GROW. PROFIT.</h2>
+            <p style="max-width: 900px; margin: 0 auto; color: #888; line-height: 1.6; font-size: var(--fs-4);">PillWars brings back the addictive chaos of classic browser games like Agar.io. Enter the arena, devour smaller pills, and grow your mass to dominate the map. But size isn't everything; master your special abilities to outsmart your opponents. Learn more below:</p>
         </div>
 
         <!-- SECCION 1 (SPLIT) - AUTOPLAY ACTIVADO -->
@@ -1791,13 +1815,13 @@ body.trailer-open #page-content{
                     <span class="ca-text" id="ca-text">2xY5QjZaNGFXQiePsZPz4YFEwqxQvzN1ALqHNyQWpump</span>
                     <span class="copy-tag">COPY</span>
                 </div>
-                <div id="copy-feedback" style="font-size:11px; color:var(--primary); height:15px; margin-top:5px;"></div>
+                <div id="copy-feedback" style="font-size: var(--fs-2); color:var(--primary); height:15px; margin-top:5px;"></div>
             </div>
         </div>
 
         <!-- SKILLS SECTION INTERACTIVE -->
         <div class="skills-section reveal">
-            <h2 style="font-family:'Russo One'; font-size: 40px; text-transform: uppercase;">THE SKILL ARSENAL</h2>
+            <h2 style="font-family:'Russo One'; font-size: var(--fs-7); text-transform: uppercase;">THE SKILL ARSENAL</h2>
             
             <div class="skills-grid" id="skills-grid-container">
                 <div class="skill-card" onmouseenter="App.UI.showSkill(event, 'shoot')" onclick="App.UI.toggleSkillMobile(event, 'shoot')" onmouseleave="App.UI.hideSkill()">
@@ -1942,7 +1966,7 @@ body.trailer-open #page-content{
     <div id="msg-modal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-title" id="msg-title">Notice</div>
-            <p id="msg-text" style="color:#ccc;font-size:14px;line-height:1.6;margin-bottom:22px"></p>
+            <p id="msg-text" style="color:#ccc;font-size: var(--fs-3);line-height:1.6;margin-bottom:22px"></p>
             <button class="cmodal-btn" onclick="App.Msg.close()">OK</button>
         </div>
     </div>
@@ -1963,7 +1987,7 @@ body.trailer-open #page-content{
                 <label class="cmodal-label">Message</label>
                 <textarea class="cmodal-field" name="message" required maxlength="2000" rows="4" placeholder="Tell us..."></textarea>
                 <button class="cmodal-btn" type="submit" id="cmodal-btn">Send message</button>
-                <div id="cmodal-status" style="margin-top:12px; font-size:13px; min-height:18px;"></div>
+                <div id="cmodal-status" style="margin-top:12px; font-size: var(--fs-2); min-height:18px;"></div>
             </form>
         </div>
     </div>
@@ -2035,7 +2059,7 @@ body.trailer-open #page-content{
             <button class="leb-btn leb-sm" onclick="LandingLayout.bumpGlow('title', 0.1)">+</button>
         </span>
         <div style="display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid #2a2f36;">
-            <label style="font-family:'Press Start 2P', monospace; font-size:7px; color:#6a737e;">NAVBAR:</label>
+            <label style="font-family:'Press Start 2P', monospace; font-size: var(--fs-1); color:#6a737e;">NAVBAR:</label>
             <input type="color" id="navbarColorPicker" style="width:32px; height:32px; border:1px solid #2a2f36; cursor:pointer;" />
         </div>
         <!-- Ciclo de 3 fuentes para TODOS los .category-tag de la pagina a la
@@ -2885,7 +2909,7 @@ function toggleTrailerMode() {
 
             function render(quests) {
                 if (!Array.isArray(quests) || !quests.length) {
-                    grid.innerHTML = "<div style=\"color:#888;font-family:Russo One,sans-serif;font-size:13px;letter-spacing:2px;padding:30px 0;text-align:center;\">LOADING QUESTS...</div>";
+                    grid.innerHTML = "<div style=\"color:#888;font-family:Russo One,sans-serif;font-size: var(--fs-2);letter-spacing:2px;padding:30px 0;text-align:center;\">LOADING QUESTS...</div>";
                     return;
                 }
                 var completed = 0;
