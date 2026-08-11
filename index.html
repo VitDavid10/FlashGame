@@ -791,6 +791,12 @@ body.trailer-open #page-content{
         }
 
         .section-container { padding: 100px var(--gutter); border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; position: relative; }
+        /* Interruptor para secciones que todavia no tienen contenido. display:none
+           y no visibility/opacity: asi no deja el hueco reservado ni la sigue
+           cogiendo el observador de scroll que reparte el foco entre secciones.
+           El !important es para ganarle al `display:flex` de .section-container
+           y al `display:block` que el hover del menu le pone a los enlaces. */
+        .oculto { display: none !important; }
         /* Estos fondos eran colores planos y OPACOS: tapaban la cuadricula pixel
            del body, que es lo que da textura al resto de la pagina, y por eso las
            secciones de abajo se veian sosas comparadas con el hero. Ahora son un
@@ -1589,7 +1595,7 @@ body.trailer-open #page-content{
             <div class="nav-links-container">
                 <a href="#hero" class="nav-link" style="min-width:4.4em">GAME</a>
                 <a href="#quest" class="nav-link" style="min-width:6.6em">QUESTS</a>
-                <a href="#shop" class="nav-link" style="min-width:5.5em">STORE</a>
+                <a href="#shop" class="nav-link oculto" data-seccion="shop" style="min-width:5.5em">STORE</a>
                 <a href="#ranking" class="nav-link" style="min-width:12.1em">LEADERBOARD</a>
                 <!-- $PILL va ANTES del boton EDIT a proposito. Los dos son
                      items de esta fila flex, asi que todo lo que se muestre u
@@ -1873,7 +1879,17 @@ body.trailer-open #page-content{
         </div>
         <div class="dq-grid" id="dq-grid"></div>
     </div>
-    <div id="shop" class="section-container">
+    <!-- ===== SKIN SHOP: OCULTO HASTA QUE HAYA SKINS =====
+         La seccion era un recuadro de linea discontinua VACIO con el rotulo
+         NFT MARKETPLACE dentro, entre DAILY QUESTS y GLOBAL ELITE. Un hueco
+         vacio a media pagina no se lee como "proximamente", se lee como que la
+         web esta a medio hacer — y contagia esa sensacion a lo que tiene al
+         lado, que si esta terminado.
+         PARA VOLVER A ENSEÑARLA: quita la clase `oculto` de este div y la del
+         enlace STORE de la navbar (busca data-seccion="shop"). No hace falta
+         tocar nada mas: el enlace del menu y el observador de scroll la vuelven
+         a coger solos. -->
+    <div id="shop" class="section-container oculto">
         <h1 class="section-title holo-text">Skin Shop</h1>
         <div class="placeholder-box"><h3>NFT MARKETPLACE</h3></div>
     </div>
