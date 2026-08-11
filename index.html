@@ -2147,9 +2147,14 @@ body.trailer-open #page-content{
                         return r.bottom > 0 && r.top < window.innerHeight;
                     };
 
-                    if (rvReduced || !('IntersectionObserver' in window)) {
+                    // Todo visible desde el inicio, sin animaciones de aparición
+                    rvBlocks.forEach(b => b.classList.add('active'));
+                    const rvs = document.querySelectorAll('.rv');
+                    rvs.forEach(rv => rv.classList.add('rv-in'));
+
+                    if (false && rvReduced || !('IntersectionObserver' in window)) {
                         rvBlocks.forEach(b => b.classList.add('active'));
-                    } else {
+                    } else if (false) {
                         // Ancla del grupo -> todas sus piezas.
                         const rvGroup = new WeakMap();
                         const rvEnter = el => {
