@@ -464,6 +464,12 @@
      por narices y no por gusto: se cuelga de la navbar (top: --navbar-height)
      y si uno escala y el otro no, se solapan. */
   .navbar, .ticker-wrap { zoom: calc(1 / .9); }
+  /* vh/vw NO se escalan con zoom (son del viewport) pero SI se pintan
+     escaladas: el hero se quedaba en 972px de los 1080 de pantalla y dejaba
+     una franja negra abajo. Dividirlo por el zoom lo devuelve a pantalla
+     completa. Es la pega de zoom frente al zoom del navegador, que si ajusta
+     el viewport; solo la sufre lo que mide en vh/vw, y aqui es el hero. */
+  .hero-video-wrapper { height: calc(100vh / .9); min-height: calc(500px / .9); }
   /* Los modales cuelgan del body, fuera de #page-content (se sacan de ahi
      para que no les entre el blur del modo cine), asi que hay que darles el
      zoom aparte o se verian un 11% mas grandes que la pagina. Los centra el
