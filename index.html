@@ -459,6 +459,11 @@
      ningun favor a nadie. */
 @media (min-width: 1200px) {
   #page-content { zoom: .9; }
+  /* La barra de arriba se queda a tamaño natural: el zoom anidado multiplica,
+     asi que 1/.9 deshace exactamente el .9 del padre. El ticker va con ella
+     por narices y no por gusto: se cuelga de la navbar (top: --navbar-height)
+     y si uno escala y el otro no, se solapan. */
+  .navbar, .ticker-wrap { zoom: calc(1 / .9); }
   /* Los modales cuelgan del body, fuera de #page-content (se sacan de ahi
      para que no les entre el blur del modo cine), asi que hay que darles el
      zoom aparte o se verian un 11% mas grandes que la pagina. Los centra el
