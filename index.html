@@ -2277,6 +2277,22 @@ body.trailer-open #page-content{
                         const armarFoco = () => focusables.forEach(el => el.classList.add('rv-anim'));
                         requestAnimationFrame(() => requestAnimationFrame(armarFoco));
                         setTimeout(armarFoco, 300);
+                        // Cuando un bloque enfoca (.rv-focus), cargar videos dentro
+                        const mutObserver = new MutationObserver(mutations => {
+                            mutations.forEach(mut => {
+                                if (mut.type === 'attributes' && mut.attributeName === 'class') {
+                                    const el = mut.target;
+                                    if (el.classList.contains('rv-focus')) {
+                                        const videos = el.querySelectorAll('video');
+                                        videos.forEach(v => v.play?.().catch(() => {}));
+                                    } else {
+                                        const videos = el.querySelectorAll('video');
+                                        videos.forEach(v => v.pause?.());
+                                    }
+                                }
+                            });
+                        });
+                        focusables.forEach(el => mutObserver.observe(el, { attributes: true }));
                     }
                 },
                 setupVideoHover: () => {
