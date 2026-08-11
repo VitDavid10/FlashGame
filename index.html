@@ -2116,14 +2116,13 @@ body.trailer-open #page-content{
                     });
 
                     // Reveal al scroll (ver .rv en el CSS): cada bloque .reveal
-                    // reparte sus hijos en grupos, y cada grupo tiene su
-                    // variante de entrada y su retardo. Se observa PIEZA A PIEZA,
-                    // no el bloque entero: en un bloque alto, disparar todo
-                    // cuando asoma su borde superior dejaba las piezas de abajo
-                    // ya animadas antes de que llegasen a mirarse.
-                    // Por eso los retardos base son cortos: cada grupo ya tiene
-                    // su propio momento de entrada, el retardo solo escalona a
-                    // los hermanos que caen a la misma altura.
+                    // reparte sus hijos en GRUPOS, y el grupo es la unidad que
+                    // entra. Se observa solo su primera pieza (la mas alta) y al
+                    // cruzar esta el centro entran todas, escalonadas por ms.
+                    // Ni el bloque entero (en uno alto, lo de abajo se animaba
+                    // sin que hubieses llegado a mirarlo) ni pieza a pieza, que
+                    // partia el texto: salia el tag y el titulo se quedaba atras
+                    // esperando su propio turno, con un hueco en medio.
                     // [selector, variante, retardo base (ms), paso entre hermanos]
                     const RV_MAP = [
                         ['.feature-block', [
@@ -2151,30 +2150,35 @@ body.trailer-open #page-content{
                     if (rvReduced || !('IntersectionObserver' in window)) {
                         rvBlocks.forEach(b => b.classList.add('active'));
                     } else {
+                        // Ancla del grupo -> todas sus piezas.
+                        const rvGroup = new WeakMap();
+                        const rvEnter = el => {
+                            // Soltar las clases al acabar deja el elemento como
+                            // estaba: sin animation pisando sus :hover.
+                            const done = ev => {
+                                if (ev.target !== el) return; // animationend burbujea
+                                el.removeEventListener('animationend', done);
+                                el.classList.remove('rv', 'rv-in');
+                                el.style.removeProperty('--rv-d');
+                                delete el.dataset.rv;
+                            };
+                            el.addEventListener('animationend', done);
+                            // Red de seguridad: si por lo que sea no llega el
+                            // animationend, el elemento se quedaria invisible.
+                            setTimeout(() => done({ target: el }), 2500);
+                            el.classList.add('rv-in');
+                            // Y su bloque, por si el observador del marco se
+                            // hubiese quedado atras: una pieza nunca puede
+                            // entrar dentro de un contenedor todavia tapado.
+                            const own = el.closest('.reveal');
+                            if (own) own.classList.add('active');
+                        };
                         const rvObserver = new IntersectionObserver((entries, obs) => {
                             entries.forEach(e => {
                                 if (!e.isIntersecting) return;
                                 obs.unobserve(e.target);
-                                const el = e.target;
-                                // Soltar las clases al acabar deja el elemento como
-                                // estaba: sin animation pisando sus :hover.
-                                const done = ev => {
-                                    if (ev.target !== el) return; // animationend burbujea
-                                    el.removeEventListener('animationend', done);
-                                    el.classList.remove('rv', 'rv-in');
-                                    el.style.removeProperty('--rv-d');
-                                    delete el.dataset.rv;
-                                };
-                                el.addEventListener('animationend', done);
-                                // Red de seguridad: si por lo que sea no llega el
-                                // animationend, el elemento se quedaria invisible.
-                                setTimeout(() => done({ target: el }), 2500);
-                                el.classList.add('rv-in');
-                                // Y su bloque, por si el observador del marco se
-                                // hubiese quedado atras: una pieza nunca puede
-                                // entrar dentro de un contenedor todavia tapado.
-                                const own = el.closest('.reveal');
-                                if (own) own.classList.add('active');
+                                // Entra el grupo entero, no solo la pieza observada.
+                                (rvGroup.get(e.target) || [e.target]).forEach(rvEnter);
                             });
                             // -50% abajo deja como zona util la mitad de arriba de
                             // la pantalla: la pieza no entra hasta que cruza el
@@ -2196,15 +2200,20 @@ body.trailer-open #page-content{
                             const rule = RV_MAP.find(([sel]) => block.matches(sel));
                             const groups = rule ? rule[1] : [[':scope > *', 'up', 0, 100]];
                             groups.forEach(([sel, variant, base, step]) => {
-                                [...block.querySelectorAll(sel)]
+                                const items = [...block.querySelectorAll(sel)]
                                     // los .reveal anidados ya se animan por su cuenta
-                                    .filter(el => !el.classList.contains('reveal') && el.closest('.reveal') === block)
-                                    .forEach((el, i) => {
-                                        el.classList.add('rv');
-                                        el.dataset.rv = variant;
-                                        el.style.setProperty('--rv-d', (base + Math.min(i, 9) * step) + 'ms');
-                                        rvObserver.observe(el);
-                                    });
+                                    .filter(el => !el.classList.contains('reveal') && el.closest('.reveal') === block);
+                                items.forEach((el, i) => {
+                                    el.classList.add('rv');
+                                    el.dataset.rv = variant;
+                                    el.style.setProperty('--rv-d', (base + Math.min(i, 9) * step) + 'ms');
+                                });
+                                // Se vigila solo la primera pieza (la mas alta del
+                                // grupo); cuando esa cruza el centro, entran todas.
+                                if (items.length) {
+                                    rvGroup.set(items[0], items);
+                                    rvObserver.observe(items[0]);
+                                }
                             });
                             rvFrameObserver.observe(block);
                         });
