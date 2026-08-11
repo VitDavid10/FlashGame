@@ -2176,20 +2176,21 @@ body.trailer-open #page-content{
                                 const own = el.closest('.reveal');
                                 if (own) own.classList.add('active');
                             });
-                            // -35% abajo: la pieza no entra al asomar por el borde,
-                            // sino cuando ya esta en el tercio bueno de la pantalla.
-                        }, { rootMargin: '0px 0px -35% 0px' });
+                            // -50% abajo deja como zona util la mitad de arriba de
+                            // la pantalla: la pieza no entra hasta que cruza el
+                            // CENTRO, ni asomando por el borde ni a medio camino.
+                        }, { rootMargin: '0px 0px -50% 0px' });
 
-                        // El marco entra un poco antes que sus piezas (-12% contra
-                        // el -35% de arriba): primero llega el bloque, y ya dentro
-                        // se va montando el contenido.
+                        // El marco va justo por delante de sus piezas (-45% contra
+                        // el -50% de arriba, unos 50px de scroll): llega al centro
+                        // el bloque y el contenido le cae dentro acto seguido.
                         const rvFrameObserver = new IntersectionObserver((entries, obs) => {
                             entries.forEach(e => {
                                 if (!e.isIntersecting) return;
                                 obs.unobserve(e.target);
                                 e.target.classList.add('active');
                             });
-                        }, { rootMargin: '0px 0px -12% 0px' });
+                        }, { rootMargin: '0px 0px -45% 0px' });
 
                         rvBlocks.forEach(block => {
                             const rule = RV_MAP.find(([sel]) => block.matches(sel));
