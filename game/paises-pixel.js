@@ -22,9 +22,8 @@
  *
  * EMBLEMAS POR CAPAS. Cada pais declara una lista de capas {f: forma, c: color,
  * k: escala, dx/dy: desplazamiento}, que se pintan en orden. Con una sola capa
- * no habia forma de que Estados Unidos pareciera Estados Unidos (necesita el
- * canton azul Y las estrellas blancas encima) ni de que China tuviera su
- * estrella grande con las cuatro pequenas.
+ * no habia forma de que China tuviera su estrella grande con las cuatro
+ * pequenas, ni de que Sudafrica llevara su triangulo negro con filo dorado.
  *
  * UMBRAL POR PAIS. `min` = alto minimo de la banda central para que ese emblema
  * aparezca. Es POR PAIS y no global: una cruz o un disco se leen a 8px, un
@@ -48,11 +47,17 @@ const PAIS_FORMAS = {
     // escudo heraldico, que a tamano pildora era una mancha con forma de escudo
     // y no se parecia a nada.
     aro: (u, v) => { const r = u * u + v * v; return r <= 1 && r >= 0.34; },
+    // Chakra de Ashoka (India): llanta, buje y 24 radios. |cos(12a)| tiene 24
+    // lobulos en la vuelta completa, que son justo los radios que lleva.
+    rueda: (u, v) => {
+        const r = Math.sqrt(u * u + v * v);
+        if (r > 1) return false;
+        if (r >= 0.76 || r <= 0.2) return true;
+        return Math.abs(Math.cos(Math.atan2(v, u) * 12)) > 0.86;
+    },
     rombo: (u, v) => Math.abs(u) + Math.abs(v) <= 1,
-    cuadrado: (u, v) => Math.abs(u) <= 1 && Math.abs(v) <= 1,
 
     cruz: (u, v) => Math.abs(u) <= 0.34 || Math.abs(v) <= 0.34,
-    cruzFina: (u, v) => Math.abs(u) <= 0.2 || Math.abs(v) <= 0.2,
     cruzGruesa: (u, v) => Math.abs(u) <= 0.46 || Math.abs(v) <= 0.46,
     // Brazo vertical desplazado a la izquierda (Suecia, Noruega).
     cruzNordica: (u, v) => Math.abs(v) <= 0.3 || Math.abs(u + 0.22) <= 0.3,
@@ -84,26 +89,10 @@ const PAIS_FORMAS = {
         return false;
     },
 
-    // Tres estrellas en fila (para cantones tipo EE.UU.).
-    filaEstrellas: (u, v) => {
-        for (let i = -1; i <= 1; i++) {
-            const du = (u - i * 0.6) / 0.34, dv = v / 0.55;
-            if (Math.abs(du) <= 1 && Math.abs(dv) <= 1 && estrellaN(du, dv, 5)) return true;
-        }
-        return false;
-    },
-
     luna: (u, v) => {
         const d1 = u * u + v * v <= 1;
         const d2 = (u - 0.42) * (u - 0.42) + v * v <= 0.82 * 0.82;
         return d1 && !d2;
-    },
-
-    escudo: (u, v) => {
-        if (Math.abs(u) > 1 || v < -1 || v > 1) return false;
-        if (v <= 0.15) return Math.abs(u) <= 0.86;
-        const t = (v - 0.15) / 0.85;
-        return Math.abs(u) <= 0.86 * (1 - t * t);
     },
 
     triangulo: (u, v) => v >= -1 && v <= 1 && u >= -0.9 && (u <= 0.9 - Math.abs(v) * 1.8),
@@ -198,170 +187,170 @@ const PAISES = {
     MX: {
         n: 'Mexico', b: ['#006847', '#ffffff', '#CE1126'], min: UMBRAL.tarde,
         e: [{ f: 'aguila', c: '#6B4A22' }],
-        lore: 'The eagle never asked permission. Neither should you — take the center of the map and dare anyone to come get it.'
+        lore: 'The eagle on the flag is mid-kill, standing on a cactus with a snake in its beak, and nobody ever asked it to pose politely. Mexico plays the arena the same way: take the middle, hold the middle, and let the rest of the lobby work out what to do about it.'
     },
     ZA: {
         n: 'South Africa', b: ['#DE3831', '#007A4D', '#002395'], min: UMBRAL.pronto,
         e: [{ f: 'triangulo', c: '#FFB612', k: 1 }, { f: 'triangulo', c: '#000000', k: 0.72 }],
-        lore: 'Six colors, one flag. Six enemies, one mouth. The arithmetic works out in your favor.'
+        lore: 'Six colours on one flag, which no other nation dared attempt, and a Y that splits and rejoins to say that everything once separate comes back together. You will do a lot of splitting here. The rejoining is the part most players get wrong.'
     },
     CH: {
         n: 'Switzerland', b: ['#DA291C', '#B81C11', '#DA291C'], min: UMBRAL.siempre,
         e: [{ f: 'cruz', c: '#ffffff', k: 0.82 }],
-        lore: 'Neutral in every war except this one. The cross marks where the mass gets stored.'
+        lore: 'Neutral in every war of the last two centuries, and the only country on this list that will sit out a fight purely because the arithmetic does not favour it. That is not cowardice. That is a player who has already counted your mass.'
     },
     CA: {
         n: 'Canada', b: ['#D80621', '#ffffff', '#D80621'], min: UMBRAL.tarde,
         e: [{ f: 'hoja', c: '#D80621' }],
-        lore: 'Polite until the split. Then the leaf comes off and something with teeth arrives.'
+        lore: 'Impossibly polite right up to the moment the leaf comes off. Canada holds the second largest territory on the planet and almost nobody lives in it, which is exactly the map control philosophy: own more space than you could possibly need, and dare someone to walk into it.'
     },
     BR: {
         n: 'Brazil', b: ['#009739', '#007C2F', '#009739'], min: UMBRAL.pronto,
         e: [{ f: 'rombo', c: '#FEDD00' }, { f: 'disco', c: '#012169', k: 0.52 }],
-        lore: 'Order and progress, in that order. First you eat in order, then you progress through the leaderboard.'
+        lore: 'Order and progress, in that order, stitched across a sky of stars fixed at the exact moment the republic was born. Five World Cups say the flair is real, but flair alone never held a lobby. Eat in order. Progress follows.'
     },
     MA: {
         n: 'Morocco', b: ['#C1272D', '#A31E24', '#C1272D'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#006233', k: 0.92 }],
-        lore: 'The green star was drawn with one unbroken line. Your run should be too.'
+        lore: 'The green star was drawn as one unbroken line, a single stroke that never lifts and never crosses itself. Play the same way. The runs that end badly here are the ones that hesitated somewhere in the middle.'
     },
-    US: {
-        n: 'United States', b: ['#B22234', '#ffffff', '#B22234'], min: UMBRAL.pronto,
-        e: [{ f: 'cuadrado', c: '#3C3B6E', k: 0.96 }, { f: 'filaEstrellas', c: '#ffffff', k: 0.9 }],
-        lore: 'Loud, oversized and impossible to ignore on the minimap. Exactly the plan.'
+    IN: {
+        n: 'India', b: ['#FF9933', '#ffffff', '#138808'], min: UMBRAL.pronto,
+        e: [{ f: 'rueda', c: '#000080', k: 0.95 }],
+        lore: 'The wheel in the middle is the Ashoka Chakra, and its twenty-four spokes are the twenty-four hours of a day. The point of it is that it never stops turning. In this arena the ones who stop rolling get eaten by the ones who did not.'
     },
     AU: {
         n: 'Australia', b: ['#00247D', '#001A5C', '#00247D'], min: UMBRAL.pronto,
         e: [{ f: 'cruzDelSur', c: '#ffffff', k: 0.98 }, { f: 'estrella7', c: '#ffffff', k: 0.42, dx: -0.55, dy: 0.45 }],
-        lore: 'Everything here is bigger than you and mildly hostile. You will fit right in.'
+        lore: 'The Southern Cross only works as a compass if you are below the equator, which is a very Australian way of saying that the rules change depending on where you are standing. Everything here is larger than you and mildly hostile. You will fit right in.'
     },
     PY: {
         n: 'Paraguay', b: ['#D52B1E', '#ffffff', '#0038A8'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#009B3A', k: 0.85 }],
-        lore: 'The only flag with a different face on each side. Nobody knows which one you are until it is too late.'
+        lore: 'The only national flag on Earth with a different emblem on each face, so what you see depends entirely on which side you are standing. Nobody in this arena knows which Paraguay they are chasing until it has already turned around.'
     },
     DE: {
         n: 'Germany', b: ['#000000', '#DD0000', '#FFCE00'], min: UMBRAL.siempre,
         e: null,
-        lore: 'No emblem. No decoration. Three bands and a plan that was drafted before the match started.'
+        lore: 'No emblem, no decoration, no flourish anywhere on it. Three bands and a plan that was finalised long before the match started. Germany does not improvise, and that is precisely the thing that should worry you.'
     },
     CI: {
         n: 'Ivory Coast', b: ['#F77F00', '#ffffff', '#009E60'], min: UMBRAL.siempre,
         e: null,
-        lore: 'Orange for the land, white for the peace, green for the hope. The hope is that you split before they do.'
+        lore: 'Orange for the savannah, white for the peace between, green for the forest and the hope. The hope, in practice, is that you split a fraction of a second before the other one does.'
     },
     EC: {
         n: 'Ecuador', b: ['#FFDD00', '#0033A0', '#EF3340'], min: UMBRAL.pronto,
         e: [{ f: 'aro', c: '#FFDD00', k: 0.9 }],
-        lore: 'The line the whole country is named after. Cross it enough times and someone notices.'
+        lore: 'Named after a line that does not physically exist, drawn around the widest part of the planet, and claimed by a country that decided the line was worth being named after. Cross the middle of the map often enough and people start naming things after you too.'
     },
     NL: {
         n: 'Netherlands', b: ['#AE1C28', '#ffffff', '#21468B'], min: UMBRAL.siempre,
         e: null,
-        lore: 'They built a country below sea level out of pure stubbornness. Holding a corner should be easy.'
+        lore: 'They built an entire country below sea level out of sheer refusal to accept the water\'s opinion on the matter. A third of it should not be there. Holding a contested corner of this map should feel like a holiday.'
     },
     JP: {
         n: 'Japan', b: ['#ffffff', '#F0F0F0', '#ffffff'], min: UMBRAL.siempre,
         e: [{ f: 'disco', c: '#BC002D', k: 0.72 }],
-        lore: 'One circle. Nothing else needed. The simplest shape on the field and the hardest to corner.'
+        lore: 'One circle. No text, no crest, no second idea. Every other flag on this list is trying to tell you something; this one just shows up. The simplest shape on the field is also the hardest to corner.'
     },
     SE: {
         n: 'Sweden', b: ['#006AA7', '#00518A', '#006AA7'], min: UMBRAL.siempre,
         e: [{ f: 'cruzNordica', c: '#FECC00', k: 0.9 }],
-        lore: 'Cold, patient, and already behind you. The cross points where you should have looked.'
+        lore: 'Cold, patient, and already behind you. Sweden spent centuries being the quiet power of the north while everyone was watching somewhere else. The cross points at exactly the place you should have been looking.'
     },
     BE: {
         n: 'Belgium', b: ['#000000', '#FDDA24', '#EF3340'], min: UMBRAL.siempre,
         e: null,
-        lore: 'Small country, dense population, no room to run. You have played this map your whole life.'
+        lore: 'A small, dense country that has been the crossroads of every European argument worth having, with no room to run in any direction. You have played this map your entire life. It is called rush hour.'
     },
     EG: {
         n: 'Egypt', b: ['#CE1126', '#ffffff', '#000000'], min: UMBRAL.tarde,
         e: [{ f: 'aguila', c: '#C09300' }],
-        lore: 'The eagle of Saladin has watched empires get eaten. It is unimpressed by your kill streak.'
+        lore: 'The Eagle of Saladin has watched empires get eaten, and it was not especially impressed by any of them. Your kill streak is real, and it is also about four thousand years too late to be the most impressive thing that ever happened here.'
     },
     ES: {
         n: 'Spain', b: ['#AA151B', '#F1BF00', '#AA151B'], min: UMBRAL.siempre,
         e: null,
-        lore: 'Plus ultra — further beyond. There is always more mass past the edge of what you can currently hold.'
+        lore: 'Red, gold, red, and Plus Ultra written across the middle of it: further beyond. It was stamped on the coins of an empire that kept sailing past the edge of its own maps. There is always more mass past the edge of what you can currently hold.'
     },
     CV: {
         n: 'Cape Verde', b: ['#003893', '#ffffff', '#003893'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#CF2027', k: 0.9 }],
-        lore: 'Ten islands, no continent, no excuses. Showed up and knocked out someone who was supposed to win.'
+        lore: 'Ten islands, no continent, half a million people, and a squad nobody outside the Atlantic had heard of. It walked into the group stage and knocked out a country that had been to two finals. Size is a statistic. It is not a result.'
     },
     FR: {
         n: 'France', b: ['#002395', '#ffffff', '#ED2939'], min: UMBRAL.siempre,
         e: null,
-        lore: 'Liberty to roam, equality of hitboxes, fraternity until one of you is bigger.'
+        lore: 'Liberty to roam wherever the map allows, equality of hitboxes at the moment of contact, and fraternity that lasts precisely until one of you is measurably larger than the other.'
     },
     NO: {
         n: 'Norway', b: ['#BA0C2F', '#ffffff', '#BA0C2F'], min: UMBRAL.siempre,
         e: [{ f: 'cruzNordica', c: '#00205B', k: 0.86 }],
-        lore: 'Carved out of a coastline that refuses to be simple. Your path through the map should be just as jagged.'
+        lore: 'A coastline so jagged that measuring it depends on the length of your ruler, folded into fjords that hide everything until you are already inside them. Take the long way. Nothing that matters here is reached in a straight line.'
     },
     SN: {
         n: 'Senegal', b: ['#00853F', '#FDEF42', '#E31B23'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#00853F', k: 0.88 }],
-        lore: 'The Lions of Teranga. Teranga means hospitality — offered right up until the moment it is not.'
+        lore: 'The Lions of Teranga, and Teranga is the word for a hospitality so complete that a stranger is fed before the family eats. It is offered without condition, right up until the exact moment that it is not.'
     },
     AR: {
         n: 'Argentina', b: ['#74ACDF', '#ffffff', '#74ACDF'], min: UMBRAL.pronto,
         e: [{ f: 'sol', c: '#F6B40E', k: 0.95 }],
-        lore: 'The Sun of May rises whether or not you were ready. Grow into it.'
+        lore: 'The Sun of May broke through the clouds over Buenos Aires during the revolution, and the whole country decided that was a sign rather than weather. It rises whether or not you were ready for it. Grow into it.'
     },
     DZ: {
         n: 'Algeria', b: ['#006233', '#ffffff', '#006233'], min: UMBRAL.pronto,
         e: [{ f: 'luna', c: '#D21034', k: 0.92 }],
-        lore: 'The crescent opens toward whatever is next. Usually that is someone smaller.'
+        lore: 'The largest country in Africa, most of it Sahara, where the crescent opens toward whatever comes next because there is nothing behind you worth turning around for. What comes next is usually somebody smaller.'
     },
     AT: {
         n: 'Austria', b: ['#ED2939', '#ffffff', '#ED2939'], min: UMBRAL.siempre,
         e: null,
-        lore: 'One of the oldest flags still flying. Red, white, red — the same three bands for eight centuries.'
+        lore: 'Legend says the red and white came from a duke\'s tunic after a battle, soaked through except for the strip under his belt. Eight centuries later it is still three bands and no explanation. Some designs never needed a second draft.'
     },
     CO: {
         n: 'Colombia', b: ['#FCD116', '#003893', '#CE1126'], min: UMBRAL.siempre,
         e: null,
-        lore: 'Half the flag is gold, because half the flag is what the country is worth. Go take your half of the map.'
+        lore: 'Half the flag is gold, and the proportion is deliberate: the top band is as tall as the other two combined because that is what the land was worth. Do not settle for a third of this map. Go and take your half.'
     },
     PT: {
-        n: 'Portugal', b: ['#046A38', '#DA291C'], min: UMBRAL.siempre,
-        e: [{ f: 'aro', c: '#FFE900', k: 0.95 }],
-        lore: 'The armillary sphere was a tool for finding your way home. Nobody here is going home.'
+        n: 'Portugal', b: ['#046A38', '#DA291C', '#A8170F'], min: UMBRAL.siempre,
+        e: null,
+        lore: 'A country that ran out of coastline and kept going anyway, mapping the edges of the world by sailing straight off them and coming back with the edges redrawn. This arena has edges too. Nobody has checked what is past them lately.'
     },
     CD: {
         n: 'DR Congo', b: ['#007FFF', '#F7D618', '#007FFF'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#CE1021', k: 0.88 }],
-        lore: 'A river that runs both sides of the equator. Whatever direction you are going, it has been there.'
+        lore: 'A river that crosses the equator twice, so somewhere along it the water is always in flood season no matter what month you name. Whatever direction you think you are going, the Congo has already been there and come back.'
     },
     GB: {
-        n: 'United Kingdom', b: ['#012169', '#001640'], min: UMBRAL.siempre,
+        n: 'United Kingdom', b: ['#012169', '#001640', '#012169'], min: UMBRAL.siempre,
         e: [
             { f: 'aspa', c: '#ffffff', k: 1 },
             { f: 'cruzGruesa', c: '#ffffff', k: 1 },
             { f: 'aspaFina', c: '#C8102E', k: 1 },
             { f: 'cruz', c: '#C8102E', k: 1 },
         ],
-        lore: 'Three crosses stacked into one flag by countries that could not agree on much else. Somehow it works.'
+        lore: 'Three crosses from three kingdoms stacked into one flag by countries that have never fully agreed on anything else, layered until the seams stopped showing. It should not work as a design. It has worked for two hundred years.'
     },
     HR: {
         n: 'Croatia', b: ['#FF0000', '#ffffff', '#171796'], min: UMBRAL.medio,
         e: [{ f: 'damero', c: '#FF0000', k: 0.92 }],
-        lore: 'Twenty-five red and white squares. Count them if you get close enough, which you will not.'
+        lore: 'Twenty-five red and white squares, and the first one is always red, a detail that has started actual arguments. Count them if you ever get close enough to a Croatian pill, which tends not to be a thing that happens twice.'
     },
     GH: {
         n: 'Ghana', b: ['#CE1126', '#FCD116', '#006B3F'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#000000', k: 0.88 }],
-        lore: 'The Black Star. First to break free, and still first to the middle of the map.'
+        lore: 'The Black Star was the first flag raised when the colonial ones came down, and every African independence movement that followed borrowed something from it. First to break free, and still first to the middle of the map.'
     },
     CN: {
-        n: 'China', b: ['#EE1C25', '#D4141B'], min: UMBRAL.siempre,
+        n: 'China', b: ['#EE1C25', '#D4141B', '#EE1C25'], min: UMBRAL.siempre,
         e: [
             { f: 'estrella', c: '#FFFF00', k: 0.62, dx: -0.42 },
             { f: 'arcoEstrellas', c: '#FFFF00', k: 1 },
         ],
-        lore: 'One large star, four small ones following. Build your own constellation out of everyone you swallow.'
+        lore: 'One large star with four smaller ones turned toward it, each facing the same centre. Build the same thing here: every pill you swallow becomes another point of light orbiting whatever it is you are turning into.'
     },
 };
 
@@ -387,6 +376,43 @@ function paisSkin(code) {
 }
 
 function paisLista() { return Object.keys(PAISES).map(c => Object.assign({ code: c }, PAISES[c])); }
+
+/* ===== PAGINADO DE LA TIENDA ===== ---------------------------------------
+ * El orden de las pestañas NO es el de la tabla: la tercera tanda abre la
+ * tienda y luego van la segunda, la primera y la cuarta. Vive aqui, y no en
+ * cada tienda, para que /game y la landing no puedan discrepar.
+ */
+const PAIS_ORDEN_PAGINAS = [2, 1, 0, 3];
+function paisNumPaginas(porPagina) { return Math.ceil(Object.keys(PAISES).length / porPagina); }
+function paisPagina(idx, porPagina) {
+    const l = paisLista();
+    const real = PAIS_ORDEN_PAGINAS[idx] === undefined ? idx : PAIS_ORDEN_PAGINAS[idx];
+    return l.slice(real * porPagina, (real + 1) * porPagina);
+}
+
+/* ===== SKINS EN PROPIEDAD ===== ------------------------------------------
+ * PROVISIONAL: vive en localStorage, o sea SOLO en este navegador. No es una
+ * compra de verdad — el ledger de $PILL y de skill points, quien posee que y
+ * que eso persista es trabajo de servidor. Esto existe para poder ver el
+ * recorrido de la tienda (comprar -> asignar -> llevarla puesta) sin montar la
+ * economia antes de tener el diseño cerrado. Cuando exista el endpoint, estas
+ * cuatro funciones son lo unico que hay que cambiar.
+ */
+const PAIS_KEY_TENGO = 'pw_skins_owned', PAIS_KEY_PUESTA = 'pw_skin_equipped';
+function paisMias() { try { return JSON.parse(localStorage.getItem(PAIS_KEY_TENGO) || '[]'); } catch (e) { return []; } }
+function paisTengo(code) { return paisMias().indexOf(code) !== -1; }
+function paisComprar(code) {
+    if (!PAISES[code] || paisTengo(code)) return false;
+    const m = paisMias(); m.push(code);
+    try { localStorage.setItem(PAIS_KEY_TENGO, JSON.stringify(m)); } catch (e) {}
+    return true;
+}
+function paisPuesta() { try { return localStorage.getItem(PAIS_KEY_PUESTA) || null; } catch (e) { return null; } }
+function paisPoner(code) {
+    if (!paisTengo(code)) return false;
+    try { localStorage.setItem(PAIS_KEY_PUESTA, code); } catch (e) {}
+    return true;
+}
 
 /* Pildora INCLINADA. Port de pixPillSpriteRot (game/index.html) a tres bandas +
  * emblema por capas. Mantiene su modo `detailed`: luz direccional constante EN
@@ -479,4 +505,4 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
     _paisCache.set(key, o); return o;
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { PAISES, PAIS_FORMAS, UMBRAL, paisSkin, paisLista, paisPillRot };
+if (typeof module !== 'undefined' && module.exports) module.exports = { PAISES, PAIS_FORMAS, UMBRAL, paisSkin, paisLista, paisPillRot, paisPagina, paisNumPaginas, PAIS_ORDEN_PAGINAS };

@@ -688,8 +688,9 @@
                                    border: none; box-shadow: none; image-rendering: pixelated; }
         .skin-detail .pw-big-btn.sd-pill { background-image: url('img/cartel-hero/btn-plain-red.png'); }
         .skin-detail .pw-big-btn.sd-sp { background-image: url('img/cartel-hero/btn-plain-green.png'); }
-        .skin-detail .pw-big-btn:hover { filter: brightness(1.15); }
-        .skin-detail .pw-big-btn:active { transform: translate(2px, 2px); }
+        .skin-detail .pw-big-btn:hover:not(:disabled) { filter: brightness(1.15); }
+        .skin-detail .pw-big-btn:active:not(:disabled) { transform: translate(2px, 2px); }
+        .skin-detail .pw-big-btn:disabled { filter: grayscale(0.7) brightness(0.8); cursor: default; }
 
         .side-tabs-dots { display: flex; gap: 5px; justify-content: center; margin-top: 5px; flex-shrink: 0; }
         .side-tabs-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: 0.2s; }
@@ -1849,8 +1850,7 @@
             <div class="sd-lore" id="sdLore"></div>
             <div class="sd-crece" id="sdCrece"></div>
             <div class="sd-pie" id="sdPie"></div>
-            <button class="pw-big-btn sd-pill" id="sdBuyPill" onmouseenter="SoundManager.playSimpleHover()">BUY · 25,000 $PILL</button>
-            <button class="pw-big-btn sd-sp" id="sdBuySp" onmouseenter="SoundManager.playSimpleHover()">BUY · 150 SP</button>
+            <div id="sdBotones"></div>
             <button class="pw-big-btn" onclick="skinClose()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
     </div>
@@ -7691,21 +7691,23 @@
     function skinRender() {
         const grid = document.getElementById('skinGrid');
         if (!grid || typeof paisLista !== 'function') return;
-        const lista = paisLista();
-        const paginas = Math.ceil(lista.length / SKIN_POR_PAGINA);
+        const paginas = paisNumPaginas(SKIN_POR_PAGINA);
         skinPagina = Math.max(0, Math.min(paginas - 1, skinPagina));
         grid.innerHTML = '';
         // El ancho de pildora sale del alto REAL de la celda, no de una constante:
         // el cartel se reescala desde EDIT LAYOUT y con un valor fijo se salia.
         const altoCelda = (grid.clientHeight - 4) / 2;
         const wL = Math.max(14, Math.min(40, Math.floor((altoCelda - 22) / 2.12)));
-        lista.slice(skinPagina * SKIN_POR_PAGINA, (skinPagina + 1) * SKIN_POR_PAGINA).forEach(p => {
+        // El orden de las pestañas lo decide paisPagina(), no la tabla.
+        paisPagina(skinPagina, SKIN_POR_PAGINA).forEach(p => {
             const o = paisPillRot(wL, p.code, SKIN_ANG);
             const cel = document.createElement('div'); cel.className = 'skin-cell';
             const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
             cv.getContext('2d').drawImage(o.cv, 0, 0);
             const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.code;
-            const pre = document.createElement('div'); pre.className = 'sc-pre'; pre.textContent = '25K';
+            const pre = document.createElement('div'); pre.className = 'sc-pre';
+            pre.textContent = paisPuesta() === p.code ? 'ON' : (paisTengo(p.code) ? 'OWNED' : '25K');
+            if (paisTengo(p.code)) pre.style.color = '#00ff88';
             cel.append(cv, cod, pre);
             cel.title = p.n;
             cel.addEventListener('click', () => skinOpen(p.code));
@@ -7722,7 +7724,7 @@
     }
 
     function skinPage(d) {
-        const paginas = Math.ceil(paisLista().length / SKIN_POR_PAGINA);
+        const paginas = paisNumPaginas(SKIN_POR_PAGINA);
         const n = skinPagina + d;
         if (n < 0 || n >= paginas) return;
         skinPagina = n; skinRender();
@@ -7750,8 +7752,31 @@
         document.getElementById('sdPie').textContent = s.capas.length === 0
             ? 'THE SAME SKIN, AS YOU GROW'
             : (primera === SKIN_CRECE[0] ? 'WEARS ITS EMBLEM FROM THE FIRST BITE' : 'THE EMBLEM SHOWS UP AS YOU GROW');
+        skinBotones(code);
         document.getElementById('skinDetailModal').style.display = 'flex';
         try { SoundManager.play('select'); } catch (e) {}
+    }
+
+    /* Sin la skin: los dos precios. Con ella: un solo boton ROJO de ASSIGN, y si
+       ademas es la que llevas puesta se queda apagado. */
+    function skinBotones(code) {
+        const cont = document.getElementById('sdBotones'); cont.innerHTML = '';
+        const boton = (txt, cls, fn, off) => {
+            const b = document.createElement('button');
+            b.className = 'pw-big-btn ' + cls; b.textContent = txt;
+            b.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
+            if (off) b.disabled = true;
+            else b.addEventListener('click', () => { fn(); skinBotones(code); skinRender(); try { SoundManager.play('select'); } catch (e) {} });
+            cont.appendChild(b);
+        };
+        if (!paisTengo(code)) {
+            boton('BUY · 25,000 $PILL', 'sd-pill', () => paisComprar(code));
+            boton('BUY · 150 SP', 'sd-sp', () => paisComprar(code));
+        } else if (paisPuesta() === code) {
+            boton('EQUIPPED', 'sd-pill', null, true);
+        } else {
+            boton('ASSIGN', 'sd-pill', () => paisPoner(code));
+        }
     }
     function skinClose() {
         document.getElementById('skinDetailModal').style.display = 'none';

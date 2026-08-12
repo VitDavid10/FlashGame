@@ -844,8 +844,12 @@ body.trailer-open #page-content{
         .shop-modal { display: none; position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.85);
                       align-items: center; justify-content: center; padding: 20px; }
         .shop-modal.on { display: flex; }
-        .shop-caja { position: relative; width: 100%; max-width: 620px; background: #0d0f12; border: 3px solid #2a2f36;
-                     box-shadow: 0 0 0 3px #000, 10px 10px 0 rgba(0,0,0,0.65); padding: 30px 32px 26px; }
+        /* El MISMO cartel de pixel art que usa /game (menu-gris.png, el de
+           SELECT A ROOM), para que la tienda no hable dos idiomas segun donde
+           la abras. Mas ancho que antes: con 620 el lore largo apretaba. */
+        .shop-caja { position: relative; width: 100%; max-width: 760px;
+                     background: transparent url('game/img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
+                     image-rendering: pixelated; border: none; box-shadow: none; padding: 56px 60px 44px; }
         .shop-cerrar { position: absolute; top: 13px; right: 15px; width: 30px; height: 30px; background: transparent;
                        border: 2px solid #3a3a3a; color: var(--txt-mute); font-size: var(--fs-3); cursor: pointer; line-height: 1; }
         .shop-cerrar:hover { border-color: var(--accent); color: var(--accent); }
@@ -863,9 +867,18 @@ body.trailer-open #page-content{
         .sm-crece canvas { image-rendering: pixelated; display: block; flex: none; }
         .sm-pie { font-size: var(--fs-2); color: var(--txt-mute); text-align: center; margin-top: 12px; }
         .sm-compra { display: flex; gap: 12px; margin-top: 18px; }
-        .sm-precio { flex: 1; text-align: center; padding: 13px; font-family: 'Press Start 2P', monospace;
-                     font-size: var(--fs-2); color: var(--gold); border: 2px solid var(--gold); box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
-        .sm-precio.sp { color: var(--primary); border-color: var(--primary); }
+        .sm-btn { flex: 1; height: 48px; padding: 0; border: none; box-shadow: none; cursor: pointer;
+                  display: flex; align-items: center; justify-content: center;
+                  font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: #fff;
+                  text-shadow: 2px 2px 0 rgba(0,0,0,0.75); image-rendering: pixelated;
+                  background: transparent url('game/img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat; }
+        .sm-btn.pill { background-image: url('game/img/cartel-hero/btn-plain-red.png'); }
+        .sm-btn.sp { background-image: url('game/img/cartel-hero/btn-plain-green.png'); }
+        /* ASSIGN: sale ROJO y a todo lo ancho una vez la skin es tuya. */
+        .sm-btn.assign { background-image: url('game/img/cartel-hero/btn-plain-red.png'); }
+        .sm-btn:hover { filter: brightness(1.15); }
+        .sm-btn:active { transform: translate(2px, 2px); }
+        .sm-btn:disabled { filter: grayscale(0.7) brightness(0.8); cursor: default; }
 
         .placeholder-box { width: 100%; max-width: var(--contenido-panel); height: 300px; border: 2px dashed rgba(255,204,0,0.35); background: rgba(0,0,0,0.4); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #6a5a2a; font-family: 'Russo One'; letter-spacing: 2px; }
 
@@ -1945,10 +1958,7 @@ body.trailer-open #page-content{
             <div class="sm-franjas" id="smFranjas"></div>
             <div class="sm-crece" id="smCrece"></div>
             <div class="sm-pie" id="smPie"></div>
-            <div class="sm-compra">
-                <span class="sm-precio">25,000 $PILL</span>
-                <span class="sm-precio sp">150 SP</span>
-            </div>
+            <div class="sm-compra" id="smCompra"></div>
         </div>
     </div>
     <div id="ranking" class="section-container">
@@ -4342,8 +4352,8 @@ function toggleTrailerMode() {
         const POR_PAG = 8, ANG = -Math.PI / 4;
         const grid = document.getElementById('shopGrid');
         if (!grid || typeof paisLista !== 'function') return;
-        const lista = paisLista(), paginas = Math.ceil(lista.length / POR_PAG);
-        let pag = 0;
+        const paginas = paisNumPaginas(POR_PAG);
+        let pag = 0, actual = null;
         const $ = id => document.getElementById(id);
         const modal = $('shopModal');
 
@@ -4358,12 +4368,15 @@ function toggleTrailerMode() {
 
         function pinta() {
             grid.innerHTML = '';
-            lista.slice(pag * POR_PAG, (pag + 1) * POR_PAG).forEach(p => {
+            // El orden de las pestañas lo decide paisPagina(), no la tabla.
+            paisPagina(pag, POR_PAG).forEach(p => {
                 const c = document.createElement('div'); c.className = 'shop-cel';
                 c.appendChild(lienzo(p.code, 42).cv);
                 const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.code;
                 const nom = document.createElement('div'); nom.className = 'sc-nom'; nom.textContent = p.n;
-                const pre = document.createElement('div'); pre.className = 'sc-pre'; pre.textContent = '25,000 $PILL';
+                const pre = document.createElement('div'); pre.className = 'sc-pre';
+                pre.textContent = paisPuesta() === p.code ? 'EQUIPPED' : (paisTengo(p.code) ? 'OWNED' : '25,000 $PILL');
+                if (paisTengo(p.code)) pre.style.color = 'var(--primary)';
                 c.append(cod, nom, pre);
                 c.addEventListener('click', () => abre(p.code));
                 grid.appendChild(c);
@@ -4373,9 +4386,31 @@ function toggleTrailerMode() {
             [...$('shopDots').children].forEach((d, i) => d.classList.toggle('act', i === pag));
         }
 
+        /* Los botones cambian segun tengas la skin o no: sin ella, los dos
+           precios; con ella, un solo boton rojo de ASSIGN a todo lo ancho, y si
+           ademas es la que llevas puesta se queda apagado. */
+        function pintaBotones(code) {
+            const cont = $('smCompra'); cont.innerHTML = '';
+            const boton = (txt, cls, fn, off) => {
+                const b = document.createElement('button');
+                b.className = 'sm-btn ' + cls; b.textContent = txt;
+                if (off) b.disabled = true; else b.addEventListener('click', fn);
+                cont.appendChild(b);
+            };
+            if (!paisTengo(code)) {
+                boton('BUY · 25,000 $PILL', 'pill', () => { paisComprar(code); pintaBotones(code); pinta(); });
+                boton('BUY · 150 SP', 'sp', () => { paisComprar(code); pintaBotones(code); pinta(); });
+            } else if (paisPuesta() === code) {
+                boton('EQUIPPED', 'assign', null, true);
+            } else {
+                boton('ASSIGN', 'assign', () => { paisPoner(code); pintaBotones(code); pinta(); });
+            }
+        }
+
         const CRECE = [14, 24, 36, 48, 64];
         function abre(code) {
             const s = paisSkin(code); if (!s) return;
+            actual = code;
             $('smCod').textContent = s.code;
             $('smNom').textContent = s.nombre;
             $('smLore').textContent = s.lore;
@@ -4387,6 +4422,7 @@ function toggleTrailerMode() {
             $('smPie').textContent = s.capas.length === 0
                 ? 'The same skin, as you grow'
                 : (primera === CRECE[0] ? 'Wears its emblem from the very first bite' : 'The emblem shows up as you grow');
+            pintaBotones(code);
             modal.classList.add('on');
         }
         const cierra = () => modal.classList.remove('on');
