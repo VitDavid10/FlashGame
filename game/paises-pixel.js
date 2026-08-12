@@ -44,6 +44,10 @@
  */
 const PAIS_FORMAS = {
     disco: (u, v) => u * u + v * v <= 1,
+    // Anillo: la esfera armilar de Portugal y la linea del ecuador. Sustituye al
+    // escudo heraldico, que a tamano pildora era una mancha con forma de escudo
+    // y no se parecia a nada.
+    aro: (u, v) => { const r = u * u + v * v; return r <= 1 && r >= 0.34; },
     rombo: (u, v) => Math.abs(u) + Math.abs(v) <= 1,
     cuadrado: (u, v) => Math.abs(u) <= 1 && Math.abs(v) <= 1,
 
@@ -197,8 +201,8 @@ const PAISES = {
         lore: 'The eagle never asked permission. Neither should you — take the center of the map and dare anyone to come get it.'
     },
     ZA: {
-        n: 'South Africa', b: ['#007A4D', '#FFB612', '#DE3831'], min: UMBRAL.pronto,
-        e: [{ f: 'triangulo', c: '#000000', k: 0.95 }],
+        n: 'South Africa', b: ['#DE3831', '#007A4D', '#002395'], min: UMBRAL.pronto,
+        e: [{ f: 'triangulo', c: '#FFB612', k: 1 }, { f: 'triangulo', c: '#000000', k: 0.72 }],
         lore: 'Six colors, one flag. Six enemies, one mouth. The arithmetic works out in your favor.'
     },
     CH: {
@@ -247,9 +251,9 @@ const PAISES = {
         lore: 'Orange for the land, white for the peace, green for the hope. The hope is that you split before they do.'
     },
     EC: {
-        n: 'Ecuador', b: ['#FFDD00', '#0033A0', '#EF3340'], min: UMBRAL.tarde,
-        e: [{ f: 'escudo', c: '#FFDD00' }],
-        lore: 'Standing on the middle of the world. Standing on the middle of the map is considerably harder.'
+        n: 'Ecuador', b: ['#FFDD00', '#0033A0', '#EF3340'], min: UMBRAL.pronto,
+        e: [{ f: 'aro', c: '#FFDD00', k: 0.9 }],
+        lore: 'The line the whole country is named after. Cross it enough times and someone notices.'
     },
     NL: {
         n: 'Netherlands', b: ['#AE1C28', '#ffffff', '#21468B'], min: UMBRAL.siempre,
@@ -277,8 +281,8 @@ const PAISES = {
         lore: 'The eagle of Saladin has watched empires get eaten. It is unimpressed by your kill streak.'
     },
     ES: {
-        n: 'Spain', b: ['#AA151B', '#F1BF00', '#AA151B'], min: UMBRAL.medio,
-        e: [{ f: 'escudo', c: '#AA151B', k: 0.92 }],
+        n: 'Spain', b: ['#AA151B', '#F1BF00', '#AA151B'], min: UMBRAL.siempre,
+        e: null,
         lore: 'Plus ultra — further beyond. There is always more mass past the edge of what you can currently hold.'
     },
     CV: {
@@ -322,9 +326,9 @@ const PAISES = {
         lore: 'Half the flag is gold, because half the flag is what the country is worth. Go take your half of the map.'
     },
     PT: {
-        n: 'Portugal', b: ['#046A38', '#DA291C', '#DA291C'], min: UMBRAL.medio,
-        e: [{ f: 'escudo', c: '#FFE900', k: 0.9 }],
-        lore: 'They mapped the edges of the world by sailing off them. The arena has edges too.'
+        n: 'Portugal', b: ['#046A38', '#DA291C'], min: UMBRAL.siempre,
+        e: [{ f: 'aro', c: '#FFE900', k: 0.95 }],
+        lore: 'The armillary sphere was a tool for finding your way home. Nobody here is going home.'
     },
     CD: {
         n: 'DR Congo', b: ['#007FFF', '#F7D618', '#007FFF'], min: UMBRAL.pronto,
@@ -332,7 +336,7 @@ const PAISES = {
         lore: 'A river that runs both sides of the equator. Whatever direction you are going, it has been there.'
     },
     GB: {
-        n: 'United Kingdom', b: ['#012169', '#001640', '#012169'], min: UMBRAL.siempre,
+        n: 'United Kingdom', b: ['#012169', '#001640'], min: UMBRAL.siempre,
         e: [
             { f: 'aspa', c: '#ffffff', k: 1 },
             { f: 'cruzGruesa', c: '#ffffff', k: 1 },
@@ -352,7 +356,7 @@ const PAISES = {
         lore: 'The Black Star. First to break free, and still first to the middle of the map.'
     },
     CN: {
-        n: 'China', b: ['#EE1C25', '#D4141B', '#EE1C25'], min: UMBRAL.siempre,
+        n: 'China', b: ['#EE1C25', '#D4141B'], min: UMBRAL.siempre,
         e: [
             { f: 'estrella', c: '#FFFF00', k: 0.62, dx: -0.42 },
             { f: 'arcoEstrellas', c: '#FFFF00', k: 1 },
@@ -405,7 +409,14 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
     const g = cv.getContext('2d');
     const rgb = skin.bandas.map(_rgb);
 
-    const medio = (seg + R) / 3;                    // media altura de la banda central
+    // medio = media altura de la banda CENTRAL en las de tres bandas, y la
+    // referencia de tamano del emblema en todas.
+    // Con DOS bandas no hay banda central: el corte cae en ly=0 y el emblema se
+    // va a la banda de ABAJO (embCy), centrado en ella. Puesto sobre la costura
+    // quedaba partido entre los dos colores y no se leia ninguno.
+    const nBandas = rgb.length;
+    const medio = (seg + R) / 3;
+    const embCy = nBandas === 2 ? (seg + R) / 2 : 0;
     const embOn = skin.capas.length > 0 && (forzarEmblema || medio * 2 >= skin.min);
     const capas = embOn ? skin.capas.map(l => ({ f: l.forma, c: _rgb(l.color), k: l.k, dx: l.dx, dy: l.dy })) : [];
     const lado = Math.min(R, medio) * 0.80;
@@ -421,12 +432,13 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
         const rad = Math.hypot(lx, ly - cy);
         if (rad > RI) continue;
 
-        let base = ly < -medio ? rgb[0] : (ly < medio ? rgb[1] : rgb[2]);
+        let base = nBandas === 2 ? (ly < 0 ? rgb[0] : rgb[1])
+                                 : (ly < -medio ? rgb[0] : (ly < medio ? rgb[1] : rgb[2]));
         // Capas del emblema, en orden: la ultima que acierta manda.
-        if (capas.length && Math.abs(ly) < medio) {
+        if (capas.length && Math.abs(ly - embCy) < medio) {
             for (const l of capas) {
                 const L = lado * l.k;
-                const eu = (lx - l.dx * lado) / L, ev = (ly - l.dy * lado) / L;
+                const eu = (lx - l.dx * lado) / L, ev = (ly - embCy - l.dy * lado) / L;
                 if (Math.abs(eu) <= 1 && Math.abs(ev) <= 1 && l.f(eu, ev)) base = l.c;
             }
         }
@@ -437,7 +449,10 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
         const u = Math.max(0, Math.min(1, (1 - ndl) * 0.5));
         const w1 = (1.05 + 1.7 * u) * kD, w2 = (2.6 + 4.2 * u) * kD, w3 = (4.2 + 6.8 * u) * kD;
         let amt;
-        if (Math.abs(Math.abs(ly) - medio) < 1.45 * kD) amt = -0.30;   // las dos costuras
+        // Costuras: una sola en ly=0 con dos bandas, dos en +-medio con tres.
+        const enCostura = nBandas === 2 ? Math.abs(ly) < 1.45 * kD
+                                        : Math.abs(Math.abs(ly) - medio) < 1.45 * kD;
+        if (enCostura) amt = -0.30;
         else if (edge < w1) amt = -0.44;
         else if (edge < w2) amt = -0.30;
         else if (u > 0.18 && edge < w3) amt = -0.15;
