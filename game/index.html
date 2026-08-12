@@ -649,7 +649,8 @@
            contenido (351x157) en vez de estirarse por todo el cuadro interior
            del cartel, que es lo que hay disponible. min-height:0 para que el
            grid pueda encoger dentro del flex en vez de desbordar. */
-        #sidePanelSkins { flex: 1; flex-direction: column; min-height: 0; }
+        #sidePanelSkins, #sidePanelMine { flex: 1; flex-direction: column; min-height: 0; }
+        #mineVacio { justify-content: center; font-family: 'Press Start 2P', monospace; font-size: 7px; color: #6b7480; letter-spacing: 1px; }
         .skin-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; min-height: 0; }
         .skin-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
                      background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07); cursor: pointer;
@@ -2156,7 +2157,13 @@
                             <button class="skin-arrow" id="skinNext" onclick="skinPage(1)" onmouseenter="SoundManager.playSimpleHover()">&#9654;</button>
                         </div>
                     </div>
-                    <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span></div>
+                    <!-- YOUR SKINS: las que ya son tuyas, para asignarlas sin
+                         volver a pasar por el catalogo. -->
+                    <div id="sidePanelMine" style="display:none">
+                        <div class="skin-grid" id="mineGrid"></div>
+                        <div class="skin-nav" id="mineVacio" style="display:none">NONE YET &middot; BUY ONE IN SKINS</div>
+                    </div>
+                    <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span><span id="dot-mine"></span></div>
                 </div>
             </div>
         </div>
@@ -4140,6 +4147,20 @@
     // aunque el panel/modal esté abierto en ese momento.
     function setPixPanelAccent(color) { pixPanelAccent = color || '#00ff88'; persistPanelStyle(); buildPixPanelCss(); }
 
+    /* Codigo de pais que debe llevar una celda, o null si va con sus colores.
+       SOLO las TUYAS: para que los demas te vean con la skin hace falta mandar
+       los dos bytes del codigo en el bloque de identidad del protocolo, y eso
+       esta sin hacer. Hasta entonces tu te ves con ella y ellos te ven con tus
+       colores de siempre.
+       El id vale para offline y para online: el cliente renombra su propio id a
+       'me' al procesar los eventos del servidor, y se mira ademas sim.myId por
+       si alguna celda llega sin renombrar. */
+    function cellPais(c) {
+        if (!c || typeof paisPuesta !== 'function') return null;
+        const code = paisPuesta(); if (!code) return null;
+        return (c.id === 'me' || (sim && sim.myId && c.id === sim.myId)) ? code : null;
+    }
+
     // Versión pixel de drawCell: cuerpo + flash + nombre; buffs (sprint/inmune/imán)
         // van por drawCellBuffFx (aura siempre visible para rivales; partículas client-side).
         function drawCellPixel(c) {
@@ -4166,7 +4187,10 @@
                                 // desde que naces. Las pildoras de COMIDA siguen con el look
                                 // corto (drawMiniPill), que ahi son de 4-16 px logicos.
                                 const wL = Math.max(6, Math.min(64, Math.round(pW * getViewScale() / PIX_SCREEN_PX / 2) * 2));
-                                drawPixPillRot(ctx, c.x, c.y, pW, wL, c.colorTop, c.colorBot, -Math.PI / 4, true);
+                                const _pais = cellPais(c);
+                                const _spr = _pais ? paisPillRot(wL, _pais, -Math.PI / 4) : null;
+                                if (_spr) { const u = pW / wL; ctx.drawImage(_spr.cv, c.x - _spr.S / 2 * u, c.y - _spr.S / 2 * u, _spr.S * u, _spr.S * u); }
+                                else drawPixPillRot(ctx, c.x, c.y, pW, wL, c.colorTop, c.colorBot, -Math.PI / 4, true);
             }
             // Buff FX (aros, rayos, escudo, imán por celda) — online y offline
             drawCellBuffFx(ctx, c, alpha);
@@ -6118,6 +6142,17 @@
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
         rooms: '#oraclePanel', quests: '#missionsPanel',
+        // Rejilla de las 8 skins y su fila de flechas. Claves COMPARTIDAS por
+        // las dos pestañas (catalogo y las tuyas) con selector por comas, igual
+        // que walletBtn: moverlas o escalarlas en una las mueve en la otra, que
+        // es lo que se quiere — si cada una tuviera su sitio se descuadrarian
+        // entre si al cambiar de pestaña.
+        // skinCells va ANTES que skinGrid por lo de siempre: la celda esta
+        // DENTRO de la rejilla y target() se queda con la primera clave que casa
+        // via closest(), asi que la mas especifica tiene que ir primero.
+        skinCells: '#skinGrid .skin-cell, #mineGrid .skin-cell',
+        skinGrid: '#skinGrid, #mineGrid',
+        skinNav: '.skin-nav',
         zoneA: '#noVirusZoneA', zoneB: '#noVirusZoneB',
     };
     // Zonas sin virus: editables por el mismo sistema de layout, pero NO son
@@ -7628,20 +7663,56 @@
     }
     // Carrusel del panel inferior derecho: alterna MISSIONS ↔ SKINS
     let sidePanelTab = 'missions';
+    // Tres pestañas en ciclo: MISSIONS -> SKINS -> YOUR SKINS -> MISSIONS.
+    const SIDE_TABS = ['missions', 'skins', 'mine'];
     function switchSidePanel() {
-        sidePanelTab = sidePanelTab === 'missions' ? 'skins' : 'missions';
-        const enSkins = sidePanelTab === 'skins';
-        document.getElementById('sidePanelMissions').style.display = enSkins ? 'none' : 'block';
-        document.getElementById('sidePanelSkins').style.display = enSkins ? 'flex' : 'none';
-        document.getElementById('sidePanelTitle').textContent = enSkins ? 'SKINS' : 'MISSIONS';
+        const i = SIDE_TABS.indexOf(sidePanelTab);
+        sidePanelTab = SIDE_TABS[(i + 1) % SIDE_TABS.length];
+        const es = t => sidePanelTab === t;
+        document.getElementById('sidePanelMissions').style.display = es('missions') ? 'block' : 'none';
+        document.getElementById('sidePanelSkins').style.display = es('skins') ? 'flex' : 'none';
+        document.getElementById('sidePanelMine').style.display = es('mine') ? 'flex' : 'none';
+        document.getElementById('sidePanelTitle').textContent =
+            es('missions') ? 'MISSIONS' : (es('skins') ? 'SKINS' : 'YOUR SKINS');
         // Cada pestaña ensena SU contador en el mismo hueco de la cabecera: el
         // progreso de misiones o el saldo de SP.
-        document.getElementById('sidePanelExtra').style.display = enSkins ? 'none' : 'inline-block';
-        document.getElementById('skinPanelExtra').style.display = enSkins ? 'inline-block' : 'none';
-        document.getElementById('dot-missions').classList.toggle('act', !enSkins);
-        document.getElementById('dot-skins').classList.toggle('act', enSkins);
-        if (enSkins) skinRender();
+        document.getElementById('sidePanelExtra').style.display = es('missions') ? 'inline-block' : 'none';
+        document.getElementById('skinPanelExtra').style.display = es('missions') ? 'none' : 'inline-block';
+        document.getElementById('dot-missions').classList.toggle('act', es('missions'));
+        document.getElementById('dot-skins').classList.toggle('act', es('skins'));
+        document.getElementById('dot-mine').classList.toggle('act', es('mine'));
+        if (es('skins')) skinRender();
+        if (es('mine')) mineRender();
         try { SoundManager.play('simpleselect'); } catch (e) {}
+    }
+
+    // Rejilla de las skins que YA son tuyas. Pulsar una la asigna directamente,
+    // sin abrir el cartel: aqui ya la tienes, lo unico que queda es ponertela.
+    function mineRender() {
+        const grid = document.getElementById('mineGrid'); if (!grid) return;
+        const mias = (typeof paisMias === 'function') ? paisMias() : [];
+        document.getElementById('mineVacio').style.display = mias.length ? 'none' : 'flex';
+        grid.style.display = mias.length ? 'grid' : 'none';
+        grid.innerHTML = '';
+        const alto = (grid.clientHeight - 4) / 2;
+        const wL = Math.max(14, Math.min(40, Math.floor((alto - 22) / 2.12)));
+        mias.slice(0, 8).forEach(code => {
+            const p = paisSkin(code); if (!p) return;
+            const o = paisPillRot(wL, code, SKIN_ANG);
+            const cel = document.createElement('div'); cel.className = 'skin-cell';
+            const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
+            cv.getContext('2d').drawImage(o.cv, 0, 0);
+            const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = code;
+            const est = document.createElement('div'); est.className = 'sc-pre';
+            const puesta = paisPuesta() === code;
+            est.textContent = puesta ? 'EQUIPPED' : 'ASSIGN';
+            est.style.color = puesta ? '#00ff88' : '#ffce3d';
+            cel.append(cv, cod, est);
+            cel.title = p.nombre;
+            cel.addEventListener('click', () => { paisPoner(code); mineRender(); skinRender(); try { SoundManager.play('select'); } catch (e) {} });
+            cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
+            grid.appendChild(cel);
+        });
     }
 
     /* ===== CATALOGO DE SKINS DE PAIS =====

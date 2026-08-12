@@ -4302,6 +4302,27 @@ function toggleTrailerMode() {
         let pag = 0, actual = null;
         const $ = id => document.getElementById(id);
 
+        /* Cursor-pildora con la bandera del pais. El cursor de la landing YA es
+           una pildora (#custom-cursor), asi que en la tienda se le cambian los
+           colores por los del pais que estas tocando: te llevas la skin en la
+           mano antes de comprarla. Con null vuelve al blanco/verde de la marca. */
+        // El cursor de marca NO es el degradado del CSS: el texture pack pixel lo
+        // sustituye por un PNG generado. Se guarda lo que hubiera la primera vez
+        // y se restaura eso, en vez de un valor escrito a mano que dejaba el
+        // cursor con el degradado plano al salir de la tienda.
+        let _cursorMarca = null;
+        function cursorPais(code) {
+            const cur = document.getElementById('custom-cursor'); if (!cur) return;
+            if (_cursorMarca === null) _cursorMarca = { bg: cur.style.background || getComputedStyle(cur).background, sh: cur.style.boxShadow };
+            const s = code && paisSkin(code);
+            if (!s) { cur.style.background = _cursorMarca.bg; cur.style.boxShadow = _cursorMarca.sh; return; }
+            const b = s.bandas, n = b.length;
+            const topes = [];
+            b.forEach((col, i) => topes.push(col + ' ' + (i * 100 / n) + '%', col + ' ' + ((i + 1) * 100 / n) + '%'));
+            cur.style.background = 'linear-gradient(180deg, ' + topes.join(', ') + ')';
+            cur.style.boxShadow = '0 0 15px ' + b[1];
+        }
+
         // A tamano natural: escalar un canvas pixelado por un factor no entero
         // lo emborrona, que es justo lo que no quieres en pixel art.
         function lienzo(code, wL) {
@@ -4323,6 +4344,13 @@ function toggleTrailerMode() {
                 pre.textContent = paisPuesta() === p.code ? 'EQUIPPED' : (paisTengo(p.code) ? 'OWNED' : paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL');
                 if (paisTengo(p.code)) pre.style.color = 'var(--primary)';
                 c.append(cod, nom, pre);
+                // El cursor-pildora se tiñe con la bandera del pais que tocas, y
+                // vuelve al blanco/verde de la marca al salir. Las tres bandas se
+                // pintan con un degradado de topes duros (0%-33%-33%-66%...), no
+                // suave: la pildora del juego tiene cortes limpios y un degradado
+                // difuminado no se pareceria a ella.
+                c.addEventListener('mouseenter', () => cursorPais(p.code));
+                c.addEventListener('mouseleave', () => cursorPais(null));
                 c.addEventListener('click', () => abre(p.code));
                 grid.appendChild(c);
             });
