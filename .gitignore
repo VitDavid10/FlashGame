@@ -11,6 +11,7 @@ server/adminlog.log
 server/quests.json
 server/warbalances.json
 server/skinpoints.json
+server/skinshop.json
 server/daily.json
 server/globalsettings.json
 server/faucet.json

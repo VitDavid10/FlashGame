@@ -123,6 +123,22 @@ async function withdraw(toWallet, pill) {
     return sig;
 }
 
+// --- QUEMA de $PILL ---
+// Destruye tokens del ATA del treasury de verdad: bajan el supply total del mint,
+// no van a "otra cartera" de la que se pudieran sacar luego. Es lo que hace que
+// "el $PILL gastado en skins se quema" sea una afirmación comprobable en el
+// explorador y no una promesa.
+// La autoridad es dueña del ATA, así que puede quemar de él sin permiso de nadie.
+async function burn(pill) {
+    const { Connection, PublicKey } = require('@solana/web3.js');
+    const { getOrCreateAssociatedTokenAccount, burn: splBurn } = require('@solana/spl-token');
+    const auth = loadAuthority();
+    const conn = new Connection(RPC, 'confirmed');
+    const mint = new PublicKey(MINT);
+    const ata = await getOrCreateAssociatedTokenAccount(conn, auth, mint, auth.publicKey);
+    return await splBurn(conn, auth, ata.address, mint, auth, pillToRaw(pill));
+}
+
 // Verifica que `signature` es una firma válida de `message` hecha por `wallet`.
 // (El jugador firma un mensaje con su wallet para AUTORIZAR el retiro; prueba que es el dueño.)
 function verifySignedMessage(wallet, message, signatureArr) {
@@ -136,4 +152,4 @@ function verifySignedMessage(wallet, message, signatureArr) {
     } catch (e) { return false; }
 }
 
-module.exports = { verifyDeposit, withdraw, airdropSol, canWithdraw, verifySignedMessage, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };
+module.exports = { verifyDeposit, withdraw, burn, airdropSol, canWithdraw, verifySignedMessage, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };

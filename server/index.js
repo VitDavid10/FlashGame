@@ -36,6 +36,7 @@ const proto = require('../shared/proto.js');     // protocolo binario para snaps
 const solana = require('./solana.js');     // verificación de depósitos $PILL
 const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
+const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILL + quema)
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
 const { listCombos, buildShardMap, applyOverrides } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
 const { createIpc } = require('./cluster/ipc.js');             // request/response sobre fork (Fase 4)
@@ -434,6 +435,9 @@ function tickOracle() {
 // (notify 'oracleRate') desde el Director. Dos relojes independientes harían
 // que el fee firmado por el cliente no cuadrara con el del cobro.
 if (PW_ROLE !== 'host') setInterval(tickOracle, ORACLE_REFRESH_MS);
+// Quema del $PILL gastado en skins. Solo en el Director: los hosts no tocan
+// economia, y dos procesos vaciando la misma cola quemarian dos veces.
+if (PW_ROLE !== 'host') skinshop.arrancaQuemaPeriodica(solana, log);
 // Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
 function entryFeePill(key, rate) { return priceOf(key) * (rate || PILL_PER_DOLLAR); }
 // Rate "vigente" de una sala: si tiene gente jugando usa el bloqueado; si está vacía,
@@ -2052,6 +2056,77 @@ const httpServer = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ pill: isSolAddr(wallet) ? warbank.getBalance(wallet) : 0 }));
         return;
     }
+    /* ===== TIENDA DE SKINS =====
+     * Mismo modelo que las salas: el saldo $PILL es interno (warbank) y gastarlo
+     * exige una FIRMA de la wallet con la cantidad exacta dentro del mensaje.
+     * Sin eso bastaría con decir "soy esta wallet" en el body para vaciarle el
+     * saldo a cualquiera — el endpoint no tiene sesión ni cookie que lo impida.
+     * Los SP no llevan firma porque van por clientId y no valen dinero real.
+     */
+    if (urlPath === '/api/skins' && req.method === 'GET') {
+        const cid = String(req.headers['x-client-id'] || '').trim();
+        // El handler no tiene objeto URL: la ruta se saca con split('?'), asi que
+        // la query se parsea aqui igual que en el resto del fichero.
+        const w = String(new URLSearchParams((req.url || '').split('?')[1] || '').get('wallet') || '');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(Object.assign(
+            skinshop.estado(isValidClientId(cid) ? cid : null, isSolAddr(w) ? w : null),
+            { quema: skinshop.estadoQuema() })));
+        return;
+    }
+    if ((urlPath === '/api/skins/buy' || urlPath === '/api/skins/equip' || urlPath === '/api/skins/convert') && req.method === 'POST') {
+        const cid = String(req.headers['x-client-id'] || '').trim();
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 4000) req.destroy(); });
+        req.on('end', () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            if (!isValidClientId(cid)) { res.end(JSON.stringify({ ok: false, error: 'sin sesion' })); return; }
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, error: 'json invalido' })); return; }
+            const wallet = isSolAddr(String(p.wallet || '')) ? String(p.wallet) : null;
+
+            // Comprueba la firma de un gasto en $PILL. `esperado` es el mensaje
+            // EXACTO que el cliente tuvo que firmar: lleva dentro la cantidad, así
+            // que una firma de 250 no sirve para gastar 25.000.
+            const firmaVale = (esperado) => {
+                const pay = p.pay || {};
+                const ts = Number(pay.ts) || 0;
+                if (!wallet || pay.message !== esperado || Math.abs(Date.now() - ts) > 120000) return 'firma de pago invalida';
+                const sigKey = 'skin_' + (Array.isArray(pay.signature) ? pay.signature.join('') : '');
+                if (warbank.sigUsed(sigKey)) return 'firma ya usada';
+                if (!solana.verifySignedMessage(wallet, pay.message, pay.signature)) return 'firma no valida';
+                warbank.creditDeposit(wallet, 0, sigKey);   // la marca como usada (anti-replay)
+                return null;
+            };
+
+            let r;
+            if (urlPath === '/api/skins/buy') {
+                const code = String(p.code || '').toUpperCase();
+                const moneda = p.moneda === 'pill' ? 'pill' : 'sp';
+                if (moneda === 'pill') {
+                    const ts = Number((p.pay || {}).ts) || 0;
+                    const mal = firmaVale(`PillWars buy skin ${code} for ${skinshop.PRECIO_PILL} PILL @ ${ts}`);
+                    if (mal) { res.end(JSON.stringify({ ok: false, error: mal })); return; }
+                }
+                r = skinshop.comprar({ cid, wallet, code, moneda, nonce: String(p.nonce || '') });
+                if (r.ok && !r.repetida) {
+                    logTx('skin', wallet || cid, moneda === 'pill' ? -skinshop.PRECIO_PILL : 0, 'skin ' + code + ' (' + moneda + ')');
+                    log(`Skin ${code} comprada con ${moneda} por ${(wallet || cid).slice(0, 6)}…`);
+                }
+            } else if (urlPath === '/api/skins/equip') {
+                r = skinshop.equipar({ cid, wallet, code: p.code === null ? null : String(p.code || '').toUpperCase() });
+            } else {
+                const pill = Math.floor(Number(p.pill) || 0);
+                const ts = Number((p.pay || {}).ts) || 0;
+                const mal = firmaVale(`PillWars convert ${pill} PILL to ${pill / skinshop.PILL_POR_SP} SP @ ${ts}`);
+                if (mal) { res.end(JSON.stringify({ ok: false, error: mal })); return; }
+                r = skinshop.convertir({ cid, wallet, pill, nonce: String(p.nonce || '') });
+                if (r.ok && !r.repetida) log(`Cambio ${pill} $PILL -> ${pill / skinshop.PILL_POR_SP} SP por ${wallet.slice(0, 6)}…`);
+            }
+            res.end(JSON.stringify(r));
+        });
+        return;
+    }
+
     // --- Acreditar un depósito: el cliente manda {wallet, sig}; verificamos on-chain y acreditamos ---
     if (urlPath === '/api/deposit' && req.method === 'POST') {
         if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
