@@ -640,6 +640,57 @@
         /* Carrusel del panel inferior (MISSIONS ↔ SKINS) */
         .side-tabs-arrow { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-family: 'Russo One'; font-size: 12px; line-height: 18px; padding: 0; transition: 0.2s; }
         .side-tabs-arrow:hover { background: currentColor; color: #04150c; }
+        /* ===== CATALOGO DE SKINS DE PAIS =====
+           El cuadro interior del cartel mide ~491x261: cuatro columnas por dos
+           filas entran justas y dejan sitio para la fila de flechas. El grid usa
+           1fr por columna (y no un ancho fijo) para que siga cuadrando cuando el
+           cartel se reescala desde EDIT LAYOUT. */
+        /* flex:1 + columna: sin esto la pestaña se quedaba en el alto de su
+           contenido (351x157) en vez de estirarse por todo el cuadro interior
+           del cartel, que es lo que hay disponible. min-height:0 para que el
+           grid pueda encoger dentro del flex en vez de desbordar. */
+        #sidePanelSkins { flex: 1; flex-direction: column; min-height: 0; }
+        .skin-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; min-height: 0; }
+        .skin-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+                     background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07); cursor: pointer;
+                     transition: 0.12s; min-height: 0; overflow: hidden; }
+        .skin-cell:hover { background: rgba(255,255,255,0.07); border-color: currentColor; transform: translateY(-1px); }
+        .skin-cell canvas { image-rendering: pixelated; display: block; flex: none; }
+        .skin-cell .sc-cod { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; text-shadow: 1px 1px 0 #000; }
+        .skin-cell .sc-pre { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #ffce3d; letter-spacing: 0.5px; }
+        .skin-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 4px; flex-shrink: 0; }
+        .skin-arrow { background: transparent; border: 1px solid currentColor; color: inherit; width: 20px; height: 18px;
+                      cursor: pointer; font-size: 9px; line-height: 1; padding: 0; transition: 0.15s; }
+        .skin-arrow:hover:not(:disabled) { background: currentColor; color: #04150c; }
+        .skin-arrow:disabled { opacity: 0.25; cursor: default; }
+        .skin-dots { display: flex; gap: 4px; }
+        .skin-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+        .skin-dots span.act { background: currentColor; box-shadow: 0 0 5px currentColor; }
+        #missionsPanel.classic .skin-dots span.act, #missionsPanel.classic .skin-arrow, #missionsPanel.classic .skin-cell:hover { color: #00ffaa; }
+        #missionsPanel.arcade .skin-dots span.act, #missionsPanel.arcade .skin-arrow, #missionsPanel.arcade .skin-cell:hover { color: #ccff00; }
+
+        /* Detalle de una skin: el cartel gris de pixel art de siempre, el mismo
+           que SELECT A ROOM y el selector de wallet. */
+        .pw-modal-box.skin-detail { background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
+                                    border: none; box-shadow: none; image-rendering: pixelated;
+                                    width: 460px; padding: 52px 46px 40px; }
+        .skin-detail .sd-cod { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #ffce3d; letter-spacing: 2px; text-shadow: 2px 2px 0 rgba(0,0,0,0.8); }
+        .skin-detail .sd-nom { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; text-shadow: 2px 2px 0 #000; margin: 7px 0 12px; }
+        .skin-detail .sd-lore { font-family: 'VT323', monospace; font-size: 17px; line-height: 1.25; color: #cfd6d0;
+                                text-shadow: 1px 1px 0 rgba(0,0,0,0.7); margin-bottom: 12px; }
+        .skin-detail .sd-crece { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 92px;
+                                 background: rgba(0,0,0,0.32); border: 2px solid rgba(0,0,0,0.45); padding: 8px 6px; margin-bottom: 6px; }
+        .skin-detail .sd-crece canvas { image-rendering: pixelated; display: block; flex: none; }
+        .skin-detail .sd-pie { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #9aa3ac; letter-spacing: 0.5px; margin-bottom: 14px; }
+        .skin-detail .pw-big-btn { height: 46px; width: 88%; margin: 6px auto 0; padding: 0; font-size: 10px;
+                                   display: flex; align-items: center; justify-content: center;
+                                   background: transparent url('img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat;
+                                   border: none; box-shadow: none; image-rendering: pixelated; }
+        .skin-detail .pw-big-btn.sd-pill { background-image: url('img/cartel-hero/btn-plain-red.png'); }
+        .skin-detail .pw-big-btn.sd-sp { background-image: url('img/cartel-hero/btn-plain-green.png'); }
+        .skin-detail .pw-big-btn:hover { filter: brightness(1.15); }
+        .skin-detail .pw-big-btn:active { transform: translate(2px, 2px); }
+
         .side-tabs-dots { display: flex; gap: 5px; justify-content: center; margin-top: 5px; flex-shrink: 0; }
         .side-tabs-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: 0.2s; }
         .side-tabs-dots span.act { background: currentColor; box-shadow: 0 0 6px currentColor; }
@@ -1790,6 +1841,20 @@
          PRICES. Recuadro menu-gris, titulo PNG de David y colores por rareza:
          FREE verde, $5 azul, $10 epico (morado), $20 legendario (dorado),
          $50 mitico (anaranjado). -->
+    <!-- Detalle de una skin de pais. Se rellena entero desde skinOpen(). -->
+    <div id="skinDetailModal" class="pw-modal" onclick="if(event.target===this) skinClose()">
+        <div class="pw-modal-box skin-detail">
+            <div class="sd-cod" id="sdCod"></div>
+            <div class="sd-nom" id="sdNom"></div>
+            <div class="sd-lore" id="sdLore"></div>
+            <div class="sd-crece" id="sdCrece"></div>
+            <div class="sd-pie" id="sdPie"></div>
+            <button class="pw-big-btn sd-pill" id="sdBuyPill" onmouseenter="SoundManager.playSimpleHover()">BUY · 25,000 $PILL</button>
+            <button class="pw-big-btn sd-sp" id="sdBuySp" onmouseenter="SoundManager.playSimpleHover()">BUY · 150 SP</button>
+            <button class="pw-big-btn" onclick="skinClose()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
+        </div>
+    </div>
+
     <div id="roomChoiceModal" class="pw-modal">
         <div class="pw-modal-box room-picker">
             <img class="wp-title" src="img/cartel-hero/select-a-room.png" alt="SELECT A ROOM">
@@ -2107,18 +2172,24 @@
                         <span id="sidePanelTitle">DAILY QUESTS</span>
                         <span style="display:flex; align-items:center; gap:10px;">
                             <span id="sidePanelExtra" style="font-size:10px;letter-spacing:0.5px;"><span id="missionsDone">0</span>/5 · <span id="missionsSp">0</span> SP</span>
+                            <!-- Saldo de SP de la pestaña SKINS: mismo sitio y misma
+                                 altura que el contador de misiones, solo cambia cual
+                                 de los dos se ensena. -->
+                            <span id="skinPanelExtra" style="display:none;font-size:10px;letter-spacing:0.5px;"><span id="skinPointsValue">0</span> SP</span>
                             <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                         </span>
                     </div>
                     <div id="sidePanelMissions"><div id="missionsList"></div></div>
+                    <!-- Catalogo de skins de pais. Ocupa TODO el cuadro interior:
+                         el saldo de SP vive en la cabecera (#skinPointsValue, a
+                         la derecha del rotulo SKINS) y no aqui dentro, para no
+                         robarle sitio a la rejilla. -->
                     <div id="sidePanelSkins" style="display:none">
-                        <div class="skins-soon">
-                            <div class="ss-big" style="color:#ffce3d">★</div>
-                            <div style="font-family:'Russo One'; font-size:11px; color:#888; letter-spacing:2px">SKIN POINTS</div>
-                            <div style="font-family:'Russo One'; font-size:32px; color:#ffce3d; text-shadow:0 0 12px rgba(255,206,61,0.4); margin:4px 0 14px;">
-                                <span id="skinPointsValue">0</span> <span style="font-size:13px; color:#888">SP</span>
-                            </div>
-                            <div style="color:#666; font-size:11px; text-align:center; line-height:1.5; padding: 0 8px;">Earn SP by completing daily quests.<br>Catalog coming soon.</div>
+                        <div class="skin-grid" id="skinGrid"></div>
+                        <div class="skin-nav">
+                            <button class="skin-arrow" id="skinPrev" onclick="skinPage(-1)" onmouseenter="SoundManager.playSimpleHover()">&#9664;</button>
+                            <div class="skin-dots" id="skinDots"></div>
+                            <button class="skin-arrow" id="skinNext" onclick="skinPage(1)" onmouseenter="SoundManager.playSimpleHover()">&#9654;</button>
                         </div>
                     </div>
                     <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span></div>
@@ -2451,6 +2522,7 @@
 <script src="cartel-hero.js"></script>
 <script src="carteles-layout.js"></script>
 <script src="skill-icons-pixel.js"></script>
+<script src="paises-pixel.js"></script>
 <script>
     // --- La lógica de juego vive en shared/sim.js (PillSim); aquí queda
     // --- presentación: render, cámara, input, menús, HUD y sonido. ---
@@ -7594,12 +7666,95 @@
     let sidePanelTab = 'missions';
     function switchSidePanel() {
         sidePanelTab = sidePanelTab === 'missions' ? 'skins' : 'missions';
-        document.getElementById('sidePanelMissions').style.display = sidePanelTab === 'missions' ? 'block' : 'none';
-        document.getElementById('sidePanelSkins').style.display = sidePanelTab === 'skins' ? 'block' : 'none';
-        document.getElementById('sidePanelTitle').textContent = sidePanelTab === 'missions' ? 'MISSIONS' : 'SKINS';
-        document.getElementById('sidePanelExtra').style.display = sidePanelTab === 'missions' ? 'inline-block' : 'none';
-        document.getElementById('dot-missions').classList.toggle('act', sidePanelTab === 'missions');
-        document.getElementById('dot-skins').classList.toggle('act', sidePanelTab === 'skins');
+        const enSkins = sidePanelTab === 'skins';
+        document.getElementById('sidePanelMissions').style.display = enSkins ? 'none' : 'block';
+        document.getElementById('sidePanelSkins').style.display = enSkins ? 'flex' : 'none';
+        document.getElementById('sidePanelTitle').textContent = enSkins ? 'SKINS' : 'MISSIONS';
+        // Cada pestaña ensena SU contador en el mismo hueco de la cabecera: el
+        // progreso de misiones o el saldo de SP.
+        document.getElementById('sidePanelExtra').style.display = enSkins ? 'none' : 'inline-block';
+        document.getElementById('skinPanelExtra').style.display = enSkins ? 'inline-block' : 'none';
+        document.getElementById('dot-missions').classList.toggle('act', !enSkins);
+        document.getElementById('dot-skins').classList.toggle('act', enSkins);
+        if (enSkins) skinRender();
+        try { SoundManager.play('simpleselect'); } catch (e) {}
+    }
+
+    /* ===== CATALOGO DE SKINS DE PAIS =====
+       Los datos y el generador de pildoras estan en paises-pixel.js. Aqui solo
+       va la rejilla de 8, el paginado y el detalle. La pildora se dibuja con el
+       MISMO angulo que el hero (-45 grados) y a tamano natural: escalar un
+       canvas pixelado por un factor no entero lo emborrona. */
+    const SKIN_POR_PAGINA = 8, SKIN_ANG = -Math.PI / 4;
+    let skinPagina = 0;
+
+    function skinRender() {
+        const grid = document.getElementById('skinGrid');
+        if (!grid || typeof paisLista !== 'function') return;
+        const lista = paisLista();
+        const paginas = Math.ceil(lista.length / SKIN_POR_PAGINA);
+        skinPagina = Math.max(0, Math.min(paginas - 1, skinPagina));
+        grid.innerHTML = '';
+        // El ancho de pildora sale del alto REAL de la celda, no de una constante:
+        // el cartel se reescala desde EDIT LAYOUT y con un valor fijo se salia.
+        const altoCelda = (grid.clientHeight - 4) / 2;
+        const wL = Math.max(14, Math.min(40, Math.floor((altoCelda - 22) / 2.12)));
+        lista.slice(skinPagina * SKIN_POR_PAGINA, (skinPagina + 1) * SKIN_POR_PAGINA).forEach(p => {
+            const o = paisPillRot(wL, p.code, SKIN_ANG);
+            const cel = document.createElement('div'); cel.className = 'skin-cell';
+            const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
+            cv.getContext('2d').drawImage(o.cv, 0, 0);
+            const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.code;
+            const pre = document.createElement('div'); pre.className = 'sc-pre'; pre.textContent = '25K';
+            cel.append(cv, cod, pre);
+            cel.title = p.n;
+            cel.addEventListener('click', () => skinOpen(p.code));
+            cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
+            grid.appendChild(cel);
+        });
+        const dots = document.getElementById('skinDots'); dots.innerHTML = '';
+        for (let i = 0; i < paginas; i++) {
+            const s = document.createElement('span'); if (i === skinPagina) s.className = 'act';
+            dots.appendChild(s);
+        }
+        document.getElementById('skinPrev').disabled = skinPagina === 0;
+        document.getElementById('skinNext').disabled = skinPagina >= paginas - 1;
+    }
+
+    function skinPage(d) {
+        const paginas = Math.ceil(paisLista().length / SKIN_POR_PAGINA);
+        const n = skinPagina + d;
+        if (n < 0 || n >= paginas) return;
+        skinPagina = n; skinRender();
+        try { SoundManager.play('simpleselect'); } catch (e) {}
+    }
+
+    // Cinco anchos crecientes que cruzan el umbral del emblema, para que se vea
+    // aparecer. Sin numeros ni masa: se entiende mirando.
+    const SKIN_CRECE = [12, 20, 30, 42, 56];
+
+    function skinOpen(code) {
+        const s = paisSkin(code); if (!s) return;
+        document.getElementById('sdCod').textContent = s.code;
+        document.getElementById('sdNom').textContent = s.nombre;
+        document.getElementById('sdLore').textContent = s.lore;
+        const cr = document.getElementById('sdCrece'); cr.innerHTML = '';
+        let primera = null;
+        SKIN_CRECE.forEach(wL => {
+            const o = paisPillRot(wL, code, SKIN_ANG);
+            if (o.conEmblema && primera === null) primera = wL;
+            const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
+            cv.getContext('2d').drawImage(o.cv, 0, 0);
+            cr.appendChild(cv);
+        });
+        document.getElementById('sdPie').textContent = s.capas.length === 0
+            ? 'THE SAME SKIN, AS YOU GROW'
+            : (primera === SKIN_CRECE[0] ? 'WEARS ITS EMBLEM FROM THE FIRST BITE' : 'THE EMBLEM SHOWS UP AS YOU GROW');
+        document.getElementById('skinDetailModal').style.display = 'flex';
+        try { SoundManager.play('select'); } catch (e) {}
+    }
+    function skinClose() {
+        document.getElementById('skinDetailModal').style.display = 'none';
         try { SoundManager.play('simpleselect'); } catch (e) {}
     }
     function tickOracleTimer() {

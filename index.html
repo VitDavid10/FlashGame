@@ -818,6 +818,55 @@ body.trailer-open #page-content{
         /* Caja "proximamente" del shop: esquina recta y dorado, en linea con el
            resto de tarjetas. Antes iba en rojo (--accent) sobre el fondo morado,
            dos colores que no estan en la paleta de la marca. */
+        /* ===== TIENDA DE SKINS DE PAIS =====
+           Mismo catalogo que /game (game/paises-pixel.js genera las pildoras),
+           con el aspecto de la landing. Cuatro paginas de ocho. */
+        .shop-sub { color: var(--txt-mute); font-size: var(--fs-2); margin: -6px 0 26px; letter-spacing: 1px; }
+        .shop-carrusel { display: flex; align-items: center; gap: 14px; width: 100%; max-width: var(--contenido-panel); }
+        .shop-flecha { flex: none; width: 46px; height: 110px; background: rgba(10,10,10,0.8); border: 2px solid #262626;
+                       color: var(--gold); font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); cursor: pointer;
+                       box-shadow: 4px 4px 0 rgba(0,0,0,0.6); transition: 0.15s; }
+        .shop-flecha:hover:not(:disabled) { border-color: var(--gold); background: #151004; transform: translateY(-2px); }
+        .shop-flecha:disabled { opacity: 0.25; cursor: default; }
+        .shop-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .shop-cel { background: rgba(10,10,10,0.8); border: 2px solid #1e1e1e; padding: 12px 6px 0; text-align: center;
+                    cursor: pointer; transition: 0.15s; box-shadow: 4px 4px 0 rgba(0,0,0,0.55); }
+        .shop-cel:hover { border-color: var(--primary); background: #0c110c; transform: translateY(-3px); }
+        .shop-cel canvas { image-rendering: pixelated; display: block; margin: 0 auto 8px; }
+        .shop-cel .sc-cod { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: #fff; }
+        .shop-cel .sc-nom { font-size: var(--fs-2); color: var(--txt-mute); margin-top: 4px; height: 26px; }
+        .shop-cel .sc-pre { margin: 6px -6px 0; padding: 7px 2px; background: rgba(255,206,61,0.08); border-top: 2px solid #1e1e1e;
+                            font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: var(--gold); }
+        .shop-dots { display: flex; justify-content: center; gap: 8px; margin-top: 22px; }
+        .shop-dots span { width: 30px; height: 5px; background: #262626; cursor: pointer; transition: 0.2s; }
+        .shop-dots span.act { background: var(--primary); box-shadow: 0 0 10px rgba(0,255,136,0.6); }
+
+        .shop-modal { display: none; position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.85);
+                      align-items: center; justify-content: center; padding: 20px; }
+        .shop-modal.on { display: flex; }
+        .shop-caja { position: relative; width: 100%; max-width: 620px; background: #0d0f12; border: 3px solid #2a2f36;
+                     box-shadow: 0 0 0 3px #000, 10px 10px 0 rgba(0,0,0,0.65); padding: 30px 32px 26px; }
+        .shop-cerrar { position: absolute; top: 13px; right: 15px; width: 30px; height: 30px; background: transparent;
+                       border: 2px solid #3a3a3a; color: var(--txt-mute); font-size: var(--fs-3); cursor: pointer; line-height: 1; }
+        .shop-cerrar:hover { border-color: var(--accent); color: var(--accent); }
+        .sm-cod { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: var(--primary); letter-spacing: 2px; }
+        .sm-nom { font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); color: #fff; margin: 8px 0 0; text-shadow: 2px 2px 0 #000; }
+        .sm-lore { font-family: 'VT323', monospace; font-size: var(--fs-4); line-height: 1.35; color: #9fb0a6;
+                   margin: 14px 0 0; border-left: 3px solid rgba(0,255,136,0.35); padding: 3px 0 3px 13px; }
+        .sm-franjas { display: flex; gap: 4px; margin-top: 16px; }
+        .sm-franjas i { flex: 1; height: 13px; border: 1px solid rgba(255,255,255,0.14); }
+        /* Centrados y no alineados por abajo: cada canvas es un CUADRADO con la
+           pildora dentro, asi que por abajo se alinean los cuadrados y las
+           pildoras salen descuadradas. */
+        .sm-crece { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 20px;
+                    padding: 20px 16px; background: #07090b; border: 2px solid #1a1d21; overflow-x: auto; }
+        .sm-crece canvas { image-rendering: pixelated; display: block; flex: none; }
+        .sm-pie { font-size: var(--fs-2); color: var(--txt-mute); text-align: center; margin-top: 12px; }
+        .sm-compra { display: flex; gap: 12px; margin-top: 18px; }
+        .sm-precio { flex: 1; text-align: center; padding: 13px; font-family: 'Press Start 2P', monospace;
+                     font-size: var(--fs-2); color: var(--gold); border: 2px solid var(--gold); box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
+        .sm-precio.sp { color: var(--primary); border-color: var(--primary); }
+
         .placeholder-box { width: 100%; max-width: var(--contenido-panel); height: 300px; border: 2px dashed rgba(255,204,0,0.35); background: rgba(0,0,0,0.4); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #6a5a2a; font-family: 'Russo One'; letter-spacing: 2px; }
 
         /* Leaderboard "Global Elite" */
@@ -1875,7 +1924,32 @@ body.trailer-open #page-content{
     </div>
     <div id="shop" class="section-container">
         <h1 class="section-title holo-text">Skin Shop</h1>
-        <div class="placeholder-box"><h3>NFT MARKETPLACE</h3></div>
+        <div class="shop-sub">32 countries · one flag, three bands and an emblem you grow into</div>
+        <div class="shop-carrusel">
+            <button class="shop-flecha" id="shopPrev" aria-label="Previous">&#9664;</button>
+            <div class="shop-grid" id="shopGrid"></div>
+            <button class="shop-flecha" id="shopNext" aria-label="Next">&#9654;</button>
+        </div>
+        <div class="shop-dots" id="shopDots"></div>
+    </div>
+
+    <!-- Detalle de una skin. Mismo contenido que el del juego (lore + la pildora
+         a cinco tamanos cruzando el umbral del emblema), con el estilo de la
+         landing en vez del cartel de piedra. -->
+    <div class="shop-modal" id="shopModal">
+        <div class="shop-caja">
+            <button class="shop-cerrar" id="shopCerrar" aria-label="Close">✕</button>
+            <div class="sm-cod" id="smCod"></div>
+            <h3 class="sm-nom" id="smNom"></h3>
+            <div class="sm-lore" id="smLore"></div>
+            <div class="sm-franjas" id="smFranjas"></div>
+            <div class="sm-crece" id="smCrece"></div>
+            <div class="sm-pie" id="smPie"></div>
+            <div class="sm-compra">
+                <span class="sm-precio">25,000 $PILL</span>
+                <span class="sm-precio sp">150 SP</span>
+            </div>
+        </div>
     </div>
     <div id="ranking" class="section-container">
         <h1 class="section-title holo-text">Global Elite</h1>
@@ -4255,6 +4329,79 @@ function toggleTrailerMode() {
                 save(); apply();
             })
             .catch(() => {});
+    })();
+    </script>
+
+    <script src="game/paises-pixel.js"></script>
+    <script>
+    /* Tienda de skins de la landing. Reutiliza tal cual el generador de pildoras
+       del juego (game/paises-pixel.js): mismos colores, mismo emblema y mismo
+       umbral, asi que lo que se ve aqui es exactamente lo que llevaras en
+       partida — y no hay una segunda copia de la tabla que se quede vieja. */
+    (function () {
+        const POR_PAG = 8, ANG = -Math.PI / 4;
+        const grid = document.getElementById('shopGrid');
+        if (!grid || typeof paisLista !== 'function') return;
+        const lista = paisLista(), paginas = Math.ceil(lista.length / POR_PAG);
+        let pag = 0;
+        const $ = id => document.getElementById(id);
+        const modal = $('shopModal');
+
+        // A tamano natural: escalar un canvas pixelado por un factor no entero
+        // lo emborrona, que es justo lo que no quieres en pixel art.
+        function lienzo(code, wL) {
+            const o = paisPillRot(wL, code, ANG);
+            const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
+            cv.getContext('2d').drawImage(o.cv, 0, 0);
+            return { cv, conEmblema: o.conEmblema };
+        }
+
+        function pinta() {
+            grid.innerHTML = '';
+            lista.slice(pag * POR_PAG, (pag + 1) * POR_PAG).forEach(p => {
+                const c = document.createElement('div'); c.className = 'shop-cel';
+                c.appendChild(lienzo(p.code, 42).cv);
+                const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.code;
+                const nom = document.createElement('div'); nom.className = 'sc-nom'; nom.textContent = p.n;
+                const pre = document.createElement('div'); pre.className = 'sc-pre'; pre.textContent = '25,000 $PILL';
+                c.append(cod, nom, pre);
+                c.addEventListener('click', () => abre(p.code));
+                grid.appendChild(c);
+            });
+            $('shopPrev').disabled = pag === 0;
+            $('shopNext').disabled = pag >= paginas - 1;
+            [...$('shopDots').children].forEach((d, i) => d.classList.toggle('act', i === pag));
+        }
+
+        const CRECE = [14, 24, 36, 48, 64];
+        function abre(code) {
+            const s = paisSkin(code); if (!s) return;
+            $('smCod').textContent = s.code;
+            $('smNom').textContent = s.nombre;
+            $('smLore').textContent = s.lore;
+            const fr = $('smFranjas'); fr.innerHTML = '';
+            s.bandas.forEach(col => { const i = document.createElement('i'); i.style.background = col; fr.appendChild(i); });
+            const cr = $('smCrece'); cr.innerHTML = '';
+            let primera = null;
+            CRECE.forEach(wL => { const l = lienzo(code, wL); if (l.conEmblema && primera === null) primera = wL; cr.appendChild(l.cv); });
+            $('smPie').textContent = s.capas.length === 0
+                ? 'The same skin, as you grow'
+                : (primera === CRECE[0] ? 'Wears its emblem from the very first bite' : 'The emblem shows up as you grow');
+            modal.classList.add('on');
+        }
+        const cierra = () => modal.classList.remove('on');
+
+        $('shopPrev').addEventListener('click', () => { if (pag > 0) { pag--; pinta(); } });
+        $('shopNext').addEventListener('click', () => { if (pag < paginas - 1) { pag++; pinta(); } });
+        $('shopCerrar').addEventListener('click', cierra);
+        modal.addEventListener('click', e => { if (e.target === modal) cierra(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') cierra(); });
+        for (let i = 0; i < paginas; i++) {
+            const d = document.createElement('span');
+            d.addEventListener('click', () => { pag = i; pinta(); });
+            $('shopDots').appendChild(d);
+        }
+        pinta();
     })();
     </script>
 </body>
