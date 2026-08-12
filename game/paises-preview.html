@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PillWars — SKIN SHOP</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600&family=VT323&display=block" rel="stylesheet">
 <style>
     :root { --bg: #050505; --primary: #00ff88; --gold: #ffce3d; }
     * { box-sizing: border-box; }
@@ -17,7 +17,6 @@
          text-shadow: 3px 3px 0 #000; }
     .sub { color: #888; font-size: 14px; margin-bottom: 34px; }
 
-    /* --- Carrusel de 8 --- */
     .tienda { display: flex; align-items: center; gap: 18px; }
     .flecha { flex: none; width: 54px; height: 128px; background: rgba(10,10,10,0.8); border: 2px solid #262626;
               color: var(--gold); font-family: 'Press Start 2P', monospace; font-size: 16px; cursor: pointer;
@@ -27,7 +26,7 @@
     .rejilla { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 
     .carta { background: rgba(10,10,10,0.8); border: 2px solid #1e1e1e; padding: 14px 8px 0; text-align: center;
-             cursor: pointer; transition: 0.15s; box-shadow: 4px 4px 0 rgba(0,0,0,0.55); position: relative; }
+             cursor: pointer; transition: 0.15s; box-shadow: 4px 4px 0 rgba(0,0,0,0.55); }
     .carta:hover { border-color: var(--primary); background: #0c110c; transform: translateY(-3px); }
     .carta canvas { image-rendering: pixelated; display: block; margin: 0 auto 10px; }
     .carta .cod { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; }
@@ -40,27 +39,34 @@
     .punto.on { background: var(--primary); box-shadow: 0 0 10px rgba(0,255,136,0.6); }
 
     /* --- Modal --- */
-    .velo { position: fixed; inset: 0; background: rgba(0,0,0,0.82); display: none; align-items: center;
+    .velo { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center;
             justify-content: center; z-index: 100; padding: 20px; }
     .velo.on { display: flex; }
     .caja { background: #0d0f12; border: 3px solid #2a2f36; box-shadow: 0 0 0 3px #000, 10px 10px 0 rgba(0,0,0,0.65);
-            max-width: 720px; width: 100%; padding: 30px 34px 26px; position: relative; }
-    .caja h2 { font-family: 'Press Start 2P', monospace; font-size: 17px; color: #fff; margin: 0 0 4px;
-               text-shadow: 2px 2px 0 #000; }
+            max-width: 700px; width: 100%; padding: 30px 34px 26px; position: relative; }
     .caja .cod2 { font-family: 'Press Start 2P', monospace; font-size: 10px; color: var(--primary); letter-spacing: 2px; }
+    .caja h2 { font-family: 'Press Start 2P', monospace; font-size: 17px; color: #fff; margin: 6px 0 0;
+               text-shadow: 2px 2px 0 #000; }
     .cerrar { position: absolute; top: 14px; right: 16px; width: 32px; height: 32px; background: transparent;
               border: 2px solid #3a3a3a; color: #888; font-size: 17px; cursor: pointer; line-height: 1; }
     .cerrar:hover { border-color: #ff2a2a; color: #ff2a2a; }
 
-    .franjas { display: flex; gap: 4px; margin: 18px 0 4px; }
-    .franjas i { flex: 1; height: 18px; border: 1px solid rgba(255,255,255,0.14); }
-    .franjas-lbl { font-size: 11px; color: #666; letter-spacing: 1px; text-transform: uppercase; }
+    .lore { font-family: 'VT323', monospace; font-size: 20px; line-height: 1.35; color: #9fb0a6;
+            margin: 16px 0 4px; border-left: 3px solid rgba(0,255,136,0.35); padding: 4px 0 4px 14px; }
 
-    .crece { display: flex; align-items: flex-end; justify-content: center; gap: 18px;
-             margin: 26px 0 8px; padding: 26px 20px 20px; background: #07090b; border: 2px solid #1a1d21;
+    .franjas { display: flex; gap: 4px; margin: 18px 0 0; }
+    .franjas i { flex: 1; height: 14px; border: 1px solid rgba(255,255,255,0.14); }
+
+    /* align-items:center y no flex-end: cada canvas es un CUADRADO con la
+       pildora centrada dentro, asi que alineando por abajo se alineaban los
+       cuadrados, no las pildoras — y se veian descuadradas. Por el centro, los
+       ejes de las capsulas caen en la misma linea y se lee como una sola
+       pildora creciendo. */
+    .crece { display: flex; align-items: center; justify-content: center; gap: 16px;
+             margin: 24px 0 8px; padding: 22px 18px; background: #07090b; border: 2px solid #1a1d21;
              overflow-x: auto; }
-    .crece canvas { image-rendering: pixelated; display: block; }
-    .crece-pie { font-size: 12px; color: #777; text-align: center; margin-bottom: 22px; }
+    .crece canvas { image-rendering: pixelated; display: block; flex: none; }
+    .crece-pie { font-size: 12px; color: #777; text-align: center; margin-bottom: 20px; }
 
     .compra { display: flex; gap: 12px; margin-top: 6px; }
     .btn { flex: 1; padding: 15px; font-family: 'Press Start 2P', monospace; font-size: 11px; cursor: pointer;
@@ -82,7 +88,7 @@
 <body>
 <div class="wrap">
     <h1>SKIN SHOP</h1>
-    <div class="sub">32 países · 4 pestañas de 8 · pulsa una skin para verla en detalle</div>
+    <div class="sub">32 countries · 4 pages of 8 · click a skin for details</div>
 
     <div class="tienda">
         <button class="flecha" id="izq">&#9664;</button>
@@ -92,12 +98,13 @@
     <div class="pestanas" id="pestanas"></div>
 
     <div class="nota">
-        <b>La píldora va inclinada</b> igual que en partida — mismo generador que el juego
-        (luz direccional fija en pantalla, reborde de 1px, rombo de brillo duro).
-        El emblema se calcula en coordenadas locales de la cápsula, así que <b>gira con ella</b>.
+        <b>Tilted, like in a real match</b> — same generator the game uses: fixed on-screen light,
+        1px rim on the whole outline, hard diamond highlight. The emblem is computed in the capsule's
+        own coordinates, so <b>it turns with the pill</b>.
         <br><br>
-        Dentro del detalle verás la píldora <b>a varios tamaños</b>: el emblema aparece solo
-        cuando la banda central da de sí. Antes de eso, la skin son sus tres colores.
+        Every emblem has <b>its own size threshold</b>. A circle or a cross reads from the very first
+        pixel, so Japan and Switzerland wear theirs from birth. A heraldic shield does not, so Spain
+        and Ecuador have to grow into it.
     </div>
 </div>
 
@@ -106,13 +113,13 @@
         <button class="cerrar" id="cerrar">✕</button>
         <div class="cod2" id="mCod"></div>
         <h2 id="mNom"></h2>
-        <div class="franjas-lbl">Colores</div>
+        <div class="lore" id="mLore"></div>
         <div class="franjas" id="mFranjas"></div>
         <div class="crece" id="mCrece"></div>
-        <div class="crece-pie">La misma skin, según lo que hayas crecido</div>
+        <div class="crece-pie" id="mPie"></div>
         <div class="compra">
-            <button class="btn pill" id="mPill">COMPRAR · 25.000 $PILL</button>
-            <button class="btn sp" id="mSp">COMPRAR · 150 SP</button>
+            <button class="btn pill">BUY · 25,000 $PILL</button>
+            <button class="btn sp">BUY · 150 SP</button>
         </div>
     </div>
 </div>
@@ -124,12 +131,10 @@ const POR_PAGINA = 8, ANG = -Math.PI / 4;
 const paises = paisLista();
 const paginas = Math.ceil(paises.length / POR_PAGINA);
 let pagina = 0;
-
 const $ = id => document.getElementById(id);
 
-// Dibuja una píldora inclinada dentro de un <canvas> escalado a `destino` px.
-function pilCanvas(code, wL, destino, conEmblema) {
-    const o = paisPillRot(wL, code, ANG, conEmblema);
+function pilCanvas(code, wL, destino) {
+    const o = paisPillRot(wL, code, ANG);
     const cv = document.createElement('canvas');
     cv.width = o.S; cv.height = o.S;
     cv.getContext('2d').drawImage(o.cv, 0, 0);
@@ -143,10 +148,10 @@ function pintaPagina() {
     const rej = $('rejilla'); rej.innerHTML = '';
     paises.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA).forEach(p => {
         const c = document.createElement('div'); c.className = 'carta';
-        c.appendChild(pilCanvas(p.code, 46, 104, true));
+        c.appendChild(pilCanvas(p.code, 46, 104));
         const cod = document.createElement('div'); cod.className = 'cod'; cod.textContent = p.code;
         const nom = document.createElement('div'); nom.className = 'nom'; nom.textContent = p.n;
-        const pr = document.createElement('div'); pr.className = 'precio'; pr.textContent = '25.000 $PILL';
+        const pr = document.createElement('div'); pr.className = 'precio'; pr.textContent = '25,000 $PILL';
         c.append(cod, nom, pr);
         c.addEventListener('click', () => abre(p.code));
         rej.appendChild(c);
@@ -156,24 +161,31 @@ function pintaPagina() {
     [...$('pestanas').children].forEach((d, i) => d.classList.toggle('on', i === pagina));
 }
 
+// Cinco anchos crecientes, dibujados A TAMAÑO NATURAL. Escalarlos emborrona el
+// pixel art (cualquier factor no entero) y ademas se salian de la caja.
+const CRECE = [14, 24, 36, 48, 64];
+
 function abre(code) {
     const s = paisSkin(code);
     $('mCod').textContent = s.code;
     $('mNom').textContent = s.nombre;
+    $('mLore').textContent = s.lore;
     const fr = $('mFranjas'); fr.innerHTML = '';
     s.bandas.forEach(col => { const i = document.createElement('i'); i.style.background = col; fr.appendChild(i); });
-    // Cinco tamaños crecientes. Sin números ni masa: se entiende mirando.
-    // A TAMAÑO NATURAL, sin escalar: escalarlas x2.1 sumaba 918px dentro de un
-    // modal de 720 y la grande se salia por la derecha. Ademas, dibujadas 1:1 el
-    // pixel art queda exacto — cualquier escala no entera lo emborrona. Los
-    // anchos elegidos cruzan el umbral del emblema (36) para que se vea aparecer.
+
     const cr = $('mCrece'); cr.innerHTML = '';
-    [14, 24, 36, 48, 64].forEach(wL => {
-        const o = paisPillRot(wL, code, ANG, true);
+    let desde = null;
+    CRECE.forEach(wL => {
+        const o = paisPillRot(wL, code, ANG);
+        if (o.conEmblema && desde === null) desde = wL;
         const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
         cv.getContext('2d').drawImage(o.cv, 0, 0);
         cr.appendChild(cv);
     });
+    $('mPie').textContent = s.capas.length === 0
+        ? 'The same skin, as you grow'
+        : (desde === CRECE[0] ? 'Wears its emblem from the very first bite'
+                              : 'The same skin, as you grow — the emblem shows up along the way');
     $('velo').classList.add('on');
 }
 

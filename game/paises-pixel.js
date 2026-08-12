@@ -13,80 +13,110 @@
  * TRES BANDAS y no dos mitades porque la capsula es el doble de alta que de
  * ancha (PILL_RATIO = 2): en horizontal caben tres bandas de ~13px en una
  * pildora recien nacida, mientras que tres franjas verticales serian de 6.6px.
- * Ademas la pildora ROTA (drawPixPillRot hornea 16 angulos) y las bandas
- * horizontales siguen el eje de la capsula.
+ * Ademas la pildora ROTA y las bandas horizontales siguen el eje de la capsula.
  *
- * Dejando que las tres bandas sean del MISMO color, el formato cubre tambien
- * banderas que no son tricolores: Japon es blanco/blanco/blanco + disco rojo,
- * Brasil verde/verde/verde + rombo. Un solo modelo de datos para todas.
+ * NINGUNA pildora es de un solo color. Las banderas que si lo son (Suiza,
+ * Japon, Marruecos, China, Brasil, Suecia, Noruega) llevan dos tonos del mismo
+ * color en las bandas de fuera y el centro, que las despega sin dejar de ser
+ * su bandera.
  *
- * Los emblemas NO son mapas de bits: son funciones (u,v) -> dentro/fuera en
- * coordenadas normalizadas (-1..1), asi que se rasterizan nitidos a CUALQUIER
- * tamano. A 20px de pildora salen siluetas de ~10px; a 200px, el mismo dibujo
- * con mas detalle. Son siluetas reconocibles, no escudos heraldicos: el de
- * Espana con las columnas de Hercules no cabe en 10 pixeles y no hay truco que
- * lo arregle.
+ * EMBLEMAS POR CAPAS. Cada pais declara una lista de capas {f: forma, c: color,
+ * k: escala, dx/dy: desplazamiento}, que se pintan en orden. Con una sola capa
+ * no habia forma de que Estados Unidos pareciera Estados Unidos (necesita el
+ * canton azul Y las estrellas blancas encima) ni de que China tuviera su
+ * estrella grande con las cuatro pequenas.
+ *
+ * UMBRAL POR PAIS. `min` = alto minimo de la banda central para que ese emblema
+ * aparezca. Es POR PAIS y no global: una cruz o un disco se leen a 8px, un
+ * escudo heraldico no. Asi Japon lleva su circulo desde el primer momento y el
+ * escudo de Espana espera a que la pildora de de si.
+ *
+ * Las formas no son mapas de bits: son funciones (u,v) -> dentro/fuera en
+ * coordenadas normalizadas (-1..1), asi que se rasterizan nitidas a CUALQUIER
+ * tamano y, al evaluarse en coordenadas LOCALES de la capsula, giran con ella
+ * de balde.
  */
 'use strict';
 
 /* ===== FORMAS ===== ------------------------------------------------------
- * Cada forma responde "este punto esta dentro?" en coordenadas -1..1 con el
- * origen en el centro. v crece hacia ABAJO (como el canvas).
+ * "Este punto esta dentro?" en coordenadas -1..1 con el origen en el centro.
+ * v crece hacia ABAJO (como el canvas).
  */
 const PAIS_FORMAS = {
     disco: (u, v) => u * u + v * v <= 1,
-
     rombo: (u, v) => Math.abs(u) + Math.abs(v) <= 1,
+    cuadrado: (u, v) => Math.abs(u) <= 1 && Math.abs(v) <= 1,
 
-    // Grosor del brazo en 0.34: por debajo la cruz desaparece a tamano pildora.
     cruz: (u, v) => Math.abs(u) <= 0.34 || Math.abs(v) <= 0.34,
-
-    // Cruz nordica: brazo vertical desplazado a la izquierda (Suecia, Noruega).
+    cruzFina: (u, v) => Math.abs(u) <= 0.2 || Math.abs(v) <= 0.2,
+    cruzGruesa: (u, v) => Math.abs(u) <= 0.46 || Math.abs(v) <= 0.46,
+    // Brazo vertical desplazado a la izquierda (Suecia, Noruega).
     cruzNordica: (u, v) => Math.abs(v) <= 0.3 || Math.abs(u + 0.22) <= 0.3,
+    // Union Jack: la cruz recta mas las dos diagonales.
+    aspa: (u, v) => Math.abs(u - v) <= 0.30 || Math.abs(u + v) <= 0.30,
+    aspaFina: (u, v) => Math.abs(u - v) <= 0.17 || Math.abs(u + v) <= 0.17,
 
-    // Estrella de 5 puntas por la formula del poligono estrellado en polares.
     estrella: (u, v) => estrellaN(u, v, 5),
-    // Estrella de la Commonwealth (Australia): 7 puntas.
     estrella7: (u, v) => estrellaN(u, v, 7),
 
-    // Luna creciente: un disco al que otro disco desplazado le come un trozo.
+    // Cuatro estrellas pequenas en arco a la derecha (China).
+    arcoEstrellas: (u, v) => {
+        for (let i = 0; i < 4; i++) {
+            const a = -0.9 + i * 0.6;                       // reparto vertical
+            const cx = 0.52 + (i === 0 || i === 3 ? -0.16 : 0.12);
+            const du = (u - cx) / 0.24, dv = (v - a * 0.52) / 0.24;
+            if (Math.abs(du) <= 1 && Math.abs(dv) <= 1 && estrellaN(du, dv, 5)) return true;
+        }
+        return false;
+    },
+
+    // Cruz del Sur: cuatro estrellas repartidas (Australia).
+    cruzDelSur: (u, v) => {
+        const pts = [[0.1, -0.75], [0.62, -0.05], [0.05, 0.62], [-0.42, 0.02]];
+        for (const [cx, cy] of pts) {
+            const du = (u - cx) / 0.3, dv = (v - cy) / 0.3;
+            if (Math.abs(du) <= 1 && Math.abs(dv) <= 1 && estrellaN(du, dv, 5)) return true;
+        }
+        return false;
+    },
+
+    // Tres estrellas en fila (para cantones tipo EE.UU.).
+    filaEstrellas: (u, v) => {
+        for (let i = -1; i <= 1; i++) {
+            const du = (u - i * 0.6) / 0.34, dv = v / 0.55;
+            if (Math.abs(du) <= 1 && Math.abs(dv) <= 1 && estrellaN(du, dv, 5)) return true;
+        }
+        return false;
+    },
+
     luna: (u, v) => {
         const d1 = u * u + v * v <= 1;
         const d2 = (u - 0.42) * (u - 0.42) + v * v <= 0.82 * 0.82;
         return d1 && !d2;
     },
 
-    // Escudo generico: cuadrado arriba que se afila en punta hacia abajo.
     escudo: (u, v) => {
         if (Math.abs(u) > 1 || v < -1 || v > 1) return false;
         if (v <= 0.15) return Math.abs(u) <= 0.86;
-        const t = (v - 0.15) / 0.85;              // 0 en el hombro, 1 en la punta
+        const t = (v - 0.15) / 0.85;
         return Math.abs(u) <= 0.86 * (1 - t * t);
     },
 
-    // Triangulo apuntando a la derecha (Bosnia) o abajo-derecha.
-    triangulo: (u, v) => v >= -1 && v <= 1 && u >= -0.9 && u <= 0.9 && (u <= 0.9 - Math.abs(v) * 1.8),
+    triangulo: (u, v) => v >= -1 && v <= 1 && u >= -0.9 && (u <= 0.9 - Math.abs(v) * 1.8),
 
-    // Sol con rayos: disco central + 8 rayos triangulares (Argentina).
     sol: (u, v) => {
         const r = Math.sqrt(u * u + v * v);
         if (r <= 0.48) return true;
         if (r > 1) return false;
         const a = Math.atan2(v, u);
-        const k = Math.abs(Math.cos(a * 8));      // 8 rayos
-        return r <= 0.48 + 0.52 * (k > 0.55 ? 1 : 0);
+        return r <= 0.48 + 0.52 * (Math.abs(Math.cos(a * 8)) > 0.55 ? 1 : 0);
     },
 
-    // Damero 5x5 (Croacia). Se evalua en la rejilla, no por distancia.
     damero: (u, v) => {
         if (Math.abs(u) > 1 || Math.abs(v) > 1) return false;
-        const cx = Math.floor((u + 1) / 0.4), cy = Math.floor((v + 1) / 0.4);
-        return (cx + cy) % 2 === 0;
+        return (Math.floor((u + 1) / 0.4) + Math.floor((v + 1) / 0.4)) % 2 === 0;
     },
 
-    // Hoja de arce (Canada). La unica que si es una matriz: no hay formula
-    // corta que de una silueta reconocible, y a este tamano lo que importa es
-    // la silueta. 11x11, se escala con vecino mas cercano.
     hoja: matrizForma([
         '.....#.....',
         '....###....',
@@ -101,42 +131,38 @@ const PAIS_FORMAS = {
         '....###....',
     ]),
 
-    // Ave/aguila de perfil, muy simplificada (Egipto, Mexico).
-    ave: matrizForma([
+    aguila: matrizForma([
         '...........',
-        '..##...##..',
-        '.####.####.',
+        '...#####...',
+        '..#.###.#..',
+        '.##.###.##.',
+        '###########',
         '.#########.',
         '..#######..',
         '...#####...',
         '....###....',
-        '...#####...',
-        '..##...##..',
-        '.#.......#.',
+        '...##.##...',
         '...........',
     ]),
 };
 
-// Estrella de n puntas. El contorno es la recta que une la PUNTA (radio 1, en
-// los multiplos del paso) con el VALLE (radio RV, a medio paso). En polares esa
-// recta es r(a) = r1*r2*sin(a2-a1) / (r1*sin(a-a1) + r2*sin(a2-a)), que con
-// a1=0, r1=1, a2=medio, r2=RV se queda en lo de abajo.
-// El intento anterior usaba cos(medio)/cos(a-medio), que es el POLIGONO CONVEXO:
-// salia un pentagono, no una estrella.
-const ESTRELLA_RV = 0.382;   // razon aurea: la proporcion de la estrella de 5 puntas
+// Estrella de n puntas. El contorno es la recta que une la PUNTA (radio 1) con
+// el VALLE (radio RV, a medio paso). En polares esa recta es
+// r(a) = r1*r2*sin(a2-a1) / (r1*sin(a-a1) + r2*sin(a2-a)).
+// Cuidado: cos(medio)/cos(a-medio) es el POLIGONO CONVEXO — con eso salian
+// pentagonos en vez de estrellas.
+const ESTRELLA_RV = 0.382;
 function estrellaN(u, v, n) {
     const r = Math.sqrt(u * u + v * v);
     if (r > 1) return false;
     if (r < 0.02) return true;
-    let a = Math.atan2(v, u) + Math.PI / 2;        // punta hacia arriba
+    let a = Math.atan2(v, u) + Math.PI / 2;
     const paso = Math.PI * 2 / n, medio = paso / 2;
     a = ((a % paso) + paso) % paso;
-    if (a > medio) a = paso - a;                   // simetrico respecto al valle
-    const borde = (ESTRELLA_RV * Math.sin(medio)) / (Math.sin(a) + ESTRELLA_RV * Math.sin(medio - a));
-    return r <= borde;
+    if (a > medio) a = paso - a;
+    return r <= (ESTRELLA_RV * Math.sin(medio)) / (Math.sin(a) + ESTRELLA_RV * Math.sin(medio - a));
 }
 
-// Convierte un dibujo ASCII en una funcion (u,v) -> dentro. '#' = pintado.
 function matrizForma(filas) {
     const h = filas.length, w = filas[0].length;
     return (u, v) => {
@@ -146,119 +172,197 @@ function matrizForma(filas) {
     };
 }
 
+/* ===== UMBRALES ===== ----------------------------------------------------
+ * Alto minimo (px) de la banda central para que aparezca el emblema. Cuanto
+ * mas simple la silueta, antes se puede ensenar.
+ */
+const UMBRAL = {
+    siempre: 0,    // disco, cruz: se leen desde el primer pixel
+    pronto: 12,    // estrella suelta, luna, triangulo
+    medio: 20,     // varias estrellas, damero, sol
+    tarde: 30,     // escudo heraldico, hoja, aguila
+};
+
 /* ===== PAISES ===== ------------------------------------------------------
- * Los 32 que avanzaron de la fase de grupos del Mundial 2026 + China.
- * b = las tres bandas de arriba a abajo. e = forma del emblema. ec = su color.
- * Cuando la bandera real es de franjas VERTICALES (Francia, Belgica, Mexico...)
- * se pasan a horizontales conservando el orden y los colores: a tamano pildora
- * lo que identifica es la terna de colores, no su direccion.
+ * b = las tres bandas de arriba a abajo.
+ * e = capas del emblema, en orden de pintado. f=forma, c=color, k=escala,
+ *     dx/dy=desplazamiento (en unidades normalizadas).
+ * min = umbral propio.
+ * lore = texto de sabor, en ingles.
  */
 const PAISES = {
-    // --- Grupo A
-    MX: { n: 'México',        b: ['#006847', '#ffffff', '#CE1126'], e: 'ave',         ec: '#8B5A2B' },
-    ZA: { n: 'Sudáfrica',     b: ['#007A4D', '#FFB612', '#DE3831'], e: 'triangulo',   ec: '#000000' },
-    // --- Grupo B
-    CH: { n: 'Suiza',         b: ['#DA291C', '#DA291C', '#DA291C'], e: 'cruz',        ec: '#ffffff' },
-    CA: { n: 'Canadá',        b: ['#D80621', '#ffffff', '#D80621'], e: 'hoja',        ec: '#D80621' },
-    // Bosnia y Herzegovina fuera a proposito: con ella eran 33 y la tienda va
-    // de 8 en 8 (4 pestañas exactas de 8). Su hueco lo pidio David.
-    // --- Grupo C
-    BR: { n: 'Brasil',        b: ['#009739', '#009739', '#009739'], e: 'rombo',       ec: '#FEDD00' },
-    MA: { n: 'Marruecos',     b: ['#C1272D', '#C1272D', '#C1272D'], e: 'estrella',    ec: '#006233' },
-    // --- Grupo D
-    US: { n: 'Estados Unidos',b: ['#B22234', '#ffffff', '#B22234'], e: 'estrella',    ec: '#3C3B6E' },
-    AU: { n: 'Australia',     b: ['#00247D', '#00247D', '#00247D'], e: 'estrella7',   ec: '#ffffff' },
-    PY: { n: 'Paraguay',      b: ['#D52B1E', '#ffffff', '#0038A8'], e: 'estrella',    ec: '#009B3A' },
-    // --- Grupo E
-    DE: { n: 'Alemania',      b: ['#000000', '#DD0000', '#FFCE00'], e: null,          ec: null },
-    CI: { n: 'Costa de Marfil', b: ['#F77F00', '#ffffff', '#009E60'], e: null,        ec: null },
-    // Escudo en AMARILLO y no en el azul del propio escudo: la banda central de
-    // Ecuador ES azul, asi que con el color real el emblema tenia contraste 1.0
-    // contra su fondo — literalmente invisible. El amarillo sale de su bandera.
-    EC: { n: 'Ecuador',       b: ['#FFDD00', '#0033A0', '#EF3340'], e: 'escudo',      ec: '#FFDD00' },
-    // --- Grupo F
-    NL: { n: 'Países Bajos',  b: ['#AE1C28', '#ffffff', '#21468B'], e: null,          ec: null },
-    JP: { n: 'Japón',         b: ['#ffffff', '#ffffff', '#ffffff'], e: 'disco',       ec: '#BC002D' },
-    SE: { n: 'Suecia',        b: ['#006AA7', '#006AA7', '#006AA7'], e: 'cruzNordica', ec: '#FECC00' },
-    // --- Grupo G
-    BE: { n: 'Bélgica',       b: ['#000000', '#FDDA24', '#EF3340'], e: null,          ec: null },
-    EG: { n: 'Egipto',        b: ['#CE1126', '#ffffff', '#000000'], e: 'ave',         ec: '#C09300' },
-    // --- Grupo H
-    ES: { n: 'España',        b: ['#AA151B', '#F1BF00', '#AA151B'], e: 'escudo',      ec: '#AA151B' },
-    CV: { n: 'Cabo Verde',    b: ['#003893', '#ffffff', '#003893'], e: 'estrella',    ec: '#CF2027' },
-    // --- Grupo I
-    FR: { n: 'Francia',       b: ['#002395', '#ffffff', '#ED2939'], e: null,          ec: null },
-    NO: { n: 'Noruega',       b: ['#BA0C2F', '#BA0C2F', '#BA0C2F'], e: 'cruzNordica', ec: '#00205B' },
-    SN: { n: 'Senegal',       b: ['#00853F', '#FDEF42', '#E31B23'], e: 'estrella',    ec: '#00853F' },
-    // --- Grupo J
-    AR: { n: 'Argentina',     b: ['#74ACDF', '#ffffff', '#74ACDF'], e: 'sol',         ec: '#F6B40E' },
-    DZ: { n: 'Argelia',       b: ['#006233', '#ffffff', '#006233'], e: 'luna',        ec: '#D21034' },
-    AT: { n: 'Austria',       b: ['#ED2939', '#ffffff', '#ED2939'], e: null,          ec: null },
-    // --- Grupo K
-    CO: { n: 'Colombia',      b: ['#FCD116', '#003893', '#CE1126'], e: null,          ec: null },
-    PT: { n: 'Portugal',      b: ['#046A38', '#DA291C', '#DA291C'], e: 'escudo',      ec: '#FFE900' },
-    CD: { n: 'RD Congo',      b: ['#007FFF', '#F7D618', '#007FFF'], e: 'estrella',    ec: '#CE1021' },
-    // --- Grupo L
-    EN: { n: 'Inglaterra',    b: ['#ffffff', '#ffffff', '#ffffff'], e: 'cruz',        ec: '#CE1124' },
-    HR: { n: 'Croacia',       b: ['#FF0000', '#ffffff', '#171796'], e: 'damero',      ec: '#FF0000' },
-    GH: { n: 'Ghana',         b: ['#CE1126', '#FCD116', '#006B3F'], e: 'estrella',    ec: '#000000' },
-    // --- Añadido a mano
-    CN: { n: 'China',         b: ['#EE1C25', '#EE1C25', '#EE1C25'], e: 'estrella',    ec: '#FFFF00' },
+    MX: {
+        n: 'Mexico', b: ['#006847', '#ffffff', '#CE1126'], min: UMBRAL.tarde,
+        e: [{ f: 'aguila', c: '#6B4A22' }],
+        lore: 'The eagle never asked permission. Neither should you — take the center of the map and dare anyone to come get it.'
+    },
+    ZA: {
+        n: 'South Africa', b: ['#007A4D', '#FFB612', '#DE3831'], min: UMBRAL.pronto,
+        e: [{ f: 'triangulo', c: '#000000', k: 0.95 }],
+        lore: 'Six colors, one flag. Six enemies, one mouth. The arithmetic works out in your favor.'
+    },
+    CH: {
+        n: 'Switzerland', b: ['#DA291C', '#B81C11', '#DA291C'], min: UMBRAL.siempre,
+        e: [{ f: 'cruz', c: '#ffffff', k: 0.82 }],
+        lore: 'Neutral in every war except this one. The cross marks where the mass gets stored.'
+    },
+    CA: {
+        n: 'Canada', b: ['#D80621', '#ffffff', '#D80621'], min: UMBRAL.tarde,
+        e: [{ f: 'hoja', c: '#D80621' }],
+        lore: 'Polite until the split. Then the leaf comes off and something with teeth arrives.'
+    },
+    BR: {
+        n: 'Brazil', b: ['#009739', '#007C2F', '#009739'], min: UMBRAL.pronto,
+        e: [{ f: 'rombo', c: '#FEDD00' }, { f: 'disco', c: '#012169', k: 0.52 }],
+        lore: 'Order and progress, in that order. First you eat in order, then you progress through the leaderboard.'
+    },
+    MA: {
+        n: 'Morocco', b: ['#C1272D', '#A31E24', '#C1272D'], min: UMBRAL.pronto,
+        e: [{ f: 'estrella', c: '#006233', k: 0.92 }],
+        lore: 'The green star was drawn with one unbroken line. Your run should be too.'
+    },
+    US: {
+        n: 'United States', b: ['#B22234', '#ffffff', '#B22234'], min: UMBRAL.pronto,
+        e: [{ f: 'cuadrado', c: '#3C3B6E', k: 0.96 }, { f: 'filaEstrellas', c: '#ffffff', k: 0.9 }],
+        lore: 'Loud, oversized and impossible to ignore on the minimap. Exactly the plan.'
+    },
+    AU: {
+        n: 'Australia', b: ['#00247D', '#001A5C', '#00247D'], min: UMBRAL.pronto,
+        e: [{ f: 'cruzDelSur', c: '#ffffff', k: 0.98 }, { f: 'estrella7', c: '#ffffff', k: 0.42, dx: -0.55, dy: 0.45 }],
+        lore: 'Everything here is bigger than you and mildly hostile. You will fit right in.'
+    },
+    PY: {
+        n: 'Paraguay', b: ['#D52B1E', '#ffffff', '#0038A8'], min: UMBRAL.pronto,
+        e: [{ f: 'estrella', c: '#009B3A', k: 0.85 }],
+        lore: 'The only flag with a different face on each side. Nobody knows which one you are until it is too late.'
+    },
+    DE: {
+        n: 'Germany', b: ['#000000', '#DD0000', '#FFCE00'], min: UMBRAL.siempre,
+        e: null,
+        lore: 'No emblem. No decoration. Three bands and a plan that was drafted before the match started.'
+    },
+    CI: {
+        n: 'Ivory Coast', b: ['#F77F00', '#ffffff', '#009E60'], min: UMBRAL.siempre,
+        e: null,
+        lore: 'Orange for the land, white for the peace, green for the hope. The hope is that you split before they do.'
+    },
+    EC: {
+        n: 'Ecuador', b: ['#FFDD00', '#0033A0', '#EF3340'], min: UMBRAL.tarde,
+        e: [{ f: 'escudo', c: '#FFDD00' }],
+        lore: 'Standing on the middle of the world. Standing on the middle of the map is considerably harder.'
+    },
+    NL: {
+        n: 'Netherlands', b: ['#AE1C28', '#ffffff', '#21468B'], min: UMBRAL.siempre,
+        e: null,
+        lore: 'They built a country below sea level out of pure stubbornness. Holding a corner should be easy.'
+    },
+    JP: {
+        n: 'Japan', b: ['#ffffff', '#F0F0F0', '#ffffff'], min: UMBRAL.siempre,
+        e: [{ f: 'disco', c: '#BC002D', k: 0.72 }],
+        lore: 'One circle. Nothing else needed. The simplest shape on the field and the hardest to corner.'
+    },
+    SE: {
+        n: 'Sweden', b: ['#006AA7', '#00518A', '#006AA7'], min: UMBRAL.siempre,
+        e: [{ f: 'cruzNordica', c: '#FECC00', k: 0.9 }],
+        lore: 'Cold, patient, and already behind you. The cross points where you should have looked.'
+    },
+    BE: {
+        n: 'Belgium', b: ['#000000', '#FDDA24', '#EF3340'], min: UMBRAL.siempre,
+        e: null,
+        lore: 'Small country, dense population, no room to run. You have played this map your whole life.'
+    },
+    EG: {
+        n: 'Egypt', b: ['#CE1126', '#ffffff', '#000000'], min: UMBRAL.tarde,
+        e: [{ f: 'aguila', c: '#C09300' }],
+        lore: 'The eagle of Saladin has watched empires get eaten. It is unimpressed by your kill streak.'
+    },
+    ES: {
+        n: 'Spain', b: ['#AA151B', '#F1BF00', '#AA151B'], min: UMBRAL.medio,
+        e: [{ f: 'escudo', c: '#AA151B', k: 0.92 }],
+        lore: 'Plus ultra — further beyond. There is always more mass past the edge of what you can currently hold.'
+    },
+    CV: {
+        n: 'Cape Verde', b: ['#003893', '#ffffff', '#003893'], min: UMBRAL.pronto,
+        e: [{ f: 'estrella', c: '#CF2027', k: 0.9 }],
+        lore: 'Ten islands, no continent, no excuses. Showed up and knocked out someone who was supposed to win.'
+    },
+    FR: {
+        n: 'France', b: ['#002395', '#ffffff', '#ED2939'], min: UMBRAL.siempre,
+        e: null,
+        lore: 'Liberty to roam, equality of hitboxes, fraternity until one of you is bigger.'
+    },
+    NO: {
+        n: 'Norway', b: ['#BA0C2F', '#ffffff', '#BA0C2F'], min: UMBRAL.siempre,
+        e: [{ f: 'cruzNordica', c: '#00205B', k: 0.86 }],
+        lore: 'Carved out of a coastline that refuses to be simple. Your path through the map should be just as jagged.'
+    },
+    SN: {
+        n: 'Senegal', b: ['#00853F', '#FDEF42', '#E31B23'], min: UMBRAL.pronto,
+        e: [{ f: 'estrella', c: '#00853F', k: 0.88 }],
+        lore: 'The Lions of Teranga. Teranga means hospitality — offered right up until the moment it is not.'
+    },
+    AR: {
+        n: 'Argentina', b: ['#74ACDF', '#ffffff', '#74ACDF'], min: UMBRAL.pronto,
+        e: [{ f: 'sol', c: '#F6B40E', k: 0.95 }],
+        lore: 'The Sun of May rises whether or not you were ready. Grow into it.'
+    },
+    DZ: {
+        n: 'Algeria', b: ['#006233', '#ffffff', '#006233'], min: UMBRAL.pronto,
+        e: [{ f: 'luna', c: '#D21034', k: 0.92 }],
+        lore: 'The crescent opens toward whatever is next. Usually that is someone smaller.'
+    },
+    AT: {
+        n: 'Austria', b: ['#ED2939', '#ffffff', '#ED2939'], min: UMBRAL.siempre,
+        e: null,
+        lore: 'One of the oldest flags still flying. Red, white, red — the same three bands for eight centuries.'
+    },
+    CO: {
+        n: 'Colombia', b: ['#FCD116', '#003893', '#CE1126'], min: UMBRAL.siempre,
+        e: null,
+        lore: 'Half the flag is gold, because half the flag is what the country is worth. Go take your half of the map.'
+    },
+    PT: {
+        n: 'Portugal', b: ['#046A38', '#DA291C', '#DA291C'], min: UMBRAL.medio,
+        e: [{ f: 'escudo', c: '#FFE900', k: 0.9 }],
+        lore: 'They mapped the edges of the world by sailing off them. The arena has edges too.'
+    },
+    CD: {
+        n: 'DR Congo', b: ['#007FFF', '#F7D618', '#007FFF'], min: UMBRAL.pronto,
+        e: [{ f: 'estrella', c: '#CE1021', k: 0.88 }],
+        lore: 'A river that runs both sides of the equator. Whatever direction you are going, it has been there.'
+    },
+    GB: {
+        n: 'United Kingdom', b: ['#012169', '#001640', '#012169'], min: UMBRAL.siempre,
+        e: [
+            { f: 'aspa', c: '#ffffff', k: 1 },
+            { f: 'cruzGruesa', c: '#ffffff', k: 1 },
+            { f: 'aspaFina', c: '#C8102E', k: 1 },
+            { f: 'cruz', c: '#C8102E', k: 1 },
+        ],
+        lore: 'Three crosses stacked into one flag by countries that could not agree on much else. Somehow it works.'
+    },
+    HR: {
+        n: 'Croatia', b: ['#FF0000', '#ffffff', '#171796'], min: UMBRAL.medio,
+        e: [{ f: 'damero', c: '#FF0000', k: 0.92 }],
+        lore: 'Twenty-five red and white squares. Count them if you get close enough, which you will not.'
+    },
+    GH: {
+        n: 'Ghana', b: ['#CE1126', '#FCD116', '#006B3F'], min: UMBRAL.pronto,
+        e: [{ f: 'estrella', c: '#000000', k: 0.88 }],
+        lore: 'The Black Star. First to break free, and still first to the middle of the map.'
+    },
+    CN: {
+        n: 'China', b: ['#EE1C25', '#D4141B', '#EE1C25'], min: UMBRAL.siempre,
+        e: [
+            { f: 'estrella', c: '#FFFF00', k: 0.62, dx: -0.42 },
+            { f: 'arcoEstrellas', c: '#FFFF00', k: 1 },
+        ],
+        lore: 'One large star, four small ones following. Build your own constellation out of everyone you swallow.'
+    },
 };
 
 /* ===== DIBUJO ===== ------------------------------------------------------ */
 
-// Alto minimo de la BANDA CENTRAL para que aparezca el emblema. Por debajo la
-// silueta se convierte en una mancha que ensucia mas de lo que identifica, asi
-// que la pildora se queda solo con sus tres colores. Con PILL_RATIO = 2 la
-// banda central mide 4r/3, asi que 24 equivale a radio >= 18: sobre el triple
-// de la masa inicial. El emblema es una recompensa por crecer.
-const PAIS_EMBLEMA_MIN = 24;
-
-// Pinta el emblema centrado en la banda central. `bandaY0`/`bandaY1` acotan la
-// banda dentro del sprite y `dentro` dice que pixeles caen dentro de la capsula
-// (el emblema nunca se sale del contorno).
-function paisPintaEmblema(g, forma, color, wL, bandaY0, bandaY1, dentro) {
-    const h = bandaY1 - bandaY0;
-    if (h < PAIS_EMBLEMA_MIN) return false;
-    // 78% de la banda: deja un respiro arriba y abajo para que no toque las
-    // costuras, que es donde el sombreado ya mete su linea oscura.
-    const lado = Math.floor(Math.min(wL, h) * 0.78);
-    const x0 = Math.round((wL - lado) / 2), y0 = Math.round(bandaY0 + (h - lado) / 2);
-    g.fillStyle = color;
-    for (let y = 0; y < lado; y++) for (let x = 0; x < lado; x++) {
-        const u = (x + 0.5) / lado * 2 - 1, v = (y + 0.5) / lado * 2 - 1;
-        if (!forma(u, v)) continue;
-        const px = x0 + x, py = y0 + y;
-        if (dentro && !dentro(px, py)) continue;
-        g.fillRect(px, py, 1, 1);
-    }
-    return true;
-}
-
-// Devuelve las tres bandas y el emblema de un codigo, o null si no existe.
-function paisSkin(code) {
-    const p = PAISES[String(code || '').toUpperCase()];
-    if (!p) return null;
-    return { code: String(code).toUpperCase(), nombre: p.n, bandas: p.b, forma: p.e ? PAIS_FORMAS[p.e] : null, colorEmblema: p.ec };
-}
-
-function paisLista() { return Object.keys(PAISES).map(c => Object.assign({ code: c }, PAISES[c])); }
-
-/* ===== PILDORA INCLINADA ===== -------------------------------------------
- * Port de pixPillSpriteRot (game/index.html) a tres bandas + emblema. Se
- * mantiene su modo `detailed`: luz direccional constante EN PANTALLA, bandas de
- * sombra que engordan hacia la punta oscura, reborde de 1px en todo el contorno
- * y un rombo de brillo duro. Es la version que usa el hero, y la mas bonita de
- * las dos que hay.
- *
- * La capsula se hornea YA GIRADA dentro de un lienzo cuadrado y se dibuja sin
- * ctx.rotate(): rotar el sprite en runtime lo mutila (bordes dentados, contorno
- * roto) porque los pixeles dejan de caer cuadrados sobre la rejilla de pantalla.
- *
- * El emblema se decide en coordenadas LOCALES (lx, ly = el eje de la capsula),
- * asi que gira con la pildora de balde: no hay que rotarlo aparte.
- */
 const PAIS_PILL_RATIO = 2.0;
 const _paisCache = new Map();
 let _paisProbe = null;
@@ -268,12 +372,29 @@ function _rgb(col) {
     const d = _paisProbe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]];
 }
 
-// wL = ancho logico de la capsula. ang = inclinacion en radianes.
-// Devuelve { cv, S } con la capsula centrada en el cuadrado SxS.
-function paisPillRot(wL, code, ang, conEmblema) {
+function paisSkin(code) {
+    const p = PAISES[String(code || '').toUpperCase()];
+    if (!p) return null;
+    return {
+        code: String(code).toUpperCase(), nombre: p.n, bandas: p.b, lore: p.lore,
+        capas: (p.e || []).map(c => ({ forma: PAIS_FORMAS[c.f], color: c.c, k: c.k || 1, dx: c.dx || 0, dy: c.dy || 0 })),
+        min: p.min === undefined ? UMBRAL.medio : p.min,
+    };
+}
+
+function paisLista() { return Object.keys(PAISES).map(c => Object.assign({ code: c }, PAISES[c])); }
+
+/* Pildora INCLINADA. Port de pixPillSpriteRot (game/index.html) a tres bandas +
+ * emblema por capas. Mantiene su modo `detailed`: luz direccional constante EN
+ * PANTALLA, bandas de sombra que engordan hacia la punta oscura, reborde de 1px
+ * en todo el contorno y un rombo de brillo duro.
+ * La capsula se hornea YA GIRADA: rotar el sprite en runtime lo mutila porque
+ * los pixeles dejan de caer cuadrados sobre la rejilla de pantalla.
+ */
+function paisPillRot(wL, code, ang, forzarEmblema) {
     const skin = paisSkin(code); if (!skin) return null;
     if (ang === undefined) ang = -Math.PI / 4;
-    const key = wL + '|' + skin.code + '|' + Math.round(ang * 100) + '|' + (conEmblema !== false ? 1 : 0);
+    const key = wL + '|' + skin.code + '|' + Math.round(ang * 100) + '|' + (forzarEmblema ? 1 : 0);
     const hit = _paisCache.get(key); if (hit) return hit;
     if (_paisCache.size > 300) _paisCache.clear();
 
@@ -283,17 +404,15 @@ function paisPillRot(wL, code, ang, conEmblema) {
     const cv = document.createElement('canvas'); cv.width = S; cv.height = S;
     const g = cv.getContext('2d');
     const rgb = skin.bandas.map(_rgb);
-    const emb = (conEmblema !== false && skin.forma) ? skin.forma : null;
-    const embRgb = emb ? _rgb(skin.colorEmblema) : null;
+
+    const medio = (seg + R) / 3;                    // media altura de la banda central
+    const embOn = skin.capas.length > 0 && (forzarEmblema || medio * 2 >= skin.min);
+    const capas = embOn ? skin.capas.map(l => ({ f: l.forma, c: _rgb(l.color), k: l.k, dx: l.dx, dy: l.dy })) : [];
+    const lado = Math.min(R, medio) * 0.80;
 
     const img = g.createImageData(S, S), px = img.data;
-    const LX = -0.6, LY = -0.8;                    // luz arriba-izquierda
-    const kD = wL / 38;                            // grosor de bandas, medido sobre wL~38
-    const medio = (seg + R) / 3;                   // media altura de la banda central
-    // El emblema ocupa el 78% del lado menor de la banda central: deja aire para
-    // no pisar las costuras, que ya llevan su linea oscura.
-    const embLado = Math.min(R, medio) * 0.78;
-    const embOn = emb && (medio * 2 >= PAIS_EMBLEMA_MIN);
+    const LX = -0.6, LY = -0.8;
+    const kD = wL / 38;
 
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
         const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2;
@@ -303,19 +422,22 @@ function paisPillRot(wL, code, ang, conEmblema) {
         if (rad > RI) continue;
 
         let base = ly < -medio ? rgb[0] : (ly < medio ? rgb[1] : rgb[2]);
-        // Emblema: dentro de la banda central y dentro de su cuadrado local.
-        if (embOn && Math.abs(ly) < medio && Math.abs(lx) <= embLado && Math.abs(ly) <= embLado) {
-            if (emb(lx / embLado, ly / embLado)) base = embRgb;
+        // Capas del emblema, en orden: la ultima que acierta manda.
+        if (capas.length && Math.abs(ly) < medio) {
+            for (const l of capas) {
+                const L = lado * l.k;
+                const eu = (lx - l.dx * lado) / L, ev = (ly - l.dy * lado) / L;
+                if (Math.abs(eu) <= 1 && Math.abs(ev) <= 1 && l.f(eu, ev)) base = l.c;
+            }
         }
 
         let nx = lx, ny = ly - cy; const nl = rad || 1; nx /= nl; ny /= nl;
-        const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY;   // -1 sombra .. 1 luz
+        const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY;
         const edge = RI - rad;
         const u = Math.max(0, Math.min(1, (1 - ndl) * 0.5));
         const w1 = (1.05 + 1.7 * u) * kD, w2 = (2.6 + 4.2 * u) * kD, w3 = (4.2 + 6.8 * u) * kD;
         let amt;
-        // Dos costuras (los dos cortes entre bandas) en vez de una.
-        if (Math.abs(Math.abs(ly) - medio) < 1.45 * kD) amt = -0.30;
+        if (Math.abs(Math.abs(ly) - medio) < 1.45 * kD) amt = -0.30;   // las dos costuras
         else if (edge < w1) amt = -0.44;
         else if (edge < w2) amt = -0.30;
         else if (u > 0.18 && edge < w3) amt = -0.15;
@@ -327,7 +449,6 @@ function paisPillRot(wL, code, ang, conEmblema) {
         px[i + 2] = base[2] + (t - base[2]) * a;
         px[i + 3] = 255;
     }
-    // Rombo de brillo duro en la punta iluminada, en coordenadas locales.
     const glx = -0.40 * R, gly = -0.48 * (seg + R);
     const gx = S / 2 + (glx * c - gly * s), gy = S / 2 + (glx * s + gly * c);
     const gr = Math.max(2, Math.round(wL * 0.145));
@@ -339,8 +460,8 @@ function paisPillRot(wL, code, ang, conEmblema) {
         px[i] += (255 - px[i]) * a; px[i + 1] += (255 - px[i + 1]) * a; px[i + 2] += (255 - px[i + 2]) * a;
     }
     g.putImageData(img, 0, 0);
-    const o = { cv, S, conEmblema: !!embOn };
+    const o = { cv, S, conEmblema: embOn };
     _paisCache.set(key, o); return o;
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { PAISES, PAIS_FORMAS, PAIS_EMBLEMA_MIN, paisSkin, paisLista, paisPintaEmblema, paisPillRot };
+if (typeof module !== 'undefined' && module.exports) module.exports = { PAISES, PAIS_FORMAS, UMBRAL, paisSkin, paisLista, paisPillRot };
