@@ -841,45 +841,6 @@ body.trailer-open #page-content{
         .shop-dots span { width: 30px; height: 5px; background: #262626; cursor: pointer; transition: 0.2s; }
         .shop-dots span.act { background: var(--primary); box-shadow: 0 0 10px rgba(0,255,136,0.6); }
 
-        .shop-modal { display: none; position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.85);
-                      align-items: center; justify-content: center; padding: 20px; }
-        .shop-modal.on { display: flex; }
-        /* El MISMO cartel de pixel art que usa /game (menu-gris.png, el de
-           SELECT A ROOM), para que la tienda no hable dos idiomas segun donde
-           la abras. Mas ancho que antes: con 620 el lore largo apretaba. */
-        .shop-caja { position: relative; width: 100%; max-width: 760px;
-                     background: transparent url('game/img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
-                     image-rendering: pixelated; border: none; box-shadow: none; padding: 56px 60px 44px; }
-        .shop-cerrar { position: absolute; top: 13px; right: 15px; width: 30px; height: 30px; background: transparent;
-                       border: 2px solid #3a3a3a; color: var(--txt-mute); font-size: var(--fs-3); cursor: pointer; line-height: 1; }
-        .shop-cerrar:hover { border-color: var(--accent); color: var(--accent); }
-        .sm-cod { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: var(--primary); letter-spacing: 2px; }
-        .sm-nom { font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); color: #fff; margin: 8px 0 0; text-shadow: 2px 2px 0 #000; }
-        .sm-lore { font-family: 'VT323', monospace; font-size: var(--fs-4); line-height: 1.35; color: #9fb0a6;
-                   margin: 14px 0 0; border-left: 3px solid rgba(0,255,136,0.35); padding: 3px 0 3px 13px; }
-        .sm-franjas { display: flex; gap: 4px; margin-top: 16px; }
-        .sm-franjas i { flex: 1; height: 13px; border: 1px solid rgba(255,255,255,0.14); }
-        /* Centrados y no alineados por abajo: cada canvas es un CUADRADO con la
-           pildora dentro, asi que por abajo se alinean los cuadrados y las
-           pildoras salen descuadradas. */
-        .sm-crece { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 20px;
-                    padding: 20px 16px; background: #07090b; border: 2px solid #1a1d21; overflow-x: auto; }
-        .sm-crece canvas { image-rendering: pixelated; display: block; flex: none; }
-        .sm-pie { font-size: var(--fs-2); color: var(--txt-mute); text-align: center; margin-top: 12px; }
-        .sm-compra { display: flex; gap: 12px; margin-top: 18px; }
-        .sm-btn { flex: 1; height: 48px; padding: 0; border: none; box-shadow: none; cursor: pointer;
-                  display: flex; align-items: center; justify-content: center;
-                  font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: #fff;
-                  text-shadow: 2px 2px 0 rgba(0,0,0,0.75); image-rendering: pixelated;
-                  background: transparent url('game/img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat; }
-        .sm-btn.pill { background-image: url('game/img/cartel-hero/btn-plain-red.png'); }
-        .sm-btn.sp { background-image: url('game/img/cartel-hero/btn-plain-green.png'); }
-        /* ASSIGN: sale ROJO y a todo lo ancho una vez la skin es tuya. */
-        .sm-btn.assign { background-image: url('game/img/cartel-hero/btn-plain-red.png'); }
-        .sm-btn:hover { filter: brightness(1.15); }
-        .sm-btn:active { transform: translate(2px, 2px); }
-        .sm-btn:disabled { filter: grayscale(0.7) brightness(0.8); cursor: default; }
-
         .placeholder-box { width: 100%; max-width: var(--contenido-panel); height: 300px; border: 2px dashed rgba(255,204,0,0.35); background: rgba(0,0,0,0.4); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #6a5a2a; font-family: 'Russo One'; letter-spacing: 2px; }
 
         /* Leaderboard "Global Elite" */
@@ -1937,7 +1898,7 @@ body.trailer-open #page-content{
     </div>
     <div id="shop" class="section-container">
         <h1 class="section-title holo-text">Skin Shop</h1>
-        <div class="shop-sub">32 countries · one flag, three bands and an emblem you grow into</div>
+        <div class="shop-sub">32 countries · buy with <b>$PILL</b> or <b>SP</b> · every $PILL spent here is burned</div>
         <div class="shop-carrusel">
             <button class="shop-flecha" id="shopPrev" aria-label="Previous">&#9664;</button>
             <div class="shop-grid" id="shopGrid"></div>
@@ -1946,21 +1907,6 @@ body.trailer-open #page-content{
         <div class="shop-dots" id="shopDots"></div>
     </div>
 
-    <!-- Detalle de una skin. Mismo contenido que el del juego (lore + la pildora
-         a cinco tamanos cruzando el umbral del emblema), con el estilo de la
-         landing en vez del cartel de piedra. -->
-    <div class="shop-modal" id="shopModal">
-        <div class="shop-caja">
-            <button class="shop-cerrar" id="shopCerrar" aria-label="Close">✕</button>
-            <div class="sm-cod" id="smCod"></div>
-            <h3 class="sm-nom" id="smNom"></h3>
-            <div class="sm-lore" id="smLore"></div>
-            <div class="sm-franjas" id="smFranjas"></div>
-            <div class="sm-crece" id="smCrece"></div>
-            <div class="sm-pie" id="smPie"></div>
-            <div class="sm-compra" id="smCompra"></div>
-        </div>
-    </div>
     <div id="ranking" class="section-container">
         <h1 class="section-title holo-text">Global Elite</h1>
         <div id="lb-wrap" class="lb-wrap">
@@ -4355,7 +4301,6 @@ function toggleTrailerMode() {
         const paginas = paisNumPaginas(POR_PAG);
         let pag = 0, actual = null;
         const $ = id => document.getElementById(id);
-        const modal = $('shopModal');
 
         // A tamano natural: escalar un canvas pixelado por un factor no entero
         // lo emborrona, que es justo lo que no quieres en pixel art.
@@ -4375,7 +4320,7 @@ function toggleTrailerMode() {
                 const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.code;
                 const nom = document.createElement('div'); nom.className = 'sc-nom'; nom.textContent = p.n;
                 const pre = document.createElement('div'); pre.className = 'sc-pre';
-                pre.textContent = paisPuesta() === p.code ? 'EQUIPPED' : (paisTengo(p.code) ? 'OWNED' : '25,000 $PILL');
+                pre.textContent = paisPuesta() === p.code ? 'EQUIPPED' : (paisTengo(p.code) ? 'OWNED' : paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL');
                 if (paisTengo(p.code)) pre.style.color = 'var(--primary)';
                 c.append(cod, nom, pre);
                 c.addEventListener('click', () => abre(p.code));
@@ -4386,52 +4331,13 @@ function toggleTrailerMode() {
             [...$('shopDots').children].forEach((d, i) => d.classList.toggle('act', i === pag));
         }
 
-        /* Los botones cambian segun tengas la skin o no: sin ella, los dos
-           precios; con ella, un solo boton rojo de ASSIGN a todo lo ancho, y si
-           ademas es la que llevas puesta se queda apagado. */
-        function pintaBotones(code) {
-            const cont = $('smCompra'); cont.innerHTML = '';
-            const boton = (txt, cls, fn, off) => {
-                const b = document.createElement('button');
-                b.className = 'sm-btn ' + cls; b.textContent = txt;
-                if (off) b.disabled = true; else b.addEventListener('click', fn);
-                cont.appendChild(b);
-            };
-            if (!paisTengo(code)) {
-                boton('BUY · 25,000 $PILL', 'pill', () => { paisComprar(code); pintaBotones(code); pinta(); });
-                boton('BUY · 150 SP', 'sp', () => { paisComprar(code); pintaBotones(code); pinta(); });
-            } else if (paisPuesta() === code) {
-                boton('EQUIPPED', 'assign', null, true);
-            } else {
-                boton('ASSIGN', 'assign', () => { paisPoner(code); pintaBotones(code); pinta(); });
-            }
-        }
-
-        const CRECE = [14, 24, 36, 48, 64];
-        function abre(code) {
-            const s = paisSkin(code); if (!s) return;
-            actual = code;
-            $('smCod').textContent = s.code;
-            $('smNom').textContent = s.nombre;
-            $('smLore').textContent = s.lore;
-            const fr = $('smFranjas'); fr.innerHTML = '';
-            s.bandas.forEach(col => { const i = document.createElement('i'); i.style.background = col; fr.appendChild(i); });
-            const cr = $('smCrece'); cr.innerHTML = '';
-            let primera = null;
-            CRECE.forEach(wL => { const l = lienzo(code, wL); if (l.conEmblema && primera === null) primera = wL; cr.appendChild(l.cv); });
-            $('smPie').textContent = s.capas.length === 0
-                ? 'The same skin, as you grow'
-                : (primera === CRECE[0] ? 'Wears its emblem from the very first bite' : 'The emblem shows up as you grow');
-            pintaBotones(code);
-            modal.classList.add('on');
-        }
-        const cierra = () => modal.classList.remove('on');
+        // El cartel de detalle es el COMPARTIDO (paisModalAbrir, en
+        // game/paises-pixel.js): la MISMA implementacion que usa /game, asi que
+        // los dos se ven igual y un retoque vale para los dos.
+        const abre = code => paisModalAbrir(code, pinta);
 
         $('shopPrev').addEventListener('click', () => { if (pag > 0) { pag--; pinta(); } });
         $('shopNext').addEventListener('click', () => { if (pag < paginas - 1) { pag++; pinta(); } });
-        $('shopCerrar').addEventListener('click', cierra);
-        modal.addEventListener('click', e => { if (e.target === modal) cierra(); });
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') cierra(); });
         for (let i = 0; i < paginas; i++) {
             const d = document.createElement('span');
             d.addEventListener('click', () => { pag = i; pinta(); });

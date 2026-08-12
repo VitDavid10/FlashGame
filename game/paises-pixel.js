@@ -398,6 +398,14 @@ function paisPagina(idx, porPagina) {
  * economia antes de tener el diseño cerrado. Cuando exista el endpoint, estas
  * cuatro funciones son lo unico que hay que cambiar.
  */
+// Precio unico para las 32. 250 SP o 25.000 $PILL, o sea 100 $PILL por SP: el
+// cambio de 1000 $PILL = 10 SP sale de aqui y no de una segunda constante que
+// pudiera quedarse descuadrada.
+const PAIS_PRECIO_SP = 250;
+const PAIS_PILL_POR_SP = 100;
+const PAIS_PRECIO_PILL = PAIS_PRECIO_SP * PAIS_PILL_POR_SP;
+function paisPrecioTexto(pill) { return pill >= 1000 ? (pill / 1000) + 'K' : String(pill); }
+
 const PAIS_KEY_TENGO = 'pw_skins_owned', PAIS_KEY_PUESTA = 'pw_skin_equipped';
 function paisMias() { try { return JSON.parse(localStorage.getItem(PAIS_KEY_TENGO) || '[]'); } catch (e) { return []; } }
 function paisTengo(code) { return paisMias().indexOf(code) !== -1; }
@@ -505,4 +513,144 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
     _paisCache.set(key, o); return o;
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { PAISES, PAIS_FORMAS, UMBRAL, paisSkin, paisLista, paisPillRot, paisPagina, paisNumPaginas, PAIS_ORDEN_PAGINAS };
+/* ===== CARTEL DE DETALLE (COMPARTIDO) ===== -------------------------------
+ * UNA sola implementacion del cartel que sale al pulsar un pais, usada por la
+ * landing y por /game. Antes eran dos copias con su propio marcado, su propio
+ * CSS y su propio JS: se veian distintas y cualquier retoque habia que hacerlo
+ * dos veces (y una de las dos se quedaba atras). Ahora se toca aqui y cambia en
+ * los dos sitios.
+ *
+ * El cartel se monta una sola vez, la primera vez que se abre, y se queda en el
+ * documento. Los precios y los rotulos salen de las constantes de arriba.
+ *
+ * `onCambio` (opcional) avisa al que lo abrio de que hubo compra o asignacion,
+ * para que refresque su rejilla.
+ */
+const PAIS_MODAL_ID = 'paisModal';
+let _paisOnCambio = null, _paisCodeAbierto = null;
+
+function _paisModalCSS() {
+    return `
+    #${PAIS_MODAL_ID} { display:none; position:fixed; inset:0; z-index:100000; background:rgba(0,0,0,.85);
+        align-items:center; justify-content:center; padding:24px; }
+    #${PAIS_MODAL_ID}.on { display:flex; }
+    #${PAIS_MODAL_ID} .pm-caja { position:relative; width:100%; max-width:var(--pm-ancho,780px);
+        background:transparent url('${_paisBase()}img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
+        image-rendering:pixelated; padding:var(--pm-pad,64px 68px 52px); box-sizing:border-box;
+        max-height:92vh; overflow-y:auto; }
+    #${PAIS_MODAL_ID} .pm-x { position:absolute; top:var(--pm-x-top,26px); right:var(--pm-x-right,30px);
+        width:34px; height:34px; padding:0; cursor:pointer; border:none; box-shadow:none; background:transparent
+        url('${_paisBase()}img/cartel-hero/close-x-red.png') center/100% 100% no-repeat; image-rendering:pixelated; }
+    #${PAIS_MODAL_ID} .pm-x:hover { filter:brightness(1.2); }
+    #${PAIS_MODAL_ID} .pm-cod { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-cod,10px);
+        color:#ffce3d; letter-spacing:2px; text-shadow:2px 2px 0 rgba(0,0,0,.8); }
+    #${PAIS_MODAL_ID} .pm-nom { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-nom,17px);
+        color:#fff; text-shadow:2px 2px 0 #000; margin:var(--pm-gap,14px) 0 0; line-height:1.4; }
+    #${PAIS_MODAL_ID} .pm-lore { font-family:'VT323',monospace; font-size:var(--pm-fs-lore,21px); line-height:1.45;
+        color:#cfd6d0; text-shadow:1px 1px 0 rgba(0,0,0,.7); margin-top:var(--pm-gap,14px);
+        border-left:3px solid rgba(0,255,136,.4); padding-left:14px; }
+    #${PAIS_MODAL_ID} .pm-franjas { display:flex; gap:5px; margin-top:var(--pm-gap,14px); }
+    #${PAIS_MODAL_ID} .pm-franjas i { flex:1; height:14px; border:1px solid rgba(255,255,255,.16); }
+    /* Centrado y no alineado por abajo: cada canvas es un CUADRADO con la
+       pildora dentro, asi que por abajo se alinean los cuadrados y las pildoras
+       salen descuadradas. */
+    #${PAIS_MODAL_ID} .pm-crece { display:flex; align-items:center; justify-content:center;
+        gap:var(--pm-crece-gap,18px); margin-top:var(--pm-gap,14px); padding:var(--pm-crece-pad,20px 16px);
+        background:rgba(0,0,0,.34); border:2px solid rgba(0,0,0,.5); overflow-x:auto; }
+    #${PAIS_MODAL_ID} .pm-crece canvas { image-rendering:pixelated; display:block; flex:none; }
+    #${PAIS_MODAL_ID} .pm-pie { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-pie,7px);
+        color:#9aa3ac; letter-spacing:.5px; text-align:center; margin-top:12px; line-height:1.7; }
+    #${PAIS_MODAL_ID} .pm-btns { display:flex; gap:var(--pm-btn-gap,14px); margin-top:var(--pm-gap-btn,22px); }
+    #${PAIS_MODAL_ID} .pm-btn { flex:1; height:var(--pm-btn-h,52px); padding:0; border:none; box-shadow:none;
+        cursor:pointer; display:flex; align-items:center; justify-content:center; image-rendering:pixelated;
+        font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-btn,10px); color:#fff;
+        text-shadow:2px 2px 0 rgba(0,0,0,.75);
+        background:transparent url('${_paisBase()}img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat; }
+    #${PAIS_MODAL_ID} .pm-btn.rojo { background-image:url('${_paisBase()}img/cartel-hero/btn-plain-red.png'); }
+    #${PAIS_MODAL_ID} .pm-btn.verde { background-image:url('${_paisBase()}img/cartel-hero/btn-plain-green.png'); }
+    #${PAIS_MODAL_ID} .pm-btn:hover:not(:disabled) { filter:brightness(1.15); }
+    #${PAIS_MODAL_ID} .pm-btn:active:not(:disabled) { transform:translate(2px,2px); }
+    #${PAIS_MODAL_ID} .pm-btn:disabled { filter:grayscale(.7) brightness(.8); cursor:default; }
+    @media (max-width:620px) { #${PAIS_MODAL_ID} .pm-caja { padding:44px 26px 34px; } #${PAIS_MODAL_ID} .pm-btns { flex-direction:column; } }
+    `;
+}
+
+// La landing carga este fichero desde game/, asi que las rutas del arte tienen
+// que salir del sitio real del <script> y no de la pagina que lo incluye.
+function _paisBase() {
+    const s = document.currentScript || [...document.querySelectorAll('script[src*="paises-pixel"]')].pop();
+    const src = s ? s.getAttribute('src') : '';
+    return src.replace(/paises-pixel\.js.*$/, '');
+}
+const _PAIS_BASE = typeof document !== 'undefined' ? _paisBase() : '';
+
+function paisModalMontar() {
+    if (document.getElementById(PAIS_MODAL_ID)) return;
+    const st = document.createElement('style'); st.id = 'paisModalCss'; st.textContent = _paisModalCSS();
+    document.head.appendChild(st);
+    const d = document.createElement('div'); d.id = PAIS_MODAL_ID;
+    d.innerHTML =
+        '<div class="pm-caja">' +
+        '<button class="pm-x" aria-label="Close"></button>' +
+        '<div class="pm-cod"></div><div class="pm-nom"></div><div class="pm-lore"></div>' +
+        '<div class="pm-franjas"></div><div class="pm-crece"></div><div class="pm-pie"></div>' +
+        '<div class="pm-btns"></div></div>';
+    document.body.appendChild(d);
+    d.querySelector('.pm-x').addEventListener('click', paisModalCerrar);
+    d.addEventListener('click', e => { if (e.target === d) paisModalCerrar(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') paisModalCerrar(); });
+}
+
+const PAIS_CRECE = [14, 24, 36, 48, 64];
+
+function paisModalAbrir(code, onCambio) {
+    const s = paisSkin(code); if (!s) return;
+    paisModalMontar();
+    _paisOnCambio = onCambio || null; _paisCodeAbierto = code;
+    const d = document.getElementById(PAIS_MODAL_ID);
+    d.querySelector('.pm-cod').textContent = s.code;
+    d.querySelector('.pm-nom').textContent = s.nombre;
+    d.querySelector('.pm-lore').textContent = s.lore;
+    const fr = d.querySelector('.pm-franjas'); fr.innerHTML = '';
+    s.bandas.forEach(c => { const i = document.createElement('i'); i.style.background = c; fr.appendChild(i); });
+    const cr = d.querySelector('.pm-crece'); cr.innerHTML = '';
+    let primera = null;
+    PAIS_CRECE.forEach(wL => {
+        const o = paisPillRot(wL, code, -Math.PI / 4);
+        if (o.conEmblema && primera === null) primera = wL;
+        const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
+        cv.getContext('2d').drawImage(o.cv, 0, 0);
+        cr.appendChild(cv);
+    });
+    d.querySelector('.pm-pie').textContent = s.capas.length === 0
+        ? 'THE SAME SKIN, AS YOU GROW'
+        : (primera === PAIS_CRECE[0] ? 'WEARS ITS EMBLEM FROM THE FIRST BITE' : 'THE EMBLEM SHOWS UP AS YOU GROW');
+    _paisPintaBotones(code);
+    d.classList.add('on');
+}
+
+function _paisPintaBotones(code) {
+    const cont = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-btns'); if (!cont) return;
+    cont.innerHTML = '';
+    const btn = (txt, cls, fn) => {
+        const b = document.createElement('button');
+        b.className = 'pm-btn ' + cls; b.textContent = txt;
+        if (fn) b.addEventListener('click', () => { fn(); _paisPintaBotones(code); if (_paisOnCambio) _paisOnCambio(); });
+        else b.disabled = true;
+        cont.appendChild(b);
+    };
+    if (!paisTengo(code)) {
+        btn('BUY · ' + paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL', 'rojo', () => paisComprar(code));
+        btn('BUY · ' + PAIS_PRECIO_SP + ' SP', 'verde', () => paisComprar(code));
+    } else if (paisPuesta() === code) {
+        btn('EQUIPPED', 'verde', null);
+    } else {
+        btn('ASSIGN', 'rojo', () => paisPoner(code));
+    }
+}
+
+function paisModalCerrar() {
+    const d = document.getElementById(PAIS_MODAL_ID); if (d) d.classList.remove('on');
+}
+
+if (typeof module !== 'undefined' && module.exports) module.exports = { PAISES, PAIS_FORMAS, UMBRAL, paisSkin, paisLista, paisPillRot, paisPagina, paisNumPaginas, PAIS_ORDEN_PAGINAS, PAIS_PRECIO_SP, PAIS_PRECIO_PILL, PAIS_PILL_POR_SP };

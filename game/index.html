@@ -669,29 +669,6 @@
         #missionsPanel.classic .skin-dots span.act, #missionsPanel.classic .skin-arrow, #missionsPanel.classic .skin-cell:hover { color: #00ffaa; }
         #missionsPanel.arcade .skin-dots span.act, #missionsPanel.arcade .skin-arrow, #missionsPanel.arcade .skin-cell:hover { color: #ccff00; }
 
-        /* Detalle de una skin: el cartel gris de pixel art de siempre, el mismo
-           que SELECT A ROOM y el selector de wallet. */
-        .pw-modal-box.skin-detail { background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
-                                    border: none; box-shadow: none; image-rendering: pixelated;
-                                    width: 460px; padding: 52px 46px 40px; }
-        .skin-detail .sd-cod { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #ffce3d; letter-spacing: 2px; text-shadow: 2px 2px 0 rgba(0,0,0,0.8); }
-        .skin-detail .sd-nom { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; text-shadow: 2px 2px 0 #000; margin: 7px 0 12px; }
-        .skin-detail .sd-lore { font-family: 'VT323', monospace; font-size: 17px; line-height: 1.25; color: #cfd6d0;
-                                text-shadow: 1px 1px 0 rgba(0,0,0,0.7); margin-bottom: 12px; }
-        .skin-detail .sd-crece { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 92px;
-                                 background: rgba(0,0,0,0.32); border: 2px solid rgba(0,0,0,0.45); padding: 8px 6px; margin-bottom: 6px; }
-        .skin-detail .sd-crece canvas { image-rendering: pixelated; display: block; flex: none; }
-        .skin-detail .sd-pie { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #9aa3ac; letter-spacing: 0.5px; margin-bottom: 14px; }
-        .skin-detail .pw-big-btn { height: 46px; width: 88%; margin: 6px auto 0; padding: 0; font-size: 10px;
-                                   display: flex; align-items: center; justify-content: center;
-                                   background: transparent url('img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat;
-                                   border: none; box-shadow: none; image-rendering: pixelated; }
-        .skin-detail .pw-big-btn.sd-pill { background-image: url('img/cartel-hero/btn-plain-red.png'); }
-        .skin-detail .pw-big-btn.sd-sp { background-image: url('img/cartel-hero/btn-plain-green.png'); }
-        .skin-detail .pw-big-btn:hover:not(:disabled) { filter: brightness(1.15); }
-        .skin-detail .pw-big-btn:active:not(:disabled) { transform: translate(2px, 2px); }
-        .skin-detail .pw-big-btn:disabled { filter: grayscale(0.7) brightness(0.8); cursor: default; }
-
         .side-tabs-dots { display: flex; gap: 5px; justify-content: center; margin-top: 5px; flex-shrink: 0; }
         .side-tabs-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: 0.2s; }
         .side-tabs-dots span.act { background: currentColor; box-shadow: 0 0 6px currentColor; }
@@ -1842,19 +1819,6 @@
          PRICES. Recuadro menu-gris, titulo PNG de David y colores por rareza:
          FREE verde, $5 azul, $10 epico (morado), $20 legendario (dorado),
          $50 mitico (anaranjado). -->
-    <!-- Detalle de una skin de pais. Se rellena entero desde skinOpen(). -->
-    <div id="skinDetailModal" class="pw-modal" onclick="if(event.target===this) skinClose()">
-        <div class="pw-modal-box skin-detail">
-            <div class="sd-cod" id="sdCod"></div>
-            <div class="sd-nom" id="sdNom"></div>
-            <div class="sd-lore" id="sdLore"></div>
-            <div class="sd-crece" id="sdCrece"></div>
-            <div class="sd-pie" id="sdPie"></div>
-            <div id="sdBotones"></div>
-            <button class="pw-big-btn" onclick="skinClose()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
-        </div>
-    </div>
-
     <div id="roomChoiceModal" class="pw-modal">
         <div class="pw-modal-box room-picker">
             <img class="wp-title" src="img/cartel-hero/select-a-room.png" alt="SELECT A ROOM">
@@ -2175,7 +2139,7 @@
                             <!-- Saldo de SP de la pestaña SKINS: mismo sitio y misma
                                  altura que el contador de misiones, solo cambia cual
                                  de los dos se ensena. -->
-                            <span id="skinPanelExtra" style="display:none;font-size:10px;letter-spacing:0.5px;"><span id="skinPointsValue">0</span> SP</span>
+                            <span id="skinPanelExtra" style="display:none;font-size:9px;letter-spacing:0.5px;"><span id="skinPointsValue">0</span> SP &middot; $PILL OR SP</span>
                             <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                         </span>
                     </div>
@@ -7706,7 +7670,7 @@
             cv.getContext('2d').drawImage(o.cv, 0, 0);
             const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.code;
             const pre = document.createElement('div'); pre.className = 'sc-pre';
-            pre.textContent = paisPuesta() === p.code ? 'ON' : (paisTengo(p.code) ? 'OWNED' : '25K');
+            pre.textContent = paisPuesta() === p.code ? 'ON' : (paisTengo(p.code) ? 'OWNED' : paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL');
             if (paisTengo(p.code)) pre.style.color = '#00ff88';
             cel.append(cv, cod, pre);
             cel.title = p.n;
@@ -7731,57 +7695,16 @@
         try { SoundManager.play('simpleselect'); } catch (e) {}
     }
 
-    // Cinco anchos crecientes que cruzan el umbral del emblema, para que se vea
-    // aparecer. Sin numeros ni masa: se entiende mirando.
-    const SKIN_CRECE = [12, 20, 30, 42, 56];
-
+    // El cartel de detalle es el COMPARTIDO (paisModalAbrir, en paises-pixel.js):
+    // una sola implementacion para /game y para la landing, asi que se ve igual
+    // en los dos sitios y cualquier retoque vale para ambos. Antes eran dos
+    // copias y una siempre se quedaba atras.
     function skinOpen(code) {
-        const s = paisSkin(code); if (!s) return;
-        document.getElementById('sdCod').textContent = s.code;
-        document.getElementById('sdNom').textContent = s.nombre;
-        document.getElementById('sdLore').textContent = s.lore;
-        const cr = document.getElementById('sdCrece'); cr.innerHTML = '';
-        let primera = null;
-        SKIN_CRECE.forEach(wL => {
-            const o = paisPillRot(wL, code, SKIN_ANG);
-            if (o.conEmblema && primera === null) primera = wL;
-            const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
-            cv.getContext('2d').drawImage(o.cv, 0, 0);
-            cr.appendChild(cv);
-        });
-        document.getElementById('sdPie').textContent = s.capas.length === 0
-            ? 'THE SAME SKIN, AS YOU GROW'
-            : (primera === SKIN_CRECE[0] ? 'WEARS ITS EMBLEM FROM THE FIRST BITE' : 'THE EMBLEM SHOWS UP AS YOU GROW');
-        skinBotones(code);
-        document.getElementById('skinDetailModal').style.display = 'flex';
+        paisModalAbrir(code, skinRender);
         try { SoundManager.play('select'); } catch (e) {}
     }
+    function skinClose() { paisModalCerrar(); }
 
-    /* Sin la skin: los dos precios. Con ella: un solo boton ROJO de ASSIGN, y si
-       ademas es la que llevas puesta se queda apagado. */
-    function skinBotones(code) {
-        const cont = document.getElementById('sdBotones'); cont.innerHTML = '';
-        const boton = (txt, cls, fn, off) => {
-            const b = document.createElement('button');
-            b.className = 'pw-big-btn ' + cls; b.textContent = txt;
-            b.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
-            if (off) b.disabled = true;
-            else b.addEventListener('click', () => { fn(); skinBotones(code); skinRender(); try { SoundManager.play('select'); } catch (e) {} });
-            cont.appendChild(b);
-        };
-        if (!paisTengo(code)) {
-            boton('BUY · 25,000 $PILL', 'sd-pill', () => paisComprar(code));
-            boton('BUY · 150 SP', 'sd-sp', () => paisComprar(code));
-        } else if (paisPuesta() === code) {
-            boton('EQUIPPED', 'sd-pill', null, true);
-        } else {
-            boton('ASSIGN', 'sd-pill', () => paisPoner(code));
-        }
-    }
-    function skinClose() {
-        document.getElementById('skinDetailModal').style.display = 'none';
-        try { SoundManager.play('simpleselect'); } catch (e) {}
-    }
     function tickOracleTimer() {
         const el = document.getElementById('oracleTimer'); if (!el) return;
         const left = Math.max(0, oracleNextRefresh - Date.now());
