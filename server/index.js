@@ -2026,6 +2026,15 @@ const httpServer = http.createServer(async (req, res) => {
                 const src = lay[k]; if (!src || typeof src !== 'object') continue;
                 const dst = {};
                 for (const p of Object.keys(src).filter(esPieza).slice(0, 12)) {
+                    // `variante` no es una pieza: es que marco lleva el cartel
+                    // (hoy solo lo usa el de skins: '' gris / 'v2' verde). Va
+                    // por lista cerrada — es lo unico que no es {x,y,s} y no
+                    // debe poder colar una cadena cualquiera.
+                    if (p === 'variante') {
+                        const v = String(src[p] || '');
+                        if (v === '' || v === 'v2') dst[p] = v;
+                        continue;
+                    }
                     const t = src[p]; if (!t || typeof t !== 'object') continue;
                     const x = Number(t.x), y = Number(t.y), s = Number(t.s);
                     dst[p] = {

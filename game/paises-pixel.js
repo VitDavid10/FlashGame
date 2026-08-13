@@ -710,8 +710,40 @@ function _paisBase() {
 }
 const _PAIS_BASE = typeof document !== 'undefined' ? _paisBase() : '';
 
+/*
+ * Marco elegido para el cartel de skin ('' = gris de siempre, 'v2' = verde
+ * alto). Lo decide David desde el editor de carteles y se guarda junto al
+ * espaciado, en la clave paisModal.
+ *
+ * Se resuelve aqui y no en carteles-layout.js porque la LANDING no carga ese
+ * fichero — solo este — y el cartel tiene que salir igual en los dos sitios.
+ * En el juego, CARTEL_LAYOUT ya esta cargado y no se pide nada; en la landing
+ * se pide lo mismo que pide el juego, con el override del servidor por encima
+ * de los valores de fabrica del repo.
+ */
+let _paisVariante = '';
+let _paisVarPedida = false;
+function _paisPideVariante() {
+    if (_paisVarPedida) return;
+    _paisVarPedida = true;
+    if (typeof CARTEL_LAYOUT === 'object' && CARTEL_LAYOUT) {
+        _paisVariante = (CARTEL_LAYOUT.paisModal && CARTEL_LAYOUT.paisModal.variante) || '';
+        return;
+    }
+    const pide = u => fetch(u, { cache: 'no-cache' }).then(r => (r.ok ? r.json() : {})).catch(() => ({}));
+    Promise.all([pide(_PAIS_BASE + 'carteles-layout.json'), pide('/api/carteles-layout')])
+        .then(([fabrica, override]) => {
+            const l = Object.assign({}, fabrica, override);
+            _paisVariante = (l.paisModal && l.paisModal.variante) || '';
+            // Si el cartel ya estaba abierto cuando llego la respuesta, se
+            // repinta el marco; si no, lo coge en la proxima apertura.
+            paisModalVariante(_paisVariante);
+        });
+}
+
 function paisModalMontar() {
     if (document.getElementById(PAIS_MODAL_ID)) return;
+    _paisPideVariante();
     const st = document.createElement('style'); st.id = 'paisModalCss'; st.textContent = _paisModalCSS();
     document.head.appendChild(st);
     const d = document.createElement('div'); d.id = PAIS_MODAL_ID;
@@ -764,7 +796,9 @@ function paisModalAbrir(code, onCambio) {
     // typeof: paises-pixel.js tambien corre en la landing, donde no hay editor.
     if (typeof applyCartelSurface === 'function' && typeof CARTEL_LAYOUT === 'object') {
         applyCartelSurface('paisModal', CARTEL_LAYOUT.paisModal);
+        _paisVariante = (CARTEL_LAYOUT.paisModal && CARTEL_LAYOUT.paisModal.variante) || '';
     }
+    paisModalVariante(_paisVariante);
     d.classList.add('on');
 }
 

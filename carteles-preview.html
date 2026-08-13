@@ -387,6 +387,15 @@ function abrir(i) {
   arrastrarFicha(ficha, c.n);
   prepararPiezas(ficha, claveDe(c), c.sup);
   aplicar(claveDe(c));
+
+  // Cartel de skin: las dos fichas (gris y V2 verde) comparten clave, asi que
+  // el marco no se puede deducir de ella. Manda el ULTIMO que se abre, y eso es
+  // lo que se guarda — abre el que quieras dejar puesto y dale a GUARDAR.
+  if (c.pais) {
+    LAYOUT.paisModal = LAYOUT.paisModal || {};
+    LAYOUT.paisModal.variante = c.pais[1] || '';
+    estado('marco del cartel de skin: ' + (c.pais[1] === 'v2' ? 'VERDE (V2)' : 'GRIS') + ' — sin guardar', '#ffce3d');
+  }
 }
 
 function cerrar(i) {

@@ -8619,11 +8619,20 @@
         const m = document.getElementById('sysModal');
         const titleEl = document.getElementById('sysModalTitle');
         const t = title || 'NOTICE';
+        // El modal es UNO solo y se repinta en cada aviso: hay que borrar los
+        // estilos que deja la rama de titulo en texto, o el siguiente aviso los
+        // hereda.
+        titleEl.style.cssText = '';
         // KICKED, REJOIN EXPIRED y los de wallet tienen su titulo horneado
         // (cartel-hero); el resto siguen con la fuente procedural.
         const sysArt = { 'KICKED': 'kicked', 'REJOIN EXPIRED': 'rejoin-expired', 'WALLET REQUIRED': 'wallet-required', 'CONNECT ERROR': 'connect-error', 'DEPOSIT FAILED': 'deposit-failed', 'PAYMENT CANCELLED': 'payment-cancelled',
             'NOTICE': 'notice', 'WALLET': 'wallet', 'WITHDRAW FAILED': 'withdraw-failed', 'WITHDRAW COMPLETE': 'withdraw-complete',
             'DEPOSIT COMPLETE': 'deposit-complete', 'INSUFFICIENT BALANCE': 'insufficient-balance', 'CONNECTION FAILED': 'connection-failed' }[t];
+        // Avisos sin PNG horneado que TAMPOCO quieren la letra trazada por
+        // canvas: escriben el titulo con Press Start 2P y punto. Los de skins
+        // van aqui porque llegaron despues del arte y la letra generada
+        // desentonaba al lado de los titulos dibujados.
+        const SYS_TITULO_TEXTO = ['SKINS', 'CONVERT'];
         // Marco de cada aviso (peticion de David):
         //   verde (prize-panel) -> KICKED y REJOIN EXPIRED, los avisos de partida.
         //   gris (menu-gris)    -> todo lo de wallet/dinero/conexion, el mismo
@@ -8656,6 +8665,17 @@
                 || ((green || gray) ? '86%' : '62%');
             img.style.cssText = 'display:block;margin:0 auto;width:' + w + ';height:auto;image-rendering:pixelated;';
             titleEl.appendChild(img);
+        } else if (pixelMode && SYS_TITULO_TEXTO.includes(t)) {
+            // Sin la letra generada por canvas: estos avisos escriben su titulo
+            // con Press Start 2P, la fuente de verdad. Los demas siguen con el
+            // trazado procedural hasta que tengan su PNG horneado.
+            ensurePixPanelCss();
+            titleEl.innerHTML = '';
+            titleEl.textContent = t;
+            titleEl.style.fontFamily = "'Press Start 2P', monospace";
+            titleEl.style.fontSize = '15px';
+            titleEl.style.letterSpacing = '1px';
+            titleEl.style.textShadow = '2px 2px 0 #000';
         } else if (pixelMode) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';
