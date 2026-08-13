@@ -4352,7 +4352,7 @@ function toggleTrailerMode() {
             // El orden de las pestañas lo decide paisPagina(), no la tabla.
             paisPagina(pag, POR_PAG).forEach(p => {
                 const c = document.createElement('div'); c.className = 'shop-cel';
-                c.appendChild(lienzo(p.code, 42).cv);
+                c.appendChild(lienzo(p.code, 70).cv);
                 const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.code;
                 const nom = document.createElement('div'); nom.className = 'sc-nom'; nom.textContent = p.n;
                 const pre = document.createElement('div'); pre.className = 'sc-pre';
