@@ -659,10 +659,10 @@ function _paisModalCSS() {
         width:34px; height:34px; padding:0; border:none; box-shadow:none; background:transparent
         url('${_paisBase()}img/cartel-hero/close-x-red.png') center/100% 100% no-repeat; image-rendering:pixelated; }
     #${PAIS_MODAL_ID} .pm-x:hover { filter:brightness(1.2); }
-    #${PAIS_MODAL_ID} .pm-cod { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-cod,10px);
-        color:#ffce3d; letter-spacing:2px; text-shadow:2px 2px 0 rgba(0,0,0,.8); }
+    /* Sin margen arriba: el nombre es lo PRIMERO del cartel desde que se quito
+       el codigo de dos letras que iba encima. */
     #${PAIS_MODAL_ID} .pm-nom { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-nom,17px);
-        color:#fff; text-shadow:2px 2px 0 #000; margin:var(--pm-gap,14px) 0 0; line-height:1.4; }
+        color:#fff; text-shadow:2px 2px 0 #000; margin:0; line-height:1.4; }
     #${PAIS_MODAL_ID} .pm-lore { font-family:'VT323',monospace; font-size:var(--pm-fs-lore,21px); line-height:1.45;
         color:#cfd6d0; text-shadow:1px 1px 0 rgba(0,0,0,.7); margin-top:var(--pm-gap,14px);
         border-left:3px solid rgba(0,255,136,.4); padding-left:14px; }
@@ -750,7 +750,7 @@ function paisModalMontar() {
     d.innerHTML =
         '<div class="pm-caja">' +
         '<button class="pm-x" aria-label="Close"></button>' +
-        '<div class="pm-cod"></div><div class="pm-nom"></div><div class="pm-lore"></div>' +
+        '<div class="pm-nom"></div><div class="pm-lore"></div>' +
         '<div class="pm-franjas"></div><div class="pm-crece"></div><div class="pm-pie"></div>' +
         '<div class="pm-btns"></div></div>';
     document.body.appendChild(d);
@@ -766,7 +766,6 @@ function paisModalAbrir(code, onCambio) {
     paisModalMontar();
     _paisOnCambio = onCambio || null; _paisCodeAbierto = code;
     const d = document.getElementById(PAIS_MODAL_ID);
-    d.querySelector('.pm-cod').textContent = s.code;
     d.querySelector('.pm-nom').textContent = s.nombre;
     d.querySelector('.pm-lore').textContent = s.lore;
     const fr = d.querySelector('.pm-franjas'); fr.innerHTML = '';
