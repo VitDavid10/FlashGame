@@ -5723,8 +5723,8 @@
             try { paintLoginBg(m); } catch(e) {}
             els.modeScreen.style.display = 'none';
             els.loginOverlay.style.display = 'flex';
-            // Siempre arrancar con DEFAULT (sin skin equipada) — evita rareza de auto-equip
-            if (typeof _paisEstado !== 'undefined') _paisEstado.equipped = null;
+            // Sincronizar skins desde servidor para mostrar la equipada correctamente
+            if (typeof paisSync === 'function') paisSync().then(() => { if (typeof renderMenuPill === 'function') renderMenuPill(); });
             // La wallet entra AQUI, con el menu ya montado (ver arriba).
             if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
             els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
@@ -6370,25 +6370,7 @@
         invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
     }
     function layoutTarget(e) {
-        // Proteger pantalla completa, canvas y overlays generales
-        const prohibited = ['#loginOverlay', '#modeScreen', '#loginBgCv', '#modeSceneCv', 'canvas', '.menu-row'];
-        if (e.target.closest && e.target.closest(prohibited.join(', '))) return null;
-
-        for (const key in LAYOUT_ELS) {
-            const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]);
-            if (!el) continue;
-
-            // Rechazar si es un contenedor muy grande o si está dentro de una zona prohibida
-            if (el.closest(prohibited.join(', '))) continue;
-
-            const rect = el.getBoundingClientRect();
-            const area = rect.width * rect.height;
-            // Si el elemento es muy grande (más de 40% de la pantalla), saltarlo
-            const maxArea = window.innerWidth * window.innerHeight * 0.4;
-            if (area > maxArea) continue;
-
-            return { key, el };
-        }
+        for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
         return null;
     }
     function enterLayoutEdit() {
