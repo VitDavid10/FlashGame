@@ -6046,8 +6046,7 @@
             // La pildora esta rotada -45º: la mitad "top" queda arriba-izquierda.
             openPalette(dx + dy < 0 ? 'colTop' : 'colBot');
         });
-        if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderMenuPill);
-        // No pintar aqui para evitar animacion molesta de cambio de colors al entrar
+        // No pintar aqui: esperar a que se sincronice con servidor para mostrar la pildora correcta
         // El pillLoop se encargará cuando el login esté visible
         // rAF solo pinta con el login visible (bob + barrido); en partida no gasta.
         (function pillLoop() {
