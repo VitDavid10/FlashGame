@@ -1622,6 +1622,15 @@
         body.pixel-pack .mqp-q .t { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 0; line-height: 1.35; }
         body.pixel-pack .mqp-q .v { font-family: 'Press Start 2P', monospace; font-size: 8px; }
         body.pixel-pack .mqp-foot { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; }
+        /* Remover flechas spinner del input[type=number] */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
     </style>
     <!-- Los PNG de los titulos (ARCADE/CLASSIC, PILLWARS del login) y de los
          carteles no se arrastran ni se copian con el menu contextual. El CSS
@@ -2178,14 +2187,14 @@
                     </div>
                     <!-- CONVERT: convertir $PILL a SP con cantidad libre -->
                     <div id="sidePanelConvert" style="display:none; flex-direction: column; gap: 12px; padding: 12px;">
-                        <div style="font-size: 11px; color: #888; font-family: 'Russo One'; text-transform: uppercase; letter-spacing: 1px;">$PILL TO SP</div>
-                        <div style="font-size: 11px; color: #cfd6d0; font-family: 'VT323'; line-height: 1.6;">
+                        <div id="convertLabel" class="convert-label" style="font-size: 11px; color: #888; font-family: 'Russo One'; text-transform: uppercase; letter-spacing: 1px;">$PILL TO SP</div>
+                        <div id="convertDesc" class="convert-desc" style="font-size: 11px; color: #cfd6d0; font-family: 'VT323'; line-height: 1.6;">
                             Burn your $PILL tokens to mint SP. Each conversion permanently removes $PILL from circulation, reducing total supply.
                         </div>
-                        <input type="number" id="convertPillInput" placeholder="Enter amount in $PILL" style="padding: 8px; background: #1a1f26; border: 1px solid #2a3f4a; color: #fff; font-family: 'VT323'; font-size: 12px; border-radius: 4px;">
-                        <div style="font-size: 11px; color: #6a937e; font-family: 'VT323';">= <span id="convertSpOutput">0</span> SP</div>
-                        <button onclick="convertirPillCustom()" style="padding: 8px; background: #0f8f46; border: 1px solid #000; color: #fff; font-family: 'Press Start 2P'; font-size: 9px; cursor: pointer; border-radius: 4px;" onmouseenter="SoundManager.playSimpleHover()">CONVERT</button>
-                        <div style="font-size: 10px; color: #ff7755; font-family: 'VT323'; margin-top: 8px; line-height: 1.4;">⚠ $PILL tokens are PERMANENTLY BURNED. This cannot be reversed.</div>
+                        <input type="number" id="convertPillInput" class="convert-input" placeholder="Enter amount in $PILL" style="padding: 8px; background: #1a1f26; border: 1px solid #2a3f4a; color: #fff; font-family: 'VT323'; font-size: 12px; border-radius: 4px;">
+                        <div id="convertOutput" class="convert-output" style="font-size: 11px; color: #6a937e; font-family: 'VT323';">= <span id="convertSpOutput">0</span> SP</div>
+                        <button id="convertBtn" class="convert-btn" onclick="convertirPillCustom()" style="padding: 8px; background: #0f8f46; border: 1px solid #000; color: #fff; font-family: 'VT323'; font-size: 12px; cursor: pointer; border-radius: 4px;" onmouseenter="SoundManager.playSimpleHover()">CONVERT</button>
+                        <div id="convertWarning" class="convert-warning" style="font-size: 10px; color: #ff7755; font-family: 'VT323'; margin-top: 8px; line-height: 1.4;">⚠ $PILL tokens are PERMANENTLY BURNED. This cannot be reversed.</div>
                     </div>
                     <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span><span id="dot-mine"></span><span id="dot-convert"></span></div>
                 </div>
@@ -6191,6 +6200,11 @@
         skinFlechas: '#skinPrev, #skinNext, #minePrev, #mineNext',
         skinTitulo:  '#sidePanelTitle',
         skinGrid:    '#skinGrid, #mineGrid',
+        // ===== PANEL DE CONVERT: cada elemento editable =====
+        convertLabel: '#convertLabel',
+        convertInput: '#convertPillInput',
+        convertOutput: '#convertOutput',
+        convertBtn: '#convertBtn',
         tabPuntos:   '.side-tabs-dots',
         tabFlecha:   '.side-tabs-arrow',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
