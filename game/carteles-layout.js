@@ -86,6 +86,20 @@ const CARTEL_SURFACES = {
             label: 'FEATURES', grupo: 'Menu',
             box: '#featuresModal .pw-modal-box', title: '#featuresModal .pw-modal-title', desc: null, actions: '#featuresModal .pw-modal-cancel',
         },
+        /* Cartel de la skin de pais (paises-pixel.js). Se afina UNA vez y vale
+           para las 32: el contenido es siempre el mismo (codigo, nombre, lore,
+           franjas, las cuatro pildoras y los botones), solo cambian los textos.
+           `desc` apunta al lore, que es la pieza larga y la que descuadra el
+           resto si se queda corta o se pasa. */
+        paisModal: {
+            label: 'Skin de pais (descripcion)', grupo: 'Skins',
+            box: '#paisModal .pm-caja', title: '#paisModal .pm-nom', desc: '#paisModal .pm-lore',
+            actions: '#paisModal .pm-btns',
+            // Las cuatro pildoras y el pie se colocan aparte del lore: son lo
+            // que mas sitio ocupa y lo que hay que cuadrar con el marco.
+            crece: '#paisModal .pm-crece', pie: '#paisModal .pm-pie',
+            partes: ['title', 'desc', 'crece', 'pie', 'actions'],
+        },
     };
 
 // Valores afinados (los del JSON). Vacio = todo de fabrica.
@@ -163,6 +177,20 @@ window.CARTELES_READY = Promise.all([
     CARTEL_LAYOUT_READY,
 ]).then(() => CARTEL_LAYOUT);
 window.cartelDevShowPrize = msg => EconHUD.showPrize(msg);
+/*
+ * Cartel de skin para el editor: lo pinta el juego con su propia funcion (misma
+ * que en partida) y elige marco gris o verde. `v` es '' o 'v2'.
+ */
+window.cartelDevShowPais = (code, v) => {
+    // El marco DESPUES de abrir: el cartel se monta en la primera apertura, asi
+    // que antes de eso su caja aun no existe y la clase se perdia.
+    paisModalAbrir(code || 'ES');
+    paisModalVariante(v || '');
+    // El editor apaga todos los carteles con display:none inline antes de pintar
+    // el que toca; este se enciende por clase (.on), y el inline le ganaba.
+    const d = document.getElementById('paisModal');
+    if (d) d.style.removeProperty('display');
+};
 /*
  * Texto de un cartel de fin de partida TAL CUAL lo pinta el juego. El editor
  * pone el estado (sala, modo, kills, carry/entrada) y llama a la MISMA

@@ -7958,7 +7958,7 @@
             }
             const cod = document.createElement('div'); cod.className = 'sc-cod';
             // Mismo criterio que el catalogo: el nombre del pais, no el codigo.
-            cod.textContent = esDefault ? 'DEFAULT' : ((paisSkin(code) || {}).nombre || code).toUpperCase();
+            cod.textContent = esDefault ? 'DEFAULT' : skinNombreCelda(code);
             const est = document.createElement('div'); est.className = 'sc-pre';
             const activa = esDefault ? !puesta : puesta === code;
             est.textContent = activa ? 'EQUIPPED' : 'ASSIGN';
@@ -8065,6 +8065,12 @@
        MISMO angulo que el hero (-45 grados) y a tamano natural: escalar un
        canvas pixelado por un factor no entero lo emborrona. */
     const SKIN_POR_PAGINA = 8, SKIN_ANG = -Math.PI / 4;
+    // Nombres que no caben en la celda (118px a 7px de Press Start 2P). Solo
+    // afecta a la rejilla: el cartel de detalle sigue diciendo el nombre entero.
+    const SKIN_NOMBRE_CORTO = { GB: 'UK', CD: 'CONGO' };
+    function skinNombreCelda(code) {
+        return SKIN_NOMBRE_CORTO[code] || ((paisSkin(code) || {}).nombre || code).toUpperCase();
+    }
     let skinPagina = 0, minePagina = 0;
 
     // Quien soy para el servidor de skins: el mismo clientId de las quests, la
@@ -8113,7 +8119,7 @@
             // El NOMBRE, no el codigo de dos letras: "AT" se lee como Australia
             // y estaba justo al lado de "AU", que si lo es. El codigo sigue
             // estando en el cartel de detalle.
-            const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.n.toUpperCase();
+            const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = skinNombreCelda(p.code);
             const pre = document.createElement('div'); pre.className = 'sc-pre';
             pre.textContent = paisPuesta() === p.code ? 'ON' : (paisTengo(p.code) ? 'OWNED' : paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL');
             if (paisTengo(p.code)) pre.style.color = '#00ff88';
@@ -8627,9 +8633,13 @@
         // NOTICE incluido: es el titulo por defecto de cualquier aviso sin uno
         // propio, y con el marco procedural viejo cantaba al lado del resto.
         const green = t === 'KICKED' || t === 'REJOIN EXPIRED' || t === 'NOTICE';
+        // SKINS y CONVERT van con los de dinero: son fallos de compra/cambio y
+        // David los quiere con el mismo marco gris y el mismo OK gris que el
+        // resto de avisos de cartera.
         const gray = ['WALLET REQUIRED', 'CONNECT ERROR', 'DEPOSIT FAILED', 'PAYMENT CANCELLED',
             'WITHDRAW FAILED', 'WITHDRAW COMPLETE', 'DEPOSIT COMPLETE',
-            'INSUFFICIENT BALANCE', 'CONNECTION FAILED', 'WALLET'].includes(t);
+            'INSUFFICIENT BALANCE', 'CONNECTION FAILED', 'WALLET',
+            'SKINS', 'CONVERT'].includes(t);
         const box = m.querySelector('.exit-box');
         if (box) { box.classList.toggle('sys-green', green); box.classList.toggle('sys-gray', gray); }
         if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {

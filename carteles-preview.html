@@ -154,6 +154,18 @@ const CASOS = [
   { g:'Wallet', n:'WITHDRAW',       sup:'gameWithdrawModal', art:0, show:'gameWithdrawModal' },
   { g:'Wallet', n:'CONNECT WALLET', sup:'walletPickerModal', art:1, show:'walletPickerModal' },
 
+  // --- SKINS (llegaron con la tienda de pildoras de pais) ---
+  // Los dos fallos van con el marco GRIS y el OK gris, como los de cartera:
+  // showSystemMsg los tiene en su lista `gray`.
+  { g:'Skins', n:'SKINS · fallo',   sup:'sysModal', art:1, sys:['You already own that skin.','SKINS'] },
+  { g:'Skins', n:'CONVERT · fallo', sup:'sysModal', art:1, sys:['Not enough $PILL in GAME to convert that amount.','CONVERT'] },
+  // El cartel de la descripcion. Se afina UNA vez y vale para las 32 skins: el
+  // contenido es el mismo y solo cambian los textos. Las dos entradas son EL
+  // MISMO cartel con distinto marco (gris de siempre / verde alto), para ver
+  // cual queda mejor; comparten clave, asi que colocar uno coloca el otro.
+  { g:'Skins', n:'SKIN · descripcion',        sup:'paisModal', art:1, pais:['ES',''] },
+  { g:'Skins', n:'SKIN · descripcion V2 verde', sup:'paisModal', art:1, pais:['ES','v2'] },
+
   { g:'Menu', n:'CHOOSE HOW TO PLAY', sup:'playChoiceModal', art:0, show:'playChoiceModal' },
   { g:'Menu', n:'SELECT A ROOM',      sup:'roomChoiceModal', art:1, show:'roomChoiceModal' },
   { g:'Menu', n:'SETTINGS',           sup:'settingsModal',   art:0, show:'settingsModal' },
@@ -164,11 +176,12 @@ const CASOS = [
 // actions por defecto, y las que declare en CARTEL_SURFACES.partes — el de fin
 // de partida ademas parte los botones en tres.
 const ETIQUETA = { title: 'TITULO', desc: 'TEXTO', actions: 'BOTONES',
-                   tryAgain: 'TRY AGAIN', spectate: 'SPECTATE', backToMenu: 'BACK TO MENU' };
+                   tryAgain: 'TRY AGAIN', spectate: 'SPECTATE', backToMenu: 'BACK TO MENU',
+                   crece: 'PILDORAS', pie: 'PIE' };
 const partesDe = sup => W().cartelPartesDe(W().CARTEL_SURFACES[sup]);
 const OCULTABLES = ['sysModal','exitModal','resultOverlay','prizeModal','skillChoiceOverlay',
                     'gameDepositModal','gameWithdrawModal','walletPickerModal','playChoiceModal',
-                    'roomChoiceModal','settingsModal','featuresModal'];
+                    'roomChoiceModal','settingsModal','featuresModal','paisModal'];
 const CLAVE_POS = 'pw_carteles_editor_pos';
 
 /*
@@ -222,6 +235,12 @@ function crearCapa() {
     .ce-parte:hover .ce-tag{opacity:1}
   `;
   d.head.appendChild(css);
+  // El cartel de skin se monta la primera vez que se abre, o sea DESPUES de
+  // esta capa, y entonces queda por detras de ella en el orden del documento:
+  // querySelector('#paisModal .pm-caja') devolvia el CLON de la ficha anterior
+  // en vez del original, y la segunda ficha se comia a la primera. Montandolo
+  // ahora queda por delante y cada ficha clona lo suyo.
+  try { W().paisModalMontar(); } catch (e) {}
   layer = d.createElement('div');
   layer.id = 'ceLayer';
   d.body.appendChild(layer);
@@ -238,6 +257,7 @@ function clonar(c) {
   // 1. Que el juego lo pinte de verdad (arte, clases, textos reales).
   OCULTABLES.forEach(id => { const e = d.getElementById(id); if (e) e.style.display = 'none'; });
   if (c.sys)        w.showSystemMsg(c.sys[0], c.sys[1]);
+  else if (c.pais)  w.cartelDevShowPais(c.pais[0], c.pais[1]);
   else if (c.prize) w.cartelDevShowPrize(c.prize);
   else if (c.exit) {
     // Mismo pintado que toggleExitModal(), pero sin sus guardas de estado

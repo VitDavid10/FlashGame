@@ -645,6 +645,16 @@ function _paisModalCSS() {
         background:transparent url('${_paisBase()}img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
         image-rendering:pixelated; padding:var(--pm-pad,64px 68px 52px); box-sizing:border-box;
         max-height:92vh; overflow-y:auto; }
+    /* V2: el MISMO cartel con el marco verde alto (el de los premios), para
+       comparar cual sienta mejor a la descripcion de la pildora. Solo cambia el
+       marco; el contenido y el espaciado son los mismos, asi que se puede
+       alternar sin volver a colocar nada. Lo enciende paisModalVariante().
+       La clase va en la CAJA y no en el overlay a proposito: el editor de
+       carteles clona la caja y la saca de #paisModal, asi que una regla que
+       dependiera del antepasado se perderia y las dos versiones saldrian
+       iguales — que es justo lo que hay que poder comparar. */
+    #${PAIS_MODAL_ID} .pm-caja.pm-v2 {
+        background-image:url('${_paisBase()}img/cartel-hero/prize-panel-tall.png'); }
     #${PAIS_MODAL_ID} .pm-x { position:absolute; top:var(--pm-x-top,26px); right:var(--pm-x-right,30px);
         width:34px; height:34px; padding:0; border:none; box-shadow:none; background:transparent
         url('${_paisBase()}img/cartel-hero/close-x-red.png') center/100% 100% no-repeat; image-rendering:pixelated; }
@@ -748,7 +758,24 @@ function paisModalAbrir(code, onCambio) {
         ? 'THE SAME SKIN, AS YOU GROW'
         : (primera === PAIS_CRECE[0] ? 'WEARS ITS EMBLEM FROM THE FIRST BITE' : 'THE EMBLEM SHOWS UP AS YOU GROW');
     _paisPintaBotones(code);
+    // Espaciado afinado desde el editor de carteles. Se aplica AQUI y no al
+    // cargar porque este cartel se monta la primera vez que se abre: al arrancar
+    // no existe en el DOM y applyCartelLayout() no encontraria sus piezas.
+    // typeof: paises-pixel.js tambien corre en la landing, donde no hay editor.
+    if (typeof applyCartelSurface === 'function' && typeof CARTEL_LAYOUT === 'object') {
+        applyCartelSurface('paisModal', CARTEL_LAYOUT.paisModal);
+    }
     d.classList.add('on');
+}
+
+/*
+ * Marco del cartel de skin: '' = el gris de siempre, 'v2' = el verde alto.
+ * Existe para poder comparar los dos sin tocar codigo, desde el editor de
+ * carteles. Cuando David decida cual se queda, esto y la regla .pm-v2 sobran.
+ */
+function paisModalVariante(v) {
+    const caja = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-caja');
+    if (caja) caja.classList.toggle('pm-v2', v === 'v2');
 }
 
 function _paisPintaBotones(code) {
