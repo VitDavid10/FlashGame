@@ -166,6 +166,12 @@ const CASOS = [
   { g:'Skins', n:'SKIN · descripcion',        sup:'paisModal', art:1, pais:['ES',''] },
   { g:'Skins', n:'SKIN · descripcion V2 verde', sup:'paisModal', art:1, pais:['ES','v2'] },
 
+  // Versiones gris del cartel de descripcion de skin. Comparten la MISMA clave
+  // (paisModal) que las otras, asi que al guardar se aplica la ultima que abras.
+  // Permite cambiar entre v2 gris, v3 gris, o volver a la original/verde.
+  { g:'GRIS', n:'SKIN · descripcion V2 gris', sup:'paisModal', art:1, pais:['ES','v2g'] },
+  { g:'GRIS', n:'SKIN · descripcion V3 gris', sup:'paisModal', art:1, pais:['ES','v3g'] },
+
   { g:'Menu', n:'CHOOSE HOW TO PLAY', sup:'playChoiceModal', art:0, show:'playChoiceModal' },
   { g:'Menu', n:'SELECT A ROOM',      sup:'roomChoiceModal', art:1, show:'roomChoiceModal' },
   { g:'Menu', n:'SETTINGS',           sup:'settingsModal',   art:0, show:'settingsModal' },

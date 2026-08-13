@@ -179,7 +179,7 @@ window.CARTELES_READY = Promise.all([
 window.cartelDevShowPrize = msg => EconHUD.showPrize(msg);
 /*
  * Cartel de skin para el editor: lo pinta el juego con su propia funcion (misma
- * que en partida) y elige marco gris o verde. `v` es '' o 'v2'.
+ * que en partida). `v` es '' (gris original), 'v2' (verde), 'v2g' (v2 gris) o 'v3g' (v3 gris).
  */
 window.cartelDevShowPais = (code, v) => {
     // El marco DESPUES de abrir: el cartel se monta en la primera apertura, asi

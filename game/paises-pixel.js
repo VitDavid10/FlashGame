@@ -649,12 +649,17 @@ function _paisModalCSS() {
        comparar cual sienta mejor a la descripcion de la pildora. Solo cambia el
        marco; el contenido y el espaciado son los mismos, asi que se puede
        alternar sin volver a colocar nada. Lo enciende paisModalVariante().
-       La clase va en la CAJA y no en el overlay a proposito: el editor de
-       carteles clona la caja y la saca de #paisModal, asi que una regla que
-       dependiera del antepasado se perderia y las dos versiones saldrian
-       iguales — que es justo lo que hay que poder comparar. */
+       Variantes gris v2 y v3 para comparar sin el verde. La clase va en la CAJA
+       y no en el overlay a proposito: el editor de carteles clona la caja y la
+       saca de #paisModal, asi que una regla que dependiera del antepasado se
+       perderia y las versiones saldrian iguales — que es justo lo que hay que
+       poder comparar. */
     #${PAIS_MODAL_ID} .pm-caja.pm-v2 {
         background-image:url('${_paisBase()}img/cartel-hero/prize-panel-tall.png'); }
+    #${PAIS_MODAL_ID} .pm-caja.pm-v2g {
+        background-image:url('${_paisBase()}img/cartel-hero/cartel-hero-v2g.png'); }
+    #${PAIS_MODAL_ID} .pm-caja.pm-v3g {
+        background-image:url('${_paisBase()}img/cartel-hero/cartel-hero-v3g.png'); }
     #${PAIS_MODAL_ID} .pm-x { position:absolute; top:var(--pm-x-top,26px); right:var(--pm-x-right,30px);
         width:34px; height:34px; padding:0; border:none; box-shadow:none; background:transparent
         url('${_paisBase()}img/cartel-hero/close-x-red.png') center/100% 100% no-repeat; image-rendering:pixelated; }
@@ -802,13 +807,18 @@ function paisModalAbrir(code, onCambio) {
 }
 
 /*
- * Marco del cartel de skin: '' = el gris de siempre, 'v2' = el verde alto.
- * Existe para poder comparar los dos sin tocar codigo, desde el editor de
- * carteles. Cuando David decida cual se queda, esto y la regla .pm-v2 sobran.
+ * Marco del cartel de skin: '' = gris original, 'v2' = verde alto,
+ * 'v2g' = v2 gris, 'v3g' = v3 gris.
+ * Existe para poder comparar versiones sin tocar codigo, desde el editor de
+ * carteles. Se aplica la variante que se guarde desde el editor.
  */
 function paisModalVariante(v) {
     const caja = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-caja');
-    if (caja) caja.classList.toggle('pm-v2', v === 'v2');
+    if (!caja) return;
+    caja.classList.remove('pm-v2', 'pm-v2g', 'pm-v3g');
+    if (v === 'v2') caja.classList.add('pm-v2');
+    else if (v === 'v2g') caja.classList.add('pm-v2g');
+    else if (v === 'v3g') caja.classList.add('pm-v3g');
 }
 
 function _paisPintaBotones(code) {
