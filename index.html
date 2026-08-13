@@ -4304,6 +4304,17 @@ function toggleTrailerMode() {
         if (!grid || typeof paisLista !== 'function') return;
         const paginas = paisNumPaginas(POR_PAG);
         let pag = 0, actual = null;
+
+        // Quien soy para el servidor de skins. El clientId es el mismo que usan las
+        // quests de la landing; la wallet y el provider salen de App.Wallet cuando
+        // esta conectada. Se leen en cada llamada porque la wallet va y viene.
+        let _cid = null;
+        try { _cid = localStorage.getItem('pw_cid'); } catch (e) {}
+        paisSetContexto(() => ({
+            cid: _cid,
+            wallet: (window.App && App.Wallet && App.Wallet.address) || null,
+            provider: (window.App && App.Wallet && App.Wallet.provider) || null,
+        }));
         const $ = id => document.getElementById(id);
 
         /* Cursor-pildora con la bandera del pais. El cursor de la landing YA es
@@ -4376,6 +4387,9 @@ function toggleTrailerMode() {
             $('shopDots').appendChild(d);
         }
         pinta();
+        // La propiedad la manda el servidor: se pide al cargar para que las celdas
+        // salgan ya como OWNED / EQUIPPED si lo son.
+        paisSync().then(pinta);
     })();
     </script>
 </body>

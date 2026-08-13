@@ -7691,8 +7691,18 @@
         document.getElementById('dot-missions').classList.toggle('act', es('missions'));
         document.getElementById('dot-skins').classList.toggle('act', es('skins'));
         document.getElementById('dot-mine').classList.toggle('act', es('mine'));
-        if (es('skins')) skinRender();
-        if (es('mine')) mineRender();
+        // Sincroniza con el servidor ANTES de pintar: la propiedad y el saldo son
+        // suyos, no del navegador. Se pinta ya con lo cacheado para que la pestaña
+        // no aparezca vacia, y se repinta cuando llega la respuesta.
+        if (es('skins') || es('mine')) {
+            if (es('skins')) skinRender(); else mineRender();
+            paisSync().then(() => {
+                const sp = document.getElementById('skinPointsValue');
+                if (sp) sp.textContent = paisSp();
+                if (sidePanelTab === 'skins') skinRender();
+                if (sidePanelTab === 'mine') mineRender();
+            });
+        }
         try { SoundManager.play('simpleselect'); } catch (e) {}
     }
 
@@ -7741,8 +7751,9 @@
             est.style.color = activa ? '#00ff88' : '#ffce3d';
             cel.append(cod, est);
             cel.title = esDefault ? 'Your own two colours' : (paisSkin(code) || {}).nombre || code;
-            cel.addEventListener('click', () => {
-                paisPoner(esDefault ? null : code);
+            cel.addEventListener('click', async () => {
+                const r = await paisPoner(esDefault ? null : code);
+                if (r && r.ok === false) { showSystemMsg(r.error || 'Could not equip that skin.', 'SKINS'); return; }
                 mineRender(); skinRender();
                 try { SoundManager.play('select'); } catch (e) {}
             });
@@ -7774,6 +7785,16 @@
        canvas pixelado por un factor no entero lo emborrona. */
     const SKIN_POR_PAGINA = 8, SKIN_ANG = -Math.PI / 4;
     let skinPagina = 0, minePagina = 0;
+
+    // Quien soy para el servidor de skins: el mismo clientId de las quests, la
+    // wallet conectada si la hay, y el provider con el que se firma el gasto.
+    // Se lee en cada llamada (no se captura): la wallet se conecta y desconecta
+    // mientras el menu esta abierto.
+    paisSetContexto(() => ({
+        cid: (typeof Quests !== 'undefined' && Quests.cid) || null,
+        wallet: (typeof GameWallet !== 'undefined' && GameWallet.address) || null,
+        provider: (typeof GameWallet !== 'undefined' && GameWallet.provider) || null,
+    }));
 
     /* Ancho de pildora de una celda. Lo usan las DOS pestañas: cada una lo
        calculaba por su cuenta y, como la rejilla de las tuyas puede medirse en

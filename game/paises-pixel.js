@@ -415,24 +415,103 @@ const PAIS_PILL_POR_SP = 100;
 const PAIS_PRECIO_PILL = PAIS_PRECIO_SP * PAIS_PILL_POR_SP;
 function paisPrecioTexto(pill) { return pill >= 1000 ? (pill / 1000) + 'K' : String(pill); }
 
-const PAIS_KEY_TENGO = 'pw_skins_owned', PAIS_KEY_PUESTA = 'pw_skin_equipped';
-function paisMias() { try { return JSON.parse(localStorage.getItem(PAIS_KEY_TENGO) || '[]'); } catch (e) { return []; } }
+/* La propiedad la manda el SERVIDOR, no el navegador.
+ *
+ * Antes esto vivia en localStorage, lo que significaba que cualquiera podia
+ * escribirse las 32 skins desde la consola sin pagar nada: el cliente se creia
+ * a si mismo. Ahora comprar, equipar y el saldo pasan por /api/skins, que cobra
+ * de verdad (SP del ledger o $PILL del saldo WAR, con firma de la wallet).
+ *
+ * El estado se CACHEA porque las funciones de dibujo lo consultan a cada frame
+ * (cellPais mira paisPuesta() en cada celda) y no pueden ser asincronas. La
+ * cache se refresca con paisSync() al abrir la tienda y despues de cada compra.
+ *
+ * Cada pagina declara su contexto (quien soy, que wallet y con que firmo) en
+ * paisContexto: /game y la landing los tienen en sitios distintos.
+ */
+let paisContexto = () => ({ cid: null, wallet: null, provider: null });
+function paisSetContexto(fn) { paisContexto = fn; }
+
+let _paisEstado = { sp: 0, pill: 0, owned: [], equipped: null };
+function paisMias() { return _paisEstado.owned || []; }
 function paisTengo(code) { return paisMias().indexOf(code) !== -1; }
-function paisComprar(code) {
-    if (!PAISES[code] || paisTengo(code)) return false;
-    const m = paisMias(); m.push(code);
-    try { localStorage.setItem(PAIS_KEY_TENGO, JSON.stringify(m)); } catch (e) {}
-    return true;
+function paisPuesta() { return _paisEstado.equipped || null; }
+function paisSp() { return _paisEstado.sp | 0; }
+function paisPill() { return _paisEstado.pill | 0; }
+
+function _paisCab() {
+    const c = paisContexto();
+    return { 'Content-Type': 'application/json', 'X-Client-Id': c.cid || '' };
 }
-function paisPuesta() { try { return localStorage.getItem(PAIS_KEY_PUESTA) || null; } catch (e) { return null; } }
-// code = null quita la skin y devuelve la pildora de dos colores de siempre. Sin
-// ese caso no habia forma de volver atras una vez te ponias una: paisTengo(null)
-// es false y la asignacion se rechazaba en silencio.
-function paisPoner(code) {
-    if (code === null) { try { localStorage.removeItem(PAIS_KEY_PUESTA); } catch (e) {} return true; }
-    if (!paisTengo(code)) return false;
-    try { localStorage.setItem(PAIS_KEY_PUESTA, code); } catch (e) {}
-    return true;
+
+async function paisSync() {
+    const c = paisContexto();
+    try {
+        const url = '/api/skins' + (c.wallet ? '?wallet=' + encodeURIComponent(c.wallet) : '');
+        const r = await fetch(url, { headers: { 'X-Client-Id': c.cid || '' }, cache: 'no-store' });
+        const j = await r.json();
+        if (j && Array.isArray(j.owned)) _paisEstado = j;
+    } catch (e) {}
+    return _paisEstado;
+}
+
+// Firma del gasto en $PILL. El mensaje lleva la cantidad DENTRO, asi que la
+// firma de una compra no sirve para gastar otra cantidad distinta.
+async function _paisFirma(provider, wallet, mensaje, ts) {
+    const res = await provider.signMessage(new TextEncoder().encode(mensaje), 'utf8');
+    const bytes = res && res.signature ? res.signature : res;
+    return { wallet, message: mensaje, ts, signature: Array.from(bytes) };
+}
+
+// nonce por intento: si la respuesta se pierde y el jugador reintenta, el
+// servidor reconoce el nonce y no cobra dos veces.
+function _paisNonce() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+async function paisComprar(code, moneda) {
+    const c = paisContexto();
+    if (!c.cid) return { ok: false, error: 'no session' };
+    const cuerpo = { code, moneda, nonce: _paisNonce(), wallet: c.wallet || null };
+    if (moneda === 'pill') {
+        if (!c.wallet || !c.provider) return { ok: false, error: 'connect your wallet first' };
+        const ts = Date.now();
+        try {
+            cuerpo.pay = await _paisFirma(c.provider, c.wallet, `PillWars buy skin ${code} for ${PAIS_PRECIO_PILL} PILL @ ${ts}`, ts);
+        } catch (e) { return { ok: false, error: 'you must sign the payment' }; }
+    }
+    try {
+        const r = await fetch('/api/skins/buy', { method: 'POST', headers: _paisCab(), body: JSON.stringify(cuerpo) });
+        const j = await r.json();
+        if (j.estado) _paisEstado = j.estado;
+        return j;
+    } catch (e) { return { ok: false, error: 'server unreachable' }; }
+}
+
+// code = null quita la skin y devuelve la pildora de dos colores de siempre.
+async function paisPoner(code) {
+    const c = paisContexto();
+    if (!c.cid) return { ok: false, error: 'no session' };
+    try {
+        const r = await fetch('/api/skins/equip', { method: 'POST', headers: _paisCab(), body: JSON.stringify({ code, wallet: c.wallet || null }) });
+        const j = await r.json();
+        if (j.estado) _paisEstado = j.estado;
+        return j;
+    } catch (e) { return { ok: false, error: 'server unreachable' }; }
+}
+
+async function paisConvertir(pill) {
+    const c = paisContexto();
+    if (!c.wallet || !c.provider) return { ok: false, error: 'connect your wallet first' };
+    const ts = Date.now();
+    let pay;
+    try {
+        pay = await _paisFirma(c.provider, c.wallet, `PillWars convert ${pill} PILL to ${pill / PAIS_PILL_POR_SP} SP @ ${ts}`, ts);
+    } catch (e) { return { ok: false, error: 'you must sign the exchange' }; }
+    try {
+        const r = await fetch('/api/skins/convert', { method: 'POST', headers: _paisCab(), body: JSON.stringify({ pill, nonce: _paisNonce(), wallet: c.wallet, pay }) });
+        const j = await r.json();
+        if (j.estado) _paisEstado = j.estado;
+        return j;
+    } catch (e) { return { ok: false, error: 'server unreachable' }; }
 }
 
 /* Pildora INCLINADA. Port de pixPillSpriteRot (game/index.html) a tres bandas +
@@ -660,21 +739,42 @@ function paisModalAbrir(code, onCambio) {
 function _paisPintaBotones(code) {
     const cont = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-btns'); if (!cont) return;
     cont.innerHTML = '';
+    // Los botones llaman al SERVIDOR, asi que son asincronos: mientras la
+    // peticion vuela se deshabilitan (un doble clic en COMPRAR llegaria a firmar
+    // dos veces) y si el servidor dice que no, el motivo se pinta en el pie.
     const btn = (txt, cls, fn) => {
         const b = document.createElement('button');
         b.className = 'pm-btn ' + cls; b.textContent = txt;
-        if (fn) b.addEventListener('click', () => { fn(); _paisPintaBotones(code); if (_paisOnCambio) _paisOnCambio(); });
-        else b.disabled = true;
+        if (!fn) { b.disabled = true; cont.appendChild(b); return; }
+        b.addEventListener('click', async () => {
+            [...cont.children].forEach(x => x.disabled = true);
+            b.textContent = '...';
+            const r = await fn();
+            if (r && r.ok === false) _paisAviso(r.error || 'could not complete');
+            _paisPintaBotones(code);
+            if (_paisOnCambio) _paisOnCambio();
+        });
         cont.appendChild(b);
     };
     if (!paisTengo(code)) {
-        btn('BUY · ' + paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL', 'rojo', () => paisComprar(code));
-        btn('BUY · ' + PAIS_PRECIO_SP + ' SP', 'verde', () => paisComprar(code));
+        btn('BUY · ' + paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL', 'rojo', () => paisComprar(code, 'pill'));
+        btn('BUY · ' + PAIS_PRECIO_SP + ' SP', 'verde', () => paisComprar(code, 'sp'));
     } else if (paisPuesta() === code) {
         btn('EQUIPPED', 'verde', null);
     } else {
         btn('ASSIGN', 'rojo', () => paisPoner(code));
     }
+}
+
+// El motivo del rechazo va en el pie del cartel, que es donde ya esta mirando el
+// jugador. Un alert() cortaria el flujo y aqui el fallo mas comun es "no te llega
+// el saldo", que no merece una ventana modal encima de otra.
+function _paisAviso(txt) {
+    const p = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-pie'); if (!p) return;
+    const antes = p.textContent;
+    p.textContent = String(txt).toUpperCase();
+    p.style.color = '#ff6b5c';
+    setTimeout(() => { p.textContent = antes; p.style.color = ''; }, 3500);
 }
 
 function paisModalCerrar() {
