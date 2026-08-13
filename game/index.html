@@ -7713,6 +7713,11 @@
         document.getElementById('dot-missions').classList.toggle('act', es('missions'));
         document.getElementById('dot-skins').classList.toggle('act', es('skins'));
         document.getElementById('dot-mine').classList.toggle('act', es('mine'));
+        // Mostrar wallet cuando entras a SKINS (igual que en salas de pago)
+        if (typeof GameWalletUI !== 'undefined') {
+            if (es('skins') || es('mine')) GameWalletUI.setVisible(true);
+            else GameWalletUI.setVisible(false);
+        }
         // Sincroniza con el servidor ANTES de pintar: la propiedad y el saldo son
         // suyos, no del navegador. Se pinta ya con lo cacheado para que la pestaña
         // no aparezca vacia, y se repinta cuando llega la respuesta.
