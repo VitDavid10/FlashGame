@@ -6156,29 +6156,29 @@
         walletBarTxt: '#gwBalInner', walletBtnTxt: '#gameWalletArea .gw-btn-txt',
         walletBar: '#gwBalBox', walletBtn: '#gwConnect, #gwDepositWrap',
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
-        features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
-        rooms: '#oraclePanel', quests: '#missionsPanel',
         // ===== PANEL DE SKINS: cada pieza por separado =====
         // El bloque de las 8 pildoras se mueve y escala ENTERO (skinGrid), no
         // celda a celda: agarrar una celda suelta descuadraba la rejilla. El
         // rotulo, las flechas de pagina, los puntos de pagina, la flecha que
-        // cambia de pestaña y los puntos de pestaña van cada uno por su cuenta,
-        // asi que se pueden llevar a donde haga falta sin arrastrar al resto.
+        // cambia de pestaña y los puntos de pestaña van cada uno por su cuenta.
         //
         // Todas son claves COMPARTIDAS por las dos pestañas (catalogo y las
         // tuyas) con selector por comas, igual que walletBtn: si cada pestaña
         // guardara su sitio, cambiar de una a otra descuadraria el panel.
         //
-        // ORDEN: de mas especifico a menos. target() resuelve por la primera
-        // clave que casa via closest(), asi que los hijos tienen que ir antes
-        // que sus contenedores — .skin-dots y .skin-arrow viven dentro de
-        // .skin-nav, y .side-tabs-arrow dentro de .menu-side-head.
+        // VAN LAS PRIMERAS, y eso es lo que las hace funcionar: layoutTarget
+        // devuelve la PRIMERA clave del objeto que casa via closest(), y todo
+        // este panel vive dentro de #missionsInner (questsInner). Declaradas
+        // despues de el, agarrar una flecha o una pildora resolvia al cartel
+        // entero y se movia todo de golpe.
         skinPuntos:  '#skinDots, #mineDots',
         skinFlechas: '#skinPrev, #skinNext, #minePrev, #mineNext',
         skinTitulo:  '#sidePanelTitle',
         skinGrid:    '#skinGrid, #mineGrid',
         tabPuntos:   '.side-tabs-dots',
         tabFlecha:   '.side-tabs-arrow',
+        features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
+        rooms: '#oraclePanel', quests: '#missionsPanel',
         zoneA: '#noVirusZoneA', zoneB: '#noVirusZoneB',
     };
     // Zonas sin virus: editables por el mismo sistema de layout, pero NO son

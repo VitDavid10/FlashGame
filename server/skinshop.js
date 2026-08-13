@@ -157,8 +157,24 @@ function estadoQuema() {
 // Vacia la cola. Se llama sola cada QUEMA_CADA_MS y tambien desde admin.
 // Si la transaccion falla, la deuda se queda entera: no se descuenta hasta que la
 // cadena confirma. Perder tokens por un timeout del RPC seria peor que esperar.
-const QUEMA_CADA_MS = 10 * 60 * 1000;
-const QUEMA_MINIMA = 1000;          // no gastar gas por cantidades ridiculas
+/* Cada cuanto se mira la cola y cuanto tiene que haber para que merezca la pena.
+ *
+ * Una quema es una transaccion de Solana: 5.000 lamports (0,000005 SOL) de
+ * comision. Barato, pero a un intervalo corto son transacciones a todas horas
+ * por cantidades ridiculas, y el historial de quemas —que es justo lo que un
+ * holder va a mirar en el explorador para comprobar que la promesa se cumple—
+ * se llena de calderilla en vez de tener pocas quemas grandes y legibles.
+ *
+ * Por defecto: se revisa cada 6 h y solo se quema si hay al menos el precio de
+ * UNA skin acumulado. Con eso son como mucho 4 transacciones al dia, y cada una
+ * corresponde a algo que de verdad se compro.
+ *
+ * Ajustables sin tocar codigo: PILL_BURN_EVERY_MIN y PILL_BURN_MIN.
+ * La deuda no se pierde por esperar — vive en skinshop.json y se salda entera
+ * cuando toque, asi que alargar el intervalo no cuesta nada.
+ */
+const QUEMA_CADA_MS = (parseInt(process.env.PILL_BURN_EVERY_MIN, 10) || 360) * 60 * 1000;
+const QUEMA_MINIMA = parseInt(process.env.PILL_BURN_MIN, 10) || PRECIO_PILL;
 let _quemando = false;
 
 async function quemarPendiente(solana, log) {
