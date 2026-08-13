@@ -347,8 +347,10 @@ const PAISES = {
     CN: {
         n: 'China', b: ['#EE1C25', '#D4141B', '#EE1C25'], min: UMBRAL.siempre,
         e: [
+            // La grande, desde el primer pixel. Las cuatro pequeñas solo cuando la
+            // banda da de si: a tamaño de partida eran manchas de un pixel.
             { f: 'estrella', c: '#FFFF00', k: 0.62, dx: -0.42 },
-            { f: 'arcoEstrellas', c: '#FFFF00', k: 1 },
+            { f: 'arcoEstrellas', c: '#FFFF00', k: 1, min: UMBRAL.medio },
         ],
         lore: 'One large star with four smaller ones turned toward it, each facing the same centre. Build the same thing here: every pill you swallow becomes another point of light orbiting whatever it is you are turning into.'
     },
@@ -368,10 +370,17 @@ function _rgb(col) {
 function paisSkin(code) {
     const p = PAISES[String(code || '').toUpperCase()];
     if (!p) return null;
+    const minPais = p.min === undefined ? UMBRAL.medio : p.min;
     return {
         code: String(code).toUpperCase(), nombre: p.n, bandas: p.b, lore: p.lore,
-        capas: (p.e || []).map(c => ({ forma: PAIS_FORMAS[c.f], color: c.c, k: c.k || 1, dx: c.dx || 0, dy: c.dy || 0 })),
-        min: p.min === undefined ? UMBRAL.medio : p.min,
+        // `min` por CAPA, no solo por pais: China lleva la estrella grande desde el
+        // primer pixel pero las cuatro pequeñas necesitan sitio — dibujadas a
+        // tamaño de partida eran cuatro manchas de un pixel que ensuciaban la
+        // pildora en vez de leerse como estrellas. Sin declararlo, cada capa
+        // hereda el umbral del pais y se comporta como antes.
+        capas: (p.e || []).map(c => ({ forma: PAIS_FORMAS[c.f], color: c.c, k: c.k || 1, dx: c.dx || 0, dy: c.dy || 0,
+                                       min: c.min === undefined ? minPais : c.min })),
+        min: minPais,
     };
 }
 
@@ -416,7 +425,11 @@ function paisComprar(code) {
     return true;
 }
 function paisPuesta() { try { return localStorage.getItem(PAIS_KEY_PUESTA) || null; } catch (e) { return null; } }
+// code = null quita la skin y devuelve la pildora de dos colores de siempre. Sin
+// ese caso no habia forma de volver atras una vez te ponias una: paisTengo(null)
+// es false y la asignacion se rechazaba en silencio.
 function paisPoner(code) {
+    if (code === null) { try { localStorage.removeItem(PAIS_KEY_PUESTA); } catch (e) {} return true; }
     if (!paisTengo(code)) return false;
     try { localStorage.setItem(PAIS_KEY_PUESTA, code); } catch (e) {}
     return true;
@@ -451,8 +464,13 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
     const nBandas = rgb.length;
     const medio = (seg + R) / 3;
     const embCy = nBandas === 2 ? (seg + R) / 2 : 0;
-    const embOn = skin.capas.length > 0 && (forzarEmblema || medio * 2 >= skin.min);
-    const capas = embOn ? skin.capas.map(l => ({ f: l.forma, c: _rgb(l.color), k: l.k, dx: l.dx, dy: l.dy })) : [];
+    // Cada capa entra por SU cuenta segun su propio umbral, asi que una pildora
+    // puede llevar ya su forma principal y todavia no los detalles pequeños.
+    const bandaPx = medio * 2;
+    const capas = skin.capas
+        .filter(l => forzarEmblema || bandaPx >= l.min)
+        .map(l => ({ f: l.forma, c: _rgb(l.color), k: l.k, dx: l.dx, dy: l.dy }));
+    const embOn = capas.length > 0;
     const lado = Math.min(R, medio) * 0.80;
 
     const img = g.createImageData(S, S), px = img.data;
@@ -534,12 +552,16 @@ function _paisModalCSS() {
     #${PAIS_MODAL_ID} { display:none; position:fixed; inset:0; z-index:100000; background:rgba(0,0,0,.85);
         align-items:center; justify-content:center; padding:24px; }
     #${PAIS_MODAL_ID}.on { display:flex; }
-    /* cursor:none tambien dentro del cartel. La landing esconde el cursor del
-       sistema y pinta el suyo (una pildora), pero las ventanas lo devolvian a
-       'default' y al abrir el detalle desaparecia justo cuando mas se quiere
-       ver — que es con la pildora del pais en la mano. */
-    #${PAIS_MODAL_ID}, #${PAIS_MODAL_ID} * { cursor: none; }
-    #${PAIS_MODAL_ID} .pm-x, #${PAIS_MODAL_ID} .pm-btn { cursor: none; }
+    /* CURSOR DEL SISTEMA, siempre. Se intento esconderlo para que se viera la
+       pildora de #custom-cursor, pero en /game esa pildora no existe y en la
+       landing el cursor propio solo aparece tras un mousemove real y no siempre
+       llegaba: el resultado era una ventana SIN NINGUN cursor justo cuando vas a
+       pulsar comprar. El !important es para ganarle al cursor:none que la landing
+       pone en el body, que si no lo hereda todo lo de dentro.
+       OJO: este bloque es un template literal, asi que aqui dentro NO puede haber
+       comillas invertidas — cierran la cadena y parten el fichero entero. */
+    #${PAIS_MODAL_ID}, #${PAIS_MODAL_ID} * { cursor: default !important; }
+    #${PAIS_MODAL_ID} .pm-x, #${PAIS_MODAL_ID} .pm-btn { cursor: pointer !important; }
     #${PAIS_MODAL_ID} .pm-caja { position:relative; width:100%; max-width:var(--pm-ancho,780px);
         background:transparent url('${_paisBase()}img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
         image-rendering:pixelated; padding:var(--pm-pad,64px 68px 52px); box-sizing:border-box;

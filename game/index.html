@@ -2161,7 +2161,12 @@
                          volver a pasar por el catalogo. -->
                     <div id="sidePanelMine" style="display:none">
                         <div class="skin-grid" id="mineGrid"></div>
-                        <div class="skin-nav" id="mineVacio" style="display:none">NONE YET &middot; BUY ONE IN SKINS</div>
+                        <div class="skin-nav" id="mineNav" style="display:none">
+                            <button class="skin-arrow" id="minePrev" onclick="minePage(-1)" onmouseenter="SoundManager.playSimpleHover()">&#9664;</button>
+                            <div class="skin-dots" id="mineDots"></div>
+                            <button class="skin-arrow" id="mineNext" onclick="minePage(1)" onmouseenter="SoundManager.playSimpleHover()">&#9654;</button>
+                        </div>
+                        <div class="skin-nav" id="mineVacio" style="display:none"></div>
                     </div>
                     <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span><span id="dot-mine"></span></div>
                 </div>
@@ -7569,10 +7574,15 @@
             // Decoracion del fondo del menu (food/virus, bob, tamano de rejilla): admin.
             applyMenuDecoFromServer(data);
             const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
-            // Reset del timer solo si el precio realmente cambió (cada 5 min en servidor).
+            // El timer se reinicia SIEMPRE que la consulta llega, no solo cuando el
+            // precio cambia. El servidor calcula la deriva con ±15% redondeado a
+            // miles sobre 10.000, asi que muy a menudo sale el MISMO numero: con la
+            // condicion de antes el reloj no se reiniciaba, se quedaba clavado en
+            // 0:00 y, como tickOracleTimer llama a refreshOracle() en cuanto llega a
+            // cero, se disparaba una peticion a /api/rooms por cada tick.
+            oracleNextRefresh = Date.now() + ORACLE_EVERY_MS;
             if (newRate !== _lastPillPerDollar) {
                 _lastPillPerDollar = newRate;
-                oracleNextRefresh = Date.now() + ORACLE_EVERY_MS;
                 gamePillPerDollar = newRate;
                 const rateEl = document.getElementById('oracleRateAmt');
                 if (rateEl) rateEl.textContent = Number(gamePillPerDollar).toLocaleString('en-US');
@@ -7688,31 +7698,73 @@
 
     // Rejilla de las skins que YA son tuyas. Pulsar una la asigna directamente,
     // sin abrir el cartel: aqui ya la tienes, lo unico que queda es ponertela.
+    // La primera casilla es SIEMPRE la pildora de dos colores de toda la vida: es
+    // la que llevas si no te pones ninguna skin, siempre la tienes y es la unica
+    // forma de volver a ella una vez te has puesto una. Ocupa sitio en la pagina
+    // igual que las demas, asi que las tuyas empiezan a contar desde la segunda.
+    const MINE_DEFAULT = '—';
     function mineRender() {
         const grid = document.getElementById('mineGrid'); if (!grid) return;
         const mias = (typeof paisMias === 'function') ? paisMias() : [];
-        document.getElementById('mineVacio').style.display = mias.length ? 'none' : 'flex';
-        grid.style.display = mias.length ? 'grid' : 'none';
+        const items = [MINE_DEFAULT].concat(mias);
+        const paginas = Math.max(1, Math.ceil(items.length / SKIN_POR_PAGINA));
+        minePagina = Math.max(0, Math.min(paginas - 1, minePagina));
+        document.getElementById('mineVacio').style.display = 'none';
+        grid.style.display = 'grid';
         grid.innerHTML = '';
-        const alto = (grid.clientHeight - 4) / 2;
-        const wL = Math.max(14, Math.min(40, Math.floor((alto - 22) / 2.12)));
-        mias.slice(0, 8).forEach(code => {
-            const p = paisSkin(code); if (!p) return;
-            const o = paisPillRot(wL, code, SKIN_ANG);
+        const wL = skinWL(grid);
+        const puesta = paisPuesta();
+        items.slice(minePagina * SKIN_POR_PAGINA, (minePagina + 1) * SKIN_POR_PAGINA).forEach(code => {
+            const esDefault = code === MINE_DEFAULT;
             const cel = document.createElement('div'); cel.className = 'skin-cell';
-            const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
-            cv.getContext('2d').drawImage(o.cv, 0, 0);
-            const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = code;
+            if (esDefault) {
+                // Se dibuja con los MISMOS colores que el jugador tiene elegidos en
+                // el menu, no con unos fijos: es literalmente su pildora.
+                const cTop = (document.getElementById('colTop') || {}).value || '#ffffff';
+                const cBot = (document.getElementById('colBot') || {}).value || '#00ff88';
+                const cv = document.createElement('canvas');
+                const o = pixPillSpriteRot(wL, cTop, cBot, SKIN_ANG, true);
+                cv.width = o.S; cv.height = o.S;
+                cv.getContext('2d').drawImage(o.cv, 0, 0);
+                cel.appendChild(cv);
+            } else {
+                const o = paisPillRot(wL, code, SKIN_ANG);
+                const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
+                cv.getContext('2d').drawImage(o.cv, 0, 0);
+                cel.appendChild(cv);
+            }
+            const cod = document.createElement('div'); cod.className = 'sc-cod';
+            cod.textContent = esDefault ? 'DEFAULT' : code;
             const est = document.createElement('div'); est.className = 'sc-pre';
-            const puesta = paisPuesta() === code;
-            est.textContent = puesta ? 'EQUIPPED' : 'ASSIGN';
-            est.style.color = puesta ? '#00ff88' : '#ffce3d';
-            cel.append(cv, cod, est);
-            cel.title = p.nombre;
-            cel.addEventListener('click', () => { paisPoner(code); mineRender(); skinRender(); try { SoundManager.play('select'); } catch (e) {} });
+            const activa = esDefault ? !puesta : puesta === code;
+            est.textContent = activa ? 'EQUIPPED' : 'ASSIGN';
+            est.style.color = activa ? '#00ff88' : '#ffce3d';
+            cel.append(cod, est);
+            cel.title = esDefault ? 'Your own two colours' : (paisSkin(code) || {}).nombre || code;
+            cel.addEventListener('click', () => {
+                paisPoner(esDefault ? null : code);
+                mineRender(); skinRender();
+                try { SoundManager.play('select'); } catch (e) {}
+            });
             cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
             grid.appendChild(cel);
         });
+        // Flechas y puntos propios de esta pestaña, con la misma pinta que los del
+        // catalogo. Solo aparecen cuando hay mas de una pagina.
+        const nav = document.getElementById('mineNav');
+        nav.style.display = paginas > 1 ? 'flex' : 'none';
+        const dots = document.getElementById('mineDots'); dots.innerHTML = '';
+        for (let i = 0; i < paginas; i++) { const s = document.createElement('span'); if (i === minePagina) s.className = 'act'; dots.appendChild(s); }
+        document.getElementById('minePrev').disabled = minePagina === 0;
+        document.getElementById('mineNext').disabled = minePagina >= paginas - 1;
+    }
+    function minePage(d) {
+        const total = 1 + ((typeof paisMias === 'function') ? paisMias().length : 0);
+        const paginas = Math.max(1, Math.ceil(total / SKIN_POR_PAGINA));
+        const n = minePagina + d;
+        if (n < 0 || n >= paginas) return;
+        minePagina = n; mineRender();
+        try { SoundManager.play('simpleselect'); } catch (e) {}
     }
 
     /* ===== CATALOGO DE SKINS DE PAIS =====
@@ -7721,7 +7773,20 @@
        MISMO angulo que el hero (-45 grados) y a tamano natural: escalar un
        canvas pixelado por un factor no entero lo emborrona. */
     const SKIN_POR_PAGINA = 8, SKIN_ANG = -Math.PI / 4;
-    let skinPagina = 0;
+    let skinPagina = 0, minePagina = 0;
+
+    /* Ancho de pildora de una celda. Lo usan las DOS pestañas: cada una lo
+       calculaba por su cuenta y, como la rejilla de las tuyas puede medirse en
+       otro momento (recien mostrada, con clientHeight aun a 0), salian pildoras
+       de distinto tamaño en SKINS y en YOUR SKINS.
+       Se mide sobre una rejilla visible; si la que se pasa aun no lo esta, se cae
+       a la otra, y en ultimo caso a un valor de referencia. */
+    function skinWL(grid) {
+        let alto = grid && grid.clientHeight;
+        if (!alto) { const otra = document.getElementById('skinGrid'); alto = otra && otra.clientHeight; }
+        if (!alto) alto = 247;                       // el alto medido del cuadro
+        return Math.max(14, Math.min(40, Math.floor(((alto - 4) / 2 - 22) / 2.12)));
+    }
 
     function skinRender() {
         const grid = document.getElementById('skinGrid');
@@ -7731,8 +7796,7 @@
         grid.innerHTML = '';
         // El ancho de pildora sale del alto REAL de la celda, no de una constante:
         // el cartel se reescala desde EDIT LAYOUT y con un valor fijo se salia.
-        const altoCelda = (grid.clientHeight - 4) / 2;
-        const wL = Math.max(14, Math.min(40, Math.floor((altoCelda - 22) / 2.12)));
+        const wL = skinWL(grid);
         // El orden de las pestañas lo decide paisPagina(), no la tabla.
         paisPagina(skinPagina, SKIN_POR_PAGINA).forEach(p => {
             const o = paisPillRot(wL, p.code, SKIN_ANG);

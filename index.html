@@ -832,6 +832,10 @@ body.trailer-open #page-content{
         .shop-cel { background: rgba(10,10,10,0.8); border: 2px solid #1e1e1e; padding: 12px 6px 0; text-align: center;
                     cursor: pointer; transition: 0.15s; box-shadow: 4px 4px 0 rgba(0,0,0,0.55); }
         .shop-cel:hover { border-color: var(--primary); background: #0c110c; transform: translateY(-3px); }
+        /* El body de la landing va con cursor:none (dibuja su propia pildora) y
+           todo lo de dentro lo hereda. En la tienda eso dejaba los controles sin
+           cursor ninguno: aqui se fuerza el del sistema, que se ve siempre. */
+        .shop-cel, .shop-flecha, .shop-dots span { cursor: pointer !important; }
         .shop-cel canvas { image-rendering: pixelated; display: block; margin: 0 auto 8px; }
         .shop-cel .sc-cod { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: #fff; }
         .shop-cel .sc-nom { font-size: var(--fs-2); color: var(--txt-mute); margin-top: 4px; height: 26px; }
