@@ -677,6 +677,36 @@
         #missionsPanel.classic .skin-dots span.act, #missionsPanel.classic .skin-arrow, #missionsPanel.classic .skin-cell:hover { color: #00ffaa; }
         #missionsPanel.arcade .skin-dots span.act, #missionsPanel.arcade .skin-arrow, #missionsPanel.arcade .skin-cell:hover { color: #ccff00; }
 
+        /* ===== Pestaña CONVERT =====
+           La letra se pone UNA vez en el contenedor y la heredan los parrafos,
+           el input y el boton: asi el panel entero habla exactamente igual que
+           la descripcion de ROOM · PRICES (.oracle-desc), incluido el cambio a
+           Press Start 2P de pixel-pack y el ciclo del boton ROOM DESC FONT (que
+           copia la familia elegida sobre este contenedor).
+           Va DESPUES de "#missionsInner .oracle-desc" a proposito: aquel pone
+           nowrap para el rotulo de una linea del catalogo y aqui los parrafos
+           SI parten en varias. */
+        #sidePanelConvert { flex-direction: column; gap: 9px; padding: 10px 2px 0;
+                            font-family: 'Inter', sans-serif; font-size: 10px; line-height: 1.35; color: #999; }
+        body.pixel-pack #sidePanelConvert { font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1.05; }
+        #sidePanelConvert .oracle-desc { white-space: normal; font-family: inherit; font-size: inherit; line-height: inherit; margin-bottom: 0; }
+        #sidePanelConvert .cv-label { color: #fff; letter-spacing: 1px; }
+        #sidePanelConvert .cv-out { color: currentColor; }
+        #sidePanelConvert .cv-warn { color: #ff7755; }
+        /* Input y boton: misma letra que los parrafos (heredada), solo cambia la
+           caja. Las flechas de subir/bajar del type=number se quitan mas abajo. */
+        #sidePanelConvert .cv-input { font-family: inherit; font-size: inherit; line-height: inherit;
+                                      width: 100%; box-sizing: border-box; padding: 7px 8px; color: #fff;
+                                      background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.14); }
+        #sidePanelConvert .cv-input:focus { outline: none; border-color: currentColor; }
+        #sidePanelConvert .cv-btn { font-family: inherit; font-size: inherit; line-height: 1;
+                                    background: transparent; border: 1px solid currentColor; color: inherit;
+                                    padding: 8px 10px; cursor: pointer; transition: 0.15s; text-transform: uppercase; }
+        #sidePanelConvert .cv-btn:hover:not(:disabled) { background: currentColor; color: #04150c; }
+        #sidePanelConvert .cv-btn:disabled { opacity: 0.4; cursor: default; }
+        #missionsPanel.classic #sidePanelConvert .cv-out, #missionsPanel.classic #sidePanelConvert .cv-btn { color: #00ffaa; }
+        #missionsPanel.arcade  #sidePanelConvert .cv-out, #missionsPanel.arcade  #sidePanelConvert .cv-btn { color: #ccff00; }
+
         .side-tabs-dots { display: flex; gap: 5px; justify-content: center; margin-top: 5px; flex-shrink: 0; }
         .side-tabs-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: 0.2s; }
         .side-tabs-dots span.act { background: currentColor; box-shadow: 0 0 6px currentColor; }
@@ -1913,6 +1943,9 @@
              PRESS START 2P / VT323. Pensado para poder usar VT323 en pixel-pack
              en vez de Press Start 2P a 8px, dificil de leer en frase larga. -->
         <button class="leb-btn" id="lebRoomsDescFont" onclick="cycleRoomsDescFont()">ROOM DESC FONT: DEFAULT</button>
+        <!-- Rescate: devuelve al sitio de fabrica lo que se haya arrastrado
+             fuera de la pantalla o detras del cartel y ya no se pueda pulsar. -->
+        <button class="leb-btn" onclick="rescueLostLayout()">BRING BACK LOST</button>
         <button class="leb-btn" onclick="setLayoutAsDefault()">SET AS DEFAULT</button>
         <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
         <button class="leb-btn" onclick="saveLayoutGlobal(this)">SAVE FOR ALL</button>
@@ -2157,7 +2190,7 @@
                             <!-- Saldo de SP de la pestaña SKINS: mismo sitio y misma
                                  altura que el contador de misiones, solo cambia cual
                                  de los dos se ensena. -->
-                            <span id="skinPanelExtra" style="display:none;font-size:9px;letter-spacing:0.5px;"><span id="skinPointsValue">0</span> SP &middot; $PILL OR SP</span>
+                            <span id="skinPanelExtra" style="display:none;font-size:9px;letter-spacing:0.5px;"><span id="skinPointsValue">0</span> SP</span>
                             <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                         </span>
                     </div>
@@ -2185,16 +2218,18 @@
                         </div>
                         <div class="skin-nav" id="mineVacio" style="display:none"></div>
                     </div>
-                    <!-- CONVERT: convertir $PILL a SP con cantidad libre -->
-                    <div id="sidePanelConvert" style="display:none; flex-direction: column; gap: 12px; padding: 12px;">
-                        <div id="convertLabel" class="convert-label" style="font-size: 11px; color: #888; font-family: 'Russo One'; text-transform: uppercase; letter-spacing: 1px;">$PILL TO SP</div>
-                        <div id="convertDesc" class="convert-desc" style="font-size: 11px; color: #cfd6d0; font-family: 'VT323'; line-height: 1.6;">
-                            Burn your $PILL tokens to mint SP. Each conversion permanently removes $PILL from circulation, reducing total supply.
-                        </div>
-                        <input type="number" id="convertPillInput" class="convert-input" placeholder="Enter amount in $PILL" style="padding: 8px; background: #1a1f26; border: 1px solid #2a3f4a; color: #fff; font-family: 'VT323'; font-size: 12px; border-radius: 4px;">
-                        <div id="convertOutput" class="convert-output" style="font-size: 11px; color: #6a937e; font-family: 'VT323';">= <span id="convertSpOutput">0</span> SP</div>
-                        <button id="convertBtn" class="convert-btn" onclick="convertirPillCustom()" style="padding: 8px; background: #0f8f46; border: 1px solid #000; color: #fff; font-family: 'VT323'; font-size: 12px; cursor: pointer; border-radius: 4px;" onmouseenter="SoundManager.playSimpleHover()">CONVERT</button>
-                        <div id="convertWarning" class="convert-warning" style="font-size: 10px; color: #ff7755; font-family: 'VT323'; margin-top: 8px; line-height: 1.4;">⚠ $PILL tokens are PERMANENTLY BURNED. This cannot be reversed.</div>
+                    <!-- CONVERT: convertir $PILL a SP con cantidad libre.
+                         Sin estilos en linea: TODO (rotulo, parrafos, input y
+                         boton) hereda la letra del contenedor, que lleva la
+                         misma que la descripcion de ROOM · PRICES (.oracle-desc)
+                         y cambia con el mismo boton ROOM DESC FONT. -->
+                    <div id="sidePanelConvert" style="display:none">
+                        <div id="convertLabel" class="oracle-desc cv-label">$PILL TO SP</div>
+                        <div id="convertDesc" class="oracle-desc">Burn your $PILL to mint SP. Every conversion removes those tokens from circulation for good, and the $PILL you spend on skins burns too.</div>
+                        <input type="number" id="convertPillInput" class="cv-input" placeholder="AMOUNT IN $PILL">
+                        <div id="convertOutput" class="oracle-desc cv-out">= <span id="convertSpOutput">0</span> SP</div>
+                        <button id="convertBtn" class="cv-btn" onclick="convertirPillCustom()" onmouseenter="SoundManager.playSimpleHover()">CONVERT</button>
+                        <div id="convertWarning" class="oracle-desc cv-warn">$PILL IS BURNED. THIS CANNOT BE REVERSED.</div>
                     </div>
                     <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span><span id="dot-mine"></span><span id="dot-convert"></span></div>
                 </div>
@@ -6200,11 +6235,16 @@
         skinFlechas: '#skinPrev, #skinNext, #minePrev, #mineNext',
         skinTitulo:  '#sidePanelTitle',
         skinGrid:    '#skinGrid, #mineGrid',
-        // ===== PANEL DE CONVERT: cada elemento editable =====
+        // ===== PESTAÑA CONVERT: cada pieza por su cuenta =====
+        // Igual que las del panel de skins, van ANTES de questsInner: si no,
+        // agarrar cualquiera de ellas resolvia al cartel entero (todas viven
+        // dentro de #missionsInner) y se movia todo de golpe.
         convertLabel: '#convertLabel',
+        convertDesc: '#convertDesc',
         convertInput: '#convertPillInput',
         convertOutput: '#convertOutput',
         convertBtn: '#convertBtn',
+        convertWarning: '#convertWarning',
         tabPuntos:   '.side-tabs-dots',
         tabFlecha:   '.side-tabs-arrow',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
@@ -6391,6 +6431,17 @@
             }
           }
         }
+        // La pestaña CONVERT habla con la MISMA letra que la descripcion de
+        // ROOM · PRICES: David los quiere identicos, asi que no tiene ciclo de
+        // fuente propio — se le copia al contenedor la familia elegida en el
+        // boton ROOM DESC FONT y de ahi la heredan parrafos, input y boton.
+        const cvBox = document.getElementById('sidePanelConvert');
+        if (cvBox) {
+            const rd = menuLayout[layoutStoreKey('roomsDesc')];
+            const fdef = rd && rd.ff ? ROOMS_DESC_FONTS.find(x => x.id === rd.ff) : null;
+            if (fdef && fdef.ff) cvBox.style.fontFamily = fdef.ff;
+            else cvBox.style.removeProperty('font-family');
+        }
         invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
     }
     function layoutTarget(e) {
@@ -6486,6 +6537,52 @@
         const cur = menuLayout['roomsDesc'];
         const f = ROOMS_DESC_FONTS.find(x => x.id === (cur && cur.ff)) || ROOMS_DESC_FONTS[0];
         btn.textContent = 'ROOM DESC FONT: ' + f.label;
+    }
+    // Superficie del elemento que de verdad se ve: su rectangulo recortado por
+    // la ventana y por cada antepasado que corte. Lo segundo es lo que importa
+    // aqui — los carteles son overflow:hidden, asi que al arrastrar una pieza
+    // fuera del cuadro interior desaparece sin salirse de la pantalla.
+    function layoutAreaVisible(el) {
+        const r = el.getBoundingClientRect();
+        let x0 = r.left, y0 = r.top, x1 = r.right, y1 = r.bottom;
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            if (getComputedStyle(p).overflow === 'visible') continue;
+            const pr = p.getBoundingClientRect();
+            x0 = Math.max(x0, pr.left); y0 = Math.max(y0, pr.top);
+            x1 = Math.min(x1, pr.right); y1 = Math.min(y1, pr.bottom);
+        }
+        x0 = Math.max(x0, 0); y0 = Math.max(y0, 0);
+        x1 = Math.min(x1, window.innerWidth); y1 = Math.min(y1, window.innerHeight);
+        return Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
+    }
+    // Devuelve a su sitio de fabrica lo que se haya arrastrado a donde ya no se
+    // puede volver a agarrar. Sin esto, un tiron de mas dejaba la pieza perdida
+    // para siempre: el doble-click que resetea una sola necesita poder pulsarla.
+    // Solo entra si (a) no se ve NADA de ella y (b) en su sitio de fabrica SI se
+    // veria — o sea, que la culpa es del arrastre y no de que este apagada por
+    // otro motivo. Toca la POSICION; el tamaño se respeta.
+    function rescueLostLayout() {
+        let n = 0;
+        for (const key in LAYOUT_ELS) {
+            if (LAYOUT_ZONE_KEYS.has(key)) continue;
+            const sk = layoutStoreKey(key);
+            const t = menuLayout[sk];
+            if (!t || (!t.x && !t.y)) continue;      // sin desplazar: nada que rescatar
+            const el = document.querySelector(LAYOUT_ELS[key]);
+            // Sin offsetParent = esta en una pestaña oculta: no se puede juzgar
+            // (mide 0x0) y resetearlo aqui seria descolocarlo sin motivo.
+            if (!el || !el.offsetParent) continue;
+            if (layoutAreaVisible(el) >= 4) continue;             // se ve: se puede agarrar
+            const antes = el.style.translate;
+            el.style.translate = '0px 0px';
+            const seVeriaEnCasa = layoutAreaVisible(el) >= 4;
+            el.style.translate = antes;
+            if (!seVeriaEnCasa) continue;                          // no es cosa del arrastre
+            t.x = 0; t.y = 0; marcarLayoutMio(sk); n++;
+        }
+        applyMenuLayout(); saveMenuLayout();
+        alert(n ? (n + ' element(s) brought back to their default position.')
+                : 'Nothing to rescue: every element is reachable.');
     }
     // Guarda el layout actual como default: si hace RESET ALL, vuelve a aqui.
     function setLayoutAsDefault() {
@@ -7840,45 +7937,29 @@
             cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
             grid.appendChild(cel);
         });
-        // Flechas y puntos propios de esta pestaña, con la misma pinta que los del
-        // catalogo. Solo aparecen cuando hay mas de una pagina.
-        // La fila de abajo se ve SIEMPRE (lleva el cambio), pero las flechas y los
-        // puntos solo cuando hay mas de una pagina.
+        // Flechas y puntos propios de esta pestaña: los MISMOS que los del
+        // catalogo (clase .skin-arrow / .skin-dots), y solo se ven cuando hay
+        // mas de una pagina.
         const nav = document.getElementById('mineNav');
         nav.style.display = 'flex';
         const hayPaginas = paginas > 1;
         document.getElementById('minePrev').style.display = hayPaginas ? '' : 'none';
         document.getElementById('mineNext').style.display = hayPaginas ? '' : 'none';
         document.getElementById('mineDots').style.display = hayPaginas ? 'flex' : 'none';
-        document.getElementById('mineConv').textContent =
-            (SKIN_CONV_PILL / 1000) + 'K $PILL → ' + (SKIN_CONV_PILL / 100) + ' SP';
         const dots = document.getElementById('mineDots'); dots.innerHTML = '';
         for (let i = 0; i < paginas; i++) { const s = document.createElement('span'); if (i === minePagina) s.className = 'act'; dots.appendChild(s); }
         document.getElementById('minePrev').disabled = minePagina === 0;
         document.getElementById('mineNext').disabled = minePagina >= paginas - 1;
     }
-    /* Cambio $PILL -> SP, un paso por pulsacion. Solo en ese sentido: el SP se
+    /* Cambio $PILL -> SP, en la pestaña CONVERT. Solo en ese sentido: el SP se
        gana jugando y poder revenderlo por tokens convertiria el juego en una
        granja. El $PILL que entra aqui se QUEMA (el servidor lo apunta y lo
        destruye del mint), no se guarda en ninguna cartera. */
-    const SKIN_CONV_PILL = 1000;
-    async function skinConvertir() {
-        const btn = document.getElementById('mineConv');
-        btn.disabled = true; const antes = btn.textContent; btn.textContent = '...';
-        const r = await paisConvertir(SKIN_CONV_PILL);
-        btn.disabled = false; btn.textContent = antes;
-        if (r && r.ok === false) { showSystemMsg(r.error || 'Could not exchange.', 'EXCHANGE'); return; }
-        const sp = document.getElementById('skinPointsValue'); if (sp) sp.textContent = paisSp();
-        mineRender(); skinRender();
-        try { SoundManager.play('select'); } catch (e) {}
-    }
-
-    // Conversión libre de cantidad de $PILL a SP
     async function convertirPillCustom() {
         const input = document.getElementById('convertPillInput');
         const pill = parseInt(input.value) || 0;
         if (pill <= 0) { showSystemMsg('Enter amount > 0', 'CONVERT'); return; }
-        const btn = event.target;
+        const btn = document.getElementById('convertBtn');
         btn.disabled = true; const antes = btn.textContent; btn.textContent = '...';
         const r = await paisConvertir(pill);
         btn.disabled = false; btn.textContent = antes;
