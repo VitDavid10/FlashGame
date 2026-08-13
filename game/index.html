@@ -6047,7 +6047,8 @@
             openPalette(dx + dy < 0 ? 'colTop' : 'colBot');
         });
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderMenuPill);
-        renderMenuPill();
+        // No pintar aqui para evitar animacion molesta de cambio de colors al entrar
+        // El pillLoop se encargará cuando el login esté visible
         // rAF solo pinta con el login visible (bob + barrido); en partida no gasta.
         (function pillLoop() {
             requestAnimationFrame(pillLoop);
