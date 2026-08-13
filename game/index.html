@@ -579,9 +579,12 @@
         /* Los dos lados de la cabecera y los contadores: mismo cuerpo de letra en
            las cuatro pestañas, para que al cambiar de una a otra no baile nada. */
         .menu-side-head .msh-left, .menu-side-head .msh-right { display: flex; align-items: center; gap: 10px; }
-        .menu-side-head .msh-sub { font-size: 10px; letter-spacing: 0.5px; }
-        #missionsPanel.classic .menu-side-head .msh-sub { color: #00ffaa !important; }
-        #missionsPanel.arcade  .menu-side-head .msh-sub { color: #ccff00 !important; }
+        /* .msh-sub SIN antepasado en el selector: la usan los contadores de la
+           cabecera Y el numero de pagina del pie, para que se lean con la misma
+           letra y el mismo cuerpo arriba y abajo. */
+        .msh-sub { font-size: 10px; letter-spacing: 0.5px; }
+        #missionsPanel.classic .msh-sub { color: #00ffaa !important; }
+        #missionsPanel.arcade  .msh-sub { color: #ccff00 !important; }
 
         /* Oracle: descripción + precio centrado + lista de salas */
         .oracle-desc { color: #999; font-family: 'Inter',sans-serif; font-size: 10px; line-height: 1.35; margin-bottom: 5px; flex-shrink: 0; }
@@ -675,17 +678,22 @@
            Una sola fila para las cuatro pestañas: pagina | puntos | flecha. Los
            dos lados miden lo mismo (flex:1) para que los puntos queden centrados
            de verdad en el cuadro, no desplazados por el ancho del texto. */
-        .side-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 5px; flex-shrink: 0; }
-        .side-foot .sf-side { flex: 1 0 0; display: flex; align-items: center; }
+        /* Misma tipografia que la cabecera: el numero de pagina lleva la clase
+           .msh-sub, igual que el saldo de SP de arriba, y las dos flechas son la
+           misma pieza. Asi el pie y la cabecera se leen como lo mismo. */
+        .side-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 5px; flex-shrink: 0;
+                     font-family: 'Russo One'; text-transform: uppercase; }
+        body.pixel-pack .side-foot { font-family: 'Press Start 2P', monospace; }
+        /* Los dos lados miden lo mismo (flex-basis 0 + grow 1) aunque el de la
+           izquierda este vacio: es lo que deja los puntos centrados de verdad en
+           el cuadro y no desplazados por el ancho del numero. */
+        .side-foot .sf-side { flex: 1 0 0; display: flex; align-items: center; gap: 10px; }
         .side-foot .sf-right { justify-content: flex-end; }
-        .side-foot .sf-page { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px; line-height: 1; }
         /* .side-tabs-arrow lleva "transition: 0.2s" (o sea, TODAS las
            propiedades) y visibility es transicionable: al pasar a una pestaña
            sin paginas la flecha se quedaba 200ms en pantalla antes de irse.
            Aqui solo transicionan los colores del hover. */
         .side-foot .side-tabs-arrow { transition: background-color 0.2s, color 0.2s; }
-        #missionsPanel.classic .side-foot .sf-page { color: #00ffaa; }
-        #missionsPanel.arcade  .side-foot .sf-page { color: #ccff00; }
 
         /* ===== Pestaña CONVERT =====
            La letra se pone UNA vez en el contenedor y la heredan los parrafos,
@@ -2244,9 +2252,12 @@
                          pie subia en CONVERT, la pestaña con menos contenido, y
                          los puntos salian a otra altura que en las demas. -->
                     <div class="side-foot">
-                        <span class="sf-side"><span class="sf-page" id="skinFootPage">1/1</span></span>
+                        <span class="sf-side"></span>
                         <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span><span id="dot-mine"></span><span id="dot-convert"></span></div>
-                        <span class="sf-side sf-right"><button class="side-tabs-arrow" id="skinFootNext" onclick="skinFootNext()" onmouseenter="SoundManager.playSimpleHover()" title="Next page">›</button></span>
+                        <span class="sf-side sf-right">
+                            <span class="sf-page msh-sub" id="skinFootPage">1/1</span>
+                            <button class="side-tabs-arrow" id="skinFootNext" onclick="skinFootNext()" onmouseenter="SoundManager.playSimpleHover()" title="Next page">›</button>
+                        </span>
                     </div>
                 </div>
             </div>
