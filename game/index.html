@@ -564,7 +564,11 @@
            la tabla de salas se cortaba a la mitad. */
         /* nowrap: "DAILY QUESTS" + contador + flecha se partia en dos lineas al
            estrecharse el inner (el head cabe justo). */
-        .menu-side-head { font-family: 'Russo One'; font-size: 12px; letter-spacing: 1.5px; color: #888; text-transform: uppercase; margin-bottom: 7px; display: flex; align-items: center; justify-content: space-between; gap: 8px; white-space: nowrap; flex-shrink: 0; }
+        /* position/z-index: la cabecera manda por encima del contenido de la
+           pestaña. Sin esto, lo que se pinte debajo (o se coloque encima desde
+           EDIT LAYOUT) tapaba la flecha de cambiar de pestaña y se quedaba sin
+           poder pulsarse. */
+        .menu-side-head { font-family: 'Russo One'; font-size: 12px; letter-spacing: 1.5px; color: #888; text-transform: uppercase; margin-bottom: 7px; display: flex; align-items: center; justify-content: space-between; gap: 8px; white-space: nowrap; flex-shrink: 0; position: relative; z-index: 5; }
         #oraclePanel.classic .menu-side-head { color: #00ffaa; }
         #oraclePanel.arcade  .menu-side-head { color: #ccff00; }
         #missionsPanel.classic .menu-side-head { color: #00ffaa; }
@@ -572,8 +576,12 @@
         .menu-side-head .otimer { font-size: 12px; letter-spacing: 1px; }
         #oraclePanel.classic .otimer { color: #00ffaa; }
         #oraclePanel.arcade  .otimer { color: #ccff00; }
-        #missionsPanel.classic #sidePanelExtra { color: #00ffaa !important; }
-        #missionsPanel.arcade  #sidePanelExtra { color: #ccff00 !important; }
+        /* Los dos lados de la cabecera y los contadores: mismo cuerpo de letra en
+           las cuatro pestañas, para que al cambiar de una a otra no baile nada. */
+        .menu-side-head .msh-left, .menu-side-head .msh-right { display: flex; align-items: center; gap: 10px; }
+        .menu-side-head .msh-sub { font-size: 10px; letter-spacing: 0.5px; }
+        #missionsPanel.classic .menu-side-head .msh-sub { color: #00ffaa !important; }
+        #missionsPanel.arcade  .menu-side-head .msh-sub { color: #ccff00 !important; }
 
         /* Oracle: descripción + precio centrado + lista de salas */
         .oracle-desc { color: #999; font-family: 'Inter',sans-serif; font-size: 10px; line-height: 1.35; margin-bottom: 5px; flex-shrink: 0; }
@@ -690,7 +698,6 @@
                             font-family: 'Inter', sans-serif; font-size: 10px; line-height: 1.35; color: #999; }
         body.pixel-pack #sidePanelConvert { font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1.05; }
         #sidePanelConvert .oracle-desc { white-space: normal; font-family: inherit; font-size: inherit; line-height: inherit; margin-bottom: 0; }
-        #sidePanelConvert .cv-label { color: #fff; letter-spacing: 1px; }
         #sidePanelConvert .cv-out { color: currentColor; }
         #sidePanelConvert .cv-warn { color: #ff7755; }
         /* Input y boton: misma letra que los parrafos (heredada), solo cambia la
@@ -2167,7 +2174,7 @@
                      (SETTINGS -> EDIT LAYOUT), asi se puede ajustar el tamano/
                      posicion del contenido sin mover el cartel entero. -->
                 <div class="cartel-inner" id="oracleInner">
-                    <div class="menu-side-head"><span>ROOM · PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
+                    <div class="menu-side-head"><span>PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
                     <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
                     <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
                     <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
@@ -2183,14 +2190,19 @@
                 <!-- Cuadrado interior: editable por separado del marco de piedra
                      (SETTINGS -> EDIT LAYOUT). -->
                 <div class="cartel-inner" id="missionsInner">
+                    <!-- Cabecera IGUAL en las cuatro pestañas: rotulo (con su
+                         contador pegado, si lo tiene) a la izquierda y el saldo
+                         de SP al final, justo antes de la flecha. Los dos
+                         contadores comparten clase .msh-sub para que ninguno
+                         desentone del otro al cambiar de pestaña. -->
                     <div class="menu-side-head">
-                        <span id="sidePanelTitle">DAILY QUESTS</span>
-                        <span style="display:flex; align-items:center; gap:10px;">
-                            <span id="sidePanelExtra" style="font-size:10px;letter-spacing:0.5px;"><span id="missionsDone">0</span>/5 · <span id="missionsSp">0</span> SP</span>
-                            <!-- Saldo de SP de la pestaña SKINS: mismo sitio y misma
-                                 altura que el contador de misiones, solo cambia cual
-                                 de los dos se ensena. -->
-                            <span id="skinPanelExtra" style="display:none;font-size:9px;letter-spacing:0.5px;"><span id="skinPointsValue">0</span> SP</span>
+                        <span class="msh-left">
+                            <span id="sidePanelTitle">MISSIONS</span>
+                            <span id="missionsCount" class="msh-sub"><span id="missionsDone">0</span>/5</span>
+                        </span>
+                        <span class="msh-right">
+                            <span id="sidePanelExtra" class="msh-sub"><span id="missionsSp">0</span> SP</span>
+                            <span id="skinPanelExtra" class="msh-sub" style="display:none"><span id="skinPointsValue">0</span> SP</span>
                             <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                         </span>
                     </div>
@@ -2224,7 +2236,6 @@
                          misma que la descripcion de ROOM · PRICES (.oracle-desc)
                          y cambia con el mismo boton ROOM DESC FONT. -->
                     <div id="sidePanelConvert" style="display:none">
-                        <div id="convertLabel" class="oracle-desc cv-label">$PILL TO SP</div>
                         <div id="convertDesc" class="oracle-desc">Burn your $PILL to mint SP. Every conversion removes those tokens from circulation for good, and the $PILL you spend on skins burns too.</div>
                         <input type="number" id="convertPillInput" class="cv-input" placeholder="AMOUNT IN $PILL">
                         <div id="convertOutput" class="oracle-desc cv-out">= <span id="convertSpOutput">0</span> SP</div>
@@ -6218,9 +6229,8 @@
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         // ===== PANEL DE SKINS: cada pieza por separado =====
         // El bloque de las 8 pildoras se mueve y escala ENTERO (skinGrid), no
-        // celda a celda: agarrar una celda suelta descuadraba la rejilla. El
-        // rotulo, las flechas de pagina, los puntos de pagina, la flecha que
-        // cambia de pestaña y los puntos de pestaña van cada uno por su cuenta.
+        // celda a celda: agarrar una celda suelta descuadraba la rejilla. Las
+        // flechas y los puntos de pagina van cada uno por su cuenta.
         //
         // Todas son claves COMPARTIDAS por las dos pestañas (catalogo y las
         // tuyas) con selector por comas, igual que walletBtn: si cada pestaña
@@ -6231,21 +6241,23 @@
         // este panel vive dentro de #missionsInner (questsInner). Declaradas
         // despues de el, agarrar una flecha o una pildora resolvia al cartel
         // entero y se movia todo de golpe.
+        //
+        // La CABECERA (rotulo, contadores) y los PUNTOS DE PESTAÑA no estan y no
+        // deben estar: son la navegacion del panel, tienen que verse igual en las
+        // cuatro pestañas, y moverlos solo servia para descuadrarlas entre si o
+        // para perder los puntos detras del cartel.
         skinPuntos:  '#skinDots, #mineDots',
         skinFlechas: '#skinPrev, #skinNext, #minePrev, #mineNext',
-        skinTitulo:  '#sidePanelTitle',
         skinGrid:    '#skinGrid, #mineGrid',
         // ===== PESTAÑA CONVERT: cada pieza por su cuenta =====
         // Igual que las del panel de skins, van ANTES de questsInner: si no,
         // agarrar cualquiera de ellas resolvia al cartel entero (todas viven
         // dentro de #missionsInner) y se movia todo de golpe.
-        convertLabel: '#convertLabel',
         convertDesc: '#convertDesc',
         convertInput: '#convertPillInput',
         convertOutput: '#convertOutput',
         convertBtn: '#convertBtn',
         convertWarning: '#convertWarning',
-        tabPuntos:   '.side-tabs-dots',
         tabFlecha:   '.side-tabs-arrow',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
         rooms: '#oraclePanel', quests: '#missionsPanel',
@@ -7855,10 +7867,13 @@
         document.getElementById('sidePanelConvert').style.display = es('convert') ? 'flex' : 'none';
         document.getElementById('sidePanelTitle').textContent =
             es('missions') ? 'MISSIONS' : (es('skins') ? 'SKINS' : (es('mine') ? 'YOUR SKINS' : 'CONVERT'));
-        // Cada pestaña ensena SU contador en el mismo hueco de la cabecera: el
-        // progreso de misiones o el saldo de SP.
+        // El progreso de misiones va PEGADO al rotulo (a su izquierda del todo) y
+        // el saldo de SP siempre al final, antes de la flecha. En MISSIONS el SP
+        // que se ensena es el que dan las misiones; en las otras tres, el que
+        // tienes. Mismo hueco y misma letra en las cuatro.
+        document.getElementById('missionsCount').style.display = es('missions') ? 'inline-block' : 'none';
         document.getElementById('sidePanelExtra').style.display = es('missions') ? 'inline-block' : 'none';
-        document.getElementById('skinPanelExtra').style.display = (es('skins') || es('mine')) ? 'inline-block' : 'none';
+        document.getElementById('skinPanelExtra').style.display = es('missions') ? 'none' : 'inline-block';
         document.getElementById('dot-missions').classList.toggle('act', es('missions'));
         document.getElementById('dot-skins').classList.toggle('act', es('skins'));
         document.getElementById('dot-mine').classList.toggle('act', es('mine'));
