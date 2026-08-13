@@ -1904,6 +1904,7 @@
              PRESS START 2P / VT323. Pensado para poder usar VT323 en pixel-pack
              en vez de Press Start 2P a 8px, dificil de leer en frase larga. -->
         <button class="leb-btn" id="lebRoomsDescFont" onclick="cycleRoomsDescFont()">ROOM DESC FONT: DEFAULT</button>
+        <button class="leb-btn" onclick="setLayoutAsDefault()">SET AS DEFAULT</button>
         <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
         <button class="leb-btn" onclick="saveLayoutGlobal(this)">SAVE FOR ALL</button>
         <button class="leb-btn done" onclick="exitLayoutEdit()">DONE</button>
@@ -5722,6 +5723,8 @@
             try { paintLoginBg(m); } catch(e) {}
             els.modeScreen.style.display = 'none';
             els.loginOverlay.style.display = 'flex';
+            // Siempre arrancar con DEFAULT (sin skin equipada) — evita rareza de auto-equip
+            if (typeof _paisEstado !== 'undefined') _paisEstado.equipped = null;
             // La wallet entra AQUI, con el menu ya montado (ver arriba).
             if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
             els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
@@ -6035,6 +6038,8 @@
     (function initMenuPill() {
         const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
         cv.addEventListener('click', e => {
+            // No permitir editar colores si hay skin equipada
+            if (typeof paisPuesta === 'function' && paisPuesta()) return;
             const r = cv.getBoundingClientRect();
             const dx = (e.clientX - r.left) * (cv.width / r.width) - cv.width / 2;
             const dy = (e.clientY - r.top) * (cv.height / r.height) - (cv.height / 2 + 18);
@@ -6365,7 +6370,25 @@
         invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
     }
     function layoutTarget(e) {
-        for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
+        // Proteger pantalla completa, canvas y overlays generales
+        const prohibited = ['#loginOverlay', '#modeScreen', '#loginBgCv', '#modeSceneCv', 'canvas', '.menu-row'];
+        if (e.target.closest && e.target.closest(prohibited.join(', '))) return null;
+
+        for (const key in LAYOUT_ELS) {
+            const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]);
+            if (!el) continue;
+
+            // Rechazar si es un contenedor muy grande o si está dentro de una zona prohibida
+            if (el.closest(prohibited.join(', '))) continue;
+
+            const rect = el.getBoundingClientRect();
+            const area = rect.width * rect.height;
+            // Si el elemento es muy grande (más de 40% de la pantalla), saltarlo
+            const maxArea = window.innerWidth * window.innerHeight * 0.4;
+            if (area > maxArea) continue;
+
+            return { key, el };
+        }
         return null;
     }
     function enterLayoutEdit() {
@@ -6456,9 +6479,29 @@
         const f = ROOMS_DESC_FONTS.find(x => x.id === (cur && cur.ff)) || ROOMS_DESC_FONTS[0];
         btn.textContent = 'ROOM DESC FONT: ' + f.label;
     }
-    // RESET ALL vuelve a cero Y suelta las claves propias: a partir de aqui
-    // manda otra vez el global del servidor.
-    function resetMenuLayout() { menuLayout = {}; layoutMine.clear(); saveLayoutMine(); saveMenuLayout(); applyMenuLayout(); syncRoomsDescFontBtn(); }
+    // Guarda el layout actual como default: si hace RESET ALL, vuelve a aqui.
+    function setLayoutAsDefault() {
+        try {
+            localStorage.setItem('pw_menu_layout_default', JSON.stringify(menuLayout));
+            alert('Current layout saved as DEFAULT. Use RESET ALL to restore.');
+        } catch (e) {
+            alert('Could not save as default');
+        }
+    }
+    // RESET ALL vuelve al default guardado (o al horneado si no hay custom default).
+    function resetMenuLayout() {
+        try {
+            const custom = localStorage.getItem('pw_menu_layout_default');
+            menuLayout = custom ? JSON.parse(custom) : JSON.parse(JSON.stringify(MENU_LAYOUT_HORNEADO));
+        } catch (e) {
+            menuLayout = JSON.parse(JSON.stringify(MENU_LAYOUT_HORNEADO));
+        }
+        layoutMine.clear();
+        saveLayoutMine();
+        saveMenuLayout();
+        applyMenuLayout();
+        syncRoomsDescFontBtn();
+    }
     // Sube el layout actual al servidor → se vuelve GLOBAL para todos (se difunde
     // por /api/rooms). Sin auth: herramienta de diseño temporal (quitar el editor
     // cuando la UI esté fijada).
