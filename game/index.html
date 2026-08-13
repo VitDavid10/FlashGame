@@ -665,6 +665,13 @@
         .skin-arrow:hover:not(:disabled) { background: currentColor; color: #04150c; }
         .skin-arrow:disabled { opacity: 0.25; cursor: default; }
         .skin-dots { display: flex; gap: 4px; }
+        /* Boton del cambio: mismo lenguaje que las flechas pero en dorado, que es
+           el color con el que la tienda habla de $PILL. */
+        .skin-conv { background: transparent; border: 1px solid #ffce3d; color: #ffce3d; height: 18px; padding: 0 7px;
+                     cursor: pointer; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: 0.5px;
+                     line-height: 1; transition: 0.15s; margin-left: 8px; white-space: nowrap; }
+        .skin-conv:hover:not(:disabled) { background: rgba(255,206,61,0.16); color: #fff; }
+        .skin-conv:disabled { opacity: 0.4; cursor: default; }
         .skin-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.15); }
         .skin-dots span.act { background: currentColor; box-shadow: 0 0 5px currentColor; }
         #missionsPanel.classic .skin-dots span.act, #missionsPanel.classic .skin-arrow, #missionsPanel.classic .skin-cell:hover { color: #00ffaa; }
@@ -2161,10 +2168,14 @@
                          volver a pasar por el catalogo. -->
                     <div id="sidePanelMine" style="display:none">
                         <div class="skin-grid" id="mineGrid"></div>
-                        <div class="skin-nav" id="mineNav" style="display:none">
+                        <div class="skin-nav" id="mineNav">
                             <button class="skin-arrow" id="minePrev" onclick="minePage(-1)" onmouseenter="SoundManager.playSimpleHover()">&#9664;</button>
                             <div class="skin-dots" id="mineDots"></div>
                             <button class="skin-arrow" id="mineNext" onclick="minePage(1)" onmouseenter="SoundManager.playSimpleHover()">&#9654;</button>
+                            <!-- Cambio $PILL -> SP. Un paso fijo por pulsacion: en un
+                                 panel de este ancho un campo de texto no cabe, y el
+                                 ratio es siempre el mismo. -->
+                            <button class="skin-conv" id="mineConv" onclick="skinConvertir()" onmouseenter="SoundManager.playSimpleHover()"></button>
                         </div>
                         <div class="skin-nav" id="mineVacio" style="display:none"></div>
                     </div>
@@ -6147,17 +6158,27 @@
         name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
         features: '#btnFeatures', roomsInner: '#oracleInner', questsInner: '#missionsInner',
         rooms: '#oraclePanel', quests: '#missionsPanel',
-        // Rejilla de las 8 skins y su fila de flechas. Claves COMPARTIDAS por
-        // las dos pestañas (catalogo y las tuyas) con selector por comas, igual
-        // que walletBtn: moverlas o escalarlas en una las mueve en la otra, que
-        // es lo que se quiere — si cada una tuviera su sitio se descuadrarian
-        // entre si al cambiar de pestaña.
-        // skinCells va ANTES que skinGrid por lo de siempre: la celda esta
-        // DENTRO de la rejilla y target() se queda con la primera clave que casa
-        // via closest(), asi que la mas especifica tiene que ir primero.
-        skinCells: '#skinGrid .skin-cell, #mineGrid .skin-cell',
-        skinGrid: '#skinGrid, #mineGrid',
-        skinNav: '.skin-nav',
+        // ===== PANEL DE SKINS: cada pieza por separado =====
+        // El bloque de las 8 pildoras se mueve y escala ENTERO (skinGrid), no
+        // celda a celda: agarrar una celda suelta descuadraba la rejilla. El
+        // rotulo, las flechas de pagina, los puntos de pagina, la flecha que
+        // cambia de pestaña y los puntos de pestaña van cada uno por su cuenta,
+        // asi que se pueden llevar a donde haga falta sin arrastrar al resto.
+        //
+        // Todas son claves COMPARTIDAS por las dos pestañas (catalogo y las
+        // tuyas) con selector por comas, igual que walletBtn: si cada pestaña
+        // guardara su sitio, cambiar de una a otra descuadraria el panel.
+        //
+        // ORDEN: de mas especifico a menos. target() resuelve por la primera
+        // clave que casa via closest(), asi que los hijos tienen que ir antes
+        // que sus contenedores — .skin-dots y .skin-arrow viven dentro de
+        // .skin-nav, y .side-tabs-arrow dentro de .menu-side-head.
+        skinPuntos:  '#skinDots, #mineDots',
+        skinFlechas: '#skinPrev, #skinNext, #minePrev, #mineNext',
+        skinTitulo:  '#sidePanelTitle',
+        skinGrid:    '#skinGrid, #mineGrid',
+        tabPuntos:   '.side-tabs-dots',
+        tabFlecha:   '.side-tabs-arrow',
         zoneA: '#noVirusZoneA', zoneB: '#noVirusZoneB',
     };
     // Zonas sin virus: editables por el mismo sistema de layout, pero NO son
@@ -7762,13 +7783,37 @@
         });
         // Flechas y puntos propios de esta pestaña, con la misma pinta que los del
         // catalogo. Solo aparecen cuando hay mas de una pagina.
+        // La fila de abajo se ve SIEMPRE (lleva el cambio), pero las flechas y los
+        // puntos solo cuando hay mas de una pagina.
         const nav = document.getElementById('mineNav');
-        nav.style.display = paginas > 1 ? 'flex' : 'none';
+        nav.style.display = 'flex';
+        const hayPaginas = paginas > 1;
+        document.getElementById('minePrev').style.display = hayPaginas ? '' : 'none';
+        document.getElementById('mineNext').style.display = hayPaginas ? '' : 'none';
+        document.getElementById('mineDots').style.display = hayPaginas ? 'flex' : 'none';
+        document.getElementById('mineConv').textContent =
+            (SKIN_CONV_PILL / 1000) + 'K $PILL → ' + (SKIN_CONV_PILL / 100) + ' SP';
         const dots = document.getElementById('mineDots'); dots.innerHTML = '';
         for (let i = 0; i < paginas; i++) { const s = document.createElement('span'); if (i === minePagina) s.className = 'act'; dots.appendChild(s); }
         document.getElementById('minePrev').disabled = minePagina === 0;
         document.getElementById('mineNext').disabled = minePagina >= paginas - 1;
     }
+    /* Cambio $PILL -> SP, un paso por pulsacion. Solo en ese sentido: el SP se
+       gana jugando y poder revenderlo por tokens convertiria el juego en una
+       granja. El $PILL que entra aqui se QUEMA (el servidor lo apunta y lo
+       destruye del mint), no se guarda en ninguna cartera. */
+    const SKIN_CONV_PILL = 1000;
+    async function skinConvertir() {
+        const btn = document.getElementById('mineConv');
+        btn.disabled = true; const antes = btn.textContent; btn.textContent = '...';
+        const r = await paisConvertir(SKIN_CONV_PILL);
+        btn.disabled = false; btn.textContent = antes;
+        if (r && r.ok === false) { showSystemMsg(r.error || 'Could not exchange.', 'EXCHANGE'); return; }
+        const sp = document.getElementById('skinPointsValue'); if (sp) sp.textContent = paisSp();
+        mineRender(); skinRender();
+        try { SoundManager.play('select'); } catch (e) {}
+    }
+
     function minePage(d) {
         const total = 1 + ((typeof paisMias === 'function') ? paisMias().length : 0);
         const paginas = Math.max(1, Math.ceil(total / SKIN_POR_PAGINA));
