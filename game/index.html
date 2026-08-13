@@ -2173,14 +2173,21 @@
                             <button class="skin-arrow" id="minePrev" onclick="minePage(-1)" onmouseenter="SoundManager.playSimpleHover()">&#9664;</button>
                             <div class="skin-dots" id="mineDots"></div>
                             <button class="skin-arrow" id="mineNext" onclick="minePage(1)" onmouseenter="SoundManager.playSimpleHover()">&#9654;</button>
-                            <!-- Cambio $PILL -> SP. Un paso fijo por pulsacion: en un
-                                 panel de este ancho un campo de texto no cabe, y el
-                                 ratio es siempre el mismo. -->
-                            <button class="skin-conv" id="mineConv" onclick="skinConvertir()" onmouseenter="SoundManager.playSimpleHover()"></button>
                         </div>
                         <div class="skin-nav" id="mineVacio" style="display:none"></div>
                     </div>
-                    <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span><span id="dot-mine"></span></div>
+                    <!-- CONVERT: convertir $PILL a SP con cantidad libre -->
+                    <div id="sidePanelConvert" style="display:none; flex-direction: column; gap: 12px; padding: 12px;">
+                        <div style="font-size: 11px; color: #888; font-family: 'Russo One'; text-transform: uppercase; letter-spacing: 1px;">$PILL → SP Converter</div>
+                        <div style="font-size: 9px; color: #aaa; font-family: 'VT323'; line-height: 1.4;">
+                            Quema tus $PILL para obtener SP. Cada conversión reduce el suministro de $PILL en circulación.
+                        </div>
+                        <input type="number" id="convertPillInput" placeholder="Amount in $PILL" style="padding: 8px; background: #1a1f26; border: 1px solid #2a3f4a; color: #fff; font-family: 'Press Start 2P'; font-size: 9px; border-radius: 4px;">
+                        <div style="font-size: 8px; color: #6a7; font-family: 'VT323';">= <span id="convertSpOutput">0</span> SP</div>
+                        <button onclick="convertirPillCustom()" style="padding: 8px; background: #0f8f46; border: 1px solid #000; color: #fff; font-family: 'Press Start 2P'; font-size: 9px; cursor: pointer; border-radius: 4px;" onmouseenter="SoundManager.playSimpleHover()">CONVERT</button>
+                        <div style="font-size: 8px; color: #f88; font-family: 'VT323'; margin-top: 8px;">⚠ $PILL burnt in conversion</div>
+                    </div>
+                    <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span><span id="dot-mine"></span><span id="dot-convert"></span></div>
                 </div>
             </div>
         </div>
@@ -7722,10 +7729,10 @@
             }).join('');
         } catch (e) {}
     }
-    // Carrusel del panel inferior derecho: alterna MISSIONS ↔ SKINS
+    // Carrusel del panel inferior derecho: alterna MISSIONS ↔ SKINS ↔ YOUR SKINS ↔ CONVERT
     let sidePanelTab = 'missions';
-    // Tres pestañas en ciclo: MISSIONS -> SKINS -> YOUR SKINS -> MISSIONS.
-    const SIDE_TABS = ['missions', 'skins', 'mine'];
+    // Cuatro pestañas en ciclo: MISSIONS -> SKINS -> YOUR SKINS -> CONVERT -> MISSIONS.
+    const SIDE_TABS = ['missions', 'skins', 'mine', 'convert'];
     function switchSidePanel() {
         const i = SIDE_TABS.indexOf(sidePanelTab);
         sidePanelTab = SIDE_TABS[(i + 1) % SIDE_TABS.length];
@@ -7733,18 +7740,20 @@
         document.getElementById('sidePanelMissions').style.display = es('missions') ? 'block' : 'none';
         document.getElementById('sidePanelSkins').style.display = es('skins') ? 'flex' : 'none';
         document.getElementById('sidePanelMine').style.display = es('mine') ? 'flex' : 'none';
+        document.getElementById('sidePanelConvert').style.display = es('convert') ? 'flex' : 'none';
         document.getElementById('sidePanelTitle').textContent =
-            es('missions') ? 'MISSIONS' : (es('skins') ? 'SKINS' : 'YOUR SKINS');
+            es('missions') ? 'MISSIONS' : (es('skins') ? 'SKINS' : (es('mine') ? 'YOUR SKINS' : 'CONVERT'));
         // Cada pestaña ensena SU contador en el mismo hueco de la cabecera: el
         // progreso de misiones o el saldo de SP.
         document.getElementById('sidePanelExtra').style.display = es('missions') ? 'inline-block' : 'none';
-        document.getElementById('skinPanelExtra').style.display = es('missions') ? 'none' : 'inline-block';
+        document.getElementById('skinPanelExtra').style.display = (es('skins') || es('mine')) ? 'inline-block' : 'none';
         document.getElementById('dot-missions').classList.toggle('act', es('missions'));
         document.getElementById('dot-skins').classList.toggle('act', es('skins'));
         document.getElementById('dot-mine').classList.toggle('act', es('mine'));
-        // Mostrar wallet cuando entras a SKINS (igual que en salas de pago)
+        document.getElementById('dot-convert').classList.toggle('act', es('convert'));
+        // Mostrar wallet cuando entras a SKINS, YOUR SKINS o CONVERT (donde hay dinero)
         if (typeof GameWalletUI !== 'undefined') {
-            if (es('skins') || es('mine')) GameWalletUI.setVisible(true);
+            if (es('skins') || es('mine') || es('convert')) GameWalletUI.setVisible(true);
             else GameWalletUI.setVisible(false);
         }
         // Sincroniza con el servidor ANTES de pintar: la propiedad y el saldo son
@@ -7848,6 +7857,34 @@
         mineRender(); skinRender();
         try { SoundManager.play('select'); } catch (e) {}
     }
+
+    // Conversión libre de cantidad de $PILL a SP
+    async function convertirPillCustom() {
+        const input = document.getElementById('convertPillInput');
+        const pill = parseInt(input.value) || 0;
+        if (pill <= 0) { showSystemMsg('Enter amount > 0', 'CONVERT'); return; }
+        const btn = event.target;
+        btn.disabled = true; const antes = btn.textContent; btn.textContent = '...';
+        const r = await paisConvertir(pill);
+        btn.disabled = false; btn.textContent = antes;
+        if (r && r.ok === false) { showSystemMsg(r.error || 'Could not exchange.', 'CONVERT'); return; }
+        const sp = document.getElementById('skinPointsValue'); if (sp) sp.textContent = paisSp();
+        input.value = '';
+        document.getElementById('convertSpOutput').textContent = '0';
+        mineRender(); skinRender();
+        try { SoundManager.play('select'); } catch (e) {}
+    }
+
+    // Actualizar output mientras escribes en el input
+    (function initConvertPanel() {
+        const input = document.getElementById('convertPillInput');
+        if (!input) return;
+        input.addEventListener('input', () => {
+            const pill = parseInt(input.value) || 0;
+            const sp = Math.floor(pill / 100);
+            document.getElementById('convertSpOutput').textContent = sp;
+        });
+    })();
 
     function minePage(d) {
         const total = 1 + ((typeof paisMias === 'function') ? paisMias().length : 0);
