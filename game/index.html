@@ -6410,9 +6410,13 @@
         renderColorPicker();
         document.getElementById('layoutEditBar').style.display = 'flex';
         syncRoomsDescFontBtn();
+        // Abrir el cartel de skins para poder editarlo en el layout editor
+        if (typeof paisModalAbrir === 'function') paisModalAbrir('MX', null);
     }
     function exitLayoutEdit() {
         layoutEditing = false; layoutDrag = null;
+        // Cerrar el cartel de skins cuando salimos del editor
+        if (typeof paisModalCerrar === 'function') paisModalCerrar();
         document.body.classList.remove('layout-editing');
         for (const id of ['pillPalette', 'colorPicker', 'palHint', 'gameWalletArea', 'gwBalBox', 'gwDepositWrap', 'gwConnect']) {
             const el = document.getElementById(id);
