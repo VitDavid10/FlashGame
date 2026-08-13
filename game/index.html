@@ -6002,13 +6002,14 @@
         if (pillSweep && (now - pillSweep.t0) >= PILL_SWEEP_MS) pillSweep = null;
                 // 48 px logicos: resolucion para las 3 bandas + rombo de la ref.
                 const MENU_PILL_WL = 48;
-                const oNew = pixPillSpriteRot(MENU_PILL_WL, cTop, cBot, -Math.PI / 4, true);
-                const pW0 = maxHalf * MENU_PILL_WL / (oNew.S / 2 + oNew.SH);
+                const equippedSkin = typeof paisPuesta === 'function' ? paisPuesta() : null;
+                const oNew = equippedSkin ? paisPillRot(MENU_PILL_WL, equippedSkin, -Math.PI / 4) : pixPillSpriteRot(MENU_PILL_WL, cTop, cBot, -Math.PI / 4, true);
+                const pW0 = maxHalf * MENU_PILL_WL / (oNew.S / 2 + (oNew.SH || 0));
                 const pW = Math.round(pW0 * (1 + breath)), pH = Math.round(pW0 * PILL_RATIO * (1 - breath));
                 g.save();
                 g.translate(W / 2, cyBase + bob);
-                const u = pW / MENU_PILL_WL, dx0 = -oNew.S / 2 * u, dw = (oNew.S + oNew.SH) * u;
-                if (pillSweep) {
+                const u = pW / MENU_PILL_WL, dx0 = -oNew.S / 2 * u, dw = (oNew.S + (oNew.SH || 0)) * u;
+                if (pillSweep && !equippedSkin) {
                     // Barrido: color viejo debajo, el nuevo entra con clip en pasos de 8px.
                     const t = (now - pillSweep.t0) / PILL_SWEEP_MS;
                     const oldTop = pillSweep.half === 'colTop' ? pillSweep.from : cTop;
@@ -7775,7 +7776,7 @@
             cel.addEventListener('click', async () => {
                 const r = await paisPoner(esDefault ? null : code);
                 if (r && r.ok === false) { showSystemMsg(r.error || 'Could not equip that skin.', 'SKINS'); return; }
-                mineRender(); skinRender();
+                mineRender(); skinRender(); renderMenuPill();
                 try { SoundManager.play('select'); } catch (e) {}
             });
             cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
@@ -7901,7 +7902,7 @@
     // en los dos sitios y cualquier retoque vale para ambos. Antes eran dos
     // copias y una siempre se quedaba atras.
     function skinOpen(code) {
-        paisModalAbrir(code, skinRender);
+        paisModalAbrir(code, () => { skinRender(); mineRender(); renderMenuPill(); });
         try { SoundManager.play('select'); } catch (e) {}
     }
     function skinClose() { paisModalCerrar(); }
