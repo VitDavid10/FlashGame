@@ -2178,14 +2178,14 @@
                     </div>
                     <!-- CONVERT: convertir $PILL a SP con cantidad libre -->
                     <div id="sidePanelConvert" style="display:none; flex-direction: column; gap: 12px; padding: 12px;">
-                        <div style="font-size: 11px; color: #888; font-family: 'Russo One'; text-transform: uppercase; letter-spacing: 1px;">$PILL → SP Converter</div>
-                        <div style="font-size: 9px; color: #aaa; font-family: 'VT323'; line-height: 1.4;">
-                            Quema tus $PILL para obtener SP. Cada conversión reduce el suministro de $PILL en circulación.
+                        <div style="font-size: 11px; color: #888; font-family: 'Russo One'; text-transform: uppercase; letter-spacing: 1px;">$PILL TO SP</div>
+                        <div style="font-size: 11px; color: #cfd6d0; font-family: 'VT323'; line-height: 1.6;">
+                            Burn your $PILL tokens to mint SP. Each conversion permanently removes $PILL from circulation, reducing total supply.
                         </div>
-                        <input type="number" id="convertPillInput" placeholder="Amount in $PILL" style="padding: 8px; background: #1a1f26; border: 1px solid #2a3f4a; color: #fff; font-family: 'Press Start 2P'; font-size: 9px; border-radius: 4px;">
-                        <div style="font-size: 8px; color: #6a7; font-family: 'VT323';">= <span id="convertSpOutput">0</span> SP</div>
+                        <input type="number" id="convertPillInput" placeholder="Enter amount in $PILL" style="padding: 8px; background: #1a1f26; border: 1px solid #2a3f4a; color: #fff; font-family: 'VT323'; font-size: 12px; border-radius: 4px;">
+                        <div style="font-size: 11px; color: #6a937e; font-family: 'VT323';">= <span id="convertSpOutput">0</span> SP</div>
                         <button onclick="convertirPillCustom()" style="padding: 8px; background: #0f8f46; border: 1px solid #000; color: #fff; font-family: 'Press Start 2P'; font-size: 9px; cursor: pointer; border-radius: 4px;" onmouseenter="SoundManager.playSimpleHover()">CONVERT</button>
-                        <div style="font-size: 8px; color: #f88; font-family: 'VT323'; margin-top: 8px;">⚠ $PILL burnt in conversion</div>
+                        <div style="font-size: 10px; color: #ff7755; font-family: 'VT323'; margin-top: 8px; line-height: 1.4;">⚠ $PILL tokens are PERMANENTLY BURNED. This cannot be reversed.</div>
                     </div>
                     <div class="side-tabs-dots"><span id="dot-missions" class="act"></span><span id="dot-skins"></span><span id="dot-mine"></span><span id="dot-convert"></span></div>
                 </div>
@@ -5721,21 +5721,24 @@
 
         // Asegurar que la configuración se cargue
         try { checkActiveRoomConfig(); } catch(e) { console.error("Error loading room config", e); }
-        
-        // Usar setTimeout para cambiar de pantalla despues de la animacion
-        setTimeout(() => {
-            // Repinta el fondo del login con la deco YA reubicada a huecos, con el
-            // login todavía oculto: así aparece colocada de golpe, sin que se vea
-            // el reacomodo (el selector movió la deco durante estos 1200ms).
-            try { paintLoginBg(m); } catch(e) {}
-            els.modeScreen.style.display = 'none';
-            els.loginOverlay.style.display = 'flex';
-            // Sincronizar skins desde servidor para mostrar la equipada correctamente
-            if (typeof paisSync === 'function') paisSync().then(() => { if (typeof renderMenuPill === 'function') renderMenuPill(); });
-            // La wallet entra AQUI, con el menu ya montado (ver arriba).
-            if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
-            els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
-        }, 1200);
+
+        // Sincronizar skins ANTES de mostrar el login para que la pildora sea correcta
+        const showLogin = async () => {
+            if (typeof paisSync === 'function') await paisSync();
+            // Usar setTimeout para cambiar de pantalla despues de la animacion
+            setTimeout(() => {
+                // Repinta el fondo del login con la deco YA reubicada a huecos, con el
+                // login todavía oculto: así aparece colocada de golpe, sin que se vea
+                // el reacomodo (el selector movió la deco durante estos 1200ms).
+                try { paintLoginBg(m); } catch(e) {}
+                els.modeScreen.style.display = 'none';
+                els.loginOverlay.style.display = 'flex';
+                // La wallet entra AQUI, con el menu ya montado (ver arriba).
+                if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
+                els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
+            }, 1200);
+        };
+        showLogin();
     }
 
     function goBackToModes() {
@@ -6416,8 +6419,6 @@
         renderColorPicker();
         document.getElementById('layoutEditBar').style.display = 'flex';
         syncRoomsDescFontBtn();
-        // Abrir el cartel de skins para poder editarlo en el layout editor
-        if (typeof paisModalAbrir === 'function') paisModalAbrir('MX', null);
     }
     function exitLayoutEdit() {
         layoutEditing = false; layoutDrag = null;
