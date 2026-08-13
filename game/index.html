@@ -668,8 +668,18 @@
                      transition: 0.12s; min-height: 0; overflow: hidden; }
         .skin-cell:hover { background: rgba(255,255,255,0.07); border-color: currentColor; transform: translateY(-1px); }
         .skin-cell canvas { image-rendering: pixelated; display: block; flex: none; }
-        .skin-cell .sc-cod { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; text-shadow: 1px 1px 0 #000; }
-        .skin-cell .sc-pre { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #ffce3d; letter-spacing: 0.5px; }
+        /* line-height fijo y no "normal": con el automatico de Press Start 2P la
+           caja de linea quedaba justa y la fila de abajo (OWNED / ON / 25K) se
+           veia comida por el borde de la celda, que recorta (overflow:hidden).
+           El nombre puede no caber (UNITED KINGDOM), asi que se corta con
+           puntos suspensivos en vez de partirse en dos lineas. */
+        /* flex:none en los dos: si algo no cabe que sobre de la pildora (que va
+           centrada y se recorta por igual arriba y abajo, apenas se nota) y no
+           del texto, que es lo que se estaba comiendo el borde. */
+        .skin-cell .sc-cod { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #fff; text-shadow: 1px 1px 0 #000;
+                             line-height: 1.6; flex: none; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .skin-cell .sc-pre { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #ffce3d; letter-spacing: 0.5px;
+                             line-height: 1.6; flex: none; }
         .skin-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 4px; flex-shrink: 0; }
         #missionsPanel.classic .skin-cell:hover { color: #00ffaa; }
         #missionsPanel.arcade .skin-cell:hover { color: #ccff00; }
@@ -7947,7 +7957,8 @@
                 cel.appendChild(cv);
             }
             const cod = document.createElement('div'); cod.className = 'sc-cod';
-            cod.textContent = esDefault ? 'DEFAULT' : code;
+            // Mismo criterio que el catalogo: el nombre del pais, no el codigo.
+            cod.textContent = esDefault ? 'DEFAULT' : ((paisSkin(code) || {}).nombre || code).toUpperCase();
             const est = document.createElement('div'); est.className = 'sc-pre';
             const activa = esDefault ? !puesta : puesta === code;
             est.textContent = activa ? 'EQUIPPED' : 'ASSIGN';
@@ -8076,7 +8087,12 @@
         let alto = grid && grid.clientHeight;
         if (!alto) { const otra = document.getElementById('skinGrid'); alto = otra && otra.clientHeight; }
         if (!alto) alto = 247;                       // el alto medido del cuadro
-        return Math.max(14, Math.min(40, Math.floor(((alto - 4) / 2 - 22) / 2.12)));
+        // Se reservan 30px por celda para las dos filas de texto (nombre +
+        // estado). Con los 22 de antes no llegaba: las dos lineas miden ~29 con
+        // sus separaciones, asi que la pildora se comia el hueco y la de abajo
+        // salia cortada por el borde de la celda. Con 30 quedan ~3px de margen
+        // sin encoger la pildora mas de lo necesario.
+        return Math.max(14, Math.min(40, Math.floor(((alto - 4) / 2 - 30) / 2.12)));
     }
 
     function skinRender() {
@@ -8094,7 +8110,10 @@
             const cel = document.createElement('div'); cel.className = 'skin-cell';
             const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
             cv.getContext('2d').drawImage(o.cv, 0, 0);
-            const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.code;
+            // El NOMBRE, no el codigo de dos letras: "AT" se lee como Australia
+            // y estaba justo al lado de "AU", que si lo es. El codigo sigue
+            // estando en el cartel de detalle.
+            const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.n.toUpperCase();
             const pre = document.createElement('div'); pre.className = 'sc-pre';
             pre.textContent = paisPuesta() === p.code ? 'ON' : (paisTengo(p.code) ? 'OWNED' : paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL');
             if (paisTengo(p.code)) pre.style.color = '#00ff88';

@@ -661,9 +661,18 @@ function _paisModalCSS() {
     /* Centrado y no alineado por abajo: cada canvas es un CUADRADO con la
        pildora dentro, asi que por abajo se alinean los cuadrados y las pildoras
        salen descuadradas. */
+    /* Fondo = la CUADRICULA del mapa, no un negro plano: la gracia de ver la
+       pildora a sus cuatro tamaños es ver como quedara en partida, y sobre negro
+       no se juzga igual. El color de la linea sale de --pm-grid, que pone
+       paisModalAbrir con el del modo activo (verde en classic, lima en arcade);
+       el valor de aqui es el que se usa en la landing, donde no hay modo. */
     #${PAIS_MODAL_ID} .pm-crece { display:flex; align-items:center; justify-content:center;
         gap:var(--pm-crece-gap,18px); margin-top:var(--pm-gap,14px); padding:var(--pm-crece-pad,20px 16px);
-        background:rgba(0,0,0,.34); border:2px solid rgba(0,0,0,.5); overflow-x:auto; }
+        background-color:#050505;
+        background-image:linear-gradient(var(--pm-grid,rgba(0,255,170,.13)) 1px, transparent 1px),
+                         linear-gradient(90deg, var(--pm-grid,rgba(0,255,170,.13)) 1px, transparent 1px);
+        background-size:var(--pm-grid-cell,24px) var(--pm-grid-cell,24px);
+        border:2px solid rgba(0,0,0,.5); overflow-x:auto; }
     #${PAIS_MODAL_ID} .pm-crece canvas { image-rendering:pixelated; display:block; flex:none; }
     #${PAIS_MODAL_ID} .pm-pie { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-pie,7px);
         color:#9aa3ac; letter-spacing:.5px; text-align:center; margin-top:12px; line-height:1.7; }
@@ -721,6 +730,12 @@ function paisModalAbrir(code, onCambio) {
     const fr = d.querySelector('.pm-franjas'); fr.innerHTML = '';
     s.bandas.forEach(c => { const i = document.createElement('i'); i.style.background = c; fr.appendChild(i); });
     const cr = d.querySelector('.pm-crece'); cr.innerHTML = '';
+    // Cuadricula del color del modo en el que se esta jugando. El panel lateral
+    // lleva la clase del modo, que es la fuente mas fiable dentro del juego; en
+    // la landing no existe y manda el default del CSS.
+    const panelModo = document.getElementById('missionsPanel');
+    const modo = panelModo && panelModo.classList.contains('arcade') ? 'arcade' : 'classic';
+    cr.style.setProperty('--pm-grid', modo === 'arcade' ? 'rgba(204,255,0,.13)' : 'rgba(0,255,170,.13)');
     let primera = null;
     PAIS_CRECE.forEach(wL => {
         const o = paisPillRot(wL, code, -Math.PI / 4);
