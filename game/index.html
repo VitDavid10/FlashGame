@@ -1019,6 +1019,11 @@
            CONNECT WALLET (imagen de David) algo mas abajo y CANCEL mas cerca
            de los botones para que el conjunto quede centrado. */
         .pw-modal-box.wallet-picker, .pw-modal-box.room-picker { border: none; box-shadow: none; background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat; image-rendering: pixelated; padding: 52px 44px 40px; }
+        /* SELECT A ROOM va con el marco gris V2 (el que eligio David), no con el
+           menu-gris de wallet/deposit/withdraw. El V2 mete el filo mas adentro
+           por arriba y por abajo (6.6% / 3.9% del alto, contra 3.5% / 0.9%), asi
+           que necesita mas padding vertical o el contenido se le monta encima. */
+        .pw-modal-box.room-picker { background-image: url('img/cartel-hero/cartel-hero-v2g.png'); padding: 60px 44px 46px; }
         .room-picker .wp-title { display: block; width: 74%; height: auto; margin: 0 auto 22px; image-rendering: pixelated; }
         /* Colores por rareza de las salas del popup: $5 azul, $10 epico,
            $20 legendario (dorado), $50 mitico (anaranjado) */
@@ -1044,8 +1049,8 @@
            !important donde pisan al bisel de body.pixel-pack. */
         .pw-modal-box.play-picker, .pw-modal-box.settings-box {
             border: none; box-shadow: none;
-            background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
-            image-rendering: pixelated; padding: 46px 42px 34px;
+            background: transparent url('img/cartel-hero/cartel-hero-v2g.png') center/100% 100% no-repeat;
+            image-rendering: pixelated; padding: 54px 42px 42px;
         }
         /* body.pixel-pack va DELANTE en todos los selectores de botón: sin él,
            "body.pixel-pack .q-btn" (0,2,1) le ganaba a ".settings-box .q-btn"

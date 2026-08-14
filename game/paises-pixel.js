@@ -641,8 +641,11 @@ function _paisModalCSS() {
        comillas invertidas — cierran la cadena y parten el fichero entero. */
     #${PAIS_MODAL_ID}, #${PAIS_MODAL_ID} * { cursor: default !important; }
     #${PAIS_MODAL_ID} .pm-x, #${PAIS_MODAL_ID} .pm-btn { cursor: pointer !important; }
+    /* Marco por defecto = el gris V2, el mismo que llevan CHOOSE HOW TO PLAY,
+       SELECT A ROOM y SETTINGS. Las clases pm-v2 / pm-v3g de mas abajo solo
+       existen para poder compararlo con las otras versiones desde el editor. */
     #${PAIS_MODAL_ID} .pm-caja { position:relative; width:100%; max-width:var(--pm-ancho,780px);
-        background:transparent url('${_paisBase()}img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
+        background:transparent url('${_paisBase()}img/cartel-hero/cartel-hero-v2g.png') center/100% 100% no-repeat;
         image-rendering:pixelated; padding:var(--pm-pad,64px 68px 52px); box-sizing:border-box;
         max-height:92vh; overflow-y:auto; }
     /* V2: el MISMO cartel con el marco verde alto (el de los premios), para
@@ -660,8 +663,14 @@ function _paisModalCSS() {
         background-image:url('${_paisBase()}img/cartel-hero/cartel-hero-v2g.png'); }
     #${PAIS_MODAL_ID} .pm-caja.pm-v3g {
         background-image:url('${_paisBase()}img/cartel-hero/cartel-hero-v3g.png'); }
-    #${PAIS_MODAL_ID} .pm-x { position:absolute; top:var(--pm-x-top,26px); right:var(--pm-x-right,30px);
-        width:34px; height:34px; padding:0; border:none; box-shadow:none; background:transparent
+    /* La X va en la esquina superior derecha del HUECO NEGRO, sin tocar el
+       marco. En PORCENTAJE y no en px a proposito: el marco es un background
+       estirado a 100% 100%, asi que su filo cae siempre en la misma fraccion del
+       cartel (arriba 6.6%, derecha 2%) mida lo que mida. Con los 26/30px de
+       antes la X se montaba encima del filo, porque el marco V2 lo mete mas
+       adentro que el gris viejo, y el alto del cartel cambia con el lore. */
+    #${PAIS_MODAL_ID} .pm-x { position:absolute; top:var(--pm-x-top,11%); right:var(--pm-x-right,6%);
+        width:30px; height:30px; padding:0; border:none; box-shadow:none; background:transparent
         url('${_paisBase()}img/cartel-hero/close-x-red.png') center/100% 100% no-repeat; image-rendering:pixelated; }
     #${PAIS_MODAL_ID} .pm-x:hover { filter:brightness(1.2); }
     /* Sin margen arriba: el nombre es lo PRIMERO del cartel desde que se quito

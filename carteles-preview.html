@@ -166,9 +166,12 @@ const CASOS = [
   { g:'Skins', n:'SKIN · descripcion',        sup:'paisModal', art:1, pais:['ES',''] },
   { g:'Skins', n:'SKIN · descripcion V2 verde', sup:'paisModal', art:1, pais:['ES','v2'] },
 
-  // Versiones gris del cartel de descripcion de skin. Comparten la MISMA clave
-  // (paisModal) que las otras, asi que al guardar se aplica la ultima que abras.
-  // Permite cambiar entre v2 gris, v3 gris, o volver a la original/verde.
+  // Versiones gris. Comparten la MISMA clave (paisModal) que las de arriba, asi
+  // que al guardar se aplica la ultima que abras.
+  // OJO: el V2 gris es YA el marco por defecto del cartel (lo eligio David, y lo
+  // llevan tambien CHOOSE HOW TO PLAY / SELECT A ROOM / SETTINGS), asi que esta
+  // entrada se ve igual que 'SKIN · descripcion'. Sirve para volver a el despues
+  // de haber guardado el V3.
   { g:'GRIS', n:'SKIN · descripcion V2 gris', sup:'paisModal', art:1, pais:['ES','v2g'] },
   { g:'GRIS', n:'SKIN · descripcion V3 gris', sup:'paisModal', art:1, pais:['ES','v3g'] },
 
