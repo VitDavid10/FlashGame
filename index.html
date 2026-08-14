@@ -521,6 +521,15 @@
      #custom-cursor y #skill-tooltip se quedan FUERA: esos si se colocan con
      las coordenadas del raton, y escalados se irian desalineando. */
   body > .modal-overlay { zoom: .9; }
+  /* ...menos los cuatro carteles de wallet, que son copia EXACTA de los de
+     /game (deposit y withdraw 508px, el aviso 470, connect 448). El zoom de la
+     pagina los dejaba en 457/423/403, o sea un 10% mas pequenos que sus gemelos
+     del juego, con el marco y la letra encogidos con ellos. El zoom del 90% es
+     de la LANDING; estos no son de la landing, son el juego enseñado aqui.
+     #contact-modal si se queda con el .9: ese es de la pagina y no existe en
+     /game. Con id basta para ganarle a la regla de arriba. */
+  body > #deposit-modal, body > #withdraw-modal,
+  body > #msg-modal, body > #wallet-modal { zoom: 1; }
 }
 
 body.trailer-open #page-content{
@@ -715,14 +724,35 @@ body.trailer-open #page-content{
         .skill-name { font-size: var(--fs-1); font-weight: 900; color: var(--txt-mute); font-family: 'Russo One'; letter-spacing: 1px; }
         
         /* --- TOOLTIP FLOTANTE --- */
+        /* El marco es el cartel gris V3 de David, el mismo arte que llevan los
+           popups del menu de /game: fuera el filo dorado, el radius y las dos
+           sombras. Los !important son necesarios porque el bisel de
+           body.pixel-pack pisa box-shadow y border-radius de .skill-tooltip
+           tambien con !important.
+           El padding es lo que mete el contenido DENTRO del marco: el PNG se
+           estira al 100% del tooltip, asi que el hueco negro empieza siempre al
+           5.1% del ancho y al 9.9% / 6.7% del alto. Antes el contenido iba a
+           sangre porque el borde eran 2px de CSS, no un dibujo.
+           Los 36/26 verticales salen de resolver que el padding se muerde la
+           cola: mas padding = mas alto = mas grueso el filo (va en % del alto) =
+           mas padding hace falta. Con el contenido que hay (263px) el punto fijo
+           es H = 263 / (1 - 0.166) = 325, y ahi el filo mide 32 arriba y 22
+           abajo; se les dan 4px de aire. Con 22/16 el ultimo renglon (AVAILABLE
+           IN ARCADE MODE) caia justo encima del filo de abajo. */
         .skill-tooltip {
             position: fixed; width: 250px;
-            background: rgba(10, 10, 10, 0.98); border: 2px solid var(--gold); border-radius: 8px;
-            box-shadow: 0 10px 40px rgba(0,0,0,1), 0 0 20px rgba(255, 204, 0, 0.3);
+            background: transparent url('game/img/cartel-hero/cartel-hero-v3g.png') center/100% 100% no-repeat;
+            border: none; border-radius: 0; box-shadow: none;
+            image-rendering: pixelated; padding: 36px 16px 26px;
             z-index: 999999; display: none; flex-direction: column;
-            backdrop-filter: blur(10px); pointer-events: none; text-align: left;
+            pointer-events: none; text-align: left;
             animation: fadeInTooltip 0.15s ease-out;
         }
+        /* El hueco del marco ya es negro, asi que la cabecera de la imagen se
+           funde con el y solo queda su linea de separacion, ahora gris para que
+           pegue con el marco en vez del #333 que iba con el filo dorado. */
+        .skill-tooltip .tooltip-img-container { border-radius: 0; background: transparent; border-bottom-color: #565663; }
+        .skill-tooltip .tooltip-content { padding: 12px 2px 0; }
         @keyframes fadeInTooltip { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .tooltip-img-container {
@@ -1078,12 +1108,17 @@ body.trailer-open #page-content{
         }
         /* El ANCHO tambien sale de /game, no del max-width:400px de .modal-box:
            con ese tope todos salian a 360px, o sea un 30% mas pequeños que sus
-           gemelos del juego (508 deposit/withdraw, 470 el aviso, 448 connect) y
-           con el marco y la letra encogidos en la misma proporcion. El
-           calc(100vw - 40px) deja los dos margenes de 20px en pantallas
-           estrechas, que es lo que hacia el max-width antes. */
+           gemelos del juego y con el marco y la letra encogidos en la misma
+           proporcion. El calc(100vw - 40px) deja los dos margenes de 20px en
+           pantallas estrechas, que es lo que hacia el max-width antes.
+           OJO con estos numeros: son el ancho TOTAL medido en /game, no el que
+           pone su CSS. Alli las cajas son content-box y aqui border-box (por el
+           reset * de arriba), asi que el 470px de #sysModal .exit-box.sys-gray
+           son en realidad 558 con sus dos padding de 44. */
         #deposit-modal .modal-box, #withdraw-modal .modal-box { width: 508px; max-width: calc(100vw - 40px); }
-        #msg-modal .modal-box { width: 470px; max-width: calc(100vw - 40px); }
+        /* El aviso ademas reparte distinto el padding vertical que deposit y
+           withdraw (40 arriba / 46 abajo, contra 44 / 40), como en el juego. */
+        #msg-modal .modal-box { width: 558px; max-width: calc(100vw - 40px); padding: 40px 44px 46px; }
         #deposit-modal .modal-title, #withdraw-modal .modal-title, #msg-modal .modal-title {
             font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); color: #c8cdd2;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.65); margin-bottom: 16px; line-height: 1.6; }
@@ -1352,8 +1387,11 @@ body.trailer-open #page-content{
         body.pixel-pack .side-widget, body.pixel-pack .widget-row, body.pixel-pack .mode-card,
         body.pixel-pack .video-card, body.pixel-pack .trailer-box:not(.active), body.pixel-pack .full-width-img,
         body.pixel-pack .ca-box, body.pixel-pack .lb-wrap, body.pixel-pack .dq-summary, body.pixel-pack .dq-card,
+        /* .skill-tooltip y su cabecera salieron de esta lista al ponerles el
+           marco V3: el bisel dibujaba su sombra dura por DEBAJO del PNG, que ya
+           trae su propio relieve, y un segundo recuadro alrededor de la imagen. */
         body.pixel-pack .modal-box, body.pixel-pack .dropdown-box, body.pixel-pack .wallet-option,
-        body.pixel-pack .skill-tooltip, body.pixel-pack .tooltip-img-container, body.pixel-pack .placeholder-box {
+        body.pixel-pack .placeholder-box {
             border-radius: 0 !important; backdrop-filter: none !important;
             box-shadow: 6px 6px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.06), inset -2px -2px 0 rgba(0,0,0,0.5) !important;
         }
