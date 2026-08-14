@@ -1037,7 +1037,19 @@
         .pw-big-btn.wp-btn { border: none; box-shadow: none; background: transparent url('img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat; image-rendering: pixelated; height: 52px; width: 88%; margin: 14px auto 0; padding: 0; display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 13px; }
         .pw-big-btn.wp-btn img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
         .pw-big-btn.wp-btn:hover:not(:disabled) { filter: brightness(1.2); transform: none; box-shadow: none; }
-        .wallet-picker .pw-modal-cancel { margin-top: 20px; }
+        /* El pixel horneado (cancel.png), no la caja dibujada por CSS de
+           .pw-modal-cancel base: era el UNICO cancel/close del menu que no
+           llevaba pixel art (CHOOSE HOW TO PLAY y SETTINGS ya lo tienen, mas
+           abajo; SELECT A ROOM tambien, via .wp-btn). Mismas medidas que esos
+           dos, solo cambia el margen para quedar centrado bajo los botones de
+           wallet, mas juntos que los de play-picker. */
+        .wallet-picker .pw-modal-cancel {
+            border: none; box-shadow: none; padding: 0; width: 58%; aspect-ratio: 509/201;
+            display: block; margin: 20px auto 0; image-rendering: pixelated;
+            background: transparent url('img/cartel-hero/cancel.png') center/100% 100% no-repeat;
+            color: transparent; text-shadow: none;
+        }
+        .wallet-picker .pw-modal-cancel:hover { filter: brightness(1.2); color: transparent; }
 
         /* ===== Popups PLAY y SETTINGS =====
            Mismo marco gris (menu-gris) que deposit/withdraw y el selector de
