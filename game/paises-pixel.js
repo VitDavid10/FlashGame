@@ -725,34 +725,77 @@ function _paisBase() {
 const _PAIS_BASE = typeof document !== 'undefined' ? _paisBase() : '';
 
 /*
- * Marco elegido para el cartel de skin ('' = gris de siempre, 'v2' = verde
- * alto). Lo decide David desde el editor de carteles y se guarda junto al
- * espaciado, en la clave paisModal.
+ * Lo que David afina de este cartel desde el editor: el MARCO ('' = el gris V2
+ * por defecto, 'v2' = verde alto, 'v3g' = el otro gris) y el sitio y el tamaño
+ * de cada pieza. Todo vive junto en la clave paisModal del layout de carteles.
  *
  * Se resuelve aqui y no en carteles-layout.js porque la LANDING no carga ese
- * fichero — solo este — y el cartel tiene que salir igual en los dos sitios.
+ * fichero — solo este — y el cartel tiene que salir IGUAL en los dos sitios.
  * En el juego, CARTEL_LAYOUT ya esta cargado y no se pide nada; en la landing
  * se pide lo mismo que pide el juego, con el override del servidor por encima
  * de los valores de fabrica del repo.
+ *
+ * Las piezas son las mismas que declara CARTEL_SURFACES.paisModal en
+ * carteles-layout.js (que es lo que lista el editor). Estan repetidas aqui
+ * porque la landing no tiene aquel fichero; si se añade una pieza al cartel,
+ * hay que darla de alta en los dos sitios.
  */
-let _paisVariante = '';
+const PAIS_PARTES = { title: '.pm-nom', desc: '.pm-lore', crece: '.pm-crece', pie: '.pm-pie', actions: '.pm-btns' };
+
+let _paisDescargado = null;  // solo landing: lo que trajo el fetch de aqui abajo
 let _paisVarPedida = false;
+
+/*
+ * Lo guardado para paisModal, LEIDO EN CADA APERTURA y no cacheado: dentro del
+ * juego CARTEL_LAYOUT se rellena de forma asincrona (CARTEL_LAYOUT_READY), asi
+ * que una copia tomada al montar el cartel podia ser el {} de antes de que
+ * llegara el JSON y se quedaba vieja para siempre.
+ */
+function _paisAjuste() {
+    if (typeof CARTEL_LAYOUT === 'object' && CARTEL_LAYOUT) return CARTEL_LAYOUT.paisModal || null;
+    return _paisDescargado;
+}
+function _paisVarianteActual() { const v = _paisAjuste(); return (v && v.variante) || ''; }
+
+// La landing no carga carteles-layout.js, asi que se descarga lo mismo que el
+// juego: fabrica del repo + override del servidor, y manda el override.
 function _paisPideVariante() {
-    if (_paisVarPedida) return;
+    if (_paisVarPedida || typeof CARTEL_LAYOUT === 'object') return;
     _paisVarPedida = true;
-    if (typeof CARTEL_LAYOUT === 'object' && CARTEL_LAYOUT) {
-        _paisVariante = (CARTEL_LAYOUT.paisModal && CARTEL_LAYOUT.paisModal.variante) || '';
-        return;
-    }
     const pide = u => fetch(u, { cache: 'no-cache' }).then(r => (r.ok ? r.json() : {})).catch(() => ({}));
     Promise.all([pide(_PAIS_BASE + 'carteles-layout.json'), pide('/api/carteles-layout')])
         .then(([fabrica, override]) => {
-            const l = Object.assign({}, fabrica, override);
-            _paisVariante = (l.paisModal && l.paisModal.variante) || '';
+            _paisDescargado = Object.assign({}, fabrica, override).paisModal || null;
             // Si el cartel ya estaba abierto cuando llego la respuesta, se
-            // repinta el marco; si no, lo coge en la proxima apertura.
-            paisModalVariante(_paisVariante);
+            // repinta; si no, lo coge en la proxima apertura.
+            paisModalVariante(_paisVarianteActual());
+            _paisAplicaAjuste();
         });
+}
+
+/*
+ * Coloca las piezas donde las dejo el editor. Mismo calculo que
+ * applyCartelSurface() en carteles-layout.js — translate + scale y no margenes,
+ * para que mover una pieza no reflote a las de al lado.
+ *
+ * Se llama SIEMPRE, tambien dentro del juego, en vez de tirar de
+ * applyCartelSurface() cuando existe: con dos caminos, la landing (que no tiene
+ * aquella funcion) se quedaba sin aplicar NADA y el cartel salia distinto en
+ * cada sitio, que es justo lo que el editor promete que no pasa.
+ */
+function _paisAplicaAjuste() {
+    const caja = document.getElementById(PAIS_MODAL_ID);
+    if (!caja) return;
+    const v = _paisAjuste();
+    for (const parte of Object.keys(PAIS_PARTES)) {
+        const el = caja.querySelector(PAIS_PARTES[parte]);
+        if (!el) continue;
+        const t = v && v[parte];
+        if (!t) { el.style.removeProperty('transform'); continue; }
+        const x = +t.x || 0, y = +t.y || 0, s = (typeof t.s === 'number' && t.s > 0) ? t.s : 1;
+        el.style.setProperty('transform', 'translate(' + x + 'px,' + y + 'px) scale(' + s + ')', 'important');
+        el.style.setProperty('transform-origin', 'center', 'important');
+    }
 }
 
 function paisModalMontar() {
@@ -803,15 +846,11 @@ function paisModalAbrir(code, onCambio) {
         ? 'THE SAME SKIN, AS YOU GROW'
         : (primera === PAIS_CRECE[0] ? 'WEARS ITS EMBLEM FROM THE FIRST BITE' : 'THE EMBLEM SHOWS UP AS YOU GROW');
     _paisPintaBotones(code);
-    // Espaciado afinado desde el editor de carteles. Se aplica AQUI y no al
-    // cargar porque este cartel se monta la primera vez que se abre: al arrancar
-    // no existe en el DOM y applyCartelLayout() no encontraria sus piezas.
-    // typeof: paises-pixel.js tambien corre en la landing, donde no hay editor.
-    if (typeof applyCartelSurface === 'function' && typeof CARTEL_LAYOUT === 'object') {
-        applyCartelSurface('paisModal', CARTEL_LAYOUT.paisModal);
-        _paisVariante = (CARTEL_LAYOUT.paisModal && CARTEL_LAYOUT.paisModal.variante) || '';
-    }
-    paisModalVariante(_paisVariante);
+    // Marco y espaciado afinados desde el editor. Se aplican AQUI y no al cargar
+    // porque este cartel se monta la primera vez que se abre: al arrancar no
+    // existe en el DOM y no habria piezas que colocar.
+    _paisAplicaAjuste();
+    paisModalVariante(_paisVarianteActual());
     d.classList.add('on');
 }
 

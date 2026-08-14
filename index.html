@@ -1076,6 +1076,14 @@ body.trailer-open #page-content{
             background: transparent url('game/img/cartel-hero/menu-gris.png') center/100% 100% no-repeat !important;
             image-rendering: pixelated; padding: 44px 44px 40px;
         }
+        /* El ANCHO tambien sale de /game, no del max-width:400px de .modal-box:
+           con ese tope todos salian a 360px, o sea un 30% mas pequeños que sus
+           gemelos del juego (508 deposit/withdraw, 470 el aviso, 448 connect) y
+           con el marco y la letra encogidos en la misma proporcion. El
+           calc(100vw - 40px) deja los dos margenes de 20px en pantallas
+           estrechas, que es lo que hacia el max-width antes. */
+        #deposit-modal .modal-box, #withdraw-modal .modal-box { width: 508px; max-width: calc(100vw - 40px); }
+        #msg-modal .modal-box { width: 470px; max-width: calc(100vw - 40px); }
         #deposit-modal .modal-title, #withdraw-modal .modal-title, #msg-modal .modal-title {
             font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); color: #c8cdd2;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.65); margin-bottom: 16px; line-height: 1.6; }
@@ -1110,7 +1118,8 @@ body.trailer-open #page-content{
            menu-gris, titulo con la imagen de David y botones grises planos. */
         #wallet-modal .modal-box { border: none !important; border-radius: 0 !important; box-shadow: none !important;
             background: transparent url('game/img/cartel-hero/menu-gris.png') center/100% 100% no-repeat !important;
-            image-rendering: pixelated; padding: 52px 44px 40px; }
+            image-rendering: pixelated; padding: 52px 44px 40px;
+            width: 448px; max-width: calc(100vw - 40px); }
         #wallet-modal .modal-title { color: transparent; font-size: 0; height: 46px; margin: 0 auto 26px; width: 82%;
             background: url('game/img/cartel-hero/connect-wallet.png') center/contain no-repeat; image-rendering: pixelated; }
         #wallet-modal .wallet-option { border: none !important; border-radius: 0 !important; box-shadow: none !important;
@@ -4317,6 +4326,38 @@ function toggleTrailerMode() {
         }));
         const $ = id => document.getElementById(id);
 
+        /* Sonido de la tienda: los MISMOS clips y los mismos disparadores que la
+           de /game — simplehover al pasar por una celda, select al abrir el
+           cartel y simpleselect al cambiar de pagina. A la MITAD de volumen,
+           igual criterio que heroSnd: esto es una landing, no un juego a
+           pantalla completa. Aqui no hay SoundManager (es todo el motor de audio
+           del juego) ni boton de mute, asi que va este reproductor de tres
+           clips. Se descargan en el primer hover y no al cargar la pagina: la
+           mayoria de las visitas no llegan a bajar hasta la tienda. */
+        const SHOP_VOL = 0.5;
+        const shopSnd = (() => {
+            const clips = {};
+            let ultimoHover = 0, cargado = false;
+            for (const n of ['simplehover', 'select', 'simpleselect']) {
+                const a = new Audio('snd/' + n + '.mp3');
+                a.volume = SHOP_VOL; a.preload = 'none';
+                clips[n] = a;
+            }
+            const f = n => {
+                const a = clips[n]; if (!a) return;
+                try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {}
+            };
+            // Mismo antirrebote de 100ms que SoundManager.playSimpleHover(): cruzar
+            // la rejilla con el raton dispara un mouseenter por cada celda rozada.
+            f.hover = () => {
+                if (!cargado) { cargado = true; for (const n in clips) { clips[n].preload = 'auto'; clips[n].load(); } }
+                const t = performance.now();
+                if (t - ultimoHover < 100) return;
+                ultimoHover = t; f('simplehover');
+            };
+            return f;
+        })();
+
         /* Cursor-pildora con la bandera del pais. El cursor de la landing YA es
            una pildora (#custom-cursor), asi que en la tienda se le cambian los
            colores por los del pais que estas tocando: te llevas la skin en la
@@ -4364,9 +4405,9 @@ function toggleTrailerMode() {
                 // pintan con un degradado de topes duros (0%-33%-33%-66%...), no
                 // suave: la pildora del juego tiene cortes limpios y un degradado
                 // difuminado no se pareceria a ella.
-                c.addEventListener('mouseenter', () => cursorPais(p.code));
+                c.addEventListener('mouseenter', () => { cursorPais(p.code); shopSnd.hover(); });
                 c.addEventListener('mouseleave', () => cursorPais(null));
-                c.addEventListener('click', () => abre(p.code));
+                c.addEventListener('click', () => { shopSnd('select'); abre(p.code); });
                 grid.appendChild(c);
             });
             $('shopPrev').disabled = pag === 0;
@@ -4379,11 +4420,13 @@ function toggleTrailerMode() {
         // los dos se ven igual y un retoque vale para los dos.
         const abre = code => paisModalAbrir(code, pinta);
 
-        $('shopPrev').addEventListener('click', () => { if (pag > 0) { pag--; pinta(); } });
-        $('shopNext').addEventListener('click', () => { if (pag < paginas - 1) { pag++; pinta(); } });
+        $('shopPrev').addEventListener('click', () => { if (pag > 0) { pag--; shopSnd('simpleselect'); pinta(); } });
+        $('shopNext').addEventListener('click', () => { if (pag < paginas - 1) { pag++; shopSnd('simpleselect'); pinta(); } });
+        [$('shopPrev'), $('shopNext')].forEach(b => b.addEventListener('mouseenter', () => { if (!b.disabled) shopSnd.hover(); }));
         for (let i = 0; i < paginas; i++) {
             const d = document.createElement('span');
-            d.addEventListener('click', () => { pag = i; pinta(); });
+            d.addEventListener('click', () => { if (pag !== i) shopSnd('simpleselect'); pag = i; pinta(); });
+            d.addEventListener('mouseenter', () => shopSnd.hover());
             $('shopDots').appendChild(d);
         }
         pinta();
