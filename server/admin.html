@@ -597,6 +597,13 @@
                     <label style="display:flex;align-items:center;gap:6px;color:#888;font-size:12px;cursor:pointer;" title="Shows the EDIT button on the landing and SETTINGS -> EDIT LAYOUT in the game. Off = the layout is the one baked into the pages.">
                         <input type="checkbox" id="mdLayoutEdit"> Layout editors
                     </label>
+                    <div style="display:flex;align-items:center;gap:8px;" title="Config 1 = placa pixel: marco dibujado a la misma escala de pixel que el fondo, carteles quietos y PLAY/SETTINGS dibujados. Config 2 = la configuracion anterior: cartel de piedra con el video del fuego, balanceo y botones desde los PNG.">
+                        <span style="color:#888;font-size:12px;">Cartel style</span>
+                        <select id="mdCartelStyle" style="background:#14171c;color:#c8cdd2;border:1px solid #2a2f36;font-size:12px;padding:2px 4px;">
+                            <option value="1">1 · Placa pixel</option>
+                            <option value="2">2 · Piedra + fuego (anterior)</option>
+                        </select>
+                    </div>
                     <div style="display:flex;align-items:center;gap:8px;">
                         <span style="color:#888;font-size:12px;">BG dim</span>
                         <input type="range" min="0" max="80" step="5" id="mdDim" oninput="document.getElementById('mdDimVal').innerText=this.value+'%'" style="width:110px;">
@@ -1052,6 +1059,7 @@ function aplicarMenuDeco() {
         selectorGlowPct: parseInt(document.getElementById('mdSelGlow').value, 10),
         blurbGlowPct: parseInt(document.getElementById('mdBlurbGlow').value, 10),
         virusTP: document.getElementById('mdVirusTP').checked,
+        cartelStyle: parseInt(document.getElementById('mdCartelStyle').value, 10),
         dimPct: parseInt(document.getElementById('mdDim').value, 10),
         layoutEdit: document.getElementById('mdLayoutEdit').checked
     });
@@ -1823,6 +1831,7 @@ function render(m) {
     if (typeof m.menuDecoSelectorGlowPct === 'number' && document.activeElement.id !== 'mdSelGlow') { const el = document.getElementById('mdSelGlow'); if (el) { el.value = m.menuDecoSelectorGlowPct; document.getElementById('mdSelGlowVal').innerText = m.menuDecoSelectorGlowPct + '%'; } }
     if (typeof m.menuDecoBlurbGlowPct === 'number' && document.activeElement.id !== 'mdBlurbGlow') { const el = document.getElementById('mdBlurbGlow'); if (el) { el.value = m.menuDecoBlurbGlowPct; document.getElementById('mdBlurbGlowVal').innerText = m.menuDecoBlurbGlowPct + '%'; } }
     if (typeof m.menuDecoVirusTP === 'boolean' && document.activeElement.id !== 'mdVirusTP') { const el = document.getElementById('mdVirusTP'); if (el) el.checked = m.menuDecoVirusTP; }
+    if (typeof m.menuCartelStyle === 'number' && document.activeElement.id !== 'mdCartelStyle') { const el = document.getElementById('mdCartelStyle'); if (el) el.value = String(m.menuCartelStyle); }
     if (typeof m.layoutEdit === 'boolean' && document.activeElement.id !== 'mdLayoutEdit') { const el = document.getElementById('mdLayoutEdit'); if (el) el.checked = m.layoutEdit; }
     if (typeof m.menuDecoDimPct === 'number' && document.activeElement.id !== 'mdDim') { const el = document.getElementById('mdDim'); if (el) { el.value = m.menuDecoDimPct; document.getElementById('mdDimVal').innerText = m.menuDecoDimPct + '%'; } }
     const t = m.totales;

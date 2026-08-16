@@ -105,6 +105,11 @@ let menuDecoGridSize = _clampN(_glob.menuDecoGridSize, 8, 40, 24);
 let menuDecoSelectorGlowPct = _clampN(_glob.menuDecoSelectorGlowPct, 0, 300, 100);
 let menuDecoBlurbGlowPct = _clampN(_glob.menuDecoBlurbGlowPct, 0, 300, 100);
 let menuDecoVirusTP = (typeof _glob.menuDecoVirusTP === 'boolean') ? _glob.menuDecoVirusTP : false;
+// Estilo del cartel del menú. 1 = placa pixel (marco dibujado a la escala del
+// fondo, carteles quietos, PLAY/SETTINGS dibujados). 2 = la configuración
+// ANTERIOR, guardada por si se quiere recuperar: piedra con el vídeo del fuego,
+// balanceo y botones desde los PNG.
+let menuCartelStyle = (_glob.menuCartelStyle === 2) ? 2 : 1;
 let menuDecoDimPct = _clampN(_glob.menuDecoDimPct, 0, 80, 0);
 // Layout del menú (posición/escala de cada elemento editable), GLOBAL: lo sube el
 // cliente desde EDIT LAYOUT → "Guardar para todos", se difunde en /api/rooms.
@@ -125,7 +130,7 @@ let cartelesLayout = (_glob.cartelesLayout && typeof _glob.cartelesLayout === 'o
 // el diseño ya está fijado en el código de cada página. Se enciende desde el
 // panel admin cuando haya que retocarlo.
 let layoutEdit = (typeof _glob.layoutEdit === 'boolean') ? _glob.layoutEdit : false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit, menuLayout, landingLayout, cartelesLayout }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, landingLayout, cartelesLayout }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -235,7 +240,7 @@ function killHosts() {
 // los hosts por notify (fire-and-forget, no hace falta confirmación).
 function pushSettingsToHosts() {
     const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
-        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit };
+        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit };
     for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('settingsSync', patch); }
 }
 // "Rendimiento" SÍ admite override por host (comparar Hz/AOI entre los dos).
@@ -865,7 +870,7 @@ function registerHostHandlers(hostEntry) {
     ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR });
     // Ajustes actuales (volumen/animaciones/zoom/tiempos) para el host recién forkeado.
     ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
-        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit });
+        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit });
 }
 
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
@@ -1078,6 +1083,7 @@ function applySettingsPatch(p) {
     if (typeof p.menuDecoCartelBobPx === 'number') menuDecoCartelBobPx = _clampN(p.menuDecoCartelBobPx, 0, 12, menuDecoCartelBobPx);
     if (typeof p.menuDecoGridSize === 'number') menuDecoGridSize = _clampN(p.menuDecoGridSize, 8, 40, menuDecoGridSize);
     if (typeof p.menuDecoVirusTP === 'boolean') menuDecoVirusTP = p.menuDecoVirusTP;
+    if (p.menuCartelStyle === 1 || p.menuCartelStyle === 2) menuCartelStyle = p.menuCartelStyle;
     if (typeof p.menuDecoDimPct === 'number') menuDecoDimPct = _clampN(p.menuDecoDimPct, 0, 80, menuDecoDimPct);
     if (typeof p.layoutEdit === 'boolean') layoutEdit = p.layoutEdit;
 }
@@ -1560,7 +1566,7 @@ function buildAdminState() {
         layerEnabled: Object.assign({}, layerEnabled),
         arcadeRestartMs, arcadeLobbyMs,
         sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
-        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct,
+        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle,
         layoutEdit,
         serverCpu: serverCpuPct,
         // Monitorización del PROPIO proceso (la tarjeta del Director en el panel).
@@ -1829,7 +1835,7 @@ const httpServer = http.createServer(async (req, res) => {
                     });
                 }
                 _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
-                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit, menuLayout }) };
+                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
             res.end(_roomsCache.body);
@@ -1881,7 +1887,7 @@ const httpServer = http.createServer(async (req, res) => {
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
-            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, layoutEdit, menuLayout }));
+            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout }));
         return;
     }
     // --- Layout del menú GLOBAL: el cliente lo sube desde EDIT LAYOUT → "Guardar
@@ -2498,6 +2504,7 @@ wss.on('connection', (ws, req) => {
                 if (typeof msg.selectorGlowPct === 'number') menuDecoSelectorGlowPct = _clampN(msg.selectorGlowPct, 0, 300, menuDecoSelectorGlowPct);
                 if (typeof msg.blurbGlowPct === 'number') menuDecoBlurbGlowPct = _clampN(msg.blurbGlowPct, 0, 300, menuDecoBlurbGlowPct);
                 if (typeof msg.virusTP === 'boolean') menuDecoVirusTP = msg.virusTP;
+                if (msg.cartelStyle === 1 || msg.cartelStyle === 2) menuCartelStyle = msg.cartelStyle;
                 if (typeof msg.dimPct === 'number') menuDecoDimPct = _clampN(msg.dimPct, 0, 80, menuDecoDimPct);
                 // Interruptor de los editores de layout (landing + menu del juego).
                 if (typeof msg.layoutEdit === 'boolean') layoutEdit = msg.layoutEdit;

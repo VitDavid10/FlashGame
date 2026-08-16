@@ -530,9 +530,13 @@
            estirado. Manda el ANCHO (100% de la columna) y el alto sale del
            ratio — al reves (alto fijo, ancho derivado) el cartel se salia por
            la derecha en cuanto la columna era mas estrecha que 1.052x el alto. */
+        /* Con la placa (estilo 1) los carteles se quedan QUIETOS. El balanceo
+           cartelBob es parte de la configuracion ANTERIOR (estilo 2), asi que
+           solo se aplica con body.placa-off. */
         #oraclePanel, #missionsPanel { position: relative; z-index: 0; flex: none; overflow: hidden;
-            width: 100%; aspect-ratio: 812 / 772;
-            animation: cartelBob 3.2s ease-in-out infinite; }
+            width: 100%; aspect-ratio: 812 / 772; }
+        body.placa-off #oraclePanel, body.placa-off #missionsPanel { animation: cartelBob 3.2s ease-in-out infinite; }
+        body.placa-off #missionsPanel { animation-delay: 1.6s; }
         /* Balanceo muy sutil (+-3px, igual de leve que el bob de la pildora del
            login) en el propio panel: mueve video+texto juntos porque es un
            transform del contenedor entero, no de una capa suelta. Usa la
@@ -549,10 +553,24 @@
            otro solo en el subtitulo de dentro del menu. */
         :root { --cartel-bob-px: 3px; --sel-glow: 1; --blurb-glow: 1; }
         @keyframes cartelBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(calc(-1 * var(--cartel-bob-px))); } }
-        #missionsPanel { animation-delay: 1.6s; }
         /* Video a todo el panel (mismo aspect-ratio, asi que el cover-fit del
            canvas ya no recorta), por debajo del contenido (.cartel-inner, z1). */
-        .quest-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+        /* Del video solo se deja lo que hay DEBAJO de la piedra: los cohetes. El
+           76.5% es donde acaba el marco de piedra en quest-panel-v2.png (medido),
+           que es justo donde acaba la placa. Asi el cartel antiguo desaparece
+           entero y el interior verde lo pinta la placa con su mismo color. */
+        .quest-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; clip-path: inset(76.5% 0 0 0); }
+        body.placa-off .quest-video-bg { clip-path: none; }
+        /* Marco "placa": tapa SOLO la piedra del cartel. El interior verde y los
+           cohetes siguen siendo el video de debajo — la placa es un ANILLO y por
+           el hueco se ve el video intacto. Va despues del video en el DOM y con
+           el mismo z-index, asi queda encima de el pero debajo de .cartel-inner
+           (z1). Se dibuja en BAJA RESOLUCION y se amplia con pixelated: su pixel
+           mide lo mismo que el del fondo del menu, que es lo que le faltaba al
+           marco de piedra (dibujado a resolucion completa) para pegar con la
+           arena. El tamano en px lo fija el JS para que el escalado sea exacto. */
+        .placa-frame { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; image-rendering: pixelated; }
+        body.placa-off .placa-frame { display: none; }
         /* Cuadrado exactamente sobre la "pantalla" verde del cartel: los % salen
            de medir el rect interior en cartel nuevo.png (812x772 → x 51..748,
            y 59..526). El 31.7% inferior queda fuera a proposito: ahi van los
@@ -2207,6 +2225,7 @@
             <!-- Bloque ORACLE: descripción + precio del token + tabla de salas -->
             <div id="oraclePanel" class="classic">
                 <canvas class="quest-video-bg" id="oracleVideoBg"></canvas>
+                <canvas class="placa-frame" id="oraclePlaca"></canvas>
                 <!-- Cuadrado interior: editable por separado del marco de piedra
                      (SETTINGS -> EDIT LAYOUT), asi se puede ajustar el tamano/
                      posicion del contenido sin mover el cartel entero. -->
@@ -2224,6 +2243,7 @@
             <!-- Bloque MISSIONS / SKINS: carrusel con flecha -->
             <div id="missionsPanel" class="classic">
                 <canvas class="quest-video-bg" id="missionsVideoBg"></canvas>
+                <canvas class="placa-frame" id="missionsPlaca"></canvas>
                 <!-- Cuadrado interior: editable por separado del marco de piedra
                      (SETTINGS -> EDIT LAYOUT). -->
                 <div class="cartel-inner" id="missionsInner">
@@ -4890,13 +4910,24 @@
     // Densidad y tamaño configurables desde el panel local del juego (ver
     // SETTINGS -> VISUALS), guardado en localStorage (pw_menu_deco).
     const MENU_DECO_KEY = 'pw_menu_deco';
-    const menuDecoSettings = Object.assign({ foodDensity: 16, virusCount: 3, pillBobPx: 3, cartelBobPx: 3, gridSize: 24, virusTP: false, dimPct: 0, selectorGlowPct: 100, blurbGlowPct: 100 },
+    // cartelStyle: 1 = placa pixel (marco dibujado a la escala del fondo, carteles
+    // quietos, PLAY/SETTINGS dibujados). 2 = configuracion ANTERIOR, guardada por
+    // si se quiere recuperar: cartel de piedra con el video del fuego, balanceo
+    // (cartelBob) y botones desde los PNG. Se cambia desde el panel admin.
+    const menuDecoSettings = Object.assign({ foodDensity: 16, virusCount: 3, pillBobPx: 3, cartelBobPx: 3, gridSize: 24, virusTP: false, dimPct: 0, selectorGlowPct: 100, blurbGlowPct: 100, cartelStyle: 1 },
         (() => { try { return JSON.parse(localStorage.getItem(MENU_DECO_KEY)) || {}; } catch (e) { return {}; } })());
     function saveMenuDecoSettings() { try { localStorage.setItem(MENU_DECO_KEY, JSON.stringify(menuDecoSettings)); } catch (e) {} }
     // cartelBobPx vive en CSS (custom property, la lee @keyframes cartelBob);
     // pillBobPx lo lee directo renderMenuPill() de menuDecoSettings, no hace
     // falta aplicarlo aparte.
     function applyMenuDecoCss() {
+        // Estilo 2 = configuracion anterior (piedra + video del fuego + bob +
+        // botones PNG). La clase placa-off es la que la devuelve entera; los
+        // botones ademas llevan estilos inline !important, asi que hay que
+        // quitarselos a mano al volver al estilo viejo.
+        const viejo = (menuDecoSettings.cartelStyle | 0) === 2;
+        document.body.classList.toggle('placa-off', viejo);
+        if (viejo) { limpiaPlacaButton(document.querySelector('.login-left .btn-play')); limpiaPlacaButton(document.querySelector('.login-left #btnSettings')); }
         document.documentElement.style.setProperty('--cartel-bob-px', menuDecoSettings.cartelBobPx + 'px');
         const dim = Math.max(0, Math.min(80, menuDecoSettings.dimPct | 0));
         document.documentElement.style.setProperty('--menu-bg-bright', (1 - dim / 100).toFixed(3));
@@ -4918,6 +4949,7 @@
             if (typeof v === 'number' && menuDecoSettings[k] !== v) { menuDecoSettings[k] = v; changed = true; }
         }
         if (typeof data.menuDecoVirusTP === 'boolean' && menuDecoSettings.virusTP !== data.menuDecoVirusTP) { menuDecoSettings.virusTP = data.menuDecoVirusTP; changed = true; }
+        if (typeof data.menuCartelStyle === 'number' && menuDecoSettings.cartelStyle !== data.menuCartelStyle) { menuDecoSettings.cartelStyle = data.menuCartelStyle; changed = true; }
         if (typeof data.menuDecoDimPct === 'number' && menuDecoSettings.dimPct !== data.menuDecoDimPct) { menuDecoSettings.dimPct = data.menuDecoDimPct; changed = true; }
         if (changed) { saveMenuDecoSettings(); applyMenuDecoCss(); }
         // Layout GLOBAL del menú (EDIT LAYOUT → "Guardar para todos"): se aplica a
@@ -6210,8 +6242,199 @@
     (function loginBgLoop() {
         requestAnimationFrame(loginBgLoop);
         const lo = document.getElementById('loginOverlay');
-        if (lo && lo.style.display === 'flex') paintLoginBg(_loginBgMode);
+        if (lo && lo.style.display === 'flex') { paintLoginBg(_loginBgMode); paintPlacas(); }
     })();
+
+    // ===== Marco "placa" pixel: sustituye SOLO la piedra del cartel =====
+    // Se dibuja un ANILLO (rectangulo exterior menos el hueco de la pantalla):
+    // por el hueco se sigue viendo el interior verde del video, y por debajo de
+    // OUT_BOTTOM se siguen viendo los cohetes. Nada del contenido cambia.
+    // Los tres numeros salen de medir game/img/cartel-hero/quest-panel-v2.png:
+    // la piedra acaba al 76.5% del alto (debajo empiezan los cohetes) y el hueco
+    // es el mismo inset que .cartel-inner, para que el contenido no se mueva.
+    const PLACA = {
+        OUT_BOTTOM: 0.765,
+        HOLE: { l: 0.0628, t: 0.0764, r: 0.9372, b: 0.70 },
+        CUT: 4,        // chaflan de esquina, en pixeles LOWRES (escalon de bloque)
+        // Verde del interior, muestreado del cartel de siempre
+        // (quest-panel-v2.png): el video queda recortado a los cohetes, asi que
+        // la pantalla la pinta la placa con este mismo color.
+        SCREEN: [14, 42, 27],
+    };
+    // Luz arriba-izquierda, la MISMA que usa el sprite de la pildora.
+    const PLACA_LX = -0.6, PLACA_LY = -0.75;
+    function drawPlaca(cv, hex) {
+        const panel = cv.parentElement;
+        if (!panel || !panel.clientWidth || !panel.clientHeight) return;
+        // Escala del fondo del menu: paintLoginBg pinta 264 px de alto y los
+        // estira a toda la ventana. Usando la misma, un pixel de la placa mide
+        // exactamente lo que un pixel de la cuadricula.
+        const gs = Math.max(6, menuDecoSettings.gridSize | 0);
+        const bgH = Math.max(gs, Math.round(270 / gs) * gs);
+        const scale = (window.innerHeight || 720) / bgH;
+        const pw = panel.clientWidth / scale, ph = panel.clientHeight / scale;
+        const W = Math.ceil(pw), H = Math.ceil(ph);
+        const key = W + '|' + H + '|' + hex;
+        if (cv._placaKey === key) return;
+        cv._placaKey = key;
+        cv.width = W; cv.height = H;
+        cv.style.width = (W * scale) + 'px';
+        cv.style.height = (H * scale) + 'px';
+
+        const rgb = pixRgb(hex);
+        const sh = f => rgb.map(v => Math.round(v * f));
+        const outB = ph * PLACA.OUT_BOTTOM, CUT = PLACA.CUT;
+        const hl = pw * PLACA.HOLE.l, hr = pw * PLACA.HOLE.r;
+        const ht = ph * PLACA.HOLE.t, hb = ph * PLACA.HOLE.b;
+        const inOuter = (x, y) => {
+            if (x < 0 || y < 0 || x >= pw || y >= outB) return false;
+            const dx = Math.min(x, pw - 1 - x), dy = Math.min(y, outB - 1 - y);
+            return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+        };
+        const inHole = (x, y) => x >= hl && x < hr && y >= ht && y < hb;
+        const inBand = (x, y) => inOuter(x, y) && !inHole(x, y);
+
+        const g = cv.getContext('2d');
+        g.imageSmoothingEnabled = false;
+        const img = g.createImageData(W, H), px = img.data;
+        const C_RIM = sh(0.42), C_LIT = sh(0.60), C_DIM = sh(0.22), C_MID = sh(0.30), C_BODY = sh(0.12);
+        const SCR = PLACA.SCREEN;
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            const i = ((y * W + x) << 2);
+            if (!inBand(x, y)) {
+                // La pantalla: el verde de siempre, ahora pintado por la placa
+                // (el video queda recortado a los cohetes). Fuera de la placa,
+                // transparente: por ahi se ven los cohetes y el fondo.
+                if (inHole(x, y)) { px[i] = SCR[0]; px[i + 1] = SCR[1]; px[i + 2] = SCR[2]; px[i + 3] = 255; }
+                continue;
+            }
+            // Anillo: 0 = borde, 1 = el siguiente hacia dentro, 2+ = cuerpo
+            let ring = 2;
+            for (let r = 1; r <= 2 && ring === 2; r++) {
+                for (let oy = -1; oy <= 1 && ring === 2; oy++) for (let ox = -1; ox <= 1; ox++) {
+                    if ((!ox && !oy) || inBand(x + ox * r, y + oy * r)) continue;
+                    ring = r - 1; break;
+                }
+            }
+            let col;
+            if (ring === 0) col = C_RIM;
+            else if (ring === 1) {
+                // Normal hacia fuera del anillo: promedio de las direcciones que
+                // salen de la placa. Vale para el borde exterior Y para el del
+                // hueco (ahi apunta al reves, asi la pantalla se ve HUNDIDA).
+                let nx = 0, ny = 0;
+                for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
+                    if ((!ox && !oy) || inBand(x + ox, y + oy)) continue;
+                    const d = Math.hypot(ox, oy); nx += ox / d; ny += oy / d;
+                }
+                const l = Math.hypot(nx, ny) || 1;
+                const ndl = (nx / l) * PLACA_LX + (ny / l) * PLACA_LY;
+                col = ndl > 0.15 ? C_LIT : ndl < -0.15 ? C_DIM : C_MID;
+            } else col = C_BODY;
+            px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
+        }
+        g.putImageData(img, 0, 0);
+    }
+    // ===== PLAY / SETTINGS con la misma placa =====
+    // Mismo dibujo que el marco del cartel, pero macizo y con el cuerpo CLARO
+    // (son llamada a la accion, no fondo): reborde oscuro del propio color,
+    // bisel claro arriba-izquierda y el rotulo con la PIXFONT del juego. Todo a
+    // la misma escala de pixel que la cuadricula, igual que la placa.
+    // Los colores son los de los PNG de siempre (btn-plain-red/blue.png).
+    const PLACA_BTN = { CUT: 2, ROJO: '#f62a2d', AZUL: '#0799ef' };
+    function drawPlacaButton(el, hex, label) {
+        if (!el || !el.clientWidth || !el.clientHeight) return;
+        const gs = Math.max(6, menuDecoSettings.gridSize | 0);
+        const bgH = Math.max(gs, Math.round(270 / gs) * gs);
+        const scale = (window.innerHeight || 720) / bgH;
+        const W = Math.max(8, Math.round(el.clientWidth / scale));
+        const H = Math.max(6, Math.round(el.clientHeight / scale));
+        const key = W + '|' + H + '|' + hex + '|' + label;
+        if (el._placaBtnKey === key) return;
+        el._placaBtnKey = key;
+
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        const g = cv.getContext('2d');
+        g.imageSmoothingEnabled = false;
+        const rgb = pixRgb(hex);
+        const sh = f => rgb.map(v => Math.min(255, Math.round(v * f)));
+        const lit = t => rgb.map(v => Math.round(v + (255 - v) * t));
+        const CUT = PLACA_BTN.CUT;
+        const inside = (x, y) => {
+            if (x < 0 || y < 0 || x >= W || y >= H) return false;
+            const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
+            return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+        };
+        const img = g.createImageData(W, H), px = img.data;
+        const C_RIM = sh(0.38), C_LIT = lit(0.32), C_DIM = sh(0.70);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (!inside(x, y)) continue;
+            let ring = 2;
+            for (let r = 1; r <= 2 && ring === 2; r++) {
+                for (let oy = -1; oy <= 1 && ring === 2; oy++) for (let ox = -1; ox <= 1; ox++) {
+                    if ((!ox && !oy) || inside(x + ox * r, y + oy * r)) continue;
+                    ring = r - 1; break;
+                }
+            }
+            // Luz arriba-izquierda: el bisel claro va al lado mas cercano al
+            // borde superior/izquierdo, el oscuro al inferior/derecho.
+            const col = ring === 0 ? C_RIM
+                : ring === 1 ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM)
+                : rgb;
+            const i = ((y * W + x) << 2);
+            px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
+        }
+        g.putImageData(img, 0, 0);
+
+        // Rotulo con la PIXFONT 5x7, avance 7 para que el contorno no pegue las
+        // letras entre si (con el avance 6 de drawPixelText se tocarian).
+        const ADV = 7, txtW = label.length * ADV - 2, x0 = Math.round((W - txtW) / 2), y0 = Math.round((H - 7) / 2);
+        const glifos = (dx, dy, color) => {
+            g.fillStyle = color; let cx = x0 + dx;
+            for (const ch of label.toUpperCase()) {
+                const rows = PIXFONT[ch];
+                if (rows) for (let r = 0; r < 7; r++) { const bits = rows[r]; for (let c = 0; c < 5; c++) if (bits & (1 << (4 - c))) g.fillRect(cx + c, y0 + dy + r, 1, 1); }
+                cx += ADV;
+            }
+        };
+        const inkArr = sh(0.25), ink = 'rgb(' + inkArr.join(',') + ')';
+        for (const o of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) glifos(o[0], o[1], ink);
+        glifos(0, 0, '#ffffff');
+
+        el.style.setProperty('background-image', 'url(' + cv.toDataURL() + ')', 'important');
+        el.style.setProperty('background-size', '100% 100%', 'important');
+        el.style.setProperty('background-repeat', 'no-repeat', 'important');
+        // El rotulo ya va horneado en la imagen: el texto del DOM se deja (para
+        // el lector de pantalla y el layout) pero invisible.
+        el.style.setProperty('color', 'transparent', 'important');
+        el.style.setProperty('text-shadow', 'none', 'important');
+    }
+    function limpiaPlacaButton(el) {
+        if (!el) return;
+        el._placaBtnKey = '';
+        for (const p of ['background-image', 'background-size', 'background-repeat', 'color', 'text-shadow']) el.style.removeProperty(p);
+    }
+    function paintPlacas() {
+        const hex = _loginBgMode === 'arcade' ? '#ccff00' : '#00ffaa';
+        const a = document.getElementById('oraclePlaca'), b = document.getElementById('missionsPlaca');
+        if (a) drawPlaca(a, hex);
+        if (b) drawPlaca(b, hex);
+        if (document.body.classList.contains('placa-off')) return;
+        drawPlacaButton(document.querySelector('.login-left .btn-play'), PLACA_BTN.ROJO, 'PLAY');
+        drawPlacaButton(document.querySelector('.login-left #btnSettings'), PLACA_BTN.AZUL, 'SETTINGS');
+    }
+    // Cambiar de estilo desde la consola sin pasar por el admin (solo para ti,
+    // no para el resto): placaOff(true) = configuracion 2 (la anterior).
+    window.placaOff = v => {
+        menuDecoSettings.cartelStyle = (v !== false) ? 2 : 1;
+        saveMenuDecoSettings(); applyMenuDecoCss();
+    };
+    // Ajustar en vivo sin recargar: placaTune({ CUT: 3, SHADOW: 2 })
+    window.placaTune = o => {
+        Object.assign(PLACA, o);
+        for (const id of ['oraclePlaca', 'missionsPlaca']) { const c = document.getElementById(id); if (c) c._placaKey = ''; }
+    };
 
     // --- Editor de layout del menu: mueve y escala cada elemento a tu gusto ---
     // SETTINGS → EDIT LAYOUT. Arrastrar = mover, rueda = escalar, doble click =
@@ -9791,5 +10014,6 @@
     window.PillChain = { deposit, creditDeposit };
     window.GameWallet = GameWallet;   // expone GameWallet para el módulo
 </script>
+
 </body>
 </html>
