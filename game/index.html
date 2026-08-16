@@ -5923,12 +5923,13 @@
     // Si algun PNG no carga, cae al texto de siempre (fallback).
     function setSelectedModeTitleArt(mode, fallbackText) {
         const el = els.selectedModeTitle;
-        // Con el estilo placa el rotulo se DIBUJA con el material del marco (ver
-        // setSelectedModeTitlePlaca) en vez de usar los PNG. Se fuerza el
-        // repintado porque el modo acaba de cambiar.
-        if (tituloUsaPlaca()) { el._tituloKey = ''; setSelectedModeTitlePlaca(mode); return; }
-        const wordSrc = 'img/mode-title/' + (mode === 'arcade' ? 'ARCADE-word.png' : 'CLASSIC-word.png');
-        const pwSrc = 'img/mode-title/PILLWARS-' + mode + '.png';
+        // Con el estilo placa se usan los rotulos dibujados con la PIXFONT y el
+        // material del marco (tools/gen-titulo-placa.js) en vez de los PNG
+        // originales, que traen degradado y halo difuminado horneados. Mismo
+        // mecanismo de <img> y mismas alturas: el tamaño y el sitio no cambian.
+        const suf = tituloUsaPlaca() ? '-placa' : '';
+        const wordSrc = 'img/mode-title/' + (mode === 'arcade' ? 'ARCADE' : 'CLASSIC') + '-word' + suf + '.png';
+        const pwSrc = 'img/mode-title/PILLWARS-' + mode + suf + '.png';
         const fb = 'this.closest(\'#selectedModeTitle\').innerText=\'' + fallbackText + '\'';
         el.innerHTML =
             '<span id="modeTitlePw" style="display:inline-block;line-height:0;vertical-align:middle;"><img src="' + pwSrc + '" alt="PILLWARS" style="display:block;height:24px;image-rendering:pixelated;" onerror="' + fb + '"></span>' +
@@ -6711,7 +6712,6 @@
         const a = document.getElementById('oraclePlaca'), b = document.getElementById('missionsPlaca');
         if (a) drawPlaca(a, hex);
         if (b) drawPlaca(b, hex);
-        if (tituloUsaPlaca() && currentGameMode) setSelectedModeTitlePlaca(currentGameMode);
         if (document.body.classList.contains('placa-off')) return;
         const play = document.querySelector('.login-left .btn-play');
         const sett = document.querySelector('.login-left #btnSettings');
@@ -6726,71 +6726,22 @@
         paintWalletPlaca();
     }
     // ===== Titulo del login con el MISMO material que el marco =====
-    // "PILLWARS" + "ARCADE"/"CLASSIC" dibujados con la PIXFONT y los tonos de la
-    // placa (reborde exterior oscuro, banda del color del modo, contorno duro y
-    // cuerpo claro con las dos filas de abajo en sombra) en vez de los PNG, que
-    // traen degradado y halo difuminado horneados — dos cosas que no existen en
-    // ningun otro sitio del menu. Cada palabra va en su propio canvas dentro de
-    // los spans de siempre (#modeTitlePw / #modeTitleWord), asi que EDIT LAYOUT
-    // los sigue moviendo y escalando por separado.
-    const TITULO = {
-        PX: 2,   // lado del pixel de la letra, en pixeles de canvas
-        // Grosor del contorno: 'plain' = 1 unidad (solo ink), 'thin' = 2 (banda
-        // de color + ink), 'full' = 4 (el preset de cartel de pixFancyText).
-        // OJO con subirlo: los glifos bold miden 11 unidades con avance 13, o
-        // sea 2 de hueco entre letras. Con 'full' el contorno de 4 unidades se
-        // come ese hueco por los dos lados y las letras se funden en un bloque
-        // macizo — el titulo deja de leerse. 'thin' ya las deja tocandose.
-        BORDE: 'plain',
-        // Factores sobre el color del modo, misma idea que PLACA.TONOS:
-        // fill = cuerpo de la letra, shade = las 2 filas inferiores (bisel
-        // interno), ink = contorno duro, body = banda de color (solo con 'thin'
-        // o 'full'), dark = reborde exterior (solo con 'full').
-        // Ajustables en vivo con tituloTune({ TONOS: {...} }).
-        TONOS: { fill: 1, shade: 0.55, ink: 0.14, body: 0.34, dark: 0.08 },
-    };
+    // "PILLWARS" + "ARCADE"/"CLASSIC" en PNG dibujados con la PIXFONT y los
+    // tonos de la placa (cuerpo del color del modo, las dos filas de abajo en
+    // sombra y contorno duro oscuro), en vez de los originales, que traen
+    // degradado y halo difuminado horneados — dos cosas que no existen en
+    // ningun otro sitio del menu. Se generan con tools/gen-titulo-placa.js.
     let _tituloPlacaOn = true;
     // El rotulo dibujado va con el marco dibujado: con el estilo 2 (cartel de
-    // piedra) vuelven los PNG, que es el conjunto con el que se diseñaron.
+    // piedra) vuelven los PNG originales, que es el conjunto con el que se
+    // diseñaron.
     function tituloUsaPlaca() {
         return _tituloPlacaOn && !document.body.classList.contains('placa-off');
-    }
-    function tituloPlacaCanvas(text, hex) {
-        const rgb = pixRgb(hex);
-        const c = f => 'rgb(' + rgb.map(v => Math.min(255, Math.round(v * f))).join(',') + ')';
-        const T = TITULO.TONOS;
-        return pixFancyText(text, Math.max(1, TITULO.PX | 0), {
-            fill: c(T.fill), shade: c(T.shade), ink: c(T.ink), accent: c(T.body), dark: c(T.dark),
-            plain: TITULO.BORDE === 'plain', thin: TITULO.BORDE === 'thin',
-        });
-    }
-    // Repintar solo cuando cambia algo: lo llama paintPlacas en cada frame.
-    function setSelectedModeTitlePlaca(mode) {
-        const el = els.selectedModeTitle;
-        if (!el) return;
-        const hex = mode === 'arcade' ? '#ccff00' : '#00ffaa';
-        const key = mode + '|' + TITULO.PX + '|' + TITULO.BORDE + '|' + JSON.stringify(TITULO.TONOS);
-        if (el._tituloKey === key) return;
-        el._tituloKey = key;
-        el.innerHTML =
-            '<span id="modeTitlePw" style="display:inline-block;line-height:0;vertical-align:middle;"></span>' +
-            ' <span id="modeTitleWord" style="display:inline-block;line-height:0;vertical-align:middle;"></span>';
-        document.getElementById('modeTitlePw').appendChild(tituloPlacaCanvas('PILLWARS', hex));
-        document.getElementById('modeTitleWord').appendChild(tituloPlacaCanvas(mode === 'arcade' ? 'ARCADE' : 'CLASSIC', hex));
-        // Mismo motivo que en setSelectedModeTitleArt: innerHTML recrea los dos
-        // spans y hay que devolverles su ajuste de EDIT LAYOUT.
-        if (typeof applyMenuLayout === 'function') applyMenuLayout();
     }
     // Volver a los PNG de siempre sin recargar: tituloPlaca(false).
     window.tituloPlaca = v => {
         _tituloPlacaOn = (v !== false);
-        const el = els.selectedModeTitle; if (el) el._tituloKey = '';
         if (currentGameMode) setSelectedModeTitleArt(currentGameMode, 'PILLWARS ' + currentGameMode.toUpperCase());
-    };
-    // Ajustar tamaño/tonos en vivo: tituloTune({ PX: 2 })
-    window.tituloTune = o => {
-        Object.assign(TITULO, o);
-        const el = els.selectedModeTitle; if (el) el._tituloKey = '';
     };
 
     // Cambiar de estilo desde la consola sin pasar por el admin (solo para ti,
