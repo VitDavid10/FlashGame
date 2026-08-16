@@ -696,14 +696,16 @@
         .sb-cartel { position: relative; box-sizing: border-box; flex: none; }
         #sbPlaca { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
             pointer-events: none; image-rendering: pixelated; }
-        /* Todo el contenido, dentro de la pantalla verde. Columna con hueco
-           uniforme: la rejilla se queda con TODO lo que sobra, asi las celdas
-           (y con ellas las pildoras) crecen con el cartel en vez de tener un
-           tamano fijo. Las CELDAS son cuadrados visibles con borde. */
-        .sb-inner { position: relative; z-index: 1; width: 100%; height: 100%; box-sizing: border-box;
-            display: flex; flex-direction: column; gap: 16px; padding: 20px; }
+        /* Todo el contenido, dentro de la pantalla verde. La rejilla ya NO se
+           estira a llenar el alto disponible (flex:1 + filas 1fr dejaban hueco
+           vacio arriba y abajo, porque un ratio pensado para texto no encaja
+           con 8 cuadrados): las filas miden lo que pide el aspect-ratio de la
+           celda (repeat(2, auto)) y drawPlacaPopup mide ese alto NATURAL para
+           dimensionar el cartel — así no sobra nada. */
+        .sb-inner { position: relative; z-index: 1; width: 100%; box-sizing: border-box;
+            display: flex; flex-direction: column; gap: 14px; padding: 18px; }
         .sb-head { display: flex; align-items: center; gap: 12px; flex-shrink: 0;
-            font-family: 'Russo One'; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+            font-family: 'Russo One'; letter-spacing: 1.5px; text-transform: uppercase; }
         .sb-tab { background: transparent; border: 2px solid #2c3630; color: #7d8a82; font-family: 'Russo One';
             font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 16px; cursor: pointer; }
         .sb-tab.act { color: #04150c; }
@@ -715,24 +717,35 @@
         .sb-close { background: transparent; border: 2px solid #2c3630; color: #7d8a82; font-family: 'Russo One';
             font-size: 12px; padding: 6px 14px; cursor: pointer; letter-spacing: 1.5px; text-transform: uppercase; }
         .sb-close:hover { border-color: #4a5a52; color: #fff; }
-        /* Fila: flecha izquierda + rejilla + flecha derecha. */
-        .sb-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 14px; }
-        .sb-arrow { width: 38px; height: 38px; flex-shrink: 0; background: transparent; border: 2px solid #2c3630;
-            color: #7d8a82; font-family: 'Russo One'; font-size: 20px; line-height: 1; cursor: pointer; padding: 0; }
-        .sb-arrow:hover:not(:disabled) { color: #fff; border-color: #4a5a52; }
+        /* Fila: flecha izquierda + rejilla + flecha derecha. Las flechas van
+           del color del MARCO (el mismo verde/lima del modo), no grises. */
+        .sb-body { flex-shrink: 0; display: flex; align-items: center; gap: 14px; }
+        .sb-arrow { width: 38px; height: 38px; flex-shrink: 0; background: transparent; border: 2px solid;
+            font-family: 'Russo One'; font-size: 20px; line-height: 1; cursor: pointer; padding: 0; }
+        #skinBigModal.arcade .sb-arrow { border-color: rgba(204,255,0,.5); color: #ccff00; }
+        #skinBigModal.classic .sb-arrow { border-color: rgba(0,255,170,.5); color: #00ffaa; }
+        .sb-arrow:hover:not(:disabled) { background: rgba(255,255,255,.08); }
+        #skinBigModal.arcade .sb-arrow:hover:not(:disabled) { border-color: #ccff00; }
+        #skinBigModal.classic .sb-arrow:hover:not(:disabled) { border-color: #00ffaa; }
         .sb-arrow:disabled { opacity: 0.22; cursor: default; }
-        /* 4 columnas x 2 filas SIEMPRE, repartiendo el hueco disponible. */
-        .sb-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(2, 1fr); gap: 14px; }
-        /* CELDA CUADRADA con borde visible: el fondo es la pantalla verde y el
-           borde define el espacio. */
+        /* 4 columnas x 2 filas: el ALTO de fila lo pone aspect-ratio de la
+           celda (auto = "lo que pida el contenido"), no un reparto forzado. */
+        .sb-grid { flex-shrink: 0; min-width: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, auto); gap: 12px; }
+        /* CELDA CUADRADA oscura, igual que en el cartel pequeno (.skin-cell):
+           fondo casi negro y borde apenas visible; el hover tambien es el
+           mismo (fondo claro + borde del color del modo + se levanta 1px). */
         .sb-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-            aspect-ratio: 1; border: 2px solid rgba(100,150,120,.4); cursor: grab; user-select: none; padding: 8px; box-sizing: border-box; }
-        .sb-cell:hover { border-color: rgba(100,150,120,.7); }
+            aspect-ratio: 1; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07);
+            cursor: grab; user-select: none; padding: 8px; box-sizing: border-box; transition: 0.12s; }
+        .sb-cell:hover { background: rgba(255,255,255,0.07); border-color: currentColor; transform: translateY(-1px); }
+        #skinBigModal.arcade .sb-cell:hover { color: #ccff00; }
+        #skinBigModal.classic .sb-cell:hover { color: #00ffaa; }
         .sb-cell.drag { opacity: 0.35; }
         .sb-cell.over { border-color: #ffce3d; background: rgba(255,206,61,.1); }
         .sb-cell.fija, .sb-cell.vacia { cursor: default; }
-        .sb-cell.vacia { border-color: transparent; }
+        .sb-cell.vacia { border-color: transparent; background: transparent; }
+        .sb-cell.vacia:hover { background: transparent; border-color: transparent; transform: none; }
         .sb-cell canvas { image-rendering: pixelated; }
         .sb-cod { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; text-align: center; line-height: 1.3; }
         .sb-pre { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #8d9a92; }
@@ -6497,21 +6510,13 @@
         placaPixels(g, W, H, (x, y) => inOuter(x, y) && !inHole(x, y), inHole, hex, lgx, lgy);
     }
     // ===== El popup de skins es el MISMO cartel, ampliado =====
-    // Marco del MISMO grosor que el cartel pequeno (placaGrosor) y un interior
-    // mucho mas grande. La caja la fija el contenido; aqui solo se cuadra a un
-    // numero entero de pixeles lowres para que el marco no salga borroso.
-    // Proporcion del cartel pequeno TAL Y COMO SE VE (el rectangulo de la placa,
-    // no la caja del panel, que arrastra el hueco de los cohetes). El popup la
-    // copia para no salir mas apaisado que el original.
-    function placaRatio() {
-        const panel = document.getElementById('oraclePanel');
-        if (!panel || !panel.clientWidth) return 812 / 591;
-        const scale = placaScale(), T = placaGrosor();
-        const pw = panel.clientWidth / scale, ph = panel.clientHeight / scale;
-        const w = (pw * PLACA.HOLE.r - pw * PLACA.HOLE.l) + 2 * T;
-        const h = (ph * PLACA.HOLE.b - ph * PLACA.HOLE.t) + 2 * T;
-        return h > 0 ? w / h : 812 / 591;
-    }
+    // Marco del MISMO grosor que el cartel pequeno (placaGrosor). El TAMANO ya
+    // no copia el ratio 812/591 del cartel pequeno (con la rejilla de 8
+    // cuadrados eso dejaba huecos vacios arriba y abajo, porque esa proporcion
+    // esta pensada para texto, no para una rejilla cuadrada): el ancho es el
+    // que quepa en pantalla y el alto es el NATURAL del contenido a ese ancho
+    // (se mide con height:auto), asi el cartel casa justo con la rejilla sin
+    // sobrar espacio.
     function drawPlacaPopup() {
         const caja = document.getElementById('sbCartel');
         const cv = document.getElementById('sbPlaca');
@@ -6520,26 +6525,28 @@
         const T = placaGrosor();
         // El padding ES el marco: el contenido nunca se mete debajo de el.
         caja.style.padding = Math.round(T * scale) + 'px';
-        // Tamano: la MISMA proporcion que el cartel pequeno, llenando la pantalla
-        // todo lo que se pueda. De aqui salen unas celdas mucho mayores y, con
-        // ellas, unas pildoras de verdad mas grandes.
-        const ratio = placaRatio();
-        let h = (window.innerHeight || 720) * 0.88;
-        let w = h * ratio;
-        const maxW = (window.innerWidth || 1280) * 0.94;
-        if (w > maxW) { w = maxW; h = w / ratio; }
+        const maxW = (window.innerWidth || 1280) * 0.92;
+        const maxH = (window.innerHeight || 720) * 0.90;
+        caja.style.width = Math.round(maxW) + 'px';
+        caja.style.height = 'auto';
+        let w = maxW, h = caja.offsetHeight;
+        if (h > maxH) {
+            // La cabecera y el pie no escalan con el ancho, asi que el alto
+            // natural crece casi lineal con el: encoger el ancho en la misma
+            // proporcion basta para que quepa, sin iterar por aproximacion.
+            w = Math.max(360, maxW * (maxH / h));
+            caja.style.width = Math.round(w) + 'px';
+            h = caja.offsetHeight;
+        }
+        caja.style.height = Math.round(h) + 'px';
         const W = Math.max(40, Math.round(w / scale)), H = Math.max(30, Math.round(h / scale));
         const hex = _loginBgMode === 'arcade' ? '#ccff00' : '#00ffaa';
         const luz = placaLuzHacia(caja), lgx = luz[0], lgy = luz[1];
         const key = W + '|' + H + '|' + hex + '|' + lgx.toFixed(2) + '|' + lgy.toFixed(2) + '|' + PLACA.GLOW;
+        skinBigMideCeldas();
         if (cv._placaKey === key) return;
         cv._placaKey = key;
         cv.width = W; cv.height = H;
-        // La caja se cuadra al canvas: asi cada pixel lowres cae en un cuadrado
-        // exacto de scale x scale y el marco no se ve emborronado.
-        caja.style.width = (W * scale) + 'px';
-        caja.style.height = (H * scale) + 'px';
-        skinBigMideCeldas();
         const CUT = PLACA.CUT;
         const inOuter = (x, y) => {
             if (x < 0 || y < 0 || x >= W || y >= H) return false;

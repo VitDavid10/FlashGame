@@ -640,57 +640,40 @@ function _paisModalCSS() {
        OJO: este bloque es un template literal, asi que aqui dentro NO puede haber
        comillas invertidas — cierran la cadena y parten el fichero entero. */
     #${PAIS_MODAL_ID}, #${PAIS_MODAL_ID} * { cursor: default !important; }
-    #${PAIS_MODAL_ID} .pm-x, #${PAIS_MODAL_ID} .pm-btn { cursor: pointer !important; }
-    /* Marco por defecto = el gris V2, el mismo que llevan CHOOSE HOW TO PLAY,
-       SELECT A ROOM y SETTINGS. Las clases pm-v2 / pm-v3g de mas abajo solo
-       existen para poder compararlo con las otras versiones desde el editor. */
-    #${PAIS_MODAL_ID} .pm-caja { position:relative; width:100%; max-width:var(--pm-ancho,780px);
-        background:transparent url('${_paisBase()}img/cartel-hero/cartel-hero-v2g.png') center/100% 100% no-repeat;
-        image-rendering:pixelated; padding:var(--pm-pad,64px 68px 52px); box-sizing:border-box;
+    #${PAIS_MODAL_ID} .pm-x, #${PAIS_MODAL_ID} .pm-btn, #${PAIS_MODAL_ID} .pm-prev { cursor: pointer !important; }
+    /* El marco ya NO es un PNG: es el mismo marco "placa" pixel del resto del
+       menu (ver _pmFrameDraw mas abajo), pintado en el canvas .pm-frame que
+       ocupa toda la caja. .pm-inner reserva el grosor de ese marco como
+       padding (fijado por JS, drawFrame) para que el contenido no se meta
+       debajo. Las variantes pm-v2/pm-v2g/pm-v3g de antes (comparar marcos PNG)
+       ya no aplican: solo hay un marco, asi que esas clases no pintan nada —
+       se dejan sin regla para no romper paisModalVariante(), que las sigue
+       poniendo desde el editor. */
+    #${PAIS_MODAL_ID} .pm-caja { position:relative; width:100%; max-width:var(--pm-ancho,780px); box-sizing:border-box; }
+    #${PAIS_MODAL_ID} .pm-frame { position:absolute; inset:0; z-index:0; pointer-events:none; image-rendering:pixelated; }
+    #${PAIS_MODAL_ID} .pm-inner { position:relative; z-index:1; box-sizing:border-box;
         max-height:92vh; overflow-y:auto; }
-    /* V2: el MISMO cartel con el marco verde alto (el de los premios), para
-       comparar cual sienta mejor a la descripcion de la pildora. Solo cambia el
-       marco; el contenido y el espaciado son los mismos, asi que se puede
-       alternar sin volver a colocar nada. Lo enciende paisModalVariante().
-       Variantes gris v2 y v3 para comparar sin el verde. La clase va en la CAJA
-       y no en el overlay a proposito: el editor de carteles clona la caja y la
-       saca de #paisModal, asi que una regla que dependiera del antepasado se
-       perderia y las versiones saldrian iguales — que es justo lo que hay que
-       poder comparar. */
-    #${PAIS_MODAL_ID} .pm-caja.pm-v2 {
-        background-image:url('${_paisBase()}img/cartel-hero/prize-panel-tall.png'); }
-    #${PAIS_MODAL_ID} .pm-caja.pm-v2g {
-        background-image:url('${_paisBase()}img/cartel-hero/cartel-hero-v2g.png'); }
-    #${PAIS_MODAL_ID} .pm-caja.pm-v3g {
-        background-image:url('${_paisBase()}img/cartel-hero/cartel-hero-v3g.png'); }
-    /* La X va en la esquina superior derecha del HUECO NEGRO, sin tocar el
-       marco. En PORCENTAJE y no en px a proposito: el marco es un background
-       estirado a 100% 100%, asi que su filo cae siempre en la misma fraccion del
-       cartel (arriba 6.6%, derecha 2%) mida lo que mida. Con los 26/30px de
-       antes la X se montaba encima del filo, porque el marco V2 lo mete mas
-       adentro que el gris viejo, y el alto del cartel cambia con el lore. */
-    #${PAIS_MODAL_ID} .pm-x { position:absolute; top:var(--pm-x-top,11%); right:var(--pm-x-right,6%);
-        width:30px; height:30px; padding:0; border:none; box-shadow:none; background:transparent
-        url('${_paisBase()}img/cartel-hero/close-x-red.png') center/100% 100% no-repeat; image-rendering:pixelated; }
-    #${PAIS_MODAL_ID} .pm-x:hover { filter:brightness(1.2); }
-    /* Flecha a la derecha del cartel: abre la previsualizacion grande de la
-       pildora sobre el fondo del juego. Mismo sitio y mismo tamano que la X,
-       pero pegada al borde derecho a media altura. */
-    #${PAIS_MODAL_ID} .pm-prev { position:absolute; top:50%; right:var(--pm-prev-right,-18px);
-        transform:translateY(-50%); width:34px; height:44px; padding:0; cursor:pointer;
-        background:rgba(6,14,9,.92); border:2px solid rgba(0,255,136,.45); color:#00ff88;
-        font-family:'Russo One',sans-serif; font-size:22px; line-height:1; }
-    #${PAIS_MODAL_ID} .pm-prev:hover { border-color:#00ff88; color:#fff; background:rgba(0,255,136,.16); }
-    /* Previsualizacion a pantalla completa: solo el canvas y un cerrar. */
-    #paisPrevia { position:fixed; inset:0; z-index:30000; display:none; background:#050806; }
-    #paisPrevia.on { display:block; }
-    #paisPrevia canvas { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; }
-    #paisPrevia .pv-x { position:absolute; top:22px; right:26px; z-index:2; padding:8px 16px; cursor:pointer;
-        background:transparent; border:2px solid #55403f; color:#d98080;
-        font-family:'Russo One',sans-serif; font-size:13px; letter-spacing:1.5px; }
-    #paisPrevia .pv-x:hover { border-color:#ff5544; color:#ff7766; }
-    #paisPrevia .pv-nom { position:absolute; top:26px; left:30px; z-index:2; color:#fff;
-        font-family:'Press Start 2P',monospace; font-size:15px; text-shadow:2px 2px 0 #000; }
+    #${PAIS_MODAL_ID} .pm-content { box-sizing:border-box; padding:var(--pm-pad,40px 44px 34px); }
+    /* Cerrar: mismo lenguaje que el resto del menu nuevo (boton con solo
+       borde, sin placa propia detras) en vez del icono PNG rojo de antes. */
+    #${PAIS_MODAL_ID} .pm-x { position:absolute; top:14px; right:14px; z-index:2; width:28px; height:28px; padding:0;
+        background:rgba(0,0,0,.35); border:2px solid rgba(255,255,255,.25); color:#d9dedb;
+        font-family:'Russo One',sans-serif; font-size:16px; line-height:1; }
+    #${PAIS_MODAL_ID} .pm-x:hover { border-color:#ff6b5c; color:#ff6b5c; }
+    /* Flecha a la derecha del cartel: da la vuelta a la MISMA tarjeta para
+       ensenar la pildora en grande (pagina 2), sin abrir nada aparte. El
+       glifo cambia de sentido segun la pagina en la que este (paisModalPagina). */
+    #${PAIS_MODAL_ID} .pm-prev { position:absolute; top:50%; right:14px; z-index:2;
+        transform:translateY(-50%); width:32px; height:44px; padding:0;
+        background:rgba(0,0,0,.35); border:2px solid rgba(255,255,255,.25); color:#d9dedb;
+        font-family:'Russo One',sans-serif; font-size:20px; line-height:1; }
+    #${PAIS_MODAL_ID} .pm-prev:hover { border-color:#00ff88; color:#00ff88; }
+    /* Pagina 2: la pildora en grande sobre el fondo del juego. Misma caja,
+       mismo marco — solo cambia lo que hay dentro. */
+    #${PAIS_MODAL_ID} .pm-page2 { display:flex; flex-direction:column; align-items:center; gap:10px; }
+    #${PAIS_MODAL_ID} .pm-page2 canvas { width:100%; aspect-ratio:16/10; image-rendering:pixelated; display:block; }
+    #${PAIS_MODAL_ID} .pm-prevnom { font-family:'Press Start 2P',monospace; font-size:13px; color:#fff;
+        text-shadow:2px 2px 0 #000; letter-spacing:.5px; }
     /* Sin margen arriba: el nombre es lo PRIMERO del cartel desde que se quito
        el codigo de dos letras que iba encima. */
     #${PAIS_MODAL_ID} .pm-nom { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-nom,17px);
@@ -719,18 +702,134 @@ function _paisModalCSS() {
     #${PAIS_MODAL_ID} .pm-pie { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-pie,7px);
         color:#9aa3ac; letter-spacing:.5px; text-align:center; margin-top:12px; line-height:1.7; }
     #${PAIS_MODAL_ID} .pm-btns { display:flex; gap:var(--pm-btn-gap,14px); margin-top:var(--pm-gap-btn,22px); }
-    #${PAIS_MODAL_ID} .pm-btn { flex:1; height:var(--pm-btn-h,52px); padding:0; border:none; box-shadow:none;
+    /* Botones: mismo dibujo "placa" macizo que PLAY/SETTINGS y CONNECT/DEPOSIT
+       en el menu (ver _pmPlateUrl), no los PNG btn-plain-*.png de antes. El
+       fondo lo pone JS (background-image con el dataURL); aqui solo el resto. */
+    #${PAIS_MODAL_ID} .pm-btn { flex:1; height:var(--pm-btn-h,50px); padding:0; border:none; box-shadow:none;
         display:flex; align-items:center; justify-content:center; image-rendering:pixelated;
+        background-size:100% 100%; background-repeat:no-repeat;
         font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-btn,10px); color:#fff;
-        text-shadow:2px 2px 0 rgba(0,0,0,.75);
-        background:transparent url('${_paisBase()}img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat; }
-    #${PAIS_MODAL_ID} .pm-btn.rojo { background-image:url('${_paisBase()}img/cartel-hero/btn-plain-red.png'); }
-    #${PAIS_MODAL_ID} .pm-btn.verde { background-image:url('${_paisBase()}img/cartel-hero/btn-plain-green.png'); }
+        text-shadow:2px 2px 0 rgba(0,0,0,.75); }
     #${PAIS_MODAL_ID} .pm-btn:hover:not(:disabled) { filter:brightness(1.15); }
     #${PAIS_MODAL_ID} .pm-btn:active:not(:disabled) { transform:translate(2px,2px); }
-    #${PAIS_MODAL_ID} .pm-btn:disabled { filter:grayscale(.7) brightness(.8); cursor:default; }
-    @media (max-width:620px) { #${PAIS_MODAL_ID} .pm-caja { padding:44px 26px 34px; } #${PAIS_MODAL_ID} .pm-btns { flex-direction:column; } }
+    #${PAIS_MODAL_ID} .pm-btn:disabled { filter:grayscale(.6) brightness(.85); cursor:default; }
+    @media (max-width:620px) { #${PAIS_MODAL_ID} .pm-btns { flex-direction:column; } }
     `;
+}
+/* ===== Marco "placa" pixel para el cartel de detalle =====
+ * Mismo dibujo que el marco del menu (game/index.html: PLACA/placaPixels) —
+ * anillo con reborde oscuro del propio color, bisel arriba-izquierda y
+ * esquinas en escalon — pero AUTONOMO: esta funcion no depende de nada de
+ * game/index.html porque este fichero tambien lo carga la landing sola.
+ */
+const PM_SCALE = 3, PM_FRAME_T = 7, PM_FRAME_CUT = 4;
+const PM_SCREEN = [9, 20, 15];
+const PM_LX = -0.6, PM_LY = -0.75;
+function _pmFrameDraw(cv, wCss, hCss, hex) {
+    const W = Math.max(24, Math.round(wCss / PM_SCALE)), H = Math.max(18, Math.round(hCss / PM_SCALE));
+    const key = W + '|' + H + '|' + hex;
+    if (cv._pmKey === key) return PM_FRAME_T * PM_SCALE;
+    cv._pmKey = key;
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    const rgb = _rgb(hex);
+    const sh = f => rgb.map(v => Math.round(v * f));
+    const T = PM_FRAME_T, CUT = PM_FRAME_CUT;
+    const inOuter = (x, y) => {
+        if (x < 0 || y < 0 || x >= W || y >= H) return false;
+        const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
+        return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+    };
+    const inHole = (x, y) => x >= T && x < W - T && y >= T && y < H - T;
+    const inBand = (x, y) => inOuter(x, y) && !inHole(x, y);
+    const img = g.createImageData(W, H), px = img.data;
+    const C_RIM = sh(0.42), C_LIT = sh(0.60), C_DIM = sh(0.22), C_MID = sh(0.30), C_BODY = sh(0.12);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = ((y * W + x) << 2);
+        if (!inOuter(x, y)) continue;
+        if (inHole(x, y)) { px[i] = PM_SCREEN[0]; px[i + 1] = PM_SCREEN[1]; px[i + 2] = PM_SCREEN[2]; px[i + 3] = 255; continue; }
+        let ring = 2;
+        for (let r = 1; r <= 2 && ring === 2; r++) {
+            for (let oy = -1; oy <= 1 && ring === 2; oy++) for (let ox = -1; ox <= 1; ox++) {
+                if ((!ox && !oy) || inBand(x + ox * r, y + oy * r)) continue;
+                ring = r - 1; break;
+            }
+        }
+        let col;
+        if (ring === 0) col = C_RIM;
+        else if (ring === 1) {
+            let nx = 0, ny = 0;
+            for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
+                if ((!ox && !oy) || inBand(x + ox, y + oy)) continue;
+                const d = Math.hypot(ox, oy); nx += ox / d; ny += oy / d;
+            }
+            const l = Math.hypot(nx, ny) || 1;
+            const ndl = (nx / l) * PM_LX + (ny / l) * PM_LY;
+            col = ndl > 0.15 ? C_LIT : ndl < -0.15 ? C_DIM : C_MID;
+        } else col = C_BODY;
+        px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    return PM_FRAME_T * PM_SCALE;
+}
+/* Placa MACIZA (sin hueco) para los botones del cartel: mismo dibujo que
+ * placaPlateUrl() en game/index.html — reborde oscuro del propio color y
+ * bisel claro arriba-izquierda —, autonoma por el mismo motivo de arriba. */
+function _pmPlateUrl(wCss, hCss, hex) {
+    const W = Math.max(10, Math.round(wCss / PM_SCALE)), H = Math.max(8, Math.round(hCss / PM_SCALE));
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    const rgb = _rgb(hex);
+    const sh = f => rgb.map(v => Math.min(255, Math.round(v * f)));
+    const lit = t => rgb.map(v => Math.round(v + (255 - v) * t));
+    const CUT = 2;
+    const inside = (x, y) => {
+        if (x < 0 || y < 0 || x >= W || y >= H) return false;
+        const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
+        return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+    };
+    const img = g.createImageData(W, H), px = img.data;
+    const C_RIM = sh(0.38), C_LIT = lit(0.32), C_DIM = sh(0.70);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (!inside(x, y)) continue;
+        let ring = 2;
+        for (let r = 1; r <= 2 && ring === 2; r++) {
+            for (let oy = -1; oy <= 1 && ring === 2; oy++) for (let ox = -1; ox <= 1; ox++) {
+                if ((!ox && !oy) || inside(x + ox * r, y + oy * r)) continue;
+                ring = r - 1; break;
+            }
+        }
+        const col = ring === 0 ? C_RIM
+            : ring === 1 ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM)
+            : rgb;
+        const i = ((y * W + x) << 2);
+        px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    return cv.toDataURL();
+}
+const PM_ROJO = '#f62a2d', PM_VERDE = '#00d97e';
+// Color del modo activo (mismo criterio que usa paisModalAbrir para --pm-grid).
+function _pmModoHex() {
+    const panelModo = document.getElementById('missionsPanel');
+    return panelModo && panelModo.classList.contains('arcade') ? '#ccff00' : '#00ffaa';
+}
+// Repinta el marco de la caja abierta a su tamano actual. Se llama al abrir,
+// al cambiar de pagina (el contenido cambia de alto) y en resize.
+function _pmRedibujaMarco() {
+    const caja = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-caja');
+    const cv = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-frame');
+    const inner = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-inner');
+    if (!caja || !cv || !inner || !caja.clientWidth) return;
+    const primero = !inner.style.padding;
+    const T = _pmFrameDraw(cv, caja.clientWidth, caja.clientHeight, _pmModoHex());
+    inner.style.padding = T + 'px';
+    // La primera vez, el alto se midio SIN el padding que acabamos de poner (el
+    // marco crece la caja 2*T mas): se repite una vez para que salga ya del
+    // tamano final, no del de antes de aplicar el padding.
+    if (primero) _pmRedibujaMarco();
 }
 
 // La landing carga este fichero desde game/, asi que las rutas del arte tienen
@@ -824,66 +923,74 @@ function paisModalMontar() {
     const d = document.createElement('div'); d.id = PAIS_MODAL_ID;
     d.innerHTML =
         '<div class="pm-caja">' +
-        '<button class="pm-x" aria-label="Close"></button>' +
+        '<canvas class="pm-frame"></canvas>' +
+        '<div class="pm-inner">' +
+        '<button class="pm-x" aria-label="Close">&times;</button>' +
         '<button class="pm-prev" title="See it big">\u203A</button>' +
+        '<div class="pm-content">' +
+        '<div class="pm-page1">' +
         '<div class="pm-nom"></div><div class="pm-lore"></div>' +
         '<div class="pm-franjas"></div><div class="pm-crece"></div><div class="pm-pie"></div>' +
-        '<div class="pm-btns"></div></div>';
+        '<div class="pm-btns"></div>' +
+        '</div>' +
+        '<div class="pm-page2" style="display:none">' +
+        '<canvas class="pm-prevcv"></canvas>' +
+        '<div class="pm-prevnom"></div>' +
+        '</div>' +
+        '</div></div></div>';
     document.body.appendChild(d);
     d.querySelector('.pm-x').addEventListener('click', paisModalCerrar);
-    d.querySelector('.pm-prev').addEventListener('click', e => { e.stopPropagation(); paisPreviaAbrir(_paisCodeAbierto); });
+    d.querySelector('.pm-prev').addEventListener('click', e => { e.stopPropagation(); paisModalPagina(_pmPagina === 2 ? 1 : 2); });
     d.addEventListener('click', e => { if (e.target === d) paisModalCerrar(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') paisModalCerrar(); });
+    // El marco depende del tamano REAL de la caja (--pm-ancho, o el hueco que
+    // deje la pantalla si es mas estrecha), asi que se repinta en cada resize
+    // mientras el cartel este abierto.
+    window.addEventListener('resize', () => { if (d.classList.contains('on')) _pmRedibujaMarco(); });
 }
 
-/* ===== Previsualizacion grande de una skin =====
- * La pildora, en grande y viva, sobre el MISMO fondo que la arena (cuadricula
- * de 24 px lowres sobre casi negro). Se dibuja todo a baja resolucion y se
- * amplia con pixelated, igual que el fondo del menu, para que el bloque de
- * pixel mida lo mismo que en el juego. La pildora no se mueve del centro: lo
- * que se mueve es el fondo (deriva lenta), mas un balanceo y una respiracion
- * muy sutiles, para que se lea que esta viva sin marearse.
+/* ===== Pagina 2 del cartel: la pildora en grande =====
+ * MISMA tarjeta, mismo marco: la flecha de la derecha da la vuelta al
+ * contenido en vez de abrir nada aparte (antes abria una capa aparte a
+ * pantalla completa; ahora es literalmente la segunda pagina de esta
+ * descripcion). La pildora, en grande y viva, sobre el mismo fondo que la
+ * arena (cuadricula de 24 px lowres). Se dibuja todo a baja resolucion y se
+ * amplia con pixelated, igual que el fondo del menu. La pildora no se mueve
+ * del centro: lo que se mueve es el fondo (deriva lenta), mas un balanceo y
+ * una respiracion muy sutiles, para que se lea que esta viva sin marearse.
  */
-const PAIS_PREVIA_ID = 'paisPrevia';
-let _paisPreviaRaf = 0, _paisPreviaCode = null;
-function paisPreviaAbrir(code) {
-    if (!code || !paisSkin(code)) return;
-    _paisPreviaCode = code;
-    let d = document.getElementById(PAIS_PREVIA_ID);
-    if (!d) {
-        d = document.createElement('div'); d.id = PAIS_PREVIA_ID;
-        d.innerHTML = '<canvas></canvas><div class="pv-nom"></div><button class="pv-x">CLOSE</button>';
-        document.body.appendChild(d);
-        d.querySelector('.pv-x').addEventListener('click', paisPreviaCerrar);
-        d.addEventListener('click', e => { if (e.target === d || e.target.tagName === 'CANVAS') paisPreviaCerrar(); });
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') paisPreviaCerrar(); });
+let _pmPagina = 1, _pmPreviaRaf = 0;
+function paisModalPagina(n) {
+    const d = document.getElementById(PAIS_MODAL_ID); if (!d) return;
+    _pmPagina = n;
+    d.querySelector('.pm-page1').style.display = n === 1 ? '' : 'none';
+    d.querySelector('.pm-page2').style.display = n === 2 ? 'flex' : 'none';
+    d.querySelector('.pm-prev').textContent = n === 2 ? '\u2039' : '\u203A';
+    cancelAnimationFrame(_pmPreviaRaf); _pmPreviaRaf = 0;
+    if (n === 2) {
+        d.querySelector('.pm-prevnom').textContent = (paisSkin(_paisCodeAbierto) || {}).nombre || _paisCodeAbierto;
+        _pmPreviaPinta();
     }
-    d.querySelector('.pv-nom').textContent = (paisSkin(code) || {}).nombre || code;
-    d.classList.add('on');
-    cancelAnimationFrame(_paisPreviaRaf);
-    _paisPreviaPinta();
+    // El alto de la caja cambia entre paginas (la 2 es mas corta): el marco
+    // tiene que seguirlo. Sincrono, no en rAF: leer clientWidth/Height fuerza
+    // el reflow con el display ya cambiado, asi que no hay parpadeo del
+    // tamano viejo.
+    _pmRedibujaMarco();
 }
-function paisPreviaCerrar() {
-    const d = document.getElementById(PAIS_PREVIA_ID);
-    if (d) d.classList.remove('on');
-    cancelAnimationFrame(_paisPreviaRaf); _paisPreviaRaf = 0;
-}
-function _paisPreviaPinta() {
-    const d = document.getElementById(PAIS_PREVIA_ID);
-    if (!d || !d.classList.contains('on')) return;
-    _paisPreviaRaf = requestAnimationFrame(_paisPreviaPinta);
-    const cv = d.querySelector('canvas');
-    // Misma escala que el fondo del menu: 264 px de alto estirados a la ventana.
-    const ESCALA_BASE = 264, GRID = 24;
-    const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
-    const H = ESCALA_BASE, W = Math.max(GRID, Math.round(vw / vh * H));
+function _pmPreviaPinta() {
+    const d = document.getElementById(PAIS_MODAL_ID);
+    if (!d || !d.classList.contains('on') || _pmPagina !== 2) return;
+    _pmPreviaRaf = requestAnimationFrame(_pmPreviaPinta);
+    const cv = d.querySelector('.pm-prevcv');
+    if (!cv || !cv.clientWidth) return;
+    // El canvas ya tiene su proporcion por CSS (aspect-ratio en
+    // _paisModalCSS): la resolucion lowres solo tiene que guardarla.
+    const GRID = 24, H = 160, W = Math.max(GRID, Math.round(cv.clientWidth / cv.clientHeight * H));
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = false;
     // Tinte del modo, como el resto del menu.
-    const panelModo = document.getElementById('missionsPanel');
-    const arcade = panelModo && panelModo.classList.contains('arcade');
-    const rgb = arcade ? [204, 255, 0] : [0, 255, 170];
+    const rgb = _rgb(_pmModoHex());
     const sh = f => 'rgb(' + rgb.map(v => Math.round(v * f)).join(',') + ')';
     g.fillStyle = sh(0.07); g.fillRect(0, 0, W, H);
     // Cuadricula con deriva lenta: es el fondo el que se mueve, no la pildora.
@@ -896,8 +1003,8 @@ function _paisPreviaPinta() {
     const bob = Math.round(Math.sin(t / 620) * 3);
     const ang = -Math.PI / 4 + Math.sin(t / 900) * 0.10;
     const breath = 1 + 0.03 * Math.sin(t / 700 + 1.2);
-    const wL = Math.max(24, Math.round(Math.min(W, H) * 0.30 * breath));
-    const o = paisPillRot(wL, _paisPreviaCode, ang);
+    const wL = Math.max(20, Math.round(Math.min(W, H) * 0.32 * breath));
+    const o = paisPillRot(wL, _paisCodeAbierto, ang);
     g.drawImage(o.cv, Math.round(W / 2 - o.S / 2), Math.round(H / 2 - o.S / 2 + bob));
 }
 
@@ -916,9 +1023,7 @@ function paisModalAbrir(code, onCambio) {
     // Cuadricula del color del modo en el que se esta jugando. El panel lateral
     // lleva la clase del modo, que es la fuente mas fiable dentro del juego; en
     // la landing no existe y manda el default del CSS.
-    const panelModo = document.getElementById('missionsPanel');
-    const modo = panelModo && panelModo.classList.contains('arcade') ? 'arcade' : 'classic';
-    cr.style.setProperty('--pm-grid', modo === 'arcade' ? 'rgba(204,255,0,.13)' : 'rgba(0,255,170,.13)');
+    cr.style.setProperty('--pm-grid', _pmModoHex() === '#ccff00' ? 'rgba(204,255,0,.13)' : 'rgba(0,255,170,.13)');
     let primera = null;
     PAIS_CRECE.forEach(wL => {
         const o = paisPillRot(wL, code, -Math.PI / 4);
@@ -937,6 +1042,7 @@ function paisModalAbrir(code, onCambio) {
     _paisAplicaAjuste();
     paisModalVariante(_paisVarianteActual());
     d.classList.add('on');
+    paisModalPagina(1);
 }
 
 /*
@@ -957,14 +1063,19 @@ function paisModalVariante(v) {
 function _paisPintaBotones(code) {
     const cont = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-btns'); if (!cont) return;
     cont.innerHTML = '';
+    const defs = !paisTengo(code)
+        ? [['BUY · ' + paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL', PM_ROJO, () => paisComprar(code, 'pill')],
+           ['BUY · ' + PAIS_PRECIO_SP + ' SP', PM_VERDE, () => paisComprar(code, 'sp')]]
+        : paisPuesta() === code ? [['EQUIPPED', PM_VERDE, null]]
+        : [['ASSIGN', PM_ROJO, () => paisPoner(code)]];
     // Los botones llaman al SERVIDOR, asi que son asincronos: mientras la
     // peticion vuela se deshabilitan (un doble clic en COMPRAR llegaria a firmar
     // dos veces) y si el servidor dice que no, el motivo se pinta en el pie.
-    const btn = (txt, cls, fn) => {
+    const botones = defs.map(([txt, hex, fn]) => {
         const b = document.createElement('button');
-        b.className = 'pm-btn ' + cls; b.textContent = txt;
-        if (!fn) { b.disabled = true; cont.appendChild(b); return; }
-        b.addEventListener('click', async () => {
+        b.className = 'pm-btn'; b.textContent = txt; b._pmHex = hex;
+        if (!fn) b.disabled = true;
+        else b.addEventListener('click', async () => {
             [...cont.children].forEach(x => x.disabled = true);
             b.textContent = '...';
             const r = await fn();
@@ -973,15 +1084,14 @@ function _paisPintaBotones(code) {
             if (_paisOnCambio) _paisOnCambio();
         });
         cont.appendChild(b);
-    };
-    if (!paisTengo(code)) {
-        btn('BUY · ' + paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL', 'rojo', () => paisComprar(code, 'pill'));
-        btn('BUY · ' + PAIS_PRECIO_SP + ' SP', 'verde', () => paisComprar(code, 'sp'));
-    } else if (paisPuesta() === code) {
-        btn('EQUIPPED', 'verde', null);
-    } else {
-        btn('ASSIGN', 'rojo', () => paisPoner(code));
-    }
+        return b;
+    });
+    // El tamano real de cada boton (repartido por flex entre los que haya) no
+    // se conoce hasta que TODOS estan en el DOM: la placa se pinta en una
+    // segunda pasada, con el layout ya asentado.
+    botones.forEach(b => {
+        b.style.backgroundImage = 'url(' + _pmPlateUrl(b.clientWidth || 150, b.clientHeight || 50, b._pmHex) + ')';
+    });
 }
 
 // El motivo del rechazo va en el pie del cartel, que es donde ya esta mirando el
@@ -997,6 +1107,7 @@ function _paisAviso(txt) {
 
 function paisModalCerrar() {
     const d = document.getElementById(PAIS_MODAL_ID); if (d) d.classList.remove('on');
+    cancelAnimationFrame(_pmPreviaRaf); _pmPreviaRaf = 0;
 }
 
 if (typeof module !== 'undefined' && module.exports) module.exports = { PAISES, PAIS_FORMAS, UMBRAL, paisSkin, paisLista, paisPillRot, paisPagina, paisNumPaginas, PAIS_ORDEN_PAGINAS, PAIS_PRECIO_SP, PAIS_PRECIO_PILL, PAIS_PILL_POR_SP };
