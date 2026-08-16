@@ -1038,17 +1038,36 @@
            Sin lineas ni cajas — flota libre como el resto. */
         .menu-head-row { display: flex; align-items: center; justify-content: flex-start; gap: 22px; margin-bottom: 14px; text-align: left; width: max-content; max-width: 60vw; }
         #selectedModeTitle { font-family: 'Press Start 2P', monospace; font-size: 24px; text-transform: uppercase; margin: 0; letter-spacing: 1px; text-shadow: 3px 3px 0 #000, 6px 6px 0 rgba(0,0,0,0.4); line-height: 1.35; white-space: nowrap; }
-        /* Titulo de placa: las dos palabras en una fila, con la MISMA altura (los
-           cuatro PNG salen del generador con el mismo alto, asi que a igual
-           height las letras miden igual en PILLWARS y en ARCADE/CLASSIC) y un
-           hueco fijo entre ellas. El centrado horizontal NO se hace aqui: cada
-           modo tiene un ancho distinto y el h1 vive en la columna izquierda, asi
-           que lo calcula centrarTitulo() midiendo contra el centro de la
-           ventana. --titulo-alto / --titulo-gap / --titulo-y se ajustan en vivo
-           con tituloTune() y se guardan por usuario. */
-        :root { --titulo-alto: 80px; --titulo-gap: 32px; }
+        /* Titulo de placa: las dos palabras en una fila con un hueco entre
+           ellas. Los cuatro PNG salen del generador con el mismo alto, asi que
+           a igual height las letras miden igual — pero PILLWARS y la palabra
+           del modo llevan su propia variable, que es lo que permite hacer una
+           mas grande que la otra. El centrado horizontal NO se hace aqui: cada
+           modo tiene un ancho distinto y el h1 vive en la columna izquierda,
+           asi que lo calcula centrarTitulo() midiendo contra el centro de la
+           ventana. Todas las --titulo-* se ajustan en vivo con tituloTune() y
+           se guardan por usuario. */
+        :root { --titulo-alto-pw: 80px; --titulo-alto-word: 80px; --titulo-gap: 32px; --titulo-blur: 0px; --titulo-glow: #00ffaa; }
+        #loginOverlay.bg-arcade { --titulo-glow: #ccff00; }
         #selectedModeTitle.titulo-placa { display: flex; align-items: center; justify-content: center; gap: var(--titulo-gap); width: max-content; }
-        #selectedModeTitle.titulo-placa img { height: var(--titulo-alto) !important; width: auto; }
+        #selectedModeTitle.titulo-placa img { width: auto; }
+        #selectedModeTitle.titulo-placa #modeTitlePw img { height: var(--titulo-alto-pw) !important; }
+        #selectedModeTitle.titulo-placa #modeTitleWord img { height: var(--titulo-alto-word) !important; }
+        /* Halo: drop-shadow y no box-shadow porque sigue el alfa del PNG, asi
+           que envuelve las letras y no un rectangulo. Dos capas para que se note
+           sin tener que subir el radio hasta emborronarlo. Con blur 0 el filtro
+           no pinta halo, que es el estado de fabrica; la sombra dura si se
+           queda, que es la que despega el rotulo del fondo.
+           Pisa a proposito el filtro de los titulos PNG (mas abajo): aquel lleva
+           contrast(1.3) y brightness, calibrados para el arte de David, y sobre
+           estas letras solo desvirtuaba los tonos. El "body" de delante esta
+           para ganar por especificidad, que si no empatan y manda el orden. */
+        body #selectedModeTitle.titulo-placa #modeTitlePw img,
+        body #selectedModeTitle.titulo-placa #modeTitleWord img {
+            filter: drop-shadow(0 0 var(--titulo-blur) var(--titulo-glow))
+                    drop-shadow(0 0 var(--titulo-blur) var(--titulo-glow))
+                    drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
+        }
         .mode-blurb { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; text-align: left; line-height: 2.1; letter-spacing: 0.5px; white-space: nowrap; }
         /* El blurb de debajo del titulo, con el color de su modo y encendido,
            igual que el ROGUELIKE MECHANICS / STANDARD MODE del selector. Mismo
@@ -6770,13 +6789,17 @@
     // alto 80 = el alto NATIVO de los PNG, o sea 1:1 sin reescalar. Otros
     // valores siguen viendose nitidos (image-rendering:pixelated), pero los
     // pixeles dejan de medir todos lo mismo salvo en multiplos de 80.
+    // altoPw/altoWord a null = los dos siguen a "alto"; con un numero, esa
+    // palabra va por libre.
     const TITULO_KEY = 'pw_titulo_placa';
-    const TITULO = { alto: 80, gap: 32, y: 0 };
+    const TITULO = { alto: 80, altoPw: null, altoWord: null, gap: 32, y: 0, blur: 0 };
     try { Object.assign(TITULO, JSON.parse(localStorage.getItem(TITULO_KEY) || '{}')); } catch (e) {}
     function aplicaTituloVars() {
         const r = document.documentElement.style;
-        r.setProperty('--titulo-alto', TITULO.alto + 'px');
+        r.setProperty('--titulo-alto-pw', (TITULO.altoPw || TITULO.alto) + 'px');
+        r.setProperty('--titulo-alto-word', (TITULO.altoWord || TITULO.alto) + 'px');
         r.setProperty('--titulo-gap', TITULO.gap + 'px');
+        r.setProperty('--titulo-blur', (TITULO.blur || 0) + 'px');
     }
     // Centrado horizontal EXACTO respecto a la ventana. No se puede dejar en
     // manos del CSS: el h1 cuelga de la columna izquierda del menu, no de un
@@ -6819,10 +6842,14 @@
         if (el && !_tituloPlacaOn) { el.classList.remove('titulo-placa'); el.style.translate = ''; }
         if (currentGameMode) setSelectedModeTitleArt(currentGameMode, 'PILLWARS ' + currentGameMode.toUpperCase());
     };
-    // Ajustar en vivo y que quede guardado:
-    //   tituloTune({ alto: 76 })   tamaño de las letras (las dos palabras a la vez)
-    //   tituloTune({ gap: 40 })    hueco entre PILLWARS y ARCADE/CLASSIC
-    //   tituloTune({ y: -8 })      sube/baja el titulo entero
+    // Ajustar en vivo y que quede guardado. Sin argumentos devuelve lo que hay.
+    //   tituloTune({ alto: 96 })      tamaño de las letras (las dos palabras)
+    //   tituloTune({ altoPw: 110 })   solo PILLWARS
+    //   tituloTune({ altoWord: 70 })  solo ARCADE/CLASSIC
+    //   tituloTune({ gap: 40 })       hueco entre PILLWARS y ARCADE/CLASSIC
+    //   tituloTune({ y: -8 })         sube/baja el titulo entero
+    //   tituloTune({ blur: 12 })      halo del color del modo (0 = sin halo)
+    //   tituloTune({ altoPw: null })  esa palabra vuelve a seguir a "alto"
     window.tituloTune = o => {
         Object.assign(TITULO, o || {});
         try { localStorage.setItem(TITULO_KEY, JSON.stringify(TITULO)); } catch (e) {}
