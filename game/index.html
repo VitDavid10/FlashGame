@@ -719,7 +719,7 @@
         .sb-close:hover { border-color: #4a5a52; color: #fff; }
         /* Sin flechas a los lados: pasar de pagina vive en el pie, igual que en
            el cartel sin ampliar. Todo el ancho es para la rejilla. */
-        .sb-body { flex-shrink: 0; display: flex; align-items: center; }
+        .sb-body { flex: 1; display: flex; align-items: center; justify-content: center; }
         /* 4 columnas x 2 filas CUADRADAS. El lado lo calcula JS en
            --sb-cell (ver skinBigMideCeldas) y NO se deja a 1fr + aspect-ratio:
            esa combinacion es circular (el ancho de columna depende del alto de
@@ -732,9 +732,9 @@
         /* CELDA CUADRADA oscura, igual que en el cartel pequeno (.skin-cell):
            fondo casi negro y borde apenas visible; el hover tambien es el
            mismo (fondo claro + borde del color del modo + se levanta 1px). */
-        .sb-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+        .sb-cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px;
             min-width: 0; min-height: 0; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07);
-            cursor: grab; user-select: none; padding: 8px; box-sizing: border-box; transition: 0.12s; }
+            cursor: grab; user-select: none; padding: 5px 2px 2px 2px; box-sizing: border-box; transition: 0.12s; }
         .sb-cell:hover { background: rgba(255,255,255,0.07); border-color: currentColor; transform: translateY(-1px); }
         #skinBigModal.arcade .sb-cell:hover { color: #ccff00; }
         #skinBigModal.classic .sb-cell:hover { color: #00ffaa; }
@@ -744,14 +744,19 @@
         .sb-cell.vacia { border-color: transparent; background: transparent; }
         .sb-cell.vacia:hover { background: transparent; border-color: transparent; transform: none; }
         .sb-cell canvas { image-rendering: pixelated; }
-        .sb-cod { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; text-align: center; line-height: 1.3; }
-        .sb-pre { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #8d9a92; }
+        .sb-cod { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; text-align: center; line-height: 1; margin-top: -6px; }
+        .sb-pre { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #8d9a92; margin-top: 3px; }
         /* EQUIP / UNEQUIP de YOUR SKINS: accion directa sin abrir el detalle. */
-        .sb-eq { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 0.5px; padding: 4px 8px;
+        .sb-eq { position: absolute; top: 10px; right: 10px; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 0.5px; padding: 4px 8px;
             background: transparent; border: 2px solid #2c3630; color: #9aa79f; cursor: pointer; text-transform: uppercase; }
         .sb-eq:hover { border-color: #4a5a52; color: #fff; }
         .sb-eq.on { border-color: #00ff88; color: #00ff88; }
         .sb-eq:disabled { opacity: 0.4; cursor: default; }
+        #skinBigModal.arcade .sb-eq { border-color: #ccff00; color: #ccff00; }
+        #skinBigModal.arcade .sb-eq:hover { border-color: #ffff00; color: #ffff00; }
+        #skinBigModal.arcade .sb-eq.on { border-color: #ffff00; color: #ffff00; }
+        #skinBigModal.classic .sb-eq { border-color: #00ffaa; color: #00ffaa; }
+        #skinBigModal.classic .sb-eq:hover { border-color: #00ff88; color: #00ff88; }
         /* Precio EN DORADO para contrastar con la pantalla verde. */
         .sb-pre.precio { color: #ffb800; }
         /* Pie: la nota CENTRADA en el cartel y el paginador pegado a la
@@ -769,8 +774,8 @@
         /* La nota de "arrastra para reordenar" SOLO sale en YOUR SKINS: el
            orden del catalogo lo fija PAIS_ORDEN_PAGINAS y no se toca. Misma
            tipografia pixel que el resto del cartel, no la de la web. */
-        .sb-hint { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #6f7a73;
-            letter-spacing: 0.5px; text-transform: uppercase; }
+        .sb-hint { font-family: 'VT323', monospace; font-size: 16px; color: #6f7a73;
+            letter-spacing: 0; text-transform: none; line-height: 1.45; }
         /* Carrusel del panel inferior (MISSIONS ↔ SKINS) */
         .side-tabs-arrow { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-family: 'Russo One'; font-size: 12px; line-height: 18px; padding: 0; transition: 0.2s; }
         .side-tabs-arrow:hover { background: currentColor; color: #04150c; }
@@ -786,7 +791,7 @@
         #sidePanelSkins, #sidePanelMine { flex: 1; flex-direction: column; min-height: 0; }
         #mineVacio { justify-content: center; font-family: 'Press Start 2P', monospace; font-size: 7px; color: #6b7480; letter-spacing: 1px; }
         .skin-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; min-height: 0; }
-        .skin-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+        .skin-cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
                      background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07); cursor: pointer;
                      transition: 0.12s; min-height: 0; overflow: hidden; }
         .skin-cell:hover { background: rgba(255,255,255,0.07); border-color: currentColor; transform: translateY(-1px); }
@@ -800,9 +805,11 @@
            centrada y se recorta por igual arriba y abajo, apenas se nota) y no
            del texto, que es lo que se estaba comiendo el borde. */
         .skin-cell .sc-cod { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #fff; text-shadow: 1px 1px 0 #000;
-                             line-height: 1.6; flex: none; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                             line-height: 1.6; flex: none; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -6px; }
         .skin-cell .sc-pre { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #ffce3d; letter-spacing: 0.5px;
                              line-height: 1.6; flex: none; }
+        .mine-eq { position: absolute; top: 4px; right: 4px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #00ff88;
+                   font-weight: bold; }
         .skin-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 4px; flex-shrink: 0; }
         #missionsPanel.classic .skin-cell:hover { color: #00ffaa; }
         #missionsPanel.arcade .skin-cell:hover { color: #ccff00; }
@@ -1090,7 +1097,7 @@
         .btn-play:hover { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 20px rgba(255, 42, 42, 0.4); }
 
         /* ===== Menu nuevo: pildora interactiva + SETTINGS + popups pixel ===== */
-        #menuPillCanvas { width: 100%; max-width: 400px; image-rendering: pixelated; display: block; margin: 0 auto; }
+        #menuPillCanvas { width: 100%; max-width: 400px; height: auto; image-rendering: pixelated; display: block; margin: 0 auto; }
         .btn-settings { width: 100%; padding: 9px; margin-top: 8px; background: #14171c; color: #c8cdd2; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(255,255,255,0.06); transition: 0.15s; text-transform: uppercase; }
         /* Los 3 botones del menu: arte pixel plano (sin texto horneado) de la
            carpeta base — rojo para PLAY, azul SETTINGS, verde FEATURES. El
@@ -2337,7 +2344,7 @@
                      (SETTINGS -> EDIT LAYOUT), asi se puede ajustar el tamano/
                      posicion del contenido sin mover el cartel entero. -->
                 <div class="cartel-inner" id="oracleInner">
-                    <div class="menu-side-head"><span>PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
+                    <div class="menu-side-head"><span>ROOM PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
                     <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
                     <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
                     <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
@@ -6549,6 +6556,7 @@
         const maxH = (window.innerHeight || 720) * 0.92;
         caja.style.width = Math.round(maxW) + 'px';
         caja.style.height = 'auto';
+        skinBigMideCeldas();   // Medir las celdas DESPUÉS de establecer el ancho
         let w = maxW, h = caja.offsetHeight;
         if (h > maxH) {
             // La cabecera y el pie no escalan con el ancho, asi que el alto
@@ -6563,7 +6571,6 @@
         const hex = _loginBgMode === 'arcade' ? '#ccff00' : '#00ffaa';
         const luz = placaLuzHacia(caja), lgx = luz[0], lgy = luz[1];
         const key = W + '|' + H + '|' + hex + '|' + lgx.toFixed(2) + '|' + lgy.toFixed(2) + '|' + PLACA.GLOW;
-        skinBigMideCeldas();
         if (cv._placaKey === key) return;
         cv._placaKey = key;
         cv.width = W; cv.height = H;
@@ -8461,11 +8468,14 @@
             const cod = document.createElement('div'); cod.className = 'sc-cod';
             // Mismo criterio que el catalogo: el nombre del pais, no el codigo.
             cod.textContent = esDefault ? 'DEFAULT' : skinNombreCelda(code);
-            const est = document.createElement('div'); est.className = 'sc-pre';
             const activa = esDefault ? !puesta : puesta === code;
-            est.textContent = activa ? 'EQUIPPED' : 'ASSIGN';
-            est.style.color = activa ? '#00ff88' : '#ffce3d';
-            cel.append(cod, est);
+            cel.append(cod);
+            // Indicador "E" en la esquina superior derecha si está equipado
+            if (activa) {
+                const eq = document.createElement('div'); eq.className = 'mine-eq';
+                eq.textContent = 'E';
+                cel.appendChild(eq);
+            }
             cel.title = esDefault ? 'Your own two colours' : (paisSkin(code) || {}).nombre || code;
             cel.addEventListener('click', async () => {
                 const r = await paisPoner(esDefault ? null : code);
@@ -8595,12 +8605,9 @@
         let alto = grid && grid.clientHeight;
         if (!alto) { const otra = document.getElementById('skinGrid'); alto = otra && otra.clientHeight; }
         if (!alto) alto = 247;                       // el alto medido del cuadro
-        // Se reservan 30px por celda para las dos filas de texto (nombre +
-        // estado). Con los 22 de antes no llegaba: las dos lineas miden ~29 con
-        // sus separaciones, asi que la pildora se comia el hueco y la de abajo
-        // salia cortada por el borde de la celda. Con 30 quedan ~3px de margen
-        // sin encoger la pildora mas de lo necesario.
-        return Math.max(14, Math.min(40, Math.floor(((alto - 4) / 2 - 30) / 2.12)));
+        // Se reservan 15px por celda para la linea de texto (nombre).
+        // Con el precio removido, se necesita menos espacio.
+        return Math.max(14, Math.min(40, Math.floor(((alto - 4) / 2 - 15) / 2.12)));
     }
 
     /* ===== Orden propio del catalogo (se reordena arrastrando en el popup) =====
@@ -8674,6 +8681,9 @@
         m.classList.remove('classic', 'arcade');
         m.classList.add(_loginBgMode === 'arcade' ? 'arcade' : 'classic');
         m.classList.add('open');
+        // Forzar reflow para que .sb-cartel tenga sus dimensiones antes de renderizar
+        const caja = document.getElementById('sbCartel');
+        if (caja) caja.offsetHeight;
         skinBigRender();   // el propio render cuadra la placa y mide las celdas
         try { SoundManager.play('select'); } catch (e) {}
     }
@@ -8732,9 +8742,9 @@
         const lado = Math.max(70, Math.floor((util - SB_GAP * 3) / 4));
         grid.style.setProperty('--sb-cell', lado + 'px');
         // 2.21 = lo que crece el lado del sprite al girarlo 45 grados
-        // (wL + wL*PILL_RATIO) * cos45. Los 58 px son las dos lineas de texto,
+        // (wL + wL*PILL_RATIO) * cos45. Los 35 px son las dos lineas de texto,
         // el boton de equipar y los huecos entre ellos.
-        const wL = Math.max(18, Math.min(90, Math.floor((lado - 58) / 2.21)));
+        const wL = Math.max(18, Math.min(120, Math.floor((lado - 35) / 2.21)));
         if (wL === skinBigWL) return;
         skinBigWL = wL;
         _skinBigMidiendo = true;
@@ -8889,10 +8899,7 @@
             // y estaba justo al lado de "AU", que si lo es. El codigo sigue
             // estando en el cartel de detalle.
             const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = skinNombreCelda(p.code);
-            const pre = document.createElement('div'); pre.className = 'sc-pre';
-            pre.textContent = paisPuesta() === p.code ? 'ON' : (paisTengo(p.code) ? 'OWNED' : paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL');
-            if (paisTengo(p.code)) pre.style.color = '#00ff88';
-            cel.append(cv, cod, pre);
+            cel.append(cv, cod);
             cel.title = p.n;
             cel.addEventListener('click', () => skinOpen(p.code));
             cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });

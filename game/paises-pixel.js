@@ -207,12 +207,12 @@ const PAISES = {
     BR: {
         n: 'Brazil', b: ['#009739', '#007C2F', '#009739'], min: UMBRAL.pronto,
         e: [{ f: 'rombo', c: '#FEDD00' }, { f: 'disco', c: '#012169', k: 0.52 }],
-        lore: 'Order and progress, in that order, stitched across a sky of stars fixed at the exact moment the republic was born. Five World Cups say the flair is real, but flair alone never held a lobby. Eat in order. Progress follows.'
+        lore: 'Order and progress, in that order, stitched across a sky of stars fixed at the exact moment the republic was born. Five World Cups say the flair is real, but flair alone never held a lobby. Eat in order. Progress follows always.'
     },
     MA: {
         n: 'Morocco', b: ['#C1272D', '#A31E24', '#C1272D'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#006233', k: 0.92 }],
-        lore: 'The green star was drawn as one unbroken line, a single stroke that never lifts and never crosses itself. Play the same way. The runs that end badly here are the ones that hesitated somewhere in the middle.'
+        lore: 'The green star was drawn as one unbroken line, a single stroke that never lifts and never crosses itself. Play the same way. The runs that end badly here are the ones that hesitated somewhere in the middle of it.'
     },
     IN: {
         n: 'India', b: ['#FF9933', '#ffffff', '#138808'], min: UMBRAL.pronto,
@@ -232,37 +232,37 @@ const PAISES = {
     DE: {
         n: 'Germany', b: ['#000000', '#DD0000', '#FFCE00'], min: UMBRAL.siempre,
         e: null,
-        lore: 'No emblem, no decoration, no flourish anywhere on it. Three bands and a plan that was finalised long before the match started. Germany does not improvise, and that is precisely the thing that should worry you.'
+        lore: 'No emblem, no decoration, no flourish anywhere on it. Three bands and a plan that was finalised long before the match started. Germany does not improvise, and that is precisely the thing that should worry you the most.'
     },
     CI: {
         n: 'Ivory Coast', b: ['#F77F00', '#ffffff', '#009E60'], min: UMBRAL.siempre,
         e: null,
-        lore: 'Orange for the savannah, white for the peace between, green for the forest and the hope. The hope, in practice, is that you split a fraction of a second before the other one does.'
+        lore: 'Orange for the savannah, white for the peace between, green for the forest and the hope. The hope, in practice, is that you split a fraction of a second before the other one does. Hope and timing are the same here.'
     },
     EC: {
         n: 'Ecuador', b: ['#FFDD00', '#0033A0', '#EF3340'], min: UMBRAL.pronto,
-        e: [{ f: 'aro', c: '#FFDD00', k: 0.9 }],
+        e: null,
         lore: 'Named after a line that does not physically exist, drawn around the widest part of the planet, and claimed by a country that decided the line was worth being named after. Cross the middle of the map often enough and people start naming things after you too.'
     },
     NL: {
         n: 'Netherlands', b: ['#AE1C28', '#ffffff', '#21468B'], min: UMBRAL.siempre,
         e: null,
-        lore: 'They built an entire country below sea level out of sheer refusal to accept the water\'s opinion on the matter. A third of it should not be there. Holding a contested corner of this map should feel like a holiday.'
+        lore: 'They built an entire country below sea level out of sheer refusal to accept the water\'s opinion on the matter. A third of it should not be there. Holding a contested corner of this map should feel like a holiday to someone.'
     },
     JP: {
         n: 'Japan', b: ['#ffffff', '#F0F0F0', '#ffffff'], min: UMBRAL.siempre,
         e: [{ f: 'disco', c: '#BC002D', k: 0.72 }],
-        lore: 'One circle. No text, no crest, no second idea. Every other flag on this list is trying to tell you something; this one just shows up. The simplest shape on the field is also the hardest to corner.'
+        lore: 'One circle. No text, no crest, no second idea. Every other flag on this list is trying to tell you something; this one just shows up. The simplest shape on the field is also the hardest to corner or escape from.'
     },
     SE: {
         n: 'Sweden', b: ['#006AA7', '#00518A', '#006AA7'], min: UMBRAL.siempre,
         e: [{ f: 'cruzNordica', c: '#FECC00', k: 0.9 }],
-        lore: 'Cold, patient, and already behind you. Sweden spent centuries being the quiet power of the north while everyone was watching somewhere else. The cross points at exactly the place you should have been looking.'
+        lore: 'Cold, patient, and already behind you. Sweden spent centuries being the quiet power of the north while everyone was watching somewhere else. The cross points at exactly the place you should have been looking. Look there now.'
     },
     BE: {
         n: 'Belgium', b: ['#000000', '#FDDA24', '#EF3340'], min: UMBRAL.siempre,
         e: null,
-        lore: 'A small, dense country that has been the crossroads of every European argument worth having, with no room to run in any direction. You have played this map your entire life. It is called rush hour.'
+        lore: 'A small, dense country that has been the crossroads of every European argument worth having, with no room to run in any direction. You have played this map your entire life. It is called rush hour every moment.'
     },
     EG: {
         n: 'Egypt', b: ['#CE1126', '#ffffff', '#000000'], min: UMBRAL.tarde,
@@ -282,7 +282,7 @@ const PAISES = {
     FR: {
         n: 'France', b: ['#002395', '#ffffff', '#ED2939'], min: UMBRAL.siempre,
         e: null,
-        lore: 'Liberty to roam wherever the map allows, equality of hitboxes at the moment of contact, and fraternity that lasts precisely until one of you is measurably larger than the other.'
+        lore: 'Liberty to roam wherever the map allows, equality of hitboxes at the moment of contact, and fraternity that lasts precisely until one of you is measurably larger than the other. French strategy is always beautiful right up until it is not.'
     },
     NO: {
         n: 'Norway', b: ['#BA0C2F', '#ffffff', '#BA0C2F'], min: UMBRAL.siempre,
@@ -292,17 +292,17 @@ const PAISES = {
     SN: {
         n: 'Senegal', b: ['#00853F', '#FDEF42', '#E31B23'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#00853F', k: 0.88 }],
-        lore: 'The Lions of Teranga, and Teranga is the word for a hospitality so complete that a stranger is fed before the family eats. It is offered without condition, right up until the exact moment that it is not.'
+        lore: 'The Lions of Teranga, and Teranga is the word for a hospitality so complete that a stranger is fed before the family eats. It is offered without condition, right up until the exact moment that it is not. Hospitality and ferocity are not opposites here.'
     },
     AR: {
         n: 'Argentina', b: ['#74ACDF', '#ffffff', '#74ACDF'], min: UMBRAL.pronto,
         e: [{ f: 'sol', c: '#F6B40E', k: 0.95 }],
-        lore: 'The Sun of May broke through the clouds over Buenos Aires during the revolution, and the whole country decided that was a sign rather than weather. It rises whether or not you were ready for it. Grow into it.'
+        lore: 'The Sun of May broke through the clouds over Buenos Aires during the revolution, and the whole country decided that was a sign rather than weather. It rises whether or not you were ready for it. Grow into it. Argentina has always bet on itself and won.'
     },
     DZ: {
         n: 'Algeria', b: ['#006233', '#ffffff', '#006233'], min: UMBRAL.pronto,
         e: [{ f: 'luna', c: '#D21034', k: 0.92 }],
-        lore: 'The largest country in Africa, most of it Sahara, where the crescent opens toward whatever comes next because there is nothing behind you worth turning around for. What comes next is usually somebody smaller.'
+        lore: 'The largest country in Africa, most of it Sahara, where the crescent opens toward whatever comes next because there is nothing behind you worth turning around for. What comes next is usually somebody smaller than they think they are.'
     },
     AT: {
         n: 'Austria', b: ['#ED2939', '#ffffff', '#ED2939'], min: UMBRAL.siempre,
@@ -312,7 +312,7 @@ const PAISES = {
     CO: {
         n: 'Colombia', b: ['#FCD116', '#003893', '#CE1126'], min: UMBRAL.siempre,
         e: null,
-        lore: 'Half the flag is gold, and the proportion is deliberate: the top band is as tall as the other two combined because that is what the land was worth. Do not settle for a third of this map. Go and take your half.'
+        lore: 'Half the flag is gold, and the proportion is deliberate: the top band is as tall as the other two combined because that is what the land was worth. Do not settle for a third of this map. Go and take your half of everything.'
     },
     PT: {
         n: 'Portugal', b: ['#046A38', '#DA291C', '#A8170F'], min: UMBRAL.siempre,
@@ -342,7 +342,7 @@ const PAISES = {
     GH: {
         n: 'Ghana', b: ['#CE1126', '#FCD116', '#006B3F'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#000000', k: 0.88 }],
-        lore: 'The Black Star was the first flag raised when the colonial ones came down, and every African independence movement that followed borrowed something from it. First to break free, and still first to the middle of the map.'
+        lore: 'The Black Star was the first flag raised when the colonial ones came down, and every African independence movement that followed borrowed something from it. First to break free, and still first to the middle of the map always.'
     },
     CN: {
         n: 'China', b: ['#EE1C25', '#D4141B', '#EE1C25'], min: UMBRAL.siempre,
@@ -352,7 +352,7 @@ const PAISES = {
             { f: 'estrella', c: '#FFFF00', k: 0.62, dx: -0.42 },
             { f: 'arcoEstrellas', c: '#FFFF00', k: 1, min: UMBRAL.medio },
         ],
-        lore: 'One large star with four smaller ones turned toward it, each facing the same centre. Build the same thing here: every pill you swallow becomes another point of light orbiting whatever it is you are turning into.'
+        lore: 'One large star with four smaller ones turned toward it, each facing the same centre. Build the same thing here: every pill you swallow becomes another point of light orbiting whatever it is you are turning into at that moment.'
     },
 };
 
@@ -674,7 +674,7 @@ function _paisModalCSS() {
        ABSOLUTA a proposito: en el hueco de arriba a la derecha ya no hay nada
        (el nombre es corto), asi que no hace falta bajar el contenido una fila
        entera para meterlos — caben donde estan. */
-    #${PAIS_MODAL_ID} .pm-top { position:absolute; top:var(--pm-top-y,50px); right:var(--pm-top-x,12px);
+    #${PAIS_MODAL_ID} .pm-top { position:absolute; top:var(--pm-top-y,62px); right:var(--pm-top-x,60px);
         z-index:3; display:flex; align-items:center; gap:10px; }
     /* Flecha: la misma forma y hover que .side-tabs-arrow (la del cartel de
        MISSIONS/SKINS), del color del modo, pero mas grande. */
@@ -691,11 +691,10 @@ function _paisModalCSS() {
        pagina 1 (el alto lo fija paisModalPagina) para que el cartel no cambie
        de tamano al pasar de una a otra; el canvas se estira con el, asi que la
        cuadricula se adapta sola a un marco mas cuadrado. */
-    #${PAIS_MODAL_ID} .pm-page2 { display:flex; flex-direction:column; align-items:center; gap:10px;
+    #${PAIS_MODAL_ID} .pm-page2 { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:10px;
         flex:1; min-height:0; }
-    #${PAIS_MODAL_ID} .pm-page2 canvas { width:100%; flex:1; min-height:0; image-rendering:pixelated; display:block; }
-    #${PAIS_MODAL_ID} .pm-prevnom { font-family:'Press Start 2P',monospace; font-size:13px; color:#fff;
-        text-shadow:2px 2px 0 #000; letter-spacing:.5px; flex:none; }
+    #${PAIS_MODAL_ID} .pm-page2 canvas { width:100%; height:430px; image-rendering:pixelated; display:block; }
+    #${PAIS_MODAL_ID} .pm-prevnom { display:none; }
     /* Sin margen arriba: el nombre es lo PRIMERO del cartel desde que se quito
        el codigo de dos letras que iba encima. */
     #${PAIS_MODAL_ID} .pm-nom { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-nom,17px);
@@ -967,8 +966,9 @@ function paisModalMontar() {
         '<button class="pm-prev" title="See it in action">\u203A</button>' +
         '<button class="pm-x">CLOSE</button>' +
         '</div>' +
+        '<div class="pm-nom"></div>' +
         '<div class="pm-page1">' +
-        '<div class="pm-nom"></div><div class="pm-lore"></div>' +
+        '<div class="pm-lore"></div>' +
         '<div class="pm-franjas"></div><div class="pm-crece"></div><div class="pm-pie"></div>' +
         '<div class="pm-btns"></div>' +
         '</div>' +
@@ -1018,7 +1018,7 @@ let _pmPreviaPausa = false, _pmPreviaUlt = 0, _pmSim = null, _pmAltoP1 = 0;
 // Colores de comida del juego (los mismos que la deco del menu).
 const PM_COMIDA_COL = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
 const PM_ARENA_BG = '#050505', PM_ARENA_GRID = 'rgba(255,255,255,0.06)';
-const PM_WL_MIN = 12, PM_WL_MAX = 78;  // de recien nacida a tope del bucle
+const PM_WL_MIN = 12, PM_WL_MAX = 50;  // de recien nacida a tope del bucle
 const PM_MUNDO = 360;                  // radio del trozo de mapa simulado, en px lowres
 const PM_ANG = -Math.PI / 4;           // inclinacion FIJA de la capsula (no gira)
 const PM_COMIDA_N = 240;               // poblacion de comida del trozo de mapa
@@ -1122,7 +1122,7 @@ function _pmPreviaPinta() {
     if (!cv || !cv.clientWidth) return;
     // El canvas ya tiene su proporcion por CSS (aspect-ratio en
     // _paisModalCSS): la resolucion lowres solo tiene que guardarla.
-    const H = 170, W = Math.max(24, Math.round(cv.clientWidth / cv.clientHeight * H));
+    const H = 165, W = Math.max(24, Math.round(cv.clientWidth / cv.clientHeight * H));
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = false;
