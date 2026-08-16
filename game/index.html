@@ -6421,6 +6421,20 @@
         // deja en sombra el opuesto. Es la misma idea que el tinte por modo que
         // llevaba el cartel de piedra, pero direccional. 0 = apagada.
         GLOW: 0.38,
+        // La luz del titulo va en ESCALONES, no en rampa: el degradado continuo
+        // era lo unico del marco que no hablaba en pixel art (cada pixel un tono
+        // distinto). Con 2 salen 5 bandas planas — misma direccion de luz,
+        // dibujada como la dibujaria el pack.
+        GLOW_STEPS: 2,
+        // Tonos del marco, como factor sobre el verde/lima de la cuadricula.
+        // El reparto es el clasico de marco pixel: contorno OSCURO que recorta
+        // la silueta contra el fondo, un escalon de bisel (claro por donde entra
+        // la luz, sombra por el opuesto) y CUERPO macizo. Antes era al reves
+        // (contorno claro 0.42, cuerpo casi negro 0.12): el cuerpo se fundia con
+        // el fondo del menu y el cartel se leia como dos lineas finas flotando
+        // en vez de como una placa con peso. Ajustables en vivo con
+        // placaTune({ TONOS: {...} }).
+        TONOS: { rim: 0.16, lit: 0.75, mid: 0.45, dim: 0.24, inner: 0.36, body: 0.30 },
     };
     // Luz arriba-izquierda, la MISMA que usa el sprite de la pildora.
     const PLACA_LX = -0.6, PLACA_LY = -0.75;
@@ -6442,7 +6456,9 @@
         const rgb = pixRgb(hex);
         const sh = f => rgb.map(v => Math.round(v * f));
         const img = g.createImageData(W, H), px = img.data;
-        const C_RIM = sh(0.42), C_LIT = sh(0.60), C_DIM = sh(0.22), C_MID = sh(0.30), C_BODY = sh(0.12);
+        const TN = PLACA.TONOS;
+        const C_RIM = sh(TN.rim), C_LIT = sh(TN.lit), C_DIM = sh(TN.dim), C_MID = sh(TN.mid),
+              C_INNER = sh(TN.inner), C_BODY = sh(TN.body);
         const SCR = PLACA.SCREEN;
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
             const i = ((y * W + x) << 2);
@@ -6452,10 +6468,12 @@
                 if (inHole(x, y)) { px[i] = SCR[0]; px[i + 1] = SCR[1]; px[i + 2] = SCR[2]; px[i + 3] = 255; }
                 continue;
             }
-            // Anillo: 0 = borde, 1 = el siguiente hacia dentro, 2+ = cuerpo
-            let ring = 2;
-            for (let r = 1; r <= 2 && ring === 2; r++) {
-                for (let oy = -1; oy <= 1 && ring === 2; oy++) for (let ox = -1; ox <= 1; ox++) {
+            // Anillo: 0 = contorno, 1 = bisel, 2 = escalon intermedio, 3+ = cuerpo.
+            // Tres escalones (antes dos) para que el marco se lea como un bloque
+            // con volumen y no como una linea con un realce al lado.
+            let ring = 3;
+            for (let r = 1; r <= 3 && ring === 3; r++) {
+                for (let oy = -1; oy <= 1 && ring === 3; oy++) for (let ox = -1; ox <= 1; ox++) {
                     if ((!ox && !oy) || inBand(x + ox * r, y + oy * r)) continue;
                     ring = r - 1; break;
                 }
@@ -6474,12 +6492,16 @@
                 const l = Math.hypot(nx, ny) || 1;
                 const ndl = (nx / l) * PLACA_LX + (ny / l) * PLACA_LY;
                 col = ndl > 0.15 ? C_LIT : ndl < -0.15 ? C_DIM : C_MID;
-            } else col = C_BODY;
+            } else if (ring === 2) col = C_INNER;
+            else col = C_BODY;
             // Luz del titulo: gana el lado que le da la cara y pierde el
             // opuesto. Solo sobre el MARCO — la pantalla se queda plana.
             if (PLACA.GLOW) {
                 const t = ((x - W / 2) * lgx + (y - H / 2) * lgy) / (Math.hypot(W, H) / 2);
-                const f = 1 + PLACA.GLOW * Math.max(-1, Math.min(1, t));
+                // Cuantizado a GLOW_STEPS: bandas planas en vez de rampa continua.
+                const st = Math.max(1, PLACA.GLOW_STEPS | 0);
+                const q = Math.round(Math.max(-1, Math.min(1, t)) * st) / st;
+                const f = 1 + PLACA.GLOW * q;
                 px[i] = Math.min(255, col[0] * f); px[i + 1] = Math.min(255, col[1] * f); px[i + 2] = Math.min(255, col[2] * f);
             } else { px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; }
             px[i + 3] = 255;
@@ -6703,9 +6725,11 @@
         saveMenuDecoSettings(); applyMenuDecoCss();
     };
     // Ajustar en vivo sin recargar: placaTune({ CUT: 3, SHADOW: 2 })
+    // sbPlaca (el popup de skins) tambien: usa el mismo placaPixels, asi que sin
+    // invalidar su clave los tonos nuevos no se veian ahi hasta recargar.
     window.placaTune = o => {
         Object.assign(PLACA, o);
-        for (const id of ['oraclePlaca', 'missionsPlaca']) { const c = document.getElementById(id); if (c) c._placaKey = ''; }
+        for (const id of ['oraclePlaca', 'missionsPlaca', 'sbPlaca']) { const c = document.getElementById(id); if (c) c._placaKey = ''; }
     };
 
     // --- Editor de layout del menu: mueve y escala cada elemento a tu gusto ---
