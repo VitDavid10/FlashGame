@@ -219,6 +219,7 @@
         #gwBalValue {
             font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px); color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
+            text-align: right;
         }
         /* Botones de wallet: los CUATRO (CONNECT / DEPOSIT / WITHDRAW /
            DISCONNECT) comparten el mismo rojo vacio y llevan el texto escrito
@@ -1296,9 +1297,11 @@
         .pw-modal-box.features .pw-modal-cancel { display: block; margin: 14px auto 0; }
 
         /* Nombre sutil bajo la pildora: una linea de texto, sin caja */
-        #playerNameInput.name-subtle { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 2px dashed var(--primary) !important; border-radius: 0 !important; font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; letter-spacing: 1px; padding: 8px 4px 6px; width: 70%; margin: 2px auto 10px; display: block; }
-        #playerNameInput.name-subtle:focus { outline: none; border-bottom-color: var(--primary) !important; }
-        #playerNameInput.name-subtle::placeholder { color: #7d8a82; }
+        #playerNameInput.name-subtle { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 2px dashed #00ffaa !important; border-radius: 0 !important; font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; letter-spacing: 1px; padding: 8px 4px 6px; width: 70%; margin: 2px auto 10px; display: block; }
+        #playerNameInput.name-subtle:focus { outline: none; border-bottom-color: #00ffaa !important; }
+        #playerNameInput.name-subtle::placeholder { color: #00ffaa; }
+        #loginOverlay.bg-arcade #playerNameInput.name-subtle { border-bottom-color: #ccff00 !important; }
+        #loginOverlay.bg-arcade #playerNameInput.name-subtle::placeholder { color: #ccff00; }
 
         /* ===== Paleta de la pildora: UN SOLO cartel (arte de David,
            palette.png) en vez de los dos popups que habia antes. La mitad que se
