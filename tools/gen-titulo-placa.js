@@ -139,14 +139,27 @@ const GLIFOS = {
             return une(arriba, abajo);
         },
     },
-    // Travesaño bajo y contador amplio: con el travesaño alto la A se cerraba
-    // casi del todo.
+    // A de hombros: dos astas RECTAS unidas arriba por un arco, y travesaño.
+    // Antes eran dos diagonales que convergian en un punto, o sea un triangulo
+    // con una ranura — no se leia como letra y ademas no hablaba el mismo
+    // idioma que la P, la R o la D, que van de arcos. Con el vertice abierto
+    // aparece un contador de verdad (12x10) en vez de la rendija de antes.
     'A': {
-        w: 33, d: (x, y) => une(
-            sdSeg(x, y, 16.5, T / 2, 5, CAP - T / 2, T / 2),
-            sdSeg(x, y, 16.5, T / 2, 28, CAP - T / 2, T / 2),
-            sdCaja(x, y, 8, 29, 17, T - 1, [1, 1, 1, 1]),
-        ),
+        w: 32, d: (x, y) => {
+            const AR = 15;          // radio del hombro
+            const arco = quita(
+                anillo(x, y, 0, 0, 32, 2 * AR, [AR, AR, AR, AR], T),
+                sdCaja(x, y, -2, AR, 36, 2 * AR, [0, 0, 0, 0]),   // se queda solo la mitad de arriba
+            );
+            return une(
+                arco,
+                sdCaja(x, y, 0, AR - 1, T, CAP - AR + 1, [0, 0, 1, 3]),
+                sdCaja(x, y, 32 - T, AR - 1, T, CAP - AR + 1, [0, 0, 3, 1]),
+                // El travesaño a 22 y no mas abajo: pegado al pie dejaba unas
+                // patas de 4 unidades y la letra tiraba a O con una barra.
+                sdCaja(x, y, 0, 22, 32, T - 1, [1, 1, 1, 1]),
+            );
+        },
     },
     'W': {
         w: 48, d: (x, y) => une(
