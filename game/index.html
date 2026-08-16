@@ -6734,11 +6734,19 @@
     // los spans de siempre (#modeTitlePw / #modeTitleWord), asi que EDIT LAYOUT
     // los sigue moviendo y escalando por separado.
     const TITULO = {
-        PX: 1,   // lado del pixel de la letra, en pixeles de canvas
+        PX: 2,   // lado del pixel de la letra, en pixeles de canvas
+        // Grosor del contorno: 'plain' = 1 unidad (solo ink), 'thin' = 2 (banda
+        // de color + ink), 'full' = 4 (el preset de cartel de pixFancyText).
+        // OJO con subirlo: los glifos bold miden 11 unidades con avance 13, o
+        // sea 2 de hueco entre letras. Con 'full' el contorno de 4 unidades se
+        // come ese hueco por los dos lados y las letras se funden en un bloque
+        // macizo — el titulo deja de leerse. 'thin' ya las deja tocandose.
+        BORDE: 'plain',
         // Factores sobre el color del modo, misma idea que PLACA.TONOS:
         // fill = cuerpo de la letra, shade = las 2 filas inferiores (bisel
-        // interno), ink = contorno duro, body = banda de color, dark = reborde
-        // exterior. Ajustables en vivo con tituloTune({ TONOS: {...} }).
+        // interno), ink = contorno duro, body = banda de color (solo con 'thin'
+        // o 'full'), dark = reborde exterior (solo con 'full').
+        // Ajustables en vivo con tituloTune({ TONOS: {...} }).
         TONOS: { fill: 1, shade: 0.55, ink: 0.14, body: 0.34, dark: 0.08 },
     };
     let _tituloPlacaOn = true;
@@ -6753,6 +6761,7 @@
         const T = TITULO.TONOS;
         return pixFancyText(text, Math.max(1, TITULO.PX | 0), {
             fill: c(T.fill), shade: c(T.shade), ink: c(T.ink), accent: c(T.body), dark: c(T.dark),
+            plain: TITULO.BORDE === 'plain', thin: TITULO.BORDE === 'thin',
         });
     }
     // Repintar solo cuando cambia algo: lo llama paintPlacas en cada frame.
@@ -6760,7 +6769,7 @@
         const el = els.selectedModeTitle;
         if (!el) return;
         const hex = mode === 'arcade' ? '#ccff00' : '#00ffaa';
-        const key = mode + '|' + TITULO.PX + '|' + JSON.stringify(TITULO.TONOS);
+        const key = mode + '|' + TITULO.PX + '|' + TITULO.BORDE + '|' + JSON.stringify(TITULO.TONOS);
         if (el._tituloKey === key) return;
         el._tituloKey = key;
         el.innerHTML =
