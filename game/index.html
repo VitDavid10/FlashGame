@@ -717,26 +717,23 @@
         .sb-close { background: transparent; border: 2px solid #2c3630; color: #7d8a82; font-family: 'Russo One';
             font-size: 12px; padding: 6px 14px; cursor: pointer; letter-spacing: 1.5px; text-transform: uppercase; }
         .sb-close:hover { border-color: #4a5a52; color: #fff; }
-        /* Fila: flecha izquierda + rejilla + flecha derecha. Las flechas van
-           del color del MARCO (el mismo verde/lima del modo), no grises. */
-        .sb-body { flex-shrink: 0; display: flex; align-items: center; gap: 14px; }
-        .sb-arrow { width: 38px; height: 38px; flex-shrink: 0; background: transparent; border: 2px solid;
-            font-family: 'Russo One'; font-size: 20px; line-height: 1; cursor: pointer; padding: 0; }
-        #skinBigModal.arcade .sb-arrow { border-color: rgba(204,255,0,.5); color: #ccff00; }
-        #skinBigModal.classic .sb-arrow { border-color: rgba(0,255,170,.5); color: #00ffaa; }
-        .sb-arrow:hover:not(:disabled) { background: rgba(255,255,255,.08); }
-        #skinBigModal.arcade .sb-arrow:hover:not(:disabled) { border-color: #ccff00; }
-        #skinBigModal.classic .sb-arrow:hover:not(:disabled) { border-color: #00ffaa; }
-        .sb-arrow:disabled { opacity: 0.22; cursor: default; }
-        /* 4 columnas x 2 filas: el ALTO de fila lo pone aspect-ratio de la
-           celda (auto = "lo que pida el contenido"), no un reparto forzado. */
-        .sb-grid { flex-shrink: 0; min-width: 0; display: grid; grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(2, auto); gap: 12px; }
+        /* Sin flechas a los lados: pasar de pagina vive en el pie, igual que en
+           el cartel sin ampliar. Todo el ancho es para la rejilla. */
+        .sb-body { flex-shrink: 0; display: flex; align-items: center; }
+        /* 4 columnas x 2 filas CUADRADAS. El lado lo calcula JS en
+           --sb-cell (ver skinBigMideCeldas) y NO se deja a 1fr + aspect-ratio:
+           esa combinacion es circular (el ancho de columna depende del alto de
+           fila, que depende del ancho) y el navegador la resolvia dandole al
+           grid su tamano intrinseco — se quedaba en 596px dentro de los 950
+           disponibles, con celdas pequenas y una franja muerta a la derecha. */
+        .sb-grid { flex: 1; min-width: 0; display: grid; justify-content: center; align-content: center;
+            grid-template-columns: repeat(4, var(--sb-cell, 140px));
+            grid-template-rows: repeat(2, var(--sb-cell, 140px)); gap: 12px; }
         /* CELDA CUADRADA oscura, igual que en el cartel pequeno (.skin-cell):
            fondo casi negro y borde apenas visible; el hover tambien es el
            mismo (fondo claro + borde del color del modo + se levanta 1px). */
         .sb-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-            aspect-ratio: 1; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07);
+            min-width: 0; min-height: 0; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07);
             cursor: grab; user-select: none; padding: 8px; box-sizing: border-box; transition: 0.12s; }
         .sb-cell:hover { background: rgba(255,255,255,0.07); border-color: currentColor; transform: translateY(-1px); }
         #skinBigModal.arcade .sb-cell:hover { color: #ccff00; }
@@ -757,10 +754,23 @@
         .sb-eq:disabled { opacity: 0.4; cursor: default; }
         /* Precio EN DORADO para contrastar con la pantalla verde. */
         .sb-pre.precio { color: #ffb800; }
-        /* Pie: numero de pagina centrado bajo la rejilla, como en el cartel. */
-        .sb-foot { display: flex; align-items: center; justify-content: center; gap: 14px; flex-shrink: 0;
-            font-family: 'Russo One'; font-size: 12px; letter-spacing: 1.5px; color: #7d8a82; }
-        .sb-hint { font-family: 'Inter', sans-serif; font-size: 11px; color: #5f6a63; letter-spacing: 0; text-transform: none; }
+        /* Pie: la nota CENTRADA en el cartel y el paginador pegado a la
+           derecha, como en el cartel sin ampliar. El paginador va absoluto para
+           que el centrado de la nota no dependa de su ancho. */
+        .sb-foot { position: relative; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; min-height: 26px; }
+        .sb-pag { position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+            display: flex; align-items: center; gap: 10px; }
+        #sbPage { font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: 1px; }
+        #skinBigModal.arcade #sbPage, #skinBigModal.arcade .sb-pag .side-tabs-arrow { color: #ccff00; }
+        #skinBigModal.classic #sbPage, #skinBigModal.classic .sb-pag .side-tabs-arrow { color: #00ffaa; }
+        .sb-pag .side-tabs-arrow { width: 26px; height: 26px; font-size: 14px; line-height: 22px; }
+        .sb-pag .side-tabs-arrow:disabled { opacity: 0.25; cursor: default; }
+        /* La nota de "arrastra para reordenar" SOLO sale en YOUR SKINS: el
+           orden del catalogo lo fija PAIS_ORDEN_PAGINAS y no se toca. Misma
+           tipografia pixel que el resto del cartel, no la de la web. */
+        .sb-hint { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #6f7a73;
+            letter-spacing: 0.5px; text-transform: uppercase; }
         /* Carrusel del panel inferior (MISSIONS ↔ SKINS) */
         .side-tabs-arrow { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-family: 'Russo One'; font-size: 12px; line-height: 18px; padding: 0; transition: 0.2s; }
         .side-tabs-arrow:hover { background: currentColor; color: #04150c; }
@@ -2722,13 +2732,17 @@
                     <button class="sb-close" onclick="skinBigClose()">CLOSE</button>
                 </div>
                 <div class="sb-body">
-                    <button class="sb-arrow" id="sbPrev" onclick="skinBigPage(-1)" title="Previous page">&lsaquo;</button>
                     <div class="sb-grid" id="sbGrid"></div>
-                    <button class="sb-arrow" id="sbNext" onclick="skinBigPage(1)" title="Next page">&rsaquo;</button>
                 </div>
+                <!-- Pie IGUAL que el del cartel sin ampliar: la nota centrada y,
+                     pegado a la derecha, el numero de pagina con la flecha de
+                     pasar (.side-tabs-arrow, la misma de MISSIONS/SKINS). -->
                 <div class="sb-foot">
-                    <span id="sbPage">1/1</span>
-                    <span class="sb-hint">Drag a skin to reorder the catalogue</span>
+                    <span class="sb-hint">Drag a skin to reorder your collection</span>
+                    <span class="sb-pag">
+                        <span id="sbPage">1/1</span>
+                        <button class="side-tabs-arrow" id="sbNext" onclick="skinBigPage(1)" onmouseenter="SoundManager.playSimpleHover()" title="Next page">&rsaquo;</button>
+                    </span>
                 </div>
             </div>
         </div>
@@ -6525,8 +6539,14 @@
         const T = placaGrosor();
         // El padding ES el marco: el contenido nunca se mete debajo de el.
         caja.style.padding = Math.round(T * scale) + 'px';
-        const maxW = (window.innerWidth || 1280) * 0.92;
-        const maxH = (window.innerHeight || 720) * 0.90;
+        // Ancho: el MISMO de siempre (proporcional al viewport, ~80%). Lo unico
+        // que cambio respecto a la version de antes es el ALTO, que ahora es el
+        // natural del contenido (height:auto mas abajo) en vez de un ratio
+        // fijo — que era lo que dejaba hueco muerto encima y debajo de las 8
+        // pildoras. El tope en px evita que en un monitor muy ancho las celdas
+        // se vayan a un tamano absurdo.
+        const maxW = Math.min((window.innerWidth || 1280) * 0.80, 1220);
+        const maxH = (window.innerHeight || 720) * 0.92;
         caja.style.width = Math.round(maxW) + 'px';
         caja.style.height = 'auto';
         let w = maxW, h = caja.offsetHeight;
@@ -8595,29 +8615,48 @@
     function skinOrdenGuardar(codes) {
         try { localStorage.setItem(SKIN_ORDER_KEY, JSON.stringify(codes)); } catch (e) {}
     }
-    // Todos los codigos en el orden que toque. Las skins que existan pero no
-    // estuvieran en el orden guardado (catalogo nuevo) van al final.
-    function skinTodosCodes() {
-        const todos = paisLista().map(p => p.code);
-        const guardado = skinOrdenGuardado();
-        if (!guardado) return todos;
-        const vistos = new Set(), out = [];
-        for (const c of guardado) if (todos.indexOf(c) !== -1 && !vistos.has(c)) { vistos.add(c); out.push(c); }
-        for (const c of todos) if (!vistos.has(c)) out.push(c);
+    // Orden CANONICO del catalogo: el mismo que ve el cartel pequeno. No es el
+    // de paisLista(): paisPagina() reordena las paginas con PAIS_ORDEN_PAGINAS
+    // ([2,1,0,3]), asi que la pagina 1 de la tienda NO es el primer trozo de la
+    // tabla. Se reconstruye pidiendo las paginas en ese mismo orden y pegandolas
+    // — usar paisLista() a pelo era lo que hacia que el popup ensenara las skins
+    // en un orden distinto al del cartel.
+    function skinBaseCodes() {
+        const out = [];
+        const n = paisNumPaginas(SKIN_POR_PAGINA);
+        for (let i = 0; i < n; i++) for (const p of paisPagina(i, SKIN_POR_PAGINA)) out.push(p.code);
         return out;
     }
-    // Pagina del catalogo pequeno: con orden propio se pagina en linea; sin el,
-    // se respeta paisPagina tal cual (mismo comportamiento de siempre).
+    // El CATALOGO va SIEMPRE por el orden canonico: el orden guardado no pinta
+    // nada aqui. Antes si lo aplicaba, y como la tienda llego a ser
+    // arrastrable, a quien hubiera movido una skin le quedaba ese orden viejo
+    // pisando al de PAIS_ORDEN_PAGINAS para siempre. El guardado es solo de
+    // YOUR SKINS (ver skinMiasOrdenadas).
+    function skinTodosCodes() { return skinBaseCodes(); }
+    // Pagina del catalogo pequeno. Mismo orden canonico que el popup, asi el
+    // cartel y el ampliado no pueden discrepar.
     function skinPaginaItems(idx, porPagina) {
-        if (!skinOrdenGuardado()) return paisPagina(idx, porPagina);
         const codes = skinTodosCodes().slice(idx * porPagina, (idx + 1) * porPagina);
         const tabla = {}; paisLista().forEach(p => { tabla[p.code] = p; });
         return codes.map(c => tabla[c]).filter(Boolean);
     }
-    // Las tuyas, ordenadas igual que el catalogo.
+    // Orden EFECTIVO de YOUR SKINS: el guardado primero y detras, por el orden
+    // canonico, lo que aun no se haya movido nunca. Lo comparten el pintado y
+    // el arrastre — si el arrastre partiera del canonico a secas, cada nuevo
+    // movimiento borraria los anteriores.
+    function skinOrdenEfectivo() {
+        const base = skinBaseCodes(), guardado = skinOrdenGuardado();
+        if (!guardado) return base;
+        const vistos = new Set(), out = [];
+        for (const c of guardado) if (base.indexOf(c) !== -1 && !vistos.has(c)) { vistos.add(c); out.push(c); }
+        for (const c of base) if (!vistos.has(c)) out.push(c);
+        return out;
+    }
+    // Las tuyas: aqui SI manda el orden guardado (es la unica pestana que se
+    // puede reordenar).
     function skinMiasOrdenadas() {
         const mias = (typeof paisMias === 'function') ? paisMias() : [];
-        const orden = skinTodosCodes();
+        const orden = skinOrdenEfectivo();
         return mias.slice().sort((a, b) => orden.indexOf(a) - orden.indexOf(b));
     }
 
@@ -8675,14 +8714,27 @@
     // reparte el hueco del cartel, asi que al agrandar el popup la pildora crece
     // con el. Se mide despues de pintar y, si cambia, se repinta una sola vez.
     let skinBigWL = 46, _skinBigMidiendo = false;
+    // Lado de la celda (cuadrada) y, de ahi, el ancho logico de la pildora. Se
+    // calcula A MANO en vez de dejarlo en 1fr + aspect-ratio porque esa pareja
+    // es circular y el navegador la resolvia dandole al grid su tamano
+    // intrinseco, dejando las celdas pequenas y una franja muerta al lado.
+    const SB_GAP = 12, SB_PADX = 18;
     function skinBigMideCeldas() {
         if (_skinBigMidiendo) return;
-        const cel = document.querySelector('#sbGrid .sb-cell');
-        if (!cel || !cel.clientHeight) return;
+        const grid = document.getElementById('sbGrid');
+        const caja = document.getElementById('sbCartel');
+        if (!grid || !caja || !caja.clientWidth) return;
+        // Ancho util = caja - marco (padding de la caja) - padding del interior
+        // - las dos flechas con sus huecos.
+        const marco = parseFloat(caja.style.padding) || 0;
+        // Sin flechas laterales, todo el ancho interior es de la rejilla.
+        const util = caja.clientWidth - marco * 2 - SB_PADX * 2;
+        const lado = Math.max(70, Math.floor((util - SB_GAP * 3) / 4));
+        grid.style.setProperty('--sb-cell', lado + 'px');
         // 2.21 = lo que crece el lado del sprite al girarlo 45 grados
         // (wL + wL*PILL_RATIO) * cos45. Los 58 px son las dos lineas de texto,
         // el boton de equipar y los huecos entre ellos.
-        const wL = Math.max(18, Math.min(90, Math.floor((cel.clientHeight - 58) / 2.21)));
+        const wL = Math.max(18, Math.min(90, Math.floor((lado - 58) / 2.21)));
         if (wL === skinBigWL) return;
         skinBigWL = wL;
         _skinBigMidiendo = true;
@@ -8709,8 +8761,12 @@
             const p = esDefault ? null : tabla[code];
             if (!esDefault && !p) return;
             const cel = document.createElement('div');
-            cel.className = 'sb-cell' + (esDefault ? ' fija' : '');
-            cel.draggable = !esDefault;
+            // Arrastrable SOLO en YOUR SKINS: el orden del catalogo lo decide
+            // PAIS_ORDEN_PAGINAS y no se toca desde la interfaz. La pildora por
+            // defecto tampoco se mueve — va siempre la primera.
+            const movible = esMine && !esDefault;
+            cel.className = 'sb-cell' + (movible ? '' : ' fija');
+            cel.draggable = movible;
             cel.dataset.code = code;
 
             const cv = document.createElement('canvas');
@@ -8768,14 +8824,16 @@
             grid.appendChild(v);
         }
         document.getElementById('sbPage').textContent = (skinBigPagina + 1) + '/' + paginas;
-        document.getElementById('sbPrev').disabled = paginas < 2;
         document.getElementById('sbNext').disabled = paginas < 2;
+        // La nota de reordenar solo tiene sentido donde se puede reordenar.
+        const hint = document.querySelector('#skinBigModal .sb-hint');
+        if (hint) hint.style.display = esMine ? '' : 'none';
         skinBigDnD(grid);
         drawPlacaPopup();
     }
-    // Arrastrar para reordenar. El orden que se guarda es SIEMPRE el del
-    // catalogo completo: en YOUR SKINS solo se ven las tuyas, asi que mover una
-    // ahi reubica ese codigo dentro de la lista global, sin tocar el resto.
+    // Arrastrar para reordenar: SOLO en YOUR SKINS (en el catalogo las celdas
+    // no son draggable). El orden que se guarda es el de la lista completa, asi
+    // que mover una de las tuyas reubica ese codigo sin tocar el resto.
     function skinBigDnD(grid) {
         if (grid._dndListo) return;
         grid._dndListo = true;
@@ -8801,7 +8859,7 @@
             e.preventDefault();
             const destino = e.target.closest('.sb-cell:not(.vacia):not(.fija)');
             if (!origen || !destino || destino === origen) return;
-            const orden = skinTodosCodes();
+            const orden = skinOrdenEfectivo();
             const de = orden.indexOf(origen.dataset.code), a = orden.indexOf(destino.dataset.code);
             if (de < 0 || a < 0) return;
             orden.splice(a, 0, orden.splice(de, 1)[0]);

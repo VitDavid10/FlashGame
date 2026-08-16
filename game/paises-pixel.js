@@ -387,11 +387,12 @@ function paisSkin(code) {
 function paisLista() { return Object.keys(PAISES).map(c => Object.assign({ code: c }, PAISES[c])); }
 
 /* ===== PAGINADO DE LA TIENDA ===== ---------------------------------------
- * El orden de las pestañas NO es el de la tabla: la tercera tanda abre la
- * tienda y luego van la segunda, la primera y la cuarta. Vive aqui, y no en
- * cada tienda, para que /game y la landing no puedan discrepar.
+ * El orden de las pestañas NO es el de la tabla: abre la TERCERA tanda (la de
+ * Egipto, España y compañia) y siguen la segunda, la cuarta y la primera.
+ * Vive aqui, y no en cada tienda, para que /game, la landing y el catalogo
+ * ampliado no puedan discrepar: es EL orden, no se reordena desde la interfaz.
  */
-const PAIS_ORDEN_PAGINAS = [2, 1, 0, 3];
+const PAIS_ORDEN_PAGINAS = [2, 1, 3, 0];
 function paisNumPaginas(porPagina) { return Math.ceil(Object.keys(PAISES).length / porPagina); }
 function paisPagina(idx, porPagina) {
     const l = paisLista();
@@ -640,7 +641,7 @@ function _paisModalCSS() {
        OJO: este bloque es un template literal, asi que aqui dentro NO puede haber
        comillas invertidas — cierran la cadena y parten el fichero entero. */
     #${PAIS_MODAL_ID}, #${PAIS_MODAL_ID} * { cursor: default !important; }
-    #${PAIS_MODAL_ID} .pm-x, #${PAIS_MODAL_ID} .pm-btn, #${PAIS_MODAL_ID} .pm-prev { cursor: pointer !important; }
+    #${PAIS_MODAL_ID} .pm-x, #${PAIS_MODAL_ID} .pm-btn, #${PAIS_MODAL_ID} .pm-prev, #${PAIS_MODAL_ID} .pm-prevcv { cursor: pointer !important; }
     /* El marco ya NO es un PNG: es el mismo marco "placa" pixel del resto del
        menu (ver _pmFrameDraw mas abajo), pintado en el canvas .pm-frame que
        ocupa toda la caja. .pm-inner reserva el grosor de ese marco como
@@ -650,30 +651,51 @@ function _paisModalCSS() {
        se dejan sin regla para no romper paisModalVariante(), que las sigue
        poniendo desde el editor. */
     #${PAIS_MODAL_ID} .pm-caja { position:relative; width:100%; max-width:var(--pm-ancho,780px); box-sizing:border-box; }
-    #${PAIS_MODAL_ID} .pm-frame { position:absolute; inset:0; z-index:0; pointer-events:none; image-rendering:pixelated; }
+    /* width/height al 100% SI O SI: un canvas es un elemento REEMPLAZADO, asi
+       que con solo inset:0 no se estira — se queda a su tamano intrinseco (el
+       del atributo width) en la esquina, y el marco salia pequeno arriba a la
+       izquierda mientras el contenido seguia a su tamano real. */
+    #${PAIS_MODAL_ID} .pm-frame { position:absolute; inset:0; width:100%; height:100%;
+        z-index:0; pointer-events:none; image-rendering:pixelated; }
     #${PAIS_MODAL_ID} .pm-inner { position:relative; z-index:1; box-sizing:border-box;
         max-height:92vh; overflow-y:auto; }
-    #${PAIS_MODAL_ID} .pm-content { box-sizing:border-box; padding:var(--pm-pad,40px 44px 34px); }
-    /* Cerrar: mismo lenguaje que el resto del menu nuevo (boton con solo
-       borde, sin placa propia detras) en vez del icono PNG rojo de antes. */
-    #${PAIS_MODAL_ID} .pm-x { position:absolute; top:14px; right:14px; z-index:2; width:28px; height:28px; padding:0;
-        background:rgba(0,0,0,.35); border:2px solid rgba(255,255,255,.25); color:#d9dedb;
-        font-family:'Russo One',sans-serif; font-size:16px; line-height:1; }
-    #${PAIS_MODAL_ID} .pm-x:hover { border-color:#ff6b5c; color:#ff6b5c; }
-    /* Flecha a la derecha del cartel: da la vuelta a la MISMA tarjeta para
-       ensenar la pildora en grande (pagina 2), sin abrir nada aparte. El
-       glifo cambia de sentido segun la pagina en la que este (paisModalPagina). */
-    #${PAIS_MODAL_ID} .pm-prev { position:absolute; top:50%; right:14px; z-index:2;
-        transform:translateY(-50%); width:32px; height:44px; padding:0;
-        background:rgba(0,0,0,.35); border:2px solid rgba(255,255,255,.25); color:#d9dedb;
-        font-family:'Russo One',sans-serif; font-size:20px; line-height:1; }
-    #${PAIS_MODAL_ID} .pm-prev:hover { border-color:#00ff88; color:#00ff88; }
-    /* Pagina 2: la pildora en grande sobre el fondo del juego. Misma caja,
-       mismo marco — solo cambia lo que hay dentro. */
-    #${PAIS_MODAL_ID} .pm-page2 { display:flex; flex-direction:column; align-items:center; gap:10px; }
-    #${PAIS_MODAL_ID} .pm-page2 canvas { width:100%; aspect-ratio:16/10; image-rendering:pixelated; display:block; }
+    /* El nombre deja hueco a la derecha para la flecha y el CLOSE, que van
+       absolutos justo encima de esa esquina. */
+    #${PAIS_MODAL_ID} .pm-page1 .pm-nom { padding-right:150px; }
+    /* Columna: cabecera arriba (alto fijo) y debajo la pagina. La 2 se queda
+       con todo lo que sobra (flex:1) para que el cartel no cambie de tamano al
+       pasar de una a otra. */
+    #${PAIS_MODAL_ID} .pm-content { box-sizing:border-box; padding:var(--pm-pad,26px 34px 30px);
+        display:flex; flex-direction:column; }
+    #${PAIS_MODAL_ID} .pm-page1 { flex:none; }
+    /* Cabecera DENTRO de la pantalla, no flotando sobre el marco: flecha y
+       CLOSE pegados a la derecha, igual que la tienda ampliada lleva su SP y su
+       CLOSE dentro del cuadro. La flecha va a la izquierda del CLOSE.
+       ABSOLUTA a proposito: en el hueco de arriba a la derecha ya no hay nada
+       (el nombre es corto), asi que no hace falta bajar el contenido una fila
+       entera para meterlos — caben donde estan. */
+    #${PAIS_MODAL_ID} .pm-top { position:absolute; top:var(--pm-top-y,20px); right:var(--pm-top-x,26px);
+        z-index:3; display:flex; align-items:center; gap:10px; }
+    /* Flecha: la misma forma y hover que .side-tabs-arrow (la del cartel de
+       MISSIONS/SKINS), del color del modo, pero mas grande. */
+    #${PAIS_MODAL_ID} .pm-prev { width:32px; height:32px; padding:0; border-radius:50%; background:transparent;
+        border:1px solid var(--pm-modo,#00ffaa); color:var(--pm-modo,#00ffaa);
+        font-family:'Russo One',sans-serif; font-size:19px; line-height:1; }
+    #${PAIS_MODAL_ID} .pm-prev:hover { background:var(--pm-modo,#00ffaa); color:#04150c; }
+    /* CLOSE: identico al de la tienda ampliada (.sb-close). */
+    #${PAIS_MODAL_ID} .pm-x { background:transparent; border:2px solid #2c3630; color:#7d8a82;
+        font-family:'Russo One',sans-serif; font-size:12px; padding:6px 14px;
+        letter-spacing:1.5px; text-transform:uppercase; line-height:1; }
+    #${PAIS_MODAL_ID} .pm-x:hover { border-color:#4a5a52; color:#fff; }
+    /* Pagina 2: la partida en pequeno. Ocupa TODO el hueco que dejaba la
+       pagina 1 (el alto lo fija paisModalPagina) para que el cartel no cambie
+       de tamano al pasar de una a otra; el canvas se estira con el, asi que la
+       cuadricula se adapta sola a un marco mas cuadrado. */
+    #${PAIS_MODAL_ID} .pm-page2 { display:flex; flex-direction:column; align-items:center; gap:10px;
+        flex:1; min-height:0; }
+    #${PAIS_MODAL_ID} .pm-page2 canvas { width:100%; flex:1; min-height:0; image-rendering:pixelated; display:block; }
     #${PAIS_MODAL_ID} .pm-prevnom { font-family:'Press Start 2P',monospace; font-size:13px; color:#fff;
-        text-shadow:2px 2px 0 #000; letter-spacing:.5px; }
+        text-shadow:2px 2px 0 #000; letter-spacing:.5px; flex:none; }
     /* Sin margen arriba: el nombre es lo PRIMERO del cartel desde que se quito
        el codigo de dos letras que iba encima. */
     #${PAIS_MODAL_ID} .pm-nom { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-nom,17px);
@@ -686,17 +708,17 @@ function _paisModalCSS() {
     /* Centrado y no alineado por abajo: cada canvas es un CUADRADO con la
        pildora dentro, asi que por abajo se alinean los cuadrados y las pildoras
        salen descuadradas. */
-    /* Fondo = la CUADRICULA del mapa, no un negro plano: la gracia de ver la
-       pildora a sus cuatro tamaños es ver como quedara en partida, y sobre negro
-       no se juzga igual. El color de la linea sale de --pm-grid, que pone
-       paisModalAbrir con el del modo activo (verde en classic, lima en arcade);
-       el valor de aqui es el que se usa en la landing, donde no hay modo. */
+    /* Fondo = el REAL de la arena, los mismos valores que usa el juego
+       (--bg-color #050505 y --grid-line rgba(255,255,255,.03) en game/index.html):
+       la gracia de ver la pildora a sus cinco tamaños es ver como quedara en
+       partida, asi que el fondo tiene que ser el de partida, no uno tenido del
+       color del modo como estaba antes. */
     #${PAIS_MODAL_ID} .pm-crece { display:flex; align-items:center; justify-content:center;
         gap:var(--pm-crece-gap,18px); margin-top:var(--pm-gap,14px); padding:var(--pm-crece-pad,20px 16px);
         background-color:#050505;
-        background-image:linear-gradient(var(--pm-grid,rgba(0,255,170,.13)) 1px, transparent 1px),
-                         linear-gradient(90deg, var(--pm-grid,rgba(0,255,170,.13)) 1px, transparent 1px);
-        background-size:var(--pm-grid-cell,24px) var(--pm-grid-cell,24px);
+        background-image:linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+                         linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+        background-size:25px 25px;
         border:2px solid rgba(0,0,0,.5); overflow-x:auto; }
     #${PAIS_MODAL_ID} .pm-crece canvas { image-rendering:pixelated; display:block; flex:none; }
     #${PAIS_MODAL_ID} .pm-pie { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-pie,7px);
@@ -707,7 +729,10 @@ function _paisModalCSS() {
        fondo lo pone JS (background-image con el dataURL); aqui solo el resto. */
     #${PAIS_MODAL_ID} .pm-btn { flex:1; height:var(--pm-btn-h,50px); padding:0; border:none; box-shadow:none;
         display:flex; align-items:center; justify-content:center; image-rendering:pixelated;
-        background-size:100% 100%; background-repeat:no-repeat;
+        /* El boton nativo trae su propio fondo gris claro (rgb(240,240,240));
+           sin anularlo se cuela por las esquinas transparentes del chaflan de
+           la placa y se ven como un reborde blanco. */
+        background-color:transparent; background-size:100% 100%; background-repeat:no-repeat;
         font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-btn,10px); color:#fff;
         text-shadow:2px 2px 0 rgba(0,0,0,.75); }
     #${PAIS_MODAL_ID} .pm-btn:hover:not(:disabled) { filter:brightness(1.15); }
@@ -722,7 +747,7 @@ function _paisModalCSS() {
  * esquinas en escalon — pero AUTONOMO: esta funcion no depende de nada de
  * game/index.html porque este fichero tambien lo carga la landing sola.
  */
-const PM_SCALE = 3, PM_FRAME_T = 7, PM_FRAME_CUT = 4;
+const PM_SCALE = 4, PM_FRAME_T = 10, PM_FRAME_CUT = 5;
 const PM_SCREEN = [9, 20, 15];
 const PM_LX = -0.6, PM_LY = -0.75;
 function _pmFrameDraw(cv, wCss, hCss, hex) {
@@ -816,6 +841,15 @@ function _pmModoHex() {
     const panelModo = document.getElementById('missionsPanel');
     return panelModo && panelModo.classList.contains('arcade') ? '#ccff00' : '#00ffaa';
 }
+/* Sonido. SoundManager vive en game/index.html, asi que en la landing (que
+ * carga este fichero suelto) no existe: se comprueba antes de cada uso en vez
+ * de asumirlo, si no la tienda de la web petaria al pulsar cualquier boton. */
+function _pmSnd(nombre) {
+    try { if (typeof SoundManager !== 'undefined') SoundManager.play(nombre); } catch (e) {}
+}
+function _pmSndHover() {
+    try { if (typeof SoundManager !== 'undefined') SoundManager.playSimpleHover(); } catch (e) {}
+}
 // Repinta el marco de la caja abierta a su tamano actual. Se llama al abrir,
 // al cambiar de pagina (el contenido cambia de alto) y en resize.
 function _pmRedibujaMarco() {
@@ -824,7 +858,10 @@ function _pmRedibujaMarco() {
     const inner = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-inner');
     if (!caja || !cv || !inner || !caja.clientWidth) return;
     const primero = !inner.style.padding;
-    const T = _pmFrameDraw(cv, caja.clientWidth, caja.clientHeight, _pmModoHex());
+    const hex = _pmModoHex();
+    // La X y la flecha leen este color, asi se tinen solas con el modo.
+    caja.style.setProperty('--pm-modo', hex);
+    const T = _pmFrameDraw(cv, caja.clientWidth, caja.clientHeight, hex);
     inner.style.padding = T + 'px';
     // La primera vez, el alto se midio SIN el padding que acabamos de poner (el
     // marco crece la caja 2*T mas): se repite una vez para que salga ya del
@@ -925,9 +962,11 @@ function paisModalMontar() {
         '<div class="pm-caja">' +
         '<canvas class="pm-frame"></canvas>' +
         '<div class="pm-inner">' +
-        '<button class="pm-x" aria-label="Close">&times;</button>' +
-        '<button class="pm-prev" title="See it big">\u203A</button>' +
         '<div class="pm-content">' +
+        '<div class="pm-top">' +
+        '<button class="pm-prev" title="See it in action">\u203A</button>' +
+        '<button class="pm-x">CLOSE</button>' +
+        '</div>' +
         '<div class="pm-page1">' +
         '<div class="pm-nom"></div><div class="pm-lore"></div>' +
         '<div class="pm-franjas"></div><div class="pm-crece"></div><div class="pm-pie"></div>' +
@@ -939,8 +978,17 @@ function paisModalMontar() {
         '</div>' +
         '</div></div></div>';
     document.body.appendChild(d);
-    d.querySelector('.pm-x').addEventListener('click', paisModalCerrar);
-    d.querySelector('.pm-prev').addEventListener('click', e => { e.stopPropagation(); paisModalPagina(_pmPagina === 2 ? 1 : 2); });
+    d.querySelector('.pm-x').addEventListener('click', () => { _pmSnd('simpleselect'); paisModalCerrar(); });
+    d.querySelector('.pm-prev').addEventListener('click', e => {
+        e.stopPropagation(); _pmSnd('simpleselect');
+        paisModalPagina(_pmPagina === 2 ? 1 : 2);
+    });
+    // Click en la pantallita: congela la simulacion en el frame en el que
+    // este. Vuelve a pulsar para seguir. No usa paisModalPagina porque no
+    // cambia de pagina, solo pausa.
+    d.querySelector('.pm-prevcv').addEventListener('click', e => { e.stopPropagation(); _pmPreviaPausa = !_pmPreviaPausa; });
+    [d.querySelector('.pm-x'), d.querySelector('.pm-prev')].forEach(b =>
+        b.addEventListener('mouseenter', () => _pmSndHover()));
     d.addEventListener('click', e => { if (e.target === d) paisModalCerrar(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') paisModalCerrar(); });
     // El marco depende del tamano REAL de la caja (--pm-ancho, o el hueco que
@@ -949,33 +997,122 @@ function paisModalMontar() {
     window.addEventListener('resize', () => { if (d.classList.contains('on')) _pmRedibujaMarco(); });
 }
 
-/* ===== Pagina 2 del cartel: la pildora en grande =====
+/* ===== Pagina 2 del cartel: la skin, en partida =====
  * MISMA tarjeta, mismo marco: la flecha de la derecha da la vuelta al
- * contenido en vez de abrir nada aparte (antes abria una capa aparte a
- * pantalla completa; ahora es literalmente la segunda pagina de esta
- * descripcion). La pildora, en grande y viva, sobre el mismo fondo que la
- * arena (cuadricula de 24 px lowres). Se dibuja todo a baja resolucion y se
- * amplia con pixelated, igual que el fondo del menu. La pildora no se mueve
- * del centro: lo que se mueve es el fondo (deriva lenta), mas un balanceo y
- * una respiracion muy sutiles, para que se lea que esta viva sin marearse.
+ * contenido en vez de abrir nada aparte.
+ *
+ * Esto NO es una animacion inventada: es una partida de verdad en peque\u00F1o.
+ * Fondo de la arena real (--bg-color #050505 con su rejilla, los mismos
+ * valores que usa pixBgPattern en el juego), comida de verdad repartida por
+ * el mapa, y la pildora nadando hacia la comida mas cercana, comiendosela y
+ * creciendo con cada bocado. Cuando llega al tamano tope, vuelve a nacer
+ * peque\u00F1a y se repite, como un video en bucle.
+ *
+ * La camara sigue a la pildora igual que en el juego, asi que ella se ve
+ * siempre centrada y lo que se desplaza es el mundo. Un click en la
+ * pantallita congela la simulacion en el frame en el que este (para poder
+ * pararla en la pose que se quiera); otro click la reanuda.
  */
 let _pmPagina = 1, _pmPreviaRaf = 0;
+let _pmPreviaPausa = false, _pmPreviaUlt = 0, _pmSim = null, _pmAltoP1 = 0;
+// Colores de comida del juego (los mismos que la deco del menu).
+const PM_COMIDA_COL = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
+const PM_ARENA_BG = '#050505', PM_ARENA_GRID = 'rgba(255,255,255,0.06)';
+const PM_WL_MIN = 12, PM_WL_MAX = 78;  // de recien nacida a tope del bucle
+const PM_MUNDO = 360;                  // radio del trozo de mapa simulado, en px lowres
+const PM_ANG = -Math.PI / 4;           // inclinacion FIJA de la capsula (no gira)
+const PM_COMIDA_N = 240;               // poblacion de comida del trozo de mapa
+const PM_SPRINT_MS = 1100, PM_SPRINT_X = 2.6;   // duracion y multiplicador del aceleron
 function paisModalPagina(n) {
     const d = document.getElementById(PAIS_MODAL_ID); if (!d) return;
+    const p1 = d.querySelector('.pm-page1'), p2 = d.querySelector('.pm-page2');
+    const content = d.querySelector('.pm-content');
+    // El alto de la pagina 1 manda: se mide ANTES de esconderla y se le fija al
+    // contenedor, para que el cartel (y con el, el marco) mida exactamente lo
+    // mismo en las dos paginas. Sin esto el marco encogia al pasar a la 2.
+    // Se mide el CONTENEDOR, no .pm-page1: .pm-content es border-box y lleva
+    // ~74px de padding propio, asi que darle el alto de la pagina le quitaba
+    // justo ese padding y el cartel encogia esos 74px.
+    if (_pmPagina === 1 && content.offsetHeight) _pmAltoP1 = content.offsetHeight;
     _pmPagina = n;
-    d.querySelector('.pm-page1').style.display = n === 1 ? '' : 'none';
-    d.querySelector('.pm-page2').style.display = n === 2 ? 'flex' : 'none';
-    d.querySelector('.pm-prev').textContent = n === 2 ? '\u2039' : '\u203A';
+    p1.style.display = n === 1 ? '' : 'none';
+    p2.style.display = n === 2 ? 'flex' : 'none';
+    // El glifo NO cambia: siempre '\u203A'. Es el mismo boton de ida y vuelta, y
+    // verlo girar a '\u2039' se leia como si fuera otro control distinto.
+    content.style.height = (n === 2 && _pmAltoP1) ? _pmAltoP1 + 'px' : '';
     cancelAnimationFrame(_pmPreviaRaf); _pmPreviaRaf = 0;
     if (n === 2) {
         d.querySelector('.pm-prevnom').textContent = (paisSkin(_paisCodeAbierto) || {}).nombre || _paisCodeAbierto;
+        // OJO: aqui NO se reinicia la partida ni la pausa. Ir a la descripcion
+        // y volver tiene que dejarlo todo como estaba (incluida la pausa); lo
+        // unico que empieza de cero es cerrar el cartel (paisModalCerrar).
+        _pmPreviaUlt = 0;
+        if (!_pmSim) _pmSimReset();
         _pmPreviaPinta();
     }
-    // El alto de la caja cambia entre paginas (la 2 es mas corta): el marco
-    // tiene que seguirlo. Sincrono, no en rAF: leer clientWidth/Height fuerza
-    // el reflow con el display ya cambiado, asi que no hay parpadeo del
-    // tamano viejo.
+    // El marco se repinta igual: el ancho puede cambiar aunque el alto no.
+    // Sincrono, no en rAF: leer clientWidth/Height fuerza el reflow con el
+    // display ya cambiado, asi que no hay parpadeo del tamano viejo.
     _pmRedibujaMarco();
+}
+// Estado de la mini-partida. La pildora nace en el centro del trozo de mapa y
+// la comida se reparte alrededor, en coordenadas de MUNDO (no de pantalla):
+// la camara se encarga de traducirlas luego.
+function _pmSimReset() {
+    _pmSim = { x: 0, y: 0, wL: PM_WL_MIN, comida: [], virus: [], sprint: 0, sprintUsado: false, t: 0 };
+    for (let i = 0; i < PM_COMIDA_N; i++) _pmSim.comida.push(_pmComidaNueva());
+    // Virus: decorado de mapa. La pildora los IGNORA (ni los busca ni choca),
+    // estan para que la escena se parezca a una partida de verdad.
+    for (let i = 0; i < 5; i++) {
+        const a = Math.random() * Math.PI * 2, r = 90 + Math.sqrt(Math.random()) * (PM_MUNDO - 90);
+        _pmSim.virus.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, r: 13 + Math.random() * 5 });
+    }
+}
+function _pmComidaNueva() {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * PM_MUNDO;
+    return {
+        x: Math.cos(a) * r, y: Math.sin(a) * r,
+        r: 2 + Math.random() * 1.5,
+        c: PM_COMIDA_COL[(Math.random() * PM_COMIDA_COL.length) | 0]
+    };
+}
+// Un paso de simulacion: buscar la comida mas cercana, ir a por ella,
+// comersela si se alcanza y crecer. dt en ms. La pildora NO rota: en el juego
+// las pildoras no giran sobre si mismas, solo se desplazan.
+function _pmSimPaso(dt) {
+    const s = _pmSim;
+    // Radio de colision de la pildora: el sprite mide wL de ancho y el doble
+    // de largo (PAIS_PILL_RATIO), asi que el semiancho es la medida honesta
+    // para "me la he comido".
+    const rPill = s.wL * 0.5;
+    let mejor = null, mejorD = Infinity;
+    for (const f of s.comida) {
+        const dx = f.x - s.x, dy = f.y - s.y, d = dx * dx + dy * dy;
+        if (d < mejorD) { mejorD = d; mejor = f; }
+    }
+    s.t += dt;
+    // SPRINT: a mitad del bucle pega un aceleron, una vez por vuelta, para que
+    // se vea la habilidad y no solo el paseo.
+    if (s.sprint > 0) s.sprint -= dt;
+    else if (!s.sprintUsado && s.wL > (PM_WL_MIN + PM_WL_MAX) / 2) {
+        s.sprint = PM_SPRINT_MS; s.sprintUsado = true;
+    }
+    if (mejor) {
+        const dx = mejor.x - s.x, dy = mejor.y - s.y, d = Math.hypot(dx, dy) || 1;
+        // Velocidad: la grande se mueve algo mas lenta que la chica, como en
+        // el juego, pero sin llegar a pararse.
+        const base = 66 - 24 * (s.wL - PM_WL_MIN) / (PM_WL_MAX - PM_WL_MIN);
+        const v = base * (s.sprint > 0 ? PM_SPRINT_X : 1) * (dt / 1000);
+        s.x += (dx / d) * v; s.y += (dy / d) * v;
+        if (d < rPill + mejor.r) {
+            // Bocado: la comida desaparece, la pildora crece y entra otra por
+            // el mapa (la poblacion se mantiene, como en partida).
+            s.comida.splice(s.comida.indexOf(mejor), 1);
+            s.comida.push(_pmComidaNueva());
+            s.wL += 1.5;
+        }
+    }
+    if (s.wL >= PM_WL_MAX) _pmSimReset();   // tope: vuelve a empezar el bucle
 }
 function _pmPreviaPinta() {
     const d = document.getElementById(PAIS_MODAL_ID);
@@ -985,27 +1122,85 @@ function _pmPreviaPinta() {
     if (!cv || !cv.clientWidth) return;
     // El canvas ya tiene su proporcion por CSS (aspect-ratio en
     // _paisModalCSS): la resolucion lowres solo tiene que guardarla.
-    const GRID = 24, H = 160, W = Math.max(GRID, Math.round(cv.clientWidth / cv.clientHeight * H));
+    const H = 170, W = Math.max(24, Math.round(cv.clientWidth / cv.clientHeight * H));
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = false;
-    // Tinte del modo, como el resto del menu.
-    const rgb = _rgb(_pmModoHex());
-    const sh = f => 'rgb(' + rgb.map(v => Math.round(v * f)).join(',') + ')';
-    g.fillStyle = sh(0.07); g.fillRect(0, 0, W, H);
-    // Cuadricula con deriva lenta: es el fondo el que se mueve, no la pildora.
-    const t = performance.now();
-    const off = (t / 90) % GRID;
-    g.fillStyle = sh(0.30);
-    for (let x = -GRID; x < W + GRID; x += GRID) g.fillRect(Math.round(x + off), 0, 1, H);
-    for (let y = -GRID; y < H + GRID; y += GRID) g.fillRect(0, Math.round(y + off * 0.6), W, 1);
-    // La pildora: siempre en el centro exacto, con balanceo y respiracion.
-    const bob = Math.round(Math.sin(t / 620) * 3);
-    const ang = -Math.PI / 4 + Math.sin(t / 900) * 0.10;
-    const breath = 1 + 0.03 * Math.sin(t / 700 + 1.2);
-    const wL = Math.max(20, Math.round(Math.min(W, H) * 0.32 * breath));
-    const o = paisPillRot(wL, _paisCodeAbierto, ang);
-    g.drawImage(o.cv, Math.round(W / 2 - o.S / 2), Math.round(H / 2 - o.S / 2 + bob));
+
+    // dt propio: asi el click puede congelar la simulacion (dt = 0) sin
+    // depender de saltarse frames.
+    const ahora = performance.now();
+    const dt = _pmPreviaPausa ? 0 : Math.min(50, ahora - (_pmPreviaUlt || ahora));
+    _pmPreviaUlt = ahora;
+    if (!_pmSim) _pmSimReset();
+    if (dt) _pmSimPaso(dt);
+    const s = _pmSim;
+
+    // Camara centrada en la pildora, igual que en el juego: ella se ve quieta
+    // en el centro y lo que se mueve es el mapa.
+    const camX = s.x - W / 2, camY = s.y - H / 2;
+
+    // Fondo REAL de la arena: el negro por defecto del juego con su rejilla.
+    g.fillStyle = PM_ARENA_BG; g.fillRect(0, 0, W, H);
+    const GRID = 25;
+    g.fillStyle = PM_ARENA_GRID;
+    const gx0 = Math.floor(camX / GRID) * GRID, gy0 = Math.floor(camY / GRID) * GRID;
+    for (let x = gx0; x < camX + W + GRID; x += GRID) g.fillRect(Math.round(x - camX), 0, 1, H);
+    for (let y = gy0; y < camY + H + GRID; y += GRID) g.fillRect(0, Math.round(y - camY), W, 1);
+
+    // Comida: el MISMO sprite que el juego (pixDotSprite) cuando existe \u2014
+    // dentro de /game \u2014; en la landing, que carga este fichero suelto y no lo
+    // tiene, un bloque del mismo color y tamano.
+    const hayDot = typeof pixDotSprite === 'function';
+    for (const f of s.comida) {
+        const px = f.x - camX, py = f.y - camY;
+        if (px < -8 || py < -8 || px > W + 8 || py > H + 8) continue;
+        const dL = Math.max(4, Math.round(f.r * 2));
+        if (hayDot) g.drawImage(pixDotSprite(dL, f.c, 'f'), Math.round(px - dL / 2), Math.round(py - dL / 2));
+        else { g.fillStyle = f.c; g.fillRect(Math.round(px - f.r), Math.round(py - f.r), Math.round(f.r * 2), Math.round(f.r * 2)); }
+    }
+
+    // Virus: tambien el sprite del juego cuando esta (pixVirusSprite), con un
+    // dibujo de respaldo para la landing. La pildora ni los busca ni choca.
+    const hayVirus = typeof pixVirusSprite === 'function';
+    for (const v of s.virus) {
+        const px = v.x - camX, py = v.y - camY;
+        if (px < -40 || py < -40 || px > W + 40 || py > H + 40) continue;
+        const dL = Math.max(8, Math.round(v.r * 2));
+        if (hayVirus) g.drawImage(pixVirusSprite(dL, 0), Math.round(px - dL / 2), Math.round(py - dL / 2));
+        else _pmDibujaVirus(g, px, py, v.r);
+    }
+
+    // La pildora, con su skin, en el centro exacto. Angulo FIJO: en el juego
+    // las pildoras no giran sobre si mismas, solo se desplazan.
+    const o = paisPillRot(Math.round(s.wL), _paisCodeAbierto, PM_ANG);
+    g.drawImage(o.cv, Math.round(W / 2 - o.S / 2), Math.round(H / 2 - o.S / 2));
+
+    // Rayos del SPRINT: el MISMO sprite dorado que lleva la habilidad en
+    // partida (pixBoltSprite, 3 fotogramas). Solo en /game — la landing no
+    // tiene el sprite y ahi el aceleron se ve sin rayos, sin romper nada.
+    if (s.sprint > 0 && typeof pixBoltSprite === 'function') {
+        const spr = pixBoltSprite(Math.floor(s.t / 90) % 3);
+        const alto = Math.max(12, Math.round(s.wL * 0.7));
+        const ancho = Math.round(alto * spr.width / spr.height);
+        const rad = s.wL * 0.62;
+        // Uno a cada lado de la capsula, latiendo con el fotograma.
+        for (const lado of [-1, 1]) {
+            const bx = W / 2 + lado * rad, by = H / 2 - rad * 0.35 + Math.sin(s.t / 70 + lado) * 2;
+            g.drawImage(spr, Math.round(bx - ancho / 2), Math.round(by - alto / 2), ancho, alto);
+        }
+    }
+}
+// Virus de respaldo para la landing (alli no existe pixVirusSprite): nucleo
+// cuadrado y pinchos en cruz y diagonales, en bloques, para no desentonar con
+// el resto del pixel art.
+function _pmDibujaVirus(g, cx, cy, r) {
+    const s = Math.max(1, Math.round(r * 0.35));
+    g.fillStyle = '#3ddc47';
+    g.fillRect(Math.round(cx - r * 0.55), Math.round(cy - r * 0.55), Math.round(r * 1.1), Math.round(r * 1.1));
+    [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]].forEach(([dx, dy]) => {
+        g.fillRect(Math.round(cx + dx * r * 0.85 - s / 2), Math.round(cy + dy * r * 0.85 - s / 2), s, s);
+    });
 }
 
 const PAIS_CRECE = [14, 24, 36, 48, 64];
@@ -1075,14 +1270,21 @@ function _paisPintaBotones(code) {
         const b = document.createElement('button');
         b.className = 'pm-btn'; b.textContent = txt; b._pmHex = hex;
         if (!fn) b.disabled = true;
-        else b.addEventListener('click', async () => {
-            [...cont.children].forEach(x => x.disabled = true);
-            b.textContent = '...';
-            const r = await fn();
-            if (r && r.ok === false) _paisAviso(r.error || 'could not complete');
-            _paisPintaBotones(code);
-            if (_paisOnCambio) _paisOnCambio();
-        });
+        else {
+            b.addEventListener('mouseenter', () => _pmSndHover());
+            b.addEventListener('click', async () => {
+                [...cont.children].forEach(x => x.disabled = true);
+                b.textContent = '...';
+                const r = await fn();
+                // Suena SIEMPRE: 'select' si la compra/asignacion salio, y
+                // 'alert' si el servidor la rechazo. Antes no sonaba nada en
+                // ninguno de los dos casos y no se sabia si habia pasado algo.
+                if (r && r.ok === false) { _pmSnd('alert'); _paisAviso(r.error || 'could not complete'); }
+                else _pmSnd('select');
+                _paisPintaBotones(code);
+                if (_paisOnCambio) _paisOnCambio();
+            });
+        }
         cont.appendChild(b);
         return b;
     });
@@ -1108,6 +1310,9 @@ function _paisAviso(txt) {
 function paisModalCerrar() {
     const d = document.getElementById(PAIS_MODAL_ID); if (d) d.classList.remove('on');
     cancelAnimationFrame(_pmPreviaRaf); _pmPreviaRaf = 0;
+    // CERRAR es lo unico que reinicia: la partida vuelve a empezar y se quita
+    // la pausa. Cambiar de pagina dentro del cartel no toca nada de esto.
+    _pmSim = null; _pmPreviaPausa = false; _pmAltoP1 = 0;
 }
 
 if (typeof module !== 'undefined' && module.exports) module.exports = { PAISES, PAIS_FORMAS, UMBRAL, paisSkin, paisLista, paisPillRot, paisPagina, paisNumPaginas, PAIS_ORDEN_PAGINAS, PAIS_PRECIO_SP, PAIS_PRECIO_PILL, PAIS_PILL_POR_SP };
