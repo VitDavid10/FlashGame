@@ -673,6 +673,24 @@ function _paisModalCSS() {
         width:30px; height:30px; padding:0; border:none; box-shadow:none; background:transparent
         url('${_paisBase()}img/cartel-hero/close-x-red.png') center/100% 100% no-repeat; image-rendering:pixelated; }
     #${PAIS_MODAL_ID} .pm-x:hover { filter:brightness(1.2); }
+    /* Flecha a la derecha del cartel: abre la previsualizacion grande de la
+       pildora sobre el fondo del juego. Mismo sitio y mismo tamano que la X,
+       pero pegada al borde derecho a media altura. */
+    #${PAIS_MODAL_ID} .pm-prev { position:absolute; top:50%; right:var(--pm-prev-right,-18px);
+        transform:translateY(-50%); width:34px; height:44px; padding:0; cursor:pointer;
+        background:rgba(6,14,9,.92); border:2px solid rgba(0,255,136,.45); color:#00ff88;
+        font-family:'Russo One',sans-serif; font-size:22px; line-height:1; }
+    #${PAIS_MODAL_ID} .pm-prev:hover { border-color:#00ff88; color:#fff; background:rgba(0,255,136,.16); }
+    /* Previsualizacion a pantalla completa: solo el canvas y un cerrar. */
+    #paisPrevia { position:fixed; inset:0; z-index:30000; display:none; background:#050806; }
+    #paisPrevia.on { display:block; }
+    #paisPrevia canvas { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; }
+    #paisPrevia .pv-x { position:absolute; top:22px; right:26px; z-index:2; padding:8px 16px; cursor:pointer;
+        background:transparent; border:2px solid #55403f; color:#d98080;
+        font-family:'Russo One',sans-serif; font-size:13px; letter-spacing:1.5px; }
+    #paisPrevia .pv-x:hover { border-color:#ff5544; color:#ff7766; }
+    #paisPrevia .pv-nom { position:absolute; top:26px; left:30px; z-index:2; color:#fff;
+        font-family:'Press Start 2P',monospace; font-size:15px; text-shadow:2px 2px 0 #000; }
     /* Sin margen arriba: el nombre es lo PRIMERO del cartel desde que se quito
        el codigo de dos letras que iba encima. */
     #${PAIS_MODAL_ID} .pm-nom { font-family:'Press Start 2P',monospace; font-size:var(--pm-fs-nom,17px);
@@ -807,13 +825,80 @@ function paisModalMontar() {
     d.innerHTML =
         '<div class="pm-caja">' +
         '<button class="pm-x" aria-label="Close"></button>' +
+        '<button class="pm-prev" title="See it big">\u203A</button>' +
         '<div class="pm-nom"></div><div class="pm-lore"></div>' +
         '<div class="pm-franjas"></div><div class="pm-crece"></div><div class="pm-pie"></div>' +
         '<div class="pm-btns"></div></div>';
     document.body.appendChild(d);
     d.querySelector('.pm-x').addEventListener('click', paisModalCerrar);
+    d.querySelector('.pm-prev').addEventListener('click', e => { e.stopPropagation(); paisPreviaAbrir(_paisCodeAbierto); });
     d.addEventListener('click', e => { if (e.target === d) paisModalCerrar(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') paisModalCerrar(); });
+}
+
+/* ===== Previsualizacion grande de una skin =====
+ * La pildora, en grande y viva, sobre el MISMO fondo que la arena (cuadricula
+ * de 24 px lowres sobre casi negro). Se dibuja todo a baja resolucion y se
+ * amplia con pixelated, igual que el fondo del menu, para que el bloque de
+ * pixel mida lo mismo que en el juego. La pildora no se mueve del centro: lo
+ * que se mueve es el fondo (deriva lenta), mas un balanceo y una respiracion
+ * muy sutiles, para que se lea que esta viva sin marearse.
+ */
+const PAIS_PREVIA_ID = 'paisPrevia';
+let _paisPreviaRaf = 0, _paisPreviaCode = null;
+function paisPreviaAbrir(code) {
+    if (!code || !paisSkin(code)) return;
+    _paisPreviaCode = code;
+    let d = document.getElementById(PAIS_PREVIA_ID);
+    if (!d) {
+        d = document.createElement('div'); d.id = PAIS_PREVIA_ID;
+        d.innerHTML = '<canvas></canvas><div class="pv-nom"></div><button class="pv-x">CLOSE</button>';
+        document.body.appendChild(d);
+        d.querySelector('.pv-x').addEventListener('click', paisPreviaCerrar);
+        d.addEventListener('click', e => { if (e.target === d || e.target.tagName === 'CANVAS') paisPreviaCerrar(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') paisPreviaCerrar(); });
+    }
+    d.querySelector('.pv-nom').textContent = (paisSkin(code) || {}).nombre || code;
+    d.classList.add('on');
+    cancelAnimationFrame(_paisPreviaRaf);
+    _paisPreviaPinta();
+}
+function paisPreviaCerrar() {
+    const d = document.getElementById(PAIS_PREVIA_ID);
+    if (d) d.classList.remove('on');
+    cancelAnimationFrame(_paisPreviaRaf); _paisPreviaRaf = 0;
+}
+function _paisPreviaPinta() {
+    const d = document.getElementById(PAIS_PREVIA_ID);
+    if (!d || !d.classList.contains('on')) return;
+    _paisPreviaRaf = requestAnimationFrame(_paisPreviaPinta);
+    const cv = d.querySelector('canvas');
+    // Misma escala que el fondo del menu: 264 px de alto estirados a la ventana.
+    const ESCALA_BASE = 264, GRID = 24;
+    const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
+    const H = ESCALA_BASE, W = Math.max(GRID, Math.round(vw / vh * H));
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    const g = cv.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    // Tinte del modo, como el resto del menu.
+    const panelModo = document.getElementById('missionsPanel');
+    const arcade = panelModo && panelModo.classList.contains('arcade');
+    const rgb = arcade ? [204, 255, 0] : [0, 255, 170];
+    const sh = f => 'rgb(' + rgb.map(v => Math.round(v * f)).join(',') + ')';
+    g.fillStyle = sh(0.07); g.fillRect(0, 0, W, H);
+    // Cuadricula con deriva lenta: es el fondo el que se mueve, no la pildora.
+    const t = performance.now();
+    const off = (t / 90) % GRID;
+    g.fillStyle = sh(0.30);
+    for (let x = -GRID; x < W + GRID; x += GRID) g.fillRect(Math.round(x + off), 0, 1, H);
+    for (let y = -GRID; y < H + GRID; y += GRID) g.fillRect(0, Math.round(y + off * 0.6), W, 1);
+    // La pildora: siempre en el centro exacto, con balanceo y respiracion.
+    const bob = Math.round(Math.sin(t / 620) * 3);
+    const ang = -Math.PI / 4 + Math.sin(t / 900) * 0.10;
+    const breath = 1 + 0.03 * Math.sin(t / 700 + 1.2);
+    const wL = Math.max(24, Math.round(Math.min(W, H) * 0.30 * breath));
+    const o = paisPillRot(wL, _paisPreviaCode, ang);
+    g.drawImage(o.cv, Math.round(W / 2 - o.S / 2), Math.round(H / 2 - o.S / 2 + bob));
 }
 
 const PAIS_CRECE = [14, 24, 36, 48, 64];

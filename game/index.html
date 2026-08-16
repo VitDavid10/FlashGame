@@ -270,6 +270,15 @@
                hereda del wrap). */
             font-size: var(--gw-font, 13px) !important;
         }
+        /* Con la placa (estilo 1) los cuatro botones de wallet usan el mismo
+           dibujo que PLAY/SETTINGS, generado en --gw-placa. --gw-red (el PNG) se
+           queda intacto, asi que el estilo 2 vuelve solo con quitar la clase. */
+        body:not(.placa-off) #gameWalletArea #gwConnect,
+        body:not(.placa-off) #gameWalletArea #gwDeposit,
+        body:not(.placa-off) #gameWalletArea #gwDropdown button {
+            background-image: var(--gw-placa, var(--gw-red, none));
+            image-rendering: pixelated;
+        }
         /* El rotulo dentro del boton, como pieza suelta: se mueve y se escala
            sin tocar la caja del boton (clave walletBtnTxt). Mismo montaje que
            #gwBalInner dentro del recuadro azul. inline-block porque translate y
@@ -533,6 +542,10 @@
         /* Con la placa (estilo 1) los carteles se quedan QUIETOS. El balanceo
            cartelBob es parte de la configuracion ANTERIOR (estilo 2), asi que
            solo se aplica con body.placa-off. */
+        /* La caja NO cambia entre estilos: el layout del menu (EDIT LAYOUT y el
+           horneado en codigo) esta calibrado sobre este aspect-ratio, y tocarlo
+           descuadra los dos carteles entre si. Con la placa, el 23.5% inferior
+           (donde iban los cohetes) simplemente queda transparente. */
         #oraclePanel, #missionsPanel { position: relative; z-index: 0; flex: none; overflow: hidden;
             width: 100%; aspect-ratio: 812 / 772; }
         body.placa-off #oraclePanel, body.placa-off #missionsPanel { animation: cartelBob 3.2s ease-in-out infinite; }
@@ -555,12 +568,10 @@
         @keyframes cartelBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(calc(-1 * var(--cartel-bob-px))); } }
         /* Video a todo el panel (mismo aspect-ratio, asi que el cover-fit del
            canvas ya no recorta), por debajo del contenido (.cartel-inner, z1). */
-        /* Del video solo se deja lo que hay DEBAJO de la piedra: los cohetes. El
-           76.5% es donde acaba el marco de piedra en quest-panel-v2.png (medido),
-           que es justo donde acaba la placa. Asi el cartel antiguo desaparece
-           entero y el interior verde lo pinta la placa con su mismo color. */
-        .quest-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; clip-path: inset(76.5% 0 0 0); }
-        body.placa-off .quest-video-bg { clip-path: none; }
+        /* Con la placa (estilo 1) el video del cartel viejo NO se pinta: ni
+           piedra, ni cohetes, ni la pata central. Solo vuelve con el estilo 2. */
+        .quest-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; display: none; }
+        body.placa-off .quest-video-bg { display: block; }
         /* Marco "placa": tapa SOLO la piedra del cartel. El interior verde y los
            cohetes siguen siendo el video de debajo — la placa es un ANILLO y por
            el hueco se ve el video intacto. Va despues del video en el DOM y con
@@ -666,6 +677,77 @@
         #missionsList { flex: 1; display: flex; flex-direction: column; }
         #missionsList .mqp-q { flex: 1 0 auto; }
 
+        /* Boton de maximizar (estilo "restaurar/agrandar" de una ventana): solo
+           sale en SKINS SHOP y YOUR SKINS. El borde superior mas grueso es lo
+           que lo hace leer como una ventana y no como un cuadrado a secas.
+           Hereda el color del rotulo, asi que ya cambia con el modo. */
+        .skin-max-btn { width: 13px; height: 13px; padding: 0; flex-shrink: 0; background: transparent;
+            border: 2px solid currentColor; border-top-width: 4px; color: inherit; cursor: pointer; }
+        .skin-max-btn:hover { filter: brightness(1.5); }
+
+        /* ===== Catalogo de skins en grande (popup) =====
+           Es el MISMO cartel de la placa, ampliado: marco del mismo grosor y un
+           interior mucho mayor, con la misma rejilla de 8 y sus paginas. El
+           marco lo pinta #sbPlaca (ver drawPlacaPopup) y el contenido va encima,
+           dentro del padding, que es justo el ancho del marco. */
+        #skinBigModal { position: fixed; inset: 0; z-index: 20000; display: none; background: rgba(3,6,4,0.9);
+            align-items: center; justify-content: center; }
+        #skinBigModal.open { display: flex; }
+        .sb-cartel { position: relative; box-sizing: border-box; flex: none; }
+        #sbPlaca { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+            pointer-events: none; image-rendering: pixelated; }
+        /* Todo el contenido, dentro de la pantalla verde. Columna con hueco
+           uniforme: la rejilla se queda con TODO lo que sobra, asi las celdas
+           (y con ellas las pildoras) crecen con el cartel en vez de tener un
+           tamano fijo. Las CELDAS son cuadrados visibles con borde. */
+        .sb-inner { position: relative; z-index: 1; width: 100%; height: 100%; box-sizing: border-box;
+            display: flex; flex-direction: column; gap: 16px; padding: 20px; }
+        .sb-head { display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+            font-family: 'Russo One'; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+        .sb-tab { background: transparent; border: 2px solid #2c3630; color: #7d8a82; font-family: 'Russo One';
+            font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 16px; cursor: pointer; }
+        .sb-tab.act { color: #04150c; }
+        #skinBigModal.arcade .sb-tab.act { background: #ccff00; border-color: #ccff00; }
+        #skinBigModal.classic .sb-tab.act { background: #00ffaa; border-color: #00ffaa; }
+        #skinBigModal.arcade .sb-sp { color: #ccff00; }
+        #skinBigModal.classic .sb-sp { color: #00ffaa; }
+        .sb-sp { margin-left: auto; font-size: 13px; }
+        .sb-close { background: transparent; border: 2px solid #2c3630; color: #7d8a82; font-family: 'Russo One';
+            font-size: 12px; padding: 6px 14px; cursor: pointer; letter-spacing: 1.5px; text-transform: uppercase; }
+        .sb-close:hover { border-color: #4a5a52; color: #fff; }
+        /* Fila: flecha izquierda + rejilla + flecha derecha. */
+        .sb-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 14px; }
+        .sb-arrow { width: 38px; height: 38px; flex-shrink: 0; background: transparent; border: 2px solid #2c3630;
+            color: #7d8a82; font-family: 'Russo One'; font-size: 20px; line-height: 1; cursor: pointer; padding: 0; }
+        .sb-arrow:hover:not(:disabled) { color: #fff; border-color: #4a5a52; }
+        .sb-arrow:disabled { opacity: 0.22; cursor: default; }
+        /* 4 columnas x 2 filas SIEMPRE, repartiendo el hueco disponible. */
+        .sb-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr); gap: 14px; }
+        /* CELDA CUADRADA con borde visible: el fondo es la pantalla verde y el
+           borde define el espacio. */
+        .sb-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+            aspect-ratio: 1; border: 2px solid rgba(100,150,120,.4); cursor: grab; user-select: none; padding: 8px; box-sizing: border-box; }
+        .sb-cell:hover { border-color: rgba(100,150,120,.7); }
+        .sb-cell.drag { opacity: 0.35; }
+        .sb-cell.over { border-color: #ffce3d; background: rgba(255,206,61,.1); }
+        .sb-cell.fija, .sb-cell.vacia { cursor: default; }
+        .sb-cell.vacia { border-color: transparent; }
+        .sb-cell canvas { image-rendering: pixelated; }
+        .sb-cod { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; text-align: center; line-height: 1.3; }
+        .sb-pre { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #8d9a92; }
+        /* EQUIP / UNEQUIP de YOUR SKINS: accion directa sin abrir el detalle. */
+        .sb-eq { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 0.5px; padding: 4px 8px;
+            background: transparent; border: 2px solid #2c3630; color: #9aa79f; cursor: pointer; text-transform: uppercase; }
+        .sb-eq:hover { border-color: #4a5a52; color: #fff; }
+        .sb-eq.on { border-color: #00ff88; color: #00ff88; }
+        .sb-eq:disabled { opacity: 0.4; cursor: default; }
+        /* Precio EN DORADO para contrastar con la pantalla verde. */
+        .sb-pre.precio { color: #ffb800; }
+        /* Pie: numero de pagina centrado bajo la rejilla, como en el cartel. */
+        .sb-foot { display: flex; align-items: center; justify-content: center; gap: 14px; flex-shrink: 0;
+            font-family: 'Russo One'; font-size: 12px; letter-spacing: 1.5px; color: #7d8a82; }
+        .sb-hint { font-family: 'Inter', sans-serif; font-size: 11px; color: #5f6a63; letter-spacing: 0; text-transform: none; }
         /* Carrusel del panel inferior (MISSIONS ↔ SKINS) */
         .side-tabs-arrow { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-family: 'Russo One'; font-size: 12px; line-height: 18px; padding: 0; transition: 0.2s; }
         .side-tabs-arrow:hover { background: currentColor; color: #04150c; }
@@ -1004,7 +1086,9 @@
             clip-path: none !important; box-shadow: none !important;
             background: transparent url('img/cartel-hero/btn-plain-blue.png') center/100% 100% no-repeat !important;
             image-rendering: pixelated; aspect-ratio: 15/2; width: 68%;
-            font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff;
+            /* 16px, el mismo cuerpo que PLAY: antes SETTINGS iba a 11px y por eso
+               los dos rotulos se veian de distinto tamano. */
+            font-family: 'Press Start 2P', monospace; font-size: 16px; color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.65); padding: 0; margin: 8px auto 0; display: block;
         }
         /* FEATURES oculto a peticion de David (queda registrado en el editor
@@ -2260,6 +2344,9 @@
                         <span class="msh-right">
                             <span id="sidePanelExtra" class="msh-sub"><span id="missionsSp">0</span> SP</span>
                             <span id="skinPanelExtra" class="msh-sub" style="display:none"><span id="skinPointsValue">0</span> SP</span>
+                            <!-- Maximizar (solo en SKINS SHOP / YOUR SKINS): abre
+                                 el catalogo entero en grande, sin paginas. -->
+                            <button id="skinMaxBtn" class="skin-max-btn" style="display:none" onclick="skinBigOpen()" title="Open the full catalogue"></button>
                             <button class="side-tabs-arrow" onclick="switchSidePanel()" title="Toggle">›</button>
                         </span>
                     </div>
@@ -2608,7 +2695,33 @@
         <input id="cmdInput" autocomplete="off" placeholder="/god   /mass 50000   /bots 10   /speed 2   /help" style="width:430px; padding:10px 14px; background:rgba(0,0,0,0.85); border:1px solid #00ffaa; color:#fff; font-family:'Russo One', sans-serif; font-size:13px; border-radius:8px; outline:none;">
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+        <!-- Catalogo de skins en grande. Solo SKINS SHOP y YOUR SKINS: aqui no
+         entran MISSIONS ni CONVERT. Es el mismo cartel de la placa pero
+         ampliado, con la misma rejilla de 8 y sus paginas. -->
+    <div id="skinBigModal" class="classic">
+        <div class="sb-cartel" id="sbCartel">
+            <canvas id="sbPlaca"></canvas>
+            <div class="sb-inner">
+                <div class="sb-head">
+                    <button class="sb-tab" id="sbTabShop" onclick="skinBigTab('skins')">SKINS SHOP</button>
+                    <button class="sb-tab" id="sbTabMine" onclick="skinBigTab('mine')">YOUR SKINS</button>
+                    <span class="sb-sp"><span id="sbSp">0</span> SP</span>
+                    <button class="sb-close" onclick="skinBigClose()">CLOSE</button>
+                </div>
+                <div class="sb-body">
+                    <button class="sb-arrow" id="sbPrev" onclick="skinBigPage(-1)" title="Previous page">&lsaquo;</button>
+                    <div class="sb-grid" id="sbGrid"></div>
+                    <button class="sb-arrow" id="sbNext" onclick="skinBigPage(1)" title="Next page">&rsaquo;</button>
+                </div>
+                <div class="sb-foot">
+                    <span id="sbPage">1/1</span>
+                    <span class="sb-hint">Drag a skin to reorder the catalogue</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+<canvas id="gameCanvas"></canvas>
 
     <!-- Zonas donde NINGÚN virus del fondo del menú puede entrar. Invisibles salvo
          en EDIT LAYOUT (rojo), donde se pueden mover/escalar como el resto. El
@@ -6256,55 +6369,48 @@
         OUT_BOTTOM: 0.765,
         HOLE: { l: 0.0628, t: 0.0764, r: 0.9372, b: 0.70 },
         CUT: 4,        // chaflan de esquina, en pixeles LOWRES (escalon de bloque)
+        // Grosor del marco en pixeles LOWRES, el MISMO en el cartel y en el
+        // popup. null = se calcula del ancho del cartel (el 6.28% de siempre).
+        // El hueco no se mueve: el marco crece o encoge hacia FUERA, asi que
+        // tocar esto no descoloca el contenido. placaTune({ T: 5 }) en vivo.
+        T: null,
         // Verde del interior, muestreado del cartel de siempre
         // (quest-panel-v2.png): el video queda recortado a los cohetes, asi que
         // la pantalla la pinta la placa con este mismo color.
         SCREEN: [14, 42, 27],
+        // Luz que sale del TITULO: el rotulo grande ilumina el borde del cartel
+        // que le queda de cara (el de arriba y el del lado por el que cae) y
+        // deja en sombra el opuesto. Es la misma idea que el tinte por modo que
+        // llevaba el cartel de piedra, pero direccional. 0 = apagada.
+        GLOW: 0.38,
     };
     // Luz arriba-izquierda, la MISMA que usa el sprite de la pildora.
     const PLACA_LX = -0.6, PLACA_LY = -0.75;
-    function drawPlaca(cv, hex) {
-        const panel = cv.parentElement;
-        if (!panel || !panel.clientWidth || !panel.clientHeight) return;
-        // Escala del fondo del menu: paintLoginBg pinta 264 px de alto y los
-        // estira a toda la ventana. Usando la misma, un pixel de la placa mide
-        // exactamente lo que un pixel de la cuadricula.
-        const gs = Math.max(6, menuDecoSettings.gridSize | 0);
-        const bgH = Math.max(gs, Math.round(270 / gs) * gs);
-        const scale = (window.innerHeight || 720) / bgH;
-        const pw = panel.clientWidth / scale, ph = panel.clientHeight / scale;
-        const W = Math.ceil(pw), H = Math.ceil(ph);
-        const key = W + '|' + H + '|' + hex;
-        if (cv._placaKey === key) return;
-        cv._placaKey = key;
-        cv.width = W; cv.height = H;
-        cv.style.width = (W * scale) + 'px';
-        cv.style.height = (H * scale) + 'px';
-
+    // Direccion (unitaria) desde el centro de un elemento hacia el TITULO.
+    // La usan el cartel y el popup para saber por donde les entra la luz.
+    function placaLuzHacia(el) {
+        const tEl = document.getElementById('selectedModeTitle');
+        if (!tEl || !PLACA.GLOW) return [0, -1];
+        const tr = tEl.getBoundingClientRect(), pr = el.getBoundingClientRect();
+        const vx = (tr.left + tr.width / 2) - (pr.left + pr.width / 2);
+        const vy = (tr.top + tr.height / 2) - (pr.top + pr.height / 2);
+        const vl = Math.hypot(vx, vy) || 1;
+        return [vx / vl, vy / vl];
+    }
+    // Pinta el anillo de la placa en un canvas de W x H pixeles LOWRES.
+    // inBand/inHole definen la forma, asi que sirve igual para el cartel (hueco
+    // por porcentajes) que para el popup (marco de grosor uniforme).
+    function placaPixels(g, W, H, inBand, inHole, hex, lgx, lgy) {
         const rgb = pixRgb(hex);
         const sh = f => rgb.map(v => Math.round(v * f));
-        const outB = ph * PLACA.OUT_BOTTOM, CUT = PLACA.CUT;
-        const hl = pw * PLACA.HOLE.l, hr = pw * PLACA.HOLE.r;
-        const ht = ph * PLACA.HOLE.t, hb = ph * PLACA.HOLE.b;
-        const inOuter = (x, y) => {
-            if (x < 0 || y < 0 || x >= pw || y >= outB) return false;
-            const dx = Math.min(x, pw - 1 - x), dy = Math.min(y, outB - 1 - y);
-            return dx >= CUT || dy >= CUT || dx + dy >= CUT;
-        };
-        const inHole = (x, y) => x >= hl && x < hr && y >= ht && y < hb;
-        const inBand = (x, y) => inOuter(x, y) && !inHole(x, y);
-
-        const g = cv.getContext('2d');
-        g.imageSmoothingEnabled = false;
         const img = g.createImageData(W, H), px = img.data;
         const C_RIM = sh(0.42), C_LIT = sh(0.60), C_DIM = sh(0.22), C_MID = sh(0.30), C_BODY = sh(0.12);
         const SCR = PLACA.SCREEN;
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
             const i = ((y * W + x) << 2);
             if (!inBand(x, y)) {
-                // La pantalla: el verde de siempre, ahora pintado por la placa
-                // (el video queda recortado a los cohetes). Fuera de la placa,
-                // transparente: por ahi se ven los cohetes y el fondo.
+                // La pantalla: el verde de siempre. Fuera de la placa,
+                // transparente (se ve el fondo del menu).
                 if (inHole(x, y)) { px[i] = SCR[0]; px[i + 1] = SCR[1]; px[i + 2] = SCR[2]; px[i + 3] = 255; }
                 continue;
             }
@@ -6331,28 +6437,139 @@
                 const ndl = (nx / l) * PLACA_LX + (ny / l) * PLACA_LY;
                 col = ndl > 0.15 ? C_LIT : ndl < -0.15 ? C_DIM : C_MID;
             } else col = C_BODY;
-            px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
+            // Luz del titulo: gana el lado que le da la cara y pierde el
+            // opuesto. Solo sobre el MARCO — la pantalla se queda plana.
+            if (PLACA.GLOW) {
+                const t = ((x - W / 2) * lgx + (y - H / 2) * lgy) / (Math.hypot(W, H) / 2);
+                const f = 1 + PLACA.GLOW * Math.max(-1, Math.min(1, t));
+                px[i] = Math.min(255, col[0] * f); px[i + 1] = Math.min(255, col[1] * f); px[i + 2] = Math.min(255, col[2] * f);
+            } else { px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; }
+            px[i + 3] = 255;
         }
         g.putImageData(img, 0, 0);
     }
-    // ===== PLAY / SETTINGS con la misma placa =====
+    // Grosor del marco del cartel, en pixeles LOWRES. Es el que hereda el popup
+    // para que los dos se vean del mismo material y el mismo grosor.
+    function placaGrosor() {
+        if (PLACA.T) return Math.max(2, PLACA.T | 0);
+        const panel = document.getElementById('oraclePanel');
+        const w = panel && panel.clientWidth;
+        if (!w) return 7;
+        return Math.max(3, Math.round(PLACA.HOLE.l * (w / placaScale())));
+    }
+    function drawPlaca(cv, hex) {
+        const panel = cv.parentElement;
+        if (!panel || !panel.clientWidth || !panel.clientHeight) return;
+        // Escala del fondo del menu: paintLoginBg pinta 264 px de alto y los
+        // estira a toda la ventana. Usando la misma, un pixel de la placa mide
+        // exactamente lo que un pixel de la cuadricula.
+        const scale = placaScale();
+        const pw = panel.clientWidth / scale, ph = panel.clientHeight / scale;
+        const W = Math.ceil(pw), H = Math.ceil(ph);
+        // Direccion hacia el titulo, desde el centro de ESTE cartel: el de la
+        // izquierda recibe la luz por arriba-derecha y el de la derecha por
+        // arriba-izquierda, porque el titulo esta arriba en medio de los dos.
+        const luz = placaLuzHacia(panel), lgx = luz[0], lgy = luz[1];
+        const key = W + '|' + H + '|' + hex + '|' + lgx.toFixed(2) + '|' + lgy.toFixed(2) + '|' + PLACA.GLOW;
+        if (cv._placaKey === key) return;
+        cv._placaKey = key;
+        cv.width = W; cv.height = H;
+        cv.style.width = (W * scale) + 'px';
+        cv.style.height = (H * scale) + 'px';
+
+        const CUT = PLACA.CUT, T = placaGrosor();
+        // El HUECO sigue exactamente donde esta .cartel-inner (el contenido no
+        // se mueve); el borde exterior es ese hueco crecido T por los cuatro
+        // lados, asi que el marco se ve del mismo grosor en todos ellos y es el
+        // MISMO que el del popup.
+        const hl = pw * PLACA.HOLE.l, hr = pw * PLACA.HOLE.r;
+        const ht = ph * PLACA.HOLE.t, hb = ph * PLACA.HOLE.b;
+        const ol = Math.max(0, hl - T), or_ = Math.min(pw, hr + T);
+        const ot = Math.max(0, ht - T), ob = Math.min(ph, hb + T);
+        const inOuter = (x, y) => {
+            if (x < ol || y < ot || x >= or_ || y >= ob) return false;
+            const dx = Math.min(x - ol, or_ - 1 - x), dy = Math.min(y - ot, ob - 1 - y);
+            return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+        };
+        const inHole = (x, y) => x >= hl && x < hr && y >= ht && y < hb;
+        const g = cv.getContext('2d');
+        g.imageSmoothingEnabled = false;
+        placaPixels(g, W, H, (x, y) => inOuter(x, y) && !inHole(x, y), inHole, hex, lgx, lgy);
+    }
+    // ===== El popup de skins es el MISMO cartel, ampliado =====
+    // Marco del MISMO grosor que el cartel pequeno (placaGrosor) y un interior
+    // mucho mas grande. La caja la fija el contenido; aqui solo se cuadra a un
+    // numero entero de pixeles lowres para que el marco no salga borroso.
+    // Proporcion del cartel pequeno TAL Y COMO SE VE (el rectangulo de la placa,
+    // no la caja del panel, que arrastra el hueco de los cohetes). El popup la
+    // copia para no salir mas apaisado que el original.
+    function placaRatio() {
+        const panel = document.getElementById('oraclePanel');
+        if (!panel || !panel.clientWidth) return 812 / 591;
+        const scale = placaScale(), T = placaGrosor();
+        const pw = panel.clientWidth / scale, ph = panel.clientHeight / scale;
+        const w = (pw * PLACA.HOLE.r - pw * PLACA.HOLE.l) + 2 * T;
+        const h = (ph * PLACA.HOLE.b - ph * PLACA.HOLE.t) + 2 * T;
+        return h > 0 ? w / h : 812 / 591;
+    }
+    function drawPlacaPopup() {
+        const caja = document.getElementById('sbCartel');
+        const cv = document.getElementById('sbPlaca');
+        if (!caja || !cv) return;
+        const scale = placaScale();
+        const T = placaGrosor();
+        // El padding ES el marco: el contenido nunca se mete debajo de el.
+        caja.style.padding = Math.round(T * scale) + 'px';
+        // Tamano: la MISMA proporcion que el cartel pequeno, llenando la pantalla
+        // todo lo que se pueda. De aqui salen unas celdas mucho mayores y, con
+        // ellas, unas pildoras de verdad mas grandes.
+        const ratio = placaRatio();
+        let h = (window.innerHeight || 720) * 0.88;
+        let w = h * ratio;
+        const maxW = (window.innerWidth || 1280) * 0.94;
+        if (w > maxW) { w = maxW; h = w / ratio; }
+        const W = Math.max(40, Math.round(w / scale)), H = Math.max(30, Math.round(h / scale));
+        const hex = _loginBgMode === 'arcade' ? '#ccff00' : '#00ffaa';
+        const luz = placaLuzHacia(caja), lgx = luz[0], lgy = luz[1];
+        const key = W + '|' + H + '|' + hex + '|' + lgx.toFixed(2) + '|' + lgy.toFixed(2) + '|' + PLACA.GLOW;
+        if (cv._placaKey === key) return;
+        cv._placaKey = key;
+        cv.width = W; cv.height = H;
+        // La caja se cuadra al canvas: asi cada pixel lowres cae en un cuadrado
+        // exacto de scale x scale y el marco no se ve emborronado.
+        caja.style.width = (W * scale) + 'px';
+        caja.style.height = (H * scale) + 'px';
+        skinBigMideCeldas();
+        const CUT = PLACA.CUT;
+        const inOuter = (x, y) => {
+            if (x < 0 || y < 0 || x >= W || y >= H) return false;
+            const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
+            return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+        };
+        const inHole = (x, y) => x >= T && x < W - T && y >= T && y < H - T;
+        const g = cv.getContext('2d');
+        g.imageSmoothingEnabled = false;
+        placaPixels(g, W, H, (x, y) => inOuter(x, y) && !inHole(x, y), inHole, hex, lgx, lgy);
+    }
+    // ===== PLAY / SETTINGS / botones de wallet con la misma placa =====
     // Mismo dibujo que el marco del cartel, pero macizo y con el cuerpo CLARO
-    // (son llamada a la accion, no fondo): reborde oscuro del propio color,
-    // bisel claro arriba-izquierda y el rotulo con la PIXFONT del juego. Todo a
-    // la misma escala de pixel que la cuadricula, igual que la placa.
-    // Los colores son los de los PNG de siempre (btn-plain-red/blue.png).
+    // (son llamada a la accion, no fondo): reborde oscuro del propio color y
+    // bisel claro arriba-izquierda, a la misma escala de pixel que la
+    // cuadricula. Los colores son los de los PNG de siempre
+    // (btn-plain-red/blue.png). Solo se sustituye el FONDO: el rotulo sigue
+    // siendo el texto del DOM de siempre (Press Start 2P) — horneado con la
+    // PIXFONT quedaba mal.
     const PLACA_BTN = { CUT: 2, ROJO: '#f62a2d', AZUL: '#0799ef' };
-    function drawPlacaButton(el, hex, label) {
-        if (!el || !el.clientWidth || !el.clientHeight) return;
+    // Escala del fondo del menu (paintLoginBg pinta 264px de alto y los estira a
+    // la ventana): con ella el pixel de la placa mide lo mismo que el de la
+    // cuadricula. La comparten el marco y todos los botones.
+    function placaScale() {
         const gs = Math.max(6, menuDecoSettings.gridSize | 0);
         const bgH = Math.max(gs, Math.round(270 / gs) * gs);
-        const scale = (window.innerHeight || 720) / bgH;
-        const W = Math.max(8, Math.round(el.clientWidth / scale));
-        const H = Math.max(6, Math.round(el.clientHeight / scale));
-        const key = W + '|' + H + '|' + hex + '|' + label;
-        if (el._placaBtnKey === key) return;
-        el._placaBtnKey = key;
-
+        return (window.innerHeight || 720) / bgH;
+    }
+    // Placa MACIZA de W x H pixeles lowres, como data URL.
+    function placaPlateUrl(W, H, hex) {
         const cv = document.createElement('canvas');
         cv.width = W; cv.height = H;
         const g = cv.getContext('2d');
@@ -6386,34 +6603,42 @@
             px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
         }
         g.putImageData(img, 0, 0);
-
-        // Rotulo con la PIXFONT 5x7, avance 7 para que el contorno no pegue las
-        // letras entre si (con el avance 6 de drawPixelText se tocarian).
-        const ADV = 7, txtW = label.length * ADV - 2, x0 = Math.round((W - txtW) / 2), y0 = Math.round((H - 7) / 2);
-        const glifos = (dx, dy, color) => {
-            g.fillStyle = color; let cx = x0 + dx;
-            for (const ch of label.toUpperCase()) {
-                const rows = PIXFONT[ch];
-                if (rows) for (let r = 0; r < 7; r++) { const bits = rows[r]; for (let c = 0; c < 5; c++) if (bits & (1 << (4 - c))) g.fillRect(cx + c, y0 + dy + r, 1, 1); }
-                cx += ADV;
-            }
-        };
-        const inkArr = sh(0.25), ink = 'rgb(' + inkArr.join(',') + ')';
-        for (const o of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) glifos(o[0], o[1], ink);
-        glifos(0, 0, '#ffffff');
-
-        el.style.setProperty('background-image', 'url(' + cv.toDataURL() + ')', 'important');
+        return cv.toDataURL();
+    }
+    // W/H se pasan desde fuera para que PLAY y SETTINGS salgan EXACTAMENTE
+    // iguales: midiendo cada boton por separado, un pixel de diferencia en
+    // clientWidth daba una placa lowres de distinto ancho y los chaflanes no
+    // coincidian entre los dos.
+    function drawPlacaButton(el, hex, W, H) {
+        if (!el || !W || !H) return;
+        const key = W + '|' + H + '|' + hex;
+        if (el._placaBtnKey === key) return;
+        el._placaBtnKey = key;
+        // Solo el fondo: el rotulo lo sigue poniendo el texto del DOM, con su
+        // Press Start 2P y su sombra de siempre.
+        el.style.setProperty('background-image', 'url(' + placaPlateUrl(W, H, hex) + ')', 'important');
         el.style.setProperty('background-size', '100% 100%', 'important');
         el.style.setProperty('background-repeat', 'no-repeat', 'important');
-        // El rotulo ya va horneado en la imagen: el texto del DOM se deja (para
-        // el lector de pantalla y el layout) pero invisible.
-        el.style.setProperty('color', 'transparent', 'important');
-        el.style.setProperty('text-shadow', 'none', 'important');
+    }
+    // CONNECT / DEPOSIT / WITHDRAW / DISCONNECT: los cuatro comparten la misma
+    // caja, asi que basta una placa en --gw-placa y la heredan todos. No se toca
+    // --gw-red (el PNG), asi el estilo 2 vuelve solo con la clase placa-off.
+    function paintWalletPlaca() {
+        const wa = document.getElementById('gameWalletArea');
+        const btn = document.getElementById('gwConnect') || document.querySelector('#gameWalletArea button');
+        if (!wa || !btn || !btn.clientWidth || !btn.clientHeight) return;
+        const scale = placaScale();
+        const W = Math.max(8, Math.round(btn.clientWidth / scale));
+        const H = Math.max(6, Math.round(btn.clientHeight / scale));
+        const key = W + '|' + H;
+        if (wa._gwPlacaKey === key) return;
+        wa._gwPlacaKey = key;
+        wa.style.setProperty('--gw-placa', 'url(' + placaPlateUrl(W, H, PLACA_BTN.ROJO) + ')');
     }
     function limpiaPlacaButton(el) {
         if (!el) return;
         el._placaBtnKey = '';
-        for (const p of ['background-image', 'background-size', 'background-repeat', 'color', 'text-shadow']) el.style.removeProperty(p);
+        for (const p of ['background-image', 'background-size', 'background-repeat']) el.style.removeProperty(p);
     }
     function paintPlacas() {
         const hex = _loginBgMode === 'arcade' ? '#ccff00' : '#00ffaa';
@@ -6421,8 +6646,17 @@
         if (a) drawPlaca(a, hex);
         if (b) drawPlaca(b, hex);
         if (document.body.classList.contains('placa-off')) return;
-        drawPlacaButton(document.querySelector('.login-left .btn-play'), PLACA_BTN.ROJO, 'PLAY');
-        drawPlacaButton(document.querySelector('.login-left #btnSettings'), PLACA_BTN.AZUL, 'SETTINGS');
+        const play = document.querySelector('.login-left .btn-play');
+        const sett = document.querySelector('.login-left #btnSettings');
+        // Una sola medida (la de PLAY) para los dos: misma placa, solo cambia el color.
+        if (play && play.clientWidth && play.clientHeight) {
+            const scale = placaScale();
+            const W = Math.max(8, Math.round(play.clientWidth / scale));
+            const H = Math.max(6, Math.round(play.clientHeight / scale));
+            drawPlacaButton(play, PLACA_BTN.ROJO, W, H);
+            drawPlacaButton(sett, PLACA_BTN.AZUL, W, H);
+        }
+        paintWalletPlaca();
     }
     // Cambiar de estilo desde la consola sin pasar por el admin (solo para ti,
     // no para el resto): placaOff(true) = configuracion 2 (la anterior).
@@ -8139,6 +8373,8 @@
         document.getElementById('dot-skins').classList.toggle('act', es('skins'));
         document.getElementById('dot-mine').classList.toggle('act', es('mine'));
         document.getElementById('dot-convert').classList.toggle('act', es('convert'));
+        const maxBtn = document.getElementById('skinMaxBtn');
+        if (maxBtn) maxBtn.style.display = (es('skins') || es('mine')) ? 'inline-block' : 'none';
         updateSkinFoot();   // el numero y la flecha de pagina solo salen en las dos de skins
         // Mostrar wallet cuando entras a SKINS, YOUR SKINS o CONVERT (donde hay dinero)
         if (typeof GameWalletUI !== 'undefined') {
@@ -8168,8 +8404,7 @@
     const MINE_DEFAULT = '—';
     function mineRender() {
         const grid = document.getElementById('mineGrid'); if (!grid) return;
-        const mias = (typeof paisMias === 'function') ? paisMias() : [];
-        const items = [MINE_DEFAULT].concat(mias);
+        const items = [MINE_DEFAULT].concat(skinMiasOrdenadas());
         const paginas = Math.max(1, Math.ceil(items.length / SKIN_POR_PAGINA));
         minePagina = Math.max(0, Math.min(paginas - 1, minePagina));
         document.getElementById('mineVacio').style.display = 'none';
@@ -8341,6 +8576,235 @@
         return Math.max(14, Math.min(40, Math.floor(((alto - 4) / 2 - 30) / 2.12)));
     }
 
+    /* ===== Orden propio del catalogo (se reordena arrastrando en el popup) =====
+       Mientras no se toque nada NO hay orden guardado y todo se pagina como
+       siempre (paisPagina, con su PAIS_ORDEN_PAGINAS). En cuanto se arrastra
+       una skin se guarda la lista entera de codigos y manda ella, tanto en el
+       popup como en el cartel pequeno. */
+    const SKIN_ORDER_KEY = 'pw_skin_order';
+    function skinOrdenGuardado() {
+        try { const v = JSON.parse(localStorage.getItem(SKIN_ORDER_KEY)); return Array.isArray(v) ? v : null; } catch (e) { return null; }
+    }
+    function skinOrdenGuardar(codes) {
+        try { localStorage.setItem(SKIN_ORDER_KEY, JSON.stringify(codes)); } catch (e) {}
+    }
+    // Todos los codigos en el orden que toque. Las skins que existan pero no
+    // estuvieran en el orden guardado (catalogo nuevo) van al final.
+    function skinTodosCodes() {
+        const todos = paisLista().map(p => p.code);
+        const guardado = skinOrdenGuardado();
+        if (!guardado) return todos;
+        const vistos = new Set(), out = [];
+        for (const c of guardado) if (todos.indexOf(c) !== -1 && !vistos.has(c)) { vistos.add(c); out.push(c); }
+        for (const c of todos) if (!vistos.has(c)) out.push(c);
+        return out;
+    }
+    // Pagina del catalogo pequeno: con orden propio se pagina en linea; sin el,
+    // se respeta paisPagina tal cual (mismo comportamiento de siempre).
+    function skinPaginaItems(idx, porPagina) {
+        if (!skinOrdenGuardado()) return paisPagina(idx, porPagina);
+        const codes = skinTodosCodes().slice(idx * porPagina, (idx + 1) * porPagina);
+        const tabla = {}; paisLista().forEach(p => { tabla[p.code] = p; });
+        return codes.map(c => tabla[c]).filter(Boolean);
+    }
+    // Las tuyas, ordenadas igual que el catalogo.
+    function skinMiasOrdenadas() {
+        const mias = (typeof paisMias === 'function') ? paisMias() : [];
+        const orden = skinTodosCodes();
+        return mias.slice().sort((a, b) => orden.indexOf(a) - orden.indexOf(b));
+    }
+
+    /* ===== Catalogo en grande (popup) =====
+       Mismo contenido y misma paginacion de 8 que el cartel pequeno: lo unico
+       que cambia es el tamano y que esta centrado en la pantalla. */
+    let skinBigTabActual = 'skins';
+    let skinBigPagina = 0;
+    const SB_WL = 46;   // ancho logico de la pildora (en el cartel pequeno son ~20)
+    function skinBigOpen() {
+        const m = document.getElementById('skinBigModal'); if (!m) return;
+        // Se entra por la pestana en la que ya estabas, y por su misma pagina.
+        skinBigTabActual = sidePanelTab === 'mine' ? 'mine' : 'skins';
+        skinBigPagina = skinBigTabActual === 'mine' ? minePagina : skinPagina;
+        m.classList.remove('classic', 'arcade');
+        m.classList.add(_loginBgMode === 'arcade' ? 'arcade' : 'classic');
+        m.classList.add('open');
+        skinBigRender();   // el propio render cuadra la placa y mide las celdas
+        try { SoundManager.play('select'); } catch (e) {}
+    }
+    function skinBigClose() {
+        const m = document.getElementById('skinBigModal'); if (m) m.classList.remove('open');
+        // El cartel pequeno puede haber cambiado de orden mientras tanto.
+        skinRender(); mineRender();
+    }
+    function skinBigTab(t) {
+        if (skinBigTabActual === t) return;
+        skinBigTabActual = t;
+        skinBigPagina = 0;
+        skinBigRender();
+        try { SoundManager.play('simpleselect'); } catch (e) {}
+    }
+    // Lista completa de la pestana actual (sin paginar). En YOUR SKINS la
+    // primera casilla es SIEMPRE la pildora por defecto (la de tus dos colores),
+    // igual que en el cartel pequeno.
+    function skinBigItems() {
+        return skinBigTabActual === 'mine' ? [MINE_DEFAULT].concat(skinMiasOrdenadas()) : skinTodosCodes();
+    }
+    function skinBigPaginas() {
+        return Math.max(1, Math.ceil(skinBigItems().length / SKIN_POR_PAGINA));
+    }
+    function skinBigPage(d) {
+        const n = skinBigPaginas();
+        if (n < 2) return;
+        skinBigPagina = (skinBigPagina + d + n) % n;
+        skinBigRender();
+        try { SoundManager.play('simpleselect'); } catch (e) {}
+    }
+    // Precio SIN abreviar: aqui hay sitio de sobra, y "25,000 $PILL" se lee
+    // mucho mejor que el "25K $PILL" que hace falta en el cartel pequeno.
+    function skinPrecioLargo() {
+        return (PAIS_PRECIO_PILL | 0).toLocaleString('en-US') + ' $PILL';
+    }
+    // Ancho logico de la pildora, medido de la celda YA colocada: la rejilla
+    // reparte el hueco del cartel, asi que al agrandar el popup la pildora crece
+    // con el. Se mide despues de pintar y, si cambia, se repinta una sola vez.
+    let skinBigWL = 46, _skinBigMidiendo = false;
+    function skinBigMideCeldas() {
+        if (_skinBigMidiendo) return;
+        const cel = document.querySelector('#sbGrid .sb-cell');
+        if (!cel || !cel.clientHeight) return;
+        // 2.21 = lo que crece el lado del sprite al girarlo 45 grados
+        // (wL + wL*PILL_RATIO) * cos45. Los 58 px son las dos lineas de texto,
+        // el boton de equipar y los huecos entre ellos.
+        const wL = Math.max(18, Math.min(90, Math.floor((cel.clientHeight - 58) / 2.21)));
+        if (wL === skinBigWL) return;
+        skinBigWL = wL;
+        _skinBigMidiendo = true;
+        try { skinBigRender(); } finally { _skinBigMidiendo = false; }
+    }
+    function skinBigRender() {
+        const grid = document.getElementById('sbGrid'); if (!grid) return;
+        const esMine = skinBigTabActual === 'mine';
+        document.getElementById('sbTabShop').classList.toggle('act', !esMine);
+        document.getElementById('sbTabMine').classList.toggle('act', esMine);
+        const sp = document.getElementById('sbSp');
+        if (sp && typeof paisSp === 'function') sp.textContent = paisSp();
+
+        const tabla = {}; paisLista().forEach(p => { tabla[p.code] = p; });
+        const todos = skinBigItems();
+        const paginas = skinBigPaginas();
+        skinBigPagina = Math.max(0, Math.min(paginas - 1, skinBigPagina));
+        const pagina = todos.slice(skinBigPagina * SKIN_POR_PAGINA, (skinBigPagina + 1) * SKIN_POR_PAGINA);
+        const puesta = paisPuesta();
+        const WL = skinBigWL;
+        grid.innerHTML = '';
+        pagina.forEach(code => {
+            const esDefault = code === MINE_DEFAULT;
+            const p = esDefault ? null : tabla[code];
+            if (!esDefault && !p) return;
+            const cel = document.createElement('div');
+            cel.className = 'sb-cell' + (esDefault ? ' fija' : '');
+            cel.draggable = !esDefault;
+            cel.dataset.code = code;
+
+            const cv = document.createElement('canvas');
+            let o;
+            if (esDefault) {
+                // Se dibuja con los colores que tengas elegidos: es literalmente
+                // tu pildora, igual que en el cartel pequeno.
+                const cTop = (document.getElementById('colTop') || {}).value || '#ffffff';
+                const cBot = (document.getElementById('colBot') || {}).value || '#00ff88';
+                o = pixPillSpriteRot(WL, cTop, cBot, SKIN_ANG, true);
+            } else {
+                o = paisPillRot(WL, code, SKIN_ANG);
+            }
+            cv.width = o.S; cv.height = o.S;
+            cv.getContext('2d').drawImage(o.cv, 0, 0);
+
+            const cod = document.createElement('div'); cod.className = 'sb-cod';
+            cod.textContent = esDefault ? 'DEFAULT' : skinNombreCelda(code);
+            cel.append(cv, cod);
+
+            const activa = esDefault ? !puesta : puesta === code;
+            if (esMine) {
+                // En las tuyas no hay precio: hay un boton para ponerla o
+                // quitarla sin tener que abrir el detalle.
+                const eq = document.createElement('button');
+                eq.className = 'sb-eq' + (activa ? ' on' : '');
+                eq.textContent = activa ? 'UNEQUIP' : 'EQUIP';
+                // La default no se puede "quitar": quitarse otra ES ponerse esta.
+                if (esDefault && activa) { eq.disabled = true; eq.style.opacity = '0.4'; eq.style.cursor = 'default'; }
+                eq.addEventListener('click', async ev => {
+                    ev.stopPropagation();
+                    const r = await paisPoner(activa || esDefault ? null : code);
+                    if (r && r.ok === false) { showSystemMsg(r.error || 'Could not equip that skin.', 'SKINS'); return; }
+                    skinBigRender(); mineRender(); skinRender(); renderMenuPill();
+                    try { SoundManager.play('select'); } catch (e) {}
+                });
+                cel.appendChild(eq);
+            } else {
+                const pre = document.createElement('div'); pre.className = 'sb-pre';
+                if (puesta === code) { pre.textContent = 'ON'; pre.style.color = '#00ff88'; }
+                else if (paisTengo(code)) { pre.textContent = 'OWNED'; pre.style.color = '#00ff88'; }
+                else pre.textContent = skinPrecioLargo();; pre.classList.add('precio');
+                cel.appendChild(pre);
+            }
+            cel.title = esDefault ? 'Your own two colours' : (p.n || code);
+            // Click en la pildora = el cartel de detalle de siempre.
+            if (!esDefault) cel.addEventListener('click', () => skinOpen(code));
+            cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
+            grid.appendChild(cel);
+        });
+        // Huecos vacios hasta 8: sin ellos la ultima pagina encoge la rejilla y
+        // el popup entero da un salto al pasar de pagina.
+        for (let i = pagina.length; i < SKIN_POR_PAGINA; i++) {
+            const v = document.createElement('div'); v.className = 'sb-cell vacia'; v.draggable = false;
+            grid.appendChild(v);
+        }
+        document.getElementById('sbPage').textContent = (skinBigPagina + 1) + '/' + paginas;
+        document.getElementById('sbPrev').disabled = paginas < 2;
+        document.getElementById('sbNext').disabled = paginas < 2;
+        skinBigDnD(grid);
+        drawPlacaPopup();
+    }
+    // Arrastrar para reordenar. El orden que se guarda es SIEMPRE el del
+    // catalogo completo: en YOUR SKINS solo se ven las tuyas, asi que mover una
+    // ahi reubica ese codigo dentro de la lista global, sin tocar el resto.
+    function skinBigDnD(grid) {
+        if (grid._dndListo) return;
+        grid._dndListo = true;
+        let origen = null;
+        grid.addEventListener('dragstart', e => {
+            const c = e.target.closest('.sb-cell');
+            if (!c || c.classList.contains('vacia') || c.classList.contains('fija')) return;
+            origen = c; c.classList.add('drag');
+            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.dataset.code); } catch (err) {}
+        });
+        grid.addEventListener('dragend', () => {
+            if (origen) origen.classList.remove('drag');
+            grid.querySelectorAll('.sb-cell.over').forEach(c => c.classList.remove('over'));
+            origen = null;
+        });
+        grid.addEventListener('dragover', e => {
+            e.preventDefault();
+            const c = e.target.closest('.sb-cell:not(.vacia):not(.fija)');
+            grid.querySelectorAll('.sb-cell.over').forEach(x => { if (x !== c) x.classList.remove('over'); });
+            if (c && c !== origen) c.classList.add('over');
+        });
+        grid.addEventListener('drop', e => {
+            e.preventDefault();
+            const destino = e.target.closest('.sb-cell:not(.vacia):not(.fija)');
+            if (!origen || !destino || destino === origen) return;
+            const orden = skinTodosCodes();
+            const de = orden.indexOf(origen.dataset.code), a = orden.indexOf(destino.dataset.code);
+            if (de < 0 || a < 0) return;
+            orden.splice(a, 0, orden.splice(de, 1)[0]);
+            skinOrdenGuardar(orden);
+            skinBigRender();
+        });
+    }
+    window.skinBigOpen = skinBigOpen; window.skinBigClose = skinBigClose;
+    window.skinBigTab = skinBigTab; window.skinBigPage = skinBigPage;
+
     function skinRender() {
         const grid = document.getElementById('skinGrid');
         if (!grid || typeof paisLista !== 'function') return;
@@ -8351,7 +8815,7 @@
         // el cartel se reescala desde EDIT LAYOUT y con un valor fijo se salia.
         const wL = skinWL(grid);
         // El orden de las pestañas lo decide paisPagina(), no la tabla.
-        paisPagina(skinPagina, SKIN_POR_PAGINA).forEach(p => {
+        skinPaginaItems(skinPagina, SKIN_POR_PAGINA).forEach(p => {
             const o = paisPillRot(wL, p.code, SKIN_ANG);
             const cel = document.createElement('div'); cel.className = 'skin-cell';
             const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
