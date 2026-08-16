@@ -10,7 +10,7 @@
  * NO se usa la PIXFONT 5x7 del juego: a ese tamaño la P es un cuadrado con un
  * agujero y no hay sitio para una sola curva. Cada glifo se define aqui como
  * GEOMETRIA (astas, cajas de esquinas redondeadas y segmentos) y se rasteriza
- * a una rejilla de 34 unidades de alto, que da resolucion de sobra para curvas
+ * a una rejilla de 38 unidades de alto, que da resolucion de sobra para curvas
  * de verdad.
  *
  * La forma se describe con una funcion de distancia: para cada punto se sabe
@@ -32,13 +32,17 @@ const RAIZ = path.join(__dirname, '..');
 const DESTINO = process.env.DEST || path.join(RAIZ, 'game', 'img', 'mode-title');
 
 // ===== Metrica =====
-const CAP = 34;          // alto de la mayuscula, en unidades de rejilla
-const T = 7;             // grosor del trazo
+// CAP sube a 38 al engordar el trazo: con la caja de 34 un trazo de 10 dejaba
+// los contadores (el hueco de la P, de la R, de la A) reducidos a una ranura.
+// Es el reparto de las tipografias pesadas — trazo del 26% del alto y contador
+// estrecho pero abierto.
+const CAP = 38;          // alto de la mayuscula, en unidades de rejilla
+const T = 10;            // grosor del trazo
 const KERN = 3;          // hueco entre letras (el de la fuente vieja, que ya estaba bien)
 const MARGEN = 3;        // aire alrededor para el contorno y la sombra
 // Lado del pixel final: el PNG sale a PX * rejilla. PX=2 da 80px de alto, que
 // es la altura a la que se enseña el titulo — 1:1, sin reescalados raros.
-// PX=6 (variable de entorno) sirve para mirar el dibujo de cerca:
+// PX=2 da 88px de alto. PX=6 (variable de entorno) sirve para verlo de cerca:
 //   PX=6 DEST=/tmp node tools/gen-titulo-placa.js
 const PX = Number(process.env.PX) || 2;
 
@@ -71,65 +75,65 @@ function anillo(px, py, x, y, w, h, r, g) {
 // Cada uno: ancho en unidades y su funcion de distancia. Los radios grandes en
 // las esquinas exteriores son lo que da la curva; los pequeños (1-2) mantienen
 // rectos los cantos que deben serlo (el pie de la P contra su asta, p.ej.).
-const R_GRANDE = 11, R_MEDIO = 7;
+const R_GRANDE = 13, R_MEDIO = 9;
 const GLIFOS = {
     'I': { w: T, d: (x, y) => sdCaja(x, y, 0, 0, T, CAP, [2, 2, 2, 2]) },
     'L': {
-        w: 22, d: (x, y) => une(
+        w: 26, d: (x, y) => une(
             sdCaja(x, y, 0, 0, T, CAP, [2, 2, 1, 3]),
-            sdCaja(x, y, 0, CAP - T, 22, T, [1, 3, 3, 3]),
+            sdCaja(x, y, 0, CAP - T, 26, T, [1, 3, 3, 3]),
         ),
     },
     'E': {
-        w: 22, d: (x, y) => une(
-            sdCaja(x, y, 0, 0, T, CAP, [3, 1, 1, 3]),
-            sdCaja(x, y, 0, 0, 22, T, [3, 3, 2, 1]),
-            sdCaja(x, y, 0, (CAP - T) / 2, 19, T, [1, 3, 3, 1]),
-            sdCaja(x, y, 0, CAP - T, 22, T, [1, 2, 3, 3]),
-        ),
-    },
-    // Bucle superior de esquinas muy redondeadas montado sobre el asta. El
-    // bucle es alto (23 de 34) para que el contador quede redondo y no una
-    // ranura: con el trazo a 7, deja un hueco de 12x9.
-    'P': {
         w: 26, d: (x, y) => une(
             sdCaja(x, y, 0, 0, T, CAP, [3, 1, 1, 3]),
-            anillo(x, y, 0, 0, 26, 23, [3, R_GRANDE, R_GRANDE, 1], T),
+            sdCaja(x, y, 0, 0, 26, T, [3, 3, 2, 1]),
+            sdCaja(x, y, 0, (CAP - T) / 2, 22, T, [1, 3, 3, 1]),
+            sdCaja(x, y, 0, CAP - T, 26, T, [1, 2, 3, 3]),
+        ),
+    },
+    // Bucle superior de esquinas muy redondeadas montado sobre el asta. Va alto
+    // (29 de 38) a proposito: con el trazo a 10, es lo que deja el contador
+    // abierto (11x9) en vez de convertido en una raja.
+    'P': {
+        w: 31, d: (x, y) => une(
+            sdCaja(x, y, 0, 0, T, CAP, [3, 1, 1, 3]),
+            anillo(x, y, 0, 0, 31, 29, [3, R_GRANDE, R_GRANDE, 1], T),
         ),
     },
     'R': {
-        w: 26, d: (x, y) => une(
+        w: 31, d: (x, y) => une(
             sdCaja(x, y, 0, 0, T, CAP, [3, 1, 1, 3]),
-            anillo(x, y, 0, 0, 26, 23, [3, R_GRANDE, R_GRANDE, 1], T),
-            sdSeg(x, y, 11, 20, 22, CAP - T / 2, T / 2),
+            anillo(x, y, 0, 0, 31, 29, [3, R_GRANDE, R_GRANDE, 1], T),
+            sdSeg(x, y, 13, 25, 26, CAP - T / 2, T / 2),
         ),
     },
     'D': {
-        w: 27, d: (x, y) => une(
+        w: 32, d: (x, y) => une(
             sdCaja(x, y, 0, 0, T, CAP, [3, 1, 1, 3]),
-            anillo(x, y, 0, 0, 27, CAP, [3, R_GRANDE + 2, R_GRANDE + 2, 3], T),
+            anillo(x, y, 0, 0, 32, CAP, [3, R_GRANDE + 2, R_GRANDE + 2, 3], T),
         ),
     },
     // C = anillo completo al que se le quita la boca de la derecha. El recorte
     // se queda DENTRO del ancho del glifo: si sobresale, el borde del recorte
     // cae donde ya no hay letra y aparece un canto suelto.
     'C': {
-        w: 27, d: (x, y) => quita(
-            anillo(x, y, 0, 0, 27, CAP, [R_GRANDE, R_GRANDE, R_GRANDE, R_GRANDE], T),
-            sdCaja(x, y, 15, 8, 12, CAP - 16, [0, 0, 0, 0]),
+        w: 32, d: (x, y) => quita(
+            anillo(x, y, 0, 0, 32, CAP, [R_GRANDE, R_GRANDE, R_GRANDE, R_GRANDE], T),
+            sdCaja(x, y, 18, 10, 14, CAP - 20, [0, 0, 0, 0]),
         ),
     },
     // S: dos medios anillos, cada uno sin el cuadrante que sobra. Los recortes
     // son cajas rectas por el mismo motivo que en la C.
     'S': {
-        w: 25, d: (x, y) => {
-            const alto = 20, medio = CAP - alto;
+        w: 30, d: (x, y) => {
+            const alto = 23, medio = CAP - alto;
             const arriba = quita(
-                anillo(x, y, 0, 0, 25, alto, [R_MEDIO + 2, R_MEDIO + 2, 2, 2], T),
-                sdCaja(x, y, 25 - T, alto / 2, T, alto / 2, [0, 0, 0, 0]),
+                anillo(x, y, 0, 0, 30, alto, [R_MEDIO + 2, R_MEDIO + 2, 2, 2], T),
+                sdCaja(x, y, 30 - T, alto / 2, T, alto / 2, [0, 0, 0, 0]),
             );
             const abajo = quita(
-                anillo(x, y, 0, medio, 25, alto, [2, 2, R_MEDIO + 2, R_MEDIO + 2], T),
+                anillo(x, y, 0, medio, 30, alto, [2, 2, R_MEDIO + 2, R_MEDIO + 2], T),
                 sdCaja(x, y, 0, medio, T, alto / 2, [0, 0, 0, 0]),
             );
             return une(arriba, abajo);
@@ -138,18 +142,18 @@ const GLIFOS = {
     // Travesaño bajo y contador amplio: con el travesaño alto la A se cerraba
     // casi del todo.
     'A': {
-        w: 28, d: (x, y) => une(
-            sdSeg(x, y, 14, T / 2, 4, CAP - T / 2, T / 2),
-            sdSeg(x, y, 14, T / 2, 24, CAP - T / 2, T / 2),
-            sdCaja(x, y, 7, 24, 14, T - 1, [1, 1, 1, 1]),
+        w: 33, d: (x, y) => une(
+            sdSeg(x, y, 16.5, T / 2, 5, CAP - T / 2, T / 2),
+            sdSeg(x, y, 16.5, T / 2, 28, CAP - T / 2, T / 2),
+            sdCaja(x, y, 8, 29, 17, T - 1, [1, 1, 1, 1]),
         ),
     },
     'W': {
-        w: 40, d: (x, y) => une(
-            sdSeg(x, y, 4, T / 2, 11, CAP - T / 2, T / 2),
-            sdSeg(x, y, 11, CAP - T / 2, 20, 13, T / 2),
-            sdSeg(x, y, 20, 13, 29, CAP - T / 2, T / 2),
-            sdSeg(x, y, 29, CAP - T / 2, 36, T / 2, T / 2),
+        w: 48, d: (x, y) => une(
+            sdSeg(x, y, 5, T / 2, 13, CAP - T / 2, T / 2),
+            sdSeg(x, y, 13, CAP - T / 2, 24, 15, T / 2),
+            sdSeg(x, y, 24, 15, 35, CAP - T / 2, T / 2),
+            sdSeg(x, y, 35, CAP - T / 2, 43, T / 2, T / 2),
         ),
     },
 };

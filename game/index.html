@@ -1047,7 +1047,7 @@
            asi que lo calcula centrarTitulo() midiendo contra el centro de la
            ventana. Todas las --titulo-* se ajustan en vivo con tituloTune() y
            se guardan por usuario. */
-        :root { --titulo-alto-pw: 80px; --titulo-alto-word: 80px; --titulo-gap: 32px; --titulo-blur: 0px; --titulo-glow: #00ffaa; }
+        :root { --titulo-alto-pw: 88px; --titulo-alto-word: 88px; --titulo-gap: 32px; --titulo-blur: 0px; --titulo-glow: #00ffaa; }
         #loginOverlay.bg-arcade { --titulo-glow: #ccff00; }
         #selectedModeTitle.titulo-placa { display: flex; align-items: center; justify-content: center; gap: var(--titulo-gap); width: max-content; }
         #selectedModeTitle.titulo-placa img { width: auto; }
@@ -6786,13 +6786,13 @@
     // Tamaño de las letras, hueco entre PILLWARS y ARCADE/CLASSIC, y altura del
     // conjunto. Los defaults estan en el CSS (:root); esto solo guarda lo que
     // se cambie con tituloTune para que sobreviva a la recarga.
-    // alto 80 = el alto NATIVO de los PNG, o sea 1:1 sin reescalar. Otros
+    // alto 88 = el alto NATIVO de los PNG, o sea 1:1 sin reescalar. Otros
     // valores siguen viendose nitidos (image-rendering:pixelated), pero los
-    // pixeles dejan de medir todos lo mismo salvo en multiplos de 80.
+    // pixeles dejan de medir todos lo mismo salvo en multiplos de 88.
     // altoPw/altoWord a null = los dos siguen a "alto"; con un numero, esa
-    // palabra va por libre.
+    // palabra va por libre (es lo que mueve la rueda en EDIT LAYOUT).
     const TITULO_KEY = 'pw_titulo_placa';
-    const TITULO = { alto: 80, altoPw: null, altoWord: null, gap: 32, y: 0, blur: 0 };
+    const TITULO = { alto: 88, altoPw: null, altoWord: null, gap: 32, y: 0, blur: 0 };
     try { Object.assign(TITULO, JSON.parse(localStorage.getItem(TITULO_KEY) || '{}')); } catch (e) {}
     function aplicaTituloVars() {
         const r = document.documentElement.style;
@@ -7398,6 +7398,18 @@
                 applyMenuLayout(); saveMenuLayout();
                 return;
             }
+            // Con el titulo de placa la rueda cambia el ALTO REAL del rotulo en
+            // vez de un scale: el scale es un transform, no cambia la caja, y el
+            // centrado automatico (centrarTitulo) dejaba de cuadrar. Asi ademas
+            // se pueden dejar las dos palabras exactamente al mismo tamaño, que
+            // con un factor a ojo era imposible. Shift = paso grande.
+            if (tituloUsaPlaca() && (t.key === 'titlePw' || t.key === 'titleWord')) {
+                const campo = t.key === 'titlePw' ? 'altoPw' : 'altoWord';
+                const base = TITULO[campo] || TITULO.alto;
+                const paso = e.shiftKey ? 8 : 2;
+                tituloTune({ [campo]: Math.max(24, Math.min(400, base + (e.deltaY < 0 ? paso : -paso))) });
+                return;
+            }
             // 1.015 (1.5%) en vez de 1.06 (6%): con el paso viejo era dificil
             // cuadrar dos elementos al MISMO tamano (se pasaba de largo entre
             // un tick y el siguiente). Shift+rueda = paso grande (1.06) para
@@ -7413,6 +7425,13 @@
         document.addEventListener('dblclick', (e) => {
             if (!layoutEditing) return;
             const t = layoutTarget(e); if (!t) return;
+            // El titulo de placa no guarda su tamaño en el layout, asi que
+            // resetearlo es devolver su palabra al alto comun.
+            if (tituloUsaPlaca() && (t.key === 'titlePw' || t.key === 'titleWord')) {
+                tituloTune({ [t.key === 'titlePw' ? 'altoPw' : 'altoWord']: null });
+                e.preventDefault();
+                return;
+            }
             // Resetear uno tambien cuenta como "tocado a mano": si no, el global
             // se lo devolvia en el siguiente poll.
             const sk = layoutStoreKey(t.key);
