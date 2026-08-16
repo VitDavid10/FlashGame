@@ -674,7 +674,7 @@ function _paisModalCSS() {
        ABSOLUTA a proposito: en el hueco de arriba a la derecha ya no hay nada
        (el nombre es corto), asi que no hace falta bajar el contenido una fila
        entera para meterlos — caben donde estan. */
-    #${PAIS_MODAL_ID} .pm-top { position:absolute; top:var(--pm-top-y,20px); right:var(--pm-top-x,26px);
+    #${PAIS_MODAL_ID} .pm-top { position:absolute; top:var(--pm-top-y,50px); right:var(--pm-top-x,12px);
         z-index:3; display:flex; align-items:center; gap:10px; }
     /* Flecha: la misma forma y hover que .side-tabs-arrow (la del cartel de
        MISSIONS/SKINS), del color del modo, pero mas grande. */
@@ -1175,20 +1175,6 @@ function _pmPreviaPinta() {
     // las pildoras no giran sobre si mismas, solo se desplazan.
     const o = paisPillRot(Math.round(s.wL), _paisCodeAbierto, PM_ANG);
     g.drawImage(o.cv, Math.round(W / 2 - o.S / 2), Math.round(H / 2 - o.S / 2));
-
-    // Rayos del SPRINT: usa drawPixBolt del juego, la MISMA animacion que en
-    // partida. Solo en /game (cuando la funcion existe); la landing los ignora.
-    if (s.sprint > 0 && typeof drawPixBolt === 'function') {
-        const life = Math.min(1, s.sprint / PM_SPRINT_MS);
-        const rot = (s.t % 360);
-        const cellR = H * 0.12;
-        // Dos rayos: uno a cada lado (izquierda y derecha), rotando juntos.
-        const rad = s.wL * 0.6;
-        for (const lado of [-1, 1]) {
-            const bolt = { x: W / 2 + lado * rad, y: H / 2 - rad * 0.2, rot: rot, life: life, scale: 1 };
-            drawPixBolt(g, bolt, cellR, 1);
-        }
-    }
 }
 // Virus de respaldo para la landing (alli no existe pixVirusSprite): nucleo
 // cuadrado y pinchos en cruz y diagonales, en bloques, para no desentonar con
