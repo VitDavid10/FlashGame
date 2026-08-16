@@ -1038,6 +1038,17 @@
            Sin lineas ni cajas — flota libre como el resto. */
         .menu-head-row { display: flex; align-items: center; justify-content: flex-start; gap: 22px; margin-bottom: 14px; text-align: left; width: max-content; max-width: 60vw; }
         #selectedModeTitle { font-family: 'Press Start 2P', monospace; font-size: 24px; text-transform: uppercase; margin: 0; letter-spacing: 1px; text-shadow: 3px 3px 0 #000, 6px 6px 0 rgba(0,0,0,0.4); line-height: 1.35; white-space: nowrap; }
+        /* Titulo de placa: las dos palabras en una fila, con la MISMA altura (los
+           cuatro PNG salen del generador con el mismo alto, asi que a igual
+           height las letras miden igual en PILLWARS y en ARCADE/CLASSIC) y un
+           hueco fijo entre ellas. El centrado horizontal NO se hace aqui: cada
+           modo tiene un ancho distinto y el h1 vive en la columna izquierda, asi
+           que lo calcula centrarTitulo() midiendo contra el centro de la
+           ventana. --titulo-alto / --titulo-gap / --titulo-y se ajustan en vivo
+           con tituloTune() y se guardan por usuario. */
+        :root { --titulo-alto: 80px; --titulo-gap: 32px; }
+        #selectedModeTitle.titulo-placa { display: flex; align-items: center; justify-content: center; gap: var(--titulo-gap); width: max-content; }
+        #selectedModeTitle.titulo-placa img { height: var(--titulo-alto) !important; width: auto; }
         .mode-blurb { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; text-align: left; line-height: 2.1; letter-spacing: 0.5px; white-space: nowrap; }
         /* El blurb de debajo del titulo, con el color de su modo y encendido,
            igual que el ROGUELIKE MECHANICS / STANDARD MODE del selector. Mismo
@@ -5928,6 +5939,7 @@
         // originales, que traen degradado y halo difuminado horneados. Mismo
         // mecanismo de <img> y mismas alturas: el tamaño y el sitio no cambian.
         const suf = tituloUsaPlaca() ? '-placa' : '';
+        el.classList.toggle('titulo-placa', !!suf);
         const wordSrc = 'img/mode-title/' + (mode === 'arcade' ? 'ARCADE' : 'CLASSIC') + '-word' + suf + '.png';
         const pwSrc = 'img/mode-title/PILLWARS-' + mode + suf + '.png';
         const fb = 'this.closest(\'#selectedModeTitle\').innerText=\'' + fallbackText + '\'';
@@ -5940,6 +5952,13 @@
         // el bug de "no se guarda" que reporto David. Se reaplica aqui sobre
         // los nodos nuevos.
         if (typeof applyMenuLayout === 'function') applyMenuLayout();
+        // Las <img> acaban de crearse: hay que esperar a que carguen para poder
+        // medir el ancho y centrar. decode() falla si la imagen no existe, de
+        // ahi el catch (el fallback de texto ya lo cubre el onerror).
+        if (tituloUsaPlaca()) {
+            centrarTitulo();
+            for (const img of el.querySelectorAll('img')) img.decode().then(centrarTitulo).catch(() => {});
+        }
     }
     function selectMode(m) {
         // Arte pesado (carteles y iconos de skill): aqui es donde empieza a
@@ -6020,6 +6039,9 @@
                 try { paintLoginBg(m); } catch(e) {}
                 els.modeScreen.style.display = 'none';
                 els.loginOverlay.style.display = 'flex';
+                // Ya se puede medir el titulo (con el login oculto medía 0 y no
+                // habia forma de centrarlo).
+                centrarTitulo();
                 // La wallet entra AQUI, con el menu ya montado (ver arriba).
                 if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
                 els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
@@ -6400,7 +6422,10 @@
     (function loginBgLoop() {
         requestAnimationFrame(loginBgLoop);
         const lo = document.getElementById('loginOverlay');
-        if (lo && lo.style.display === 'flex') { paintLoginBg(_loginBgMode); paintPlacas(); }
+        // centrarTitulo tambien aqui: cuando se crea el titulo el login sigue
+        // oculto (mide 0) y no se puede centrar todavia. Es barato — sale por
+        // la clave de posicion en cuanto ya esta puesto.
+        if (lo && lo.style.display === 'flex') { paintLoginBg(_loginBgMode); paintPlacas(); centrarTitulo(); }
     })();
 
     // ===== Marco "placa" pixel: sustituye SOLO la piedra del cartel =====
@@ -6726,11 +6751,12 @@
         paintWalletPlaca();
     }
     // ===== Titulo del login con el MISMO material que el marco =====
-    // "PILLWARS" + "ARCADE"/"CLASSIC" en PNG dibujados con la PIXFONT y los
-    // tonos de la placa (cuerpo del color del modo, las dos filas de abajo en
-    // sombra y contorno duro oscuro), en vez de los originales, que traen
-    // degradado y halo difuminado horneados — dos cosas que no existen en
-    // ningun otro sitio del menu. Se generan con tools/gen-titulo-placa.js.
+    // "PILLWARS" + "ARCADE"/"CLASSIC" en PNG con letras dibujadas por geometria
+    // (astas, arcos y cajas de esquinas redondeadas) e iluminadas igual que el
+    // marco de la placa: contorno oscuro, canto claro por donde entra la luz y
+    // sombra en el opuesto. Sustituyen a los originales, que traian degradado y
+    // halo difuminado horneados — dos cosas que no existen en ningun otro sitio
+    // del menu. Se generan con tools/gen-titulo-placa.js.
     let _tituloPlacaOn = true;
     // El rotulo dibujado va con el marco dibujado: con el estilo 2 (cartel de
     // piedra) vuelven los PNG originales, que es el conjunto con el que se
@@ -6738,10 +6764,71 @@
     function tituloUsaPlaca() {
         return _tituloPlacaOn && !document.body.classList.contains('placa-off');
     }
+    // Tamaño de las letras, hueco entre PILLWARS y ARCADE/CLASSIC, y altura del
+    // conjunto. Los defaults estan en el CSS (:root); esto solo guarda lo que
+    // se cambie con tituloTune para que sobreviva a la recarga.
+    // alto 80 = el alto NATIVO de los PNG, o sea 1:1 sin reescalar. Otros
+    // valores siguen viendose nitidos (image-rendering:pixelated), pero los
+    // pixeles dejan de medir todos lo mismo salvo en multiplos de 80.
+    const TITULO_KEY = 'pw_titulo_placa';
+    const TITULO = { alto: 80, gap: 32, y: 0 };
+    try { Object.assign(TITULO, JSON.parse(localStorage.getItem(TITULO_KEY) || '{}')); } catch (e) {}
+    function aplicaTituloVars() {
+        const r = document.documentElement.style;
+        r.setProperty('--titulo-alto', TITULO.alto + 'px');
+        r.setProperty('--titulo-gap', TITULO.gap + 'px');
+    }
+    // Centrado horizontal EXACTO respecto a la ventana. No se puede dejar en
+    // manos del CSS: el h1 cuelga de la columna izquierda del menu, no de un
+    // contenedor a pantalla completa. Se mide el titulo sin desplazar y se
+    // aplica el translate que falta — como cada modo tiene un ancho distinto
+    // (ARCADE y CLASSIC no miden lo mismo), cada uno sale centrado por su
+    // cuenta con la misma cuenta.
+    let _tituloPos = '';
+    function centrarTitulo() {
+        const el = els.selectedModeTitle;
+        if (!el || !tituloUsaPlaca()) return;
+        // Sin translate puesto no hay desplazamiento que descontar (pasa cada
+        // vez que se recrea el titulo al cambiar de modo).
+        if (!el.style.translate) _tituloPos = '';
+        const r = el.getBoundingClientRect();
+        if (!r.width) return;   // login todavia oculto: no se puede medir
+        // El translate mueve pero no redimensiona, asi que restandolo se sabe
+        // donde caeria el titulo sin desplazar — sin tener que limpiarlo y
+        // volver a medir, que son dos reflows en vez de uno.
+        const dxViejo = parseFloat(_tituloPos) || 0;
+        const centroBase = (r.left + r.width / 2) - dxViejo;
+        const pos = Math.round((window.innerWidth / 2) - centroBase) + 'px ' + (TITULO.y || 0) + 'px';
+        if (pos === _tituloPos) return;
+        _tituloPos = pos;
+        el.style.translate = pos;
+    }
+    aplicaTituloVars();
+    addEventListener('resize', centrarTitulo);
+    // Red de seguridad: al volver al menu desde una partida el titulo ya existe
+    // y nadie vuelve a llamar a selectMode, asi que se recentra cuando el h1
+    // cambia de tamaño (de 0 a su ancho real al mostrarse el login).
+    if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => centrarTitulo());
+        addEventListener('DOMContentLoaded', () => { if (els.selectedModeTitle) ro.observe(els.selectedModeTitle); });
+    }
     // Volver a los PNG de siempre sin recargar: tituloPlaca(false).
     window.tituloPlaca = v => {
         _tituloPlacaOn = (v !== false);
+        const el = els.selectedModeTitle;
+        if (el && !_tituloPlacaOn) { el.classList.remove('titulo-placa'); el.style.translate = ''; }
         if (currentGameMode) setSelectedModeTitleArt(currentGameMode, 'PILLWARS ' + currentGameMode.toUpperCase());
+    };
+    // Ajustar en vivo y que quede guardado:
+    //   tituloTune({ alto: 76 })   tamaño de las letras (las dos palabras a la vez)
+    //   tituloTune({ gap: 40 })    hueco entre PILLWARS y ARCADE/CLASSIC
+    //   tituloTune({ y: -8 })      sube/baja el titulo entero
+    window.tituloTune = o => {
+        Object.assign(TITULO, o || {});
+        try { localStorage.setItem(TITULO_KEY, JSON.stringify(TITULO)); } catch (e) {}
+        aplicaTituloVars();
+        centrarTitulo();
+        return { ...TITULO };
     };
 
     // Cambiar de estilo desde la consola sin pasar por el admin (solo para ti,
@@ -6990,6 +7077,13 @@
           // querySelectorAll y no querySelector: una clave puede gobernar VARIOS
           // elementos (walletBtn = CONNECT + DEPOSIT, que van siempre juntos).
           for (const el of document.querySelectorAll(LAYOUT_ELS[key])) {
+            // El titulo de placa se centra solo (flex) y su tamaño lo mandan las
+            // variables --titulo-*: aplicarle ademas el translate/scale guardado
+            // a mano lo descentraba, que es justo lo que se queria quitar.
+            if (tituloUsaPlaca() && (key === 'titlePw' || key === 'titleWord')) {
+                el.style.translate = ''; el.style.scale = '';
+                continue;
+            }
             const t = menuLayout[layoutStoreKey(key)];
             // Propiedades translate/scale (NO transform): asi el efecto de
             // pulsacion pixel-pack (button:active { transform } !important) se
