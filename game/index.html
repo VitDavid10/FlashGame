@@ -186,7 +186,7 @@
            el otro esta o no. Lo que muevas se queda donde lo pongas. */
         #gameWalletArea { position: absolute; top: 20px; right: 175px; z-index: 100; display: none; width: 0; height: 0; font-family: 'Russo One',sans-serif; }
         #gwConnect, #gwDepositWrap { position: absolute; top: 18px; right: 0; }
-        #gwBalBox { position: absolute; top: 0; right: 160px; }
+        #gwBalBox { position: absolute; top: 0; left: 0; }
         /* ===== Barra de wallet =====
            SIN el recuadro azul (ingame-bar.png). Vuelve la caja de antes: fondo
            oscuro translucido con un filo dorado, redondeada, y el ancho lo pone
@@ -219,7 +219,7 @@
         #gwBalValue {
             font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px); color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
-            text-align: right;
+            text-align: right; min-width: 60px;
         }
         /* Botones de wallet: los CUATRO (CONNECT / DEPOSIT / WITHDRAW /
            DISCONNECT) comparten el mismo rojo vacio y llevan el texto escrito
