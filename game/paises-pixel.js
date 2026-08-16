@@ -1176,18 +1176,17 @@ function _pmPreviaPinta() {
     const o = paisPillRot(Math.round(s.wL), _paisCodeAbierto, PM_ANG);
     g.drawImage(o.cv, Math.round(W / 2 - o.S / 2), Math.round(H / 2 - o.S / 2));
 
-    // Rayos del SPRINT: el MISMO sprite dorado que lleva la habilidad en
-    // partida (pixBoltSprite, 3 fotogramas). Solo en /game — la landing no
-    // tiene el sprite y ahi el aceleron se ve sin rayos, sin romper nada.
-    if (s.sprint > 0 && typeof pixBoltSprite === 'function') {
-        const spr = pixBoltSprite(Math.floor(s.t / 90) % 3);
-        const alto = Math.max(12, Math.round(s.wL * 0.7));
-        const ancho = Math.round(alto * spr.width / spr.height);
-        const rad = s.wL * 0.62;
-        // Uno a cada lado de la capsula, latiendo con el fotograma.
+    // Rayos del SPRINT: usa drawPixBolt del juego, la MISMA animacion que en
+    // partida. Solo en /game (cuando la funcion existe); la landing los ignora.
+    if (s.sprint > 0 && typeof drawPixBolt === 'function') {
+        const life = Math.min(1, s.sprint / PM_SPRINT_MS);
+        const rot = (s.t % 360);
+        const cellR = H * 0.12;
+        // Dos rayos: uno a cada lado (izquierda y derecha), rotando juntos.
+        const rad = s.wL * 0.6;
         for (const lado of [-1, 1]) {
-            const bx = W / 2 + lado * rad, by = H / 2 - rad * 0.35 + Math.sin(s.t / 70 + lado) * 2;
-            g.drawImage(spr, Math.round(bx - ancho / 2), Math.round(by - alto / 2), ancho, alto);
+            const bolt = { x: W / 2 + lado * rad, y: H / 2 - rad * 0.2, rot: rot, life: life, scale: 1 };
+            drawPixBolt(g, bolt, cellR, 1);
         }
     }
 }
