@@ -2806,7 +2806,7 @@
             <canvas id="sbPlaca"></canvas>
             <div class="sb-inner">
                 <div class="sb-head">
-                    <button class="sb-tab" id="sbTabShop" onclick="skinBigTab('skins')">SKINS SHOP</button>
+                    <button class="sb-tab" id="sbTabShop" onclick="skinBigTab('skins')">SKINS STORE</button>
                     <button class="sb-tab" id="sbTabMine" onclick="skinBigTab('mine')">YOUR SKINS</button>
                     <span class="sb-sp"><span id="sbSp">0</span> SP</span>
                     <button class="sb-close" onclick="skinBigClose()">CLOSE</button>
@@ -8715,7 +8715,7 @@
         document.getElementById('sidePanelMine').style.display = es('mine') ? 'flex' : 'none';
         document.getElementById('sidePanelConvert').style.display = es('convert') ? 'flex' : 'none';
         document.getElementById('sidePanelTitle').textContent =
-            es('missions') ? 'MISSIONS' : (es('skins') ? 'SKINS SHOP' : (es('mine') ? 'YOUR SKINS' : 'CONVERT'));
+            es('missions') ? 'MISSIONS' : (es('skins') ? 'SKINS STORE' : (es('mine') ? 'YOUR SKINS' : 'CONVERT'));
         // El progreso de misiones va PEGADO al rotulo (a su izquierda del todo) y
         // el saldo de SP siempre al final, antes de la flecha. En MISSIONS el SP
         // que se ensena es el que dan las misiones; en las otras tres, el que

@@ -741,7 +741,7 @@ function _paisModalCSS() {
         color:#fff; text-shadow:2px 2px 0 #000; margin:0; line-height:1.4; }
     #${PAIS_MODAL_ID} .pm-lore { font-family:'VT323',monospace; font-size:var(--pm-fs-lore,21px); line-height:1.45;
         color:#cfd6d0; text-shadow:1px 1px 0 rgba(0,0,0,.7); margin-top:var(--pm-gap,14px);
-        border-left:3px solid rgba(0,255,136,.4); padding-left:14px; }
+        border-left:3px solid var(--pm-modo,#00ffaa); padding-left:14px; }
     #${PAIS_MODAL_ID} .pm-franjas { display:flex; gap:5px; margin-top:var(--pm-gap,14px); }
     #${PAIS_MODAL_ID} .pm-franjas i { flex:1; height:14px; border:1px solid rgba(255,255,255,.16); }
     /* Centrado y no alineado por abajo: cada canvas es un CUADRADO con la
@@ -905,10 +905,14 @@ function _pmPlateUrl(wCss, hCss, hex) {
     return cv.toDataURL();
 }
 const PM_ROJO = '#f62a2d', PM_VERDE = '#00d97e';
+const PM_DORADO = '#ffcc00';   // dorado de la Skin Store, para el cartel en la landing
 // Color del modo activo (mismo criterio que usa paisModalAbrir para --pm-grid).
+// Sin #missionsPanel (la landing, que no tiene panel de modo) el cartel usa el
+// dorado/negro de la tienda en vez del verde/lima del juego.
 function _pmModoHex() {
     const panelModo = document.getElementById('missionsPanel');
-    return panelModo && panelModo.classList.contains('arcade') ? '#ccff00' : '#00ffaa';
+    if (!panelModo) return PM_DORADO;
+    return panelModo.classList.contains('arcade') ? '#ccff00' : '#00ffaa';
 }
 /* Sonido. SoundManager vive en game/index.html, asi que en la landing (que
  * carga este fichero suelto) no existe: se comprueba antes de cada uso en vez
@@ -1272,8 +1276,11 @@ function paisModalAbrir(code, onCambio) {
     const cr = d.querySelector('.pm-crece'); cr.innerHTML = '';
     // Cuadricula del color del modo en el que se esta jugando. El panel lateral
     // lleva la clase del modo, que es la fuente mas fiable dentro del juego; en
-    // la landing no existe y manda el default del CSS.
-    cr.style.setProperty('--pm-grid', _pmModoHex() === '#ccff00' ? 'rgba(204,255,0,.13)' : 'rgba(0,255,170,.13)');
+    // la landing no existe y manda el dorado de la Skin Store.
+    const _modoHex = _pmModoHex();
+    cr.style.setProperty('--pm-grid', _modoHex === '#ccff00' ? 'rgba(204,255,0,.13)'
+                                     : _modoHex === '#00ffaa' ? 'rgba(0,255,170,.13)'
+                                     : 'rgba(255,204,0,.13)');
     let primera = null;
     PAIS_CRECE.forEach(wL => {
         const o = paisPillRot(wL, code, -Math.PI / 4);

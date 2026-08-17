@@ -832,12 +832,11 @@ body.trailer-open #page-content{
         .section-container { padding: 100px var(--gutter); border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; position: relative; }
         /* Estos fondos eran colores planos y OPACOS: tapaban la cuadricula pixel
            del body, que es lo que da textura al resto de la pagina, y por eso las
-           secciones de abajo se veian sosas comparadas con el hero. Ahora son un
-           velo translucido con un halo del color de cada seccion, asi que la
-           rejilla se sigue viendo por debajo. El morado del shop, que ademas se
-           salia de la paleta verde/dorada de la marca, pasa a dorado. */
-        #quest { background: radial-gradient(ellipse at 50% 0%, rgba(0,255,136,0.13), rgba(5,5,5,0.80) 55%, rgba(5,5,5,0.92)); }
-        #shop { background: radial-gradient(ellipse at 50% 0%, rgba(255,204,0,0.10), rgba(5,5,5,0.80) 55%, rgba(5,5,5,0.92)); }
+           secciones de abajo se veian sosas comparadas con el hero. #ranking sigue
+           con su velo translucido de siempre. #quest y #shop ya no llevan halo de
+           fondo: su color vive en la caja .store-panel (dorado/negro de la
+           tienda), no en toda la seccion. */
+        #quest, #shop { background: rgba(5,5,5,0.92); }
         #ranking { background: radial-gradient(ellipse at 50% 100%, rgba(0,255,136,0.10), rgba(5,5,5,0.80) 55%, rgba(5,5,5,0.92)); border-bottom: 1px solid #222; }
         .lb-pag { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 22px; }
         .lb-pag button { background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 7px 12px; font-family: 'Russo One'; font-size: var(--fs-2); cursor: pointer; transition: 0.2s; min-width: 36px; }
@@ -862,7 +861,7 @@ body.trailer-open #page-content{
            con el aspecto de la landing. Cuatro paginas de ocho. */
         .shop-sub { color: var(--txt-mute); font-size: var(--fs-2); margin: -6px 0 26px; letter-spacing: 1px; }
         .shop-carrusel { display: flex; align-items: center; gap: 14px; width: 100%; max-width: var(--contenido-panel); }
-        .shop-flecha { flex: none; width: 46px; height: 110px; background: rgba(10,10,10,0.8); border: 2px solid #262626;
+        .shop-flecha { flex: none; width: 56px; height: 56px; background: rgba(10,10,10,0.8); border: 2px solid #262626;
                        color: var(--gold); font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); cursor: pointer;
                        box-shadow: 4px 4px 0 rgba(0,0,0,0.6); transition: 0.15s; }
         .shop-flecha:hover:not(:disabled) { border-color: var(--gold); background: #151004; transform: translateY(-2px); }
@@ -899,6 +898,16 @@ body.trailer-open #page-content{
         .lb-c-name { color: #fff; font-weight: 700; font-size: var(--fs-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lb-c-kills { color: var(--primary); font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-3); }
         .lb-c-mass { color: #ffce3d; font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-3); }
+
+        /* Caja "cuadrada" con la paleta de la tienda (dorado + negro), igual
+           que .battle-modes-container pero sin halo de fondo por seccion:
+           Daily Quests y Skin Store comparten esta caja. */
+        .store-panel {
+            border: 2px solid var(--gold); background: rgba(15, 15, 15, 0.3);
+            border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55);
+            padding: 60px; width: 100%; max-width: var(--contenido);
+            backdrop-filter: blur(2px);
+        }
 
         /* DAILY QUESTS */
         /* Daily Quests iba con esquinas redondeadas y bordes de 1px, el unico
@@ -1322,7 +1331,7 @@ body.trailer-open #page-content{
             }
             .feature-images { width: 100%; }
             
-            .battle-modes-container { padding: 30px 20px; }
+            .battle-modes-container, .store-panel { padding: 30px 20px; }
             .battle-modes-container h2 { font-size: var(--fs-6); }
             .modes-grid { flex-direction: column; }
             
@@ -1987,34 +1996,38 @@ body.trailer-open #page-content{
 
     <!-- SECCIONES -->
     <div id="quest" class="section-container">
-        <span class="dq-tag">PRE-LAUNCH EXCLUSIVE</span>
-        <h1 class="section-title holo-text" style="margin: 14px 0 0;">Daily Quests</h1>
-        <p class="dq-subtitle">Complete 3 of 5 daily quests to unlock <b>exclusive Telegram access</b> — the contract drops there first.</p>
-        <div class="dq-summary">
-            <div class="dq-ring">
-                <svg viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="#1c1c1c" stroke-width="8"/>
-                    <circle id="dq-ring-fill" cx="50" cy="50" r="42" fill="none" stroke="#00ff88" stroke-width="8" stroke-dasharray="0 264" stroke-linecap="round"/>
-                </svg>
-                <div class="num"><span id="dq-done">0<em>/5</em></span><span>QUESTS</span></div>
+        <div class="store-panel">
+            <span class="dq-tag">PRE-LAUNCH EXCLUSIVE</span>
+            <h1 class="section-title holo-text" style="margin: 14px 0 0;">Daily Quests</h1>
+            <p class="dq-subtitle">Complete 3 of 5 daily quests to unlock <b>exclusive Telegram access</b> — the contract drops there first.</p>
+            <div class="dq-summary">
+                <div class="dq-ring">
+                    <svg viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="#1c1c1c" stroke-width="8"/>
+                        <circle id="dq-ring-fill" cx="50" cy="50" r="42" fill="none" stroke="#00ff88" stroke-width="8" stroke-dasharray="0 264" stroke-linecap="round"/>
+                    </svg>
+                    <div class="num"><span id="dq-done">0<em>/5</em></span><span>QUESTS</span></div>
+                </div>
+                <div class="info">
+                    <div class="ti">REWARD: EXCLUSIVE TELEGRAM ACCESS</div>
+                    <div class="sub" id="dq-sub">Complete 3 quests to unlock.</div>
+                </div>
+                <a id="dq-btn" class="dq-btn" href="#" onclick="return false;">LOCKED</a>
             </div>
-            <div class="info">
-                <div class="ti">REWARD: EXCLUSIVE TELEGRAM ACCESS</div>
-                <div class="sub" id="dq-sub">Complete 3 quests to unlock.</div>
-            </div>
-            <a id="dq-btn" class="dq-btn" href="#" onclick="return false;">LOCKED</a>
+            <div class="dq-grid" id="dq-grid"></div>
         </div>
-        <div class="dq-grid" id="dq-grid"></div>
     </div>
     <div id="shop" class="section-container">
-        <h1 class="section-title holo-text">Skin Shop</h1>
-        <div class="shop-sub">32 countries · buy with <b>$PILL</b> or <b>SP</b> · every $PILL spent here is burned</div>
-        <div class="shop-carrusel">
-            <button class="shop-flecha" id="shopPrev" aria-label="Previous">&#9664;</button>
-            <div class="shop-grid" id="shopGrid"></div>
-            <button class="shop-flecha" id="shopNext" aria-label="Next">&#9654;</button>
+        <div class="store-panel">
+            <h1 class="section-title holo-text">Skin Store</h1>
+            <div class="shop-sub">32 countries · buy with <b>$PILL</b> or <b>SP</b> · every $PILL spent here is burned</div>
+            <div class="shop-carrusel">
+                <button class="shop-flecha" id="shopPrev" aria-label="Previous">&#9664;</button>
+                <div class="shop-grid" id="shopGrid"></div>
+                <button class="shop-flecha" id="shopNext" aria-label="Next">&#9654;</button>
+            </div>
+            <div class="shop-dots" id="shopDots"></div>
         </div>
-        <div class="shop-dots" id="shopDots"></div>
     </div>
 
     <div id="ranking" class="section-container">
