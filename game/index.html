@@ -1049,8 +1049,15 @@
            se guardan por usuario. */
         :root { --titulo-alto-pw: 88px; --titulo-alto-word: 88px; --titulo-gap: 32px; --titulo-blur: 0px; --titulo-glow: #00ffaa; }
         #loginOverlay.bg-arcade { --titulo-glow: #ccff00; }
-        #selectedModeTitle.titulo-placa { display: flex; align-items: center; justify-content: center; gap: var(--titulo-gap); width: max-content; }
-        #selectedModeTitle.titulo-placa img { width: auto; }
+        /* width 0 y los rotulos desbordando: el h1 vive en la misma fila flex
+           que el subtitulo (.menu-head-row), asi que si ocupa su ancho real
+           —865px con las letras nuevas— empuja al subtitulo fuera de la
+           pantalla. Con ancho cero no empuja a nadie y CONSERVA la altura, que
+           es lo que sujeta la cabecera. El centrado no se resiente: lo calcula
+           centrarTitulo() midiendo los dos rotulos, no la caja del h1. */
+        #selectedModeTitle.titulo-placa { display: flex; align-items: center; justify-content: flex-start; gap: var(--titulo-gap); width: 0; overflow: visible; }
+        #selectedModeTitle.titulo-placa > span { flex: none; }
+        #selectedModeTitle.titulo-placa img { width: auto; max-width: none; }
         #selectedModeTitle.titulo-placa #modeTitlePw img { height: var(--titulo-alto-pw) !important; }
         #selectedModeTitle.titulo-placa #modeTitleWord img { height: var(--titulo-alto-word) !important; }
         /* Halo: drop-shadow y no box-shadow porque sigue el alfa del PNG, asi
@@ -1756,10 +1763,11 @@
            (tools/gen-titulo-placa.js). El ANCHO no se toca —312 y 332px, los de
            siempre— para que el titulo caiga donde caia; solo cambia la
            proporcion, que es la del PNG nuevo.
-           Y se les quita el contraste/brillo de la correccion tonal: esa estaba
-           calibrada para el arte v4, que venia apagado, y sobre estas letras
-           solo desvirtua los tonos. El halo y la sombra dura del selector se
-           quedan, que son parte de esa pantalla. */
+           Y se les quita el contraste/brillo de la correccion tonal (calibrada
+           para el arte v4, que venia apagado) y tambien los dos halos: el
+           difuminado es justo lo que no tiene el estilo nuevo, donde el volumen
+           lo dan el contorno y el bisel. Se queda la sombra dura, que despega el
+           rotulo del fondo sin emborronar nada. */
         .mode-arcade .mt-placa { aspect-ratio: 412 / 88; }
         .mode-classic .mt-placa { aspect-ratio: 432 / 88; }
         /* La clase repetida sube la especificidad por encima de las dos reglas
@@ -1767,9 +1775,7 @@
         body.pixel-pack .mode-title:not(.no-img) img.mt-placa.mt-placa,
         body.pixel-pack.has-hover-scene .mode-title:not(.no-img) img.mt-placa.mt-placa {
             image-rendering: pixelated;
-            filter: drop-shadow(0 0 calc(13px * var(--sel-glow)) var(--mt-glow-a))
-                    drop-shadow(0 0 calc(30px * var(--sel-glow)) var(--mt-glow-b))
-                    drop-shadow(4px 4px 0 rgba(0,0,0,0.9));
+            filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.9));
         }
         /* ===== Correccion tonal del arte v4, distinta por modo. El v4 viene
            apagado (el ARCADE perdio un 18% de luminancia respecto al anterior y
@@ -6913,13 +6919,22 @@
         // Sin translate puesto no hay desplazamiento que descontar (pasa cada
         // vez que se recrea el titulo al cambiar de modo).
         if (!el.style.translate) _tituloPos = '';
-        const r = el.getBoundingClientRect();
-        if (!r.width) return;   // login todavia oculto: no se puede medir
+        // Se miden los DOS rotulos, no la caja del h1: el h1 va a ancho cero
+        // para no empujar al subtitulo, asi que su rect no sirve para centrar.
+        let izq = Infinity, der = -Infinity;
+        for (const n of [document.getElementById('modeTitlePw'), document.getElementById('modeTitleWord')]) {
+            if (!n) continue;
+            const b = n.getBoundingClientRect();
+            if (!b.width) continue;
+            if (b.left < izq) izq = b.left;
+            if (b.right > der) der = b.right;
+        }
+        if (!isFinite(izq)) return;   // login todavia oculto: no se puede medir
         // El translate mueve pero no redimensiona, asi que restandolo se sabe
         // donde caeria el titulo sin desplazar — sin tener que limpiarlo y
         // volver a medir, que son dos reflows en vez de uno.
         const dxViejo = parseFloat(_tituloPos) || 0;
-        const centroBase = (r.left + r.width / 2) - dxViejo;
+        const centroBase = (izq + (der - izq) / 2) - dxViejo;
         const pos = Math.round((window.innerWidth / 2) - centroBase) + 'px ' + (TITULO.y || 0) + 'px';
         if (pos === _tituloPos) return;
         _tituloPos = pos;
