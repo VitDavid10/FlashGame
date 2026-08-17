@@ -223,8 +223,22 @@ const PAISES = {
         lore: 'The wheel in the middle is the Ashoka Chakra, and its twenty-four spokes are the twenty-four hours of a day. The point of it is that it never stops turning. In this arena the ones who stop rolling get eaten by the ones who did not.'
     },
     AU: {
+        // La bandera australiana lleva la Union Jack en el canton, y sin ella la
+        // pildora era un azul con estrellas sueltas que no decia Australia. Se
+        // monta como en la bandera: Union Jack arriba-izquierda, la estrella de
+        // la Commonwealth debajo y la Cruz del Sur a la derecha. La Union Jack
+        // son cuatro capas y no cabe hasta que la banda da de si, asi que
+        // esperan a UMBRAL.medio — antes de eso la pildora sigue enseñando solo
+        // las estrellas, que es lo que se lee a ese tamaño.
         n: 'Australia', b: ['#00247D', '#001A5C', '#00247D'], min: UMBRAL.pronto,
-        e: [{ f: 'cruzDelSur', c: '#ffffff', k: 0.98 }, { f: 'estrella7', c: '#ffffff', k: 0.42, dx: -0.55, dy: 0.45 }],
+        e: [
+            { f: 'aspa', c: '#ffffff', k: 0.40, dx: -0.58, dy: -0.30, min: UMBRAL.medio },
+            { f: 'cruzGruesa', c: '#ffffff', k: 0.40, dx: -0.58, dy: -0.30, min: UMBRAL.medio },
+            { f: 'aspaFina', c: '#C8102E', k: 0.40, dx: -0.58, dy: -0.30, min: UMBRAL.medio },
+            { f: 'cruz', c: '#C8102E', k: 0.40, dx: -0.58, dy: -0.30, min: UMBRAL.medio },
+            { f: 'estrella7', c: '#ffffff', k: 0.30, dx: -0.58, dy: 0.52 },
+            { f: 'cruzDelSur', c: '#ffffff', k: 0.62, dx: 0.42 },
+        ],
         lore: 'The Southern Cross only works as a compass if you are below the equator, which is a very Australian way of saying that the rules change depending on where you are standing. Everything here is larger than you and mildly hostile. You will fit right in.'
     },
     PY: {
@@ -258,7 +272,11 @@ const PAISES = {
         lore: 'One circle. No text, no crest, no second idea. Every other flag on this list is trying to tell you something; this one just shows up. The simplest shape on the field is also the hardest to corner or escape from.'
     },
     SE: {
-        n: 'Sweden', b: ['#006AA7', '#00518A', '#006AA7'], min: UMBRAL.siempre,
+        // Amarillo en las bandas de FUERA y azul en el centro. Antes eran dos
+        // tonos del mismo azul y el unico amarillo era la cruz: la pildora se
+        // leia como "azul con algo" y no como Suecia. Asi los dos colores de la
+        // bandera estan en la propia capsula, y la cruz sigue encima del azul.
+        n: 'Sweden', b: ['#FECC00', '#006AA7', '#FECC00'], min: UMBRAL.siempre,
         e: [{ f: 'cruzNordica', c: '#FECC00', k: 0.9 }],
         lore: 'Cold, patient, and already behind you. Sweden spent centuries being the quiet power of the north while everyone was watching somewhere else. The cross points at exactly the place you should have been looking. Look there now.'
     },
