@@ -473,18 +473,14 @@
         .mqp-head { font-family: 'Russo One'; font-size: 11px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
         .mqp.classic .mqp-head .pill { color: #00ffaa; }
         .mqp.arcade .mqp-head .pill { color: #ccff00; }
-        .mqp-q { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.06); }
+        .mqp-q { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.06); }
         .mqp-q:first-of-type { border-top: 0; }
-        .mqp-q .n { font-family: 'Russo One'; font-size: 16px; color: #555; letter-spacing: 1px; }
-        .mqp-q.done .n, .mqp-q.prog .n { color: inherit; }
-        .mqp.classic .mqp-q.done .n, .mqp.classic .mqp-q.prog .n { color: #00ffaa; }
-        .mqp.arcade .mqp-q.done .n, .mqp.arcade .mqp-q.prog .n { color: #ccff00; }
         .mqp-q .t { font-family: 'Russo One'; font-size: 10.5px; letter-spacing: 1px; color: #ddd; line-height: 1.2; text-transform: uppercase; }
         .mqp-q .v { font-family: 'Russo One'; font-size: 11px; color: #888; font-variant-numeric: tabular-nums; }
         .mqp-q.done .v { color: inherit; }
         .mqp.classic .mqp-q.done .v { color: #00ffaa; }
         .mqp.arcade .mqp-q.done .v { color: #ccff00; }
-        .mqp-bar { grid-column: 2 / span 2; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+        .mqp-bar { grid-column: 1 / -1; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin-top: 4px; }
         .mqp-bar i { display: block; height: 100%; width: 0%; background-color: #444; transition: width 0.4s; }
         .mqp.classic .mqp-q.done .mqp-bar i, .mqp.classic .mqp-q.prog .mqp-bar i { background-color: #00ffaa; }
         .mqp.arcade .mqp-q.done .mqp-bar i, .mqp.arcade .mqp-q.prog .mqp-bar i { background-color: #ccff00; }
@@ -637,7 +633,6 @@
            que conserva su tamano): mas compactas para que las 5 quepan sin
            barra de scroll ahora que el alto util es el de la pantalla verde. */
         #missionsList .mqp-q { padding: 3px 0; }
-        #missionsList .mqp-q .n { font-size: 13px; }
         #missionsList .mqp-bar { margin-top: 2px; }
         /* Scrollbar fino y con el tema, en vez del grueso gris de Windows por
            si el contenido no llega a caber entero (ventanas bajas). */
@@ -1838,7 +1833,6 @@
         body.pixel-pack .back-to-web, body.pixel-pack .mqp-btn, body.pixel-pack .mqp-head { font-family: 'Press Start 2P', monospace; font-size: 9px; }
         body.pixel-pack .mqp-btn .dot { border-radius: 0; }
         body.pixel-pack .mqp-foot { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px; }
-        body.pixel-pack .mqp-q .n { font-family: 'Press Start 2P', monospace; font-size: 12px; }
         body.pixel-pack .mqp-q .t { font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 1.6; letter-spacing: 0; }
         body.pixel-pack .mqp-q .v { font-family: 'Press Start 2P', monospace; font-size: 8px; }
         body.pixel-pack .mqp-bar { border-radius: 0; height: 6px; background: rgba(255,255,255,0.08); box-shadow: inset 1px 1px 0 rgba(0,0,0,0.6); }
@@ -1896,8 +1890,6 @@
         body.pixel-pack .skins-soon { font-family: 'Press Start 2P', monospace; font-size: 9px; }
         body.pixel-pack .skins-soon .ss-big { font-size: 18px; }
         body.pixel-pack .mqp-head { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px; }
-        body.pixel-pack .mqp-q .n { font-family: 'Press Start 2P', monospace; }
-        body.pixel-pack #missionsList .mqp-q .n { font-size: 10px; }
         body.pixel-pack .mqp-q .t { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 0; line-height: 1.35; }
         body.pixel-pack .mqp-q .v { font-family: 'Press Start 2P', monospace; font-size: 8px; }
         body.pixel-pack .mqp-foot { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; }
@@ -5841,7 +5833,7 @@
             if (!cont) return;
             const safe = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
             let done = 0;
-            cont.innerHTML = _dailyState.quests.map((q, i) => {
+            cont.innerHTML = _dailyState.quests.map(q => {
                 const ok = !!q.done;
                 const inProg = !ok && (q.progress | 0) > 0;
                 if (ok) done++;
@@ -5849,7 +5841,6 @@
                 const right = q.progress + '/' + q.target;
                 const pct = Math.min(100, Math.round((q.progress | 0) / q.target * 100));
                 return '<div class="mqp-q ' + cls + '">' +
-                    '<div class="n">' + (i + 1).toString().padStart(2, '0') + '</div>' +
                     '<div class="t">' + safe(q.t) + '</div>' +
                     '<div class="v">' + right + '</div>' +
                     '<div class="mqp-bar"><i style="width:' + pct + '%;"></i></div>' +
@@ -5876,7 +5867,6 @@
             const right = q.isMass ? fmtMqpVal(q, val) + ' / 100k' : (val|0) + '/' + q.target;
             const safe = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
             return '<div class="mqp-q ' + cls + '">' +
-                '<div class="n">' + q.n + '</div>' +
                 '<div class="t">' + q.t + '</div>' +
                 '<div class="v">' + right + '</div>' +
                 '<div class="mqp-bar"><i style="width:' + pct + '%;"></i></div>' +
@@ -5910,7 +5900,7 @@
         if (!list) return;
         let done = 0;
         const safe = (str) => String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        list.innerHTML = s.quests.map((q, i) => {
+        list.innerHTML = s.quests.map(q => {
             const pct = Math.min(100, Math.round((q.progress | 0) / q.target * 100));
             const ok = !!q.done;
             const inProg = !ok && (q.progress | 0) > 0;
@@ -5918,7 +5908,6 @@
             const cls = ok ? 'done' : inProg ? 'prog' : '';
             const right = q.progress + '/' + q.target;
             return '<div class="mqp-q ' + cls + '">' +
-                '<div class="n">' + (i + 1).toString().padStart(2, '0') + '</div>' +
                 '<div class="t">' + safe(q.t) + ' <span style="color:#888;font-size:9px">+' + q.reward + ' SP</span></div>' +
                 '<div class="v">' + right + '</div>' +
                 '<div class="mqp-bar"><i style="width:' + pct + '%;"></i></div>' +

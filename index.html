@@ -957,10 +957,7 @@ body.trailer-open #page-content{
         .dq-card.prog:hover { border-color: #ffce3d; box-shadow: 3px 3px 0 rgba(0,0,0,0.5), 0 0 20px rgba(255,206,61,0.12); }
         .dq-card.done { border-color: rgba(0,255,136,0.35); border-left-color: var(--primary); }
         .dq-card.prog { border-left-color: #ffce3d; }
-        .dq-card-h { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
-        .dq-num { font-family: 'Russo One'; font-size: var(--fs-5); color: #666; line-height: 1; letter-spacing: 1px; min-width: 38px; }
-        .dq-card.done .dq-num { color: var(--primary); }
-        .dq-card.prog .dq-num { color: #ffce3d; }
+        .dq-card-h { margin-bottom: 12px; }
         .dq-title { font-family: 'Russo One'; color: #fff; font-size: var(--fs-2); letter-spacing: 1px; line-height: 1.3; margin-bottom: 4px; }
         .dq-desc { color: #888; font-size: var(--fs-2); line-height: 1.5; }
         .dq-bar { height: 6px; background: #0b0b0b; border: 1px solid #000; border-radius: 0; overflow: hidden; }
@@ -1489,54 +1486,6 @@ body.trailer-open #page-content{
         #layoutEditBar .leb-btn.leb-sm { padding: 5px 10px; font-size: var(--fs-1); }
         #btnLandingEdit { background: none; border: none; padding: 0; color: #ff9c3d; cursor: pointer !important; }
         #btnLandingEdit:hover { color: #fff; text-shadow: 0 0 10px #ff9c3d; }
-            .sb-inner { position: relative; z-index: 1; width: 100%; height: 100%; box-sizing: border-box;
-            display: flex; flex-direction: column; gap: 16px; padding: 20px; }
-        .sb-head { display: flex; align-items: center; gap: 12px; flex-shrink: 0;
-            font-family: 'Russo One'; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
-        .sb-tab { background: transparent; border: 2px solid #2c3630; color: #7d8a82; font-family: 'Russo One';
-            font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 16px; cursor: pointer; }
-        .sb-tab.act { color: #04150c; }
-        #skinBigModal.arcade .sb-tab.act { background: #ccff00; border-color: #ccff00; }
-        #skinBigModal.classic .sb-tab.act { background: #00ffaa; border-color: #00ffaa; }
-        #skinBigModal.arcade .sb-sp { color: #ccff00; }
-        #skinBigModal.classic .sb-sp { color: #00ffaa; }
-        .sb-sp { margin-left: auto; font-size: 13px; }
-        .sb-close { background: transparent; border: 2px solid #2c3630; color: #7d8a82; font-family: 'Russo One';
-            font-size: 12px; padding: 6px 14px; cursor: pointer; letter-spacing: 1.5px; text-transform: uppercase; }
-        .sb-close:hover { border-color: #4a5a52; color: #fff; }
-        /* Fila: flecha izquierda + rejilla + flecha derecha. */
-        .sb-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 14px; }
-        .sb-arrow { width: 38px; height: 38px; flex-shrink: 0; background: transparent; border: 2px solid #2c3630;
-            color: #7d8a82; font-family: 'Russo One'; font-size: 20px; line-height: 1; cursor: pointer; padding: 0; }
-        .sb-arrow:hover:not(:disabled) { color: #fff; border-color: #4a5a52; }
-        .sb-arrow:disabled { opacity: 0.22; cursor: default; }
-        /* 4 columnas x 2 filas SIEMPRE, repartiendo el hueco disponible. */
-        .sb-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(2, 1fr); gap: 14px; }
-        /* CELDA CUADRADA con borde visible: el fondo es la pantalla verde y el
-           borde define el espacio. */
-        .sb-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-            aspect-ratio: 1; border: 2px solid rgba(100,150,120,.4); cursor: grab; user-select: none; padding: 8px; box-sizing: border-box; }
-        .sb-cell:hover { border-color: rgba(100,150,120,.7); }
-        .sb-cell.drag { opacity: 0.35; }
-        .sb-cell.over { border-color: #ffce3d; background: rgba(255,206,61,.1); }
-        .sb-cell.fija, .sb-cell.vacia { cursor: default; }
-        .sb-cell.vacia { border-color: transparent; }
-        .sb-cell canvas { image-rendering: pixelated; }
-        .sb-cod { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; text-align: center; line-height: 1.3; }
-        .sb-pre { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #8d9a92; }
-        /* EQUIP / UNEQUIP de YOUR SKINS: accion directa sin abrir el detalle. */
-        .sb-eq { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 0.5px; padding: 4px 8px;
-            background: transparent; border: 2px solid #2c3630; color: #9aa79f; cursor: pointer; text-transform: uppercase; }
-        .sb-eq:hover { border-color: #4a5a52; color: #fff; }
-        .sb-eq.on { border-color: #00ff88; color: #00ff88; }
-        .sb-eq:disabled { opacity: 0.4; cursor: default; }
-        /* Precio EN DORADO para contrastar con la pantalla verde. */
-        .sb-pre.precio { color: #ffb800; }
-        /* Pie: numero de pagina centrado bajo la rejilla, como en el cartel. */
-        .sb-foot { display: flex; align-items: center; justify-content: center; gap: 14px; flex-shrink: 0;
-            font-family: 'Russo One'; font-size: 12px; letter-spacing: 1.5px; color: #7d8a82; }
-        .sb-hint { font-family: 'Inter', sans-serif; font-size: 11px; color: #5f6a63; letter-spacing: 0; text-transform: none; }
 
     </style>
     <!-- El PNG del titulo/carteles no se arrastra ni se copia con el menu
@@ -3085,19 +3034,18 @@ function toggleTrailerMode() {
                     return;
                 }
                 var completed = 0;
-                grid.innerHTML = quests.map(function(Q, i) {
+                grid.innerHTML = quests.map(function(Q) {
                     var val = Q.progress | 0;
                     var pct = Math.min(100, Math.round(val / Q.target * 100));
                     var done = !!Q.done;
                     var inProg = val > 0 && !done;
                     if (done) completed++;
-                    var num = String(i + 1).padStart(2, "0");
                     var state = done ? "COMPLETED" : inProg ? "IN PROGRESS" : "NOT STARTED";
                     var right = val + "/" + Q.target;
                     var descTxt = Q.desc ? esc(Q.desc) : ("+" + Q.reward + " SP");
                     return '<div class="dq-card ' + (done ? "done" : inProg ? "prog" : "") + '">' +
-                        '<div class="dq-card-h"><div class="dq-num">' + num + '</div><div style="flex:1">' +
-                        '<div class="dq-title">' + esc(Q.t) + '</div><div class="dq-desc">' + descTxt + '</div></div></div>' +
+                        '<div class="dq-card-h">' +
+                        '<div class="dq-title">' + esc(Q.t) + '</div><div class="dq-desc">' + descTxt + '</div></div>' +
                         '<div class="dq-bar"><i style="width:' + pct + '%"></i></div>' +
                         '<div class="dq-foot"><span class="state">' + state + '</span><span>' + right + '</span></div>' +
                         "</div>";
@@ -4610,216 +4558,7 @@ function toggleTrailerMode() {
         if (d && d.menuCartelStyle === 2) document.body.classList.add('placa-off');
     }).catch(function () {});
 })();
-    function skinBigOpen() {
-        const m = document.getElementById('skinBigModal'); if (!m) return;
-        // Se entra por la pestana en la que ya estabas, y por su misma pagina.
-        skinBigTabActual = sidePanelTab === 'mine' ? 'mine' : 'skins';
-        skinBigPagina = skinBigTabActual === 'mine' ? minePagina : skinPagina;
-        m.classList.remove('classic', 'arcade');
-        m.classList.add(_loginBgMode === 'arcade' ? 'arcade' : 'classic');
-        m.classList.add('open');
-        skinBigRender();   // el propio render cuadra la placa y mide las celdas
-        try { SoundManager.play('select'); } catch (e) {}
-    }
-    function skinBigClose() {
-        const m = document.getElementById('skinBigModal'); if (m) m.classList.remove('open');
-        // El cartel pequeno puede haber cambiado de orden mientras tanto.
-        skinRender(); mineRender();
-    }
-    function skinBigTab(t) {
-        if (skinBigTabActual === t) return;
-        skinBigTabActual = t;
-        skinBigPagina = 0;
-        skinBigRender();
-        try { SoundManager.play('simpleselect'); } catch (e) {}
-    }
-    // Lista completa de la pestana actual (sin paginar). En YOUR SKINS la
-    // primera casilla es SIEMPRE la pildora por defecto (la de tus dos colores),
-    // igual que en el cartel pequeno.
-    function skinBigItems() {
-        return skinBigTabActual === 'mine' ? [MINE_DEFAULT].concat(skinMiasOrdenadas()) : skinTodosCodes();
-    }
-    function skinBigPaginas() {
-        return Math.max(1, Math.ceil(skinBigItems().length / SKIN_POR_PAGINA));
-    }
-    function skinBigPage(d) {
-        const n = skinBigPaginas();
-        if (n < 2) return;
-        skinBigPagina = (skinBigPagina + d + n) % n;
-        skinBigRender();
-        try { SoundManager.play('simpleselect'); } catch (e) {}
-    }
-    // Precio SIN abreviar: aqui hay sitio de sobra, y "25,000 $PILL" se lee
-    // mucho mejor que el "25K $PILL" que hace falta en el cartel pequeno.
-    function skinPrecioLargo() {
-        return (PAIS_PRECIO_PILL | 0).toLocaleString('en-US') + ' $PILL';
-    }
-    // Ancho logico de la pildora, medido de la celda YA colocada: la rejilla
-    // reparte el hueco del cartel, asi que al agrandar el popup la pildora crece
-    // con el. Se mide despues de pintar y, si cambia, se repinta una sola vez.
-    let skinBigWL = 46, _skinBigMidiendo = false;
-    function skinBigMideCeldas() {
-        if (_skinBigMidiendo) return;
-        const cel = document.querySelector('#sbGrid .sb-cell');
-        if (!cel || !cel.clientHeight) return;
-        // 2.21 = lo que crece el lado del sprite al girarlo 45 grados
-        // (wL + wL*PILL_RATIO) * cos45. Los 58 px son las dos lineas de texto,
-        // el boton de equipar y los huecos entre ellos.
-        const wL = Math.max(18, Math.min(90, Math.floor((cel.clientHeight - 58) / 2.21)));
-        if (wL === skinBigWL) return;
-        skinBigWL = wL;
-        _skinBigMidiendo = true;
-        try { skinBigRender(); } finally { _skinBigMidiendo = false; }
-    }
-    function skinBigRender() {
-        const grid = document.getElementById('sbGrid'); if (!grid) return;
-        const esMine = skinBigTabActual === 'mine';
-        document.getElementById('sbTabShop').classList.toggle('act', !esMine);
-        document.getElementById('sbTabMine').classList.toggle('act', esMine);
-        const sp = document.getElementById('sbSp');
-        if (sp && typeof paisSp === 'function') sp.textContent = paisSp();
-
-        const tabla = {}; paisLista().forEach(p => { tabla[p.code] = p; });
-        const todos = skinBigItems();
-        const paginas = skinBigPaginas();
-        skinBigPagina = Math.max(0, Math.min(paginas - 1, skinBigPagina));
-        const pagina = todos.slice(skinBigPagina * SKIN_POR_PAGINA, (skinBigPagina + 1) * SKIN_POR_PAGINA);
-        const puesta = paisPuesta();
-        const WL = skinBigWL;
-        grid.innerHTML = '';
-        pagina.forEach(code => {
-            const esDefault = code === MINE_DEFAULT;
-            const p = esDefault ? null : tabla[code];
-            if (!esDefault && !p) return;
-            const cel = document.createElement('div');
-            cel.className = 'sb-cell' + (esDefault ? ' fija' : '');
-            cel.draggable = !esDefault;
-            cel.dataset.code = code;
-
-            const cv = document.createElement('canvas');
-            let o;
-            if (esDefault) {
-                // Se dibuja con los colores que tengas elegidos: es literalmente
-                // tu pildora, igual que en el cartel pequeno.
-                const cTop = (document.getElementById('colTop') || {}).value || '#ffffff';
-                const cBot = (document.getElementById('colBot') || {}).value || '#00ff88';
-                o = pixPillSpriteRot(WL, cTop, cBot, SKIN_ANG, true);
-            } else {
-                o = paisPillRot(WL, code, SKIN_ANG);
-            }
-            cv.width = o.S; cv.height = o.S;
-            cv.getContext('2d').drawImage(o.cv, 0, 0);
-
-            const cod = document.createElement('div'); cod.className = 'sb-cod';
-            cod.textContent = esDefault ? 'DEFAULT' : skinNombreCelda(code);
-            cel.append(cv, cod);
-
-            const activa = esDefault ? !puesta : puesta === code;
-            if (esMine) {
-                // En las tuyas no hay precio: hay un boton para ponerla o
-                // quitarla sin tener que abrir el detalle.
-                const eq = document.createElement('button');
-                eq.className = 'sb-eq' + (activa ? ' on' : '');
-                eq.textContent = activa ? 'UNEQUIP' : 'EQUIP';
-                // La default no se puede "quitar": quitarse otra ES ponerse esta.
-                if (esDefault && activa) { eq.disabled = true; eq.style.opacity = '0.4'; eq.style.cursor = 'default'; }
-                eq.addEventListener('click', async ev => {
-                    ev.stopPropagation();
-                    const r = await paisPoner(activa || esDefault ? null : code);
-                    if (r && r.ok === false) { showSystemMsg(r.error || 'Could not equip that skin.', 'SKINS'); return; }
-                    skinBigRender(); mineRender(); skinRender(); renderMenuPill();
-                    try { SoundManager.play('select'); } catch (e) {}
-                });
-                cel.appendChild(eq);
-            } else {
-                const pre = document.createElement('div'); pre.className = 'sb-pre';
-                if (puesta === code) { pre.textContent = 'ON'; pre.style.color = '#00ff88'; }
-                else if (paisTengo(code)) { pre.textContent = 'OWNED'; pre.style.color = '#00ff88'; }
-                else pre.textContent = skinPrecioLargo();; pre.classList.add('precio');
-                cel.appendChild(pre);
-            }
-            cel.title = esDefault ? 'Your own two colours' : (p.n || code);
-            // Click en la pildora = el cartel de detalle de siempre.
-            if (!esDefault) cel.addEventListener('click', () => skinOpen(code));
-            cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
-            grid.appendChild(cel);
-        });
-        // Huecos vacios hasta 8: sin ellos la ultima pagina encoge la rejilla y
-        // el popup entero da un salto al pasar de pagina.
-        for (let i = pagina.length; i < SKIN_POR_PAGINA; i++) {
-            const v = document.createElement('div'); v.className = 'sb-cell vacia'; v.draggable = false;
-            grid.appendChild(v);
-        }
-        document.getElementById('sbPage').textContent = (skinBigPagina + 1) + '/' + paginas;
-        document.getElementById('sbPrev').disabled = paginas < 2;
-        document.getElementById('sbNext').disabled = paginas < 2;
-        skinBigDnD(grid);
-        drawPlacaPopup();
-    }
-    // Arrastrar para reordenar. El orden que se guarda es SIEMPRE el del
-    // catalogo completo: en YOUR SKINS solo se ven las tuyas, asi que mover una
-    // ahi reubica ese codigo dentro de la lista global, sin tocar el resto.
-    function skinBigDnD(grid) {
-        if (grid._dndListo) return;
-        grid._dndListo = true;
-        let origen = null;
-        grid.addEventListener('dragstart', e => {
-            const c = e.target.closest('.sb-cell');
-            if (!c || c.classList.contains('vacia') || c.classList.contains('fija')) return;
-            origen = c; c.classList.add('drag');
-            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.dataset.code); } catch (err) {}
-        });
-        grid.addEventListener('dragend', () => {
-            if (origen) origen.classList.remove('drag');
-            grid.querySelectorAll('.sb-cell.over').forEach(c => c.classList.remove('over'));
-            origen = null;
-        });
-        grid.addEventListener('dragover', e => {
-            e.preventDefault();
-            const c = e.target.closest('.sb-cell:not(.vacia):not(.fija)');
-            grid.querySelectorAll('.sb-cell.over').forEach(x => { if (x !== c) x.classList.remove('over'); });
-            if (c && c !== origen) c.classList.add('over');
-        });
-        grid.addEventListener('drop', e => {
-            e.preventDefault();
-            const destino = e.target.closest('.sb-cell:not(.vacia):not(.fija)');
-            if (!origen || !destino || destino === origen) return;
-            const orden = skinTodosCodes();
-            const de = orden.indexOf(origen.dataset.code), a = orden.indexOf(destino.dataset.code);
-            if (de < 0 || a < 0) return;
-            orden.splice(a, 0, orden.splice(de, 1)[0]);
-            skinOrdenGuardar(orden);
-            skinBigRender();
-        });
-    }
-    window.skinBigOpen = skinBigOpen; window.skinBigClose = skinBigClose;
-    window.skinBigTab = skinBigTab; window.skinBigPage = skinBigPage;
 
     </script>
-        <!-- Catalogo de skins en grande. Solo SKINS SHOP y YOUR SKINS: aqui no
-         entran MISSIONS ni CONVERT. Es el mismo cartel de la placa pero
-         ampliado, con la misma rejilla de 8 y sus paginas. -->
-    <div id="skinBigModal" class="classic">
-        <div class="sb-cartel" id="sbCartel">
-            <canvas id="sbPlaca"></canvas>
-            <div class="sb-inner">
-                <div class="sb-head">
-                    <button class="sb-tab" id="sbTabShop" onclick="skinBigTab('skins')">SKINS SHOP</button>
-                    <button class="sb-tab" id="sbTabMine" onclick="skinBigTab('mine')">YOUR SKINS</button>
-                    <span class="sb-sp"><span id="sbSp">0</span> SP</span>
-                    <button class="sb-close" onclick="skinBigClose()">CLOSE</button>
-                </div>
-                <div class="sb-body">
-                    <button class="sb-arrow" id="sbPrev" onclick="skinBigPage(-1)" title="Previous page">&lsaquo;</button>
-                    <div class="sb-grid" id="sbGrid"></div>
-                    <button class="sb-arrow" id="sbNext" onclick="skinBigPage(1)" title="Next page">&rsaquo;</button>
-                </div>
-                <div class="sb-foot">
-                    <span id="sbPage">1/1</span>
-                    <span class="sb-hint">Drag a skin to reorder the catalogue</span>
-                </div>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
