@@ -6457,7 +6457,22 @@
     const PLACA = {
         OUT_BOTTOM: 0.765,
         HOLE: { l: 0.0628, t: 0.0764, r: 0.9372, b: 0.70 },
+        // SUB: en cuantos trozos se parte el pixel de la cuadricula para dibujar
+        // el marco. Con 1 el pixel del marco medía lo mismo que el del fondo, y
+        // a esa resolucion sus bordes solo daban para escalones de bloque: un
+        // chaflan de cuatro peldaños haciendo de esquina. Con 2, el marco tiene
+        // el doble de pixeles a lo largo y a lo ancho — caben esquinas redondas
+        // de verdad, un escalon mas de bisel, y el anillo pasa de 7 a 14 pixeles
+        // de grosor, que es lo que hace falta para que entre el tono de masa.
+        // El tamaño EN PANTALLA no cambia: solo el detalle.
+        SUB: 2,
         CUT: 4,        // chaflan de esquina, en pixeles LOWRES (escalon de bloque)
+        // Radio de la esquina redonda, en pixeles del marco. Se usa en vez del
+        // chaflan cuando SUB > 1 (con SUB 1 no hay resolucion para una curva).
+        RADIO: 9,
+        // Radio de las esquinas del HUECO. Mas pequeño: es un rebaje interior,
+        // no el canto de la pieza.
+        RADIO_HUECO: 4,
         // Grosor del marco en pixeles LOWRES, el MISMO en el cartel y en el
         // popup. null = se calcula del ancho del cartel (el 6.28% de siempre).
         // El hueco no se mueve: el marco crece o encoge hacia FUERA, asi que
@@ -6517,6 +6532,7 @@
         const C_RIM = sh(TN.rim), C_LIT = sh(TN.lit), C_DIM = sh(TN.dim), C_MID = sh(TN.mid),
               C_INNER = sh(TN.inner), C_BODY = sh(TN.body), C_MASA = sh(TN.masa);
         const MASA = Math.max(1, PLACA.MASA_DESDE | 0);
+        const SUB = Math.max(1, PLACA.SUB | 0);
         const SCR = PLACA.SCREEN;
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
             const i = ((y * W + x) << 2);
@@ -6526,12 +6542,13 @@
                 if (inHole(x, y)) { px[i] = SCR[0]; px[i + 1] = SCR[1]; px[i + 2] = SCR[2]; px[i + 3] = 255; }
                 continue;
             }
-            // Anillo: 0 = contorno, 1 = bisel, 2 = escalon intermedio, 3 =
-            // cuerpo, MASA+ = zona gruesa. Tres escalones (antes dos) para que
-            // el marco se lea como un bloque con volumen y no como una linea con
-            // un realce al lado; el ultimo tramo se sigue midiendo para saber a
-            // que profundidad esta cada pixel y marcar donde hay mas material.
-            const HASTA = Math.max(3, MASA);
+            // Anillo: contorno, bisel, escalon intermedio, cuerpo y —si hay
+            // material de sobra— masa. Los umbrales van multiplicados por SUB
+            // porque se miden en pixeles de la CUADRICULA: al partir el pixel en
+            // dos, un bisel de "1" pasa a ocupar 2 pixeles del marco y se sigue
+            // viendo igual de grueso. Sin esto, subir la resolucion adelgazaba
+            // todos los escalones a la mitad y el marco se iba a oscuro.
+            const HASTA = Math.max(3, MASA) * SUB;
             let ring = HASTA;
             for (let r = 1; r <= HASTA && ring === HASTA; r++) {
                 for (let oy = -1; oy <= 1 && ring === HASTA; oy++) for (let ox = -1; ox <= 1; ox++) {
@@ -6540,8 +6557,8 @@
                 }
             }
             let col;
-            if (ring === 0) col = C_RIM;
-            else if (ring === 1) {
+            if (ring < SUB) col = C_RIM;
+            else if (ring < 2 * SUB) {
                 // Normal hacia fuera del anillo: promedio de las direcciones que
                 // salen de la placa. Vale para el borde exterior Y para el del
                 // hueco (ahi apunta al reves, asi la pantalla se ve HUNDIDA).
@@ -6553,8 +6570,8 @@
                 const l = Math.hypot(nx, ny) || 1;
                 const ndl = (nx / l) * PLACA_LX + (ny / l) * PLACA_LY;
                 col = ndl > 0.15 ? C_LIT : ndl < -0.15 ? C_DIM : C_MID;
-            } else if (ring === 2) col = C_INNER;
-            else col = ring >= MASA ? C_MASA : C_BODY;
+            } else if (ring < 3 * SUB) col = C_INNER;
+            else col = ring >= MASA * SUB ? C_MASA : C_BODY;
             // Luz del titulo: gana el lado que le da la cara y pierde el
             // opuesto. Solo sobre el MARCO — la pantalla se queda plana.
             if (PLACA.GLOW) {
@@ -6569,22 +6586,40 @@
         }
         g.putImageData(img, 0, 0);
     }
-    // Grosor del marco del cartel, en pixeles LOWRES. Es el que hereda el popup
-    // para que los dos se vean del mismo material y el mismo grosor.
+    // Escala a la que se dibuja el marco: la de la cuadricula partida en SUB.
+    // Es lo unico que separa "pixel del fondo" de "pixel del marco".
+    function placaScaleFina() {
+        return placaScale() / Math.max(1, PLACA.SUB | 0);
+    }
+    // Grosor del marco del cartel, en pixeles del MARCO. Es el que hereda el
+    // popup para que los dos se vean del mismo material y el mismo grosor.
     function placaGrosor() {
-        if (PLACA.T) return Math.max(2, PLACA.T | 0);
+        const sub = Math.max(1, PLACA.SUB | 0);
+        if (PLACA.T) return Math.max(2, (PLACA.T | 0) * sub);
         const panel = document.getElementById('oraclePanel');
         const w = panel && panel.clientWidth;
-        if (!w) return 7;
-        return Math.max(3, Math.round(PLACA.HOLE.l * (w / placaScale())));
+        if (!w) return 7 * sub;
+        return Math.max(3, Math.round(PLACA.HOLE.l * (w / placaScaleFina())));
+    }
+    // Rectangulo de esquinas redondas. Con SUB 1 se cae al chaflan de siempre:
+    // a esa resolucion una curva de radio 4 son cuatro peldaños y se ve peor que
+    // el chaflan recto.
+    function _placaEsquina(dx, dy, radio) {
+        if (Math.max(1, PLACA.SUB | 0) < 2) {
+            const c = PLACA.CUT;
+            return dx >= c || dy >= c || dx + dy >= c;
+        }
+        if (dx >= radio || dy >= radio) return true;
+        const ex = radio - dx, ey = radio - dy;
+        return ex * ex + ey * ey <= radio * radio;
     }
     function drawPlaca(cv, hex) {
         const panel = cv.parentElement;
         if (!panel || !panel.clientWidth || !panel.clientHeight) return;
-        // Escala del fondo del menu: paintLoginBg pinta 264 px de alto y los
-        // estira a toda la ventana. Usando la misma, un pixel de la placa mide
-        // exactamente lo que un pixel de la cuadricula.
-        const scale = placaScale();
+        // Escala del fondo del menu partida en SUB: el pixel del marco es esa
+        // fraccion del de la cuadricula, que es lo que le da resolucion para
+        // curvas. Ocupa lo mismo en pantalla — cambia el detalle, no el tamaño.
+        const scale = placaScaleFina();
         const pw = panel.clientWidth / scale, ph = panel.clientHeight / scale;
         const W = Math.ceil(pw), H = Math.ceil(ph);
         // Direccion hacia el titulo, desde el centro de ESTE cartel: el de la
@@ -6598,7 +6633,7 @@
         cv.style.width = (W * scale) + 'px';
         cv.style.height = (H * scale) + 'px';
 
-        const CUT = PLACA.CUT, T = placaGrosor();
+        const T = placaGrosor();
         // El HUECO sigue exactamente donde esta .cartel-inner (el contenido no
         // se mueve); el borde exterior es ese hueco crecido T por los cuatro
         // lados, asi que el marco se ve del mismo grosor en todos ellos y es el
@@ -6610,9 +6645,13 @@
         const inOuter = (x, y) => {
             if (x < ol || y < ot || x >= or_ || y >= ob) return false;
             const dx = Math.min(x - ol, or_ - 1 - x), dy = Math.min(y - ot, ob - 1 - y);
-            return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+            return _placaEsquina(dx, dy, PLACA.RADIO);
         };
-        const inHole = (x, y) => x >= hl && x < hr && y >= ht && y < hb;
+        const inHole = (x, y) => {
+            if (x < hl || y < ht || x >= hr || y >= hb) return false;
+            const dx = Math.min(x - hl, hr - 1 - x), dy = Math.min(y - ht, hb - 1 - y);
+            return _placaEsquina(dx, dy, PLACA.RADIO_HUECO);
+        };
         const g = cv.getContext('2d');
         g.imageSmoothingEnabled = false;
         placaPixels(g, W, H, (x, y) => inOuter(x, y) && !inHole(x, y), inHole, hex, lgx, lgy);
@@ -6629,7 +6668,7 @@
         const caja = document.getElementById('sbCartel');
         const cv = document.getElementById('sbPlaca');
         if (!caja || !cv) return;
-        const scale = placaScale();
+        const scale = placaScaleFina();
         const T = placaGrosor();
         // El padding ES el marco: el contenido nunca se mete debajo de el.
         caja.style.padding = Math.round(T * scale) + 'px';
@@ -6661,13 +6700,16 @@
         if (cv._placaKey === key) return;
         cv._placaKey = key;
         cv.width = W; cv.height = H;
-        const CUT = PLACA.CUT;
         const inOuter = (x, y) => {
             if (x < 0 || y < 0 || x >= W || y >= H) return false;
             const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
-            return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+            return _placaEsquina(dx, dy, PLACA.RADIO);
         };
-        const inHole = (x, y) => x >= T && x < W - T && y >= T && y < H - T;
+        const inHole = (x, y) => {
+            if (x < T || y < T || x >= W - T || y >= H - T) return false;
+            const dx = Math.min(x - T, W - T - 1 - x), dy = Math.min(y - T, H - T - 1 - y);
+            return _placaEsquina(dx, dy, PLACA.RADIO_HUECO);
+        };
         const g = cv.getContext('2d');
         g.imageSmoothingEnabled = false;
         placaPixels(g, W, H, (x, y) => inOuter(x, y) && !inHole(x, y), inHole, hex, lgx, lgy);
@@ -6684,7 +6726,12 @@
     // MASA_DESDE pixeles de cualquier borde, va un punto mas oscura. Es lo mismo
     // que hace el relieve de las letras del titulo y lo que les deja esas marcas
     // en los cruces de trazos. MASA_DESDE muy alto lo apaga.
-    const PLACA_BTN = { CUT: 2, ROJO: '#f62a2d', AZUL: '#0799ef', MASA: 0.88, MASA_DESDE: 3 };
+    // SUB / RADIO: lo mismo que en el marco del cartel, y por lo mismo — a un
+    // pixel por cuadricula los cantos solo daban para un chaflan de dos
+    // peldaños. PLAY y SETTINGS son grandes y se nota; CONNECT/DEPOSIT y los de
+    // wallet siguen a SUB 1 porque son pequeños y ahi el canto de bloque esta
+    // bien (paintWalletPlaca no pasa por aqui).
+    const PLACA_BTN = { CUT: 2, SUB: 2, RADIO: 5, ROJO: '#f62a2d', AZUL: '#0799ef', MASA: 0.88, MASA_DESDE: 3 };
     // Escala del fondo del menu (paintLoginBg pinta 264px de alto y los estira a
     // la ventana): con ella el pixel de la placa mide lo mismo que el de la
     // cuadricula. La comparten el marco y todos los botones.
@@ -6693,8 +6740,11 @@
         const bgH = Math.max(gs, Math.round(270 / gs) * gs);
         return (window.innerHeight || 720) / bgH;
     }
-    // Placa MACIZA de W x H pixeles lowres, como data URL.
-    function placaPlateUrl(W, H, hex) {
+    // Placa MACIZA de W x H pixeles lowres, como data URL. sub = en cuantos
+    // trozos se parte el pixel de la cuadricula (2 en PLAY/SETTINGS para que los
+    // cantos den para una curva; 1 en los botones pequeños de wallet).
+    function placaPlateUrl(W, H, hex, sub) {
+        sub = Math.max(1, sub | 0) || 1;
         const cv = document.createElement('canvas');
         cv.width = W; cv.height = H;
         const g = cv.getContext('2d');
@@ -6702,23 +6752,27 @@
         const rgb = pixRgb(hex);
         const sh = f => rgb.map(v => Math.min(255, Math.round(v * f)));
         const lit = t => rgb.map(v => Math.round(v + (255 - v) * t));
-        const CUT = PLACA_BTN.CUT;
+        const CUT = PLACA_BTN.CUT * sub, RADIO = PLACA_BTN.RADIO * sub;
         const inside = (x, y) => {
             if (x < 0 || y < 0 || x >= W || y >= H) return false;
             const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
-            return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+            if (sub < 2) return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+            if (dx >= RADIO || dy >= RADIO) return true;
+            const ex = RADIO - dx, ey = RADIO - dy;
+            return ex * ex + ey * ey <= RADIO * RADIO;
         };
         const img = g.createImageData(W, H), px = img.data;
         const C_RIM = sh(0.38), C_LIT = lit(0.32), C_DIM = sh(0.70), C_MASA = sh(PLACA_BTN.MASA);
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
             if (!inside(x, y)) continue;
-            // Se mide hasta MASA_DESDE y no hasta 2: mas alla del bisel interesa
-            // saber a que profundidad esta el pixel, para oscurecer la zona con
-            // mas material — el mismo efecto que da relieve a las letras del
-            // titulo, donde el tono baja en los cruces de trazos. En el marco del
-            // cartel no se aplica porque su anillo es demasiado fino (7 pixeles:
-            // ningun punto llega a estar a 4 de un borde).
-            const HASTA = Math.max(2, PLACA_BTN.MASA_DESDE);
+            // Contorno, bisel y masa se miden en pixeles de la CUADRICULA, asi
+            // que con sub 2 ocupan el doble de pixeles del boton y siguen
+            // viendose igual de gruesos. Mas alla del bisel se sigue midiendo la
+            // profundidad para oscurecer la zona con mas material — el mismo
+            // efecto que da relieve a las letras del titulo, donde el tono baja
+            // en los cruces de trazos.
+            const BISEL = sub, MASA_D = PLACA_BTN.MASA_DESDE * sub;
+            const HASTA = Math.max(2 * sub, MASA_D);
             let ring = HASTA;
             for (let r = 1; r <= HASTA && ring === HASTA; r++) {
                 for (let oy = -1; oy <= 1 && ring === HASTA; oy++) for (let ox = -1; ox <= 1; ox++) {
@@ -6728,9 +6782,9 @@
             }
             // Luz arriba-izquierda: el bisel claro va al lado mas cercano al
             // borde superior/izquierdo, el oscuro al inferior/derecho.
-            const col = ring === 0 ? C_RIM
-                : ring === 1 ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM)
-                : ring >= PLACA_BTN.MASA_DESDE ? C_MASA : rgb;
+            const col = ring < BISEL ? C_RIM
+                : ring < 2 * BISEL ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM)
+                : ring >= MASA_D ? C_MASA : rgb;
             const i = ((y * W + x) << 2);
             px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
         }
@@ -6748,7 +6802,7 @@
         el._placaBtnKey = key;
         // Solo el fondo: el rotulo lo sigue poniendo el texto del DOM, con su
         // Press Start 2P y su sombra de siempre.
-        el.style.setProperty('background-image', 'url(' + placaPlateUrl(W, H, hex) + ')', 'important');
+        el.style.setProperty('background-image', 'url(' + placaPlateUrl(W, H, hex, PLACA_BTN.SUB) + ')', 'important');
         el.style.setProperty('background-size', '100% 100%', 'important');
         el.style.setProperty('background-repeat', 'no-repeat', 'important');
     }
@@ -6765,7 +6819,9 @@
         const key = W + '|' + H;
         if (wa._gwPlacaKey === key) return;
         wa._gwPlacaKey = key;
-        wa.style.setProperty('--gw-placa', 'url(' + placaPlateUrl(W, H, PLACA_BTN.ROJO) + ')');
+        // sub 1 a proposito: estos botones son pequeños y el canto de bloque les
+        // sienta bien; subirles la resolucion solo emborronaria el chaflan.
+        wa.style.setProperty('--gw-placa', 'url(' + placaPlateUrl(W, H, PLACA_BTN.ROJO, 1) + ')');
     }
     function limpiaPlacaButton(el) {
         if (!el) return;
@@ -6782,7 +6838,10 @@
         const sett = document.querySelector('.login-left #btnSettings');
         // Una sola medida (la de PLAY) para los dos: misma placa, solo cambia el color.
         if (play && play.clientWidth && play.clientHeight) {
-            const scale = placaScale();
+            // Escala partida en SUB: el canvas del boton lleva el doble de
+            // pixeles a lo largo y a lo ancho, y se sigue estirando al mismo
+            // tamaño (background-size 100% 100%).
+            const scale = placaScale() / Math.max(1, PLACA_BTN.SUB | 0);
             const W = Math.max(8, Math.round(play.clientWidth / scale));
             const H = Math.max(6, Math.round(play.clientHeight / scale));
             drawPlacaButton(play, PLACA_BTN.ROJO, W, H);
