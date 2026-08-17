@@ -228,8 +228,8 @@ const PAISES = {
         // bandera de un solo color de fondo, como Japon o Marruecos.
         n: 'Turkey', b: ['#E30A17'], min: UMBRAL.siempre,
         e: [
-            { f: 'luna', c: '#ffffff', k: 0.62, dx: -0.18 },
-            { f: 'estrella', c: '#ffffff', k: 0.30, dx: 0.30 },
+            { f: 'luna', c: '#ffffff', k: 0.62, dx: -0.18, rot: 90 },
+            { f: 'estrella', c: '#ffffff', k: 0.30, dx: 0.30, rot: 90 },
         ],
         lore: 'One country on two continents, with a strait in between that decides who gets to move and who does not. The crescent has watched over this crossing for six centuries. It has never once needed to point the same direction twice.'
     },
