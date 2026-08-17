@@ -833,10 +833,10 @@ body.trailer-open #page-content{
         /* Estos fondos eran colores planos y OPACOS: tapaban la cuadricula pixel
            del body, que es lo que da textura al resto de la pagina, y por eso las
            secciones de abajo se veian sosas comparadas con el hero. #ranking sigue
-           con su velo translucido de siempre. #quest y #shop ya no llevan halo de
-           fondo: su color vive en la caja .store-panel (dorado/negro de la
-           tienda), no en toda la seccion. */
-        #quest, #shop { background: rgba(5,5,5,0.92); }
+           con su velo translucido de siempre. #quest y #shop ya NO llevan ningun
+           fondo propio: el fondo normal de la web (el body, con su cuadricula) se
+           ve por debajo, igual que detras de .battle-modes-container; su color
+           vive solo en la caja .store-panel (dorado/negro de la tienda). */
         #ranking { background: radial-gradient(ellipse at 50% 100%, rgba(0,255,136,0.10), rgba(5,5,5,0.80) 55%, rgba(5,5,5,0.92)); border-bottom: 1px solid #222; }
         .lb-pag { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 22px; }
         .lb-pag button { background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 7px 12px; font-family: 'Russo One'; font-size: var(--fs-2); cursor: pointer; transition: 0.2s; min-width: 36px; }
@@ -905,9 +905,15 @@ body.trailer-open #page-content{
         .store-panel {
             border: 2px solid var(--gold); background: rgba(15, 15, 15, 0.3);
             border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55);
-            padding: 60px; width: 100%; max-width: var(--contenido);
+            padding: 60px; text-align: center; width: 100%; max-width: var(--contenido);
             backdrop-filter: blur(2px);
         }
+        /* .dq-summary/.dq-grid/.shop-carrusel llevan su propio max-width (mas
+           estrecho que la caja) y antes se centraban por el align-items:center
+           del flex que las contenia directamente; dentro de .store-panel (un
+           bloque normal) hace falta el margin:auto explicito o se van al borde
+           izquierdo. */
+        .store-panel .dq-summary, .store-panel .dq-grid, .store-panel .shop-carrusel { margin-left: auto; margin-right: auto; }
 
         /* DAILY QUESTS */
         /* Daily Quests iba con esquinas redondeadas y bordes de 1px, el unico
@@ -2501,7 +2507,7 @@ body.trailer-open #page-content{
                     // apagarlos y encenderlos no aportaba nada.
                     if (!rvReduced && 'IntersectionObserver' in window) {
                         const FOCUS_SOLO = '.feature-block, .battle-modes-container, .skills-grid,' +
-                                           '.skills-section .intro-text, #quest, #shop, #ranking';
+                                           '.skills-section .intro-text, .store-panel, #ranking';
                         const unidadDe = new WeakMap();
                         const focusables = [];
                         document.querySelectorAll(FOCUS_SOLO).forEach(e => {
