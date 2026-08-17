@@ -63,6 +63,21 @@ function sdSeg(px, py, x0, y0, x1, y1, r) {
     const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / (vx * vx + vy * vy || 1)));
     return Math.hypot(wx - t * vx, wy - t * vy) - r;
 }
+// Anillo ELIPTICO. La caja de esquinas redondeadas tiene lados rectos entre
+// curva y curva; para la S eso se ve como escalones en el trazo del centro,
+// donde los dos bucles se cruzan. Aqui no hay ni un tramo recto.
+// La distancia a la elipse se aproxima por F/|grad F|, que cerca del borde —que
+// es lo unico que importa aqui, el resto solo decide dentro/fuera— se queda a
+// menos de un pixel de la distancia real.
+function sdElipse(px, py, cx, cy, rx, ry) {
+    const x = px - cx, y = py - cy;
+    const F = (x * x) / (rx * rx) + (y * y) / (ry * ry) - 1;
+    const g = Math.hypot(2 * x / (rx * rx), 2 * y / (ry * ry)) || 1e-6;
+    return F / g;
+}
+function anilloElipse(px, py, cx, cy, rx, ry, grosor) {
+    return Math.abs(sdElipse(px, py, cx, cy, rx, ry)) - grosor / 2;
+}
 const une = (...d) => Math.min(...d);
 const quita = (d, hueco) => Math.max(d, -hueco);
 // Sector con el vertice en (vx,vy), abierto en la direccion (dx,dy) y con
@@ -135,20 +150,22 @@ const GLIFOS = {
             cuna(x, y, 16, CAP / 2, 1, 0, 26),
         ),
     },
-    // S: dos medios anillos, cada uno sin el cuadrante que sobra. Aqui los
-    // recortes son cajas y NO cuñas como en la C: los dos anillos se solapan por
-    // el centro (es lo que forma el trazo diagonal), y una cuña desde el centro
-    // de cada uno atraviesa esa zona compartida y parte el trazo de arriba.
+    // S: dos bucles ELIPTICOS que se cruzan por el centro. Al de arriba se le
+    // quita el cuadrante de abajo-derecha y al de abajo el de arriba-izquierda;
+    // lo que queda de cada uno se encuentra en la banda donde solapan y forma el
+    // trazo diagonal. Antes eran dos cajas de esquinas redondeadas y sus lados
+    // rectos se veian como escalones justo en ese cruce, que es donde mas canta.
     'S': {
         w: 30, d: (x, y) => {
-            const alto = 23, medio = CAP - alto;
+            const rx = (30 - T) / 2, ry = 6;
+            const cyA = ry + T / 2, cyB = CAP - ry - T / 2;   // bucles pegados a los bordes
             const arriba = quita(
-                anillo(x, y, 0, 0, 30, alto, [R_MEDIO + 2, R_MEDIO + 2, 2, 2], T),
-                sdCaja(x, y, 30 - T, alto / 2, T, alto / 2, [0, 0, 0, 0]),
+                anilloElipse(x, y, rx + T / 2, cyA, rx, ry, T),
+                cuna(x, y, rx + T / 2, cyA, 1, 1, 45),
             );
             const abajo = quita(
-                anillo(x, y, 0, medio, 30, alto, [2, 2, R_MEDIO + 2, R_MEDIO + 2], T),
-                sdCaja(x, y, 0, medio, T, alto / 2, [0, 0, 0, 0]),
+                anilloElipse(x, y, rx + T / 2, cyB, rx, ry, T),
+                cuna(x, y, rx + T / 2, cyB, -1, -1, 45),
             );
             return une(arriba, abajo);
         },
