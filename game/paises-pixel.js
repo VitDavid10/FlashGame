@@ -232,16 +232,16 @@ const PAISES = {
         // las estrellas, que es lo que se lee a ese tamaño.
         n: 'Australia', b: ['#00247D', '#001A5C', '#00247D'], min: UMBRAL.pronto,
         e: [
-            // La Union Jack ARRIBA y centrada (no en la esquina): en una capsula
-            // tan estrecha la esquina la dejaba pisando el borde curvo y se
-            // comia medio dibujo. Debajo, la estrella de la Commonwealth y la
-            // Cruz del Sur.
-            { f: 'aspa', c: '#ffffff', k: 0.44, dy: -0.62, min: UMBRAL.medio },
-            { f: 'cruzGruesa', c: '#ffffff', k: 0.44, dy: -0.62, min: UMBRAL.medio },
-            { f: 'aspaFina', c: '#C8102E', k: 0.44, dy: -0.62, min: UMBRAL.medio },
-            { f: 'cruz', c: '#C8102E', k: 0.44, dy: -0.62, min: UMBRAL.medio },
-            { f: 'estrella7', c: '#ffffff', k: 0.30, dx: -0.52, dy: 0.55 },
-            { f: 'cruzDelSur', c: '#ffffff', k: 0.60, dx: 0.30, dy: 0.30 },
+            // La Union Jack va en la PRIMERA franja, ella sola, como el canton
+            // de la bandera. En la banda central no cabia junto a las estrellas
+            // sin quedar las dos cosas diminutas.
+            { f: 'aspa', c: '#ffffff', k: 0.92, banda: 0, min: UMBRAL.medio },
+            { f: 'cruzGruesa', c: '#ffffff', k: 0.92, banda: 0, min: UMBRAL.medio },
+            { f: 'aspaFina', c: '#C8102E', k: 0.92, banda: 0, min: UMBRAL.medio },
+            { f: 'cruz', c: '#C8102E', k: 0.92, banda: 0, min: UMBRAL.medio },
+            // Estrellas en la central: la de la Commonwealth y la Cruz del Sur.
+            { f: 'estrella7', c: '#ffffff', k: 0.38, dx: -0.62 },
+            { f: 'cruzDelSur', c: '#ffffff', k: 0.72, dx: 0.28 },
         ],
         lore: 'The Southern Cross only works as a compass if you are below the equator, which is a very Australian way of saying that the rules change depending on where you are standing. Everything here is larger than you and mildly hostile. You will fit right in.'
     },
@@ -409,8 +409,12 @@ function paisSkin(code) {
         // rot = grados que gira la capa, en sentido horario. Gira el SISTEMA de
         // la capa, asi que dx/dy giran con ella y el conjunto se mueve entero
         // (las cuatro estrellas de China y su estrella grande, por ejemplo).
+        // banda = en cual de las tres se dibuja la capa (0 arriba, 1 centro, 2
+        // abajo). Por defecto la central, que es donde va el emblema de casi
+        // todos. Australia necesita la Union Jack en la de ARRIBA, como en su
+        // bandera, y cada capa se recorta a SU banda.
         capas: (p.e || []).map(c => ({ forma: PAIS_FORMAS[c.f], color: c.c, k: c.k || 1, dx: c.dx || 0, dy: c.dy || 0,
-                                       rot: c.rot || 0,
+                                       rot: c.rot || 0, banda: c.banda === undefined ? 1 : c.banda,
                                        min: c.min === undefined ? minPais : c.min })),
         min: minPais,
     };
@@ -581,7 +585,10 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
     const bandaPx = medio * 2;
     const capas = skin.capas
         .filter(l => forzarEmblema || bandaPx >= l.min)
+        // cy = centro de la banda de esa capa. Con dos bandas (o una) no hay
+        // tres donde elegir, asi que todas caen en embCy como hasta ahora.
         .map(l => ({ f: l.forma, c: _rgb(l.color), k: l.k, dx: l.dx, dy: l.dy,
+                     cy: nBandas === 3 ? (l.banda - 1) * 2 * medio : embCy,
                      rc: Math.cos(l.rot * Math.PI / 180), rs: Math.sin(l.rot * Math.PI / 180) }));
     const embOn = capas.length > 0;
     const lado = Math.min(R, medio) * 0.80;
@@ -601,12 +608,15 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
                  : nBandas === 2 ? (ly < 0 ? rgb[0] : rgb[1])
                                  : (ly < -medio ? rgb[0] : (ly < medio ? rgb[1] : rgb[2]));
         // Capas del emblema, en orden: la ultima que acierta manda.
-        if (capas.length && Math.abs(ly - embCy) < medio) {
+        if (capas.length) {
             for (const l of capas) {
+                // Cada capa se recorta a SU banda: antes el corte era comun y
+                // una capa puesta arriba salia cortada por la mitad.
+                if (Math.abs(ly - l.cy) >= medio) continue;
                 const L = lado * l.k;
                 // El giro va ANTES del desplazamiento para que dx/dy se lean en
                 // el sistema ya girado y la composicion entera rote junta.
-                const qx = lx, qy = ly - embCy;
+                const qx = lx, qy = ly - l.cy;
                 const rx = qx * l.rc + qy * l.rs, ry = -qx * l.rs + qy * l.rc;
                 const eu = (rx - l.dx * lado) / L, ev = (ry - l.dy * lado) / L;
                 if (Math.abs(eu) <= 1 && Math.abs(ev) <= 1 && l.f(eu, ev)) base = l.c;

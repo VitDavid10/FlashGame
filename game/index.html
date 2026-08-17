@@ -1752,6 +1752,25 @@
            al lado (v4, 800x161) y que el CLASSIC-word.png del login (v4),
            asi que su aspect-ratio va aparte. */
         .mode-classic .mt-img { width: 332px; aspect-ratio: 895 / 183; }
+        /* Rotulos dibujados con la geometria del titulo del login
+           (tools/gen-titulo-placa.js). El ANCHO no se toca —312 y 332px, los de
+           siempre— para que el titulo caiga donde caia; solo cambia la
+           proporcion, que es la del PNG nuevo.
+           Y se les quita el contraste/brillo de la correccion tonal: esa estaba
+           calibrada para el arte v4, que venia apagado, y sobre estas letras
+           solo desvirtua los tonos. El halo y la sombra dura del selector se
+           quedan, que son parte de esa pantalla. */
+        .mode-arcade .mt-placa { aspect-ratio: 412 / 88; }
+        .mode-classic .mt-placa { aspect-ratio: 432 / 88; }
+        /* La clase repetida sube la especificidad por encima de las dos reglas
+           de .mt-img que vienen mas abajo; sin eso ganaban ellas por orden. */
+        body.pixel-pack .mode-title:not(.no-img) img.mt-placa.mt-placa,
+        body.pixel-pack.has-hover-scene .mode-title:not(.no-img) img.mt-placa.mt-placa {
+            image-rendering: pixelated;
+            filter: drop-shadow(0 0 calc(13px * var(--sel-glow)) var(--mt-glow-a))
+                    drop-shadow(0 0 calc(30px * var(--sel-glow)) var(--mt-glow-b))
+                    drop-shadow(4px 4px 0 rgba(0,0,0,0.9));
+        }
         /* ===== Correccion tonal del arte v4, distinta por modo. El v4 viene
            apagado (el ARCADE perdio un 18% de luminancia respecto al anterior y
            se lee oliva en vez de oro), asi que se le estira el rango por CSS.
@@ -2260,7 +2279,7 @@
         <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
             <div id="contentArcade" class="mode-content">
                 <div class="mode-sub">ROGUELIKE MECHANICS</div>
-                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img" src="img/mode-title/ARCADE.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img mt-placa" src="img/mode-title/ARCADE-word-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NORMAL MAP. TIME: <span class="highlight">3:50</span>.<br>
                     START EMPTY. <span class="highlight">PICK SKILLS</span> EVERY 30S.<br>
@@ -2271,7 +2290,7 @@
         <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
             <div id="contentClassic" class="mode-content">
                 <div class="mode-sub">STANDARD MODE</div>
-                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img" src="img/mode-title/CLASSIC.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img mt-placa" src="img/mode-title/CLASSIC-word-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NO TIMER. <span class="highlight">HUGE MAP (x2)</span>.<br>
                     ONLY <span class="highlight">SHOOT</span> SKILL (KEY 1).<br>
