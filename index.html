@@ -692,6 +692,11 @@ body.trailer-open #page-content{
            (como 03/VIRAL BALLISTICS) para Skin Store. */
         #quest .store-panel { --box-accent: #9ee32d; --box-accent-soft: rgba(158, 227, 45, 0.08); }
         #shop .store-panel { --box-accent: var(--gold); --box-accent-soft: rgba(255, 204, 0, 0.08); }
+        /* Daily Quests y Skin Store no llenan los 1200px de Battle Modes: su
+           contenido (dq-summary/dq-grid/shop-carrusel) ya iba a 980px
+           (--contenido-panel), asi que la caja sobraba de ancho a los lados.
+           Se estrecha justo a ese ancho + el padding, sin hueco de mas. */
+        .store-panel { max-width: calc(var(--contenido-panel) + 120px); }
         .battle-modes-container h2 { font-family: 'Russo One'; font-size: var(--fs-8); color: #fff; margin: 0; text-transform: uppercase; }
         .powered-by { color: var(--primary); font-family: 'Russo One'; font-size: var(--fs-4); letter-spacing: 3px; margin-bottom: 25px; display: block; }
         .mode-oracle-info { color: #888; font-size: var(--fs-3); max-width: 800px; margin: 0 auto 50px auto; line-height: 1.6; }
@@ -928,7 +933,7 @@ body.trailer-open #page-content{
         /* Daily Quests iba con esquinas redondeadas y bordes de 1px, el unico
            bloque de la pagina que no seguia el lenguaje arcade de .mode-card /
            .dq-card (esquina recta + sombra dura). Igualado aqui. */
-        .dq-subtitle { color: #888; font-size: var(--fs-3); margin: 10px 0 30px; text-align: center; max-width: 640px; }
+        .dq-subtitle { color: #888; font-size: var(--fs-3); margin: 10px auto 30px; text-align: center; max-width: 640px; }
         .dq-subtitle b { color: var(--primary); font-weight: 600; }
         .dq-summary { width: 100%; max-width: var(--contenido-panel); background: rgba(10,15,10,0.7); border: 2px solid rgba(0,255,136,0.35); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55); padding: 22px 26px; margin-bottom: 26px; display: flex; align-items: center; gap: 22px; }
         .dq-ring { position: relative; width: 90px; height: 90px; flex: none; }
