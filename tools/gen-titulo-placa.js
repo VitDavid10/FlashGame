@@ -306,7 +306,8 @@ function campoProfundidad(masc, W, H, radio) {
     return prof;
 }
 
-function rasterizar(texto, hex) {
+function rasterizar(texto, hex, px) {
+    px = px || PX;
     const { d, ancho } = distanciaTexto(texto);
     const W = Math.ceil(ancho) + 2 * MARGEN, H = CAP + 2 * MARGEN;
     const base = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
@@ -330,8 +331,8 @@ function rasterizar(texto, hex) {
     const prof = campoProfundidad(masc, W, H, Math.ceil(BISEL * 2) + 1);
     const en = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? -99 : prof[y * W + x];
 
-    const rgba = Buffer.alloc(W * H * PX * PX * 4);
-    const pw = W * PX;
+    const rgba = Buffer.alloc(W * H * px * px * 4);
+    const pw = W * px;
     for (let gy = 0; gy < H; gy++) for (let gx = 0; gx < W; gx++) {
         const p = prof[gy * W + gx];
         let col = null;
@@ -349,12 +350,12 @@ function rasterizar(texto, hex) {
             col = ndl > 0.35 ? COL.luz : ndl > -0.1 ? COL.luzSuave : ndl < -0.55 ? COL.sombra : COL.base;
         } else col = p < BISEL * 2 ? COL.cuerpo : COL.base;
         if (!col) continue;
-        for (let sy = 0; sy < PX; sy++) for (let sx = 0; sx < PX; sx++) {
-            const i = ((gy * PX + sy) * pw + gx * PX + sx) * 4;
+        for (let sy = 0; sy < px; sy++) for (let sx = 0; sx < px; sx++) {
+            const i = ((gy * px + sy) * pw + gx * px + sx) * 4;
             rgba[i] = col[0]; rgba[i + 1] = col[1]; rgba[i + 2] = col[2]; rgba[i + 3] = 255;
         }
     }
-    return { rgba, w: pw, h: H * PX };
+    return { rgba, w: pw, h: H * px };
 }
 
 // ===== PNG RGBA sin dependencias =====
@@ -391,15 +392,23 @@ function png(w, h, rgba) {
 // Los cuatro salen con el MISMO alto, asi que puestos a la misma altura CSS las
 // letras miden igual en PILLWARS y en ARCADE/CLASSIC. Solo cambia el ancho, que
 // es lo que obliga a centrar cada modo por separado (lo hace centrarTitulo()).
+// px: PX por defecto. Los del SELECTOR de modos van al doble porque alli el
+// rotulo no se enseña a su tamaño: el panel lleva una animacion de escala
+// (1.2 el activo, 0.8 el otro), asi que acaba reducido por un factor que no es
+// entero y se come columnas de pixeles. Con el doble de resolucion cada unidad
+// del dibujo tiene cuatro pixeles en vez de dos, y perder alguno por el camino
+// deja de notarse. A tamaño natural —el login— dos siguen siendo lo justo.
 const TRABAJOS = [
-    ['PILLWARS-arcade-placa.png',  'PILLWARS', '#ccff00'],
-    ['PILLWARS-classic-placa.png', 'PILLWARS', '#00ffaa'],
-    ['ARCADE-word-placa.png',      'ARCADE',   '#ccff00'],
-    ['CLASSIC-word-placa.png',     'CLASSIC',  '#00ffaa'],
+    ['PILLWARS-arcade-placa.png',  'PILLWARS', '#ccff00', PX],
+    ['PILLWARS-classic-placa.png', 'PILLWARS', '#00ffaa', PX],
+    ['ARCADE-word-placa.png',      'ARCADE',   '#ccff00', PX],
+    ['CLASSIC-word-placa.png',     'CLASSIC',  '#00ffaa', PX],
+    ['ARCADE-sel-placa.png',       'ARCADE',   '#ccff00', PX * 2],
+    ['CLASSIC-sel-placa.png',      'CLASSIC',  '#00ffaa', PX * 2],
 ];
 
-for (const [nombre, texto, hex] of TRABAJOS) {
-    const { rgba, w, h } = rasterizar(texto, hex);
+for (const [nombre, texto, hex, px] of TRABAJOS) {
+    const { rgba, w, h } = rasterizar(texto, hex, px);
     const buf = png(w, h, rgba);
     fs.writeFileSync(path.join(DESTINO, nombre), buf);
     console.log(nombre.padEnd(30), w + 'x' + h, '(' + buf.length + ' bytes)');
