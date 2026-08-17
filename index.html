@@ -668,12 +668,30 @@ body.trailer-open #page-content{
         /* Envolvia .mode-card, que ya iban con esquina recta, dentro de un marco
            redondeado de 24px: al pasar los bloques de mecanica a esquina recta la
            mezcla cantaba mas todavia. Mismo marco que el resto. */
-        .battle-modes-container {
-            border: 2px solid var(--primary); background: rgba(15, 15, 15, 0.3);
+        /* Mismo lenguaje visual que .feature-block (fondo en degradado con el
+           color de acento + escuadras en las esquinas), sin el numero grande:
+           aqui no hay un 01/02/03 al que anclarlo. Battle Modes se queda con
+           el verde de marca (como el bloque 01/SPLIT); Daily Quests y Skin
+           Store toman prestado el resto de la progresion en .store-panel. */
+        .battle-modes-container, .store-panel {
+            --box-accent: var(--primary); --box-accent-soft: rgba(0, 255, 136, 0.08);
+            position: relative;
+            border: 2px solid var(--box-accent); background: linear-gradient(135deg, var(--box-accent-soft), rgba(10, 10, 10, 0.55) 45%);
             border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55);
-            padding: 60px; text-align: center; margin: 80px 0; width: 100%; max-width: var(--contenido);
+            padding: 60px; text-align: center; width: 100%; max-width: var(--contenido);
             backdrop-filter: blur(2px);
         }
+        .battle-modes-container { margin: 80px 0; }
+        .battle-modes-container::before, .battle-modes-container::after,
+        .store-panel::before, .store-panel::after {
+            content: ''; position: absolute; width: 26px; height: 26px; pointer-events: none;
+        }
+        .battle-modes-container::before, .store-panel::before { top: 10px; left: 10px; border-top: 4px solid var(--box-accent); border-left: 4px solid var(--box-accent); }
+        .battle-modes-container::after, .store-panel::after { bottom: 10px; right: 10px; border-bottom: 4px solid var(--box-accent); border-right: 4px solid var(--box-accent); }
+        /* Verde-lima de los virus (como 02/VIRUS) para Daily Quests; dorado
+           (como 03/VIRAL BALLISTICS) para Skin Store. */
+        #quest .store-panel { --box-accent: #9ee32d; --box-accent-soft: rgba(158, 227, 45, 0.08); }
+        #shop .store-panel { --box-accent: var(--gold); --box-accent-soft: rgba(255, 204, 0, 0.08); }
         .battle-modes-container h2 { font-family: 'Russo One'; font-size: var(--fs-8); color: #fff; margin: 0; text-transform: uppercase; }
         .powered-by { color: var(--primary); font-family: 'Russo One'; font-size: var(--fs-4); letter-spacing: 3px; margin-bottom: 25px; display: block; }
         .mode-oracle-info { color: #888; font-size: var(--fs-3); max-width: 800px; margin: 0 auto 50px auto; line-height: 1.6; }
@@ -899,15 +917,6 @@ body.trailer-open #page-content{
         .lb-c-kills { color: var(--primary); font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-3); }
         .lb-c-mass { color: #ffce3d; font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-3); }
 
-        /* Caja "cuadrada" con la paleta de la tienda (dorado + negro), igual
-           que .battle-modes-container pero sin halo de fondo por seccion:
-           Daily Quests y Skin Store comparten esta caja. */
-        .store-panel {
-            border: 2px solid var(--gold); background: rgba(15, 15, 15, 0.3);
-            border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55);
-            padding: 60px; text-align: center; width: 100%; max-width: var(--contenido);
-            backdrop-filter: blur(2px);
-        }
         /* .dq-summary/.dq-grid/.shop-carrusel llevan su propio max-width (mas
            estrecho que la caja) y antes se centraban por el align-items:center
            del flex que las contenia directamente; dentro de .store-panel (un
@@ -919,7 +928,6 @@ body.trailer-open #page-content{
         /* Daily Quests iba con esquinas redondeadas y bordes de 1px, el unico
            bloque de la pagina que no seguia el lenguaje arcade de .mode-card /
            .dq-card (esquina recta + sombra dura). Igualado aqui. */
-        .dq-tag { display: inline-block; font-family: 'Russo One', sans-serif; font-size: var(--fs-2); letter-spacing: 4px; color: var(--primary); padding: 6px 14px; border: 2px solid var(--primary); border-radius: 0; text-transform: uppercase; background: rgba(0,255,136,0.08); box-shadow: 3px 3px 0 rgba(0,0,0,0.6); }
         .dq-subtitle { color: #888; font-size: var(--fs-3); margin: 10px 0 30px; text-align: center; max-width: 640px; }
         .dq-subtitle b { color: var(--primary); font-weight: 600; }
         .dq-summary { width: 100%; max-width: var(--contenido-panel); background: rgba(10,15,10,0.7); border: 2px solid rgba(0,255,136,0.35); border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,0.55); padding: 22px 26px; margin-bottom: 26px; display: flex; align-items: center; gap: 22px; }
@@ -930,7 +938,7 @@ body.trailer-open #page-content{
         .dq-ring .num span:first-child { font-size: var(--fs-5); color: var(--primary); }
         .dq-ring .num span:first-child em { font-style: normal; color: #666; }
         .dq-ring .num span:last-child { font-size: var(--fs-1); color: var(--txt-mute); letter-spacing: 1px; }
-        .dq-summary .info { flex: 1; }
+        .dq-summary .info { flex: 1; text-align: left; }
         .dq-summary .info .ti { font-family: 'Russo One'; color: #fff; font-size: var(--fs-4); letter-spacing: 1px; margin-bottom: 4px; }
         .dq-summary .info .sub { color: #888; font-size: var(--fs-2); }
         .dq-summary .info .sub.ok { color: var(--primary); }
@@ -1258,6 +1266,7 @@ body.trailer-open #page-content{
             /* La fila del resumen de quests es flex en una linea: el boton
                LOCKED, con `flex: none`, se salia 23px por la derecha. */
             .dq-summary { flex-wrap: wrap; justify-content: center; text-align: center; }
+            .dq-summary .info { text-align: center; }
             .dq-btn { flex: none; }
             .hero-ca-sign { max-width: 100%; white-space: normal; font-size: var(--fs-1); }
             
@@ -1439,7 +1448,7 @@ body.trailer-open #page-content{
             transform: translate(2px, 2px) !important;
             box-shadow: 1px 1px 0 rgba(0,0,0,0.7), inset 2px 2px 0 rgba(0,0,0,0.35) !important;
         }
-        body.pixel-pack .category-tag, body.pixel-pack .dq-tag, body.pixel-pack .copy-tag,
+        body.pixel-pack .category-tag, body.pixel-pack .copy-tag,
         body.pixel-pack .cmodal-field { border-radius: 0 !important; }
         body.pixel-pack .lb-c-pos { border-radius: 0 !important; }
         body.pixel-pack .dq-bar, body.pixel-pack .dq-bar i { border-radius: 0 !important; }
@@ -2003,8 +2012,7 @@ body.trailer-open #page-content{
     <!-- SECCIONES -->
     <div id="quest" class="section-container">
         <div class="store-panel">
-            <span class="dq-tag">PRE-LAUNCH EXCLUSIVE</span>
-            <h1 class="section-title holo-text" style="margin: 14px 0 0;">Daily Quests</h1>
+            <h1 class="section-title holo-text">Daily Quests</h1>
             <p class="dq-subtitle">Complete 3 of 5 daily quests to unlock <b>exclusive Telegram access</b> — the contract drops there first.</p>
             <div class="dq-summary">
                 <div class="dq-ring">
