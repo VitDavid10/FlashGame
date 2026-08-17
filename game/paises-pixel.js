@@ -222,28 +222,16 @@ const PAISES = {
         e: [{ f: 'rueda', c: '#000080', k: 0.95 }],
         lore: 'The wheel in the middle is the Ashoka Chakra, and its twenty-four spokes are the twenty-four hours of a day. The point of it is that it never stops turning. In this arena the ones who stop rolling get eaten by the ones who did not.'
     },
-    AU: {
-        // La bandera australiana lleva la Union Jack en el canton, y sin ella la
-        // pildora era un azul con estrellas sueltas que no decia Australia. Se
-        // monta como en la bandera: Union Jack arriba-izquierda, la estrella de
-        // la Commonwealth debajo y la Cruz del Sur a la derecha. La Union Jack
-        // son cuatro capas y no cabe hasta que la banda da de si, asi que
-        // esperan a UMBRAL.medio — antes de eso la pildora sigue enseñando solo
-        // las estrellas, que es lo que se lee a ese tamaño.
-        n: 'Australia', b: ['#00247D', '#001A5C', '#00247D'], min: UMBRAL.pronto,
+    TR: {
+        // Rojo liso + media luna y estrella blancas, en el sitio de siempre
+        // (canton, algo desplazadas del centro hacia el asta). Banda unica: es
+        // bandera de un solo color de fondo, como Japon o Marruecos.
+        n: 'Turkey', b: ['#E30A17'], min: UMBRAL.siempre,
         e: [
-            // La Union Jack va en la PRIMERA franja, ella sola, como el canton
-            // de la bandera. En la banda central no cabia junto a las estrellas
-            // sin quedar las dos cosas diminutas.
-            { f: 'aspa', c: '#ffffff', k: 0.92, banda: 0, min: UMBRAL.medio },
-            { f: 'cruzGruesa', c: '#ffffff', k: 0.92, banda: 0, min: UMBRAL.medio },
-            { f: 'aspaFina', c: '#C8102E', k: 0.92, banda: 0, min: UMBRAL.medio },
-            { f: 'cruz', c: '#C8102E', k: 0.92, banda: 0, min: UMBRAL.medio },
-            // Estrellas en la central: la de la Commonwealth y la Cruz del Sur.
-            { f: 'estrella7', c: '#ffffff', k: 0.38, dx: -0.62 },
-            { f: 'cruzDelSur', c: '#ffffff', k: 0.72, dx: 0.28 },
+            { f: 'luna', c: '#ffffff', k: 0.62, dx: -0.18 },
+            { f: 'estrella', c: '#ffffff', k: 0.30, dx: 0.30 },
         ],
-        lore: 'The Southern Cross only works as a compass if you are below the equator, which is a very Australian way of saying that the rules change depending on where you are standing. Everything here is larger than you and mildly hostile. You will fit right in.'
+        lore: 'One country on two continents, with a strait in between that decides who gets to move and who does not. The crescent has watched over this crossing for six centuries. It has never once needed to point the same direction twice.'
     },
     PY: {
         n: 'Paraguay', b: ['#D52B1E', '#ffffff', '#0038A8'], min: UMBRAL.pronto,
