@@ -39,6 +39,7 @@ const DESTINO = process.env.DEST || path.join(RAIZ, 'game', 'img', 'mode-title')
 const CAP = 38;          // alto de la mayuscula, en unidades de rejilla
 const T = 10;            // grosor del trazo
 const KERN = 3;          // hueco entre letras (el de la fuente vieja, que ya estaba bien)
+const SOLAPE_MAX = 7;    // cuanto puede arrimar el kerning optico, como maximo
 const MARGEN = 3;        // aire alrededor para el contorno y la sombra
 // Lado del pixel final: el PNG sale a PX * rejilla. PX=2 da 80px de alto, que
 // es la altura a la que se enseña el titulo — 1:1, sin reescalados raros.
@@ -64,6 +65,16 @@ function sdSeg(px, py, x0, y0, x1, y1, r) {
 }
 const une = (...d) => Math.min(...d);
 const quita = (d, hueco) => Math.max(d, -hueco);
+// Sector con el vertice en (vx,vy), abierto en la direccion (dx,dy) y con
+// semiangulo en grados. Restado a un anillo, abre la boca de la C o los ganchos
+// de la S dejando las puntas en pico, en vez del corte a escuadra de una caja.
+function cuna(px, py, vx, vy, dx, dy, gradosSemi) {
+    const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+    const t = Math.tan(gradosSemi * Math.PI / 180);
+    const avance = (px - vx) * dx + (py - vy) * dy;
+    const desvio = Math.abs(-(px - vx) * dy + (py - vy) * dx);
+    return Math.max(-avance, desvio - t * avance);
+}
 // Anillo: caja hueca. El hueco lleva los mismos radios encogidos, asi el trazo
 // mantiene el grosor tambien en las curvas.
 function anillo(px, py, x, y, w, h, r, g) {
@@ -114,17 +125,20 @@ const GLIFOS = {
             anillo(x, y, 0, 0, 32, CAP, [3, R_GRANDE + 2, R_GRANDE + 2, 3], T),
         ),
     },
-    // C = anillo completo al que se le quita la boca de la derecha. El recorte
-    // se queda DENTRO del ancho del glifo: si sobresale, el borde del recorte
-    // cae donde ya no hay letra y aparece un canto suelto.
+    // C = anillo completo al que se le abre la boca con una CUÑA, no con una
+    // caja: la caja cortaba las dos puntas a escuadra y quedaban dos topes
+    // romos, mientras el resto del alfabeto va de curvas. Con el vertice metido
+    // en el hueco del anillo, las puntas salen en pico y siguiendo la curva.
     'C': {
         w: 32, d: (x, y) => quita(
             anillo(x, y, 0, 0, 32, CAP, [R_GRANDE, R_GRANDE, R_GRANDE, R_GRANDE], T),
-            sdCaja(x, y, 18, 10, 14, CAP - 20, [0, 0, 0, 0]),
+            cuna(x, y, 16, CAP / 2, 1, 0, 26),
         ),
     },
-    // S: dos medios anillos, cada uno sin el cuadrante que sobra. Los recortes
-    // son cajas rectas por el mismo motivo que en la C.
+    // S: dos medios anillos, cada uno sin el cuadrante que sobra. Aqui los
+    // recortes son cajas y NO cuñas como en la C: los dos anillos se solapan por
+    // el centro (es lo que forma el trazo diagonal), y una cuña desde el centro
+    // de cada uno atraviesa esa zona compartida y parte el trazo de arriba.
     'S': {
         w: 30, d: (x, y) => {
             const alto = 23, medio = CAP - alto;
@@ -184,17 +198,57 @@ const LX = -0.55, LY = -0.83;
 const BISEL = 3;     // grosor de la banda biselada, en unidades
 const INK = 1.6;     // grosor del contorno
 
+// Silueta lateral de un glifo: para cada fila, hasta donde llega por la derecha
+// y desde donde empieza por la izquierda. Es lo que permite ajustar el hueco
+// entre dos letras por su FORMA y no por su caja.
+const _perfilCache = new Map();
+function perfil(ch, glifo) {
+    let p = _perfilCache.get(ch);
+    if (p) return p;
+    const H = CAP + 2, W = Math.ceil(glifo.w) + 2;
+    const der = new Float64Array(H).fill(-Infinity), izq = new Float64Array(H).fill(Infinity);
+    for (let gy = 0; gy < H; gy++) for (let gx = 0; gx < W; gx++) {
+        const x = gx - 1 + 0.5, y = gy - 1 + 0.5;
+        if (glifo.d(x, y) > 0) continue;
+        if (x > der[gy]) der[gy] = x;
+        if (x < izq[gy]) izq[gy] = x;
+    }
+    p = { der, izq, H };
+    _perfilCache.set(ch, p);
+    return p;
+}
+
 function distanciaTexto(texto) {
-    const glifos = [...texto.toUpperCase()].map(ch => {
+    const chars = [...texto.toUpperCase()];
+    const glifos = chars.map(ch => {
         const g = GLIFOS[ch];
         if (!g) throw new Error('Falta el glifo "' + ch + '" en GLIFOS');
         return g;
     });
-    const ancho = glifos.reduce((a, g) => a + g.w, 0) + KERN * (glifos.length - 1);
-    // Desplazamiento acumulado de cada glifo.
-    const offs = [];
-    let cx = 0;
-    for (const g of glifos) { offs.push(cx); cx += g.w + KERN; }
+    // Kerning OPTICO: cada letra se arrima a la anterior hasta que el hueco mas
+    // estrecho entre sus siluetas vale KERN. Con un avance fijo (caja + KERN),
+    // las letras de lados rectos quedaban bien pero las abiertas se veian
+    // sueltas: la W, que se estrecha por abajo, dejaba un agujero contra las LL
+    // de PILLWARS aunque sus cajas se tocasen. Solo puede ACERCAR — el avance
+    // normal sigue siendo el tope, para que dos letras rectas no se separen.
+    const offs = [0];
+    for (let i = 1; i < glifos.length; i++) {
+        const tope = offs[i - 1] + glifos[i - 1].w + KERN;
+        const a = perfil(chars[i - 1], glifos[i - 1]), b = perfil(chars[i], glifos[i]);
+        let solape = -Infinity;
+        for (let y = 0; y < a.H; y++) {
+            if (a.der[y] === -Infinity || b.izq[y] === Infinity) continue;
+            const v = a.der[y] - b.izq[y];
+            if (v > solape) solape = v;
+        }
+        // SOLAPE_MAX: el hueco minimo garantizado es KERN, pero eso solo mira la
+        // fila mas estrecha. Dos letras curvas que encajan (las SS de CLASSIC)
+        // cumplen el minimo en un punto y quedan pegadas en todo lo demas, asi
+        // que ademas se limita cuanto puede comerse del avance normal.
+        const cerca = solape === -Infinity ? tope : offs[i - 1] + solape + KERN + 1;
+        offs.push(Math.min(tope, Math.max(cerca, tope - SOLAPE_MAX)));
+    }
+    const ancho = offs[offs.length - 1] + glifos[glifos.length - 1].w;
     const d = (x, y) => {
         let m = 1e9;
         for (let i = 0; i < glifos.length; i++) {
