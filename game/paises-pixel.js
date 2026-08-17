@@ -15,10 +15,13 @@
  * pildora recien nacida, mientras que tres franjas verticales serian de 6.6px.
  * Ademas la pildora ROTA y las bandas horizontales siguen el eje de la capsula.
  *
- * NINGUNA pildora es de un solo color. Las banderas que si lo son (Suiza,
- * Japon, Marruecos, China, Brasil, Suecia, Noruega) llevan dos tonos del mismo
- * color en las bandas de fuera y el centro, que las despega sin dejar de ser
- * su bandera.
+ * UNA, DOS O TRES BANDAS. Las banderas de un solo color (Suiza, Japon,
+ * Marruecos, China, Brasil, Reino Unido) van con banda UNICA: color plano y sin
+ * costura. Antes llevaban dos tonos del mismo color para "despegarlas", pero el
+ * resultado era una pildora que seguia leyendose como de tres franjas cuando la
+ * bandera no las tiene — y el emblema, que es lo que de verdad las identifica,
+ * competia con unas rayas que no pintaban nada. El volumen se lo sigue dando el
+ * sombreado del borde, que no depende de las bandas.
  *
  * EMBLEMAS POR CAPAS. Cada pais declara una lista de capas {f: forma, c: color,
  * k: escala, dx/dy: desplazamiento}, que se pintan en orden. Con una sola capa
@@ -195,7 +198,7 @@ const PAISES = {
         lore: 'Six colours on one flag, which no other nation dared attempt, and a Y that splits and rejoins to say that everything once separate comes back together. You will do a lot of splitting here. The rejoining is the part most players get wrong.'
     },
     CH: {
-        n: 'Switzerland', b: ['#DA291C', '#B81C11', '#DA291C'], min: UMBRAL.siempre,
+        n: 'Switzerland', b: ['#DA291C'], min: UMBRAL.siempre,
         e: [{ f: 'cruz', c: '#ffffff', k: 0.82 }],
         lore: 'Neutral in every war of the last two centuries, and the only country on this list that will sit out a fight purely because the arithmetic does not favour it. That is not cowardice. That is a player who has already counted your mass.'
     },
@@ -205,12 +208,12 @@ const PAISES = {
         lore: 'Impossibly polite right up to the moment the leaf comes off. Canada holds the second largest territory on the planet and almost nobody lives in it, which is exactly the map control philosophy: own more space than you could possibly need, and dare someone to walk into it.'
     },
     BR: {
-        n: 'Brazil', b: ['#009739', '#007C2F', '#009739'], min: UMBRAL.pronto,
+        n: 'Brazil', b: ['#009739'], min: UMBRAL.pronto,
         e: [{ f: 'rombo', c: '#FEDD00' }, { f: 'disco', c: '#012169', k: 0.52 }],
         lore: 'Order and progress, in that order, stitched across a sky of stars fixed at the exact moment the republic was born. Five World Cups say the flair is real, but flair alone never held a lobby. Eat in order. Progress follows always.'
     },
     MA: {
-        n: 'Morocco', b: ['#C1272D', '#A31E24', '#C1272D'], min: UMBRAL.pronto,
+        n: 'Morocco', b: ['#C1272D'], min: UMBRAL.pronto,
         e: [{ f: 'estrella', c: '#006233', k: 0.92 }],
         lore: 'The green star was drawn as one unbroken line, a single stroke that never lifts and never crosses itself. Play the same way. The runs that end badly here are the ones that hesitated somewhere in the middle of it.'
     },
@@ -250,7 +253,7 @@ const PAISES = {
         lore: 'They built an entire country below sea level out of sheer refusal to accept the water\'s opinion on the matter. A third of it should not be there. Holding a contested corner of this map should feel like a holiday to someone.'
     },
     JP: {
-        n: 'Japan', b: ['#ffffff', '#F0F0F0', '#ffffff'], min: UMBRAL.siempre,
+        n: 'Japan', b: ['#ffffff'], min: UMBRAL.siempre,
         e: [{ f: 'disco', c: '#BC002D', k: 0.72 }],
         lore: 'One circle. No text, no crest, no second idea. Every other flag on this list is trying to tell you something; this one just shows up. The simplest shape on the field is also the hardest to corner or escape from.'
     },
@@ -325,7 +328,7 @@ const PAISES = {
         lore: 'A river that crosses the equator twice, so somewhere along it the water is always in flood season no matter what month you name. Whatever direction you think you are going, the Congo has already been there and come back.'
     },
     GB: {
-        n: 'United Kingdom', b: ['#012169', '#001640', '#012169'], min: UMBRAL.siempre,
+        n: 'United Kingdom', b: ['#012169'], min: UMBRAL.siempre,
         e: [
             { f: 'aspa', c: '#ffffff', k: 1 },
             { f: 'cruzGruesa', c: '#ffffff', k: 1 },
@@ -345,7 +348,7 @@ const PAISES = {
         lore: 'The Black Star was the first flag raised when the colonial ones came down, and every African independence movement that followed borrowed something from it. First to break free, and still first to the middle of the map always.'
     },
     CN: {
-        n: 'China', b: ['#EE1C25', '#D4141B', '#EE1C25'], min: UMBRAL.siempre,
+        n: 'China', b: ['#EE1C25'], min: UMBRAL.siempre,
         e: [
             // La grande, desde el primer pixel. Las cuatro pequeñas solo cuando la
             // banda da de si: a tamaño de partida eran manchas de un pixel.
@@ -564,7 +567,8 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
         const rad = Math.hypot(lx, ly - cy);
         if (rad > RI) continue;
 
-        let base = nBandas === 2 ? (ly < 0 ? rgb[0] : rgb[1])
+        let base = nBandas === 1 ? rgb[0]
+                 : nBandas === 2 ? (ly < 0 ? rgb[0] : rgb[1])
                                  : (ly < -medio ? rgb[0] : (ly < medio ? rgb[1] : rgb[2]));
         // Capas del emblema, en orden: la ultima que acierta manda.
         if (capas.length && Math.abs(ly - embCy) < medio) {
@@ -581,8 +585,12 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
         const u = Math.max(0, Math.min(1, (1 - ndl) * 0.5));
         const w1 = (1.05 + 1.7 * u) * kD, w2 = (2.6 + 4.2 * u) * kD, w3 = (4.2 + 6.8 * u) * kD;
         let amt;
-        // Costuras: una sola en ly=0 con dos bandas, dos en +-medio con tres.
-        const enCostura = nBandas === 2 ? Math.abs(ly) < 1.45 * kD
+        // Costuras: ninguna con una sola banda, una en ly=0 con dos, dos en
+        // +-medio con tres. Con banda unica la costura sobra por definicion — no
+        // hay dos colores que separar, y la raya oscura era justo lo que hacia
+        // que una bandera de un solo color siguiera pareciendo de tres franjas.
+        const enCostura = nBandas === 1 ? false
+                        : nBandas === 2 ? Math.abs(ly) < 1.45 * kD
                                         : Math.abs(Math.abs(ly) - medio) < 1.45 * kD;
         if (enCostura) amt = -0.30;
         else if (edge < w1) amt = -0.44;
@@ -746,7 +754,19 @@ function _paisModalCSS() {
  * esquinas en escalon — pero AUTONOMO: esta funcion no depende de nada de
  * game/index.html porque este fichero tambien lo carga la landing sola.
  */
-const PM_SCALE = 4, PM_FRAME_T = 10, PM_FRAME_CUT = 5;
+// PM_SUB parte el pixel del marco igual que PLACA.SUB en game/index.html: a un
+// pixel por cuadricula el canto solo daba para un chaflan de peldaños. El resto
+// de medidas van multiplicadas por el, asi que el marco ocupa lo mismo en
+// pantalla y solo cambia el detalle.
+const PM_SUB = 2;
+const PM_SCALE = 4 / PM_SUB, PM_FRAME_T = 10 * PM_SUB, PM_FRAME_CUT = 5 * PM_SUB;
+const PM_RADIO = 9 * PM_SUB;      // esquina redonda exterior
+const PM_RADIO_HUECO = 4 * PM_SUB;
+// Los MISMOS tonos que el marco del menu (PLACA.TONOS): contorno oscuro que
+// recorta la silueta, bisel claro por donde entra la luz y cuerpo macizo. Este
+// cartel llevaba todavia el reparto viejo —contorno claro 0.42 y cuerpo casi
+// negro 0.12—, asi que al ampliar una skin aparecia el marco de antes.
+const PM_TONOS = { rim: 0.16, lit: 0.75, mid: 0.45, dim: 0.24, inner: 0.36, body: 0.30 };
 const PM_SCREEN = [9, 20, 15];
 const PM_LX = -0.6, PM_LY = -0.75;
 function _pmFrameDraw(cv, wCss, hCss, hex) {
@@ -759,30 +779,43 @@ function _pmFrameDraw(cv, wCss, hCss, hex) {
     g.imageSmoothingEnabled = false;
     const rgb = _rgb(hex);
     const sh = f => rgb.map(v => Math.round(v * f));
-    const T = PM_FRAME_T, CUT = PM_FRAME_CUT;
+    const T = PM_FRAME_T;
+    // Esquina redonda de verdad (con PM_SUB hay pixeles para ella).
+    const esquina = (dx, dy, radio) => {
+        if (PM_SUB < 2) { const c = PM_FRAME_CUT; return dx >= c || dy >= c || dx + dy >= c; }
+        if (dx >= radio || dy >= radio) return true;
+        const ex = radio - dx, ey = radio - dy;
+        return ex * ex + ey * ey <= radio * radio;
+    };
     const inOuter = (x, y) => {
         if (x < 0 || y < 0 || x >= W || y >= H) return false;
-        const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
-        return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+        return esquina(Math.min(x, W - 1 - x), Math.min(y, H - 1 - y), PM_RADIO);
     };
-    const inHole = (x, y) => x >= T && x < W - T && y >= T && y < H - T;
+    const inHole = (x, y) => {
+        if (x < T || y < T || x >= W - T || y >= H - T) return false;
+        return esquina(Math.min(x - T, W - T - 1 - x), Math.min(y - T, H - T - 1 - y), PM_RADIO_HUECO);
+    };
     const inBand = (x, y) => inOuter(x, y) && !inHole(x, y);
     const img = g.createImageData(W, H), px = img.data;
-    const C_RIM = sh(0.42), C_LIT = sh(0.60), C_DIM = sh(0.22), C_MID = sh(0.30), C_BODY = sh(0.12);
+    const C_RIM = sh(PM_TONOS.rim), C_LIT = sh(PM_TONOS.lit), C_DIM = sh(PM_TONOS.dim),
+          C_MID = sh(PM_TONOS.mid), C_INNER = sh(PM_TONOS.inner), C_BODY = sh(PM_TONOS.body);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const i = ((y * W + x) << 2);
         if (!inOuter(x, y)) continue;
         if (inHole(x, y)) { px[i] = PM_SCREEN[0]; px[i + 1] = PM_SCREEN[1]; px[i + 2] = PM_SCREEN[2]; px[i + 3] = 255; continue; }
-        let ring = 2;
-        for (let r = 1; r <= 2 && ring === 2; r++) {
-            for (let oy = -1; oy <= 1 && ring === 2; oy++) for (let ox = -1; ox <= 1; ox++) {
+        // Umbrales en pixeles de CUADRICULA: por eso van por PM_SUB. Sin eso,
+        // al doblar la resolucion cada banda quedaba a la mitad de grosor.
+        const HASTA = 3 * PM_SUB;
+        let ring = HASTA;
+        for (let r = 1; r <= HASTA && ring === HASTA; r++) {
+            for (let oy = -1; oy <= 1 && ring === HASTA; oy++) for (let ox = -1; ox <= 1; ox++) {
                 if ((!ox && !oy) || inBand(x + ox * r, y + oy * r)) continue;
                 ring = r - 1; break;
             }
         }
         let col;
-        if (ring === 0) col = C_RIM;
-        else if (ring === 1) {
+        if (ring < PM_SUB) col = C_RIM;
+        else if (ring < 2 * PM_SUB) {
             let nx = 0, ny = 0;
             for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
                 if ((!ox && !oy) || inBand(x + ox, y + oy)) continue;
@@ -791,7 +824,8 @@ function _pmFrameDraw(cv, wCss, hCss, hex) {
             const l = Math.hypot(nx, ny) || 1;
             const ndl = (nx / l) * PM_LX + (ny / l) * PM_LY;
             col = ndl > 0.15 ? C_LIT : ndl < -0.15 ? C_DIM : C_MID;
-        } else col = C_BODY;
+        } else if (ring < 3 * PM_SUB) col = C_INNER;
+        else col = C_BODY;
         px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
     }
     g.putImageData(img, 0, 0);
@@ -808,25 +842,29 @@ function _pmPlateUrl(wCss, hCss, hex) {
     const rgb = _rgb(hex);
     const sh = f => rgb.map(v => Math.min(255, Math.round(v * f)));
     const lit = t => rgb.map(v => Math.round(v + (255 - v) * t));
-    const CUT = 2;
+    const CUT = 2 * PM_SUB, RADIO = 5 * PM_SUB;
     const inside = (x, y) => {
         if (x < 0 || y < 0 || x >= W || y >= H) return false;
         const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
-        return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+        if (PM_SUB < 2) return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+        if (dx >= RADIO || dy >= RADIO) return true;
+        const ex = RADIO - dx, ey = RADIO - dy;
+        return ex * ex + ey * ey <= RADIO * RADIO;
     };
     const img = g.createImageData(W, H), px = img.data;
     const C_RIM = sh(0.38), C_LIT = lit(0.32), C_DIM = sh(0.70);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         if (!inside(x, y)) continue;
-        let ring = 2;
-        for (let r = 1; r <= 2 && ring === 2; r++) {
-            for (let oy = -1; oy <= 1 && ring === 2; oy++) for (let ox = -1; ox <= 1; ox++) {
+        const HASTA = 2 * PM_SUB;
+        let ring = HASTA;
+        for (let r = 1; r <= HASTA && ring === HASTA; r++) {
+            for (let oy = -1; oy <= 1 && ring === HASTA; oy++) for (let ox = -1; ox <= 1; ox++) {
                 if ((!ox && !oy) || inside(x + ox * r, y + oy * r)) continue;
                 ring = r - 1; break;
             }
         }
-        const col = ring === 0 ? C_RIM
-            : ring === 1 ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM)
+        const col = ring < PM_SUB ? C_RIM
+            : ring < 2 * PM_SUB ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM)
             : rgb;
         const i = ((y * W + x) << 2);
         px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
