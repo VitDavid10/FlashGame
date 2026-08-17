@@ -1058,6 +1058,11 @@
         #selectedModeTitle.titulo-placa { display: flex; align-items: center; justify-content: flex-start; gap: var(--titulo-gap); width: 0; overflow: visible; }
         #selectedModeTitle.titulo-placa > span { flex: none; }
         #selectedModeTitle.titulo-placa img { width: auto; max-width: none; }
+        /* El subtitulo va BAJADO por el ajuste de layout, y ahi abajo empieza
+           .login-left (la columna de la pildora), que lo tapaba. Con el texto
+           corto de CLASSIC el centro caia fuera de esa columna y se veia; con el
+           largo de ARCADE quedaba debajo y desaparecia. */
+        .mode-blurb { position: relative; z-index: 3; }
         #selectedModeTitle.titulo-placa #modeTitlePw img { height: var(--titulo-alto-pw) !important; }
         #selectedModeTitle.titulo-placa #modeTitleWord img { height: var(--titulo-alto-word) !important; }
         /* Halo: drop-shadow y no box-shadow porque sigue el alfa del PNG, asi
@@ -1768,13 +1773,20 @@
            difuminado es justo lo que no tiene el estilo nuevo, donde el volumen
            lo dan el contorno y el bisel. Se queda la sombra dura, que despega el
            rotulo del fondo sin emborronar nada. */
-        .mode-arcade .mt-placa { aspect-ratio: 412 / 88; }
-        .mode-classic .mt-placa { aspect-ratio: 432 / 88; }
+        .mode-arcade .mt-placa { aspect-ratio: 824 / 176; }
+        .mode-classic .mt-placa { aspect-ratio: 864 / 176; }
         /* La clase repetida sube la especificidad por encima de las dos reglas
            de .mt-img que vienen mas abajo; sin eso ganaban ellas por orden. */
         body.pixel-pack .mode-title:not(.no-img) img.mt-placa.mt-placa,
         body.pixel-pack.has-hover-scene .mode-title:not(.no-img) img.mt-placa.mt-placa {
-            image-rendering: pixelated;
+            /* auto y NO pixelated, al reves que en el login. Aqui el rotulo
+               nunca se enseña a escala entera: el panel lleva una animacion que
+               lo deja en 374 y 266px, y el PNG mide 824 y 864. Con pixelated el
+               navegador se queda con una columna de cada dos y las letras salen
+               con los palos de distinto grosor — los "pixeles rotos". Con auto
+               promedia, y como el dibujo viene al doble de resolucion el
+               resultado es el mismo trazo, limpio y sin irregularidades. */
+            image-rendering: auto;
             filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.9));
         }
         /* ===== Correccion tonal del arte v4, distinta por modo. El v4 viene
@@ -2285,7 +2297,7 @@
         <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
             <div id="contentArcade" class="mode-content">
                 <div class="mode-sub">ROGUELIKE MECHANICS</div>
-                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img mt-placa" src="img/mode-title/ARCADE-word-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img mt-placa" src="img/mode-title/ARCADE-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NORMAL MAP. TIME: <span class="highlight">3:50</span>.<br>
                     START EMPTY. <span class="highlight">PICK SKILLS</span> EVERY 30S.<br>
@@ -2296,7 +2308,7 @@
         <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
             <div id="contentClassic" class="mode-content">
                 <div class="mode-sub">STANDARD MODE</div>
-                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img mt-placa" src="img/mode-title/CLASSIC-word-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img mt-placa" src="img/mode-title/CLASSIC-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                 <div class="mode-desc">
                     NO TIMER. <span class="highlight">HUGE MAP (x2)</span>.<br>
                     ONLY <span class="highlight">SHOOT</span> SKILL (KEY 1).<br>
