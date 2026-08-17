@@ -6485,7 +6485,13 @@
         // el fondo del menu y el cartel se leia como dos lineas finas flotando
         // en vez de como una placa con peso. Ajustables en vivo con
         // placaTune({ TONOS: {...} }).
-        TONOS: { rim: 0.16, lit: 0.75, mid: 0.45, dim: 0.24, inner: 0.36, body: 0.30 },
+        // masa = donde el marco es MAS GRUESO (las esquinas, que en diagonal
+        // tienen mas material que los lados). Es el mismo efecto que en las
+        // letras del titulo: cuanto mas lejos queda un pixel de cualquier borde,
+        // mas oscuro va, y eso deja marcas justo donde se acumula material. Al
+        // mismo tono que "body" no se nota nada; poner MASA_DESDE a 99 lo apaga.
+        TONOS: { rim: 0.16, lit: 0.75, mid: 0.45, dim: 0.24, inner: 0.36, body: 0.30, masa: 0.21 },
+        MASA_DESDE: 4,
     };
     // Luz arriba-izquierda, la MISMA que usa el sprite de la pildora.
     const PLACA_LX = -0.6, PLACA_LY = -0.75;
@@ -6509,7 +6515,8 @@
         const img = g.createImageData(W, H), px = img.data;
         const TN = PLACA.TONOS;
         const C_RIM = sh(TN.rim), C_LIT = sh(TN.lit), C_DIM = sh(TN.dim), C_MID = sh(TN.mid),
-              C_INNER = sh(TN.inner), C_BODY = sh(TN.body);
+              C_INNER = sh(TN.inner), C_BODY = sh(TN.body), C_MASA = sh(TN.masa);
+        const MASA = Math.max(1, PLACA.MASA_DESDE | 0);
         const SCR = PLACA.SCREEN;
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
             const i = ((y * W + x) << 2);
@@ -6519,12 +6526,15 @@
                 if (inHole(x, y)) { px[i] = SCR[0]; px[i + 1] = SCR[1]; px[i + 2] = SCR[2]; px[i + 3] = 255; }
                 continue;
             }
-            // Anillo: 0 = contorno, 1 = bisel, 2 = escalon intermedio, 3+ = cuerpo.
-            // Tres escalones (antes dos) para que el marco se lea como un bloque
-            // con volumen y no como una linea con un realce al lado.
-            let ring = 3;
-            for (let r = 1; r <= 3 && ring === 3; r++) {
-                for (let oy = -1; oy <= 1 && ring === 3; oy++) for (let ox = -1; ox <= 1; ox++) {
+            // Anillo: 0 = contorno, 1 = bisel, 2 = escalon intermedio, 3 =
+            // cuerpo, MASA+ = zona gruesa. Tres escalones (antes dos) para que
+            // el marco se lea como un bloque con volumen y no como una linea con
+            // un realce al lado; el ultimo tramo se sigue midiendo para saber a
+            // que profundidad esta cada pixel y marcar donde hay mas material.
+            const HASTA = Math.max(3, MASA);
+            let ring = HASTA;
+            for (let r = 1; r <= HASTA && ring === HASTA; r++) {
+                for (let oy = -1; oy <= 1 && ring === HASTA; oy++) for (let ox = -1; ox <= 1; ox++) {
                     if ((!ox && !oy) || inBand(x + ox * r, y + oy * r)) continue;
                     ring = r - 1; break;
                 }
@@ -6544,7 +6554,7 @@
                 const ndl = (nx / l) * PLACA_LX + (ny / l) * PLACA_LY;
                 col = ndl > 0.15 ? C_LIT : ndl < -0.15 ? C_DIM : C_MID;
             } else if (ring === 2) col = C_INNER;
-            else col = C_BODY;
+            else col = ring >= MASA ? C_MASA : C_BODY;
             // Luz del titulo: gana el lado que le da la cara y pierde el
             // opuesto. Solo sobre el MARCO — la pantalla se queda plana.
             if (PLACA.GLOW) {
@@ -6670,7 +6680,11 @@
     // (btn-plain-red/blue.png). Solo se sustituye el FONDO: el rotulo sigue
     // siendo el texto del DOM de siempre (Press Start 2P) — horneado con la
     // PIXFONT quedaba mal.
-    const PLACA_BTN = { CUT: 2, ROJO: '#f62a2d', AZUL: '#0799ef' };
+    // MASA / MASA_DESDE: la franja del centro, la que queda a mas de
+    // MASA_DESDE pixeles de cualquier borde, va un punto mas oscura. Es lo mismo
+    // que hace el relieve de las letras del titulo y lo que les deja esas marcas
+    // en los cruces de trazos. MASA_DESDE muy alto lo apaga.
+    const PLACA_BTN = { CUT: 2, ROJO: '#f62a2d', AZUL: '#0799ef', MASA: 0.88, MASA_DESDE: 3 };
     // Escala del fondo del menu (paintLoginBg pinta 264px de alto y los estira a
     // la ventana): con ella el pixel de la placa mide lo mismo que el de la
     // cuadricula. La comparten el marco y todos los botones.
@@ -6695,12 +6709,19 @@
             return dx >= CUT || dy >= CUT || dx + dy >= CUT;
         };
         const img = g.createImageData(W, H), px = img.data;
-        const C_RIM = sh(0.38), C_LIT = lit(0.32), C_DIM = sh(0.70);
+        const C_RIM = sh(0.38), C_LIT = lit(0.32), C_DIM = sh(0.70), C_MASA = sh(PLACA_BTN.MASA);
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
             if (!inside(x, y)) continue;
-            let ring = 2;
-            for (let r = 1; r <= 2 && ring === 2; r++) {
-                for (let oy = -1; oy <= 1 && ring === 2; oy++) for (let ox = -1; ox <= 1; ox++) {
+            // Se mide hasta MASA_DESDE y no hasta 2: mas alla del bisel interesa
+            // saber a que profundidad esta el pixel, para oscurecer la zona con
+            // mas material — el mismo efecto que da relieve a las letras del
+            // titulo, donde el tono baja en los cruces de trazos. En el marco del
+            // cartel no se aplica porque su anillo es demasiado fino (7 pixeles:
+            // ningun punto llega a estar a 4 de un borde).
+            const HASTA = Math.max(2, PLACA_BTN.MASA_DESDE);
+            let ring = HASTA;
+            for (let r = 1; r <= HASTA && ring === HASTA; r++) {
+                for (let oy = -1; oy <= 1 && ring === HASTA; oy++) for (let ox = -1; ox <= 1; ox++) {
                     if ((!ox && !oy) || inside(x + ox * r, y + oy * r)) continue;
                     ring = r - 1; break;
                 }
@@ -6709,7 +6730,7 @@
             // borde superior/izquierdo, el oscuro al inferior/derecho.
             const col = ring === 0 ? C_RIM
                 : ring === 1 ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM)
-                : rgb;
+                : ring >= PLACA_BTN.MASA_DESDE ? C_MASA : rgb;
             const i = ((y * W + x) << 2);
             px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
         }
