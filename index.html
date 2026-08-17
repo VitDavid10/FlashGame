@@ -328,25 +328,33 @@
         /* PLAY NOW del hero, cartel del contrato y el contrato: apilados bajo el
            titulo. Los cuatro se mueven/escalan desde EDIT (ver LandingLayout). */
         .hero-play-row { display: flex; align-items: center; justify-content: center; gap: 46px; margin-top: 26px; }
-        /* Sin pixelated: el PNG no es rejilla dura de verdad (tiene antialiasing
-           suave "estilo pixel"), y forzar nearest-neighbor sobre un filter
-           animado en :hover hacia que Chrome re-muestreara la imagen en cada
-           frame de la transicion -> se veian los "pixeles" temblando/moviendose.
-           image-rendering: auto (el default de la pagina) escala suave y no
-           tiene ese problema. */
-        .hero-play { display: block; height: 84px; width: auto; aspect-ratio: 1856 / 560; cursor: pointer !important; filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .2s; }
+        /* PLAY NOW: ya no es el PNG banner alargado (1856x560), es un boton real
+           con una placa pixel-art generada por canvas (heroPlayBtnPlate, mismo
+           dibujo que _pmPlateUrl de la Skin Store: reborde oscuro + bisel claro),
+           mas cuadrado y con el mismo nivel de pixel que el resto de botones
+           placa del juego. pixelated de verdad porque ahora SI es rejilla dura. */
+        .hero-play { display: block; height: 90px; width: auto; aspect-ratio: 2.3; padding: 0; border: none;
+            cursor: pointer !important; image-rendering: pixelated; background-color: transparent;
+            background-size: 100% 100%; background-repeat: no-repeat;
+            font-family: 'Press Start 2P', monospace; font-size: 17px; color: #fff; letter-spacing: 1px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
+            filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .15s ease, transform .1s ease; }
         .hero-play:hover { filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.15); }
+        .hero-play:active { transform: translate(2px, 2px); }
         /* PLAY NOW de la navbar: oculto mientras el hero esta a la vista (ya
            hay uno ahi dentro), aparece al hacer scroll y salir de el (ver el
            IntersectionObserver mas abajo). En EDIT LAYOUT se fuerza visible
            siempre, si no no habria forma de agarrarlo con el hero fuera de
            pantalla. Posicion/tamaño se mueven desde EDIT como el resto (clave
-           navPlay en HERO_LAYOUT_ELS). */
-        /* Sin pixelated: mismo motivo que .hero-play — a 30px de alto el
-           nearest-neighbor aliasea una fila del borde antialiased en una linea
-           clara visible, y con el filter animado en :hover "tiembla". */
-        .nav-play-now { display: none; height: 30px; width: auto; aspect-ratio: 1856 / 560; cursor: pointer !important; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); flex-shrink: 0; transition: filter .2s; }
+           navPlay en HERO_LAYOUT_ELS). Misma placa que .hero-play, a menor escala. */
+        .nav-play-now { display: none; height: 32px; width: auto; aspect-ratio: 2.3; padding: 0; border: none;
+            cursor: pointer !important; image-rendering: pixelated; background-color: transparent;
+            background-size: 100% 100%; background-repeat: no-repeat;
+            font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; letter-spacing: 0.5px;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.75);
+            filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); flex-shrink: 0; transition: filter .15s ease; }
         .nav-play-now:hover { filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)) brightness(1.15); }
+        .nav-play-now:active { transform: translate(1px, 1px); }
         body.nav-play-visible .nav-play-now, body.layout-editing .nav-play-now { display: block; }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
@@ -1664,12 +1672,27 @@ body.trailer-open #page-content{
             g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(Math.round(wL * 0.22), Math.round(hL * 0.14), hs, hs);
             return cv.toDataURL();
         }
+        // Placa pixel-art de PLAY NOW (hero + navbar): mismo dibujo que los
+        // botones placa de la Skin Store (_pmPlateUrl, de game/paises-pixel.js,
+        // cargado mas abajo en el body) para que hable el mismo idioma visual
+        // que el resto de botones pixel del juego, en vez del PNG banner de
+        // antes. Se redibuja en cada resize porque la placa es un raster a la
+        // resolucion EXACTA del boton, no un vector.
+        function drawHeroPlayPlates() {
+            if (typeof _pmPlateUrl !== 'function') return;
+            [['heroPlayNow', '#00ff88'], ['navPlayNow', '#00ff88']].forEach(([id, hex]) => {
+                const el = document.getElementById(id);
+                if (!el || !el.clientWidth) return;
+                el.style.backgroundImage = 'url(' + _pmPlateUrl(el.clientWidth, el.clientHeight, hex) + ')';
+            });
+        }
+        window.addEventListener('resize', drawHeroPlayPlates);
         function applyPixelPill() {
             // 8×15 logico sobre 24×44 de pantalla ≈ pixel gordo de 3px, como el juego
             const url = 'url(' + pixPillUrl(8, 15, [255, 255, 255], [0, 255, 136]) + ')';
             document.querySelectorAll('#custom-cursor, .logo-pill').forEach(el => { el.style.backgroundImage = url; });
         }
-        document.addEventListener('DOMContentLoaded', () => { applyPixelPill(); applyPixelCloseX(); });
+        document.addEventListener('DOMContentLoaded', () => { applyPixelPill(); applyPixelCloseX(); drawHeroPlayPlates(); });
 
         // F5 arranca arriba del todo, no donde estabas: si el navegador
         // restaura el scroll, la pagina reaparece a media altura con las
@@ -1728,8 +1751,8 @@ body.trailer-open #page-content{
 
         <div class="nav-dropdown-group">
             <!-- PLAY NOW de la navbar: solo se ve fuera del hero (o siempre en
-                 EDIT LAYOUT). Misma imagen que el del hero, ya sin fringe. -->
-            <img class="nav-play-now" id="navPlayNow" src="img/pixel-hero/play-now-hero.png" alt="PLAY NOW" onclick="window.location.href='game/'" onerror="this.style.display='none'">
+                 EDIT LAYOUT). Mismo boton-placa que el del hero, a menor escala. -->
+            <button class="nav-play-now" id="navPlayNow" onclick="window.location.href='game/'">PLAY NOW</button>
             <!-- Wallet: mismo montaje que /game (gameWalletArea). Balance IN GAME +
                  CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT) cuando ya
                  estas conectado. -->
@@ -1785,7 +1808,7 @@ body.trailer-open #page-content{
                     <div class="pick-me-label esc-to-leave">ESC TO LEAVE</div>
                     <canvas class="pick-me-pill" width="86" height="86"></canvas>
                 </div>
-                <img class="hero-play" id="heroPlayNow" src="img/pixel-hero/play-now-hero.png" alt="PLAY NOW" onclick="window.location.href='game/'" onerror="this.style.display='none'">
+                <button class="hero-play" id="heroPlayNow" onclick="window.location.href='game/'">PLAY NOW</button>
             </div>
             <!-- Rotulo y caja del contrato: los dos con el MISMO formato que la
                  barra IN GAME / el desplegable de $PILL (fondo negro
@@ -3368,6 +3391,9 @@ function toggleTrailerMode() {
                 px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
             }
             // Brillo en rombo manhattan, en coordenadas locales de la capsula.
+            // Con tantas pills sueltas por el hero (deco + la jugable) el brillo
+            // a maxima intensidad (.95 en el centro) se acumulaba en pantalla y
+            // se veia todo muy iluminado; bajado a la mitad, mismo tamaño.
             const glx = -0.40 * R, gly = -0.48 * (seg + R);
             const gx = S / 2 + (glx * c - gly * s), gy = S / 2 + (glx * s + gly * c);
             const gr = Math.max(2, Math.round(wL * 0.145));
@@ -3375,7 +3401,7 @@ function toggleTrailerMode() {
                 if (!inside(x, y)) continue;
                 const md = Math.abs(x + 0.5 - gx) + Math.abs(y + 0.5 - gy);
                 if (md > gr) continue;
-                const a = md <= gr * 0.45 ? 0.95 : md <= gr * 0.75 ? 0.78 : 0.50;
+                const a = md <= gr * 0.45 ? 0.48 : md <= gr * 0.75 ? 0.38 : 0.24;
                 const i = ((y * S + x) << 2);
                 px[i] += (255 - px[i]) * a; px[i + 1] += (255 - px[i + 1]) * a; px[i + 2] += (255 - px[i + 2]) * a;
             }
@@ -4322,7 +4348,13 @@ function toggleTrailerMode() {
             const hero = document.getElementById('hero');
             if (!hero || !('IntersectionObserver' in window)) return;
             const io = new IntersectionObserver(
-                (entries) => document.body.classList.toggle('nav-play-visible', !entries[0].isIntersecting),
+                (entries) => {
+                    document.body.classList.toggle('nav-play-visible', !entries[0].isIntersecting);
+                    // La placa de #navPlayNow no se pudo dibujar mientras estaba
+                    // display:none (clientWidth 0): en cuanto se hace visible por
+                    // primera vez hay que dibujarla ya.
+                    drawHeroPlayPlates();
+                },
                 { threshold: 0 }
             );
             io.observe(hero);
