@@ -209,12 +209,12 @@ const PAISES = {
     },
     BR: {
         n: 'Brazil', b: ['#009739'], min: UMBRAL.pronto,
-        e: [{ f: 'rombo', c: '#FEDD00' }, { f: 'disco', c: '#012169', k: 0.52 }],
+        e: [{ f: 'rombo', c: '#FEDD00', k: 1.18 }, { f: 'disco', c: '#012169', k: 0.62 }],
         lore: 'Order and progress, in that order, stitched across a sky of stars fixed at the exact moment the republic was born. Five World Cups say the flair is real, but flair alone never held a lobby. Eat in order. Progress follows always.'
     },
     MA: {
         n: 'Morocco', b: ['#C1272D'], min: UMBRAL.pronto,
-        e: [{ f: 'estrella', c: '#006233', k: 0.92 }],
+        e: [{ f: 'estrella', c: '#006233', k: 1.12 }],
         lore: 'The green star was drawn as one unbroken line, a single stroke that never lifts and never crosses itself. Play the same way. The runs that end badly here are the ones that hesitated somewhere in the middle of it.'
     },
     IN: {
@@ -232,12 +232,16 @@ const PAISES = {
         // las estrellas, que es lo que se lee a ese tamaño.
         n: 'Australia', b: ['#00247D', '#001A5C', '#00247D'], min: UMBRAL.pronto,
         e: [
-            { f: 'aspa', c: '#ffffff', k: 0.40, dx: -0.58, dy: -0.30, min: UMBRAL.medio },
-            { f: 'cruzGruesa', c: '#ffffff', k: 0.40, dx: -0.58, dy: -0.30, min: UMBRAL.medio },
-            { f: 'aspaFina', c: '#C8102E', k: 0.40, dx: -0.58, dy: -0.30, min: UMBRAL.medio },
-            { f: 'cruz', c: '#C8102E', k: 0.40, dx: -0.58, dy: -0.30, min: UMBRAL.medio },
-            { f: 'estrella7', c: '#ffffff', k: 0.30, dx: -0.58, dy: 0.52 },
-            { f: 'cruzDelSur', c: '#ffffff', k: 0.62, dx: 0.42 },
+            // La Union Jack ARRIBA y centrada (no en la esquina): en una capsula
+            // tan estrecha la esquina la dejaba pisando el borde curvo y se
+            // comia medio dibujo. Debajo, la estrella de la Commonwealth y la
+            // Cruz del Sur.
+            { f: 'aspa', c: '#ffffff', k: 0.44, dy: -0.62, min: UMBRAL.medio },
+            { f: 'cruzGruesa', c: '#ffffff', k: 0.44, dy: -0.62, min: UMBRAL.medio },
+            { f: 'aspaFina', c: '#C8102E', k: 0.44, dy: -0.62, min: UMBRAL.medio },
+            { f: 'cruz', c: '#C8102E', k: 0.44, dy: -0.62, min: UMBRAL.medio },
+            { f: 'estrella7', c: '#ffffff', k: 0.30, dx: -0.52, dy: 0.55 },
+            { f: 'cruzDelSur', c: '#ffffff', k: 0.60, dx: 0.30, dy: 0.30 },
         ],
         lore: 'The Southern Cross only works as a compass if you are below the equator, which is a very Australian way of saying that the rules change depending on where you are standing. Everything here is larger than you and mildly hostile. You will fit right in.'
     },
@@ -268,7 +272,7 @@ const PAISES = {
     },
     JP: {
         n: 'Japan', b: ['#ffffff'], min: UMBRAL.siempre,
-        e: [{ f: 'disco', c: '#BC002D', k: 0.72 }],
+        e: [{ f: 'disco', c: '#BC002D', k: 0.95 }],
         lore: 'One circle. No text, no crest, no second idea. Every other flag on this list is trying to tell you something; this one just shows up. The simplest shape on the field is also the hardest to corner or escape from.'
     },
     SE: {
@@ -346,7 +350,7 @@ const PAISES = {
         lore: 'A river that crosses the equator twice, so somewhere along it the water is always in flood season no matter what month you name. Whatever direction you think you are going, the Congo has already been there and come back.'
     },
     GB: {
-        n: 'United Kingdom', b: ['#012169'], min: UMBRAL.siempre,
+        n: 'United Kingdom', b: ['#ffffff', '#012169', '#ffffff'], min: UMBRAL.siempre,
         e: [
             { f: 'aspa', c: '#ffffff', k: 1 },
             { f: 'cruzGruesa', c: '#ffffff', k: 1 },
@@ -370,8 +374,11 @@ const PAISES = {
         e: [
             // La grande, desde el primer pixel. Las cuatro pequeñas solo cuando la
             // banda da de si: a tamaño de partida eran manchas de un pixel.
-            { f: 'estrella', c: '#FFFF00', k: 0.62, dx: -0.42 },
-            { f: 'arcoEstrellas', c: '#FFFF00', k: 1, min: UMBRAL.medio },
+            // rot 90: el conjunto gira un cuarto de vuelta a la derecha, asi que
+            // la grande queda arriba y el arco de cuatro cae debajo, siguiendo
+            // el eje largo de la capsula en vez de cruzarlo.
+            { f: 'estrella', c: '#FFFF00', k: 0.62, dx: -0.42, rot: 90 },
+            { f: 'arcoEstrellas', c: '#FFFF00', k: 1, rot: 90, min: UMBRAL.medio },
         ],
         lore: 'One large star with four smaller ones turned toward it, each facing the same centre. Build the same thing here: every pill you swallow becomes another point of light orbiting whatever it is you are turning into at that moment.'
     },
@@ -399,7 +406,11 @@ function paisSkin(code) {
         // tamaño de partida eran cuatro manchas de un pixel que ensuciaban la
         // pildora en vez de leerse como estrellas. Sin declararlo, cada capa
         // hereda el umbral del pais y se comporta como antes.
+        // rot = grados que gira la capa, en sentido horario. Gira el SISTEMA de
+        // la capa, asi que dx/dy giran con ella y el conjunto se mueve entero
+        // (las cuatro estrellas de China y su estrella grande, por ejemplo).
         capas: (p.e || []).map(c => ({ forma: PAIS_FORMAS[c.f], color: c.c, k: c.k || 1, dx: c.dx || 0, dy: c.dy || 0,
+                                       rot: c.rot || 0,
                                        min: c.min === undefined ? minPais : c.min })),
         min: minPais,
     };
@@ -570,7 +581,8 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
     const bandaPx = medio * 2;
     const capas = skin.capas
         .filter(l => forzarEmblema || bandaPx >= l.min)
-        .map(l => ({ f: l.forma, c: _rgb(l.color), k: l.k, dx: l.dx, dy: l.dy }));
+        .map(l => ({ f: l.forma, c: _rgb(l.color), k: l.k, dx: l.dx, dy: l.dy,
+                     rc: Math.cos(l.rot * Math.PI / 180), rs: Math.sin(l.rot * Math.PI / 180) }));
     const embOn = capas.length > 0;
     const lado = Math.min(R, medio) * 0.80;
 
@@ -592,7 +604,11 @@ function paisPillRot(wL, code, ang, forzarEmblema) {
         if (capas.length && Math.abs(ly - embCy) < medio) {
             for (const l of capas) {
                 const L = lado * l.k;
-                const eu = (lx - l.dx * lado) / L, ev = (ly - embCy - l.dy * lado) / L;
+                // El giro va ANTES del desplazamiento para que dx/dy se lean en
+                // el sistema ya girado y la composicion entera rote junta.
+                const qx = lx, qy = ly - embCy;
+                const rx = qx * l.rc + qy * l.rs, ry = -qx * l.rs + qy * l.rc;
+                const eu = (rx - l.dx * lado) / L, ev = (ry - l.dy * lado) / L;
                 if (Math.abs(eu) <= 1 && Math.abs(ev) <= 1 && l.f(eu, ev)) base = l.c;
             }
         }
