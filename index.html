@@ -427,6 +427,16 @@
         #nav-play-area { display: none; align-items: center; gap: 10px; position: relative; }
         body.nav-play-visible #nav-play-area, body.layout-editing #nav-play-area { display: flex; }
         #nav-play-wrap { display: flex; }
+        /* Cuerpo de letra de PLAY NOW/CHOOSE MODES/CHOOSE SKINS en la barra,
+           AJUSTABLE APARTE de la caja (ALT+rueda, clave navPlay en
+           FONT_DEFAULTS): con solo la rueda de siempre (que escala la caja
+           entera) el texto crecia/encogia pegado al borde de la placa y quedaba
+           mal encuadrado — letra pegada arriba/abajo o desbordando. --pw-font
+           lo escribe apply() sobre #nav-play-area y cae en cascada a los 3
+           botones (misma clave, mismo tamaño de letra para el grupo). */
+        #nav-play-area .btn-connect, #nav-play-area .btn-deposit, #nav-play-area .btn-withdraw {
+            font-size: var(--pw-font, var(--fs-4));
+        }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
         #heroPickMe { cursor: pointer !important; user-select: none; }
@@ -4418,7 +4428,7 @@ function toggleTrailerMode() {
         // Cuerpo de letra por defecto de cada clave que admite ALT+rueda: el
         // mismo numero que el fallback de var(--pw-font, N) en su CSS. Hace
         // falta porque al leer --pw-font sin valor guardado no devuelve nada.
-        const FONT_DEFAULTS = { pillMenu: 13, caSign: 13, ca: 11 };
+        const FONT_DEFAULTS = { pillMenu: 13, caSign: 13, ca: 11, navPlay: 18 };
         // Tope de escala por clave. El general (3) se queda corto en los iconos
         // de skills: el del tooltip a 3x mide 192px dentro de una caja de
         // ~246px, asi que ni siquiera llega a tocar los lados para recortarse.
