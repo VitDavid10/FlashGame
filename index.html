@@ -450,45 +450,18 @@
            IntersectionObserver mas abajo). En EDIT LAYOUT se fuerza visible
            siempre, si no no habria forma de agarrarlo con el hero fuera de
            pantalla. Posicion/tamaño se mueven desde EDIT como el resto (clave
-           navPlay en HERO_LAYOUT_ELS). Mismo sitio/tamaño/desplegable que
-           CONNECT: reusa .wallet-area/.wallet-deposit-wrap/.wallet-dropdown-content
-           tal cual — #nav-play-wrap gana por especificidad de ID a la regla
-           "display:none" por defecto de .wallet-deposit-wrap (esa es solo para
-           cuando SI depende de "wallet conectada"; aqui PLAY NOW no depende de
-           nada, siempre se puede desplegar). */
+           navPlay en HERO_LAYOUT_ELS). Mismo sitio y mismo boton que CONNECT:
+           reusa .wallet-area/.wb-box tal cual. Aqui va SOLO PLAY NOW, sin
+           desplegable — CHOOSE MODES/CHOOSE SKINS solo estan en el hero. */
         #nav-play-area { display: none; align-items: center; gap: 10px; position: relative; }
         body.nav-play-visible #nav-play-area, body.layout-editing #nav-play-area { display: flex; }
-        #nav-play-wrap { display: flex; }
-        /* Cuerpo de letra de PLAY NOW/CHOOSE MODES/CHOOSE SKINS en la barra,
-           AJUSTABLE APARTE de la caja (ALT+rueda, clave navPlay en
-           FONT_DEFAULTS): con solo la rueda de siempre (que escala la caja
+        /* Cuerpo de letra AJUSTABLE APARTE de la caja (ALT+rueda, clave navPlay
+           en FONT_DEFAULTS): con solo la rueda de siempre (que escala la caja
            entera) el texto crecia/encogia pegado al borde de la placa y quedaba
-           mal encuadrado — letra pegada arriba/abajo o desbordando. --pw-font
-           lo escribe apply() sobre #nav-play-area y cae en cascada a los 3
-           botones (misma clave, mismo tamaño de letra para el grupo). */
+           mal encuadrado. --pw-font lo escribe apply() sobre #nav-play-area y
+           lo hereda el boton. */
         #nav-play-area .btn-connect {
             font-size: var(--pw-font, 15px);
-        }
-        /* CHOOSE MODES/CHOOSE SKINS: cada uno con su PROPIA clave de layout
-           (navChooseModes/navChooseSkins) en vez de heredar la de PLAY NOW —
-           antes compartian #nav-play-area entero, target() siempre resolvia al
-           grupo y no habia forma de agarrar cada boton por su cuenta.
-           La clave apunta al .wb-box, NO al <button>: apply() escribe
-           el.style.scale SIEMPRE (el neutro '1' explicito cuando no hay pieza
-           guardada), y sobre el boton eso pisaba su `scale: 0.8746` de CSS —
-           el boton saltaba a tamaño nativo, se salia de su caja de 166px y los
-           tres quedaban descuadrados en cuanto se tocaba uno. Sobre el .wb-box
-           el scale del editor se COMPONE con el del boton en vez de pisarlo.
-           --pw-font tambien se hereda del box al boton (las custom properties
-           heredan), asi que ALT+rueda sigue funcionando igual.
-           Mas pequeños por `scale` y NO por `width`: cambiar el width obliga al
-           navegador a re-rasterizar el background-image antes del drop-shadow y
-           deja un halo negro alrededor de la pildora (ver la nota de
-           .btn-connect mas arriba). 0.7 sobre los 190px nativos = 133px. */
-        #nav-play-area .wb-box-sub { width: 133px; height: 31.1px; }
-        #nav-play-area .btn-deposit, #nav-play-area .btn-withdraw {
-            scale: 0.7;
-            font-size: var(--pw-font, 10px);
         }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
@@ -1696,12 +1669,6 @@ body.trailer-open #page-content{
         pillDropdown: '#pill-dropdown',
         walletBal: '#wallet-bal-box',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
-        // navChooseModes/navChooseSkins van ANTES que navPlay por lo mismo que
-        // walletBtnTxt/pillMenu: estan DENTRO de #nav-play-area (el desplegable
-        // que abre PLAY NOW), asi que la clave mas especifica tiene que ganar
-        // primero o target() siempre resolvia al grupo entero — CHOOSE MODES/
-        // CHOOSE SKINS no se podian agarrar ni redimensionar por su cuenta.
-        navChooseModes: '#nav-choose-modes', navChooseSkins: '#nav-choose-skins',
         navPlay: '#nav-play-area',
         // Tooltip flotante de las skills (el cuadro que sale al pasar el
         // raton por SHOT/SPRINT/...). tooltipIcon va ANTES que skillTooltip
@@ -1729,12 +1696,6 @@ body.trailer-open #page-content{
         play:   { x: -58.5,  y: -4.5,    s: 1.2880203308689964 },
         pickMe: { x: -444.5, y: -7.25,   s: 2.4798680723250732 },
         pillDropdown: { x: 0, y: 0, s: 1 },
-        // Neutros: estas dos claves apuntan al .wb-box (el contenedor), que no
-        // trae scale propio de CSS — el del boton de dentro lo pone su clase y
-        // apply() ya no lo pisa. El 0.8746 que llevaban aqui era el parche de
-        // cuando la clave apuntaba al <button>.
-        navChooseModes: { x: 0, y: 0, s: 1 },
-        navChooseSkins: { x: 0, y: 0, s: 1 },
     };
     (function () {
         // El horneado es el diseño BUENO de fabrica, pero si ESTE usuario ya
@@ -1911,17 +1872,11 @@ body.trailer-open #page-content{
 
         <div class="nav-dropdown-group">
             <!-- PLAY NOW de la navbar: solo se ve fuera del hero (o siempre en
-                 EDIT LAYOUT). Mismo sitio y mismo boton que CONNECT (.btn-connect,
-                 tamaño navbar) y el mismo truco de desplegable que CONNECT->DEPOSIT
-                 para CHOOSE MODES/CHOOSE SKINS. -->
+                 EDIT LAYOUT). Mismo sitio y mismo boton que CONNECT
+                 (.btn-connect, tamaño navbar). SIN desplegable: aqui va solo
+                 PLAY NOW — CHOOSE MODES/CHOOSE SKINS siguen estando en el hero. -->
             <div class="wallet-area" id="nav-play-area">
-                <div class="wallet-deposit-wrap" id="nav-play-wrap">
-                    <div class="wb-box"><button class="btn-connect" onclick="HeroPlayModal.open()">PLAY NOW</button></div>
-                    <div class="wallet-dropdown-content">
-                        <div class="wb-box wb-box-sub" id="nav-choose-modes"><button class="btn-deposit" onclick="window.open('game/', '_blank')">CHOOSE MODES</button></div>
-                        <div class="wb-box wb-box-sub" id="nav-choose-skins"><button class="btn-withdraw" onclick="window.open('game/?heroskins=1', '_blank')">CHOOSE SKINS</button></div>
-                    </div>
-                </div>
+                <div class="wb-box"><button class="btn-connect" onclick="HeroPlayModal.open()">PLAY NOW</button></div>
             </div>
             <!-- Wallet: mismo montaje que /game (gameWalletArea). Balance IN GAME +
                  CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT) cuando ya
@@ -4505,26 +4460,6 @@ function toggleTrailerMode() {
             }
         })();
 
-        // MISMO problema y mismo remedio en el desplegable de PLAY NOW de la
-        // navbar (CHOOSE MODES / CHOOSE SKINS): con :hover puro, en cuanto
-        // mueves uno de los dos con el editor deja de estar debajo del wrap y
-        // el camino del raton hasta el pasa por fuera -> el desplegable se
-        // cerraba a medio recorrido y el boton no se podia ni clicar. Los
-        // mouseenter/mouseleave van sobre el wrap Y sobre cada boton movido,
-        // asi que el menu aguanta abierto vayan donde vayan.
-        (function () {
-            const wrap = document.getElementById('nav-play-wrap');
-            const menu = wrap && wrap.querySelector('.wallet-dropdown-content');
-            if (!wrap || !menu) return;
-            let cierre = null;
-            const abrir = () => { clearTimeout(cierre); menu.style.display = 'block'; };
-            const cerrar = () => { clearTimeout(cierre); cierre = setTimeout(() => menu.style.removeProperty('display'), 320); };
-            for (const el of [wrap, menu]) {
-                el.addEventListener('mouseenter', () => { if (!editing) abrir(); });
-                el.addEventListener('mouseleave', () => { if (!editing) cerrar(); });
-            }
-        })();
-
         document.addEventListener('pointerdown', (e) => {
             if (!editing || e.target.closest('#layoutEditBar')) return;
             const t = target(e); if (!t) return;
@@ -4536,7 +4471,7 @@ function toggleTrailerMode() {
         // .hero-main-content, asi que no llevan el scale de heroZoom: dividir
         // su arrastre por heroZoom haria que el raton y el elemento se
         // desincronizaran (heroZoom por defecto es 0.8).
-        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon', 'navPlay', 'navChooseModes', 'navChooseSkins', 'tooltipIcon', 'skillTooltip', 'skillIcon', 'skillCard']);
+        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon', 'navPlay', 'tooltipIcon', 'skillTooltip', 'skillIcon', 'skillCard']);
         window.addEventListener('pointermove', (e) => {
             if (!editing || !drag) return;
             const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
@@ -4550,7 +4485,7 @@ function toggleTrailerMode() {
         // Cuerpo de letra por defecto de cada clave que admite ALT+rueda: el
         // mismo numero que el fallback de var(--pw-font, N) en su CSS. Hace
         // falta porque al leer --pw-font sin valor guardado no devuelve nada.
-        const FONT_DEFAULTS = { pillMenu: 13, caSign: 13, ca: 11, navPlay: 15, navChooseModes: 10, navChooseSkins: 10 };
+        const FONT_DEFAULTS = { pillMenu: 13, caSign: 13, ca: 11, navPlay: 15 };
         // Tope de escala por clave. El general (3) se queda corto en los iconos
         // de skills: el del tooltip a 3x mide 192px dentro de una caja de
         // ~246px, asi que ni siquiera llega a tocar los lados para recortarse.
