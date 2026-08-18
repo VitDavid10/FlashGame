@@ -414,7 +414,16 @@
         .hero-game-veil { position: absolute; inset: 0; background: rgba(3,5,4,0.62);
             display: flex; align-items: flex-start; justify-content: center; padding-top: 24vh; pointer-events: none; }
         .hero-game-btns { display: flex; flex-direction: column; align-items: center; gap: 20px; pointer-events: auto; }
-        .hero-main-content { z-index: 2; text-align: center; padding: 0 20px; margin-top: 60px; }
+        /* pointer-events: none en el CONTENEDOR y auto en sus hijos: va con
+           z-index 2 sobre .hero-game-wrap (z-index 0, donde viven los 3
+           botones), y es una caja de ancho completo casi toda vacia — al mover
+           PLAY NOW al centro del hero con el editor caia debajo de ella y
+           dejaba de recibir clics (se podia arrastrar pero no pulsar). Ahora
+           solo capturan el raton las piezas de verdad (el cartel del contrato),
+           no el hueco vacio que las rodea. Mismo truco que ya usa
+           .hero-game-veil con .hero-game-btns. */
+        .hero-main-content { z-index: 2; text-align: center; padding: 0 20px; margin-top: 60px; pointer-events: none; }
+        .hero-main-content > * { pointer-events: auto; }
         /* PLAY NOW: ya no es el PNG banner alargado (1856x560), es un boton real
            con una placa pixel-art generada por canvas (heroPlayBtnPlate, mismo
            dibujo que _pmPlateUrl de la Skin Store: reborde oscuro + bisel claro),
@@ -1315,6 +1324,10 @@ body.trailer-open #page-content{
         #deposit-modal .modal-box .max-btn, #withdraw-modal .modal-box .max-btn {
             font-family: 'Press Start 2P', monospace !important; font-size: var(--fs-1) !important; letter-spacing: 0; }
         #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field, #hero-name-modal .cmodal-field { border-radius: 0 !important; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important; }
+        /* Al escribir el nombre, el campo se encendia en VERDE: .cmodal-field:focus
+           usa var(--primary), el verde de marca de la landing. Aqui el cartel es
+           el gris (menu-gris.png) y desentonaba — mismo gris del marco. */
+        #hero-name-modal .cmodal-field:focus { border-color: #8a939c; }
         /* Boton de #hero-name-modal: NO ok-gris.png (lleva "OK" horneado) sino
            btn-plain-grey.png, la placa lisa sin texto que usa .btn-play/
            .btn-settings dentro del juego — asi el rotulo PLAY NOW se lee de
@@ -1623,7 +1636,7 @@ body.trailer-open #page-content{
            herramienta de diseño para colocar titulo/PLAY NOW/cartel/contrato.
            Quitar el boton, esta hoja y LandingLayout cuando quede fijado. ===== */
         body.layout-editing .hero-editable { outline: 2px dashed rgba(255,255,255,0.55); outline-offset: 3px; cursor: move !important; transition: none !important; }
-        body.layout-editing .hero-editable:hover { outline-color: var(--primary); }
+        body.layout-editing .hero-editable:hover { outline-color: #c8cdd2; }
         /* flex-wrap + max-width: con los grupos de −/+ la barra ya no cabe de
            una linea en 1280px, y sin envolver se salia por los lados. */
         #layoutEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 100001; display: flex; flex-wrap: wrap; justify-content: center; max-width: 96vw; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
@@ -4300,25 +4313,31 @@ function toggleTrailerMode() {
                 return null;
             };
             const arriba = primero(e.target);
-            if (!arriba || e.clientX == null || !document.elementsFromPoint) return arriba;
-            // Piezas HERMANAS solapadas (las dos .wb-box del desplegable de PLAY
-            // NOW, p.ej.): elementFromPoint solo ve la de encima, asi que en
-            // cuanto una tapaba a la otra con el editor la de debajo se quedaba
-            // imposible de agarrar — y si la tapaba entera, sin salida ninguna.
-            // Entre hermanas gana la que tenga el CENTRO mas cerca del raton,
-            // asi siempre se puede llegar a las dos apuntando a su mitad.
-            // SOLO entre hermanas: las relaciones padre/hijo (el rotulo dentro
-            // del boton) siguen mandando por orden de LAYOUT_ELS, que es lo que
-            // hace que el texto se agarre aparte de su caja.
+            if (e.clientX == null || !document.elementsFromPoint) return arriba;
+            // Piezas SOLAPADAS: elementFromPoint (y por tanto e.target) solo ve
+            // la de ENCIMA, asi que en cuanto algo tapaba una pieza esta se
+            // quedaba imposible de agarrar en el editor. Dos casos, los dos
+            // reales aqui:
+            //   - la tapa OTRA PIEZA editable (las dos .wb-box del desplegable
+            //     de PLAY NOW, al mover una sobre la otra),
+            //   - la tapa algo que NO es editable (el hero, un overlay...): ahi
+            //     e.target ni siquiera resuelve a una clave y antes se salia con
+            //     null sin llegar a mirar debajo — el boton no respondia a nada.
+            // Por eso se recorre TODA la pila bajo el raton, con o sin pieza
+            // arriba, y gana la de CENTRO mas cercano: siempre se puede llegar a
+            // cualquiera apuntando a su mitad.
+            // Las relaciones PADRE/HIJO se dejan fuera del desempate: ahi sigue
+            // mandando el orden de LAYOUT_ELS, que es lo que hace que el rotulo
+            // se agarre aparte de la caja que lo contiene.
             const dist = (el) => {
                 const b = el.getBoundingClientRect();
                 return Math.hypot(e.clientX - (b.left + b.width / 2), e.clientY - (b.top + b.height / 2));
             };
-            let mejor = arriba, mejorD = dist(arriba.el);
+            let mejor = arriba, mejorD = arriba ? dist(arriba.el) : Infinity;
             for (const nodo of document.elementsFromPoint(e.clientX, e.clientY)) {
                 const c = primero(nodo);
-                if (!c || c.el === arriba.el) continue;
-                if (c.el.parentElement !== arriba.el.parentElement) continue;
+                if (!c) continue;
+                if (arriba && (c.el === arriba.el || c.el.contains(arriba.el) || arriba.el.contains(c.el))) continue;
                 const d = dist(c.el);
                 if (d < mejorD) { mejorD = d; mejor = c; }
             }

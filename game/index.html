@@ -9800,7 +9800,12 @@
         sim = new PillSim.Simulation({
             mode: 'arcade', mapSize: WORLD_CONFIG.arcade.size, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
             botConfig: { enabled: true, count: 25, respawn: true }, maxBotCells: 4,
-            botPlayerGraceMs: 0, fx: { enabled: true, enemyFX: enableEnemyFX }
+            // 15s de gracia: durante ese rato los bots ni cazan ni huyen de la
+            // pildora del fondo (ver botPlayerGraceMs en shared/sim.js). Con 0
+            // se le echaban encima nada mas arrancar y se la comian en segundos,
+            // que es justo lo que tapaba el juego de fondo. Pasado el margen
+            // vuelven a hacerle caso, asi que a veces la persiguen.
+            botPlayerGraceMs: 15000, fx: { enabled: true, enemyFX: enableEnemyFX }
         });
         sim.populate();
         MAP_SIZE = sim.mapSize;
@@ -9843,7 +9848,14 @@
             if (d < bestD) { bestD = d; target = f; }
         }
         let wx, wy;
-        if (target) { wx = target.x; wy = target.y; }
+        // Anti-encallado: el mapa va centrado en 0 (|x|,|y| <= MAP_SIZE). Pegada
+        // a un borde, la comida mas cercana suele estar tambien pegada o al otro
+        // lado del muro, asi que la pill se quedaba empujando la pared para
+        // siempre — el "juego parado en un extremo del mapa". Dentro del margen
+        // manda volver al centro, que siempre la despega. Mismo criterio que
+        // usan los bots en shared/sim.js (ver el corte por mapSize - 200).
+        if (Math.abs(c0.x) > MAP_SIZE - 400 || Math.abs(c0.y) > MAP_SIZE - 400) { wx = 0; wy = 0; }
+        else if (target) { wx = target.x; wy = target.y; }
         else { const a = Math.random() * Math.PI * 2; wx = c0.x + Math.cos(a) * 400; wy = c0.y + Math.sin(a) * 400; }
         const es = getViewScale();
         mouse.x = (wx - camera.x) * es + width / 2;
