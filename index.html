@@ -13,6 +13,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PillWars - The Crypto Arena</title>
+
+    <!-- Placa pixel de CONNECT/PLAY NOW/DEPOSIT/etc: se calcula AQUI, antes de
+         pintar nada, para que --wallet-placa ya este puesta la primera vez que
+         el navegador pinta esos botones. Sin esto se veia el PNG plano
+         (wallet-btn-red.png, el fallback que tenia el var() del CSS) un
+         instante antes de saltar a la textura pixel real — el dibujo tarda
+         microsegundos, no hay motivo para tener fallback ninguno. -->
+    <script>
+    (function () {
+        var W = 48, H = 11, CUT = 2, RGB = [246, 42, 45];   // #f62a2d, el rojo de wallet-btn-red.png
+        function placa() {
+            var cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            var g = cv.getContext('2d');
+            g.imageSmoothingEnabled = false;
+            var sh = function (f) { return RGB.map(function (v) { return Math.min(255, Math.round(v * f)); }); };
+            var lit = function (t) { return RGB.map(function (v) { return Math.round(v + (255 - v) * t); }); };
+            var inside = function (x, y) {
+                if (x < 0 || y < 0 || x >= W || y >= H) return false;
+                var dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
+                return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+            };
+            var img = g.createImageData(W, H), px = img.data;
+            var C_RIM = sh(0.38), C_LIT = lit(0.32), C_DIM = sh(0.70);
+            for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+                if (!inside(x, y)) continue;
+                var ring = 2;
+                for (var r = 1; r <= 2 && ring === 2; r++) {
+                    for (var oy = -1; oy <= 1 && ring === 2; oy++) for (var ox = -1; ox <= 1; ox++) {
+                        if ((!ox && !oy) || inside(x + ox * r, y + oy * r)) continue;
+                        ring = r - 1; break;
+                    }
+                }
+                var col = ring === 0 ? C_RIM
+                    : ring === 1 ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM)
+                    : RGB;
+                var i = ((y * W + x) << 2);
+                px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
+            }
+            g.putImageData(img, 0, 0);
+            return cv.toDataURL();
+        }
+        document.documentElement.style.setProperty('--wallet-placa', 'url(' + placa() + ')');
+    })();
+    </script>
     <!-- FAVICON -->
     <link rel="icon" href="img/web.png">
 
@@ -288,11 +333,13 @@
         }
         /* Placa pixel (el mismo dibujo que los botones de /game): reborde oscuro
            del propio color, bisel claro arriba-izquierda y esquinas en escalon.
-           La genera el script del final en --wallet-placa. Con el estilo 2
-           (body.placa-off) no se define la variable y vuelve el PNG de siempre. */
+           La genera un script en la cabecera, antes de pintar nada (--wallet-placa
+           ya esta puesta al llegar aqui, sin fallback: no hace falta, no tarda).
+           Con el estilo 2 (body.placa-off) no se aplica esta regla y vuelve el
+           PNG de siempre de la regla base de arriba. */
         body:not(.placa-off) .btn-connect, body:not(.placa-off) .btn-deposit,
         body:not(.placa-off) .btn-withdraw, body:not(.placa-off) .btn-disconnect {
-            background-image: var(--wallet-placa, url('game/img/cartel-hero/wallet-btn-red.png'));
+            background-image: var(--wallet-placa);
             image-rendering: pixelated;
         }
         .btn-connect:hover, .btn-deposit:hover, .btn-withdraw:hover, .btn-disconnect:hover { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
@@ -4668,52 +4715,12 @@ function toggleTrailerMode() {
     })();
     </script>
 <script>
-// ===== Placa pixel de CONNECT / DEPOSIT / WITHDRAW / DISCONNECT =====
-// Mismo dibujo que en /game, en pequeno y autocontenido (aqui no hay pixfont ni
-// el resto del motor). Los botones miden 190x44.4 de caja, asi que 48x11 pixeles
-// lowres dejan el bloque del tamano al que se ve el pixel en el juego.
-(function () {
-    var W = 48, H = 11, CUT = 2, RGB = [246, 42, 45];   // #f62a2d, el rojo de wallet-btn-red.png
-    function placa() {
-        var cv = document.createElement('canvas');
-        cv.width = W; cv.height = H;
-        var g = cv.getContext('2d');
-        g.imageSmoothingEnabled = false;
-        var sh = function (f) { return RGB.map(function (v) { return Math.min(255, Math.round(v * f)); }); };
-        var lit = function (t) { return RGB.map(function (v) { return Math.round(v + (255 - v) * t); }); };
-        var inside = function (x, y) {
-            if (x < 0 || y < 0 || x >= W || y >= H) return false;
-            var dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
-            return dx >= CUT || dy >= CUT || dx + dy >= CUT;
-        };
-        var img = g.createImageData(W, H), px = img.data;
-        var C_RIM = sh(0.38), C_LIT = lit(0.32), C_DIM = sh(0.70);
-        for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
-            if (!inside(x, y)) continue;
-            var ring = 2;
-            for (var r = 1; r <= 2 && ring === 2; r++) {
-                for (var oy = -1; oy <= 1 && ring === 2; oy++) for (var ox = -1; ox <= 1; ox++) {
-                    if ((!ox && !oy) || inside(x + ox * r, y + oy * r)) continue;
-                    ring = r - 1; break;
-                }
-            }
-            var col = ring === 0 ? C_RIM
-                : ring === 1 ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM)
-                : RGB;
-            var i = ((y * W + x) << 2);
-            px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
-        }
-        g.putImageData(img, 0, 0);
-        return cv.toDataURL();
-    }
-    document.documentElement.style.setProperty('--wallet-placa', 'url(' + placa() + ')');
-    // Estilo 2 desde el panel admin: se pide una vez al cargar y, si esta puesto,
-    // la clase devuelve los PNG de siempre (la variable deja de aplicarse).
-    fetch('/api/rooms', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
-        if (d && d.menuCartelStyle === 2) document.body.classList.add('placa-off');
-    }).catch(function () {});
-})();
-
+// Estilo 2 desde el panel admin: se pide una vez al cargar y, si esta puesto,
+// vuelve el PNG de siempre (ver body.placa-off en el CSS). El dibujo de
+// --wallet-placa esta en la cabecera, antes de pintar nada.
+fetch('/api/rooms', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.menuCartelStyle === 2) document.body.classList.add('placa-off');
+}).catch(function () {});
     </script>
 </body>
 </html>

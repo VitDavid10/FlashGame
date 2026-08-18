@@ -1949,10 +1949,15 @@
             document.documentElement.setAttribute('data-pwlab', '1');
             document.write('<style>#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
         }
-        if (/[?&]hero=1\b/.test(location.search)) {
+        else if (/[?&]hero=1\b/.test(location.search)) {
             document.write('<style>#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
-        }
-        if (/[?&](heroplay|heroskins)=1\b/.test(location.search)) {
+        } else {
+            // TODOS los demas arranques (entrada normal incluida, no solo
+            // heroplay/heroskins): menuLayout sale primero con el horneado del
+            // codigo y solo se corrige cuando responde refreshOracle() (ver el
+            // bloque de arranque al final del body) — sin ocultar aqui se veia
+            // ese salto de layout horneado -> guardado en CUALQUIER visita, no
+            // solo en las que abre el hero.
             document.write('<style id="_heroBootHide">#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
         }
     </script>
@@ -10948,13 +10953,14 @@
     // y las 10 casillas de skill se quedaban visibles hasta la siguiente vez
     // que algo volvia a llamarla (p.ej. elegir una skill).
     //
-    // heroplay/heroskins pasan ademas por showLoadingScreen (el mismo cartel
-    // de carga de siempre entrar en partida online) hasta que refreshOracle()
-    // haya aplicado el layout guardado del servidor (menuLayout, EDIT LAYOUT):
-    // sin esto se veia un instante el layout horneado/por defecto antes de
-    // saltar al de verdad en cuanto llegaba la respuesta. hero=1 (el fondo del
-    // iframe) no lo necesita: heroAmbientDemo no toca ningun elemento posicionado
-    // por menuLayout.
+    // TODOS los arranques (entrada normal incluida) pasan por showLoadingScreen
+    // (el mismo cartel de carga de siempre entrar en partida online) hasta que
+    // refreshOracle() haya aplicado el layout guardado del servidor (menuLayout,
+    // EDIT LAYOUT): sin esto se veia un instante el layout horneado/por defecto
+    // antes de saltar al de verdad en cuanto llegaba la respuesta — en
+    // CUALQUIER visita a la pagina, no solo en las que abre el hero. hero=1 (el
+    // fondo del iframe) no lo necesita: heroAmbientDemo no toca ningun elemento
+    // posicionado por menuLayout.
     (function () {
         const qs = new URLSearchParams(location.search);
         const quitarVelo = () => { const st = document.getElementById('_heroBootHide'); if (st) st.remove(); };
@@ -10963,12 +10969,19 @@
             return;
         }
         const modo = qs.get('heroplay') === '1' ? 'heroplay' : qs.get('heroskins') === '1' ? 'heroskins' : null;
-        if (!modo) return;
-        let layoutReady = false;
+        // readyFn no mira SOLO el layout del servidor: tambien espera a que las
+        // fuentes (Press Start 2P/Russo One, las que usa todo el rotulo del
+        // menu) hayan terminado de cargar. document.fonts.ready resuelve en
+        // cuanto el navegador termina de resolver TODAS las fuentes en uso (ok
+        // o error, nunca se queda colgada) — sin esto el texto podia pintarse
+        // un instante con la tipografia de reserva antes de saltar a la real.
+        let layoutReady = false, fontsReady = false;
         refreshOracle().catch(() => {}).then(() => { layoutReady = true; });
-        showLoadingScreen(500, () => layoutReady, () => {
+        (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => { fontsReady = true; });
+        showLoadingScreen(500, () => layoutReady && fontsReady, () => {
             if (modo === 'heroplay') { heroQuickPlay(qs.get('name') || ''); quitarVelo(); }
-            else { heroShowSkinsStore().then(quitarVelo); }
+            else if (modo === 'heroskins') { heroShowSkinsStore().then(quitarVelo); }
+            else quitarVelo();
         });
     })();
 
