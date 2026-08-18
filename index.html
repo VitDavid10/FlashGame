@@ -4605,8 +4605,9 @@ function toggleTrailerMode() {
      * llega nunca (ni le pisa el autopiloto ni hace falta bloquear clics a
      * mano) y los 3 botones no tocan ese fondo para nada.
      *
-     * Los 3 botones abren el juego de VERDAD en una pestaña aparte, cada uno
-     * con su propio arranque directo (ver el bloque final de game/index.html):
+     * Los 3 botones abren el juego de VERDAD en la MISMA pestaña (location.href,
+     * no window.open), cada uno con su propio arranque directo (ver el bloque
+     * final de game/index.html):
      *   PLAY NOW      -> game/?heroplay=1&name=... : offline arcade directa,
      *                     skin basica. Su 1a muerte salta TRY AGAIN.
      *   CHOOSE MODES  -> game/ tal cual: la pantalla de modos de siempre.
@@ -4626,8 +4627,8 @@ function toggleTrailerMode() {
         const btnSkins = document.getElementById('heroChooseSkins');
         if (!btnPlay) return;
         btnPlay.onclick = () => HeroPlayModal.open();
-        if (btnModes) btnModes.onclick = () => { window.open('game/', '_blank'); };
-        if (btnSkins) btnSkins.onclick = () => { window.open('game/?heroskins=1', '_blank'); };
+        if (btnModes) btnModes.onclick = () => { window.location.href = 'game/'; };
+        if (btnSkins) btnSkins.onclick = () => { window.location.href = 'game/?heroskins=1'; };
     })();
     // Modal de nombre de PLAY NOW: mismo modal-overlay/cmodal-* que el de
     // contacto, en vez del prompt() nativo del navegador.
@@ -4644,7 +4645,7 @@ function toggleTrailerMode() {
             const input = document.getElementById('hero-name-input');
             const nombre = (input ? input.value : '').trim().slice(0, 12);
             this.close();
-            window.open('game/?heroplay=1&name=' + encodeURIComponent(nombre), '_blank');
+            window.location.href = 'game/?heroplay=1&name=' + encodeURIComponent(nombre);
         },
     };
     window.HeroPlayModal = HeroPlayModal;   // los onclick="" inline del modal necesitan verla en window
