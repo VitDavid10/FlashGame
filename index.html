@@ -411,7 +411,13 @@
            falta mas grande. scale:1 porque el 0.87 de .btn-connect es un ajuste
            fino de la navbar que aqui no pinta nada (no hay layout horneado que
            lo compense). */
-        .hero-play.btn-connect { width: 300px; scale: 1; font-size: 15px; }
+        /* width bajado de 300 a 220 (y letra subida de 15 a 17): a 300px "PLAY
+           NOW" solo llenaba el 40% de la placa (medido con canvas.measureText)
+           contra el 63% de "CHOOSE MODES" en su caja de 210px — se veia
+           mucho hueco rojo a los lados. A 220/17 vuelve al mismo ~62% de
+           relleno que los botones secundarios, y sigue leyendo como el
+           principal (caja y letra mas grandes que hero-play-sub). */
+        .hero-play.btn-connect { width: 220px; scale: 1; font-size: 17px; }
         /* CHOOSE MODES / CHOOSE SKINS: la misma placa, mas pequeñas — CTAs
            secundarias frente a PLAY NOW. */
         .hero-play-sub.btn-connect { width: 210px; font-size: 11px; }
@@ -436,19 +442,23 @@
            mal encuadrado — letra pegada arriba/abajo o desbordando. --pw-font
            lo escribe apply() sobre #nav-play-area y cae en cascada a los 3
            botones (misma clave, mismo tamaño de letra para el grupo). */
-        #nav-play-area .btn-connect, #nav-play-area .btn-deposit, #nav-play-area .btn-withdraw {
+        #nav-play-area .btn-connect {
             font-size: var(--pw-font, var(--fs-4));
         }
-        /* CHOOSE MODES/CHOOSE SKINS (el desplegable) mas pequenos que PLAY NOW:
-           mismo criterio que hero-play-sub en el hero (boton principal grande,
-           los dos secundarios mas chicos) — a la caja de 190px de PLAY NOW,
-           "CHOOSE MODES"/"CHOOSE SKINS" no cabian a la misma letra y sobresalian
-           por los lados. calc() sobre el mismo --pw-font: si se agranda el grupo
-           entero con ALT+rueda, estos siguen proporcionalmente mas pequenos. */
-        #nav-play-area .wallet-dropdown-content .btn-deposit,
-        #nav-play-area .wallet-dropdown-content .btn-withdraw {
+        /* CHOOSE MODES/CHOOSE SKINS: cada uno con su PROPIA clave de layout
+           (navChooseModes/navChooseSkins) en vez de heredar la de PLAY NOW —
+           antes compartian #nav-play-area entero, target() siempre resolvia al
+           grupo y no habia forma de agarrar/redimensionar cada boton por su
+           cuenta (el desplegable ademas se ve "roto": al ser position:absolute
+           queda fuera de la caja de PLAY NOW y no se le podia poner el
+           recuadro punteado de EDIT LAYOUT). Con clave propia cada uno tiene
+           su propio --pw-font (ALT+rueda) y su propio scale (rueda), igual que
+           chooseModes/chooseSkins en el hero. width mas pequeño de fabrica
+           porque "CHOOSE MODES"/"CHOOSE SKINS" no cabian en los 190px de
+           PLAY NOW a la misma letra y sobresalian por los lados. */
+        #nav-play-area .btn-deposit, #nav-play-area .btn-withdraw {
             width: 133px;
-            font-size: calc(var(--pw-font, var(--fs-4)) * 0.73);
+            font-size: var(--pw-font, 13px);
         }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
@@ -1652,6 +1662,12 @@ body.trailer-open #page-content{
         pillDropdown: '#pill-dropdown',
         walletBal: '#wallet-bal-box',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
+        // navChooseModes/navChooseSkins van ANTES que navPlay por lo mismo que
+        // walletBtnTxt/pillMenu: estan DENTRO de #nav-play-area (el desplegable
+        // que abre PLAY NOW), asi que la clave mas especifica tiene que ganar
+        // primero o target() siempre resolvia al grupo entero — CHOOSE MODES/
+        // CHOOSE SKINS no se podian agarrar ni redimensionar por su cuenta.
+        navChooseModes: '#nav-choose-modes', navChooseSkins: '#nav-choose-skins',
         navPlay: '#nav-play-area',
         // Tooltip flotante de las skills (el cuadro que sale al pasar el
         // raton por SHOT/SPRINT/...). tooltipIcon va ANTES que skillTooltip
@@ -1862,8 +1878,8 @@ body.trailer-open #page-content{
                 <div class="wallet-deposit-wrap" id="nav-play-wrap">
                     <div class="wb-box"><button class="btn-connect" onclick="HeroPlayModal.open()">PLAY NOW</button></div>
                     <div class="wallet-dropdown-content">
-                        <div class="wb-box"><button class="btn-deposit" onclick="window.open('game/', '_blank')">CHOOSE MODES</button></div>
-                        <div class="wb-box"><button class="btn-withdraw" onclick="window.open('game/?heroskins=1', '_blank')">CHOOSE SKINS</button></div>
+                        <div class="wb-box"><button class="btn-deposit" id="nav-choose-modes" onclick="window.open('game/', '_blank')">CHOOSE MODES</button></div>
+                        <div class="wb-box"><button class="btn-withdraw" id="nav-choose-skins" onclick="window.open('game/?heroskins=1', '_blank')">CHOOSE SKINS</button></div>
                     </div>
                 </div>
             </div>
@@ -4427,7 +4443,7 @@ function toggleTrailerMode() {
         // .hero-main-content, asi que no llevan el scale de heroZoom: dividir
         // su arrastre por heroZoom haria que el raton y el elemento se
         // desincronizaran (heroZoom por defecto es 0.8).
-        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon', 'navPlay', 'tooltipIcon', 'skillTooltip', 'skillIcon', 'skillCard']);
+        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon', 'navPlay', 'navChooseModes', 'navChooseSkins', 'tooltipIcon', 'skillTooltip', 'skillIcon', 'skillCard']);
         window.addEventListener('pointermove', (e) => {
             if (!editing || !drag) return;
             const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
@@ -4441,7 +4457,7 @@ function toggleTrailerMode() {
         // Cuerpo de letra por defecto de cada clave que admite ALT+rueda: el
         // mismo numero que el fallback de var(--pw-font, N) en su CSS. Hace
         // falta porque al leer --pw-font sin valor guardado no devuelve nada.
-        const FONT_DEFAULTS = { pillMenu: 13, caSign: 13, ca: 11, navPlay: 18 };
+        const FONT_DEFAULTS = { pillMenu: 13, caSign: 13, ca: 11, navPlay: 18, navChooseModes: 13, navChooseSkins: 13 };
         // Tope de escala por clave. El general (3) se queda corto en los iconos
         // de skills: el del tooltip a 3x mide 192px dentro de una caja de
         // ~246px, asi que ni siquiera llega a tocar los lados para recortarse.
