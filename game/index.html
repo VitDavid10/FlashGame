@@ -1783,7 +1783,7 @@
                promedia, y como el dibujo viene al doble de resolucion el
                resultado es el mismo trazo, limpio y sin irregularidades. */
             image-rendering: auto;
-            filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.9));
+            filter: none;
         }
         /* ===== Correccion tonal del arte v4, distinta por modo. El v4 viene
            apagado (el ARCADE perdio un 18% de luminancia respecto al anterior y
@@ -1862,11 +1862,11 @@
            cada modo tiene el suyo). 1 = el valor de diseno, 0 = sin halo. */
         body.pixel-pack #modeTitlePw img,
         body.pixel-pack #modeTitleWord img {
-            filter: brightness(0.85) contrast(1.3) drop-shadow(0 0 calc(6px * var(--title-glow, 1)) rgba(0,255,136,0.6)) drop-shadow(0 0 calc(14px * var(--title-glow, 1)) rgba(0,255,136,0.35)) drop-shadow(2px 2px 0 rgba(0,0,0,0.5));
+            filter: none;
         }
         #loginOverlay.bg-arcade #modeTitlePw img,
         #loginOverlay.bg-arcade #modeTitleWord img {
-            filter: contrast(1.3) drop-shadow(0 0 calc(6px * var(--title-glow, 1)) rgba(204,255,0,0.6)) drop-shadow(0 0 calc(14px * var(--title-glow, 1)) rgba(204,255,0,0.35)) drop-shadow(2px 2px 0 rgba(0,0,0,0.5));
+            filter: none;
         }
 
         /* ===== Tipografia de los carteles laterales (ROOM · PRICES y DAILY
