@@ -1933,10 +1933,27 @@
          mientras la comparativa terminaba de congelar la UI, un clic en
          ARCADE/CLASSIC te metía en una partida local. initFrame (en
          comparativa.html) hace el resto. -->
+    <!-- El hero de la landing embebe esta pagina en un iframe (?hero=1, fondo
+         decorativo) y abre pestañas nuevas con ?heroplay=1 (PLAY NOW) o
+         ?heroskins=1 (CHOOSE SKINS): mismo problema de fondo que ?pwlab
+         (modeScreen se ve un instante antes de que el JS de mas abajo decida
+         saltarselo), mismo remedio — ocultar YA, en el parseo.
+         hero=1 lo oculta para SIEMPRE (el iframe del hero es decoracion pura:
+         heroAmbientDemo la reemplaza entera y nunca hace falta volver a
+         mostrar el login/los modos ahi dentro). heroplay/heroskins SI
+         necesitan volver a verse mas tarde (goBackToModes, returnToMenu tras
+         la partida), asi que su <style> es temporal: el bloque de arranque de
+         mas abajo lo quita en cuanto termina de montar la pantalla. -->
     <script>
         if (location.search.indexOf('pwlab') !== -1) {
             document.documentElement.setAttribute('data-pwlab', '1');
             document.write('<style>#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
+        }
+        if (/[?&]hero=1\b/.test(location.search)) {
+            document.write('<style>#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
+        }
+        if (/[?&](heroplay|heroskins)=1\b/.test(location.search)) {
+            document.write('<style id="_heroBootHide">#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
         }
     </script>
 
@@ -6006,7 +6023,11 @@
             for (const img of el.querySelectorAll('img')) img.decode().then(centrarTitulo).catch(() => {});
         }
     }
-    function selectMode(m) {
+    // instant = true salta la animacion de 1200ms y muestra el login ya
+    // montado: lo usa el arranque directo de las pestañas ?heroskins=1 que
+    // abre el hero (no tiene sentido animar una transicion que nadie vio
+    // empezar).
+    function selectMode(m, instant) {
         // Arte pesado (carteles y iconos de skill): aqui es donde empieza a
         // pedirse, ver cartel-hero.js. La pantalla de modos no lo necesita.
         cartelHeroLoad(); skillIconLoad();
@@ -6077,8 +6098,7 @@
         // Sincronizar skins ANTES de mostrar el login para que la pildora sea correcta
         const showLogin = async () => {
             if (typeof paisSync === 'function') await paisSync();
-            // Usar setTimeout para cambiar de pantalla despues de la animacion
-            setTimeout(() => {
+            const ir = () => {
                 // Repinta el fondo del login con la deco YA reubicada a huecos, con el
                 // login todavía oculto: así aparece colocada de golpe, sin que se vea
                 // el reacomodo (el selector movió la deco durante estos 1200ms).
@@ -6091,9 +6111,10 @@
                 // La wallet entra AQUI, con el menu ya montado (ver arriba).
                 if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
                 els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
-            }, 1200);
+            };
+            if (instant) ir(); else setTimeout(ir, 1200);
         };
-        showLogin();
+        return showLogin();
     }
 
     function goBackToModes() {
@@ -7910,6 +7931,14 @@
         return lineaKills(kills);   // matchFinished
     }
     function showResultsUI(tipo, extra) {
+        // 1a muerte de la partida disparada desde PLAY NOW del hero: nada de
+        // TRY AGAIN, vuelta directa al menu (ver heroQuickPlay). Solo aplica a
+        // GAME OVER — MATCH FINISHED/victory no son "morir", se dejan igual.
+        if (tipo === 'gameOver' && _heroSkipTryAgain) {
+            _heroSkipTryAgain = false;
+            returnToMenu();
+            return;
+        }
         hideSpectatorBar();
         // Si moriste con el modal gris de salir abierto (o con el cashout en
         // marcha), se cierra solo: manda el cartel de resultado.
@@ -9696,17 +9725,28 @@
     // (los colores por defecto de colTop/colBot). Que la primera muerte salte
     // TRY AGAIN lo decide index.html sobreescribiendo showResultsUI desde
     // fuera (mismo truco que comparativa.html con returnToMenu).
+    // PLAY NOW del hero: nombre + partida offline arcade directa, skin basica.
+    // _heroSkipTryAgain marca esa PRIMERA partida para que su primera muerte
+    // salte TRY AGAIN (ver showResultsUI): vuelve directo al menu en vez de
+    // dejar a alguien que solo queria probar la landing plantado en un cartel
+    // de resultado. Se consume una sola vez.
+    let _heroSkipTryAgain = false;
     function heroQuickPlay(name) {
         playerName = String(name || '').trim().slice(0, 12) || 'Player';
+        _heroSkipTryAgain = true;
+        // startPracticeGame() no toca modeScreen (normalmente ya esta oculta
+        // de haber pasado por selectMode antes): aqui se salta directo, asi
+        // que hay que ocultarla a mano o reaparece en cuanto se quite el
+        // <style> temporal del arranque (_heroBootHide).
+        els.modeScreen.style.display = 'none';
         startPracticeGame('arcade');
     }
-    // CHOOSE SKINS del hero: catalogo grande, pestana SKINS STORE, tenido de
-    // arcade. skinBigOpen() ya cae en la pestana 'skins' salvo que sidePanelTab
-    // sea 'mine', pero se fuerza explicito por si una sesion previa lo dejo ahi.
-    function heroShowSkinsStore() {
-        _loginBgMode = 'arcade'; currentGameMode = 'arcade';
-        skinBigOpen();
-        skinBigTab('skins');
+    // CHOOSE SKINS del hero: entra directo a ARCADE (selectMode instantaneo,
+    // sin la animacion de 1200ms que nadie vio empezar) con el panel pequeño
+    // ya en la pestaña SKINS (la 2, tras MISSIONS) — NO el catalogo grande.
+    async function heroShowSkinsStore() {
+        await selectMode('arcade', true);
+        if (sidePanelTab !== 'skins') switchSidePanel();
     }
     // Fondo del hero antes de pulsar ningun boton: una partida arcade real con
     // bots, sin "yo" — la camara sigue al bot mas grande, mismo criterio que
@@ -9714,6 +9754,16 @@
     // updateGame), aplicado aqui a una sim offline. No usa startSpectatorMode():
     // esa lee inputs de un panel de ajustes (botsToggle, mapMult...) que ya no
     // existe en el HTML y peta en su primera linea.
+    // Fondo del hero antes de pulsar ningun boton: una pill jugable real, con
+    // skin basica (los mismos colores de fabrica de colTop/colBot) y sin
+    // nombre, en autopiloto hacia la comida mas cercana — la misma vista que
+    // tendrias jugando tu, no una camara de espectador alejada. Al morir,
+    // practiceMode ya la reaparece al instante (mismo camino que "esperando
+    // partida online", ver el caso 'playerDied' en processSimEvents), asi que
+    // no hace falta logica de respawn propia. No usa startSpectatorMode(): esa
+    // lee inputs de un panel de ajustes (botsToggle, mapMult...) que ya no
+    // existe en el HTML y peta en su primera linea.
+    let heroAutopilotActive = false, _heroAutopilotTimer = null;
     function heroAmbientDemo() {
         currentGameMode = 'arcade';
         sim = new PillSim.Simulation({
@@ -9724,17 +9774,80 @@
         sim.populate();
         MAP_SIZE = sim.mapSize;
         explosions = [];
-        isGodMode = false; isSpectating = true; onlineSpectator = true; practiceMode = true;
-        els.actionBar.style.display = 'none';
+        isGodMode = false; isSpectating = false; practiceMode = true; heroAutopilotActive = true;
+        // Nada de sonido: SFX + las dos musicas, paradas en seco por si alguna
+        // ya estaba sonando (p.ej. musica de menu heredada de otra pestana del
+        // mismo origen con el "no silenciar" guardado en localStorage).
+        SoundManager.muted = true; SoundManager.musicMuted = true; SoundManager.menuMusicMuted = true;
+        try { SoundManager.music.pause(); SoundManager.menuMusic.pause(); SoundManager.stopAllSfx(); } catch (e) {}
         // modeScreen es lo primero que se ve al cargar (z-index:50, por encima
         // del canvas): sin ocultarla tambien, la demo corre debajo tapada por
         // la pantalla de modos de siempre.
         els.modeScreen.style.display = 'none';
         els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
-        document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block';
+        els.actionBar.style.display = 'none';
+        document.getElementById('ui').style.display = 'flex';
+        // TOP MASS y KILLS fuera: gameplay limpio de fondo, sin HUD de competicion.
+        document.getElementById('leaderboard').style.display = 'none';
+        document.getElementById('timerDisplay').style.display = 'none';
+        const p = sim.addPlayer('me', { name: '', colorBot: '#00ff44', colorTop: '#c0c8d0' });
+        const c = sim.spawnPlayer('me');
+        camera.x = c.x; camera.y = c.y; camera.scale = 0.8;
         lastFrameTime = Date.now();
         gameRunning = true;
+        if (!_heroAutopilotTimer) _heroAutopilotTimer = setInterval(heroAutopilotStep, 300);
     }
+    // Autopiloto: cada 300ms apunta mouse.x/mouse.y (en coordenadas de
+    // PANTALLA) hacia la comida mas cercana, convertidas con la misma formula
+    // que ya usa updateGame() para leer el input MOUSE — cero cambios en el
+    // bucle principal, la pill se mueve exactamente igual que si alguien la
+    // llevase con el raton.
+    function heroAutopilotStep() {
+        if (!heroAutopilotActive || !gameRunning || !sim) return;
+        const p = me(); if (!p || !p.cells.length) return;
+        const c0 = p.cells[0];
+        let target = null, bestD = Infinity;
+        for (const f of sim.foods) {
+            const d = (f.x - c0.x) * (f.x - c0.x) + (f.y - c0.y) * (f.y - c0.y);
+            if (d < bestD) { bestD = d; target = f; }
+        }
+        let wx, wy;
+        if (target) { wx = target.x; wy = target.y; }
+        else { const a = Math.random() * Math.PI * 2; wx = c0.x + Math.cos(a) * 400; wy = c0.y + Math.sin(a) * 400; }
+        const es = getViewScale();
+        mouse.x = (wx - camera.x) * es + width / 2;
+        mouse.y = (wy - camera.y) * es + height / 2;
+        inputMode = 'MOUSE';
+    }
+    // Pestana no activa -> demo parada del todo (gameRunning gobierna tanto
+    // updateGame() como draw()). lastFrameTime se resetea al volver para que
+    // el primer delta tras la pausa no sea gigante.
+    document.addEventListener('visibilitychange', () => {
+        if (!heroAutopilotActive) return;
+        gameRunning = !document.hidden;
+        if (!document.hidden) lastFrameTime = Date.now();
+    });
+
+    // ===== Arranque directo de las pantallas que dispara el hero =====
+    // hero=1 (fondo del iframe) -> heroAmbientDemo(), sin mas. heroplay=1&
+    // name=X -> PLAY NOW; heroskins=1 -> CHOOSE SKINS. El <style> temporal que
+    // oculta modeScreen/loginOverlay al parsear (ver el bloque ?pwlab de la
+    // cabecera) se quita en cuanto la pantalla que corresponda ya esta
+    // montada, para que goBackToModes/returnToMenu vuelvan a funcionar con
+    // normalidad el resto de la sesion (hero=1 no lleva ese <style> temporal:
+    // el suyo es permanente, ver el bloque de la cabecera).
+    (function () {
+        const qs = new URLSearchParams(location.search);
+        const quitarVelo = () => { const st = document.getElementById('_heroBootHide'); if (st) st.remove(); };
+        if (qs.get('hero') === '1') {
+            heroAmbientDemo();
+        } else if (qs.get('heroplay') === '1') {
+            heroQuickPlay(qs.get('name') || '');   // sincrono: el login ya esta oculto al volver
+            quitarVelo();
+        } else if (qs.get('heroskins') === '1') {
+            heroShowSkinsStore().then(quitarVelo);   // async (paisSync): quitar el velo solo al terminar
+        }
+    })();
 
     // Texto de error de la wallet SIEMPRE en ingles: el mensaje que devuelve
     // la extension (Phantom/Backpack/...) o el RPC de Solana viene en el

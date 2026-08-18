@@ -234,8 +234,11 @@
 
         /* Area wallet: mismo estilo que en /game (gameWalletArea). Balance IN
            GAME + CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT)
-           cuando ya estas conectado. */
-        .wallet-area { display: flex; align-items: center; gap: 10px; position: relative; }
+           cuando ya estas conectado. Sin uso en la landing (aqui no se paga
+           nada): oculta salvo en EDIT LAYOUT, donde sigue haciendo falta
+           verla para poder moverla/escalarla. */
+        .wallet-area { display: none; align-items: center; gap: 10px; position: relative; }
+        body.layout-editing .wallet-area { display: flex !important; }
         .wallet-bal-box {
             display: none; align-items: center; gap: 5px;
             padding: 8px 14px; box-sizing: border-box;
@@ -329,17 +332,24 @@
            animacion "comido" de HeroPlay lo siguen leyendo. */
         #heroDecoCv, #heroPickMe, #heroTitleWrap { display: none !important; }
         /* El juego real de fondo: iframe a game/?hero=1, con un velo oscuro
-           encima (dim) y los 3 botones. Mismo hueco que ocupaba heroDecoCv. */
+           encima (dim) y los 3 botones. Mismo hueco que ocupaba heroDecoCv.
+           pointer-events:none en el iframe: es decoracion pura (una pill en
+           autopiloto, ver heroAmbientDemo en game/index.html), y sin esto
+           cualquier movimiento de raton real se colaria como input dentro del
+           iframe y le pisaria el autopiloto a la pill. Como consecuencia
+           tambien deja de hacer falta bloquear clics a mano: el velo se queda
+           siempre visible, no hay nada que mostrar/ocultar al pulsar un boton
+           (los 3 abren el juego de verdad en otra pestaña, ver el script). */
         .hero-game-wrap { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
-        .hero-game-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+        .hero-game-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: none; pointer-events: none; }
         /* Los 3 botones van en la mitad de ARRIBA: heroTitleWrap esta oculto,
            asi que .hero-main-content (el contrato, z-index:2 por encima) se
            centra ahora mas corto y le queda el centro/mitad de abajo — sin
            esto los botones y la caja del contrato se pisaban en el mismo
            centro vertical del hero. */
         .hero-game-veil { position: absolute; inset: 0; background: rgba(3,5,4,0.62);
-            display: flex; align-items: flex-start; justify-content: center; padding-top: 24vh; }
-        .hero-game-btns { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+            display: flex; align-items: flex-start; justify-content: center; padding-top: 24vh; pointer-events: none; }
+        .hero-game-btns { display: flex; flex-direction: column; align-items: center; gap: 20px; pointer-events: auto; }
         .hero-main-content { z-index: 2; text-align: center; padding: 0 20px; margin-top: 60px; }
         /* PLAY NOW: ya no es el PNG banner alargado (1856x560), es un boton real
            con una placa pixel-art generada por canvas (heroPlayBtnPlate, mismo
@@ -350,7 +360,7 @@
            aspect-ratio 15/2), no la placa cuadrada de antes — mismo nivel de
            pixel, forma mas parecida al boton real del juego. Los 3 en el mismo
            verde oscuro (drawHeroPlayPlates les da el mismo hex). */
-        .hero-play { display: block; height: 52px; width: auto; aspect-ratio: 6.8; padding: 0; border: none;
+        .hero-play { display: block; height: 52px; width: auto; aspect-ratio: 1724 / 403; padding: 0; border: none;
             cursor: pointer !important; image-rendering: pixelated; background-color: transparent;
             background-size: 100% 100%; background-repeat: no-repeat;
             font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; letter-spacing: 1px;
@@ -1538,7 +1548,9 @@ body.trailer-open #page-content{
          LandingLayout lo lee de window para no tener dos copias. -->
     <script>
     window.HERO_LAYOUT_ELS = {
-        title: '#heroTitleWrap', play: '#heroPlayNow', pickMe: '#heroPickMe',
+        title: '#heroTitleWrap', play: '#heroPlayNow',
+        chooseModes: '#heroChooseModes', chooseSkins: '#heroChooseSkins',
+        pickMe: '#heroPickMe',
         caSign: '#heroCaSign', ca: '#heroCaWrap',
         // Navbar: wallet, PILL, iconos sociales. SIN valor horneado (parten del
         // CSS de fabrica, sin transform) — quedan neutros hasta que se editen.
@@ -4457,113 +4469,39 @@ function toggleTrailerMode() {
     <script src="game/paises-pixel.js"></script>
     <script>
     /* ===== HERO: el juego real de fondo =====
-     * index.html embebe game/?hero=1 en un iframe SAME-ORIGIN (game/ y la
-     * landing viven bajo el mismo dominio), asi que se puede llamar a las
-     * funciones de dentro directamente sobre iframe.contentWindow — el mismo
-     * truco que ya usa game/comparativa.html para congelar/disparar la sim de
-     * dos copias del juego a la vez (ver whenReady/initFrame alli).
+     * index.html embebe game/?hero=1 en un iframe: heroAmbientDemo() (dentro
+     * de game/index.html) arranca sola en cuanto el iframe carga y mueve una
+     * pill en autopiloto detras del velo, puramente decorativo — el iframe
+     * lleva pointer-events:none, asi que ningun movimiento de raton real le
+     * llega nunca (ni le pisa el autopiloto ni hace falta bloquear clics a
+     * mano) y los 3 botones no tocan ese fondo para nada.
      *
-     * ?hero=1 no oculta nada especial por si mismo (a diferencia de ?pwlab=1,
-     * pensado para journals de comparacion): el iframe carga el juego tal cual,
-     * empezando en su pantalla de modos de siempre. El velo (.hero-game-veil)
-     * con los 3 botones va ENCIMA, en el documento de la landing, y bloquea el
-     * iframe hasta que se pulsa uno. Al pulsar, el velo se esconde y el iframe
-     * queda interactivo con lo que corresponda:
-     *   PLAY NOW      -> heroQuickPlay(nombre) dentro del iframe: offline arcade
-     *                     directa, skin basica. La 1a muerte de ESA partida salta
-     *                     TRY AGAIN (showResultsUI sobreescrita mas abajo).
-     *   CHOOSE MODES  -> nada que llamar: la pantalla de modos real ya esta
-     *                     debajo, solo hacia falta destapar el iframe.
-     *   CHOOSE SKINS  -> heroShowSkinsStore() dentro del iframe: catalogo
-     *                     grande, pestaña Store, tenido de arcade.
+     * Los 3 botones abren el juego de VERDAD en una pestaña aparte, cada uno
+     * con su propio arranque directo (ver el bloque final de game/index.html):
+     *   PLAY NOW      -> game/?heroplay=1&name=... : offline arcade directa,
+     *                     skin basica. Su 1a muerte salta TRY AGAIN.
+     *   CHOOSE MODES  -> game/ tal cual: la pantalla de modos de siempre.
+     *   CHOOSE SKINS  -> game/?heroskins=1 : arcade directo, panel pequeño en
+     *                     la pestaña SKINS (sin el catalogo grande).
      */
     (function () {
-        const wrap = document.getElementById('heroGameWrap');
-        const frame = document.getElementById('heroGameFrame');
-        const veil = document.getElementById('heroGameVeil');
+        // Movil: el iframe ya se apaga por CSS (.hero-game-frame{display:none}
+        // en el media query) — de paso se le quita el src, que si no carga y
+        // corre igual (autopiloto incluido) solo para no verse nunca.
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            const frame = document.getElementById('heroGameFrame');
+            if (frame) frame.removeAttribute('src');
+        }
         const btnPlay = document.getElementById('heroPlayNow');
         const btnModes = document.getElementById('heroChooseModes');
         const btnSkins = document.getElementById('heroChooseSkins');
-        if (!wrap || !frame || !veil || !btnPlay) return;
-
-        // Movil: el iframe se apaga por CSS (.hero-game-frame{display:none}) y
-        // aqui se cae al link directo de siempre — la escala desktop del juego
-        // (EDIT LAYOUT, el propio /game bloqueando moviles con #mobileBlock) no
-        // tiene sentido embebida en un hero pequeño.
-        const esMovil = () => window.matchMedia('(max-width: 768px)').matches;
-        if (esMovil()) {
-            frame.removeAttribute('src');
-            const irAlJuego = () => { window.location.href = 'game/'; };
-            btnPlay.onclick = irAlJuego;
-            if (btnModes) btnModes.onclick = irAlJuego;
-            if (btnSkins) btnSkins.onclick = irAlJuego;
-            return;
-        }
-
-        function mostrarVelo() { veil.style.display = 'flex'; }
-        function ocultarVelo() { veil.style.display = 'none'; }
-
-        // Sondeo de arranque: mismo criterio que whenReady() en comparativa.html
-        // (readyState completo + una funcion propia del juego ya declarada).
-        function cuandoListo(fn) {
-            const ok = () => {
-                try {
-                    const w = frame.contentWindow;
-                    return w && w.document.readyState === 'complete' && typeof w.heroQuickPlay === 'function';
-                } catch (e) { return false; }
-            };
-            const t = setInterval(() => { if (ok()) { clearInterval(t); fn(frame.contentWindow); } }, 150);
-            setTimeout(() => clearInterval(t), 20000);
-        }
-
-        let win = null, heroFirstMatchPending = false;
-        cuandoListo(w => {
-            win = w;
-            // Fondo: partida real con bots, la camara sigue al mas grande — nada
-            // de pantalla de modos estatica detras del velo.
-            try { w.heroAmbientDemo(); } catch (e) {}
-            // Sobreescribe showResultsUI dentro del iframe: la partida disparada
-            // desde PLAY NOW no debe enseñar TRY AGAIN en su primera muerte, solo
-            // volver al velo. Partidas offline normales (fuera de este flujo,
-            // p.ej. si el visitante ya esta jugando via CHOOSE MODES) siguen con
-            // el TRY AGAIN de siempre porque heroFirstMatchPending esta a false.
-            const showResultsUIOriginal = w.showResultsUI;
-            w.showResultsUI = function (tipo, extra) {
-                if (tipo === 'gameOver' && heroFirstMatchPending) {
-                    heroFirstMatchPending = false;
-                    try { w.returnToMenu(); } catch (e) {}
-                    mostrarVelo();
-                    return;
-                }
-                showResultsUIOriginal.call(w, tipo, extra);
-            };
-            // Al cerrar el catalogo de skins abierto desde CHOOSE SKINS, vuelve
-            // el velo con los 3 botones.
-            const skinBigCloseOriginal = w.skinBigClose;
-            w.skinBigClose = function () {
-                skinBigCloseOriginal.call(w);
-                mostrarVelo();
-            };
-        });
-
+        if (!btnPlay) return;
         btnPlay.onclick = () => {
-            if (!win) return;
             const nombre = (window.prompt('Enter your name', '') || '').trim().slice(0, 12);
-            heroFirstMatchPending = true;
-            ocultarVelo();
-            try { win.heroQuickPlay(nombre); } catch (e) {}
+            window.open('game/?heroplay=1&name=' + encodeURIComponent(nombre), '_blank');
         };
-        // El fondo esta espectando la demo ambiente (heroAmbientDemo), no la
-        // pantalla de modos: goBackToModes() la trae de verdad encima. La demo
-        // se queda corriendo tapada (gameRunning no se toca aqui), pero
-        // cualquier flujo real de partida (selectMode -> ... -> startGame) pone
-        // isSpectating a false por su cuenta al arrancar.
-        if (btnModes) btnModes.onclick = () => {
-            if (!win) return;
-            try { win.goBackToModes(); } catch (e) {}
-            ocultarVelo();
-        };
-        if (btnSkins) btnSkins.onclick = () => { if (!win) return; ocultarVelo(); try { win.heroShowSkinsStore(); } catch (e) {} };
+        if (btnModes) btnModes.onclick = () => { window.open('game/', '_blank'); };
+        if (btnSkins) btnSkins.onclick = () => { window.open('game/?heroskins=1', '_blank'); };
     })();
     </script>
     <script>
