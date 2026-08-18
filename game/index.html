@@ -3103,7 +3103,19 @@
         stopMenuMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); clearTimeout(this._menuMusicTimer); this.menuMusic.pause(); this.menuMusic.currentTime = 0; }
     };
 
-    function enableAudioContext() { document.removeEventListener('click', enableAudioContext); document.removeEventListener('keydown', enableAudioContext); document.removeEventListener('touchstart', enableAudioContext); }
+    // heroplay/heroskins arrancan el sonido SOLOS, sin ningun click previo en
+    // la pestaña nueva: el navegador bloquea ese autoplay (politica de gesto
+    // de usuario) y el .catch(()=>{}) de SoundManager lo traga en silencio.
+    // En cuanto llega la PRIMERA interaccion real, reintenta lo que deberia
+    // estar sonando y no sono.
+    function enableAudioContext() {
+        document.removeEventListener('click', enableAudioContext); document.removeEventListener('keydown', enableAudioContext); document.removeEventListener('touchstart', enableAudioContext);
+        if (SoundManager.activeMusic === 'game' && !SoundManager.musicMuted && SoundManager.music.paused && gameRunning) SoundManager.music.play().catch(e => {});
+        if (SoundManager.activeMusic === 'menu' && !SoundManager.menuMusicMuted && SoundManager.menuMusic.paused) SoundManager.menuMusic.play().catch(e => {});
+        const ld = SoundManager.sounds.loading;
+        const ls = document.getElementById('loadingScreen');
+        if (ld && ld.paused && ls && getComputedStyle(ls).display !== 'none') SoundManager.play('loading');
+    }
     document.addEventListener('click', enableAudioContext); document.addEventListener('keydown', enableAudioContext); document.addEventListener('touchstart', enableAudioContext);
     function toggleAudio() { SoundManager.toggleSFX(); }
     function toggleMusic() { SoundManager.toggleMusic(); }

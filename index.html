@@ -356,36 +356,30 @@
            dibujo que _pmPlateUrl de la Skin Store: reborde oscuro + bisel claro),
            mas cuadrado y con el mismo nivel de pixel que el resto de botones
            placa del juego. pixelated de verdad porque ahora SI es rejilla dura. */
-        /* Alargado como el PLAY de dentro de cada modo (btn-plain-red.png,
-           aspect-ratio 15/2), no la placa cuadrada de antes — mismo nivel de
-           pixel, forma mas parecida al boton real del juego. Los 3 en el mismo
-           verde oscuro (drawHeroPlayPlates les da el mismo hex). */
-        .hero-play { display: block; height: 52px; width: auto; aspect-ratio: 1724 / 403; padding: 0; border: none;
-            cursor: pointer !important; image-rendering: pixelated; background-color: transparent;
-            background-size: 100% 100%; background-repeat: no-repeat;
-            font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; letter-spacing: 1px;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
-            filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.5)); transition: filter .15s ease, transform .1s ease; }
-        .hero-play:hover { filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.5)) brightness(1.15); }
-        .hero-play:active { transform: translate(2px, 2px); }
-        /* CHOOSE MODES / CHOOSE SKINS: la misma placa, algo mas pequeñas — CTAs
+        /* IGUALES a CONNECT de verdad: la clase .btn-connect (ver mas abajo,
+           usa --wallet-placa) ya trae fondo/fuente/cursor/hover/active — aqui
+           solo se pisa el tamaño, que en la navbar es fijo a 190px y aqui hace
+           falta mas grande. scale:1 porque el 0.87 de .btn-connect es un ajuste
+           fino de la navbar que aqui no pinta nada (no hay layout horneado que
+           lo compense). */
+        .hero-play.btn-connect { width: 300px; scale: 1; font-size: 15px; }
+        /* CHOOSE MODES / CHOOSE SKINS: la misma placa, mas pequeñas — CTAs
            secundarias frente a PLAY NOW. */
-        .hero-play-sub { height: 40px; font-size: 9px; }
+        .hero-play-sub.btn-connect { width: 210px; font-size: 11px; }
         /* PLAY NOW de la navbar: oculto mientras el hero esta a la vista (ya
            hay uno ahi dentro), aparece al hacer scroll y salir de el (ver el
            IntersectionObserver mas abajo). En EDIT LAYOUT se fuerza visible
            siempre, si no no habria forma de agarrarlo con el hero fuera de
            pantalla. Posicion/tamaño se mueven desde EDIT como el resto (clave
-           navPlay en HERO_LAYOUT_ELS). Misma placa que .hero-play, a menor escala. */
-        .nav-play-now { display: none; height: 32px; width: auto; aspect-ratio: 2.3; padding: 0; border: none;
-            cursor: pointer !important; image-rendering: pixelated; background-color: transparent;
-            background-size: 100% 100%; background-repeat: no-repeat;
-            font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; letter-spacing: 0.5px;
-            text-shadow: 1px 1px 0 rgba(0,0,0,0.75);
-            filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); flex-shrink: 0; transition: filter .15s ease; }
-        .nav-play-now:hover { filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)) brightness(1.15); }
-        .nav-play-now:active { transform: translate(1px, 1px); }
-        body.nav-play-visible .nav-play-now, body.layout-editing .nav-play-now { display: block; }
+           navPlay en HERO_LAYOUT_ELS). Mismo sitio/tamaño/desplegable que
+           CONNECT: reusa .wallet-area/.wallet-deposit-wrap/.wallet-dropdown-content
+           tal cual — #nav-play-wrap gana por especificidad de ID a la regla
+           "display:none" por defecto de .wallet-deposit-wrap (esa es solo para
+           cuando SI depende de "wallet conectada"; aqui PLAY NOW no depende de
+           nada, siempre se puede desplegar). */
+        #nav-play-area { display: none; align-items: center; gap: 10px; position: relative; }
+        body.nav-play-visible #nav-play-area, body.layout-editing #nav-play-area { display: flex; }
+        #nav-play-wrap { display: flex; }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
         #heroPickMe { cursor: pointer !important; user-select: none; }
@@ -1173,7 +1167,7 @@ body.trailer-open #page-content{
            (.modal-box / .cmodal-btn / .modal-box button) tambien llevan
            !important y pintaban un recuadro de sombra dura detras del marco
            PNG y alrededor de los botones OK/MAX. ===== */
-        #deposit-modal .modal-box, #withdraw-modal .modal-box, #msg-modal .modal-box {
+        #deposit-modal .modal-box, #withdraw-modal .modal-box, #msg-modal .modal-box, #hero-name-modal .modal-box {
             border: none !important; border-radius: 0 !important; box-shadow: none !important;
             background: transparent url('game/img/cartel-hero/menu-gris.png') center/100% 100% no-repeat !important;
             image-rendering: pixelated; padding: 44px 44px 40px;
@@ -1187,11 +1181,11 @@ body.trailer-open #page-content{
            pone su CSS. Alli las cajas son content-box y aqui border-box (por el
            reset * de arriba), asi que el 470px de #sysModal .exit-box.sys-gray
            son en realidad 558 con sus dos padding de 44. */
-        #deposit-modal .modal-box, #withdraw-modal .modal-box { width: 508px; max-width: calc(100vw - 40px); }
+        #deposit-modal .modal-box, #withdraw-modal .modal-box, #hero-name-modal .modal-box { width: 508px; max-width: calc(100vw - 40px); }
         /* El aviso ademas reparte distinto el padding vertical que deposit y
            withdraw (40 arriba / 46 abajo, contra 44 / 40), como en el juego. */
         #msg-modal .modal-box { width: 558px; max-width: calc(100vw - 40px); padding: 40px 44px 46px; }
-        #deposit-modal .modal-title, #withdraw-modal .modal-title, #msg-modal .modal-title {
+        #deposit-modal .modal-title, #withdraw-modal .modal-title, #msg-modal .modal-title, #hero-name-modal .modal-title {
             font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); color: #c8cdd2;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.65); margin-bottom: 16px; line-height: 1.6; }
         /* Filas "In wallet / In GAME" + etiqueta "Amount": mismo cuerpo que el
@@ -1202,7 +1196,7 @@ body.trailer-open #page-content{
             font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); line-height: 1.9; letter-spacing: 0; }
         #deposit-modal .cmodal-label, #withdraw-modal .cmodal-label { color: #c8cdd2; }
         #deposit-modal .gm-row:first-of-type, #withdraw-modal .gm-row:first-of-type { margin-top: 10px; }
-        #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field {
+        #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field, #hero-name-modal .cmodal-field {
             font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); letter-spacing: 0; }
         #deposit-modal .cmodal-btn, #withdraw-modal .cmodal-btn, #msg-modal .cmodal-btn {
             border: none !important; border-radius: 0 !important; box-shadow: none !important;
@@ -1214,12 +1208,25 @@ body.trailer-open #page-content{
         #deposit-modal .cmodal-btn:active, #withdraw-modal .cmodal-btn:active, #msg-modal .cmodal-btn:active { box-shadow: none !important; }
         #deposit-modal .cmodal-btn:disabled, #withdraw-modal .cmodal-btn:disabled { filter: grayscale(0.6) brightness(0.75); opacity: 1; }
         /* MAX y cualquier otro boton dentro de estos modales: sin bevel del pack */
-        #deposit-modal .modal-box button, #withdraw-modal .modal-box button, #msg-modal .modal-box button { box-shadow: none !important; }
+        #deposit-modal .modal-box button, #withdraw-modal .modal-box button, #msg-modal .modal-box button, #hero-name-modal .modal-box button { box-shadow: none !important; }
         /* !important: body.pixel-pack .modal-box button fuerza 11px con
            !important y dejaba el MAX mas grande que en el juego (8px). */
         #deposit-modal .modal-box .max-btn, #withdraw-modal .modal-box .max-btn {
             font-family: 'Press Start 2P', monospace !important; font-size: var(--fs-1) !important; letter-spacing: 0; }
-        #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field { border-radius: 0 !important; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important; }
+        #deposit-modal .cmodal-field, #withdraw-modal .cmodal-field, #hero-name-modal .cmodal-field { border-radius: 0 !important; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important; }
+        /* Boton de #hero-name-modal: NO ok-gris.png (lleva "OK" horneado) sino
+           btn-plain-grey.png, la placa lisa sin texto que usa .btn-play/
+           .btn-settings dentro del juego — asi el rotulo PLAY NOW se lee de
+           verdad, como el resto de botones planos del pack. */
+        #hero-name-modal .cmodal-btn {
+            border: none !important; border-radius: 0 !important; box-shadow: none !important;
+            background: transparent url('game/img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat !important;
+            aspect-ratio: 15/2; width: 68%; display: block; margin: 18px auto 0; padding: 0;
+            image-rendering: pixelated; font-family: 'Press Start 2P', monospace; font-size: 13px;
+            color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
+        }
+        #hero-name-modal .cmodal-btn:hover { filter: brightness(1.15); }
+        #hero-name-modal .cmodal-btn:active { transform: translate(1px, 1px); }
 
         /* CONNECT WALLET: identico al selector de dentro del juego — recuadro
            menu-gris, titulo con la imagen de David y botones grises planos. */
@@ -1575,7 +1582,7 @@ body.trailer-open #page-content{
         pillDropdown: '#pill-dropdown',
         walletBal: '#wallet-bal-box',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
-        navPlay: '#navPlayNow',
+        navPlay: '#nav-play-area',
         // Tooltip flotante de las skills (el cuadro que sale al pasar el
         // raton por SHOT/SPRINT/...). tooltipIcon va ANTES que skillTooltip
         // por lo mismo que pillMenu/walletBtnTxt: el icono esta DENTRO del
@@ -1710,32 +1717,16 @@ body.trailer-open #page-content{
             g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(Math.round(wL * 0.22), Math.round(hL * 0.14), hs, hs);
             return cv.toDataURL();
         }
-        // Placa pixel-art de PLAY NOW (hero + navbar): mismo dibujo que los
-        // botones placa de la Skin Store (_pmPlateUrl, de game/paises-pixel.js,
-        // cargado mas abajo en el body) para que hable el mismo idioma visual
-        // que el resto de botones pixel del juego, en vez del PNG banner de
-        // antes. Se redibuja en cada resize porque la placa es un raster a la
-        // resolucion EXACTA del boton, no un vector.
-        function drawHeroPlayPlates() {
-            if (typeof _pmPlateUrl !== 'function') return;
-            // Los 3 botones del hero (PLAY NOW/CHOOSE MODES/CHOOSE SKINS) en el
-            // mismo rojo que CONNECT (#f62a2d, ver placa() de wallet-btn-red.png
-            // mas abajo); navPlayNow (la copia de la navbar) se queda con el
-            // verde de marca de siempre.
-            [['heroPlayNow', '#f62a2d'], ['navPlayNow', '#00ff88'],
-             ['heroChooseModes', '#f62a2d'], ['heroChooseSkins', '#f62a2d']].forEach(([id, hex]) => {
-                const el = document.getElementById(id);
-                if (!el || !el.clientWidth) return;
-                el.style.backgroundImage = 'url(' + _pmPlateUrl(el.clientWidth, el.clientHeight, hex) + ')';
-            });
-        }
-        window.addEventListener('resize', drawHeroPlayPlates);
+        // Los botones del hero (PLAY NOW/CHOOSE MODES/CHOOSE SKINS) ya NO llevan
+        // una placa generada aparte: usan la clase .btn-connect tal cual (mismo
+        // --wallet-placa que CONNECT, ver el bloque de placa() mas abajo), asi
+        // que son literalmente el mismo boton a otro tamaño — no una aproximacion.
         function applyPixelPill() {
             // 8×15 logico sobre 24×44 de pantalla ≈ pixel gordo de 3px, como el juego
             const url = 'url(' + pixPillUrl(8, 15, [255, 255, 255], [0, 255, 136]) + ')';
             document.querySelectorAll('#custom-cursor, .logo-pill').forEach(el => { el.style.backgroundImage = url; });
         }
-        document.addEventListener('DOMContentLoaded', () => { applyPixelPill(); applyPixelCloseX(); drawHeroPlayPlates(); });
+        document.addEventListener('DOMContentLoaded', () => { applyPixelPill(); applyPixelCloseX(); });
 
         // F5 arranca arriba del todo, no donde estabas: si el navegador
         // restaura el scroll, la pagina reaparece a media altura con las
@@ -1794,8 +1785,18 @@ body.trailer-open #page-content{
 
         <div class="nav-dropdown-group">
             <!-- PLAY NOW de la navbar: solo se ve fuera del hero (o siempre en
-                 EDIT LAYOUT). Mismo boton-placa que el del hero, a menor escala. -->
-            <button class="nav-play-now" id="navPlayNow" onclick="window.location.href='game/'">PLAY NOW</button>
+                 EDIT LAYOUT). Mismo sitio y mismo boton que CONNECT (.btn-connect,
+                 tamaño navbar) y el mismo truco de desplegable que CONNECT->DEPOSIT
+                 para CHOOSE MODES/CHOOSE SKINS. -->
+            <div class="wallet-area" id="nav-play-area">
+                <div class="wallet-deposit-wrap" id="nav-play-wrap">
+                    <div class="wb-box"><button class="btn-connect" onclick="HeroPlayModal.open()">PLAY NOW</button></div>
+                    <div class="wallet-dropdown-content">
+                        <div class="wb-box"><button class="btn-deposit" onclick="window.open('game/', '_blank')">CHOOSE MODES</button></div>
+                        <div class="wb-box"><button class="btn-withdraw" onclick="window.open('game/?heroskins=1', '_blank')">CHOOSE SKINS</button></div>
+                    </div>
+                </div>
+            </div>
             <!-- Wallet: mismo montaje que /game (gameWalletArea). Balance IN GAME +
                  CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT) cuando ya
                  estas conectado. -->
@@ -1840,9 +1841,9 @@ body.trailer-open #page-content{
             <iframe class="hero-game-frame" id="heroGameFrame" src="game/?hero=1" title="PillWars gameplay" loading="eager"></iframe>
             <div class="hero-game-veil" id="heroGameVeil">
                 <div class="hero-game-btns">
-                    <button class="hero-play" id="heroPlayNow">PLAY NOW</button>
-                    <button class="hero-play hero-play-sub" id="heroChooseModes">CHOOSE MODES</button>
-                    <button class="hero-play hero-play-sub" id="heroChooseSkins">CHOOSE SKINS</button>
+                    <button class="hero-play btn-connect" id="heroPlayNow">PLAY NOW</button>
+                    <button class="hero-play hero-play-sub btn-connect" id="heroChooseModes">CHOOSE MODES</button>
+                    <button class="hero-play hero-play-sub btn-connect" id="heroChooseSkins">CHOOSE SKINS</button>
                 </div>
             </div>
         </div>
@@ -4419,10 +4420,6 @@ function toggleTrailerMode() {
             const io = new IntersectionObserver(
                 (entries) => {
                     document.body.classList.toggle('nav-play-visible', !entries[0].isIntersecting);
-                    // La placa de #navPlayNow no se pudo dibujar mientras estaba
-                    // display:none (clientWidth 0): en cuanto se hace visible por
-                    // primera vez hay que dibujarla ya.
-                    drawHeroPlayPlates();
                 },
                 { threshold: 0 }
             );
