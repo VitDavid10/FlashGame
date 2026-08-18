@@ -358,6 +358,21 @@
         body:not(.layout-editing) .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
         body.layout-editing .wallet-deposit-wrap .wallet-dropdown-content { display: block; }
         .wallet-dropdown-content .wb-box { margin-top: 4px; }
+        /* Los .wb-box del desplegable se PISAN entre ellos en cuanto uno se
+           mueve con el editor: al ir seguidos en el DOM y sin z-index propio,
+           el de ABAJO (CHOOSE SKINS) gana el hit-test y se traga los clics del
+           de arriba (CHOOSE MODES) — medido, pasa al bajar CHOOSE MODES entre
+           20 y 50px, justo el rango en el que se solapan. El boton quedaba
+           imposible de clicar Y de agarrar en el editor. Con z-index
+           DESCENDENTE manda siempre el primero: el que mueves encima del otro
+           sigue respondiendo. */
+        .wallet-dropdown-content .wb-box:nth-of-type(1) { z-index: 3; }
+        .wallet-dropdown-content .wb-box:nth-of-type(2) { z-index: 2; }
+        .wallet-dropdown-content .wb-box:nth-of-type(3) { z-index: 1; }
+        /* Red de seguridad general del editor: la pieza bajo el raton se sube
+           del todo, asi NINGUNA posicion deja un elemento inagarrable por
+           quedar tapado por otro. */
+        body.layout-editing .hero-editable:hover { z-index: 10000; }
 
         /* --- TICKER --- */
         .ticker-wrap {
@@ -4279,8 +4294,35 @@ function toggleTrailerMode() {
             btn.textContent = 'TAG FONT: ' + f.label;
         }
         function target(e) {
-            for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
-            return null;
+            const primero = (nodo) => {
+                if (!nodo || !nodo.closest) return null;
+                for (const key in LAYOUT_ELS) { const el = nodo.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
+                return null;
+            };
+            const arriba = primero(e.target);
+            if (!arriba || e.clientX == null || !document.elementsFromPoint) return arriba;
+            // Piezas HERMANAS solapadas (las dos .wb-box del desplegable de PLAY
+            // NOW, p.ej.): elementFromPoint solo ve la de encima, asi que en
+            // cuanto una tapaba a la otra con el editor la de debajo se quedaba
+            // imposible de agarrar — y si la tapaba entera, sin salida ninguna.
+            // Entre hermanas gana la que tenga el CENTRO mas cerca del raton,
+            // asi siempre se puede llegar a las dos apuntando a su mitad.
+            // SOLO entre hermanas: las relaciones padre/hijo (el rotulo dentro
+            // del boton) siguen mandando por orden de LAYOUT_ELS, que es lo que
+            // hace que el texto se agarre aparte de su caja.
+            const dist = (el) => {
+                const b = el.getBoundingClientRect();
+                return Math.hypot(e.clientX - (b.left + b.width / 2), e.clientY - (b.top + b.height / 2));
+            };
+            let mejor = arriba, mejorD = dist(arriba.el);
+            for (const nodo of document.elementsFromPoint(e.clientX, e.clientY)) {
+                const c = primero(nodo);
+                if (!c || c.el === arriba.el) continue;
+                if (c.el.parentElement !== arriba.el.parentElement) continue;
+                const d = dist(c.el);
+                if (d < mejorD) { mejorD = d; mejor = c; }
+            }
+            return mejor;
         }
         const LandingLayout = {
             enter() {
