@@ -9732,14 +9732,21 @@
     // de resultado. Se consume una sola vez.
     let _heroSkipTryAgain = false;
     function heroQuickPlay(name) {
-        playerName = String(name || '').trim().slice(0, 12) || 'Player';
+        // startGame() y no startPracticeGame(): esa ultima es el preview de
+        // "esperando partida online" y por diseño se salta el PRIMER selector
+        // de skill (practiceMode, ver showSkillChoice) — aqui se quiere una
+        // partida offline de verdad, con todo su ciclo normal.
+        const nameInput = document.getElementById('playerNameInput');
+        if (nameInput) nameInput.value = String(name || '').trim().slice(0, 12);
+        currentGameMode = 'arcade';
+        selectRoom('Free');
         _heroSkipTryAgain = true;
-        // startPracticeGame() no toca modeScreen (normalmente ya esta oculta
-        // de haber pasado por selectMode antes): aqui se salta directo, asi
-        // que hay que ocultarla a mano o reaparece en cuanto se quite el
-        // <style> temporal del arranque (_heroBootHide).
+        // startGame() no toca modeScreen (normalmente ya esta oculta de haber
+        // pasado por selectMode antes): aqui se salta directo, asi que hay
+        // que ocultarla a mano o reaparece en cuanto se quite el <style>
+        // temporal del arranque (_heroBootHide).
         els.modeScreen.style.display = 'none';
-        startPracticeGame('arcade');
+        startGame();
     }
     // CHOOSE SKINS del hero: entra directo a ARCADE (selectMode instantaneo,
     // sin la animacion de 1200ms que nadie vio empezar) con el panel pequeño
@@ -9827,27 +9834,6 @@
         gameRunning = !document.hidden;
         if (!document.hidden) lastFrameTime = Date.now();
     });
-
-    // ===== Arranque directo de las pantallas que dispara el hero =====
-    // hero=1 (fondo del iframe) -> heroAmbientDemo(), sin mas. heroplay=1&
-    // name=X -> PLAY NOW; heroskins=1 -> CHOOSE SKINS. El <style> temporal que
-    // oculta modeScreen/loginOverlay al parsear (ver el bloque ?pwlab de la
-    // cabecera) se quita en cuanto la pantalla que corresponda ya esta
-    // montada, para que goBackToModes/returnToMenu vuelvan a funcionar con
-    // normalidad el resto de la sesion (hero=1 no lleva ese <style> temporal:
-    // el suyo es permanente, ver el bloque de la cabecera).
-    (function () {
-        const qs = new URLSearchParams(location.search);
-        const quitarVelo = () => { const st = document.getElementById('_heroBootHide'); if (st) st.remove(); };
-        if (qs.get('hero') === '1') {
-            heroAmbientDemo();
-        } else if (qs.get('heroplay') === '1') {
-            heroQuickPlay(qs.get('name') || '');   // sincrono: el login ya esta oculto al volver
-            quitarVelo();
-        } else if (qs.get('heroskins') === '1') {
-            heroShowSkinsStore().then(quitarVelo);   // async (paisSync): quitar el velo solo al terminar
-        }
-    })();
 
     // Texto de error de la wallet SIEMPRE en ingles: el mensaje que devuelve
     // la extension (Phantom/Backpack/...) o el RPC de Solana viene en el
@@ -10925,7 +10911,55 @@
         }
     }
 
-    initMenuState(); init();
+    // initMenuState() prepara la pantalla de modos (hover por defecto, paneles)
+    // y SIEMPRE programa musica de menu 2s despues (SoundManager.playMenuMusic),
+    // sin mirar si ya se salto esa pantalla. En los arranques que dispara el
+    // hero (hero/heroplay/heroskins) modeScreen se queda oculta para siempre,
+    // asi que no hay nada que preparar ahi — y sonar musica de menu encima de
+    // una partida real (heroplay) o del panel de skins (heroskins) es
+    // justo el bug que no queremos.
+    if (!/[?&](hero|heroplay|heroskins)=1\b/.test(location.search)) initMenuState();
+    init();
+
+    // ===== Arranque directo de las pantallas que dispara el hero =====
+    // hero=1 (fondo del iframe) -> heroAmbientDemo(), sin mas. heroplay=1&
+    // name=X -> PLAY NOW; heroskins=1 -> CHOOSE SKINS. El <style> temporal que
+    // oculta modeScreen/loginOverlay al parsear (ver el bloque ?pwlab de la
+    // cabecera) se quita en cuanto la pantalla que corresponda ya esta
+    // montada, para que goBackToModes/returnToMenu vuelvan a funcionar con
+    // normalidad el resto de la sesion (hero=1 no lleva ese <style> temporal:
+    // el suyo es permanente, ver el bloque de la cabecera).
+    // DESPUES de init(), no antes: init() rellena uiSlots[]/uiIcons[]/etc y
+    // engancha los listeners de teclado/raton — arrancar la partida antes de
+    // eso dejaba updateSkillsUI_Arcade() operando sobre un uiSlots vacio (sus
+    // "if(divSlot)" no hacian nada porque uiSlots[5..10] aun eran undefined),
+    // y las 10 casillas de skill se quedaban visibles hasta la siguiente vez
+    // que algo volvia a llamarla (p.ej. elegir una skill).
+    //
+    // heroplay/heroskins pasan ademas por showLoadingScreen (el mismo cartel
+    // de carga de siempre entrar en partida online) hasta que refreshOracle()
+    // haya aplicado el layout guardado del servidor (menuLayout, EDIT LAYOUT):
+    // sin esto se veia un instante el layout horneado/por defecto antes de
+    // saltar al de verdad en cuanto llegaba la respuesta. hero=1 (el fondo del
+    // iframe) no lo necesita: heroAmbientDemo no toca ningun elemento posicionado
+    // por menuLayout.
+    (function () {
+        const qs = new URLSearchParams(location.search);
+        const quitarVelo = () => { const st = document.getElementById('_heroBootHide'); if (st) st.remove(); };
+        if (qs.get('hero') === '1') {
+            heroAmbientDemo();
+            return;
+        }
+        const modo = qs.get('heroplay') === '1' ? 'heroplay' : qs.get('heroskins') === '1' ? 'heroskins' : null;
+        if (!modo) return;
+        let layoutReady = false;
+        refreshOracle().catch(() => {}).then(() => { layoutReady = true; });
+        showLoadingScreen(500, () => layoutReady, () => {
+            if (modo === 'heroplay') { heroQuickPlay(qs.get('name') || ''); quitarVelo(); }
+            else { heroShowSkinsStore().then(quitarVelo); }
+        });
+    })();
+
     // Red de seguridad: modeFxActive() exige modeScreen.offsetWidth>0 (ya con
     // layout hecho). Si initMenuState() corre ANTES de que el navegador termine
     // el primer layout (variaba segun cache/velocidad de carga: "cuando

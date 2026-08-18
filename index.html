@@ -1719,10 +1719,11 @@ body.trailer-open #page-content{
         function drawHeroPlayPlates() {
             if (typeof _pmPlateUrl !== 'function') return;
             // Los 3 botones del hero (PLAY NOW/CHOOSE MODES/CHOOSE SKINS) en el
-            // mismo verde oscuro; navPlayNow (la copia de la navbar) se queda
-            // con el verde de marca de siempre.
-            [['heroPlayNow', '#0f7a3d'], ['navPlayNow', '#00ff88'],
-             ['heroChooseModes', '#0f7a3d'], ['heroChooseSkins', '#0f7a3d']].forEach(([id, hex]) => {
+            // mismo rojo que CONNECT (#f62a2d, ver placa() de wallet-btn-red.png
+            // mas abajo); navPlayNow (la copia de la navbar) se queda con el
+            // verde de marca de siempre.
+            [['heroPlayNow', '#f62a2d'], ['navPlayNow', '#00ff88'],
+             ['heroChooseModes', '#f62a2d'], ['heroChooseSkins', '#f62a2d']].forEach(([id, hex]) => {
                 const el = document.getElementById(id);
                 if (!el || !el.clientWidth) return;
                 el.style.backgroundImage = 'url(' + _pmPlateUrl(el.clientWidth, el.clientHeight, hex) + ')';
@@ -2189,6 +2190,18 @@ body.trailer-open #page-content{
                 <button class="cmodal-btn" type="submit" id="cmodal-btn">Send message</button>
                 <div id="cmodal-status" style="margin-top:12px; font-size: var(--fs-2); min-height:18px;"></div>
             </form>
+        </div>
+    </div>
+
+    <!-- Nombre para PLAY NOW del hero: mismo marco/campo/boton que el modal de
+         contacto (.modal-box/.cmodal-field/.cmodal-btn), en vez del prompt()
+         nativo del navegador. -->
+    <div id="hero-name-modal" class="modal-overlay" onclick="if(event.target===this) HeroPlayModal.close()">
+        <div class="modal-box">
+            <span class="modal-close" onclick="HeroPlayModal.close()">&times;</span>
+            <div class="modal-title">Enter your name</div>
+            <input class="cmodal-field" type="text" id="hero-name-input" maxlength="12" placeholder="Your name" autocomplete="off" spellcheck="false">
+            <button class="cmodal-btn" id="hero-name-go" onclick="HeroPlayModal.confirm()">PLAY NOW</button>
         </div>
     </div>
 
@@ -4496,13 +4509,33 @@ function toggleTrailerMode() {
         const btnModes = document.getElementById('heroChooseModes');
         const btnSkins = document.getElementById('heroChooseSkins');
         if (!btnPlay) return;
-        btnPlay.onclick = () => {
-            const nombre = (window.prompt('Enter your name', '') || '').trim().slice(0, 12);
-            window.open('game/?heroplay=1&name=' + encodeURIComponent(nombre), '_blank');
-        };
+        btnPlay.onclick = () => HeroPlayModal.open();
         if (btnModes) btnModes.onclick = () => { window.open('game/', '_blank'); };
         if (btnSkins) btnSkins.onclick = () => { window.open('game/?heroskins=1', '_blank'); };
     })();
+    // Modal de nombre de PLAY NOW: mismo modal-overlay/cmodal-* que el de
+    // contacto, en vez del prompt() nativo del navegador.
+    const HeroPlayModal = {
+        open() {
+            const m = document.getElementById('hero-name-modal'), input = document.getElementById('hero-name-input');
+            if (!m || !input) return;
+            input.value = '';
+            m.style.display = 'flex';
+            setTimeout(() => input.focus(), 50);
+        },
+        close() { const m = document.getElementById('hero-name-modal'); if (m) m.style.display = 'none'; },
+        confirm() {
+            const input = document.getElementById('hero-name-input');
+            const nombre = (input ? input.value : '').trim().slice(0, 12);
+            this.close();
+            window.open('game/?heroplay=1&name=' + encodeURIComponent(nombre), '_blank');
+        },
+    };
+    window.HeroPlayModal = HeroPlayModal;   // los onclick="" inline del modal necesitan verla en window
+    document.getElementById('hero-name-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') HeroPlayModal.confirm();
+        else if (e.key === 'Escape') HeroPlayModal.close();
+    });
     </script>
     <script>
     /* Tienda de skins de la landing. Reutiliza tal cual el generador de pildoras
