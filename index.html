@@ -1695,6 +1695,13 @@ body.trailer-open #page-content{
         play:   { x: -58.5,  y: -4.5,    s: 1.2880203308689964 },
         pickMe: { x: -444.5, y: -7.25,   s: 2.4798680723250732 },
         pillDropdown: { x: 0, y: 0, s: 1 },
+        // Sin esto se veian mas grandes de lo que tocaba: apply() escribe
+        // el.style.scale sobre el BOTON mismo (a diferencia de navPlay, que
+        // apunta al wrapper y deja intacto el scale:0.8745... de la clase
+        // .btn-connect/.btn-deposit/.btn-withdraw) — sin valor horneado
+        // caia al neutro (1) y pisaba el de la clase compartida.
+        navChooseModes: { x: 0, y: 0, s: 0.8745922401980181 },
+        navChooseSkins: { x: 0, y: 0, s: 0.8745922401980181 },
     };
     (function () {
         // El horneado es el diseño BUENO de fabrica, pero si ESTE usuario ya
