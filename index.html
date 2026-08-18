@@ -1693,7 +1693,12 @@ body.trailer-open #page-content{
         title:  { x: 23,     y: -120.75, s: 1.23175573069396 },
         ca:     { x: 17.25,  y: 127.75,  s: 0.8363874218953965 },
         caSign: { x: 19.75,  y: 136,     s: 0.8616672317221851 },
-        play:   { x: -58.5,  y: -4.5,    s: 1.2880203308689964 },
+        // x a 0 = centrado exacto: .hero-game-btns ya va centrado (el veil es
+        // flex con justify-content:center y align-items:center), asi que
+        // cualquier x distinta de 0 lo saca del centro. Con -58.5 quedaba
+        // desplazado a la izquierda respecto a CHOOSE MODES/CHOOSE SKINS, que
+        // no llevan horneado y por tanto SI salen centrados. La y no se toca.
+        play:   { x: 0,      y: -4.5,    s: 1.2880203308689964 },
         pickMe: { x: -444.5, y: -7.25,   s: 2.4798680723250732 },
         pillDropdown: { x: 0, y: 0, s: 1 },
     };
