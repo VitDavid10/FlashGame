@@ -319,28 +319,48 @@
 
         /* HERO */
         .hero-video-wrapper { position: relative; width: 100%; height: 100vh; min-height: 500px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--primary); }
-        /* Deco del hero: mismo fondo pixel + comida/virus/pildoras del juego,
-           confinados al "cuadro" (de la linea verde de la navbar a la linea
-           verde de abajo = este wrapper). Va DETRAS del contenido para que las
-           pildoras pasen por debajo del titulo. */
-        #heroDecoCv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; image-rendering: pixelated; pointer-events: none; }
+        /* Deco vieja del hero (fondo pixel + comida/virus/pildoras de mentira):
+           sustituida por el juego real de fondo (.hero-game-wrap). Se deja en
+           el DOM oculta en vez de borrarla — HeroPlay mas abajo sigue leyendo
+           heroDecoCv y heroPickMe sin comprobar null en varios sitios.
+           heroTitleWrap (PILLWARS / THE CRYPTO ARENA) tambien fuera: con el
+           juego real de fondo sobra, el contrato (heroCaSign/heroCaWrap) es la
+           info que queda. Misma razon para no borrarlo: EDIT LAYOUT y la
+           animacion "comido" de HeroPlay lo siguen leyendo. */
+        #heroDecoCv, #heroPickMe, #heroTitleWrap { display: none !important; }
+        /* El juego real de fondo: iframe a game/?hero=1, con un velo oscuro
+           encima (dim) y los 3 botones. Mismo hueco que ocupaba heroDecoCv. */
+        .hero-game-wrap { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+        .hero-game-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+        /* Los 3 botones van en la mitad de ARRIBA: heroTitleWrap esta oculto,
+           asi que .hero-main-content (el contrato, z-index:2 por encima) se
+           centra ahora mas corto y le queda el centro/mitad de abajo — sin
+           esto los botones y la caja del contrato se pisaban en el mismo
+           centro vertical del hero. */
+        .hero-game-veil { position: absolute; inset: 0; background: rgba(3,5,4,0.62);
+            display: flex; align-items: flex-start; justify-content: center; padding-top: 24vh; }
+        .hero-game-btns { display: flex; flex-direction: column; align-items: center; gap: 20px; }
         .hero-main-content { z-index: 2; text-align: center; padding: 0 20px; margin-top: 60px; }
-        /* PLAY NOW del hero, cartel del contrato y el contrato: apilados bajo el
-           titulo. Los cuatro se mueven/escalan desde EDIT (ver LandingLayout). */
-        .hero-play-row { display: flex; align-items: center; justify-content: center; gap: 46px; margin-top: 26px; }
         /* PLAY NOW: ya no es el PNG banner alargado (1856x560), es un boton real
            con una placa pixel-art generada por canvas (heroPlayBtnPlate, mismo
            dibujo que _pmPlateUrl de la Skin Store: reborde oscuro + bisel claro),
            mas cuadrado y con el mismo nivel de pixel que el resto de botones
            placa del juego. pixelated de verdad porque ahora SI es rejilla dura. */
-        .hero-play { display: block; height: 90px; width: auto; aspect-ratio: 2.3; padding: 0; border: none;
+        /* Alargado como el PLAY de dentro de cada modo (btn-plain-red.png,
+           aspect-ratio 15/2), no la placa cuadrada de antes — mismo nivel de
+           pixel, forma mas parecida al boton real del juego. Los 3 en el mismo
+           verde oscuro (drawHeroPlayPlates les da el mismo hex). */
+        .hero-play { display: block; height: 52px; width: auto; aspect-ratio: 6.8; padding: 0; border: none;
             cursor: pointer !important; image-rendering: pixelated; background-color: transparent;
             background-size: 100% 100%; background-repeat: no-repeat;
-            font-family: 'Press Start 2P', monospace; font-size: 17px; color: #fff; letter-spacing: 1px;
+            font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; letter-spacing: 1px;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
-            filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)); transition: filter .15s ease, transform .1s ease; }
-        .hero-play:hover { filter: drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.15); }
+            filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.5)); transition: filter .15s ease, transform .1s ease; }
+        .hero-play:hover { filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.5)) brightness(1.15); }
         .hero-play:active { transform: translate(2px, 2px); }
+        /* CHOOSE MODES / CHOOSE SKINS: la misma placa, algo mas pequeñas — CTAs
+           secundarias frente a PLAY NOW. */
+        .hero-play-sub { height: 40px; font-size: 9px; }
         /* PLAY NOW de la navbar: oculto mientras el hero esta a la vista (ya
            hay uno ahi dentro), aparece al hacer scroll y salir de el (ver el
            IntersectionObserver mas abajo). En EDIT LAYOUT se fuerza visible
@@ -1260,7 +1280,13 @@ body.trailer-open #page-content{
                 height: auto !important; width: 100% !important;
             }
             .hero-play { height: auto; width: min(70vw, 260px); }
-            .hero-play-row { gap: 0; margin-top: 18px; }
+            .hero-game-btns { gap: 12px; }
+            /* En movil el iframe del juego real se apaga: pantalla pequeña,
+               dentro /game ya bloquea el juego con #mobileBlock, y la escala
+               desktop del layout (EDIT LAYOUT) no tiene sentido aqui. Se cae al
+               link directo de siempre. */
+            .hero-game-frame { display: none; }
+            .hero-game-veil { background: rgba(3,5,4,0.78); }
             /* El contrato son 44 caracteres en una fuente monoespaciada: en una
                sola linea no cabe en ningun movil. Se deja partir. */
             .hero-ca { max-width: 100%; flex-wrap: wrap; justify-content: center; gap: 8px; }
@@ -1680,7 +1706,11 @@ body.trailer-open #page-content{
         // resolucion EXACTA del boton, no un vector.
         function drawHeroPlayPlates() {
             if (typeof _pmPlateUrl !== 'function') return;
-            [['heroPlayNow', '#00ff88'], ['navPlayNow', '#00ff88']].forEach(([id, hex]) => {
+            // Los 3 botones del hero (PLAY NOW/CHOOSE MODES/CHOOSE SKINS) en el
+            // mismo verde oscuro; navPlayNow (la copia de la navbar) se queda
+            // con el verde de marca de siempre.
+            [['heroPlayNow', '#0f7a3d'], ['navPlayNow', '#00ff88'],
+             ['heroChooseModes', '#0f7a3d'], ['heroChooseSkins', '#0f7a3d']].forEach(([id, hex]) => {
                 const el = document.getElementById(id);
                 if (!el || !el.clientWidth) return;
                 el.style.backgroundImage = 'url(' + _pmPlateUrl(el.clientWidth, el.clientHeight, hex) + ')';
@@ -1789,6 +1819,20 @@ body.trailer-open #page-content{
          que pinta heroDecoCv junto con la comida/virus/pildoras. -->
     <div class="hero-video-wrapper" id="hero">
         <canvas id="heroDecoCv"></canvas>
+        <!-- El juego REAL de fondo: iframe al propio /game (misma origen, asi
+             que index.html puede llamar funciones dentro sin postMessage, ver
+             HeroGame mas abajo). Un velo oscuro encima con los 3 botones tapa
+             el menu normal del juego hasta que se pulsa uno. -->
+        <div class="hero-game-wrap" id="heroGameWrap">
+            <iframe class="hero-game-frame" id="heroGameFrame" src="game/?hero=1" title="PillWars gameplay" loading="eager"></iframe>
+            <div class="hero-game-veil" id="heroGameVeil">
+                <div class="hero-game-btns">
+                    <button class="hero-play" id="heroPlayNow">PLAY NOW</button>
+                    <button class="hero-play hero-play-sub" id="heroChooseModes">CHOOSE MODES</button>
+                    <button class="hero-play hero-play-sub" id="heroChooseSkins">CHOOSE SKINS</button>
+                </div>
+            </div>
+        </div>
         <div class="hero-main-content">
             <div class="hero-txt">
                 <h1 class="big-title">PILLWARS</h1>
@@ -1800,15 +1844,15 @@ body.trailer-open #page-content{
                 <img class="hero-img" id="heroTitle" src="img/pixel-hero/hero-title.png" alt="PillWars" onerror="this.closest('.hero-main-content').classList.add('no-img')">
                 <div class="hero-sub">THE CRYPTO ARENA</div>
             </div>
-            <div class="hero-play-row">
-                <!-- Pildora jugable: al clicarla tomas el control de una pill
-                     dentro del hero (ver HeroPlay en el script del final). -->
-                <div id="heroPickMe" title="Take control">
-                    <div class="pick-me-label">PICK ME!</div>
-                    <div class="pick-me-label esc-to-leave">ESC TO LEAVE</div>
-                    <canvas class="pick-me-pill" width="86" height="86"></canvas>
-                </div>
-                <button class="hero-play" id="heroPlayNow" onclick="window.location.href='game/'">PLAY NOW</button>
+            <!-- heroPickMe queda en el DOM pero oculto (ver #heroPickMe{display:none}):
+                 HeroPlay sigue leyendola sin comprobar null en varios sitios, y su
+                 lienzo (heroDecoCv) tambien esta oculto ahora que el fondo es el
+                 iframe del juego real, asi que "tomar el control" ya no tiene donde
+                 dibujarse aunque se dejara visible. -->
+            <div id="heroPickMe" title="Take control">
+                <div class="pick-me-label">PICK ME!</div>
+                <div class="pick-me-label esc-to-leave">ESC TO LEAVE</div>
+                <canvas class="pick-me-pill" width="86" height="86"></canvas>
             </div>
             <!-- Rotulo y caja del contrato: los dos con el MISMO formato que la
                  barra IN GAME / el desplegable de $PILL (fondo negro
@@ -4411,6 +4455,117 @@ function toggleTrailerMode() {
     </script>
 
     <script src="game/paises-pixel.js"></script>
+    <script>
+    /* ===== HERO: el juego real de fondo =====
+     * index.html embebe game/?hero=1 en un iframe SAME-ORIGIN (game/ y la
+     * landing viven bajo el mismo dominio), asi que se puede llamar a las
+     * funciones de dentro directamente sobre iframe.contentWindow — el mismo
+     * truco que ya usa game/comparativa.html para congelar/disparar la sim de
+     * dos copias del juego a la vez (ver whenReady/initFrame alli).
+     *
+     * ?hero=1 no oculta nada especial por si mismo (a diferencia de ?pwlab=1,
+     * pensado para journals de comparacion): el iframe carga el juego tal cual,
+     * empezando en su pantalla de modos de siempre. El velo (.hero-game-veil)
+     * con los 3 botones va ENCIMA, en el documento de la landing, y bloquea el
+     * iframe hasta que se pulsa uno. Al pulsar, el velo se esconde y el iframe
+     * queda interactivo con lo que corresponda:
+     *   PLAY NOW      -> heroQuickPlay(nombre) dentro del iframe: offline arcade
+     *                     directa, skin basica. La 1a muerte de ESA partida salta
+     *                     TRY AGAIN (showResultsUI sobreescrita mas abajo).
+     *   CHOOSE MODES  -> nada que llamar: la pantalla de modos real ya esta
+     *                     debajo, solo hacia falta destapar el iframe.
+     *   CHOOSE SKINS  -> heroShowSkinsStore() dentro del iframe: catalogo
+     *                     grande, pestaña Store, tenido de arcade.
+     */
+    (function () {
+        const wrap = document.getElementById('heroGameWrap');
+        const frame = document.getElementById('heroGameFrame');
+        const veil = document.getElementById('heroGameVeil');
+        const btnPlay = document.getElementById('heroPlayNow');
+        const btnModes = document.getElementById('heroChooseModes');
+        const btnSkins = document.getElementById('heroChooseSkins');
+        if (!wrap || !frame || !veil || !btnPlay) return;
+
+        // Movil: el iframe se apaga por CSS (.hero-game-frame{display:none}) y
+        // aqui se cae al link directo de siempre — la escala desktop del juego
+        // (EDIT LAYOUT, el propio /game bloqueando moviles con #mobileBlock) no
+        // tiene sentido embebida en un hero pequeño.
+        const esMovil = () => window.matchMedia('(max-width: 768px)').matches;
+        if (esMovil()) {
+            frame.removeAttribute('src');
+            const irAlJuego = () => { window.location.href = 'game/'; };
+            btnPlay.onclick = irAlJuego;
+            if (btnModes) btnModes.onclick = irAlJuego;
+            if (btnSkins) btnSkins.onclick = irAlJuego;
+            return;
+        }
+
+        function mostrarVelo() { veil.style.display = 'flex'; }
+        function ocultarVelo() { veil.style.display = 'none'; }
+
+        // Sondeo de arranque: mismo criterio que whenReady() en comparativa.html
+        // (readyState completo + una funcion propia del juego ya declarada).
+        function cuandoListo(fn) {
+            const ok = () => {
+                try {
+                    const w = frame.contentWindow;
+                    return w && w.document.readyState === 'complete' && typeof w.heroQuickPlay === 'function';
+                } catch (e) { return false; }
+            };
+            const t = setInterval(() => { if (ok()) { clearInterval(t); fn(frame.contentWindow); } }, 150);
+            setTimeout(() => clearInterval(t), 20000);
+        }
+
+        let win = null, heroFirstMatchPending = false;
+        cuandoListo(w => {
+            win = w;
+            // Fondo: partida real con bots, la camara sigue al mas grande — nada
+            // de pantalla de modos estatica detras del velo.
+            try { w.heroAmbientDemo(); } catch (e) {}
+            // Sobreescribe showResultsUI dentro del iframe: la partida disparada
+            // desde PLAY NOW no debe enseñar TRY AGAIN en su primera muerte, solo
+            // volver al velo. Partidas offline normales (fuera de este flujo,
+            // p.ej. si el visitante ya esta jugando via CHOOSE MODES) siguen con
+            // el TRY AGAIN de siempre porque heroFirstMatchPending esta a false.
+            const showResultsUIOriginal = w.showResultsUI;
+            w.showResultsUI = function (tipo, extra) {
+                if (tipo === 'gameOver' && heroFirstMatchPending) {
+                    heroFirstMatchPending = false;
+                    try { w.returnToMenu(); } catch (e) {}
+                    mostrarVelo();
+                    return;
+                }
+                showResultsUIOriginal.call(w, tipo, extra);
+            };
+            // Al cerrar el catalogo de skins abierto desde CHOOSE SKINS, vuelve
+            // el velo con los 3 botones.
+            const skinBigCloseOriginal = w.skinBigClose;
+            w.skinBigClose = function () {
+                skinBigCloseOriginal.call(w);
+                mostrarVelo();
+            };
+        });
+
+        btnPlay.onclick = () => {
+            if (!win) return;
+            const nombre = (window.prompt('Enter your name', '') || '').trim().slice(0, 12);
+            heroFirstMatchPending = true;
+            ocultarVelo();
+            try { win.heroQuickPlay(nombre); } catch (e) {}
+        };
+        // El fondo esta espectando la demo ambiente (heroAmbientDemo), no la
+        // pantalla de modos: goBackToModes() la trae de verdad encima. La demo
+        // se queda corriendo tapada (gameRunning no se toca aqui), pero
+        // cualquier flujo real de partida (selectMode -> ... -> startGame) pone
+        // isSpectating a false por su cuenta al arrancar.
+        if (btnModes) btnModes.onclick = () => {
+            if (!win) return;
+            try { win.goBackToModes(); } catch (e) {}
+            ocultarVelo();
+        };
+        if (btnSkins) btnSkins.onclick = () => { if (!win) return; ocultarVelo(); try { win.heroShowSkinsStore(); } catch (e) {} };
+    })();
+    </script>
     <script>
     /* Tienda de skins de la landing. Reutiliza tal cual el generador de pildoras
        del juego (game/paises-pixel.js): mismos colores, mismo emblema y mismo

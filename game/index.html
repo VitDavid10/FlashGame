@@ -741,6 +741,7 @@
         .sb-cell.vacia:hover { background: transparent; border-color: transparent; transform: none; }
         .sb-cell canvas { image-rendering: pixelated; }
         .sb-cod { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; text-align: center; line-height: 1; margin-top: -6px; }
+        .sb-flag { font-family: initial; font-size: 13px; vertical-align: -1px; }
         .sb-pre { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #8d9a92; margin-top: 3px; }
         /* EQUIP / UNEQUIP de YOUR SKINS: accion directa sin abrir el detalle. */
         .sb-eq { position: absolute; top: 10px; right: 10px; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 0.5px; padding: 4px 8px;
@@ -7711,7 +7712,13 @@
         // Crear o reutilizar la simulación de esta sala
         let entry = roomStates[roomKey];
         if (!entry) {
-            sim = new PillSim.Simulation({ mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }, maxBotCells: MAX_BOT_CELLS, fx: { enabled: true, enemyFX: enableEnemyFX } });
+            sim = new PillSim.Simulation({
+                mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }, maxBotCells: MAX_BOT_CELLS,
+                // Mismo calentamiento que startPracticeGame: sin el, una partida
+                // offline recien entrada podia acabar en 1s con los bots ya encima.
+                botPlayerGraceMs: 10000,
+                fx: { enabled: true, enemyFX: enableEnemyFX }
+            });
             sim.populate();
             explosions = [];
             roomStates[roomKey] = { sim: sim, config: currentBotConfig };
@@ -8892,6 +8899,13 @@
     function skinNombreCelda(code) {
         return SKIN_NOMBRE_CORTO[code] || ((paisSkin(code) || {}).nombre || code).toUpperCase();
     }
+    // Bandera emoji del codigo ISO de dos letras (regional indicators), mismo
+    // algoritmo que flag() en index.html (leaderboard Global Elite).
+    function skinFlagEmoji(code) {
+        const c = String(code || '').toUpperCase();
+        if (c.length !== 2) return '';
+        return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65) + String.fromCodePoint(0x1F1E6 + c.charCodeAt(1) - 65);
+    }
     let skinPagina = 0, minePagina = 0;
 
     // Quien soy para el servidor de skins: el mismo clientId de las quests, la
@@ -9103,7 +9117,13 @@
             cv.getContext('2d').drawImage(o.cv, 0, 0);
 
             const cod = document.createElement('div'); cod.className = 'sb-cod';
-            cod.textContent = esDefault ? 'DEFAULT' : skinNombreCelda(code);
+            if (esDefault) {
+                cod.textContent = 'DEFAULT';
+            } else {
+                cod.textContent = skinNombreCelda(code) + ' ';
+                const fl = document.createElement('span'); fl.className = 'sb-flag'; fl.textContent = skinFlagEmoji(code);
+                cod.appendChild(fl);
+            }
             cel.append(cv, cod);
 
             const activa = esDefault ? !puesta : puesta === code;
@@ -9144,9 +9164,10 @@
         }
         document.getElementById('sbPage').textContent = (skinBigPagina + 1) + '/' + paginas;
         document.getElementById('sbNext').disabled = paginas < 2;
-        // La nota de reordenar solo tiene sentido donde se puede reordenar.
+        // Mismo hueco del pie para las dos pestanas: en YOUR SKINS explica el
+        // drag-to-reorder, en SKINS STORE de donde sale el SP para comprar.
         const hint = document.querySelector('#skinBigModal .sb-hint');
-        if (hint) hint.style.display = esMine ? '' : 'none';
+        if (hint) hint.textContent = esMine ? 'Drag a skin to reorder your collection' : 'You can get SP with Daily Quests';
         skinBigDnD(grid);
         drawPlacaPopup();
     }
@@ -9663,6 +9684,55 @@
         lastFrameTime = Date.now();
         practiceFirstSkillDone = false;   // el primer selector de skill del preview se omite
         // Preview sin música: solo efectos (se cortan al empezar la partida).
+        gameRunning = true;
+    }
+
+    // ===== API para el hero de la landing =====
+    // index.html embebe esta pagina en un iframe same-origin y llama a estas
+    // funciones desde fuera (mismo patron que __pwLab/comparativa.html, pero
+    // funciones normales en vez de getters: no necesitan tocar variables desde
+    // fuera, solo disparar una accion con closure sobre las de aqui).
+    // PLAY NOW del hero: nombre + partida offline arcade directa, skin basica
+    // (los colores por defecto de colTop/colBot). Que la primera muerte salte
+    // TRY AGAIN lo decide index.html sobreescribiendo showResultsUI desde
+    // fuera (mismo truco que comparativa.html con returnToMenu).
+    function heroQuickPlay(name) {
+        playerName = String(name || '').trim().slice(0, 12) || 'Player';
+        startPracticeGame('arcade');
+    }
+    // CHOOSE SKINS del hero: catalogo grande, pestana SKINS STORE, tenido de
+    // arcade. skinBigOpen() ya cae en la pestana 'skins' salvo que sidePanelTab
+    // sea 'mine', pero se fuerza explicito por si una sesion previa lo dejo ahi.
+    function heroShowSkinsStore() {
+        _loginBgMode = 'arcade'; currentGameMode = 'arcade';
+        skinBigOpen();
+        skinBigTab('skins');
+    }
+    // Fondo del hero antes de pulsar ningun boton: una partida arcade real con
+    // bots, sin "yo" — la camara sigue al bot mas grande, mismo criterio que
+    // espectar una sala online (onlineSpectator, ver el bloque de camara en
+    // updateGame), aplicado aqui a una sim offline. No usa startSpectatorMode():
+    // esa lee inputs de un panel de ajustes (botsToggle, mapMult...) que ya no
+    // existe en el HTML y peta en su primera linea.
+    function heroAmbientDemo() {
+        currentGameMode = 'arcade';
+        sim = new PillSim.Simulation({
+            mode: 'arcade', mapSize: WORLD_CONFIG.arcade.size, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
+            botConfig: { enabled: true, count: 25, respawn: true }, maxBotCells: 4,
+            botPlayerGraceMs: 0, fx: { enabled: true, enemyFX: enableEnemyFX }
+        });
+        sim.populate();
+        MAP_SIZE = sim.mapSize;
+        explosions = [];
+        isGodMode = false; isSpectating = true; onlineSpectator = true; practiceMode = true;
+        els.actionBar.style.display = 'none';
+        // modeScreen es lo primero que se ve al cargar (z-index:50, por encima
+        // del canvas): sin ocultarla tambien, la demo corre debajo tapada por
+        // la pantalla de modos de siempre.
+        els.modeScreen.style.display = 'none';
+        els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
+        document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block';
+        lastFrameTime = Date.now();
         gameRunning = true;
     }
 
