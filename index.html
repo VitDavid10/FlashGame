@@ -352,9 +352,11 @@
         /* DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT debajo. */
         .wallet-deposit-wrap { display: none; position: relative; flex-shrink: 0; }
         .wallet-dropdown-content { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 1002; }
-        /* Igual que el dropdown de $PILL: en EDIT LAYOUT no se abre solo con
-           el hover, tapaba otros elementos y no dejaba agarrarlos. */
+        /* Igual que el dropdown de $PILL: en EDIT LAYOUT no depende del hover
+           (perderlo a medio arrastre lo cerraba y CHOOSE MODES/CHOOSE SKINS se
+           quedaban sin forma de agarrarlos), se fuerza siempre abierto. */
         body:not(.layout-editing) .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
+        body.layout-editing .wallet-deposit-wrap .wallet-dropdown-content { display: block; }
         .wallet-dropdown-content .wb-box { margin-top: 4px; }
 
         /* --- TICKER --- */
@@ -436,6 +438,17 @@
            botones (misma clave, mismo tamaño de letra para el grupo). */
         #nav-play-area .btn-connect, #nav-play-area .btn-deposit, #nav-play-area .btn-withdraw {
             font-size: var(--pw-font, var(--fs-4));
+        }
+        /* CHOOSE MODES/CHOOSE SKINS (el desplegable) mas pequenos que PLAY NOW:
+           mismo criterio que hero-play-sub en el hero (boton principal grande,
+           los dos secundarios mas chicos) — a la caja de 190px de PLAY NOW,
+           "CHOOSE MODES"/"CHOOSE SKINS" no cabian a la misma letra y sobresalian
+           por los lados. calc() sobre el mismo --pw-font: si se agranda el grupo
+           entero con ALT+rueda, estos siguen proporcionalmente mas pequenos. */
+        #nav-play-area .wallet-dropdown-content .btn-deposit,
+        #nav-play-area .wallet-dropdown-content .btn-withdraw {
+            width: 133px;
+            font-size: calc(var(--pw-font, var(--fs-4)) * 0.73);
         }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
