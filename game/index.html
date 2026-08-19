@@ -9794,7 +9794,7 @@
     // no hace falta logica de respawn propia. No usa startSpectatorMode(): esa
     // lee inputs de un panel de ajustes (botsToggle, mapMult...) que ya no
     // existe en el HTML y peta en su primera linea.
-    let heroAutopilotActive = false, _heroAutopilotTimer = null;
+    let heroAutopilotActive = false, _heroAutopilotTimer = null, heroDemoHoldUntil = 0;
     function heroAmbientDemo() {
         currentGameMode = 'arcade';
         sim = new PillSim.Simulation({
@@ -9831,6 +9831,14 @@
         camera.x = c.x; camera.y = c.y; camera.scale = 0.8;
         lastFrameTime = Date.now();
         gameRunning = true;
+        // Medio segundo con el mapa, la comida y la pildora ya pintados pero
+        // QUIETOS antes de dejar que sim.step() mueva nada (ver el freno en
+        // updateGame). En conexiones lentas el iframe tardaba en cargar y, en
+        // cuanto terminaba, el primer fotograma llegaba ya en marcha — un
+        // salto feo de "nada" a "todo moviendose de golpe". draw() no mira
+        // este freno, asi que la escena se ve completa desde el primer
+        // fotograma, solo congelada un instante.
+        heroDemoHoldUntil = Date.now() + 500;
         if (!_heroAutopilotTimer) _heroAutopilotTimer = setInterval(heroAutopilotStep, 300);
     }
     // Autopiloto: cada 300ms apunta mouse.x/mouse.y (en coordenadas de
@@ -10549,6 +10557,10 @@
         if (!gameRunning || !sim) return;
         const p = me();
         const now = Date.now(), delta = now - lastFrameTime; lastFrameTime = now;
+        // Arranque del hero: sim.step() se congela hasta heroDemoHoldUntil
+        // (ver heroAmbientDemo) para que el primer fotograma visible sea el
+        // mapa/comida/pildora ya en su sitio pero quietos, no ya en marcha.
+        if (heroDemoHoldUntil) { if (now < heroDemoHoldUntil) return; heroDemoHoldUntil = 0; }
 
         // 1) Input → sim (objetivo en coordenadas de mundo)
         if (isSpectating || isLoggingOut || !p) { if (p) sim.setInput('me', null); }
