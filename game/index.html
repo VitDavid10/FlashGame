@@ -1958,7 +1958,27 @@
             // bloque de arranque al final del body) — sin ocultar aqui se veia
             // ese salto de layout horneado -> guardado en CUALQUIER visita, no
             // solo en las que abre el hero.
-            document.write('<style id="_heroBootHide">#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
+            // #modeScreen se tapa con opacity, NO con display:none:
+            // modeFxActive() exige que #modeScreen tenga medidas (offsetWidth),
+            // y con display:none valen 0 — la escena de fondo del selector no
+            // podia montarse hasta DESPUES de quitar este velo, asi que la
+            // pantalla de carga daba paso a un selector aun en negro (el CSS
+            // deja paneles y divisor en opacity 0 mientras no exista la
+            // escena). Con opacity el selector sigue midiendo, la escena se
+            // monta debajo de la pantalla de carga —que lo tapa entero— y al
+            // levantarla ya esta todo pintado.
+            // El recorte se hace con clip-path, y no con visibility ni con
+            // opacity, porque las dos tenian su pega: visibility SE HEREDA y
+            // dejaba a los hijos con "transition: all" (.mode-content,
+            // .mode-title) en hidden para siempre al quitarse el velo; opacity
+            // SI la transiciona #modeScreen (transition: opacity 0.5s), asi
+            // que al quitar el velo el selector entraba con un fundido —y en
+            // una pestaña que el navegador no esta componiendo, esa transicion
+            // ni siquiera progresa y se quedaba invisible. clip-path no se
+            // hereda y no esta en la lista de transiciones de #modeScreen: el
+            // selector aparece de golpe, igual que con el display:none de
+            // antes, pero midiendo desde el primer momento.
+            document.write('<style id="_heroBootHide">#modeScreen{clip-path:inset(100%)!important;pointer-events:none!important}#loginOverlay{display:none!important;pointer-events:none!important}</style>');
         }
     </script>
 
@@ -3419,6 +3439,21 @@
     const getEllipticalDist = PillSim.getEllipticalDist;
 
     function getViewScale() { let scaleX = width / BASE_WIDTH; let scaleY = height / BASE_HEIGHT; return camera.scale * Math.max(scaleX, scaleY); }
+
+    // Zoom al que la camara TIENDE segun el tamaño del jugador. updateGame lo
+    // persigue suavemente cada frame; heroAmbientDemo lo aplica de golpe para
+    // arrancar ya enfocado en su pildora (antes empezaba en 0.8 fijo y el
+    // primer par de segundos del fondo del hero era un zoom acercandose).
+    function zoomObjetivoJugador(totalR, maxR, n) {
+        const effR = Math.max(INITIAL_RADIUS, totalR / Math.pow(n, 0.4));
+        let s = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / effR, ZOOM_CONFIG.exponent);
+        // Red de seguridad: por muy grande que seas, tu célula mayor nunca
+        // ocupa más del ~55% del lado corto de la pantalla (la curva de
+        // potencia sola se aplana y a masas enormes el cuerpo desbordaba).
+        const viewFactor = Math.max(width / BASE_WIDTH, height / BASE_HEIGHT);
+        s = Math.min(s, 0.275 * Math.min(width, height) / (maxR * viewFactor));
+        return Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, s));
+    }
 
     // --- RENDER DE CÉLULAS (la lógica de Cell vive en shared/sim.js) ---
     const skinCache = new Map();
@@ -5596,9 +5631,28 @@
             modeFx.cv = cv; modeFx.g = cv.getContext('2d');
         }
         modeFx.lastT = performance.now();
-        modeFx.raf = requestAnimationFrame(modeFxTick);
+        // Primer frame YA, sincrono, en vez de esperar al rAF: la escena de
+        // fondo del selector (#modeSceneCv, la que el CSS exige para sacar
+        // paneles y titulos del negro) se monta DENTRO del tick, y los rAF no
+        // corren en una pestaña en segundo plano — el selector se quedaba
+        // negro hasta que la pestaña volvia al frente. El propio tick encadena
+        // el siguiente rAF, asi que esto no duplica el bucle.
+        // El try es obligatorio, no decorativo: la primera llamada a esta
+        // funcion ocurre mientras el script aun se esta evaluando, y el tick
+        // toca constantes declaradas mas abajo (LAYOUT_ELS y compañia, en su
+        // zona muerta todavia). Sin el try esa excepcion subia al top-level y
+        // abortaba el resto del script — ni pantalla de carga ni init(). Si
+        // falla se cae al rAF de siempre, que ya corre con todo evaluado.
+        try { modeFxTick(modeFx.lastT); }
+        catch (e) { modeFx.raf = requestAnimationFrame(modeFxTick); }
     }
     function modeFxTick(now) {
+        // El rAF que trajo hasta aqui ya esta consumido: marcarlo ANTES de
+        // hacer nada. Si el cuerpo muriera a medias, antes quedaba el ID
+        // viejo, la guarda de modeFxStart() lo tomaba por "ya corriendo" y
+        // nada podia revivir la escena en toda la sesion; con el 0 puesto de
+        // entrada, la siguiente llamada a modeFxStart() la recupera.
+        modeFx.raf = 0;
         if (!modeFxActive()) {
             modeFx.raf = 0; modeFx.pills.length = 0; modeFx.sparks.length = 0; modeFx.burstT = 0;
             if (modeFx.g) modeFx.g.clearRect(0, 0, modeFx.cv.width, modeFx.cv.height);
@@ -9828,7 +9882,12 @@
         document.getElementById('timerDisplay').style.display = 'none';
         const p = sim.addPlayer('me', { name: '', colorBot: '#00ff44', colorTop: '#c0c8d0' });
         const c = sim.spawnPlayer('me');
-        camera.x = c.x; camera.y = c.y; camera.scale = 0.8;
+        // Encuadre FINAL desde el primer fotograma: el 0.8 de partida que usan
+        // las partidas de verdad es un plano abierto del que la camara se va
+        // acercando sola, y en el hero eso se veia como "sale el mapa y luego
+        // hace zoom a la pildora". Aqui se entra ya en el zoom al que la
+        // camara iba a acabar, asi que no hay acercamiento que ver.
+        camera.x = c.x; camera.y = c.y; camera.scale = zoomObjetivoJugador(c.r, c.r, 1);
         lastFrameTime = Date.now();
         gameRunning = true;
         // Medio segundo con el mapa, la comida y la pildora ya pintados pero
@@ -10634,16 +10693,7 @@
             const cells = myCells(); let tx=0, ty=0, totalR=0, maxR=0, n=cells.length; cells.forEach(c => { tx+=c.x; ty+=c.y; totalR+=c.r; if (c.r > maxR) maxR = c.r; });
             if(n > 0) {
                 camera.x += ((tx/n) - camera.x) * 0.05 * timeScale; camera.y += ((ty/n) - camera.y) * 0.05 * timeScale;
-                let effR = Math.max(INITIAL_RADIUS, totalR / Math.pow(n, 0.4));
-                let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / effR, ZOOM_CONFIG.exponent);
-                // Red de seguridad: por muy grande que seas, tu célula mayor nunca
-                // ocupa más del ~55% del lado corto de la pantalla (la curva de
-                // potencia sola se aplana y a masas enormes el cuerpo desbordaba).
-                const viewFactor = Math.max(width / BASE_WIDTH, height / BASE_HEIGHT);
-                const fitCap = 0.275 * Math.min(width, height) / (maxR * viewFactor);
-                targetScale = Math.min(targetScale, fitCap);
-                targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale));
-                camera.scale += (targetScale - camera.scale) * 0.05 * timeScale;
+                camera.scale += (zoomObjetivoJugador(totalR, maxR, n) - camera.scale) * 0.05 * timeScale;
             }
         }
 
@@ -11030,14 +11080,32 @@
         let layoutReady = false, fontsReady = false;
         refreshOracle().catch(() => {}).then(() => { layoutReady = true; });
         (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => { fontsReady = true; });
-        // Ademas de layout/fuentes, esperar al evento `load` (TODAS las imagenes
-        // de la pagina, placas ARCADE/CLASSIC incluidas). Sin esto la carga
-        // terminaba en cuanto refreshOracle()+fuentes respondian y el selector
-        // se enseñaba aunque sus imagenes no hubieran llegado aun — pantalla
-        // negra unos segundos hasta que aparecian solas. LOADING_MAX_MS (9s)
-        // sigue de red de seguridad si algun recurso nunca llega a cargar.
-        let pageReady = document.readyState === 'complete';
-        if (!pageReady) window.addEventListener('load', () => { pageReady = true; }, { once: true });
+        // El selector no se ve hasta que su escena de fondo (el canvas
+        // #modeSceneCv) esta montada y pintada: mientras no exista, el CSS deja
+        // paneles, divisor y titulos en opacity 0 y lo unico que se ve es
+        // negro. Se espera a ESO y a las imagenes del propio selector — no al
+        // evento `load` de la pagina entera, que arrastraba recursos que el
+        // selector ni usa y hacia esperar de mas a quien ya lo tenia listo.
+        // LOADING_MAX_MS (9s) sigue de red de seguridad.
+        const selectorListo = () => {
+            const ms = els.modeScreen;
+            if (!ms) return true;
+            // Sin texture pack pixel no hay escena que montar (modeFxActive lo
+            // exige) y el selector se ve con su estilo de siempre: no hay nada
+            // que esperar ahi.
+            if (pixelMode) {
+                // Reintento barato: modeFxStart() solo prende si #modeScreen ya
+                // tiene medidas, y en la primera llamada (al parsear) aun no
+                // las tenia. Aqui se reintenta cada vuelta del tick de carga.
+                if (!modeFx.raf) modeFxStart();
+                if (!document.body.classList.contains('has-hover-scene')) return false;
+            }
+            // .complete tambien es true si la imagen fallo (404): un recurso
+            // que no existe no puede colgar la carga, y su onerror ya tiene
+            // previsto el fallback.
+            for (const img of ms.querySelectorAll('img')) if (!img.complete) return false;
+            return true;
+        };
         // heroplay se salta selectMode() (quien normalmente dispara la carga del
         // atlas pixel de cartel-hero.js: skill-slot.png, top-mass.png, los
         // iconos de sonido/musica/salir...) y arranca la partida DIRECTO. Sin
@@ -11052,7 +11120,7 @@
             cartelHeroLoad(); skillIconLoad();
             CARTEL_HERO_READY_PROMISE.then(() => { atlasReady = true; });
         }
-        showLoadingScreen(500, () => layoutReady && fontsReady && atlasReady && pageReady, () => {
+        showLoadingScreen(500, () => layoutReady && fontsReady && atlasReady && selectorListo(), () => {
             if (modo === 'heroplay') { heroQuickPlay(qs.get('name') || '').then(quitarVelo); }
             else if (modo === 'heroskins') { heroShowSkinsStore().then(quitarVelo); }
             else quitarVelo();
