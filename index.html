@@ -458,6 +458,10 @@
             opacity: 0; pointer-events: none; transition: opacity 0.18s ease;
         }
         .hero-play-group:hover .hero-play-links { opacity: 1; pointer-events: auto; }
+        /* En EDIT LAYOUT se fuerza visible SIEMPRE (igual que #pill-dropdown y
+           .wallet-area mas arriba): si no, MODES/SKINS son inalcanzables en
+           cuanto el raton sale de PLAY NOW para ir a arrastrarlas. */
+        body.layout-editing .hero-play-links { opacity: 1 !important; pointer-events: auto !important; }
         .hero-sub-link {
             background: none; border: 0; padding: 4px 6px; cursor: pointer !important;
             font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 1px;
