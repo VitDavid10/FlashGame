@@ -9847,6 +9847,19 @@
             const d = (f.x - c0.x) * (f.x - c0.x) + (f.y - c0.y) * (f.y - c0.y);
             if (d < bestD) { bestD = d; target = f; }
         }
+        // Tambien persigue gente (bots), no solo comida: solo perseguia
+        // comida y esta a veces reaparece pegada al mismo borde del mapa una
+        // y otra vez, dejando la pildora clavada empujando la pared. Los
+        // bots se mueven solos, asi que tirar de ellos como alternativa saca
+        // a la pildora de esos atascos. Solo cuentan como objetivo los mas
+        // PEQUEÑOS (presa segura, mismo umbral 1.15 que usa la IA real de
+        // los bots): los mas grandes se ignoran para no arriesgar la
+        // pildora una vez pasada la gracia de 15s (botPlayerGraceMs).
+        for (const e of sim.enemies) {
+            if (e.r * 1.15 >= c0.r) continue;
+            const d = (e.x - c0.x) * (e.x - c0.x) + (e.y - c0.y) * (e.y - c0.y);
+            if (d < bestD) { bestD = d; target = e; }
+        }
         let wx, wy;
         // Anti-encallado: el mapa va centrado en 0 (|x|,|y| <= MAP_SIZE). Pegada
         // a un borde, la comida mas cercana suele estar tambien pegada o al otro
