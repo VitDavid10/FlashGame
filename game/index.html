@@ -10442,10 +10442,18 @@
         const finish = () => {
             if (window.__loadingTimer) { clearTimeout(window.__loadingTimer); window.__loadingTimer = null; }
             bar.style.transition = 'width .15s ease'; bar.style.width = '100%';
-            window.__loadingLock = false;
             SoundManager.stop('loading');
-            ov.style.display = 'none';
-            if (onDone) onDone();
+            // El cartel se retira DESPUES de onDone, y si onDone es asincrono,
+            // cuando termine. Antes se quitaba primero y se llamaba despues:
+            // con un onDone que tarda en montar su pantalla (CHOOSE SKINS
+            // sincroniza skins y monta el login) quedaba un hueco en negro
+            // entre el final de la carga y la pantalla de destino.
+            const cerrar = () => { window.__loadingLock = false; ov.style.display = 'none'; };
+            let r;
+            // Un fallo montando la pantalla no puede dejar el cartel puesto
+            // para siempre (ni el input bloqueado): pase lo que pase, se cierra.
+            try { r = onDone && onDone(); } catch (e) { console.warn('[loading] onDone', e); }
+            if (r && typeof r.then === 'function') r.then(cerrar, cerrar); else cerrar();
         };
         const tick = () => {
             const elapsed = Date.now() - start;
@@ -11120,10 +11128,15 @@
             cartelHeroLoad(); skillIconLoad();
             CARTEL_HERO_READY_PROMISE.then(() => { atlasReady = true; });
         }
+        // Los `return` importan: showLoadingScreen no retira el cartel hasta
+        // que la promesa que le devuelve esta funcion resuelve. Sin ellos la
+        // carga se quitaba nada mas empezar a montar la pantalla de destino y
+        // se veia el negro de fondo mientras tanto (CHOOSE SKINS, que espera a
+        // paisSync() antes de enseñar el login).
         showLoadingScreen(500, () => layoutReady && fontsReady && atlasReady && selectorListo(), () => {
-            if (modo === 'heroplay') { heroQuickPlay(qs.get('name') || '').then(quitarVelo); }
-            else if (modo === 'heroskins') { heroShowSkinsStore().then(quitarVelo); }
-            else quitarVelo();
+            if (modo === 'heroplay') return heroQuickPlay(qs.get('name') || '').then(quitarVelo);
+            if (modo === 'heroskins') return heroShowSkinsStore().then(quitarVelo);
+            quitarVelo();
         });
     })();
 

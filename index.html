@@ -437,22 +437,43 @@
            lo compense). */
         /* width bajado de 300 a 220 (y letra subida de 15 a 17): a 300px "PLAY
            NOW" solo llenaba el 40% de la placa (medido con canvas.measureText)
-           contra el 63% de "CHOOSE MODES" en su caja de 210px — se veia
-           mucho hueco rojo a los lados. A 220/17 vuelve al mismo ~62% de
-           relleno que los botones secundarios, y sigue leyendo como el
-           principal (caja y letra mas grandes que hero-play-sub). */
+           y se veia mucho hueco rojo a los lados. A 220/17 la letra llena
+           ~62% de la placa. Ya es la UNICA placa del hero: MODES/SKINS pasaron
+           a ser texto (ver .hero-sub-link justo debajo). */
         .hero-play.btn-connect { width: 220px; scale: 1; font-size: 17px; }
-        /* CHOOSE MODES / CHOOSE SKINS: la misma placa, mas pequeñas — CTAs
-           secundarias frente a PLAY NOW. */
-        .hero-play-sub.btn-connect { width: 210px; font-size: 11px; }
+        /* MODES / SKINS: ya no son dos placas mas (competian con PLAY NOW por
+           la mirada). Ahora son dos palabras en el dorado de la marca que solo
+           se despliegan al pasar el raton por PLAY NOW, en UNA fila de dos
+           columnas — asi el hero se queda con una sola llamada a la accion.
+           El desplegable va en position:absolute a proposito: plegado no
+           ocupa hueco, asi que no mueve a PLAY NOW de su sitio (que se coloca
+           desde EDIT LAYOUT, en px medidos) ni empuja nada del hero. */
+        .hero-play-group { position: relative; display: flex; flex-direction: column; align-items: center; }
+        .hero-play-links {
+            position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: row; gap: 26px; white-space: nowrap;
+            /* El padding es el puente para el raton: sin el, el hueco entre el
+               boton y las palabras rompe el hover a mitad de camino. */
+            padding-top: 12px;
+            opacity: 0; pointer-events: none; transition: opacity 0.18s ease;
+        }
+        .hero-play-group:hover .hero-play-links { opacity: 1; pointer-events: auto; }
+        .hero-sub-link {
+            background: none; border: 0; padding: 4px 6px; cursor: pointer !important;
+            font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 1px;
+            color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
+            transition: color 0.15s, text-shadow 0.15s;
+        }
+        .hero-sub-link:hover { color: #fff; text-shadow: 0 0 10px rgba(255,206,61,0.9), 2px 2px 0 rgba(0,0,0,0.75); }
         /* PLAY NOW de la navbar: oculto mientras el hero esta a la vista (ya
            hay uno ahi dentro), aparece al hacer scroll y salir de el (ver el
            IntersectionObserver mas abajo). En EDIT LAYOUT se fuerza visible
            siempre, si no no habria forma de agarrarlo con el hero fuera de
            pantalla. Posicion/tamaño se mueven desde EDIT como el resto (clave
            navPlay en HERO_LAYOUT_ELS). Mismo sitio y mismo boton que CONNECT:
-           reusa .wallet-area/.wb-box tal cual. Aqui va SOLO PLAY NOW, sin
-           desplegable — CHOOSE MODES/CHOOSE SKINS solo estan en el hero. */
+           reusa .wallet-area/.wb-box tal cual. Al pasar el raton despliega
+           MODES/SKINS en vertical, igual que el desplegable de $PILL (en el
+           hero los mismos dos van en una sola fila, ver .hero-play-links). */
         #nav-play-area { display: none; align-items: center; gap: 10px; position: relative; }
         body.nav-play-visible #nav-play-area, body.layout-editing #nav-play-area { display: flex; }
         /* Cuerpo de letra AJUSTABLE APARTE de la caja (ALT+rueda, clave navPlay
@@ -463,6 +484,17 @@
         #nav-play-area .btn-connect {
             font-size: var(--pw-font, 15px);
         }
+        /* Desplegable MODES/SKINS del PLAY NOW de la navbar: el MISMO cuadro
+           que el de $PILL (por eso reusa .dropdown-content/.dropdown-box/a, que
+           ya traen el dorado, la Press Start 2P y el separador). El id hace
+           falta para ganarle a "body.pixel-pack .dropdown-box", que anula
+           radius y blur con !important — mismo motivo que en #pill-dropdown. */
+        #nav-play-area .dropdown-box { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px !important; overflow: hidden; backdrop-filter: blur(4px) !important; }
+        /* min-width auto: el de $PILL reserva 220px para "Buy $PILL" + icono;
+           aqui son dos palabras sueltas y esa anchura dejaba el cuadro medio
+           vacio. Se ciñe al boton. */
+        #nav-play-area .dropdown-content { min-width: 100%; }
+        body:not(.layout-editing) #nav-play-area:hover .dropdown-content { display: block; }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
         #heroPickMe { cursor: pointer !important; user-select: none; }
@@ -1396,6 +1428,13 @@ body.trailer-open #page-content{
             }
             .hero-play { height: auto; width: min(70vw, 260px); }
             .hero-game-btns { gap: 12px; }
+            /* En tactil no hay raton que pasar por encima: MODES/SKINS se
+               quedan siempre a la vista (plegados serian inalcanzables) y en
+               el flujo normal, debajo del boton. */
+            .hero-play-links {
+                position: static; transform: none; opacity: 1; pointer-events: auto;
+                padding-top: 14px; gap: 30px;
+            }
             /* En movil el iframe del juego real se apaga: pantalla pequeña,
                dentro /game ya bloquea el juego con #mobileBlock, y la escala
                desktop del layout (EDIT LAYOUT) no tiene sentido aqui. Se cae al
@@ -1901,10 +1940,19 @@ body.trailer-open #page-content{
         <div class="nav-dropdown-group">
             <!-- PLAY NOW de la navbar: solo se ve fuera del hero (o siempre en
                  EDIT LAYOUT). Mismo sitio y mismo boton que CONNECT
-                 (.btn-connect, tamaño navbar). SIN desplegable: aqui va solo
-                 PLAY NOW — CHOOSE MODES/CHOOSE SKINS siguen estando en el hero. -->
+                 (.btn-connect, tamaño navbar), y al pasar el raton despliega
+                 MODES/SKINS en vertical, como el desplegable de $PILL. -->
             <div class="wallet-area" id="nav-play-area">
                 <div class="wb-box"><button class="btn-connect" onclick="HeroPlayModal.open()">PLAY NOW</button></div>
+                <!-- Mismo montaje que el desplegable de $PILL (dropdown-content
+                     > dropdown-box > a): en la navbar sale en vertical, una
+                     palabra por fila. -->
+                <div class="dropdown-content">
+                    <div class="dropdown-box">
+                        <a href="game/">MODES</a>
+                        <a href="game/?heroskins=1">SKINS</a>
+                    </div>
+                </div>
             </div>
             <!-- Wallet: mismo montaje que /game (gameWalletArea). Balance IN GAME +
                  CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT) cuando ya
@@ -1950,9 +1998,13 @@ body.trailer-open #page-content{
             <iframe class="hero-game-frame" id="heroGameFrame" src="game/?hero=1" title="PillWars gameplay" loading="eager"></iframe>
             <div class="hero-game-veil" id="heroGameVeil">
                 <div class="hero-game-btns">
-                    <button class="hero-play btn-connect" id="heroPlayNow">PLAY NOW</button>
-                    <button class="hero-play hero-play-sub btn-connect" id="heroChooseModes">CHOOSE MODES</button>
-                    <button class="hero-play hero-play-sub btn-connect" id="heroChooseSkins">CHOOSE SKINS</button>
+                    <div class="hero-play-group">
+                        <button class="hero-play btn-connect" id="heroPlayNow">PLAY NOW</button>
+                        <div class="hero-play-links">
+                            <button class="hero-sub-link" id="heroChooseModes">MODES</button>
+                            <button class="hero-sub-link" id="heroChooseSkins">SKINS</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4631,11 +4683,13 @@ function toggleTrailerMode() {
      * Los 3 botones abren el juego de VERDAD en la MISMA pestaña (location.href,
      * no window.open), cada uno con su propio arranque directo (ver el bloque
      * final de game/index.html):
-     *   PLAY NOW      -> game/?heroplay=1&name=... : offline arcade directa,
-     *                     skin basica. Su 1a muerte salta TRY AGAIN.
-     *   CHOOSE MODES  -> game/ tal cual: la pantalla de modos de siempre.
-     *   CHOOSE SKINS  -> game/?heroskins=1 : arcade directo, panel pequeño en
-     *                     la pestaña SKINS (sin el catalogo grande).
+     *   PLAY NOW -> game/?heroplay=1&name=... : offline arcade directa,
+     *                skin basica. Su 1a muerte salta TRY AGAIN.
+     *   MODES    -> game/ tal cual: la pantalla de modos de siempre.
+     *   SKINS    -> game/?heroskins=1 : arcade directo, panel pequeño en
+     *                la pestaña SKINS (sin el catalogo grande).
+     * MODES/SKINS solo se despliegan al pasar el raton por PLAY NOW (en tactil
+     * salen siempre, ver .hero-play-links en el media query de 768px).
      */
     (function () {
         // Movil: el iframe ya se apaga por CSS (.hero-game-frame{display:none}
