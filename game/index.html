@@ -9901,46 +9901,88 @@
         if (!_heroAutopilotTimer) _heroAutopilotTimer = setInterval(heroAutopilotStep, 300);
     }
     // Autopiloto: cada 300ms apunta mouse.x/mouse.y (en coordenadas de
-    // PANTALLA) hacia la comida mas cercana, convertidas con la misma formula
-    // que ya usa updateGame() para leer el input MOUSE — cero cambios en el
-    // bucle principal, la pill se mueve exactamente igual que si alguien la
-    // llevase con el raton.
-    function heroAutopilotStep() {
-        if (!heroAutopilotActive || !gameRunning || !sim) return;
-        const p = me(); if (!p || !p.cells.length) return;
-        const c0 = p.cells[0];
-        let target = null, bestD = Infinity;
-        for (const f of sim.foods) {
-            const d = (f.x - c0.x) * (f.x - c0.x) + (f.y - c0.y) * (f.y - c0.y);
-            if (d < bestD) { bestD = d; target = f; }
-        }
-        // Tambien persigue gente (bots), no solo comida: solo perseguia
-        // comida y esta a veces reaparece pegada al mismo borde del mapa una
-        // y otra vez, dejando la pildora clavada empujando la pared. Los
-        // bots se mueven solos, asi que tirar de ellos como alternativa saca
-        // a la pildora de esos atascos. Solo cuentan como objetivo los mas
-        // PEQUEÑOS (presa segura, mismo umbral 1.15 que usa la IA real de
-        // los bots): los mas grandes se ignoran para no arriesgar la
-        // pildora una vez pasada la gracia de 15s (botPlayerGraceMs).
-        for (const e of sim.enemies) {
-            if (e.r * 1.15 >= c0.r) continue;
-            const d = (e.x - c0.x) * (e.x - c0.x) + (e.y - c0.y) * (e.y - c0.y);
-            if (d < bestD) { bestD = d; target = e; }
-        }
-        let wx, wy;
-        // Anti-encallado: el mapa va centrado en 0 (|x|,|y| <= MAP_SIZE). Pegada
-        // a un borde, la comida mas cercana suele estar tambien pegada o al otro
-        // lado del muro, asi que la pill se quedaba empujando la pared para
-        // siempre — el "juego parado en un extremo del mapa". Dentro del margen
-        // manda volver al centro, que siempre la despega. Mismo criterio que
-        // usan los bots en shared/sim.js (ver el corte por mapSize - 200).
-        if (Math.abs(c0.x) > MAP_SIZE - 400 || Math.abs(c0.y) > MAP_SIZE - 400) { wx = 0; wy = 0; }
-        else if (target) { wx = target.x; wy = target.y; }
-        else { const a = Math.random() * Math.PI * 2; wx = c0.x + Math.cos(a) * 400; wy = c0.y + Math.sin(a) * 400; }
+    // PANTALLA) hacia su objetivo, convertidas con la misma formula que ya usa
+    // updateGame() para leer el input MOUSE — cero cambios en el bucle
+    // principal, la pill se mueve exactamente igual que si alguien la llevase
+    // con el raton. La conversion no recorta a la pantalla, asi que persigue
+    // igual de bien a alguien que esta fuera de plano.
+    //
+    // Dos reglas mandan sobre el resto:
+    //  1. Va a por GENTE. Los bots se mueven solos, asi que perseguirlos la
+    //     saca de los rincones donde la comida —que esta quieta— la dejaba
+    //     clavada. La comida es el plan B, para cuando no hay ninguna presa.
+    //  2. El objetivo se MANTIENE hasta cumplirlo. Antes se recalculaba "lo
+    //     mas cercano" cada 300ms y, con ~2000 comidas repartidas por el mapa,
+    //     el punto mas cercano cambiaba de lado en cuanto se movia un poco: la
+    //     pildora se pasaba el rato corrigiendo el rumbo sin avanzar. Ese era
+    //     el zigzag.
+    let heroTarget = null, heroTargetHasta = 0, heroVolviendo = false, heroUltPos = null, heroQuieta = 0;
+    function heroApunta(wx, wy) {
         const es = getViewScale();
         mouse.x = (wx - camera.x) * es + width / 2;
         mouse.y = (wy - camera.y) * es + height / 2;
         inputMode = 'MOUSE';
+    }
+    function heroAutopilotStep() {
+        if (!heroAutopilotActive || !gameRunning || !sim) return;
+        const p = me(); if (!p || !p.cells.length) return;
+        const c0 = p.cells[0], ahora = Date.now(), M = MAP_SIZE;
+
+        // Anti-atasco de verdad: si en tres vueltas seguidas (~1s) no se ha
+        // movido ni su propio radio, lo que tenga entre manos no le esta
+        // funcionando (pared, objetivo inalcanzable) y se tira para buscar otro.
+        if (heroUltPos && Math.hypot(c0.x - heroUltPos.x, c0.y - heroUltPos.y) < Math.max(10, c0.r)) heroQuieta++;
+        else heroQuieta = 0;
+        heroUltPos = { x: c0.x, y: c0.y };
+        if (heroQuieta >= 3) { heroTarget = null; heroQuieta = 0; }
+
+        // Vuelta al centro, con HISTERESIS: se enciende pegada al borde y no se
+        // apaga hasta estar bien dentro. Con un solo umbral (lo de antes)
+        // entraba, volvia a elegir algo del borde, salia otra vez... y ese ir y
+        // venir era la otra mitad del zigzag.
+        const dBorde = Math.max(Math.abs(c0.x), Math.abs(c0.y));
+        if (dBorde > M - 400) heroVolviendo = true;
+        else if (dBorde < M - 1200) heroVolviendo = false;
+        if (heroVolviendo) { heroTarget = null; heroApunta(0, 0); return; }
+
+        // ¿Sigue valiendo el objetivo de la vuelta anterior? Un bot vale
+        // mientras siga vivo y siga siendo presa; la comida, mientras nadie se
+        // la haya comido. La caducidad es solo para reconsiderar de vez en
+        // cuando (puede haber aparecido una presa mucho mejor).
+        const vale = heroTarget && ahora < heroTargetHasta && (heroTarget.bot
+            ? sim.enemies.includes(heroTarget.ref) && heroTarget.ref.r * 1.15 < c0.r
+            : sim.foods.includes(heroTarget.ref));
+
+        if (!vale) {
+            heroTarget = null;
+            let mejorD = Infinity;
+            // Presas: solo las mas PEQUEÑAS (mismo umbral 1.15 que usa la IA
+            // real de los bots en shared/sim.js). Las mas grandes se ignoran
+            // para no regalarle la pildora al primero que pase una vez agotada
+            // la gracia de 15s (botPlayerGraceMs).
+            for (const e of sim.enemies) {
+                if (e.r * 1.15 >= c0.r) continue;
+                const d = (e.x - c0.x) * (e.x - c0.x) + (e.y - c0.y) * (e.y - c0.y);
+                if (d < mejorD) { mejorD = d; heroTarget = { ref: e, bot: true }; }
+            }
+            // Sin presas a la vista (al empezar es lo normal: nace mas pequeña
+            // que cualquier bot), a comer para crecer. La comida pegada al
+            // borde no cuenta: es justo la que la devolvia a la esquina de la
+            // que acababa de salir.
+            if (!heroTarget) {
+                for (const f of sim.foods) {
+                    if (Math.max(Math.abs(f.x), Math.abs(f.y)) > M - 600) continue;
+                    const d = (f.x - c0.x) * (f.x - c0.x) + (f.y - c0.y) * (f.y - c0.y);
+                    if (d < mejorD) { mejorD = d; heroTarget = { ref: f, bot: false }; }
+                }
+            }
+            // Perseguir a alguien merece mas margen que comerse un punto: al
+            // bot hay que darle alcance y se mueve.
+            heroTargetHasta = ahora + (heroTarget && heroTarget.bot ? 5000 : 2500);
+        }
+
+        if (heroTarget) heroApunta(heroTarget.ref.x, heroTarget.ref.y);
+        else heroApunta(0, 0);   // mapa vacio: al centro, pero nunca parada
     }
     // Pestana no activa -> demo parada del todo (gameRunning gobierna tanto
     // updateGame() como draw()). lastFrameTime se resetea al volver para que
