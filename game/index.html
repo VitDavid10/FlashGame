@@ -11001,6 +11001,14 @@
             return;
         }
         const modo = qs.get('heroplay') === '1' ? 'heroplay' : qs.get('heroskins') === '1' ? 'heroskins' : null;
+        // PLAY NOW/CHOOSE SKINS del hero navegan con ?heroplay=1&name=... /
+        // ?heroskins=1: sin esto esos parametros se quedaban pegados en la
+        // barra de direcciones, y encima un F5 volvia a mandar esa misma URL
+        // al servidor — el arranque directo se disparaba otra vez y tirabas
+        // la partida en curso para empezar una nueva de sorpresa. Limpiando
+        // la URL nada mas leerla, F5 cae al menu de modos de siempre (game/
+        // a secas) en vez de reiniciar la partida.
+        if (modo) history.replaceState(null, '', location.pathname);
         // readyFn no mira SOLO el layout del servidor: tambien espera a que las
         // fuentes (Press Start 2P/Russo One, las que usa todo el rotulo del
         // menu) hayan terminado de cargar. document.fonts.ready resuelve en
