@@ -457,7 +457,14 @@
             padding-top: 12px;
             opacity: 0; pointer-events: none; transition: opacity 0.18s ease;
         }
-        .hero-play-group:hover .hero-play-links { opacity: 1; pointer-events: auto; }
+        /* .open lo pone/quita JS con un retardo al cerrar (ver el bloque del
+           hero mas abajo): con el :hover pelado, al bajar de PLAY NOW hacia las
+           palabras el menu se cerraba antes de que diera tiempo a pulsarlas si
+           el camino pasaba por fuera del grupo — que es justo lo que ocurre en
+           cuanto se recolocan desde EDIT LAYOUT. Se deja tambien el :hover para
+           que funcione igual si el JS no llega a correr. */
+        .hero-play-group:hover .hero-play-links,
+        .hero-play-group.open .hero-play-links { opacity: 1; pointer-events: auto; }
         /* En EDIT LAYOUT se fuerza visible SIEMPRE (igual que #pill-dropdown y
            .wallet-area mas arriba): si no, MODES/SKINS son inalcanzables en
            cuanto el raton sale de PLAY NOW para ir a arrastrarlas. */
@@ -1709,7 +1716,17 @@ body.trailer-open #page-content{
     <script>
     window.HERO_LAYOUT_ELS = {
         title: '#heroTitleWrap', play: '#heroPlayNow',
-        chooseModes: '#heroChooseModes', chooseSkins: '#heroChooseSkins',
+        // heroModes/heroSkins y NO chooseModes/chooseSkins: bajo esos dos
+        // nombres el servidor tiene guardadas las posiciones de cuando MODES y
+        // SKINS eran dos placas sueltas colocadas a mano por el hero (modes
+        // 350px por debajo, skins 402px a la izquierda y 260px arriba). Ahora
+        // que cuelgan de PLAY NOW esos translate los mandaban lejos del boton
+        // — SKINS se salia del veil y no se veia, y el hover se cerraba en el
+        // camino porque el raton tenia que cruzar el hueco. Con claves nuevas
+        // aquellos valores se quedan huerfanos y apply() no los mira (mismo
+        // caso que navChooseModes/navChooseSkins, que siguen en el JSON del
+        // servidor sin usarse).
+        heroModes: '#heroChooseModes', heroSkins: '#heroChooseSkins',
         pickMe: '#heroPickMe',
         caSign: '#heroCaSign', ca: '#heroCaWrap',
         // Navbar: wallet, PILL, iconos sociales. SIN valor horneado (parten del
@@ -4710,6 +4727,20 @@ function toggleTrailerMode() {
         btnPlay.onclick = () => HeroPlayModal.open();
         if (btnModes) btnModes.onclick = () => { window.location.href = 'game/'; };
         if (btnSkins) btnSkins.onclick = () => { window.location.href = 'game/?heroskins=1'; };
+        // El desplegable se queda abierto un rato al salir el raton, en vez de
+        // cerrarse en seco: con el :hover pelado no daba tiempo a llegar a las
+        // palabras si el camino se salia del grupo (pasa en cuanto se recolocan
+        // desde EDIT LAYOUT, que es lo que las mueve). mouseleave no salta
+        // mientras el raton este sobre MODES/SKINS, que son hijos del grupo.
+        const grupo = btnPlay.closest('.hero-play-group');
+        if (grupo) {
+            let cierre = null;
+            grupo.addEventListener('mouseenter', () => { clearTimeout(cierre); grupo.classList.add('open'); });
+            grupo.addEventListener('mouseleave', () => {
+                clearTimeout(cierre);
+                cierre = setTimeout(() => grupo.classList.remove('open'), 450);
+            });
+        }
     })();
     // Modal de nombre de PLAY NOW: mismo modal-overlay/cmodal-* que el de
     // contacto, en vez del prompt() nativo del navegador.
