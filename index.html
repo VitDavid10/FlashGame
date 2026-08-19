@@ -805,8 +805,19 @@ body.trailer-open #page-content{
         .battle-modes-container::after, .store-panel::after { bottom: 10px; right: 10px; border-bottom: 4px solid var(--box-accent); border-right: 4px solid var(--box-accent); }
         /* Verde-lima de los virus (como 02/VIRUS) para Daily Quests; dorado
            (como 03/VIRAL BALLISTICS) para Skin Store. */
-        #quest .store-panel { --box-accent: #9ee32d; --box-accent-soft: rgba(158, 227, 45, 0.08); }
-        #shop .store-panel { --box-accent: var(--gold); --box-accent-soft: rgba(255, 204, 0, 0.08); }
+        #quest .store-panel { --box-accent: #9ee32d; --box-accent-soft: rgba(158, 227, 45, 0.08); --box-glow: rgba(158, 227, 45, 0.4); }
+        #shop .store-panel { --box-accent: var(--gold); --box-accent-soft: rgba(255, 204, 0, 0.08); --box-glow: rgba(255, 204, 0, 0.4); }
+        /* Marco "cartel" (mismo lenguaje que el ROOM PRICES / DAILY QUESTS de
+           /game: placa redondeada con borde grueso y glow) en vez de las
+           escuadras de esquina del resto de bloques — estas dos secciones
+           son las que tienen ese equivalente dentro del juego. */
+        #quest .store-panel, #shop .store-panel {
+            border-radius: 26px; border-width: 5px;
+            background: radial-gradient(120% 140% at 50% 0%, var(--box-accent-soft), rgba(4, 10, 6, 0.94) 60%);
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.55), 0 0 46px var(--box-glow);
+        }
+        #quest .store-panel::before, #quest .store-panel::after,
+        #shop .store-panel::before, #shop .store-panel::after { display: none; }
         /* Daily Quests y Skin Store no llenan los 1200px de Battle Modes: su
            contenido (dq-summary/dq-grid/shop-carrusel) ya iba a 980px
            (--contenido-panel), asi que la caja sobraba de ancho a los lados.
