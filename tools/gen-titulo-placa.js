@@ -401,6 +401,11 @@ function png(w, h, rgba) {
 const TRABAJOS = [
     ['PILLWARS-arcade-placa.png',  'PILLWARS', '#ccff00', PX],
     ['PILLWARS-classic-placa.png', 'PILLWARS', '#00ffaa', PX],
+    // Version BLANCA para la pantalla de carga, que no va tintada de ningun
+    // modo (fondo negro + rejilla, sin verde). Mismo dibujo y misma luz: solo
+    // cambia el color base sobre el que se calculan los tonos. Va al doble de
+    // resolucion (PX*2) porque alli se enseña mas grande que en el login.
+    ['PILLWARS-white-placa.png',   'PILLWARS', '#ffffff', PX * 2],
     ['ARCADE-word-placa.png',      'ARCADE',   '#ccff00', PX],
     ['CLASSIC-word-placa.png',     'CLASSIC',  '#00ffaa', PX],
     ['ARCADE-sel-placa.png',       'ARCADE',   '#ccff00', PX * 2],

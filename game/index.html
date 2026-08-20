@@ -10438,17 +10438,6 @@
         pc.style.width = (pc.width * LS_PILL_ZOOM) + 'px';
         pc.style.height = (pc.height * LS_PILL_ZOOM) + 'px';
     }
-    // Titulo: la pixfont del juego (la misma que dibuja el GO!) en BLANCO con
-    // tinta negra — `plain` justamente para quitar las capas de halo verde que
-    // trae de serie. No se usa el PNG del login (img/mode-title/*-placa.png)
-    // porque ese va tintado del color del modo, y aqui el rotulo va blanco.
-    const LS_TITLE_PX = 6;
-    function lsDrawTitle() {
-        const host = document.getElementById('lsTitle'); if (!host) return;
-        const cv = pixFancyText('PILLWARS', LS_TITLE_PX, { plain: true, fill: '#ffffff', shade: '#b9c2cc' });
-        cv.className = 'ls-title-cv';
-        host.replaceChildren(cv);
-    }
     // Fondo: SOLO la cuadricula, sin nada del juego encima (ni comida ni virus).
     // Se usa el mismo generador de tile del login/selector pero tintado de
     // blanco, o sea gris sobre casi negro: la rejilla es la del juego, el verde
@@ -10500,9 +10489,13 @@
                     // El sprite ya viene girado desde pixPillSpriteRot (rotarlo por
                     // CSS lo mutila: bordes dentados), asi que el bob es solo vertical.
                     '#loadingScreen .ls-pill{display:block;image-rendering:pixelated;animation:lsFloat 2.4s ease-in-out infinite}' +
-                    // El canvas de la pixfont sale a su tamaño nativo; el height fijo
-                    // lo estira con pixelated, que es como se escala todo el pack.
-                    '#loadingScreen .ls-title-cv{display:block;height:84px;width:auto;image-rendering:pixelated}' +
+                    // El PNG sale a 1008x176 (doble resolucion); a 88px de alto cada
+                    // unidad del dibujo cae en 2 pixeles exactos, sin medias columnas.
+                    '#loadingScreen .ls-title-img{display:block;height:88px;width:auto;image-rendering:pixelated}' +
+                    // Fallback si el PNG no carga: la pixel font del pack, con sombra
+                    // DURA (nada de halo difuminado).
+                    '#loadingScreen .ls-title{font-family:\'Press Start 2P\',monospace;font-size:clamp(22px,4.4vw,42px);line-height:1;' +
+                    'color:#fff;letter-spacing:2px;margin:0;text-shadow:4px 4px 0 rgba(0,0,0,.8)}' +
                     '#loadingScreen .ls-sub{font-family:\'Press Start 2P\',monospace;font-size:clamp(8px,1.1vw,12px);color:#b9c2cc;' +
                     'letter-spacing:4px;text-shadow:2px 2px 0 rgba(0,0,0,.8)}' +
                     // Barra con el bisel de placa del menu (borde duro + luz arriba /
@@ -10517,18 +10510,22 @@
             }
             ov = document.createElement('div');
             ov.id = 'loadingScreen';
-            // El titulo lo dibuja lsDrawTitle() con la pixfont dentro de #lsTitle.
+            // Titulo: el MISMO rotulo dibujado del login (tools/gen-titulo-placa.js
+            // — geometria con curvas de verdad e iluminado como el marco de la
+            // placa), en su variante BLANCA, que se genera solo para aqui: la
+            // carga no va tintada de ningun modo. Si el PNG faltara, el onerror
+            // cae al texto en Press Start 2P y la carga sigue igual.
             ov.innerHTML =
                 '<canvas id="lsBgCv"></canvas>' +
                 '<div class="ls-inner">' +
                 '<canvas class="ls-pill" id="lsPill"></canvas>' +
-                '<div id="lsTitle"></div>' +
+                '<img class="ls-title-img" src="img/mode-title/PILLWARS-white-placa.png" alt="PILLWARS" ' +
+                'onerror="this.outerHTML=\'&lt;h1 class=&quot;ls-title&quot;&gt;PILLWARS&lt;/h1&gt;\'">' +
                 '<div class="ls-sub">THE CRYPTO ARENA</div>' +
                 '<div class="ls-track"><div id="loadingBar"></div></div>' +
                 '</div>';
             document.body.appendChild(ov);
             lsDrawPill();
-            lsDrawTitle();
             // La rejilla depende del aspect ratio: hay que rehacerla al
             // redimensionar. Sale barato — solo repinta si el cartel se ve.
             addEventListener('resize', () => {
