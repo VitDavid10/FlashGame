@@ -1473,7 +1473,15 @@
            como editable. layoutTarget() ya resuelve bien el anidado via
            closest(), y el listener de 'click' de mas abajo ya evita que se
            disparen botones mientras se edita — no hace falta pointer-events. */
-        #layoutEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 120; display: flex; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
+        /* #lsEditBar (editor de la pantalla de carga) comparte estilos: es la
+           misma herramienta. Su z-index sube por encima del propio cartel de
+           carga, que va a 9999. */
+        #layoutEditBar, #lsEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 120; display: flex; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
+        #lsEditBar { z-index: 10000; }
+        #lsEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 0.5px; }
+        #lsEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
+        #lsEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
+        #lsEditBar .leb-btn.done { background: #0f8f46; color: #fff; border-color: #000; }
         #layoutEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 0.5px; }
         #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
         #layoutEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
@@ -2185,6 +2193,9 @@
             </div>
 
             <button class="btn-settings" id="btnEditLayout" style="margin-top:15px; display:none;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
+            <!-- Editor TEMPORAL de la pantalla de carga. Sale/entra con el mismo
+                 interruptor que EDIT LAYOUT (panel admin -> Menu visuals). -->
+            <button class="btn-settings" id="btnEditLoading" style="margin-top:10px; display:none;" onclick="closeSettings(); loadingEdit();">EDIT LOADING</button>
 
             <button class="pw-modal-cancel" style="margin-top:15px;" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
@@ -2200,6 +2211,15 @@
             <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('solflare')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="">SOLFLARE</button>
             <button class="pw-modal-cancel" onclick="document.getElementById('walletPickerModal').style.display='none'" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
+    </div>
+
+    <!-- Barra del editor TEMPORAL de la pantalla de carga. Reusa los estilos de
+         #layoutEditBar (misma herramienta, mismo aspecto). Quitar junto con el
+         bloque lsEnterEdit/lsExitEdit cuando el diseño quede fijado. -->
+    <div id="lsEditBar" style="display:none;">
+        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE &nbsp;·&nbsp; ESC = SALIR</span>
+        <button class="leb-btn" onclick="LoadingLayout.resetAll()">RESET ALL</button>
+        <button class="leb-btn done" onclick="LoadingLayout.exit()">DONE</button>
     </div>
 
     <!-- Barra del editor de layout del menu: visible solo en modo edicion -->
@@ -5252,8 +5272,10 @@
         } catch (e) {}
         // Interruptor de los editores de layout (panel admin → Menu visuals).
         if (typeof data.layoutEdit === 'boolean') {
-            const b = document.getElementById('btnEditLayout');
-            if (b) b.style.display = data.layoutEdit ? '' : 'none';
+            for (const id of ['btnEditLayout', 'btnEditLoading']) {
+                const b = document.getElementById(id);
+                if (b) b.style.display = data.layoutEdit ? '' : 'none';
+            }
         }
     }
     const MENU_DECO_FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
@@ -10438,31 +10460,66 @@
         pc.style.width = (pc.width * LS_PILL_ZOOM) + 'px';
         pc.style.height = (pc.height * LS_PILL_ZOOM) + 'px';
     }
-    // Fondo: SOLO la cuadricula, sin nada del juego encima (ni comida ni virus).
-    // Se usa el mismo generador de tile del login/selector pero tintado de
-    // blanco, o sea gris sobre casi negro: la rejilla es la del juego, el verde
-    // no. El calculo de W/H se copia de paintLoginBg (base 270 y multiplos
-    // exactos de gridSize) para que la celda mida en pantalla lo mismo que alli.
-    const LS_GRID_HEX = '#ffffff';
+    // Fondo: el MISMO cuadro del hero viejo de la landing (el que habia detras
+    // del PILLWARS / THE CRYPTO ARENA antes de que el hero pasara a llevar el
+    // juego real de fondo), copiado tal cual de su tile: base casi negra,
+    // moteado sutil y linea de rejilla en verde muy apagado, con la celda a
+    // 50px de pantalla. SIN nada del juego encima — ni comida ni virus.
+    const LS_PIX = 2;                     // px de pantalla por pixel logico
+    const LS_CELL = 50 / LS_PIX;          // celda de 50px, como en el hero
+    const LS_GRID_LINE = 'rgb(0,40,22)';  // verde muy apagado del hero
+    const lsTile = (() => {
+        const cv = document.createElement('canvas'); cv.width = LS_CELL; cv.height = LS_CELL;
+        const g = cv.getContext('2d');
+        const sp = (fx, fy) => [Math.round(fx * LS_CELL), Math.round(fy * LS_CELL)];
+        g.fillStyle = '#050505'; g.fillRect(0, 0, LS_CELL, LS_CELL);
+        g.fillStyle = '#0d0d0d';
+        for (const s of [[0.12, 0.19], [0.5, 0.08], [0.81, 0.42], [0.27, 0.69], [0.65, 0.85]]) { const p = sp(s[0], s[1]); g.fillRect(p[0], p[1], 1, 1); }
+        g.fillStyle = '#0b0b0b';
+        for (const s of [[0.38, 0.35], [0.88, 0.73], [0.08, 0.88], [0.73, 0.15]]) { const p = sp(s[0], s[1]); g.fillRect(p[0], p[1], 1, 1); }
+        g.fillStyle = LS_GRID_LINE; g.fillRect(0, 0, LS_CELL, 1); g.fillRect(0, 0, 1, LS_CELL);
+        return cv;
+    })();
+    // ===== LAYOUT DE LA PANTALLA DE CARGA (EDITOR TEMPORAL) =====
+    // Mismo mecanismo que EDIT LAYOUT del menu: arrastrar mueve, la rueda
+    // escala, doble click resetea una pieza. Se guarda en localStorage (solo
+    // este navegador: no hay endpoint, es una herramienta de diseño). Quitar
+    // este bloque, el boton EDIT LOADING y su barra cuando quede fijado.
+    const LS_LAYOUT_KEY = 'pw_loading_layout';
+    const LS_LAYOUT_ELS = {
+        pill: '#lsPill',
+        title: '#loadingScreen .ls-title-img, #loadingScreen .ls-title',
+        sub: '#loadingScreen .ls-sub',
+        track: '#loadingScreen .ls-track',
+    };
+    let lsLayout = {};
+    try { lsLayout = JSON.parse(localStorage.getItem(LS_LAYOUT_KEY) || '{}') || {}; } catch (e) {}
+    function lsSaveLayout() { try { localStorage.setItem(LS_LAYOUT_KEY, JSON.stringify(lsLayout)); } catch (e) {} }
+    // translate/scale (no `transform`): asi no se pelea con el transform que la
+    // animacion lsFloat le pone a la pildora.
+    function lsApplyLayout() {
+        for (const k in LS_LAYOUT_ELS) {
+            const t = lsLayout[k];
+            for (const el of document.querySelectorAll(LS_LAYOUT_ELS[k])) {
+                el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '0px 0px';
+                el.style.scale = String(t ? (t.s || 1) : 1);
+            }
+        }
+    }
+    let lsPat = null;
     function lsPaintBg() {
         const cv = document.getElementById('lsBgCv'); if (!cv) return;
-        const gs = Math.max(6, menuDecoSettings.gridSize | 0);
         const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
-        const H = Math.max(gs, Math.round(270 / gs) * gs);
-        const W = Math.max(gs, Math.round((vw / vh * H) / gs) * gs);
+        const W = Math.max(LS_CELL, Math.round(vw / LS_PIX)), H = Math.max(LS_CELL, Math.round(vh / LS_PIX));
         if (cv.width !== W) cv.width = W;
         if (cv.height !== H) cv.height = H;
         const g = cv.getContext('2d');
         g.imageSmoothingEnabled = false;
-        const tile = _msV2Tile(LS_GRID_HEX);
-        if (!tile.pat) tile.pat = g.createPattern(tile.cv, 'repeat');
-        g.fillStyle = tile.pat;
-        g.fillRect(0, 0, W, H);
-        // Cierre de la rejilla por derecha y abajo (el tile solo pinta la linea
-        // de arriba/izquierda de cada celda), igual que paintLoginBg.
-        const rgb = pixRgb(LS_GRID_HEX);
-        g.fillStyle = 'rgb(' + rgb.map(v => Math.round(v * 0.30)).join(',') + ')';
-        g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
+        if (!lsPat) lsPat = g.createPattern(lsTile, 'repeat');
+        g.fillStyle = lsPat; g.fillRect(0, 0, W, H);
+        // El tile solo pinta la linea de arriba/izquierda de cada celda: sin
+        // esto la ultima fila y columna quedarian sin cerrar.
+        g.fillStyle = LS_GRID_LINE; g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
     }
     function showLoadingScreen(minMs, readyFn, onDone) {
         window.__loadingLock = true;
@@ -10489,37 +10546,49 @@
                     // El sprite ya viene girado desde pixPillSpriteRot (rotarlo por
                     // CSS lo mutila: bordes dentados), asi que el bob es solo vertical.
                     '#loadingScreen .ls-pill{display:block;image-rendering:pixelated;animation:lsFloat 2.4s ease-in-out infinite}' +
-                    // El PNG sale a 1008x176 (doble resolucion); a 88px de alto cada
-                    // unidad del dibujo cae en 2 pixeles exactos, sin medias columnas.
-                    '#loadingScreen .ls-title-img{display:block;height:88px;width:auto;image-rendering:pixelated}' +
+                    // hero-title.png, el PILLWARS del hero viejo: blanco con volumen
+                    // y un filo de halo verde ya horneado. Se enseña a 120px, la
+                    // MISMA altura a la que iba alli.
+                    '#loadingScreen .ls-title-img{display:block;height:120px;width:auto;image-rendering:auto}' +
                     // Fallback si el PNG no carga: la pixel font del pack, con sombra
                     // DURA (nada de halo difuminado).
                     '#loadingScreen .ls-title{font-family:\'Press Start 2P\',monospace;font-size:clamp(22px,4.4vw,42px);line-height:1;' +
                     'color:#fff;letter-spacing:2px;margin:0;text-shadow:4px 4px 0 rgba(0,0,0,.8)}' +
-                    '#loadingScreen .ls-sub{font-family:\'Press Start 2P\',monospace;font-size:clamp(8px,1.1vw,12px);color:#b9c2cc;' +
-                    'letter-spacing:4px;text-shadow:2px 2px 0 rgba(0,0,0,.8)}' +
-                    // Barra con el bisel de placa del menu (borde duro + luz arriba /
-                    // sombra abajo), sin radios ni resplandor.
-                    '#loadingScreen .ls-track{width:min(340px,70vw);height:16px;background:#0d0d0d;border:3px solid #000;' +
-                    'box-shadow:inset 2px 2px 0 rgba(0,0,0,.55)}' +
-                    '#loadingBar{width:0%;height:100%;background:#e8ecf0;' +
-                    'box-shadow:inset 0 3px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.35)}' +
+                    // THE CRYPTO ARENA con el neon del hero viejo, tal cual estaba.
+                    '#loadingScreen .ls-sub{font-family:\'Press Start 2P\',monospace;font-size:14px;color:#aaffdd;' +
+                    'letter-spacing:6px;white-space:nowrap;' +
+                    'text-shadow:0 0 6px #00ff88,0 0 14px #00ff88,0 0 26px rgba(0,255,136,0.7)}' +
+                    // Barra pixel: marco de 2 tonos (tinta + bisel) y relleno por
+                    // BLOQUES sueltos, no una banda continua — dibujada con la misma
+                    // rejilla dura que el resto del pack.
+                    '#loadingScreen .ls-track{width:336px;height:22px;background:#050505;' +
+                    'box-shadow:0 0 0 3px #000,inset 0 0 0 3px #1b2a22;position:relative}' +
+                    '#loadingBar{width:0%;height:100%;' +
+                    'background-image:linear-gradient(90deg,#eaf6f0 0 12px,transparent 12px 16px);background-size:16px 100%;' +
+                    'background-repeat:repeat-x}' +
                     '@keyframes lsFade{from{opacity:0}to{opacity:1}}' +
-                    '@keyframes lsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}';
+                    '@keyframes lsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}' +
+                    // Modo edicion: recuadro de agarre en cada pieza. La animacion
+                    // de la pildora se para (si no, se mueve mientras la colocas) y
+                    // .ls-inner suelta el flujo para que cada pieza se pueda llevar
+                    // adonde sea sin empujar a las demas.
+                    '#loadingScreen.ls-editing .ls-editable{outline:2px dashed rgba(255,255,255,.55);outline-offset:3px;cursor:move}' +
+                    '#loadingScreen.ls-editing .ls-pill{animation:none}';
                 document.head.appendChild(st);
             }
             ov = document.createElement('div');
             ov.id = 'loadingScreen';
-            // Titulo: el MISMO rotulo dibujado del login (tools/gen-titulo-placa.js
-            // — geometria con curvas de verdad e iluminado como el marco de la
-            // placa), en su variante BLANCA, que se genera solo para aqui: la
-            // carga no va tintada de ningun modo. Si el PNG faltara, el onerror
-            // cae al texto en Press Start 2P y la carga sigue igual.
+            // Titulo rescatado del hero viejo de la landing: el mismo
+            // hero-title.png (PILLWARS blanco con volumen) con THE CRYPTO ARENA
+            // debajo, tal como se veian antes de que el hero pasara a llevar el
+            // juego real de fondo y ese bloque se ocultara. Vive en la RAIZ del
+            // sitio, de ahi el ../ (esta pagina cuelga de /game/). Si el PNG no
+            // carga, el onerror deja el texto en Press Start 2P.
             ov.innerHTML =
                 '<canvas id="lsBgCv"></canvas>' +
                 '<div class="ls-inner">' +
                 '<canvas class="ls-pill" id="lsPill"></canvas>' +
-                '<img class="ls-title-img" src="img/mode-title/PILLWARS-white-placa.png" alt="PILLWARS" ' +
+                '<img class="ls-title-img" src="../img/pixel-hero/hero-title.png" alt="PILLWARS" ' +
                 'onerror="this.outerHTML=\'&lt;h1 class=&quot;ls-title&quot;&gt;PILLWARS&lt;/h1&gt;\'">' +
                 '<div class="ls-sub">THE CRYPTO ARENA</div>' +
                 '<div class="ls-track"><div id="loadingBar"></div></div>' +
@@ -10537,6 +10606,7 @@
         // Sincrono, antes de que el navegador pinte: el fondo es estatico (solo
         // rejilla), asi que con una pasada basta — nada de rAF eterno.
         lsPaintBg();
+        lsApplyLayout();
         // Solo suena el sonido de carga (sin música; la música arranca al hacer GO).
         SoundManager.stopMusic();
         SoundManager.play('loading');
@@ -10573,6 +10643,84 @@
         };
         window.__loadingTimer = setTimeout(tick, minMs);
     }
+
+    // ===== EDITOR TEMPORAL DE LA PANTALLA DE CARGA =====
+    // La carga real dura medio segundo, asi que no hay forma de colocar nada
+    // "en vivo": este modo la deja CONGELADA (sin temporizador, sin sonido y
+    // sin bloquear el input) para poder arrastrar sus piezas con calma.
+    // Se abre desde SETTINGS -> EDIT LOADING, o con loadingEdit() por consola.
+    let lsEditing = false, lsDrag = null;
+    function lsEditTarget(e) {
+        for (const k in LS_LAYOUT_ELS) {
+            const el = e.target.closest(LS_LAYOUT_ELS[k]);
+            if (el) return { k, el };
+        }
+        return null;
+    }
+    function lsEnterEdit() {
+        if (lsEditing) return;
+        lsEditing = true;
+        // El cartel, montado y quieto: minMs enorme y readyFn siempre false, asi
+        // no llega a terminar nunca. onDone no se usa — se sale con DONE.
+        showLoadingScreen(9e6, () => false, () => {});
+        // showLoadingScreen bloquea el input y arranca el sonido para la carga de
+        // verdad; aqui las dos cosas sobran.
+        window.__loadingLock = false;
+        if (window.__loadingTimer) { clearTimeout(window.__loadingTimer); window.__loadingTimer = null; }
+        SoundManager.stop('loading');
+        // Barra a media carga: colocarla a 0% seria colocar una caja vacia.
+        const bar = document.getElementById('loadingBar');
+        bar.style.transition = 'none'; bar.style.width = '55%';
+        const ov = document.getElementById('loadingScreen');
+        ov.classList.add('ls-editing');
+        for (const k in LS_LAYOUT_ELS) ov.querySelectorAll(LS_LAYOUT_ELS[k]).forEach(el => el.classList.add('ls-editable'));
+        document.getElementById('lsEditBar').style.display = 'flex';
+    }
+    function lsExitEdit() {
+        lsEditing = false; lsDrag = null;
+        const ov = document.getElementById('loadingScreen');
+        if (ov) {
+            ov.classList.remove('ls-editing');
+            ov.querySelectorAll('.ls-editable').forEach(el => el.classList.remove('ls-editable'));
+            ov.style.display = 'none';
+        }
+        document.getElementById('lsEditBar').style.display = 'none';
+        lsSaveLayout();
+    }
+    window.loadingEdit = lsEnterEdit;
+    window.LoadingLayout = {
+        exit: lsExitEdit,
+        resetAll() { lsLayout = {}; lsSaveLayout(); lsApplyLayout(); },
+    };
+    addEventListener('pointerdown', e => {
+        if (!lsEditing) return;
+        const t = lsEditTarget(e); if (!t) return;
+        const cur = lsLayout[t.k] || { x: 0, y: 0, s: 1 };
+        lsDrag = { k: t.k, x0: e.clientX, y0: e.clientY, ox: cur.x || 0, oy: cur.y || 0 };
+        e.preventDefault();
+    });
+    addEventListener('pointermove', e => {
+        if (!lsDrag) return;
+        const cur = lsLayout[lsDrag.k] = lsLayout[lsDrag.k] || { x: 0, y: 0, s: 1 };
+        cur.x = Math.round(lsDrag.ox + (e.clientX - lsDrag.x0));
+        cur.y = Math.round(lsDrag.oy + (e.clientY - lsDrag.y0));
+        lsApplyLayout();
+    });
+    addEventListener('pointerup', () => { if (lsDrag) { lsDrag = null; lsSaveLayout(); } });
+    addEventListener('wheel', e => {
+        if (!lsEditing) return;
+        const t = lsEditTarget(e); if (!t) return;
+        e.preventDefault();
+        const cur = lsLayout[t.k] = lsLayout[t.k] || { x: 0, y: 0, s: 1 };
+        cur.s = Math.round(Math.min(4, Math.max(0.2, (cur.s || 1) * (e.deltaY < 0 ? 1.06 : 1 / 1.06))) * 1000) / 1000;
+        lsApplyLayout(); lsSaveLayout();
+    }, { passive: false });
+    addEventListener('dblclick', e => {
+        if (!lsEditing) return;
+        const t = lsEditTarget(e); if (!t) return;
+        delete lsLayout[t.k]; lsApplyLayout(); lsSaveLayout();
+    });
+    addEventListener('keydown', e => { if (lsEditing && e.key === 'Escape') lsExitEdit(); });
 
     // Splash "GO!" estilo PillWars al arrancar la partida (entra grande, rebota y se
     // desvanece). Acompaña al inicio de la música y la liberación del control.
