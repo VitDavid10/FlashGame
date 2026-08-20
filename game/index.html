@@ -10423,52 +10423,123 @@
     // readyFn (opcional): la carga no termina hasta que sea true Y haya pasado minMs.
     // Así el GO! sale justo cuando la partida está REALMENTE cargada (primer snapshot),
     // no a un tiempo fijo: si tarda en cargar, la barra espera; si va rápida, mínimo minMs.
+    // Pildora del cartel: el sprite de partida, no una capsula CSS. Se genera
+    // CHICO (20 px logicos de ancho) y se estira x3 con pixelated, igual que
+    // hace el hero de la landing con el PICK ME: generarlo ya grande daria
+    // pixeles de 1px de pantalla, que no leen como pixel art. Blanco arriba /
+    // verde abajo = la pill de la MARCA. El angulo lo cuantiza el propio
+    // generador a pasos de 22.5 grados.
+    const LS_PILL_W = 20, LS_PILL_ZOOM = 3;
+    function lsDrawPill() {
+        const pc = document.getElementById('lsPill'); if (!pc) return;
+        const o = pixPillSpriteRot(LS_PILL_W, '#ffffff', '#00ff88', -Math.PI / 6, true);
+        pc.width = o.cv.width; pc.height = o.cv.height;
+        pc.getContext('2d').drawImage(o.cv, 0, 0);
+        pc.style.width = (pc.width * LS_PILL_ZOOM) + 'px';
+        pc.style.height = (pc.height * LS_PILL_ZOOM) + 'px';
+    }
+    // Titulo: la pixfont del juego (la misma que dibuja el GO!) en BLANCO con
+    // tinta negra — `plain` justamente para quitar las capas de halo verde que
+    // trae de serie. No se usa el PNG del login (img/mode-title/*-placa.png)
+    // porque ese va tintado del color del modo, y aqui el rotulo va blanco.
+    const LS_TITLE_PX = 6;
+    function lsDrawTitle() {
+        const host = document.getElementById('lsTitle'); if (!host) return;
+        const cv = pixFancyText('PILLWARS', LS_TITLE_PX, { plain: true, fill: '#ffffff', shade: '#b9c2cc' });
+        cv.className = 'ls-title-cv';
+        host.replaceChildren(cv);
+    }
+    // Fondo: SOLO la cuadricula, sin nada del juego encima (ni comida ni virus).
+    // Se usa el mismo generador de tile del login/selector pero tintado de
+    // blanco, o sea gris sobre casi negro: la rejilla es la del juego, el verde
+    // no. El calculo de W/H se copia de paintLoginBg (base 270 y multiplos
+    // exactos de gridSize) para que la celda mida en pantalla lo mismo que alli.
+    const LS_GRID_HEX = '#ffffff';
+    function lsPaintBg() {
+        const cv = document.getElementById('lsBgCv'); if (!cv) return;
+        const gs = Math.max(6, menuDecoSettings.gridSize | 0);
+        const vw = window.innerWidth || 1280, vh = window.innerHeight || 720;
+        const H = Math.max(gs, Math.round(270 / gs) * gs);
+        const W = Math.max(gs, Math.round((vw / vh * H) / gs) * gs);
+        if (cv.width !== W) cv.width = W;
+        if (cv.height !== H) cv.height = H;
+        const g = cv.getContext('2d');
+        g.imageSmoothingEnabled = false;
+        const tile = _msV2Tile(LS_GRID_HEX);
+        if (!tile.pat) tile.pat = g.createPattern(tile.cv, 'repeat');
+        g.fillStyle = tile.pat;
+        g.fillRect(0, 0, W, H);
+        // Cierre de la rejilla por derecha y abajo (el tile solo pinta la linea
+        // de arriba/izquierda de cada celda), igual que paintLoginBg.
+        const rgb = pixRgb(LS_GRID_HEX);
+        g.fillStyle = 'rgb(' + rgb.map(v => Math.round(v * 0.30)).join(',') + ')';
+        g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
+    }
     function showLoadingScreen(minMs, readyFn, onDone) {
         window.__loadingLock = true;
         let ov = document.getElementById('loadingScreen');
         if (!ov) {
-            // Estilos de la landing (cuadrícula verde, píldora, título neón) para que
-            // la carga tenga la misma calidad que la portada de pillwars.fun.
+            // Todo el cartel sale del MISMO material que el juego, no de CSS que
+            // se le parezca: el fondo es la cuadricula pixel del login/selector
+            // (_msV2Tile + la comida y los virus de drawMenuDeco), la pildora es
+            // el sprite de partida (pixPillSpriteRot) y el titulo es el PNG de
+            // los rotulos dibujados del login. Antes eran una capsula CSS con
+            // border-radius, un grid de lineas de 1.5px y 'Russo One' con halo
+            // difuminado — tres cosas que no existen en ninguna otra pantalla.
             if (!document.getElementById('loadingScreenCss')) {
                 const st = document.createElement('style');
                 st.id = 'loadingScreenCss';
                 st.textContent =
-                    '#loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;' +
-                    'background-color:#050505;background-image:radial-gradient(circle at 50% 40%,rgba(0,255,136,.10),transparent 60%),' +
-                    'linear-gradient(rgba(0,255,136,.05) 1.5px,transparent 1.5px),linear-gradient(90deg,rgba(0,255,136,.05) 1.5px,transparent 1.5px);' +
-                    'background-size:100% 100%,50px 50px,50px 50px;animation:lsFade .25s ease}' +
-                    '#loadingScreen .ls-pill{width:58px;height:104px;border-radius:99px;background:linear-gradient(180deg,#fff 50%,#00ff88 50%);' +
-                    'border:3px solid #000;box-shadow:0 0 35px #00ff88;animation:lsFloat 2.4s ease-in-out infinite}' +
-                    '#loadingScreen .ls-title{font-family:\'Russo One\',sans-serif;font-size:clamp(46px,9vw,86px);line-height:1;color:#fff;' +
-                    'letter-spacing:3px;margin:0;animation:lsGlow 2.4s ease-in-out infinite}' +
-                    '#loadingScreen .ls-title-img{max-width:min(520px,78vw);width:60vw;height:auto;image-rendering:pixelated;' +
-                    'animation:lsGlowImg 2.4s ease-in-out infinite}' +
-                    '#loadingScreen .ls-sub{font-family:\'Russo One\',sans-serif;font-size:clamp(13px,1.6vw,20px);color:#00ff88;font-weight:800;' +
-                    'text-transform:uppercase;letter-spacing:8px;margin-top:-12px}' +
-                    '#loadingScreen .ls-track{width:min(340px,70vw);height:12px;border:2px solid rgba(0,255,136,.6);border-radius:8px;overflow:hidden;' +
-                    'background:rgba(0,255,136,.06);box-shadow:0 0 14px rgba(0,255,136,.35)}' +
-                    '#loadingBar{width:0%;height:100%;background:linear-gradient(90deg,#00cc6e,#00ff88);box-shadow:0 0 12px #00ff88}' +
+                    '#loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;' +
+                    'background:#000;animation:lsFade .25s ease}' +
+                    // Mismas reglas que #loginBgCv: el canvas va lowres y lo estira
+                    // el navegador con pixelated, asi la celda de la cuadricula mide
+                    // en pantalla lo mismo que en el login.
+                    '#lsBgCv{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;z-index:0}' +
+                    '#loadingScreen .ls-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:26px}' +
+                    // El sprite ya viene girado desde pixPillSpriteRot (rotarlo por
+                    // CSS lo mutila: bordes dentados), asi que el bob es solo vertical.
+                    '#loadingScreen .ls-pill{display:block;image-rendering:pixelated;animation:lsFloat 2.4s ease-in-out infinite}' +
+                    // El canvas de la pixfont sale a su tamaño nativo; el height fijo
+                    // lo estira con pixelated, que es como se escala todo el pack.
+                    '#loadingScreen .ls-title-cv{display:block;height:84px;width:auto;image-rendering:pixelated}' +
+                    '#loadingScreen .ls-sub{font-family:\'Press Start 2P\',monospace;font-size:clamp(8px,1.1vw,12px);color:#b9c2cc;' +
+                    'letter-spacing:4px;text-shadow:2px 2px 0 rgba(0,0,0,.8)}' +
+                    // Barra con el bisel de placa del menu (borde duro + luz arriba /
+                    // sombra abajo), sin radios ni resplandor.
+                    '#loadingScreen .ls-track{width:min(340px,70vw);height:16px;background:#0d0d0d;border:3px solid #000;' +
+                    'box-shadow:inset 2px 2px 0 rgba(0,0,0,.55)}' +
+                    '#loadingBar{width:0%;height:100%;background:#e8ecf0;' +
+                    'box-shadow:inset 0 3px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.35)}' +
                     '@keyframes lsFade{from{opacity:0}to{opacity:1}}' +
-                    '@keyframes lsFloat{0%,100%{transform:rotate(-30deg) translateY(0)}50%{transform:rotate(-30deg) translateY(-14px)}}' +
-                    '@keyframes lsGlow{0%,100%{text-shadow:0 0 18px rgba(0,255,136,.55),0 0 36px rgba(0,255,136,.35)}50%{text-shadow:0 0 28px rgba(0,255,136,.9),0 0 60px rgba(0,255,136,.55)}}' +
-                    '@keyframes lsGlowImg{0%,100%{filter:drop-shadow(0 0 14px rgba(0,255,136,.55))}50%{filter:drop-shadow(0 0 26px rgba(0,255,136,.85))}}';
+                    '@keyframes lsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}';
                 document.head.appendChild(st);
             }
             ov = document.createElement('div');
             ov.id = 'loadingScreen';
-            // Título de carga: si existe img/loading-title.png se usa esa imagen
-            // (onload la muestra y oculta el texto); si falta (404), el onerror la
-            // quita y se queda el texto "PILLWARS" de siempre — nunca rompe la carga.
+            // El titulo lo dibuja lsDrawTitle() con la pixfont dentro de #lsTitle.
             ov.innerHTML =
-                '<div class="ls-pill"></div>' +
-                '<h1 class="ls-title" id="lsTitleText">PILLWARS</h1>' +
-                '<img src="img/loading-title.png" class="ls-title-img" style="display:none" ' +
-                'onload="this.style.display=\'block\';document.getElementById(\'lsTitleText\').style.display=\'none\'" onerror="this.remove()">' +
-                '<div class="ls-sub">The Crypto Arena</div>' +
-                '<div class="ls-track"><div id="loadingBar"></div></div>';
+                '<canvas id="lsBgCv"></canvas>' +
+                '<div class="ls-inner">' +
+                '<canvas class="ls-pill" id="lsPill"></canvas>' +
+                '<div id="lsTitle"></div>' +
+                '<div class="ls-sub">THE CRYPTO ARENA</div>' +
+                '<div class="ls-track"><div id="loadingBar"></div></div>' +
+                '</div>';
             document.body.appendChild(ov);
+            lsDrawPill();
+            lsDrawTitle();
+            // La rejilla depende del aspect ratio: hay que rehacerla al
+            // redimensionar. Sale barato — solo repinta si el cartel se ve.
+            addEventListener('resize', () => {
+                const o = document.getElementById('loadingScreen');
+                if (o && o.style.display !== 'none') lsPaintBg();
+            });
         }
         ov.style.display = 'flex';
+        // Sincrono, antes de que el navegador pinte: el fondo es estatico (solo
+        // rejilla), asi que con una pasada basta — nada de rAF eterno.
+        lsPaintBg();
         // Solo suena el sonido de carga (sin música; la música arranca al hacer GO).
         SoundManager.stopMusic();
         SoundManager.play('loading');
