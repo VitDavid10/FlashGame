@@ -396,7 +396,7 @@
             body.mobile-allowed #exitGameBtn  { top: auto !important; bottom: 96px !important; right: 12px !important; }
             /* CONNECT justo a la IZQUIERDA de esos tres (sin girar), a su misma
                altura: girado, el usuario lo ve pegado a ellos en la misma fila. */
-            body.mobile-allowed #gameWalletArea { top: auto !important; bottom: 84px; right: 60px; transform-origin: center; }
+            body.mobile-allowed #gameWalletArea { top: auto !important; bottom: 96px; right: 52px; transform-origin: center; }
 
             /* Los POPUPS, girados igual que el menu del que salen (el de elegir
                partida, el de sala, el de wallet, SETTINGS...). Todos comparten
@@ -417,12 +417,84 @@
                escritorio (190px de ancho) tapaba media pantalla. */
             body.mobile-allowed #gameWalletArea #gwConnect,
             body.mobile-allowed #gameWalletArea #gwDeposit {
-                min-width: 0; width: auto; padding: 6px 12px; font-size: 10px; height: 34px;
+                min-width: 0; width: auto; padding: 4px 10px; font-size: 8px; height: 28px;
             }
 
             /* El MENU DEL MODO, girado tambien: es la tercera pantalla de la
                misma secuencia (selector -> menu -> carga), y dejarla derecha
                obligaria a girar el movil de vuelta en mitad del camino. */
+            /* ===== LA PARTIDA, GIRADA TAMBIEN =====
+               Sale del menu girado, asi que si el juego arrancara derecho
+               habria que dar la vuelta al telefono justo al empezar a jugar.
+               El canvas ya se pide con los lados intercambiados (ver resize() y
+               juegoGirado() en el JS); aqui se le da la vuelta a el y al HUD.
+               El input se convierte aparte, en ptJuego(). */
+            body.mobile-allowed #gameCanvas,
+            body.mobile-allowed #ui,
+            body.mobile-allowed #actionBar,
+            body.mobile-allowed #leaderboard,
+            body.mobile-allowed #minimap {
+                position: fixed;
+                width: 100vh; height: 100vw;
+                width: 100dvh; height: 100dvw;
+                top: -100vw; left: 0; right: auto; bottom: auto;
+                top: -100dvw;
+                transform: rotate(90deg); transform-origin: bottom left;
+            }
+            /* El HUD no ocupa la pantalla entera: recupera su tamaño y se ancla
+               por la esquina que le toca DENTRO del cuadro ya girado. El truco
+               es el transform-origin: se gira sobre la esquina por la que esta
+               anclado, asi el elemento se despliega hacia dentro de la pantalla
+               en vez de salirse (con origin top-left se iban a x=-33 y a
+               y=-430). Y las esquinas cambian: lo que en el juego va
+               arriba-izquierda, girado cae arriba-DERECHA. */
+            body.mobile-allowed #ui,
+            body.mobile-allowed #actionBar,
+            body.mobile-allowed #leaderboard,
+            body.mobile-allowed #minimap {
+                width: auto; height: auto; top: auto; bottom: auto; left: auto; right: auto;
+            }
+            /* Cada uno gira sobre su CENTRO y se coloca por el centro, que es
+               la unica forma que no depende de cuanto mida: al girar, una caja
+               de w x h pasa a ocupar h x w alrededor del mismo punto. Con los
+               transform-origin de esquina el resultado dependia del tamaño de
+               cada pieza y se salian (el marcador acababa en y=-275 y la barra
+               en x=-12). Los porcentajes son del viewport ya girado. */
+            body.mobile-allowed #ui,
+            body.mobile-allowed #actionBar,
+            body.mobile-allowed #leaderboard,
+            body.mobile-allowed #minimap { transform-origin: center !important; }
+            /* Avisos que se superponen a la partida (PLAYING AGAINST BOTS,
+               MATCH ENDING/STARTING): tambien girados, que si no salian
+               derechos sobre un juego tumbado. Van centrados, asi que basta
+               con girarlos sobre su centro. */
+            body.mobile-allowed #lobbyBanner,
+            body.mobile-allowed #cdNum {
+                transform-origin: center !important;
+                transform: translate(-50%, -50%) rotate(90deg) !important;
+                top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
+            }
+            /* Marcadores: arriba-izquierda del juego -> arriba-derecha real. */
+            body.mobile-allowed #ui {
+                top: 24% !important; right: 22px !important; left: auto !important;
+                transform: translate(50%, -50%) rotate(90deg) scale(0.62) !important;
+            }
+            /* Barra de habilidades: abajo-centro -> centro del borde izquierdo. */
+            body.mobile-allowed #actionBar {
+                top: 50% !important; left: 28px !important; right: auto !important; bottom: auto !important;
+                transform: translate(-50%, -50%) rotate(90deg) scale(0.58) !important;
+            }
+            /* Clasificacion: arriba-derecha -> abajo-derecha real. */
+            body.mobile-allowed #leaderboard {
+                top: 78% !important; right: 92px !important; left: auto !important; bottom: auto !important;
+                transform: translate(50%, -50%) rotate(90deg) scale(0.58) !important;
+            }
+            /* Minimapa: abajo-derecha -> abajo-izquierda real. */
+            body.mobile-allowed #minimap {
+                top: 80% !important; left: 0 !important; right: auto !important; bottom: auto !important;
+                transform: translate(-50%, -50%) rotate(90deg) scale(0.58) !important;
+            }
+
             body.mobile-allowed #loginOverlay {
                 width: 100vh; height: 100vw;
                 width: 100dvh; height: 100dvw;
@@ -470,7 +542,7 @@
                pegado a un lado en vez de en medio. */
             body.mobile-allowed #loginOverlay .menu-head-row {
                 flex: none; flex-direction: column; align-items: center; justify-content: center;
-                gap: 2px; margin: 14px 0 4px;
+                gap: 2px; margin: 34px 0 4px;
                 width: 100% !important; max-width: none !important; align-self: stretch;
             }
             body.mobile-allowed #loginOverlay #selectedModeTitle {
@@ -8298,9 +8370,9 @@
         window.addEventListener('beforeunload', () => { if (gameRunning && !isSpectating && myCells().length > 0) { saveSystem.save(); } });
         window.addEventListener('mousedown', e => { if(isSpectating && !isHoveringUI) { isSpecDragging = true; lastSpecX = e.clientX; lastSpecY = e.clientY; } });
         window.addEventListener('mouseup', () => { isSpecDragging = false; });
-        window.addEventListener('mousemove', e => { if(isHoveringUI || isLoggingOut) return; mouse.x = e.clientX; mouse.y = e.clientY; if (!isSpectating && !(keys.w || keys.a || keys.s || keys.d)) { inputMode = 'MOUSE'; } });
-        window.addEventListener('touchmove', e => { if (!gameRunning || isLoggingOut) return; e.preventDefault(); const t = e.touches[0]; mouse.x = t.clientX; mouse.y = t.clientY; inputMode = 'MOUSE'; }, {passive: false});
-        window.addEventListener('touchstart', e => { if(e.target.closest('.ab-slot, button, #loginOverlay, #resultOverlay, #skillChoiceOverlay, #exitGameBtn, #exitModal, .nav-btn')) return; const now = Date.now(); if (now - lastTapTime < 300) { splitPlayer(); e.preventDefault(); } else { if(e.touches[0] && !isLoggingOut){ mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; inputMode = 'MOUSE'; } } lastTapTime = now; }, {passive: false});
+        window.addEventListener('mousemove', e => { if(isHoveringUI || isLoggingOut) return; const _p = ptJuego(e.clientX, e.clientY); mouse.x = _p.x; mouse.y = _p.y; if (!isSpectating && !(keys.w || keys.a || keys.s || keys.d)) { inputMode = 'MOUSE'; } });
+        window.addEventListener('touchmove', e => { if (!gameRunning || isLoggingOut) return; e.preventDefault(); const t = e.touches[0]; const _p = ptJuego(t.clientX, t.clientY); mouse.x = _p.x; mouse.y = _p.y; inputMode = 'MOUSE'; }, {passive: false});
+        window.addEventListener('touchstart', e => { if(e.target.closest('.ab-slot, button, #loginOverlay, #resultOverlay, #skillChoiceOverlay, #exitGameBtn, #exitModal, .nav-btn')) return; const now = Date.now(); if (now - lastTapTime < 300) { splitPlayer(); e.preventDefault(); } else { if(e.touches[0] && !isLoggingOut){ const _p = ptJuego(e.touches[0].clientX, e.touches[0].clientY); mouse.x = _p.x; mouse.y = _p.y; inputMode = 'MOUSE'; } } lastTapTime = now; }, {passive: false});
         window.addEventListener('keydown', e => {
             if (!gameRunning) return;
             if (cmdBarOpen) { if (e.code === 'Escape') toggleCmdBar(false); else if (e.code === 'Enter' || e.code === 'NumpadEnter') submitCmd(); return; }
@@ -11736,7 +11808,31 @@
     }
 
     function drawMiniPill(f, scale) { if (pixelMode) { const w = f.r * 2, wL = Math.max(4, Math.min(16, Math.round(w * scale / PIX_SCREEN_PX / 2) * 2)); drawPixPillRot(ctx, f.x, f.y, w, wL, f.c1, f.c2, f.angle || 0); return; } let sR = f.r * scale; if (isLowQuality || sR < DRAW_LOD_THRESHOLD) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle||0); let w = f.r * 2, h = w * 2.0, r = w / 2; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, r); ctx.clip(); ctx.fillStyle = f.c1; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = f.c2; ctx.fillRect(-w/2, 0, w, h/2); ctx.restore(); } }
-    function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; ctx.imageSmoothingEnabled = !pixelMode; scheduleAspectUpdate(); }
+    // En movil la partida se juega GIRADA, igual que el menu del que sale (ver
+    // "PARTIDA GIRADA" en el <style>): el canvas se pide con los lados
+    // intercambiados —ancho = alto de pantalla— y el CSS lo tumba encima del
+    // viewport. Asi el juego cree que corre en una pantalla apaisada normal y
+    // no hay que tocar nada de la simulacion ni del dibujo.
+    function juegoGirado() {
+        return document.body.classList.contains('mobile-allowed')
+            && window.matchMedia('(orientation: portrait)').matches;
+    }
+    function resize() {
+        const g = juegoGirado();
+        width = g ? window.innerHeight : window.innerWidth;
+        height = g ? window.innerWidth : window.innerHeight;
+        canvas.width = width; canvas.height = height;
+        ctx.imageSmoothingEnabled = !pixelMode; scheduleAspectUpdate();
+    }
+    // Pasa un punto de la PANTALLA al espacio del canvas girado. Sale de las
+    // esquinas: con rotate(90deg) sobre la esquina inferior izquierda, el punto
+    // logico (0,0) cae en (anchoPantalla, 0) y el (0, alto) en (0,0) — o sea
+    // x_logico = clientY, y_logico = anchoPantalla - clientX. Sin esto el dedo
+    // movia la pildora en la direccion equivocada.
+    function ptJuego(cx, cy) {
+        if (!juegoGirado()) return { x: cx, y: cy };
+        return { x: cy, y: window.innerWidth - cx };
+    }
     // Notifica al server el nuevo aspect ratio (debounced) para que AOI se ajuste.
     let _aspectTimer = null;
     function scheduleAspectUpdate() {
