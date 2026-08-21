@@ -145,6 +145,15 @@
             #modeScreen, #loginOverlay, #ui, #gameCanvas { filter: blur(10px); pointer-events: none; }
         }
         body.mobile-allowed #mobileBlock { display: none !important; }
+        /* hero=1 = el iframe decorativo de la landing. Ahi NO se juega: es una
+           pill en autopiloto de fondo, con el iframe en pointer-events:none. El
+           cartel de "Desktop Recommended" y el blur que lo acompaña convertirian
+           ese fondo en un borron con un aviso encima justo en el movil, que es
+           donde la landing lo quiere ver. El bloqueo sigue intacto para quien
+           entre al juego de verdad desde el telefono. */
+        html[data-hero] #mobileBlock { display: none !important; }
+        html[data-hero] #modeScreen, html[data-hero] #loginOverlay,
+        html[data-hero] #ui, html[data-hero] #gameCanvas { filter: none !important; }
         body.mobile-allowed #modeScreen,
         body.mobile-allowed #loginOverlay,
         body.mobile-allowed #ui,

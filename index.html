@@ -1507,6 +1507,12 @@ body.trailer-open #page-content{
             body.pixel-pack .brand-name:not(.no-img) .bn-img { height: 20px; }
             .brand-name { font-size: var(--fs-3); }
             body.nav-play-visible .brand-name { display: none !important; }
+            /* $PILL tambien cede el sitio mientras el PLAY NOW esta a la vista:
+               el boton mide 166px y en 375 de ancho se le montaba encima
+               (medido: PLAY NOW acababa en 240 y $PILL empezaba en 196). Con el
+               hero a la vista —que es cuando no hay PLAY NOW— $PILL se ve
+               normal. */
+            body.nav-play-visible #pill-dropdown { display: none !important; }
 
             /* ===== EL CONJUNTO DEL HERO, JUNTO Y CENTRADO =====
                En movil el grupo quedaba muy arriba (PLAY NOW a 195px de un hero
@@ -1556,11 +1562,11 @@ body.trailer-open #page-content{
                 position: static; transform: none; opacity: 1; pointer-events: auto;
                 padding-top: 14px; gap: 30px;
             }
-            /* En movil el iframe del juego real se apaga: pantalla pequeña,
-               dentro /game ya bloquea el juego con #mobileBlock, y la escala
-               desktop del layout (EDIT LAYOUT) no tiene sentido aqui. Se cae al
-               link directo de siempre. */
-            .hero-game-frame { display: none; }
+            /* El iframe del juego SI se ve en movil (antes iba a display:none).
+               El cartel de "Desktop Recommended" que /game enseña en tactil ya no
+               estorba: con ?hero=1 se desactiva alli (ver html[data-hero] en
+               game/index.html), porque este iframe es decoracion en autopiloto y
+               no se juega en el. */
             /* Sin iframe no hay nada que esperar, asi que el negro con el que se
                tapa la cuadricula del body mientras carga (ver .hero-game-wrap)
                aqui solo serviria para dejar el hero en negro para siempre. */
@@ -1636,9 +1642,40 @@ body.trailer-open #page-content{
             }
             .feature-images { width: 100%; }
             
-            .battle-modes-container, .store-panel { padding: 30px 20px; }
+            /* El ancho util se lo comian los paddings encadenados: 20px de
+               .content-container + 30 de .battle-modes-container dejaban el grid
+               en 261px de un viewport de 375, y de ahi salian tarjetas de 126px.
+               Recortados, el grid gana ~65px. */
+            .content-container { padding: 60px 10px; }
+            .battle-modes-container, .store-panel { padding: 24px 10px; }
             .battle-modes-container h2 { font-size: var(--fs-6); }
-            .modes-grid { flex-direction: column; }
+            /* ===== CARTELES EN DOS COLUMNAS, COMO EN ESCRITORIO =====
+               BATTLE MODES y DAILY QUEST se apilaban a ancho completo en movil
+               (.modes-grid a flex-direction:column, y el auto-fit de .dq-grid con
+               minmax(280px) que en 375 solo deja una columna). Cada tarjeta salia
+               de 347px de ancho por unos pocos de alto: la "forma alargada" que
+               no gusta. Manteniendolas en dos columnas conservan la proporcion
+               del cartel de escritorio, solo que en pequeño — que es lo que se
+               pide. El padding y los cuerpos de letra bajan en consecuencia,
+               porque a ~165px de ancho los de escritorio no entran. */
+            /* BATTLE MODES se queda en UNA columna, al reves que los otros dos.
+               No es un descuido: sus dos tarjetas llevan un parrafo de ~140
+               caracteres, y a media pantalla (138px) eso se estiraba hasta 341px
+               de alto — proporcion 0.4, todavia mas alargada que apiladas, solo
+               que en vertical. A ancho completo el mismo texto ocupa ~90px y la
+               tarjeta queda en torno a 2:1, que es lo mas cerca del cartel de
+               escritorio (1.5:1) a lo que se puede llegar en 375px. Lo que si
+               baja es el aire y el cuerpo de letra, para que ocupe menos. */
+            .modes-grid { flex-direction: column; gap: 10px; margin-bottom: 30px; }
+            .mode-card { flex: none; min-width: 0; padding: 14px 16px; }
+            .mode-card h4 { font-size: var(--fs-3); margin: 6px 0; }
+            .mode-card p { font-size: var(--fs-1); line-height: 1.45; }
+            .mode-card .category-tag { font-size: var(--fs-1); padding: 3px 6px; }
+            .dq-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .dq-card { padding: 10px 11px; border-left-width: 3px; }
+            /* La tienda de skins ya iba a dos columnas; se le ajusta el aire
+               para que case con los otros dos bloques. */
+            .shop-cel { padding: 8px 4px 0; }
 
             /* El grid de la Skin Store va a 4 columnas fijas y los canvas de
                las pildoras tienen ancho natural (151px, sin escalar): en un
@@ -4835,13 +4872,10 @@ function toggleTrailerMode() {
      * salen siempre, ver .hero-play-links en el media query de 768px).
      */
     (function () {
-        // Movil: el iframe ya se apaga por CSS (.hero-game-frame{display:none}
-        // en el media query) — de paso se le quita el src, que si no carga y
-        // corre igual (autopiloto incluido) solo para no verse nunca.
-        if (window.matchMedia('(max-width: 768px)').matches) {
-            const frame = document.getElementById('heroGameFrame');
-            if (frame) frame.removeAttribute('src');
-        }
+        // (Aqui se le quitaba el src al iframe en movil, porque el CSS lo tenia
+        // en display:none y si no cargaba y corria igual para no verse nunca.
+        // Ahora el juego de fondo TAMBIEN se ve en movil, asi que el iframe se
+        // deja cargar en todas las pantallas.)
         const btnPlay = document.getElementById('heroPlayNow');
         const btnModes = document.getElementById('heroChooseModes');
         const btnSkins = document.getElementById('heroChooseSkins');
