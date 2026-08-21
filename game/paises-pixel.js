@@ -1107,6 +1107,86 @@ let _pmPagina = 1, _pmPreviaRaf = 0;
 let _pmPreviaPausa = false, _pmPreviaUlt = 0, _pmSim = null, _pmAltoP1 = 0;
 // Colores de comida del juego (los mismos que la deco del menu).
 const PM_COMIDA_COL = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
+
+/* ===== Sprites de comida y virus, IGUALES a los del juego =====
+ * La previa de la skin ya intentaba usar pixDotSprite/pixVirusSprite, pero esas
+ * viven dentro de game/index.html: en la LANDING este fichero se carga suelto,
+ * las funciones no existian y la escena caia a su dibujo de respaldo — cuadrados
+ * de color por comida y un virus hecho a mano. De ahi que la animacion enseñara
+ * "comida y virus que no salen en el juego".
+ * Aqui se definen las mismas, portadas tal cual (mismo trazado y mismos tonos),
+ * y SOLO si no existen ya: dentro de /game siguen mandando las del juego, asi
+ * que no hay dos versiones que puedan separarse con el tiempo.
+ */
+if (typeof pixRgb !== 'function') {
+    var _pmProbe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    _pmProbe.canvas.width = _pmProbe.canvas.height = 1;
+    var pixRgb = function (col) {
+        _pmProbe.clearRect(0, 0, 1, 1); _pmProbe.fillStyle = col; _pmProbe.fillRect(0, 0, 1, 1);
+        const d = _pmProbe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]];
+    };
+}
+if (typeof pixShade !== 'function') {
+    var pixShade = function (rgb, amt) {
+        const t = amt < 0 ? 0 : 255, a = Math.abs(amt);
+        return 'rgb(' + rgb.map(v => Math.round(v + (t - v) * a)).join(',') + ')';
+    };
+}
+if (typeof pixDotSprite !== 'function') {
+    var _pmDotCache = new Map();
+    var pixDotSprite = function (dL, col, kind) {
+        const key = kind + dL + '|' + col;
+        let spr = _pmDotCache.get(key); if (spr) return spr;
+        if (_pmDotCache.size > 600) _pmDotCache.clear();
+        spr = document.createElement('canvas'); spr.width = dL; spr.height = dL;
+        const g = spr.getContext('2d'), rgb = pixRgb(col), R = dL / 2;
+        const inside = (x, y) => { if (x < 0 || y < 0 || x >= dL || y >= dL) return false; const dx = x + 0.5 - R, dy = y + 0.5 - R; return dx * dx + dy * dy <= (R - 0.1) * (R - 0.1); };
+        for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
+            if (!inside(x, y)) continue;
+            let c2;
+            if (dL >= 6 && (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1))) c2 = pixShade(rgb, -0.5);
+            else if (x + y > dL) c2 = pixShade(rgb, -0.22);
+            else c2 = 'rgb(' + rgb.join(',') + ')';
+            g.fillStyle = c2; g.fillRect(x, y, 1, 1);
+        }
+        g.fillStyle = 'rgba(255,255,255,0.55)'; const hp = Math.max(1, Math.floor(dL / 5));
+        g.fillRect(Math.floor(dL * 0.25), Math.floor(dL * 0.25), hp, hp);
+        _pmDotCache.set(key, spr); return spr;
+    };
+}
+if (typeof pixVirusSprite !== 'function') {
+    var _pmVirusCache = new Map();
+    var pixVirusSprite = function (dL, t) {
+        const key = dL + '|' + t;
+        let spr = _pmVirusCache.get(key); if (spr) return spr;
+        spr = document.createElement('canvas'); spr.width = dL; spr.height = dL;
+        const g = spr.getContext('2d'), R = dL / 2 - 0.5;
+        // t=0 siempre por aqui (virus normal); se conserva el parametro para que
+        // la firma sea identica a la del juego.
+        const rgbF = pixRgb('#9EE32D'), rgbD = pixRgb('#3E8E11');
+        const teeth = dL >= 36 ? 16 : 12;
+        const rr = (a) => R * (0.82 + 0.18 * (0.5 + 0.5 * Math.cos(a * teeth)));
+        const inside = (x, y) => { if (x < 0 || y < 0 || x >= dL || y >= dL) return false; const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2; return Math.sqrt(dx * dx + dy * dy) <= rr(Math.atan2(dy, dx)); };
+        for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
+            if (!inside(x, y)) continue;
+            const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2, d = Math.sqrt(dx * dx + dy * dy);
+            let col;
+            if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = pixShade(rgbD, -0.15);
+            else if (!inside(x + 2, y) || !inside(x, y + 2)) col = pixShade(rgbF, -0.3);
+            else if (!inside(x - 2, y) || !inside(x, y - 2)) col = pixShade(rgbF, 0.3);
+            else if (dL >= 20 && Math.abs(d - R * 0.58) < Math.max(1, dL / 40)) col = 'rgb(' + rgbD.join(',') + ')';
+            else if (dL >= 20 && d < R * 0.30) col = pixShade(rgbF, dx + dy < 0 ? -0.16 : -0.32);
+            else col = 'rgb(' + rgbF.join(',') + ')';
+            g.fillStyle = col; g.fillRect(x, y, 1, 1);
+        }
+        g.fillStyle = 'rgba(0,0,0,0.25)';
+        const spots = [[0.36, 0.42], [0.62, 0.36], [0.58, 0.64]], sr = Math.max(1, Math.round(dL / 12));
+        for (const s of spots) g.fillRect(Math.round(dL * s[0]), Math.round(dL * s[1]), sr, sr);
+        g.fillStyle = 'rgba(255,255,255,0.35)';
+        g.fillRect(Math.round(dL * 0.30), Math.round(dL * 0.24), Math.max(1, Math.round(dL / 10)), Math.max(1, Math.round(dL / 16)));
+        _pmVirusCache.set(key, spr); return spr;
+    };
+}
 const PM_ARENA_BG = '#050505', PM_ARENA_GRID = 'rgba(255,255,255,0.06)';
 const PM_WL_MIN = 12, PM_WL_MAX = 50;  // de recien nacida a tope del bucle
 const PM_MUNDO = 360;                  // radio del trozo de mapa simulado, en px lowres
