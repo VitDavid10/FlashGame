@@ -164,7 +164,10 @@
            Y la pantalla es realmente pequeña. */
         @media (max-width: 900px), (pointer: coarse) and (max-width: 1024px) {
             /* Menú: zoom físico para que el layout de escritorio (1200px+) entre en 375-768px.
-               zoom afecta al cálculo de layout (no solo a la pintura), así que evita overflow. */
+               zoom afecta al cálculo de layout (no solo a la pintura), así que evita overflow.
+               Esto es lo que se ve en VERTICAL — en horizontal manda el bloque
+               "RUEDA 3D" de mas abajo, que anula este zoom para el selector de
+               modos (el resto del menu, HUD incluido, sigue igual en los dos). */
             body.mobile-allowed #modeScreen { zoom: 0.55; overflow-y: auto; }
 
             /* En sesión, escalar el HUD proporcionalmente. */
@@ -177,6 +180,89 @@
             body.mobile-allowed #soundToggle { right: 12px; top: 12px; }
             body.mobile-allowed #musicToggle { right: 54px; top: 12px; }
             body.mobile-allowed #exitGameBtn { right: 96px; top: 12px; }
+        }
+
+        /* ===== SELECTOR DE MODOS: RUEDA 3D, SOLO MOVIL HORIZONTAL =====
+           El diseño de escritorio es una escena dividida en diagonal que se
+           reparte por hover: en tactil no hay hover, asi que un tap en
+           cualquier mitad confirmaba el modo al instante, sin previsualizar
+           nada, y con el zoom:0.55 de arriba las dos mitades quedaban
+           diminutas y dificiles de acertar. Aqui se reemplaza por una tarjeta
+           que gira sobre su eje vertical (mismo truco que un "flip card":
+           las dos caras llevan rotateY fijo y solo se alterna cual mira a la
+           camara) — CLASSIC y ARCADE conservan su arte, su placa y sus
+           colores tal cual, solo que a pantalla completa una detras de otra
+           en vez de repartidas en diagonal. Las flechas giran la rueda
+           (mobileWheelToggle, ver el JS) y el panel que se ve de frente es el
+           unico con pointer-events, asi que tocarlo confirma ese modo con el
+           mismo selectMode(...) de siempre — no hace falta un boton aparte.
+           Solo horizontal: en vertical una tarjeta a pantalla completa deja
+           el titulo y la descripcion muy apretados; ahi sigue el zoom de
+           arriba, que en vertical tiene mas alto para trabajar. */
+        @media (orientation: landscape) and (max-height: 560px) {
+            body.mobile-allowed #modeScreen { zoom: 1; overflow: hidden; }
+            body.mobile-allowed #modeWheel {
+                display: block; position: absolute; inset: 0; perspective: 1400px;
+            }
+            body.mobile-allowed #modeWheel .mode-panel {
+                position: absolute; inset: 0; left: 0; right: auto; width: 100%; height: 100%;
+                clip-path: none !important; filter: none !important; z-index: 2;
+                backface-visibility: hidden; -webkit-backface-visibility: hidden;
+                transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+                align-items: center !important; text-align: center !important;
+                justify-content: center; padding: 4% 9%; pointer-events: none;
+            }
+            /* Cara de partida: ARCADE mirando a camara, CLASSIC de espaldas
+               (rotada 180, invisible por backface-visibility). .flip las
+               intercambia. */
+            body.mobile-allowed #modeWheel .mode-panel.mode-arcade { transform: rotateY(0deg); }
+            body.mobile-allowed #modeWheel .mode-panel.mode-classic { transform: rotateY(180deg); }
+            body.mobile-allowed #modeWheel.flip .mode-panel.mode-arcade { transform: rotateY(-180deg); }
+            body.mobile-allowed #modeWheel.flip .mode-panel.mode-classic { transform: rotateY(0deg); }
+            /* Solo la cara que mira a camara recibe el tap (evita confirmar
+               el modo de espaldas, que backface-visibility solo esconde
+               visualmente — el hueco seguiria siendo tocable sin esto). */
+            body.mobile-allowed #modeWheel:not(.flip) .mode-panel.mode-arcade,
+            body.mobile-allowed #modeWheel.flip .mode-panel.mode-classic { pointer-events: auto; }
+
+            /* Contenido: layout normal centrado, no el posicionado absoluto a
+               porcentajes que usa el hover de escritorio. */
+            body.mobile-allowed #modeWheel .mode-content {
+                position: static !important; transform: none !important; left: auto !important;
+                max-width: 86%; opacity: 1 !important; margin: 0 auto;
+            }
+            /* Medido en el movil de pruebas: con 6/4/4px de margen el conjunto
+               quedaba pegadisimo (4px justos entre STANDARD MODE y CLASSIC) —
+               y sobraba de sobra alto libre arriba y abajo del bloque (el
+               contenido ocupa ~180px de los 340 del viewport), asi que no
+               habia motivo para ir tan apretado. */
+            body.mobile-allowed #modeWheel .mode-title { font-size: clamp(28px, 6.5vh, 46px); margin-bottom: 14px; }
+            body.mobile-allowed #modeWheel .mode-sub { font-size: 11px; margin-bottom: 10px; }
+            body.mobile-allowed #modeWheel .mode-desc { font-size: clamp(10px, 2.6vh, 13px); line-height: 1.5; margin-bottom: 4px; }
+            body.pixel-pack.mobile-allowed #modeWheel .mode-title.no-img,
+            body.pixel-pack.mobile-allowed #modeWheel .mode-title:not(.no-img) .mt-img { max-width: 78vw; }
+
+            body.mobile-allowed .mode-wheel-arrow {
+                display: flex; align-items: center; justify-content: center;
+                position: absolute; top: 50%; transform: translateY(-50%); z-index: 60;
+                width: 46px; height: 46px; border-radius: 8px; cursor: pointer;
+                background: rgba(0,0,0,0.55); border: 2px solid rgba(255,255,255,0.3);
+                color: #fff; font-size: 16px; -webkit-tap-highlight-color: transparent;
+            }
+            body.mobile-allowed .mode-wheel-arrow:active { background: rgba(255,255,255,0.2); }
+            body.mobile-allowed .mode-wheel-arrow.left { left: 10px; }
+            body.mobile-allowed .mode-wheel-arrow.right { right: 10px; }
+            body.mobile-allowed .mode-wheel-hint {
+                display: block; position: absolute; left: 50%; bottom: 4%; z-index: 60;
+                transform: translateX(-50%); color: rgba(255,255,255,0.65);
+                font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px;
+                text-shadow: 2px 2px 0 rgba(0,0,0,0.8); pointer-events: none; white-space: nowrap;
+            }
+            /* El divisor diagonal y los botones de daily quests son cosa del
+               reparto en diagonal: sin sitio ni sentido con la tarjeta a
+               pantalla completa. */
+            body.mobile-allowed #modeScreen .diagonal-divider,
+            body.mobile-allowed #modeScreen .mqp-btn { display: none !important; }
         }
 
         /* --- UI & BUTTONS --- */
@@ -475,6 +561,14 @@
         
         .mode-panel.expanded { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%) !important; z-index: 40; filter:brightness(1) !important; width:100% !important; height:100% !important; top:0 !important; left:0 !important; }
         .mode-panel.hidden { opacity: 0; pointer-events: none; }
+        /* display:contents = invisible en escritorio y en movil vertical: los
+           dos .mode-panel siguen siendo hijos directos de #modeScreen a
+           efectos de layout Y de selectores CSS (el descendiente #modeScreen
+           .mode-arcade sigue casando igual), asi que nada de lo de arriba
+           cambia. Solo se convierte en la rueda dentro del media query de
+           movil horizontal, mas abajo. */
+        #modeWheel { display: contents; }
+        .mode-wheel-arrow, .mode-wheel-hint { display: none; }
 
         /* --- BOTÓN "DAILY QUESTS" + PANEL DESPLEGABLE --- */
         .mqp-btn { position: absolute; top: 22%; z-index: 35; display: none; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); font-family: 'Russo One'; font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; cursor: pointer; user-select: none; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
@@ -2379,27 +2473,39 @@
              suavizado): ver modeFxDrawScene. Sustituye a los mp4/PNG, que
              quedaban borrosos al reescalar. -->
         <div class="diagonal-divider"></div>
-        <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
-            <div id="contentArcade" class="mode-content">
-                <div class="mode-sub">ROGUELIKE MECHANICS</div>
-                <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img mt-placa" src="img/mode-title/ARCADE-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
-                <div class="mode-desc">
-                    NORMAL MAP. TIME: <span class="highlight">3:50</span>.<br>
-                    START EMPTY. <span class="highlight">PICK SKILLS</span> EVERY 30S.<br>
-                    <span style="color:#ccff00;">REACH TOP 10 TO WIN.</span>
+        <!-- #modeWheel: display:contents en escritorio (no cambia nada, los dos
+             paneles siguen siendo hijos directos de #modeScreen a efectos de CSS
+             y de los selectores existentes). Solo en movil horizontal (ver el
+             media query "RUEDA 3D") se convierte en el eje de la rueda: cada
+             panel es una cara con rotateY fija y .flip gira cual mira a camara,
+             efecto tarjeta-que-se-da-la-vuelta. Las flechas y el aviso solo se
+             ven ahi tambien. -->
+        <div id="modeWheel">
+            <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
+                <div id="contentArcade" class="mode-content">
+                    <div class="mode-sub">ROGUELIKE MECHANICS</div>
+                    <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img mt-placa" src="img/mode-title/ARCADE-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                    <div class="mode-desc">
+                        NORMAL MAP. TIME: <span class="highlight">3:50</span>.<br>
+                        START EMPTY. <span class="highlight">PICK SKILLS</span> EVERY 30S.<br>
+                        <span style="color:#ccff00;">REACH TOP 10 TO WIN.</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
-            <div id="contentClassic" class="mode-content">
-                <div class="mode-sub">STANDARD MODE</div>
-                <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img mt-placa" src="img/mode-title/CLASSIC-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
-                <div class="mode-desc">
-                    NO TIMER. <span class="highlight">HUGE MAP (x2)</span>.<br>
-                    ONLY <span class="highlight">SHOOT</span> SKILL (KEY 1).<br>
-                    <span style="color:#00ffaa;">PURE CELL-EATING GAMES EXPERIENCE.</span>
+            <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
+                <div id="contentClassic" class="mode-content">
+                    <div class="mode-sub">STANDARD MODE</div>
+                    <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img mt-placa" src="img/mode-title/CLASSIC-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
+                    <div class="mode-desc">
+                        NO TIMER. <span class="highlight">HUGE MAP (x2)</span>.<br>
+                        ONLY <span class="highlight">SHOOT</span> SKILL (KEY 1).<br>
+                        <span style="color:#00ffaa;">PURE CELL-EATING GAMES EXPERIENCE.</span>
+                    </div>
                 </div>
             </div>
+            <button type="button" class="mode-wheel-arrow left" onclick="event.stopPropagation(); mobileWheelToggle();" aria-label="Previous mode">&#9664;</button>
+            <button type="button" class="mode-wheel-arrow right" onclick="event.stopPropagation(); mobileWheelToggle();" aria-label="Next mode">&#9654;</button>
+            <div class="mode-wheel-hint">TAP TO SELECT</div>
         </div>
         <!-- Botones que despliegan los paneles de quests por modo -->
         <div class="mqp-btn arcade" onclick="toggleModeQuests('arcade')"><span class="dot"></span>DAILY QUESTS <span class="cnt" id="mqpArcadeBtnCnt">0/5</span></div>
@@ -4758,6 +4864,19 @@
         if (e && e.clientY < MODE_DEAD_ZONE_PX) return;
         if (ignoreNextHover) { ignoreNextHover = false; return; }
         if (m !== lastHoveredMode) SoundManager.play('hover');
+    }
+    // Rueda 3D del selector de modos en movil horizontal (ver el media query
+    // "RUEDA 3D" en el <style>). Solo hay dos caras, asi que da igual que
+    // flecha se pulse: SIEMPRE se pasa a la otra. Reutiliza tryPlayHover +
+    // setHoverMode, las mismas que ya usa el hover de escritorio, para que el
+    // sonido, el fondo con FX y el "ultimo modo" en localStorage queden
+    // identicos sea cual sea la via de entrada.
+    function mobileWheelToggle() {
+        const next = (lastHoveredMode === 'classic') ? 'arcade' : 'classic';
+        const wheel = document.getElementById('modeWheel');
+        if (wheel) wheel.classList.toggle('flip', next === 'classic');
+        tryPlayHover(next);
+        setHoverMode(next);
     }
     // --- FX del menu de modos: escena pixel-art dibujada a mano + pildoras ---
     // La escena (cielo, skyline neon, suelo ajedrez, portales y rayos) se
