@@ -604,7 +604,7 @@
                —que ocupan el borde de abajo hasta y=96—, de modo que la columna
                continua sin pisarlos. */
             html:not([data-hero]) body.mobile-allowed #ui {
-                top: 17% !important; bottom: auto !important; right: 4% !important; left: auto !important;
+                top: 17% !important; bottom: auto !important; right: 6% !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(1) !important;
                 display: flex !important; flex-direction: row !important; gap: 4px !important;
                 font-size: 8px !important;
@@ -647,11 +647,22 @@
                 bottom: 54px !important; right: 78px !important; top: auto !important; left: auto !important;
                 transform: rotate(90deg) !important; transform-origin: center !important;
             }
+            /* body.pixel-pack (desktop) saca #killsSection del flujo con
+               position:absolute;top:calc(100% + 12px) para colgarlo DEBAJO
+               del cartel TOP MASS, y esconde la etiqueta "KILLS" (esa
+               regla vive en _hudRule(), no aqui). En movil el cartel es
+               ahora un cuadrado de 76px de alto: esa regla lo mandaba fuera
+               del cuadrado por completo (el numero salia suelto por debajo,
+               el cuadrado se veia vacio). Se vuelve a flujo normal y se
+               recupera la etiqueta. */
             html:not([data-hero]) body.mobile-allowed #killsSection {
+                position: static !important; top: auto !important; left: auto !important; transform: none !important;
                 border-top: none !important; margin: 26px 0 0 !important; padding-top: 0 !important;
                 text-align: center !important;
             }
-            html:not([data-hero]) body.mobile-allowed #killsSection div:first-child { font-size: 7px !important; margin-bottom: 0 !important; }
+            html:not([data-hero]) body.mobile-allowed #killsSection div:first-child {
+                display: block !important; font-size: 7px !important; margin-bottom: 0 !important;
+            }
             html:not([data-hero]) body.mobile-allowed #killsVal { font-size: 15px !important; }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
             html:not([data-hero]) body.mobile-allowed #minimap {
