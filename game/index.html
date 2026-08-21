@@ -135,15 +135,11 @@
             50% { transform: translateY(-10px); }
         }
 
-        /* REGLA DE BLOQUEO:
-           Solo dispositivos TÁCTILES reales (móvil/tablet: puntero grueso y sin hover).
-           Un PC con ratón NUNCA se bloquea, aunque la ventana sea estrecha (antes un
-           max-width:900px atrapaba PCs con la ventana pequeña → falso positivo).
-           Cuando el usuario pulsa "Continue anyway", se añade html:not([data-hero]) body.mobile-allowed y se desactiva. */
-        @media (pointer: coarse) and (hover: none) {
-            #mobileBlock { display: flex !important; }
-            #modeScreen, #loginOverlay, #ui, #gameCanvas { filter: blur(10px); pointer-events: none; }
-        }
+        /* El cartel "Desktop Recommended" ya no se enseña a jugadores reales
+           (antes salia solo, con el juego desenfocado, y habia que pulsar
+           CONTINUE ANYWAY para entrar). El div y su boton se quedan solo para
+           poder previsualizarlo desde comparativa.html; mobile-allowed se
+           concede solo abajo, en el script. */
         html:not([data-hero]) body.mobile-allowed #mobileBlock { display: none !important; }
         /* hero=1 = el iframe decorativo de la landing. Ahi NO se juega: es una
            pill en autopiloto de fondo, con el iframe en pointer-events:none. El
@@ -461,7 +457,7 @@
             /* A la IZQUIERDA del reloj (que va al 42% del borde derecho) y
                centrado con el: misma altura, x menor. */
             html:not([data-hero]) body.mobile-allowed #skillChoiceOverlay {
-                top: 50% !important; left: 62% !important; right: auto !important;
+                top: 50% !important; left: 68% !important; right: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) scale(0.62) !important;
             }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
@@ -519,6 +515,14 @@
                MATCH ENDING/STARTING): tambien girados, que si no salian
                derechos sobre un juego tumbado. Van centrados, asi que basta
                con girarlos sobre su centro. */
+            /* PLAYING AGAINST BOTS: mismo truco de giro que ROOM/MASS/ALIVE
+               (misma transform: translate+rotate+scale), colocado justo
+               ENCIMA de esa columna en vez de centrado arriba del mapa. */
+            html:not([data-hero]) body.mobile-allowed #botsBanner {
+                top: 3% !important; bottom: auto !important; right: 8% !important; left: auto !important;
+                transform: translate(50%, 0) rotate(90deg) scale(0.42) !important;
+                transform-origin: center !important;
+            }
             /* TODOS los carteles que se superponen a la partida: elegir skill,
                salir, resultado, aviso de sistema, premio... Sin esto salian
                derechos sobre un juego tumbado. */
@@ -609,8 +613,8 @@
             }
             /* Clasificacion: arriba-derecha -> abajo-derecha real. */
             html:not([data-hero]) body.mobile-allowed #leaderboard {
-                bottom: 0.6% !important; top: auto !important; right: 31% !important; left: auto !important;
-                transform: translate(50%, 0) rotate(90deg) scale(0.62) !important;
+                bottom: 0% !important; top: auto !important; right: 31% !important; left: auto !important;
+                transform: translate(50%, 0) rotate(90deg) scale(0.74) !important;
             }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
             html:not([data-hero]) body.mobile-allowed #minimap {
@@ -2605,16 +2609,13 @@
         // Mobile gate: si el usuario aceptó previamente, restaurar el estado al cargar.
         // Persistente (localStorage) para no preguntar de nuevo.
         function allowMobile() {
-            try { localStorage.setItem('pw_mobile_allowed', '1'); } catch(e) {}
             document.body.classList.add('mobile-allowed');
         }
         try {
-            // Auto-cura: en un dispositivo NO táctil (PC con ratón) nunca se entra en
-            // modo móvil, y se borra un flag viejo que hubiera quedado por un falso
-            // positivo (ventana estrecha en PC). Así el PC nunca queda con salas de pago bloqueadas.
+            // Táctil real (móvil/tablet: puntero grueso y sin hover) entra directo,
+            // sin pedir confirmación: se concede mobile-allowed al vuelo.
             var _isTouch = window.matchMedia && window.matchMedia('(pointer: coarse) and (hover: none)').matches;
-            if (!_isTouch) localStorage.removeItem('pw_mobile_allowed');
-            if (localStorage.getItem('pw_mobile_allowed') === '1') document.body.classList.add('mobile-allowed');
+            if (_isTouch) document.body.classList.add('mobile-allowed');
         } catch(e) {}
     </script>
 
@@ -2743,7 +2744,6 @@
          GAME), setPlayBtnState (CONNECTING...) y Rejoin los siguen usando. -->
     <div id="playChoiceModal" class="pw-modal">
         <div class="pw-modal-box play-picker">
-            <div class="pw-modal-title">CHOOSE HOW TO PLAY</div>
             <button class="pw-big-btn offline" id="btnEnterGame" onclick="choosePlay('offline')" onmouseenter="SoundManager.playSimpleHover()">PLAY OFFLINE</button>
             <div class="pw-btn-sub">PRACTICE VS BOTS · NO WAGER</div>
             <button class="pw-big-btn online" id="btnPlayOnline" onclick="choosePlay('online')" onmouseenter="SoundManager.playSimpleHover()">PLAY ONLINE</button>
