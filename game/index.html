@@ -419,10 +419,25 @@
             /* Los popups, mas pequeños: la caja de escritorio (360px + 28/30 de
                relleno) se comia casi toda la pantalla girada. */
             body.mobile-allowed .pw-modal .pw-modal-box {
-                max-width: 74vh; width: 300px; padding: 16px 18px;
+                max-width: 74vh; width: 272px; padding: 14px 14px 16px;
             }
-            body.mobile-allowed .pw-modal .pw-modal-title { font-size: 10px; margin-bottom: 14px; line-height: 1.7; }
-            body.mobile-allowed .pw-modal .pw-big-btn { font-size: 10px; padding: 11px 0; }
+            body.mobile-allowed .pw-modal .pw-modal-title { font-size: 8px; margin-bottom: 12px; line-height: 1.8; }
+            body.mobile-allowed .pw-modal .pw-big-btn { font-size: 8px; padding: 9px 4px; letter-spacing: 0; }
+            /* Los carteles con MARCO DE IMAGEN (elegir sala y elegir wallet) no
+               son la caja plana de arriba: el marco es el propio fondo y el
+               contenido vive dentro de un padding enorme (60/44/46). A tamaño
+               de movil eso dejaba el rotulo y los botones tocando el filo
+               dibujado. Se encoge TODO el interior: menos relleno, rotulo mas
+               estrecho, botones mas bajos y rejilla mas junta. */
+            body.mobile-allowed .pw-modal-box.room-picker,
+            body.mobile-allowed .pw-modal-box.wallet-picker {
+                width: 260px; padding: 34px 30px 28px;
+            }
+            body.mobile-allowed .room-picker .wp-title { width: 58%; margin-bottom: 12px; }
+            body.mobile-allowed .wallet-picker .wp-title { width: 64%; margin-bottom: 14px; }
+            body.mobile-allowed .pw-room-grid { gap: 5px; }
+            body.mobile-allowed .pw-room-grid .pw-big-btn { padding: 7px 0; font-size: 8px; }
+            body.mobile-allowed .room-picker .wp-cancel { margin-top: 9px; font-size: 8px; height: 30px; width: 70%; }
             /* Las 4 casillas de skill de abajo, mas grandes: al 62% de la barra
                quedaban demasiado pequeñas para el dedo. */
             /* (El tamaño y la posicion de la barra de skills van en el bloque
@@ -434,9 +449,11 @@
             /* El selector de skill, mas pequeño y justo DEBAJO del reloj (que va
                al 42% del borde derecho): asi los dos quedan en la misma columna
                y no tapa el centro del mapa. */
+            /* A la IZQUIERDA del reloj (que va al 42% del borde derecho) y
+               centrado con el: misma altura, x menor. */
             body.mobile-allowed #skillChoiceOverlay {
-                top: 62% !important; left: 50% !important;
-                transform: translate(-50%, -50%) rotate(90deg) scale(0.72) !important;
+                top: 42% !important; left: auto !important; right: 96px !important;
+                transform: translate(50%, -50%) rotate(90deg) scale(0.62) !important;
             }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
                escritorio (190px de ancho) tapaba media pantalla. */
@@ -512,10 +529,18 @@
             }
             /* Y sus cajas, mas pequeñas: las de escritorio se comian la pantalla
                girada (el GAME OVER sobre todo). */
-            body.mobile-allowed #sysModal .exit-box,
             body.mobile-allowed #exitModal .exit-box,
             body.mobile-allowed #resultOverlay .result-box,
             body.mobile-allowed #prizeModal .exit-box { transform: scale(0.68); transform-origin: center; }
+            /* El aviso de sistema no va en mitad de la pantalla: se corre hacia
+               el lado de los indicadores (ROOM/MASS/ALIVE) para dejar libre el
+               centro del mapa. margin-left en el cuadro ya girado = "mas
+               abajo" desde el punto de vista del que juega. */
+            body.mobile-allowed #sysModal { justify-content: flex-start !important; }
+            body.mobile-allowed #sysModal .exit-box {
+                transform: scale(0.62); transform-origin: center;
+                margin-top: 12vh;
+            }
             body.mobile-allowed #prizeModal,
             body.mobile-allowed #lobbyBanner,
             body.mobile-allowed #cdNum {
@@ -528,8 +553,8 @@
                —que ocupan el borde de abajo hasta y=96—, de modo que la columna
                continua sin pisarlos. */
             body.mobile-allowed #ui {
-                top: 172px !important; bottom: auto !important; right: 20px !important; left: auto !important;
-                transform: translate(50%, 0) rotate(90deg) scale(0.9) !important;
+                top: 150px !important; bottom: auto !important; right: 34px !important; left: auto !important;
+                transform: translate(50%, 0) rotate(90deg) scale(0.7) !important;
             }
             /* El TIEMPO, arriba y centrado con el telefono girado (sin girar:
                borde derecho, a media altura). Iba pegado al mismo sitio que el
@@ -550,8 +575,8 @@
             }
             /* Clasificacion: arriba-derecha -> abajo-derecha real. */
             body.mobile-allowed #leaderboard {
-                bottom: 150px !important; top: auto !important; right: 88px !important; left: auto !important;
-                transform: translate(50%, 0) rotate(90deg) scale(0.62) !important;
+                bottom: 10px !important; top: auto !important; right: 128px !important; left: auto !important;
+                transform: translate(50%, 0) rotate(90deg) scale(0.5) !important;
             }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
             body.mobile-allowed #minimap {
@@ -6863,7 +6888,9 @@
         // En MOVIL no se salta nunca: alli la sala se pregunta SIEMPRE (ver
         // choosePlay), porque no hay ningun sitio donde consultar en que sala
         // estas ni cambiarla — el panel de precios no se enseña en el telefono.
-        if (currentServer && currentServer !== 'Free' && !esMovilJuego()) { SoundManager.play('simpleselect'); startOnlineGame(); return; }
+        // (Antes, con una sala de PAGO elegida se entraba directo a online sin
+        // preguntar. Eso dejaba sin salida: no habia forma de volver a jugar
+        // offline salvo cambiando de sala. Ahora siempre se pregunta.)
         SoundManager.play('simpleselect');
         // En movil se salta el "CHOOSE HOW TO PLAY": ahi no se practica offline
         // —solo hay sala FREE online— asi que ese paso era un cartel de mas
