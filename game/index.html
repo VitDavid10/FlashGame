@@ -209,38 +209,44 @@
            depende de la orientacion es la ROTACION FORZADA de mas abajo. */
         @media (pointer: coarse) {
             body.mobile-allowed #modeScreen { zoom: 1; overflow: hidden; }
-            /* SIN `perspective` de contenedor y SIN `backface-visibility`, que
-               era la version anterior y no se veia NADA en el movil (solo el
-               fondo): #modeScreen esta girado 90 grados, y un ancestro
-               transformado APLANA el contexto 3D de sus hijos, asi que el
-               calculo de que cara mira a camara se va al traste y las dos
-               quedaban ocultas a la vez.
-               La perspectiva va ahora dentro del propio `transform` de cada
-               panel — `perspective(...)` como FUNCION, que se resuelve en el
-               elemento y no depende del espacio 3D del padre — y el papel de
-               backface-visibility lo hace la opacidad, que es determinista:
-               conmuta de golpe (0s) a mitad del giro (delay 0.35s de los 0.7s),
-               que es justo cuando la cara esta de perfil. Mismo efecto a la
-               vista, sin nada que un ancestro pueda romper. */
+            /* CAMBIO DE MODO POR DESLIZAMIENTO, no por giro 3D.
+               El flip de tarjeta pedia `perspective` + `backface-visibility`, y
+               con #modeScreen girado 90 grados eso no se sostiene: un ancestro
+               transformado APLANA el contexto 3D de sus hijos, el calculo de
+               que cara mira a camara se va al traste y llegaron a quedar
+               ocultas LAS DOS a la vez (en el movil solo se veia el fondo).
+               Un desplazamiento lateral es 2D puro: no depende de ningun
+               espacio 3D, asi que ningun ancestro puede romperlo — y encima se
+               lee mejor, porque acompaña a la flecha que lo dispara.
+               El panel que sale se va por la izquierda y el que entra llega
+               desde la derecha; el `overflow:hidden` de #modeScreen los recorta
+               fuera de cuadro, asi que no asoman por los lados. */
             body.mobile-allowed #modeWheel {
-                display: block; position: absolute; inset: 0;
+                display: block; position: absolute; inset: 0; overflow: hidden;
             }
+            /* Con ANIMACIONES y no con transiciones entre dos estados: la
+               flecha apunta siempre a la derecha, asi que el movimiento tiene
+               que ser siempre el mismo — el de dentro se va por la izquierda y
+               el nuevo entra por la derecha, tanto al ir a CLASSIC como al
+               volver a ARCADE. Con transiciones eso es imposible: la vuelta es
+               por fuerza el camino inverso de la ida, y se veia entrar el panel
+               por el lado contrario al que señala la flecha. */
             body.mobile-allowed #modeWheel .mode-panel {
                 position: absolute; inset: 0; left: 0; right: auto; width: 100%; height: 100%;
                 clip-path: none !important; filter: none !important; z-index: 2;
-                transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0s linear 0.35s;
                 align-items: center !important; text-align: center !important;
-                justify-content: center; padding: 4% 9%; pointer-events: none;
+                justify-content: center; padding: 4% 9%;
+                transform: translateX(100%); opacity: 0; pointer-events: none;
             }
-            /* Cara de partida: ARCADE de frente, CLASSIC de espaldas. */
-            body.mobile-allowed #modeWheel .mode-panel.mode-arcade { transform: perspective(1400px) rotateY(0deg); opacity: 1; }
-            body.mobile-allowed #modeWheel .mode-panel.mode-classic { transform: perspective(1400px) rotateY(180deg); opacity: 0; }
-            body.mobile-allowed #modeWheel.flip .mode-panel.mode-arcade { transform: perspective(1400px) rotateY(-180deg); opacity: 0; }
-            body.mobile-allowed #modeWheel.flip .mode-panel.mode-classic { transform: perspective(1400px) rotateY(0deg); opacity: 1; }
-            /* Solo la cara de frente recibe el tap: la de espaldas esta a
-               opacity 0, que no quita el hueco tocable. */
-            body.mobile-allowed #modeWheel:not(.flip) .mode-panel.mode-arcade,
-            body.mobile-allowed #modeWheel.flip .mode-panel.mode-classic { pointer-events: auto; }
+            /* wheel-on = el que esta en cuadro (y el unico tocable). Las clases
+               wheel-in/out las pone y quita mobileWheelToggle. */
+            body.mobile-allowed #modeWheel .mode-panel.wheel-on {
+                transform: translateX(0); opacity: 1; pointer-events: auto;
+            }
+            body.mobile-allowed #modeWheel .mode-panel.wheel-in { animation: wheelIn .5s cubic-bezier(.33,1,.68,1) both; }
+            body.mobile-allowed #modeWheel .mode-panel.wheel-out { animation: wheelOut .5s cubic-bezier(.33,1,.68,1) both; }
+            @keyframes wheelIn  { from { transform: translateX(100%);  opacity: 0 } to { transform: translateX(0);     opacity: 1 } }
+            @keyframes wheelOut { from { transform: translateX(0);     opacity: 1 } to { transform: translateX(-100%); opacity: 0 } }
 
             /* Contenido: layout normal centrado, no el posicionado absoluto a
                porcentajes que usa el hover de escritorio. */
@@ -259,16 +265,31 @@
             body.pixel-pack.mobile-allowed #modeWheel .mode-title.no-img,
             body.pixel-pack.mobile-allowed #modeWheel .mode-title:not(.no-img) .mt-img { max-width: 78vw; }
 
+            /* Grande y pegada al borde derecho: es el unico control que NO
+               confirma modo, asi que cuanto mas se distinga del panel (que
+               ocupa toda la pantalla y si confirma al tocarlo), menos veces se
+               selecciona un modo sin querer. 64px es el area comoda de pulgar
+               sin comerse el cartel. */
             body.mobile-allowed .mode-wheel-arrow {
                 display: flex; align-items: center; justify-content: center;
                 position: absolute; top: 50%; transform: translateY(-50%); z-index: 60;
-                width: 46px; height: 46px; border-radius: 8px; cursor: pointer;
-                background: rgba(0,0,0,0.55); border: 2px solid rgba(255,255,255,0.3);
-                color: #fff; font-size: 16px; -webkit-tap-highlight-color: transparent;
+                width: 64px; height: 64px; border-radius: 10px; cursor: pointer;
+                background: rgba(0,0,0,0.68); border: 3px solid currentColor;
+                font-size: 24px; -webkit-tap-highlight-color: transparent;
+                transition: color .45s ease, box-shadow .45s ease, background .15s ease;
             }
-            body.mobile-allowed .mode-wheel-arrow:active { background: rgba(255,255,255,0.2); }
-            body.mobile-allowed .mode-wheel-arrow.left { left: 10px; }
-            body.mobile-allowed .mode-wheel-arrow.right { right: 10px; }
+            body.mobile-allowed .mode-wheel-arrow:active { background: rgba(255,255,255,0.22); }
+            body.mobile-allowed .mode-wheel-arrow.right { right: 14px; }
+            /* Del color del modo que se esta viendo (el borde y la punta usan
+               currentColor, asi que basta con cambiar `color`): lima de ARCADE
+               o verde-agua de CLASSIC, los mismos --arcade/--classic que ya
+               llevan los titulos. Cambia a la vez que la cara de la rueda. */
+            body.mobile-allowed #modeWheel:not(.flip) .mode-wheel-arrow {
+                color: #ccff00; box-shadow: 0 0 14px rgba(204,255,0,0.45);
+            }
+            body.mobile-allowed #modeWheel.flip .mode-wheel-arrow {
+                color: #00ffaa; box-shadow: 0 0 14px rgba(0,255,170,0.45);
+            }
             body.mobile-allowed .mode-wheel-hint {
                 display: block; position: absolute; left: 50%; bottom: 4%; z-index: 60;
                 transform: translateX(-50%); color: rgba(255,255,255,0.65);
@@ -2553,7 +2574,10 @@
              efecto tarjeta-que-se-da-la-vuelta. Las flechas y el aviso solo se
              ven ahi tambien. -->
         <div id="modeWheel">
-            <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
+            <!-- wheel-on de partida: en movil la rueda arranca por ARCADE (es
+                 el modo que ya trae por defecto el diseño de escritorio). La
+                 clase no pinta nada fuera del media query de la rueda. -->
+            <div id="panelArcade" class="mode-panel mode-arcade wheel-on" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
                 <div id="contentArcade" class="mode-content">
                     <div class="mode-sub">ROGUELIKE MECHANICS</div>
                     <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img mt-placa" src="img/mode-title/ARCADE-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
@@ -2575,7 +2599,10 @@
                     </div>
                 </div>
             </div>
-            <button type="button" class="mode-wheel-arrow left" onclick="event.stopPropagation(); mobileWheelToggle();" aria-label="Previous mode">&#9664;</button>
+            <!-- UNA sola flecha, a la derecha: solo hay dos modos, asi que las
+                 dos flechas hacian exactamente lo mismo y lo unico que
+                 aportaba la de la izquierda era otro sitio donde fallar el
+                 dedo y acabar seleccionando el modo sin querer. -->
             <button type="button" class="mode-wheel-arrow right" onclick="event.stopPropagation(); mobileWheelToggle();" aria-label="Next mode">&#9654;</button>
             <div class="mode-wheel-hint">TAP TO SELECT</div>
         </div>
@@ -4946,7 +4973,19 @@
     function mobileWheelToggle() {
         const next = (lastHoveredMode === 'classic') ? 'arcade' : 'classic';
         const wheel = document.getElementById('modeWheel');
-        if (wheel) wheel.classList.toggle('flip', next === 'classic');
+        if (wheel) {
+            wheel.classList.toggle('flip', next === 'classic');   // color de la flecha
+            const entra = document.getElementById(next === 'classic' ? 'panelClassic' : 'panelArcade');
+            const sale  = document.getElementById(next === 'classic' ? 'panelArcade' : 'panelClassic');
+            // Se limpian las clases de animacion y se fuerza un reflow ANTES de
+            // volver a ponerlas: sin ese corte, repetir el mismo movimiento
+            // (dos toques seguidos a la flecha) no relanza la animacion, porque
+            // para el navegador la clase ya estaba puesta y no hay cambio.
+            [entra, sale].forEach(p => p && p.classList.remove('wheel-in', 'wheel-out'));
+            void wheel.offsetWidth;
+            if (sale)  { sale.classList.remove('wheel-on'); sale.classList.add('wheel-out'); }
+            if (entra) { entra.classList.add('wheel-on', 'wheel-in'); }
+        }
         tryPlayHover(next);
         setHoverMode(next);
     }
@@ -5743,9 +5782,15 @@
     // habría zona y los virus pasarían por el título). Al cargar, invalida el cache
     // para remedir ya con las imágenes disponibles.
     ['PILLWARS-arcade', 'PILLWARS-classic', 'ARCADE-word', 'CLASSIC-word'].forEach(s => { const i = new Image(); i.onload = invalidateLoginUIRects; i.src = 'img/mode-title/' + s + '.png'; });
-    function drawMenuDeco(g, w, h) {
+    // sinVirus: pinta SOLO la comida. Lo usa el selector de modos en movil,
+    // donde la pantalla va girada 90 grados y los virus —que giran por su
+    // cuenta, con su propio rotate por frame— se veian mal; la comida, que
+    // solo se desplaza, aguanta el giro sin problema. En el resto (login,
+    // escritorio) se siguen pintando los dos.
+    function drawMenuDeco(g, w, h, sinVirus) {
         const now = performance.now();
         for (const p of menuDeco.items) {
+            if (p.isVirus && sinVirus) continue;
             if (p.isVirus) {
                 // Mismo virus giratorio que la partida: giro cuantizado (16 pasos/
                 // vuelta), más lento cuanto más grande, con fase/sentido propios
@@ -5868,7 +5913,10 @@
         // menuDeco.lastT se sigue actualizando cada frame, asi que al soltarla
         // el primer paso es uno normal y no salta de golpe.
         stepMenuDeco(W, H, performance.now(), modeFxListo ? undefined : false, null, _bounce);
-        drawMenuDeco(g, W, H);
+        // Sin virus cuando el selector va como rueda en movil (ver la clase que
+        // pone el CSS): ahi la pantalla esta girada y los virus giratorios se
+        // veian mal. Queda solo la comida flotando.
+        drawMenuDeco(g, W, H, document.body.classList.contains('mobile-allowed'));
     }
     // El movimiento del selector no empieza hasta que ha cargado TODO (imagenes
     // de los titulos y fuentes): hasta entonces modeFxTick pinta con dt 0.
