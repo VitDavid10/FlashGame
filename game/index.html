@@ -476,7 +476,7 @@
                entero pasa a caber sin haber nada que desbordar. */
             html:not([data-hero]) body.mobile-allowed #paisModal {
                 --pm-pad: 14px 16px 16px !important;
-                --pm-top-y: 14px !important; --pm-top-x: 14px !important;
+                --pm-top-y: 30px !important; --pm-top-x: 30px !important;
                 --pm-fs-nom: 11px !important;
                 --pm-fs-lore: 12px !important;
                 --pm-gap: 8px !important;
@@ -1921,6 +1921,43 @@
         }
         .wallet-picker .pw-modal-cancel:hover { filter: brightness(1.2); color: transparent; }
 
+        /* ===== Nombre (movil): MISMO marco/campo/boton que #hero-name-modal
+           de la landing (index.html), pixel a pixel — mismo menu-gris.png,
+           mismo campo con sombra hundida y mismo boton btn-plain-grey.png a
+           aspect-ratio 15/2, para que los dos carteles sean coherentes. ===== */
+        .pw-modal-box.name-choice {
+            position: relative; border: none; box-shadow: none;
+            background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
+            image-rendering: pixelated; padding: 44px 44px 40px;
+        }
+        .name-choice .nc-close {
+            position: absolute; top: 15px; right: 20px; width: 22px; height: 22px;
+            color: transparent; font-size: 0; cursor: pointer;
+            background: url('img/cartel-hero/close-x-red.png') center/contain no-repeat;
+            image-rendering: pixelated; opacity: 0.9;
+        }
+        .name-choice .nc-close:hover { opacity: 1; filter: brightness(1.25); }
+        .name-choice .nc-title {
+            font-family: 'Press Start 2P', monospace; font-size: 16px; color: #c8cdd2;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.65); margin-bottom: 16px; line-height: 1.6;
+        }
+        .name-choice .nc-field {
+            width: 100%; box-sizing: border-box; background: #111; border: 1px solid #333; border-radius: 0;
+            color: #fff; font-family: 'Press Start 2P', monospace; font-size: 13px; letter-spacing: 0;
+            padding: 11px 13px; outline: none;
+            box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05);
+        }
+        .name-choice .nc-field:focus { border-color: #8a939c; }
+        .name-choice .nc-btn {
+            border: none; box-shadow: none; cursor: pointer;
+            background: transparent url('img/cartel-hero/btn-plain-grey.png') center/100% 100% no-repeat;
+            aspect-ratio: 15/2; width: 68%; display: block; margin: 18px auto 0; padding: 0;
+            image-rendering: pixelated; font-family: 'Press Start 2P', monospace; font-size: 13px;
+            color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
+        }
+        .name-choice .nc-btn:hover { filter: brightness(1.15); }
+        .name-choice .nc-btn:active { transform: translate(1px, 1px); }
+
         /* ===== Popups PLAY y SETTINGS =====
            Mismo marco gris (menu-gris) que deposit/withdraw y el selector de
            salas, y los botones con el arte de David: el rojo vacio de DEPOSIT
@@ -2852,14 +2889,15 @@
         </div>
     </div>
 
-    <!-- Nombre (solo movil, ver choosePlay/openNameChoice): mismo cartel gris
-         y mismos botones que SELECT A WALLET, para no meter un diseño nuevo. -->
+    <!-- Nombre (solo movil, ver choosePlay/openNameChoice): MISMO marco/campo/
+         boton que #hero-name-modal en la landing (index.html) — el que sale
+         al pulsar PLAY NOW en el hero — para que los dos sean coherentes. -->
     <div id="nameChoiceModal" class="pw-modal">
-        <div class="pw-modal-box wallet-picker">
-            <div class="pw-modal-title">YOUR NAME</div>
-            <input type="text" id="mobileNameField" class="name-subtle" placeholder="TYPE YOUR NAME" maxlength="12" autocomplete="off" spellcheck="false" style="width:82%; margin:2px auto 22px;" onkeydown="if(event.key==='Enter') confirmNameChoice();">
-            <button class="pw-big-btn wp-btn" onclick="confirmNameChoice()" onmouseenter="SoundManager.playSimpleHover()" style="justify-content:center;">PLAY</button>
-            <button class="pw-modal-cancel" onclick="closeNameChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
+        <div class="pw-modal-box name-choice">
+            <span class="nc-close" onclick="closeNameChoice()" onmouseenter="SoundManager.playSimpleHover()">&times;</span>
+            <div class="nc-title">ENTER YOUR NAME</div>
+            <input type="text" id="mobileNameField" class="nc-field" maxlength="12" placeholder="Your name" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter') confirmNameChoice();">
+            <button class="nc-btn" onclick="confirmNameChoice()" onmouseenter="SoundManager.playSimpleHover()">PLAY NOW</button>
         </div>
     </div>
 
@@ -7053,12 +7091,12 @@
     function choosePlay(kind) {
         closePlayChoice();
         // En movil el input de nombre va oculto (no cabe en el layout tactil),
-        // asi que sin esto nunca se llegaba a pedir: se entraba siempre con el
-        // nombre en blanco. Se pregunta aqui, justo antes de jugar, con un
-        // cartel propio (mismo diseño gris girado que el resto de popups) en
-        // vez del prompt() nativo del navegador: ese no gira con el juego y
-        // salia derecho encima de todo lo demas tumbado.
-        if (esMovilJuego() && !document.getElementById('playerNameInput').value.trim()) {
+        // asi que sin esto nunca se llegaba a pedir. Se pregunta aqui, SIEMPRE
+        // (no solo la primera vez: asi el jugador puede cambiar de nombre sin
+        // ir a buscar un ajuste aparte), con un cartel propio en vez del
+        // prompt() nativo del navegador — ese no gira con el juego y salia
+        // derecho encima de todo lo demas tumbado.
+        if (esMovilJuego()) {
             openNameChoice(kind);
             return;
         }
@@ -7079,14 +7117,16 @@
         runPlay(kind);
     }
     function runPlay(kind) { if (kind === 'online') startOnlineGame(); else startGame(); }
-    // Cartel de nombre (movil): mismo marco gris que SELECT A ROOM/wallet.
+    // Cartel de nombre (movil): mismo marco/campo/boton que #hero-name-modal.
     let _pendingNameKind = null;
     function openNameChoice(kind) {
         _pendingNameKind = kind;
         const f = document.getElementById('mobileNameField');
         f.value = document.getElementById('playerNameInput').value || '';
         document.getElementById('nameChoiceModal').style.display = 'flex';
-        setTimeout(() => f.focus(), 0);
+        // SIN f.focus(): que no salte el teclado solo al abrir. El nombre ya
+        // sale puesto (si lo habia) y el jugador solo toca el campo si
+        // quiere cambiarlo -- si no, PLAY NOW sigue con el mismo de siempre.
     }
     function closeNameChoice() { _pendingNameKind = null; document.getElementById('nameChoiceModal').style.display = 'none'; }
     function confirmNameChoice() {
