@@ -1629,7 +1629,9 @@ body.trailer-open #page-content{
                abajo (column-reverse, ver arriba) sea o no .reverse — el
                numero se ancla abajo/derecha (detras del texto) en vez de
                arriba (detras del video) en los dos casos. */
-            .fb-num, .feature-block.reverse .fb-num { left: auto; right: 16px; top: auto; bottom: 12px; font-size: var(--fs-9); }
+            /* Los numeros 01/02/03 fuera en movil: en pantalla pequeña el
+               numero gigante detras del texto ensucia mas de lo que decora. */
+            .fb-num { display: none; }
             .feature-block::before, .feature-block::after { width: 16px; height: 16px; }
             .feature-text { text-align: center; }
             .feature-text h3 { font-size: var(--fs-5); }
@@ -1648,6 +1650,17 @@ body.trailer-open #page-content{
                Recortados, el grid gana ~65px. */
             .content-container { padding: 60px 10px; }
             .battle-modes-container, .store-panel { padding: 24px 10px; }
+            /* El recuadro de BATTLE MODES (borde verde + fondo + sombra dura +
+               las dos escuadras de las esquinas) fuera en movil: en 375px es un
+               marco alrededor de otro marco —las propias tarjetas ya llevan el
+               suyo— y solo aprieta el contenido. Las cards se quedan solas sobre
+               el fondo de la pagina. El de la tienda (.store-panel) se mantiene:
+               ahi dentro no hay tarjetas con borde propio. */
+            .battle-modes-container {
+                border: 0; background: none; box-shadow: none; backdrop-filter: none;
+                padding: 0; margin: 40px 0;
+            }
+            .battle-modes-container::before, .battle-modes-container::after { display: none; }
             .battle-modes-container h2 { font-size: var(--fs-6); }
             /* ===== CARTELES EN DOS COLUMNAS, COMO EN ESCRITORIO =====
                BATTLE MODES y DAILY QUEST se apilaban a ancho completo en movil
@@ -1658,16 +1671,13 @@ body.trailer-open #page-content{
                del cartel de escritorio, solo que en pequeño — que es lo que se
                pide. El padding y los cuerpos de letra bajan en consecuencia,
                porque a ~165px de ancho los de escritorio no entran. */
-            /* BATTLE MODES se queda en UNA columna, al reves que los otros dos.
-               No es un descuido: sus dos tarjetas llevan un parrafo de ~140
-               caracteres, y a media pantalla (138px) eso se estiraba hasta 341px
-               de alto — proporcion 0.4, todavia mas alargada que apiladas, solo
-               que en vertical. A ancho completo el mismo texto ocupa ~90px y la
-               tarjeta queda en torno a 2:1, que es lo mas cerca del cartel de
-               escritorio (1.5:1) a lo que se puede llegar en 375px. Lo que si
-               baja es el aire y el cuerpo de letra, para que ocupe menos. */
-            .modes-grid { flex-direction: column; gap: 10px; margin-bottom: 30px; }
-            .mode-card { flex: none; min-width: 0; padding: 14px 16px; }
+            /* BATTLE MODES en DOS columnas, igual que en la web: las tarjetas
+               salen estrechas y altas porque su parrafo ronda los 140
+               caracteres, pero ese texto no es lo importante aqui — manda que
+               las dos cards se vean juntas como en escritorio. El cuerpo de
+               letra baja para que el parrafo no se dispare de alto. */
+            .modes-grid { flex-direction: row; gap: 8px; margin-bottom: 30px; }
+            .mode-card { flex: 0 0 calc(50% - 4px); min-width: 0; padding: 12px 10px; }
             .mode-card h4 { font-size: var(--fs-3); margin: 6px 0; }
             .mode-card p { font-size: var(--fs-1); line-height: 1.45; }
             .mode-card .category-tag { font-size: var(--fs-1); padding: 3px 6px; }
