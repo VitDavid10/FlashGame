@@ -425,8 +425,18 @@
             body.mobile-allowed .pw-modal .pw-big-btn { font-size: 10px; padding: 11px 0; }
             /* Las 4 casillas de skill de abajo, mas grandes: al 62% de la barra
                quedaban demasiado pequeñas para el dedo. */
-            body.mobile-allowed #actionBar {
-                transform: translate(-50%, -50%) rotate(90deg) scale(0.85) !important;
+            /* (El tamaño y la posicion de la barra de skills van en el bloque
+               del HUD, mas abajo: tener dos reglas con !important dejaba que
+               ganara la ultima y los cambios de aqui no se notaban.) */
+            /* ACTIVE BUFFS fuera en movil: no cabe una tabla mas en la pantalla
+               girada, y sin girar quedaba cruzada sobre el juego. */
+            body.mobile-allowed #buffTable { display: none !important; }
+            /* El selector de skill, mas pequeño y justo DEBAJO del reloj (que va
+               al 42% del borde derecho): asi los dos quedan en la misma columna
+               y no tapa el centro del mapa. */
+            body.mobile-allowed #skillChoiceOverlay {
+                top: 62% !important; left: 50% !important;
+                transform: translate(-50%, -50%) rotate(90deg) scale(0.72) !important;
             }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
                escritorio (190px de ancho) tapaba media pantalla. */
@@ -486,10 +496,26 @@
             /* TODOS los carteles que se superponen a la partida: elegir skill,
                salir, resultado, aviso de sistema, premio... Sin esto salian
                derechos sobre un juego tumbado. */
-            body.mobile-allowed #skillChoiceOverlay,
-            body.mobile-allowed #exitModal,
-            body.mobile-allowed #resultOverlay,
+            /* Estos tres cubren la pantalla entera (inset 0 con su velo), asi
+               que se giran como el canvas —medidas intercambiadas— y su
+               contenido se centra solo dentro. Tratarlos como cajita centrada
+               los dejaba descolocados y sin cubrir el fondo. */
             body.mobile-allowed #sysModal,
+            body.mobile-allowed #resultOverlay,
+            body.mobile-allowed #exitModal {
+                position: fixed !important;
+                width: 100vh; height: 100vw;
+                width: 100dvh; height: 100dvw;
+                top: -100vw; left: 0; right: auto; bottom: auto;
+                top: -100dvw;
+                transform: rotate(90deg) !important; transform-origin: bottom left !important;
+            }
+            /* Y sus cajas, mas pequeñas: las de escritorio se comian la pantalla
+               girada (el GAME OVER sobre todo). */
+            body.mobile-allowed #sysModal .exit-box,
+            body.mobile-allowed #exitModal .exit-box,
+            body.mobile-allowed #resultOverlay .result-box,
+            body.mobile-allowed #prizeModal .exit-box { transform: scale(0.68); transform-origin: center; }
             body.mobile-allowed #prizeModal,
             body.mobile-allowed #lobbyBanner,
             body.mobile-allowed #cdNum {
@@ -502,32 +528,35 @@
                —que ocupan el borde de abajo hasta y=96—, de modo que la columna
                continua sin pisarlos. */
             body.mobile-allowed #ui {
-                top: auto !important; bottom: 312px !important; right: 20px !important; left: auto !important;
-                transform: translate(50%, 50%) rotate(90deg) scale(0.82) !important;
+                top: 172px !important; bottom: auto !important; right: 20px !important; left: auto !important;
+                transform: translate(50%, 0) rotate(90deg) scale(0.9) !important;
             }
             /* El TIEMPO, arriba y centrado con el telefono girado (sin girar:
                borde derecho, a media altura). Iba pegado al mismo sitio que el
                resto del HUD. */
+            /* SIN display:block: lo tenia forzado y por eso el reloj salia ya en
+               el menu, antes de empezar la partida. Sigue mandando el JS, que
+               lo enseña solo en juego. Y separado del borde, que iba pegado. */
             body.mobile-allowed #timerDisplay {
-                position: fixed !important; top: 50% !important; right: 10px !important;
+                position: fixed !important; top: 42% !important; right: 26px !important;
                 left: auto !important; bottom: auto !important; z-index: 60;
-                transform: translate(50%, -50%) rotate(90deg) scale(1.25) !important;
-                transform-origin: center !important; display: block;
+                transform: translate(50%, -50%) rotate(90deg) scale(1.15) !important;
+                transform-origin: center !important;
             }
             /* Barra de habilidades: abajo-centro -> centro del borde izquierdo. */
             body.mobile-allowed #actionBar {
-                top: 50% !important; left: 28px !important; right: auto !important; bottom: auto !important;
-                transform: translate(-50%, -50%) rotate(90deg) scale(0.58) !important;
+                top: 50% !important; left: 46px !important; right: auto !important; bottom: auto !important;
+                transform: translate(-50%, -50%) rotate(90deg) scale(1.15) !important;
             }
             /* Clasificacion: arriba-derecha -> abajo-derecha real. */
             body.mobile-allowed #leaderboard {
-                top: 78% !important; right: 92px !important; left: auto !important; bottom: auto !important;
-                transform: translate(50%, -50%) rotate(90deg) scale(0.58) !important;
+                bottom: 150px !important; top: auto !important; right: 88px !important; left: auto !important;
+                transform: translate(50%, 0) rotate(90deg) scale(0.62) !important;
             }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
             body.mobile-allowed #minimap {
                 top: 80% !important; left: 0 !important; right: auto !important; bottom: auto !important;
-                transform: translate(-50%, -50%) rotate(90deg) scale(0.58) !important;
+                transform: translate(-50%, -50%) rotate(90deg) scale(1.15) !important;
             }
 
             body.mobile-allowed #loginOverlay {
@@ -6836,6 +6865,10 @@
         // estas ni cambiarla — el panel de precios no se enseña en el telefono.
         if (currentServer && currentServer !== 'Free' && !esMovilJuego()) { SoundManager.play('simpleselect'); startOnlineGame(); return; }
         SoundManager.play('simpleselect');
+        // En movil se salta el "CHOOSE HOW TO PLAY": ahi no se practica offline
+        // —solo hay sala FREE online— asi que ese paso era un cartel de mas
+        // antes del unico que importa, el de elegir sala.
+        if (esMovilJuego()) { choosePlay('online'); return; }
         document.getElementById('playChoiceModal').style.display = 'flex';
     }
     function closePlayChoice() { document.getElementById('playChoiceModal').style.display = 'none'; }
