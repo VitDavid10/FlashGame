@@ -1641,8 +1641,19 @@ body.trailer-open #page-content{
                numero gigante detras del texto ensucia mas de lo que decora. */
             .fb-num { display: none; }
             .feature-block::before, .feature-block::after { width: 16px; height: 16px; }
+            /* El efecto de FOCO (el bloque del centro entero y el resto encogido
+               al 86% y apagado) fuera en movil. En una pantalla estrecha entra
+               un bloque por vez y casi siempre se ve alguno a medio animar, con
+               lo que los tres parecen de tamaños distintos aunque midan lo mismo
+               (medidos ya revelados: los tres a 355px). Sin el efecto, los tres
+               se ven identicos siempre. */
+            .rv-focusable, .rv-focusable.rv-anim { filter: none !important; scale: 1 !important; transition: none !important; }
             .feature-text { text-align: center; }
             .feature-text h3 { font-size: var(--fs-5); }
+            /* Aire entre el video y el rotulo de debajo: con 16px, RISK & REWARD
+               quedaba pegado al video. Y el mismo hueco para los tres. */
+            .feature-images { margin-bottom: 14px; }
+            .feature-text .category-tag { margin-bottom: 4px; }
             /* El empuje a la derecha de tag/titulo es cosa de desktop (deja
                hueco al numero pegado al borde del bloque); en movil el texto
                vuelve a estar centrado como el resto. */
@@ -1712,6 +1723,9 @@ body.trailer-open #page-content{
             .shop-flecha { width: 26px; height: 26px; font-size: var(--fs-1); flex: none; }
             .shop-cel { min-width: 0; }
             .shop-cel canvas { max-width: 100%; height: auto; }
+            /* Sin la franja del precio en movil: a 50px de celda no cabe y
+               ensucia. El precio se ve al abrir la skin. */
+            .shop-cel .sc-pre { display: none; }
 
             .skills-section h2 { font-size: var(--fs-5); }
             .section-title { font-size: var(--fs-6); }

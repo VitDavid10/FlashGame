@@ -777,7 +777,23 @@ function _paisModalCSS() {
     #${PAIS_MODAL_ID} .pm-btn:hover:not(:disabled) { filter:brightness(1.15); }
     #${PAIS_MODAL_ID} .pm-btn:active:not(:disabled) { transform:translate(2px,2px); }
     #${PAIS_MODAL_ID} .pm-btn:disabled { filter:grayscale(.6) brightness(.85); cursor:default; }
-    @media (max-width:620px) { #${PAIS_MODAL_ID} .pm-btns { flex-direction:column; } }
+    /* En pantalla estrecha los botones se apilan. Y ahi hay que soltar el
+       flex:1 que traen: en columna, flex-grow reparte la ALTURA del contenedor
+       en vez del ancho, y los botones se aplastaban a 10px — la placa estirada
+       a esa altura es el "boton roto". Con flex:none respetan su --pm-btn-h. */
+    @media (max-width:620px) {
+        #${PAIS_MODAL_ID} .pm-btns { flex-direction:column; }
+        #${PAIS_MODAL_ID} .pm-btn { flex:none; width:100%; }
+        /* La fila de tallas va mas apretada: con el hueco y el relleno de
+           escritorio, las dos pildoras no entraban en el ancho del cartel y la
+           fila salia con scroll lateral. */
+        #${PAIS_MODAL_ID} .pm-crece { gap:10px; padding:12px 8px; }
+        /* Y el cartel entero deja de reservar 34px de margen a cada lado: en un
+           movil eso es casi un quinto del ancho tirado, y es lo que dejaba la
+           fila de tallas en 179px cuando la caja mide 327. */
+        #${PAIS_MODAL_ID} .pm-content { padding:16px 12px 18px; }
+        #${PAIS_MODAL_ID} .pm-page1 .pm-nom { padding-right:96px; }
+    }
     `;
 }
 /* ===== Marco "placa" pixel para el cartel de detalle =====
@@ -1263,6 +1279,16 @@ function _pmDibujaVirus(g, cx, cy, r) {
 }
 
 const PAIS_CRECE = [14, 24, 36, 48, 64];
+// En movil solo DOS tallas, la mas pequeña y la mas grande. Las cinco suman
+// 186px de pildora mas cuatro huecos: en una pantalla de 375 no entran, y la
+// fila acababa recortada o con scroll lateral dentro del cartel. Con la primera
+// y la ultima se sigue viendo lo unico que importa aqui — como queda el emblema
+// de chica y de grande.
+function _paisCreceTallas() {
+    return (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 600px)').matches)
+        ? [PAIS_CRECE[0], PAIS_CRECE[PAIS_CRECE.length - 1]]
+        : PAIS_CRECE;
+}
 
 function paisModalAbrir(code, onCambio) {
     const s = paisSkin(code); if (!s) return;
@@ -1282,7 +1308,8 @@ function paisModalAbrir(code, onCambio) {
                                      : _modoHex === '#00ffaa' ? 'rgba(0,255,170,.13)'
                                      : 'rgba(255,204,0,.13)');
     let primera = null;
-    PAIS_CRECE.forEach(wL => {
+    const _tallas = _paisCreceTallas();
+    _tallas.forEach(wL => {
         const o = paisPillRot(wL, code, -Math.PI / 4);
         if (o.conEmblema && primera === null) primera = wL;
         const cv = document.createElement('canvas'); cv.width = o.S; cv.height = o.S;
@@ -1291,7 +1318,7 @@ function paisModalAbrir(code, onCambio) {
     });
     d.querySelector('.pm-pie').textContent = s.capas.length === 0
         ? 'THE SAME SKIN, AS YOU GROW'
-        : (primera === PAIS_CRECE[0] ? 'WEARS ITS EMBLEM FROM THE FIRST BITE' : 'THE EMBLEM SHOWS UP AS YOU GROW');
+        : (primera === _tallas[0] ? 'WEARS ITS EMBLEM FROM THE FIRST BITE' : 'THE EMBLEM SHOWS UP AS YOU GROW');
     _paisPintaBotones(code);
     // Marco y espaciado afinados desde el editor. Se aplican AQUI y no al cargar
     // porque este cartel se monta la primera vez que se abre: al arrancar no
