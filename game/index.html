@@ -438,6 +438,7 @@
             html:not([data-hero]) body.mobile-allowed .sb-cod {
                 font-size: 8px !important; white-space: nowrap !important;
                 overflow: hidden !important; text-overflow: ellipsis !important; max-width: 100% !important;
+                margin-top: 4px !important;
             }
             /* Detalle de una skin (paisModal, se abre al tocar una pildora de
                la rejilla): mismo giro. Su .pm-inner usa max-height:92vh SIN
@@ -463,6 +464,37 @@
             html:not([data-hero]) body.mobile-allowed #paisModal .pm-inner {
                 max-height: 92vw !important;
             }
+            /* El contenido (nombre/descripcion/franjas/botones) usa padding y
+               tipografia de escritorio via estas custom properties, y a ese
+               tamaño no cabia en los 92vw de arriba: el overflow-y:auto de
+               .pm-inner lo dejaba scrolleable, PERO al estar todo girado
+               overflow-y scrollea el eje LOCAL vertical, que tras el giro es
+               el eje visual HORIZONTAL -- para el jugador eso se ve/siente
+               como que la imagen y el texto de abajo "se salen" del cuadro en
+               vez de un scroll normal de arriba a abajo. Encogiendo todo
+               (custom properties, heredan a todos los .pm-*) el contenido
+               entero pasa a caber sin haber nada que desbordar. */
+            html:not([data-hero]) body.mobile-allowed #paisModal {
+                --pm-pad: 14px 16px 16px !important;
+                --pm-top-y: 14px !important; --pm-top-x: 14px !important;
+                --pm-fs-nom: 11px !important;
+                --pm-fs-lore: 12px !important;
+                --pm-gap: 8px !important;
+                --pm-crece-gap: 10px !important; --pm-crece-pad: 10px 8px !important;
+                --pm-fs-pie: 6px !important;
+                --pm-gap-btn: 10px !important; --pm-btn-h: 32px !important; --pm-fs-btn: 8px !important;
+            }
+            /* paises-pixel.js apila los botones en columna por debajo de
+               620px de VENTANA real (@media max-width:620px, pensado para un
+               movil normal sin girar) — aqui la ventana real SI es estrecha
+               (375px) pero el ancho LOCAL disponible (antes de girar) es
+               generoso (764px), asi que apilarlos gastaba 3x su alto sin
+               necesidad. Se vuelve a fila. */
+            html:not([data-hero]) body.mobile-allowed #paisModal .pm-btns { flex-direction: row !important; }
+            html:not([data-hero]) body.mobile-allowed #paisModal .pm-btn { flex: 1 !important; width: auto !important; }
+            /* Mismo motivo: el video de la pagina 2 tenia canvas{height:300px}
+               fijo (pensado para esa misma ventana estrecha sin girar). */
+            html:not([data-hero]) body.mobile-allowed #paisModal .pm-page2 canvas { height: 200px !important; }
             /* La caja de dentro se centra sola (.pw-modal ya es flex centrado);
                solo se le acota el ancho al del cartel girado. */
             /* Los popups, mas pequeños: la caja de escritorio (360px + 28/30 de
@@ -10016,6 +10048,16 @@
     const SB_WL = 46;   // ancho logico de la pildora (en el cartel pequeno son ~20)
     function skinBigOpen(forceTab) {
         const m = document.getElementById('skinBigModal'); if (!m) return;
+        // Si la ultima vez se cerro estando en QUESTS, sbGrid/sbFoot se
+        // habian quedado con display:none puestos a mano (ver skinBigTab) y
+        // #missionsList colgado dentro de #sbQuests: sin este reset, la
+        // proxima apertura (aunque sea en SKINS STORE/YOUR SKINS) heredaba
+        // ese estado y salia con la rejilla oculta / el cartel medido con la
+        // altura equivocada — el "menu cortado raro" al reabrir.
+        skinBigHideQuests();
+        document.getElementById('sbGrid').style.display = '';
+        document.getElementById('sbFoot').style.display = '';
+        document.getElementById('sbTabQuests').classList.remove('act');
         // Se entra por la pestana en la que ya estabas, y por su misma pagina
         // (o por forceTab, que usa el click en la pildora en movil para
         // entrar siempre en YOUR SKINS sin importar donde se quedo el panel).
