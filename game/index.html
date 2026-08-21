@@ -443,6 +443,10 @@
             /* (El tamaño y la posicion de la barra de skills van en el bloque
                del HUD, mas abajo: tener dos reglas con !important dejaba que
                ganara la ultima y los cambios de aqui no se notaban.) */
+            /* Las tres cajas, apretadas: el `min-width: 7ch` del valor reservaba
+               sitio para 9.999.999 en cada una y era lo que estiraba la fila. */
+            body.mobile-allowed #ui .hud-item { padding: 3px 5px !important; border-radius: 2px; }
+            body.mobile-allowed #ui .hud-val { min-width: 0 !important; }
             /* ACTIVE BUFFS fuera en movil: no cabe una tabla mas en la pantalla
                girada, y sin girar quedaba cruzada sobre el juego. */
             body.mobile-allowed #buffTable { display: none !important; }
@@ -452,8 +456,8 @@
             /* A la IZQUIERDA del reloj (que va al 42% del borde derecho) y
                centrado con el: misma altura, x menor. */
             body.mobile-allowed #skillChoiceOverlay {
-                top: 42% !important; left: auto !important; right: 96px !important;
-                transform: translate(50%, -50%) rotate(90deg) scale(0.62) !important;
+                top: 50% !important; left: 50% !important; right: auto !important;
+                transform: translate(-50%, -50%) rotate(90deg) scale(0.62) !important;
             }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
                escritorio (190px de ancho) tapaba media pantalla. */
@@ -536,10 +540,12 @@
                el lado de los indicadores (ROOM/MASS/ALIVE) para dejar libre el
                centro del mapa. margin-left en el cuadro ya girado = "mas
                abajo" desde el punto de vista del que juega. */
+            /* Justo DEBAJO de los tres indicadores, que van pegados al borde de
+               arriba: el cartel se alinea a ese mismo lado en vez de al centro. */
             body.mobile-allowed #sysModal { justify-content: flex-start !important; }
             body.mobile-allowed #sysModal .exit-box {
-                transform: scale(0.62); transform-origin: center;
-                margin-top: 12vh;
+                transform: scale(0.58); transform-origin: top center;
+                margin-top: 4vh;
             }
             body.mobile-allowed #prizeModal,
             body.mobile-allowed #lobbyBanner,
@@ -553,8 +559,10 @@
                —que ocupan el borde de abajo hasta y=96—, de modo que la columna
                continua sin pisarlos. */
             body.mobile-allowed #ui {
-                top: 150px !important; bottom: auto !important; right: 34px !important; left: auto !important;
-                transform: translate(50%, 0) rotate(90deg) scale(0.7) !important;
+                top: 17% !important; bottom: auto !important; right: 8% !important; left: auto !important;
+                transform: translate(50%, 0) rotate(90deg) scale(1) !important;
+                display: flex !important; flex-direction: row !important; gap: 4px !important;
+                font-size: 8px !important;
             }
             /* El TIEMPO, arriba y centrado con el telefono girado (sin girar:
                borde derecho, a media altura). Iba pegado al mismo sitio que el
@@ -563,19 +571,19 @@
                el menu, antes de empezar la partida. Sigue mandando el JS, que
                lo enseña solo en juego. Y separado del borde, que iba pegado. */
             body.mobile-allowed #timerDisplay {
-                position: fixed !important; top: 42% !important; right: 26px !important;
+                position: fixed !important; top: 50% !important; right: 6% !important;
                 left: auto !important; bottom: auto !important; z-index: 60;
                 transform: translate(50%, -50%) rotate(90deg) scale(1.15) !important;
                 transform-origin: center !important;
             }
             /* Barra de habilidades: abajo-centro -> centro del borde izquierdo. */
             body.mobile-allowed #actionBar {
-                top: 50% !important; left: 46px !important; right: auto !important; bottom: auto !important;
+                top: 50% !important; left: 11% !important; right: auto !important; bottom: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) scale(1.15) !important;
             }
             /* Clasificacion: arriba-derecha -> abajo-derecha real. */
             body.mobile-allowed #leaderboard {
-                bottom: 10px !important; top: auto !important; right: 128px !important; left: auto !important;
+                bottom: 1.5% !important; top: auto !important; right: 30% !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(0.5) !important;
             }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
@@ -6892,10 +6900,6 @@
         // preguntar. Eso dejaba sin salida: no habia forma de volver a jugar
         // offline salvo cambiando de sala. Ahora siempre se pregunta.)
         SoundManager.play('simpleselect');
-        // En movil se salta el "CHOOSE HOW TO PLAY": ahi no se practica offline
-        // —solo hay sala FREE online— asi que ese paso era un cartel de mas
-        // antes del unico que importa, el de elegir sala.
-        if (esMovilJuego()) { choosePlay('online'); return; }
         document.getElementById('playChoiceModal').style.display = 'flex';
     }
     function closePlayChoice() { document.getElementById('playChoiceModal').style.display = 'none'; }
