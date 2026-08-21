@@ -384,7 +384,14 @@
                girarla desde una esquina la mandaba fuera de pantalla: se gira
                sobre su centro y se coloca por el hueco que queda a la izquierda
                de los dos botones de sonido. */
-            body.mobile-allowed #gameWalletArea { top: 157px; right: 12px; transform-origin: center; }
+            /* Los tres, en FILA y en el mismo extremo. Girados 90 grados, lo
+               que en pantalla es "uno debajo de otro" el usuario lo ve como
+               "uno detras de otro", asi que se reparten a lo largo del borde
+               (top creciente) y no a lo ancho. */
+            body.mobile-allowed #gameWalletArea { top: 283px; right: -6px; transform-origin: center; }
+            body.mobile-allowed #soundToggle  { top: 12px !important;  right: 12px !important; }
+            body.mobile-allowed #musicToggle  { top: 54px !important;  right: 12px !important; }
+            body.mobile-allowed #exitGameBtn  { top: 96px !important;  right: 12px !important; }
 
             /* Los POPUPS, girados igual que el menu del que salen (el de elegir
                partida, el de sala, el de wallet, SETTINGS...). Todos comparten
@@ -472,7 +479,7 @@
                La altura va en vw = el alto util con la pantalla girada. */
             body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitlePw img,
             body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitleWord img {
-                height: min(9vw, 46px) !important; width: auto !important; max-width: 100% !important;
+                height: min(12vw, 58px) !important; width: auto !important; max-width: 100% !important;
             }
             /* Las dos mitades del rotulo (PILLWARS + ARCADE) puestas en fila
                sumaban mas del ancho disponible y la segunda se salia por el
@@ -493,17 +500,23 @@
                 /* En UNA linea: sin el scale que arrastraba, la frase entera
                    mide 247px y el cartel tiene 842 de ancho, asi que cabe de
                    sobra — no hacia falta partirla. */
-                white-space: nowrap !important; text-align: center !important;
-                width: auto !important; max-width: 100% !important;
-                line-height: 1.6 !important; font-size: 9px !important;
+                /* Acotado a ~1/3 del cartel, que es lo que mide el rotulo: asi
+                   la frase NUNCA sale mas larga que el titulo. Se le deja
+                   partir, porque en una linea a un cuerpo legible no cabe por
+                   debajo de ese ancho. */
+                white-space: normal !important; text-align: center !important;
+                width: auto !important; max-width: 30% !important;
+                /* Siempre por debajo del ancho del rotulo: en 9px la frase se
+                   iba mas larga que el titulo y se comia la fila. */
+                line-height: 1.6 !important; font-size: 6px !important; letter-spacing: 0 !important;
             }
             /* 2) PILDORA: grande y PEGADA a PLAY. Solo margin-top:auto (no
                   `margin:auto`, que la dejaba flotando en el centro): asi todo
                   el hueco libre se va arriba y la pildora cae junto al boton. */
             body.mobile-allowed #loginOverlay .pill-stage {
-                margin: auto auto 10px !important; max-width: min(70vw, 340px);
+                margin: auto auto 10px !important; max-width: min(56vw, 265px);
             }
-            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(70vw, 340px); }
+            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(56vw, 265px); }
             /* 3) PLAY ABAJO, del ancho de su texto: al 62% del cartel salia una
                   barra larguisima de lado a lado. */
             /* El MISMO boton de siempre (su placa roja), solo mas corto. Antes
@@ -6657,6 +6670,10 @@
                 // Ya se puede medir el titulo (con el login oculto medía 0 y no
                 // habia forma de centrarlo).
                 centrarTitulo();
+                // Y ya se pueden medir los dos carteles de info para dejarlos a
+                // la misma altura: applyMenuLayout corre con el menu todavia
+                // oculto, donde los rects valen 0 y no hay desfase que corregir.
+                alineaCartelesInfo();
                 // La wallet entra AQUI, con el menu ya montado (ver arriba).
                 if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
                 els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
@@ -6699,14 +6716,24 @@
         if (typeof Rejoin !== 'undefined' && Rejoin.get()) { startOnlineGame(); return; }
         // Sala de PAGO ya elegida: directo a online, sin preguntar offline
         // (practicar no aplica a una sala de pago). FREE o sin sala → popup.
-        if (currentServer && currentServer !== 'Free') { SoundManager.play('simpleselect'); startOnlineGame(); return; }
+        // En MOVIL no se salta nunca: alli la sala se pregunta SIEMPRE (ver
+        // choosePlay), porque no hay ningun sitio donde consultar en que sala
+        // estas ni cambiarla — el panel de precios no se enseña en el telefono.
+        if (currentServer && currentServer !== 'Free' && !esMovilJuego()) { SoundManager.play('simpleselect'); startOnlineGame(); return; }
         SoundManager.play('simpleselect');
         document.getElementById('playChoiceModal').style.display = 'flex';
     }
     function closePlayChoice() { document.getElementById('playChoiceModal').style.display = 'none'; }
+    // Movil = el gate tactil ya aceptado (body.mobile-allowed). Se usa para
+    // decidir que el flujo de PLAY pregunte siempre la sala.
+    function esMovilJuego() { return document.body.classList.contains('mobile-allowed'); }
     function choosePlay(kind) {
         closePlayChoice();
-        if (!currentServer) {
+        // En movil se pregunta la sala SIEMPRE, aunque ya hubiera uma elegida:
+        // en el telefono no se ve el panel de precios, asi que sin esto te
+        // metia en la ultima sala usada (normalmente Free) sin decir nada y no
+        // habia forma de cambiarla.
+        if (!currentServer || esMovilJuego()) {
             // Offline es practica: no se pregunta sala, se va directo a FREE.
             if (kind === 'offline') { selectRoom('Free'); runPlay(kind); return; }
             _pendingPlayKind = kind;
@@ -7816,7 +7843,22 @@
                 el.style.translate = ''; el.style.scale = '';
                 continue;
             }
-            const t = menuLayout[layoutStoreKey(key)];
+            let t = menuLayout[layoutStoreKey(key)];
+            // Los DOS carteles de info (precios de sala y quests/skins) van
+            // SIEMPRE a la misma altura y del mismo tamaño. Cada uno se coloca
+            // por su lado con el editor, y cuadrarlos a ojo es imposible: miden
+            // lo mismo por dentro (372px), asi que cualquier diferencia de
+            // escala los deja de distinto alto — con 1.659 y 1.540 salian 617 y
+            // 573. El de quests toma la escala y la Y del de salas y conserva
+            // solo su X, que es lo unico que los distingue.
+            // Se copia la ESCALA, no la Y: cada cartel arranca de un sitio
+            // distinto del flujo, asi que clonar el desplazamiento los separaba
+            // (241 contra 633). Con su Y propia y la misma escala quedan
+            // alineados y del mismo tamaño.
+            if (key === 'quests') {
+                const base = menuLayout[layoutStoreKey('rooms')];
+                if (base) t = Object.assign({}, t || {}, { s: base.s || 1 });
+            }
             // Propiedades translate/scale (NO transform): asi el efecto de
             // pulsacion pixel-pack (button:active { transform } !important) se
             // COMPONE con el layout en vez de pisarlo — antes, al pulsar un
@@ -7863,7 +7905,28 @@
             if (fdef && fdef.ff) cvBox.style.fontFamily = fdef.ff;
             else cvBox.style.removeProperty('font-family');
         }
+        // Dos pasadas: la de ahora y otra en el frame siguiente. Al aplicar el
+        // layout los carteles pueden no tener aun su alto definitivo (fuentes e
+        // imagenes a medio cargar) y la medida saldria de un tamaño que va a
+        // cambiar; en el siguiente frame ya esta asentado.
+        alineaCartelesInfo();
+        requestAnimationFrame(alineaCartelesInfo);
         invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
+    }
+    // Deja los DOS carteles de info (precios de sala y quests/skins) clavados a
+    // la misma altura. Ya comparten escala (ver el caso 'quests' de arriba), asi
+    // que miden lo mismo; lo que queda es el desfase vertical: el scale tira del
+    // centro de cada uno y, como parten de sitios distintos del flujo, la misma
+    // escala los dejaba a 22px de diferencia. En vez de calcularlo a ciegas se
+    // MIDE lo que se ve y se corrige, que aguanta cualquier escala y cualquier
+    // posicion que se guarde desde el editor.
+    function alineaCartelesInfo() {
+        const a = document.getElementById('oraclePanel'), b = document.getElementById('missionsPanel');
+        if (!a || !b) return;
+        if (getComputedStyle(a).display === 'none' || getComputedStyle(b).display === 'none') return;
+        b.style.marginTop = '';                       // se parte del sitio sin corregir
+        const desfase = a.getBoundingClientRect().top - b.getBoundingClientRect().top;
+        if (Math.abs(desfase) > 0.5) b.style.marginTop = Math.round(desfase) + 'px';
     }
     function layoutTarget(e) {
         for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
