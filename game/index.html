@@ -5292,10 +5292,20 @@
             }
         } catch (e) {}
         // Interruptor de los editores de layout (panel admin → Menu visuals).
+        // layoutEditAllowed es lo que de verdad gobierna enterLayoutEdit()/
+        // loadingEdit(): el display del boton es solo el atajo visual, ver su
+        // declaracion mas arriba.
         if (typeof data.layoutEdit === 'boolean') {
+            layoutEditAllowed = data.layoutEdit;
             for (const id of ['btnEditLayout', 'btnEditLoading']) {
                 const b = document.getElementById(id);
                 if (b) b.style.display = data.layoutEdit ? '' : 'none';
+            }
+            // El admin lo acaba de apagar mientras alguien seguia dentro del
+            // editor: sacarlo YA, no dejarlo hasta que el solo pulse DONE.
+            if (!data.layoutEdit) {
+                if (layoutEditing) exitLayoutEdit();
+                if (lsEditing) lsExitEdit();
             }
         }
     }
@@ -7281,6 +7291,14 @@
         return na(a) === na(b);
     }
     let layoutEditing = false, layoutDrag = null;
+    // Interruptor real del admin (panel -> Menu visuals -> Layout editors).
+    // FALLA CERRADO: hasta que el primer poll de /api/rooms confirme lo
+    // contrario, ningun editor entra — igual que el boton, que ya nace
+    // display:none en el HTML. Sin esto, enterLayoutEdit()/loadingEdit()
+    // seguian siendo funciones normales del scope: ocultar el boton no impide
+    // llamarlas a mano desde la consola, asi que el interruptor del admin no
+    // apagaba nada de verdad, solo el atajo comodo.
+    let layoutEditAllowed = false;
     // ===== Claves TOCADAS a mano en esta maquina =====
     // El poll de /api/rooms reemplaza menuLayout ENTERO por el global del
     // servidor. Como el global no trae las piezas nuevas (la barra IN GAME y
@@ -7416,6 +7434,9 @@
         return null;
     }
     function enterLayoutEdit() {
+        // Puerta de verdad: el boton ya nace oculto sin permiso, pero esto
+        // bloquea tambien a quien lo llame a mano desde la consola.
+        if (!layoutEditAllowed) return;
         layoutEditing = true;
         document.body.classList.add('layout-editing');
         for (const key in LAYOUT_ELS) document.querySelectorAll(LAYOUT_ELS[key]).forEach(el => el.classList.add('menu-editable'));
@@ -9892,7 +9913,14 @@
     // lee inputs de un panel de ajustes (botsToggle, mapMult...) que ya no
     // existe en el HTML y peta en su primera linea.
     let heroAutopilotActive = false, _heroAutopilotTimer = null, heroDemoHoldUntil = 0;
+    // Cuenta las muertes de la pildora decorativa entre un reset de mundo y el
+    // siguiente (ver el caso 'playerDied' en processSimEvents): rehacer TODA la
+    // simulacion (25 bots + comida) en cada muerte es caro y las muertes pueden
+    // ser frecuentes, asi que solo se reconstruye cada 5 — las otras 4 son un
+    // respawn barato, igual que en la sala de practica.
+    let heroDeathCount = 0;
     function heroAmbientDemo() {
+        heroDeathCount = 0;   // mundo nuevo -> cuenta a cero, venga de donde venga la llamada
         currentGameMode = 'arcade';
         sim = new PillSim.Simulation({
             mode: 'arcade', mapSize: WORLD_CONFIG.arcade.size, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
@@ -10679,7 +10707,9 @@
         return null;
     }
     function lsEnterEdit() {
-        if (lsEditing) return;
+        // Misma puerta que enterLayoutEdit(): el boton EDIT LOADING ya nace
+        // oculto sin permiso, esto bloquea tambien la llamada a mano.
+        if (!layoutEditAllowed || lsEditing) return;
         lsEditing = true;
         // El cartel, montado y quieto: minMs enorme y readyFn siempre false, asi
         // no llega a terminar nunca. onDone no se usa — se sale con DONE.
@@ -11032,7 +11062,22 @@
                 case 'botPieceEaten': if (ev.playerId === 'me') SoundManager.play('kill1'); break;
                 case 'playerDied': {
                     if (ev.playerId !== 'me') break;
-                    if (practiceMode && sim && !sim.isRemote) {
+                    if (heroAutopilotActive) {
+                        // Demo del hero: heroAmbientDemo() se llama UNA sola vez al
+                        // cargar el iframe (ver el arranque al final del archivo) y el
+                        // mismo `sim` vive mientras la pestaña este abierta — nunca hay
+                        // una partida real que reinicie. Reaparecer solo A TI (como en
+                        // practica) dejaba el resto del mundo intacto: 25 bots que
+                        // llevaban rato creciendo sin que nadie los cazara acababan
+                        // llenando la pantalla de pildoras gigantes. Cada 5 muertes se
+                        // rehace la escena entera —sim nuevo, bots y comida frescos—;
+                        // las otras 4 son un respawn barato (reconstruir TODO en cada
+                        // muerte es caro y aqui pueden ser frecuentes). No es un
+                        // jugador de verdad practicando, asi que sin el texto
+                        // "RESPAWNING (PRACTICE)": es decoracion, no partida.
+                        if (++heroDeathCount >= 5) { heroAmbientDemo(); }
+                        else { const c = sim.spawnPlayer('me'); camera.x = c.x; camera.y = c.y; }
+                    } else if (practiceMode && sim && !sim.isRemote) {
                         // En práctica (esperando sala online) se reaparece al instante
                         const c = sim.spawnPlayer('me');
                         camera.x = c.x; camera.y = c.y;

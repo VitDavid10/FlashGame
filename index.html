@@ -254,7 +254,12 @@
            el translate del padre pasaba a ser su containing block, de modo que
            las coordenadas de viewport que se le calculaban quedaban desplazadas
            dos veces y aparecia fuera de sitio. */
-        .dropdown-content { display: none; position: absolute; top: 100%; right: 0; z-index: 1; pointer-events: auto; padding-top: 8px; min-width: 220px; }
+        /* min-width bajado de 220 a 150: el contenido real (icono + "CHART" /
+           "BUY $PILL" en Press Start 2P + padding) mide 122px, asi que 220
+           dejaba casi 100px de hueco vacio a la derecha del texto. 150 da un
+           margen de respiro sin sobrar. #nav-play-area pisa esto con
+           min-width:100% (ver mas abajo), asi que alli no cambia nada. */
+        .dropdown-content { display: none; position: absolute; top: 100%; right: 0; z-index: 1; pointer-events: auto; padding-top: 8px; min-width: 150px; }
         /* Mismo aspecto que la barra IN GAME / $PILL (.wallet-bal-box): fondo
            oscuro translucido con filo dorado, esquinas de 8px y blur detras.
            Antes era una caja gris plana (#111 con borde #333) que no pegaba con
@@ -4296,6 +4301,12 @@ function toggleTrailerMode() {
             Object.assign(layout, guardado);
         } catch (e) {}
         let editing = false, drag = null;
+        // Interruptor real del admin (panel -> Menu visuals -> Layout editors),
+        // igual que layoutEditAllowed en game/index.html. FALLA CERRADO: hasta
+        // que el fetch de mas abajo confirme lo contrario, LandingLayout.enter()
+        // no entra — ocultar el boton EDIT no bastaba, la funcion seguia siendo
+        // llamable a mano desde la consola.
+        let landingEditAllowed = false;
         const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
         // ===== Claves TOCADAS a mano en esta maquina =====
         // Mismo mecanismo que EDIT LAYOUT del menu del juego (game/index.html,
@@ -4435,6 +4446,7 @@ function toggleTrailerMode() {
         }
         const LandingLayout = {
             enter() {
+                if (!landingEditAllowed) return;
                 editing = true;
                 document.body.classList.add('layout-editing');
                 for (const key in LAYOUT_ELS) { document.querySelectorAll(LAYOUT_ELS[key]).forEach(el => el.classList.add('hero-editable')); }
@@ -4709,7 +4721,11 @@ function toggleTrailerMode() {
         fetch('/api/landing-layout', { cache: 'no-store' })
             .then(r => r.json())
             .then(d => {
-                if (d && d.edit) { const b = document.getElementById('btnLandingEdit'); if (b) b.style.display = ''; }
+                landingEditAllowed = !!(d && d.edit);
+                const b = document.getElementById('btnLandingEdit');
+                if (b) b.style.display = landingEditAllowed ? '' : 'none';
+                // El admin lo apago mientras alguien seguia dentro: sacarlo YA.
+                if (!landingEditAllowed && editing) LandingLayout.exit();
                 if (editing || !d || !d.layout || !Object.keys(d.layout).length) return;
                 // Fusionado sobre el horneado (no reemplazo directo): si el
                 // servidor guardo su layout antes de que existiera una clave
