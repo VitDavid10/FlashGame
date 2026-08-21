@@ -396,7 +396,11 @@
             body.mobile-allowed #exitGameBtn  { top: auto !important; bottom: 96px !important; right: 12px !important; }
             /* CONNECT justo a la IZQUIERDA de esos tres (sin girar), a su misma
                altura: girado, el usuario lo ve pegado a ellos en la misma fila. */
-            body.mobile-allowed #gameWalletArea { top: auto !important; bottom: 96px; right: 52px; transform-origin: center; }
+            /* CONNECT fuera del movil de momento: en el telefono solo se puede
+               jugar la sala FREE, asi que no hay nada que pagar y el boton solo
+               ocupaba sitio. Al intentar entrar en una de pago sale el aviso
+               gris (ver selectRoom). */
+            body.mobile-allowed #gameWalletArea { display: none !important; }
 
             /* Los POPUPS, girados igual que el menu del que salen (el de elegir
                partida, el de sala, el de wallet, SETTINGS...). Todos comparten
@@ -412,7 +416,18 @@
             }
             /* La caja de dentro se centra sola (.pw-modal ya es flex centrado);
                solo se le acota el ancho al del cartel girado. */
-            body.mobile-allowed .pw-modal .pw-modal-box { max-width: 86vh; }
+            /* Los popups, mas pequeños: la caja de escritorio (360px + 28/30 de
+               relleno) se comia casi toda la pantalla girada. */
+            body.mobile-allowed .pw-modal .pw-modal-box {
+                max-width: 74vh; width: 300px; padding: 16px 18px;
+            }
+            body.mobile-allowed .pw-modal .pw-modal-title { font-size: 10px; margin-bottom: 14px; line-height: 1.7; }
+            body.mobile-allowed .pw-modal .pw-big-btn { font-size: 10px; padding: 11px 0; }
+            /* Las 4 casillas de skill de abajo, mas grandes: al 62% de la barra
+               quedaban demasiado pequeñas para el dedo. */
+            body.mobile-allowed #actionBar {
+                transform: translate(-50%, -50%) rotate(90deg) scale(0.85) !important;
+            }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
                escritorio (190px de ancho) tapaba media pantalla. */
             body.mobile-allowed #gameWalletArea #gwConnect,
@@ -468,16 +483,36 @@
                MATCH ENDING/STARTING): tambien girados, que si no salian
                derechos sobre un juego tumbado. Van centrados, asi que basta
                con girarlos sobre su centro. */
+            /* TODOS los carteles que se superponen a la partida: elegir skill,
+               salir, resultado, aviso de sistema, premio... Sin esto salian
+               derechos sobre un juego tumbado. */
+            body.mobile-allowed #skillChoiceOverlay,
+            body.mobile-allowed #exitModal,
+            body.mobile-allowed #resultOverlay,
+            body.mobile-allowed #sysModal,
+            body.mobile-allowed #prizeModal,
             body.mobile-allowed #lobbyBanner,
             body.mobile-allowed #cdNum {
                 transform-origin: center !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important;
                 top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
             }
-            /* Marcadores: arriba-izquierda del juego -> arriba-derecha real. */
+            /* Marcadores (ROOM / MASS / ALIVE): pegados al extremo y algo mas
+               grandes, y justo DEBAJO de los botones de salir, musica y sonido
+               —que ocupan el borde de abajo hasta y=96—, de modo que la columna
+               continua sin pisarlos. */
             body.mobile-allowed #ui {
-                top: 24% !important; right: 22px !important; left: auto !important;
-                transform: translate(50%, -50%) rotate(90deg) scale(0.62) !important;
+                top: auto !important; bottom: 312px !important; right: 20px !important; left: auto !important;
+                transform: translate(50%, 50%) rotate(90deg) scale(0.82) !important;
+            }
+            /* El TIEMPO, arriba y centrado con el telefono girado (sin girar:
+               borde derecho, a media altura). Iba pegado al mismo sitio que el
+               resto del HUD. */
+            body.mobile-allowed #timerDisplay {
+                position: fixed !important; top: 50% !important; right: 10px !important;
+                left: auto !important; bottom: auto !important; z-index: 60;
+                transform: translate(50%, -50%) rotate(90deg) scale(1.25) !important;
+                transform-origin: center !important; display: block;
             }
             /* Barra de habilidades: abajo-centro -> centro del borde izquierdo. */
             body.mobile-allowed #actionBar {
@@ -6776,7 +6811,10 @@
         // En móvil (warning aceptado) solo se permite la sala FREE; las de pago requieren PC/Mac.
         if (document.body.classList.contains('mobile-allowed') && a !== 'Free') {
             SoundManager.play('cd');
-            alert('Paid rooms require a PC/Mac. Free room is available on mobile.');
+            // Nuestro cartel gris, no el alert() del navegador: aquel sale con
+            // el tipo de letra del sistema y SIN girar, cruzado sobre una
+            // pantalla que esta tumbada.
+            showSystemMsg('Paid rooms need a PC or a Mac.<br><br>On mobile you can play the <b>FREE</b> room.', 'DESKTOP ONLY');
             return false;
         }
         SoundManager.play('simpleselect'); gameRunning = false; currentServer = a;
@@ -10155,8 +10193,9 @@
             "#lobbyBanner.lb-pix .lb-pix-txt.lb-pix-blue{color:#9cc4ff;text-shadow:0 0 6px rgba(77,155,255,.9),1px 1px 0 #000}" +
             "@keyframes lbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}" +
             "#cdNum{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none;transform:translateY(-120px)}" +
-            "#cdNum .cd-lbl{font-family:'Russo One',sans-serif;font-size:13px;letter-spacing:4px;color:#00ff88;text-shadow:0 0 10px #00ff88;opacity:.9}" +
-            "#cdNum .cd-n{font-family:'Russo One',sans-serif;font-size:clamp(72px,14vw,150px);line-height:1;color:#fff;" +
+            // Press Start 2P, la MISMA del rotulo PILLWARS ARCADE, no 'Russo One'.
+            "#cdNum .cd-lbl{font-family:'Press Start 2P',monospace;font-size:11px;letter-spacing:3px;color:#00ff88;text-shadow:2px 2px 0 #000,0 0 10px #00ff88;opacity:.9}" +
+            "#cdNum .cd-n{font-family:'Press Start 2P',monospace;font-size:clamp(52px,10vw,110px);line-height:1;color:#fff;" +
             "-webkit-text-stroke:4px #000;text-shadow:0 0 26px #00ff88,0 0 60px #00ff88,0 6px 0 rgba(0,0,0,.5);animation:cdPop 1s ease-out forwards}" +
             "@keyframes cdPop{0%{transform:scale(.4);opacity:0}18%{transform:scale(1.12);opacity:1}38%{transform:scale(1)}78%{opacity:1}100%{transform:scale(.8);opacity:0}}";
         document.head.appendChild(st);
