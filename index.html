@@ -488,13 +488,19 @@
            .wallet-area mas arriba): si no, MODES/SKINS son inalcanzables en
            cuanto el raton sale de PLAY NOW para ir a arrastrarlas. */
         body.layout-editing .hero-play-links { opacity: 1 !important; pointer-events: auto !important; }
+        /* Mismo recuadrito que OFFICIAL CONTRACT ADDRESS (.hero-ca-sign): fondo
+           negro translucido, filo dorado, esquinas de 8px y blur detras. Antes
+           eran solo dos palabras sueltas flotando sobre el hero, sin ninguna
+           caja que las separase del fondo. */
         .hero-sub-link {
-            background: none; border: 0; padding: 4px 6px; cursor: pointer !important;
+            background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4);
+            border-radius: 8px; backdrop-filter: blur(4px); cursor: pointer !important;
+            padding: 6px 12px; box-sizing: border-box;
             font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 1px;
             color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
-            transition: color 0.15s, text-shadow 0.15s;
+            transition: color 0.15s, text-shadow 0.15s, border-color 0.15s;
         }
-        .hero-sub-link:hover { color: #fff; text-shadow: 0 0 10px rgba(255,206,61,0.9), 2px 2px 0 rgba(0,0,0,0.75); }
+        .hero-sub-link:hover { color: #fff; border-color: rgba(255,206,61,0.75); text-shadow: 0 0 10px rgba(255,206,61,0.9), 2px 2px 0 rgba(0,0,0,0.75); }
         /* PLAY NOW de la navbar: oculto mientras el hero esta a la vista (ya
            hay uno ahi dentro), aparece al hacer scroll y salir de el (ver el
            IntersectionObserver mas abajo). En EDIT LAYOUT se fuerza visible
