@@ -674,43 +674,10 @@
                 top: 50% !important; left: 11% !important; right: auto !important; bottom: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) scale(1.15) !important;
             }
-            /* TOP MASS fuera del movil (a peticion de David: no cabia bien y
-               solapaba los botones de sonido/musica/salir). Se deja SOLO el
-               contador de KILLS, convertido en una placa cuadrada pegada a la
-               IZQUIERDA de esos tres botones y de su mismo alto (34px) — el
-               marco top-mass.png fuera (era demasiado grande para un solo
-               numero), pero SIGUE siendo un cuadrado con fondo/borde como los
-               botones de al lado, no el numero suelto. */
-            html:not([data-hero]) body.mobile-allowed #leaderboard h3,
-            html:not([data-hero]) body.mobile-allowed #lb-list { display: none !important; }
-            html:not([data-hero]) body.pixel-pack.mobile-allowed #leaderboard {
-                background: rgba(0,0,0,0.6) !important; border: 1px solid #333 !important;
-                border-radius: 0 !important; box-shadow: none !important;
-            }
-            /* display se deja SIN tocar (ni !important): el JS lo alterna entre
-               none/block para ocultar el HUD fuera de partida (menu, demo del
-               hero...) y forzarlo a flex lo habria dejado visible siempre. */
-            html:not([data-hero]) body.mobile-allowed #leaderboard {
-                position: fixed !important; width: 34px !important; height: 76px !important; padding: 0 !important;
-                bottom: 54px !important; right: 78px !important; top: auto !important; left: auto !important;
-                transform: rotate(90deg) !important; transform-origin: center !important;
-            }
-            /* body.pixel-pack (desktop) saca #killsSection del flujo con
-               position:absolute;top:calc(100% + 12px) para colgarlo DEBAJO
-               del cartel TOP MASS, y esconde la etiqueta "KILLS" (esa
-               regla vive en _hudRule(), no aqui). En movil el cartel es
-               ahora un cuadrado de 76px de alto: esa regla lo mandaba fuera
-               del cuadrado por completo (el numero salia suelto por debajo,
-               el cuadrado se veia vacio). Se vuelve a flujo normal y se
-               recupera la etiqueta. */
-            html:not([data-hero]) body.mobile-allowed #killsSection {
-                position: static !important; top: auto !important; left: auto !important; transform: none !important;
-                border-top: none !important; margin: 26px 0 0 !important; padding-top: 0 !important;
-                text-align: center !important;
-            }
-            html:not([data-hero]) body.mobile-allowed #killsSection div:first-child {
-                display: block !important; font-size: 7px !important; margin-bottom: 0 !important;
-            }
+            /* TOP MASS y KILLS fuera del movil por completo (a peticion de
+               David: no cabia bien, solapaba botones, y quitando solo la
+               tabla y dejando el cuadrado de KILLS quedaba sucio). */
+            html:not([data-hero]) body.mobile-allowed #leaderboard { display: none !important; }
             html:not([data-hero]) body.mobile-allowed #killsVal { font-size: 15px !important; }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
             html:not([data-hero]) body.mobile-allowed #minimap {
@@ -2850,6 +2817,17 @@
             <button class="pw-big-btn online" id="btnPlayOnline" onclick="choosePlay('online')" onmouseenter="SoundManager.playSimpleHover()">PLAY ONLINE</button>
             <div class="pw-btn-sub">REAL PLAYERS · REAL ROOMS</div>
             <button class="pw-modal-cancel" onclick="closePlayChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- Nombre (solo movil, ver choosePlay/openNameChoice): mismo cartel gris
+         y mismos botones que SELECT A WALLET, para no meter un diseño nuevo. -->
+    <div id="nameChoiceModal" class="pw-modal">
+        <div class="pw-modal-box wallet-picker">
+            <div class="pw-modal-title">YOUR NAME</div>
+            <input type="text" id="mobileNameField" class="name-subtle" placeholder="TYPE YOUR NAME" maxlength="12" autocomplete="off" spellcheck="false" style="width:82%; margin:2px auto 22px;" onkeydown="if(event.key==='Enter') confirmNameChoice();">
+            <button class="pw-big-btn wp-btn" onclick="confirmNameChoice()" onmouseenter="SoundManager.playSimpleHover()" style="justify-content:center;">PLAY</button>
+            <button class="pw-modal-cancel" onclick="closeNameChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
     </div>
 
@@ -7044,14 +7022,17 @@
         closePlayChoice();
         // En movil el input de nombre va oculto (no cabe en el layout tactil),
         // asi que sin esto nunca se llegaba a pedir: se entraba siempre con el
-        // nombre en blanco. Se pregunta aqui, justo antes de jugar.
-        if (esMovilJuego()) {
-            const nameEl = document.getElementById('playerNameInput');
-            if (!nameEl.value.trim()) {
-                const n = prompt('Your name:', '');
-                if (n && n.trim()) nameEl.value = n.trim().slice(0, 12);
-            }
+        // nombre en blanco. Se pregunta aqui, justo antes de jugar, con un
+        // cartel propio (mismo diseño gris girado que el resto de popups) en
+        // vez del prompt() nativo del navegador: ese no gira con el juego y
+        // salia derecho encima de todo lo demas tumbado.
+        if (esMovilJuego() && !document.getElementById('playerNameInput').value.trim()) {
+            openNameChoice(kind);
+            return;
         }
+        continueChoosePlay(kind);
+    }
+    function continueChoosePlay(kind) {
         // En movil se pregunta la sala SIEMPRE, aunque ya hubiera uma elegida:
         // en el telefono no se ve el panel de precios, asi que sin esto te
         // metia en la ultima sala usada (normalmente Free) sin decir nada y no
@@ -7066,6 +7047,23 @@
         runPlay(kind);
     }
     function runPlay(kind) { if (kind === 'online') startOnlineGame(); else startGame(); }
+    // Cartel de nombre (movil): mismo marco gris que SELECT A ROOM/wallet.
+    let _pendingNameKind = null;
+    function openNameChoice(kind) {
+        _pendingNameKind = kind;
+        const f = document.getElementById('mobileNameField');
+        f.value = document.getElementById('playerNameInput').value || '';
+        document.getElementById('nameChoiceModal').style.display = 'flex';
+        setTimeout(() => f.focus(), 0);
+    }
+    function closeNameChoice() { _pendingNameKind = null; document.getElementById('nameChoiceModal').style.display = 'none'; }
+    function confirmNameChoice() {
+        const v = document.getElementById('mobileNameField').value.trim();
+        if (v) document.getElementById('playerNameInput').value = v.slice(0, 12);
+        document.getElementById('nameChoiceModal').style.display = 'none';
+        const kind = _pendingNameKind; _pendingNameKind = null;
+        if (kind) continueChoosePlay(kind);
+    }
     function closeRoomChoice() { _pendingPlayKind = null; document.getElementById('roomChoiceModal').style.display = 'none'; }
     function chooseRoomFromModal(a) {
         if (!selectRoom(a)) return;
