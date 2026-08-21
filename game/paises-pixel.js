@@ -791,8 +791,15 @@ function _paisModalCSS() {
         /* Y el cartel entero deja de reservar 34px de margen a cada lado: en un
            movil eso es casi un quinto del ancho tirado, y es lo que dejaba la
            fila de tallas en 179px cuando la caja mide 327. */
-        #${PAIS_MODAL_ID} .pm-content { padding:16px 12px 18px; }
+        #${PAIS_MODAL_ID} .pm-content { padding:16px 8px 18px; }
         #${PAIS_MODAL_ID} .pm-page1 .pm-nom { padding-right:96px; }
+        /* La previa se CENTRA en vez de pegarse abajo. El alto del cartel lo fija
+           la pagina 1 (para que el marco no cambie de tamaño al pasar de una a
+           otra), y con justify-content:flex-end la escena se iba al fondo
+           dejando ~270px muertos encima. Y su alto baja de 430 a 300: en una
+           pantalla de 812 los 430 de escritorio se comian medio cartel. */
+        #${PAIS_MODAL_ID} .pm-page2 { justify-content:center; }
+        #${PAIS_MODAL_ID} .pm-page2 canvas { height:300px; }
     }
     `;
 }
