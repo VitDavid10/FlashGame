@@ -384,7 +384,23 @@
                girarla desde una esquina la mandaba fuera de pantalla: se gira
                sobre su centro y se coloca por el hueco que queda a la izquierda
                de los dos botones de sonido. */
-            body.mobile-allowed #gameWalletArea { top: 157px; right: 29px; transform-origin: center; }
+            body.mobile-allowed #gameWalletArea { top: 157px; right: 12px; transform-origin: center; }
+
+            /* Los POPUPS, girados igual que el menu del que salen (el de elegir
+               partida, el de sala, el de wallet, SETTINGS...). Todos comparten
+               .pw-modal, asi que basta con girar esa caja: sin esto salian
+               derechos sobre un menu tumbado y habia que girar el telefono de
+               vuelta para leerlos. */
+            body.mobile-allowed .pw-modal {
+                width: 100vh; height: 100vw;
+                width: 100dvh; height: 100dvw;
+                top: -100vw; left: 0; right: auto; bottom: auto;
+                top: -100dvw;
+                transform: rotate(90deg); transform-origin: bottom left;
+            }
+            /* La caja de dentro se centra sola (.pw-modal ya es flex centrado);
+               solo se le acota el ancho al del cartel girado. */
+            body.mobile-allowed .pw-modal .pw-modal-box { max-width: 86vh; }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
                escritorio (190px de ancho) tapaba media pantalla. */
             body.mobile-allowed #gameWalletArea #gwConnect,
@@ -456,7 +472,7 @@
                La altura va en vw = el alto util con la pantalla girada. */
             body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitlePw img,
             body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitleWord img {
-                height: min(5vw, 24px) !important; width: auto !important; max-width: 100% !important;
+                height: min(9vw, 46px) !important; width: auto !important; max-width: 100% !important;
             }
             /* Las dos mitades del rotulo (PILLWARS + ARCADE) puestas en fila
                sumaban mas del ancho disponible y la segunda se salia por el
@@ -474,22 +490,31 @@
                 /* scale tambien: el layout guardado le mete un scale ~1.45, y
                    por eso una caja de 247px seguia midiendo 359 en pantalla. */
                 translate: none !important; scale: 1 !important; margin: 0 auto !important;
-                white-space: normal !important; text-align: center !important;
-                width: min(62vh, 330px) !important; max-width: 100% !important;
-                line-height: 1.5 !important; font-size: 7px !important;
+                /* En UNA linea: sin el scale que arrastraba, la frase entera
+                   mide 247px y el cartel tiene 842 de ancho, asi que cabe de
+                   sobra — no hacia falta partirla. */
+                white-space: nowrap !important; text-align: center !important;
+                width: auto !important; max-width: 100% !important;
+                line-height: 1.6 !important; font-size: 9px !important;
             }
             /* 2) PILDORA: grande y PEGADA a PLAY. Solo margin-top:auto (no
                   `margin:auto`, que la dejaba flotando en el centro): asi todo
                   el hueco libre se va arriba y la pildora cae junto al boton. */
             body.mobile-allowed #loginOverlay .pill-stage {
-                margin: auto auto 0 !important; max-width: min(58vw, 290px);
+                margin: auto auto 10px !important; max-width: min(70vw, 340px);
             }
-            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(58vw, 290px); }
+            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(70vw, 340px); }
             /* 3) PLAY ABAJO, del ancho de su texto: al 62% del cartel salia una
                   barra larguisima de lado a lado. */
+            /* El MISMO boton de siempre (su placa roja), solo mas corto. Antes
+               se le puso `width:auto` + padding y eso rompio su `aspect-ratio:
+               15/2`: el alto colapsaba a 17px y quedaba una raya fina. Aqui se
+               suelta la proporcion y se fija el grosor a mano, que es lo que se
+               pidio — mismo grosor, menos largo. */
             body.mobile-allowed #loginOverlay #btnPlay {
-                margin: 0 auto 8px !important; width: auto !important; min-width: 0 !important;
-                padding: 0 30px !important; flex: none; align-self: center;
+                margin: 0 auto 26px !important; flex: none; align-self: center;
+                aspect-ratio: auto !important; width: 210px !important; height: 46px !important;
+                min-width: 0 !important; padding: 0 !important; font-size: 15px !important;
             }
             /* Fuera todo lo que no son esas tres piezas. */
             body.mobile-allowed #loginOverlay .menu-right-col,
@@ -7010,10 +7035,13 @@
         // columna queda sin borde. Con esto la cuadrícula termina exacta en los 4
         // lados (celdas completas para centrar el título con EDIT LAYOUT).
         { const rgb = pixRgb(hex); g.fillStyle = 'rgb(' + rgb.map(v => Math.round(v * 0.30)).join(',') + ')'; g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1); }
-        // login: deco congelada salvo lo tapado por elementos del menú, que
-        // sigue avanzando hasta despejarlos (ver stepMenuDeco).
-        stepMenuDeco(W, H, performance.now(), false, menuDecoObstacleRects(W, H));
-        drawMenuDeco(g, W, H);
+        // La comida cruza el fondo tambien AQUI, dentro del modo: antes el menu
+        // la dejaba congelada (move=false) y solo se movia lo que quedaba tapado
+        // por la UI, asi que la pantalla se veia muerta comparada con el
+        // selector. Los virus no se pintan (el `true` del final): giran sobre si
+        // mismos y aqui no aportan.
+        stepMenuDeco(W, H, performance.now(), true, menuDecoObstacleRects(W, H));
+        drawMenuDeco(g, W, H, true);
     }
     // rAF continuo: mientras el login este visible, repinta tile+deco cada
     // frame (para que la food/virus atraviesen el fondo tambien aqui, igual
