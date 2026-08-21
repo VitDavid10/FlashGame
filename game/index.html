@@ -356,6 +356,96 @@
                CORTO: salia diminuto. Con vh usa el lado largo, que es el ancho
                real del cartel ya girado. */
             body.mobile-allowed #loadingScreen .ls-title { font-size: clamp(22px, 4.4vh, 42px); }
+
+            /* El MENU DEL MODO, girado tambien: es la tercera pantalla de la
+               misma secuencia (selector -> menu -> carga), y dejarla derecha
+               obligaria a girar el movil de vuelta en mitad del camino. */
+            body.mobile-allowed #loginOverlay {
+                width: 100vh; height: 100vw;
+                top: -100vw; left: 0; right: auto; bottom: auto;
+                transform: rotate(90deg); transform-origin: bottom left;
+                overflow-y: auto; overflow-x: hidden;
+            }
+        }
+
+        /* ===== MENU DEL MODO EN MOVIL: en columna y sin los px de EDIT LAYOUT =====
+           El sitio de cada pieza del menu sale de EDIT LAYOUT, que guarda
+           desplazamientos y escalas en PIXELES FIJOS medidos en un monitor
+           grande y los aplica igual en un telefono. Medido en 412px de ancho:
+           el documento se iba a 689px (277 de desborde), la pildora acababa en
+           x=545 y el titulo empezaba en x=-268 — las tres cosas, fuera de
+           pantalla. Aqui se anulan esos inline (llegan como style="translate:..."
+           desde el layout guardado, de ahi el !important) y el menu se apila en
+           una sola columna centrada, que es lo unico que cabe.
+           Va FUERA del bloque de arriba (sin `orientation`) porque esto hace
+           falta en tactil se mire como se mire el telefono. */
+        @media (pointer: coarse) {
+            /* Apretado a proposito: girado, el alto util es el ANCHO del
+               telefono (412px en el de pruebas). Con los huecos de escritorio
+               el bloque pedia 549 y PLAY/SETTINGS se salian por abajo. */
+            body.mobile-allowed #loginOverlay .menu-row {
+                flex-direction: column; align-items: center; gap: 6px;
+                width: 100%; padding: 6px 10px 10px; box-sizing: border-box;
+            }
+            body.mobile-allowed #loginOverlay .login-box,
+            body.mobile-allowed #loginOverlay .menu-right-col {
+                width: 100%; max-width: 560px; min-width: 0;
+            }
+            body.mobile-allowed #loginOverlay .menu-right-col {
+                display: flex; flex-direction: column; align-items: center; gap: 14px;
+            }
+            /* Se sueltan TODAS las piezas colocadas a mano: vuelven a su sitio
+               natural en el flujo. */
+            body.mobile-allowed #loginOverlay .pill-stage,
+            body.mobile-allowed #loginOverlay #playerNameInput,
+            body.mobile-allowed #loginOverlay #btnPlay,
+            body.mobile-allowed #loginOverlay #btnSettings,
+            body.mobile-allowed #loginOverlay #btnFeatures,
+            body.mobile-allowed #loginOverlay #oraclePanel,
+            body.mobile-allowed #loginOverlay #missionsPanel,
+            body.mobile-allowed #loginOverlay #oracleInner,
+            body.mobile-allowed #loginOverlay #missionsInner,
+            body.mobile-allowed #loginOverlay #skinGrid,
+            body.mobile-allowed #loginOverlay #mineGrid,
+            body.mobile-allowed #loginOverlay #modeTitlePw,
+            body.mobile-allowed #loginOverlay #modeTitleWord,
+            body.mobile-allowed #loginOverlay #modeBlurb,
+            body.mobile-allowed #loginOverlay #gwBalBox,
+            body.mobile-allowed #loginOverlay #gwConnect,
+            body.mobile-allowed #loginOverlay #gwDepositWrap {
+                translate: none !important; scale: 1 !important; position: relative !important;
+                left: auto !important; top: auto !important; margin-left: auto !important; margin-right: auto !important;
+            }
+            body.mobile-allowed #loginOverlay .login-left { width: 100%; text-align: center; }
+            /* Los 20px de relleno de la caja son los ultimos que sobran para
+               que el bloque entero baje de los 412 de alto util. */
+            body.mobile-allowed #loginOverlay .login-box { padding: 6px 10px; }
+            /* La pildora es lo mas grande del bloque (198px de alto de los 549
+               que pedia): recortarla es lo que hace que quepa el resto. */
+            body.mobile-allowed #loginOverlay .pill-stage { max-width: 132px; }
+            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: 132px; }
+            body.mobile-allowed #loginOverlay .menu-head-row h1 { font-size: 20px; margin: 0; }
+            body.mobile-allowed #loginOverlay .mode-blurb { font-size: 9px; line-height: 1.3; }
+            body.mobile-allowed #loginOverlay .menu-head-row { flex-direction: column; align-items: center; gap: 6px; }
+            /* Los dos carteles laterales (precios de sala y skins/quests) fuera
+               en movil. Son piezas de 532x560 con marco de tamaño fijo: apiladas
+               dejaban el menu en 1350px de alto para una pantalla de 412, y lo
+               unico que se veia al entrar era un cartel vacio gigante con PLAY y
+               la pildora empujados fuera de cuadro. En un telefono ademas solo
+               se puede jugar en salas Free (lo dice el propio aviso de entrada),
+               asi que el selector de precios no pinta nada aqui. Queda el nucleo:
+               titulo, pildora, nombre y PLAY. */
+            body.mobile-allowed #loginOverlay .menu-right-col { display: none !important; }
+            /* La paleta y el selector de color son emergentes anclados a la
+               pildora con px de escritorio: en columna se colocan centrados
+               debajo, no encima de otra cosa. */
+            body.mobile-allowed #loginOverlay #pillPalette,
+            body.mobile-allowed #loginOverlay #colorPicker,
+            body.mobile-allowed #loginOverlay #palHint {
+                translate: none !important; scale: 1 !important;
+                position: relative !important; left: auto !important; top: auto !important;
+                margin: 8px auto 0 !important;
+            }
         }
 
         /* --- UI & BUTTONS --- */
