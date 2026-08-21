@@ -524,14 +524,16 @@
                derechos sobre un juego tumbado. Van centrados, asi que basta
                con girarlos sobre su centro. */
             /* PLAYING AGAINST BOTS y el banner de sala (FINDING ROOM/WAITING
-               PLAYERS online) van en el MISMO sitio, cerca de ROOM/MASS/ALIVE:
-               mismo truco de giro que esa columna, sin encogerlos casi nada
-               (el lobbyBanner nunca se encogia, por eso se leia bien; el 0.42
-               de antes era lo que dejaba el aviso de bots enano). */
+               PLAYERS online) van en el MISMO sitio: junto al reloj (mismo
+               top:50% y mismo translate(50%,-50%) que #timerDisplay), un poco
+               mas a la izquierda (right mayor que el 6% del reloj) para que
+               no se solapen. Sin apenas encoger (el lobbyBanner nunca se
+               encogia, por eso se leia bien; el 0.42 de antes era lo que
+               dejaba el aviso de bots enano). */
             html:not([data-hero]) body.mobile-allowed #botsBanner,
             html:not([data-hero]) body.mobile-allowed #lobbyBanner {
-                top: 18% !important; bottom: auto !important; right: 22% !important; left: auto !important;
-                transform: translate(50%, 0) rotate(90deg) scale(0.85) !important;
+                top: 50% !important; bottom: auto !important; right: 18% !important; left: auto !important;
+                transform: translate(50%, -50%) rotate(90deg) scale(0.85) !important;
                 transform-origin: center !important;
             }
             /* TODOS los carteles que se superponen a la partida: elegir skill,
@@ -624,23 +626,28 @@
                 top: 50% !important; left: 11% !important; right: auto !important; bottom: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) scale(1.15) !important;
             }
-            /* Clasificacion: arriba-derecha -> abajo-derecha real. */
-            html:not([data-hero]) body.mobile-allowed #leaderboard {
-                bottom: -6% !important; top: auto !important; right: 48% !important; left: auto !important;
-                transform: translate(50%, 0) rotate(90deg) scale(0.74) !important;
-            }
-            /* Cartel mas ancho (mismas proporciones que el PNG top-mass,
-               210x282 -> 250x336, para no deformarlo) — con el ancho de
-               fabrica el nombre y la masa (justify-content:space-between)
-               quedaban pegados. Y la masa a ancho fijo (7ch, hueco para
-               "1000000") para que la fila NUNCA cambie de tamaño segun crecen
-               los numeros durante la partida. */
+            /* TOP MASS fuera del movil (a peticion de David: no cabia bien y
+               solapaba los botones de sonido/musica/salir). Se deja SOLO el
+               contador de KILLS, convertido en una placa pequeña pegada a la
+               IZQUIERDA de esos tres botones y de su mismo alto (34px) — el
+               marco top-mass.png (fondo/borde) tambien fuera, ya no hace
+               falta con solo un numero dentro. */
+            html:not([data-hero]) body.mobile-allowed #leaderboard h3,
+            html:not([data-hero]) body.mobile-allowed #lb-list { display: none !important; }
             html:not([data-hero]) body.pixel-pack.mobile-allowed #leaderboard {
-                width: 225px !important; height: 302px !important; padding: 47px 17px 13px !important;
+                background: none !important; border: none !important; box-shadow: none !important;
             }
-            html:not([data-hero]) body.mobile-allowed .lb-item span:last-child {
-                min-width: 7ch !important; text-align: right !important;
+            html:not([data-hero]) body.mobile-allowed #leaderboard {
+                position: fixed !important; width: 34px !important; height: 76px !important; padding: 0 !important;
+                bottom: 54px !important; right: 72px !important; top: auto !important; left: auto !important;
+                transform: rotate(90deg) !important; transform-origin: center !important;
             }
+            html:not([data-hero]) body.mobile-allowed #killsSection {
+                border-top: none !important; margin-top: 0 !important; padding-top: 0 !important;
+                text-align: center !important;
+            }
+            html:not([data-hero]) body.mobile-allowed #killsSection div:first-child { font-size: 7px !important; margin-bottom: 0 !important; }
+            html:not([data-hero]) body.mobile-allowed #killsVal { font-size: 15px !important; }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
             html:not([data-hero]) body.mobile-allowed #minimap {
                 top: 80% !important; left: 0 !important; right: auto !important; bottom: auto !important;
@@ -8845,7 +8852,7 @@
             showResultsUI('matchFinished');
         }
     }
-    function returnToMenu() { if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function returnToMenu() { if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
