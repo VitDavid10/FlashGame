@@ -431,7 +431,8 @@
                dibujado. Se encoge TODO el interior: menos relleno, rotulo mas
                estrecho, botones mas bajos y rejilla mas junta. */
             html:not([data-hero]) body.mobile-allowed .pw-modal-box.room-picker,
-            html:not([data-hero]) body.mobile-allowed .pw-modal-box.wallet-picker {
+            html:not([data-hero]) body.mobile-allowed .pw-modal-box.wallet-picker,
+            html:not([data-hero]) body.mobile-allowed .pw-modal-box.play-picker {
                 width: 260px; padding: 34px 30px 28px;
             }
             html:not([data-hero]) body.mobile-allowed .room-picker .wp-title { width: 58%; margin-bottom: 12px; }
@@ -516,10 +517,12 @@
                derechos sobre un juego tumbado. Van centrados, asi que basta
                con girarlos sobre su centro. */
             /* PLAYING AGAINST BOTS: mismo truco de giro que ROOM/MASS/ALIVE
-               (misma transform: translate+rotate+scale), colocado justo
-               ENCIMA de esa columna en vez de centrado arriba del mapa. */
+               (misma transform: translate+rotate+scale), a la izquierda de esa
+               columna y con hueco de por medio (right:32% contra el 8% de
+               #ui) para no montarse encima de ROOM, y bajado lo suficiente
+               (top:10%) para que no se corte por arriba de la pantalla. */
             html:not([data-hero]) body.mobile-allowed #botsBanner {
-                top: 3% !important; bottom: auto !important; right: 8% !important; left: auto !important;
+                top: 10% !important; bottom: auto !important; right: 32% !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(0.42) !important;
                 transform-origin: center !important;
             }
@@ -540,23 +543,20 @@
                 top: -100dvw;
                 transform: rotate(90deg) !important; transform-origin: bottom left !important;
             }
-            /* Y sus cajas, mas pequeñas: las de escritorio se comian la pantalla
-               girada (el GAME OVER sobre todo). */
+            /* Y sus cajas, TODAS al mismo ancho (el del cartel gris de
+               exitModal/sysModal) y SIN transform:scale: antes el GAME OVER y
+               PRIZE usaban scale(0.68/nada), que pierde contra la animacion de
+               entrada (slideUp/fadeIn) durante su medio segundo — salian a
+               tamaño de escritorio y luego encogian de golpe. Y exitModal
+               encima combinaba width:250px CON scale(0.68), un doble encogido
+               que lo dejaba enano. Con ancho fijo + transform:none no hay nada
+               que la animacion pueda ganar ni nada que se sume dos veces. */
             html:not([data-hero]) body.mobile-allowed #exitModal .exit-box,
-            html:not([data-hero]) body.mobile-allowed #resultOverlay .result-box,
-            html:not([data-hero]) body.mobile-allowed #prizeModal .exit-box { transform: scale(0.68); transform-origin: center; }
-            /* El aviso de sistema no va en mitad de la pantalla: se corre hacia
-               el lado de los indicadores (ROOM/MASS/ALIVE) para dejar libre el
-               centro del mapa. margin-left en el cuadro ya girado = "mas
-               abajo" desde el punto de vista del que juega. */
-            /* El cartel de aviso, mas pequeño y con la letra en su sitio: su caja
-               mide 420px con 44/48 de relleno y el rotulo va a 24px, medidas de
-               escritorio que en la pantalla girada no cuadraban de ninguna
-               manera. El !important es para ganarle al CSS que inyecta
-               cartelHero (el del marco menu-gris). */
             html:not([data-hero]) body.mobile-allowed #sysModal .exit-box,
-            html:not([data-hero]) body.mobile-allowed #exitModal .exit-box {
-                width: 250px !important; padding: 26px 26px 22px !important;
+            html:not([data-hero]) body.mobile-allowed #resultOverlay .result-box,
+            html:not([data-hero]) body.mobile-allowed #prizeModal .gameModalBox {
+                width: 250px !important; max-width: 250px !important;
+                padding: 26px 26px 22px !important; transform: none !important;
             }
             html:not([data-hero]) body.mobile-allowed #sysModal .exit-title,
             html:not([data-hero]) body.mobile-allowed #exitModal .exit-title {
@@ -573,10 +573,7 @@
             /* Justo DEBAJO de los tres indicadores, que van pegados al borde de
                arriba: el cartel se alinea a ese mismo lado en vez de al centro. */
             html:not([data-hero]) body.mobile-allowed #sysModal { justify-content: flex-start !important; }
-            html:not([data-hero]) body.mobile-allowed #sysModal .exit-box {
-                transform: scale(0.58); transform-origin: top center;
-                margin-top: 4vh;
-            }
+            html:not([data-hero]) body.mobile-allowed #sysModal .exit-box { margin-top: 4vh !important; }
             html:not([data-hero]) body.mobile-allowed #prizeModal,
             html:not([data-hero]) body.mobile-allowed #lobbyBanner,
             html:not([data-hero]) body.mobile-allowed #cdNum {
@@ -613,7 +610,7 @@
             }
             /* Clasificacion: arriba-derecha -> abajo-derecha real. */
             html:not([data-hero]) body.mobile-allowed #leaderboard {
-                bottom: 0% !important; top: auto !important; right: 31% !important; left: auto !important;
+                bottom: -8% !important; top: auto !important; right: 31% !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(0.74) !important;
             }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
