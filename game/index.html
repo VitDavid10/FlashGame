@@ -388,10 +388,15 @@
                que en pantalla es "uno debajo de otro" el usuario lo ve como
                "uno detras de otro", asi que se reparten a lo largo del borde
                (top creciente) y no a lo ancho. */
-            body.mobile-allowed #gameWalletArea { top: 283px; right: -6px; transform-origin: center; }
-            body.mobile-allowed #soundToggle  { top: 12px !important;  right: 12px !important; }
-            body.mobile-allowed #musicToggle  { top: 54px !important;  right: 12px !important; }
-            body.mobile-allowed #exitGameBtn  { top: 96px !important;  right: 12px !important; }
+            /* Extremo ABAJO-DERECHA de la pantalla sin girar, que es lo que el
+               usuario ve arriba-derecha del todo con el telefono ya girado.
+               Antes iban con `top`, o sea al otro extremo. */
+            body.mobile-allowed #soundToggle  { top: auto !important; bottom: 12px !important; right: 12px !important; }
+            body.mobile-allowed #musicToggle  { top: auto !important; bottom: 54px !important; right: 12px !important; }
+            body.mobile-allowed #exitGameBtn  { top: auto !important; bottom: 96px !important; right: 12px !important; }
+            /* CONNECT justo a la IZQUIERDA de esos tres (sin girar), a su misma
+               altura: girado, el usuario lo ve pegado a ellos en la misma fila. */
+            body.mobile-allowed #gameWalletArea { top: auto !important; bottom: 84px; right: 60px; transform-origin: center; }
 
             /* Los POPUPS, girados igual que el menu del que salen (el de elegir
                partida, el de sala, el de wallet, SETTINGS...). Todos comparten
@@ -465,7 +470,7 @@
                pegado a un lado en vez de en medio. */
             body.mobile-allowed #loginOverlay .menu-head-row {
                 flex: none; flex-direction: column; align-items: center; justify-content: center;
-                gap: 2px; margin: 0 0 4px;
+                gap: 2px; margin: 14px 0 4px;
                 width: 100% !important; max-width: none !important; align-self: stretch;
             }
             body.mobile-allowed #loginOverlay #selectedModeTitle {
@@ -504,8 +509,8 @@
                    la frase NUNCA sale mas larga que el titulo. Se le deja
                    partir, porque en una linea a un cuerpo legible no cabe por
                    debajo de ese ancho. */
-                white-space: normal !important; text-align: center !important;
-                width: auto !important; max-width: 30% !important;
+                white-space: nowrap !important; text-align: center !important;
+                width: auto !important; max-width: none !important;
                 /* Siempre por debajo del ancho del rotulo: en 9px la frase se
                    iba mas larga que el titulo y se comia la fila. */
                 line-height: 1.6 !important; font-size: 6px !important; letter-spacing: 0 !important;
@@ -514,9 +519,9 @@
                   `margin:auto`, que la dejaba flotando en el centro): asi todo
                   el hueco libre se va arriba y la pildora cae junto al boton. */
             body.mobile-allowed #loginOverlay .pill-stage {
-                margin: auto auto 10px !important; max-width: min(56vw, 265px);
+                margin: auto auto 10px !important; max-width: min(64vw, 300px);
             }
-            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(56vw, 265px); }
+            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(64vw, 300px); }
             /* 3) PLAY ABAJO, del ancho de su texto: al 62% del cartel salia una
                   barra larguisima de lado a lado. */
             /* El MISMO boton de siempre (su placa roja), solo mas corto. Antes
@@ -6992,10 +6997,16 @@
                 g.restore();
         // Tal cual se escribe (mayusculas Y minusculas), igual que el input lo
         // muestra y que el nombre en partida.
-        const name = document.getElementById('playerNameInput').value.trim() || 'PLAYER';
-        g.font = "34px " + PIX_FONT; g.textAlign = 'center'; g.textBaseline = 'top';
-        g.strokeStyle = '#000'; g.lineWidth = 5; g.fillStyle = '#FFF';
-        g.strokeText(name, W / 2, 2); g.fillText(name, W / 2, 2);
+        // En movil no se pinta el nombre: el campo para escribirlo esta oculto
+        // ahi (no cabe), asi que lo unico que salia era el "PLAYER" de relleno
+        // ocupando la franja de arriba del canvas — sitio que aprovecha la
+        // pildora para verse mas grande.
+        if (!document.body.classList.contains('mobile-allowed')) {
+            const name = document.getElementById('playerNameInput').value.trim() || 'PLAYER';
+            g.font = "34px " + PIX_FONT; g.textAlign = 'center'; g.textBaseline = 'top';
+            g.strokeStyle = '#000'; g.lineWidth = 5; g.fillStyle = '#FFF';
+            g.strokeText(name, W / 2, 2); g.fillText(name, W / 2, 2);
+        }
     }
     (function initMenuPill() {
         const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
