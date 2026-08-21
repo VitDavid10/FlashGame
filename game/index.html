@@ -209,27 +209,36 @@
            depende de la orientacion es la ROTACION FORZADA de mas abajo. */
         @media (pointer: coarse) {
             body.mobile-allowed #modeScreen { zoom: 1; overflow: hidden; }
+            /* SIN `perspective` de contenedor y SIN `backface-visibility`, que
+               era la version anterior y no se veia NADA en el movil (solo el
+               fondo): #modeScreen esta girado 90 grados, y un ancestro
+               transformado APLANA el contexto 3D de sus hijos, asi que el
+               calculo de que cara mira a camara se va al traste y las dos
+               quedaban ocultas a la vez.
+               La perspectiva va ahora dentro del propio `transform` de cada
+               panel — `perspective(...)` como FUNCION, que se resuelve en el
+               elemento y no depende del espacio 3D del padre — y el papel de
+               backface-visibility lo hace la opacidad, que es determinista:
+               conmuta de golpe (0s) a mitad del giro (delay 0.35s de los 0.7s),
+               que es justo cuando la cara esta de perfil. Mismo efecto a la
+               vista, sin nada que un ancestro pueda romper. */
             body.mobile-allowed #modeWheel {
-                display: block; position: absolute; inset: 0; perspective: 1400px;
+                display: block; position: absolute; inset: 0;
             }
             body.mobile-allowed #modeWheel .mode-panel {
                 position: absolute; inset: 0; left: 0; right: auto; width: 100%; height: 100%;
                 clip-path: none !important; filter: none !important; z-index: 2;
-                backface-visibility: hidden; -webkit-backface-visibility: hidden;
-                transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0s linear 0.35s;
                 align-items: center !important; text-align: center !important;
                 justify-content: center; padding: 4% 9%; pointer-events: none;
             }
-            /* Cara de partida: ARCADE mirando a camara, CLASSIC de espaldas
-               (rotada 180, invisible por backface-visibility). .flip las
-               intercambia. */
-            body.mobile-allowed #modeWheel .mode-panel.mode-arcade { transform: rotateY(0deg); }
-            body.mobile-allowed #modeWheel .mode-panel.mode-classic { transform: rotateY(180deg); }
-            body.mobile-allowed #modeWheel.flip .mode-panel.mode-arcade { transform: rotateY(-180deg); }
-            body.mobile-allowed #modeWheel.flip .mode-panel.mode-classic { transform: rotateY(0deg); }
-            /* Solo la cara que mira a camara recibe el tap (evita confirmar
-               el modo de espaldas, que backface-visibility solo esconde
-               visualmente — el hueco seguiria siendo tocable sin esto). */
+            /* Cara de partida: ARCADE de frente, CLASSIC de espaldas. */
+            body.mobile-allowed #modeWheel .mode-panel.mode-arcade { transform: perspective(1400px) rotateY(0deg); opacity: 1; }
+            body.mobile-allowed #modeWheel .mode-panel.mode-classic { transform: perspective(1400px) rotateY(180deg); opacity: 0; }
+            body.mobile-allowed #modeWheel.flip .mode-panel.mode-arcade { transform: perspective(1400px) rotateY(-180deg); opacity: 0; }
+            body.mobile-allowed #modeWheel.flip .mode-panel.mode-classic { transform: perspective(1400px) rotateY(0deg); opacity: 1; }
+            /* Solo la cara de frente recibe el tap: la de espaldas esta a
+               opacity 0, que no quita el hueco tocable. */
             body.mobile-allowed #modeWheel:not(.flip) .mode-panel.mode-arcade,
             body.mobile-allowed #modeWheel.flip .mode-panel.mode-classic { pointer-events: auto; }
 
