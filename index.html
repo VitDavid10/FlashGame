@@ -1628,15 +1628,17 @@ body.trailer-open #page-content{
                es un cajon de color por bloque que no deja respirar nada; el
                contenido se queda solo sobre el fondo de la pagina. */
             .feature-block, .feature-block.reverse {
-                flex-direction: column-reverse; padding: 0; gap: 16px;
+                flex-direction: column; padding: 0; gap: 16px;
                 border: 0; background: none; box-shadow: none; backdrop-filter: none;
                 margin-bottom: 34px;
             }
             .feature-block::before, .feature-block::after { display: none; }
-            /* En movil TODOS los bloques apilan el video arriba y el texto
-               abajo (column-reverse, ver arriba) sea o no .reverse — el
-               numero se ancla abajo/derecha (detras del texto) en vez de
-               arriba (detras del video) en los dos casos. */
+            /* En movil TODOS los bloques apilan el TEXTO arriba y el video
+               abajo (column, no column-reverse) sea o no .reverse: se lee
+               primero la explicacion y el video la acompaña despues, en vez
+               de ver la animacion antes de saber que es lo que enseña. El
+               DOM ya trae feature-text antes que feature-images en los tres
+               bloques, asi que column normal basta — no hace falta reves. */
             /* Los numeros 01/02/03 fuera en movil: en pantalla pequeña el
                numero gigante detras del texto ensucia mas de lo que decora. */
             .fb-num { display: none; }
