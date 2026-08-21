@@ -430,8 +430,38 @@
            centra ahora mas corto y le queda el centro/mitad de abajo — sin
            esto los botones y la caja del contrato se pisaban en el mismo
            centro vertical del hero. */
+        /* Centrado y desplazado con un margen en PX, no con un padding en vh.
+           PLAY NOW + MODES/SKINS viven aqui, pero OFFICIAL CONTRACT y el
+           contrato viven en .hero-main-content, que va centrado en el hero con
+           un margen fijo en px. Antes esto usaba `padding-top: 24vh`: al cambiar
+           el zoom los dos grupos se movian a ritmos distintos y "el pack" se
+           descuadraba (medido: el hueco entre PLAY NOW y el contrato pasaba de
+           294px a 918 de alto a 220px a 600). Mezclar vh con px es ademas
+           especialmente traicionero aqui, porque todo cuelga de #page-content,
+           que lleva `zoom: 0.9`: el zoom escala los px pero no resuelve los vh
+           en la misma referencia, asi que quedaba una deriva residual.
+           Con align-items:center el anclaje es el CENTRO del hero —la misma
+           referencia que ya usa el contrato— y el desplazamiento hacia arriba lo
+           da margin-bottom en px, que el zoom escala igual que todo lo demas.
+           Todo en la misma unidad y el mismo contexto: los cuatro se mueven
+           juntos pase lo que pase con el zoom. */
         .hero-game-veil { position: absolute; inset: 0; background: rgba(3,5,4,0.62);
-            display: flex; align-items: flex-start; justify-content: center; padding-top: 24vh; pointer-events: none; }
+            display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        /* margin-bottom desplaza HACIA ARRIBA la mitad de su valor cuando el
+           item va centrado: 568px = 284px por encima del centro, que es donde
+           caia el grupo con el 24vh de antes en una ventana de 1000px. */
+        .hero-game-veil > .hero-game-btns { margin-bottom: 568px; }
+        /* Ventana baja (zoom fuerte): con los 568px de arriba el grupo subia
+           tanto que PLAY NOW se metia por debajo de la navbar (medido: a 700px
+           de alto quedaba a 60px del borde, con la navbar ocupando 80). Se
+           acerca al centro lo justo para que quepa. Dentro de cada tramo las
+           distancias siguen siendo fijas en px, asi que el pack no se deforma. */
+        @media (max-height: 820px) {
+            .hero-game-veil > .hero-game-btns { margin-bottom: 380px; }
+        }
+        @media (max-height: 620px) {
+            .hero-game-veil > .hero-game-btns { margin-bottom: 240px; }
+        }
         .hero-game-btns { display: flex; flex-direction: column; align-items: center; gap: 20px; pointer-events: auto; }
         /* pointer-events: none en el CONTENEDOR y auto en sus hijos: va con
            z-index 2 sobre .hero-game-wrap (z-index 0, donde viven los 3
@@ -1037,6 +1067,23 @@ body.trailer-open #page-content{
            no puede chocar con nada. Medido: a partir de 1467 ya no habia solape,
            1500 es el corte que ya usa la hoja mas abajo. */
         @media (max-width: 1499px) { #navPlayNow { translate: none !important; } }
+        /* ===== NAVBAR ESTRECHA: se sueltan las piezas prescindibles =====
+           La navbar es una sola fila sin wrap. Al hacer mucho zoom (que estrecha
+           el viewport en px CSS) el contenido dejaba de caber: medido a 800px de
+           ancho pedia 876px, asi que EDIT se montaba encima de $PILL y el icono
+           de Telegram se salia por el borde — el "doble ancho" que quedaba mal.
+           Los gap ya encogen antes con clamp() (ver .nav-left), pero llega un
+           punto en que no basta y hay que quitar cosas.
+           Se van los dos iconos sociales y EDIT (40px cada uno, 120px en total):
+           son los prescindibles — las redes estan tambien en el footer y EDIT es
+           una herramienta interna que solo ve el admin. Se quedan la pildora del
+           logo, GAME/QUESTS/STORE/LEADERBOARD y $PILL.
+           1100px y no menos: el caso peor es con el PLAY NOW de la navbar a la
+           vista (fuera del hero), que pide ~1072px. Asi el corte cubre tambien
+           ese caso y las piezas no aparecen y desaparecen al hacer scroll. */
+        @media (max-width: 1100px) {
+            #twitter-icon-btn, #telegram-icon-btn, #btnLandingEdit { display: none !important; }
+        }
 
         @media (min-width: 1500px) {
             :root { --contenido: 1440px; }
@@ -1755,7 +1802,13 @@ body.trailer-open #page-content{
         // aquellos valores se quedan huerfanos y apply() no los mira (mismo
         // caso que navChooseModes/navChooseSkins, que siguen en el JSON del
         // servidor sin usarse).
-        heroModes: '#heroChooseModes', heroSkins: '#heroChooseSkins',
+        // UNA sola clave para los DOS (selector con comas, mismo patron que
+        // navWalletBtn con los 4 botones de wallet): apply() usa
+        // querySelectorAll, asi que el translate/scale se aplica igual a MODES y
+        // a SKINS y nunca pueden quedar a distinta altura. Antes eran dos claves
+        // sueltas (heroModes/heroSkins) y bastaba arrastrar una un pixel para
+        // desalinearlas — justo lo que costaba cuadrar a mano.
+        heroLinks: '#heroChooseModes, #heroChooseSkins',
         pickMe: '#heroPickMe',
         caSign: '#heroCaSign', ca: '#heroCaWrap',
         // Navbar: wallet, PILL, iconos sociales. SIN valor horneado (parten del
