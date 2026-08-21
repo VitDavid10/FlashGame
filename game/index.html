@@ -431,9 +431,16 @@
                dibujado. Se encoge TODO el interior: menos relleno, rotulo mas
                estrecho, botones mas bajos y rejilla mas junta. */
             html:not([data-hero]) body.mobile-allowed .pw-modal-box.room-picker,
-            html:not([data-hero]) body.mobile-allowed .pw-modal-box.wallet-picker,
-            html:not([data-hero]) body.mobile-allowed .pw-modal-box.play-picker {
+            html:not([data-hero]) body.mobile-allowed .pw-modal-box.wallet-picker {
                 width: 260px; padding: 34px 30px 28px;
+            }
+            /* PLAY: sin titulo (se quito CHOOSE HOW TO PLAY), el boton
+               OFFLINE quedaba pegado casi al filo dibujado del cartel con el
+               mismo padding-top que room/wallet-picker (34px, pensado para
+               dejar sitio de sobra bajo el rotulo que aqui ya no existe). Mas
+               relleno arriba para que respire dentro del marco. */
+            html:not([data-hero]) body.mobile-allowed .pw-modal-box.play-picker {
+                width: 260px; padding: 50px 30px 28px;
             }
             html:not([data-hero]) body.mobile-allowed .room-picker .wp-title { width: 58%; margin-bottom: 12px; }
             html:not([data-hero]) body.mobile-allowed .wallet-picker .wp-title { width: 64%; margin-bottom: 14px; }
@@ -543,20 +550,26 @@
                 top: -100dvw;
                 transform: rotate(90deg) !important; transform-origin: bottom left !important;
             }
-            /* Y sus cajas, TODAS al mismo ancho (el del cartel gris de
-               exitModal/sysModal) y SIN transform:scale: antes el GAME OVER y
-               PRIZE usaban scale(0.68/nada), que pierde contra la animacion de
-               entrada (slideUp/fadeIn) durante su medio segundo — salian a
-               tamaño de escritorio y luego encogian de golpe. Y exitModal
-               encima combinaba width:250px CON scale(0.68), un doble encogido
-               que lo dejaba enano. Con ancho fijo + transform:none no hay nada
-               que la animacion pueda ganar ni nada que se sume dos veces. */
+            /* exitModal/sysModal: ancho fijo (el "cartel gris"), SIN
+               transform:scale — antes combinaban width:250px CON scale(0.68),
+               un doble encogido que lo dejaba enano. */
             html:not([data-hero]) body.mobile-allowed #exitModal .exit-box,
-            html:not([data-hero]) body.mobile-allowed #sysModal .exit-box,
-            html:not([data-hero]) body.mobile-allowed #resultOverlay .result-box,
-            html:not([data-hero]) body.mobile-allowed #prizeModal .gameModalBox {
+            html:not([data-hero]) body.mobile-allowed #sysModal .exit-box {
                 width: 250px !important; max-width: 250px !important;
                 padding: 26px 26px 22px !important; transform: none !important;
+            }
+            /* GAME OVER y PRIZE: su marco (prize-panel.png) tiene una
+               proporcion fija (ver _resultOverlayRule), asi que aqui NO se
+               puede forzar el ancho sin deformarlo — eso fue lo que paso al
+               copiarles el mismo width:250px de arriba (salio aplastado). Se
+               encogen enteros con scale(0.68), que respeta la proporcion, y
+               el !important es IMPRESCINDIBLE: sin el, la animacion de
+               entrada (.result-box trae `animation:slideUp`) le gana al
+               scale durante su medio segundo — salian a tamaño de escritorio
+               y encogian de golpe al terminar la animacion. */
+            html:not([data-hero]) body.mobile-allowed #resultOverlay .result-box,
+            html:not([data-hero]) body.mobile-allowed #prizeModal .gameModalBox {
+                transform: scale(0.68) !important; transform-origin: center !important;
             }
             html:not([data-hero]) body.mobile-allowed #sysModal .exit-title,
             html:not([data-hero]) body.mobile-allowed #exitModal .exit-title {
@@ -566,6 +579,9 @@
             html:not([data-hero]) body.mobile-allowed #exitModal .exit-desc {
                 font-size: 7px !important; line-height: 1.9 !important; margin-bottom: 14px !important;
             }
+            /* Nota "(Your carry will be paid...)" del CASHOUT classic: en
+               movil no cabe/no hace falta, el cartel ya va muy apretado. */
+            html:not([data-hero]) body.mobile-allowed .carry-note { display: none !important; }
             html:not([data-hero]) body.mobile-allowed #sysModal .btn-sys,
             html:not([data-hero]) body.mobile-allowed #exitModal .exit-actions button {
                 font-size: 9px !important; padding: 8px 16px !important;
@@ -610,8 +626,20 @@
             }
             /* Clasificacion: arriba-derecha -> abajo-derecha real. */
             html:not([data-hero]) body.mobile-allowed #leaderboard {
-                bottom: -8% !important; top: auto !important; right: 31% !important; left: auto !important;
+                bottom: -6% !important; top: auto !important; right: 31% !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(0.74) !important;
+            }
+            /* Cartel mas ancho (mismas proporciones que el PNG top-mass,
+               210x282 -> 250x336, para no deformarlo) — con el ancho de
+               fabrica el nombre y la masa (justify-content:space-between)
+               quedaban pegados. Y la masa a ancho fijo (7ch, hueco para
+               "1000000") para que la fila NUNCA cambie de tamaño segun crecen
+               los numeros durante la partida. */
+            html:not([data-hero]) body.pixel-pack.mobile-allowed #leaderboard {
+                width: 250px !important; height: 336px !important; padding: 52px 19px 14px !important;
+            }
+            html:not([data-hero]) body.mobile-allowed .lb-item span:last-child {
+                min-width: 7ch !important; text-align: right !important;
             }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
             html:not([data-hero]) body.mobile-allowed #minimap {
@@ -697,7 +725,7 @@
                 position: relative !important; left: auto !important; top: auto !important;
                 /* scale tambien: el layout guardado le mete un scale ~1.45, y
                    por eso una caja de 247px seguia midiendo 359 en pantalla. */
-                translate: none !important; scale: 1 !important; margin: 0 auto !important;
+                translate: none !important; scale: 1 !important; margin: 12px auto 0 !important;
                 /* En UNA linea: sin el scale que arrastraba, la frase entera
                    mide 247px y el cartel tiene 842 de ancho, asi que cabe de
                    sobra — no hacia falta partirla. */
@@ -3434,16 +3462,16 @@
     </div>
 
     <div id="actionBar">
-        <div class="ab-slot" id="slot1" ondblclick="removeSkill(1)" draggable="true" ondragstart="dragStart(event, 0)" ondrop="drop(event, 0)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(1, event)" onmousedown="activateSkillTouch(1, event)"><div class="skill-icon icon-empty" id="icon1"></div><div class="count-badge" id="count1" style="display:none">0</div><div class="gcd-badge" id="gcd1"></div><div class="cooldown-overlay" id="cd1"></div><div class="active-overlay" id="dur1"></div></div>
-        <div class="ab-slot" id="slot2" ondblclick="removeSkill(2)" draggable="true" ondragstart="dragStart(event, 1)" ondrop="drop(event, 1)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(2, event)" onmousedown="activateSkillTouch(2, event)"><div class="skill-icon icon-empty" id="icon2"></div><div class="count-badge" id="count2" style="display:none">0</div><div class="gcd-badge" id="gcd2"></div><div class="cooldown-overlay" id="cd2"></div><div class="active-overlay" id="dur2"></div></div>
-        <div class="ab-slot" id="slot3" ondblclick="removeSkill(3)" draggable="true" ondragstart="dragStart(event, 2)" ondrop="drop(event, 2)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(3, event)" onmousedown="activateSkillTouch(3, event)"><div class="skill-icon icon-empty" id="icon3"></div><div class="count-badge" id="count3" style="display:none">0</div><div class="gcd-badge" id="gcd3"></div><div class="cooldown-overlay" id="cd3"></div><div class="active-overlay" id="dur3"></div></div>
-        <div class="ab-slot" id="slot4" ondblclick="removeSkill(4)" draggable="true" ondragstart="dragStart(event, 3)" ondrop="drop(event, 3)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(4, event)" onmousedown="activateSkillTouch(4, event)"><div class="skill-icon icon-empty" id="icon4"></div><div class="count-badge" id="count4" style="display:none">0</div><div class="gcd-badge" id="gcd4"></div><div class="cooldown-overlay" id="cd4"></div><div class="active-overlay" id="dur4"></div></div>
-        <div class="ab-slot" id="slot5" ondblclick="removeSkill(5)" draggable="true" ondragstart="dragStart(event, 4)" ondrop="drop(event, 4)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(5, event)" onmousedown="activateSkillTouch(5, event)"><div class="skill-icon icon-empty" id="icon5"></div><div class="count-badge" id="count5" style="display:none">0</div><div class="gcd-badge" id="gcd5"></div><div class="cooldown-overlay" id="cd5"></div><div class="active-overlay" id="dur5"></div></div>
-        <div class="ab-slot" id="slot6" ondblclick="removeSkill(6)" draggable="true" ondragstart="dragStart(event, 5)" ondrop="drop(event, 5)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(6, event)" onmousedown="activateSkillTouch(6, event)"><div class="skill-icon icon-empty" id="icon6"></div><div class="count-badge" id="count6" style="display:none">0</div><div class="gcd-badge" id="gcd6"></div><div class="cooldown-overlay" id="cd6"></div><div class="active-overlay" id="dur6"></div></div>
-        <div class="ab-slot" id="slot7" ondblclick="removeSkill(7)" draggable="true" ondragstart="dragStart(event, 6)" ondrop="drop(event, 6)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(7, event)" onmousedown="activateSkillTouch(7, event)"><div class="skill-icon icon-empty" id="icon7"></div><div class="count-badge" id="count7" style="display:none">0</div><div class="gcd-badge" id="gcd7"></div><div class="cooldown-overlay" id="cd7"></div><div class="active-overlay" id="dur7"></div></div>
-        <div class="ab-slot" id="slot8" ondblclick="removeSkill(8)" draggable="true" ondragstart="dragStart(event, 7)" ondrop="drop(event, 7)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(8, event)" onmousedown="activateSkillTouch(8, event)"><div class="skill-icon icon-empty" id="icon8"></div><div class="count-badge" id="count8" style="display:none">0</div><div class="gcd-badge" id="gcd8"></div><div class="cooldown-overlay" id="cd8"></div><div class="active-overlay" id="dur8"></div></div>
-        <div class="ab-slot" id="slot9" ondblclick="removeSkill(9)" draggable="true" ondragstart="dragStart(event, 8)" ondrop="drop(event, 8)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(9, event)" onmousedown="activateSkillTouch(9, event)"><div class="skill-icon icon-empty" id="icon9"></div><div class="count-badge" id="count9" style="display:none">0</div><div class="gcd-badge" id="gcd9"></div><div class="cooldown-overlay" id="cd9"></div><div class="active-overlay" id="dur9"></div></div>
-        <div class="ab-slot" id="slot10" ondblclick="removeSkill(10)" draggable="true" ondragstart="dragStart(event, 9)" ondrop="drop(event, 9)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(10, event)" onmousedown="activateSkillTouch(10, event)"><div class="skill-icon icon-empty" id="icon10"></div><div class="count-badge" id="count10" style="display:none">0</div><div class="gcd-badge" id="gcd10"></div><div class="cooldown-overlay" id="cd10"></div><div class="active-overlay" id="dur10"></div></div>
+        <div class="ab-slot" id="slot1" draggable="true" ondragstart="dragStart(event, 0)" ondrop="drop(event, 0)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(1, event)" onmousedown="activateSkillTouch(1, event)"><div class="skill-icon icon-empty" id="icon1"></div><div class="count-badge" id="count1" style="display:none">0</div><div class="gcd-badge" id="gcd1"></div><div class="cooldown-overlay" id="cd1"></div><div class="active-overlay" id="dur1"></div></div>
+        <div class="ab-slot" id="slot2" draggable="true" ondragstart="dragStart(event, 1)" ondrop="drop(event, 1)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(2, event)" onmousedown="activateSkillTouch(2, event)"><div class="skill-icon icon-empty" id="icon2"></div><div class="count-badge" id="count2" style="display:none">0</div><div class="gcd-badge" id="gcd2"></div><div class="cooldown-overlay" id="cd2"></div><div class="active-overlay" id="dur2"></div></div>
+        <div class="ab-slot" id="slot3" draggable="true" ondragstart="dragStart(event, 2)" ondrop="drop(event, 2)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(3, event)" onmousedown="activateSkillTouch(3, event)"><div class="skill-icon icon-empty" id="icon3"></div><div class="count-badge" id="count3" style="display:none">0</div><div class="gcd-badge" id="gcd3"></div><div class="cooldown-overlay" id="cd3"></div><div class="active-overlay" id="dur3"></div></div>
+        <div class="ab-slot" id="slot4" draggable="true" ondragstart="dragStart(event, 3)" ondrop="drop(event, 3)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(4, event)" onmousedown="activateSkillTouch(4, event)"><div class="skill-icon icon-empty" id="icon4"></div><div class="count-badge" id="count4" style="display:none">0</div><div class="gcd-badge" id="gcd4"></div><div class="cooldown-overlay" id="cd4"></div><div class="active-overlay" id="dur4"></div></div>
+        <div class="ab-slot" id="slot5" draggable="true" ondragstart="dragStart(event, 4)" ondrop="drop(event, 4)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(5, event)" onmousedown="activateSkillTouch(5, event)"><div class="skill-icon icon-empty" id="icon5"></div><div class="count-badge" id="count5" style="display:none">0</div><div class="gcd-badge" id="gcd5"></div><div class="cooldown-overlay" id="cd5"></div><div class="active-overlay" id="dur5"></div></div>
+        <div class="ab-slot" id="slot6" draggable="true" ondragstart="dragStart(event, 5)" ondrop="drop(event, 5)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(6, event)" onmousedown="activateSkillTouch(6, event)"><div class="skill-icon icon-empty" id="icon6"></div><div class="count-badge" id="count6" style="display:none">0</div><div class="gcd-badge" id="gcd6"></div><div class="cooldown-overlay" id="cd6"></div><div class="active-overlay" id="dur6"></div></div>
+        <div class="ab-slot" id="slot7" draggable="true" ondragstart="dragStart(event, 6)" ondrop="drop(event, 6)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(7, event)" onmousedown="activateSkillTouch(7, event)"><div class="skill-icon icon-empty" id="icon7"></div><div class="count-badge" id="count7" style="display:none">0</div><div class="gcd-badge" id="gcd7"></div><div class="cooldown-overlay" id="cd7"></div><div class="active-overlay" id="dur7"></div></div>
+        <div class="ab-slot" id="slot8" draggable="true" ondragstart="dragStart(event, 7)" ondrop="drop(event, 7)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(8, event)" onmousedown="activateSkillTouch(8, event)"><div class="skill-icon icon-empty" id="icon8"></div><div class="count-badge" id="count8" style="display:none">0</div><div class="gcd-badge" id="gcd8"></div><div class="cooldown-overlay" id="cd8"></div><div class="active-overlay" id="dur8"></div></div>
+        <div class="ab-slot" id="slot9" draggable="true" ondragstart="dragStart(event, 8)" ondrop="drop(event, 8)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(9, event)" onmousedown="activateSkillTouch(9, event)"><div class="skill-icon icon-empty" id="icon9"></div><div class="count-badge" id="count9" style="display:none">0</div><div class="gcd-badge" id="gcd9"></div><div class="cooldown-overlay" id="cd9"></div><div class="active-overlay" id="dur9"></div></div>
+        <div class="ab-slot" id="slot10" draggable="true" ondragstart="dragStart(event, 9)" ondrop="drop(event, 9)" ondragover="allowDrop(event)" ontouchstart="activateSkillTouch(10, event)" onmousedown="activateSkillTouch(10, event)"><div class="skill-icon icon-empty" id="icon10"></div><div class="count-badge" id="count10" style="display:none">0</div><div class="gcd-badge" id="gcd10"></div><div class="cooldown-overlay" id="cd10"></div><div class="active-overlay" id="dur10"></div></div>
     </div>
 
     <div id="lobbyBanner"></div>
@@ -6899,7 +6927,7 @@
             // Nuestro cartel gris, no el alert() del navegador: aquel sale con
             // el tipo de letra del sistema y SIN girar, cruzado sobre una
             // pantalla que esta tumbada.
-            showSystemMsg('Paid rooms need a PC or a Mac.<br><br>On mobile you can play the <b>FREE</b> room.', 'DESKTOP ONLY');
+            showSystemMsg('Paid rooms need a PC or a Mac.\n\nOn mobile you can play the FREE room.', 'DESKTOP ONLY');
             return false;
         }
         SoundManager.play('simpleselect'); gameRunning = false; currentServer = a;
@@ -8465,7 +8493,7 @@
             const color = fee === 0 ? '#00ff88' : (fee === 10 ? '#ffce3d' : '#ff2a2a');
             const txt = fee === 0 ? `SAFE EXIT: 0% FEE (${k}+ kills)` : `WARNING: ${fee}% FEE (Kills < ${k + 1})`;
             setTitle("SECURE CASHOUT", 'secure-cashout');
-            desc.innerHTML = `You have <span style="color:#fff">${k} Kills</span>.<br><span style="color:${color}; font-weight:bold;">${txt}</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>`;
+            desc.innerHTML = `You have <span style="color:#fff">${k} Kills</span>.<br><span style="color:${color}; font-weight:bold;">${txt}</span><br>Stand still for 5s to CASHOUT safely.<br><span class="carry-note" style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>`;
             btn.onclick = startClassicLogout; btn.innerText = "START CASHOUT (5s)";
         } else {
             setTitle("WARNING: FORFEIT?", 'warning');
@@ -10839,7 +10867,7 @@
         const gray = ['WALLET REQUIRED', 'CONNECT ERROR', 'DEPOSIT FAILED', 'PAYMENT CANCELLED',
             'WITHDRAW FAILED', 'WITHDRAW COMPLETE', 'DEPOSIT COMPLETE',
             'INSUFFICIENT BALANCE', 'CONNECTION FAILED', 'WALLET',
-            'SKINS', 'CONVERT'].includes(t);
+            'SKINS', 'CONVERT', 'DESKTOP ONLY'].includes(t);
         const box = m.querySelector('.exit-box');
         if (box) { box.classList.toggle('sys-green', green); box.classList.toggle('sys-gray', gray); }
         if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {
@@ -11703,7 +11731,7 @@
             }
             // tl negativo en preview (reloj local "vencido" sin partida real) no debe
             // parar el pickup de skills: elapsed sigue creciendo bien más allá de dur.
-            if(!isGodMode && !isSpectating && (tl > 0 || practiceMode)) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = quantizeTimerWidth(Math.max(0, pickTimer) / 10) + "%"; if(pickTimer <= 0) { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } }
+            if(!isGodMode && !isSpectating && (tl > 0 || practiceMode)) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = quantizeTimerWidth(Math.max(0, pickTimer) / 10) + "%"; if(pickTimer <= 0) { let opts = els.skillOpts.children; if (opts[skillChoiceIndex]) opts[skillChoiceIndex].click(); else { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } } }
         } else { els.timer.innerText = ""; }
 
         if (isGodMode) { els.debugHud.style.display = 'block'; } else { els.debugHud.style.display = 'none'; }
