@@ -532,7 +532,7 @@
                dejaba el aviso de bots enano). */
             html:not([data-hero]) body.mobile-allowed #botsBanner,
             html:not([data-hero]) body.mobile-allowed #lobbyBanner {
-                top: 50% !important; bottom: auto !important; right: 18% !important; left: auto !important;
+                top: 50% !important; bottom: auto !important; right: 14% !important; left: auto !important;
                 transform: translate(50%, -50%) rotate(90deg) scale(0.85) !important;
                 transform-origin: center !important;
             }
@@ -604,7 +604,7 @@
                —que ocupan el borde de abajo hasta y=96—, de modo que la columna
                continua sin pisarlos. */
             html:not([data-hero]) body.mobile-allowed #ui {
-                top: 17% !important; bottom: auto !important; right: 8% !important; left: auto !important;
+                top: 17% !important; bottom: auto !important; right: 4% !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(1) !important;
                 display: flex !important; flex-direction: row !important; gap: 4px !important;
                 font-size: 8px !important;
@@ -628,22 +628,27 @@
             }
             /* TOP MASS fuera del movil (a peticion de David: no cabia bien y
                solapaba los botones de sonido/musica/salir). Se deja SOLO el
-               contador de KILLS, convertido en una placa pequeña pegada a la
+               contador de KILLS, convertido en una placa cuadrada pegada a la
                IZQUIERDA de esos tres botones y de su mismo alto (34px) — el
-               marco top-mass.png (fondo/borde) tambien fuera, ya no hace
-               falta con solo un numero dentro. */
+               marco top-mass.png fuera (era demasiado grande para un solo
+               numero), pero SIGUE siendo un cuadrado con fondo/borde como los
+               botones de al lado, no el numero suelto. */
             html:not([data-hero]) body.mobile-allowed #leaderboard h3,
             html:not([data-hero]) body.mobile-allowed #lb-list { display: none !important; }
             html:not([data-hero]) body.pixel-pack.mobile-allowed #leaderboard {
-                background: none !important; border: none !important; box-shadow: none !important;
+                background: rgba(0,0,0,0.6) !important; border: 1px solid #333 !important;
+                border-radius: 0 !important; box-shadow: none !important;
             }
+            /* display se deja SIN tocar (ni !important): el JS lo alterna entre
+               none/block para ocultar el HUD fuera de partida (menu, demo del
+               hero...) y forzarlo a flex lo habria dejado visible siempre. */
             html:not([data-hero]) body.mobile-allowed #leaderboard {
                 position: fixed !important; width: 34px !important; height: 76px !important; padding: 0 !important;
-                bottom: 54px !important; right: 72px !important; top: auto !important; left: auto !important;
+                bottom: 54px !important; right: 78px !important; top: auto !important; left: auto !important;
                 transform: rotate(90deg) !important; transform-origin: center !important;
             }
             html:not([data-hero]) body.mobile-allowed #killsSection {
-                border-top: none !important; margin-top: 0 !important; padding-top: 0 !important;
+                border-top: none !important; margin: 26px 0 0 !important; padding-top: 0 !important;
                 text-align: center !important;
             }
             html:not([data-hero]) body.mobile-allowed #killsSection div:first-child { font-size: 7px !important; margin-bottom: 0 !important; }
