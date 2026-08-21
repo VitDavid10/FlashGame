@@ -6971,6 +6971,16 @@
     function esMovilJuego() { return document.body.classList.contains('mobile-allowed'); }
     function choosePlay(kind) {
         closePlayChoice();
+        // En movil el input de nombre va oculto (no cabe en el layout tactil),
+        // asi que sin esto nunca se llegaba a pedir: se entraba siempre con el
+        // nombre en blanco. Se pregunta aqui, justo antes de jugar.
+        if (esMovilJuego()) {
+            const nameEl = document.getElementById('playerNameInput');
+            if (!nameEl.value.trim()) {
+                const n = prompt('Your name:', '');
+                if (n && n.trim()) nameEl.value = n.trim().slice(0, 12);
+            }
+        }
         // En movil se pregunta la sala SIEMPRE, aunque ya hubiera uma elegida:
         // en el telefono no se ve el panel de precios, asi que sin esto te
         // metia en la ultima sala usada (normalmente Free) sin decir nada y no
