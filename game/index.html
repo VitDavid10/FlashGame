@@ -1958,7 +1958,15 @@
             document.write('<style>#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
         }
         else if (/[?&]hero=1\b/.test(location.search)) {
-            document.write('<style>#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
+            // El body lleva su propia cuadricula de fondo (dos linear-gradient de
+            // 40px, ver la regla `body` mas arriba) y esa se pinta en cuanto llega
+            // el CSS — muchisimo antes de que este fichero (casi 800 KB) acabe de
+            // evaluarse y heroAmbientDemo() monte la escena. En el hero de la
+            // landing eso se veia como "primero sale la cuadricula sola y luego
+            // aparece el juego de golpe". Aqui se apaga: negro liso hasta que
+            // draw() pinta el primer fotograma, que ya trae su propio fondo
+            // (--bg-color) con la comida y las pildoras dentro.
+            document.write('<style>body{background-image:none!important}#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
         } else {
             // TODOS los demas arranques (entrada normal incluida, no solo
             // heroplay/heroskins): menuLayout sale primero con el horneado del
