@@ -205,7 +205,13 @@
             padding: 0 30px; position: fixed; top: 0; width: 100%; z-index: 1000;
             justify-content: space-between; transition: all 0.3s ease;
         }
-        .nav-left { display: flex; align-items: center; gap: 40px; }
+        /* gap elastico (clamp) en vez de 40px fijos: a partir de ~1150px de
+           ancho el contenido de la navbar —logo + 4 enlaces + PLAY NOW + $PILL
+           + los dos iconos— dejaba de caber y el grupo de la derecha se salia
+           por el borde. Al encogerse los huecos primero, el conjunto sigue
+           entero y pegado a su esquina. En pantallas anchas el clamp topa en
+           los 40px de siempre, asi que ahi no cambia nada. */
+        .nav-left { display: flex; align-items: center; gap: clamp(14px, 2.5vw, 40px); }
         .brand-container { display: flex; align-items: center; gap: 10px; text-decoration: none; }
         .logo-pill {
             width: 26px; height: 46px; border-radius: 99px;
@@ -214,8 +220,8 @@
         }
         .brand-name { font-family: 'Russo One'; font-size: var(--fs-6); color: #fff; text-transform: uppercase; letter-spacing: 2px; }
 
-        .nav-links-container { 
-            display: flex; gap: 30px; margin-left: 20px; align-items: center; 
+        .nav-links-container {
+            display: flex; gap: clamp(12px, 2vw, 30px); margin-left: 20px; align-items: center;
         }
 
         .nav-link { font-size: var(--fs-3); font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; font-family: 'Russo One'; text-decoration: none; white-space: nowrap; }
@@ -1752,19 +1758,29 @@ body.trailer-open #page-content{
         // walletBtnTxt va ANTES que walletBtn en el orden: el rotulo esta
         // DENTRO del boton, y target() resuelve por el primer key que
         // matchee via closest(), asi que el mas especifico va primero.
-        walletBtnTxt: '#wallet-btn-txt, #wallet-deposit-txt, #wallet-withdraw-txt, #wallet-disconnect-txt',
-        walletBtn: '#wallet-btn-box, #wallet-deposit-box, #wallet-withdraw-box, #wallet-disconnect-box',
-        // pillMenu (el desplegable CHART / BUY $PILL) va ANTES que pillDropdown
+        // ===== Piezas de la NAVBAR =====
+        // Las cinco de abajo estrenan nombre (navWalletBtn, navPillMenu,
+        // navPill, navBal, navPlayBtn) para soltar lo que el servidor tiene
+        // guardado bajo los viejos: eran translate en PIXELES FIJOS que cruzaban
+        // la navbar de lado a lado ($PILL +1021 desde la izquierda, PLAY NOW
+        // -861 desde la derecha, CONNECT -159, IN GAME -84). Cuadraban a una
+        // anchura concreta y descolocaban el conjunto en cuanto se cambiaba el
+        // zoom. Ahora cada pieza esta en su grupo de verdad en el DOM y la
+        // coloca el flex de .navbar (space-between), asi que aguanta cualquier
+        // ancho; estas claves se quedan neutras hasta que alguien las ajuste a
+        // mano, y lo que se ajuste ya sera un retoque fino y no un cruce.
+        navWalletBtn: '#wallet-btn-box, #wallet-deposit-box, #wallet-withdraw-box, #wallet-disconnect-box',
+        // navPillMenu (el desplegable CHART / BUY $PILL) va ANTES que navPill
         // por lo mismo que walletBtnTxt: esta DENTRO de el, y target() se queda
         // con la primera clave que casa via closest(). Asi apuntando al
         // desplegable se agarra el desplegable, y apuntando al rotulo $PILL se
         // agarra el conjunto. En EDIT LAYOUT el desplegable se queda abierto
         // (ver la regla body.layout-editing de mas abajo) para poder tocarlo.
-        pillMenu: '#pill-dropdown .dropdown-content',
-        pillDropdown: '#pill-dropdown',
-        walletBal: '#wallet-bal-box',
+        navPillMenu: '#pill-dropdown .dropdown-content',
+        navPill: '#pill-dropdown',
+        navBal: '#wallet-bal-box',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
-        navPlay: '#nav-play-area',
+        navPlayBtn: '#nav-play-area',
         // Tooltip flotante de las skills (el cuadro que sale al pasar el
         // raton por SHOT/SPRINT/...). tooltipIcon va ANTES que skillTooltip
         // por lo mismo que pillMenu/walletBtnTxt: el icono esta DENTRO del
@@ -1795,7 +1811,10 @@ body.trailer-open #page-content{
         // no llevan horneado y por tanto SI salen centrados. La y no se toca.
         play:   { x: 0,      y: -4.5,    s: 1.2880203308689964 },
         pickMe: { x: -444.5, y: -7.25,   s: 2.4798680723250732 },
-        pillDropdown: { x: 0, y: 0, s: 1 },
+        // Las piezas de la NAVBAR no se hornean: las coloca el flex de .navbar
+        // y cualquier valor aqui volveria a fijar pixeles que solo cuadran a
+        // una anchura. (Habia un pillDropdown a 0/0/1, que ya no aplicaba a
+        // nada tras el renombrado.)
     };
     (function () {
         // El horneado es el diseño BUENO de fabrica, pero si ESTE usuario ya
@@ -1946,19 +1965,23 @@ body.trailer-open #page-content{
                 <a href="#quest" class="nav-link" style="min-width:6.6em">QUESTS</a>
                 <a href="#shop" class="nav-link" style="min-width:5.5em">STORE</a>
                 <a href="#ranking" class="nav-link" style="min-width:12.1em">LEADERBOARD</a>
-                <!-- $PILL va ANTES del boton EDIT a proposito. Los dos son
-                     items de esta fila flex, asi que todo lo que se muestre u
-                     oculte DELANTE de $PILL lo desplaza: con EDIT delante,
-                     encender/apagar "Layout editors" en el admin lo movia 74px
-                     (medido) y descuadraba la posicion que se hubiera guardado.
-                     Detras ya no le afecta, y siguen quedando uno al lado del
-                     otro igual que antes. -->
-                <div class="dropdown" id="pill-dropdown">
-                    <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
+                <!-- PLAY NOW de la navbar: PEGADO al bloque de la izquierda,
+                     justo detras de LEADERBOARD. Antes vivia en el grupo de la
+                     derecha y se traia hasta aqui con un translate de -861px
+                     guardado desde EDIT LAYOUT: al cambiar el ancho de la
+                     ventana (zoom out) esos pixeles dejaban de cuadrar y se
+                     descolocaba. Ahora lo coloca el flex, asi que aguanta
+                     cualquier anchura. Solo se ve fuera del hero (o siempre en
+                     EDIT LAYOUT). -->
+                <div class="wallet-area" id="nav-play-area">
+                    <div class="wb-box"><button class="btn-connect" onclick="HeroPlayModal.open()">PLAY NOW</button></div>
+                    <!-- Mismo montaje que el desplegable de $PILL (dropdown-content
+                         > dropdown-box > a): en la navbar sale en vertical, una
+                         palabra por fila. -->
                     <div class="dropdown-content">
                         <div class="dropdown-box">
-                            <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon"> Chart</a>
-                            <a href="https://pump.fun target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
+                            <a href="game/">MODES</a>
+                            <a href="game/?heroskins=1">SKINS</a>
                         </div>
                     </div>
                 </div>
@@ -1971,19 +1994,18 @@ body.trailer-open #page-content{
         </div>
 
         <div class="nav-dropdown-group">
-            <!-- PLAY NOW de la navbar: solo se ve fuera del hero (o siempre en
-                 EDIT LAYOUT). Mismo sitio y mismo boton que CONNECT
-                 (.btn-connect, tamaño navbar), y al pasar el raton despliega
-                 MODES/SKINS en vertical, como el desplegable de $PILL. -->
-            <div class="wallet-area" id="nav-play-area">
-                <div class="wb-box"><button class="btn-connect" onclick="HeroPlayModal.open()">PLAY NOW</button></div>
-                <!-- Mismo montaje que el desplegable de $PILL (dropdown-content
-                     > dropdown-box > a): en la navbar sale en vertical, una
-                     palabra por fila. -->
+            <!-- $PILL: AQUI, en el grupo de la derecha, no en la fila de enlaces
+                 de la izquierda. Antes estaba alli y se traia a esta esquina con
+                 un translate de +1021px guardado desde EDIT LAYOUT — pixeles
+                 fijos que solo cuadraban a una anchura concreta y descolocaban
+                 el conjunto en cuanto se hacia zoom out. Como item de este flex
+                 se queda pegado a la esquina pase lo que pase con el ancho. -->
+            <div class="dropdown" id="pill-dropdown">
+                <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
                 <div class="dropdown-content">
                     <div class="dropdown-box">
-                        <a href="game/">MODES</a>
-                        <a href="game/?heroskins=1">SKINS</a>
+                        <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon"> Chart</a>
+                        <a href="https://pump.fun target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
                     </div>
                 </div>
             </div>
@@ -2434,8 +2456,8 @@ body.trailer-open #page-content{
              — mismo motivo que los −/+ del editor de /game. -->
         <span class="leb-group">
             <span class="leb-label">$PILL MENU TXT</span>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('pillMenu', -1)">−</button>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('pillMenu', 1)">+</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('navPillMenu', -1)">−</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('navPillMenu', 1)">+</button>
         </span>
         <span class="leb-group">
             <span class="leb-label">CA SIGN TXT</span>
@@ -2453,13 +2475,13 @@ body.trailer-open #page-content{
              izquierda, asi que en diagonal te salias de los dos). -->
         <span class="leb-group">
             <span class="leb-label">$PILL BOX W</span>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('pillDropdown', 'w', -10)">−</button>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('pillDropdown', 'w', 10)">+</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('navPill', 'w', -10)">−</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('navPill', 'w', 10)">+</button>
         </span>
         <span class="leb-group">
             <span class="leb-label">$PILL BOX H</span>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('pillDropdown', 'h', -5)">−</button>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('pillDropdown', 'h', 5)">+</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('navPill', 'h', -5)">−</button>
+            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('navPill', 'h', 5)">+</button>
         </span>
         <span class="leb-group">
             <span class="leb-label">TITLE GLOW</span>
@@ -4303,7 +4325,7 @@ function toggleTrailerMode() {
         // uniforme. Solo el $PILL: su caja mide 50x10 y el desplegable cuelga
         // 170px a su izquierda, asi que al bajar el raton en diagonal se salia
         // de los dos y el menu se cerraba. Ensanchandola se cubre ese camino.
-        const LAYOUT_RESIZABLE = new Set(['pillDropdown']);
+        const LAYOUT_RESIZABLE = new Set(['navPill']);
         const ZOOM_PASOS = [1, 0.8, 0.6, 0.45];
         // Ciclo de fuente para TODOS los .category-tag a la vez (CORE MECHANICS,
         // RISK & REWARD, STANDARD EXPERIENCE...). No va por LAYOUT_ELS (esa
@@ -4584,7 +4606,7 @@ function toggleTrailerMode() {
         // .hero-main-content, asi que no llevan el scale de heroZoom: dividir
         // su arrastre por heroZoom haria que el raton y el elemento se
         // desincronizaran (heroZoom por defecto es 0.8).
-        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'walletBtn', 'walletBal', 'twitterIcon', 'telegramIcon', 'navPlay', 'tooltipIcon', 'skillTooltip', 'skillIcon', 'skillCard']);
+        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'navWalletBtn', 'navBal', 'twitterIcon', 'telegramIcon', 'navPlayBtn', 'navPill', 'navPillMenu', 'tooltipIcon', 'skillTooltip', 'skillIcon', 'skillCard']);
         window.addEventListener('pointermove', (e) => {
             if (!editing || !drag) return;
             const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
@@ -4598,7 +4620,7 @@ function toggleTrailerMode() {
         // Cuerpo de letra por defecto de cada clave que admite ALT+rueda: el
         // mismo numero que el fallback de var(--pw-font, N) en su CSS. Hace
         // falta porque al leer --pw-font sin valor guardado no devuelve nada.
-        const FONT_DEFAULTS = { pillMenu: 13, caSign: 13, ca: 11, navPlay: 15 };
+        const FONT_DEFAULTS = { navPillMenu: 13, caSign: 13, ca: 11, navPlayBtn: 15 };
         // Tope de escala por clave. El general (3) se queda corto en los iconos
         // de skills: el del tooltip a 3x mide 192px dentro de una caja de
         // ~246px, asi que ni siquiera llega a tocar los lados para recortarse.
