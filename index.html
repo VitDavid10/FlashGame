@@ -1496,13 +1496,43 @@ body.trailer-open #page-content{
             #heroTitleWrap, #heroPlayNow, #heroCaSign, #heroCaWrap, #navPlayNow {
                 translate: none !important; scale: 1 !important;
             }
-            .hero-main-content { scale: 1 !important; margin-top: 30px; padding: 0 14px; }
+            .hero-main-content { scale: 1 !important; padding: 0 14px; }
             /* La navbar NO se parte en dos filas ni aqui: ver el bloque
-               "UNA SOLA FILA SIEMPRE" mas abajo. Lo unico que cede en pantalla
-               de telefono es el rotulo PILLWARS, que se cae y deja la pildora
-               dibujada del logo sola (26px en vez de 247). */
+               "UNA SOLA FILA SIEMPRE" mas abajo. */
             .navbar { padding: 0 14px; }
-            .brand-name { display: none !important; }
+            /* Arriba del todo se ve el rotulo PILLWARS (mas pequeño que en
+               escritorio para que quepa junto a $PILL y los iconos). Al bajar
+               aparece el PLAY NOW de la navbar y el rotulo se retira para
+               dejarle el sitio: se turnan, nunca estan los dos a la vez. */
+            body.pixel-pack .brand-name:not(.no-img) .bn-img { height: 20px; }
+            .brand-name { font-size: var(--fs-3); }
+            body.nav-play-visible .brand-name { display: none !important; }
+
+            /* ===== EL CONJUNTO DEL HERO, JUNTO Y CENTRADO =====
+               En movil el grupo quedaba muy arriba (PLAY NOW a 195px de un hero
+               de 812) y muy suelto: 72px de aire entre MODES/SKINS y el cartel
+               del contrato, y 324px muertos por debajo. Ahora los dos bloques se
+               anclan al CENTRO —el velo con align-items:center y el contenido
+               con su propio centrado— y se separan lo justo, asi que el conjunto
+               queda agrupado en mitad de la pantalla. Solo afecta al movil: el
+               velo de escritorio sigue con su padding-top en vh. */
+            .hero-game-veil { align-items: center; padding-top: 0; }
+            .hero-game-btns > .hero-play-group { margin-bottom: 98px; }
+            /* En POSICION ABSOLUTA, no en el flujo: .hero-main-content es hijo
+               del wrapper flex, que lo centra, y ahi el margin-top no lo baja lo
+               que se le pide (subiendolo de 130 a 198 solo lo movia 6px, porque
+               el centrado se come el resto). Con top en % respecto al hero se
+               coloca exactamente donde toca, justo debajo de MODES/SKINS. */
+            .hero-main-content { position: absolute; left: 0; right: 0; top: 52%; margin-top: 0; }
+            /* El hueco del aviso "copiado" reservaba 27px (15 de alto + 12 de
+               margen) SIEMPRE, tambien vacio, y era casi la mitad del alto de la
+               caja del contrato. */
+            #hero-copy-feedback { height: 10px; margin-top: 6px; }
+            /* MODES/SKINS pegados debajo de PLAY NOW, no a media pantalla. */
+            .hero-play-links { padding-top: 10px; gap: 18px; }
+            /* El cartel del rotulo pega con el contrato, sin los 34px de aire
+               que lleva en escritorio. */
+            .hero-ca-sign { margin-top: 0; }
         }
         /* --- MOBILE OPTIMIZATIONS FIXED --- */
         @media (max-width: 768px) {
@@ -1536,10 +1566,20 @@ body.trailer-open #page-content{
                aqui solo serviria para dejar el hero en negro para siempre. */
             .hero-game-wrap { background: transparent; }
             .hero-game-veil { background: rgba(3,5,4,0.78); }
-            /* El contrato son 44 caracteres en una fuente monoespaciada: en una
-               sola linea no cabe en ningun movil. Se deja partir. */
-            .hero-ca { max-width: 100%; flex-wrap: wrap; justify-content: center; gap: 8px; }
-            .hero-ca .ca-text { white-space: normal; word-break: break-all; font-size: var(--fs-1); }
+            /* El contrato son 44 caracteres en una fuente monoespaciada. Antes se
+               dejaba partir en dos lineas (flex-wrap:wrap + word-break), y la
+               caja acababa midiendo 347x104 — un ladrillo enorme para lo que es.
+               Ahora se fuerza UNA sola linea y el cuerpo de letra se calcula con
+               vw para que quepa: los 44 caracteres de Press Start 2P ocupan
+               ~1.05em cada uno, asi que a 1.75vw entran de sobra con el COPY al
+               lado. Queda la MISMA forma que en escritorio, solo que en pequeño,
+               que es justo lo que se busca. */
+            .hero-ca {
+                max-width: calc(100% - 8px); flex-wrap: nowrap; justify-content: center;
+                gap: 6px; padding: 6px 8px;
+            }
+            .hero-ca .ca-text { white-space: nowrap; word-break: normal; font-size: min(7px, 1.75vw); }
+            .hero-ca .ca-copy { font-size: min(7px, 1.75vw); padding: 4px 5px; }
 
             /* La OTRA caja del contrato (la de mitad de pagina, .ca-box) tenia
                `white-space: nowrap` con `overflow-x: auto`: los 44 caracteres
