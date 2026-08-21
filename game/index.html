@@ -160,9 +160,17 @@
         body.mobile-allowed #gameCanvas { filter: none !important; pointer-events: auto !important; }
 
         /* --- ESCALADO MÓVIL: HUD y menú proporcionales como un juego móvil ---
-           Solo se aplica cuando el usuario aceptó jugar en móvil (.mobile-allowed)
-           Y la pantalla es realmente pequeña. */
-        @media (max-width: 900px), (pointer: coarse) and (max-width: 1024px) {
+           Solo se aplica cuando el usuario aceptó jugar en móvil (.mobile-allowed).
+           Antes el segundo termino exigia ADEMAS max-width:1024px: en una
+           tablet grande con pointer:coarse pero mas ancha que eso (visto en
+           un dispositivo real: el selector de modos salia gigante y
+           desbordado, sin encoger nada), ni esta regla ni la de la rueda 3D
+           de mas abajo llegaban a aplicarse. body.mobile-allowed ya filtra
+           que sea un dispositivo tactil de verdad (el JS del gate solo pone
+           esa clase tras comprobar pointer:coarse+hover:none), asi que
+           sobra volver a acotar el ancho aqui — vale para CUALQUIER pantalla
+           tactil, por grande que sea. */
+        @media (max-width: 900px), (pointer: coarse) {
             /* Menú: zoom físico para que el layout de escritorio (1200px+) entre en 375-768px.
                zoom afecta al cálculo de layout (no solo a la pintura), así que evita overflow.
                Esto es lo que se ve en VERTICAL — en horizontal manda el bloque
@@ -196,10 +204,10 @@
            (mobileWheelToggle, ver el JS) y el panel que se ve de frente es el
            unico con pointer-events, asi que tocarlo confirma ese modo con el
            mismo selectMode(...) de siempre — no hace falta un boton aparte.
-           Solo horizontal: en vertical una tarjeta a pantalla completa deja
-           el titulo y la descripcion muy apretados; ahi sigue el zoom de
-           arriba, que en vertical tiene mas alto para trabajar. */
-        @media (orientation: landscape) and (max-height: 560px) {
+           Va SIN media query de orientacion a proposito: la rueda es el
+           selector en tactil, se mire como se mire el telefono. Lo que si
+           depende de la orientacion es la ROTACION FORZADA de mas abajo. */
+        @media (pointer: coarse) {
             body.mobile-allowed #modeScreen { zoom: 1; overflow: hidden; }
             body.mobile-allowed #modeWheel {
                 display: block; position: absolute; inset: 0; perspective: 1400px;
@@ -263,6 +271,42 @@
                pantalla completa. */
             body.mobile-allowed #modeScreen .diagonal-divider,
             body.mobile-allowed #modeScreen .mqp-btn { display: none !important; }
+        }
+
+        /* ===== ROTACION FORZADA: el selector se PINTA girado 90 grados =====
+           No se pide permiso al sensor ni se espera a que el telefono avise de
+           que ha girado: el selector se dibuja SIEMPRE tumbado, y es el
+           usuario quien gira el aparato para verlo derecho. Es la unica forma
+           que funciona con el bloqueo de rotacion activado — que es el caso
+           normal: con el candado puesto, girar el movil no cambia nada y el
+           viewport se queda en vertical para siempre, asi que un
+           `@media (orientation: landscape)` no llegaba a entrar NUNCA por
+           mucho que se girase el aparato.
+           La condicion es la FORMA del viewport, no el sensor: mientras sea
+           mas alto que ancho se pinta girado. Si el usuario no tiene el
+           candado y gira, el viewport pasa a ser mas ancho que alto, esta
+           regla deja de aplicar sola y se ve derecho igual — los dos casos
+           quedan cubiertos con la misma regla.
+           El truco: se intercambian las medidas (ancho = alto de pantalla y
+           al reves), se gira 90 grados sobre la esquina inferior izquierda y
+           se sube el elemento 100vw para que al girar caiga justo encima del
+           viewport. Todo lo de dentro —canvas de fondo incluido, que va al
+           100% del contenedor— se gira con el, y el navegador mapea solo los
+           toques a las coordenadas giradas. */
+        @media (pointer: coarse) and (orientation: portrait) {
+            body.mobile-allowed #modeScreen {
+                position: absolute;
+                width: 100vh; height: 100vw;
+                top: -100vw; left: 0;
+                transform: rotate(90deg); transform-origin: bottom left;
+            }
+            /* El clamp de la tipografia usa vh, que aqui es el lado CORTO
+               (el ancho real de la tarjeta girada): sin esto el titulo se
+               dimensionaba con el lado equivocado y salia desproporcionado. */
+            body.mobile-allowed #modeWheel .mode-title { font-size: clamp(28px, 6.5vw, 46px); }
+            body.mobile-allowed #modeWheel .mode-desc { font-size: clamp(10px, 2.6vw, 13px); }
+            body.pixel-pack.mobile-allowed #modeWheel .mode-title.no-img,
+            body.pixel-pack.mobile-allowed #modeWheel .mode-title:not(.no-img) .mt-img { max-width: 78vh; }
         }
 
         /* --- UI & BUTTONS --- */
