@@ -1622,9 +1622,17 @@ body.trailer-open #page-content{
             .trailer-box { aspect-ratio: 16/9; width: 100%; }
             .side-widget { width: 100%; }
             
+            /* Sin el recuadro de color en movil: THE SPLIT EXECUTION, TACTICAL
+               VIRAL y VIRAL BALLISTICS llevan cada uno su marco (borde de color,
+               fondo, sombra dura y las escuadras de las esquinas). En 375px eso
+               es un cajon de color por bloque que no deja respirar nada; el
+               contenido se queda solo sobre el fondo de la pagina. */
             .feature-block, .feature-block.reverse {
-                flex-direction: column-reverse; padding: 30px; gap: 20px;
+                flex-direction: column-reverse; padding: 0; gap: 16px;
+                border: 0; background: none; box-shadow: none; backdrop-filter: none;
+                margin-bottom: 34px;
             }
+            .feature-block::before, .feature-block::after { display: none; }
             /* En movil TODOS los bloques apilan el video arriba y el texto
                abajo (column-reverse, ver arriba) sea o no .reverse — el
                numero se ancla abajo/derecha (detras del texto) en vez de
@@ -1681,22 +1689,28 @@ body.trailer-open #page-content{
             .mode-card h4 { font-size: var(--fs-3); margin: 6px 0; }
             .mode-card p { font-size: var(--fs-1); line-height: 1.45; }
             .mode-card .category-tag { font-size: var(--fs-1); padding: 3px 6px; }
-            .dq-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-            .dq-card { padding: 10px 11px; border-left-width: 3px; }
-            /* La tienda de skins ya iba a dos columnas; se le ajusta el aire
-               para que case con los otros dos bloques. */
-            .shop-cel { padding: 8px 4px 0; }
+            /* DAILY QUEST y SKIN STORE con las MISMAS columnas que en la web:
+               3 las quests y 4 las skins. Es lo que se pidio — que se vean igual
+               que en escritorio, solo que pequeñas. Salen celdas muy estrechas
+               (~40px las de skins) y el texto queda diminuto, pero manda la
+               reticula. */
+            .dq-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+            /* min-width:0 (y el word-break del titulo): sin esto el `1fr` no
+               baja del ancho MINIMO del contenido, y las tres columnas salian
+               desiguales (78 / 104 / ...) con la ultima rozando el borde del
+               panel. Con esto se reparten exactas. */
+            .dq-card { padding: 7px 6px; border-left-width: 3px; min-width: 0; overflow-wrap: anywhere; }
+            .shop-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+            .shop-cel { padding: 6px 2px 0; }
 
-            /* El grid de la Skin Store va a 4 columnas fijas y los canvas de
-               las pildoras tienen ancho natural (151px, sin escalar): en un
-               movil de 375px eso empujaba el documento a 791px de ancho
-               (oculto por el overflow-x:hidden del body) y las columnas 3/4
-               quedaban fuera de pantalla. Menos flechas, menos columnas y el
-               canvas escalable dentro de su celda lo arregla. */
-            .shop-carrusel { gap: 8px; }
-            .shop-flecha { width: 40px; height: 40px; font-size: var(--fs-1); }
-            .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; min-width: 0; }
-            .shop-cel { min-width: 0; padding: 8px 4px 0; }
+            /* Los canvas de las pildoras tienen ancho natural (151px): sin
+               acotarlos, las 4 columnas empujaban el documento a 791px de ancho
+               en un movil de 375. min-width:0 en la celda y el canvas escalable
+               dentro lo arreglan, y asi la reticula puede quedarse en las 4
+               columnas de escritorio (ver mas arriba). */
+            .shop-carrusel { gap: 4px; }
+            .shop-flecha { width: 26px; height: 26px; font-size: var(--fs-1); flex: none; }
+            .shop-cel { min-width: 0; }
             .shop-cel canvas { max-width: 100%; height: auto; }
 
             .skills-section h2 { font-size: var(--fs-5); }
