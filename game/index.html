@@ -437,8 +437,13 @@
                 position: relative !important; left: auto !important; top: auto !important;
             }
             /* 1) ROTULO ARRIBA. */
+            /* width:100% para que el centrado tenga sobre que centrar: sin el,
+               la fila se encogia al ancho de su contenido y el rotulo quedaba
+               pegado a un lado en vez de en medio. */
             body.mobile-allowed #loginOverlay .menu-head-row {
-                flex: none; flex-direction: column; align-items: center; gap: 2px; margin: 0 0 4px;
+                flex: none; flex-direction: column; align-items: center; justify-content: center;
+                gap: 2px; margin: 0 0 4px;
+                width: 100% !important; max-width: none !important; align-self: stretch;
             }
             body.mobile-allowed #loginOverlay #selectedModeTitle {
                 font-size: 22px; margin: 0; line-height: 1.1; white-space: nowrap;
@@ -458,22 +463,33 @@
                lado: min-width:0 las deja encoger dentro del flex. */
             body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitlePw,
             body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitleWord { min-width: 0; }
-            /* La frase larga del modo, FUERA en movil. Se intento conservarla
-               (devuelta al flujo, partida en 2 lineas, con el ancho y el cuerpo
-               de letra forzados) y en los tres intentos siguio midiendo mas que
-               la caja que la contiene y saliendose por arriba: es un parrafo
-               pensado para el ancho de un monitor. El rotulo del modo, que es
-               lo que identifica la pantalla, si se queda. */
-            body.mobile-allowed #loginOverlay .mode-blurb { display: none !important; }
-            /* 2) PILDORA EN MEDIO: los dos margenes automaticos (este y el de
-                  PLAY) se reparten el hueco libre, asi que queda centrada. */
-            body.mobile-allowed #loginOverlay .pill-stage {
-                margin: auto !important; max-width: min(40vw, 200px);
+            /* SUBTITULO debajo del rotulo, centrado. Su CSS base lleva
+               `white-space: nowrap` y `text-align: left` (esta pensado como una
+               linea suelta al lado del titulo en un monitor), y eso es lo que
+               lo mandaba a 363px de ancho en una sola linea. Aqui se le deja
+               partir y se le acota el ancho, asi baja a las 2-3 lineas que
+               caben de sobra. */
+            body.mobile-allowed #loginOverlay .mode-blurb {
+                position: relative !important; left: auto !important; top: auto !important;
+                /* scale tambien: el layout guardado le mete un scale ~1.45, y
+                   por eso una caja de 247px seguia midiendo 359 en pantalla. */
+                translate: none !important; scale: 1 !important; margin: 0 auto !important;
+                white-space: normal !important; text-align: center !important;
+                width: min(62vh, 330px) !important; max-width: 100% !important;
+                line-height: 1.5 !important; font-size: 7px !important;
             }
-            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(40vw, 200px); }
-            /* 3) PLAY ABAJO. */
+            /* 2) PILDORA: grande y PEGADA a PLAY. Solo margin-top:auto (no
+                  `margin:auto`, que la dejaba flotando en el centro): asi todo
+                  el hueco libre se va arriba y la pildora cae junto al boton. */
+            body.mobile-allowed #loginOverlay .pill-stage {
+                margin: auto auto 0 !important; max-width: min(58vw, 290px);
+            }
+            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(58vw, 290px); }
+            /* 3) PLAY ABAJO, del ancho de su texto: al 62% del cartel salia una
+                  barra larguisima de lado a lado. */
             body.mobile-allowed #loginOverlay #btnPlay {
-                margin: auto auto 6px !important; width: 62%; min-width: 190px; flex: none;
+                margin: 0 auto 8px !important; width: auto !important; min-width: 0 !important;
+                padding: 0 30px !important; flex: none; align-self: center;
             }
             /* Fuera todo lo que no son esas tres piezas. */
             body.mobile-allowed #loginOverlay .menu-right-col,
