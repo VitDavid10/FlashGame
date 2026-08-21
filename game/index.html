@@ -139,12 +139,12 @@
            Solo dispositivos TÁCTILES reales (móvil/tablet: puntero grueso y sin hover).
            Un PC con ratón NUNCA se bloquea, aunque la ventana sea estrecha (antes un
            max-width:900px atrapaba PCs con la ventana pequeña → falso positivo).
-           Cuando el usuario pulsa "Continue anyway", se añade body.mobile-allowed y se desactiva. */
+           Cuando el usuario pulsa "Continue anyway", se añade html:not([data-hero]) body.mobile-allowed y se desactiva. */
         @media (pointer: coarse) and (hover: none) {
             #mobileBlock { display: flex !important; }
             #modeScreen, #loginOverlay, #ui, #gameCanvas { filter: blur(10px); pointer-events: none; }
         }
-        body.mobile-allowed #mobileBlock { display: none !important; }
+        html:not([data-hero]) body.mobile-allowed #mobileBlock { display: none !important; }
         /* hero=1 = el iframe decorativo de la landing. Ahi NO se juega: es una
            pill en autopiloto de fondo, con el iframe en pointer-events:none. El
            cartel de "Desktop Recommended" y el blur que lo acompaña convertirian
@@ -154,10 +154,10 @@
         html[data-hero] #mobileBlock { display: none !important; }
         html[data-hero] #modeScreen, html[data-hero] #loginOverlay,
         html[data-hero] #ui, html[data-hero] #gameCanvas { filter: none !important; }
-        body.mobile-allowed #modeScreen,
-        body.mobile-allowed #loginOverlay,
-        body.mobile-allowed #ui,
-        body.mobile-allowed #gameCanvas { filter: none !important; pointer-events: auto !important; }
+        html:not([data-hero]) body.mobile-allowed #modeScreen,
+        html:not([data-hero]) body.mobile-allowed #loginOverlay,
+        html:not([data-hero]) body.mobile-allowed #ui,
+        html:not([data-hero]) body.mobile-allowed #gameCanvas { filter: none !important; pointer-events: auto !important; }
 
         /* --- ESCALADO MÓVIL: HUD y menú proporcionales como un juego móvil ---
            Solo se aplica cuando el usuario aceptó jugar en móvil (.mobile-allowed).
@@ -165,7 +165,7 @@
            tablet grande con pointer:coarse pero mas ancha que eso (visto en
            un dispositivo real: el selector de modos salia gigante y
            desbordado, sin encoger nada), ni esta regla ni la de la rueda 3D
-           de mas abajo llegaban a aplicarse. body.mobile-allowed ya filtra
+           de mas abajo llegaban a aplicarse. html:not([data-hero]) body.mobile-allowed ya filtra
            que sea un dispositivo tactil de verdad (el JS del gate solo pone
            esa clase tras comprobar pointer:coarse+hover:none), asi que
            sobra volver a acotar el ancho aqui — vale para CUALQUIER pantalla
@@ -176,18 +176,18 @@
                Esto es lo que se ve en VERTICAL — en horizontal manda el bloque
                "RUEDA 3D" de mas abajo, que anula este zoom para el selector de
                modos (el resto del menu, HUD incluido, sigue igual en los dos). */
-            body.mobile-allowed #modeScreen { zoom: 0.55; overflow-y: auto; }
+            html:not([data-hero]) body.mobile-allowed #modeScreen { zoom: 0.55; overflow-y: auto; }
 
             /* En sesión, escalar el HUD proporcionalmente. */
-            body.mobile-allowed #actionBar { transform: scale(0.7); transform-origin: bottom center; }
-            body.mobile-allowed #ui { transform: scale(0.75); transform-origin: top left; }
-            body.mobile-allowed #leaderboard { transform: scale(0.7); transform-origin: top right; }
-            body.mobile-allowed #minimap { transform: scale(0.7); transform-origin: bottom right; }
-            body.mobile-allowed .sound-btn { width: 34px; height: 34px; }
-            body.mobile-allowed .sound-btn svg { width: 18px; height: 18px; }
-            body.mobile-allowed #soundToggle { right: 12px; top: 12px; }
-            body.mobile-allowed #musicToggle { right: 54px; top: 12px; }
-            body.mobile-allowed #exitGameBtn { right: 96px; top: 12px; }
+            html:not([data-hero]) body.mobile-allowed #actionBar { transform: scale(0.7); transform-origin: bottom center; }
+            html:not([data-hero]) body.mobile-allowed #ui { transform: scale(0.75); transform-origin: top left; }
+            html:not([data-hero]) body.mobile-allowed #leaderboard { transform: scale(0.7); transform-origin: top right; }
+            html:not([data-hero]) body.mobile-allowed #minimap { transform: scale(0.7); transform-origin: bottom right; }
+            html:not([data-hero]) body.mobile-allowed .sound-btn { width: 34px; height: 34px; }
+            html:not([data-hero]) body.mobile-allowed .sound-btn svg { width: 18px; height: 18px; }
+            html:not([data-hero]) body.mobile-allowed #soundToggle { right: 12px; top: 12px; }
+            html:not([data-hero]) body.mobile-allowed #musicToggle { right: 54px; top: 12px; }
+            html:not([data-hero]) body.mobile-allowed #exitGameBtn { right: 96px; top: 12px; }
         }
 
         /* ===== SELECTOR DE MODOS: RUEDA 3D, SOLO MOVIL HORIZONTAL =====
@@ -208,7 +208,7 @@
            selector en tactil, se mire como se mire el telefono. Lo que si
            depende de la orientacion es la ROTACION FORZADA de mas abajo. */
         @media (pointer: coarse) {
-            body.mobile-allowed #modeScreen { zoom: 1; overflow: hidden; }
+            html:not([data-hero]) body.mobile-allowed #modeScreen { zoom: 1; overflow: hidden; }
             /* CAMBIO DE MODO POR DESLIZAMIENTO, no por giro 3D.
                El flip de tarjeta pedia `perspective` + `backface-visibility`, y
                con #modeScreen girado 90 grados eso no se sostiene: un ancestro
@@ -221,7 +221,7 @@
                El panel que sale se va por la izquierda y el que entra llega
                desde la derecha; el `overflow:hidden` de #modeScreen los recorta
                fuera de cuadro, asi que no asoman por los lados. */
-            body.mobile-allowed #modeWheel {
+            html:not([data-hero]) body.mobile-allowed #modeWheel {
                 display: block; position: absolute; inset: 0; overflow: hidden;
             }
             /* Con ANIMACIONES y no con transiciones entre dos estados: la
@@ -231,7 +231,7 @@
                volver a ARCADE. Con transiciones eso es imposible: la vuelta es
                por fuerza el camino inverso de la ida, y se veia entrar el panel
                por el lado contrario al que señala la flecha. */
-            body.mobile-allowed #modeWheel .mode-panel {
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-panel {
                 position: absolute; inset: 0; left: 0; right: auto; width: 100%; height: 100%;
                 clip-path: none !important; filter: none !important; z-index: 2;
                 align-items: center !important; text-align: center !important;
@@ -240,17 +240,17 @@
             }
             /* wheel-on = el que esta en cuadro (y el unico tocable). Las clases
                wheel-in/out las pone y quita mobileWheelToggle. */
-            body.mobile-allowed #modeWheel .mode-panel.wheel-on {
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-panel.wheel-on {
                 transform: translateX(0); opacity: 1; pointer-events: auto;
             }
-            body.mobile-allowed #modeWheel .mode-panel.wheel-in { animation: wheelIn .5s cubic-bezier(.33,1,.68,1) both; }
-            body.mobile-allowed #modeWheel .mode-panel.wheel-out { animation: wheelOut .5s cubic-bezier(.33,1,.68,1) both; }
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-panel.wheel-in { animation: wheelIn .5s cubic-bezier(.33,1,.68,1) both; }
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-panel.wheel-out { animation: wheelOut .5s cubic-bezier(.33,1,.68,1) both; }
             @keyframes wheelIn  { from { transform: translateX(100%);  opacity: 0 } to { transform: translateX(0);     opacity: 1 } }
             @keyframes wheelOut { from { transform: translateX(0);     opacity: 1 } to { transform: translateX(-100%); opacity: 0 } }
 
             /* Contenido: layout normal centrado, no el posicionado absoluto a
                porcentajes que usa el hover de escritorio. */
-            body.mobile-allowed #modeWheel .mode-content {
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-content {
                 position: static !important; transform: none !important; left: auto !important;
                 max-width: 86%; opacity: 1 !important; margin: 0 auto;
             }
@@ -259,9 +259,9 @@
                y sobraba de sobra alto libre arriba y abajo del bloque (el
                contenido ocupa ~180px de los 340 del viewport), asi que no
                habia motivo para ir tan apretado. */
-            body.mobile-allowed #modeWheel .mode-title { font-size: clamp(28px, 6.5vh, 46px); margin-bottom: 14px; }
-            body.mobile-allowed #modeWheel .mode-sub { font-size: 11px; margin-bottom: 10px; }
-            body.mobile-allowed #modeWheel .mode-desc { font-size: clamp(10px, 2.6vh, 13px); line-height: 1.5; margin-bottom: 4px; }
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-title { font-size: clamp(28px, 6.5vh, 46px); margin-bottom: 14px; }
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-sub { font-size: 11px; margin-bottom: 10px; }
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-desc { font-size: clamp(10px, 2.6vh, 13px); line-height: 1.5; margin-bottom: 4px; }
             body.pixel-pack.mobile-allowed #modeWheel .mode-title.no-img,
             body.pixel-pack.mobile-allowed #modeWheel .mode-title:not(.no-img) .mt-img { max-width: 78vw; }
 
@@ -270,7 +270,7 @@
                ocupa toda la pantalla y si confirma al tocarlo), menos veces se
                selecciona un modo sin querer. 64px es el area comoda de pulgar
                sin comerse el cartel. */
-            body.mobile-allowed .mode-wheel-arrow {
+            html:not([data-hero]) body.mobile-allowed .mode-wheel-arrow {
                 display: flex; align-items: center; justify-content: center;
                 position: absolute; top: 50%; transform: translateY(-50%); z-index: 60;
                 width: 64px; height: 64px; border-radius: 10px; cursor: pointer;
@@ -278,21 +278,21 @@
                 font-size: 24px; -webkit-tap-highlight-color: transparent;
                 transition: color .45s ease, box-shadow .45s ease, background .15s ease;
             }
-            body.mobile-allowed .mode-wheel-arrow:active { background: rgba(255,255,255,0.22); }
+            html:not([data-hero]) body.mobile-allowed .mode-wheel-arrow:active { background: rgba(255,255,255,0.22); }
             /* Separada del borde (4%, unos 35px en un movil normal) y no a 14px
                clavados: pegada al filo se comia con la barra del navegador. */
-            body.mobile-allowed .mode-wheel-arrow.right { right: 4%; }
+            html:not([data-hero]) body.mobile-allowed .mode-wheel-arrow.right { right: 4%; }
             /* Del color del modo que se esta viendo (el borde y la punta usan
                currentColor, asi que basta con cambiar `color`): lima de ARCADE
                o verde-agua de CLASSIC, los mismos --arcade/--classic que ya
                llevan los titulos. Cambia a la vez que la cara de la rueda. */
-            body.mobile-allowed #modeWheel:not(.flip) .mode-wheel-arrow {
+            html:not([data-hero]) body.mobile-allowed #modeWheel:not(.flip) .mode-wheel-arrow {
                 color: #ccff00; box-shadow: 0 0 14px rgba(204,255,0,0.45);
             }
-            body.mobile-allowed #modeWheel.flip .mode-wheel-arrow {
+            html:not([data-hero]) body.mobile-allowed #modeWheel.flip .mode-wheel-arrow {
                 color: #00ffaa; box-shadow: 0 0 14px rgba(0,255,170,0.45);
             }
-            body.mobile-allowed .mode-wheel-hint {
+            html:not([data-hero]) body.mobile-allowed .mode-wheel-hint {
                 display: block; position: absolute; left: 50%; bottom: 4%; z-index: 60;
                 transform: translateX(-50%); color: rgba(255,255,255,0.65);
                 font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px;
@@ -301,8 +301,8 @@
             /* El divisor diagonal y los botones de daily quests son cosa del
                reparto en diagonal: sin sitio ni sentido con la tarjeta a
                pantalla completa. */
-            body.mobile-allowed #modeScreen .diagonal-divider,
-            body.mobile-allowed #modeScreen .mqp-btn { display: none !important; }
+            html:not([data-hero]) body.mobile-allowed #modeScreen .diagonal-divider,
+            html:not([data-hero]) body.mobile-allowed #modeScreen .mqp-btn { display: none !important; }
         }
 
         /* ===== ROTACION FORZADA: el selector se PINTA girado 90 grados =====
@@ -325,6 +325,11 @@
            viewport. Todo lo de dentro —canvas de fondo incluido, que va al
            100% del contenedor— se gira con el, y el navegador mapea solo los
            toques a las coordenadas giradas. */
+        /* OJO con `html:not([data-hero])` en este bloque y en el de mas abajo:
+           el hero de la landing es un iframe que carga ESTE mismo /game, asi
+           que sin esa condicion se le aplicaba la rotacion entera y la portada
+           salia con el juego tumbado dentro. Ahi no se toca nada: es
+           decoracion de fondo. */
         @media (pointer: coarse) and (orientation: portrait) {
             /* En dvh y no en vh: `vh` cuenta la pantalla ENTERA, incluida la
                franja que ocupa la barra del navegador, asi que el borde
@@ -332,7 +337,7 @@
                verdad y la flecha, pegada a ese borde, quedaba tapada. `dvh` es
                el alto realmente visible. Se deja antes la version en vh como
                reserva para navegadores que no entiendan dvh. */
-            body.mobile-allowed #modeScreen {
+            html:not([data-hero]) body.mobile-allowed #modeScreen {
                 position: absolute;
                 width: 100vh; height: 100vw;
                 width: 100dvh; height: 100dvw;
@@ -343,8 +348,8 @@
             /* El clamp de la tipografia usa vh, que aqui es el lado CORTO
                (el ancho real de la tarjeta girada): sin esto el titulo se
                dimensionaba con el lado equivocado y salia desproporcionado. */
-            body.mobile-allowed #modeWheel .mode-title { font-size: clamp(28px, 6.5vw, 46px); }
-            body.mobile-allowed #modeWheel .mode-desc { font-size: clamp(10px, 2.6vw, 13px); }
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-title { font-size: clamp(28px, 6.5vw, 46px); }
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-desc { font-size: clamp(10px, 2.6vw, 13px); }
             body.pixel-pack.mobile-allowed #modeWheel .mode-title.no-img,
             body.pixel-pack.mobile-allowed #modeWheel .mode-title:not(.no-img) .mt-img { max-width: 78vh; }
 
@@ -357,7 +362,7 @@
                manden el width/height nuevos. El fondo (#lsBgCv) y el bloque
                central (.ls-inner) van al 100% / centrados, asi que se giran
                con el sin tocarles nada. */
-            body.mobile-allowed #loadingScreen {
+            html:not([data-hero]) body.mobile-allowed #loadingScreen {
                 width: 100vh; height: 100vw;
                 width: 100dvh; height: 100dvw;
                 top: -100vw; left: 0; right: auto; bottom: auto;
@@ -367,7 +372,7 @@
             /* El cuerpo del titulo se calculaba con vw, que girado es el lado
                CORTO: salia diminuto. Con vh usa el lado largo, que es el ancho
                real del cartel ya girado. */
-            body.mobile-allowed #loadingScreen .ls-title { font-size: clamp(22px, 4.4vh, 42px); }
+            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-title { font-size: clamp(22px, 4.4vh, 42px); }
 
             /* ===== BOTONES SUELTOS (sonido, salir y wallet), TAMBIEN GIRADOS =====
                Estos cuatro cuelgan de <body>, no de #loginOverlay, asi que la
@@ -376,10 +381,10 @@
                uno con la misma vuelta, de modo que al girar el telefono se leen
                como todo lo demas. CONNECT (la wallet) se pega al lado de los de
                sonido, que es donde se pidio. */
-            body.mobile-allowed #soundToggle,
-            body.mobile-allowed #musicToggle,
-            body.mobile-allowed #exitGameBtn,
-            body.mobile-allowed #gameWalletArea { transform: rotate(90deg); transform-origin: center; }
+            html:not([data-hero]) body.mobile-allowed #soundToggle,
+            html:not([data-hero]) body.mobile-allowed #musicToggle,
+            html:not([data-hero]) body.mobile-allowed #exitGameBtn,
+            html:not([data-hero]) body.mobile-allowed #gameWalletArea { transform: rotate(90deg); transform-origin: center; }
             /* La wallet es una caja de 0x0 con los botones colgando, asi que
                girarla desde una esquina la mandaba fuera de pantalla: se gira
                sobre su centro y se coloca por el hueco que queda a la izquierda
@@ -391,23 +396,23 @@
             /* Extremo ABAJO-DERECHA de la pantalla sin girar, que es lo que el
                usuario ve arriba-derecha del todo con el telefono ya girado.
                Antes iban con `top`, o sea al otro extremo. */
-            body.mobile-allowed #soundToggle  { top: auto !important; bottom: 12px !important; right: 12px !important; }
-            body.mobile-allowed #musicToggle  { top: auto !important; bottom: 54px !important; right: 12px !important; }
-            body.mobile-allowed #exitGameBtn  { top: auto !important; bottom: 96px !important; right: 12px !important; }
+            html:not([data-hero]) body.mobile-allowed #soundToggle  { top: auto !important; bottom: 12px !important; right: 12px !important; }
+            html:not([data-hero]) body.mobile-allowed #musicToggle  { top: auto !important; bottom: 54px !important; right: 12px !important; }
+            html:not([data-hero]) body.mobile-allowed #exitGameBtn  { top: auto !important; bottom: 96px !important; right: 12px !important; }
             /* CONNECT justo a la IZQUIERDA de esos tres (sin girar), a su misma
                altura: girado, el usuario lo ve pegado a ellos en la misma fila. */
             /* CONNECT fuera del movil de momento: en el telefono solo se puede
                jugar la sala FREE, asi que no hay nada que pagar y el boton solo
                ocupaba sitio. Al intentar entrar en una de pago sale el aviso
                gris (ver selectRoom). */
-            body.mobile-allowed #gameWalletArea { display: none !important; }
+            html:not([data-hero]) body.mobile-allowed #gameWalletArea { display: none !important; }
 
             /* Los POPUPS, girados igual que el menu del que salen (el de elegir
                partida, el de sala, el de wallet, SETTINGS...). Todos comparten
                .pw-modal, asi que basta con girar esa caja: sin esto salian
                derechos sobre un menu tumbado y habia que girar el telefono de
                vuelta para leerlos. */
-            body.mobile-allowed .pw-modal {
+            html:not([data-hero]) body.mobile-allowed .pw-modal {
                 width: 100vh; height: 100vw;
                 width: 100dvh; height: 100dvw;
                 top: -100vw; left: 0; right: auto; bottom: auto;
@@ -418,26 +423,26 @@
                solo se le acota el ancho al del cartel girado. */
             /* Los popups, mas pequeños: la caja de escritorio (360px + 28/30 de
                relleno) se comia casi toda la pantalla girada. */
-            body.mobile-allowed .pw-modal .pw-modal-box {
+            html:not([data-hero]) body.mobile-allowed .pw-modal .pw-modal-box {
                 max-width: 74vh; width: 272px; padding: 14px 14px 16px;
             }
-            body.mobile-allowed .pw-modal .pw-modal-title { font-size: 8px; margin-bottom: 12px; line-height: 1.8; }
-            body.mobile-allowed .pw-modal .pw-big-btn { font-size: 8px; padding: 9px 4px; letter-spacing: 0; }
+            html:not([data-hero]) body.mobile-allowed .pw-modal .pw-modal-title { font-size: 8px; margin-bottom: 12px; line-height: 1.8; }
+            html:not([data-hero]) body.mobile-allowed .pw-modal .pw-big-btn { font-size: 8px; padding: 9px 4px; letter-spacing: 0; }
             /* Los carteles con MARCO DE IMAGEN (elegir sala y elegir wallet) no
                son la caja plana de arriba: el marco es el propio fondo y el
                contenido vive dentro de un padding enorme (60/44/46). A tamaño
                de movil eso dejaba el rotulo y los botones tocando el filo
                dibujado. Se encoge TODO el interior: menos relleno, rotulo mas
                estrecho, botones mas bajos y rejilla mas junta. */
-            body.mobile-allowed .pw-modal-box.room-picker,
-            body.mobile-allowed .pw-modal-box.wallet-picker {
+            html:not([data-hero]) body.mobile-allowed .pw-modal-box.room-picker,
+            html:not([data-hero]) body.mobile-allowed .pw-modal-box.wallet-picker {
                 width: 260px; padding: 34px 30px 28px;
             }
-            body.mobile-allowed .room-picker .wp-title { width: 58%; margin-bottom: 12px; }
-            body.mobile-allowed .wallet-picker .wp-title { width: 64%; margin-bottom: 14px; }
-            body.mobile-allowed .pw-room-grid { gap: 5px; }
-            body.mobile-allowed .pw-room-grid .pw-big-btn { padding: 7px 0; font-size: 8px; }
-            body.mobile-allowed .room-picker .wp-cancel { margin-top: 9px; font-size: 8px; height: 30px; width: 70%; }
+            html:not([data-hero]) body.mobile-allowed .room-picker .wp-title { width: 58%; margin-bottom: 12px; }
+            html:not([data-hero]) body.mobile-allowed .wallet-picker .wp-title { width: 64%; margin-bottom: 14px; }
+            html:not([data-hero]) body.mobile-allowed .pw-room-grid { gap: 5px; }
+            html:not([data-hero]) body.mobile-allowed .pw-room-grid .pw-big-btn { padding: 7px 0; font-size: 8px; }
+            html:not([data-hero]) body.mobile-allowed .room-picker .wp-cancel { margin-top: 9px; font-size: 8px; height: 30px; width: 70%; }
             /* Las 4 casillas de skill de abajo, mas grandes: al 62% de la barra
                quedaban demasiado pequeñas para el dedo. */
             /* (El tamaño y la posicion de la barra de skills van en el bloque
@@ -445,24 +450,24 @@
                ganara la ultima y los cambios de aqui no se notaban.) */
             /* Las tres cajas, apretadas: el `min-width: 7ch` del valor reservaba
                sitio para 9.999.999 en cada una y era lo que estiraba la fila. */
-            body.mobile-allowed #ui .hud-item { padding: 3px 5px !important; border-radius: 2px; }
-            body.mobile-allowed #ui .hud-val { min-width: 0 !important; }
+            html:not([data-hero]) body.mobile-allowed #ui .hud-item { padding: 3px 5px !important; border-radius: 2px; }
+            html:not([data-hero]) body.mobile-allowed #ui .hud-val { min-width: 0 !important; }
             /* ACTIVE BUFFS fuera en movil: no cabe una tabla mas en la pantalla
                girada, y sin girar quedaba cruzada sobre el juego. */
-            body.mobile-allowed #buffTable { display: none !important; }
+            html:not([data-hero]) body.mobile-allowed #buffTable { display: none !important; }
             /* El selector de skill, mas pequeño y justo DEBAJO del reloj (que va
                al 42% del borde derecho): asi los dos quedan en la misma columna
                y no tapa el centro del mapa. */
             /* A la IZQUIERDA del reloj (que va al 42% del borde derecho) y
                centrado con el: misma altura, x menor. */
-            body.mobile-allowed #skillChoiceOverlay {
-                top: 50% !important; left: 50% !important; right: auto !important;
+            html:not([data-hero]) body.mobile-allowed #skillChoiceOverlay {
+                top: 50% !important; left: 62% !important; right: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) scale(0.62) !important;
             }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
                escritorio (190px de ancho) tapaba media pantalla. */
-            body.mobile-allowed #gameWalletArea #gwConnect,
-            body.mobile-allowed #gameWalletArea #gwDeposit {
+            html:not([data-hero]) body.mobile-allowed #gameWalletArea #gwConnect,
+            html:not([data-hero]) body.mobile-allowed #gameWalletArea #gwDeposit {
                 min-width: 0; width: auto; padding: 4px 10px; font-size: 8px; height: 28px;
             }
 
@@ -475,11 +480,11 @@
                El canvas ya se pide con los lados intercambiados (ver resize() y
                juegoGirado() en el JS); aqui se le da la vuelta a el y al HUD.
                El input se convierte aparte, en ptJuego(). */
-            body.mobile-allowed #gameCanvas,
-            body.mobile-allowed #ui,
-            body.mobile-allowed #actionBar,
-            body.mobile-allowed #leaderboard,
-            body.mobile-allowed #minimap {
+            html:not([data-hero]) body.mobile-allowed #gameCanvas,
+            html:not([data-hero]) body.mobile-allowed #ui,
+            html:not([data-hero]) body.mobile-allowed #actionBar,
+            html:not([data-hero]) body.mobile-allowed #leaderboard,
+            html:not([data-hero]) body.mobile-allowed #minimap {
                 position: fixed;
                 width: 100vh; height: 100vw;
                 width: 100dvh; height: 100dvw;
@@ -494,10 +499,10 @@
                en vez de salirse (con origin top-left se iban a x=-33 y a
                y=-430). Y las esquinas cambian: lo que en el juego va
                arriba-izquierda, girado cae arriba-DERECHA. */
-            body.mobile-allowed #ui,
-            body.mobile-allowed #actionBar,
-            body.mobile-allowed #leaderboard,
-            body.mobile-allowed #minimap {
+            html:not([data-hero]) body.mobile-allowed #ui,
+            html:not([data-hero]) body.mobile-allowed #actionBar,
+            html:not([data-hero]) body.mobile-allowed #leaderboard,
+            html:not([data-hero]) body.mobile-allowed #minimap {
                 width: auto; height: auto; top: auto; bottom: auto; left: auto; right: auto;
             }
             /* Cada uno gira sobre su CENTRO y se coloca por el centro, que es
@@ -506,10 +511,10 @@
                transform-origin de esquina el resultado dependia del tamaño de
                cada pieza y se salian (el marcador acababa en y=-275 y la barra
                en x=-12). Los porcentajes son del viewport ya girado. */
-            body.mobile-allowed #ui,
-            body.mobile-allowed #actionBar,
-            body.mobile-allowed #leaderboard,
-            body.mobile-allowed #minimap { transform-origin: center !important; }
+            html:not([data-hero]) body.mobile-allowed #ui,
+            html:not([data-hero]) body.mobile-allowed #actionBar,
+            html:not([data-hero]) body.mobile-allowed #leaderboard,
+            html:not([data-hero]) body.mobile-allowed #minimap { transform-origin: center !important; }
             /* Avisos que se superponen a la partida (PLAYING AGAINST BOTS,
                MATCH ENDING/STARTING): tambien girados, que si no salian
                derechos sobre un juego tumbado. Van centrados, asi que basta
@@ -521,9 +526,9 @@
                que se giran como el canvas —medidas intercambiadas— y su
                contenido se centra solo dentro. Tratarlos como cajita centrada
                los dejaba descolocados y sin cubrir el fondo. */
-            body.mobile-allowed #sysModal,
-            body.mobile-allowed #resultOverlay,
-            body.mobile-allowed #exitModal {
+            html:not([data-hero]) body.mobile-allowed #sysModal,
+            html:not([data-hero]) body.mobile-allowed #resultOverlay,
+            html:not([data-hero]) body.mobile-allowed #exitModal {
                 position: fixed !important;
                 width: 100vh; height: 100vw;
                 width: 100dvh; height: 100dvw;
@@ -533,23 +538,44 @@
             }
             /* Y sus cajas, mas pequeñas: las de escritorio se comian la pantalla
                girada (el GAME OVER sobre todo). */
-            body.mobile-allowed #exitModal .exit-box,
-            body.mobile-allowed #resultOverlay .result-box,
-            body.mobile-allowed #prizeModal .exit-box { transform: scale(0.68); transform-origin: center; }
+            html:not([data-hero]) body.mobile-allowed #exitModal .exit-box,
+            html:not([data-hero]) body.mobile-allowed #resultOverlay .result-box,
+            html:not([data-hero]) body.mobile-allowed #prizeModal .exit-box { transform: scale(0.68); transform-origin: center; }
             /* El aviso de sistema no va en mitad de la pantalla: se corre hacia
                el lado de los indicadores (ROOM/MASS/ALIVE) para dejar libre el
                centro del mapa. margin-left en el cuadro ya girado = "mas
                abajo" desde el punto de vista del que juega. */
+            /* El cartel de aviso, mas pequeño y con la letra en su sitio: su caja
+               mide 420px con 44/48 de relleno y el rotulo va a 24px, medidas de
+               escritorio que en la pantalla girada no cuadraban de ninguna
+               manera. El !important es para ganarle al CSS que inyecta
+               cartelHero (el del marco menu-gris). */
+            html:not([data-hero]) body.mobile-allowed #sysModal .exit-box,
+            html:not([data-hero]) body.mobile-allowed #exitModal .exit-box {
+                width: 250px !important; padding: 26px 26px 22px !important;
+            }
+            html:not([data-hero]) body.mobile-allowed #sysModal .exit-title,
+            html:not([data-hero]) body.mobile-allowed #exitModal .exit-title {
+                font-size: 12px !important; margin-bottom: 8px !important;
+            }
+            html:not([data-hero]) body.mobile-allowed #sysModal .exit-desc,
+            html:not([data-hero]) body.mobile-allowed #exitModal .exit-desc {
+                font-size: 7px !important; line-height: 1.9 !important; margin-bottom: 14px !important;
+            }
+            html:not([data-hero]) body.mobile-allowed #sysModal .btn-sys,
+            html:not([data-hero]) body.mobile-allowed #exitModal .exit-actions button {
+                font-size: 9px !important; padding: 8px 16px !important;
+            }
             /* Justo DEBAJO de los tres indicadores, que van pegados al borde de
                arriba: el cartel se alinea a ese mismo lado en vez de al centro. */
-            body.mobile-allowed #sysModal { justify-content: flex-start !important; }
-            body.mobile-allowed #sysModal .exit-box {
+            html:not([data-hero]) body.mobile-allowed #sysModal { justify-content: flex-start !important; }
+            html:not([data-hero]) body.mobile-allowed #sysModal .exit-box {
                 transform: scale(0.58); transform-origin: top center;
                 margin-top: 4vh;
             }
-            body.mobile-allowed #prizeModal,
-            body.mobile-allowed #lobbyBanner,
-            body.mobile-allowed #cdNum {
+            html:not([data-hero]) body.mobile-allowed #prizeModal,
+            html:not([data-hero]) body.mobile-allowed #lobbyBanner,
+            html:not([data-hero]) body.mobile-allowed #cdNum {
                 transform-origin: center !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important;
                 top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
@@ -558,7 +584,7 @@
                grandes, y justo DEBAJO de los botones de salir, musica y sonido
                —que ocupan el borde de abajo hasta y=96—, de modo que la columna
                continua sin pisarlos. */
-            body.mobile-allowed #ui {
+            html:not([data-hero]) body.mobile-allowed #ui {
                 top: 17% !important; bottom: auto !important; right: 8% !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(1) !important;
                 display: flex !important; flex-direction: row !important; gap: 4px !important;
@@ -570,29 +596,29 @@
             /* SIN display:block: lo tenia forzado y por eso el reloj salia ya en
                el menu, antes de empezar la partida. Sigue mandando el JS, que
                lo enseña solo en juego. Y separado del borde, que iba pegado. */
-            body.mobile-allowed #timerDisplay {
+            html:not([data-hero]) body.mobile-allowed #timerDisplay {
                 position: fixed !important; top: 50% !important; right: 6% !important;
                 left: auto !important; bottom: auto !important; z-index: 60;
                 transform: translate(50%, -50%) rotate(90deg) scale(1.15) !important;
                 transform-origin: center !important;
             }
             /* Barra de habilidades: abajo-centro -> centro del borde izquierdo. */
-            body.mobile-allowed #actionBar {
+            html:not([data-hero]) body.mobile-allowed #actionBar {
                 top: 50% !important; left: 11% !important; right: auto !important; bottom: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) scale(1.15) !important;
             }
             /* Clasificacion: arriba-derecha -> abajo-derecha real. */
-            body.mobile-allowed #leaderboard {
-                bottom: 1.5% !important; top: auto !important; right: 30% !important; left: auto !important;
-                transform: translate(50%, 0) rotate(90deg) scale(0.5) !important;
+            html:not([data-hero]) body.mobile-allowed #leaderboard {
+                bottom: 0.6% !important; top: auto !important; right: 31% !important; left: auto !important;
+                transform: translate(50%, 0) rotate(90deg) scale(0.62) !important;
             }
             /* Minimapa: abajo-derecha -> abajo-izquierda real. */
-            body.mobile-allowed #minimap {
+            html:not([data-hero]) body.mobile-allowed #minimap {
                 top: 80% !important; left: 0 !important; right: auto !important; bottom: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) scale(1.15) !important;
             }
 
-            body.mobile-allowed #loginOverlay {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay {
                 width: 100vh; height: 100vw;
                 width: 100dvh; height: 100dvw;
                 top: -100vw; left: 0; right: auto; bottom: auto;
@@ -613,23 +639,23 @@
            Se anulan esos inline (llegan como style="translate:...", de ahi el
            !important) y se reparte la columna con margenes automaticos. */
         @media (pointer: coarse) {
-            body.mobile-allowed #loginOverlay .menu-row {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-row {
                 flex-direction: column; align-items: center; gap: 0;
                 width: 100%; height: 100%; padding: 10px 14px; box-sizing: border-box;
             }
-            body.mobile-allowed #loginOverlay .login-box {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .login-box {
                 display: flex; flex-direction: column; height: 100%; min-height: 0;
                 width: 100%; max-width: none; padding: 0; background: none; border: none; box-shadow: none;
             }
-            body.mobile-allowed #loginOverlay .login-left {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .login-left {
                 flex: 1; min-height: 0; width: 100%; text-align: center;
                 display: flex; flex-direction: column; align-items: center;
             }
             /* Se sueltan las piezas colocadas a mano. */
-            body.mobile-allowed #loginOverlay .pill-stage,
-            body.mobile-allowed #loginOverlay #btnPlay,
-            body.mobile-allowed #loginOverlay .menu-head-row,
-            body.mobile-allowed #loginOverlay #selectedModeTitle {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .pill-stage,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #btnPlay,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-head-row,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle {
                 translate: none !important; scale: 1 !important;
                 position: relative !important; left: auto !important; top: auto !important;
             }
@@ -637,12 +663,12 @@
             /* width:100% para que el centrado tenga sobre que centrar: sin el,
                la fila se encogia al ancho de su contenido y el rotulo quedaba
                pegado a un lado en vez de en medio. */
-            body.mobile-allowed #loginOverlay .menu-head-row {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-head-row {
                 flex: none; flex-direction: column; align-items: center; justify-content: center;
                 gap: 2px; margin: 34px 0 4px;
                 width: 100% !important; max-width: none !important; align-self: stretch;
             }
-            body.mobile-allowed #loginOverlay #selectedModeTitle {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle {
                 font-size: 22px; margin: 0; line-height: 1.1; white-space: nowrap;
                 display: flex; align-items: center; justify-content: center; gap: 6px;
                 max-width: 100%;
@@ -651,22 +677,22 @@
                la altura clavada en px de escritorio: en el movil se salian por
                el lado. El !important es para ganar al que ya traen esas reglas.
                La altura va en vw = el alto util con la pantalla girada. */
-            body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitlePw img,
-            body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitleWord img {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitlePw img,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitleWord img {
                 height: min(12vw, 58px) !important; width: auto !important; max-width: 100% !important;
             }
             /* Las dos mitades del rotulo (PILLWARS + ARCADE) puestas en fila
                sumaban mas del ancho disponible y la segunda se salia por el
                lado: min-width:0 las deja encoger dentro del flex. */
-            body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitlePw,
-            body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitleWord { min-width: 0; }
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitlePw,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitleWord { min-width: 0; }
             /* SUBTITULO debajo del rotulo, centrado. Su CSS base lleva
                `white-space: nowrap` y `text-align: left` (esta pensado como una
                linea suelta al lado del titulo en un monitor), y eso es lo que
                lo mandaba a 363px de ancho en una sola linea. Aqui se le deja
                partir y se le acota el ancho, asi baja a las 2-3 lineas que
                caben de sobra. */
-            body.mobile-allowed #loginOverlay .mode-blurb {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .mode-blurb {
                 position: relative !important; left: auto !important; top: auto !important;
                 /* scale tambien: el layout guardado le mete un scale ~1.45, y
                    por eso una caja de 247px seguia midiendo 359 en pantalla. */
@@ -687,10 +713,10 @@
             /* 2) PILDORA: grande y PEGADA a PLAY. Solo margin-top:auto (no
                   `margin:auto`, que la dejaba flotando en el centro): asi todo
                   el hueco libre se va arriba y la pildora cae junto al boton. */
-            body.mobile-allowed #loginOverlay .pill-stage {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .pill-stage {
                 margin: auto auto 10px !important; max-width: min(64vw, 300px);
             }
-            body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(64vw, 300px); }
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(64vw, 300px); }
             /* 3) PLAY ABAJO, del ancho de su texto: al 62% del cartel salia una
                   barra larguisima de lado a lado. */
             /* El MISMO boton de siempre (su placa roja), solo mas corto. Antes
@@ -698,19 +724,19 @@
                15/2`: el alto colapsaba a 17px y quedaba una raya fina. Aqui se
                suelta la proporcion y se fija el grosor a mano, que es lo que se
                pidio — mismo grosor, menos largo. */
-            body.mobile-allowed #loginOverlay #btnPlay {
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #btnPlay {
                 margin: 0 auto 26px !important; flex: none; align-self: center;
                 aspect-ratio: auto !important; width: 210px !important; height: 46px !important;
                 min-width: 0 !important; padding: 0 !important; font-size: 15px !important;
             }
             /* Fuera todo lo que no son esas tres piezas. */
-            body.mobile-allowed #loginOverlay .menu-right-col,
-            body.mobile-allowed #loginOverlay #playerNameInput,
-            body.mobile-allowed #loginOverlay #btnSettings,
-            body.mobile-allowed #loginOverlay #btnFeatures,
-            body.mobile-allowed #loginOverlay #pillPalette,
-            body.mobile-allowed #loginOverlay #colorPicker,
-            body.mobile-allowed #loginOverlay #palHint { display: none !important; }
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-right-col,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #playerNameInput,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #btnSettings,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #btnFeatures,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #pillPalette,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #colorPicker,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #palHint { display: none !important; }
         }
 
         /* --- UI & BUTTONS --- */
@@ -11918,6 +11944,7 @@
     // no hay que tocar nada de la simulacion ni del dibujo.
     function juegoGirado() {
         return document.body.classList.contains('mobile-allowed')
+            && !document.documentElement.hasAttribute('data-hero')
             && window.matchMedia('(orientation: portrait)').matches;
     }
     function resize() {
