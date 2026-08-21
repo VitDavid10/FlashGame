@@ -427,6 +427,42 @@
                 top: -100dvw !important;
                 transform: rotate(90deg) !important; transform-origin: bottom left !important;
             }
+            /* Celda de skin en movil: la bandera y el precio no caben en el
+               cuadrado mas pequeño (81px vs los 133px de escritorio) sin
+               deformarlo. El precio solo estorba (no dice nada que ON/OWNED
+               no digan ya); la bandera se quita del todo. El nombre del pais,
+               mas pequeño y en una sola linea (algunos no cabian ni con el
+               acortado de escritorio a este tamaño). */
+            html:not([data-hero]) body.mobile-allowed .sb-flag { display: none !important; }
+            html:not([data-hero]) body.mobile-allowed .sb-pre.precio { display: none !important; }
+            html:not([data-hero]) body.mobile-allowed .sb-cod {
+                font-size: 8px !important; white-space: nowrap !important;
+                overflow: hidden !important; text-overflow: ellipsis !important; max-width: 100% !important;
+            }
+            /* Detalle de una skin (paisModal, se abre al tocar una pildora de
+               la rejilla): mismo giro. Su .pm-inner usa max-height:92vh SIN
+               saber que en movil "alto" real acaba siendo el ANCHO de
+               pantalla tras el giro -- con el 92vh de fabrica (92% del alto
+               REAL, 812px) se salia por los lados. Con 92vw usa el 92% del
+               ANCHO real (375px), que es lo que de verdad queda disponible
+               una vez girado. */
+            html:not([data-hero]) body.mobile-allowed #paisModal {
+                /* box-sizing:border-box es IMPRESCINDIBLE aqui: a diferencia
+                   de skinBigModal/.pw-modal, este cartel lleva el padding:24px
+                   directamente en el contenedor girado (no en una caja
+                   interior), y con el content-box de fabrica ese padding se
+                   SUMABA a los 100vh/100vw -- el cartel giraba de sobra
+                   (812+48 x 375+48) y se salia de la pantalla real. */
+                box-sizing: border-box !important;
+                width: 100vh !important; height: 100vw !important;
+                width: 100dvh !important; height: 100dvw !important;
+                top: -100vw !important; left: 0 !important; right: auto !important; bottom: auto !important;
+                top: -100dvw !important;
+                transform: rotate(90deg) !important; transform-origin: bottom left !important;
+            }
+            html:not([data-hero]) body.mobile-allowed #paisModal .pm-inner {
+                max-height: 92vw !important;
+            }
             /* La caja de dentro se centra sola (.pw-modal ya es flex centrado);
                solo se le acota el ancho al del cartel girado. */
             /* Los popups, mas pequeños: la caja de escritorio (360px + 28/30 de
@@ -1375,6 +1411,11 @@
         /* Sin flechas a los lados: pasar de pagina vive en el pie, igual que en
            el cartel sin ampliar. Todo el ancho es para la rejilla. */
         .sb-body { flex: 1; display: flex; align-items: center; justify-content: center; }
+        /* QUESTS: #missionsList reenganchado aqui (ver skinBigShowQuests). El
+           panel lateral del que viene ya lo escala/alinea todo por su cuenta
+           (.mqp-q etc, clases globales) — solo hace falta darle ancho
+           completo y dejar que crezca en vertical sin cortar la lista. */
+        .sb-quests { width: 100%; max-height: 100%; overflow-y: auto; padding: 4px 8px; box-sizing: border-box; }
         /* 4 columnas x 2 filas CUADRADAS. El lado lo calcula JS en
            --sb-cell (ver skinBigMideCeldas) y NO se deja a 1fr + aspect-ratio:
            esa combinacion es circular (el ancho de columna depende del alto de
@@ -3539,16 +3580,23 @@
                 <div class="sb-head">
                     <button class="sb-tab" id="sbTabShop" onclick="skinBigTab('skins')">SKINS STORE</button>
                     <button class="sb-tab" id="sbTabMine" onclick="skinBigTab('mine')">YOUR SKINS</button>
+                    <button class="sb-tab" id="sbTabQuests" onclick="skinBigTab('quests')">QUESTS</button>
                     <span class="sb-sp"><span id="sbSp">0</span> SP</span>
                     <button class="sb-close" onclick="skinBigClose()">CLOSE</button>
                 </div>
                 <div class="sb-body">
                     <div class="sb-grid" id="sbGrid"></div>
+                    <!-- QUESTS: aqui SOLO el contenedor. El contenido real
+                         (#missionsList) se reengancha desde el panel lateral
+                         al entrar en esta pestaña (ver skinBigShowQuests) y
+                         vuelve a su sitio al salir -- mismos datos, mismo
+                         render de siempre, ningun duplicado. -->
+                    <div class="sb-quests" id="sbQuests" style="display:none"></div>
                 </div>
                 <!-- Pie IGUAL que el del cartel sin ampliar: la nota centrada y,
                      pegado a la derecha, el numero de pagina con la flecha de
                      pasar (.side-tabs-arrow, la misma de MISSIONS/SKINS). -->
-                <div class="sb-foot">
+                <div class="sb-foot" id="sbFoot">
                     <span class="sb-hint">Drag a skin to reorder your collection</span>
                     <span class="sb-pag">
                         <span id="sbPage">1/1</span>
@@ -9986,14 +10034,46 @@
     }
     function skinBigClose() {
         const m = document.getElementById('skinBigModal'); if (m) m.classList.remove('open');
+        skinBigHideQuests();   // por si se cerraba estando en la pestana QUESTS
         // El cartel pequeno puede haber cambiado de orden mientras tanto.
         skinRender(); mineRender();
     }
+    // QUESTS reutiliza el MISMO #missionsList del panel lateral (misma
+    // funcion loadModeQuests/renderMode que ya lo mantiene al dia): se
+    // reengancha aqui dentro mientras esta pestaña esta activa y vuelve a su
+    // sitio al salir. Nada de duplicar el render de las quests.
+    function skinBigShowQuests() {
+        const dest = document.getElementById('sbQuests');
+        const list = document.getElementById('missionsList');
+        if (!dest || !list) return;
+        if (list.parentElement !== dest) dest.appendChild(list);
+        dest.style.display = 'block';
+        if (typeof loadModeQuests === 'function') loadModeQuests();
+    }
+    function skinBigHideQuests() {
+        const dest = document.getElementById('sbQuests');
+        const home = document.getElementById('sidePanelMissions');
+        const list = document.getElementById('missionsList');
+        if (list && home && list.parentElement !== home) home.appendChild(list);
+        if (dest) dest.style.display = 'none';
+    }
     function skinBigTab(t) {
         if (skinBigTabActual === t) return;
+        const dejabaQuests = skinBigTabActual === 'quests';
         skinBigTabActual = t;
         skinBigPagina = 0;
-        skinBigRender();
+        document.getElementById('sbTabQuests').classList.toggle('act', t === 'quests');
+        const grid = document.getElementById('sbGrid'), foot = document.getElementById('sbFoot');
+        if (t === 'quests') {
+            document.getElementById('sbTabShop').classList.remove('act');
+            document.getElementById('sbTabMine').classList.remove('act');
+            grid.style.display = 'none'; foot.style.display = 'none';
+            skinBigShowQuests();
+        } else {
+            grid.style.display = ''; foot.style.display = '';
+            if (dejabaQuests) skinBigHideQuests();
+            skinBigRender();
+        }
         try { SoundManager.play('simpleselect'); } catch (e) {}
     }
     // Lista completa de la pestana actual (sin paginar). En YOUR SKINS la
