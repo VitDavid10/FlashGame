@@ -415,6 +415,18 @@
                 top: -100dvw;
                 transform: rotate(90deg); transform-origin: bottom left;
             }
+            /* Catalogo de skins (YOUR SKINS/SKINS STORE): mismo truco de giro
+               que .pw-modal. drawPlacaPopup() ya mide con ancho/alto
+               intercambiados en movil (ver juegoGirado() ahi), asi que el
+               cartel sale tumbado el mismo y el CSS solo tiene que girar el
+               contenedor entero encima del viewport. */
+            html:not([data-hero]) body.mobile-allowed #skinBigModal {
+                width: 100vh !important; height: 100vw !important;
+                width: 100dvh !important; height: 100dvw !important;
+                top: -100vw !important; left: 0 !important; right: auto !important; bottom: auto !important;
+                top: -100dvw !important;
+                transform: rotate(90deg) !important; transform-origin: bottom left !important;
+            }
             /* La caja de dentro se centra sola (.pw-modal ya es flex centrado);
                solo se le acota el ancho al del cartel girado. */
             /* Los popups, mas pequeños: la caja de escritorio (360px + 28/30 de
@@ -7269,6 +7281,10 @@
     (function initMenuPill() {
         const cv = document.getElementById('menuPillCanvas'); if (!cv) return;
         cv.addEventListener('click', e => {
+            // Movil: sin sitio para la paleta rapida al lado de la pildora,
+            // asi que tocarla abre directamente el popup grande en YOUR SKINS
+            // (ahi tambien se editan colores, tocando la pildora por defecto).
+            if (typeof esMovilJuego === 'function' && esMovilJuego()) { skinBigOpen('mine'); return; }
             // No permitir editar colores si hay skin equipada
             if (typeof paisPuesta === 'function' && paisPuesta()) return;
             const r = cv.getBoundingClientRect();
@@ -7582,8 +7598,14 @@
         // fijo — que era lo que dejaba hueco muerto encima y debajo de las 8
         // pildoras. El tope en px evita que en un monitor muy ancho las celdas
         // se vayan a un tamano absurdo.
-        const maxW = Math.min((window.innerWidth || 1280) * 0.80, 1220);
-        const maxH = (window.innerHeight || 720) * 0.92;
+        // Movil (juegoGirado()): el popup se pinta tumbado y el CSS lo gira
+        // 90deg encima del viewport (mismo truco que el canvas/menu), asi que
+        // aqui hay que medir con ancho/alto INTERCAMBIADOS o el marco salia
+        // estrecho-y-altisimo en vez de ancho-y-bajo, desbordando por los
+        // lados una vez girado.
+        const girado = typeof juegoGirado === 'function' && juegoGirado();
+        const maxW = Math.min((girado ? window.innerHeight : (window.innerWidth || 1280)) * 0.80, 1220);
+        const maxH = (girado ? window.innerWidth : (window.innerHeight || 720)) * 0.92;
         caja.style.width = Math.round(maxW) + 'px';
         caja.style.height = 'auto';
         skinBigMideCeldas();   // Medir las celdas DESPUÉS de establecer el ancho
@@ -7591,10 +7613,23 @@
         if (h > maxH) {
             // La cabecera y el pie no escalan con el ancho, asi que el alto
             // natural crece casi lineal con el: encoger el ancho en la misma
-            // proporcion basta para que quepa, sin iterar por aproximacion.
-            w = Math.max(360, maxW * (maxH / h));
-            caja.style.width = Math.round(w) + 'px';
-            h = caja.offsetHeight;
+            // proporcion suele bastar de una pasada... salvo en el marco
+            // girado del movil, donde maxH sale muy ajustado (92% del ancho
+            // real de pantalla) y una sola pasada se quedaba corta -- el
+            // suelo de 360px (pensado para monitor de escritorio) no dejaba
+            // encoger lo suficiente y el cartel desbordaba por los lados. Con
+            // varias pasadas (y suelo mas bajo en movil) converge de sobra.
+            let intentos = 0;
+            while (h > maxH && intentos < 5) {
+                const suelo = girado ? 220 : 360;
+                const nuevoW = Math.max(suelo, w * (maxH / h));
+                if (Math.abs(nuevoW - w) < 1) break;
+                w = nuevoW;
+                caja.style.width = Math.round(w) + 'px';
+                skinBigMideCeldas();
+                h = caja.offsetHeight;
+                intentos++;
+            }
         }
         caja.style.height = Math.round(h) + 'px';
         const W = Math.max(40, Math.round(w / scale)), H = Math.max(30, Math.round(h / scale));
@@ -9933,10 +9968,12 @@
     let skinBigTabActual = 'skins';
     let skinBigPagina = 0;
     const SB_WL = 46;   // ancho logico de la pildora (en el cartel pequeno son ~20)
-    function skinBigOpen() {
+    function skinBigOpen(forceTab) {
         const m = document.getElementById('skinBigModal'); if (!m) return;
-        // Se entra por la pestana en la que ya estabas, y por su misma pagina.
-        skinBigTabActual = sidePanelTab === 'mine' ? 'mine' : 'skins';
+        // Se entra por la pestana en la que ya estabas, y por su misma pagina
+        // (o por forceTab, que usa el click en la pildora en movil para
+        // entrar siempre en YOUR SKINS sin importar donde se quedo el panel).
+        skinBigTabActual = forceTab || (sidePanelTab === 'mine' ? 'mine' : 'skins');
         skinBigPagina = skinBigTabActual === 'mine' ? minePagina : skinPagina;
         m.classList.remove('classic', 'arcade');
         m.classList.add(_loginBgMode === 'arcade' ? 'arcade' : 'classic');
