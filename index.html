@@ -404,7 +404,15 @@
            tambien deja de hacer falta bloquear clics a mano: el velo se queda
            siempre visible, no hay nada que mostrar/ocultar al pulsar un boton
            (los 3 abren el juego de verdad en otra pestaña, ver el script). */
-        .hero-game-wrap { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+        /* background NEGRO OPACO, y no transparente: el body de ESTA pagina lleva
+           la cuadricula verde global (ver la regla `body`, --pix-tile + los dos
+           degradados de fallback) y el hero la dejaba ver por detras mientras el
+           iframe del juego —casi 800 KB— terminaba de cargar. Eso es lo que se
+           veia como "primero sale la cuadricula y luego el juego de golpe": la
+           rejilla no era la del juego, era la de la landing asomando por debajo.
+           Al ser CSS del <head> tapa desde el PRIMER pintado, sin ventana para
+           el parpadeo, y en cuanto el iframe pinta se pone encima igual. */
+        .hero-game-wrap { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #000; }
         .hero-game-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: none; pointer-events: none; }
         /* Los 3 botones van en la mitad de ARRIBA: heroTitleWrap esta oculto,
            asi que .hero-main-content (el contrato, z-index:2 por encima) se
@@ -1451,6 +1459,10 @@ body.trailer-open #page-content{
                desktop del layout (EDIT LAYOUT) no tiene sentido aqui. Se cae al
                link directo de siempre. */
             .hero-game-frame { display: none; }
+            /* Sin iframe no hay nada que esperar, asi que el negro con el que se
+               tapa la cuadricula del body mientras carga (ver .hero-game-wrap)
+               aqui solo serviria para dejar el hero en negro para siempre. */
+            .hero-game-wrap { background: transparent; }
             .hero-game-veil { background: rgba(3,5,4,0.78); }
             /* El contrato son 44 caracteres en una fuente monoespaciada: en una
                sola linea no cabe en ningun movil. Se deja partir. */
