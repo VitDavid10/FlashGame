@@ -279,7 +279,9 @@
                 transition: color .45s ease, box-shadow .45s ease, background .15s ease;
             }
             body.mobile-allowed .mode-wheel-arrow:active { background: rgba(255,255,255,0.22); }
-            body.mobile-allowed .mode-wheel-arrow.right { right: 14px; }
+            /* Separada del borde (4%, unos 35px en un movil normal) y no a 14px
+               clavados: pegada al filo se comia con la barra del navegador. */
+            body.mobile-allowed .mode-wheel-arrow.right { right: 4%; }
             /* Del color del modo que se esta viendo (el borde y la punta usan
                currentColor, asi que basta con cambiar `color`): lima de ARCADE
                o verde-agua de CLASSIC, los mismos --arcade/--classic que ya
@@ -324,10 +326,18 @@
            100% del contenedor— se gira con el, y el navegador mapea solo los
            toques a las coordenadas giradas. */
         @media (pointer: coarse) and (orientation: portrait) {
+            /* En dvh y no en vh: `vh` cuenta la pantalla ENTERA, incluida la
+               franja que ocupa la barra del navegador, asi que el borde
+               "derecho" del cartel girado caia por debajo de lo que se ve de
+               verdad y la flecha, pegada a ese borde, quedaba tapada. `dvh` es
+               el alto realmente visible. Se deja antes la version en vh como
+               reserva para navegadores que no entiendan dvh. */
             body.mobile-allowed #modeScreen {
                 position: absolute;
                 width: 100vh; height: 100vw;
+                width: 100dvh; height: 100dvw;
                 top: -100vw; left: 0;
+                top: -100dvw;
                 transform: rotate(90deg); transform-origin: bottom left;
             }
             /* El clamp de la tipografia usa vh, que aqui es el lado CORTO
@@ -349,7 +359,9 @@
                con el sin tocarles nada. */
             body.mobile-allowed #loadingScreen {
                 width: 100vh; height: 100vw;
+                width: 100dvh; height: 100dvw;
                 top: -100vw; left: 0; right: auto; bottom: auto;
+                top: -100dvw;
                 transform: rotate(90deg); transform-origin: bottom left;
             }
             /* El cuerpo del titulo se calculaba con vw, que girado es el lado
@@ -362,7 +374,9 @@
                obligaria a girar el movil de vuelta en mitad del camino. */
             body.mobile-allowed #loginOverlay {
                 width: 100vh; height: 100vw;
+                width: 100dvh; height: 100dvw;
                 top: -100vw; left: 0; right: auto; bottom: auto;
+                top: -100dvw;
                 transform: rotate(90deg); transform-origin: bottom left;
                 overflow-y: auto; overflow-x: hidden;
             }
@@ -5626,9 +5640,18 @@
         // declaracion mas arriba.
         if (typeof data.layoutEdit === 'boolean') {
             layoutEditAllowed = data.layoutEdit;
-            for (const id of ['btnEditLayout', 'btnEditLoading']) {
+            // btnSettings entra en la lista: el cartel de SETTINGS es la puerta
+            // a EDIT LAYOUT y EDIT LOADING, asi que con el interruptor del admin
+            // apagado se va entero, no solo los dos botones de dentro. Al
+            // volver a encenderlo reaparece (display:'' devuelve el del CSS).
+            for (const id of ['btnEditLayout', 'btnEditLoading', 'btnSettings']) {
                 const b = document.getElementById(id);
                 if (b) b.style.display = data.layoutEdit ? '' : 'none';
+            }
+            // Y si estaba abierto en ese momento, se cierra.
+            if (!data.layoutEdit && typeof closeSettings === 'function') {
+                const sm = document.getElementById('settingsModal');
+                if (sm && getComputedStyle(sm).display !== 'none') closeSettings();
             }
             // El admin lo acaba de apagar mientras alguien seguia dentro del
             // editor: sacarlo YA, no dejarlo hasta que el solo pulse DONE.

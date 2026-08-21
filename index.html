@@ -254,12 +254,15 @@
            el translate del padre pasaba a ser su containing block, de modo que
            las coordenadas de viewport que se le calculaban quedaban desplazadas
            dos veces y aparecia fuera de sitio. */
-        /* min-width bajado de 220 a 150: el contenido real (icono + "CHART" /
-           "BUY $PILL" en Press Start 2P + padding) mide 122px, asi que 220
-           dejaba casi 100px de hueco vacio a la derecha del texto. 150 da un
-           margen de respiro sin sobrar. #nav-play-area pisa esto con
-           min-width:100% (ver mas abajo), asi que alli no cambia nada. */
-        .dropdown-content { display: none; position: absolute; top: 100%; right: 0; z-index: 1; pointer-events: auto; padding-top: 8px; min-width: 150px; }
+        /* SIN min-width: la caja la mide el contenido. Estaba en 220 y luego en
+           150, pero el contenido real (icono + "CHART" / "BUY $PILL" en Press
+           Start 2P + su padding) mide 122, asi que siempre sobraba hueco muerto
+           a la derecha del texto — el marco se cerraba mucho despues de acabar
+           la palabra. Con max-content el filo derecho cae donde termina el
+           texto y el aire que queda es el padding del propio enlace (16px), el
+           mismo por los dos lados. #nav-play-area lo pisa con min-width:100%
+           (ver mas abajo), asi que alli no cambia nada. */
+        .dropdown-content { display: none; position: absolute; top: 100%; right: 0; z-index: 1; pointer-events: auto; padding-top: 8px; min-width: max-content; }
         /* Mismo aspecto que la barra IN GAME / $PILL (.wallet-bal-box): fondo
            oscuro translucido con filo dorado, esquinas de 8px y blur detras.
            Antes era una caja gris plana (#111 con borde #333) que no pegaba con
