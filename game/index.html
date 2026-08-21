@@ -21,6 +21,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 
+    <!-- hero=1 = el iframe decorativo de la landing. Se marca AQUI, antes del
+         <style> de abajo, y no en el <script> del body que ya detecta hero:
+         alli el override llegaba despues del primer pintado y se veia un
+         parpadeo de cuadricula antes del negro. Con el atributo puesto antes de
+         que el CSS se parsee, la regla de la cuadricula no llega a aplicarse
+         nunca (ver `html[data-hero] body`). -->
+    <script>
+        if (/[?&]hero=1\b/.test(location.search)) document.documentElement.setAttribute('data-hero', '1');
+    </script>
+
     <style>
         :root {
             --primary: #00ff88; --primary-dim: rgba(0, 255, 136, 0.1); --accent: #ff2a2a;
@@ -47,6 +57,14 @@
             image-rendering: -webkit-optimize-contrast;
             transition: background-color 0.5s ease;
         }
+        /* En el hero de la landing, negro liso desde el primer pintado. La
+           cuadricula de aqui arriba se ve en cuanto llega el CSS, o sea mucho
+           antes de que este fichero (casi 800 KB) acabe de evaluarse y
+           heroAmbientDemo() monte la escena — y se veia como "primero la
+           cuadricula sola y luego el juego de golpe". El primer fotograma de
+           draw() ya trae su propio fondo con comida y pildoras dentro.
+           El atributo lo pone un <script> del <head>, ANTES de este bloque. */
+        html[data-hero] body { background-image: none; }
 
         /* --- MOBILE BLOCKER STYLE --- */
         #mobileBlock {
@@ -1958,15 +1976,10 @@
             document.write('<style>#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
         }
         else if (/[?&]hero=1\b/.test(location.search)) {
-            // El body lleva su propia cuadricula de fondo (dos linear-gradient de
-            // 40px, ver la regla `body` mas arriba) y esa se pinta en cuanto llega
-            // el CSS — muchisimo antes de que este fichero (casi 800 KB) acabe de
-            // evaluarse y heroAmbientDemo() monte la escena. En el hero de la
-            // landing eso se veia como "primero sale la cuadricula sola y luego
-            // aparece el juego de golpe". Aqui se apaga: negro liso hasta que
-            // draw() pinta el primer fotograma, que ya trae su propio fondo
-            // (--bg-color) con la comida y las pildoras dentro.
-            document.write('<style>body{background-image:none!important}#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
+            // La cuadricula del body se apaga en el <head> (html[data-hero]), no
+            // aqui: a estas alturas el navegador ya ha pintado una vez y se veia
+            // el parpadeo.
+            document.write('<style>#modeScreen,#loginOverlay{display:none!important;pointer-events:none!important}</style>');
         } else {
             // TODOS los demas arranques (entrada normal incluida, no solo
             // heroplay/heroskins): menuLayout sale primero con el horneado del
