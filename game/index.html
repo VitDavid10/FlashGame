@@ -476,7 +476,7 @@
                entero pasa a caber sin haber nada que desbordar. */
             html:not([data-hero]) body.mobile-allowed #paisModal {
                 --pm-pad: 14px 16px 16px !important;
-                --pm-top-y: 66px !important; --pm-top-x: 16px !important;
+                --pm-top-y: 96px !important; --pm-top-x: 120px !important;
                 --pm-fs-nom: 11px !important;
                 --pm-fs-lore: 12px !important;
                 --pm-gap: 8px !important;
@@ -701,10 +701,10 @@
                como referencia en vez de la pantalla real, y descolocada en el
                telefono de verdad aunque en el emulador midiera bien. */
             html:not([data-hero]) body.mobile-allowed #pillPalette {
-                position: fixed !important; top: 30% !important; left: 24% !important;
+                position: fixed !important; top: 34% !important; left: 29% !important;
                 right: auto !important; bottom: auto !important; margin-left: 0 !important;
-                width: 260px !important; z-index: 500 !important;
-                transform: translate(-50%, -50%) rotate(90deg) scale(0.85) !important;
+                width: 200px !important; z-index: 500 !important;
+                transform: translate(-50%, -50%) rotate(90deg) !important;
                 transform-origin: center !important;
             }
             /* Botones TOP/BOTTOM, debajo de la rejilla en coordenadas LOCALES
@@ -731,12 +731,12 @@
             html:not([data-hero]) body.mobile-allowed #colorPicker {
                 position: fixed !important; top: 50% !important; left: 50% !important;
                 right: auto !important; bottom: auto !important; margin-left: 0 !important;
-                width: 300px !important; z-index: 501 !important;
-                transform: translate(-50%, -50%) rotate(90deg) scale(0.62) !important;
+                width: 250px !important; z-index: 501 !important;
+                transform: translate(-50%, -50%) rotate(90deg) !important;
                 transform-origin: center !important;
             }
             html:not([data-hero]) body.mobile-allowed #palHint {
-                position: fixed !important; top: 55% !important; left: 24% !important;
+                position: fixed !important; top: 55% !important; left: 29% !important;
                 right: auto !important; bottom: auto !important; z-index: 500 !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important;
                 transform-origin: center !important; font-size: 7px !important;
@@ -2167,40 +2167,42 @@
            con las propiedades translate/scale, que se componen ANTES que
            transform — un translateX(-50%) aqui se recalcularia sobre el elemento
            ya escalado y el cartel se descolocaria al tocar el zoom en EDIT LAYOUT. */
+        /* ===== Paleta rapida: el MISMO marco dibujado que DAILY QUESTS /
+           ROOM PRICES (drawPlacaCaja), no el arte de piedra palette.png que
+           llevaba antes. El canvas .pal-frame va DETRAS y el contenido en
+           .pal-inner encima; el padding lo pone drawPlacaCaja (= el grosor del
+           marco), asi que aqui solo se decide el ancho. Marco fino (tFactor
+           0.55) porque es un cuadro pequeño. ===== */
         .pill-palette {
             position: absolute; z-index: 20; left: 50%; bottom: -6px;
-            width: 300px; margin-left: -150px; aspect-ratio: 950 / 447;
+            width: 240px; margin-left: -120px; box-sizing: border-box;
         }
-        /* El marco va en un <canvas> y no en un background: asi lo pinta el mismo
-           bucle que los carteles grandes (ROOM · PRICES / DAILY QUESTS) y recibe
-           el TINTE del modo — piedra dorada en arcade, verde fria en classic.
-           Con un background de CSS no habia forma de teñir solo la piedra sin
-           tocar los colores de las ventanas. */
         .pal-frame {
-            position: absolute; inset: 0; z-index: 2; pointer-events: none;
-            width: 100%; height: 100%;
-            filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55));
+            position: absolute; inset: 0; z-index: 0; pointer-events: none;
+            width: 100%; height: 100%; image-rendering: pixelated;
+            filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
         }
-        .pal-slots { position: absolute; inset: 0; z-index: 1; }
+        .pal-inner { position: relative; z-index: 1; }
+        /* Rejilla normal de 5x2 (antes cada swatch iba en % sobre la ventana
+           que le tocaba del PNG). */
+        .pal-slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
         .pal-swatch {
-            position: absolute; border: 0; padding: 0; cursor: pointer;
-            width: 13.68%; height: 29.08%;
+            width: 100%; aspect-ratio: 1; padding: 0; cursor: pointer;
+            border: 2px solid rgba(0,0,0,0.5);
         }
-        .pal-swatch:hover { filter: brightness(1.25); }
-        /* Las DOS placas de abajo del arte: la izquierda abre el selector de
-           color y la derecha resetea la paleta. SIN rotulo, manda el arte.
-           Antes habia UNA sola placa en el centro; se ha movido a estas dos
-           posiciones en el PROPIO PNG (el centro pasa a ser fila de piedra
-           normal), asi que las dos son literalmente la misma pieza que estaba
-           en medio. En el arte de 950x447 van de x=85 y x=626, 240 de ancho, y
-           de y=383 a 441: de ahi salen estos porcentajes. */
+        .pal-swatch:hover { filter: brightness(1.25); border-color: #fff; }
+        /* MORE (abre los 108 tonos) y RESET. Antes eran dos zonas invisibles
+           sobre placas horneadas en el PNG; ahora son botones de verdad, con
+           su rotulo, del mismo idioma que el resto del pack. */
+        .pal-actions { display: flex; gap: 6px; margin-top: 8px; }
         .pal-btn {
-            position: absolute; z-index: 3; border: 0; padding: 0; cursor: pointer;
-            background: transparent; top: 85.68%; height: 12.98%; width: 25.26%;
+            flex: 1; padding: 7px 2px; cursor: pointer;
+            background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.22);
+            color: #cfd6d0; font-family: 'Press Start 2P', monospace; font-size: 7px;
+            letter-spacing: 0;
         }
-        .pal-btn:hover { background: rgba(255,255,255,0.16); }
-        #palPickL { left: 8.95%; }
-        #palReset { left: 65.89%; }
+        .pal-btn:hover { filter: brightness(1.35); border-color: #00ffaa; color: #00ffaa; }
+        #loginOverlay.bg-arcade .pal-btn:hover { border-color: #ccff00; color: #ccff00; }
         /* Solo movil (ver bloque @media mas arriba): en escritorio se elige
            mitad tocando la propia pildora, no hacen falta estos botones. */
         .pal-half-picker { display: none; }
@@ -2233,33 +2235,30 @@
            boceto. Es absolute dentro de .login-left para poder colocarlo desde
            EDIT LAYOUT, igual que la paleta. ===== */
         .color-picker {
-            position: absolute; left: 50%; bottom: -6px; margin-left: -170px;
-            z-index: 40; width: 340px; aspect-ratio: 924 / 683;
+            position: absolute; left: 50%; bottom: -6px; margin-left: -140px;
+            z-index: 40; width: 280px; box-sizing: border-box;
         }
         .cp-frame {
-            position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1;
-            pointer-events: none; filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.55));
+            position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+            pointer-events: none; image-rendering: pixelated;
+            filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
         }
-        /* Area util con AIRE respecto a la estructura: el interior verde empieza
-           en el 4.5% por los lados y el 6.4% arriba, y las plataformas de abajo
-           ocupan desde el 92%. Los margenes van por encima de esos valores para
-           que ningun cuadro llegue a tocar la piedra. */
-        .cp-cells {
-            position: absolute; left: 9.5%; right: 9.5%; top: 11%; bottom: 15%; z-index: 2;
-            display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(3, 1fr);
-            gap: 4%;
-        }
-        .cp-group { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); box-shadow: 0 0 0 2px rgba(0,0,0,0.55); }
+        .cp-inner { position: relative; z-index: 1; }
+        /* Rejilla de 4x3 grupos; cada grupo es un cuadrado de 3x3 tonos. El
+           alto sale del aspect-ratio de los grupos (antes el panel tenia alto
+           fijo por el aspect-ratio del PNG y las celdas se estiraban dentro). */
+        .cp-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .cp-group { display: grid; grid-template-columns: repeat(3, 1fr); aspect-ratio: 1; box-shadow: 0 0 0 2px rgba(0,0,0,0.55); }
         .cp-cell { border: 0; padding: 0; cursor: pointer; }
-        /* La placa central de abajo del marco (panel-liso.png) ya esta en el
-           arte, entre las dos filas de remaches: se aprovecha como boton de
-           CERRAR el selector y volver a la paleta de menos colores. Medida
-           sobre el PNG de 924x683 (placa de x=343 a x=580, y=605 a 650). */
+        /* CLOSE: vuelve a la paleta de 10 colores. Antes era una zona invisible
+           sobre una placa horneada en panel-liso.png. */
         .cp-close {
-            position: absolute; z-index: 3; border: 0; padding: 0; cursor: pointer;
-            background: transparent; left: 37.1%; width: 25.8%; top: 88.6%; height: 6.6%;
+            display: block; width: 62%; margin: 9px auto 0; padding: 7px 2px; cursor: pointer;
+            background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.22);
+            color: #cfd6d0; font-family: 'Press Start 2P', monospace; font-size: 7px;
         }
-        .cp-close:hover { background: rgba(255,255,255,0.16); }
+        .cp-close:hover { filter: brightness(1.35); border-color: #00ffaa; color: #00ffaa; }
+        #loginOverlay.bg-arcade .cp-close:hover { border-color: #ccff00; color: #ccff00; }
         /* Marca del color bajo el raton: un recuadro blanco LIMPIO por fuera de
            la celda. El inset de antes pintaba el borde por DENTRO, comiendose el
            color justo donde lo estas mirando y dejando esa sombra rara sobre el
@@ -3256,16 +3255,20 @@
                      carteles grandes). Aqui NO va fuego: el fuego animado es cosa
                      de los paneles grandes. -->
                 <div id="pillPalette" class="pill-palette" style="display:none;">
-                    <div class="pal-slots" id="palGrid"></div>
                     <canvas class="pal-frame" id="palFrame"></canvas>
-                    <button class="pal-btn" id="palPickL" type="button" title="Pick any color"></button>
-                    <button class="pal-btn" id="palReset" type="button" title="Reset the palette to its default colors"></button>
-                    <!-- Solo movil: ahi no se toca una mitad de la pildora para
-                         elegir que mitad se pinta (el toque en la pildora abre
-                         YOUR SKINS), asi que hacen falta estos dos botones. -->
-                    <div class="pal-half-picker" id="palHalfPicker">
-                        <button type="button" class="pal-half-btn" id="palHalfUp" onclick="setPalHalf('colTop')" title="Paint top half">TOP</button>
-                        <button type="button" class="pal-half-btn" id="palHalfDown" onclick="setPalHalf('colBot')" title="Paint bottom half">BOTTOM</button>
+                    <div class="pal-inner">
+                        <div class="pal-slots" id="palGrid"></div>
+                        <div class="pal-actions">
+                            <button class="pal-btn" id="palPickL" type="button" title="Pick any color">MORE</button>
+                            <button class="pal-btn" id="palReset" type="button" title="Reset the palette to its default colors">RESET</button>
+                        </div>
+                        <!-- Solo movil: ahi no se toca una mitad de la pildora para
+                             elegir que mitad se pinta (el toque en la pildora abre
+                             YOUR SKINS), asi que hacen falta estos dos botones. -->
+                        <div class="pal-half-picker" id="palHalfPicker">
+                            <button type="button" class="pal-half-btn" id="palHalfUp" onclick="setPalHalf('colTop')" title="Paint top half">TOP</button>
+                            <button type="button" class="pal-half-btn" id="palHalfDown" onclick="setPalHalf('colBot')" title="Paint bottom half">BOTTOM</button>
+                        </div>
                     </div>
                 </div>
                 <!-- Fuera de la paleta para poder moverlo por separado en EDIT
@@ -3276,8 +3279,10 @@
                      grandes. Los colores se pintan encima, en rejilla. -->
                 <div id="colorPicker" class="color-picker" style="display:none;">
                     <canvas class="cp-frame" id="cpFrame"></canvas>
-                    <div class="cp-cells" id="cpCells"></div>
-                    <button class="cp-close" id="cpClose" type="button" title="Back to the palette"></button>
+                    <div class="cp-inner">
+                        <div class="cp-cells" id="cpCells"></div>
+                        <button class="cp-close" id="cpClose" type="button" title="Back to the palette">CLOSE</button>
+                    </div>
                 </div>
                 <!-- RADIO BUTTONS HIDDEN (COLORS ONLY DEFAULT) -->
                 <div class="style-type-selector" style="display:none;">
@@ -3467,21 +3472,14 @@
             } else {
                 imagen.src = 'img/cartel-hero/quest-panel-v2.png';
             }
-            // La paleta de la pildora entra por aqui con su PROPIA fuente
-            // (palette.png): asi hereda gratis el croma y, sobre todo, el tinte
-            // por modo — que es lo que la hacia desentonar cuando se pintaba con
-            // un background de CSS plano al lado de los carteles grandes.
-            var imagenPal = new Image();
-            imagenPal.src = 'img/cartel-hero/palette.png';
-            // El selector usa el mismo marco de piedra pero SIN los cohetes
-            // (panel-liso.png = el cartel cortado justo antes de las llamas):
-            // aqui el fuego no pinta nada, y de paso el recorte deja una
-            // proporcion (1.35) que le va mejor a la rejilla de 4x3.
-            var imagenCartel = new Image();
-            imagenCartel.src = 'img/cartel-hero/panel-liso.png';
-            var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg'), document.getElementById('palFrame'), document.getElementById('cpFrame')];
+            // La paleta de la pildora y el selector de 108 tonos YA NO entran
+            // por aqui: usaban palette.png / panel-liso.png (arte de PIEDRA con
+            // sus ventanas horneadas). Ahora llevan el MISMO marco dibujado que
+            // los carteles de DAILY QUESTS / ROOM PRICES — drawPlacaCaja(), mas
+            // abajo — asi que no hay PNG que tintar.
+            var canvases = [document.getElementById('oracleVideoBg'), document.getElementById('missionsVideoBg')];
             // null = la fuente comun de los carteles grandes. Si no, {el, video}.
-            var fuentes = [null, null, { el: imagenPal, video: false }, { el: imagenCartel, video: false }];
+            var fuentes = [null, null];
             // Un temporal por cartel: no miden lo mismo (cada uno tiene su escala
             // en EDIT LAYOUT), y compartir uno obligaria a redimensionarlo varias
             // veces por frame.
@@ -3489,15 +3487,8 @@
             // Con imagen no hace falta repintar a 60fps: solo cuando cambia algo
             // que afecte al resultado (tamano del canvas o modo, que cambia el
             // tinte). Esta es la huella de lo ultimo pintado en cada canvas.
-            var pintado = ['', '', '', ''];
+            var pintado = ['', ''];
             function modoDe(cv) {
-                // La paleta no cuelga de un panel con clase de modo, asi que su
-                // modo lo marca el fondo del propio login. Los carteles grandes
-                // siguen mirando SOLO a su panel, como siempre.
-                if (cv.id === 'palFrame' || cv.id === 'cpFrame') {
-                    var ov = document.getElementById('loginOverlay');
-                    return (ov && ov.classList.contains('bg-arcade')) ? 'arcade' : 'classic';
-                }
                 var p = cv.parentElement;
                 // Del DOM y no de currentGameMode: esta IIFE corre antes de que
                 // el script grande declare esa variable.
@@ -7102,10 +7093,10 @@
                 els.loginOverlay.style.display = 'flex';
                 // Movil: la paleta rapida vive siempre a un lateral (no hay
                 // gesto de tocar la pildora para abrirla, esa la usa ahora
-                // YOUR SKINS). Se abre aqui, con la mitad de arriba por
-                // defecto, y closePalette() ya esta hecho para no volver a
-                // esconderla en movil.
-                if (esMovilJuego()) openPalette('colTop');
+                // YOUR SKINS). closePalette() ya esta hecho para no volver a
+                // esconderla en movil; syncPaletaMovil la deja como toque
+                // segun lleves skin de pais puesta o no.
+                syncPaletaMovil();
                 // Ya se puede medir el titulo (con el login oculto medía 0 y no
                 // habia forma de centrarlo).
                 centrarTitulo();
@@ -7243,8 +7234,9 @@
     // arte, asi que la rejilla es justo de 10.
     const PAL_SLOTS = 10;
     const PAL_DEFAULT = ['#ffffff', '#c0c8d0', '#ff2a2a', '#ff8c00', '#ffce3d', '#00ff44', '#00ffaa', '#1a73e8', '#66ccff', '#cc00ff'];
-    // Rejilla de ventanas MEDIDA sobre palette.png (950x447), en % del cartel.
-    const PAL_X0 = 8.42, PAL_DX = 17.48, PAL_Y0 = 15.88, PAL_DY = 35.35;
+    // (Las constantes PAL_X0/PAL_DX/PAL_Y0/PAL_DY de aqui median las ventanas
+    // horneadas en palette.png. Ya no hacen falta: la paleta lleva el marco
+    // dibujado de DAILY QUESTS y los swatches van en una rejilla CSS.)
     /* --- Selector grande: 12 grupos de 3x3 = 108 tonos. Los colores salen del
      * boceto de David (muestreados del centro de cada subcelda), pero se pintan
      * en una rejilla propia sobre el marco de piedra del juego, no con su panel
@@ -7278,9 +7270,8 @@
         palColors.forEach((c, i) => {
             const b = document.createElement('button');
             b.className = 'pal-swatch'; b.type = 'button'; b.style.background = c; b.title = c;
-            // Cada swatch va colocado en SU ventana del marco (fila de 5).
-            b.style.left = (PAL_X0 + (i % 5) * PAL_DX) + '%';
-            b.style.top = (PAL_Y0 + Math.floor(i / 5) * PAL_DY) + '%';
+            // Rejilla CSS de 5 columnas: ya no hay que colocarlos a mano en la
+            // ventana que les tocaba del PNG de piedra.
             b.onclick = () => {
                 // En movil la paleta esta SIEMPRE abierta (a un lateral, ver
                 // openPalette/esMovilJuego mas abajo): elegir color no debe
@@ -7332,6 +7323,25 @@
         renderPalette();
         pal.style.display = 'block';
         updatePalHalfUI();
+        // El marco se dibuja AHORA: con display:none la caja mide 0 y no
+        // habria nada que pintar.
+        try { paintPalettePlacas(); } catch (e) {}
+    }
+    // La paleta rapida de movil vive SIEMPRE a un lado del menu... salvo si
+    // llevas una skin de pais puesta: entonces tus dos colores no se ven (los
+    // tapa la skin) y no hay nada que elegir, igual que en escritorio, donde
+    // el click en la pildora tampoco abre la paleta si hay skin.
+    // Se llama desde los sitios donde eso puede cambiar (entrar al menu,
+    // equipar/quitar skin) y ademas desde el rAF de la pildora como respaldo.
+    function syncPaletaMovil() {
+        if (!esMovilJuego()) return;
+        const pal = document.getElementById('pillPalette'); if (!pal) return;
+        const conSkin = typeof paisPuesta === 'function' && !!paisPuesta();
+        if (conSkin) {
+            if (pal.style.display !== 'none') { pal.style.display = 'none'; closeColorPicker(); }
+        } else if (pal.style.display === 'none') {
+            openPalette(palHalf || 'colTop');
+        }
     }
     // Solo movil: botones TOP/BOTTOM en vez de tocar una mitad de la pildora
     // (esa la usa ahora skinBigOpen). No renderiza ni cambia display -- la
@@ -7386,6 +7396,7 @@
         const cp = document.getElementById('colorPicker'); if (!cp) return;
         renderColorPicker();
         cp.style.display = 'block';
+        try { paintPalettePlacas(); } catch (e) {}
         updateHint();
     }
     function closeColorPicker() { const cp = document.getElementById('colorPicker'); if (cp) cp.style.display = 'none'; updateHint(); }
@@ -7547,15 +7558,8 @@
             const lo = document.getElementById('loginOverlay');
             if (lo && lo.style.display === 'flex') {
                 renderMenuPill();
-                // Red de seguridad: la paleta rapida de movil se abre desde
-                // selectMode() al mostrar el login, pero por si esa pantalla
-                // llegase a verse por otra via (resume, etc.) sin pasar por
-                // ahi, aqui se comprueba cada frame y se abre si hiciera
-                // falta -- no cuesta nada, openPalette() no hace nada raro si
-                // ya estaba abierta.
-                if (esMovilJuego() && document.getElementById('pillPalette').style.display === 'none') {
-                    openPalette(palHalf || 'colTop');
-                }
+                // Red de seguridad de la paleta de movil (ver syncPaletaMovil).
+                syncPaletaMovil();
             }
         })();
     })();
@@ -7833,6 +7837,53 @@
         g.imageSmoothingEnabled = false;
         placaPixels(g, W, H, (x, y) => inOuter(x, y) && !inHole(x, y), inHole, hex, lgx, lgy);
     }
+    // ===== Marco "placa" sobre una caja cualquiera =====
+    // El MISMO material y el mismo dibujo que los carteles de DAILY QUESTS /
+    // ROOM PRICES (placaPixels), pero para una caja cuyo tamaño lo decide el
+    // CSS: el hueco es la caja menos T por lado, y ese T se pone de padding
+    // para que el contenido no caiga nunca debajo del marco. Lo usan la paleta
+    // de la pildora y el selector de 108 tonos, que antes iban con arte de
+    // piedra en PNG (palette.png / panel-liso.png) y desentonaban.
+    // tFactor < 1 = marco mas FINO que el de los carteles grandes, que es lo
+    // que pidio David para estos dos (son cuadros pequeños).
+    function drawPlacaCaja(caja, cv, hex, tFactor) {
+        if (!caja || !cv) return;
+        const w = caja.offsetWidth, h = caja.offsetHeight;
+        if (!w || !h) return;
+        const scale = placaScaleFina();
+        const T = Math.max(3, Math.round(placaGrosor() * (tFactor || 1)));
+        const padPx = Math.round(T * scale);
+        if (caja._placaPad !== padPx) { caja._placaPad = padPx; caja.style.padding = padPx + 'px'; }
+        const W = Math.max(8, Math.round(w / scale)), H = Math.max(8, Math.round(h / scale));
+        const luz = placaLuzHacia(caja), lgx = luz[0], lgy = luz[1];
+        const key = W + '|' + H + '|' + hex + '|' + T + '|' + lgx.toFixed(2) + '|' + lgy.toFixed(2);
+        if (cv._placaKey === key) return;
+        cv._placaKey = key;
+        cv.width = W; cv.height = H;
+        const inOuter = (x, y) => {
+            if (x < 0 || y < 0 || x >= W || y >= H) return false;
+            const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
+            return _placaEsquina(dx, dy, PLACA.RADIO);
+        };
+        const inHole = (x, y) => {
+            if (x < T || y < T || x >= W - T || y >= H - T) return false;
+            const dx = Math.min(x - T, W - 1 - T - x), dy = Math.min(y - T, H - 1 - T - y);
+            return _placaEsquina(dx, dy, PLACA.RADIO_HUECO);
+        };
+        const g = cv.getContext('2d');
+        g.imageSmoothingEnabled = false;
+        placaPixels(g, W, H, (x, y) => inOuter(x, y) && !inHole(x, y), inHole, hex, lgx, lgy);
+    }
+    // Repinta los marcos de la paleta y del selector de color. Se llama desde
+    // paintPlacas (cambio de modo/tamaño) y al abrir cada uno — con display
+    // none la caja mide 0 y no habria nada que dibujar.
+    function paintPalettePlacas() {
+        const hex = _loginBgMode === 'arcade' ? '#ccff00' : '#00ffaa';
+        const pal = document.getElementById('pillPalette');
+        if (pal && pal.style.display !== 'none') drawPlacaCaja(pal, document.getElementById('palFrame'), hex, 0.55);
+        const cp = document.getElementById('colorPicker');
+        if (cp && cp.style.display !== 'none') drawPlacaCaja(cp, document.getElementById('cpFrame'), hex, 0.55);
+    }
     // ===== El popup de skins es el MISMO cartel, ampliado =====
     // Marco del MISMO grosor que el cartel pequeno (placaGrosor). El TAMANO ya
     // no copia el ratio 812/591 del cartel pequeno (con la rejilla de 8
@@ -8029,6 +8080,9 @@
         const a = document.getElementById('oraclePlaca'), b = document.getElementById('missionsPlaca');
         if (a) drawPlaca(a, hex);
         if (b) drawPlaca(b, hex);
+        // La paleta y el selector de color llevan el MISMO marco: se repintan
+        // aqui para que sigan el cambio de modo/tamaño como los carteles.
+        paintPalettePlacas();
         if (document.body.classList.contains('placa-off')) return;
         const play = document.querySelector('.login-left .btn-play');
         const sett = document.querySelector('.login-left #btnSettings');
@@ -10413,6 +10467,9 @@
                     const r = await paisPoner(activa || esDefault ? null : code);
                     if (r && r.ok === false) { showSystemMsg(r.error || 'Could not equip that skin.', 'SKINS'); return; }
                     skinBigRender(); mineRender(); skinRender(); renderMenuPill();
+                    // Con skin puesta la paleta de colores sobra (y al quitarla
+                    // vuelve): ver syncPaletaMovil.
+                    syncPaletaMovil();
                     try { SoundManager.play('select'); } catch (e) {}
                 });
                 cel.appendChild(eq);
