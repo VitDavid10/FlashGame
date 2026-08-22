@@ -275,9 +275,29 @@
            .wallet-bal-box no esta en esa lista, por eso conserva el redondeo y
            el blur — esto es lo que iguala a los dos. */
         #pill-dropdown .dropdown-box { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px !important; overflow: hidden; backdrop-filter: blur(4px) !important; }
+        /* El cuadro cae JUSTO DEBAJO del rotulo $PILL, igual que el de PLAY NOW
+           (#nav-play-area .dropdown-content, mas abajo). Dos piezas:
+
+           1) min-width:100% — nunca mas estrecho que el rotulo del que cuelga.
+              Con el precio cargado ("$PILL  $0.001234") el rotulo mide 116-152px
+              y el cuadro se estira a ESE ancho, asi que sus dos filos coinciden
+              con los del rotulo y queda calcado debajo. Es literalmente la misma
+              linea que usa PLAY NOW para lograr lo mismo.
+
+           2) letra y padding ceñidos — el cuadro venia con 12px de letra
+              mientras el rotulo usa --fs-1 (9px, ver body.pixel-pack .dropbtn):
+              un tercio mas grande que el boton del que cuelga, lo que ensanchaba
+              "BUY $PILL" 27px de mas y descolgaba el cuadro muy a la izquierda
+              (medido: 170px de cuadro contra 45px de rotulo). Igualarlo a --fs-1
+              lo mete DENTRO del ancho del rotulo, que es la condicion para que
+              min-width:100% mande y el cuadro quede pegado. El padding baja de
+              16 a 12 por lo mismo. Se conserva var(--pw-font) delante: el cuerpo
+              sigue siendo ajustable con ALT+rueda desde EDIT LAYOUT. */
+        #pill-dropdown .dropdown-content { min-width: 100%; }
+        #pill-dropdown .dropdown-content a { padding: 10px 12px; font-size: var(--pw-font, var(--fs-1)); }
         /* --pw-font: cuerpo de letra ajustable desde EDIT LAYOUT con ALT+rueda
            sobre el desplegable (clave pillMenu). Sin valor guardado manda el 13. */
-        .dropdown-content a { padding: 12px 16px; font-family: 'Press Start 2P', monospace; font-size: var(--pw-font, 12px); color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid rgba(255,206,61,0.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dropdown-content a { padding: 12px 16px; font-family: 'Press Start 2P', monospace; font-size: var(--pw-font, 12px); color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid rgba(255,206,61,0.25); white-space: nowrap; }
         .dropdown-content a:last-child { border-bottom: 0; }
         .dropdown-content a:hover { background: rgba(255,206,61,0.12); color: #fff; }
         /* En EDIT LAYOUT el desplegable se queda abierto: si no, no hay forma de
@@ -2162,7 +2182,7 @@ body.trailer-open #page-content{
                 <div class="dropdown-content">
                     <div class="dropdown-box">
                         <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon"> Chart</a>
-                        <a href="https://pump.fun target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
+                        <a href="https://pump.fun" target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
                     </div>
                 </div>
             </div>
