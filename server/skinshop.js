@@ -86,23 +86,23 @@ function estado(cid, wallet) {
 /* ===== COMPRA ===== */
 // moneda: 'sp' | 'pill'. Devuelve { ok, estado } o { ok:false, error }.
 function comprar({ cid, wallet, code, moneda, nonce }) {
-    if (!cid) return { ok: false, error: 'sin sesion' };
-    if (!ES_CODIGO(code)) return { ok: false, error: 'skin desconocida' };
+    if (!cid) return { ok: false, error: 'no session' };
+    if (!ES_CODIGO(code)) return { ok: false, error: 'unknown skin' };
 
     // Idempotencia: mismo nonce = misma compra. Se responde lo de la primera vez.
     const clave = cid + ':' + nonce;
     if (nonce && data.nonces[clave]) return { ok: true, repetida: true, estado: estado(cid, wallet) };
 
-    if (skinpoints.ownedOf(cid).indexOf(code) !== -1) return { ok: false, error: 'ya la tienes' };
+    if (skinpoints.ownedOf(cid).indexOf(code) !== -1) return { ok: false, error: 'you already own it' };
 
     if (moneda === 'sp') {
-        if (skinpoints.spendPoints(cid, PRECIO_SP) === false) return { ok: false, error: 'SP insuficientes' };
+        if (skinpoints.spendPoints(cid, PRECIO_SP) === false) return { ok: false, error: 'not enough SP' };
     } else if (moneda === 'pill') {
-        if (!wallet) return { ok: false, error: 'conecta la wallet' };
-        if (warbank.debit(wallet, PRECIO_PILL) === false) return { ok: false, error: '$PILL insuficiente' };
+        if (!wallet) return { ok: false, error: 'connect your wallet' };
+        if (warbank.debit(wallet, PRECIO_PILL) === false) return { ok: false, error: 'not enough $PILL' };
         apuntaQuema(PRECIO_PILL);
     } else {
-        return { ok: false, error: 'moneda no valida' };
+        return { ok: false, error: 'invalid currency' };
     }
 
     skinpoints.addOwned(cid, code);
@@ -116,9 +116,9 @@ function comprar({ cid, wallet, code, moneda, nonce }) {
 
 /* ===== EQUIPAR ===== */
 function equipar({ cid, wallet, code }) {
-    if (!cid) return { ok: false, error: 'sin sesion' };
-    if (code !== null && !ES_CODIGO(code)) return { ok: false, error: 'skin desconocida' };
-    if (code !== null && skinpoints.ownedOf(cid).indexOf(code) === -1) return { ok: false, error: 'no la tienes' };
+    if (!cid) return { ok: false, error: 'no session' };
+    if (code !== null && !ES_CODIGO(code)) return { ok: false, error: 'unknown skin' };
+    if (code !== null && skinpoints.ownedOf(cid).indexOf(code) === -1) return { ok: false, error: "you don't own it" };
     if (code === null) delete data.equipped[cid]; else data.equipped[cid] = code;
     dirty = true;
     return { ok: true, estado: estado(cid, wallet) };
@@ -128,18 +128,18 @@ function equipar({ cid, wallet, code }) {
 // Solo en ese sentido: el SP se gana jugando y no deberia poder revenderse por
 // tokens, o el juego se convierte en una granja.
 function convertir({ cid, wallet, pill, nonce }) {
-    if (!cid) return { ok: false, error: 'sin sesion' };
-    if (!wallet) return { ok: false, error: 'conecta la wallet' };
+    if (!cid) return { ok: false, error: 'no session' };
+    if (!wallet) return { ok: false, error: 'connect your wallet' };
     pill = Math.floor(Number(pill) || 0);
-    if (pill < CONVERSION_MIN_PILL) return { ok: false, error: 'minimo ' + CONVERSION_MIN_PILL + ' $PILL' };
+    if (pill < CONVERSION_MIN_PILL) return { ok: false, error: 'minimum ' + CONVERSION_MIN_PILL + ' $PILL' };
     // Solo multiplos exactos: con el resto, cambiar 150 daria 1 SP y se comerian
     // 50 $PILL sin contrapartida.
-    if (pill % PILL_POR_SP !== 0) return { ok: false, error: 'debe ser multiplo de ' + PILL_POR_SP };
+    if (pill % PILL_POR_SP !== 0) return { ok: false, error: 'must be a multiple of ' + PILL_POR_SP };
 
     const clave = cid + ':conv:' + nonce;
     if (nonce && data.nonces[clave]) return { ok: true, repetida: true, estado: estado(cid, wallet) };
 
-    if (warbank.debit(wallet, pill) === false) return { ok: false, error: '$PILL insuficiente' };
+    if (warbank.debit(wallet, pill) === false) return { ok: false, error: 'not enough $PILL' };
     apuntaQuema(pill);
     skinpoints.addPoints(cid, pill / PILL_POR_SP);
     if (nonce) data.nonces[clave] = { t: Date.now() };

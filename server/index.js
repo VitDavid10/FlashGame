@@ -1051,8 +1051,10 @@ function relayRoomCmdToHosts(msg) {
     };
     for (const h of hostProcs.values()) if (h.alive) h.ipc.notify('adminRoomCmd', p);
 }
-// Apaga/enciende UNA layer de UN combo concreto. La Layer 1 no se puede apagar:
-// un combo activo siempre necesita al menos una instancia.
+// Apaga/enciende UNA layer de UN combo concreto. La L1 TAMBIEN se puede apagar:
+// es la unica forma de desactivar un precio entero (p.ej. quitar las salas de
+// 50$) — con todas sus layers apagadas el combo deja de listarse en /api/rooms
+// y el matchmaker no lo elige, asi que desaparece de la pantalla de salas.
 // Persistencia y creación de sala van por separado:
 //  - Crear/destruir la sala: solo el proceso DUEÑO real del combo (mono, o el host
 //    al que el shard-map le asigna ese combo).
@@ -1064,7 +1066,6 @@ function relayRoomCmdToHosts(msg) {
 // en el host la creación/borrado de sala ya la registra getOrCreateRoom/shutdownRoom).
 function applySetLayerEnabled(mode, price, layerIdx, enabled) {
     if (!(layerIdx >= 1 && layerIdx <= LAYERS_PER_COMBO)) return false;
-    if (layerIdx === 1 && !enabled) return false;
     const owner = !ownsCombo || ownsCombo(mode, price);
     const lk = layerKeyOf(mode, price, layerIdx);
     if (owner) {
@@ -1837,6 +1838,9 @@ const httpServer = http.createServer(async (req, res) => {
                 const list = [];
                 for (const mode of CATALOG_MODES) for (const price of PRICES) {
                     const ck = mode + '_' + price;
+                    // Combo con TODAS sus layers apagadas: no existe para el
+                    // jugador, así que no se lista (igual que una layer suelta).
+                    if (enabledLayerCount(mode, price) === 0) continue;
                     const hj = perHost.get(SHARD.comboToHost.get(ck));
                     const entry = hj && hj.rooms && hj.rooms.find(r => r.key === ck);
                     list.push(entry || {
@@ -1862,6 +1866,8 @@ const httpServer = http.createServer(async (req, res) => {
         const now = Date.now();
         for (const mode of CATALOG_MODES) for (const price of PRICES) {
             const ck = mode + '_' + price;
+            // Todas las layers apagadas = sala desactivada: fuera del listado.
+            if (enabledLayerCount(mode, price) === 0) continue;
             const layers = [];
             for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
                 if (!isLayerEnabled(mode, price, i)) continue;
@@ -2108,8 +2114,8 @@ const httpServer = http.createServer(async (req, res) => {
         req.on('data', c => { body += c; if (body.length > 4000) req.destroy(); });
         req.on('end', () => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-            if (!isValidClientId(cid)) { res.end(JSON.stringify({ ok: false, error: 'sin sesion' })); return; }
-            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, error: 'json invalido' })); return; }
+            if (!isValidClientId(cid)) { res.end(JSON.stringify({ ok: false, error: 'no session' })); return; }
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, error: 'invalid request' })); return; }
             const wallet = isSolAddr(String(p.wallet || '')) ? String(p.wallet) : null;
 
             // Comprueba la firma de un gasto en $PILL. `esperado` es el mensaje
@@ -2118,10 +2124,10 @@ const httpServer = http.createServer(async (req, res) => {
             const firmaVale = (esperado) => {
                 const pay = p.pay || {};
                 const ts = Number(pay.ts) || 0;
-                if (!wallet || pay.message !== esperado || Math.abs(Date.now() - ts) > 120000) return 'firma de pago invalida';
+                if (!wallet || pay.message !== esperado || Math.abs(Date.now() - ts) > 120000) return 'invalid payment signature';
                 const sigKey = 'skin_' + (Array.isArray(pay.signature) ? pay.signature.join('') : '');
-                if (warbank.sigUsed(sigKey)) return 'firma ya usada';
-                if (!solana.verifySignedMessage(wallet, pay.message, pay.signature)) return 'firma no valida';
+                if (warbank.sigUsed(sigKey)) return 'signature already used';
+                if (!solana.verifySignedMessage(wallet, pay.message, pay.signature)) return 'signature not valid';
                 warbank.creditDeposit(wallet, 0, sigKey);   // la marca como usada (anti-replay)
                 return null;
             };

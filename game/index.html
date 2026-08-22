@@ -756,6 +756,28 @@
                 transform: translate(50%, -50%) rotate(90deg) scale(0.85) !important;
                 transform-origin: center !important;
             }
+            /* Aviso de pentakill y el +X de cada kill: cuelgan de <body>, asi que
+               la rotacion del juego no les llegaba y salian derechos sobre una
+               partida tumbada. Se giran igual que #botsBanner. El aviso va justo
+               debajo del reloj (lo que el jugador ve arriba) y el +X al otro
+               extremo, que es lo que ve ABAJO. */
+            html:not([data-hero]) body.mobile-allowed #pentakillBanner {
+                top: 50% !important; bottom: auto !important; right: 22% !important; left: auto !important;
+                transform: translate(50%, -50%) rotate(90deg) scale(0.8) !important;
+                transform-origin: center !important;
+                /* El pulso propio mueve el transform y borraria el giro: aqui va
+                   la version girada de esa misma animacion. */
+                animation-name: pentakillPulseMovil !important;
+            }
+            @keyframes pentakillPulseMovil {
+                0%, 100% { transform: translate(50%, -50%) rotate(90deg) scale(0.8); filter: brightness(1); }
+                50%      { transform: translate(50%, -50%) rotate(90deg) scale(0.85); filter: brightness(1.3); }
+            }
+            html:not([data-hero]) body.mobile-allowed #killGainStack {
+                top: 50% !important; bottom: auto !important; right: 76% !important; left: auto !important;
+                transform: translate(50%, -50%) rotate(90deg) scale(0.85) !important;
+                transform-origin: center !important;
+            }
             /* TODOS los carteles que se superponen a la partida: elegir skill,
                salir, resultado, aviso de sistema, premio... Sin esto salian
                derechos sobre un juego tumbado. */
@@ -1228,7 +1250,7 @@
         .gameModalBox .gm-btn:disabled { opacity: 0.6; cursor:default; }
         .gameModalBox .gm-row { display:flex; justify-content:space-between; font-size:13px; color:#888; margin-bottom: 4px; }
         /* Tabla de reparto (popup arcade) */
-        .prizeRow { display:grid; grid-template-columns:34px 1fr 60px 90px; gap:8px; padding:6px 10px; align-items:center; border-bottom:1px solid #1a1a1a; font-size:13px; }
+        .prizeRow { display:grid; grid-template-columns:34px 1fr 56px 132px; gap:8px; padding:6px 10px; align-items:center; border-bottom:1px solid #1a1a1a; font-size:13px; }
         .prizeRow.mine { background: rgba(255,206,61,0.1); border:1px solid rgba(255,206,61,0.5); border-radius:6px; }
         .prizeRow .pos { font-family:'Russo One'; color:#888; }
         .prizeRow.mine .pos, .prizeRow.mine .name { color:#ffce3d; }
@@ -2036,8 +2058,10 @@
 
         #botsBanner { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(8,12,8,0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0,255,136,0.4); border-radius: 10px; padding: 12px 28px; font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #00ff88; box-shadow: 0 0 30px rgba(0,255,136,0.2); white-space: nowrap; transition: top 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s; opacity: 0; pointer-events: none; }
         #botsBanner.show { top: 22px; opacity: 1; }
-        #killGainStack { position: fixed; top: 90px; left: 50%; transform: translateX(-50%); z-index: 9998; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
-        .kill-gain { font-family: 'Russo One', sans-serif; font-size: 44px; letter-spacing: 2px; color: #ff9933; text-shadow: 0 0 26px rgba(255,153,51,0.9), 0 0 10px rgba(255,153,51,0.7), 0 3px 8px rgba(0,0,0,0.9); animation: killGainFloat 2s cubic-bezier(0.2,0.7,0.3,1) forwards; }
+        /* Abajo y no arriba: el hueco de arriba lo ocupan el reloj, el aviso de
+           pentakill y el marcador, y el +X se les montaba encima. */
+        #killGainStack { position: fixed; top: auto; bottom: 20%; left: 50%; transform: translateX(-50%); z-index: 9998; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+        .kill-gain { font-family: 'Russo One', sans-serif; font-size: 32px; letter-spacing: 2px; color: #ff9933; text-shadow: 0 0 26px rgba(255,153,51,0.9), 0 0 10px rgba(255,153,51,0.7), 0 3px 8px rgba(0,0,0,0.9); animation: killGainFloat 2s cubic-bezier(0.2,0.7,0.3,1) forwards; }
         @keyframes killGainFloat {
             0%   { opacity: 0; transform: translateY(20px) scale(0.7); }
             12%  { opacity: 1; transform: translateY(0) scale(1.1); }
@@ -2647,7 +2671,7 @@
         }
         body.pixel-pack #botsBanner { font-size: 10px !important; text-shadow: 1px 1px 0 #000 !important; }
         body.pixel-pack #pentakillBanner { font-size: 13px !important; letter-spacing: 2px !important; text-shadow: 2px 2px 0 #000 !important; }
-        body.pixel-pack .kill-gain { font-family: 'Press Start 2P', monospace !important; font-size: 30px !important; text-shadow: 4px 4px 0 #000, 8px 8px 0 rgba(0,0,0,0.5) !important; }
+        body.pixel-pack .kill-gain { font-family: 'Press Start 2P', monospace !important; font-size: 20px !important; text-shadow: 4px 4px 0 #000, 8px 8px 0 rgba(0,0,0,0.5) !important; }
         body.pixel-pack #cmdBar input {
             border-radius: 0 !important; font-family: 'VT323', monospace !important; font-size: 17px !important;
             box-shadow: 4px 4px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important;
@@ -7303,7 +7327,7 @@
         // quedaban abiertos y reaparecian tal cual al volver a entrar.
         cerrarUIColores();
         SoundManager.play('select'); SoundManager.playMenuMusic(); ignoreNextHover = true; els.loginOverlay.style.display = 'none'; els.skillOverlay.style.display = 'none';
-        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // ocultar wallet al volver a la pantalla de selección
+        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, currentGameMode);   // la wallet se queda tambien en la pantalla de selección
         els.modeScreen.style.display = 'flex'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); 
         document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; 
         if(currentGameMode === 'classic') setHoverMode('classic'); else setHoverMode('arcade'); currentGameMode = null; 
@@ -7373,6 +7397,7 @@
             // Offline es practica: no se pregunta sala, se va directo a FREE.
             if (kind === 'offline') { selectRoom('Free'); runPlay(kind); return; }
             _pendingPlayKind = kind;
+            aplicarSalasActivas();
             document.getElementById('roomChoiceModal').style.display = 'flex';
             return;
         }
@@ -7397,6 +7422,20 @@
         document.getElementById('nameChoiceModal').style.display = 'none';
         const kind = _pendingNameKind; _pendingNameKind = null;
         if (kind) continueChoosePlay(kind);
+    }
+    // Salas activas del modo, segun el ultimo /api/rooms (ver refreshOracle).
+    // Vacio = aun no ha contestado el servidor: entonces no se esconde nada.
+    let _salasActivas = [];
+    // Los botones del popup SELECT A ROOM estan escritos en el HTML (no salen de
+    // la lista), asi que hay que apagar a mano los precios desactivados o el
+    // jugador entraria a una sala que ya no existe.
+    function aplicarSalasActivas() {
+        if (!_salasActivas.length) return;
+        const porClase = { free: 'Free', r5: '5$', r10: '10$', r20: '20$', r50: '50$' };
+        for (const cls in porClase) {
+            const b = document.querySelector('#roomChoiceModal .pw-room-grid .' + cls);
+            if (b) b.style.display = _salasActivas.indexOf(porClase[cls]) === -1 ? 'none' : '';
+        }
     }
     function closeRoomChoice() { _pendingPlayKind = null; document.getElementById('roomChoiceModal').style.display = 'none'; }
     function chooseRoomFromModal(a) {
@@ -9133,7 +9172,30 @@
         if (logoutTimer) clearInterval(logoutTimer); logoutTimer = setInterval(() => { timeLeft--; if (timeLeft <= 0) { clearInterval(logoutTimer); confirmExit(); } else { btn.innerText = `WAIT ${timeLeft}s...`; } }, 1000);
     }
     
-    function confirmExit() { document.getElementById('exitModal').style.display = 'none'; isLoggingOut = false; localStorage.removeItem('pillwars_save'); if(saveInterval) clearInterval(saveInterval); returnToMenu(); }
+    // Lo que se cobra al salir VIVO de una classic de pago online: el servidor lo
+    // paga en onPlayerLeave (al cerrarse el socket) y por eso su mensaje 'prize'
+    // no llega nunca — el cartel se pinta aqui con la MISMA formula de fee que
+    // usa el servidor (classicExitFeePct). Devuelve null si no toca cashout
+    // (arcade, offline, practica, muerto, lobby, sala gratis o carry a 0; con
+    // pentakill el carry ya es 0 porque el servidor pago la VICTORY).
+    function cashoutAlSalir() {
+        if (currentGameMode !== 'classic') return null;
+        if (practiceMode || isSpectating || !sim || !sim.isRemote) return null;
+        if (!netState || !netState.token) return null;
+        if (myCells().length === 0) return null;
+        const carry = (typeof EconHUD !== 'undefined' ? EconHUD.carry : 0) | 0;
+        if (carry <= 0) return null;
+        const kills = myKillStreak() | 0;
+        const feePct = kills >= 2 ? 0 : (kills >= 1 ? 10 : 20);
+        const fee = Math.floor(carry * feePct / 100);
+        return { reason: 'cashout', amount: carry - fee, carry, kills, feePct, fee };
+    }
+    function confirmExit() {
+        document.getElementById('exitModal').style.display = 'none'; isLoggingOut = false;
+        const cash = cashoutAlSalir();   // ANTES de returnToMenu, que resetea el HUD
+        localStorage.removeItem('pillwars_save'); if(saveInterval) clearInterval(saveInterval); returnToMenu();
+        if (cash) EconHUD.showPrize(cash);
+    }
     function forceResetRoom() { if (!confirm("Reset current room state? (Only affects your local simulation)")) return; let roomKey = currentGameMode + '_' + currentServer; roomStates[roomKey] = null; roomTimers[roomKey] = 0; localStorage.removeItem('pillwars_save'); checkActiveRoomConfig(); }
 
     function init() {
@@ -9471,7 +9533,11 @@
             showResultsUI('matchFinished');
         }
     }
-    function returnToMenu() { cerrarUIColores(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    // hideGameHUD() aqui dentro y no solo en showResultsUI: al SALIR por el boton
+    // no se pasa por el cartel de resultado, asi que los avisos de partida
+    // (2 KILLS TO PENTAKILL, CARRY/POT, barra de skills...) se quedaban pintados
+    // encima del menu.
+    function returnToMenu() { hideGameHUD(); cerrarUIColores(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
@@ -9829,11 +9895,14 @@
             }
         },
         // Muestra/oculta el panel completo y aplica el color del modo activo.
-        // En sala FREE (modo offline) se oculta porque no aplica wallet.
+        // Ya NO se esconde en la sala FREE: el saldo in-GAME y DEPOSIT/WITHDRAW
+        // son de la cuenta, no de la sala, y desaparecian justo cuando el
+        // jugador queria ingresar para poder entrar en una de pago. En movil la
+        // barra sigue oculta por CSS (alli solo se juega la FREE).
         setVisible(visible, mode) {
             const a = document.getElementById('gameWalletArea');
             if (!a) return;
-            const shouldShow = visible && currentServer !== 'Free';
+            const shouldShow = !!visible;
             a.style.display = shouldShow ? 'inline-flex' : 'none';
             const color = mode === 'classic' ? '#00ff88' : (mode === 'arcade' ? '#ccff00' : '#00ff88');
             a.style.setProperty('--mode-color', color);
@@ -9957,9 +10026,21 @@
     // Con MONEY_IN_USD = false se vuelve a mostrar en $PILL (cuando el token exista).
     const MONEY_IN_USD = true;
     let pillRate = 0;
+    // Tokens abreviados: 25000 -> 25K, 1200000 -> 1.2M. Lo que se gana son $PILL
+    // y las cifras son largas; asi caben en el HUD y en los carteles.
+    function fmtPillShort(pill) {
+        const n = Math.round(Number(pill) || 0);
+        const corta = (v, suf) => (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + suf;
+        if (n >= 1e6) return corta(n / 1e6, 'M');
+        if (n >= 1000) return corta(n / 1000, 'K');
+        return String(n);
+    }
+    // "25K (~$20)": la cantidad de verdad es la de TOKENS; el dolar va detras y
+    // con ~ porque el oraculo se re-precia cada 5 minutos — entre dos refrescos
+    // ese equivalente ya no es exacto.
     function fmtMoney(pill) {
         const n = Number(pill || 0);
-        if (MONEY_IN_USD && pillRate > 0) return '$' + (n / pillRate).toLocaleString('en-US', { maximumFractionDigits: 2 });
+        if (MONEY_IN_USD && pillRate > 0) return fmtPillShort(n) + ' (~$' + (n / pillRate).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ')';
         return n.toLocaleString('en-US') + ' $PILL';
     }
     // HUD del juego: actualiza carry/bote y muestra popup de premios al ganar.
@@ -10016,7 +10097,9 @@
             } else if (msg.reason === 'cashout') {
                 setOverlayTitle(title, 'cashout', 'CASHOUT', '#00ff88');
                 setAmt(msg.amount);
-                sub.innerHTML = msg.kills + ' kills · carry <b>' + fmtMoney(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmtMoney(msg.fee) + '</b>)';
+                // El fee va SOLO en tokens: con el (~$) de fmtMoney quedaban
+                // parentesis dentro de parentesis y no se leia nada.
+                sub.innerHTML = msg.kills + (msg.kills === 1 ? ' kill' : ' kills') + ' · carry <b>' + fmtMoney(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmtPillShort(msg.fee) + ' $PILL</b>)';
             } else if (msg.reason === 'arcadeEnd') {
                 setOverlayTitle(title, 'matchEnded', 'MATCH ENDED', msg.myAmount > 0 ? '#ffce3d' : '#aaa');
                 if (msg.myAmount > 0) setAmt(msg.myAmount); else amt.innerText = 'Out of top 10';
@@ -10044,10 +10127,21 @@
     }
     // Aviso de pentakill cercano: banner arriba + glow pulsante del contador.
     // Solo aplica a classic; arcade y los demás modos lo ignoran.
+    // En MOVIL el aviso asoma y se va solo: la pantalla girada es estrecha y
+    // dejarlo fijo (como en escritorio) se come el juego hasta que llega la
+    // kill que falta. En escritorio no cambia nada: se queda mientras dure.
+    let _pentaMovilTimer = null;
+    function mostrarPentaBanner(banner) {
+        banner.style.display = 'block';
+        if (typeof esMovilJuego === 'function' && esMovilJuego()) {
+            _pentaMovilTimer = setTimeout(() => { banner.style.display = 'none'; _pentaMovilTimer = null; }, 2600);
+        }
+    }
     function updatePentakillHint(streak) {
         const banner = document.getElementById('pentakillBanner');
         const kv = document.getElementById('killsVal');
         if (!banner || !kv) return;
+        if (_pentaMovilTimer) { clearTimeout(_pentaMovilTimer); _pentaMovilTimer = null; }
         kv.classList.remove('k-warn', 'k-crit');
         banner.classList.remove('almost', 'final');
         if (currentGameMode !== 'classic' || streak >= 5 || streak <= 0) {
@@ -10065,7 +10159,7 @@
                 banner.innerText = '2 KILLS TO PENTAKILL';
             }
             banner.classList.add('almost');
-            banner.style.display = 'block';
+            mostrarPentaBanner(banner);
             kv.classList.add('k-warn');
         } else if (streak === 4) {
             if (pixelMode && cartelUsesAtlas('one-more-kill')) {
@@ -10075,7 +10169,7 @@
                 banner.innerText = '★ 1 MORE KILL TO WIN ★';
             }
             banner.classList.add('final');
-            banner.style.display = 'block';
+            mostrarPentaBanner(banner);
             kv.classList.add('k-crit');
         } else {
             banner.style.display = 'none';
@@ -10090,6 +10184,12 @@
     // Solo refrescamos cuando el panel está visible (en menú de modo). Refresco periódico ligero.
     setInterval(() => { if (document.getElementById('gameWalletArea').style.display !== 'none') GameWalletUI.refresh(); }, 6000);
     window.GameWalletUI = GameWalletUI;   // expone para debug y para el módulo ESM
+    // Sesión de wallet al RECARGAR: se reintenta nada más cargar, sin esperar a
+    // que se abra el menú de un modo. Solo puede reconectar sola si la extensión
+    // tiene el sitio como de confianza (connect({onlyIfTrusted:true})); si el
+    // usuario no lo ha marcado, la wallet exige pulsar CONNECT otra vez y no hay
+    // forma de saltárselo desde la página.
+    try { GameWallet.ensure().then(ok => { if (ok) GameWalletUI.refresh(); }); } catch (e) {}
 
     let gamePillPerDollar = null;
     let oracleNextRefresh = 0;
@@ -10148,6 +10248,16 @@
             // Todas las salas del modo, FREE incluida (es seleccionable como las de pago).
             // Mostramos la layer elegida (default L1).
             const roomsThisMode = (data.rooms || []).filter(r => r.mode === (currentGameMode || 'classic'));
+            // El admin puede desactivar un precio entero (todas sus layers): esa
+            // sala deja de venir en la lista. Si era la elegida, se cae a la
+            // primera que quede — sin pasar por selectRoom, que en movil sacaria
+            // el aviso de "solo PC".
+            const nombresSala = roomsThisMode.map(r => r.priceUsd === 0 ? 'Free' : r.priceUsd + '$');
+            _salasActivas = nombresSala;
+            if (currentServer && nombresSala.length && nombresSala.indexOf(currentServer) === -1) {
+                currentServer = nombresSala[0];
+                checkActiveRoomConfig();
+            }
             // Barra L1..L4: solo layers que REALMENTE tienen sala creada (server solo
             // manda un entry en r.layers si esa sala existe — L2+ se crean on-demand
             // cuando la anterior se llena, no por tener layersPerCombo alto).
@@ -11586,7 +11696,7 @@
         // canvas: escriben el titulo con Press Start 2P y punto. Los de skins
         // van aqui porque llegaron despues del arte y la letra generada
         // desentonaba al lado de los titulos dibujados.
-        const SYS_TITULO_TEXTO = ['SKINS', 'CONVERT'];
+        const SYS_TITULO_TEXTO = ['SKINS', 'CONVERT', 'DESKTOP ONLY'];
         // Marco de cada aviso (peticion de David):
         //   verde (prize-panel) -> KICKED y REJOIN EXPIRED, los avisos de partida.
         //   gris (menu-gris)    -> todo lo de wallet/dinero/conexion, el mismo

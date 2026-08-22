@@ -133,9 +133,8 @@
     .ra-pips { display: flex; gap: 4px; }
     .ra-pip { font-size: 9px; font-family: 'Russo One'; letter-spacing: 0.5px; padding: 2px 6px; border-radius: 4px; border: 1px solid #333; color: #666; background: #0e0e0e; cursor: pointer; transition: 0.12s; }
     .ra-pip.on { color: #061; background: var(--primary); border-color: var(--primary); }
-    .ra-pip.fixed { cursor: default; opacity: 0.85; }
-    .ra-pip:not(.fixed):hover { border-color: #777; color: #ccc; }
-    .ra-pip.on:not(.fixed):hover { color: #061; }
+    .ra-pip:hover { border-color: #777; color: #ccc; }
+    .ra-pip.on:hover { color: #061; }
 
     /* Ranking de países */
     .ccode { display: inline-flex; min-width: 34px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 5px; background: #1a1a1a; border: 1px solid #2c2c2c; font-family: 'Russo One'; font-size: 10px; letter-spacing: 1px; color: var(--primary); }
@@ -1374,8 +1373,10 @@ function _raHostOf(ha, combo) {
 function _raChipHtml(combo, running, layerEnabled, hasHosts, assigned) {
     let pips = '';
     for (let L = 1; L <= running; L++) {
-        const on = _raIsOn(layerEnabled, combo, L), fixed = L === 1;
-        pips += `<span class="ra-pip${on ? ' on' : ''}${fixed ? ' fixed' : ''}" data-l="${L}"${fixed ? '' : ` onclick="raTogglePip(event,'${combo}',${L})"`}>L${L}</span>`;
+        // L1 tambien se apaga: apagar TODAS las layers de un combo es como se
+        // desactiva un precio entero (deja de salir en la pantalla de salas).
+        const on = _raIsOn(layerEnabled, combo, L);
+        pips += `<span class="ra-pip${on ? ' on' : ''}" data-l="${L}" onclick="raTogglePip(event,'${combo}',${L})">L${L}</span>`;
     }
     return `<div class="ra-chip${assigned ? ' assigned' : ''}" id="rachip_${combo}" data-combo="${combo}"${hasHosts ? ` draggable="true" ondragstart="raDragStart(event,'${combo}')" ondragend="raDragEnd(event)"` : ''}>
         <div class="ra-chip-name">${_raLabel(combo)}</div>

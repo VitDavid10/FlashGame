@@ -102,11 +102,13 @@ function createGameHost(deps) {
         const ck = comboKeyOf(mode, roomName);
         const max = maxPlayersOf(ck);
         for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
+            // La layer apagada NO entra al matchmaking aunque su sala siga viva
+            // (el admin puede apagarla con gente dentro: se vacía al terminar).
+            if (!isLayerEnabled(mode, roomName, i)) continue;
             const key = layerKeyOf(mode, roomName, i);
             let r = rooms.get(key);
             if (!r) {
                 if (i === 1) continue;
-                if (!isLayerEnabled(mode, roomName, i)) continue;
                 r = getOrCreateRoom(key, mode, roomName);
                 log(`Lazy: creada ${key} porque L${i - 1} está llena`);
             }
@@ -129,6 +131,9 @@ function createGameHost(deps) {
                 // Fase 4: en modo host cada proceso pre-crea SOLO los combos que le
                 // asigna el shard-map. En mono, ownsCombo es siempre true → las 10.
                 if (ownsCombo && !ownsCombo(mode, price)) continue;
+                // Precio desactivado desde el panel (L1 apagada): no se pre-crea,
+                // o al reiniciar el servidor volverían a salir las salas apagadas.
+                if (!isLayerEnabled(mode, price, 1)) continue;
                 getOrCreateRoom(layerKeyOf(mode, price, 1), mode, price);
                 n++;
             }
