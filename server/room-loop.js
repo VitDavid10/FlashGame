@@ -355,30 +355,43 @@ function tickRoomOnce(room, now, ctx) {
         const lbJson = JSON.stringify({ t: 'lb', top: board.slice(0, 10) });
         for (const [, cli] of room.clients) { if (cli.ws.readyState === 1 && cli.ws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX) try { cli.ws.send(lbJson); } catch (e) {} }
         for (const sws of room.spectators) { if (sws.readyState === 1 && sws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX) try { sws.send(lbJson); } catch (e) {} }
-        sendCrowd(room, puntos, ctx);
+        // Cada 400 ticks = 10 s (el bloque de arriba va a 20 = 2 Hz). Puede ir
+        // tan lento porque lo que viaja es un PUNTO, no un angulo: el cliente
+        // recalcula la direccion en cada frame con su posicion de AHORA, asi que
+        // la flecha nunca apunta mal aunque la muestra sea vieja.
+        if (room.tickCount % 400 === 0) sendCrowd(room, puntos, ctx);
     }
     sendMs += performance.now() - _t2;
     return { stepMs, snapMs, sendMs };
 }
 
 /*
- * BRUJULA DE MULTITUD (mensaje 'crowd', ~2 Hz, solo classic).
+ * BRUJULA DE MULTITUD (mensaje 'crowd', cada 10 s, solo classic y salas Free).
  *
  * Con AOI el cliente solo conoce lo que le cabe en la camara: la flecha de aviso
  * del juego no podria apuntar mas alla del borde de su pantalla. Aqui el
- * servidor le dice hacia DONDE esta el mayor grupo de jugadores/bots que NO le
- * cabe en su AOI, cuantos son y la masa del mas gordo.
+ * servidor le dice DONDE esta el mayor grupo de jugadores/bots que NO le cabe en
+ * su AOI, y cuantos son.
  *
- * Se manda SOLO un angulo (y con 24 cubos de 15 grados de resolucion): con una
- * direccion no se puede triangular una posicion, asi que no reabre el maphack
- * que cierra el AOI. Nada de coordenadas.
+ * Viaja un PUNTO y no un angulo, y por eso puede ir a 10 s: el cliente recalcula
+ * la direccion en cada frame contra su posicion de ahora, asi que la flecha
+ * sigue apuntando bien aunque el jugador haya cruzado medio mapa desde la ultima
+ * muestra. Con un angulo habria que refrescar constantemente.
  *
- * Coste: una pasada sobre `puntos` por cliente cada 20 ticks (~2 Hz). Con 35
- * jugadores y 60 puntos son unas 2.000 operaciones cada medio segundo.
+ * El punto va CUANTIZADO a rejilla de 400 (el mapa classic mide 14.000 de lado):
+ * es "por esa zona hay gente", no la posicion de nadie. Ademas es el centroide
+ * de un grupo, no una celda concreta.
+ *
+ * Coste: una pasada sobre `puntos` por cliente cada 400 ticks. Ver el bench en
+ * la conversacion: ~0,6 ms por pasada con 35 clientes, o sea 0,006% de un nucleo.
  */
 const CROWD_BINS = 24;   // cubos de 15 grados
 const CROWD_WIN = 2;     // ventana de +-2 cubos = +-30 grados
-const _cb = { n: new Float64Array(CROWD_BINS), x: new Float64Array(CROWD_BINS), y: new Float64Array(CROWD_BINS), m: new Float64Array(CROWD_BINS) };
+const CROWD_REJILLA = 400;
+const _cb = {
+    n: new Float64Array(CROWD_BINS),
+    px: new Float64Array(CROWD_BINS), py: new Float64Array(CROWD_BINS),
+};
 // SOLO EN SALAS GRATIS mientras se prueba (peticion de David): asi las salas de
 // pago no son el conejillo de indias y se puede medir el coste con y sin. Para
 // abrirlo a todas, quitar la comprobacion de roomName.
@@ -390,52 +403,48 @@ function sendCrowd(room, puntos, ctx) {
         if (cli.ws.readyState !== 1 || cli.ws.bufferedAmount >= ctx.WS_BACKPRESSURE_MAX) continue;
         const pj = room.sim.players.get(pid);
         if (!pj || !pj.alive || !pj.cells.length) continue;
-        let mx = 0, my = 0;
-        for (const c of pj.cells) { mx += c.x; my += c.y; }
-        mx /= pj.cells.length; my /= pj.cells.length;
         // box null = este cliente esta recibiendo el mapa ENTERO (AOI apagado, o
         // caja mayor que el mapa): su cliente ya lo sabe todo y la brujula no
         // tiene nada que añadir. Se sale ANTES del bucle, asi con el AOI apagado
         // esto no cuesta absolutamente nada.
         const box = cli._aoiBox;
         if (!box) continue;
-        _cb.n.fill(0); _cb.x.fill(0); _cb.y.fill(0); _cb.m.fill(0);
+        let mx = 0, my = 0;
+        for (const c of pj.cells) { mx += c.x; my += c.y; }
+        mx /= pj.cells.length; my /= pj.cells.length;
+        _cb.n.fill(0); _cb.px.fill(0); _cb.py.fill(0);
         let total = 0;
         for (const q of puntos) {
             if (q.id === pid) continue;
             // Lo que le cabe en el AOI ya lo esta recibiendo: la brujula es para
             // lo de FUERA.
             if (Math.abs(q.x - box.cx) <= box.halfX && Math.abs(q.y - box.cy) <= box.halfY) continue;
-            const dx = q.x - mx, dy = q.y - my;
-            const len = Math.sqrt(dx * dx + dy * dy) || 1;
-            // El vector unitario sale de dx/dy directamente: un sqrt en vez de un
-            // cos + un sin. atan2 solo se usa para el indice del cubo.
-            const ang = Math.atan2(dy, dx);
+            const ang = Math.atan2(q.y - my, q.x - mx);
             let i = ((ang + Math.PI) / (Math.PI * 2) * CROWD_BINS) | 0;
             if (i < 0) i = 0; else if (i >= CROWD_BINS) i = CROWD_BINS - 1;
-            _cb.n[i]++; _cb.x[i] += dx / len; _cb.y[i] += dy / len;
-            if (q.m > _cb.m[i]) _cb.m[i] = q.m;
+            _cb.n[i]++; _cb.px[i] += q.x; _cb.py[i] += q.y;
             total++;
         }
         if (!total) {
-            // Solo se avisa del cambio a "no hay nadie fuera" una vez, no 2 veces
-            // por segundo para siempre.
+            // Solo se avisa del cambio a "no hay nadie fuera" una vez.
             if (cli._crowdN !== 0) { cli._crowdN = 0; try { cli.ws.send('{"t":"crowd","n":0}'); } catch (e) {} }
             continue;
         }
-        let mejorN = 0, sx = 0, sy = 0, mMax = 0;
+        // Gana la ventana de +-30 grados con mas gente dentro; el punto es el
+        // centroide de los de esa ventana.
+        let mejorN = 0, sx = 0, sy = 0;
         for (let i = 0; i < CROWD_BINS; i++) {
-            let n = 0, ax = 0, ay = 0, mm = 0;
+            let n = 0, ax = 0, ay = 0;
             for (let k = -CROWD_WIN; k <= CROWD_WIN; k++) {
                 const j = (i + k + CROWD_BINS) % CROWD_BINS;
-                n += _cb.n[j]; ax += _cb.x[j]; ay += _cb.y[j];
-                if (_cb.m[j] > mm) mm = _cb.m[j];
+                n += _cb.n[j]; ax += _cb.px[j]; ay += _cb.py[j];
             }
-            if (n > mejorN) { mejorN = n; sx = ax; sy = ay; mMax = mm; }
+            if (n > mejorN) { mejorN = n; sx = ax; sy = ay; }
         }
         if (!mejorN) continue;
         cli._crowdN = mejorN;
-        try { cli.ws.send(JSON.stringify({ t: 'crowd', a: +Math.atan2(sy, sx).toFixed(3), n: mejorN, m: Math.round(mMax) })); } catch (e) {}
+        const cuant = v => Math.round(v / CROWD_REJILLA) * CROWD_REJILLA;
+        try { cli.ws.send(JSON.stringify({ t: 'crowd', x: cuant(sx / mejorN), y: cuant(sy / mejorN), n: mejorN })); } catch (e) {}
     }
 }
 
