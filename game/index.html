@@ -7729,6 +7729,29 @@
     // dibujaba su propio patron (dithering+rejilla aqui, moteado+rejilla alla)
     // y aunque se parecian no eran iguales. Tinte segun el modo. ---
     let _loginBgMode = 'classic';
+    // Lados del area donde se pinta un fondo pixel a pantalla completa, para
+    // los dos que hay (el del menu del modo y el de la pantalla de carga).
+    // Se mide el CONTENEDOR, pero cuando todavia esta oculto mide 0 y hay que
+    // caer al viewport — y ahi estaba el fallo: en movil estas pantallas se
+    // pintan GIRADAS 90 grados, asi que sus lados van al REVES que los de la
+    // pantalla, y con innerWidth/innerHeight a pelo salia la proporcion
+    // invertida. Medido en un telefono de 375x812: un buffer de 120x264 para un
+    // area de 812x375, estirado casi 7 veces a lo ancho. Eso es la "imagen
+    // lisa" que se colaba un frame al entrar en un modo, porque selectMode
+    // llama a paintLoginBg DOS veces y la primera corre con el menu aun
+    // escondido. La condicion de girado es la misma del media query que las gira
+    // (ver "ROTACION FORZADA" en el CSS).
+    function ladosFondo(cv) {
+        const caja = cv.parentElement;
+        let vw = (caja && caja.offsetWidth) || 0;
+        let vh = (caja && caja.offsetHeight) || 0;
+        if (vw && vh) return { vw, vh };
+        const girado = matchMedia('(pointer: coarse) and (orientation: portrait)').matches
+            && document.body.classList.contains('mobile-allowed')
+            && !document.documentElement.hasAttribute('data-hero');
+        const iw = window.innerWidth || 1280, ih = window.innerHeight || 720;
+        return girado ? { vw: ih, vh: iw } : { vw: iw, vh: ih };
+    }
     function paintLoginBg(mode) {
         const cv = document.getElementById('loginBgCv'); if (!cv) return;
         _loginBgMode = mode;
@@ -7749,9 +7772,7 @@
         // se estiraba en tiras — el mismo fallo que ya tenia la pantalla de
         // carga (ver lsPaintBg). Sin rotacion coinciden, asi que en escritorio
         // no cambia nada.
-        const caja = cv.parentElement;
-        const vw = (caja && caja.offsetWidth) || window.innerWidth || 1280;
-        const vh = (caja && caja.offsetHeight) || window.innerHeight || 720;
+        const { vw, vh } = ladosFondo(cv);
         const H = Math.max(gs, Math.round(270 / gs) * gs);
         const W = Math.max(gs, Math.round((vw / vh * H) / gs) * gs);
         if (cv.width !== W) cv.width = W;
@@ -11951,9 +11972,7 @@
         // son las medidas del elemento ANTES de rotarlo, que es justo lo que
         // hay que llenar. Sin rotacion coinciden con las de la ventana, asi que
         // en escritorio no cambia nada.
-        const caja = cv.parentElement;
-        const vw = (caja && caja.offsetWidth) || window.innerWidth || 1280;
-        const vh = (caja && caja.offsetHeight) || window.innerHeight || 720;
+        const { vw, vh } = ladosFondo(cv);
         const W = Math.max(LS_CELL, Math.round(vw / LS_PIX)), H = Math.max(LS_CELL, Math.round(vh / LS_PIX));
         if (cv.width !== W) cv.width = W;
         if (cv.height !== H) cv.height = H;
