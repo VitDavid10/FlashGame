@@ -476,7 +476,7 @@
                entero pasa a caber sin haber nada que desbordar. */
             html:not([data-hero]) body.mobile-allowed #paisModal {
                 --pm-pad: 14px 16px 16px !important;
-                --pm-top-y: 30px !important; --pm-top-x: 30px !important;
+                --pm-top-y: 66px !important; --pm-top-x: 16px !important;
                 --pm-fs-nom: 11px !important;
                 --pm-fs-lore: 12px !important;
                 --pm-gap: 8px !important;
@@ -694,23 +694,21 @@
                 top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
             }
             /* Paleta rapida (siempre visible en movil, ver openPalette en
-               selectMode). OJO: #pillPalette vive DENTRO de #loginOverlay,
-               que ya esta rotado entero (position:fixed con un ancestro
-               transform:rotate() usa ESE ancestro como referencia, no la
-               pantalla real) -- asi que aqui NO hace falta rotate(90deg)
-               propio, heredaria el giro dos veces (180 en vez de 90) y salia
-               patas arriba. Solo hace falta colocarla en coordenadas LOCALES
-               (las de #loginOverlay ya girado: 812x375). El marco (#palFrame)
-               lo sigue pintando el bucle de los carteles grandes -- ese mide
-               clientWidth/clientHeight real, se autoajusta solo. */
+               selectMode). Se cuelga de <body> por JS (ver initPalette) para
+               poder usar el MISMO truco de giro que #botsBanner/#timerDisplay
+               y compania -- confirmado funcionando. Colgada de #loginOverlay
+               (que ya va rotado entero) el position:fixed usaba ESE ancestro
+               como referencia en vez de la pantalla real, y descolocada en el
+               telefono de verdad aunque en el emulador midiera bien. */
             html:not([data-hero]) body.mobile-allowed #pillPalette {
-                position: fixed !important; left: 24px !important; top: 24px !important;
+                position: fixed !important; top: 30% !important; left: 24% !important;
                 right: auto !important; bottom: auto !important; margin-left: 0 !important;
-                width: 260px !important;
-                transform: scale(0.85) !important; transform-origin: top left !important;
+                width: 260px !important; z-index: 500 !important;
+                transform: translate(-50%, -50%) rotate(90deg) scale(0.85) !important;
+                transform-origin: center !important;
             }
-            /* Botones TOP/BOTTOM, debajo de la rejilla (mismo motivo de
-               arriba: coordenadas LOCALES, sin rotate propio). */
+            /* Botones TOP/BOTTOM, debajo de la rejilla en coordenadas LOCALES
+               (dentro de #pillPalette, que ya gira entera como una pieza). */
             html:not([data-hero]) body.mobile-allowed .pal-half-picker {
                 display: flex !important; flex-direction: row; gap: 8px;
                 position: absolute; left: 0; top: 100%; margin-top: 8px; width: 100%;
@@ -726,21 +724,22 @@
             #loginOverlay.bg-arcade .pal-half-btn.act {
                 border-color: #ccff00; color: #ccff00; text-shadow: 0 0 6px rgba(204,255,0,.7);
             }
-            /* Selector grande (108 tonos): temporal, centrado en el marco
-               local de #loginOverlay, "fino y pequeño" (mismo marco de
-               piedra, escalado mas chico en vez del tamano de escritorio
-               pensado para raton). Mismo motivo: sin rotate propio. */
+            /* Selector grande (108 tonos): temporal, centrado en pantalla,
+               "fino y pequeño" (mismo marco de piedra, escalado mas chico en
+               vez del tamano de escritorio pensado para raton). Mismo giro
+               que la paleta, ya colgado de <body> tambien. */
             html:not([data-hero]) body.mobile-allowed #colorPicker {
-                position: fixed !important; left: 50% !important; top: 50% !important;
+                position: fixed !important; top: 50% !important; left: 50% !important;
                 right: auto !important; bottom: auto !important; margin-left: 0 !important;
-                width: 300px !important;
-                transform: translate(-50%, -50%) scale(0.62) !important;
+                width: 300px !important; z-index: 501 !important;
+                transform: translate(-50%, -50%) rotate(90deg) scale(0.62) !important;
                 transform-origin: center !important;
             }
             html:not([data-hero]) body.mobile-allowed #palHint {
-                position: fixed !important; left: 24px !important; top: 190px !important;
-                right: auto !important; bottom: auto !important;
-                transform: none !important; font-size: 7px !important;
+                position: fixed !important; top: 55% !important; left: 24% !important;
+                right: auto !important; bottom: auto !important; z-index: 500 !important;
+                transform: translate(-50%, -50%) rotate(90deg) !important;
+                transform-origin: center !important; font-size: 7px !important;
             }
             /* Marcadores (ROOM / MASS / ALIVE): pegados al extremo y algo mas
                grandes, y justo DEBAJO de los botones de salir, musica y sonido
@@ -7398,6 +7397,23 @@
     }
 
     (function initPalette() {
+        // Movil: #pillPalette/#colorPicker/#palHint viven dentro de
+        // #loginOverlay, que va rotado entero -- eso convierte a ese
+        // ancestro en el "containing block" de cualquier position:fixed de
+        // dentro (regla rara pero real de CSS: un transform en un antecesor
+        // hace de referencia en vez de la pantalla), y coloco a mano en su
+        // sistema de coordenadas LOCAL no estaba dando resultados fiables en
+        // movil real (aun dentro de los limites en el emulador, mal
+        // colocado/tapado en el telefono de verdad). Se sacan de ahi y se
+        // cuelgan de <body>, igual que el resto de carteles de movil
+        // (skinBigModal, paisModal, nameChoiceModal), que usan el mismo
+        // truco de giro y SI estan confirmados funcionando.
+        if (esMovilJuego()) {
+            ['pillPalette', 'colorPicker', 'palHint'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.parentElement !== document.body) document.body.appendChild(el);
+            });
+        }
         // El marco lo pinta el bucle de los carteles grandes en #palFrame (ahi
         // recibe el tinte del modo), no hace falta cargarlo desde aqui.
         // El arte del selector grande si: es un background normal.
