@@ -502,6 +502,20 @@
             html:not([data-hero]) body.mobile-allowed .pw-modal .pw-modal-box {
                 max-width: 74vh; width: 272px; padding: 14px 14px 16px;
             }
+            /* name-choice (cartel de nombre) queda FUERA de la regla de
+               arriba: David pidio que fuera IGUAL, sin ninguna diferencia, al
+               #hero-name-modal de la landing. Encoger el padding/tipografia a
+               mano (como arriba) es exactamente lo que rompia esa igualdad —
+               cualquier numero que no cuadre justo se nota. En vez de eso se
+               deja la caja en sus medidas de ESCRITORIO (identicas a las de
+               #hero-name-modal: 508px, padding 44/44/40, boton 15/2 al 68%...)
+               y se encoge TODA junta con un solo scale, asi que las
+               proporciones internas quedan pixel a pixel iguales, solo mas
+               pequeñas. */
+            html:not([data-hero]) body.mobile-allowed .pw-modal .pw-modal-box.name-choice {
+                width: 420px !important; max-width: none !important; padding: 44px 44px 40px !important;
+                transform: scale(0.62) !important; transform-origin: center !important;
+            }
             html:not([data-hero]) body.mobile-allowed .pw-modal .pw-modal-title { font-size: 8px; margin-bottom: 12px; line-height: 1.8; }
             html:not([data-hero]) body.mobile-allowed .pw-modal .pw-big-btn { font-size: 8px; padding: 9px 4px; letter-spacing: 0; }
             /* Los carteles con MARCO DE IMAGEN (elegir sala y elegir wallet) no
@@ -1975,7 +1989,12 @@
            mismo campo con sombra hundida y mismo boton btn-plain-grey.png a
            aspect-ratio 15/2, para que los dos carteles sean coherentes. ===== */
         .pw-modal-box.name-choice {
-            position: relative; border: none; box-shadow: none;
+            /* #hero-name-modal (index.html) mide 508px TOTAL porque esa
+               pagina resetea box-sizing:border-box; aqui las cajas son
+               content-box de fabrica, asi que hacen falta 420px de ancho
+               (508 menos los dos 44 de padding) para que el total salga
+               IGUAL, pixel a pixel, y no una caja de mas (o de menos). */
+            position: relative; border: none; box-shadow: none; width: 420px;
             background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat;
             image-rendering: pixelated; padding: 44px 44px 40px;
         }
@@ -7510,7 +7529,18 @@
         (function pillLoop() {
             requestAnimationFrame(pillLoop);
             const lo = document.getElementById('loginOverlay');
-            if (lo && lo.style.display === 'flex') renderMenuPill();
+            if (lo && lo.style.display === 'flex') {
+                renderMenuPill();
+                // Red de seguridad: la paleta rapida de movil se abre desde
+                // selectMode() al mostrar el login, pero por si esa pantalla
+                // llegase a verse por otra via (resume, etc.) sin pasar por
+                // ahi, aqui se comprueba cada frame y se abre si hiciera
+                // falta -- no cuesta nada, openPalette() no hace nada raro si
+                // ya estaba abierta.
+                if (esMovilJuego() && document.getElementById('pillPalette').style.display === 'none') {
+                    openPalette(palHalf || 'colTop');
+                }
+            }
         })();
     })();
 
