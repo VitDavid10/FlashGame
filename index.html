@@ -1551,6 +1551,16 @@ body.trailer-open #page-content{
                la hoja, en el bloque TEXTURE PACK PIXEL, porque las de alli
                —misma especificidad o mas, y mas abajo— se comian a estas. */
             body.nav-play-visible .brand-name { display: none !important; }
+            /* ...y el PLAY NOW ocupa EXACTAMENTE su hueco. Los enlaces cuelgan
+               de .nav-links-container, que lleva 20px de margen propio mas los
+               14 del gap de .nav-left: en escritorio eso separa el logo del
+               menu, pero aqui, con el rotulo fuera, dejaba el boton 24px a la
+               derecha de donde empezaba PILLWARS y parecia descolgado de la
+               pildora en vez de salir de ella. Sin margen y con el mismo gap de
+               10 que usa .brand-container entre la pildora y el rotulo, el
+               boton arranca en el pixel exacto en el que arrancaba el rotulo. */
+            body.nav-play-visible .nav-left { gap: 10px; }
+            body.nav-play-visible .nav-links-container { margin-left: 0; }
             /* $PILL tambien cede el sitio mientras el PLAY NOW esta a la vista:
                el boton mide 166px y en 375 de ancho se le montaba encima
                (medido: PLAY NOW acababa en 240 y $PILL empezaba en 196). Con el
