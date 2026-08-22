@@ -1933,14 +1933,7 @@
             border: none !important; border-image: none !important; border-radius: 0 !important;
             clip-path: none !important; box-shadow: none !important;
             background: transparent url('img/cartel-hero/btn-plain-red.png') center/100% 100% no-repeat !important;
-            /* MENOS ALARGADO, como se ve en movil: alli el boton queda a
-               210x46 (proporcion 4.6) y en escritorio iba a 447x50 (9.0), el
-               doble de estirado. Se conserva el ancho (68%) y se sube el alto
-               bajando la proporcion a 9/2 = 4.5. (Antes probe 18/2, que va en
-               la direccion CONTRARIA: mismo ancho pero aun mas bajo, o sea
-               mas alargado todavia.) La placa la redibuja paintPlacas con la
-               medida real, asi que se ajusta sola. */
-            image-rendering: pixelated; aspect-ratio: 9/2; width: 68%;
+            image-rendering: pixelated; aspect-ratio: 2.8/1; width: 55%;
             font-family: 'Press Start 2P', monospace; font-size: 16px; color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.65); padding: 0; margin: 14px auto 0; display: block;
         }
