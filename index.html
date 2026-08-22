@@ -305,7 +305,7 @@
            left:0 lo pega al filo izquierdo, que es el del rotulo tanto si la
            caja esta ensanchada como si no, y min-width:0 lo devuelve a medirse
            por su contenido en vez de por la caja. */
-        #pill-dropdown .dropdown-content { left: 0; right: auto; min-width: 0; }
+        #pill-dropdown .dropdown-content { left: 0; right: auto; min-width: 0; padding-top: 16px; }
         /* translate/scale forzados: apply() del editor los escribe inline sobre
            TODAS las claves de LAYOUT_ELS, navPillMenu incluida, asi que un x/y
            guardado de cuando se podia arrastrar el menu lo volveria a descolgar
@@ -315,7 +315,7 @@
            EDIT LAYOUT la siguen usando (--pw-font sigue vivo, solo se clavan
            posicion y escala). */
         #pill-dropdown .dropdown-content { translate: none !important; scale: 1 !important; }
-        #pill-dropdown .dropdown-content a { padding: 10px 12px; font-size: var(--pw-font, var(--fs-1)); }
+        #pill-dropdown .dropdown-content a { padding: 10px 12px; font-size: var(--pw-font, 11px); }
         /* --pw-font: cuerpo de letra ajustable desde EDIT LAYOUT con ALT+rueda
            sobre el desplegable (clave pillMenu). Sin valor guardado manda el 13. */
         .dropdown-content a { padding: 12px 16px; font-family: 'Press Start 2P', monospace; font-size: var(--pw-font, 12px); color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid rgba(255,206,61,0.25); white-space: nowrap; }
@@ -4825,7 +4825,7 @@ function toggleTrailerMode() {
         // Cuerpo de letra por defecto de cada clave que admite ALT+rueda: el
         // mismo numero que el fallback de var(--pw-font, N) en su CSS. Hace
         // falta porque al leer --pw-font sin valor guardado no devuelve nada.
-        const FONT_DEFAULTS = { navPillMenu: 9, caSign: 13, ca: 11, navPlayBtn: 15 };
+        const FONT_DEFAULTS = { navPillMenu: 11, caSign: 13, ca: 11, navPlayBtn: 15 };
         // Tope de escala por clave. El general (3) se queda corto en los iconos
         // de skills: el del tooltip a 3x mide 192px dentro de una caja de
         // ~246px, asi que ni siquiera llega a tocar los lados para recortarse.
