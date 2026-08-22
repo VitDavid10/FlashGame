@@ -679,6 +679,55 @@
                 transform: translate(-50%, -50%) rotate(90deg) !important;
                 top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
             }
+            /* Paleta rapida (siempre visible en movil, ver openPalette en
+               selectMode). OJO: #pillPalette vive DENTRO de #loginOverlay,
+               que ya esta rotado entero (position:fixed con un ancestro
+               transform:rotate() usa ESE ancestro como referencia, no la
+               pantalla real) -- asi que aqui NO hace falta rotate(90deg)
+               propio, heredaria el giro dos veces (180 en vez de 90) y salia
+               patas arriba. Solo hace falta colocarla en coordenadas LOCALES
+               (las de #loginOverlay ya girado: 812x375). El marco (#palFrame)
+               lo sigue pintando el bucle de los carteles grandes -- ese mide
+               clientWidth/clientHeight real, se autoajusta solo. */
+            html:not([data-hero]) body.mobile-allowed #pillPalette {
+                position: fixed !important; left: 24px !important; top: 24px !important;
+                right: auto !important; bottom: auto !important; margin-left: 0 !important;
+                width: 260px !important;
+                transform: scale(0.85) !important; transform-origin: top left !important;
+            }
+            /* Botones TOP/BOTTOM, debajo de la rejilla (mismo motivo de
+               arriba: coordenadas LOCALES, sin rotate propio). */
+            html:not([data-hero]) body.mobile-allowed .pal-half-picker {
+                display: flex !important; flex-direction: row; gap: 8px;
+                position: absolute; left: 0; top: 100%; margin-top: 8px; width: 100%;
+            }
+            html:not([data-hero]) body.mobile-allowed .pal-half-btn {
+                flex: 1; font-family: 'Press Start 2P', monospace; font-size: 9px; color: #cfd6d0;
+                background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.2);
+                padding: 8px 4px; cursor: pointer; letter-spacing: 0;
+            }
+            html:not([data-hero]) body.mobile-allowed .pal-half-btn.act {
+                border-color: #00ffaa; color: #00ffaa; text-shadow: 0 0 6px rgba(0,255,170,.7);
+            }
+            #loginOverlay.bg-arcade .pal-half-btn.act {
+                border-color: #ccff00; color: #ccff00; text-shadow: 0 0 6px rgba(204,255,0,.7);
+            }
+            /* Selector grande (108 tonos): temporal, centrado en el marco
+               local de #loginOverlay, "fino y pequeño" (mismo marco de
+               piedra, escalado mas chico en vez del tamano de escritorio
+               pensado para raton). Mismo motivo: sin rotate propio. */
+            html:not([data-hero]) body.mobile-allowed #colorPicker {
+                position: fixed !important; left: 50% !important; top: 50% !important;
+                right: auto !important; bottom: auto !important; margin-left: 0 !important;
+                width: 300px !important;
+                transform: translate(-50%, -50%) scale(0.62) !important;
+                transform-origin: center !important;
+            }
+            html:not([data-hero]) body.mobile-allowed #palHint {
+                position: fixed !important; left: 24px !important; top: 190px !important;
+                right: auto !important; bottom: auto !important;
+                transform: none !important; font-size: 7px !important;
+            }
             /* Marcadores (ROOM / MASS / ALIVE): pegados al extremo y algo mas
                grandes, y justo DEBAJO de los botones de salir, musica y sonido
                —que ocupan el borde de abajo hasta y=96—, de modo que la columna
@@ -828,14 +877,14 @@
                 aspect-ratio: auto !important; width: 210px !important; height: 46px !important;
                 min-width: 0 !important; padding: 0 !important; font-size: 15px !important;
             }
-            /* Fuera todo lo que no son esas tres piezas. */
+            /* Fuera todo lo que no son esas tres piezas. La paleta rapida
+               (#pillPalette) y el selector grande (#colorPicker) SI se
+               quedan: ver su propio bloque mas abajo, tienen posicion propia
+               en vez de heredar la de escritorio. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-right-col,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #playerNameInput,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #btnSettings,
-            html:not([data-hero]) body.mobile-allowed #loginOverlay #btnFeatures,
-            html:not([data-hero]) body.mobile-allowed #loginOverlay #pillPalette,
-            html:not([data-hero]) body.mobile-allowed #loginOverlay #colorPicker,
-            html:not([data-hero]) body.mobile-allowed #loginOverlay #palHint { display: none !important; }
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #btnFeatures { display: none !important; }
         }
 
         /* --- UI & BUTTONS --- */
@@ -2134,6 +2183,9 @@
         .pal-btn:hover { background: rgba(255,255,255,0.16); }
         #palPickL { left: 8.95%; }
         #palReset { left: 65.89%; }
+        /* Solo movil (ver bloque @media mas arriba): en escritorio se elige
+           mitad tocando la propia pildora, no hacen falta estos botones. */
+        .pal-half-picker { display: none; }
         .pill-palette.assigning .pal-swatch { animation: palBlink 0.7s steps(2) infinite; }
         @keyframes palBlink { 50% { outline: 2px solid #fff; outline-offset: -1px; } }
         /* Aviso de "guarda el color en una ventana". Sin placa: mismo idioma que
@@ -3190,6 +3242,13 @@
                     <canvas class="pal-frame" id="palFrame"></canvas>
                     <button class="pal-btn" id="palPickL" type="button" title="Pick any color"></button>
                     <button class="pal-btn" id="palReset" type="button" title="Reset the palette to its default colors"></button>
+                    <!-- Solo movil: ahi no se toca una mitad de la pildora para
+                         elegir que mitad se pinta (el toque en la pildora abre
+                         YOUR SKINS), asi que hacen falta estos dos botones. -->
+                    <div class="pal-half-picker" id="palHalfPicker">
+                        <button type="button" class="pal-half-btn" id="palHalfUp" onclick="setPalHalf('colTop')" title="Paint top half">TOP</button>
+                        <button type="button" class="pal-half-btn" id="palHalfDown" onclick="setPalHalf('colBot')" title="Paint bottom half">BOTTOM</button>
+                    </div>
                 </div>
                 <!-- Fuera de la paleta para poder moverlo por separado en EDIT
                      LAYOUT (dentro heredaba su posicion y su escala). -->
@@ -7023,6 +7082,12 @@
                 try { paintLoginBg(m); } catch(e) {}
                 els.modeScreen.style.display = 'none';
                 els.loginOverlay.style.display = 'flex';
+                // Movil: la paleta rapida vive siempre a un lateral (no hay
+                // gesto de tocar la pildora para abrirla, esa la usa ahora
+                // YOUR SKINS). Se abre aqui, con la mitad de arriba por
+                // defecto, y closePalette() ya esta hecho para no volver a
+                // esconderla en movil.
+                if (esMovilJuego()) openPalette('colTop');
                 // Ya se puede medir el titulo (con el login oculto medía 0 y no
                 // habia forma de centrarlo).
                 centrarTitulo();
@@ -7199,8 +7264,17 @@
             b.style.left = (PAL_X0 + (i % 5) * PAL_DX) + '%';
             b.style.top = (PAL_Y0 + Math.floor(i / 5) * PAL_DY) + '%';
             b.onclick = () => {
-                if (palAssign) { palColors[i] = palAssign; savePalette(); setAssignMode(null); renderPalette(); setTimeout(closePalette, 200); }
-                else { applyPillColor(c); closePalette(); }
+                // En movil la paleta esta SIEMPRE abierta (a un lateral, ver
+                // openPalette/esMovilJuego mas abajo): elegir color no debe
+                // cerrarla, solo pintar. Sin este corte se cerraba sola cada
+                // vez y habia que volver a abrirla para el siguiente cambio.
+                if (palAssign) {
+                    palColors[i] = palAssign; savePalette(); setAssignMode(null); renderPalette();
+                    if (!esMovilJuego()) setTimeout(closePalette, 200);
+                } else {
+                    applyPillColor(c);
+                    if (!esMovilJuego()) closePalette();
+                }
             };
             grid.appendChild(b);
         });
@@ -7239,8 +7313,27 @@
         setAssignMode(null);
         renderPalette();
         pal.style.display = 'block';
+        updatePalHalfUI();
     }
-    function closePalette() { if (assignTimeout) clearTimeout(assignTimeout); const p = document.getElementById('pillPalette'); if (p) { p.style.display = 'none'; setAssignMode(null); } }
+    // Solo movil: botones TOP/BOTTOM en vez de tocar una mitad de la pildora
+    // (esa la usa ahora skinBigOpen). No renderiza ni cambia display -- la
+    // paleta ya esta abierta siempre, esto solo cambia que mitad se pinta.
+    function setPalHalf(half) {
+        palHalf = half;
+        updatePalHalfUI();
+        try { SoundManager.playSimpleHover(); } catch (e) {}
+    }
+    function updatePalHalfUI() {
+        const up = document.getElementById('palHalfUp'), down = document.getElementById('palHalfDown');
+        if (up) up.classList.toggle('act', palHalf === 'colTop');
+        if (down) down.classList.toggle('act', palHalf === 'colBot');
+    }
+    function closePalette() {
+        // En movil la paleta no se cierra nunca sola (vive siempre a un
+        // lateral): solo el selector grande de 108 tonos, que si es temporal.
+        if (esMovilJuego()) { setAssignMode(null); return; }
+        if (assignTimeout) clearTimeout(assignTimeout); const p = document.getElementById('pillPalette'); if (p) { p.style.display = 'none'; setAssignMode(null); }
+    }
     // RESET de la paleta: las 10 ventanas vuelven a los colores de fabrica. No
     // toca el color que lleve puesto la pildora, solo los guardados.
     function resetPalette() {
