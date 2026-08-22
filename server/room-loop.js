@@ -285,6 +285,10 @@ function tickRoomOnce(room, now, ctx) {
             // jugador. Es lo que hace barato el caso "jugador enorme" o "zoom
             // global muy alejado" sin apagar el AOI para el resto.
             const box = ctx.aoiBoxFor(pj, cli.aspect, room.sim.mapSize);
+            // Se guarda para la brujula de multitud de mas abajo. NO se puede
+            // volver a llamar a aoiBoxFor: adelanta el lerp de p._aoiScale y
+            // descuadraria la caja real del AOI.
+            cli._aoiBox = box;
             if (!box) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
             const snap = ctx.buildSnapshotFor(room, pid, box);
             // Binario: pasar el string ya hecho (snap.evs); JSON: el array (snap.ev).
@@ -323,25 +327,100 @@ function tickRoomOnce(room, now, ctx) {
     // vivos + grupos de bots, por masa actual) y lo manda a todos. El cliente marca su
     // propia fila por id. Es barato: una pasada sobre células cada 20 ticks.
     if (room.tickCount % 20 === 0) {
-        const board = [];
+        // La misma pasada saca el ranking Y el centroide de cada jugador/grupo
+        // de bots (`puntos`), que es lo que necesita la brujula de mas abajo.
+        const board = [], puntos = [];
         for (const p of room.sim.players.values()) {
             if (!p.alive || !p.cells.length) continue;
-            let m = 0; for (const c of p.cells) m += c.mass;
+            let m = 0, cx = 0, cy = 0;
+            for (const c of p.cells) { m += c.mass; cx += c.x; cy += c.y; }
             board.push({ id: p.id, n: p.name, m: Math.round(m) });
+            puntos.push({ id: p.id, x: cx / p.cells.length, y: cy / p.cells.length, m });
         }
-        const botMap = new Map();   // id → { n, m }
+        const botMap = new Map();   // id → { n, m, x, y, k }
         for (const e of room.sim.enemies) {
             const g = botMap.get(e.id);
-            if (g) g.m += e.mass; else botMap.set(e.id, { n: e.name, m: e.mass });
+            if (g) { g.m += e.mass; g.x += e.x; g.y += e.y; g.k++; }
+            else botMap.set(e.id, { n: e.name, m: e.mass, x: e.x, y: e.y, k: 1 });
         }
-        for (const [id, g] of botMap) board.push({ id, n: g.n, m: Math.round(g.m) });
+        for (const [id, g] of botMap) {
+            board.push({ id, n: g.n, m: Math.round(g.m) });
+            puntos.push({ id, x: g.x / g.k, y: g.y / g.k, m: g.m });
+        }
         board.sort((a, b) => b.m - a.m);
         const lbJson = JSON.stringify({ t: 'lb', top: board.slice(0, 10) });
         for (const [, cli] of room.clients) { if (cli.ws.readyState === 1 && cli.ws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX) try { cli.ws.send(lbJson); } catch (e) {} }
         for (const sws of room.spectators) { if (sws.readyState === 1 && sws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX) try { sws.send(lbJson); } catch (e) {} }
+        sendCrowd(room, puntos, ctx);
     }
     sendMs += performance.now() - _t2;
     return { stepMs, snapMs, sendMs };
+}
+
+/*
+ * BRUJULA DE MULTITUD (mensaje 'crowd', ~2 Hz, solo classic).
+ *
+ * Con AOI el cliente solo conoce lo que le cabe en la camara: la flecha de aviso
+ * del juego no podria apuntar mas alla del borde de su pantalla. Aqui el
+ * servidor le dice hacia DONDE esta el mayor grupo de jugadores/bots que NO le
+ * cabe en su AOI, cuantos son y la masa del mas gordo.
+ *
+ * Se manda SOLO un angulo (y con 24 cubos de 15 grados de resolucion): con una
+ * direccion no se puede triangular una posicion, asi que no reabre el maphack
+ * que cierra el AOI. Nada de coordenadas.
+ *
+ * Coste: una pasada sobre `puntos` por cliente cada 20 ticks (~2 Hz). Con 35
+ * jugadores y 60 puntos son unas 2.000 operaciones cada medio segundo.
+ */
+const CROWD_BINS = 24;   // cubos de 15 grados
+const CROWD_WIN = 2;     // ventana de +-2 cubos = +-30 grados
+const _cb = { n: new Float64Array(CROWD_BINS), x: new Float64Array(CROWD_BINS), y: new Float64Array(CROWD_BINS), m: new Float64Array(CROWD_BINS) };
+function sendCrowd(room, puntos, ctx) {
+    if (room.mode !== 'classic' || puntos.length < 2) return;
+    for (const [pid, cli] of room.clients) {
+        if (cli.ws.readyState !== 1 || cli.ws.bufferedAmount >= ctx.WS_BACKPRESSURE_MAX) continue;
+        const pj = room.sim.players.get(pid);
+        if (!pj || !pj.alive || !pj.cells.length) continue;
+        let mx = 0, my = 0;
+        for (const c of pj.cells) { mx += c.x; my += c.y; }
+        mx /= pj.cells.length; my /= pj.cells.length;
+        const box = cli._aoiBox;
+        _cb.n.fill(0); _cb.x.fill(0); _cb.y.fill(0); _cb.m.fill(0);
+        let total = 0;
+        for (const q of puntos) {
+            if (q.id === pid) continue;
+            // Lo que le cabe en el AOI ya lo esta recibiendo: la brujula es para
+            // lo de FUERA (box null = esta recibiendo el mapa entero → nada que
+            // añadir, su cliente ya lo sabe todo).
+            if (!box) continue;
+            if (Math.abs(q.x - box.cx) <= box.halfX && Math.abs(q.y - box.cy) <= box.halfY) continue;
+            const ang = Math.atan2(q.y - my, q.x - mx);
+            let i = ((ang + Math.PI) / (Math.PI * 2) * CROWD_BINS) | 0;
+            if (i < 0) i = 0; else if (i >= CROWD_BINS) i = CROWD_BINS - 1;
+            _cb.n[i]++; _cb.x[i] += Math.cos(ang); _cb.y[i] += Math.sin(ang);
+            if (q.m > _cb.m[i]) _cb.m[i] = q.m;
+            total++;
+        }
+        if (!total) {
+            // Solo se avisa del cambio a "no hay nadie fuera" una vez, no 2 veces
+            // por segundo para siempre.
+            if (cli._crowdN !== 0) { cli._crowdN = 0; try { cli.ws.send('{"t":"crowd","n":0}'); } catch (e) {} }
+            continue;
+        }
+        let mejorN = 0, sx = 0, sy = 0, mMax = 0;
+        for (let i = 0; i < CROWD_BINS; i++) {
+            let n = 0, ax = 0, ay = 0, mm = 0;
+            for (let k = -CROWD_WIN; k <= CROWD_WIN; k++) {
+                const j = (i + k + CROWD_BINS) % CROWD_BINS;
+                n += _cb.n[j]; ax += _cb.x[j]; ay += _cb.y[j];
+                if (_cb.m[j] > mm) mm = _cb.m[j];
+            }
+            if (n > mejorN) { mejorN = n; sx = ax; sy = ay; mMax = mm; }
+        }
+        if (!mejorN) continue;
+        cli._crowdN = mejorN;
+        try { cli.ws.send(JSON.stringify({ t: 'crowd', a: +Math.atan2(sy, sx).toFixed(3), n: mejorN, m: Math.round(mMax) })); } catch (e) {}
+    }
 }
 
 module.exports = { tickRoomOnce };

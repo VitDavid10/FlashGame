@@ -9590,7 +9590,7 @@
         }
         MAX_BOT_CELLS = (currentGameMode === 'classic') ? 8 : 16;
     }
-    function hideGameHUD() { document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; EconHUD.entry=0; document.getElementById('econHud').style.display='none'; } updatePentakillHint(0); }
+    function hideGameHUD() { crowdHint = null; document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; EconHUD.entry=0; document.getElementById('econHud').style.display='none'; } updatePentakillHint(0); }
     // El split también vive en la sim: solo encolamos la acción con el objetivo del ratón.
     function splitPlayer() {
         if (!gameRunning || !sim || isSpectating) return;
@@ -12076,6 +12076,9 @@
             } else if (msg.t === 'econ') {
                 if (msg.rate > 0) pillRate = msg.rate;
                 EconHUD.update(msg.carry, msg.pot, msg.entry);
+            } else if (msg.t === 'crowd') {
+                // Brujula de multitud (ver drawEnemyArrow). Solo classic.
+                crowdHint = { a: +msg.a || 0, n: msg.n | 0, m: msg.m | 0, at: Date.now() };
             } else if (msg.t === 'killGain') {
                 showKillGain(msg.amount);
             } else if (msg.t === 'prize') {
@@ -12868,18 +12871,25 @@
         ctx.restore();
 
         floatingTexts.forEach(ft => ft.draw(ctx)); ctx.restore(); uiTexts.forEach(ut => ut.draw(ctx));
-        drawEnemyArrows(es);
+        drawEnemyArrow(es);
     }
 
-    // ===== FLECHAS DE AVISO DE ENEMIGO (solo classic) =====
-    // Cada enemigo que se queda FUERA de la pantalla deja una punta pegada al
-    // borde apuntando hacia el. En classic el mapa es grande, no hay skills que
-    // avisen y te comen por la espalda sin verlo venir; con esto sabes por donde
-    // viene y de que tamaño. Color = peligro: ROJO si te puede comer, VERDE si
-    // te lo comes tu, AMBAR si estais parejos.
+    // ===== FLECHA DE AVISO (solo classic) =====
+    // UNA sola punta pegada al borde, apuntando a donde hay MAS gente que no se
+    // ve. Antes eran hasta 6 (una por enemigo) y quedaba un erizo de flechas.
     //
-    // Online solo salen las flechas de lo que el servidor te manda (AOI), o sea
-    // lo que tienes cerca — que es justo lo que interesa avisar.
+    // El angulo sale de un histograma de 24 cubos con DOS fuentes que se suman:
+    //   1) Lo que ve tu cliente: cada enemigo del AOI que se ha ido de pantalla.
+    //   2) La brujula del servidor (mensaje 'crowd', ~2 Hz): el mayor grupo de
+    //      todo lo que NO te cabe en el AOI. Sin ella la flecha solo alcanzaria
+    //      el anillo justo fuera del borde, porque el servidor no te manda nada
+    //      mas (ver AOI en server/index.js).
+    // Gana la ventana de +-30 grados con mas gente dentro, y la flecha apunta a
+    // la media de los vectores de esa ventana (no al centro del cubo, que
+    // saltaria de 15 en 15 grados).
+    //
+    // Color = peligro del MAS GORDO de ese grupo: ROJO te come, VERDE te lo
+    // comes, AMBAR estais parejos.
     const FLECHA_MASK = [
         '11.....',
         '1111...',
@@ -12889,10 +12899,14 @@
         '1111...',
         '11.....',
     ];
-    const FLECHA_PX = 4;      // lado de cada "pixel gordo" del sprite
-    const FLECHA_MARGEN = 30; // a cuanto del borde de la pantalla se pega
-    const FLECHAS_MAX = 6;    // solo las de los enemigos mas cercanos
+    const FLECHA_PX = 5;       // lado de cada "pixel gordo" del sprite
+    const FLECHA_MARGEN = 34;  // a cuanto del borde de la pantalla se pega
+    const FLECHA_BINS = 24;    // cubos de 15 grados
+    const FLECHA_WIN = 2;      // ventana de +-2 cubos = +-30 grados
     const _flechaCache = new Map();
+    const _fb = { n: new Float64Array(FLECHA_BINS), x: new Float64Array(FLECHA_BINS), y: new Float64Array(FLECHA_BINS), m: new Float64Array(FLECHA_BINS) };
+    // Ultima brujula del servidor. n=0 significa "no hay nadie fuera de tu AOI".
+    let crowdHint = null;
     // Sprite pixel de la punta, apuntando a la DERECHA (angulo 0). Se dibuja una
     // vez por color y luego solo se rota: nada de pintar rectangulos por frame.
     function pixArrowSprite(color) {
@@ -12918,13 +12932,20 @@
         _flechaCache.set(color, cv);
         return cv;
     }
-    function drawEnemyArrows(es) {
+    function drawEnemyArrow(es) {
         if (currentGameMode !== 'classic' || isSpectating) return;
         const cells = myCells();
         if (!cells.length) return;
         let miMasa = 0; for (const c of cells) miMasa += c.mass;
-        // Un enemigo = un grupo (sus trozos partidos cuentan como uno solo):
-        // apuntamos a su celda mas gorda y comparamos con su masa TOTAL.
+        const cx = width / 2, cy = height / 2, M = FLECHA_MARGEN;
+        _fb.n.fill(0); _fb.x.fill(0); _fb.y.fill(0); _fb.m.fill(0);
+        const anotar = (ang, peso, masa) => {
+            let i = ((ang + Math.PI) / (Math.PI * 2) * FLECHA_BINS) | 0;
+            if (i < 0) i = 0; else if (i >= FLECHA_BINS) i = FLECHA_BINS - 1;
+            _fb.n[i] += peso; _fb.x[i] += Math.cos(ang) * peso; _fb.y[i] += Math.sin(ang) * peso;
+            if (masa > _fb.m[i]) _fb.m[i] = masa;
+        };
+        // Fuente 1: un enemigo = un grupo (sus trozos partidos cuentan como uno).
         const grupos = new Map();
         for (const e of sim.enemies) {
             let g = grupos.get(e.id);
@@ -12932,46 +12953,45 @@
             g.masa += e.mass;
             if (e.r > g.mayor) { g.mayor = e.r; g.x = e.x; g.y = e.y; }
         }
-        const cx = width / 2, cy = height / 2, M = FLECHA_MARGEN;
-        const fuera = [];
+        let hay = false;
         for (const g of grupos.values()) {
             const sx = (g.x - camera.x) * es + cx, sy = (g.y - camera.y) * es + cy;
             if (sx > -M && sx < width + M && sy > -M && sy < height + M) continue;   // ya se ve
-            const dx = sx - cx, dy = sy - cy;
-            fuera.push({ g, dx, dy, d2: dx * dx + dy * dy });
+            anotar(Math.atan2(sy - cy, sx - cx), 1, g.masa);
+            hay = true;
         }
-        if (!fuera.length) return;
-        fuera.sort((a, b) => a.d2 - b.d2);
-        const diag = Math.max(width, height) * 1.6;
+        // Fuente 2: la brujula del servidor (el mundo no cambia de orientacion
+        // entre mundo y pantalla, asi que su angulo vale tal cual). Se descarta
+        // si lleva mas de 3s sin refrescarse: el server la manda a 2 Hz.
+        if (crowdHint && crowdHint.n > 0 && Date.now() - crowdHint.at < 3000) {
+            anotar(crowdHint.a, crowdHint.n, crowdHint.m);
+            hay = true;
+        }
+        if (!hay) return;
+        let mejorN = 0, sx = 0, sy = 0, mMax = 0;
+        for (let i = 0; i < FLECHA_BINS; i++) {
+            let n = 0, ax = 0, ay = 0, mm = 0;
+            for (let k = -FLECHA_WIN; k <= FLECHA_WIN; k++) {
+                const j = (i + k + FLECHA_BINS) % FLECHA_BINS;
+                n += _fb.n[j]; ax += _fb.x[j]; ay += _fb.y[j];
+                if (_fb.m[j] > mm) mm = _fb.m[j];
+            }
+            if (n > mejorN) { mejorN = n; sx = ax; sy = ay; mMax = mm; }
+        }
+        if (!mejorN) return;
+        const ang = Math.atan2(sy, sx), dx = Math.cos(ang), dy = Math.sin(ang);
+        // Donde la recta centro→multitud corta el rectangulo de pantalla metido
+        // M hacia dentro: ahi se clava la punta.
+        const t = Math.min((cx - M) / Math.max(1e-6, Math.abs(dx)), (cy - M) / Math.max(1e-6, Math.abs(dy)));
+        const col = mMax > miMasa * 1.15 ? '#ff3b3b' : (miMasa > mMax * 1.15 ? '#2ee56a' : '#ffce3d');
+        const sp = pixArrowSprite(col);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
-        for (let i = 0; i < Math.min(FLECHAS_MAX, fuera.length); i++) {
-            const f = fuera[i];
-            // Donde la recta centro→enemigo corta el rectangulo de pantalla
-            // metido M hacia dentro: ahi se clava la punta.
-            const t = Math.min((cx - M) / Math.max(1e-6, Math.abs(f.dx)), (cy - M) / Math.max(1e-6, Math.abs(f.dy)));
-            const col = f.g.masa > miMasa * 1.15 ? '#ff3b3b' : (miMasa > f.g.masa * 1.15 ? '#2ee56a' : '#ffce3d');
-            const sp = pixArrowSprite(col);
-            // Cuanto mas lejos, mas pequeña y mas tenue: el que tienes encima
-            // tiene que cantar mas que el que esta al otro lado del AOI.
-            const lejos = Math.min(1, Math.sqrt(f.d2) / diag);
-            const k = 1 - 0.45 * lejos;
-            ctx.save();
-            ctx.translate(cx + f.dx * t, cy + f.dy * t);
-            ctx.rotate(Math.atan2(f.dy, f.dx));
-            ctx.globalAlpha = 0.55 + 0.45 * (1 - lejos);
-            ctx.drawImage(sp, -sp.width * k / 2, -sp.height * k / 2, sp.width * k, sp.height * k);
-            ctx.restore();
-        }
+        ctx.translate(cx + dx * t, cy + dy * t);
+        ctx.rotate(ang);
+        ctx.drawImage(sp, -sp.width / 2, -sp.height / 2);
         ctx.restore();
     }
-
-    function drawMiniPill(f, scale) { if (pixelMode) { const w = f.r * 2, wL = Math.max(4, Math.min(16, Math.round(w * scale / PIX_SCREEN_PX / 2) * 2)); drawPixPillRot(ctx, f.x, f.y, w, wL, f.c1, f.c2, f.angle || 0); return; } let sR = f.r * scale; if (isLowQuality || sR < DRAW_LOD_THRESHOLD) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle||0); let w = f.r * 2, h = w * 2.0, r = w / 2; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, r); ctx.clip(); ctx.fillStyle = f.c1; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = f.c2; ctx.fillRect(-w/2, 0, w, h/2); ctx.restore(); } }
-    // En movil la partida se juega GIRADA, igual que el menu del que sale (ver
-    // "PARTIDA GIRADA" en el <style>): el canvas se pide con los lados
-    // intercambiados —ancho = alto de pantalla— y el CSS lo tumba encima del
-    // viewport. Asi el juego cree que corre en una pantalla apaisada normal y
-    // no hay que tocar nada de la simulacion ni del dibujo.
     function juegoGirado() {
         return document.body.classList.contains('mobile-allowed')
             && !document.documentElement.hasAttribute('data-hero')
