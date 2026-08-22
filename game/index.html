@@ -809,7 +809,22 @@
                 transform: translate(-50%, -50%) rotate(90deg) scale(1.15) !important;
             }
 
+            /* position:fixed, como TODAS las demas piezas que se giran aqui
+               (#gameCanvas, #ui, #actionBar, #minimap, y #modeScreen con su
+               absolute propio). Esta se habia quedado con el `absolute` que
+               hereda del CSS de escritorio (#loginOverlay, #resultOverlay), y
+               un absolute girado se ancla al bloque contenedor y VIAJA CON EL
+               SCROLL: en el movil de verdad la barra del navegador se retrae al
+               poco de cargar, con lo que cambian a la vez el alto del documento
+               y el valor de 100dvh/100dvw, y el menu se quedaba cubriendo solo
+               una franja — el resto de la pantalla, un color plano. Eso es lo
+               que se veia "cortado por la mitad", y por que se arreglaba solo a
+               los pocos segundos (cuando la barra terminaba de retraerse) en
+               unos telefonos y en otros no se arreglaba nunca. Con fixed el
+               menu se ancla al viewport y no depende ni del scroll ni del alto
+               del documento. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay {
+                position: fixed;
                 width: 100vh; height: 100vw;
                 width: 100dvh; height: 100dvw;
                 top: -100vw; left: 0; right: auto; bottom: auto;
