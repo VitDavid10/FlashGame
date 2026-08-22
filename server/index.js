@@ -463,8 +463,11 @@ function entryFeePill(key, rate) { return priceOf(key) * (rate || PILL_PER_DOLLA
 function roomRate(room) { return (room && room.clients.size > 0 && room.pillRate) ? room.pillRate : PILL_PER_DOLLAR; }
 
 // --- Economía B3 (custodiada): carry de classic + bote de arcade ---
-// Exit fee de classic según killStreak al hacer cashout (20% sin kills, 10% con 1, 0% con 2+).
-function classicExitFeePct(kills) { if (kills >= 2) return 0; if (kills >= 1) return 10; return 20; }
+// Exit fee de classic según killStreak al hacer cashout (50% sin kills, 20% con 1,
+// 10% con 2+). Salir de vacío sale caro a propósito: el carry es la entrada de
+// todos y largarse sin jugársela tiene que costar. Con 5 kills es VICTORY y no
+// paga fee (ver room-loop). El cliente replica esta misma tabla en exitFeePct().
+function classicExitFeePct(kills) { if (kills >= 2) return 10; if (kills >= 1) return 20; return 50; }
 // Mueve `amount` PILL al "bote" interno de la sala (off-chain, en memoria).
 function addToPot(room, amount) { if (amount > 0) room.pot = (room.pot || 0) + amount; }
 // Notifica al cliente su carry actual y el bote de la sala (para el HUD del juego).

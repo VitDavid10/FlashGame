@@ -116,7 +116,7 @@ const CASOS = [
   { g:'Sistema · avisos', n:'STOP SPECTATING?',     sup:'exitModal', art:1, exit:["You're just watching this match. Leave to return to the menu.", 'STOP SPECTATING?', 'stop-spectating', 'BACK TO MENU'] },
   { g:'Sistema · avisos', n:'LEAVE LOBBY?',         sup:'exitModal', art:1, exit:["The match has not started yet.<br><span style='color:#00ff88; font-weight:bold;'>Your entry will be refunded to your in-game balance.</span>", 'LEAVE LOBBY?', 'leave-lobby', 'LEAVE'] },
   { g:'Sistema · avisos', n:'WARNING: FORFEIT?',    sup:'exitModal', art:1, exit:["You will lose <span style='color:#ff2a2a'>100% of the PILLS</span> used to enter (they go to the prize pot).<br>Are you sure?", 'WARNING: FORFEIT?', 'warning', 'EXIT NOW'] },
-  { g:'Sistema · avisos', n:'SECURE CASHOUT',       sup:'exitModal', art:1, exit:['You have <span style="color:#fff">2 Kills</span>.<br><span style="color:#00ff88; font-weight:bold;">SAFE EXIT: 0% FEE (2+ kills)</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>', 'SECURE CASHOUT', 'secure-cashout', 'START CASHOUT (5s)'] },
+  { g:'Sistema · avisos', n:'SECURE CASHOUT',       sup:'exitModal', art:1, exit:['You have <span style="color:#fff">2 Kills</span>.<br><span style="color:#00ff88; font-weight:bold;">BEST EXIT: 10% FEE (2+ kills)</span><br>Stand still for 5s to CASHOUT safely.<br><span style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>', 'SECURE CASHOUT', 'secure-cashout', 'START CASHOUT (5s)'] },
 
   // Todos llevan TRY AGAIN (tambien offline desde jul-2026). `st` es el estado
   // de partida que se le pasa a cartelDevResultText(): el texto bajo el titulo
@@ -134,8 +134,12 @@ const CASOS = [
     st:{ tipo:'matchFinished', mode:'classic', server:'Free', kills:3 } },
   { g:'Fin de partida', n:'ROOM RESTARTED', sup:'resultOverlay', art:1, show:'resultOverlay', res:['roomRestarted','ROOM RESTARTED','#ffcc00'],
     st:{ tipo:'roomRestarted', mode:'classic', server:'5$', kills:0, extra:{ refunded:5000 } } },
-  { g:'Fin de partida', n:'VICTORY!',       sup:'prizeModal', art:1, prize:{ reason:'victory',  amount:250000, carry:180000 } },
-  { g:'Fin de partida', n:'CASHOUT',        sup:'prizeModal', art:1, prize:{ reason:'cashout',  amount:40000,  carry:50000  } },
+  // Los datos son los MISMOS campos que manda el servidor en el mensaje
+  // 'prize' (ver room-loop.js y cashoutAlSalir): sin kills/feePct/fee el
+  // cartel salia con "undefined kills · undefined% exit fee" y no se parecia
+  // al de verdad. VICTORY se lleva el carry ENTERO, sin fee.
+  { g:'Fin de partida', n:'VICTORY!',       sup:'prizeModal', art:1, prize:{ reason:'victory',  amount:250000, carry:250000 } },
+  { g:'Fin de partida', n:'CASHOUT',        sup:'prizeModal', art:1, prize:{ reason:'cashout',  amount:40000,  carry:50000, kills:1, feePct:20, fee:10000 } },
   { g:'Fin de partida', n:'MATCH ENDED',    sup:'prizeModal', art:1, prize:{ reason:'arcadeEnd', myAmount:120000, pot:500000, top:[
     { pos:1, name:'CryptoKid',     pct:25, amount:125000 },
     { pos:2, name:'xX_Reaper_Xx',  pct:19, amount:95000  },
@@ -186,6 +190,7 @@ const CASOS = [
 // de partida ademas parte los botones en tres.
 const ETIQUETA = { title: 'TITULO', desc: 'TEXTO', actions: 'BOTONES',
                    tryAgain: 'TRY AGAIN', spectate: 'SPECTATE', backToMenu: 'BACK TO MENU',
+                   share: 'SHARE', continuar: 'CONTINUE',
                    crece: 'PILDORAS', pie: 'PIE' };
 const partesDe = sup => W().cartelPartesDe(W().CARTEL_SURFACES[sup]);
 const OCULTABLES = ['sysModal','exitModal','resultOverlay','prizeModal','skillChoiceOverlay',

@@ -104,6 +104,12 @@ async function spawnBot(i) {
   let myId = null;               // id del jugador en la sim (para detectar mi muerte)
   let reconnectPending = false;
   let lastSplit = 0;             // timestamp del último split (cooldown ~8s)
+  // Comida del mapa y posición propia: con esto el bot VA A COMER en vez de
+  // cruzar el vacío. Sin ello los stress bots se quedaban con la masa de salida
+  // toda la partida (y en una sala de prueba parecía que "no progresan").
+  // La lista llega entera en el welcome; los foodRespawn la mantienen al día.
+  let foods = [];
+  let myX = 0, myY = 0;
 
   // Cierra este bot y programa uno nuevo tras un retardo (si RESPAWN). Centraliza
   // la reconexión que antes estaba repetida en muerte/roomRestart/noSlot.
@@ -116,8 +122,23 @@ async function spawnBot(i) {
     try { ws.close(); } catch {}
   }
 
-  // Elige un nuevo destino dentro del mapa (a veces hacia el centro para no pegarse al borde)
+  // Elige un nuevo destino: la comida más cercana de una MUESTRA al azar de la
+  // lista (muestrear en vez de recorrer las ~7.800 foods mantiene el coste plano
+  // aunque haya cientos de bots). Si aún no hay lista —o la sala va sin comida—
+  // se cae al paseo aleatorio de siempre.
+  const MUESTRA_COMIDA = 200;
   function nuevoDestino() {
+    if (foods.length) {
+      let mejorD = Infinity, mx = 0, my = 0;
+      const n = Math.min(MUESTRA_COMIDA, foods.length);
+      for (let k = 0; k < n; k++) {
+        const f = foods[(Math.random() * foods.length) | 0];
+        if (!f) continue;
+        const dx = f.x - myX, dy = f.y - myY, d = dx * dx + dy * dy;
+        if (d < mejorD) { mejorD = d; mx = f.x; my = f.y; }
+      }
+      if (mejorD < Infinity) { tx = mx; ty = my; return; }
+    }
     const lim = mapSize * 0.9;
     if (Math.random() < 0.15) { tx = (Math.random() - 0.5) * mapSize * 0.4; ty = (Math.random() - 0.5) * mapSize * 0.4; }
     else { tx = (Math.random() * 2 - 1) * lim; ty = (Math.random() * 2 - 1) * lim; }
@@ -135,7 +156,10 @@ async function spawnBot(i) {
     // Split y skills aleatorios igual que los bots offline.
     inputTimer = setInterval(() => {
       if (ws.readyState !== WebSocket.OPEN) return;
-      if (Math.random() < 0.04) nuevoDestino();   // de vez en cuando cambia de rumbo
+      // Al llegar al bocado (o de vez en cuando, para no encasillarse) se elige
+      // otro. Antes SOLO se cambiaba por sorteo, así que el bot seguía apuntando
+      // a comida que ya se había comido.
+      if (((tx - myX) ** 2 + (ty - myY) ** 2) < 90 * 90 || Math.random() < 0.02) nuevoDestino();
       ws.send(JSON.stringify({ t: 'input', tx, ty }));
       stats.messagesSent++;
       // Split ~cada 20s de media (independiente del Hz); cooldown mínimo 8s
@@ -191,6 +215,15 @@ async function spawnBot(i) {
     if (m.id) myId = m.id;   // welcome / matchStart traen mi id
     if (m.t === 'welcome' && !counted) { stats.entered++; stats.porSala[salaKey]++; counted = true; }
     if (m.mapSize) mapSize = m.mapSize;   // el welcome trae el tamaño real del mapa
+    // Comida: llega entera en el welcome (solo x/y nos interesa) y se mantiene
+    // con los eventos foodRespawn de más abajo.
+    if (Array.isArray(m.foods)) { foods = m.foods.map(f => ({ x: f.x, y: f.y })); nuevoDestino(); }
+    // Mi posición sale del snapshot; es lo que hace que el bot sepa qué comida
+    // tiene cerca y cuándo ha llegado.
+    if (m.t === 'snap' && myId && Array.isArray(m.players)) {
+      const mp = m.players.find(q => q.id === myId);
+      if (mp && mp.cells && mp.cells.length) { myX = mp.cells[0].x; myY = mp.cells[0].y; }
+    }
     // Spawn-al-ready: el server ya no spawnea en startMatch; hay que pedir el spawn
     // mandando 'ready' al recibir matchStart (o welcome con la sala ya en juego).
     if (m.t === 'matchStart' || (m.t === 'welcome' && m.state === 'playing')) {
@@ -206,6 +239,13 @@ async function spawnBot(i) {
       : (m.t === 'snap' && Array.isArray(m.ev)) ? m.ev : null;
     if (evList && myId && !reconnectPending) {
       for (const ev of evList) {
+        // Mismo tratamiento que el cliente real: la food comida se cambia por la
+        // nueva en su hueco (swap-remove + push), así la lista no se desfasa.
+        if (ev.type === 'foodRespawn') {
+          if (ev.index >= 0 && ev.index < foods.length) { foods[ev.index] = foods[foods.length - 1]; foods.pop(); }
+          if (ev.food) foods.push({ x: ev.food.x, y: ev.food.y });
+          continue;
+        }
         const muerto = ev.type === 'playerDied' && ev.playerId === myId;
         const gano = ev.type === 'botKilled' && ev.playerId === myId && ev.mode === 'classic' && ev.streak >= 5;
         if (muerto || gano) {

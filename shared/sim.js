@@ -143,6 +143,12 @@
     const createFood = () => ({ x: 0, y: 0, r: 0, c1: '#fff', c2: '#fff', angle: 0, spikes: [], eaten: false });
     const createVirus = () => ({ x: 0, y: 0, r: 0, vx: 0, vy: 0, hits: 0, damaged: false, animTime: 0, spots: [] });
 
+    // Busqueda de comida de los bots: radio de vision (unidades de mundo) y cada
+    // cuantos ticks re-eligen bocado. El radio se traduce en celdas del foodGrid
+    // (150 de lado), asi que 600 son 9x9 celdas — barato y suficiente para no
+    // quedarse quieto en una zona pelada.
+    const BOT_FOOD_RANGE = 600;
+    const BOT_FOOD_RETARGET = 20;
     class SpatialGrid {
         constructor(cellSize) { this.cellSize = cellSize; this.buckets = new Map(); }
         clear() { this.buckets.clear(); }
@@ -334,7 +340,24 @@
                     });
                 }
             }
-            if (flee) return; if (this.changeDirTimer <= 0) { this.targetX = Math.random() * (sim.mapSize * 1.8) - sim.mapSize * 0.9; this.targetY = Math.random() * (sim.mapSize * 1.8) - sim.mapSize * 0.9; this.changeDirTimer = Math.random() * 80 + 40; }
+            if (flee) return;
+            // SIN presa ni amenaza: ir A COMER. Antes el bot elegia un punto
+            // completamente al azar del mapa y cruzaba el vacio hasta el
+            // siguiente sorteo: en un mapa de miles de unidades casi nunca
+            // pasaba por comida, no crecia en toda la partida y el jugador
+            // ganaba por goleada sin oposicion. Ahora apunta a la comida mas
+            // cercana (consulta al grid espacial, ~80 celdas) y re-apunta a
+            // menudo, asi que barre la zona en vez de atravesarla.
+            if (this.changeDirTimer <= 0) {
+                let mejor = null, mejorD = Infinity;
+                for (const f of sim.foodGrid.query(this.x, this.y, BOT_FOOD_RANGE)) {
+                    if (f.eaten) continue;
+                    const dx = f.x - this.x, dy = f.y - this.y, d = dx * dx + dy * dy;
+                    if (d < mejorD) { mejorD = d; mejor = f; }
+                }
+                if (mejor) { this.targetX = mejor.x; this.targetY = mejor.y; this.changeDirTimer = BOT_FOOD_RETARGET; }
+                else { this.targetX = Math.random() * (sim.mapSize * 1.8) - sim.mapSize * 0.9; this.targetY = Math.random() * (sim.mapSize * 1.8) - sim.mapSize * 0.9; this.changeDirTimer = Math.random() * 80 + 40; }
+            }
         }
 
         executeBotSkill(sim, id) {

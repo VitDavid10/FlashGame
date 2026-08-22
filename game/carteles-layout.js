@@ -49,7 +49,12 @@ const CARTEL_SURFACES = {
     },
     prizeModal: {
         label: 'Premio (VICTORY / CASHOUT)', grupo: 'Fin de partida',
-        box: '#prizeModal .gameModalBox', title: '#prizeTitle', desc: '#prizeSubtitle', actions: '#prizeModal .gm-btn',
+        box: '#prizeModal .gameModalBox', title: '#prizeTitle', desc: '#prizeSubtitle',
+        // `actions` mueve el BLOQUE de los dos botones; share/continuar afinan
+        // cada uno dentro del bloque (se suman), igual que en resultOverlay.
+        actions: '#prizeModal .prize-actions',
+        share: '#prizeShare', continuar: '#prizeContinue',
+        partes: ['title', 'desc', 'actions', 'share', 'continuar'],
     },
     skillChoiceOverlay: {
         label: 'Eleccion de skill', grupo: 'Fin de partida',
@@ -176,7 +181,13 @@ window.CARTELES_READY = Promise.all([
     typeof CARTEL_HERO_READY_PROMISE !== 'undefined' ? CARTEL_HERO_READY_PROMISE : null,
     CARTEL_LAYOUT_READY,
 ]).then(() => CARTEL_LAYOUT);
-window.cartelDevShowPrize = msg => EconHUD.showPrize(msg);
+window.cartelDevShowPrize = msg => {
+    // El editor no juega, asi que no tiene rate del oraculo: se le pone uno de
+    // muestra (10.000 $PILL = 1$, el valor de fabrica del oraculo) para que el
+    // cartel salga con su "(~$)" exactamente igual que en partida.
+    if (window.cartelDevSetPillRate) window.cartelDevSetPillRate(msg.rate || 10000);
+    EconHUD.showPrize(msg);
+};
 /*
  * Cartel de skin para el editor: lo pinta el juego con su propia funcion (misma
  * que en partida). `v` es '' (gris original), 'v2' (verde), 'v2g' (v2 gris) o 'v3g' (v3 gris).

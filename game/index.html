@@ -1250,6 +1250,12 @@
         .gameModalBox .gm-btn:disabled { opacity: 0.6; cursor:default; }
         .gameModalBox .gm-row { display:flex; justify-content:space-between; font-size:13px; color:#888; margin-bottom: 4px; }
         /* Tabla de reparto (popup arcade) */
+        /* Piezas comunes de cualquier cifra de dinero: icono de $PILL, la unidad
+           y el equivalente en dolares. Van mas pequeños que la cifra, que es lo
+           que se cobra de verdad. */
+        .pw-pill-ico { height: 1em; vertical-align: -0.14em; margin: 0 2px 0 5px; image-rendering: pixelated; }
+        .pw-unit { font-size: 0.66em; color: #9aa3ad; }
+        .pw-amt-usd { font-size: 0.62em; color: #7fd8a8; }
         .prizeRow { display:grid; grid-template-columns:34px 1fr 56px 132px; gap:8px; padding:6px 10px; align-items:center; border-bottom:1px solid #1a1a1a; font-size:13px; }
         .prizeRow.mine { background: rgba(255,206,61,0.1); border:1px solid rgba(255,206,61,0.5); border-radius:6px; }
         .prizeRow .pos { font-family:'Russo One'; color:#888; }
@@ -2496,6 +2502,24 @@
         .btn-reset { width: 100%; padding: 6px; margin-top: 5px; background: transparent; border: 1px dashed #333; color: #555; font-size: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-reset:hover { border-color: var(--primary); color: var(--primary); }
         
+        /* SHARE (VICTORY / CASHOUT / MATCH ENDED). Azul, el mismo #0799EF del
+           SPECTATE, con la placa LISA (btn-plain-blue.png, sin texto horneado)
+           y el rotulo encima en fuente pixel — aun no hace nada, es el hueco
+           reservado para compartir el resultado. */
+        .prize-actions { display: flex; flex-direction: column; align-items: center; }
+        /* Por id y no por clase: `.gameModalBox .gm-btn` (dos clases) le ganaba
+           en especificidad y el boton salia al 100% de ancho, mas largo que el
+           CONTINUE de debajo. Mismo ancho y misma proporcion que aquel. */
+        #prizeShare {
+            background: transparent url('img/cartel-hero/btn-plain-blue.png') center/100% 100% no-repeat !important;
+            border: none !important; border-image: none !important; border-radius: 0 !important;
+            box-shadow: none !important; clip-path: none !important; image-rendering: pixelated;
+            aspect-ratio: 828/124; width: 80%; margin: 0 auto; padding: 0 !important;
+            font-family: 'Press Start 2P', monospace; font-size: 13px; letter-spacing: 1px;
+            color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.6); cursor: pointer; transition: none;
+        }
+        #prizeShare:hover { filter: brightness(1.15); box-shadow: none !important; }
+        #prizeShare:active { transform: translate(2px, 2px); }
         .btn-spectate { width: 100%; padding: 12px; margin-top: 10px; background: #00bcd4; color: white; border: none; font-family: 'Russo One'; font-size: 18px; letter-spacing: 1px; clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
         .btn-spectate:hover { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 20px rgba(0, 188, 212, 0.4); }
 
@@ -3113,7 +3137,13 @@
             <div id="prizeAmount" style="font-family:'Russo One';font-size:36px;color:#ffce3d;margin:8px 0 4px;text-shadow:0 0 18px rgba(255,206,61,0.5)">0 $PILL</div>
             <div id="prizeSubtitle" style="color:#aaa;font-size:13px;margin-bottom:18px"></div>
             <div id="prizeTable" style="margin-bottom:14px;display:none"></div>
-            <button class="gm-btn" onclick="document.getElementById('prizeModal').style.display='none'">CONTINUE</button>
+            <!-- Los dos botones en un bloque, como los tres de fin de partida:
+                 asi el editor de carteles puede moverlos juntos (pieza BOTONES)
+                 o cada uno por su lado (SHARE / CONTINUE). -->
+            <div class="prize-actions">
+                <button class="gm-btn" id="prizeShare" onclick="return false">SHARE</button>
+                <button class="gm-btn" id="prizeContinue" onclick="document.getElementById('prizeModal').style.display='none'">CONTINUE</button>
+            </div>
         </div>
     </div>
 
@@ -5332,9 +5362,11 @@
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('try-again') + ') center/100% 100% no-repeat!important;' +
                 'aspect-ratio:1048/118;image-rendering:pixelated;color:transparent!important;text-shadow:none!important}' +
                 // El texto "TRY AGAIN" esta horneado en el PNG (blanco sobre
-                // amarillo), y .btn-play:hover (regla generica del boton PLAY
-                // del login, no pensada para este) le mete brightness(1.2): el
-                // amarillo se va a casi blanco y el texto blanco desaparece.
+                // VERDE — el amarillo de antes no cuadraba con el rojo del BACK
+                // TO MENU ni con el azul del SPECTATE), y .btn-play:hover
+                // (regla generica del boton PLAY del login, no pensada para
+                // este) le mete brightness(1.2): el fondo se va a casi blanco y
+                // el texto blanco desaparece.
                 'body.pixel-pack #btnTryAgainOnline:hover{filter:none!important}';
         }
         if (cartelUsesAtlas('spectate')) {
@@ -5483,7 +5515,11 @@
             // + subtitulo) va centrado entre el titulo y el CONTINUE.
             css += 'body.pixel-pack #prizeModal .gameModalBox.prize-hero{border:none!important;border-radius:0!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('prize-panel') + ') center/100% 100% no-repeat!important;' +
-                'image-rendering:pixelated;max-width:470px;aspect-ratio:990/613;display:flex;flex-direction:column;justify-content:center;padding:40px 44px 36px}' +
+                // aspect-ratio fijo NO: con el boton SHARE el contenido ya no
+                // cabia en los 291px que salian de la proporcion del PNG y se
+                // desbordaba. min-height parte de esa misma proporcion (470 *
+                // 613/990) y el cartel se ALARGA lo que pida el contenido.
+                'image-rendering:pixelated;max-width:470px;width:470px;min-height:291px;display:flex;flex-direction:column;justify-content:center;padding:38px 44px 32px}' +
                 'body.pixel-pack .prize-hero #prizeSubtitle{margin-bottom:0!important}' +
                 // VICTORY/CASHOUT: el titulo un pelin mas arriba (solo visual, no afecta al flujo)
                 'body.pixel-pack .prize-hero:not(.prize-tall) h3{transform:translateY(-8px)}';
@@ -5496,15 +5532,15 @@
                 'body.pixel-pack .prize-tall #prizeSubtitle{margin-bottom:10px!important}';
         }
         if (cartelUsesAtlas('continue')) {
-            css += 'body.pixel-pack .prize-hero .gm-btn{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
+            css += 'body.pixel-pack #prizeContinue{border:none!important;border-image:none!important;border-radius:0!important;clip-path:none!important;' +
                 'box-shadow:none!important;background:transparent url(' + cartelHeroUrl('continue') + ') center/100% 100% no-repeat!important;' +
-                'aspect-ratio:828/124;width:80%!important;display:block;margin:13px auto 0;padding:0!important;' +
+                'aspect-ratio:828/124;width:80%!important;display:block;margin:10px auto 0;padding:0!important;' +
                 'image-rendering:pixelated;color:transparent!important;text-shadow:none!important}' +
-                'body.pixel-pack .prize-hero .gm-btn:hover{filter:brightness(1.15);box-shadow:none!important}';
+                'body.pixel-pack #prizeContinue:hover{filter:brightness(1.15);box-shadow:none!important}';
         }
         css += 'body.pixel-pack #prizeAmount.pw-amt-pix{font-family:"Press Start 2P",monospace!important;font-size:19px!important;' +
             'color:#c8cdd2!important;text-shadow:3px 3px 0 rgba(0,0,0,.65)!important;line-height:1.4}' +
-            'body.pixel-pack #prizeAmount.pw-amt-pix .pw-pill-ico{height:1em;vertical-align:-0.12em;margin:0 4px;image-rendering:pixelated}' +
+            'body.pixel-pack #prizeAmount.pw-amt-pix .pw-pill-ico{height:1em;vertical-align:-0.12em;margin:0 2px 0 5px;image-rendering:pixelated}' +
             'body.pixel-pack .prize-hero #prizeSubtitle{font-family:"Press Start 2P",monospace;font-size:8px;line-height:1.9;letter-spacing:0}' +
             // GAME OVER: la linea de kills/$PILL del overlay de resultado con la
             // misma fuente pixel (es la referencia de estilo de .pw-amt-pix).
@@ -9117,6 +9153,10 @@
         }, true);
         window.addEventListener('keydown', (e) => { if (layoutEditing && e.code === 'Escape') exitLayoutEdit(); });
     })();
+    // MISMA tabla que classicExitFeePct() del servidor (server/index.js). Si una
+    // cambia, la otra tambien: el cartel de CASHOUT se pinta con esta y el cobro
+    // lo hace aquella, y si no coinciden el jugador ve una cifra y cobra otra.
+    function exitFeePct(kills) { if (kills >= 2) return 10; if (kills >= 1) return 20; return 50; }
     function toggleExitModal() {
         if(!gameRunning) return;
         const modal = document.getElementById('exitModal'); const btn = document.getElementById('btnConfirmExit'); const title = document.getElementById('exitModalTitle'); const desc = document.getElementById('exitModalDesc');
@@ -9154,9 +9194,11 @@
         }
         if (currentGameMode === 'classic') {
             const k = myKillStreak();
-            const fee = k >= 2 ? 0 : (k >= 1 ? 10 : 20);
-            const color = fee === 0 ? '#00ff88' : (fee === 10 ? '#ffce3d' : '#ff2a2a');
-            const txt = fee === 0 ? `SAFE EXIT: 0% FEE (${k}+ kills)` : `WARNING: ${fee}% FEE (Kills < ${k + 1})`;
+            const fee = exitFeePct(k);
+            const color = fee === 10 ? '#00ff88' : (fee === 20 ? '#ffce3d' : '#ff2a2a');
+            const txt = fee === 10 ? `BEST EXIT: 10% FEE (2+ kills)`
+                : fee === 20 ? `WARNING: 20% FEE (1 more kill → 10%)`
+                : `WARNING: 50% FEE (get 1 kill → 20%)`;
             setTitle("SECURE CASHOUT", 'secure-cashout');
             desc.innerHTML = `You have <span style="color:#fff">${k} Kills</span>.<br><span style="color:${color}; font-weight:bold;">${txt}</span><br>Stand still for 5s to CASHOUT safely.<br><span class="carry-note" style="font-size:10px; color:#888;">(Your carry will be paid to your in-game balance; the fee goes to the pot)</span>`;
             btn.onclick = startClassicLogout; btn.innerText = "START CASHOUT (5s)";
@@ -9187,7 +9229,7 @@
         const carry = (typeof EconHUD !== 'undefined' ? EconHUD.carry : 0) | 0;
         if (carry <= 0) return null;
         const kills = myKillStreak() | 0;
-        const feePct = kills >= 2 ? 0 : (kills >= 1 ? 10 : 20);
+        const feePct = exitFeePct(kills);
         const fee = Math.floor(carry * feePct / 100);
         return { reason: 'cashout', amount: carry - fee, carry, kills, feePct, fee };
     }
@@ -9456,10 +9498,10 @@
     }
     function hideSpectatorBar() { onlineSpectator = false; }
     // Línea de PILL con su icono, del mismo tamaño/color en los tres carteles.
+    // GAME OVER / ROOM RESTARTED: SIEMPRE en $PILL, sin el equivalente en dolares
+    // (peticion de David: aqui lo que importa es lo que pierdes en tokens).
     function lineaPill(cantidad, etiqueta) {
-        if (MONEY_IN_USD && pillRate > 0) return `<span style="color:#ffce3d;font-size:22px;">${etiqueta ? etiqueta + ' ' : ''}${fmtMoney(cantidad)}</span>`;
-        const ico = (pixelMode && cartelUsesAtlas('pill')) ? `<img src="${cartelHeroUrl('pill')}" style="height:1em;vertical-align:-0.2em;margin-right:4px;image-rendering:pixelated;">` : '';
-        return `<span style="color:#ffce3d;font-size:22px;">${etiqueta ? etiqueta + ' ' : ''}${Number(cantidad || 0).toLocaleString('en-US')} ${ico}<span style="font-size:14px;color:#888;">$PILL</span></span>`;
+        return `<span style="color:#ffce3d;font-size:22px;">${etiqueta ? etiqueta + ' ' : ''}${fmtPill(cantidad)}</span>`;
     }
     function lineaKills(kills) {
         const col = kills >= 5 ? '#ff4444' : kills >= 1 ? '#ffce3d' : '#888';
@@ -10042,7 +10084,30 @@
     function fmtMoney(pill) {
         const n = Number(pill || 0);
         if (MONEY_IN_USD && pillRate > 0) return fmtPillShort(n) + ' (~$' + (n / pillRate).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ')';
-        return n.toLocaleString('en-US') + ' $PILL';
+        return fmtPillShort(n) + ' $PILL';
+    }
+    // Solo el equivalente en dolares, "(~$20)", o '' si no hay rate del oraculo.
+    // El rate se BLOQUEA al entrar en la sala (mensaje 'econ'), asi que es el
+    // precio que marcaba el oraculo en ese momento; por eso el ~.
+    function fmtUsdAprox(pill) {
+        if (!(MONEY_IN_USD && pillRate > 0)) return '';
+        return '(~$' + (Number(pill || 0) / pillRate).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ')';
+    }
+    // Puente para carteles-preview.html: ahi no hay partida, asi que nunca llega
+    // el mensaje 'econ' que bloquea el rate del oraculo y los carteles salian SIN
+    // el (~$) — o sea, el editor enseñaba una version que el jugador no ve nunca.
+    window.cartelDevSetPillRate = r => { pillRate = Number(r) || 0; };
+    // <img> del icono de $PILL (solo en pixel-pack, donde existe el arte).
+    function pillIcoHtml(cls) {
+        if (!(pixelMode && cartelUsesAtlas('pill'))) return '';
+        return '<img class="' + (cls || 'pw-pill-ico') + '" src="' + cartelHeroUrl('pill') + '">';
+    }
+    // "25K [icono] $PILL" — sin dolares. Es la unidad REAL del juego: se usa en
+    // GAME OVER, en el bote de MATCH ENDED y en su ranking.
+    function fmtPill(pill) {
+        // Sin arte de pildora (modo clasico, o el atlas aun cargando) el icono se
+        // sustituye por un espacio: si no, salia "40K$PILL" todo pegado.
+        return fmtPillShort(pill) + (pillIcoHtml() || ' ') + '<span class="pw-unit">$PILL</span>';
     }
     // HUD del juego: actualiza carry/bote y muestra popup de premios al ganar.
     const EconHUD = {
@@ -10069,7 +10134,6 @@
         showPrize(msg) {
             const m = document.getElementById('prizeModal');
             const title = document.getElementById('prizeTitle'), amt = document.getElementById('prizeAmount'), sub = document.getElementById('prizeSubtitle'), tbl = document.getElementById('prizeTable');
-            const fmt = n => Number(n || 0).toLocaleString('en-US');
             tbl.style.display = 'none'; tbl.innerHTML = '';
             // VICTORY/CASHOUT en pixel: panel verde fino propio (prize-panel.png)
             // + cantidad con la misma letra/color que las kills del GAME OVER y
@@ -10082,14 +10146,13 @@
             box.classList.toggle('prize-hero', usePix && cartelUsesAtlas('prize-panel'));
             box.classList.toggle('prize-tall', isArcadeEnd && pixelMode && cartelUsesAtlas('prize-panel-tall'));
             amt.classList.remove('pw-amt-pix');
-            const enUsd = MONEY_IN_USD && pillRate > 0;
+            // "+176K [pildora]$PILL (~$140)": la cifra con su unidad PEGADA (es lo
+            // que se cobra de verdad) y el equivalente en dolares detras, mas
+            // pequeño y aproximado — el oraculo se re-precia cada 5 minutos.
             const setAmt = amount => {
-                if (usePix) {
-                    // El icono de píldora solo acompaña a la cifra en PILL; en $ sobra.
-                    const ico = (!enUsd && cartelUsesAtlas('pill')) ? '<img class="pw-pill-ico" src="' + cartelHeroUrl('pill') + '">' : '';
-                    amt.innerHTML = '+' + (enUsd ? fmtMoney(amount) : fmt(amount) + ' ' + ico + '$PILL');
-                    amt.classList.add('pw-amt-pix');
-                } else amt.innerText = '+' + fmtMoney(amount);
+                const usd = fmtUsdAprox(amount);
+                amt.innerHTML = '+' + fmtPill(amount) + (usd ? ' <span class="pw-amt-usd">' + usd + '</span>' : '');
+                if (usePix) amt.classList.add('pw-amt-pix');
             };
             if (msg.reason === 'victory') {
                 setOverlayTitle(title, 'victory', 'VICTORY!', '#ffce3d');
@@ -10104,10 +10167,12 @@
             } else if (msg.reason === 'arcadeEnd') {
                 setOverlayTitle(title, 'matchEnded', 'MATCH ENDED', msg.myAmount > 0 ? '#ffce3d' : '#aaa');
                 if (msg.myAmount > 0) setAmt(msg.myAmount); else amt.innerText = 'Out of top 10';
-                sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmtMoney(msg.pot) + '</b>';
+                // Bote y ranking SIEMPRE en $PILL (peticion de David): el reparto
+                // se hace en tokens, y solo lo TUYO lleva ademas el (~$).
+                sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmtPill(msg.pot) + '</b>';
                 tbl.style.display = 'block';
                 tbl.innerHTML = (msg.top || []).map(t =>
-                    `<div class="prizeRow ${t.mine ? 'mine' : ''}"><span class="pos">#${t.pos}</span><span class="name">${esc(t.name || '—')}</span><span class="pct">${t.pct}%</span><span class="amt">${fmtMoney(t.amount)}</span></div>`
+                    `<div class="prizeRow ${t.mine ? 'mine' : ''}"><span class="pos">#${t.pos}</span><span class="name">${esc(t.name || '—')}</span><span class="pct">${t.pct}%</span><span class="amt">${fmtPillShort(t.amount)} <span class="pw-unit">$PILL</span></span></div>`
                 ).join('');
             }
             m.style.display = 'flex';
@@ -12803,6 +12868,102 @@
         ctx.restore();
 
         floatingTexts.forEach(ft => ft.draw(ctx)); ctx.restore(); uiTexts.forEach(ut => ut.draw(ctx));
+        drawEnemyArrows(es);
+    }
+
+    // ===== FLECHAS DE AVISO DE ENEMIGO (solo classic) =====
+    // Cada enemigo que se queda FUERA de la pantalla deja una punta pegada al
+    // borde apuntando hacia el. En classic el mapa es grande, no hay skills que
+    // avisen y te comen por la espalda sin verlo venir; con esto sabes por donde
+    // viene y de que tamaño. Color = peligro: ROJO si te puede comer, VERDE si
+    // te lo comes tu, AMBAR si estais parejos.
+    //
+    // Online solo salen las flechas de lo que el servidor te manda (AOI), o sea
+    // lo que tienes cerca — que es justo lo que interesa avisar.
+    const FLECHA_MASK = [
+        '11.....',
+        '1111...',
+        '111111.',
+        '1111111',
+        '111111.',
+        '1111...',
+        '11.....',
+    ];
+    const FLECHA_PX = 4;      // lado de cada "pixel gordo" del sprite
+    const FLECHA_MARGEN = 30; // a cuanto del borde de la pantalla se pega
+    const FLECHAS_MAX = 6;    // solo las de los enemigos mas cercanos
+    const _flechaCache = new Map();
+    // Sprite pixel de la punta, apuntando a la DERECHA (angulo 0). Se dibuja una
+    // vez por color y luego solo se rota: nada de pintar rectangulos por frame.
+    function pixArrowSprite(color) {
+        let cv = _flechaCache.get(color);
+        if (cv) return cv;
+        const S = FLECHA_PX, W = FLECHA_MASK[0].length, H = FLECHA_MASK.length;
+        cv = document.createElement('canvas');
+        cv.width = (W + 2) * S; cv.height = (H + 2) * S;
+        const g = cv.getContext('2d');
+        const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && FLECHA_MASK[y][x] === '1';
+        // Reborde negro (toda casilla vacia que toque una llena, en diagonal
+        // tambien): es lo que despega la flecha de la cuadricula del fondo.
+        g.fillStyle = '#000';
+        for (let y = -1; y <= H; y++) for (let x = -1; x <= W; x++) {
+            if (on(x, y)) continue;
+            if (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1) ||
+                on(x - 1, y - 1) || on(x + 1, y - 1) || on(x - 1, y + 1) || on(x + 1, y + 1)) {
+                g.fillRect((x + 1) * S, (y + 1) * S, S, S);
+            }
+        }
+        g.fillStyle = color;
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) g.fillRect((x + 1) * S, (y + 1) * S, S, S);
+        _flechaCache.set(color, cv);
+        return cv;
+    }
+    function drawEnemyArrows(es) {
+        if (currentGameMode !== 'classic' || isSpectating) return;
+        const cells = myCells();
+        if (!cells.length) return;
+        let miMasa = 0; for (const c of cells) miMasa += c.mass;
+        // Un enemigo = un grupo (sus trozos partidos cuentan como uno solo):
+        // apuntamos a su celda mas gorda y comparamos con su masa TOTAL.
+        const grupos = new Map();
+        for (const e of sim.enemies) {
+            let g = grupos.get(e.id);
+            if (!g) { g = { x: e.x, y: e.y, masa: 0, mayor: 0 }; grupos.set(e.id, g); }
+            g.masa += e.mass;
+            if (e.r > g.mayor) { g.mayor = e.r; g.x = e.x; g.y = e.y; }
+        }
+        const cx = width / 2, cy = height / 2, M = FLECHA_MARGEN;
+        const fuera = [];
+        for (const g of grupos.values()) {
+            const sx = (g.x - camera.x) * es + cx, sy = (g.y - camera.y) * es + cy;
+            if (sx > -M && sx < width + M && sy > -M && sy < height + M) continue;   // ya se ve
+            const dx = sx - cx, dy = sy - cy;
+            fuera.push({ g, dx, dy, d2: dx * dx + dy * dy });
+        }
+        if (!fuera.length) return;
+        fuera.sort((a, b) => a.d2 - b.d2);
+        const diag = Math.max(width, height) * 1.6;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        for (let i = 0; i < Math.min(FLECHAS_MAX, fuera.length); i++) {
+            const f = fuera[i];
+            // Donde la recta centro→enemigo corta el rectangulo de pantalla
+            // metido M hacia dentro: ahi se clava la punta.
+            const t = Math.min((cx - M) / Math.max(1e-6, Math.abs(f.dx)), (cy - M) / Math.max(1e-6, Math.abs(f.dy)));
+            const col = f.g.masa > miMasa * 1.15 ? '#ff3b3b' : (miMasa > f.g.masa * 1.15 ? '#2ee56a' : '#ffce3d');
+            const sp = pixArrowSprite(col);
+            // Cuanto mas lejos, mas pequeña y mas tenue: el que tienes encima
+            // tiene que cantar mas que el que esta al otro lado del AOI.
+            const lejos = Math.min(1, Math.sqrt(f.d2) / diag);
+            const k = 1 - 0.45 * lejos;
+            ctx.save();
+            ctx.translate(cx + f.dx * t, cy + f.dy * t);
+            ctx.rotate(Math.atan2(f.dy, f.dx));
+            ctx.globalAlpha = 0.55 + 0.45 * (1 - lejos);
+            ctx.drawImage(sp, -sp.width * k / 2, -sp.height * k / 2, sp.width * k, sp.height * k);
+            ctx.restore();
+        }
+        ctx.restore();
     }
 
     function drawMiniPill(f, scale) { if (pixelMode) { const w = f.r * 2, wL = Math.max(4, Math.min(16, Math.round(w * scale / PIX_SCREEN_PX / 2) * 2)); drawPixPillRot(ctx, f.x, f.y, w, wL, f.c1, f.c2, f.angle || 0); return; } let sR = f.r * scale; if (isLowQuality || sR < DRAW_LOD_THRESHOLD) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle||0); let w = f.r * 2, h = w * 2.0, r = w / 2; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, r); ctx.clip(); ctx.fillStyle = f.c1; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = f.c2; ctx.fillRect(-w/2, 0, w, h/2); ctx.restore(); } }
