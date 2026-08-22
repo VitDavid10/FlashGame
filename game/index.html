@@ -1544,6 +1544,12 @@
         .sb-eq:hover { border-color: #4a5a52; color: #fff; }
         .sb-eq.on { border-color: #00ff88; color: #00ff88; }
         .sb-eq:disabled { opacity: 0.4; cursor: default; }
+        /* La "E" de puesta: no es un boton, solo la marca. Sin borde ni caja
+           (la de .sb-eq deja un recuadro enorme alrededor de una sola letra) y
+           sin cursor de pulsar, que no lleva a ningun sitio. Es la misma letra
+           y el mismo sitio que .mine-eq en el cartel pequeño. */
+        .sb-eq-marca { border: 0 !important; padding: 0 !important; background: none !important;
+            font-size: 11px; font-weight: bold; cursor: default; }
         #skinBigModal.arcade .sb-eq { border-color: #ccff00; color: #ccff00; }
         #skinBigModal.arcade .sb-eq:hover { border-color: #ffff00; color: #ffff00; }
         #skinBigModal.arcade .sb-eq.on { border-color: #ffff00; color: #ffff00; }
@@ -7402,13 +7408,20 @@
     function syncPaletaMovil() {
         if (!esMovilJuego()) return;
         const pal = document.getElementById('pillPalette'); if (!pal) return;
-        closeColorPicker();
         const conSkin = typeof paisPuesta === 'function' && !!paisPuesta();
         if (conSkin) {
-            if (pal.style.display !== 'none') { pal.style.display = 'none'; }
+            // Con skin puesta no hay colores que elegir: se va la paleta y con
+            // ella el panel grande, si estaba abierto. Solo en el CAMBIO de
+            // estado, no en cada pasada.
+            if (pal.style.display !== 'none') { pal.style.display = 'none'; closeColorPicker(); }
         } else if (pal.style.display === 'none') {
             openPalette(palHalf || 'colTop');
         }
+        // OJO: aqui NO va un closeColorPicker() suelto. Lo llevaba, y como esta
+        // funcion la repite el rAF de la pildora en CADA FRAME mientras el menu
+        // este a la vista, el panel grande se cerraba solo ~16ms despues de
+        // abrirlo: pulsabas MORE y no pasaba nada. Quien tiene que cerrarlo al
+        // salir del menu es cerrarUIColores(), y ese corre una vez por salida.
     }
     // Solo movil: botones TOP/BOTTOM en vez de tocar una mitad de la pildora
     // (esa la usa ahora skinBigOpen). No renderiza ni cambia display -- la
@@ -10538,17 +10551,27 @@
             cel.append(cv, cod);
 
             const activa = esDefault ? !puesta : puesta === code;
-            if (esMine) {
-                // En las tuyas no hay precio: hay un boton para ponerla o
-                // quitarla sin tener que abrir el detalle.
+            if (esMine && activa) {
+                // Puesta: la MISMA marca "E" que el cartel pequeño (.mine-eq), no
+                // un boton. El UNEQUIP que habia aqui sobraba y encima confundia:
+                // quitarse una skin ES ponerse la DEFAULT, asi que en la DEFAULT
+                // no habia nada que quitar y el boton salia deshabilitado
+                // diciendo "UNEQUIP" — justo el caso que no se entendia. Para
+                // volver a tus colores se pulsa EQUIP en DEFAULT, igual que en el
+                // cartel pequeño.
+                const on = document.createElement('div');
+                on.className = 'sb-eq on sb-eq-marca';
+                on.textContent = 'E';
+                cel.appendChild(on);
+            } else if (esMine) {
+                // En las tuyas no hay precio: hay un boton para ponerla sin tener
+                // que abrir el detalle.
                 const eq = document.createElement('button');
-                eq.className = 'sb-eq' + (activa ? ' on' : '');
-                eq.textContent = activa ? 'UNEQUIP' : 'EQUIP';
-                // La default no se puede "quitar": quitarse otra ES ponerse esta.
-                if (esDefault && activa) { eq.disabled = true; eq.style.opacity = '0.4'; eq.style.cursor = 'default'; }
+                eq.className = 'sb-eq';
+                eq.textContent = 'EQUIP';
                 eq.addEventListener('click', async ev => {
                     ev.stopPropagation();
-                    const r = await paisPoner(activa || esDefault ? null : code);
+                    const r = await paisPoner(esDefault ? null : code);
                     if (r && r.ok === false) { showSystemMsg(r.error || 'Could not equip that skin.', 'SKINS'); return; }
                     skinBigRender(); mineRender(); skinRender(); renderMenuPill();
                     // Con skin puesta la paleta de colores sobra (y al quitarla
