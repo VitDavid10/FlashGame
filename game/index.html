@@ -10,6 +10,44 @@
   gtag('config', 'G-WER49F1YEH');
 </script>
 
+    <!-- --vpw / --vph: el ancho y el alto REALES del viewport, en px, medidos
+         por JS. Los usan las pantallas que en movil se pintan giradas 90 grados
+         (#modeScreen, #loginOverlay, #gameCanvas y el HUD), que necesitan los
+         lados INTERCAMBIADOS: width = alto de pantalla, height = ancho.
+         Antes salian de 100dvh/100dvw a secas y ahi estaba el fallo de "media
+         pantalla en color plano": esas unidades las evalua el navegador a su
+         aire y en una Custom Tab —la vista de Chrome/Samsung que se abre al
+         tocar un enlace, con la X y el titulo arriba— 100dvh devolvia el lado
+         CORTO, asi que el menu salia cuadrado (de lado = ancho de pantalla) y
+         el resto quedaba sin pintar. Segun el telefono se corregia solo a los
+         segundos (cuando la barra terminaba de encogerse y disparaba un
+         resize) o no se corregia nunca — justo lo que se veia.
+         visualViewport es lo que de verdad se ve, barras incluidas; se vuelve a
+         medir en cada cambio. El CSS conserva 100dvh/100dvw como valor de
+         reserva por si esto no llegara a correr. -->
+    <script>
+    (function () {
+        var el = document.documentElement;
+        function sync() {
+            var vv = window.visualViewport;
+            var w = Math.round((vv && vv.width) || window.innerWidth || 0);
+            var h = Math.round((vv && vv.height) || window.innerHeight || 0);
+            if (w > 0 && h > 0) { el.style.setProperty('--vpw', w + 'px'); el.style.setProperty('--vph', h + 'px'); }
+        }
+        sync();
+        addEventListener('resize', sync, { passive: true });
+        addEventListener('orientationchange', sync, { passive: true });
+        addEventListener('pageshow', sync, { passive: true });
+        if (window.visualViewport) {
+            visualViewport.addEventListener('resize', sync, { passive: true });
+            visualViewport.addEventListener('scroll', sync, { passive: true });
+        }
+        // La barra del navegador se encoge sin avisar durante los primeros
+        // instantes: unas cuantas pasadas mas por si algun resize no llega.
+        addEventListener('load', function () { sync(); setTimeout(sync, 60); setTimeout(sync, 300); setTimeout(sync, 1000); }, { passive: true });
+    })();
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PillWars - The Crypto Arena</title>
@@ -336,9 +374,9 @@
             html:not([data-hero]) body.mobile-allowed #modeScreen {
                 position: absolute;
                 width: 100vh; height: 100vw;
-                width: 100dvh; height: 100dvw;
+                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
                 top: -100vw; left: 0;
-                top: -100dvw;
+                top: calc(-1 * var(--vpw, 100dvw));
                 transform: rotate(90deg); transform-origin: bottom left;
             }
             /* El clamp de la tipografia usa vh, que aqui es el lado CORTO
@@ -360,9 +398,9 @@
                con el sin tocarles nada. */
             html:not([data-hero]) body.mobile-allowed #loadingScreen {
                 width: 100vh; height: 100vw;
-                width: 100dvh; height: 100dvw;
+                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
                 top: -100vw; left: 0; right: auto; bottom: auto;
-                top: -100dvw;
+                top: calc(-1 * var(--vpw, 100dvw));
                 transform: rotate(90deg); transform-origin: bottom left;
             }
             /* El cuerpo del titulo se calculaba con vw, que girado es el lado
@@ -410,9 +448,9 @@
                vuelta para leerlos. */
             html:not([data-hero]) body.mobile-allowed .pw-modal {
                 width: 100vh; height: 100vw;
-                width: 100dvh; height: 100dvw;
+                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
                 top: -100vw; left: 0; right: auto; bottom: auto;
-                top: -100dvw;
+                top: calc(-1 * var(--vpw, 100dvw));
                 transform: rotate(90deg); transform-origin: bottom left;
             }
             /* Catalogo de skins (YOUR SKINS/SKINS STORE): mismo truco de giro
@@ -422,9 +460,9 @@
                contenedor entero encima del viewport. */
             html:not([data-hero]) body.mobile-allowed #skinBigModal {
                 width: 100vh !important; height: 100vw !important;
-                width: 100dvh !important; height: 100dvw !important;
+                width: var(--vph, 100dvh) !important; height: var(--vpw, 100dvw) !important;
                 top: -100vw !important; left: 0 !important; right: auto !important; bottom: auto !important;
-                top: -100dvw !important;
+                top: calc(-1 * var(--vpw, 100dvw)) !important;
                 transform: rotate(90deg) !important; transform-origin: bottom left !important;
             }
             /* Celda de skin en movil: la bandera y el precio no caben en el
@@ -456,9 +494,9 @@
                    (812+48 x 375+48) y se salia de la pantalla real. */
                 box-sizing: border-box !important;
                 width: 100vh !important; height: 100vw !important;
-                width: 100dvh !important; height: 100dvw !important;
+                width: var(--vph, 100dvh) !important; height: var(--vpw, 100dvw) !important;
                 top: -100vw !important; left: 0 !important; right: auto !important; bottom: auto !important;
-                top: -100dvw !important;
+                top: calc(-1 * var(--vpw, 100dvw)) !important;
                 transform: rotate(90deg) !important; transform-origin: bottom left !important;
             }
             html:not([data-hero]) body.mobile-allowed #paisModal .pm-inner {
@@ -595,9 +633,9 @@
             html:not([data-hero]) body.mobile-allowed #minimap {
                 position: fixed;
                 width: 100vh; height: 100vw;
-                width: 100dvh; height: 100dvw;
+                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
                 top: -100vw; left: 0; right: auto; bottom: auto;
-                top: -100dvw;
+                top: calc(-1 * var(--vpw, 100dvw));
                 transform: rotate(90deg); transform-origin: bottom left;
             }
             /* El HUD no ocupa la pantalla entera: recupera su tamaño y se ancla
@@ -652,9 +690,9 @@
             html:not([data-hero]) body.mobile-allowed #exitModal {
                 position: fixed !important;
                 width: 100vh; height: 100vw;
-                width: 100dvh; height: 100dvw;
+                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
                 top: -100vw; left: 0; right: auto; bottom: auto;
-                top: -100dvw;
+                top: calc(-1 * var(--vpw, 100dvw));
                 transform: rotate(90deg) !important; transform-origin: bottom left !important;
             }
             /* exitModal/sysModal: ancho fijo (el "cartel gris"), SIN
@@ -826,9 +864,9 @@
             html:not([data-hero]) body.mobile-allowed #loginOverlay {
                 position: fixed;
                 width: 100vh; height: 100vw;
-                width: 100dvh; height: 100dvw;
+                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
                 top: -100vw; left: 0; right: auto; bottom: auto;
-                top: -100dvw;
+                top: calc(-1 * var(--vpw, 100dvw));
                 transform: rotate(90deg); transform-origin: bottom left;
                 overflow-y: auto; overflow-x: hidden;
             }

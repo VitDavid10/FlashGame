@@ -1190,7 +1190,7 @@ body.trailer-open #page-content{
 
         /* Leaderboard "Global Elite" */
         .lb-wrap { width: 100%; max-width: var(--contenido-panel); background: rgba(10,10,10,0.7); border: 1px solid rgba(0,255,136,0.18); border-radius: 18px; padding: 18px 20px 22px; box-shadow: 0 10px 50px rgba(0,0,0,0.5); }
-        .lb-head, .lb-row { display: grid; grid-template-columns: 64px 1.5fr 1fr 0.7fr 0.8fr 0.7fr 0.7fr 1fr; gap: 10px; align-items: center; padding: 11px 14px; font-family: 'Inter', sans-serif; font-size: var(--fs-3); }
+        .lb-head, .lb-row { display: grid; grid-template-columns: 64px 1.5fr 1fr 0.7fr 0.8fr 0.7fr 0.7fr; gap: 10px; align-items: center; padding: 11px 14px; font-family: 'Inter', sans-serif; font-size: var(--fs-3); }
         .lb-head { color: var(--txt-mute); font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-2); letter-spacing: 2px; border-bottom: 1px solid #1c1c1c; margin-bottom: 4px; }
         .lb-row { border-bottom: 1px solid #141414; transition: 0.2s; }
         .lb-row:hover { background: rgba(0,255,136,0.04); }
@@ -1248,13 +1248,11 @@ body.trailer-open #page-content{
         .dq-card.done .dq-foot .state { color: var(--primary); }
         .dq-card.prog .dq-foot .state { color: #ffce3d; }
         .lb-c-deaths, .lb-c-kd, .lb-c-games { color: #ccc; font-variant-numeric: tabular-nums; }
-        .lb-c-country { color: #ccc; }
-        .lb-flag { font-size: var(--fs-4); margin-right: 7px; vertical-align: -2px; }
         .lb-empty { padding: 50px 0; text-align: center; color: var(--txt-mute); font-family: 'Russo One'; font-size: var(--fs-3); letter-spacing: 2px; }
         @media (max-width: 720px) {
             .lb-head { display: none; }
             .lb-row { grid-template-columns: 56px 1fr; gap: 6px; }
-            .lb-c-deaths, .lb-c-kd, .lb-c-games, .lb-c-country { grid-column: 2; color: #888; font-size: var(--fs-2); }
+            .lb-c-deaths, .lb-c-kd, .lb-c-games { grid-column: 2; color: #888; font-size: var(--fs-2); }
             .lb-c-kills { grid-column: 2; }
         }
 
@@ -2504,7 +2502,6 @@ body.trailer-open #page-content{
                 <span class="lb-c-deaths">DEATHS</span>
                 <span class="lb-c-kd">K/D</span>
                 <span class="lb-c-games">GAMES</span>
-                <span class="lb-c-country">COUNTRY</span>
             </div>
             <div id="lb-body"><div class="lb-empty">Loading leaderboard…</div></div>
         </div>
@@ -3599,12 +3596,6 @@ function toggleTrailerMode() {
         (function () {
             const body = document.getElementById('lb-body');
             if (!body) return;
-            function flag(code) {
-                if (!code || code === 'LOCAL' || code === '??') return '🌐';
-                const c = String(code).toUpperCase();
-                if (c.length !== 2) return '🌐';
-                return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65) + String.fromCodePoint(0x1F1E6 + c.charCodeAt(1) - 65);
-            }
             function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
             const PER_PAGE = 10;
@@ -3635,7 +3626,6 @@ function toggleTrailerMode() {
                         <span class="lb-c-deaths">${p.muertes.toLocaleString('en-US')}</span>
                         <span class="lb-c-kd">${kd}</span>
                         <span class="lb-c-games">${p.partidas.toLocaleString('en-US')}</span>
-                        <span class="lb-c-country" title="${esc(p.paisName || p.paisCode || '')}"><span class="lb-flag">${flag(p.paisCode)}</span></span>
                     </div>`;
                 }).join('');
                 renderPag(totalPag);

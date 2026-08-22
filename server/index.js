@@ -130,7 +130,11 @@ let cartelesLayout = (_glob.cartelesLayout && typeof _glob.cartelesLayout === 'o
 // el diseño ya está fijado en el código de cada página. Se enciende desde el
 // panel admin cuando haya que retocarlo.
 let layoutEdit = (typeof _glob.layoutEdit === 'boolean') ? _glob.layoutEdit : false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, landingLayout, cartelesLayout }), () => {}); }
+// Si el ranking cuenta a los testers/bots. Se guarda porque el ranking se
+// RECALCULA SOLO al arrancar (ver computeRanking mas abajo) y hay que saber con
+// que criterio hacerlo; si no, cada reinicio lo dejaba en el de por defecto.
+let rankingIncludeTesters = (typeof _glob.rankingIncludeTesters === 'boolean') ? _glob.rankingIncludeTesters : false;
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, landingLayout, cartelesLayout }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -400,6 +404,15 @@ function computeRanking(includeTesters) {
     }
     setImmediate(step);
 }
+// Se calcula SOLO al arrancar. El ranking vive en memoria (_rankingCache), asi
+// que cada reinicio del proceso lo dejaba vacio y el Global Elite de la web
+// aparecia en blanco hasta que alguien entraba al panel a pulsar "Actualizar
+// ranking" — eso es lo que parecia que se reseteaba solo. Los datos nunca se
+// pierden: viven en players.json, que si se guarda; lo unico que faltaba era
+// rehacer el cache al arrancar. Con el mismo criterio de testers/bots que se
+// eligio la ultima vez (rankingIncludeTesters, guardado en globalsettings).
+// setImmediate para no retrasar el arranque: computeRanking ya va por chunks.
+setImmediate(() => computeRanking(rankingIncludeTesters));
 let statsDirty = false, rulesDirty = false, playersDirty = false;
 function statsOf(key) { if (!roomStats[key]) roomStats[key] = { entradas: 0, muertes: 0, entradasReal: 0, muertesReal: 0 }; const s = roomStats[key]; if (s.entradasReal == null) { s.entradasReal = 0; s.muertesReal = 0; } return s; }
 function rulesOf(key) {
@@ -2595,7 +2608,8 @@ wss.on('connection', (ws, req) => {
                     setTimeout(() => process.exit(0), 500);
                 }
             } else if (msg.cmd === 'updateRanking') {
-                computeRanking(!!msg.includeTesters);
+                rankingIncludeTesters = !!msg.includeTesters; saveGlobal();
+                computeRanking(rankingIncludeTesters);
                 playersDirty = true;   // aprovechar para forzar save tras recalcular
                 logAdmin('-', 'Actualizó el ranking', msg.includeTesters ? 'con testers' : 'sin testers');
             } else if (msg.cmd === 'deleteRanking' && msg.playerKey) {
