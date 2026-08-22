@@ -749,11 +749,11 @@
                hay nada salvo la flecha de volver, en la otra esquina), no en
                mitad de la pantalla encima de todo lo demas. */
             html:not([data-hero]) body.mobile-allowed #colorPicker {
-                position: fixed !important; top: 18% !important; left: 25% !important;
+                position: fixed !important; top: 18% !important; left: 50% !important;
                 right: auto !important; bottom: auto !important; margin-left: 0 !important;
                 width: 250px !important; z-index: 501 !important;
                 translate: none !important; scale: 1 !important;
-                transform: translate(-50%, -50%) rotate(90deg) !important;
+                transform: translate(calc(-50% - 10px), -50%) rotate(90deg) !important;
                 transform-origin: center !important;
             }
             html:not([data-hero]) body.mobile-allowed #palHint {
