@@ -28,10 +28,21 @@
     <script>
     (function () {
         var el = document.documentElement;
+        // El MAYOR de las tres medidas, no visualViewport a secas. Las tres
+        // dicen cosas distintas mientras la barra del navegador se esta
+        // encogiendo -visualViewport es lo visible AHORA, que al principio es
+        // lo mas pequeno- y quedarse con la pequena es lo que dejaba el destello
+        // de un frame: el menu se pintaba corto, llegaba el resize y crecia de
+        // golpe. Con el maximo se acierta el tamano FINAL ya en el primer
+        // pintado; lo unico que puede pasar es que durante ese instante el menu
+        // asome unos pixeles por debajo de la barra, que no se nota. Aqui no hay
+        // teclado que encoja el viewport (en movil el campo del nombre esta
+        // oculto), asi que quedarse con el maximo no deja nada tapado.
         function sync() {
             var vv = window.visualViewport;
-            var w = Math.round((vv && vv.width) || window.innerWidth || 0);
-            var h = Math.round((vv && vv.height) || window.innerHeight || 0);
+            var de = document.documentElement;
+            var w = Math.round(Math.max((vv && vv.width) || 0, window.innerWidth || 0, de.clientWidth || 0));
+            var h = Math.round(Math.max((vv && vv.height) || 0, window.innerHeight || 0, de.clientHeight || 0));
             if (w > 0 && h > 0) { el.style.setProperty('--vpw', w + 'px'); el.style.setProperty('--vph', h + 'px'); }
         }
         sync();
