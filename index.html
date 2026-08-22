@@ -293,7 +293,28 @@
               min-width:100% mande y el cuadro quede pegado. El padding baja de
               16 a 12 por lo mismo. Se conserva var(--pw-font) delante: el cuerpo
               sigue siendo ajustable con ALT+rueda desde EDIT LAYOUT. */
-        #pill-dropdown .dropdown-content { min-width: 100%; }
+        /* ANCLADO AL ROTULO, no a la caja. #pill-dropdown esta en
+           LAYOUT_RESIZABLE: el editor le escribe un `width` en px para ensanchar
+           su zona de hover (la caja mide 50x10 y al bajar en diagonal hacia el
+           menu el raton se salia de las dos). Esa caja ensanchada crece hacia la
+           IZQUIERDA — el rotulo se queda en flex-start pegado a su filo
+           izquierdo — asi que anclar el menu con right:0 + min-width:100% lo
+           estiraba hasta el filo DERECHO de la caja: medido, con width 260px el
+           rotulo iba de 390 a 542 y el menu de 390 a 650, sobresaliendo 108px
+           por la derecha. Es lo que se veia como "el desplegable esta a un lado".
+           left:0 lo pega al filo izquierdo, que es el del rotulo tanto si la
+           caja esta ensanchada como si no, y min-width:0 lo devuelve a medirse
+           por su contenido en vez de por la caja. */
+        #pill-dropdown .dropdown-content { left: 0; right: auto; min-width: 0; }
+        /* translate/scale forzados: apply() del editor los escribe inline sobre
+           TODAS las claves de LAYOUT_ELS, navPillMenu incluida, asi que un x/y
+           guardado de cuando se podia arrastrar el menu lo volveria a descolgar
+           de su rotulo pase lo que pase con las reglas de arriba. El menu no es
+           una pieza que deba colocarse a mano: cuelga de $PILL y punto. La clave
+           se queda en LAYOUT_ELS porque los botones +/- de LETRA del panel de
+           EDIT LAYOUT la siguen usando (--pw-font sigue vivo, solo se clavan
+           posicion y escala). */
+        #pill-dropdown .dropdown-content { translate: none !important; scale: 1 !important; }
         #pill-dropdown .dropdown-content a { padding: 10px 12px; font-size: var(--pw-font, var(--fs-1)); }
         /* --pw-font: cuerpo de letra ajustable desde EDIT LAYOUT con ALT+rueda
            sobre el desplegable (clave pillMenu). Sin valor guardado manda el 13. */
@@ -4804,7 +4825,7 @@ function toggleTrailerMode() {
         // Cuerpo de letra por defecto de cada clave que admite ALT+rueda: el
         // mismo numero que el fallback de var(--pw-font, N) en su CSS. Hace
         // falta porque al leer --pw-font sin valor guardado no devuelve nada.
-        const FONT_DEFAULTS = { navPillMenu: 13, caSign: 13, ca: 11, navPlayBtn: 15 };
+        const FONT_DEFAULTS = { navPillMenu: 9, caSign: 13, ca: 11, navPlayBtn: 15 };
         // Tope de escala por clave. El general (3) se queda corto en los iconos
         // de skills: el del tooltip a 3x mide 192px dentro de una caja de
         // ~246px, asi que ni siquiera llega a tocar los lados para recortarse.
