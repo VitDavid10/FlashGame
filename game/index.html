@@ -486,7 +486,7 @@
                    con 28/38 queda en x 300-332, y 629-750 dentro de un cartel
                    que ocupa x 15-360, y 24-788 — pegado a esa esquina y con
                    el CLOSE entero dentro. */
-                --pm-top-y: 28px !important; --pm-top-x: 38px !important;
+                --pm-top-y: 36px !important; --pm-top-x: 38px !important;
                 --pm-fs-nom: 11px !important;
                 --pm-fs-lore: 12px !important;
                 --pm-gap: 8px !important;
@@ -749,7 +749,7 @@
                hay nada salvo la flecha de volver, en la otra esquina), no en
                mitad de la pantalla encima de todo lo demas. */
             html:not([data-hero]) body.mobile-allowed #colorPicker {
-                position: fixed !important; top: 18% !important; left: 50% !important;
+                position: fixed !important; top: 18% !important; left: 25% !important;
                 right: auto !important; bottom: auto !important; margin-left: 0 !important;
                 width: 250px !important; z-index: 501 !important;
                 translate: none !important; scale: 1 !important;
@@ -7372,9 +7372,10 @@
     function syncPaletaMovil() {
         if (!esMovilJuego()) return;
         const pal = document.getElementById('pillPalette'); if (!pal) return;
+        closeColorPicker();
         const conSkin = typeof paisPuesta === 'function' && !!paisPuesta();
         if (conSkin) {
-            if (pal.style.display !== 'none') { pal.style.display = 'none'; closeColorPicker(); }
+            if (pal.style.display !== 'none') { pal.style.display = 'none'; }
         } else if (pal.style.display === 'none') {
             openPalette(palHalf || 'colTop');
         }
