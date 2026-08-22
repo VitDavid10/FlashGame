@@ -277,9 +277,13 @@ function tickRoomOnce(room, now, ctx) {
             // red mala acumula snapshots sin límite en RAM del proceso y lo arrastra.
             const canSnap = doSnap && cli.ws.bufferedAmount < ctx.WS_BACKPRESSURE_MAX;
             if (!canSnap) { if (eventsJson) cli.ws.send(eventsJson); continue; }
-            if (!aoiOn) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
+            // _aoiBox = null en TODOS los caminos de snapshot completo: si se
+            // quedara el de antes, la brujula de multitud filtraria con una caja
+            // vieja. null significa "este cliente lo esta recibiendo todo", y
+            // entonces la brujula no tiene nada que añadir.
+            if (!aoiOn) { cli._aoiBox = null; cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
             const pj = room.sim.players.get(pid);
-            if (!pj || !pj.alive || pj.cells.length === 0) { cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
+            if (!pj || !pj.alive || pj.cells.length === 0) { cli._aoiBox = null; cli.ws.send(cli.useBin ? ensureFullBin() : ensureFullJson()); continue; }
             // box null = la caja cubriría (casi) todo el mapa → snapshot completo
             // CACHEADO (una serialización para todos) en vez de uno idéntico por
             // jugador. Es lo que hace barato el caso "jugador enorme" o "zoom
@@ -375,8 +379,13 @@ function tickRoomOnce(room, now, ctx) {
 const CROWD_BINS = 24;   // cubos de 15 grados
 const CROWD_WIN = 2;     // ventana de +-2 cubos = +-30 grados
 const _cb = { n: new Float64Array(CROWD_BINS), x: new Float64Array(CROWD_BINS), y: new Float64Array(CROWD_BINS), m: new Float64Array(CROWD_BINS) };
+// SOLO EN SALAS GRATIS mientras se prueba (peticion de David): asi las salas de
+// pago no son el conejillo de indias y se puede medir el coste con y sin. Para
+// abrirlo a todas, quitar la comprobacion de roomName.
+const CROWD_SOLO_FREE = true;
 function sendCrowd(room, puntos, ctx) {
     if (room.mode !== 'classic' || puntos.length < 2) return;
+    if (CROWD_SOLO_FREE && room.roomName !== 'Free') return;
     for (const [pid, cli] of room.clients) {
         if (cli.ws.readyState !== 1 || cli.ws.bufferedAmount >= ctx.WS_BACKPRESSURE_MAX) continue;
         const pj = room.sim.players.get(pid);
@@ -384,20 +393,27 @@ function sendCrowd(room, puntos, ctx) {
         let mx = 0, my = 0;
         for (const c of pj.cells) { mx += c.x; my += c.y; }
         mx /= pj.cells.length; my /= pj.cells.length;
+        // box null = este cliente esta recibiendo el mapa ENTERO (AOI apagado, o
+        // caja mayor que el mapa): su cliente ya lo sabe todo y la brujula no
+        // tiene nada que añadir. Se sale ANTES del bucle, asi con el AOI apagado
+        // esto no cuesta absolutamente nada.
         const box = cli._aoiBox;
+        if (!box) continue;
         _cb.n.fill(0); _cb.x.fill(0); _cb.y.fill(0); _cb.m.fill(0);
         let total = 0;
         for (const q of puntos) {
             if (q.id === pid) continue;
             // Lo que le cabe en el AOI ya lo esta recibiendo: la brujula es para
-            // lo de FUERA (box null = esta recibiendo el mapa entero → nada que
-            // añadir, su cliente ya lo sabe todo).
-            if (!box) continue;
+            // lo de FUERA.
             if (Math.abs(q.x - box.cx) <= box.halfX && Math.abs(q.y - box.cy) <= box.halfY) continue;
-            const ang = Math.atan2(q.y - my, q.x - mx);
+            const dx = q.x - mx, dy = q.y - my;
+            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+            // El vector unitario sale de dx/dy directamente: un sqrt en vez de un
+            // cos + un sin. atan2 solo se usa para el indice del cubo.
+            const ang = Math.atan2(dy, dx);
             let i = ((ang + Math.PI) / (Math.PI * 2) * CROWD_BINS) | 0;
             if (i < 0) i = 0; else if (i >= CROWD_BINS) i = CROWD_BINS - 1;
-            _cb.n[i]++; _cb.x[i] += Math.cos(ang); _cb.y[i] += Math.sin(ang);
+            _cb.n[i]++; _cb.x[i] += dx / len; _cb.y[i] += dy / len;
             if (q.m > _cb.m[i]) _cb.m[i] = q.m;
             total++;
         }
