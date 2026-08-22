@@ -7430,7 +7430,9 @@
         });
     }
     function openColorPicker() {
-        const ms = document.getElementById('modeScreen'); if (ms && ms.style.display !== 'none') return;
+        const ms = document.getElementById('modeScreen');
+        const msDisplay = ms ? getComputedStyle(ms).display : 'none';
+        if (msDisplay !== 'none') return;
         const cp = document.getElementById('colorPicker'); if (!cp) return;
         renderColorPicker();
         cp.style.display = 'block';
@@ -7441,7 +7443,9 @@
     // La placa de PICK abre Y cierra: si ya estan los 108 tonos a la vista,
     // volver a pulsarla los quita sin obligarte a elegir ningun color.
     function toggleColorPicker() {
-        const ms = document.getElementById('modeScreen'); if (ms && ms.style.display !== 'none') return;
+        const ms = document.getElementById('modeScreen');
+        const msDisplay = ms ? getComputedStyle(ms).display : 'none';
+        if (msDisplay !== 'none') return;
         const cp = document.getElementById('colorPicker');
         if (cp && cp.style.display !== 'none') closeColorPicker(); else openColorPicker();
     }
