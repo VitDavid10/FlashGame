@@ -476,7 +476,12 @@
                entero pasa a caber sin haber nada que desbordar. */
             html:not([data-hero]) body.mobile-allowed #paisModal {
                 --pm-pad: 14px 16px 16px !important;
-                --pm-top-y: 96px !important; --pm-top-x: 120px !important;
+                /* Flecha + CLOSE a la esquina INFERIOR DERECHA del cartel.
+                   Ojo con los nombres: --pm-top-y es el `top` y --pm-top-x el
+                   `right` del .pm-top, los dos en coordenadas del cartel SIN
+                   girar (que es como lo ve el jugador con el movil ya girado):
+                   top grande = abajo, right pequeño = pegado a la derecha. */
+                --pm-top-y: 288px !important; --pm-top-x: 28px !important;
                 --pm-fs-nom: 11px !important;
                 --pm-fs-lore: 12px !important;
                 --pm-gap: 8px !important;
@@ -700,10 +705,18 @@
                (que ya va rotado entero) el position:fixed usaba ESE ancestro
                como referencia en vez de la pantalla real, y descolocada en el
                telefono de verdad aunque en el emulador midiera bien. */
+            /* translate/scale a none: applyMenuLayout() los pone INLINE con el
+               layout guardado desde EDIT LAYOUT (pensado para el menu de
+               escritorio) y, al ser propiedades independientes, se COMPONEN
+               con el transform de aqui -- la paleta acababa desplazada fuera
+               de la pantalla en cualquier movil con layout guardado, aunque
+               con localStorage limpio saliera bien. Mismo reset que ya llevan
+               .pill-stage / #btnPlay / #selectedModeTitle mas arriba. */
             html:not([data-hero]) body.mobile-allowed #pillPalette {
-                position: fixed !important; top: 34% !important; left: 29% !important;
+                position: fixed !important; top: 80% !important; left: 35% !important;
                 right: auto !important; bottom: auto !important; margin-left: 0 !important;
                 width: 200px !important; z-index: 500 !important;
+                translate: none !important; scale: 1 !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important;
                 transform-origin: center !important;
             }
@@ -732,12 +745,14 @@
                 position: fixed !important; top: 50% !important; left: 50% !important;
                 right: auto !important; bottom: auto !important; margin-left: 0 !important;
                 width: 250px !important; z-index: 501 !important;
+                translate: none !important; scale: 1 !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important;
                 transform-origin: center !important;
             }
             html:not([data-hero]) body.mobile-allowed #palHint {
-                position: fixed !important; top: 55% !important; left: 29% !important;
+                position: fixed !important; top: 80% !important; left: 15% !important;
                 right: auto !important; bottom: auto !important; z-index: 500 !important;
+                translate: none !important; scale: 1 !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important;
                 transform-origin: center !important; font-size: 7px !important;
             }
@@ -1461,6 +1476,10 @@
         .sb-tab { background: transparent; border: 2px solid #2c3630; color: #7d8a82; font-family: 'Russo One';
             font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 16px; cursor: pointer; }
         .sb-tab.act { color: #04150c; }
+        /* La pestaña QUESTS solo existe en movil (en escritorio las quests
+           tienen su cartel propio en el menu). */
+        .sb-tab-movil { display: none; }
+        body.mobile-allowed .sb-tab-movil { display: inline-block; }
         #skinBigModal.arcade .sb-tab.act { background: #ccff00; border-color: #ccff00; }
         #skinBigModal.classic .sb-tab.act { background: #00ffaa; border-color: #00ffaa; }
         #skinBigModal.arcade .sb-sp { color: #ccff00; }
@@ -1907,7 +1926,10 @@
             border: none !important; border-image: none !important; border-radius: 0 !important;
             clip-path: none !important; box-shadow: none !important;
             background: transparent url('img/cartel-hero/btn-plain-red.png') center/100% 100% no-repeat !important;
-            image-rendering: pixelated; aspect-ratio: 15/2; width: 68%;
+            /* Mismo ancho (68%) pero mas bajo que SETTINGS: 15/2 -> 18/2, a
+               peticion de David. Solo cambia la proporcion; la placa la
+               redibuja paintPlacas con la medida real, asi que se ajusta sola. */
+            image-rendering: pixelated; aspect-ratio: 18/2; width: 68%;
             font-family: 'Press Start 2P', monospace; font-size: 16px; color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.65); padding: 0; margin: 14px auto 0; display: block;
         }
@@ -3696,7 +3718,10 @@
                 <div class="sb-head">
                     <button class="sb-tab" id="sbTabShop" onclick="skinBigTab('skins')">SKINS STORE</button>
                     <button class="sb-tab" id="sbTabMine" onclick="skinBigTab('mine')">YOUR SKINS</button>
-                    <button class="sb-tab" id="sbTabQuests" onclick="skinBigTab('quests')">QUESTS</button>
+                    <!-- Solo movil: en escritorio las quests ya tienen su
+                         propio cartel en el menu (DAILY QUESTS, columna
+                         derecha), asi que aqui sobraria. -->
+                    <button class="sb-tab sb-tab-movil" id="sbTabQuests" onclick="skinBigTab('quests')">QUESTS</button>
                     <span class="sb-sp"><span id="sbSp">0</span> SP</span>
                     <button class="sb-close" onclick="skinBigClose()">CLOSE</button>
                 </div>
@@ -10507,31 +10532,78 @@
     function skinBigDnD(grid) {
         if (grid._dndListo) return;
         grid._dndListo = true;
-        let origen = null;
+        // El code y NO la referencia al div: al pasar de pagina la rejilla se
+        // vuelve a pintar entera y el nodo original deja de existir, asi que
+        // guardarse el elemento no serviria para soltar en la pagina nueva.
+        let origenCode = null, origenEl = null;
+        // Cambio de pagina al arrastrar hasta el borde. Con retardo (no en
+        // cuanto se roza) para que arrastrar a la ultima columna no dispare un
+        // cambio sin querer, y con pausa despues para no encadenar paginas.
+        let bordeTimer = null, bordeDir = 0;
+        const BORDE_MS = 550;
+        function paraBorde() { if (bordeTimer) { clearTimeout(bordeTimer); bordeTimer = null; } bordeDir = 0; }
+        function limpia() {
+            if (origenEl) origenEl.classList.remove('drag');
+            grid.querySelectorAll('.sb-cell.over').forEach(c => c.classList.remove('over'));
+            origenCode = null; origenEl = null;
+            paraBorde();
+        }
         grid.addEventListener('dragstart', e => {
             const c = e.target.closest('.sb-cell');
             if (!c || c.classList.contains('vacia') || c.classList.contains('fija')) return;
-            origen = c; c.classList.add('drag');
+            origenEl = c; origenCode = c.dataset.code; c.classList.add('drag');
             try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.dataset.code); } catch (err) {}
         });
-        grid.addEventListener('dragend', () => {
-            if (origen) origen.classList.remove('drag');
-            grid.querySelectorAll('.sb-cell.over').forEach(c => c.classList.remove('over'));
-            origen = null;
-        });
+        grid.addEventListener('dragend', limpia);
         grid.addEventListener('dragover', e => {
             e.preventDefault();
-            const c = e.target.closest('.sb-cell:not(.vacia):not(.fija)');
+            if (!origenCode) return;
+            const c = e.target.closest('.sb-cell:not(.fija)');
             grid.querySelectorAll('.sb-cell.over').forEach(x => { if (x !== c) x.classList.remove('over'); });
-            if (c && c !== origen) c.classList.add('over');
+            if (c && c.dataset.code !== origenCode) c.classList.add('over');
+            // Zona de borde. El eje se elige por la FORMA de la rejilla: en el
+            // movil el catalogo va girado 90 grados, asi que lo que el jugador
+            // ve como "borde derecho" es el borde de ABAJO en coordenadas de
+            // pantalla — mirar siempre clientX se quedaria corto ahi.
+            const r = grid.getBoundingClientRect();
+            const horiz = r.width >= r.height;
+            const pos = horiz ? e.clientX : e.clientY;
+            const ini = horiz ? r.left : r.top, fin = horiz ? r.right : r.bottom;
+            const margen = Math.max(20, (fin - ini) * 0.10);
+            const dir = pos > fin - margen ? 1 : (pos < ini + margen ? -1 : 0);
+            if (dir !== bordeDir) {
+                paraBorde();
+                bordeDir = dir;
+                if (dir && skinBigPaginas() > 1) {
+                    bordeTimer = setTimeout(() => {
+                        bordeTimer = null;
+                        skinBigPage(dir);
+                        // La rejilla se acaba de repintar: el nodo que se
+                        // arrastraba ya no existe, pero el arrastre sigue vivo
+                        // y origenCode basta para soltar.
+                        origenEl = null;
+                        bordeDir = 0;
+                    }, BORDE_MS);
+                }
+            }
         });
+        grid.addEventListener('dragleave', e => { if (!grid.contains(e.relatedTarget)) paraBorde(); });
         grid.addEventListener('drop', e => {
             e.preventDefault();
-            const destino = e.target.closest('.sb-cell:not(.vacia):not(.fija)');
-            if (!origen || !destino || destino === origen) return;
+            const destino = e.target.closest('.sb-cell:not(.fija)');
+            paraBorde();
+            if (!origenCode || !destino) return;
             const orden = skinOrdenEfectivo();
-            const de = orden.indexOf(origen.dataset.code), a = orden.indexOf(destino.dataset.code);
-            if (de < 0 || a < 0) return;
+            const de = orden.indexOf(origenCode);
+            if (de < 0) return;
+            // Hueco vacio de la ultima pagina: la skin se va al final de la
+            // lista. Sin esto no habia forma de mandar una al final.
+            let a;
+            if (destino.classList.contains('vacia')) a = orden.length - 1;
+            else {
+                a = orden.indexOf(destino.dataset.code);
+                if (a < 0 || destino.dataset.code === origenCode) return;
+            }
             orden.splice(a, 0, orden.splice(de, 1)[0]);
             skinOrdenGuardar(orden);
             skinBigRender();
