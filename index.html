@@ -1108,10 +1108,34 @@ body.trailer-open #page-content{
            navbar se queda con la pildora del logo, $PILL y los dos iconos, que
            es lo unico que tiene que caber siempre. */
         @media (max-width: 1200px) { #btnLandingEdit { display: none !important; } }
-        @media (max-width: 1100px) { .nav-links-container .nav-link[href="#ranking"] { display: none; } }
-        @media (max-width: 1000px) { .nav-links-container .nav-link[href="#shop"]    { display: none; } }
-        @media (max-width: 900px)  { .nav-links-container .nav-link[href="#quest"]   { display: none; } }
-        @media (max-width: 820px)  { .nav-links-container .nav-link[href="#hero"]    { display: none; } }
+        /* ===== NAVBAR ESTRECHA: los cuatro enlaces se van JUNTOS =====
+           Antes se caian de uno en uno en 1100/1000/900/820 px fijos, o sea que
+           LEADERBOARD desaparecia con 1100 de ancho teniendo sitio de sobra (el
+           contenido de la barra pide ~1120 con PLAY NOW dentro). Ahora se mide
+           de verdad (ajustaNavbar) y, cuando no caben, se van los cuatro a la
+           vez y en su hueco queda MENU, que los despliega en una columna. */
+        body.nav-colapsada .nav-links-container > a.nav-link { display: none !important; }
+        #nav-menu-dd { display: none; }
+        body.nav-colapsada #nav-menu-dd { display: flex; }
+        /* Cuelga hacia la DERECHA del rotulo (es el primer item por la izquierda
+           de la barra); el de $PILL, que vive en la esquina opuesta, cuelga al reves. */
+        #nav-menu-dd .dropdown-content { left: 0; right: auto; }
+        #nav-menu-dd .dropdown-box { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px !important; overflow: hidden; backdrop-filter: blur(4px) !important; }
+        #nav-menu-dd .dropbtn { cursor: pointer; }
+
+        /* ===== TACTIL: los desplegables se abren PULSANDO, no al pasar =====
+           En un movil no hay "pasar el raton": el primer toque disparaba el
+           :hover y el mismo toque activaba el enlace de debajo, asi que el
+           desplegable ni se veia. Aqui se apaga el hover y manda la clase
+           .abierto, que pone/quita el toque (ver navTactil en el JS). */
+        @media (hover: none), (pointer: coarse) {
+            body:not(.layout-editing) .dropdown:hover .dropdown-content,
+            body:not(.layout-editing) #nav-play-area:hover .dropdown-content,
+            body:not(.layout-editing) #wallet-deposit-wrap:hover .wallet-dropdown-content { display: none; }
+            body:not(.layout-editing) .dropdown.abierto .dropdown-content,
+            body:not(.layout-editing) #nav-play-area.abierto .dropdown-content,
+            body:not(.layout-editing) #wallet-deposit-wrap.abierto .wallet-dropdown-content { display: block; }
+        }
         /* ===== UNA SOLA FILA SIEMPRE =====
            La navbar NUNCA debe partirse en dos filas: el "doble grosor" es el
            efecto que peor se ve al hacer zoom. Va al final de la hoja y con
@@ -2198,6 +2222,20 @@ body.trailer-open #page-content{
                 <a href="#quest" class="nav-link" style="min-width:6.6em">QUESTS</a>
                 <a href="#shop" class="nav-link" style="min-width:5.5em">STORE</a>
                 <a href="#ranking" class="nav-link" style="min-width:12.1em">LEADERBOARD</a>
+                <!-- MENU: solo se ve cuando los cuatro enlaces de arriba no caben
+                     (body.nav-colapsada, lo decide ajustaNavbar midiendo). Los
+                     mismos cuatro destinos, en una columna. -->
+                <div class="dropdown" id="nav-menu-dd">
+                    <span class="dropbtn nav-link" tabindex="0">MENU</span>
+                    <div class="dropdown-content">
+                        <div class="dropdown-box">
+                            <a href="#hero">GAME</a>
+                            <a href="#quest">QUESTS</a>
+                            <a href="#shop">STORE</a>
+                            <a href="#ranking">LEADERBOARD</a>
+                        </div>
+                    </div>
+                </div>
                 <!-- PLAY NOW de la navbar: PEGADO al bloque de la izquierda,
                      justo detras de LEADERBOARD. Antes vivia en el grupo de la
                      derecha y se traia hasta aqui con un translate de -861px
@@ -2825,8 +2863,90 @@ body.trailer-open #page-content{
                     // Ejecutar ajuste al cargar y al redimensionar
                     adjustTicker();
                     window.addEventListener('resize', adjustTicker);
-                    // Un pequeño delay por si las fuentes cargan tarde y cambian la altura
-                    setTimeout(adjustTicker, 500);
+
+                    /* ===== NAVBAR: los cuatro enlaces se colapsan en MENU =====
+                       Se MIDE si caben en vez de usar breakpoints fijos: los de
+                       antes (1100/1000/900/820) hacian desaparecer LEADERBOARD
+                       con 1100 de ancho cuando el contenido solo pide ~1120 con
+                       PLAY NOW dentro, o sea que se iban mucho antes de faltar
+                       sitio. Se mide siempre con los cuatro puestos (se quita la
+                       clase antes) para que la cuenta no dependa de si ya
+                       estaban colapsados. */
+                    const ajustaNavbar = () => {
+                        const nb = document.querySelector('.navbar');
+                        const izq = document.querySelector('.nav-left');
+                        const der = document.querySelector('.nav-dropdown-group');
+                        if (!nb || !izq || !der) return;
+                        document.body.classList.remove('nav-colapsada');
+                        const cs = getComputedStyle(nb);
+                        const hueco = nb.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+                        // scrollWidth y no getBoundingClientRect: los dos grupos
+                        // son items flex y el navegador los ENCOGE antes de
+                        // desbordar, asi que su ancho pintado ya viene apretado y
+                        // no dice lo que de verdad piden.
+                        const pide = izq.scrollWidth + der.scrollWidth + 24;   // 24 = aire entre los dos grupos
+                        if (pide > hueco) document.body.classList.add('nav-colapsada');
+                    };
+                    ajustaNavbar();
+                    window.addEventListener('resize', ajustaNavbar);
+                    // PLAY NOW aparece al salir del hero (body.nav-play-visible) y
+                    // ensancha la fila: hay que volver a medir cuando eso pasa.
+                    // OJO: el observador mira las clases de <body> y ajustaNavbar
+                    // TOCA una clase de <body>, asi que sin este filtro se llama a
+                    // si mismo sin parar y cuelga la pagina. Solo reacciona cuando
+                    // cambia de verdad la visibilidad del PLAY NOW.
+                    if (window.MutationObserver) {
+                        let playVisible = document.body.classList.contains('nav-play-visible');
+                        new MutationObserver(() => {
+                            const v = document.body.classList.contains('nav-play-visible');
+                            if (v === playVisible) return;
+                            playVisible = v;
+                            ajustaNavbar();
+                        }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+                    }
+                    // La primera medida cae con las fuentes aun sin cargar y los
+                    // rotulos miden de mas: se repite cuando estan listas y al
+                    // terminar de cargar la pagina, o la barra arranca colapsada
+                    // sin necesidad.
+                    setTimeout(ajustaNavbar, 600);
+                    window.addEventListener('load', ajustaNavbar);
+                    if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustaNavbar);
+
+                    /* ===== TACTIL: desplegables por PULSACION =====
+                       En un movil no hay "pasar el raton": el toque disparaba el
+                       :hover y a la vez el enlace de debajo, asi que el
+                       desplegable no llegaba a verse. Aqui el toque solo abre o
+                       cierra (ver el bloque @media (hover: none) del CSS). */
+                    const esTactil = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+                    if (esTactil) {
+                        const desplegables = ['#nav-menu-dd', '#pill-dropdown', '#nav-play-area', '#wallet-deposit-wrap'];
+                        const cierraTodos = (salvo) => desplegables.forEach(sel => {
+                            const el = document.querySelector(sel);
+                            if (el && el !== salvo) el.classList.remove('abierto');
+                        });
+                        for (const sel of desplegables) {
+                            const el = document.querySelector(sel);
+                            if (!el) continue;
+                            // En CAPTURA y sobre el contenedor: PLAY NOW y DEPOSIT
+                            // llevan su propio onclick (abren su modal) y hay que
+                            // pararlo ANTES de que llegue al boton, o el toque
+                            // haria las dos cosas. Los enlaces de dentro del
+                            // desplegable si tienen que pasar: son el destino.
+                            el.addEventListener('click', (e) => {
+                                if (e.target.closest('.dropdown-content, .wallet-dropdown-content')) return;
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const abierto = el.classList.contains('abierto');
+                                cierraTodos(el);
+                                el.classList.toggle('abierto', !abierto);
+                            }, true);
+                        }
+                        // Tocar fuera cierra. En captura para enterarse aunque el
+                        // sitio tocado se coma el evento por su cuenta.
+                        document.addEventListener('click', (e) => {
+                            if (!e.target.closest(desplegables.join(','))) cierraTodos(null);
+                        }, true);
+                    }
 
                     App.UI.setupScroll();
                     // SOLO PARA EL VIDEO DE GAMEPLAY GRANDE
