@@ -5898,7 +5898,10 @@
     // Por debajo de esto los dos paneles en diagonal se pisan y el de detras no
     // se lee: se pasa a la rueda (ver body.selector-rueda en el CSS). En tactil
     // manda su propia regla, que ya es rueda siempre.
-    const SELECTOR_RUEDA_W = 1000, SELECTOR_RUEDA_H = 620;
+    // 1400 y no 1000: medido por David en su pantalla, a 1400 el rotulo de
+    // detras (CLASSIC estando en ARCADE) ya queda aplastado contra el borde y
+    // no hay quien lo lea, mucho antes de la mitad de 1920.
+    const SELECTOR_RUEDA_W = 1400, SELECTOR_RUEDA_H = 620;
     function ajustaSelectorModos() {
         if (document.body.classList.contains('mobile-allowed')) return;   // ya es rueda por su cuenta
         const rueda = window.innerWidth < SELECTOR_RUEDA_W || window.innerHeight < SELECTOR_RUEDA_H;
