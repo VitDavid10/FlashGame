@@ -9589,7 +9589,7 @@
         }
         MAX_BOT_CELLS = (currentGameMode === 'classic') ? 8 : 16;
     }
-    function hideGameHUD() { crowdHint = null; _vistoEnemigoAt = 0; document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; EconHUD.entry=0; document.getElementById('econHud').style.display='none'; } updatePentakillHint(0); }
+    function hideGameHUD() { crowdHint = null; _vistoEnemigoAt = 0; _flechaObj = null; document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; EconHUD.entry=0; document.getElementById('econHud').style.display='none'; } updatePentakillHint(0); }
     // El split también vive en la sim: solo encolamos la acción con el objetivo del ratón.
     function splitPlayer() {
         if (!gameRunning || !sim || isSpectating) return;
@@ -12892,29 +12892,48 @@
     // sale de `es` (getViewScale), que arrastra ZOOM_CONFIG.baseScale/exponent —
     // justo los valores que se tocan desde el panel admin. Si ahi se recorta la
     // vision, el contador de 5 s se entera solo.
+    // Flecha con cola en V y tres tonos (bisel claro arriba-izquierda, sombra
+    // abajo-derecha, reborde negro), el mismo lenguaje que las placas del menu.
+    // Aqui solo se marca el CUERPO; los tres tonos los saca pixArrowSprite.
     const FLECHA_MASK = [
-        '......1....',
-        '......11...',
-        '......111..',
-        '1111111111.',
-        '11111111111',
-        '1111111111.',
-        '......111..',
-        '......11...',
-        '......1....',
+        '.......1.....',
+        '.......11....',
+        '.......111...',
+        '11.....1111..',
+        '111111111111.',
+        '1111111111111',
+        '111111111111.',
+        '11.....1111..',
+        '.......111...',
+        '.......11....',
+        '.......1.....',
     ];
-    const FLECHA_COLOR = '#ffffff';
+    const FLECHA_VERDE = '#2ee56a';
     const FLECHA_PX = 4;            // lado de cada "pixel gordo" del sprite
     const FLECHA_ALTURA = 0.30;     // 0 = arriba del todo, 1 = abajo (=70 en la escala de David)
     const FLECHA_ESPERA_MS = 5000;  // sin ver a nadie antes de que salga
     const FLECHA_BINS = 24;         // cubos de 15 grados
     const FLECHA_WIN = 2;           // ventana de +-2 cubos = +-30 grados
     const FLECHA_HINT_MS = 15000;   // la brujula del server llega cada 10 s
+    // ---- Anti-baile: la flecha no puede pegar volantazos ----
+    // La deriva suave (menos de FLECHA_TOL) se sigue siempre; un cambio GRANDE
+    // solo se acepta si han pasado FLECHA_ESPERA_GIRO desde el ultimo, y aun asi
+    // la flecha llega girando (FLECHA_GIRO por frame), nunca de golpe. Sin esto
+    // pegaba volantazos cada vez que un enemigo entraba o salia del AOI y no
+    // habia quien la siguiera.
+    const FLECHA_TOL = 25 * Math.PI / 180;
+    const FLECHA_ESPERA_GIRO = 2500;
+    const FLECHA_GIRO = 0.12;
     let _flechaSprite = null;
     let _vistoEnemigoAt = 0;        // ultima vez que hubo alguien en pantalla
+    let _flechaObj = null;          // angulo al que queremos apuntar
+    let _flechaAng = 0;             // angulo que se pinta AHORA (persigue al de arriba)
+    let _flechaCambioAt = 0;        // cuando se acepto el ultimo volantazo
     const _fb = { n: new Float64Array(FLECHA_BINS), x: new Float64Array(FLECHA_BINS), y: new Float64Array(FLECHA_BINS) };
     // Ultima brujula del servidor: {x, y} del grupo (mundo) y cuantos son.
     let crowdHint = null;
+    // Diferencia entre dos angulos por el camino CORTO (en [-pi, pi]).
+    function difAng(a, b) { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; }
     // Sprite pixel de la flecha, apuntando a la DERECHA. Se dibuja UNA vez y
     // luego solo se rota: nada de pintar rectangulos por frame.
     function pixArrowSprite() {
@@ -12924,18 +12943,24 @@
         cv.width = (W + 2) * S; cv.height = (H + 2) * S;
         const g = cv.getContext('2d');
         const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && FLECHA_MASK[y][x] === '1';
-        // Reborde negro (toda casilla vacia que toque una llena, en diagonal
-        // tambien): es lo que despega la flecha de lo que tenga detras.
-        g.fillStyle = '#000';
+        const put = (x, y, col) => { g.fillStyle = col; g.fillRect((x + 1) * S, (y + 1) * S, S, S); };
+        // Reborde negro: toda casilla vacia que toque una llena, diagonales
+        // incluidas. Es lo que despega la flecha de lo que tenga detras.
         for (let y = -1; y <= H; y++) for (let x = -1; x <= W; x++) {
             if (on(x, y)) continue;
             if (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1) ||
-                on(x - 1, y - 1) || on(x + 1, y - 1) || on(x - 1, y + 1) || on(x + 1, y + 1)) {
-                g.fillRect((x + 1) * S, (y + 1) * S, S, S);
-            }
+                on(x - 1, y - 1) || on(x + 1, y - 1) || on(x - 1, y + 1) || on(x + 1, y + 1)) put(x, y, '#000');
         }
-        g.fillStyle = FLECHA_COLOR;
-        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) g.fillRect((x + 1) * S, (y + 1) * S, S, S);
+        // Volumen: canto claro por donde entra la luz (arriba-izquierda) y
+        // sombra en el borde opuesto. Misma idea que placaPixels.
+        const claro = lerpColor(FLECHA_VERDE, '#ffffff', 0.45);
+        const oscuro = lerpColor(FLECHA_VERDE, '#000000', 0.45);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (!on(x, y)) continue;
+            if (!on(x, y - 1) || !on(x - 1, y)) put(x, y, claro);
+            else if (!on(x, y + 1) || !on(x + 1, y)) put(x, y, oscuro);
+            else put(x, y, FLECHA_VERDE);
+        }
         _flechaSprite = cv;
         return cv;
     }
@@ -12976,8 +13001,10 @@
             anotar(Math.atan2(crowdHint.y - wy, crowdHint.x - wx), crowdHint.n);
             hay = true;
         }
-        // Solo tras 5 s sin ver a nadie, y solo si hay a donde apuntar.
-        if (!hay || ahora - _vistoEnemigoAt < FLECHA_ESPERA_MS) return;
+        // Solo tras 5 s sin ver a nadie, y solo si hay a donde apuntar. Mientras
+        // esta escondida se olvida su angulo, para que al volver a salir no
+        // aparezca girando desde donde apuntaba hace un rato.
+        if (!hay || ahora - _vistoEnemigoAt < FLECHA_ESPERA_MS) { _flechaObj = null; return; }
         let mejorN = 0, sumX = 0, sumY = 0;
         for (let i = 0; i < FLECHA_BINS; i++) {
             let n = 0, ax = 0, ay = 0;
@@ -12987,8 +13014,15 @@
             }
             if (n > mejorN) { mejorN = n; sumX = ax; sumY = ay; }
         }
-        if (!mejorN) return;
-        const ang = Math.atan2(sumY, sumX);
+        if (!mejorN) { _flechaObj = null; return; }
+        const angCalc = Math.atan2(sumY, sumX);
+        if (_flechaObj == null) { _flechaObj = angCalc; _flechaAng = angCalc; _flechaCambioAt = ahora; }
+        else {
+            const d = difAng(angCalc, _flechaObj);
+            if (Math.abs(d) < FLECHA_TOL) _flechaObj = angCalc;                        // deriva: se sigue
+            else if (ahora - _flechaCambioAt > FLECHA_ESPERA_GIRO) { _flechaObj = angCalc; _flechaCambioAt = ahora; }
+        }
+        _flechaAng += difAng(_flechaObj, _flechaAng) * FLECHA_GIRO;                     // llega girando
         const sp = pixArrowSprite();
         // Sitio FIJO: centrado a lo ancho, a un 30% del borde de arriba. Solo
         // gira la flecha; el cartelito no se mueve nunca de ahi.
@@ -12997,10 +13031,10 @@
         const top = Math.round(height * FLECHA_ALTURA - alto / 2);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
-        ctx.globalAlpha = 0.9;
-        drawPixelText(ctx, 'ENEMIES', Math.round(cx - tw / 2), top, px, FLECHA_COLOR, '#000');
+        ctx.globalAlpha = 0.92;
+        drawPixelText(ctx, 'ENEMIES', Math.round(cx - tw / 2), top, px, FLECHA_VERDE, '#000');
         ctx.translate(cx, top + th + 8 + sp.height / 2);
-        ctx.rotate(ang);
+        ctx.rotate(_flechaAng);
         ctx.drawImage(sp, -sp.width / 2, -sp.height / 2);
         ctx.restore();
     }
