@@ -12703,6 +12703,13 @@
                 case 'virusSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('virus', {x: ev.x, y: ev.y}); } else { SoundManager.play('virus'); } break;
                 case 'text': if (ev.playerId === 'me') spawnFloatingText(ev.text, ev.color, ev.world); break;
                 case 'botText': { const cells = myCells(); if (enableEnemyFX && cells.length > 0 && getEllipticalDist({x: ev.x, y: ev.y}, cells[0]) < 1500) { floatingTexts.push(new FloatingText(ev.x, ev.y, ev.text, ev.color)); } break; }
+                // Un bot ha hecho pentakill: se va de la partida (igual que un
+                // jugador que gana) y entra otro. Se avisa o desaparece un bicho
+                // enorme de golpe y no hay quien lo entienda.
+                case 'botWon': {
+                    spawnFloatingText((ev.botName || 'A PLAYER') + ' WON - PENTAKILL', '#ffce3d');
+                    break;
+                }
                 case 'botKilled': {
                     if (ev.playerId !== 'me') break;
                     Quests.reportKill();

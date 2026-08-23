@@ -149,6 +149,12 @@
     // quedarse quieto en una zona pelada.
     const BOT_FOOD_RANGE = 600;
     const BOT_FOOD_RETARGET = 20;
+    // Un bot que llega a 5 kills GANA y se va, igual que un jugador (en classic
+    // el pentakill es el final de la partida para quien lo consigue). Sin esto,
+    // offline los bots se quedaban para siempre y no paraban de crecer: pasado
+    // un rato TODOS eran mas grandes que tu y no habia forma de ganar.
+    const BOT_WIN_KILLS = 5;
+    const BOT_WIN_RESPAWN_MS = 3000;   // lo mismo que tarda en reponerse uno muerto
     class SpatialGrid {
         constructor(cellSize) { this.cellSize = cellSize; this.buckets = new Map(); }
         clear() { this.buckets.clear(); }
@@ -393,6 +399,12 @@
             this.players = new Map();
             this.events = [];
             this.botRespawnQueue = [];
+            // Kills de cada grupo de bot (clave = su id) y los que han llegado a
+            // 5 y hay que retirar. El retiro se APLAZA a despues del barrido de
+            // bots: ese bucle va por indice y filtrar el array a media pasada le
+            // descuadra los indices.
+            this.botStreak = new Map();
+            this._botRetirar = new Set();
             this.foodPool = new ObjectPool(createFood);
             this.virusPool = new ObjectPool(createVirus);
             this.foodGrid = new SpatialGrid(150);
@@ -480,6 +492,31 @@
 
         spawnFood() { this.spawnFoodSafe(this.foods, this.mapSize); }
         spawnVirus() { this.spawnVirusSafe(this.viruses, this.mapSize); }
+        // Un bot se ha llevado a alguien por delante (solo classic). Al llegar a
+        // BOT_WIN_KILLS se marca para retirarlo del mapa.
+        botAnotaKill(botId) {
+            if (this.config.mode !== 'classic') return;
+            const n = (this.botStreak.get(botId) || 0) + 1;
+            this.botStreak.set(botId, n);
+            if (n >= BOT_WIN_KILLS) this._botRetirar.add(botId);
+        }
+        // Saca del mapa a los bots que han hecho pentakill y encola su relevo.
+        // Se llama UNA vez por tick, con el barrido de bots ya terminado.
+        retiraBotsGanadores() {
+            if (!this._botRetirar.size) return;
+            for (const id of this._botRetirar) {
+                const antes = this.enemies.length;
+                const uno = this.enemies.find(e => e.id === id);
+                const nombre = uno ? uno.name : '';
+                this.enemies = this.enemies.filter(e => e.id !== id);
+                this.botStreak.delete(id);
+                if (this.enemies.length !== antes) {
+                    this.emit({ type: 'botWon', botId: id, botName: nombre });
+                    if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + BOT_WIN_RESPAWN_MS);
+                }
+            }
+            this._botRetirar.clear();
+        }
         spawnBot(limit) {
             if (!this.config.botConfig.enabled) return;
             let p = this.getSafePos(limit || this.mapSize);
@@ -837,11 +874,16 @@
                         let c = p.cells[k]; if (c.tpPhase > 0 || bot.tpPhase > 0) continue; if (c.immuneTime > 0 && bot.r > c.r) continue; if (bot.immuneTime > 0 && c.r > bot.r) continue;
                         if (this.config.mode === 'classic' && p.killStreak >= 5) continue;
                         let botHiding = this.isHiddenInVirus(bot); let playerHiding = this.isHiddenInVirus(c);
-                        if (!p.godMode && bot.r > c.r * 1.15 && getEllipticalDist(bot, c) < bot.r * 0.8 && !playerHiding) { bot.r = Math.sqrt((bot.mass + c.mass) / (Math.PI * PILL_RATIO)); p.cells.splice(k, 1); }
+                        if (!p.godMode && bot.r > c.r * 1.15 && getEllipticalDist(bot, c) < bot.r * 0.8 && !playerHiding) {
+                            bot.r = Math.sqrt((bot.mass + c.mass) / (Math.PI * PILL_RATIO)); p.cells.splice(k, 1);
+                            // Le ha quitado la ULTIMA celda: para el bot cuenta como kill.
+                            if (p.cells.length === 0) this.botAnotaKill(bot.id);
+                        }
                         else if (c.r > bot.r * 1.15 && getEllipticalDist(c, bot) < c.r * 0.8 && !botHiding) {
                             c.r = Math.sqrt((c.mass + bot.mass) / (Math.PI * PILL_RATIO)); let botId = bot.id; let botName = bot.name; this.enemies.splice(i, 1);
                             let remainingPieces = this.enemies.filter(e => e.id === botId).length;
                             if (remainingPieces === 0) {
+                                this.botStreak.delete(botId);
                                 if (this.config.mode === 'classic') { p.killStreak++; }
                                 this.emit({ type: 'botKilled', playerId: p.id, botName, streak: p.killStreak, mode: this.config.mode });
                                 if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000);
@@ -855,11 +897,15 @@
                 for (let j = i - 1; j >= 0; j--) {
                     let other = this.enemies[j]; this.resolveCellCollision(bot, other, bot.id === other.id);
                     if (bot.id !== other.id) {
-                        if (bot.r > other.r * 1.15 && getEllipticalDist(bot, other) < bot.r * 0.6) { if (!this.isHiddenInVirus(other) && other.immuneTime <= 0) { bot.r = Math.sqrt((bot.mass + other.mass) / (Math.PI * PILL_RATIO)); let otherId = other.id; this.enemies.splice(j, 1); let remaining = this.enemies.filter(e => e.id === otherId).length; if (remaining === 0 && this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000); i--; } }
-                        else if (other.r > bot.r * 1.15 && getEllipticalDist(other, bot) < other.r * 0.6) { if (!this.isHiddenInVirus(bot) && bot.immuneTime <= 0) { other.r = Math.sqrt((other.mass + bot.mass) / (Math.PI * PILL_RATIO)); let botId = bot.id; this.enemies.splice(i, 1); let remaining = this.enemies.filter(e => e.id === botId).length; if (remaining === 0 && this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000); break; } }
+                        if (bot.r > other.r * 1.15 && getEllipticalDist(bot, other) < bot.r * 0.6) { if (!this.isHiddenInVirus(other) && other.immuneTime <= 0) { bot.r = Math.sqrt((bot.mass + other.mass) / (Math.PI * PILL_RATIO)); let otherId = other.id; this.enemies.splice(j, 1); let remaining = this.enemies.filter(e => e.id === otherId).length; if (remaining === 0) { this.botStreak.delete(otherId); this.botAnotaKill(bot.id); if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000); } i--; } }
+                        else if (other.r > bot.r * 1.15 && getEllipticalDist(other, bot) < other.r * 0.6) { if (!this.isHiddenInVirus(bot) && bot.immuneTime <= 0) { other.r = Math.sqrt((other.mass + bot.mass) / (Math.PI * PILL_RATIO)); let botId = bot.id; this.enemies.splice(i, 1); let remaining = this.enemies.filter(e => e.id === botId).length; if (remaining === 0) { this.botStreak.delete(botId); this.botAnotaKill(other.id); if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000); } break; } }
                     }
                 }
             }
+
+            // Bots con pentakill: fuera del mapa y relevo en camino. Aqui y no
+            // dentro del bucle de arriba, que va por indice.
+            this.retiraBotsGanadores();
 
             // Combate jugador contra jugador (PvP)
             const plist = [...this.players.values()];
