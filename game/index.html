@@ -1503,15 +1503,7 @@
         body.menu-compacto #loginOverlay .menu-right-col { display: none !important; }
         /* Por debajo de MENU_W_BLURB el subtitulo no cabe al lado del rotulo. */
         body.menu-sin-blurb #loginOverlay .mode-blurb { display: none !important; }
-        /* Mientras se mide, las animaciones de entrada quietas: .menu-right-col y
-           .login-box traen `slideUp`, y al reaparecer los carteles se median a
-           mitad del deslizamiento — de ahi que al volver al tamaño grande todo
-           quedara desplazado hacia arriba. */
-        body.menu-midiendo #loginOverlay .menu-row,
-        body.menu-midiendo #loginOverlay .menu-right-col,
-        body.menu-midiendo #loginOverlay .login-box,
-        body.menu-midiendo #loginOverlay #oraclePanel,
-        body.menu-midiendo #loginOverlay #missionsPanel { animation: none !important; }
+
         /* Ventana pequeña en partida: TOP MASS / KILLS estorban mas de lo que
            aportan (y son lo primero que se come el sitio del reloj). */
         @media (max-width: 1100px), (max-height: 700px) {
@@ -1552,7 +1544,11 @@
            (ajustaMenuResponsive). Con vh aqui, al bajar la altura los dos
            carteles cambiaban de tamaño por su cuenta mientras el escalado los
            encogia a la vez, y acababan descuadrados y a distinta altura. */
-        .menu-right-col { width: 476px; margin-top: 46px; height: 926px; z-index: 61; display: flex; flex-direction: column; justify-content: center; gap: 20px; pointer-events: auto; animation: slideUp 0.4s ease-out; }
+        /* SIN `animation: slideUp`: esta columna se esconde y se vuelve a mostrar
+           al cruzar el ancho de corte, y la animacion se relanzaba entera cada
+           vez. Arrastrando el borde de la ventana eso son decenas de reinicios
+           por segundo: los carteles parpadeaban y parecia que desaparecian. */
+        .menu-right-col { width: 476px; margin-top: 46px; height: 926px; z-index: 61; display: flex; flex-direction: column; justify-content: center; gap: 20px; pointer-events: auto; }
         /* El cartel entero (marco de piedra + interior) es el video animado de
            David, pintado en el <canvas class="quest-video-bg"> — el panel solo
            aporta layout; el padding y el contenido viven en .cartel-inner, que
@@ -8681,11 +8677,17 @@
         // sin encogidos y sin nada escondido. Asi cada pasada da lo mismo
         // independientemente de la anterior — es lo que hacia que al volver al
         // tamaño grande el menu no quedara como al principio.
-        cuerpo.classList.add('menu-midiendo');
         row.style.transform = '';
         const h1 = els.selectedModeTitle;
         if (h1) { h1.style.translate = ''; _tituloReset(); }
         raiz.style.setProperty('--titulo-fit', '1');
+        // titulo-corto TAMBIEN se resetea: si no, la medida del rotulo se toma
+        // con "PILLWARS" ya escondido, sale que cabe de sobra, se vuelve a poner
+        // entero... y a la siguiente pasada no cabe otra vez. Ese ida y vuelta
+        // era lo que hacia que en la ventana mas estrecha reapareciera
+        // "PILLWARS ARCADE" descuadrado, y que al arrastrar el borde el rotulo
+        // saliera unas veces entero y otras no.
+        cuerpo.classList.remove('titulo-corto');
         const compacto = vwReal <= MENU_W_PANELES;
         const sinBlurb = vwReal < MENU_W_BLURB;
         cuerpo.classList.toggle('menu-compacto', compacto);
@@ -8731,7 +8733,7 @@
 
         // 3) Colocacion.
         const caja2 = _menuCaja(piezas), nuc = _menuCaja(MENU_NUCLEO);
-        if (!caja2 || !nuc) { cuerpo.classList.remove('menu-midiendo'); centrarTitulo(); return; }
+        if (!caja2 || !nuc) { centrarTitulo(); return; }
         const rr = row.getBoundingClientRect();
         // Origen en el centro del contenido para que ese punto no se mueva al
         // escalar (el centro de la caja del flex no coincide con el del dibujo).
@@ -8763,7 +8765,6 @@
         // diferencia, y volver de una ventana pequeña lo deja igual que al abrir.
         if (k === 1 && dx === 0 && dy === 0) row.style.transform = '';
         else row.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
-        cuerpo.classList.remove('menu-midiendo');
         centrarTitulo();
     }
     addEventListener('resize', ajustaMenuResponsive);
