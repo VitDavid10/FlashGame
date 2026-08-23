@@ -1391,6 +1391,46 @@
            movil horizontal, mas abajo. */
         #modeWheel { display: contents; }
         .mode-wheel-arrow, .mode-wheel-hint { display: none; }
+        /* ===== SELECTOR EN VENTANA ESTRECHA (escritorio) =====
+           Con la ventana estrecha los dos paneles en diagonal se pisan y el de
+           detras deja de leerse (estas en ARCADE y no hay quien lea CLASSIC).
+           Entonces se cambia a la MISMA rueda que el movil: un panel a pantalla
+           completa y la flecha de la derecha para pasar al otro. Es una copia
+           de las reglas de la rueda tactil (que viven dentro de un
+           @media (pointer: coarse) y no alcanzan aqui), sin los tamaños de
+           letra pensados para el telefono. */
+        body.selector-rueda #modeScreen { overflow: hidden; }
+        body.selector-rueda .diagonal-divider { display: none !important; }
+        body.selector-rueda #modeWheel { display: block; position: absolute; inset: 0; overflow: hidden; }
+        body.selector-rueda #modeWheel .mode-panel {
+            position: absolute; inset: 0; left: 0; right: auto; width: 100%; height: 100%;
+            clip-path: none !important; filter: none !important; z-index: 2;
+            align-items: center !important; text-align: center !important;
+            justify-content: center; padding: 4% 9%;
+            transform: translateX(100%); opacity: 0; pointer-events: none;
+        }
+        body.selector-rueda #modeWheel .mode-panel.wheel-on { transform: translateX(0); opacity: 1; pointer-events: auto; }
+        body.selector-rueda #modeWheel .mode-panel.wheel-in { animation: ruedaIn .5s cubic-bezier(.33,1,.68,1) both; }
+        body.selector-rueda #modeWheel .mode-panel.wheel-out { animation: ruedaOut .5s cubic-bezier(.33,1,.68,1) both; }
+        /* Los @keyframes de la rueda tactil estan DENTRO de su media query, asi
+           que solo existen cuando esa query casa: aqui hacen falta propios. */
+        @keyframes ruedaIn  { from { transform: translateX(100%);  opacity: 0 } to { transform: translateX(0);     opacity: 1 } }
+        @keyframes ruedaOut { from { transform: translateX(0);     opacity: 1 } to { transform: translateX(-100%); opacity: 0 } }
+        body.selector-rueda #modeWheel .mode-content {
+            position: static !important; transform: none !important; left: auto !important;
+            max-width: 86%; opacity: 1 !important; margin: 0 auto;
+        }
+        body.selector-rueda .mode-wheel-arrow {
+            display: flex; align-items: center; justify-content: center;
+            position: absolute; top: 50%; transform: translateY(-50%); z-index: 60;
+            width: 64px; height: 64px; border-radius: 10px; cursor: pointer;
+            background: rgba(0,0,0,0.68); border: 3px solid currentColor;
+            font-size: 24px; transition: color .45s ease, box-shadow .45s ease, background .15s ease;
+        }
+        body.selector-rueda .mode-wheel-arrow:hover { background: rgba(255,255,255,0.16); }
+        body.selector-rueda .mode-wheel-arrow.right { right: 4%; }
+        body.selector-rueda #modeWheel:not(.flip) .mode-wheel-arrow { color: #ccff00; box-shadow: 0 0 14px rgba(204,255,0,0.45); }
+        body.selector-rueda #modeWheel.flip .mode-wheel-arrow { color: #00ffaa; box-shadow: 0 0 14px rgba(0,255,170,0.45); }
 
         /* --- BOTÓN "DAILY QUESTS" + PANEL DESPLEGABLE --- */
         .mqp-btn { position: absolute; top: 22%; z-index: 35; display: none; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; background: rgba(8,12,8,0.85); backdrop-filter: blur(6px); font-family: 'Russo One'; font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; cursor: pointer; user-select: none; transition: 0.25s; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
@@ -1443,6 +1483,26 @@
         /* Wrapper flex con baseline alignment: el login-box marca el tope/abajo,
            la columna se anclla a su top/bottom vía sticky pseudo-clip (JS sync). */
         .menu-row { display: flex; flex-direction: row; gap: 110px; align-items: flex-start; max-width: 100%; position: relative; z-index: 1; }
+        /* MENU RESPONSIVE (ver ajustaMenuResponsive en el JS).
+           El menu esta colocado con desplazamientos en PIXELES afinados a mano
+           desde EDIT LAYOUT, asi que no hay forma de hacerlo fluido sin
+           destrozar la composicion. En vez de eso se escala ENTERO: el titulo,
+           la pildora, los botones y los carteles encogen a la vez, con lo que
+           las distancias entre ellos —la separacion cartel/pildora y su
+           altura— quedan CLAVADAS a cualquier tamaño de ventana. */
+        #loginOverlay .menu-row { transform-origin: center center; }
+        /* Por debajo de cierta escala los carteles de los lados encogen tanto
+           que no se leen: se quitan y el bloque central recupera tamaño. */
+        body.menu-compacto #loginOverlay .menu-right-col { display: none !important; }
+        /* Ventana pequeña en partida: TOP MASS / KILLS estorban mas de lo que
+           aportan (y son lo primero que se come el sitio del reloj). */
+        @media (max-width: 1100px), (max-height: 700px) {
+            html:not([data-hero]) #leaderboard { display: none !important; }
+        }
+        /* Chip del HUD apagado por falta de sitio (ver ajustaHudResponsive). Va
+           por clase y no tocando el style para no pisar el display propio de
+           cada uno (CARRY y NEXT MATCH se encienden y apagan por su cuenta). */
+        #ui .hud-oculto { display: none !important; }
         /* Fondo pixel del menu: canvas a baja resolucion estirado sin suavizado */
         #loginBgCv { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; filter: brightness(var(--menu-bg-bright, 1)); }
         /* Zonas sin virus: siempre presentes (el rebote lee su rect), invisibles
@@ -5817,6 +5877,31 @@
     // setHoverMode, las mismas que ya usa el hover de escritorio, para que el
     // sonido, el fondo con FX y el "ultimo modo" en localStorage queden
     // identicos sea cual sea la via de entrada.
+    // Por debajo de esto los dos paneles en diagonal se pisan y el de detras no
+    // se lee: se pasa a la rueda (ver body.selector-rueda en el CSS). En tactil
+    // manda su propia regla, que ya es rueda siempre.
+    const SELECTOR_RUEDA_W = 1000, SELECTOR_RUEDA_H = 620;
+    function ajustaSelectorModos() {
+        if (document.body.classList.contains('mobile-allowed')) return;   // ya es rueda por su cuenta
+        const rueda = window.innerWidth < SELECTOR_RUEDA_W || window.innerHeight < SELECTOR_RUEDA_H;
+        if (rueda === document.body.classList.contains('selector-rueda')) return;
+        document.body.classList.toggle('selector-rueda', rueda);
+        // Al entrar en modo rueda hay que dejar EN CUADRO el modo que estuviera
+        // resaltado; al salir se limpian las clases o el panel que se fue por la
+        // izquierda se queda fuera de la diagonal.
+        const wheel = document.getElementById('modeWheel');
+        const arc = document.getElementById('panelArcade'), cla = document.getElementById('panelClassic');
+        if (!wheel || !arc || !cla) return;
+        [arc, cla].forEach(p => p.classList.remove('wheel-in', 'wheel-out', 'wheel-on'));
+        if (rueda) {
+            const enCuadro = lastHoveredMode === 'classic' ? cla : arc;
+            enCuadro.classList.add('wheel-on');
+            wheel.classList.toggle('flip', lastHoveredMode === 'classic');
+        } else {
+            wheel.classList.remove('flip');
+        }
+    }
+    addEventListener('resize', ajustaSelectorModos);
     function mobileWheelToggle() {
         const next = (lastHoveredMode === 'classic') ? 'arcade' : 'classic';
         const wheel = document.getElementById('modeWheel');
@@ -7360,6 +7445,7 @@
                 alineaCartelesInfo();
                 // La wallet entra AQUI, con el menu ya montado (ver arriba).
                 if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
+                ajustaMenuResponsive();   // el menu ya esta visible: ya se puede medir y escalar
                 els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
             };
             if (instant) ir(); else setTimeout(ir, 1200);
@@ -7373,7 +7459,7 @@
         // quedaban abiertos y reaparecian tal cual al volver a entrar.
         cerrarUIColores();
         SoundManager.play('select'); SoundManager.playMenuMusic(); ignoreNextHover = true; els.loginOverlay.style.display = 'none'; els.skillOverlay.style.display = 'none';
-        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, currentGameMode);   // la wallet se queda tambien en la pantalla de selección
+        if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // CONNECT solo dentro de un modo (ahi es donde se paga y se compran skins)
         els.modeScreen.style.display = 'flex'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); 
         document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; 
         if(currentGameMode === 'classic') setHoverMode('classic'); else setHoverMode('arcade'); currentGameMode = null; 
@@ -7439,7 +7525,10 @@
         // en el telefono no se ve el panel de precios, asi que sin esto te
         // metia en la ultima sala usada (normalmente Free) sin decir nada y no
         // habia forma de cambiarla.
-        if (!currentServer || esMovilJuego()) {
+        // Sin panel de precios a la vista (movil, o ventana pequeña donde los
+        // carteles de los lados se quitan) no hay ningun sitio donde elegir
+        // sala: se pregunta SIEMPRE.
+        if (!currentServer || esMovilJuego() || document.body.classList.contains('menu-compacto')) {
             // Offline es practica: no se pregunta sala, se va directo a FREE.
             if (kind === 'offline') { selectRoom('Free'); runPlay(kind); return; }
             _pendingPlayKind = kind;
@@ -8469,6 +8558,9 @@
     // (ARCADE y CLASSIC no miden lo mismo), cada uno sale centrado por su
     // cuenta con la misma cuenta.
     let _tituloPos = '';
+    // Olvida el ultimo centrado: lo usa ajustaMenuResponsive antes de medir, que
+    // limpia el translate del titulo y necesita que la cuenta parta de cero.
+    function _tituloReset() { _tituloPos = ''; }
     function centrarTitulo() {
         const el = els.selectedModeTitle;
         if (!el || !tituloUsaPlaca()) return;
@@ -8490,13 +8582,81 @@
         // donde caeria el titulo sin desplazar — sin tener que limpiarlo y
         // volver a medir, que son dos reflows en vez de uno.
         const dxViejo = parseFloat(_tituloPos) || 0;
-        const centroBase = (izq + (der - izq) / 2) - dxViejo;
-        const pos = Math.round((window.innerWidth / 2) - centroBase) + 'px ' + (TITULO.y || 0) + 'px';
+        // izq/der salen de getBoundingClientRect, o sea YA escalados por el
+        // zoom del menu (ver ajustaMenuResponsive); dxViejo, en cambio, es un
+        // translate en px sin escalar. Por eso lo que falta se mide en pantalla
+        // y se divide por la escala antes de sumarlo: si no, con el menu
+        // encogido el titulo se quedaba corto y salia descentrado.
+        const k = (typeof menuEscala === 'number' && menuEscala > 0) ? menuEscala : 1;
+        const centroPantalla = izq + (der - izq) / 2;
+        const pos = Math.round(dxViejo + (window.innerWidth / 2 - centroPantalla) / k) + 'px ' + (TITULO.y || 0) + 'px';
         if (pos === _tituloPos) return;
         _tituloPos = pos;
         el.style.translate = pos;
     }
     aplicaTituloVars();
+    // ===== ESCALADO DEL MENU DE MODO =====
+    // El menu esta colocado con desplazamientos en PIXELES afinados a mano desde
+    // EDIT LAYOUT: no hay forma de hacerlo fluido sin destrozar la composicion.
+    // Se escala ENTERO y se recentra, con lo que las distancias entre piezas —la
+    // separacion de los carteles a la pildora y su altura— quedan CLAVADAS a
+    // cualquier tamaño de ventana, que es justo lo que se pedia.
+    //
+    // Las medidas NO van horneadas: se miden en vivo con la escala quitada, asi
+    // que si se re-hornea el layout esto sigue cuadrando solo.
+    const MENU_MARGEN = 16;    // aire minimo a los bordes de la ventana
+    // Por debajo de esta escala los carteles de los lados salen ilegibles: se
+    // quitan y el bloque central se re-escala con el sitio que dejan.
+    const MENU_K_MIN = 0.72;
+    const MENU_NUCLEO = ['.menu-head-row', '.pill-stage', '#playerNameInput', '#btnPlay', '#btnSettings'];
+    const MENU_PANELES = ['#oraclePlaca', '#oracleInner', '#missionsPlaca', '#missionsInner'];
+    let menuEscala = 1;
+    function _menuCaja(sels) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const sel of sels) for (const el of document.querySelectorAll(sel)) {
+            const r = el.getBoundingClientRect();
+            if (!r.width && !r.height) continue;
+            if (r.left < x0) x0 = r.left;
+            if (r.top < y0) y0 = r.top;
+            if (r.right > x1) x1 = r.right;
+            if (r.bottom > y1) y1 = r.bottom;
+        }
+        return isFinite(x0) ? { x0, y0, w: x1 - x0, h: y1 - y0 } : null;
+    }
+    function ajustaMenuResponsive() {
+        const row = document.querySelector('#loginOverlay .menu-row');
+        if (!row || !els.loginOverlay || els.loginOverlay.style.display === 'none') return;
+        // Se mide SIN escala y con el titulo sin centrar: asi cada pasada parte
+        // del mismo sitio y el resultado no depende de la anterior (si se midiera
+        // con el centrado puesto, cada resize arrastraria el de antes).
+        row.style.transform = '';
+        const h1 = els.selectedModeTitle;
+        if (h1) { h1.style.translate = ''; _tituloReset(); }
+        document.body.classList.remove('menu-compacto');
+        const vw = window.innerWidth - MENU_MARGEN * 2, vh = window.innerHeight - MENU_MARGEN * 2;
+        const kDe = c => c ? Math.min(1, vw / c.w, vh / c.h) : 1;
+        let caja = _menuCaja(MENU_NUCLEO.concat(MENU_PANELES));
+        let k = kDe(caja);
+        if (k < MENU_K_MIN) {
+            document.body.classList.add('menu-compacto');
+            caja = _menuCaja(MENU_NUCLEO);   // los carteles ya no cuentan
+            k = kDe(caja);
+        }
+        menuEscala = k;
+        if (!caja) { centrarTitulo(); return; }
+        // Origen en el centro del CONTENIDO (no en el de la caja del flex, que
+        // no coinciden: la pildora y los botones van desplazados dentro de ella)
+        // para que ese punto no se mueva al escalar, y de ahi al centro de la
+        // ventana. Sin esto el bloque encogia hacia un lado y PLAY se seguia
+        // saliendo por abajo.
+        const rr = row.getBoundingClientRect();
+        const cx = caja.x0 + caja.w / 2, cy = caja.y0 + caja.h / 2;
+        row.style.transformOrigin = (cx - rr.left) + 'px ' + (cy - rr.top) + 'px';
+        const dx = window.innerWidth / 2 - cx, dy = window.innerHeight / 2 - cy;
+        row.style.transform = 'translate(' + Math.round(dx) + 'px,' + Math.round(dy) + 'px) scale(' + k + ')';
+        centrarTitulo();
+    }
+    addEventListener('resize', ajustaMenuResponsive);
     addEventListener('resize', centrarTitulo);
     // Red de seguridad: al volver al menu desde una partida el titulo ya existe
     // y nadie vuelve a llamar a selectMode, asi que se recentra cuando el h1
@@ -9321,6 +9481,29 @@
         hasSaveForRoom: function(mode, server) { const data = this.load(); if(!data) return false; if(Date.now() - data.timestamp > 20 * 60 * 1000) return false; return data.mode === mode && data.server === server && data.player.cells.length > 0; }
     };
 
+    // El reloj va centrado arriba y la fila de chips (ROOM/MASS/ALIVE/CARRY)
+    // crece desde la izquierda: en ventanas estrechas se le metian debajo. Se
+    // van apagando chips hasta que la fila deja el reloj libre. MASS NO esta en
+    // la lista, asi que es el ultimo que queda en pie — antes el superviviente
+    // era ROOM, que dice bastante menos que tu propia masa.
+    const HUD_ORDEN_QUITAR = ['hudRoom', 'hudAlive', 'waitHud', 'econHud'];
+    function ajustaHudResponsive() {
+        const ui = document.getElementById('ui'), reloj = document.getElementById('timerDisplay');
+        if (!ui || ui.style.display === 'none') return;
+        for (const id of HUD_ORDEN_QUITAR) { const e = document.getElementById(id); if (e) e.classList.remove('hud-oculto'); }
+        if (!reloj || reloj.style.display === 'none') return;   // sin reloj no hay con quien chocar
+        const tope = () => reloj.getBoundingClientRect().left - 12;
+        for (const id of HUD_ORDEN_QUITAR) {
+            if (ui.getBoundingClientRect().right <= tope()) break;
+            const e = document.getElementById(id);
+            if (e) e.classList.add('hud-oculto');
+        }
+    }
+    // Cada 700 ms y no en cada frame: los chips aparecen y desaparecen solos
+    // (CARRY al ganar dinero, NEXT MATCH entre partidas) y hay que reevaluar,
+    // pero son cuatro getBoundingClientRect y no urge al milisegundo.
+    setInterval(() => { if (gameRunning) ajustaHudResponsive(); }, 700);
+    addEventListener('resize', ajustaHudResponsive);
     function showBotsBanner() {
         const b = document.getElementById('botsBanner');
         b.classList.remove('show');
@@ -9955,10 +10138,12 @@
             }
         },
         // Muestra/oculta el panel completo y aplica el color del modo activo.
-        // Ya NO se esconde en la sala FREE: el saldo in-GAME y DEPOSIT/WITHDRAW
-        // son de la cuenta, no de la sala, y desaparecian justo cuando el
-        // jugador queria ingresar para poder entrar en una de pago. En movil la
-        // barra sigue oculta por CSS (alli solo se juega la FREE).
+        // SOLO se ve dentro de un modo: ahi es donde se paga la entrada y se
+        // compran skins. Fuera (selector de modos y partida) no pinta nada.
+        // Dentro del modo NO se esconde en la sala FREE: el saldo in-GAME y
+        // DEPOSIT/WITHDRAW son de la cuenta, no de la sala, y desaparecian justo
+        // cuando el jugador queria ingresar para entrar en una de pago. En movil
+        // la barra sigue oculta por CSS (alli solo se juega la FREE).
         setVisible(visible, mode) {
             const a = document.getElementById('gameWalletArea');
             if (!a) return;
