@@ -4309,7 +4309,17 @@
     let currentGameMode = 'classic', currentServer = null, width, height, gameRunning = false, isGodMode = false, isSpectating = false;
     let serverLeaderboard = null;   // ranking de la sala entera que manda el server (online); null = usar cálculo local (offline)
     let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
-    let camera = { x: 0, y: 0, scale: 0.8 }, mouse = { x: 0, y: 0 }, inputMode = 'MOUSE', keys = { w: false, a: false, s: false, d: false, f: false }, botConfig = { enabled: true, count: 25, respawn: true };
+    // Cuantos bots hay offline. Classic lleva mas (40) porque su mapa es el doble
+    // de grande que el de arcade y con 25 te podias pasar la partida sin cruzarte
+    // con nadie.
+    const BOTS_OFFLINE = 25, BOTS_OFFLINE_CLASSIC = 40;
+    // Vida de cada bot en classic offline (+-30% de jitter, ver shared/sim.js):
+    // al cumplirla se va y entra uno nuevo pequeño. Es lo que online pasa solo
+    // —la gente entra y sale— y lo que hace que classic offline se pueda ganar:
+    // sin esto los mismos bots se quedaban la partida entera engordando hasta
+    // que TODOS eran mas grandes que tu.
+    const BOT_VIDA_CLASSIC_MS = 60000;
+    let camera = { x: 0, y: 0, scale: 0.8 }, mouse = { x: 0, y: 0 }, inputMode = 'MOUSE', keys = { w: false, a: false, s: false, d: false, f: false }, botConfig = { enabled: true, count: BOTS_OFFLINE, respawn: true };
 
     // --- Daily Quests: reportar progreso al servidor con clientId anónimo ---
     const Quests = (() => {
@@ -9326,12 +9336,15 @@
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
         MAX_BOT_CELLS = 16;
         worldSettings.map = 1; worldSettings.food = 1; worldSettings.virus = 1; worldSettings.speed = 1;
-        let currentBotConfig = { botEnabled: true, botCount: 25, botRespawn: true, chaosMode: false, botMaxSplits: MAX_BOT_CELLS, world: {...worldSettings} };
+        // Classic offline: 40 bots (25 en arcade) y cada uno dura ~1 minuto, ver
+        // BOTS_OFFLINE / BOT_VIDA_CLASSIC_MS.
+        const nBots = currentGameMode === 'classic' ? BOTS_OFFLINE_CLASSIC : BOTS_OFFLINE;
+        let currentBotConfig = { botEnabled: true, botCount: nBots, botRespawn: true, chaosMode: false, botMaxSplits: MAX_BOT_CELLS, world: {...worldSettings} };
         enableEnemyFX = serverEnemyFx; enableEnemySnd = false;
         isGodMode = false; isSpectating = false;
         if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; els.actionBar.style.display = 'none'; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; els.actionBar.style.display = 'flex'; }
         MAP_SIZE *= worldSettings.map;
-        botConfig.enabled = true; botConfig.count = 25; botConfig.respawn = true;
+        botConfig.enabled = true; botConfig.count = nBots; botConfig.respawn = true;
         let roomKey = currentGameMode + '_' + currentServer;
 
         // Crear o reutilizar la simulación de esta sala
@@ -9339,6 +9352,7 @@
         if (!entry) {
             sim = new PillSim.Simulation({
                 mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }, maxBotCells: MAX_BOT_CELLS,
+                botLifeMs: currentGameMode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0,
                 // Mismo calentamiento que startPracticeGame: sin el, una partida
                 // offline recien entrada podia acabar en 1s con los bots ya encima.
                 botPlayerGraceMs: 10000,
@@ -9352,6 +9366,9 @@
             explosions = [];
             if (entry.config) { botConfig.enabled = entry.config.botEnabled; botConfig.count = entry.config.botCount; botConfig.respawn = entry.config.botRespawn; sim.config.botConfig = { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }; }
             sim.config.fx.enemyFX = enableEnemyFX;
+            // Sala guardada de antes (RESUME GAME): puede venir SIN vida de bot,
+            // que es justo el estado en el que todos habian engordado sin freno.
+            sim.config.botLifeMs = currentGameMode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0;
         }
         MAP_SIZE = sim.mapSize;
 
@@ -9411,13 +9428,14 @@
         let roomKey = currentGameMode + '_' + currentServer; if (!roomTimers[roomKey] || roomTimers[roomKey] <= Date.now()) { if(GAME_DURATION_MS) roomTimers[roomKey] = Date.now() + GAME_DURATION_MS; }
         let entry = roomStates[roomKey];
         if (!entry) {
-            sim = new PillSim.Simulation({ mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }, maxBotCells: MAX_BOT_CELLS, fx: { enabled: true, enemyFX: enableEnemyFX } });
+            sim = new PillSim.Simulation({ mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }, maxBotCells: MAX_BOT_CELLS, botLifeMs: currentGameMode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0, fx: { enabled: true, enemyFX: enableEnemyFX } });
             sim.populate();
             roomStates[roomKey] = { sim: sim, config: currentBotConfig };
         } else {
             sim = entry.sim;
             if (entry.config) { botConfig.enabled = entry.config.botEnabled; botConfig.count = entry.config.botCount; botConfig.respawn = entry.config.botRespawn; sim.config.botConfig = { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }; }
             sim.config.fx.enemyFX = enableEnemyFX;
+            sim.config.botLifeMs = currentGameMode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0;
         }
         MAP_SIZE = sim.mapSize;
         explosions = [];
@@ -11464,12 +11482,13 @@
         practiceMode = true;
         Quests.resetKills();   // el preview no arrastra los kills de la partida anterior
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
-        const botCount = 25;
+        const botCount = mode === 'classic' ? BOTS_OFFLINE_CLASSIC : BOTS_OFFLINE;
         const baseSize = (mode === 'classic') ? WORLD_CONFIG.classic.size : WORLD_CONFIG.arcade.size;
         sim = new PillSim.Simulation({
             mode: mode, mapSize: baseSize, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
             botConfig: { enabled: true, count: botCount, respawn: true },
             maxBotCells: mode === 'classic' ? 8 : 4,
+            botLifeMs: mode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0,
             // Calentamiento: en el preview offline los bots ignoran al jugador los
             // primeros 15s (entras en calor sin que sea "muere-muere-muere").
             botPlayerGraceMs: 15000,

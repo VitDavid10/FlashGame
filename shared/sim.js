@@ -155,6 +155,10 @@
     // un rato TODOS eran mas grandes que tu y no habia forma de ganar.
     const BOT_WIN_KILLS = 5;
     const BOT_WIN_RESPAWN_MS = 3000;   // lo mismo que tarda en reponerse uno muerto
+    // Jitter de la vida de cada bot (config.botLifeMs): +-30%, igual que el
+    // MAX_LIFE_MS de los bots de stress online. Sin el se irian los 40 de golpe
+    // cada minuto en vez de ir rotando de uno en uno.
+    const BOT_LIFE_JITTER = 0.3;
     class SpatialGrid {
         constructor(cellSize) { this.cellSize = cellSize; this.buckets = new Map(); }
         clear() { this.buckets.clear(); }
@@ -404,7 +408,10 @@
             // bots: ese bucle va por indice y filtrar el array a media pasada le
             // descuadra los indices.
             this.botStreak = new Map();
-            this._botRetirar = new Set();
+            // id del grupo -> instante en que se recicla (solo si config.botLifeMs).
+            this.botExpira = new Map();
+            // id -> motivo ('pentakill' | 'ttl'). Solo el pentakill se anuncia.
+            this._botRetirar = new Map();
             this.foodPool = new ObjectPool(createFood);
             this.virusPool = new ObjectPool(createVirus);
             this.foodGrid = new SpatialGrid(150);
@@ -498,20 +505,34 @@
             if (this.config.mode !== 'classic') return;
             const n = (this.botStreak.get(botId) || 0) + 1;
             this.botStreak.set(botId, n);
-            if (n >= BOT_WIN_KILLS) this._botRetirar.add(botId);
+            if (n >= BOT_WIN_KILLS) this._botRetirar.set(botId, 'pentakill');
         }
-        // Saca del mapa a los bots que han hecho pentakill y encola su relevo.
-        // Se llama UNA vez por tick, con el barrido de bots ya terminado.
-        retiraBotsGanadores() {
+        // Bots que se les acaba el tiempo (config.botLifeMs). Es el "entra y sale
+        // gente" que online pasa solo: sin esto, offline los mismos bots se
+        // quedan la partida entera engordando y llega un punto en que TODOS son
+        // mas grandes que tu y no hay 5 presas a las que llegar.
+        caducaBots() {
+            if (!this.botExpira.size) return;
+            for (const [id, cuando] of this.botExpira) {
+                if (cuando <= this.now && !this._botRetirar.has(id)) this._botRetirar.set(id, 'ttl');
+            }
+        }
+        // Saca del mapa a los bots marcados y encola su relevo. Se llama UNA vez
+        // por tick, con el barrido de bots ya terminado.
+        retiraBots() {
             if (!this._botRetirar.size) return;
-            for (const id of this._botRetirar) {
+            for (const [id, motivo] of this._botRetirar) {
                 const antes = this.enemies.length;
                 const uno = this.enemies.find(e => e.id === id);
                 const nombre = uno ? uno.name : '';
                 this.enemies = this.enemies.filter(e => e.id !== id);
                 this.botStreak.delete(id);
+                this.botExpira.delete(id);
                 if (this.enemies.length !== antes) {
-                    this.emit({ type: 'botWon', botId: id, botName: nombre });
+                    // El relevo por tiempo NO se anuncia: con 40 bots rotando
+                    // saldria un cartel cada segundo y medio. El pentakill si,
+                    // que si no desaparece un bicho enorme y no se entiende.
+                    if (motivo === 'pentakill') this.emit({ type: 'botWon', botId: id, botName: nombre });
                     if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + BOT_WIN_RESPAWN_MS);
                 }
             }
@@ -523,7 +544,10 @@
             // Online (servidor): nombres realistas tipo "xDarkz", "Pablo23..." para parecer jugadores reales.
             // Offline (navegador): nombres simples originales del juego ("ETH", "Doge", "NASA"...).
             let name = this.config.realisticBotNames ? genBotName() : BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
-            this.enemies.push(new Cell(p.x, p.y, Math.random() * 5 + 14, getRandomColor(), getRandomColor(), name, true, null, null, this.now));
+            const bot = new Cell(p.x, p.y, Math.random() * 5 + 14, getRandomColor(), getRandomColor(), name, true, null, null, this.now);
+            this.enemies.push(bot);
+            const vida = this.config.botLifeMs | 0;
+            if (vida > 0) this.botExpira.set(bot.id, this.now + vida * (1 - BOT_LIFE_JITTER + Math.random() * BOT_LIFE_JITTER * 2));
         }
 
         getSafePos(limit) {
@@ -883,7 +907,7 @@
                             c.r = Math.sqrt((c.mass + bot.mass) / (Math.PI * PILL_RATIO)); let botId = bot.id; let botName = bot.name; this.enemies.splice(i, 1);
                             let remainingPieces = this.enemies.filter(e => e.id === botId).length;
                             if (remainingPieces === 0) {
-                                this.botStreak.delete(botId);
+                                this.botStreak.delete(botId); this.botExpira.delete(botId);
                                 if (this.config.mode === 'classic') { p.killStreak++; }
                                 this.emit({ type: 'botKilled', playerId: p.id, botName, streak: p.killStreak, mode: this.config.mode });
                                 if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000);
@@ -897,15 +921,17 @@
                 for (let j = i - 1; j >= 0; j--) {
                     let other = this.enemies[j]; this.resolveCellCollision(bot, other, bot.id === other.id);
                     if (bot.id !== other.id) {
-                        if (bot.r > other.r * 1.15 && getEllipticalDist(bot, other) < bot.r * 0.6) { if (!this.isHiddenInVirus(other) && other.immuneTime <= 0) { bot.r = Math.sqrt((bot.mass + other.mass) / (Math.PI * PILL_RATIO)); let otherId = other.id; this.enemies.splice(j, 1); let remaining = this.enemies.filter(e => e.id === otherId).length; if (remaining === 0) { this.botStreak.delete(otherId); this.botAnotaKill(bot.id); if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000); } i--; } }
-                        else if (other.r > bot.r * 1.15 && getEllipticalDist(other, bot) < other.r * 0.6) { if (!this.isHiddenInVirus(bot) && bot.immuneTime <= 0) { other.r = Math.sqrt((other.mass + bot.mass) / (Math.PI * PILL_RATIO)); let botId = bot.id; this.enemies.splice(i, 1); let remaining = this.enemies.filter(e => e.id === botId).length; if (remaining === 0) { this.botStreak.delete(botId); this.botAnotaKill(other.id); if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000); } break; } }
+                        if (bot.r > other.r * 1.15 && getEllipticalDist(bot, other) < bot.r * 0.6) { if (!this.isHiddenInVirus(other) && other.immuneTime <= 0) { bot.r = Math.sqrt((bot.mass + other.mass) / (Math.PI * PILL_RATIO)); let otherId = other.id; this.enemies.splice(j, 1); let remaining = this.enemies.filter(e => e.id === otherId).length; if (remaining === 0) { this.botStreak.delete(otherId); this.botExpira.delete(otherId); this.botAnotaKill(bot.id); if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000); } i--; } }
+                        else if (other.r > bot.r * 1.15 && getEllipticalDist(other, bot) < other.r * 0.6) { if (!this.isHiddenInVirus(bot) && bot.immuneTime <= 0) { other.r = Math.sqrt((other.mass + bot.mass) / (Math.PI * PILL_RATIO)); let botId = bot.id; this.enemies.splice(i, 1); let remaining = this.enemies.filter(e => e.id === botId).length; if (remaining === 0) { this.botStreak.delete(botId); this.botExpira.delete(botId); this.botAnotaKill(other.id); if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000); } break; } }
                     }
                 }
             }
 
-            // Bots con pentakill: fuera del mapa y relevo en camino. Aqui y no
-            // dentro del bucle de arriba, que va por indice.
-            this.retiraBotsGanadores();
+            // Bots que se van (pentakill o se les acabo el tiempo): fuera del mapa
+            // y relevo en camino. Aqui y no dentro del bucle de arriba, que va
+            // por indice y filtrar el array a media pasada lo descuadra.
+            this.caducaBots();
+            this.retiraBots();
 
             // Combate jugador contra jugador (PvP)
             const plist = [...this.players.values()];
