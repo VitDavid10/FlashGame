@@ -2507,20 +2507,23 @@
            y el rotulo encima en fuente pixel — aun no hace nada, es el hueco
            reservado para compartir el resultado. */
         .prize-actions { display: flex; flex-direction: column; align-items: center; }
-        /* SHARE y CONTINUE: la MISMA placa (la procedural de PLAY/SETTINGS, ver
-           drawPlacaButton) con distinto color, y el rotulo en Press Start 2P del
-           DOM. Antes CONTINUE traia su PNG con el texto horneado y SHARE una
-           placa lisa de otra proporcion: se veian de dos familias distintas.
+        /* SHARE y CONTINUE: la MISMA placa lisa (btn-plain-blue.png) con el
+           rotulo encima en Press Start 2P del DOM. El verde es ESE MISMO PNG
+           recoloreado (btn-plain-green.png, 734x93 igual que el azul), asi que
+           los dos son el mismo dibujo y solo cambia el color. Antes CONTINUE
+           traia continue.png con el texto horneado: otra letra y otro grosor de
+           marco en el mismo cartel.
            Por id y no por clase: `.gameModalBox .gm-btn` (dos clases) gana en
            especificidad y los dejaba al 100% de ancho. */
         #prizeShare, #prizeContinue {
-            background: transparent none center/100% 100% no-repeat !important;
             border: none !important; border-image: none !important; border-radius: 0 !important;
             box-shadow: none !important; clip-path: none !important; image-rendering: pixelated;
             aspect-ratio: 828/124; width: 80% !important; display: block; margin: 8px auto 0; padding: 0 !important;
             font-family: 'Press Start 2P', monospace !important; font-size: 13px; letter-spacing: 1px;
             color: #fff !important; text-shadow: 2px 2px 0 rgba(0,0,0,0.6) !important; cursor: pointer; transition: none;
         }
+        #prizeShare { background: transparent url('img/cartel-hero/btn-plain-blue.png') center/100% 100% no-repeat !important; }
+        #prizeContinue { background: transparent url('img/cartel-hero/btn-plain-green.png') center/100% 100% no-repeat !important; }
         #prizeShare:hover, #prizeContinue:hover { filter: brightness(1.15); box-shadow: none !important; }
         #prizeShare:active, #prizeContinue:active { transform: translate(2px, 2px); }
         .btn-spectate { width: 100%; padding: 12px; margin-top: 10px; background: #00bcd4; color: white; border: none; font-family: 'Russo One'; font-size: 18px; letter-spacing: 1px; clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%); cursor: pointer; transition: 0.2s; text-transform: uppercase; }
@@ -8296,7 +8299,7 @@
     // peldaños. PLAY y SETTINGS son grandes y se nota; CONNECT/DEPOSIT y los de
     // wallet siguen a SUB 1 porque son pequeños y ahi el canto de bloque esta
     // bien (paintWalletPlaca no pasa por aqui).
-    const PLACA_BTN = { CUT: 2, SUB: 2, RADIO: 5, ROJO: '#f62a2d', AZUL: '#0799ef', VERDE: '#13c82d', MASA: 0.88, MASA_DESDE: 3 };
+    const PLACA_BTN = { CUT: 2, SUB: 2, RADIO: 5, ROJO: '#f62a2d', AZUL: '#0799ef', MASA: 0.88, MASA_DESDE: 3 };
     // Escala del fondo del menu (paintLoginBg pinta 264px de alto y los estira a
     // la ventana): con ella el pixel de la placa mide lo mismo que el de la
     // cuadricula. La comparten el marco y todos los botones.
@@ -10172,24 +10175,10 @@
                 ).join('');
             }
             m.style.display = 'flex';
-            pintarBotonesPremio();
             // Refrescar saldo in GAME
             setTimeout(() => GameWalletUI.refresh(), 800);
         }
     };
-    // SHARE + CONTINUE con la misma placa procedural, y con UNA sola medida para
-    // los dos: midiendo cada boton por su cuenta, un pixel de diferencia en
-    // clientWidth da una placa lowres de distinto ancho y los chaflanes dejan de
-    // coincidir (mismo motivo que en PLAY/SETTINGS, ver paintPlacas).
-    function pintarBotonesPremio() {
-        const sh = document.getElementById('prizeShare'), co = document.getElementById('prizeContinue');
-        if (!sh || !co || !co.clientWidth || !co.clientHeight) return;
-        const scale = placaScale() / Math.max(1, PLACA_BTN.SUB | 0);
-        const W = Math.max(8, Math.round(co.clientWidth / scale));
-        const H = Math.max(6, Math.round(co.clientHeight / scale));
-        drawPlacaButton(sh, PLACA_BTN.AZUL, W, H);
-        drawPlacaButton(co, PLACA_BTN.VERDE, W, H);
-    }
     // Floating "+$X" en naranja al matar (solo classic). Aparece sobre el HUD y sube.
     function showKillGain(amount) {
         if (!amount || amount <= 0) return;
