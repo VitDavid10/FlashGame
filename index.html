@@ -2222,20 +2222,6 @@ body.trailer-open #page-content{
                 <a href="#quest" class="nav-link" style="min-width:6.6em">QUESTS</a>
                 <a href="#shop" class="nav-link" style="min-width:5.5em">STORE</a>
                 <a href="#ranking" class="nav-link" style="min-width:12.1em">LEADERBOARD</a>
-                <!-- MENU: solo se ve cuando los cuatro enlaces de arriba no caben
-                     (body.nav-colapsada, lo decide ajustaNavbar midiendo). Los
-                     mismos cuatro destinos, en una columna. -->
-                <div class="dropdown" id="nav-menu-dd">
-                    <span class="dropbtn nav-link" tabindex="0">MENU</span>
-                    <div class="dropdown-content">
-                        <div class="dropdown-box">
-                            <a href="#hero">GAME</a>
-                            <a href="#quest">QUESTS</a>
-                            <a href="#shop">STORE</a>
-                            <a href="#ranking">LEADERBOARD</a>
-                        </div>
-                    </div>
-                </div>
                 <!-- PLAY NOW de la navbar: PEGADO al bloque de la izquierda,
                      justo detras de LEADERBOARD. Antes vivia en el grupo de la
                      derecha y se traia hasta aqui con un translate de -861px
@@ -2253,6 +2239,22 @@ body.trailer-open #page-content{
                         <div class="dropdown-box">
                             <a href="game/">MODES</a>
                             <a href="game/?heroskins=1">SKINS</a>
+                        </div>
+                    </div>
+                </div>
+                <!-- MENU: solo se ve cuando los cuatro enlaces no caben. Va DESPUES de
+                     PLAY NOW (a su derecha) y no al lado del logo: es donde queda
+                     el hueco al irse los cuatro enlaces
+                     (body.nav-colapsada, lo decide ajustaNavbar midiendo). Los
+                     mismos cuatro destinos, en una columna. -->
+                <div class="dropdown" id="nav-menu-dd">
+                    <span class="dropbtn nav-link" tabindex="0">MENU</span>
+                    <div class="dropdown-content">
+                        <div class="dropdown-box">
+                            <a href="#hero">GAME</a>
+                            <a href="#quest">QUESTS</a>
+                            <a href="#shop">STORE</a>
+                            <a href="#ranking">LEADERBOARD</a>
                         </div>
                     </div>
                 </div>

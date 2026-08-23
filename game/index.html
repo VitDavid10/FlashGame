@@ -2091,7 +2091,11 @@
            pantalla. Con ancho cero no empuja a nadie y CONSERVA la altura, que
            es lo que sujeta la cabecera. El centrado no se resiente: lo calcula
            centrarTitulo() midiendo los dos rotulos, no la caja del h1. */
-        #selectedModeTitle.titulo-placa { display: flex; align-items: center; justify-content: flex-start; gap: var(--titulo-gap); width: 0; overflow: visible; }
+        /* El hueco entre las dos palabras encoge con --titulo-fit igual que las
+           letras: si no, al encoger el rotulo el gap se quedaba a su tamaño y el
+           conjunto salia mas ancho de lo pedido (el margen a los lados no
+           cuadraba con lo calculado). */
+        #selectedModeTitle.titulo-placa { display: flex; align-items: center; justify-content: flex-start; gap: calc(var(--titulo-gap) * var(--titulo-fit, 1)); width: 0; overflow: visible; }
         #selectedModeTitle.titulo-placa > span { flex: none; }
         #selectedModeTitle.titulo-placa img { width: auto; max-width: none; }
         /* El subtitulo va BAJADO por el ajuste de layout, y ahi abajo empieza
@@ -7486,6 +7490,7 @@
     }
 
     function goBackToModes() {
+        ajustaSelectorModos();   // volver con la ventana ya pequeña tiene que dar rueda, no diagonal
         // Igual que startGame y returnToMenu: la paleta y el panel de colores
         // son del menu del modo, asi que salen de ahi con el. Sin esto se
         // quedaban abiertos y reaparecian tal cual al volver a entrar.
@@ -8651,6 +8656,12 @@
     const MENU_W_PANELES = 1600;   // <= esto: sin carteles laterales
     const MENU_W_BLURB = 960;      // <  esto: sin subtitulo y el rotulo empieza a encoger
     const TITULO_K_MIN = 0.62;     // por debajo, fuera "PILLWARS"
+    // Aire a los lados del rotulo, en PROPORCION al ancho de la ventana. Es la
+    // referencia que puso David: en el estado final (solo ARCADE en la ventana
+    // mas estrecha) el rotulo deja un 5% a cada lado, y mas pegado que eso no lo
+    // quiere. Con un margen en px fijos el rotulo entero acababa a 10px de los
+    // bordes mientras el corto respiraba, y por eso "no encogia lo suficiente".
+    const MENU_MARGEN_TIT = 0.05;
     const MENU_NUCLEO = ['.pill-stage', '#playerNameInput', '#btnPlay', '#btnSettings'];
     const MENU_TITULO = ['#modeTitlePw', '#modeTitleWord', '#modeBlurb'];
     const MENU_PANELES = ['#oraclePlaca', '#oracleInner', '#missionsPlaca', '#missionsInner'];
@@ -8671,6 +8682,17 @@
         const row = document.querySelector('#loginOverlay .menu-row');
         if (!row || !els.loginOverlay || els.loginOverlay.style.display === 'none') return;
         const raiz = document.documentElement, cuerpo = document.body;
+        // EN MOVIL, FUERA. Alli el menu va GIRADO 90 grados y con medidas en
+        // vw/vh puestas a mano en su media query; este escalado es de escritorio
+        // y encima de aquello solo descuadra (la caja del menu pasa a medir 972
+        // de ancho porque es su alto girado, y el centrado se vuelve loco).
+        if (cuerpo.classList.contains('mobile-allowed') && window.matchMedia('(pointer: coarse)').matches) {
+            row.style.transform = '';
+            raiz.style.setProperty('--titulo-fit', '1');
+            cuerpo.classList.remove('menu-compacto', 'menu-sin-blurb', 'titulo-corto');
+            menuEscala = 1;
+            return;
+        }
         const vwReal = window.innerWidth, vhReal = window.innerHeight;
         const vw = vwReal - MENU_MARGEN * 2;
         // Estado de fabrica antes de medir: sin escala, sin centrado de titulo,
@@ -8719,7 +8741,10 @@
         // Con carteles (ventana grande) el rotulo va a su tamaño de siempre; el
         // encogido solo entra ya en compacto, y ahi se congela en el valor de
         // MENU_W_BLURB hasta bajar de ese ancho: esa es la meseta.
-        const anchoTit = compacto ? Math.min(vw, MENU_W_BLURB - MENU_MARGEN * 2) : vw;
+        const margenTit = Math.max(MENU_MARGEN, Math.round(vwReal * MENU_MARGEN_TIT));
+        const anchoTit = compacto
+            ? Math.min(vwReal - margenTit * 2, Math.round(MENU_W_BLURB * (1 - MENU_MARGEN_TIT * 2)))
+            : vw;
         const tit = _menuCaja(['#modeTitlePw', '#modeTitleWord']);
         if (tit && tit.w > 0) {
             let kt = Math.min(1, anchoTit / (tit.w * k));
@@ -13431,7 +13456,7 @@
     // arranca SIEMPRE en ARCADE, a peticion de David — ya no restaura el
     // ultimo modo usado (pw_lastMode se sigue guardando por si hace falta
     // en el futuro, pero initMenuState ya no lo lee).
-    function initMenuState() { els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); setHoverMode('arcade'); document.getElementById('contentArcade').style.opacity = '1'; document.getElementById('contentClassic').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; SoundManager.playMenuMusic(2000); }
+    function initMenuState() { ajustaSelectorModos(); els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); setHoverMode('arcade'); document.getElementById('contentArcade').style.opacity = '1'; document.getElementById('contentClassic').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; SoundManager.playMenuMusic(2000); }
 
     // ROOM PRICES / DAILY QUESTS son independientes del menu central: su tamano
     // vive solo en CSS (.menu-right-col), sin JS sincronizando alturas con nada.
