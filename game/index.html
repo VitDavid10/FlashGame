@@ -12583,32 +12583,37 @@
                 const st = document.createElement('style');
                 st.id = 'loadingScreenCss';
                 st.textContent =
+                    // Medidas ELASTICAS (clamp / vw / min) en todo el bloque central:
+                    // el rotulo, el subtitulo, la pildora y la barra iban en px fijos
+                    // y en una ventana pequeña la pantalla de carga se salia por los
+                    // lados. Los topes de arriba son los valores de siempre, asi que en
+                    // pantalla grande no cambia absolutamente nada.
                     '#loadingScreen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;' +
                     'background:#000;animation:lsFade .25s ease}' +
                     // Mismas reglas que #loginBgCv: el canvas va lowres y lo estira
                     // el navegador con pixelated, asi la celda de la cuadricula mide
                     // en pantalla lo mismo que en el login.
                     '#lsBgCv{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;z-index:0}' +
-                    '#loadingScreen .ls-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:26px}' +
+                    '#loadingScreen .ls-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:26px;max-width:92vw}' +
                     // El sprite ya viene girado desde pixPillSpriteRot (rotarlo por
                     // CSS lo mutila: bordes dentados), asi que el bob es solo vertical.
-                    '#loadingScreen .ls-pill{display:block;image-rendering:pixelated;animation:lsFloat 2.4s ease-in-out infinite}' +
+                    '#loadingScreen .ls-pill{display:block;image-rendering:pixelated;animation:lsFloat 2.4s ease-in-out infinite;max-width:52vw;height:auto}' +
                     // hero-title.png, el PILLWARS del hero viejo: blanco con volumen
                     // y un filo de halo verde ya horneado. Se enseña a 120px, la
                     // MISMA altura a la que iba alli.
-                    '#loadingScreen .ls-title-img{display:block;height:120px;width:auto;image-rendering:auto}' +
+                    '#loadingScreen .ls-title-img{display:block;height:clamp(46px,12vw,120px);width:auto;max-width:92vw;image-rendering:auto}' +
                     // Fallback si el PNG no carga: la pixel font del pack, con sombra
                     // DURA (nada de halo difuminado).
                     '#loadingScreen .ls-title{font-family:\'Press Start 2P\',monospace;font-size:clamp(22px,4.4vw,42px);line-height:1;' +
                     'color:#fff;letter-spacing:2px;margin:0;text-shadow:4px 4px 0 rgba(0,0,0,.8)}' +
                     // THE CRYPTO ARENA con el neon del hero viejo, tal cual estaba.
-                    '#loadingScreen .ls-sub{font-family:\'Press Start 2P\',monospace;font-size:14px;color:#aaffdd;' +
-                    'letter-spacing:6px;white-space:nowrap;' +
+                    '#loadingScreen .ls-sub{font-family:\'Press Start 2P\',monospace;font-size:clamp(7px,1.6vw,14px);color:#aaffdd;' +
+                    'letter-spacing:clamp(2px,0.7vw,6px);white-space:nowrap;' +
                     'text-shadow:0 0 6px #00ff88,0 0 14px #00ff88,0 0 26px rgba(0,255,136,0.7)}' +
                     // Barra pixel: marco de 2 tonos (tinta + bisel) y relleno por
                     // BLOQUES sueltos, no una banda continua — dibujada con la misma
                     // rejilla dura que el resto del pack.
-                    '#loadingScreen .ls-track{width:336px;height:22px;background:#050505;' +
+                    '#loadingScreen .ls-track{width:min(336px,78vw);height:22px;background:#050505;' +
                     'box-shadow:0 0 0 3px #000,inset 0 0 0 3px #1b2a22;position:relative}' +
                     '#loadingBar{width:0%;height:100%;' +
                     'background-image:linear-gradient(90deg,#eaf6f0 0 12px,transparent 12px 16px);background-size:16px 100%;' +

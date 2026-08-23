@@ -1193,7 +1193,16 @@ body.trailer-open #page-content{
                        box-shadow: 4px 4px 0 rgba(0,0,0,0.6); transition: 0.15s; }
         .shop-flecha:hover:not(:disabled) { border-color: var(--gold); background: #151004; transform: translateY(-2px); }
         .shop-flecha:disabled { opacity: 0.25; cursor: default; }
-        .shop-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .shop-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; min-width: 0; }
+        /* min-width:0 en la celda y canvas escalable dentro, SIEMPRE (antes solo
+           dentro del media query del movil). Los canvas de las pildoras tienen
+           ancho natural fijo: sin acotarlos, un `1fr` no baja del ancho MINIMO
+           de su contenido, asi que al estrechar la ventana la reticula se
+           quedaba clavada, las pildoras se salian del cuadro y no encogia nada
+           hasta cruzar de golpe el breakpoint del movil. Con esto va fluido
+           desde el primer pixel. */
+        .shop-cel { min-width: 0; }
+        .shop-cel canvas { max-width: 100%; height: auto; }
         .shop-cel { background: rgba(10,10,10,0.8); border: 2px solid #1e1e1e; padding: 12px 6px 0; text-align: center;
                     cursor: pointer; transition: 0.15s; box-shadow: 4px 4px 0 rgba(0,0,0,0.55); }
         .shop-cel:hover { border-color: var(--primary); background: #0c110c; transform: translateY(-3px); }
