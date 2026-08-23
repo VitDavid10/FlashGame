@@ -1485,7 +1485,11 @@
         /* max-width: none — con el 100% de antes, en una ventana estrecha el flex
            apretaba la columna del menu contra la de los carteles y se
            descolocaba todo por dentro. El ancho lo resuelve el escalado. */
-        .menu-row { display: flex; flex-direction: row; gap: 110px; align-items: flex-start; max-width: none; position: relative; z-index: 1; }
+        /* min-height = lo que ocupa la columna de carteles (46 de margen + 926):
+           sin ella, al esconderlos la fila encogia, el centrado vertical del
+           overlay la recolocaba y TODO el menu daba un salto hacia abajo. Con el
+           alto fijo, quitar los carteles no mueve nada de sitio. */
+        .menu-row { display: flex; flex-direction: row; gap: 110px; align-items: flex-start; max-width: none; min-height: 972px; position: relative; z-index: 1; }
         /* MENU RESPONSIVE (ver ajustaMenuResponsive en el JS).
            El menu esta colocado con desplazamientos en PIXELES afinados a mano
            desde EDIT LAYOUT, asi que no hay forma de hacerlo fluido sin
@@ -1497,6 +1501,17 @@
         /* Por debajo de cierta escala los carteles de los lados encogen tanto
            que no se leen: se quitan y el bloque central recupera tamaño. */
         body.menu-compacto #loginOverlay .menu-right-col { display: none !important; }
+        /* Por debajo de MENU_W_BLURB el subtitulo no cabe al lado del rotulo. */
+        body.menu-sin-blurb #loginOverlay .mode-blurb { display: none !important; }
+        /* Mientras se mide, las animaciones de entrada quietas: .menu-right-col y
+           .login-box traen `slideUp`, y al reaparecer los carteles se median a
+           mitad del deslizamiento — de ahi que al volver al tamaño grande todo
+           quedara desplazado hacia arriba. */
+        body.menu-midiendo #loginOverlay .menu-row,
+        body.menu-midiendo #loginOverlay .menu-right-col,
+        body.menu-midiendo #loginOverlay .login-box,
+        body.menu-midiendo #loginOverlay #oraclePanel,
+        body.menu-midiendo #loginOverlay #missionsPanel { animation: none !important; }
         /* Ventana pequeña en partida: TOP MASS / KILLS estorban mas de lo que
            aportan (y son lo primero que se come el sitio del reloj). */
         @media (max-width: 1100px), (max-height: 700px) {
@@ -8619,29 +8634,27 @@
     // ===== ESCALADO DEL MENU DE MODO =====
     // El menu esta colocado con desplazamientos en PIXELES afinados a mano desde
     // EDIT LAYOUT: no hay forma de hacerlo fluido sin destrozar la composicion.
-    // Se escala ENTERO y se recentra, con lo que las distancias entre piezas —la
-    // separacion de los carteles a la pildora y su altura— quedan CLAVADAS.
+    // Se escala ENTERO, con lo que las distancias entre piezas —la separacion de
+    // los carteles a la pildora y su altura— quedan CLAVADAS.
     //
-    // Dos escalas y no una, que es lo que fallaba antes:
-    //   - La del CONJUNTO la manda el ALTO. Estrechar la ventana no encoge la
-    //     pildora ni PLAY: caben de sobra, y encogerlos solo servia para
-    //     descentrarlos y subir PLAY sin necesidad.
-    //   - El ROTULO va aparte (--titulo-fit). Mide 865px con las dos palabras y
-    //     es lo unico que no cabe al estrechar; si ni encogiendolo cabe, se cae
-    //     "PILLWARS" y se queda solo ARCADE / CLASSIC.
-    //
-    // Las medidas se toman EN VIVO con todo neutralizado, asi que si se
-    // re-hornea el layout esto sigue cuadrando solo.
-    const MENU_MARGEN = 16;      // aire minimo a los bordes
-    // Por debajo de esta escala los carteles de los lados salen tan pequeños que
-    // las DAILY QUESTS dejan de leerse: se quitan y el bloque central se
-    // re-escala con el sitio que dejan. 0,65 deja que sobrevivan en los portatiles
-    // normales (1366x768 -> 0,71; 1280x720 -> 0,67) y los quita de 1200 para
-    // abajo. Es EL numero a tocar si se quieren antes o despues.
-    const MENU_K_MIN = 0.65;
-    // Y por debajo de esta, el rotulo pierde "PILLWARS" en vez de seguir
-    // encogiendo hasta no leerse.
-    const TITULO_K_MIN = 0.62;
+    // Reglas (las pidio David asi, y el motivo es que el menu no baile):
+    //   - Los carteles de los lados se quitan a partir de MENU_W_PANELES.
+    //   - Entre MENU_W_PANELES y MENU_W_BLURB, estrechar la ventana NO cambia el
+    //     tamaño de rotulo/pildora/PLAY. Sobra hueco a los lados, pero es
+    //     preferible a que todo encoja un poco con cada pixel de ventana.
+    //   - Solo el ALTO encoge el conjunto, y solo cuando hace falta de verdad.
+    //   - El rotulo tiene su propio encogido (--titulo-fit) que solo entra por
+    //     debajo de MENU_W_BLURB; ahi tambien se cae el subtitulo, y si ni asi
+    //     cabe se queda solo ARCADE / CLASSIC.
+    const MENU_MARGEN = 16;
+    // Aire que se le deja a la barra de la wallet (CONNECT / IN GAME) cuando el
+    // rotulo se le echaria encima. Solo se aplica si de verdad se cruzan en
+    // horizontal: en pantalla ancha el rotulo se queda a mitad de camino y no
+    // hay por que apartarse de nada.
+    const MENU_HUECO_WALLET = 10;
+    const MENU_W_PANELES = 1600;   // <= esto: sin carteles laterales
+    const MENU_W_BLURB = 960;      // <  esto: sin subtitulo y el rotulo empieza a encoger
+    const TITULO_K_MIN = 0.62;     // por debajo, fuera "PILLWARS"
     const MENU_NUCLEO = ['.pill-stage', '#playerNameInput', '#btnPlay', '#btnSettings'];
     const MENU_TITULO = ['#modeTitlePw', '#modeTitleWord', '#modeBlurb'];
     const MENU_PANELES = ['#oraclePlaca', '#oracleInner', '#missionsPlaca', '#missionsInner'];
@@ -8661,60 +8674,96 @@
     function ajustaMenuResponsive() {
         const row = document.querySelector('#loginOverlay .menu-row');
         if (!row || !els.loginOverlay || els.loginOverlay.style.display === 'none') return;
-        // Todo a cero antes de medir: escala fuera, titulo sin centrar y sin
-        // encoger, carteles y "PILLWARS" de vuelta. Asi cada pasada parte del
-        // mismo sitio y no arrastra la anterior.
+        const raiz = document.documentElement, cuerpo = document.body;
+        const vwReal = window.innerWidth, vhReal = window.innerHeight;
+        const vw = vwReal - MENU_MARGEN * 2;
+        // Estado de fabrica antes de medir: sin escala, sin centrado de titulo,
+        // sin encogidos y sin nada escondido. Asi cada pasada da lo mismo
+        // independientemente de la anterior — es lo que hacia que al volver al
+        // tamaño grande el menu no quedara como al principio.
+        cuerpo.classList.add('menu-midiendo');
         row.style.transform = '';
         const h1 = els.selectedModeTitle;
         if (h1) { h1.style.translate = ''; _tituloReset(); }
-        const raiz = document.documentElement;
         raiz.style.setProperty('--titulo-fit', '1');
-        document.body.classList.remove('menu-compacto', 'titulo-corto');
+        const compacto = vwReal <= MENU_W_PANELES;
+        const sinBlurb = vwReal < MENU_W_BLURB;
+        cuerpo.classList.toggle('menu-compacto', compacto);
+        cuerpo.classList.toggle('menu-sin-blurb', sinBlurb);
 
-        const vw = window.innerWidth - MENU_MARGEN * 2, vh = window.innerHeight - MENU_MARGEN * 2;
-        // 1) ¿caben los carteles? Aqui SI cuenta el ancho: son ellos los que se
-        //    van a los lados y los que hay que quitar cuando no da.
-        const conTodo = _menuCaja(MENU_NUCLEO.concat(MENU_TITULO, MENU_PANELES));
-        let k = conTodo ? Math.min(1, vw / conTodo.w, vh / conTodo.h) : 1;
-        const compacto = k < MENU_K_MIN;
-        if (compacto) document.body.classList.add('menu-compacto');
-        // 2) Escala del conjunto. Sin carteles manda el ALTO; del ancho solo se
-        //    vigila el bloque central SIN el rotulo (ese va por su cuenta).
-        if (compacto) {
-            const nucleo = _menuCaja(MENU_NUCLEO);
-            const alto = _menuCaja(MENU_NUCLEO.concat(MENU_TITULO));
-            k = Math.min(1, nucleo ? vw / nucleo.w : 1, alto ? vh / alto.h : 1);
+        // 0) ¿El bloque central se cruza con la barra de la wallet? Solo entonces
+        //    se le reserva ese hueco por arriba. Entra en el calculo de la
+        //    escala y no solo en el recorte: si solo se recortara, no habria
+        //    sitio para los dos y el menu se saldria por abajo.
+        const cajaWallet = _menuCaja(['#gwConnect', '#gwDepositWrap', '#gwBalBox']);
+        const cajaCentro = _menuCaja(MENU_NUCLEO.concat(MENU_TITULO));
+        let topeArriba = MENU_MARGEN;
+        if (cajaWallet && cajaCentro &&
+            !(cajaCentro.x0 + cajaCentro.w < cajaWallet.x0 || cajaCentro.x0 > cajaWallet.x0 + cajaWallet.w)) {
+            topeArriba = Math.max(topeArriba, cajaWallet.y0 + cajaWallet.h + MENU_HUECO_WALLET);
         }
+        const vh = vhReal - topeArriba - MENU_MARGEN;
+
+        // 1) Escala del conjunto. Con carteles cuenta tambien el ancho (son
+        //    ellos los que se van a los lados); sin ellos, SOLO el alto.
+        const piezas = MENU_NUCLEO.concat(MENU_TITULO, compacto ? [] : MENU_PANELES);
+        const caja = _menuCaja(piezas);
+        let k = 1;
+        if (caja) k = compacto ? Math.min(1, vh / caja.h) : Math.min(1, vw / caja.w, vh / caja.h);
         menuEscala = k;
-        // 3) El rotulo, a lo que quede de ancho con la escala ya puesta.
+
+        // 2) El rotulo. Su encogido SOLO mira por debajo de MENU_W_BLURB: por
+        //    encima cabe de sobra y asi no cambia de tamaño con cada pixel.
+        // Con carteles (ventana grande) el rotulo va a su tamaño de siempre; el
+        // encogido solo entra ya en compacto, y ahi se congela en el valor de
+        // MENU_W_BLURB hasta bajar de ese ancho: esa es la meseta.
+        const anchoTit = compacto ? Math.min(vw, MENU_W_BLURB - MENU_MARGEN * 2) : vw;
         const tit = _menuCaja(['#modeTitlePw', '#modeTitleWord']);
         if (tit && tit.w > 0) {
-            let kt = Math.min(1, vw / (tit.w * k));
+            let kt = Math.min(1, anchoTit / (tit.w * k));
             if (kt < TITULO_K_MIN) {
-                // Fuera "PILLWARS": con solo la palabra del modo cabe casi sin
-                // encoger, que es lo que pidio David.
-                document.body.classList.add('titulo-corto');
+                cuerpo.classList.add('titulo-corto');
                 const solo = _menuCaja(['#modeTitleWord']);
-                kt = solo && solo.w > 0 ? Math.min(1, vw / (solo.w * k)) : 1;
-            }
+                kt = solo && solo.w > 0 ? Math.min(1, anchoTit / (solo.w * k)) : 1;
+            } else cuerpo.classList.remove('titulo-corto');
             raiz.style.setProperty('--titulo-fit', String(Math.round(kt * 1000) / 1000));
         }
-        // 4) Centrar por el CONTENIDO ya definitivo (con el rotulo a su tamaño):
-        //    el centro de la caja del flex y el del contenido no coinciden, la
-        //    pildora y los botones van desplazados dentro de ella.
-        const caja = _menuCaja(MENU_NUCLEO.concat(MENU_TITULO, compacto ? [] : MENU_PANELES));
-        const nuc = _menuCaja(MENU_NUCLEO);
-        if (!caja || !nuc) { centrarTitulo(); return; }
+
+        // 3) Colocacion.
+        const caja2 = _menuCaja(piezas), nuc = _menuCaja(MENU_NUCLEO);
+        if (!caja2 || !nuc) { cuerpo.classList.remove('menu-midiendo'); centrarTitulo(); return; }
         const rr = row.getBoundingClientRect();
-        // A lo ANCHO se centra la PILDORA (con PLAY debajo), no la caja entera:
-        // el rotulo arranca a la izquierda de la pildora y arrastraba el centro
-        // hacia ese lado, asi que pildora y PLAY acababan desplazados a la
-        // derecha. El rotulo se centra por su cuenta en centrarTitulo().
-        // A lo ALTO manda la caja COMPLETA, que es la que no se puede salir.
-        const cx = nuc.x0 + nuc.w / 2, cy = caja.y0 + caja.h / 2;
-        row.style.transformOrigin = (cx - rr.left) + 'px ' + (cy - rr.top) + 'px';
-        const dx = window.innerWidth / 2 - cx, dy = window.innerHeight / 2 - cy;
-        row.style.transform = 'translate(' + Math.round(dx) + 'px,' + Math.round(dy) + 'px) scale(' + k + ')';
+        // Origen en el centro del contenido para que ese punto no se mueva al
+        // escalar (el centro de la caja del flex no coincide con el del dibujo).
+        const ox = caja2.x0 + caja2.w / 2, oy = caja2.y0 + caja2.h / 2;
+        row.style.transformOrigin = (ox - rr.left) + 'px ' + (oy - rr.top) + 'px';
+        // A lo ANCHO solo se recoloca cuando se han quitado los carteles: sin
+        // ellos el bloque queda descentrado y se lleva al medio por la PILDORA
+        // (el rotulo arranca a su izquierda y arrastraria el centro). Con
+        // carteles NO se toca: la composicion es la que afino David.
+        const cxN = nuc.x0 + nuc.w / 2;
+        const dx = compacto ? Math.round(vwReal / 2 - (ox + (cxN - ox) * k)) : 0;
+        // A lo ALTO tampoco se centra: se deja donde cae y solo se corrige lo
+        // justo si se sale. Centrarlo era lo que subia el menu entero al bajar
+        // la ventana y metia el rotulo debajo de la wallet.
+        // Dos topes por arriba: el hueco de la wallet solo lo pide el bloque
+        // central (los carteles de los lados quedan lejos de ella y les basta el
+        // margen normal). Sin esa distincion los carteles, que empiezan mas
+        // arriba que el rotulo, empujaban el menu entero hacia abajo sin motivo.
+        const cajaTit = cajaCentro || caja2;
+        const arriba = oy - (oy - caja2.y0) * k, abajo = oy + (caja2.y0 + caja2.h - oy) * k;
+        const arribaTit = oy - (oy - cajaTit.y0) * k;
+        let dy = 0;
+        if (abajo > vhReal - MENU_MARGEN) dy = (vhReal - MENU_MARGEN) - abajo;
+        if (arriba + dy < MENU_MARGEN) dy = MENU_MARGEN - arriba;
+        if (arribaTit + dy < topeArriba) dy = topeArriba - arribaTit;
+        dy = Math.round(dy);
+        // Si no hay nada que escalar ni que mover, fuera el transform: asi el
+        // menu a tamaño grande queda EXACTAMENTE como estaba, sin un pixel de
+        // diferencia, y volver de una ventana pequeña lo deja igual que al abrir.
+        if (k === 1 && dx === 0 && dy === 0) row.style.transform = '';
+        else row.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
+        cuerpo.classList.remove('menu-midiendo');
         centrarTitulo();
     }
     addEventListener('resize', ajustaMenuResponsive);
