@@ -2919,9 +2919,12 @@ body.trailer-open #page-content{
                        anterior no basta. Mientras haya sitio no se mueve nada.
 
                        ARRIBA DE LA PAGINA (sin PLAY NOW en la barra):
-                         1. PILLWARS encoge. NUNCA desaparece — es la marca y es
-                            lo unico que hay a la izquierda.
-                         2. Los cuatro enlaces se van a MENU.
+                         1. Los cuatro enlaces se van a MENU. Casi siempre basta
+                            con esto solo y PILLWARS se queda a tamaño completo.
+                         2. Solo si aun colapsado no cupiera, PILLWARS encoge
+                            (NUNCA desaparece). Ultimo recurso, no el primero:
+                            $PILL no llega a tocar a MENU salvo en pantallas
+                            muy estrechas.
 
                        CON PLAY NOW (ya has bajado del hero):
                          1. PILLWARS encoge hasta medir lo MISMO que PLAY NOW.
@@ -2974,20 +2977,13 @@ body.trailer-open #page-content{
                         const pide = () => izq.scrollWidth + der.scrollWidth;
                         if (pide() <= hueco) return;
 
-                        // PASO 1: encoger el rotulo. Con PLAY NOW a la vista el
-                        // suelo es SU ancho (para que la sustitucion no mueva
-                        // nada); sin el, puede bajar mas, porque no se va a ir.
-                        if (marca && getComputedStyle(marca).display !== 'none') {
+                        // Encoge el rotulo hasta el suelo dado (iterativo: el
+                        // ancho de un texto no baja proporcional al font-size,
+                        // asi que una sola pasada se quedaba corta).
+                        const encogerMarca = (suelo, kMinAbs) => {
+                            if (!marca || getComputedStyle(marca).display === 'none') return;
                             const anchoMarca = marca.getBoundingClientRect().width;
-                            // Sin PLAY NOW el rotulo NO se va a retirar (es lo unico
-                            // que hay a la izquierda), asi que se le deja encoger
-                            // bastante mas: es el unico que puede ceder ancho.
-                            const suelo = hayPlay ? play.getBoundingClientRect().width : anchoMarca * 0.7;
-                            // Tope duro por proporcion: si el ancho medido deja de
-                            // bajar (el rotulo en pixel-pack es una imagen y tiene
-                            // su propio minimo), el bucle seguiria multiplicando k
-                            // hasta dejarlo ilegible.
-                            const kMin = anchoMarca > 0 ? Math.max(0.7, suelo / anchoMarca) : 1;
+                            const kMin = anchoMarca > 0 ? Math.max(kMinAbs, suelo / anchoMarca) : 1;
                             let k = 1;
                             for (let i = 0; i < 8 && pide() > hueco; i++) {
                                 const w = marca.getBoundingClientRect().width;
@@ -2996,23 +2992,36 @@ body.trailer-open #page-content{
                                 k = Math.max(kMin, k * (objetivo / w));
                                 raiz.style.setProperty('--marca-k', String(Math.round(k * 1000) / 1000));
                             }
-                            if (pide() <= hueco) return;
-                        }
+                        };
 
-                        // PASO 2: SOLO con PLAY NOW a la vista. El rotulo se
-                        // retira y PLAY NOW se mete en su hueco. Sin PLAY NOW
-                        // este paso no existe: la marca se queda encogida y se
-                        // pasa directo a MENU.
                         if (hayPlay) {
+                            // PASO 1: encoger el rotulo hasta medir lo mismo que
+                            // PLAY NOW (para que la sustitucion no mueva nada).
+                            encogerMarca(play.getBoundingClientRect().width, 0.1);
+                            if (pide() <= hueco) return;
+
+                            // PASO 2: el rotulo se retira y PLAY NOW ocupa su hueco.
                             raiz.style.removeProperty('--marca-k');
                             document.body.classList.add('nav-apretada');
                             colocaPlay(true);
                             if (pide() <= hueco) return;
-                        }
 
-                        // PASO 3: los cuatro enlaces, a MENU.
-                        document.body.classList.add('nav-colapsada');
-                        if (pide() <= hueco) return;
+                            // PASO 3: los cuatro enlaces, a MENU.
+                            document.body.classList.add('nav-colapsada');
+                            if (pide() <= hueco) return;
+                        } else {
+                            // PASO 1: los cuatro enlaces, a MENU. Casi siempre
+                            // basta con esto y PILLWARS no llega a encoger nada:
+                            // $PILL no se acerca a MENU salvo pantalla muy estrecha.
+                            document.body.classList.add('nav-colapsada');
+                            if (pide() <= hueco) return;
+
+                            // PASO 2: ya con MENU puesto, si aun asi no cupiera,
+                            // PILLWARS encoge como ultimo recurso (nunca desaparece).
+                            const anchoMarca = marca ? marca.getBoundingClientRect().width : 0;
+                            encogerMarca(anchoMarca * 0.7, 0.7);
+                            if (pide() <= hueco) return;
+                        }
 
                         // PASO 4: ya no queda nada que se pueda quitar sin perder
                         // informacion, asi que se encoge lo mas grande —el boton
