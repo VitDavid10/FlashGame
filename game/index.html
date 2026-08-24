@@ -8813,7 +8813,17 @@
         // arriba que el rotulo, empujaban el menu entero hacia abajo sin motivo.
         const cajaTit = cajaCentro || caja2;
         const arriba = oy - (oy - caja2.y0) * k, abajo = oy + (caja2.y0 + caja2.h - oy) * k;
-        const arribaTit = oy - (oy - cajaTit.y0) * k;
+        // TITULO.y cuenta para el tope de la wallet. Al principio de esta misma
+        // funcion se le limpia el translate al rotulo para poder medirlo sin
+        // desplazar, y quien se lo vuelve a poner es centrarTitulo(), que corre
+        // DESPUES de todo esto. O sea que la medida de aqui no veia ese
+        // desplazamiento: con un TITULO.y negativo (rotulo subido a mano con la
+        // rueda en EDIT LAYOUT) el rotulo se colaba por encima del tope y
+        // acababa a la altura de CONNECT y los botones — justo lo que la regla
+        // prohibe. Solo se cuenta si es NEGATIVO: subir el rotulo tiene que
+        // apretar el tope, pero bajarlo no debe aflojarlo (ahi el borde de
+        // arriba de la caja ya no es el rotulo, sino otra pieza).
+        const arribaTit = oy - (oy - cajaTit.y0) * k + Math.min(0, TITULO.y || 0) * k;
         let dy = 0;
         if (abajo > vhReal - MENU_MARGEN) dy = (vhReal - MENU_MARGEN) - abajo;
         if (arriba + dy < MENU_MARGEN) dy = MENU_MARGEN - arriba;
