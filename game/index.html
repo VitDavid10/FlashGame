@@ -6532,6 +6532,18 @@
                 if (!mismoMenuLayout(entrante, menuLayout)) { menuLayout = entrante; saveMenuLayout(); applyMenuLayout(); }
             }
         } catch (e) {}
+        // Rotulo del menu, igual que el layout: global, salvo mientras TU estas
+        // editando o si lo has tocado a mano y aun no le has dado a SAVE FOR
+        // ALL (la clave 'titulo' de layoutMine, mismo mecanismo que el resto de
+        // piezas). Sin ese respeto, al salir del editor el poll te devolvia el
+        // rotulo del servidor y parecia que tu ajuste no se habia guardado.
+        try {
+            if (data.menuTitulo && typeof data.menuTitulo === 'object' && Object.keys(data.menuTitulo).length > 0
+                && !layoutEditing && !layoutMine.has('titulo')) {
+                const dif = Object.keys(data.menuTitulo).some(k => TITULO[k] !== data.menuTitulo[k]);
+                if (dif) tituloTune(data.menuTitulo);
+            }
+        } catch (e) {}
         // Interruptor de los editores de layout (panel admin → Menu visuals).
         // layoutEditAllowed es lo que de verdad gobierna enterLayoutEdit()/
         // loadingEdit(): el display del boton es solo el atajo visual, ver su
@@ -8866,7 +8878,10 @@
     //   tituloTune({ y: -8 })         sube/baja el titulo entero
     //   tituloTune({ blur: 12 })      halo del color del modo (0 = sin halo)
     //   tituloTune({ altoPw: null })  esa palabra vuelve a seguir a "alto"
-    window.tituloTune = o => {
+    // marcarMio=false lo usa el poll al aplicar el rotulo GLOBAL: eso no es una
+    // edicion tuya y no debe blindarte contra el servidor.
+    window.tituloTune = (o, marcarMio) => {
+        if (marcarMio) marcarLayoutMio('titulo');
         Object.assign(TITULO, o || {});
         try { localStorage.setItem(TITULO_KEY, JSON.stringify(TITULO)); } catch (e) {}
         aplicaTituloVars();
@@ -9400,7 +9415,11 @@
         if (btn) { btn.textContent = 'SAVING...'; btn.disabled = true; }
         let ok = false;
         try {
-            const r = await fetch('/api/menu-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout: menuLayout }) });
+            // Va tambien el ajuste del ROTULO (alto de cada palabra, hueco,
+            // altura y halo). Antes se quedaba en el localStorage de quien lo
+            // tocara: lo colocabas, le dabas a SAVE FOR ALL y el resto del mundo
+            // seguia viendo el de fabrica.
+            const r = await fetch('/api/menu-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout: menuLayout, titulo: TITULO }) });
             ok = (await r.json()).ok === true;
             // Ya son de todos: se sueltan las claves propias para no quedarse
             // pegado a una version local del layout que ya subiste.
@@ -9435,7 +9454,7 @@
                 // TITULO.y se aplica DENTRO del bloque escalado: sin eso el
                 // rotulo iba mas despacio que el raton con la ventana pequeña.
                 const k = (typeof menuEscala === 'number' && menuEscala > 0) ? menuEscala : 1;
-                tituloTune({ y: Math.round(layoutDrag.baseY + (e.clientY - layoutDrag.startY) / k) });
+                tituloTune({ y: Math.round(layoutDrag.baseY + (e.clientY - layoutDrag.startY) / k) }, true);
                 ajustaMenuResponsive();
                 return;
             }
@@ -9496,7 +9515,7 @@
                 const campo = t.key === 'titlePw' ? 'altoPw' : 'altoWord';
                 const base = TITULO[campo] || TITULO.alto;
                 const paso = e.shiftKey ? 8 : 2;
-                tituloTune({ [campo]: Math.max(24, Math.min(400, base + (e.deltaY < 0 ? paso : -paso))) });
+                tituloTune({ [campo]: Math.max(24, Math.min(400, base + (e.deltaY < 0 ? paso : -paso))) }, true);
                 return;
             }
             // 1.015 (1.5%) en vez de 1.06 (6%): con el paso viejo era dificil
@@ -9517,7 +9536,7 @@
             // El titulo de placa no guarda su tamaño en el layout, asi que
             // resetearlo es devolver su palabra al alto comun.
             if (tituloUsaPlaca() && (t.key === 'titlePw' || t.key === 'titleWord')) {
-                tituloTune({ [t.key === 'titlePw' ? 'altoPw' : 'altoWord']: null });
+                tituloTune({ [t.key === 'titlePw' ? 'altoPw' : 'altoWord']: null }, true);
                 e.preventDefault();
                 return;
             }

@@ -114,6 +114,13 @@ let menuDecoDimPct = _clampN(_glob.menuDecoDimPct, 0, 80, 0);
 // Layout del menú (posición/escala de cada elemento editable), GLOBAL: lo sube el
 // cliente desde EDIT LAYOUT → "Guardar para todos", se difunde en /api/rooms.
 let menuLayout = (_glob.menuLayout && typeof _glob.menuLayout === 'object') ? _glob.menuLayout : {};
+// Ajuste del ROTULO del menu (alto de cada palabra, hueco entre las dos, cuanto
+// sube/baja y el halo). Va APARTE de menuLayout porque el rotulo horneado no se
+// coloca con translate/scale como el resto: se centra solo y su tamaño sale de
+// las variables --titulo-*, asi que sus numeros no son {x,y,s} y no caben en el
+// saneado de menuLayout. Antes solo vivia en el localStorage de cada uno: lo
+// ajustabas y el resto del mundo seguia viendo el de fabrica.
+let menuTitulo = (_glob.menuTitulo && typeof _glob.menuTitulo === 'object') ? _glob.menuTitulo : {};
 // Lo mismo para el HERO de la landing (título, PLAY NOW, cartel del contrato y
 // contrato): lo sube el botón EDIT de index.html. Va APARTE de menuLayout para
 // que las dos herramientas no se pisen la una a la otra.
@@ -134,7 +141,7 @@ let layoutEdit = (typeof _glob.layoutEdit === 'boolean') ? _glob.layoutEdit : fa
 // RECALCULA SOLO al arrancar (ver computeRanking mas abajo) y hay que saber con
 // que criterio hacerlo; si no, cada reinicio lo dejaba en el de por defecto.
 let rankingIncludeTesters = (typeof _glob.rankingIncludeTesters === 'boolean') ? _glob.rankingIncludeTesters : false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, landingLayout, cartelesLayout }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, menuTitulo, landingLayout, cartelesLayout }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -1855,7 +1862,7 @@ const httpServer = http.createServer(async (req, res) => {
                     });
                 }
                 _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
-                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout }) };
+                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
             res.end(_roomsCache.body);
@@ -1909,7 +1916,7 @@ const httpServer = http.createServer(async (req, res) => {
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
-            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout }));
+            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }));
         return;
     }
     // --- Layout del menú GLOBAL: el cliente lo sube desde EDIT LAYOUT → "Guardar
@@ -1952,9 +1959,24 @@ const httpServer = http.createServer(async (req, res) => {
                     if (['default', 'press', 'vt323'].includes(t.ff)) e.ff = t.ff;
                     clean[String(k).slice(0, 40)] = e;
                 }
-                menuLayout = clean; saveGlobal();
+                menuLayout = clean;
+                // Ajuste del rotulo, si viene. Mismo trato que el layout: solo
+                // numeros y con topes, para que un payload raro no pueda dejar
+                // el titulo a 4000px de alto ni fuera de pantalla. alto/altoPw/
+                // altoWord aceptan null = "esa palabra sigue al alto comun".
+                if (payload && typeof payload.titulo === 'object' && payload.titulo) {
+                    const t = payload.titulo, tc = {};
+                    const num = (v, min, max) => (typeof v === 'number' && isFinite(v)) ? Math.max(min, Math.min(max, v)) : null;
+                    const alto = (k) => { if (t[k] === null) { tc[k] = null; return; } const v = num(t[k], 24, 400); if (v !== null) tc[k] = v; };
+                    alto('alto'); alto('altoPw'); alto('altoWord');
+                    const g = num(t.gap, 0, 400); if (g !== null) tc.gap = g;
+                    const y = num(t.y, -600, 600); if (y !== null) tc.y = y;
+                    const b = num(t.blur, 0, 80); if (b !== null) tc.blur = b;
+                    menuTitulo = tc;
+                }
+                saveGlobal();
                 if (PW_ROLE === 'director') _roomsCache = null;   // fuerza refresco del cache agregado
-                log(`Menu layout GLOBAL actualizado (${Object.keys(clean).length} elementos)`);
+                log(`Menu layout GLOBAL actualizado (${Object.keys(clean).length} elementos, rotulo ${Object.keys(menuTitulo).length} ajustes)`);
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                 res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
             });
