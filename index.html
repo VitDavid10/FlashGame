@@ -1012,9 +1012,9 @@ body.trailer-open #page-content{
             transform: scale(1.1); z-index: 10;
         }
         
-        /* Mismo criterio que .tooltip-icon-main: 64px es el tamaño nativo del
-           pixel art, y pixelated evita que el navegador lo difumine al
-           reescalarlo desde EDIT (clave skillIcon, comun a las 8). */
+        /* 64px es el tamaño nativo del pixel art, y pixelated evita que el
+           navegador lo difumine al reescalarlo desde EDIT (clave skillIcon,
+           comun a las 8). */
         .skill-icon { width: 64px; height: 64px; margin-bottom: 12px; image-rendering: pixelated; }
         .skill-name { font-size: var(--fs-1); font-weight: 900; color: var(--txt-mute); font-family: 'Russo One'; letter-spacing: 1px; }
         
@@ -1035,7 +1035,7 @@ body.trailer-open #page-content{
            abajo; se les dan 4px de aire. Con 22/16 el ultimo renglon (AVAILABLE
            IN ARCADE MODE) caia justo encima del filo de abajo. */
         .skill-tooltip {
-            position: fixed; width: 250px;
+            position: fixed; width: 320px; height: 396px;
             background: transparent url('game/img/cartel-hero/cartel-hero-v3g.png') center/100% 100% no-repeat;
             border: none; border-radius: 0; box-shadow: none;
             image-rendering: pixelated; padding: 36px 16px 26px;
@@ -1047,27 +1047,25 @@ body.trailer-open #page-content{
            funde con el y solo queda su linea de separacion, ahora gris para que
            pegue con el marco en vez del #333 que iba con el filo dorado. */
         .skill-tooltip .tooltip-img-container { border-radius: 0; background: transparent; border-bottom-color: #565663; }
-        .skill-tooltip .tooltip-content { padding: 12px 2px 0; }
+        /* 24/12 y no 12/2: pegado al video (que ahora es lo primero que se
+           mira, no un icono discreto) el titulo se leia mal, y con 2px a los
+           lados el texto quedaba pegado al marco por los dos bordes. Con esto
+           la altura de 396px (fija: medida contra CLON, la descripcion mas
+           larga con esta letra) deja sitio de sobra en las 8 sin desbordar. */
+        .skill-tooltip .tooltip-content { padding: 24px 12px 0; }
         @keyframes fadeInTooltip { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* 170 y no 100: hueco mas alto para el video de la skill (antes un
+           icono con fondo desenfocado). Es el mismo elemento de siempre —
+           .tooltip-img-container— solo que ahora lo unico que hay dentro es
+           el <video>, ver .tooltip-video mas abajo. */
         .tooltip-img-container {
-            width: 100%; height: 100px; background: #000; border-bottom: 1px solid #333;
+            width: 100%; height: 170px; background: #000; border-bottom: 1px solid #333;
             display: flex; align-items: center; justify-content: center; border-radius: 6px 6px 0 0;
             position: relative; overflow: hidden;
         }
-        .tooltip-img-bg {
-            position: absolute; width: 100%; height: 100%; 
-            background-size: cover; background-position: center; opacity: 0.3; filter: blur(5px);
-        }
-        /* 64px = el tamaño NATIVO del arte (los PNG son pixel art de 64x64), asi
-           que a 1x cada pixel del dibujo cae en un pixel de pantalla y sale
-           nitido. Al escalar desde EDIT, los multiplos enteros (2x = 128px,
-           3x = 192px) son los que quedan perfectos. */
-        .tooltip-icon-main { width: 64px; height: 64px; z-index: 2; filter: drop-shadow(0 0 10px var(--gold)); image-rendering: pixelated; }
-        /* El icono NO se sale de la caja de la imagen: la caja ya es
-           overflow:hidden, asi que al agrandarlo se recorta por los lados en
-           vez de invadir el texto. */
-        /* EDIT LAYOUT (claves tooltipIcon/skillTooltip): fuera de edicion el
+        .tooltip-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* EDIT LAYOUT (claves tooltipIcon -ahora selecciona el video- /skillTooltip): fuera de edicion el
            tooltip solo aparece al hacer hover y no recibe el raton (por eso
            pointer-events:none arriba, para no robarle el hover a la card de
            al lado). En edicion se fuerza visible y clicable para poder
@@ -1996,7 +1994,7 @@ body.trailer-open #page-content{
         }
         /* imagenes/iconos reescalados sin suavizado */
         body.pixel-pack .skill-icon, body.pixel-pack .dd-icon, body.pixel-pack .wallet-option img,
-        body.pixel-pack .tooltip-icon-main, body.pixel-pack .feature-images img,
+        body.pixel-pack .feature-images img,
         body.pixel-pack .full-width-img img { image-rendering: pixelated; }
 
         /* ===== EDITOR DE LAYOUT DEL HERO (boton EDIT de la navbar) — TEMPORAL:
@@ -2091,13 +2089,15 @@ body.trailer-open #page-content{
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
         navPlayBtn: '#nav-play-area',
         // Tooltip flotante de las skills (el cuadro que sale al pasar el
-        // raton por SHOT/SPRINT/...). tooltipIcon va ANTES que skillTooltip
-        // por lo mismo que pillMenu/walletBtnTxt: el icono esta DENTRO del
-        // cuadro, asi que la clave mas especifica tiene que ir primero para
-        // que target() la agarre a ELLA y no al cuadro entero. En EDIT LAYOUT
-        // se fuerza visible (ver la regla body.layout-editing mas abajo):
-        // normalmente solo aparece al hacer hover sobre una skill.
-        tooltipIcon: '#tooltip-icon',
+        // raton por SHOT/SPRINT/...). tooltipIcon (el nombre se queda igual,
+        // lo leen NAVBAR_KEYS/SCALE_MAX mas abajo; lo unico que cambio es el
+        // selector) va ANTES que skillTooltip por lo mismo que pillMenu/
+        // walletBtnTxt: el video esta DENTRO del cuadro, asi que la clave mas
+        // especifica tiene que ir primero para que target() la agarre a EL y
+        // no al cuadro entero. En EDIT LAYOUT se fuerza visible (ver la regla
+        // body.layout-editing mas abajo): normalmente solo aparece al hacer
+        // hover sobre una skill.
+        tooltipIcon: '#tooltip-video',
         skillTooltip: '#skill-tooltip',
         // Rejilla de skills (SHOT, SPRINT, BLINK...). Claves COMPARTIDAS: el
         // selector casa con las 8, y apply() usa querySelectorAll, asi que
@@ -2752,8 +2752,7 @@ body.trailer-open #page-content{
     <!-- TOOLTIP HTML -->
     <div id="skill-tooltip" class="skill-tooltip">
         <div class="tooltip-img-container">
-            <div id="tooltip-bg" class="tooltip-img-bg"></div>
-            <img id="tooltip-icon" src="" class="tooltip-icon-main">
+            <video id="tooltip-video" class="tooltip-video" autoplay loop muted playsinline></video>
         </div>
         <div class="tooltip-content">
             <h4 id="tooltip-title" class="tooltip-title">NAME</h4>
@@ -2868,20 +2867,24 @@ body.trailer-open #page-content{
             tooltip: document.getElementById('skill-tooltip'),
             ttTitle: document.getElementById('tooltip-title'),
             ttDesc: document.getElementById('tooltip-desc'),
-            ttIcon: document.getElementById('tooltip-icon'),
-            ttBg: document.getElementById('tooltip-bg'),
+            ttVideo: document.getElementById('tooltip-video'),
             ttClassic: document.getElementById('tooltip-classic-tag')
         };
 
+        // video: mismos nombres que ya usa game/index.html (SKILL_DESCRIPTIONS) para
+        // los mismos 8 clips en video/, asi los dos sitios comparten fichero.
+        // Solo Clon.mp4 y Sprint.mp4 existen por ahora; el resto se ve en negro
+        // hasta que se graben (mismo criterio que game/index.html: la ruta se
+        // deja puesta de antemano, no hace falta esperar a tener los 8).
         const SKILL_DB = {
-            clone: { name: "CLON", img: "img/skills-pixel/clon.png", desc: "THE FARMER. Shoots a mass projectile. IMPORTANT: If it hits a VIRUS, it clones it and grants you a NEW SKILL card. Cooldown: 1s." },
-            shoot: { name: "SHOOT", img: "img/skills-pixel/shoot.png", desc: "OFFENSIVE. Fires mass projectiles to damage enemies or push viruses. Does not grant skills. Cost: 2500 Mass." },
-            sprint: { name: "SPRINT", img: "img/skills-pixel/sprint.png", desc: "MOBILITY. Boosts movement speed by 50% for 10 seconds. Great for chasing or escaping. Passive effect: Gold aura." },
-            tp: { name: "TELEPORT", img: "img/skills-pixel/tp.png", desc: "EVASION. Instantly teleports all your cells to a random safe location near your center. Use to dodge attacks. Cooldown: 20s." },
-            magnet: { name: "MAGNET", img: "img/skills-pixel/iman.png", desc: "UTILITY. Automatically pulls nearby food pellets towards your cells for 8 seconds. Radius: 200px." },
-            shield: { name: "SHIELD", img: "img/skills-pixel/inmune.png", desc: "DEFENSE. Grants total immunity to viruses and being eaten by larger players for 3 seconds. Visual: Purple forcefield." },
-            plus: { name: "PLUS", img: "img/skills-pixel/big.png", desc: "GROWTH. Instantly grants a large amount of mass (5k - 12k) distributed among your cells." },
-            gamble: { name: "GAMBLE", img: "img/skills-pixel/random.png", desc: "RISK. 50% chance to gain 15,000 Mass (JACKPOT). 50% chance to lose 5,000 Mass. Do you feel lucky?" }
+            clone: { name: "CLON", img: "img/skills-pixel/clon.png", video: "video/Clon.mp4", desc: "THE FARMER. Shoots a mass projectile. IMPORTANT: If it hits a VIRUS, it clones it and grants you a NEW SKILL card. Cooldown: 1s." },
+            shoot: { name: "SHOOT", img: "img/skills-pixel/shoot.png", video: "video/Shoot.mp4", desc: "OFFENSIVE. Fires mass projectiles to damage enemies or push viruses. Does not grant skills. Cost: 2500 Mass." },
+            sprint: { name: "SPRINT", img: "img/skills-pixel/sprint.png", video: "video/Sprint.mp4", desc: "MOBILITY. Boosts movement speed by 50% for 10 seconds. Great for chasing or escaping. Passive effect: Gold aura." },
+            tp: { name: "TELEPORT", img: "img/skills-pixel/tp.png", video: "video/Tp.mp4", desc: "EVASION. Instantly teleports all your cells to a random safe location near your center. Use to dodge attacks. Cooldown: 20s." },
+            magnet: { name: "MAGNET", img: "img/skills-pixel/iman.png", video: "video/Magnet.mp4", desc: "UTILITY. Automatically pulls nearby food pellets towards your cells for 8 seconds. Radius: 200px." },
+            shield: { name: "SHIELD", img: "img/skills-pixel/inmune.png", video: "video/Inmune.mp4", desc: "DEFENSE. Grants total immunity to viruses and being eaten by larger players for 3 seconds. Visual: Purple forcefield." },
+            plus: { name: "PLUS", img: "img/skills-pixel/big.png", video: "video/Plus.mp4", desc: "GROWTH. Instantly grants a large amount of mass (5k - 12k) distributed among your cells." },
+            gamble: { name: "GAMBLE", img: "img/skills-pixel/random.png", video: "video/Gamble.mp4", desc: "RISK. 50% chance to gain 15,000 Mass (JACKPOT). 50% chance to lose 5,000 Mass. Do you feel lucky?" }
         };
 
         const App = {
@@ -3454,8 +3457,19 @@ body.trailer-open #page-content{
 
                     DOM.ttTitle.innerText = data.name;
                     DOM.ttDesc.innerText = data.desc;
-                    DOM.ttIcon.src = data.img;
-                    DOM.ttBg.style.backgroundImage = `url('${data.img}')`;
+                    // Solo se toca el src si cambia de skill (evita reiniciar el
+                    // mismo clip en cada mouseenter). El play() NO va pegado al
+                    // cambio de src: Chrome aborta ese play() con "video-only
+                    // background media was paused to save power" porque el
+                    // navegador aun no ha empezado a cargar la fuente nueva, y el
+                    // video se queda congelado en negro hasta el siguiente hover.
+                    // Se espera a 'canplay' (fuente lista de verdad) antes de
+                    // pedir el play. Medido: sin esto fallaba SIEMPRE al cambiar
+                    // de skill; con esto, nunca.
+                    if (DOM.ttVideo.getAttribute('src') !== data.video) {
+                        DOM.ttVideo.src = data.video;
+                        DOM.ttVideo.addEventListener('canplay', () => DOM.ttVideo.play().catch(() => {}), { once: true });
+                    }
 
                     if (key === 'shoot') {
                         DOM.ttClassic.style.display = 'flex';
@@ -3465,8 +3479,8 @@ body.trailer-open #page-content{
 
                     const card = e.currentTarget;
                     const rect = card.getBoundingClientRect();
-                    const toolTipWidth = 250; 
-                    const toolTipHeight = 320; 
+                    const toolTipWidth = 320; 
+                    const toolTipHeight = 396; 
 
                     let leftPos = (rect.left + (rect.width / 2) - (toolTipWidth / 2));
                     if (leftPos < 10) leftPos = 10;
@@ -3481,6 +3495,7 @@ body.trailer-open #page-content{
                 },
                 hideSkill: () => {
                     DOM.tooltip.style.display = 'none';
+                    DOM.ttVideo.pause();
                 }
             },
 
