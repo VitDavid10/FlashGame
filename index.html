@@ -222,7 +222,7 @@
            justa (lo calcula ajustaNavbar). Es el PRIMER recurso, antes de
            quitarle nada a nadie: el rotulo cede ancho poco a poco hasta medir lo
            mismo que PLAY NOW, y solo entonces se retira. */
-        .brand-name { font-family: 'Russo One'; font-size: calc(var(--fs-6) * var(--marca-k, 1)); color: #fff; text-transform: uppercase; letter-spacing: 2px; }
+        .brand-name { font-family: 'Russo One'; font-size: calc(var(--fs-6) * var(--marca-k, 1)); color: #fff; text-transform: uppercase; letter-spacing: calc(2px * var(--marca-k, 1)); }
 
         .nav-links-container {
             display: flex; gap: clamp(12px, 2vw, 30px); margin-left: 20px; align-items: center;
@@ -1907,13 +1907,16 @@ body.trailer-open #page-content{
            misma regla, pero este bloque va despues en la hoja con la misma
            especificidad, le ganaba la cascada y la dejaba sin efecto. */
         @media (max-width: 600px) {
+            /* Las tres llevan --marca-k: son las que mandan por debajo de 600 y
+               sin el factor el rotulo dejaba de encoger justo donde mas falta
+               hace (ver ajustaNavbar). */
             body.pixel-pack .brand-name:not(.no-img) .bn-img {
-                height: auto; width: min(132px, calc(100vw - 235px));
+                height: auto; width: calc(min(132px, calc(100vw - 235px)) * var(--marca-k, 1));
             }
             /* El texto de reserva (si brand.png no carga) baja con el PNG: a
                --fs-4 en Press Start 2P "PILLWARS" no cabe en 360. */
-            body.pixel-pack .brand-name { font-size: var(--fs-2); }
-            .brand-name { font-size: var(--fs-3); }
+            body.pixel-pack .brand-name { font-size: calc(var(--fs-2) * var(--marca-k, 1)); }
+            .brand-name { font-size: calc(var(--fs-3) * var(--marca-k, 1)); }
         }
         body.pixel-pack .section-title { font-family: 'Press Start 2P', monospace; font-size: var(--fs-5); text-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
         body.pixel-pack .feature-text h3 { font-family: 'Press Start 2P', monospace; font-size: var(--fs-5); line-height: 1.3; }
@@ -2912,17 +2915,27 @@ body.trailer-open #page-content{
                        estaban colapsados. */
                     /* ===== NAVBAR: quien cede sitio, y en que orden =====
                        Se MIDE lo que piden los dos grupos de la barra contra el
-                       hueco que hay, y se va cediendo por pasos. El orden lo
-                       marco David y es de menos a mas doloroso:
-                         1. PILLWARS ENCOGE, poco a poco, hasta medir lo mismo
-                            que PLAY NOW. Nada desaparece todavia.
-                         2. PILLWARS se retira y PLAY NOW ocupa su hueco (es lo
-                            que pasa cuando $PILL ya toca a PLAY NOW).
+                       hueco que hay y se cede por pasos, cada uno solo si el
+                       anterior no basta. Mientras haya sitio no se mueve nada.
+
+                       ARRIBA DE LA PAGINA (sin PLAY NOW en la barra):
+                         1. PILLWARS encoge. NUNCA desaparece — es la marca y es
+                            lo unico que hay a la izquierda.
+                         2. Los cuatro enlaces se van a MENU.
+
+                       CON PLAY NOW (ya has bajado del hero):
+                         1. PILLWARS encoge hasta medir lo MISMO que PLAY NOW.
+                         2. PLAY NOW lo SUSTITUYE: se mete en el hueco del
+                            rotulo, pegado al logo. Como para entonces los dos
+                            miden igual, los enlaces no se mueven de sitio — ese
+                            era el salto raro de antes, que venia de esconder el
+                            rotulo y dejar PLAY NOW donde estaba.
                          3. Los cuatro enlaces se van a MENU (cuando $PILL
-                            alcanzaria a LEADERBOARD).
-                       $PILL y los iconos de redes NO se tocan en ningun paso.
-                       Cada paso solo entra si el anterior no ha bastado, asi que
-                       mientras haya sitio no se mueve nada de nada. */
+                            alcanza a LEADERBOARD, que con PLAY NOW ya colocado
+                            es lo que tiene mas cerca).
+                         4. Ultimo recurso: encoger boton e iconos.
+
+                       $PILL y los iconos de redes no se esconden nunca. */
                     const NAV_AIRE = 24;   // hueco minimo entre los dos grupos
                     const ajustaNavbar = () => {
                         const nb = document.querySelector('.navbar');
@@ -2930,13 +2943,28 @@ body.trailer-open #page-content{
                         const der = document.querySelector('.nav-dropdown-group');
                         if (!nb || !izq || !der) return;
                         const marca = document.querySelector('.brand-name');
+                        const marcaCaja = document.querySelector('.brand-container');
+                        const enlaces = document.querySelector('.nav-links-container');
                         const play = document.getElementById('nav-play-area');
+                        const menuDd = document.getElementById('nav-menu-dd');
                         const raiz = document.documentElement;
+                        const hayPlay = !!play && getComputedStyle(play).display !== 'none';
+                        // PLAY NOW al hueco del rotulo, o de vuelta a su sitio.
+                        // Se mueve en el DOM y no con CSS porque tiene que OCUPAR
+                        // el hueco, no solo taparlo: si no, la fila no encoge.
+                        const colocaPlay = (enLaMarca) => {
+                            if (!play) return;
+                            const destino = enLaMarca ? marcaCaja : enlaces;
+                            if (!destino || play.parentElement === destino) return;
+                            if (enLaMarca) marcaCaja.appendChild(play);
+                            else enlaces.insertBefore(play, menuDd);
+                        };
                         // Estado de fabrica antes de medir: cada pasada parte de
                         // cero y no arrastra lo que decidio la anterior.
                         document.body.classList.remove('nav-colapsada', 'nav-apretada');
                         raiz.style.removeProperty('--marca-k');
                         raiz.style.removeProperty('--nav-k');
+                        colocaPlay(false);
                         const cs = getComputedStyle(nb);
                         const hueco = nb.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - NAV_AIRE;
                         // scrollWidth y no el ancho pintado: los dos grupos son
@@ -2946,23 +2974,41 @@ body.trailer-open #page-content{
                         const pide = () => izq.scrollWidth + der.scrollWidth;
                         if (pide() <= hueco) return;
 
-                        // PASO 1: encoger el rotulo.
+                        // PASO 1: encoger el rotulo. Con PLAY NOW a la vista el
+                        // suelo es SU ancho (para que la sustitucion no mueva
+                        // nada); sin el, puede bajar mas, porque no se va a ir.
                         if (marca && getComputedStyle(marca).display !== 'none') {
-                            const ancho = marca.getBoundingClientRect().width;
-                            // Suelo = lo que mide PLAY NOW (o un 70% si no esta a
-                            // la vista): mas pequeño que eso no baja.
-                            const suelo = (play && play.offsetWidth) ? play.offsetWidth : ancho * 0.7;
-                            const recorte = Math.min(pide() - hueco, Math.max(0, ancho - suelo));
-                            if (recorte > 0 && ancho > 0) {
-                                raiz.style.setProperty('--marca-k', String(Math.max(0.1, Math.round((1 - recorte / ancho) * 1000) / 1000)));
+                            const anchoMarca = marca.getBoundingClientRect().width;
+                            // Sin PLAY NOW el rotulo NO se va a retirar (es lo unico
+                            // que hay a la izquierda), asi que se le deja encoger
+                            // bastante mas: es el unico que puede ceder ancho.
+                            const suelo = hayPlay ? play.getBoundingClientRect().width : anchoMarca * 0.35;
+                            // Tope duro por proporcion: si el ancho medido deja de
+                            // bajar (el rotulo en pixel-pack es una imagen y tiene
+                            // su propio minimo), el bucle seguiria multiplicando k
+                            // hasta dejarlo ilegible.
+                            const kMin = anchoMarca > 0 ? Math.max(0.35, suelo / anchoMarca) : 1;
+                            let k = 1;
+                            for (let i = 0; i < 8 && pide() > hueco; i++) {
+                                const w = marca.getBoundingClientRect().width;
+                                if (w <= suelo + 0.5 || k <= kMin + 0.001) break;
+                                const objetivo = Math.max(suelo, w - (pide() - hueco));
+                                k = Math.max(kMin, k * (objetivo / w));
+                                raiz.style.setProperty('--marca-k', String(Math.round(k * 1000) / 1000));
                             }
                             if (pide() <= hueco) return;
                         }
 
-                        // PASO 2: fuera el rotulo, PLAY NOW ocupa su sitio.
-                        raiz.style.removeProperty('--marca-k');
-                        document.body.classList.add('nav-apretada');
-                        if (pide() <= hueco) return;
+                        // PASO 2: SOLO con PLAY NOW a la vista. El rotulo se
+                        // retira y PLAY NOW se mete en su hueco. Sin PLAY NOW
+                        // este paso no existe: la marca se queda encogida y se
+                        // pasa directo a MENU.
+                        if (hayPlay) {
+                            raiz.style.removeProperty('--marca-k');
+                            document.body.classList.add('nav-apretada');
+                            colocaPlay(true);
+                            if (pide() <= hueco) return;
+                        }
 
                         // PASO 3: los cuatro enlaces, a MENU.
                         document.body.classList.add('nav-colapsada');
@@ -2973,7 +3019,7 @@ body.trailer-open #page-content{
                         // PLAY NOW y los iconos— hasta que entre. Nada
                         // desaparece: $PILL y las redes siguen ahi, solo mas
                         // pequeñas. Tope en 0,6 para que sigan siendo pulsables.
-                        const encogibles = [play, ...document.querySelectorAll('.icon-btn')].filter(Boolean);
+                        const encogibles = [hayPlay ? play : null, ...document.querySelectorAll('.icon-btn')].filter(Boolean);
                         const anchoEncogible = encogibles.reduce((t, e) => t + e.getBoundingClientRect().width, 0);
                         if (anchoEncogible > 0) {
                             const k = Math.max(0.6, 1 - (pide() - hueco) / anchoEncogible);
