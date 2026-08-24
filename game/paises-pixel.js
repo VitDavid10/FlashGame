@@ -826,7 +826,11 @@ const PM_RADIO_HUECO = 4 * PM_SUB;
 // cartel llevaba todavia el reparto viejo —contorno claro 0.42 y cuerpo casi
 // negro 0.12—, asi que al ampliar una skin aparecia el marco de antes.
 const PM_TONOS = { rim: 0.16, lit: 0.75, mid: 0.45, dim: 0.24, inner: 0.36, body: 0.30 };
+// PM_SCREEN se reasigna en vivo desde PM_SCREEN_BASE (ver aplicaScreenBright
+// en game/index.html — este fichero tambien lo carga la landing sola, donde
+// esa funcion no existe y PM_SCREEN se queda tal cual).
 const PM_SCREEN = [9, 20, 15];
+const PM_SCREEN_BASE = [9, 20, 15];
 const PM_LX = -0.6, PM_LY = -0.75;
 // screen = color RGB del hueco interior, opcional. Sin el, PM_SCREEN de
 // siempre (el del cartel de detalle de skin). El cartel general "HOW TO

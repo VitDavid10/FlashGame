@@ -1795,14 +1795,10 @@
             min-width: 0; min-height: 0; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07);
             cursor: grab; user-select: none; padding: 5px 2px 2px 2px; box-sizing: border-box; transition: 0.12s; }
         /* Mismo efecto que .gc-skill (la rejilla de skills del cartel de
-           instrucciones): fondo solido oscuro + borde del color del modo +
-           resplandor a juego, en vez del tinte blanco casi invisible de
-           antes. currentColor en border-color ya se tiñe solo con el color
-           que fija cada regla de mas abajo (arcade/classic); el resplandor,
-           al llevar alpha, hace falta declararlo aparte en cada una. */
-        .sb-cell:hover { background: #1a1a1a; border-color: currentColor; transform: translateY(-1px); }
-        #skinBigModal.arcade .sb-cell:hover { color: #ccff00; box-shadow: 0 0 18px rgba(204,255,0,.4); }
-        #skinBigModal.classic .sb-cell:hover { color: #00ffaa; box-shadow: 0 0 18px rgba(0,255,170,.4); }
+           instrucciones): fondo solido oscuro + borde dorado + resplandor,
+           en vez del tinte blanco casi invisible de antes. David pidio
+           explicitamente calcar ese hover aqui. */
+        .sb-cell:hover { background: #1a1a1a; border-color: #ffcc00; box-shadow: 0 0 18px rgba(255,204,0,.4); transform: translateY(-1px); }
         .sb-cell.drag { opacity: 0.35; }
         .sb-cell.over { border-color: #ffce3d; background: rgba(255,206,61,.1); }
         .sb-cell.fija, .sb-cell.vacia { cursor: default; }
@@ -1867,8 +1863,8 @@
                      background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07); cursor: pointer;
                      transition: 0.12s; min-height: 0; overflow: hidden; }
         /* Mismo efecto que .gc-skill / .sb-cell (ver su comentario): fondo
-           solido oscuro + borde y resplandor del color del modo. */
-        .skin-cell:hover { background: #1a1a1a; border-color: currentColor; transform: translateY(-1px); }
+           solido oscuro + borde y resplandor dorado. */
+        .skin-cell:hover { background: #1a1a1a; border-color: #ffcc00; box-shadow: 0 0 18px rgba(255,204,0,.4); transform: translateY(-1px); }
         .skin-cell canvas { image-rendering: pixelated; display: block; flex: none; }
         /* line-height fijo y no "normal": con el automatico de Press Start 2P la
            caja de linea quedaba justa y la fila de abajo (OWNED / ON / 25K) se
@@ -1885,8 +1881,6 @@
         .mine-eq { position: absolute; top: 4px; right: 4px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #00ff88;
                    font-weight: bold; }
         .skin-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 4px; flex-shrink: 0; }
-        #missionsPanel.classic .skin-cell:hover { color: #00ffaa; box-shadow: 0 0 18px rgba(0,255,170,.4); }
-        #missionsPanel.arcade .skin-cell:hover { color: #ccff00; box-shadow: 0 0 18px rgba(204,255,0,.4); }
 
         /* ===== Pie del cartel =====
            Una sola fila para las cuatro pestañas: pagina | puntos | flecha. Los
@@ -2260,22 +2254,28 @@
         .login-left .btn-play:hover:not(:disabled), .login-left .btn-settings:hover { filter: brightness(1.15); color: #fff; }
         .login-left .btn-play:disabled { filter: grayscale(0.6) brightness(0.75); }
         /* Rueda "como jugar": color segun el modo, igual que menu-side-head
-           (ROOM PRICES/MISSIONS). position:absolute a proposito — ver el
-           comentario junto al boton en el HTML. */
+           (ROOM PRICES/MISSIONS). En flujo normal (no absolute): asi tiene
+           una posicion de fabrica razonable y EDIT LAYOUT la mueve desde ahi
+           con translate/scale, igual que #btnPlay (clave "wheel" en
+           LAYOUT_ELS). body.pixel-pack .login-box button fuerza esquinas
+           rectas y su propio box-shadow a TODOS los botones de la columna
+           (border-radius:0 !important) — de ahi salia cuadrada; se le gana
+           aqui con selector igual de especifico. */
         .htp-wheel {
-            position: absolute; top: 0; left: 0; width: 32px; height: 32px; border-radius: 50%;
-            border: 2px solid #ccff00; background: rgba(0,0,0,.55); color: #ccff00;
             display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+            width: 32px; height: 32px; margin: 8px auto 0;
+            border: 2px solid #ccff00; background: rgba(0,0,0,.55); color: #ccff00;
             box-shadow: 0 0 12px rgba(204,255,0,.4); transition: transform .2s ease, border-color .2s, color .2s, box-shadow .2s;
             z-index: 3;
         }
-        .htp-wheel:hover { transform: rotate(35deg); }
-        #loginOverlay.bg-classic .htp-wheel { border-color: #00ffaa; color: #00ffaa; box-shadow: 0 0 12px rgba(0,255,170,.4); }
-        /* Movil (mismo gate que .login-left mas abajo): sin JS, en el flujo
-           normal debajo de PLAY. */
-        html:not([data-hero]) body.mobile-allowed #loginOverlay .htp-wheel {
-            position: relative !important; left: auto !important; top: auto !important; margin: 8px auto 0;
+        body.pixel-pack .login-box .htp-wheel {
+            border-radius: 50% !important; clip-path: none !important;
+            box-shadow: 0 0 12px rgba(204,255,0,.4) !important;
         }
+        .htp-wheel:hover { transform: rotate(35deg); }
+        body.pixel-pack .login-box .htp-wheel:active { transform: rotate(35deg) !important; }
+        #loginOverlay.bg-classic .htp-wheel { border-color: #00ffaa; color: #00ffaa; }
+        body.pixel-pack #loginOverlay.bg-classic .login-box .htp-wheel { box-shadow: 0 0 12px rgba(0,255,170,.4) !important; }
 
         /* ===== CARTEL GENERAL "HOW TO PLAY" ===== */
         .gc-overlay-page {
@@ -2298,7 +2298,7 @@
             font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--acc); letter-spacing: 1px;
             display: flex; align-items: center; text-transform: uppercase;
         }
-        .gc-body { min-height: 400px; padding-top: 4px; display: flex; flex-direction: column; }
+        .gc-body { min-height: 400px; padding-top: 24px; display: flex; flex-direction: column; }
         .gc-h3 { font-family: 'Press Start 2P', monospace; font-size: 15px; color: #fff; margin: 0 0 10px; letter-spacing: .5px; }
         .gc-desc { font-family: 'VT323', monospace; font-size: 16px; line-height: 1.35; color: #ccc; margin: 0 0 16px; }
         .gc-desc b { color: var(--acc); }
@@ -3509,6 +3509,14 @@
             <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBarTxt', -1)">−</button>
             <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBarTxt', 1)">+</button>
         </span>
+        <!-- Verde de fondo de TODOS los carteles (ROOM PRICES, MISSIONS,
+             tienda ampliada, cartel general, detalle de skin): solo mas
+             oscuro/mas claro, para hacer pruebas — ver aplicaScreenBright. -->
+        <span class="leb-group">
+            <span class="leb-label">SCREEN</span>
+            <button class="leb-btn leb-sm" onclick="bumpScreenBright(-8)">−</button>
+            <button class="leb-btn leb-sm" onclick="bumpScreenBright(8)">+</button>
+        </span>
         <!-- Un solo control para los CUATRO botones de wallet: comparten la
              clave walletBtnTxt, asi que nunca se descuadran entre ellos. Toca
              SOLO la letra; la caja del boton no se mueve. -->
@@ -3761,12 +3769,12 @@
                 <div id="skinInputContainer" style="display:none;"></div>
 
                 <button class="btn-play" id="btnPlay" onclick="openPlayChoice()">PLAY</button>
-                <!-- "Como jugar": al lado de PLAY, color segun el modo (ver
-                     #loginOverlay.bg-arcade/.bg-classic mas abajo). Se coloca
-                     por JS contra el rect real de #btnPlay (posicionaRuedaJuego),
-                     no con flujo normal: #btnPlay es blanco de EDIT LAYOUT (clave
-                     "play" en LAYOUT_ELS) y puede llevar su propio translate/scale
-                     guardado, que solo es pintura y no cuenta para el layout. -->
+                <!-- "Como jugar": color segun el modo (ver
+                     #loginOverlay.bg-arcade/.bg-classic mas abajo). Posicion/
+                     tamaño editables en EDIT LAYOUT como cualquier otra pieza
+                     (clave "wheel" en LAYOUT_ELS) — de fabrica sale en flujo
+                     normal debajo de PLAY, y desde ahi se arrastra a donde
+                     haga falta. -->
                 <button class="htp-wheel" id="howToPlayWheel" type="button" title="How to play" aria-label="How to play">
                     <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.14.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.14 7.14 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.49.38 1.04.7 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54a7.3 7.3 0 0 0 1.63-.94l2.39.96c.24.1.46 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
                 </button>
@@ -4739,6 +4747,10 @@
     // Sin selector de modo propio: pinta el modo YA seleccionado
     // (currentGameMode) al abrir.
     (function () {
+        // Iconos SIN fondo (el set de la landing, ../img/skills-pixel/*.png):
+        // los de SKILL_DESCRIPTIONS[i].icon (../img/*.png) son los viejos, con
+        // un cuadro negro horneado en el PNG — no sirven para esta rejilla.
+        const GC_ICON_FILES = { 1: 'clon', 2: 'shoot', 3: 'sprint', 4: 'tp', 5: 'iman', 6: 'inmune', 7: 'big', 8: 'random' };
         let gcPage = 0;
         const gcOverlay = document.getElementById('gcOverlay'), gcCard = document.getElementById('gcCard');
         const gcFrameCv = document.getElementById('gcFrameCv'), gcInner = document.getElementById('gcInner');
@@ -4783,7 +4795,7 @@
                 const data = SKILL_DESCRIPTIONS[i];
                 const el = document.createElement('div');
                 el.className = 'gc-skill';
-                el.innerHTML = '<img src="' + data.icon + '"><div class="nm">' + data.name + '</div>';
+                el.innerHTML = '<img src="../img/skills-pixel/' + GC_ICON_FILES[i] + '.png"><div class="nm">' + data.name + '</div>';
                 el.addEventListener('click', () => gcOpenFloat(i));
                 grid.appendChild(el);
             }
@@ -7774,7 +7786,7 @@
                 alineaCartelesInfo();
                 // La wallet entra AQUI, con el menu ya montado (ver arriba).
                 if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
-                ajustaMenuResponsive(); posicionaRuedaJuego();   // el menu ya esta visible: ya se puede medir y escalar
+                ajustaMenuResponsive();   // el menu ya esta visible: ya se puede medir y escalar
                 els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
             };
             if (instant) ir(); else setTimeout(ir, 1200);
@@ -8412,7 +8424,11 @@
         // Verde del interior, muestreado del cartel de siempre
         // (quest-panel-v2.png): el video queda recortado a los cohetes, asi que
         // la pantalla la pinta la placa con este mismo color.
+        // SCREEN se reasigna en vivo desde SCREEN_BASE + menuLayout.screenBright
+        // (ver aplicaScreenBright): SCREEN_BASE es el original de fabrica, sin
+        // tocar, para poder recalcular sin que los ajustes se acumulen.
         SCREEN: [14, 42, 27],
+        SCREEN_BASE: [14, 42, 27],
         // Luz que sale del TITULO: el rotulo grande ilumina el borde del cartel
         // que le queda de cara (el de arriba y el del lado por el que cae) y
         // deja en sombra el opuesto. Es la misma idea que el tinte por modo que
@@ -8977,36 +8993,6 @@
         }
         return isFinite(x0) ? { x0, y0, w: x1 - x0, h: y1 - y0 } : null;
     }
-    // Rueda "como jugar": mismo problema que cualquier pieza de LAYOUT_ELS
-    // (aqui, la clave "play"), que lleva su propio translate/scale guardado
-    // — solo pinta, no cuenta para el layout normal. Se coloca por JS contra
-    // el rect REAL de #btnPlay: se prueba, se mide cuanto se movio DE VERDAD
-    // y se corrige con la proporcion exacta (misma tecnica que la landing
-    // usa para calibrar sobre el zoom compuesto del hero).
-    function posicionaRuedaJuego() {
-        const wheel = document.getElementById('howToPlayWheel');
-        const play = document.getElementById('btnPlay');
-        const cont = play && play.closest('.login-left');
-        if (!wheel || !play || !cont) return;
-        if (document.body.classList.contains('mobile-allowed') && window.matchMedia('(pointer: coarse)').matches) {
-            wheel.style.removeProperty('left'); wheel.style.removeProperty('top');
-            return;
-        }
-        const GAP = 10;
-        const contRect = cont.getBoundingClientRect();
-        const playRect = play.getBoundingClientRect();
-        const wheelH = wheel.getBoundingClientRect().height;
-        const objetivoLeft = playRect.right + GAP - contRect.left;
-        const objetivoTop = playRect.top + playRect.height / 2 - wheelH / 2 - contRect.top;
-        wheel.style.left = objetivoLeft + 'px';
-        wheel.style.top = objetivoTop + 'px';
-        const realLeft = wheel.getBoundingClientRect().left - contRect.left;
-        if (Math.abs(objetivoLeft) > 0.5 && Math.abs(realLeft - objetivoLeft) > 0.5) {
-            const factor = realLeft / objetivoLeft;
-            wheel.style.left = (objetivoLeft / factor) + 'px';
-            wheel.style.top = (objetivoTop / factor) + 'px';
-        }
-    }
     function ajustaMenuResponsive() {
         const row = document.querySelector('#loginOverlay .menu-row');
         if (!row || !els.loginOverlay || els.loginOverlay.style.display === 'none') return;
@@ -9131,7 +9117,7 @@
         else row.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
         centrarTitulo();
     }
-    addEventListener('resize', () => { ajustaMenuResponsive(); posicionaRuedaJuego(); });
+    addEventListener('resize', ajustaMenuResponsive);
     addEventListener('resize', centrarTitulo);
     // Red de seguridad: al volver al menu desde una partida el titulo ya existe
     // y nadie vuelve a llamar a selectMode, asi que se recentra cuando el h1
@@ -9235,7 +9221,7 @@
         // margenes) se agarra el recuadro.
         walletBarTxt: '#gwBalInner', walletBtnTxt: '#gameWalletArea .gw-btn-txt',
         walletBar: '#gwBalBox', walletBtn: '#gwConnect, #gwDepositWrap',
-        name: '#playerNameInput', play: '#btnPlay', settings: '#btnSettings',
+        name: '#playerNameInput', play: '#btnPlay', wheel: '#howToPlayWheel', settings: '#btnSettings',
         // ===== PANEL DE SKINS =====
         // El bloque de las 8 pildoras se mueve y escala ENTERO, no celda a
         // celda: agarrar una celda suelta descuadraba la rejilla. Clave
@@ -9496,6 +9482,42 @@
         alineaCartelesInfo();
         requestAnimationFrame(alineaCartelesInfo);
         invalidateLoginUIRects();   // la UI se movió → renovar las zonas prohibidas de los virus
+        aplicaScreenBright();   // no-op si no cambio desde la ultima vez (ver su comentario)
+    }
+    // Verde de fondo de TODOS los carteles (ROOM PRICES, MISSIONS, tienda
+    // ampliada, cartel general, detalle de skin): un solo mando de prueba,
+    // no rango completo de color, solo mas oscuro/mas claro (menuLayout.
+    // screenBright, -60..60), guardado local como cualquier otra clave de
+    // EDIT LAYOUT. _lastScreenBright evita repintar los canvas en cada
+    // applyMenuLayout (arrastrar dispara muchos) cuando no cambio nada.
+    let _lastScreenBright = null;
+    function aplicaScreenBright() {
+        const b = Math.max(-60, Math.min(60, menuLayout.screenBright || 0));
+        if (b === _lastScreenBright) return;
+        _lastScreenBright = b;
+        const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+        PLACA.SCREEN = PLACA.SCREEN_BASE.map(v => clamp(v + b));
+        if (typeof PM_SCREEN !== 'undefined' && typeof PM_SCREEN_BASE !== 'undefined') {
+            PM_SCREEN[0] = clamp(PM_SCREEN_BASE[0] + b);
+            PM_SCREEN[1] = clamp(PM_SCREEN_BASE[1] + b);
+            PM_SCREEN[2] = clamp(PM_SCREEN_BASE[2] + b);
+        }
+        // El color no entra en la clave de cache de drawPlacaCaja/drawPlacaPopup
+        // (solo tamaño/hex/grosor/luz) — sin invalidar a mano se quedarian con
+        // el verde viejo hasta el siguiente cambio de tamaño real.
+        for (const id of ['oraclePlaca', 'missionsPlaca', 'sbPlaca']) { const c = document.getElementById(id); if (c) c._placaKey = ''; }
+        if (typeof paintPlacas === 'function') paintPlacas();
+        const sb = document.getElementById('skinBigModal');
+        if (sb && sb.classList.contains('open') && typeof drawPlacaPopup === 'function') drawPlacaPopup();
+        if (typeof _pmRedibujaMarco === 'function') _pmRedibujaMarco();
+        // El cartel general redibuja su marco solo en resize (gcDrawFrame vive
+        // cerrado dentro de su propia IIFE, sin nombre global que llamar aqui).
+        window.dispatchEvent(new Event('resize'));
+    }
+    function bumpScreenBright(delta) {
+        menuLayout.screenBright = Math.max(-60, Math.min(60, (menuLayout.screenBright || 0) + delta));
+        saveMenuLayout();
+        aplicaScreenBright();
     }
     // Deja los DOS carteles de info (precios de sala y quests/skins) clavados a
     // la misma altura. Ya comparten escala (ver el caso 'quests' de arriba), asi
@@ -9732,7 +9754,7 @@
                 // rotulo iba mas despacio que el raton con la ventana pequeña.
                 const k = (typeof menuEscala === 'number' && menuEscala > 0) ? menuEscala : 1;
                 tituloTune({ y: Math.round(layoutDrag.baseY + (e.clientY - layoutDrag.startY) / k) }, true);
-                ajustaMenuResponsive(); posicionaRuedaJuego();
+                ajustaMenuResponsive();
                 return;
             }
             const cur = menuLayout[layoutDrag.key] = menuLayout[layoutDrag.key] || { x: 0, y: 0, s: 1 };
@@ -10291,7 +10313,7 @@
     function returnToMenu() { hideGameHUD(); cerrarUIColores(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
         // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
         // la medida de cuando se entro al modo (ver el comentario de arriba).
-        centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive(); posicionaRuedaJuego();
+        centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
         gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
@@ -13987,7 +14009,7 @@
             // (startGame ya lo escondio) y no hace falta tocar nada aqui:
             // returnToMenu se encarga cuando vuelva a enseñarse.
             if (getComputedStyle(els.loginOverlay).display !== 'none') {
-                centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive(); posicionaRuedaJuego();
+                centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
             }
         };
         if (qs.get('hero') === '1') {
