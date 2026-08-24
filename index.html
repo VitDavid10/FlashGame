@@ -4819,64 +4819,32 @@ function toggleTrailerMode() {
             const play = document.getElementById('heroPlayNow');
             const caSign = document.getElementById('heroCaSign');
             if (!play || !caSign) return;
-            const caTopAntes = caSign.getBoundingClientRect().top;
-            const hueco = caTopAntes - play.getBoundingClientRect().bottom;
-            if (hueco < HERO_GAP_MIN) {
-                const faltan = HERO_GAP_MIN - hueco;
-                // El empujon va DENTRO de .hero-main-content (su propio scale) Y
-                // de #page-content (zoom:.9 en pantallas grandes, ver mas abajo
-                // en la hoja) — un translateY de X px ahi NO se ve en pantalla
-                // como X px. En vez de calcular a mano los dos factores y como
-                // se combinan, se CALIBRA: se prueba con X=faltan, se mide
-                // cuanto bajo DE VERDAD, y se corrige con la proporcion exacta.
-                // Funciona pase lo que haya por debajo, sin enumerar cada capa.
-                raiz.style.setProperty('--hero-ca-nudge', faltan + 'px');
-                const bajoDeVerdad = caSign.getBoundingClientRect().top - caTopAntes;
-                if (bajoDeVerdad > 0.5 && Math.abs(bajoDeVerdad - faltan) > 0.5) {
-                    raiz.style.setProperty('--hero-ca-nudge', (faltan * faltan / bajoDeVerdad) + 'px');
-                }
-            }
-            posicionaLinksHero();
-        }
-        // MODES/SKINS no se abre pegado a PLAY NOW: ahi queda a medio camino,
-        // entre el boton y el contrato, y a poca altura se pisan (visto en
-        // pillwars.fun). Va SIEMPRE debajo de TODO el hero — la misma
-        // posicion final que ya tiene en movil (position:static, despues del
-        // contrato en el flujo) — y no se mueve de ahi en ningun punto
-        // intermedio de la ventana: solo aparece en su sitio de siempre
-        // "oculto debajo de PLAY al pasar el raton" y, si se saca, es para
-        // este otro sitio, no para uno a medias.
-        const HERO_LINKS_GAP = 14;
-        function posicionaLinksHero() {
+            // MODES/SKINS (el desplegable de PLAY NOW) cuenta tambien SI esta
+            // abierto: en desktop es position:absolute debajo del boton y a poca
+            // altura se salia por debajo tapando el contrato igual que el boton.
+            // Oculto no ocupa hueco (pointer-events:none + opacity:0), asi que no
+            // empuja nada mientras no se ve.
+            // El :hover activa al instante pero opacity va con transition
+            // (0.18s): leerla aqui mismo, recien entrado el raton, todavia
+            // devolveria el valor de ANTES de abrirse. matches(':hover') no
+            // anima, es verdad o mentira ya.
             const grupo = document.querySelector('.hero-play-group');
             const links = document.querySelector('.hero-play-links');
-            const caWrap = document.getElementById('heroCaWrap');
-            if (!grupo || !links || !caWrap) return;
-            if (window.innerWidth <= HERO_ANCHO_ESTRECHO) {
-                // Movil ya lo pone ahi mismo con su propio CSS (position:static,
-                // en el flujo, detras del contrato): no hace falta tocar nada.
-                links.style.removeProperty('top');
-                return;
-            }
-            const grupoTop = grupo.getBoundingClientRect().top;
-            const objetivo = caWrap.getBoundingClientRect().bottom + HERO_LINKS_GAP;
-            const deseadoLocal = objetivo - grupoTop;
-            links.style.top = deseadoLocal + 'px';
-            // .hero-play-group vive dentro de #page-content, que en pantallas
-            // grandes lleva zoom:.9 (ver mas abajo en la hoja) — un top en px
-            // ahi no se traduce 1:1 a pixeles de pantalla. Se calibra: se
-            // prueba, se mide cuanto bajo DE VERDAD, se corrige con la
-            // proporcion exacta.
-            if (Math.abs(deseadoLocal) > 0.5) {
-                const factor = (links.getBoundingClientRect().top - grupoTop) / deseadoLocal;
-                if (Math.abs(factor) > 0.01 && Math.abs(factor - 1) > 0.01) links.style.top = (deseadoLocal / factor) + 'px';
+            const linksAbiertos = grupo && links && (grupo.matches(':hover') || grupo.classList.contains('open'));
+            const tope = Math.max(play.getBoundingClientRect().bottom, linksAbiertos ? links.getBoundingClientRect().bottom : 0);
+            const hueco = caSign.getBoundingClientRect().top - tope;
+            if (hueco < HERO_GAP_MIN) {
+                // El empujon va DENTRO de .hero-main-content, que lleva su propio
+                // scale (heroZoom): un translateY de X px ahi se ve en pantalla
+                // como X*escala, no como X. Sin dividir por la escala el hueco
+                // real se quedaba corto (medido: pedir 50px de empujon con
+                // escala 0.8 solo abria 40px de hueco de verdad).
+                raiz.style.setProperty('--hero-ca-nudge', ((HERO_GAP_MIN - hueco) / escala) + 'px');
             }
         }
         ajustaHeroResponsive();
-        // Recalcular tambien al abrir/cerrar MODES/SKINS: solo un resize no
-        // basta, el desplegable puede abrirse sin que la ventana cambie de
-        // tamaño. mouseenter y no mouseover: :hover ya esta activo al entrar,
-        // sin esperar a que la transicion de opacity termine.
+        // Recalcular tambien al abrir MODES/SKINS: solo un resize no basta, el
+        // desplegable puede abrirse sin que la ventana cambie de tamaño.
         const heroPlayGroup = document.querySelector('.hero-play-group');
         if (heroPlayGroup) {
             heroPlayGroup.addEventListener('mouseenter', ajustaHeroResponsive);
