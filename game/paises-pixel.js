@@ -814,7 +814,11 @@ function _paisModalCSS() {
 // de medidas van multiplicadas por el, asi que el marco ocupa lo mismo en
 // pantalla y solo cambia el detalle.
 const PM_SUB = 2;
-const PM_SCALE = 4 / PM_SUB, PM_FRAME_T = 10 * PM_SUB, PM_FRAME_CUT = 5 * PM_SUB;
+// PM_FRAME_T bajado de 10 a 8 (por PM_SUB): David lo queria "un poquito" mas
+// fino, mas cerca del grosor de la tienda ampliada (drawPlacaPopup en
+// game/index.html) sin acoplarse a ella — este fichero tambien lo carga la
+// landing sola, donde ese sistema no existe.
+const PM_SCALE = 4 / PM_SUB, PM_FRAME_T = 8 * PM_SUB, PM_FRAME_CUT = 5 * PM_SUB;
 const PM_RADIO = 9 * PM_SUB;      // esquina redonda exterior
 const PM_RADIO_HUECO = 4 * PM_SUB;
 // Los MISMOS tonos que el marco del menu (PLACA.TONOS): contorno oscuro que
@@ -828,18 +832,22 @@ const PM_LX = -0.6, PM_LY = -0.75;
 // siempre (el del cartel de detalle de skin). El cartel general "HOW TO
 // PLAY" pide el mismo fondo que ROOM PRICES/MISSIONS (PLACA.SCREEN en
 // game/index.html) para ir a juego con esos dos, sin tocar el de aqui.
-function _pmFrameDraw(cv, wCss, hCss, hex, screen) {
+// frameT = grosor del marco en PX FINALES (ya en pantalla), opcional. Sin
+// el, PM_FRAME_T*PM_SCALE de siempre. El cartel general "HOW TO PLAY" lo usa
+// para calcar el grosor EXACTO de la tienda ampliada (placaGrosor() *
+// placaScaleFina() en game/index.html), que vive fuera de este fichero.
+function _pmFrameDraw(cv, wCss, hCss, hex, screen, frameT) {
     const scr = screen || PM_SCREEN;
+    const T = frameT ? Math.max(6, Math.round(frameT / PM_SCALE)) : PM_FRAME_T;
     const W = Math.max(24, Math.round(wCss / PM_SCALE)), H = Math.max(18, Math.round(hCss / PM_SCALE));
-    const key = W + '|' + H + '|' + hex + '|' + scr.join(',');
-    if (cv._pmKey === key) return PM_FRAME_T * PM_SCALE;
+    const key = W + '|' + H + '|' + hex + '|' + scr.join(',') + '|' + T;
+    if (cv._pmKey === key) return T * PM_SCALE;
     cv._pmKey = key;
     cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = false;
     const rgb = _rgb(hex);
     const sh = f => rgb.map(v => Math.round(v * f));
-    const T = PM_FRAME_T;
     // Esquina redonda de verdad (con PM_SUB hay pixeles para ella).
     const esquina = (dx, dy, radio) => {
         if (PM_SUB < 2) { const c = PM_FRAME_CUT; return dx >= c || dy >= c || dx + dy >= c; }
@@ -889,7 +897,7 @@ function _pmFrameDraw(cv, wCss, hCss, hex, screen) {
         px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
     }
     g.putImageData(img, 0, 0);
-    return PM_FRAME_T * PM_SCALE;
+    return T * PM_SCALE;
 }
 /* Placa MACIZA (sin hueco) para los botones del cartel: mismo dibujo que
  * placaPlateUrl() en game/index.html — reborde oscuro del propio color y

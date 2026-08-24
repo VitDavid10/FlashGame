@@ -524,24 +524,6 @@
            ocupa hueco, asi que no mueve a PLAY NOW de su sitio (que se coloca
            desde EDIT LAYOUT, en px medidos) ni empuja nada del hero. */
         .hero-play-group { position: relative; display: flex; flex-direction: column; align-items: center; }
-        /* Rueda de "como jugar", a la derecha de PLAY NOW. position:absolute
-           a proposito, igual que .hero-play-links: PLAY NOW lleva su propio
-           scale individual desde EDIT LAYOUT (bastante mayor que 1), que solo
-           es pintura — no infla la caja de .hero-play-group en el flex, asi
-           que colocar la rueda con flujo normal (al lado, sin mas) la dejaba
-           lejos del boton DE VERDAD. Se coloca por JS contra su rect real
-           (ver posicionaRuedaHero en el script del hero, mas abajo), con la
-           misma calibracion que usa el empujon del contrato para el zoom
-           compuesto de .hero-main-content + #page-content. Color arcade fijo
-           (lima): PLAY NOW arranca siempre en arcade (heroQuickPlay). */
-        .hero-wheel {
-            position: absolute; top: 0; left: 0; width: 38px; height: 38px; border-radius: 50%;
-            border: 3px solid #ccff00; background: rgba(0,0,0,.55); color: #ccff00;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-            box-shadow: 0 0 14px rgba(204,255,0,.45), 3px 3px 0 rgba(0,0,0,.5);
-            transition: transform .2s ease; z-index: 2;
-        }
-        .hero-wheel:hover { transform: rotate(35deg); }
         .hero-play-links {
             position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
             display: flex; flex-direction: row; gap: 26px; white-space: nowrap;
@@ -1102,90 +1084,6 @@ body.trailer-open #page-content{
         .mode-arcade-tag { color: #ccff00; }
         .mode-classic-tag { color: #00ffaa; }
 
-        /* ===== CARTEL GENERAL "HOW TO PLAY" =====
-           Diseñado y aprobado como mockup antes de tocar esta hoja (varias
-           rondas: tamaño, tipografia pixel, marco, color). Ver el resumen de
-           decisiones en cada regla. */
-        .gc-overlay-page {
-            display: none; position: fixed; inset: 0; z-index: 999998;
-            background: rgba(0,0,0,.75); align-items: center; justify-content: center; padding: 20px;
-        }
-        .gc-overlay-page.on { display: flex; }
-        .general-card { --acc: #ccff00; width: min(560px, 100%); position: relative; }
-        .general-card.classic { --acc: #00ffaa; }
-        /* El marco NO es CSS: es _pmFrameDraw (game/paises-pixel.js), el mismo
-           dibujo que usa #paisModal .pm-frame (el cartel de detalle de skin) —
-           mismo <canvas> a baja resolucion estirado con pixelated, coloreado
-           por --acc. Se pinta desde el script del hero, mas abajo. */
-        .gc-frame-cv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; image-rendering: pixelated; }
-        .gc-inner { position: relative; z-index: 1; box-sizing: border-box; }
-        .gc-content { padding: 22px 20px 18px; display: flex; flex-direction: column; gap: 16px; }
-        .gc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        /* Press Start 2P mide una caja de linea desproporcionada (42px para
-           texto de 14px, propio de la fuente) con el texto pegado arriba: sin
-           esto "HOW TO PLAY" salia mas alto que el boton CLOSE de al lado.
-           display:flex + altura fija fuerza el centrado de verdad. */
-        .gc-title {
-            font-family: 'Press Start 2P', monospace; font-size: 14px; color: var(--acc); letter-spacing: 1px;
-            display: flex; align-items: center; height: 28px; padding-top: 6px;
-        }
-        /* .sb-close calcado (game/index.html): mismo CLOSE que usan los demas
-           paneles del juego, en vez de un icono ✕ suelto. */
-        .gc-close {
-            background: transparent; border: 2px solid #2c3630; color: #7d8a82;
-            font-family: 'Russo One'; font-size: 12px; padding: 6px 14px;
-            cursor: pointer; letter-spacing: 1.5px; text-transform: uppercase; line-height: 1; flex-shrink: 0;
-        }
-        .gc-close:hover { border-color: #4a5a52; color: #fff; }
-        .gc-modeseg { display: flex; gap: 8px; }
-        .gc-modeseg button {
-            flex: 1; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px;
-            padding: 8px; border: 2px solid #2c3630; background: transparent; color: #7d8a82; cursor: pointer;
-        }
-        .gc-modeseg button.on { border-color: var(--acc); color: var(--acc); background: rgba(255,255,255,.04); }
-        /* padding-top fijo, no centrado automatico: centrar cada pagina por
-           separado (justify-content:center) dependia de cuanto contenido
-           tuviera, y mecanica (titulo+texto+video) y skills (titulo+rejilla)
-           no miden lo mismo — el titulo caia a alturas distintas segun la
-           pagina. Con el mismo padding-top arriba en las dos arranca SIEMPRE
-           en el mismo sitio. min-height de sobra para el video de 250px sin
-           que nada se recorte (medido: sin desbordar en las 8 combinaciones
-           pagina×modo). */
-        .gc-body { min-height: 400px; padding-top: 24px; display: flex; flex-direction: column; }
-        .gc-h3 { font-family: 'Press Start 2P', monospace; font-size: 15px; color: #fff; margin: 0 0 10px; letter-spacing: .5px; }
-        .gc-desc { font-family: 'VT323', monospace; font-size: 16px; line-height: 1.35; color: #ccc; margin: 0 0 16px; }
-        .gc-desc b { color: var(--acc); }
-        .gc-video-box {
-            width: 100%; height: 250px; background: #000; border: 1px solid #333; border-radius: 8px;
-            overflow: hidden; display: flex; align-items: center; justify-content: center;
-        }
-        .gc-video-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .gc-skills-title { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #7d8a82; letter-spacing: 1px; margin-bottom: 24px; text-align: center; }
-        .gc-skills-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
-        /* Mismo efecto que .sb-cell/.skin-cell (la rejilla de skins de la
-           tienda, ver su comentario): fondo solido oscuro + borde y
-           resplandor del color del modo. David pidio explicitamente calcar
-           este hover ahi porque le gusto aqui primero. */
-        .gc-skill {
-            background: rgba(10,10,10,.8); border: 2px solid #2c3630; aspect-ratio: 1; border-radius: 8px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: .15s;
-        }
-        .gc-skill:hover { border-color: var(--acc); background: #1a1a1a; box-shadow: 0 0 18px var(--acc-glow, rgba(204,255,0,.4)); }
-        .general-card.classic .gc-skill:hover { --acc-glow: rgba(0,255,170,.4); }
-        .gc-skill img { width: 44%; height: 44%; margin-bottom: 6px; image-rendering: pixelated; }
-        .gc-skill .nm { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #7d8a82; letter-spacing: .5px; }
-        .gc-skill:hover .nm { color: #fff; }
-        .gc-nav { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 6px; border-top: 1px solid #2c3630; }
-        .gc-arrow {
-            width: 34px; height: 34px; border: 2px solid var(--acc); background: transparent; color: var(--acc);
-            display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px; font-size: 16px; flex-shrink: 0;
-        }
-        .gc-arrow:hover { background: var(--acc); color: #000; }
-        .gc-arrow:disabled { opacity: .25; cursor: default; background: transparent; color: var(--acc); }
-        .gc-dots { display: flex; gap: 8px; }
-        .gc-dot { width: 9px; height: 9px; border-radius: 50%; background: #2c3630; cursor: pointer; transition: .15s; }
-        .gc-dot.on { background: var(--acc); box-shadow: 0 0 8px var(--acc); }
-
         .full-width-img {
             width: 100%; max-width: 1000px; border: 1px solid var(--primary); border-radius: 12px; 
             overflow: hidden; margin: 30px auto; background: #000;
@@ -1716,10 +1614,6 @@ body.trailer-open #page-content{
                escritorio y luego pegaba un salto al cruzar los 600px de
                verdad. Asi sale YA en su sitio final. */
             .hero-play-links { position: static; transform: none; opacity: 1; pointer-events: auto; }
-            /* En movil PLAY NOW ya lleva scale:1 (arriba en este mismo bloque),
-               sin el desajuste de escritorio, asi que la rueda no necesita JS:
-               se deja en el flujo normal, entre el boton y MODES/SKINS. */
-            .hero-wheel { position: static; margin: 10px 0; }
             /* La navbar NO se parte en dos filas ni aqui: ver el bloque
                "UNA SOLA FILA SIEMPRE" mas abajo. */
             .navbar { padding: 0 14px; }
@@ -2486,9 +2380,6 @@ body.trailer-open #page-content{
                 <div class="hero-game-btns">
                     <div class="hero-play-group">
                         <button class="hero-play btn-connect" id="heroPlayNow">PLAY NOW</button>
-                        <button class="hero-wheel" id="heroHowToPlay" title="How to play" aria-label="How to play">
-                            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.14.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.14 7.14 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.49.38 1.04.7 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54a7.3 7.3 0 0 0 1.63-.94l2.39.96c.24.1.46 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
-                        </button>
                         <div class="hero-play-links">
                             <button class="hero-sub-link" id="heroChooseModes">MODES</button>
                             <button class="hero-sub-link" id="heroChooseSkins">SKINS</button>
@@ -2873,42 +2764,6 @@ body.trailer-open #page-content{
             </div>
             <div id="tooltip-classic-tag" class="tooltip-mode mode-classic-tag" style="display:none;">
                 <span>●</span> DEFAULT MECHANIC IN CLASSIC MODE
-            </div>
-        </div>
-    </div>
-
-    <!-- Cartel general "HOW TO PLAY", el que abre la rueda de al lado de PLAY
-         NOW: 3 paginas con flechas + puntos, mismas mecanicas que los bloques
-         01/SPLIT, 02/VIRUS, 03/VIRAL de mas arriba (mismos textos y videos,
-         reutilizados, no repetidos a mano) mas un boton ARCADE/CLASSIC para
-         elegir de cual se habla. En ARCADE la 3a pagina no es VIRAL BALLISTICS
-         (ahi no se dispara como mecanica fija, es una skill mas) sino la
-         rejilla de las 8 skills, y es la que se abre por defecto — es la que
-         se pidio ver primero. Los iconos de esa rejilla llaman a las MISMAS
-         App.UI.showSkill/toggleSkillMobile que ya usa la fila de skills de
-         mas abajo: la tarjeta flotante que sale es la de siempre, no una
-         copia. Marco = _pmFrameDraw (game/paises-pixel.js), el mismo cartel
-         de detalle de skin, no CSS. -->
-    <div id="gcOverlay" class="gc-overlay-page">
-        <div class="general-card" id="gcCard">
-            <canvas class="gc-frame-cv" id="gcFrameCv"></canvas>
-            <div class="gc-inner" id="gcInner">
-                <div class="gc-content">
-                    <div class="gc-head">
-                        <div class="gc-title">HOW TO PLAY</div>
-                        <button class="gc-close" id="gcClose">CLOSE</button>
-                    </div>
-                    <div class="gc-modeseg" id="gcModeSeg">
-                        <button data-mode="arcade" class="on">ARCADE</button>
-                        <button data-mode="classic">CLASSIC</button>
-                    </div>
-                    <div class="gc-body" id="gcBody"></div>
-                    <div class="gc-nav">
-                        <button class="gc-arrow" id="gcPrev">&#10094;</button>
-                        <div class="gc-dots" id="gcDots"></div>
-                        <button class="gc-arrow" id="gcNext">&#10095;</button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -3301,7 +3156,7 @@ body.trailer-open #page-content{
                         
                         // CIERRA TOOLTIP AL TOCAR FUERA (SOLO MOVIL)
                         if (App.isTouch && App.UI.activeSkill) {
-                            if (!e.target.closest('.skill-card') && !e.target.closest('.skill-tooltip') && !e.target.closest('.gc-skill')) {
+                            if (!e.target.closest('.skill-card') && !e.target.closest('.skill-tooltip')) {
                                 App.UI.hideSkill();
                                 App.UI.activeSkill = null;
                                 // Remover clase activa de cards
@@ -5022,153 +4877,8 @@ function toggleTrailerMode() {
                 raiz.style.setProperty('--hero-ca-nudge', ((HERO_GAP_MIN - hueco) / escala) + 'px');
             }
         }
-        // Rueda de "como jugar": mismo problema de siempre con PLAY NOW (scale
-        // individual desde EDIT LAYOUT que solo pinta, no cuenta para el flex de
-        // .hero-play-group), asi que se coloca por JS contra el rect REAL del
-        // boton, no con flujo normal. Misma calibracion que --hero-ca-nudge: se
-        // prueba, se mide cuanto se movio DE VERDAD y se corrige con la
-        // proporcion exacta — funciona pase lo que haya de zoom compuesto por
-        // encima (.hero-main-content + #page-content), sin tener que calcular
-        // esos dos factores a mano.
-        function posicionaRuedaHero() {
-            const grupo = document.querySelector('.hero-play-group');
-            const wheel = document.getElementById('heroHowToPlay');
-            const play = document.getElementById('heroPlayNow');
-            if (!grupo || !wheel || !play) return;
-            if (window.innerWidth <= HERO_ANCHO_ESTRECHO) {
-                // Movil: fuera del flujo especial, se coloca por CSS (ver el
-                // @media mas abajo, junto a .hero-play-links).
-                wheel.style.removeProperty('left'); wheel.style.removeProperty('top');
-                return;
-            }
-            const GAP = 14;
-            const groupRect = grupo.getBoundingClientRect();
-            const playRect = play.getBoundingClientRect();
-            const wheelH = wheel.getBoundingClientRect().height;
-            const objetivoLeft = playRect.right + GAP - groupRect.left;
-            const objetivoTop = playRect.top + playRect.height / 2 - wheelH / 2 - groupRect.top;
-            wheel.style.left = objetivoLeft + 'px';
-            wheel.style.top = objetivoTop + 'px';
-            const realLeft = wheel.getBoundingClientRect().left - groupRect.left;
-            if (Math.abs(objetivoLeft) > 0.5 && Math.abs(realLeft - objetivoLeft) > 0.5) {
-                const factor = realLeft / objetivoLeft;
-                wheel.style.left = (objetivoLeft / factor) + 'px';
-                wheel.style.top = (objetivoTop / factor) + 'px';
-            }
-        }
-        function ajustaHeroYRueda() { ajustaHeroResponsive(); posicionaRuedaHero(); }
-        ajustaHeroYRueda();
-        // Recalcular tambien al abrir MODES/SKINS: solo un resize no basta, el
-        // desplegable puede abrirse sin que la ventana cambie de tamaño.
-        const heroPlayGroup = document.querySelector('.hero-play-group');
-        if (heroPlayGroup) {
-            heroPlayGroup.addEventListener('mouseenter', ajustaHeroYRueda);
-            heroPlayGroup.addEventListener('mouseleave', ajustaHeroYRueda);
-        }
-        window.addEventListener('resize', ajustaHeroYRueda);
-
-        // ===== CARTEL GENERAL "HOW TO PLAY" =====
-        // Mismo texto y mismo video que los bloques 01/SPLIT, 02/VIRUS,
-        // 03/VIRAL de mas arriba — no se repite a mano, se referencian los
-        // mismos videos (video/Split.mp4 etc.), que ya estan en el repo.
-        (function () {
-            const GC_PAGE1 = { title: 'THE SPLIT EXECUTION', vid: 'video/Split.mp4',
-                html: "In the arena, speed is a weapon. The <b>Split mechanic</b> allows you to divide your mass instantly, launching half of your body forward at high velocity. Use it as a <b>projectile</b> to surprise enemies or as an <b>escape tool</b>." };
-            const GC_PAGE2 = { title: 'TACTICAL VIRAL WARFARE', vid: 'video/Virus.mp4',
-                html: "Green Spikes are no longer your enemies. In PillWars, <b>Viruses</b> are growth catalysts. While they shred large players, they award <b>massive bonus mass</b> upon collision. It's the ultimate strategic trade-off." };
-            const GC_PAGE3_CLASSIC = { title: 'VIRAL BALLISTICS', vid: 'video/Viral.mp4',
-                html: "Weaponize your mass with <b>Precision Shooting (Key 1)</b>. By ejecting small pieces of yourself, you can feed allies or, more importantly, <b>trigger Viruses</b>. Pop giant enemies from a safe distance and scavenge their remains." };
-            // Mismos 8 iconos/claves que ya usa la fila SKILL ARSENAL de mas
-            // abajo (SKILL_DB los tiene completos, pero vive en otro <script>
-            // y no hace falta aqui: solo se necesita icono+clave+etiqueta
-            // corta para pintar la rejilla — el detalle lo saca del tooltip
-            // de siempre App.UI.showSkill/toggleSkillMobile, no de aqui).
-            const GC_SKILLS = [
-                ['shoot', 'SHOT', 'img/skills-pixel/shoot.png'], ['sprint', 'SPRINT', 'img/skills-pixel/sprint.png'],
-                ['tp', 'BLINK', 'img/skills-pixel/tp.png'], ['magnet', 'MAGNET', 'img/skills-pixel/iman.png'],
-                ['clone', 'CLONE', 'img/skills-pixel/clon.png'], ['shield', 'SHIELD', 'img/skills-pixel/inmune.png'],
-                ['plus', 'PLUS', 'img/skills-pixel/big.png'], ['gamble', 'GAMBLE', 'img/skills-pixel/random.png']
-            ];
-
-            let gcMode = 'arcade', gcPage = 0;
-            const gcOverlay = document.getElementById('gcOverlay'), gcCard = document.getElementById('gcCard');
-            const gcFrameCv = document.getElementById('gcFrameCv'), gcInner = document.getElementById('gcInner');
-            const gcBody = document.getElementById('gcBody'), gcDots = document.getElementById('gcDots');
-            const gcPrev = document.getElementById('gcPrev'), gcNext = document.getElementById('gcNext');
-            if (!gcOverlay || !gcCard) return;
-
-            function gcDrawFrame() {
-                if (typeof _pmFrameDraw !== 'function' || !gcCard.clientWidth) return;
-                const primero = !gcInner.style.padding;
-                const hex = gcMode === 'classic' ? '#00ffaa' : '#ccff00';
-                // [14,42,27] = PLACA.SCREEN (game/index.html), el fondo de
-                // ROOM PRICES/MISSIONS — no el [9,20,15] de siempre de este
-                // marco (el del cartel de detalle de skin): pedido asi para
-                // que el cartel general vaya a juego con los otros paneles.
-                const T = _pmFrameDraw(gcFrameCv, gcCard.clientWidth, gcCard.clientHeight, hex, [14, 42, 27]);
-                gcInner.style.padding = T + 'px';
-                if (primero) gcDrawFrame();
-            }
-            function gcMechPage(p) {
-                gcBody.innerHTML =
-                    '<div class="gc-h3">' + p.title + '</div>' +
-                    '<div class="gc-desc">' + p.html + '</div>' +
-                    '<div class="gc-video-box"><video autoplay loop muted playsinline src="' + p.vid + '"></video></div>';
-            }
-            function gcSkillsPage() {
-                gcBody.innerHTML = '<div class="gc-skills-title">SKILL ARSENAL — TAP A SKILL</div><div class="gc-skills-grid" id="gcSkGrid"></div>';
-                const grid = document.getElementById('gcSkGrid');
-                GC_SKILLS.forEach(([key, nm, img]) => {
-                    const el = document.createElement('div');
-                    el.className = 'gc-skill';
-                    el.innerHTML = '<img src="' + img + '"><div class="nm">' + nm + '</div>';
-                    // Mismos manejadores que la fila de skills de mas abajo: la
-                    // tarjeta flotante que sale al pasar el raton/tocar es la
-                    // de siempre (#skill-tooltip), no una copia.
-                    el.addEventListener('mouseenter', (e) => App.UI.showSkill(e, key));
-                    el.addEventListener('mouseleave', () => App.UI.hideSkill());
-                    el.addEventListener('click', (e) => App.UI.toggleSkillMobile(e, key));
-                    grid.appendChild(el);
-                });
-            }
-            function gcPages() { return gcMode === 'classic' ? [GC_PAGE1, GC_PAGE2, GC_PAGE3_CLASSIC] : [null, GC_PAGE1, GC_PAGE2]; }
-            function gcRender() {
-                App.UI.hideSkill();
-                const ps = gcPages();
-                gcCard.classList.toggle('classic', gcMode === 'classic');
-                if (ps[gcPage] === null) gcSkillsPage(); else gcMechPage(ps[gcPage]);
-                gcPrev.disabled = gcPage === 0; gcNext.disabled = gcPage === 2;
-                gcDots.innerHTML = '';
-                for (let i = 0; i < 3; i++) {
-                    const d = document.createElement('div'); d.className = 'gc-dot' + (i === gcPage ? ' on' : '');
-                    d.addEventListener('click', () => { gcPage = i; gcRender(); });
-                    gcDots.appendChild(d);
-                }
-                gcDrawFrame();
-            }
-            gcPrev.addEventListener('click', () => { if (gcPage > 0) { gcPage--; gcRender(); } });
-            gcNext.addEventListener('click', () => { if (gcPage < 2) { gcPage++; gcRender(); } });
-            document.getElementById('gcModeSeg').addEventListener('click', (e) => {
-                const b = e.target.closest('button'); if (!b) return;
-                gcMode = b.dataset.mode;
-                document.querySelectorAll('#gcModeSeg button').forEach(x => x.classList.toggle('on', x.dataset.mode === gcMode));
-                gcPage = 0;
-                gcRender();
-            });
-            function gcOpen() {
-                gcMode = 'arcade'; gcPage = 0;
-                document.querySelectorAll('#gcModeSeg button').forEach(x => x.classList.toggle('on', x.dataset.mode === 'arcade'));
-                gcInner.style.removeProperty('padding');   // fuerza el "primero" de gcDrawFrame otra vez
-                gcOverlay.classList.add('on');
-                gcRender();
-            }
-            function gcClose() { gcOverlay.classList.remove('on'); App.UI.hideSkill(); }
-            document.getElementById('heroHowToPlay').addEventListener('click', gcOpen);
-            document.getElementById('gcClose').addEventListener('click', gcClose);
-            gcOverlay.addEventListener('click', (e) => { if (e.target === gcOverlay) gcClose(); });
-            window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && gcOverlay.classList.contains('on')) gcClose(); });
-            addEventListener('resize', () => { if (gcOverlay.classList.contains('on')) { gcInner.style.removeProperty('padding'); gcDrawFrame(); } });
-        })();
+        ajustaHeroResponsive();
+        window.addEventListener('resize', ajustaHeroResponsive);
 
         // Pill del DOM ("PICK ME!"): mismo sprite y misma inclinacion de 45º con
         // la que se ven las pills en partida. El ancho lo comparte HeroPlay.startR()
