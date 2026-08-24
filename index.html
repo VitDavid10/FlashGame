@@ -2939,15 +2939,14 @@ body.trailer-open #page-content{
                             muy estrechas.
 
                        CON PLAY NOW (ya has bajado del hero):
-                         1. PILLWARS encoge hasta medir lo MISMO que PLAY NOW.
-                         2. PLAY NOW lo SUSTITUYE: se mete en el hueco del
+                         1. Los cuatro enlaces se van a MENU primero — el
+                            cambio menos llamativo, y casi siempre basta sin
+                            tocar PILLWARS.
+                         2. Si aun asi no cupiera, PILLWARS encoge hasta medir
+                            lo MISMO que PLAY NOW.
+                         3. PLAY NOW lo SUSTITUYE: se mete en el hueco del
                             rotulo, pegado al logo. Como para entonces los dos
-                            miden igual, los enlaces no se mueven de sitio — ese
-                            era el salto raro de antes, que venia de esconder el
-                            rotulo y dejar PLAY NOW donde estaba.
-                         3. Los cuatro enlaces se van a MENU (cuando $PILL
-                            alcanza a LEADERBOARD, que con PLAY NOW ya colocado
-                            es lo que tiene mas cerca).
+                            miden igual, no hay salto al hacer el cambio.
                          4. Ultimo recurso: encoger boton e iconos.
 
                        $PILL y los iconos de redes no se esconden nunca. */
@@ -3007,19 +3006,23 @@ body.trailer-open #page-content{
                         };
 
                         if (hayPlay) {
-                            // PASO 1: encoger el rotulo hasta medir lo mismo que
-                            // PLAY NOW (para que la sustitucion no mueva nada).
+                            // PASO 1: los cuatro enlaces a MENU primero — es
+                            // el cambio menos llamativo, y basta casi siempre
+                            // sin tocar PILLWARS (antes se encogia el rotulo
+                            // aunque colapsar los enlaces ya fuera suficiente).
+                            document.body.classList.add('nav-colapsada');
+                            if (pide() <= hueco) return;
+
+                            // PASO 2: encoger el rotulo hasta medir lo mismo
+                            // que PLAY NOW (para que la sustitucion de abajo
+                            // no mueva nada).
                             encogerMarca(play.getBoundingClientRect().width, 0.1);
                             if (pide() <= hueco) return;
 
-                            // PASO 2: el rotulo se retira y PLAY NOW ocupa su hueco.
+                            // PASO 3: el rotulo se retira y PLAY NOW ocupa su hueco.
                             raiz.style.removeProperty('--marca-k');
                             document.body.classList.add('nav-apretada');
                             colocaPlay(true);
-                            if (pide() <= hueco) return;
-
-                            // PASO 3: los cuatro enlaces, a MENU.
-                            document.body.classList.add('nav-colapsada');
                             if (pide() <= hueco) return;
                         } else {
                             // PASO 1: los cuatro enlaces, a MENU. Casi siempre
