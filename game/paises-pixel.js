@@ -832,10 +832,10 @@ const PM_LX = -0.6, PM_LY = -0.75;
 // siempre (el del cartel de detalle de skin). El cartel general "HOW TO
 // PLAY" pide el mismo fondo que ROOM PRICES/MISSIONS (PLACA.SCREEN en
 // game/index.html) para ir a juego con esos dos, sin tocar el de aqui.
-// frameT = grosor del marco en PX FINALES (ya en pantalla), opcional. Sin
-// el, PM_FRAME_T*PM_SCALE de siempre. El cartel general "HOW TO PLAY" lo usa
-// para calcar el grosor EXACTO de la tienda ampliada (placaGrosor() *
-// placaScaleFina() en game/index.html), que vive fuera de este fichero.
+// frameT = grosor del marco en PX FINALES, opcional. Sin el, PM_FRAME_T*
+// PM_SCALE de siempre (el que usa #paisModal). El cartel general "HOW TO
+// PLAY" pide el mismo grosor del mockup aprobado (40px = el PM_FRAME_T
+// ORIGINAL antes de afinarlo aqui para las descripciones de skin).
 function _pmFrameDraw(cv, wCss, hCss, hex, screen, frameT) {
     const scr = screen || PM_SCREEN;
     const T = frameT ? Math.max(6, Math.round(frameT / PM_SCALE)) : PM_FRAME_T;

@@ -2308,11 +2308,16 @@
         }
         .gc-video-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
         .gc-skills-title { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #7d8a82; letter-spacing: 1px; margin-bottom: 24px; text-align: center; }
-        .gc-skills-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px 10px; }
-        .gc-skill { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
-        .gc-skill .grid-skill-icon { width: 100%; aspect-ratio: 1; }
+        .gc-skills-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+        .gc-skill {
+            background: rgba(10,10,10,.8); border: 2px solid #333; aspect-ratio: 1; border-radius: 8px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: .15s;
+        }
+        .gc-skill:hover { border-color: #ffcc00; background: #1a1a1a; box-shadow: 0 0 18px rgba(255,204,0,.4); }
+        .gc-skill img { width: 44%; height: 44%; margin-bottom: 6px; image-rendering: pixelated; }
         .gc-skill .nm { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #7d8a82; letter-spacing: .5px; }
         .gc-skill:hover .nm { color: #fff; }
+        .gc-skills-hint { margin-top: 14px; text-align: center; font-family: 'VT323', monospace; font-size: 15px; color: #7d8a82; }
         .gc-nav { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 6px; border-top: 1px solid #2c3630; }
         .gc-arrow {
             width: 34px; height: 34px; border: 2px solid var(--acc); background: transparent; color: var(--acc);
@@ -2323,6 +2328,32 @@
         .gc-dots { display: flex; gap: 8px; }
         .gc-dot { width: 9px; height: 9px; border-radius: 50%; background: #2c3630; cursor: pointer; transition: .15s; }
         .gc-dot.on { background: var(--acc); box-shadow: 0 0 8px var(--acc); }
+        /* Tarjeta flotante de detalle de skill, al tocar un icono de la
+           rejilla: lenguaje store-panel (dorado) en vez del marco de piedra,
+           para que se distinga del cartel que la contiene. Calcada del
+           mockup aprobado (general_card_preview.html), con un solo cambio:
+           CERRAR -> CLOSE (convencion del resto del sitio, todo en ingles). */
+        .gc-overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center;
+            border-radius: 19px; z-index: 5; backdrop-filter: blur(2px);
+        }
+        .gc-overlay.show { display: flex; }
+        .float-card {
+            width: min(300px, 88%); border: 6px solid #ffcc00; border-radius: 20px;
+            background: radial-gradient(120% 140% at 50% 0%, rgba(255,204,0,.12), rgba(4,10,6,.96) 60%);
+            box-shadow: 0 0 0 3px rgba(0,0,0,.6), 0 0 40px rgba(255,204,0,.35);
+            padding: 16px 16px 18px; display: flex; flex-direction: column; text-align: left;
+        }
+        .fc-video-box { width: 100%; height: 150px; background: #000; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
+        .fc-video-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .fc-title { font-family: 'Press Start 2P', monospace; font-size: 12px; color: #fff; margin: 14px 0 6px; text-transform: uppercase; }
+        .fc-divider { width: 36px; height: 3px; background: #ffcc00; margin-bottom: 8px; }
+        .fc-desc { font-family: 'VT323', monospace; font-size: 15px; line-height: 1.3; color: #ccc; margin-bottom: 10px; }
+        .fc-close {
+            align-self: flex-end; margin-top: 4px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #7d8a82;
+            background: none; border: none; cursor: pointer; letter-spacing: 1px;
+        }
+        .fc-close:hover { color: #fff; }
         .btn-settings:hover { transform: scale(1.02); color: #fff; border-color: #4a525c; filter: brightness(1.2); }
         .pw-modal { display: none; position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; }
         .pw-modal-box { background: #0d0f12; border: 3px solid #2a2f36; box-shadow: 0 0 0 3px #000, 8px 8px 0 rgba(0,0,0,0.65), inset 2px 2px 0 rgba(255,255,255,0.05); padding: 28px 30px; width: 360px; max-width: 92vw; text-align: center; image-rendering: pixelated; }
@@ -4184,14 +4215,16 @@
     </div>
 
     <!-- Cartel general "HOW TO PLAY", el que abre la rueda de al lado de PLAY.
+         Calcado del mockup aprobado (scratchpad/general_card_preview.html).
          Sin selector de modo propio: se abre siempre con el modo YA
          seleccionado (currentGameMode) — arranca en la rejilla de skills en
          arcade, en SPLIT en classic. Contenido reusado, no repetido: los
          textos/videos de mecanicas son guideSlides (los mismos del carrusel
-         de la izquierda) y la rejilla de skills es SKILL_DESCRIPTIONS +
-         TooltipManager (el mismo #skill-tooltip de siempre). Marco =
-         _pmFrameDraw (paises-pixel.js), grosor calcado al de la tienda
-         ampliada (ver gcDrawFrame). -->
+         de la izquierda) y la rejilla de skills es SKILL_DESCRIPTIONS. Marco
+         = _pmFrameDraw (paises-pixel.js), el mismo cartel de detalle de
+         skin. La tarjeta de detalle de skill (.float-card) es un componente
+         propio, no #skill-tooltip: mismo diseño del mockup, con "CERRAR"
+         cambiado a "CLOSE" para ir a juego con el resto del sitio. -->
     <div id="gcOverlay" class="gc-overlay-page">
         <div class="general-card" id="gcCard">
             <canvas class="gc-frame-cv" id="gcFrameCv"></canvas>
@@ -4206,6 +4239,15 @@
                         <button class="gc-arrow" id="gcPrev">&#10094;</button>
                         <div class="gc-dots" id="gcDots"></div>
                         <button class="gc-arrow" id="gcNext">&#10095;</button>
+                    </div>
+                </div>
+                <div class="gc-overlay" id="gcSkillOverlay">
+                    <div class="float-card" id="gcFloatCard">
+                        <div class="fc-video-box"><video id="fcVideo" autoplay loop muted playsinline></video></div>
+                        <div class="fc-title" id="fcTitle"></div>
+                        <div class="fc-divider"></div>
+                        <div class="fc-desc" id="fcDesc"></div>
+                        <button class="fc-close" id="fcClose">CLOSE</button>
                     </div>
                 </div>
             </div>
@@ -4691,26 +4733,29 @@
     };
 
     // ===== CARTEL GENERAL "HOW TO PLAY" =====
+    // Calcado del mockup aprobado (scratchpad/general_card_preview.html).
     // Contenido reusado: guideSlides (mecanicas, mismo carrusel de la
-    // izquierda) y SKILL_DESCRIPTIONS/TooltipManager (misma rejilla/tooltip
-    // de siempre). Sin selector de modo propio: pinta el modo YA
-    // seleccionado (currentGameMode) al abrir.
+    // izquierda) y SKILL_DESCRIPTIONS (misma base de datos que FEATURES).
+    // Sin selector de modo propio: pinta el modo YA seleccionado
+    // (currentGameMode) al abrir.
     (function () {
-        let gcPage = 0, gcActiveSkillId = null;
+        let gcPage = 0;
         const gcOverlay = document.getElementById('gcOverlay'), gcCard = document.getElementById('gcCard');
         const gcFrameCv = document.getElementById('gcFrameCv'), gcInner = document.getElementById('gcInner');
         const gcBody = document.getElementById('gcBody'), gcDots = document.getElementById('gcDots');
         const gcPrev = document.getElementById('gcPrev'), gcNext = document.getElementById('gcNext');
+        const skOverlay = document.getElementById('gcSkillOverlay'), fcVideo = document.getElementById('fcVideo');
+        const fcTitle = document.getElementById('fcTitle'), fcDesc = document.getElementById('fcDesc');
         if (!gcOverlay || !gcCard) return;
 
         function gcDrawFrame() {
             if (typeof _pmFrameDraw !== 'function' || !gcCard.clientWidth) return;
             const primero = !gcInner.style.padding;
             const hex = currentGameMode === 'classic' ? '#00ffaa' : '#ccff00';
-            // Grosor EXACTO de la tienda ampliada (drawPlacaPopup), no el
-            // PM_FRAME_T de siempre de este marco: David lo queria calcado.
-            const frameT = placaGrosor() * placaScaleFina();
-            const T = _pmFrameDraw(gcFrameCv, gcCard.clientWidth, gcCard.clientHeight, hex, PLACA.SCREEN, frameT);
+            // 40px = grosor del mockup aprobado (general_card_preview.html),
+            // no el PM_FRAME_T reducido de aqui (ese es solo para el cartel
+            // de detalle de skin, ver su comentario en paises-pixel.js).
+            const T = _pmFrameDraw(gcFrameCv, gcCard.clientWidth, gcCard.clientHeight, hex, PLACA.SCREEN, 40);
             gcInner.style.padding = T + 'px';
             if (primero) gcDrawFrame();
         }
@@ -4720,22 +4765,26 @@
                 '<div class="gc-desc">' + slide.desc + '</div>' +
                 '<div class="gc-video-box"><video autoplay loop muted playsinline src="' + slide.video + '"></video></div>';
         }
-        function gcCloseSkillTip() { TooltipManager.hide(); gcActiveSkillId = null; }
+        function gcCloseFloat() { skOverlay.classList.remove('show'); fcVideo.pause(); }
+        function gcOpenFloat(id) {
+            const data = SKILL_DESCRIPTIONS[id];
+            fcTitle.textContent = data.name;
+            fcDesc.textContent = data.desc;
+            if (fcVideo.getAttribute('src') !== data.video) {
+                fcVideo.src = data.video;
+                fcVideo.addEventListener('canplay', () => fcVideo.play().catch(() => {}), { once: true });
+            } else { fcVideo.play().catch(() => {}); }
+            skOverlay.classList.add('show');
+        }
         function gcSkillsPage() {
-            gcBody.innerHTML = '<div class="gc-skills-title">SKILL ARSENAL — TAP A SKILL</div><div class="gc-skills-grid" id="gcSkGrid"></div>';
-            gcActiveSkillId = null;
+            gcBody.innerHTML = '<div class="gc-skills-title">SKILL ARSENAL — TAP A SKILL</div><div class="gc-skills-grid" id="gcSkGrid"></div><div class="gc-skills-hint">8 skills, drafted every 30s in a match</div>';
             const grid = document.getElementById('gcSkGrid');
             for (let i = 1; i <= 8; i++) {
                 const data = SKILL_DESCRIPTIONS[i];
                 const el = document.createElement('div');
                 el.className = 'gc-skill';
-                el.innerHTML = '<div class="grid-skill-icon ' + SKILL_ICONS[i] + '"></div><div class="nm">' + data.name + '</div>';
-                el.addEventListener('mouseenter', (e) => TooltipManager.show(e, i));
-                el.addEventListener('mouseleave', () => { if (gcActiveSkillId !== i) TooltipManager.hide(); });
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (gcActiveSkillId === i) { gcCloseSkillTip(); } else { TooltipManager.show(e, i); gcActiveSkillId = i; }
-                });
+                el.innerHTML = '<img src="' + data.icon + '"><div class="nm">' + data.name + '</div>';
+                el.addEventListener('click', () => gcOpenFloat(i));
                 grid.appendChild(el);
             }
         }
@@ -4743,7 +4792,7 @@
             return currentGameMode === 'classic' ? guideSlides : [null, guideSlides[0], guideSlides[1]];
         }
         function gcRender() {
-            gcCloseSkillTip();
+            gcCloseFloat();
             const ps = gcPages();
             gcCard.classList.toggle('classic', currentGameMode === 'classic');
             if (ps[gcPage] === null) gcSkillsPage(); else gcMechPage(ps[gcPage]);
@@ -4764,17 +4813,16 @@
             gcOverlay.classList.add('on');
             gcRender();
         }
-        function gcClose() { gcOverlay.classList.remove('on'); gcCloseSkillTip(); }
+        function gcClose() { gcOverlay.classList.remove('on'); gcCloseFloat(); }
         const wheelBtn = document.getElementById('howToPlayWheel');
         if (wheelBtn) wheelBtn.addEventListener('click', gcOpen);
         document.getElementById('gcClose').addEventListener('click', gcClose);
+        document.getElementById('fcClose').addEventListener('click', gcCloseFloat);
         gcOverlay.addEventListener('click', (e) => { if (e.target === gcOverlay) gcClose(); });
-        window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && gcOverlay.classList.contains('on')) gcClose(); });
-        // Cierra el tooltip de una skill al tocar fuera (movil): unica pieza
-        // de este cartel que abre #skill-tooltip por tap, no hay guardia
-        // equivalente ya puesta en game/index.html (alli es solo hover).
-        document.addEventListener('click', (e) => {
-            if (gcActiveSkillId !== null && !e.target.closest('.gc-skill') && !e.target.closest('.skill-tooltip')) gcCloseSkillTip();
+        window.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (skOverlay.classList.contains('show')) gcCloseFloat();
+            else if (gcOverlay.classList.contains('on')) gcClose();
         });
         window.addEventListener('resize', () => { if (gcOverlay.classList.contains('on')) { gcInner.style.removeProperty('padding'); gcDrawFrame(); } });
     })();
