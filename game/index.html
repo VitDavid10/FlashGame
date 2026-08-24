@@ -13422,6 +13422,26 @@
         ctx.drawImage(sp, -sp.width / 2, -sp.height / 2);
         ctx.restore();
     }
+
+    // Dibuja UNA pildora pequeña: la masa eyectada de las skills CLON y SHOOT
+    // (ver el forEach sobre sim.ejectedMasses en draw()).
+    // La borro por error el commit e02753d (el de la flecha de multitud), que se
+    // llevo por delante esta funcion y el comentario de "PARTIDA GIRADA" de
+    // abajo, pero DEJO la llamada. Resultado: en cuanto salia un proyectil a
+    // pantalla, draw() petaba ahi con "drawMiniPill is not defined" y no llegaba
+    // a pintar NADA de lo que va despues —celdas incluidas, de ahi lo de "la
+    // pildora desaparece"—. Y como peta entre el ctx.save() de esa seccion y su
+    // ctx.restore(), cada frame dejaba un save colgado: el estado del canvas
+    // (transform, colores, clip) se iba acumulando y por eso se corrompian el
+    // fondo y los colores, y seguia roto aunque cambiaras de modo.
+    // Restaurada tal cual estaba.
+    function drawMiniPill(f, scale) { if (pixelMode) { const w = f.r * 2, wL = Math.max(4, Math.min(16, Math.round(w * scale / PIX_SCREEN_PX / 2) * 2)); drawPixPillRot(ctx, f.x, f.y, w, wL, f.c1, f.c2, f.angle || 0); return; } let sR = f.r * scale; if (isLowQuality || sR < DRAW_LOD_THRESHOLD) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill(); } else { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle||0); let w = f.r * 2, h = w * 2.0, r = w / 2; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, r); ctx.clip(); ctx.fillStyle = f.c1; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = f.c2; ctx.fillRect(-w/2, 0, w, h/2); ctx.restore(); } }
+
+    // En movil la partida se juega GIRADA, igual que el menu del que sale (ver
+    // "PARTIDA GIRADA" en el <style>): el canvas se pide con los lados
+    // intercambiados —ancho = alto de pantalla— y el CSS lo tumba encima del
+    // viewport. Asi el juego cree que corre en una pantalla apaisada normal y
+    // no hay que tocar nada de la simulacion ni del dibujo.
     function juegoGirado() {
         return document.body.classList.contains('mobile-allowed')
             && !document.documentElement.hasAttribute('data-hero')
