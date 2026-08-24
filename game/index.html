@@ -10011,7 +10011,11 @@
     // no se pasa por el cartel de resultado, asi que los avisos de partida
     // (2 KILLS TO PENTAKILL, CARRY/POT, barra de skills...) se quedaban pintados
     // encima del menu.
-    function returnToMenu() { hideGameHUD(); cerrarUIColores(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex'; gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
+    function returnToMenu() { hideGameHUD(); cerrarUIColores(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
+        // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
+        // la medida de cuando se entro al modo (ver el comentario de arriba).
+        centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
+        gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
         const btn = document.getElementById('btnEnterGame');
@@ -13698,7 +13702,17 @@
     // posicionado por menuLayout.
     (function () {
         const qs = new URLSearchParams(location.search);
-        const quitarVelo = () => { const st = document.getElementById('_heroBootHide'); if (st) st.remove(); };
+        const quitarVelo = () => {
+            const st = document.getElementById('_heroBootHide'); if (st) st.remove();
+            // Si el login es lo que queda a la vista (heroShowSkinsStore: el
+            // velo era lo unico que lo tapaba), se puede medir de verdad ya.
+            // En heroQuickPlay el login sigue oculto por el propio juego
+            // (startGame ya lo escondio) y no hace falta tocar nada aqui:
+            // returnToMenu se encarga cuando vuelva a enseñarse.
+            if (getComputedStyle(els.loginOverlay).display !== 'none') {
+                centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
+            }
+        };
         if (qs.get('hero') === '1') {
             heroAmbientDemo();
             return;
