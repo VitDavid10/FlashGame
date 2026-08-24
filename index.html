@@ -3482,17 +3482,28 @@ body.trailer-open #page-content{
                         DOM.ttClassic.style.display = 'none';
                     }
 
-                    const card = e.currentTarget;
-                    const rect = card.getBoundingClientRect();
-                    const toolTipWidth = 320; 
-                    const toolTipHeight = 396; 
+                    const toolTipWidth = 320;
+                    const toolTipHeight = 396;
+                    let leftPos, topPos;
 
-                    let leftPos = (rect.left + (rect.width / 2) - (toolTipWidth / 2));
-                    if (leftPos < 10) leftPos = 10;
-                    if (leftPos + toolTipWidth > window.innerWidth) leftPos = window.innerWidth - toolTipWidth - 10;
+                    if (App.isTouch) {
+                        // En movil no hay "pasar cerca de la card": es un toque, y
+                        // colocar el cartel junto al dedo lo dejaba a veces medio
+                        // tapado por el propio dedo o cortado por un borde. Se
+                        // centra SIEMPRE en la pantalla, clamp incluido por si el
+                        // telefono es mas estrecho/bajo que el cartel (320x396).
+                        leftPos = Math.max(10, (window.innerWidth - toolTipWidth) / 2);
+                        topPos = Math.max(10, (window.innerHeight - toolTipHeight) / 2);
+                    } else {
+                        const card = e.currentTarget;
+                        const rect = card.getBoundingClientRect();
+                        leftPos = (rect.left + (rect.width / 2) - (toolTipWidth / 2));
+                        if (leftPos < 10) leftPos = 10;
+                        if (leftPos + toolTipWidth > window.innerWidth) leftPos = window.innerWidth - toolTipWidth - 10;
 
-                    let topPos = rect.top - toolTipHeight + 40; 
-                    if (topPos < 0) topPos = rect.bottom + 10;
+                        topPos = rect.top - toolTipHeight + 40;
+                        if (topPos < 0) topPos = rect.bottom + 10;
+                    }
 
                     DOM.tooltip.style.left = leftPos + 'px';
                     DOM.tooltip.style.top = topPos + 'px';
