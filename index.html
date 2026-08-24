@@ -673,6 +673,14 @@
         }
         .hero-ca:hover .ca-copy { background: rgba(255,206,61,0.18); color: #fff; }
         #hero-copy-feedback { font-family: 'Press Start 2P', monospace !important; font-size: var(--fs-2) !important; color: #ffce3d !important; text-shadow: 2px 2px 0 rgba(0,0,0,0.75) !important; height: 15px; margin-top: 12px; }
+        /* Empuje minimo cuando la ventana se hace baja: PLAY NOW sube con la
+           altura (24vh) pero el contrato esta centrado por flex + el translate
+           horneado, que apenas se mueve — a poca altura los dos convergen y se
+           pisan. `transform` es una propiedad DISTINTA de `translate` (la que
+           usa el horneado) y se suma encima sin tocarla: ajustaHeroSolape (ver
+           el script del hero) solo escribe esta variable cuando hace falta, y
+           en el resto de casos vale 0 y no cambia nada. */
+        #heroCaSign, #heroCaWrap { transform: translateY(var(--hero-ca-nudge, 0px)); }
         .big-title { font-size: var(--fs-10); font-family: 'Russo One'; color: #fff; text-shadow: 0 0 30px var(--primary); margin: 0; line-height: 1; }
         .big-subtitle { font-size: var(--fs-4); color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 8px; margin-top: 10px; }
 
@@ -1667,7 +1675,11 @@ body.trailer-open #page-content{
             body.pixel-pack .hero-main-content:not(.no-img) .hero-img {
                 height: auto !important; width: 100% !important;
             }
-            .hero-play { height: auto; width: min(70vw, 260px); }
+            /* 220 y no 260: es el mismo ancho que en escritorio (.hero-play.btn-connect
+               mas arriba). Con 260 el boton se hacia MAS GRANDE al cruzar a movil
+               en vez de mas pequeño — justo lo contrario de lo que se quiere al
+               estrechar la ventana. */
+            .hero-play { height: auto; width: min(70vw, 220px); }
             .hero-game-btns { gap: 12px; }
             /* En tactil no hay raton que pasar por encima: MODES/SKINS se
                quedan siempre a la vista (plegados serian inalcanzables) y en
@@ -4763,6 +4775,82 @@ function toggleTrailerMode() {
             rebuildScene();
             paintHero(performance.now());   // repinta ya, sin esperar al frame
         }
+
+        // ===== EL HERO NO SE PISA AL ESTRECHAR/BAJAR LA VENTANA =====
+        // Dos ajustes, cada uno resuelve un salto distinto:
+        //
+        // 1) SALTO DE TAMAÑO: por debajo de 600px de ancho el movil fuerza
+        //    scale:1 en .hero-main-content (ver el @media), pero en escritorio
+        //    el horneado deja un 0.8 fijo SIN IMPORTAR el ancho — al cruzar
+        //    los 600px el contrato pegaba un salto de golpe (mas grande, no
+        //    mas pequeño). Se interpola con el MISMO setHeroZoom que ya usa el
+        //    editor, de 0.8 a 900px hasta 1 a 600px: al llegar al movil ya
+        //    esta en 1 y no hay salto.
+        //
+        // 2) SOLAPE: PLAY NOW sube con la altura (24vh, ver .hero-game-veil)
+        //    pero el contrato esta centrado por flex + un translate horneado
+        //    que apenas se mueve con la altura — a poca altura los dos
+        //    convergen y se pisan. Se corrige empujando el contrato hacia
+        //    abajo SOLO lo justo para mantener un hueco minimo, via
+        //    --hero-ca-nudge (ver el CSS de #heroCaSign/#heroCaWrap). En el
+        //    resto de casos vale 0 y no toca nada — la posicion
+        //    horneada/editada se respeta tal cual.
+        const HERO_GAP_MIN = 40;
+        const HERO_ANCHO_ANCHO = 900, HERO_ANCHO_ESTRECHO = 600;
+        function ajustaHeroResponsive() {
+            if (document.body.classList.contains('layout-editing')) return;
+            const raiz = document.documentElement;
+            if (window.innerWidth <= HERO_ANCHO_ESTRECHO) {
+                // El movil ya tiene su propio layout (position:absolute, top:52%,
+                // scale:1 fijo por CSS): no hace falta ni el empujon ni el zoom.
+                raiz.style.removeProperty('--hero-ca-nudge');
+                return;
+            }
+            let zoomBase = (window.HERO_LAYOUT_HORNEADO && window.HERO_LAYOUT_HORNEADO.zoom) || 1;
+            try {
+                const guardado = JSON.parse(localStorage.getItem('pw_landing_layout') || '{}');
+                if (guardado && typeof guardado.zoom === 'number') zoomBase = guardado.zoom;
+            } catch (e) {}
+            const t = Math.min(1, Math.max(0, (window.innerWidth - HERO_ANCHO_ESTRECHO) / (HERO_ANCHO_ANCHO - HERO_ANCHO_ESTRECHO)));
+            const escala = zoomBase + (1 - zoomBase) * (1 - t);
+            setHeroZoom(escala);
+
+            raiz.style.removeProperty('--hero-ca-nudge');
+            const play = document.getElementById('heroPlayNow');
+            const caSign = document.getElementById('heroCaSign');
+            if (!play || !caSign) return;
+            // MODES/SKINS (el desplegable de PLAY NOW) cuenta tambien SI esta
+            // abierto: en desktop es position:absolute debajo del boton y a poca
+            // altura se salia por debajo tapando el contrato igual que el boton.
+            // Oculto no ocupa hueco (pointer-events:none + opacity:0), asi que no
+            // empuja nada mientras no se ve.
+            // El :hover activa al instante pero opacity va con transition
+            // (0.18s): leerla aqui mismo, recien entrado el raton, todavia
+            // devolveria el valor de ANTES de abrirse. matches(':hover') no
+            // anima, es verdad o mentira ya.
+            const grupo = document.querySelector('.hero-play-group');
+            const links = document.querySelector('.hero-play-links');
+            const linksAbiertos = grupo && links && (grupo.matches(':hover') || grupo.classList.contains('open'));
+            const tope = Math.max(play.getBoundingClientRect().bottom, linksAbiertos ? links.getBoundingClientRect().bottom : 0);
+            const hueco = caSign.getBoundingClientRect().top - tope;
+            if (hueco < HERO_GAP_MIN) {
+                // El empujon va DENTRO de .hero-main-content, que lleva su propio
+                // scale (heroZoom): un translateY de X px ahi se ve en pantalla
+                // como X*escala, no como X. Sin dividir por la escala el hueco
+                // real se quedaba corto (medido: pedir 50px de empujon con
+                // escala 0.8 solo abria 40px de hueco de verdad).
+                raiz.style.setProperty('--hero-ca-nudge', ((HERO_GAP_MIN - hueco) / escala) + 'px');
+            }
+        }
+        ajustaHeroResponsive();
+        // Recalcular tambien al abrir MODES/SKINS: solo un resize no basta, el
+        // desplegable puede abrirse sin que la ventana cambie de tamaño.
+        const heroPlayGroup = document.querySelector('.hero-play-group');
+        if (heroPlayGroup) {
+            heroPlayGroup.addEventListener('mouseenter', ajustaHeroResponsive);
+            heroPlayGroup.addEventListener('mouseleave', ajustaHeroResponsive);
+        }
+        window.addEventListener('resize', ajustaHeroResponsive);
 
         // Pill del DOM ("PICK ME!"): mismo sprite y misma inclinacion de 45º con
         // la que se ven las pills en partida. El ancho lo comparte HeroPlay.startR()
