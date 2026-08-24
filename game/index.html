@@ -8703,6 +8703,12 @@
     function _menuCaja(sels) {
         let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
         for (const sel of sels) for (const el of document.querySelectorAll(sel)) {
+            // Lo que solo se ve PORQUE el editor lo enseña (la barra de saldo,
+            // DEPOSIT, la paleta...) no cuenta para medir. Si contara, entrar en
+            // EDIT LAYOUT cambiaria la caja medida y con ella la escala y el
+            // tope de la wallet: colocabas algo mirando una composicion y al
+            // salir del editor era otra. Ver enterLayoutEdit.
+            if (el._layoutForzado) continue;
             const r = el.getBoundingClientRect();
             if (!r.width && !r.height) continue;
             if (r.left < x0) x0 = r.left;
@@ -9233,6 +9239,7 @@
             const el = document.getElementById(id);
             if (!el) continue;
             el._layoutPrevDisplay = el.style.display;
+            el._layoutForzado = true;   // no cuenta para medir, ver _menuCaja
             el.style.display = 'block';
         }
         // La barra de saldo y los botones de wallet solo salen con la cartera
@@ -9249,6 +9256,9 @@
             const el = document.getElementById(id);
             if (!el) continue;
             el._layoutPrevDisplay = el.style.display;
+            // Solo se marca el que estaba OCULTO: los que ya se veian jugando
+            // (CONNECT, normalmente) tienen que seguir contando igual que antes.
+            if (getComputedStyle(el).display === 'none') el._layoutForzado = true;
             el.style.display = id === 'gwBalBox' ? 'flex' : 'block';
             if (id === 'gwConnect') el.style.opacity = '0.55';
         }
@@ -9266,6 +9276,7 @@
         for (const id of ['pillPalette', 'colorPicker', 'palHint', 'gameWalletArea', 'gwBalBox', 'gwDepositWrap', 'gwConnect']) {
             const el = document.getElementById(id);
             if (el && el._layoutPrevDisplay !== undefined) { el.style.display = el._layoutPrevDisplay; delete el._layoutPrevDisplay; }
+            if (el) delete el._layoutForzado;
         }
         const gwc = document.getElementById('gwConnect');
         if (gwc) gwc.style.opacity = '';
@@ -9404,18 +9415,39 @@
             const t = layoutTarget(e); if (!t) return;
             const sk = layoutStoreKey(t.key);
             const cur = menuLayout[sk] || { x: 0, y: 0, s: 1 };
-            layoutDrag = { key: sk, startX: e.clientX, startY: e.clientY, baseX: cur.x || 0, baseY: cur.y || 0 };
+            // El rotulo de placa va por su cuenta: applyMenuLayout lo SALTA (se
+            // centra solo y su tamaño lo mandan las --titulo-*), asi que
+            // arrastrarlo escribia en menuLayout un valor que no lee nadie — el
+            // rotulo no se movia y el layout guardado se llenaba de basura. Su
+            // sitio de verdad es TITULO.y, que es lo que se toca aqui.
+            const esTitulo = tituloUsaPlaca() && (t.key === 'titlePw' || t.key === 'titleWord');
+            layoutDrag = esTitulo
+                ? { titulo: true, startY: e.clientY, baseY: TITULO.y || 0 }
+                : { key: sk, startX: e.clientX, startY: e.clientY, baseX: cur.x || 0, baseY: cur.y || 0 };
             e.preventDefault(); e.stopPropagation();
         }, true);
         window.addEventListener('pointermove', (e) => {
             if (!layoutEditing || !layoutDrag) return;
+            if (layoutDrag.titulo) {
+                // Solo el eje Y: la X del rotulo la calcula centrarTitulo() para
+                // dejarlo centrado en la ventana, asi que no hay nada que
+                // arrastrar a lo ancho. Se divide por la escala del menu porque
+                // TITULO.y se aplica DENTRO del bloque escalado: sin eso el
+                // rotulo iba mas despacio que el raton con la ventana pequeña.
+                const k = (typeof menuEscala === 'number' && menuEscala > 0) ? menuEscala : 1;
+                tituloTune({ y: Math.round(layoutDrag.baseY + (e.clientY - layoutDrag.startY) / k) });
+                ajustaMenuResponsive();
+                return;
+            }
             const cur = menuLayout[layoutDrag.key] = menuLayout[layoutDrag.key] || { x: 0, y: 0, s: 1 };
             cur.x = layoutDrag.baseX + (e.clientX - layoutDrag.startX);
             cur.y = layoutDrag.baseY + (e.clientY - layoutDrag.startY);
             marcarLayoutMio(layoutDrag.key);
             applyMenuLayout();
         });
-        window.addEventListener('pointerup', () => { if (layoutDrag) { layoutDrag = null; saveMenuLayout(); } });
+        // tituloTune ya guarda lo suyo en cada paso, asi que el rotulo no pasa
+        // por saveMenuLayout (su sitio no vive en menuLayout).
+        window.addEventListener('pointerup', () => { if (layoutDrag) { const t = layoutDrag.titulo; layoutDrag = null; if (!t) saveMenuLayout(); } });
         document.addEventListener('wheel', (e) => {
             if (!layoutEditing) return;
             const t = layoutTarget(e); if (!t) return;
