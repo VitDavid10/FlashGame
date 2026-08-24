@@ -1794,9 +1794,15 @@
         .sb-cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px;
             min-width: 0; min-height: 0; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07);
             cursor: grab; user-select: none; padding: 5px 2px 2px 2px; box-sizing: border-box; transition: 0.12s; }
-        .sb-cell:hover { background: rgba(255,255,255,0.07); border-color: currentColor; transform: translateY(-1px); }
-        #skinBigModal.arcade .sb-cell:hover { color: #ccff00; }
-        #skinBigModal.classic .sb-cell:hover { color: #00ffaa; }
+        /* Mismo efecto que .gc-skill (la rejilla de skills del cartel de
+           instrucciones): fondo solido oscuro + borde del color del modo +
+           resplandor a juego, en vez del tinte blanco casi invisible de
+           antes. currentColor en border-color ya se tiñe solo con el color
+           que fija cada regla de mas abajo (arcade/classic); el resplandor,
+           al llevar alpha, hace falta declararlo aparte en cada una. */
+        .sb-cell:hover { background: #1a1a1a; border-color: currentColor; transform: translateY(-1px); }
+        #skinBigModal.arcade .sb-cell:hover { color: #ccff00; box-shadow: 0 0 18px rgba(204,255,0,.4); }
+        #skinBigModal.classic .sb-cell:hover { color: #00ffaa; box-shadow: 0 0 18px rgba(0,255,170,.4); }
         .sb-cell.drag { opacity: 0.35; }
         .sb-cell.over { border-color: #ffce3d; background: rgba(255,206,61,.1); }
         .sb-cell.fija, .sb-cell.vacia { cursor: default; }
@@ -1860,7 +1866,9 @@
         .skin-cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
                      background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07); cursor: pointer;
                      transition: 0.12s; min-height: 0; overflow: hidden; }
-        .skin-cell:hover { background: rgba(255,255,255,0.07); border-color: currentColor; transform: translateY(-1px); }
+        /* Mismo efecto que .gc-skill / .sb-cell (ver su comentario): fondo
+           solido oscuro + borde y resplandor del color del modo. */
+        .skin-cell:hover { background: #1a1a1a; border-color: currentColor; transform: translateY(-1px); }
         .skin-cell canvas { image-rendering: pixelated; display: block; flex: none; }
         /* line-height fijo y no "normal": con el automatico de Press Start 2P la
            caja de linea quedaba justa y la fila de abajo (OWNED / ON / 25K) se
@@ -1877,8 +1885,8 @@
         .mine-eq { position: absolute; top: 4px; right: 4px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #00ff88;
                    font-weight: bold; }
         .skin-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 4px; flex-shrink: 0; }
-        #missionsPanel.classic .skin-cell:hover { color: #00ffaa; }
-        #missionsPanel.arcade .skin-cell:hover { color: #ccff00; }
+        #missionsPanel.classic .skin-cell:hover { color: #00ffaa; box-shadow: 0 0 18px rgba(0,255,170,.4); }
+        #missionsPanel.arcade .skin-cell:hover { color: #ccff00; box-shadow: 0 0 18px rgba(204,255,0,.4); }
 
         /* ===== Pie del cartel =====
            Una sola fila para las cuatro pestañas: pagina | puntos | flecha. Los

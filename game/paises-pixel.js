@@ -824,9 +824,14 @@ const PM_RADIO_HUECO = 4 * PM_SUB;
 const PM_TONOS = { rim: 0.16, lit: 0.75, mid: 0.45, dim: 0.24, inner: 0.36, body: 0.30 };
 const PM_SCREEN = [9, 20, 15];
 const PM_LX = -0.6, PM_LY = -0.75;
-function _pmFrameDraw(cv, wCss, hCss, hex) {
+// screen = color RGB del hueco interior, opcional. Sin el, PM_SCREEN de
+// siempre (el del cartel de detalle de skin). El cartel general "HOW TO
+// PLAY" pide el mismo fondo que ROOM PRICES/MISSIONS (PLACA.SCREEN en
+// game/index.html) para ir a juego con esos dos, sin tocar el de aqui.
+function _pmFrameDraw(cv, wCss, hCss, hex, screen) {
+    const scr = screen || PM_SCREEN;
     const W = Math.max(24, Math.round(wCss / PM_SCALE)), H = Math.max(18, Math.round(hCss / PM_SCALE));
-    const key = W + '|' + H + '|' + hex;
+    const key = W + '|' + H + '|' + hex + '|' + scr.join(',');
     if (cv._pmKey === key) return PM_FRAME_T * PM_SCALE;
     cv._pmKey = key;
     cv.width = W; cv.height = H;
@@ -857,7 +862,7 @@ function _pmFrameDraw(cv, wCss, hCss, hex) {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const i = ((y * W + x) << 2);
         if (!inOuter(x, y)) continue;
-        if (inHole(x, y)) { px[i] = PM_SCREEN[0]; px[i + 1] = PM_SCREEN[1]; px[i + 2] = PM_SCREEN[2]; px[i + 3] = 255; continue; }
+        if (inHole(x, y)) { px[i] = scr[0]; px[i + 1] = scr[1]; px[i + 2] = scr[2]; px[i + 3] = 255; continue; }
         // Umbrales en pixeles de CUADRICULA: por eso van por PM_SUB. Sin eso,
         // al doblar la resolucion cada banda quedaba a la mitad de grosor.
         const HASTA = 3 * PM_SUB;
