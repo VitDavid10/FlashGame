@@ -10,7 +10,11 @@
 // 'button' = skin compartido de los botones pixel (OK del modal, CONTINUE del
 // premio, tarjetas de skill, TRY AGAIN/SPECTATE/MENU). Si existe button.png se
 // usa como marco+fondo (border-image) de todos ellos; si falta, look de fábrica.
-const CARTEL_IDS = ['lobbyBanner', 'sysModal', 'skillPanel', 'button', 'menu-square', 'game-over', 'pill', 'spectate', 'backtomenu', 'try-again',
+// lobbyBanner y sysModal NO estan en la lista a proposito: su PNG no existe y
+// no hace falta. El arte de esos dos carteles ya va bien con su estilo de
+// siempre (CSS), asi que pedirlos solo servia para soltar dos 404 por carga.
+// Si algun dia se hornean, basta con volver a ponerlos aqui.
+const CARTEL_IDS = ['skillPanel', 'button', 'menu-square', 'game-over', 'pill', 'spectate', 'backtomenu', 'try-again',
     'menu-gris', 'warning', 'secure-cashout', 'cancel', 'exit-now', 'start-cashout', 'skill-slot',
     'top-mass', 'kills', 'x', 'song', 'sonido',
     // Contador de inicio (rotulo + digitos con glow) y premio VICTORY/CASHOUT

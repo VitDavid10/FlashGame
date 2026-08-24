@@ -4271,7 +4271,7 @@
         sounds: { 
             alert: new Audio('../snd/alert.mp3'), cd: new Audio('../snd/cd.mp3'), death: new Audio('../snd/death.mp3'),
             hover: new Audio('../snd/hover.mp3'), iman: new Audio('../snd/iman.mp3'), kill1: new Audio('../snd/kill1.mp3'),
-            kill2: new Audio('../snd/kill2.mp3'), select: new Audio('../snd/select.mp3'), shield: new Audio('../snd/shield.mp3'),
+            select: new Audio('../snd/select.mp3'), shield: new Audio('../snd/shield.mp3'),
             shoot: new Audio('../snd/shoot.mp3'), simplehover: new Audio('../snd/simplehover.mp3'), simpleselect: new Audio('../snd/simpleselect.mp3'),
             split: new Audio('../snd/split.mp3'), sprint: new Audio('../snd/sprint.mp3'), timer: new Audio('../snd/timer.mp3'),
             tp: new Audio('../snd/tp.mp3'), big: new Audio('../snd/big.mp3'), little: new Audio('../snd/little.mp3'),
@@ -4337,7 +4337,9 @@
         stop: function(name) { if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },
         stopAllSfx: function() { for (const k in this.sounds) { try { this.sounds[k].pause(); this.sounds[k].currentTime = 0; } catch (e) {} } },
         playSimpleHover: function() { if (Date.now() - this.lastSimpleHoverTime < 100) return; this.lastSimpleHoverTime = Date.now(); this.play('simplehover'); },
-        playKill: function() { const now = Date.now(); if (now - this.lastKillTime < 150) return; this.lastKillTime = now; const snd = Math.random() < 0.5 ? 'kill1' : 'kill2'; this.play(snd); },
+        // Solo kill1: kill2 nunca ha existido en snd/, asi que la mitad de las
+        // muertes sonaban mudas y ademas soltaban un 404 en la consola.
+        playKill: function() { const now = Date.now(); if (now - this.lastKillTime < 150) return; this.lastKillTime = now; this.play('kill1'); },
         playFloatKill: function() { const now = Date.now(); if (now - this.lastFloatKillTime < 200) return; this.lastFloatKillTime = now; this.play('floatkill'); },
         playSplit: function() { const now = Date.now(); if (now - this.lastSplitTime < 150) return; this.lastSplitTime = now; this.play('split'); },
         playMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
