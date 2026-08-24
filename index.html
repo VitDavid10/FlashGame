@@ -218,7 +218,11 @@
             background: linear-gradient(180deg, #fff 50%, var(--primary) 50%);
             transform: rotate(-30deg); box-shadow: 0 0 25px var(--primary); border: 2px solid #000;
         }
-        .brand-name { font-family: 'Russo One'; font-size: var(--fs-6); color: #fff; text-transform: uppercase; letter-spacing: 2px; }
+        /* --marca-k: cuanto se encoge PILLWARS cuando la barra empieza a ir
+           justa (lo calcula ajustaNavbar). Es el PRIMER recurso, antes de
+           quitarle nada a nadie: el rotulo cede ancho poco a poco hasta medir lo
+           mismo que PLAY NOW, y solo entonces se retira. */
+        .brand-name { font-family: 'Russo One'; font-size: calc(var(--fs-6) * var(--marca-k, 1)); color: #fff; text-transform: uppercase; letter-spacing: 2px; }
 
         .nav-links-container {
             display: flex; gap: clamp(12px, 2vw, 30px); margin-left: 20px; align-items: center;
@@ -1133,9 +1137,15 @@ body.trailer-open #page-content{
            $PILL se le monta a PLAY NOW: el rotulo mide 211px y PLAY NOW 166, asi
            que cambiando uno por otro la fila hasta encoge. */
         body.nav-apretada .brand-name { display: none !important; }
-        /* Ultimo recurso, ya sin rotulo: se van los iconos sociales. $PILL no se
-           toca — David lo quiere siempre a la vista. */
-        body.nav-min .icon-btn { display: none !important; }
+        /* Ni $PILL ni los iconos de redes se esconden nunca: son lo que queda
+           siempre a la derecha. Lo que cede sitio es, por este orden, el rotulo
+           PILLWARS (encogiendo, luego del todo) y los cuatro enlaces (a MENU).
+           Y si aun asi no cabe —un movil estrecho con PLAY NOW dentro— lo ultimo
+           es ENCOGER lo mas grande (el boton y los iconos) con --nav-k, que
+           sigue sin borrar nada de la barra. `zoom` y no `scale`: scale es solo
+           visual y no libera sitio en la fila; zoom si cuenta para el layout. */
+        #nav-play-area { zoom: var(--nav-k, 1); }
+        .icon-btn { zoom: var(--nav-k, 1); }
         /* $PILL y MENU a la MISMA altura. Sale 1px mas bajo que MENU porque su
            rotulo son dos trozos ("$PILL" en un span y el precio como texto
            suelto) y la caja de linea no mide igual. */
@@ -1614,9 +1624,9 @@ body.trailer-open #page-content{
             body.nav-play-visible .nav-links-container { margin-left: 0; }
             /* $PILL SE QUEDA (peticion de David). Antes se escondia con PLAY NOW
                a la vista porque se le montaba encima; ahora quien cede el sitio
-               es el rotulo PILLWARS (body.nav-apretada), que mide 211px frente a
-               los 166 del boton, asi que sobra hueco para los dos. Si aun asi no
-               cabe, lo ultimo en irse son los iconos sociales (body.nav-min). */
+               es el rotulo PILLWARS: primero encogiendo (--marca-k) y, si aun asi
+               no basta, retirandose del todo (body.nav-apretada). Ni $PILL ni los
+               iconos de redes se esconden nunca. */
 
             /* ===== EL CONJUNTO DEL HERO, JUNTO Y CENTRADO =====
                En movil el grupo quedaba muy arriba (PLAY NOW a 195px de un hero
@@ -1846,7 +1856,7 @@ body.trailer-open #page-content{
         /* rotulos */
         body.pixel-pack .big-title { font-family: 'Press Start 2P', monospace; font-size: var(--fs-8); text-shadow: 5px 5px 0 #063e26, 10px 10px 0 rgba(0,0,0,0.55); }
         body.pixel-pack .big-subtitle { font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); letter-spacing: 5px; }
-        body.pixel-pack .brand-name { font-family: 'Press Start 2P', monospace; font-size: var(--fs-4); }
+        body.pixel-pack .brand-name { font-family: 'Press Start 2P', monospace; font-size: calc(var(--fs-4) * var(--marca-k, 1)); }
         /* ===== TEXTURE PACK PIXEL: hero/brand/boton por sprite PNG (img/pixel-hero/)
            con fallback al texto/estilo procedural de siempre si el PNG no existe
            (onerror del img añade .no-img al contenedor — mismo mecanismo que los
@@ -1878,7 +1888,7 @@ body.trailer-open #page-content{
         /* 32px, no 44: el PNG de la navbar va SIN glow, asi que su caja es toda
            letra. Con los 44 de la version con halo el rotulo salia un tercio mas
            grande y se comia el hueco de los nav-links. */
-        body.pixel-pack .brand-name:not(.no-img) .bn-img { display: inline-block; height: 32px; width: auto; vertical-align: middle; }
+        body.pixel-pack .brand-name:not(.no-img) .bn-img { display: inline-block; height: calc(32px * var(--marca-k, 1)); width: auto; vertical-align: middle; }
         body.pixel-pack .brand-name:not(.no-img) .bn-txt { display: none; }
         /* ...y en telefono, lo que quepa. Con los 32 de arriba el PNG mide 211px
            de ancho (640/97): en una pantalla de 360 el rotulo llegaba a x=261
@@ -2900,39 +2910,75 @@ body.trailer-open #page-content{
                        sitio. Se mide siempre con los cuatro puestos (se quita la
                        clase antes) para que la cuenta no dependa de si ya
                        estaban colapsados. */
+                    /* ===== NAVBAR: quien cede sitio, y en que orden =====
+                       Se MIDE lo que piden los dos grupos de la barra contra el
+                       hueco que hay, y se va cediendo por pasos. El orden lo
+                       marco David y es de menos a mas doloroso:
+                         1. PILLWARS ENCOGE, poco a poco, hasta medir lo mismo
+                            que PLAY NOW. Nada desaparece todavia.
+                         2. PILLWARS se retira y PLAY NOW ocupa su hueco (es lo
+                            que pasa cuando $PILL ya toca a PLAY NOW).
+                         3. Los cuatro enlaces se van a MENU (cuando $PILL
+                            alcanzaria a LEADERBOARD).
+                       $PILL y los iconos de redes NO se tocan en ningun paso.
+                       Cada paso solo entra si el anterior no ha bastado, asi que
+                       mientras haya sitio no se mueve nada de nada. */
+                    const NAV_AIRE = 24;   // hueco minimo entre los dos grupos
                     const ajustaNavbar = () => {
                         const nb = document.querySelector('.navbar');
                         const izq = document.querySelector('.nav-left');
                         const der = document.querySelector('.nav-dropdown-group');
                         if (!nb || !izq || !der) return;
-                        document.body.classList.remove('nav-colapsada');
+                        const marca = document.querySelector('.brand-name');
+                        const play = document.getElementById('nav-play-area');
+                        const raiz = document.documentElement;
+                        // Estado de fabrica antes de medir: cada pasada parte de
+                        // cero y no arrastra lo que decidio la anterior.
+                        document.body.classList.remove('nav-colapsada', 'nav-apretada');
+                        raiz.style.removeProperty('--marca-k');
+                        raiz.style.removeProperty('--nav-k');
                         const cs = getComputedStyle(nb);
-                        const hueco = nb.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-                        // scrollWidth y no getBoundingClientRect: los dos grupos
-                        // son items flex y el navegador los ENCOGE antes de
-                        // desbordar, asi que su ancho pintado ya viene apretado y
-                        // no dice lo que de verdad piden.
-                        const pide = izq.scrollWidth + der.scrollWidth + 24;   // 24 = aire entre los dos grupos
-                        if (pide > hueco) document.body.classList.add('nav-colapsada');
-                        // SEGUNDO NIVEL. Con los enlaces ya en MENU la barra
-                        // puede seguir sin caber (PLAY NOW ocupa 166px + hueco),
-                        // y entonces los dos grupos se pisan: $PILL encima de
-                        // PLAY NOW y MENU encima de los iconos. Ahi se cae el
-                        // rotulo PILLWARS y PLAY NOW ocupa su sitio, que es
-                        // justo lo que hay que hacer segun David.
-                        // Tambien entra en cuanto PLAY NOW esta a la vista y la
-                        // barra ya va colapsada: si no, aparecer PLAY NOW
-                        // empujaba MENU 186px a la derecha de golpe.
-                        document.body.classList.remove('nav-apretada', 'nav-min');
-                        const colapsada = document.body.classList.contains('nav-colapsada');
-                        const playVisible = getComputedStyle(document.getElementById('nav-play-area') || document.body).display !== 'none';
-                        if (colapsada && (playVisible || izq.scrollWidth + der.scrollWidth + 24 > hueco)) {
-                            document.body.classList.add('nav-apretada');
+                        const hueco = nb.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - NAV_AIRE;
+                        // scrollWidth y no el ancho pintado: los dos grupos son
+                        // items flex y el navegador los ENCOGE antes de
+                        // desbordar, asi que lo pintado ya viene apretado y no
+                        // dice lo que de verdad piden.
+                        const pide = () => izq.scrollWidth + der.scrollWidth;
+                        if (pide() <= hueco) return;
+
+                        // PASO 1: encoger el rotulo.
+                        if (marca && getComputedStyle(marca).display !== 'none') {
+                            const ancho = marca.getBoundingClientRect().width;
+                            // Suelo = lo que mide PLAY NOW (o un 70% si no esta a
+                            // la vista): mas pequeño que eso no baja.
+                            const suelo = (play && play.offsetWidth) ? play.offsetWidth : ancho * 0.7;
+                            const recorte = Math.min(pide() - hueco, Math.max(0, ancho - suelo));
+                            if (recorte > 0 && ancho > 0) {
+                                raiz.style.setProperty('--marca-k', String(Math.max(0.1, Math.round((1 - recorte / ancho) * 1000) / 1000)));
+                            }
+                            if (pide() <= hueco) return;
                         }
-                        // TERCER NIVEL: ya sin rotulo y sigue sin caber -> se van
-                        // los iconos sociales. $PILL nunca: David lo quiere
-                        // siempre a la vista.
-                        if (izq.scrollWidth + der.scrollWidth + 24 > hueco) document.body.classList.add('nav-min');
+
+                        // PASO 2: fuera el rotulo, PLAY NOW ocupa su sitio.
+                        raiz.style.removeProperty('--marca-k');
+                        document.body.classList.add('nav-apretada');
+                        if (pide() <= hueco) return;
+
+                        // PASO 3: los cuatro enlaces, a MENU.
+                        document.body.classList.add('nav-colapsada');
+                        if (pide() <= hueco) return;
+
+                        // PASO 4: ya no queda nada que se pueda quitar sin perder
+                        // informacion, asi que se encoge lo mas grande —el boton
+                        // PLAY NOW y los iconos— hasta que entre. Nada
+                        // desaparece: $PILL y las redes siguen ahi, solo mas
+                        // pequeñas. Tope en 0,6 para que sigan siendo pulsables.
+                        const encogibles = [play, ...document.querySelectorAll('.icon-btn')].filter(Boolean);
+                        const anchoEncogible = encogibles.reduce((t, e) => t + e.getBoundingClientRect().width, 0);
+                        if (anchoEncogible > 0) {
+                            const k = Math.max(0.6, 1 - (pide() - hueco) / anchoEncogible);
+                            raiz.style.setProperty('--nav-k', String(Math.round(k * 1000) / 1000));
+                        }
                     };
                     ajustaNavbar();
                     window.addEventListener('resize', ajustaNavbar);
