@@ -984,6 +984,16 @@
             html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-row {
                 flex-direction: column; align-items: center; gap: 0;
                 width: 100%; height: 100%; padding: 10px 14px; box-sizing: border-box;
+                /* min-height:0 y no solo height:100%: la regla de escritorio
+                   (.menu-row, mas abajo) trae min-height:972px, pensado para un
+                   monitor, y min-height LE GANA a height. Girado, este cartel
+                   mide de alto lo que el telefono mide de ANCHO (375px en un
+                   movil normal), asi que ese minimo lo estiraba a 972 y el
+                   contenido se salia por los cuatro lados: el rotulo se iba por
+                   arriba y la pildora y PLAY quedaban fuera de pantalla por el
+                   lado. Eso es lo que se veia como "media pantalla en negro con
+                   la pildora cortada". */
+                min-height: 0;
             }
             html:not([data-hero]) body.mobile-allowed #loginOverlay .login-box {
                 display: flex; flex-direction: column; height: 100%; min-height: 0;
@@ -1007,7 +1017,11 @@
                pegado a un lado en vez de en medio. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-head-row {
                 flex: none; flex-direction: column; align-items: center; justify-content: center;
-                gap: 2px; margin: 34px 0 4px;
+                /* 14 y no 34 arriba: con el alto ya bien (ver min-height:0
+                   justo encima) la columna entera pide mas de lo que cabe en
+                   los 375px del cartel girado, y este era el margen mas gordo
+                   de los fijos. */
+                gap: 2px; margin: 14px 0 4px;
                 width: 100% !important; max-width: none !important; align-self: stretch;
             }
             html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle {
@@ -1055,10 +1069,20 @@
             /* 2) PILDORA: grande y PEGADA a PLAY. Solo margin-top:auto (no
                   `margin:auto`, que la dejaba flotando en el centro): asi todo
                   el hueco libre se va arriba y la pildora cae junto al boton. */
+            /* Tope por ALTO ademas de por ancho. El cartel girado mide de alto
+               100vw (el ancho del telefono) y las piezas fijas de la columna
+               —rotulo, PLAY y sus margenes— se llevan ~185px de esos, asi que la
+               pildora se queda con el resto. En calc y no en un vw fijo porque
+               lo que sobra NO es proporcional al ancho: en un telefono estrecho
+               un 52vw ya no cabia y volvia a desbordar. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay .pill-stage {
                 margin: auto auto 10px !important; max-width: min(64vw, 300px);
+                max-height: calc(100vw - 185px);
             }
-            html:not([data-hero]) body.mobile-allowed #loginOverlay #menuPillCanvas { max-width: min(64vw, 300px); }
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #menuPillCanvas {
+                max-width: min(64vw, 300px); max-height: calc(100vw - 185px);
+                width: auto; height: auto;
+            }
             /* 3) PLAY ABAJO, del ancho de su texto: al 62% del cartel salia una
                   barra larguisima de lado a lado. */
             /* El MISMO boton de siempre (su placa roja), solo mas corto. Antes
@@ -1067,7 +1091,7 @@
                suelta la proporcion y se fija el grosor a mano, que es lo que se
                pidio — mismo grosor, menos largo. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay #btnPlay {
-                margin: 0 auto 26px !important; flex: none; align-self: center;
+                margin: 0 auto 14px !important; flex: none; align-self: center;
                 aspect-ratio: auto !important; width: 210px !important; height: 46px !important;
                 min-width: 0 !important; padding: 0 !important; font-size: 15px !important;
             }
