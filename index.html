@@ -4819,8 +4819,21 @@ function toggleTrailerMode() {
             const play = document.getElementById('heroPlayNow');
             const caSign = document.getElementById('heroCaSign');
             if (!play || !caSign) return;
+            posicionaLinksHero();
+            // MODES/SKINS se queda SIEMPRE pegado al BOTON DE VERDAD (ver
+            // posicionaLinksHero) — es la misma posicion final que ya tiene en
+            // movil (el @media de mas abajo, "pegados debajo de PLAY NOW"): no
+            // se aparta de ahi nunca, ni a medio camino ni al final. Lo que
+            // cede sitio para no pisarlo es el contrato, igual que hace movil
+            // (top:52% en vez de centrado). Cuenta tambien cuando esta abierto:
+            // en position:absolute no ocupa hueco en el flujo, asi que hay que
+            // mirar su borde a mano.
+            const grupo = document.querySelector('.hero-play-group');
+            const links = document.querySelector('.hero-play-links');
+            const linksAbiertos = grupo && links && (grupo.matches(':hover') || grupo.classList.contains('open'));
+            const tope = Math.max(play.getBoundingClientRect().bottom, linksAbiertos ? links.getBoundingClientRect().bottom : 0);
             const caTopAntes = caSign.getBoundingClientRect().top;
-            const hueco = caTopAntes - play.getBoundingClientRect().bottom;
+            const hueco = caTopAntes - tope;
             if (hueco < HERO_GAP_MIN) {
                 const faltan = HERO_GAP_MIN - hueco;
                 // El empujon va DENTRO de .hero-main-content (su propio scale) Y
@@ -4836,50 +4849,49 @@ function toggleTrailerMode() {
                     raiz.style.setProperty('--hero-ca-nudge', (faltan * faltan / bajoDeVerdad) + 'px');
                 }
             }
-            posicionaLinksHero();
         }
-        ajustaHeroResponsive();
-
-        // MODES/SKINS ya no se abre pegado a PLAY NOW (ahi competia por el
-        // mismo hueco que el contrato, ver el bug de arriba): se coloca
-        // SIEMPRE por debajo de la caja del contrato entera, asi que nunca
-        // pisa nada de en medio. top:100% (su valor de CSS de fabrica) se
-        // pisa aqui con un top en px calculado contra .hero-play-group, que es
-        // su ancestro posicionado — position:absolute sigue siendo relativo A
-        // ESE, no a la pantalla.
-        const HERO_LINKS_GAP = 14;
+        // PLAY NOW lleva su propio scale del editor (~1.9x, para verse mas
+        // grande): eso lo agranda VISUALMENTE pero no infla la caja de
+        // .hero-play-group (scale no cuenta para el flex, solo pinta) — su
+        // caja se queda del tamaño chico de fabrica, y ahi es donde colgaba
+        // el top:100% del desplegable de serie: pegado a esa caja chica, muy
+        // por ENCIMA de donde se ve el boton de verdad (medido: la caja
+        // acababa en y=251 mientras el boton pintado empezaba en y=473, un
+        // hueco de 220px). Se coloca a mano contra el boton VISTO.
+        const HERO_LINKS_GAP = 10;
         function posicionaLinksHero() {
-            if (window.innerWidth <= HERO_ANCHO_ESTRECHO) {
-                // En movil ya va en el flujo normal, pegado al boton (ver el
-                // @media): sin position:absolute que reposicionar.
-                const links = document.querySelector('.hero-play-links');
-                if (links) links.style.removeProperty('top');
-                return;
-            }
             const grupo = document.querySelector('.hero-play-group');
             const links = document.querySelector('.hero-play-links');
-            const caWrap = document.getElementById('heroCaWrap');
-            if (!grupo || !links || !caWrap) return;
+            const play = document.getElementById('heroPlayNow');
+            if (!grupo || !links || !play) return;
+            if (window.innerWidth <= HERO_ANCHO_ESTRECHO) {
+                // Movil resetea el scale de PLAY NOW a 1 (ver el @media, mas
+                // abajo) y el desplegable pasa a position:static, en el flujo
+                // normal: no hace falta tocar nada.
+                links.style.removeProperty('top');
+                return;
+            }
             const grupoTop = grupo.getBoundingClientRect().top;
-            const objetivo = caWrap.getBoundingClientRect().bottom + HERO_LINKS_GAP;
+            const objetivo = play.getBoundingClientRect().bottom + HERO_LINKS_GAP;
             const deseadoLocal = objetivo - grupoTop;
             links.style.top = deseadoLocal + 'px';
-            // Mismo problema que el empujon del contrato: .hero-play-group vive
-            // dentro de #page-content, que en pantallas grandes lleva zoom:.9 —
-            // se calibra igual, midiendo cuanto bajo DE VERDAD.
-            if (deseadoLocal > 0.5) {
+            // Mismo problema de siempre: .hero-play-group vive dentro de
+            // #page-content, que en pantallas grandes lleva zoom:.9 — se
+            // calibra igual, midiendo cuanto bajo DE VERDAD.
+            if (Math.abs(deseadoLocal) > 0.5) {
                 const factor = (links.getBoundingClientRect().top - grupoTop) / deseadoLocal;
-                if (factor > 0.01 && Math.abs(factor - 1) > 0.01) links.style.top = (deseadoLocal / factor) + 'px';
+                if (Math.abs(factor) > 0.01 && Math.abs(factor - 1) > 0.01) links.style.top = (deseadoLocal / factor) + 'px';
             }
         }
-        posicionaLinksHero();
-        // Recalcular tambien al abrir MODES/SKINS: solo un resize no basta, el
-        // desplegable puede abrirse sin que la ventana cambie de tamaño. Antes
-        // de mostrarse (mouseenter, no un :hover ya en marcha) para que no se
-        // vea saltar de sitio una vez visible.
+        ajustaHeroResponsive();
+        // Recalcular tambien al abrir/cerrar MODES/SKINS: solo un resize no
+        // basta, el desplegable puede abrirse sin que la ventana cambie de
+        // tamaño. mouseenter y no mouseover: :hover ya esta activo al entrar,
+        // sin esperar a que la transicion de opacity termine.
         const heroPlayGroup = document.querySelector('.hero-play-group');
         if (heroPlayGroup) {
-            heroPlayGroup.addEventListener('mouseenter', posicionaLinksHero);
+            heroPlayGroup.addEventListener('mouseenter', ajustaHeroResponsive);
+            heroPlayGroup.addEventListener('mouseleave', ajustaHeroResponsive);
         }
         window.addEventListener('resize', ajustaHeroResponsive);
 
