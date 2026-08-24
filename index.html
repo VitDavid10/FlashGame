@@ -1608,6 +1608,14 @@ body.trailer-open #page-content{
                 translate: none !important; scale: 1 !important;
             }
             .hero-main-content { scale: 1 !important; padding: 0 14px; }
+            /* En tactil no hay raton que pasar por encima: MODES/SKINS se
+               quedan siempre a la vista (plegados serian inalcanzables), en
+               el flujo normal debajo del boton. Aqui y no en el @media de
+               768px: si se hacia visible antes de que el hero se recolocara
+               (top:52%, mas abajo en esta hoja) aparecia en la zona vieja de
+               escritorio y luego pegaba un salto al cruzar los 600px de
+               verdad. Asi sale YA en su sitio final. */
+            .hero-play-links { position: static; transform: none; opacity: 1; pointer-events: auto; }
             /* La navbar NO se parte en dos filas ni aqui: ver el bloque
                "UNA SOLA FILA SIEMPRE" mas abajo. */
             .navbar { padding: 0 14px; }
@@ -1681,13 +1689,6 @@ body.trailer-open #page-content{
                estrechar la ventana. */
             .hero-play { height: auto; width: min(70vw, 220px); }
             .hero-game-btns { gap: 12px; }
-            /* En tactil no hay raton que pasar por encima: MODES/SKINS se
-               quedan siempre a la vista (plegados serian inalcanzables) y en
-               el flujo normal, debajo del boton. */
-            .hero-play-links {
-                position: static; transform: none; opacity: 1; pointer-events: auto;
-                padding-top: 14px; gap: 30px;
-            }
             /* El iframe del juego SI se ve en movil (antes iba a display:none).
                El cartel de "Desktop Recommended" que /game enseña en tactil ya no
                estorba: con ?hero=1 se desactiva alli (ver html[data-hero] en
