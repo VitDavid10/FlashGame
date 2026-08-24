@@ -3457,18 +3457,23 @@ body.trailer-open #page-content{
 
                     DOM.ttTitle.innerText = data.name;
                     DOM.ttDesc.innerText = data.desc;
-                    // Solo se toca el src si cambia de skill (evita reiniciar el
-                    // mismo clip en cada mouseenter). El play() NO va pegado al
-                    // cambio de src: Chrome aborta ese play() con "video-only
-                    // background media was paused to save power" porque el
-                    // navegador aun no ha empezado a cargar la fuente nueva, y el
-                    // video se queda congelado en negro hasta el siguiente hover.
-                    // Se espera a 'canplay' (fuente lista de verdad) antes de
-                    // pedir el play. Medido: sin esto fallaba SIEMPRE al cambiar
-                    // de skill; con esto, nunca.
+                    // El src solo se toca si cambia de skill (evita reiniciar el
+                    // mismo clip en cada mouseenter), pero el play() va SIEMPRE,
+                    // cambie o no: hideSkill() pausa el video al salir, y si el
+                    // play() solo viviera dentro del if de arriba, volver a mirar
+                    // la MISMA skill no lo relanzaba nunca — se quedaba pausado
+                    // para siempre en el punto exacto donde se habia dejado.
+                    // El play() NO va pegado al cambio de src: Chrome aborta ese
+                    // play() con "video-only background media was paused to save
+                    // power" porque el navegador aun no ha empezado a cargar la
+                    // fuente nueva. Con el src ya cargado (misma skill de antes)
+                    // el video responde al instante; con uno nuevo, se espera a
+                    // 'canplay' antes de pedirlo.
                     if (DOM.ttVideo.getAttribute('src') !== data.video) {
                         DOM.ttVideo.src = data.video;
                         DOM.ttVideo.addEventListener('canplay', () => DOM.ttVideo.play().catch(() => {}), { once: true });
+                    } else {
+                        DOM.ttVideo.play().catch(() => {});
                     }
 
                     if (key === 'shoot') {
