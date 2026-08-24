@@ -2982,12 +2982,12 @@ body.trailer-open #page-content{
                             // Sin PLAY NOW el rotulo NO se va a retirar (es lo unico
                             // que hay a la izquierda), asi que se le deja encoger
                             // bastante mas: es el unico que puede ceder ancho.
-                            const suelo = hayPlay ? play.getBoundingClientRect().width : anchoMarca * 0.35;
+                            const suelo = hayPlay ? play.getBoundingClientRect().width : anchoMarca * 0.7;
                             // Tope duro por proporcion: si el ancho medido deja de
                             // bajar (el rotulo en pixel-pack es una imagen y tiene
                             // su propio minimo), el bucle seguiria multiplicando k
                             // hasta dejarlo ilegible.
-                            const kMin = anchoMarca > 0 ? Math.max(0.35, suelo / anchoMarca) : 1;
+                            const kMin = anchoMarca > 0 ? Math.max(0.7, suelo / anchoMarca) : 1;
                             let k = 1;
                             for (let i = 0; i < 8 && pide() > hueco; i++) {
                                 const w = marca.getBoundingClientRect().width;
