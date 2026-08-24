@@ -493,8 +493,15 @@
            transform-origin arriba-centro: al encoger, el bloque se queda
            anclado por su borde de arriba y centrado, o sea un solo movimiento
            en una direccion — nada de subir, bajar y volver a subir. */
-        .hero-game-btns { display: flex; flex-direction: column; align-items: center; gap: 46px; pointer-events: auto; transform-origin: top center; }
-        .hero-game-btns .hero-ca-sign { margin: 0; }
+        .hero-game-btns { display: flex; flex-direction: column; align-items: center; gap: 0; pointer-events: auto; transform-origin: top center; }
+        /* Las MISMAS distancias que tenia el hero antes de agruparlo (medidas en
+           1600x900: PLAY NOW acababa en y=243 y el rotulo del contrato empezaba
+           en 549). Ahora son fijas en px dentro del bloque, asi que el conjunto
+           se ve igual que siempre y ademas ya no se descoloca al cambiar el
+           ancho. Es el numero a tocar si se quiere el contrato mas arriba o mas
+           abajo. */
+        .hero-game-btns .hero-ca-sign { margin: 334px 0 0; }
+        .hero-game-btns #heroCaWrap { margin-top: -6px; }
         /* Sin el margen propio: la separacion la pone el gap del bloque, y asi el
            hueco rotulo->contrato es el mismo que PLAY NOW->rotulo. */
         .hero-game-btns .hero-ca { margin-top: 0; }
@@ -672,6 +679,11 @@
         .hero-ca .ca-text {
             font-family: 'Press Start 2P', monospace; font-size: var(--pw-font, 11px);
             color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
+            /* SIN barra de scroll. `.ca-text` a secas (la del bloque de abajo de
+               la pagina) trae overflow-x:auto, y aqui eso pinta una barra
+               horizontal dentro de la caja del contrato. El hero no la necesita:
+               el bloque entero encoge cuando no cabe. */
+            overflow: visible;
         }
         .hero-ca .ca-copy {
             font-family: 'Press Start 2P', monospace; font-size: calc(var(--pw-font, 11px) * 0.8);
@@ -2132,9 +2144,15 @@ body.trailer-open #page-content{
         // LandingLayout, asi sus estilos inline pisan esto sin pelearse con los
         // transform de los :hover.
         let css = '.hero-main-content{scale:' + (L.zoom || 1) + '}';
+        // El rotulo y la caja del contrato ya NO cuelgan de .hero-main-content
+        // (se mudaron al bloque del velo), asi que dejaron de heredar su zoom y
+        // salian mas grandes que antes. Se les multiplica aqui para que se vean
+        // exactamente igual que cuando estaban dentro.
+        const CON_ZOOM = { caSign: 1, ca: 1 };
         for (const k in SEL) {
             const t = L[k]; if (!t) continue;
-            css += SEL[k] + '{translate:' + (t.x || 0) + 'px ' + (t.y || 0) + 'px;scale:' + (t.s || 1) + '}';
+            const esc = (t.s || 1) * (CON_ZOOM[k] ? (L.zoom || 1) : 1);
+            css += SEL[k] + '{translate:' + (t.x || 0) + 'px ' + (t.y || 0) + 'px;scale:' + esc + '}';
         }
         const st = document.createElement('style');
         st.id = 'heroLayoutHorneado'; st.textContent = css;
@@ -4769,9 +4787,15 @@ function toggleTrailerMode() {
                 // Sin pieza se escribe el neutro EXPLICITO, no cadena vacia:
                 // vaciarlo devolveria el mando al CSS horneado del <head> y
                 // RESET ALL no resetearia nada.
+                // caSign/ca: el rotulo y la caja del contrato se mudaron al bloque
+                // del velo y dejaron de colgar de .hero-main-content, asi que ya
+                // no heredan su zoom. Se les multiplica aqui para que se vean del
+                // MISMO tamaño que cuando estaban dentro (mismo apaño que en el
+                // CSS horneado del <head>).
+                const zoomExtra = (key === 'caSign' || key === 'ca') ? (layout.zoom || 1) : 1;
                 for (const el of els) {
                     el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '0px 0px';
-                    el.style.scale = String(t ? (t.s || 1) : 1);
+                    el.style.scale = String((t ? (t.s || 1) : 1) * zoomExtra);
                     // Cuerpo de letra (ALT+rueda). Va por la custom property
                     // --pw-font, que es lo que leen los font-size del CSS; sin
                     // valor guardado se quita la property y manda el default del
