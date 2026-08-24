@@ -484,31 +484,7 @@
            gradual. */
         .hero-game-veil { position: absolute; inset: 0; background: rgba(3,5,4,0.62);
             display: flex; align-items: flex-start; justify-content: center; padding-top: 24vh; pointer-events: none; }
-        /* ===== EL BLOQUE DEL HERO =====
-           PLAY NOW (con MODES/SKINS colgando), OFFICIAL CONTRACT y la caja del
-           contrato son UNA sola columna: las distancias las pone el `gap` y no
-           dependen del ancho de la ventana. El gap es de 46 y no de 20 porque
-           MODES/SKINS van en position:absolute debajo de PLAY NOW y tienen que
-           caber en ese hueco sin tapar el rotulo del contrato.
-           transform-origin arriba-centro: al encoger, el bloque se queda
-           anclado por su borde de arriba y centrado, o sea un solo movimiento
-           en una direccion — nada de subir, bajar y volver a subir. */
-        .hero-game-btns { display: flex; flex-direction: column; align-items: center; gap: 0; pointer-events: auto; transform-origin: top center; }
-        /* Las MISMAS distancias que tenia el hero antes de agruparlo (medidas en
-           1600x900: PLAY NOW acababa en y=243 y el rotulo del contrato empezaba
-           en 549). Ahora son fijas en px dentro del bloque, asi que el conjunto
-           se ve igual que siempre y ademas ya no se descoloca al cambiar el
-           ancho. Es el numero a tocar si se quiere el contrato mas arriba o mas
-           abajo. */
-        .hero-game-btns .hero-ca-sign { margin: 334px 0 0; }
-        .hero-game-btns #heroCaWrap { margin-top: -6px; }
-        /* Sin el margen propio: la separacion la pone el gap del bloque, y asi el
-           hueco rotulo->contrato es el mismo que PLAY NOW->rotulo. */
-        .hero-game-btns .hero-ca { margin-top: 0; }
-        /* Las tres piezas ya NO se colocan por su cuenta con los px guardados de
-           EDIT LAYOUT: las coloca el bloque. Si se dejaran, cada una volveria a
-           irse por su lado en cuanto cambiara el ancho. */
-        #heroPlayNow, #heroCaSign, #heroCaWrap { translate: none !important; }
+        .hero-game-btns { display: flex; flex-direction: column; align-items: center; gap: 20px; pointer-events: auto; }
         /* pointer-events: none en el CONTENEDOR y auto en sus hijos: va con
            z-index 2 sobre .hero-game-wrap (z-index 0, donde viven los 3
            botones), y es una caja de ancho completo casi toda vacia — al mover
@@ -679,10 +655,10 @@
         .hero-ca .ca-text {
             font-family: 'Press Start 2P', monospace; font-size: var(--pw-font, 11px);
             color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
-            /* SIN barra de scroll. `.ca-text` a secas (la del bloque de abajo de
-               la pagina) trae overflow-x:auto, y aqui eso pinta una barra
-               horizontal dentro de la caja del contrato. El hero no la necesita:
-               el bloque entero encoge cuando no cabe. */
+            /* SIN barra de scroll horizontal. `.ca-text` a secas —la del bloque
+               del contrato de mas abajo de la pagina— trae overflow-x:auto, y en
+               el hero eso pinta una barra de izquierda a derecha dentro de la
+               caja. Aqui no hace falta: la caja se ajusta al texto. */
             overflow: visible;
         }
         .hero-ca .ca-copy {
@@ -1651,22 +1627,22 @@ body.trailer-open #page-content{
                queda agrupado en mitad de la pantalla. Solo afecta al movil: el
                velo de escritorio sigue con su padding-top en vh. */
             .hero-game-veil { align-items: center; padding-top: 0; }
-            /* Sin el margen de 98px de antes: reservaba sitio para el contrato
-               cuando este vivia FUERA del grupo. Ahora esta dentro y lo separa
-               el gap del bloque. */
+            .hero-game-btns > .hero-play-group { margin-bottom: 98px; }
             /* En POSICION ABSOLUTA, no en el flujo: .hero-main-content es hijo
                del wrapper flex, que lo centra, y ahi el margin-top no lo baja lo
                que se le pide (subiendolo de 130 a 198 solo lo movia 6px, porque
                el centrado se come el resto). Con top en % respecto al hero se
                coloca exactamente donde toca, justo debajo de MODES/SKINS. */
-            /* El titulo se va ARRIBA: el centro lo ocupa ya el bloque entero
-               (PLAY NOW + contrato), que antes solo tenia los botones. */
-            .hero-main-content { position: absolute; left: 0; right: 0; top: 16%; margin-top: 0; }
-            /* Aqui YA NO se tocan las distancias del bloque (ni el hueco del
-               aviso "copiado", ni el padding/gap de MODES/SKINS, ni el margen
-               del rotulo del contrato): el bloque encoge entero con su escala y
-               cualquier retoque suelto le cambiaba la forma al cruzar este
-               breakpoint, que es justo lo que se queria quitar. */
+            .hero-main-content { position: absolute; left: 0; right: 0; top: 52%; margin-top: 0; }
+            /* El hueco del aviso "copiado" reservaba 27px (15 de alto + 12 de
+               margen) SIEMPRE, tambien vacio, y era casi la mitad del alto de la
+               caja del contrato. */
+            #hero-copy-feedback { height: 10px; margin-top: 6px; }
+            /* MODES/SKINS pegados debajo de PLAY NOW, no a media pantalla. */
+            .hero-play-links { padding-top: 10px; gap: 18px; }
+            /* El cartel del rotulo pega con el contrato, sin los 34px de aire
+               que lleva en escritorio. */
+            .hero-ca-sign { margin-top: 0; }
         }
         /* --- MOBILE OPTIMIZATIONS FIXED --- */
         @media (max-width: 768px) {
@@ -1681,13 +1657,15 @@ body.trailer-open #page-content{
             body.pixel-pack .hero-main-content:not(.no-img) .hero-img {
                 height: auto !important; width: 100% !important;
             }
-            /* Aqui ya no se toca ni el tamaño de PLAY NOW, ni el gap del bloque,
-               ni el desplegable: el bloque entero encoge con su escala (ver
-               ajustaHero) y asi las distancias entre PLAY NOW, el rotulo del
-               contrato y la caja son las MISMAS a cualquier ancho.
-               MODES/SKINS vuelven a ser desplegable tambien en tactil: alli se
-               abren con el primer toque en PLAY NOW (ver su onclick), que es lo
-               que pidio David, en vez de estar siempre a la vista. */
+            .hero-play { height: auto; width: min(70vw, 260px); }
+            .hero-game-btns { gap: 12px; }
+            /* En tactil no hay raton que pasar por encima: MODES/SKINS se
+               quedan siempre a la vista (plegados serian inalcanzables) y en
+               el flujo normal, debajo del boton. */
+            .hero-play-links {
+                position: static; transform: none; opacity: 1; pointer-events: auto;
+                padding-top: 14px; gap: 30px;
+            }
             /* El iframe del juego SI se ve en movil (antes iba a display:none).
                El cartel de "Desktop Recommended" que /game enseña en tactil ya no
                estorba: con ?hero=1 se desactiva alli (ver html[data-hero] en
@@ -1719,19 +1697,13 @@ body.trailer-open #page-content{
                documento hasta 449 (74px de scroll lateral en toda la pagina,
                escondido por el overflow-x:hidden del body). Partiendola cabe. */
             .ca-box { max-width: 100%; }
-            /* .ca-text se queda en UNA linea tambien aqui: el bloque del hero ya
-               encoge entero, y partir el contrato en tres lineas le cambiaba el
-               alto de golpe al cruzar este ancho. La regla sigue valiendo para
-               los .ca-text que NO son del hero. */
-            .ca-text:not(.hero-ca .ca-text) { white-space: normal; word-break: break-all; font-size: var(--fs-2); overflow-x: visible; }
+            .ca-text { white-space: normal; word-break: break-all; font-size: var(--fs-2); overflow-x: visible; }
             /* La fila del resumen de quests es flex en una linea: el boton
                LOCKED, con `flex: none`, se salia 23px por la derecha. */
             .dq-summary { flex-wrap: wrap; justify-content: center; text-align: center; }
             .dq-summary .info { text-align: center; }
             .dq-btn { flex: none; }
-            /* Sin `white-space: normal` ni max-width: el rotulo del contrato se
-               parte en dos lineas y el bloque cambia de alto. Encoge con el. */
-            .hero-ca-sign { font-size: var(--fs-1); }
+            .hero-ca-sign { max-width: 100%; white-space: normal; font-size: var(--fs-1); }
             
             .nav-link { font-size: var(--fs-2); }
             .dropbtn { font-size: var(--fs-2); }
@@ -2144,15 +2116,9 @@ body.trailer-open #page-content{
         // LandingLayout, asi sus estilos inline pisan esto sin pelearse con los
         // transform de los :hover.
         let css = '.hero-main-content{scale:' + (L.zoom || 1) + '}';
-        // El rotulo y la caja del contrato ya NO cuelgan de .hero-main-content
-        // (se mudaron al bloque del velo), asi que dejaron de heredar su zoom y
-        // salian mas grandes que antes. Se les multiplica aqui para que se vean
-        // exactamente igual que cuando estaban dentro.
-        const CON_ZOOM = { caSign: 1, ca: 1 };
         for (const k in SEL) {
             const t = L[k]; if (!t) continue;
-            const esc = (t.s || 1) * (CON_ZOOM[k] ? (L.zoom || 1) : 1);
-            css += SEL[k] + '{translate:' + (t.x || 0) + 'px ' + (t.y || 0) + 'px;scale:' + esc + '}';
+            css += SEL[k] + '{translate:' + (t.x || 0) + 'px ' + (t.y || 0) + 'px;scale:' + (t.s || 1) + '}';
         }
         const st = document.createElement('style');
         st.id = 'heroLayoutHorneado'; st.textContent = css;
@@ -2393,21 +2359,6 @@ body.trailer-open #page-content{
                             <button class="hero-sub-link" id="heroChooseSkins">SKINS</button>
                         </div>
                     </div>
-                    <!-- El contrato vive AQUI, dentro del mismo grupo que PLAY
-                         NOW, y no en .hero-main-content como antes. Eran dos
-                         contenedores distintos y cada pieza se colocaba con px
-                         guardados desde EDIT LAYOUT: al cambiar el ancho de la
-                         ventana se separaban, se juntaban y se movia cada una
-                         por su lado. Siendo una sola columna flex, las
-                         distancias las pone el `gap` y no cambian nunca. -->
-                    <div class="hero-ca-sign" id="heroCaSign">OFFICIAL CONTRACT ADDRESS</div>
-                    <div id="heroCaWrap">
-                        <div class="hero-ca" onclick="App.UI.copyCA()" title="Copy contract address">
-                            <span class="ca-text" id="hero-ca-text">2xY5QjZaNGFXQiePsZPz4YFEwqxQvzN1ALqHNyQWpump</span>
-                            <span class="ca-copy">COPY</span>
-                        </div>
-                        <div id="hero-copy-feedback"></div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -2431,6 +2382,22 @@ body.trailer-open #page-content{
                 <div class="pick-me-label">PICK ME!</div>
                 <div class="pick-me-label esc-to-leave">ESC TO LEAVE</div>
                 <canvas class="pick-me-pill" width="86" height="86"></canvas>
+            </div>
+            <!-- Rotulo y caja del contrato: los dos con el MISMO formato que la
+                 barra IN GAME / el desplegable de $PILL (fondo negro
+                 translucido, filo dorado, Press Start 2P). Antes cada uno era un
+                 PNG distinto (official-contract.png y contract-box.png) con el
+                 texto encimado dentro de un marco de ancho fijo, y ahi el
+                 contrato no cabia: la caja daba 157px para 352px de texto, asi
+                 que salia cortado. Al ser ahora cajas de CSS, el ancho lo pone
+                 el contenido y entra entero en una linea. -->
+            <div class="hero-ca-sign" id="heroCaSign">OFFICIAL CONTRACT ADDRESS</div>
+            <div id="heroCaWrap">
+                <div class="hero-ca" onclick="App.UI.copyCA()" title="Copy contract address">
+                    <span class="ca-text" id="hero-ca-text">2xY5QjZaNGFXQiePsZPz4YFEwqxQvzN1ALqHNyQWpump</span>
+                    <span class="ca-copy">COPY</span>
+                </div>
+                <div id="hero-copy-feedback"></div>
             </div>
         </div>
     </div>
@@ -4787,15 +4754,9 @@ function toggleTrailerMode() {
                 // Sin pieza se escribe el neutro EXPLICITO, no cadena vacia:
                 // vaciarlo devolveria el mando al CSS horneado del <head> y
                 // RESET ALL no resetearia nada.
-                // caSign/ca: el rotulo y la caja del contrato se mudaron al bloque
-                // del velo y dejaron de colgar de .hero-main-content, asi que ya
-                // no heredan su zoom. Se les multiplica aqui para que se vean del
-                // MISMO tamaño que cuando estaban dentro (mismo apaño que en el
-                // CSS horneado del <head>).
-                const zoomExtra = (key === 'caSign' || key === 'ca') ? (layout.zoom || 1) : 1;
                 for (const el of els) {
                     el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '0px 0px';
-                    el.style.scale = String((t ? (t.s || 1) : 1) * zoomExtra);
+                    el.style.scale = String(t ? (t.s || 1) : 1);
                     // Cuerpo de letra (ALT+rueda). Va por la custom property
                     // --pw-font, que es lo que leen los font-size del CSS; sin
                     // valor guardado se quita la property y manda el default del
@@ -5197,48 +5158,15 @@ function toggleTrailerMode() {
         const btnModes = document.getElementById('heroChooseModes');
         const btnSkins = document.getElementById('heroChooseSkins');
         if (!btnPlay) return;
-        const grupo = btnPlay.closest('.hero-play-group');
-        // TACTIL: el primer toque en PLAY NOW despliega MODES/SKINS (que en un
-        // movil no se pueden sacar con el raton) y el segundo, ya con ellas a la
-        // vista, abre el modal del nombre. Asi se llega a las tres cosas sin
-        // perder ninguna. Con raton no cambia nada: el hover las saca y el clic
-        // abre el modal directamente.
-        const heroTactil = window.matchMedia('(hover: none), (pointer: coarse)').matches;
-        btnPlay.onclick = () => {
-            if (heroTactil && grupo && !grupo.classList.contains('open')) { grupo.classList.add('open'); return; }
-            HeroPlayModal.open();
-        };
-        if (heroTactil && grupo) {
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.hero-play-group')) grupo.classList.remove('open');
-            }, true);
-        }
+        btnPlay.onclick = () => HeroPlayModal.open();
         if (btnModes) btnModes.onclick = () => { window.location.href = 'game/'; };
         if (btnSkins) btnSkins.onclick = () => { window.location.href = 'game/?heroskins=1'; };
-
-        // El BLOQUE (PLAY NOW + contrato) encoge ENTERO cuando no cabe de ancho.
-        // Su ancho natural lo marca la caja del contrato (44 caracteres en una
-        // linea), asi que es lo primero que se sale. Escalando el conjunto, las
-        // distancias internas no se mueven ni un pixel y MODES/SKINS encogen con
-        // el resto — que es lo que se pedia para el estado mas estrecho.
-        const heroBloque = document.querySelector('.hero-game-btns');
-        const ajustaHero = () => {
-            if (!heroBloque) return;
-            heroBloque.style.transform = '';
-            const natural = heroBloque.getBoundingClientRect().width;
-            if (!natural) return;
-            const k = Math.min(1, (window.innerWidth - 28) / natural);
-            if (k < 1) heroBloque.style.transform = 'scale(' + (Math.round(k * 1000) / 1000) + ')';
-        };
-        ajustaHero();
-        window.addEventListener('resize', ajustaHero);
-        window.addEventListener('load', ajustaHero);
-        if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustaHero);
         // El desplegable se queda abierto un rato al salir el raton, en vez de
         // cerrarse en seco: con el :hover pelado no daba tiempo a llegar a las
         // palabras si el camino se salia del grupo (pasa en cuanto se recolocan
         // desde EDIT LAYOUT, que es lo que las mueve). mouseleave no salta
         // mientras el raton este sobre MODES/SKINS, que son hijos del grupo.
+        const grupo = btnPlay.closest('.hero-play-group');
         if (grupo) {
             let cierre = null;
             grupo.addEventListener('mouseenter', () => { clearTimeout(cierre); grupo.classList.add('open'); });
