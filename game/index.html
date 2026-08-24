@@ -966,7 +966,17 @@
                 width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
                 top: 50%; left: 50%; right: auto; bottom: auto;
                 transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
-                overflow-y: auto; overflow-x: hidden;
+                /* SIN scroll. Lo llevaba en `auto` y ahi estaba lo del "fondo
+                   partido en dos": #loginBgCv va en position:absolute DENTRO de
+                   este overlay, o sea que se desplaza CON el contenido. Mientras
+                   .menu-row media 972px de alto (ver min-height mas abajo) esto
+                   se podia desplazar 309px, y al hacerlo la cuadricula se iba
+                   por un lado dejando el resto de la pantalla con el negro
+                   translucido del propio overlay — dos zonas de fondo distinto.
+                   Ya no hace falta: con el alto arreglado el menu cabe entero,
+                   y la pildora ademas tiene tope por alto para que siga
+                   cabiendo en cualquier telefono. */
+                overflow: hidden;
             }
         }
 
