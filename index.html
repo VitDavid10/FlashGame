@@ -1122,6 +1122,19 @@ body.trailer-open #page-content{
         #nav-menu-dd .dropdown-content { left: 0; right: auto; }
         #nav-menu-dd .dropdown-box { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px !important; overflow: hidden; backdrop-filter: blur(4px) !important; }
         #nav-menu-dd .dropbtn { cursor: pointer; }
+        /* Barra apretada: se cae el rotulo PILLWARS (el logo-pildora se queda) y
+           PLAY NOW pasa a ocupar su sitio. Es lo que evita que, al aparecer PLAY
+           NOW, MENU se vaya a la derecha y acabe encima de los iconos mientras
+           $PILL se le monta a PLAY NOW: el rotulo mide 211px y PLAY NOW 166, asi
+           que cambiando uno por otro la fila hasta encoge. */
+        body.nav-apretada .brand-name { display: none !important; }
+        /* Ultimo recurso, ya sin rotulo: se van los iconos sociales. $PILL no se
+           toca — David lo quiere siempre a la vista. */
+        body.nav-min .icon-btn { display: none !important; }
+        /* $PILL y MENU a la MISMA altura. Sale 1px mas bajo que MENU porque su
+           rotulo son dos trozos ("$PILL" en un span y el precio como texto
+           suelto) y la caja de linea no mide igual. */
+        #price-btn { position: relative; top: -1px; }
 
         /* ===== TACTIL: los desplegables se abren PULSANDO, no al pasar =====
            En un movil no hay "pasar el raton": el primer toque disparaba el
@@ -1594,12 +1607,11 @@ body.trailer-open #page-content{
                boton arranca en el pixel exacto en el que arrancaba el rotulo. */
             body.nav-play-visible .nav-left { gap: 10px; }
             body.nav-play-visible .nav-links-container { margin-left: 0; }
-            /* $PILL tambien cede el sitio mientras el PLAY NOW esta a la vista:
-               el boton mide 166px y en 375 de ancho se le montaba encima
-               (medido: PLAY NOW acababa en 240 y $PILL empezaba en 196). Con el
-               hero a la vista —que es cuando no hay PLAY NOW— $PILL se ve
-               normal. */
-            body.nav-play-visible #pill-dropdown { display: none !important; }
+            /* $PILL SE QUEDA (peticion de David). Antes se escondia con PLAY NOW
+               a la vista porque se le montaba encima; ahora quien cede el sitio
+               es el rotulo PILLWARS (body.nav-apretada), que mide 211px frente a
+               los 166 del boton, asi que sobra hueco para los dos. Si aun asi no
+               cabe, lo ultimo en irse son los iconos sociales (body.nav-min). */
 
             /* ===== EL CONJUNTO DEL HERO, JUNTO Y CENTRADO =====
                En movil el grupo quedaba muy arriba (PLAY NOW a 195px de un hero
@@ -2897,6 +2909,25 @@ body.trailer-open #page-content{
                         // no dice lo que de verdad piden.
                         const pide = izq.scrollWidth + der.scrollWidth + 24;   // 24 = aire entre los dos grupos
                         if (pide > hueco) document.body.classList.add('nav-colapsada');
+                        // SEGUNDO NIVEL. Con los enlaces ya en MENU la barra
+                        // puede seguir sin caber (PLAY NOW ocupa 166px + hueco),
+                        // y entonces los dos grupos se pisan: $PILL encima de
+                        // PLAY NOW y MENU encima de los iconos. Ahi se cae el
+                        // rotulo PILLWARS y PLAY NOW ocupa su sitio, que es
+                        // justo lo que hay que hacer segun David.
+                        // Tambien entra en cuanto PLAY NOW esta a la vista y la
+                        // barra ya va colapsada: si no, aparecer PLAY NOW
+                        // empujaba MENU 186px a la derecha de golpe.
+                        document.body.classList.remove('nav-apretada', 'nav-min');
+                        const colapsada = document.body.classList.contains('nav-colapsada');
+                        const playVisible = getComputedStyle(document.getElementById('nav-play-area') || document.body).display !== 'none';
+                        if (colapsada && (playVisible || izq.scrollWidth + der.scrollWidth + 24 > hueco)) {
+                            document.body.classList.add('nav-apretada');
+                        }
+                        // TERCER NIVEL: ya sin rotulo y sigue sin caber -> se van
+                        // los iconos sociales. $PILL nunca: David lo quiere
+                        // siempre a la vista.
+                        if (izq.scrollWidth + der.scrollWidth + 24 > hueco) document.body.classList.add('nav-min');
                     };
                     ajustaNavbar();
                     window.addEventListener('resize', ajustaNavbar);
