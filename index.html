@@ -3060,6 +3060,38 @@ body.trailer-open #page-content{
                     window.addEventListener('load', ajustaNavbar);
                     if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustaNavbar);
 
+                    /* ===== EL SCROLL NO CAMBIA DE SECCION AL REDIMENSIONAR =====
+                       Al estrechar la ventana el contenido se apila y la pagina
+                       crece de alto, pero el navegador mantiene el mismo scrollY
+                       en pixeles: ese mismo scroll cae en una seccion distinta a
+                       la que se estaba viendo y parece que la pagina salta sola.
+                       Se ancla: en cada scroll se apunta que seccion esta arriba
+                       del todo y cuanto se ha bajado dentro de ella: al
+                       redimensionar se recoloca ahi mismo. */
+                    (() => {
+                        const SECCIONES = ['#hero', '#quest', '#shop', '#ranking', '#main-footer'];
+                        let ancla = null;
+                        const anota = () => {
+                            let mejor = null;
+                            for (const sel of SECCIONES) {
+                                const el = document.querySelector(sel);
+                                if (!el) continue;
+                                const top = el.getBoundingClientRect().top;
+                                if (top <= 1 && (!mejor || top > mejor.top)) mejor = { sel, top };
+                            }
+                            if (mejor) ancla = { sel: mejor.sel, offset: -mejor.top };
+                        };
+                        window.addEventListener('scroll', anota, { passive: true });
+                        anota();
+                        window.addEventListener('resize', () => {
+                            if (!ancla) return;
+                            const el = document.querySelector(ancla.sel);
+                            if (!el) return;
+                            const y = el.getBoundingClientRect().top + window.scrollY + ancla.offset;
+                            window.scrollTo(0, Math.max(0, y));
+                        });
+                    })();
+
                     /* ===== TACTIL: desplegables por PULSACION =====
                        En un movil no hay "pasar el raton": el toque disparaba el
                        :hover y a la vez el enlace de debajo, asi que el
