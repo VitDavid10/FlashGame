@@ -847,11 +847,33 @@
             let living = this.livingCells();
             for (let i = this.ejectedMasses.length - 1; i >= 0; i--) {
                 let m = this.ejectedMasses[i], f = (m.type === 'shoot') ? 0.93 : 0.9; m.x += m.vx * timeScale; m.y += m.vy * timeScale; m.vx *= Math.pow(f, timeScale); m.vy *= Math.pow(f, timeScale);
+                // UN SOLO impacto contra celdas, no dos. Antes habia dos bucles
+                // seguidos sobre las mismas celdas: uno para el shoot y otro,
+                // SIN condicion, para "comerse" la masa. Un disparo que acertaba
+                // pasaba por los DOS:
+                //   1. el shoot se quitaba con splice(i, 1)...
+                //   2. ...y el segundo bucle seguia con el MISMO `m` (la
+                //      variable ya estaba leida), volvia a acertar, ALIMENTABA a
+                //      la celda y hacia otro splice(i, 1) — que en ese momento
+                //      ya se llevaba por delante OTRO proyectil, el que habia
+                //      quedado en esa posicion al correrse el array.
+                // O sea: disparar a un rival le REGALABA masa en vez de hacerle
+                // daño (medido: -2500 para el que dispara, +905 para el que
+                // recibe), y ademas desaparecia un disparo ajeno que iba
+                // volando. Igual con el `if (i < length)` de abajo, que dejaba
+                // pasar a los virus un proyectil ya retirado.
+                // Viene del prototipo (img/333.html, misma pareja de bucles).
                 // Shoot impacta jugador: SIN explosión visual (era ruido innecesario al
                 // disparar contra rivales; la explosión solo se mantiene contra virus lila).
-                if (m.type === 'shoot') { for (let c of living) { if (getEllipticalDist(m, c) < c.r) { this.ejectedMasses.splice(i, 1); break; } } }
-                for (let c of living) { if (getEllipticalDist(m, c) < c.r) { c.r = Math.sqrt((c.mass + (Math.PI * m.r * m.r * 2)) / (Math.PI * PILL_RATIO)); this.ejectedMasses.splice(i, 1); break; } }
-                if (i < this.ejectedMasses.length) {
+                let impacto = false;
+                for (let c of living) {
+                    if (getEllipticalDist(m, c) < c.r) {
+                        // El clon SI se come (es masa); el disparo NO alimenta.
+                        if (m.type !== 'shoot') c.r = Math.sqrt((c.mass + (Math.PI * m.r * m.r * 2)) / (Math.PI * PILL_RATIO));
+                        this.ejectedMasses.splice(i, 1); impacto = true; break;
+                    }
+                }
+                if (!impacto) {
                     for (let vIdx = 0; vIdx < this.viruses.length; vIdx++) {
                         let v = this.viruses[vIdx];
                         if (Math.hypot(m.x - v.x, m.y - v.y) < v.r) {
