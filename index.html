@@ -1034,23 +1034,20 @@ body.trailer-open #page-content{
            es H = 263 / (1 - 0.166) = 325, y ahi el filo mide 32 arriba y 22
            abajo; se les dan 4px de aire. Con 22/16 el ultimo renglon (AVAILABLE
            IN ARCADE MODE) caia justo encima del filo de abajo. */
+        /* Popup SIEMPRE centrado en pantalla (ver el comentario largo en
+           renderTooltip): left/top:50% con margen negativo de la mitad de
+           su propio ancho/alto fijo (320x396), sin JS de por medio.
+           Aparte del transform: no choca con el transform:translateY(...)
+           de la animacion de abajo, que lo pisaria al terminar. */
         .skill-tooltip {
             position: fixed; width: 320px; height: 396px;
+            left: 50%; top: 50%; margin-left: -160px; margin-top: -198px;
             background: transparent url('game/img/cartel-hero/cartel-hero-v3g.png') center/100% 100% no-repeat;
             border: none; border-radius: 0; box-shadow: none;
             image-rendering: pixelated; padding: 36px 16px 26px;
             z-index: 999999; display: none; flex-direction: column;
             pointer-events: none; text-align: left;
             animation: fadeInTooltip 0.15s ease-out;
-        }
-        /* Movil: popup centrado en la pantalla SIN medir nada (ni el tamaño
-           de la card ni el viewport) — margen negativo de la mitad de su
-           propio ancho/alto fijo (320x396), sobre left/top:50%. Aparte del
-           transform (evita chocar con el transform: translateY(...) de la
-           animacion de arriba, que lo pisaria al terminar). */
-        .skill-tooltip.tt-centered {
-            left: 50% !important; top: 50% !important; right: auto !important; bottom: auto !important;
-            margin-left: -160px !important; margin-top: -198px !important;
         }
         /* El hueco del marco ya es negro, asi que la cabecera de la imagen se
            funde con el y solo queda su linea de separacion, ahora gris para que
@@ -3491,31 +3488,15 @@ body.trailer-open #page-content{
                         DOM.ttClassic.style.display = 'none';
                     }
 
-                    if (App.isTouch) {
-                        // En movil no hay "pasar cerca de la card": es un toque, y
-                        // colocar el cartel junto al dedo lo dejaba a veces medio
-                        // tapado por el propio dedo o cortado por un borde. Popup
-                        // centrado en la pantalla via CSS (.tt-centered), sin medir
-                        // nada — ni el viewport ni la card.
-                        DOM.tooltip.classList.add('tt-centered');
-                        DOM.tooltip.style.removeProperty('left');
-                        DOM.tooltip.style.removeProperty('top');
-                    } else {
-                        DOM.tooltip.classList.remove('tt-centered');
-                        const toolTipWidth = 320;
-                        const toolTipHeight = 396;
-                        const card = e.currentTarget;
-                        const rect = card.getBoundingClientRect();
-                        let leftPos = (rect.left + (rect.width / 2) - (toolTipWidth / 2));
-                        if (leftPos < 10) leftPos = 10;
-                        if (leftPos + toolTipWidth > window.innerWidth) leftPos = window.innerWidth - toolTipWidth - 10;
-
-                        let topPos = rect.top - toolTipHeight + 40;
-                        if (topPos < 0) topPos = rect.bottom + 10;
-
-                        DOM.tooltip.style.left = leftPos + 'px';
-                        DOM.tooltip.style.top = topPos + 'px';
-                    }
+                    // Posicion: puro CSS en .skill-tooltip (left/top:50% +
+                    // margen negativo), sin JS de por medio. La version
+                    // anterior colocaba el cartel pegado a la card en
+                    // escritorio y centrado en movil segun App.isTouch, y esa
+                    // rama fallaba en dispositivos reales (isTouch a false, o
+                    // el hover sintetico de un tap disparando la rama de
+                    // escritorio) — sin ninguna condicion no hay rama que
+                    // pueda fallar. Mismo criterio que la tienda/descripcion
+                    // de pills, que tambien abren siempre centradas.
                     DOM.tooltip.style.display = 'flex';
                 },
                 hideSkill: () => {

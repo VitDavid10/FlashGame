@@ -1036,10 +1036,9 @@
                 flex: 1; min-height: 0; width: 100%; text-align: center;
                 display: flex; flex-direction: column; align-items: center;
             }
-            /* Se sueltan las piezas colocadas a mano. #howToPlayWheel NO va
-               aqui: a diferencia de estas, no se coloca por flujo/CSS sino
-               por JS (posicionaRuedaJuego) contra el rect real de #btnPlay,
-               y necesita quedarse en position:absolute tambien en movil. */
+            /* Se sueltan las piezas colocadas a mano. #howToPlayWheel no va
+               aqui: ya no vive dentro de .login-left (ver el HTML, junto a
+               .back-icon), asi que esta lista no le afecta. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay .pill-stage,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #btnPlay,
             html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-head-row,
@@ -2279,37 +2278,25 @@
         .login-left #btnFeatures { display: none; }
         .login-left .btn-play:hover:not(:disabled), .login-left .btn-settings:hover { filter: brightness(1.15); color: #fff; }
         .login-left .btn-play:disabled { filter: grayscale(0.6) brightness(0.75); }
-        /* Rueda "como jugar": color segun el modo, igual que menu-side-head
-           (ROOM PRICES/MISSIONS). position:absolute A PROPOSITO, colocada
-           por JS (posicionaRuedaJuego) contra el rect REAL de #btnPlay, NO
-           en flujo normal: en flujo era un elemento MAS dentro de
-           .login-left, cuya altura en movil esta ajustada al pixel para
-           caber justo en #loginOverlay (que ahi lleva overflow:hidden,
-           SIN scroll) — cualquier añadido de mas se recortaba entero, sin
-           error ni rastro, y por eso no se veia NUNCA en movil pasara lo
-           que pasara con su color o su forma. posicionaRuedaJuego usa
-           getBoundingClientRect(), que ya da coordenadas de pantalla
-           FINALES (tras cualquier giro/escala de los antepasados), asi que
-           funciona igual en escritorio y en el menu girado 90 grados de
-           movil sin necesitar casos aparte. EDIT LAYOUT (clave "wheel" en
-           LAYOUT_ELS) sigue pudiendo mover/escalar ENCIMA de esta base via
-           translate/scale, igual que hacia PLAY NOW en el hero. */
+        /* Rueda "como jugar": hijo DIRECTO de #loginOverlay (ver el HTML,
+           junto a .back-icon), NO de .login-left/.menu-row — top/right FIJOS,
+           calcados de .back-icon (arriba a la izquierda), que ya demuestra
+           que este patron funciona en escritorio y en el menu girado 90
+           grados de movil sin JS ni casos aparte. Dentro de .login-left se
+           recortaba en silencio: #loginOverlay lleva overflow:hidden en
+           movil con el alto ajustado al pixel, y cualquier pieza de mas ahi
+           dentro (en flujo o a mano con JS) se perdia sin ningun error.
+           Color segun el modo, igual que menu-side-head. */
         .htp-wheel {
-            position: absolute; top: 0; left: 0;
+            position: absolute; top: 18px; right: 24px;
             display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
-            width: 32px; height: 32px;
+            width: 32px; height: 32px; border-radius: 50%;
             border: 2px solid #ccff00; background: rgba(0,0,0,.55); color: #ccff00;
             box-shadow: 0 0 12px rgba(204,255,0,.4); transition: transform .2s ease, border-color .2s, color .2s, box-shadow .2s;
-            z-index: 20;
-        }
-        body.pixel-pack .login-box .htp-wheel {
-            border-radius: 50% !important; clip-path: none !important;
-            box-shadow: 0 0 12px rgba(204,255,0,.4) !important;
+            z-index: 65;
         }
         .htp-wheel:hover { transform: rotate(35deg); }
-        body.pixel-pack .login-box .htp-wheel:active { transform: rotate(35deg) !important; }
-        #loginOverlay.bg-classic .htp-wheel { border-color: #00ffaa; color: #00ffaa; }
-        body.pixel-pack #loginOverlay.bg-classic .login-box .htp-wheel { box-shadow: 0 0 12px rgba(0,255,170,.4) !important; }
+        #loginOverlay.bg-classic .htp-wheel { border-color: #00ffaa; color: #00ffaa; box-shadow: 0 0 12px rgba(0,255,170,.4); }
 
         /* ===== CARTEL GENERAL "HOW TO PLAY" ===== */
         .gc-overlay-page {
@@ -3733,6 +3720,19 @@
       <canvas id="loginBgCv"></canvas>
       <!-- El arte de back-arrow.png ya trae dibujada la flecha: sin SVG dentro. -->
       <div class="back-icon" onclick="goBackToModes()"></div>
+      <!-- "Como jugar": hijo DIRECTO de #loginOverlay, como .back-icon
+           (arriba) — no de .login-left/.menu-row: ahi dentro, en movil,
+           es donde se recorta silenciosamente (#loginOverlay lleva
+           overflow:hidden con el alto ajustado al pixel, ver la regla mas
+           abajo) y donde el giro de 90 grados descuadraba cualquier
+           offset a mano. Aqui, con top/right fijos exactamente como
+           .back-icon (que si funciona en movil), no hace falta medir ni
+           calcular nada. Color segun el modo: #loginOverlay.bg-arcade/
+           .bg-classic mas abajo. Editable en EDIT LAYOUT (clave "wheel" en
+           LAYOUT_ELS) por si hace falta reubicarla. -->
+      <button class="htp-wheel" id="howToPlayWheel" type="button" title="How to play" aria-label="How to play">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.14.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.14 7.14 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.49.38 1.04.7 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54a7.3 7.3 0 0 0 1.63-.94l2.39.96c.24.1.46 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+      </button>
       <div class="menu-row">
         <div class="login-box">
             <!-- Cabecera: titulo del modo + 2 frases breves a la derecha -->
@@ -3809,15 +3809,6 @@
                 <div id="skinInputContainer" style="display:none;"></div>
 
                 <button class="btn-play" id="btnPlay" onclick="openPlayChoice()">PLAY</button>
-                <!-- "Como jugar": color segun el modo (ver
-                     #loginOverlay.bg-arcade/.bg-classic mas abajo). Posicion/
-                     tamaño editables en EDIT LAYOUT como cualquier otra pieza
-                     (clave "wheel" en LAYOUT_ELS) — de fabrica sale en flujo
-                     normal debajo de PLAY, y desde ahi se arrastra a donde
-                     haga falta. -->
-                <button class="htp-wheel" id="howToPlayWheel" type="button" title="How to play" aria-label="How to play">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.14.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.14 7.14 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.49.38 1.04.7 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54a7.3 7.3 0 0 0 1.63-.94l2.39.96c.24.1.46 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
-                </button>
                 <button class="btn-settings" id="btnSettings" onclick="openSettings()">SETTINGS</button>
                 <button class="btn-settings" id="btnFeatures" onclick="openFeatures()">FEATURES</button>
             </div>
@@ -7826,7 +7817,7 @@
                 alineaCartelesInfo();
                 // La wallet entra AQUI, con el menu ya montado (ver arriba).
                 if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
-                ajustaMenuResponsive(); posicionaRuedaJuego();   // el menu ya esta visible: ya se puede medir y escalar
+                ajustaMenuResponsive();   // el menu ya esta visible: ya se puede medir y escalar
                 els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
             };
             if (instant) ir(); else setTimeout(ir, 1200);
@@ -9033,43 +9024,6 @@
         }
         return isFinite(x0) ? { x0, y0, w: x1 - x0, h: y1 - y0 } : null;
     }
-    // Rueda "como jugar": ver el comentario largo junto a .htp-wheel en el
-    // CSS. getBoundingClientRect() da coordenadas de pantalla FINALES (tras
-    // cualquier transform de los antepasados — escala en escritorio, giro
-    // 90deg en movil), asi que calibrar contra el rect real de #btnPlay
-    // funciona igual en los dos casos sin necesitar ramas por dispositivo.
-    // El clamp contra #loginOverlay es la parte que de verdad hacia falta en
-    // movil: ahi lleva overflow:hidden y SIN el clamp la rueda podia acabar
-    // recortada (invisible, sin ningun error) si PLAY queda cerca de un
-    // borde tras el giro.
-    function posicionaRuedaJuego() {
-        const wheel = document.getElementById('howToPlayWheel');
-        const play = document.getElementById('btnPlay');
-        const cont = play && play.closest('.login-left');
-        const overlay = document.getElementById('loginOverlay');
-        if (!wheel || !play || !cont || !overlay) return;
-        const GAP = 10, SIZE = 32, MARGIN = 6;
-        const contRect = cont.getBoundingClientRect();
-        const playRect = play.getBoundingClientRect();
-        const ovRect = overlay.getBoundingClientRect();
-        if (!ovRect.width || !ovRect.height) return;   // overlay oculto: nada que calibrar todavia
-        let screenLeft = playRect.right + GAP;
-        let screenTop = playRect.top + playRect.height / 2 - SIZE / 2;
-        screenLeft = Math.min(Math.max(screenLeft, ovRect.left + MARGIN), ovRect.right - SIZE - MARGIN);
-        screenTop = Math.min(Math.max(screenTop, ovRect.top + MARGIN), ovRect.bottom - SIZE - MARGIN);
-        const objetivoLeft = screenLeft - contRect.left;
-        const objetivoTop = screenTop - contRect.top;
-        wheel.style.left = objetivoLeft + 'px';
-        wheel.style.top = objetivoTop + 'px';
-        // Se prueba, se mide cuanto se movio DE VERDAD (compuesto con
-        // cualquier scale de .menu-row/EDIT LAYOUT) y se corrige con la
-        // proporcion exacta — misma tecnica que --hero-ca-nudge en la landing.
-        const real = wheel.getBoundingClientRect();
-        const factorL = objetivoLeft ? (real.left - contRect.left) / objetivoLeft : 1;
-        const factorT = objetivoTop ? (real.top - contRect.top) / objetivoTop : 1;
-        if (Math.abs(factorL - 1) > 0.01 && factorL) wheel.style.left = (objetivoLeft / factorL) + 'px';
-        if (Math.abs(factorT - 1) > 0.01 && factorT) wheel.style.top = (objetivoTop / factorT) + 'px';
-    }
     function ajustaMenuResponsive() {
         const row = document.querySelector('#loginOverlay .menu-row');
         if (!row || !els.loginOverlay || els.loginOverlay.style.display === 'none') return;
@@ -9194,7 +9148,7 @@
         else row.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
         centrarTitulo();
     }
-    addEventListener('resize', () => { ajustaMenuResponsive(); posicionaRuedaJuego(); });
+    addEventListener('resize', ajustaMenuResponsive);
     addEventListener('resize', centrarTitulo);
     // Red de seguridad: al volver al menu desde una partida el titulo ya existe
     // y nadie vuelve a llamar a selectMode, asi que se recentra cuando el h1
@@ -9831,7 +9785,7 @@
                 // rotulo iba mas despacio que el raton con la ventana pequeña.
                 const k = (typeof menuEscala === 'number' && menuEscala > 0) ? menuEscala : 1;
                 tituloTune({ y: Math.round(layoutDrag.baseY + (e.clientY - layoutDrag.startY) / k) }, true);
-                ajustaMenuResponsive(); posicionaRuedaJuego();
+                ajustaMenuResponsive();
                 return;
             }
             const cur = menuLayout[layoutDrag.key] = menuLayout[layoutDrag.key] || { x: 0, y: 0, s: 1 };
@@ -10390,7 +10344,7 @@
     function returnToMenu() { hideGameHUD(); cerrarUIColores(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
         // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
         // la medida de cuando se entro al modo (ver el comentario de arriba).
-        centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive(); posicionaRuedaJuego();
+        centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
         gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
@@ -14086,7 +14040,7 @@
             // (startGame ya lo escondio) y no hace falta tocar nada aqui:
             // returnToMenu se encarga cuando vuelva a enseñarse.
             if (getComputedStyle(els.loginOverlay).display !== 'none') {
-                centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive(); posicionaRuedaJuego();
+                centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
             }
         };
         if (qs.get('hero') === '1') {
