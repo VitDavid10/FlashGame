@@ -4994,7 +4994,15 @@ function toggleTrailerMode() {
                 // vaciarlo devolveria el mando al CSS horneado del <head> y
                 // RESET ALL no resetearia nada.
                 for (const el of els) {
-                    el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '0px 0px';
+                    // El cartel de skill es un POPUP CENTRADO (ver .skill-tooltip
+                    // en la hoja): su sitio lo fija el CSS y NADIE lo mueve. El
+                    // layout global del servidor traia skillTooltip {x:-183,
+                    // y:178} de una sesion de EDIT LAYOUT en escritorio, y ese
+                    // translate se aplicaba ENCIMA del centrado — en un movil de
+                    // 375px lo sacaba casi entero de la pantalla, que es por lo
+                    // que salia descolocado hiciera lo que hiciera el CSS. La
+                    // ESCALA si se respeta: el tamaño sigue siendo ajustable.
+                    el.style.translate = (key === 'skillTooltip' || !t) ? '0px 0px' : (t.x || 0) + 'px ' + (t.y || 0) + 'px';
                     el.style.scale = String(t ? (t.s || 1) : 1);
                     // Cuerpo de letra (ALT+rueda). Va por la custom property
                     // --pw-font, que es lo que leen los font-size del CSS; sin

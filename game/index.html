@@ -1036,14 +1036,27 @@
                 flex: 1; min-height: 0; width: 100%; text-align: center;
                 display: flex; flex-direction: column; align-items: center;
             }
-            /* Se sueltan las piezas colocadas a mano. #howToPlayWheel no va
-               aqui: ya no vive dentro de .login-left (ver el HTML, junto a
-               .back-icon), asi que esta lista no le afecta. */
+            /* Se sueltan las piezas colocadas a mano. #playRow y no #btnPlay:
+               el translate/scale de EDIT LAYOUT vive ahora en la caja que
+               contiene a PLAY y a la rueda (ver LAYOUT_ELS), asi que es a ella
+               a la que hay que soltarle el sitio de escritorio. Con #btnPlay
+               a secas la caja se quedaba con el desplazamiento de escritorio
+               puesto y se llevaba a la rueda fuera de la pantalla.
+               La rueda NO se lista: va absolute DENTRO de la caja, pegada a
+               PLAY, y ahi es justo donde tiene que quedarse. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay .pill-stage,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #playRow,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #btnPlay,
             html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-head-row,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle {
                 translate: none !important; scale: 1 !important;
+            }
+            /* La rueda va absolute dentro de #playRow: si el reset de arriba le
+               tocara la position se saldria de su sitio junto a PLAY. */
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .pill-stage,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #btnPlay,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-head-row,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle {
                 position: relative !important; left: auto !important; top: auto !important;
             }
             /* 1) ROTULO ARRIBA. */
@@ -1123,8 +1136,18 @@
                15/2`: el alto colapsaba a 17px y quedaba una raya fina. Aqui se
                suelta la proporcion y se fija el grosor a mano, que es lo que se
                pidio — mismo grosor, menos largo. */
+            /* margin 0 a los lados (antes `auto`): dentro de #playRow, que es
+               flex, un margen automatico se come el espacio libre y empujaria
+               a la rueda al borde en vez de dejarla pegada al boton. */
+            /* Mismo margen vertical que el boton, por lo de siempre: que
+               align-items:center los deje a la misma altura (ver la regla
+               gemela fuera de este bloque). */
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .htp-wheel,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay .htp-spacer {
+                margin-top: 0 !important; margin-bottom: 26px !important;
+            }
             html:not([data-hero]) body.mobile-allowed #loginOverlay #btnPlay {
-                margin: 0 auto 26px !important; flex: none; align-self: center;
+                margin: 0 0 26px !important; flex: none; align-self: center;
                 aspect-ratio: auto !important; width: 210px !important; height: 46px !important;
                 min-width: 0 !important; padding: 0 !important; font-size: 15px !important;
             }
@@ -2278,25 +2301,45 @@
         .login-left #btnFeatures { display: none; }
         .login-left .btn-play:hover:not(:disabled), .login-left .btn-settings:hover { filter: brightness(1.15); color: #fff; }
         .login-left .btn-play:disabled { filter: grayscale(0.6) brightness(0.75); }
-        /* Rueda "como jugar": hijo DIRECTO de #loginOverlay (ver el HTML,
-           junto a .back-icon), NO de .login-left/.menu-row — top/right FIJOS,
-           calcados de .back-icon (arriba a la izquierda), que ya demuestra
-           que este patron funciona en escritorio y en el menu girado 90
-           grados de movil sin JS ni casos aparte. Dentro de .login-left se
-           recortaba en silencio: #loginOverlay lleva overflow:hidden en
-           movil con el alto ajustado al pixel, y cualquier pieza de mas ahi
-           dentro (en flujo o a mano con JS) se perdia sin ningun error.
+        /* Caja de PLAY + rueda (ver el comentario del HTML). Fila flex: la
+           rueda queda pegada al canto derecho del boton MIDA LO QUE MIDA —
+           en escritorio es el 55% del ancho y en movil 210px fijos, asi que
+           cualquier porcentaje a ojo fallaba en uno de los dos. El
+           espaciador invisible de la izquierda es del mismo ancho que la
+           rueda: con el, el conjunto sigue centrado sobre el MISMO eje que
+           antes, o sea que PLAY no se mueve ni un pixel de donde estaba. */
+        .play-row { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; }
+        .play-row .btn-play { margin-left: 0 !important; margin-right: 0 !important; flex: none; }
+        /* Los tres comparten margen vertical con el boton (14px arriba) para
+           que align-items:center los alinee por el MISMO eje: si solo lo
+           llevara el boton, su caja quedaria 7px descentrada respecto a la
+           rueda y esta saldria a distinta altura. */
+        .play-row .htp-wheel, .play-row .htp-spacer { margin-top: 14px; }
+        .htp-spacer { width: 32px; height: 1px; flex: none; }
+        /* Rueda "como jugar". Al vivir DENTRO de #playRow hereda su
+           translate/scale de EDIT LAYOUT, o sea que se mueve y crece con
+           PLAY como una sola pieza — que es lo que hacia falta: los valores
+           guardados de PLAY son solo pintura y un hermano suyo fuera de esta
+           caja acababa lejisimos del boton que se ve.
            Color segun el modo, igual que menu-side-head. */
         .htp-wheel {
-            position: absolute; top: 18px; right: 24px;
+            flex: none;
             display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
             width: 32px; height: 32px; border-radius: 50%;
             border: 2px solid #ccff00; background: rgba(0,0,0,.55); color: #ccff00;
             box-shadow: 0 0 12px rgba(204,255,0,.4); transition: transform .2s ease, border-color .2s, color .2s, box-shadow .2s;
-            z-index: 65;
+            z-index: 5;
+        }
+        /* pixel-pack cuadra TODOS los botones del menu (border-radius:0
+           !important). Esta es redonda a proposito. */
+        body.pixel-pack .login-box .htp-wheel {
+            border-radius: 50% !important; clip-path: none !important;
+            box-shadow: 0 0 12px rgba(204,255,0,.4) !important;
         }
         .htp-wheel:hover { transform: rotate(35deg); }
+        body.pixel-pack .login-box .htp-wheel:active { transform: rotate(35deg) !important; }
         #loginOverlay.bg-classic .htp-wheel { border-color: #00ffaa; color: #00ffaa; box-shadow: 0 0 12px rgba(0,255,170,.4); }
+        body.pixel-pack #loginOverlay.bg-classic .login-box .htp-wheel { box-shadow: 0 0 12px rgba(0,255,170,.4) !important; }
 
         /* ===== CARTEL GENERAL "HOW TO PLAY" ===== */
         .gc-overlay-page {
@@ -3720,19 +3763,6 @@
       <canvas id="loginBgCv"></canvas>
       <!-- El arte de back-arrow.png ya trae dibujada la flecha: sin SVG dentro. -->
       <div class="back-icon" onclick="goBackToModes()"></div>
-      <!-- "Como jugar": hijo DIRECTO de #loginOverlay, como .back-icon
-           (arriba) — no de .login-left/.menu-row: ahi dentro, en movil,
-           es donde se recorta silenciosamente (#loginOverlay lleva
-           overflow:hidden con el alto ajustado al pixel, ver la regla mas
-           abajo) y donde el giro de 90 grados descuadraba cualquier
-           offset a mano. Aqui, con top/right fijos exactamente como
-           .back-icon (que si funciona en movil), no hace falta medir ni
-           calcular nada. Color segun el modo: #loginOverlay.bg-arcade/
-           .bg-classic mas abajo. Editable en EDIT LAYOUT (clave "wheel" en
-           LAYOUT_ELS) por si hace falta reubicarla. -->
-      <button class="htp-wheel" id="howToPlayWheel" type="button" title="How to play" aria-label="How to play">
-          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.14.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.14 7.14 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.49.38 1.04.7 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54a7.3 7.3 0 0 0 1.63-.94l2.39.96c.24.1.46 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
-      </button>
       <div class="menu-row">
         <div class="login-box">
             <!-- Cabecera: titulo del modo + 2 frases breves a la derecha -->
@@ -3808,7 +3838,24 @@
 
                 <div id="skinInputContainer" style="display:none;"></div>
 
-                <button class="btn-play" id="btnPlay" onclick="openPlayChoice()">PLAY</button>
+                <!-- PLAY y la rueda de "como jugar" van en la MISMA caja y se
+                     mueven/escalan JUNTAS: la clave "play" de EDIT LAYOUT
+                     apunta a este #playRow, no al boton. Ese era el problema
+                     de raiz — #btnPlay lleva {x:261,y:137,s:1.43}, que es
+                     solo PINTURA (translate/scale no cambian su caja en el
+                     flujo), asi que cualquier hermano suyo aterrizaba lejos
+                     del boton que se VE. Moviendo la caja entera, la rueda va
+                     pegada a PLAY siempre, sin medir nada y sin JS.
+                     El espaciador de la izquierda mide lo mismo que la rueda:
+                     asi el conjunto queda centrado sobre el mismo eje de
+                     antes y PLAY no se mueve de donde estaba. -->
+                <div class="play-row" id="playRow">
+                    <span class="htp-spacer" aria-hidden="true"></span>
+                    <button class="btn-play" id="btnPlay" onclick="openPlayChoice()">PLAY</button>
+                    <button class="htp-wheel" id="howToPlayWheel" type="button" title="How to play" aria-label="How to play">
+                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.14.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.14 7.14 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.49.38 1.04.7 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54a7.3 7.3 0 0 0 1.63-.94l2.39.96c.24.1.46 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+                    </button>
+                </div>
                 <button class="btn-settings" id="btnSettings" onclick="openSettings()">SETTINGS</button>
                 <button class="btn-settings" id="btnFeatures" onclick="openFeatures()">FEATURES</button>
             </div>
@@ -9252,7 +9299,13 @@
         // margenes) se agarra el recuadro.
         walletBarTxt: '#gwBalInner', walletBtnTxt: '#gameWalletArea .gw-btn-txt',
         walletBar: '#gwBalBox', walletBtn: '#gwConnect, #gwDepositWrap',
-        name: '#playerNameInput', play: '#btnPlay', wheel: '#howToPlayWheel', settings: '#btnSettings',
+        // play apunta a la CAJA (#playRow), no al boton: dentro va tambien la
+        // rueda de "como jugar", y asi las dos se mueven/escalan juntas con un
+        // solo arrastre. Los valores guardados de siempre siguen valiendo — la
+        // caja es del ancho completo con el boton centrado, asi que moverla
+        // deja a PLAY donde estaba. wheel va aparte para poder afinar SOLO la
+        // rueda (encima de lo que herede de la caja) sin tocar el boton.
+        name: '#playerNameInput', play: '#playRow', wheel: '#howToPlayWheel', settings: '#btnSettings',
         // ===== PANEL DE SKINS =====
         // El bloque de las 8 pildoras se mueve y escala ENTERO, no celda a
         // celda: agarrar una celda suelta descuadraba la rejilla. Clave
