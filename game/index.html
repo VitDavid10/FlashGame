@@ -545,6 +545,29 @@
                 top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important; transform-origin: center !important;
             }
+            /* Cartel general "HOW TO PLAY": mismo giro que #skinBigModal/
+               #loginOverlay/#paisModal — sin esto quedaba SIN girar mientras
+               el resto de la interfaz si, y salia de lado en el movil. */
+            html:not([data-hero]) body.mobile-allowed #gcOverlay {
+                width: 100vh !important; height: 100vw !important;
+                width: var(--vph, 100dvh) !important; height: var(--vpw, 100dvw) !important;
+                top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
+                transform: translate(-50%, -50%) rotate(90deg) !important; transform-origin: center !important;
+            }
+            /* El ancho normal (min(560px,100%)) se mide contra el eje LOCAL del
+               contenedor girado (100vh reales, ~800px), no contra lo que de
+               verdad queda disponible tras el giro (el ANCHO real, ~375px,
+               ver el comentario de #paisModal .pm-inner mas arriba con el
+               mismo 92vw). */
+            html:not([data-hero]) body.mobile-allowed #gcOverlay .general-card { width: 92vw !important; }
+            /* Mismo motivo: alto pensado para escritorio, no para el eje
+               (ahora vw) que de verdad queda tras el giro. */
+            html:not([data-hero]) body.mobile-allowed #gcOverlay .gc-body { min-height: 0 !important; }
+            html:not([data-hero]) body.mobile-allowed #gcOverlay .gc-video-box { height: 150px !important; }
+            html:not([data-hero]) body.mobile-allowed #gcOverlay .gc-content { padding: 14px 12px !important; gap: 10px !important; }
+            html:not([data-hero]) body.mobile-allowed #gcOverlay .gc-skills-grid { gap: 6px !important; }
+            html:not([data-hero]) body.mobile-allowed #gcOverlay .float-card { width: 84vw !important; }
+            html:not([data-hero]) body.mobile-allowed #gcOverlay .fc-video-box { height: 100px !important; }
             /* Celda de skin en movil: la bandera y el precio no caben en el
                cuadrado mas pequeño (81px vs los 133px de escritorio) sin
                deformarlo. El precio solo estorba (no dice nada que ON/OWNED
@@ -1016,6 +1039,7 @@
             /* Se sueltan las piezas colocadas a mano. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay .pill-stage,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #btnPlay,
+            html:not([data-hero]) body.mobile-allowed #loginOverlay #howToPlayWheel,
             html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-head-row,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle {
                 translate: none !important; scale: 1 !important;
@@ -2276,16 +2300,6 @@
         body.pixel-pack .login-box .htp-wheel:active { transform: rotate(35deg) !important; }
         #loginOverlay.bg-classic .htp-wheel { border-color: #00ffaa; color: #00ffaa; }
         body.pixel-pack #loginOverlay.bg-classic .login-box .htp-wheel { box-shadow: 0 0 12px rgba(0,255,170,.4) !important; }
-        /* Movil: #loginOverlay va GIRADO 90 grados (ver su regla mas arriba) y
-           .login-left, dentro, hace cosas raras con el ancho del flex en ese
-           contexto — la rueda, en flujo normal, salia fuera de pantalla. Se
-           saca del flujo y se coloca DIRECTAMENTE contra #loginOverlay (fixed,
-           el mismo contenedor que ya gira entero sin problemas), en vw/vh
-           como el resto de piezas de este bloque movil. */
-        html:not([data-hero]) body.mobile-allowed #loginOverlay .htp-wheel {
-            position: absolute !important; top: 3vh !important; right: 4vw !important; left: auto !important; bottom: auto !important;
-            margin: 0 !important; z-index: 20;
-        }
 
         /* ===== CARTEL GENERAL "HOW TO PLAY" ===== */
         .gc-overlay-page {
