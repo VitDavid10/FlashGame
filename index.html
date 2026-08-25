@@ -1043,6 +1043,15 @@ body.trailer-open #page-content{
             pointer-events: none; text-align: left;
             animation: fadeInTooltip 0.15s ease-out;
         }
+        /* Movil: popup centrado en la pantalla SIN medir nada (ni el tamaño
+           de la card ni el viewport) — margen negativo de la mitad de su
+           propio ancho/alto fijo (320x396), sobre left/top:50%. Aparte del
+           transform (evita chocar con el transform: translateY(...) de la
+           animacion de arriba, que lo pisaria al terminar). */
+        .skill-tooltip.tt-centered {
+            left: 50% !important; top: 50% !important; right: auto !important; bottom: auto !important;
+            margin-left: -160px !important; margin-top: -198px !important;
+        }
         /* El hueco del marco ya es negro, asi que la cabecera de la imagen se
            funde con el y solo queda su linea de separacion, ahora gris para que
            pegue con el marco en vez del #333 que iba con el filo dorado. */
@@ -3482,31 +3491,31 @@ body.trailer-open #page-content{
                         DOM.ttClassic.style.display = 'none';
                     }
 
-                    const toolTipWidth = 320;
-                    const toolTipHeight = 396;
-                    let leftPos, topPos;
-
                     if (App.isTouch) {
                         // En movil no hay "pasar cerca de la card": es un toque, y
                         // colocar el cartel junto al dedo lo dejaba a veces medio
-                        // tapado por el propio dedo o cortado por un borde. Se
-                        // centra SIEMPRE en la pantalla, clamp incluido por si el
-                        // telefono es mas estrecho/bajo que el cartel (320x396).
-                        leftPos = Math.max(10, (window.innerWidth - toolTipWidth) / 2);
-                        topPos = Math.max(10, (window.innerHeight - toolTipHeight) / 2);
+                        // tapado por el propio dedo o cortado por un borde. Popup
+                        // centrado en la pantalla via CSS (.tt-centered), sin medir
+                        // nada — ni el viewport ni la card.
+                        DOM.tooltip.classList.add('tt-centered');
+                        DOM.tooltip.style.removeProperty('left');
+                        DOM.tooltip.style.removeProperty('top');
                     } else {
+                        DOM.tooltip.classList.remove('tt-centered');
+                        const toolTipWidth = 320;
+                        const toolTipHeight = 396;
                         const card = e.currentTarget;
                         const rect = card.getBoundingClientRect();
-                        leftPos = (rect.left + (rect.width / 2) - (toolTipWidth / 2));
+                        let leftPos = (rect.left + (rect.width / 2) - (toolTipWidth / 2));
                         if (leftPos < 10) leftPos = 10;
                         if (leftPos + toolTipWidth > window.innerWidth) leftPos = window.innerWidth - toolTipWidth - 10;
 
-                        topPos = rect.top - toolTipHeight + 40;
+                        let topPos = rect.top - toolTipHeight + 40;
                         if (topPos < 0) topPos = rect.bottom + 10;
-                    }
 
-                    DOM.tooltip.style.left = leftPos + 'px';
-                    DOM.tooltip.style.top = topPos + 'px';
+                        DOM.tooltip.style.left = leftPos + 'px';
+                        DOM.tooltip.style.top = topPos + 'px';
+                    }
                     DOM.tooltip.style.display = 'flex';
                 },
                 hideSkill: () => {

@@ -1036,10 +1036,12 @@
                 flex: 1; min-height: 0; width: 100%; text-align: center;
                 display: flex; flex-direction: column; align-items: center;
             }
-            /* Se sueltan las piezas colocadas a mano. */
+            /* Se sueltan las piezas colocadas a mano. #howToPlayWheel NO va
+               aqui: a diferencia de estas, no se coloca por flujo/CSS sino
+               por JS (posicionaRuedaJuego) contra el rect real de #btnPlay,
+               y necesita quedarse en position:absolute tambien en movil. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay .pill-stage,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #btnPlay,
-            html:not([data-hero]) body.mobile-allowed #loginOverlay #howToPlayWheel,
             html:not([data-hero]) body.mobile-allowed #loginOverlay .menu-head-row,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle {
                 translate: none !important; scale: 1 !important;
@@ -2278,19 +2280,27 @@
         .login-left .btn-play:hover:not(:disabled), .login-left .btn-settings:hover { filter: brightness(1.15); color: #fff; }
         .login-left .btn-play:disabled { filter: grayscale(0.6) brightness(0.75); }
         /* Rueda "como jugar": color segun el modo, igual que menu-side-head
-           (ROOM PRICES/MISSIONS). En flujo normal (no absolute): asi tiene
-           una posicion de fabrica razonable y EDIT LAYOUT la mueve desde ahi
-           con translate/scale, igual que #btnPlay (clave "wheel" en
-           LAYOUT_ELS). body.pixel-pack .login-box button fuerza esquinas
-           rectas y su propio box-shadow a TODOS los botones de la columna
-           (border-radius:0 !important) — de ahi salia cuadrada; se le gana
-           aqui con selector igual de especifico. */
+           (ROOM PRICES/MISSIONS). position:absolute A PROPOSITO, colocada
+           por JS (posicionaRuedaJuego) contra el rect REAL de #btnPlay, NO
+           en flujo normal: en flujo era un elemento MAS dentro de
+           .login-left, cuya altura en movil esta ajustada al pixel para
+           caber justo en #loginOverlay (que ahi lleva overflow:hidden,
+           SIN scroll) — cualquier añadido de mas se recortaba entero, sin
+           error ni rastro, y por eso no se veia NUNCA en movil pasara lo
+           que pasara con su color o su forma. posicionaRuedaJuego usa
+           getBoundingClientRect(), que ya da coordenadas de pantalla
+           FINALES (tras cualquier giro/escala de los antepasados), asi que
+           funciona igual en escritorio y en el menu girado 90 grados de
+           movil sin necesitar casos aparte. EDIT LAYOUT (clave "wheel" en
+           LAYOUT_ELS) sigue pudiendo mover/escalar ENCIMA de esta base via
+           translate/scale, igual que hacia PLAY NOW en el hero. */
         .htp-wheel {
+            position: absolute; top: 0; left: 0;
             display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
-            width: 32px; height: 32px; margin: 8px auto 0;
+            width: 32px; height: 32px;
             border: 2px solid #ccff00; background: rgba(0,0,0,.55); color: #ccff00;
             box-shadow: 0 0 12px rgba(204,255,0,.4); transition: transform .2s ease, border-color .2s, color .2s, box-shadow .2s;
-            z-index: 3;
+            z-index: 20;
         }
         body.pixel-pack .login-box .htp-wheel {
             border-radius: 50% !important; clip-path: none !important;
@@ -7816,7 +7826,7 @@
                 alineaCartelesInfo();
                 // La wallet entra AQUI, con el menu ya montado (ver arriba).
                 if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(true, m);
-                ajustaMenuResponsive();   // el menu ya esta visible: ya se puede medir y escalar
+                ajustaMenuResponsive(); posicionaRuedaJuego();   // el menu ya esta visible: ya se puede medir y escalar
                 els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
             };
             if (instant) ir(); else setTimeout(ir, 1200);
@@ -9023,6 +9033,43 @@
         }
         return isFinite(x0) ? { x0, y0, w: x1 - x0, h: y1 - y0 } : null;
     }
+    // Rueda "como jugar": ver el comentario largo junto a .htp-wheel en el
+    // CSS. getBoundingClientRect() da coordenadas de pantalla FINALES (tras
+    // cualquier transform de los antepasados — escala en escritorio, giro
+    // 90deg en movil), asi que calibrar contra el rect real de #btnPlay
+    // funciona igual en los dos casos sin necesitar ramas por dispositivo.
+    // El clamp contra #loginOverlay es la parte que de verdad hacia falta en
+    // movil: ahi lleva overflow:hidden y SIN el clamp la rueda podia acabar
+    // recortada (invisible, sin ningun error) si PLAY queda cerca de un
+    // borde tras el giro.
+    function posicionaRuedaJuego() {
+        const wheel = document.getElementById('howToPlayWheel');
+        const play = document.getElementById('btnPlay');
+        const cont = play && play.closest('.login-left');
+        const overlay = document.getElementById('loginOverlay');
+        if (!wheel || !play || !cont || !overlay) return;
+        const GAP = 10, SIZE = 32, MARGIN = 6;
+        const contRect = cont.getBoundingClientRect();
+        const playRect = play.getBoundingClientRect();
+        const ovRect = overlay.getBoundingClientRect();
+        if (!ovRect.width || !ovRect.height) return;   // overlay oculto: nada que calibrar todavia
+        let screenLeft = playRect.right + GAP;
+        let screenTop = playRect.top + playRect.height / 2 - SIZE / 2;
+        screenLeft = Math.min(Math.max(screenLeft, ovRect.left + MARGIN), ovRect.right - SIZE - MARGIN);
+        screenTop = Math.min(Math.max(screenTop, ovRect.top + MARGIN), ovRect.bottom - SIZE - MARGIN);
+        const objetivoLeft = screenLeft - contRect.left;
+        const objetivoTop = screenTop - contRect.top;
+        wheel.style.left = objetivoLeft + 'px';
+        wheel.style.top = objetivoTop + 'px';
+        // Se prueba, se mide cuanto se movio DE VERDAD (compuesto con
+        // cualquier scale de .menu-row/EDIT LAYOUT) y se corrige con la
+        // proporcion exacta — misma tecnica que --hero-ca-nudge en la landing.
+        const real = wheel.getBoundingClientRect();
+        const factorL = objetivoLeft ? (real.left - contRect.left) / objetivoLeft : 1;
+        const factorT = objetivoTop ? (real.top - contRect.top) / objetivoTop : 1;
+        if (Math.abs(factorL - 1) > 0.01 && factorL) wheel.style.left = (objetivoLeft / factorL) + 'px';
+        if (Math.abs(factorT - 1) > 0.01 && factorT) wheel.style.top = (objetivoTop / factorT) + 'px';
+    }
     function ajustaMenuResponsive() {
         const row = document.querySelector('#loginOverlay .menu-row');
         if (!row || !els.loginOverlay || els.loginOverlay.style.display === 'none') return;
@@ -9147,7 +9194,7 @@
         else row.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
         centrarTitulo();
     }
-    addEventListener('resize', ajustaMenuResponsive);
+    addEventListener('resize', () => { ajustaMenuResponsive(); posicionaRuedaJuego(); });
     addEventListener('resize', centrarTitulo);
     // Red de seguridad: al volver al menu desde una partida el titulo ya existe
     // y nadie vuelve a llamar a selectMode, asi que se recentra cuando el h1
@@ -9784,7 +9831,7 @@
                 // rotulo iba mas despacio que el raton con la ventana pequeña.
                 const k = (typeof menuEscala === 'number' && menuEscala > 0) ? menuEscala : 1;
                 tituloTune({ y: Math.round(layoutDrag.baseY + (e.clientY - layoutDrag.startY) / k) }, true);
-                ajustaMenuResponsive();
+                ajustaMenuResponsive(); posicionaRuedaJuego();
                 return;
             }
             const cur = menuLayout[layoutDrag.key] = menuLayout[layoutDrag.key] || { x: 0, y: 0, s: 1 };
@@ -10343,7 +10390,7 @@
     function returnToMenu() { hideGameHUD(); cerrarUIColores(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
         // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
         // la medida de cuando se entro al modo (ver el comentario de arriba).
-        centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
+        centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive(); posicionaRuedaJuego();
         gameRunning = false; isSpectating = false; document.getElementById('exitGameBtn').style.display = 'none'; if(saveInterval) clearInterval(saveInterval); if (sim && sim.isRemote) { sim.close(); sim = null; } if (typeof practiceMode !== 'undefined' && practiceMode) { practiceMode = false; sim = null; } if (window._lobbyPreviewTimer) { clearInterval(window._lobbyPreviewTimer); window._lobbyPreviewTimer = null; } if (typeof setLobbyBanner === 'function') setLobbyBanner(null); if (typeof WaitHud !== 'undefined') WaitHud.hide(); if (typeof Rejoin !== 'undefined') Rejoin.clear(); if (typeof netState !== 'undefined' && netState && netState.ws) { const w = netState.ws; netState = null; try { w.close(); } catch(e) {} } checkActiveRoomConfig(); if (typeof GameWalletUI !== 'undefined' && currentGameMode) GameWalletUI.setVisible(true, currentGameMode); }
     function checkActiveRoomConfig() {
         if (!currentGameMode) return;
@@ -14039,7 +14086,7 @@
             // (startGame ya lo escondio) y no hace falta tocar nada aqui:
             // returnToMenu se encarga cuando vuelva a enseñarse.
             if (getComputedStyle(els.loginOverlay).display !== 'none') {
-                centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
+                centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive(); posicionaRuedaJuego();
             }
         };
         if (qs.get('hero') === '1') {
