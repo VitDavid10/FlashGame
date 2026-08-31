@@ -20,6 +20,12 @@ RestartSec=3
 Environment=PORT=8080
 # CAMBIA esta clave por una larga y secreta (NO dejes 1234 en producción)
 Environment=ADMIN_KEY=CAMBIA_ESTA_CLAVE_LARGA
+# CAMBIA estos dos paths por algo no adivinable (el repo es publico en GitHub,
+# asi que NO pongas aqui el valor real y lo subas — esto es solo la plantilla;
+# edita el .service real en el VPS con el valor de verdad, igual que ADMIN_KEY).
+# Sin definir caen a /admin y /carteles-preview.html (los de siempre).
+Environment=ADMIN_PATH=/CAMBIA-ESTE-PATH
+Environment=CARTELES_PATH=/CAMBIA-ESTE-OTRO-PATH.html
 Environment=MIN_PLAYERS=5
 Environment=TARGET_POP=10
 # Fase 4b — split multiproceso: el Director (8080) forkea PW_HOST_COUNT hosts

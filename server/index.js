@@ -52,6 +52,15 @@ const PW_HOST_COUNT = parseInt(process.env.PW_HOST_COUNT, 10) || 1;
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
+// Path del panel/editor: el repo es PUBLICO en GitHub, así que un valor fijo
+// aquí (aunque parezca random) se vería en el código fuente por cualquiera —
+// esto NO es "la clave", es solo evitar que un escaneo automático o alguien
+// tecleando /admin a lo tonto se tope con la pantalla de login. Lo que de
+// verdad protege sigue siendo ADMIN_KEY. Por eso viven en variables de
+// entorno (como ADMIN_KEY) y NO se commitean con el valor real — en
+// deploy/pillwars.service solo hay un placeholder, igual que con ADMIN_KEY.
+const ADMIN_PATH = process.env.ADMIN_PATH || '/admin';
+const CARTELES_PATH = process.env.CARTELES_PATH || '/carteles-preview.html';
 const MIN_PLAYERS = parseInt(process.env.MIN_PLAYERS, 10) || 5;    // reales para empezar (editable por sala desde el panel)
 // Población objetivo (reales + bots de relleno). 0 = SIN bots de relleno: online
 // solo tiene jugadores reales. Editable por sala desde el panel si se quieren bots.
@@ -2350,12 +2359,25 @@ const httpServer = http.createServer(async (req, res) => {
         res.writeHead(405, { 'Allow': 'GET, POST, OPTIONS', 'Access-Control-Allow-Origin': '*' });
         res.end('Method Not Allowed'); return;
     }
-    if (urlPath === '/admin' || urlPath === '/admin.html') {
+    if (urlPath === ADMIN_PATH) {
         try {
-            const html = fs.readFileSync(path.join(__dirname, 'admin.html'));
+            let html = fs.readFileSync(path.join(__dirname, 'admin.html'), 'utf8');
+            // El cliente (admin.html) necesita saber el path real para construir el
+            // WS/APIs con el mismo prefijo /hN detrás del proxy (ver BASE_PATH ahi).
+            // Se inyecta en vez de que el JS asuma "/admin": si mañana se cambia
+            // ADMIN_PATH solo hay que tocar la env, no el HTML.
+            html = html.replace('<head>', '<head><script>window.__ADMIN_PATH__=' + JSON.stringify(ADMIN_PATH) + ';</script>');
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
             res.end(html);
         } catch (e) { res.writeHead(500); res.end('No se pudo cargar admin.html'); }
+        return;
+    }
+    if (urlPath === CARTELES_PATH) {
+        try {
+            const html = fs.readFileSync(path.join(ROOT, 'carteles-preview.html'));
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
+            res.end(html);
+        } catch (e) { res.writeHead(500); res.end('No se pudo cargar carteles-preview.html'); }
         return;
     }
     // Estáticos del juego servidos desde la raíz del repo (mismo origen que el WS):
@@ -2366,8 +2388,12 @@ const httpServer = http.createServer(async (req, res) => {
     // igual que ROOT (p.ej. "FlashGame-main-backup") pasaría el guard.
     if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) { res.writeHead(403); res.end('Forbidden'); return; }
     // Nunca servir carpetas privadas (datos con IPs, código de servidor, repo, notas)
-    const top = path.relative(ROOT, filePath).replace(/\\/g, '/').split('/')[0].toLowerCase();
+    const relLower = path.relative(ROOT, filePath).replace(/\\/g, '/').toLowerCase();
+    const top = relLower.split('/')[0];
     if (['server', '.git', 'node_modules', 'tasks', '.claude', 'memory'].includes(top)) { res.writeHead(403); res.end('Forbidden'); return; }
+    // El editor de carteles solo se sirve por CARTELES_PATH (arriba): el nombre
+    // literal se bloquea aqui para que ni conociendolo se pueda pedir directo.
+    if (relLower === 'carteles-preview.html') { res.writeHead(404); res.end('Not Found'); return; }
     // 'no-cache' NO significa "no guardes": significa "pregunta antes de usarlo".
     // Lo que faltaba era el Last-Modified para poder contestar 304 y no reenviar
     // el fichero entero — sin él, cada F5 se volvía a bajar TODO el arte del
@@ -2834,7 +2860,9 @@ httpServer.listen(PORT, () => {
     log(`Servidor PillWars [${PW_ROLE}${PW_ROLE === 'host' ? ' ' + PW_HOST_ID + '/' + PW_HOST_COUNT : ''}] escuchando en ws://localhost:${PORT}`);
     // Solo mostramos la clave si es la insegura por defecto (avisamos) — en producción NUNCA se loguea
     if (ADMIN_KEY === '1234') log(`⚠ [SEGURIDAD] ADMIN_KEY no definida — usando '1234' por defecto. Define ADMIN_KEY en producción.`);
-    else log(`Panel de admin: http://localhost:${PORT}/admin  (clave definida en ADMIN_KEY, ${ADMIN_KEY.length} chars)`);
+    else log(`Panel de admin: http://localhost:${PORT}${ADMIN_PATH}  (clave definida en ADMIN_KEY, ${ADMIN_KEY.length} chars)`);
+    if (ADMIN_PATH === '/admin') log(`⚠ [SEGURIDAD] ADMIN_PATH no definida — usando '/admin' por defecto. Define ADMIN_PATH en producción para que no sea adivinable.`);
+    if (CARTELES_PATH === '/carteles-preview.html') log(`⚠ [SEGURIDAD] CARTELES_PATH no definida — usando '/carteles-preview.html' por defecto. Define CARTELES_PATH en producción.`);
     log(`Lobby: mínimo ${MIN_PLAYERS} reales, población objetivo ${TARGET_POP} (editable por sala en el panel)`);
     log(`Privacidad: IPs anonimizadas, logs borrados a los ${LOG_RETENTION_DAYS} días`);
 });

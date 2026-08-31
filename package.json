@@ -6,7 +6,7 @@
   "scripts": {
     "server": "node server/index.js",
     "web": "npx -y http-server -p 8123 -c-1 .",
-    "admin": "start http://localhost:8080/admin",
+    "admin": "node -e \"console.log('Panel: http://localhost:' + (process.env.PORT || 8080) + (process.env.ADMIN_PATH || '/admin'))\"",
     "token:devnet": "node scripts/create-devnet-token.js",
     "pill:send": "node scripts/send-pill.js",
     "sol:send": "node scripts/send-sol.js",

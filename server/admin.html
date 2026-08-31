@@ -686,10 +686,14 @@ function mainVisible() { return !hostOnlyView && MAIN_GROUP_TABS.includes(tabAct
 let _pendingScrollTab = null;   // scroll a una sección de Main, disparado en el próximo render() (ver verTab)
 const expandidos = new Set();
 
-// Prefijo de path (Fase 4b): si el panel se abre en /hN/admin (host N detrás del
-// proxy), el WS y las APIs deben llevar el mismo prefijo para llegar a ESE host.
-// En /admin normal (mono o director) el prefijo es vacío → igual que siempre.
-const BASE_PATH = location.pathname.replace(/\/admin(\.html)?$/, '');
+// Prefijo de path (Fase 4b): si el panel se abre en /hN/<ADMIN_PATH> (host N
+// detrás del proxy), el WS y las APIs deben llevar el mismo prefijo para
+// llegar a ESE host. En el path normal (mono o director) el prefijo es
+// vacío → igual que siempre. window.__ADMIN_PATH__ lo inyecta el servidor
+// (ver server/index.js) con el valor real de ADMIN_PATH — así el JS no
+// necesita asumir que el panel vive en "/admin".
+const ADMIN_PATH = window.__ADMIN_PATH__ || '/admin';
+const BASE_PATH = location.pathname.endsWith(ADMIN_PATH) ? location.pathname.slice(0, -ADMIN_PATH.length) : '';
 
 function conectar() {
     key = document.getElementById('key').value;
