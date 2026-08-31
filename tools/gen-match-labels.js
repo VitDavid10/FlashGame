@@ -177,11 +177,16 @@ const GLIFOS = {
     },
     // ---- Digitos del contador ----
     '1': {
-        w: 20, d: (x, y) => une(
-            sdCaja(x, y, (20 - T) / 2, 0, T, CAP, [0, 2, 2, 2]),
-            sdSeg(x, y, (20 - T) / 2 - 6, 7, (20 - T) / 2, 0, T / 2 * 0.85),
-            sdCaja(x, y, 2, CAP - T, 16, T, [2, 2, 2, 2]),
-        ),
+        // Vastago + bandera diagonal (RDIAG: mismo ajuste que en M/N, el
+        // extremo del trazo no toca y=0 o se pasa del borde) + base ancha.
+        w: 22, d: (x, y) => {
+            const RDIAG = T / 2 * 0.85, stemX = 7;
+            return une(
+                sdCaja(x, y, stemX, 0, T, CAP, [0, 2, 2, 2]),
+                sdSeg(x, y, stemX - 7, 12, stemX, RDIAG, RDIAG),
+                sdCaja(x, y, 0, CAP - T, 22, T, [2, 2, 2, 2]),
+            );
+        },
     },
     '2': {
         w: 26, d: (x, y) => {
@@ -197,13 +202,20 @@ const GLIFOS = {
             );
         },
     },
+    // Dos lobulos eliticos (misma tecnica que la S), abiertos por la
+    // izquierda con una cuna de angulo ANCHO (74, probado suelto antes de
+    // montar el digito entero): un angulo estrecho alargaba la punta hasta
+    // un pico fino; uno ancho corta el remate mas pronto y recto.
+    // Los dos lobulos solos se fundian en una sola curva sin cintura (no se
+    // leia como 3). Se le muerde un pellizco por la derecha a media altura
+    // para marcar la cintura, como en una S de verdad.
     '3': {
         w: 26, d: (x, y) => {
-            const rx = (26 - T) / 2, ry = 6;
+            const rx = (26 - T) / 2, ry = 10;
             const cyA = ry + T / 2, cyB = CAP - ry - T / 2;
-            const arriba = quita(anilloElipse(x, y, rx + T / 2, cyA, rx, ry, T), cuna(x, y, rx + T / 2, cyA, -1, 0, 50));
-            const abajo = quita(anilloElipse(x, y, rx + T / 2, cyB, rx, ry, T), cuna(x, y, rx + T / 2, cyB, -1, 0, 50));
-            return une(arriba, abajo);
+            const lobulo = cy => quita(anilloElipse(x, y, rx + T / 2, cy, rx, ry, T), cuna(x, y, rx + T / 2, cy, -1, 0, 74));
+            const cintura = cuna(x, y, 26 - T / 2, CAP / 2, -1, 0, 30);
+            return quita(une(lobulo(cyA), lobulo(cyB)), cintura);
         },
     },
     '4': {
