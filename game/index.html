@@ -4620,6 +4620,9 @@
                 }
             }
             if (name === 'cd') { if (Date.now() - this.lastCdTime < 700) return; this.lastCdTime = Date.now(); }
+            // simplehover suena en CADA boton del menu al pasar el raton: al
+            // 100% se hacia pesado. -60% (queda al 40%) pedido por David.
+            if (name === 'simplehover') vol *= 0.4;
             const s = this.sounds[name]; s.currentTime = 0; s.volume = Math.min(1, vol * SFX_MASTER); s.play().catch(e => {});
         },
         stop: function(name) { if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },
