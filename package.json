@@ -11,7 +11,9 @@
     "pill:send": "node scripts/send-pill.js",
     "sol:send": "node scripts/send-sol.js",
     "test:deposit": "node scripts/test-deposit.js",
-    "design:dump": "node scripts/dump-design-layout.js"
+    "design:dump": "node scripts/dump-design-layout.js",
+    "vendor:solana": "node scripts/vendor-solana.js",
+    "vendor:check": "node scripts/vendor-check.js"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.8",
@@ -21,5 +23,8 @@
   },
   "overrides": {
     "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

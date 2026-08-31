@@ -14365,9 +14365,14 @@
 
 <!-- Depósito de $PILL desde el juego: mismo módulo ESM que la web (web3.js + spl-token) -->
 <script type="module">
-    import { Connection, PublicKey, Transaction } from 'https://esm.sh/@solana/web3.js@1.95.3';
-    import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount, TokenAccountNotFoundError }
-        from 'https://esm.sh/@solana/spl-token@0.4.8?deps=@solana/web3.js@1.95.3';
+    // La libreria la sirve NUESTRO servidor (vendor/solana.js, generado con
+    // `npm run vendor:solana`). Antes venia de https://esm.sh en caliente: era
+    // codigo de un tercero ejecutandose dentro de la pagina donde el jugador
+    // firma transacciones — si lo comprometen, pueden cambiar el destinatario
+    // justo antes de la firma y el jugador aprueba sin notarlo.
+    import { Connection, PublicKey, Transaction,
+             getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction,
+             getAccount, TokenAccountNotFoundError } from '/vendor/solana.js';
     const RPC = 'https://api.devnet.solana.com';
     const MINT = 'Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r';
     const TREASURY = '4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN';

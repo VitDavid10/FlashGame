@@ -1766,7 +1766,9 @@ function applySecurityHeaders(res) {
 const _rpcOrigin = (() => { try { return new URL(solana.RPC).origin; } catch (e) { return ''; } })();
 const CSP_JUEGO = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://esm.sh",
+    // esm.sh ya no aparece: la libreria de Solana la servimos nosotros desde
+    // /vendor/solana.js, asi que 'self' la cubre (ver scripts/vendor-solana.js).
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     // Imágenes: la landing tira de varios CDN. https: en vez de lista cerrada
@@ -1778,7 +1780,7 @@ const CSP_JUEGO = [
     // así que aquí van por comodín o la analítica se cae en media Europa.
     ["connect-src 'self' ws: wss:",
         'https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com',
-        'https://api.dexscreener.com https://api.web3forms.com https://esm.sh',
+        'https://api.dexscreener.com https://api.web3forms.com',
         _rpcOrigin].filter(Boolean).join(' '),
     "frame-ancestors 'self'",
     "base-uri 'none'",
@@ -2986,6 +2988,14 @@ httpServer.listen(PORT, () => {
     // Solo mostramos la clave si es la insegura por defecto (avisamos) — en producción NUNCA se loguea
     if (ADMIN_KEY === '1234') log(`⚠ [SEGURIDAD] ADMIN_KEY no definida — usando '1234' por defecto. Define ADMIN_KEY en producción.`);
     else log(`Panel de admin: http://localhost:${PORT}${ADMIN_PATH}  (clave definida en ADMIN_KEY, ${ADMIN_KEY.length} chars)`);
+    // Aviso si el bundle de Solana (vendor/solana.js) se quedó atrás respecto a
+    // la librería instalada: es el único mantenimiento que trae haber dejado de
+    // cargarla desde esm.sh, y así no depende de acordarse — sale en el log al
+    // reiniciar tras cada deploy. Se arregla con `npm run vendor:solana`.
+    try {
+        const desfase = require('../scripts/vendor-check.js').comprobar();
+        if (desfase) log(`⚠ [VENDOR] vendor/solana.js desfasado (${desfase}). Regenera con: npm run vendor:solana`);
+    } catch (e) {}
     if (ADMIN_PATH === '/admin') log(`⚠ [SEGURIDAD] ADMIN_PATH no definida — usando '/admin' por defecto. Define ADMIN_PATH en producción para que no sea adivinable.`);
     if (CARTELES_PATH === '/carteles-preview.html') log(`⚠ [SEGURIDAD] CARTELES_PATH no definida — usando '/carteles-preview.html' por defecto. Define CARTELES_PATH en producción.`);
     log(`Lobby: mínimo ${MIN_PLAYERS} reales, población objetivo ${TARGET_POP} (editable por sala en el panel)`);

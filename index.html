@@ -4057,9 +4057,10 @@ function toggleTrailerMode() {
     <!-- Depósito de entrada $PILL (Solana). Módulo ESM: construye y firma el transfer
          al treasury con la wallet conectada. Base de las salas de pago (Fase B2). -->
     <script type="module">
-        import { Connection, PublicKey, Transaction } from 'https://esm.sh/@solana/web3.js@1.95.3';
-        import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount }
-            from 'https://esm.sh/@solana/spl-token@0.4.8?deps=@solana/web3.js@1.95.3';
+        // Misma libreria servida por NUESTRO servidor (ver game/index.html).
+        import { Connection, PublicKey, Transaction,
+                 getAssociatedTokenAddress, createTransferInstruction,
+                 createAssociatedTokenAccountInstruction, getAccount } from '/vendor/solana.js';
 
         const C = () => window.App.Config;
 
