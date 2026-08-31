@@ -202,20 +202,20 @@ const GLIFOS = {
             );
         },
     },
-    // Dos lobulos eliticos (misma tecnica que la S), abiertos por la
-    // izquierda con una cuna de angulo ANCHO (74, probado suelto antes de
-    // montar el digito entero): un angulo estrecho alargaba la punta hasta
-    // un pico fino; uno ancho corta el remate mas pronto y recto.
-    // Los dos lobulos solos se fundian en una sola curva sin cintura (no se
-    // leia como 3). Se le muerde un pellizco por la derecha a media altura
-    // para marcar la cintura, como en una S de verdad.
+    // El 3 es la S ESPEJADA: misma pareja de bucles elipticos que ya funciona
+    // en el alfabeto, pero quitando los cuadrantes de la IZQUIERDA (abajo-izq
+    // arriba, arriba-izq abajo) en vez de los de la diagonal. Asi los dos
+    // bucles se encuentran solos en el centro y sale la cintura sin trucos.
+    // La cuna va estrecha (35): cuanto menos angulo, mas largos quedan los dos
+    // brazos de la izquierda y mas cerrado el digito — es la version que
+    // eligio David de las seis que se compararon.
     '3': {
         w: 26, d: (x, y) => {
-            const rx = (26 - T) / 2, ry = 10;
+            const rx = (26 - T) / 2, ry = 6;
             const cyA = ry + T / 2, cyB = CAP - ry - T / 2;
-            const lobulo = cy => quita(anilloElipse(x, y, rx + T / 2, cy, rx, ry, T), cuna(x, y, rx + T / 2, cy, -1, 0, 74));
-            const cintura = cuna(x, y, 26 - T / 2, CAP / 2, -1, 0, 30);
-            return quita(une(lobulo(cyA), lobulo(cyB)), cintura);
+            const arriba = quita(anilloElipse(x, y, rx + T / 2, cyA, rx, ry, T), cuna(x, y, rx + T / 2, cyA, -1, 1, 35));
+            const abajo = quita(anilloElipse(x, y, rx + T / 2, cyB, rx, ry, T), cuna(x, y, rx + T / 2, cyB, -1, -1, 35));
+            return une(arriba, abajo);
         },
     },
     '4': {
