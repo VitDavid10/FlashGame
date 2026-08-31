@@ -194,16 +194,13 @@ const CASOS = [
   // cartelDevShowCountdown, para revisar fuente/color con calma. No tiene
   // piezas arrastrables (no usa CARTEL_SURFACES): solo se puede mover el
   // cartel entero por el lienzo.
-  // Dos ajustes SEPARADOS (David, 31-08-2026): el rotulo (letras) y el 3·2·1
-  // (digitos) no son el mismo cartel — el rotulo se abre solo (hideDigit) y
-  // el contador aparte, animando 3→2→1 en bucle (digits) para ver el ritmo
-  // real en vez de un digito congelado.
-  { g:'Partida', n:'MATCH STARTING · ARCADE',  art:1, cd:{ label:'MATCH STARTING', mode:'arcade',  hideDigit:true } },
-  { g:'Partida', n:'MATCH STARTING · CLASSIC', art:1, cd:{ label:'MATCH STARTING', mode:'classic', hideDigit:true } },
-  { g:'Partida', n:'MATCH ENDING · ARCADE',    art:1, cd:{ label:'MATCH ENDING',   mode:'arcade',  hideDigit:true } },
-  { g:'Partida', n:'MATCH ENDING · CLASSIC',   art:1, cd:{ label:'MATCH ENDING',   mode:'classic', hideDigit:true } },
-  { g:'Partida', n:'CONTADOR 3·2·1 · ARCADE',  art:1, cd:{ digits:true, mode:'arcade' } },
-  { g:'Partida', n:'CONTADOR 3·2·1 · CLASSIC', art:1, cd:{ digits:true, mode:'classic' } },
+  // En la partida el numero SIEMPRE sale debajo del rotulo, en el mismo
+  // cartel, asi que aqui se ve tal cual: rotulo + digito animando 3→2→1 en
+  // bucle, para juzgar el conjunto y no dos piezas sueltas.
+  { g:'Partida', n:'MATCH STARTING · ARCADE',  art:1, cd:{ label:'MATCH STARTING', mode:'arcade'  } },
+  { g:'Partida', n:'MATCH STARTING · CLASSIC', art:1, cd:{ label:'MATCH STARTING', mode:'classic' } },
+  { g:'Partida', n:'MATCH ENDING · ARCADE',    art:1, cd:{ label:'MATCH ENDING',   mode:'arcade'  } },
+  { g:'Partida', n:'MATCH ENDING · CLASSIC',   art:1, cd:{ label:'MATCH ENDING',   mode:'classic' } },
 ];
 
 // Las piezas de cada cartel las decide el juego (cartelPartesDe): title/desc/
@@ -294,21 +291,9 @@ function clonar(c) {
   OCULTABLES.forEach(id => { const e = d.getElementById(id); if (e) e.style.display = 'none'; });
   // Contador (grupo Partida): no es un modal de CARTEL_SURFACES (no tiene
   // caja fija ni piezas x/y/s), es el #cdNum que el juego crea y borra solo.
-  // Dos variantes, cada una se queda con SOLO su mitad del cartel real:
-  //  - c.cd.hideDigit: solo el rotulo (MATCH STARTING/ENDING), se pide fijo
-  //    (cartelDevShowCountdown) y se le quita el digito del clon.
-  //  - c.cd.digits: solo el 3·2·1, animando en bucle (lo mueve abrir()/cerrar()
-  //    con un setInterval propio) — aqui solo se prepara el hueco vacio.
-  if (c.cd && c.cd.digits) {
-    const wrap = d.createElement('div'); wrap.className = 'cd-n';
-    const img = d.createElement('img');
-    img.style.cssText = 'height:190px;width:auto;image-rendering:pixelated;';
-    wrap.appendChild(img);
-    const host = d.createElement('div');
-    host.appendChild(wrap);
-    host._cdImg = img;
-    return host;
-  }
+  // Se pide fijo (cartelDevShowCountdown) y se clona ENTERO — rotulo arriba y
+  // digito debajo, igual que en la partida. El digito lo va cambiando
+  // abrir()/cerrar() con un setInterval sobre host._cdImg.
   if (c.cd) {
     w.cartelDevShowCountdown(c.cd.label, c.cd.mode, 3);
     const box = d.getElementById('cdNum');
@@ -316,10 +301,10 @@ function clonar(c) {
     const clon = box.cloneNode(true);
     clon.style.setProperty('position', 'static', 'important');
     clon.style.setProperty('transform', 'none', 'important');
-    if (c.cd.hideDigit) { const nEl = clon.querySelector('.cd-n'); if (nEl) nEl.remove(); }
     const host = d.createElement('div');
     host.style.cssText = 'display:block;';
     host.appendChild(clon);
+    host._cdImg = clon.querySelector('img.cd-n');
     return host;
   }
   if (c.sys)        w.showSystemMsg(c.sys[0], c.sys[1]);
@@ -454,17 +439,29 @@ function abrir(i) {
   // c.cd (grupo Partida) no tiene CARTEL_SURFACES ni piezas x/y/s: solo se
   // arrastra el cartel entero (arrastrarFicha, ya hecho arriba).
   if (c.sup) { prepararPiezas(ficha, claveDe(c), c.sup); aplicar(claveDe(c)); }
-  if (c.cd && c.cd.digits) {
-    // 3·2·1 animado: un intervalo propio cambia el src del digito en el
-    // clon ya montado (no vuelve a llamar a showCountdownNumber para no
-    // pisar el rotulo/estado del resto de fichas abiertas).
-    const seq = [3, 2, 1]; let idx = 0;
+  if (c.cd) {
+    // 3·2·1 animado: un intervalo propio cambia el src del digito en el clon
+    // ya montado (no vuelve a llamar a showCountdownNumber para no pisar el
+    // rotulo/estado del resto de fichas abiertas).
     const img = clon._cdImg;
-    const tick = () => { img.src = W().cartelHeroUrl('cd-' + seq[idx] + '-' + c.cd.mode); idx = (idx + 1) % seq.length; };
-    tick();
-    ficha._cdTimer = setInterval(tick, 800);
+    if (img) {
+      const seq = [3, 2, 1]; let idx = 0;
+      // La animacion cdPop del juego es 'forwards' y acaba en opacity:0 — en la
+      // partida da igual porque el elemento se destruye cada segundo, pero en
+      // un clon fijo el digito quedaba invisible. Se reinicia en cada tick
+      // (animation:none + reflow), que ademas reproduce el pop de verdad.
+      const tick = () => {
+        img.src = W().cartelHeroUrl('cd-' + seq[idx] + '-' + c.cd.mode);
+        img.style.animation = 'none';
+        void img.offsetWidth;
+        img.style.animation = '';
+        idx = (idx + 1) % seq.length;
+      };
+      tick();
+      ficha._cdTimer = setInterval(tick, 1000);   // igual que cdPop (1s)
+    }
+    aplicarGlowLabel();
   }
-  if (c.cd && c.cd.hideDigit) aplicarGlowLabel();
 
   // Cartel de skin: las dos fichas (gris y V2 verde) comparten clave, asi que
   // el marco no se puede deducir de ella. Manda el ULTIMO que se abre, y eso es

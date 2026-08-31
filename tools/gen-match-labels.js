@@ -400,7 +400,10 @@ const TRABAJOS = [
 // PIXELART-PLAN.md F1). Con PX bajo el bitmap nativo es MENOR que 190px y el
 // navegador hace un UPSCALE nearest, que es donde ese modo de render luce
 // (pixel grande y limpio, ver los iconos ya reprocesados).
-for (const n of [1, 2, 3, 4, 5]) {
+// Solo 3·2·1: es lo que dura la cuenta atras del juego (CD_SECS en
+// game/index.html) y lo que dura snd/contador.mp3. Los glifos 4 y 5 se quedan
+// definidos arriba por si algun dia se alarga.
+for (const n of [1, 2, 3]) {
     TRABAJOS.push(['cd-' + n + '-arcade.png',  String(n), ARCADE,  PX]);
     TRABAJOS.push(['cd-' + n + '-classic.png', String(n), CLASSIC, PX]);
 }

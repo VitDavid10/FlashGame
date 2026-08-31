@@ -23,8 +23,8 @@ const CARTEL_IDS = ['skillPanel', 'button', 'menu-square', 'game-over', 'pill', 
     // horneado). Uno por modo: el glow de color se pone por CSS al pintarlos.
     'match-starting-arcade', 'match-starting-classic',
     'match-ending-arcade', 'match-ending-classic',
-    'cd-1-arcade', 'cd-2-arcade', 'cd-3-arcade', 'cd-4-arcade', 'cd-5-arcade',
-    'cd-1-classic', 'cd-2-classic', 'cd-3-classic', 'cd-4-classic', 'cd-5-classic',
+    'cd-1-arcade', 'cd-2-arcade', 'cd-3-arcade',
+    'cd-1-classic', 'cd-2-classic', 'cd-3-classic',
     'victory', 'cashout', 'continue', 'prize-panel', 'prize-panel-tall',
     // Titulos de fin de partida y modales de sistema, boton OK, X de cierre
     // de los gameModal y arte del bloqueo movil.
