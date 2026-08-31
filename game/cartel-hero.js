@@ -17,9 +17,14 @@
 const CARTEL_IDS = ['skillPanel', 'button', 'menu-square', 'game-over', 'pill', 'spectate', 'backtomenu', 'try-again',
     'menu-gris', 'warning', 'secure-cashout', 'cancel', 'exit-now', 'start-cashout', 'skill-slot',
     'top-mass', 'kills', 'x', 'song', 'sonido',
-    // Contador de inicio (rotulo + digitos con glow) y premio VICTORY/CASHOUT
-    // (titulos, panel verde fino y boton CONTINUE horneado).
-    'match-starting', 'cd-1', 'cd-2', 'cd-3', 'cd-4', 'cd-5',
+    // Contador de inicio/fin (rotulo + digitos, misma fuente vectorial que
+    // PILLWARS/ARCADE/CLASSIC del login, ver tools/gen-match-labels.js) y
+    // premio VICTORY/CASHOUT (titulos, panel verde fino y boton CONTINUE
+    // horneado). Uno por modo: el glow de color se pone por CSS al pintarlos.
+    'match-starting-arcade', 'match-starting-classic',
+    'match-ending-arcade', 'match-ending-classic',
+    'cd-1-arcade', 'cd-2-arcade', 'cd-3-arcade', 'cd-4-arcade', 'cd-5-arcade',
+    'cd-1-classic', 'cd-2-classic', 'cd-3-classic', 'cd-4-classic', 'cd-5-classic',
     'victory', 'cashout', 'continue', 'prize-panel', 'prize-panel-tall',
     // Titulos de fin de partida y modales de sistema, boton OK, X de cierre
     // de los gameModal y arte del bloqueo movil.

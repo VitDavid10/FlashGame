@@ -183,6 +183,16 @@ const CASOS = [
   { g:'Menu', n:'SELECT A ROOM',      sup:'roomChoiceModal', art:1, show:'roomChoiceModal' },
   { g:'Menu', n:'SETTINGS',           sup:'settingsModal',   art:0, show:'settingsModal' },
   { g:'Menu', n:'FEATURES',           sup:'featuresModal',   art:0, show:'featuresModal' },
+
+  // Contador de inicio/fin de partida: sale unos segundos durante el lobby y
+  // los ultimos 5s de la partida. Fijo en pantalla (sin autoborrado) via
+  // cartelDevShowCountdown, para revisar fuente/color con calma. No tiene
+  // piezas arrastrables (no usa CARTEL_SURFACES): solo se puede mover el
+  // cartel entero por el lienzo.
+  { g:'Partida', n:'MATCH STARTING · ARCADE',  art:1, cd:{ label:'MATCH STARTING', mode:'arcade',  n:3 } },
+  { g:'Partida', n:'MATCH STARTING · CLASSIC', art:1, cd:{ label:'MATCH STARTING', mode:'classic', n:3 } },
+  { g:'Partida', n:'MATCH ENDING · ARCADE',    art:1, cd:{ label:'MATCH ENDING',   mode:'arcade',  n:3 } },
+  { g:'Partida', n:'MATCH ENDING · CLASSIC',   art:1, cd:{ label:'MATCH ENDING',   mode:'classic', n:3 } },
 ];
 
 // Las piezas de cada cartel las decide el juego (cartelPartesDe): title/desc/
@@ -210,6 +220,7 @@ function claveDe(c) {
   if (c.res)   return 'resultOverlay#' + c.res[0];
   if (c.prize) return 'prizeModal#' + (c.prize.reason === 'arcadeEnd' ? 'matchEnded' : c.prize.reason);
   if (c.exit)  return 'exitModal#' + c.exit[1];
+  if (c.cd)    return 'cdNum#' + c.cd.label + ':' + c.cd.mode;
   return c.sup;
 }
 
@@ -270,6 +281,22 @@ function clonar(c) {
   const w = W(), d = w.document;
   // 1. Que el juego lo pinte de verdad (arte, clases, textos reales).
   OCULTABLES.forEach(id => { const e = d.getElementById(id); if (e) e.style.display = 'none'; });
+  // MATCH STARTING/ENDING: no es un modal de CARTEL_SURFACES (no tiene caja
+  // fija ni piezas x/y/s), es el #cdNum que el juego crea y borra solo. Se
+  // pide fijo (cartelDevShowCountdown) y se clona tal cual, sin medir ni
+  // marcar piezas — solo se puede mover el cartel entero.
+  if (c.cd) {
+    w.cartelDevShowCountdown(c.cd.label, c.cd.mode, c.cd.n);
+    const box = d.getElementById('cdNum');
+    if (!box) return null;
+    const clon = box.cloneNode(true);
+    clon.style.setProperty('position', 'static', 'important');
+    clon.style.setProperty('transform', 'none', 'important');
+    const host = d.createElement('div');
+    host.style.cssText = 'display:block;';
+    host.appendChild(clon);
+    return host;
+  }
   if (c.sys)        w.showSystemMsg(c.sys[0], c.sys[1]);
   else if (c.pais)  w.cartelDevShowPais(c.pais[0], c.pais[1]);
   else if (c.prize) w.cartelDevShowPrize(c.prize);
@@ -399,8 +426,9 @@ function abrir(i) {
   CASOS[i].btn.classList.add('on');
 
   arrastrarFicha(ficha, c.n);
-  prepararPiezas(ficha, claveDe(c), c.sup);
-  aplicar(claveDe(c));
+  // c.cd (MATCH STARTING/ENDING) no tiene CARTEL_SURFACES ni piezas x/y/s:
+  // solo se arrastra el cartel entero (arrastrarFicha, ya hecho arriba).
+  if (c.sup) { prepararPiezas(ficha, claveDe(c), c.sup); aplicar(claveDe(c)); }
 
   // Cartel de skin: las dos fichas (gris y V2 verde) comparten clave, asi que
   // el marco no se puede deducir de ella. Manda el ULTIMO que se abre, y eso es

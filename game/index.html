@@ -12206,9 +12206,16 @@
     }
     // Número grande de cuenta atrás (9..1), estilo GO!. Se llama una vez por segundo.
     let _lastCdNum = null;
+    // _cdDevKeep: puesto por cartelDevShowCountdown (editor de carteles) para
+    // que el cartel no se autoborre al segundo, y así quede fijo en pantalla
+    // mientras se revisa.
+    let _cdDevKeep = false;
     // opts (opcional): mismo esquema que pixFancyText. Sin opts, el estilo de
-    // fábrica. El dígito sale de su PNG horneado (cd-N.png) y, si falta, de la
-    // fuente procedural.
+    // fábrica. El dígito sale de su PNG horneado (cd-N-<modo>.png) y, si falta,
+    // de la fuente procedural. MATCH STARTING/ENDING y los dígitos usan la
+    // MISMA fuente vectorial que los títulos PILLWARS/ARCADE/CLASSIC del
+    // login (tools/gen-match-labels.js), tintada según el modo (arcade/classic)
+    // y con el glow puesto por CSS (drop-shadow), igual que esos títulos.
     function showCountdownNumber(n, label, opts) {
         if (n === _lastCdNum) return; _lastCdNum = n;
         opts = opts || {};
@@ -12220,17 +12227,21 @@
         const cdDx = opts.dx | 0, cdDy = opts.dy | 0;
         if (cdDx || cdDy) el.style.transform = 'translate(' + cdDx + 'px,' + (-120 + cdDy) + 'px)';
         label = label || 'MATCH STARTING';
-        const glow = opts.glow !== undefined ? opts.glow : '#00ff88';
+        const modeKey = currentGameMode === 'classic' ? 'classic' : 'arcade';
+        const modeHex = modeKey === 'classic' ? '#00ffaa' : '#ccff00';
+        const glow = opts.glow !== undefined ? opts.glow : modeHex;
+        const glowFilter = glow ? ('drop-shadow(0 0 6px ' + glow + ') drop-shadow(0 0 14px ' + glow + ')') : '';
         if (pixelMode) {
             // Etiqueta como cartel pixel encima del número (antes era texto CSS
-            // pequeño que se perdía al lado del dígito grande). MATCH STARTING
-            // tiene su PNG horneado (match-starting.png, con glow); el resto de
-            // etiquetas (MATCH ENDING...) siguen con la fuente procedural.
+            // pequeño que se perdía al lado del dígito grande). MATCH STARTING/
+            // ENDING tienen su PNG horneado por modo; si falta, fuente procedural.
             const lblWrap = document.createElement('div'); lblWrap.className = 'cd-lbl';
-            if (label === 'MATCH STARTING' && cartelUsesAtlas('match-starting')) {
+            const lblAtlasId = label === 'MATCH STARTING' ? 'match-starting-' + modeKey
+                              : label === 'MATCH ENDING' ? 'match-ending-' + modeKey : null;
+            if (lblAtlasId && cartelUsesAtlas(lblAtlasId)) {
                 const li = document.createElement('img');
-                li.src = cartelHeroUrl('match-starting');
-                li.style.cssText = 'display:block;height:64px;width:auto;image-rendering:pixelated;';
+                li.src = cartelHeroUrl(lblAtlasId);
+                li.style.cssText = 'display:block;height:64px;width:auto;image-rendering:pixelated;filter:' + glowFilter + ';';
                 lblWrap.appendChild(li);
             } else {
                 const lblOpts = { plain: true };
@@ -12238,15 +12249,16 @@
                 lblWrap.appendChild(pixFancyText(label, 2, lblOpts));
             }
             el.appendChild(lblWrap);
-            // Dígitos 5..1 con su PNG horneado (cd-N.png, glow verde) al tamaño
-            // del contador procedural de antes (~190px de alto con glow). Si el
-            // llamador pide un look custom (font/fill/plain) o el dígito no
-            // tiene PNG (6+), fuente procedural como siempre.
-            if (n >= 1 && n <= 5 && !opts.font && !opts.fill && !opts.plain && cartelUsesAtlas('cd-' + n)) {
+            // Dígitos 5..1 con su PNG horneado por modo, al tamaño del contador
+            // procedural de antes (~190px de alto). Si el llamador pide un look
+            // custom (font/fill/plain) o el dígito no tiene PNG (6+), fuente
+            // procedural como siempre.
+            const cdAtlasId = 'cd-' + n + '-' + modeKey;
+            if (n >= 1 && n <= 5 && !opts.font && !opts.fill && !opts.plain && cartelUsesAtlas(cdAtlasId)) {
                 const ni = document.createElement('img');
-                ni.src = cartelHeroUrl('cd-' + n);
+                ni.src = cartelHeroUrl(cdAtlasId);
                 ni.className = 'cd-n';
-                ni.style.cssText = 'height:190px;width:auto;image-rendering:pixelated;';
+                ni.style.cssText = 'height:190px;width:auto;image-rendering:pixelated;filter:' + glowFilter + ';';
                 el.appendChild(ni);
             } else {
                 const px = opts.px || 9;
@@ -12263,9 +12275,18 @@
         else { el.innerHTML = '<div class="cd-lbl">' + label + '</div>'; const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3, 5s) lo dispara quien llama, una vez al entrar en los 5s.
-        setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
+        if (!_cdDevKeep) setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
     }
     function hideCountdownNumber() { _lastCdNum = null; const el = document.getElementById('cdNum'); if (el) el.remove(); }
+    // Para el editor de carteles (carteles-preview.html): pinta MATCH STARTING/
+    // ENDING con el modo pedido y lo deja fijo en pantalla (sin autoborrado) para
+    // poder revisar fuente/color/tamaño con calma.
+    window.cartelDevShowCountdown = function (label, mode, n) {
+        currentGameMode = mode === 'classic' ? 'classic' : 'arcade';
+        _lastCdNum = null;
+        _cdDevKeep = true;
+        showCountdownNumber(n || 3, label);
+    };
 
     // Rejoin: si te desconectas sin querer en mitad de una partida online,
     // tienes una ventana (30s en server) para volver a entrar SIN pagar usando

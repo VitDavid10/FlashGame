@@ -53,17 +53,26 @@ Checklist acordada con David; cada ítem se verifica lado a lado en
   2 planetas, skyline con ventanas parpadeantes, 2 ovnis a la deriva, letrero
   neon, suelo ajedrez en perspectiva, astronauta con bob de 1px y rayo con
   llama ondulante hasta la diagonal — nitidez perfecta a cualquier resolución.
-  Pendiente de que David dé el visto bueno visual (MENÚS → "Modos hover …").
-- [ ] **Menús de sala CLASSIC/ARCADE** — versión pixel propia del login/sala,
-  no solo el CSS genérico de `body.pixel-pack` (MENÚS → "Menú de sala …").
-- [ ] **Carteles pentakill (los dos)** — "2 KILLS TO PENTAKILL" y
-  "★ 1 MORE KILL TO WIN ★" (HUD DE PARTIDA → "Pentakill: …").
-- [ ] **Overlays de resultado con el marco verde del GAME OVER** — reutilizar
-  ese panel como base común en VICTORY, CASHOUT, MATCH ENDED, MATCH FINISHED y
-  ROOM RESTARTED, y en los modales REJOIN EXPIRED, KICKED y DEPOSIT; el
-  interior de cada uno se rediseña (FIN DE PARTIDA + SISTEMA Y MODALES).
-- [ ] **Banners de lobby** — FINDING ROOM, ROOM FOUND y anuncio de admin
-  (BANNER DE LOBBY).
+  Visto bueno de David (31-08-2026): dado por bueno.
+- [x] **Menús de sala CLASSIC/ARCADE** — dado por bueno por David (31-08-2026).
+- [x] **Carteles pentakill (los dos)** — "2 KILLS TO PENTAKILL" y
+  "★ 1 MORE KILL TO WIN ★" — dado por bueno por David (31-08-2026).
+- [x] **Overlays de resultado con el marco verde del GAME OVER** (VICTORY,
+  CASHOUT, MATCH ENDED, MATCH FINISHED, ROOM RESTARTED, REJOIN EXPIRED,
+  KICKED, DEPOSIT) — dado por bueno por David (31-08-2026).
+- [x] **Banners de lobby** (FINDING ROOM, ROOM FOUND, anuncio de admin) — dado
+  por bueno por David (31-08-2026).
+- [x] **MATCH STARTING / MATCH ENDING + dígitos del contador** (31-08-2026) —
+  antes usaban un cartel horneado a mano (MATCH STARTING) o la fuente
+  procedural (MATCH ENDING) sin relación con el resto. Ahora los dos títulos y
+  los 5 dígitos usan la MISMA fuente vectorial SDF que PILLWARS/ARCADE/CLASSIC
+  del login (`tools/gen-match-labels.js`, glifos M/T/H/N/G y 1-5 añadidos sobre
+  los de `gen-titulo-placa.js`), tintados según el modo en curso (arcade
+  `#ccff00` / classic `#00ffaa`, mismo criterio que el resto del juego) con el
+  glow puesto por CSS `drop-shadow` — igual que los títulos del login, no
+  horneado en el PNG. Tamaños en pantalla sin tocar (64px el rótulo, 190px el
+  dígito). El GO! no se toca (sigue con su PNG dedicado). Previsualizable en
+  el editor de carteles, grupo "Partida".
 - [x] ~~Reprocesar iconos de skills con píxel más gordo~~ — hecho (10-07-2026):
   downscale 16×16 nearest + upscale nearest a 256×256, sustituye el bicúbico
   liso anterior. Comparado en collage a 16/20/24/32 lógicos, 16 fue el que dio
