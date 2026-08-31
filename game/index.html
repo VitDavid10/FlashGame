@@ -2375,9 +2375,15 @@
         .gc-skills-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
         .gc-skill {
             background: rgba(10,10,10,.8); border: 2px solid #333; aspect-ratio: 1; border-radius: 8px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: .15s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+            transition: transform .12s steps(3), border-color .15s, background .15s, box-shadow .15s;
         }
-        .gc-skill:hover { border-color: #ffcc00; background: #1a1a1a; box-shadow: 0 0 18px rgba(255,204,0,.4); }
+        /* Hover con peso: la casilla sube de golpe (steps, sin suavizar) y el
+           icono se enciende; al pulsar se hunde. Mismo gesto duro que el resto
+           de botones del pack. */
+        .gc-skill:hover { border-color: #ffcc00; background: #1a1a1a; box-shadow: 0 0 18px rgba(255,204,0,.4); transform: translateY(-4px); }
+        .gc-skill:hover img { filter: drop-shadow(0 0 6px rgba(255,204,0,.9)); }
+        .gc-skill:active { transform: translateY(1px); box-shadow: 0 0 8px rgba(255,204,0,.35); }
         .gc-skill img { width: 44%; height: 44%; margin-bottom: 6px; image-rendering: pixelated; }
         .gc-skill .nm { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #7d8a82; letter-spacing: .5px; }
         .gc-skill:hover .nm { color: #fff; }
@@ -2386,11 +2392,14 @@
         .gc-arrow {
             width: 34px; height: 34px; border: 2px solid var(--acc); background: transparent; color: var(--acc);
             display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px; font-size: 16px; flex-shrink: 0;
+            transition: transform .1s steps(2), background .12s, color .12s, box-shadow .12s;
         }
-        .gc-arrow:hover { background: var(--acc); color: #000; }
+        .gc-arrow:hover:not(:disabled) { background: var(--acc); color: #000; transform: translateY(-3px); box-shadow: 0 0 14px var(--acc); }
+        .gc-arrow:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
         .gc-arrow:disabled { opacity: .25; cursor: default; background: transparent; color: var(--acc); }
         .gc-dots { display: flex; gap: 8px; }
         .gc-dot { width: 9px; height: 9px; border-radius: 50%; background: #2c3630; cursor: pointer; transition: .15s; }
+        .gc-dot:hover { background: var(--acc); transform: scale(1.4); }
         .gc-dot.on { background: var(--acc); box-shadow: 0 0 8px var(--acc); }
         /* Tarjeta flotante de detalle de skill, al tocar un icono de la
            rejilla: lenguaje store-panel (dorado) en vez del marco de piedra,
@@ -2423,7 +2432,14 @@
             font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; line-height: 1;
             background: #1a1a1a; border: 2px solid #ffcc00; border-radius: 50%; cursor: pointer;
         }
-        .fc-close:hover { background: #ffcc00; color: #000; }
+        .fc-close { transition: transform .1s steps(2), background .12s, color .12s; }
+        .fc-close:hover { background: #ffcc00; color: #000; transform: scale(1.15); }
+        .fc-close:active { transform: scale(1); }
+        /* El CLOSE del cartel comparte .sb-close con la tienda; aqui se le suma
+           el mismo empujon que a las flechas. */
+        .gc-head .sb-close { transition: transform .1s steps(2), border-color .12s, color .12s; }
+        .gc-head .sb-close:hover { transform: translateY(-2px); box-shadow: 0 0 12px rgba(255,255,255,.18); }
+        .gc-head .sb-close:active { transform: translateY(1px); box-shadow: none; }
         .btn-settings:hover { transform: scale(1.02); color: #fff; border-color: #4a525c; filter: brightness(1.2); }
         .pw-modal { display: none; position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; }
         .pw-modal-box { background: #0d0f12; border: 3px solid #2a2f36; box-shadow: 0 0 0 3px #000, 8px 8px 0 rgba(0,0,0,0.65), inset 2px 2px 0 rgba(255,255,255,0.05); padding: 28px 30px; width: 360px; max-width: 92vw; text-align: center; image-rendering: pixelated; }
@@ -2629,6 +2645,27 @@
         .settings-box .pw-modal-cancel:hover { color: #fff; }
         .pw-modal-box.settings-box { padding-bottom: 44px; }
 
+        /* ===== SETTINGS: el mismo cartel, un punto mas pixel-art =====
+           No se toca ni el gris ni el hover (el brillo de siempre): lo que se
+           suma son los detalles duros del pack — rotulo entre corchetes de
+           recreativa, linea de seccion a bloques en vez de un filete de 1px,
+           marca ">" en la opcion activa y pulsacion que hunde el boton por
+           pixeles enteros (steps, sin suavizar). */
+        .settings-box .pw-modal-title { font-size: 14px; text-shadow: 3px 3px 0 #000; }
+        .settings-box .pw-modal-title::before { content: '['; color: #6a737e; margin-right: 12px; }
+        .settings-box .pw-modal-title::after { content: ']'; color: #6a737e; margin-left: 12px; }
+        .settings-box .section-title {
+            border-bottom: none !important; padding-bottom: 7px; color: #b3bac3 !important;
+            background-image: repeating-linear-gradient(90deg, #4a525c 0 4px, transparent 4px 8px);
+            background-repeat: no-repeat; background-position: left bottom; background-size: 100% 3px;
+            text-shadow: 2px 2px 0 #000;
+        }
+        .settings-box .q-btn.selected::before { content: '>'; margin-right: 6px; }
+        .settings-box .q-btn, .settings-box .ultra-btn,
+        .settings-box .btn-settings, .settings-box .pw-modal-cancel { transition: transform .08s steps(2), filter .12s steps(2); }
+        .settings-box .q-btn:active, .settings-box .ultra-btn:active,
+        .settings-box .btn-settings:active, .settings-box .pw-modal-cancel:active { transform: translateY(3px); }
+
         /* FEATURES: modal ancho con los paneles de guia de cada modo dentro */
         .pw-modal-box.features { width: 720px; max-width: 94vw; max-height: 88vh; overflow-y: auto; text-align: left; }
         .pw-modal-box.features .pw-modal-title { text-align: center; }
@@ -2792,6 +2829,17 @@
         #layoutEditBar .leb-group { display: flex; align-items: center; gap: 5px; padding-left: 10px; border-left: 1px solid #2a2f36; }
         #layoutEditBar .leb-label { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #6a737e; letter-spacing: 0.5px; }
         #layoutEditBar .leb-btn.leb-sm { padding: 5px 10px; font-size: 10px; }
+        /* Asa para llevarse la barra de sitio: fija abajo tapaba lo que hubiera
+           justo debajo (la rueda de HOW TO PLAY, que vive al lado de PLAY) y no
+           habia forma de pulsarlo sin salir del editor. Doble clic = vuelve a
+           su sitio de fabrica. */
+        #layoutEditBar .leb-grip, #lsEditBar .leb-grip {
+            font-family: 'Press Start 2P', monospace; font-size: 8px; color: #6a737e; letter-spacing: 0.5px;
+            padding: 7px 10px; background: #14171c; border: 2px solid #2a2f36; cursor: grab;
+            user-select: none; touch-action: none; flex-shrink: 0;
+        }
+        #layoutEditBar .leb-grip:hover, #lsEditBar .leb-grip:hover { color: #fff; border-color: #4a525c; }
+        #layoutEditBar .leb-grip:active, #lsEditBar .leb-grip:active { cursor: grabbing; color: #fff; }
 
         /* Carteles ROOM PRICES / DAILY QUESTS: marco de piedra + fondo (PNG de
            David, quest-panel.png) via _pixFrameRule en buildPixPanelCss. */
@@ -3561,6 +3609,7 @@
          #layoutEditBar (misma herramienta, mismo aspecto). Quitar junto con el
          bloque lsEnterEdit/lsExitEdit cuando el diseño quede fijado. -->
     <div id="lsEditBar" style="display:none;">
+        <span class="leb-grip" title="Arrastra para mover la barra · doble clic = volver abajo">MOVE</span>
         <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE &nbsp;·&nbsp; ESC = SALIR</span>
         <button class="leb-btn" onclick="LoadingLayout.resetAll()">RESET ALL</button>
         <button class="leb-btn done" onclick="LoadingLayout.exit()">DONE</button>
@@ -3568,6 +3617,7 @@
 
     <!-- Barra del editor de layout del menu: visible solo en modo edicion -->
     <div id="layoutEditBar" style="display:none;">
+        <span class="leb-grip" title="Arrastra para mover la barra · doble clic = volver abajo">MOVE</span>
         <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW / TEXT SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE &nbsp;·&nbsp; EL TEXTO DE IN GAME Y EL DE LOS BOTONES SE AGARRAN APARTE DE SU CAJA</span>
         <!-- Botones sueltos para el texto/ancho de IN GAME: el gesto de rueda
              (ALT / CTRL+rueda) depende de acertar el punto exacto con el raton
@@ -4838,6 +4888,16 @@
         const fcTitle = document.getElementById('fcTitle'), fcDesc = document.getElementById('fcDesc');
         if (!gcOverlay || !gcCard) return;
 
+        // Sonido: el mismo par que el resto del menu — simplehover al pasar por
+        // encima (ya viene con anti-repeticion de 100ms dentro de SoundManager)
+        // y simpleselect al pulsar. Se engancha por JS y no con onmouseenter en
+        // el HTML porque la rejilla de skills y los puntos se crean a mano.
+        function gcSfx(el, conClick) {
+            if (!el) return;
+            el.addEventListener('mouseenter', () => SoundManager.playSimpleHover());
+            if (conClick !== false) el.addEventListener('click', () => SoundManager.play('simpleselect'));
+        }
+
         function gcDrawFrame() {
             if (typeof _pmFrameDraw !== 'function' || !gcCard.clientWidth) return;
             const primero = !gcInner.style.padding;
@@ -4875,6 +4935,7 @@
                 el.className = 'gc-skill';
                 el.innerHTML = '<img src="../img/skills-pixel/' + GC_ICON_FILES[i] + '.png"><div class="nm">' + data.name + '</div>';
                 el.addEventListener('click', () => gcOpenFloat(i));
+                gcSfx(el);
                 grid.appendChild(el);
             }
         }
@@ -4891,6 +4952,7 @@
             for (let i = 0; i < 3; i++) {
                 const d = document.createElement('div'); d.className = 'gc-dot' + (i === gcPage ? ' on' : '');
                 d.addEventListener('click', () => { gcPage = i; gcRender(); });
+                gcSfx(d);
                 gcDots.appendChild(d);
             }
             gcDrawFrame();
@@ -4908,6 +4970,8 @@
         if (wheelBtn) wheelBtn.addEventListener('click', gcOpen);
         document.getElementById('gcClose').addEventListener('click', gcClose);
         document.getElementById('fcClose').addEventListener('click', gcCloseFloat);
+        gcSfx(wheelBtn); gcSfx(gcPrev); gcSfx(gcNext);
+        gcSfx(document.getElementById('gcClose')); gcSfx(document.getElementById('fcClose'));
         gcOverlay.addEventListener('click', (e) => { if (e.target === gcOverlay) gcClose(); });
         window.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
@@ -9303,9 +9367,17 @@
         // rueda de "como jugar", y asi las dos se mueven/escalan juntas con un
         // solo arrastre. Los valores guardados de siempre siguen valiendo — la
         // caja es del ancho completo con el boton centrado, asi que moverla
-        // deja a PLAY donde estaba. wheel va aparte para poder afinar SOLO la
-        // rueda (encima de lo que herede de la caja) sin tocar el boton.
-        name: '#playerNameInput', play: '#playRow', wheel: '#howToPlayWheel', settings: '#btnSettings',
+        // deja a PLAY donde estaba.
+        //
+        // La rueda NO tiene clave propia, y es a proposito: cuando la tuvo
+        // ("wheel") era un elemento suelto arriba a la derecha, y el layout
+        // global del servidor se quedo con lo que se guardo entonces —
+        // {x:573, y:251, s:1.98}. Al meterla dentro de #playRow ese valor se
+        // SUMABA al de la caja y la mandaba a ~850px a la derecha y 550px
+        // abajo, escalada 3.6x: fuera de la pantalla, en PC y en movil. Su
+        // sitio es "pegada a PLAY" y de eso ya se encarga la caja; una clave
+        // propia solo servia para poder romperlo.
+        name: '#playerNameInput', play: '#playRow', settings: '#btnSettings',
         // ===== PANEL DE SKINS =====
         // El bloque de las 8 pildoras se mueve y escala ENTERO, no celda a
         // celda: agarrar una celda suelta descuadraba la rejilla. Clave
@@ -9810,8 +9882,55 @@
         } catch (e) {}
         if (btn) { btn.textContent = ok ? 'SAVED ✓' : 'ERROR'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600); }
     }
+    // La barra del editor va fija abajo en el centro, justo encima de la rueda
+    // de HOW TO PLAY: se puede agarrar por el asa MOVE y dejarla donde no
+    // estorbe. La posicion se guarda por barra en localStorage; doble clic en
+    // el asa la devuelve a su sitio de fabrica.
+    function makeEditBarDraggable(barId) {
+        const bar = document.getElementById(barId);
+        const grip = bar && bar.querySelector('.leb-grip');
+        if (!grip) return;
+        const KEY = 'pw_editbar_pos_' + barId;
+        function colocar(x, y, limitar) {
+            if (limitar) {
+                x = Math.max(0, Math.min(window.innerWidth - bar.offsetWidth, x));
+                y = Math.max(0, Math.min(window.innerHeight - bar.offsetHeight, y));
+            }
+            bar.style.left = x + 'px'; bar.style.top = y + 'px';
+            bar.style.bottom = 'auto'; bar.style.transform = 'none';
+        }
+        // Sin limitar al arrancar: la barra esta oculta y mide 0, asi que el
+        // clamp la mandaria a la esquina. Se limita ya al arrastrar.
+        try { const g = JSON.parse(localStorage.getItem(KEY)); if (g) colocar(g.x, g.y, false); } catch (e) {}
+        grip.addEventListener('pointerdown', (e) => {
+            const r = bar.getBoundingClientRect();
+            const dx = e.clientX - r.left, dy = e.clientY - r.top;
+            e.preventDefault(); e.stopPropagation();
+            // Los listeners van en window y no en el asa (con captura de
+            // puntero): el raton se adelanta a la barra al arrastrar rapido y
+            // con el asa sola el gesto se cortaba al salirse de ella.
+            const mover = (ev) => colocar(ev.clientX - dx, ev.clientY - dy, true);
+            const soltar = () => {
+                window.removeEventListener('pointermove', mover);
+                window.removeEventListener('pointerup', soltar);
+                window.removeEventListener('pointercancel', soltar);
+                try { localStorage.setItem(KEY, JSON.stringify({ x: bar.offsetLeft, y: bar.offsetTop })); } catch (e2) {}
+            };
+            window.addEventListener('pointermove', mover);
+            window.addEventListener('pointerup', soltar);
+            window.addEventListener('pointercancel', soltar);
+        });
+        grip.addEventListener('dblclick', () => {
+            bar.style.left = ''; bar.style.top = ''; bar.style.bottom = ''; bar.style.transform = '';
+            try { localStorage.removeItem(KEY); } catch (e) {}
+        });
+        window.addEventListener('resize', () => { if (bar.style.left && bar.offsetWidth) colocar(bar.offsetLeft, bar.offsetTop, true); });
+    }
+
     (function initLayoutEdit() {
         applyMenuLayout();
+        makeEditBarDraggable('layoutEditBar');
+        makeEditBarDraggable('lsEditBar');
         document.addEventListener('pointerdown', (e) => {
             if (!layoutEditing || e.target.closest('#layoutEditBar')) return;
             const t = layoutTarget(e); if (!t) return;
