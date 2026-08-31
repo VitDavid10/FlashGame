@@ -53,8 +53,10 @@ exit   # volver a root
 
 ```bash
 cp /home/pillwars/FlashGame/deploy/pillwars.service /etc/systemd/system/
-# EDITA la clave de admin (cambia 1234 por una larga y secreta):
-nano /etc/systemd/system/pillwars.service     # línea ADMIN_KEY=...
+# EDITA la clave de admin y las rutas secretas del panel (ADMIN_KEY, ADMIN_PATH,
+# CARTELES_PATH: cambia los placeholders CAMBIA-... por valores tuyos, largos y
+# al azar — nunca los commitees, este fichero de systemd no vive en git):
+nano /etc/systemd/system/pillwars.service
 systemctl daemon-reload
 systemctl enable --now pillwars
 systemctl status pillwars     # debe salir "active (running)"
@@ -100,12 +102,12 @@ con el juego, y el WebSocket irá por **wss://pillwars.fun** automáticamente
 
 Con el split hay un panel por proceso (cada uno ve SUS salas):
 
-- `https://pillwars.fun/admin` — Director: dinero/warbank, stats globales, /match.
+- `https://pillwars.fun<ADMIN_PATH>` — Director: dinero/warbank, stats globales, /match.
   No tiene salas (viven en los hosts).
-- `https://pillwars.fun/h0/admin` — Host 0: sus 5 combos (salas, kick, forceStart, espectador).
-- `https://pillwars.fun/h1/admin` — Host 1: sus otros 5 combos.
+- `https://pillwars.fun/h0<ADMIN_PATH>` — Host 0: sus 5 combos (salas, kick, forceStart, espectador).
+- `https://pillwars.fun/h1<ADMIN_PATH>` — Host 1: sus otros 5 combos.
 
-Misma clave `ADMIN_KEY` en los tres (los hosts la heredan del Director).
+Misma clave `ADMIN_KEY` y mismo `ADMIN_PATH` en los tres (los hosts los heredan del Director).
 
 ## 8. Activar / desactivar el split (rollback a mono)
 

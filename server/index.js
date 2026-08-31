@@ -2387,10 +2387,20 @@ const httpServer = http.createServer(async (req, res) => {
     // Comparar con separador: sin él, un directorio hermano cuyo nombre empiece
     // igual que ROOT (p.ej. "FlashGame-main-backup") pasaría el guard.
     if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) { res.writeHead(403); res.end('Forbidden'); return; }
-    // Nunca servir carpetas privadas (datos con IPs, código de servidor, repo, notas)
+    // Nunca servir carpetas privadas (datos con IPs, código de servidor, repo, notas).
+    // deploy/scripts/tools/chatbot-backend/stress_bot/.codegraph no las necesita
+    // el juego (nada del cliente les hace fetch) — eran descargables sin
+    // querer: deploy/pillwars.service y deploy/Caddyfile enseñaban toda la
+    // arquitectura (puertos, hosts, rutas de admin) a quien los pidiera.
     const relLower = path.relative(ROOT, filePath).replace(/\\/g, '/').toLowerCase();
     const top = relLower.split('/')[0];
-    if (['server', '.git', 'node_modules', 'tasks', '.claude', 'memory'].includes(top)) { res.writeHead(403); res.end('Forbidden'); return; }
+    if (['server', '.git', 'node_modules', 'tasks', '.claude', 'memory',
+         'deploy', 'scripts', 'tools', 'chatbot-backend', 'stress_bot', '.codegraph'].includes(top)) {
+        res.writeHead(403); res.end('Forbidden'); return;
+    }
+    // Los .md de la raíz (ROADMAP, BLOCKCHAIN-PLAN, DESPLIEGUE-VPS...) son notas
+    // internas, no páginas del juego: mismo motivo, tampoco hace falta servirlas.
+    if (relLower.endsWith('.md')) { res.writeHead(403); res.end('Forbidden'); return; }
     // El editor de carteles solo se sirve por CARTELES_PATH (arriba): el nombre
     // literal se bloquea aqui para que ni conociendolo se pueda pedir directo.
     if (relLower === 'carteles-preview.html') { res.writeHead(404); res.end('Not Found'); return; }
