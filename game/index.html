@@ -9865,10 +9865,15 @@
         syncRoomsDescFontBtn();
     }
     // Sube el layout actual al servidor → se vuelve GLOBAL para todos (se difunde
-    // por /api/rooms). Sin auth: herramienta de diseño temporal (quitar el editor
-    // cuando la UI esté fijada).
+    // por /api/rooms). Pide la ADMIN_KEY, igual que el editor de carteles: sin
+    // ella cualquiera con un curl podia descolocarle el menu a todo el mundo.
+    // Se guarda en memoria (no en localStorage) para no dejarla escrita en el
+    // navegador; se vuelve a pedir en cada recarga de la pagina.
+    let _layoutAdminKey = '';
     async function saveLayoutGlobal(btn) {
         saveMenuLayout();
+        if (!_layoutAdminKey) _layoutAdminKey = prompt('Admin key para guardar el layout para todos:') || '';
+        if (!_layoutAdminKey) return;
         const orig = btn ? btn.textContent : '';
         if (btn) { btn.textContent = 'SAVING...'; btn.disabled = true; }
         let ok = false;
@@ -9877,8 +9882,9 @@
             // altura y halo). Antes se quedaba en el localStorage de quien lo
             // tocara: lo colocabas, le dabas a SAVE FOR ALL y el resto del mundo
             // seguia viendo el de fabrica.
-            const r = await fetch('/api/menu-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout: menuLayout, titulo: TITULO }) });
+            const r = await fetch('/api/menu-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout: menuLayout, titulo: TITULO, key: _layoutAdminKey }) });
             ok = (await r.json()).ok === true;
+            if (!ok) _layoutAdminKey = '';   // clave mala: que la vuelva a pedir
             // Ya son de todos: se sueltan las claves propias para no quedarse
             // pegado a una version local del layout que ya subiste.
             if (ok) { layoutMine.clear(); saveLayoutMine(); }

@@ -77,7 +77,13 @@ async function verifyDeposit({ sig, fromOwner, minPill }) {
 
     if (treasuryDelta < minRaw) return { ok: false, reason: 'treasury no recibió lo suficiente', amount: Number(treasuryDelta) / 10 ** DECIMALS };
     if (playerDelta > -minRaw) return { ok: false, reason: 'el jugador no pagó esa cantidad' };
-    return { ok: true, amount: Number(treasuryDelta) / 10 ** DECIMALS };
+    // Se acredita lo que PAGÓ EL JUGADOR (-playerDelta), no lo que subió el
+    // treasury: en una tx con varias transferencias al treasury, devolver
+    // treasuryDelta acreditaba a quien reclamara la firma el total de TODOS los
+    // ingresos de esa tx, no solo el suyo. Y por si acaso, nunca más de lo que
+    // el treasury recibió de verdad.
+    const acreditable = treasuryDelta < -playerDelta ? treasuryDelta : -playerDelta;
+    return { ok: true, amount: Number(acreditable) / 10 ** DECIMALS };
 }
 
 // --- Retiro: envía PILL del treasury de vuelta a la wallet del jugador ---

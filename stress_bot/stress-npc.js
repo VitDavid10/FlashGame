@@ -149,7 +149,12 @@ async function spawnBot(i) {
     stats.connected++;
     // bin:2 → snapshots binarios v4 (delta: ids/nombres viajan una vez por
     // conexión), igual que el cliente real. Reduce bytes y coste de ws.send.
-    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: genBotName(), colorBot: randColor(), colorTop: randColor(), tester: 'STRESS_TEST_DEVNET', bin: 2 }));
+    // tester: el secreto del servidor (env STRESS_KEY, la MISMA que tenga el
+    // servidor). Antes era la cadena fija 'STRESS_TEST_DEVNET' escrita aquí, o
+    // sea una puerta trasera publicada: cualquiera podía mandarla en su join y
+    // entrar gratis a las salas de pago. Sin STRESS_KEY los bots entran como
+    // jugadores normales (y no podrán entrar a salas de pago sin saldo).
+    ws.send(JSON.stringify({ t: 'join', mode: dest.mode, room: dest.room, name: genBotName(), colorBot: randColor(), colorTop: randColor(), tester: process.env.STRESS_KEY || '', bin: 2 }));
     stats.messagesSent++;
 
     // Movimiento tipo NPC: dirigirse al destino; al acercarse, elegir otro.

@@ -22,13 +22,30 @@ function save() { if (!dirty) return; dirty = false; fs.writeFile(FILE, JSON.str
 setInterval(save, 3000);
 process.on('SIGTERM', save); process.on('SIGINT', () => { save(); process.exit(0); });
 
-// Purga periódica de firmas viejas (>24h). Anti-leak: el map crece eternamente si no.
+/*
+ * Purga periódica de firmas viejas. Anti-leak: el map crece eternamente si no.
+ *
+ * CUIDADO — solo se purgan las firmas de RETIRO ('wd_'), ENTRADA ('enter_') y
+ * COMPRA DE SKIN ('skin_'): esas son firmas de un MENSAJE que el jugador firma
+ * con su wallet, llevan un `ts` dentro y el endpoint las rechaza pasados 120 s,
+ * así que una vez caducado ese margen ya no se pueden reusar aunque se olviden
+ * aquí.
+ *
+ * Las firmas de DEPÓSITO (clave = la firma de la tx de Solana, sin prefijo) NO
+ * se purgan NUNCA. Una transacción de Solana es permanente: verifyDeposit() la
+ * lee por RPC y la da por buena para siempre, sin ninguna ventana temporal. Si
+ * se olvida aquí, el mismo depósito se puede volver a canjear una y otra vez
+ * (dinero infinito). Este map es lo ÚNICO que lo impide, así que es un registro
+ * permanente, no una caché. Crece solo con depósitos reales (uno por ingreso
+ * on-chain de verdad), así que su tamaño no es un problema.
+ */
 const SIG_TTL_MS = 24 * 3600 * 1000;
+const esPurgable = (k) => k.startsWith('wd_') || k.startsWith('enter_') || k.startsWith('skin_');
 setInterval(() => {
     const cutoff = Date.now() - SIG_TTL_MS;
     let removed = 0;
     for (const [k, t] of Object.entries(data.sigs)) {
-        if (t < cutoff) { delete data.sigs[k]; removed++; }
+        if (esPurgable(k) && t < cutoff) { delete data.sigs[k]; removed++; }
     }
     if (removed > 0) dirty = true;
 }, 30 * 60 * 1000);   // cada 30 min

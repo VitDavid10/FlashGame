@@ -28,6 +28,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { performance } = require('perf_hooks');
 const { fork } = require('child_process');
 const { WebSocketServer } = require('ws');
@@ -61,6 +62,10 @@ const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
 // deploy/pillwars.service solo hay un placeholder, igual que con ADMIN_KEY.
 const ADMIN_PATH = process.env.ADMIN_PATH || '/admin';
 const CARTELES_PATH = process.env.CARTELES_PATH || '/carteles-preview.html';
+// Secreto del stress test: permite entrar GRATIS a salas de pago (jugadores
+// marcados como tester, fuera de las stats). Sin definir = modo tester apagado.
+// Nunca una constante en el código: eso sería una puerta trasera pública.
+const STRESS_KEY = process.env.STRESS_KEY || '';
 const MIN_PLAYERS = parseInt(process.env.MIN_PLAYERS, 10) || 5;    // reales para empezar (editable por sala desde el panel)
 // Población objetivo (reales + bots de relleno). 0 = SIN bots de relleno: online
 // solo tiene jugadores reales. Editable por sala desde el panel si se quieren bots.
@@ -594,6 +599,30 @@ process.on('uncaughtException', (e) => { try { log('uncaughtException: ' + (e &&
 process.on('unhandledRejection', (e) => { try { log('unhandledRejection: ' + (e && e.stack || e)); } catch (_) {} });
 
 function cleanIp(addr) { return String(addr || '?').replace(/^::ffff:/, '').replace(/^::1$/, 'localhost'); }
+/*
+ * IP real del cliente, a prueba de falsificación por cabecera.
+ *
+ * ANTES se leía `cf-connecting-ip` primero y, si no, el PRIMER valor de
+ * x-forwarded-for. Las dos cosas las controla el cliente:
+ *   - cf-connecting-ip la ponía Cloudflare, pero ya no usamos Cloudflare (se
+ *     quitó al pasar a Caddy), así que hoy no la pone nadie de confianza.
+ *   - x-forwarded-for es una LISTA y el proxy AÑADE al final; el principio es
+ *     justo lo que el cliente haya inyectado.
+ * Resultado: bastaba mandar `X-Forwarded-For: <lo que sea>` para saltarse el
+ * rate-limit del RPC y, peor, el cooldown diario del faucet (farmeo infinito).
+ *
+ * Ahora se coge el ÚLTIMO salto de x-forwarded-for, que es el que añade nuestro
+ * Caddy y el cliente no puede controlar. Con TRUST_PROXY=0 (servidor expuesto
+ * directo, sin proxy delante) se ignora la cabecera entera.
+ */
+const TRUST_PROXY = process.env.TRUST_PROXY !== '0';
+function clientIp(req) {
+    if (TRUST_PROXY) {
+        const xff = String(req.headers['x-forwarded-for'] || '').split(',').map(s => s.trim()).filter(Boolean);
+        if (xff.length) return cleanIp(xff[xff.length - 1]);
+    }
+    return cleanIp(req.socket.remoteAddress);
+}
 // Anonimiza la IP (RGPD): IPv4 sin el último octeto, IPv6 solo el prefijo /48.
 // Sigue valiendo para sacar el país y para distinguir redes, sin guardar la IP exacta.
 function anonIp(ip) {
@@ -734,14 +763,19 @@ const directorLocal = {
     // `fee` viene del Host (calculado con el rate BLOQUEADO de su sala); la firma
     // del cliente incluye ese fee exacto, así que un fee desalineado se rechaza.
     authorizeEntry({ comboKey, key, fee, pay, testerReq }) {
-        const tester = testerReq === 'STRESS_TEST_DEVNET' && /devnet/i.test(solana.RPC || '');
+        // El modo tester (entrada GRATIS a salas de pago, para el stress test) va
+        // contra un secreto de servidor, no contra una constante del código: antes
+        // era la cadena fija 'STRESS_TEST_DEVNET', que cualquiera podía mandar en
+        // su join y colarse gratis en cualquier sala de pago. Sin STRESS_KEY
+        // definida no hay modo tester (y sigue exigiendo devnet, como antes).
+        const tester = !!STRESS_KEY && testerReq === STRESS_KEY && /devnet/i.test(solana.RPC || '');
         if (fee > 0 && !tester) {
             pay = pay || {};
             const w = String(pay.wallet || ''), ts = Number(pay.ts) || 0;
             const expected = `PillWars enter ${comboKey} paying ${fee} PILL @ ${ts}`;
             const balance = isSolAddr(w) ? warbank.getBalance(w) : 0;
             if (!isSolAddr(w) || pay.message !== expected || Math.abs(Date.now() - ts) > 120000) return { ok: false, reason: 'firma de pago inválida', balance };
-            const sigKey = 'enter_' + (Array.isArray(pay.signature) ? pay.signature.join('') : '');
+            const sigKey = 'enter_' + (Array.isArray(pay.signature) ? pay.signature.join(',') : '');
             if (warbank.sigUsed(sigKey)) return { ok: false, reason: 'firma ya usada', balance };
             if (!solana.verifySignedMessage(w, pay.message, pay.signature)) return { ok: false, reason: 'firma no válida', balance };
             if (warbank.getBalance(w) < fee) return { ok: false, reason: 'saldo WAR insuficiente', balance };
@@ -1715,6 +1749,75 @@ function applySecurityHeaders(res) {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader('Content-Security-Policy', CSP_JUEGO);
+}
+/*
+ * CSP. El JS/CSS del juego y del panel va TODO inline, así que 'unsafe-inline'
+ * es obligatorio y la CSP NO puede impedir que un XSS inyectado se ejecute. Lo
+ * que sí acota es a DÓNDE puede hablar ese script: con connect-src cerrado a
+ * una lista, un XSS no puede mandarse los datos a un servidor propio.
+ *
+ * La lista de hosts sale de lo que el cliente usa de verdad (grep de index.html
+ * y game/index.html): analytics, el CDN de módulos, el RPC de Solana, el oráculo
+ * de precio y el formulario de contacto. El RPC se añade desde la config (env
+ * SOL_RPC / devnet-token.json) para que al pasar a mainnet no haya que tocar
+ * esto y se rompan los depósitos sin avisar.
+ */
+const _rpcOrigin = (() => { try { return new URL(solana.RPC).origin; } catch (e) { return ''; } })();
+const CSP_JUEGO = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://esm.sh",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    // Imágenes: la landing tira de varios CDN. https: en vez de lista cerrada
+    // (romper la web por un logo no compensa), pero sin http: ni comodín total.
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' data: blob:",
+    // GA4 no manda todo a www.google-analytics.com: usa endpoints REGIONALES
+    // (region1.google-analytics.com y compañía) que cambian según el visitante,
+    // así que aquí van por comodín o la analítica se cae en media Europa.
+    ["connect-src 'self' ws: wss:",
+        'https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com',
+        'https://api.dexscreener.com https://api.web3forms.com https://esm.sh',
+        _rpcOrigin].filter(Boolean).join(' '),
+    "frame-ancestors 'self'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "object-src 'none'",
+].join('; ');
+/*
+ * CSP del panel de admin y del editor de carteles: mucho más cerrada. Ahí no
+ * hay analytics, ni CDN, ni RPC — solo el WebSocket al propio servidor y las
+ * fuentes de Google. Es la página que más daño haría comprometida (ve wallets,
+ * IPs y puede echar jugadores), así que no hereda los permisos del juego.
+ */
+const CSP_ADMIN = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "media-src 'self' data: blob:",
+    "connect-src 'self' ws: wss:",
+    "frame-ancestors 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "object-src 'none'",
+].join('; ');
+/*
+ * Compara contra ADMIN_KEY en TIEMPO CONSTANTE.
+ *
+ * Un `===` normal corta en el primer carácter distinto, así que el tiempo de
+ * respuesta filtra cuántos aciertas — se puede reconstruir la clave carácter a
+ * carácter midiendo. Aquí no era muy explotable (hay bloqueo a los 8 intentos),
+ * pero timingSafeEqual es gratis. Se hashean los dos lados antes de comparar
+ * porque timingSafeEqual exige buffers del mismo largo: si no, la propia
+ * excepción por longitudes distintas ya filtraría el tamaño de la clave.
+ */
+function adminKeyOk(k) {
+    if (typeof k !== 'string' || !k) return false;
+    const h = (s) => crypto.createHash('sha256').update(String(s)).digest();
+    return crypto.timingSafeEqual(h(k), h(ADMIN_KEY));
 }
 function isSolAddr(s) { return typeof s === 'string' && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s); }
 // Firmas de depósito en verificación RPC ahora mismo (ver /api/deposit).
@@ -1724,7 +1827,7 @@ const pendingDeposits = new Set();
 // gratuito y tumba los depósitos para todo el mundo. 5 por minuto y por IP.
 const rpcApiHits = new Map();   // ip → { c: peticiones, resetAt: timestamp }
 function rpcRateLimited(req) {
-    const ip = cleanIp(req.headers['cf-connecting-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress);
+    const ip = clientIp(req);
     const now = Date.now();
     let e = rpcApiHits.get(ip);
     if (!e || now >= e.resetAt) { e = { c: 0, resetAt: now + 60000 }; rpcApiHits.set(ip, e); }
@@ -1929,8 +2032,10 @@ const httpServer = http.createServer(async (req, res) => {
         return;
     }
     // --- Layout del menú GLOBAL: el cliente lo sube desde EDIT LAYOUT → "Guardar
-    // para todos". Sin auth (herramienta de diseño temporal). Se persiste y se
-    // difunde a todos por /api/rooms. ---
+    // para todos". Se persiste y se difunde a todos por /api/rooms.
+    // Protegido con ADMIN_KEY, igual que /api/landing-layout y /api/carteles-layout:
+    // hasta ahora era el ÚNICO de los tres sin auth, o sea que cualquiera con un
+    // curl podía dejarle el menú descolocado a todos los jugadores a la vez. ---
     if (urlPath === '/api/menu-layout') {
         if (req.method === 'OPTIONS') {
             res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' });
@@ -1942,6 +2047,7 @@ const httpServer = http.createServer(async (req, res) => {
             req.on('end', () => {
                 if (abortado) return;
                 let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
+                if (!adminKeyOk(payload.key)) { res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad key' })); return; }
                 const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
                 if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
                 // Sanea: solo claves con {x,y,s} numéricos (evita basura arbitraria).
@@ -2067,7 +2173,7 @@ const httpServer = http.createServer(async (req, res) => {
         req.on('end', () => {
             if (abortado) return;
             let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
-            if (payload.key !== ADMIN_KEY) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad key' })); return; }
+            if (!adminKeyOk(payload.key)) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad key' })); return; }
             const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
             if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
             // Sanea: cada cartel es {pieza: {x, y, s}} y nada mas, para no
@@ -2159,7 +2265,7 @@ const httpServer = http.createServer(async (req, res) => {
                 const pay = p.pay || {};
                 const ts = Number(pay.ts) || 0;
                 if (!wallet || pay.message !== esperado || Math.abs(Date.now() - ts) > 120000) return 'invalid payment signature';
-                const sigKey = 'skin_' + (Array.isArray(pay.signature) ? pay.signature.join('') : '');
+                const sigKey = 'skin_' + (Array.isArray(pay.signature) ? pay.signature.join(',') : '');
                 if (warbank.sigUsed(sigKey)) return 'signature already used';
                 if (!solana.verifySignedMessage(wallet, pay.message, pay.signature)) return 'signature not valid';
                 warbank.creditDeposit(wallet, 0, sigKey);   // la marca como usada (anti-replay)
@@ -2239,7 +2345,7 @@ const httpServer = http.createServer(async (req, res) => {
             const expected = `PillWars withdraw ${amount} PILL @ ${ts}`;
             if (message !== expected) { res.end(JSON.stringify({ ok: false, reason: 'mensaje inválido' })); return; }
             if (Math.abs(Date.now() - ts) > 120000) { res.end(JSON.stringify({ ok: false, reason: 'firma caducada, reintenta' })); return; }
-            const sigKey = 'wd_' + (Array.isArray(signature) ? signature.join('') : '');
+            const sigKey = 'wd_' + (Array.isArray(signature) ? signature.join(',') : '');
             if (warbank.sigUsed(sigKey)) { res.end(JSON.stringify({ ok: false, reason: 'firma ya usada' })); return; }
             if (!solana.verifySignedMessage(wallet, message, signature)) { res.end(JSON.stringify({ ok: false, reason: 'firma no válida' })); return; }
             if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'retiros no disponibles (servidor sin clave del treasury)' })); return; }
@@ -2275,7 +2381,7 @@ const httpServer = http.createServer(async (req, res) => {
             const wallet = String(p.wallet || ''), kind = String(p.kind || '');
             if (!isSolAddr(wallet) || (kind !== 'pill' && kind !== 'sol')) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
             if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'faucet no disponible (servidor sin clave del treasury)' })); return; }
-            const ip = anonIp(cleanIp(req.headers['cf-connecting-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress));
+            const ip = anonIp(clientIp(req));
             const left = claimCooldownLeft(wallet, ip, kind);
             if (left > 0) { res.end(JSON.stringify({ ok: false, reason: 'ya reclamado hoy', nextInMs: left })); return; }
             // Marca ANTES de enviar (evita doble claim por requests solapadas); si falla, revierte.
@@ -2367,6 +2473,9 @@ const httpServer = http.createServer(async (req, res) => {
             // Se inyecta en vez de que el JS asuma "/admin": si mañana se cambia
             // ADMIN_PATH solo hay que tocar la env, no el HTML.
             html = html.replace('<head>', '<head><script>window.__ADMIN_PATH__=' + JSON.stringify(ADMIN_PATH) + ';</script>');
+            // CSP cerrada (sin analytics/CDN/RPC): estas dos páginas no los usan
+            // y son las que más daño harían comprometidas.
+            res.setHeader('Content-Security-Policy', CSP_ADMIN);
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
             res.end(html);
         } catch (e) { res.writeHead(500); res.end('No se pudo cargar admin.html'); }
@@ -2375,6 +2484,7 @@ const httpServer = http.createServer(async (req, res) => {
     if (urlPath === CARTELES_PATH) {
         try {
             const html = fs.readFileSync(path.join(ROOT, 'carteles-preview.html'));
+            res.setHeader('Content-Security-Policy', CSP_ADMIN);
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
             res.end(html);
         } catch (e) { res.writeHead(500); res.end('No se pudo cargar carteles-preview.html'); }
@@ -2433,7 +2543,13 @@ const httpServer = http.createServer(async (req, res) => {
     servir();
 });
 
-const wss = new WebSocketServer({ server: httpServer });
+// maxPayload: el rate-limit por conexión (MSG_RATE_*) se evalúa en el evento
+// 'message', o sea DESPUÉS de que el frame entero esté en memoria. Con el
+// default de `ws` (100 MiB) unas pocas conexiones mandando frames gigantes
+// tumbaban el proceso por RAM antes de que el contador llegara a mirarlos.
+// 64 KB sobra de largo: el mensaje más grande que manda el cliente real es un
+// join con nombre y colores (unos cientos de bytes).
+const wss = new WebSocketServer({ server: httpServer, maxPayload: 64 * 1024 });
 
 wss.on('connection', (ws, req) => {
     // Contador de egress (panel Rendimiento): se envuelve el send UNA vez por
@@ -2447,11 +2563,10 @@ wss.on('connection', (ws, req) => {
     let room = null, playerId = null, spectatorRoom = null;
     let joinPending = false;   // join en vuelo (authorizeEntry es async): bloquea joins dobles
     let rlWindow = 0, rlCount = 0;   // rate-limit: ventana (segundo) y mensajes en ella
-    // Detrás del túnel/proxy de Cloudflare la IP real viene en cabeceras.
+    // Detrás del proxy (Caddy) la IP real la añade él al final de x-forwarded-for
+    // (ver clientIp: el principio de esa lista lo controla el cliente).
     // Se anonimiza de inmediato (RGPD): nunca se almacena ni se muestra la IP exacta.
-    const ip = anonIp(cleanIp(req.headers['cf-connecting-ip']
-        || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
-        || req.socket.remoteAddress));
+    const ip = anonIp(clientIp(req));
 
     ws.on('message', raw => {
         // Rate-limit por conexión: contador por segundo (antes de parsear, para no
@@ -2475,7 +2590,7 @@ wss.on('connection', (ws, req) => {
             // Rate-limit por IP: 8 intentos fallidos / 60s → bloqueo 10 min
             const fb = adminFails.get(ip) || { c: 0, until: 0 };
             if (fb.until > Date.now()) { ws.send(JSON.stringify({ t: 'adminError' })); return; }
-            const validKey = (msg.key === ADMIN_KEY);
+            const validKey = adminKeyOk(msg.key);
             const validTok = msg.key && specTokens.has(msg.key) && specTokens.get(msg.key) > Date.now();
             if (!validKey && !validTok) {
                 fb.c++; if (fb.c >= 8) { fb.until = Date.now() + 10*60*1000; fb.c = 0; log(`[seguridad] IP ${ip} bloqueada 10 min por intentos fallidos de admin`); }

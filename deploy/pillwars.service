@@ -26,6 +26,13 @@ Environment=ADMIN_KEY=CAMBIA_ESTA_CLAVE_LARGA
 # Sin definir caen a /admin y /carteles-preview.html (los de siempre).
 Environment=ADMIN_PATH=/CAMBIA-ESTE-PATH
 Environment=CARTELES_PATH=/CAMBIA-ESTE-OTRO-PATH.html
+# Secreto del stress test: deja entrar GRATIS a las salas de pago (solo devnet).
+# SIN DEFINIR = modo tester apagado, que es lo correcto en produccion. Definelo
+# solo mientras lances un stress test, y pasa el MISMO valor al bot por env.
+#Environment=STRESS_KEY=CAMBIA-ESTE-SECRETO
+# TRUST_PROXY: 1 (defecto) = detras de Caddy, la IP real es el ultimo salto de
+# x-forwarded-for. Ponlo a 0 solo si expones Node directo, sin proxy delante.
+Environment=TRUST_PROXY=1
 Environment=MIN_PLAYERS=5
 Environment=TARGET_POP=10
 # Fase 4b — split multiproceso: el Director (8080) forkea PW_HOST_COUNT hosts

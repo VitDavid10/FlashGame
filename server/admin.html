@@ -825,6 +825,16 @@ function verLayer(n) {
     pedir();
 }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+/*
+ * Para meter un dato DENTRO de una cadena JS que va en un atributo (onclick="f('AQUI')").
+ *
+ * esc() NO vale en ese sitio: el navegador decodifica las entidades del atributo
+ * ANTES de que el JS se parsee, así que un &#39; vuelve a ser una comilla y se
+ * escapa de la cadena. Aquí se neutraliza a nivel de JS (barra invertida) y
+ * ademas se quitan < y & para que no pueda cerrar el atributo ni colar entidades.
+ * Hoy estos ids los genera el servidor, pero el patrón no debe quedar frágil.
+ */
+function escJs(s) { return String(s == null ? '' : s).replace(/[\\'"]/g, c => '\\' + c).replace(/[<>&]/g, ''); }
 function fmtSeg(s) { if (s < 60) return s + 's'; if (s < 3600) return Math.floor(s/60) + 'm'; return Math.floor(s/3600) + 'h' + Math.floor((s%3600)/60) + 'm'; }
 function fmtMs(ms) { const s = Math.ceil(ms / 1000); const m = Math.floor(s / 60); return (m < 10 ? '0' + m : m) + ':' + ((s % 60) < 10 ? '0' + (s % 60) : (s % 60)); }
 function num(n) { return Number(n || 0).toLocaleString('en-US'); }
@@ -885,7 +895,7 @@ function renderRanking() {
         const kd = p.muertes > 0 ? (p.kills / p.muertes).toFixed(2) : p.kills.toFixed(0) + '.00';
         const sel = rankSel.has(p.key);
         rank += `<tr style="${sel ? 'background:rgba(255,42,42,0.08)' : ''}">
-            <td><input type="checkbox" ${sel ? 'checked' : ''} onclick="rankToggle('${esc(p.key)}')"></td>
+            <td><input type="checkbox" ${sel ? 'checked' : ''} onclick="rankToggle('${escJs(p.key)}')"></td>
             <td><span class="pos ${pos === 1 ? 'p1' : pos === 2 ? 'p2' : pos === 3 ? 'p3' : ''} russo">${pos}</span></td>
             <td><b style="color:#fff">${esc(p.name)}</b></td><td class="kills">${num(p.kills)}</td><td>${num(p.muertes)}</td><td>${kd}</td>
             <td>${num(p.partidas)}</td><td>${fecha(p.lastSeen)}</td>
@@ -966,9 +976,9 @@ function cartaSala(r) {
                 <td>${p.god ? '<span class="tag god">GOD</span> ' : ''}${p.alive ? '<span class="tag vivo">ALIVE</span>' : '<span class="tag muerto">SPECT.</span>'}</td>
                 <td>${fmtSeg(p.conectadoSec)}</td>
                 <td style="white-space:nowrap; text-align:right">
-                    <button class="b morado mini" onclick="god('${esc(p.id)}')">${p.god ? 'Remove God' : 'Give God'}</button>
-                    <button class="b azul mini" onclick="masa('${esc(p.id)}')">Mass</button>
-                    <button class="b rojo mini" onclick="kick('${esc(p.id)}')">Kick</button>
+                    <button class="b morado mini" onclick="god('${escJs(p.id)}')">${p.god ? 'Remove God' : 'Give God'}</button>
+                    <button class="b azul mini" onclick="masa('${escJs(p.id)}')">Mass</button>
+                    <button class="b rojo mini" onclick="kick('${escJs(p.id)}')">Kick</button>
                 </td>
             </tr>`).join('') + '</tbody></table></div>';
     } else if (expandidos.has(id)) {

@@ -13,8 +13,23 @@
  */
 'use strict';
 
+const crypto = require('crypto');
 const PillSim = require('../shared/sim.js');
 const { tickRoomOnce } = require('./room-loop.js');   // tick por sala (simulación + snapshots)
+
+/*
+ * Token de reconexión: 32 bytes de crypto, NO PillSim.uuid().
+ *
+ * uuid() es Math.random(), que en V8 es xorshift128+ — predecible: con unas
+ * pocas salidas se reconstruye el estado interno y se calculan las siguientes.
+ * Y esas salidas son públicas: los playerId salen del MISMO generador y viajan
+ * a todos los clientes dentro de cada snapshot. Con el token siendo dos uuid(),
+ * cualquiera en la sala podía recuperar el estado del PRNG y predecir el token
+ * del siguiente que entrase — y ese token es la única credencial para robarle
+ * la sesión (su célula viva y, en classic, el dinero que lleve encima).
+ * Mismo criterio que los specTokens del panel, que ya usaban randomBytes.
+ */
+function nuevoResumeToken() { return crypto.randomBytes(32).toString('hex'); }
 
 // Crea una instancia de GameHost capturando las dependencias una sola vez.
 // Devuelve la interfaz pública que index.js usa en lugar de las funciones
@@ -292,7 +307,7 @@ function createGameHost(deps) {
             colorTop: typeof msg.colorTop === 'string' ? msg.colorTop.slice(0, 9) : undefined
         };
         room.sim.addPlayer(playerId, opts);
-        const token = PillSim.uuid() + PillSim.uuid();
+        const token = nuevoResumeToken();
         resumeTokens.set(token, { roomKey: key, playerId });
         const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
         // Opt-in al protocolo binario para snapshots: bin:1 = v3, bin:2 = v4
