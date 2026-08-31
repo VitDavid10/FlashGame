@@ -305,8 +305,15 @@ function clonar(c) {
     // ultimo creado), asi que el siguiente cartel que se abria a veces
     // pillaba el clon de otro por error — el lio de colores/rotulo cruzado.
     clon.removeAttribute('id');
-    clon.style.setProperty('position', 'static', 'important');
-    clon.style.setProperty('transform', 'none', 'important');
+    // El display:flex que centra el numero bajo el rotulo estaba enganchado a
+    // la regla CSS "#cdNum{...}" — al quitarle el id (arriba) el clon dejo de
+    // matchear esa regla y se quedaba en block (numero pegado a la izquierda
+    // en vez de centrado). Se repone aqui mismo por estilo, ya sin depender
+    // del id. gap un poco mayor que el 2px de la partida real: "un pelin mas
+    // abajo" (David) para separar mas el numero del rotulo.
+    clon.style.cssText += ';position:static!important;transform:none!important;' +
+      'display:flex!important;flex-direction:column!important;align-items:center!important;' +
+      'justify-content:center!important;gap:10px!important;';
     const host = d.createElement('div');
     host.style.cssText = 'display:block;';
     host.appendChild(clon);
