@@ -177,13 +177,16 @@ const GLIFOS = {
     },
     // ---- Digitos del contador ----
     '1': {
-        // Vastago + bandera diagonal (RDIAG: mismo ajuste que en M/N, el
-        // extremo del trazo no toca y=0 o se pasa del borde) + base ancha.
+        // Vastago + bandera diagonal + base ancha. El extremo de la bandera
+        // acababa justo en el borde del vastago (stemX) y dejaba una cuna sin
+        // pintar en la esquina (el redondeo de la capsula no llega a la
+        // esquina cuadrada): se meten 3 unidades DENTRO del vastago para que
+        // se solapen de verdad.
         w: 22, d: (x, y) => {
             const RDIAG = T / 2 * 0.85, stemX = 7;
             return une(
-                sdCaja(x, y, stemX, 0, T, CAP, [0, 2, 2, 2]),
-                sdSeg(x, y, stemX - 7, 12, stemX, RDIAG, RDIAG),
+                sdCaja(x, y, stemX, 0, T, CAP, [1, 2, 2, 2]),
+                sdSeg(x, y, stemX - 7, 12, stemX + 3, RDIAG, RDIAG),
                 sdCaja(x, y, 0, CAP - T, 22, T, [2, 2, 2, 2]),
             );
         },

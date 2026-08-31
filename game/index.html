@@ -12234,13 +12234,14 @@
         label = label || 'MATCH STARTING';
         const modeKey = currentGameMode === 'classic' ? 'classic' : 'arcade';
         const modeHex = modeKey === 'classic' ? '#00ffaa' : '#ccff00';
-        const glow = opts.glow !== undefined ? opts.glow : modeHex;
-        const glowFilter = glow ? ('drop-shadow(0 0 6px ' + glow + ') drop-shadow(0 0 14px ' + glow + ')') : '';
-        // El rótulo (MATCH STARTING/ENDING) va SIN glow por defecto (David: se
-        // veía borroso) — el PNG horneado ya tiene su propio contorno/bisel, no
-        // le hace falta. opts.lblGlowPx lo activa (lo usa cartelDevShowCountdown
-        // desde el editor de carteles para poder probar valores).
-        const lblGlowFilter = opts.lblGlowPx ? ('drop-shadow(0 0 ' + opts.lblGlowPx + 'px ' + modeHex + ') drop-shadow(0 0 ' + Math.round(opts.lblGlowPx * 2.2) + 'px ' + modeHex + ')') : 'none';
+        // Rótulo Y dígito van SIN glow por defecto (David: se veía borroso; los
+        // dos PNG horneados ya tienen su propio contorno/bisel, no les hace
+        // falta). opts.glowPx activa el MISMO glow para los dos por igual — lo
+        // usa cartelDevShowCountdown desde el editor de carteles para probar
+        // valores en vivo antes de decidir uno.
+        const glowPx = opts.glowPx || 0;
+        const glow = glowPx ? modeHex : (opts.glow !== undefined ? opts.glow : null);
+        const glowFilter = glowPx ? ('drop-shadow(0 0 ' + glowPx + 'px ' + modeHex + ') drop-shadow(0 0 ' + Math.round(glowPx * 2.2) + 'px ' + modeHex + ')') : 'none';
         if (pixelMode) {
             // Etiqueta como cartel pixel encima del número (antes era texto CSS
             // pequeño que se perdía al lado del dígito grande). MATCH STARTING/
@@ -12252,7 +12253,7 @@
                 const li = document.createElement('img');
                 li.src = cartelHeroUrl(lblAtlasId);
                 li.dataset.mode = modeKey;
-                li.style.cssText = 'display:block;height:64px;width:auto;image-rendering:pixelated;filter:' + lblGlowFilter + ';';
+                li.style.cssText = 'display:block;height:64px;width:auto;image-rendering:pixelated;filter:' + glowFilter + ';';
                 lblWrap.appendChild(li);
             } else {
                 const lblOpts = { plain: true };
@@ -12269,7 +12270,8 @@
                 const ni = document.createElement('img');
                 ni.src = cartelHeroUrl(cdAtlasId);
                 ni.className = 'cd-n';
-                ni.style.cssText = 'height:190px;width:auto;image-rendering:pixelated;filter:' + glowFilter + ';';
+                ni.dataset.mode = modeKey;
+                ni.style.cssText = 'height:150px;width:auto;image-rendering:pixelated;filter:' + glowFilter + ';';
                 el.appendChild(ni);
             } else {
                 const px = opts.px || 9;
@@ -12292,11 +12294,11 @@
     // Para el editor de carteles (carteles-preview.html): pinta MATCH STARTING/
     // ENDING con el modo pedido y lo deja fijo en pantalla (sin autoborrado) para
     // poder revisar fuente/color/tamaño con calma.
-    window.cartelDevShowCountdown = function (label, mode, n, lblGlowPx) {
+    window.cartelDevShowCountdown = function (label, mode, n, glowPx) {
         currentGameMode = mode === 'classic' ? 'classic' : 'arcade';
         _lastCdNum = null;
         _cdDevKeep = true;
-        showCountdownNumber(n || 3, label, { lblGlowPx: lblGlowPx || 0 });
+        showCountdownNumber(n || 3, label, { glowPx: glowPx || 0 });
     };
 
     // Rejoin: si te desconectas sin querer en mitad de una partida online,

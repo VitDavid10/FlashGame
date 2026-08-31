@@ -63,7 +63,7 @@
       <b>Rueda</b> encima = tamano · <b>Doble click</b> = reset de esa pieza
     </span>
     <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#7d8a84;">
-      GLOW MATCH STARTING/ENDING
+      GLOW (rotulo + numero)
       <input id="glowSlider" type="range" min="0" max="20" value="0" style="width:90px;">
       <span id="glowVal" style="color:#dfe6e2;min-width:52px;">sin glow</span>
     </label>
@@ -299,6 +299,12 @@ function clonar(c) {
     const box = d.getElementById('cdNum');
     if (!box) return null;
     const clon = box.cloneNode(true);
+    // Quitar el id del clon YA, antes de nada mas: cloneNode conserva el id, y
+    // con dos-tres fichas de Partida abiertas quedaban VARIOS #cdNum en el
+    // documento. getElementById solo devuelve el primero que encuentra (no el
+    // ultimo creado), asi que el siguiente cartel que se abria a veces
+    // pillaba el clon de otro por error — el lio de colores/rotulo cruzado.
+    clon.removeAttribute('id');
     clon.style.setProperty('position', 'static', 'important');
     clon.style.setProperty('transform', 'none', 'important');
     const host = d.createElement('div');
@@ -555,8 +561,8 @@ function prepararPiezas(ficha, clave, sup) {
   }
 }
 
-// --- Glow del rotulo MATCH STARTING/ENDING (David pidio quitarlo por
-// defecto y poder probar valores desde aqui) --------------------------------
+// --- Glow del rotulo MATCH STARTING/ENDING Y del digito (David: los dos por
+// igual, los dos a 0 de base) ------------------------------------------------
 // Solo vive en el editor: no se guarda en el servidor. Si David encuentra un
 // valor que le gusta, se lo pasa a Claude por chat y se hornea como el nuevo
 // valor por defecto en showCountdownNumber (game/index.html).
@@ -564,7 +570,7 @@ const glowSlider = document.getElementById('glowSlider'), glowVal = document.get
 function aplicarGlowLabel() {
   const v = Number(glowSlider.value);
   glowVal.textContent = v ? (v + 'px') : 'sin glow';
-  const imgs = W().document.querySelectorAll('#ceLayer .cd-lbl img');
+  const imgs = W().document.querySelectorAll('#ceLayer .cd-lbl img, #ceLayer img.cd-n');
   imgs.forEach(img => {
     if (!v) { img.style.filter = 'none'; return; }
     const hex = img.dataset.mode === 'classic' ? '#00ffaa' : '#ccff00';
