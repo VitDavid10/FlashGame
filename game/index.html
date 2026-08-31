@@ -12231,6 +12231,11 @@
         const modeHex = modeKey === 'classic' ? '#00ffaa' : '#ccff00';
         const glow = opts.glow !== undefined ? opts.glow : modeHex;
         const glowFilter = glow ? ('drop-shadow(0 0 6px ' + glow + ') drop-shadow(0 0 14px ' + glow + ')') : '';
+        // El rótulo (MATCH STARTING/ENDING) va SIN glow por defecto (David: se
+        // veía borroso) — el PNG horneado ya tiene su propio contorno/bisel, no
+        // le hace falta. opts.lblGlowPx lo activa (lo usa cartelDevShowCountdown
+        // desde el editor de carteles para poder probar valores).
+        const lblGlowFilter = opts.lblGlowPx ? ('drop-shadow(0 0 ' + opts.lblGlowPx + 'px ' + modeHex + ') drop-shadow(0 0 ' + Math.round(opts.lblGlowPx * 2.2) + 'px ' + modeHex + ')') : 'none';
         if (pixelMode) {
             // Etiqueta como cartel pixel encima del número (antes era texto CSS
             // pequeño que se perdía al lado del dígito grande). MATCH STARTING/
@@ -12241,7 +12246,8 @@
             if (lblAtlasId && cartelUsesAtlas(lblAtlasId)) {
                 const li = document.createElement('img');
                 li.src = cartelHeroUrl(lblAtlasId);
-                li.style.cssText = 'display:block;height:64px;width:auto;image-rendering:pixelated;filter:' + glowFilter + ';';
+                li.dataset.mode = modeKey;
+                li.style.cssText = 'display:block;height:64px;width:auto;image-rendering:pixelated;filter:' + lblGlowFilter + ';';
                 lblWrap.appendChild(li);
             } else {
                 const lblOpts = { plain: true };
@@ -12281,11 +12287,11 @@
     // Para el editor de carteles (carteles-preview.html): pinta MATCH STARTING/
     // ENDING con el modo pedido y lo deja fijo en pantalla (sin autoborrado) para
     // poder revisar fuente/color/tamaño con calma.
-    window.cartelDevShowCountdown = function (label, mode, n) {
+    window.cartelDevShowCountdown = function (label, mode, n, lblGlowPx) {
         currentGameMode = mode === 'classic' ? 'classic' : 'arcade';
         _lastCdNum = null;
         _cdDevKeep = true;
-        showCountdownNumber(n || 3, label);
+        showCountdownNumber(n || 3, label, { lblGlowPx: lblGlowPx || 0 });
     };
 
     // Rejoin: si te desconectas sin querer en mitad de una partida online,
@@ -12770,6 +12776,9 @@
             titleEl.style.fontSize = '15px';
             titleEl.style.letterSpacing = '1px';
             titleEl.style.textShadow = '2px 2px 0 #000';
+            // SKINS/CONVERT (fallo): titulo blanco, no el verde de .sys-title
+            // (marco gris de dinero, y ese verde no pega con el resto de fallos).
+            if (t === 'SKINS' || t === 'CONVERT') titleEl.style.setProperty('color', '#fff', 'important');
         } else if (pixelMode) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';

@@ -119,12 +119,20 @@ const GLIFOS = {
     },
     // ---- Nuevas para MATCH / STARTING / ENDING ----
     'M': {
-        w: 38, d: (x, y) => une(
-            sdCaja(x, y, 0, 0, T, CAP, [2, 2, 1, 1]),
-            sdCaja(x, y, 38 - T, 0, T, CAP, [2, 2, 1, 1]),
-            sdSeg(x, y, T / 2, 0, 19, 20, T / 2 * 0.9),
-            sdSeg(x, y, 19, 20, 38 - T / 2, 0, T / 2 * 0.9),
-        ),
+        // Los extremos de sdSeg son capsulas (redondeadas): un extremo puesto
+        // justo en y=0 asoma por encima del borde del glifo (el radio del
+        // trazo, ~4.5, se le suma hacia arriba) y la M salia mas alta que el
+        // resto de letras. Se entra el extremo RDIAG hacia dentro para que el
+        // redondeo toque el borde en vez de pasarse.
+        w: 38, d: (x, y) => {
+            const RDIAG = T / 2 * 0.9;
+            return une(
+                sdCaja(x, y, 0, 0, T, CAP, [2, 2, 1, 1]),
+                sdCaja(x, y, 38 - T, 0, T, CAP, [2, 2, 1, 1]),
+                sdSeg(x, y, T / 2, RDIAG, 19, 20, RDIAG),
+                sdSeg(x, y, 19, 20, 38 - T / 2, RDIAG, RDIAG),
+            );
+        },
     },
     'T': {
         w: 28, d: (x, y) => une(
@@ -140,21 +148,32 @@ const GLIFOS = {
         ),
     },
     'N': {
-        w: 32, d: (x, y) => une(
-            sdCaja(x, y, 0, 0, T, CAP, [2, 2, 1, 1]),
-            sdCaja(x, y, 32 - T, 0, T, CAP, [2, 2, 1, 1]),
-            sdSeg(x, y, T / 2, 2, 32 - T / 2, CAP - 2, T / 2 * 0.9),
-        ),
+        // Mismo ajuste que la M: el extremo del trazo diagonal se entra RDIAG
+        // hacia dentro en vez de tocar y=0/CAP, para que el redondeo no asome.
+        w: 32, d: (x, y) => {
+            const RDIAG = T / 2 * 0.9;
+            return une(
+                sdCaja(x, y, 0, 0, T, CAP, [2, 2, 1, 1]),
+                sdCaja(x, y, 32 - T, 0, T, CAP, [2, 2, 1, 1]),
+                sdSeg(x, y, T / 2, RDIAG, 32 - T / 2, CAP - RDIAG, RDIAG),
+            );
+        },
     },
+    // Anillo (como la C) con la boca mas cerrada y una barra+espiga que entra
+    // por esa boca, un poco por debajo del centro (asi lee como G y no como
+    // una C con un palito suelto en medio).
     'G': {
-        w: 32, d: (x, y) => une(
-            quita(
-                anillo(x, y, 0, 0, 32, CAP, [R_GRANDE, R_GRANDE, R_GRANDE, R_GRANDE], T),
-                cuna(x, y, 16, CAP / 2, 1, 0, 26),
-            ),
-            sdCaja(x, y, 16, (CAP - T) / 2, 16, T, [0, 1, 1, 0]),
-            sdCaja(x, y, 32 - T, (CAP - T) / 2, T, 10, [0, 0, 2, 2]),
-        ),
+        w: 32, d: (x, y) => {
+            const barY = CAP / 2 + 3;
+            return une(
+                quita(
+                    anillo(x, y, 0, 0, 32, CAP, [R_GRANDE, R_GRANDE, R_GRANDE, R_GRANDE], T),
+                    cuna(x, y, 15, CAP / 2, 1, 0, 20),
+                ),
+                sdCaja(x, y, 15, barY - T / 2, 17, T, [0, 1, 1, 0]),
+                sdCaja(x, y, 32 - T, barY - T / 2, T, CAP - (barY - T / 2) - 6, [0, 0, 2, 2]),
+            );
+        },
     },
     // ---- Digitos del contador ----
     '1': {
@@ -362,9 +381,16 @@ const TRABAJOS = [
     ['match-ending-arcade.png',    'MATCH ENDING',    ARCADE,  PX],
     ['match-ending-classic.png',   'MATCH ENDING',    CLASSIC, PX],
 ];
+// PX bajo (igual que las etiquetas) y no PX*4: a mas resolucion nativa, el
+// escalado a 190px CSS es un DOWNSCALE con nearest-neighbor (image-rendering:
+// pixelated), que en vez de suavizar promedia mal y sale con ruido/muaré — el
+// mismo problema que los iconos de skills con downscale bicubico (ver
+// PIXELART-PLAN.md F1). Con PX bajo el bitmap nativo es MENOR que 190px y el
+// navegador hace un UPSCALE nearest, que es donde ese modo de render luce
+// (pixel grande y limpio, ver los iconos ya reprocesados).
 for (const n of [1, 2, 3, 4, 5]) {
-    TRABAJOS.push(['cd-' + n + '-arcade.png',  String(n), ARCADE,  PX * 4]);
-    TRABAJOS.push(['cd-' + n + '-classic.png', String(n), CLASSIC, PX * 4]);
+    TRABAJOS.push(['cd-' + n + '-arcade.png',  String(n), ARCADE,  PX]);
+    TRABAJOS.push(['cd-' + n + '-classic.png', String(n), CLASSIC, PX]);
 }
 
 fs.mkdirSync(DESTINO, { recursive: true });

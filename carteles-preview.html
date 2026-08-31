@@ -62,6 +62,11 @@
       Arrastra el <b>cartel</b> para moverlo · Arrastra <b>titulo / texto / botones</b> para colocarlos ·
       <b>Rueda</b> encima = tamano · <b>Doble click</b> = reset de esa pieza
     </span>
+    <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#7d8a84;">
+      GLOW MATCH STARTING/ENDING
+      <input id="glowSlider" type="range" min="0" max="20" value="0" style="width:90px;">
+      <span id="glowVal" style="color:#dfe6e2;min-width:52px;">sin glow</span>
+    </label>
     <button class="save" onclick="guardar()">GUARDAR</button>
     <button onclick="resetTodo()">RESET TODO</button>
     <button onclick="cerrarTodos()">CERRAR TODOS</button>
@@ -189,10 +194,16 @@ const CASOS = [
   // cartelDevShowCountdown, para revisar fuente/color con calma. No tiene
   // piezas arrastrables (no usa CARTEL_SURFACES): solo se puede mover el
   // cartel entero por el lienzo.
-  { g:'Partida', n:'MATCH STARTING · ARCADE',  art:1, cd:{ label:'MATCH STARTING', mode:'arcade',  n:3 } },
-  { g:'Partida', n:'MATCH STARTING · CLASSIC', art:1, cd:{ label:'MATCH STARTING', mode:'classic', n:3 } },
-  { g:'Partida', n:'MATCH ENDING · ARCADE',    art:1, cd:{ label:'MATCH ENDING',   mode:'arcade',  n:3 } },
-  { g:'Partida', n:'MATCH ENDING · CLASSIC',   art:1, cd:{ label:'MATCH ENDING',   mode:'classic', n:3 } },
+  // Dos ajustes SEPARADOS (David, 31-08-2026): el rotulo (letras) y el 3·2·1
+  // (digitos) no son el mismo cartel — el rotulo se abre solo (hideDigit) y
+  // el contador aparte, animando 3→2→1 en bucle (digits) para ver el ritmo
+  // real en vez de un digito congelado.
+  { g:'Partida', n:'MATCH STARTING · ARCADE',  art:1, cd:{ label:'MATCH STARTING', mode:'arcade',  hideDigit:true } },
+  { g:'Partida', n:'MATCH STARTING · CLASSIC', art:1, cd:{ label:'MATCH STARTING', mode:'classic', hideDigit:true } },
+  { g:'Partida', n:'MATCH ENDING · ARCADE',    art:1, cd:{ label:'MATCH ENDING',   mode:'arcade',  hideDigit:true } },
+  { g:'Partida', n:'MATCH ENDING · CLASSIC',   art:1, cd:{ label:'MATCH ENDING',   mode:'classic', hideDigit:true } },
+  { g:'Partida', n:'CONTADOR 3·2·1 · ARCADE',  art:1, cd:{ digits:true, mode:'arcade' } },
+  { g:'Partida', n:'CONTADOR 3·2·1 · CLASSIC', art:1, cd:{ digits:true, mode:'classic' } },
 ];
 
 // Las piezas de cada cartel las decide el juego (cartelPartesDe): title/desc/
@@ -220,7 +231,7 @@ function claveDe(c) {
   if (c.res)   return 'resultOverlay#' + c.res[0];
   if (c.prize) return 'prizeModal#' + (c.prize.reason === 'arcadeEnd' ? 'matchEnded' : c.prize.reason);
   if (c.exit)  return 'exitModal#' + c.exit[1];
-  if (c.cd)    return 'cdNum#' + c.cd.label + ':' + c.cd.mode;
+  if (c.cd)    return 'cdNum#' + (c.cd.digits ? 'digits' : c.cd.label) + ':' + c.cd.mode;
   return c.sup;
 }
 
@@ -281,17 +292,31 @@ function clonar(c) {
   const w = W(), d = w.document;
   // 1. Que el juego lo pinte de verdad (arte, clases, textos reales).
   OCULTABLES.forEach(id => { const e = d.getElementById(id); if (e) e.style.display = 'none'; });
-  // MATCH STARTING/ENDING: no es un modal de CARTEL_SURFACES (no tiene caja
-  // fija ni piezas x/y/s), es el #cdNum que el juego crea y borra solo. Se
-  // pide fijo (cartelDevShowCountdown) y se clona tal cual, sin medir ni
-  // marcar piezas — solo se puede mover el cartel entero.
+  // Contador (grupo Partida): no es un modal de CARTEL_SURFACES (no tiene
+  // caja fija ni piezas x/y/s), es el #cdNum que el juego crea y borra solo.
+  // Dos variantes, cada una se queda con SOLO su mitad del cartel real:
+  //  - c.cd.hideDigit: solo el rotulo (MATCH STARTING/ENDING), se pide fijo
+  //    (cartelDevShowCountdown) y se le quita el digito del clon.
+  //  - c.cd.digits: solo el 3·2·1, animando en bucle (lo mueve abrir()/cerrar()
+  //    con un setInterval propio) — aqui solo se prepara el hueco vacio.
+  if (c.cd && c.cd.digits) {
+    const wrap = d.createElement('div'); wrap.className = 'cd-n';
+    const img = d.createElement('img');
+    img.style.cssText = 'height:190px;width:auto;image-rendering:pixelated;';
+    wrap.appendChild(img);
+    const host = d.createElement('div');
+    host.appendChild(wrap);
+    host._cdImg = img;
+    return host;
+  }
   if (c.cd) {
-    w.cartelDevShowCountdown(c.cd.label, c.cd.mode, c.cd.n);
+    w.cartelDevShowCountdown(c.cd.label, c.cd.mode, 3);
     const box = d.getElementById('cdNum');
     if (!box) return null;
     const clon = box.cloneNode(true);
     clon.style.setProperty('position', 'static', 'important');
     clon.style.setProperty('transform', 'none', 'important');
+    if (c.cd.hideDigit) { const nEl = clon.querySelector('.cd-n'); if (nEl) nEl.remove(); }
     const host = d.createElement('div');
     host.style.cssText = 'display:block;';
     host.appendChild(clon);
@@ -426,9 +451,20 @@ function abrir(i) {
   CASOS[i].btn.classList.add('on');
 
   arrastrarFicha(ficha, c.n);
-  // c.cd (MATCH STARTING/ENDING) no tiene CARTEL_SURFACES ni piezas x/y/s:
-  // solo se arrastra el cartel entero (arrastrarFicha, ya hecho arriba).
+  // c.cd (grupo Partida) no tiene CARTEL_SURFACES ni piezas x/y/s: solo se
+  // arrastra el cartel entero (arrastrarFicha, ya hecho arriba).
   if (c.sup) { prepararPiezas(ficha, claveDe(c), c.sup); aplicar(claveDe(c)); }
+  if (c.cd && c.cd.digits) {
+    // 3·2·1 animado: un intervalo propio cambia el src del digito en el
+    // clon ya montado (no vuelve a llamar a showCountdownNumber para no
+    // pisar el rotulo/estado del resto de fichas abiertas).
+    const seq = [3, 2, 1]; let idx = 0;
+    const img = clon._cdImg;
+    const tick = () => { img.src = W().cartelHeroUrl('cd-' + seq[idx] + '-' + c.cd.mode); idx = (idx + 1) % seq.length; };
+    tick();
+    ficha._cdTimer = setInterval(tick, 800);
+  }
+  if (c.cd && c.cd.hideDigit) aplicarGlowLabel();
 
   // Cartel de skin: las dos fichas (gris y V2 verde) comparten clave, asi que
   // el marco no se puede deducir de ella. Manda el ULTIMO que se abre, y eso es
@@ -442,7 +478,7 @@ function abrir(i) {
 
 function cerrar(i) {
   const f = ABIERTOS.get(i);
-  if (f) f.remove();
+  if (f) { if (f._cdTimer) clearInterval(f._cdTimer); f.remove(); }
   ABIERTOS.delete(i);
   CASOS[i].btn.classList.remove('on');
 }
@@ -521,6 +557,24 @@ function prepararPiezas(ficha, clave, sup) {
     });
   }
 }
+
+// --- Glow del rotulo MATCH STARTING/ENDING (David pidio quitarlo por
+// defecto y poder probar valores desde aqui) --------------------------------
+// Solo vive en el editor: no se guarda en el servidor. Si David encuentra un
+// valor que le gusta, se lo pasa a Claude por chat y se hornea como el nuevo
+// valor por defecto en showCountdownNumber (game/index.html).
+const glowSlider = document.getElementById('glowSlider'), glowVal = document.getElementById('glowVal');
+function aplicarGlowLabel() {
+  const v = Number(glowSlider.value);
+  glowVal.textContent = v ? (v + 'px') : 'sin glow';
+  const imgs = W().document.querySelectorAll('#ceLayer .cd-lbl img');
+  imgs.forEach(img => {
+    if (!v) { img.style.filter = 'none'; return; }
+    const hex = img.dataset.mode === 'classic' ? '#00ffaa' : '#ccff00';
+    img.style.filter = 'drop-shadow(0 0 ' + v + 'px ' + hex + ') drop-shadow(0 0 ' + Math.round(v * 2.2) + 'px ' + hex + ')';
+  });
+}
+glowSlider.addEventListener('input', aplicarGlowLabel);
 
 // --- Guardar / reset -----------------------------------------------------
 async function guardar() {
