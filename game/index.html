@@ -13270,10 +13270,6 @@
         bar.style.transition = 'none'; bar.style.width = '0%';
         // forzar reflow antes de animar
         void bar.offsetWidth;
-        // La barra llega al 92% en minMs; el 8% final se completa al estar lista.
-        bar.style.transition = 'width ' + minMs + 'ms linear';
-        bar.style.width = '92%';
-        const start = Date.now();
         if (window.__loadingTimer) clearTimeout(window.__loadingTimer);
         const finish = () => {
             if (window.__loadingTimer) { clearTimeout(window.__loadingTimer); window.__loadingTimer = null; }
@@ -13291,13 +13287,32 @@
             try { r = onDone && onDone(); } catch (e) { console.warn('[loading] onDone', e); }
             if (r && typeof r.then === 'function') r.then(cerrar, cerrar); else cerrar();
         };
-        const tick = () => {
-            const elapsed = Date.now() - start;
-            const ready = !readyFn || readyFn();
-            if ((elapsed >= minMs && ready) || elapsed >= LOADING_MAX_MS) finish();
-            else window.__loadingTimer = setTimeout(tick, 80);
+        // La barra no arranca hasta que el titulo (hero-title.png, lo unico
+        // realmente asincrono del cartel: la pildora y el fondo son dibujo
+        // procedural, listos al instante) haya cargado — asi nunca se la ve
+        // avanzar sobre un hueco en blanco. Solo importa la primera vez: el
+        // overlay se reusa entre partidas y la imagen, una vez cargada, se
+        // queda cargada.
+        const startBar = () => {
+            // La barra llega al 92% en minMs; el 8% final se completa al estar lista.
+            bar.style.transition = 'width ' + minMs + 'ms linear';
+            bar.style.width = '92%';
+            const start = Date.now();
+            const tick = () => {
+                const elapsed = Date.now() - start;
+                const ready = !readyFn || readyFn();
+                if ((elapsed >= minMs && ready) || elapsed >= LOADING_MAX_MS) finish();
+                else window.__loadingTimer = setTimeout(tick, 80);
+            };
+            window.__loadingTimer = setTimeout(tick, minMs);
         };
-        window.__loadingTimer = setTimeout(tick, minMs);
+        const titleImg = ov.querySelector('.ls-title-img');
+        if (titleImg && !titleImg.complete) {
+            titleImg.addEventListener('load', startBar, { once: true });
+            titleImg.addEventListener('error', startBar, { once: true });
+        } else {
+            startBar();
+        }
     }
 
     // ===== EDITOR TEMPORAL DE LA PANTALLA DE CARGA =====
