@@ -8099,13 +8099,7 @@
         }
         runPlay(kind);
     }
-    function runPlay(kind) {
-        // Online pasa SIEMPRE por ROOM INFO: es donde se dice lo que va a costar
-        // de verdad y en que momento de la partida entras. Offline es practica
-        // gratis, no hay nada que avisar.
-        if (kind === 'online') { openRoomInfo(); return; }
-        startGame();
-    }
+    function runPlay(kind) { if (kind === 'online') startOnlineGame(); else startGame(); }
 
     /* ---------- ROOM INFO (aviso previo a entrar online) ---------- */
 
@@ -8275,6 +8269,14 @@
         if (!selectRoom(a)) return;
         document.getElementById('roomChoiceModal').style.display = 'none';
         const kind = _pendingPlayKind; _pendingPlayKind = null;
+        // Llegar hasta aqui significa que NO se vio el panel ROOM PRICES: movil,
+        // ventana pequeña, o PLAY sin sala elegida. Es justo el caso para el que
+        // se hizo ROOM INFO — se elige "$20" a ciegas y hay que decir lo que
+        // cuesta de verdad y en que momento de la partida se entra.
+        // Eligiendo desde el panel no sale: alli ya se ve el precio en dolares
+        // en vivo, los $PILL y el estado de cada sala, y repetirlo solo mete un
+        // click de mas entre PLAY y la firma.
+        if (kind === 'online') { openRoomInfo(); return; }
         if (kind) runPlay(kind);
     }
     function openSettings() { SoundManager.play('simpleselect'); document.getElementById('settingsModal').style.display = 'flex'; }
