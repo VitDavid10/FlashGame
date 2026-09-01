@@ -1345,73 +1345,53 @@ body.trailer-open #page-content{
            Ahora cada dato lleva su etiqueta encima —la que estaba en la cabecera
            que se oculta— y van en rejilla de tres, asi que la fila es
            dorsal + nombre + dos lineas de datos legibles. */
+        /* ===== RANKING EN MOVIL =====
+           Es la MISMA tabla que en escritorio: cabecera una vez arriba y una
+           fila por jugador debajo. Antes se ocultaba la cabecera y cada fila
+           repetia los rotulos (PLAYER, KILLS, DEATHS...) sobre sus numeros:
+           las 10 filas salian a dos lineas y aquello parecia un formulario,
+           no una clasificacion.
+           Lo que cambia respecto a escritorio es solo lo que hace falta para
+           que entre en 375px: se cae BEST MASS (el dato menos comparable de
+           los seis) y bajan los cuerpos de letra y los huecos. */
         @media (max-width: 720px) {
-            .lb-head { display: none; }
-            /* Dos filas: dorsal+nombre arriba, y los CINCO datos en una sola
-               linea debajo. Con los datos en rejilla de 3 la fila se iba a ~110px
-               de alto y el ranking entero se hacia larguisimo. */
-            /* Fila 1: nombre a la izquierda y KILLS a su DERECHA, no debajo.
-               Con KILLS en la fila de abajo su etiqueta caia justo bajo el
-               nombre y se leia como si el nombre fuera "las kills". Ahora los
-               dos van en la misma linea y los dos llevan rotulo, asi que se
-               emparejan en vez de encadenarse. */
-            .lb-row {
-                grid-template-columns: 30px repeat(3, minmax(0, 1fr));
-                column-gap: 6px; row-gap: 8px;
-                padding: 10px 8px; align-items: start;
+            /* Anchos medidos contra el rotulo mas largo de cada columna (Russo
+               One a 9px): KILLS 45, DEATHS 48, GAMES 43, K/D 30. El resto del
+               ancho se lo queda el nombre. */
+            .lb-head, .lb-row {
+                grid-template-columns: 20px minmax(0, 1fr) 46px 50px 32px 45px;
+                gap: 3px; padding: 7px 4px; font-size: var(--fs-2);
             }
-            /* El dorsal va envuelto en un <span> sin clase (ver renderLB), asi
-               que se referencia por posicion. Abarca las dos filas. */
-            .lb-row > :first-child { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
-            .lb-c-name { grid-column: 2 / 4; grid-row: 1; }
-            /* PLAYER es el rotulo que la cabecera le da a esta columna; en movil
-               la cabecera esta oculta y el nombre era el UNICO dato sin rotulo,
-               que es lo que descuadraba la fila. */
-            .lb-c-name::before {
-                content: 'PLAYER'; display: block;
-                font-family: 'Russo One'; font-size: var(--fs-1); font-weight: 400;
-                color: var(--txt-mute); letter-spacing: 1px; margin-bottom: 1px;
-            }
-            /* BEST MASS fuera en movil: con cinco datos la primera columna caia
-               justo debajo del nombre y los dos numeros se leian como uno solo.
-               Es ademas el dato menos comparable de los cinco. */
-            .lb-c-mass   { display: none; }
-            /* KILLS va en la MISMA columna que GAMES y alineado igual (a la
-               izquierda de su celda), no pegado al borde derecho: alineado a la
-               derecha no caia sobre ninguna columna de la fila de abajo y la
-               rejilla entera se veia torcida. Asi KILLS queda justo encima de
-               GAMES y las dos filas comparten las mismas verticales. */
-            .lb-c-kills  { grid-column: 4; grid-row: 1; }
-            .lb-c-deaths { grid-column: 2; grid-row: 2; }
-            .lb-c-kd     { grid-column: 3; grid-row: 2; }
-            .lb-c-games  { grid-column: 4; grid-row: 2; }
-            /* El dorsal, sin caja. El circulo de escritorio se queda cuadrado
-               con el pack pixel (que pone border-radius:0 en todo) y a 28px es
-               un recuadro gris que no pega con nada. Solo el numero, con el
-               color del puesto — el oro/plata/bronce del podio se conserva
-               como color de texto en vez de como fondo.
-               La forma y el color ya vienen del CSS base (el dorsal se quedo
-               sin caja en las DOS vistas); aqui solo se ajusta el cuerpo. */
-            .lb-c-pos { font-size: var(--fs-3); }
-            /* .lb-c-mass NO entra aqui: esta oculta arriba y si se la nombra en
-               este grupo el display:flex la vuelve a mostrar. */
-            .lb-c-kills, .lb-c-deaths, .lb-c-kd, .lb-c-games {
-                display: flex; flex-direction: column; gap: 1px;
-                font-size: var(--fs-2); line-height: 1.2;
-                min-width: 0; white-space: nowrap;
-            }
-            .lb-c-deaths, .lb-c-kd, .lb-c-games { color: #ccc; }
-            .lb-c-kills::before, .lb-c-deaths::before,
-            .lb-c-kd::before, .lb-c-games::before {
-                font-family: 'Russo One'; font-size: var(--fs-1);
-                color: var(--txt-mute); letter-spacing: 1px; font-weight: 400;
-            }
-            .lb-c-kills::before  { content: 'KILLS'; }
-            .lb-c-deaths::before { content: 'DEATHS'; }
-            .lb-c-kd::before     { content: 'K/D'; }
-            .lb-c-games::before  { content: 'GAMES'; }
+            /* Menos relleno en el panel: los 18px de los lados eran justo lo
+               que faltaba para que los seis rotulos entraran enteros. */
+            #ranking .lb-wrap { padding: 12px 10px 14px; }
+            /* La cabecera vuelve a Russo One. El pack pixel la pasa a Press
+               Start 2P, que al mismo cuerpo ocupa casi el doble: "DEATHS" pedia
+               72px para una columna de 46 y los seis rotulos salian cortados
+               ("DE...", "GA..."). Con Russo One entran enteros y ademas sobra
+               ancho para que el nombre no se corte. */
+            /* Con #ranking delante (1,1,0): la regla del pack pixel es
+               body.pixel-pack .lb-head (0,2,0) y va DESPUES en el archivo, asi
+               que a igual peso ganaba ella. */
+            #ranking .lb-head { font-family: 'Russo One', sans-serif; font-size: var(--fs-1); letter-spacing: 0; }
+            /* BEST MASS fuera: con las seis columnas los rotulos de la cabecera
+               no entran a lo ancho. Es ademas el unico dato que no sirve para
+               comparar de un vistazo (va en miles). */
+            .lb-c-mass { display: none; }
+            .lb-head { font-size: var(--fs-1); letter-spacing: 0; padding-bottom: 6px; }
+            .lb-head span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            /* Con #ranking: hay un #ranking .lb-c-name a fs-3 (15px) mas arriba
+               que gana a la clase sola, y a ese cuerpo "CLAUDE-2" no entraba en
+               su columna y salia "CLAU...". */
+            #ranking .lb-c-name { font-size: var(--fs-2); }
+            .lb-c-kills, .lb-c-deaths, .lb-c-kd, .lb-c-games { font-size: var(--fs-2); white-space: nowrap; }
+            /* El dorsal ya va sin caja desde el CSS base (mismo trato en web y
+               movil); aqui solo se ajusta el cuerpo y se quita el '#', que en
+               una columna de 22px no cabe junto al numero — la cabecera ya lo
+               dice una vez. */
+            .lb-c-pos { font-size: var(--fs-2); }
+            .lb-c-pos::before { content: none; }
         }
-
         footer { 
             padding: 60px; text-align: center; background: #020202; border-top: none; font-size: var(--fs-2); color: var(--txt-mute); 
             position: relative; z-index: 50; 
