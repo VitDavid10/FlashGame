@@ -1376,7 +1376,12 @@ body.trailer-open #page-content{
                justo debajo del nombre y los dos numeros se leian como uno solo.
                Es ademas el dato menos comparable de los cinco. */
             .lb-c-mass   { display: none; }
-            .lb-c-kills  { grid-column: 4; grid-row: 1; text-align: right; align-items: flex-end; }
+            /* KILLS va en la MISMA columna que GAMES y alineado igual (a la
+               izquierda de su celda), no pegado al borde derecho: alineado a la
+               derecha no caia sobre ninguna columna de la fila de abajo y la
+               rejilla entera se veia torcida. Asi KILLS queda justo encima de
+               GAMES y las dos filas comparten las mismas verticales. */
+            .lb-c-kills  { grid-column: 4; grid-row: 1; }
             .lb-c-deaths { grid-column: 2; grid-row: 2; }
             .lb-c-kd     { grid-column: 3; grid-row: 2; }
             .lb-c-games  { grid-column: 4; grid-row: 2; }
