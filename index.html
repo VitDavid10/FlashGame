@@ -1355,12 +1355,25 @@ body.trailer-open #page-content{
            que entre en 375px: se cae BEST MASS (el dato menos comparable de
            los seis) y bajan los cuerpos de letra y los huecos. */
         @media (max-width: 720px) {
-            /* Anchos medidos contra el rotulo mas largo de cada columna (Russo
-               One a 9px): KILLS 45, DEATHS 48, GAMES 43, K/D 30. El resto del
-               ancho se lo queda el nombre. */
-            .lb-head, .lb-row {
-                grid-template-columns: 20px minmax(0, 1fr) 46px 50px 32px 45px;
-                gap: 3px; padding: 7px 4px; font-size: var(--fs-2);
+            /* Las cuatro columnas de datos, TODAS DEL MISMO ANCHO y con el
+               contenido centrado. Antes cada una media lo que pedia su rotulo
+               (46/50/32/45) y todo iba alineado a la izquierda: los huecos
+               entre ellas salian desiguales, los numeros no caian bajo su
+               titulo, y el sobrante se lo quedaba entero la columna del nombre
+               — de ahi el hueco enorme entre PLAYER y KILLS.
+               45px = lo que mide el rotulo mas largo (DEATHS) a este cuerpo. */
+            /* Con #ranking: hay un "#ranking .lb-head, #ranking .lb-row" con
+               padding 7px 14px que ganaba a la clase sola, y esos 28px de los
+               lados eran justo lo que faltaba para el nombre.
+               Reparto medido a este cuerpo: rotulo mas ancho DEATHS 33px (por
+               eso 42), nombre mas largo 65px (por eso le quedan 73). */
+            #ranking .lb-head, #ranking .lb-row {
+                grid-template-columns: 20px minmax(0, 1fr) repeat(4, 42px);
+                gap: 6px; padding: 7px 6px; font-size: var(--fs-2);
+            }
+            .lb-head .lb-c-kills, .lb-head .lb-c-deaths, .lb-head .lb-c-kd, .lb-head .lb-c-games,
+            .lb-row .lb-c-kills, .lb-row .lb-c-deaths, .lb-row .lb-c-kd, .lb-row .lb-c-games {
+                text-align: center;
             }
             /* Menos relleno en el panel: los 18px de los lados eran justo lo
                que faltaba para que los seis rotulos entraran enteros. */
@@ -1374,6 +1387,12 @@ body.trailer-open #page-content{
                body.pixel-pack .lb-head (0,2,0) y va DESPUES en el archivo, asi
                que a igual peso ganaba ella. */
             #ranking .lb-head { font-family: 'Russo One', sans-serif; font-size: var(--fs-1); letter-spacing: 0; }
+            /* Los <span> de la CABECERA llevan las mismas clases que los de las
+               filas (.lb-c-kills, .lb-c-name...), asi que cogian el cuerpo de
+               los DATOS (12-15px) en vez del de la cabecera: por eso "DEATHS"
+               pedia 48px para una columna de 42 y salia cortado por mucho que
+               se ensanchara. Que hereden el de .lb-head y ya. */
+            #ranking .lb-head span { font-size: inherit; }
             /* BEST MASS fuera: con las seis columnas los rotulos de la cabecera
                no entran a lo ancho. Es ademas el unico dato que no sirve para
                comparar de un vistazo (va en miles). */
