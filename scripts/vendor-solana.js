@@ -42,7 +42,7 @@ function versiones() {
 
 async function main() {
     fs.mkdirSync(path.dirname(SALIDA), { recursive: true });
-    const r = await esbuild.build({
+    await esbuild.build({
         entryPoints: [ENTRADA],
         bundle: true,
         format: 'esm',
@@ -51,7 +51,10 @@ async function main() {
         minify: true,
         legalComments: 'none',
         outfile: SALIDA,
-        metafile: true,
+        // spl-token usa `Buffer` como global de Node sin importarlo: en el
+        // navegador no existe y createTransferInstruction petaba con "Buffer is
+        // not defined" al codificar el importe. Ver vendor-buffer-shim.js.
+        inject: [path.join(RAIZ, 'scripts', 'vendor-buffer-shim.js')],
     });
     const bytes = fs.statSync(SALIDA).size;
 
@@ -65,6 +68,51 @@ async function main() {
         console.error('El bundle NO es autocontenido, quedan imports externos:', sueltos.slice(0, 5));
         process.exit(1);
     }
+
+    /*
+     * Prueba de humo: NO basta con que el bundle compile.
+     *
+     * La primera version compilaba, pesaba lo esperado y no tenia imports
+     * sueltos... y aun asi el deposito fallaba al instante en produccion, por
+     * el `Buffer` global que spl-token da por hecho. Eso no se ve mirando el
+     * fichero: solo aparece al EJECUTAR el codigo.
+     *
+     * Y hay que ejecutarlo COMO UN NAVEGADOR. Un primer intento corria el test
+     * en este mismo proceso de Node, donde Buffer es un global de serie: pasaba
+     * igual de verde con y sin el arreglo, o sea que no valia para nada. Por eso
+     * se lanza un proceso aparte que BORRA los globales que el navegador no
+     * tiene (Buffer, process, global) antes de importar el bundle.
+     */
+    const tmp = path.join(path.dirname(SALIDA), '.humo.mjs');
+    const test = path.join(path.dirname(SALIDA), '.humo-test.mjs');
+    fs.copyFileSync(SALIDA, tmp);
+    fs.writeFileSync(test, `
+// Simula el navegador: fuera los globales de Node que alli no existen.
+delete globalThis.Buffer; delete globalThis.process; delete globalThis.global;
+const m = await import('./.humo.mjs');
+const faltan = ['Connection','PublicKey','Transaction','getAssociatedTokenAddress',
+  'createTransferInstruction','createAssociatedTokenAccountInstruction','getAccount',
+  'TokenAccountNotFoundError'].filter(k => !m[k]);
+if (faltan.length) throw new Error('el bundle no exporta: ' + faltan.join(', '));
+const mint  = new m.PublicKey('Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r');
+const owner = new m.PublicKey('4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN');
+const ata = await m.getAssociatedTokenAddress(mint, owner);
+// El paso exacto que reventaba en produccion: codifica un u64, necesita Buffer.
+const ix = m.createTransferInstruction(ata, ata, owner, 1000000n);
+if (!ix || !ix.data || !ix.data.length) throw new Error('createTransferInstruction no devolvio datos');
+new m.Transaction().add(ix);
+console.log('  prueba de humo (sin globales de Node): OK, transferencia codificada en ' + ix.data.length + ' bytes');
+`);
+    const { status, stderr, stdout } = require('child_process').spawnSync(
+        process.execPath, [test], { encoding: 'utf8' });
+    try { fs.unlinkSync(tmp); fs.unlinkSync(test); } catch (_) {}
+    if (status !== 0) {
+        console.error('\nEl bundle compila pero NO FUNCIONA en un navegador:');
+        console.error((stderr || '').split('\n').filter(l => l.trim()).slice(0, 6).join('\n'));
+        console.error('\nNo se escribe el meta: corrigelo antes de commitear.');
+        process.exit(1);
+    }
+    process.stdout.write(stdout);
 
     fs.writeFileSync(META, JSON.stringify({
         generado: new Date().toISOString(),
