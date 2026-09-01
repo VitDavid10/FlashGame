@@ -1771,6 +1771,12 @@
         .oracle-row .ostatus.ending { background: #ff8c00; box-shadow: 0 0 10px rgba(255,140,0,0.9); animation: capfullPulse 1.0s ease-in-out infinite; }
         .oracle-row .ostartin { color: #4d9bff; font-size: 11px; font-weight: bold; font-variant-numeric: tabular-nums; }
         .oracle-row .ostartin.ending-label { color: #ff8c00; }
+        /* El reloj de partida en marcha reusa las clases del popup ROOM INFO,
+           pero .oracle-row .ostartin pinta azul con mas especificidad: hay que
+           repetirlas aqui o el color no llega a aplicarse. */
+        .oracle-row .ostartin.ri-t-green { color: #00ff88; }
+        .oracle-row .ostartin.ri-t-yellow { color: #ffce3d; }
+        .oracle-row .ostartin.ri-t-red { color: #ff5a4e; }
         @keyframes capfullPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
         /* Quitada la descripcion de encima: #missionsList reparte el hueco que
            dejaba libre entre las 5 quests (igual que .oracle-rows con las
@@ -2464,6 +2470,37 @@
         .pw-room-grid .pw-big-btn.free { grid-column: 1 / -1; }
         .pw-modal-cancel { margin-top: 14px; padding: 8px 22px; background: transparent; border: 2px solid #3a4048; color: #8a939e; font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 1px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
         .pw-modal-cancel:hover { color: #fff; border-color: #6a737e; }
+
+        /* ROOM INFO: mismo cartel gris que wallet/room-picker. Mas ancho que los
+           otros popups porque lleva parrafo de texto, no solo botones. */
+        .pw-modal-box.room-info { border: none; box-shadow: none; background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat; image-rendering: pixelated; padding: 52px 44px 40px; width: 430px; }
+        .ri-head { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; letter-spacing: 1px; margin-bottom: 14px; }
+        .ri-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-family: 'Russo One', sans-serif; font-size: 13px; color: #c8ced6; margin: 7px 0; }
+        .ri-line b { color: #fff; font-weight: normal; font-variant-numeric: tabular-nums; }
+        .ri-fee { color: #ffce3d; font-variant-numeric: tabular-nums; }
+        /* Verde/amarillo/rojo del reloj: mismos tonos que los puntos de estado
+           de las filas del ORACLE, para que el codigo de color sea uno solo. */
+        /* Con `b` en el selector: .ri-line b ya pinta blanco con mas
+           especificidad, asi que sin esto el reloj de la linea MATCH se quedaba
+           blanco y el codigo de color solo se veia en la lista de layers. */
+        .ri-t-green, .ri-line b.ri-t-green { color: #00ff88; }
+        .ri-t-yellow, .ri-line b.ri-t-yellow { color: #ffce3d; }
+        .ri-t-red, .ri-line b.ri-t-red { color: #ff5a4e; }
+        .ri-note { font-family: 'Russo One', sans-serif; font-size: 11px; line-height: 1.6; color: #8a939e; margin: 14px 0 4px; text-align: left; }
+        .ri-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
+        /* Con una sola layer no hay nada que comparar y LAYERS se esconde: sin
+           esto CONTINUE se quedaba en media columna, descentrado. */
+        .ri-actions.solo { grid-template-columns: 1fr; }
+        .ri-actions .pw-big-btn { margin-top: 0; padding: 13px 0; font-size: 11px; }
+        /* Lista de layers: oculta hasta pulsar LAYERS. Misma rejilla que las
+           filas del panel ROOM PRICES para que se lea igual. */
+        .ri-layers { display: none; margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.12); }
+        .ri-layers.open { display: block; }
+        .ri-layer { display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 6px 2px; font-family: 'Russo One', sans-serif; font-size: 12px; color: #c8ced6; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .ri-layer .rl-name { color: #fff; letter-spacing: 1px; }
+        .ri-layer .rl-fee { color: #ffce3d; font-variant-numeric: tabular-nums; text-align: left; }
+        .ri-layer .rl-time { font-variant-numeric: tabular-nums; }
+        .ri-layer.cur { background: rgba(0,255,136,0.08); }
 
         /* Selector de wallet: recuadro menu-gris + botones grises planos con
            icono. Botones compactos (alto fijo, el PNG se estira — es un
@@ -3559,8 +3596,9 @@
 
     <!-- Popup de sala: aparece al darle a PLAY si no elegiste sala en ROOM
          PRICES. Recuadro menu-gris, titulo PNG de David y colores por rareza:
-         FREE verde, $5 azul, $10 epico (morado), $20 legendario (dorado),
-         $50 mitico (anaranjado). -->
+         FREE verde, $2 azul, $5 morado, $10 dorado, $20 anaranjado.
+         Si se toca esta lista hay que tocar tambien porClase en
+         aplicarSalasActivas(), que mapea cada boton a su precio. -->
     <div id="roomChoiceModal" class="pw-modal">
         <div class="pw-modal-box room-picker">
             <img class="wp-title" src="img/cartel-hero/select-a-room.png" alt="SELECT A ROOM">
@@ -3573,6 +3611,25 @@
             </div>
             <div class="pw-btn-sub">ROOM PRICES BY ORACLE</div>
             <button class="pw-big-btn wp-btn wp-cancel" onclick="closeRoomChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- ROOM INFO: aviso previo a entrar online. Dice cuanto lleva abierta la
+         sala, cuanto le queda y — lo importante — cuantos $PILL cuesta DE VERDAD
+         antes de cobrarlos, porque el precio se congelo al abrirse y desde
+         entonces el token se ha movido. Sin esto, quien no mire el panel (movil,
+         o le da rapido) elige "$20" y se le cobra otra cosa sin previo aviso.
+         Cartel gris + titulo blanco + CONTINUE gris. -->
+    <div id="roomInfoModal" class="pw-modal">
+        <div class="pw-modal-box room-info">
+            <div class="pw-modal-title">ROOM INFO</div>
+            <div id="riBody"></div>
+            <div id="riLayers" class="ri-layers"></div>
+            <div class="ri-actions">
+                <button class="pw-big-btn room" id="riLayersBtn" onclick="toggleRoomInfoLayers()" onmouseenter="SoundManager.playSimpleHover()">LAYERS</button>
+                <button class="pw-big-btn room" onclick="confirmRoomInfo()" onmouseenter="SoundManager.playSimpleHover()">CONTINUE</button>
+            </div>
+            <button class="pw-modal-cancel" onclick="closeRoomInfo()">CANCEL</button>
         </div>
     </div>
 
@@ -4733,6 +4790,11 @@
 
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     const els = { modeScreen: document.getElementById('modeScreen'), loginOverlay: document.getElementById('loginOverlay'), selectedModeTitle: document.getElementById('selectedModeTitle'), playerNameInput: document.getElementById('playerNameInput'), botsToggle: document.getElementById('botsToggle'), botCountInput: document.getElementById('botCountInput'), botRespawnToggle: document.getElementById('botRespawnToggle'), godModeToggle: document.getElementById('godModeToggle'), enemyCount: document.getElementById('enemyCount'), score: document.getElementById('score'), room: document.getElementById('roomName'), lbList: document.getElementById('lb-list'), timer: document.getElementById('timerDisplay'), result: document.getElementById('resultOverlay'), resultTitle: document.getElementById('resultTitle'), gameOver: document.getElementById('gameOverMsg'), winnerList: document.getElementById('winnerList'), myResult: document.getElementById('myResult'), debugHud: document.getElementById('debugHud'), fpsVal: document.getElementById('fpsVal'), speedVal: document.getElementById('speedVal'), skillOverlay: document.getElementById('skillChoiceOverlay'), skillOpts: document.getElementById('skillOptionsContainer'), skillTimer: document.getElementById('skillTimerFill'), actionBar: document.getElementById('actionBar'), buffTable: document.getElementById('buffTable'), buffList: document.getElementById('buff-list-content') };
+
+    // Ultima respuesta de /api/rooms (la guarda refreshOracle). La usa el popup
+    // ROOM INFO; _lastRoomsAt sirve para envejecer los contadores, que van en ms
+    // relativos al momento en que el servidor contesto.
+    let _lastRoomsData = null, _lastRoomsAt = 0;
 
     // currentServer arranca en null: la sala se elige de forma discreta en el
     // panel ROOM · PRICES, o el popup la pide al darle a PLAY.
@@ -8037,7 +8099,128 @@
         }
         runPlay(kind);
     }
-    function runPlay(kind) { if (kind === 'online') startOnlineGame(); else startGame(); }
+    function runPlay(kind) {
+        // Online pasa SIEMPRE por ROOM INFO: es donde se dice lo que va a costar
+        // de verdad y en que momento de la partida entras. Offline es practica
+        // gratis, no hay nada que avisar.
+        if (kind === 'online') { openRoomInfo(); return; }
+        startGame();
+    }
+
+    /* ---------- ROOM INFO (aviso previo a entrar online) ---------- */
+
+    // Los contadores de /api/rooms vienen en ms relativos al instante en que
+    // contesto el servidor. Como la respuesta se cachea, hay que envejecerlos o
+    // el popup enseñaria el tiempo que quedaba hace unos segundos.
+    function _riEdad() { return _lastRoomsAt ? Math.max(0, Date.now() - _lastRoomsAt) : 0; }
+
+    function fmtReloj(ms) {
+        const s = Math.max(0, Math.round(ms / 1000));
+        return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    }
+
+    /*
+     * Color del reloj: verde recien abierta, amarillo pasada, rojo a punto de
+     * acabar. Los umbrales que pidio David (verde <1:30, rojo <40s) estan
+     * tomados de arcade, que dura 3:50; el verde va en FRACCION de la partida
+     * (40% ≈ 1:32 en arcade) para que en classic, que dura 15 min, no salga
+     * amarillo el 90% del tiempo. El rojo sí es absoluto: 40 segundos son 40
+     * segundos dure lo que dure la partida.
+     */
+    function riClaseTiempo(openMs, endsIn, durationMs) {
+        if (endsIn != null && endsIn < 40000) return 'ri-t-red';
+        if (durationMs > 0 && openMs < durationMs * 0.4) return 'ri-t-green';
+        return 'ri-t-yellow';
+    }
+
+    // Estado de una layer en una linea: "12:30 LEFT", "STARTS IN 8s", etc.
+    function riEstadoLayer(L, edad) {
+        if (L.state === 'playing' && L.endsIn != null) {
+            const quedan = Math.max(0, L.endsIn - edad);
+            const abierta = Math.max(0, (L.openMs || 0) + edad);
+            return { txt: fmtReloj(quedan) + ' LEFT', cls: riClaseTiempo(abierta, quedan, L.durationMs || 0), abierta, quedan };
+        }
+        if (L.state === 'ended') return { txt: 'RESTARTING', cls: 'ri-t-yellow', abierta: 0, quedan: 0 };
+        if (L.startIn != null && L.startIn > edad) return { txt: 'STARTS IN ' + Math.ceil((L.startIn - edad) / 1000) + 's', cls: 'ri-t-green', abierta: 0, quedan: 0 };
+        return { txt: 'WAITING', cls: 'ri-t-green', abierta: 0, quedan: 0 };
+    }
+
+    function _riRoomData() {
+        if (!_lastRoomsData || !currentServer) return null;
+        const modo = currentGameMode || 'classic';
+        return (_lastRoomsData.rooms || []).find(r => r.mode === modo
+            && (r.priceUsd === 0 ? 'Free' : r.priceUsd + '$') === currentServer) || null;
+    }
+
+    function openRoomInfo() {
+        const r = _riRoomData();
+        // Sin datos del servidor (primer arranque, o /api/rooms fallando) no se
+        // bloquea la partida: se entra como siempre. Un popup vacio seria peor.
+        if (!r) { startOnlineGame(); return; }
+        const edad = _riEdad();
+        const pillUsd = Number(_lastRoomsData.pillUsd) || 0;
+        const gratis = r.priceUsd === 0;
+        const fee = Number(r.pillFee) || 0;
+        const usdReal = (pillUsd > 0 && fee > 0) ? fee * pillUsd : r.priceUsd;
+        const est = riEstadoLayer({
+            state: r.state, endsIn: r.endsIn, startIn: r.startIn,
+            openMs: (r.layers || []).find(L => L.layerIdx === r.pickLayerIdx)?.openMs || 0,
+            durationMs: (r.layers || []).find(L => L.layerIdx === r.pickLayerIdx)?.durationMs || 0,
+        }, edad);
+
+        const nombre = gratis ? 'FREE ROOM' : '$' + r.priceUsd + ' ROOM';
+        const capa = r.pickLayerIdx ? ' &middot; LAYER ' + r.pickLayerIdx : '';
+        let html = `<div class="ri-head">${nombre}${capa}</div>`;
+        if (r.state === 'playing') {
+            html += `<div class="ri-line"><span>OPEN FOR</span><b>${fmtReloj(est.abierta)}</b></div>`;
+        }
+        html += `<div class="ri-line"><span>MATCH</span><b class="${est.cls}">${est.txt}</b></div>`;
+        html += `<div class="ri-line"><span>PLAYERS</span><b>${r.players || 0} / ${r.cap || 0}</b></div>`;
+
+        if (!gratis) {
+            html += `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">${fee.toLocaleString('en-US')} $PILL</b></div>`;
+            html += `<div class="ri-line"><span>WORTH NOW</span><b>$${usdReal.toFixed(2)}</b></div>`;
+            // La diferencia entre el nominal y lo que valen hoy esos PILL es la
+            // razon de ser del popup: hay que decir que NO es un error.
+            const dif = usdReal - r.priceUsd;
+            if (Math.abs(dif) >= 0.01 && pillUsd > 0) {
+                const subio = dif > 0;
+                html += `<div class="ri-note">This room locked its entry at ${fee.toLocaleString('en-US')} $PILL when it opened.
+                    $PILL has gone ${subio ? 'UP' : 'DOWN'} since then, so those tokens are worth
+                    <b>$${usdReal.toFixed(2)}</b> right now instead of $${r.priceUsd.toFixed(2)}. This is not an error —
+                    the entry is fixed in $PILL, and its value in dollars moves with the token.</div>`;
+            } else {
+                html += `<div class="ri-note">The entry is fixed in $PILL while this match runs, so its value in dollars moves with the token.</div>`;
+            }
+        }
+        document.getElementById('riBody').innerHTML = html;
+
+        // Lista de layers (oculta hasta pulsar LAYERS): sirve para ver si otra
+        // layer esta mas barata o mas fresca antes de entrar.
+        const layers = (r.layers || []).filter(L => !L.disabled);
+        const btn = document.getElementById('riLayersBtn');
+        const varias = layers.length > 1;
+        btn.style.display = varias ? '' : 'none';
+        document.querySelector('#roomInfoModal .ri-actions').classList.toggle('solo', !varias);
+        const cont = document.getElementById('riLayers');
+        cont.classList.remove('open');
+        cont.innerHTML = layers.map(L => {
+            const e = riEstadoLayer(L, edad);
+            const f = Number(L.pillFee) || 0;
+            const precio = gratis ? 'FREE' : f.toLocaleString('en-US') + ' $PILL'
+                + (pillUsd > 0 ? ` ($${(f * pillUsd).toFixed(2)})` : '');
+            return `<div class="ri-layer${L.layerIdx === r.pickLayerIdx ? ' cur' : ''}">
+                <span class="rl-name">L${L.layerIdx}</span>
+                <span class="rl-fee">${precio}</span>
+                <span class="rl-time ${e.cls}">${e.txt}</span>
+            </div>`;
+        }).join('');
+
+        document.getElementById('roomInfoModal').style.display = 'flex';
+    }
+    function toggleRoomInfoLayers() { document.getElementById('riLayers').classList.toggle('open'); }
+    function closeRoomInfo() { document.getElementById('roomInfoModal').style.display = 'none'; }
+    function confirmRoomInfo() { closeRoomInfo(); startOnlineGame(); }
     // Cartel de nombre (movil): mismo marco/campo/boton que #hero-name-modal.
     let _pendingNameKind = null;
     function openNameChoice(kind) {
@@ -8065,7 +8248,12 @@
     // jugador entraria a una sala que ya no existe.
     function aplicarSalasActivas() {
         if (!_salasActivas.length) return;
-        const porClase = { free: 'Free', r5: '5$', r10: '10$', r20: '20$', r50: '50$' };
+        // Este mapa tiene que llevar EXACTAMENTE los mismos precios que los
+        // botones del HTML de arriba. Se quedo desincronizado al pasar el
+        // catalogo de Free/5/10/20/50 a Free/2/5/10/20: sobraba r50 (boton que
+        // ya no existe) y faltaba r2, asi que el boton de $2 no se apagaba nunca
+        // aunque el admin desactivara esa sala.
+        const porClase = { free: 'Free', r2: '2$', r5: '5$', r10: '10$', r20: '20$' };
         for (const cls in porClase) {
             const b = document.querySelector('#roomChoiceModal .pw-room-grid .' + cls);
             if (b) b.style.display = _salasActivas.indexOf(porClase[cls]) === -1 ? 'none' : '';
@@ -11257,6 +11445,11 @@
     async function refreshOracle() {
         try {
             const data = await (await fetch('/api/rooms', { cache: 'no-store' })).json();
+            // El popup ROOM INFO lee de aqui en vez de volver a pedir /api/rooms:
+            // el menu ya hace polling, y una peticion extra justo al darle a PLAY
+            // solo añade espera antes de entrar.
+            _lastRoomsData = data;
+            _lastRoomsAt = Date.now();
             // Volumen "por defecto del servidor" (admin): se aplica como master; el
             // usuario sigue pudiendo mutear/ajustar encima.
             if (typeof data.sfxVol === 'number') SFX_MASTER = Math.max(0, Math.min(1, data.sfxVol));
@@ -11342,6 +11535,12 @@
                     restartIn: L.restartIn, endsIn: L.endsIn, key: L.key,
                     cap: (r.cap || 30) / (r.layers.length || 1),
                     layerLabel: 'L' + L.layerIdx,
+                    // El precio tambien es de la layer que se esta viendo: cada
+                    // una lo congela por su cuenta al abrirse, asi que mirando L2
+                    // salia el numero de la layer que elegiria el matchmaker.
+                    // openMs/durationMs son para el color del reloj de la fila.
+                    pillFee: L.pillFee, locked: L.locked,
+                    openMs: L.openMs, durationMs: L.durationMs,
                 });
             });
             window._roomCountdowns = window._roomCountdowns || {};
@@ -11376,9 +11575,15 @@
                 const ending = r.state === 'playing' && r.endsIn != null && r.endsIn <= 30000;
                 const ended = r.state === 'ended';
                 const counting = !ended && !ending && r.startIn != null && r.startIn > 0;
+                // Partida en marcha y sin estar acabando: en vez de la palabra
+                // "STATUS" (que no decia nada) va el tiempo que queda, con el
+                // mismo verde/amarillo/rojo del popup ROOM INFO. Asi se ve de un
+                // vistazo si una sala acaba de abrir o esta por la mitad.
+                const jugando = r.state === 'playing' && !ending && r.endsIn != null;
                 if (ending) window._roomCountdowns[r.key] = Date.now() + r.endsIn;
                 else if (ended && r.restartIn != null) window._roomCountdowns[r.key] = Date.now() + r.restartIn;
                 else if (counting) window._roomCountdowns[r.key] = Date.now() + r.startIn;
+                else if (jugando) window._roomCountdowns[r.key] = Date.now() + r.endsIn;
                 else delete window._roomCountdowns[r.key];
                 // 0 → gris (vacía). 1-49% → amarillo. 50-99% → verde. 100% → rojo.
                 const cls = ending ? 'ending'
@@ -11396,6 +11601,10 @@
                     : (r.players >= cap ? 'FULL' : '');
                 const label = (ending || ended || counting)
                     ? `<span class="ostartin${ending ? ' ending-label' : ''}" data-key="${r.key}" data-prefix="${prefix}">${prefix}${secsLeft}s</span>`
+                    : jugando
+                    // data-fmt="clock": el ticker lo pinta mm:ss en vez de "Ns", y
+                    // asi el reloj corre entre polls igual que las otras cuentas.
+                    ? `<span class="ostartin ${riClaseTiempo(r.openMs || 0, r.endsIn, r.durationMs || 0)}" data-key="${r.key}" data-fmt="clock">${fmtReloj(r.endsIn)}</span>`
                     : 'STATUS';
                 // Fila clicable: seleccion discreta de sala (roomName = 'Free' | '5$'...).
                 const srvName = r.priceUsd === 0 ? 'Free' : r.priceUsd + '$';
@@ -12071,9 +12280,16 @@
         // Suaviza las cuentas atrás de lobby por sala entre polls (cada 8s) del panel.
         if (window._roomCountdowns) {
             document.querySelectorAll('.ostartin').forEach(span => {
+                // Sin data-key no hay cuenta atras que seguir. Sin este guard,
+                // `_roomCountdowns[undefined]` puede resolver a una clave literal
+                // "undefined" y pintar en ese span un tiempo que no es el suyo.
+                if (!span.dataset.key) return;
                 const endsAt = window._roomCountdowns[span.dataset.key];
                 if (!endsAt) return;
-                span.textContent = (span.dataset.prefix || '') + Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) + 's';
+                const left = Math.max(0, endsAt - Date.now());
+                span.textContent = span.dataset.fmt === 'clock'
+                    ? fmtReloj(left)
+                    : (span.dataset.prefix || '') + Math.ceil(left / 1000) + 's';
             });
         }
     }
@@ -12787,7 +13003,7 @@
         // Un pop-up a la vez: al salir un aviso (KICKED, REJOIN EXPIRED, PAYMENT
         // CANCELLED, DEPOSIT FAILED…) se cierran los modales abiertos —sobre todo
         // DEPOSIT/WITHDRAW— para que no se apilen carteles uno encima de otro.
-        ['gameDepositModal', 'gameWithdrawModal', 'walletPickerModal', 'playChoiceModal', 'roomChoiceModal', 'settingsModal', 'featuresModal'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+        ['gameDepositModal', 'gameWithdrawModal', 'walletPickerModal', 'playChoiceModal', 'roomChoiceModal', 'roomInfoModal', 'settingsModal', 'featuresModal'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         const m = document.getElementById('sysModal');
         const titleEl = document.getElementById('sysModalTitle');
         const t = title || 'NOTICE';

@@ -2192,6 +2192,8 @@ const httpServer = http.createServer(async (req, res) => {
                 if (!isLayerEnabled(mode, price, i)) continue;
                 const r = rooms.get(layerKeyOf(mode, price, i));
                 if (!r) continue;
+                const durMs = r.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS;
+                const endsIn = (r.state === 'playing' && r.endsAt) ? Math.max(0, r.endsAt - now) : null;
                 layers.push({
                     layerIdx: i,
                     key: r.key,
@@ -2199,8 +2201,15 @@ const httpServer = http.createServer(async (req, res) => {
                     state: r.state,
                     startIn: r.startAt ? Math.max(0, r.startAt - now) : null,
                     restartIn: (r.state === 'ended' && r.restartAt) ? Math.max(0, r.restartAt - now) : null,
-                    endsIn: (r.state === 'playing' && r.endsAt) ? Math.max(0, r.endsAt - now) : null,
+                    endsIn,
                     disabled: !!r.disabled,
+                    // Para el popup ROOM INFO: cada layer congela su propio precio
+                    // al abrirse, así que el del combo (el de la layer que elegiría
+                    // el matchmaker) no vale para enseñar las demás.
+                    pillFee: entryFeePill(ck, roomRate(r)),
+                    locked: r.clients.size > 0,
+                    durationMs: durMs,
+                    openMs: endsIn === null ? 0 : Math.max(0, durMs - endsIn),
                 });
             }
             // Layer "representativa": la que el matchmaker elegiría. Si pickLayer
@@ -2227,6 +2236,10 @@ const httpServer = http.createServer(async (req, res) => {
                 endsIn: (pick && pick.state === 'playing' && pick.endsAt) ? Math.max(0, pick.endsAt - now) : null,
                 roomName: price,
                 layers,
+                // Qué layer te tocaría al entrar ahora. El popup ROOM INFO la
+                // marca en la lista: sin esto no hay forma de saber cuál de las
+                // layers describen los campos de arriba.
+                pickLayerIdx: pick ? (pick.layerIdx || 1) : null,
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
