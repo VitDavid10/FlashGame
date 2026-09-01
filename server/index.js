@@ -487,6 +487,12 @@ const ORACLE_DIVISOR = Number(process.env.ORACLE_DIVISOR) || 1;
 const ORACLE_URL = process.env.ORACLE_URL
     || 'https://api.coingecko.com/api/v3/simple/price?ids=' + encodeURIComponent(ORACLE_COIN) + '&vs_currencies=usd';
 let _oracleUltimoOk = 0;   // cuándo se logró leer el precio por última vez
+// Cuándo toca el PRÓXIMO refresco, en tiempo absoluto. Se manda al cliente para
+// que su cuenta atrás sea la de verdad: antes el cliente se ponía 5:00 al cargar
+// la página, así que un F5 la reiniciaba y podía decir "faltan 4:59" cuando el
+// servidor iba a actualizar en 10 segundos. Absoluto y no "segundos que faltan"
+// a propósito: /api/rooms va cacheado, y un timestamp aguanta la caché bien.
+let _oracleNextAt = Date.now() + ORACLE_REFRESH_MS;
 
 // Precio de referencia en $, o null si el feed no contesta. Nunca lanza: un
 // oráculo que revienta no debe tumbar el tick del servidor.
@@ -532,7 +538,8 @@ async function tickOracle() {
     }
     // Fase 4: los hosts cachean el rate (lo usan para bloquear el precio de sala
     // y calcular la tarifa); el oráculo SOLO se mueve aquí, en el Director.
-    for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR }); }
+    _oracleNextAt = Date.now() + ORACLE_REFRESH_MS;
+    for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR, nextAt: _oracleNextAt }); }
 }
 // En rol 'host' el oráculo NO se mueve por su cuenta: el rate llega por IPC
 // (notify 'oracleRate') desde el Director. Dos relojes independientes harían
@@ -911,7 +918,7 @@ const econLocal = {
 const hostIpc = PW_ROLE === 'host' ? createIpc(process, { label: `host${PW_HOST_ID}→director` }) : null;
 if (hostIpc) {
     // Cache del oráculo: el Director lo manda al forkear y en cada tickOracle.
-    hostIpc.handle('oracleRate', (d) => { if (d && d.rate > 0) { PILL_PER_DOLLAR = d.rate; log(`Oráculo (IPC): $1 = ${PILL_PER_DOLLAR} PILL`); } });
+    hostIpc.handle('oracleRate', (d) => { if (d && d.rate > 0) { PILL_PER_DOLLAR = d.rate; if (d.nextAt > 0) _oracleNextAt = d.nextAt; log(`Oráculo (IPC): $1 = ${PILL_PER_DOLLAR} PILL`); } });
     // Fase 4b: el Director es la fuente de verdad de "Ajustes"/"Rendimiento" y
     // reenvía aquí los cambios hechos en /admin. Las acciones de alcance (kick/
     // restart por modo, anuncios) también llegan reenviadas — cada host las
@@ -1009,7 +1016,7 @@ function registerHostHandlers(hostEntry) {
     ipc.handle('econ.questBestMass', (p) => econLocal.questBestMass(p.cid, p.peak));
     ipc.handle('econ.questSkills', (p) => econLocal.questSkills(p.cid, p.matchSkillUses));
     // Rate actual del oráculo para el cache del host recién forkeado.
-    ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR });
+    ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR, nextAt: _oracleNextAt });
     // Ajustes actuales (volumen/animaciones/zoom/tiempos) para el host recién forkeado.
     ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
         menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit });
@@ -2051,7 +2058,7 @@ const httpServer = http.createServer(async (req, res) => {
                         roomName: price, layers: [],
                     });
                 }
-                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
+                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
                     menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
@@ -2105,7 +2112,7 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: 5 * 60 * 1000, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
             menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }));
         return;
     }

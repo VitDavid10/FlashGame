@@ -11245,13 +11245,15 @@
             // Decoracion del fondo del menu (food/virus, bob, tamano de rejilla): admin.
             applyMenuDecoFromServer(data);
             const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
-            // El timer se reinicia SIEMPRE que la consulta llega, no solo cuando el
-            // precio cambia. El servidor calcula la deriva con ±15% redondeado a
-            // miles sobre 10.000, asi que muy a menudo sale el MISMO numero: con la
-            // condicion de antes el reloj no se reiniciaba, se quedaba clavado en
-            // 0:00 y, como tickOracleTimer llama a refreshOracle() en cuanto llega a
-            // cero, se disparaba una peticion a /api/rooms por cada tick.
-            oracleNextRefresh = Date.now() + ORACLE_EVERY_MS;
+            // La cuenta atras la marca el SERVIDOR (oracleNextAt, en tiempo
+            // absoluto), no el cliente. Antes se ponia 5:00 cada vez que llegaba la
+            // consulta, asi que un F5 la reiniciaba y podia decir "faltan 4:59"
+            // cuando el servidor iba a actualizar en 10 segundos: el reloj del
+            // servidor corre desde que arranca, no desde que tu abres la pagina.
+            // El minimo de 5s evita que, si el instante ya paso (el servidor aun no
+            // ha hecho su tick, o los relojes no van finos), el timer se quede en
+            // 0:00 pidiendo /api/rooms en cada vuelta.
+            oracleNextRefresh = Math.max(Number(data.oracleNextAt) || 0, Date.now() + 5000);
             if (newRate !== _lastPillPerDollar) {
                 _lastPillPerDollar = newRate;
                 gamePillPerDollar = newRate;
