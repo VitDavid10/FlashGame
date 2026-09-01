@@ -1,7 +1,7 @@
 /*
  * Servidor autoritativo de PillWars (local).
  *
- * - Catálogo de salas: {classic, arcade} × {Free, 5$, 10$, 20$, 50$}.
+ * - Catálogo de salas: {classic, arcade} × {Free, 2$, 5$, 10$, 20$}.
  *   Las salas se materializan al entrar el primer jugador y aparecen como
  *   "offline" en el panel de admin mientras no haya nadie.
  * - Lobby: una sala no empieza hasta minReal jugadores reales (5 por defecto,
@@ -198,7 +198,7 @@ const LOG_FILE = path.join(__dirname, 'connections.log');
 const STATS_FILE = path.join(__dirname, 'stats.json');
 const RULES_FILE = path.join(__dirname, 'roomrules.json');
 
-const PRICES = ['Free', '5$', '10$', '20$', '50$'];
+const PRICES = ['Free', '2$', '5$', '10$', '20$'];
 const CATALOG_MODES = ['classic', 'arcade'];
 
 // Reparto de combos entre hosts (Fase 4). En 'mono' este proceso es dueño de TODOS
@@ -491,6 +491,8 @@ const ORACLE_REFRESH_MS = Math.max(15000, parseInt(process.env.ORACLE_REFRESH_MS
  *
  * ORACLE_DIVISOR queda por si hiciera falta reescalar (1 = precio tal cual).
  */
+// Caducidad del precio congelado en CLASSIC (ver lockPriceIfEmpty). 0 = nunca.
+const CLASSIC_RATE_TTL_MS = Math.max(0, parseInt(process.env.CLASSIC_RATE_TTL_MS, 10) || 15 * 60 * 1000);
 const ORACLE_TOKEN = process.env.ORACLE_TOKEN || 'pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn';
 const ORACLE_DIVISOR = Number(process.env.ORACLE_DIVISOR) || 1;
 const ORACLE_URL = process.env.ORACLE_URL
@@ -875,7 +877,30 @@ const directorLocal = {
     // acababan pagando diferente en la MISMA sala. La ventana son milisegundos,
     // pero pasar el oraculo de 5 min a 1 min la hizo cinco veces mas probable.
     lockPriceIfEmpty(room) {
-        if (room.clients.size === 0 && !(room._reserved > 0)) room.pillRate = PILL_PER_DOLLAR;
+        if (room.clients.size === 0 && !(room._reserved > 0)) {
+            room.pillRate = PILL_PER_DOLLAR;
+            room.pillRateAt = Date.now();
+            return;
+        }
+        // CLASSIC: una partida no termina nunca, así que una sala con gente puede
+        // pasarse horas sin vaciarse y quedarse con el precio de esta mañana. Si
+        // el token se mueve un 30% entre medias, la barrera de entrada deja de
+        // ser la misma para todos. Pasado CLASSIC_RATE_TTL_MS se vuelve a
+        // congelar al precio actual.
+        //
+        // Solo en classic: en arcade el bote es COMÚN, así que si unos pagaron
+        // 1.000 y otros 1.400 el reparto se desvirtúa — y allí no hace falta,
+        // porque cada partida acaba, la sala se vacía y el precio se refresca
+        // solo. En classic el carry es individual (lo tuyo es lo que pagaste),
+        // así que refrescar no descuadra ninguna cuenta.
+        if (room.mode === 'classic' && CLASSIC_RATE_TTL_MS > 0
+            && room.pillRateAt && (Date.now() - room.pillRateAt) >= CLASSIC_RATE_TTL_MS
+            && room.pillRate !== PILL_PER_DOLLAR) {
+            const antes = room.pillRate;
+            room.pillRate = PILL_PER_DOLLAR;
+            room.pillRateAt = Date.now();
+            log(`Precio de ${room.key} refrescado por antigüedad: ${antes} → ${PILL_PER_DOLLAR} PILL/$`);
+        }
     },
 
     // Autoriza y COBRA la entrada. Salas gratis o testers pasan sin cobro. Salas de
@@ -1011,7 +1036,30 @@ const directorProxy = hostIpc && {
     // acababan pagando diferente en la MISMA sala. La ventana son milisegundos,
     // pero pasar el oraculo de 5 min a 1 min la hizo cinco veces mas probable.
     lockPriceIfEmpty(room) {
-        if (room.clients.size === 0 && !(room._reserved > 0)) room.pillRate = PILL_PER_DOLLAR;
+        if (room.clients.size === 0 && !(room._reserved > 0)) {
+            room.pillRate = PILL_PER_DOLLAR;
+            room.pillRateAt = Date.now();
+            return;
+        }
+        // CLASSIC: una partida no termina nunca, así que una sala con gente puede
+        // pasarse horas sin vaciarse y quedarse con el precio de esta mañana. Si
+        // el token se mueve un 30% entre medias, la barrera de entrada deja de
+        // ser la misma para todos. Pasado CLASSIC_RATE_TTL_MS se vuelve a
+        // congelar al precio actual.
+        //
+        // Solo en classic: en arcade el bote es COMÚN, así que si unos pagaron
+        // 1.000 y otros 1.400 el reparto se desvirtúa — y allí no hace falta,
+        // porque cada partida acaba, la sala se vacía y el precio se refresca
+        // solo. En classic el carry es individual (lo tuyo es lo que pagaste),
+        // así que refrescar no descuadra ninguna cuenta.
+        if (room.mode === 'classic' && CLASSIC_RATE_TTL_MS > 0
+            && room.pillRateAt && (Date.now() - room.pillRateAt) >= CLASSIC_RATE_TTL_MS
+            && room.pillRate !== PILL_PER_DOLLAR) {
+            const antes = room.pillRate;
+            room.pillRate = PILL_PER_DOLLAR;
+            room.pillRateAt = Date.now();
+            log(`Precio de ${room.key} refrescado por antigüedad: ${antes} → ${PILL_PER_DOLLAR} PILL/$`);
+        }
     },
     async authorizeEntry(payload) {
         try { return await hostIpc.request('authorizeEntry', payload); }

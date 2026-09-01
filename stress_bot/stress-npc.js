@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Stress test "realista" para PillWars.
- * - Reparte los bots entre TODAS las salas (classic/arcade × Free/5$/10$/20$/50$).
+ * - Reparte los bots entre TODAS las salas (classic/arcade × Free/2$/5$/10$/20$).
  * - Cada bot vaga como un NPC: elige un punto del mapa y se dirige hacia él;
  *   al llegar (o cada cierto tiempo) elige otro destino. Nada de saltos random.
  *
@@ -15,7 +15,7 @@
  *   INPUT_HZ=10                  Inputs por segundo por bot (10 = 1 cada 100ms)
  *   DURATION_S=60                Segundos que dura el test (0 = indefinido)
  *   MODES=classic,arcade         Modos a usar
- *   PRICES=Free,5$,10$,20$,50$   Precios a usar
+ *   PRICES=Free,2$,5$,10$,20$   Precios a usar
  *   ROOMS=classic_Free,arcade_5$ Salas exactas (mode_room) — anula MODES/PRICES
  *   STRESS_JSON=1                Emite líneas "STATS {json}" en vez del informe bonito
  */
@@ -32,7 +32,7 @@ const RAMP_MS    = parseInt(process.env.RAMP_MS   || '60',  10);
 const INPUT_HZ   = parseInt(process.env.INPUT_HZ  || '30',  10);
 const DURATION_S = parseInt(process.env.DURATION_S || '60', 10);
 const MODES      = (process.env.MODES  || 'classic,arcade').split(',');
-const PRICES     = (process.env.PRICES || 'Free,5$,10$,20$,50$').split(',');
+const PRICES     = (process.env.PRICES || 'Free,2$,5$,10$,20$').split(',');
 const JSON_MODE  = process.env.STRESS_JSON === '1';
 // Respawn: al morir un bot, reconecta tras un retardo aleatorio para que la sala
 // no se vacíe (mantiene la población ~constante, pero sin reentrar todos a la vez).

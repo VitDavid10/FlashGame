@@ -2473,10 +2473,15 @@
         .room-picker .wp-title { display: block; width: 74%; height: auto; margin: 0 auto 22px; image-rendering: pixelated; }
         /* Colores por rareza de las salas del popup: $5 azul, $10 epico,
            $20 legendario (dorado), $50 mitico (anaranjado) */
-        .pw-big-btn.r5 { background: linear-gradient(#3f8ef7, #1450b4); }
-        .pw-big-btn.r10 { background: linear-gradient(#b45cff, #6a1fb4); }
-        .pw-big-btn.r20 { background: linear-gradient(#ffd94e, #b8860b); }
-        .pw-big-btn.r50 { background: linear-gradient(#ff9d3f, #c85a10); }
+        /* Los colores van de barata a cara (azul → morado → amarillo → naranja).
+           Al pasar el catalogo a 2/5/10/20 se corren todos un puesto: el azul
+           que llevaba la de 5$ pasa a la nueva de 2$, y asi. Es la misma paleta
+           y la misma progresion visual, solo cambia a que sala le toca cada
+           color — un jugador que vuelva no ve un salto raro de tonos. */
+        .pw-big-btn.r2 { background: linear-gradient(#3f8ef7, #1450b4); }
+        .pw-big-btn.r5 { background: linear-gradient(#b45cff, #6a1fb4); }
+        .pw-big-btn.r10 { background: linear-gradient(#ffd94e, #b8860b); }
+        .pw-big-btn.r20 { background: linear-gradient(#ff9d3f, #c85a10); }
         /* CANCEL del popup de salas: boton gris plano */
         .room-picker .wp-cancel { margin-top: 16px; font-size: 11px; height: 46px; width: 62%; }
         .wallet-picker .wp-title { display: block; width: 82%; height: auto; margin: 0 auto 26px; image-rendering: pixelated; }
@@ -3555,10 +3560,10 @@
             <img class="wp-title" src="img/cartel-hero/select-a-room.png" alt="SELECT A ROOM">
             <div class="pw-room-grid">
                 <button class="pw-big-btn free" onclick="chooseRoomFromModal('Free')" onmouseenter="SoundManager.playSimpleHover()">FREE</button>
+                <button class="pw-big-btn r2" onclick="chooseRoomFromModal('2$')" onmouseenter="SoundManager.playSimpleHover()">$2</button>
                 <button class="pw-big-btn r5" onclick="chooseRoomFromModal('5$')" onmouseenter="SoundManager.playSimpleHover()">$5</button>
                 <button class="pw-big-btn r10" onclick="chooseRoomFromModal('10$')" onmouseenter="SoundManager.playSimpleHover()">$10</button>
                 <button class="pw-big-btn r20" onclick="chooseRoomFromModal('20$')" onmouseenter="SoundManager.playSimpleHover()">$20</button>
-                <button class="pw-big-btn r50" onclick="chooseRoomFromModal('50$')" onmouseenter="SoundManager.playSimpleHover()">$50</button>
             </div>
             <div class="pw-btn-sub">ROOM PRICES BY ORACLE</div>
             <button class="pw-big-btn wp-btn wp-cancel" onclick="closeRoomChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>

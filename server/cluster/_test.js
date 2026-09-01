@@ -16,7 +16,7 @@ function check(name, fn) {
 }
 
 const MODES = ['classic', 'arcade'];
-const PRICES = ['Free', '5$', '10$', '20$', '50$'];
+const PRICES = ['Free', '2$', '5$', '10$', '20$'];
 
 async function main() {
     // --- shard-map ---

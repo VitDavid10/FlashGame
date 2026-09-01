@@ -1103,7 +1103,7 @@ function aplicarGlobal() {
 // Vista Salas del Director: dos gráficos de barras verticales (CLASSIC / ARCADE)
 // con ocupación por sala, cuenta atrás de la partida en arcade y pentakills
 // (racha 5+ viva) en classic, más chips de resumen por modo.
-const PRICE_ORDER = { 'Free': 0, '5$': 1, '10$': 2, '20$': 3, '50$': 4 };
+const PRICE_ORDER = { 'Free': 0, '2$': 1, '5$': 2, '10$': 3, '20$': 4 };
 function _roomBadge(mode, r) {
     if (mode === 'arcade') {
         if (r.state === 'playing' && r.tlMs != null) return `<span class="vxb naranja">${fmtMs(r.tlMs)} left</span>`;

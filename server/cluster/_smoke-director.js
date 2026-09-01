@@ -17,7 +17,7 @@ const DIR_PORT = 8095;
 const MONO_PORT = 8098;
 const HOSTS = 2;
 const MODES = ['classic', 'arcade'];
-const PRICES = ['Free', '5$', '10$', '20$', '50$'];
+const PRICES = ['Free', '2$', '5$', '10$', '20$'];
 
 const INDEX = path.join(__dirname, '../index.js');
 function boot(env) {
