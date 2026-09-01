@@ -1335,7 +1335,7 @@ body.trailer-open #page-content{
                linea debajo. Con los datos en rejilla de 3 la fila se iba a ~110px
                de alto y el ranking entero se hacia larguisimo. */
             .lb-row {
-                grid-template-columns: 30px repeat(5, minmax(0, 1fr));
+                grid-template-columns: 26px repeat(4, minmax(0, 1fr));
                 column-gap: 6px; row-gap: 7px;
                 padding: 10px 8px; align-items: start;
             }
@@ -1343,25 +1343,43 @@ body.trailer-open #page-content{
                que se referencia por posicion. Abarca las dos filas. */
             .lb-row > :first-child { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
             .lb-c-name { grid-column: 2 / -1; grid-row: 1; }
-            .lb-c-mass   { grid-column: 2; grid-row: 2; }
-            .lb-c-kills  { grid-column: 3; grid-row: 2; }
-            .lb-c-deaths { grid-column: 4; grid-row: 2; }
-            .lb-c-kd     { grid-column: 5; grid-row: 2; }
-            .lb-c-games  { grid-column: 6; grid-row: 2; }
-            .lb-c-mass, .lb-c-kills, .lb-c-deaths, .lb-c-kd, .lb-c-games {
+            /* BEST MASS fuera en movil: con cinco datos la primera columna caia
+               justo debajo del nombre y los dos numeros se leian como uno solo.
+               Es ademas el dato menos comparable de los cinco. */
+            .lb-c-mass   { display: none; }
+            .lb-c-kills  { grid-column: 2; grid-row: 2; }
+            .lb-c-deaths { grid-column: 3; grid-row: 2; }
+            .lb-c-kd     { grid-column: 4; grid-row: 2; }
+            .lb-c-games  { grid-column: 5; grid-row: 2; }
+            /* El dorsal, sin caja. El circulo de escritorio se queda cuadrado
+               con el pack pixel (que pone border-radius:0 en todo) y a 28px es
+               un recuadro gris que no pega con nada. Solo el numero, con el
+               color del puesto — el oro/plata/bronce del podio se conserva
+               como color de texto en vez de como fondo.
+               La forma va sin #ranking y el color aparte: con el ID delante
+               (1,1,0) esta regla le ganaba a .lb-row.p1 .lb-c-pos (0,2,0) y el
+               podio salia gris. */
+            #ranking .lb-c-pos, .lb-c-pos {
+                width: auto; height: auto; background: none; border: 0;
+                box-shadow: none; font-size: var(--fs-3);
+            }
+            .lb-c-pos { color: #55606d; }
+            .lb-row.p1 .lb-c-pos { color: #ffd54a; }
+            .lb-row.p2 .lb-c-pos { color: #e0e6ee; }
+            .lb-row.p3 .lb-c-pos { color: #e29c66; }
+            /* .lb-c-mass NO entra aqui: esta oculta arriba y si se la nombra en
+               este grupo el display:flex la vuelve a mostrar. */
+            .lb-c-kills, .lb-c-deaths, .lb-c-kd, .lb-c-games {
                 display: flex; flex-direction: column; gap: 1px;
                 font-size: var(--fs-2); line-height: 1.2;
                 min-width: 0; white-space: nowrap;
             }
             .lb-c-deaths, .lb-c-kd, .lb-c-games { color: #ccc; }
-            .lb-c-mass::before, .lb-c-kills::before, .lb-c-deaths::before,
+            .lb-c-kills::before, .lb-c-deaths::before,
             .lb-c-kd::before, .lb-c-games::before {
                 font-family: 'Russo One'; font-size: var(--fs-1);
                 color: var(--txt-mute); letter-spacing: 1px; font-weight: 400;
             }
-            /* "BEST MASS" en dos palabras no cabe en una columna de ~55px y
-               partia la linea, descuadrando la fila entera: aqui va MASS. */
-            .lb-c-mass::before   { content: 'MASS'; }
             .lb-c-kills::before  { content: 'KILLS'; }
             .lb-c-deaths::before { content: 'DEATHS'; }
             .lb-c-kd::before     { content: 'K/D'; }
@@ -1845,7 +1863,7 @@ body.trailer-open #page-content{
                MODES, contrato, skills) estaban a 10px del borde mientras el
                ranking iba a 20 y la tienda a 30, y ese escalonado era lo que
                hacia que la pagina se viera apretada de lado. */
-            .content-container { padding: 60px 20px; }
+            .content-container { padding: 60px 26px; }
             .battle-modes-container, .store-panel { padding: 24px 10px; }
             /* El recuadro de BATTLE MODES (borde verde + fondo + sombra dura +
                las dos escuadras de las esquinas) fuera en movil: en 375px es un
@@ -1920,7 +1938,11 @@ body.trailer-open #page-content{
 
             .skills-section h2 { font-size: var(--fs-5); }
             .section-title { font-size: var(--fs-6); }
-            .section-container { padding: 60px 20px; }
+            /* 26 y no 20: a 20px los paneles (DAILY QUESTS, SKIN STORE, ranking)
+               quedaban rozando el filo de la pantalla. Mismo numero que
+               .content-container para que TODOS los bloques de la pagina
+               arranquen en la misma vertical. */
+            .section-container { padding: 60px 26px; }
         }
 
         /* ===== TEXTURE PACK PIXEL (landing) =====
@@ -1997,7 +2019,11 @@ body.trailer-open #page-content{
         body.pixel-pack .feature-text h3 { font-family: 'Press Start 2P', monospace; font-size: var(--fs-5); line-height: 1.3; }
         body.pixel-pack .skills-section h2, body.pixel-pack .battle-modes-container h2 { font-family: 'Press Start 2P', monospace !important; font-size: var(--fs-5) !important; }
         body.pixel-pack .mode-card h4 { font-family: 'Press Start 2P', monospace; font-size: var(--fs-3); }
-        body.pixel-pack .modal-title, body.pixel-pack .dq-summary .info .ti { font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); }
+        /* line-height 1.9: Press Start 2P dibuja la letra ocupando casi toda la
+           caja, asi que con el interlineado normal "REWARD: EXCLUSIVE" y
+           "TELEGRAM ACCESS" se tocaban. El resto de rotulos del pack no lo
+           necesitan porque son de una sola linea. */
+        body.pixel-pack .modal-title, body.pixel-pack .dq-summary .info .ti { font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); line-height: 1.9; }
         body.pixel-pack .nav-link, body.pixel-pack .dropbtn { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); }
         body.pixel-pack .ticker-item { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); }
         body.pixel-pack .skill-name, body.pixel-pack .dq-title, body.pixel-pack .tooltip-title,

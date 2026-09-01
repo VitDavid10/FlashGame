@@ -117,6 +117,9 @@ const CASOS = [
   { g:'Sistema · avisos', n:'CONNECT ERROR',        sup:'sysModal', art:1, sys:['Phantom is not installed. Install it or pick another wallet.','CONNECT ERROR'] },
   { g:'Sistema · avisos', n:'DEPOSIT FAILED',       sup:'sysModal', art:1, sys:['You only have 8,000 $PILL in your wallet. Lower the amount.','DEPOSIT FAILED'] },
   { g:'Sistema · avisos', n:'PAYMENT CANCELLED',    sup:'sysModal', art:1, sys:['You must sign the entry payment to join a paid room.','PAYMENT CANCELLED'] },
+  // Solo se ve en movil (al tocar una sala de pago), asi que en el editor era
+  // el unico aviso que no habia forma de colocar sin un telefono delante.
+  { g:'Sistema · avisos', n:'DESKTOP ONLY',         sup:'sysModal', art:1, sys:['Paid rooms need a PC or a Mac.\n\nOn mobile you can play the FREE room.','DESKTOP ONLY'] },
   { g:'Sistema · avisos', n:'LEAVE ARENA?',         sup:'exitModal', art:1, exit:['You are about to leave the arena.<br>Are you sure?', 'LEAVE ARENA?', 'leave-arena', 'EXIT'] },
   { g:'Sistema · avisos', n:'STOP SPECTATING?',     sup:'exitModal', art:1, exit:["You're just watching this match. Leave to return to the menu.", 'STOP SPECTATING?', 'stop-spectating', 'BACK TO MENU'] },
   { g:'Sistema · avisos', n:'LEAVE LOBBY?',         sup:'exitModal', art:1, exit:["The match has not started yet.<br><span style='color:#00ff88; font-weight:bold;'>Your entry will be refunded to your in-game balance.</span>", 'LEAVE LOBBY?', 'leave-lobby', 'LEAVE'] },

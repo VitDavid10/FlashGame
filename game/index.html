@@ -686,6 +686,22 @@
             html:not([data-hero]) body.mobile-allowed .pw-modal-box.play-picker {
                 width: 260px; padding: 50px 30px 28px;
             }
+            /* ROOM INFO lleva MARCO DE IMAGEN (menu-gris), como room-picker y
+               wallet-picker: con el padding plano de .pw-modal-box (14px) el
+               contenido se salia por fuera del filo dibujado. Y sus tipos son
+               de escritorio (13px) en una caja de 268px, asi que las lineas
+               desbordaban por los lados y el boton se estiraba a lo alto. Todo
+               el interior encogido, igual que se hizo con esos dos. */
+            html:not([data-hero]) body.mobile-allowed .pw-modal-box.room-info {
+                width: 268px; max-width: none; padding: 40px 26px 30px;
+            }
+            html:not([data-hero]) body.mobile-allowed .room-info .ri-head { font-size: 7px; margin-bottom: 10px; letter-spacing: 0; }
+            html:not([data-hero]) body.mobile-allowed .room-info .ri-line { font-size: 9px; margin: 5px 0; gap: 8px; }
+            html:not([data-hero]) body.mobile-allowed .room-info .ri-note { font-size: 8px; line-height: 1.55; margin: 10px 0 2px; }
+            html:not([data-hero]) body.mobile-allowed .room-info .ri-actions { gap: 6px; margin-top: 12px; }
+            html:not([data-hero]) body.mobile-allowed .room-info .ri-actions .pw-big-btn { font-size: 8px; padding: 9px 0; }
+            html:not([data-hero]) body.mobile-allowed .room-info .pw-modal-cancel { margin-top: 9px; font-size: 7px; padding: 6px 16px; }
+            html:not([data-hero]) body.mobile-allowed .room-info .ri-layer { font-size: 9px; grid-template-columns: 30px 1fr auto; gap: 6px; padding: 4px 2px; }
             html:not([data-hero]) body.mobile-allowed .room-picker .wp-title { width: 58%; margin-bottom: 12px; }
             html:not([data-hero]) body.mobile-allowed .wallet-picker .wp-title { width: 64%; margin-bottom: 14px; }
             html:not([data-hero]) body.mobile-allowed .pw-room-grid { gap: 5px; }
@@ -853,10 +869,11 @@
             html:not([data-hero]) body.mobile-allowed #exitModal .exit-actions button {
                 font-size: 9px !important; padding: 8px 16px !important;
             }
-            /* Justo DEBAJO de los tres indicadores, que van pegados al borde de
-               arriba: el cartel se alinea a ese mismo lado en vez de al centro. */
-            html:not([data-hero]) body.mobile-allowed #sysModal { justify-content: flex-start !important; }
-            html:not([data-hero]) body.mobile-allowed #sysModal .exit-box { margin-top: 4vh !important; }
+            /* CENTRADO, igual que .pw-modal (ROOM INFO, SELECT A ROOM, wallet).
+               Antes se alineaba arriba con margin-top:4vh para caer bajo los
+               tres indicadores, pero al lado del resto de popups —todos al
+               centro— el aviso salia descolgado en una esquina. */
+            html:not([data-hero]) body.mobile-allowed #sysModal { justify-content: center !important; }
             html:not([data-hero]) body.mobile-allowed #prizeModal,
             html:not([data-hero]) body.mobile-allowed #cdNum {
                 transform-origin: center !important;
@@ -8033,7 +8050,10 @@
     function selectRoom(a) {
         // En móvil (warning aceptado) solo se permite la sala FREE; las de pago requieren PC/Mac.
         if (document.body.classList.contains('mobile-allowed') && a !== 'Free') {
-            SoundManager.play('cd');
+            // 'alert' y no 'cd': cd es el zumbido de "skill en enfriamiento" y
+            // aqui no hay ningun cooldown, es un aviso. Sonaba a error de
+            // gameplay en medio del menu.
+            SoundManager.play('alert');
             // Nuestro cartel gris, no el alert() del navegador: aquel sale con
             // el tipo de letra del sistema y SIN girar, cruzado sobre una
             // pantalla que esta tumbada.
@@ -8153,6 +8173,9 @@
     }
 
     function openRoomInfo() {
+        // La paleta de la pildora se quedaba abierta DEBAJO del popup y se veia
+        // asomando por los lados. Es del menu, no del aviso: fuera al abrirlo.
+        cerrarUIColores();
         const r = _riRoomData();
         // Sin datos del servidor (primer arranque, o /api/rooms fallando) no se
         // bloquea la partida: se entra como siempre. Un popup vacio seria peor.
@@ -13119,9 +13142,10 @@
             titleEl.style.fontSize = '15px';
             titleEl.style.letterSpacing = '1px';
             titleEl.style.textShadow = '2px 2px 0 #000';
-            // SKINS/CONVERT (fallo): titulo blanco, no el verde de .sys-title
-            // (marco gris de dinero, y ese verde no pega con el resto de fallos).
-            if (t === 'SKINS' || t === 'CONVERT') titleEl.style.setProperty('color', '#fff', 'important');
+            // SKINS/CONVERT/DESKTOP ONLY (fallos): titulo blanco, no el verde de
+            // .sys-title (marco gris de dinero, y ese verde no pega con el resto
+            // de fallos).
+            if (t === 'SKINS' || t === 'CONVERT' || t === 'DESKTOP ONLY') titleEl.style.setProperty('color', '#fff', 'important');
         } else if (pixelMode) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';
