@@ -3726,7 +3726,7 @@
                         <span style="color:var(--primary);">KILLS 2+:</span> 0% PENALTY FEE (SAFE EXIT).
                         <br><br>
                         <span style="color:#ffd700; font-weight:bold;">ANTI-COMBAT LOG:</span> STAND STILL <span style="color:#fff;">5s</span> TO LOGOUT SAFELY.
-                        <br><span style="color:#ffd700; font-weight:bold;">MATCH ENDS IN 15 MIN:</span> IF YOU'RE STILL ALIVE YOU CASH OUT AUTOMATICALLY (SAME FEE AS A MANUAL EXIT).
+                        <br><span style="color:#ffd700; font-weight:bold;">15 MIN TIME LIMIT:</span> WHEN IT RUNS OUT, IF YOU'RE STILL ALIVE YOU CASH OUT AUTOMATICALLY — <span style="color:#fff;">THE SAME PENALTY FEE ABOVE STILL APPLIES</span>, SO KILLS PAY OFF EITHER WAY.
                         <div class="card-lines-bottom" style="border-color:#00ffaa;"></div>
                     </div>
                 </div>
@@ -11345,33 +11345,23 @@
                 // congelado y, si ademas el precio vivo se ha separado un 1% o mas,
                 // cuanto y hacia donde — asi se ve de un vistazo que no cuadre con el
                 // numero grande de arriba no es un error.
-                // El porcentaje va SIEMPRE desde el punto de vista del jugador:
-                // cuanto mas barata o mas cara sale ESTA sala comparada con lo
-                // que costaria entrar ahora mismo. Es decir (congelado - vivo).
-                //
-                // El primer intento lo hacia al reves (vivo - congelado) y salia
-                // enganoso: si el token se abarataba hacian falta MAS PILL por 5$,
-                // el precio vivo subia y aparecia un "▲5%" verde-esperanza en una
-                // sala que en realidad estaba BARATA. La flecha decia una cosa y
-                // significaba la contraria. Ahora: −5% = te ahorras un 5%.
-                let lock = '';
-                if (r.locked) {
-                    const live = Number(r.pillFeeLive) || 0, fee0 = Number(r.pillFee) || 0;
-                    const dif = (live > 0 && fee0 > 0) ? (fee0 - live) / live * 100 : 0;
-                    let tit = 'Price locked when this match started.';
-                    if (live > 0) {
-                        tit += ' A new room right now would cost ' + live.toLocaleString('en-US') + ' $PILL';
-                        if (Math.abs(dif) >= 1) tit += ' — this one is ' + Math.abs(dif).toFixed(0) + '% ' + (dif < 0 ? 'cheaper' : 'pricier');
-                        tit += '.';
-                    }
-                    lock = ' <span title="' + tit + '" style="color:#888">🔒</span>';
-                    if (Math.abs(dif) >= 1) {
-                        // Verde = te sale mas barata que abrir una nueva; ambar = mas cara.
-                        const col = dif < 0 ? '#00c97a' : '#e0a63a';
-                        lock += ' <span title="' + tit + '" style="color:' + col + ';font-size:.82em">'
-                             + (dif < 0 ? '−' : '+') + Math.abs(dif).toFixed(0) + '%</span>';
-                    }
-                }
+                /*
+                 * El precio de la IZQUIERDA es lo que cuesta la sala EN DOLARES
+                 * ahora mismo: los $PILL que pide (congelados al empezar la
+                 * partida) valorados al precio de PILL de este momento.
+                 *
+                 * Con la sala vacia sale el nominal ($2.00), porque los PILL se
+                 * acaban de calcular a este mismo precio. Con la sala en marcha
+                 * el numero se separa solo ($2.05) segun se mueva el token — que
+                 * es justo lo que hay que ver: cuanto te cuesta DE VERDAD entrar
+                 * ahi. Antes esto era un porcentaje con flecha, que obligaba a
+                 * hacer la cuenta mental y encima apuntaba al reves.
+                 */
+                const pillUsdNow = Number(data.pillUsd) || 0;
+                const usdReal = (pillUsdNow > 0 && r.pillFee > 0) ? r.pillFee * pillUsdNow : r.priceUsd;
+                const lock = r.locked
+                    ? ' <span title="Entry price is locked while this match runs, so its value in $ drifts with the token." style="color:#888">🔒</span>'
+                    : '';
                 const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL' + lock;
                 const cap = r.cap || 30;
                 // ending  → últimas 30s de partida: icono naranja + "LAST Xs"
@@ -11404,7 +11394,7 @@
                 // Fila clicable: seleccion discreta de sala (roomName = 'Free' | '5$'...).
                 const srvName = r.priceUsd === 0 ? 'Free' : r.priceUsd + '$';
                 return `<div class="oracle-row${currentServer === srvName ? ' sel' : ''}" data-server="${srvName}" onclick="selectRoom('${srvName}')">
-                    <span class="oroom">${r.priceUsd === 0 ? 'FREE' : '$' + r.priceUsd}</span>
+                    <span class="oroom">${r.priceUsd === 0 ? 'FREE' : '$' + usdReal.toFixed(2)}</span>
                     <span class="opill">${fee}</span>
                     <span class="ostatuslabel">${label}</span>
                     <span class="ostatus ${cls}" title="${title}"></span>
@@ -13689,7 +13679,12 @@
         let activeBuffs = []; if (p) { if (p.skillState[3] > 0) activeBuffs.push({id: 3, time: p.skillState[3]}); if (p.skillState[5] > 0) activeBuffs.push({id: 5, time: p.skillState[5]}); if (p.skillState[6] > 0) activeBuffs.push({id: 6, time: p.skillState[6]}); }
         if(activeBuffs.length > 0) { els.buffTable.style.display = 'block'; let buffHtml = ""; const buffImages = { 3: '../img/sprint.png', 5: '../img/iman.png', 6: '../img/inmune.png' }; activeBuffs.forEach(buff => { let seconds = Math.ceil(buff.time / 1000); let imgSrc = skillIconUrl(buff.id, buffImages[buff.id] || ''); buffHtml += `<div class="buff-row"><img src="${imgSrc}" class="buff-icon-img" onerror="this.style.display='none'"><span class="buff-time">${seconds}s</span></div>`; }); els.buffList.innerHTML = buffHtml; } else { els.buffTable.style.display = 'none'; }
 
-        if (currentGameMode === 'arcade' || currentGameMode === 'skills') {
+        // Arcade siempre lleva reloj. Classic tambien desde que las partidas
+        // duran 15 min — pero SOLO online: la practica offline de classic no
+        // tiene fin, y ahi un reloj no significaria nada.
+        const _modoConSkills = (currentGameMode === 'arcade' || currentGameMode === 'skills');
+        const _conReloj = _modoConSkills || (currentGameMode === 'classic' && sim.isRemote);
+        if (_conReloj) {
             // Tiempo de sala: local (roomTimers) u online (el servidor lo manda en cada snapshot)
             let tl, dur;
             if (sim.isRemote) { tl = sim.remainingMs(); if (tl == null) tl = 0; dur = sim.duration; }
@@ -13714,7 +13709,9 @@
             }
             // tl negativo en preview (reloj local "vencido" sin partida real) no debe
             // parar el pickup de skills: elapsed sigue creciendo bien más allá de dur.
-            if(!isGodMode && !isSpectating && (tl > 0 || practiceMode)) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = quantizeTimerWidth(Math.max(0, pickTimer) / 10) + "%"; if(pickTimer <= 0) { let opts = els.skillOpts.children; if (opts[skillChoiceIndex]) opts[skillChoiceIndex].click(); else { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } } }
+            // Eleccion de skills cada 30s: es de ARCADE. Classic entra aqui por el
+            // reloj, pero no debe heredar el sistema de skills (solo tiene SHOOT).
+            if(_modoConSkills && !isGodMode && !isSpectating && (tl > 0 || practiceMode)) { let elapsed = (dur - tl) / 1000; if (elapsed > nextSkillPickTime) { showSkillChoice(); nextSkillPickTime += 30; } if(totalM >= 1000 && !massMilestoneReached) { massMilestoneReached = true; showSkillChoice(); } if(isPickingSkill) { pickTimer -= (1/60) * timeScale; els.skillTimer.style.width = quantizeTimerWidth(Math.max(0, pickTimer) / 10) + "%"; if(pickTimer <= 0) { let opts = els.skillOpts.children; if (opts[skillChoiceIndex]) opts[skillChoiceIndex].click(); else { els.skillOverlay.style.display = 'none'; isPickingSkill = false; SoundManager.stop('timer'); } } } }
         } else { els.timer.innerText = ""; }
 
         if (isGodMode) { els.debugHud.style.display = 'block'; } else { els.debugHud.style.display = 'none'; }
