@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "PillWars — arquitectura del servidor multijugador",
+    "output": "pillwars.architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "ruta-partida",
+        "label": "Ruta de una partida",
+        "focus": [
+          "browser",
+          "caddy",
+          "hosts"
+        ],
+        "note": "El tráfico de juego entra por wss y Caddy lo enruta al host dueño del combo."
+      },
+      {
+        "id": "control-y-sharding",
+        "label": "Control y sharding",
+        "focus": [
+          "director",
+          "hosts"
+        ],
+        "note": "El Director forkea los hosts y les habla por IPC: entradas, economía y ajustes."
+      },
+      {
+        "id": "dinero",
+        "label": "Dinero",
+        "focus": [
+          "director",
+          "warbank",
+          "solana"
+        ],
+        "note": "El saldo WAR vive off-chain; Solana solo se consulta para verificar depósitos."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Cliente web",
+      "sublabel": "index.html + PillSim",
+      "pos": [
+        60,
+        95
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "admin",
+      "type": "frontend",
+      "label": "Panel admin",
+      "sublabel": "server/admin.html",
+      "tag": "ADMIN_KEY",
+      "pos": [
+        60,
+        303
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "caddy",
+      "type": "cloud",
+      "label": "Caddy",
+      "sublabel": "HTTPS + wss :443",
+      "tag": "handle_path /hN/*",
+      "pos": [
+        330,
+        202
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "hosts",
+      "type": "backend",
+      "label": "Game Hosts x2",
+      "sublabel": "game-host.js :8081-:8082",
+      "tag": "tick 40 Hz",
+      "pos": [
+        620,
+        70
+      ],
+      "size": [
+        180,
+        70
+      ]
+    },
+    {
+      "id": "director",
+      "type": "backend",
+      "label": "Director",
+      "sublabel": "server/index.js :8080",
+      "tag": "matchmaking + economía",
+      "pos": [
+        620,
+        278
+      ],
+      "size": [
+        180,
+        70
+      ]
+    },
+    {
+      "id": "warbank",
+      "type": "database",
+      "label": "WAR bank",
+      "sublabel": "warbalances.json",
+      "pos": [
+        620,
+        452
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "Estado del juego",
+      "sublabel": "players / stats / quests",
+      "pos": [
+        330,
+        452
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "solana",
+      "type": "external",
+      "label": "Solana RPC",
+      "sublabel": "devnet - mint $PILL",
+      "pos": [
+        1000,
+        278
+      ],
+      "size": [
+        160,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "VPS - systemd pillwars.service",
+      "wraps": [
+        "caddy",
+        "hosts",
+        "director",
+        "warbank",
+        "state"
+      ],
+      "pad": 14
+    }
+  ],
+  "connections": [
+    {
+      "id": "cliente-edge",
+      "from": "browser",
+      "to": "caddy",
+      "label": "HTTPS + wss",
+      "variant": "emphasis"
+    },
+    {
+      "id": "admin-edge",
+      "from": "admin",
+      "to": "caddy",
+      "label": "ADMIN_PATH secreto",
+      "variant": "security"
+    },
+    {
+      "id": "edge-hosts",
+      "from": "caddy",
+      "to": "hosts",
+      "label": "wss /h0/*, /h1/*",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge-director",
+      "from": "caddy",
+      "to": "director",
+      "label": "/match y /api/*"
+    },
+    {
+      "id": "ipc",
+      "from": "director",
+      "to": "hosts",
+      "label": "IPC fork: authorizeEntry, econ.*",
+      "variant": "dashed"
+    },
+    {
+      "id": "cobro",
+      "from": "director",
+      "to": "warbank",
+      "label": "cobra entrada / abona premio",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "deposito",
+      "from": "director",
+      "to": "solana",
+      "label": "verifica depósito (RPC)"
+    },
+    {
+      "id": "persistencia",
+      "from": "director",
+      "to": "state",
+      "label": "persistencia JSON"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Sharding",
+      "items": [
+        "Un combo = modo + precio, entero en un host",
+        "shard-map reparte round-robin entre hosts",
+        "Caddy quita el prefijo /hN al proxear"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Simulación",
+      "items": [
+        "shared/sim.js corre en cliente y servidor",
+        "El servidor es la única autoridad",
+        "Snapshots binarios con AOI por jugador"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Dinero",
+      "items": [
+        "Depositar acredita saldo WAR off-chain",
+        "Entrar a sala de pago no requiere firmar",
+        "Retirar devuelve $PILL a la wallet"
+      ]
+    }
+  ]
+}
