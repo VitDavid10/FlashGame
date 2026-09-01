@@ -1322,11 +1322,51 @@ body.trailer-open #page-content{
         .dq-card.prog .dq-foot .state { color: #ffce3d; }
         .lb-c-deaths, .lb-c-kd, .lb-c-games { color: #ccc; font-variant-numeric: tabular-nums; }
         .lb-empty { padding: 50px 0; text-align: center; color: var(--txt-mute); font-family: 'Russo One'; font-size: var(--fs-3); letter-spacing: 2px; }
+        /* ===== RANKING EN MOVIL =====
+           La cabecera con los nombres de columna no cabe y se oculta. Antes se
+           ocultaba y ya: las cinco cifras se apilaban en la columna 2 como
+           numeros sueltos (0 / 0 / 0.00 / 63) sin nada que dijera cual era cual.
+           Ahora cada dato lleva su etiqueta encima —la que estaba en la cabecera
+           que se oculta— y van en rejilla de tres, asi que la fila es
+           dorsal + nombre + dos lineas de datos legibles. */
         @media (max-width: 720px) {
             .lb-head { display: none; }
-            .lb-row { grid-template-columns: 56px 1fr; gap: 6px; }
-            .lb-c-deaths, .lb-c-kd, .lb-c-games { grid-column: 2; color: #888; font-size: var(--fs-2); }
-            .lb-c-kills { grid-column: 2; }
+            /* Dos filas: dorsal+nombre arriba, y los CINCO datos en una sola
+               linea debajo. Con los datos en rejilla de 3 la fila se iba a ~110px
+               de alto y el ranking entero se hacia larguisimo. */
+            .lb-row {
+                grid-template-columns: 30px repeat(5, minmax(0, 1fr));
+                column-gap: 6px; row-gap: 7px;
+                padding: 10px 8px; align-items: start;
+            }
+            /* El dorsal va envuelto en un <span> sin clase (ver renderLB), asi
+               que se referencia por posicion. Abarca las dos filas. */
+            .lb-row > :first-child { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+            .lb-c-name { grid-column: 2 / -1; grid-row: 1; }
+            .lb-c-mass   { grid-column: 2; grid-row: 2; }
+            .lb-c-kills  { grid-column: 3; grid-row: 2; }
+            .lb-c-deaths { grid-column: 4; grid-row: 2; }
+            .lb-c-kd     { grid-column: 5; grid-row: 2; }
+            .lb-c-games  { grid-column: 6; grid-row: 2; }
+            .lb-c-mass, .lb-c-kills, .lb-c-deaths, .lb-c-kd, .lb-c-games {
+                display: flex; flex-direction: column; gap: 1px;
+                font-size: var(--fs-2); line-height: 1.2;
+                min-width: 0; white-space: nowrap;
+            }
+            .lb-c-deaths, .lb-c-kd, .lb-c-games { color: #ccc; }
+            .lb-c-mass::before, .lb-c-kills::before, .lb-c-deaths::before,
+            .lb-c-kd::before, .lb-c-games::before {
+                font-family: 'Russo One'; font-size: var(--fs-1);
+                color: var(--txt-mute); letter-spacing: 1px; font-weight: 400;
+            }
+            /* "BEST MASS" en dos palabras no cabe en una columna de ~55px y
+               partia la linea, descuadrando la fila entera: aqui va MASS. */
+            .lb-c-mass::before   { content: 'MASS'; }
+            .lb-c-kills::before  { content: 'KILLS'; }
+            .lb-c-deaths::before { content: 'DEATHS'; }
+            .lb-c-kd::before     { content: 'K/D'; }
+            .lb-c-games::before  { content: 'GAMES'; }
+            #ranking .lb-c-pos { width: 28px; height: 28px; }
         }
 
         footer { 
@@ -1799,8 +1839,13 @@ body.trailer-open #page-content{
             /* El ancho util se lo comian los paddings encadenados: 20px de
                .content-container + 30 de .battle-modes-container dejaban el grid
                en 261px de un viewport de 375, y de ahi salian tarjetas de 126px.
-               Recortados, el grid gana ~65px. */
-            .content-container { padding: 60px 10px; }
+               El de .battle-modes-container se va a 0 mas abajo (el recuadro
+               entero desaparece en movil), asi que este puede volver a 20 y
+               alinearse con .section-container: los bloques de aqui (BATTLE
+               MODES, contrato, skills) estaban a 10px del borde mientras el
+               ranking iba a 20 y la tienda a 30, y ese escalonado era lo que
+               hacia que la pagina se viera apretada de lado. */
+            .content-container { padding: 60px 20px; }
             .battle-modes-container, .store-panel { padding: 24px 10px; }
             /* El recuadro de BATTLE MODES (borde verde + fondo + sombra dura +
                las dos escuadras de las esquinas) fuera en movil: en 375px es un
@@ -1844,6 +1889,19 @@ body.trailer-open #page-content{
                desiguales (78 / 104 / ...) con la ultima rozando el borde del
                panel. Con esto se reparten exactas. */
             .dq-card { padding: 7px 6px; border-left-width: 3px; min-width: 0; overflow-wrap: anywhere; }
+            /* El pack pixel cambia .dq-title a Press Start 2P, que al mismo
+               cuerpo es MUCHO mas ancha que Russo One: a 12px "SURVIVE" pide
+               ~84px y la celda de 3 columnas da 81, asi que el overflow-wrap
+               partia las palabras por la mitad (SURVIV / E / CLASSI / C). Un
+               cuerpo menos y sin letter-spacing, igual que ya hacen .skill-name
+               y .lb-head con este mismo pack. */
+            .dq-title { font-size: var(--fs-1); letter-spacing: 0; line-height: 1.45; }
+            /* El overflow-wrap:anywhere de .dq-card tambien alcanzaba al
+               contador del pie y lo partia ("0/" arriba y "3" abajo). El rotulo
+               de estado SI puede seguir partiendo, pero por el espacio: "NOT
+               STARTED" en dos lineas se lee bien; "0/ 3" no. */
+            .dq-foot > span + span { white-space: nowrap; overflow-wrap: normal; }
+            .dq-foot { gap: 4px; letter-spacing: 0; }
             .shop-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }
             .shop-cel { padding: 6px 2px 0; }
 
