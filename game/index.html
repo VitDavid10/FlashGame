@@ -8180,17 +8180,28 @@
         if (!gratis) {
             html += `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">${fee.toLocaleString('en-US')} $PILL</b></div>`;
             html += `<div class="ri-line"><span>WORTH NOW</span><b>$${usdReal.toFixed(2)}</b></div>`;
-            // La diferencia entre el nominal y lo que valen hoy esos PILL es la
-            // razon de ser del popup: hay que decir que NO es un error.
-            const dif = usdReal - r.priceUsd;
-            if (Math.abs(dif) >= 0.01 && pillUsd > 0) {
-                const subio = dif > 0;
+            /*
+             * El parrafo largo solo si la desviacion pasa del 5%. Por debajo, el
+             * precio en dolares que se ve arriba ya se explica solo y el texto
+             * sobra: si sale en TODAS las salas deja de leerse, y entonces no
+             * avisa cuando de verdad hay que avisar.
+             *
+             * El aviso corto lleva el reloj de la sala, con su verde/amarillo/
+             * rojo, para que las dos cosas que se firman —cuanto y en que
+             * momento de la partida entras— esten en la misma frase.
+             */
+            const dif = pillUsd > 0 ? usdReal - r.priceUsd : 0;
+            const desvio = r.priceUsd > 0 ? Math.abs(dif) / r.priceUsd : 0;
+            const cuando = r.state === 'playing'
+                ? ` <b class="${est.cls}">${est.txt}</b>.`
+                : ' The match has not started yet.';
+            if (desvio > 0.05) {
                 html += `<div class="ri-note">This room locked its entry at ${fee.toLocaleString('en-US')} $PILL when it opened.
-                    $PILL has gone ${subio ? 'UP' : 'DOWN'} since then, so those tokens are worth
+                    $PILL has gone ${dif > 0 ? 'UP' : 'DOWN'} since then, so those tokens are worth
                     <b>$${usdReal.toFixed(2)}</b> right now instead of $${r.priceUsd.toFixed(2)}. This is not an error —
-                    the entry is fixed in $PILL, and its value in dollars moves with the token.</div>`;
+                    the entry is fixed in $PILL, and its value in dollars moves with the token.${cuando}</div>`;
             } else {
-                html += `<div class="ri-note">The entry is fixed in $PILL while this match runs, so its value in dollars moves with the token.</div>`;
+                html += `<div class="ri-note">This room locked its entry at ${fee.toLocaleString('en-US')} $PILL.${cuando}</div>`;
             }
         }
         document.getElementById('riBody').innerHTML = html;
