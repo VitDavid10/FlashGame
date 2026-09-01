@@ -11334,7 +11334,24 @@
             });
             window._roomCountdowns = window._roomCountdowns || {};
             cont.innerHTML = rowsForMode.map(r => {
-                const lock = r.locked ? ' <span title="price locked while players are inside" style="color:#888">🔒</span>' : '';
+                // Precio congelado: el de esta sala es el de cuando entro el primero,
+                // no el del oraculo de ahora. Se enseña el candado SIEMPRE que este
+                // congelado y, si ademas el precio vivo se ha separado un 1% o mas,
+                // cuanto y hacia donde — asi se ve de un vistazo que no cuadre con el
+                // numero grande de arriba no es un error.
+                let lock = '';
+                if (r.locked) {
+                    const live = Number(r.pillFeeLive) || 0, fee0 = Number(r.pillFee) || 0;
+                    const dif = (live > 0 && fee0 > 0) ? (live - fee0) / fee0 * 100 : 0;
+                    const tit = live > 0
+                        ? 'Price locked when this room opened. Live oracle right now: ' + live.toLocaleString('en-US') + ' $PILL'
+                        : 'Price locked when this room opened';
+                    lock = ' <span title="' + tit + '" style="color:#888">🔒</span>';
+                    if (Math.abs(dif) >= 1) {
+                        lock += ' <span title="' + tit + '" style="color:#6a7a72;font-size:.82em">'
+                             + (dif > 0 ? '▲' : '▼') + Math.abs(dif).toFixed(0) + '%</span>';
+                    }
+                }
                 const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL' + lock;
                 const cap = r.cap || 30;
                 // ending  → últimas 30s de partida: icono naranja + "LAST Xs"

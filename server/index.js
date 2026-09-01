@@ -864,7 +864,19 @@ const directorLocal = {
 
     // Precio BLOQUEADO por sala: si está vacía (primer jugador), fija el rate al del
     // oráculo actual; mientras haya gente, no cambia (todos pagan lo mismo).
-    lockPriceIfEmpty(room) { if (room.clients.size === 0) room.pillRate = PILL_PER_DOLLAR; },
+    // El precio de una sala se congela cuando entra el PRIMERO y no se vuelve a
+    // tocar hasta que la sala se vacia: asi todos los que estan dentro han pagado
+    // lo mismo, aunque el oraculo se haya movido diez veces entre medias.
+    //
+    // _reserved cuenta a los que estan EN MITAD del cobro (hay un await entre
+    // congelar el precio y registrarlos en clients). Sin mirarlo, dos jugadores
+    // que entraran a la vez a una sala vacia veian los dos clients.size===0, y si
+    // el oraculo cambiaba en ese hueco cada uno congelaba un precio distinto y
+    // acababan pagando diferente en la MISMA sala. La ventana son milisegundos,
+    // pero pasar el oraculo de 5 min a 1 min la hizo cinco veces mas probable.
+    lockPriceIfEmpty(room) {
+        if (room.clients.size === 0 && !(room._reserved > 0)) room.pillRate = PILL_PER_DOLLAR;
+    },
 
     // Autoriza y COBRA la entrada. Salas gratis o testers pasan sin cobro. Salas de
     // pago exigen firma de wallet + saldo WAR. Si cobra, descuenta del saldo y marca
@@ -988,7 +1000,19 @@ const directorProxy = hostIpc && {
         catch (e) { log(`IPC checkKick falló: ${e.message} — join bloqueado (fail-closed)`); return { secondsLeft: 3 }; }
     },
     // El precio se bloquea con el rate CACHEADO del oráculo del Director (síncrono).
-    lockPriceIfEmpty(room) { if (room.clients.size === 0) room.pillRate = PILL_PER_DOLLAR; },
+    // El precio de una sala se congela cuando entra el PRIMERO y no se vuelve a
+    // tocar hasta que la sala se vacia: asi todos los que estan dentro han pagado
+    // lo mismo, aunque el oraculo se haya movido diez veces entre medias.
+    //
+    // _reserved cuenta a los que estan EN MITAD del cobro (hay un await entre
+    // congelar el precio y registrarlos en clients). Sin mirarlo, dos jugadores
+    // que entraran a la vez a una sala vacia veian los dos clients.size===0, y si
+    // el oraculo cambiaba en ese hueco cada uno congelaba un precio distinto y
+    // acababan pagando diferente en la MISMA sala. La ventana son milisegundos,
+    // pero pasar el oraculo de 5 min a 1 min la hizo cinco veces mas probable.
+    lockPriceIfEmpty(room) {
+        if (room.clients.size === 0 && !(room._reserved > 0)) room.pillRate = PILL_PER_DOLLAR;
+    },
     async authorizeEntry(payload) {
         try { return await hostIpc.request('authorizeEntry', payload); }
         catch (e) {
@@ -2127,6 +2151,12 @@ const httpServer = http.createServer(async (req, res) => {
                 key: ck, mode, room: price,
                 priceUsd: priceOf(price),
                 pillFee: entryFeePill(ck, roomRate(pick)),
+                // Lo que costaría AHORA MISMO al precio vivo del oráculo. Cuando la
+                // sala tiene gente, pillFee va congelado del momento en que entró el
+                // primero y los dos números no coinciden: el cliente enseña esa
+                // diferencia para que se vea que el precio de la sala no es el del
+                // oráculo de ahora, sino el de cuando se abrió.
+                pillFeeLive: entryFeePill(ck, null),
                 locked: !!(pick && pick.clients.size > 0),
                 players,                                  // total del combo (todas las layers)
                 needed: minRealOf(ck),
