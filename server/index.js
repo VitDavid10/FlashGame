@@ -155,7 +155,7 @@ let layoutEdit = (typeof _glob.layoutEdit === 'boolean') ? _glob.layoutEdit : fa
 // RECALCULA SOLO al arrancar (ver computeRanking mas abajo) y hay que saber con
 // que criterio hacerlo; si no, cada reinicio lo dejaba en el de por defecto.
 let rankingIncludeTesters = (typeof _glob.rankingIncludeTesters === 'boolean') ? _glob.rankingIncludeTesters : false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, menuTitulo, landingLayout, cartelesLayout }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, menuTitulo, landingLayout, cartelesLayout, pillPerDollar: _glob.pillPerDollar }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -459,26 +459,96 @@ function lobbyMsOf(key) { return /^arcade_/.test(key) ? arcadeLobbyMs : 0; }
 // el precio vivo del token (en mainnet vendría de un feed real). El precio se BLOQUEA en
 // la entrada (la firma incluye la tarifa exacta), así que cambiarlo NO afecta a quien ya
 // está dentro: su carry está en PILL absolutos.
+// Arranca con el ÚLTIMO precio bueno que se guardó (globalsettings.json), no con
+// el de fábrica: así un reinicio con el feed caído no pone las salas a un precio
+// inventado. Solo la primera vez de todas se usa PILL_PER_DOLLAR.
 const PILL_PER_DOLLAR_BASE = parseInt(process.env.PILL_PER_DOLLAR, 10) || 10000;
-let PILL_PER_DOLLAR = PILL_PER_DOLLAR_BASE;
+let PILL_PER_DOLLAR = (_glob.pillPerDollar > 0) ? _glob.pillPerDollar : PILL_PER_DOLLAR_BASE;
 const ORACLE_REFRESH_MS = 5 * 60 * 1000;
-function tickOracle() {
-    const drift = 1 + (Math.random() * 0.30 - 0.15);   // ±15%
-    PILL_PER_DOLLAR = Math.max(1, Math.round(PILL_PER_DOLLAR_BASE * drift / 1000) * 1000);
-    log(`Oráculo: $1 = ${PILL_PER_DOLLAR} PILL`);
+/*
+ * El oráculo sigue un precio REAL: el de SOL dividido entre ORACLE_DIVISOR,
+ * tratado como si fuera el precio de $PILL. Ya no hay deriva aleatoria.
+ *
+ * $PILL todavía no cotiza en ningún sitio, así que esto es el mecanismo
+ * definitivo funcionando con un precio de verdad — que se mueve solo, a veces
+ * se cae y a veces da saltos, que es justo lo que hay que saber manejar. El día
+ * que $PILL cotice, esto es cambiar SOL_PRICE_URL y el divisor a 1: la lógica
+ * de bloqueo de precio por sala, el reparto por IPC y el redondeo de la tarifa
+ * ya estarán probados con dinero moviéndose de verdad.
+ *
+ * El /1000 es para que las cifras no canten a "esto es el precio de SOL".
+ */
+const ORACLE_DIVISOR = Number(process.env.ORACLE_DIVISOR) || 1000;
+const SOL_PRICE_URL = process.env.SOL_PRICE_URL
+    || 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
+let _oracleUltimoOk = 0;   // cuándo se logró leer el precio por última vez
+
+// Precio de SOL en $, o null si el feed no contesta. Nunca lanza: un oráculo
+// que revienta no debe tumbar el tick del servidor.
+async function precioSol() {
+    try {
+        const r = await fetch(SOL_PRICE_URL, { signal: AbortSignal.timeout(8000) });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const j = await r.json();
+        const p = j && j.solana && Number(j.solana.usd);
+        return (p > 0 && isFinite(p)) ? p : null;
+    } catch (e) { log(`Oráculo: no se pudo leer el precio (${e.message})`); return null; }
+}
+
+// PILL por $1, redondeado a 4 cifras significativas. NO a múltiplos de 1000
+// como antes: con el precio de SOL/1000 el rate ronda las unidades, y redondear
+// a millares lo dejaba en 0 (y de ahí al mínimo de 1, un precio inventado).
+function redondeaRate(v) {
+    if (!(v > 0) || !isFinite(v)) return null;
+    const mag = Math.pow(10, Math.max(0, 3 - Math.floor(Math.log10(v))));
+    return Math.max(1, Math.round(v * mag) / mag);
+}
+
+async function tickOracle() {
+    const sol = await precioSol();
+    if (sol == null) {
+        // Sin precio nuevo se CONSERVA el último bueno. Volver al valor de
+        // fábrica sería cambiar el precio de las salas por un fallo de red ajeno.
+        const mins = _oracleUltimoOk ? Math.round((Date.now() - _oracleUltimoOk) / 60000) : -1;
+        log(`Oráculo: mantengo $1 = ${PILL_PER_DOLLAR} PILL` + (mins >= 0 ? ` (último precio bueno hace ${mins} min)` : ' (AÚN SIN PRECIO REAL)'));
+    } else {
+        const precioPill = sol / ORACLE_DIVISOR;              // $ por PILL
+        const rate = redondeaRate(1 / precioPill);            // PILL por $1
+        if (rate) {
+            PILL_PER_DOLLAR = rate;
+            _oracleUltimoOk = Date.now();
+            // Se persiste para que un reinicio no vuelva al valor de fábrica: sin
+            // esto, reiniciar con el feed caído dejaba las salas a un precio
+            // inventado (1000x el real) hasta que el feed volviera.
+            if (_glob.pillPerDollar !== rate) { _glob.pillPerDollar = rate; saveGlobal(); }
+            log(`Oráculo: SOL $${sol} / ${ORACLE_DIVISOR} ⇒ PILL $${precioPill.toPrecision(4)} ⇒ $1 = ${PILL_PER_DOLLAR} PILL`);
+        }
+    }
     // Fase 4: los hosts cachean el rate (lo usan para bloquear el precio de sala
-    // y calcular la tarifa); el oráculo SOLO deriva aquí, en el Director.
+    // y calcular la tarifa); el oráculo SOLO se mueve aquí, en el Director.
     for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR }); }
 }
-// En rol 'host' el oráculo NO deriva por su cuenta: el rate llega por IPC
+// En rol 'host' el oráculo NO se mueve por su cuenta: el rate llega por IPC
 // (notify 'oracleRate') desde el Director. Dos relojes independientes harían
 // que el fee firmado por el cliente no cuadrara con el del cobro.
-if (PW_ROLE !== 'host') setInterval(tickOracle, ORACLE_REFRESH_MS);
+if (PW_ROLE !== 'host') {
+    // Una lectura AL ARRANCAR: sin esto el servidor pasaba los primeros 5 min
+    // con el valor de fábrica (10000) en vez de con el precio real.
+    tickOracle().catch(() => {});
+    setInterval(() => { tickOracle().catch(() => {}); }, ORACLE_REFRESH_MS);
+}
 // Quema del $PILL gastado en skins. Solo en el Director: los hosts no tocan
 // economia, y dos procesos vaciando la misma cola quemarian dos veces.
 if (PW_ROLE !== 'host') skinshop.arrancaQuemaPeriodica(solana, log);
 // Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
-function entryFeePill(key, rate) { return priceOf(key) * (rate || PILL_PER_DOLLAR); }
+// Math.round: la tarifa viaja DENTRO del mensaje que el jugador firma
+// ("...paying 48 PILL @ ..."), y el servidor reconstruye esa misma cadena para
+// validarla. Con el rate en millares daba igual, pero con un rate real y
+// decimal (SOL/1000 ⇒ ~9.7) el producto sale en coma flotante
+// (5 * 9.695 = 48.474999999999994) y basta el mínimo desajuste entre los dos
+// lados para que la firma no cuadre y no se pueda entrar. En PILL enteros eso
+// no puede pasar. El cliente redondea igual antes de firmar.
+function entryFeePill(key, rate) { return Math.round(priceOf(key) * (rate || PILL_PER_DOLLAR)); }
 // Rate "vigente" de una sala: si tiene gente jugando usa el bloqueado; si está vacía,
 // el precio vivo del oráculo (lo que pagaría el próximo en entrar y fijar el precio).
 function roomRate(room) { return (room && room.clients.size > 0 && room.pillRate) ? room.pillRate : PILL_PER_DOLLAR; }

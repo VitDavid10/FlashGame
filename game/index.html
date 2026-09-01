@@ -12035,7 +12035,10 @@
         if (!ok) { showSystemMsg('Connect your wallet first on the home page, then come back to play paid rooms.', 'WALLET REQUIRED'); return null; }
         // Tarifa AUTORITATIVA del servidor justo antes de firmar (el oráculo puede haber
         // cambiado). Así la firma coincide con lo que el servidor cobrará.
-        let fee = price * (await getPillPerDollar());
+        // Math.round igual que entryFeePill() en el servidor: la tarifa va dentro
+        // del mensaje firmado y las dos cadenas tienen que salir identicas. Con un
+        // rate decimal (oraculo real) el producto da coma flotante y no cuadraria.
+        let fee = Math.round(price * (await getPillPerDollar()));
         try {
             const rooms = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).rooms || [];
             const rr = rooms.find(r => r.key === (mode + '_' + roomName));
