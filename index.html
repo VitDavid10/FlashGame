@@ -1216,7 +1216,7 @@ body.trailer-open #page-content{
         #ranking .section-title { margin-bottom: 22px; }
         #ranking .lb-wrap { padding: 14px 18px 16px; }
         #ranking .lb-head, #ranking .lb-row { padding: 7px 14px; font-size: var(--fs-2); }
-        #ranking .lb-c-pos { width: 30px; height: 30px; font-size: var(--fs-2); }
+        #ranking .lb-c-pos { font-size: var(--fs-3); }
         #ranking .lb-c-name, #ranking .lb-c-kills, #ranking .lb-c-mass { font-size: var(--fs-3); }
         #ranking .lb-pag { margin-top: 14px; }
         .section-title { font-size: var(--fs-7); font-family: 'Russo One'; margin-bottom: 50px; text-transform: uppercase; text-align: center; }
@@ -1267,10 +1267,26 @@ body.trailer-open #page-content{
         .lb-head { color: var(--txt-mute); font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-2); letter-spacing: 2px; border-bottom: 1px solid #1c1c1c; margin-bottom: 4px; }
         .lb-row { border-bottom: 1px solid #141414; transition: 0.2s; }
         .lb-row:hover { background: rgba(0,255,136,0.04); }
-        .lb-c-pos { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: 'Russo One'; font-size: var(--fs-3); background: #1a1a1a; border: 1px solid #2a2a2a; color: #999; }
-        .lb-row.p1 .lb-c-pos { background: linear-gradient(180deg,#ffd54a,#b8860b); border: 0; color: #2b2000; box-shadow: 0 0 14px rgba(255,213,74,0.4); }
-        .lb-row.p2 .lb-c-pos { background: linear-gradient(180deg,#e0e6ee,#8a95a5); border: 0; color: #1c222c; }
-        .lb-row.p3 .lb-c-pos { background: linear-gradient(180deg,#e29c66,#8c5523); border: 0; color: #2b1a07; }
+        /* ===== DORSAL =====
+           Sin caja. Era un circulo con fondo, pero el pack pixel pone
+           border-radius:0 en todo y se quedaba en un recuadro gris que no
+           pegaba con nada. Ahora es el numero a secas, en grande, y el
+           oro/plata/bronce del podio se lleva al COLOR y a un glow en vez de
+           al fondo. Mismo trato en web y en movil.
+           El '#' va en ::before, mas pequeño y apagado, para que el numero se
+           lea como puesto y no como un dato mas de la fila. */
+        .lb-c-pos { display: inline-flex; align-items: baseline; justify-content: flex-end; gap: 1px; width: 100%; font-family: 'Russo One'; font-size: var(--fs-4); font-variant-numeric: tabular-nums; color: #55606d; }
+        .lb-c-pos::before { content: '#'; font-size: var(--fs-1); color: #39414c; }
+        /* La cabecera ya escribe su propio '#' en el HTML: sin esto salia '##'. */
+        .lb-head .lb-c-pos::before { content: none; }
+        .lb-row.p1 .lb-c-pos { color: #ffd54a; text-shadow: 0 0 12px rgba(255,213,74,0.45); }
+        .lb-row.p2 .lb-c-pos { color: #e0e6ee; text-shadow: 0 0 10px rgba(224,230,238,0.3); }
+        .lb-row.p3 .lb-c-pos { color: #e29c66; text-shadow: 0 0 10px rgba(226,156,102,0.3); }
+        /* Filo de color a la izquierda de la fila para el podio: el acento que
+           daba el fondo del circulo, ahora sin encajonar el numero. */
+        .lb-row.p1 { box-shadow: inset 3px 0 0 #ffd54a; }
+        .lb-row.p2 { box-shadow: inset 3px 0 0 #e0e6ee; }
+        .lb-row.p3 { box-shadow: inset 3px 0 0 #e29c66; }
         .lb-c-name { color: #fff; font-weight: 700; font-size: var(--fs-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lb-c-kills { color: var(--primary); font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-3); }
         .lb-c-mass { color: #ffce3d; font-family: 'Russo One'; font-weight: 400; font-size: var(--fs-3); }
@@ -1334,39 +1350,44 @@ body.trailer-open #page-content{
             /* Dos filas: dorsal+nombre arriba, y los CINCO datos en una sola
                linea debajo. Con los datos en rejilla de 3 la fila se iba a ~110px
                de alto y el ranking entero se hacia larguisimo. */
+            /* Fila 1: nombre a la izquierda y KILLS a su DERECHA, no debajo.
+               Con KILLS en la fila de abajo su etiqueta caia justo bajo el
+               nombre y se leia como si el nombre fuera "las kills". Ahora los
+               dos van en la misma linea y los dos llevan rotulo, asi que se
+               emparejan en vez de encadenarse. */
             .lb-row {
-                grid-template-columns: 26px repeat(4, minmax(0, 1fr));
-                column-gap: 6px; row-gap: 7px;
+                grid-template-columns: 30px repeat(3, minmax(0, 1fr));
+                column-gap: 6px; row-gap: 8px;
                 padding: 10px 8px; align-items: start;
             }
             /* El dorsal va envuelto en un <span> sin clase (ver renderLB), asi
                que se referencia por posicion. Abarca las dos filas. */
             .lb-row > :first-child { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
-            .lb-c-name { grid-column: 2 / -1; grid-row: 1; }
+            .lb-c-name { grid-column: 2 / 4; grid-row: 1; }
+            /* PLAYER es el rotulo que la cabecera le da a esta columna; en movil
+               la cabecera esta oculta y el nombre era el UNICO dato sin rotulo,
+               que es lo que descuadraba la fila. */
+            .lb-c-name::before {
+                content: 'PLAYER'; display: block;
+                font-family: 'Russo One'; font-size: var(--fs-1); font-weight: 400;
+                color: var(--txt-mute); letter-spacing: 1px; margin-bottom: 1px;
+            }
             /* BEST MASS fuera en movil: con cinco datos la primera columna caia
                justo debajo del nombre y los dos numeros se leian como uno solo.
                Es ademas el dato menos comparable de los cinco. */
             .lb-c-mass   { display: none; }
-            .lb-c-kills  { grid-column: 2; grid-row: 2; }
-            .lb-c-deaths { grid-column: 3; grid-row: 2; }
-            .lb-c-kd     { grid-column: 4; grid-row: 2; }
-            .lb-c-games  { grid-column: 5; grid-row: 2; }
+            .lb-c-kills  { grid-column: 4; grid-row: 1; text-align: right; align-items: flex-end; }
+            .lb-c-deaths { grid-column: 2; grid-row: 2; }
+            .lb-c-kd     { grid-column: 3; grid-row: 2; }
+            .lb-c-games  { grid-column: 4; grid-row: 2; }
             /* El dorsal, sin caja. El circulo de escritorio se queda cuadrado
                con el pack pixel (que pone border-radius:0 en todo) y a 28px es
                un recuadro gris que no pega con nada. Solo el numero, con el
                color del puesto — el oro/plata/bronce del podio se conserva
                como color de texto en vez de como fondo.
-               La forma va sin #ranking y el color aparte: con el ID delante
-               (1,1,0) esta regla le ganaba a .lb-row.p1 .lb-c-pos (0,2,0) y el
-               podio salia gris. */
-            #ranking .lb-c-pos, .lb-c-pos {
-                width: auto; height: auto; background: none; border: 0;
-                box-shadow: none; font-size: var(--fs-3);
-            }
-            .lb-c-pos { color: #55606d; }
-            .lb-row.p1 .lb-c-pos { color: #ffd54a; }
-            .lb-row.p2 .lb-c-pos { color: #e0e6ee; }
-            .lb-row.p3 .lb-c-pos { color: #e29c66; }
+               La forma y el color ya vienen del CSS base (el dorsal se quedo
+               sin caja en las DOS vistas); aqui solo se ajusta el cuerpo. */
+            .lb-c-pos { font-size: var(--fs-3); }
             /* .lb-c-mass NO entra aqui: esta oculta arriba y si se la nombra en
                este grupo el display:flex la vuelve a mostrar. */
             .lb-c-kills, .lb-c-deaths, .lb-c-kd, .lb-c-games {
@@ -1384,7 +1405,6 @@ body.trailer-open #page-content{
             .lb-c-deaths::before { content: 'DEATHS'; }
             .lb-c-kd::before     { content: 'K/D'; }
             .lb-c-games::before  { content: 'GAMES'; }
-            #ranking .lb-c-pos { width: 28px; height: 28px; }
         }
 
         footer { 
@@ -2072,7 +2092,6 @@ body.trailer-open #page-content{
         }
         body.pixel-pack .category-tag, body.pixel-pack .copy-tag,
         body.pixel-pack .cmodal-field { border-radius: 0 !important; }
-        body.pixel-pack .lb-c-pos { border-radius: 0 !important; }
         body.pixel-pack .dq-bar, body.pixel-pack .dq-bar i { border-radius: 0 !important; }
         /* logo y cursor: pill en pixel art DE VERDAD — mismo algoritmo que
            pixPillSprite del juego (contorno, sombra, costura, brillo), pintada

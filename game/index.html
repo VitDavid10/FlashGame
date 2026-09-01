@@ -8430,6 +8430,26 @@
         const pal = document.getElementById('pillPalette');
         if (pal) pal.style.display = 'none';
     }
+    /*
+     * Pop-ups que tapan el menu. Dos usos:
+     *   - showSystemMsg los cierra para que no se apilen carteles.
+     *   - syncPaletaMovil mira si hay alguno abierto para no reabrir la paleta
+     *     por debajo (ver alli).
+     * Todos se abren poniendo display inline ('flex'), asi que basta con mirar
+     * style.display: getComputedStyle sobre 13 nodos en cada frame del rAF
+     * seria caro para lo que se necesita.
+     */
+    const POPUPS_MENU = ['gameDepositModal', 'gameWithdrawModal', 'walletPickerModal',
+        'playChoiceModal', 'roomChoiceModal', 'roomInfoModal', 'settingsModal',
+        'featuresModal', 'sysModal', 'exitModal', 'nameChoiceModal',
+        'skinBigModal', 'paisModal'];
+    function hayPopupAbierto() {
+        for (const id of POPUPS_MENU) {
+            const e = document.getElementById(id);
+            if (e && e.style.display && e.style.display !== 'none') return true;
+        }
+        return false;
+    }
     // La paleta rapida de movil vive SIEMPRE a un lado del menu... salvo si
     // llevas una skin de pais puesta: entonces tus dos colores no se ven (los
     // tapa la skin) y no hay nada que elegir, igual que en escritorio, donde
@@ -8439,6 +8459,17 @@
     function syncPaletaMovil() {
         if (!esMovilJuego()) return;
         const pal = document.getElementById('pillPalette'); if (!pal) return;
+        /*
+         * Con un pop-up delante la paleta no pinta nada y encima asomaba por
+         * los lados del cartel. Va AQUI y no en cada sitio que abre un popup
+         * porque el rAF de la pildora llama a esta funcion en CADA FRAME: un
+         * cerrarUIColores() suelto se deshacia ~16ms despues, que es justo lo
+         * que hacia que la paleta "no se dejara cerrar".
+         */
+        if (hayPopupAbierto()) {
+            if (pal.style.display !== 'none') { pal.style.display = 'none'; closeColorPicker(); }
+            return;
+        }
         const conSkin = typeof paisPuesta === 'function' && !!paisPuesta();
         if (conSkin) {
             // Con skin puesta no hay colores que elegir: se va la paleta y con
@@ -12388,6 +12419,11 @@
     }
     async function startOnlineGame() {
         if (_joinInFlight) return;
+        // La paleta es del MENU. El rAF que la vigila solo corre con el
+        // loginOverlay a la vista, asi que al entrar en partida nadie la
+        // cerraba y se quedaba flotando sobre el juego (startGame, el offline,
+        // ya lo hacia; este camino no).
+        cerrarUIColores();
         // Protocolo binario ON por defecto (ahorra ~50% extra sobre AOI+JSON).
         // ?bin=0 fuerza JSON para debug. Calculado ANTES del branch de REJOIN:
         // sin esto, un rejoin tras recargar la página perdía el binario/delta
@@ -13081,7 +13117,7 @@
         // Un pop-up a la vez: al salir un aviso (KICKED, REJOIN EXPIRED, PAYMENT
         // CANCELLED, DEPOSIT FAILED…) se cierran los modales abiertos —sobre todo
         // DEPOSIT/WITHDRAW— para que no se apilen carteles uno encima de otro.
-        ['gameDepositModal', 'gameWithdrawModal', 'walletPickerModal', 'playChoiceModal', 'roomChoiceModal', 'roomInfoModal', 'settingsModal', 'featuresModal'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+        POPUPS_MENU.forEach(id => { if (id === 'sysModal') return; const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         const m = document.getElementById('sysModal');
         const titleEl = document.getElementById('sysModalTitle');
         const t = title || 'NOTICE';
