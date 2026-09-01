@@ -466,31 +466,36 @@ const PILL_PER_DOLLAR_BASE = parseInt(process.env.PILL_PER_DOLLAR, 10) || 10000;
 let PILL_PER_DOLLAR = (_glob.pillPerDollar > 0) ? _glob.pillPerDollar : PILL_PER_DOLLAR_BASE;
 const ORACLE_REFRESH_MS = 5 * 60 * 1000;
 /*
- * El oráculo sigue un precio REAL: el de SOL dividido entre ORACLE_DIVISOR,
- * tratado como si fuera el precio de $PILL. Ya no hay deriva aleatoria.
+ * El oráculo sigue un precio REAL, sin nada aleatorio: el de PUMP (el token de
+ * pump.fun), tratado como si fuera el de $PILL.
  *
- * $PILL todavía no cotiza en ningún sitio, así que esto es el mecanismo
- * definitivo funcionando con un precio de verdad — que se mueve solo, a veces
- * se cae y a veces da saltos, que es justo lo que hay que saber manejar. El día
- * que $PILL cotice, esto es cambiar SOL_PRICE_URL y el divisor a 1: la lógica
- * de bloqueo de precio por sala, el reparto por IPC y el redondeo de la tarifa
- * ya estarán probados con dinero moviéndose de verdad.
+ * PUMP y no SOL porque $PILL se creará en pump.fun: mismo tipo de token y,
+ * sobre todo, mismo orden de magnitud (PUMP ~$0.0045 ⇒ ~223 PILL por dólar, o
+ * sea salas de 1.100 a 11.000 PILL). Con SOL el rate se iba a ~9 PILL/$ y las
+ * cifras no se parecían en nada a lo que se verá el día de mañana.
  *
- * El /1000 es para que las cifras no canten a "esto es el precio de SOL".
+ * $PILL no cotiza todavía, así que esto es el mecanismo DEFINITIVO rodándose
+ * con un precio de verdad — que se mueve solo, a veces se cae y a veces pega
+ * saltos, que es justo lo que hay que saber manejar. El día que $PILL cotice,
+ * es cambiar ORACLE_COIN: el bloqueo de precio por sala, el reparto por IPC y
+ * el redondeo de la tarifa ya estarán probados.
+ *
+ * ORACLE_DIVISOR queda por si hiciera falta reescalar (1 = precio tal cual).
  */
-const ORACLE_DIVISOR = Number(process.env.ORACLE_DIVISOR) || 1000;
-const SOL_PRICE_URL = process.env.SOL_PRICE_URL
-    || 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
+const ORACLE_COIN = process.env.ORACLE_COIN || 'pump-fun';
+const ORACLE_DIVISOR = Number(process.env.ORACLE_DIVISOR) || 1;
+const ORACLE_URL = process.env.ORACLE_URL
+    || 'https://api.coingecko.com/api/v3/simple/price?ids=' + encodeURIComponent(ORACLE_COIN) + '&vs_currencies=usd';
 let _oracleUltimoOk = 0;   // cuándo se logró leer el precio por última vez
 
-// Precio de SOL en $, o null si el feed no contesta. Nunca lanza: un oráculo
-// que revienta no debe tumbar el tick del servidor.
-async function precioSol() {
+// Precio de referencia en $, o null si el feed no contesta. Nunca lanza: un
+// oráculo que revienta no debe tumbar el tick del servidor.
+async function precioReferencia() {
     try {
-        const r = await fetch(SOL_PRICE_URL, { signal: AbortSignal.timeout(8000) });
+        const r = await fetch(ORACLE_URL, { signal: AbortSignal.timeout(8000) });
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const j = await r.json();
-        const p = j && j.solana && Number(j.solana.usd);
+        const p = j && j[ORACLE_COIN] && Number(j[ORACLE_COIN].usd);
         return (p > 0 && isFinite(p)) ? p : null;
     } catch (e) { log(`Oráculo: no se pudo leer el precio (${e.message})`); return null; }
 }
@@ -505,23 +510,24 @@ function redondeaRate(v) {
 }
 
 async function tickOracle() {
-    const sol = await precioSol();
-    if (sol == null) {
+    const ref = await precioReferencia();
+    if (ref == null) {
         // Sin precio nuevo se CONSERVA el último bueno. Volver al valor de
         // fábrica sería cambiar el precio de las salas por un fallo de red ajeno.
         const mins = _oracleUltimoOk ? Math.round((Date.now() - _oracleUltimoOk) / 60000) : -1;
         log(`Oráculo: mantengo $1 = ${PILL_PER_DOLLAR} PILL` + (mins >= 0 ? ` (último precio bueno hace ${mins} min)` : ' (AÚN SIN PRECIO REAL)'));
     } else {
-        const precioPill = sol / ORACLE_DIVISOR;              // $ por PILL
+        const precioPill = ref / ORACLE_DIVISOR;              // $ por PILL
         const rate = redondeaRate(1 / precioPill);            // PILL por $1
         if (rate) {
             PILL_PER_DOLLAR = rate;
             _oracleUltimoOk = Date.now();
             // Se persiste para que un reinicio no vuelva al valor de fábrica: sin
             // esto, reiniciar con el feed caído dejaba las salas a un precio
-            // inventado (1000x el real) hasta que el feed volviera.
+            // inventado hasta que el feed volviera.
             if (_glob.pillPerDollar !== rate) { _glob.pillPerDollar = rate; saveGlobal(); }
-            log(`Oráculo: SOL $${sol} / ${ORACLE_DIVISOR} ⇒ PILL $${precioPill.toPrecision(4)} ⇒ $1 = ${PILL_PER_DOLLAR} PILL`);
+            const div = ORACLE_DIVISOR !== 1 ? ` / ${ORACLE_DIVISOR}` : '';
+            log(`Oráculo: ${ORACLE_COIN} $${ref}${div} ⇒ PILL $${precioPill.toPrecision(4)} ⇒ $1 = ${PILL_PER_DOLLAR} PILL`);
         }
     }
     // Fase 4: los hosts cachean el rate (lo usan para bloquear el precio de sala
