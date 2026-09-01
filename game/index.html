@@ -3627,7 +3627,7 @@
             <div id="riLayers" class="ri-layers"></div>
             <div class="ri-actions">
                 <button class="pw-big-btn room" id="riLayersBtn" onclick="toggleRoomInfoLayers()" onmouseenter="SoundManager.playSimpleHover()">LAYERS</button>
-                <button class="pw-big-btn room" onclick="confirmRoomInfo()" onmouseenter="SoundManager.playSimpleHover()">CONTINUE</button>
+                <button class="pw-big-btn room" id="riContinue" onclick="confirmRoomInfo()" onmouseenter="SoundManager.playSimpleHover()">CONTINUE</button>
             </div>
             <button class="pw-modal-cancel" onclick="closeRoomInfo()">CANCEL</button>
         </div>
@@ -8099,7 +8099,13 @@
         }
         runPlay(kind);
     }
-    function runPlay(kind) { if (kind === 'online') startOnlineGame(); else startGame(); }
+    function runPlay(kind) {
+        // Online pasa SIEMPRE por ROOM INFO, se haya elegido la sala en el panel
+        // o en SELECT A ROOM: es el ultimo sitio donde se ve lo que se va a
+        // firmar. Offline es practica gratis, no hay nada que avisar.
+        if (kind === 'online') { openRoomInfo(); return; }
+        startGame();
+    }
 
     /* ---------- ROOM INFO (aviso previo a entrar online) ---------- */
 
@@ -8156,10 +8162,12 @@
         const gratis = r.priceUsd === 0;
         const fee = Number(r.pillFee) || 0;
         const usdReal = (pillUsd > 0 && fee > 0) ? fee * pillUsd : r.priceUsd;
+        // La layer a la que se entra. Todo lo que se enseña abajo va de ESA sala,
+        // no del combo: el combo suma jugadores y aforo de todas sus layers.
+        const LP = (r.layers || []).find(L => L.layerIdx === r.pickLayerIdx) || null;
         const est = riEstadoLayer({
             state: r.state, endsIn: r.endsIn, startIn: r.startIn,
-            openMs: (r.layers || []).find(L => L.layerIdx === r.pickLayerIdx)?.openMs || 0,
-            durationMs: (r.layers || []).find(L => L.layerIdx === r.pickLayerIdx)?.durationMs || 0,
+            openMs: LP ? LP.openMs : 0, durationMs: LP ? LP.durationMs : 0,
         }, edad);
 
         const nombre = gratis ? 'FREE ROOM' : '$' + r.priceUsd + ' ROOM';
@@ -8169,7 +8177,9 @@
             html += `<div class="ri-line"><span>OPEN FOR</span><b>${fmtReloj(est.abierta)}</b></div>`;
         }
         html += `<div class="ri-line"><span>MATCH</span><b class="${est.cls}">${est.txt}</b></div>`;
-        html += `<div class="ri-line"><span>PLAYERS</span><b>${r.players || 0} / ${r.cap || 0}</b></div>`;
+        const dentro = LP ? (LP.players || 0) : (r.players || 0);
+        const aforo = (LP && LP.maxPlayers) || r.cap || 0;
+        html += `<div class="ri-line"><span>PLAYERS</span><b>${dentro} / ${aforo}</b></div>`;
 
         if (!gratis) {
             html += `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">${fee.toLocaleString('en-US')} $PILL</b></div>`;
@@ -8225,7 +8235,10 @@
     }
     function toggleRoomInfoLayers() { document.getElementById('riLayers').classList.toggle('open'); }
     function closeRoomInfo() { document.getElementById('roomInfoModal').style.display = 'none'; }
-    function confirmRoomInfo() { closeRoomInfo(); startOnlineGame(); }
+    // NO cierra el popup: la firma tarda (Phantom abre su ventana) y el jugador
+    // tiene que seguir viendo el precio que esta aceptando. Lo cierra
+    // startOnlineGame cuando la firma ya esta hecha, o showSystemMsg si falla.
+    function confirmRoomInfo() { startOnlineGame(); }
     // Cartel de nombre (movil): mismo marco/campo/boton que #hero-name-modal.
     let _pendingNameKind = null;
     function openNameChoice(kind) {
@@ -8269,14 +8282,6 @@
         if (!selectRoom(a)) return;
         document.getElementById('roomChoiceModal').style.display = 'none';
         const kind = _pendingPlayKind; _pendingPlayKind = null;
-        // Llegar hasta aqui significa que NO se vio el panel ROOM PRICES: movil,
-        // ventana pequeña, o PLAY sin sala elegida. Es justo el caso para el que
-        // se hizo ROOM INFO — se elige "$20" a ciegas y hay que decir lo que
-        // cuesta de verdad y en que momento de la partida se entra.
-        // Eligiendo desde el panel no sale: alli ya se ve el precio en dolares
-        // en vivo, los $PILL y el estado de cada sala, y repetirlo solo mete un
-        // click de mas entre PLAY y la firma.
-        if (kind === 'online') { openRoomInfo(); return; }
         if (kind) runPlay(kind);
     }
     function openSettings() { SoundManager.play('simpleselect'); document.getElementById('settingsModal').style.display = 'flex'; }
@@ -11658,11 +11663,13 @@
         const maxBtn = document.getElementById('skinMaxBtn');
         if (maxBtn) maxBtn.style.display = (es('skins') || es('mine')) ? 'inline-block' : 'none';
         updateSkinFoot();   // el numero y la flecha de pagina solo salen en las dos de skins
-        // Mostrar wallet cuando entras a SKINS, YOUR SKINS o CONVERT (donde hay dinero)
-        if (typeof GameWalletUI !== 'undefined') {
-            if (es('skins') || es('mine') || es('convert')) GameWalletUI.setVisible(true);
-            else GameWalletUI.setVisible(false);
-        }
+        // La wallet NO se toca al cambiar de pestaña. Antes se enseñaba en SKINS/
+        // YOUR SKINS/CONVERT y se escondia al volver a MISSIONS, que es de cuando
+        // solo salia en las pestañas con dinero. Con la politica actual —visible
+        // en todo el modo, ver GameWalletUI.setVisible— eso hacia desaparecer
+        // CONNECT con solo dar la vuelta al carrusel. Ademas se llamaba sin
+        // `mode`, asi que en arcade repintaba la wallet de verde classic.
+        // Quien la muestra es la entrada al modo, una vez.
         // Sincroniza con el servidor ANTES de pintar: la propiedad y el saldo son
         // suyos, no del navegador. Se pinta ya con lo cacheado para que la pestaña
         // no aparezca vacia, y se repinta cuando llega la respuesta.
@@ -12350,6 +12357,11 @@
         if (btn) { btn.disabled = !!busy; btn.innerText = busy ? (label || 'CONNECTING...') : 'PLAY ONLINE'; }
         if (btnLocal) { btnLocal.disabled = !!busy; }
         if (btnMain) { btnMain.disabled = !!busy; btnMain.innerText = busy ? (label || 'CONNECTING...') : 'PLAY'; }
+        // CONTINUE de ROOM INFO: el popup se queda abierto mientras se firma, asi
+        // que el estado tiene que verse AQUI. Sin esto el aviso desaparecia al
+        // pulsar y el "SIGNING..." salia en un boton tapado por el propio popup.
+        const btnCont = document.getElementById('riContinue');
+        if (btnCont) { btnCont.disabled = !!busy; btnCont.innerText = busy ? (label || 'CONNECTING...') : 'CONTINUE'; }
     }
     async function startOnlineGame() {
         if (_joinInFlight) return;
@@ -12395,6 +12407,9 @@
         let paid;
         try { paid = await preparePayment(mode, currentServer); } catch (e) { paid = null; }
         if (!paid) { _joinInFlight = false; setPlayBtnState(false); return; }   // sin saldo / sin firma → ya se avisó
+        // Firmado: ROOM INFO ya cumplio su papel. A partir de aqui el estado
+        // (CONNECTING...) vuelve al boton PLAY de siempre.
+        closeRoomInfo();
         // Fase 4 (split multiproceso): preguntar al matchmaker (/match del Director)
         // qué host sirve este combo ANTES de abrir el WS de juego. En modo mono el
         // server devuelve su PROPIO puerto y sin `path` → no se reescribe nada.
@@ -12588,6 +12603,33 @@
     // Para el editor de carteles (carteles-preview.html): pinta MATCH STARTING/
     // ENDING con el modo pedido y lo deja fijo en pantalla (sin autoborrado) para
     // poder revisar fuente/color/tamaño con calma.
+    /*
+     * ROOM INFO para el editor de carteles. El popup se rellena con datos vivos
+     * de /api/rooms, que ahi no existen: sin esto saldria vacio y no se podria
+     * colocar nada. Los numeros son de una partida tipica (classic $20 a mitad,
+     * token subido un 9%) para que se vea el caso CON aviso largo, que es el que
+     * mas alto hace el cartel — colocandolo con el corto se quedaria corto.
+     */
+    window.cartelDevShowRoomInfo = function (modo) {
+        const DUR = modo === 'arcade' ? 230000 : 900000;
+        currentGameMode = modo || 'classic';
+        currentServer = '20$';
+        _lastRoomsAt = Date.now();
+        _lastRoomsData = {
+            pillUsd: 0.00473,
+            rooms: [{
+                mode: currentGameMode, room: '20$', key: currentGameMode + '_20$', priceUsd: 20,
+                pillFee: 4636, players: 12, cap: 70, state: 'playing',
+                endsIn: Math.round(DUR * 0.5), startIn: null, restartIn: null, pickLayerIdx: 1,
+                layers: [
+                    { layerIdx: 1, key: currentGameMode + '_20$_L1', players: 12, state: 'playing', endsIn: Math.round(DUR * 0.5), durationMs: DUR, openMs: Math.round(DUR * 0.5), pillFee: 4636, locked: true, maxPlayers: modo === 'arcade' ? 25 : 35, disabled: false },
+                    { layerIdx: 2, key: currentGameMode + '_20$_L2', players: 4, state: 'playing', endsIn: Math.round(DUR * 0.85), durationMs: DUR, openMs: Math.round(DUR * 0.15), pillFee: 4700, locked: true, maxPlayers: modo === 'arcade' ? 25 : 35, disabled: false },
+                ],
+            }],
+        };
+        openRoomInfo();
+    };
+
     window.cartelDevShowCountdown = function (label, mode, n, glowPx) {
         currentGameMode = mode === 'classic' ? 'classic' : 'arcade';
         _lastCdNum = null;

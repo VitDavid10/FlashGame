@@ -186,6 +186,12 @@ const CASOS = [
 
   { g:'Menu', n:'CHOOSE HOW TO PLAY', sup:'playChoiceModal', art:0, show:'playChoiceModal' },
   { g:'Menu', n:'SELECT A ROOM',      sup:'roomChoiceModal', art:1, show:'roomChoiceModal' },
+  // Aviso previo a entrar online: lo que cuesta la sala en $PILL y en que
+  // momento de la partida entras. Las dos entradas son EL MISMO cartel
+  // (comparten clave roomInfoModal); cambia el reloj, que en arcade dura 3:50
+  // y en classic 15 min, para ver que el texto cabe en los dos.
+  { g:'Menu', n:'ROOM INFO · CLASSIC', sup:'roomInfoModal', art:1, ri:'classic' },
+  { g:'Menu', n:'ROOM INFO · ARCADE',  sup:'roomInfoModal', art:1, ri:'arcade' },
   { g:'Menu', n:'SETTINGS',           sup:'settingsModal',   art:0, show:'settingsModal' },
   { g:'Menu', n:'FEATURES',           sup:'featuresModal',   art:0, show:'featuresModal' },
 
@@ -213,7 +219,7 @@ const ETIQUETA = { title: 'TITULO', desc: 'TEXTO', actions: 'BOTONES',
 const partesDe = sup => W().cartelPartesDe(W().CARTEL_SURFACES[sup]);
 const OCULTABLES = ['sysModal','exitModal','resultOverlay','prizeModal','skillChoiceOverlay',
                     'gameDepositModal','gameWithdrawModal','walletPickerModal','playChoiceModal',
-                    'roomChoiceModal','settingsModal','featuresModal','paisModal'];
+                    'roomChoiceModal','roomInfoModal','settingsModal','featuresModal','paisModal'];
 const CLAVE_POS = 'pw_carteles_editor_pos';
 
 /*
@@ -321,6 +327,10 @@ function clonar(c) {
     return host;
   }
   if (c.sys)        w.showSystemMsg(c.sys[0], c.sys[1]);
+  // ROOM INFO se rellena con datos vivos de /api/rooms, que aqui no hay: el
+  // juego lo pinta con una partida de ejemplo (cartelDevShowRoomInfo) y a
+  // partir de ahi es un modal normal, con su caja y sus piezas.
+  else if (c.ri)    w.cartelDevShowRoomInfo(c.ri);
   else if (c.pais)  w.cartelDevShowPais(c.pais[0], c.pais[1]);
   else if (c.prize) w.cartelDevShowPrize(c.prize);
   else if (c.exit) {

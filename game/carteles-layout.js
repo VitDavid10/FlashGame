@@ -83,6 +83,13 @@ const CARTEL_SURFACES = {
             label: 'SELECT A ROOM', grupo: 'Menu',
             box: '#roomChoiceModal .pw-modal-box', title: '#roomChoiceModal .wp-title', desc: '#roomChoiceModal .pw-btn-sub', actions: '#roomChoiceModal .wp-cancel',
         },
+        roomInfoModal: {
+            label: 'ROOM INFO', grupo: 'Menu',
+            // desc = #riBody: las lineas (OPEN FOR / MATCH / PLAYERS / ENTRY /
+            // WORTH NOW) mas el aviso del precio, que se escalan juntas.
+            box: '#roomInfoModal .pw-modal-box', title: '#roomInfoModal .pw-modal-title',
+            desc: '#riBody', actions: '#roomInfoModal .ri-actions',
+        },
         settingsModal: {
             label: 'SETTINGS', grupo: 'Menu',
             box: '#settingsModal .pw-modal-box', title: '#settingsModal .pw-modal-title', desc: '#settingsModal .section-title', actions: '#settingsModal .pw-modal-cancel',

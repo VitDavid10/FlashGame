@@ -2210,6 +2210,11 @@ const httpServer = http.createServer(async (req, res) => {
                     locked: r.clients.size > 0,
                     durationMs: durMs,
                     openMs: endsIn === null ? 0 : Math.max(0, durMs - endsIn),
+                    // Tope de ESTA sala. El `cap` del combo es la suma de todas
+                    // las layers, que no es el aforo de ninguna sala real: el
+                    // popup ROOM INFO habla de una sola y ponia "0 / 50" cuando
+                    // el limite de esa partida son 25.
+                    maxPlayers: maxPlayersOf(ck),
                 });
             }
             // Layer "representativa": la que el matchmaker elegiría. Si pickLayer
