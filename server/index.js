@@ -2722,11 +2722,13 @@ const httpServer = http.createServer(async (req, res) => {
     // deploy/scripts/tools/chatbot-backend/stress_bot/.codegraph no las necesita
     // el juego (nada del cliente les hace fetch) — eran descargables sin
     // querer: deploy/pillwars.service y deploy/Caddyfile enseñaban toda la
-    // arquitectura (puertos, hosts, rutas de admin) a quien los pidiera.
+    // arquitectura (puertos, hosts, rutas de admin) a quien los pidiera. docs/
+    // es lo mismo en dibujo: el mapa de arquitectura generado con Archify.
     const relLower = path.relative(ROOT, filePath).replace(/\\/g, '/').toLowerCase();
     const top = relLower.split('/')[0];
     if (['server', '.git', 'node_modules', 'tasks', '.claude', 'memory',
-         'deploy', 'scripts', 'tools', 'chatbot-backend', 'stress_bot', '.codegraph'].includes(top)) {
+         'deploy', 'scripts', 'tools', 'chatbot-backend', 'stress_bot', '.codegraph',
+         'docs'].includes(top)) {
         res.writeHead(403); res.end('Forbidden'); return;
     }
     // Los .md de la raíz (ROADMAP, BLOCKCHAIN-PLAN, DESPLIEGUE-VPS...) son notas
