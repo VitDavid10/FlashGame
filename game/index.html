@@ -3923,8 +3923,8 @@
                      posicion del contenido sin mover el cartel entero. -->
                 <div class="cartel-inner" id="oracleInner">
                     <div class="menu-side-head"><span>ROOM PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
-                    <div class="oracle-desc">The on-chain oracle re-prices every room every 5 minutes, so entry cost in $PILL adapts to the live token price.</div>
-                    <div class="oracle-rate"><span class="or-amt" id="oracleRateAmt">10,000</span> <span class="or-unit">$PILL = $1</span></div>
+                    <div class="oracle-desc">The on-chain oracle re-prices every room every minute, so entry cost in $PILL adapts to the live token price.</div>
+                    <div class="oracle-rate"><span class="or-unit">1 $PILL =</span> <span class="or-amt" id="oracleRateAmt">$0.0045</span></div>
                     <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
                         <span class="oracle-layers-hint">view a specific room layer (you can't choose which one you'll be assigned to)</span>
                     </div>
@@ -11207,7 +11207,23 @@
 
     let gamePillPerDollar = null;
     let oracleNextRefresh = 0;
-    const ORACLE_EVERY_MS = 5 * 60 * 1000;
+    const ORACLE_EVERY_MS = 60 * 1000;
+    /*
+     * Precio de 1 $PILL en dolares, con los decimales que hagan falta.
+     *
+     * toFixed(4) fijo no vale: una moneda de 50k-1M de capitalizacion puede
+     * cotizar a $0.00005 y saldria "$0.0001" (o directamente "$0.0000"), o sea
+     * un precio falso. Y toPrecision(4) tampoco, porque por debajo de 0.000001
+     * se pasa a notacion cientifica ("5.000e-7") y eso no se le ensena a nadie.
+     * Aqui se calculan los decimales para dejar 4 cifras significativas y se
+     * podan los ceros sobrantes del final.
+     */
+    function fmtPillUsd(p) {
+        if (!(p > 0) || !isFinite(p)) return '$—';
+        if (p >= 1) return '$' + p.toFixed(2);
+        const dec = Math.min(12, Math.max(2, 3 - Math.floor(Math.log10(p))));
+        return '$' + p.toFixed(dec).replace(/(\.\d*?[1-9])0+$/, '$1');
+    }
     async function getPillPerDollar() {
         if (gamePillPerDollar != null) return gamePillPerDollar;
         try { gamePillPerDollar = (await (await fetch('/api/fees')).json()).pillPerDollar || 10000; } catch (e) { gamePillPerDollar = 10000; }
@@ -11258,7 +11274,12 @@
                 _lastPillPerDollar = newRate;
                 gamePillPerDollar = newRate;
                 const rateEl = document.getElementById('oracleRateAmt');
-                if (rateEl) rateEl.textContent = Number(gamePillPerDollar).toLocaleString('en-US');
+                // Se ensena el precio en DOLARES por PILL ("1 $PILL = $0.004527"),
+                // que es como se mira el precio de un token, en vez de "223 $PILL
+                // = $1". El valor exacto lo manda el servidor (pillUsd); 1/rate
+                // seria el mismo numero pero ya redondeado dos veces.
+                const usd = Number(data.pillUsd) > 0 ? Number(data.pillUsd) : (1 / newRate);
+                if (rateEl) rateEl.textContent = fmtPillUsd(usd);
             }
             const cont = document.getElementById('oracleRows'); if (!cont) return;
             // Todas las salas del modo, FREE incluida (es seleccionable como las de pago).

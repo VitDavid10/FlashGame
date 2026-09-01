@@ -155,7 +155,7 @@ let layoutEdit = (typeof _glob.layoutEdit === 'boolean') ? _glob.layoutEdit : fa
 // RECALCULA SOLO al arrancar (ver computeRanking mas abajo) y hay que saber con
 // que criterio hacerlo; si no, cada reinicio lo dejaba en el de por defecto.
 let rankingIncludeTesters = (typeof _glob.rankingIncludeTesters === 'boolean') ? _glob.rankingIncludeTesters : false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, menuTitulo, landingLayout, cartelesLayout, pillPerDollar: _glob.pillPerDollar }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, menuTitulo, landingLayout, cartelesLayout, pillPerDollar: _glob.pillPerDollar, pillUsd: _glob.pillUsd }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -464,29 +464,39 @@ function lobbyMsOf(key) { return /^arcade_/.test(key) ? arcadeLobbyMs : 0; }
 // inventado. Solo la primera vez de todas se usa PILL_PER_DOLLAR.
 const PILL_PER_DOLLAR_BASE = parseInt(process.env.PILL_PER_DOLLAR, 10) || 10000;
 let PILL_PER_DOLLAR = (_glob.pillPerDollar > 0) ? _glob.pillPerDollar : PILL_PER_DOLLAR_BASE;
-const ORACLE_REFRESH_MS = 5 * 60 * 1000;
+// 1 min: una altcoin de 50k-1M de capitalización se mueve mucho más que SOL, y
+// re-precificar cada 5 min dejaba las salas con un precio viejo. DexScreener
+// aguanta este ritmo de sobra (ver abajo); CoinGecko no lo habría aguantado.
+const ORACLE_REFRESH_MS = Math.max(15000, parseInt(process.env.ORACLE_REFRESH_MS, 10) || 60 * 1000);
 /*
  * El oráculo sigue un precio REAL, sin nada aleatorio: el de PUMP (el token de
  * pump.fun), tratado como si fuera el de $PILL.
  *
- * PUMP y no SOL porque $PILL se creará en pump.fun: mismo tipo de token y,
- * sobre todo, mismo orden de magnitud (PUMP ~$0.0045 ⇒ ~223 PILL por dólar, o
- * sea salas de 1.100 a 11.000 PILL). Con SOL el rate se iba a ~9 PILL/$ y las
- * cifras no se parecían en nada a lo que se verá el día de mañana.
+ * FUENTE: DexScreener, por el mint del token. No CoinGecko, por dos razones que
+ * importan justo para el caso real:
+ *   1. CoinGecko NO lista tokens de 50k-1M de capitalización. El día que salga
+ *      $PILL no estaría ahí, así que el ensayo no valdría de nada. DexScreener
+ *      indexa cualquier par de un DEX en cuanto existe.
+ *   2. Su API pública no está pensada para una llamada por minuto (~43.000 al
+ *      mes); DexScreener permite 300 por minuto en este endpoint.
+ * Es además la misma fuente que ya usa la landing para el precio del token.
  *
- * $PILL no cotiza todavía, así que esto es el mecanismo DEFINITIVO rodándose
- * con un precio de verdad — que se mueve solo, a veces se cae y a veces pega
- * saltos, que es justo lo que hay que saber manejar. El día que $PILL cotice,
- * es cambiar ORACLE_COIN: el bloqueo de precio por sala, el reparto por IPC y
- * el redondeo de la tarifa ya estarán probados.
+ * PUMP y no SOL porque $PILL se creará en pump.fun: mismo tipo de token y mismo
+ * orden de magnitud (~$0.0045 ⇒ ~223 PILL por dólar, salas de 1.100 a 11.000
+ * PILL). Con SOL el rate se iba a ~9 PILL/$, que no se parecía a nada real.
+ *
+ * El día que $PILL cotice es cambiar ORACLE_TOKEN por su mint y ya: el bloqueo
+ * de precio por sala, el reparto por IPC, el redondeo de la tarifa y el aguante
+ * ante un feed caído ya estarán rodados.
  *
  * ORACLE_DIVISOR queda por si hiciera falta reescalar (1 = precio tal cual).
  */
-const ORACLE_COIN = process.env.ORACLE_COIN || 'pump-fun';
+const ORACLE_TOKEN = process.env.ORACLE_TOKEN || 'pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn';
 const ORACLE_DIVISOR = Number(process.env.ORACLE_DIVISOR) || 1;
 const ORACLE_URL = process.env.ORACLE_URL
-    || 'https://api.coingecko.com/api/v3/simple/price?ids=' + encodeURIComponent(ORACLE_COIN) + '&vs_currencies=usd';
+    || 'https://api.dexscreener.com/latest/dex/tokens/' + encodeURIComponent(ORACLE_TOKEN);
 let _oracleUltimoOk = 0;   // cuándo se logró leer el precio por última vez
+let _oraclePillUsd = (_glob.pillUsd > 0) ? _glob.pillUsd : 0;   // $ por 1 PILL (para la UI)
 // Cuándo toca el PRÓXIMO refresco, en tiempo absoluto. Se manda al cliente para
 // que su cuenta atrás sea la de verdad: antes el cliente se ponía 5:00 al cargar
 // la página, así que un F5 la reiniciaba y podía decir "faltan 4:59" cuando el
@@ -501,10 +511,25 @@ async function precioReferencia() {
         const r = await fetch(ORACLE_URL, { signal: AbortSignal.timeout(8000) });
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const j = await r.json();
-        const p = j && j[ORACLE_COIN] && Number(j[ORACLE_COIN].usd);
-        return (p > 0 && isFinite(p)) ? p : null;
+        const pares = Array.isArray(j && j.pairs) ? j.pairs : [];
+        if (!pares.length) throw new Error('sin pares para ' + ORACLE_TOKEN);
+        // Se coge el par con MÁS LIQUIDEZ, no el primero que devuelva la API.
+        // Un token suele tener decenas de pares y los de poca liquidez son
+        // precisamente los que se mueven con cuatro duros: tomar uno de esos
+        // sería regalarle a cualquiera la posibilidad de mover el precio de las
+        // salas. Es el riesgo de "oráculo manipulable" del BLOCKCHAIN-PLAN.
+        let mejor = null;
+        for (const p of pares) {
+            const usd = Number(p && p.priceUsd), liq = Number(p && p.liquidity && p.liquidity.usd) || 0;
+            if (!(usd > 0) || !isFinite(usd)) continue;
+            if (!mejor || liq > mejor.liq) mejor = { usd, liq, dex: p.dexId, par: (p.baseToken && p.baseToken.symbol) + '/' + (p.quoteToken && p.quoteToken.symbol) };
+        }
+        if (!mejor) throw new Error('ningún par con precio válido');
+        _oracleParInfo = `${mejor.par} en ${mejor.dex} (liquidez $${Math.round(mejor.liq).toLocaleString('es-ES')})`;
+        return mejor.usd;
     } catch (e) { log(`Oráculo: no se pudo leer el precio (${e.message})`); return null; }
 }
+let _oracleParInfo = '';   // de qué par salió el último precio (para el log)
 
 // PILL por $1, redondeado a 4 cifras significativas. NO a múltiplos de 1000
 // como antes: con el precio de SOL/1000 el rate ronda las unidades, y redondear
@@ -527,13 +552,16 @@ async function tickOracle() {
         const rate = redondeaRate(1 / precioPill);            // PILL por $1
         if (rate) {
             PILL_PER_DOLLAR = rate;
+            _oraclePillUsd = precioPill;
             _oracleUltimoOk = Date.now();
             // Se persiste para que un reinicio no vuelva al valor de fábrica: sin
             // esto, reiniciar con el feed caído dejaba las salas a un precio
             // inventado hasta que el feed volviera.
-            if (_glob.pillPerDollar !== rate) { _glob.pillPerDollar = rate; saveGlobal(); }
+            if (_glob.pillPerDollar !== rate) {
+                _glob.pillPerDollar = rate; _glob.pillUsd = precioPill; saveGlobal();
+            }
             const div = ORACLE_DIVISOR !== 1 ? ` / ${ORACLE_DIVISOR}` : '';
-            log(`Oráculo: ${ORACLE_COIN} $${ref}${div} ⇒ PILL $${precioPill.toPrecision(4)} ⇒ $1 = ${PILL_PER_DOLLAR} PILL`);
+            log(`Oráculo: 1 PILL = $${precioPill.toPrecision(4)}${div} ⇒ $1 = ${PILL_PER_DOLLAR} PILL  [${_oracleParInfo}]`);
         }
     }
     // Fase 4: los hosts cachean el rate (lo usan para bloquear el precio de sala
@@ -2058,7 +2086,7 @@ const httpServer = http.createServer(async (req, res) => {
                         roomName: price, layers: [],
                     });
                 }
-                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
+                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, pillUsd: _oraclePillUsd, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
                     menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
@@ -2112,7 +2140,7 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, pillUsd: _oraclePillUsd, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
             menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }));
         return;
     }
