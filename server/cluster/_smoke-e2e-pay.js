@@ -4,9 +4,13 @@
 // Director + 2 hosts. Dos jugadores (wallets con firma nacl real) pagan la
 // entrada de classic_5$ (50k PILL cada uno) en el HOST, la partida arranca
 // (forceStart vía admin del host), spawnean y juegan (snapshots reales), y
-// salen VIVOS en plena partida → cashout classic con exit fee 20% (0 kills):
-// +40k al warbank de cada uno. Todo el dinero cruza por IPC host→director.
-// Cuadre exacto: 1M − 50k (entrada) + 40k (cashout) = 990k por cabeza.
+// salen VIVOS en plena partida → cashout classic con exit fee 50% (0 kills):
+// +25k al warbank de cada uno. Todo el dinero cruza por IPC host→director.
+// Cuadre exacto: 1M − 50k (entrada) + 25k (cashout) = 975k por cabeza.
+//
+// (La comisión era del 20% cuando se escribió este test; el commit 89ea54d la
+// subió a 50/20/10 y estas cifras se quedaron sin actualizar, así que el test
+// llevaba fallando desde entonces por una expectativa vieja, no por un bug.)
 //
 // (El caso "morir con carry → bote" está cubierto unitariamente en _test-econ;
 // aquí se verifica el CANAL: los eventos económicos de una partida real servida
@@ -26,7 +30,7 @@ const DIR_PORT = 8095;
 const RATE = 10000;
 const FEE = 5 * RATE;
 const START = 1000000;
-const CASHOUT_NET = FEE - Math.floor(FEE * 20 / 100);   // exit fee 20% con 0 kills
+const CASHOUT_NET = FEE - Math.floor(FEE * 50 / 100);   // exit fee 50% con 0 kills (ver classicExitFeePct)
 
 function makeWallet() {
     const kp = nacl.sign.keyPair();

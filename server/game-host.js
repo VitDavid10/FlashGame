@@ -41,7 +41,7 @@ function createGameHost(deps) {
         rulesOf, minRealOf, targetPopOf, maxPlayersOf, lobbyMsOf,
         log, onRulesDirty,
         CATALOG_MODES, PRICES, LAYERS_PER_COMBO, ownsCombo,
-        MATCH_MS,
+        MATCH_MS, CLASSIC_MATCH_MS,
         resumeTokens,
         SPAWN_IMMUNE_MS,
         director, RESUME_GRACE_MS, sendEcon, entryFeePill,
@@ -411,7 +411,10 @@ function createGameHost(deps) {
             t: type || 'welcome', id: playerId, token,
             mapSize: room.sim.mapSize, mode: room.mode, roomName: room.roomName,
             state: room.state, count: room.clients.size, needed: minRealOf(room.comboKey),
-            duration: MATCH_MS,
+            // Duracion de ESTE modo: el cliente pinta el reloj con ella, y classic
+            // dura mas que arcade. Mandando siempre MATCH_MS el contador de classic
+            // habria arrancado en 3:50 y se habria quedado clavado en 0:00 el resto.
+            duration: room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS,
             tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
             startIn: room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
             restartEnMs: room.restartAt ? Math.max(0, room.restartAt - Date.now()) : null,
@@ -487,7 +490,11 @@ function createGameHost(deps) {
         room.state = 'playing';
         room.startAt = null;
         room.lastTick = Date.now();
-        if (room.mode !== 'classic') room.endsAt = Date.now() + MATCH_MS;
+        // Classic tambien tiene final de partida (mas largo). No es un cambio de
+        // diseño porque si: es lo unico que hace que todos jueguen al mismo
+        // precio de entrada, porque el precio se congela por sala y refrescarlo
+        // con gente dentro descuadra el intercambio de carry al matar.
+        room.endsAt = Date.now() + (room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS);
         // NO spawneamos aquí: cada jugador se spawnea cuando su cliente manda 'ready'
         // (al terminar su pantalla de carga). Así la inmunidad empieza justo cuando entra
         // de verdad, dure lo que dure su carga, y no está expuesto mientras carga.

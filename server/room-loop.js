@@ -110,6 +110,38 @@ function tickRoomOnce(room, now, ctx) {
         let payoutMsg = null;
         if (room.mode !== 'classic') {
             for (const cli of room.clients.values()) { if (cli.carry > 0) { ctx.addToPot(room, cli.carry); cli.carry = 0; } }
+        } else {
+            /*
+             * CLASSIC: al acabar el tiempo, el que sigue VIVO cobra su carry como
+             * si hubiera hecho cashout — misma comisión por kills que si se
+             * hubiera salido por su pie.
+             *
+             * La comisión se aplica a propósito. Sin ella, aguantar hasta el
+             * final pagaría el 100% mientras que salirse pagaría entre un 10% y
+             * un 50%, así que a nadie le compensaría volver a hacer cashout:
+             * lo óptimo sería matar a uno y esconderse hasta que sonara el
+             * timer. Con la misma comisión, terminar la partida equivale a
+             * cobrar en ese instante y la decisión de cuándo salir sigue
+             * significando lo mismo que hasta ahora.
+             *
+             * Se pone el carry a 0 tras pagar: restartRoom() devuelve el carry
+             * que quede (partida anulada) y si no, se cobraría dos veces.
+             */
+            for (const [pid, cli] of room.clients) {
+                const pj = room.sim.players.get(pid);
+                if (!pj || !pj.alive || !(cli.carry > 0)) continue;
+                const bruto = cli.carry;
+                const fee = Math.floor(bruto * ctx.classicExitFeePct(pj.killStreak | 0) / 100);
+                const neto = bruto - fee;
+                cli.carry = 0;
+                if (neto > 0 && cli.payWallet) ctx.econ.credit(cli.payWallet, neto);
+                try {
+                    if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify({
+                        t: 'prize', reason: 'cashout', amount: neto, carry: bruto,
+                        kills: pj.killStreak | 0, feePct: ctx.classicExitFeePct(pj.killStreak | 0), fee,
+                    }));
+                } catch (e) {}
+            }
         }
         if (room.mode !== 'classic' && (room.pot || 0) > 0) {
             const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];

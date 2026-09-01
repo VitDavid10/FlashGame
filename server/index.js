@@ -71,6 +71,23 @@ const MIN_PLAYERS = parseInt(process.env.MIN_PLAYERS, 10) || 5;    // reales par
 // solo tiene jugadores reales. Editable por sala desde el panel si se quieren bots.
 const TARGET_POP = process.env.TARGET_POP != null ? parseInt(process.env.TARGET_POP, 10) : 0;
 const MATCH_MS = parseInt(process.env.MATCH_MS, 10) || (3 * 60 * 1000 + 50 * 1000);
+/*
+ * Duración de una partida de CLASSIC. Antes classic no acababa nunca.
+ *
+ * El motivo no es de diseño de juego, es económico: el precio de entrada se
+ * congela cuando entra el primero a la sala, y sin final de partida esa sala
+ * podía pasarse horas con el precio de por la mañana. Con el token moviéndose,
+ * la barrera de entrada dejaba de ser la misma para todos.
+ *
+ * No vale con refrescar el precio a media partida: en classic te llevas el
+ * carry del que matas, así que si el de al lado entró a otro precio, matarle
+ * renta distinto que matarte a ti. El intercambio deja de ser simétrico. La
+ * única forma de que todos jueguen al mismo precio es que la partida termine y
+ * empiece de nuevo para todos a la vez.
+ */
+// Suelo de 10 s (no de minutos) para poder probar el final de partida sin
+// esperar cuartos de hora. Nadie pondría 10 s en producción por accidente.
+const CLASSIC_MATCH_MS = Math.max(10000, parseInt(process.env.CLASSIC_MATCH_MS, 10) || 15 * 60 * 1000);
 const GLOBAL_FILE = path.join(__dirname, 'globalsettings.json');
 let _glob = loadJson(GLOBAL_FILE, {});
 let arcadeRestartMs = Math.max(1000, (_glob.arcadeRestartMs | 0) || 10000);
@@ -462,8 +479,23 @@ function lobbyMsOf(key) { return /^arcade_/.test(key) ? arcadeLobbyMs : 0; }
 // Arranca con el ÚLTIMO precio bueno que se guardó (globalsettings.json), no con
 // el de fábrica: así un reinicio con el feed caído no pone las salas a un precio
 // inventado. Solo la primera vez de todas se usa PILL_PER_DOLLAR.
-const PILL_PER_DOLLAR_BASE = parseInt(process.env.PILL_PER_DOLLAR, 10) || 10000;
-let PILL_PER_DOLLAR = (_glob.pillPerDollar > 0) ? _glob.pillPerDollar : PILL_PER_DOLLAR_BASE;
+/*
+ * PILL_PER_DOLLAR por entorno = PRECIO FIJO y oráculo APAGADO.
+ *
+ * Hacía falta por dos motivos. El primero, que sin esto los tests con dinero
+ * eran imposibles: _smoke-e2e-pay fija el rate a 10.000 y firma un pago de
+ * 50.000 PILL, pero el oráculo lo pisaba con el precio real de PUMP al
+ * arrancar y la firma dejaba de cuadrar ("firma de pago inválida"). El segundo,
+ * que si un día el feed hace algo raro, esto es el interruptor para clavar el
+ * precio sin desplegar código.
+ *
+ * Sin esta variable manda el oráculo, arrancando con el último precio bueno
+ * guardado (globalsettings.json) y no con el de fábrica: así un reinicio con el
+ * feed caído no pone las salas a un precio inventado.
+ */
+const PILL_FIJO = parseInt(process.env.PILL_PER_DOLLAR, 10) || 0;
+const PILL_PER_DOLLAR_BASE = PILL_FIJO || 10000;
+let PILL_PER_DOLLAR = PILL_FIJO || ((_glob.pillPerDollar > 0) ? _glob.pillPerDollar : PILL_PER_DOLLAR_BASE);
 // 1 min: una altcoin de 50k-1M de capitalización se mueve mucho más que SOL, y
 // re-precificar cada 5 min dejaba las salas con un precio viejo. DexScreener
 // aguanta este ritmo de sobra (ver abajo); CoinGecko no lo habría aguantado.
@@ -491,8 +523,6 @@ const ORACLE_REFRESH_MS = Math.max(15000, parseInt(process.env.ORACLE_REFRESH_MS
  *
  * ORACLE_DIVISOR queda por si hiciera falta reescalar (1 = precio tal cual).
  */
-// Caducidad del precio congelado en CLASSIC (ver lockPriceIfEmpty). 0 = nunca.
-const CLASSIC_RATE_TTL_MS = Math.max(0, parseInt(process.env.CLASSIC_RATE_TTL_MS, 10) || 15 * 60 * 1000);
 const ORACLE_TOKEN = process.env.ORACLE_TOKEN || 'pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn';
 const ORACLE_DIVISOR = Number(process.env.ORACLE_DIVISOR) || 1;
 const ORACLE_URL = process.env.ORACLE_URL
@@ -574,11 +604,13 @@ async function tickOracle() {
 // En rol 'host' el oráculo NO se mueve por su cuenta: el rate llega por IPC
 // (notify 'oracleRate') desde el Director. Dos relojes independientes harían
 // que el fee firmado por el cliente no cuadrara con el del cobro.
-if (PW_ROLE !== 'host') {
-    // Una lectura AL ARRANCAR: sin esto el servidor pasaba los primeros 5 min
-    // con el valor de fábrica (10000) en vez de con el precio real.
+if (PW_ROLE !== 'host' && !PILL_FIJO) {
+    // Una lectura AL ARRANCAR: sin esto el servidor pasaba el primer minuto
+    // con el valor de fábrica en vez de con el precio real.
     tickOracle().catch(() => {});
     setInterval(() => { tickOracle().catch(() => {}); }, ORACLE_REFRESH_MS);
+} else if (PILL_FIJO) {
+    log(`Oráculo APAGADO por PILL_PER_DOLLAR=${PILL_FIJO}: precio fijo, no se consulta el feed.`);
 }
 // Quema del $PILL gastado en skins. Solo en el Director: los hosts no tocan
 // economia, y dos procesos vaciando la misma cola quemarian dos veces.
@@ -876,31 +908,21 @@ const directorLocal = {
     // el oraculo cambiaba en ese hueco cada uno congelaba un precio distinto y
     // acababan pagando diferente en la MISMA sala. La ventana son milisegundos,
     // pero pasar el oraculo de 5 min a 1 min la hizo cinco veces mas probable.
+    // El precio de una sala se congela cuando entra el PRIMERO y no se vuelve a
+    // tocar hasta que la sala se vacía: así todos los de dentro han pagado lo
+    // mismo, aunque el oráculo se haya movido entre medias. Refrescarlo con
+    // gente dentro NO es una opción — en classic te llevas el carry del que
+    // matas, así que si cada uno entró a un precio, matar a uno renta distinto
+    // que a otro. Por eso classic tiene ahora final de partida
+    // (CLASSIC_MATCH_MS): es lo que hace que todos vuelvan a empezar a la vez
+    // al precio nuevo.
+    //
+    // _reserved cuenta a los que están EN MITAD del cobro (hay un await entre
+    // congelar el precio y registrarlos en clients). Sin mirarlo, dos jugadores
+    // que entraran a la vez a una sala vacía veían los dos clients.size===0, y
+    // si el oráculo cambiaba en ese hueco cada uno congelaba un precio distinto.
     lockPriceIfEmpty(room) {
-        if (room.clients.size === 0 && !(room._reserved > 0)) {
-            room.pillRate = PILL_PER_DOLLAR;
-            room.pillRateAt = Date.now();
-            return;
-        }
-        // CLASSIC: una partida no termina nunca, así que una sala con gente puede
-        // pasarse horas sin vaciarse y quedarse con el precio de esta mañana. Si
-        // el token se mueve un 30% entre medias, la barrera de entrada deja de
-        // ser la misma para todos. Pasado CLASSIC_RATE_TTL_MS se vuelve a
-        // congelar al precio actual.
-        //
-        // Solo en classic: en arcade el bote es COMÚN, así que si unos pagaron
-        // 1.000 y otros 1.400 el reparto se desvirtúa — y allí no hace falta,
-        // porque cada partida acaba, la sala se vacía y el precio se refresca
-        // solo. En classic el carry es individual (lo tuyo es lo que pagaste),
-        // así que refrescar no descuadra ninguna cuenta.
-        if (room.mode === 'classic' && CLASSIC_RATE_TTL_MS > 0
-            && room.pillRateAt && (Date.now() - room.pillRateAt) >= CLASSIC_RATE_TTL_MS
-            && room.pillRate !== PILL_PER_DOLLAR) {
-            const antes = room.pillRate;
-            room.pillRate = PILL_PER_DOLLAR;
-            room.pillRateAt = Date.now();
-            log(`Precio de ${room.key} refrescado por antigüedad: ${antes} → ${PILL_PER_DOLLAR} PILL/$`);
-        }
+        if (room.clients.size === 0 && !(room._reserved > 0)) room.pillRate = PILL_PER_DOLLAR;
     },
 
     // Autoriza y COBRA la entrada. Salas gratis o testers pasan sin cobro. Salas de
@@ -1035,31 +1057,21 @@ const directorProxy = hostIpc && {
     // el oraculo cambiaba en ese hueco cada uno congelaba un precio distinto y
     // acababan pagando diferente en la MISMA sala. La ventana son milisegundos,
     // pero pasar el oraculo de 5 min a 1 min la hizo cinco veces mas probable.
+    // El precio de una sala se congela cuando entra el PRIMERO y no se vuelve a
+    // tocar hasta que la sala se vacía: así todos los de dentro han pagado lo
+    // mismo, aunque el oráculo se haya movido entre medias. Refrescarlo con
+    // gente dentro NO es una opción — en classic te llevas el carry del que
+    // matas, así que si cada uno entró a un precio, matar a uno renta distinto
+    // que a otro. Por eso classic tiene ahora final de partida
+    // (CLASSIC_MATCH_MS): es lo que hace que todos vuelvan a empezar a la vez
+    // al precio nuevo.
+    //
+    // _reserved cuenta a los que están EN MITAD del cobro (hay un await entre
+    // congelar el precio y registrarlos en clients). Sin mirarlo, dos jugadores
+    // que entraran a la vez a una sala vacía veían los dos clients.size===0, y
+    // si el oráculo cambiaba en ese hueco cada uno congelaba un precio distinto.
     lockPriceIfEmpty(room) {
-        if (room.clients.size === 0 && !(room._reserved > 0)) {
-            room.pillRate = PILL_PER_DOLLAR;
-            room.pillRateAt = Date.now();
-            return;
-        }
-        // CLASSIC: una partida no termina nunca, así que una sala con gente puede
-        // pasarse horas sin vaciarse y quedarse con el precio de esta mañana. Si
-        // el token se mueve un 30% entre medias, la barrera de entrada deja de
-        // ser la misma para todos. Pasado CLASSIC_RATE_TTL_MS se vuelve a
-        // congelar al precio actual.
-        //
-        // Solo en classic: en arcade el bote es COMÚN, así que si unos pagaron
-        // 1.000 y otros 1.400 el reparto se desvirtúa — y allí no hace falta,
-        // porque cada partida acaba, la sala se vacía y el precio se refresca
-        // solo. En classic el carry es individual (lo tuyo es lo que pagaste),
-        // así que refrescar no descuadra ninguna cuenta.
-        if (room.mode === 'classic' && CLASSIC_RATE_TTL_MS > 0
-            && room.pillRateAt && (Date.now() - room.pillRateAt) >= CLASSIC_RATE_TTL_MS
-            && room.pillRate !== PILL_PER_DOLLAR) {
-            const antes = room.pillRate;
-            room.pillRate = PILL_PER_DOLLAR;
-            room.pillRateAt = Date.now();
-            log(`Precio de ${room.key} refrescado por antigüedad: ${antes} → ${PILL_PER_DOLLAR} PILL/$`);
-        }
+        if (room.clients.size === 0 && !(room._reserved > 0)) room.pillRate = PILL_PER_DOLLAR;
     },
     async authorizeEntry(payload) {
         try { return await hostIpc.request('authorizeEntry', payload); }
@@ -1133,7 +1145,7 @@ const gameHost = createGameHost({
     log,
     onRulesDirty: () => { rulesDirty = true; },
     CATALOG_MODES, PRICES, LAYERS_PER_COMBO, ownsCombo,
-    MATCH_MS,
+    MATCH_MS, CLASSIC_MATCH_MS,
     resumeTokens,
     SPAWN_IMMUNE_MS,
     director, RESUME_GRACE_MS, sendEcon, entryFeePill,
@@ -3102,7 +3114,7 @@ const tickCtx = {
     // funciones puras
     log, logAdmin, broadcast, restartRoom, startMatch, tickGradualBots,
     buildSnapshotFor, aoiBoxFor,
-    addToPot, sendEcon, entryFeePill, minRealOf,
+    addToPot, sendEcon, entryFeePill, minRealOf, classicExitFeePct,
     deleteRoom: (key) => rooms.delete(key),
     // constantes
     DEAD_REMOVE_MS, EMPTY_ROOM_TTL, EMPTY_RESET_MS, ARCADE_KEEP_MIN, ARCADE_SHORTEN_MS,

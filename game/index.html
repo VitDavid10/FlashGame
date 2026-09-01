@@ -3725,7 +3725,8 @@
                         <br>
                         <span style="color:var(--primary);">KILLS 2+:</span> 0% PENALTY FEE (SAFE EXIT).
                         <br><br>
-                        <span style="color:#ffd700; font-weight:bold;">ANTI-COMBAT LOG:</span> STAND STILL <span style="color:#fff;">5s</span> TO LOGOUT SAFELY. NO TIMER.
+                        <span style="color:#ffd700; font-weight:bold;">ANTI-COMBAT LOG:</span> STAND STILL <span style="color:#fff;">5s</span> TO LOGOUT SAFELY.
+                        <br><span style="color:#ffd700; font-weight:bold;">MATCH ENDS IN 15 MIN:</span> IF YOU'RE STILL ALIVE YOU CASH OUT AUTOMATICALLY (SAME FEE AS A MANUAL EXIT).
                         <div class="card-lines-bottom" style="border-color:#00ffaa;"></div>
                     </div>
                 </div>
@@ -3783,7 +3784,7 @@
                     <div class="mode-sub">STANDARD MODE</div>
                     <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img mt-placa" src="img/mode-title/CLASSIC-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                     <div class="mode-desc">
-                        NO TIMER. <span class="highlight">HUGE MAP (x2)</span>.<br>
+                        <span class="highlight">15 MIN</span> MATCHES. <span class="highlight">HUGE MAP (x2)</span>.<br>
                         ONLY <span class="highlight">SHOOT</span> SKILL (KEY 1).<br>
                         <span style="color:#00ffaa;">PURE CELL-EATING GAMES EXPERIENCE.</span>
                     </div>
@@ -7871,7 +7872,7 @@
             document.getElementById('panelArcade').classList.add('hidden');
             setSelectedModeTitleArt('classic', 'PILLWARS CLASSIC');
             els.selectedModeTitle.style.color = "#00ffaa";
-            if (blurb) blurb.innerHTML = 'PURE CELL-EATING — NO TIMER, 5 KILLS = MAX PROFIT.';
+            if (blurb) blurb.innerHTML = 'PURE CELL-EATING — 15 MIN MATCHES, 5 KILLS = MAX PROFIT.';
             els.loginOverlay.classList.remove('bg-arcade');
             els.loginOverlay.classList.add('bg-classic');
             document.getElementById('arcadeGuidePanel').style.display = 'none';
@@ -11344,17 +11345,31 @@
                 // congelado y, si ademas el precio vivo se ha separado un 1% o mas,
                 // cuanto y hacia donde — asi se ve de un vistazo que no cuadre con el
                 // numero grande de arriba no es un error.
+                // El porcentaje va SIEMPRE desde el punto de vista del jugador:
+                // cuanto mas barata o mas cara sale ESTA sala comparada con lo
+                // que costaria entrar ahora mismo. Es decir (congelado - vivo).
+                //
+                // El primer intento lo hacia al reves (vivo - congelado) y salia
+                // enganoso: si el token se abarataba hacian falta MAS PILL por 5$,
+                // el precio vivo subia y aparecia un "▲5%" verde-esperanza en una
+                // sala que en realidad estaba BARATA. La flecha decia una cosa y
+                // significaba la contraria. Ahora: −5% = te ahorras un 5%.
                 let lock = '';
                 if (r.locked) {
                     const live = Number(r.pillFeeLive) || 0, fee0 = Number(r.pillFee) || 0;
-                    const dif = (live > 0 && fee0 > 0) ? (live - fee0) / fee0 * 100 : 0;
-                    const tit = live > 0
-                        ? 'Price locked when this room opened. Live oracle right now: ' + live.toLocaleString('en-US') + ' $PILL'
-                        : 'Price locked when this room opened';
+                    const dif = (live > 0 && fee0 > 0) ? (fee0 - live) / live * 100 : 0;
+                    let tit = 'Price locked when this match started.';
+                    if (live > 0) {
+                        tit += ' A new room right now would cost ' + live.toLocaleString('en-US') + ' $PILL';
+                        if (Math.abs(dif) >= 1) tit += ' — this one is ' + Math.abs(dif).toFixed(0) + '% ' + (dif < 0 ? 'cheaper' : 'pricier');
+                        tit += '.';
+                    }
                     lock = ' <span title="' + tit + '" style="color:#888">🔒</span>';
                     if (Math.abs(dif) >= 1) {
-                        lock += ' <span title="' + tit + '" style="color:#6a7a72;font-size:.82em">'
-                             + (dif > 0 ? '▲' : '▼') + Math.abs(dif).toFixed(0) + '%</span>';
+                        // Verde = te sale mas barata que abrir una nueva; ambar = mas cara.
+                        const col = dif < 0 ? '#00c97a' : '#e0a63a';
+                        lock += ' <span title="' + tit + '" style="color:' + col + ';font-size:.82em">'
+                             + (dif < 0 ? '−' : '+') + Math.abs(dif).toFixed(0) + '%</span>';
                     }
                 }
                 const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL' + lock;
