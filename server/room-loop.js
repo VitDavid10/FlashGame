@@ -14,7 +14,7 @@
  *   - módulos: warbank, dailyquests, proto
  *   - funciones puras: log, logAdmin, broadcast, restartRoom, startMatch,
  *     tickGradualBots, buildSnapshotFor, aoiBoxFor, pstatOf, statsOf,
- *     questsOf, addToPot, sendEcon, entryFeePill, flushPeakMass, minRealOf
+ *     questsOf, addToPot, sendEcon, flushPeakMass, minRealOf
  *   - estado mutable: resumeTokens (Map), flags ({stats, players, quests})
  *   - getters dinámicos: aoiEnabled, snapshotEvery, arcadeRestartMs
  *   - constantes: DEAD_REMOVE_MS, EMPTY_ROOM_TTL, WS_BACKPRESSURE_MAX
@@ -198,10 +198,14 @@ function tickRoomOnce(room, now, ctx) {
             ctx.econ.playerDeath(room.comboKey, dTest_, pj && pj.name);
             ctx.econ.peakMassFlush(room, ev.playerId, room.clients.get(ev.playerId));
             // ARCADE: cada muerte llena el bote (entrada del muerto va al bote).
+            // Solo cuenta el carry REAL del muerto. Antes, si el muerto no era un
+            // cliente con carry (= un bot), se añadía una entrada virtual al bote:
+            // dinero creado de la nada al rate de la sala. Con el rate atado al
+            // precio del token, tumbar el precio multiplicaba lo impreso por bot.
+            // Los bots no pagan entrada, así que no aportan bote.
             if (room.mode !== 'classic') {
                 const dCli = room.clients.get(ev.playerId);
                 if (dCli && dCli.carry > 0) { ctx.addToPot(room, dCli.carry); dCli.carry = 0; }
-                else ctx.addToPot(room, ctx.entryFeePill(room.comboKey, room.pillRate));   // bot: su entrada al bote
             }
             // Q2 también cuenta al morir online (jugaste la partida hasta el final aunque te eliminaran)
             const cliD = room.clients.get(ev.playerId);
@@ -227,21 +231,24 @@ function tickRoomOnce(room, now, ctx) {
                     if (peak >= 100000 && !cliK._mass100) { cliK._mass100 = true; ctx.econ.dailyEvent(cliK.cid, 'mass_100k', 1); }
                 }
             }
-            // CLASSIC: el matador recibe carry de la víctima directamente (humano o bot virtual).
-            // No hay "pot" en classic — todo es carry, más simple y coherente con "pure skill".
+            // CLASSIC: el matador recibe el carry de la víctima. Solo se mueve
+            // dinero que alguien pagó — matar a un bot no da nada. Antes la
+            // víctima bot "aportaba" una entrada virtual (entryFeePill al rate
+            // de la sala), que era PILL impreso de la nada y encima proporcional
+            // al rate: hundir el precio del token multiplicaba lo impreso.
             if (cliK && room.mode === 'classic') {
                 const victimCli = ev.victimId ? room.clients.get(ev.victimId) : null;
                 let gain = 0;
                 if (victimCli && victimCli.carry > 0) {
                     gain = victimCli.carry; victimCli.carry = 0;
                     ctx.sendEcon(victimCli, room);
-                } else {
-                    // víctima bot: aporta una entrada virtual directa al carry del matador
-                    gain = ctx.entryFeePill(room.comboKey, room.pillRate);
                 }
                 cliK.carry += gain;
                 // Notificar el +X PILL al cliente para que muestre el floating naranja
-                if (gain > 0) { try { cliK.ws.send(JSON.stringify({ t: 'killGain', amount: gain, victimWasBot: !(victimCli && victimCli.carry >= 0 && victimCli.payWallet) })); } catch (e) {} }
+                // (victimWasBot se quitó: con los bots sin aportar dinero, gain>0
+                // implica víctima real, así que el campo era siempre false. El
+                // cliente nunca lo leyó.)
+                if (gain > 0) { try { cliK.ws.send(JSON.stringify({ t: 'killGain', amount: gain })); } catch (e) {} }
                 ctx.sendEcon(cliK, room);
                 // VICTORIA en classic (5 kills): cashout automático sin fee, se lleva todo su carry.
                 if (ev.streak >= 5 && cliK.payWallet) {

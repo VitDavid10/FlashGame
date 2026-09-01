@@ -109,6 +109,12 @@ function createGameHost(deps) {
         return n;
     }
 
+    // Ventana muerta del final de partida: pickLayer no manda a nadie a una sala
+    // a menos de esto para acabar (entrarías para morir). El mismo número separa
+    // los finales de las layers (ver staggerExtraMs): si dos acaban a la vez sus
+    // ventanas muertas coinciden y el combo entero se queda sin sitio donde entrar.
+    const LAYER_STAGGER_MS = 30000;
+
     function pickLayer(mode, roomName) {
         // Fase 4: este proceso solo materializa salas de SUS combos. Sin el guard,
         // el lazy-create de L2+ creaba salas de combos ajenos (p.ej. en el Director,
@@ -131,7 +137,7 @@ function createGameHost(deps) {
             // _reserved: joins con el cobro IPC en vuelo (async). Cuentan como slot
             // ocupado para que dos joins simultáneos no desborden el cap de la sala.
             if (liveInRoom(r) + (r._reserved || 0) >= max) continue;
-            if (r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < 30000) continue;
+            if (r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < LAYER_STAGGER_MS) continue;
             return r;
         }
         return null;
@@ -414,7 +420,7 @@ function createGameHost(deps) {
             // Duracion de ESTE modo: el cliente pinta el reloj con ella, y classic
             // dura mas que arcade. Mandando siempre MATCH_MS el contador de classic
             // habria arrancado en 3:50 y se habria quedado clavado en 0:00 el resto.
-            duration: room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS,
+            duration: room.durationMs || (room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS),
             tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
             startIn: room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
             restartEnMs: room.restartAt ? Math.max(0, room.restartAt - Date.now()) : null,
@@ -485,6 +491,23 @@ function createGameHost(deps) {
         }
     }
 
+    // Cuánto hay que ALARGAR esta partida para que no acabe a la vez que otra
+    // layer del mismo combo. Devuelve 0 (el caso normal) si ya están separadas:
+    // solo actúa cuando de verdad chocarían, así que no acumula deriva partida
+    // tras partida. El bucle es por si hay 3+ layers encadenadas; LAYERS_PER_COMBO
+    // iteraciones bastan para colocarla detrás de todas.
+    function staggerExtraMs(room, base) {
+        const objetivo = Date.now() + base;
+        let fin = objetivo;
+        for (let i = 0; i < LAYERS_PER_COMBO; i++) {
+            const choque = [...rooms.values()].find(r => r !== room && r.comboKey === room.comboKey
+                && r.endsAt && Math.abs(r.endsAt - fin) < LAYER_STAGGER_MS);
+            if (!choque) break;
+            fin = choque.endsAt + LAYER_STAGGER_MS;
+        }
+        return fin - objetivo;
+    }
+
     function startMatch(room) {
         if (room.state !== 'waiting') return;
         room.state = 'playing';
@@ -494,7 +517,14 @@ function createGameHost(deps) {
         // diseño porque si: es lo unico que hace que todos jueguen al mismo
         // precio de entrada, porque el precio se congela por sala y refrescarlo
         // con gente dentro descuadra el intercambio de carry al matar.
-        room.endsAt = Date.now() + (room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS);
+        const base = room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS;
+        const extra = staggerExtraMs(room, base);
+        // durationMs (no la constante del modo) es lo que el cliente usa para
+        // pintar el reloj: con el desfase aplicado, mandar la nominal dejaría el
+        // contador arrancando por encima de su propia escala.
+        room.durationMs = base + extra;
+        room.endsAt = Date.now() + room.durationMs;
+        if (extra > 0) log(`Layer async ${room.key}: +${Math.round(extra / 1000)}s para no acabar a la vez que otra layer`);
         // NO spawneamos aquí: cada jugador se spawnea cuando su cliente manda 'ready'
         // (al terminar su pantalla de carga). Así la inmunidad empieza justo cuando entra
         // de verdad, dure lo que dure su carga, y no está expuesto mientras carga.
@@ -534,6 +564,7 @@ function createGameHost(deps) {
         // room.clients se vacía vía ws.on('close'); no esperamos a eso para pasar a waiting
         room.state = 'waiting';
         room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false; room._shortened = false; room.pentas = 0;
+        room.durationMs = 0;   // si no, quien entre al lobby vería el reloj con el desfase de la partida anterior
         room.deadRemovals.clear(); room.pendingRemovals.clear();
         room.sim = buildSim(room.mode, rulesOf(room.comboKey));
         sendWaiting(room);

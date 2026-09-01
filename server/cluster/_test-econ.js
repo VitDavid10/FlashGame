@@ -53,20 +53,26 @@ function playingRoom(mode, sim, clients) {
     };
 }
 
-// --- Escenario 1: classic, matar bot → carry sube y econ.botKill emitido ---
-check('classic botKilled: carry += fee, econ.botKill emitido', () => {
+// --- Escenario 1: classic, matar bot → NO da dinero, pero sí cuenta la kill ---
+// Antes la víctima bot aportaba una entrada virtual (entryFeePill al rate de la
+// sala) al carry del matador: PILL creado de la nada y encima proporcional al
+// rate, así que hundir el precio del token multiplicaba lo impreso por bot.
+// Ahora los bots no aportan dinero; la kill sigue contando para stats y quests.
+check('classic botKilled: NO acuña carry (los bots no pagan entrada)', () => {
     const econ = spyEcon();
     const K = { id: 'K', name: 'Killer', peakMass: 0, cells: [], alive: true, matchSkillUses: 0 };
     const sim = mockSim([K], [{ type: 'botKilled', playerId: 'K', streak: 1, victimId: null }]);
     const cliK = { ws: ws(), carry: 0, payWallet: null, cid: null, name: 'Killer' };
     const room = playingRoom('classic', sim, [['K', cliK]]);
     tickRoomOnce(room, Date.now(), baseCtx(econ));
-    assert.strictEqual(cliK.carry, 100, 'carry debería subir por la kill de bot');
+    assert.strictEqual(cliK.carry, 0, 'matar un bot no debe crear PILL');
     assert.ok(econ.calls.find(c => c[0] === 'botKill' && c[1] === 'Killer'), 'falta econ.botKill');
     assert.ok(!econ.calls.find(c => c[0] === 'credit'), 'no debe haber credit sin 5 kills');
 });
 
 // --- Escenario 2: classic, 5ª kill con wallet → econ.credit del carry completo ---
+// El carry acreditado es solo el que ya traía (robado a jugadores reales): la
+// kill de bot que dispara la victoria no añade nada.
 check('classic victoria (streak 5): econ.credit(wallet, carry) y carry=0', () => {
     const econ = spyEcon();
     const K = { id: 'K', name: 'Killer', peakMass: 0, cells: [], alive: true, matchSkillUses: 0 };
@@ -77,7 +83,7 @@ check('classic victoria (streak 5): econ.credit(wallet, carry) y carry=0', () =>
     const credit = econ.calls.find(c => c[0] === 'credit');
     assert.ok(credit, 'falta econ.credit en la victoria');
     assert.strictEqual(credit[1], 'WalletABC');
-    assert.strictEqual(credit[2], 600, 'debe acreditar carry(500)+fee(100)=600');
+    assert.strictEqual(credit[2], 500, 'acredita solo el carry real, la kill de bot no suma');
     assert.strictEqual(cliK.carry, 0, 'carry se vacía tras el cashout de victoria');
 });
 
@@ -93,6 +99,20 @@ check('arcade playerDied: carry del muerto va al pot, econ.playerDeath emitido',
     assert.strictEqual(cliD.carry, 0, 'carry del muerto se vacía');
     assert.ok(econ.calls.find(c => c[0] === 'playerDeath' && c[1] === 'arcade_5$'), 'falta econ.playerDeath');
     assert.ok(econ.calls.find(c => c[0] === 'peakMassFlush'), 'falta econ.peakMassFlush');
+});
+
+// --- Escenario 3b: arcade, muere un BOT → el pot NO sube ---
+// Gemelo del escenario 1 en el lado de arcade: antes, un muerto sin cliente con
+// carry (= un bot) metía una entrada virtual al pot, con el mismo problema de
+// acuñar al rate de la sala. El bot no pagó entrada, así que no aporta bote.
+check('arcade bot muerto: el pot NO sube (los bots no pagan entrada)', () => {
+    const econ = spyEcon();
+    const B = { id: 'B', name: 'Bot', peakMass: 500, cells: [], alive: false, matchSkillUses: 0 };
+    const sim = mockSim([B], [{ type: 'playerDied', playerId: 'B' }]);
+    const room = playingRoom('arcade', sim, []);   // sin cliente = bot
+    room.pot = 0;
+    tickRoomOnce(room, Date.now(), baseCtx(econ));
+    assert.strictEqual(room.pot, 0, 'un bot muerto no debe crear PILL en el pot');
 });
 
 // --- Escenario 4: tester no ensucia stats reales (econ.playerDeath con tester=true) ---
