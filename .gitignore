@@ -61,3 +61,7 @@ programs/*-keypair.json
 # Artefactos de compilacion de Anchor/Rust
 target/
 .anchor/
+
+# Evidencia del visual-check de los diagramas (PNG y receipt): se regenera con
+# `archify visual-check` y no aporta nada en el historial.
+docs/*.visual-check.*

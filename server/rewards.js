@@ -341,7 +341,7 @@ function estado() {
 
 module.exports = {
     tick, arranca, estado, premiosDe, marcarCobrado, rondaPublica,
-    prepararRonda, publicarRonda, presupuestoRaw,
+    prepararRonda, publicarRonda, presupuestoRaw, refrescar,
     epochDeFecha, fechaDeEpoch, pillToRaw, rawToPill,
     PROGRAM, save,
 };
