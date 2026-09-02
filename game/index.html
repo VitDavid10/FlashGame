@@ -3611,6 +3611,32 @@
         </div>
     </div>
 
+    <!-- Falta saldo para entrar a la sala.
+         Antes esto era un mensaje seco ("no tienes bastante, usa DEPOSIT") que
+         obligaba a salir del flujo, abrir el deposito, volver y elegir sala otra
+         vez. Ahora se resuelve donde ocurre: se dice cuanto falta y se deposita
+         justo eso — o mas, si quiere — sin perder la sala a la que iba. Cerrar el
+         cartel es decir que no. -->
+    <div id="gameTopUpModal" class="gameModal">
+        <div class="gameModalBox">
+            <span class="close" onclick="GameWalletUI.cancelTopUp()">×</span>
+            <h3>Not enough $PILL</h3>
+            <div class="gm-body">
+                <div class="gm-row"><span>Entry</span><b id="tuFee" style="color:#c8cdd2">—</b></div>
+                <div class="gm-row"><span>In GAME</span><b id="tuBal" style="color:#c8cdd2">—</b></div>
+                <div class="gm-row" style="margin-bottom:14px"><span>You need</span><b id="tuNeed" style="color:#ff4d4d">—</b></div>
+                <label>Deposit</label>
+                <div style="position:relative">
+                    <input id="tuAmount" type="text" inputmode="numeric" autocomplete="off" style="padding-right:60px"
+                           oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                    <button type="button" onclick="GameWalletUI.fillMaxTopUp()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:1px solid #c8cdd2;color:#c8cdd2;font-family:'Russo One';font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">MAX</button>
+                </div>
+                <div id="tuWallet" style="color:#8b9199;font-size:11px;margin-top:6px"></div>
+            </div>
+            <button class="gm-btn" id="tuConfirm" onclick="GameWalletUI.confirmTopUp()">Deposit and play</button>
+        </div>
+    </div>
+
     <!-- Premios diarios del top 10: salen de la TESORERIA, no del saldo in-GAME.
          Por eso van en su propio cartel y no en el de withdraw: el dinero no
          pasa por la cuenta del juego, va de la boveda a la wallet directamente.
@@ -11365,23 +11391,34 @@
                 this.refresh();
             } catch (e) { showSystemMsg('Sign-in was cancelled or the wallet refused the connection. Please try again.', 'CONNECT ERROR'); }
         },
+        /* Saldo $PILL de la wallet, leido del RPC. Estaba escrito dentro de
+         * openDeposit; se saca aparte porque el cartel de "te falta saldo" tambien
+         * lo necesita, y dos copias del mismo fetch acabarian divergiendo.
+         *
+         * 15 s de tope: si devnet no contesta, el modal se abre igual con el saldo
+         * en "—" en vez de quedarse colgado pidiendolo. */
+        async refreshWallet() {
+            this.walletBalance = null;   // desconocido hasta que el RPC conteste
+            const RPC = 'https://api.devnet.solana.com';
+            const MINT = 'Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r';
+            const res = await fetch(RPC, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenAccountsByOwner', params: [GameWallet.address, { mint: MINT }, { encoding: 'jsonParsed' }] }),
+                signal: AbortSignal.timeout(15000),
+            });
+            const data = await res.json();
+            const amt = data.result && data.result.value && data.result.value[0] ? data.result.value[0].account.data.parsed.info.tokenAmount.uiAmountString : '0';
+            this.walletBalance = Math.floor(parseFloat(amt) || 0);
+            return this.walletBalance;
+        },
         async openDeposit() {
             if (!GameWallet.address) { this.connect(); return; }
             document.getElementById('gameDepositModal').style.display = 'flex';
             document.getElementById('gdGame').innerText = this.fmt(this.gameBalance) + ' $PILL';
             document.getElementById('gdWallet').innerText = '—';
-            this.walletBalance = null;   // desconocido hasta que el RPC conteste
-            // Lee saldo wallet on-chain (RPC) — devnet
             try {
-                const RPC = location.protocol === 'https:' ? 'https://api.devnet.solana.com' : 'https://api.devnet.solana.com';
-                const MINT = 'Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r';
-                // 15s de tope: si devnet no contesta, el modal se abre igual con
-                // el saldo de wallet en "—" en vez de quedarse pidiendolo.
-                const res = await fetch(RPC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenAccountsByOwner', params: [GameWallet.address, { mint: MINT }, { encoding: 'jsonParsed' }] }), signal: AbortSignal.timeout(15000) });
-                const data = await res.json();
-                const amt = data.result && data.result.value && data.result.value[0] ? data.result.value[0].account.data.parsed.info.tokenAmount.uiAmountString : '0';
-                this.walletBalance = Math.floor(parseFloat(amt) || 0);
-                document.getElementById('gdWallet').innerText = this.fmt(amt) + ' $PILL';
+                const w = await this.refreshWallet();
+                document.getElementById('gdWallet').innerText = this.fmt(w) + ' $PILL';
             } catch (e) {}
         },
         closeDeposit() { document.getElementById('gameDepositModal').style.display = 'none'; },
@@ -11409,12 +11446,85 @@
                 btn.innerText = 'Withdrawing...';
                 const r = await (await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: GameWallet.address, amount: amt, ts, message, signature: Array.from(sigBytes) }) })).json();
                 if (!r.ok) throw new Error(r.reason || 'withdraw failed');
+                /* Con el contrato desplegado el retiro lo firman DOS: el servidor dice
+                 * cuánto (el saldo es suyo) y tú dices que eres tú. Así el servidor no
+                 * puede mandar tu dinero a otra dirección. Aquí llega su mitad firmada
+                 * y falta la tuya. */
+                if (r.needsSignature) {
+                    btn.innerText = 'Sign the transfer...';
+                    const enviado = await window.PillChain.firmarRetiro(r.tx);
+                    btn.innerText = 'Withdrawing...';
+                    const r2 = await (await fetch('/api/withdraw/send', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wallet: GameWallet.address, tx: enviado }),
+                    })).json();
+                    if (!r2.ok) throw new Error(r2.reason || 'withdraw failed');
+                }
                 this.closeWithdraw();
                 this.refresh();
                 showSystemMsg(this.fmt(amt) + ' $PILL sent back to your wallet.', 'WITHDRAW COMPLETE');
             } catch (e) { showSystemMsg(walletErrText(e), 'WITHDRAW FAILED'); }
             btn.disabled = false; btn.innerText = old;
         },
+        /* ===== FALTA SALDO PARA ENTRAR =====
+         *
+         * Se abre en el mismo punto donde el jugador iba a firmar la entrada, con la
+         * cantidad que le falta ya calculada. Depositar y entrar pasan a ser una sola
+         * decision en vez de un viaje al menu de deposito y vuelta a buscar la sala.
+         *
+         * Devuelve una promesa: true si deposito, false si cerro. preparePayment se
+         * queda esperando aqui, asi que el join sigue exactamente donde lo dejo.
+         */
+        _topUp: null,
+        pedirDeposito(fee, saldo) {
+            const falta = Math.max(0, fee - saldo);
+            document.getElementById('tuFee').innerText = this.fmt(fee) + ' $PILL';
+            document.getElementById('tuBal').innerText = this.fmt(saldo) + ' $PILL';
+            document.getElementById('tuNeed').innerText = this.fmt(falta) + ' $PILL';
+            document.getElementById('tuAmount').value = String(falta);
+            document.getElementById('tuWallet').innerText = '';
+            document.getElementById('gameTopUpModal').style.display = 'flex';
+            // Cuanto tiene en la wallet, para que no intente depositar lo que no tiene.
+            this.refreshWallet().then(() => {
+                const w = this.walletBalance | 0;
+                const el = document.getElementById('tuWallet');
+                if (el) el.innerText = 'In wallet: ' + this.fmt(w) + ' $PILL' + (w < falta ? ' — not enough to cover it' : '');
+            }).catch(() => {});
+            return new Promise(resolve => { this._topUp = { resolve, falta }; });
+        },
+        cancelTopUp() {
+            document.getElementById('gameTopUpModal').style.display = 'none';
+            if (this._topUp) { this._topUp.resolve(false); this._topUp = null; }
+        },
+        fillMaxTopUp() {
+            // El maximo util es lo que tenga en la wallet: depositar mas no se puede.
+            document.getElementById('tuAmount').value = String(Math.floor(this.walletBalance || 0));
+        },
+        async confirmTopUp() {
+            if (!this._topUp) return;
+            const amt = Math.max(1, parseInt(document.getElementById('tuAmount').value, 10) || 0);
+            if (amt < this._topUp.falta) {
+                showSystemMsg('You need at least ' + this.fmt(this._topUp.falta) + ' $PILL to cover the entry.', 'NOT ENOUGH');
+                return;
+            }
+            const btn = document.getElementById('tuConfirm'); const old = btn.innerText;
+            btn.disabled = true; btn.innerText = 'Sign in wallet...';
+            try { SoundManager.play('select'); } catch (e) {}
+            try {
+                const sig = await window.PillChain.deposit(amt);
+                btn.innerText = 'Crediting...';
+                const r = await window.PillChain.creditDeposit(GameWallet.address, sig);
+                if (!r.ok) throw new Error(r.reason || 'deposit not credited');
+                document.getElementById('gameTopUpModal').style.display = 'none';
+                this.refresh();
+                const resolver = this._topUp.resolve; this._topUp = null;
+                resolver(true);
+            } catch (e) {
+                showSystemMsg(walletErrText(e), 'DEPOSIT FAILED');
+            }
+            btn.disabled = false; btn.innerText = old;
+        },
+
         /* ===== PREMIOS DIARIOS DE LA TESORERIA =====
          *
          * Estos NO son saldo in-GAME. Salen de la boveda bloqueada y van directos
@@ -12693,8 +12803,28 @@
             const rr = rooms.find(r => r.key === (mode + '_' + roomName));
             if (rr && rr.pillFee > 0) fee = rr.pillFee;
         } catch (e) {}
-        let bal = 0; try { bal = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
-        if (bal < fee) { showSystemMsg('Not enough in-GAME balance. Entry costs ' + fee.toLocaleString('en-US') + ' $PILL and you have ' + bal.toLocaleString('en-US') + '. Use the DEPOSIT button to add more.', 'INSUFFICIENT BALANCE'); return null; }
+        const leeSaldo = async () => {
+            try { return (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) { return 0; }
+        };
+        let bal = await leeSaldo();
+        /*
+         * No le llega para entrar. Antes esto era un mensaje seco que le mandaba al
+         * boton DEPOSIT: salir del flujo, depositar, volver, buscar la sala otra vez.
+         * Ahora se ofrece depositar justo lo que falta sin moverse de aqui — cerrar
+         * el cartel sigue siendo decir que no, y entonces no se entra.
+         *
+         * Al volver se relee el saldo del SERVIDOR y no se da por hecho: el deposito
+         * pudo acreditarse por otra cantidad, o no acreditarse del todo.
+         */
+        if (bal < fee) {
+            const deposito = await GameWalletUI.pedirDeposito(fee, bal);
+            if (!deposito) return null;
+            bal = await leeSaldo();
+            if (bal < fee) {
+                showSystemMsg('The deposit did not cover the entry. You have ' + bal.toLocaleString('en-US') + ' $PILL and it costs ' + fee.toLocaleString('en-US') + '.', 'STILL NOT ENOUGH');
+                return null;
+            }
+        }
         try {
             const ts = Date.now();
             const message = `PillWars enter ${mode}_${roomName} paying ${fee} PILL @ ${ts}`;
@@ -15606,7 +15736,28 @@
         return sig;
     }
 
-    window.PillChain = { deposit, creditDeposit, claim };
+    /*
+     * Firma la mitad del jugador en un retiro y la devuelve al servidor.
+     *
+     * La transaccion llega ya firmada por la autoridad; aqui solo se anade la firma
+     * del dueno del dinero. NO se envia desde el cliente a proposito: la manda el
+     * servidor para saber con certeza si salio y poder descontar el saldo interno sin
+     * riesgo de cobrar dos veces ni de descontar un retiro que nunca ocurrio.
+     */
+    async function firmarRetiro(txBase64) {
+        const W = window.GameWallet;
+        if (!W || !W.address || !W.provider) throw new Error('Connect your wallet first');
+        if (!W.provider.signTransaction) throw new Error('this wallet cannot sign transactions');
+        const tx = Transaction.from(Uint8Array.from(atob(txBase64), c => c.charCodeAt(0)));
+        const conTope = (p, ms, que) => Promise.race([p, new Promise((_, rej) =>
+            setTimeout(() => rej(new Error('timeout: ' + que)), ms))]);
+        const firmada = await conTope(W.provider.signTransaction(tx), 60000, 'wallet');
+        // requireAllSignatures false: aunque estan las dos, serializar con la
+        // comprobacion estricta falla si la wallet devuelve la tx en otro orden.
+        return btoa(String.fromCharCode(...firmada.serialize({ requireAllSignatures: false, verifySignatures: false })));
+    }
+
+    window.PillChain = { deposit, creditDeposit, claim, firmarRetiro };
     window.GameWallet = GameWallet;   // expone GameWallet para el módulo
 </script>
 

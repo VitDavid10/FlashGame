@@ -908,6 +908,23 @@ pub struct Fund<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/*
+ * Retiro: DOS FIRMAS, la del servidor y la del jugador.
+ *
+ * La autoridad dice CUANTO (los saldos viven off-chain y solo el servidor los sabe),
+ * pero ya no dice A DONDE: el destino tiene que ser la cuenta asociada del jugador
+ * que firma. Antes `to` era una token account cualquiera elegida por la autoridad,
+ * asi que la clave del servidor sola podia mandar la custodia a donde quisiera.
+ *
+ * Lo que esto SI cierra: que un bug del servidor —o un despiste— mande el dinero de
+ * un jugador a otra direccion, y que un retiro no tenga constancia de quien lo cobro.
+ * Cada retiro lleva ahora la firma del beneficiario.
+ *
+ * Lo que NO cierra, y conviene no venderlo como que si: a quien robe la clave de la
+ * autoridad no le para, porque puede generarse una wallet y firmar con las dos. Para
+ * eso haria falta un tope por epoca (que aqui se descarto a proposito: hacer esperar
+ * a alguien por su dinero es peor) o un multisig.
+ */
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     #[account(
@@ -922,8 +939,18 @@ pub struct Withdraw<'info> {
     /// Se pasa solo para poder comprobar que el destino no es el treasury.
     #[account(seeds = [TREASURY_SEED], bump = config.treasury_bump)]
     pub treasury: Account<'info, TokenAccount>,
-    #[account(mut, constraint = to.mint == config.mint @ TreasuryError::WrongMint)]
+    /// La ATA canonica del jugador. Al derivarla de `player` el destino deja de ser
+    /// una direccion que la autoridad pueda elegir.
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = player,
+    )]
     pub to: Account<'info, TokenAccount>,
+    #[account(address = config.mint @ TreasuryError::WrongMint)]
+    pub mint: Account<'info, Mint>,
+    /// El jugador que cobra. Firma su propio retiro.
+    pub player: Signer<'info>,
     pub authority: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }

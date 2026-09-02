@@ -1994,6 +1994,35 @@ function flushPeakMass(room, pid, cli) {
  * Se cachea 15 s: es público y sin auth, y sin caché cualquiera puede usarlo para
  * agotar la cuota del RPC a base de recargar.
  */
+/* Retiros preparados a la espera de que el jugador firme.
+ *
+ * El saldo se descuenta al preparar (si no, podría pedir diez transacciones y
+ * ejecutarlas todas). Si no completa la firma, hay que devolvérselo — pero no antes
+ * de que su transacción deje de poder ejecutarse, o se le devuelve el saldo Y cobra.
+ *
+ * Ese momento es cuando caduca el blockhash: una transacción con un blockhash viejo
+ * la rechaza la red entera. Se espera un margen generoso por encima para no jugar con
+ * los bordes: el precio de esperar de más son unos minutos con el saldo retenido; el
+ * de esperar de menos es dinero duplicado.
+ */
+const retirosPendientes = new Map();   // wallet -> { amount, creadoEn, lastValidBlockHeight }
+// Configurable para poder probar el barrido sin esperar cinco minutos. En producción
+// no se toca: bajarlo por debajo de la vida de un blockhash devolvería el saldo de un
+// retiro que todavía puede ejecutarse, y el jugador cobraría dos veces.
+const RETIRO_PENDIENTE_MS = (parseInt(process.env.WITHDRAW_PENDING_SECS, 10) || 300) * 1000;
+setInterval(() => {
+    const ahora = Date.now();
+    for (const [wallet, p] of retirosPendientes) {
+        if (ahora - p.creadoEn < RETIRO_PENDIENTE_MS) continue;
+        retirosPendientes.delete(wallet);
+        warbank.credit(wallet, p.amount);
+        logTx('refund', wallet, p.amount, 'retiro no firmado a tiempo');
+        log(`Retiro caducado sin firmar (${wallet.slice(0, 6)}…): ${p.amount} PILL devueltos al saldo`);
+    }
+    // Se revisa cada 10 s y no cada minuto: el retiro ya está descontado del saldo del
+    // jugador, así que cada segundo de más es un segundo con su dinero retenido.
+}, 10000).unref();
+
 const TREASURY_PROGRAM = process.env.TREASURY_PROGRAM || '';
 let _treasuryCache = null, _treasuryCacheAt = 0;
 const TREASURY_CACHE_MS = 15000;
@@ -2822,6 +2851,29 @@ const httpServer = http.createServer(async (req, res) => {
             warbank.creditDeposit(wallet, 0, sigKey);   // marca la firma como usada (anti-replay)
             // Descontamos ANTES de enviar (evita doble retiro); si falla on-chain, devolvemos.
             warbank.debit(wallet, amount);
+
+            /* CON CONTRATO el retiro lo firma también el jugador, así que aquí solo se
+             * prepara: se devuelve la transacción ya firmada por la autoridad y el
+             * cliente la completa con su wallet en /api/withdraw/send.
+             *
+             * El saldo queda descontado desde ya y se anota como pendiente. Si el
+             * jugador no termina, `barreRetirosPendientes` se lo devuelve en cuanto
+             * caduca el blockhash — a partir de ahí esa transacción no puede
+             * ejecutarse, así que devolver el saldo es seguro. */
+            if (process.env.TREASURY_PROGRAM) {
+                try {
+                    const prep = await solana.prepararRetiro(wallet, amount);
+                    retirosPendientes.set(wallet, { amount, creadoEn: Date.now(), lastValidBlockHeight: prep.lastValidBlockHeight });
+                    log(`Retiro preparado: ${wallet.slice(0, 6)}… ${amount} PILL (falta la firma del jugador)`);
+                    res.end(JSON.stringify({ ok: true, needsSignature: true, tx: prep.tx, amount, warBalance: warbank.getBalance(wallet) }));
+                } catch (e) {
+                    warbank.credit(wallet, amount);
+                    log(`Retiro NO preparado (${wallet.slice(0, 6)}…): ${e.message} — saldo devuelto`);
+                    res.end(JSON.stringify({ ok: false, reason: e.message }));
+                }
+                return;
+            }
+
             try {
                 const sig = await solana.withdraw(wallet, amount);
                 const saldo = warbank.getBalance(wallet);
@@ -2834,6 +2886,43 @@ const httpServer = http.createServer(async (req, res) => {
                 logTx('refund', wallet, amount, 'withdraw failed on-chain');
                 log(`Retiro FALLÓ (${wallet.slice(0, 6)}…): ${e.message} — saldo devuelto`);
                 res.end(JSON.stringify({ ok: false, reason: 'envío on-chain falló: ' + e.message }));
+            }
+        });
+        return;
+    }
+
+    /* Segundo paso del retiro con contrato: el jugador devuelve la transacción ya
+     * firmada y el servidor la envía.
+     *
+     * Podría enviarla el propio cliente, pero entonces el servidor no sabría si salió,
+     * y las dos opciones serían malas: dar el retiro por hecho sin que haya salido le
+     * roba al jugador; no darlo por hecho habiéndose ejecutado le deja retirar dos
+     * veces. Enviándola aquí, el servidor sabe el resultado con certeza. */
+    if (urlPath === '/api/withdraw/send' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones' })); return; }
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 8000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
+            const wallet = String(p.wallet || '');
+            if (!isSolAddr(wallet) || typeof p.tx !== 'string') { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+            const pend = retirosPendientes.get(wallet);
+            if (!pend) { res.end(JSON.stringify({ ok: false, reason: 'no hay ningún retiro pendiente para esa wallet' })); return; }
+            try {
+                const sig = await solana.enviarRetiro(p.tx);
+                retirosPendientes.delete(wallet);   // el saldo ya se descontó al preparar
+                const saldo = warbank.getBalance(wallet);
+                logTx('withdraw', wallet, -pend.amount, 'tx ' + sig.slice(0, 8) + '…');
+                logAdmin('-', 'Retiro $PILL', wallet.slice(0, 6) + '… -' + pend.amount);
+                log(`Retiro: ${wallet.slice(0, 6)}… -${pend.amount} PILL → saldo ${saldo} (tx ${sig.slice(0, 8)}…)`);
+                res.end(JSON.stringify({ ok: true, withdrawn: pend.amount, warBalance: saldo, sig }));
+            } catch (e) {
+                // No se devuelve el saldo aquí: la transacción puede haber entrado y
+                // estar solo tardando en confirmar. Lo devuelve el barrido cuando el
+                // blockhash caduque, que es cuando ya es seguro.
+                log(`Retiro no confirmado (${wallet.slice(0, 6)}…): ${e.message}`);
+                res.end(JSON.stringify({ ok: false, reason: e.message }));
             }
         });
         return;

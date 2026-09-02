@@ -159,16 +159,9 @@ async function withdraw(toWallet, pill) {
     const mint = new PublicKey(MINT);
 
     if (TREASURY_PROGRAM) {
-        const tc = require('./treasury-client.js');
-        // La ATA del jugador tiene que existir antes: el programa transfiere a una
-        // token account ya creada, no la crea él. La paga la autoridad, que es quien
-        // firma — un jugador que retira por primera vez no tiene por qué haber
-        // recibido nunca este token.
-        const toAta = await getOrCreateAssociatedTokenAccount(conn, auth, mint, new PublicKey(toWallet));
-        const ix = tc.withdraw(TREASURY_PROGRAM, {
-            to: toAta.address, authority: auth.publicKey, amountRaw: pillToRaw(pill),
-        });
-        return await sendInstructions([ix]);
+        // Con contrato el retiro NECESITA la firma del jugador, así que el servidor
+        // no puede hacerlo solo: ver prepararRetiro() y enviarRetiro().
+        throw new Error('con contrato desplegado el retiro lo firma el jugador (usa /api/withdraw en dos pasos)');
     }
 
     const fromAta = await getOrCreateAssociatedTokenAccount(conn, auth, mint, auth.publicKey);
@@ -229,6 +222,60 @@ function authorityPubkey() {
     try { return loadAuthority().publicKey.toBase58(); } catch (e) { return null; }
 }
 
+/* ===== RETIRO EN DOS PASOS (solo con contrato) =====
+ *
+ * El programa exige DOS firmas: la autoridad (que sabe el saldo off-chain y dice
+ * cuánto) y el jugador (que dice que es él). Como el servidor no tiene la clave del
+ * jugador, el retiro deja de ser una llamada y pasa a ser:
+ *
+ *   1. prepararRetiro()  el servidor construye la tx, la firma y la devuelve
+ *   2. el jugador la firma en su wallet
+ *   3. enviarRetiro()    el servidor la envía y espera la confirmación
+ *
+ * EL ENVÍO LO HACE EL SERVIDOR a propósito, aunque el cliente podría hacerlo. Es lo
+ * que le permite saber con certeza si el retiro salió, y por tanto cuándo descontar
+ * el saldo interno. Si lo enviara el cliente y no avisara, el servidor no sabría si
+ * descontar o no — y las dos opciones son malas: descontar sin que haya salido roba
+ * al jugador, no descontar habiendo salido le deja retirar dos veces.
+ */
+async function prepararRetiro(toWallet, pill) {
+    if (!TREASURY_PROGRAM) throw new Error('sin contrato de tesorería');
+    const { Connection, PublicKey, Transaction } = require('@solana/web3.js');
+    const { getOrCreateAssociatedTokenAccount } = require('@solana/spl-token');
+    const tc = require('./treasury-client.js');
+    const auth = loadAuthority();
+    const conn = new Connection(RPC, 'confirmed');
+
+    // La ATA del jugador tiene que existir: el programa transfiere a una cuenta ya
+    // creada, no la crea él. La paga la autoridad — quien retira por primera vez no
+    // tiene por qué haber recibido nunca este token.
+    await getOrCreateAssociatedTokenAccount(conn, auth, new PublicKey(MINT), new PublicKey(toWallet));
+
+    const ix = tc.withdraw(TREASURY_PROGRAM, {
+        player: toWallet, authority: auth.publicKey, mint: MINT, amountRaw: pillToRaw(pill),
+    });
+    const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('finalized');
+    const tx = new Transaction({ feePayer: auth.publicKey, blockhash, lastValidBlockHeight }).add(ix);
+    tx.partialSign(auth);   // la autoridad firma ya; falta la del jugador
+    return {
+        tx: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'),
+        blockhash, lastValidBlockHeight,
+    };
+}
+
+/** Envía la transacción ya firmada por el jugador y espera a que confirme. */
+async function enviarRetiro(txBase64) {
+    const { Connection, Transaction } = require('@solana/web3.js');
+    const conn = new Connection(RPC, 'confirmed');
+    const tx = Transaction.from(Buffer.from(txBase64, 'base64'));
+    // Sin esto, una transacción a la que le falte una firma se manda igual y falla
+    // en el nodo con un error que no dice cuál falta.
+    if (!tx.verifySignatures()) throw new Error('a la transacción le falta alguna firma');
+    const sig = await conn.sendRawTransaction(tx.serialize());
+    await conn.confirmTransaction(sig, 'confirmed');
+    return sig;
+}
+
 // Verifica que `signature` es una firma válida de `message` hecha por `wallet`.
 // (El jugador firma un mensaje con su wallet para AUTORIZAR el retiro; prueba que es el dueño.)
 function verifySignedMessage(wallet, message, signatureArr) {
@@ -242,4 +289,4 @@ function verifySignedMessage(wallet, message, signatureArr) {
     } catch (e) { return false; }
 }
 
-module.exports = { verifyDeposit, withdraw, burn, airdropSol, canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey, RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };
+module.exports = { verifyDeposit, withdraw, prepararRetiro, enviarRetiro, burn, airdropSol, canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey, RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };

@@ -206,12 +206,24 @@ function fund(programId, { from, owner, amountRaw }) {
     ], Buffer.concat([ixDisc('fund'), u64le(amountRaw)]));
 }
 
-/** withdraw — CUSTODY -> token account del jugador. Solo la autoridad. */
-function withdraw(programId, { to, authority, amountRaw }) {
+/**
+ * withdraw — CUSTODY -> la ATA del jugador. DOS FIRMAS: la autoridad y el jugador.
+ *
+ * La autoridad dice cuanto (el saldo es off-chain), el jugador dice que es el. El
+ * destino ya no es un parametro: se deriva de , asi que la clave del servidor
+ * sola no puede mandar el dinero a una direccion cualquiera.
+ */
+function withdraw(programId, { player, authority, mint, amountRaw }) {
     const p = pdas(programId);
+    const w = new PublicKey(player);
+    const m = new PublicKey(mint);
     return ix(programId, [
-        rw(p.config), rw(p.custody), ro(p.treasury), rw(new PublicKey(to)),
-        ro(new PublicKey(authority), true), ro(TOKEN_PROGRAM_ID),
+        rw(p.config), rw(p.custody), ro(p.treasury),
+        rw(getAssociatedTokenAddressSync(m, w, true)),
+        ro(m),
+        ro(w, true),
+        ro(new PublicKey(authority), true),
+        ro(TOKEN_PROGRAM_ID),
     ], Buffer.concat([ixDisc('withdraw'), u64le(amountRaw)]));
 }
 

@@ -80,7 +80,7 @@ const CASOS = [
     ['Initialize', () => tc.initialize(PROGRAM_ID, { mint, authority, payer: authority, args: { unlockTs: 1, epochSecs: 86400, rewardCapPerEpoch: 1, rewardBpsPerEpoch: 5, challengeSecs: 172800, sweepCapPerEpoch: 1, burnCapPerEpoch: 1 } })],
     ['Deposit', () => tc.deposit(PROGRAM_ID, { from: mint, owner: jugador, amountRaw: 1 })],
     ['Fund', () => tc.fund(PROGRAM_ID, { from: mint, owner: jugador, amountRaw: 1 })],
-    ['Withdraw', () => tc.withdraw(PROGRAM_ID, { to: mint, authority, amountRaw: 1 })],
+    ['Withdraw', () => tc.withdraw(PROGRAM_ID, { player: jugador, authority, mint, amountRaw: 1 })],
     ['Sweep', () => tc.sweep(PROGRAM_ID, { authority, amountRaw: 1 })],
     ['BurnFromCustody', () => tc.burn(PROGRAM_ID, { authority, mint, amountRaw: 1 })],
     ['PublishRound', () => tc.publishRound(PROGRAM_ID, { epoch: EPOCH, merkleRoot: Buffer.alloc(32, 7), totalRaw: 1, winners: 10, authority })],
@@ -132,6 +132,24 @@ test('PublishRound: la ronda va en el PDA ["round", epoch] — dos rondas de la 
     const c = tc.roundPda(PROGRAM_ID, EPOCH + 1).toBase58();
     assert.equal(a, b);
     assert.notEqual(a, c);
+});
+
+test('Withdraw: firman los DOS, y el destino es la ATA del jugador', () => {
+    // La autoridad dice cuanto (el saldo es off-chain); el jugador dice que es el.
+    // El destino ya no es un parametro: sale de `player`, asi que la clave del
+    // servidor sola no puede mandar la custodia a una direccion cualquiera.
+    const campos = camposDe('Withdraw');
+    const inst = tc.withdraw(PROGRAM_ID, { player: jugador, authority, mint, amountRaw: 1 });
+    const iPlayer = campos.findIndex(c => c.nombre === 'player');
+    const iAuth = campos.findIndex(c => c.nombre === 'authority');
+    const iTo = campos.findIndex(c => c.nombre === 'to');
+    assert.equal(inst.keys[iPlayer].isSigner, true, 'el jugador tiene que firmar su retiro');
+    assert.equal(inst.keys[iAuth].isSigner, true, 'y la autoridad tambien');
+    assert.equal(
+        inst.keys[iTo].pubkey.toBase58(),
+        getAssociatedTokenAddressSync(mint, jugador, true).toBase58(),
+        'el destino tiene que ser la ATA canonica del que firma'
+    );
 });
 
 test('el ganador NO firma su claim (puede reclamar un tercero por el)', () => {
