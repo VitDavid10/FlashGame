@@ -233,6 +233,97 @@ test('un cluster cerrado se distingue de un jugador que se mezcla', () => {
     fs.rmSync(TMP2, { recursive: true, force: true });
 });
 
+/* ===================== RECAUDADO DEL DIA ===================== */
+
+/*
+ * Es el numero que ata el premio a lo que de verdad se jugo. Si se cuenta de mas,
+ * el bote del dia sube por encima de lo que entro y crear wallets vuelve a salir a
+ * cuenta — que es justo el ataque que este dato existe para cerrar.
+ */
+
+// Los otros tests dejan partidas con endedAt = ahora en el mismo directorio, asi que
+// estas se fechan hace meses: la ventana de cada test solo ve lo suyo.
+const VIEJO = Date.now() - 100 * 86400e3;
+
+test('el recaudado suma entrada x jugadores que pagaron', () => {
+    const t = VIEJO;
+    partidaDe([W(80), W(81), W(82)], { endedAt: t });
+    const r = matches.recaudadoEntre(t - 1000, t + 1000);
+    assert.equal(r.pill, 1161 * 3);
+    assert.equal(r.entradas, 3);
+    assert.equal(r.partidas, 1);
+});
+
+test('los que NO pagaron no suben el bote de nadie', () => {
+    const t = VIEJO + 10 * 86400e3;
+    matches.registra({
+        room: 'free_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
+        entryFee: 1161, pot: 0,
+        players: [
+            { wallet: W(90), name: 'a', kills: 3, peak: 1, paid: true, isTester: false },
+            { wallet: W(91), name: 'b', kills: 2, peak: 1, paid: false, isTester: false },
+            { wallet: W(92), name: 'c', kills: 1, peak: 1, paid: true, isTester: true },
+        ],
+    });
+    const r = matches.recaudadoEntre(t - 1000, t + 1000);
+    assert.equal(r.entradas, 1, 'solo cuenta el que pago y no es tester');
+    assert.equal(r.pill, 1161);
+});
+
+test('una sala gratis no recauda nada', () => {
+    const t = VIEJO + 20 * 86400e3;
+    matches.registra({
+        room: 'free_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
+        entryFee: 0, pot: 0,
+        players: [{ wallet: W(95), name: 'a', kills: 3, peak: 1, paid: true, isTester: false }],
+    });
+    assert.equal(matches.recaudadoEntre(t - 1000, t + 1000).pill, 0);
+});
+
+test('la ventana acota: lo de ayer no paga el premio de hoy', () => {
+    const ayer = VIEJO + 30 * 86400e3;
+    const hoy = ayer + 86400e3;
+    partidaDe([W(70), W(71)], { endedAt: ayer });
+    assert.equal(matches.recaudadoEntre(hoy - 1000, hoy + 1000).entradas, 0, 'entro algo de fuera de la ventana');
+    assert.equal(matches.recaudadoEntre(ayer - 1000, ayer + 1000).entradas, 2, 'no encuentra lo que si esta dentro');
+});
+
+test('EL ATAQUE: con factor 1 no se puede sacar mas de lo que se metio', () => {
+    // Juego vacio. Meto K wallets mias, juegan entre ellas y copan la tabla entera.
+    // Aunque me lleve el bote completo, el bote no puede pasar de lo que pague.
+    const t = Date.now();
+    const DIR2 = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-sybil-'));
+    const antes = process.env.LB_DIR;
+    process.env.LB_DIR = DIR2;
+    delete require.cache[require.resolve('../server/matches.js')];
+    const m2 = require('../server/matches.js');
+
+    const K = 40;
+    const mias = Array.from({ length: K }, (_, i) => W(500 + i));
+    for (let i = 0; i < K; i += 4) {
+        m2.registra({
+            room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t - 1000,
+            entryFee: 1161, pot: 0,
+            players: mias.slice(i, i + 4).map((w, j) => ({
+                wallet: w, name: 'bot' + j, kills: 5, peak: 1, paid: true, isTester: false,
+            })),
+        });
+    }
+    const rec = m2.recaudadoEntre(t - 5000, t);
+    const coste = K * 1161;
+    assert.equal(rec.pill, coste, 'el recaudado tiene que ser exactamente lo que pague');
+    for (const factor of [0.5, 1]) {
+        const bote = Math.floor(rec.pill * factor);
+        assert.ok(bote <= coste, `con factor ${factor} el bote (${bote}) supera el coste (${coste})`);
+    }
+    // Y el que lo haria rentable:
+    assert.ok(Math.floor(rec.pill * 2) > coste, 'con factor 2 el ataque SI seria rentable — por eso se acota a 1');
+
+    process.env.LB_DIR = antes;
+    delete require.cache[require.resolve('../server/matches.js')];
+    fs.rmSync(DIR2, { recursive: true, force: true });
+});
+
 test('limpieza', () => {
     matches.save();
     fs.rmSync(TMP, { recursive: true, force: true });

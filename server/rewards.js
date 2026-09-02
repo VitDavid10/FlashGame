@@ -37,6 +37,27 @@ const PROGRAM = process.env.TREASURY_PROGRAM || '';
 const DECIMALS = parseInt(process.env.PILL_DECIMALS, 10) || 6;
 /** Presupuesto de respaldo mientras no hay contrato, en PILL enteros. */
 const BUDGET_FALLBACK = parseInt(process.env.REWARD_BUDGET_PILL, 10) || 50000;
+/*
+ * Cuanto premio se paga por cada PILL cobrado en entradas ese dia.
+ *
+ * Es lo que impide que crear wallets sea rentable. El grifo del contrato es un
+ * techo, pero un techo no sabe cuanta gente hay jugando: en un juego vacio deja
+ * salir lo mismo que en uno lleno, y entonces a cualquiera le sale a cuenta meter
+ * doscientas wallets suyas y cobrar el bote entero.
+ *
+ * Atando el bote a lo RECAUDADO, ese ataque deja de tener sentido por aritmetica y
+ * no por filtro: con el factor en 1 o menos, nadie puede sacar mas de lo que metio
+ * en entradas, meta las wallets que meta. Por encima de 1 el ataque vuelve a ser
+ * rentable, asi que el valor se acota ahi.
+ *
+ * Un 0 significa lo que parece: no se pagan premios. No es la forma de desactivar
+ * este limite — no hay forma, es una proteccion, no una opcion.
+ */
+const REWARD_FACTOR = (() => {
+    const v = parseFloat(process.env.REWARD_FACTOR);
+    if (!Number.isFinite(v)) return 1;
+    return Math.max(0, Math.min(1, v));
+})();
 
 const DIA = 86400;
 
@@ -90,12 +111,47 @@ function save() { if (!dirty || SOLO_LECTURA) return; dirty = false; try { fs.wr
  * publish_round(), asi que si aqui sale un numero mas alto la transaccion se
  * rechaza — y mejor que se rechace a que se publique una ronda impagable.
  */
+/*
+ * Acota el techo del contrato a lo que la actividad del dia justifica.
+ *
+ * El contrato pone el maximo; esto decide cuanto de ese maximo tiene sentido pedir.
+ * Con 20 jugadores el bote sale pequeno solo, sin que nadie tenga que ajustar nada,
+ * y con 300 llega al tope. Y si el juego no arranca, la tesoreria dura anios en vez
+ * de vaciarse repartiendo premios en una sala vacia.
+ *
+ * La cuenta se puede rehacer desde fuera: las entradas salen de los recibos de
+ * partida, que se anclan en la cadena por lotes. Si el bote publicado no cuadra con
+ * lo que se jugo ese dia, se ve.
+ */
+function porActividad(topeRaw, log) {
+    let rec;
+    try {
+        const matches = require('./matches.js');
+        if (typeof matches.recaudadoEntre !== 'function') return topeRaw;
+        rec = matches.recaudadoEntre(Date.now() - DIA * 1000, Date.now());
+    } catch (e) {
+        // Sin recibos no se puede acotar. Se deja el techo del contrato antes que
+        // bloquear los premios: el techo sigue siendo un limite duro.
+        return topeRaw;
+    }
+    const porJuego = pillToRaw(Math.floor(rec.pill * REWARD_FACTOR));
+    if (porJuego >= topeRaw) return topeRaw;
+    if (log) {
+        log(`Premios: ${rec.entradas} entradas en ${rec.partidas} partidas (${rec.pill} PILL) ` +
+            `-> bote ${rawToPill(porJuego)} en vez del tope ${rawToPill(topeRaw)}`);
+    }
+    return porJuego;
+}
+
 async function presupuestoRaw(conn, log) {
-    if (!PROGRAM || !conn) return pillToRaw(BUDGET_FALLBACK);
+    // Sin contrato el techo es el presupuesto local, pero el acotado por actividad se
+    // aplica igual: es la parte que no depende de la cadena, y saltarsela aqui dejaba
+    // el bote suelto justo en el modo en el que se prueba todo.
+    if (!PROGRAM || !conn) return porActividad(pillToRaw(BUDGET_FALLBACK), log);
     try {
         const p = tc.pdas(PROGRAM);
         const [cfgInfo, treInfo] = await conn.getMultipleAccountsInfo([p.config, p.treasury]);
-        if (!cfgInfo || !treInfo) return pillToRaw(BUDGET_FALLBACK);
+        if (!cfgInfo || !treInfo) return porActividad(pillToRaw(BUDGET_FALLBACK), log);
         const cfg = tc.decodeConfig(cfgInfo.data);
         // El saldo de una token account SPL: u64 en el offset 64.
         const saldo = treInfo.data.readBigUInt64LE(64);
@@ -104,10 +160,11 @@ async function presupuestoRaw(conn, log) {
         const tope = porBps < cfg.rewardCapPerEpoch ? porBps : cfg.rewardCapPerEpoch;
         // Nunca por encima de lo que queda libre: lo reservado por rondas vivas ya
         // tiene dueno aunque todavia no lo haya reclamado.
-        return tope < libre ? tope : libre;
+        const delContrato = tope < libre ? tope : libre;
+        return porActividad(delContrato, log);
     } catch (e) {
         if (log) log(`Premios: no pude leer el grifo on-chain (${e.message}); uso el presupuesto local`);
-        return pillToRaw(BUDGET_FALLBACK);
+        return porActividad(pillToRaw(BUDGET_FALLBACK), log);
     }
 }
 

@@ -296,8 +296,47 @@ function oponentesDe(desde) {
     return salida;
 }
 
+/*
+ * Lo que se cobro en entradas dentro de una ventana, en PILL.
+ *
+ * Es el dato que ata el premio del dia a lo que de verdad se jugo. Sin el, el bote
+ * depende de contar wallets — y las wallets son gratis de crear, asi que a quien le
+ * salga a cuenta las creara. Las entradas no son gratis: por eso el bote se calcula
+ * sobre esto y no sobre cuanta gente aparezca en la lista.
+ *
+ * Solo cuenta a los que PAGARON (`paid`) y no son testers: un jugador de una sala
+ * gratis no ha metido nada al sistema, asi que no puede subir el premio de nadie.
+ *
+ * Sale de los mismos recibos que se anclan en la cadena por lotes, o sea que
+ * cualquiera puede rehacer esta suma desde /api/matches y comprobar que el bote
+ * publicado cuadra. No es un numero que yo declare.
+ */
+function recaudadoEntre(desde, hasta) {
+    const ini = desde == null ? 0 : desde;
+    const fin = hasta == null ? Date.now() : hasta;
+    let total = 0, partidas = 0, entradas = 0;
+    let ficheros = [];
+    try { ficheros = fs.readdirSync(DIR); } catch (e) { return { pill: 0, partidas: 0, entradas: 0 }; }
+    for (const f of ficheros) {
+        if (!f.endsWith('.json')) continue;
+        let m;
+        try { m = JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch (e) { continue; }
+        if (!m || !m.players) continue;
+        const t = m.endedAt || 0;
+        if (t < ini || t >= fin) continue;
+        const fee = m.entryFee | 0;
+        if (fee <= 0) continue;
+        const pagaron = m.players.filter(p => p.paid && !p.isTester && p.wallet).length;
+        if (pagaron === 0) continue;
+        total += fee * pagaron;
+        entradas += pagaron;
+        partidas++;
+    }
+    return { pill: total, partidas, entradas };
+}
+
 module.exports = {
     registra, anclaLote, arranca, save,
-    partida, lote, cadena, pendientes, verificar, oponentesDe,
+    partida, lote, cadena, pendientes, verificar, oponentesDe, recaudadoEntre,
     _canonico: canonico, _canonicoLote: canonicoLote, GENESIS, MEMO_PROGRAM,
 };

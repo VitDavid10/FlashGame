@@ -157,6 +157,52 @@ test('el estado resume las rondas para el panel', () => {
     assert.equal(r.pill, 50000 - 0, 'el reparto entero del presupuesto (los pesos suman 100 %)');
 });
 
+/* ===================== EL BOTE SEGUN LA ACTIVIDAD ===================== */
+
+/*
+ * El grifo del contrato es un techo, pero un techo no sabe cuanta gente juega: en
+ * una sala vacia deja salir lo mismo que en una llena. Esto es lo que baja el bote
+ * cuando no hay actividad — y de paso lo que hace que crear wallets no sea rentable,
+ * porque el bote no puede pasar de lo que se pago en entradas.
+ */
+
+test('sin partidas el bote es cero, aunque el grifo del contrato deje salir', async () => {
+    const p = await rewards.presupuestoRaw(null, null);
+    assert.equal(p, 0n, 'sin nada jugado no deberia haber premio');
+});
+
+test('el bote sube con lo recaudado y se para en el techo', async () => {
+    const matches = require('../server/matches.js');
+    const t = Date.now();
+    const jugar = (n, fee) => matches.registra({
+        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t - 1000,
+        entryFee: fee, pot: 0,
+        players: Array.from({ length: n }, (_, i) => ({
+            wallet: wallets[i % wallets.length], name: 'j' + i, kills: 3, peak: 1,
+            paid: true, isTester: false,
+        })),
+    });
+
+    // 10 entradas de 1000 = 10.000 PILL recaudados. Con factor 1, bote 10.000.
+    jugar(10, 1000);
+    assert.equal(await rewards.presupuestoRaw(null, null), rewards.pillToRaw(10000));
+
+    // Mas partidas, mas bote — hasta que topa con el fallback de 50.000.
+    jugar(20, 1000); jugar(20, 1000);
+    assert.equal(await rewards.presupuestoRaw(null, null), rewards.pillToRaw(50000),
+        'por encima del techo manda el techo, no la actividad');
+});
+
+test('el bote nunca puede pasar de lo que se pago en entradas', async () => {
+    // Es el invariante que cierra el sybil: da igual cuantas wallets aparezcan en la
+    // tabla, el premio del dia sale acotado por el dinero que entro ese dia.
+    const matches = require('../server/matches.js');
+    const rec = matches.recaudadoEntre(Date.now() - 86400e3, Date.now());
+    const bote = await rewards.presupuestoRaw(null, null);
+    assert.ok(bote <= rewards.pillToRaw(rec.pill),
+        `el bote (${rewards.rawToPill(bote)}) supera lo recaudado (${rec.pill})`);
+});
+
 test('limpieza', () => {
     rewards.save(); lb.save();
     fs.rmSync(TMP, { recursive: true, force: true });

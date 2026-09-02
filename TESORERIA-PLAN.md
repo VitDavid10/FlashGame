@@ -381,6 +381,51 @@ mordiendo a los pocos meses.
 deja la curva sin efecto durante el primer año. Usa `--simular-con <PILL>` para que
 la calcule sobre lo que vas a meter de verdad, no sobre el ejemplo.
 
+#### El tercer freno: el bote no puede pasar de lo recaudado
+
+Los dos frenos anteriores son un techo, y un techo no sabe cuánta gente hay jugando:
+en una sala vacía deja salir lo mismo que en una llena. Eso abre un ataque que
+ningún filtro cierra del todo — **crear wallets es gratis, y si el bote sube al
+contarlas, a alguien le saldrá a cuenta crearlas**:
+
+| K wallets propias | coste en entradas | bote si escala con jugadores | ganancia |
+|---|---|---|---|
+| 25 | 29 000 | 138 889 | **+109 889** |
+| 100 | 116 000 | 555 556 | **+439 556** |
+| 200 | 232 000 | 1 111 111 | **+879 111** |
+
+La salida no es contar mejor: es **no contar wallets**. Lo que no es gratis es la
+entrada de la sala, así que el bote se ata a eso:
+
+```
+bote del día = min( grifo del contrato , recaudado del día × REWARD_FACTOR )
+```
+
+Con el factor en 1 o menos, **nadie puede sacar más de lo que metió en entradas,
+meta las wallets que meta**. No es un filtro que se pueda esquivar: es aritmética.
+Por eso el valor está acotado a `[0, 1]` en el código — por encima de 1 el ataque
+vuelve a ser rentable.
+
+Y de paso hace lo que hacía falta para el arranque:
+
+| jugadores | partidas/día | recaudado | bote (F=1) | días para 100 M |
+|---|---|---|---|---|
+| 20 | 60 | 69 600 | 69 600 | 1437 |
+| 50 | 150 | 174 000 | 174 000 | 575 |
+| 100 | 400 | 464 000 | 464 000 | 216 |
+| 300 | 1200 | 1 392 000 | 1 111 111 (tope) | 90 |
+
+**Si el juego funciona, la tesorería se reparte en meses; si no funciona, dura
+años** en vez de vaciarse premiando salas vacías. Sin que nadie ajuste nada.
+
+El dato sale de los recibos de partida (`entryFee` y quién pagó), que se anclan en
+la cadena por lotes: cualquiera puede rehacer la suma desde `/api/matches` y
+comprobar que el bote publicado cuadra con lo que se jugó. No es un número que yo
+declare — es la misma lógica que el resto del diseño.
+
+> `REWARD_FACTOR=0` significa lo que parece: no se pagan premios. **No es la forma
+> de desactivar este límite** — no hay forma, es una protección y no una opción.
+
 #### Y sigue siendo un techo
 
 Aunque un atacante controlase la autoridad y falsease todas las listas, no puede
