@@ -2686,6 +2686,7 @@ const httpServer = http.createServer(async (req, res) => {
      * antes, pero sin llave privada detrás. Y la wallet la enseña antes de firmar.
      */
     if (urlPath === '/api/deposit-tx' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
         let body = '';
         req.on('data', c => { body += c; if (body.length > 1000) req.destroy(); });
         req.on('end', async () => {
@@ -2887,6 +2888,10 @@ const httpServer = http.createServer(async (req, res) => {
      * ganadores, no hace falta tocar el programa.
      */
     if (urlPath === '/api/rewards/claim-tx' && req.method === 'POST') {
+        // Pide un blockhash al RPC en cada llamada: sin tope, cualquiera agota la
+        // cuota del nodo desde una pestana y deja sin cobrar a todo el mundo. Mismo
+        // limitador que /api/deposit, que ya existia por esto exacto.
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
         let body = '';
         req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
         req.on('end', async () => {
