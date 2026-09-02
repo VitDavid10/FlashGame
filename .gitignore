@@ -52,3 +52,12 @@ chatbot-backend/emails.json
 # Cache de Python de los scripts de assets
 __pycache__/
 *.pyc
+
+# Clave del PROGRAMA de tesoreria: es la que fija su direccion on-chain.
+# Si se filtra, cualquiera puede desplegar en esa direccion antes que tu.
+# Si se PIERDE, no se puede volver a desplegar ahi nunca mas: guardala fuera de git.
+programs/*-keypair.json
+
+# Artefactos de compilacion de Anchor/Rust
+target/
+.anchor/

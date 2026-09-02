@@ -1,0 +1,24 @@
+[package]
+name = "pill-treasury"
+version = "0.1.0"
+description = "Tesoreria de PillWars: custodia separada, bloqueo de anios y premios por Merkle claim"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "pill_treasury"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+# init-if-needed: la ATA del ganador se crea en el propio claim si no existe, para que
+# cobrar sea una sola transaccion. Aqui es seguro — una ATA ya creada no se reinicializa.
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+anchor-spl = "0.31.1"

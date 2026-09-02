@@ -1,0 +1,12 @@
+[workspace]
+members = ["programs/*"]
+resolver = "2"
+
+[profile.release]
+# overflow-checks ON en release, a proposito. En un programa que mueve dinero, un
+# desbordamiento silencioso es la diferencia entre un error y un exploit: sin esto,
+# reserved.checked_add serviria de poco si otra suma se desborda sin avisar.
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+incremental = false
