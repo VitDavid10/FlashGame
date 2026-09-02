@@ -1,0 +1,314 @@
+[
+ {
+  "nombre": "ganador #1",
+  "epoch": 20334,
+  "winner": "6mJGeC6KTzGP5xnWBDMuMGjeCz3NdnsRqAv7cv3BDvCo",
+  "amount": "350000000",
+  "proof": [
+   "0038bca49eb3429ea55f02a04c0587aa8d4bf3156d166daa764d03bdf301a744",
+   "f27ae037600dc7d705bbb223cb8c4e1a0534e49f4616d178bff7155e7e17e991",
+   "90c00df0e8b4a7297a5eba9e0a369d821f7af99d2eb87152a91a19aa0b9299ec",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "ganador #2",
+  "epoch": 20334,
+  "winner": "H68zyc6WEA96Z9TTknqAsvMKd6ChWC3MMBbDhqiqBZ6x",
+  "amount": "200000000",
+  "proof": [
+   "b30ab381dbc1f4f79e5fe4ca1b1acde0b80c125ce8c0eb4f7f6385ceebf12cf7",
+   "e514269642375a278795a109435b1d4c7d2b77c6abe3e8ff66816dc6d0e75592"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "ganador #3",
+  "epoch": 20334,
+  "winner": "2hWF3fja5ngEGQQHx2Zosgau88sCPk3aCYwndGRNLAW8",
+  "amount": "130000000",
+  "proof": [
+   "c2befa4f64a31c76f6493b6fa807e453a6b861c6fbf9fa69ed6d35bafe8fa4d3",
+   "02baad9dbf908f14d7f362fea7b869e816c4fdfea492092066aab6521c9d2800",
+   "90c00df0e8b4a7297a5eba9e0a369d821f7af99d2eb87152a91a19aa0b9299ec",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "ganador #4",
+  "epoch": 20334,
+  "winner": "GeMMC13PJdRCrkygxF58VM8wVPHePvzK5aNhUuBopvyo",
+  "amount": "90000000",
+  "proof": [
+   "8b41163e6075311cb40592834455b56df51f7bb3b651d5f845a6982f62096a80",
+   "e0bc61a400e553a7603bd4ecd6d6d53ac8f58fc33ddadd093da4433de32c1f4f",
+   "373681030bf532f349d91e8a97720cd224c80c8d1fa7b3a91d63edd3da47e863",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "ganador #5",
+  "epoch": 20334,
+  "winner": "6apD9TwzirSfSxZuSLzW6gUZ2Xh1iNHX9L2exkVrQcK4",
+  "amount": "70000000",
+  "proof": [
+   "e26b52a1230d4b108fd6e16569e91998b3877a1ee71d275463a6e6d49ef261d1",
+   "f27ae037600dc7d705bbb223cb8c4e1a0534e49f4616d178bff7155e7e17e991",
+   "90c00df0e8b4a7297a5eba9e0a369d821f7af99d2eb87152a91a19aa0b9299ec",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "ganador #6",
+  "epoch": 20334,
+  "winner": "F9GghVeW5SP6paVsSLtrQp9QUeqd4KFRdcrRmLNbuD53",
+  "amount": "50000000",
+  "proof": [
+   "f769d39bac187df24b763e7f29e03e7ea67376f72e2cb69118e1151aef80745f",
+   "d4c56fd72105c284b02521d2017d6d5214a6c9c5b9bfb4fd6085dc84c6171d70",
+   "373681030bf532f349d91e8a97720cd224c80c8d1fa7b3a91d63edd3da47e863",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "ganador #7",
+  "epoch": 20334,
+  "winner": "9GNYjxnpPsYAXFCNj1dvqbxNMPkkT1jUiwPxbL4qZ6Mm",
+  "amount": "40000000",
+  "proof": [
+   "8a7fe5966743543419c63696441b750b0e100ee78b3f2009ba5ad44e4c5bcb48",
+   "d4c56fd72105c284b02521d2017d6d5214a6c9c5b9bfb4fd6085dc84c6171d70",
+   "373681030bf532f349d91e8a97720cd224c80c8d1fa7b3a91d63edd3da47e863",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "ganador #8",
+  "epoch": 20334,
+  "winner": "GEk6BwWCANz5TNPqrrD4XGPKcqCaVGbyzHta2NTDf3jL",
+  "amount": "30000000",
+  "proof": [
+   "9cff5df47d67a83775b3b36b2b993b267727b4b69fa2c4425764238ebccfcac3",
+   "e0bc61a400e553a7603bd4ecd6d6d53ac8f58fc33ddadd093da4433de32c1f4f",
+   "373681030bf532f349d91e8a97720cd224c80c8d1fa7b3a91d63edd3da47e863",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "ganador #9",
+  "epoch": 20334,
+  "winner": "2BgaAVQB3WDozs8gti3rQArAyVWXQkTnDp6drDdfmZoy",
+  "amount": "25000000",
+  "proof": [
+   "85e8b5606efe7b75d77dd2299ab64953427a1d82d7843bd2fd3a03e9f4e94b5c",
+   "02baad9dbf908f14d7f362fea7b869e816c4fdfea492092066aab6521c9d2800",
+   "90c00df0e8b4a7297a5eba9e0a369d821f7af99d2eb87152a91a19aa0b9299ec",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "ganador #10",
+  "epoch": 20334,
+  "winner": "HKCvwcUNwZFVQ3vECLj3XThzKKoM6vCa2v4ddApk1Ws5",
+  "amount": "15000000",
+  "proof": [
+   "0ec9cb18066b2b31e5ec83d6a5e5af094aa7cbc9c594d366607052add01f7b5d",
+   "e514269642375a278795a109435b1d4c7d2b77c6abe3e8ff66816dc6d0e75592"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": true
+ },
+ {
+  "nombre": "la prueba del #2 usada por el #1",
+  "epoch": 20334,
+  "winner": "6mJGeC6KTzGP5xnWBDMuMGjeCz3NdnsRqAv7cv3BDvCo",
+  "amount": "350000000",
+  "proof": [
+   "b30ab381dbc1f4f79e5fe4ca1b1acde0b80c125ce8c0eb4f7f6385ceebf12cf7",
+   "e514269642375a278795a109435b1d4c7d2b77c6abe3e8ff66816dc6d0e75592"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": false
+ },
+ {
+  "nombre": "el #3 pidiendo el doble de lo que le toca",
+  "epoch": 20334,
+  "winner": "2hWF3fja5ngEGQQHx2Zosgau88sCPk3aCYwndGRNLAW8",
+  "amount": "260000000",
+  "proof": [
+   "c2befa4f64a31c76f6493b6fa807e453a6b861c6fbf9fa69ed6d35bafe8fa4d3",
+   "02baad9dbf908f14d7f362fea7b869e816c4fdfea492092066aab6521c9d2800",
+   "90c00df0e8b4a7297a5eba9e0a369d821f7af99d2eb87152a91a19aa0b9299ec",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": false
+ },
+ {
+  "nombre": "la prueba del #4 en otra epoca",
+  "epoch": 20335,
+  "winner": "GeMMC13PJdRCrkygxF58VM8wVPHePvzK5aNhUuBopvyo",
+  "amount": "90000000",
+  "proof": [
+   "8b41163e6075311cb40592834455b56df51f7bb3b651d5f845a6982f62096a80",
+   "e0bc61a400e553a7603bd4ecd6d6d53ac8f58fc33ddadd093da4433de32c1f4f",
+   "373681030bf532f349d91e8a97720cd224c80c8d1fa7b3a91d63edd3da47e863",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": false
+ },
+ {
+  "nombre": "una wallet que no estaba en la lista",
+  "epoch": 20334,
+  "winner": "H4HtvSLpswMCqFPnf7YozQeoLW2jxAJHugjU69uze9ix",
+  "amount": "70000000",
+  "proof": [
+   "e26b52a1230d4b108fd6e16569e91998b3877a1ee71d275463a6e6d49ef261d1",
+   "f27ae037600dc7d705bbb223cb8c4e1a0534e49f4616d178bff7155e7e17e991",
+   "90c00df0e8b4a7297a5eba9e0a369d821f7af99d2eb87152a91a19aa0b9299ec",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": false
+ },
+ {
+  "nombre": "un byte cambiado en la prueba",
+  "epoch": 20334,
+  "winner": "F9GghVeW5SP6paVsSLtrQp9QUeqd4KFRdcrRmLNbuD53",
+  "amount": "50000000",
+  "proof": [
+   "0869d39bac187df24b763e7f29e03e7ea67376f72e2cb69118e1151aef80745f",
+   "d4c56fd72105c284b02521d2017d6d5214a6c9c5b9bfb4fd6085dc84c6171d70",
+   "373681030bf532f349d91e8a97720cd224c80c8d1fa7b3a91d63edd3da47e863",
+   "3b25a8a8674384f7a78693c7dee3de1d7641b1092b4b4da1581304369e3578c0"
+  ],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": false
+ },
+ {
+  "nombre": "prueba vacia contra un arbol de diez hojas",
+  "epoch": 20334,
+  "winner": "9GNYjxnpPsYAXFCNj1dvqbxNMPkkT1jUiwPxbL4qZ6Mm",
+  "amount": "40000000",
+  "proof": [],
+  "root": "37de9444633cf30c6a75342932d5e84fd42980ebf02b2df60c482e6112908600",
+  "valid": false
+ },
+ {
+  "nombre": "ganador unico (raiz = hoja, prueba vacia)",
+  "epoch": 20334,
+  "winner": "6mJGeC6KTzGP5xnWBDMuMGjeCz3NdnsRqAv7cv3BDvCo",
+  "amount": "123456",
+  "proof": [],
+  "root": "1c883cb8541c75ee181e227be6993c82d5b10514c3f25b641a8d226c962ce5f1",
+  "valid": true
+ },
+ {
+  "nombre": "arbol de 7 hojas, 1",
+  "epoch": 20334,
+  "winner": "Trmo2XDnjViHGbusm7QixZUyihxaBQunuK1A1oYyKQq",
+  "amount": "1000",
+  "proof": [
+   "3fb2bb00e2e31d184c325980928bf480253f688acc997b70e18aa1d3ae4cf6a4",
+   "8a9879332e14ad73b1044d23e5e864ccfe50314c829810e5eaa3308e6a618dfc"
+  ],
+  "root": "6a89e9b1f3627255cca2f02371d8903de649548c8c3d9d47b9547efa98928bc6",
+  "valid": true
+ },
+ {
+  "nombre": "arbol de 7 hojas, 2",
+  "epoch": 20334,
+  "winner": "Fakq9MgfLkQaMqndMqRXmnY7s5XhRP2EbPV2JetcviRP",
+  "amount": "2000",
+  "proof": [
+   "f4bc4279674965a842f47ae69b85ced704cccde15320b97a6f788cf9e53cdcfa",
+   "02b77f843c588cef8966fed5012653487e896e415bb59105b9fb141caa1480ad",
+   "8a9879332e14ad73b1044d23e5e864ccfe50314c829810e5eaa3308e6a618dfc"
+  ],
+  "root": "6a89e9b1f3627255cca2f02371d8903de649548c8c3d9d47b9547efa98928bc6",
+  "valid": true
+ },
+ {
+  "nombre": "arbol de 7 hojas, 3",
+  "epoch": 20334,
+  "winner": "EMEmGsk3bDAybnQ7bkcyz2cpu4fs6UPVkXMf9QDv2GEN",
+  "amount": "3000",
+  "proof": [
+   "b01066712491490cf078a321f684afd7d69abcc364e4005121c11f003f7a3fff",
+   "87e374c0c868a7c3bc38ec53eabf39a46def1151651601e1aed1b4ed3855a05e",
+   "23cdc3d2da638f0f6f52968deeda9524ac4734229152d3f75f09198da3b60eeb"
+  ],
+  "root": "6a89e9b1f3627255cca2f02371d8903de649548c8c3d9d47b9547efa98928bc6",
+  "valid": true
+ },
+ {
+  "nombre": "arbol de 7 hojas, 4",
+  "epoch": 20334,
+  "winner": "BbQqXKVozVft4Nmp9bHw6HFCDjQFZ9w4rxBbDoFAFnxY",
+  "amount": "4000",
+  "proof": [
+   "9e9e7755bb5398e1f2dd8e5a78ef5d79338b0697fc327c87e9d26c8052bc218e",
+   "87e374c0c868a7c3bc38ec53eabf39a46def1151651601e1aed1b4ed3855a05e",
+   "23cdc3d2da638f0f6f52968deeda9524ac4734229152d3f75f09198da3b60eeb"
+  ],
+  "root": "6a89e9b1f3627255cca2f02371d8903de649548c8c3d9d47b9547efa98928bc6",
+  "valid": true
+ },
+ {
+  "nombre": "arbol de 7 hojas, 5",
+  "epoch": 20334,
+  "winner": "2ZHP6fPxhnS5w4qD9AwWH8UoBQe38HRa3dfoazyTavPE",
+  "amount": "5000",
+  "proof": [
+   "b78186e2f00a256b038fbc1153e62abfaf994f5639437db5ad8085b729ef153b",
+   "7c22ff850689d5f940e061ab65a27fa7daed89cea19b1fe9781881b1012acac5",
+   "23cdc3d2da638f0f6f52968deeda9524ac4734229152d3f75f09198da3b60eeb"
+  ],
+  "root": "6a89e9b1f3627255cca2f02371d8903de649548c8c3d9d47b9547efa98928bc6",
+  "valid": true
+ },
+ {
+  "nombre": "arbol de 7 hojas, 6",
+  "epoch": 20334,
+  "winner": "F554pR5kQNTV7Zvz1kBVCsYTSLiabYcMhCFMVb3uSzH2",
+  "amount": "6000",
+  "proof": [
+   "47b016acf39c6e0bc15eec6f52bba3ff933a8ad63ff22d79e9a5b446da370f74",
+   "02b77f843c588cef8966fed5012653487e896e415bb59105b9fb141caa1480ad",
+   "8a9879332e14ad73b1044d23e5e864ccfe50314c829810e5eaa3308e6a618dfc"
+  ],
+  "root": "6a89e9b1f3627255cca2f02371d8903de649548c8c3d9d47b9547efa98928bc6",
+  "valid": true
+ },
+ {
+  "nombre": "arbol de 7 hojas, 7",
+  "epoch": 20334,
+  "winner": "2nKKoHoZpUKyJH2tcK56YYWGGL2MbFdVmL8CD4CrcM4Y",
+  "amount": "7000",
+  "proof": [
+   "1d231beffa0c3b511dedd00cfb46699b7604f62b38090473d9d81feaadc93f8b",
+   "7c22ff850689d5f940e061ab65a27fa7daed89cea19b1fe9781881b1012acac5",
+   "23cdc3d2da638f0f6f52968deeda9524ac4734229152d3f75f09198da3b60eeb"
+  ],
+  "root": "6a89e9b1f3627255cca2f02371d8903de649548c8c3d9d47b9547efa98928bc6",
+  "valid": true
+ }
+]

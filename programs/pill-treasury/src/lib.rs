@@ -591,6 +591,95 @@ fn verify_proof(proof: &[[u8; 32]], root: [u8; 32], leaf: [u8; 32]) -> bool {
     acc == root
 }
 
+/// La misma hoja que calcula claim(). Aparte para poder testearla sin montar un
+/// contexto de instruccion entero.
+fn leaf_hash(epoch: u64, winner: &[u8; 32], amount: u64) -> [u8; 32] {
+    hash::hashv(&[
+        &[LEAF_PREFIX],
+        &epoch.to_le_bytes(),
+        winner,
+        &amount.to_le_bytes(),
+    ])
+    .to_bytes()
+}
+
+#[cfg(test)]
+mod test_vectors;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /*
+     * El test que importa de verdad: que este programa acepte EXACTAMENTE lo que
+     * genera server/merkle.js y rechace lo demas.
+     *
+     * Las dos implementaciones del arbol viven en lenguajes distintos y no hay
+     * ningun sitio donde se ejecuten juntas. Si se separan —un prefijo de dominio
+     * cambiado, otro orden de bytes, sha256 en un lado y keccak en el otro— ningun
+     * claim funciona, y nadie se entera hasta que un jugador intenta cobrar y le
+     * rebota InvalidProof.
+     *
+     * Los vectores los genera `node scripts/gen-merkle-vectors.js`. Si esto falla,
+     * NO se regeneran para que pase: es que una de las dos se movio.
+     */
+    #[test]
+    fn casa_con_el_arbol_del_servidor() {
+        for v in test_vectors::VECTORS {
+            let hoja = leaf_hash(v.epoch, &v.winner, v.amount);
+            let ok = verify_proof(v.proof, v.root, hoja);
+            assert_eq!(
+                ok, v.valid,
+                "vector con epoch={} amount={} deberia dar {}",
+                v.epoch, v.amount, v.valid
+            );
+        }
+    }
+
+    #[test]
+    fn hoja_y_nodo_viven_en_dominios_distintos() {
+        // Sin los prefijos, un nodo interno de 64 bytes podria presentarse como una
+        // hoja y alguien fabricaria una prueba de un premio que nunca existio.
+        let a = [1u8; 32];
+        let b = [2u8; 32];
+        let como_nodo = hash::hashv(&[&[NODE_PREFIX], &a, &b]).to_bytes();
+        let sin_prefijo = hash::hashv(&[&a, &b]).to_bytes();
+        assert_ne!(como_nodo, sin_prefijo);
+    }
+
+    #[test]
+    fn cada_campo_de_la_hoja_cambia_el_hash() {
+        // Si alguno no entrara en la hoja, una prueba serviria para cobrar otra
+        // cantidad, en otra epoca o a otra wallet.
+        let w = [7u8; 32];
+        let base = leaf_hash(100, &w, 500);
+        assert_ne!(base, leaf_hash(101, &w, 500), "la epoca no entra en la hoja");
+        assert_ne!(base, leaf_hash(100, &w, 501), "la cantidad no entra en la hoja");
+        assert_ne!(base, leaf_hash(100, &[8u8; 32], 500), "la wallet no entra en la hoja");
+    }
+
+    #[test]
+    fn una_prueba_vacia_solo_vale_si_la_raiz_es_la_hoja() {
+        let hoja = leaf_hash(1, &[3u8; 32], 42);
+        assert!(verify_proof(&[], hoja, hoja));
+        assert!(!verify_proof(&[], [0u8; 32], hoja));
+    }
+
+    #[test]
+    fn el_orden_de_los_hermanos_da_igual() {
+        // Pares ordenados: por eso la prueba no lleva la posicion de cada nodo.
+        let a = leaf_hash(1, &[1u8; 32], 10);
+        let b = leaf_hash(1, &[2u8; 32], 20);
+        let raiz = if a <= b {
+            hash::hashv(&[&[NODE_PREFIX], &a, &b]).to_bytes()
+        } else {
+            hash::hashv(&[&[NODE_PREFIX], &b, &a]).to_bytes()
+        };
+        assert!(verify_proof(&[b], raiz, a));
+        assert!(verify_proof(&[a], raiz, b));
+    }
+}
+
 /* ===================== CUENTAS ===================== */
 
 #[account]
