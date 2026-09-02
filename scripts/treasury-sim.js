@@ -32,6 +32,9 @@
  */
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+
 /* ===================== PARAMETROS ===================== */
 
 const args = process.argv.slice(2);
@@ -40,6 +43,7 @@ const flag = (nombre, def) => {
     return i >= 0 && args[i + 1] != null ? Number(args[i + 1]) : def;
 };
 const tiene = (nombre) => args.includes('--' + nombre);
+const flagStr = (nombre) => { const i = args.indexOf('--' + nombre); return i >= 0 && args[i + 1] != null ? args[i + 1] : null; };
 
 // Precio real del oraculo (server/globalsettings.json). Se usa solo para traducir a $.
 const PILL_POR_DOLAR = flag('rate', 232.3);
@@ -98,10 +102,123 @@ const INICIAL = flag('inicial', 30_000_000);     // PILL comprados en el lanzami
 const BPS_DIA = flag('bps', 5);                  // 0,05 % del saldo por dia
 const CAP_ABS = flag('cap', 250_000);            // tope absoluto por dia, en PILL
 
+/* ===================== DATOS REALES ===================== */
+
+/*
+ * Lee server/transactions.log y saca los ingresos de tesoreria MEDIDOS, sin
+ * hipotesis de por medio. Es la diferencia entre "si pasa esto, aguanta" y "esto es
+ * lo que esta pasando", y es lo que decide los caps definitivos.
+ *
+ * La cuenta es una resta: lo que entra por entradas menos lo que sale por premios,
+ * cashouts y reembolsos. Lo que queda es el rake — el exit fee de classic y las
+ * partes del bote de arcade que nadie reclamo — y esta contabilizado por el propio
+ * servidor, tal y como ocurrio.
+ *
+ *   entry    negativo, lo que paga el jugador al entrar
+ *   cashout  positivo, lo que se lleva al salir vivo (ya con el fee descontado)
+ *   prize    positivo, victorias de classic y reparto de arcade
+ *   refund   positivo, entrada devuelta (sala que no arranco, o reinicio de admin)
+ *   skin     negativo cuando se paga en $PILL, 0 cuando se paga en SP
+ */
+function analizaLog(fichero) {
+    let lineas;
+    try { lineas = fs.readFileSync(fichero, 'utf8').split('\n').filter(Boolean); }
+    catch (e) { return { error: 'no se puede leer ' + fichero + ': ' + e.message }; }
+
+    const porDia = new Map();
+    let malformadas = 0;
+    for (const l of lineas) {
+        let e;
+        try { e = JSON.parse(l); } catch (err) { malformadas++; continue; }
+        if (!e || !e.fecha) { malformadas++; continue; }
+        const dia = String(e.fecha).slice(0, 10);
+        if (!porDia.has(dia)) porDia.set(dia, { entradas: 0, pagado: 0, refunds: 0, tienda: 0, n: 0 });
+        const d = porDia.get(dia);
+        const cantidad = Math.abs(Number(e.amount) || 0);
+        d.n++;
+        if (e.type === 'entry') d.entradas += cantidad;
+        else if (e.type === 'cashout' || e.type === 'prize') d.pagado += cantidad;
+        else if (e.type === 'refund') d.refunds += cantidad;
+        else if (e.type === 'skin') d.tienda += cantidad;   // 0 si se pago con SP
+    }
+
+    const dias = [...porDia.entries()].sort();
+    // Solo cuentan los dias con movimiento de dinero: incluir los dias muertos
+    // dividiria la media por dias en los que no habia servidor levantado, y saldria
+    // un ingreso "real" mas bajo que el de verdad.
+    const activos = dias.filter(([, d]) => d.entradas > 0 || d.tienda > 0);
+    if (activos.length === 0) return { error: 'el log no tiene ni una entrada de pago todavia' };
+
+    const total = activos.reduce((a, [, d]) => ({
+        entradas: a.entradas + d.entradas,
+        pagado: a.pagado + d.pagado,
+        refunds: a.refunds + d.refunds,
+        tienda: a.tienda + d.tienda,
+    }), { entradas: 0, pagado: 0, refunds: 0, tienda: 0 });
+
+    const rake = total.entradas - total.pagado - total.refunds;
+    return {
+        dias: activos.length,
+        primerDia: activos[0][0],
+        ultimoDia: activos[activos.length - 1][0],
+        malformadas,
+        entradasDia: total.entradas / activos.length,
+        pagadoDia: total.pagado / activos.length,
+        refundsDia: total.refunds / activos.length,
+        tiendaDia: total.tienda / activos.length,
+        rakeDia: rake / activos.length,
+        rakePct: total.entradas > 0 ? rake / total.entradas : 0,
+        serie: activos,
+    };
+}
+
+function informeLog(fichero) {
+    const r = analizaLog(fichero);
+    console.log('');
+    console.log('━'.repeat(78));
+    console.log('  DATOS REALES  ' + fichero);
+    console.log('━'.repeat(78));
+    if (r.error) {
+        console.log(`\n  ${r.error}`);
+        console.log('  Sin datos no hay calibracion posible: los escenarios de abajo son hipotesis,');
+        console.log('  no medidas. NO fijes los caps definitivos con esto.\n');
+        return null;
+    }
+
+    console.log(`\n  ${r.dias} dias con movimiento (${r.primerDia} → ${r.ultimoDia})`);
+    if (r.malformadas) console.log(`  ${r.malformadas} lineas ilegibles, ignoradas`);
+    console.log('\n  MEDIA POR DIA ACTIVO');
+    console.log(`    Entradas cobradas ......... ${fmt(r.entradasDia).padStart(12)} PILL   ${usd(r.entradasDia)}`);
+    console.log(`    Pagado a jugadores ........ ${fmt(r.pagadoDia).padStart(12)} PILL   ${usd(r.pagadoDia)}`);
+    console.log(`    Reembolsado ............... ${fmt(r.refundsDia).padStart(12)} PILL   ${usd(r.refundsDia)}`);
+    console.log(`    ${'─'.repeat(52)}`);
+    console.log(`    RAKE (queda en la casa) ... ${fmt(r.rakeDia).padStart(12)} PILL   ${usd(r.rakeDia)}`);
+    console.log(`    Gastado en la tienda ...... ${fmt(r.tiendaDia).padStart(12)} PILL   ${usd(r.tiendaDia)}`);
+    console.log(`\n    El rake es el ${(r.rakePct * 100).toFixed(1)} % de lo apostado.`);
+
+    if (r.dias < 14) {
+        console.log(`\n  ⚠ Solo ${r.dias} dias de datos. Es poco para fijar nada irreversible:`);
+        console.log('    un fin de semana bueno o una racha mala mueven esta media a la mitad.');
+    }
+    return r;
+}
+
 /* ===================== MODELO ===================== */
 
 /** Ingresos diarios de tesoreria, en PILL, desglosados por origen. */
 function ingresosDia(e) {
+    // Escenario derivado del log: el rake esta MEDIDO, no modelado. Se devuelve tal
+    // cual en vez de reconstruirlo a partir de partidas/jugadores/fee, que serian
+    // tres suposiciones para llegar a un numero que ya se sabe.
+    if (e._ingresosMedidos != null) {
+        return {
+            rakeClassic: 0, rakeArcade: 0, tienda: 0,
+            total: e._ingresosMedidos,
+            volumenDia: e._volumenMedido || 0,
+            quemadoDia: 0,
+            medido: true,
+        };
+    }
     const entradaPill = e.entradaMediaUsd * PILL_POR_DOLAR;
     const volumenDia = e.partidasDia * e.jugadoresPartida * entradaPill;
 
@@ -164,16 +281,22 @@ function informe(e) {
 
     console.log('');
     console.log('━'.repeat(78));
-    console.log(`  ESCENARIO ${e.nombre}   ${e.partidasDia} partidas/dia · ${e.jugadoresPartida} jug/partida · entrada ${e.entradaMediaUsd}$`);
+    console.log(r.ing.medido
+        ? `  ESCENARIO ${e.nombre}   ingresos tomados del log de transacciones`
+        : `  ESCENARIO ${e.nombre}   ${e.partidasDia} partidas/dia · ${e.jugadoresPartida} jug/partida · entrada ${e.entradaMediaUsd}$`);
     console.log('━'.repeat(78));
 
     console.log('\n  INGRESOS DE TESORERIA (por dia)');
-    console.log(`    Exit fee classic .......... ${fmt(r.ing.rakeClassic).padStart(12)} PILL   ${usd(r.ing.rakeClassic)}`);
-    console.log(`    Bote arcade no reclamado .. ${fmt(r.ing.rakeArcade).padStart(12)} PILL   ${usd(r.ing.rakeArcade)}`);
-    console.log(`    Tienda + conversor ........ ${fmt(r.ing.tienda).padStart(12)} PILL   ${usd(r.ing.tienda)}`);
+    if (r.ing.medido) {
+        console.log('    (rake y tienda medidos en transactions.log, no modelados)');
+    } else {
+        console.log(`    Exit fee classic .......... ${fmt(r.ing.rakeClassic).padStart(12)} PILL   ${usd(r.ing.rakeClassic)}`);
+        console.log(`    Bote arcade no reclamado .. ${fmt(r.ing.rakeArcade).padStart(12)} PILL   ${usd(r.ing.rakeArcade)}`);
+        console.log(`    Tienda + conversor ........ ${fmt(r.ing.tienda).padStart(12)} PILL   ${usd(r.ing.tienda)}`);
+    }
     console.log(`    ${'─'.repeat(52)}`);
     console.log(`    TOTAL ..................... ${fmt(r.ing.total).padStart(12)} PILL   ${usd(r.ing.total)}`);
-    console.log(`    (ademas se queman ${fmt(r.ing.quemadoDia)} PILL/dia, que no entran aqui)`);
+    if (!r.ing.medido) console.log(`    (ademas se queman ${fmt(r.ing.quemadoDia)} PILL/dia, que no entran aqui)`);
     console.log(`    Volumen apostado .......... ${fmt(r.ing.volumenDia).padStart(12)} PILL   ${usd(r.ing.volumenDia)}`);
 
     console.log(`\n  GRIFO  cap ${fmt(CAP_ABS)} PILL/dia · ${BPS_DIA} bps (${(BPS_DIA / 100).toFixed(2)} %/dia · ~${(BPS_DIA * 365 / 100).toFixed(0)} %/anio)`);
@@ -224,6 +347,27 @@ function informe(e) {
 }
 
 /* ===================== MAIN ===================== */
+
+/*
+ * Los datos reales van primero, si los hay: todo lo demas son hipotesis y esto no.
+ * Con --log se apunta a otro fichero (el del VPS, por ejemplo); con --no-log se
+ * salta y quedan solo los escenarios modelados.
+ */
+const LOG = tiene('no-log') ? null : (flagStr('log') || path.join(__dirname, '..', 'server', 'transactions.log'));
+const real = LOG ? informeLog(LOG) : null;
+
+// Con datos reales se anade un escenario mas: el que de verdad esta pasando.
+if (real) {
+    const split = flag('split', 0.5);
+    ESCENARIOS.real = {
+        nombre: 'REAL (medido)',
+        partidasDia: 0, jugadoresPartida: 0, entradaMediaUsd: 0,
+        feeMedioClassic: 0, pctClassic: 0.5, noReclamadoArcade: 0,
+        skinsDia: 0, conversionDiaPill: 0, splitTesoreria: split,
+        _ingresosMedidos: real.rakeDia + real.tiendaDia * split,
+        _volumenMedido: real.entradasDia,
+    };
+}
 
 const resultados = Object.values(ESCENARIOS).map(informe);
 

@@ -162,7 +162,17 @@ Cada semana:
 ```bash
 npm run treasury -- status          # cuánto entra, cuánto sale, cuánto se reclama
 npm run treasury:verify             # que la cadena y las raíces cuadren
-npm run treasury:sim -- --partidas <las reales> --skins <las reales>
+npm run treasury:sim                # proyección con los datos REALES del log
+```
+
+El simulador lee `server/transactions.log` y saca el rake **medido**, no estimado:
+entradas cobradas menos premios, cashouts y reembolsos. Lo que queda es lo que el
+exit fee de classic y el bote no reclamado de arcade dejan en la casa, tal y como
+ocurrió. Ese número, y no una hipótesis, es el que decide los caps.
+
+```bash
+# En el VPS, sobre el log de producción
+node scripts/treasury-sim.js --log /ruta/a/server/transactions.log --anios 4
 ```
 
 Lo que hay que responder antes de bloquear:
