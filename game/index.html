@@ -5634,9 +5634,10 @@
         // grosor fijo siguiendo el contorno de la cápsula, con bisel (borde
         // exterior oscuro / interior claro). Cache por tamaño lógico + color.
         // dashed=true deja huecos tipo "campo de fuerza" (inmune).
-        function pixRingSprite(wL, col, dashed, thickDiv) {
+        function pixRingSprite(wL, col, dashed, thickDiv, segs) {
             const div = thickDiv || (dashed ? 10 : 8);
-            const key = wL + '|' + col + (dashed ? '|d' : '') + '|' + div;
+            const SG = segs || 8;   // trozos del punteado: 8 son dientes gordos
+            const key = wL + '|' + col + (dashed ? '|d' : '') + '|' + div + '|' + SG;
             let spr = PIX.ring.get(key); if (spr) return spr;
             if (PIX.ring.size > 200) PIX.ring.clear();
             const hL = Math.round(wL * PILL_RATIO), R = wL / 2;
@@ -5653,7 +5654,7 @@
                 const cy = Math.min(Math.max(y + 0.5, R), hL - R);
                 let ang = Math.atan2(y + 0.5 - cy, x + 0.5 - R);
                 if (ang < 0) ang += Math.PI * 2;
-                const seg = (ang / (Math.PI * 2)) * 8;
+                const seg = (ang / (Math.PI * 2)) * SG;
                 return (seg % 1) < 0.62;
             };
             for (let y = 0; y < hL; y++) for (let x = 0; x < wL; x++) {
@@ -5886,14 +5887,22 @@
                                                                                                             if (isSelf || enemySkillFx) ensureSprintBoltPops(c, now, showExtra);
                                                                                                         }
 
-                                                    // --- INMUNE: aura morada + rail punteado con cuenta atras encima. El
-                                                    // rail y el relleno son solo TUYOS; de los demas se ve solo el aura.
+                                                    // --- INMUNE: aura morada dentada que late. El dentado es el aro
+                                                    // punteado de fuera, pero con trozos cortos (22 en vez de los 8 de
+                                                    // serie, que salian como cuatro barrotes) y latiendo con el aro de
+                                                    // dentro. El relleno y el dentado son solo TUYOS; de los demas se ve
+                                                    // unicamente el aura solida.
                                                     if (c.immuneTime > 0 && showAura) {
                                                         ctx.save();
                                                         ctx.translate(c.x, c.y);
                                                         ctx.rotate(-Math.PI / 4);
                                                         const step = Math.floor(now / 160) % 2;
                                                         const gap = c.r * (0.08 + 0.03 * step);
+                                                        if (isSelf || enemySkillFx) {
+                                                            const gap2 = gap + c.r * 0.1;
+                                                            ctx.globalAlpha = alpha * (0.75 + 0.2 * step);
+                                                            ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true, 7, 22), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
+                                                        }
                                                         ctx.globalAlpha = alpha * 0.95;
                                                         ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
                                                         if (isSelf || enemySkillFx) {
@@ -5902,31 +5911,6 @@
                                                             ctx.beginPath();
                                                             ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
                                                             ctx.fill();
-                                                            // Rail punteado + lo que queda de escudo pintado encima. Va en trazo
-                                                            // fino y no con pixRingSprite porque el punteado del sprite son 8
-                                                            // segmentos gordos, y a este tamaño salia irregular.
-                                                            const gap2 = gap + c.r * 0.16;
-                                                            const w2 = pW + gap2 * 2, h2 = pH + gap2 * 2, rb2 = w2 / 2;
-                                                            const gr = Math.max(2.5, c.r * 0.1);
-                                                            const per = 2 * (h2 - 2 * rb2) + 2 * Math.PI * rb2;
-                                                            const totalMs = (typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.shieldDuration) ? SKILL_PARAMS.shieldDuration : 3000;
-                                                            const queda = Math.max(0, Math.min(1, c.immuneTime / totalMs));
-                                                            ctx.lineCap = 'butt';
-                                                            ctx.lineWidth = gr;
-                                                            ctx.globalAlpha = alpha * 0.5;
-                                                            ctx.strokeStyle = '#a020f0';
-                                                            ctx.setLineDash([gr * 2.4, gr * 1.7]);
-                                                            ctx.beginPath();
-                                                            ctx.roundRect(-w2 / 2, -h2 / 2, w2, h2, rb2);
-                                                            ctx.stroke();
-                                                            ctx.globalAlpha = alpha;
-                                                            ctx.strokeStyle = '#e6c2ff';
-                                                            ctx.setLineDash([per * queda, per]);
-                                                            ctx.lineDashOffset = 0;
-                                                            ctx.beginPath();
-                                                            ctx.roundRect(-w2 / 2, -h2 / 2, w2, h2, rb2);
-                                                            ctx.stroke();
-                                                            ctx.setLineDash([]);
                                                         }
                                                         ctx.restore();
                                                     }
