@@ -271,7 +271,10 @@ function verificar(limite = 200) {
  * gente AHORA.
  */
 function oponentesDe(desde) {
-    const corte = desde || (Date.now() - 7 * 86400e3);
+    // `desde == null` y no `desde ||`: pasar 0 significa "desde el principio", y con
+    // el || se convertia silenciosamente en la ventana por defecto — el filtro se
+    // desactivaba sin que nadie se enterara, que es la peor forma de fallar aqui.
+    const corte = desde == null ? Date.now() - 7 * 86400e3 : desde;
     const mapa = new Map();   // wallet -> Set(oponentes)
     const partidas = new Map();
     let ficheros = [];

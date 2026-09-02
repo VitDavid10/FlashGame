@@ -29,6 +29,13 @@
  *   7. Que el programa sea inmutable. Si no lo es, todo lo anterior es decorativo:
  *      quien tenga la upgrade authority puede desplegar una version que vacie los
  *      vaults, y ninguna de las comprobaciones de arriba lo impediria.
+ *   8. Que los recibos de partida encajen con los lotes anclados en la cadena, y que
+ *      los premiados se hayan cruzado con gente distinta. Un jugador de verdad juega
+ *      con decenas de personas; diez wallets del mismo dueno solo se cruzan entre
+ *      ellas, y eso se ve.
+ *   9. Que el pasivo publicado sea la suma de la lista de saldos y que la custodia lo
+ *      cubra. Es la mitad que casi nadie publica: decir cuanto tienes es facil, lo
+ *      dificil es demostrar cuanto DEBES.
  *
  * POR QUE HACEN FALTA LAS CUATRO PRIMERAS. Cada una tapa el agujero que deja la
  * anterior. Probado con un servidor trucado a proposito:
@@ -58,7 +65,11 @@ let fallos = 0, avisos = 0;
 const ok = (m) => console.log('  \x1b[32m✓\x1b[0m ' + m);
 const mal = (m) => { fallos++; console.log('  \x1b[31m✗ ' + m + '\x1b[0m'); };
 const avisa = (m) => { avisos++; console.log('  \x1b[33m! ' + m + '\x1b[0m'); };
-const titulo = (m) => console.log('\n\x1b[1m' + m + '\x1b[0m');
+// El numero lo pone el contador y no el texto: si una seccion no llega a correr
+// (sin contrato desplegado, por ejemplo), la numeracion saltaba huecos y parecia que
+// faltaban comprobaciones.
+let _seccion = 0;
+const titulo = (m) => console.log('\n\x1b[1m' + (++_seccion) + '. ' + m + '\x1b[0m');
 
 async function get(ruta) {
     const r = await fetch(BASE + ruta, { signal: AbortSignal.timeout(20000) });
@@ -116,7 +127,7 @@ const canonico = (date, entries) => JSON.stringify({
 });
 
 async function auditaCadena() {
-    titulo('1. Cadena de hashes del leaderboard');
+    titulo('Cadena de hashes del leaderboard');
     const { chain } = await get('/api/leaderboard/chain');
     if (!chain || !chain.length) { avisa('todavia no hay ningun dia cerrado'); return {}; }
 
@@ -143,7 +154,7 @@ async function auditaCadena() {
 const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
 
 async function auditaRondas(estado, dias) {
-    titulo('2. Raices de Merkle contra las listas publicadas');
+    titulo('Raices de Merkle contra las listas publicadas');
     const rondas = (estado.premios && estado.premios.rondas) || [];
     if (!rondas.length) { avisa('todavia no hay ninguna ronda de premios'); return []; }
 
@@ -171,7 +182,7 @@ async function auditaRondas(estado, dias) {
         ok(`epoca ${r.epoch} (${pub.date}): raiz, total y ${pub.entries.length} pruebas cuadran`);
     }
 
-    titulo('3. Ganadores contra el leaderboard de ese dia');
+    titulo('Ganadores contra el leaderboard de ese dia');
     for (const r of rondas) {
         const pub = listas[r.epoch];
         if (!pub) continue;
@@ -210,7 +221,7 @@ async function auditaRondas(estado, dias) {
         if (!problemas) ok(`epoca ${r.epoch}: los ${premiados.length} premiados son el top del ${pub.date}, con sus pesos`);
     }
 
-    titulo('4. Topes diarios');
+    titulo('Topes diarios');
     const cfg = estado.config;
     if (!cfg) { avisa('sin contrato desplegado no hay topes que comprobar'); return rondas; }
     const dec = 10 ** 6;
@@ -222,10 +233,128 @@ async function auditaRondas(estado, dias) {
     return rondas;
 }
 
+/* ===================== RECIBOS DE PARTIDA ===================== */
+
+/*
+ * Los recibos son lo que impide que el leaderboard sea "lo que dice el servidor". Se
+ * comprueban tres cosas: que la cadena de lotes encaje, que cada recibo siga dando el
+ * hash con el que se anclo, y —la que de verdad revela algo— que los premiados se
+ * hayan cruzado con gente de verdad y no solo entre ellos.
+ */
+async function auditaPartidas(estado) {
+    titulo('Recibos de partida');
+    let cadena;
+    try { cadena = await get('/api/matches/chain'); }
+    catch (e) { avisa('no hay endpoint de recibos de partida en este servidor (' + e.message + ')'); return; }
+
+    const check = cadena.check || {};
+    if (!(cadena.batches || []).length) { avisa('todavia no se ha anclado ningun lote de partidas'); return; }
+    if (check.ok) ok(`${check.lotes} lotes de recibos, la cadena encaja (${cadena.pendientes} recibos sin anclar)`);
+    else {
+        mal(`la cadena de recibos NO encaja: ${(check.fallos || []).length} problemas`);
+        for (const f of (check.fallos || []).slice(0, 5)) console.log(`      lote ${f.lote}${f.match ? ' recibo ' + f.match : ''}: ${f.error}`);
+    }
+
+    // Rehacer un lote entero desde los recibos publicados, como haria un tercero.
+    const ultimo = cadena.batches[cadena.batches.length - 1];
+    try {
+        const lote = await get('/api/matches/batch/' + ultimo.n);
+        let rotos = 0;
+        for (const r of lote.matches.slice(0, 25)) {
+            const m = await get('/api/matches/' + r.id);
+            // El hash del recibo se rehace con el mismo canonico que usa el servidor.
+            const canon = JSON.stringify({
+                seq: m.seq, room: m.room, mode: m.mode, startedAt: m.startedAt, endedAt: m.endedAt,
+                entryFee: m.entryFee, pot: m.pot,
+                players: m.players.slice()
+                    .sort((a, b) => ((a.wallet || a.name || '') < (b.wallet || b.name || '') ? -1 : 1))
+                    .map(p => ({ wallet: p.wallet, name: p.name, kills: p.kills, peak: p.peak, paid: p.paid })),
+            });
+            if (sha256hex(canon) !== r.hash) { mal(`recibo ${r.id}: el contenido no da el hash con el que se anclo`); rotos++; }
+        }
+        if (!rotos) ok(`los recibos del lote ${ultimo.n} cuadran con sus hashes`);
+    } catch (e) { avisa('no pude bajar el ultimo lote: ' + e.message); }
+
+    // Y el dato que revela el fraude que ninguna firma puede impedir.
+    titulo('Con quien juegan los premiados');
+    try {
+        const op = await get('/api/matches/opponents?dias=7');
+        const porWallet = new Map((op.wallets || []).map(w => [w.wallet, w]));
+        const rondas = (estado.premios && estado.premios.rondas) || [];
+        let sospechosas = 0, revisadas = 0;
+        for (const r of rondas.slice(0, 3)) {
+            const pub = await get('/api/rewards/' + r.epoch).catch(() => null);
+            if (!pub) continue;
+            for (const fila of pub.entries) {
+                const w = porWallet.get(fila.wallet);
+                revisadas++;
+                if (!w) continue;   // puede haber premiado antes de la ventana de 7 dias
+                if (w.oponentes < (op.minOponentes || 5)) {
+                    mal(`${fila.wallet.slice(0, 8)}… cobro el puesto ${fila.rank} y solo se cruzo con ${w.oponentes} wallets en ${w.partidas} partidas`);
+                    sospechosas++;
+                }
+            }
+        }
+        if (revisadas === 0) avisa('todavia no hay premiados que contrastar');
+        else if (!sospechosas) ok(`los ${revisadas} premiados revisados se cruzan con gente distinta`);
+    } catch (e) { avisa('no pude leer la tabla de oponentes: ' + e.message); }
+}
+
+/* ===================== PRUEBA DE PASIVO ===================== */
+
+/*
+ * La otra mitad de la prueba de reservas, y la que casi nadie publica: cuanto se
+ * DEBE. Sin esto, el ratio de reservas lo calcula el propio sospechoso.
+ */
+async function auditaPasivo(estado) {
+    titulo('Lo que el servidor dice que debe');
+    let r;
+    try { r = await get('/api/reserves'); }
+    catch (e) { avisa('no hay prueba de pasivo en este servidor (' + e.message + ')'); return; }
+    if (!r.ultimo) { avisa('todavia no se ha publicado ningun snapshot de saldos'); return; }
+
+    const check = r.check || {};
+    if (check.ok) ok(`${check.snapshots} snapshots de saldos, la cadena encaja`);
+    else {
+        mal(`la cadena de saldos NO encaja: ${(check.fallos || []).length} problemas`);
+        for (const f of (check.fallos || []).slice(0, 5)) console.log(`      snapshot ${f.n}: ${f.error}`);
+    }
+
+    // Rehacer el total desde la lista publicada: que el numero anunciado sea la suma.
+    try {
+        const snap = await get('/api/reserves/' + r.ultimo.n);
+        const suma = (snap.balances || []).reduce((a, b) => a + b.saldo, 0);
+        if (suma !== snap.total) mal(`el pasivo anunciado (${snap.total}) no es la suma de la lista (${suma})`);
+        else ok(`pasivo ${suma.toLocaleString('es-ES')} PILL sobre ${snap.balances.length} wallets, y la suma cuadra`);
+
+        // Y contra la custodia on-chain: es la comprobacion que importa.
+        if (estado.custody) {
+            if (estado.custody.balance >= suma) ok(`la custodia (${estado.custody.balance.toLocaleString('es-ES')}) cubre el pasivo`);
+            else mal(`FALTA DINERO: custodia ${estado.custody.balance} contra ${suma} debidos`);
+        } else {
+            avisa('sin contrato desplegado no hay custodia on-chain contra la que contrastar');
+        }
+        /*
+         * La diferencia con las obligaciones de AHORA es un aviso, no un fallo: entre
+         * un snapshot y el siguiente la gente deposita, juega y retira, asi que salvo
+         * en un servidor parado los dos numeros no van a coincidir nunca. Lo que si
+         * dice algo es cuanto se han separado y cuanto hace del ultimo snapshot: una
+         * diferencia enorme con un snapshot reciente es lo que habria que mirar.
+         */
+        if (estado.pasivo && typeof estado.obligaciones === 'number') {
+            const dif = Math.abs(estado.obligaciones - snap.total);
+            const horas = (Date.now() - new Date(snap.at).getTime()) / 3600e3;
+            if (dif === 0) ok('el snapshot coincide exactamente con las obligaciones de ahora');
+            else avisa(`el pasivo se ha movido ${dif.toLocaleString('es-ES')} PILL desde el ultimo snapshot (hace ${horas.toFixed(1)} h) — normal si hay gente jugando`);
+            if (horas > 6) avisa(`el ultimo snapshot es de hace ${horas.toFixed(1)} h: deberia publicarse mas a menudo`);
+        }
+    } catch (e) { avisa('no pude bajar el ultimo snapshot: ' + e.message); }
+}
+
 /* ===================== 6 y 7: LA CADENA ===================== */
 
 async function auditaOnChain(estado) {
-    titulo('5. Estado on-chain');
+    titulo('Estado on-chain');
     if (!estado.programa) {
         avisa('NO HAY CONTRATO DESPLEGADO: el dinero de los jugadores y el del proyecto');
         avisa('comparten una wallet normal, sin bloqueo. Nada de lo de arriba esta respaldado');
@@ -273,7 +402,7 @@ async function auditaOnChain(estado) {
         else avisa('los parametros aun se pueden endurecer: fase de calibracion');
     }
 
-    titulo('6. Lo que decide si algo de esto vale');
+    titulo('Lo que decide si algo de esto vale');
     const u = estado.upgradeAuthority;
     if (!u || !u.conocido) { avisa('no se pudo leer la upgrade authority del programa'); return; }
     if (u.inmutable) {
@@ -301,6 +430,8 @@ async function auditaOnChain(estado) {
     const dias = await auditaCadena();
     await auditaRondas(estado, dias);
     await auditaOnChain(estado);
+    await auditaPartidas(estado);
+    await auditaPasivo(estado);
 
     console.log('');
     if (fallos === 0) {
