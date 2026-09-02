@@ -6432,13 +6432,17 @@
                             });
                             ctx.restore();
                         }
+            const _fSizePix = Math.max(14, c.r / 1.1);
             if (c.name) {
                 ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-                const fSize = Math.max(14, c.r / 1.1); ctx.font = `${fSize}px ${PIX_FONT}`;
+                ctx.font = `${_fSizePix}px ${PIX_FONT}`;
                 ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
                 ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5);
                 ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5);
             }
+            // Corona / numero de puesto: solo arcade, solo TU pildora.
+            if (_miPuesto && !c.isBot && c.id === 'me' && currentGameMode === 'arcade')
+                dibujaRango(ctx, c.x, rangoAncla(c, !!c.name, _fSizePix), _miPuesto, Date.now());
             ctx.restore();
         }
 
@@ -6474,7 +6478,11 @@
             });
             ctx.restore();
         }
-        if (c.name) { ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3; let fSize = Math.max(12, c.r / 1.2); ctx.font = `bold ${fSize}px Russo One`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); }
+        const _fSize = Math.max(12, c.r / 1.2);
+        if (c.name) { ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.font = `bold ${_fSize}px Russo One`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); }
+        // Corona / numero de puesto: solo arcade, solo TU pildora.
+        if (_miPuesto && !c.isBot && c.id === 'me' && currentGameMode === 'arcade')
+            dibujaRango(ctx, c.x, rangoAncla(c, !!c.name, _fSize), _miPuesto, Date.now());
         ctx.restore();
     }
     function drawCellColors(c, w, h) { ctx.fillStyle = c.colorTop; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = c.colorBot; ctx.fillRect(-w/2, 0, w, h/2); }
@@ -10887,7 +10895,7 @@
     // no se pasa por el cartel de resultado, asi que los avisos de partida
     // (2 KILLS TO PENTAKILL, CARRY/POT, barra de skills...) se quedaban pintados
     // encima del menu.
-    function returnToMenu() { hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
+    function returnToMenu() { hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); _miPuesto = null; _puestoPrevio = null; if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
         // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
         // la medida de cuando se entro al modo (ver el comentario de arriba).
         centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
@@ -14429,6 +14437,111 @@
         drawEnemyArrow(es);
     }
 
+
+    /* ===== RANGO: corona del podio / numero del 4 al 10 (solo ARCADE) =========
+     * Sale encima de TU pildora, sobre el nombre —o directamente sobre la
+     * pildora si no has puesto ninguno—, y solo mientras estas en el top 10.
+     * Podio: corona con una piedra en cada punta, del color del metal. La de
+     * oro ademas enciende sus tres piedras en cadena, que es lo que hace que
+     * ir primero se note por el rabillo del ojo sin mirar el numero.
+     * Del 4 al 10: el numero pelado, en el amarillo de arcade.
+     */
+    let _miPuesto = null;          // 1..10 mientras estes en el top; null fuera
+    let _puestoPrevio = null;      // para disparar los sonidos solo al ENTRAR
+
+    const RANGO_CORONA = [
+        '1.....1.....1',
+        '1.....1.....1',
+        '11...111...11',
+        '1111111111111',
+        '.111111111111',
+        '.11111111111.',
+    ];
+    const RANGO_PIEDRAS = [[0, 0], [6, 0], [12, 0]];
+    const RANGO_METAL = { 1: '#ffd54a', 2: '#e0e6ee', 3: '#e29c66' };
+    const RANGO_GEMA  = { 1: '#ff5a4e', 2: '#4d9bff', 3: '#2ee56a' };
+    const RANGO_NUM   = '#ccff00';   // el amarillo de arcade, para el 4-10
+
+    function _tonoMas(hex, k) {
+        const n = parseInt(hex.slice(1), 16);
+        return `rgb(${Math.min(255, ((n >> 16) & 255) + k)},${Math.min(255, ((n >> 8) & 255) + k)},${Math.min(255, (n & 255) + k)})`;
+    }
+    function _tonoMenos(hex, k) {
+        const n = parseInt(hex.slice(1), 16);
+        return `rgb(${Math.max(0, ((n >> 16) & 255) - k)},${Math.max(0, ((n >> 8) & 255) - k)},${Math.max(0, (n & 255) - k)})`;
+    }
+    // Reborde negro + bisel arriba-izquierda + sombra abajo-derecha: el mismo
+    // recetario que el resto de sprites del pack pixel.
+    function _pintaMascara(g, mask, color, ox, oy, px) {
+        const H = mask.length, W = mask[0].length;
+        const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && mask[y][x] === '1';
+        g.fillStyle = '#000';
+        for (let y = -1; y <= H; y++) for (let x = -1; x <= W; x++) {
+            if (on(x, y)) continue;
+            if (on(x-1,y) || on(x+1,y) || on(x,y-1) || on(x,y+1) ||
+                on(x-1,y-1) || on(x+1,y-1) || on(x-1,y+1) || on(x+1,y+1))
+                g.fillRect(ox + x*px, oy + y*px, px, px);
+        }
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (!on(x, y)) continue;
+            let c = color;
+            if (!on(x, y-1) || !on(x-1, y)) c = _tonoMas(color, 70);
+            else if (!on(x, y+1) || !on(x+1, y)) c = _tonoMenos(color, 70);
+            g.fillStyle = c; g.fillRect(ox + x*px, oy + y*px, px, px);
+        }
+    }
+
+    function dibujaRango(g, cx, baseY, puesto, ahora) {
+        if (!puesto || puesto > 10) return;
+        g.save();
+        g.imageSmoothingEnabled = false;
+        if (puesto <= 3) {
+            const metal = RANGO_METAL[puesto], gema = RANGO_GEMA[puesto];
+            const px = Math.max(2, Math.round(baseY.px));
+            const ox = Math.round(cx - (13 * px) / 2), oy = Math.round(baseY.y - 6 * px);
+            _pintaMascara(g, RANGO_CORONA, metal, ox, oy, px);
+            RANGO_PIEDRAS.forEach(([x, y], i) => {
+                // Solo el oro late: las tres piedras se encienden en cadena.
+                let f = 0;
+                if (puesto === 1) {
+                    const fase = (ahora + i * 600) % 1800;
+                    f = fase < 500 ? Math.sin((fase / 500) * Math.PI) : 0;
+                }
+                g.fillStyle = '#000';
+                g.fillRect(ox + x*px - 1, oy + y*px - 1, px + 2, px + 2);
+                g.fillStyle = f > 0 ? _tonoMas(gema, Math.round(120 * f)) : gema;
+                g.fillRect(ox + x*px, oy + y*px, px, px);
+                g.fillStyle = _tonoMas(gema, 90);
+                g.fillRect(ox + x*px, oy + y*px, px, Math.max(1, px / 3));
+                if (f > 0.55) {   // chispa en cruz en el punto alto
+                    g.fillStyle = `rgba(255,255,255,${(f - 0.55) * 1.6})`;
+                    g.fillRect(ox + x*px - px, oy + y*px + px/3, px*3, px/3);
+                    g.fillRect(ox + x*px + px/3, oy + y*px - px, px/3, px*3);
+                }
+            });
+        } else {
+            const tam = Math.max(11, baseY.px * 4.2);
+            g.font = `${tam}px ${typeof PIX_FONT !== 'undefined' ? PIX_FONT : "'Press Start 2P', monospace"}`;
+            g.textAlign = 'center'; g.textBaseline = 'bottom';
+            g.lineWidth = 3; g.strokeStyle = '#000';
+            g.strokeText(String(puesto), cx, baseY.y);
+            g.fillStyle = RANGO_NUM;
+            g.fillText(String(puesto), cx, baseY.y);
+        }
+        g.restore();
+    }
+    /*
+     * Sitio del indicador. El hueco del nombre se reserva SIEMPRE, lo lleves o
+     * no: si no, sin nombre la corona se pegaba a la pildora y con nombre
+     * quedaba mas arriba, o sea que saltaba de sitio segun quien fueras.
+     * `px` es el lado del pixel gordo de la corona, atado al tamaño de letra
+     * para que las dos crezcan juntas.
+     */
+    function rangoAncla(c, hayNombre, fSize) {
+        const arribaPildora = c.y - (c.r * PILL_RATIO) + 5;
+        return { y: arribaPildora - (fSize + 10), px: Math.max(2, Math.round(fSize / 6)) };
+    }
+
     const FLECHA_VERDE = '#2ee56a';
     const FLECHA_VERDE_PIE = '#1f9e4c';   // segunda linea del cartel, apagada
     const FLECHA_ALTURA = 0.30;     // 0 = arriba del todo, 1 = abajo (=70 en la escala de David)
@@ -14678,6 +14791,24 @@
             for (let b of botMap.values()) all.push(b);
             all.sort((a,b) => b.mass - a.mass);
         }
+        /*
+         * De paso sale MI puesto, que es lo que pinta la corona sobre la
+         * pildora. Se saca de aqui y no en otro sitio porque este `all` ya es
+         * el ranking bueno en los dos casos: el del servidor en online (con AOI
+         * el cliente solo ve su zona y el suyo seria falso) y el local en
+         * offline.
+         * Solo arcade: en classic no hay puestos que valgan.
+         */
+        if (currentGameMode === 'arcade') {
+            const i = all.findIndex(p => p.isMe);
+            _miPuesto = (i >= 0 && i < 10) ? i + 1 : null;
+            if (_miPuesto !== _puestoPrevio) {
+                // Solo al ENTRAR al top 10 (venias de fuera) y al coronarte.
+                if (_miPuesto === 1 && _puestoPrevio !== 1) { try { SoundManager.play('top1'); } catch (e) {} }
+                else if (_miPuesto && !_puestoPrevio) { try { SoundManager.play('top10'); } catch (e) {} }
+                _puestoPrevio = _miPuesto;
+            }
+        } else { _miPuesto = null; _puestoPrevio = null; }
         let html = "";
         for (let i=0; i<Math.min(10, all.length); i++) {
             let pl = all[i];
