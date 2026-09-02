@@ -76,3 +76,5 @@ server/leaderboard-chain.json
 server/leaderboard-today.json
 server/rewards/
 server/rewards.json
+server/reserves/
+server/reserves-state.json

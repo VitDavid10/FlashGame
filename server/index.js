@@ -39,6 +39,7 @@ const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 const leaderboard = require('./leaderboard.js');   // ranking DIARIO por wallet (premios de tesorería)
 const rewards = require('./rewards.js');           // rondas de premios: Merkle + publicación on-chain
 const matches = require('./matches.js');           // recibos de partida anclados en la cadena
+const reserves = require('./reserves.js');         // prueba publica de lo que se debe a los jugadores
 // El leaderboard filtra por oponentes distintos, pero ese dato vive en los recibos.
 // Se inyecta en vez de que un modulo importe al otro: asi ninguno de los dos depende
 // del otro para funcionar, y en los tests se puede probar cada uno por su lado.
@@ -644,6 +645,9 @@ if (PW_ROLE !== 'host') rewards.arranca(solana, log);
 // Anclaje de los recibos de partida. Solo el Director: dos procesos anclando el mismo
 // lote lo escribirian dos veces en la cadena con hashes distintos.
 if (PW_ROLE !== 'host') matches.arranca(solana, log);
+// Prueba de pasivo: publica cada hora la lista de saldos y ancla su raiz. Es lo que
+// impide que el servidor mienta sobre cuanto debe — ver server/reserves.js.
+if (PW_ROLE !== 'host') reserves.arranca(() => warbank._balances, solana, log);
 // Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
 // Math.round: la tarifa viaja DENTRO del mensaje que el jugador firma
 // ("...paying 48 PILL @ ..."), y el servidor reconstruye esa misma cadena para
@@ -2044,8 +2048,22 @@ async function treasuryState() {
         mint: solana.MINT || null,
         rpc: solana.RPC,
         obligaciones,
+        // La suma de arriba la hago yo, así que sola no prueba nada. Lo que la hace
+        // comprobable es el snapshot: la lista completa de saldos, con su raíz anclada
+        // en la cadena. Si reportara menos pasivo tendría que quitarle saldo a alguien
+        // concreto, y ese alguien lo ve en /api/reserves/proof.
+        pasivo: (() => {
+            const u = reserves.ultimo();
+            if (!u) return null;
+            return {
+                snapshot: u.n, total: u.total, wallets: u.wallets, root: u.root,
+                at: u.at, sig: u.sig,
+                cuadraConLasObligaciones: u.total === obligaciones,
+            };
+        })(),
         premios: rewards.estado(),
         leaderboard: { hoy: leaderboard.estadoHoy().date, cadena: leaderboard.cadena(30).length, check: leaderboard.verificarCadena() },
+        partidas: { lotes: matches.cadena(1).length ? matches.cadena(1)[0].n + 1 : 0, pendientes: matches.pendientes(), check: matches.verificar(20) },
         generadoEn: new Date().toISOString(),
     };
 
@@ -2897,6 +2915,41 @@ const httpServer = http.createServer(async (req, res) => {
         const snap = /^\d{4}-\d{2}-\d{2}$/.test(date) ? leaderboard.diaCerrado(date) : null;
         res.writeHead(snap ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify(snap || { error: 'no hay leaderboard cerrado para esa fecha' }));
+        return;
+    }
+
+    /* ===== PRUEBA DE PASIVO =====
+     *
+     * Publicar cuánto hay en custodia es fácil; lo difícil es demostrar cuánto se
+     * DEBE, porque ese número lo pone el servidor. Aquí va la lista completa de
+     * saldos con su raíz anclada en la cadena: para reportar menos pasivo del que
+     * hay tendría que quitarle saldo a alguien concreto, que lo va a ver.
+     */
+    if (urlPath === '/api/reserves') {
+        const u = reserves.ultimo();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({
+            ultimo: u,
+            snapshots: reserves.cadena(50),
+            check: reserves.verificar(50),
+            memoProgram: reserves.MEMO_PROGRAM,
+        }));
+        return;
+    }
+    // La fila de una wallet con su prueba: lo que mira un jugador para comprobar que
+    // su saldo está bien contado en lo que publico.
+    if (urlPath === '/api/reserves/proof') {
+        const wallet = String(query.get('wallet') || '');
+        const p = isSolAddr(wallet) ? reserves.pruebaDe(wallet) : null;
+        res.writeHead(p ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(p || { error: 'todavía no hay ningún snapshot publicado' }));
+        return;
+    }
+    if (urlPath.startsWith('/api/reserves/')) {
+        const n = parseInt(urlPath.slice('/api/reserves/'.length), 10);
+        const s = Number.isFinite(n) ? reserves.snapshot(n) : null;
+        res.writeHead(s ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(s || { error: 'no hay snapshot con ese número' }));
         return;
     }
 
