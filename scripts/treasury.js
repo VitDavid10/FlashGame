@@ -2,7 +2,7 @@
  * HERRAMIENTA DE OPERACION DE LA TESORERIA.
  *
  *   node scripts/treasury.js status
- *   node scripts/treasury.js init --unlock-days 30 --cap 200000 --bps 225 --sweep-cap 500000
+ *   node scripts/treasury.js init --unlock-days 30 --cap 1700000 --bps 225 --sweep-cap 500000
  *   node scripts/treasury.js fund 1000000
  *   node scripts/treasury.js sweep 50000
  *   node scripts/treasury.js publish <epoch>
@@ -163,7 +163,7 @@ async function status() {
  * Asi que la curva se imprime ANTES de firmar.
  */
 function curvaDe(bps, cap) {
-    const T = Number(flag('simular-con', '30000000'));
+    const T = Number(flag('simular-con', '150000000'));
     const halvingDias = Math.log(0.5) / Math.log(1 - bps / 10000);
     console.log(`\n  -- Lo que implica bps=${bps} sobre ${fmt(T)} PILL --`);
     console.log(`  halving cada ${halvingDias.toFixed(1)} dias (${(halvingDias / 30.44).toFixed(1)} meses)`);
@@ -205,7 +205,7 @@ async function init() {
 
     const dias = parseInt(flag('unlock-days', '30'), 10);
     const unlockTs = Math.floor(Date.now() / 1000) + dias * 86400;
-    const cap = Math.round(Number(flag('cap', '200000')));
+    const cap = Math.round(Number(flag('cap', '1700000')));
     const bps = parseInt(flag('bps', '225'), 10);
     const challengeH = parseInt(flag('challenge-hours', '48'), 10);
     const sweepCap = Math.round(Number(flag('sweep-cap', '500000')));

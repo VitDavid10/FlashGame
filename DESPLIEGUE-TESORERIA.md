@@ -107,7 +107,7 @@ export TREASURY_PROGRAM=PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW
 export PILL_MINT=<el mint de $PILL>
 export SOL_RPC=https://api.devnet.solana.com
 
-npm run treasury -- init --unlock-days 30 --cap 200000 --bps 225 --sweep-cap 500000 --burn-cap 500000
+npm run treasury -- init --unlock-days 30 --cap 1700000 --bps 225 --sweep-cap 500000 --burn-cap 500000
 ```
 
 Los valores por defecto son los de **calibración**, no los definitivos:
@@ -116,7 +116,7 @@ Los valores por defecto son los de **calibración**, no los definitivos:
 |---|---|---|
 | `--unlock-days 30` | 30 días | corto a propósito: hay que medir antes de bloquear años |
 | `--bps 225` | 2,25 %/día | **la curva de emisión**: halving mensual (ver §3.4 del plan) |
-| `--cap 200000` | 200 000 PILL/día | afeita el pico del día 1: ~100 días de premio alto y constante |
+| `--cap 1700000` | 1 700 000 PILL/día | 44 días de premio alto y constante sobre una tesorería de 150 M |
 | `--sweep-cap 500000` | 500 000 PILL/día | techo de lo que puede pasar de custodia a tesorería |
 | `--burn-cap 500000` | 500 000 PILL/día | techo de lo que la tienda puede quemar de la custodia |
 

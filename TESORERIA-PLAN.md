@@ -426,6 +426,58 @@ declare — es la misma lógica que el resto del diseño.
 > `REWARD_FACTOR=0` significa lo que parece: no se pagan premios. **No es la forma
 > de desactivar este límite** — no hay forma, es una protección y no una opción.
 
+#### Los premios en dólares, que es lo que mira el jugador
+
+Todo lo anterior está en PILL, y el jugador no piensa en PILL: piensa en si vale la
+pena jugar. Con **150 M en tesorería y un marketcap de 100 000 $** sobre 1 B de
+supply (1 PILL = 0,0001 $), la tesorería entera vale **15 000 $**. Eso es todo lo
+que hay que repartir, y ningún parámetro lo cambia.
+
+Lo único que se decide es en cuánto tiempo:
+
+| cap PILL/día | bote | meseta | #1 | #5 | #10 |
+|---|---|---|---|---|---|
+| 800 000 | 80 $ | 144 d | 28 $ | 5,60 $ | 1,20 $ |
+| 1 200 000 | 120 $ | 81 d | 42 $ | 8,40 $ | 1,80 $ |
+| **1 700 000** | **170 $** | **44 d** | **59 $** | **11,90 $** | **2,55 $** |
+| 2 500 000 | 250 $ | 16 d | 88 $ | 17,50 $ | 3,75 $ |
+
+**Estrechar el top no es la palanca.** Repartiendo lo mismo entre menos gente, el
+primero pasa de 58 $ a 86 $ (top 3) — un 50 % más — y cinco personas se quedan sin
+nada. La velocidad mueve doce veces más: de 14 $/día a 175 $/día. Si el premio
+sabe a poco, el cap es lo que hay que tocar, no el número de ganadores.
+
+##### Y el premio sigue al precio sin tocar nada
+
+El cap está en PILL, así que su valor en dólares sube con el token; y la entrada
+está en dólares, así que cuando el token sube se recaudan menos PILL y el límite por
+actividad se vuelve el que manda. Los dos frenos se turnan solos:
+
+| marketcap | recaudado/día* | manda | bote |
+|---|---|---|---|
+| 100 000 $ | 20 000 000 PILL | el cap | 170 $ |
+| 1 000 000 $ | 2 000 000 PILL | el cap | 1 700 $ |
+| 5 000 000 $ | 400 000 PILL | la actividad | 2 000 $ |
+| 20 000 000 $ | 100 000 PILL | la actividad | 2 000 $ |
+
+<sub>* 100 jugadores, 4 partidas/día, entrada de 5 $</sub>
+
+A precio bajo reparte los tokens que hay; a precio alto **no puede repartir más de
+lo que el juego factura**, valga lo que valga el token. Nadie tiene que ajustar nada
+en ninguno de los dos extremos.
+
+##### El gas del claim
+
+La `ClaimReceipt` cuesta 0,00213 SOL de renta (~0,43 $) que queda inmovilizada para
+siempre: el recibo **no se puede cerrar** a propósito, porque cerrarlo permitiría
+cobrar dos veces. Con un bote de 170 $/día eso es el 17 % del premio del #10.
+
+El contrato no exige que el ganador firme su propio `claim` — un tercero puede
+ejecutarlo, y el destino sale de la hoja del árbol, no de quién firma. Así que el
+servidor puede cobrar por los ganadores y comerse el gas (~4,30 $/día con diez
+ganadores) sin poder desviar un solo token. Es la diferencia entre "has ganado
+2,55 $, haz una transacción de 0,43 $" y que los tokens aparezcan solos.
+
 #### Y sigue siendo un techo
 
 Aunque un atacante controlase la autoridad y falsease todas las listas, no puede
