@@ -14455,6 +14455,7 @@
         '.......1.....',
     ];
     const FLECHA_VERDE = '#2ee56a';
+    const FLECHA_VERDE_PIE = '#1f9e4c';   // segunda linea del cartel, apagada
     const FLECHA_PX = 4;            // lado de cada "pixel gordo" del sprite
     const FLECHA_ALTURA = 0.30;     // 0 = arriba del todo, 1 = abajo (=70 en la escala de David)
     const FLECHA_ESPERA_MS = 5000;  // sin ver a nadie antes de que salga
@@ -14572,14 +14573,25 @@
         const sp = pixArrowSprite();
         // Sitio FIJO: centrado a lo ancho, a un 30% del borde de arriba. Solo
         // gira la flecha; el cartelito no se mueve nunca de ahi.
-        const px = 2, tw = pixTextWidth('ENEMIES', px), th = 7 * px;
-        const alto = th + 8 + sp.height;
+        /*
+         * Dos lineas en vez del 'ENEMIES' de antes: la primera dice QUE pasa y
+         * la segunda QUE hacer. Una palabra suelta no explicaba de que iba el
+         * cartel — sobre todo la primera vez que sale.
+         * La segunda va en verde apagado para que se lea como pie y no compita
+         * con la de arriba.
+         */
+        const px = 2, th = 7 * px, SEP = 5;
+        const L1 = 'NOBODY NEARBY', L2 = 'FOLLOW THE ARROW';
+        const w1 = pixTextWidth(L1, px), w2 = pixTextWidth(L2, px);
+        const textos = th + SEP + th;
+        const alto = textos + 8 + sp.height;
         const top = Math.round(height * FLECHA_ALTURA - alto / 2);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.globalAlpha = 0.92;
-        drawPixelText(ctx, 'ENEMIES', Math.round(cx - tw / 2), top, px, FLECHA_VERDE, '#000');
-        ctx.translate(cx, top + th + 8 + sp.height / 2);
+        drawPixelText(ctx, L1, Math.round(cx - w1 / 2), top, px, FLECHA_VERDE, '#000');
+        drawPixelText(ctx, L2, Math.round(cx - w2 / 2), top + th + SEP, px, FLECHA_VERDE_PIE, '#000');
+        ctx.translate(cx, top + textos + 8 + sp.height / 2);
         ctx.rotate(_flechaAng);
         ctx.drawImage(sp, -sp.width / 2, -sp.height / 2);
         ctx.restore();
