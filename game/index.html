@@ -2458,6 +2458,16 @@
         .gc-skill .nm { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #7d8a82; letter-spacing: .5px; }
         .gc-skill:hover .nm { color: #fff; }
         .gc-skills-hint { margin-top: 14px; text-align: center; font-family: 'VT323', monospace; font-size: 15px; color: #7d8a82; }
+        /* Interruptor de los efectos de skill de los rivales. Mismo lenguaje
+           que .gc-skill: caja cuadrada, borde 2px y encendido en el acento. */
+        .gc-opt { margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 9px; cursor: pointer; user-select: none; }
+        .gc-opt input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .gc-opt-box { width: 15px; height: 15px; border: 2px solid #333; background: rgba(10,10,10,.8); flex-shrink: 0; position: relative; transition: border-color .15s, box-shadow .15s; }
+        .gc-opt:hover .gc-opt-box { border-color: var(--acc); box-shadow: 0 0 10px var(--acc); }
+        .gc-opt input:focus-visible + .gc-opt-box { border-color: var(--acc); box-shadow: 0 0 10px var(--acc); }
+        .gc-opt input:checked + .gc-opt-box::after { content: ''; position: absolute; inset: 2px; background: var(--acc); }
+        .gc-opt-txt { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #7d8a82; letter-spacing: .5px; }
+        .gc-opt:hover .gc-opt-txt { color: var(--acc); }
         .gc-nav { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 6px; border-top: 1px solid #2c3630; }
         .gc-arrow {
             width: 34px; height: 34px; border: 2px solid var(--acc); background: transparent; color: var(--acc);
@@ -4669,6 +4679,17 @@
         set practiceFirstSkillDone(v) { practiceFirstSkillDone = v; },
     };
     let enableEnemyFX = true;
+    // Efectos de skill de los RIVALES. Apagado se ve solo el aura de color
+    // (amarilla en speed, morada en inmune); encendido, el detalle completo
+    // (rayos, aro extra, escudo). Por defecto apagado: es mucho ruido en
+    // pantalla y ademas cuesta. Se cambia en el cartel de HOW TO PLAY.
+    let enemySkillFx = false;
+    try { enemySkillFx = localStorage.getItem('pw_enemySkillFx') === '1'; } catch (e) {}
+    // Una celula es tuya si lleva tu id o si estas offline y no es un bot.
+    const _esMia = c => c.id === 'me' || (!c.isBot && sim && !sim.isRemote);
+    // Que efectos de skill toca pintar en esta celula: los tuyos siempre, los
+    // de los demas solo con la opcion de HOW TO PLAY encendida.
+    const _pintaFxDe = c => enemySkillFx || _esMia(c);
     let serverEnemyFx = true;   // override global del server (admin): false = sin FX de enemigos para todos
     // Zoom base: ajuste LOCAL de tu navegador (lo pone el panel admin via localStorage,
     // compartido por ser mismo origen). Solo afecta a TU vista. Mayor = más cerca.
@@ -5075,7 +5096,15 @@
             skOverlay.classList.add('show');
         }
         function gcSkillsPage() {
-            gcBody.innerHTML = '<div class="gc-skills-title">SKILL ARSENAL — TAP A SKILL</div><div class="gc-skills-grid" id="gcSkGrid"></div><div class="gc-skills-hint">8 skills, drafted every 30s in a match</div>';
+            gcBody.innerHTML = '<div class="gc-skills-title">SKILL ARSENAL — TAP A SKILL</div><div class="gc-skills-grid" id="gcSkGrid"></div><div class="gc-skills-hint">8 skills, drafted every 30s in a match</div>'
+                + '<label class="gc-opt"><input type="checkbox" id="gcEnemyFx"><span class="gc-opt-box"></span><span class="gc-opt-txt">ENEMY SKILL EFFECTS</span></label>';
+            const optFx = document.getElementById('gcEnemyFx'), optLbl = optFx.closest('.gc-opt');
+            optFx.checked = enemySkillFx;
+            optFx.addEventListener('change', () => {
+                enemySkillFx = optFx.checked;
+                try { localStorage.setItem('pw_enemySkillFx', enemySkillFx ? '1' : '0'); } catch (e) {}
+            });
+            gcSfx(optLbl);
             const grid = document.getElementById('gcSkGrid');
             for (let i = 1; i <= 8; i++) {
                 const data = SKILL_DESCRIPTIONS[i];
@@ -5821,7 +5850,7 @@
                                                  * - Imán: ondas + partículas azules en el radio (sin icono).
                                                  */
                                                 function drawCellBuffFx(ctx, c, alpha) {
-                                                    const isSelf = c.id === 'me' || (!c.isBot && sim && !sim.isRemote);
+                                                    const isSelf = _esMia(c);
                                                     const showAura = true;
                                                     const showExtra = isSelf || !c.isBot || enableEnemyFX;
                                                     if (!showAura && !showExtra) return;
@@ -5842,11 +5871,12 @@
                                                                                                             ctx.globalAlpha = alpha;
                                                                                                             ctx.drawImage(pixRingSprite(wLfx, '#FFD700', false, 16), -pW / 2 - pulse, -pH / 2 - pulse, pW + pulse * 2, pH + pulse * 2);
                                                                                                             ctx.restore();
-                                                                                                            // Online (sin sim particles): emitir pops client-side como +++
-                                                                                                            ensureSprintBoltPops(c, now, showExtra);
+                                                                                                            // Los rayos son solo TUYOS: de los demas se ve unicamente el aura.
+                                                                                                            if (isSelf || enemySkillFx) ensureSprintBoltPops(c, now, showExtra);
                                                                                                         }
 
-                                                    // --- INMUNE: aros + escudo (sin partículas) ---
+                                                    // --- INMUNE: aura morada. El aro extra, el relleno y el escudo son
+                                                    // solo TUYOS: de los demas se ve unicamente el aura.
                                                     if (c.immuneTime > 0 && showAura) {
                                                         ctx.save();
                                                         ctx.translate(c.x, c.y);
@@ -5855,37 +5885,40 @@
                                                         const gap = c.r * (0.08 + 0.03 * step);
                                                         ctx.globalAlpha = alpha * 0.95;
                                                         ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
-                                                        const gap2 = gap + c.r * 0.16;
-                                                        ctx.globalAlpha = alpha * (0.5 + 0.25 * step);
-                                                        ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
-                                                        ctx.globalAlpha = alpha * 0.16;
-                                                        ctx.fillStyle = '#a020f0';
-                                                        ctx.beginPath();
-                                                        ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
-                                                        ctx.fill();
+                                                        if (isSelf || enemySkillFx) {
+                                                            const gap2 = gap + c.r * 0.16;
+                                                            ctx.globalAlpha = alpha * (0.5 + 0.25 * step);
+                                                            ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
+                                                            ctx.globalAlpha = alpha * 0.16;
+                                                            ctx.fillStyle = '#a020f0';
+                                                            ctx.beginPath();
+                                                            ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
+                                                            ctx.fill();
+                                                        }
                                                         ctx.restore();
-
-                                                        // Escudo: icono pixel si hay; si no, procedural
-                                                                                                                const shWorld = Math.max(20, Math.min(56, c.r * 0.82));
-                                                                                                                                                                                                                                const bob = Math.sin(now / 180) * (c.r * 0.05);
-                                                                                                                                                                                                                                const glow = 1 + 0.06 * (Math.floor(now / 130) % 2);
-                                                                                                                                                                                                                                const dw = shWorld * glow;
-                                                                                                                const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
-                                                                                                                ctx.save();
-                                                                                                                ctx.translate(sx, sy);
-                                                                                                                ctx.globalAlpha = alpha;
-                                                                                                                if (!drawFxPop(ctx, 'shield', dw, 1)) {
-                                                                                                                    const sW = Math.max(12, Math.min(32, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
-                                                                                                                    const spr = pixShieldSprite(sW);
-                                                                                                                    const dh = (spr.height / spr.width) * dw;
-                                                                                                                    ctx.imageSmoothingEnabled = false;
-                                                                                                                    ctx.drawImage(spr, -dw / 2, -dh / 2, dw, dh);
-                                                                                                                }
-                                                                                                                ctx.restore();
-                                                                                                            }
-
-                                                    // --- IMÁN por celda (rivales/bots): solo partículas en radio ---
-                                                    if (c.magnetTime > 0 && showExtra && !isSelf) {
+                                                        if (isSelf || enemySkillFx) {
+                                                            const shWorld = Math.max(20, Math.min(56, c.r * 0.82));
+                                                            const bob = Math.sin(now / 180) * (c.r * 0.05);
+                                                            const glow = 1 + 0.06 * (Math.floor(now / 130) % 2);
+                                                            const dw = shWorld * glow;
+                                                            const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
+                                                            ctx.save();
+                                                            ctx.translate(sx, sy);
+                                                            ctx.globalAlpha = alpha;
+                                                            if (!drawFxPop(ctx, 'shield', dw, 1)) {
+                                                                const sW = Math.max(12, Math.min(32, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
+                                                                const spr = pixShieldSprite(sW);
+                                                                const dh = (spr.height / spr.width) * dw;
+                                                                ctx.imageSmoothingEnabled = false;
+                                                                ctx.drawImage(spr, -dw / 2, -dh / 2, dw, dh);
+                                                            }
+                                                            ctx.restore();
+                                                        }
+                                                    }
+                                                    
+                                                    // --- IMÁN: particulas en radio, iguales para todos. Las ondas y
+                                                    // la herradura del cluster propio se quitaron: costaban lag.
+                                                    if (c.magnetTime > 0 && showExtra && (isSelf || enemySkillFx)) {
                                                         const mR = ((typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.magnetRange) ? SKILL_PARAMS.magnetRange : 200) + c.r;
                                                         drawMagnetParticles(ctx, c.x, c.y, mR, alpha, c.x + c.y);
                                                     }
@@ -5963,31 +5996,6 @@
                                     ctx.imageSmoothingEnabled = prev;
                                 }
 
-                                /** Ondas del imán + partículas en el radio (cluster propio). Sin icono. */
-                                function drawPlayerMagnetFx(ctx, cells, alpha) {
-                                    if (!cells || !cells.length) return;
-                                    let avgX = 0, avgY = 0, maxR = 0;
-                                    for (let i = 0; i < cells.length; i++) {
-                                        avgX += cells[i].x; avgY += cells[i].y;
-                                        if (cells[i].r > maxR) maxR = cells[i].r;
-                                    }
-                                    avgX /= cells.length; avgY /= cells.length;
-                                    const magnetRad = ((typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.magnetRange) ? SKILL_PARAMS.magnetRange : 200) + maxR;
-                                    const timeLoop = (performance.now() / 1000) % 1;
-                                    ctx.save();
-                                    ctx.translate(avgX, avgY);
-                                    for (let i = 0; i < 3; i++) {
-                                        const offset = i * 0.3, t = (timeLoop + offset) % 1;
-                                        const radius = magnetRad * (1 - t), opacity = t;
-                                        ctx.beginPath();
-                                        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-                                        ctx.strokeStyle = `rgba(40, 140, 255, ${opacity * 0.45 * alpha})`;
-                                        ctx.lineWidth = 2 + opacity * 3;
-                                        ctx.stroke();
-                                    }
-                                    ctx.restore();
-                                    drawMagnetParticles(ctx, avgX, avgY, magnetRad, alpha, avgX + avgY);
-                                }
 
     // ===== Fuente bitmap pixel (PIXFONT, drawPixelText, pixFancyText, HD) =====
     // Movida a pixfont.js (compartida con comparativa.html para ver el alfabeto).
@@ -6421,7 +6429,7 @@
             // Buff FX (aros, rayos, escudo, imán por celda) — online y offline
             drawCellBuffFx(ctx, c, alpha);
             // Pops de masa / sprint: mismo sistema de partículas (+++ / --- / ⚡)
-                        if (c.particles && c.particles.length > 0) {
+                        if (c.particles && c.particles.length > 0 && _pintaFxDe(c)) {
                             ctx.save(); ctx.translate(c.x, c.y);
                             c.particles.forEach(p => {
                                 ctx.save();
@@ -6447,7 +6455,7 @@
                             });
                             ctx.restore();
                         }
-            dibujaTpPedazos(ctx, c, alpha);
+            if (_pintaFxDe(c)) dibujaTpPedazos(ctx, c, alpha);
             // Nombre y corona ya no se pintan por celula: los dibuja
             // dibujaNombresYRango en un pase posterior (ver draw()).
             ctx.restore();
@@ -6471,7 +6479,7 @@
         if (c.immuneTime > 0 && drawEffects) { ctx.fillStyle = 'rgba(160, 32, 240, 0.4)'; ctx.fill(); }
         ctx.beginPath(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.ellipse(-pW/4, -pH/4, pW/5, pH/6, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.lineWidth = Math.max(2, c.r * 0.1); ctx.strokeStyle = '#222'; ctx.stroke(); ctx.restore();
-        if (c.particles.length > 0 && drawEffects) {
+        if (c.particles.length > 0 && drawEffects && _pintaFxDe(c)) {
             ctx.save(); ctx.translate(c.x, c.y);
             c.particles.forEach(p => {
                 ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = p.life * alpha;
@@ -6486,7 +6494,7 @@
             });
             ctx.restore();
         }
-        dibujaTpPedazos(ctx, c, alpha);
+        if (_pintaFxDe(c)) dibujaTpPedazos(ctx, c, alpha);
         // Nombre y corona ya no se pintan por celula: los dibuja
         // dibujaNombresYRango en un pase posterior (ver draw()).
         ctx.restore();
@@ -10658,6 +10666,13 @@
         MAP_SIZE *= worldSettings.map;
         botConfig.enabled = true; botConfig.count = nBots; botConfig.respawn = true;
         let roomKey = currentGameMode + '_' + currentServer;
+        // Una sala con el reloj vencido es una partida TERMINADA: no se
+        // reutiliza su simulacion. Si no, entrabas con el contador recien
+        // puesto a 3:50 pero con los bots ya gordos de la partida anterior.
+        if (roomTimers[roomKey] && roomTimers[roomKey] <= Date.now()) {
+            roomStates[roomKey] = null;
+            delete roomTimers[roomKey];
+        }
 
         // Crear o reutilizar la simulación de esta sala
         let entry = roomStates[roomKey];
@@ -10708,7 +10723,9 @@
         let loadedSave = false;
         if (saveSystem.hasSaveForRoom(currentGameMode, currentServer)) {
             const saveData = saveSystem.load();
-            if(saveData) {
+            // Y por lo mismo, un guardado cuya sala ya vencio tampoco se carga.
+            const finGuardado = saveData && saveData.timers ? saveData.timers[roomKey] : 0;
+            if(saveData && finGuardado > Date.now()) {
                 p.cells = saveData.player.cells.map(c => new PillSim.Cell(c.x, c.y, c.r, c.colorBot, c.colorTop, c.name, false, c.skinSrc, c.id, sim.now)); p.alive = p.cells.length > 0;
                 if(saveData.player.skills) p.skillSlots = saveData.player.skills; p.killStreak = saveData.player.killStreak || 0;
                 sim.enemies = saveData.enemies.map(c => { let e = new PillSim.Cell(c.x, c.y, c.r, c.colorBot, c.colorTop, c.name, true, null, c.id, sim.now); e.botSkills = c.botSkills || []; e.massMilestoneMet = c.massMilestoneMet; return e; });
@@ -12658,6 +12675,10 @@
 
     // Práctica offline mientras la sala online espera jugadores
     let practiceMode = false;
+    // Reloj del preview, APARTE del de las salas offline. Compartir la clave de
+    // roomTimers hacia que buscar sala te consumiese el tiempo de tu propia
+    // partida offline: entrabas y el contador ya venia gastado.
+    let previewHasta = 0;
     let practiceFirstSkillDone = false;   // en preview se omite SOLO el primer selector de skill
     let _endCdPlayed = false;   // para que el sonido de cuenta atrás del final suene una vez
 
@@ -13020,14 +13041,17 @@
         Quests.startMatch(mode === 'skills' ? 'arcade' : mode, false);
         const esArcade = (mode === 'arcade' || mode === 'skills');
         els.actionBar.style.display = esArcade ? 'flex' : 'none';
-        if (esArcade) { p.skillSlots = [null, null, null, null]; massMilestoneReached = false; nextSkillPickTime = 30; isPickingSkill = false; els.skillOverlay.style.display = 'none'; updateSkillsUI_Arcade(); roomTimers[mode + '_' + currentServer] = Date.now() + GAME_DURATION_MS; }
+        if (esArcade) { p.skillSlots = [null, null, null, null]; massMilestoneReached = false; nextSkillPickTime = 30; isPickingSkill = false; els.skillOverlay.style.display = 'none'; updateSkillsUI_Arcade(); }
         els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
         document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
         if (saveInterval) clearInterval(saveInterval);
         lastFrameTime = Date.now();
         // El preview lleva su propio reloj de ciclo (no se ve en pantalla): al
         // agotarse se recicla la sala entera en vez de terminar la partida.
-        roomTimers[mode + '_' + currentServer] = Date.now() + duracionOffline(mode);
+        // Ojo: NO puede usar roomTimers. Compartir clave con la sala offline
+        // hacia que abrir el preview reiniciase el reloj de tu partida y lo
+        // dejase corriendo mientras buscabas: entrabas y ya venia gastado.
+        previewHasta = Date.now() + duracionOffline(mode);
         practiceFirstSkillDone = false;   // el primer selector de skill del preview se omite
         // Preview sin música: solo efectos (se cortan al empezar la partida).
         gameRunning = true;
@@ -14194,7 +14218,7 @@
             let tl, dur;
             if (sim.isRemote) { tl = sim.remainingMs(); if (tl == null) tl = 0; dur = sim.duration; }
             else {
-                tl = roomTimers[currentGameMode + '_' + currentServer] - Date.now(); dur = duracionOffline(currentGameMode);
+                tl = (practiceMode ? previewHasta : roomTimers[currentGameMode + '_' + currentServer]) - Date.now(); dur = duracionOffline(currentGameMode);
                 // practiceMode = preview offline mientras se busca partida real (FINDING
                 // ROOM/lobby): es un modo de pruebas sin límite de tiempo, no una partida
                 // de verdad. Sin esto, una búsqueda larga terminaba el preview solo con
@@ -14421,10 +14445,6 @@
                     drawCell(e);
                 }});
 
-                // Magnet cluster propio: ondas + herradura (online skillState / offline igual).
-                if (p && p.skillState[5] > 0 && p.cells.length > 0) {
-                    drawPlayerMagnetFx(ctx, p.cells, 1);
-                }
                 // Sumar/bajar masa. AQUI y no mas abajo: pasado el ctx.restore()
                 // del bloque de mundo, el lienzo vuelve a coordenadas de
                 // PANTALLA y el efecto salia pintado en una esquina.
@@ -14510,12 +14530,22 @@
     function _pintaMascara(g, mask, color, ox, oy, px) {
         const H = mask.length, W = mask[0].length;
         const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && mask[y][x] === '1';
+        // Borde negro de medio pixel gordo. Antes valia px entero, o sea que a
+        // coronas grandes engordaba con el dibujo y se comia la figura; en vez
+        // de una celda entera se pinta solo la franja pegada al glifo.
+        const b = Math.max(1, Math.round(px / 2));
         g.fillStyle = '#000';
         for (let y = -1; y <= H; y++) for (let x = -1; x <= W; x++) {
             if (on(x, y)) continue;
-            if (on(x-1,y) || on(x+1,y) || on(x,y-1) || on(x,y+1) ||
-                on(x-1,y-1) || on(x+1,y-1) || on(x-1,y+1) || on(x+1,y+1))
-                g.fillRect(ox + x*px, oy + y*px, px, px);
+            const X = ox + x*px, Y = oy + y*px;
+            if (on(x+1, y)) g.fillRect(X + px - b, Y, b, px);
+            if (on(x-1, y)) g.fillRect(X, Y, b, px);
+            if (on(x, y+1)) g.fillRect(X, Y + px - b, px, b);
+            if (on(x, y-1)) g.fillRect(X, Y, px, b);
+            if (on(x+1, y+1)) g.fillRect(X + px - b, Y + px - b, b, b);
+            if (on(x-1, y+1)) g.fillRect(X, Y + px - b, b, b);
+            if (on(x+1, y-1)) g.fillRect(X + px - b, Y, b, b);
+            if (on(x-1, y-1)) g.fillRect(X, Y, b, b);
         }
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
             if (!on(x, y)) continue;
@@ -14535,31 +14565,55 @@
      *  - Se pintan despues de todas las pildoras, no dentro de drawCell, para
      *    que una celula grande no te tape el nombre ni la corona.
      */
+    function _pintaNombre(txt, cx, ny, fSize, pix) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = !pix;
+        ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+        ctx.font = pix ? `${fSize}px ${PIX_FONT}` : `bold ${fSize}px Russo One`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.strokeText(txt, cx, ny);
+        ctx.fillText(txt, cx, ny);
+        ctx.restore();
+    }
     function dibujaNombresYRango(vL, vR, vT, vB) {
+        const pix = pixelMode, ahora = Date.now();
+        const es = getViewScale();
+        // El rotulo no puede subir por encima del HUD: ROOM/MASS/ALIVE llega a
+        // 43px y el reloj a 25, asi que 52 deja un respiro y no se montan.
+        const limiteArriba = camera.y - (height / 2) / es + 52 / es;
+
+        // --- Rivales: un nombre por jugador, en su celula mayor ---
         const mayor = new Map();
-        for (const c of [...sim.enemies, ...myCells()]) {
+        for (const c of sim.enemies) {
             const prev = mayor.get(c.id);
             if (!prev || c.r > prev.r) mayor.set(c.id, c);
         }
-        const pix = pixelMode, ahora = Date.now();
         for (const c of mayor.values()) {
+            if (!c.name) continue;
             if (c.x + c.r < vL || c.x - c.r > vR || c.y + c.r < vT || c.y - c.r > vB) continue;
             const fSize = tamNombre(c.r, pix ? 14 : 12);
-            if (c.name) {
-                ctx.save();
-                ctx.imageSmoothingEnabled = !pix;
-                ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-                ctx.font = pix ? `${fSize}px ${PIX_FONT}` : `bold ${fSize}px Russo One`;
-                ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-                const ny = c.y - (c.r * PILL_RATIO) + 5;
-                ctx.strokeText(c.name, c.x, ny);
-                ctx.fillText(c.name, c.x, ny);
-                ctx.restore();
-            }
-            // Corona / numero de puesto: solo arcade, solo TU pildora.
-            if (_miPuesto && !c.isBot && c.id === 'me' && currentGameMode === 'arcade')
-                dibujaRango(ctx, c.x, rangoAncla(c, !!c.name, fSize), _miPuesto, ahora);
+            _pintaNombre(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5, fSize, pix);
         }
+
+        // --- El tuyo: normalmente va en tu celula mayor, pero si esa esta tan
+        // arriba que el rotulo se saldria, se pasa a la siguiente celula que si
+        // quepa. El tamaño lo sigue marcando la mayor (es TU masa, no la de la
+        // celula que le hace de sitio). Si no cabe en ninguna, se pega al HUD.
+        const mias = myCells();
+        if (!mias.length) return;
+        const orden = [...mias].sort((a, b) => b.r - a.r);
+        const fSize = tamNombre(orden[0].r, pix ? 14 : 12);
+        const conCorona = !!_miPuesto && currentGameMode === 'arcade';
+        const alto = conCorona ? fSize + 10 + 6 * Math.max(2, Math.round(fSize / 6)) : fSize;
+        const anclaDe = c => c.y - (c.r * PILL_RATIO) + 5;
+        let host = orden[0], ny = anclaDe(host);
+        if (ny - alto < limiteArriba) {
+            const cabe = orden.find(c => anclaDe(c) - alto >= limiteArriba);
+            if (cabe) { host = cabe; ny = anclaDe(host); }
+            else ny = limiteArriba + alto;
+        }
+        if (host.name) _pintaNombre(host.name, host.x, ny, fSize, pix);
+        if (conCorona) dibujaRango(ctx, host.x, rangoAncla(ny, fSize), _miPuesto, ahora);
     }
     function dibujaRango(g, cx, baseY, puesto, ahora) {
         if (!puesto || puesto > 10) return;
@@ -14609,9 +14663,8 @@
      * `px` es el lado del pixel gordo de la corona, atado al tamaño de letra
      * para que las dos crezcan juntas.
      */
-    function rangoAncla(c, hayNombre, fSize) {
-        const arribaPildora = c.y - (c.r * PILL_RATIO) + 5;
-        return { y: arribaPildora - (fSize + 10), px: Math.max(2, Math.round(fSize / 6)) };
+    function rangoAncla(anclaNombre, fSize) {
+        return { y: anclaNombre - (fSize + 10), px: Math.max(2, Math.round(fSize / 6)) };
     }
 
 
@@ -14645,12 +14698,8 @@
         g.imageSmoothingEnabled = false;
         for (const c of cells) {
             const alcance = c.r + 46;
-            // Halo: el mismo que daba flashColor en offline, pero sin blur.
-            g.globalAlpha = (1 - k) * 0.30;
-            g.fillStyle = col;
-            g.beginPath();
-            g.arc(c.x, c.y, c.r * 1.22, 0, Math.PI * 2);
-            g.fill();
+            // Sin halo: el circulo relleno sobre una pildora (que es una capsula)
+            // quedaba fuera de sitio. El efecto lo llevan solo las particulas.
             const s = Math.max(2, Math.round(c.r * 0.09));
             for (let i = 0; i < 20; i++) {
                 const a = _hashFx(i, 1) * Math.PI * 2;
