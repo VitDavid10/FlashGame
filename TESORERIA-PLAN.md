@@ -393,7 +393,68 @@ la tesorería a N años con los ingresos reales del juego.
 
 ---
 
-## 6 bis. El auditor, y por qué cada comprobación tapa el agujero de la anterior
+## 6 bis. Los dos agujeros que quedaban, y qué se hizo con ellos
+
+Todo lo de arriba impide **reescribir** el pasado. Ninguna de esas piezas impide
+**escribir una mentira la primera vez**, y hay dos sitios donde eso importa.
+
+### «Puedo anotar hoy que mi wallet hizo 500 kills»
+
+Cierto. El servidor decide las kills, y hashearlas no las hace verdad. Lo que sí se
+puede hacer es **anclar cuándo se dijo cada cosa**, y eso mata el ataque práctico.
+
+Al acabar cada partida se guarda un **recibo** y cada minuto se ancla en Solana el
+hash de un lote de recibos, encadenados entre sí (`server/matches.js`):
+
+- **El pasado no se puede inventar.** Las partidas de ayer tienen transacciones de
+  ayer. Fabricar un top 10 deja de ser un bucle sobre un JSON y pasa a exigir
+  semanas de transacciones a horas creíbles.
+- **Una partida anclada no se puede cambiar.** Cambiar una kill cambia el hash del
+  recibo, el del lote y el de todos los lotes siguientes.
+- **No se puede meter a un jugador que no jugó.** El recibo guarda la firma con la
+  que cada uno pidió entrar a la sala (`authorizeEntry`, `server/index.js:966`), y
+  esa la hizo su wallet.
+
+Lo que ninguna firma impide es montar diez wallets propias y hacerlas jugar entre
+ellas. Contra eso va la **diversidad de oponentes**: un jugador real se cruza con
+decenas de personas sin proponérselo; un cluster cerrado, no. Por debajo de
+`LB_MIN_OPPONENTS` una wallet no entra en el leaderboard **por muchas kills que
+acumule**. Probado: tres wallets con 300 kills cada una y 2 oponentes distintos
+quedaron fuera, mientras entraban jugadores con 39 kills y 13 oponentes.
+
+Es mejor filtro que exigir una fianza porque **no cuesta dinero al jugador
+legítimo**: filtra por comportamiento, no por capital.
+
+### «Puedo darme saldo editando un fichero»
+
+También cierto, y era el más grave. `warbalances.json` es texto plano.
+
+Con el contrato eso ya hundía el ratio de reservas, pero **las obligaciones las
+sumaba el propio servidor**: bastaba con reportar menos pasivo para que el ratio
+volviera a dar 1. Un ratio que calcula el sospechoso no prueba nada.
+
+`server/reserves.js` publica cada hora la **lista completa de saldos**, con su raíz
+de Merkle anclada en la cadena y encadenada con el snapshot anterior:
+
+| Ataque | Qué lo destapa |
+|---|---|
+| Me doy saldo | El pasivo publicado sube y deja de cuadrar con la custodia |
+| Lo escondo bajando el saldo de otro | Tengo que quitárselo a **alguien concreto**, que lo ve en `/api/reserves/proof` |
+| Reescribo un snapshot viejo | Se rompe la cadena, y la raíz vieja ya está en un memo de Solana |
+
+La lista entera y no solo la raíz: con solo la raíz cada uno comprueba su fila, pero
+nadie puede ver que no **falten** filas.
+
+### Lo que sigue sin cerrarse
+
+Que el servidor escribe las kills. El juego va a 40 Hz off-chain y nadie puede
+re-verificar una partida desde fuera. Los recibos prueban que una partida existió a
+una hora y quién firmó para entrar; **no prueban el marcador**. Lo único que cierra
+eso es un **multisig donde uno de los firmantes no sea el operador**.
+
+---
+
+## 6 ter. El auditor, y por qué cada comprobación tapa el agujero de la anterior
 
 `scripts/audit-treasury.js` está escrito para que **lo copie y lo ejecute cualquiera**:
 no importa nada del repo, no necesita `npm install` y solo habla con las URLs públicas

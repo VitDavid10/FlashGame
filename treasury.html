@@ -81,15 +81,26 @@
             <li>That the winners are the ones from the leaderboard. Each day is hashed into a chain and published
                 <i>before</i> anyone knows who will win, and the full prize list sits on-chain as a Merkle root for
                 48 h before a single token moves.</li>
+            <li><b class="k">That the matches happened.</b> Receipt hashes are anchored on Solana every minute, so
+                the past cannot be invented after the fact — and each receipt carries the signature every player used
+                to enter the room, which we cannot forge.</li>
+            <li><b class="k">That we are not hiding what we owe you.</b> The full balance list is published with its
+                root anchored on-chain. Understating the debt means shaving somebody's balance, and they can check it
+                above.</li>
         </ul>
         <p><b class="k">Not guaranteed — say it out loud:</b></p>
         <ul>
             <li>If the program is still <b class="k">upgradeable</b>, everything above is decoration: a new version
                 could drain the vaults. That's why the upgrade authority is the first thing on this page.</li>
-            <li><b class="k">Sybil is possible.</b> Anyone, including us, can run several wallets, pay entries and
-                earn a spot legitimately. It costs money, it's capped, and it's public — but it's possible.</li>
-            <li><b class="k">In-game balances are off-chain.</b> The contract only knows how much sits in custody,
-                not who is owed what. The reserves ratio above is the check for that.</li>
+            <li><b class="k">We could still run our own wallets.</b> Nothing tells our wallet apart from yours. What
+                stops it being free is that they must pay entries, must cross paths with enough distinct opponents to
+                qualify, and every match they play is anchored with a timestamp. It is not impossible — it is slow,
+                expensive and visible.</li>
+            <li><b class="k">We write the kills.</b> The game runs at 40 Hz off-chain; nobody can re-verify a match
+                from outside. Receipts prove a match existed at a given time and who signed into it; they do not prove
+                the score. The only thing that would close this is a multisig where one signer is not us.</li>
+            <li><b class="k">In-game balances are off-chain.</b> The contract knows how much sits in custody, not who
+                is owed what. That is what the liabilities snapshot is for.</li>
         </ul>
     </div>
 
@@ -103,6 +114,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&
 // lleva a una cuenta que no existe y parece que la tesoreria esta vacia.
 const esDevnet = (rpc) => /devnet/i.test(rpc || '');
 const solscan = (dir, rpc) => 'https://solscan.io/account/' + dir + (esDevnet(rpc) ? '?cluster=devnet' : '');
+const solscanTx = (sig, rpc) => 'https://solscan.io/tx/' + sig + (esDevnet(rpc) ? '?cluster=devnet' : '');
 
 function vault(titulo, sub, dato, rpc, locked) {
     if (!dato) return '';
@@ -169,6 +181,68 @@ function pintaRondas(premios) {
         + 'If it doesn\'t, the list you were shown is not the list that got paid.</p>';
 }
 
+function pintaPasivo(d) {
+    const p = d.pasivo;
+    if (!p) return '<div class="box muted">No liabilities snapshot published yet.</div>';
+    const cubierto = d.custody ? d.custody.balance >= p.total : null;
+    let h = '<div class="flag ' + (cubierto === false ? 'bad' : 'ok') + '">'
+        + '<b>' + fmt(p.total) + ' $PILL owed</b> across ' + fmt(p.wallets) + ' wallets, as of snapshot #' + p.snapshot + '.'
+        + (cubierto === true ? ' Fully covered by custody.' : cubierto === false ? ' <b>CUSTODY DOES NOT COVER IT.</b>' : '')
+        + '</div>';
+    h += '<p class="muted">Saying how much you hold is easy. The hard half is proving how much you <b>owe</b> — '
+        + 'that number comes from our server. So the full balance list is published, its Merkle root is anchored on-chain, '
+        + 'and each snapshot links to the previous one. To report a smaller debt we would have to shave somebody\'s balance, '
+        + 'and that somebody can see it.</p>';
+    h += '<div class="box"><b class="k">Check your own balance</b><br>'
+        + '<input id="wcheck" placeholder="paste your wallet address" style="width:100%;max-width:520px;margin-top:8px;padding:8px 10px;background:#0b0f0b;border:1px solid rgba(0,255,136,0.3);color:#cfd3d6;border-radius:6px;font-family:ui-monospace,monospace;font-size:12px">'
+        + '<button onclick="compruebaSaldo()" style="margin-left:8px;padding:8px 16px;background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:6px;cursor:pointer;font-family:inherit">Check</button>'
+        + '<div id="wresult" style="margin-top:12px"></div></div>';
+    h += '<p class="muted">Snapshot list: <a href="/api/reserves">/api/reserves</a> · '
+        + 'this snapshot: <a href="/api/reserves/' + p.snapshot + '">/api/reserves/' + p.snapshot + '</a>'
+        + (p.sig ? ' · <a href="' + solscanTx(p.sig, d.rpc) + '" target="_blank" rel="noopener">anchor tx</a>' : '')
+        + '</p>';
+    return h;
+}
+
+function pintaPartidas(d) {
+    const m = d.partidas;
+    if (!m || !m.lotes) return '<div class="box muted">No match receipts anchored yet.</div>';
+    const ok = m.check && m.check.ok;
+    let h = '<div class="flag ' + (ok ? 'ok' : 'bad') + '">'
+        + (ok ? '<b>' + fmt(m.lotes) + ' receipt batches anchored</b>, chain intact.'
+              : '<b>Match receipt chain BROKEN.</b> A receipt changed after being anchored.')
+        + (m.pendientes ? ' ' + m.pendientes + ' receipt(s) waiting for the next batch.' : '')
+        + '</div>';
+    h += '<p class="muted">Every match writes a receipt, and every minute a batch of receipt hashes is anchored on Solana. '
+        + 'That means <b>the past cannot be invented</b>: yesterday\'s matches have yesterday\'s transactions. '
+        + 'Each receipt also carries the <b>signature each player used to enter the room</b> — we cannot put someone '
+        + 'in a match they did not play. Browse them at <a href="/api/matches/chain">/api/matches/chain</a>.</p>';
+    h += '<p class="muted">What no signature can prevent is us running our own wallets and playing against ourselves. '
+        + 'That is why <a href="/api/matches/opponents">/api/matches/opponents</a> is public: a real player crosses paths '
+        + 'with dozens of people, and a closed cluster of wallets does not. Below the minimum, a wallet does not enter '
+        + 'the daily leaderboard at all — no matter how many kills it piles up.</p>';
+    return h;
+}
+
+async function compruebaSaldo() {
+    const w = (document.getElementById('wcheck').value || '').trim();
+    const out = document.getElementById('wresult');
+    if (!w) { out.innerHTML = ''; return; }
+    out.innerHTML = '<span class="muted">Checking…</span>';
+    try {
+        const r = await (await fetch('/api/reserves/proof?wallet=' + encodeURIComponent(w))).json();
+        if (!r || r.error) { out.innerHTML = '<span style="color:var(--accent)">' + esc(r && r.error || 'not found') + '</span>'; return; }
+        out.innerHTML = r.incluida
+            ? '<div class="flag ok" style="margin:0"><b>' + fmt(r.saldo) + ' $PILL</b> for this wallet in snapshot #' + r.snapshot + '.'
+              + '<br><span class="mono">proof: ' + r.proof.length + ' node(s) · root ' + esc(String(r.root).slice(0, 24)) + '…</span>'
+              + '<br><span class="muted">If this is not what the game shows you, that is the discrepancy this page exists to expose.</span></div>'
+            : '<div class="flag warn" style="margin:0">This wallet is <b>not in the published list</b>, meaning we claim to owe it nothing. '
+              + 'If you have a balance in the game, that is a problem and you should say so publicly.</div>';
+    } catch (e) {
+        out.innerHTML = '<span style="color:var(--accent)">' + esc(e.message) + '</span>';
+    }
+}
+
 function pintaCadena(lb) {
     if (!lb) return '';
     const c = lb.check || {};
@@ -233,6 +307,8 @@ function render(d) {
         if (d.error) h += '<div class="flag warn"><b>Could not read part of the chain:</b> ' + esc(d.error) + '</div>';
     }
 
+    h += '<h2>What we owe you</h2>' + pintaPasivo(d);
+    h += '<h2>Match receipts</h2>' + pintaPartidas(d);
     h += '<h2>Daily reward rounds</h2>' + pintaRondas(d.premios);
     h += '<h2>Leaderboard chain</h2>' + pintaCadena(d.leaderboard);
     h += '<p class="muted" style="margin-top:22px">Read live at ' + esc(d.generadoEn) + ' · RPC <span class="mono">' + esc(d.rpc) + '</span></p>';
