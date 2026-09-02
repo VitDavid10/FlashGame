@@ -38,6 +38,11 @@ const solana = require('./solana.js');     // verificación de depósitos $PILL
 const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 const leaderboard = require('./leaderboard.js');   // ranking DIARIO por wallet (premios de tesorería)
 const rewards = require('./rewards.js');           // rondas de premios: Merkle + publicación on-chain
+const matches = require('./matches.js');           // recibos de partida anclados en la cadena
+// El leaderboard filtra por oponentes distintos, pero ese dato vive en los recibos.
+// Se inyecta en vez de que un modulo importe al otro: asi ninguno de los dos depende
+// del otro para funcionar, y en los tests se puede probar cada uno por su lado.
+leaderboard.setProveedorOponentes(() => matches.oponentesDe());
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
 const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILL + quema)
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
@@ -636,6 +641,9 @@ if (PW_ROLE !== 'host') skinshop.arrancaQuemaPeriodica(solana, log, require('./t
 // raíz. Solo en el Director, por lo mismo que la quema — dos procesos publicando la
 // misma ronda serían dos transacciones, y la segunda fallaría con la época ya usada.
 if (PW_ROLE !== 'host') rewards.arranca(solana, log);
+// Anclaje de los recibos de partida. Solo el Director: dos procesos anclando el mismo
+// lote lo escribirian dos veces en la cadena con hashes distintos.
+if (PW_ROLE !== 'host') matches.arranca(solana, log);
 // Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
 // Math.round: la tarifa viaja DENTRO del mensaje que el jugador firma
 // ("...paying 48 PILL @ ..."), y el servidor reconstruye esa misma cadena para
@@ -975,7 +983,14 @@ const directorLocal = {
             logTx('entry', w, -fee, key);
             logAdmin(key, 'Entrada pagada', w.slice(0, 6) + '… -' + fee + ' PILL');
             log(`Entrada pagada: ${w.slice(0, 6)}… -${fee} PILL → ${key}`);
-            return { ok: true, payWallet: w, fee, tester };
+            // La firma viaja de vuelta para guardarla en el recibo de la partida. Es
+            // lo que hace que el recibo no sea "lo que dice el servidor": esta firma
+            // la hizo la wallet del jugador y yo no la puedo fabricar, así que nadie
+            // puede aparecer en una partida que no jugó. Ver server/matches.js.
+            return {
+                ok: true, payWallet: w, fee, tester,
+                entry: { msg: pay.message, ts, sig: Array.isArray(pay.signature) ? pay.signature : null },
+            };
         }
         return { ok: true, payWallet: null, fee, tester };
     },
@@ -1011,6 +1026,9 @@ const econLocal = {
     },
     // Vuelca el pico de masa a stats/quests (misma lógica que la función global).
     peakMassFlush(room, pid, cli) { flushPeakMass(room, pid, cli); },
+    // Recibo de la partida: se guarda y se ancla en la cadena por lotes. Es lo que
+    // hace que el leaderboard no sea solo "lo que dice el servidor" — ver matches.js.
+    matchEnded(datos) { try { matches.registra(datos); } catch (e) { log('Recibo de partida fallido: ' + e.message); } },
     // Retos diarios rotativos (fire-and-forget: telemetría, no dinero).
     dailyEvent(cid, type, n) { if (cid) dailyquests.recordEvent(cid, type, n); },
     // Quests semanales con CAP aplicado en el Director (el Host solo emite el hecho).
@@ -1119,6 +1137,7 @@ const econProxy = hostIpc && {
         if (peak <= 0) return;
         hostIpc.notify('econ.peakMass', { name: cli && cli.name, isTester: !!(cli && cli.isTester), cid: (cli && cli.cid) || null, peak, wallet: (cli && cli.payWallet) || null });
     },
+    matchEnded(datos) { hostIpc.notify('econ.matchEnded', datos); },
     dailyEvent(cid, type, n) { if (cid) hostIpc.notify('econ.dailyEvent', { cid, type, n }); },
     questOnlineMatch(cid) { hostIpc.notify('econ.questOnlineMatch', { cid }); },
     questFinishArcade(cid) { hostIpc.notify('econ.questFinishArcade', { cid }); },
@@ -1146,6 +1165,7 @@ function registerHostHandlers(hostEntry) {
     ipc.handle('econ.playerDeath', (p) => econLocal.playerDeath(p.comboKey, p.tester, p.name));
     ipc.handle('econ.botKill', (p) => econLocal.botKill(p.name, p.tester, p.wallet));
     ipc.handle('econ.peakMass', (p) => applyPeakMass(p.name, p.isTester, p.cid, p.peak, p.wallet));
+    ipc.handle('econ.matchEnded', (p) => econLocal.matchEnded(p));
     ipc.handle('econ.dailyEvent', (p) => econLocal.dailyEvent(p.cid, p.type, p.n));
     ipc.handle('econ.questOnlineMatch', (p) => econLocal.questOnlineMatch(p.cid));
     ipc.handle('econ.questFinishArcade', (p) => econLocal.questFinishArcade(p.cid));
@@ -2877,6 +2897,47 @@ const httpServer = http.createServer(async (req, res) => {
         const snap = /^\d{4}-\d{2}-\d{2}$/.test(date) ? leaderboard.diaCerrado(date) : null;
         res.writeHead(snap ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify(snap || { error: 'no hay leaderboard cerrado para esa fecha' }));
+        return;
+    }
+
+    /* ===== RECIBOS DE PARTIDA =====
+     *
+     * Lo que permite clicar una kill del leaderboard y llegar a la partida donde se
+     * hizo, con la hora que dice Solana y la firma con la que cada jugador pidió
+     * entrar. Todo público: si hubiera que pedirlo, no sería una prueba.
+     */
+    if (urlPath === '/api/matches/chain') {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({
+            memoProgram: matches.MEMO_PROGRAM,
+            pendientes: matches.pendientes(),
+            batches: matches.cadena(),
+            check: matches.verificar(50),
+        }));
+        return;
+    }
+    // Con cuántas wallets distintas se ha cruzado cada una. Es lo que hace visible el
+    // fraude que ninguna firma puede impedir: wallets que solo juegan entre ellas.
+    if (urlPath === '/api/matches/opponents') {
+        const dias = Math.max(1, Math.min(90, parseInt(query.get('dias'), 10) || 7));
+        const mapa = matches.oponentesDe(Date.now() - dias * 86400e3);
+        const filas = [...mapa].map(([wallet, v]) => ({ wallet, partidas: v.partidas, oponentes: v.oponentes }))
+            .sort((a, b) => b.partidas - a.partidas).slice(0, 500);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ dias, minOponentes: leaderboard.MIN_OPONENTES, wallets: filas }));
+        return;
+    }
+    if (urlPath.startsWith('/api/matches/batch/')) {
+        const n = parseInt(urlPath.slice('/api/matches/batch/'.length), 10);
+        const l = matches.lote(n);
+        res.writeHead(l ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(l || { error: 'no hay lote con ese número' }));
+        return;
+    }
+    if (urlPath.startsWith('/api/matches/')) {
+        const m = matches.partida(urlPath.slice('/api/matches/'.length));
+        res.writeHead(m ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(m || { error: 'no hay recibo con ese id' }));
         return;
     }
 

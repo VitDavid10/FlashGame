@@ -51,6 +51,38 @@ test('por debajo del minimo de kills no se entra en la lista', () => {
     assert.deepEqual(lb.tablaDe(players).map(f => f.wallet), ['A']);
 });
 
+test('sin datos de oponentes el filtro no se aplica', () => {
+    // Importante: si filtrara sin poder comprobar nada, un servidor recien desplegado
+    // (todavia sin recibos de partida) dejaria la lista vacia y no habria premios.
+    const players = { A: { kills: 50, peak: 100, name: 'a' }, B: { kills: 40, peak: 90, name: 'b' } };
+    assert.equal(lb.tablaDe(players).length, 2);
+    assert.equal(lb.tablaDe(players, new Map()).length, 2);
+});
+
+test('con datos, quien no se cruza con nadie queda fuera aunque juegue mas', () => {
+    // El caso que esto ataca: diez wallets propias jugando entre ellas. Juegan mucho,
+    // acumulan kills, y siempre contra los mismos.
+    const players = {
+        cluster: { kills: 500, peak: 9999, name: 'yo' },
+        normal: { kills: 20, peak: 100, name: 'jugador' },
+    };
+    const oponentes = new Map([
+        ['cluster', { oponentes: lb.MIN_OPONENTES - 1, partidas: 300 }],
+        ['normal', { oponentes: lb.MIN_OPONENTES + 10, partidas: 6 }],
+    ]);
+    const t = lb.tablaDe(players, oponentes);
+    assert.deepEqual(t.map(f => f.wallet), ['normal'], 'el cluster no deberia entrar');
+    assert.equal(t[0].oponentes, lb.MIN_OPONENTES + 10, 'la fila dice de donde sale la decision');
+});
+
+test('una wallet sin ningun recibo tampoco entra si ya hay datos', () => {
+    // Si hay recibos de otros pero de esta no, es que sus kills no vienen de ninguna
+    // partida anclada. Eso es exactamente lo que hay que dejar fuera.
+    const players = { fantasma: { kills: 99, peak: 9999, name: 'x' } };
+    const oponentes = new Map([['otra', { oponentes: 30, partidas: 10 }]]);
+    assert.equal(lb.tablaDe(players, oponentes).length, 0);
+});
+
 test('quien juega sin wallet no puntua (no habria donde pagarle)', () => {
     const antes = lb.estadoHoy().entries.length;
     lb.recordKill(null, 'anonimo');

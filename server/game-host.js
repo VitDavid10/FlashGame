@@ -330,7 +330,7 @@ function createGameHost(deps) {
             ws.send(JSON.stringify({ t: 'payRequired', room: room.roomName, fee: fee0, reason: auth.reason || 'pago rechazado', balance: auth.balance | 0 }));
             return null;
         }
-        const { payWallet, fee, tester } = auth;
+        const { payWallet, fee, tester, entry } = auth;
         // El socket murió mientras el cobro estaba en vuelo: no hay a quién meter en
         // la sala. Se devuelve la entrada por el mismo camino que "la sala no empezó".
         if (ws.readyState !== 1) {
@@ -359,7 +359,11 @@ function createGameHost(deps) {
         const binV = msg.bin === true ? 1 : Math.max(0, Math.min(2, msg.bin | 0));
         const useBin = binV >= 1;
         const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
-        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, binV, aspect, _spawned: false });
+        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: fee || 0, payWallet, carry: fee || 0, isTester: tester, useBin, binV, aspect, _spawned: false,
+            // Firma de entrada del jugador: va al recibo de la partida (server/matches.js).
+            // Sin ella el recibo seria "lo que dice el servidor"; con ella, nadie puede
+            // aparecer en una partida que no jugo.
+            entrySig: entry || null });
         sendEcon(room.clients.get(playerId), room);
         director.recordEntry({ comboKey: ck, key, mode: room.mode, playerId, name, cid, ip, tester });
         if (room.state === 'playing') {
@@ -543,6 +547,8 @@ function createGameHost(deps) {
         // precio de entrada, porque el precio se congela por sala y refrescarlo
         // con gente dentro descuadra el intercambio de carry al matar.
         room.endsAt = Date.now() + (room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS);
+        // Cuando empezo de verdad: va en el recibo de la partida (server/matches.js).
+        room.startedAt = Date.now();
         // NO spawneamos aquí: cada jugador se spawnea cuando su cliente manda 'ready'
         // (al terminar su pantalla de carga). Así la inmunidad empieza justo cuando entra
         // de verdad, dure lo que dure su carga, y no está expuesto mientras carga.
@@ -581,7 +587,7 @@ function createGameHost(deps) {
         }
         // room.clients se vacía vía ws.on('close'); no esperamos a eso para pasar a waiting
         room.state = 'waiting';
-        room.endsAt = null; room.restartAt = null; room.startAt = null; room.ended = false; room._shortened = false; room.pentas = 0;
+        room.endsAt = null; room.restartAt = null; room.startAt = null; room.startedAt = null; room.ended = false; room._shortened = false; room.pentas = 0;
         room.deadRemovals.clear(); room.pendingRemovals.clear();
         room.sim = buildSim(room.mode, rulesOf(room.comboKey));
         sendWaiting(room);

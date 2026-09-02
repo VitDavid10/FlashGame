@@ -65,3 +65,14 @@ target/
 # Evidencia del visual-check de los diagramas (PNG y receipt): se regenera con
 # `archify visual-check` y no aporta nada en el historial.
 docs/*.visual-check.*
+
+# Recibos de partida y sus lotes: son datos de ejecucion, como el resto de los
+# .json del servidor. Los publicos se sirven por /api/matches.
+server/matches/
+server/matches-batch/
+server/matches-state.json
+server/leaderboards/
+server/leaderboard-chain.json
+server/leaderboard-today.json
+server/rewards/
+server/rewards.json

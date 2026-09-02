@@ -55,6 +55,29 @@ const PUBLICADOS = 100;
  *  suelta, y el premio deja de significar nada. */
 const MIN_KILLS = parseInt(process.env.LB_MIN_KILLS, 10) || 3;
 
+/*
+ * OPONENTES DISTINTOS MINIMOS. Es el filtro contra el fraude que ninguna firma puede
+ * impedir: montar diez wallets propias y hacerlas jugar entre ellas.
+ *
+ * Un jugador de verdad se cruza con decenas de personas sin proponerselo — las salas
+ * tienen hasta 35 sitios y no elige con quien le toca. Diez wallets que solo juegan
+ * entre ellas forman un cluster cerrado y no llegan al minimo. Para saltarselo hay
+ * que meter esas wallets en partidas con gente real, pagando entradas reales y con
+ * los reales llevandose su parte: el fraude deja de ser gratis.
+ *
+ * Es mejor filtro que exigir una fianza porque no cuesta dinero al jugador legitimo.
+ * Filtra por comportamiento, no por capital: un chaval sin un euro que juega mucho
+ * pasa, y diez wallets con dinero que solo se cruzan entre ellas no.
+ *
+ * Se aplica SOLO si hay datos de oponentes (recibos de partida). Sin ellos no filtra
+ * nada: un filtro que no puede comprobar nada dejaria la lista vacia y sin premios.
+ */
+const MIN_OPONENTES = parseInt(process.env.LB_MIN_OPPONENTS, 10) || 5;
+
+/** Lo inyecta index.js con matches.oponentesDe, para no acoplar los dos modulos. */
+let _proveedorOponentes = null;
+function setProveedorOponentes(fn) { _proveedorOponentes = fn; }
+
 /** Pesos del top 10. Los mismos que el reparto del bote de arcade
  *  (server/room-loop.js:156): ya estan calibrados y la gente los conoce. */
 const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
@@ -133,13 +156,38 @@ function recordPeak(wallet, peak, name) {
 
 /* ===================== CIERRE DEL DIA ===================== */
 
-/** Filas ordenadas y ya filtradas, tal y como se publican. */
-function tablaDe(players) {
+/*
+ * Filas ordenadas y ya filtradas, tal y como se publican.
+ *
+ * `oponentes` es el Map de matches.oponentesDe(). Si no llega o viene vacio, el
+ * filtro de diversidad NO se aplica: sin recibos de partida no hay con que
+ * comprobarlo, y dejar la lista vacia por falta de datos seria peor que no filtrar.
+ * La fila lleva el numero de oponentes para que se vea de donde sale la decision.
+ */
+function tablaDe(players, oponentes) {
+    const hayDatos = oponentes && oponentes.size > 0;
     return Object.entries(players)
-        .filter(([, p]) => p.kills >= MIN_KILLS)
+        .filter(([w, p]) => {
+            if (p.kills < MIN_KILLS) return false;
+            if (!hayDatos) return true;
+            const o = oponentes.get(w);
+            return !!o && o.oponentes >= MIN_OPONENTES;
+        })
         .sort(([wa, a], [wb, b]) => (b.kills - a.kills) || (b.peak - a.peak) || (wa < wb ? -1 : 1))
         .slice(0, PUBLICADOS)
-        .map(([wallet, p], i) => ({ rank: i + 1, wallet, name: p.name || null, kills: p.kills, peak: p.peak }));
+        .map(([wallet, p], i) => {
+            const o = hayDatos ? oponentes.get(wallet) : null;
+            return {
+                rank: i + 1, wallet, name: p.name || null, kills: p.kills, peak: p.peak,
+                oponentes: o ? o.oponentes : null,
+            };
+        });
+}
+
+/** Los oponentes del proveedor inyectado, o null si no hay. */
+function _oponentes() {
+    if (!_proveedorOponentes) return null;
+    try { return _proveedorOponentes(); } catch (e) { return null; }
 }
 
 /*
@@ -172,7 +220,7 @@ function cerrarDia(date, nuevaFecha) {
         if (nuevaFecha && nuevaFecha !== hoy.date) { hoy = { date: nuevaFecha, players: {} }; dirty = true; save(); }
         return diaCerrado(date);
     }
-    const filas = tablaDe(hoy.players);
+    const filas = tablaDe(hoy.players, _oponentes());
     const prevHash = chain.length ? chain[chain.length - 1].hash : GENESIS;
     const cuerpo = canonico(date, filas);
     const hash = sha256hex(prevHash + cuerpo);
@@ -181,7 +229,8 @@ function cerrarDia(date, nuevaFecha) {
         date, prevHash, hash,
         closedAt: new Date().toISOString(),
         minKills: MIN_KILLS,
-        criterio: 'kills del dia; desempate por masa maxima del dia',
+        minOponentes: MIN_OPONENTES,
+        criterio: 'kills del dia; desempate por masa maxima del dia; minimo de oponentes distintos',
         entries: filas,
     };
     if (SOLO_LECTURA) return snapshot;   // un host nunca cierra un dia
@@ -207,7 +256,7 @@ function cerrarAhora() {
 /** La tabla de hoy, en vivo. Aun no esta cerrada ni hasheada. */
 function estadoHoy() {
     alDia();
-    return { date: hoy.date, cerrado: false, minKills: MIN_KILLS, entries: tablaDe(hoy.players) };
+    return { date: hoy.date, cerrado: false, minKills: MIN_KILLS, minOponentes: MIN_OPONENTES, entries: tablaDe(hoy.players, _oponentes()) };
 }
 
 function diaCerrado(date) {
@@ -272,9 +321,9 @@ function repartoDe(snapshot, presupuestoRaw) {
 module.exports = {
     recordKill, recordPeak,
     estadoHoy, diaCerrado, cadena, verificarCadena,
-    cerrarAhora, repartoDe, tablaDe,
+    cerrarAhora, repartoDe, tablaDe, setProveedorOponentes,
     save,
-    PESOS, MIN_KILLS, PUBLICADOS,
+    PESOS, MIN_KILLS, MIN_OPONENTES, PUBLICADOS,
     // Para los tests: la funcion de hash tiene que ser reproducible desde fuera, y
     // hay que poder simular el paso de los dias sin esperar a medianoche.
     _canonico: canonico, _sha256hex: sha256hex, GENESIS,

@@ -117,6 +117,8 @@ function tickRoomOnce(room, now, ctx) {
         // ARCADE: reparto del bote por TOP 10. Curva: 35/20/13/9/7/5/4/3/2.5/1.5 (=100%).
         // Los que sigan vivos al final también aportan su carry al bote (igualdad de trato).
         let payoutMsg = null;
+        // El bote se pone a 0 al repartirlo; se guarda antes para el recibo.
+        let potFinal = 0;
         if (room.mode !== 'classic') {
             for (const cli of room.clients.values()) { if (cli.carry > 0) { ctx.addToPot(room, cli.carry); cli.carry = 0; } }
         } else {
@@ -158,6 +160,7 @@ function tickRoomOnce(room, now, ctx) {
                 .filter(p => (p.peakMass | 0) > 0 || p.alive)
                 .sort((a, b) => (b.peakMass | 0) - (a.peakMass | 0));
             const totalPot = room.pot;
+            potFinal = totalPot;
             const top = [];
             for (let i = 0; i < Math.min(10, ranking.length); i++) {
                 const pj = ranking[i];
@@ -179,6 +182,35 @@ function tickRoomOnce(room, now, ctx) {
             ctx.log(`Reparto arcade ${room.key}: bote ${totalPot} → ${top.filter(t => t.paid).map(t => `#${t.pos}=${t.amount}`).join(' ') || '(sin ganadores con wallet)'}`);
             room.pot = 0;
         }
+        /*
+         * RECIBO DE LA PARTIDA. Se emite después del reparto (así lleva quién cobró)
+         * y con los datos ya cerrados: kills, pico de masa y la firma con la que cada
+         * jugador pidió entrar.
+         *
+         * Es lo que ancla en la cadena que esta partida existió a esta hora. El Host
+         * solo reporta el hecho; escribirlo y anclarlo es del Director, como todo lo
+         * que toca dinero. Ver server/matches.js.
+         */
+        ctx.econ.matchEnded({
+            room: room.key,
+            mode: room.mode,
+            startedAt: room.startedAt || null,
+            endedAt: Date.now(),
+            entryFee: ctx.entryFeePill(room.comboKey, room.pillRate),
+            pot: potFinal,
+            players: [...room.clients].map(([pid, cli]) => {
+                const pj = room.sim.players.get(pid);
+                return {
+                    wallet: cli.payWallet || null,
+                    name: cli.name || null,
+                    kills: pj ? (pj.killStreak | 0) : 0,
+                    peak: pj ? (pj.peakMass | 0) : 0,
+                    paid: !!cli.payWallet,
+                    isTester: !!cli.isTester,
+                    entry: cli.entrySig || null,
+                };
+            }),
+        });
         ctx.broadcast(room, { t: 'matchEnd' });
         ctx.broadcast(room, { t: 'lobbyPreview', count: room.clients.size, needed: ctx.minRealOf(room.comboKey), roomName: room.roomName, mode: room.mode, restartIn: ctx.arcadeRestartMs });
         ctx.log(`Partida terminada en ${room.key}; reinicio en ${ctx.arcadeRestartMs / 1000}s`);
