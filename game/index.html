@@ -5219,11 +5219,14 @@
 
     function getViewScale() { let scaleX = width / BASE_WIDTH; let scaleY = height / BASE_HEIGHT; return camera.scale * Math.max(scaleX, scaleY); }
 
-    // Tamaño del rotulo. Crece MUCHO mas despacio que la pildora (raiz en vez
-    // de lineal): con r/1.2 el nombre se comia la pantalla a masas altas y
-    // empujaba la corona fuera del encuadre.
+    // Tamaño del rotulo. Hasta R_LENTO crece como siempre (lineal con el
+    // radio); de ahi para arriba frena, porque con r/1.2 a masas altas el
+    // nombre se comia la pantalla y empujaba la corona fuera del encuadre.
+    // El freno es solo para pildoras enormes: a tamaño normal no cambia nada.
+    const R_LENTO = 60;
     function tamNombre(r, minPx) {
-        return Math.max(minPx, 9.5 * Math.sqrt(Math.max(1, r / INITIAL_RADIUS)));
+        if (r <= R_LENTO) return Math.max(minPx, r / 1.2);
+        return Math.max(minPx, (R_LENTO / 1.2) * Math.pow(r / R_LENTO, 0.35));
     }
     // Cuanto sobresale por encima del centro de la celula el conjunto que hay
     // que encuadrar: cuerpo + nombre + corona. Es la altura que manda en la red
@@ -14587,7 +14590,9 @@
                 }
             });
         } else {
-            const tam = Math.max(11, baseY.px * 4.2);
+            // La corona mide 6 px gordos de alto: el numero se ata a eso para
+            // que los dos indicadores pesen lo mismo (con 4.2 salia enano).
+            const tam = Math.max(14, baseY.px * 7);
             g.font = `${tam}px ${typeof PIX_FONT !== 'undefined' ? PIX_FONT : "'Press Start 2P', monospace"}`;
             g.textAlign = 'center'; g.textBaseline = 'bottom';
             g.lineWidth = 3; g.strokeStyle = '#000';
