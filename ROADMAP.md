@@ -109,6 +109,33 @@ no de capacidad.
 
 ---
 
+## 💰 Tesorería on-chain (en marcha)
+
+Línea aparte del multijugador: separar el dinero de los jugadores del dinero del
+proyecto y bloquear el segundo durante años, de forma que se pueda comprobar desde
+fuera. Diseño en [TESORERIA-PLAN.md](TESORERIA-PLAN.md), despliegue en
+[DESPLIEGUE-TESORERIA.md](DESPLIEGUE-TESORERIA.md).
+
+Hecho (todo funciona hoy sin cadena, y con ella cuando se despliegue):
+- ✅ Programa Anchor `pill_treasury`: dos PDAs (custodia / tesorería), timelock que
+  solo puede alargarse, y premios por Merkle claim con 48 h de impugnación.
+- ✅ Leaderboard diario por wallet con cadena de hashes; solo puntúan las salas de
+  pago, lo que encarece el sybil sin código extra.
+- ✅ Reparto automático del top 10, árbol de Merkle y publicación de la raíz.
+- ✅ Split quema/tesorería en la tienda de skins (`PILL_TREASURY_PCT`).
+- ✅ `/api/treasury`, `/api/leaderboard/chain`, `/api/rewards/<epoch>` y
+  [treasury.html](treasury.html) — todo público y sin auth.
+- ✅ `scripts/treasury.js` (operar y auditar) y `scripts/treasury-sim.js` (calibrar).
+- ✅ 80 tests en Node + vectores compartidos con los tests del programa en Rust.
+
+Pendiente:
+- Compilar y desplegar en devnet (necesita toolchain de Rust; en Windows, WSL).
+- 30 días de calibración con datos reales antes de tocar los caps.
+- El cerrojo: `extend-lock` → `tighten` → `finalize` → **revocar la upgrade
+  authority**. Sin ese último paso el bloqueo no significa nada.
+
+---
+
 ## 🔒 Seguridad — estado actual
 
 **Bien protegido (servidor autoritativo):**

@@ -1,5 +1,12 @@
 # PillWars — Plan blockchain ($PILL)
 
+> **Dónde vive el dinero** se trata aparte, en [TESORERIA-PLAN.md](TESORERIA-PLAN.md):
+> el programa `pill_treasury` separa la custodia de los jugadores de la tesorería del
+> proyecto, bloquea la segunda durante años y solo la deja pagar premios diarios
+> reclamados por sus ganadores. Este documento cubre el escrow de las **partidas**;
+> aquel, la caja fuerte. Donde se contradigan, manda el de tesorería: es posterior y
+> tiene el programa escrito.
+
 Plan para integrar el token **$PILL** (Solana, creado con pump.fun) como moneda de
 acceso a las salas de pago, con un escrow on-chain y reparto de premios. Todo se
 desarrolla y prueba primero en **devnet/testnet**; mainnet solo tras hardening + decisión legal.
