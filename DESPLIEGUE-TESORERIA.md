@@ -118,6 +118,9 @@ Environment=TREASURY_PROGRAM=PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW
 Environment=PILL_TREASURY_PCT=50      # mitad de la tienda a tesorería, mitad se quema
 Environment=REWARDS_TICK_MIN=20
 Environment=LB_MIN_KILLS=3
+Environment=LB_MIN_OPPONENTS=5     # oponentes distintos para entrar en el top 10
+Environment=MATCH_BATCH_MIN=1      # cada cuanto se anclan los recibos de partida
+Environment=RESERVES_EVERY_MIN=60  # cada cuanto se publica la lista de saldos
 ```
 
 ```bash

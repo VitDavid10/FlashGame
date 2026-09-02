@@ -126,7 +126,12 @@ Hecho (todo funciona hoy sin cadena, y con ella cuando se despliegue):
 - ✅ `/api/treasury`, `/api/leaderboard/chain`, `/api/rewards/<epoch>` y
   [treasury.html](treasury.html) — todo público y sin auth.
 - ✅ `scripts/treasury.js` (operar y auditar) y `scripts/treasury-sim.js` (calibrar).
-- ✅ 80 tests en Node + vectores compartidos con los tests del programa en Rust.
+- ✅ Recibos de partida anclados en Solana (memo por lotes) con la firma de entrada
+  de cada jugador, y filtro de oponentes distintos contra los clusters de wallets
+  propias.
+- ✅ Prueba de pasivo: lista completa de saldos publicada con su raíz anclada, para
+  que el servidor no pueda mentir sobre lo que debe.
+- ✅ 134 tests en Node + vectores compartidos con los tests del programa en Rust.
 
 Pendiente:
 - Compilar y desplegar en devnet (necesita toolchain de Rust; en Windows, WSL).
