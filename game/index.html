@@ -3564,6 +3564,9 @@
             <button id="gwDeposit" onclick="SoundManager.play('simpleselect'); GameWalletUI.openDeposit()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">DEPOSIT</span></button>
             <div id="gwDropdown">
                 <button onclick="SoundManager.play('simpleselect'); GameWalletUI.openWithdraw()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">WITHDRAW</span></button>
+                <!-- Solo aparece si esta wallet tiene premios sin cobrar: un boton
+                     que siempre esta ahi y casi siempre esta vacio deja de mirarse. -->
+                <button id="gwClaim" style="display:none" onclick="SoundManager.play('simpleselect'); GameWalletUI.openClaim()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">CLAIM</span></button>
                 <button onclick="SoundManager.play('simpleselect'); GameWalletUI.disconnect()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">DISCONNECT</span></button>
             </div>
         </div>
@@ -3605,6 +3608,22 @@
                 </div>
             </div>
             <button class="gm-btn" id="gwdConfirm" onclick="GameWalletUI.withdraw()">Withdraw to wallet</button>
+        </div>
+    </div>
+
+    <!-- Premios diarios del top 10: salen de la TESORERIA, no del saldo in-GAME.
+         Por eso van en su propio cartel y no en el de withdraw: el dinero no
+         pasa por la cuenta del juego, va de la boveda a la wallet directamente.
+         El aviso de abajo esta ahi porque la pregunta que hace todo el mundo la
+         primera vez es "por que no puedo cobrarlo ya". -->
+    <div id="gameClaimModal" class="gameModal">
+        <div class="gameModalBox">
+            <span class="close" onclick="GameWalletUI.closeClaim()">×</span>
+            <h3>Daily rewards</h3>
+            <div class="gm-body">
+                <div id="gcList" style="max-height:260px;overflow-y:auto;margin-bottom:12px"></div>
+                <div id="gcNote" style="color:#8b9199;font-size:11px;line-height:1.5"></div>
+            </div>
         </div>
     </div>
 
@@ -11298,6 +11317,10 @@
                 try { this.gameBalance = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
                 if (balVal) balVal.textContent = this.fmt(this.gameBalance);
                 if (balBox) balBox.style.display = 'inline-flex';
+                // Los premios del top 10 se miran aquí y no en su propio ciclo: el
+                // botón CLAIM vive en el mismo desplegable, así que si no se refresca
+                // a la vez que el saldo aparece un ciclo tarde, cuando ya lo cerraste.
+                this.refreshClaims();
             } else {
                 conn.style.display = 'inline-block'; dep.style.display = 'none';
                 if (balBox) balBox.style.display = 'none';
@@ -11391,6 +11414,94 @@
                 showSystemMsg(this.fmt(amt) + ' $PILL sent back to your wallet.', 'WITHDRAW COMPLETE');
             } catch (e) { showSystemMsg(walletErrText(e), 'WITHDRAW FAILED'); }
             btn.disabled = false; btn.innerText = old;
+        },
+        /* ===== PREMIOS DIARIOS DE LA TESORERIA =====
+         *
+         * Estos NO son saldo in-GAME. Salen de la boveda bloqueada y van directos
+         * a la wallet: el juego no los toca en ningun momento, y por eso hay que
+         * firmar una transaccion de verdad en vez de un mensaje como en withdraw.
+         *
+         * Y por eso hay una espera de 48 h desde que se publica la lista hasta que
+         * se puede cobrar: es la ventana en la que cualquiera puede bajarse la
+         * lista entera, recalcular la raiz y comprobar que los ganadores son los
+         * del leaderboard de ese dia. Sin esa espera, el servidor podria pagar a
+         * quien quisiera y nadie tendria tiempo de mirarlo.
+         */
+        premios: { pendientes: [], total: 0 },
+        async refreshClaims() {
+            const btn = document.getElementById('gwClaim');
+            if (!GameWallet.address) { if (btn) btn.style.display = 'none'; return; }
+            try {
+                this.premios = await (await fetch('/api/rewards?wallet=' + GameWallet.address)).json();
+            } catch (e) { this.premios = { pendientes: [], total: 0 }; }
+            if (btn) btn.style.display = (this.premios.pendientes || []).length ? 'block' : 'none';
+        },
+        openClaim() {
+            document.getElementById('gameClaimModal').style.display = 'flex';
+            this.pintaClaims();
+        },
+        closeClaim() { document.getElementById('gameClaimModal').style.display = 'none'; },
+        pintaClaims() {
+            const lista = document.getElementById('gcList'), nota = document.getElementById('gcNote');
+            const p = this.premios.pendientes || [];
+            if (!p.length) {
+                lista.innerHTML = '<div style="color:#8b9199;text-align:center;padding:18px 0">Nothing to claim.<br>Finish in the daily top 10 to earn from the treasury.</div>';
+                nota.innerHTML = '';
+                return;
+            }
+            lista.innerHTML = p.map(x => {
+                // Tres estados y cada uno dice algo distinto: aun sin anclar en la
+                // cadena, en ventana de revision, o listo.
+                const listo = x.claimable;
+                const enVentana = x.publicado && !listo;
+                const cuando = x.claimableAt ? new Date(x.claimableAt).toLocaleString() : '';
+                const estado = listo ? 'READY TO CLAIM'
+                    : enVentana ? 'Review window · opens ' + cuando
+                    : 'Waiting to be published on-chain';
+                // El estilo es el del boton MAX de deposit/withdraw y no .gm-btn: el
+                // pixel pack repinta .gm-btn contando con un boton de ancho completo,
+                // y a este tamano el texto acababa casi negro sobre fondo oscuro.
+                const btn = 'background:transparent;font-family:\'Russo One\';font-size:11px;padding:5px 12px;border-radius:5px;';
+                return '<div class="gm-row" style="align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.07)">'
+                    + '<span style="flex:1">'
+                    + '<b style="color:#ffce3d">#' + x.rank + '</b> · ' + x.date
+                    + '<br><span style="font-size:10px;color:' + (listo ? '#ffce3d' : '#8b9199') + '">' + estado + '</span>'
+                    + '</span>'
+                    + '<b style="color:#c8cdd2;margin-right:10px">' + this.fmt(x.pill) + ' $PILL</b>'
+                    + (listo
+                        ? '<button type="button" style="' + btn + 'border:1px solid #ffce3d;color:#ffce3d;cursor:pointer" onclick="GameWalletUI.claim(' + x.epoch + ')">CLAIM</button>'
+                        : '<button type="button" style="' + btn + 'border:1px solid #454b52;color:#454b52;cursor:default" disabled>CLAIM</button>')
+                    + '</div>';
+            }).join('');
+            nota.innerHTML = 'Rewards are published as a Merkle root 48 h before they can be claimed, '
+                + 'so anyone can check the winner list against that day\'s leaderboard first. '
+                + 'The list is public at <b>/api/rewards/&lt;epoch&gt;</b>.';
+        },
+        async claim(epoch) {
+            const p = (this.premios.pendientes || []).find(x => x.epoch === epoch);
+            if (!p) return;
+            try { SoundManager.play('select'); } catch (e) {}
+            const lista = document.getElementById('gcList');
+            const antes = lista.innerHTML;
+            lista.innerHTML = '<div style="color:#c8cdd2;text-align:center;padding:24px 0">Sign in your wallet...</div>';
+            try {
+                const sig = await window.PillChain.claim(epoch);
+                // Aviso al servidor solo para que el boton desaparezca ya. Quien
+                // cobro de verdad esta on-chain: el recibo es una cuenta que solo
+                // se puede crear una vez, asi que un aviso falso no consigue nada.
+                try {
+                    await fetch('/api/rewards/claimed', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wallet: GameWallet.address, epoch, sig }),
+                    });
+                } catch (e) {}
+                this.closeClaim();
+                await this.refreshClaims();
+                showSystemMsg(this.fmt(p.pill) + ' $PILL sent from the treasury to your wallet.', 'REWARD CLAIMED');
+            } catch (e) {
+                lista.innerHTML = antes;
+                showSystemMsg(walletErrText(e), 'CLAIM FAILED');
+            }
         },
         // Desconecta la wallet del juego (y olvida la sesion recordada)
         disconnect() {
@@ -15382,7 +15493,62 @@
         }
         return ultimo;
     }
-    window.PillChain = { deposit, creditDeposit };
+    /*
+     * Cobrar un premio diario de la tesoreria.
+     *
+     * La transaccion la CONSTRUYE el servidor (lleva la prueba de Merkle, que son
+     * varios hashes de 32 bytes, y el jugador no tiene por que saber montar eso),
+     * pero no puede desviarla: el destino de los tokens es la ATA del ganador, y
+     * el contrato la deriva EL SOLO a partir de la hoja del arbol. Lo peor que
+     * puede hacer un servidor comprometido aqui es devolver una transaccion que
+     * falle. Por eso vale la pena que la firme el jugador y no el servidor: no
+     * hay que confiar en nadie para cobrar, solo tener el premio.
+     */
+    async function claim(epoch) {
+        const W = window.GameWallet;
+        if (!W || !W.address || !W.provider) throw new Error('Connect your wallet first');
+
+        const r = await (await fetch('/api/rewards/claim-tx', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wallet: W.address, epoch }),
+            signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+        })).json();
+        if (!r.ok) throw new Error(r.reason || 'claim failed');
+
+        const tx = Transaction.from(Uint8Array.from(atob(r.tx), c => c.charCodeAt(0)));
+        const conn = nuevaConexion();
+        // Blockhash nuevo aunque el servidor ya puso uno: entre que se pidio la
+        // transaccion y el jugador acierta a firmarla pueden pasar minutos, y un
+        // blockhash caducado se rechaza con un error que no dice nada util.
+        // 'finalized' por lo mismo que en deposit: un hash demasiado reciente
+        // todavia no lo conoce el nodo que recibe el envio.
+        tx.feePayer = new PublicKey(W.address);
+        try { tx.recentBlockhash = (await conn.getLatestBlockhash('finalized')).blockhash; }
+        catch (e) { throw new Error('rpc: ' + ((e && e.message) || e)); }
+
+        const conTope = (p, ms, que) => Promise.race([p, new Promise((_, rej) =>
+            setTimeout(() => rej(new Error('timeout: ' + que)), ms))]);
+        let sig;
+        // signTransaction primero, igual que en deposit: signAndSendTransaction
+        // envia por el RPC de la extension, que suele apuntar a mainnet y no
+        // conoce un blockhash de devnet.
+        if (W.provider.signTransaction) {
+            const signed = await conTope(W.provider.signTransaction(tx), 60000, 'wallet');
+            sig = await conn.sendRawTransaction(signed.serialize());
+        } else {
+            const res = await conTope(W.provider.signAndSendTransaction(tx), 60000, 'wallet');
+            sig = res.signature || res;
+        }
+        // Si la confirmacion tarda no se lanza error: la transaccion ya salio, y
+        // el recibo on-chain es la verdad. Reventar aqui haria que el jugador
+        // creyera que fallo un cobro que si se hizo, y el segundo intento
+        // rebotaria contra el recibo ya creado.
+        try { await conn.confirmTransaction(sig, 'confirmed'); }
+        catch (e) { console.warn('[claim] confirmacion no llego a tiempo, la firma vale igual:', e); }
+        return sig;
+    }
+
+    window.PillChain = { deposit, creditDeposit, claim };
     window.GameWallet = GameWallet;   // expone GameWallet para el módulo
 </script>
 

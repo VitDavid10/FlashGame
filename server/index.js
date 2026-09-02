@@ -2823,6 +2823,72 @@ const httpServer = http.createServer(async (req, res) => {
         res.end(JSON.stringify(isSolAddr(wallet) ? rewards.premiosDe(wallet) : { pendientes: [], total: 0 }));
         return;
     }
+    /* Transacción de claim, lista para firmar.
+     *
+     * El servidor la construye, pero NO la firma ni puede desviarla: el destino de
+     * los tokens es la ATA del ganador, derivada dentro del contrato a partir de la
+     * hoja del Merkle. Lo peor que puede hacer un servidor comprometido aquí es
+     * devolver una transacción que falle — la wallet la enseña antes de firmar.
+     *
+     * El feePayer es el jugador porque así no depende de nadie para cobrar. El
+     * contrato permite que pague cualquiera (el `payer` del claim es un signer
+     * suelto), así que si algún día se quiere reclamar automáticamente por los
+     * ganadores, no hace falta tocar el programa.
+     */
+    if (urlPath === '/api/rewards/claim-tx' && req.method === 'POST') {
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            try {
+                const p = JSON.parse(body || '{}');
+                const wallet = String(p.wallet || '');
+                const epoch = parseInt(p.epoch, 10);
+                if (!isSolAddr(wallet) || !Number.isFinite(epoch)) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+                if (!process.env.TREASURY_PROGRAM) { res.end(JSON.stringify({ ok: false, reason: 'todavía no hay contrato de tesorería' })); return; }
+
+                const ronda = rewards.rondaPublica(epoch);
+                const fila = ronda && ronda.entries.find(e => e.wallet === wallet);
+                if (!fila) { res.end(JSON.stringify({ ok: false, reason: 'no hay premio para esa wallet en esa ronda' })); return; }
+
+                const tcl = require('./treasury-client.js');
+                const { Transaction, PublicKey } = require('@solana/web3.js');
+                const ix = tcl.claim(process.env.TREASURY_PROGRAM, {
+                    epoch, winner: wallet, amountRaw: BigInt(fila.amountRaw),
+                    proof: fila.proof, mint: solana.MINT, payer: wallet,
+                });
+                const conn = _solConn();
+                const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('confirmed');
+                const tx = new Transaction({ feePayer: new PublicKey(wallet), blockhash, lastValidBlockHeight }).add(ix);
+                res.end(JSON.stringify({
+                    ok: true,
+                    tx: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'),
+                    amountRaw: fila.amountRaw, rank: fila.rank, epoch,
+                }));
+            } catch (e) {
+                res.end(JSON.stringify({ ok: false, reason: e.message }));
+            }
+        });
+        return;
+    }
+    /* Aviso de que un claim se confirmó. Es solo para que el botón desaparezca sin
+     * esperar al siguiente refresco: la verdad de quién cobró está on-chain (el
+     * recibo es un PDA), y un aviso falso no consigue nada — el segundo claim de esa
+     * wallet fallaría igual en el contrato. */
+    if (urlPath === '/api/rewards/claimed' && req.method === 'POST') {
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 500) req.destroy(); });
+        req.on('end', () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            try {
+                const p = JSON.parse(body || '{}');
+                const ok = isSolAddr(String(p.wallet || '')) && Number.isFinite(parseInt(p.epoch, 10))
+                    && rewards.marcarCobrado(parseInt(p.epoch, 10), String(p.wallet), String(p.sig || '').slice(0, 128));
+                res.end(JSON.stringify({ ok: !!ok }));
+            } catch (e) { res.end(JSON.stringify({ ok: false })); }
+        });
+        return;
+    }
     // La ronda completa de una época: la lista de ganadores con sus pruebas. Es el
     // fichero que hay que bajarse para auditar una raíz publicada on-chain.
     if (urlPath.startsWith('/api/rewards/')) {
