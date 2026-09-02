@@ -14,6 +14,7 @@ Windows hay que hacerlo desde WSL**: el toolchain de BPF no compila nativo.
 
 ```bash
 # En WSL (Ubuntu)
+sudo apt install -y build-essential pkg-config libssl-dev
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
 cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
@@ -28,6 +29,25 @@ rustc --version && solana --version && anchor --version
 
 El resto del repo (servidor, tests, scripts) **no necesita nada de esto**: es Node
 puro y funciona sin cadena.
+
+### El token de pruebas ya existe
+
+Creado el 19/06/2026 con `scripts/create-devnet-token.js`, apuntado en
+`scripts/devnet-token.json`. No hay que crear otro:
+
+```
+mint       Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r   (devnet, 6 decimales)
+autoridad  4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN
+```
+
+https://solscan.io/token/Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r?cluster=devnet
+
+**Hay que cambiar el cluster a devnet** en el selector de Solscan, o dirá que no
+existe. Supply 994.575.000 de 1.000M — la diferencia son quemas de la tienda de
+antes de que la tienda pasara a mandarlo todo al pozo del staking.
+
+Casi todo está hoy en la wallet de autoridad, con llave privada. Eso es justo lo
+que estos pasos vienen a cambiar.
 
 ---
 
@@ -179,6 +199,52 @@ bloqueado igual que todo lo demás, también para ti.
 npm run treasury -- fund 30000000
 ```
 
+### 5 bis. Qué ve exactamente alguien que mire el token
+
+Es la pregunta que importa, porque toda la transparencia del diseño se apoya en
+que cualquiera pueda comprobarlo sin fiarse de mí.
+
+En Solana esto **no funciona como en Ethereum**. Allí el token *es* un contrato y
+los holders pueden ser contratos. Aquí:
+
+- El **mint** no tiene código propio. Lo gestiona el **SPL Token Program**, uno
+  solo, compartido por todos los tokens de la red. No se le "mete" nada a un token.
+- Los saldos no están en el mint: viven en **token accounts** aparte, cada una con
+  un campo `owner`.
+- Un programa **no puede tener llave privada**. Lo que tiene es una **PDA**: una
+  dirección derivada de `hash(program_id + semilla)` que cae *fuera* de la curva
+  ed25519. No es que la llave esté bien guardada — es que esa dirección **no puede
+  tener llave**. Solo firma el programa, y solo ejecutando su propio código.
+
+Las cuatro bolsas son deterministas: se derivan del program ID, así que cualquiera
+las recalcula y comprueba que son estas y no otras.
+
+```
+CUSTODY   ETvkkwoHqdmdQfG8me9bLTFe8udgLgtNUNHZHCW3SqLP   dinero de los jugadores
+TREASURY  4BHducidP1dnZJas3VCzjfBNyHbBfFAXn3t7LFcsoxQm   bloqueada años
+STAKE     3nSsrgmeZHPaA4poFP8JH9DTv84EfQ2Q4RdyhrLuhFEp   principal de los stakers
+REWARDS   82gqBvzN6p1r994eQ4VjGosubCMqEdDc8wMsisjS4ZeV   pozo por repartir
+```
+
+```bash
+# Recalcularlas desde cero, sin fiarse del repo
+solana find-program-derived-address PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW string:custody
+solana account ETvkkwoHqdmdQfG8me9bLTFe8udgLgtNUNHZHCW3SqLP --output json
+```
+
+Lo que hace especiales a esas cuentas está en `lib.rs`:
+
+```rust
+token::authority = custody,
+```
+
+**La cuenta es su propia autoridad.** No apunta a mi wallet ni a un multisig: se
+apunta a sí misma, y por sí misma no puede firmar nadie.
+
+Después de `fund`, esas direcciones salen en la pestaña Holders del token. Pero
+**Solscan no pone ningún cartel de "esto es un contrato" por su cuenta**: lo que se
+ve es una dirección con saldo. Eso lo arregla el build verificable — ver §6 bis.
+
 ---
 
 ## 6. Calibrar (30 días)
@@ -227,9 +293,31 @@ Lo que hay que responder antes de bloquear:
 
 ---
 
+## 6 bis. El build verificable — antes del cerrojo, no después
+
+Sin esto, cualquiera puede leer el código del repo y ver el programa desplegado,
+pero **no puede comprobar que sean el mismo binario**. Todo el diseño se queda en
+"el contrato hace esto, te lo prometo".
+
+```bash
+cargo install solana-verify
+solana-verify verify-from-repo https://github.com/VitDavid10/FlashGame     --program-id PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW
+```
+
+Compila el repo en un contenedor reproducible y compara el hash con el binario que
+hay en la cadena. Si coinciden, queda registrado y Solscan lo enseña como
+verificado; a partir de ahí las invariantes del `lib.rs` dejan de ser una promesa y
+pasan a ser algo que se lee del código que de verdad se está ejecutando.
+
+**Va antes del cerrojo.** Después de revocar la upgrade authority ya no se puede
+recompilar y volver a subir si el hash no cuadra por una versión distinta del
+toolchain. Deja anotada la versión exacta de Anchor y de Rust con la que compilaste.
+
+---
+
 ## 7. El cerrojo
 
-Cuando los números cuadren, y en este orden:
+Cuando los números cuadren, **con §6 bis ya hecho**, y en este orden:
 
 ```bash
 # 1. Los caps definitivos (solo se puede apretar)
@@ -246,6 +334,12 @@ solana program set-upgrade-authority PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW
 ```
 
 Los tres primeros piden escribir a mano lo que va a pasar. No hay deshacer.
+
+El paso 2 es el que responde a "que la gente vea que no puedo retirar nada":
+mueve `unlock_ts` cuatro años hacia delante, y **`extend_lock` rechaza cualquier
+fecha anterior a la que ya hay**. La única salida de la tesorería hasta entonces es
+`claim`, que paga a la wallet que dice la hoja del árbol de Merkle — no a quien
+firma la transacción.
 
 **El paso 4 no es opcional.** Mientras exista la upgrade authority, todo lo anterior
 es decorativo: con ella se despliega otra versión del programa que vacíe los vaults.
