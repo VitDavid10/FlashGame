@@ -10622,6 +10622,14 @@
         b._hideTimer = setTimeout(() => { b.classList.remove('show'); }, 3500);
     }
     function startGame() {
+        /*
+         * practiceMode a false SIEMPRE al empezar una partida offline de verdad.
+         * Sin esto, si venias del preview de "buscando sala" la bandera se
+         * quedaba encendida, y el fin de partida por tiempo esta condicionado a
+         * `!practiceMode` (el preview no debe terminar nunca): resultado, el
+         * reloj llegaba a 0:00 y la sala offline no se reiniciaba jamas.
+         */
+        practiceMode = false;
         SoundManager.play('select'); SoundManager.stopMenuMusic(); SoundManager.playMusic(); showBotsBanner();
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
         playerName = document.getElementById('playerNameInput').value.trim() || "";
@@ -13005,6 +13013,9 @@
         document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
         if (saveInterval) clearInterval(saveInterval);
         lastFrameTime = Date.now();
+        // El preview lleva su propio reloj de ciclo (no se ve en pantalla): al
+        // agotarse se recicla la sala entera en vez de terminar la partida.
+        roomTimers[mode + '_' + currentServer] = Date.now() + duracionOffline(mode);
         practiceFirstSkillDone = false;   // el primer selector de skill del preview se omite
         // Preview sin música: solo efectos (se cortan al empezar la partida).
         gameRunning = true;
@@ -14176,7 +14187,14 @@
                 // ROOM/lobby): es un modo de pruebas sin límite de tiempo, no una partida
                 // de verdad. Sin esto, una búsqueda larga terminaba el preview solo con
                 // finishGameSuccess() al agotarse el reloj local de 3:50.
-                if (tl <= 0 && !practiceMode) { finishGameSuccess(); return; }
+                if (tl <= 0) {
+                    if (!practiceMode) { finishGameSuccess(); return; }
+                    // El preview no termina nunca, pero tampoco se deja degenerar en
+                    // busquedas largas: al agotarse el ciclo se regenera todo (sala,
+                    // bots, comida, skills) y vuelve a empezar.
+                    startPracticeGame(currentGameMode);
+                    return;
+                }
             }
             // Últimos segundos (CD_SECS): cuenta atrás grande estilo GO! (+ sonido) y se
             // oculta el contador normal.
