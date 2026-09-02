@@ -178,9 +178,25 @@ function curvaDe(bps, cap) {
                 `   queda ${fmt(Math.round(saldo))}`);
         }
     }
-    if (cap < T * bps / 10000) {
-        console.log(`  (manda el cap de ${fmt(cap)} hasta que la curva baje de ahi: mesa plana)`);
+    // Cuantos dias manda el cap antes de que la curva baje por debajo de el. Es la
+    // proporcion entre los dos frenos lo que decide la forma, no cada uno por su lado:
+    // un cap pensado para 30 M sobre una tesoreria de 150 M deja dos anios planos y el
+    // halving no llega a notarse nunca.
+    const umbral = cap * 10000 / bps;
+    if (umbral < T) {
+        let s2 = T, dias = 0;
+        while (s2 > umbral && dias < 3650) { s2 -= cap; dias++; }
+        console.log(`  el cap de ${fmt(cap)} manda los primeros ${dias} dias (meseta plana), luego manda la curva`);
+        if (dias > 365) {
+            console.log(`\n  AVISO: con ese cap la curva no se nota en el primer anio.`);
+            console.log(`  Si la idea era el halving, el cap para ${fmt(T)} PILL ronda ${fmt(Math.round(T * bps / 10000 / 4))}`);
+            console.log(`  (un cuarto de lo que daria la curva el dia 1). Con --cap ${Math.round(T * bps / 10000 / 4)} la meseta`);
+            console.log(`  dura unos meses en vez de anios.`);
+        }
+    } else {
+        console.log(`  el cap de ${fmt(cap)} no llega a morder: manda la curva desde el dia 1`);
     }
+    console.log(`  (simulado sobre ${fmt(T)} PILL — si vas a meter otra cantidad, pasa --simular-con)`);
 }
 
 async function init() {

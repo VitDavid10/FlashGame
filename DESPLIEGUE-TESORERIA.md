@@ -129,6 +129,26 @@ Y **el número que pongas aquí es el techo de todo lo que puedas elegir despué
 porque `tighten` solo aprieta: de 225 se baja a 38, de 38 no se sube a 225. En caso
 de duda, arrancar alto y bajar con los datos de los 30 días.
 
+> **El cap depende de cuánto vayas a meter, así que decide eso ANTES del init.**
+> Los dos frenos no se eligen por separado: manda el que muerda primero. Un cap de
+> 200 000 sobre 30 M deja ~100 días de meseta; el mismo cap sobre 150 M deja 702,
+> y el halving no se nota en dos años. La regla es
+> `cap ≈ tesorería × bps / 10000 / 4`.
+>
+> ```bash
+> # Ver la curva sobre lo que vas a meter DE VERDAD, antes de firmar nada
+> npm run treasury -- init --bps 225 --cap 800000 --simular-con 150000000
+> ```
+>
+> El comando imprime el reparto en los días 1/30/90/180/365 y avisa si el cap deja
+> la curva sin efecto el primer año. La tabla de combinaciones está en
+> [TESORERIA-PLAN.md §3.4](TESORERIA-PLAN.md).
+
+**Si te quedas corto, `fund` no caduca.** Cualquiera puede aportar a la tesorería
+cuando quiera, también después del cerrojo — `finalized` solo bloquea `tighten`. Y
+como el grifo es un porcentaje del saldo, meter tokens **sube la emisión diaria
+sola**: es la palanca que queda cuando los bps ya no se pueden subir.
+
 El comando imprime las direcciones de **CUSTODIA** y **TESORERÍA**. Guárdalas: son
 las dos que la gente va a mirar en el explorador.
 

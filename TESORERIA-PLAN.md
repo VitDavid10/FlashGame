@@ -340,6 +340,47 @@ Con cap 200 k son ~100 días de premio alto y **constante**, que retiene mejor q
 un pico que se desinfla en tres semanas, y el mercado absorbe 0,6 % de supply nuevo
 al mes en vez de 1,5 %.
 
+#### Si te quedas corto: `fund` no caduca
+
+La objeción obvia a una curva agresiva es qué pasa si el juego arranca lento y coge
+tracción al mes 6, con la tesorería ya casi vacía. La respuesta está en `fund`:
+
+> *Aportación directa a la TESORERÍA. **Cualquiera puede llamarla.***
+> — `lib.rs:202`
+
+Sin autoridad, sin límite y sin caducidad. `finalized` solo bloquea `tighten`, así
+que se puede aportar también después del cerrojo, para siempre.
+
+Y como el grifo es un porcentaje del saldo, **meter tokens sube la emisión diaria
+sola**. Los bps no se pueden subir; el saldo del que se calculan, sí. Para sostener
+`E` PILL por época hace falta un saldo de `E × 10000 / bps` — con 225 bps y 800 000
+al día, unos 35,6 M en tesorería.
+
+Eso sí: lo que entra queda sujeto al timelock igual que lo demás. Es dinero que se
+regala a la comunidad, no un préstamo que se recupere.
+
+#### La proporción entre los dos frenos es lo que decide la forma
+
+No sirve elegir los bps y el cap por separado: lo que manda es cuál de los dos
+muerde primero, y eso depende de **cuánto haya en la tesorería**. El mismo cap de
+200 000 sobre 30 M deja ~100 días de meseta, y sobre 150 M deja **702** — dos años
+planos en los que el halving no llega a notarse nunca.
+
+Regla: **el cap ronda un cuarto de lo que daría la curva el día 1**
+(`saldo × bps / 10000 / 4`). Con eso el pico queda afeitado y la curva sigue
+mordiendo a los pocos meses.
+
+| tesorería | bps | cap | meseta | repartido 3 m / 6 m / 12 m | supply nuevo al mes |
+|---|---|---|---|---|---|
+| 30 M | 225 | 200 k | ~100 d | 60 % / 95 % / 100 % | 0,60 % |
+| 150 M | 225 | 200 k | **702 d** | 12 % / 24 % / 49 % | 0,60 % |
+| 150 M | 225 | 800 k | ~143 d | 48 % / 90 % / 100 % | 2,41 % |
+| 150 M | 38 | 400 k | ~110 d | 24 % / 46 % / 73 % | 1,21 % |
+
+`npm run treasury -- init` imprime esta simulación antes de firmar y avisa si el cap
+deja la curva sin efecto durante el primer año. Usa `--simular-con <PILL>` para que
+la calcule sobre lo que vas a meter de verdad, no sobre el ejemplo.
+
 #### Y sigue siendo un techo
 
 Aunque un atacante controlase la autoridad y falsease todas las listas, no puede
