@@ -972,12 +972,22 @@
                lados, asi que el 10% esta calculado para que ni con una masa de
                7 cifras (el caso mas ancho) se salga por arriba. */
             html:not([data-hero]) body.mobile-allowed #ui {
-                /* right 24px (no 6%): con el translate(50%) el margen que queda
-                   de verdad es la mitad, o sea 12px — los mismos que la X, el
-                   sonido y la musica, que van en px. Con el 6% salian 10 y no
-                   cuadraban con esos tres. En px coinciden en cualquier
-                   pantalla; en % se irian separando al crecer el movil. */
-                top: 10% !important; bottom: auto !important; right: 24px !important; left: auto !important;
+                /*
+                 * bottom y NO top. Con el telefono girado, lo que en la
+                 * pantalla fisica esta ABAJO es lo que el usuario ve ARRIBA
+                 * (por eso el sonido, la musica y la X van con bottom 12/54/96).
+                 * El cuadro de MASS iba con `top`, o sea en el extremo fisico
+                 * contrario: por mucho que se subiera el %, el usuario lo seguia
+                 * viendo abajo del todo, al otro lado de esos tres botones.
+                 * 205px lo coloca en la misma fila, justo detras de la X (que
+                 * acaba a 132) — medido para que ni con una masa de 9 cifras se
+                 * le eche encima; el numero crece hacia los dos lados.
+                 *
+                 * right 24px (no 6%): con el translate(50%) el margen real es la
+                 * mitad, o sea los mismos 12px que llevan esos tres botones. En
+                 * % salian 10 y ademas se irian separando en pantallas grandes.
+                 */
+                top: auto !important; bottom: 205px !important; right: 24px !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(1) !important;
                 flex-direction: row !important; gap: 4px !important;
                 font-size: 8px !important;
@@ -3530,13 +3540,13 @@
              azul, para poder moverlo/escalarlo DENTRO del boton sin tocar el
              tamano del boton. Los cuatro comparten clave, asi que se ajustan a
              la vez y no se descuadran entre ellos. -->
-        <button id="gwConnect" onclick="GameWalletUI.connect()"><span class="gw-btn-txt">CONNECT</span></button>
+        <button id="gwConnect" onclick="SoundManager.play('simpleselect'); GameWalletUI.connect()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">CONNECT</span></button>
         <!-- DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT -->
         <div id="gwDepositWrap" style="display:none">
-            <button id="gwDeposit" onclick="GameWalletUI.openDeposit()"><span class="gw-btn-txt">DEPOSIT</span></button>
+            <button id="gwDeposit" onclick="SoundManager.play('simpleselect'); GameWalletUI.openDeposit()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">DEPOSIT</span></button>
             <div id="gwDropdown">
-                <button onclick="GameWalletUI.openWithdraw()"><span class="gw-btn-txt">WITHDRAW</span></button>
-                <button onclick="GameWalletUI.disconnect()"><span class="gw-btn-txt">DISCONNECT</span></button>
+                <button onclick="SoundManager.play('simpleselect'); GameWalletUI.openWithdraw()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">WITHDRAW</span></button>
+                <button onclick="SoundManager.play('simpleselect'); GameWalletUI.disconnect()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">DISCONNECT</span></button>
             </div>
         </div>
     </div>
@@ -4743,10 +4753,10 @@
             // simplehover suena en CADA boton del menu al pasar el raton: al
             // 100% se hacia pesado. -60% (queda al 40%) pedido por David.
             if (name === 'simplehover') vol *= 0.4;
-            // Skills: al 33% (-67%, pedido por David). Son los cuatro que suenan
-            // al ACTIVAR una skill y en arcade se disparan cada pocos segundos;
-            // a volumen completo tapaban el resto del juego.
-            if (name === 'sprint' || name === 'tp' || name === 'iman' || name === 'shield') vol *= 0.33;
+            // SELECTOR de skills al 33% (-67%, pedido por David): 'timer' es la
+            // cuenta atras que suena durante los 10s de eleccion, sin parar. Los
+            // sonidos de ACTIVAR una skill (sprint/tp/iman/shield) no se tocan.
+            if (name === 'timer') vol *= 0.33;
             const s = this.sounds[name]; s.currentTime = 0; s.volume = Math.min(1, vol * SFX_MASTER); s.play().catch(e => {});
         },
         stop: function(name) { if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },
