@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "PillWars — Por donde entra y sale el dinero",
+    "viewBox": [
+      1068,
+      604
+    ],
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "custodia",
+        "label": "Dinero de los jugadores",
+        "focus": [
+          "wallet",
+          "custody",
+          "retiro"
+        ],
+        "note": "Lo que un jugador deposita entra en custodia y sale de custodia cuando lo retira."
+      },
+      {
+        "id": "tesoreria",
+        "label": "Dinero del proyecto",
+        "focus": [
+          "launch",
+          "custody",
+          "treasury"
+        ],
+        "note": "La tesoreria se alimenta del lanzamiento y del rake, y no devuelve nada."
+      },
+      {
+        "id": "premios",
+        "label": "Camino de un premio",
+        "focus": [
+          "leaderboard",
+          "ronda",
+          "treasury",
+          "ganador"
+        ],
+        "note": "El leaderboard del dia se hashea, la lista se publica 48 h antes y cobra el ganador."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "Entra"
+    },
+    {
+      "label": "Custodia"
+    },
+    {
+      "label": "Sale de custodia"
+    },
+    {
+      "label": "Tesoreria"
+    },
+    {
+      "label": "Cobro"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "wallet",
+      "type": "frontend",
+      "label": "Wallet",
+      "sublabel": "deposita $PILL",
+      "stage": 0,
+      "row": 1,
+      "tag": "firma"
+    },
+    {
+      "id": "custody",
+      "type": "database",
+      "label": "CUSTODY",
+      "sublabel": "sin llave privada",
+      "stage": 1,
+      "row": 1,
+      "tag": "es deuda"
+    },
+    {
+      "id": "retiro",
+      "type": "frontend",
+      "label": "Retiro",
+      "sublabel": "a su wallet",
+      "stage": 2,
+      "row": 0,
+      "tag": "cuando quiera"
+    },
+    {
+      "id": "quema",
+      "type": "security",
+      "label": "Quema",
+      "sublabel": "baja el supply",
+      "stage": 2,
+      "row": 2,
+      "tag": "capado"
+    },
+    {
+      "id": "launch",
+      "type": "external",
+      "label": "Lanzamiento",
+      "sublabel": "tokens comprados",
+      "stage": 3,
+      "row": 0,
+      "tag": "sin retorno"
+    },
+    {
+      "id": "treasury",
+      "type": "database",
+      "label": "TREASURY",
+      "sublabel": "bloqueada N anios",
+      "stage": 3,
+      "row": 1,
+      "tag": "timelock"
+    },
+    {
+      "id": "ganador",
+      "type": "frontend",
+      "label": "El ganador cobra",
+      "sublabel": "lo firma el ganador",
+      "stage": 4,
+      "row": 1,
+      "tag": "top 10"
+    },
+    {
+      "id": "leaderboard",
+      "type": "backend",
+      "label": "Leaderboard diario",
+      "sublabel": "hash encadenado",
+      "stage": 1,
+      "row": 3,
+      "tag": "publico"
+    },
+    {
+      "id": "ronda",
+      "type": "messagebus",
+      "label": "Raiz de Merkle",
+      "sublabel": "publish_round",
+      "stage": 2,
+      "row": 3,
+      "tag": "no mueve tokens"
+    }
+  ],
+  "flows": [
+    {
+      "id": "deposito",
+      "from": "wallet",
+      "to": "custody",
+      "label": "deposit()",
+      "classification": "lo firma el jugador",
+      "variant": "emphasis"
+    },
+    {
+      "id": "retirada",
+      "from": "custody",
+      "to": "retiro",
+      "label": "withdraw()",
+      "classification": "nunca toca la tesoreria",
+      "variant": "default"
+    },
+    {
+      "id": "quemado",
+      "from": "custody",
+      "to": "quema",
+      "label": "burn()",
+      "classification": "tope por epoca",
+      "variant": "security"
+    },
+    {
+      "id": "barrido",
+      "from": "custody",
+      "to": "treasury",
+      "label": "sweep()",
+      "classification": "rake y tienda, tope por epoca",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "aporte",
+      "from": "launch",
+      "to": "treasury",
+      "label": "fund()",
+      "classification": "de ida",
+      "variant": "default",
+      "labelDy": 44
+    },
+    {
+      "id": "lista",
+      "from": "leaderboard",
+      "to": "ronda",
+      "label": "top 10 del dia",
+      "classification": "criterio publicado antes",
+      "variant": "default",
+      "labelAt": [
+        423,
+        542
+      ]
+    },
+    {
+      "id": "reserva",
+      "from": "ronda",
+      "to": "treasury",
+      "label": "reserva el premio",
+      "classification": "solo escribe 32 bytes",
+      "variant": "dashed",
+      "labelDx": 76
+    },
+    {
+      "id": "cobro",
+      "from": "treasury",
+      "to": "ganador",
+      "label": "claim()",
+      "classification": "unica salida antes del unlock",
+      "variant": "emphasis",
+      "labelDy": -34
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Dos bolsas, dos direcciones",
+      "items": [
+        "Custodia: entra al depositar, sale al retirar",
+        "Tesoreria: bloqueada durante anios"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Todo lo que sale va capado",
+      "items": [
+        "sweep y burn tienen tope por epoca",
+        "Antes del unlock nadie elige el destino"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "El criterio va antes que el pago",
+      "items": [
+        "El dia se cierra y se hashea",
+        "La lista se publica 48 h antes"
+      ]
+    }
+  ]
+}

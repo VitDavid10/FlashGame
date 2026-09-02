@@ -60,6 +60,10 @@ use anchor_lang::solana_program::hash;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+/// PLACEHOLDER. Es una direccion valida pero nadie tiene su clave, asi que no se
+/// puede desplegar ahi: hay que sustituirla por la del keypair real antes de
+/// `anchor build` (`node scripts/grind-program-id.js PiLL` la genera, y
+/// `anchor keys sync` la escribe aqui y en Anchor.toml). Ver DESPLIEGUE-TESORERIA.md.
 declare_id!("PiLLTreas1111111111111111111111111111111111");
 
 pub const CONFIG_SEED: &[u8] = b"config";
