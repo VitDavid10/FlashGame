@@ -13,7 +13,7 @@ try { const j = JSON.parse(fs.readFileSync(FILE, 'utf8')); data.points = j.point
 
 let dirty = false;
 function save() { if (!dirty) return; dirty = false; fs.writeFile(FILE, JSON.stringify(data), () => {}); }
-setInterval(save, 3000);
+setInterval(save, 3000).unref();   // ver la nota en skinshop.js
 process.on('SIGTERM', save); process.on('SIGINT', () => { save(); process.exit(0); });
 
 function getPoints(cid) { return data.points[cid] | 0; }

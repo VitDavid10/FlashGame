@@ -19,7 +19,7 @@ try { const j = JSON.parse(fs.readFileSync(FILE, 'utf8')); data.balances = j.bal
 
 let dirty = false;
 function save() { if (!dirty) return; dirty = false; fs.writeFile(FILE, JSON.stringify(data), () => {}); }
-setInterval(save, 3000);
+setInterval(save, 3000).unref();   // ver la nota en skinshop.js
 process.on('SIGTERM', save); process.on('SIGINT', () => { save(); process.exit(0); });
 
 /*
@@ -48,7 +48,7 @@ setInterval(() => {
         if (esPurgable(k) && t < cutoff) { delete data.sigs[k]; removed++; }
     }
     if (removed > 0) dirty = true;
-}, 30 * 60 * 1000);   // cada 30 min
+}, 30 * 60 * 1000).unref();   // cada 30 min
 
 function getBalance(wallet) { return data.balances[wallet] || 0; }
 function sigUsed(sig) { return !!data.sigs[sig]; }

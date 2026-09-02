@@ -12,12 +12,16 @@
  * 250 SP o 25.000 $PILL por skin, y el cambio 1000 $PILL -> 10 SP sale del mismo
  * ratio (100 $PILL por SP), no de una segunda constante.
  *
- * QUEMA. Todo el $PILL gastado aqui —comprando o cambiando a SP— se destruye: no
- * va a otra cartera de la que se pudiera sacar despues, se quema del mint y baja
- * el supply. Como quemar es una transaccion on-chain (lenta y con gas), NO se hace
- * dentro de la peticion del jugador: se apunta en una cola y un temporizador la
- * vacia. Asi comprar sigue siendo instantaneo y un devnet caido no bloquea la
- * tienda — la deuda de quema queda pendiente y se salda cuando vuelva.
+ * QUEMA Y TESORERIA. El $PILL gastado aqui —comprando o cambiando a SP— no vuelve a
+ * ninguna cartera de la que se pudiera sacar despues. Por defecto se quema entero:
+ * baja el supply del mint y se comprueba en el explorador. Con PILL_TREASURY_PCT se
+ * puede desviar una parte a la boveda bloqueada, que es lo que financia los premios
+ * diarios del top 10 (ver TESORERIA-PLAN.md). Las dos salidas son de ida.
+ *
+ * Como las dos son transacciones on-chain (lentas y con gas), NO se hacen dentro de
+ * la peticion del jugador: se apuntan en una cola y un temporizador la vacia. Asi
+ * comprar sigue siendo instantaneo y un devnet caido no bloquea la tienda — la deuda
+ * queda pendiente y se salda cuando vuelva.
  *
  * ANTI DOBLE COBRO. Cada compra lleva un `nonce` del cliente. Si llega repetido
  * (reintento por red, doble clic, F5 a medio camino) se devuelve el resultado de
@@ -47,7 +51,7 @@ const CODIGOS = ['MX','ZA','CH','CA','BR','MA','IN','AU','PY','DE','CI','EC','NL
                  'EG','ES','CV','FR','NO','SN','AR','DZ','AT','CO','PT','CD','GB','HR','GH','CN'];
 const ES_CODIGO = c => CODIGOS.indexOf(c) !== -1;
 
-let data = { equipped: {}, nonces: {}, quemaPendiente: 0, quemado: 0, quemas: [] };
+let data = { equipped: {}, nonces: {}, quemaPendiente: 0, quemado: 0, quemas: [], tesoreriaPendiente: 0, tesoreria: 0, barridos: [] };
 try {
     const j = JSON.parse(fs.readFileSync(FILE, 'utf8'));
     data.equipped = j.equipped || {};
@@ -55,11 +59,17 @@ try {
     data.quemaPendiente = j.quemaPendiente || 0;
     data.quemado = j.quemado || 0;
     data.quemas = j.quemas || [];
+    // Campos nuevos: un skinshop.json de antes del split no los trae.
+    data.tesoreriaPendiente = j.tesoreriaPendiente || 0;
+    data.tesoreria = j.tesoreria || 0;
+    data.barridos = j.barridos || [];
 } catch (e) {}
 
 let dirty = false;
 function save() { if (!dirty) return; dirty = false; fs.writeFile(FILE, JSON.stringify(data), () => {}); }
-setInterval(save, 3000);
+// unref: en el servidor da igual (no termina nunca), pero sin esto un test que solo
+// importe el modulo se queda colgado para siempre esperando a un temporizador.
+setInterval(save, 3000).unref();
 process.on('SIGTERM', save); process.on('SIGINT', () => { save(); process.exit(0); });
 
 // Purga de nonces viejos (>24h), igual que warbank con las firmas: si no, el mapa
@@ -70,7 +80,7 @@ setInterval(() => {
     let n = 0;
     for (const [k, v] of Object.entries(data.nonces)) if (v.t < corte) { delete data.nonces[k]; n++; }
     if (n) dirty = true;
-}, 30 * 60 * 1000);
+}, 30 * 60 * 1000).unref();
 
 /* ===== ESTADO DEL JUGADOR ===== */
 function estado(cid, wallet) {
@@ -147,11 +157,56 @@ function convertir({ cid, wallet, pill, nonce }) {
     return { ok: true, estado: estado(cid, wallet) };
 }
 
-/* ===== QUEMA ===== */
-function apuntaQuema(pill) { data.quemaPendiente += pill; dirty = true; }
+/* ===== SALIDA DEL $PILL GASTADO: QUEMA Y/O TESORERIA =====
+ *
+ * Todo lo que se gasta aqui sale del saldo WAR del jugador, o sea que fisicamente
+ * sigue en la custodia. Lo que se decide ahora es a donde va:
+ *
+ *   QUEMA     baja el supply del mint. Es irreversible y comprobable en el
+ *             explorador, y es lo que sostiene la narrativa deflacionaria.
+ *   TESORERIA sweep de custodia a la boveda bloqueada. No baja el supply, pero
+ *             financia los premios diarios del top 10.
+ *
+ * PILL_TREASURY_PCT decide el reparto. Por defecto 0: TODO se quema, exactamente
+ * como hasta ahora. Y tiene que ser 0 por defecto porque sin el programa de
+ * tesoreria desplegado no hay a donde barrer — activarlo antes de tener contrato
+ * dejaria una deuda de sweep creciendo sin nadie que la salde.
+ *
+ * El contrato no sabe que es una skin. Solo ve un numero. Por eso se pueden anadir
+ * skins, cambiar precios o montar un pase de temporada sin tocarlo, que es lo que
+ * permite dejarlo finalizado y con la upgrade authority revocada.
+ */
+const TESORERIA_PCT = Math.max(0, Math.min(100, parseInt(process.env.PILL_TREASURY_PCT, 10) || 0));
+
+/*
+ * El reparto, aislado y sin estado, para poder comprobar la invariante que importa:
+ * quema + tesoreria == lo gastado, EXACTAMENTE, con cualquier porcentaje y cualquier
+ * cantidad. La tesoreria se lleva la parte redondeada a la baja y la quema el resto,
+ * asi que el redondeo nunca pierde ni inventa un token.
+ */
+function repartoSalida(pill, pct) {
+    const tesoreria = Math.floor(pill * pct / 100);
+    return { tesoreria, quema: pill - tesoreria };
+}
+
+function apuntaSalida(pill) {
+    const r = repartoSalida(pill, TESORERIA_PCT);
+    data.quemaPendiente += r.quema;
+    if (r.tesoreria > 0) data.tesoreriaPendiente = (data.tesoreriaPendiente || 0) + r.tesoreria;
+    dirty = true;
+}
+// Nombre viejo: lo llaman comprar() y convertir(). Se deja para no tocar dos sitios
+// por un renombrado.
+function apuntaQuema(pill) { apuntaSalida(pill); }
 
 function estadoQuema() {
-    return { pendiente: data.quemaPendiente, quemado: data.quemado, ultimas: data.quemas.slice(-10) };
+    return {
+        pendiente: data.quemaPendiente, quemado: data.quemado, ultimas: data.quemas.slice(-10),
+        tesoreriaPct: TESORERIA_PCT,
+        tesoreriaPendiente: data.tesoreriaPendiente || 0,
+        tesoreria: data.tesoreria || 0,
+        ultimosBarridos: (data.barridos || []).slice(-10),
+    };
 }
 
 // Vacia la cola. Se llama sola cada QUEMA_CADA_MS y tambien desde admin.
@@ -200,12 +255,49 @@ async function quemarPendiente(solana, log) {
     }
 }
 
-function arrancaQuemaPeriodica(solana, log) {
-    setInterval(() => { quemarPendiente(solana, log).catch(() => {}); }, QUEMA_CADA_MS);
+/*
+ * Barre a la tesoreria lo acumulado por la tienda. Mismo patron que la quema: la
+ * deuda no se descuenta hasta que la cadena confirma, asi que un RPC caido solo
+ * retrasa el barrido, nunca pierde tokens.
+ *
+ * El sweep va capado por epoca EN EL CONTRATO. Si la deuda acumulada supera el cap
+ * de hoy, se barre lo que quepa y el resto espera al dia siguiente — por eso el
+ * error del contrato no se trata como un fallo raro: es el funcionamiento normal
+ * cuando hay un dia muy bueno de tienda.
+ */
+async function barrerPendiente(solana, treasuryClient, programId, log) {
+    const cantidad = data.tesoreriaPendiente || 0;
+    if (cantidad <= 0) return { ok: false, error: 'nada pendiente' };
+    if (!programId) return { ok: false, error: 'sin programa de tesoreria configurado' };
+    if (!solana.canWithdraw()) return { ok: false, error: 'clave de la autoridad no disponible' };
+    try {
+        const ix = treasuryClient.sweep(programId, {
+            authority: solana.authorityPubkey(),
+            amountRaw: solana.pillToRaw(cantidad),
+        });
+        const sig = await solana.sendInstructions([ix]);
+        data.tesoreriaPendiente -= cantidad;
+        data.tesoreria += cantidad;
+        data.barridos.push({ pill: cantidad, sig, t: Date.now() });
+        if (data.barridos.length > 50) data.barridos = data.barridos.slice(-50);
+        dirty = true; save();
+        if (log) log(`Barridos ${cantidad} $PILL de la tienda a la tesoreria — ${sig}`);
+        return { ok: true, pill: cantidad, sig };
+    } catch (e) {
+        if (log) log(`Barrido FALLIDO (${cantidad} $PILL siguen pendientes): ${e.message}`);
+        return { ok: false, error: e.message };
+    }
+}
+
+function arrancaQuemaPeriodica(solana, log, treasuryClient, programId) {
+    setInterval(() => {
+        quemarPendiente(solana, log).catch(() => {});
+        if (programId) barrerPendiente(solana, treasuryClient, programId, log).catch(() => {});
+    }, QUEMA_CADA_MS);
 }
 
 module.exports = {
     estado, comprar, equipar, convertir,
-    estadoQuema, quemarPendiente, arrancaQuemaPeriodica,
-    PRECIO_SP, PRECIO_PILL, PILL_POR_SP, CODIGOS,
+    estadoQuema, quemarPendiente, barrerPendiente, arrancaQuemaPeriodica, repartoSalida,
+    PRECIO_SP, PRECIO_PILL, PILL_POR_SP, CODIGOS, TESORERIA_PCT,
 };

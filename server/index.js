@@ -631,7 +631,7 @@ if (PW_ROLE !== 'host' && !PILL_FIJO) {
 }
 // Quema del $PILL gastado en skins. Solo en el Director: los hosts no tocan
 // economia, y dos procesos vaciando la misma cola quemarian dos veces.
-if (PW_ROLE !== 'host') skinshop.arrancaQuemaPeriodica(solana, log);
+if (PW_ROLE !== 'host') skinshop.arrancaQuemaPeriodica(solana, log, require('./treasury-client.js'), process.env.TREASURY_PROGRAM || '');
 // Premios diarios de la tesorería: cierra el día, construye el árbol y publica la
 // raíz. Solo en el Director, por lo mismo que la quema — dos procesos publicando la
 // misma ronda serían dos transacciones, y la segunda fallaría con la época ya usada.
