@@ -499,7 +499,19 @@ let PILL_PER_DOLLAR = PILL_FIJO || ((_glob.pillPerDollar > 0) ? _glob.pillPerDol
 // 1 min: una altcoin de 50k-1M de capitalización se mueve mucho más que SOL, y
 // re-precificar cada 5 min dejaba las salas con un precio viejo. DexScreener
 // aguanta este ritmo de sobra (ver abajo); CoinGecko no lo habría aguantado.
-const ORACLE_REFRESH_MS = Math.max(15000, parseInt(process.env.ORACLE_REFRESH_MS, 10) || 60 * 1000);
+/*
+ * 5s (antes 60). Cachear lento NO protege del pumpeo: no promedia nada, solo
+ * mantiene viva una lectura — si esa lectura pilla un pico, el precio falso se
+ * queda congelado el minuto entero y todas las salas que se abran mientras lo
+ * cogen. Leyendo cada 5s, un precio manipulado dura lo que el atacante lo
+ * sostenga y nada mas. (Lo que SI amortiguaria de verdad es promediar varias
+ * lecturas, un TWAP, y eso es otra cosa.)
+ * Suelta 12 peticiones por minuto a DexScreener, muy por debajo de su limite.
+ */
+const ORACLE_REFRESH_MS = Math.max(3000, parseInt(process.env.ORACLE_REFRESH_MS, 10) || 5 * 1000);
+// Y el momento exacto de cada lectura se mueve +-40%: con un intervalo clavado
+// se puede predecir el instante que hay que atacar, aunque la ventana sea corta.
+function proximaLectura() { return Math.round(ORACLE_REFRESH_MS * (0.6 + Math.random() * 0.8)); }
 /*
  * El oráculo sigue un precio REAL, sin nada aleatorio: el de PUMP (el token de
  * pump.fun), tratado como si fuera el de $PILL.
@@ -608,7 +620,10 @@ if (PW_ROLE !== 'host' && !PILL_FIJO) {
     // Una lectura AL ARRANCAR: sin esto el servidor pasaba el primer minuto
     // con el valor de fábrica en vez de con el precio real.
     tickOracle().catch(() => {});
-    setInterval(() => { tickOracle().catch(() => {}); }, ORACLE_REFRESH_MS);
+    // setTimeout encadenado y no setInterval: cada espera es distinta.
+    (function otraVuelta() {
+        setTimeout(() => { tickOracle().catch(() => {}); otraVuelta(); }, proximaLectura());
+    })();
 } else if (PILL_FIJO) {
     log(`Oráculo APAGADO por PILL_PER_DOLLAR=${PILL_FIJO}: precio fijo, no se consulta el feed.`);
 }

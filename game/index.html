@@ -4049,7 +4049,7 @@
                      (SETTINGS -> EDIT LAYOUT), asi se puede ajustar el tamano/
                      posicion del contenido sin mover el cartel entero. -->
                 <div class="cartel-inner" id="oracleInner">
-                    <div class="menu-side-head"><span>ROOM PRICES</span><span id="oracleTimer" class="otimer">5:00</span></div>
+                    <div class="menu-side-head"><span>ROOM PRICES</span><span id="oracleTimer" class="otimer">LIVE</span></div>
                     <div class="oracle-desc">The on-chain oracle re-prices every room every minute, so entry cost in $PILL adapts to the live token price.</div>
                     <div class="oracle-rate"><span class="or-unit">1 $PILL =</span> <span class="or-amt" id="oracleRateAmt">$0.0045</span></div>
                     <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
@@ -4685,6 +4685,11 @@
         // CORREGIDO: Rutas a sonidos con ../
         sounds: { 
             alert: new Audio('../snd/alert.mp3'), cd: new Audio('../snd/cd.mp3'), death: new Audio('../snd/death.mp3'),
+            // Los tres nuevos. Hasta que los MP3 esten en snd/ dan 404 al
+            // cargar y play() se traga el error: no suena nada y no rompe.
+            radar: new Audio('../snd/radar.mp3'),     // sale el cartel del radar
+            top10: new Audio('../snd/top10.mp3'),     // entras en el top 10
+            top1: new Audio('../snd/top1.mp3'),       // te pones primero
             hover: new Audio('../snd/hover.mp3'), iman: new Audio('../snd/iman.mp3'), kill1: new Audio('../snd/kill1.mp3'),
             select: new Audio('../snd/select.mp3'), shield: new Audio('../snd/shield.mp3'),
             shoot: new Audio('../snd/shoot.mp3'), simplehover: new Audio('../snd/simplehover.mp3'), simpleselect: new Audio('../snd/simpleselect.mp3'),
@@ -12474,10 +12479,14 @@
     function skinClose() { paisModalCerrar(); }
 
     function tickOracleTimer() {
-        const el = document.getElementById('oracleTimer'); if (!el) return;
+        /*
+         * Ya no se pinta cuenta atras: ponia "faltan Xs" para la proxima
+         * lectura, o sea decia en voz alta el instante exacto que habria que
+         * atacar para colar un precio manipulado. El rotulo se queda en LIVE,
+         * que ademas es la verdad con el refresco a 5s.
+         * El disparo del refresco se conserva tal cual.
+         */
         const left = Math.max(0, oracleNextRefresh - Date.now());
-        const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
-        el.textContent = m + ':' + (s < 10 ? '0' + s : s);
         if (left <= 0) refreshOracle();
         // Suaviza las cuentas atrás de lobby por sala entre polls (cada 8s) del panel.
         if (window._roomCountdowns) {
@@ -14420,43 +14429,8 @@
         drawEnemyArrow(es);
     }
 
-    // ===== BRUJULA "ENEMIES" (solo classic) =====
-    // Cartelito FIJO en la pantalla (rotulo + flecha) que aparece cuando llevas
-    // 5 s sin ver a NADIE y apunta hacia donde hay mas gente. En classic te pasas
-    // media partida buscando a alguien; esto es la guia. No se mueve de sitio:
-    // solo gira la flecha sobre si misma.
-    //
-    // La direccion sale de un histograma de 24 cubos con DOS fuentes:
-    //   1) Lo que ve tu cliente: cada enemigo del AOI que esta fuera de pantalla.
-    //   2) La brujula del servidor (mensaje 'crowd'): el PUNTO donde esta el
-    //      mayor grupo de todo lo que NO te cabe en el AOI. Llega cada 10 s, pero
-    //      da igual que sea vieja: al ser un punto, la direccion se recalcula
-    //      cada frame contra donde estas AHORA.
-    // Gana la ventana de +-30 grados con mas gente dentro.
-    //
-    // "Ver a alguien" se decide con la camara DE VERDAD: la posicion en pantalla
-    // sale de `es` (getViewScale), que arrastra ZOOM_CONFIG.baseScale/exponent —
-    // justo los valores que se tocan desde el panel admin. Si ahi se recorta la
-    // vision, el contador de 5 s se entera solo.
-    // Flecha con cola en V y tres tonos (bisel claro arriba-izquierda, sombra
-    // abajo-derecha, reborde negro), el mismo lenguaje que las placas del menu.
-    // Aqui solo se marca el CUERPO; los tres tonos los saca pixArrowSprite.
-    const FLECHA_MASK = [
-        '.......1.....',
-        '.......11....',
-        '.......111...',
-        '11.....1111..',
-        '111111111111.',
-        '1111111111111',
-        '111111111111.',
-        '11.....1111..',
-        '.......111...',
-        '.......11....',
-        '.......1.....',
-    ];
     const FLECHA_VERDE = '#2ee56a';
     const FLECHA_VERDE_PIE = '#1f9e4c';   // segunda linea del cartel, apagada
-    const FLECHA_PX = 4;            // lado de cada "pixel gordo" del sprite
     const FLECHA_ALTURA = 0.30;     // 0 = arriba del todo, 1 = abajo (=70 en la escala de David)
     const FLECHA_ESPERA_MS = 5000;  // sin ver a nadie antes de que salga
     const FLECHA_BINS = 24;         // cubos de 15 grados
@@ -14470,8 +14444,59 @@
     // habia quien la siguiera.
     const FLECHA_TOL = 25 * Math.PI / 180;
     const FLECHA_ESPERA_GIRO = 2500;
-    const FLECHA_GIRO = 0.12;
-    let _flechaSprite = null;
+    // 0.035 (antes 0.12): a 0.12 el arco llegaba en unos 8 frames y se veia
+    // dar un salto. Asi tarda medio segundo y se ve viajar.
+    const FLECHA_GIRO = 0.035;
+    const FLECHA_TEXTO_MS = 2000;   // el rotulo se retira y deja solo el radar
+    const FLECHA_RITMO = 260;       // ms entre anillo y anillo
+    /*
+     * El radar solo mira a la MITAD DE ARRIBA (decision de David: queda mucho
+     * mejor y evita que el cartel apunte hacia el propio HUD). 20 grados de
+     * margen por debajo de la horizontal a cada lado, para que los grupos que
+     * caen justo al ras sigan senalando a su lado bueno.
+     * Lo que cae fuera NO se descarta: se PROYECTA al borde mas cercano. Asi
+     * no se pierde a nadie —seguirias sabiendo que estan hacia ese lado— y el
+     * arco nunca baja de la horizontal.
+     */
+    const FLECHA_MARGEN = 20 * Math.PI / 180;
+    function alSectorAlto(a) {
+        // En canvas 0 = derecha y +PI/2 = ABAJO, asi que el arco prohibido es
+        // el que va de +margen a PI-margen.
+        const lim1 = FLECHA_MARGEN, lim2 = Math.PI - FLECHA_MARGEN;
+        if (a > lim1 && a < lim2) return (a - lim1) < (lim2 - a) ? lim1 : lim2;
+        return a;
+    }
+    let _flechaDesde = 0;           // cuando aparecio el cartel (para el rotulo)
+    /*
+     * El radar: TRES anillos concentricos que se encienden de dentro hacia
+     * fuera, uno cada FLECHA_RITMO. Sustituye a la flecha maciza de antes, que
+     * a tamano pequeno se veia como un bloque verde y tapaba el mapa.
+     * Sin punta en el centro (peticion de David): el centro queda limpio y no
+     * compite con tu propia pildora.
+     * Los de fuera abren un poco mas de angulo, para que se lea como algo que
+     * se expande y no como tres rayas sueltas.
+     */
+    function dibujaRadar(ctx, ang, ahora) {
+        const RADIOS = [20, 31, 42];
+        const encendido = Math.floor(ahora / FLECHA_RITMO) % 3;
+        ctx.save();
+        ctx.rotate(ang);
+        for (let i = 0; i < RADIOS.length; i++) {
+            const r = RADIOS[i], on = i === encendido, ap = 0.30 + i * 0.05;
+            ctx.lineCap = 'butt';
+            ctx.strokeStyle = on ? 'rgba(46,229,106,0.95)' : 'rgba(46,229,106,0.20)';
+            ctx.lineWidth = on ? 5 : 3;
+            ctx.beginPath(); ctx.arc(0, 0, r, -ap, ap); ctx.stroke();
+            if (on) {
+                // Filo negro a los dos lados: es lo que le da el borde duro del
+                // pixel art, igual que el reborde de los sprites.
+                ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(0, 0, r + 3, -ap, ap); ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, 0, r - 3, -ap, ap); ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
     let _vistoEnemigoAt = 0;        // ultima vez que hubo alguien en pantalla
     let _flechaObj = null;          // angulo al que queremos apuntar
     let _flechaAng = 0;             // angulo que se pinta AHORA (persigue al de arriba)
@@ -14481,36 +14506,6 @@
     let crowdHint = null;
     // Diferencia entre dos angulos por el camino CORTO (en [-pi, pi]).
     function difAng(a, b) { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; }
-    // Sprite pixel de la flecha, apuntando a la DERECHA. Se dibuja UNA vez y
-    // luego solo se rota: nada de pintar rectangulos por frame.
-    function pixArrowSprite() {
-        if (_flechaSprite) return _flechaSprite;
-        const S = FLECHA_PX, W = FLECHA_MASK[0].length, H = FLECHA_MASK.length;
-        const cv = document.createElement('canvas');
-        cv.width = (W + 2) * S; cv.height = (H + 2) * S;
-        const g = cv.getContext('2d');
-        const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && FLECHA_MASK[y][x] === '1';
-        const put = (x, y, col) => { g.fillStyle = col; g.fillRect((x + 1) * S, (y + 1) * S, S, S); };
-        // Reborde negro: toda casilla vacia que toque una llena, diagonales
-        // incluidas. Es lo que despega la flecha de lo que tenga detras.
-        for (let y = -1; y <= H; y++) for (let x = -1; x <= W; x++) {
-            if (on(x, y)) continue;
-            if (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1) ||
-                on(x - 1, y - 1) || on(x + 1, y - 1) || on(x - 1, y + 1) || on(x + 1, y + 1)) put(x, y, '#000');
-        }
-        // Volumen: canto claro por donde entra la luz (arriba-izquierda) y
-        // sombra en el borde opuesto. Misma idea que placaPixels.
-        const claro = lerpColor(FLECHA_VERDE, '#ffffff', 0.45);
-        const oscuro = lerpColor(FLECHA_VERDE, '#000000', 0.45);
-        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-            if (!on(x, y)) continue;
-            if (!on(x, y - 1) || !on(x - 1, y)) put(x, y, claro);
-            else if (!on(x, y + 1) || !on(x + 1, y)) put(x, y, oscuro);
-            else put(x, y, FLECHA_VERDE);
-        }
-        _flechaSprite = cv;
-        return cv;
-    }
     function drawEnemyArrow(es) {
         if (currentGameMode !== 'classic' || isSpectating) return;
         const cells = myCells();
@@ -14551,7 +14546,7 @@
         // Solo tras 5 s sin ver a nadie, y solo si hay a donde apuntar. Mientras
         // esta escondida se olvida su angulo, para que al volver a salir no
         // aparezca girando desde donde apuntaba hace un rato.
-        if (!hay || ahora - _vistoEnemigoAt < FLECHA_ESPERA_MS) { _flechaObj = null; return; }
+        if (!hay || ahora - _vistoEnemigoAt < FLECHA_ESPERA_MS) { _flechaObj = null; _flechaDesde = 0; return; }
         let mejorN = 0, sumX = 0, sumY = 0;
         for (let i = 0; i < FLECHA_BINS; i++) {
             let n = 0, ax = 0, ay = 0;
@@ -14562,38 +14557,50 @@
             if (n > mejorN) { mejorN = n; sumX = ax; sumY = ay; }
         }
         if (!mejorN) { _flechaObj = null; return; }
-        const angCalc = Math.atan2(sumY, sumX);
-        if (_flechaObj == null) { _flechaObj = angCalc; _flechaAng = angCalc; _flechaCambioAt = ahora; }
+        const angCalc = alSectorAlto(Math.atan2(sumY, sumX));
+        if (_flechaObj == null) {
+            _flechaObj = angCalc; _flechaAng = angCalc; _flechaCambioAt = ahora;
+            _flechaDesde = ahora;
+            try { SoundManager.play('radar'); } catch (e) {}
+        }
         else {
             const d = difAng(angCalc, _flechaObj);
             if (Math.abs(d) < FLECHA_TOL) _flechaObj = angCalc;                        // deriva: se sigue
             else if (ahora - _flechaCambioAt > FLECHA_ESPERA_GIRO) { _flechaObj = angCalc; _flechaCambioAt = ahora; }
         }
         _flechaAng += difAng(_flechaObj, _flechaAng) * FLECHA_GIRO;                     // llega girando
-        const sp = pixArrowSprite();
-        // Sitio FIJO: centrado a lo ancho, a un 30% del borde de arriba. Solo
-        // gira la flecha; el cartelito no se mueve nunca de ahi.
         /*
-         * Dos lineas en vez del 'ENEMIES' de antes: la primera dice QUE pasa y
-         * la segunda QUE hacer. Una palabra suelta no explicaba de que iba el
-         * cartel — sobre todo la primera vez que sale.
-         * La segunda va en verde apagado para que se lea como pie y no compita
-         * con la de arriba.
+         * Sitio FIJO: centrado a lo ancho, a un 30% del borde de arriba. Solo
+         * gira el radar; el cartel no se mueve nunca de ahi.
+         *
+         * El rotulo son DOS lineas —que pasa y que hacer— y se retira a los
+         * FLECHA_TEXTO_MS con un desvanecido: ya ha dicho lo que tenia que
+         * decir y a partir de ahi solo estorba al radar. Se desvanece, no
+         * desaparece de golpe, porque un corte seco en mitad de la partida se
+         * lee como un fallo.
          */
         const px = 2, th = 7 * px, SEP = 5;
-        const L1 = 'NOBODY NEARBY', L2 = 'FOLLOW THE ARROW';
+        const L1 = 'NOBODY NEARBY', L2 = 'LOOKING FOR ENEMIES';
         const w1 = pixTextWidth(L1, px), w2 = pixTextWidth(L2, px);
         const textos = th + SEP + th;
-        const alto = textos + 8 + sp.height;
+        const RADIO = 42;                     // el anillo de fuera
+        const alto = textos + 8 + RADIO;
         const top = Math.round(height * FLECHA_ALTURA - alto / 2);
+        const vivo = ahora - _flechaDesde;
+        const opTexto = vivo < FLECHA_TEXTO_MS ? 1
+            : Math.max(0, 1 - (vivo - FLECHA_TEXTO_MS) / 450);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.globalAlpha = 0.92;
-        drawPixelText(ctx, L1, Math.round(cx - w1 / 2), top, px, FLECHA_VERDE, '#000');
-        drawPixelText(ctx, L2, Math.round(cx - w2 / 2), top + th + SEP, px, FLECHA_VERDE_PIE, '#000');
-        ctx.translate(cx, top + textos + 8 + sp.height / 2);
-        ctx.rotate(_flechaAng);
-        ctx.drawImage(sp, -sp.width / 2, -sp.height / 2);
+        if (opTexto > 0) {
+            ctx.save();
+            ctx.globalAlpha = 0.92 * opTexto;
+            drawPixelText(ctx, L1, Math.round(cx - w1 / 2), top, px, FLECHA_VERDE, '#000');
+            drawPixelText(ctx, L2, Math.round(cx - w2 / 2), top + th + SEP, px, FLECHA_VERDE_PIE, '#000');
+            ctx.restore();
+        }
+        ctx.translate(cx, top + textos + 8 + RADIO / 2);
+        dibujaRadar(ctx, _flechaAng, ahora);
         ctx.restore();
     }
 
