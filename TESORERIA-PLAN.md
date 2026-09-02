@@ -384,6 +384,32 @@ la tesorería a N años con los ingresos reales del juego.
 
 ---
 
+## 6 bis. El auditor, y por qué cada comprobación tapa el agujero de la anterior
+
+`scripts/audit-treasury.js` está escrito para que **lo copie y lo ejecute cualquiera**:
+no importa nada del repo, no necesita `npm install` y solo habla con las URLs públicas
+y con un RPC de Solana. Un auditor que usara el código del auditado comprobaría que el
+servidor está de acuerdo consigo mismo, que no demuestra nada.
+
+```bash
+node audit-treasury.js https://pillwars.fun
+```
+
+Probado contra un servidor trucado a propósito, subiendo el nivel del ataque:
+
+| Ataque | Qué hace el atacante | Qué lo detecta |
+|---|---|---|
+| 1 | Cambia la wallet de un ganador en la lista de premios | La **raíz de Merkle** ya no sale de la lista |
+| 2 | …y regenera el árbol para que cuadre | El **cruce con el leaderboard**: ese puesto lo ganó otro |
+| 3 | …y reescribe el leaderboard de ese día | La **cadena de hashes**: el hash del día deja de salir |
+| 4 | …y rehace la cadena de hashes entera | La **raíz on-chain**, publicada días antes e inmutable |
+
+Cada capa sola es esquivable. Las cuatro juntas obligan a reescribir algo que ya está
+en Solana, y eso no se puede. Por eso la comprobación contra la cadena no sobra aunque
+parezca que repite: es la única que el servidor no puede tocar.
+
+---
+
 ## 7. Transparencia pública
 
 Endpoint `/api/treasury`, y una página que lo pinte:
