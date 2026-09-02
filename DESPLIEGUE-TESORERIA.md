@@ -82,7 +82,7 @@ export TREASURY_PROGRAM=<la dirección>
 export PILL_MINT=<el mint de $PILL>
 export SOL_RPC=https://api.devnet.solana.com
 
-npm run treasury -- init --unlock-days 30 --cap 60000 --bps 5 --sweep-cap 500000
+npm run treasury -- init --unlock-days 30 --cap 60000 --bps 5 --sweep-cap 500000 --burn-cap 500000
 ```
 
 Los valores por defecto son los de **calibración**, no los definitivos:
@@ -93,6 +93,7 @@ Los valores por defecto son los de **calibración**, no los definitivos:
 | `--cap 60000` | 60 000 PILL/día | el equilibrio del escenario pesimista de `npm run treasury:sim` |
 | `--bps 5` | 0,05 %/día | segundo freno, relativo al saldo |
 | `--sweep-cap 500000` | 500 000 PILL/día | techo de lo que puede pasar de custodia a tesorería |
+| `--burn-cap 500000` | 500 000 PILL/día | techo de lo que la tienda puede quemar de la custodia |
 
 El comando imprime las direcciones de **CUSTODIA** y **TESORERÍA**. Guárdalas: son
 las dos que la gente va a mirar en el explorador.
@@ -124,6 +125,19 @@ Ese JSON ya debería mostrar las dos bolsas por separado y `reservesRatio`.
 **`PILL_TREASURY_PCT` no se toca hasta que el programa esté desplegado.** Sin
 contrato no hay a dónde barrer, y la deuda de sweep se acumularía sin nadie que la
 salde.
+
+Con `TREASURY_PROGRAM` puesto, el servidor cambia de camino solo:
+
+| | Sin contrato | Con contrato |
+|---|---|---|
+| Depósito | transferencia SPL a la wallet | instrucción `deposit` al PDA de custodia |
+| Verificación | delta de la wallet | delta del PDA |
+| Retiro | transfer desde la ATA de la autoridad | instrucción `withdraw` |
+| Quema (tienda) | `burn` del ATA de la autoridad | instrucción `burn` del PDA, capada |
+
+La web lo pregunta en cada depósito por `/api/fees`, no una vez al cargar: el día
+que se despliegue, un jugador con la pestaña abierta desde hace horas seguiría
+mandando el dinero a la cuenta vieja.
 
 ---
 
