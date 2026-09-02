@@ -828,10 +828,24 @@
             html:not([data-hero]) body.mobile-allowed #resultOverlay,
             html:not([data-hero]) body.mobile-allowed #exitModal {
                 position: fixed !important;
-                width: 100vh; height: 100vw;
-                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
-                top: 50%; left: 50%; right: auto; bottom: auto;
-                transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
+                width: 100vh !important; height: 100vw !important;
+                width: var(--vph, 100dvh) !important; height: var(--vpw, 100dvw) !important;
+                /* Todo con !important: el "#exitModal { position:absolute;
+                   top:0; left:0; width:100% }" de mas abajo acababa ganando y
+                   el cartel se anclaba en la esquina 0,0 en vez de centrarse. */
+                top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
+                /*
+                 * animation:none — la causa del "recuadro negro" que salia al
+                 * abrir estos carteles en movil. Entran con `animation: fadeIn
+                 * 0.2s`, y fadeIn anima TRANSFORM (translateY): en la cascada
+                 * una animacion gana a una declaracion normal, asi que se comia
+                 * el rotate y el centrado de aqui. El cartel se quedaba sin
+                 * girar y descolocado, o sea su fondo negro (rgba(0,0,0,0.85))
+                 * asomando como un recuadro. Se veia al salir con la X y al
+                 * tocar una sala de pago (aviso DESKTOP ONLY).
+                 */
+                animation: none !important;
+                transform: translate(-50%, -50%) rotate(90deg) !important; transform-origin: center !important;
             }
             /* exitModal/sysModal: ancho fijo (el "cartel gris"), SIN
                transform:scale — antes combinaban width:250px CON scale(0.68),
@@ -952,8 +966,13 @@
                solo en partida (startGame los pone a 'flex' y returnToMenu a
                'none'); flex-direction y gap se quedan porque describen COMO se
                ven cuando el JS los saca, no CUANDO. */
+            /* top 10% (antes 17): el cuadro de MASS colgaba a media altura en
+               vez de pegado al borde de arriba. Ojo, con el rotate el `top` fija
+               el CENTRO del cuadro, no su filo: el numero crece hacia los dos
+               lados, asi que el 10% esta calculado para que ni con una masa de
+               7 cifras (el caso mas ancho) se salga por arriba. */
             html:not([data-hero]) body.mobile-allowed #ui {
-                top: 17% !important; bottom: auto !important; right: 6% !important; left: auto !important;
+                top: 10% !important; bottom: auto !important; right: 6% !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(1) !important;
                 flex-direction: row !important; gap: 4px !important;
                 font-size: 8px !important;
@@ -1197,9 +1216,7 @@
         body:has(#modeScreen:not([style*="display: none"]):not([style*="display:none"])) #musicToggle {
             display: none !important;
         }
-        /* 235 = los 210 del panel TOP MASS + sus 15 de margen + 10 de aire:
-           el boton se queda a su izquierda en vez de encima de el. */
-        #exitGameBtn { right: 235px; border-color: #522; color: #f55; display: none; }
+        #exitGameBtn { right: 120px; border-color: #522; color: #f55; display: none; }
         #exitGameBtn:hover { background: rgba(255, 50, 50, 0.2); border-color: #f00; color: #fff; }
 
         /* Wallet area en el juego: dos cajas separadas (saldo / botones) arriba-derecha.
@@ -2949,11 +2966,7 @@
         .hud-val { display: inline-block; min-width: 7ch; text-align: right; font-variant-numeric: tabular-nums; }
         .hud-val { color: var(--primary); }
         #timerDisplay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); color: #fff; font-family: 'Russo One'; font-size: 24px; text-shadow: 0 0 10px var(--primary); pointer-events: none; z-index: 10; display: none;}
-        /* top 15 (antes 75): el HUD de la izquierda arranca a 15 y este
-           colgaba 60px mas abajo, asi que las dos esquinas de arriba no se
-           leian como una pareja. Lo que ocupaba ese hueco era el boton de
-           salir, que se aparta a la izquierda del panel (ver #exitGameBtn). */
-        #leaderboard { position: absolute; top: 15px; right: 15px; background: rgba(10, 10, 10, 0.8); border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; width: 160px; pointer-events: none; z-index: 10; font-size: 12px; display: none; }
+        #leaderboard { position: absolute; top: 75px; right: 15px; background: rgba(10, 10, 10, 0.8); border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; width: 160px; pointer-events: none; z-index: 10; font-size: 12px; display: none; }
         #leaderboard h3 { font-family: 'Russo One'; color: #888; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px; font-size: 12px; letter-spacing: 1px; }
         .lb-item { display: flex; justify-content: space-between; margin-bottom: 4px; font-weight: 600; }
         .is-me { color: var(--primary); text-shadow: 0 0 5px var(--primary-dim); }
