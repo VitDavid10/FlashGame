@@ -107,6 +107,27 @@ las dos que la gente va a mirar en el explorador.
 npm run treasury -- status
 ```
 
+### Activar el staking
+
+Aparte del resto, y opcional: el programa funciona sin el.
+
+```bash
+npm run treasury -- init-staking
+```
+
+Crea las dos bolsas del pool. A partir de ahi, lo que la tienda desvia con
+`PILL_TREASURY_PCT` alimenta las recompensas del staking en vez de la tesoreria, y
+se reparte por goteo (24 h por defecto, `STAKE_DRIP_SECS`).
+
+Para meter el rake de las partidas a mano:
+
+```bash
+npm run treasury -- fund-stake 50000 --hours 24
+```
+
+Por goteo y no de golpe a proposito: si se soltara entero, cualquiera stakearia un
+segundo antes, cobraria su parte del dia y saldria.
+
 ---
 
 ## 4. Enchufar el servidor

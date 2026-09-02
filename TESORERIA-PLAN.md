@@ -126,6 +126,54 @@ reservas están completas. Si no, se ve inmediatamente.
 
 ---
 
+## 2 bis. Staking: dos grifos con fuentes distintas
+
+Hay dos tipos de dinero entrando y no tiene sentido mezclarlos:
+
+```
+ingresos corrientes del juego     →  STAKING      quien inmoviliza $PILL
+(rake de partidas + tienda)
+
+principal de la compra inicial    →  TESORERÍA    premios del top 10 diario
+(fund, bloqueado años)
+```
+
+Si se mezclaran pasaría una de dos cosas malas: o el rendimiento del staking se come
+el principal bloqueado, o los premios del leaderboard dependen de que el juego
+facture ese mes. Separados, cada grifo tiene su fuente y su ritmo.
+
+Y hay una diferencia que importa más de lo que parece:
+
+| | Premios del top 10 | Staking |
+|---|---|---|
+| Quién decide quién cobra | El servidor (yo) | **El contrato, solo** |
+| ¿Hay que confiar en el operador? | Sí — capado, publicado y auditable | **No** |
+| Qué hay que hacer para cobrar | Jugar bien | Inmovilizar $PILL |
+
+El reparto del staking es el único que el programa calcula por su cuenta: sabe cuánto
+tiene stakeado cada wallet y desde cuándo, y no necesita que nadie se lo cuente.
+
+### Dos bolsas separadas
+
+`stake_vault` guarda el **principal de los usuarios** —dinero suyo, que sale cuando
+quieran, sin permisos ni esperas ni tope— y `reward_vault` las recompensas por
+repartir. Juntas, un error de cálculo pagaría recompensas con el principal de otro y
+no se notaría hasta que alguien no pudiera sacar lo suyo.
+
+### Por qué el reparto va por segundo
+
+Si el rake se soltara de golpe cada vez que se barre, el juego sería obvio: stakeas un
+segundo antes, cobras tu parte del día entero, sales. `fund_stake_rewards` reparte a lo
+largo de un periodo (24 h por defecto), así que **lo que cobras es proporcional al
+tiempo que estuviste dentro**.
+
+Por dentro es el patrón del índice acumulado: un solo número global dice cuánta
+recompensa lleva acumulada cada unidad stakeada desde el principio, y lo tuyo es la
+diferencia con el índice que había la última vez que tocaste tu posición. Entrar,
+salir y cobrar son O(1) y no dependen de cuánta gente haya.
+
+---
+
 ## 3. El programa
 
 ### 3.1 Cuentas
@@ -185,6 +233,11 @@ Los vaults son token accounts en PDAs `["custody"]` y `["treasury"]`, con
 | `withdraw(amount)` | autoridad | CUSTODY → jugador | nunca toca treasury |
 | `sweep(amount)` | autoridad | CUSTODY → TREASURY | cap por época |
 | `burn(amount)` | autoridad | CUSTODY → destruido | cap por época |
+| `init_staking()` | autoridad | crea las dos bolsas del pool | una sola vez |
+| `stake(amount)` | **el usuario** | su wallet → STAKE | — |
+| `unstake(amount)` | **el usuario** | STAKE → su wallet | sin esperas ni tope |
+| `claim_stake_rewards()` | **el usuario** | REWARDS → su wallet | lo devengado |
+| `fund_stake_rewards(amount, dur)` | autoridad | CUSTODY → REWARDS, por goteo | — |
 | `publish_round(epoch, root, total, winners)` | autoridad | anota la raíz | `total <= cap`; época irrepetible |
 | `cancel_round(epoch)` | autoridad | anula una ronda | **solo antes de `claimable_at`** |
 | `claim(epoch, amount, proof)` | **cualquiera** | TREASURY → ganador de la hoja | `now >= claimable_at`, una vez por wallet |
@@ -504,6 +557,12 @@ programa es inmutable — el dato que más pesa de todo el JSON.
 ---
 
 ## 8. Plan de implementación
+
+### Lo que el staking no cambia
+
+La tesorería sigue igual de bloqueada: `fund_stake_rewards` saca de **custodia**, no
+de la tesorería. Los premios del top 10 y el rendimiento del staking no compiten por
+el mismo dinero.
 
 | # | Entregable | Estado |
 |---|---|---|
