@@ -41,5 +41,48 @@ Environment=TARGET_POP=10
 Environment=PW_ROLE=director
 Environment=PW_HOST_COUNT=2
 
+# ===================== TESORERIA Y PREMIOS =====================
+# Nada de esto es obligatorio: sin TREASURY_PROGRAM el juego funciona igual y los
+# depositos van a la wallet de la autoridad, como siempre. Con el, van al PDA de
+# custodia, que no tiene llave privada. Ver DESPLIEGUE-TESORERIA.md.
+
+# El programa desplegado. Definelo SOLO despues de `anchor deploy` y `init`.
+#Environment=TREASURY_PROGRAM=PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW
+# El mint y el RPC salen de scripts/devnet-token.json si no se definen aqui.
+#Environment=PILL_MINT=Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r
+#Environment=SOL_RPC=https://api.devnet.solana.com
+
+# Comision del bote de arcade, en %. Va al pozo del staking, no a la tesoreria.
+# Es el unico porcentaje que sale del bolsillo de los jugadores. Tope duro: 50.
+Environment=ARCADE_RAKE_PCT=5
+
+# --- Los dos filtros de quien puntua en el leaderboard diario ---
+# Kills minimas del dia para entrar en la lista.
+Environment=LB_MIN_KILLS=3
+# Oponentes DISTINTOS con los que hay que haberse cruzado. Es lo que hace visible
+# un cluster de wallets que solo juegan entre ellas: diez wallets mias jugando
+# solas no llegan a cinco oponentes distintos de verdad.
+Environment=LB_MIN_OPPONENTS=5
+
+# --- Los dos frenos del bote que NO estan en el contrato ---
+# Premio por cada PILL cobrado en entradas ese dia. Con 1 nadie puede sacar mas de
+# lo que metio, meta las wallets que meta: es aritmetica, no un filtro. Acotado a
+# [0,1] en el codigo; un 0 significa "sin premios", no "sin limite".
+Environment=REWARD_FACTOR=1
+# Jugadores en la lista del dia para que salga el bote entero. Por debajo sale
+# proporcional: con 25 la mitad, con 5 la decima parte. Sin esto, doce jugadores
+# echando tres partidas ya sueltan el maximo y estar en el top 10 sale gratis.
+# Cuenta ELEGIBLES (hasta 100), no ganadores: siguen cobrando solo los diez primeros.
+Environment=LB_FULL_POT_AT=50
+
+# Presupuesto de premios cuando NO hay contrato configurado (fase de pruebas).
+# Con TREASURY_PROGRAM puesto se ignora: el tope lo dice la Config on-chain.
+Environment=REWARD_BUDGET_PILL=50000
+
+# Estas tres se pueden cambiar cuando quieras: son del servidor, no del contrato.
+# Cambiarlas NO afecta al bloqueo — el contrato pone el techo y el servidor solo
+# puede pedir menos. Tras editarlas:
+#   sudo systemctl daemon-reload && sudo systemctl restart pillwars
+
 [Install]
 WantedBy=multi-user.target
