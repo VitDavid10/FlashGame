@@ -411,16 +411,20 @@ programa es inmutable — el dato que más pesa de todo el JSON.
 
 | # | Entregable | Estado |
 |---|---|---|
-| T1 | `programs/pill-treasury/src/lib.rs` — el programa | — |
-| T2 | Tests del programa (Merkle, caps, timelock, dobles claims) | — |
-| T3 | `server/treasury-client.js` — cliente sin dependencia de Anchor | — |
-| T4 | `scripts/treasury-sim.js` — simulador de sostenibilidad | — |
-| T5 | Leaderboard diario con hash encadenado + `/api/leaderboard` | — |
-| T6 | Constructor del Merkle + `publish_round` automático | — |
-| T7 | UI de claim en el juego | — |
-| T8 | `/api/treasury` + página de transparencia | — |
-| T9 | Despliegue devnet, calibración 30 días | — |
-| T10 | Bloqueo: extend + tighten + finalize + revocar upgrade | — |
+| T1 | `programs/pill-treasury/src/lib.rs` — el programa | ✅ escrito |
+| T2 | Tests del Merkle y del cliente contra el `.rs` | ✅ 77 tests |
+| T3 | `server/treasury-client.js` — cliente sin dependencia de Anchor | ✅ |
+| T4 | `scripts/treasury-sim.js` — simulador de sostenibilidad | ✅ |
+| T5 | Leaderboard diario con hash encadenado + `/api/leaderboard` | ✅ |
+| T6 | Constructor del Merkle + `publish_round` automático | ✅ `server/rewards.js` |
+| T7 | Split quema/tesorería en la tienda y el conversor | ✅ `PILL_TREASURY_PCT` |
+| T8 | `/api/treasury` + `scripts/treasury.js` (operación y auditoría) | ✅ |
+| T9 | UI de claim en el juego | pendiente |
+| T10 | Compilar y desplegar en devnet | pendiente — necesita WSL |
+| T11 | Calibración de 30 días con datos reales | pendiente |
+| T12 | Bloqueo: extend + tighten + finalize + **revocar upgrade** | pendiente |
+
+Los pasos de despliegue, uno a uno: [DESPLIEGUE-TESORERIA.md](DESPLIEGUE-TESORERIA.md).
 
 ---
 
