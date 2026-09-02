@@ -5645,17 +5645,29 @@
             const g = spr.getContext('2d'), rgb = pixRgb(col);
             const t = Math.max(2, Math.round(wL / div));
             const dist = (x, y) => { const cy = Math.min(Math.max(y + 0.5, R), hL - R); const dx = x + 0.5 - R, dy = y + 0.5 - cy; return Math.sqrt(dx * dx + dy * dy); };
+            // Distancia recorrida por el contorno de la capsula en sentido horario:
+            // recto derecho, casquete de abajo, recto izquierdo, casquete de arriba.
+            const Lrec = Math.max(0, hL - 2 * R);
+            const perim = 2 * Lrec + 2 * Math.PI * R;
+            const recorrido = (x, y) => {
+                const xx = x + 0.5, yy = y + 0.5;
+                if (yy >= R && yy <= hL - R) {
+                    return xx >= R ? (yy - R) : (Lrec + Math.PI * R + (hL - R - yy));
+                }
+                if (yy > hL - R) return Lrec + Math.atan2(yy - (hL - R), xx - R) * R;
+                return 2 * Lrec + Math.PI * R + (Math.PI - Math.atan2(R - yy, xx - R)) * R;
+            };
             const inRing = (x, y) => {
                 if (x < 0 || y < 0 || x >= wL || y >= hL) return false;
                 const d = dist(x, y);
                 if (!(d <= R - 0.1 && d >= R - 0.1 - t)) return false;
                 if (!dashed) return true;
-                // 8 segmentos: ángulo alrededor del centro de la cápsula.
-                const cy = Math.min(Math.max(y + 0.5, R), hL - R);
-                let ang = Math.atan2(y + 0.5 - cy, x + 0.5 - R);
-                if (ang < 0) ang += Math.PI * 2;
-                const seg = (ang / (Math.PI * 2)) * SG;
-                return (seg % 1) < 0.62;
+                // Los trozos se reparten por LONGITUD de contorno, no por angulo.
+                // Con el angulo, en los tramos rectos de la capsula todos los pixeles
+                // daban la misma medida (dy=0 => siempre 0 o pi), asi que los lados
+                // salian enteros o vacios y solo habia dientes en las puntas.
+                const seg = (recorrido(x, y) / perim) * SG;
+                return (seg % 1) < 0.55;
             };
             for (let y = 0; y < hL; y++) for (let x = 0; x < wL; x++) {
                 if (!inRing(x, y)) continue;
@@ -5897,14 +5909,14 @@
                                                         ctx.translate(c.x, c.y);
                                                         ctx.rotate(-Math.PI / 4);
                                                         const step = Math.floor(now / 160) % 2;
-                                                        const gap = c.r * (0.08 + 0.03 * step);
+                                                        const gap = c.r * (0.11 + 0.03 * step);
                                                         if (isSelf || enemySkillFx) {
-                                                            const gap2 = gap + c.r * 0.1;
-                                                            ctx.globalAlpha = alpha * (0.75 + 0.2 * step);
-                                                            ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true, 7, 22), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
+                                                            const gap2 = gap + c.r * 0.16;
+                                                            ctx.globalAlpha = alpha;
+                                                            ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true, 12, 22), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
                                                         }
-                                                        ctx.globalAlpha = alpha * 0.95;
-                                                        ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
+                                                        ctx.globalAlpha = alpha;
+                                                        ctx.drawImage(pixRingSprite(wLfx, '#c060ff', false, 9), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
                                                         if (isSelf || enemySkillFx) {
                                                             ctx.globalAlpha = alpha * 0.16;
                                                             ctx.fillStyle = '#a020f0';
