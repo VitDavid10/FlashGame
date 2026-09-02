@@ -1974,9 +1974,22 @@ const TREASURY_PROGRAM = process.env.TREASURY_PROGRAM || '';
 let _treasuryCache = null, _treasuryCacheAt = 0;
 const TREASURY_CACHE_MS = 15000;
 
+/*
+ * Conexión al RPC, con TOPE DE ESPERA. Es la misma lección que ya está escrita en
+ * solana.js: sin él, un devnet que no contesta deja la petición HTTP colgada hasta
+ * que caduca el socket —minutos— y el jugador se queda mirando un botón muerto. Aquí
+ * es peor todavía, porque estos endpoints los usa cualquiera sin autenticar: unas
+ * cuantas peticiones a un RPC caído dejan sockets ocupados en el servidor del juego.
+ */
+const SOL_RPC_TIMEOUT_MS = 8000;
 function _solConn() {
     const { Connection } = require('@solana/web3.js');
-    if (!_solConn._c) _solConn._c = new Connection(solana.RPC, 'confirmed');
+    if (!_solConn._c) {
+        _solConn._c = new Connection(solana.RPC, {
+            commitment: 'confirmed',
+            fetch: (url, opts) => fetch(url, Object.assign({}, opts, { signal: AbortSignal.timeout(SOL_RPC_TIMEOUT_MS) })),
+        });
+    }
     return _solConn._c;
 }
 
@@ -2927,21 +2940,38 @@ const httpServer = http.createServer(async (req, res) => {
         });
         return;
     }
-    /* Aviso de que un claim se confirmó. Es solo para que el botón desaparezca sin
-     * esperar al siguiente refresco: la verdad de quién cobró está on-chain (el
-     * recibo es un PDA), y un aviso falso no consigue nada — el segundo claim de esa
-     * wallet fallaría igual en el contrato. */
+    /* Aviso de que un claim se confirmó, para que el botón desaparezca sin esperar al
+     * siguiente refresco.
+     *
+     * NO SE CREE EL AVISO: lo comprueba. El recibo de un cobro es un PDA que solo el
+     * contrato puede crear, así que el servidor lo lee y solo marca si existe de
+     * verdad. Sin esa comprobación, cualquiera podría marcar los premios de todo el
+     * mundo como cobrados y esconderles el botón CLAIM — el dinero seguiría siendo
+     * suyo y reclamable on-chain, pero no lo verían, que a efectos prácticos es lo
+     * mismo que quitárselo.
+     *
+     * Va con el mismo tope de peticiones que el resto: lee del RPC. */
     if (urlPath === '/api/rewards/claimed' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones' })); return; }
         let body = '';
         req.on('data', c => { body += c; if (body.length > 500) req.destroy(); });
-        req.on('end', () => {
+        req.on('end', async () => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
             try {
                 const p = JSON.parse(body || '{}');
-                const ok = isSolAddr(String(p.wallet || '')) && Number.isFinite(parseInt(p.epoch, 10))
-                    && rewards.marcarCobrado(parseInt(p.epoch, 10), String(p.wallet), String(p.sig || '').slice(0, 128));
-                res.end(JSON.stringify({ ok: !!ok }));
-            } catch (e) { res.end(JSON.stringify({ ok: false })); }
+                const wallet = String(p.wallet || '');
+                const epoch = parseInt(p.epoch, 10);
+                if (!isSolAddr(wallet) || !Number.isFinite(epoch)) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+                if (!process.env.TREASURY_PROGRAM) { res.end(JSON.stringify({ ok: false, reason: 'sin contrato' })); return; }
+
+                const tcl = require('./treasury-client.js');
+                const recibo = tcl.claimPda(process.env.TREASURY_PROGRAM, epoch, wallet);
+                const info = await _solConn().getAccountInfo(recibo);
+                if (!info) { res.end(JSON.stringify({ ok: false, reason: 'ese cobro no existe on-chain' })); return; }
+
+                rewards.marcarCobrado(epoch, wallet, String(p.sig || '').slice(0, 128));
+                res.end(JSON.stringify({ ok: true }));
+            } catch (e) { res.end(JSON.stringify({ ok: false, reason: e.message })); }
         });
         return;
     }
