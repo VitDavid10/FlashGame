@@ -5907,7 +5907,7 @@
                                                             // segmentos gordos, y a este tamaño salia irregular.
                                                             const gap2 = gap + c.r * 0.16;
                                                             const w2 = pW + gap2 * 2, h2 = pH + gap2 * 2, rb2 = w2 / 2;
-                                                            const gr = Math.max(1.5, c.r * 0.055);
+                                                            const gr = Math.max(2.5, c.r * 0.1);
                                                             const per = 2 * (h2 - 2 * rb2) + 2 * Math.PI * rb2;
                                                             const totalMs = (typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.shieldDuration) ? SKILL_PARAMS.shieldDuration : 3000;
                                                             const queda = Math.max(0, Math.min(1, c.immuneTime / totalMs));
@@ -5922,7 +5922,7 @@
                                                             ctx.globalAlpha = alpha;
                                                             ctx.strokeStyle = '#e6c2ff';
                                                             ctx.setLineDash([per * queda, per]);
-                                                            ctx.lineDashOffset = per * 0.25;
+                                                            ctx.lineDashOffset = 0;
                                                             ctx.beginPath();
                                                             ctx.roundRect(-w2 / 2, -h2 / 2, w2, h2, rb2);
                                                             ctx.stroke();
@@ -14521,6 +14521,7 @@
      * Del 4 al 10: el numero pelado, en el amarillo de arcade.
      */
     let _miPuesto = null;          // 1..10 mientras estes en el top; null fuera
+    const _podio = new Map();      // id de rival -> 1..3, para su corona
     let _puestoPrevio = null;      // para disparar los sonidos solo al ENTRAR
     let _rangoSonidoAt = 0;        // ultimo top1/top10 que sono
     const RANGO_SND_MS = 15000;    // uno cada 15s como mucho
@@ -14610,10 +14611,13 @@
             if (!prev || c.r > prev.r) mayor.set(c.id, c);
         }
         for (const c of mayor.values()) {
-            if (!c.name) continue;
             if (c.x + c.r < vL || c.x - c.r > vR || c.y + c.r < vT || c.y - c.r > vB) continue;
+            if (!c.name && !_podio.has(c.id)) continue;
             const fSize = tamNombre(c.r, pix ? 14 : 12);
-            _pintaNombre(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5, fSize, pix);
+            const ny = c.y - (c.r * PILL_RATIO) + 5;
+            if (c.name) _pintaNombre(c.name, c.x, ny, fSize, pix);
+            const suPuesto = _podio.get(c.id);
+            if (suPuesto && currentGameMode === 'arcade') dibujaRango(ctx, c.x, rangoAncla(ny, fSize), suPuesto, ahora);
         }
 
         // --- El tuyo: normalmente va en tu celula mayor, pero si esa esta tan
@@ -14991,16 +14995,16 @@
         // Online: el ranking de la sala ENTERA lo calcula el server (con AOI el cliente
         // solo ve su zona). Usamos ese top; marcamos "me" por id. Offline/practice: local.
         if (sim && sim.isRemote && serverLeaderboard) {
-            all = serverLeaderboard.map(e => ({ name: e.n, mass: e.m, isMe: e.id === sim.myId }));
+            all = serverLeaderboard.map(e => ({ id: e.id, name: e.n, mass: e.m, isMe: e.id === sim.myId }));
         } else {
             const cells = myCells();
             if (cells.length > 0) {
                 let m = 0; cells.forEach(c => m += c.mass);
-                all.push({ name: me().name, mass: m, isMe: true });
+                all.push({ id: 'me', name: me().name, mass: m, isMe: true });
             }
             let botMap = new Map();
             sim.enemies.forEach(e => {
-                if (!botMap.has(e.id)) botMap.set(e.id, { name: e.name, mass: 0, isMe: false });
+                if (!botMap.has(e.id)) botMap.set(e.id, { id: e.id, name: e.name, mass: 0, isMe: false });
                 botMap.get(e.id).mass += e.mass;
             });
             for (let b of botMap.values()) all.push(b);
@@ -15017,6 +15021,12 @@
         if (currentGameMode === 'arcade') {
             const i = all.findIndex(p => p.isMe);
             _miPuesto = (i >= 0 && i < 10) ? i + 1 : null;
+            // Podio ajeno: las coronas de 1o, 2o y 3o se ven tambien sobre los
+            // rivales. Del 4 al 10 sigue siendo cosa tuya y de nadie mas.
+            _podio.clear();
+            for (let k = 0; k < 3 && k < all.length; k++) {
+                if (all[k].id != null && !all[k].isMe) _podio.set(all[k].id, k + 1);
+            }
             if (_miPuesto !== _puestoPrevio) {
                 /*
                  * Solo al ENTRAR al top 10 (venias de fuera) y al coronarte, y
