@@ -972,7 +972,12 @@
                lados, asi que el 10% esta calculado para que ni con una masa de
                7 cifras (el caso mas ancho) se salga por arriba. */
             html:not([data-hero]) body.mobile-allowed #ui {
-                top: 10% !important; bottom: auto !important; right: 6% !important; left: auto !important;
+                /* right 24px (no 6%): con el translate(50%) el margen que queda
+                   de verdad es la mitad, o sea 12px — los mismos que la X, el
+                   sonido y la musica, que van en px. Con el 6% salian 10 y no
+                   cuadraban con esos tres. En px coinciden en cualquier
+                   pantalla; en % se irian separando al crecer el movil. */
+                top: 10% !important; bottom: auto !important; right: 24px !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(1) !important;
                 flex-direction: row !important; gap: 4px !important;
                 font-size: 8px !important;
@@ -1421,6 +1426,16 @@
         }
         #sysModal .exit-box { border-color: rgba(0,255,136,0.4); box-shadow: 0 0 40px rgba(0,255,136,0.15); }
         .sys-title { color: var(--primary) !important; text-shadow: 0 0 14px rgba(0,255,136,0.4); }
+        /* Android pinta un recuadro azul translucido sobre lo que acabas de
+           tocar y lo deja ahi un momento: al abrirse un cartel encima (p.ej.
+           DESKTOP ONLY tras tocar una sala) quedaba flotando como un resto del
+           click anterior. */
+        button, a, .pw-big-btn, .oracle-row, [onclick] { -webkit-tap-highlight-color: transparent; }
+        /* CARRY/POT: parpadeo verde al subir, rojo al bajar (ver EconHUD._pintar) */
+        @keyframes econSube { 0% { color: #6cff9f; text-shadow: 0 0 10px rgba(0,255,136,0.8); } 100% { color: #ffce3d; text-shadow: none; } }
+        @keyframes econBaja { 0% { color: #ff6b6b; text-shadow: 0 0 10px rgba(255,90,78,0.8); } 100% { color: #ffce3d; text-shadow: none; } }
+        #econVal.econ-sube { animation: econSube 0.6s ease-out; }
+        #econVal.econ-baja { animation: econBaja 0.6s ease-out; }
         .btn-sys { flex: 1; padding: 12px; border: 1px solid var(--primary); background: transparent; color: var(--primary); font-weight: bold; border-radius: 6px; cursor: pointer; font-family: 'Russo One'; letter-spacing: 1px; transition: 0.2s; }
         .btn-sys:hover { background: var(--primary); color: #04150c; box-shadow: 0 0 18px rgba(0,255,136,0.5); }
 
@@ -4728,6 +4743,10 @@
             // simplehover suena en CADA boton del menu al pasar el raton: al
             // 100% se hacia pesado. -60% (queda al 40%) pedido por David.
             if (name === 'simplehover') vol *= 0.4;
+            // Skills: al 33% (-67%, pedido por David). Son los cuatro que suenan
+            // al ACTIVAR una skill y en arcade se disparan cada pocos segundos;
+            // a volumen completo tapaban el resto del juego.
+            if (name === 'sprint' || name === 'tp' || name === 'iman' || name === 'shield') vol *= 0.33;
             const s = this.sounds[name]; s.currentTime = 0; s.volume = Math.min(1, vol * SFX_MASTER); s.play().catch(e => {});
         },
         stop: function(name) { if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },
@@ -10837,7 +10856,7 @@
     // no se pasa por el cartel de resultado, asi que los avisos de partida
     // (2 KILLS TO PENTAKILL, CARRY/POT, barra de skills...) se quedaban pintados
     // encima del menu.
-    function returnToMenu() { hideGameHUD(); cerrarUIColores(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
+    function returnToMenu() { hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
         // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
         // la medida de cuando se entro al modo (ver el comentario de arriba).
         centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
@@ -11268,6 +11287,10 @@
         async withdraw() {
             const amt = Math.max(1, parseInt(document.getElementById('gwdAmount').value, 10) || 0);
             if (amt > (this.gameBalance || 0)) { showSystemMsg('You only have ' + this.fmt(this.gameBalance) + ' $PILL in GAME. Lower the amount.', 'WITHDRAW FAILED'); return; }
+            // Mismo 'select' que el CONTINUE de ROOM INFO: los dos abren la
+            // wallet para firmar, y ese boton se quedaba mudo mientras la
+            // extension tardaba en aparecer.
+            try { SoundManager.play('select'); } catch (e) {}
             const btn = document.getElementById('gwdConfirm'); const old = btn.innerText; btn.disabled = true; btn.innerText = 'Sign in wallet...';
             try {
                 const ts = Date.now();
@@ -11302,6 +11325,10 @@
                 showSystemMsg('You only have ' + this.fmt(this.walletBalance) + ' $PILL in your wallet. Lower the amount.', 'DEPOSIT FAILED');
                 return;
             }
+            // Mismo 'select' que el CONTINUE de ROOM INFO: los dos abren la
+            // wallet para firmar, y ese boton se quedaba mudo mientras la
+            // extension tardaba en aparecer.
+            try { SoundManager.play('select'); } catch (e) {}
             const btn = document.getElementById('gdConfirm'); const old = btn.innerText; btn.disabled = true; btn.innerText = 'Sign in wallet...';
             // A los 5s el boton vuelve a estar disponible AUNQUE la operacion
             // siga en marcha. Mandar una transaccion de mas no rompe nada (el
@@ -11376,6 +11403,38 @@
     const EconHUD = {
         mode: null, carry: 0, pot: 0, entry: 0,
         setMode(m) { this.mode = m; },
+        /*
+         * El CARRY/POT sube y baja CONTANDO, no de un salto. Es el numero que
+         * mas se mira en una sala de pago —cada kill lo cambia— y cambiado de
+         * golpe no se veia venir: mirabas y ya era otro. Ademas parpadea en
+         * verde al subir y en rojo al bajar, que es lo que hace que se note sin
+         * tener el ojo puesto encima.
+         */
+        _anim: null, _mostrado: null,
+        _pintar(destino, val) {
+            destino = Math.round(destino || 0);
+            if (this._anim) { cancelAnimationFrame(this._anim); this._anim = null; }
+            // Primera pintada de la partida: sin animar, que si no cuenta desde
+            // 0 cada vez que entras.
+            if (this._mostrado === null) { this._mostrado = destino; val.innerText = fmtMoney(destino); return; }
+            const desde = this._mostrado, delta = destino - desde;
+            if (delta === 0) { val.innerText = fmtMoney(destino); return; }
+            val.classList.remove('econ-sube', 'econ-baja');
+            void val.offsetWidth;   // reinicia la animacion CSS si se encadenan dos cambios
+            val.classList.add(delta > 0 ? 'econ-sube' : 'econ-baja');
+            const t0 = performance.now(), DUR = 420;
+            const paso = (t) => {
+                const k = Math.min(1, (t - t0) / DUR);
+                const e = 1 - Math.pow(1 - k, 3);   // frena al llegar
+                this._mostrado = Math.round(desde + delta * e);
+                val.innerText = fmtMoney(this._mostrado);
+                if (k < 1) this._anim = requestAnimationFrame(paso);
+                else { this._mostrado = destino; val.innerText = fmtMoney(destino); this._anim = null; }
+            };
+            this._anim = requestAnimationFrame(paso);
+        },
+        // Al salir de la partida: la proxima entrada vuelve a pintar sin animar.
+        resetAnim() { if (this._anim) cancelAnimationFrame(this._anim); this._anim = null; this._mostrado = null; },
         update(carry, pot, entry) {
             if (carry != null) this.carry = carry;
             if (pot != null) this.pot = pot;
@@ -11389,7 +11448,7 @@
             if (!show) { el.style.display = 'none'; return; }
             el.style.display = 'inline-block';
             lbl.innerText = isClassic ? 'CARRY' : 'POT';
-            val.innerText = fmtMoney(isClassic ? this.carry : this.pot);
+            this._pintar(isClassic ? this.carry : this.pot, val);
             // fmtMoney ya trae el símbolo cuando va en $, así que sobra el sufijo.
             const unit = document.getElementById('econUnit');
             if (unit) unit.style.display = (MONEY_IN_USD && pillRate > 0) ? 'none' : '';
@@ -13247,7 +13306,12 @@
         // por modal: cada uno se afina por separado aunque compartan el DOM.
         applyCartelSurface('sysModal', CARTEL_LAYOUT['sysModal#' + t] || CARTEL_LAYOUT.sysModal);
         m.style.display = 'flex';
-        try { SoundManager.play('little'); } catch (e) {}
+        // 'little' es el sonido de AVISO y valia para todos los carteles, pero
+        // un deposito o una retirada que salen bien no son un aviso: sonaban
+        // igual que INSUFFICIENT BALANCE o CONNECTION FAILED. Los dos exitos
+        // usan 'simpleselect', el de confirmacion del menu.
+        const _ok = (t === 'DEPOSIT COMPLETE' || t === 'WITHDRAW COMPLETE');
+        try { SoundManager.play(_ok ? 'simpleselect' : 'little'); } catch (e) {}
     }
     function hideSystemMsg() { document.getElementById('sysModal').style.display = 'none'; }
 
