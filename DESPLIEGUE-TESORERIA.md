@@ -107,7 +107,7 @@ export TREASURY_PROGRAM=PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW
 export PILL_MINT=<el mint de $PILL>
 export SOL_RPC=https://api.devnet.solana.com
 
-npm run treasury -- init --unlock-days 30 --cap 60000 --bps 5 --sweep-cap 500000 --burn-cap 500000
+npm run treasury -- init --unlock-days 30 --cap 200000 --bps 225 --sweep-cap 500000 --burn-cap 500000
 ```
 
 Los valores por defecto son los de **calibración**, no los definitivos:
@@ -115,10 +115,19 @@ Los valores por defecto son los de **calibración**, no los definitivos:
 | Parámetro | Valor | Por qué |
 |---|---|---|
 | `--unlock-days 30` | 30 días | corto a propósito: hay que medir antes de bloquear años |
-| `--cap 60000` | 60 000 PILL/día | el equilibrio del escenario pesimista de `npm run treasury:sim` |
-| `--bps 5` | 0,05 %/día | segundo freno, relativo al saldo |
+| `--bps 225` | 2,25 %/día | **la curva de emisión**: halving mensual (ver §3.4 del plan) |
+| `--cap 200000` | 200 000 PILL/día | afeita el pico del día 1: ~100 días de premio alto y constante |
 | `--sweep-cap 500000` | 500 000 PILL/día | techo de lo que puede pasar de custodia a tesorería |
 | `--burn-cap 500000` | 500 000 PILL/día | techo de lo que la tienda puede quemar de la custodia |
+
+**`--bps` no es un tope de seguridad, es el calendario**: como el límite es un
+porcentaje del saldo que queda, un bps constante *es* un halving. 225 reparte la
+mitad de la tesorería cada mes; 38 cada semestre; 19 cada año. La tabla completa
+está en [TESORERIA-PLAN.md §3.4](TESORERIA-PLAN.md).
+
+Y **el número que pongas aquí es el techo de todo lo que puedas elegir después**,
+porque `tighten` solo aprieta: de 225 se baja a 38, de 38 no se sube a 225. En caso
+de duda, arrancar alto y bajar con los datos de los 30 días.
 
 El comando imprime las direcciones de **CUSTODIA** y **TESORERÍA**. Guárdalas: son
 las dos que la gente va a mirar en el explorador.

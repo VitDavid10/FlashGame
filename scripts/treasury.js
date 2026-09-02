@@ -2,7 +2,7 @@
  * HERRAMIENTA DE OPERACION DE LA TESORERIA.
  *
  *   node scripts/treasury.js status
- *   node scripts/treasury.js init --unlock-days 30 --cap 60000 --bps 5 --sweep-cap 500000
+ *   node scripts/treasury.js init --unlock-days 30 --cap 200000 --bps 225 --sweep-cap 500000
  *   node scripts/treasury.js fund 1000000
  *   node scripts/treasury.js sweep 50000
  *   node scripts/treasury.js publish <epoch>
@@ -151,14 +151,46 @@ async function status() {
 
 /* ===================== INIT ===================== */
 
+/*
+ * Los bps NO son un tope de seguridad: son el calendario de emision.
+ *
+ * Como el limite de cada epoca es un PORCENTAJE del saldo que queda, un bps
+ * constante es un halving continuo — 225 reparte la mitad de la tesoreria cada
+ * mes, 38 cada semestre, 19 cada anio. Es la decision mas importante del init y
+ * la mas facil de tomar sin darse cuenta, porque parece un parametro tecnico.
+ *
+ * Y solo es reversible en una direccion: tighten baja los bps, nunca los sube.
+ * Asi que la curva se imprime ANTES de firmar.
+ */
+function curvaDe(bps, cap) {
+    const T = Number(flag('simular-con', '30000000'));
+    const halvingDias = Math.log(0.5) / Math.log(1 - bps / 10000);
+    console.log(`\n  -- Lo que implica bps=${bps} sobre ${fmt(T)} PILL --`);
+    console.log(`  halving cada ${halvingDias.toFixed(1)} dias (${(halvingDias / 30.44).toFixed(1)} meses)`);
+    let saldo = T, acumulado = 0;
+    const hitos = [1, 30, 90, 180, 365];
+    for (let d = 1; d <= 365; d++) {
+        const hoy = Math.min(saldo * bps / 10000, cap);
+        saldo -= hoy; acumulado += hoy;
+        if (hitos.includes(d)) {
+            console.log(`    dia ${String(d).padStart(3)}: ${fmt(Math.round(hoy)).padStart(9)}/dia` +
+                `   repartido ${(acumulado / T * 100).toFixed(1).padStart(5)} %` +
+                `   queda ${fmt(Math.round(saldo))}`);
+        }
+    }
+    if (cap < T * bps / 10000) {
+        console.log(`  (manda el cap de ${fmt(cap)} hasta que la curva baje de ahi: mesa plana)`);
+    }
+}
+
 async function init() {
     exigePrograma(); const authority = exigeAutoridad();
     if (!solana.MINT) { console.error('Falta PILL_MINT.'); process.exit(1); }
 
     const dias = parseInt(flag('unlock-days', '30'), 10);
     const unlockTs = Math.floor(Date.now() / 1000) + dias * 86400;
-    const cap = Math.round(Number(flag('cap', '60000')));
-    const bps = parseInt(flag('bps', '5'), 10);
+    const cap = Math.round(Number(flag('cap', '200000')));
+    const bps = parseInt(flag('bps', '225'), 10);
     const challengeH = parseInt(flag('challenge-hours', '48'), 10);
     const sweepCap = Math.round(Number(flag('sweep-cap', '500000')));
     const burnCap = Math.round(Number(flag('burn-cap', '500000')));
@@ -170,8 +202,12 @@ async function init() {
     console.log(`  ventana impugnar    ${challengeH} h`);
     console.log(`  cap de sweep        ${fmt(sweepCap)} PILL/epoca`);
     console.log(`  cap de quema        ${fmt(burnCap)} PILL/epoca`);
+
+    curvaDe(bps, cap);
     console.log('\nEl bloqueo corto es a proposito: es la fase de calibracion. Se alarga con');
     console.log('extend-lock cuando los numeros del simulador cuadren con los datos reales.');
+    console.log('El bps y el cap NO: tighten solo los baja, asi que estos son el techo de');
+    console.log('todo lo que se pueda elegir despues.');
 
     const ix = tc.initialize(PROGRAM, {
         mint: solana.MINT,

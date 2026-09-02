@@ -208,7 +208,7 @@ pub struct Config {
     // grifo de premios
     pub epoch_secs: i64,            // 86_400 (1 día)
     pub reward_cap_per_epoch: u64,  // tope absoluto por época
-    pub reward_bps_per_epoch: u16,  // tope relativo al saldo (‱ del treasury)
+    pub reward_bps_per_epoch: u16,  // curva de emision (‱ del saldo por epoca)
     pub challenge_secs: i64,        // ventana de impugnación (172_800 = 48 h)
     // grifo de sweep custody -> treasury
     pub sweep_cap_per_epoch: u64,
@@ -287,20 +287,69 @@ Cualquiera puede leer el código del programa y comprobar estas cinco:
 
 ```
 epoch_secs           = 86 400        (1 día)
-reward_bps_per_epoch = 5             (0,05 % del treasury por día)
-reward_cap_per_epoch = 250 000 PILL  (tope absoluto, el que sea menor)
+reward_bps_per_epoch = 225           (2,25 % del saldo por día)
+reward_cap_per_epoch = 200 000 PILL  (tope absoluto)
 challenge_secs       = 172 800       (48 h)
 unlock_ts            = hoy + 4 años
 ```
 
-`publish_round` valida `total <= min(saldo·bps/10000, cap)`.
+`publish_round` valida `total <= min(saldo·bps/10000, cap)`. Son dos frenos con
+formas distintas, y conviene entender por qué hay dos.
 
-Con 0,05 %/día, **el máximo teórico anual es ~17 %** — y eso suponiendo que
-publico rondas al tope todos los días. Aun con un atacante que controlase la
-autoridad y falsease todas las listas, drenar la tesorería le llevaría años, a la
-vista de todos, con 48 h de aviso en cada tirada.
+#### Los bps NO son un tope: son el calendario de emisión
 
-Ese es el compromiso duro. Todo lo demás es detectabilidad; **esto es un techo.**
+Es lo que menos se ve del diseño. El tope no es una cantidad fija, es **un
+porcentaje del saldo que queda** — y un porcentaje constante de algo que baja es
+exactamente un halving, solo que continuo en vez de escalonado. Elegir los bps es
+elegir la vida media de la tesorería:
+
+| halving cada | bps | día 1 (sobre 30 M) | repartido al año |
+|---|---|---|---|
+| mes | 225 | 675 000 | 100 % |
+| trimestre | 76 | 228 000 | 97 % |
+| semestre | 38 | 114 000 | 75 % |
+| año | 19 | 57 000 | 50 % |
+
+Tres propiedades que salen gratis de que sea relativo y no absoluto:
+
+- **Se autorregula con la actividad.** Lo que no se reparte un día flojo se queda
+  dentro, y el grifo del día siguiente es un porcentaje de un saldo mayor. Si el
+  juego arranca lento, la emisión dura más sola. Si arranca fuerte, se agota antes.
+- **Nunca llega a cero.** Un calendario por fechas se vacía y convierte el candado
+  en decoración; un porcentaje siempre deja algo dentro.
+- **Nadie tiene que ejecutar nada.** Ningún halving que disparar cada X meses, y
+  ninguna oportunidad de olvidarlo o hacerlo mal. Y como `tighten` solo baja los
+  bps, la curva es un techo garantizado: se puede hacer más lenta, nunca más rápida.
+
+#### El cap absoluto es lo que afeita el pico
+
+Una exponencial pura reparte su máximo el día 1, que es justo cuando menos
+jugadores hay — el peor momento posible. Con 225 bps y sin cap, el primero de la
+tabla se llevaría 236 000 PILL diarios en un día de cinco jugadores, y con
+`LB_MIN_OPPONENTS=5` bastan seis wallets para cobrarlo.
+
+El cap corta esa cabeza y convierte la curva en **meseta y caída**:
+
+| | día 1 | día 90 | supply nuevo el 1.er mes | repartido a 3 meses |
+|---|---|---|---|---|
+| 225 bps sin cap | 675 000 | 89 000 | 1,49 % | 87 % |
+| 225 bps + cap 200 k | 200 000 | 200 000 | 0,60 % | 60 % |
+| 225 bps + cap 120 k | 120 000 | 120 000 | 0,36 % | 36 % |
+
+Con cap 200 k son ~100 días de premio alto y **constante**, que retiene mejor que
+un pico que se desinfla en tres semanas, y el mercado absorbe 0,6 % de supply nuevo
+al mes en vez de 1,5 %.
+
+#### Y sigue siendo un techo
+
+Aunque un atacante controlase la autoridad y falsease todas las listas, no puede
+sacar más de lo que deja el menor de los dos frenos, con 48 h de aviso en cada
+tirada y a la vista de todos. Todo lo demás del diseño es detectabilidad;
+**esto es lo único que es imposibilidad.**
+
+> **El número de `init` es el techo de todo lo que puedas elegir después.**
+> `tighten` solo aprieta: de 225 bps se puede bajar a 38, de 38 no se sube a 225.
+> En caso de duda, arrancar alto y bajar con datos.
 
 ---
 
@@ -564,7 +613,7 @@ Endpoint `/api/treasury`, y una página que lo pinte:
   "treasury": { "address": "...", "balance": 31500000, "unlockTs": 1883000000 },
   "obligations": 8390000,
   "reservesRatio": 1.0036,
-  "caps": { "rewardPerEpoch": 250000, "bps": 5, "challengeHours": 48 },
+  "caps": { "rewardPerEpoch": 200000, "bps": 225, "challengeHours": 48 },
   "lastRound": { "epoch": 20334, "total": 148200, "claimed": 121000, "winners": 10 },
   "upgradeAuthority": null
 }
