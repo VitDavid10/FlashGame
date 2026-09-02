@@ -22,13 +22,21 @@
 function tickRoomOnce(room, now, ctx) {
     let stepMs = 0, snapMs = 0, sendMs = 0;
     // jugadores en gracia de reconexión que no volvieron
-    for (const [pid, deadline] of room.pendingRemovals) {
+    for (const [pid, info] of room.pendingRemovals) {
+        // El valor lleva la posición económica desde que la desconexión dejó de
+        // liquidarse al instante. Se acepta el formato viejo (solo el deadline) por si
+        // queda alguno en vuelo tras un reinicio a mitad de partida.
+        const deadline = typeof info === 'number' ? info : info.deadline;
         if (room.clients.has(pid)) { room.pendingRemovals.delete(pid); continue; }
         if (now >= deadline) {
             room.pendingRemovals.delete(pid);
+            // No volvió: lo que llevaba encima se pierde y va a la tesorería. No al
+            // bote de la sala — el bote es de los que siguen jugando, y regalarles lo
+            // de quien se cayó premiaría tener mala conexión enfrente.
+            if (info && info.econ) ctx.econ.graceExpired(info.econ);
             room.sim.removePlayer(pid);
             if (room._pidx) room._pidx.delete(pid);   // libera el índice v4 (delta)
-            for (const [tok, info] of ctx.resumeTokens) { if (info.playerId === pid) ctx.resumeTokens.delete(tok); }
+            for (const [tok, i2] of ctx.resumeTokens) { if (i2.playerId === pid) ctx.resumeTokens.delete(tok); }
         }
     }
     // muertos: retirarlos de la sim (su conexión queda de espectador)
@@ -146,6 +154,10 @@ function tickRoomOnce(room, now, ctx) {
                 const neto = bruto - fee;
                 cli.carry = 0;
                 if (neto > 0 && cli.payWallet) ctx.econ.credit(cli.payWallet, neto);
+                // El exit fee es ingreso del juego: va al pozo del staking. Hasta ahora
+                // se descontaba del saldo y los tokens se quedaban en custodia sin que
+                // nadie apuntara de quién eran.
+                if (fee > 0 && cli.payWallet) ctx.econ.rakeStaking(fee, 'exit fee ' + room.key);
                 try {
                     if (cli.ws.readyState === 1) cli.ws.send(JSON.stringify({
                         t: 'prize', reason: 'cashout', amount: neto, carry: bruto,
@@ -161,11 +173,26 @@ function tickRoomOnce(room, now, ctx) {
                 .sort((a, b) => (b.peakMass | 0) - (a.peakMass | 0));
             const totalPot = room.pot;
             potFinal = totalPot;
+            /*
+             * COMISION DE LA CASA sobre el bote de arcade. Se aparta ANTES de repartir
+             * y va a la tesorería bloqueada, que es la que paga los premios del top 10
+             * diario — no al pozo del staking. La lógica: lo que sale del bote de los
+             * jugadores vuelve a los jugadores, solo que por otra puerta y a otro
+             * ritmo. Los ingresos del juego (exit fees, tienda) son los que van al
+             * staking.
+             *
+             * Los pesos siguen sumando 100, pero sobre el bote YA descontada la
+             * comisión: así el reparto entre los diez no cambia de forma y solo baja
+             * la escala.
+             */
+            const comision = Math.floor(totalPot * ctx.ARCADE_RAKE_PCT / 100);
+            const repartible = totalPot - comision;
+            if (comision > 0) ctx.econ.rakeTesoreria(comision, 'comision arcade ' + room.key);
             const top = [];
             for (let i = 0; i < Math.min(10, ranking.length); i++) {
                 const pj = ranking[i];
                 const cli = room.clients.get(pj.id);
-                const parte = Math.floor(totalPot * PESOS[i] / 100);
+                const parte = Math.floor(repartible * PESOS[i] / 100);
                 if (cli && cli.payWallet && parte > 0) ctx.econ.credit(cli.payWallet, parte);
                 // Daily: terminar top 5 en arcade
                 if (cli && cli.cid && (i + 1) <= 5) ctx.econ.dailyEvent(cli.cid, 'arcade_top5', 1);
@@ -179,7 +206,7 @@ function tickRoomOnce(room, now, ctx) {
                 const myCopy = top.map((t, i) => Object.assign({}, t, { mine: i === idx }));
                 try { cli.ws.send(JSON.stringify(Object.assign({}, payoutMsg, { top: myCopy, myAmount: idx >= 0 ? top[idx].amount : 0 }))); } catch (e) {}
             }
-            ctx.log(`Reparto arcade ${room.key}: bote ${totalPot} → ${top.filter(t => t.paid).map(t => `#${t.pos}=${t.amount}`).join(' ') || '(sin ganadores con wallet)'}`);
+            ctx.log(`Reparto arcade ${room.key}: bote ${totalPot} (comisión ${comision} → tesorería) → ${top.filter(t => t.paid).map(t => `#${t.pos}=${t.amount}`).join(' ') || '(sin ganadores con wallet)'}`);
             room.pot = 0;
         }
         /*

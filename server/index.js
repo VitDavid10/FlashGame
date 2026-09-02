@@ -40,6 +40,7 @@ const leaderboard = require('./leaderboard.js');   // ranking DIARIO por wallet 
 const rewards = require('./rewards.js');           // rondas de premios: Merkle + publicación on-chain
 const matches = require('./matches.js');           // recibos de partida anclados en la cadena
 const reserves = require('./reserves.js');         // prueba publica de lo que se debe a los jugadores
+const rake = require('./rake.js');                 // lo que se queda la casa, y a que bolsa va
 // El leaderboard filtra por oponentes distintos, pero ese dato vive en los recibos.
 // Se inyecta en vez de que un modulo importe al otro: asi ninguno de los dos depende
 // del otro para funcionar, y en los tests se puede probar cada uno por su lado.
@@ -648,6 +649,9 @@ if (PW_ROLE !== 'host') matches.arranca(solana, log);
 // Prueba de pasivo: publica cada hora la lista de saldos y ancla su raiz. Es lo que
 // impide que el servidor mienta sobre cuanto debe — ver server/reserves.js.
 if (PW_ROLE !== 'host') reserves.arranca(() => warbank._balances, solana, log);
+// Barrido del rake a sus dos bolsas. Solo el Director: dos procesos saldando la
+// misma cola la barrerian dos veces.
+if (PW_ROLE !== 'host') rake.arranca(solana, require('./treasury-client.js'), process.env.TREASURY_PROGRAM || '', log);
 // Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
 // Math.round: la tarifa viaja DENTRO del mensaje que el jugador firma
 // ("...paying 48 PILL @ ..."), y el servidor reconstruye esa misma cadena para
@@ -667,6 +671,19 @@ function roomRate(room) { return (room && room.clients.size > 0 && room.pillRate
 // todos y largarse sin jugársela tiene que costar. Con 5 kills es VICTORY y no
 // paga fee (ver room-loop). El cliente replica esta misma tabla en exitFeePct().
 function classicExitFeePct(kills) { if (kills >= 2) return 10; if (kills >= 1) return 20; return 50; }
+
+/*
+ * Comisión de la casa sobre el bote de arcade, en %.
+ *
+ * Va a la TESORERÍA bloqueada, no al pozo del staking: lo que sale del bote de los
+ * jugadores vuelve a los jugadores, solo que por la puerta de los premios diarios.
+ * Los ingresos del juego (exit fees, tienda) son los que financian el staking.
+ *
+ * Hasta ahora los pesos del reparto sumaban 100 y no se quedaba nada; el único rake
+ * de arcade era accidental — las partes de quien no tenía wallet, o los puestos
+ * vacíos cuando había menos de diez jugadores.
+ */
+const ARCADE_RAKE_PCT = Math.max(0, Math.min(50, parseFloat(process.env.ARCADE_RAKE_PCT) || 5));
 // Mueve `amount` PILL al "bote" interno de la sala (off-chain, en memoria).
 function addToPot(room, amount) { if (amount > 0) room.pot = (room.pot || 0) + amount; }
 // Notifica al cliente su carry actual y el bote de la sala (para el HUD del juego).
@@ -894,11 +911,16 @@ const directorLocal = {
             if (p.name && !p.isTester) { pstatOf(p.name).muertes++; playersDirty = true; }
             const ds_ = statsOf(p.comboKey); ds_.muertes++; if (!p.isTester) ds_.muertesReal++; statsDirty = true;
             // Cashout classic al salir vivo en plena partida: carry menos exit fee.
-            if (p.mode === 'classic' && p.carry > 0 && p.state === 'playing' && p.payWallet) {
+            // `enGracia`: se fue en plena partida con dinero encima. No se liquida
+            // nada hasta que se cumpla el plazo de reconexion — si vuelve recupera su
+            // posicion, y si no, va a la tesoreria (ver graceExpired).
+            if (p.mode === 'classic' && p.carry > 0 && p.state === 'playing' && p.payWallet && !p.enGracia) {
                 const fee = Math.floor(p.carry * classicExitFeePct(p.kills) / 100);
                 const net = p.carry - fee;
                 if (net > 0) { warbank.credit(p.payWallet, net); logTx('cashout', p.payWallet, net, p.comboKey); }
-                log(`Cashout classic: ${p.payWallet.slice(0, 6)}… +${net} PILL (carry ${p.carry}, fee ${fee} descartado)`);
+                // El exit fee es ingreso del juego → pozo del staking.
+                if (fee > 0) rake.alStaking(fee, 'exit fee ' + p.comboKey);
+                log(`Cashout classic: ${p.payWallet.slice(0, 6)}… +${net} PILL (carry ${p.carry}, fee ${fee} al staking)`);
                 if (p.cid && p.kills >= 2) dailyquests.recordEvent(p.cid, 'classic_safe_exit', 1);
             }
         }
@@ -1030,6 +1052,19 @@ const econLocal = {
     },
     // Vuelca el pico de masa a stats/quests (misma lógica que la función global).
     peakMassFlush(room, pid, cli) { flushPeakMass(room, pid, cli); },
+    // Se acabo el plazo de reconexion y no volvio: lo que llevaba encima va a la
+    // tesoreria. No al bote de la sala — ese es de los que siguen jugando, y
+    // regalarles lo del que se cayo premiaria tener mala conexion enfrente.
+    graceExpired(econ) {
+        if (!econ || !(econ.carry > 0)) return;
+        rake.aTesoreria(econ.carry, 'entrada perdida por desconexion ' + (econ.comboKey || ''));
+        logTx('lost', econ.payWallet || '-', -econ.carry, 'no volvio a tiempo (' + (econ.comboKey || '') + ')');
+        log(`No volvio a tiempo: ${(econ.payWallet || '?').slice(0, 6)}… pierde ${econ.carry} PILL → tesoreria`);
+    },
+    // Ingresos del juego (exit fees) al pozo del staking.
+    rakeStaking(pill, motivo) { rake.alStaking(pill, motivo); },
+    // Lo que sale del bote de los jugadores (comision de arcade) a la tesoreria.
+    rakeTesoreria(pill, motivo) { rake.aTesoreria(pill, motivo); },
     // Recibo de la partida: se guarda y se ancla en la cadena por lotes. Es lo que
     // hace que el leaderboard no sea solo "lo que dice el servidor" — ver matches.js.
     matchEnded(datos) { try { matches.registra(datos); } catch (e) { log('Recibo de partida fallido: ' + e.message); } },
@@ -1142,6 +1177,9 @@ const econProxy = hostIpc && {
         hostIpc.notify('econ.peakMass', { name: cli && cli.name, isTester: !!(cli && cli.isTester), cid: (cli && cli.cid) || null, peak, wallet: (cli && cli.payWallet) || null });
     },
     matchEnded(datos) { hostIpc.notify('econ.matchEnded', datos); },
+    graceExpired(econ) { hostIpc.notify('econ.graceExpired', econ); },
+    rakeStaking(pill, motivo) { hostIpc.notify('econ.rakeStaking', { pill, motivo }); },
+    rakeTesoreria(pill, motivo) { hostIpc.notify('econ.rakeTesoreria', { pill, motivo }); },
     dailyEvent(cid, type, n) { if (cid) hostIpc.notify('econ.dailyEvent', { cid, type, n }); },
     questOnlineMatch(cid) { hostIpc.notify('econ.questOnlineMatch', { cid }); },
     questFinishArcade(cid) { hostIpc.notify('econ.questFinishArcade', { cid }); },
@@ -1170,6 +1208,9 @@ function registerHostHandlers(hostEntry) {
     ipc.handle('econ.botKill', (p) => econLocal.botKill(p.name, p.tester, p.wallet));
     ipc.handle('econ.peakMass', (p) => applyPeakMass(p.name, p.isTester, p.cid, p.peak, p.wallet));
     ipc.handle('econ.matchEnded', (p) => econLocal.matchEnded(p));
+    ipc.handle('econ.graceExpired', (p) => econLocal.graceExpired(p));
+    ipc.handle('econ.rakeStaking', (p) => econLocal.rakeStaking(p.pill, p.motivo));
+    ipc.handle('econ.rakeTesoreria', (p) => econLocal.rakeTesoreria(p.pill, p.motivo));
     ipc.handle('econ.dailyEvent', (p) => econLocal.dailyEvent(p.cid, p.type, p.n));
     ipc.handle('econ.questOnlineMatch', (p) => econLocal.questOnlineMatch(p.cid));
     ipc.handle('econ.questFinishArcade', (p) => econLocal.questFinishArcade(p.cid));
@@ -2159,6 +2200,9 @@ async function treasuryState() {
             };
         })(),
         premios: rewards.estado(),
+        // Lo que la casa lleva apuntado y todavia no ha barrido a su bolsa. Publico
+        // porque es dinero que salio del bote de los jugadores o de lo que gastaron.
+        rake: rake.estado(),
         leaderboard: { hoy: leaderboard.estadoHoy().date, cadena: leaderboard.cadena(30).length, check: leaderboard.verificarCadena() },
         partidas: { lotes: matches.cadena(1).length ? matches.cadena(1)[0].n + 1 : 0, pendientes: matches.pendientes(), check: matches.verificar(20) },
         generadoEn: new Date().toISOString(),
@@ -3858,7 +3902,7 @@ const tickCtx = {
     // funciones puras
     log, logAdmin, broadcast, restartRoom, startMatch, tickGradualBots,
     buildSnapshotFor, aoiBoxFor,
-    addToPot, sendEcon, entryFeePill, minRealOf, classicExitFeePct,
+    addToPot, sendEcon, entryFeePill, minRealOf, classicExitFeePct, ARCADE_RAKE_PCT,
     deleteRoom: (key) => rooms.delete(key),
     // constantes
     DEAD_REMOVE_MS, EMPTY_ROOM_TTL, EMPTY_RESET_MS, ARCADE_KEEP_MIN, ARCADE_SHORTEN_MS,

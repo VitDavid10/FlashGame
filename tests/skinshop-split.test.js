@@ -53,10 +53,13 @@ test('el redondeo va contra la tesoreria, nunca contra la quema', () => {
     assert.equal(r.quema, 1);
 });
 
-test('por defecto el split esta apagado', () => {
-    // Tiene que ser asi: sin el programa de tesoreria desplegado no hay a donde
-    // barrer, y encenderlo antes dejaria una deuda creciendo sin nadie que la salde.
-    assert.equal(TESORERIA_PCT, 0);
+test('por defecto NO se quema nada: todo va al pozo del staking', () => {
+    // Quemar destruye los tokens y punto; mandarlos al staking devuelve ese mismo
+    // dinero a la gente que sostiene el token.
+    assert.equal(TESORERIA_PCT, 100);
+    const r = repartoSalida(PRECIO_PILL, TESORERIA_PCT);
+    assert.equal(r.quema, 0);
+    assert.equal(r.tesoreria, PRECIO_PILL);
 });
 
 test('un porcentaje fuera de rango no rompe el invariante', () => {

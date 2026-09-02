@@ -284,6 +284,18 @@ function createGameHost(deps) {
             const r = tok ? rooms.get(tok.roomKey) : null;
             if (tok && r && r.sim.players.has(tok.playerId) && !r.clients.has(tok.playerId)) {
                 const playerId = tok.playerId;
+                /*
+                 * Vuelve dentro del plazo: recupera su posición económica entera.
+                 *
+                 * Antes esto no se hacía y era un fallo con dinero de por medio —
+                 * reconectabas vivo pero sin carry ni wallet asociada, así que lo que
+                 * llevabas encima desaparecía de la contabilidad aunque hubieras
+                 * vuelto. Ahora que la desconexión sin regreso manda ese dinero a la
+                 * tesorería, devolverlo al que sí vuelve deja de ser un detalle y pasa
+                 * a ser la mitad justa de la regla.
+                 */
+                const pend = r.pendingRemovals.get(playerId);
+                const econ = (pend && typeof pend === 'object') ? pend.econ : null;
                 r.pendingRemovals.delete(playerId);
                 const p = r.sim.players.get(playerId);
                 // Mismo opt-in binario que un join normal: sin esto, un jugador que
@@ -293,10 +305,20 @@ function createGameHost(deps) {
                 const binV = msg.bin === true ? 1 : Math.max(0, Math.min(2, msg.bin | 0));
                 const useBin = binV >= 1;
                 const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
-                r.clients.set(playerId, { ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume, opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop }, useBin, binV, aspect });
+                r.clients.set(playerId, {
+                    ws, ip, name: p.name, joinedAt: Date.now(), token: msg.resume,
+                    opts: { name: p.name, colorBot: p.colorBot, colorTop: p.colorTop },
+                    useBin, binV, aspect,
+                    carry: econ ? econ.carry : 0,
+                    payWallet: econ ? econ.payWallet : null,
+                    paidFee: econ ? econ.paidFee : 0,
+                    cid: econ ? econ.cid : null,
+                    isTester: econ ? econ.isTester : false,
+                });
                 ws.send(welcomeMsg(r, playerId, msg.resume, undefined, useBin ? { useBin: true, binV } : null));
+                if (econ && econ.carry > 0) sendEcon(r.clients.get(playerId), r);
                 refillBots(r);
-                log(`Jugador '${p.name}' RECONECTADO a ${r.key}${useBin ? ' [bin' + binV + ']' : ''}`);
+                log(`Jugador '${p.name}' RECONECTADO a ${r.key}${useBin ? ' [bin' + binV + ']' : ''}${econ && econ.carry > 0 ? ' (recupera ' + econ.carry + ' PILL)' : ''}`);
                 return { room: r, playerId };
             }
             ws.send(JSON.stringify({ t: 'resumeFail' }));
@@ -398,15 +420,39 @@ function createGameHost(deps) {
             const wasAlive = !!(pj && pj.alive);
             const kills = pj ? (pj.killStreak | 0) : 0;
             const peak = (pj && pj.peakMass) ? Math.floor(pj.peakMass) : 0;
-            // Frontera de deltas de la SALIDA: datos planos → misma llamada local o IPC.
+            /*
+             * SALIDA EN PLENA PARTIDA: el dinero NO se liquida aquí, se queda en
+             * gracia hasta que se cumpla el plazo de reconexión.
+             *
+             * Antes el cashout de classic era inmediato: te caía la conexión y
+             * cobrabas al instante con su comisión. Eso hacía que desconectarse fuera
+             * una salida sin riesgo — la mejor jugada posible con el carry alto. Ahora
+             * la desconexión tiene consecuencia: si vuelves dentro del plazo recuperas
+             * tu posición entera, y si no vuelves, lo que llevabas encima va a la
+             * tesorería (ver graceExpired en room-loop).
+             *
+             * Para que eso sea justo hay que devolverle su carry al reconectar, que es
+             * algo que antes NO se hacía: volvías vivo pero sin dinero ni wallet
+             * asociada. Por eso la posición económica viaja aquí dentro.
+             */
+            const enGracia = room.state === 'playing' && (cli.carry | 0) > 0 && !!cli.payWallet;
             director.onPlayerLeave({
                 mode: room.mode, comboKey: room.comboKey, state: room.state,
                 name: cli.name || '', isTester: !!cli.isTester, carry: cli.carry | 0,
                 payWallet: cli.payWallet || null, paidFee: cli.paidFee | 0,
-                cid: cli.cid || null, peak, wasAlive, kills,
+                cid: cli.cid || null, peak, wasAlive, kills, enGracia,
             });
             room.clients.delete(playerId);
-            if (!room.pendingRemovals.has(playerId)) room.pendingRemovals.set(playerId, Date.now() + RESUME_GRACE_MS);
+            if (!room.pendingRemovals.has(playerId)) {
+                room.pendingRemovals.set(playerId, {
+                    deadline: Date.now() + RESUME_GRACE_MS,
+                    econ: enGracia ? {
+                        carry: cli.carry | 0, payWallet: cli.payWallet, paidFee: cli.paidFee | 0,
+                        cid: cli.cid || null, isTester: !!cli.isTester,
+                        comboKey: room.comboKey, mode: room.mode,
+                    } : null,
+                });
+            }
             log(`Jugador ${playerId} desconectado de ${room.key} — quedan ${room.clients.size}`);
             if (room.state === 'waiting') { sendWaiting(room); armLobby(room); }   // cancela la cuenta atrás si baja del mínimo
             refillBots(room);   // un bot cubre el hueco (y se retira si el jugador reconecta)

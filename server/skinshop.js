@@ -12,12 +12,12 @@
  * 250 SP o 25.000 $PILL por skin, y el cambio 1000 $PILL -> 10 SP sale del mismo
  * ratio (100 $PILL por SP), no de una segunda constante.
  *
- * QUEMA Y STAKING. El $PILL gastado aqui —comprando o cambiando a SP— no vuelve a
- * ninguna cartera de la que se pudiera sacar despues. Por defecto se quema entero:
- * baja el supply del mint y se comprueba en el explorador. Con PILL_TREASURY_PCT se
- * puede desviar una parte al POZO DEL STAKING, que reparte los ingresos corrientes
- * del juego entre quien inmoviliza $PILL (ver TESORERIA-PLAN.md). Los premios del top
- * 10 no salen de aqui: esos vienen del principal bloqueado en la tesoreria.
+ * A DONDE VA LO GASTADO. Al POZO DEL STAKING, que lo reparte entre quien inmoviliza
+ * $PILL. No se quema: quemar destruye los tokens y ya esta, mientras que mandarlos al
+ * staking devuelve ese mismo dinero a la gente que sostiene el token. Con
+ * PILL_TREASURY_PCT se puede volver a quemar una parte, pero por defecto no se quema
+ * nada. Los premios del top 10 no salen de aqui: esos vienen del principal bloqueado
+ * en la tesoreria (ver TESORERIA-PLAN.md).
  *
  * Como las dos son transacciones on-chain (lentas y con gas), NO se hacen dentro de
  * la peticion del jugador: se apuntan en una cola y un temporizador la vacia. Asi
@@ -177,7 +177,18 @@ function convertir({ cid, wallet, pill, nonce }) {
  * skins, cambiar precios o montar un pase de temporada sin tocarlo, que es lo que
  * permite dejarlo finalizado y con la upgrade authority revocada.
  */
-const TESORERIA_PCT = Math.max(0, Math.min(100, parseInt(process.env.PILL_TREASURY_PCT, 10) || 0));
+/*
+ * Cuanto de lo gastado en la tienda va al POZO DEL STAKING. El resto se quema.
+ *
+ * Por defecto 100: NO SE QUEMA NADA. La quema destruye tokens y punto; mandarlos al
+ * staking los devuelve a la gente que sostiene el token, que es mejor uso del mismo
+ * dinero. La instruccion de quema sigue en el contrato por si alguna vez interesa,
+ * pero el flujo normal no la toca.
+ */
+const TESORERIA_PCT = (() => {
+    const v = parseInt(process.env.PILL_TREASURY_PCT, 10);
+    return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 100;
+})();
 
 /*
  * El reparto, aislado y sin estado, para poder comprobar la invariante que importa:
