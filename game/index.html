@@ -10566,10 +10566,11 @@
 
     // El reloj va centrado arriba y la fila de chips (ROOM/MASS/ALIVE/CARRY)
     // crece desde la izquierda: en ventanas estrechas se le metian debajo. Se
-    // van apagando chips hasta que la fila deja el reloj libre. MASS NO esta en
-    // la lista, asi que es el ultimo que queda en pie — antes el superviviente
-    // era ROOM, que dice bastante menos que tu propia masa.
-    const HUD_ORDEN_QUITAR = ['hudRoom', 'hudAlive', 'waitHud', 'econHud'];
+    // van apagando chips hasta que la fila deja el reloj libre.
+    // MASS y ALIVE NO estan en la lista: son los dos que se quedan pase lo que
+    // pase (cuanta gente sigue viva importa tanto como tu masa). El primero en
+    // caer es ROOM, que dice bastante menos que cualquiera de los dos.
+    const HUD_ORDEN_QUITAR = ['hudRoom', 'waitHud', 'econHud'];
     function ajustaHudResponsive() {
         const ui = document.getElementById('ui'), reloj = document.getElementById('timerDisplay');
         if (!ui || ui.style.display === 'none') return;
@@ -10586,6 +10587,24 @@
     // (CARRY al ganar dinero, NEXT MATCH entre partidas) y hay que reevaluar,
     // pero son cuatro getBoundingClientRect y no urge al milisegundo.
     setInterval(() => { if (gameRunning) ajustaHudResponsive(); }, 700);
+    /*
+     * Ademas del intervalo, un ajuste INMEDIATO cada vez que el HUD se enseña.
+     * El intervalo tarda hasta 700ms en la primera pasada, asi que al entrar en
+     * partida (sobre todo desde el PLAY NOW del hero) salian los tres chips
+     * juntos y se apagaban solos un momento despues — parecia un parpadeo.
+     * Se envuelve el display del contenedor: cualquier sitio que lo enseñe pasa
+     * por aqui sin tener que acordarse de llamar.
+     */
+    (function ajustaAlMostrarHud() {
+        const ui = document.getElementById('ui');
+        if (!ui) return;
+        let visible = false;
+        new MutationObserver(() => {
+            const ahora = ui.style.display && ui.style.display !== 'none';
+            if (ahora && !visible) ajustaHudResponsive();
+            visible = ahora;
+        }).observe(ui, { attributes: true, attributeFilter: ['style'] });
+    })();
     addEventListener('resize', ajustaHudResponsive);
     function showBotsBanner() {
         const b = document.getElementById('botsBanner');
