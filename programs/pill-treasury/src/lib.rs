@@ -39,6 +39,8 @@
  *   4. El flujo custody -> treasury es unidireccional. No hay treasury -> custody.
  *   5. Cada ganador cobra una vez por ronda (el recibo es un PDA: si existe, falla).
  *   6. Ninguna ronda puede reservar mas de lo que el grifo permite por epoca.
+ *   7. Las salidas de custodia que no van al jugador (sweep y burn) van capadas por
+ *      epoca, y withdraw no puede apuntar ni a la tesoreria ni a la propia custodia.
  *
  * LO QUE NO GARANTIZA — y hay que decirlo:
  *   - Si el programa queda UPGRADEABLE, todo lo anterior vale cero: con la upgrade
@@ -205,6 +207,15 @@ pub mod pill_treasury {
             ctx.accounts.to.key(),
             ctx.accounts.treasury.key(),
             TreasuryError::DestinationIsTreasury
+        );
+        // Ni la propia custodia. Un custody -> custody no mueve un token, pero sumaria
+        // igual a total_withdrawn, y ese contador es de los que la gente mira para
+        // saber cuanto ha salido de verdad. Un contador que se puede inflar gratis no
+        // sirve como dato publico.
+        require_keys_neq!(
+            ctx.accounts.to.key(),
+            ctx.accounts.custody.key(),
+            TreasuryError::DestinationIsCustody
         );
         let bump = ctx.accounts.config.custody_bump;
         let seeds: &[&[u8]] = &[CUSTODY_SEED, &[bump]];
@@ -490,7 +501,8 @@ pub mod pill_treasury {
     pub fn expire_round(ctx: Context<ExpireRound>) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let round = &mut ctx.accounts.round;
-        require!(!round.expired && !round.cancelled, TreasuryError::RoundExpired);
+        require!(!round.cancelled, TreasuryError::RoundCancelled);
+        require!(!round.expired, TreasuryError::RoundExpired);
         let limite = round
             .claimable_at
             .checked_add(CLAIM_WINDOW_SECS)
@@ -1193,6 +1205,8 @@ pub enum TreasuryError {
     NotPendingAuthority,
     #[msg("El destino de un retiro de custodia no puede ser la tesoreria")]
     DestinationIsTreasury,
+    #[msg("El destino de un retiro de custodia no puede ser la propia custodia")]
+    DestinationIsCustody,
     #[msg("Desbordamiento aritmetico")]
     MathOverflow,
 }
