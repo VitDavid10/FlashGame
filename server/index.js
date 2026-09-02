@@ -913,7 +913,7 @@ const directorLocal = {
             // Cashout classic al salir vivo en plena partida: carry menos exit fee.
             // `enGracia`: se fue en plena partida con dinero encima. No se liquida
             // nada hasta que se cumpla el plazo de reconexion — si vuelve recupera su
-            // posicion, y si no, va a la tesoreria (ver graceExpired).
+            // posicion, y si no, va al pozo del staking (ver graceExpired).
             if (p.mode === 'classic' && p.carry > 0 && p.state === 'playing' && p.payWallet && !p.enGracia) {
                 const fee = Math.floor(p.carry * classicExitFeePct(p.kills) / 100);
                 const net = p.carry - fee;
@@ -1052,18 +1052,20 @@ const econLocal = {
     },
     // Vuelca el pico de masa a stats/quests (misma lógica que la función global).
     peakMassFlush(room, pid, cli) { flushPeakMass(room, pid, cli); },
-    // Se acabo el plazo de reconexion y no volvio: lo que llevaba encima va a la
-    // tesoreria. No al bote de la sala — ese es de los que siguen jugando, y
+    // Se acabo el plazo de reconexion y no volvio: lo que llevaba encima va al pozo
+    // del staking. No al bote de la sala — ese es de los que siguen jugando, y
     // regalarles lo del que se cayo premiaria tener mala conexion enfrente.
     graceExpired(econ) {
         if (!econ || !(econ.carry > 0)) return;
-        rake.aTesoreria(econ.carry, 'entrada perdida por desconexion ' + (econ.comboKey || ''));
+        rake.alStaking(econ.carry, 'entrada perdida por desconexion ' + (econ.comboKey || ''));
         logTx('lost', econ.payWallet || '-', -econ.carry, 'no volvio a tiempo (' + (econ.comboKey || '') + ')');
-        log(`No volvio a tiempo: ${(econ.payWallet || '?').slice(0, 6)}… pierde ${econ.carry} PILL → tesoreria`);
+        log(`No volvio a tiempo: ${(econ.payWallet || '?').slice(0, 6)}… pierde ${econ.carry} PILL → staking`);
     },
-    // Ingresos del juego (exit fees) al pozo del staking.
+    // Todo lo que el juego recauda — exit fees, comision del bote de arcade, partes
+    // del bote que nadie reclama — va al pozo del staking.
     rakeStaking(pill, motivo) { rake.alStaking(pill, motivo); },
-    // Lo que sale del bote de los jugadores (comision de arcade) a la tesoreria.
+    // Queda la via a la tesoreria, pero hoy no la usa nadie: la tesoreria solo se
+    // llena con fund(), o sea con los tokens de la compra inicial.
     rakeTesoreria(pill, motivo) { rake.aTesoreria(pill, motivo); },
     // Recibo de la partida: se guarda y se ancla en la cadena por lotes. Es lo que
     // hace que el leaderboard no sea solo "lo que dice el servidor" — ver matches.js.

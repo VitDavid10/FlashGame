@@ -3757,6 +3757,23 @@
         </div>
     </div>
 
+    <!-- Entrar a una classic con el reloj casi a cero.
+         La comision de salida se cobra sobre lo que lleves encima cuando suena el
+         timer, y entrando tarde casi no da tiempo a hacer kills — o sea que se paga
+         el tramo mas alto (50 %) sobre la propia entrada. No se prohibe entrar: se
+         dice antes de firmar, que es cuando todavia se puede decidir. Mismo cartel
+         gris con titulo blanco que ROOM INFO. -->
+    <div id="lateJoinModal" class="pw-modal">
+        <div class="pw-modal-box room-info">
+            <div class="pw-modal-title">HEADS UP</div>
+            <div id="ljBody"></div>
+            <div class="ri-actions solo">
+                <button class="pw-big-btn room" id="ljOk" onclick="confirmLateJoin()" onmouseenter="SoundManager.playSimpleHover()">OK</button>
+            </div>
+            <button class="pw-modal-cancel" onclick="closeLateJoin()">CANCEL</button>
+        </div>
+    </div>
+
     <!-- SETTINGS: calidad grafica, tema de mapa y texture pack (antes en el menu) -->
     <div id="settingsModal" class="pw-modal">
         <div class="pw-modal-box settings-box">
@@ -8378,6 +8395,24 @@
             } else {
                 html += `<div class="ri-note">This room locked its entry at ${fee.toLocaleString('en-US')} $PILL.${cuando}</div>`;
             }
+            /*
+             * La comisión de salida, dicha ANTES de firmar. Es lo que separa "me han
+             * cobrado algo raro al final" de "ya lo sabía": el jugador solo ve el fee
+             * cuando la partida acaba y le llega el cashout, y para entonces ya no
+             * puede decidir nada.
+             *
+             * Solo en classic: en arcade no hay carry que llevarse — el bote se reparte
+             * entre el top 10 y no hay comisión de salida ninguna.
+             */
+            if (r.mode === 'classic') {
+                html += `<div class="ri-line"><span>EXIT FEE</span><b class="ri-fee">50% / 20% / 10%</b></div>`;
+                html += `<div class="ri-note">When the match timer ends — or if you leave early — you cash out
+                    automatically and a fee is taken from whatever you are carrying:
+                    <b>50%</b> with no kills, <b>20%</b> with one kill, <b>10%</b> with two or more.
+                    Win the room (5 kills) and you keep <b>everything</b>, no fee.<br><br>
+                    If you disconnect and do not come back within the reconnect window, you lose what you
+                    were carrying.</div>`;
+            }
         }
         document.getElementById('riBody').innerHTML = html;
 
@@ -8409,7 +8444,42 @@
     // NO cierra el popup: la firma tarda (Phantom abre su ventana) y el jugador
     // tiene que seguir viendo el precio que esta aceptando. Lo cierra
     // startOnlineGame cuando la firma ya esta hecha, o showSystemMsg si falla.
-    function confirmRoomInfo() { startOnlineGame(); }
+    /*
+     * Umbral del aviso de entrada tardía, en segundos. Con menos que esto en el reloj
+     * casi no da tiempo a hacer una kill, así que la comisión de salida cae en el
+     * tramo del 50 % sobre la propia entrada.
+     */
+    const AVISO_ENTRADA_TARDE_S = 120;
+
+    function confirmRoomInfo() {
+        const r = _riRoomData();
+        const tarde = r && r.state === 'playing' && r.priceUsd > 0 && r.mode === 'classic'
+            && Number(r.endsIn) > 0 && Number(r.endsIn) <= AVISO_ENTRADA_TARDE_S * 1000;
+        if (!tarde) { startOnlineGame(); return; }
+
+        const seg = Math.max(1, Math.round(Number(r.endsIn) / 1000));
+        const fee = Number(r.pillFee) || 0;
+        document.getElementById('ljBody').innerHTML =
+            `<div class="ri-head">ONLY ${seg}s LEFT</div>`
+            + `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">${fee.toLocaleString('en-US')} $PILL</b></div>`
+            + `<div class="ri-line"><span>EXIT FEE NOW</span><b class="ri-fee">50%</b></div>`
+            + `<div class="ri-note">This match ends in <b>${seg} seconds</b>. When the timer runs out you cash out
+                automatically and an <b>exit fee</b> is taken from whatever you are carrying:
+                <b>50%</b> with no kills, <b>20%</b> with one, <b>10%</b> with two or more.<br><br>
+                Joining now leaves you almost no time to get a kill, so you would most likely pay the
+                <b>50%</b> tier on your own entry. You can still join — just know what it costs.</div>`;
+        document.getElementById('roomInfoModal').style.display = 'none';
+        document.getElementById('lateJoinModal').style.display = 'flex';
+    }
+    function closeLateJoin() {
+        document.getElementById('lateJoinModal').style.display = 'none';
+        try { SoundManager.play('simpleselect'); } catch (e) {}
+    }
+    // OK: se quita el cartel y arranca el cobro (la wallet pide firmar acto seguido).
+    function confirmLateJoin() {
+        document.getElementById('lateJoinModal').style.display = 'none';
+        startOnlineGame();
+    }
     // Cartel de nombre (movil): mismo marco/campo/boton que #hero-name-modal.
     let _pendingNameKind = null;
     function openNameChoice(kind) {

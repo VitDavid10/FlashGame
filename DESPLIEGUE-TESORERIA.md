@@ -196,8 +196,18 @@ npm run treasury:sim                # proyección con los datos REALES del log
 
 El simulador lee `server/transactions.log` y saca el rake **medido**, no estimado:
 entradas cobradas menos premios, cashouts y reembolsos. Lo que queda es lo que el
-exit fee de classic y el bote no reclamado de arcade dejan en la casa, tal y como
-ocurrió. Ese número, y no una hipótesis, es el que decide los caps.
+exit fee, la comisión de arcade, el bote no reclamado y las entradas perdidas dejan
+en la casa, tal y como ocurrió.
+
+Ojo con qué decide ese número: **ese rake va íntegro al pozo del staking**, así que
+lo que estima es el rendimiento que van a ver los stakers, no los premios. Los caps
+de la tesorería salen de otro sitio — del saldo que deje `fund()` dividido por los
+años de recorrido que quieras darle:
+
+    cap por época  ≤  saldo de tesorería / (365 × años)
+
+Un cap por encima de eso vacía la tesorería antes de que venza el bloqueo, y
+entonces el candado no protege nada porque ya no queda nada dentro.
 
 ```bash
 # En el VPS, sobre el log de producción

@@ -132,11 +132,30 @@ Hay dos tipos de dinero entrando y no tiene sentido mezclarlos:
 
 ```
 ingresos corrientes del juego     →  STAKING      quien inmoviliza $PILL
-(rake de partidas + tienda)
+(todo lo que recauda la casa)
 
 principal de la compra inicial    →  TESORERÍA    premios del top 10 diario
 (fund, bloqueado años)
 ```
+
+**Todo lo que entra en el pozo del staking**, sin excepciones — son los cinco
+únicos sitios del código que llaman a `rake.alStaking()`:
+
+| Concepto | Cuánto | Dónde se genera |
+|---|---|---|
+| Exit fee de classic al acabar el tiempo de sala | 50 % sin kills / 20 % con una / 10 % con dos o más; 0 % si ganas la sala | `room-loop.js` |
+| Exit fee de classic al salirse en plena partida | igual | `index.js` (`onPlayerLeave`) |
+| Comisión del bote de arcade | `ARCADE_RAKE_PCT`, 5 % por defecto, tope duro 50 % | `room-loop.js` |
+| Partes del bote de arcade que nadie reclama | lo que quede del top 10 sin wallet detrás | `room-loop.js` |
+| Entrada del que se desconecta y no vuelve a tiempo | lo que llevara encima | `index.js` (`graceExpired`) |
+| Tienda de skins y conversor de SP | 100 % (`SKINSHOP_TREASURY_PCT`) | `skinshop.js` |
+
+**No se quema nada.** Lo que antes se destruía en la tienda ahora va a este mismo
+pozo: destruir tokens no le devuelve dinero a nadie, y este sí.
+
+**En la tesorería solo entra `fund()`** — los tokens de la compra inicial. Ni un
+PILL de los jugadores acaba ahí. Es lo que hace que el bloqueo de años no sea un
+problema: la tesorería no necesita liquidez porque no debe nada a nadie.
 
 Si se mezclaran pasaría una de dos cosas malas: o el rendimiento del staking se come
 el principal bloqueado, o los premios del leaderboard dependen de que el juego
@@ -378,9 +397,10 @@ temporada o un mercado de reventa — **cero cambios en el contrato**, que puede
 estar finalizado y con la upgrade authority revocada. Todo el catálogo vive en
 `skinshop.js`, donde ya está.
 
-Misma historia con el rake de partidas: el exit fee de classic y las partes no
-reclamadas del bote de arcade dejan de "desaparecer" y pasan a contabilizarse
-como ingreso de tesorería, saldado con un `sweep` diario.
+Misma historia con el rake de partidas: el exit fee de classic, la comisión del
+bote de arcade, las partes no reclamadas de ese bote y la entrada del que se
+desconecta y no vuelve dejan de "desaparecer" y pasan a contabilizarse. Todo eso
+va al **pozo del staking** (`fund_stake_rewards`), no a la tesorería — ver §5.5.
 
 ### 5.4 Premios del top 10 diario
 

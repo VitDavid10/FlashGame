@@ -175,11 +175,9 @@ function tickRoomOnce(room, now, ctx) {
             potFinal = totalPot;
             /*
              * COMISION DE LA CASA sobre el bote de arcade. Se aparta ANTES de repartir
-             * y va a la tesorería bloqueada, que es la que paga los premios del top 10
-             * diario — no al pozo del staking. La lógica: lo que sale del bote de los
-             * jugadores vuelve a los jugadores, solo que por otra puerta y a otro
-             * ritmo. Los ingresos del juego (exit fees, tienda) son los que van al
-             * staking.
+             * y va al POZO DEL STAKING, como todo lo que factura el juego. La tesorería
+             * bloqueada no recibe nada de aquí: esa solo tiene los tokens de la compra
+             * inicial, y con ellos paga los premios del top 10 diario.
              *
              * Los pesos siguen sumando 100, pero sobre el bote YA descontada la
              * comisión: así el reparto entre los diez no cambia de forma y solo baja
@@ -187,13 +185,14 @@ function tickRoomOnce(room, now, ctx) {
              */
             const comision = Math.floor(totalPot * ctx.ARCADE_RAKE_PCT / 100);
             const repartible = totalPot - comision;
-            if (comision > 0) ctx.econ.rakeTesoreria(comision, 'comision arcade ' + room.key);
+            let repartido = 0;
+            if (comision > 0) ctx.econ.rakeStaking(comision, 'comision arcade ' + room.key);
             const top = [];
             for (let i = 0; i < Math.min(10, ranking.length); i++) {
                 const pj = ranking[i];
                 const cli = room.clients.get(pj.id);
                 const parte = Math.floor(repartible * PESOS[i] / 100);
-                if (cli && cli.payWallet && parte > 0) ctx.econ.credit(cli.payWallet, parte);
+                if (cli && cli.payWallet && parte > 0) { ctx.econ.credit(cli.payWallet, parte); repartido += parte; }
                 // Daily: terminar top 5 en arcade
                 if (cli && cli.cid && (i + 1) <= 5) ctx.econ.dailyEvent(cli.cid, 'arcade_top5', 1);
                 top.push({ pos: i + 1, name: pj.name, mass: pj.peakMass | 0, pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
@@ -206,7 +205,15 @@ function tickRoomOnce(room, now, ctx) {
                 const myCopy = top.map((t, i) => Object.assign({}, t, { mine: i === idx }));
                 try { cli.ws.send(JSON.stringify(Object.assign({}, payoutMsg, { top: myCopy, myAmount: idx >= 0 ? top[idx].amount : 0 }))); } catch (e) {}
             }
-            ctx.log(`Reparto arcade ${room.key}: bote ${totalPot} (comisión ${comision} → tesorería) → ${top.filter(t => t.paid).map(t => `#${t.pos}=${t.amount}`).join(' ') || '(sin ganadores con wallet)'}`);
+            /*
+             * Lo que no se ha llegado a repartir también va al staking: puestos vacíos
+             * cuando hay menos de diez en el ranking, partes de ganadores sin wallet
+             * conectada, y la calderilla del redondeo. Antes se quedaba en custodia sin
+             * que nadie apuntara de quién era — un rake accidental e invisible.
+             */
+            const sinRepartir = repartible - repartido;
+            if (sinRepartir > 0) ctx.econ.rakeStaking(sinRepartir, 'bote no reclamado ' + room.key);
+            ctx.log(`Reparto arcade ${room.key}: bote ${totalPot} (comisión ${comision}${sinRepartir > 0 ? ' + ' + sinRepartir + ' sin reclamar' : ''} → staking) → ${top.filter(t => t.paid).map(t => `#${t.pos}=${t.amount}`).join(' ') || '(sin ganadores con wallet)'}`);
             room.pot = 0;
         }
         /*

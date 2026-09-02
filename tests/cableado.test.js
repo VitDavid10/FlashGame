@@ -101,3 +101,59 @@ test('ningun endpoint de tesoreria pide la clave de admin', () => {
     const trozo = INDEX.slice(INDEX.indexOf("urlPath === '/api/treasury'") - 4000, INDEX.indexOf("urlPath === '/api/treasury'") + 500);
     assert.ok(!/ADMIN_KEY/.test(trozo), 'algun endpoint publico de tesoreria esta detras de la clave de admin');
 });
+
+/* ── A que bolsa va cada euro ──────────────────────────────────────────────────
+ *
+ * Hay dos bolsas y NO son intercambiables:
+ *
+ *   staking   — todo lo que recauda el juego. Vuelve a quien inmoviliza $PILL.
+ *   tesoreria — solo fund(), o sea los tokens de la compra inicial. Paga el top 10.
+ *
+ * Cambiar un `rakeStaking` por un `rakeTesoreria` no rompe nada, no da ningun
+ * error y no lo nota nadie: simplemente ese dinero deja de llegar a los stakers.
+ * Por eso se fija aqui.
+ */
+
+test('la comision del bote de arcade va al staking', () => {
+    const cuerpo = cuerpoDe(ROOM_LOOP, 'const comision = Math.floor(totalPot');
+    assert.match(cuerpo, /rakeStaking\(comision/, 'la comision de arcade no va al pozo del staking');
+    assert.ok(!/rakeTesoreria\(comision/.test(cuerpo), 'la comision de arcade esta yendo a la tesoreria');
+});
+
+test('las partes del bote que nadie reclama van al staking', () => {
+    // Un bote de 35 jugadores con 4 wallets en el top 10 deja el resto sin dueño.
+    const cuerpo = cuerpoDe(ROOM_LOOP, 'const sinRepartir = repartible - repartido');
+    assert.match(cuerpo, /rakeStaking\(sinRepartir/, 'lo no reclamado del bote no va al staking');
+});
+
+test('el bote repartido es el bote menos la comision', () => {
+    // Si el reparto se calculase sobre `totalPot` se prometeria mas de lo que queda
+    // en la sala y el ultimo del top 10 cobraria de menos o nada.
+    assert.match(ROOM_LOOP, /const repartible = totalPot - comision;/, 'el reparto no descuenta la comision');
+    assert.ok(!/repartible \* PESOS\[i\] \/ 100[\s\S]{0,80}totalPot \* PESOS/.test(ROOM_LOOP));
+    assert.match(ROOM_LOOP, /Math\.floor\(repartible \* PESOS\[i\]/, 'el reparto no se calcula sobre el bote repartible');
+});
+
+test('el exit fee de classic va al staking, tanto en sala como al desconectar', () => {
+    assert.match(ROOM_LOOP, /rakeStaking\(fee, 'exit fee /, 'el exit fee de la sala no va al staking');
+    assert.match(INDEX, /rake\.alStaking\(fee, 'exit fee /, 'el exit fee del cashout no va al staking');
+});
+
+test('la entrada del que no vuelve a tiempo va al staking', () => {
+    const cuerpo = cuerpoDe(INDEX, 'graceExpired(econ) {\n        if (!econ');
+    assert.match(cuerpo, /rake\.alStaking\(econ\.carry/, 'lo que llevaba el desconectado no va al staking');
+    assert.ok(!/addToPot|bote/.test(cuerpo.split('\n')[2] || ''), 'no debe volver al bote de la sala');
+});
+
+test('la comision de arcade tiene un tope duro', () => {
+    // Es el unico porcentaje que sale del bolsillo de los jugadores, y viene de una
+    // variable de entorno. Sin tope, un ARCADE_RAKE_PCT=95 mal escrito se queda casi
+    // con el bote entero y el reparto sigue "funcionando".
+    assert.match(
+        INDEX,
+        /ARCADE_RAKE_PCT = Math\.max\(0, Math\.min\(50, parseFloat\(process\.env\.ARCADE_RAKE_PCT\) \|\| 5\)\)/,
+        'ARCADE_RAKE_PCT no esta acotado entre 0 y 50'
+    );
+    assert.match(ROOM_LOOP, /ctx\.ARCADE_RAKE_PCT/, 'room-loop no lee el porcentaje del contexto');
+    assert.match(INDEX, /addToPot, sendEcon[\s\S]{0,200}ARCADE_RAKE_PCT/, 'ARCADE_RAKE_PCT no se pasa al contexto de la sala');
+});
