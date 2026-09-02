@@ -60,11 +60,11 @@ use anchor_lang::solana_program::hash;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-/// PLACEHOLDER. Es una direccion valida pero nadie tiene su clave, asi que no se
-/// puede desplegar ahi: hay que sustituirla por la del keypair real antes de
-/// `anchor build` (`node scripts/grind-program-id.js PiLL` la genera, y
-/// `anchor keys sync` la escribe aqui y en Anchor.toml). Ver DESPLIEGUE-TESORERIA.md.
-declare_id!("PiLLTreas1111111111111111111111111111111111");
+/// Direccion del programa. La clave que la controla vive en
+/// programs/pill-treasury-keypair.json, FUERA de git (esta en .gitignore): si se
+/// filtra, otro puede desplegar aqui antes que tu; si se pierde, esta direccion no
+/// se puede volver a usar nunca. Guardala fuera del equipo antes de desplegar.
+declare_id!("PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW");
 
 pub const CONFIG_SEED: &[u8] = b"config";
 pub const CUSTODY_SEED: &[u8] = b"custody";

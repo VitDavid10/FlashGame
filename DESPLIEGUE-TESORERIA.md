@@ -43,14 +43,19 @@ está en `.gitignore` por algo:
 node scripts/grind-program-id.js PiLL
 ```
 
-Busca una dirección que empiece por `PiLL`. Con 8 núcleos tarda unos 20 minutos
-(son ~11 millones de intentos). Un prefijo de 3 letras sale en medio minuto.
+Ya está hecho: la dirección es **`PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW`** y su
+clave está en `programs/pill-treasury-keypair.json`, fuera de git. Tardó 5 h y 27 min
+y 97 millones de intentos con 8 núcleos — la media teórica era de 11 millones, así que
+fue mala suerte. **Guarda esa clave fuera de este equipo antes de desplegar.**
+
+Para volver a generarla (otro prefijo, o si se pierde y da igual la dirección): el
+mismo comando. Un prefijo de 3 letras sale en medio minuto.
 
 No es seguridad de verdad, pero una dirección reconocible hace que colar un
 contrato falso con otra dirección tenga que explicarse.
 
-Después, el `declare_id!` de `programs/pill-treasury/src/lib.rs` y las dos entradas
-de `Anchor.toml` tienen que llevar esa dirección.
+El `declare_id!` de `programs/pill-treasury/src/lib.rs` y las dos entradas de
+`Anchor.toml` ya la llevan.
 
 ```bash
 solana address -k programs/pill-treasury-keypair.json
@@ -78,7 +83,7 @@ keypair no son el mismo. `anchor keys sync` lo arregla.
 Crea la config y los dos vaults. **Una sola vez en la vida del programa.**
 
 ```bash
-export TREASURY_PROGRAM=<la dirección>
+export TREASURY_PROGRAM=PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW
 export PILL_MINT=<el mint de $PILL>
 export SOL_RPC=https://api.devnet.solana.com
 
@@ -109,7 +114,7 @@ npm run treasury -- status
 En el VPS, a `pillwars.service`:
 
 ```ini
-Environment=TREASURY_PROGRAM=<la dirección>
+Environment=TREASURY_PROGRAM=PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW
 Environment=PILL_TREASURY_PCT=50      # mitad de la tienda a tesorería, mitad se quema
 Environment=REWARDS_TICK_MIN=20
 Environment=LB_MIN_KILLS=3
@@ -203,7 +208,7 @@ npm run treasury -- extend-lock --years 4
 npm run treasury -- finalize
 
 # 4. Y lo que de verdad importa: revocar la upgrade authority
-solana program set-upgrade-authority <TREASURY_PROGRAM> --final
+solana program set-upgrade-authority PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW --final
 ```
 
 Los tres primeros piden escribir a mano lo que va a pasar. No hay deshacer.
