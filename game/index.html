@@ -966,28 +966,26 @@
                solo en partida (startGame los pone a 'flex' y returnToMenu a
                'none'); flex-direction y gap se quedan porque describen COMO se
                ven cuando el JS los saca, no CUANDO. */
-            /* top 10% (antes 17): el cuadro de MASS colgaba a media altura en
-               vez de pegado al borde de arriba. Ojo, con el rotate el `top` fija
-               el CENTRO del cuadro, no su filo: el numero crece hacia los dos
-               lados, asi que el 10% esta calculado para que ni con una masa de
-               7 cifras (el caso mas ancho) se salga por arriba. */
+            /*
+             * El cuadro de MASS, clavado a la esquina ARRIBA-IZQUIERDA de la
+             * vista del jugador y a los mismos 12px que los iconos.
+             *
+             * La clave es el transform-origin. Con `center` (lo de antes) el
+             * cuadro rota sobre su punto medio, asi que al crecer el numero
+             * crece hacia LOS DOS LADOS: con 4 cifras dejaba un hueco negro a
+             * la izquierda y con 9 se pegaba al filo. Rotando sobre la esquina
+             * (0 0), el borde de arriba del resultado ya no depende de lo ancho
+             * que sea el texto, y el translate del 100% (en vez del 50%)
+             * recoloca el eje que la rotacion desplaza.
+             * Girado el telefono: el borde derecho fisico se ve ARRIBA y el
+             * superior fisico se ve a la IZQUIERDA, de ahi top+right.
+             * Medido con masas de 1, 4 y 9 cifras: los dos margenes se quedan
+             * en 12 y no se mueven.
+             */
             html:not([data-hero]) body.mobile-allowed #ui {
-                /*
-                 * Con `top` (no `bottom`): girado el telefono, el borde derecho
-                 * fisico se ve ARRIBA y el borde superior fisico se ve a la
-                 * IZQUIERDA, asi que top+right pequeños = arriba-izquierda, que
-                 * es donde va. Con `bottom` se iba al extremo contrario.
-                 *
-                 * right 24px: el margen del borde sale a right-12 (el translate(50%)
-                 * se come la mitad), asi que 24 deja el BORDE del cuadro a los
-                 * mismos 12px que los iconos de sonido/musica/X. Ese es el
-                 * borde derecho fisico, que girado el telefono es el de ARRIBA:
-                 * lo que se compara con los iconos es el filo del recuadro, no
-                 * el resplandor. (Se probo 34 para que el glow acabara a 12 y
-                 * quedaba visiblemente mas hundido que los iconos.)
-                 */
-                top: 10% !important; bottom: auto !important; right: 24px !important; left: auto !important;
-                transform: translate(50%, 0) rotate(90deg) scale(1) !important;
+                top: 12px !important; bottom: auto !important; right: 12px !important; left: auto !important;
+                transform: translate(100%, 0) rotate(90deg) scale(1) !important;
+                transform-origin: 0 0 !important;
                 flex-direction: row !important; gap: 4px !important;
                 font-size: 8px !important;
             }
@@ -997,12 +995,8 @@
             /* SIN display:block: lo tenia forzado y por eso el reloj salia ya en
                el menu, antes de empezar la partida. Sigue mandando el JS, que
                lo enseña solo en juego. Y separado del borde, que iba pegado. */
-            /* right 21px (no 6%): medido, deja el reloj a 12px del borde
-               derecho fisico — el de ARRIBA en la vista girada—, los mismos que
-               el cuadro de MASS y los tres iconos. Con el 6% salia a 14 y se
-               veia medio hundido respecto a ellos. */
             html:not([data-hero]) body.mobile-allowed #timerDisplay {
-                position: fixed !important; top: 50% !important; right: 21px !important;
+                position: fixed !important; top: 50% !important; right: 6% !important;
                 left: auto !important; bottom: auto !important; z-index: 60;
                 transform: translate(50%, -50%) rotate(90deg) scale(1.15) !important;
                 transform-origin: center !important;
