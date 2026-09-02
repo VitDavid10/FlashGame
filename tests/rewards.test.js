@@ -154,7 +154,70 @@ test('el estado resume las rondas para el panel', () => {
     const r = e.rondas.find(x => x.date === FECHA);
     assert.ok(r);
     assert.equal(r.winners, 10);
-    assert.equal(r.pill, 50000 - 0, 'el reparto entero del presupuesto (los pesos suman 100 %)');
+    // 12 elegibles de los 50 que hacen falta para el bote completo: sale el 24 %.
+    // Los pesos suman 100 %, asi que se reparte ese 24 % entero.
+    // `estado()` da el resumen del panel, donde el total ya viene en PILL.
+    // 12 elegibles de los 50 que hacen falta para el bote completo: sale el 24 %,
+    // y con doce en la lista los diez pesos estan ocupados, asi que se reparte entero.
+    assert.equal(r.pill, Math.floor(50000 * 12 / 50));
+});
+
+/* ===================== EL BOTE SEGUN CUANTA GENTE JUGO ===================== */
+
+/*
+ * Con doce jugadores, diez cobran: estar en el top 10 sale casi gratis. El premio
+ * tiene que valer lo que cuesta ganarlo, y ganarle a once no vale lo mismo que
+ * ganarle a doscientos. Cobran los diez primeros igual — lo que cambia es el tamano
+ * del bote, no cuanta gente lo parte.
+ */
+
+function diaCon(n, fecha) {
+    const ws = Array.from({ length: n }, () => Keypair.generate().publicKey.toBase58());
+    ws.forEach((w, i) => {
+        for (let k = 0; k < 60 - i; k++) lb.recordKill(w, 'j' + i);
+        lb.recordPeak(w, 50000 - i, 'j' + i);
+    });
+    lb._setFecha(fecha);
+    return lb.cerrarAhora();
+}
+
+test('con 50 jugadores o mas sale el bote entero', () => {
+    const snap = diaCon(50, '2026-05-10');
+    assert.equal(snap.entries.length, 50);
+    const r = rewards.prepararRonda('2026-05-10', rewards.pillToRaw(50000));
+    assert.equal(rewards.rawToPill(r.totalRaw), 50000, 'con 50 elegibles no deberia recortarse nada');
+    assert.equal(r.winners, 10, 'siguen cobrando solo diez');
+});
+
+test('con 25 sale la mitad; con 5, ademas, los pesos vacios no salen', () => {
+    assert.equal(rewards.prepararRonda('2026-05-11', rewards.pillToRaw(50000)), null,
+        'un dia sin cerrar no da ronda');
+
+    // 25 de 50 -> bote al 50 %. Y con 25 en la lista los diez pesos estan ocupados.
+    diaCon(25, '2026-05-12');
+    assert.equal(rewards.rawToPill(rewards.prepararRonda('2026-05-12', rewards.pillToRaw(50000)).totalRaw), 25000);
+
+    // Con 5 se multiplican los dos recortes: el bote baja al 10 % (5 de 50) y ademas
+    // solo salen cinco pesos, 35+20+13+9+7 = 84 %. 50.000 x 0,10 x 0,84 = 4.200.
+    diaCon(5, '2026-05-13');
+    assert.equal(rewards.rawToPill(rewards.prepararRonda('2026-05-13', rewards.pillToRaw(50000)).totalRaw), 4200);
+});
+
+test('mas de 50 no sube el bote por encima del tope', () => {
+    diaCon(90, '2026-05-14');
+    const r = rewards.prepararRonda('2026-05-14', rewards.pillToRaw(50000));
+    assert.equal(rewards.rawToPill(r.totalRaw), 50000, 'el tope es el tope: 90 jugadores no dan mas que 50');
+});
+
+test('el JSON publico dice por que el bote fue el que fue', () => {
+    // Sin estos numeros, "ese dia se repartio menos" hay que creerselo.
+    const pub = rewards.rondaPublica(rewards.epochDeFecha('2026-05-12'));
+    assert.equal(pub.elegibles, 25);
+    assert.equal(pub.potCompletoCon, 50);
+    assert.equal(pub.topeRaw, rewards.pillToRaw(50000).toString());
+    // Y la cuenta se rehace desde ahi, sin fiarse del total publicado.
+    const esperado = BigInt(pub.topeRaw) * BigInt(pub.elegibles) / BigInt(pub.potCompletoCon);
+    assert.equal(BigInt(pub.total), esperado);
 });
 
 /* ===================== EL BOTE SEGUN LA ACTIVIDAD ===================== */

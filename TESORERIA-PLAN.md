@@ -426,6 +426,40 @@ declare — es la misma lógica que el resto del diseño.
 > `REWARD_FACTOR=0` significa lo que parece: no se pagan premios. **No es la forma
 > de desactivar este límite** — no hay forma, es una protección y no una opción.
 
+#### El cuarto freno: el bote sale proporcional a cuánta gente jugó
+
+Con los tres límites anteriores, **doce jugadores echando tres partidas ya sueltan
+el bote entero**: hacen falta 34 entradas de 5 $ para llegar al tope de 170 $, y eso
+lo alcanza casi cualquier día. Diez de esos doce cobran, o sea que estar en el top
+10 sale gratis y el premio no vale lo que cuesta ganarlo.
+
+```
+bote = bote × min( 1 , elegibles del día / LB_FULL_POT_AT )     (50 por defecto)
+```
+
+| jugadores en la lista | sale del bote | bote | #1 |
+|---|---|---|---|
+| 5 | 10 % × 84 %* | 14 $ | 5,00 $ |
+| 12 | 24 % | 41 $ | 14,28 $ |
+| 25 | 50 % | 85 $ | 29,75 $ |
+| 50 o más | 100 % | 170 $ | 59,50 $ |
+
+<sub>* con cinco en la lista solo salen cinco pesos (35+20+13+9+7), los dos recortes se multiplican</sub>
+
+**Cuenta a los elegibles, no a los que cobran.** La lista del día llega hasta
+`PUBLICADOS = 100`; los premios siguen siendo del top 10. Del 11 al 50 no reciben
+nada — lo único que hacen es que el bote sea el completo, lo que convierte *traer
+gente* en un interés de los que ya están.
+
+Y no reabre el sybil que cerró el freno anterior: el bote sigue acotado por lo
+recaudado, y esto solo puede **bajarlo**. Presentar cincuenta wallets para llegar al
+umbral cuesta cincuenta entradas, y el bote no puede pasar de lo que esas entradas
+pagaron. Los cuatro límites se aplican en cadena y gana siempre el más pequeño.
+
+El JSON público de cada ronda lleva `elegibles`, `potCompletoCon` y `topeRaw`, así
+que la cuenta se rehace desde el leaderboard publicado — que ya va encadenado por
+hash. "Ese día se repartió menos" es comprobable, no algo que haya que creerse.
+
 #### Los premios en dólares, que es lo que mira el jugador
 
 Todo lo anterior está en PILL, y el jugador no piensa en PILL: piensa en si vale la

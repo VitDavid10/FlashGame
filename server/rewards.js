@@ -53,6 +53,25 @@ const BUDGET_FALLBACK = parseInt(process.env.REWARD_BUDGET_PILL, 10) || 50000;
  * Un 0 significa lo que parece: no se pagan premios. No es la forma de desactivar
  * este limite — no hay forma, es una proteccion, no una opcion.
  */
+/*
+ * Cuantos jugadores hacen falta en la lista del dia para que salga el bote entero.
+ *
+ * Sin esto, con doce jugadores jugando tres partidas ya se reparte el maximo: diez
+ * de esos doce cobran, y estar en el top 10 sale gratis. El premio tiene que valer
+ * lo que cuesta ganarlo, y ganarle a once personas no vale lo mismo que ganarle a
+ * doscientas.
+ *
+ * OJO: esto cuenta a los ELEGIBLES de la lista (hasta PUBLICADOS=100), no a los que
+ * cobran. Siguen cobrando solo los diez primeros — del 11 al 50 no reciben nada, lo
+ * unico que hacen es que el bote sea el completo. Es lo que convierte "traer gente"
+ * en un interes de los que ya estan.
+ *
+ * No reabre el sybil: el bote sigue acotado por lo recaudado (ver REWARD_FACTOR), y
+ * esto solo puede BAJARLO. Meter cincuenta wallets para llegar al umbral cuesta
+ * cincuenta entradas, y el bote no puede pasar de lo que esas entradas pagaron.
+ */
+const POT_COMPLETO_CON = Math.max(1, parseInt(process.env.LB_FULL_POT_AT, 10) || 50);
+
 const REWARD_FACTOR = (() => {
     const v = parseFloat(process.env.REWARD_FACTOR);
     if (!Number.isFinite(v)) return 1;
@@ -182,7 +201,16 @@ function prepararRonda(date, presupuesto) {
     if (!(BigInt(presupuesto) > 0n)) return null;
 
     const epoch = epochDeFecha(date);
-    const { entries, totalRaw } = leaderboard.repartoDe(snap, presupuesto);
+
+    // El bote sale proporcional a cuanta gente jugo, hasta POT_COMPLETO_CON. Va aqui
+    // y no en presupuestoRaw porque es lo unico que necesita el snapshot del dia.
+    const elegibles = snap.entries.length;
+    const bote = elegibles >= POT_COMPLETO_CON
+        ? BigInt(presupuesto)
+        : (BigInt(presupuesto) * BigInt(elegibles)) / BigInt(POT_COMPLETO_CON);
+    if (bote <= 0n) return null;
+
+    const { entries, totalRaw } = leaderboard.repartoDe(snap, bote);
     if (entries.length === 0 || totalRaw <= 0n) return null;
 
     const ronda = merkle.buildRound(epoch, entries);
@@ -195,6 +223,12 @@ function prepararRonda(date, presupuesto) {
         leaderboardPrevHash: snap.prevHash,
         criterio: snap.criterio,
         decimals: DECIMALS,
+        // Por que el bote fue el que fue. Sin estos tres numeros, "ese dia se
+        // repartio menos" hay que creerselo; con ellos se rehace la cuenta desde el
+        // leaderboard publicado, que ya va encadenado por hash.
+        elegibles,
+        potCompletoCon: POT_COMPLETO_CON,
+        topeRaw: String(presupuesto),
         generatedAt: new Date().toISOString(),
     });
     try { fs.writeFileSync(path.join(DIR, epoch + '.json'), JSON.stringify(publico, null, 1)); } catch (e) {}
