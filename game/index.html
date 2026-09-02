@@ -978,15 +978,15 @@
                  * IZQUIERDA, asi que top+right pequeños = arriba-izquierda, que
                  * es donde va. Con `bottom` se iba al extremo contrario.
                  *
-                 * right 34px: el cuadro lleva un box-shadow de glow de 10px que el
-                 * bounding box no cuenta. Con el borde a los mismos 12px que el
-                 * icono de sonido, el que tocaba el filo de la pantalla era el
-                 * resplandor. Medido: el margen del borde sale a right-12, asi
-                 * que 34 deja el borde a 22 y el GLOW acabando en 12, justo
-                 * donde acaba el icono de sonido — que es lo que se compara a
-                 * ojo, el final de cada uno.
+                 * right 24px: el margen del borde sale a right-12 (el translate(50%)
+                 * se come la mitad), asi que 24 deja el BORDE del cuadro a los
+                 * mismos 12px que los iconos de sonido/musica/X. Ese es el
+                 * borde derecho fisico, que girado el telefono es el de ARRIBA:
+                 * lo que se compara con los iconos es el filo del recuadro, no
+                 * el resplandor. (Se probo 34 para que el glow acabara a 12 y
+                 * quedaba visiblemente mas hundido que los iconos.)
                  */
-                top: 10% !important; bottom: auto !important; right: 34px !important; left: auto !important;
+                top: 10% !important; bottom: auto !important; right: 24px !important; left: auto !important;
                 transform: translate(50%, 0) rotate(90deg) scale(1) !important;
                 flex-direction: row !important; gap: 4px !important;
                 font-size: 8px !important;
@@ -997,8 +997,12 @@
             /* SIN display:block: lo tenia forzado y por eso el reloj salia ya en
                el menu, antes de empezar la partida. Sigue mandando el JS, que
                lo enseña solo en juego. Y separado del borde, que iba pegado. */
+            /* right 21px (no 6%): medido, deja el reloj a 12px del borde
+               derecho fisico — el de ARRIBA en la vista girada—, los mismos que
+               el cuadro de MASS y los tres iconos. Con el 6% salia a 14 y se
+               veia medio hundido respecto a ellos. */
             html:not([data-hero]) body.mobile-allowed #timerDisplay {
-                position: fixed !important; top: 50% !important; right: 6% !important;
+                position: fixed !important; top: 50% !important; right: 21px !important;
                 left: auto !important; bottom: auto !important; z-index: 60;
                 transform: translate(50%, -50%) rotate(90deg) scale(1.15) !important;
                 transform-origin: center !important;
