@@ -10895,7 +10895,7 @@
     // no se pasa por el cartel de resultado, asi que los avisos de partida
     // (2 KILLS TO PENTAKILL, CARRY/POT, barra de skills...) se quedaban pintados
     // encima del menu.
-    function returnToMenu() { hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); _miPuesto = null; _puestoPrevio = null; if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
+    function returnToMenu() { hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); _miPuesto = null; _puestoPrevio = null; _rangoSonidoAt = 0; if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
         // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
         // la medida de cuando se entro al modo (ver el comentario de arriba).
         centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
@@ -14448,6 +14448,8 @@
      */
     let _miPuesto = null;          // 1..10 mientras estes en el top; null fuera
     let _puestoPrevio = null;      // para disparar los sonidos solo al ENTRAR
+    let _rangoSonidoAt = 0;        // ultimo top1/top10 que sono
+    const RANGO_SND_MS = 15000;    // uno cada 15s como mucho
 
     const RANGO_CORONA = [
         '1.....1.....1',
@@ -14803,9 +14805,20 @@
             const i = all.findIndex(p => p.isMe);
             _miPuesto = (i >= 0 && i < 10) ? i + 1 : null;
             if (_miPuesto !== _puestoPrevio) {
-                // Solo al ENTRAR al top 10 (venias de fuera) y al coronarte.
-                if (_miPuesto === 1 && _puestoPrevio !== 1) { try { SoundManager.play('top1'); } catch (e) {} }
-                else if (_miPuesto && !_puestoPrevio) { try { SoundManager.play('top10'); } catch (e) {} }
+                /*
+                 * Solo al ENTRAR al top 10 (venias de fuera) y al coronarte, y
+                 * como mucho uno cada RANGO_SND_MS: peleando el primer puesto se
+                 * baila del 1 al 2 y vuelta cada dos por tres, y sin este freno
+                 * el sonido saltaria sin parar hasta hacerse insoportable.
+                 * La corona SI cambia al instante — el freno es solo del audio.
+                 */
+                const ahoraSnd = Date.now();
+                if (ahoraSnd - _rangoSonidoAt > RANGO_SND_MS) {
+                    let son = null;
+                    if (_miPuesto === 1 && _puestoPrevio !== 1) son = 'top1';
+                    else if (_miPuesto && !_puestoPrevio) son = 'top10';
+                    if (son) { try { SoundManager.play(son); } catch (e) {} _rangoSonidoAt = ahoraSnd; }
+                }
                 _puestoPrevio = _miPuesto;
             }
         } else { _miPuesto = null; _puestoPrevio = null; }
