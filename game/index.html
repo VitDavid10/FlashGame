@@ -270,6 +270,17 @@
            donde la landing lo quiere ver. El bloqueo sigue intacto para quien
            entre al juego de verdad desde el telefono. */
         html[data-hero] #mobileBlock { display: none !important; }
+        /* El hero es gameplay de fondo, no una partida: nada de HUD. Va por CSS
+           y no solo por JS porque heroAmbientDemo() corre despues del primer
+           pintado, y durante ese rato se veian los chips y el selector. */
+        html[data-hero] #ui,
+        html[data-hero] #leaderboard,
+        html[data-hero] #timerDisplay,
+        html[data-hero] #actionBar,
+        html[data-hero] #skillChoiceOverlay,
+        html[data-hero] #minimap,
+        html[data-hero] #buffTable,
+        html[data-hero] #exitGameBtn { display: none !important; }
         html[data-hero] #modeScreen, html[data-hero] #loginOverlay,
         html[data-hero] #ui, html[data-hero] #gameCanvas { filter: none !important; }
         html:not([data-hero]) body.mobile-allowed #modeScreen,
@@ -5875,8 +5886,8 @@
                                                                                                             if (isSelf || enemySkillFx) ensureSprintBoltPops(c, now, showExtra);
                                                                                                         }
 
-                                                    // --- INMUNE: aura morada. El aro extra, el relleno y el escudo son
-                                                    // solo TUYOS: de los demas se ve unicamente el aura.
+                                                    // --- INMUNE: aura morada + rail punteado con cuenta atras encima. El
+                                                    // rail y el relleno son solo TUYOS; de los demas se ve solo el aura.
                                                     if (c.immuneTime > 0 && showAura) {
                                                         ctx.save();
                                                         ctx.translate(c.x, c.y);
@@ -5886,39 +5897,48 @@
                                                         ctx.globalAlpha = alpha * 0.95;
                                                         ctx.drawImage(pixRingSprite(wLfx, '#c060ff'), -pW / 2 - gap, -pH / 2 - gap, pW + gap * 2, pH + gap * 2);
                                                         if (isSelf || enemySkillFx) {
-                                                            const gap2 = gap + c.r * 0.16;
-                                                            ctx.globalAlpha = alpha * (0.5 + 0.25 * step);
-                                                            ctx.drawImage(pixRingSprite(wLfx, '#a020f0', true), -pW / 2 - gap2, -pH / 2 - gap2, pW + gap2 * 2, pH + gap2 * 2);
                                                             ctx.globalAlpha = alpha * 0.16;
                                                             ctx.fillStyle = '#a020f0';
                                                             ctx.beginPath();
                                                             ctx.roundRect(-pW / 2, -pH / 2, pW, pH, pW / 2);
                                                             ctx.fill();
+                                                            // Rail punteado + lo que queda de escudo pintado encima. Va en trazo
+                                                            // fino y no con pixRingSprite porque el punteado del sprite son 8
+                                                            // segmentos gordos, y a este tamaño salia irregular.
+                                                            const gap2 = gap + c.r * 0.16;
+                                                            const w2 = pW + gap2 * 2, h2 = pH + gap2 * 2, rb2 = w2 / 2;
+                                                            const gr = Math.max(1.5, c.r * 0.055);
+                                                            const per = 2 * (h2 - 2 * rb2) + 2 * Math.PI * rb2;
+                                                            const totalMs = (typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.shieldDuration) ? SKILL_PARAMS.shieldDuration : 3000;
+                                                            const queda = Math.max(0, Math.min(1, c.immuneTime / totalMs));
+                                                            ctx.lineCap = 'butt';
+                                                            ctx.lineWidth = gr;
+                                                            ctx.globalAlpha = alpha * 0.5;
+                                                            ctx.strokeStyle = '#a020f0';
+                                                            ctx.setLineDash([gr * 2.4, gr * 1.7]);
+                                                            ctx.beginPath();
+                                                            ctx.roundRect(-w2 / 2, -h2 / 2, w2, h2, rb2);
+                                                            ctx.stroke();
+                                                            ctx.globalAlpha = alpha;
+                                                            ctx.strokeStyle = '#e6c2ff';
+                                                            ctx.setLineDash([per * queda, per]);
+                                                            ctx.lineDashOffset = per * 0.25;
+                                                            ctx.beginPath();
+                                                            ctx.roundRect(-w2 / 2, -h2 / 2, w2, h2, rb2);
+                                                            ctx.stroke();
+                                                            ctx.setLineDash([]);
                                                         }
                                                         ctx.restore();
-                                                        if (isSelf || enemySkillFx) {
-                                                            const shWorld = Math.max(20, Math.min(56, c.r * 0.82));
-                                                            const bob = Math.sin(now / 180) * (c.r * 0.05);
-                                                            const glow = 1 + 0.06 * (Math.floor(now / 130) % 2);
-                                                            const dw = shWorld * glow;
-                                                            const sx = c.x + c.r * 0.55, sy = c.y - c.r * PILL_RATIO * 0.35 + bob;
-                                                            ctx.save();
-                                                            ctx.translate(sx, sy);
-                                                            ctx.globalAlpha = alpha;
-                                                            if (!drawFxPop(ctx, 'shield', dw, 1)) {
-                                                                const sW = Math.max(12, Math.min(32, Math.round(shWorld * getViewScale() / PIX_SCREEN_PX)));
-                                                                const spr = pixShieldSprite(sW);
-                                                                const dh = (spr.height / spr.width) * dw;
-                                                                ctx.imageSmoothingEnabled = false;
-                                                                ctx.drawImage(spr, -dw / 2, -dh / 2, dw, dh);
-                                                            }
-                                                            ctx.restore();
-                                                        }
                                                     }
                                                     
                                                     // --- IMÁN: particulas en radio, iguales para todos. Las ondas y
                                                     // la herradura del cluster propio se quitaron: costaban lag.
-                                                    if (c.magnetTime > 0 && showExtra && (isSelf || enemySkillFx)) {
+                                                    // El iman PROPIO vive en skillState[5]; los bots lo llevan por
+                                                    // celda en magnetTime. Hay que mirar los dos o offline no se
+                                                    // veian tus particulas (skillState vale en online y en offline).
+                                                    const _yo = me();
+                                                    const conIman = c.magnetTime > 0 || (isSelf && _yo && _yo.skillState && _yo.skillState[5] > 0);
+                                                    if (conIman && showExtra && (isSelf || enemySkillFx)) {
                                                         const mR = ((typeof SKILL_PARAMS !== 'undefined' && SKILL_PARAMS.magnetRange) ? SKILL_PARAMS.magnetRange : 200) + c.r;
                                                         drawMagnetParticles(ctx, c.x, c.y, mR, alpha, c.x + c.y);
                                                     }
@@ -14161,7 +14181,8 @@
         const notches = Math.max(1, Math.round(barPx / TIMER_NOTCH_PX));
         return (Math.ceil(progress01 * notches) / notches) * 100;
     }
-    function showSkillChoice() { if(isPickingSkill) return; if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) ensurePixPanelCss(); titleEl.textContent = 'SELECT A SKILL'; }
+    function showSkillChoice() { if(isPickingSkill) return; if(heroAutopilotActive) return;   // el hero es fondo: ahi no se elige nada
+        if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) ensurePixPanelCss(); titleEl.textContent = 'SELECT A SKILL'; }
         els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (!pixelMode) { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
         // Texto interior ("tips"): copy de fábrica; en pixel-pack el CSS lo pinta
         // amarillo con Press Start 2P (regla en buildPixPanelCss).
