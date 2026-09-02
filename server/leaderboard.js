@@ -24,6 +24,14 @@
  * que ya ordena el ranking global (server/index.js:435), asi que no hay que explicar
  * una metrica nueva. Puntuar por $PILL ganado se descarto a proposito: premiaria
  * apostar fuerte en las salas de 50 $, no jugar bien.
+ *
+ * SOLO PUNTUAN LAS SALAS DE PAGO, y no es un descuido: `payWallet` solo se rellena
+ * cuando se cobro una entrada (game-host.js:362). Sale gratis del diseno que ya
+ * habia y es la mejor defensa anti-sybil que tiene todo esto: para salir en la lista
+ * que reparte la tesoreria hay que haber pagado por jugar. Montar diez cuentas para
+ * cobrarse los premios pasa de ser gratis a costar diez entradas al dia, con cada
+ * pago escrito en la cadena. Quien juega gratis sigue apareciendo en el ranking
+ * historico de siempre; en este no.
  */
 'use strict';
 
@@ -63,9 +71,18 @@ try { const j = JSON.parse(fs.readFileSync(TODAY_FILE, 'utf8')); if (j && j.date
 try { chain = JSON.parse(fs.readFileSync(CHAIN_FILE, 'utf8')) || []; } catch (e) {}
 try { fs.mkdirSync(DIR, { recursive: true }); } catch (e) {}
 
+/*
+ * Los hosts no escriben. En el split multiproceso (Fase 4) los hosts reportan los
+ * hechos por IPC y es el Director quien lleva la contabilidad; pero el modulo se
+ * carga igual en los dos porque el require esta arriba de index.js. Sin esta guarda,
+ * cuatro procesos escribirian el mismo leaderboard-today.json a la vez y el ultimo en
+ * cerrar el fichero se lleva el dia entero por delante.
+ */
+const SOLO_LECTURA = process.env.PW_ROLE === 'host';
+
 let dirty = false;
 function save() {
-    if (!dirty) return;
+    if (!dirty || SOLO_LECTURA) return;
     dirty = false;
     fs.writeFile(TODAY_FILE, JSON.stringify(hoy), () => {});
 }
@@ -167,6 +184,7 @@ function cerrarDia(date, nuevaFecha) {
         criterio: 'kills del dia; desempate por masa maxima del dia',
         entries: filas,
     };
+    if (SOLO_LECTURA) return snapshot;   // un host nunca cierra un dia
     try { fs.writeFileSync(path.join(DIR, date + '.json'), JSON.stringify(snapshot, null, 1)); } catch (e) {}
 
     chain.push({ date, prevHash, hash, players: filas.length, closedAt: snapshot.closedAt });

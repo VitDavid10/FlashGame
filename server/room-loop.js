@@ -223,7 +223,11 @@ function tickRoomOnce(room, now, ctx) {
         } else if (ev.type === 'botKilled') {
             const killer = room.sim.players.get(ev.playerId);
             const cliKiller_ = room.clients.get(ev.playerId);
-            ctx.econ.botKill(killer && killer.name, cliKiller_ && cliKiller_.isTester);
+            // La wallet va junto al nombre porque el leaderboard DIARIO (el que paga
+            // los premios de la tesorería) se indexa por dirección: un nombre no es
+            // un sitio al que mandar tokens. El ranking histórico sigue yendo por
+            // nombre, como siempre.
+            ctx.econ.botKill(killer && killer.name, cliKiller_ && cliKiller_.isTester, cliKiller_ && cliKiller_.payWallet);
             // Pentakills acumulados de la sala (panel admin): se cuenta el momento
             // exacto de llegar a 5 (=== y no >=, para no recontar en la kill 6, 7...).
             if (room.mode === 'classic' && ev.streak === 5) room.pentas = (room.pentas | 0) + 1;

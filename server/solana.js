@@ -145,6 +145,31 @@ async function burn(pill) {
     return await splBurn(conn, auth, ata.address, mint, auth, pillToRaw(pill));
 }
 
+/*
+ * Envía una o varias instrucciones firmadas por la autoridad. Es lo que usa el
+ * módulo de premios para hablar con el programa de tesorería (publish_round,
+ * sweep, extend_lock...).
+ *
+ * Vive aquí y no en treasury-client.js a propósito: la clave de la autoridad NO
+ * debe salir de este fichero. treasury-client construye instrucciones —datos, sin
+ * secretos— y quien las firma es siempre este módulo, que es el único que sabe
+ * cargar la keypair. Así hay un solo sitio al que mirar cuando la pregunta es
+ * "quién puede firmar con la autoridad".
+ */
+async function sendInstructions(instructions, extraSigners = []) {
+    const { Connection, Transaction, sendAndConfirmTransaction } = require('@solana/web3.js');
+    const auth = loadAuthority();
+    const conn = new Connection(RPC, 'confirmed');
+    const tx = new Transaction();
+    for (const ix of instructions) tx.add(ix);
+    return await sendAndConfirmTransaction(conn, tx, [auth, ...extraSigners]);
+}
+
+/** Pubkey de la autoridad, sin exponer la clave privada. */
+function authorityPubkey() {
+    try { return loadAuthority().publicKey.toBase58(); } catch (e) { return null; }
+}
+
 // Verifica que `signature` es una firma válida de `message` hecha por `wallet`.
 // (El jugador firma un mensaje con su wallet para AUTORIZAR el retiro; prueba que es el dueño.)
 function verifySignedMessage(wallet, message, signatureArr) {
@@ -158,4 +183,4 @@ function verifySignedMessage(wallet, message, signatureArr) {
     } catch (e) { return false; }
 }
 
-module.exports = { verifyDeposit, withdraw, burn, airdropSol, canWithdraw, verifySignedMessage, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };
+module.exports = { verifyDeposit, withdraw, burn, airdropSol, canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };

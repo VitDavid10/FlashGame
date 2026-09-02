@@ -261,6 +261,10 @@ Nada de esto sirve si se vende como más de lo que es.
 - **Sybil.** Puedo crear wallets, depositar dinero real, jugar con ellas y salir
   en el leaderboard legítimamente. Eso es multi-cuenta, no saqueo: me cuesta
   dinero, va capado y es el mismo camino que tiene cualquiera.
+  Con una barrera que sale gratis del diseño que ya había: **al leaderboard diario
+  solo entra quien jugó en salas de pago** — `payWallet` únicamente existe si se
+  cobró entrada (`server/game-host.js:362`). Montar diez cuentas para cobrarse los
+  premios cuesta diez entradas al día, y cada pago queda escrito en la cadena.
 - **Los saldos WAR son off-chain.** El contrato no sabe cuánto le debo a cada
   jugador; solo que `custody` tiene X. La prueba de reservas es la mitigación.
 - **`sweep` puede vaciar la custodia hacia el treasury.** Los jugadores se

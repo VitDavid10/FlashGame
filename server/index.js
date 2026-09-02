@@ -36,6 +36,8 @@ const PillSim = require('../shared/sim.js');
 const proto = require('../shared/proto.js');     // protocolo binario para snaps (opt-in)
 const solana = require('./solana.js');     // verificación de depósitos $PILL
 const warbank = require('./warbank.js');   // saldo WAR interno por wallet
+const leaderboard = require('./leaderboard.js');   // ranking DIARIO por wallet (premios de tesorería)
+const rewards = require('./rewards.js');           // rondas de premios: Merkle + publicación on-chain
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
 const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILL + quema)
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
@@ -630,6 +632,10 @@ if (PW_ROLE !== 'host' && !PILL_FIJO) {
 // Quema del $PILL gastado en skins. Solo en el Director: los hosts no tocan
 // economia, y dos procesos vaciando la misma cola quemarian dos veces.
 if (PW_ROLE !== 'host') skinshop.arrancaQuemaPeriodica(solana, log);
+// Premios diarios de la tesorería: cierra el día, construye el árbol y publica la
+// raíz. Solo en el Director, por lo mismo que la quema — dos procesos publicando la
+// misma ronda serían dos transacciones, y la segunda fallaría con la época ya usada.
+if (PW_ROLE !== 'host') rewards.arranca(solana, log);
 // Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
 // Math.round: la tarifa viaja DENTRO del mensaje que el jugador firma
 // ("...paying 48 PILL @ ..."), y el servidor reconstruye esa misma cadena para
@@ -999,7 +1005,10 @@ const econLocal = {
         if (name && !tester) { pstatOf(name).muertes++; playersDirty = true; }
     },
     // Kill de bot: suma al contador de kills del matador.
-    botKill(name, tester) { if (name && !tester) { pstatOf(name).kills++; playersDirty = true; } },
+    botKill(name, tester, wallet) {
+        if (name && !tester) { pstatOf(name).kills++; playersDirty = true; }
+        if (!tester) leaderboard.recordKill(wallet, name);
+    },
     // Vuelca el pico de masa a stats/quests (misma lógica que la función global).
     peakMassFlush(room, pid, cli) { flushPeakMass(room, pid, cli); },
     // Retos diarios rotativos (fire-and-forget: telemetría, no dinero).
@@ -1102,13 +1111,13 @@ const directorProxy = hostIpc && {
 const econProxy = hostIpc && {
     credit(wallet, amount) { if (wallet && amount > 0) hostIpc.notify('econ.credit', { wallet, amount }); },
     playerDeath(comboKey, tester, name) { hostIpc.notify('econ.playerDeath', { comboKey, tester: !!tester, name: name || null }); },
-    botKill(name, tester) { hostIpc.notify('econ.botKill', { name: name || null, tester: !!tester }); },
+    botKill(name, tester, wallet) { hostIpc.notify('econ.botKill', { name: name || null, tester: !!tester, wallet: wallet || null }); },
     // El peak se LEE aquí (la sim vive en el host) y viaja como dato plano.
     peakMassFlush(room, pid, cli) {
         const pj = room.sim.players.get(pid); if (!pj) return;
         const peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
         if (peak <= 0) return;
-        hostIpc.notify('econ.peakMass', { name: cli && cli.name, isTester: !!(cli && cli.isTester), cid: (cli && cli.cid) || null, peak });
+        hostIpc.notify('econ.peakMass', { name: cli && cli.name, isTester: !!(cli && cli.isTester), cid: (cli && cli.cid) || null, peak, wallet: (cli && cli.payWallet) || null });
     },
     dailyEvent(cid, type, n) { if (cid) hostIpc.notify('econ.dailyEvent', { cid, type, n }); },
     questOnlineMatch(cid) { hostIpc.notify('econ.questOnlineMatch', { cid }); },
@@ -1135,8 +1144,8 @@ function registerHostHandlers(hostEntry) {
     ipc.handle('refundEntry', (p) => directorLocal.refundEntry(p));
     ipc.handle('econ.credit', (p) => econLocal.credit(p.wallet, p.amount));
     ipc.handle('econ.playerDeath', (p) => econLocal.playerDeath(p.comboKey, p.tester, p.name));
-    ipc.handle('econ.botKill', (p) => econLocal.botKill(p.name, p.tester));
-    ipc.handle('econ.peakMass', (p) => applyPeakMass(p.name, p.isTester, p.cid, p.peak));
+    ipc.handle('econ.botKill', (p) => econLocal.botKill(p.name, p.tester, p.wallet));
+    ipc.handle('econ.peakMass', (p) => applyPeakMass(p.name, p.isTester, p.cid, p.peak, p.wallet));
     ipc.handle('econ.dailyEvent', (p) => econLocal.dailyEvent(p.cid, p.type, p.n));
     ipc.handle('econ.questOnlineMatch', (p) => econLocal.questOnlineMatch(p.cid));
     ipc.handle('econ.questFinishArcade', (p) => econLocal.questFinishArcade(p.cid));
@@ -1924,7 +1933,7 @@ async function buildDirectorAdminState() {
 // Aplica un peakMass YA CALCULADO a playerStats (ranking) y quests (clientId).
 // Datos planos: es lo que ejecuta el Director tanto en mono como al recibir el
 // notify 'econ.peakMass' de un host. Idempotente: solo sube si supera el récord.
-function applyPeakMass(name, isTester, cid, peak) {
+function applyPeakMass(name, isTester, cid, peak, wallet) {
     if (!(peak > 0)) return;
     if (name && !isTester) {
         const ps = pstatOf(name);
@@ -1934,12 +1943,133 @@ function applyPeakMass(name, isTester, cid, peak) {
         const q = questsOf(cid);
         if (peak > (q.bestMass | 0)) { q.bestMass = peak; q.updated = Date.now(); questsDirty = true; }
     }
+    // El pico del día también va al leaderboard diario: es el desempate cuando dos
+    // jugadores acaban con las mismas kills.
+    if (!isTester) leaderboard.recordPeak(wallet, peak, name);
 }
 // Lee el peakMass desde la sim local y lo aplica (path mono/director).
 function flushPeakMass(room, pid, cli) {
     const pj = room.sim.players.get(pid); if (!pj) return;
     const peak = pj.peakMass ? Math.floor(pj.peakMass) : 0;
-    applyPeakMass(cli && cli.name, !!(cli && cli.isTester), cli && cli.cid, peak);
+    applyPeakMass(cli && cli.name, !!(cli && cli.isTester), cli && cli.cid, peak, cli && cli.payWallet);
+}
+
+/* ===== ESTADO PÚBLICO DE LA TESORERÍA =====
+ *
+ * Lo que hace verificable el diseño de TESORERIA-PLAN.md. Tres datos y por qué:
+ *
+ *   custody vs treasury   son DOS direcciones distintas, no un apunte contable. El
+ *                         saldo de custodia es dinero de los jugadores; el de
+ *                         tesorería es del proyecto y está bloqueado.
+ *   reservesRatio         custody / obligaciones (suma de saldos WAR). Si baja de 1,
+ *                         hay menos on-chain de lo que se debe, y se ve al instante.
+ *   upgradeAuthority      el dato que más pesa: mientras no sea null, la promesa del
+ *                         bloqueo no vale nada — con la upgrade authority se despliega
+ *                         otra versión del programa que vacíe los vaults.
+ *
+ * Se cachea 15 s: es público y sin auth, y sin caché cualquiera puede usarlo para
+ * agotar la cuota del RPC a base de recargar.
+ */
+const TREASURY_PROGRAM = process.env.TREASURY_PROGRAM || '';
+let _treasuryCache = null, _treasuryCacheAt = 0;
+const TREASURY_CACHE_MS = 15000;
+
+function _solConn() {
+    const { Connection } = require('@solana/web3.js');
+    if (!_solConn._c) _solConn._c = new Connection(solana.RPC, 'confirmed');
+    return _solConn._c;
+}
+
+// Dueño de la upgrade authority de un programa, o null si es inmutable.
+// El layout del loader v3: la cuenta del programa es [enum u32 = 2][programdata 32],
+// y ProgramData es [enum u32 = 3][slot u64][Option<Pubkey>: 1 byte + 32].
+async function upgradeAuthorityDe(conn, programId) {
+    const { PublicKey } = require('@solana/web3.js');
+    const info = await conn.getAccountInfo(new PublicKey(programId));
+    if (!info || info.data.length < 36) return { conocido: false };
+    const programData = new PublicKey(info.data.subarray(4, 36));
+    const pd = await conn.getAccountInfo(programData);
+    if (!pd || pd.data.length < 45) return { conocido: false };
+    const tieneAutoridad = pd.data[12] === 1;
+    return {
+        conocido: true,
+        inmutable: !tieneAutoridad,
+        authority: tieneAutoridad ? new PublicKey(pd.data.subarray(13, 45)).toBase58() : null,
+    };
+}
+
+async function treasuryState() {
+    if (_treasuryCache && Date.now() - _treasuryCacheAt < TREASURY_CACHE_MS) return _treasuryCache;
+
+    const dec = solana.DECIMALS;
+    const aPill = (raw) => Number(BigInt(raw)) / 10 ** dec;
+    // Las obligaciones son off-chain y siempre se pueden calcular, haya cadena o no.
+    const obligaciones = Object.values(warbank._balances || {}).reduce((s, v) => s + (v || 0), 0);
+
+    const estado = {
+        programa: TREASURY_PROGRAM || null,
+        mint: solana.MINT || null,
+        rpc: solana.RPC,
+        obligaciones,
+        premios: rewards.estado(),
+        leaderboard: { hoy: leaderboard.estadoHoy().date, cadena: leaderboard.cadena(30).length, check: leaderboard.verificarCadena() },
+        generadoEn: new Date().toISOString(),
+    };
+
+    // Sin programa desplegado el resto no existe todavía: se dice, no se inventa.
+    if (!TREASURY_PROGRAM) {
+        estado.aviso = 'todavía no hay programa de tesorería desplegado: custodia y tesorería siguen en la misma wallet';
+        estado.treasuryOwnerLegacy = solana.TREASURY_OWNER || null;
+        _treasuryCache = estado; _treasuryCacheAt = Date.now();
+        return estado;
+    }
+
+    try {
+        const conn = _solConn();
+        const tc = require('./treasury-client.js');
+        const p = tc.pdas(TREASURY_PROGRAM);
+        const [cfgInfo, cusInfo, treInfo] = await conn.getMultipleAccountsInfo([p.config, p.custody, p.treasury]);
+        // El saldo de una token account SPL vive en el u64 del offset 64.
+        const saldo = (info) => (info && info.data.length >= 72 ? info.data.readBigUInt64LE(64) : 0n);
+
+        estado.custody = { address: p.custody.toBase58(), balance: aPill(saldo(cusInfo)) };
+        estado.treasury = { address: p.treasury.toBase58(), balance: aPill(saldo(treInfo)) };
+        estado.reservesRatio = obligaciones > 0 ? estado.custody.balance / obligaciones : null;
+        estado.reservasCompletas = obligaciones === 0 || estado.custody.balance >= obligaciones;
+
+        if (cfgInfo) {
+            const cfg = tc.decodeConfig(cfgInfo.data);
+            estado.config = {
+                authority: cfg.authority,
+                unlockTs: cfg.unlockTs,
+                unlockDate: new Date(cfg.unlockTs * 1000).toISOString(),
+                bloqueado: Date.now() / 1000 < cfg.unlockTs,
+                diasParaDesbloqueo: Math.max(0, Math.ceil((cfg.unlockTs - Date.now() / 1000) / 86400)),
+                finalized: cfg.finalized,
+                epochSecs: cfg.epochSecs,
+                challengeHoras: cfg.challengeSecs / 3600,
+                rewardCapPerEpoch: aPill(cfg.rewardCapPerEpoch),
+                rewardBpsPerEpoch: cfg.rewardBpsPerEpoch,
+                sweepCapPerEpoch: aPill(cfg.sweepCapPerEpoch),
+                reservado: aPill(cfg.reserved),
+                totales: {
+                    depositado: aPill(cfg.totalDeposited),
+                    retirado: aPill(cfg.totalWithdrawn),
+                    aportado: aPill(cfg.totalFunded),
+                    barrido: aPill(cfg.totalSwept),
+                    premiado: aPill(cfg.totalRewarded),
+                    caducado: aPill(cfg.totalExpired),
+                    rondas: Number(cfg.roundsPublished),
+                },
+            };
+        }
+        estado.upgradeAuthority = await upgradeAuthorityDe(conn, TREASURY_PROGRAM);
+    } catch (e) {
+        estado.error = 'no pude leer la cadena: ' + e.message;
+    }
+
+    _treasuryCache = estado; _treasuryCacheAt = Date.now();
+    return estado;
 }
 
 function findClient(playerId) {
@@ -2655,6 +2785,67 @@ const httpServer = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ ranking: top, updated: _rankingUpdatedAt, stale: _rankingUpdatedAt === 0 }));
         return;
     }
+    /* ===== TESORERÍA: LEADERBOARD DIARIO, PREMIOS Y TRANSPARENCIA =====
+     *
+     * Todo esto es público y sin autenticación a propósito. La promesa "no puedo
+     * tocar la tesorería" no vale nada si los datos que la sostienen —quién ganó,
+     * cuánto se repartió, cuánto hay en cada bolsa— solo los puedo ver yo. Un
+     * endpoint que hay que pedir por privado no es una prueba, es una promesa.
+     */
+
+    // Leaderboard del día en curso (aún abierto, todavía sin hashear).
+    if (urlPath === '/api/leaderboard') {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(leaderboard.estadoHoy()));
+        return;
+    }
+    // La cadena de hashes entera, y su verificación. Es lo que permite a cualquiera
+    // comprobar que ningún día se reescribió después de cerrarse.
+    if (urlPath === '/api/leaderboard/chain') {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ chain: leaderboard.cadena(), check: leaderboard.verificarCadena() }));
+        return;
+    }
+    // Un día cerrado: /api/leaderboard/2026-09-02
+    if (urlPath.startsWith('/api/leaderboard/')) {
+        const date = urlPath.slice('/api/leaderboard/'.length);
+        const snap = /^\d{4}-\d{2}-\d{2}$/.test(date) ? leaderboard.diaCerrado(date) : null;
+        res.writeHead(snap ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(snap || { error: 'no hay leaderboard cerrado para esa fecha' }));
+        return;
+    }
+
+    // Premios de una wallet, con la prueba de Merkle ya calculada: el jugador no
+    // tiene que saber construir árboles, solo firmar.
+    if (urlPath === '/api/rewards') {
+        const wallet = String(query.get('wallet') || '');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(isSolAddr(wallet) ? rewards.premiosDe(wallet) : { pendientes: [], total: 0 }));
+        return;
+    }
+    // La ronda completa de una época: la lista de ganadores con sus pruebas. Es el
+    // fichero que hay que bajarse para auditar una raíz publicada on-chain.
+    if (urlPath.startsWith('/api/rewards/')) {
+        const epoch = parseInt(urlPath.slice('/api/rewards/'.length), 10);
+        const ronda = Number.isFinite(epoch) ? rewards.rondaPublica(epoch) : null;
+        res.writeHead(ronda ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(ronda || { error: 'no hay ronda para esa época' }));
+        return;
+    }
+
+    // Estado de la tesorería: las dos bolsas, las obligaciones y la prueba de
+    // reservas. Ver treasuryState() para por qué cada campo está aquí.
+    if (urlPath === '/api/treasury') {
+        treasuryState().then(estado => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(estado));
+        }).catch(e => {
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: e.message }));
+        });
+        return;
+    }
+
     // Endpoint de quests: GET → lee el progreso del clientId; POST → suma eventos.
     if (urlPath === '/api/quests') {
         const cid = String(req.headers['x-client-id'] || '').trim();
