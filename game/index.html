@@ -15414,9 +15414,29 @@
     const nuevaConexion = () => new Connection(RPC, {
         commitment: 'confirmed', confirmTransactionInitialTimeout: CONFIRM_TIMEOUT_MS, fetch: fetchConTope,
     });
+    /*
+     * Destino del deposito. Sin contrato es la wallet de siempre (constante TREASURY);
+     * con contrato desplegado es el PDA de custodia, que no tiene llave privada. El
+     * servidor lo dice en /api/fees, y se pregunta en cada deposito y no una vez al
+     * cargar: el dia que se despliegue el contrato, el jugador que tenga la pestana
+     * abierta desde hace horas seguiria mandando el dinero a la cuenta vieja.
+     */
+    async function configDeposito() {
+        try {
+            const r = await fetch('/api/fees', { signal: AbortSignal.timeout(RPC_TIMEOUT_MS) });
+            const j = await r.json();
+            return { programa: j.treasuryProgram || null, destino: j.depositTo || TREASURY };
+        } catch (e) { return { programa: null, destino: TREASURY }; }
+    }
+
     async function deposit(amount) {
         const W = window.GameWallet;
         if (!W || !W.address || !W.provider) throw new Error('Connect your wallet first');
+        const cfg = await configDeposito();
+        // Con contrato, la transaccion la arma el servidor: la instruccion `deposit`
+        // lleva discriminador y PDAs, y este bundle no trae con que construirla.
+        // Mueve tokens del jugador al PDA de custodia y nada mas; la wallet lo ensena.
+        if (cfg.programa) return await depositPorContrato(amount);
         const conn = nuevaConexion();
         const owner = new PublicKey(W.address);
         const mint = new PublicKey(MINT);
@@ -15473,6 +15493,44 @@
         catch (e) { console.warn('[deposit] confirmacion no llego en ' + CONFIRM_TIMEOUT_MS + 'ms, se acredita por firma:', e); }
         return sig;
     }
+    /*
+     * Deposito por el contrato. Mismo resultado para el jugador —su PILL pasa a saldo
+     * in-GAME— pero el destino es un PDA sin llave privada en vez de una wallet.
+     *
+     * El servidor NO firma esto: solo formatea la instruccion. Quien firma y paga es
+     * el jugador, y el unico sitio al que la instruccion puede mandar los tokens es
+     * el PDA de custodia, que va fijado en el propio programa.
+     */
+    async function depositPorContrato(amount) {
+        const W = window.GameWallet;
+        const r = await (await fetch('/api/deposit-tx', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wallet: W.address, pill: Math.round(amount) }),
+            signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+        })).json();
+        if (!r.ok) throw new Error(r.reason || 'deposit failed');
+
+        const tx = Transaction.from(Uint8Array.from(atob(r.tx), c => c.charCodeAt(0)));
+        const conn = nuevaConexion();
+        tx.feePayer = new PublicKey(W.address);
+        try { tx.recentBlockhash = (await conn.getLatestBlockhash('finalized')).blockhash; }
+        catch (e) { throw new Error('rpc: ' + ((e && e.message) || e)); }
+
+        const conTope = (p, ms, que) => Promise.race([p, new Promise((_, rej) =>
+            setTimeout(() => rej(new Error('timeout: ' + que)), ms))]);
+        let sig;
+        if (W.provider.signTransaction) {
+            const signed = await conTope(W.provider.signTransaction(tx), 60000, 'wallet');
+            sig = await conn.sendRawTransaction(signed.serialize());
+        } else {
+            const res = await conTope(W.provider.signAndSendTransaction(tx), 60000, 'wallet');
+            sig = res.signature || res;
+        }
+        try { await conn.confirmTransaction(sig, 'confirmed'); }
+        catch (e) { console.warn('[deposit] confirmacion no llego a tiempo, se acredita por firma:', e); }
+        return sig;
+    }
+
     // El servidor verifica la tx leyendola on-chain. Si la pide antes de que el
     // RPC la tenga indexada contesta "tx no encontrada": eso NO es un fallo del
     // deposito, solo que se ha llegado pronto. Se reintenta dos veces (el

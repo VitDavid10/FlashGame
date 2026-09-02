@@ -108,11 +108,13 @@ async function status() {
     console.log(`  bps del saldo      ${cfg.rewardBpsPerEpoch} (${(cfg.rewardBpsPerEpoch / 100).toFixed(2)} %/epoca)`);
     console.log(`  ventana impugnar   ${cfg.challengeSecs / 3600} h`);
     console.log(`  sweep cap          ${fmt(aPill(cfg.sweepCapPerEpoch))} PILL/epoca`);
+    console.log(`  burn cap           ${fmt(aPill(cfg.burnCapPerEpoch))} PILL/epoca`);
 
     console.log(`\nACUMULADO`);
     console.log(`  depositado ${fmt(aPill(cfg.totalDeposited))} · retirado ${fmt(aPill(cfg.totalWithdrawn))}`);
     console.log(`  aportado   ${fmt(aPill(cfg.totalFunded))} · barrido ${fmt(aPill(cfg.totalSwept))}`);
     console.log(`  premiado   ${fmt(aPill(cfg.totalRewarded))} · caducado ${fmt(aPill(cfg.totalExpired))}`);
+    console.log(`  quemado    ${fmt(aPill(cfg.totalBurned))}`);
     console.log(`  rondas publicadas ${cfg.roundsPublished}`);
 
     // Lo primero que mira cualquiera que audite esto.
@@ -143,6 +145,7 @@ async function init() {
     const bps = parseInt(flag('bps', '5'), 10);
     const challengeH = parseInt(flag('challenge-hours', '48'), 10);
     const sweepCap = Math.round(Number(flag('sweep-cap', '500000')));
+    const burnCap = Math.round(Number(flag('burn-cap', '500000')));
 
     console.log('Se va a inicializar con:');
     console.log(`  bloqueo inicial     ${dias} dias  (${new Date(unlockTs * 1000).toISOString()})`);
@@ -150,6 +153,7 @@ async function init() {
     console.log(`  bps del saldo       ${bps}`);
     console.log(`  ventana impugnar    ${challengeH} h`);
     console.log(`  cap de sweep        ${fmt(sweepCap)} PILL/epoca`);
+    console.log(`  cap de quema        ${fmt(burnCap)} PILL/epoca`);
     console.log('\nEl bloqueo corto es a proposito: es la fase de calibracion. Se alarga con');
     console.log('extend-lock cuando los numeros del simulador cuadren con los datos reales.');
 
@@ -164,6 +168,7 @@ async function init() {
             rewardBpsPerEpoch: bps,
             challengeSecs: challengeH * 3600,
             sweepCapPerEpoch: solana.pillToRaw(sweepCap),
+            burnCapPerEpoch: solana.pillToRaw(burnCap),
         },
     });
     const sig = await solana.sendInstructions([ix]);
@@ -259,9 +264,10 @@ async function tighten() {
     const cap = flag('cap', null);
     const bps = flag('bps', null);
     const sweepCap = flag('sweep-cap', null);
+    const burnCap = flag('burn-cap', null);
     const challengeH = flag('challenge-hours', null);
-    if (cap == null && bps == null && sweepCap == null && challengeH == null) {
-        console.error('Uso: treasury.js tighten [--cap N] [--bps N] [--sweep-cap N] [--challenge-hours N]');
+    if (cap == null && bps == null && sweepCap == null && burnCap == null && challengeH == null) {
+        console.error('Uso: treasury.js tighten [--cap N] [--bps N] [--sweep-cap N] [--burn-cap N] [--challenge-hours N]');
         console.error('Recuerda: los caps SOLO bajan y la ventana SOLO sube. El contrato rechaza lo demas.');
         process.exit(1);
     }
@@ -269,6 +275,7 @@ async function tighten() {
     if (cap != null) console.log(`  cap de premios -> ${fmt(cap)} PILL/epoca`);
     if (bps != null) console.log(`  bps -> ${bps}`);
     if (sweepCap != null) console.log(`  cap de sweep -> ${fmt(sweepCap)} PILL/epoca`);
+    if (burnCap != null) console.log(`  cap de quema -> ${fmt(burnCap)} PILL/epoca`);
     if (challengeH != null) console.log(`  ventana -> ${challengeH} h`);
     console.log('Esto no se puede aflojar despues.');
     if (!await confirmar('ENDURECER')) { console.log('Cancelado.'); return; }
@@ -278,6 +285,7 @@ async function tighten() {
         rewardCapPerEpoch: cap != null ? solana.pillToRaw(Math.round(Number(cap))) : null,
         rewardBpsPerEpoch: bps != null ? parseInt(bps, 10) : null,
         sweepCapPerEpoch: sweepCap != null ? solana.pillToRaw(Math.round(Number(sweepCap))) : null,
+        burnCapPerEpoch: burnCap != null ? solana.pillToRaw(Math.round(Number(burnCap))) : null,
         challengeSecs: challengeH != null ? parseInt(challengeH, 10) * 3600 : null,
     });
     console.log('OK: ' + await solana.sendInstructions([ix]));

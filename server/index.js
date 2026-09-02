@@ -2586,7 +2586,14 @@ const httpServer = http.createServer(async (req, res) => {
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
     if (urlPath === '/api/fees') {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ pillPerDollar: PILL_PER_DOLLAR }));
+        // El destino del depósito viaja aquí porque el cliente lo necesita para saber
+        // si construye la transferencia él mismo (modelo viejo, wallet) o se la pide
+        // al servidor (modelo con contrato, PDA de custodia).
+        res.end(JSON.stringify({
+            pillPerDollar: PILL_PER_DOLLAR,
+            treasuryProgram: process.env.TREASURY_PROGRAM || null,
+            depositTo: solana.DEPOSIT_OWNER || null,
+        }));
         return;
     }
     // --- Saldo WAR (PILL depositado en el juego) ---
@@ -2663,6 +2670,50 @@ const httpServer = http.createServer(async (req, res) => {
                 if (r.ok && !r.repetida) log(`Cambio ${pill} $PILL -> ${pill / skinshop.PILL_POR_SP} SP por ${wallet.slice(0, 6)}…`);
             }
             res.end(JSON.stringify(r));
+        });
+        return;
+    }
+
+    /* Transacción de depósito, lista para firmar.
+     *
+     * Existe solo cuando hay contrato: sin él, el cliente construye una transferencia
+     * SPL normal y no necesita al servidor para nada. Con contrato hay que llamar a
+     * la instrucción `deposit`, que lleva discriminador y PDAs, y el bundle de Solana
+     * que sirve la web no trae con qué construir instrucciones arbitrarias.
+     *
+     * Que la arme el servidor no le da poder sobre el dinero: la instrucción mueve
+     * tokens del jugador al PDA de custodia y nada más — el mismo sitio al que iban
+     * antes, pero sin llave privada detrás. Y la wallet la enseña antes de firmar.
+     */
+    if (urlPath === '/api/deposit-tx' && req.method === 'POST') {
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 1000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            try {
+                const p = JSON.parse(body || '{}');
+                const wallet = String(p.wallet || '');
+                const pill = Math.floor(Number(p.pill) || 0);
+                if (!isSolAddr(wallet) || !(pill > 0)) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+                if (!process.env.TREASURY_PROGRAM) { res.end(JSON.stringify({ ok: false, reason: 'sin contrato: usa la transferencia normal' })); return; }
+
+                const tcl = require('./treasury-client.js');
+                const { Transaction, PublicKey } = require('@solana/web3.js');
+                const { getAssociatedTokenAddressSync } = require('@solana/spl-token');
+                const w = new PublicKey(wallet);
+                const from = getAssociatedTokenAddressSync(new PublicKey(solana.MINT), w, true);
+                const ix = tcl.deposit(process.env.TREASURY_PROGRAM, {
+                    from, owner: wallet, amountRaw: solana.pillToRaw(pill),
+                });
+                const conn = _solConn();
+                const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('finalized');
+                const tx = new Transaction({ feePayer: w, blockhash, lastValidBlockHeight }).add(ix);
+                res.end(JSON.stringify({
+                    ok: true,
+                    tx: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'),
+                    pill,
+                }));
+            } catch (e) { res.end(JSON.stringify({ ok: false, reason: e.message })); }
         });
         return;
     }

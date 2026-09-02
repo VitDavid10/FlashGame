@@ -111,6 +111,10 @@ function decodeConfig(data) {
         sweepCapPerEpoch: c.u64(),
         sweepEpoch: c.i64(),
         sweptThisEpoch: c.u64(),
+        burnCapPerEpoch: c.u64(),
+        burnEpoch: c.i64(),
+        burnedThisEpoch: c.u64(),
+        totalBurned: c.u64(),
         reserved: c.u64(),
         totalDeposited: c.u64(),
         totalWithdrawn: c.u64(),
@@ -175,6 +179,7 @@ function initialize(programId, { mint, authority, payer, args }) {
         u16le(args.rewardBpsPerEpoch),
         i64le(args.challengeSecs),
         u64le(args.sweepCapPerEpoch),
+        u64le(args.burnCapPerEpoch),
     ]);
     return ix(programId, [
         rw(p.config), rw(p.custody), rw(p.treasury),
@@ -217,6 +222,21 @@ function sweep(programId, { authority, amountRaw }) {
         rw(p.config), rw(p.custody), rw(p.treasury), ro(new PublicKey(authority), true),
         ro(TOKEN_PROGRAM_ID),
     ], Buffer.concat([ixDisc('sweep'), u64le(amountRaw)]));
+}
+
+/**
+ * burn — quema PILL de la CUSTODIA. Baja el supply; no va a ninguna cartera.
+ *
+ * Es la otra salida de lo que la tienda de skins recauda: el jugador ya gasto ese
+ * PILL, asi que tiene que salir de la custodia o esta acabaria respaldando saldos
+ * que ya nadie tiene. El mint va como cuenta mutable porque el supply vive ahi.
+ */
+function burn(programId, { authority, mint, amountRaw }) {
+    const p = pdas(programId);
+    return ix(programId, [
+        rw(p.config), rw(p.custody), rw(new PublicKey(mint)),
+        ro(new PublicKey(authority), true), ro(TOKEN_PROGRAM_ID),
+    ], Buffer.concat([ixDisc('burn'), u64le(amountRaw)]));
 }
 
 /** publishRound — anota la raiz y arranca la ventana de impugnacion. No mueve tokens. */
@@ -279,13 +299,14 @@ function extendLock(programId, { newUnlockTs, authority }) {
 }
 
 /** tighten — endurece los limites. Los `null` se dejan como estan. */
-function tighten(programId, { authority, rewardCapPerEpoch = null, rewardBpsPerEpoch = null, sweepCapPerEpoch = null, challengeSecs = null }) {
+function tighten(programId, { authority, rewardCapPerEpoch = null, rewardBpsPerEpoch = null, sweepCapPerEpoch = null, burnCapPerEpoch = null, challengeSecs = null }) {
     const p = pdas(programId);
     return ix(programId, [rw(p.config), ro(new PublicKey(authority), true)], Buffer.concat([
         ixDisc('tighten'),
         opt(rewardCapPerEpoch, u64le),
         opt(rewardBpsPerEpoch, u16le),
         opt(sweepCapPerEpoch, u64le),
+        opt(burnCapPerEpoch, u64le),
         opt(challengeSecs, i64le),
     ]));
 }
@@ -319,7 +340,7 @@ function unlockWithdraw(programId, { to, authority, amountRaw }) {
 module.exports = {
     pdas, roundPda, claimPda,
     decodeConfig, decodeRound, decodeReceipt,
-    initialize, deposit, fund, withdraw, sweep,
+    initialize, deposit, fund, withdraw, sweep, burn,
     publishRound, cancelRound, claim, expireRound,
     extendLock, tighten, finalize, transferAuthority, acceptAuthority, unlockWithdraw,
     // Se exportan para los tests: son el contrato de compatibilidad con el .rs.

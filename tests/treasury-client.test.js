@@ -77,11 +77,12 @@ const ESPERADO = {
 
 const EPOCH = 20334;
 const CASOS = [
-    ['Initialize', () => tc.initialize(PROGRAM_ID, { mint, authority, payer: authority, args: { unlockTs: 1, epochSecs: 86400, rewardCapPerEpoch: 1, rewardBpsPerEpoch: 5, challengeSecs: 172800, sweepCapPerEpoch: 1 } })],
+    ['Initialize', () => tc.initialize(PROGRAM_ID, { mint, authority, payer: authority, args: { unlockTs: 1, epochSecs: 86400, rewardCapPerEpoch: 1, rewardBpsPerEpoch: 5, challengeSecs: 172800, sweepCapPerEpoch: 1, burnCapPerEpoch: 1 } })],
     ['Deposit', () => tc.deposit(PROGRAM_ID, { from: mint, owner: jugador, amountRaw: 1 })],
     ['Fund', () => tc.fund(PROGRAM_ID, { from: mint, owner: jugador, amountRaw: 1 })],
     ['Withdraw', () => tc.withdraw(PROGRAM_ID, { to: mint, authority, amountRaw: 1 })],
     ['Sweep', () => tc.sweep(PROGRAM_ID, { authority, amountRaw: 1 })],
+    ['BurnFromCustody', () => tc.burn(PROGRAM_ID, { authority, mint, amountRaw: 1 })],
     ['PublishRound', () => tc.publishRound(PROGRAM_ID, { epoch: EPOCH, merkleRoot: Buffer.alloc(32, 7), totalRaw: 1, winners: 10, authority })],
     ['CancelRound', () => tc.cancelRound(PROGRAM_ID, { epoch: EPOCH, authority })],
     ['Claim', () => tc.claim(PROGRAM_ID, { epoch: EPOCH, winner: jugador, amountRaw: 1, proof: [], mint, payer: authority })],
@@ -182,14 +183,14 @@ test('la prueba de Merkle viaja como Vec<[u8;32]>: u32 de longitud y los nodos s
 
 test('tighten: los campos sin tocar viajan como None (un solo byte)', () => {
     const soloCap = tc.tighten(PROGRAM_ID, { authority, rewardCapPerEpoch: 60000 });
-    // disc(8) + Some(u64)=9 + None + None + None = 20
-    assert.equal(soloCap.data.length, 20);
+    // disc(8) + Some(u64)=9 + None x4 = 21
+    assert.equal(soloCap.data.length, 21);
     assert.equal(soloCap.data[8], 1);
     assert.equal(soloCap.data.readBigUInt64LE(9), 60000n);
     assert.equal(soloCap.data[17], 0);
 
     const nada = tc.tighten(PROGRAM_ID, { authority });
-    assert.equal(nada.data.length, 12);
+    assert.equal(nada.data.length, 13);
 });
 
 test('una raiz que no mida 32 bytes se rechaza aqui, no on-chain', () => {

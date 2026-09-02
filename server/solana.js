@@ -24,6 +24,30 @@ const DECIMALS = parseInt(process.env.PILL_DECIMALS, 10) || tok.decimals || 6;
 // Dueño del treasury (a dónde se ingresan las entradas). Por ahora = autoridad.
 const TREASURY_OWNER = process.env.PILL_TREASURY || tok.authority || '';
 
+/*
+ * A DÓNDE VAN LOS DEPÓSITOS.
+ *
+ * Sin contrato desplegado: a la wallet de la autoridad, como hasta ahora. Con
+ * TREASURY_PROGRAM configurado: al PDA de custodia, que no tiene llave privada — ni
+ * mía ni de nadie. Ese es el cambio que separa "el dueño guarda tu dinero" de "tu
+ * dinero está en una cuenta que solo mueve el programa".
+ *
+ * El destino se resuelve UNA VEZ al arrancar y no en cada verificación: si esto
+ * cambiara a mitad de vida del proceso, unos depósitos se acreditarían mirando una
+ * cuenta y otros mirando otra.
+ */
+const TREASURY_PROGRAM = process.env.TREASURY_PROGRAM || '';
+const DEPOSIT_OWNER = (() => {
+    if (!TREASURY_PROGRAM) return TREASURY_OWNER;
+    try {
+        // El owner de la token account de custodia es el propio PDA (self-authority),
+        // así que es lo que aparece como `owner` en los balances de la transacción.
+        return require('./treasury-client.js').pdas(TREASURY_PROGRAM).custody.toBase58();
+    } catch (e) {
+        return TREASURY_OWNER;
+    }
+})();
+
 function pillToRaw(pill) { return BigInt(Math.round(pill)) * (10n ** BigInt(DECIMALS)); }
 
 // Tope de espera del RPC. Sin él, un devnet que no contesta dejaba la petición
@@ -62,7 +86,7 @@ function deltaFor(meta, owner) {
  * Devuelve { ok, amount, reason }.
  */
 async function verifyDeposit({ sig, fromOwner, minPill }) {
-    if (!MINT || !TREASURY_OWNER) return { ok: false, reason: 'token no configurado' };
+    if (!MINT || !DEPOSIT_OWNER) return { ok: false, reason: 'token no configurado' };
     if (!sig || !fromOwner) return { ok: false, reason: 'faltan datos' };
     let tx;
     try {
@@ -72,7 +96,7 @@ async function verifyDeposit({ sig, fromOwner, minPill }) {
     if (tx.meta && tx.meta.err) return { ok: false, reason: 'tx falló on-chain' };
 
     const minRaw = pillToRaw(minPill);
-    const treasuryDelta = deltaFor(tx.meta, TREASURY_OWNER);   // debe SUBIR
+    const treasuryDelta = deltaFor(tx.meta, DEPOSIT_OWNER);   // debe SUBIR
     const playerDelta = deltaFor(tx.meta, fromOwner);          // debe BAJAR
 
     if (treasuryDelta < minRaw) return { ok: false, reason: 'treasury no recibió lo suficiente', amount: Number(treasuryDelta) / 10 ** DECIMALS };
@@ -117,12 +141,36 @@ async function airdropSol(toWallet, sol) {
     return await sendAndConfirmTransaction(conn, tx, [auth]);
 }
 
+/*
+ * Devuelve PILL a la wallet del jugador.
+ *
+ * CON CONTRATO: sale del PDA de custodia por la instrucción `withdraw`, que el
+ * programa solo deja apuntar a una token account que no sea la tesorería. Aunque
+ * esta clave se filtrara, quien la tenga no puede tocar el dinero bloqueado — ni
+ * mandarlo a la tesorería para inutilizarlo.
+ *
+ * SIN CONTRATO: transferencia normal desde la ATA de la autoridad, como siempre.
+ */
 async function withdraw(toWallet, pill) {
     const { Connection, PublicKey } = require('@solana/web3.js');
     const { getOrCreateAssociatedTokenAccount, transfer } = require('@solana/spl-token');
     const auth = loadAuthority();
     const conn = new Connection(RPC, 'confirmed');
     const mint = new PublicKey(MINT);
+
+    if (TREASURY_PROGRAM) {
+        const tc = require('./treasury-client.js');
+        // La ATA del jugador tiene que existir antes: el programa transfiere a una
+        // token account ya creada, no la crea él. La paga la autoridad, que es quien
+        // firma — un jugador que retira por primera vez no tiene por qué haber
+        // recibido nunca este token.
+        const toAta = await getOrCreateAssociatedTokenAccount(conn, auth, mint, new PublicKey(toWallet));
+        const ix = tc.withdraw(TREASURY_PROGRAM, {
+            to: toAta.address, authority: auth.publicKey, amountRaw: pillToRaw(pill),
+        });
+        return await sendInstructions([ix]);
+    }
+
     const fromAta = await getOrCreateAssociatedTokenAccount(conn, auth, mint, auth.publicKey);
     const toAta = await getOrCreateAssociatedTokenAccount(conn, auth, mint, new PublicKey(toWallet));
     const sig = await transfer(conn, auth, fromAta.address, toAta.address, auth, pillToRaw(pill));
@@ -139,6 +187,17 @@ async function burn(pill) {
     const { Connection, PublicKey } = require('@solana/web3.js');
     const { getOrCreateAssociatedTokenAccount, burn: splBurn } = require('@solana/spl-token');
     const auth = loadAuthority();
+
+    // Con el contrato, lo gastado en la tienda vive en el PDA de custodia y la
+    // autoridad ya no es dueña de esos tokens: quemar pasa a ser una instrucción del
+    // programa, capada por época igual que el sweep. Es el mismo hecho de siempre
+    // (baja el supply, no va a ninguna cartera) por un camino que nadie controla.
+    if (TREASURY_PROGRAM) {
+        const tc = require('./treasury-client.js');
+        const ix = tc.burn(TREASURY_PROGRAM, { authority: auth.publicKey, mint: MINT, amountRaw: pillToRaw(pill) });
+        return await sendInstructions([ix]);
+    }
+
     const conn = new Connection(RPC, 'confirmed');
     const mint = new PublicKey(MINT);
     const ata = await getOrCreateAssociatedTokenAccount(conn, auth, mint, auth.publicKey);
@@ -183,4 +242,4 @@ function verifySignedMessage(wallet, message, signatureArr) {
     } catch (e) { return false; }
 }
 
-module.exports = { verifyDeposit, withdraw, burn, airdropSol, canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey, RPC, MINT, DECIMALS, TREASURY_OWNER, pillToRaw };
+module.exports = { verifyDeposit, withdraw, burn, airdropSol, canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey, RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };

@@ -184,6 +184,7 @@ Los vaults son token accounts en PDAs `["custody"]` y `["treasury"]`, con
 | `fund(amount)` | **cualquiera** | quien sea → TREASURY | sin retorno |
 | `withdraw(amount)` | autoridad | CUSTODY → jugador | nunca toca treasury |
 | `sweep(amount)` | autoridad | CUSTODY → TREASURY | cap por época |
+| `burn(amount)` | autoridad | CUSTODY → destruido | cap por época |
 | `publish_round(epoch, root, total, winners)` | autoridad | anota la raíz | `total <= cap`; época irrepetible |
 | `cancel_round(epoch)` | autoridad | anula una ronda | **solo antes de `claimable_at`** |
 | `claim(epoch, amount, proof)` | **cualquiera** | TREASURY → ganador de la hoja | `now >= claimable_at`, una vez por wallet |
@@ -308,6 +309,14 @@ compra de skin: 25 000 PILL del saldo WAR
 Ambos salen de la misma cola diferida que ya existe (`apuntaQuema`), así que
 comprar sigue siendo instantáneo. Se convierte en `apuntaSalida(pill)` con dos
 contadores, y el temporizador vacía los dos.
+
+**Y por eso el contrato necesita su propia `burn`.** Al mover la custodia a un PDA,
+la autoridad deja de ser dueña de esos tokens y ya no puede quemarlos desde su ATA
+como hacía antes. Sin una instrucción de quema, ese PILL —que el jugador *ya gastó*,
+así que su saldo interno bajó— se quedaría en custodia respaldando saldos que ya no
+existen, y la ratio de reservas iría inflándose hacia arriba sin significar nada.
+`burn` va capada por época como `sweep`, y ahí el cap importa todavía más: lo
+quemado no se recupera ni siquiera bloqueado.
 
 **Y aquí está la clave de tu pregunta sobre las skins nuevas:** el contrato no
 sabe qué es una skin. No conoce precios, ni códigos, ni catálogos. Solo ve

@@ -3,8 +3,11 @@
  *
  * DOS BOLSAS SEPARADAS, con reglas distintas y direcciones distintas:
  *
- *   CUSTODY  ["custody"]   Dinero de los JUGADORES. Entra con deposit(), sale con
- *                          withdraw() a la wallet del jugador. Es deuda, no es mía.
+ *   CUSTODY  ["custody"]   Dinero de los JUGADORES. Entra con deposit(); sale con
+ *                          withdraw() a la wallet del jugador, con sweep() hacia la
+ *                          tesoreria y con burn() al vacio (la tienda de skins).
+ *                          Las tres salidas que no son withdraw van capadas por
+ *                          epoca. Es deuda, no es mia.
  *
  *   TREASURY ["treasury"]  Dinero del PROYECTO. Entra con fund() y con sweep().
  *                          BLOQUEADO hasta unlock_ts (años). Antes de esa fecha la
@@ -109,6 +112,10 @@ pub mod pill_treasury {
         cfg.sweep_cap_per_epoch = args.sweep_cap_per_epoch;
         cfg.sweep_epoch = 0;
         cfg.swept_this_epoch = 0;
+        cfg.burn_cap_per_epoch = args.burn_cap_per_epoch;
+        cfg.burn_epoch = 0;
+        cfg.burned_this_epoch = 0;
+        cfg.total_burned = 0;
         cfg.reserved = 0;
         cfg.total_deposited = 0;
         cfg.total_withdrawn = 0;
@@ -262,6 +269,52 @@ pub mod pill_treasury {
         cfg.swept_this_epoch = acumulado;
         cfg.total_swept = cfg.total_swept.saturating_add(amount);
         emit!(Swept { amount, epoch });
+        Ok(())
+    }
+
+    /// Quema $PILL de la CUSTODIA. Baja el supply del mint: no va a ninguna cartera.
+    ///
+    /// Es la otra mitad de lo que la tienda de skins ya hacia antes del contrato. El
+    /// jugador gasta 25.000 $PILL en una skin: su saldo interno baja, y esos tokens
+    /// —que fisicamente siguen en custodia— tienen que salir de ahi o la custodia
+    /// acabaria respaldando saldos que ya nadie tiene. Una parte se quema (aqui) y
+    /// otra se barre a la tesoreria (sweep).
+    ///
+    /// Va capada por epoca como el sweep, y por lo mismo: sin cap, quemar seria una
+    /// forma de destruir la custodia de los jugadores. Aqui el cap es todavia mas
+    /// importante que en el sweep, porque lo quemado no se recupera ni bloqueado.
+    pub fn burn(ctx: Context<BurnFromCustody>, amount: u64) -> Result<()> {
+        require!(amount > 0, TreasuryError::ZeroAmount);
+        let now = Clock::get()?.unix_timestamp;
+        let cfg = &mut ctx.accounts.config;
+        let epoch = now.checked_div(cfg.epoch_secs).ok_or(TreasuryError::MathOverflow)?;
+        if epoch != cfg.burn_epoch {
+            cfg.burn_epoch = epoch;
+            cfg.burned_this_epoch = 0;
+        }
+        let acumulado = cfg
+            .burned_this_epoch
+            .checked_add(amount)
+            .ok_or(TreasuryError::MathOverflow)?;
+        require!(acumulado <= cfg.burn_cap_per_epoch, TreasuryError::BurnCapExceeded);
+
+        let bump = cfg.custody_bump;
+        let seeds: &[&[u8]] = &[CUSTODY_SEED, &[bump]];
+        token::burn(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                token::Burn {
+                    mint: ctx.accounts.mint.to_account_info(),
+                    from: ctx.accounts.custody.to_account_info(),
+                    authority: ctx.accounts.custody.to_account_info(),
+                },
+                &[seeds],
+            ),
+            amount,
+        )?;
+        cfg.burned_this_epoch = acumulado;
+        cfg.total_burned = cfg.total_burned.saturating_add(amount);
+        emit!(Burned { amount, epoch });
         Ok(())
     }
 
@@ -489,6 +542,10 @@ pub mod pill_treasury {
             require!(v <= cfg.sweep_cap_per_epoch, TreasuryError::WouldLoosen);
             cfg.sweep_cap_per_epoch = v;
         }
+        if let Some(v) = args.burn_cap_per_epoch {
+            require!(v <= cfg.burn_cap_per_epoch, TreasuryError::WouldLoosen);
+            cfg.burn_cap_per_epoch = v;
+        }
         if let Some(v) = args.challenge_secs {
             require!(v >= cfg.challenge_secs, TreasuryError::WouldLoosen);
             cfg.challenge_secs = v;
@@ -497,6 +554,7 @@ pub mod pill_treasury {
             reward_cap_per_epoch: cfg.reward_cap_per_epoch,
             reward_bps_per_epoch: cfg.reward_bps_per_epoch,
             sweep_cap_per_epoch: cfg.sweep_cap_per_epoch,
+            burn_cap_per_epoch: cfg.burn_cap_per_epoch,
             challenge_secs: cfg.challenge_secs,
         });
         Ok(())
@@ -698,6 +756,12 @@ pub struct Config {
     pub sweep_cap_per_epoch: u64,
     pub sweep_epoch: i64,
     pub swept_this_epoch: u64,
+    /// Grifo de la quema. Aparte del de sweep: son salidas distintas y una de ellas
+    /// (esta) es irreversible incluso para la tesoreria.
+    pub burn_cap_per_epoch: u64,
+    pub burn_epoch: i64,
+    pub burned_this_epoch: u64,
+    pub total_burned: u64,
     /// Suma de lo pendiente de reclamar en rondas vivas. Bloquea ese saldo.
     pub reserved: u64,
     pub total_deposited: u64,
@@ -747,6 +811,7 @@ pub struct InitArgs {
     pub reward_bps_per_epoch: u16,
     pub challenge_secs: i64,
     pub sweep_cap_per_epoch: u64,
+    pub burn_cap_per_epoch: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -754,6 +819,7 @@ pub struct TightenArgs {
     pub reward_cap_per_epoch: Option<u64>,
     pub reward_bps_per_epoch: Option<u16>,
     pub sweep_cap_per_epoch: Option<u64>,
+    pub burn_cap_per_epoch: Option<u64>,
     pub challenge_secs: Option<i64>,
 }
 
@@ -859,6 +925,24 @@ pub struct Sweep<'info> {
     pub custody: Account<'info, TokenAccount>,
     #[account(mut, seeds = [TREASURY_SEED], bump = config.treasury_bump)]
     pub treasury: Account<'info, TokenAccount>,
+    pub authority: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct BurnFromCustody<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED],
+        bump = config.config_bump,
+        has_one = authority @ TreasuryError::NotAuthority
+    )]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [CUSTODY_SEED], bump = config.custody_bump)]
+    pub custody: Account<'info, TokenAccount>,
+    /// Mutable: quemar baja el supply, que vive en la cuenta del mint.
+    #[account(mut, address = config.mint @ TreasuryError::WrongMint)]
+    pub mint: Account<'info, Mint>,
     pub authority: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -1015,6 +1099,8 @@ pub struct Withdrawn { pub to: Pubkey, pub amount: u64 }
 #[event]
 pub struct Swept { pub amount: u64, pub epoch: i64 }
 #[event]
+pub struct Burned { pub amount: u64, pub epoch: i64 }
+#[event]
 pub struct RoundPublished {
     pub epoch: u64,
     pub merkle_root: [u8; 32],
@@ -1035,6 +1121,7 @@ pub struct Tightened {
     pub reward_cap_per_epoch: u64,
     pub reward_bps_per_epoch: u16,
     pub sweep_cap_per_epoch: u64,
+    pub burn_cap_per_epoch: u64,
     pub challenge_secs: i64,
 }
 #[event]
@@ -1068,6 +1155,8 @@ pub enum TreasuryError {
     RewardCapExceeded,
     #[msg("Ese barrido supera el tope de la epoca")]
     SweepCapExceeded,
+    #[msg("Esa quema supera el tope de la epoca")]
+    BurnCapExceeded,
     #[msg("No hay saldo libre suficiente en la tesoreria")]
     InsufficientTreasury,
     #[msg("Esa epoca todavia no ha terminado")]
