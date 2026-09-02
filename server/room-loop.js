@@ -87,7 +87,16 @@ function tickRoomOnce(room, now, ctx) {
     // fin de partida (arcade/skills)
     if (room.endsAt && now >= room.endsAt) {
         room.state = 'ended';
-        room.restartAt = now + ctx.arcadeRestartMs;
+        /*
+         * +5-10s al azar (idea de David). El precio de la sala se congela en el
+         * instante en que entra el primero tras quedar vacia, asi que si el
+         * reinicio fuera un tiempo fijo se sabria con precision de segundos
+         * CUANDO se va a congelar — que es justo lo que necesita quien quiera
+         * mover el precio del token en ese momento. Con el reinicio impredecible
+         * hay que sostener la manipulacion durante toda la ventana en vez de
+         * clavarla en un instante, que sale bastante mas caro.
+         */
+        room.restartAt = now + ctx.arcadeRestartMs + 5000 + Math.floor(Math.random() * 5000);
         // BLINDAJE matchEnd: para cada cliente con cid, actualiza Q1, Q2, Q4 (mass).
         // Q3 (skills) ya se actualizó incrementalmente en cada skillUsed.
         for (const [pid, cli] of room.clients) {
