@@ -3211,6 +3211,27 @@ wss.on('connection', (ws, req) => {
                     log(`ADMIN anuncio a ${n} jugadores: ${text}`);
                 }
                 ws.send(JSON.stringify(buildAdminState()));
+            /* ===== TESORERÍA =====
+             * Los dos únicos comandos que hacen falta desde el panel. El resto de la
+             * operación (init, extend-lock, tighten, finalize) vive en
+             * scripts/treasury.js y NO se expone aquí a propósito: son irreversibles
+             * y piden escribir a mano lo que va a pasar. Un botón en un panel web,
+             * detrás de una sola clave, es demasiado fácil de pulsar sin querer para
+             * algo que no tiene deshacer.
+             */
+            } else if (msg.cmd === 'closeDay') {
+                const snap = leaderboard.cerrarAhora();
+                logAdmin('-', 'Cerró el leaderboard del día', snap ? snap.date : '(nada)');
+                log(`ADMIN cerró el leaderboard del ${snap ? snap.date : '?'}: hash ${snap ? snap.hash.slice(0, 12) : '-'}…`);
+                ws.send(JSON.stringify({ t: 'treasuryCmd', ok: !!snap, date: snap && snap.date, hash: snap && snap.hash }));
+            } else if (msg.cmd === 'rewardsTick') {
+                rewards.tick(solana, log).then(hecho => {
+                    logAdmin('-', 'Forzó el ciclo de premios', JSON.stringify(hecho));
+                    ws.send(JSON.stringify({ t: 'treasuryCmd', ok: true, hecho }));
+                }).catch(e => {
+                    log('ADMIN ciclo de premios falló: ' + e.message);
+                    ws.send(JSON.stringify({ t: 'treasuryCmd', ok: false, error: e.message }));
+                });
             } else if (msg.cmd === 'snapshotHz' && typeof msg.hz === 'number') {
                 const hz = msg.hz | 0;
                 if (PW_ROLE === 'director') {

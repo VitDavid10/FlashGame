@@ -367,6 +367,7 @@
             <div class="ngroup" id="ngroupDatos">Data</div>
             <button id="tabBtn_actividad" class="nitem" onclick="verTab('actividad')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2.5-7 5 14 2.5-7h4"/></svg>Activity</button>
             <button id="tabBtn_transactions" class="nitem" onclick="verTab('transactions')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10h13l-4-4M17 14H4l4 4"/></svg>Transactions</button>
+            <button id="tabBtn_treasury" class="nitem" onclick="verTab('treasury')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/><circle cx="12" cy="14" r="1.5"/></svg>Treasury</button>
             <div class="ngroup" id="ngroupSistema" style="display:none">System</div>
             <button id="tabBtn_ajustes" class="nitem" onclick="verTab('ajustes')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>Settings</button>
             <button id="tabBtn_rendimiento" class="nitem" onclick="verTab('rendimiento')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19a9 9 0 1 1 14 0"/><path d="M12 14l4-5"/><circle cx="12" cy="14" r="1.5"/></svg>Performance</button>
@@ -497,6 +498,41 @@
                 <thead><tr><th>Date</th><th>Type</th><th>Wallet</th><th style="text-align:right">Amount (PILL)</th><th>Detail</th></tr></thead>
                 <tbody id="txCuerpo"></tbody>
             </table>
+        </div>
+
+        <!-- TESORERÍA. Lee de /api/treasury y /api/leaderboard, los mismos endpoints
+             públicos que la página de transparencia: si aquí se viera algo distinto
+             de lo que ve cualquiera desde fuera, el panel sería un sitio donde
+             engañarse a uno mismo. Solo dos acciones, y ninguna irreversible. -->
+        <div id="tab_treasury" style="display:none">
+            <h2 class="section">Treasury</h2>
+            <div id="trsBoxes" class="usage" style="padding:18px 20px">Loading…</div>
+
+            <h2 class="section" style="margin-top:22px">Today's leaderboard <span style="color:#666;font-size:12px;font-weight:400">(still open — closes at 00:00 UTC)</span></h2>
+            <table class="rank">
+                <thead><tr><th>#</th><th>Player</th><th>Wallet</th><th style="text-align:right">Kills</th><th style="text-align:right">Best mass</th></tr></thead>
+                <tbody id="trsHoy"></tbody>
+            </table>
+
+            <h2 class="section" style="margin-top:22px">Reward rounds</h2>
+            <table class="rank">
+                <thead><tr><th>Day</th><th>Epoch</th><th style="text-align:right">Pool</th><th style="text-align:right">Winners</th><th style="text-align:right">Claimed</th><th>Root</th><th>Status</th></tr></thead>
+                <tbody id="trsRondas"></tbody>
+            </table>
+
+            <div class="usage" style="padding:18px 20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:16px">
+                <button class="b" onclick="cerrarDia()">Close today's leaderboard</button>
+                <span style="color:#666;font-size:12px">Hashes and freezes today's table right now instead of waiting for 00:00 UTC. Closing an already-closed day does nothing.</span>
+            </div>
+            <div class="usage" style="padding:18px 20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+                <button class="b" onclick="tickPremios()">Run reward cycle now</button>
+                <span style="color:#666;font-size:12px">Builds the Merkle tree for any closed day without a round, and publishes pending roots on-chain.</span>
+            </div>
+            <div class="usage" style="padding:18px 20px;color:#666;font-size:12px;line-height:1.6">
+                Everything irreversible — <b style="color:#999">init, extend-lock, tighten, finalize</b> — lives in
+                <b style="color:#999">scripts/treasury.js</b> and is not exposed here on purpose: those have no undo, and a
+                button behind a single password is too easy to press by accident.
+            </div>
         </div>
 
         <div id="tab_ajustes" style="display:none">
@@ -681,7 +717,7 @@ let ws = null, key = '', autorizado = false, tabActiva = 'dashboard';
 let hostOnlyView = false;   // rol host: solo Rooms, sin Dashboard/Players (ver render())
 const MAIN_GROUP_TABS = ['dashboard', 'salas', 'jugadores'];
 // Registro de tabs: los fijos + los de host que crea ensureHostUi en rol director.
-const ALL_TABS = ['dashboard', 'salas', 'jugadores', 'actividad', 'transactions', 'ajustes', 'rendimiento'];
+const ALL_TABS = ['dashboard', 'salas', 'jugadores', 'actividad', 'transactions', 'treasury', 'ajustes', 'rendimiento'];
 function mainVisible() { return !hostOnlyView && MAIN_GROUP_TABS.includes(tabActiva); }
 let _pendingScrollTab = null;   // scroll a una sección de Main, disparado en el próximo render() (ver verTab)
 const expandidos = new Set();
@@ -710,6 +746,18 @@ function conectar() {
             errorLogin('Wrong key');
         } else if (m.t === 'layerActionError') {
             toast('<strong>Not allowed</strong><br>' + esc(m.reason || ''), 'warn');
+        } else if (m.t === 'treasuryCmd') {
+            if (!m.ok) { toast('<strong>Treasury command failed</strong><br>' + esc(m.error || 'nothing to do'), 'warn'); }
+            else if (m.date) { toast('<strong>Day closed: ' + esc(m.date) + '</strong><br>hash ' + esc(String(m.hash).slice(0, 16)) + '…', 'ok'); }
+            else {
+                const h = m.hecho || {};
+                const partes = [];
+                if (h.cerrado) partes.push('closed ' + h.cerrado);
+                if ((h.preparadas || []).length) partes.push((h.preparadas || []).length + ' round(s) built');
+                if ((h.publicadas || []).length) partes.push((h.publicadas || []).length + ' published on-chain');
+                toast('<strong>Reward cycle done</strong><br>' + esc(partes.join(' · ') || 'nothing pending'), 'ok');
+            }
+            cargarTesoreria();
         }
     };
     ws.onclose = () => {
@@ -754,7 +802,7 @@ async function refrescarSalud() {
 }
 setInterval(refrescarSalud, 5000); refrescarSalud();
 
-const TAB_TITLES = { dashboard: 'Dashboard', salas: 'Rooms', jugadores: 'Players', actividad: 'Activity', transactions: 'Transactions', ajustes: 'Settings', rendimiento: 'Performance' };
+const TAB_TITLES = { dashboard: 'Dashboard', salas: 'Rooms', jugadores: 'Players', actividad: 'Activity', transactions: 'Transactions', treasury: 'Treasury', ajustes: 'Settings', rendimiento: 'Performance' };
 function verTab(t) {
     tabActiva = t;
     // Dashboard/Rooms/Players viven en una sola página scrolleable ("Main"): clicar
@@ -779,6 +827,9 @@ function verTab(t) {
     } else {
         window.scrollTo(0, 0);   // página suelta (Activity, Host N...): empezar arriba
         if (t.startsWith('host')) pedir();
+        // La tesorería no viaja en el adminState (son lecturas de la cadena, lentas y
+        // cacheadas 15 s): se pide solo al abrir la pestaña, no en cada poll.
+        if (t === 'treasury') cargarTesoreria();
     }
 }
 
@@ -866,6 +917,95 @@ function actualizarRanking(includeTesters) {
 }
 function borrarRanking(playerKey, nombre) { if (confirm('Delete ' + nombre + ' from the ranking? Their stats are removed on the server.')) { send({ cmd: 'deleteRanking', playerKey }); toast('<strong>Removed from ranking</strong><br>' + esc(nombre), 'err'); setTimeout(pedir, 100); } }
 function resetearQuests() { if (confirm('RESET quests for EVERY player? This cannot be undone.')) { send({ cmd: 'resetQuests' }); toast('<strong>Quests reset</strong><br>Every player starts from zero', 'warn'); setTimeout(pedir, 100); } }
+
+/* ===== TESORERÍA =====
+ * Se lee de los endpoints PÚBLICOS, los mismos que /treasury.html. Si el panel
+ * tuviera su propia fuente de datos podría enseñar unos números y el mundo otros,
+ * y entonces el panel sería el sitio donde uno se engaña a sí mismo.
+ */
+function cerrarDia() {
+    if (!confirm("Close today's leaderboard now?\n\nIt gets hashed and frozen; today's table stops accepting kills.")) return;
+    send({ cmd: 'closeDay' });
+}
+function tickPremios() { toast('<strong>Running reward cycle…</strong>', 'ok'); send({ cmd: 'rewardsTick' }); }
+
+const trsPill = (n) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+const trsCorta = (s, n) => (s ? String(s).slice(0, n) + '…' : '—');
+
+async function cargarTesoreria() {
+    const caja = document.getElementById('trsBoxes');
+    if (!caja) return;
+    let d, hoy;
+    try {
+        [d, hoy] = await Promise.all([
+            fetch(BASE_PATH + '/api/treasury').then(r => r.json()),
+            fetch(BASE_PATH + '/api/leaderboard').then(r => r.json()),
+        ]);
+    } catch (e) { caja.innerHTML = '<span style="color:#e05">Could not load: ' + esc(e.message) + '</span>'; return; }
+
+    let h = '';
+    if (!d.programa) {
+        h += '<div style="color:#e8a33d;margin-bottom:10px"><b>No treasury contract deployed.</b> '
+            + 'Player deposits and project funds still share one wallet, with no time lock. '
+            + 'Deploy it and set TREASURY_PROGRAM (see DESPLIEGUE-TESORERIA.md).</div>';
+        h += '<div style="color:#666;font-size:12px">Current wallet: <code>' + esc(d.treasuryOwnerLegacy || '—') + '</code></div>';
+    } else {
+        const u = d.upgradeAuthority || {};
+        // Lo primero y en rojo mientras siga siendo cierto: sin revocarla, el bloqueo
+        // es decorativo y no tiene sentido enterrar el aviso al final de la página.
+        if (u.conocido && !u.inmutable) {
+            h += '<div style="color:#e05;margin-bottom:12px"><b>⚠ The program is still UPGRADEABLE.</b> '
+                + 'The lock guarantees nothing until the upgrade authority is revoked.</div>';
+        } else if (u.inmutable) {
+            h += '<div style="color:#3dd68c;margin-bottom:12px"><b>✓ Program is immutable</b> — upgrade authority revoked.</div>';
+        }
+        h += '<div style="display:flex;gap:26px;flex-wrap:wrap">';
+        h += '<div><div style="color:#666;font-size:11px;text-transform:uppercase">Custody (players)</div>'
+            + '<div style="font-size:22px;color:#e8ecef">' + trsPill(d.custody && d.custody.balance) + ' <span style="font-size:12px;color:#666">$PILL</span></div>'
+            + '<div style="color:#666;font-size:11px">owed: ' + trsPill(d.obligaciones) + '</div></div>';
+        h += '<div><div style="color:#666;font-size:11px;text-transform:uppercase">Treasury (locked)</div>'
+            + '<div style="font-size:22px;color:#e8a33d">' + trsPill(d.treasury && d.treasury.balance) + ' <span style="font-size:12px;color:#666">$PILL</span></div>'
+            + (d.config ? '<div style="color:#666;font-size:11px">' + (d.config.bloqueado ? trsPill(d.config.diasParaDesbloqueo) + ' days locked' : 'UNLOCKED') + '</div>' : '')
+            + '</div>';
+        if (d.reservesRatio != null) {
+            const ok = d.reservasCompletas;
+            h += '<div><div style="color:#666;font-size:11px;text-transform:uppercase">Reserves</div>'
+                + '<div style="font-size:22px;color:' + (ok ? '#3dd68c' : '#e05') + '">' + (d.reservesRatio * 100).toFixed(2) + '%</div>'
+                + '<div style="color:#666;font-size:11px">' + (ok ? 'fully backed' : 'SHORT — stop withdrawals') + '</div></div>';
+        }
+        if (d.config) {
+            h += '<div><div style="color:#666;font-size:11px;text-transform:uppercase">Daily cap</div>'
+                + '<div style="font-size:22px;color:#e8ecef">' + trsPill(d.config.rewardCapPerEpoch) + '</div>'
+                + '<div style="color:#666;font-size:11px">' + (d.config.rewardBpsPerEpoch / 100).toFixed(2) + '% · ' + (d.config.finalized ? 'frozen' : 'tightenable') + '</div></div>';
+        }
+        h += '</div>';
+    }
+    const chk = (d.leaderboard && d.leaderboard.check) || {};
+    h += '<div style="margin-top:14px;color:' + (chk.ok ? '#666' : '#e05') + ';font-size:12px">'
+        + 'Leaderboard chain: ' + (chk.ok ? 'intact across ' + chk.dias + ' days' : 'BROKEN — ' + ((chk.fallos || []).length) + ' day(s) do not match')
+        + ' · <a href="/treasury.html" target="_blank" style="color:#5b8def">public page</a></div>';
+    if (d.error) h += '<div style="margin-top:8px;color:#e8a33d;font-size:12px">' + esc(d.error) + '</div>';
+    caja.innerHTML = h;
+
+    const filasHoy = (hoy && hoy.entries) || [];
+    document.getElementById('trsHoy').innerHTML = filasHoy.length
+        ? filasHoy.slice(0, 20).map(f => '<tr><td>' + f.rank + '</td><td>' + esc(f.name || '—') + '</td>'
+            + '<td style="font-family:monospace;font-size:11px;color:#888">' + esc(trsCorta(f.wallet, 12)) + '</td>'
+            + '<td style="text-align:right">' + f.kills + '</td><td style="text-align:right">' + trsPill(f.peak) + '</td></tr>').join('')
+        : '<tr><td colspan="5" style="color:#666">Nobody has reached the minimum kills today. Only paid rooms count.</td></tr>';
+
+    const rondas = (d.premios && d.premios.rondas) || [];
+    document.getElementById('trsRondas').innerHTML = rondas.length
+        ? rondas.map(r => '<tr><td>' + esc(r.date) + '</td><td style="font-family:monospace;font-size:11px">' + r.epoch + '</td>'
+            + '<td style="text-align:right">' + trsPill(r.pill) + '</td><td style="text-align:right">' + r.winners + '</td>'
+            + '<td style="text-align:right">' + r.cobrados + '/' + r.winners + '</td>'
+            + '<td style="font-family:monospace;font-size:11px;color:#888"><a href="/api/rewards/' + r.epoch + '" target="_blank" style="color:#5b8def">' + esc(trsCorta(r.root, 12)) + '</a></td>'
+            + '<td>' + (r.cancelled ? '<span style="color:#e05">cancelled</span>'
+                : r.expired ? '<span style="color:#666">expired</span>'
+                : r.publicada ? '<span style="color:#3dd68c">on-chain</span>'
+                : '<span style="color:#e8a33d">not published</span>') + '</td></tr>').join('')
+        : '<tr><td colspan="7" style="color:#666">No rounds yet.</td></tr>';
+}
 
 // --- Ranking: búsqueda, paginación (top 10/página) y borrado por selección ---
 let rankData = [], rankSearch = '', rankPage = 1, rankSel = new Set();
