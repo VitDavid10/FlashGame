@@ -5219,6 +5219,26 @@
 
     function getViewScale() { let scaleX = width / BASE_WIDTH; let scaleY = height / BASE_HEIGHT; return camera.scale * Math.max(scaleX, scaleY); }
 
+    // Tamaño del rotulo. Crece MUCHO mas despacio que la pildora (raiz en vez
+    // de lineal): con r/1.2 el nombre se comia la pantalla a masas altas y
+    // empujaba la corona fuera del encuadre.
+    function tamNombre(r, minPx) {
+        return Math.max(minPx, 9.5 * Math.sqrt(Math.max(1, r / INITIAL_RADIUS)));
+    }
+    // Cuanto sobresale por encima del centro de la celula el conjunto que hay
+    // que encuadrar: cuerpo + nombre + corona. Es la altura que manda en la red
+    // de seguridad del zoom.
+    function altoRotulado(maxR) {
+        const fSize = tamNombre(maxR, pixelMode ? 14 : 12);
+        // Sin rotulo solo hay que encuadrar el cuerpo: la pildora es una capsula
+        // girada 45 grados, o sea ~1.71*r por encima del centro (no 2*r).
+        let alto = maxR * 1.71;
+        if (playerName) {
+            alto = maxR * PILL_RATIO + fSize;                                   // el nombre se apoya en el borde de arriba
+            if (_miPuesto && currentGameMode === 'arcade') alto += fSize + 10;  // y la corona, sobre el nombre
+        }
+        return alto;
+    }
     // Zoom al que la camara TIENDE segun el tamaño del jugador. updateGame lo
     // persigue suavemente cada frame; heroAmbientDemo lo aplica de golpe para
     // arrancar ya enfocado en su pildora (antes empezaba en 0.8 fijo y el
@@ -5226,11 +5246,12 @@
     function zoomObjetivoJugador(totalR, maxR, n) {
         const effR = Math.max(INITIAL_RADIUS, totalR / Math.pow(n, 0.4));
         let s = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / effR, ZOOM_CONFIG.exponent);
-        // Red de seguridad: por muy grande que seas, tu célula mayor nunca
-        // ocupa más del ~55% del lado corto de la pantalla (la curva de
-        // potencia sola se aplana y a masas enormes el cuerpo desbordaba).
+        // Red de seguridad: lo que tiene que caber no es solo el cuerpo, sino
+        // pildora + nombre + corona. Se aleja la camara lo justo para que ese
+        // conjunto entre en la mitad superior de la pantalla. Sin nombre ni
+        // corona el resultado es el de siempre (~55% del lado corto).
         const viewFactor = Math.max(width / BASE_WIDTH, height / BASE_HEIGHT);
-        s = Math.min(s, 0.275 * Math.min(width, height) / (maxR * viewFactor));
+        s = Math.min(s, 0.44 * Math.min(width, height) / (altoRotulado(maxR) * viewFactor));
         return Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, s));
     }
 
@@ -6424,17 +6445,8 @@
                             ctx.restore();
                         }
             dibujaTpPedazos(ctx, c, alpha);
-            const _fSizePix = Math.max(14, c.r / 1.1);
-            if (c.name) {
-                ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-                ctx.font = `${_fSizePix}px ${PIX_FONT}`;
-                ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-                ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5);
-                ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5);
-            }
-            // Corona / numero de puesto: solo arcade, solo TU pildora.
-            if (_miPuesto && !c.isBot && c.id === 'me' && currentGameMode === 'arcade')
-                dibujaRango(ctx, c.x, rangoAncla(c, !!c.name, _fSizePix), _miPuesto, Date.now());
+            // Nombre y corona ya no se pintan por celula: los dibuja
+            // dibujaNombresYRango en un pase posterior (ver draw()).
             ctx.restore();
         }
 
@@ -6472,11 +6484,8 @@
             ctx.restore();
         }
         dibujaTpPedazos(ctx, c, alpha);
-        const _fSize = Math.max(12, c.r / 1.2);
-        if (c.name) { ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.font = `bold ${_fSize}px Russo One`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); }
-        // Corona / numero de puesto: solo arcade, solo TU pildora.
-        if (_miPuesto && !c.isBot && c.id === 'me' && currentGameMode === 'arcade')
-            dibujaRango(ctx, c.x, rangoAncla(c, !!c.name, _fSize), _miPuesto, Date.now());
+        // Nombre y corona ya no se pintan por celula: los dibuja
+        // dibujaNombresYRango en un pase posterior (ver draw()).
         ctx.restore();
     }
     function drawCellColors(c, w, h) { ctx.fillStyle = c.colorTop; ctx.fillRect(-w/2, -h/2, w, h/2); ctx.fillStyle = c.colorBot; ctx.fillRect(-w/2, 0, w, h/2); }
@@ -14418,6 +14427,11 @@
                 // PANTALLA y el efecto salia pintado en una esquina.
                 dibujaFxMasa(ctx);
 
+                // Nombres y corona: pase aparte y POR ENCIMA de todas las
+                // pildoras, para que ninguna celula los tape. Va antes de los
+                // virus a proposito: esconderse dentro de uno si debe ocultarte.
+                dibujaNombresYRango(vL, vR, vT, vB);
+
                 // (buffs por celda: drawCellBuffFx dentro de drawCellPixel)
 
         ctx.save();
@@ -14509,6 +14523,41 @@
         }
     }
 
+    /*
+     * Rotulos de jugador. Dos reglas nuevas respecto al render por celula que
+     * habia antes:
+     *  - Un nombre por JUGADOR, no por trozo: al dividirte salia repetido en
+     *    cada mitad. Las celulas de un mismo dueño comparten id (ver sim.js),
+     *    asi que se rotula solo la mayor de cada grupo.
+     *  - Se pintan despues de todas las pildoras, no dentro de drawCell, para
+     *    que una celula grande no te tape el nombre ni la corona.
+     */
+    function dibujaNombresYRango(vL, vR, vT, vB) {
+        const mayor = new Map();
+        for (const c of [...sim.enemies, ...myCells()]) {
+            const prev = mayor.get(c.id);
+            if (!prev || c.r > prev.r) mayor.set(c.id, c);
+        }
+        const pix = pixelMode, ahora = Date.now();
+        for (const c of mayor.values()) {
+            if (c.x + c.r < vL || c.x - c.r > vR || c.y + c.r < vT || c.y - c.r > vB) continue;
+            const fSize = tamNombre(c.r, pix ? 14 : 12);
+            if (c.name) {
+                ctx.save();
+                ctx.imageSmoothingEnabled = !pix;
+                ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+                ctx.font = pix ? `${fSize}px ${PIX_FONT}` : `bold ${fSize}px Russo One`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+                const ny = c.y - (c.r * PILL_RATIO) + 5;
+                ctx.strokeText(c.name, c.x, ny);
+                ctx.fillText(c.name, c.x, ny);
+                ctx.restore();
+            }
+            // Corona / numero de puesto: solo arcade, solo TU pildora.
+            if (_miPuesto && !c.isBot && c.id === 'me' && currentGameMode === 'arcade')
+                dibujaRango(ctx, c.x, rangoAncla(c, !!c.name, fSize), _miPuesto, ahora);
+        }
+    }
     function dibujaRango(g, cx, baseY, puesto, ahora) {
         if (!puesto || puesto > 10) return;
         g.save();
