@@ -6415,23 +6415,15 @@
                                                                         ctx.strokeStyle = '#000'; ctx.fillStyle = '#FFD700';
                                                                         ctx.strokeText('⚡', 0, 0); ctx.fillText('⚡', 0, 0);
                                                                     }
-                                                                } else if (p.type === 'PLUS') {
-                                                                    if (!drawFxPop(ctx, 'plus', szPop, 1)) {
-                                                                        ctx.font = `${Math.round(szPop)}px ${PIX_FONT}`;
-                                                                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                                                                        ctx.fillStyle = '#00ff00'; ctx.fillText('+', 0, 0);
-                                                                    }
-                                                                } else {
-                                                                    if (!drawFxPop(ctx, 'minus', szPop, 1)) {
-                                                                        ctx.font = `${Math.round(szPop)}px ${PIX_FONT}`;
-                                                                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                                                                        ctx.fillStyle = '#ff0000'; ctx.fillText('-', 0, 0);
-                                                                    }
                                                                 }
+                                                                // PLUS/MINUS ya no se pintan aqui: los sustituye
+                                                                // dibujaFxMasa, que ademas se ve en online (estas
+                                                                // particulas no viajan en el snapshot).
                                 ctx.restore();
                             });
                             ctx.restore();
                         }
+            dibujaTpPedazos(ctx, c, alpha);
             const _fSizePix = Math.max(14, c.r / 1.1);
             if (c.name) {
                 ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
@@ -6473,11 +6465,13 @@
                                     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                                     ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.fillStyle = '#FFD700';
                                     ctx.strokeText('⚡', 0, 0); ctx.fillText('⚡', 0, 0);
-                                } else { ctx.font = `bold ${Math.max(20, c.r/1.4)}px Russo One`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (p.type === 'PLUS') { ctx.fillStyle = '#00ff00'; ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 5; ctx.fillText("+", 0, 0); } else { ctx.fillStyle = '#ff0000'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5; ctx.fillText("-", 0, 0); } }
+                                }   // PLUS/MINUS ya no se pintan aqui: los sustituye dibujaFxMasa,
+                    // que ademas se ve en online (estas particulas no viajan).
                 ctx.restore();
             });
             ctx.restore();
         }
+        dibujaTpPedazos(ctx, c, alpha);
         const _fSize = Math.max(12, c.r / 1.2);
         if (c.name) { ctx.fillStyle = '#FFF'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.font = `bold ${_fSize}px Russo One`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.strokeText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); ctx.fillText(c.name, c.x, c.y - (c.r * PILL_RATIO) + 5); }
         // Corona / numero de puesto: solo arcade, solo TU pildora.
@@ -14312,13 +14306,13 @@
                 case 'skillUsed': {
                     if (ev.playerId !== 'me') break;
                     Quests.reportSkill(ev.id);
-                    if (ev.id === 'godmass') { spawnFloatingText("GOD MODE MASS", "#00FF00"); SoundManager.play('big'); }
+                    if (ev.id === 'godmass') { spawnFloatingText("GOD MODE MASS", "#00FF00"); SoundManager.play('big'); disparaFxMasa(true); }
                     else if (ev.id === 3) { spawnFloatingText("+ SPEED", "#00FFFF"); SoundManager.play('sprint'); }
                     else if (ev.id === 4) { SoundManager.play('tp'); }
                     else if (ev.id === 5) { spawnFloatingText("+ MAGNET POWER", "#2882FF"); SoundManager.play('iman'); }
                     else if (ev.id === 6) { spawnFloatingText("IMMUNITY", "#FFD700"); SoundManager.play('shield'); }
-                    else if (ev.id === 7) { spawnFloatingText("MASS UP", "#00FF00"); SoundManager.play('big'); }
-                    else if (ev.id === 8) { if (ev.win) { spawnFloatingText("LUCKY! +MASS", "#00FF00"); SoundManager.play('big'); } else { spawnFloatingText("UNLUCKY! -MASS", "#FF0000"); SoundManager.play('little'); } }
+                    else if (ev.id === 7) { spawnFloatingText("MASS UP", "#00FF00"); SoundManager.play('big'); disparaFxMasa(true); }
+                    else if (ev.id === 8) { if (ev.win) { spawnFloatingText("LUCKY! +MASS", "#00FF00"); SoundManager.play('big'); disparaFxMasa(true); } else { spawnFloatingText("UNLUCKY! -MASS", "#FF0000"); SoundManager.play('little'); disparaFxMasa(false); } }
                     break;
                 }
                 case 'skillsUI': if (ev.playerId === 'me') updateSkillsUI_Arcade(); break;
@@ -14401,6 +14395,10 @@
                 if (p && p.skillState[5] > 0 && p.cells.length > 0) {
                     drawPlayerMagnetFx(ctx, p.cells, 1);
                 }
+                // Sumar/bajar masa. AQUI y no mas abajo: pasado el ctx.restore()
+                // del bloque de mundo, el lienzo vuelve a coordenadas de
+                // PANTALLA y el efecto salia pintado en una esquina.
+                dibujaFxMasa(ctx);
 
                 // (buffs por celda: drawCellBuffFx dentro de drawCellPixel)
 
@@ -14542,6 +14540,79 @@
     function rangoAncla(c, hayNombre, fSize) {
         const arribaPildora = c.y - (c.r * PILL_RATIO) + 5;
         return { y: arribaPildora - (fSize + 10), px: Math.max(2, Math.round(fSize / 6)) };
+    }
+
+
+    /* ===== EFECTOS DE SKILL (dibujados por el cliente) =======================
+     * Van aqui y no en las particulas de la simulacion por un motivo concreto:
+     * en ONLINE las particulas no viajan en el snapshot y el cliente ademas
+     * pone flashTime=0 al construir las celdas remotas, asi que el halo y los
+     * "+/-" solo se veian jugando offline. Colgando el efecto del evento
+     * 'skillUsed' —que SI llega en los dos— sale identico en offline, online y
+     * en el preview de busqueda de sala.
+     */
+    const _hashFx = (a, b) => { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); };
+
+    let _fxMasa = null;                  // { t0, suma }
+    const FX_MASA_MS = 750;
+    function disparaFxMasa(suma) { _fxMasa = { t0: Date.now(), suma: !!suma }; }
+
+    /* Sumar masa = ABSORCION: los pixeles caen de fuera hacia la pildora.
+       Bajar masa = FUGA: salen de ella hacia fuera. Son el mismo dibujo con la
+       distancia invertida, asi que se leen como pareja. El halo de color va
+       aqui tambien (offline lo pintaba flashColor, que online no recibe). */
+    function dibujaFxMasa(g) {
+        if (!_fxMasa) return;
+        const k = (Date.now() - _fxMasa.t0) / FX_MASA_MS;
+        if (k >= 1) { _fxMasa = null; return; }
+        const cells = myCells(); if (!cells.length) return;
+        const suma = _fxMasa.suma;
+        const col = suma ? '#2ee56a' : '#ff5a4e';
+        const claro = suma ? '#9dffc4' : '#ffb3ad';
+        g.save();
+        g.imageSmoothingEnabled = false;
+        for (const c of cells) {
+            const alcance = c.r + 46;
+            // Halo: el mismo que daba flashColor en offline, pero sin blur.
+            g.globalAlpha = (1 - k) * 0.30;
+            g.fillStyle = col;
+            g.beginPath();
+            g.arc(c.x, c.y, c.r * 1.22, 0, Math.PI * 2);
+            g.fill();
+            const s = Math.max(2, Math.round(c.r * 0.09));
+            for (let i = 0; i < 20; i++) {
+                const a = _hashFx(i, 1) * Math.PI * 2;
+                const d = c.r * 0.3 + (suma ? (1 - k) : k) * alcance;
+                g.globalAlpha = Math.min(1, (1 - k) * 1.5);
+                g.fillStyle = _hashFx(i, 2) > 0.5 ? col : claro;
+                g.fillRect(Math.round(c.x + Math.cos(a) * d), Math.round(c.y + Math.sin(a) * d), s, s);
+            }
+        }
+        g.restore();
+    }
+
+    /* TELEPORT EN PEDAZOS: la pildora se desarma en cubos al irse y se rearma
+     * al llegar. tpPhase/tpTimer SI viajan en el snapshot (campos tp/tt), asi
+     * que esto sale igual en los tres modos sin tocar el protocolo.
+     * El alpha de la celda ya lo calcula quien nos llama; aqui `t` es cuanto
+     * esta deshecha: 0 entera, 1 del todo. Sale igual en las dos fases porque
+     * en las dos el alpha va de/hacia 1.
+     */
+    function dibujaTpPedazos(g, c, alpha) {
+        if (!c.tpPhase) return;
+        const t = Math.max(0, Math.min(1, 1 - alpha));
+        if (t <= 0.02) return;
+        const s = Math.max(2, Math.round(c.r * 0.1));
+        g.save();
+        g.imageSmoothingEnabled = false;
+        for (let i = 0; i < 22; i++) {
+            const a = _hashFx(i, 1) * Math.PI * 2;
+            const d = t * (c.r * 1.7 + 46) * (0.4 + _hashFx(i, 2) * 0.8);
+            g.globalAlpha = (1 - t) * 0.95;
+            g.fillStyle = _hashFx(i, 3) > 0.5 ? '#b06bff' : '#e8ebee';
+            g.fillRect(Math.round(c.x + Math.cos(a) * d), Math.round(c.y + Math.sin(a) * d), s, s);
+        }
+        g.restore();
     }
 
     const FLECHA_VERDE = '#2ee56a';
