@@ -12,11 +12,12 @@
  * 250 SP o 25.000 $PILL por skin, y el cambio 1000 $PILL -> 10 SP sale del mismo
  * ratio (100 $PILL por SP), no de una segunda constante.
  *
- * QUEMA Y TESORERIA. El $PILL gastado aqui —comprando o cambiando a SP— no vuelve a
+ * QUEMA Y STAKING. El $PILL gastado aqui —comprando o cambiando a SP— no vuelve a
  * ninguna cartera de la que se pudiera sacar despues. Por defecto se quema entero:
  * baja el supply del mint y se comprueba en el explorador. Con PILL_TREASURY_PCT se
- * puede desviar una parte a la boveda bloqueada, que es lo que financia los premios
- * diarios del top 10 (ver TESORERIA-PLAN.md). Las dos salidas son de ida.
+ * puede desviar una parte al POZO DEL STAKING, que reparte los ingresos corrientes
+ * del juego entre quien inmoviliza $PILL (ver TESORERIA-PLAN.md). Los premios del top
+ * 10 no salen de aqui: esos vienen del principal bloqueado en la tesoreria.
  *
  * Como las dos son transacciones on-chain (lentas y con gas), NO se hacen dentro de
  * la peticion del jugador: se apuntan en una cola y un temporizador la vacia. Asi
@@ -271,9 +272,20 @@ async function barrerPendiente(solana, treasuryClient, programId, log) {
     if (!programId) return { ok: false, error: 'sin programa de tesoreria configurado' };
     if (!solana.canWithdraw()) return { ok: false, error: 'clave de la autoridad no disponible' };
     try {
-        const ix = treasuryClient.sweep(programId, {
+        /*
+         * Al POZO DEL STAKING, no a la tesoreria bloqueada. Son dos grifos con
+         * fuentes distintas: lo que la gente se gasta en el juego va a quien
+         * inmoviliza $PILL, y los premios del top 10 salen del principal de la
+         * compra inicial. Si se mezclaran, el rendimiento del staking se comeria
+         * el principal bloqueado o los premios dependerian de que el juego facture.
+         *
+         * Va por goteo (24 h) y no de golpe: si se soltara entero, cualquiera
+         * stakearia un segundo antes de cada barrido y saldria despues.
+         */
+        const ix = treasuryClient.fundStakeRewards(programId, {
             authority: solana.authorityPubkey(),
             amountRaw: solana.pillToRaw(cantidad),
+            durationSecs: parseInt(process.env.STAKE_DRIP_SECS, 10) || 86400,
         });
         const sig = await solana.sendInstructions([ix]);
         data.tesoreriaPendiente -= cantidad;
@@ -281,7 +293,7 @@ async function barrerPendiente(solana, treasuryClient, programId, log) {
         data.barridos.push({ pill: cantidad, sig, t: Date.now() });
         if (data.barridos.length > 50) data.barridos = data.barridos.slice(-50);
         dirty = true; save();
-        if (log) log(`Barridos ${cantidad} $PILL de la tienda a la tesoreria — ${sig}`);
+        if (log) log(`Barridos ${cantidad} $PILL de la tienda al pozo del staking — ${sig}`);
         return { ok: true, pill: cantidad, sig };
     } catch (e) {
         if (log) log(`Barrido FALLIDO (${cantidad} $PILL siguen pendientes): ${e.message}`);

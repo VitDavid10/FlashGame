@@ -11,6 +11,8 @@
  *   node scripts/treasury.js tighten --cap 60000
  *   node scripts/treasury.js finalize
  *   node scripts/treasury.js verify
+ *   node scripts/treasury.js init-staking
+ *   node scripts/treasury.js fund-stake 50000 --hours 24
  *
  * CONFIGURACION (env, igual que el resto del servidor):
  *   TREASURY_PROGRAM   direccion del programa desplegado
@@ -110,6 +112,20 @@ async function status() {
     console.log(`  sweep cap          ${fmt(aPill(cfg.sweepCapPerEpoch))} PILL/epoca`);
     console.log(`  burn cap           ${fmt(aPill(cfg.burnCapPerEpoch))} PILL/epoca`);
 
+    if (cfg.stakingReady) {
+        const [stkInfo, rwdInfo] = await c.getMultipleAccountsInfo([p.stakeVault, p.rewardVault]);
+        const ahora = Math.floor(Date.now() / 1000);
+        console.log(`\nSTAKING`);
+        console.log(`  stakeado por usuarios ${fmt(aPill(saldo(stkInfo))).padStart(16)} PILL`);
+        console.log(`  pozo de recompensas   ${fmt(aPill(saldo(rwdInfo))).padStart(16)} PILL`);
+        console.log(`  repartiendo           ${ahora < cfg.periodFinish
+            ? fmt(aPill(cfg.rewardRate * 86400n)) + ' PILL/dia hasta ' + new Date(cfg.periodFinish * 1000).toISOString().slice(0, 16)
+            : '(parado)'}`);
+        console.log(`  aportado / pagado     ${fmt(aPill(cfg.totalStakeFunded))} / ${fmt(aPill(cfg.totalStakeRewardsPaid))} PILL`);
+    } else {
+        console.log(`\nSTAKING  sin activar (ejecuta el comando init-staking)`);
+    }
+
     console.log(`\nACUMULADO`);
     console.log(`  depositado ${fmt(aPill(cfg.totalDeposited))} · retirado ${fmt(aPill(cfg.totalWithdrawn))}`);
     console.log(`  aportado   ${fmt(aPill(cfg.totalFunded))} · barrido ${fmt(aPill(cfg.totalSwept))}`);
@@ -188,6 +204,46 @@ async function fund() {
     const from = getAssociatedTokenAddressSync(new PublicKey(solana.MINT), new PublicKey(authority), true);
     console.log(`Aportando ${fmt(pill)} PILL a la TESORERIA. Esto es de ida: queda bloqueado igual que el resto.`);
     const ix = tc.fund(PROGRAM, { from, owner: authority, amountRaw: solana.pillToRaw(pill) });
+    console.log('OK: ' + await solana.sendInstructions([ix]));
+}
+
+/*
+ * Activa el pool de staking. Una sola vez.
+ *
+ * Aparte de `init` a proposito: el programa funciona sin staking y se puede encender
+ * despues sin migrar nada.
+ */
+async function initStaking() {
+    exigePrograma(); const authority = exigeAutoridad();
+    if (!solana.MINT) { console.error('Falta PILL_MINT.'); process.exit(1); }
+    const p = tc.pdas(PROGRAM);
+    console.log('Se van a crear las dos bolsas del staking:');
+    console.log(`  principal de los usuarios  ${p.stakeVault.toBase58()}`);
+    console.log(`  pozo de recompensas        ${p.rewardVault.toBase58()}`);
+    console.log('\nSeparadas a proposito: si estuvieran juntas, un error de calculo');
+    console.log('pagaria recompensas con el principal de otro, y no se notaria hasta');
+    console.log('que alguien no pudiera sacar lo suyo.');
+    const ix = tc.initStaking(PROGRAM, { authority, mint: solana.MINT });
+    console.log('\nOK: ' + await solana.sendInstructions([ix]));
+}
+
+/*
+ * Mete PILL de la custodia en el pozo del staking, a repartir por goteo.
+ *
+ * Es el camino del rake de las partidas y de lo que se gasta en la tienda. Por goteo
+ * y no de golpe: si se soltara entero, cualquiera stakearia un segundo antes de cada
+ * aportacion, cobraria su parte del dia entero y saldria.
+ */
+async function fundStake() {
+    exigePrograma(); const authority = exigeAutoridad();
+    const pill = Math.round(Number(args[0]));
+    const horas = Number(flag('hours', '24'));
+    if (!(pill > 0)) { console.error('Uso: treasury.js fund-stake <pill> [--hours 24]'); process.exit(1); }
+    console.log(`Metiendo ${fmt(pill)} PILL en el pozo del staking, a repartir en ${horas} h`);
+    console.log(`  ritmo: ${fmt(Math.floor(pill / (horas * 3600)))} PILL por segundo`);
+    const ix = tc.fundStakeRewards(PROGRAM, {
+        authority, amountRaw: solana.pillToRaw(pill), durationSecs: Math.round(horas * 3600),
+    });
     console.log('OK: ' + await solana.sendInstructions([ix]));
 }
 
@@ -354,7 +410,7 @@ async function verify() {
 
 /* ===================== MAIN ===================== */
 
-const COMANDOS = { status, init, fund, sweep, publish, claim, 'extend-lock': extendLock, tighten, finalize, verify };
+const COMANDOS = { status, init, 'init-staking': initStaking, fund, 'fund-stake': fundStake, sweep, publish, claim, 'extend-lock': extendLock, tighten, finalize, verify };
 const cmd = process.argv[2];
 if (!cmd || !COMANDOS[cmd]) {
     console.log('Comandos: ' + Object.keys(COMANDOS).join(', '));

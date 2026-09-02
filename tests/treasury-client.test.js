@@ -62,6 +62,8 @@ const ESPERADO = {
     config: P.config,
     custody: P.custody,
     treasury: P.treasury,
+    stake_vault: P.stakeVault,
+    reward_vault: P.rewardVault,
     mint,
     authority,
     payer: authority,
@@ -90,6 +92,11 @@ const CASOS = [
     ['AuthorityOnly', () => tc.finalize(PROGRAM_ID, { authority })],
     ['AcceptAuthority', () => tc.acceptAuthority(PROGRAM_ID, { newAuthority: authority })],
     ['UnlockWithdraw', () => tc.unlockWithdraw(PROGRAM_ID, { to: mint, authority, amountRaw: 1 })],
+    ['InitStaking', () => tc.initStaking(PROGRAM_ID, { authority, mint })],
+    ['Stake', () => tc.stake(PROGRAM_ID, { owner: jugador, from: mint, amountRaw: 1 })],
+    ['Unstake', () => tc.unstake(PROGRAM_ID, { owner: jugador, mint, amountRaw: 1 })],
+    ['ClaimStakeRewards', () => tc.claimStakeRewards(PROGRAM_ID, { owner: jugador, mint })],
+    ['FundStakeRewards', () => tc.fundStakeRewards(PROGRAM_ID, { authority, amountRaw: 1, durationSecs: 86400 })],
 ];
 
 for (const [structName, construir] of CASOS) {
@@ -161,6 +168,76 @@ test('el ganador NO firma su claim (puede reclamar un tercero por el)', () => {
     assert.equal(inst.keys[iPayer].isSigner, true, 'el payer si firma: paga el gas');
 });
 
+/* ===================== STAKING ===================== */
+
+test('cada wallet tiene su propia posicion en el pool', () => {
+    const otro = Keypair.generate().publicKey;
+    assert.notEqual(tc.stakePda(PROGRAM_ID, jugador).toBase58(), tc.stakePda(PROGRAM_ID, otro).toBase58());
+    assert.equal(tc.stakePda(PROGRAM_ID, jugador).toBase58(), tc.stakePda(PROGRAM_ID, jugador).toBase58());
+});
+
+test('stake y unstake los firma el dueno, no la autoridad', () => {
+    // El principal del pool es de los usuarios: nadie mas puede moverlo, ni yo.
+    for (const [nombre, inst] of [
+        ['stake', tc.stake(PROGRAM_ID, { owner: jugador, from: mint, amountRaw: 1 })],
+        ['unstake', tc.unstake(PROGRAM_ID, { owner: jugador, mint, amountRaw: 1 })],
+        ['claim', tc.claimStakeRewards(PROGRAM_ID, { owner: jugador, mint })],
+    ]) {
+        const firmantes = inst.keys.filter(k => k.isSigner).map(k => k.pubkey.toBase58());
+        assert.deepEqual(firmantes, [jugador.toBase58()], nombre + ' solo lo firma el dueno');
+    }
+});
+
+test('unstake y claim solo pueden ir a la ATA del dueno', () => {
+    const esperada = getAssociatedTokenAddressSync(mint, jugador, true).toBase58();
+    for (const [nombre, structName, inst] of [
+        ['unstake', 'Unstake', tc.unstake(PROGRAM_ID, { owner: jugador, mint, amountRaw: 1 })],
+        ['claim', 'ClaimStakeRewards', tc.claimStakeRewards(PROGRAM_ID, { owner: jugador, mint })],
+    ]) {
+        const campos = camposDe(structName);
+        const i = campos.findIndex(c => c.nombre === 'to');
+        assert.equal(inst.keys[i].pubkey.toBase58(), esperada, nombre + ' tiene que ir a la ATA del dueno');
+    }
+});
+
+test('fund_stake_rewards saca de CUSTODY y lo mete en el pozo de recompensas', () => {
+    // El rake y la tienda alimentan el staking; la tesoreria bloqueada no se toca.
+    const campos = camposDe('FundStakeRewards');
+    const inst = tc.fundStakeRewards(PROGRAM_ID, { authority, amountRaw: 5000, durationSecs: 86400 });
+    assert.deepEqual(campos.map(c => c.nombre).slice(0, 3), ['config', 'custody', 'reward_vault']);
+    assert.equal(inst.keys[1].pubkey.toBase58(), P.custody.toBase58());
+    assert.equal(inst.keys[2].pubkey.toBase58(), P.rewardVault.toBase58());
+    // Y la tesoreria NO aparece por ningun lado en esta instruccion.
+    assert.ok(!inst.keys.some(k => k.pubkey.toBase58() === P.treasury.toBase58()));
+    assert.equal(inst.data.readBigUInt64LE(8), 5000n);
+    assert.equal(inst.data.readBigInt64LE(16), 86400n);
+});
+
+test('las dos bolsas del staking son cuentas distintas entre si y de las otras dos', () => {
+    const dir = [P.custody, P.treasury, P.stakeVault, P.rewardVault].map(x => x.toBase58());
+    assert.equal(new Set(dir).size, 4, 'las cuatro bolsas tienen que ser direcciones distintas');
+});
+
+test('decodeStakeAccount lee el layout del .rs', () => {
+    const crypto = require('node:crypto');
+    const campos = camposDe('StakeAccount');
+    assert.deepEqual(campos.map(c => c.nombre), ['owner', 'amount', 'reward_per_share_paid', 'pending', 'bump']);
+    const buf = Buffer.concat([
+        crypto.createHash('sha256').update('account:StakeAccount').digest().subarray(0, 8),
+        jugador.toBuffer(),
+        (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(123456n); return b; })(),
+        (() => { const b = Buffer.alloc(16); b.writeBigUInt64LE(999n, 0); b.writeBigUInt64LE(0n, 8); return b; })(),
+        (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(77n); return b; })(),
+        Buffer.from([254]),
+    ]);
+    const a = tc.decodeStakeAccount(buf);
+    assert.equal(a.owner, jugador.toBase58());
+    assert.equal(a.amount, 123456n);
+    assert.equal(a.rewardPerSharePaid, 999n);
+    assert.equal(a.pending, 77n);
+    assert.equal(a.bump, 254);
+});
+
 /* ===================== DISCRIMINADORES ===================== */
 
 test('cada instruccion lleva delante sha256("global:<nombre>")[0..8]', () => {
@@ -229,6 +306,7 @@ function configSintetica(valores) {
         else if (tipo === 'u8') trozos.push(Buffer.from([v]));
         else if (tipo === 'u16') { const b = Buffer.alloc(2); b.writeUInt16LE(v); trozos.push(b); }
         else if (tipo === 'u64') { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(v)); trozos.push(b); }
+        else if (tipo === 'u128') { const b = Buffer.alloc(16); b.writeBigUInt64LE(BigInt(v), 0); b.writeBigUInt64LE(0n, 8); trozos.push(b); }
         else if (tipo === 'i64') { const b = Buffer.alloc(8); b.writeBigInt64LE(BigInt(v)); trozos.push(b); }
         else throw new Error('tipo sin manejar en el test: ' + tipo);
     }
@@ -245,6 +323,10 @@ test('decodeConfig lee el mismo layout que declara el .rs', () => {
         else if (tipo === 'u8') valores[nombre] = n++ % 250;
         else if (tipo === 'u16') valores[nombre] = 5;
         else valores[nombre] = n++ * 1000;
+        // u128 se compara como BigInt: el decodificador no lo baja a Number porque
+        // acc_reward_per_share crece por encima de lo que un Number aguanta sin perder
+        // precision, y ahi cada unidad perdida es recompensa que no se paga.
+        if (tipo === 'u128') valores[nombre] = BigInt(valores[nombre]);
     }
     const buf = configSintetica(valores);
     const cfg = tc.decodeConfig(buf);
@@ -253,8 +335,9 @@ test('decodeConfig lee el mismo layout que declara el .rs', () => {
     for (const { nombre, tipo } of campos) {
         const leido = cfg[camel(nombre)];
         const esperado = valores[nombre];
-        const norm = typeof leido === 'bigint' ? Number(leido) : leido;
-        assert.equal(norm, esperado, `campo ${nombre} mal leido (tipo ${tipo})`);
+        const esperadoNorm = typeof esperado === 'bigint' ? esperado : esperado;
+        const norm = (typeof leido === 'bigint' && typeof esperado !== 'bigint') ? Number(leido) : leido;
+        assert.equal(norm, esperadoNorm, `campo ${nombre} mal leido (tipo ${tipo})`);
     }
 });
 

@@ -57,6 +57,8 @@ class Cursor {
     pubkey() { const p = new PublicKey(this.b.subarray(this.o, this.o + 32)); this.o += 32; return p; }
     bytes32() { const v = this.b.subarray(this.o, this.o + 32); this.o += 32; return Buffer.from(v); }
     u64() { const v = this.b.readBigUInt64LE(this.o); this.o += 8; return v; }
+    /** u128 de Borsh: dos u64 little-endian, la mitad baja primero. */
+    u128() { const lo = this.b.readBigUInt64LE(this.o); const hi = this.b.readBigUInt64LE(this.o + 8); this.o += 16; return (hi << 64n) | lo; }
     i64() { const v = this.b.readBigInt64LE(this.o); this.o += 8; return Number(v); }
     u16() { const v = this.b.readUInt16LE(this.o); this.o += 2; return v; }
     u8() { return this.b[this.o++]; }
@@ -70,7 +72,17 @@ function pdas(programId) {
     const [config] = PublicKey.findProgramAddressSync([Buffer.from('config')], pid);
     const [custody] = PublicKey.findProgramAddressSync([Buffer.from('custody')], pid);
     const [treasury] = PublicKey.findProgramAddressSync([Buffer.from('treasury')], pid);
-    return { programId: pid, config, custody, treasury };
+    const [stakeVault] = PublicKey.findProgramAddressSync([Buffer.from('stake')], pid);
+    const [rewardVault] = PublicKey.findProgramAddressSync([Buffer.from('rewards')], pid);
+    return { programId: pid, config, custody, treasury, stakeVault, rewardVault };
+}
+
+/** La posicion de una wallet en el pool de staking. */
+function stakePda(programId, owner) {
+    return PublicKey.findProgramAddressSync(
+        [Buffer.from('stake'), new PublicKey(owner).toBuffer()],
+        new PublicKey(programId)
+    )[0];
 }
 
 function roundPda(programId, epoch) {
@@ -126,6 +138,31 @@ function decodeConfig(data) {
         configBump: c.u8(),
         custodyBump: c.u8(),
         treasuryBump: c.u8(),
+        stakingReady: c.bool(),
+        stakeBump: c.u8(),
+        rewardsBump: c.u8(),
+        totalStaked: c.u64(),
+        accRewardPerShare: c.u128(),
+        rewardRate: c.u64(),
+        periodFinish: c.i64(),
+        lastUpdate: c.i64(),
+        totalStakeFunded: c.u64(),
+        totalStakeRewardsPaid: c.u64(),
+    };
+}
+
+const STAKE_DISC = accDisc('StakeAccount');
+function decodeStakeAccount(data) {
+    if (!data || data.length < 8 || !data.subarray(0, 8).equals(STAKE_DISC)) {
+        throw new Error('treasury: esa cuenta no es un StakeAccount de este programa');
+    }
+    const c = new Cursor(data, 8);
+    return {
+        owner: c.pubkey().toBase58(),
+        amount: c.u64(),
+        rewardPerSharePaid: c.u128(),
+        pending: c.u64(),
+        bump: c.u8(),
     };
 }
 
@@ -251,6 +288,68 @@ function burn(programId, { authority, mint, amountRaw }) {
     ], Buffer.concat([ixDisc('burn'), u64le(amountRaw)]));
 }
 
+/* ===================== STAKING ===================== */
+
+/** initStaking — crea las dos bolsas del pool. Una sola vez, y solo la autoridad. */
+function initStaking(programId, { authority, mint }) {
+    const p = pdas(programId);
+    return ix(programId, [
+        rw(p.config), rw(p.stakeVault), rw(p.rewardVault),
+        ro(new PublicKey(mint)), rw(new PublicKey(authority), true),
+        ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId), ro(SYSVAR_RENT_PUBKEY),
+    ], ixDisc('init_staking'));
+}
+
+/** stake — el usuario inmoviliza $PILL. Su posicion se crea sola la primera vez. */
+function stake(programId, { owner, from, amountRaw }) {
+    const p = pdas(programId);
+    const w = new PublicKey(owner);
+    return ix(programId, [
+        rw(p.config), rw(p.stakeVault), rw(stakePda(programId, w)),
+        rw(new PublicKey(from)), rw(w, true),
+        ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId),
+    ], Buffer.concat([ixDisc('stake'), u64le(amountRaw)]));
+}
+
+/** unstake — saca principal. Sin permisos, sin esperas y sin tope: es su dinero. */
+function unstake(programId, { owner, mint, amountRaw }) {
+    const p = pdas(programId);
+    const w = new PublicKey(owner);
+    const m = new PublicKey(mint);
+    return ix(programId, [
+        rw(p.config), rw(p.stakeVault), rw(stakePda(programId, w)),
+        rw(getAssociatedTokenAddressSync(m, w, true)), ro(m), ro(w, true),
+        ro(TOKEN_PROGRAM_ID),
+    ], Buffer.concat([ixDisc('unstake'), u64le(amountRaw)]));
+}
+
+/** claimStakeRewards — cobra lo acumulado sin tocar el principal. */
+function claimStakeRewards(programId, { owner, mint }) {
+    const p = pdas(programId);
+    const w = new PublicKey(owner);
+    const m = new PublicKey(mint);
+    return ix(programId, [
+        rw(p.config), rw(p.rewardVault), rw(stakePda(programId, w)),
+        rw(getAssociatedTokenAddressSync(m, w, true)), ro(m), ro(w, true),
+        ro(TOKEN_PROGRAM_ID),
+    ], ixDisc('claim_stake_rewards'));
+}
+
+/**
+ * fundStakeRewards — CUSTODY -> pozo de recompensas, a repartir en `durationSecs`.
+ *
+ * Es el camino del rake y de la tienda. Va por goteo y no de golpe: si se soltara
+ * entero, cualquiera stakearia un segundo antes, se llevaria su parte del dia entero
+ * y saldria.
+ */
+function fundStakeRewards(programId, { authority, amountRaw, durationSecs }) {
+    const p = pdas(programId);
+    return ix(programId, [
+        rw(p.config), rw(p.custody), rw(p.rewardVault),
+        ro(new PublicKey(authority), true), ro(TOKEN_PROGRAM_ID),
+    ], Buffer.concat([ixDisc('fund_stake_rewards'), u64le(amountRaw), i64le(durationSecs)]));
+}
+
 /** publishRound — anota la raiz y arranca la ventana de impugnacion. No mueve tokens. */
 function publishRound(programId, { epoch, merkleRoot, totalRaw, winners, authority }) {
     const p = pdas(programId);
@@ -350,8 +449,9 @@ function unlockWithdraw(programId, { to, authority, amountRaw }) {
 }
 
 module.exports = {
-    pdas, roundPda, claimPda,
-    decodeConfig, decodeRound, decodeReceipt,
+    pdas, roundPda, claimPda, stakePda,
+    decodeConfig, decodeRound, decodeReceipt, decodeStakeAccount,
+    initStaking, stake, unstake, claimStakeRewards, fundStakeRewards,
     initialize, deposit, fund, withdraw, sweep, burn,
     publishRound, cancelRound, claim, expireRound,
     extendLock, tighten, finalize, transferAuthority, acceptAuthority, unlockWithdraw,

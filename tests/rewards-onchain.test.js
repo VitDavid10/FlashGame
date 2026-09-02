@@ -42,7 +42,15 @@ const i64 = (n) => { const b = Buffer.alloc(8); b.writeBigInt64LE(BigInt(n)); re
 const u16 = (n) => { const b = Buffer.alloc(2); b.writeUInt16LE(n); return b; };
 const u8 = (n) => Buffer.from([n]);
 
-/** Config on-chain con el layout exacto de lib.rs. */
+const u128 = (n) => { const b = Buffer.alloc(16); b.writeBigUInt64LE(BigInt(n), 0); b.writeBigUInt64LE(0n, 8); return b; };
+
+/*
+ * Config on-chain con el layout exacto de lib.rs.
+ *
+ * Se escribe a mano a propósito: si alguien añade un campo al struct de Rust y no
+ * toca esto, los tests fallan y obligan a mirar. Un buffer construido con el propio
+ * decodificador no se enteraría de nada.
+ */
 function configBuf({ rewardCap, bps, reserved = 0 }) {
     return Buffer.concat([
         disc('account', 'Config'),
@@ -56,6 +64,9 @@ function configBuf({ rewardCap, bps, reserved = 0 }) {
         u64(reserved),
         u64(0), u64(0), u64(0), u64(0), u64(0), u64(0), u64(0),    // totales
         u8(255), u8(255), u8(255),                                 // bumps
+        // staking: activo, sin nadie dentro y sin goteo en marcha
+        u8(1), u8(255), u8(255),                                   // staking_ready, stake/rewards bump
+        u64(0), u128(0), u64(0), i64(0), i64(0), u64(0), u64(0),
     ]);
 }
 

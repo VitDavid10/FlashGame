@@ -16,6 +16,22 @@
  *                          hoja de un arbol de Merkle cuya raiz se publico al menos
  *                          challenge_secs antes (48 h por defecto).
  *
+ *   STAKE    ["stake"]     Principal de quien inmoviliza $PILL. Es suyo: entra con
+ *                          stake() y sale con unstake() cuando quiera, sin permisos
+ *                          ni esperas.
+ *
+ *   REWARDS  ["rewards"]   Recompensas del staking por repartir. Se llena con el rake
+ *                          de las partidas y lo que se gasta en la tienda, y gotea por
+ *                          segundo entre los que estan dentro.
+ *
+ * DE DONDE SALE CADA COSA. Son dos grifos con fuentes distintas y no se mezclan:
+ *
+ *   ingresos corrientes del juego  ->  STAKING     (quien inmoviliza $PILL)
+ *   principal de la compra inicial ->  TESORERIA   (premios del top 10 diario)
+ *
+ * Asi el premio de gameplay no depende de que el juego facture, y el rendimiento del
+ * staking no se come el principal bloqueado.
+ *
  * POR QUE ASI. Un vault del que la autoridad puede ordenar pagos arbitrarios no esta
  * bloqueado: bastaria con declarar que mis wallets son el top 10 del dia. El problema
  * no es el acceso a los fondos, es el acceso al CRITERIO. Este programa no puede
@@ -71,6 +87,8 @@ pub const CUSTODY_SEED: &[u8] = b"custody";
 pub const TREASURY_SEED: &[u8] = b"treasury";
 pub const ROUND_SEED: &[u8] = b"round";
 pub const CLAIM_SEED: &[u8] = b"claim";
+pub const STAKE_SEED: &[u8] = b"stake";
+pub const REWARDS_SEED: &[u8] = b"rewards";
 
 /// Prefijos de dominio del arbol de Merkle. Sin ellos, un nodo interno de 64 bytes
 /// podria hacerse pasar por una hoja (ataque de segunda preimagen) y alguien podria
@@ -133,6 +151,17 @@ pub mod pill_treasury {
         cfg.config_bump = ctx.bumps.config;
         cfg.custody_bump = ctx.bumps.custody;
         cfg.treasury_bump = ctx.bumps.treasury;
+        // El staking se activa aparte con init_staking(): el programa funciona sin el.
+        cfg.staking_ready = false;
+        cfg.stake_bump = 0;
+        cfg.rewards_bump = 0;
+        cfg.total_staked = 0;
+        cfg.acc_reward_per_share = 0;
+        cfg.reward_rate = 0;
+        cfg.period_finish = 0;
+        cfg.last_update = now;
+        cfg.total_stake_funded = 0;
+        cfg.total_stake_rewards_paid = 0;
 
         emit!(Initialized {
             authority: cfg.authority,
@@ -330,6 +359,176 @@ pub mod pill_treasury {
         cfg.burned_this_epoch = acumulado;
         cfg.total_burned = cfg.total_burned.saturating_add(amount);
         emit!(Burned { amount, epoch });
+        Ok(())
+    }
+
+    /* ===================== STAKING ===================== */
+
+    /// Crea las dos bolsas del staking. Aparte de initialize a proposito: el programa
+    /// puede desplegarse y funcionar sin staking, y activarlo despues sin migrar nada.
+    ///
+    /// DOS bolsas y no una: `stake_vault` guarda el principal de los usuarios —dinero
+    /// suyo, retirable siempre— y `reward_vault` las recompensas por repartir. Si
+    /// estuvieran juntas, un error de calculo pagaria recompensas con el principal de
+    /// otro y nadie lo notaria hasta que alguien no pudiera sacar lo suyo.
+    pub fn init_staking(ctx: Context<InitStaking>) -> Result<()> {
+        let cfg = &mut ctx.accounts.config;
+        require!(!cfg.staking_ready, TreasuryError::StakingAlreadyInit);
+        cfg.staking_ready = true;
+        cfg.stake_bump = ctx.bumps.stake_vault;
+        cfg.rewards_bump = ctx.bumps.reward_vault;
+        cfg.total_staked = 0;
+        cfg.acc_reward_per_share = 0;
+        cfg.reward_rate = 0;
+        cfg.period_finish = 0;
+        cfg.last_update = Clock::get()?.unix_timestamp;
+        emit!(StakingReady {
+            stake_vault: ctx.accounts.stake_vault.key(),
+            reward_vault: ctx.accounts.reward_vault.key(),
+        });
+        Ok(())
+    }
+
+    /// Mete $PILL en el pool. El principal sigue siendo del usuario y sale cuando quiera.
+    pub fn stake(ctx: Context<Stake>, amount: u64) -> Result<()> {
+        require!(amount > 0, TreasuryError::ZeroAmount);
+        let now = Clock::get()?.unix_timestamp;
+        actualiza_pool(&mut ctx.accounts.config, now)?;
+        liquida(&mut ctx.accounts.config, &mut ctx.accounts.stake_account)?;
+
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.from.to_account_info(),
+                    to: ctx.accounts.stake_vault.to_account_info(),
+                    authority: ctx.accounts.owner.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+
+        let acc = &mut ctx.accounts.stake_account;
+        acc.owner = ctx.accounts.owner.key();
+        acc.amount = acc.amount.checked_add(amount).ok_or(TreasuryError::MathOverflow)?;
+        acc.bump = ctx.bumps.stake_account;
+        let cfg = &mut ctx.accounts.config;
+        cfg.total_staked = cfg.total_staked.checked_add(amount).ok_or(TreasuryError::MathOverflow)?;
+        // Se vuelve a apuntar el indice DESPUES de cambiar el saldo: si no, lo que
+        // acaba de entrar cobraria recompensas de antes de estar dentro.
+        acc.reward_per_share_paid = cfg.acc_reward_per_share;
+
+        emit!(Staked { owner: acc.owner, amount, total: acc.amount });
+        Ok(())
+    }
+
+    /// Saca principal del pool. Sin permisos, sin esperas y sin tope: es su dinero.
+    pub fn unstake(ctx: Context<Unstake>, amount: u64) -> Result<()> {
+        require!(amount > 0, TreasuryError::ZeroAmount);
+        require!(ctx.accounts.stake_account.amount >= amount, TreasuryError::NotEnoughStaked);
+        let now = Clock::get()?.unix_timestamp;
+        actualiza_pool(&mut ctx.accounts.config, now)?;
+        liquida(&mut ctx.accounts.config, &mut ctx.accounts.stake_account)?;
+
+        let bump = ctx.accounts.config.stake_bump;
+        let seeds: &[&[u8]] = &[STAKE_SEED, &[bump]];
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.stake_vault.to_account_info(),
+                    to: ctx.accounts.to.to_account_info(),
+                    authority: ctx.accounts.stake_vault.to_account_info(),
+                },
+                &[seeds],
+            ),
+            amount,
+        )?;
+
+        let acc = &mut ctx.accounts.stake_account;
+        acc.amount -= amount;
+        let cfg = &mut ctx.accounts.config;
+        cfg.total_staked = cfg.total_staked.saturating_sub(amount);
+        acc.reward_per_share_paid = cfg.acc_reward_per_share;
+
+        emit!(Unstaked { owner: acc.owner, amount, total: acc.amount });
+        Ok(())
+    }
+
+    /// Cobra las recompensas acumuladas. El principal no se toca.
+    pub fn claim_stake_rewards(ctx: Context<ClaimStakeRewards>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        actualiza_pool(&mut ctx.accounts.config, now)?;
+        liquida(&mut ctx.accounts.config, &mut ctx.accounts.stake_account)?;
+
+        let pendiente = ctx.accounts.stake_account.pending;
+        require!(pendiente > 0, TreasuryError::NothingToClaim);
+
+        let bump = ctx.accounts.config.rewards_bump;
+        let seeds: &[&[u8]] = &[REWARDS_SEED, &[bump]];
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.reward_vault.to_account_info(),
+                    to: ctx.accounts.to.to_account_info(),
+                    authority: ctx.accounts.reward_vault.to_account_info(),
+                },
+                &[seeds],
+            ),
+            pendiente,
+        )?;
+
+        ctx.accounts.stake_account.pending = 0;
+        let cfg = &mut ctx.accounts.config;
+        cfg.total_stake_rewards_paid = cfg.total_stake_rewards_paid.saturating_add(pendiente);
+        emit!(StakeRewardsClaimed { owner: ctx.accounts.stake_account.owner, amount: pendiente });
+        Ok(())
+    }
+
+    /// CUSTODY -> el pozo de recompensas del staking, repartido a lo largo de `duration`.
+    ///
+    /// Es el camino del rake de las partidas y de lo que se gasta en la tienda: los
+    /// ingresos corrientes del juego van a quien inmoviliza $PILL. La tesoreria
+    /// bloqueada no se toca aqui — esa financia los premios del top 10 diario.
+    ///
+    /// SE REPARTE POR SEGUNDO, no de golpe. Si se soltara entero al llamar, cualquiera
+    /// podria stakear un segundo antes, llevarse su parte del dia entero y salir. Con
+    /// el goteo, lo que cobras es proporcional al tiempo que estuviste dentro.
+    pub fn fund_stake_rewards(ctx: Context<FundStakeRewards>, amount: u64, duration: i64) -> Result<()> {
+        require!(amount > 0, TreasuryError::ZeroAmount);
+        require!(duration >= 3_600, TreasuryError::DurationTooShort);
+        let now = Clock::get()?.unix_timestamp;
+        actualiza_pool(&mut ctx.accounts.config, now)?;
+
+        let cfg_bump = ctx.accounts.config.custody_bump;
+        let seeds: &[&[u8]] = &[CUSTODY_SEED, &[cfg_bump]];
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.custody.to_account_info(),
+                    to: ctx.accounts.reward_vault.to_account_info(),
+                    authority: ctx.accounts.custody.to_account_info(),
+                },
+                &[seeds],
+            ),
+            amount,
+        )?;
+
+        let cfg = &mut ctx.accounts.config;
+        // Lo que quede sin repartir del periodo anterior se suma al nuevo: si no, cada
+        // aportacion antes de tiempo tiraria a la basura la cola de la anterior.
+        let restante = if now < cfg.period_finish {
+            (cfg.period_finish - now) as u128 * cfg.reward_rate as u128
+        } else { 0 };
+        let total = (amount as u128).checked_add(restante).ok_or(TreasuryError::MathOverflow)?;
+        cfg.reward_rate = (total / duration as u128) as u64;
+        cfg.period_finish = now.checked_add(duration).ok_or(TreasuryError::MathOverflow)?;
+        cfg.last_update = now;
+        cfg.total_stake_funded = cfg.total_stake_funded.saturating_add(amount);
+
+        emit!(StakeRewardsFunded { amount, duration, rate: cfg.reward_rate, until: cfg.period_finish });
         Ok(())
     }
 
@@ -649,6 +848,64 @@ pub mod pill_treasury {
     }
 }
 
+/* ===================== EL REPARTO DEL STAKING ===================== */
+
+/*
+ * El patron del "indice acumulado": en vez de recorrer a todos los que stakean cada
+ * vez que entra dinero —imposible on-chain—, se lleva un solo numero global que dice
+ * cuanta recompensa lleva acumulada CADA unidad stakeada desde el principio. Lo que
+ * te toca es ese numero menos el que habia la ultima vez que tocaste tu posicion,
+ * multiplicado por lo que tienes dentro.
+ *
+ * Asi entrar, salir y cobrar son O(1) y no dependen de cuanta gente haya.
+ *
+ * PRECISION existe porque la division entera perderia los decimales: con pocas
+ * recompensas y mucho stakeado, el incremento por unidad seria 0 y nadie cobraria
+ * nunca. Multiplicando por 1e12 antes de dividir, ese redondeo se va a la basura
+ * doce ordenes de magnitud mas abajo.
+ */
+const PRECISION: u128 = 1_000_000_000_000;
+
+/// Pone al dia el indice global hasta `now`. Hay que llamarla ANTES de cualquier
+/// cambio de saldo, o el reparto se calcularia con el saldo nuevo sobre tiempo viejo.
+fn actualiza_pool(cfg: &mut Config, now: i64) -> Result<()> {
+    if !cfg.staking_ready { return err!(TreasuryError::StakingNotReady); }
+    let hasta = core::cmp::min(now, cfg.period_finish);
+    if hasta > cfg.last_update && cfg.total_staked > 0 && cfg.reward_rate > 0 {
+        let dt = (hasta - cfg.last_update) as u128;
+        let repartido = dt
+            .checked_mul(cfg.reward_rate as u128)
+            .ok_or(TreasuryError::MathOverflow)?
+            .checked_mul(PRECISION)
+            .ok_or(TreasuryError::MathOverflow)?
+            / cfg.total_staked as u128;
+        cfg.acc_reward_per_share = cfg
+            .acc_reward_per_share
+            .checked_add(repartido)
+            .ok_or(TreasuryError::MathOverflow)?;
+    }
+    // El reloj avanza aunque no haya nadie dentro: si no, al entrar el primero se le
+    // pagaria todo lo acumulado mientras el pool estaba vacio.
+    cfg.last_update = core::cmp::max(cfg.last_update, hasta);
+    Ok(())
+}
+
+/// Pasa a `pending` lo que le toca a esta cuenta desde su ultima liquidacion.
+fn liquida(cfg: &Config, acc: &mut StakeAccount) -> Result<()> {
+    if acc.amount > 0 {
+        let ganado = (acc.amount as u128)
+            .checked_mul(cfg.acc_reward_per_share.saturating_sub(acc.reward_per_share_paid))
+            .ok_or(TreasuryError::MathOverflow)?
+            / PRECISION;
+        acc.pending = acc
+            .pending
+            .checked_add(ganado as u64)
+            .ok_or(TreasuryError::MathOverflow)?;
+    }
+    acc.reward_per_share_paid = cfg.acc_reward_per_share;
+    Ok(())
+}
+
 /* ===================== MERKLE ===================== */
 
 /// Verificacion clasica de pares ordenados: en cada nivel se ordenan los dos hijos
@@ -708,6 +965,118 @@ mod tests {
                 v.epoch, v.amount, v.valid
             );
         }
+    }
+
+    /* ===================== EL REPARTO DEL STAKING ===================== */
+
+    /// Config mínima para probar el acumulador sin montar cuentas de Solana.
+    fn pool(total_staked: u64, rate: u64, now: i64, dura: i64) -> Config {
+        let mut c: Config = unsafe { core::mem::zeroed() };
+        c.staking_ready = true;
+        c.total_staked = total_staked;
+        c.reward_rate = rate;
+        c.last_update = now;
+        c.period_finish = now + dura;
+        c
+    }
+    fn cuenta(amount: u64, cfg: &Config) -> StakeAccount {
+        let mut a: StakeAccount = unsafe { core::mem::zeroed() };
+        a.amount = amount;
+        a.reward_per_share_paid = cfg.acc_reward_per_share;
+        a
+    }
+
+    #[test]
+    fn el_reparto_es_proporcional_a_lo_stakeado() {
+        // Dos usuarios, uno con el triple que el otro, el mismo tiempo dentro.
+        let mut cfg = pool(4_000, 100, 0, 1_000);
+        let mut pequeno = cuenta(1_000, &cfg);
+        let mut grande = cuenta(3_000, &cfg);
+
+        actualiza_pool(&mut cfg, 100).unwrap();
+        liquida(&cfg, &mut pequeno).unwrap();
+        liquida(&cfg, &mut grande).unwrap();
+
+        // 100 s x 100/s = 10.000 repartidos entre 4.000 stakeados.
+        assert_eq!(pequeno.pending + grande.pending, 10_000);
+        assert_eq!(grande.pending, pequeno.pending * 3);
+    }
+
+    #[test]
+    fn quien_entra_tarde_no_cobra_lo_de_antes() {
+        // El ataque que mata el goteo: stakear justo antes del reparto para llevarse
+        // la parte de todo el periodo.
+        let mut cfg = pool(1_000, 100, 0, 1_000);
+        let mut veterano = cuenta(1_000, &cfg);
+
+        // 100 s solo el veterano.
+        actualiza_pool(&mut cfg, 100).unwrap();
+        liquida(&cfg, &mut veterano).unwrap();
+        assert_eq!(veterano.pending, 10_000);
+
+        // Entra uno nuevo con lo mismo. Su indice arranca en el acumulado de AHORA.
+        let mut nuevo = cuenta(1_000, &cfg);
+        cfg.total_staked = 2_000;
+
+        // Otros 100 s, ahora a medias.
+        actualiza_pool(&mut cfg, 200).unwrap();
+        liquida(&cfg, &mut veterano).unwrap();
+        liquida(&cfg, &mut nuevo).unwrap();
+
+        assert_eq!(nuevo.pending, 5_000, "el nuevo solo cobra desde que entro");
+        assert_eq!(veterano.pending, 15_000, "el veterano cobra los dos tramos");
+    }
+
+    #[test]
+    fn el_goteo_se_para_al_acabar_el_periodo() {
+        let mut cfg = pool(1_000, 100, 0, 50);   // solo 50 s de reparto
+        let mut a = cuenta(1_000, &cfg);
+        actualiza_pool(&mut cfg, 1_000).unwrap();   // pasa muchisimo mas tiempo
+        liquida(&cfg, &mut a).unwrap();
+        assert_eq!(a.pending, 5_000, "no puede repartir mas alla de period_finish");
+    }
+
+    #[test]
+    fn con_el_pool_vacio_no_se_acumula_nada() {
+        // Si el reloj corriera con el pool vacio, al entrar el primero se le pagaria
+        // todo lo acumulado mientras no habia nadie.
+        let mut cfg = pool(0, 100, 0, 1_000);
+        actualiza_pool(&mut cfg, 500).unwrap();
+        assert_eq!(cfg.acc_reward_per_share, 0);
+
+        cfg.total_staked = 1_000;
+        let mut a = cuenta(1_000, &cfg);
+        actualiza_pool(&mut cfg, 600).unwrap();
+        liquida(&cfg, &mut a).unwrap();
+        assert_eq!(a.pending, 10_000, "solo los 100 s que estuvo dentro");
+    }
+
+    #[test]
+    fn salir_y_volver_no_regala_recompensas() {
+        let mut cfg = pool(1_000, 100, 0, 10_000);
+        let mut a = cuenta(1_000, &cfg);
+
+        actualiza_pool(&mut cfg, 100).unwrap();
+        liquida(&cfg, &mut a).unwrap();
+        let tras_100 = a.pending;
+
+        // Sale del todo y vuelve a entrar en el mismo instante.
+        a.amount = 0;
+        cfg.total_staked = 0;
+        actualiza_pool(&mut cfg, 200).unwrap();
+        a.amount = 1_000;
+        cfg.total_staked = 1_000;
+        a.reward_per_share_paid = cfg.acc_reward_per_share;
+
+        liquida(&cfg, &mut a).unwrap();
+        assert_eq!(a.pending, tras_100, "fuera del pool no se acumula");
+    }
+
+    #[test]
+    fn sin_staking_activado_no_se_toca_el_pool() {
+        let mut cfg = pool(1_000, 100, 0, 1_000);
+        cfg.staking_ready = false;
+        assert!(actualiza_pool(&mut cfg, 100).is_err());
     }
 
     #[test]
@@ -790,6 +1159,24 @@ pub struct Config {
     pub config_bump: u8,
     pub custody_bump: u8,
     pub treasury_bump: u8,
+
+    /* --- STAKING ---
+     * Los ingresos corrientes del juego (rake de partidas y tienda) se reparten
+     * entre quien inmoviliza $PILL. La tesoreria bloqueada NO entra aqui: esa
+     * financia los premios del top 10 diario. Dos grifos, dos fuentes. */
+    pub staking_ready: bool,
+    pub stake_bump: u8,
+    pub rewards_bump: u8,
+    pub total_staked: u64,
+    /// Recompensa acumulada por unidad stakeada, escalada por PRECISION.
+    pub acc_reward_per_share: u128,
+    /// Tokens por segundo que se estan repartiendo ahora mismo.
+    pub reward_rate: u64,
+    /// Hasta cuando dura el goteo actual.
+    pub period_finish: i64,
+    pub last_update: i64,
+    pub total_stake_funded: u64,
+    pub total_stake_rewards_paid: u64,
 }
 
 #[account]
@@ -814,6 +1201,21 @@ pub struct RewardRound {
 pub struct ClaimReceipt {
     pub amount: u64,
     pub ts: i64,
+    pub bump: u8,
+}
+
+/// La posicion de un usuario en el pool. Una por wallet, PDA ["stake", owner].
+#[account]
+#[derive(InitSpace)]
+pub struct StakeAccount {
+    pub owner: Pubkey,
+    /// Principal. Es suyo y sale cuando quiera.
+    pub amount: u64,
+    /// El indice global en su ultima liquidacion. La diferencia con el actual es lo
+    /// que ha ganado desde entonces.
+    pub reward_per_share_paid: u128,
+    /// Ganado y todavia sin cobrar.
+    pub pending: u64,
     pub bump: u8,
 }
 
@@ -968,6 +1370,118 @@ pub struct Sweep<'info> {
     pub custody: Account<'info, TokenAccount>,
     #[account(mut, seeds = [TREASURY_SEED], bump = config.treasury_bump)]
     pub treasury: Account<'info, TokenAccount>,
+    pub authority: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+/* ===================== CONTEXTOS DEL STAKING ===================== */
+
+#[derive(Accounts)]
+pub struct InitStaking<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED],
+        bump = config.config_bump,
+        has_one = authority @ TreasuryError::NotAuthority
+    )]
+    pub config: Account<'info, Config>,
+    /// Principal de los usuarios. Como los demas vaults: PDA que es su propia
+    /// autoridad, sin ninguna llave privada capaz de firmar por el.
+    #[account(
+        init, payer = authority, seeds = [STAKE_SEED], bump,
+        token::mint = mint, token::authority = stake_vault,
+    )]
+    pub stake_vault: Account<'info, TokenAccount>,
+    /// Recompensas por repartir. Separada del principal a proposito.
+    #[account(
+        init, payer = authority, seeds = [REWARDS_SEED], bump,
+        token::mint = mint, token::authority = reward_vault,
+    )]
+    pub reward_vault: Account<'info, TokenAccount>,
+    #[account(address = config.mint @ TreasuryError::WrongMint)]
+    pub mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct Stake<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.config_bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [STAKE_SEED], bump = config.stake_bump)]
+    pub stake_vault: Account<'info, TokenAccount>,
+    /// La posicion del usuario. Se crea sola la primera vez que stakea.
+    #[account(
+        init_if_needed, payer = owner,
+        space = 8 + StakeAccount::INIT_SPACE,
+        seeds = [STAKE_SEED, owner.key().as_ref()], bump
+    )]
+    pub stake_account: Account<'info, StakeAccount>,
+    #[account(mut, constraint = from.mint == config.mint @ TreasuryError::WrongMint)]
+    pub from: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Unstake<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.config_bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [STAKE_SEED], bump = config.stake_bump)]
+    pub stake_vault: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        seeds = [STAKE_SEED, owner.key().as_ref()], bump = stake_account.bump,
+        has_one = owner @ TreasuryError::NotYourStake
+    )]
+    pub stake_account: Account<'info, StakeAccount>,
+    /// Su cuenta asociada: el principal solo puede volver a su dueno.
+    #[account(mut, associated_token::mint = mint, associated_token::authority = owner)]
+    pub to: Account<'info, TokenAccount>,
+    #[account(address = config.mint @ TreasuryError::WrongMint)]
+    pub mint: Account<'info, Mint>,
+    pub owner: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimStakeRewards<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.config_bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [REWARDS_SEED], bump = config.rewards_bump)]
+    pub reward_vault: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        seeds = [STAKE_SEED, owner.key().as_ref()], bump = stake_account.bump,
+        has_one = owner @ TreasuryError::NotYourStake
+    )]
+    pub stake_account: Account<'info, StakeAccount>,
+    #[account(mut, associated_token::mint = mint, associated_token::authority = owner)]
+    pub to: Account<'info, TokenAccount>,
+    #[account(address = config.mint @ TreasuryError::WrongMint)]
+    pub mint: Account<'info, Mint>,
+    pub owner: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct FundStakeRewards<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED],
+        bump = config.config_bump,
+        has_one = authority @ TreasuryError::NotAuthority
+    )]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [CUSTODY_SEED], bump = config.custody_bump)]
+    pub custody: Account<'info, TokenAccount>,
+    #[account(mut, seeds = [REWARDS_SEED], bump = config.rewards_bump)]
+    pub reward_vault: Account<'info, TokenAccount>,
     pub authority: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -1144,6 +1658,16 @@ pub struct Swept { pub amount: u64, pub epoch: i64 }
 #[event]
 pub struct Burned { pub amount: u64, pub epoch: i64 }
 #[event]
+pub struct StakingReady { pub stake_vault: Pubkey, pub reward_vault: Pubkey }
+#[event]
+pub struct Staked { pub owner: Pubkey, pub amount: u64, pub total: u64 }
+#[event]
+pub struct Unstaked { pub owner: Pubkey, pub amount: u64, pub total: u64 }
+#[event]
+pub struct StakeRewardsClaimed { pub owner: Pubkey, pub amount: u64 }
+#[event]
+pub struct StakeRewardsFunded { pub amount: u64, pub duration: i64, pub rate: u64, pub until: i64 }
+#[event]
 pub struct RoundPublished {
     pub epoch: u64,
     pub merkle_root: [u8; 32],
@@ -1200,6 +1724,18 @@ pub enum TreasuryError {
     SweepCapExceeded,
     #[msg("Esa quema supera el tope de la epoca")]
     BurnCapExceeded,
+    #[msg("El staking todavia no esta activado")]
+    StakingNotReady,
+    #[msg("El staking ya estaba activado")]
+    StakingAlreadyInit,
+    #[msg("No tienes tanto en el pool")]
+    NotEnoughStaked,
+    #[msg("Esa posicion de staking no es tuya")]
+    NotYourStake,
+    #[msg("No hay nada que cobrar")]
+    NothingToClaim,
+    #[msg("El reparto tiene que durar al menos una hora")]
+    DurationTooShort,
     #[msg("No hay saldo libre suficiente en la tesoreria")]
     InsufficientTreasury,
     #[msg("Esa epoca todavia no ha terminado")]

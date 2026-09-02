@@ -2064,6 +2064,74 @@ async function upgradeAuthorityDe(conn, programId) {
     };
 }
 
+/* Estado del pool de staking, y la posición de una wallet si se pide.
+ *
+ * El rendimiento se calcula aquí y no on-chain: el contrato solo guarda la tasa por
+ * segundo y hasta cuándo dura, que es lo que necesita para repartir. Anualizar eso es
+ * cosa de quien lo mira, y conviene que se vea de dónde sale — con el pool casi vacío
+ * el porcentaje se dispara y no significa nada.
+ */
+async function stakeState(wallet) {
+    const dec = solana.DECIMALS;
+    const aPill = (raw) => Number(BigInt(raw)) / 10 ** dec;
+    if (!TREASURY_PROGRAM) return { activo: false, aviso: 'el staking todavía no está desplegado' };
+
+    const tc = require('./treasury-client.js');
+    const p = tc.pdas(TREASURY_PROGRAM);
+    const conn = _solConn();
+    const claves = [p.config, p.stakeVault, p.rewardVault];
+    if (wallet) claves.push(tc.stakePda(TREASURY_PROGRAM, wallet));
+    const cuentas = await conn.getMultipleAccountsInfo(claves);
+    if (!cuentas[0]) return { activo: false, aviso: 'el programa no está inicializado' };
+
+    const cfg = tc.decodeConfig(cuentas[0].data);
+    const saldo = (info) => (info && info.data.length >= 72 ? info.data.readBigUInt64LE(64) : 0n);
+    const ahora = Math.floor(Date.now() / 1000);
+    const enMarcha = ahora < cfg.periodFinish;
+    const porDia = enMarcha ? Number(cfg.rewardRate) * 86400 : 0;
+    const stakeado = Number(cfg.totalStaked);
+
+    const out = {
+        activo: cfg.stakingReady,
+        stakeVault: p.stakeVault.toBase58(),
+        rewardVault: p.rewardVault.toBase58(),
+        totalStaked: aPill(cfg.totalStaked),
+        pozo: aPill(saldo(cuentas[2])),
+        repartiendoPorDia: aPill(porDia),
+        hasta: cfg.periodFinish ? new Date(cfg.periodFinish * 1000).toISOString() : null,
+        enMarcha,
+        // Aproximación: lo que se reparte al día sobre lo que hay dentro, anualizado.
+        // Con poco stakeado sale un número enorme que no se sostendría si entrara
+        // gente, así que se da como lo que es y no como una promesa.
+        apr: stakeado > 0 && enMarcha ? (porDia * 365) / stakeado : null,
+        totales: { aportado: aPill(cfg.totalStakeFunded), pagado: aPill(cfg.totalStakeRewardsPaid) },
+    };
+
+    if (wallet) {
+        const info = cuentas[3];
+        if (!info) out.posicion = { wallet, stakeado: 0, pendiente: 0, existe: false };
+        else {
+            const acc = tc.decodeStakeAccount(info.data);
+            // Lo pendiente guardado más lo devengado desde su última liquidación, que
+            // es lo que el contrato le pagaría ahora mismo.
+            const PRECISION = 1_000_000_000_000n;
+            let acumulado = cfg.accRewardPerShare;
+            if (stakeado > 0 && enMarcha) {
+                const dt = BigInt(Math.max(0, Math.min(ahora, cfg.periodFinish) - cfg.lastUpdate));
+                acumulado += (dt * cfg.rewardRate * PRECISION) / cfg.totalStaked;
+            }
+            const devengado = (acc.amount * (acumulado - acc.rewardPerSharePaid)) / PRECISION;
+            out.posicion = {
+                wallet, existe: true,
+                stakeado: aPill(acc.amount),
+                pendiente: aPill(acc.pending + devengado),
+                parteDelPool: stakeado > 0 ? Number(acc.amount) / stakeado : 0,
+            };
+        }
+    }
+    return out;
+}
+
 async function treasuryState() {
     if (_treasuryCache && Date.now() - _treasuryCacheAt < TREASURY_CACHE_MS) return _treasuryCache;
 
@@ -2144,6 +2212,9 @@ async function treasuryState() {
             };
         }
         estado.upgradeAuthority = await upgradeAuthorityDe(conn, TREASURY_PROGRAM);
+        // El staking va aparte porque es otra fuente y otro destinatario: los
+        // ingresos corrientes para quien inmoviliza, el principal para el top 10.
+        try { estado.staking = await stakeState(null); } catch (e) { estado.staking = { activo: false, error: e.message }; }
     } catch (e) {
         estado.error = 'no pude leer la cadena: ' + e.message;
     }
@@ -3004,6 +3075,77 @@ const httpServer = http.createServer(async (req, res) => {
         const snap = /^\d{4}-\d{2}-\d{2}$/.test(date) ? leaderboard.diaCerrado(date) : null;
         res.writeHead(snap ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify(snap || { error: 'no hay leaderboard cerrado para esa fecha' }));
+        return;
+    }
+
+    /* ===== STAKING =====
+     *
+     * El pool reparte los ingresos corrientes del juego —rake de partidas y tienda—
+     * entre quien inmoviliza $PILL. Todo lo que hace falta para operarlo lo firma el
+     * propio usuario: el servidor solo formatea la transacción, igual que en el claim.
+     * Ni el principal ni las recompensas pasan por sus manos.
+     */
+    if (urlPath === '/api/stake' && req.method === 'GET') {
+        const wallet = String(query.get('wallet') || '');
+        stakeState(isSolAddr(wallet) ? wallet : null).then(st => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(st));
+        }).catch(e => {
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: e.message }));
+        });
+        return;
+    }
+    /* Transacción de stake / unstake / cobro, lista para firmar.
+     *
+     * La firma es SIEMPRE del dueño y de nadie más: el contrato exige que el owner
+     * firme y que el destino sea su propia cuenta asociada. Lo peor que puede hacer
+     * un servidor comprometido aquí es devolver una transacción que falle. */
+    if (urlPath === '/api/stake/tx' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones' })); return; }
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 1000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            try {
+                const p = JSON.parse(body || '{}');
+                const wallet = String(p.wallet || '');
+                const accion = String(p.accion || '');
+                const pill = Math.floor(Number(p.pill) || 0);
+                if (!isSolAddr(wallet)) { res.end(JSON.stringify({ ok: false, reason: 'wallet inválida' })); return; }
+                if (!TREASURY_PROGRAM) { res.end(JSON.stringify({ ok: false, reason: 'el staking todavía no está desplegado' })); return; }
+
+                const tcl = require('./treasury-client.js');
+                const { Transaction, PublicKey } = require('@solana/web3.js');
+                const { getAssociatedTokenAddressSync } = require('@solana/spl-token');
+                const w = new PublicKey(wallet);
+                let ix;
+                if (accion === 'stake') {
+                    if (!(pill > 0)) { res.end(JSON.stringify({ ok: false, reason: 'cantidad inválida' })); return; }
+                    ix = tcl.stake(TREASURY_PROGRAM, {
+                        owner: wallet,
+                        from: getAssociatedTokenAddressSync(new PublicKey(solana.MINT), w, true),
+                        amountRaw: solana.pillToRaw(pill),
+                    });
+                } else if (accion === 'unstake') {
+                    if (!(pill > 0)) { res.end(JSON.stringify({ ok: false, reason: 'cantidad inválida' })); return; }
+                    ix = tcl.unstake(TREASURY_PROGRAM, { owner: wallet, mint: solana.MINT, amountRaw: solana.pillToRaw(pill) });
+                } else if (accion === 'claim') {
+                    ix = tcl.claimStakeRewards(TREASURY_PROGRAM, { owner: wallet, mint: solana.MINT });
+                } else {
+                    res.end(JSON.stringify({ ok: false, reason: 'acción desconocida' })); return;
+                }
+
+                const conn = _solConn();
+                const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('finalized');
+                const tx = new Transaction({ feePayer: w, blockhash, lastValidBlockHeight }).add(ix);
+                res.end(JSON.stringify({
+                    ok: true,
+                    tx: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'),
+                    accion, pill,
+                }));
+            } catch (e) { res.end(JSON.stringify({ ok: false, reason: e.message })); }
+        });
         return;
     }
 
