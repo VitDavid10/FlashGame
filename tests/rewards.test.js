@@ -491,6 +491,112 @@ test('anclar dos veces el mismo dia no gasta otra transaccion', async () => {
     assert.equal(anclajes, 1, 'ha vuelto a anclar y eso cuesta gas');
 });
 
+/* ===================== CLAIM SIN CONTRATO ===================== */
+
+/*
+ * El jugador pulsa CLAIM y el servidor le manda su premio. Es lo que de verdad
+ * mueve dinero mientras no haya contrato, asi que lo que hay que fijar es a QUIEN
+ * se le puede pagar y cuantas veces.
+ */
+
+function solanaFalsoQuePaga(registro) {
+    return {
+        canWithdraw: () => true,
+        sendInstructions: async () => 'sigAncla',
+        withdraw: async (w, pill) => { registro.push({ w, pill }); return 'sigPago' + registro.length; },
+    };
+}
+
+test('claim: paga a quien esta en la lista, y por lo que dice la lista', async () => {
+    const F = '2026-10-01';
+    const snap = diaDe(F, 50, 20000);
+    const ronda = rewards.prepararRonda(F, rewards.pillToRaw(50000));
+    const pagos = [];
+    const sol = solanaFalsoQuePaga(pagos);
+    await lb.anclarDia(F, sol, null);
+
+    const pub = rewards.rondaPublica(ronda.epoch);
+    const primero = pub.entries[0];
+    const r = await rewards.pagarUno(ronda.epoch, primero.wallet, sol, null);
+
+    assert.equal(r.ok, true);
+    assert.equal(pagos.length, 1, 'tiene que pagar a UNO, no a la lista entera');
+    assert.equal(pagos[0].w, primero.wallet);
+    assert.equal(pagos[0].pill, rewards.rawToPill(primero.amountRaw));
+    assert.ok(r.sig, 'sin firma el jugador no puede comprobar que le pagaron');
+});
+
+test('claim: a quien NO sale en la lista no se le paga', async () => {
+    // Es el invariante que importa: el destino no lo elige quien pide el pago.
+    const F = '2026-10-02';
+    diaDe(F, 50, 20000);
+    const ronda = rewards.prepararRonda(F, rewards.pillToRaw(50000));
+    const pagos = [];
+    const sol = solanaFalsoQuePaga(pagos);
+    await lb.anclarDia(F, sol, null);
+
+    const intruso = Keypair.generate().publicKey.toBase58();
+    const r = await rewards.pagarUno(ronda.epoch, intruso, sol, null);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no sale en la lista/);
+    assert.equal(pagos.length, 0, 'ha pagado a alguien que no estaba en la lista');
+});
+
+test('claim: no se puede cobrar dos veces el mismo dia', async () => {
+    const F = '2026-10-03';
+    diaDe(F, 50, 20000);
+    const ronda = rewards.prepararRonda(F, rewards.pillToRaw(50000));
+    const pagos = [];
+    const sol = solanaFalsoQuePaga(pagos);
+    await lb.anclarDia(F, sol, null);
+    const w = rewards.rondaPublica(ronda.epoch).entries[0].wallet;
+
+    const uno = await rewards.pagarUno(ronda.epoch, w, sol, null);
+    assert.equal(uno.ok, true);
+    const dos = await rewards.pagarUno(ronda.epoch, w, sol, null);
+    assert.equal(dos.ok, false);
+    assert.equal(dos.yaCobrado, true);
+    assert.equal(pagos.length, 1, 'ha pagado dos veces');
+});
+
+test('claim: no se paga un dia que no este anclado', async () => {
+    const F = '2026-10-04';
+    diaDe(F, 50, 20000);
+    const ronda = rewards.prepararRonda(F, rewards.pillToRaw(50000));
+    const pagos = [];
+    const sol = solanaFalsoQuePaga(pagos);
+    // A proposito NO se ancla.
+    const w = rewards.rondaPublica(ronda.epoch).entries[0].wallet;
+    const r = await rewards.pagarUno(ronda.epoch, w, sol, null);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /anclado/);
+    assert.equal(pagos.length, 0);
+});
+
+test('premiosDirectosDe dice lo cobrado, lo pendiente y si se puede ya', async () => {
+    const F = '2026-10-05';
+    diaDe(F, 50, 20000);
+    const ronda = rewards.prepararRonda(F, rewards.pillToRaw(50000));
+    const pagos = [];
+    const sol = solanaFalsoQuePaga(pagos);
+    const w = rewards.rondaPublica(ronda.epoch).entries[0].wallet;
+
+    // Sin anclar: sale en la lista pero todavia no se puede cobrar.
+    let mios = rewards.premiosDirectosDe(w).filter(x => x.epoch === ronda.epoch);
+    assert.equal(mios.length, 1);
+    assert.equal(mios[0].anclado, false);
+    assert.equal(mios[0].cobrado, false);
+
+    await lb.anclarDia(F, sol, null);
+    mios = rewards.premiosDirectosDe(w).filter(x => x.epoch === ronda.epoch);
+    assert.equal(mios[0].anclado, true, 'ya deberia poder cobrarse');
+
+    await rewards.pagarUno(ronda.epoch, w, sol, null);
+    mios = rewards.premiosDirectosDe(w).filter(x => x.epoch === ronda.epoch);
+    assert.equal(mios[0].cobrado, true);
+    assert.ok(mios[0].sig, 'la firma del pago es lo que hace comprobable el cobro');
+});
+
 /*
  * ESTE VA EL ULTIMO a proposito: recarga rake/rewards/leaderboard con otro
  * LB_DIR y deja la cache de require tocada. Cualquier test que fuera detras

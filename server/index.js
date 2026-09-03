@@ -3350,7 +3350,52 @@ const httpServer = http.createServer(async (req, res) => {
     if (urlPath === '/api/rewards') {
         const wallet = String(query.get('wallet') || '');
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify(isSolAddr(wallet) ? rewards.premiosDe(wallet) : { pendientes: [], total: 0 }));
+        if (!isSolAddr(wallet)) { res.end(JSON.stringify({ pendientes: [], total: 0 })); return; }
+        // Con contrato, los premios se cobran on-chain con su prueba de Merkle.
+        // Sin contrato, el servidor paga cuando el jugador pulsa CLAIM — misma
+        // pantalla, y solo se gasta gas por quien reclama de verdad.
+        const out = rewards.premiosDe(wallet);
+        if (!rewards.PROGRAM) {
+            out.directos = rewards.premiosDirectosDe(wallet);
+            out.modo = 'directo';
+        } else out.modo = 'contrato';
+        res.end(JSON.stringify(out));
+        return;
+    }
+
+    /* CLAIM sin contrato: el jugador pulsa y el servidor le manda su premio.
+     *
+     * No pide firma del ganador a proposito, igual que el claim del contrato: el
+     * destino no lo elige quien llama, sale de la lista ya anclada en la cadena.
+     * Disparar el claim de otro solo consigue pagarle a el — y asi un ganador sin
+     * SOL puede cobrar, porque el gas lo pone el servidor.
+     *
+     * Con el contrato desplegado este camino se cierra: alli se cobra con la prueba
+     * de Merkle y el servidor no pinta nada. */
+    if (urlPath === '/api/rewards/claim-direct' && req.method === 'POST') {
+        if (rpcRateLimited(req)) {
+            res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones' })); return;
+        }
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 500) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            try {
+                const p = JSON.parse(body || '{}');
+                const wallet = String(p.wallet || '');
+                const epoch = parseInt(p.epoch, 10);
+                if (!isSolAddr(wallet)) { res.end(JSON.stringify({ ok: false, reason: 'wallet inválida' })); return; }
+                if (!Number.isFinite(epoch)) { res.end(JSON.stringify({ ok: false, reason: 'época inválida' })); return; }
+                if (rewards.PROGRAM) {
+                    res.end(JSON.stringify({ ok: false, reason: 'hay contrato: cobra con claim on-chain' })); return;
+                }
+                const r = await rewards.pagarUno(epoch, wallet, solana, log);
+                res.end(JSON.stringify(r.ok
+                    ? { ok: true, pill: r.pill, sig: r.sig, anclaLeaderboard: r.anclaLeaderboard }
+                    : { ok: false, reason: r.error, yaCobrado: !!r.yaCobrado }));
+            } catch (e) { res.end(JSON.stringify({ ok: false, reason: e.message })); }
+        });
         return;
     }
     /* Transacción de claim, lista para firmar.

@@ -11820,30 +11820,46 @@
             try {
                 this.premios = await (await fetch('/api/rewards?wallet=' + GameWallet.address)).json();
             } catch (e) { this.premios = { pendientes: [], total: 0 }; }
-            if (btn) btn.style.display = (this.premios.pendientes || []).length ? 'block' : 'none';
+            // El boton sale si hay algo que cobrar POR CUALQUIERA DE LOS DOS
+            // caminos: sin contrato los premios viven en `directos`, y mirando solo
+            // `pendientes` el boton no aparecia nunca en ese modo.
+            if (btn) btn.style.display = this.listaPremios().length ? 'block' : 'none';
         },
         openClaim() {
             document.getElementById('gameClaimModal').style.display = 'flex';
             this.pintaClaims();
         },
         closeClaim() { document.getElementById('gameClaimModal').style.display = 'none'; },
+        // Con contrato los premios se cobran on-chain; sin el, el servidor paga
+        // cuando el jugador pulsa CLAIM. La pantalla es la MISMA a proposito: al
+        // jugador le da igual como esta montado por dentro.
+        listaPremios() {
+            const p = this.premios || {};
+            if (p.modo === 'directo') return (p.directos || []).filter(x => !x.cobrado);
+            return p.pendientes || [];
+        },
+        esDirecto() { return (this.premios || {}).modo === 'directo'; },
+
         pintaClaims() {
             const lista = document.getElementById('gcList'), nota = document.getElementById('gcNote');
-            const p = this.premios.pendientes || [];
+            const p = this.listaPremios();
+            const directo = this.esDirecto();
             if (!p.length) {
                 lista.innerHTML = '<div style="color:#8b9199;text-align:center;padding:18px 0">Nothing to claim.<br>Finish in the daily top 10 to earn from the treasury.</div>';
                 nota.innerHTML = '';
                 return;
             }
             lista.innerHTML = p.map(x => {
-                // Tres estados y cada uno dice algo distinto: aun sin anclar en la
-                // cadena, en ventana de revision, o listo.
-                const listo = x.claimable;
-                const enVentana = x.publicado && !listo;
+                // En modo directo solo hay dos estados: el dia esta anclado en la
+                // cadena (y entonces se puede cobrar) o todavia no.
+                const listo = directo ? !!x.anclado : x.claimable;
+                const enVentana = !directo && x.publicado && !listo;
                 const cuando = x.claimableAt ? new Date(x.claimableAt).toLocaleString() : '';
-                const estado = listo ? 'READY TO CLAIM'
-                    : enVentana ? 'Review window · opens ' + cuando
-                    : 'Waiting to be published on-chain';
+                const estado = directo
+                    ? (listo ? 'READY TO CLAIM' : 'Waiting to be anchored on-chain')
+                    : (listo ? 'READY TO CLAIM'
+                        : enVentana ? 'Review window · opens ' + cuando
+                        : 'Waiting to be published on-chain');
                 // El estilo es el del boton MAX de deposit/withdraw y no .gm-btn: el
                 // pixel pack repinta .gm-btn contando con un boton de ancho completo,
                 // y a este tamano el texto acababa casi negro sobre fondo oscuro.
@@ -11859,13 +11875,18 @@
                         : '<button type="button" style="' + btn + 'border:1px solid #454b52;color:#454b52;cursor:default" disabled>CLAIM</button>')
                     + '</div>';
             }).join('');
-            nota.innerHTML = 'Rewards are published as a Merkle root 48 h before they can be claimed, '
-                + 'so anyone can check the winner list against that day\'s leaderboard first. '
-                + 'The list is public at <b>/api/rewards/&lt;epoch&gt;</b>.';
+            nota.innerHTML = directo
+                ? 'Each day\'s standings are hashed and anchored on Solana <b>before</b> anyone is paid, '
+                  + 'so the payouts can be checked against a list that was already public. '
+                  + 'Your payment arrives as a normal transfer and you get its transaction to verify.'
+                : 'Rewards are published as a Merkle root 48 h before they can be claimed, '
+                  + 'so anyone can check the winner list against that day\'s leaderboard first. '
+                  + 'The list is public at <b>/api/rewards/&lt;epoch&gt;</b>.';
         },
         async claim(epoch) {
-            const p = (this.premios.pendientes || []).find(x => x.epoch === epoch);
+            const p = this.listaPremios().find(x => x.epoch === epoch);
             if (!p) return;
+            if (this.esDirecto()) return this.claimDirecto(p);
             try { SoundManager.play('select'); } catch (e) {}
             const lista = document.getElementById('gcList');
             const antes = lista.innerHTML;
@@ -11889,6 +11910,34 @@
                 showSystemMsg(walletErrText(e), 'CLAIM FAILED');
             }
         },
+        /*
+         * CLAIM sin contrato: se le pide al servidor que mande el premio.
+         *
+         * No hay nada que firmar — el destino no lo elige quien pide el pago, sale
+         * de la lista que ya esta anclada en la cadena. Por eso tampoco hace falta
+         * tener SOL para cobrar: el gas lo pone el servidor.
+         */
+        async claimDirecto(p) {
+            try { SoundManager.play('select'); } catch (e) {}
+            const lista = document.getElementById('gcList');
+            const antes = lista.innerHTML;
+            lista.innerHTML = '<div style="color:#c8cdd2;text-align:center;padding:24px 0">Sending your reward...</div>';
+            try {
+                const r = await (await fetch('/api/rewards/claim-direct', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet: GameWallet.address, epoch: p.epoch }),
+                })).json();
+                if (!r.ok) throw new Error(r.reason || 'claim failed');
+                this.closeClaim();
+                await this.refreshClaims();
+                await this.refresh();
+                showSystemMsg(this.fmt(r.pill) + ' $PILL sent to your wallet.', 'REWARD CLAIMED');
+            } catch (e) {
+                lista.innerHTML = antes;
+                showSystemMsg((e && e.message) || String(e), 'CLAIM FAILED');
+            }
+        },
+
         // Desconecta la wallet del juego (y olvida la sesion recordada)
         disconnect() {
             try { if (GameWallet.provider && GameWallet.provider.disconnect) GameWallet.provider.disconnect(); } catch (e) {}

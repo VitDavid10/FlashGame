@@ -420,6 +420,92 @@ async function pagarDirecto(date, solana, log) {
 }
 
 /*
+ * CLAIM SIN CONTRATO — el jugador pulsa y el servidor le manda su premio.
+ *
+ * Es el punto medio entre las dos formas de pagar, y en la practica es la mejor
+ * mientras no haya contrato desplegado:
+ *
+ *   - Para el jugador es lo mismo que el claim del contrato: pulsa CLAIM y le
+ *     llegan los tokens. No cambia nada de lo que ve.
+ *   - Para el proyecto cuesta MENOS que pagar a todos: solo se paga gas por quien
+ *     reclama, y los premios que nadie recoge no cuestan nada.
+ *
+ * No hace falta que el ganador firme: el destino no lo elige quien pide el pago,
+ * sale de la lista anclada. Cualquiera puede disparar el claim de otro y el dinero
+ * ira igualmente a su wallet — igual que con el claim del contrato, donde un
+ * tercero tambien puede reclamar por ti. Y asi un ganador sin SOL puede cobrar,
+ * porque el gas lo pone el servidor.
+ *
+ * Las tres comprobaciones, en este orden:
+ *   1. el dia esta anclado en la cadena (si no, el reparto no se puede contrastar)
+ *   2. esa wallet sale en la lista publicada de esa epoca
+ *   3. no se le ha pagado ya
+ */
+async function pagarUno(epoch, wallet, solana, log) {
+    const ronda = data.rounds[epoch];
+    if (!ronda) return { ok: false, error: 'no hay ronda para esa epoca' };
+    if (ronda.cancelled) return { ok: false, error: 'esa ronda se cancelo' };
+    if (ronda.sig) return { ok: false, error: 'esa ronda esta on-chain: se cobra con claim del contrato' };
+    if (!solana || !solana.canWithdraw()) return { ok: false, error: 'sin clave de la autoridad' };
+
+    const eslabon = leaderboard.cadena(400).find(e => e.date === ronda.date);
+    if (!eslabon || !eslabon.sig) {
+        return { ok: false, error: 'ese dia todavia no esta anclado en la cadena' };
+    }
+
+    const pub = rondaPublica(epoch);
+    const fila = pub && (pub.entries || []).find(x => x.wallet === wallet);
+    if (!fila) return { ok: false, error: 'esa wallet no sale en la lista de ese dia' };
+
+    ronda.pagos = ronda.pagos || [];
+    if (ronda.pagos.some(x => x.wallet === wallet && x.sig)) {
+        return { ok: false, error: 'ya cobraste ese dia', yaCobrado: true };
+    }
+
+    const pill = rawToPill(fila.amountRaw);
+    if (!(pill > 0)) return { ok: false, error: 'premio de cero' };
+
+    try {
+        const sig = await solana.withdraw(wallet, pill);
+        ronda.pagos.push({ wallet, rank: fila.rank, pill, sig, at: new Date().toISOString() });
+        ronda.anclaLeaderboard = eslabon.sig;
+        dirty = true; save();
+        if (log) log(`Premio reclamado por ${wallet.slice(0, 6)}…: ${pill} PILL — ${sig}`);
+        return { ok: true, pill, sig, anclaLeaderboard: eslabon.sig };
+    } catch (e) {
+        if (log) log(`Premio NO pagado a ${wallet.slice(0, 6)}…: ${e.message}`);
+        return { ok: false, error: e.message };
+    }
+}
+
+/*
+ * Los premios de una wallet en el modo sin contrato: lo que puede reclamar y lo
+ * que ya cobro, con la firma de cada pago para poder comprobarlo.
+ */
+function premiosDirectosDe(wallet) {
+    const out = [];
+    for (const r of Object.values(data.rounds)) {
+        if (r.sig || r.cancelled) continue;          // esas van por el contrato
+        const pub = rondaPublica(r.epoch);
+        const fila = pub && (pub.entries || []).find(x => x.wallet === wallet);
+        if (!fila) continue;
+        const pago = (r.pagos || []).find(x => x.wallet === wallet && x.sig);
+        const eslabon = leaderboard.cadena(400).find(e => e.date === r.date);
+        out.push({
+            epoch: r.epoch, date: r.date, rank: fila.rank,
+            pill: rawToPill(fila.amountRaw),
+            cobrado: !!pago,
+            sig: pago ? pago.sig : null,
+            // Sin ancla no se puede reclamar todavia: es lo que hace el pago
+            // comprobable, y pagar antes seria pagar a ciegas.
+            anclado: !!(eslabon && eslabon.sig),
+            anclaSig: eslabon ? eslabon.sig : null,
+        });
+    }
+    return out.sort((a, b) => b.epoch - a.epoch);
+}
+
+/*
  * Refresca el estado on-chain de las rondas publicadas: cuando se abre el claim,
  * cuanto se lleva reclamado y si alguna se cancelo. El contrato es la fuente de la
  * verdad; este fichero es solo una cache para no consultar el RPC en cada peticion
@@ -655,7 +741,8 @@ async function proyeccionDeHoy(snapshot) {
 
 module.exports = {
     tick, arranca, estado, premiosDe, marcarCobrado, rondaPublica,
-    prepararRonda, publicarRonda, pagarDirecto, presupuestoRaw, proyeccionDeHoy, refrescar,
+    prepararRonda, publicarRonda, pagarDirecto, pagarUno, premiosDirectosDe,
+    presupuestoRaw, proyeccionDeHoy, refrescar,
     epochDeFecha, fechaDeEpoch, pillToRaw, rawToPill,
     PROGRAM, save, DRY_RUN, REWARD_FACTOR, POT_COMPLETO_CON,
 };
