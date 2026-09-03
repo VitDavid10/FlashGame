@@ -103,17 +103,19 @@ function conexionFalsa(mapa) {
 /* ===================== PRESUPUESTO ===================== */
 
 /*
- * El bote sale del MENOR de dos limites: el grifo del contrato y lo que la actividad
- * del dia justifica. Estos tests miden el primero, asi que hace falta actividad de
- * sobra para que no sea ella la que mande — si no, todos medirian el segundo y no se
- * notaria que el grifo dejo de funcionar.
+ * El bote es el menor de varios limites, y uno de ellos es lo que se recaudo EL DIA
+ * que se premia. Estos tests miden el grifo del contrato, asi que el dia en cuestion
+ * necesita actividad de sobra: si no, todos acabarian midiendo el freno de la
+ * actividad y no se notaria que el grifo dejo de funcionar.
+ *
+ * La fecha importa: el freno abre una ventana de 00:00 a 24:00 UTC de ESE dia.
  */
-function actividadDeSobra() {
+function actividadDeSobra(fecha) {
     const matches = require('../server/matches.js');
-    const t = Date.now();
+    const t = fecha ? Date.parse(fecha + 'T12:00:00Z') : Date.now();
     for (let k = 0; k < 20; k++) {
         matches.registra({
-            room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t - 1000,
+            room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
             entryFee: 100000, pot: 0,
             players: Array.from({ length: 10 }, (_, i) => ({
                 wallet: Keypair.generate().publicKey.toBase58(), name: 'j' + i,
@@ -122,7 +124,8 @@ function actividadDeSobra() {
         });
     }
 }
-actividadDeSobra();   // 20 M PILL recaudados: muy por encima de cualquier tope de aqui
+actividadDeSobra();              // hoy
+actividadDeSobra('2026-07-01');  // el dia que premian los tests de claims
 
 test('el presupuesto respeta el menor de los dos topes del grifo', async () => {
     const p = tc.pdas(PROGRAM);
@@ -134,10 +137,14 @@ test('el presupuesto respeta el menor de los dos topes del grifo', async () => {
     assert.equal(await rewards.presupuestoRaw(conn, null), raw(50000));
 });
 
-test('con poca actividad manda la actividad, aunque el grifo deje salir mucho', async () => {
+test('con poca actividad manda la actividad, aunque el grifo deje salir mucho', () => {
     // Es el caso del arranque: contrato lleno, grifo abierto y cuatro jugadores. Sin
     // este limite se repartiria el tope entero entre esos cuatro, que es exactamente
     // lo que hace rentable presentarse con wallets propias.
+    //
+    // El freno vive en prepararRonda y no en presupuestoRaw porque necesita saber DE
+    // QUE DIA se trata: con dias atrasados, una ventana de "ultimas 24 h" les
+    // aplicaria a todos la actividad de hoy.
     const DIR2 = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-poco-'));
     const antes = process.env.LB_DIR;
     process.env.LB_DIR = DIR2;
@@ -146,23 +153,26 @@ test('con poca actividad manda la actividad, aunque el grifo deje salir mucho', 
     }
     const rw2 = require('../server/rewards.js');
     const m2 = require('../server/matches.js');
-    const t = Date.now();
-    m2.registra({
-        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t - 1000,
-        entryFee: 1000, pot: 0,
-        players: Array.from({ length: 4 }, (_, i) => ({
-            wallet: Keypair.generate().publicKey.toBase58(), name: 'j' + i,
-            kills: 3, peak: 1, paid: true, isTester: false,
-        })),
-    });
+    const lb3 = require('../server/leaderboard.js');
 
-    const p2 = tc.pdas(PROGRAM);
-    const conn = conexionFalsa({
-        [p2.config.toBase58()]: configBuf({ rewardCap: raw(60000), bps: 100 }),
-        [p2.treasury.toBase58()]: tokenBuf(raw(100_000_000)),
+    const F = '2026-06-15';
+    const t = Date.parse(F + 'T12:00:00Z');
+    const ws = Array.from({ length: 4 }, () => Keypair.generate().publicKey.toBase58());
+    m2.registra({
+        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
+        entryFee: 1000, pot: 0,
+        players: ws.map((w, i) => ({ wallet: w, name: 'j' + i, kills: 3, peak: 1, paid: true, isTester: false })),
     });
-    // El grifo dejaria salir 60.000; se jugaron 4 entradas de 1.000 = 4.000.
-    assert.equal(await rw2.presupuestoRaw(conn, null), raw(4000));
+    ws.forEach((w, i) => { for (let k = 0; k < 10 - i; k++) lb3.recordKill(w, 'j' + i); lb3.recordPeak(w, 100 - i, 'j' + i); });
+    lb3._setFecha(F);
+    lb3.cerrarAhora();
+
+    // El grifo dejaria salir 60.000; se jugaron 4 entradas de 1.000 = 4.000. Y luego
+    // los otros dos recortes: 4 de 50 elegibles, y los pesos de los cuatro puestos.
+    const r = rw2.prepararRonda(F, rw2.pillToRaw(60000));
+    const esperado = Math.floor(Math.floor(4000 * 4 / 50) * 77 / 100);   // 35+20+13+9
+    assert.equal(rw2.rawToPill(r.totalRaw), esperado);
+    assert.ok(rw2.rawToPill(r.totalRaw) < 4000, 'nunca por encima de lo recaudado');
 
     process.env.LB_DIR = antes;
     for (const m of ['../server/matches.js', '../server/rewards.js', '../server/leaderboard.js']) {
@@ -343,6 +353,78 @@ test('el decodificador lee una RewardRound como la escribe el contrato', () => {
     assert.equal(d.claimableAt, 1900000000);
     assert.equal(d.cancelled, false);
     assert.equal(d.expired, false);
+});
+
+/* ===================== LOS CUATRO FRENOS, EN CADENA ===================== */
+
+/*
+ * Cada freno tiene su test, pero ninguno comprueba que se apliquen los cuatro
+ * JUNTOS. Es donde se cuela un fallo que ningun test individual ve: basta con que
+ * uno se calcule sobre el tope original en vez de sobre la salida del anterior para
+ * que el bote sea mayor de lo que deberia, y todos los tests sueltos sigan pasando.
+ *
+ *   1. grifo del contrato   min(saldo x bps / 10000, cap)
+ *   2. recaudacion          x REWARD_FACTOR sobre lo cobrado en entradas
+ *   3. participacion        x min(1, elegibles / LB_FULL_POT_AT)
+ *   4. pesos vacios         solo salen los puestos que existen
+ */
+
+test('los cuatro frenos se multiplican, no se pisan', () => {
+    const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-cadena-'));
+    const antes = process.env.LB_DIR;
+    process.env.LB_DIR = DIR;
+    for (const m of ['../server/matches.js', '../server/rewards.js', '../server/leaderboard.js']) {
+        delete require.cache[require.resolve(m)];
+    }
+    const rw = require('../server/rewards.js');
+    const lb2 = require('../server/leaderboard.js');
+    const mt = require('../server/matches.js');
+
+    // 1. El tope del contrato: saldo 100 M, bps 100 (1 %) -> 1.000.000, cap 100.000.
+    //    Manda el cap.
+    const TOPE = 100000;
+
+    // 2. Recaudacion DEL DIA que se premia: 8 entradas de 5.000 = 40.000 PILL.
+    //    Con REWARD_FACTOR=1, el bote no puede pasar de ahi.
+    const FECHA_R = '2026-07-09';
+    const t = Date.parse(FECHA_R + 'T12:00:00Z');
+    const ws = Array.from({ length: 8 }, () => Keypair.generate().publicKey.toBase58());
+    mt.registra({
+        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
+        entryFee: 5000, pot: 0,
+        players: ws.map((w, i) => ({ wallet: w, name: 'j' + i, kills: 3, peak: 1, paid: true, isTester: false })),
+    });
+
+    // 3. Participacion: 8 elegibles de los 50 del umbral -> x 8/50 = 0,16.
+    ws.forEach((w, i) => { for (let k = 0; k < 10 - i; k++) lb2.recordKill(w, 'j' + i); lb2.recordPeak(w, 100 - i, 'j' + i); });
+    lb2._setFecha(FECHA_R);
+    const snap = lb2.cerrarAhora();
+    assert.equal(snap.entries.length, 8, 'los ocho tienen que ser elegibles');
+
+    // 4. Pesos vacios: con ocho en la lista salen 35+20+13+9+7+5+4+3 = 96 %.
+    const r = rw.prepararRonda(FECHA_R, rw.pillToRaw(TOPE));
+
+    const trasRecaudacion = Math.min(TOPE, 40000);          // 40.000
+    const trasParticipacion = Math.floor(trasRecaudacion * 8 / 50);   // 6.400
+    const esperado = Math.floor(trasParticipacion * 96 / 100);        // 6.144
+    assert.equal(rw.rawToPill(r.totalRaw), esperado,
+        'el bote no es el producto de los cuatro frenos: alguno se esta saltando');
+
+    // Y la comprobacion que de verdad importa: NO es el tope, ni el tope con un
+    // solo freno aplicado. Si alguno se pisara, saldria uno de estos numeros.
+    assert.notEqual(rw.rawToPill(r.totalRaw), TOPE);
+    assert.notEqual(rw.rawToPill(r.totalRaw), Math.floor(TOPE * 96 / 100));
+    assert.notEqual(rw.rawToPill(r.totalRaw), Math.floor(40000 * 96 / 100));
+    assert.notEqual(rw.rawToPill(r.totalRaw), Math.floor(TOPE * 8 / 50));
+
+    // Siguen cobrando ocho (los que hay), no cincuenta ni diez.
+    assert.equal(r.winners, 8);
+
+    process.env.LB_DIR = antes;
+    for (const m of ['../server/matches.js', '../server/rewards.js', '../server/leaderboard.js']) {
+        delete require.cache[require.resolve(m)];
+    }
+    fs.rmSync(DIR, { recursive: true, force: true });
 });
 
 test('limpieza', () => {

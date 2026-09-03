@@ -27,8 +27,27 @@ const lb = require('../server/leaderboard.js');
 const rewards = require('../server/rewards.js');
 const merkle = require('../server/merkle.js');
 
+const matches = require('../server/matches.js');
+
 const wallets = Array.from({ length: 12 }, () => Keypair.generate().publicKey.toBase58());
 const FECHA = '2026-05-04';
+
+/*
+ * Actividad de sobra en un dia concreto.
+ *
+ * El bote esta acotado por lo que se cobro en entradas ESE dia. Los tests de aqui
+ * miden el reparto, no ese freno, asi que le dan recaudacion suficiente para que no
+ * sea ella la que mande. Sin esto un dia sin partidas no genera ronda — que es el
+ * comportamiento correcto, pero no lo que se esta midiendo.
+ */
+function actividadEn(fecha, pill = 10000000) {
+    const t = Date.parse(fecha + 'T12:00:00Z');
+    matches.registra({
+        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
+        entryFee: pill, pot: 0,
+        players: [{ wallet: wallets[0], name: 'seed', kills: 1, peak: 1, paid: true, isTester: false }],
+    });
+}
 
 test('la epoca de un dia es el numero de dias desde el epoch Unix', () => {
     assert.equal(rewards.epochDeFecha('1970-01-01'), 0);
@@ -40,6 +59,7 @@ test('la epoca de un dia es el numero de dias desde el epoch Unix', () => {
 });
 
 test('preparar una ronda de un dia cerrado saca reparto, arbol y JSON publico', () => {
+    actividadEn(FECHA);
     wallets.forEach((w, i) => {
         for (let k = 0; k < 60 - i * 4; k++) lb.recordKill(w, 'jugador' + i);
         lb.recordPeak(w, 50000 - i * 100, 'jugador' + i);
@@ -172,6 +192,7 @@ test('el estado resume las rondas para el panel', () => {
  */
 
 function diaCon(n, fecha) {
+    actividadEn(fecha);
     const ws = Array.from({ length: n }, () => Keypair.generate().publicKey.toBase58());
     ws.forEach((w, i) => {
         for (let k = 0; k < 60 - i; k++) lb.recordKill(w, 'j' + i);
@@ -229,41 +250,78 @@ test('el JSON publico dice por que el bote fue el que fue', () => {
  * porque el bote no puede pasar de lo que se pago en entradas.
  */
 
-test('sin partidas el bote es cero, aunque el grifo del contrato deje salir', async () => {
-    const p = await rewards.presupuestoRaw(null, null);
-    assert.equal(p, 0n, 'sin nada jugado no deberia haber premio');
+/*
+ * El freno vive en prepararRonda y no en presupuestoRaw: necesita saber DE QUE DIA
+ * se trata. presupuestoRaw da el techo del contrato, que es el mismo para todos los
+ * dias pendientes; lo que se jugo, no.
+ */
+
+/** Cierra un dia con `jug` jugadores y `entradas` entradas de `fee` PILL. */
+function diaDe(fecha, jug, entradas, fee) {
+    const t = Date.parse(fecha + 'T12:00:00Z');
+    const ws = Array.from({ length: jug }, () => Keypair.generate().publicKey.toBase58());
+    for (let k = 0; k < entradas; k += jug) {
+        matches.registra({
+            room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
+            entryFee: fee, pot: 0,
+            players: ws.map((w, i) => ({ wallet: w, name: 'j' + i, kills: 3, peak: 1, paid: true, isTester: false })),
+        });
+    }
+    // Todos por encima de MIN_KILLS y en orden decreciente: si alguno se queda corto
+    // deja de ser elegible y el freno de participacion recorta sin que se vea por que.
+    ws.forEach((w, i) => { for (let k = 0; k < jug - i + 3; k++) lb.recordKill(w, 'j' + i); lb.recordPeak(w, 9000 - i, 'j' + i); });
+    lb._setFecha(fecha);
+    const snap = lb.cerrarAhora();
+    assert.equal(snap.entries.length, jug, `los ${jug} jugadores tienen que ser elegibles`);
+    return snap;
+}
+
+test('un dia sin partidas no genera ronda, por mucho que el grifo deje salir', () => {
+    // Solo leaderboard, cero entradas cobradas. No puede haber premio: el dinero
+    // saldria de la tesoreria sin que nadie hubiera puesto nada.
+    const F = '2026-05-20';
+    const ws = Array.from({ length: 12 }, () => Keypair.generate().publicKey.toBase58());
+    ws.forEach((w, i) => { for (let k = 0; k < 20 - i; k++) lb.recordKill(w, 'x' + i); lb.recordPeak(w, 900 - i, 'x' + i); });
+    lb._setFecha(F);
+    assert.equal(lb.cerrarAhora().entries.length, 12, 'los doce estan en la lista');
+    assert.equal(rewards.prepararRonda(F, rewards.pillToRaw(50000)), null);
 });
 
-test('el bote sube con lo recaudado y se para en el techo', async () => {
-    const matches = require('../server/matches.js');
-    const t = Date.now();
-    const jugar = (n, fee) => matches.registra({
-        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t - 1000,
-        entryFee: fee, pot: 0,
-        players: Array.from({ length: n }, (_, i) => ({
-            wallet: wallets[i % wallets.length], name: 'j' + i, kills: 3, peak: 1,
-            paid: true, isTester: false,
-        })),
-    });
+test('el bote sube con lo recaudado y se para en el techo del contrato', () => {
+    // 50 jugadores para que el freno de participacion no recorte, y los 10 pesos
+    // ocupados: asi lo unico que se mide aqui es la recaudacion.
+    diaDe('2026-05-21', 50, 50, 200);        // 50 x 200 = 10.000 recaudados
+    assert.equal(rewards.rawToPill(rewards.prepararRonda('2026-05-21', rewards.pillToRaw(50000)).totalRaw), 10000);
 
-    // 10 entradas de 1000 = 10.000 PILL recaudados. Con factor 1, bote 10.000.
-    jugar(10, 1000);
-    assert.equal(await rewards.presupuestoRaw(null, null), rewards.pillToRaw(10000));
-
-    // Mas partidas, mas bote — hasta que topa con el fallback de 50.000.
-    jugar(20, 1000); jugar(20, 1000);
-    assert.equal(await rewards.presupuestoRaw(null, null), rewards.pillToRaw(50000),
+    diaDe('2026-05-22', 50, 50, 2000);       // 100.000 recaudados, por encima del techo
+    assert.equal(rewards.rawToPill(rewards.prepararRonda('2026-05-22', rewards.pillToRaw(50000)).totalRaw), 50000,
         'por encima del techo manda el techo, no la actividad');
 });
 
-test('el bote nunca puede pasar de lo que se pago en entradas', async () => {
+test('el bote nunca puede pasar de lo que se pago en entradas ESE dia', () => {
     // Es el invariante que cierra el sybil: da igual cuantas wallets aparezcan en la
-    // tabla, el premio del dia sale acotado por el dinero que entro ese dia.
-    const matches = require('../server/matches.js');
-    const rec = matches.recaudadoEntre(Date.now() - 86400e3, Date.now());
-    const bote = await rewards.presupuestoRaw(null, null);
-    assert.ok(bote <= rewards.pillToRaw(rec.pill),
-        `el bote (${rewards.rawToPill(bote)}) supera lo recaudado (${rec.pill})`);
+    // tabla, el premio sale acotado por el dinero que entro ese dia.
+    const F = '2026-05-23';
+    diaDe(F, 50, 50, 300);                   // 15.000 recaudados
+    const rec = matches.recaudadoEntre(Date.parse(F + 'T00:00:00Z'), Date.parse(F + 'T00:00:00Z') + 86400e3);
+    assert.equal(rec.pill, 15000);
+    const r = rewards.prepararRonda(F, rewards.pillToRaw(50000));
+    assert.ok(rewards.rawToPill(r.totalRaw) <= rec.pill,
+        `el bote (${rewards.rawToPill(r.totalRaw)}) supera lo recaudado (${rec.pill})`);
+});
+
+test('la actividad de hoy no paga los premios de un dia atrasado', () => {
+    // El fallo que esto evita: si la ventana fueran "las ultimas 24 h", un dia flojo
+    // premiado con retraso cobraria segun lo que se jugo HOY. Con dias acumulados
+    // —el servidor caido, o el ciclo corriendo tarde— todos cobrarian lo mismo.
+    diaDe('2026-05-24', 50, 50, 100);        //  5.000 el dia flojo
+    diaDe('2026-05-25', 50, 50, 4000);       // 200.000 el dia bueno
+
+    const flojo = rewards.prepararRonda('2026-05-24', rewards.pillToRaw(50000));
+    const bueno = rewards.prepararRonda('2026-05-25', rewards.pillToRaw(50000));
+
+    assert.equal(rewards.rawToPill(flojo.totalRaw), 5000, 'el dia flojo cobra lo suyo');
+    assert.equal(rewards.rawToPill(bueno.totalRaw), 50000, 'el bueno topa con el techo');
 });
 
 test('limpieza', () => {

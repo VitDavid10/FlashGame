@@ -142,12 +142,18 @@ function save() { if (!dirty || SOLO_LECTURA) return; dirty = false; try { fs.wr
  * partida, que se anclan en la cadena por lotes. Si el bote publicado no cuadra con
  * lo que se jugo ese dia, se ve.
  */
-function porActividad(topeRaw, log) {
+function porActividad(date, topeRaw, log) {
+    // La ventana es EL DIA que se premia, no las ultimas 24 h. Con dias atrasados
+    // —el servidor caido, o el ciclo corriendo a media tarde— una ventana movil les
+    // aplicaria a todos la actividad de hoy: un dia flojo cobraria como uno bueno
+    // solo por premiarse tarde.
+    const ini = Date.parse(date + 'T00:00:00Z');
+    if (!Number.isFinite(ini)) return topeRaw;
     let rec;
     try {
         const matches = require('./matches.js');
         if (typeof matches.recaudadoEntre !== 'function') return topeRaw;
-        rec = matches.recaudadoEntre(Date.now() - DIA * 1000, Date.now());
+        rec = matches.recaudadoEntre(ini, ini + DIA * 1000);
     } catch (e) {
         // Sin recibos no se puede acotar. Se deja el techo del contrato antes que
         // bloquear los premios: el techo sigue siendo un limite duro.
@@ -156,7 +162,7 @@ function porActividad(topeRaw, log) {
     const porJuego = pillToRaw(Math.floor(rec.pill * REWARD_FACTOR));
     if (porJuego >= topeRaw) return topeRaw;
     if (log) {
-        log(`Premios: ${rec.entradas} entradas en ${rec.partidas} partidas (${rec.pill} PILL) ` +
+        log(`Premios ${date}: ${rec.entradas} entradas en ${rec.partidas} partidas (${rec.pill} PILL) ` +
             `-> bote ${rawToPill(porJuego)} en vez del tope ${rawToPill(topeRaw)}`);
     }
     return porJuego;
@@ -166,11 +172,11 @@ async function presupuestoRaw(conn, log) {
     // Sin contrato el techo es el presupuesto local, pero el acotado por actividad se
     // aplica igual: es la parte que no depende de la cadena, y saltarsela aqui dejaba
     // el bote suelto justo en el modo en el que se prueba todo.
-    if (!PROGRAM || !conn) return porActividad(pillToRaw(BUDGET_FALLBACK), log);
+    if (!PROGRAM || !conn) return pillToRaw(BUDGET_FALLBACK);
     try {
         const p = tc.pdas(PROGRAM);
         const [cfgInfo, treInfo] = await conn.getMultipleAccountsInfo([p.config, p.treasury]);
-        if (!cfgInfo || !treInfo) return porActividad(pillToRaw(BUDGET_FALLBACK), log);
+        if (!cfgInfo || !treInfo) return pillToRaw(BUDGET_FALLBACK);
         const cfg = tc.decodeConfig(cfgInfo.data);
         // El saldo de una token account SPL: u64 en el offset 64.
         const saldo = treInfo.data.readBigUInt64LE(64);
@@ -179,11 +185,10 @@ async function presupuestoRaw(conn, log) {
         const tope = porBps < cfg.rewardCapPerEpoch ? porBps : cfg.rewardCapPerEpoch;
         // Nunca por encima de lo que queda libre: lo reservado por rondas vivas ya
         // tiene dueno aunque todavia no lo haya reclamado.
-        const delContrato = tope < libre ? tope : libre;
-        return porActividad(delContrato, log);
+        return tope < libre ? tope : libre;
     } catch (e) {
         if (log) log(`Premios: no pude leer el grifo on-chain (${e.message}); uso el presupuesto local`);
-        return porActividad(pillToRaw(BUDGET_FALLBACK), log);
+        return pillToRaw(BUDGET_FALLBACK);
     }
 }
 
@@ -202,12 +207,21 @@ function prepararRonda(date, presupuesto) {
 
     const epoch = epochDeFecha(date);
 
-    // El bote sale proporcional a cuanta gente jugo, hasta POT_COMPLETO_CON. Va aqui
-    // y no en presupuestoRaw porque es lo unico que necesita el snapshot del dia.
+    /*
+     * Los dos frenos que dependen DEL DIA que se premia, en cadena. Van aqui y no en
+     * presupuestoRaw porque los dos necesitan saber de que dia se trata: el tope del
+     * contrato es el mismo para todos, pero lo que se jugo no.
+     *
+     *   presupuesto (grifo del contrato)
+     *     -> x lo recaudado ese dia
+     *     -> x elegibles / POT_COMPLETO_CON
+     *     -> repartoDe() quita ademas los pesos de los puestos vacios
+     */
+    const trasActividad = porActividad(date, BigInt(presupuesto), null);
     const elegibles = snap.entries.length;
     const bote = elegibles >= POT_COMPLETO_CON
-        ? BigInt(presupuesto)
-        : (BigInt(presupuesto) * BigInt(elegibles)) / BigInt(POT_COMPLETO_CON);
+        ? trasActividad
+        : (trasActividad * BigInt(elegibles)) / BigInt(POT_COMPLETO_CON);
     if (bote <= 0n) return null;
 
     const { entries, totalRaw } = leaderboard.repartoDe(snap, bote);
@@ -229,6 +243,7 @@ function prepararRonda(date, presupuesto) {
         elegibles,
         potCompletoCon: POT_COMPLETO_CON,
         topeRaw: String(presupuesto),
+        trasActividadRaw: String(trasActividad),
         generatedAt: new Date().toISOString(),
     });
     try { fs.writeFileSync(path.join(DIR, epoch + '.json'), JSON.stringify(publico, null, 1)); } catch (e) {}

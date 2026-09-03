@@ -456,9 +456,19 @@ recaudado, y esto solo puede **bajarlo**. Presentar cincuenta wallets para llega
 umbral cuesta cincuenta entradas, y el bote no puede pasar de lo que esas entradas
 pagaron. Los cuatro límites se aplican en cadena y gana siempre el más pequeño.
 
-El JSON público de cada ronda lleva `elegibles`, `potCompletoCon` y `topeRaw`, así
-que la cuenta se rehace desde el leaderboard publicado — que ya va encadenado por
-hash. "Ese día se repartió menos" es comprobable, no algo que haya que creerse.
+El JSON público de cada ronda lleva `elegibles`, `potCompletoCon`, `topeRaw` y
+`trasActividadRaw`, así que la cuenta se rehace paso a paso desde el leaderboard
+publicado — que ya va encadenado por hash. "Ese día se repartió menos" es
+comprobable, no algo que haya que creerse.
+
+##### La ventana es el día que se premia, no las últimas 24 h
+
+Los frenos que dependen del día viven en `prepararRonda`, no en `presupuestoRaw`,
+y no es un detalle de organización: el tope del contrato es el mismo para todos los
+días pendientes, pero **lo que se jugó no**. Con una ventana móvil de 24 horas, un
+día flojo premiado con retraso —el servidor estuvo caído, o el ciclo corre a media
+tarde— cobraría según la actividad de hoy. Y el ciclo prepara hasta siete días de
+una tirada, así que los siete cobrarían lo mismo.
 
 #### Los premios en dólares, que es lo que mira el jugador
 
