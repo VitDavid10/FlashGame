@@ -142,6 +142,22 @@ pub mod pill_custody {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
+    /* Solo quien desplego el programa puede inicializarlo.
+     *
+     * Sin esto, `initialize` es una carrera: cualquiera que vigile despliegues puede
+     * llamarla antes que yo, ponerse a si mismo de autoridad y con su propio mint. No
+     * roba nada —la boveda esta vacia— pero deja el programa inservible, y como la
+     * config ya existe no se puede volver a inicializar: habria que desplegar otra vez
+     * en otra direccion y los 1,56 SOL de este despliegue se quedan dentro.
+     *
+     * La comprobacion sale gratis en riesgo: la upgrade authority de un programa
+     * recien desplegado soy yo por definicion. Y deja de importar en cuanto se llama
+     * una vez, porque la config `init` no admite una segunda. */
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ CustodyError::NotDeployer)]
+    pub program: Program<'info, crate::program::PillCustody>,
+    #[account(constraint = program_data.upgrade_authority_address == Some(payer.key()) @ CustodyError::NotDeployer)]
+    pub program_data: Account<'info, ProgramData>,
+
     #[account(
         init, payer = payer, space = 8 + Config::INIT_SPACE,
         seeds = [CONFIG_SEED], bump
@@ -257,4 +273,6 @@ pub enum CustodyError {
     NotAuthority,
     #[msg("No eres la autoridad nombrada")]
     NotPendingAuthority,
+    #[msg("Solo quien desplego el programa puede inicializarlo")]
+    NotDeployer,
 }

@@ -7,9 +7,11 @@ skip-lint = false
 
 [programs.localnet]
 pill_treasury = "PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW"
+pill_custody = "8WnuBzocee451WyjNyaCRzeuXdsWU8bUgZqrQ3XfKSd2"
 
 [programs.devnet]
 pill_treasury = "PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW"
+pill_custody = "8WnuBzocee451WyjNyaCRzeuXdsWU8bUgZqrQ3XfKSd2"
 
 [registry]
 url = "https://api.apr.dev"
