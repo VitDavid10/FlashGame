@@ -322,6 +322,68 @@ test('la actividad de hoy no paga los premios de un dia atrasado', () => {
     assert.equal(rewards.rawToPill(bueno.totalRaw), 50000, 'el bueno topa con el techo');
 });
 
+/* ===================== LA PROYECCION DEL DIA EN CURSO ===================== */
+
+/*
+ * Es lo que ve el jugador en el leaderboard antes de que el dia cierre. Tiene que
+ * aplicar EXACTAMENTE los mismos frenos que prepararRonda, o el panel prometeria
+ * una cifra y al cerrar se pagaria otra — que es la peor forma de perder la
+ * confianza de alguien que esta mirando cuanto puede ganar.
+ */
+
+test('la proyeccion aplica los mismos frenos que el reparto real', async () => {
+    const F = '2026-08-01';
+    diaDe(F, 50, 20000);                       // 20.000 de rake, 50 elegibles
+    const snap = lb.diaCerrado(F);
+
+    const pr = await rewards.proyeccionDeHoy({ date: F, entries: snap.entries });
+    // 50 elegibles = sin recorte por participacion, y factor 1 en estos tests.
+    assert.equal(pr.elegibles, 50);
+    assert.equal(pr.faltanParaCompleto, 0);
+    assert.equal(pr.rakeDelDia, 20000);
+    assert.equal(pr.botePill, 20000);
+
+    // Y el reparto real de ese mismo dia tiene que dar lo mismo.
+    const r = rewards.prepararRonda(F, rewards.pillToRaw(50000));
+    assert.equal(rewards.rawToPill(r.totalRaw), pr.botePill,
+        'la proyeccion promete una cifra y el reparto paga otra');
+});
+
+test('con poca gente la proyeccion recorta igual que el reparto', async () => {
+    const F = '2026-08-02';
+    diaDe(F, 10, 20000);                       // 10 de los 50 -> el bote sale al 20 %
+    const snap = lb.diaCerrado(F);
+
+    const pr = await rewards.proyeccionDeHoy({ date: F, entries: snap.entries });
+    assert.equal(pr.elegibles, 10);
+    assert.equal(pr.faltanParaCompleto, 40);
+    assert.equal(pr.botePill, Math.floor(20000 * 10 / 50));
+});
+
+test('el desglose por puesto suma el bote y no paga puestos vacios', async () => {
+    const F = '2026-08-03';
+    diaDe(F, 4, 20000);                        // solo cuatro en la lista
+    const snap = lb.diaCerrado(F);
+
+    const pr = await rewards.proyeccionDeHoy({ date: F, entries: snap.entries });
+    // Cuatro puestos, ni uno mas: los pesos del 5 al 10 no se pagan.
+    assert.equal(pr.puestos.length, 4);
+    assert.deepEqual(pr.puestos.map(x => x.rank), [1, 2, 3, 4]);
+    assert.deepEqual(pr.puestos.map(x => x.pct), [35, 20, 13, 9]);
+    // Y lo repartido cuadra con el bote por los pesos que SI salen (77 %).
+    const suma = pr.puestos.reduce((a, x) => a + x.pill, 0);
+    assert.ok(Math.abs(suma - pr.botePill * 0.77) <= 4, 'el desglose no cuadra con el bote');
+});
+
+test('sin rake no hay proyeccion que ensenar', async () => {
+    // El leaderboard tiene que decir cero, no el tope del contrato: si enseñara el
+    // tope, prometeria un bote que ese dia no se va a pagar.
+    const pr = await rewards.proyeccionDeHoy({ date: '2026-08-20', entries: [] });
+    assert.equal(pr.rakeDelDia, 0);
+    assert.equal(pr.botePill, 0);
+    assert.equal(pr.puestos.length, 0);
+});
+
 /*
  * ESTE VA EL ULTIMO a proposito: recarga rake/rewards/leaderboard con otro
  * LB_DIR y deja la cache de require tocada. Cualquier test que fuera detras

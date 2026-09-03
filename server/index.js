@@ -2152,7 +2152,7 @@ async function stakeState(wallet) {
 
     if (wallet) {
         const info = cuentas[3];
-        if (!info) out.posicion = { wallet, stakeado: 0, pendiente: 0, existe: false };
+        if (!info) out.posicion = { wallet, stakeado: 0, pendiente: 0, saliendo: 0, saleEl: null, existe: false };
         else {
             const acc = tc.decodeStakeAccount(info.data);
             // Lo pendiente guardado más lo devengado desde su última liquidación, que
@@ -2168,6 +2168,12 @@ async function stakeState(wallet) {
                 wallet, existe: true,
                 stakeado: aPill(acc.amount),
                 pendiente: aPill(acc.pending + devengado),
+                // La salida pedida. Ya NO rinde ni cuenta para parteDelPool: sale de
+                // total_staked en cuanto se pide, para no diluir a quien sigue dentro.
+                saliendo: aPill(acc.unstaking),
+                saleEl: acc.unstaking > 0n && acc.unstakeReadyAt
+                    ? new Date(Number(acc.unstakeReadyAt) * 1000).toISOString()
+                    : null,
                 parteDelPool: stakeado > 0 ? Number(acc.amount) / stakeado : 0,
             };
         }
@@ -2794,6 +2800,31 @@ const httpServer = http.createServer(async (req, res) => {
         return;
     }
     // --- Saldo WAR (PILL depositado en el juego) ---
+    /* Saldo $PILL de una wallet EN LA CADENA (no el saldo in-game).
+     *
+     * Lo usa el boton MAX del panel de staking: se stakea desde la wallet, que es
+     * otra bolsa distinta de la custodia. Solo lectura y con el mismo limite de
+     * peticiones que el resto de lo que toca el RPC. */
+    if (urlPath === '/api/walletbalance') {
+        const wallet = String(query.get('wallet') || '');
+        if (!isSolAddr(wallet)) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: 'wallet inválida' })); return;
+        }
+        if (rpcRateLimited(req)) {
+            res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: 'demasiadas peticiones' })); return;
+        }
+        solana.walletBalance(wallet).then(pill => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ wallet, pill }));
+        }).catch(e => {
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: e.message }));
+        });
+        return;
+    }
+
     if (urlPath === '/api/warbalance') {
         const wallet = String(query.get('wallet') || '');
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
@@ -3104,8 +3135,39 @@ const httpServer = http.createServer(async (req, res) => {
 
     // Leaderboard del día en curso (aún abierto, todavía sin hashear).
     if (urlPath === '/api/leaderboard') {
+        const est = leaderboard.estadoHoy();
+        // Y lo que se repartiria HOY con la gente que hay ahora mismo en la lista.
+        // Es la pregunta que se hace cualquiera que la mire ("¿cuanto hay en juego?")
+        // y la respuesta cambia sola con los cuatro frenos: el grifo del contrato, el
+        // rake del dia, cuanta gente es elegible y los pesos de los puestos vacios.
+        rewards.proyeccionDeHoy(est).then(reparto => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(Object.assign({}, est, { reparto })));
+        }).catch(() => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(est));
+        });
+        return;
+    }
+
+    /* Historial de una wallet: sus partidas ancladas, sus premios y sus firmas.
+     *
+     * Es lo que hay detras de cada nombre del top 10. Todo sale de los mismos
+     * recibos que se anclan en la cadena por lotes, asi que cada linea se puede
+     * seguir hasta una transaccion de Solana — el objetivo es que "ese jugador hizo
+     * 40 kills" no haya que creerselo. */
+    if (urlPath.startsWith('/api/player/')) {
+        const wallet = urlPath.slice('/api/player/'.length);
+        if (!isSolAddr(wallet)) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: 'wallet inválida' })); return;
+        }
+        let out;
+        try { out = matches.historialDe(wallet, 40); } catch (e) { out = { error: e.message }; }
+        // Sus premios del top 10, con la firma de la ronda en la que salieron.
+        try { out.premios = rewards.premiosDe(wallet); } catch (e) {}
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify(leaderboard.estadoHoy()));
+        res.end(JSON.stringify(out));
         return;
     }
     // La cadena de hashes entera, y su verificación. Es lo que permite a cualquiera
@@ -3173,9 +3235,17 @@ const httpServer = http.createServer(async (req, res) => {
                         from: getAssociatedTokenAddressSync(new PublicKey(solana.MINT), w, true),
                         amountRaw: solana.pillToRaw(pill),
                     });
-                } else if (accion === 'unstake') {
+                } else if (accion === 'request_unstake') {
+                    // Pide la salida: no mueve tokens, arranca los 7 dias y lo pedido
+                    // deja de rendir en el acto.
                     if (!(pill > 0)) { res.end(JSON.stringify({ ok: false, reason: 'cantidad inválida' })); return; }
-                    ix = tcl.unstake(TREASURY_PROGRAM, { owner: wallet, mint: solana.MINT, amountRaw: solana.pillToRaw(pill) });
+                    ix = tcl.requestUnstake(TREASURY_PROGRAM, { owner: wallet, amountRaw: solana.pillToRaw(pill) });
+                } else if (accion === 'withdraw_unstaked') {
+                    // Saca lo que ya cumplio la espera. Sin cantidad: sale todo lo pedido.
+                    ix = tcl.withdrawUnstaked(TREASURY_PROGRAM, { owner: wallet, mint: solana.MINT });
+                } else if (accion === 'compound') {
+                    // Lo ganado vuelve al principal sin pasar por la wallet.
+                    ix = tcl.compoundStakeRewards(TREASURY_PROGRAM, { owner: wallet });
                 } else if (accion === 'claim') {
                     ix = tcl.claimStakeRewards(TREASURY_PROGRAM, { owner: wallet, mint: solana.MINT });
                 } else {

@@ -162,6 +162,8 @@ function decodeStakeAccount(data) {
         amount: c.u64(),
         rewardPerSharePaid: c.u128(),
         pending: c.u64(),
+        unstaking: c.u64(),
+        unstakeReadyAt: c.i64(),
         bump: c.u8(),
     };
 }
@@ -312,7 +314,22 @@ function stake(programId, { owner, from, amountRaw }) {
 }
 
 /** unstake — saca principal. Sin permisos, sin esperas y sin tope: es su dinero. */
-function unstake(programId, { owner, mint, amountRaw }) {
+/*
+ * requestUnstake — pide la salida. NO mueve tokens.
+ *
+ * Lo pedido deja de rendir en el acto y arranca los 7 dias. Por eso esta
+ * instruccion no lleva ni boveda ni cuenta de destino: solo toca contadores.
+ */
+function requestUnstake(programId, { owner, amountRaw }) {
+    const p = pdas(programId);
+    const w = new PublicKey(owner);
+    return ix(programId, [
+        rw(p.config), rw(stakePda(programId, w)), ro(w, true),
+    ], Buffer.concat([ixDisc('request_unstake'), u64le(amountRaw)]));
+}
+
+/** withdrawUnstaked — saca lo que ya cumplio los 7 dias. Todo lo pedido, de una. */
+function withdrawUnstaked(programId, { owner, mint }) {
     const p = pdas(programId);
     const w = new PublicKey(owner);
     const m = new PublicKey(mint);
@@ -320,7 +337,22 @@ function unstake(programId, { owner, mint, amountRaw }) {
         rw(p.config), rw(p.stakeVault), rw(stakePda(programId, w)),
         rw(getAssociatedTokenAddressSync(m, w, true)), ro(m), ro(w, true),
         ro(TOKEN_PROGRAM_ID),
-    ], Buffer.concat([ixDisc('unstake'), u64le(amountRaw)]));
+    ], Buffer.concat([ixDisc('withdraw_unstaked')]));
+}
+
+/*
+ * compoundStakeRewards — mete lo ganado dentro del principal.
+ *
+ * Los tokens van del pozo de recompensas a la boveda del principal: no salen del
+ * programa, asi que aqui no hay ninguna cuenta del usuario ni el mint.
+ */
+function compoundStakeRewards(programId, { owner }) {
+    const p = pdas(programId);
+    const w = new PublicKey(owner);
+    return ix(programId, [
+        rw(p.config), rw(p.rewardVault), rw(p.stakeVault), rw(stakePda(programId, w)),
+        ro(w, true), ro(TOKEN_PROGRAM_ID),
+    ], Buffer.concat([ixDisc('compound_stake_rewards')]));
 }
 
 /** claimStakeRewards — cobra lo acumulado sin tocar el principal. */
@@ -476,7 +508,8 @@ function unlockWithdraw(programId, { to, authority, amountRaw }) {
 module.exports = {
     pdas, roundPda, claimPda, stakePda,
     decodeConfig, decodeRound, decodeReceipt, decodeStakeAccount,
-    initStaking, stake, unstake, claimStakeRewards, fundStakeRewards,
+    initStaking, stake, requestUnstake, withdrawUnstaked,
+    claimStakeRewards, compoundStakeRewards, fundStakeRewards,
     initialize, deposit, fund, withdraw, sweep, burn,
     publishRound, cancelRound, claim, claimToStake, expireRound,
     extendLock, tighten, finalize, transferAuthority, acceptAuthority, unlockWithdraw,

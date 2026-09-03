@@ -95,7 +95,9 @@ const CASOS = [
     ['UnlockWithdraw', () => tc.unlockWithdraw(PROGRAM_ID, { to: mint, authority, amountRaw: 1 })],
     ['InitStaking', () => tc.initStaking(PROGRAM_ID, { authority, mint })],
     ['Stake', () => tc.stake(PROGRAM_ID, { owner: jugador, from: mint, amountRaw: 1 })],
-    ['Unstake', () => tc.unstake(PROGRAM_ID, { owner: jugador, mint, amountRaw: 1 })],
+    ['Unstake', () => tc.withdrawUnstaked(PROGRAM_ID, { owner: jugador, mint })],
+    ['RequestUnstake', () => tc.requestUnstake(PROGRAM_ID, { owner: jugador, amountRaw: 1 })],
+    ['CompoundStakeRewards', () => tc.compoundStakeRewards(PROGRAM_ID, { owner: jugador })],
     ['ClaimStakeRewards', () => tc.claimStakeRewards(PROGRAM_ID, { owner: jugador, mint })],
     ['FundStakeRewards', () => tc.fundStakeRewards(PROGRAM_ID, { authority, amountRaw: 1, durationSecs: 86400 })],
 ];
@@ -249,11 +251,15 @@ test('cada wallet tiene su propia posicion en el pool', () => {
     assert.equal(tc.stakePda(PROGRAM_ID, jugador).toBase58(), tc.stakePda(PROGRAM_ID, jugador).toBase58());
 });
 
-test('stake y unstake los firma el dueno, no la autoridad', () => {
+test('todo el staking lo firma el dueno, no la autoridad', () => {
     // El principal del pool es de los usuarios: nadie mas puede moverlo, ni yo.
+    // Incluye compound, que mueve tokens ENTRE bovedas del programa: aunque no
+    // salgan a ninguna wallet, quien decide moverlos es el dueno de la posicion.
     for (const [nombre, inst] of [
         ['stake', tc.stake(PROGRAM_ID, { owner: jugador, from: mint, amountRaw: 1 })],
-        ['unstake', tc.unstake(PROGRAM_ID, { owner: jugador, mint, amountRaw: 1 })],
+        ['request_unstake', tc.requestUnstake(PROGRAM_ID, { owner: jugador, amountRaw: 1 })],
+        ['withdraw_unstaked', tc.withdrawUnstaked(PROGRAM_ID, { owner: jugador, mint })],
+        ['compound', tc.compoundStakeRewards(PROGRAM_ID, { owner: jugador })],
         ['claim', tc.claimStakeRewards(PROGRAM_ID, { owner: jugador, mint })],
     ]) {
         const firmantes = inst.keys.filter(k => k.isSigner).map(k => k.pubkey.toBase58());
@@ -261,10 +267,10 @@ test('stake y unstake los firma el dueno, no la autoridad', () => {
     }
 });
 
-test('unstake y claim solo pueden ir a la ATA del dueno', () => {
+test('lo que sale del staking solo puede ir a la ATA del dueno', () => {
     const esperada = getAssociatedTokenAddressSync(mint, jugador, true).toBase58();
     for (const [nombre, structName, inst] of [
-        ['unstake', 'Unstake', tc.unstake(PROGRAM_ID, { owner: jugador, mint, amountRaw: 1 })],
+        ['withdraw_unstaked', 'Unstake', tc.withdrawUnstaked(PROGRAM_ID, { owner: jugador, mint })],
         ['claim', 'ClaimStakeRewards', tc.claimStakeRewards(PROGRAM_ID, { owner: jugador, mint })],
     ]) {
         const campos = camposDe(structName);
@@ -294,13 +300,16 @@ test('las dos bolsas del staking son cuentas distintas entre si y de las otras d
 test('decodeStakeAccount lee el layout del .rs', () => {
     const crypto = require('node:crypto');
     const campos = camposDe('StakeAccount');
-    assert.deepEqual(campos.map(c => c.nombre), ['owner', 'amount', 'reward_per_share_paid', 'pending', 'bump']);
+    assert.deepEqual(campos.map(c => c.nombre),
+        ['owner', 'amount', 'reward_per_share_paid', 'pending', 'unstaking', 'unstake_ready_at', 'bump']);
     const buf = Buffer.concat([
         crypto.createHash('sha256').update('account:StakeAccount').digest().subarray(0, 8),
         jugador.toBuffer(),
         (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(123456n); return b; })(),
         (() => { const b = Buffer.alloc(16); b.writeBigUInt64LE(999n, 0); b.writeBigUInt64LE(0n, 8); return b; })(),
         (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(77n); return b; })(),
+        (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(5000n); return b; })(),
+        (() => { const b = Buffer.alloc(8); b.writeBigInt64LE(1788000000n); return b; })(),
         Buffer.from([254]),
     ]);
     const a = tc.decodeStakeAccount(buf);
@@ -308,6 +317,10 @@ test('decodeStakeAccount lee el layout del .rs', () => {
     assert.equal(a.amount, 123456n);
     assert.equal(a.rewardPerSharePaid, 999n);
     assert.equal(a.pending, 77n);
+    // Los dos campos de la salida pedida. Si el decodificador los leyera corridos,
+    // la interfaz ensenaria una cuenta atras absurda y un WITHDRAW que no funciona.
+    assert.equal(a.unstaking, 5000n);
+    assert.equal(a.unstakeReadyAt, 1788000000);
     assert.equal(a.bump, 254);
 });
 

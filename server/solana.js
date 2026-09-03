@@ -289,4 +289,32 @@ function verifySignedMessage(wallet, message, signatureArr) {
     } catch (e) { return false; }
 }
 
-module.exports = { verifyDeposit, withdraw, prepararRetiro, enviarRetiro, burn, airdropSol, canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey, RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };
+/*
+ * Saldo $PILL de una wallet EN LA CADENA, en PILL enteros.
+ *
+ * Es otra bolsa distinta del saldo in-game: eso vive en custodia y se mueve con
+ * deposit/withdraw; esto es lo que la wallet tiene suyo, y es desde donde se
+ * stakea. Se usa para el boton MAX del panel de staking.
+ *
+ * Suma TODAS las token accounts de ese owner para el mint y no solo la asociada:
+ * una wallet puede tener mas de una y ensenar de menos seria peor que tardar un
+ * poco mas. Si el RPC falla devuelve 0 en vez de reventar — el MAX es una ayuda,
+ * y la cadena rechazara igual un stake por encima del saldo real.
+ */
+async function walletBalance(owner) {
+    if (!MINT || !owner) return 0;
+    try {
+        const r = await rpc('getTokenAccountsByOwner', [
+            owner, { mint: MINT }, { encoding: 'jsonParsed' },
+        ]);
+        let raw = 0n;
+        for (const it of (r && r.value) || []) {
+            const a = it.account && it.account.data && it.account.data.parsed
+                && it.account.data.parsed.info && it.account.data.parsed.info.tokenAmount;
+            if (a && a.amount) raw += BigInt(a.amount);
+        }
+        return Number(raw / 10n ** BigInt(DECIMALS));
+    } catch (e) { return 0; }
+}
+
+module.exports = { walletBalance, verifyDeposit, withdraw, prepararRetiro, enviarRetiro, burn, airdropSol, canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey, RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };

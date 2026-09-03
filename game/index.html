@@ -1388,6 +1388,95 @@
         .gameModalBox .gm-btn:hover { filter: brightness(1.1); box-shadow: 0 0 18px rgba(0,255,136,0.4); }
         .gameModalBox .gm-btn:disabled { opacity: 0.6; cursor:default; }
         .gameModalBox .gm-row { display:flex; justify-content:space-between; font-size:13px; color:#888; margin-bottom: 4px; }
+
+        /* ---------- STAKING ----------
+           Mas ancho que el resto de carteles porque lleva dos tarjetas de datos
+           y tres acciones: a 420px las cifras se partian en dos lineas y el APR
+           dejaba de leerse de un vistazo, que es justo para lo que esta. */
+        .stake-box { max-width: 520px; text-align: left; max-height: 92vh; overflow-y: auto; }
+        .stake-box h3 { text-align: center; }
+        .stk-card { background: rgba(255,255,255,0.03); border: 1px solid #23282e; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+        .stk-card-t { font-family:'Russo One'; font-size:10px; letter-spacing:1.5px; color:#6f7681; text-transform:uppercase; margin-bottom:9px; }
+        .stk-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px 16px; }
+        .stk-grid > div { display:flex; flex-direction:column; gap:2px; min-width:0; }
+        .stk-grid span { font-size:10.5px; color:#7d848d; letter-spacing:.3px; }
+        .stk-grid b { font-family:'Russo One'; font-size:15px; color:#e6e9ec; overflow:hidden; text-overflow:ellipsis; }
+        .stk-apr { color:#00ff88 !important; }
+        .stk-earn { color:#ffce3d !important; }
+        .stk-note { font-size:10px; color:#6f7681; line-height:1.45; margin-top:8px; }
+
+        /* Cuenta atras de la salida pedida. Ambar mientras corre, verde cuando ya
+           se puede retirar: el color es lo primero que se mira al abrir. */
+        .stk-cooldown { display:flex; align-items:center; justify-content:space-between; gap:10px;
+                        margin-top:10px; padding:9px 11px; border-radius:8px;
+                        background:rgba(255,206,61,0.07); border:1px solid rgba(255,206,61,0.28); }
+        .stk-cooldown span { font-size:11.5px; color:#ffce3d; line-height:1.35; }
+        .stk-cooldown.ready { background:rgba(0,255,136,0.07); border-color:rgba(0,255,136,0.3); }
+        .stk-cooldown.ready span { color:#00ff88; }
+
+        .stk-input-row { display:flex; gap:8px; align-items:stretch; }
+        .stk-input-row input { flex:1; }
+        .stk-max { background:transparent; border:1px solid #454b52; color:#9aa3ad; border-radius:8px;
+                   font-family:'Russo One'; font-size:11px; padding:0 14px; cursor:pointer; letter-spacing:1px; }
+        .stk-max:hover { border-color:#8a939e; color:#e6e9ec; }
+
+        /* Las tres acciones secundarias en una fila: COMPOUND y CLAIM son las de
+           todos los dias y UNSTAKE la que arranca la espera, asi que va aparte en
+           rojo — no por peligro, sino porque deja de rendir en el acto. */
+        .stk-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
+        .stk-btn { background:transparent; border:1px solid #454b52; color:#9aa3ad; border-radius:8px;
+                   font-family:'Russo One'; font-size:11px; letter-spacing:1px; padding:10px 4px; cursor:pointer; transition:.15s; }
+        .stk-btn:hover:not(:disabled) { border-color:#8a939e; color:#e6e9ec; }
+        .stk-btn:disabled { opacity:.4; cursor:default; }
+        .stk-btn.stk-danger { border-color:#5a3a3a; color:#c98a8a; }
+        .stk-btn.stk-danger:hover:not(:disabled) { border-color:#ff6b6b; color:#ff6b6b; }
+        .stk-btn.stk-sm { padding:6px 14px; font-size:10px; flex:0 0 auto; }
+        .stk-help { font-size:11px; color:#8b9199; line-height:1.6; margin-top:16px;
+                    border-top:1px solid #1e2227; padding-top:12px; }
+        .stk-help b { color:#c8cdd2; }
+
+        /* ---------- LEADERBOARD DIARIO ---------- */
+        .board-box { max-width: 560px; text-align: left; max-height: 92vh; overflow-y: auto; }
+        .board-box h3 { text-align: center; }
+        .lb-list { margin-top: 4px; }
+        /* Cada fila es un boton: se abre la ficha del jugador. El cursor y el
+           hover lo dicen, porque una lista que no parece pulsable no se pulsa. */
+        .lb-row { display:grid; grid-template-columns:34px 1fr auto auto; gap:10px; align-items:center;
+                  padding:9px 10px; border-bottom:1px solid #16191d; cursor:pointer; transition:.12s;
+                  border-radius:6px; }
+        .lb-row:hover { background:rgba(255,255,255,0.04); }
+        .lb-row .lb-pos { font-family:'Russo One'; font-size:14px; color:#6f7681; text-align:center; }
+        .lb-row.top1 .lb-pos { color:#ffce3d; }
+        .lb-row.top2 .lb-pos { color:#c8cdd2; }
+        .lb-row.top3 .lb-pos { color:#c98a5a; }
+        .lb-row.mine { background:rgba(0,255,136,0.07); border:1px solid rgba(0,255,136,0.25); }
+        .lb-row .lb-name { font-family:'Russo One'; font-size:13px; color:#e6e9ec; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .lb-row .lb-sub { font-size:10px; color:#6f7681; }
+        .lb-row .lb-kills { font-size:12px; color:#9aa3ad; text-align:right; }
+        .lb-row .lb-pill { font-family:'Russo One'; font-size:13px; color:#ffce3d; text-align:right; min-width:76px; }
+        .lb-row .lb-pill.zero { color:#454b52; }
+
+        /* Cuanto falta para que el bote deje de recortarse por participacion. Es
+           la unica cifra del panel sobre la que los jugadores pueden actuar. */
+        .lb-bar-wrap { margin-top:10px; }
+        .lb-bar { height:5px; background:#1a1e23; border-radius:3px; overflow:hidden; }
+        .lb-bar-fill { height:100%; background:linear-gradient(90deg,#00b35f,#00ff88); transition:width .3s; }
+
+        .lb-back { margin-bottom:12px; }
+        .lb-stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px 16px; margin-bottom:12px; }
+        .lb-stat-grid > div { display:flex; flex-direction:column; gap:2px; }
+        .lb-stat-grid span { font-size:10.5px; color:#7d848d; }
+        .lb-stat-grid b { font-family:'Russo One'; font-size:15px; color:#e6e9ec; }
+        .lb-match { display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center;
+                    padding:7px 0; border-bottom:1px solid #16191d; font-size:11.5px; }
+        .lb-match .lb-m-room { color:#9aa3ad; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .lb-match .lb-m-k { color:#e6e9ec; font-family:'Russo One'; }
+        /* El enlace a la transaccion es lo que convierte la fila en algo
+           comprobable. Sin anclar todavia se dice, no se esconde. */
+        .lb-match a { color:#00ff88; text-decoration:none; font-size:10px; border:1px solid rgba(0,255,136,0.3);
+                      border-radius:4px; padding:2px 7px; }
+        .lb-match a:hover { background:rgba(0,255,136,0.1); }
+        .lb-match .lb-m-no { color:#454b52; font-size:10px; }
         /* Tabla de reparto (popup arcade) */
         /* Piezas comunes de cualquier cifra de dinero: icono de $PILL, la unidad
            y el equivalente en dolares. Van mas pequeños que la cifra, que es lo
@@ -3567,6 +3656,10 @@
                 <!-- Solo aparece si esta wallet tiene premios sin cobrar: un boton
                      que siempre esta ahi y casi siempre esta vacio deja de mirarse. -->
                 <button id="gwClaim" style="display:none" onclick="SoundManager.play('simpleselect'); GameWalletUI.openClaim()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">CLAIM</span></button>
+                <!-- STAKE abre su propia ventana a pantalla completa. Vive aqui y no
+                     en el menu a proposito: es una decision de cartera, no de juego. -->
+                <button id="gwStake" onclick="SoundManager.play('simpleselect'); StakeUI.open()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">STAKE</span></button>
+                <button id="gwBoard" onclick="SoundManager.play('simpleselect'); BoardUI.open()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">BOARD</span></button>
                 <button onclick="SoundManager.play('simpleselect'); GameWalletUI.disconnect()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">DISCONNECT</span></button>
             </div>
         </div>
@@ -3650,6 +3743,119 @@
                 <div id="gcList" style="max-height:260px;overflow-y:auto;margin-bottom:12px"></div>
                 <div id="gcNote" style="color:#8b9199;font-size:11px;line-height:1.5"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- ===================== STAKING =====================
+         Ventana aparte a proposito: no se llega scrolleando desde el menu ni
+         desde la partida. Se abre solo desde STAKE en la barra de la wallet y
+         tapa la pantalla entera, porque bloquear tokens siete dias no es algo
+         que deba quedar a un dedo de distancia de PLAY. -->
+    <div id="gameStakeModal" class="gameModal">
+        <div class="gameModalBox stake-box">
+            <span class="close" onclick="StakeUI.close()">&times;</span>
+            <h3>Staking</h3>
+
+            <!-- El pozo. Es lo que hace creible el APR: se ve cuanto queda por
+                 repartir, no solo el porcentaje. -->
+            <div class="stk-card">
+                <div class="stk-card-t">Reward pool</div>
+                <div class="stk-grid">
+                    <div><span>In rewards vault</span><b id="stkPozo">—</b></div>
+                    <div><span>Distributing / day</span><b id="stkPorDia">—</b></div>
+                    <div><span>Total staked</span><b id="stkTotal">—</b></div>
+                    <div><span>Est. APR</span><b id="stkApr" class="stk-apr">—</b></div>
+                </div>
+                <div class="stk-note" id="stkAprNota"></div>
+            </div>
+
+            <!-- Tu posicion. Solo con wallet conectada. -->
+            <div class="stk-card" id="stkMine" style="display:none">
+                <div class="stk-card-t">Your position</div>
+                <div class="stk-grid">
+                    <div><span>Staked</span><b id="stkMio">—</b></div>
+                    <div><span>Earned (unclaimed)</span><b id="stkPend" class="stk-earn">—</b></div>
+                </div>
+                <div id="stkColaWrap" class="stk-cooldown" style="display:none">
+                    <span id="stkColaTxt"></span>
+                    <button type="button" class="stk-btn stk-sm" id="stkBtnWithdraw"
+                            onclick="StakeUI.withdrawUnstaked()">WITHDRAW</button>
+                </div>
+            </div>
+
+            <div class="gm-body">
+                <label for="stkAmount">Amount</label>
+                <div class="stk-input-row">
+                    <input id="stkAmount" type="number" min="1" step="1" placeholder="0">
+                    <button type="button" class="stk-max" onclick="StakeUI.fillMax()">MAX</button>
+                </div>
+                <button class="gm-btn" id="stkBtnStake" onclick="StakeUI.stake()">STAKE</button>
+
+                <div class="stk-actions">
+                    <button type="button" class="stk-btn" id="stkBtnCompound" onclick="StakeUI.compound()"
+                            title="Move what you earned into your stake, so it keeps earning">COMPOUND</button>
+                    <button type="button" class="stk-btn" id="stkBtnClaim" onclick="StakeUI.claim()"
+                            title="Send what you earned to your wallet">CLAIM</button>
+                    <button type="button" class="stk-btn stk-danger" id="stkBtnReq" onclick="StakeUI.requestUnstake()"
+                            title="Start the 7-day wait to take your stake out">UNSTAKE</button>
+                </div>
+
+                <div class="stk-help">
+                    <b>How you earn.</b> Everything the house keeps goes into the reward
+                    pool: exit fees, the arcade cut, entries from players who
+                    disconnect and never come back, unclaimed pot shares and the skin
+                    shop. That pool drips into stakers by the second, split by how much
+                    each one has locked — no tokens are minted, it is the game's own
+                    income coming back.
+                    <br><br>
+                    <b>Why the 7 days.</b> <b>UNSTAKE</b> starts a 7-day wait and those
+                    tokens stop earning immediately. Without it, dropping in right
+                    before a payout and leaving right after would cost nothing, and the
+                    yield would go to whoever held nothing — paid by whoever did.
+                    <br><br>
+                    <b>COMPOUND</b> puts what you earned back into your stake, so it
+                    earns too. <b>CLAIM</b> sends it to your wallet instead. Your
+                    principal is never locked by anyone but the timer: no permissions,
+                    no approvals.
+                </div>
+                <div class="stk-note" id="stkAviso"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== LEADERBOARD DIARIO =====================
+         Ventana aparte, como el staking. Ensena lo que se reparte HOY con la
+         gente que hay ahora mismo, y cada nombre se abre para ver de donde
+         salen sus numeros: partidas ancladas en la cadena, no una lista que
+         diga yo. -->
+    <div id="gameBoardModal" class="gameModal">
+        <div class="gameModalBox board-box">
+            <span class="close" onclick="BoardUI.close()">&times;</span>
+            <h3 id="lbTitle">Daily leaderboard</h3>
+
+            <!-- El bote de hoy y por que es ese y no otro. -->
+            <div class="stk-card">
+                <div class="stk-card-t">Today's prize pool</div>
+                <div class="stk-grid">
+                    <div><span>Pool right now</span><b id="lbBote" class="stk-earn">—</b></div>
+                    <div><span>Players in the list</span><b id="lbElegibles">—</b></div>
+                </div>
+                <div class="lb-bar-wrap" id="lbBarWrap" style="display:none">
+                    <div class="lb-bar"><div class="lb-bar-fill" id="lbBarFill"></div></div>
+                    <div class="stk-note" id="lbBarTxt"></div>
+                </div>
+                <div class="stk-note" id="lbPorQue"></div>
+            </div>
+
+            <div id="lbLista" class="lb-list"></div>
+
+            <!-- Ficha de un jugador. Sustituye a la lista al pulsar un nombre. -->
+            <div id="lbFicha" style="display:none">
+                <button type="button" class="stk-btn stk-sm lb-back" onclick="BoardUI.volver()">&larr; BACK</button>
+                <div id="lbFichaBody"></div>
+            </div>
+
+            <div class="stk-note" id="lbNota"></div>
         </div>
     </div>
 
@@ -11948,6 +12154,314 @@
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     // Solo refrescamos cuando el panel está visible (en menú de modo). Refresco periódico ligero.
     setInterval(() => { if (document.getElementById('gameWalletArea').style.display !== 'none') GameWalletUI.refresh(); }, 6000);
+    /* ===================== STAKING =====================
+     *
+     * Panel aparte del resto del menu: se abre solo desde STAKE en la barra de la
+     * wallet. Todo lo que se ve aqui viene de /api/stake, que lo lee de la CADENA
+     * (config, boveda del principal y pozo de recompensas), no de un fichero del
+     * servidor: si el servidor mintiera, el APR no cuadraria con lo que cualquiera
+     * puede ver en el explorador.
+     */
+    const StakeUI = {
+        st: null,          // ultimo estado de /api/stake
+        walletBal: null,   // saldo de la wallet, techo del boton MAX
+        _timer: null,      // refresco de la cuenta atras, solo mientras esta abierto
+        fmt(n) { return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }); },
+
+        // "6d 4h" / "3h 12m" / "8m". Sin segundos: se repinta cada 30 s y ver los
+        // segundos correr en algo que dura una semana solo distrae.
+        dur(ms) {
+            if (ms <= 0) return 'now';
+            const m = Math.floor(ms / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
+            if (d > 0) return d + 'd ' + (h % 24) + 'h';
+            if (h > 0) return h + 'h ' + (m % 60) + 'm';
+            return Math.max(1, m) + 'm';
+        },
+
+        async open() {
+            document.getElementById('gameStakeModal').style.display = 'flex';
+            await this.refresh();
+            // La cuenta atras se repinta sola: el cartel puede quedarse abierto
+            // mientras la espera vence, y un "0m" que no cambia a WITHDRAW confunde.
+            if (this._timer) clearInterval(this._timer);
+            this._timer = setInterval(() => this.pinta(), 30000);
+        },
+        close() {
+            document.getElementById('gameStakeModal').style.display = 'none';
+            if (this._timer) { clearInterval(this._timer); this._timer = null; }
+        },
+
+        async refresh() {
+            const w = (window.GameWallet && GameWallet.address) || '';
+            try {
+                const r = await fetch('/api/stake' + (w ? '?wallet=' + w : ''));
+                this.st = await r.json();
+            } catch (e) { this.st = { activo: false, aviso: 'Could not reach the server.' }; }
+            // El techo del MAX es el saldo de la WALLET: se stakea desde ahi, no
+            // desde el saldo in-game (ese vive en custodia, es otra bolsa distinta).
+            this.walletBal = null;
+            if (w) {
+                try {
+                    const b = await (await fetch('/api/walletbalance?wallet=' + w)).json();
+                    if (b && typeof b.pill === 'number') this.walletBal = b.pill;
+                } catch (e) {}
+            }
+            this.pinta();
+        },
+
+        pinta() {
+            const st = this.st || {}, $ = (id) => document.getElementById(id);
+            const pos = st.posicion || null;
+            const conectado = !!(window.GameWallet && GameWallet.address);
+
+            $('stkPozo').textContent = st.pozo != null ? this.fmt(st.pozo) : '—';
+            $('stkPorDia').textContent = st.repartiendoPorDia != null ? this.fmt(st.repartiendoPorDia) : '—';
+            $('stkTotal').textContent = st.totalStaked != null ? this.fmt(st.totalStaked) : '—';
+
+            // El APR se da como lo que es. Con poco stakeado sale un numero enorme
+            // que se desploma en cuanto entre gente, y ensenarlo a secas seria
+            // prometer un rendimiento que nadie puede sostener.
+            if (st.apr != null && st.enMarcha) {
+                $('stkApr').textContent = (st.apr * 100).toFixed(1) + '%';
+                $('stkAprNota').textContent = st.totalStaked < 1000
+                    ? 'Almost nothing is staked yet, so this number is huge and will drop as soon as others join. It is a snapshot, not a promise.'
+                    : 'Today rate over what is staked right now, annualised. It moves with the pool and with how much the game earns.';
+            } else {
+                $('stkApr').textContent = '—';
+                $('stkAprNota').textContent = st.activo === false
+                    ? (st.aviso || 'Staking is not live yet.')
+                    : 'Nothing is being distributed right now. The pool fills up from the game own income.';
+            }
+
+            $('stkMine').style.display = conectado && pos ? '' : 'none';
+            if (pos) {
+                $('stkMio').textContent = this.fmt(pos.stakeado);
+                $('stkPend').textContent = this.fmt(pos.pendiente);
+            }
+
+            // La salida pedida: cuanto queda, o el boton para retirarla ya.
+            const cola = $('stkColaWrap');
+            const enCola = !!(pos && pos.saliendo > 0);
+            cola.style.display = enCola ? '' : 'none';
+            if (enCola) {
+                const falta = new Date(pos.saleEl).getTime() - Date.now();
+                const listo = falta <= 0;
+                cola.classList.toggle('ready', listo);
+                $('stkColaTxt').innerHTML = listo
+                    ? '<b>' + this.fmt(pos.saliendo) + ' $PILL</b> ready to withdraw.'
+                    : '<b>' + this.fmt(pos.saliendo) + ' $PILL</b> on the way out · ' + this.dur(falta) + ' left';
+                $('stkBtnWithdraw').disabled = !listo;
+            }
+
+            const hayPend = !!(pos && pos.pendiente > 0);
+            $('stkBtnCompound').disabled = !hayPend;
+            $('stkBtnClaim').disabled = !hayPend;
+            $('stkBtnReq').disabled = !(pos && pos.stakeado > 0);
+            $('stkBtnStake').disabled = !conectado || st.activo === false;
+            $('stkAviso').textContent = !conectado
+                ? 'Connect your wallet to stake.'
+                : (st.activo === false ? (st.aviso || '') : '');
+        },
+
+        fillMax() {
+            if (this.walletBal != null) document.getElementById('stkAmount').value = String(Math.floor(this.walletBal));
+        },
+
+        // Las cinco acciones pasan por lo mismo: pedir la transaccion al servidor,
+        // firmarla en la wallet y refrescar. El servidor NO firma nada de esto: el
+        // contrato exige la firma del dueno y que el destino sea su propia cuenta.
+        async _accion(accion, pill, txtOk) {
+            if (!window.PillChain || !window.PillChain.stakeTx) { showSystemMsg('Wallet module not loaded yet.', 'STAKING'); return; }
+            const aviso = document.getElementById('stkAviso');
+            const antes = aviso.textContent;
+            aviso.textContent = 'Sign in your wallet...';
+            try {
+                await window.PillChain.stakeTx(accion, pill);
+                await this.refresh();
+                showSystemMsg(txtOk, 'STAKING');
+            } catch (e) {
+                aviso.textContent = antes;
+                showSystemMsg(walletErrText(e), 'STAKING FAILED');
+            }
+        },
+
+        stake() {
+            const amt = Math.max(0, parseInt(document.getElementById('stkAmount').value, 10) || 0);
+            if (!(amt > 0)) { showSystemMsg('Enter how much you want to stake.', 'STAKING'); return; }
+            if (this.walletBal != null && amt > this.walletBal) {
+                showSystemMsg('You only have ' + this.fmt(this.walletBal) + ' $PILL in your wallet.', 'NOT ENOUGH');
+                return;
+            }
+            this._accion('stake', amt, this.fmt(amt) + ' $PILL staked. It starts earning right away.');
+        },
+        compound() { this._accion('compound', 0, 'Rewards moved into your stake. They earn from now on.'); },
+        claim() { this._accion('claim', 0, 'Rewards sent to your wallet.'); },
+        requestUnstake() {
+            const pos = (this.st && this.st.posicion) || null;
+            if (!pos || !(pos.stakeado > 0)) return;
+            const escrito = Math.max(0, parseInt(document.getElementById('stkAmount').value, 10) || 0);
+            const n = Math.min(escrito > 0 ? escrito : pos.stakeado, pos.stakeado);
+            // Se avisa ANTES de firmar: deja de rendir en el acto, y eso no se ve
+            // en la pantalla de confirmacion de la wallet.
+            if (!confirm(this.fmt(n) + ' $PILL will stop earning now and can be withdrawn in 7 days.\n\nContinue?')) return;
+            this._accion('request_unstake', n, this.fmt(n) + ' $PILL on the way out. You can withdraw them in 7 days.');
+        },
+        withdrawUnstaked() { this._accion('withdraw_unstaked', 0, 'Tokens sent to your wallet.'); },
+    };
+    /* ===================== LEADERBOARD DIARIO =====================
+     *
+     * Dos pantallas en el mismo cartel: la lista del dia y la ficha de un jugador.
+     * Todo sale de /api/leaderboard y /api/player/<wallet>, y las dos cosas se
+     * pueden abrir en el navegador: la gracia es que nada de lo que se ve aqui
+     * dependa de creerse al servidor.
+     */
+    const BoardUI = {
+        data: null,
+        fmt(n) { return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }); },
+        corta(w) { return w ? w.slice(0, 4) + '…' + w.slice(-4) : ''; },
+
+        async open() {
+            document.getElementById('gameBoardModal').style.display = 'flex';
+            this.volver();
+            document.getElementById('lbLista').innerHTML =
+                '<div style="color:#8b9199;text-align:center;padding:24px 0">Loading…</div>';
+            try {
+                this.data = await (await fetch('/api/leaderboard')).json();
+            } catch (e) { this.data = null; }
+            this.pinta();
+        },
+        close() { document.getElementById('gameBoardModal').style.display = 'none'; },
+        volver() {
+            document.getElementById('lbFicha').style.display = 'none';
+            document.getElementById('lbLista').style.display = '';
+        },
+
+        pinta() {
+            const d = this.data, $ = (id) => document.getElementById(id);
+            if (!d) {
+                $('lbLista').innerHTML = '<div style="color:#8b9199;text-align:center;padding:24px 0">Could not load the leaderboard.</div>';
+                return;
+            }
+            const rep = d.reparto || {};
+            const filas = d.entries || [];
+            const mia = (window.GameWallet && GameWallet.address) || null;
+
+            $('lbTitle').textContent = 'Daily leaderboard · ' + (d.date || '');
+            $('lbBote').textContent = rep.botePill != null ? this.fmt(rep.botePill) + ' $PILL' : '—';
+            $('lbElegibles').textContent = filas.length;
+
+            // La barra de participacion: cuanta gente falta para el bote completo.
+            // Es lo unico de este panel sobre lo que los jugadores pueden actuar.
+            const wrap = $('lbBarWrap');
+            if (rep.potCompletoCon) {
+                wrap.style.display = '';
+                const pct = Math.min(100, (filas.length / rep.potCompletoCon) * 100);
+                $('lbBarFill').style.width = pct.toFixed(0) + '%';
+                $('lbBarTxt').textContent = rep.faltanParaCompleto > 0
+                    ? rep.faltanParaCompleto + ' more eligible players and the pool stops being cut for low turnout.'
+                    : 'Full turnout: the pool is not being cut any more.';
+            } else wrap.style.display = 'none';
+
+            // Por que el bote es ese. Se dice entero: si el rake del dia es cero,
+            // el bote es cero por mucho que el contrato deje salir mas.
+            $('lbPorQue').innerHTML = rep.botePill != null
+                ? 'The pool is the smallest of: what the contract lets out today (<b>' + this.fmt(rep.topePill) + '</b>), '
+                  + 'what the house actually kept today (<b>' + this.fmt(rep.rakeDelDia) + '</b> × ' + (rep.factor || 1) + '), '
+                  + 'and how many players are in the list (' + filas.length + '/' + rep.potCompletoCon + ').'
+                : '';
+
+            if (!filas.length) {
+                $('lbLista').innerHTML = '<div style="color:#8b9199;text-align:center;padding:24px 0">'
+                    + 'Nobody qualifies yet today.<br><span style="font-size:10.5px">You need at least '
+                    + (d.minKills || 3) + ' kills in paid rooms, and to have played against enough different people.</span></div>';
+            } else {
+                $('lbLista').innerHTML = filas.map((f, i) => {
+                    const pr = (rep.puestos || []).find(x => x.rank === f.rank);
+                    const pill = pr ? pr.pill : 0;
+                    const cls = 'lb-row' + (i < 3 ? ' top' + (i + 1) : '') + (mia && f.wallet === mia ? ' mine' : '');
+                    return '<div class="' + cls + '" onclick="BoardUI.abrirFicha(\'' + f.wallet + '\')">'
+                        + '<div class="lb-pos">' + f.rank + '</div>'
+                        + '<div><div class="lb-name">' + (f.name ? String(f.name).replace(/[<>&]/g, '') : this.corta(f.wallet)) + '</div>'
+                        + '<div class="lb-sub">' + this.corta(f.wallet) + (f.oponentes != null ? ' · ' + f.oponentes + ' rivals' : '') + '</div></div>'
+                        + '<div class="lb-kills">' + f.kills + ' k</div>'
+                        + '<div class="lb-pill' + (pill > 0 ? '' : ' zero') + '">' + (pill > 0 ? this.fmt(pill) : '—') + '</div>'
+                        + '</div>';
+                }).join('');
+            }
+
+            $('lbNota').innerHTML = 'Only paid rooms count. The list closes at 23:59 UTC and is hashed into a chain '
+                + 'anyone can check at <b>/api/leaderboard/chain</b>. Tap a player to see where their numbers come from.';
+        },
+
+        // Ficha de un jugador: sus numeros y las partidas que los respaldan.
+        async abrirFicha(wallet) {
+            document.getElementById('lbLista').style.display = 'none';
+            const ficha = document.getElementById('lbFicha');
+            ficha.style.display = '';
+            const body = document.getElementById('lbFichaBody');
+            body.innerHTML = '<div style="color:#8b9199;text-align:center;padding:24px 0">Loading…</div>';
+
+            let d;
+            try { d = await (await fetch('/api/player/' + wallet)).json(); }
+            catch (e) { body.innerHTML = '<div style="color:#8b9199;text-align:center;padding:24px 0">Could not load this player.</div>'; return; }
+
+            const st = d.stats || {};
+            const explica = (t) => '<div class="stk-note" style="margin-top:-4px">' + t + '</div>';
+
+            let h = '<div style="font-family:\'Russo One\';font-size:13px;color:#e6e9ec;margin-bottom:2px">' + this.corta(wallet) + '</div>'
+                + '<div class="stk-note" style="margin-bottom:12px">'
+                + '<a href="https://solscan.io/account/' + wallet + '?cluster=devnet" target="_blank" style="color:#00ff88;text-decoration:none">View wallet on Solscan &rarr;</a></div>';
+
+            h += '<div class="lb-stat-grid">'
+                + '<div><span>Kills counted</span><b>' + this.fmt(st.kills) + '</b></div>'
+                + '<div><span>Paid matches</span><b>' + this.fmt(st.partidas) + '</b></div>'
+                + '<div><span>Kills per match</span><b>' + (st.killsPorPartida || 0).toFixed(1) + '</b></div>'
+                + '<div><span>Different rivals</span><b>' + this.fmt(st.oponentesDistintos) + '</b></div>'
+                + '</div>';
+
+            // Los dos numeros que deciden si entra en la lista, explicados. Es la
+            // parte que la gente pregunta: "¿por que este si y yo no?".
+            h += explica('<b>Different rivals</b> is what separates a real player from someone running '
+                + 'their own wallets against each other: a closed group can never meet anyone new, so its '
+                + 'number stops growing no matter how much it plays. '
+                + '<b>Kills</b> only count in paid rooms.');
+
+            h += '<div class="stk-card-t" style="margin:16px 0 6px">Recent matches</div>';
+            const ms = d.partidas || [];
+            if (!ms.length) {
+                h += '<div class="stk-note">No anchored matches yet.</div>';
+            } else {
+                h += ms.slice(0, 15).map(m => {
+                    const cuando = m.endedAt ? new Date(m.endedAt).toLocaleDateString() : '';
+                    const enlace = m.sig
+                        ? '<a href="https://solscan.io/tx/' + m.sig + '?cluster=devnet" target="_blank">TX</a>'
+                        : '<span class="lb-m-no">not anchored yet</span>';
+                    return '<div class="lb-match">'
+                        + '<div class="lb-m-room">' + String(m.room || '').replace(/[<>&]/g, '') + ' · ' + cuando + '</div>'
+                        + '<div class="lb-m-k">' + m.kills + ' k</div>'
+                        + '<div>' + enlace + '</div></div>';
+                }).join('');
+                h += explica('Every match is hashed and its hash goes into a batch anchored on Solana. '
+                    + 'That is what makes these numbers checkable: the match existed <i>before</i> the '
+                    + 'rewards were worked out, and nobody can add one afterwards.');
+            }
+
+            const pr = (d.premios && d.premios.pendientes) || [];
+            if (pr.length) {
+                h += '<div class="stk-card-t" style="margin:16px 0 6px">Treasury rewards</div>';
+                h += pr.map(x => '<div class="lb-match"><div class="lb-m-room">#' + x.rank + ' · ' + x.date + '</div>'
+                    + '<div class="lb-m-k">' + this.fmt(x.pill) + '</div>'
+                    + '<div>' + (x.sig ? '<a href="https://solscan.io/tx/' + x.sig + '?cluster=devnet" target="_blank">TX</a>'
+                                       : '<span class="lb-m-no">pending</span>') + '</div></div>').join('');
+            }
+
+            body.innerHTML = h;
+        },
+    };
+    window.BoardUI = BoardUI;
+
+    window.StakeUI = StakeUI;
+
     window.GameWalletUI = GameWalletUI;   // expone para debug y para el módulo ESM
     // Sesión de wallet al RECARGAR: se reintenta nada más cargar, sin esperar a
     // que se abra el menú de un modo. Solo puede reconectar sola si la extensión
@@ -15814,6 +16328,52 @@
      * servidor para saber con certeza si salio y poder descontar el saldo interno sin
      * riesgo de cobrar dos veces ni de descontar un retiro que nunca ocurrio.
      */
+    /*
+     * Firma una accion de staking: stake / compound / claim / request_unstake /
+     * withdraw_unstaked.
+     *
+     * El servidor solo ARMA la transaccion; quien firma es el dueno, y el contrato
+     * exige que sea el y que cualquier token que salga vaya a su propia cuenta
+     * asociada. Lo peor que puede hacer un servidor comprometido es devolver una
+     * transaccion que falle al ejecutarse.
+     */
+    async function stakeTx(accion, pill) {
+        const W = window.GameWallet;
+        if (!W || !W.address || !W.provider) throw new Error('Connect your wallet first');
+
+        const r = await (await fetch('/api/stake/tx', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wallet: W.address, accion, pill: pill || 0 }),
+            signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+        })).json();
+        if (!r.ok) throw new Error(r.reason || 'staking failed');
+
+        const tx = Transaction.from(Uint8Array.from(atob(r.tx), c => c.charCodeAt(0)));
+        const conn = nuevaConexion();
+        // Blockhash nuevo por lo mismo que en claim(): entre pedir la transaccion y
+        // acertar a firmarla pueden pasar minutos, y uno caducado se rechaza con un
+        // error que no dice nada util.
+        tx.feePayer = new PublicKey(W.address);
+        try { tx.recentBlockhash = (await conn.getLatestBlockhash('finalized')).blockhash; }
+        catch (e) { throw new Error('rpc: ' + ((e && e.message) || e)); }
+
+        const conTope = (pr, ms, que) => Promise.race([pr, new Promise((_, rej) =>
+            setTimeout(() => rej(new Error('timeout: ' + que)), ms))]);
+        let sig;
+        if (W.provider.signTransaction) {
+            const signed = await conTope(W.provider.signTransaction(tx), 60000, 'wallet');
+            sig = await conn.sendRawTransaction(signed.serialize());
+        } else {
+            const res = await conTope(W.provider.signAndSendTransaction(tx), 60000, 'wallet');
+            sig = res.signature || res;
+        }
+        // Igual que en claim: si la confirmacion tarda NO se lanza error. La
+        // transaccion ya salio, y decirle al jugador que fallo cuando no fallo es
+        // peor que hacerle esperar al refresco.
+        try { await conTope(conn.confirmTransaction(sig, 'confirmed'), 30000, 'confirm'); } catch (e) {}
+        return sig;
+    }
+
     async function firmarRetiro(txBase64) {
         const W = window.GameWallet;
         if (!W || !W.address || !W.provider) throw new Error('Connect your wallet first');
@@ -15827,7 +16387,7 @@
         return btoa(String.fromCharCode(...firmada.serialize({ requireAllSignatures: false, verifySignatures: false })));
     }
 
-    window.PillChain = { deposit, creditDeposit, claim, firmarRetiro };
+    window.PillChain = { deposit, creditDeposit, claim, firmarRetiro, stakeTx };
     window.GameWallet = GameWallet;   // expone GameWallet para el módulo
 </script>
 

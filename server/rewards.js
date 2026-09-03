@@ -497,9 +497,61 @@ function estado() {
     };
 }
 
+/*
+ * Lo que se repartiria HOY, con la gente que hay ahora mismo en la lista.
+ *
+ * Es la misma cadena de frenos que aplica prepararRonda al cerrar el dia, pero
+ * mirando el dia en curso: sirve para ensenar en el leaderboard cuanto hay en
+ * juego AHORA y como cambia al entrar mas gente. No decide nada — el reparto de
+ * verdad se calcula al cerrar, con el rake ya cerrado.
+ *
+ * Devuelve tambien el desglose por puesto: es lo unico que responde de verdad a
+ * "¿y a mi cuanto me tocaria si acabo cuarto?".
+ */
+async function proyeccionDeHoy(snapshot) {
+    const hoy = (snapshot && snapshot.date) || new Date().toISOString().slice(0, 10);
+    const elegibles = ((snapshot && snapshot.entries) || []).length;
+
+    // Sin cadena configurada, presupuestoRaw ya cae solo al presupuesto local: la
+    // proyeccion sigue siendo util en devnet antes de desplegar el contrato.
+    let topeRaw;
+    try { topeRaw = await presupuestoRaw(PROGRAM ? conexion(require('./solana.js')) : null, null); }
+    catch (e) { topeRaw = pillToRaw(BUDGET_FALLBACK); }
+
+    const trasActividad = porActividad(hoy, BigInt(topeRaw), null);
+    const bote = elegibles >= POT_COMPLETO_CON
+        ? trasActividad
+        : (trasActividad * BigInt(elegibles)) / BigInt(POT_COMPLETO_CON);
+
+    // El desglose sale de los mismos pesos que usa el reparto real, y solo hasta
+    // donde hay gente: los puestos vacios no se pagan.
+    const pesos = leaderboard.PESOS;
+    const puestos = [];
+    for (let i = 0; i < Math.min(elegibles, pesos.length); i++) {
+        puestos.push({
+            rank: i + 1,
+            pct: pesos[i],
+            pill: rawToPill((bote * BigInt(Math.round(pesos[i] * 100))) / 10000n),
+        });
+    }
+
+    return {
+        fecha: hoy,
+        elegibles,
+        potCompletoCon: POT_COMPLETO_CON,
+        factor: REWARD_FACTOR,
+        rakeDelDia: (() => { try { return require('./rake.js').delDia(hoy); } catch (e) { return 0; } })(),
+        topePill: rawToPill(topeRaw),
+        botePill: rawToPill(bote),
+        // Cuanta gente falta para que el bote deje de recortarse por participacion.
+        faltanParaCompleto: Math.max(0, POT_COMPLETO_CON - elegibles),
+        puestos,
+    };
+}
+
 module.exports = {
     tick, arranca, estado, premiosDe, marcarCobrado, rondaPublica,
-    prepararRonda, publicarRonda, presupuestoRaw, refrescar,
+    prepararRonda, publicarRonda, presupuestoRaw, proyeccionDeHoy, refrescar,
     epochDeFecha, fechaDeEpoch, pillToRaw, rawToPill,
     PROGRAM, save, DRY_RUN, REWARD_FACTOR, POT_COMPLETO_CON,
 };

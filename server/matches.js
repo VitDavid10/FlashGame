@@ -335,8 +335,74 @@ function recaudadoEntre(desde, hasta) {
     return { pill: total, partidas, entradas };
 }
 
+/*
+ * Las ultimas partidas de una wallet, con lo que hace falta para seguirlas hasta
+ * la cadena: el id del recibo, su hash y el lote en el que se anclo.
+ *
+ * Es lo que hay detras de cada nombre del top 10. Sin esto, "ese jugador hizo 40
+ * kills" es una linea de mi servidor; con esto, cada partida lleva su hash dentro
+ * de un lote anclado por Memo, asi que se puede comprobar que existia antes de
+ * que se repartieran los premios.
+ */
+function historialDe(wallet, limite = 40) {
+    let ficheros = [];
+    try { ficheros = fs.readdirSync(DIR); } catch (e) { return { wallet, partidas: [], stats: null }; }
+
+    // Que lote ancla cada recibo, para poder dar el enlace a la transaccion.
+    const loteDe = new Map();
+    for (const l of (data.lotes || [])) {
+        for (const r of (l.recibos || [])) loteDe.set(r.id, { n: l.n, sig: l.sig });
+    }
+
+    const partidas = [];
+    let kills = 0, muertes = 0, pagado = 0, picoMax = 0;
+    const rivales = new Set();
+
+    for (const f of ficheros) {
+        if (!f.endsWith('.json')) continue;
+        let m;
+        try { m = JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch (e) { continue; }
+        if (!m || !m.players) continue;
+        const yo = m.players.find(x => x.wallet === wallet);
+        if (!yo) continue;
+
+        kills += yo.kills | 0;
+        if (!yo.gano) muertes++;
+        if ((yo.peak | 0) > picoMax) picoMax = yo.peak | 0;
+        if (yo.paid) pagado += m.entryFee | 0;
+        for (const o of m.players) if (o.wallet && o.wallet !== wallet) rivales.add(o.wallet);
+
+        const anclado = loteDe.get(m.id) || null;
+        partidas.push({
+            id: m.id, hash: m.hash, room: m.room, mode: m.mode,
+            endedAt: m.endedAt, entryFee: m.entryFee | 0,
+            kills: yo.kills | 0, peak: yo.peak | 0, pago: !!yo.paid,
+            jugadores: m.players.filter(x => x.wallet).length,
+            lote: anclado ? anclado.n : null,
+            sig: anclado ? anclado.sig : null,
+        });
+    }
+
+    partidas.sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0));
+    return {
+        wallet,
+        stats: {
+            partidas: partidas.length,
+            kills,
+            killsPorPartida: partidas.length ? kills / partidas.length : 0,
+            picoMax,
+            // Los dos numeros del filtro anti-cluster, para que se vea POR QUE
+            // alguien entra o no en la lista del dia.
+            oponentesDistintos: rivales.size,
+            pagadoEnEntradas: pagado,
+            ancladas: partidas.filter(x => x.sig).length,
+        },
+        partidas: partidas.slice(0, limite),
+    };
+}
+
 module.exports = {
     registra, anclaLote, arranca, save,
-    partida, lote, cadena, pendientes, verificar, oponentesDe, recaudadoEntre,
+    partida, lote, cadena, pendientes, verificar, oponentesDe, recaudadoEntre, historialDe,
     _canonico: canonico, _canonicoLote: canonicoLote, GENESIS, MEMO_PROGRAM,
 };

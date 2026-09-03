@@ -105,6 +105,14 @@ const MAX_PROOF_LEN: usize = 20;
 /// para siempre y la tesoreria se va bloqueando sola ronda tras ronda.
 pub const CLAIM_WINDOW_SECS: i64 = 30 * 86_400;
 
+/// Lo que hay que esperar entre pedir la salida del staking y poder retirar.
+///
+/// No es un castigo: es lo que hace que el APR signifique algo. Sin espera, entrar
+/// justo antes de un reparto y salir justo despues sale gratis, y el rendimiento se
+/// lo lleva quien no sostuvo nada — a costa de quien si. Con la espera, para cobrar
+/// hay que haber estado dentro de verdad.
+pub const UNSTAKE_COOLDOWN_SECS: i64 = 7 * 86_400;
+
 #[program]
 pub mod pill_treasury {
     use super::*;
@@ -423,12 +431,52 @@ pub mod pill_treasury {
     }
 
     /// Saca principal del pool. Sin permisos, sin esperas y sin tope: es su dinero.
-    pub fn unstake(ctx: Context<Unstake>, amount: u64) -> Result<()> {
+    /// Pide la salida de parte del principal. NO mueve tokens.
+    ///
+    /// Lo pedido deja de rendir en el acto y sale de `total_staked` — si siguiera
+    /// contando, el resto de stakers cobraria menos por unos tokens que ya estan de
+    /// salida. Se retira con `withdraw_unstaked` pasado el enfriamiento.
+    ///
+    /// Pedir de nuevo con una salida ya pendiente suma la cantidad y REINICIA el
+    /// reloj. Sin eso, bastaria pedir un token el primer dia para tener la cuenta
+    /// atras corriendo y ampliarla al maximo justo antes de que venza.
+    pub fn request_unstake(ctx: Context<RequestUnstake>, amount: u64) -> Result<()> {
         require!(amount > 0, TreasuryError::ZeroAmount);
         require!(ctx.accounts.stake_account.amount >= amount, TreasuryError::NotEnoughStaked);
         let now = Clock::get()?.unix_timestamp;
         actualiza_pool(&mut ctx.accounts.config, now)?;
         liquida(&mut ctx.accounts.config, &mut ctx.accounts.stake_account)?;
+
+        let acc = &mut ctx.accounts.stake_account;
+        acc.amount -= amount;
+        acc.unstaking = acc.unstaking.checked_add(amount).ok_or(TreasuryError::MathOverflow)?;
+        acc.unstake_ready_at = now
+            .checked_add(UNSTAKE_COOLDOWN_SECS)
+            .ok_or(TreasuryError::MathOverflow)?;
+
+        let cfg = &mut ctx.accounts.config;
+        cfg.total_staked = cfg.total_staked.saturating_sub(amount);
+        acc.reward_per_share_paid = cfg.acc_reward_per_share;
+
+        emit!(UnstakeRequested {
+            owner: acc.owner,
+            amount,
+            total_unstaking: acc.unstaking,
+            ready_at: acc.unstake_ready_at,
+        });
+        Ok(())
+    }
+
+    /// Retira lo que ya cumplio el enfriamiento. Todo lo pedido, no una parte:
+    /// partirlo solo daria mas transacciones y mas formas de equivocarse.
+    pub fn withdraw_unstaked(ctx: Context<Unstake>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        let amount = ctx.accounts.stake_account.unstaking;
+        require!(amount > 0, TreasuryError::NothingToWithdraw);
+        require!(
+            now >= ctx.accounts.stake_account.unstake_ready_at,
+            TreasuryError::UnstakeCooldownOpen
+        );
 
         let bump = ctx.accounts.config.stake_bump;
         let seeds: &[&[u8]] = &[STAKE_SEED, &[bump]];
@@ -446,12 +494,53 @@ pub mod pill_treasury {
         )?;
 
         let acc = &mut ctx.accounts.stake_account;
-        acc.amount -= amount;
-        let cfg = &mut ctx.accounts.config;
-        cfg.total_staked = cfg.total_staked.saturating_sub(amount);
-        acc.reward_per_share_paid = cfg.acc_reward_per_share;
+        acc.unstaking = 0;
+        acc.unstake_ready_at = 0;
 
         emit!(Unstaked { owner: acc.owner, amount, total: acc.amount });
+        Ok(())
+    }
+
+    /// Mete lo ganado DENTRO del principal, sin pasar por la wallet.
+    ///
+    /// Es la opcion por defecto de la interfaz: el rendimiento que no se saca
+    /// vuelve a rendir. Los tokens van del pozo de recompensas a la boveda del
+    /// principal — no se imprime nada, solo cambian de bolsillo dentro del programa.
+    pub fn compound_stake_rewards(ctx: Context<CompoundStakeRewards>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        actualiza_pool(&mut ctx.accounts.config, now)?;
+        liquida(&mut ctx.accounts.config, &mut ctx.accounts.stake_account)?;
+
+        let amount = ctx.accounts.stake_account.pending;
+        require!(amount > 0, TreasuryError::NothingToClaim);
+
+        let bump = ctx.accounts.config.rewards_bump;
+        let seeds: &[&[u8]] = &[REWARDS_SEED, &[bump]];
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.reward_vault.to_account_info(),
+                    to: ctx.accounts.stake_vault.to_account_info(),
+                    authority: ctx.accounts.reward_vault.to_account_info(),
+                },
+                &[seeds],
+            ),
+            amount,
+        )?;
+
+        let acc = &mut ctx.accounts.stake_account;
+        acc.pending = 0;
+        acc.amount = acc.amount.checked_add(amount).ok_or(TreasuryError::MathOverflow)?;
+
+        let cfg = &mut ctx.accounts.config;
+        cfg.total_staked = cfg.total_staked.checked_add(amount).ok_or(TreasuryError::MathOverflow)?;
+        cfg.total_stake_rewards_paid = cfg.total_stake_rewards_paid.saturating_add(amount);
+        // El indice se reapunta DESPUES de subir el saldo, igual que en stake():
+        // si no, lo que acaba de entrar cobraria recompensas de antes de estar dentro.
+        acc.reward_per_share_paid = cfg.acc_reward_per_share;
+
+        emit!(Staked { owner: acc.owner, amount, total: acc.amount });
         Ok(())
     }
 
@@ -1309,13 +1398,20 @@ pub struct ClaimReceipt {
 #[derive(InitSpace)]
 pub struct StakeAccount {
     pub owner: Pubkey,
-    /// Principal. Es suyo y sale cuando quiera.
+    /// Principal que esta DENTRO y rindiendo.
     pub amount: u64,
     /// El indice global en su ultima liquidacion. La diferencia con el actual es lo
     /// que ha ganado desde entonces.
     pub reward_per_share_paid: u128,
     /// Ganado y todavia sin cobrar.
     pub pending: u64,
+    /// Principal que ya pidio salir: sigue fisicamente en la boveda pero YA NO RINDE
+    /// y no cuenta para total_staked. Se retira cuando pase el enfriamiento.
+    pub unstaking: u64,
+    /// Cuando se puede retirar lo de `unstaking`. Pedir una salida nueva mientras hay
+    /// una pendiente suma la cantidad y REINICIA este reloj: si no, se pediria un
+    /// token al principio para arrancar la cuenta atras y el resto el ultimo dia.
+    pub unstake_ready_at: i64,
     pub bump: u8,
 }
 
@@ -1545,6 +1641,39 @@ pub struct Unstake<'info> {
     pub to: Account<'info, TokenAccount>,
     #[account(address = config.mint @ TreasuryError::WrongMint)]
     pub mint: Account<'info, Mint>,
+    pub owner: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct RequestUnstake<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.config_bump)]
+    pub config: Account<'info, Config>,
+    #[account(
+        mut,
+        seeds = [STAKE_SEED, owner.key().as_ref()], bump = stake_account.bump,
+        has_one = owner @ TreasuryError::NotYourStake
+    )]
+    pub stake_account: Account<'info, StakeAccount>,
+    pub owner: Signer<'info>,
+}
+
+/// El pozo de recompensas paga a la boveda del principal: los tokens no salen del
+/// programa, solo cambian de boveda. Por eso no hay ninguna cuenta del usuario aqui.
+#[derive(Accounts)]
+pub struct CompoundStakeRewards<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.config_bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [REWARDS_SEED], bump = config.rewards_bump)]
+    pub reward_vault: Account<'info, TokenAccount>,
+    #[account(mut, seeds = [STAKE_SEED], bump = config.stake_bump)]
+    pub stake_vault: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        seeds = [STAKE_SEED, owner.key().as_ref()], bump = stake_account.bump,
+        has_one = owner @ TreasuryError::NotYourStake
+    )]
+    pub stake_account: Account<'info, StakeAccount>,
     pub owner: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -1804,6 +1933,8 @@ pub struct Staked { pub owner: Pubkey, pub amount: u64, pub total: u64 }
 #[event]
 pub struct Unstaked { pub owner: Pubkey, pub amount: u64, pub total: u64 }
 #[event]
+pub struct UnstakeRequested { pub owner: Pubkey, pub amount: u64, pub total_unstaking: u64, pub ready_at: i64 }
+#[event]
 pub struct StakeRewardsClaimed { pub owner: Pubkey, pub amount: u64 }
 #[event]
 pub struct StakeRewardsFunded { pub amount: u64, pub duration: i64, pub rate: u64, pub until: i64 }
@@ -1874,6 +2005,10 @@ pub enum TreasuryError {
     NotYourStake,
     #[msg("No hay nada que cobrar")]
     NothingToClaim,
+    #[msg("No tienes ninguna salida pedida")]
+    NothingToWithdraw,
+    #[msg("Todavia no han pasado los 7 dias desde que pediste la salida")]
+    UnstakeCooldownOpen,
     #[msg("El reparto tiene que durar al menos una hora")]
     DurationTooShort,
     #[msg("No hay saldo libre suficiente en la tesoreria")]

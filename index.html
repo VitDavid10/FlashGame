@@ -231,6 +231,98 @@
         .nav-link { font-size: var(--fs-3); font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; font-family: 'Russo One'; text-decoration: none; white-space: nowrap; }
         .nav-link:hover { color: #fff; text-shadow: 0 0 10px #fff; }
 
+        /* ===================== VISTAS =====================
+           STAKE y LEADERBOARD no son secciones de la pagina: son vistas que la
+           TAPAN, con la barra de arriba encima. A proposito — bloquear tokens
+           siete dias o mirar quien cobra hoy no es algo a lo que se deba llegar
+           scrolleando sin querer mientras buscas la tienda.
+
+           La pagina de debajo no se desmonta: se queda donde estaba y vuelve
+           intacta al cerrar (position:fixed sobre ella, no display:none en el
+           contenido). */
+        .pw-view { position: fixed; inset: var(--navbar-height) 0 0 0; z-index: 900;
+                   background: var(--bg-dark); overflow-y: auto; display: none;
+                   animation: pwViewIn .18s ease; }
+        .pw-view.on { display: block; }
+        body.pw-viewing { overflow: hidden; }
+        @keyframes pwViewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+        .pw-view-inner { max-width: 900px; margin: 0 auto; padding: 34px 22px 80px; }
+        .pw-view-head { display: flex; align-items: baseline; justify-content: space-between;
+                        gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+        .pw-view-head h2 { font-family: 'Russo One'; font-size: clamp(24px, 3.4vw, 38px); color: #fff;
+                           text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+        .pw-view-head p { color: #8b9199; font-size: 13px; margin: 6px 0 0; max-width: 560px; line-height: 1.55; }
+        .pw-view-close { background: transparent; border: 1px solid #2a2f36; color: #8b9199;
+                         font-family: 'Russo One'; font-size: 11px; letter-spacing: 1px;
+                         padding: 9px 16px; border-radius: 8px; cursor: pointer; transition: .15s; }
+        .pw-view-close:hover { border-color: #00ff88; color: #00ff88; }
+
+        /* Tarjetas de datos, compartidas por las dos vistas. */
+        .pwc { background: rgba(255,255,255,0.025); border: 1px solid #1e2227; border-radius: 12px;
+               padding: 18px 20px; margin-bottom: 16px; }
+        .pwc-t { font-family:'Russo One'; font-size:10px; letter-spacing:1.6px; color:#6f7681;
+                 text-transform:uppercase; margin-bottom:14px; }
+        .pwc-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px 24px; }
+        .pwc-grid > div { display:flex; flex-direction:column; gap:3px; min-width:0; }
+        .pwc-grid span { font-size:11px; color:#7d848d; }
+        .pwc-grid b { font-family:'Russo One'; font-size:22px; color:#e6e9ec;
+                      overflow:hidden; text-overflow:ellipsis; }
+        .pwc-grid b.green { color:#00ff88; }
+        .pwc-grid b.gold { color:#ffce3d; }
+        .pwc-note { font-size:11.5px; color:#6f7681; line-height:1.55; margin-top:12px; }
+        .pwc-note b { color:#9aa3ad; }
+
+        .pw-in-row { display:flex; gap:10px; align-items:stretch; margin-top:6px; }
+        .pw-in-row input { flex:1; background:#0e1114; border:1px solid #23282e; border-radius:9px;
+                           color:#fff; font-family:'Inter',sans-serif; font-size:15px; padding:13px 15px;
+                           outline:none; box-sizing:border-box; }
+        .pw-in-row input:focus { border-color:#00ff88; }
+        .pw-btn { background:#00ff88; color:#04150c; border:none; border-radius:9px; font-family:'Russo One';
+                  font-size:13px; letter-spacing:1px; text-transform:uppercase; padding:13px 26px;
+                  cursor:pointer; transition:.15s; }
+        .pw-btn:hover:not(:disabled) { filter:brightness(1.1); box-shadow:0 0 20px rgba(0,255,136,.35); }
+        .pw-btn:disabled { opacity:.4; cursor:default; }
+        .pw-btn.ghost { background:transparent; border:1px solid #2a2f36; color:#9aa3ad; }
+        .pw-btn.ghost:hover:not(:disabled) { border-color:#00ff88; color:#00ff88; box-shadow:none; }
+        .pw-btn.danger { background:transparent; border:1px solid #5a3a3a; color:#c98a8a; }
+        .pw-btn.danger:hover:not(:disabled) { border-color:#ff6b6b; color:#ff6b6b; box-shadow:none; }
+        .pw-acts { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:12px; }
+
+        .pw-cool { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+                   margin-top:14px; padding:13px 16px; border-radius:10px;
+                   background:rgba(255,206,61,.07); border:1px solid rgba(255,206,61,.28); }
+        .pw-cool span { font-size:13px; color:#ffce3d; }
+        .pw-cool.ready { background:rgba(0,255,136,.07); border-color:rgba(0,255,136,.3); }
+        .pw-cool.ready span { color:#00ff88; }
+
+        .pw-help { font-size:13px; color:#8b9199; line-height:1.7; margin-top:22px;
+                   border-top:1px solid #1e2227; padding-top:18px; }
+        .pw-help b { color:#c8cdd2; }
+        .pw-help p { margin:0 0 12px; }
+
+        /* Filas del leaderboard diario */
+        .pwlb-row { display:grid; grid-template-columns:44px 1fr auto auto; gap:14px; align-items:center;
+                    padding:13px 12px; border-bottom:1px solid #16191d; cursor:pointer;
+                    border-radius:8px; transition:.12s; }
+        .pwlb-row:hover { background:rgba(255,255,255,.04); }
+        .pwlb-row .p { font-family:'Russo One'; font-size:17px; color:#6f7681; text-align:center; }
+        .pwlb-row.t1 .p { color:#ffce3d; } .pwlb-row.t2 .p { color:#c8cdd2; } .pwlb-row.t3 .p { color:#c98a5a; }
+        .pwlb-row .n { font-family:'Russo One'; font-size:15px; color:#e6e9ec; }
+        .pwlb-row .w { font-size:11px; color:#6f7681; }
+        .pwlb-row .k { font-size:13px; color:#9aa3ad; }
+        .pwlb-row .z { font-family:'Russo One'; font-size:15px; color:#ffce3d; min-width:92px; text-align:right; }
+        .pwlb-row .z.no { color:#3a3f45; }
+        .pw-bar { height:6px; background:#161a1e; border-radius:3px; overflow:hidden; margin-top:12px; }
+        .pw-bar > i { display:block; height:100%; background:linear-gradient(90deg,#00b35f,#00ff88); transition:width .3s; }
+        .pw-match { display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center;
+                    padding:10px 0; border-bottom:1px solid #16191d; font-size:13px; }
+        .pw-match .r { color:#9aa3ad; }
+        .pw-match .k { font-family:'Russo One'; color:#e6e9ec; }
+        .pw-match a { color:#00ff88; text-decoration:none; font-size:11px; border:1px solid rgba(0,255,136,.3);
+                      border-radius:5px; padding:3px 9px; }
+        .pw-match a:hover { background:rgba(0,255,136,.1); }
+        .pw-match .no { color:#3a3f45; font-size:11px; }
+
         .nav-dropdown-group { display: flex; gap: 20px; align-items: center; }
         /* Iconos sociales: arte pixel de David (recortado de fondo magenta,
            ya trae su propio recuadro redondeado y color horneados), mismo
@@ -2386,7 +2478,8 @@ body.trailer-open #page-content{
                 <a href="#hero" class="nav-link" style="min-width:4.4em">GAME</a>
                 <a href="#quest" class="nav-link" style="min-width:6.6em">QUESTS</a>
                 <a href="#shop" class="nav-link" style="min-width:5.5em">STORE</a>
-                <a href="#ranking" class="nav-link" style="min-width:12.1em">LEADERBOARD</a>
+                <a href="#" class="nav-link" style="min-width:12.1em" onclick="PWView.open('board'); return false;">LEADERBOARD</a>
+            <a href="#" class="nav-link" style="min-width:5.5em" onclick="PWView.open('stake'); return false;">STAKE</a>
                 <!-- PLAY NOW de la navbar: PEGADO al bloque de la izquierda,
                      justo detras de LEADERBOARD. Antes vivia en el grupo de la
                      derecha y se traia hasta aqui con un translate de -861px
@@ -2748,6 +2841,119 @@ body.trailer-open #page-content{
             <div id="lb-body"><div class="lb-empty">Loading leaderboard…</div></div>
         </div>
         <div id="lb-pag" class="lb-pag"></div>
+    </div>
+
+    <!-- ===================== VISTA: STAKING =====================
+         Tapa la pagina entera con la barra encima. No se llega scrolleando. -->
+    <div class="pw-view" id="viewStake">
+        <div class="pw-view-inner">
+            <div class="pw-view-head">
+                <div>
+                    <h2>Staking</h2>
+                    <p>Lock $PILL and take a cut of everything the game earns. No tokens are
+                       minted: what you get paid is the house's own income coming back.</p>
+                </div>
+                <button class="pw-view-close" onclick="PWView.close()">&larr; BACK TO SITE</button>
+            </div>
+
+            <div class="pwc">
+                <div class="pwc-t">Reward pool</div>
+                <div class="pwc-grid">
+                    <div><span>In rewards vault</span><b id="vsPozo">—</b></div>
+                    <div><span>Distributing / day</span><b id="vsPorDia">—</b></div>
+                    <div><span>Total staked</span><b id="vsTotal">—</b></div>
+                    <div><span>Est. APR</span><b id="vsApr" class="green">—</b></div>
+                </div>
+                <div class="pwc-note" id="vsAprNota"></div>
+            </div>
+
+            <div class="pwc" id="vsMine" style="display:none">
+                <div class="pwc-t">Your position</div>
+                <div class="pwc-grid">
+                    <div><span>Staked</span><b id="vsMio">—</b></div>
+                    <div><span>Earned (unclaimed)</span><b id="vsPend" class="gold">—</b></div>
+                    <div><span>Share of pool</span><b id="vsParte">—</b></div>
+                </div>
+                <div class="pw-cool" id="vsCool" style="display:none">
+                    <span id="vsCoolTxt"></span>
+                    <button class="pw-btn ghost" id="vsBtnWithdraw" onclick="PWStake.withdrawUnstaked()">WITHDRAW</button>
+                </div>
+            </div>
+
+            <div class="pwc">
+                <div class="pwc-t">Stake</div>
+                <div class="pw-in-row">
+                    <input id="vsAmount" type="number" min="1" step="1" placeholder="0">
+                    <button class="pw-btn ghost" onclick="PWStake.fillMax()">MAX</button>
+                    <button class="pw-btn" id="vsBtnStake" onclick="PWStake.stake()">STAKE</button>
+                </div>
+                <div class="pw-acts">
+                    <button class="pw-btn ghost" id="vsBtnCompound" onclick="PWStake.compound()">COMPOUND</button>
+                    <button class="pw-btn ghost" id="vsBtnClaim" onclick="PWStake.claim()">CLAIM</button>
+                    <button class="pw-btn danger" id="vsBtnReq" onclick="PWStake.requestUnstake()">UNSTAKE</button>
+                </div>
+                <div class="pwc-note" id="vsAviso"></div>
+            </div>
+
+            <div class="pw-help">
+                <p><b>Where the yield comes from.</b> Everything the house keeps goes into the
+                reward pool: exit fees from classic rooms, the arcade cut, entries from players
+                who disconnect and never come back, pot shares nobody claims, and the skin shop.
+                That pool drips into stakers by the second, split by how much each one has
+                locked. Nothing is minted — if the game earns nothing, the pool pays nothing.</p>
+
+                <p><b>Why locking for 7 days.</b> <b>UNSTAKE</b> starts a 7-day wait, and those
+                tokens stop earning the moment you ask. Without it, dropping in right before a
+                payout and leaving right after would cost nothing, and the yield would go to
+                whoever held nothing — paid for by whoever actually did. The wait is what makes
+                the APR mean something.</p>
+
+                <p><b>COMPOUND vs CLAIM.</b> COMPOUND moves what you earned into your stake, so
+                it starts earning too. CLAIM sends it to your wallet instead. Your principal is
+                never locked by anyone but that timer: no approvals, no permissions, and nobody
+                — me included — can move it.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== VISTA: LEADERBOARD DIARIO ===================== -->
+    <div class="pw-view" id="viewBoard">
+        <div class="pw-view-inner">
+            <div class="pw-view-head">
+                <div>
+                    <h2 id="vbTitle">Daily leaderboard</h2>
+                    <p>The top 10 of each day is paid from the treasury. Tap any player to see
+                       exactly where their numbers come from — every match is anchored on Solana.</p>
+                </div>
+                <button class="pw-view-close" onclick="PWView.close()">&larr; BACK TO SITE</button>
+            </div>
+
+            <div class="pwc">
+                <div class="pwc-t">Today's prize pool</div>
+                <div class="pwc-grid">
+                    <div><span>Pool right now</span><b id="vbBote" class="gold">—</b></div>
+                    <div><span>Players in the list</span><b id="vbEleg">—</b></div>
+                    <div><span>Kept by the house today</span><b id="vbRake">—</b></div>
+                </div>
+                <div id="vbBarWrap" style="display:none">
+                    <div class="pw-bar"><i id="vbBarFill"></i></div>
+                    <div class="pwc-note" id="vbBarTxt"></div>
+                </div>
+                <div class="pwc-note" id="vbPorQue"></div>
+            </div>
+
+            <div class="pwc" id="vbListaCard">
+                <div class="pwc-t">Standings</div>
+                <div id="vbLista"></div>
+            </div>
+
+            <div class="pwc" id="vbFicha" style="display:none">
+                <button class="pw-view-close" style="margin-bottom:16px" onclick="PWBoard.volver()">&larr; BACK TO STANDINGS</button>
+                <div id="vbFichaBody"></div>
+            </div>
+
+            <div class="pwc-note" id="vbNota"></div>
+        </div>
     </div>
 
     <!-- FOOTER -->
@@ -3977,6 +4183,252 @@ function toggleTrailerMode() {
 }
 
 
+        /* ===================== VISTAS =====================
+         *
+         * STAKE y LEADERBOARD no son secciones de la pagina: son vistas que la
+         * tapan. Se abren desde la barra y se cierran con BACK. La pagina de
+         * debajo no se toca — al cerrar sigue exactamente donde estaba.
+         */
+        const PWView = {
+            actual: null,
+            open(cual) {
+                this.close(true);
+                const el = document.getElementById(cual === 'stake' ? 'viewStake' : 'viewBoard');
+                if (!el) return;
+                el.classList.add('on');
+                document.body.classList.add('pw-viewing');
+                this.actual = cual;
+                el.scrollTop = 0;
+                if (cual === 'stake') PWStake.refresh(); else PWBoard.cargar();
+            },
+            close(silencioso) {
+                document.querySelectorAll('.pw-view.on').forEach(v => v.classList.remove('on'));
+                document.body.classList.remove('pw-viewing');
+                this.actual = null;
+                if (!silencioso) PWStake.parar();
+            },
+        };
+        window.PWView = PWView;
+        // Escape cierra la vista: es lo que espera cualquiera con un panel abierto.
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && PWView.actual) PWView.close(); });
+
+        const _fmt = (n) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        const _corta = (w) => (w ? w.slice(0, 4) + '…' + w.slice(-4) : '');
+        const _esc = (t) => String(t == null ? '' : t).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+        const _wallet = () => (window.App && App.Wallet && App.Wallet.address) || null;
+
+        /* ---------- STAKING ---------- */
+        const PWStake = {
+            st: null, walletBal: null, _t: null,
+            dur(ms) {
+                if (ms <= 0) return 'now';
+                const m = Math.floor(ms / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
+                if (d > 0) return d + 'd ' + (h % 24) + 'h';
+                if (h > 0) return h + 'h ' + (m % 60) + 'm';
+                return Math.max(1, m) + 'm';
+            },
+            parar() { if (this._t) { clearInterval(this._t); this._t = null; } },
+
+            async refresh() {
+                const w = _wallet();
+                try { this.st = await (await fetch('/api/stake' + (w ? '?wallet=' + w : ''))).json(); }
+                catch (e) { this.st = { activo: false, aviso: 'Could not reach the server.' }; }
+                this.walletBal = null;
+                if (w) {
+                    try {
+                        const b = await (await fetch('/api/walletbalance?wallet=' + w)).json();
+                        if (b && typeof b.pill === 'number') this.walletBal = b.pill;
+                    } catch (e) {}
+                }
+                this.pinta();
+                // La cuenta atras se repinta sola mientras la vista siga abierta.
+                this.parar();
+                this._t = setInterval(() => { if (PWView.actual === 'stake') this.pinta(); }, 30000);
+            },
+
+            pinta() {
+                const st = this.st || {}, $ = (i) => document.getElementById(i);
+                const pos = st.posicion || null, conectado = !!_wallet();
+
+                $('vsPozo').textContent = st.pozo != null ? _fmt(st.pozo) : '—';
+                $('vsPorDia').textContent = st.repartiendoPorDia != null ? _fmt(st.repartiendoPorDia) : '—';
+                $('vsTotal').textContent = st.totalStaked != null ? _fmt(st.totalStaked) : '—';
+
+                if (st.apr != null && st.enMarcha) {
+                    $('vsApr').textContent = (st.apr * 100).toFixed(1) + '%';
+                    $('vsAprNota').textContent = st.totalStaked < 1000
+                        ? 'Almost nothing is staked yet, so this number is huge and will fall as soon as others join. It is a snapshot, not a promise.'
+                        : "Today's rate over what is staked right now, annualised. It moves with the pool and with how much the game earns.";
+                } else {
+                    $('vsApr').textContent = '—';
+                    $('vsAprNota').textContent = st.activo === false
+                        ? (st.aviso || 'Staking is not live yet.')
+                        : "Nothing is being distributed right now. The pool fills up from the game's own income.";
+                }
+
+                $('vsMine').style.display = conectado && pos ? '' : 'none';
+                if (pos) {
+                    $('vsMio').textContent = _fmt(pos.stakeado);
+                    $('vsPend').textContent = _fmt(pos.pendiente);
+                    $('vsParte').textContent = pos.parteDelPool != null ? (pos.parteDelPool * 100).toFixed(2) + '%' : '—';
+                }
+
+                const cool = $('vsCool'), enCola = !!(pos && pos.saliendo > 0);
+                cool.style.display = enCola ? '' : 'none';
+                if (enCola) {
+                    const falta = new Date(pos.saleEl).getTime() - Date.now(), listo = falta <= 0;
+                    cool.classList.toggle('ready', listo);
+                    $('vsCoolTxt').innerHTML = listo
+                        ? '<b>' + _fmt(pos.saliendo) + ' $PILL</b> ready to withdraw.'
+                        : '<b>' + _fmt(pos.saliendo) + ' $PILL</b> on the way out · ' + this.dur(falta) + ' left';
+                    $('vsBtnWithdraw').disabled = !listo;
+                }
+
+                const hay = !!(pos && pos.pendiente > 0);
+                $('vsBtnCompound').disabled = !hay;
+                $('vsBtnClaim').disabled = !hay;
+                $('vsBtnReq').disabled = !(pos && pos.stakeado > 0);
+                $('vsBtnStake').disabled = !conectado || st.activo === false;
+                $('vsAviso').textContent = !conectado ? 'Connect your wallet to stake.'
+                    : (st.activo === false ? (st.aviso || '') : '');
+            },
+
+            fillMax() { if (this.walletBal != null) document.getElementById('vsAmount').value = String(Math.floor(this.walletBal)); },
+
+            // El servidor solo arma la transaccion: firma el dueno, y el contrato
+            // exige que cualquier token que salga vaya a su propia cuenta.
+            async _accion(accion, pill, ok) {
+                if (!window.PillChain || !window.PillChain.stakeTx) { App.Msg.show('Please wait', 'Wallet module still loading, try again in a moment.'); return; }
+                const av = document.getElementById('vsAviso'), antes = av.textContent;
+                av.textContent = 'Sign in your wallet…';
+                try { await window.PillChain.stakeTx(accion, pill); await this.refresh(); App.Msg.show('Staking', ok); }
+                catch (e) { av.textContent = antes; App.Msg.show('Staking failed', (e && e.message) || String(e)); }
+            },
+            stake() {
+                const a = Math.max(0, parseInt(document.getElementById('vsAmount').value, 10) || 0);
+                if (!(a > 0)) { App.Msg.show('Staking', 'Enter how much you want to stake.'); return; }
+                if (this.walletBal != null && a > this.walletBal) { App.Msg.show('Not enough', 'You only have ' + _fmt(this.walletBal) + ' $PILL in your wallet.'); return; }
+                this._accion('stake', a, _fmt(a) + ' $PILL staked. It starts earning right away.');
+            },
+            compound() { this._accion('compound', 0, 'Rewards moved into your stake. They earn from now on.'); },
+            claim() { this._accion('claim', 0, 'Rewards sent to your wallet.'); },
+            requestUnstake() {
+                const pos = (this.st && this.st.posicion) || null;
+                if (!pos || !(pos.stakeado > 0)) return;
+                const esc = Math.max(0, parseInt(document.getElementById('vsAmount').value, 10) || 0);
+                const n = Math.min(esc > 0 ? esc : pos.stakeado, pos.stakeado);
+                if (!confirm(_fmt(n) + ' $PILL will stop earning now and can be withdrawn in 7 days.\n\nContinue?')) return;
+                this._accion('request_unstake', n, _fmt(n) + ' $PILL on the way out. You can withdraw them in 7 days.');
+            },
+            withdrawUnstaked() { this._accion('withdraw_unstaked', 0, 'Tokens sent to your wallet.'); },
+        };
+        window.PWStake = PWStake;
+
+        /* ---------- LEADERBOARD DIARIO ---------- */
+        const PWBoard = {
+            data: null,
+            async cargar() {
+                this.volver();
+                document.getElementById('vbLista').innerHTML = '<div style="color:#8b9199;padding:20px 0">Loading…</div>';
+                try { this.data = await (await fetch('/api/leaderboard')).json(); } catch (e) { this.data = null; }
+                this.pinta();
+            },
+            volver() {
+                document.getElementById('vbFicha').style.display = 'none';
+                document.getElementById('vbListaCard').style.display = '';
+            },
+            pinta() {
+                const d = this.data, $ = (i) => document.getElementById(i);
+                if (!d) { $('vbLista').innerHTML = '<div style="color:#8b9199;padding:20px 0">Could not load the leaderboard.</div>'; return; }
+                const rep = d.reparto || {}, filas = d.entries || [], mia = _wallet();
+
+                $('vbTitle').textContent = 'Daily leaderboard · ' + (d.date || '');
+                $('vbBote').textContent = rep.botePill != null ? _fmt(rep.botePill) : '—';
+                $('vbEleg').textContent = filas.length;
+                $('vbRake').textContent = rep.rakeDelDia != null ? _fmt(rep.rakeDelDia) : '—';
+
+                const wrap = $('vbBarWrap');
+                if (rep.potCompletoCon) {
+                    wrap.style.display = '';
+                    $('vbBarFill').style.width = Math.min(100, (filas.length / rep.potCompletoCon) * 100).toFixed(0) + '%';
+                    $('vbBarTxt').textContent = rep.faltanParaCompleto > 0
+                        ? rep.faltanParaCompleto + ' more eligible players and the pool stops being cut for low turnout.'
+                        : 'Full turnout: the pool is not being cut any more.';
+                } else wrap.style.display = 'none';
+
+                $('vbPorQue').innerHTML = rep.botePill != null
+                    ? 'The pool is the smallest of three things: what the contract lets out today (<b>' + _fmt(rep.topePill)
+                      + '</b>), what the house actually kept today (<b>' + _fmt(rep.rakeDelDia) + '</b> × ' + (rep.factor || 1)
+                      + '), and how many players are in the list (' + filas.length + '/' + rep.potCompletoCon + ').'
+                    : '';
+
+                $('vbLista').innerHTML = !filas.length
+                    ? '<div style="color:#8b9199;padding:20px 0">Nobody qualifies yet today.<br>'
+                      + '<span style="font-size:12px">You need at least ' + (d.minKills || 3)
+                      + ' kills in paid rooms, and to have played against enough different people.</span></div>'
+                    : filas.map((f, i) => {
+                        const pr = (rep.puestos || []).find(x => x.rank === f.rank), pill = pr ? pr.pill : 0;
+                        return '<div class="pwlb-row' + (i < 3 ? ' t' + (i + 1) : '') + '" onclick="PWBoard.ficha(\'' + _esc(f.wallet) + '\')">'
+                            + '<div class="p">' + f.rank + '</div>'
+                            + '<div><div class="n">' + _esc(f.name || _corta(f.wallet)) + (mia && f.wallet === mia ? ' <span style="color:#00ff88;font-size:11px">YOU</span>' : '') + '</div>'
+                            + '<div class="w">' + _corta(f.wallet) + (f.oponentes != null ? ' · ' + f.oponentes + ' different rivals' : '') + '</div></div>'
+                            + '<div class="k">' + f.kills + ' kills</div>'
+                            + '<div class="z' + (pill > 0 ? '' : ' no') + '">' + (pill > 0 ? _fmt(pill) : '—') + '</div></div>';
+                    }).join('');
+
+                $('vbNota').innerHTML = 'Only paid rooms count. The list closes at 23:59 UTC and every day is hashed into a chain '
+                    + 'anyone can verify at <b>/api/leaderboard/chain</b>.';
+            },
+
+            async ficha(wallet) {
+                document.getElementById('vbListaCard').style.display = 'none';
+                const card = document.getElementById('vbFicha'); card.style.display = '';
+                const body = document.getElementById('vbFichaBody');
+                body.innerHTML = '<div style="color:#8b9199;padding:20px 0">Loading…</div>';
+                let d;
+                try { d = await (await fetch('/api/player/' + wallet)).json(); }
+                catch (e) { body.innerHTML = '<div style="color:#8b9199;padding:20px 0">Could not load this player.</div>'; return; }
+                const st = d.stats || {};
+
+                let h = '<div style="font-family:\'Russo One\';font-size:17px;color:#e6e9ec">' + _corta(wallet) + '</div>'
+                    + '<div class="pwc-note" style="margin:4px 0 18px"><a href="https://solscan.io/account/' + _esc(wallet)
+                    + '?cluster=devnet" target="_blank" rel="noopener" style="color:#00ff88;text-decoration:none">View wallet on Solscan &rarr;</a></div>'
+                    + '<div class="pwc-grid" style="margin-bottom:14px">'
+                    + '<div><span>Kills counted</span><b>' + _fmt(st.kills) + '</b></div>'
+                    + '<div><span>Paid matches</span><b>' + _fmt(st.partidas) + '</b></div>'
+                    + '<div><span>Kills per match</span><b>' + (st.killsPorPartida || 0).toFixed(1) + '</b></div>'
+                    + '<div><span>Different rivals</span><b>' + _fmt(st.oponentesDistintos) + '</b></div>'
+                    + '<div><span>Best mass</span><b>' + _fmt(st.picoMax) + '</b></div>'
+                    + '<div><span>Paid in entries</span><b>' + _fmt(st.pagadoEnEntradas) + '</b></div></div>'
+                    + '<div class="pwc-note"><b>Different rivals</b> is what separates a real player from someone '
+                    + 'running their own wallets against each other: a closed group can never meet anyone new, so that '
+                    + 'number stops growing no matter how much it plays. Kills only count in paid rooms.</div>';
+
+                const ms = d.partidas || [];
+                h += '<div class="pwc-t" style="margin:22px 0 8px">Recent matches</div>';
+                h += !ms.length ? '<div class="pwc-note">No anchored matches yet.</div>'
+                    : ms.slice(0, 15).map(m => '<div class="pw-match"><div class="r">' + _esc(m.room) + ' · '
+                        + (m.endedAt ? new Date(m.endedAt).toLocaleDateString() : '') + '</div>'
+                        + '<div class="k">' + m.kills + ' k</div><div>'
+                        + (m.sig ? '<a href="https://solscan.io/tx/' + _esc(m.sig) + '?cluster=devnet" target="_blank" rel="noopener">TX</a>'
+                                 : '<span class="no">not anchored yet</span>') + '</div></div>').join('')
+                      + '<div class="pwc-note" style="margin-top:10px">Every match is hashed and that hash goes into a batch '
+                      + 'anchored on Solana. That is what makes these numbers checkable: the match existed <i>before</i> the '
+                      + 'rewards were worked out, and nobody can add one afterwards.</div>';
+
+                const pr = (d.premios && d.premios.pendientes) || [];
+                if (pr.length) {
+                    h += '<div class="pwc-t" style="margin:22px 0 8px">Treasury rewards</div>'
+                        + pr.map(x => '<div class="pw-match"><div class="r">#' + x.rank + ' · ' + _esc(x.date) + '</div>'
+                        + '<div class="k">' + _fmt(x.pill) + '</div><div>'
+                        + (x.sig ? '<a href="https://solscan.io/tx/' + _esc(x.sig) + '?cluster=devnet" target="_blank" rel="noopener">TX</a>'
+                                 : '<span class="no">pending</span>') + '</div></div>').join('');
+                }
+                body.innerHTML = h;
+            },
+        };
+        window.PWBoard = PWBoard;
+
         window.App = App;   // exponer App para el módulo ESM de blockchain (PillChain)
         App.UI.init();
         App.Market.updateTicker();
@@ -4215,7 +4667,48 @@ function toggleTrailerMode() {
             const r = await fetch('/api/deposit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet, sig }) });
             return r.json();
         }
-        window.PillChain = { deposit, getWarBalance, creditDeposit };
+        /*
+         * Firma una accion de staking: stake / compound / claim / request_unstake /
+         * withdraw_unstaked.
+         *
+         * El servidor solo ARMA la transaccion. Quien firma es el dueno, y el
+         * contrato exige que sea el y que cualquier token que salga vaya a su propia
+         * cuenta asociada: lo peor que puede hacer un servidor comprometido aqui es
+         * devolver una transaccion que falle al ejecutarse.
+         */
+        async function stakeTx(accion, pill) {
+            const W = window.App.Wallet;
+            if (!W.address || !W.provider) throw new Error('Connect your wallet first');
+
+            const r = await (await fetch('/api/stake/tx', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet: W.address, accion, pill: pill || 0 }),
+            })).json();
+            if (!r.ok) throw new Error(r.reason || 'staking failed');
+
+            const conn = new Connection(C().RPC, 'confirmed');
+            const tx = Transaction.from(Uint8Array.from(atob(r.tx), c => c.charCodeAt(0)));
+            tx.feePayer = new PublicKey(W.address);
+            // Blockhash nuevo aunque el servidor pusiera uno: entre pedir la
+            // transaccion y acertar a firmarla pueden pasar minutos, y uno caducado
+            // se rechaza con un error que no dice nada util.
+            tx.recentBlockhash = (await conn.getLatestBlockhash('finalized')).blockhash;
+
+            let sig;
+            if (W.provider.signTransaction) {
+                const signed = await W.provider.signTransaction(tx);
+                sig = await conn.sendRawTransaction(signed.serialize());
+            } else {
+                const res = await W.provider.signAndSendTransaction(tx);
+                sig = res.signature || res;
+            }
+            // Si la confirmacion tarda NO se lanza error: la transaccion ya salio, y
+            // decir que fallo cuando no fallo es peor que esperar al refresco.
+            try { await conn.confirmTransaction(sig, 'confirmed'); } catch (e) {}
+            return sig;
+        }
+
+        window.PillChain = { deposit, getWarBalance, creditDeposit, stakeTx };
         // Si la wallet ya estaba conectada al cargar el módulo, refresca el saldo WAR.
         if (window.App && window.App.Wallet && window.App.Wallet.address) window.App.Market.fetchWar(window.App.Wallet.address);
     </script>
