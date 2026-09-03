@@ -623,6 +623,111 @@ precio de que el juego sea un juego y no una DEX.
 
 ---
 
+## 6 quater. El staking, como contrato aparte
+
+`programs/pill-staking` es el mismo staking que vivía dentro de `pill_treasury`,
+sacado a su propio programa para poder comprarlo suelto.
+
+### Ya está desplegado en devnet (04/09/2026)
+
+```
+programa     6PHKEA9qmFGjUSJBLJ3wSkkpKn1aEch9kzfTXfo5e65b
+config       AKS4mnC49Af4Q9xyCqe1ZCmVJmitjJJ4NsHqHNRUEVao
+principal    2ocSJ5CtiBTAimPzVw6aqpyTZhfJtWQwUxC2UcLHMKsb   ← holder: el dinero de los stakers
+recompensas  HsbXYVez3u1ZXDqJsr4mmxKwfjeoeQAs8CyRzuM44r9P   ← holder: lo que hay por repartir
+```
+
+**311.664 bytes = 1,9746 SOL.** Ejercicio contra devnet: **13 bien, 0 mal**.
+
+### Lo que cuesta partirlo, dicho con números
+
+| | bytes | renta |
+|---|---|---|
+| `pill_custody` | 246.576 | 1,5624 SOL |
+| `pill_staking` | 311.664 | 1,9746 SOL |
+| **los dos** | | **3,5370 SOL** |
+| `pill_treasury` (custodia + staking + premios + timelock) | 485.608 | 3,0770 SOL |
+
+Partirlo sale **0,46 SOL más caro en total**, y no es un fallo: de esos ~246 KB del
+más pequeño, unos 175 KB son suelo de Anchor, y ese suelo se paga entero por cada
+programa. Lo que se compra a cambio es **poder pagarlo a plazos**: 1,56 ahora y 1,97
+cuando el juego lo justifique, en vez de 3,08 de golpe para tener también premios y
+timelock que hoy no hacen falta.
+
+### Dos bolsas, y separadas a propósito
+
+```
+  ["stake"]    principal de los usuarios. Es SUYO. Sale con 7 días de aviso.
+  ["rewards"]  lo que hay por repartir. Se llena con fund_rewards() y gotea
+               por segundo entre los que están dentro.
+```
+
+Si estuvieran juntas, un error de cálculo pagaría recompensas con el principal de otro
+y nadie lo notaría hasta que alguien no pudiera sacar lo suyo.
+
+**No hay ninguna instrucción que saque de la bóveda del principal hacia la autoridad.**
+Ninguna. Hay un test que lee el `.rs` y falla si alguien añade una.
+
+### Lo que cambia respecto a la versión de dentro de `pill_treasury`
+
+`fund_rewards` coge el dinero de **una cuenta normal** del que llama, no de la bóveda
+de custodia: este programa no custodia nada más que el staking. Sigue exigiendo la
+autoridad, y **no por avaricia**: quien llame recalcula el ritmo de reparto, así que un
+`fund_rewards(1, 30 días)` de un tercero estiraría lo que queda por repartir a lo largo
+de un mes. Fastidia a todos los stakers sin robar un token.
+
+### Enchufarlo: una variable
+
+```bash
+STAKING_PROGRAM=6PHKEA9qmFGjUSJBLJ3wSkkpKn1aEch9kzfTXfo5e65b
+```
+
+`server/staking.js` decide qué contrato lleva el staking y normaliza los dos a la misma
+forma. Con esa variable manda el contrato aparte; sin ella, el staking de dentro de
+`pill_treasury`; sin ninguna de las dos, se dice y ya. **El orden importa**: es lo que
+hace que desplegarlo baste para pasarse. Si ganara la tesorería, el contrato nuevo
+estaría desplegado y muerto sin que se notara.
+
+Comprobado contra devnet: las cinco acciones del panel construyen transacción con el
+programa correcto y con el número de cuentas de cada struct (7, 3, 7, 6, 7).
+
+### Operarlo
+
+```bash
+node scripts/staking.js estado <PROGRAMA>
+node scripts/staking.js fund <PROGRAMA> 50000 --horas 24
+node scripts/staking.js posicion <PROGRAMA> <WALLET>
+node scripts/staking.js prueba <PROGRAMA>      # los 7 casos que tienen que fallar
+```
+
+`estado` avisa si la bóveda del principal no cuadra con `total_staked`: la diferencia
+es lo que hay pedido para salir, que sigue dentro pero ya no rinde. Que no cuadren es
+lo normal, y por eso se dice en vez de esconderlo.
+
+### El APR es una proyección, no una promesa
+
+Extrapola el ritmo de HOY a un año entero. Con el pozo lleno y poca gente dentro sale
+un número absurdo —en las pruebas de devnet dio 358.782%— y **es correcto**: es lo que
+se repartiría si nadie más entrara y el goteo no parara nunca. Las dos cosas van a
+pasar. Por eso el número va con su explicación al lado y no como un titular, y por eso
+`aprAprox()` devuelve cero en cuanto el goteo termina: enseñar el APR del periodo
+anterior sería prometer un rendimiento que ya no existe.
+
+### Los premios del leaderboard NO están aquí
+
+Y no por falta de sitio. Un hueco para premios dentro del staking solo tendría dos
+finales: o la autoridad puede sacarlos —y entonces no están bloqueados, es una wallet
+con pasos de más— o hacen falta pruebas de Merkle y ventana de impugnación, que es
+`pill_treasury` entero. Además, separados, un fallo en la contabilidad del staking no
+puede tocar el dinero de los premios.
+
+El bloqueo de la asignación de premios se hace con **vesting externo** (Jupiter Lock,
+Streamflow): cuesta céntimos, ya está auditado, y va soltando la asignación poco a poco
+a la wallet desde la que se paga. Es más fuerte que un contrato propio porque no
+depende de que yo no haya metido un bug.
+
+---
+
 ## 6 ter. Lo que cuesta desplegar, y por qué importa antes de lo que parece
 
 Desplegar cobra una **renta proporcional al tamaño del binario**, no una comisión
