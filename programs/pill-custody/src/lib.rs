@@ -44,6 +44,25 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 // la del contrato de tesoreria.
 declare_id!("8WnuBzocee451WyjNyaCRzeuXdsWU8bUgZqrQ3XfKSd2");
 
+/*
+ * QUIEN PUEDE INICIALIZAR. Va aqui, en el binario, y no como una comprobacion
+ * contra la upgrade authority — que seria mas elegante pero cuesta 63 KB de codigo
+ * (0,44 SOL de renta) porque arrastra medio bpf_loader_upgradeable. Esto son 640
+ * bytes: 0,0045 SOL por la misma proteccion.
+ *
+ * Sin ella, `initialize` es una carrera. Cualquiera que vigile despliegues puede
+ * llamarla antes que yo, ponerse de autoridad y con su propio mint. No roba nada
+ * —la boveda esta vacia— pero como la config es `init` no admite una segunda
+ * llamada: el programa queda inservible y hay que desplegar otra vez en otra
+ * direccion, con los 1,56 SOL del primero dentro.
+ *
+ * AL CAMBIAR DE RED HAY QUE CAMBIAR ESTO. Un despliegue con la direccion
+ * equivocada aqui cuesta exactamente lo mismo que el ataque del que protege, asi
+ * que scripts/deploy-custody.sh lo comprueba contra la wallet activa ANTES de
+ * gastar un lamport.
+ */
+pub const DEPLOYER: Pubkey = anchor_lang::solana_program::pubkey!("4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN");
+
 pub const CONFIG_SEED: &[u8] = b"config";
 pub const CUSTODY_SEED: &[u8] = b"custody";
 
@@ -142,21 +161,6 @@ pub mod pill_custody {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    /* Solo quien desplego el programa puede inicializarlo.
-     *
-     * Sin esto, `initialize` es una carrera: cualquiera que vigile despliegues puede
-     * llamarla antes que yo, ponerse a si mismo de autoridad y con su propio mint. No
-     * roba nada —la boveda esta vacia— pero deja el programa inservible, y como la
-     * config ya existe no se puede volver a inicializar: habria que desplegar otra vez
-     * en otra direccion y los 1,56 SOL de este despliegue se quedan dentro.
-     *
-     * La comprobacion sale gratis en riesgo: la upgrade authority de un programa
-     * recien desplegado soy yo por definicion. Y deja de importar en cuanto se llama
-     * una vez, porque la config `init` no admite una segunda. */
-    #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ CustodyError::NotDeployer)]
-    pub program: Program<'info, crate::program::PillCustody>,
-    #[account(constraint = program_data.upgrade_authority_address == Some(payer.key()) @ CustodyError::NotDeployer)]
-    pub program_data: Account<'info, ProgramData>,
 
     #[account(
         init, payer = payer, space = 8 + Config::INIT_SPACE,
@@ -177,7 +181,7 @@ pub struct Initialize<'info> {
     pub mint: Account<'info, Mint>,
     /// CHECK: solo se guarda como la autoridad que podrá ordenar retiros.
     pub authority: UncheckedAccount<'info>,
-    #[account(mut)]
+    #[account(mut, constraint = payer.key() == DEPLOYER @ CustodyError::NotDeployer)]
     pub payer: Signer<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
