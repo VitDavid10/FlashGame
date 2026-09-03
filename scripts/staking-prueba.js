@@ -49,6 +49,13 @@ async function manda(c, ixs, firmantes) {
     return sig;
 }
 
+/* El reloj del programa va en segundos enteros. Sin esperas de verdad, dos
+ * transacciones seguidas caen en el mismo segundo y el goteo no ha soltado nada. */
+const espera = (segs) => {
+    console.log(`  ...esperando ${segs}s a que gotee`);
+    return new Promise(r => setTimeout(r, segs * 1000));
+};
+
 async function debeIr(titulo, fn) {
     try { const r = await fn(); bien(titulo); return r; }
     catch (e) { falla(titulo, e.message); throw e; }
@@ -124,24 +131,47 @@ async function run(pos, argv) {
         if (BigInt(cfg.rewardRate) <= 0n) throw new Error('el ritmo se quedo a cero');
     });
 
-    await debeIr('el pendiente sube con el tiempo y NO se paga de golpe', async () => {
-        // Lo caro de equivocarse aqui es soltar el pozo entero al llamar: quien
-        // stakea un segundo antes se lleva el dia completo y sale.
+    await debeIr('el pendiente gotea al ritmo anunciado y NO se suelta de golpe', async () => {
+        /*
+         * Lo caro de equivocarse aqui es soltar el pozo entero al llamar: quien stakea
+         * un segundo antes se lleva el dia completo y sale.
+         *
+         * Se mide el INCREMENTO, no el absoluto. El absoluto arrastra lo que ya
+         * estuviera liquidado en `pending` de antes, asi que compararlo con un umbral
+         * da un fallo falso en cuanto la prueba se corre dos veces.
+         */
         const cfg = sc.decodeConfig((await c.getAccountInfo(config)).data);
         const acc = sc.decodeStakeAccount((await c.getAccountInfo(sc.stakeAccount(programa, pagador.publicKey))).data);
         const t0 = cfg.lastUpdate;
-        const en10s = BigInt(sc.pendienteAhora(cfg, acc, t0 + 10));
-        const en100s = BigInt(sc.pendienteAhora(cfg, acc, t0 + 100));
-        if (!(en100s > en10s)) throw new Error('el pendiente no crece con el tiempo');
-        // 0,1 PILL/s durante 3600 s = 360. En 10 s no puede haber mas de ~1.
-        if (en10s > aRaw(5)) throw new Error(`en 10 s ya habia ${aPill(en10s)} PILL: se solto de golpe`);
+        const en = (s) => BigInt(sc.pendienteAhora(cfg, acc, t0 + s));
+        const base = en(0);
+        const diez = en(10) - base;
+        const cien = en(100) - base;
+
+        if (!(cien > diez)) throw new Error('el pendiente no crece con el tiempo');
+        // Lineal: 10x el tiempo, 10x lo ganado. Si el reparto fuera de golpe, los dos
+        // incrementos serian iguales (todo en el primer instante).
+        const esperado10 = BigInt(cfg.rewardRate) * 10n;
+        const margen = esperado10 / 100n + 1n;
+        const dif = diez > esperado10 ? diez - esperado10 : esperado10 - diez;
+        if (dif > margen) {
+            throw new Error(`en 10 s gotearon ${aPill(diez)} y el ritmo anunciado da ${aPill(esperado10)}`);
+        }
+        if (cien * 10n < diez * 95n || cien * 10n > diez * 105n) {
+            throw new Error('el goteo no es lineal en el tiempo');
+        }
     });
 
     await debeIr('lo que ensena la interfaz es lo que paga el programa', async () => {
         /*
          * pendienteAhora() rehace en JS la cuenta del contrato. Si las dos se separan,
          * el usuario ve un numero y cobra otro.
+         *
+         * Hay que esperar unos segundos de verdad: el reloj del programa va en
+         * segundos enteros, asi que un claim en el mismo segundo que el fund revierte
+         * con NothingToClaim y no habria nada que comparar.
          */
+        await espera(12);
         const antesAta = (await getAccount(c, miAta.address)).amount;
         const cfg = sc.decodeConfig((await c.getAccountInfo(config)).data);
         const acc = sc.decodeStakeAccount((await c.getAccountInfo(sc.stakeAccount(programa, pagador.publicKey))).data);
@@ -174,6 +204,7 @@ async function run(pos, argv) {
     });
 
     await debeIr('compound mete lo ganado en el principal sin pasar por la wallet', async () => {
+        await espera(12);
         const antesAta = (await getAccount(c, miAta.address)).amount;
         const antesVault = (await getAccount(c, stakeVault)).amount;
         await manda(c, [sc.compound(programa, { owner: pagador.publicKey })], [pagador]);
