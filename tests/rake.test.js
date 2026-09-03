@@ -69,7 +69,8 @@ test('por debajo del minimo no compensa el gas', async () => {
         canWithdraw: () => true, authorityPubkey: () => 'auth', pillToRaw: (n) => BigInt(n),
         sendInstructions: async (ix) => { enviadas.push(ix); return 'sig'; },
     };
-    const tcFalso = { fundStakeRewards: () => 'ixStake', sweep: () => 'ixTes' };
+    const tcFalso = { sweep: () => 'ixTes' };
+    const stFalso = { PROGRAMA: 'p', ixFund: () => 'ixStake' };
 
     // Una cola nueva y pequeña.
     const TMP2 = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-rake2-'));
@@ -79,7 +80,7 @@ test('por debajo del minimo no compensa el gas', async () => {
     const r2 = require('../server/rake.js');
 
     r2.alStaking(r2.MINIMO - 1, 'poco');
-    await r2.barre(solanaFalso, tcFalso, 'programa', null);
+    await r2.barre(solanaFalso, tcFalso, 'programa', null, stFalso);
     assert.equal(enviadas.length, 0, 'no deberia haber mandado nada');
     assert.equal(r2.estado().pendienteStaking, r2.MINIMO - 1, 'y la deuda sigue ahi');
 
@@ -101,13 +102,18 @@ test('cada cola va a su instruccion: staking al pozo, tesoreria al sweep', async
         sendInstructions: async (ix) => { llamadas.push(ix[0]); return 'sig' + llamadas.length; },
     };
     const tcFalso = {
-        fundStakeRewards: (prog, o) => ({ tipo: 'fundStakeRewards', amount: o.amountRaw, dur: o.durationSecs }),
         sweep: (prog, o) => ({ tipo: 'sweep', amount: o.amountRaw }),
+    };
+    // El pozo del staking va por su propio adaptador desde que el staking puede ser
+    // un contrato aparte. Se inyecta igual que el cliente de la tesoreria.
+    const stFalso = {
+        PROGRAMA: 'programa-staking',
+        ixFund: (o) => ({ tipo: 'fundStakeRewards', amount: o.amountRaw, dur: o.durationSecs }),
     };
 
     r3.alStaking(50000, 'exit fees del dia');
     r3.aTesoreria(30000, 'comision arcade');
-    const hecho = await r3.barre(solanaFalso, tcFalso, 'programa', null);
+    const hecho = await r3.barre(solanaFalso, tcFalso, 'programa', null, stFalso);
 
     assert.equal(llamadas.length, 2);
     const stake = llamadas.find(x => x.tipo === 'fundStakeRewards');
@@ -146,14 +152,12 @@ test('si una transaccion falla, esa deuda se queda entera', async () => {
             return 'sig';
         },
     };
-    const tcFalso = {
-        fundStakeRewards: () => ({ tipo: 'fundStakeRewards' }),
-        sweep: () => ({ tipo: 'sweep' }),
-    };
+    const tcFalso = { sweep: () => ({ tipo: 'sweep' }) };
+    const stFalso = { PROGRAMA: 'p', ixFund: () => ({ tipo: 'fundStakeRewards' }) };
 
     r4.alStaking(40000, 'x');
     r4.aTesoreria(20000, 'y');
-    await r4.barre(solanaFalso, tcFalso, 'programa', null);
+    await r4.barre(solanaFalso, tcFalso, 'programa', null, stFalso);
 
     const e = r4.estado();
     assert.equal(e.pendienteStaking, 40000, 'lo que fallo sigue pendiente y se reintentara');

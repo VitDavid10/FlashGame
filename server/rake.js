@@ -122,15 +122,22 @@ function apunta(destino, pill, motivo, ts) {
  * se queda entera y se reintenta. Perder tokens por un timeout del RPC sería mucho
  * peor que esperar al siguiente ciclo.
  */
-async function barre(solana, treasuryClient, programId, log) {
+async function barre(solana, treasuryClient, programId, log, stakingMod) {
+    const staking = stakingMod || require('./staking.js');
     const hecho = { stake: null, tesoreria: null };
-    if (SOLO_LECTURA || !programId) return hecho;
+    if (SOLO_LECTURA) return hecho;
+    // El pozo del staking va por su propio programa, que puede estar desplegado sin
+    // que lo este la tesoreria. La cola de tesoreria si necesita `programId`.
+    if (!programId && !staking.PROGRAMA) return hecho;
     if (!solana.canWithdraw()) return hecho;
 
-    if (data.aStake >= MINIMO) {
+    if (data.aStake >= MINIMO && staking.PROGRAMA) {
         const cantidad = data.aStake;
         try {
-            const ix = treasuryClient.fundStakeRewards(programId, {
+            const ix = staking.ixFund({
+                // Con el contrato aparte el rake sale de la cuenta de la autoridad
+                // —ese no custodia nada mas que el staking— y con el de la tesoreria,
+                // de su propia boveda. Cual de las dos, lo decide el adaptador.
                 authority: solana.authorityPubkey(),
                 amountRaw: solana.pillToRaw(cantidad),
                 durationSecs: GOTEO_SECS,
@@ -146,7 +153,7 @@ async function barre(solana, treasuryClient, programId, log) {
         }
     }
 
-    if (data.aTesoreria >= MINIMO) {
+    if (data.aTesoreria >= MINIMO && programId) {
         const cantidad = data.aTesoreria;
         try {
             const ix = treasuryClient.sweep(programId, {

@@ -293,7 +293,7 @@ async function barrerPendiente(solana, treasuryClient, programId, log) {
          * Va por goteo (24 h) y no de golpe: si se soltara entero, cualquiera
          * stakearia un segundo antes de cada barrido y saldria despues.
          */
-        const ix = treasuryClient.fundStakeRewards(programId, {
+        const ix = require('./staking.js').ixFund({
             authority: solana.authorityPubkey(),
             amountRaw: solana.pillToRaw(cantidad),
             durationSecs: parseInt(process.env.STAKE_DRIP_SECS, 10) || 86400,

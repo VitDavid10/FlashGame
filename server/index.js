@@ -2117,17 +2117,23 @@ async function upgradeAuthorityDe(conn, programId) {
 async function stakeState(wallet) {
     const dec = solana.DECIMALS;
     const aPill = (raw) => Number(BigInt(raw)) / 10 ** dec;
-    if (!TREASURY_PROGRAM) return { activo: false, aviso: 'el staking todavía no está desplegado' };
 
-    const tc = require('./treasury-client.js');
-    const p = tc.pdas(TREASURY_PROGRAM);
+    /*
+     * Da igual si el staking va por su propio contrato o por el de la tesoreria:
+     * server/staking.js decide cual y los normaliza. Aqui solo se lee.
+     */
+    const st = require('./staking.js');
+    if (!st.PROGRAMA) return { activo: false, aviso: 'el staking todavía no está desplegado' };
+
+    const p = st.pdas();
     const conn = _solConn();
     const claves = [p.config, p.stakeVault, p.rewardVault];
-    if (wallet) claves.push(tc.stakePda(TREASURY_PROGRAM, wallet));
+    if (wallet) claves.push(st.posicionPda(wallet));
     const cuentas = await conn.getMultipleAccountsInfo(claves);
     if (!cuentas[0]) return { activo: false, aviso: 'el programa no está inicializado' };
 
-    const cfg = tc.decodeConfig(cuentas[0].data);
+    const cfg = st.decodeConfig(cuentas[0].data);
+    // El saldo de una token account son 8 bytes en el offset 64.
     const saldo = (info) => (info && info.data.length >= 72 ? info.data.readBigUInt64LE(64) : 0n);
     const ahora = Math.floor(Date.now() / 1000);
     const enMarcha = ahora < cfg.periodFinish;
@@ -2135,7 +2141,11 @@ async function stakeState(wallet) {
     const stakeado = Number(cfg.totalStaked);
 
     const out = {
-        activo: cfg.stakingReady,
+        activo: cfg.activo,
+        programa: st.PROGRAMA,
+        // "aparte" = contrato propio; "tesoreria" = el staking de dentro de
+        // pill_treasury. Se dice para que el panel no tenga que adivinarlo.
+        modo: st.MODO,
         stakeVault: p.stakeVault.toBase58(),
         rewardVault: p.rewardVault.toBase58(),
         totalStaked: aPill(cfg.totalStaked),
@@ -2147,16 +2157,18 @@ async function stakeState(wallet) {
         // Con poco stakeado sale un número enorme que no se sostendría si entrara
         // gente, así que se da como lo que es y no como una promesa.
         apr: stakeado > 0 && enMarcha ? (porDia * 365) / stakeado : null,
-        totales: { aportado: aPill(cfg.totalStakeFunded), pagado: aPill(cfg.totalStakeRewardsPaid) },
+        totales: { aportado: aPill(cfg.aportado), pagado: aPill(cfg.pagado) },
     };
 
     if (wallet) {
         const info = cuentas[3];
         if (!info) out.posicion = { wallet, stakeado: 0, pendiente: 0, saliendo: 0, saleEl: null, existe: false };
         else {
-            const acc = tc.decodeStakeAccount(info.data);
+            const acc = st.decodeStakeAccount(info.data);
             // Lo pendiente guardado más lo devengado desde su última liquidación, que
-            // es lo que el contrato le pagaría ahora mismo.
+            // es lo que el contrato le pagaría ahora mismo. El programa solo adelanta
+            // el índice cuando alguien le llama, así que leer `pending` a secas
+            // enseñaría un número viejo.
             const PRECISION = 1_000_000_000_000n;
             let acumulado = cfg.accRewardPerShare;
             if (stakeado > 0 && enMarcha) {
@@ -2172,7 +2184,7 @@ async function stakeState(wallet) {
                 // total_staked en cuanto se pide, para no diluir a quien sigue dentro.
                 saliendo: aPill(acc.unstaking),
                 saleEl: acc.unstaking > 0n && acc.unstakeReadyAt
-                    ? new Date(Number(acc.unstakeReadyAt) * 1000).toISOString()
+                    ? new Date(acc.unstakeReadyAt * 1000).toISOString()
                     : null,
                 parteDelPool: stakeado > 0 ? Number(acc.amount) / stakeado : 0,
             };
@@ -2938,6 +2950,316 @@ const httpServer = http.createServer(async (req, res) => {
                 const ix = tcl.deposit(process.env.TREASURY_PROGRAM, {
                     from, owner: wallet, amountRaw: solana.pillToRaw(pill),
                 });
+                const conn = _solConn();
+                const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('finalized');
+                const tx = new Transaction({ feePayer: w, blockhash, lastValidBlockHeight }).add(ix);
+                res.end(JSON.stringify({
+                    ok: true,
+                    tx: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'),
+                    pill,
+                }));
+            } catch (e) { res.end(JSON.stringify({ ok: false, reason: e.message })); }
+        });
+        return;
+    }
+
+    // --- Acreditar un depósito: el cliente manda {wallet, sig}; verificamos on-chain y acreditamos ---
+    if (urlPath === '/api/deposit' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
+            const wallet = String(p.wallet || ''), sig = String(p.sig || '');
+            if (!isSolAddr(wallet) || !sig) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+            // Anti doble-acreditación: la firma se reserva ANTES del await (la verificación
+            // RPC tarda cientos de ms; dos requests simultáneas con la misma sig pasaban
+            // ambas el sigUsed y se acreditaba dos veces). pendingDeposits cierra esa ventana.
+            if (warbank.sigUsed(sig) || pendingDeposits.has(sig)) { res.end(JSON.stringify({ ok: false, reason: 'depósito ya acreditado' })); return; }
+            pendingDeposits.add(sig);
+            let v;
+            try {
+                v = await solana.verifyDeposit({ sig, fromOwner: wallet, minPill: 1 });
+            } finally { pendingDeposits.delete(sig); }
+            if (!v.ok) { res.end(JSON.stringify({ ok: false, reason: v.reason || 'no verificado' })); return; }
+            if (warbank.sigUsed(sig)) { res.end(JSON.stringify({ ok: false, reason: 'depósito ya acreditado' })); return; }
+            const saldo = warbank.creditDeposit(wallet, v.amount, sig);
+            logTx('deposit', wallet, v.amount, 'on-chain ' + sig.slice(0, 8) + '…');
+            logAdmin('-', 'Depósito $PILL', wallet.slice(0, 6) + '… +' + v.amount);
+            log(`Depósito acreditado: ${wallet.slice(0, 6)}… +${v.amount} PILL → saldo ${saldo}`);
+            res.end(JSON.stringify({ ok: true, credited: v.amount, warBalance: saldo }));
+        });
+        return;
+    }
+    // --- Retiro: descuenta del saldo WAR y envía PILL del treasury a la wallet ---
+    if (urlPath === '/api/withdraw' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
+            const wallet = String(p.wallet || ''), amount = Math.floor(Number(p.amount) || 0);
+            const ts = Number(p.ts) || 0, message = String(p.message || ''), signature = p.signature;
+            if (!isSolAddr(wallet) || amount <= 0) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+            // El jugador debe FIRMAR el retiro con su wallet (prueba que es el dueño).
+            const expected = `PillWars withdraw ${amount} PILL @ ${ts}`;
+            if (message !== expected) { res.end(JSON.stringify({ ok: false, reason: 'mensaje inválido' })); return; }
+            if (Math.abs(Date.now() - ts) > 120000) { res.end(JSON.stringify({ ok: false, reason: 'firma caducada, reintenta' })); return; }
+            const sigKey = 'wd_' + (Array.isArray(signature) ? signature.join(',') : '');
+            if (warbank.sigUsed(sigKey)) { res.end(JSON.stringify({ ok: false, reason: 'firma ya usada' })); return; }
+            if (!solana.verifySignedMessage(wallet, message, signature)) { res.end(JSON.stringify({ ok: false, reason: 'firma no válida' })); return; }
+            if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'retiros no disponibles (servidor sin clave del treasury)' })); return; }
+            if (warbank.getBalance(wallet) < amount) { res.end(JSON.stringify({ ok: false, reason: 'saldo WAR insuficiente' })); return; }
+            warbank.creditDeposit(wallet, 0, sigKey);   // marca la firma como usada (anti-replay)
+            // Descontamos ANTES de enviar (evita doble retiro); si falla on-chain, devolvemos.
+            warbank.debit(wallet, amount);
+
+            /* CON CONTRATO el retiro lo firma también el jugador, así que aquí solo se
+             * prepara: se devuelve la transacción ya firmada por la autoridad y el
+             * cliente la completa con su wallet en /api/withdraw/send.
+             *
+             * El saldo queda descontado desde ya y se anota como pendiente. Si el
+             * jugador no termina, `barreRetirosPendientes` se lo devuelve en cuanto
+             * caduca el blockhash — a partir de ahí esa transacción no puede
+             * ejecutarse, así que devolver el saldo es seguro. */
+            if (process.env.TREASURY_PROGRAM) {
+                try {
+                    const prep = await solana.prepararRetiro(wallet, amount);
+                    retirosPendientes.set(wallet, { amount, creadoEn: Date.now(), lastValidBlockHeight: prep.lastValidBlockHeight });
+                    log(`Retiro preparado: ${wallet.slice(0, 6)}… ${amount} PILL (falta la firma del jugador)`);
+                    res.end(JSON.stringify({ ok: true, needsSignature: true, tx: prep.tx, amount, warBalance: warbank.getBalance(wallet) }));
+                } catch (e) {
+                    warbank.credit(wallet, amount);
+                    log(`Retiro NO preparado (${wallet.slice(0, 6)}…): ${e.message} — saldo devuelto`);
+                    res.end(JSON.stringify({ ok: false, reason: e.message }));
+                }
+                return;
+            }
+
+            try {
+                const sig = await solana.withdraw(wallet, amount);
+                const saldo = warbank.getBalance(wallet);
+                logTx('withdraw', wallet, -amount, 'tx ' + sig.slice(0, 8) + '…');
+                logAdmin('-', 'Retiro $PILL', wallet.slice(0, 6) + '… -' + amount);
+                log(`Retiro: ${wallet.slice(0, 6)}… -${amount} PILL → saldo ${saldo} (tx ${sig.slice(0, 8)}…)`);
+                res.end(JSON.stringify({ ok: true, withdrawn: amount, warBalance: saldo, sig }));
+            } catch (e) {
+                warbank.credit(wallet, amount);   // refund del saldo WAR si el envío falló
+                logTx('refund', wallet, amount, 'withdraw failed on-chain');
+                log(`Retiro FALLÓ (${wallet.slice(0, 6)}…): ${e.message} — saldo devuelto`);
+                res.end(JSON.stringify({ ok: false, reason: 'envío on-chain falló: ' + e.message }));
+            }
+        });
+        return;
+    }
+
+    /* Segundo paso del retiro con contrato: el jugador devuelve la transacción ya
+     * firmada y el servidor la envía.
+     *
+     * Podría enviarla el propio cliente, pero entonces el servidor no sabría si salió,
+     * y las dos opciones serían malas: dar el retiro por hecho sin que haya salido le
+     * roba al jugador; no darlo por hecho habiéndose ejecutado le deja retirar dos
+     * veces. Enviándola aquí, el servidor sabe el resultado con certeza. */
+    if (urlPath === '/api/withdraw/send' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones' })); return; }
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 8000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
+            const wallet = String(p.wallet || '');
+            if (!isSolAddr(wallet) || typeof p.tx !== 'string') { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+            const pend = retirosPendientes.get(wallet);
+            if (!pend) { res.end(JSON.stringify({ ok: false, reason: 'no hay ningún retiro pendiente para esa wallet' })); return; }
+            try {
+                const sig = await solana.enviarRetiro(p.tx);
+                retirosPendientes.delete(wallet);   // el saldo ya se descontó al preparar
+                const saldo = warbank.getBalance(wallet);
+                logTx('withdraw', wallet, -pend.amount, 'tx ' + sig.slice(0, 8) + '…');
+                logAdmin('-', 'Retiro $PILL', wallet.slice(0, 6) + '… -' + pend.amount);
+                log(`Retiro: ${wallet.slice(0, 6)}… -${pend.amount} PILL → saldo ${saldo} (tx ${sig.slice(0, 8)}…)`);
+                res.end(JSON.stringify({ ok: true, withdrawn: pend.amount, warBalance: saldo, sig }));
+            } catch (e) {
+                // No se devuelve el saldo aquí: la transacción puede haber entrado y
+                // estar solo tardando en confirmar. Lo devuelve el barrido cuando el
+                // blockhash caduque, que es cuando ya es seguro.
+                log(`Retiro no confirmado (${wallet.slice(0, 6)}…): ${e.message}`);
+                res.end(JSON.stringify({ ok: false, reason: e.message }));
+            }
+        });
+        return;
+    }
+
+    // --- Faucet de testnet: claim diario de $PILL o SOL (transfer on-chain real) ---
+    if (urlPath === '/api/claim' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'json inválido' })); return; }
+            const wallet = String(p.wallet || ''), kind = String(p.kind || '');
+            if (!isSolAddr(wallet) || (kind !== 'pill' && kind !== 'sol')) { res.end(JSON.stringify({ ok: false, reason: 'datos inválidos' })); return; }
+            if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'faucet no disponible (servidor sin clave del treasury)' })); return; }
+            const ip = anonIp(clientIp(req));
+            const left = claimCooldownLeft(wallet, ip, kind);
+            if (left > 0) { res.end(JSON.stringify({ ok: false, reason: 'ya reclamado hoy', nextInMs: left })); return; }
+            // Marca ANTES de enviar (evita doble claim por requests solapadas); si falla, revierte.
+            markClaim(wallet, ip, kind);
+            try {
+                const sig = (kind === 'pill')
+                    ? await solana.withdraw(wallet, CLAIM_PILL)
+                    : await solana.airdropSol(wallet, CLAIM_SOL);
+                const amount = kind === 'pill' ? CLAIM_PILL : CLAIM_SOL;
+                logAdmin('-', 'Faucet ' + kind, wallet.slice(0, 6) + '… +' + amount);
+                log(`Faucet ${kind}: ${wallet.slice(0, 6)}… +${amount} (tx ${sig.slice(0, 8)}…)`);
+                res.end(JSON.stringify({ ok: true, kind, amount, sig }));
+            } catch (e) {
+                // Revertir el cooldown: el claim no llegó, que pueda reintentar.
+                if (faucet.wallets[wallet]) delete faucet.wallets[wallet][kind];
+                if (faucet.ips[ip]) delete faucet.ips[ip][kind];
+                faucetDirty = true;
+                log(`Faucet ${kind} FALLÓ (${wallet.slice(0, 6)}…): ${e.message}`);
+                res.end(JSON.stringify({ ok: false, reason: 'envío on-chain falló: ' + e.message }));
+            }
+        });
+        return;
+    }
+
+    // Endpoint público del ranking (para "Global Elite" en la web). Ordena por bestMass.
+    if (urlPath === '/ranking.json' || urlPath === '/api/ranking') {
+        // Sirve el cache — si está vacío (nunca actualizado) devuelve array vacío.
+        // Actualizar desde el panel admin con cmd updateRanking.
+        const top = _rankingCache.slice(0, 100).map(p => ({
+            name: p.name, bestMass: p.bestMass | 0, kills: p.kills | 0,
+            muertes: p.muertes | 0, partidas: p.partidas | 0,
+            paisCode: p.paisCode, paisName: p.paisName
+        }));
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ ranking: top, updated: _rankingUpdatedAt, stale: _rankingUpdatedAt === 0 }));
+        return;
+    }
+    /* ===== TESORERÍA: LEADERBOARD DIARIO, PREMIOS Y TRANSPARENCIA =====
+     *
+     * Todo esto es público y sin autenticación a propósito. La promesa "no puedo
+     * tocar la tesorería" no vale nada si los datos que la sostienen —quién ganó,
+     * cuánto se repartió, cuánto hay en cada bolsa— solo los puedo ver yo. Un
+     * endpoint que hay que pedir por privado no es una prueba, es una promesa.
+     */
+
+    // Leaderboard del día en curso (aún abierto, todavía sin hashear).
+    if (urlPath === '/api/leaderboard') {
+        const est = leaderboard.estadoHoy();
+        // Y lo que se repartiria HOY con la gente que hay ahora mismo en la lista.
+        // Es la pregunta que se hace cualquiera que la mire ("¿cuanto hay en juego?")
+        // y la respuesta cambia sola con los cuatro frenos: el grifo del contrato, el
+        // rake del dia, cuanta gente es elegible y los pesos de los puestos vacios.
+        // Y los pagos ya hechos, con su firma. Es la otra mitad de la pregunta:
+        // no solo "cuanto hay en juego" sino "¿de verdad paga?" — y esa se
+        // responde ensenando transacciones, no promesas.
+        let pagos = []; try { pagos = rewards.historialDePagos(14); } catch (e) {}
+        rewards.proyeccionDeHoy(est).then(reparto => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(Object.assign({}, est, { reparto, pagos })));
+        }).catch(() => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(est));
+        });
+        return;
+    }
+
+    /* Historial de una wallet: sus partidas ancladas, sus premios y sus firmas.
+     *
+     * Es lo que hay detras de cada nombre del top 10. Todo sale de los mismos
+     * recibos que se anclan en la cadena por lotes, asi que cada linea se puede
+     * seguir hasta una transaccion de Solana — el objetivo es que "ese jugador hizo
+     * 40 kills" no haya que creerselo. */
+    if (urlPath.startsWith('/api/player/')) {
+        const wallet = urlPath.slice('/api/player/'.length);
+        if (!isSolAddr(wallet)) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: 'wallet inválida' })); return;
+        }
+        let out;
+        try { out = matches.historialDe(wallet, 40); } catch (e) { out = { error: e.message }; }
+        // Sus premios del top 10, con la firma de la ronda en la que salieron.
+        try { out.premios = rewards.premiosDe(wallet); } catch (e) {}
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(out));
+        return;
+    }
+    // La cadena de hashes entera, y su verificación. Es lo que permite a cualquiera
+    // comprobar que ningún día se reescribió después de cerrarse.
+    if (urlPath === '/api/leaderboard/chain') {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ chain: leaderboard.cadena(), check: leaderboard.verificarCadena() }));
+        return;
+    }
+    // Un día cerrado: /api/leaderboard/2026-09-02
+    if (urlPath.startsWith('/api/leaderboard/')) {
+        const date = urlPath.slice('/api/leaderboard/'.length);
+        const snap = /^\d{4}-\d{2}-\d{2}$/.test(date) ? leaderboard.diaCerrado(date) : null;
+        res.writeHead(snap ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(snap || { error: 'no hay leaderboard cerrado para esa fecha' }));
+        return;
+    }
+
+    /* ===== STAKING =====
+     *
+     * El pool reparte los ingresos corrientes del juego —rake de partidas y tienda—
+     * entre quien inmoviliza $PILL. Todo lo que hace falta para operarlo lo firma el
+     * propio usuario: el servidor solo formatea la transacción, igual que en el claim.
+     * Ni el principal ni las recompensas pasan por sus manos.
+     */
+    if (urlPath === '/api/stake' && req.method === 'GET') {
+        const wallet = String(query.get('wallet') || '');
+        stakeState(isSolAddr(wallet) ? wallet : null).then(st => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(st));
+        }).catch(e => {
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: e.message }));
+        });
+        return;
+    }
+    /* Transacción de stake / unstake / cobro, lista para firmar.
+     *
+     * La firma es SIEMPRE del dueño y de nadie más: el contrato exige que el owner
+     * firme y que el destino sea su propia cuenta asociada. Lo peor que puede hacer
+     * un servidor comprometido aquí es devolver una transacción que falle. */
+    if (urlPath === '/api/stake/tx' && req.method === 'POST') {
+        if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones' })); return; }
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 1000) req.destroy(); });
+        req.on('end', async () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            try {
+                const p = JSON.parse(body || '{}');
+                const wallet = String(p.wallet || '');
+                const accion = String(p.accion || '');
+                const pill = Math.floor(Number(p.pill) || 0);
+                if (!isSolAddr(wallet)) { res.end(JSON.stringify({ ok: false, reason: 'wallet inválida' })); return; }
+                const st = require('./staking.js');
+                if (!st.PROGRAMA) { res.end(JSON.stringify({ ok: false, reason: 'el staking todavía no está desplegado' })); return; }
+
+                const { Transaction, PublicKey } = require('@solana/web3.js');
+                const { getAssociatedTokenAddressSync } = require('@solana/spl-token');
+                const w = new PublicKey(wallet);
+                // Las cinco acciones necesitan cantidad menos dos: retirar saca TODO
+                // lo que ya cumplió la espera, y cobrar saca todo lo pendiente.
+                if ((accion === 'stake' || accion === 'request_unstake') && !(pill > 0)) {
+                    res.end(JSON.stringify({ ok: false, reason: 'cantidad inválida' })); return;
+                }
+                const ix = st.ix(accion, {
+                    wallet,
+                    amountRaw: solana.pillToRaw(pill),
+                    from: getAssociatedTokenAddressSync(new PublicKey(solana.MINT), w, true),
+                    mint: solana.MINT,
+                });
+                if (!ix) { res.end(JSON.stringify({ ok: false, reason: 'acción desconocida' })); return; }
+
                 const conn = _solConn();
                 const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('finalized');
                 const tx = new Transaction({ feePayer: w, blockhash, lastValidBlockHeight }).add(ix);
