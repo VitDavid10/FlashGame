@@ -50,7 +50,6 @@
 //!    token el primer día para tener la cuenta atrás corriendo.
 
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 /*
@@ -493,7 +492,6 @@ pub struct WithdrawUnstaked<'info> {
     pub mint: Account<'info, Mint>,
     pub owner: Signer<'info>,
     pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
