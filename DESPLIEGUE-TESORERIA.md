@@ -481,6 +481,73 @@ solana program show --buffers      # ver si hay
 solana program close --buffers     # recuperarlos
 ```
 
+### Ya está desplegada en devnet (04/09/2026)
+
+```
+programa   2rCs2GNBbncW5ZwLeahx5yDeoLyCTD1GdK2zzGjfv3sk
+config     9TcXyodBA85bMX9KDFEH3xCTAnQ1HSHoqumVjffJ6GRm
+bóveda     6xVG7tjpo5pQkSsUDV8i87QTjWV7zxHZH8UWaKogtkFS   ← el holder que se ve
+mint       Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r
+autoridad  4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN
+```
+
+Coste real: **1,562376432 SOL**, exactamente lo que dijo `solana rent`. El ejercicio
+completo salió **9 bien, 0 mal, 1 sin probar** (ver más abajo por qué ese uno no
+contaba), y los contadores cuadran con el saldo de la bóveda.
+
+**La renta se recupera, comprobado.** Al cerrar un programa desechable de la misma
+medida:
+
+```
+Closed Program Id 6ykq8pij…, 1.562661417 SOL reclaimed
+```
+
+Íntegro. Eso sigue siendo posible mientras la upgrade authority esté viva, y deja de
+serlo para siempre al revocar.
+
+### Dos cosas que solo se vieron ejecutando
+
+**1. Borsh serializa `Option::None` como UN byte, no como 1+32.**
+
+`InitSpace` reserva 33 para dimensionar la *cuenta*, pero los *datos* con `None` son
+un solo byte y quedan 32 de cola sin usar. El cliente lo leía con tamaño fijo, así que
+todo lo de detrás salía desplazado 32 bytes: el mint se leía de otro sitio y los
+contadores daban cero. **Sin error, sin excepción, sin nada.** La bóveda tenía 60 PILL
+y la Config decía 0.
+
+Lo peor no fue el bug: fue que el test lo tapaba, porque construía el buffer con la
+misma suposición equivocada que el decodificador. Los dos estaban mal y se daban la
+razón. Un test que encodea con las reglas del decodificador no prueba el decodificador,
+prueba que sabe copiarse a sí mismo.
+
+**2. Anchor asigna las cuentas `init` ANTES de evaluar los `constraint` de más abajo.**
+
+El primer intento de probar el `DEPLOYER` dio un rechazo que parecía bueno:
+
+```
+Program 11111111111111111111111111111111 failed: custom program error: 0x1
+```
+
+Ese `11111…` es el System Program y `0x1` son fondos insuficientes: el intruso no
+tenía SOL para pagar la renta de la cuenta nueva, así que la asignación falló antes de
+llegar a mi comprobación. **La transacción revertía por el motivo equivocado.** Con el
+intruso financiado con 0,05 SOL:
+
+```
+Program log: AnchorError caused by account: payer.
+             Error Code: NotDeployer. Error Number: 6004.
+```
+
+Ahí sí. En los dos casos el ataque queda bloqueado, pero solo el segundo prueba que lo
+bloquea la constante y no la casualidad.
+
+**La lección, que vale para todo lo que viene:** un caso negativo que revierta no es un
+caso negativo que pase. Hay que mirar POR QUÉ revirtió. `custody-prueba.js` marca ahora
+esos casos como `¿? sin probar` en vez de `OK`, y los cuenta aparte — un OK falso es
+peor que un fallo, porque un fallo se arregla y un OK falso se cree.
+
+---
+
 ### La constante DEPLOYER, y por qué no es la comprobación elegante
 
 `initialize` solo la puede llamar la dirección compilada en `pill-custody/src/lib.rs`.
