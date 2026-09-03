@@ -8,10 +8,12 @@ skip-lint = false
 [programs.localnet]
 pill_treasury = "PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW"
 pill_custody = "2rCs2GNBbncW5ZwLeahx5yDeoLyCTD1GdK2zzGjfv3sk"
+pill_staking = "6PHKEA9qmFGjUSJBLJ3wSkkpKn1aEch9kzfTXfo5e65b"
 
 [programs.devnet]
 pill_treasury = "PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW"
 pill_custody = "2rCs2GNBbncW5ZwLeahx5yDeoLyCTD1GdK2zzGjfv3sk"
+pill_staking = "6PHKEA9qmFGjUSJBLJ3wSkkpKn1aEch9kzfTXfo5e65b"
 
 [registry]
 url = "https://api.apr.dev"
