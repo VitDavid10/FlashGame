@@ -77,6 +77,10 @@ echo "Listo. Comprueba antes de meter dinero:"
 echo "  solana program show $PROGRAMA"
 echo "  node scripts/custody.js estado $PROGRAMA"
 echo
+echo "OJO con los upgrades: --max-len por defecto reserva justo el tamano de HOY."
+echo "Un parche que ocupe mas bytes NO cabra. Antes de subirlo:"
+echo "  solana program extend $PROGRAMA <bytes de mas>   # cuesta renta adicional"
+echo
 echo "La upgrade authority sigue viva: puedes parchear bugs y recuperar la renta."
 echo "Revocar (irreversible, y renuncia a los $NECESARIO SOL):"
 echo "  solana program set-upgrade-authority $PROGRAMA --final"
