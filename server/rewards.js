@@ -410,7 +410,7 @@ async function pagarDirecto(date, solana, log) {
             // Una transferencia por ganador y no una sola con diez instrucciones: si
             // una falla (por ejemplo, hay que crearle la cuenta asociada), las demas
             // ya han salido y no se reintentan enteras.
-            const sig = await solana.withdraw(fila.wallet, pill);
+            const sig = await solana.pagaPremio(fila.wallet, pill);
             pagos.push({ wallet: fila.wallet, rank: fila.rank, pill, sig });
             if (log) log(`Premio pagado a ${fila.wallet.slice(0, 6)}…: ${pill} PILL — ${sig}`);
         } catch (e) {
@@ -544,7 +544,7 @@ async function pagarUno(epoch, wallet, solana, log) {
     if (!(pill > 0)) return { ok: false, error: 'premio de cero' };
 
     try {
-        const sig = await solana.withdraw(wallet, pill);
+        const sig = await solana.pagaPremio(wallet, pill);
         ronda.pagos.push({ wallet, rank: fila.rank, pill, sig, at: new Date().toISOString() });
         ronda.anclaLeaderboard = eslabon.sig;
         dirty = true; save();

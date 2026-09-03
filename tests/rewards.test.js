@@ -401,7 +401,7 @@ test('NO se paga un dia que no este anclado en la cadena', async () => {
 
     const solanaFalso = {
         canWithdraw: () => true,
-        withdraw: async () => 'nunca deberia llegar aqui',
+        pagaPremio: async () => 'nunca deberia llegar aqui',
         sendInstructions: async () => 'sig',
     };
     const r = await rewards.pagarDirecto(F, solanaFalso, null);
@@ -419,7 +419,7 @@ test('anclado el dia, se paga a cada ganador y queda la firma', async () => {
     const solanaFalso = {
         canWithdraw: () => true,
         sendInstructions: async () => 'sigDelAncla',
-        withdraw: async (wallet, pill) => { pagados.push({ wallet, pill }); return 'sigPago' + pagados.length; },
+        pagaPremio: async (wallet, pill) => { pagados.push({ wallet, pill }); return 'sigPago' + pagados.length; },
     };
 
     // Primero el ancla, que es el requisito.
@@ -450,7 +450,7 @@ test('lo pagado cuadra con la lista publicada, wallet por wallet', async () => {
     const solanaFalso = {
         canWithdraw: () => true,
         sendInstructions: async () => 'ancla',
-        withdraw: async (w, pill) => { pagados.set(w, pill); return 'sig'; },
+        pagaPremio: async (w, pill) => { pagados.set(w, pill); return 'sig'; },
     };
     await lb.anclarDia(F, solanaFalso, null);
     await rewards.pagarDirecto(F, solanaFalso, null);
@@ -470,7 +470,7 @@ test('no se paga dos veces el mismo dia', async () => {
     const solanaFalso = {
         canWithdraw: () => true,
         sendInstructions: async () => 'ancla',
-        withdraw: async () => { veces++; return 'sig'; },
+        pagaPremio: async () => { veces++; return 'sig'; },
     };
     await lb.anclarDia(F, solanaFalso, null);
     await rewards.pagarDirecto(F, solanaFalso, null);
@@ -520,7 +520,7 @@ function solanaFalsoQuePaga(registro) {
     return {
         canWithdraw: () => true,
         sendInstructions: async () => 'sigAncla',
-        withdraw: async (w, pill) => { registro.push({ w, pill }); return 'sigPago' + registro.length; },
+        pagaPremio: async (w, pill) => { registro.push({ w, pill }); return 'sigPago' + registro.length; },
     };
 }
 

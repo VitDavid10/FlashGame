@@ -129,6 +129,86 @@ function loadAuthority() {
 }
 function canWithdraw() { try { loadAuthority(); return true; } catch (e) { return false; } }
 
+/* ===================== LA WALLET DE LOS PREMIOS ===================== */
+
+/*
+ * De donde salen los premios del leaderboard. Es una wallet APARTE de la autoridad
+ * a proposito, aunque por defecto sean la misma.
+ *
+ * Lo que se gana con separarlas:
+ *
+ *   - Se ve. Cualquiera abre esa direccion en el explorador y ve entrar la
+ *     asignacion y salir los premios, sin mezclarse con el rake, los depositos ni
+ *     el gas. "Los premios los paga esta wallet" pasa de ser una frase a una lista
+ *     de transacciones.
+ *   - Se acota lo caliente. Esa wallet lleva lo de unos dias, no el 15% del supply:
+ *     el grueso vive en un bloqueo externo (Jupiter Lock, Streamflow) que va
+ *     soltando poco a poco. Si el servidor cae en malas manos, lo que se pierde es
+ *     lo de unos dias, no la asignacion entera.
+ *
+ * Sin REWARDS_SECRET configurado paga la autoridad, que es lo que pasaba antes.
+ */
+let _rewards = null;
+function loadRewards() {
+    if (_rewards) return _rewards;
+    const { Keypair } = require('@solana/web3.js');
+    if (process.env.REWARDS_SECRET) {
+        _rewards = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.REWARDS_SECRET)));
+        return _rewards;
+    }
+    const f = path.join(__dirname, '..', 'scripts', '.rewards-wallet.json');
+    if (fs.existsSync(f)) {
+        _rewards = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(f, 'utf8'))));
+        return _rewards;
+    }
+    _rewards = loadAuthority();
+    return _rewards;
+}
+
+function rewardsPubkey() {
+    try { return loadRewards().publicKey.toBase58(); } catch (e) { return null; }
+}
+
+/** true si la wallet de premios es una distinta de la autoridad. */
+function rewardsAparte() {
+    try { return loadRewards().publicKey.toBase58() !== loadAuthority().publicKey.toBase58(); }
+    catch (e) { return false; }
+}
+
+/*
+ * Manda un premio. Transferencia normal, a proposito.
+ *
+ * NO pasa por withdraw(): eso es el camino del saldo in-game, que con el contrato de
+ * custodia desplegado exige la firma del jugador —el dinero de ahi es suyo y ya
+ * estaba apuntado a su nombre—. Un premio es otra cosa: sale de la asignacion, el
+ * ganador no ha depositado nada, y quien decide que le toca es la lista anclada. Son
+ * dos flujos distintos y compartir funcion solo serviria para que un cambio en uno
+ * rompiera el otro.
+ *
+ * El gas lo pone esta wallet: un ganador sin SOL tiene que poder cobrar.
+ */
+async function pagaPremio(toWallet, pill) {
+    const { Connection, PublicKey } = require('@solana/web3.js');
+    const { getOrCreateAssociatedTokenAccount, transfer } = require('@solana/spl-token');
+    const pagador = loadRewards();
+    const conn = new Connection(RPC, 'confirmed');
+    const mint = new PublicKey(MINT);
+    const desde = await getOrCreateAssociatedTokenAccount(conn, pagador, mint, pagador.publicKey);
+    const hacia = await getOrCreateAssociatedTokenAccount(conn, pagador, mint, new PublicKey(toWallet));
+    return await transfer(conn, pagador, desde.address, hacia.address, pagador, pillToRaw(pill));
+}
+
+/** Lo que le queda a la wallet de premios, en PILL. Para el panel y la web. */
+async function saldoDePremios() {
+    const { Connection, PublicKey } = require('@solana/web3.js');
+    const { getAssociatedTokenAddressSync, getAccount } = require('@solana/spl-token');
+    try {
+        const conn = new Connection(RPC, 'confirmed');
+        const ata = getAssociatedTokenAddressSync(new PublicKey(MINT), new PublicKey(rewardsPubkey()), true);
+        return Number((await getAccount(conn, ata)).amount) / 10 ** DECIMALS;
+    } catch (e) { return 0; }
+}
+
 // --- Faucet SOL (devnet): envía SOL nativo del treasury a la wallet del jugador ---
 // Usa la MISMA keypair de la autoridad (que ya paga el gas de los retiros). Esa
 // cuenta debe tener SOL de devnet (se rellena con `solana airdrop 1 <addr> -u devnet`).
@@ -317,4 +397,7 @@ async function walletBalance(owner) {
     } catch (e) { return 0; }
 }
 
-module.exports = { walletBalance, verifyDeposit, withdraw, prepararRetiro, enviarRetiro, burn, airdropSol, canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey, RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };
+module.exports = { walletBalance, verifyDeposit, withdraw, prepararRetiro, enviarRetiro, burn, airdropSol,
+    canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey,
+    pagaPremio, rewardsPubkey, rewardsAparte, saldoDePremios,
+    RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };

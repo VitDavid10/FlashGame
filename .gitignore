@@ -80,3 +80,6 @@ server/reserves/
 server/reserves-state.json
 server/rake.json
 .tmp-demo/
+
+# Claves. NUNCA en git.
+scripts/.rewards-wallet.json
