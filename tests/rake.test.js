@@ -164,6 +164,58 @@ test('si una transaccion falla, esa deuda se queda entera', async () => {
     fs.rmSync(TMP4, { recursive: true, force: true });
 });
 
+/* ===================== EL RAKE POR DIA ===================== */
+
+/*
+ * Es el numero que decide el premio del leaderboard, y el porque importa:
+ *
+ * En classic la entrada SE CONVIERTE en tu carry (game-host.js:384) y quien gana la
+ * sala con 5 kills cobra SIN fee (room-loop.js:332). Asi que veinte wallets propias
+ * entrando juntas, una matando a las otras diecinueve, recuperan las veinte entradas
+ * ENTERAS: el ataque cuesta cero. Medir el premio por lo cobrado en entradas no
+ * defiende de nada.
+ *
+ * El rake si es infalsificable: es lo que la casa se queda, y jugando contra ti mismo
+ * eso da cero — el ganador no paga fee y los muertos no llevaban nada encima.
+ */
+
+test('el rake se acumula por dia UTC', () => {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const antes = rake.delDia(hoy);
+    rake.alStaking(500, 'exit fee de prueba');
+    assert.equal(rake.delDia(hoy), antes + 500);
+});
+
+test('un dia sin rake da 0, no undefined', () => {
+    // Con undefined, `rake * FACTOR` daria NaN y el bote se colaria como "sin acotar"
+    // en vez de como "no hay premio".
+    assert.equal(rake.delDia('1999-01-01'), 0);
+    assert.equal(typeof rake.delDia('1999-01-01'), 'number');
+});
+
+test('EL ATAQUE: jugar contra uno mismo no deja rake, luego no da premio', () => {
+    const TMP5 = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-atk-'));
+    const antesDir = process.env.LB_DIR;
+    process.env.LB_DIR = TMP5;
+    delete require.cache[require.resolve('../server/rake.js')];
+    const r5 = require('../server/rake.js');
+    const hoy = new Date().toISOString().slice(0, 10);
+
+    // 20 wallets mias entran a 1.160: 23.200 PILL de carrys. Una mata a las otras 19
+    // y gana la sala -> cashout sin fee. Las 19 muertas salen con carry 0, tampoco
+    // pagan. La casa no se queda NADA: no hay ni un apunte de rake.
+    assert.equal(r5.delDia(hoy), 0, 'jugar contra uno mismo no puede dejar rake');
+
+    // Con jugadores de verdad la mayoria NO gana la sala, asi que pagan su exit fee.
+    r5.alStaking(Math.floor(1160 * 0.5), 'exit fee sin kills');
+    r5.alStaking(Math.floor(1160 * 0.2), 'exit fee con una kill');
+    assert.ok(r5.delDia(hoy) > 0, 'con jugadores de verdad si hay rake');
+
+    process.env.LB_DIR = antesDir;
+    delete require.cache[require.resolve('../server/rake.js')];
+    fs.rmSync(TMP5, { recursive: true, force: true });
+});
+
 test('limpieza', () => {
     rake.save();
     fs.rmSync(TMP, { recursive: true, force: true });

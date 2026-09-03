@@ -164,6 +164,40 @@ function recordPeak(wallet, peak, name) {
  * comprobarlo, y dejar la lista vacia por falta de datos seria peor que no filtrar.
  * La fila lleva el numero de oponentes para que se vea de donde sale la decision.
  */
+/*
+ * Cuantos oponentes DISTINTOS por partida hace falta ver para contar como jugador.
+ *
+ * `oponentes >= MIN_OPONENTES` a secas no defiende de nada: veinte wallets propias
+ * jugando entre ellas ven diecinueve oponentes distintos cada una y pasan el filtro
+ * sobradas. Lo que un cluster cerrado NO puede fingir es conocer gente nueva:
+ *
+ *   veinte wallets propias, veinte partidas -> 19 distintos / 20 partidas = 0,95
+ *   jugador real, 4 partidas de 35 personas -> ~100 distintos / 4 partidas = 25
+ *
+ * Los separa un factor de veinticinco. Y para subir el ratio hay que meter wallets
+ * nuevas de verdad: mas entradas que pagar y mas horas que jugar, que es justo el
+ * coste que el ataque intentaba evitar.
+ *
+ * Se exige tambien un minimo de partidas: con una sola partida el ratio es enorme
+ * por construccion (34 oponentes / 1) y no dice nada.
+ *
+ * EL LIMITE DE ESTO, dicho claro: el ratio de un jugador real depende de cuanta
+ * gente haya en el juego. Con quince jugadores en total, todos se cruzan siempre con
+ * los mismos — un cluster y la comunidad entera son indistinguibles, y no hay filtro
+ * que arregle eso. Por eso el umbral por defecto es BAJO (2): con el juego pequeño
+ * no echa a nadie real, y aun asi deja fuera al grupo cerrado, que se queda por
+ * debajo de 1. Cuando la base crezca se sube por variable de entorno, sin tocar
+ * nada mas.
+ */
+const MIN_DIVERSIDAD = parseFloat(process.env.LB_MIN_DIVERSITY) || 2;
+const MIN_PARTIDAS = parseInt(process.env.LB_MIN_MATCHES, 10) || 3;
+
+function diversoBastante(o) {
+    const partidas = o.partidas || 0;
+    if (partidas < MIN_PARTIDAS) return false;
+    return (o.oponentes / partidas) >= MIN_DIVERSIDAD;
+}
+
 function tablaDe(players, oponentes) {
     const hayDatos = oponentes && oponentes.size > 0;
     return Object.entries(players)
@@ -171,7 +205,8 @@ function tablaDe(players, oponentes) {
             if (p.kills < MIN_KILLS) return false;
             if (!hayDatos) return true;
             const o = oponentes.get(w);
-            return !!o && o.oponentes >= MIN_OPONENTES;
+            if (!o || o.oponentes < MIN_OPONENTES) return false;
+            return diversoBastante(o);
         })
         .sort(([wa, a], [wb, b]) => (b.kills - a.kills) || (b.peak - a.peak) || (wa < wb ? -1 : 1))
         .slice(0, PUBLICADOS)
@@ -323,7 +358,8 @@ module.exports = {
     estadoHoy, diaCerrado, cadena, verificarCadena,
     cerrarAhora, repartoDe, tablaDe, setProveedorOponentes,
     save,
-    PESOS, MIN_KILLS, MIN_OPONENTES, PUBLICADOS,
+    PESOS, MIN_KILLS, MIN_OPONENTES, MIN_DIVERSIDAD, MIN_PARTIDAS, PUBLICADOS,
+    _diversoBastante: diversoBastante,
     // Para los tests: la funcion de hash tiene que ser reproducible desde fuera, y
     // hay que poder simular el paso de los dias sin esperar a medianoche.
     _canonico: canonico, _sha256hex: sha256hex, GENESIS,

@@ -38,17 +38,22 @@ const DECIMALS = parseInt(process.env.PILL_DECIMALS, 10) || 6;
 /** Presupuesto de respaldo mientras no hay contrato, en PILL enteros. */
 const BUDGET_FALLBACK = parseInt(process.env.REWARD_BUDGET_PILL, 10) || 50000;
 /*
- * Cuanto premio se paga por cada PILL cobrado en entradas ese dia.
+ * Cuanto premio se paga por cada PILL que la casa se quedo ese dia.
  *
  * Es lo que impide que crear wallets sea rentable. El grifo del contrato es un
  * techo, pero un techo no sabe cuanta gente hay jugando: en un juego vacio deja
  * salir lo mismo que en uno lleno, y entonces a cualquiera le sale a cuenta meter
- * doscientas wallets suyas y cobrar el bote entero.
+ * veinte wallets suyas y cobrar el bote entero.
  *
- * Atando el bote a lo RECAUDADO, ese ataque deja de tener sentido por aritmetica y
- * no por filtro: con el factor en 1 o menos, nadie puede sacar mas de lo que metio
- * en entradas, meta las wallets que meta. Por encima de 1 el ataque vuelve a ser
- * rentable, asi que el valor se acota ahi.
+ * OJO con medirlo por lo COBRADO EN ENTRADAS, que es lo que hacia antes: no sirve.
+ * En classic la entrada se convierte en tu carry, y quien gana la sala con 5 kills
+ * cobra sin fee — veinte wallets propias, una matando a las otras diecinueve,
+ * recuperan las veinte entradas enteras. El ataque cuesta CERO.
+ *
+ * Lo que no se puede falsear es el RAKE: lo que la casa se queda de verdad. Jugando
+ * contra ti mismo da cero (el que gana no paga fee, los muertos no llevaban nada) y
+ * con jugadores de verdad da mucho, porque casi nadie gana la sala. Con el factor
+ * en 1 o menos, nadie puede cobrar mas de lo que la casa ingreso por su culpa.
  *
  * Un 0 significa lo que parece: no se pagan premios. No es la forma de desactivar
  * este limite — no hay forma, es una proteccion, no una opcion.
@@ -66,17 +71,50 @@ const BUDGET_FALLBACK = parseInt(process.env.REWARD_BUDGET_PILL, 10) || 50000;
  * unico que hacen es que el bote sea el completo. Es lo que convierte "traer gente"
  * en un interes de los que ya estan.
  *
- * No reabre el sybil: el bote sigue acotado por lo recaudado (ver REWARD_FACTOR), y
- * esto solo puede BAJARLO. Meter cincuenta wallets para llegar al umbral cuesta
- * cincuenta entradas, y el bote no puede pasar de lo que esas entradas pagaron.
+ * Es el freno que de verdad encarece montar un cluster de wallets: llegar al umbral
+ * exige cincuenta wallets con kills y oponentes distintos, no cinco.
  */
 const POT_COMPLETO_CON = Math.max(1, parseInt(process.env.LB_FULL_POT_AT, 10) || 50);
 
+/*
+ * Cuanto premio se paga por cada PILL que la casa se quedo ese dia (el "rake":
+ * exit fees, comision de arcade, entradas de los que no vuelven, botes sin reclamar,
+ * tienda). NO por cada PILL cobrado en entradas — eso no defiende de nada, porque en
+ * classic la entrada se convierte en tu carry y quien gana la sala cobra sin fee:
+ * veinte wallets propias, una matando a las otras diecinueve, recuperan las veinte
+ * entradas enteras y el ataque cuesta CERO.
+ *
+ * El rake si es infalsificable: jugando contra ti mismo da cero, porque el que gana
+ * no paga fee y los muertos no llevaban nada.
+ *
+ * NO esta acotado a 1, y esto es deliberado. Con factor 1 el leaderboard se
+ * estrangula: el rake de classic sale solo de quien sobrevive al timer sin ganar la
+ * sala, y con 500 jugadores da unos 50 $ al dia frente a los 170 $ del grifo. El
+ * factor es el multiplicador que se calibra con datos reales, no una constante de
+ * seguridad. Lo que sigue siendo un suelo duro pase lo que pase: cero por cualquier
+ * factor sigue siendo cero.
+ *
+ * Un 0 significa lo que parece: no se pagan premios.
+ */
 const REWARD_FACTOR = (() => {
     const v = parseFloat(process.env.REWARD_FACTOR);
-    if (!Number.isFinite(v)) return 1;
-    return Math.max(0, Math.min(1, v));
+    if (!Number.isFinite(v)) return 20;
+    return Math.max(0, v);
 })();
+
+/*
+ * Modo seco: se calcula todo y no se publica NADA en la cadena.
+ *
+ * Es la herramienta de calibracion, y hace falta porque con la curva de emision
+ * actual el primer mes se reparte un tercio de la tesoreria: esperar treinta dias
+ * para ajustar el factor significa haberlo gastado ya.
+ *
+ * En seco el ciclo prepara las rondas de verdad y escribe los JSON publicos, asi que
+ * en 48 h hay datos reales —cuanto rake se genero, cuantos elegibles hubo, que bote
+ * habria salido, quien habria cobrado— sin haber movido un solo token. Cuando los
+ * numeros convenzan, se quita la variable y las rondas pendientes se publican.
+ */
+const DRY_RUN = process.env.REWARD_DRY_RUN === '1';
 
 const DIA = 86400;
 
@@ -143,28 +181,21 @@ function save() { if (!dirty || SOLO_LECTURA) return; dirty = false; try { fs.wr
  * lo que se jugo ese dia, se ve.
  */
 function porActividad(date, topeRaw, log) {
-    // La ventana es EL DIA que se premia, no las ultimas 24 h. Con dias atrasados
-    // —el servidor caido, o el ciclo corriendo a media tarde— una ventana movil les
-    // aplicaria a todos la actividad de hoy: un dia flojo cobraria como uno bueno
-    // solo por premiarse tarde.
-    const ini = Date.parse(date + 'T00:00:00Z');
-    if (!Number.isFinite(ini)) return topeRaw;
-    let rec;
+    // El dia es el que se premia, con el mismo corte UTC que usa el leaderboard. Una
+    // ventana movil de 24 h le aplicaria a un dia atrasado la actividad de hoy, y el
+    // ciclo prepara hasta siete dias de una tirada.
+    let rake;
     try {
-        const matches = require('./matches.js');
-        if (typeof matches.recaudadoEntre !== 'function') return topeRaw;
-        rec = matches.recaudadoEntre(ini, ini + DIA * 1000);
+        rake = require('./rake.js').delDia(date);
     } catch (e) {
-        // Sin recibos no se puede acotar. Se deja el techo del contrato antes que
+        // Sin el dato no se puede acotar. Se deja el techo del contrato antes que
         // bloquear los premios: el techo sigue siendo un limite duro.
         return topeRaw;
     }
-    const porJuego = pillToRaw(Math.floor(rec.pill * REWARD_FACTOR));
+    if (!(rake > 0)) return 0n;   // la casa no ingreso nada ese dia: no hay premio
+    const porJuego = pillToRaw(Math.floor(rake * REWARD_FACTOR));
     if (porJuego >= topeRaw) return topeRaw;
-    if (log) {
-        log(`Premios ${date}: ${rec.entradas} entradas en ${rec.partidas} partidas (${rec.pill} PILL) ` +
-            `-> bote ${rawToPill(porJuego)} en vez del tope ${rawToPill(topeRaw)}`);
-    }
+    if (log) log(`Premios ${date}: la casa ingreso ${rake} PILL -> bote ${rawToPill(porJuego)} (tope ${rawToPill(topeRaw)})`);
     return porJuego;
 }
 
@@ -242,6 +273,8 @@ function prepararRonda(date, presupuesto) {
         // leaderboard publicado, que ya va encadenado por hash.
         elegibles,
         potCompletoCon: POT_COMPLETO_CON,
+        factor: REWARD_FACTOR,
+        seco: DRY_RUN || undefined,
         topeRaw: String(presupuesto),
         trasActividadRaw: String(trasActividad),
         generatedAt: new Date().toISOString(),
@@ -267,6 +300,12 @@ function prepararRonda(date, presupuesto) {
 
 /** Publica on-chain una ronda ya preparada. Sin cadena configurada, no hace nada. */
 async function publicarRonda(ronda, solana, log) {
+    // El corte del modo seco va aqui y no en el ciclo: asi TODO lo que llame a
+    // publicar respeta la calibracion, incluido el boton del panel de admin.
+    if (DRY_RUN) {
+        if (log) log(`[SECO] Ronda ${ronda.epoch} (${ronda.date}) NO publicada: ${rawToPill(ronda.totalRaw)} PILL para ${ronda.winners} ganadores`);
+        return { ok: false, error: 'modo seco (REWARD_DRY_RUN=1): la ronda queda preparada y sin publicar', seco: true };
+    }
     if (!PROGRAM) return { ok: false, error: 'sin programa de tesoreria configurado' };
     if (!solana.canWithdraw()) return { ok: false, error: 'clave de la autoridad no disponible' };
     if (ronda.sig) return { ok: true, sig: ronda.sig, repetida: true };
@@ -442,6 +481,11 @@ function estado() {
         })),
         total: rondas.length,
         sinPublicar: rondas.filter(r => !r.sig && !r.cancelled).length,
+        // Sin esto, en modo seco el panel enseña rondas "sin publicar" y parece que
+        // algo falla, cuando es exactamente lo que se le ha pedido que haga.
+        seco: DRY_RUN,
+        factor: REWARD_FACTOR,
+        potCompletoCon: POT_COMPLETO_CON,
     };
 }
 
@@ -449,5 +493,5 @@ module.exports = {
     tick, arranca, estado, premiosDe, marcarCobrado, rondaPublica,
     prepararRonda, publicarRonda, presupuestoRaw, refrescar,
     epochDeFecha, fechaDeEpoch, pillToRaw, rawToPill,
-    PROGRAM, save,
+    PROGRAM, save, DRY_RUN, REWARD_FACTOR, POT_COMPLETO_CON,
 };

@@ -25,6 +25,8 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-onchain-'));
 process.env.LB_DIR = TMP;
 process.env.TREASURY_PROGRAM = 'Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS';
 process.env.REWARD_BUDGET_PILL = '50000';
+// Factor 1 para que los numeros sean directos: 1 PILL de rake -> 1 de bote.
+process.env.REWARD_FACTOR = '1';
 
 const rewards = require('../server/rewards.js');
 const lb = require('../server/leaderboard.js');
@@ -103,26 +105,18 @@ function conexionFalsa(mapa) {
 /* ===================== PRESUPUESTO ===================== */
 
 /*
- * El bote es el menor de varios limites, y uno de ellos es lo que se recaudo EL DIA
- * que se premia. Estos tests miden el grifo del contrato, asi que el dia en cuestion
- * necesita actividad de sobra: si no, todos acabarian midiendo el freno de la
- * actividad y no se notaria que el grifo dejo de funcionar.
+ * El bote es el menor de varios limites, y uno de ellos es el RAKE de ese dia: lo
+ * que la casa se quedo. Estos tests miden el grifo del contrato, asi que el dia en
+ * cuestion necesita rake de sobra — si no, todos acabarian midiendo el otro freno y
+ * no se notaria que el grifo dejo de funcionar.
  *
- * La fecha importa: el freno abre una ventana de 00:00 a 24:00 UTC de ESE dia.
+ * La fecha importa: el rake se acumula por dia UTC, con el mismo corte que el
+ * leaderboard.
  */
 function actividadDeSobra(fecha) {
-    const matches = require('../server/matches.js');
+    const rake = require('../server/rake.js');
     const t = fecha ? Date.parse(fecha + 'T12:00:00Z') : Date.now();
-    for (let k = 0; k < 20; k++) {
-        matches.registra({
-            room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
-            entryFee: 100000, pot: 0,
-            players: Array.from({ length: 10 }, (_, i) => ({
-                wallet: Keypair.generate().publicKey.toBase58(), name: 'j' + i,
-                kills: 3, peak: 1, paid: true, isTester: false,
-            })),
-        });
-    }
+    rake.alStaking(20000000, 'exit fees del dia', t);
 }
 actividadDeSobra();              // hoy
 actividadDeSobra('2026-07-01');  // el dia que premian los tests de claims
@@ -152,27 +146,23 @@ test('con poca actividad manda la actividad, aunque el grifo deje salir mucho', 
         delete require.cache[require.resolve(m)];
     }
     const rw2 = require('../server/rewards.js');
-    const m2 = require('../server/matches.js');
+    const rk2 = require('../server/rake.js');
     const lb3 = require('../server/leaderboard.js');
 
     const F = '2026-06-15';
     const t = Date.parse(F + 'T12:00:00Z');
     const ws = Array.from({ length: 4 }, () => Keypair.generate().publicKey.toBase58());
-    m2.registra({
-        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
-        entryFee: 1000, pot: 0,
-        players: ws.map((w, i) => ({ wallet: w, name: 'j' + i, kills: 3, peak: 1, paid: true, isTester: false })),
-    });
+    rk2.alStaking(4000, 'exit fees', t);
     ws.forEach((w, i) => { for (let k = 0; k < 10 - i; k++) lb3.recordKill(w, 'j' + i); lb3.recordPeak(w, 100 - i, 'j' + i); });
     lb3._setFecha(F);
     lb3.cerrarAhora();
 
-    // El grifo dejaria salir 60.000; se jugaron 4 entradas de 1.000 = 4.000. Y luego
-    // los otros dos recortes: 4 de 50 elegibles, y los pesos de los cuatro puestos.
+    // El grifo dejaria salir 60.000; la casa solo se quedo 4.000 ese dia. Y luego los
+    // otros dos recortes: 4 de 50 elegibles, y los pesos de los cuatro puestos.
     const r = rw2.prepararRonda(F, rw2.pillToRaw(60000));
     const esperado = Math.floor(Math.floor(4000 * 4 / 50) * 77 / 100);   // 35+20+13+9
     assert.equal(rw2.rawToPill(r.totalRaw), esperado);
-    assert.ok(rw2.rawToPill(r.totalRaw) < 4000, 'nunca por encima de lo recaudado');
+    assert.ok(rw2.rawToPill(r.totalRaw) < 4000, 'nunca por encima del rake del dia');
 
     process.env.LB_DIR = antes;
     for (const m of ['../server/matches.js', '../server/rewards.js', '../server/leaderboard.js']) {
@@ -364,7 +354,7 @@ test('el decodificador lee una RewardRound como la escribe el contrato', () => {
  * que el bote sea mayor de lo que deberia, y todos los tests sueltos sigan pasando.
  *
  *   1. grifo del contrato   min(saldo x bps / 10000, cap)
- *   2. recaudacion          x REWARD_FACTOR sobre lo cobrado en entradas
+ *   2. rake del dia         x REWARD_FACTOR sobre lo que se quedo la casa
  *   3. participacion        x min(1, elegibles / LB_FULL_POT_AT)
  *   4. pesos vacios         solo salen los puestos que existen
  */
@@ -378,22 +368,18 @@ test('los cuatro frenos se multiplican, no se pisan', () => {
     }
     const rw = require('../server/rewards.js');
     const lb2 = require('../server/leaderboard.js');
-    const mt = require('../server/matches.js');
+    const mt = require('../server/rake.js');
 
     // 1. El tope del contrato: saldo 100 M, bps 100 (1 %) -> 1.000.000, cap 100.000.
     //    Manda el cap.
     const TOPE = 100000;
 
-    // 2. Recaudacion DEL DIA que se premia: 8 entradas de 5.000 = 40.000 PILL.
+    // 2. Rake DEL DIA que se premia: la casa se quedo 40.000 PILL.
     //    Con REWARD_FACTOR=1, el bote no puede pasar de ahi.
     const FECHA_R = '2026-07-09';
     const t = Date.parse(FECHA_R + 'T12:00:00Z');
     const ws = Array.from({ length: 8 }, () => Keypair.generate().publicKey.toBase58());
-    mt.registra({
-        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
-        entryFee: 5000, pot: 0,
-        players: ws.map((w, i) => ({ wallet: w, name: 'j' + i, kills: 3, peak: 1, paid: true, isTester: false })),
-    });
+    mt.alStaking(40000, 'exit fees', t);
 
     // 3. Participacion: 8 elegibles de los 50 del umbral -> x 8/50 = 0,16.
     ws.forEach((w, i) => { for (let k = 0; k < 10 - i; k++) lb2.recordKill(w, 'j' + i); lb2.recordPeak(w, 100 - i, 'j' + i); });
@@ -404,8 +390,8 @@ test('los cuatro frenos se multiplican, no se pisan', () => {
     // 4. Pesos vacios: con ocho en la lista salen 35+20+13+9+7+5+4+3 = 96 %.
     const r = rw.prepararRonda(FECHA_R, rw.pillToRaw(TOPE));
 
-    const trasRecaudacion = Math.min(TOPE, 40000);          // 40.000
-    const trasParticipacion = Math.floor(trasRecaudacion * 8 / 50);   // 6.400
+    const trasRake = Math.min(TOPE, 40000);                 // 40.000
+    const trasParticipacion = Math.floor(trasRake * 8 / 50);          // 6.400
     const esperado = Math.floor(trasParticipacion * 96 / 100);        // 6.144
     assert.equal(rw.rawToPill(r.totalRaw), esperado,
         'el bote no es el producto de los cuatro frenos: alguno se esta saltando');

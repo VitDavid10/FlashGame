@@ -65,10 +65,31 @@ Environment=LB_MIN_KILLS=3
 Environment=LB_MIN_OPPONENTS=5
 
 # --- Los dos frenos del bote que NO estan en el contrato ---
-# Premio por cada PILL cobrado en entradas ese dia. Con 1 nadie puede sacar mas de
-# lo que metio, meta las wallets que meta: es aritmetica, no un filtro. Acotado a
-# [0,1] en el codigo; un 0 significa "sin premios", no "sin limite".
-Environment=REWARD_FACTOR=1
+# Premio por cada PILL que la CASA se quedo ese dia (exit fees, comision de arcade,
+# entradas perdidas, botes sin reclamar, tienda). No por cada PILL cobrado en
+# entradas: en classic la entrada se convierte en tu carry y quien gana la sala cobra
+# sin fee, asi que veinte wallets propias recuperan las veinte entradas enteras y el
+# ataque cuesta CERO. El rake si es infalsificable: jugando contra ti mismo da cero.
+#
+# NO esta acotado a 1: con factor 1 el leaderboard se estrangula (unos 50 \$/dia con
+# 500 jugadores frente a los 170 \$ del grifo). Es el multiplicador que se calibra con
+# datos. Lo que no cambia: cero por cualquier factor sigue siendo cero.
+Environment=REWARD_FACTOR=20
+
+# MODO SECO: calcula las rondas y NO publica nada en la cadena. Es la herramienta de
+# calibracion — en 48 h hay datos reales del rake y del bote sin gastar un token.
+# Quitalo (o ponlo a 0) cuando los numeros convenzan.
+Environment=REWARD_DRY_RUN=1
+
+# Oponentes DISTINTOS por partida para contar como jugador y no como cluster.
+# Veinte wallets propias jugando entre ellas dan 19/20 = 0,95; un jugador real que
+# echa 4 partidas de 35 personas da ~25. Insistir empeora el ratio, no lo mejora.
+# El 2 por defecto es bajo a proposito: con el juego pequeño todos se cruzan con los
+# mismos y un umbral alto echaria a jugadores de verdad. Se sube cuando crezca.
+Environment=LB_MIN_DIVERSITY=2
+# Partidas minimas para que el ratio signifique algo (con una sola es enorme por
+# construccion: 34 oponentes / 1 partida).
+Environment=LB_MIN_MATCHES=3
 # Jugadores en la lista del dia para que salga el bote entero. Por debajo sale
 # proporcional: con 25 la mitad, con 5 la decima parte. Sin esto, doce jugadores
 # echando tres partidas ya sueltan el maximo y estar en el top 10 sale gratis.

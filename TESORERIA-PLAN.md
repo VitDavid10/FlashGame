@@ -381,50 +381,113 @@ mordiendo a los pocos meses.
 deja la curva sin efecto durante el primer año. Usa `--simular-con <PILL>` para que
 la calcule sobre lo que vas a meter de verdad, no sobre el ejemplo.
 
-#### El tercer freno: el bote no puede pasar de lo recaudado
+#### El tercer freno: el bote no puede pasar del RAKE del día
 
 Los dos frenos anteriores son un techo, y un techo no sabe cuánta gente hay jugando:
 en una sala vacía deja salir lo mismo que en una llena. Eso abre un ataque que
-ningún filtro cierra del todo — **crear wallets es gratis, y si el bote sube al
-contarlas, a alguien le saldrá a cuenta crearlas**:
+ningún filtro cierra del todo, porque **crear wallets es gratis**.
 
-| K wallets propias | coste en entradas | bote si escala con jugadores | ganancia |
+La primera versión de esto ataba el bote a lo cobrado en **entradas**. No sirve, y
+la razón está en dos líneas del juego:
+
+- `game-host.js:384` — `carry: fee || 0`: **la entrada se convierte en tu carry**.
+- `room-loop.js:332` — a las 5 kills, cashout automático **sin fee**.
+
+| | |
+|---|---|
+| 20 wallets propias entran | 20 × 1.160 = 23.200 PILL en carrys |
+| Una mata a las otras 19 | acumula los 23.200 |
+| Llega a 5 kills, gana la sala | cobra **sin fee**: recupera los 23.200 |
+| Las 19 muertas | salen con carry 0, no pagan fee porque no llevan nada |
+| **Coste del ataque** | **0 PILL** |
+
+Recupera las entradas enteras. Medir el premio por lo que entró no defiende de nada.
+
+Lo que **sí** es infalsificable es el **rake**: lo que la casa se queda de verdad
+—exit fees, comisión de arcade, entradas de los que no vuelven, botes sin reclamar,
+tienda. Jugando contra ti mismo eso da **cero**, porque el que gana no paga fee y los
+muertos no llevaban nada.
+
+```
+bote del día = min( grifo del contrato , rake del día × REWARD_FACTOR )
+```
+
+##### Por qué el factor NO está acotado a 1
+
+Porque el rake de classic es pequeño: solo lo paga quien sobrevive al timer sin
+ganar la sala.
+
+| jugadores | partidas/día | rake/día | con factor 1 |
 |---|---|---|---|
-| 25 | 29 000 | 138 889 | **+109 889** |
-| 100 | 116 000 | 555 556 | **+439 556** |
-| 200 | 232 000 | 1 111 111 | **+879 111** |
+| 100 | 400 | 81.200 PILL | 8,12 $ |
+| 300 | 1.200 | 243.600 PILL | 24,36 $ |
+| 500 | 2.500 | 507.500 PILL | 50,75 $ |
 
-La salida no es contar mejor: es **no contar wallets**. Lo que no es gratis es la
-entrada de la sala, así que el bote se ata a eso:
+Ni con 500 jugadores llega a los 170 $ del grifo. Con factor 1 el leaderboard se
+estrangula justo cuando el juego funciona, así que el factor es **el multiplicador
+que se calibra con datos**, no una constante de seguridad. Por defecto 20.
 
-```
-bote del día = min( grifo del contrato , recaudado del día × REWARD_FACTOR )
-```
+Lo que no cambia por mucho que suba: **cero por cualquier factor sigue siendo cero.**
+El factor decide cuánto se paga por actividad real, no si el ataque funciona.
 
-Con el factor en 1 o menos, **nadie puede sacar más de lo que metió en entradas,
-meta las wallets que meta**. No es un filtro que se pueda esquivar: es aritmética.
-Por eso el valor está acotado a `[0, 1]` en el código — por encima de 1 el ataque
-vuelve a ser rentable.
+La parte honesta: con factor 20, quien sacrifique 100 PILL en fees puede cobrar
+2.000. No es imposible — es caro, lento y visible, y con el filtro de abajo encima,
+además exige cincuenta wallets que se crucen con gente de verdad.
 
-Y de paso hace lo que hacía falta para el arranque:
+#### El quinto freno: el cluster cerrado
 
-| jugadores | partidas/día | recaudado | bote (F=1) | días para 100 M |
-|---|---|---|---|---|
-| 20 | 60 | 69 600 | 69 600 | 1437 |
-| 50 | 150 | 174 000 | 174 000 | 575 |
-| 100 | 400 | 464 000 | 464 000 | 216 |
-| 300 | 1200 | 1 392 000 | 1 111 111 (tope) | 90 |
+`oponentes >= 5` a secas no defiende de nada: veinte wallets propias jugando entre
+ellas ven diecinueve oponentes distintos cada una y pasan sobradas. Lo que un grupo
+cerrado **no puede fingir es conocer gente nueva**:
 
-**Si el juego funciona, la tesorería se reparte en meses; si no funciona, dura
-años** en vez de vaciarse premiando salas vacías. Sin que nadie ajuste nada.
+| | oponentes distintos | partidas | ratio |
+|---|---|---|---|
+| Cluster de 20 wallets | 19 (siempre los mismos) | 20 | **0,95** |
+| Jugador real, 4 partidas de 35 | ~100 | 4 | **25** |
 
-El dato sale de los recibos de partida (`entryFee` y quién pagó), que se anclan en
-la cadena por lotes: cualquiera puede rehacer la suma desde `/api/matches` y
-comprobar que el bote publicado cuadra con lo que se jugó. No es un número que yo
-declare — es la misma lógica que el resto del diseño.
+Y la propiedad que importa: **insistir empeora el ratio, no lo mejora.** Jugar mil
+partidas entre las mismas veinte wallets lo hunde a 0,02. La única salida es meter
+wallets nuevas de verdad — más entradas que pagar y más horas que jugar, que es
+justo el coste que el ataque evitaba.
 
-> `REWARD_FACTOR=0` significa lo que parece: no se pagan premios. **No es la forma
-> de desactivar este límite** — no hay forma, es una protección y no una opción.
+**El límite de esto, dicho claro:** el ratio de un jugador real depende de cuánta
+gente haya en el juego. Con quince jugadores en total, todos se cruzan siempre con
+los mismos — un cluster y la comunidad entera son indistinguibles, y no hay filtro
+que arregle eso. Por eso `LB_MIN_DIVERSITY` es **2** por defecto: con el juego
+pequeño no echa a nadie real, y el grupo cerrado se queda igualmente por debajo de 1.
+Se sube cuando la base crezca, por variable de entorno.
+
+#### Y todo esto es comprobable desde fuera
+
+El JSON público de cada ronda lleva `elegibles`, `potCompletoCon`, `topeRaw`,
+`trasActividadRaw` y `factor`, así que la cuenta se rehace freno a freno desde el
+leaderboard publicado — que ya va encadenado por hash. "Ese día se repartió menos"
+es comprobable, no algo que haya que creerse.
+
+##### La ventana es el día que se premia, no las últimas 24 h
+
+Los frenos que dependen del día viven en `prepararRonda`, no en `presupuestoRaw`,
+y no es un detalle de organización: el tope del contrato es el mismo para todos los
+días pendientes, pero **lo que se jugó no**. Con una ventana móvil de 24 horas, un
+día flojo premiado con retraso —el servidor estuvo caído, o el ciclo corre a media
+tarde— cobraría según la actividad de hoy. Y el ciclo prepara hasta siete días de
+una tirada, así que los siete cobrarían lo mismo.
+
+##### Calibrar en 48 h, no en 30 días
+
+Con la curva de emisión actual el primer mes se reparte un tercio de la tesorería:
+esperar treinta días para ajustar el factor significa habérselo gastado ya.
+
+`REWARD_DRY_RUN=1` resuelve eso. El ciclo prepara las rondas de verdad, aplica los
+cinco frenos y escribe los JSON públicos, pero **no publica nada en la cadena**. En
+48 horas hay datos reales — cuánto rake se generó, cuántos elegibles hubo, qué bote
+habría salido, quién habría cobrado — sin haber movido un solo token. Cuando los
+números convenzan, se quita la variable.
+
+El corte está dentro de `publicarRonda`, no en el ciclo, para que **todo** lo que
+llame a publicar lo respete, incluido el botón del panel de admin.
+
+> `REWARD_FACTOR=0` significa lo que parece: no se pagan premios.
 
 #### El cuarto freno: el bote sale proporcional a cuánta gente jugó
 
@@ -451,10 +514,8 @@ bote = bote × min( 1 , elegibles del día / LB_FULL_POT_AT )     (50 por defect
 nada — lo único que hacen es que el bote sea el completo, lo que convierte *traer
 gente* en un interés de los que ya están.
 
-Y no reabre el sybil que cerró el freno anterior: el bote sigue acotado por lo
-recaudado, y esto solo puede **bajarlo**. Presentar cincuenta wallets para llegar al
-umbral cuesta cincuenta entradas, y el bote no puede pasar de lo que esas entradas
-pagaron. Los cuatro límites se aplican en cadena y gana siempre el más pequeño.
+Y no reabre el sybil: el bote sigue acotado por el rake, y esto solo puede
+**bajarlo**. Los cinco límites se aplican en cadena y gana siempre el más pequeño.
 
 El JSON público de cada ronda lleva `elegibles`, `potCompletoCon`, `topeRaw` y
 `trasActividadRaw`, así que la cuenta se rehace paso a paso desde el leaderboard

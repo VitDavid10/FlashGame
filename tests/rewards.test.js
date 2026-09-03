@@ -21,6 +21,9 @@ const { Keypair } = require('@solana/web3.js');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-rw-'));
 process.env.LB_DIR = TMP;
 process.env.REWARD_BUDGET_PILL = '50000';
+// Factor 1 para que los numeros de aqui sean directos (1 PILL de rake -> 1 de bote).
+// El valor real por defecto es 20, y tiene su propio test mas abajo.
+process.env.REWARD_FACTOR = '1';
 delete process.env.TREASURY_PROGRAM;
 
 const lb = require('../server/leaderboard.js');
@@ -28,25 +31,22 @@ const rewards = require('../server/rewards.js');
 const merkle = require('../server/merkle.js');
 
 const matches = require('../server/matches.js');
+const rake = require('../server/rake.js');
 
 const wallets = Array.from({ length: 12 }, () => Keypair.generate().publicKey.toBase58());
 const FECHA = '2026-05-04';
 
 /*
- * Actividad de sobra en un dia concreto.
+ * Rake de sobra en un dia concreto.
  *
- * El bote esta acotado por lo que se cobro en entradas ESE dia. Los tests de aqui
- * miden el reparto, no ese freno, asi que le dan recaudacion suficiente para que no
- * sea ella la que mande. Sin esto un dia sin partidas no genera ronda — que es el
- * comportamiento correcto, pero no lo que se esta midiendo.
+ * El bote esta acotado por lo que la casa se quedo ESE dia. Los tests de aqui miden
+ * el reparto, no ese freno, asi que le dan rake suficiente para que no sea el quien
+ * mande. Sin esto un dia sin rake no genera ronda — que es el comportamiento
+ * correcto, pero no lo que se esta midiendo.
  */
 function actividadEn(fecha, pill = 10000000) {
     const t = Date.parse(fecha + 'T12:00:00Z');
-    matches.registra({
-        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
-        entryFee: pill, pot: 0,
-        players: [{ wallet: wallets[0], name: 'seed', kills: 1, peak: 1, paid: true, isTester: false }],
-    });
+    rake.alStaking(pill, 'exit fees del dia', t);
 }
 
 test('la epoca de un dia es el numero de dias desde el epoch Unix', () => {
@@ -256,17 +256,16 @@ test('el JSON publico dice por que el bote fue el que fue', () => {
  * dias pendientes; lo que se jugo, no.
  */
 
-/** Cierra un dia con `jug` jugadores y `entradas` entradas de `fee` PILL. */
-function diaDe(fecha, jug, entradas, fee) {
+/** Cierra un dia con `jug` jugadores y `rakePill` de rake generado. */
+function diaDe(fecha, jug, rakePill) {
     const t = Date.parse(fecha + 'T12:00:00Z');
     const ws = Array.from({ length: jug }, () => Keypair.generate().publicKey.toBase58());
-    for (let k = 0; k < entradas; k += jug) {
-        matches.registra({
-            room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
-            entryFee: fee, pot: 0,
-            players: ws.map((w, i) => ({ wallet: w, name: 'j' + i, kills: 3, peak: 1, paid: true, isTester: false })),
-        });
-    }
+    rake.alStaking(rakePill, 'exit fees', t);
+    matches.registra({
+        room: 'classic_5$_L1', mode: 'classic', startedAt: t - 300000, endedAt: t,
+        entryFee: 1160, pot: 0,
+        players: ws.map((w, i) => ({ wallet: w, name: 'j' + i, kills: 3, peak: 1, paid: true, isTester: false })),
+    });
     // Todos por encima de MIN_KILLS y en orden decreciente: si alguno se queda corto
     // deja de ser elegible y el freno de participacion recorta sin que se vea por que.
     ws.forEach((w, i) => { for (let k = 0; k < jug - i + 3; k++) lb.recordKill(w, 'j' + i); lb.recordPeak(w, 9000 - i, 'j' + i); });
@@ -287,41 +286,90 @@ test('un dia sin partidas no genera ronda, por mucho que el grifo deje salir', (
     assert.equal(rewards.prepararRonda(F, rewards.pillToRaw(50000)), null);
 });
 
-test('el bote sube con lo recaudado y se para en el techo del contrato', () => {
+test('el bote sube con el rake y se para en el techo del contrato', () => {
     // 50 jugadores para que el freno de participacion no recorte, y los 10 pesos
     // ocupados: asi lo unico que se mide aqui es la recaudacion.
-    diaDe('2026-05-21', 50, 50, 200);        // 50 x 200 = 10.000 recaudados
+    diaDe('2026-05-21', 50, 10000);   // 10.000 de rake
     assert.equal(rewards.rawToPill(rewards.prepararRonda('2026-05-21', rewards.pillToRaw(50000)).totalRaw), 10000);
 
-    diaDe('2026-05-22', 50, 50, 2000);       // 100.000 recaudados, por encima del techo
+    diaDe('2026-05-22', 50, 100000);  // 100.000 de rake, por encima del techo
     assert.equal(rewards.rawToPill(rewards.prepararRonda('2026-05-22', rewards.pillToRaw(50000)).totalRaw), 50000,
         'por encima del techo manda el techo, no la actividad');
 });
 
-test('el bote nunca puede pasar de lo que se pago en entradas ESE dia', () => {
+test('el bote nunca puede pasar del rake de ESE dia', () => {
     // Es el invariante que cierra el sybil: da igual cuantas wallets aparezcan en la
     // tabla, el premio sale acotado por el dinero que entro ese dia.
     const F = '2026-05-23';
-    diaDe(F, 50, 50, 300);                   // 15.000 recaudados
-    const rec = matches.recaudadoEntre(Date.parse(F + 'T00:00:00Z'), Date.parse(F + 'T00:00:00Z') + 86400e3);
-    assert.equal(rec.pill, 15000);
+    diaDe(F, 50, 15000);              // 15.000 de rake
+    assert.equal(rake.delDia(F), 15000);
     const r = rewards.prepararRonda(F, rewards.pillToRaw(50000));
-    assert.ok(rewards.rawToPill(r.totalRaw) <= rec.pill,
-        `el bote (${rewards.rawToPill(r.totalRaw)}) supera lo recaudado (${rec.pill})`);
+    assert.ok(rewards.rawToPill(r.totalRaw) <= 15000,
+        `el bote (${rewards.rawToPill(r.totalRaw)}) supera el rake del dia (15000)`);
 });
 
 test('la actividad de hoy no paga los premios de un dia atrasado', () => {
     // El fallo que esto evita: si la ventana fueran "las ultimas 24 h", un dia flojo
     // premiado con retraso cobraria segun lo que se jugo HOY. Con dias acumulados
     // —el servidor caido, o el ciclo corriendo tarde— todos cobrarian lo mismo.
-    diaDe('2026-05-24', 50, 50, 100);        //  5.000 el dia flojo
-    diaDe('2026-05-25', 50, 50, 4000);       // 200.000 el dia bueno
+    diaDe('2026-05-24', 50, 5000);    //   5.000 de rake el dia flojo
+    diaDe('2026-05-25', 50, 200000);  // 200.000 de rake el dia bueno
 
     const flojo = rewards.prepararRonda('2026-05-24', rewards.pillToRaw(50000));
     const bueno = rewards.prepararRonda('2026-05-25', rewards.pillToRaw(50000));
 
     assert.equal(rewards.rawToPill(flojo.totalRaw), 5000, 'el dia flojo cobra lo suyo');
     assert.equal(rewards.rawToPill(bueno.totalRaw), 50000, 'el bueno topa con el techo');
+});
+
+/*
+ * ESTE VA EL ULTIMO a proposito: recarga rake/rewards/leaderboard con otro
+ * LB_DIR y deja la cache de require tocada. Cualquier test que fuera detras
+ * cogeria una instancia de rake recien creada, sin los apuntes en memoria de
+ * los tests anteriores, y le saldria un bote de cero sin motivo aparente.
+ */
+test('el factor multiplica el rake, y por defecto es 20', () => {
+    // El rake de classic sale solo de quien sobrevive al timer sin ganar la sala: con
+    // factor 1 el leaderboard se estrangula (unos 50 \$/dia con 500 jugadores frente a
+    // los 170 \$ del grifo). El factor es el multiplicador que se calibra con datos.
+    //
+    // Lo que NO cambia por mucho que suba: cero por cualquier factor sigue siendo
+    // cero, asi que jugar contra uno mismo nunca paga.
+    const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-factor-'));
+    const antesDir = process.env.LB_DIR, antesF = process.env.REWARD_FACTOR;
+    process.env.LB_DIR = DIR;
+    delete process.env.REWARD_FACTOR;          // el default
+    for (const m of ['../server/rake.js', '../server/rewards.js', '../server/leaderboard.js']) {
+        delete require.cache[require.resolve(m)];
+    }
+    const rw = require('../server/rewards.js');
+    const rk = require('../server/rake.js');
+    const lb2 = require('../server/leaderboard.js');
+    assert.equal(rw.REWARD_FACTOR, 20, 'el default deberia ser 20');
+
+    const F = '2026-06-01';
+    const t = Date.parse(F + 'T12:00:00Z');
+    rk.alStaking(1000, 'exit fees', t);        // 1.000 de rake -> 20.000 de bote
+    const ws = Array.from({ length: 50 }, () => Keypair.generate().publicKey.toBase58());
+    ws.forEach((w, i) => { for (let k = 0; k < 60 - i; k++) lb2.recordKill(w, 'j' + i); lb2.recordPeak(w, 9000 - i, 'j' + i); });
+    lb2._setFecha(F);
+    lb2.cerrarAhora();
+    assert.equal(rw.rawToPill(rw.prepararRonda(F, rw.pillToRaw(500000)).totalRaw), 20000);
+
+    // Y el suelo duro: sin rake no hay premio, valga lo que valga el factor.
+    const F2 = '2026-06-02';
+    ws.forEach((w, i) => { for (let k = 0; k < 60 - i; k++) lb2.recordKill(w, 'j' + i); lb2.recordPeak(w, 9000 - i, 'j' + i); });
+    lb2._setFecha(F2);
+    lb2.cerrarAhora();
+    assert.equal(rk.delDia(F2), 0);
+    assert.equal(rw.prepararRonda(F2, rw.pillToRaw(500000)), null, 'sin rake no hay ronda');
+
+    process.env.LB_DIR = antesDir;
+    if (antesF !== undefined) process.env.REWARD_FACTOR = antesF;
+    for (const m of ['../server/rake.js', '../server/rewards.js', '../server/leaderboard.js']) {
+        delete require.cache[require.resolve(m)];
+    }
+    fs.rmSync(DIR, { recursive: true, force: true });
 });
 
 test('limpieza', () => {
