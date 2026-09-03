@@ -3849,6 +3849,14 @@
 
             <div id="lbLista" class="lb-list"></div>
 
+            <!-- Lo ya pagado, con su transaccion. Es la unica parte de este panel
+                 que no hay que creerse. -->
+            <div class="stk-card" id="lbPagosCard" style="display:none">
+                <div class="stk-card-t">Rewards actually paid</div>
+                <div id="lbPagos"></div>
+                <div class="stk-note" id="lbPagosNota"></div>
+            </div>
+
             <!-- Ficha de un jugador. Sustituye a la lista al pulsar un nombre. -->
             <div id="lbFicha" style="display:none">
                 <button type="button" class="stk-btn stk-sm lb-back" onclick="BoardUI.volver()">&larr; BACK</button>
@@ -12383,6 +12391,8 @@
         volver() {
             document.getElementById('lbFicha').style.display = 'none';
             document.getElementById('lbLista').style.display = '';
+            document.getElementById('lbPagosCard').style.display =
+                (this.data && (this.data.pagos || []).some(x => x.pagados > 0 || x.rondaSig)) ? '' : 'none';
         },
 
         pinta() {
@@ -12440,11 +12450,61 @@
 
             $('lbNota').innerHTML = 'Only paid rooms count. The list closes at 23:59 UTC and is hashed into a chain '
                 + 'anyone can check at <b>/api/leaderboard/chain</b>. Tap a player to see where their numbers come from.';
+
+            this.pintaPagos();
+        },
+
+        /*
+         * Lo YA PAGADO. Todo lo de arriba son numeros que decimos nosotros; esto son
+         * transferencias que estan en la cadena o no estan.
+         *
+         * Cada dia dice ademas de que bolsillo salio, que son dos y no conviene
+         * mezclarlos: lo que factura el juego va al pozo del staking, y los premios
+         * de esta lista los paga la asignacion.
+         */
+        pintaPagos() {
+            const dias = ((this.data && this.data.pagos) || []).filter(d => d.pagados > 0 || d.rondaSig);
+            const card = document.getElementById('lbPagosCard');
+            if (!dias.length) { card.style.display = 'none'; return; }
+            card.style.display = '';
+
+            const tx = (sig, txt) => sig
+                ? '<a href="https://solscan.io/tx/' + sig + '?cluster=devnet" target="_blank" style="color:#00ff88;text-decoration:none">' + txt + '</a>'
+                : '<span style="color:#8b9199">' + txt + '</span>';
+
+            document.getElementById('lbPagos').innerHTML = dias.slice(0, 5).map(d => {
+                const o = d.cobertura || {};
+                const filas = (d.pagos || []).map(x =>
+                    '<div class="lb-row" style="cursor:default">'
+                    + '<div class="lb-pos">' + x.rank + '</div>'
+                    + '<div><div class="lb-sub">' + this.corta(x.wallet) + '</div></div>'
+                    + '<div class="lb-pill">' + this.fmt(x.pill) + '</div>'
+                    + '<div class="lb-kills">' + tx(x.sig, 'TX') + '</div></div>').join('');
+
+                return '<div style="margin-bottom:14px">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">'
+                    + '<b style="font-family:\'Russo One\';font-size:12px;color:#e6e9ec">' + d.date + '</b>'
+                    + '<span style="font-size:10.5px;color:#8b9199">'
+                    + (d.modo === 'contrato' ? 'claimed on-chain' : d.pagados + ' of ' + d.ganadores + ' claimed')
+                    + ' · ' + tx(d.anclaSig, 'anchor') + '</span></div>'
+                    + '<div style="font-family:\'Russo One\';font-size:16px;color:#ffce3d">' + this.fmt(d.pill) + ' $PILL</div>'
+                    + (o.pctCubierto == null ? '' :
+                        '<div class="stk-note" style="margin:2px 0 6px">Paid from the <b>rewards allocation</b>. '
+                        + 'The game itself took <b>' + this.fmt(o.rakeDelDia) + '</b> that day — ' + o.pctCubierto.toFixed(0)
+                        + '% of this pool — and that goes to stakers, not here.</div>')
+                    + filas + '</div>';
+            }).join('');
+
+            document.getElementById('lbPagosNota').innerHTML =
+                'The standings are hashed and anchored on Solana <b>before</b> a single token moves, so every '
+                + 'payment above can be checked against a list that was already public. Nothing claimed yet just '
+                + 'means nobody pressed CLAIM — rewards do not expire.';
         },
 
         // Ficha de un jugador: sus numeros y las partidas que los respaldan.
         async abrirFicha(wallet) {
             document.getElementById('lbLista').style.display = 'none';
+            document.getElementById('lbPagosCard').style.display = 'none';
             const ficha = document.getElementById('lbFicha');
             ficha.style.display = '';
             const body = document.getElementById('lbFichaBody');
