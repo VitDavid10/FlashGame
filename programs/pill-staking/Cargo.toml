@@ -18,5 +18,9 @@ no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = "0.31.1"
+# init-if-needed: la posicion de staking se crea sola la primera vez que alguien
+# stakea. El ataque de re-inicializacion que avisa Anchor no aplica: stake_account
+# es una PDA sembrada con el owner y NO se cierra nunca, asi que nadie puede
+# vaciarla para volver a crearla con otros numeros.
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 anchor-spl = "0.31.1"
