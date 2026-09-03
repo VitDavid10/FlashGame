@@ -318,6 +318,12 @@
                     padding:10px 0; border-bottom:1px solid #16191d; font-size:13px; }
         .pw-match .r { color:#9aa3ad; }
         .pw-match .k { font-family:'Russo One'; color:#e6e9ec; }
+        .pw-pay-d { font-family:'Russo One'; font-size:14px; color:#e6e9ec; }
+        .pw-pay-h { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+        .pw-pay-h .s { font-size:12px; color:#8b9199; }
+        .pw-pay-h a { color:#00ff88; text-decoration:none; }
+        .pw-pay-h a:hover { text-decoration:underline; }
+        .pw-pay-a { font-family:'Russo One'; font-size:20px; color:#ffd700; margin:2px 0 0; }
         .pw-match a { color:#00ff88; text-decoration:none; font-size:11px; border:1px solid rgba(0,255,136,.3);
                       border-radius:5px; padding:3px 9px; }
         .pw-match a:hover { background:rgba(0,255,136,.1); }
@@ -2947,6 +2953,12 @@ body.trailer-open #page-content{
                 <div id="vbLista"></div>
             </div>
 
+            <div class="pwc" id="vbPagosCard" style="display:none">
+                <div class="pwc-t">Rewards actually paid</div>
+                <div id="vbPagos"></div>
+                <div class="pwc-note" id="vbPagosNota"></div>
+            </div>
+
             <div class="pwc" id="vbFicha" style="display:none">
                 <button class="pw-view-close" style="margin-bottom:16px" onclick="PWBoard.volver()">&larr; BACK TO STANDINGS</button>
                 <div id="vbFichaBody"></div>
@@ -4336,6 +4348,7 @@ function toggleTrailerMode() {
             volver() {
                 document.getElementById('vbFicha').style.display = 'none';
                 document.getElementById('vbListaCard').style.display = '';
+                document.getElementById('vbPagosCard').style.display = (this.data && (this.data.pagos || []).length) ? '' : 'none';
             },
             pinta() {
                 const d = this.data, $ = (i) => document.getElementById(i);
@@ -4378,10 +4391,73 @@ function toggleTrailerMode() {
 
                 $('vbNota').innerHTML = 'Only paid rooms count. The list closes at 23:59 UTC and every day is hashed into a chain '
                     + 'anyone can verify at <b>/api/leaderboard/chain</b>.';
+
+                this.pintaPagos();
+            },
+
+            /*
+             * Lo YA PAGADO, con su transaccion. Es la unica parte de esta pantalla
+             * que no hay que creerse: todo lo demas son numeros que decimos nosotros,
+             * esto son transferencias que estan en la cadena o no estan.
+             *
+             * Cada dia trae ademas de donde salio el dinero, que son dos bolsillos
+             * distintos y mezclarlos seria vender el juego como algo que todavia no es.
+             */
+            pintaPagos() {
+                const dias = (this.data && this.data.pagos || []).filter(d => d.pagados > 0 || d.rondaSig);
+                const card = document.getElementById('vbPagosCard');
+                if (!dias.length) { card.style.display = 'none'; return; }
+                card.style.display = '';
+
+                document.getElementById('vbPagos').innerHTML = dias.map(d => {
+                    const o = d.cobertura || {};
+                    const tx = (sig, txt) => sig
+                        ? '<a href="https://solscan.io/tx/' + _esc(sig) + '?cluster=devnet" target="_blank" rel="noopener">' + txt + '</a>'
+                        : '<span class="no">' + txt + '</span>';
+
+                    /*
+                     * Quien pago esto, sin adornos: la asignacion de premios, entera.
+                     * El rake del juego va al pozo del staking y no toca este bote.
+                     *
+                     * La barra es la COBERTURA — cuanto de lo repartido se lo gano el
+                     * juego ese dia. Empieza baja a proposito (es el subsidio) y el
+                     * dia que llegue al 100% el juego se paga sus propios premios.
+                     */
+                    const barra = o.pctCubierto == null ? '' :
+                        '<div class="pw-bar" style="margin:8px 0 4px"><i style="width:' + Math.min(100, o.pctCubierto).toFixed(0) + '%"></i></div>'
+                        + '<div class="pwc-note" style="margin:0">Paid from the <b>rewards allocation</b>. '
+                        + 'The game itself took <b>' + _fmt(o.rakeDelDia) + '</b> that day — <b>'
+                        + o.pctCubierto.toFixed(0) + '%</b> of this pool — and that goes to stakers, not here.</div>';
+
+                    const filas = (d.pagos || []).map(x =>
+                        '<div class="pw-match"><div class="r">#' + x.rank + ' · ' + _corta(x.wallet) + '</div>'
+                        + '<div class="k">' + _fmt(x.pill) + '</div><div>' + tx(x.sig, 'TX') + '</div></div>').join('');
+
+                    return '<div style="margin-bottom:20px">'
+                        + '<div class="pw-pay-h">'
+                        + '<div class="pw-pay-d">' + _esc(d.date) + '</div>'
+                        + '<div class="s">'
+                        + (d.modo === 'contrato'
+                            ? 'claimed on-chain · ' + tx(d.rondaSig, 'round TX')
+                            : d.pagados + ' of ' + d.ganadores + ' claimed')
+                        + ' · ' + tx(d.anclaSig, 'standings anchor') + '</div></div>'
+                        + '<div class="pw-pay-a">' + _fmt(d.pill) + ' <span style="font-size:12px;color:#8b9199">$PILL</span></div>'
+                        + barra + filas + '</div>';
+                }).join('');
+
+                document.getElementById('vbPagosNota').innerHTML =
+                    'Each day\'s standings are hashed and anchored on Solana <b>before</b> a single token moves, '
+                    + 'so every payment above can be checked against a list that was already public when it was made. '
+                    + 'Winners with nothing claimed yet have not pressed CLAIM — the reward does not expire.'
+                    + '<br><br><b>Two separate pots, on purpose.</b> The <b>treasury</b> is what the game earns — exit fees, '
+                    + 'arcade commission, unclaimed pots — and all of it goes to stakers. The <b>rewards allocation</b> is '
+                    + 'set aside by the team and it is what pays this leaderboard. What the game earns goes to people who '
+                    + 'hold; what the team set aside goes to people who play well.';
             },
 
             async ficha(wallet) {
                 document.getElementById('vbListaCard').style.display = 'none';
+                document.getElementById('vbPagosCard').style.display = 'none';
                 const card = document.getElementById('vbFicha'); card.style.display = '';
                 const body = document.getElementById('vbFichaBody');
                 body.innerHTML = '<div style="color:#8b9199;padding:20px 0">Loading…</div>';

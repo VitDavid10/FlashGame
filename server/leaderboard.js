@@ -119,6 +119,18 @@ setInterval(save, 5000).unref();
 process.on('SIGTERM', save);
 process.on('SIGINT', () => { save(); process.exit(0); });
 
+/*
+ * La cadena se escribe sincrona y en cuanto cambia. Son dos escrituras al dia
+ * (cerrar y anclar) sobre un fichero pequenio, asi que no hay nada que optimizar,
+ * y perderla es caro: un ancla que no llega al disco deja el dia como "sin anclar"
+ * despues de un reinicio, y entonces los ganadores que aun no habian cobrado no
+ * pueden — pagarUno se niega a pagar un dia sin ancla, con razon.
+ */
+function guardaCadena() {
+    if (SOLO_LECTURA) return;
+    try { fs.writeFileSync(CHAIN_FILE, JSON.stringify(chain)); } catch (e) {}
+}
+
 /* ===================== REGISTRO ===================== */
 
 function slot(wallet) {
@@ -286,7 +298,7 @@ function cerrarDia(date, nuevaFecha) {
     try { fs.writeFileSync(path.join(DIR, date + '.json'), JSON.stringify(snapshot, null, 1)); } catch (e) {}
 
     chain.push({ date, prevHash, hash, players: filas.length, closedAt: snapshot.closedAt });
-    try { fs.writeFileSync(CHAIN_FILE, JSON.stringify(chain)); } catch (e) {}
+    guardaCadena();
 
     hoy = { date: nuevaFecha || hoyUTC(), players: {} };
     dirty = true;
@@ -347,7 +359,7 @@ async function anclarDia(date, solana, log) {
         })]);
         eslabon.sig = sig;
         eslabon.anchoredAt = new Date().toISOString();
-        dirty = true; save();
+        guardaCadena();
         if (log) log(`Leaderboard del ${date} anclado: ${sig}`);
         return { ok: true, sig };
     } catch (e) {

@@ -251,6 +251,11 @@ async function presupuestoRaw(conn, log) {
  * cadena. Devuelve null si ese dia no dio para premios (nadie llego al minimo de
  * kills, o el presupuesto es cero).
  */
+// El rake de un dia, en raw. require perezoso, como en el resto del fichero.
+function rakeDelDiaRaw(date) {
+    try { return pillToRaw(require('./rake.js').delDia(date)); } catch (e) { return 0n; }
+}
+
 function prepararRonda(date, presupuesto) {
     if (data.rounds[epochDeFecha(date)]) return null;      // ya existe
     const snap = leaderboard.diaCerrado(date);
@@ -295,6 +300,9 @@ function prepararRonda(date, presupuesto) {
         elegibles,
         potCompletoCon: POT_COMPLETO_CON,
         factor: REWARD_FACTOR,
+        // Lo que el JUEGO recaudo ese dia. Se congela aqui a proposito: el rake
+        // sigue moviendose, pero el de un dia ya cerrado no debe cambiar nunca.
+        rakeDelDiaRaw: String(rakeDelDiaRaw(date)),
         seco: DRY_RUN || undefined,
         topeRaw: String(presupuesto),
         trasActividadRaw: String(trasActividad),
@@ -306,6 +314,7 @@ function prepararRonda(date, presupuesto) {
         epoch, date,
         root: ronda.root,
         totalRaw: ronda.total,
+        rakeDelDiaRaw: String(rakeDelDiaRaw(date)),
         winners: ronda.winners,
         leaderboardHash: snap.hash,
         sig: null,
@@ -417,6 +426,75 @@ async function pagarDirecto(date, solana, log) {
 
     const fallidos = pagos.filter(p => p.error).length;
     return { ok: fallidos === 0, pagos, fallidos, anclaLeaderboard: eslabon.sig };
+}
+
+/*
+ * DE DONDE SALE EL BOTE. Dos bolsillos, y hoy no se tocan:
+ *
+ *   TESORERIA  lo que genera el juego — exit fees, comision de arcade y botes sin
+ *              reclamar. Va integro al pozo del STAKING (ver room-loop.js): lo
+ *              cobra quien inmoviliza tokens, no quien gana partidas.
+ *   REWARDS    la asignacion de premios, que la pongo yo con fund(). De AQUI sale
+ *              el 100% de lo que cobra el top 10 diario.
+ *
+ * Asi que el bote se DIMENSIONA con el rake (rake x REWARD_FACTOR) pero no se paga
+ * con el. Decir "X del bote lo puso el juego" seria falso: ese dinero esta
+ * comprometido con los stakers.
+ *
+ * Lo que si se puede decir, y es el numero que importa, es la COBERTURA: cuanto de
+ * lo que se reparte hoy se lo ha ganado el juego hoy. Con REWARD_FACTOR = 12 sale
+ * ~8%, y no es casualidad — es 1/12, el subsidio que arranca la cosa. Sube cuando
+ * los otros frenos recortan el bote, y llega al 100% el dia que se baja el factor
+ * a 1 porque el juego ya factura lo que regala.
+ */
+function coberturaDelBote(ronda) {
+    if (!ronda) return null;
+    const bote = BigInt(ronda.totalRaw || 0);
+    // Rondas de antes de guardar el rake: no se puede reconstruir sin inventar.
+    if (ronda.rakeDelDiaRaw == null) return { bote: rawToPill(bote), desconocido: true };
+    const rakeRaw = BigInt(ronda.rakeDelDiaRaw);
+    return {
+        bote: rawToPill(bote),
+        // Lo que facturo el juego ese dia. NO sale de aqui el premio.
+        rakeDelDia: rawToPill(rakeRaw),
+        // Y lo que de verdad pago el premio: la asignacion, entera.
+        deLaAsignacion: rawToPill(bote),
+        pctCubierto: bote > 0n ? Number((rakeRaw * 10000n) / bote) / 100 : 0,
+        factor: REWARD_FACTOR,
+    };
+}
+
+/*
+ * Los pagos de los ultimos dias, para ensenarlos en el leaderboard.
+ *
+ * Es la respuesta a "¿de verdad paga?" sin tener que fiarse de nadie: cada linea
+ * lleva su firma de Solana, y el hash del dia se anclo ANTES de pagar, asi que se
+ * puede comprobar que se pago lo que decia la lista y no otra cosa.
+ */
+function historialDePagos(n) {
+    const cadena = leaderboard.cadena(400);
+    return Object.values(data.rounds)
+        .filter(r => !r.cancelled)
+        .sort((a, b) => b.epoch - a.epoch)
+        .slice(0, n || 14)
+        .map(r => {
+            const eslabon = cadena.find(e => e.date === r.date);
+            const pagos = (r.pagos || []).filter(x => x.sig);
+            return {
+                epoch: r.epoch, date: r.date,
+                pill: rawToPill(r.totalRaw),
+                ganadores: r.winners,
+                cobertura: coberturaDelBote(r),
+                // Con contrato el ganador cobra el solo y aqui no hay firmas que
+                // ensenar: la prueba es la raiz publicada. Sin contrato, cada pago
+                // deja su propia transaccion.
+                modo: r.sig ? 'contrato' : 'directo',
+                rondaSig: r.sig || null,
+                anclaSig: eslabon ? eslabon.sig : null,
+                pagados: pagos.length,
+                pagos: pagos.map(x => ({ wallet: x.wallet, rank: x.rank, pill: x.pill, sig: x.sig, at: x.at })),
+            };
+        });
 }
 
 /*
@@ -742,6 +820,7 @@ async function proyeccionDeHoy(snapshot) {
 module.exports = {
     tick, arranca, estado, premiosDe, marcarCobrado, rondaPublica,
     prepararRonda, publicarRonda, pagarDirecto, pagarUno, premiosDirectosDe,
+    coberturaDelBote, historialDePagos,
     presupuestoRaw, proyeccionDeHoy, refrescar,
     epochDeFecha, fechaDeEpoch, pillToRaw, rawToPill,
     PROGRAM, save, DRY_RUN, REWARD_FACTOR, POT_COMPLETO_CON,

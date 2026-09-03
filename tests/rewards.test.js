@@ -480,6 +480,23 @@ test('no se paga dos veces el mismo dia', async () => {
     assert.equal(veces, primera, 'el segundo intento ha vuelto a pagar');
 });
 
+test('la firma del ancla sobrevive a un reinicio', async () => {
+    /*
+     * Antes se guardaba solo el fichero del dia en curso, asi que la firma del ancla
+     * solo llegaba al disco si DESPUES se cerraba otro dia. Reiniciar entremedias
+     * dejaba el dia como "sin anclar" — y entonces los ganadores que aun no habian
+     * cobrado no podian, porque pagarUno se niega a pagar un dia sin ancla.
+     */
+    const F = '2026-10-06';
+    diaDe(F, 50, 20000);
+    await lb.anclarDia(F, solanaFalsoQuePaga([]), null);
+
+    const enDisco = JSON.parse(fs.readFileSync(path.join(TMP, 'leaderboard-chain.json'), 'utf8'));
+    const eslabon = enDisco.find(e => e.date === F);
+    assert.ok(eslabon, 'el dia tiene que estar en la cadena del disco');
+    assert.ok(eslabon.sig, 'la firma del ancla no llego al disco');
+});
+
 test('anclar dos veces el mismo dia no gasta otra transaccion', async () => {
     const F = '2026-09-14';
     diaDe(F, 10, 5000);

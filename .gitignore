@@ -79,3 +79,4 @@ server/rewards.json
 server/reserves/
 server/reserves-state.json
 server/rake.json
+.tmp-demo/

@@ -3144,9 +3144,13 @@ const httpServer = http.createServer(async (req, res) => {
         // Es la pregunta que se hace cualquiera que la mire ("¿cuanto hay en juego?")
         // y la respuesta cambia sola con los cuatro frenos: el grifo del contrato, el
         // rake del dia, cuanta gente es elegible y los pesos de los puestos vacios.
+        // Y los pagos ya hechos, con su firma. Es la otra mitad de la pregunta:
+        // no solo "cuanto hay en juego" sino "¿de verdad paga?" — y esa se
+        // responde ensenando transacciones, no promesas.
+        let pagos = []; try { pagos = rewards.historialDePagos(14); } catch (e) {}
         rewards.proyeccionDeHoy(est).then(reparto => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify(Object.assign({}, est, { reparto })));
+            res.end(JSON.stringify(Object.assign({}, est, { reparto, pagos })));
         }).catch(() => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
             res.end(JSON.stringify(est));
