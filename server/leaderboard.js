@@ -165,37 +165,48 @@ function recordPeak(wallet, peak, name) {
  * La fila lleva el numero de oponentes para que se vea de donde sale la decision.
  */
 /*
- * Cuantos oponentes DISTINTOS por partida hace falta ver para contar como jugador.
+ * Que fraccion de la gente que jugo ese dia hay que haber conocido.
  *
  * `oponentes >= MIN_OPONENTES` a secas no defiende de nada: veinte wallets propias
- * jugando entre ellas ven diecinueve oponentes distintos cada una y pasan el filtro
- * sobradas. Lo que un cluster cerrado NO puede fingir es conocer gente nueva:
+ * jugando entre ellas ven diecinueve oponentes distintos cada una y pasan sobradas.
  *
- *   veinte wallets propias, veinte partidas -> 19 distintos / 20 partidas = 0,95
- *   jugador real, 4 partidas de 35 personas -> ~100 distintos / 4 partidas = 25
+ * La diferencia real es que UN CLUSTER TIENE TECHO Y UN JUGADOR NO. Con veinte
+ * wallets nunca conoceras a mas de diecinueve personas, juegues cuatro partidas o
+ * cuatro mil. Un jugador de verdad se cruza con gente nueva cada vez que entra.
  *
- * Los separa un factor de veinticinco. Y para subir el ratio hay que meter wallets
- * nuevas de verdad: mas entradas que pagar y mas horas que jugar, que es justo el
- * coste que el ataque intentaba evitar.
+ *   sobre 500 jugadores activos:
+ *     atacante con 20 wallets  ->  19 de 499  =   4 %   (fijo, juegue lo que juegue)
+ *     atacante con 50 wallets  ->  49 de 499  =  10 %   (justo en el umbral)
+ *     jugador real, 4 partidas -> 130 de 499  =  25 %
+ *     jugador real, 20 partidas-> 380 de 499  =  76 %
  *
- * Se exige tambien un minimo de partidas: con una sola partida el ratio es enorme
- * por construccion (34 oponentes / 1) y no dice nada.
+ * Se mide contra la POBLACION y no contra las partidas jugadas. Dividir por partidas
+ * parecia razonable y estaba mal: baja cuanto mas juegas, asi que castigaba al
+ * jugador activo (poblacion 30 y 20 partidas daba 1,5, por debajo del umbral) y
+ * dejaba pasar al atacante que juega poco (20 wallets en 4 partidas daban 4,75).
+ * Contra la poblacion pasa lo correcto: jugar mas solo puede SUBIR tu porcentaje.
  *
- * EL LIMITE DE ESTO, dicho claro: el ratio de un jugador real depende de cuanta
- * gente haya en el juego. Con quince jugadores en total, todos se cruzan siempre con
- * los mismos — un cluster y la comunidad entera son indistinguibles, y no hay filtro
- * que arregle eso. Por eso el umbral por defecto es BAJO (2): con el juego pequeño
- * no echa a nadie real, y aun asi deja fuera al grupo cerrado, que se queda por
- * debajo de 1. Cuando la base crezca se sube por variable de entorno, sin tocar
- * nada mas.
+ * EL LIMITE, dicho claro: si en el juego hay treinta personas y el atacante controla
+ * veinte, ha conocido al 66 % de la comunidad — igual que cualquiera. Con poca
+ * poblacion esto no distingue, y no hay filtro que lo arregle. Por eso la defensa
+ * principal es economica (jugar contra uno mismo no genera rake, ver rewards.js) y
+ * esto es una capa encima, no al reves.
  */
-const MIN_DIVERSIDAD = parseFloat(process.env.LB_MIN_DIVERSITY) || 2;
-const MIN_PARTIDAS = parseInt(process.env.LB_MIN_MATCHES, 10) || 3;
+/*
+ * El 10 % es deliberadamente conservador: entre "atacante con 50 wallets" (9,8 % de
+ * 499) y "jugador que echa dos partidas" (13 %) hay muy poco margen, y ante la duda
+ * es mejor dejar pasar a un atacante que echar a un jugador de verdad. Sube el liston
+ * a unas 55 wallets, que ya es un coste real — y el rake las deja a cero igualmente.
+ */
+const MIN_CONOCIDOS_PCT = parseFloat(process.env.LB_MIN_KNOWN_PCT) || 0.10;
+const MIN_PARTIDAS = parseInt(process.env.LB_MIN_MATCHES, 10) || 2;
 
-function diversoBastante(o) {
-    const partidas = o.partidas || 0;
-    if (partidas < MIN_PARTIDAS) return false;
-    return (o.oponentes / partidas) >= MIN_DIVERSIDAD;
+function diversoBastante(o, poblacion) {
+    if ((o.partidas || 0) < MIN_PARTIDAS) return false;
+    // Con menos de dos jugadores activos no hay nada contra lo que comparar.
+    const pob = (poblacion | 0) - 1;
+    if (pob < 1) return true;
+    return (o.oponentes / pob) >= MIN_CONOCIDOS_PCT;
 }
 
 function tablaDe(players, oponentes) {
@@ -206,7 +217,7 @@ function tablaDe(players, oponentes) {
             if (!hayDatos) return true;
             const o = oponentes.get(w);
             if (!o || o.oponentes < MIN_OPONENTES) return false;
-            return diversoBastante(o);
+            return diversoBastante(o, oponentes.size);
         })
         .sort(([wa, a], [wb, b]) => (b.kills - a.kills) || (b.peak - a.peak) || (wa < wb ? -1 : 1))
         .slice(0, PUBLICADOS)
@@ -358,7 +369,7 @@ module.exports = {
     estadoHoy, diaCerrado, cadena, verificarCadena,
     cerrarAhora, repartoDe, tablaDe, setProveedorOponentes,
     save,
-    PESOS, MIN_KILLS, MIN_OPONENTES, MIN_DIVERSIDAD, MIN_PARTIDAS, PUBLICADOS,
+    PESOS, MIN_KILLS, MIN_OPONENTES, MIN_CONOCIDOS_PCT, MIN_PARTIDAS, PUBLICADOS,
     _diversoBastante: diversoBastante,
     // Para los tests: la funcion de hash tiene que ser reproducible desde fuera, y
     // hay que poder simular el paso de los dias sin esperar a medianoche.

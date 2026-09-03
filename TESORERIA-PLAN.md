@@ -437,25 +437,38 @@ además exige cincuenta wallets que se crucen con gente de verdad.
 #### El quinto freno: el cluster cerrado
 
 `oponentes >= 5` a secas no defiende de nada: veinte wallets propias jugando entre
-ellas ven diecinueve oponentes distintos cada una y pasan sobradas. Lo que un grupo
-cerrado **no puede fingir es conocer gente nueva**:
+ellas ven diecinueve oponentes distintos cada una y pasan sobradas.
 
-| | oponentes distintos | partidas | ratio |
-|---|---|---|---|
-| Cluster de 20 wallets | 19 (siempre los mismos) | 20 | **0,95** |
-| Jugador real, 4 partidas de 35 | ~100 | 4 | **25** |
+Lo que las separa es que **un cluster tiene techo y un jugador no**. Con veinte
+wallets jamás conocerás a más de diecinueve personas, juegues cuatro partidas o
+cuatro mil. Un jugador de verdad se cruza con gente nueva cada vez que entra. Así
+que la pregunta del filtro es **«¿a qué parte de la gente que jugó hoy has
+conocido?»**:
 
-Y la propiedad que importa: **insistir empeora el ratio, no lo mejora.** Jugar mil
-partidas entre las mismas veinte wallets lo hunde a 0,02. La única salida es meter
-wallets nuevas de verdad — más entradas que pagar y más horas que jugar, que es
-justo el coste que el ataque evitaba.
+| sobre 500 jugadores activos | conocidos | % |
+|---|---|---|
+| Atacante con 20 wallets | 19 (fijo) | **4 %** |
+| Atacante con 50 wallets | 49 (fijo) | **10 %** |
+| Jugador real, 2 partidas | ~65 | 13 % |
+| Jugador real, 4 partidas | ~130 | 25 % |
+| Jugador real, 20 partidas | ~380 | 76 % |
 
-**El límite de esto, dicho claro:** el ratio de un jugador real depende de cuánta
-gente haya en el juego. Con quince jugadores en total, todos se cruzan siempre con
-los mismos — un cluster y la comunidad entera son indistinguibles, y no hay filtro
-que arregle eso. Por eso `LB_MIN_DIVERSITY` es **2** por defecto: con el juego
-pequeño no echa a nadie real, y el grupo cerrado se queda igualmente por debajo de 1.
-Se sube cuando la base crezca, por variable de entorno.
+Se mide contra la **población** y no contra las partidas jugadas. Dividir por
+partidas parecía razonable y estaba mal: baja cuanto más juegas, así que castigaba
+al jugador activo y dejaba pasar al atacante que juega poco. Contra la población
+pasa lo correcto: **jugar más solo puede subir tu porcentaje**, y el atacante se
+queda clavado en su techo.
+
+Para subirlo no hay atajo: más wallets, y cada una cuesta entradas y horas.
+
+**El límite, dicho claro:** si en el juego hay treinta personas y el atacante
+controla veinte, ha conocido al 66 % de la comunidad — igual que cualquiera. Con
+poca población esto no distingue y no hay filtro que lo arregle. Por eso la defensa
+principal es económica y esto es una capa encima, no al revés.
+
+`LB_MIN_KNOWN_PCT` es **0,10** por defecto, conservador a propósito: entre «atacante
+con 50 wallets» (9,8 %) y «jugador que echa dos partidas» (13 %) hay poco margen, y
+ante la duda es mejor dejar pasar a un atacante que echar a un jugador de verdad.
 
 #### Y todo esto es comprobable desde fuera
 

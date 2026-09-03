@@ -81,15 +81,20 @@ Environment=REWARD_FACTOR=20
 # Quitalo (o ponlo a 0) cuando los numeros convenzan.
 Environment=REWARD_DRY_RUN=1
 
-# Oponentes DISTINTOS por partida para contar como jugador y no como cluster.
-# Veinte wallets propias jugando entre ellas dan 19/20 = 0,95; un jugador real que
-# echa 4 partidas de 35 personas da ~25. Insistir empeora el ratio, no lo mejora.
-# El 2 por defecto es bajo a proposito: con el juego pequeño todos se cruzan con los
-# mismos y un umbral alto echaria a jugadores de verdad. Se sube cuando crezca.
-Environment=LB_MIN_DIVERSITY=2
-# Partidas minimas para que el ratio signifique algo (con una sola es enorme por
-# construccion: 34 oponentes / 1 partida).
-Environment=LB_MIN_MATCHES=3
+# Que fraccion de la gente que jugo ese dia hay que haber conocido para contar como
+# jugador y no como cluster. Un cluster TIENE TECHO: con 20 wallets propias nunca
+# conoceras a mas de 19 personas, juegues 4 partidas o 4.000. Sobre 500 activos eso
+# es un 4 % fijo, mientras que un jugador con 4 partidas va por el 25 %.
+#
+# Se mide contra la POBLACION, no contra las partidas: dividir por partidas bajaba
+# cuanto mas jugabas, o sea que castigaba al jugador activo y dejaba pasar al
+# atacante que juega poco.
+#
+# El 10 % es conservador a proposito — entre echar a un jugador real y dejar pasar a
+# un atacante, se prefiere lo segundo. Sube el liston a unas 55 wallets.
+Environment=LB_MIN_KNOWN_PCT=0.10
+# Partidas minimas para que el porcentaje signifique algo.
+Environment=LB_MIN_MATCHES=2
 # Jugadores en la lista del dia para que salga el bote entero. Por debajo sale
 # proporcional: con 25 la mitad, con 5 la decima parte. Sin esto, doce jugadores
 # echando tres partidas ya sueltan el maximo y estar en el top 10 sale gratis.

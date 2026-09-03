@@ -232,71 +232,78 @@ test('el reparto encaja con el arbol de merkle sin retoques', () => {
 
 /*
  * `oponentes >= MIN_OPONENTES` a secas no defiende de nada: veinte wallets propias
- * jugando entre ellas ven diecinueve oponentes distintos cada una y pasan el filtro
- * sobradas. Lo que un grupo cerrado NO puede fingir es CONOCER GENTE NUEVA.
+ * jugando entre ellas ven diecinueve oponentes distintos cada una y pasan sobradas.
  *
- *   veinte wallets propias, veinte partidas -> 19 distintos / 20 partidas = 0,95
- *   jugador real, 4 partidas de 35 personas -> ~100 distintos / 4 partidas = 25
- *
- * Y para subir el ratio hay que meter wallets nuevas de verdad: mas entradas que
- * pagar y mas horas que jugar, que es justo el coste que el ataque evitaba.
+ * Lo que las separa es que UN CLUSTER TIENE TECHO Y UN JUGADOR NO: con veinte
+ * wallets nunca conoceras a mas de diecinueve personas, juegues cuatro partidas o
+ * cuatro mil. Por eso se mide contra la POBLACION y no contra las partidas.
  */
 
-test('un cluster de 20 wallets propias NO pasa el filtro, aunque vea 19 oponentes', () => {
-    // Cada una ha visto a las otras 19 y ha jugado 20 partidas: ratio 0,95.
-    const o = { oponentes: 19, partidas: 20 };
-    assert.ok(o.oponentes >= lb.MIN_OPONENTES, 'el filtro viejo lo dejaba pasar');
-    assert.equal(lb._diversoBastante(o), false, 'el de diversidad no');
-});
-
-test('un jugador real pasa de sobra', () => {
-    // 4 partidas de 35 personas: ~100 oponentes distintos. Ratio 25.
-    assert.equal(lb._diversoBastante({ oponentes: 100, partidas: 4 }), true);
-    // Y uno tranquilo: 6 partidas, 40 personas conocidas. Ratio 6,7.
-    assert.equal(lb._diversoBastante({ oponentes: 40, partidas: 6 }), true);
-});
-
-test('con el juego pequeño, un jugador real tambien pasa', () => {
-    // El limite de este filtro: si en el juego hay quince personas, un jugador de
-    // verdad se cruza siempre con las mismas. Por eso el umbral por defecto es bajo
-    // (2) — con el juego vacio no puede echar a nadie real, y el cluster se queda
-    // igualmente por debajo de 1.
-    assert.equal(lb._diversoBastante({ oponentes: 15, partidas: 6 }), true, 'ratio 2,5');
-    assert.equal(lb._diversoBastante({ oponentes: 12, partidas: 5 }), true, 'ratio 2,4');
-    // Y el cluster, con muchas mas partidas, sigue fuera.
-    assert.equal(lb._diversoBastante({ oponentes: 19, partidas: 30 }), false, 'ratio 0,63');
-});
-
-test('una sola partida no cuenta, por muchos oponentes que tenga', () => {
-    // 34 oponentes en una partida da un ratio enorme por construccion y no dice
-    // nada: cualquiera entra una vez a una sala llena.
-    assert.equal(lb._diversoBastante({ oponentes: 34, partidas: 1 }), false);
-    assert.equal(lb._diversoBastante({ oponentes: 68, partidas: 2 }), false);
-});
-
-test('el cluster no se arregla jugando MAS partidas entre ellos', () => {
-    // Es la propiedad que importa: insistir empeora el ratio, no lo mejora. La unica
-    // salida es meter wallets nuevas, que cuesta entradas y horas.
-    for (const partidas of [20, 50, 200]) {
-        assert.equal(lb._diversoBastante({ oponentes: 19, partidas }), false,
+test('el cluster se queda en su techo por muchas partidas que juegue', () => {
+    // 20 wallets propias sobre 500 activos: 19 de 499 = 3,8 %. Y jugar mas no lo
+    // cambia, porque no hay a quien mas conocer.
+    for (const partidas of [4, 20, 200, 2000]) {
+        assert.equal(lb._diversoBastante({ oponentes: 19, partidas }, 500), false,
             `con ${partidas} partidas entre las mismas 19 wallets sigue sin pasar`);
     }
 });
 
+test('a un jugador real, jugar mas solo puede SUBIRLE el porcentaje', () => {
+    // Es la propiedad que la metrica anterior (oponentes/partidas) tenia al reves:
+    // aquella bajaba cuanto mas jugabas, asi que castigaba al jugador activo.
+    const pob = 500;
+    let anterior = 0;
+    for (const [op, partidas] of [[65, 2], [130, 4], [250, 10], [380, 20]]) {
+        const pct = op / (pob - 1);
+        assert.ok(pct >= anterior, 'el porcentaje no deberia bajar al jugar mas');
+        anterior = pct;
+        assert.equal(lb._diversoBastante({ oponentes: op, partidas }, pob), true);
+    }
+});
+
+test('ni 50 wallets propias llegan a donde llega un jugador ocasional', () => {
+    // 49 de 499 = 9,8 %, justo por debajo del 10 %. Un jugador con dos partidas ya
+    // va por 13 %, y con cuatro por 25 %. El margen es estrecho a proposito: entre
+    // dejar pasar a un atacante y echar a un jugador real, se prefiere lo primero.
+    assert.equal(lb._diversoBastante({ oponentes: 49, partidas: 30 }, 500), false);
+    assert.equal(lb._diversoBastante({ oponentes: 65, partidas: 2 }, 500), true);
+    assert.equal(lb._diversoBastante({ oponentes: 130, partidas: 4 }, 500), true);
+});
+
+test('una sola partida no cuenta', () => {
+    assert.equal(lb._diversoBastante({ oponentes: 34, partidas: 1 }, 500), false);
+});
+
+test('con el juego pequeño no se puede distinguir, y se deja pasar', () => {
+    // Treinta jugadores en total: todos se cruzan con todos. Un cluster de veinte
+    // conoce al 66 % de la comunidad, igual que cualquiera. No hay filtro que
+    // arregle esto — la defensa ahi es economica (el rake), no de deteccion.
+    // Se deja pasar a proposito: mejor eso que echar a jugadores de verdad.
+    assert.equal(lb._diversoBastante({ oponentes: 19, partidas: 30 }, 30), true);
+    assert.equal(lb._diversoBastante({ oponentes: 25, partidas: 6 }, 30), true);
+});
+
+test('sin poblacion con la que comparar, no se filtra', () => {
+    assert.equal(lb._diversoBastante({ oponentes: 5, partidas: 5 }, 1), true);
+    assert.equal(lb._diversoBastante({ oponentes: 5, partidas: 5 }, 0), true);
+});
+
 test('el filtro completo deja fuera al cluster y dentro al jugador normal', () => {
+    // 200 wallets activas ese dia. El cluster tiene MAS kills que nadie: sin el
+    // filtro copaba el podio entero.
     const cluster = wallets.slice(0, 3);
     const normal = wallets.slice(3, 6);
     const players = {};
     const op = new Map();
-    for (const w of cluster) { players[w] = { kills: 50, peak: 9000, name: 'c' }; op.set(w, { oponentes: 19, partidas: 30 }); }
-    for (const w of normal) { players[w] = { kills: 10, peak: 100, name: 'n' }; op.set(w, { oponentes: 90, partidas: 5 }); }
+    for (const w of cluster) { players[w] = { kills: 500, peak: 9999, name: 'c' }; op.set(w, { oponentes: 19, partidas: 40 }); }
+    for (const w of normal) { players[w] = { kills: 10, peak: 100, name: 'n' }; op.set(w, { oponentes: 120, partidas: 5 }); }
+    // Relleno hasta 200 activos, que es la poblacion contra la que se compara.
+    for (let i = 0; i < 194; i++) op.set('relleno' + i, { oponentes: 100, partidas: 5 });
 
-    const tabla = lb.tablaDe(players, op);
-    const dentro = tabla.map(f => f.wallet);
+    const dentro = lb.tablaDe(players, op).map(f => f.wallet);
     for (const w of cluster) assert.ok(!dentro.includes(w), 'una wallet del cluster se ha colado');
     for (const w of normal) assert.ok(dentro.includes(w), 'un jugador normal se ha quedado fuera');
-    // Y ojo: el cluster tenia MAS kills. Sin el filtro copaba el podio entero.
-    assert.equal(tabla.length, 3);
+    assert.equal(dentro.length, 3);
 });
 
 test('limpieza', () => {
