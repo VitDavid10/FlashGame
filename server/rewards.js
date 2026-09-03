@@ -124,6 +124,19 @@ const REWARD_FACTOR = (() => {
  */
 const DRY_RUN = process.env.REWARD_DRY_RUN === '1';
 
+/*
+ * Pagar los premios por transferencia directa cuando NO hay contrato desplegado.
+ *
+ * Es el modo barato: cuesta el gas de diez transferencias al dia en vez de la renta
+ * de un programa. Sigue siendo comprobable porque el dia se ancla en la cadena
+ * ANTES de pagar (ver pagarDirecto), pero da una garantia mas floja que el
+ * contrato: alli el dinero NO PUEDE ir a otro sitio; aqui, si va, se nota.
+ *
+ * Apagado por defecto: que el servidor empiece a mandar tokens solo porque falta
+ * una variable de entorno seria la peor forma de descubrir que estaba encendido.
+ */
+const PAGO_DIRECTO = process.env.REWARD_DIRECT_PAY === '1';
+
 const DIA = 86400;
 
 /*
@@ -338,6 +351,75 @@ async function publicarRonda(ronda, solana, log) {
 }
 
 /*
+ * PAGO DIRECTO — repartir los premios SIN contrato de tesoreria.
+ *
+ * Es el camino barato: mientras no haya programa desplegado, los premios se pagan
+ * con transferencias normales desde la wallet de la autoridad. Cuesta el gas de
+ * cada transferencia (calderilla) en vez de la renta de un programa.
+ *
+ * Lo que lo hace comprobable, y no un "fiate de mi", es el ORDEN:
+ *
+ *   1. a las 23:59 se cierra el dia y su clasificacion queda con un hash
+ *   2. ese hash se ancla en la cadena con un Memo  (leaderboard.anclarDia)
+ *   3. SOLO DESPUES se paga
+ *
+ * Con eso, cualquiera coge el hash anclado —que lleva su fecha en la cadena—,
+ * recalcula el hash de la lista publicada en /api/leaderboard/<fecha>, y comprueba
+ * que las transferencias fueron a esas wallets y por esas cantidades.
+ *
+ * LO QUE ESTO NO DA, dicho sin adornos: no impide pagar a otra wallet. Da que se
+ * NOTE, porque contradiria una lista cuyo hash ya estaba en la cadena antes. El
+ * contrato de premios convierte ese "se nota" en un "no se puede" — y esa es
+ * exactamente la diferencia por la que vale lo que cuesta desplegarlo, cuando se
+ * pueda pagar.
+ *
+ * No paga un dia que no este anclado: sin el anclaje previo, el reparto no se
+ * puede comprobar y entonces esto solo seria una wallet mandando tokens.
+ */
+async function pagarDirecto(date, solana, log) {
+    const epoch = epochDeFecha(date);
+    const ronda = data.rounds[epoch];
+    if (!ronda) return { ok: false, error: 'no hay ronda preparada para ese dia' };
+    if (ronda.sig) return { ok: false, error: 'esa ronda ya se publico on-chain: se cobra con claim' };
+    if (ronda.pagos && ronda.pagos.length) return { ok: true, repetida: true, pagos: ronda.pagos };
+    if (!solana || !solana.canWithdraw()) return { ok: false, error: 'sin clave de la autoridad' };
+
+    // El anclaje va PRIMERO. Sin el, pagar no demuestra nada.
+    const eslabon = leaderboard.cadena(400).find(e => e.date === date);
+    if (!eslabon || !eslabon.sig) {
+        return { ok: false, error: 'ese dia no esta anclado en la cadena todavia: ancla primero' };
+    }
+
+    const pub = rondaPublica(epoch);
+    if (!pub || !pub.entries || !pub.entries.length) return { ok: false, error: 'la ronda no tiene lista' };
+
+    const pagos = [];
+    for (const fila of pub.entries) {
+        const pill = rawToPill(fila.amountRaw);
+        if (!(pill > 0)) continue;
+        try {
+            // Una transferencia por ganador y no una sola con diez instrucciones: si
+            // una falla (por ejemplo, hay que crearle la cuenta asociada), las demas
+            // ya han salido y no se reintentan enteras.
+            const sig = await solana.withdraw(fila.wallet, pill);
+            pagos.push({ wallet: fila.wallet, rank: fila.rank, pill, sig });
+            if (log) log(`Premio pagado a ${fila.wallet.slice(0, 6)}…: ${pill} PILL — ${sig}`);
+        } catch (e) {
+            pagos.push({ wallet: fila.wallet, rank: fila.rank, pill, error: e.message });
+            if (log) log(`Premio NO pagado a ${fila.wallet.slice(0, 6)}…: ${e.message}`);
+        }
+    }
+
+    ronda.pagos = pagos;
+    ronda.pagadoEn = new Date().toISOString();
+    ronda.anclaLeaderboard = eslabon.sig;
+    dirty = true; save();
+
+    const fallidos = pagos.filter(p => p.error).length;
+    return { ok: fallidos === 0, pagos, fallidos, anclaLeaderboard: eslabon.sig };
+}
+
+/*
  * Refresca el estado on-chain de las rondas publicadas: cuando se abre el claim,
  * cuanto se lleva reclamado y si alguna se cancelo. El contrato es la fuente de la
  * verdad; este fichero es solo una cache para no consultar el RPC en cada peticion
@@ -377,7 +459,7 @@ async function refrescar(conn, log) {
  */
 async function tick(solana, log, connOverride) {
     const conn = connOverride !== undefined ? connOverride : conexion(solana);
-    const hecho = { cerrado: null, preparadas: [], publicadas: [] };
+    const hecho = { cerrado: null, preparadas: [], anclados: [], publicadas: [], pagadas: [] };
 
     // 1. Cerrar el dia anterior si aun no se cerro.
     const ayer = new Date(Date.now() - DIA * 1000).toISOString().slice(0, 10);
@@ -399,11 +481,33 @@ async function tick(solana, log, connOverride) {
         }
     }
 
-    // 3. Publicar las que estan sin publicar.
-    for (const r of Object.values(data.rounds)) {
-        if (r.sig || r.cancelled) continue;
-        const res = await publicarRonda(r, solana, log);
-        if (res.ok && !res.repetida) hecho.publicadas.push(r.epoch);
+    // 3. Anclar en la cadena los dias cerrados que aun no lo esten.
+    //
+    // Va ANTES de pagar y de publicar, siempre, haya contrato o no: es lo que fija
+    // la clasificacion del dia con fecha en la cadena. Cuesta una transaccion.
+    for (const date of leaderboard.sinAnclar()) {
+        if (date === hoy) continue;
+        const res = await leaderboard.anclarDia(date, solana, log);
+        if (res.ok && !res.repetida) hecho.anclados.push(date);
+    }
+
+    // 4. Pagar.
+    //
+    // Con contrato: se publica la raiz de Merkle y cada ganador cobra su premio.
+    // Sin contrato: transferencias directas desde la autoridad, pero SOLO de dias
+    // ya anclados — si no, el reparto no se podria comprobar contra nada.
+    if (PROGRAM) {
+        for (const r of Object.values(data.rounds)) {
+            if (r.sig || r.cancelled) continue;
+            const res = await publicarRonda(r, solana, log);
+            if (res.ok && !res.repetida) hecho.publicadas.push(r.epoch);
+        }
+    } else if (PAGO_DIRECTO) {
+        for (const r of Object.values(data.rounds)) {
+            if (r.cancelled || (r.pagos && r.pagos.length)) continue;
+            const res = await pagarDirecto(r.date, solana, log);
+            if (res.ok) hecho.pagadas.push(r.epoch);
+        }
     }
 
     // 4. Refrescar el estado de las vivas.
@@ -551,7 +655,7 @@ async function proyeccionDeHoy(snapshot) {
 
 module.exports = {
     tick, arranca, estado, premiosDe, marcarCobrado, rondaPublica,
-    prepararRonda, publicarRonda, presupuestoRaw, proyeccionDeHoy, refrescar,
+    prepararRonda, publicarRonda, pagarDirecto, presupuestoRaw, proyeccionDeHoy, refrescar,
     epochDeFecha, fechaDeEpoch, pillToRaw, rawToPill,
     PROGRAM, save, DRY_RUN, REWARD_FACTOR, POT_COMPLETO_CON,
 };

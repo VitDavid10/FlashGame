@@ -344,6 +344,74 @@ toolchain. Deja anotada la versión exacta de Anchor y de Rust con la que compil
 
 ---
 
+## 6 bis bis. El camino barato: arrancar por 1,5 SOL
+
+Todo lo de arriba describe el contrato completo. Con presupuesto corto hay un orden
+que cuesta mucho menos y no renuncia a lo que de verdad importa.
+
+### Qué se despliega primero, y por qué ese
+
+`programs/pill-custody` — **246 KB, 1,56 SOL** (medido compilando, no estimado).
+Hace cuatro cosas: `initialize`, `deposit`, `withdraw` con dos firmas, y traspaso de
+autoridad en dos pasos. Ni timelock, ni caps, ni premios, ni staking.
+
+Es el primero porque **es el único que guarda dinero ajeno**. Los depósitos de los
+jugadores pasan de estar en una wallet con llave privada —que se vacía en una
+transacción— a una PDA que no puede tener llave. La tesorería, en cambio, guarda
+dinero propio: si me lo llevo he mentido, pero no he robado a nadie.
+
+De esos 246 KB, **175 KB son suelo de Anchor** y solo 71 KB son código nuestro. Por
+eso partir el contrato en trozos sale más caro en total: ese suelo se paga entero
+por cada programa.
+
+### Cómo se reparten los premios mientras tanto
+
+Sin contrato de tesorería, con **transferencias directas** desde la autoridad. Cuesta
+el gas de diez transferencias al día en vez de la renta de un programa. Lo que lo
+mantiene comprobable es el **orden**, no la confianza:
+
+```
+23:59  se cierra el día  →  hash de la clasificación
+                                   │
+                                   ▼
+       Memo en la cadena  (leaderboard.anclarDia, ~0,000005 SOL)
+                                   │   ← la lista queda fijada CON FECHA
+                                   ▼
+       10 transferencias a los ganadores  (rewards.pagarDirecto)
+```
+
+`pagarDirecto` **se niega a pagar un día que no esté anclado**, y hay un test que lo
+fija: sin ancla previa el reparto no se puede contrastar con nada, y esto sería solo
+una wallet mandando tokens.
+
+Con eso, cualquiera coge el hash anclado —que lleva su fecha en la cadena—,
+recalcula el hash de la lista de `/api/leaderboard/<fecha>` y comprueba que las
+transferencias fueron a esas wallets y por esas cantidades.
+
+**Lo que NO da, dicho sin adornos:** no impide pagar a otra wallet. Da que se
+**note**, porque contradiría una lista cuyo hash ya estaba publicado antes. El
+contrato convierte ese «se nota» en un «no se puede», y esa es exactamente la
+diferencia por la que vale lo que cuesta — cuando se pueda pagar.
+
+Se enciende con `REWARD_DIRECT_PAY=1`, apagado por defecto: que el servidor empiece
+a mandar tokens porque falta una variable sería la peor forma de enterarse.
+
+### Y el bloqueo del supply, aparte
+
+Con **vesting externo** (ver TESORERIA-PLAN §3 bis): céntimos, ya auditado, y más
+fuerte que el `unlock_ts` de aquí porque no depende de que yo no cambie el código.
+
+### El orden completo, con precios
+
+| paso | qué habilita | coste |
+|---|---|---|
+| Vesting externo del supply | «no puedo vender mi parte» | céntimos |
+| `pill-custody` | los depósitos dejan de estar en mi wallet | **1,56 SOL** |
+| Premios por transferencia + ancla | reparto diario comprobable | gas |
+| `pill-treasury` (más tarde) | premios imposibles de desviar, y staking | 3,08 SOL |
+
+---
+
 ## 6 ter. Lo que cuesta desplegar, y por qué importa antes de lo que parece
 
 Desplegar cobra una **renta proporcional al tamaño del binario**, no una comisión

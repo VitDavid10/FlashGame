@@ -82,6 +82,9 @@ function setProveedorOponentes(fn) { _proveedorOponentes = fn; }
  *  (server/room-loop.js:156): ya estan calibrados y la gente los conoce. */
 const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
 
+// El mismo que usa matches.js para anclar los lotes de partidas.
+const MEMO_PROGRAM = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+
 const hoyUTC = () => new Date().toISOString().slice(0, 10);
 const sha256hex = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
@@ -309,6 +312,53 @@ function diaCerrado(date) {
     try { return JSON.parse(fs.readFileSync(path.join(DIR, date + '.json'), 'utf8')); } catch (e) { return null; }
 }
 
+/*
+ * Ancla el hash de un dia cerrado en la cadena, con un Memo.
+ *
+ * Esto es lo que permite repartir premios SIN contrato y que siga siendo
+ * comprobable. Cuesta una transaccion (unos 0,000005 SOL) y deja constancia de que
+ * la clasificacion de ese dia estaba fijada ANTES de que se pagara a nadie.
+ *
+ * Con eso, cualquiera puede:
+ *   1. coger el hash anclado y su fecha en la cadena
+ *   2. bajarse la lista de /api/leaderboard/<fecha> y recalcular el hash
+ *   3. mirar las transferencias a los ganadores y ver que coinciden
+ *
+ * Lo que NO da, y conviene decirlo: no impide pagar a otra wallet. Da que se note
+ * — pagar a alguien que no esta en una lista cuyo hash ya estaba publicado es una
+ * contradiccion visible. El contrato de premios convierte ese "se nota" en un "no
+ * se puede", y por eso vale lo que cuesta desplegarlo; pero mientras no lo haya,
+ * esto es mucho mejor que nada.
+ */
+async function anclarDia(date, solana, log) {
+    const eslabon = chain.find(e => e.date === date);
+    if (!eslabon) return { ok: false, error: 'ese dia no esta cerrado' };
+    if (eslabon.sig) return { ok: true, sig: eslabon.sig, repetida: true };
+    if (!solana || !solana.canWithdraw()) return { ok: false, error: 'sin clave para firmar' };
+
+    try {
+        const { PublicKey, TransactionInstruction } = require('@solana/web3.js');
+        // Mismo formato que los lotes de partidas: prefijo, identificador y hash.
+        const memo = `PWLB${date}:${eslabon.hash}`;
+        const sig = await solana.sendInstructions([new TransactionInstruction({
+            programId: new PublicKey(MEMO_PROGRAM),
+            keys: [],
+            data: Buffer.from(memo, 'utf8'),
+        })]);
+        eslabon.sig = sig;
+        eslabon.anchoredAt = new Date().toISOString();
+        dirty = true; save();
+        if (log) log(`Leaderboard del ${date} anclado: ${sig}`);
+        return { ok: true, sig };
+    } catch (e) {
+        if (log) log(`Leaderboard del ${date} NO anclado: ${e.message}`);
+        return { ok: false, error: e.message };
+    }
+}
+
+/** Los dias cerrados que todavia no tienen su hash en la cadena. */
+function sinAnclar() { return chain.filter(e => !e.sig).map(e => e.date); }
+
 function cadena(limite = 400) { return chain.slice(-limite); }
 
 /*
@@ -368,6 +418,7 @@ module.exports = {
     recordKill, recordPeak,
     estadoHoy, diaCerrado, cadena, verificarCadena,
     cerrarAhora, repartoDe, tablaDe, setProveedorOponentes,
+    anclarDia, sinAnclar,
     save,
     PESOS, MIN_KILLS, MIN_OPONENTES, MIN_CONOCIDOS_PCT, MIN_PARTIDAS, PUBLICADOS,
     _diversoBastante: diversoBastante,

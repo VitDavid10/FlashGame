@@ -1,0 +1,22 @@
+[package]
+name = "pill-custody"
+version = "0.1.0"
+description = "Custodia de PillWars: el saldo in-game de los jugadores, en una cuenta sin llave privada"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "pill_custody"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"

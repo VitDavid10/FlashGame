@@ -384,6 +384,113 @@ test('sin rake no hay proyeccion que ensenar', async () => {
     assert.equal(pr.puestos.length, 0);
 });
 
+/* ===================== PAGO SIN CONTRATO ===================== */
+
+/*
+ * El camino barato: sin programa desplegado, los premios se pagan por
+ * transferencia directa. Lo que lo hace comprobable y no un "fiate de mi" es EL
+ * ORDEN — el hash del dia se ancla en la cadena ANTES de pagar. Si se pagara sin
+ * anclar, no habria nada contra lo que contrastar el reparto y esto seria
+ * simplemente una wallet mandando tokens a quien le apetezca.
+ */
+
+test('NO se paga un dia que no este anclado en la cadena', async () => {
+    const F = '2026-09-10';
+    diaDe(F, 50, 20000);
+    rewards.prepararRonda(F, rewards.pillToRaw(50000));
+
+    const solanaFalso = {
+        canWithdraw: () => true,
+        withdraw: async () => 'nunca deberia llegar aqui',
+        sendInstructions: async () => 'sig',
+    };
+    const r = await rewards.pagarDirecto(F, solanaFalso, null);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /anclado/, 'deberia negarse por no estar anclado');
+});
+
+test('anclado el dia, se paga a cada ganador y queda la firma', async () => {
+    const F = '2026-09-11';
+    diaDe(F, 50, 20000);
+    const ronda = rewards.prepararRonda(F, rewards.pillToRaw(50000));
+    assert.ok(ronda, 'deberia haber ronda');
+
+    const pagados = [];
+    const solanaFalso = {
+        canWithdraw: () => true,
+        sendInstructions: async () => 'sigDelAncla',
+        withdraw: async (wallet, pill) => { pagados.push({ wallet, pill }); return 'sigPago' + pagados.length; },
+    };
+
+    // Primero el ancla, que es el requisito.
+    const anc = await lb.anclarDia(F, solanaFalso, null);
+    assert.equal(anc.ok, true);
+
+    const r = await rewards.pagarDirecto(F, solanaFalso, null);
+    assert.equal(r.ok, true);
+    assert.equal(r.fallidos, 0);
+    // Se paga a los diez del top, no a mas ni a menos.
+    assert.equal(pagados.length, 10);
+    assert.equal(r.pagos.length, 10);
+    // Y cada pago lleva su firma, que es lo que se puede seguir en el explorador.
+    for (const p of r.pagos) assert.ok(p.sig, 'un pago sin firma no se puede comprobar');
+    // La ronda guarda contra que ancla se pago: sin eso, comprobarlo obligaria a
+    // rebuscar en la cadena de que dia salio.
+    assert.equal(r.anclaLeaderboard, 'sigDelAncla');
+});
+
+test('lo pagado cuadra con la lista publicada, wallet por wallet', async () => {
+    // Es la comprobacion que haria un tercero: bajarse el JSON del dia y verificar
+    // que a cada wallet le llego lo que decia la lista.
+    const F = '2026-09-12';
+    diaDe(F, 50, 20000);
+    rewards.prepararRonda(F, rewards.pillToRaw(50000));
+
+    const pagados = new Map();
+    const solanaFalso = {
+        canWithdraw: () => true,
+        sendInstructions: async () => 'ancla',
+        withdraw: async (w, pill) => { pagados.set(w, pill); return 'sig'; },
+    };
+    await lb.anclarDia(F, solanaFalso, null);
+    await rewards.pagarDirecto(F, solanaFalso, null);
+
+    const pub = rewards.rondaPublica(rewards.epochDeFecha(F));
+    for (const fila of pub.entries) {
+        assert.equal(pagados.get(fila.wallet), rewards.rawToPill(fila.amountRaw),
+            'a ' + fila.wallet.slice(0, 6) + ' no le llego lo que decia la lista');
+    }
+});
+
+test('no se paga dos veces el mismo dia', async () => {
+    const F = '2026-09-13';
+    diaDe(F, 50, 20000);
+    rewards.prepararRonda(F, rewards.pillToRaw(50000));
+    let veces = 0;
+    const solanaFalso = {
+        canWithdraw: () => true,
+        sendInstructions: async () => 'ancla',
+        withdraw: async () => { veces++; return 'sig'; },
+    };
+    await lb.anclarDia(F, solanaFalso, null);
+    await rewards.pagarDirecto(F, solanaFalso, null);
+    const primera = veces;
+    const otra = await rewards.pagarDirecto(F, solanaFalso, null);
+    assert.equal(otra.repetida, true);
+    assert.equal(veces, primera, 'el segundo intento ha vuelto a pagar');
+});
+
+test('anclar dos veces el mismo dia no gasta otra transaccion', async () => {
+    const F = '2026-09-14';
+    diaDe(F, 10, 5000);
+    let anclajes = 0;
+    const solanaFalso = { canWithdraw: () => true, sendInstructions: async () => { anclajes++; return 'sig'; } };
+    await lb.anclarDia(F, solanaFalso, null);
+    const otra = await lb.anclarDia(F, solanaFalso, null);
+    assert.equal(otra.repetida, true);
+    assert.equal(anclajes, 1, 'ha vuelto a anclar y eso cuesta gas');
+});
+
 /*
  * ESTE VA EL ULTIMO a proposito: recarga rake/rewards/leaderboard con otro
  * LB_DIR y deja la cache de require tocada. Cualquier test que fuera detras
