@@ -157,3 +157,21 @@ test('la comision de arcade tiene un tope duro', () => {
     assert.match(ROOM_LOOP, /ctx\.ARCADE_RAKE_PCT/, 'room-loop no lee el porcentaje del contexto');
     assert.match(INDEX, /addToPot, sendEcon[\s\S]{0,200}ARCADE_RAKE_PCT/, 'ARCADE_RAKE_PCT no se pasa al contexto de la sala');
 });
+
+/* ── El campo de la clave de admin ─────────────────────────────────────────────
+ *
+ * Tenia maxlength="32" y la recomendacion de generar la clave es
+ * `openssl rand -hex 32`, que da 32 BYTES = 64 caracteres. El navegador cortaba
+ * la clave por la mitad al pegarla y mandaba los 32 primeros, asi que el panel
+ * decia "wrong key" con la clave correcta delante. Nada fallaba, nada se
+ * loguearba: solo no se podia entrar.
+ */
+
+test('el campo de la clave admite una clave de 32 bytes en hex', () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'server', 'admin.html'), 'utf8');
+    const m = html.match(/<input id="key"[^>]*maxlength="(\d+)"/);
+    if (m) {
+        assert.ok(parseInt(m[1], 10) >= 64,
+            `maxlength=${m[1]} corta una clave de "openssl rand -hex 32" (64 caracteres) sin avisar`);
+    }
+});
