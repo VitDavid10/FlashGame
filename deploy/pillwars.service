@@ -46,8 +46,18 @@ Environment=PW_HOST_COUNT=2
 # depositos van a la wallet de la autoridad, como siempre. Con el, van al PDA de
 # custodia, que no tiene llave privada. Ver DESPLIEGUE-TESORERIA.md.
 
-# El programa desplegado. Definelo SOLO despues de `anchor deploy` y `init`.
+# Los programas desplegados. Definelos SOLO despues de desplegar E inicializar cada
+# uno: con la variable puesta y el programa sin inicializar, el servidor pide cuentas
+# que no existen.
+#
+# Los tres son independientes y se pueden poner por separado, que es de lo que se
+# trata: la custodia primero (1,56 SOL), el staking cuando el juego lo justifique
+# (1,97), y la tesoreria entera solo si hace falta el claim on-chain de premios.
 #Environment=TREASURY_PROGRAM=PiLLBwuaj4eTy9cdFoiChNtbCstHZFSLeKQk13zJwMW
+#Environment=CUSTODY_PROGRAM=2rCs2GNBbncW5ZwLeahx5yDeoLyCTD1GdK2zzGjfv3sk
+# Con STAKING_PROGRAM puesto, el staking va por su contrato aparte; sin el, por el de
+# dentro de pill_treasury. No hay que quitar TREASURY_PROGRAM: manda el de aparte.
+#Environment=STAKING_PROGRAM=6PHKEA9qmFGjUSJBLJ3wSkkpKn1aEch9kzfTXfo5e65b
 # El mint y el RPC salen de scripts/devnet-token.json si no se definen aqui.
 #Environment=PILL_MINT=Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r
 #Environment=SOL_RPC=https://api.devnet.solana.com
