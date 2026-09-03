@@ -94,7 +94,15 @@ function acceptAuthority(programId, { nueva }) {
 
 /*
  * Config: 8 de discriminador y detras el struct en orden de declaracion.
- * Option<Pubkey> es 1 byte de etiqueta + 32, ocupe o no.
+ *
+ * OJO CON Option<Pubkey>. En Borsh es de LONGITUD VARIABLE: `None` son 1 byte y ya,
+ * `Some(x)` son 1 + 32. Lo que reserva `InitSpace` (33 siempre) es el TAMANO DE LA
+ * CUENTA, no lo que ocupan los datos — con None quedan 32 bytes de cola sin usar.
+ *
+ * Leerlo como si fuera fijo desplaza 32 bytes TODO lo que viene detras, y entonces
+ * el mint sale de otro sitio y los contadores salen a cero sin dar ningun error.
+ * Paso exactamente eso, y el test no lo cazo porque construia el buffer con la misma
+ * suposicion equivocada que el decodificador.
  */
 function decodeConfig(data) {
     const buf = Buffer.from(data);
@@ -105,7 +113,7 @@ function decodeConfig(data) {
     const pk = () => { const v = new PublicKey(buf.subarray(o, o + 32)).toBase58(); o += 32; return v; };
     const authority = pk();
     const tienePending = buf[o] === 1; o += 1;
-    const pending = new PublicKey(buf.subarray(o, o + 32)).toBase58(); o += 32;
+    const pending = tienePending ? pk() : null;
     const mint = pk();
     const configBump = buf[o]; o += 1;
     const custodyBump = buf[o]; o += 1;
@@ -113,7 +121,7 @@ function decodeConfig(data) {
     const totalWithdrawn = buf.readBigUInt64LE(o); o += 8;
     return {
         authority,
-        pendingAuthority: tienePending ? pending : null,
+        pendingAuthority: pending,
         mint, configBump, custodyBump,
         totalDeposited: totalDeposited.toString(),
         totalWithdrawn: totalWithdrawn.toString(),

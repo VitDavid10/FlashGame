@@ -35,9 +35,12 @@ const DEC = 6;
 const aRaw = (pill) => BigInt(Math.round(Number(pill) * 10 ** DEC));
 const aPill = (raw) => Number(BigInt(raw)) / 10 ** DEC;
 
-let ok = 0, mal = 0;
-const bien = (t) => { ok++; console.log('  OK   ' + t); };
+let ok = 0, mal = 0, dudoso = 0;
+const bien = (t) => { ok++; console.log('  OK    ' + t); };
 const falla = (t, e) => { mal++; console.log('  FALLA ' + t + (e ? '\n         ' + e : '')); };
+// Ni bien ni mal: no se ha llegado a probar. Cuenta aparte porque un OK falso es peor
+// que un fallo — un fallo se arregla, un OK falso se cree.
+const sinProbar = (t) => { dudoso++; console.log('  ¿?    ' + t); };
 
 async function manda(c, ixs, firmantes) {
     const tx = new Transaction().add(...ixs);
@@ -52,12 +55,22 @@ async function manda(c, ixs, firmantes) {
 /*
  * Un caso que TIENE que revertir. Si pasa, es un agujero: se anota como fallo y se
  * dice exactamente que consiguio hacer, porque "la transaccion paso" no explica nada.
+ *
+ * `porQueNoVale` es igual de importante: un rechazo por el motivo equivocado es un
+ * test que MIENTE. Con el programa ya inicializado, cualquier initialize revierte con
+ * "account already in use" antes de llegar a la comprobacion que se queria probar —
+ * y saldria OK sin haber probado nada.
  */
-async function debeFallar(titulo, fn, queSignificaSiPasa) {
+async function debeFallar(titulo, fn, queSignificaSiPasa, porQueNoVale) {
     try {
         await fn();
         falla(titulo + ' — NO revirtio. ' + queSignificaSiPasa);
     } catch (e) {
+        const logs = ((e.logs || []).join('\n') + '\n' + (e.message || ''));
+        if (porQueNoVale && porQueNoVale.test(logs)) {
+            sinProbar(titulo + ' — revirtio, pero por otro motivo: no prueba nada');
+            return;
+        }
         bien(titulo + ' — rechazado');
     }
 }
@@ -157,13 +170,20 @@ async function run(pos, argv) {
     ], [pagador]), 'la config se podria reescribir y con ella la autoridad.');
 
     const intruso = Keypair.generate();
+    /*
+     * La comision la paga el pagador legitimo a proposito: asi el intruso no necesita
+     * SOL y el UNICO motivo posible de fallo es la comprobacion de DEPLOYER. Pedirle
+     * un airdrop al intruso metia un 429 del faucet como causa alternativa.
+     *
+     * Contra un programa YA inicializado esto no prueba nada —revierte antes, con
+     * "account already in use"— y por eso se marca como no probado en vez de OK.
+     */
     await debeFallar('initialize desde otra wallet (no es DEPLOYER)', async () => {
-        const s = await c.requestAirdrop(intruso.publicKey, 1e9);
-        await c.confirmTransaction(s, 'confirmed');
         await manda(c, [cc.initialize(programa, {
             mint, authority: intruso.publicKey, payer: intruso.publicKey,
-        })], [intruso]);
-    }, 'cualquiera podria quedarse el programa recien desplegado.');
+        })], [pagador, intruso]);
+    }, 'cualquiera podria quedarse el programa recien desplegado.',
+       /already in use/i);
 
     await debeFallar('deposit con un token que no es el mint del programa', async () => {
         const otro = await createMint(c, pagador, pagador.publicKey, null, DEC);
@@ -204,7 +224,12 @@ async function run(pos, argv) {
     ], [pagador, jugador]), 'la boveda quedaria en negativo o robaria de otra cuenta.');
 
     console.log('');
-    console.log(`RESULTADO: ${ok} bien, ${mal} mal`);
+    console.log(`RESULTADO: ${ok} bien, ${mal} mal` + (dudoso ? `, ${dudoso} sin probar` : ''));
+    if (dudoso) {
+        console.log('');
+        console.log('Los "¿?" revirtieron por otro motivo, asi que no dicen nada. Para probarlos');
+        console.log('hace falta un programa recien desplegado y todavia sin inicializar.');
+    }
     if (mal > 0) {
         console.log('');
         console.log('NO revoques la upgrade authority con esto asi: un fallo aqui es dinero');

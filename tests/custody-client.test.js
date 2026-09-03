@@ -113,6 +113,18 @@ test('todas las instrucciones del programa tienen cliente', () => {
 
 const u64le = (n) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(n)); return b; };
 
+/*
+ * Option<Pubkey> COMO LO SERIALIZA BORSH, que es de longitud variable: None es un
+ * solo byte, Some son 1 + 32.
+ *
+ * Esto lo escribia antes como 1 + 32 siempre, copiando lo que reserva `InitSpace`.
+ * Pero InitSpace dimensiona la CUENTA, no los datos: con None quedan 32 bytes de cola
+ * sin usar. El test construia el buffer con la misma suposicion equivocada que el
+ * decodificador, asi que los dos estaban mal y el test pasaba igual. Se vio contra
+ * devnet: el mint salia de otro sitio y los contadores a cero, sin error ninguno.
+ */
+const optPubkey = (pk) => pk ? Buffer.concat([Buffer.from([1]), pk.toBuffer()]) : Buffer.from([0]);
+
 test('decodeConfig lee los campos en el orden de Config', () => {
     const campos = camposDe('Config').map(c => c.nombre);
     assert.deepEqual(campos, ['authority', 'pending_authority', 'mint', 'config_bump',
@@ -125,10 +137,11 @@ test('decodeConfig lee los campos en el orden de Config', () => {
     const buf = Buffer.concat([
         cc.accDisc('Config'),
         auth.toBuffer(),
-        Buffer.from([0]), Buffer.alloc(32),          // pending_authority = None
+        optPubkey(null),                             // pending_authority = None -> 1 byte
         mnt.toBuffer(),
         Buffer.from([254, 253]),                     // config_bump, custody_bump
         u64le(1234567), u64le(456),
+        Buffer.alloc(32),                            // la cola que reserva InitSpace
     ]);
     const cfg = cc.decodeConfig(buf);
     assert.equal(cfg.authority, auth.toBase58());
@@ -141,14 +154,33 @@ test('decodeConfig lee los campos en el orden de Config', () => {
 });
 
 test('decodeConfig lee la autoridad en cola cuando la hay', () => {
+    // Con Some, el Option ocupa 33 y todo lo de detras se corre 32 bytes. Si el
+    // decodificador usara un tamano fijo, uno de los dos casos leeria basura.
     const auth = Keypair.generate().publicKey, pend = Keypair.generate().publicKey;
+    const mnt = Keypair.generate().publicKey;
     const buf = Buffer.concat([
         cc.accDisc('Config'), auth.toBuffer(),
-        Buffer.from([1]), pend.toBuffer(),           // pending_authority = Some(..)
-        Keypair.generate().publicKey.toBuffer(),
-        Buffer.from([255, 255]), u64le(0), u64le(0),
+        optPubkey(pend),                             // pending_authority = Some(..)
+        mnt.toBuffer(),
+        Buffer.from([250, 249]), u64le(77), u64le(11),
     ]);
-    assert.equal(cc.decodeConfig(buf).pendingAuthority, pend.toBase58());
+    const cfg = cc.decodeConfig(buf);
+    assert.equal(cfg.pendingAuthority, pend.toBase58());
+    // Y lo de detras tiene que seguir cuadrando, que es lo que se rompia.
+    assert.equal(cfg.mint, mnt.toBase58());
+    assert.equal(cfg.configBump, 250);
+    assert.equal(cfg.totalDeposited, '77');
+    assert.equal(cfg.totalWithdrawn, '11');
+});
+
+test('el tamano de la cuenta es el que reserva InitSpace, no el de los datos', () => {
+    // 8 + 32 + (1+32) + 32 + 1 + 1 + 8 + 8 = 123, que es lo que mide la cuenta real
+    // en devnet. Con None solo se escriben 91 y los otros 32 quedan a cero: por eso
+    // dimensionar y deserializar son dos cuentas distintas.
+    const campos = camposDe('Config');
+    const TAM = { 'Pubkey': 32, 'Option<Pubkey>': 33, 'u8': 1, 'u64': 8 };
+    const total = 8 + campos.reduce((s, c) => s + (TAM[c.tipo] ?? NaN), 0);
+    assert.equal(total, 123, 'Config cambio de tamano: revisa decodeConfig y el .rs');
 });
 
 test('decodeConfig rechaza una cuenta que no es suya', () => {
