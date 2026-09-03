@@ -21,14 +21,40 @@ cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
 avm install 0.31.1 && avm use 0.31.1
 ```
 
-Comprobación:
+Comprobación — y **la que importa no es `solana --version`**:
 
 ```bash
-rustc --version && solana --version && anchor --version
+cargo-build-sbf --version     # tiene que decir platform-tools v1.54, rustc >= 1.89
+```
+
+### La trampa: `anchor build` te cambia el compilador por detrás
+
+`anchor build` gira el símlink `~/.local/share/solana/install/active_release` de
+vuelta a **Solana 2.1.0** cada vez que se ejecuta, aunque `solana --version` dijera
+4.2.2 un segundo antes. Esa versión trae rustc 1.79, y con rustc 1.79 el build muere
+así:
+
+```
+error: failed to parse manifest at .../zeroize-1.9.0/Cargo.toml
+Caused by: feature `edition2024` is required
+```
+
+**El error apunta a `zeroize` y `zeroize` no tiene nada que ver.** El problema es que
+el compilador es viejo. Se puede perder media hora persiguiendo la dependencia
+equivocada, fijando versiones en `Cargo.lock` que no arreglan nada.
+
+`agave-install init 4.2.2` deja bien el `config.yml`, pero **no impide que el
+siguiente `anchor build` lo vuelva a girar**. Así que el camino bueno es saltárselo:
+
+```bash
+~/.local/share/solana/install/releases/4.2.2/solana-release/bin/cargo-build-sbf \
+    --manifest-path programs/pill-custody/Cargo.toml --sbf-out-dir target/deploy
 ```
 
 El resto del repo (servidor, tests, scripts) **no necesita nada de esto**: es Node
-puro y funciona sin cadena.
+puro y funciona sin cadena. Los 13 tests de `tests/custody-client.test.js` comparan el
+cliente JS contra el `.rs` sin tocar la cadena, así que la mitad de los errores caros
+se cazan antes de compilar nada.
 
 ### El token de pruebas ya existe
 
@@ -409,6 +435,124 @@ fuerte que el `unlock_ts` de aquí porque no depende de que yo no cambie el cód
 | `pill-custody` | los depósitos dejan de estar en mi wallet | **1,56 SOL** |
 | Premios por transferencia + ancla | reparto diario comprobable | gas |
 | `pill-treasury` (más tarde) | premios imposibles de desviar, y staking | 3,08 SOL |
+
+---
+
+## 6 bis ter. Desplegar la custodia, paso a paso
+
+Esto es lo que se despliega **primero**, y con presupuesto corto puede que lo único
+durante meses. Los números de aquí están medidos, no estimados.
+
+### Lo que cuesta, exacto
+
+```
+$ solana rent 246576
+Rent-exempt minimum: 1.562376432 SOL
+```
+
+Son **1,5624 SOL** y no el doble: `solana program deploy` reserva por defecto justo
+el tamaño del binario de hoy (`--max-len [default: the length of the original
+deployed program]`). El precio de eso es que **un parche futuro más grande no cabe**;
+antes de subirlo hay que pagar el espacio extra:
+
+```
+solana program extend <PROGRAMA> <bytes de más>
+```
+
+### Un comando
+
+```
+scripts/deploy-custody.sh <mint> [autoridad]
+```
+
+Despliega e inicializa seguido —entre las dos cosas hay una ventana— y antes de
+gastar un lamport comprueba las tres cosas que cuestan 1,56 SOL si fallan después:
+
+1. **Que la wallet activa es la compilada en `DEPLOYER`.** Si no, `initialize` falla
+   *después* del despliegue, con el SOL ya gastado.
+2. **Que el `.so` no es más viejo que el `.rs`.** Un binario viejo lleva la constante
+   vieja y el aviso anterior no serviría de nada.
+3. **Que no quedan buffers huérfanos.** Un despliegue cortado a medias deja ~1,5 SOL
+   dentro de un buffer que no se ve por ningún lado. Es la forma más común de «perder»
+   SOL, y por eso «el deploy me costó 5 SOL» casi siempre son tres intentos fallidos:
+
+```
+solana program show --buffers      # ver si hay
+solana program close --buffers     # recuperarlos
+```
+
+### La constante DEPLOYER, y por qué no es la comprobación elegante
+
+`initialize` solo la puede llamar la dirección compilada en `pill-custody/src/lib.rs`.
+Sin eso es una carrera: cualquiera que vigile despliegues puede llamarla antes, ponerse
+de autoridad y con su propio mint. No roba nada —la bóveda está vacía— pero como la
+config es `init` no admite una segunda llamada: el programa queda inservible y hay que
+desplegar otra vez, con los 1,56 SOL del primero dentro.
+
+Lo correcto sería comprobarlo contra la upgrade authority del propio programa. Se
+midió compilando las dos versiones:
+
+| versión | bytes | renta |
+|---|---|---|
+| sin comprobación | 246.200 | 1,5622 SOL |
+| constante `DEPLOYER` | 246.840 | 1,5663 SOL |
+| `Account<ProgramData>` | 309.664 | 1,9663 SOL |
+
+`Account<ProgramData>` arrastra medio `bpf_loader_upgradeable`: **+63 KB, +0,44 SOL de
+renta permanente** por la misma protección que dan 640 bytes. Pagar 0,44 SOL seguros
+para evitar un 2% de perder 1,56 es mal negocio; 640 bytes no lo es.
+
+**Al cambiar de red hay que cambiar la constante y recompilar.** Es el punto débil de
+este enfoque, y por eso el script lo comprueba antes de gastar nada.
+
+### Probarlo antes de meter dinero
+
+```
+node scripts/custody.js prueba <PROGRAMA>
+node scripts/custody.js estado <PROGRAMA>
+```
+
+`prueba` hace el ciclo completo y, sobre todo, comprueba que el contrato **se niegue**
+a las siete cosas donde un contrato de custodia simple pierde el dinero de todos:
+inicializar dos veces, inicializar sin ser el `DEPLOYER`, depositar un token que no es
+el mint, retirar a una cuenta que no es la del jugador, retirar sin la firma del
+jugador, sin la de la autoridad, y más de lo que hay en la bóveda.
+
+Un contrato que pasa los casos buenos no está probado. El script sale con error si
+alguno de los siete **no** revierte.
+
+`estado` avisa si el saldo de la bóveda no cuadra con los contadores: una transferencia
+directa a la PDA no pasa por `deposit` y no se cuenta. No es un error por sí mismo,
+pero hay que verlo.
+
+### No hay validador local en esta máquina
+
+La CPU no tiene AVX2 y el binario de Agave lo exige:
+
+```
+ERROR solana_perf] Incompatible CPU detected: missing AVX2 support
+```
+
+Aborta sin escribir nada, lo que parece un problema de permisos y no lo es. Compilar
+Agave desde fuente son horas y hay que rehacerlo en cada versión, así que **todo se
+prueba en devnet**. Eso convierte el SOL de devnet en un recurso real: el faucet de la
+CLI lleva rate limit agresivo y los RPC alternativos piden API key. Cuando haga falta,
+faucet.solana.com (tiene captcha).
+
+### Lo que la custodia NO protege, dicho claro
+
+El contrato no lleva saldos por jugador: los lleva el servidor, porque la economía del
+juego pasa fuera de la cadena. Así que `withdraw`, con la firma de la autoridad y la
+del jugador, puede sacar lo que sea de la bóveda hacia ese jugador.
+
+Traducido: **la custodia protege contra que te roben una llave privada de wallet, no
+contra que te roben la llave de la autoridad.** Lo que gana frente a tener el dinero
+en una wallet normal es que cada movimiento es un evento en la cadena con su
+destinatario, y los totales son públicos: se puede *ver*, no *impedir*.
+
+Hacerlo fuerte de verdad exigiría saldos por jugador on-chain, y eso es incompatible
+con que el $PILL se gane y se pierda dentro de la partida. No es un descuido: es el
+precio de que el juego sea un juego y no una DEX.
 
 ---
 
