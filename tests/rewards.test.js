@@ -328,7 +328,7 @@ test('la actividad de hoy no paga los premios de un dia atrasado', () => {
  * cogeria una instancia de rake recien creada, sin los apuntes en memoria de
  * los tests anteriores, y le saldria un bote de cero sin motivo aparente.
  */
-test('el factor multiplica el rake, y por defecto es 20', () => {
+test('el factor multiplica el rake, y por defecto es 12', () => {
     // El rake de classic sale solo de quien sobrevive al timer sin ganar la sala: con
     // factor 1 el leaderboard se estrangula (unos 50 \$/dia con 500 jugadores frente a
     // los 170 \$ del grifo). El factor es el multiplicador que se calibra con datos.
@@ -345,16 +345,16 @@ test('el factor multiplica el rake, y por defecto es 20', () => {
     const rw = require('../server/rewards.js');
     const rk = require('../server/rake.js');
     const lb2 = require('../server/leaderboard.js');
-    assert.equal(rw.REWARD_FACTOR, 20, 'el default deberia ser 20');
+    assert.equal(rw.REWARD_FACTOR, 12, 'el default deberia ser 12');
 
     const F = '2026-06-01';
     const t = Date.parse(F + 'T12:00:00Z');
-    rk.alStaking(1000, 'exit fees', t);        // 1.000 de rake -> 20.000 de bote
+    rk.alStaking(1000, 'exit fees', t);        // 1.000 de rake -> 12.000 de bote
     const ws = Array.from({ length: 50 }, () => Keypair.generate().publicKey.toBase58());
     ws.forEach((w, i) => { for (let k = 0; k < 60 - i; k++) lb2.recordKill(w, 'j' + i); lb2.recordPeak(w, 9000 - i, 'j' + i); });
     lb2._setFecha(F);
     lb2.cerrarAhora();
-    assert.equal(rw.rawToPill(rw.prepararRonda(F, rw.pillToRaw(500000)).totalRaw), 20000);
+    assert.equal(rw.rawToPill(rw.prepararRonda(F, rw.pillToRaw(500000)).totalRaw), 12000);
 
     // Y el suelo duro: sin rake no hay premio, valga lo que valga el factor.
     const F2 = '2026-06-02';

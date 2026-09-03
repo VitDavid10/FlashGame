@@ -88,6 +88,7 @@ const CASOS = [
     ['PublishRound', () => tc.publishRound(PROGRAM_ID, { epoch: EPOCH, merkleRoot: Buffer.alloc(32, 7), totalRaw: 1, winners: 10, authority })],
     ['CancelRound', () => tc.cancelRound(PROGRAM_ID, { epoch: EPOCH, authority })],
     ['Claim', () => tc.claim(PROGRAM_ID, { epoch: EPOCH, winner: jugador, amountRaw: 1, proof: [], mint, payer: authority })],
+    ['ClaimToStake', () => tc.claimToStake(PROGRAM_ID, { epoch: EPOCH, winner: jugador, amountRaw: 1, proof: [] })],
     ['ExpireRound', () => tc.expireRound(PROGRAM_ID, { epoch: EPOCH, caller: authority })],
     ['AuthorityOnly', () => tc.finalize(PROGRAM_ID, { authority })],
     ['AcceptAuthority', () => tc.acceptAuthority(PROGRAM_ID, { newAuthority: authority })],
@@ -113,6 +114,78 @@ for (const [structName, construir] of CASOS) {
         });
     });
 }
+
+/* ===================== LAS DOS PUERTAS DEL PREMIO ===================== */
+
+/*
+ * `claim` paga a la wallet y `claim_to_stake` mete el premio directo al staking.
+ * Son dos caminos al mismo dinero, asi que lo unico que de verdad importa es que
+ * compartan el CERROJO: si cada una usara su propio recibo, o si construyeran hojas
+ * distintas, un premio se podria cobrar dos veces — una por cada puerta.
+ */
+
+test('las dos puertas comparten el mismo recibo: cobrar por una cierra la otra', () => {
+    const cCampos = camposDe('Claim');
+    const sCampos = camposDe('ClaimToStake');
+    const c = tc.claim(PROGRAM_ID, { epoch: EPOCH, winner: jugador, amountRaw: 1, proof: [], mint, payer: authority });
+    const st = tc.claimToStake(PROGRAM_ID, { epoch: EPOCH, winner: jugador, amountRaw: 1, proof: [] });
+    const recC = c.keys[cCampos.findIndex(x => x.nombre === 'receipt')].pubkey.toBase58();
+    const recS = st.keys[sCampos.findIndex(x => x.nombre === 'receipt')].pubkey.toBase58();
+    assert.equal(recC, recS, 'recibos distintos = el premio se puede cobrar dos veces');
+    assert.equal(recC, tc.claimPda(PROGRAM_ID, EPOCH, jugador).toBase58());
+});
+
+test('las dos puertas construyen la MISMA hoja de Merkle', () => {
+    // En el .rs las dos hacen hashv([LEAF_PREFIX, epoch, winner, amount]). Si una se
+    // tocara sin la otra, harian falta dos arboles y el cerrojo del recibo no
+    // bastaria: cada puerta validaria una prueba distinta para el mismo premio.
+    const trozo = (nombre) => {
+        const i = RS.indexOf('pub fn ' + nombre + '(');
+        assert.ok(i > 0, 'no encuentro ' + nombre);
+        return RS.slice(i, i + 2600);
+    };
+    const hoja = /hash::hashv\(&\[\s*&\[LEAF_PREFIX\],\s*&epoch\.to_le_bytes\(\),\s*ctx\.accounts\.winner\.key\(\)\.as_ref\(\),\s*&amount\.to_le_bytes\(\),/;
+    assert.match(trozo('claim'), hoja, 'claim ya no construye la hoja canonica');
+    assert.match(trozo('claim_to_stake'), hoja, 'claim_to_stake construye otra hoja');
+});
+
+test('claim_to_stake manda el premio a la boveda del staking, no a una ATA', () => {
+    const campos = camposDe('ClaimToStake');
+    const inst = tc.claimToStake(PROGRAM_ID, { epoch: EPOCH, winner: jugador, amountRaw: 1, proof: [] });
+    const iVault = campos.findIndex(c => c.nombre === 'stake_vault');
+    assert.equal(inst.keys[iVault].pubkey.toBase58(), P.stakeVault.toBase58());
+    // Y a la posicion del ganador, no a la de otro.
+    const iPos = campos.findIndex(c => c.nombre === 'stake_account');
+    assert.equal(inst.keys[iPos].pubkey.toBase58(), tc.stakePda(PROGRAM_ID, jugador).toBase58());
+});
+
+test('en claim_to_stake el ganador SI firma; en claim no hace falta', () => {
+    // En claim el destino sale de la hoja del arbol, asi que no hay nada que desviar
+    // y puede reclamar un tercero. En claim_to_stake se le esta abriendo su posicion
+    // de staking, y eso solo lo puede pedir el.
+    const sCampos = camposDe('ClaimToStake');
+    const st = tc.claimToStake(PROGRAM_ID, { epoch: EPOCH, winner: jugador, amountRaw: 1, proof: [] });
+    const iW = sCampos.findIndex(x => x.nombre === 'winner');
+    assert.equal(st.keys[iW].isSigner, true, 'el ganador tiene que firmar su claim_to_stake');
+
+    const cCampos = camposDe('Claim');
+    const c = tc.claim(PROGRAM_ID, { epoch: EPOCH, winner: jugador, amountRaw: 1, proof: [], mint, payer: authority });
+    assert.equal(c.keys[cCampos.findIndex(x => x.nombre === 'winner')].isSigner, false);
+});
+
+test('EL PREMIO NO CADUCA: expired no bloquea el cobro', () => {
+    // expire_round solo suelta la reserva para que la tesoreria no se estrangule con
+    // premios que nadie recogio. Quien aparezca dos anios despues con su prueba cobra
+    // igual, mientras quede saldo.
+    const i = RS.indexOf('pub fn claim(');
+    const cuerpo = RS.slice(i, RS.indexOf('pub fn claim_to_stake('));
+    assert.ok(cuerpo.length > 1000, 'no he cogido el cuerpo entero de claim');
+    assert.ok(!/require!\(!round\.expired/.test(cuerpo),
+        'claim vuelve a rechazar rondas expiradas: el premio caducaria');
+    assert.match(cuerpo, /let estaba_expirada = round\.expired;/);
+    // Y la reserva de una ronda ya expirada no se resta dos veces.
+    assert.match(cuerpo, /if !estaba_expirada \{\s*cfg\.reserved = cfg\.reserved\.saturating_sub\(amount\);/);
+});
 
 test('Claim: la ATA de destino es la canonica del ganador, no otra cuenta', () => {
     // Es lo que impide desviar un premio: aunque quien firme sea otro, el token

@@ -425,7 +425,16 @@ ganar la sala.
 
 Ni con 500 jugadores llega a los 170 $ del grifo. Con factor 1 el leaderboard se
 estrangula justo cuando el juego funciona, así que el factor es **el multiplicador
-que se calibra con datos**, no una constante de seguridad. Por defecto 20.
+que se calibra con datos**, no una constante de seguridad.
+
+Por defecto **12**, elegido para que la curva sea lineal el mayor tramo posible: con
+20 el bote toca el techo del grifo a los 140 jugadores y a partir de ahí que crezca
+la comunidad ya no paga más.
+
+| jugadores | 50 | 100 | 150 | 200 | 233+ |
+|---|---|---|---|---|---|
+| factor 20 | 61 $ | 122 $ | **170 $** | 170 $ | 170 $ |
+| **factor 12** | 37 $ | 73 $ | 110 $ | 146 $ | **170 $** |
 
 Lo que no cambia por mucho que suba: **cero por cualquier factor sigue siendo cero.**
 El factor decide cuánto se paga por actividad real, no si el ataque funciona.
@@ -583,6 +592,29 @@ actividad se vuelve el que manda. Los dos frenos se turnan solos:
 A precio bajo reparte los tokens que hay; a precio alto **no puede repartir más de
 lo que el juego factura**, valga lo que valga el token. Nadie tiene que ajustar nada
 en ninguno de los dos extremos.
+
+##### El premio no caduca, y se puede cobrar directo al stake
+
+`expire_round` existe porque un ganador que pierde su wallet dejaría su parte
+reservada para siempre y la tesorería se estrangularía sola. Pero **expirar solo
+suelta la reserva; no cierra el cobro**: quien aparezca dos años después con su
+prueba cobra igual, mientras quede saldo. Y la reserva de una ronda ya expirada no
+se vuelve a restar — hacerlo dejaría `reserved` por debajo de lo real y
+`publish_round` empezaría a aceptar rondas sin respaldo.
+
+Además de `claim`, hay `claim_to_stake`: el mismo premio, mismo árbol, misma prueba,
+pero los tokens van de TREASURY a la bóveda del staking y se suman a la posición del
+ganador. Para el jugador es **una transacción en vez de dos**, y se ahorra la renta
+de la ATA si aún no la tiene.
+
+Las dos puertas comparten el **mismo recibo** (`["claim", epoch, winner]`), así que
+cobrar por una cierra la otra. Y construyen la **misma hoja**: si se separasen,
+harían falta dos árboles y el cerrojo del recibo no bastaría. Hay un test que lo fija
+leyendo el `.rs`.
+
+La diferencia: en `claim` el ganador **no** firma — el destino sale de la hoja, no
+hay nada que desviar, y puede reclamar un tercero. En `claim_to_stake` **sí** firma,
+porque se le está abriendo su posición de staking y eso solo lo puede pedir él.
 
 ##### El gas del claim
 

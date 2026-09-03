@@ -94,11 +94,19 @@ const POT_COMPLETO_CON = Math.max(1, parseInt(process.env.LB_FULL_POT_AT, 10) ||
  * seguridad. Lo que sigue siendo un suelo duro pase lo que pase: cero por cualquier
  * factor sigue siendo cero.
  *
+ * El 12 por defecto sale de querer una curva LINEAL: con 20 el bote toca el techo del
+ * grifo a los 140 jugadores y a partir de ahi crecer la comunidad ya no paga mas. Con
+ * 12 la parte lineal llega hasta los 233:
+ *
+ *     jugadores   50     100     150     200     233+
+ *     factor 20  $61    $122    $170    $170    $170   <- plano desde 140
+ *     factor 12  $37     $73    $110    $146    $170   <- lineal hasta 233
+ *
  * Un 0 significa lo que parece: no se pagan premios.
  */
 const REWARD_FACTOR = (() => {
     const v = parseFloat(process.env.REWARD_FACTOR);
-    if (!Number.isFinite(v)) return 20;
+    if (!Number.isFinite(v)) return 12;
     return Math.max(0, v);
 })();
 

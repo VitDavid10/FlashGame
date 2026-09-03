@@ -395,6 +395,31 @@ function claim(programId, { epoch, winner, amountRaw, proof, mint, payer }) {
 }
 
 /** expireRound — libera lo no reclamado de una ronda vieja. La puede llamar cualquiera. */
+/*
+ * Cobrar el premio DIRECTAMENTE al stake, sin pasar por la wallet.
+ *
+ * Mismo arbol, misma prueba y el MISMO recibo que claim(): cobrar por una puerta
+ * cierra la otra. Lo que cambia es el destino (la boveda del staking en vez de la
+ * ATA) y que aqui el ganador FIRMA — se le esta abriendo su posicion, no solo
+ * pagandole. Para el es una transaccion en vez de dos, y se ahorra la renta de la
+ * ATA si no la tiene.
+ */
+function claimToStake(programId, { epoch, winner, amountRaw, proof }) {
+    const p = pdas(programId);
+    const w = new PublicKey(winner);
+    const nodos = proof.map(n => (Buffer.isBuffer(n) ? n : Buffer.from(n, 'hex')));
+    for (const n of nodos) if (n.length !== 32) throw new Error('treasury: nodo de prueba con longitud rara');
+    return ix(programId, [
+        rw(p.config), rw(roundPda(programId, epoch)), rw(p.treasury), rw(p.stakeVault),
+        rw(stakePda(programId, w)),
+        rw(w, true),
+        rw(claimPda(programId, epoch, w)),
+        ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId),
+    ], Buffer.concat([
+        ixDisc('claim_to_stake'), u64le(epoch), u64le(amountRaw), vec(nodos, (n) => n),
+    ]));
+}
+
 function expireRound(programId, { epoch, caller }) {
     const p = pdas(programId);
     return ix(programId, [
@@ -453,7 +478,7 @@ module.exports = {
     decodeConfig, decodeRound, decodeReceipt, decodeStakeAccount,
     initStaking, stake, unstake, claimStakeRewards, fundStakeRewards,
     initialize, deposit, fund, withdraw, sweep, burn,
-    publishRound, cancelRound, claim, expireRound,
+    publishRound, cancelRound, claim, claimToStake, expireRound,
     extendLock, tighten, finalize, transferAuthority, acceptAuthority, unlockWithdraw,
     // Se exportan para los tests: son el contrato de compatibilidad con el .rs.
     _internals: { ixDisc, accDisc, u64le, i64le, u16le, opt, vec, Cursor },

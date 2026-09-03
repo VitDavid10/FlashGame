@@ -640,8 +640,17 @@ pub mod pill_treasury {
         let now = Clock::get()?.unix_timestamp;
         let round = &mut ctx.accounts.round;
         require!(!round.cancelled, TreasuryError::RoundCancelled);
-        require!(!round.expired, TreasuryError::RoundExpired);
         require!(now >= round.claimable_at, TreasuryError::ChallengeWindowOpen);
+
+        // EL PREMIO NO CADUCA. `expired` no bloquea el cobro: lo unico que hace es
+        // soltar la reserva para que la tesoreria no se estrangule con premios que
+        // nadie recogio. Quien aparezca dos anios despues con su prueba cobra igual,
+        // mientras quede saldo — y si no queda, el transfer falla solo.
+        //
+        // La reserva de una ronda expirada ya se resto en expire_round, asi que aqui
+        // no se vuelve a restar: hacerlo dejaria `reserved` por debajo de lo real y
+        // publish_round empezaria a aceptar rondas sin respaldo.
+        let estaba_expirada = round.expired;
 
         // sha256 y no keccak: es el mismo syscall de barato on-chain, y fuera de la
         // cadena lo tiene cualquier runtime sin instalar nada (en Node es crypto a
@@ -685,17 +694,108 @@ pub mod pill_treasury {
         receipt.bump = ctx.bumps.receipt;
 
         let cfg = &mut ctx.accounts.config;
-        cfg.reserved = cfg.reserved.saturating_sub(amount);
+        if !estaba_expirada {
+            cfg.reserved = cfg.reserved.saturating_sub(amount);
+        }
         cfg.total_rewarded = cfg.total_rewarded.saturating_add(amount);
 
         emit!(Claimed { epoch, winner: ctx.accounts.winner.key(), amount });
         Ok(())
     }
 
+    /// Cobra el premio DIRECTAMENTE AL STAKE, sin pasar por la wallet.
+    ///
+    /// Es el mismo `claim` con otro destino: mismas comprobaciones, misma prueba de
+    /// Merkle, mismo recibo anti doble cobro. Lo unico que cambia es que los tokens
+    /// van de TREASURY a la boveda del staking y se suman a la posicion del ganador,
+    /// en vez de a su ATA.
+    ///
+    /// Para el jugador es una transaccion en vez de dos, y se ahorra la renta de la
+    /// ATA si todavia no la tiene — con premios pequeños, esa renta se comia una
+    /// parte notable de lo cobrado.
+    ///
+    /// Aqui el ganador SI firma. En `claim` no hace falta porque el destino sale de
+    /// la hoja del arbol y no hay nada que desviar; aqui se le esta abriendo (o
+    /// tocando) su posicion de staking, y eso solo lo puede pedir el.
+    pub fn claim_to_stake(ctx: Context<ClaimToStake>, epoch: u64, amount: u64, proof: Vec<[u8; 32]>) -> Result<()> {
+        require!(amount > 0, TreasuryError::ZeroAmount);
+        require!(proof.len() <= MAX_PROOF_LEN, TreasuryError::ProofTooLong);
+        require!(ctx.accounts.config.staking_ready, TreasuryError::StakingNotReady);
+
+        let now = Clock::get()?.unix_timestamp;
+        {
+            let round = &ctx.accounts.round;
+            require!(!round.cancelled, TreasuryError::RoundCancelled);
+            require!(now >= round.claimable_at, TreasuryError::ChallengeWindowOpen);
+        }
+
+        // La MISMA hoja que en claim: si estas dos se separasen, un premio se podria
+        // cobrar dos veces (una por cada puerta) con dos arboles distintos.
+        let hoja = hash::hashv(&[
+            &[LEAF_PREFIX],
+            &epoch.to_le_bytes(),
+            ctx.accounts.winner.key().as_ref(),
+            &amount.to_le_bytes(),
+        ])
+        .to_bytes();
+        require!(
+            verify_proof(&proof, ctx.accounts.round.merkle_root, hoja),
+            TreasuryError::InvalidProof
+        );
+
+        let estaba_expirada = ctx.accounts.round.expired;
+        let ya = ctx.accounts.round.claimed.checked_add(amount).ok_or(TreasuryError::MathOverflow)?;
+        require!(ya <= ctx.accounts.round.total, TreasuryError::RoundOverclaimed);
+
+        // El indice del pool se actualiza ANTES de tocar el saldo, igual que en
+        // stake(): si no, lo que acaba de entrar cobraria recompensas de antes.
+        actualiza_pool(&mut ctx.accounts.config, now)?;
+        liquida(&mut ctx.accounts.config, &mut ctx.accounts.stake_account)?;
+
+        let bump = ctx.accounts.config.treasury_bump;
+        let seeds: &[&[u8]] = &[TREASURY_SEED, &[bump]];
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.treasury.to_account_info(),
+                    to: ctx.accounts.stake_vault.to_account_info(),
+                    authority: ctx.accounts.treasury.to_account_info(),
+                },
+                &[seeds],
+            ),
+            amount,
+        )?;
+
+        ctx.accounts.round.claimed = ya;
+        let receipt = &mut ctx.accounts.receipt;
+        receipt.amount = amount;
+        receipt.ts = now;
+        receipt.bump = ctx.bumps.receipt;
+
+        let acc = &mut ctx.accounts.stake_account;
+        acc.owner = ctx.accounts.winner.key();
+        acc.amount = acc.amount.checked_add(amount).ok_or(TreasuryError::MathOverflow)?;
+        acc.bump = ctx.bumps.stake_account;
+
+        let cfg = &mut ctx.accounts.config;
+        cfg.total_staked = cfg.total_staked.checked_add(amount).ok_or(TreasuryError::MathOverflow)?;
+        acc.reward_per_share_paid = cfg.acc_reward_per_share;
+        if !estaba_expirada {
+            cfg.reserved = cfg.reserved.saturating_sub(amount);
+        }
+        cfg.total_rewarded = cfg.total_rewarded.saturating_add(amount);
+
+        emit!(Claimed { epoch, winner: ctx.accounts.winner.key(), amount });
+        emit!(Staked { owner: ctx.accounts.winner.key(), amount, total: acc.amount });
+        Ok(())
+    }
+
     /// Libera lo que nadie reclamo de una ronda vieja. La puede llamar CUALQUIERA.
     ///
-    /// No mueve tokens: solo baja el contador de reservado para que ese dinero pueda
-    /// volver a repartirse en rondas futuras. Sin esto, un ganador que pierde su wallet
+    /// NO caduca el premio: quien tenga su prueba puede cobrar despues igualmente
+    /// (ver claim). Lo unico que hace es bajar el contador de reservado para que ese
+    /// dinero pueda volver a repartirse. Sin esto, un ganador que pierde su wallet
     /// deja su parte inmovilizada para siempre y la tesoreria se estrangula sola.
     ///
     /// Es permissionless a proposito: solo puede aflojar una reserva pasada la ventana
@@ -1588,6 +1688,46 @@ pub struct Claim<'info> {
 
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+/// Mismas cuentas que Claim, pero el destino es la boveda del staking y el ganador
+/// firma (se le esta tocando su posicion, no solo pagandole).
+#[derive(Accounts)]
+#[instruction(epoch: u64)]
+pub struct ClaimToStake<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.config_bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [ROUND_SEED, &epoch.to_le_bytes()], bump = round.bump)]
+    pub round: Account<'info, RewardRound>,
+    #[account(mut, seeds = [TREASURY_SEED], bump = config.treasury_bump)]
+    pub treasury: Account<'info, TokenAccount>,
+    #[account(mut, seeds = [STAKE_SEED], bump = config.stake_bump)]
+    pub stake_vault: Account<'info, TokenAccount>,
+
+    /// La posicion del ganador. Se crea sola si es su primera vez.
+    #[account(
+        init_if_needed, payer = winner,
+        space = 8 + StakeAccount::INIT_SPACE,
+        seeds = [STAKE_SEED, winner.key().as_ref()], bump
+    )]
+    pub stake_account: Account<'info, StakeAccount>,
+
+    /// Aqui SI firma: se le esta abriendo o modificando su posicion de staking.
+    #[account(mut)]
+    pub winner: Signer<'info>,
+
+    /// El mismo recibo que usa `claim`: cobrar por una puerta cierra la otra.
+    #[account(
+        init,
+        payer = winner,
+        space = 8 + ClaimReceipt::INIT_SPACE,
+        seeds = [CLAIM_SEED, &epoch.to_le_bytes(), winner.key().as_ref()],
+        bump
+    )]
+    pub receipt: Account<'info, ClaimReceipt>,
+
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 

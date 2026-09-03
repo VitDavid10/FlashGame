@@ -74,7 +74,7 @@ Environment=LB_MIN_OPPONENTS=5
 # NO esta acotado a 1: con factor 1 el leaderboard se estrangula (unos 50 \$/dia con
 # 500 jugadores frente a los 170 \$ del grifo). Es el multiplicador que se calibra con
 # datos. Lo que no cambia: cero por cualquier factor sigue siendo cero.
-Environment=REWARD_FACTOR=20
+Environment=REWARD_FACTOR=12
 
 # MODO SECO: calcula las rondas y NO publica nada en la cadena. Es la herramienta de
 # calibracion — en 48 h hay datos reales del rake y del bote sin gastar un token.
