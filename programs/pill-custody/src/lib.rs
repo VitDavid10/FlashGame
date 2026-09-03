@@ -42,7 +42,17 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 // Provisional, solo para poder compilar y medir el tamano. La definitiva se
 // grindea con scripts/grind-program-id.js antes de desplegar, igual que se hizo con
 // la del contrato de tesoreria.
-declare_id!("8WnuBzocee451WyjNyaCRzeuXdsWU8bUgZqrQ3XfKSd2");
+/*
+ * DIRECCION DEL PROGRAMA. Esta es la de DEVNET, y va con el keypair de
+ * target/deploy/pill_custody-keypair.json.
+ *
+ * Igual que DEPLOYER, es un valor por red: mainnet lleva su propio keypair (uno
+ * "molido" para que la direccion empiece por PiLL y un contrato falso no pueda
+ * imitarla barato) y hay que cambiar esta linea y recompilar antes de desplegar alli.
+ * Si no coincide con el keypair del despliegue, Anchor rechaza TODAS las
+ * instrucciones con DeclaredProgramIdMismatch.
+ */
+declare_id!("2rCs2GNBbncW5ZwLeahx5yDeoLyCTD1GdK2zzGjfv3sk");
 
 /*
  * QUIEN PUEDE INICIALIZAR. Va aqui, en el binario, y no como una comprobacion
