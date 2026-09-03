@@ -10,3 +10,19 @@ overflow-checks = true
 lto = "fat"
 codegen-units = 1
 incremental = false
+
+# El resto es para que el BINARIO SEA PEQUENO, y aqui eso es dinero contante:
+# desplegar cuesta una renta proporcional al tamano (~6,3 lamports por byte), que
+# ademas queda inmovilizada para siempre en cuanto se revoca la upgrade authority.
+# Cada 100 KB que sobren son unos 0,63 SOL enterrados.
+#
+# opt-level "z" (tamano) en vez de "3" (velocidad): en un programa que hace cuatro
+# sumas y una transferencia, la velocidad no se nota — el limite son las unidades
+# de computo de Solana, no el codigo maquina.
+opt-level = "z"
+# Sin desenrollado de pila: un panic aborta y ya. Las tablas de unwinding ocupan
+# bastante y en Solana no sirven de nada, porque una instruccion que entra en panico
+# revierte entera de todos modos.
+panic = "abort"
+# Fuera los simbolos de depuracion.
+strip = true

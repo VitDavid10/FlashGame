@@ -21,4 +21,9 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 # init-if-needed: la ATA del ganador se crea en el propio claim si no existe, para que
 # cobrar sea una sola transaccion. Aqui es seguro — una ATA ya creada no se reinicializa.
 anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+# Se probo recortar features (default-features=false + solo token/associated_token)
+# y NO ahorra ni un byte: el LTO ya descarta lo que no se llama, y ademas obliga a
+# incluir token_2022 igualmente porque el #[derive(Accounts)] de las restricciones
+# associated_token:: genera codigo que lo referencia. Menos configuracion y el
+# mismo binario, asi que se deja como estaba.
 anchor-spl = "0.31.1"

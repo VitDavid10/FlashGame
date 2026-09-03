@@ -641,6 +641,60 @@ tirada y a la vista de todos. Todo lo demás del diseño es detectabilidad;
 
 ---
 
+## 3 bis. El bloqueo del supply NO tiene por qué ser este contrato
+
+Hay dos preguntas distintas y conviene no mezclarlas, porque tienen respuestas
+distintas y precios muy distintos:
+
+| pregunta | qué la responde | cuesta |
+|---|---|---|
+| ¿Puede el fundador vender su 20 % del supply? | Un contrato de **vesting ya desplegado** | céntimos |
+| ¿Puede el juego robar los depósitos de los jugadores? | **Este** contrato, inmutable | ~460 $ |
+
+El `unlock_ts` de aquí solo vale mientras el programa sea inmutable: con la upgrade
+authority viva se puede subir una versión que lo ignore. Así que **un bloqueo hecho
+con este contrato, antes de revocar, no es un bloqueo** — y decir que lo es sería
+justo el tipo de promesa que este documento existe para evitar.
+
+### La forma barata y más fuerte
+
+Los tokens del lanzamiento se bloquean en un **contrato de vesting de terceros, ya
+auditado y ya desplegado** (en Solana: Jupiter Lock, Streamflow, Bonfida vesting).
+No hay que desplegar nada: se crea una cuenta de bloqueo, que cuesta la renta de una
+cuenta pequeña. Y sale más fuerte que hacerlo aquí, porque el bloqueo pasa a
+depender de un contrato que **ni yo ni nadie del proyecto puede cambiar**.
+
+Encaja sin tocar una línea de este programa:
+
+```
+  vesting externo  ──(transferencia SPL normal)──▶  bóveda TREASURY  ──▶  premios
+   (bloqueado,                                      (solo tiene lo
+    calendario público)                              ya liberado)
+```
+
+Funciona porque `publish_round` lee el **saldo real de la bóveda**
+(`treasury.amount`), no un contador interno: los tokens pueden llegar por una
+transferencia normal y todo cuadra. El contrato de vesting no necesita saber nada
+de este programa — para él, la bóveda es una dirección más.
+
+Y de regalo acota el daño: el programa solo tiene en cada momento **lo ya liberado**,
+nunca los 150 M de golpe. Si apareciera un fallo aquí, lo que está por liberar sigue
+fuera de su alcance.
+
+> El contador `total_funded` solo cuenta lo que entra por `fund()`, así que con
+> vesting externo se queda corto a propósito. El dato bueno es el saldo de la
+> bóveda, que es lo que publica `/api/treasury` y lo que cualquiera ve en el
+> explorador.
+
+### Lo que esto cambia en el orden de las cosas
+
+Deja de hacer falta gastar 460 $ el primer día para poder decir «no puedo vender mi
+parte». El supply se bloquea por céntimos, y la inmutabilidad de **este** contrato
+—que es otra promesa, la de no tocar los depósitos de los jugadores— se paga cuando
+el proyecto tenga con qué.
+
+---
+
 ## 4. Qué garantiza y qué no
 
 Nada de esto sirve si se vende como más de lo que es.

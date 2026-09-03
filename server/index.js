@@ -2255,7 +2255,11 @@ async function treasuryState() {
                 totales: {
                     depositado: aPill(cfg.totalDeposited),
                     retirado: aPill(cfg.totalWithdrawn),
-                    aportado: aPill(cfg.totalFunded),
+                    // Lo que ENTRO por fund(). Un contrato de vesting externo que
+                    // libere hacia la boveda transfiere a secas, sin llamar a fund,
+                    // asi que este contador se queda corto: el saldo de verdad es
+                    // `treasury.saldo` de arriba, que se lee de la cuenta.
+                    aportadoPorFund: aPill(cfg.totalFunded),
                     barrido: aPill(cfg.totalSwept),
                     premiado: aPill(cfg.totalRewarded),
                     caducado: aPill(cfg.totalExpired),

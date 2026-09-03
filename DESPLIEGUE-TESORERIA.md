@@ -344,6 +344,61 @@ toolchain. Deja anotada la versión exacta de Anchor y de Rust con la que compil
 
 ---
 
+## 6 ter. Lo que cuesta desplegar, y por qué importa antes de lo que parece
+
+Desplegar cobra una **renta proporcional al tamaño del binario**, no una comisión
+fija. En devnet da igual porque el SOL es gratis; en mainnet es dinero real:
+
+```
+3,967 SOL por 626 KB   ≈  6,3 lamports por byte
+```
+
+| SOL a | coste del despliegue |
+|---|---|
+| 100 $ | ~400 $ |
+| 150 $ | ~595 $ |
+| 200 $ | ~795 $ |
+
+### Ese SOL NO se gasta: se aparca
+
+`solana program close` lo devuelve **entero**, y esto cambia por completo la
+decisión: mientras el programa siga siendo modificable, el despliegue cuesta cero
+de verdad. Lo que convierte el depósito en gasto irreversible es el **paso 4 del
+cerrojo** — revocar la upgrade authority. A partir de ahí el programa ya no se
+puede cerrar y ese SOL queda enterrado para siempre.
+
+O sea que hay dos momentos y no uno:
+
+| | coste real | qué garantiza |
+|---|---|---|
+| Desplegar y no revocar | **0 $** (depósito recuperable) | El código está publicado y es verificable, pero podría cambiarse |
+| Revocar la authority | 400-800 $ enterrados | Nadie puede tocarlo nunca, yo incluido |
+
+**Con poco presupuesto, desplegar sin revocar es lo sensato.** Se dice en público
+que la authority sigue viva y cuándo se revocará, y se revoca cuando el proyecto
+valga más que ese depósito. Si el juego no arranca, se cierra el programa y el
+dinero vuelve. Lo que no tiene marcha atrás es revocar y arrepentirse.
+
+### Y el binario se puede encoger
+
+Cada 100 KB que sobran son ~0,63 SOL inmovilizados. En `Cargo.toml`:
+
+```toml
+opt-level = "z"     # tamaño en vez de velocidad: aquí el límite son las
+                    # unidades de computo de Solana, no el código máquina
+panic = "abort"     # sin tablas de unwinding, que en Solana no sirven de nada
+strip = true        # fuera los símbolos de depuración
+```
+
+Eso solo ya baja de **626 KB a 486 KB** — unos 134 $ a 150 $/SOL.
+
+En `programs/pill-treasury/Cargo.toml`, `anchor-spl` con `default-features = false`
+y solo lo que se usa. Ojo: `token_2022` hace falta aunque el mint sea SPL clásico,
+porque el `#[derive(Accounts)]` de las restricciones `associated_token::` genera
+código que lo referencia — sin esa feature no compila.
+
+---
+
 ## 7. El cerrojo
 
 Cuando los números cuadren, **con §6 bis ya hecho**, y en este orden:
@@ -370,8 +425,14 @@ fecha anterior a la que ya hay**. La única salida de la tesorería hasta entonc
 `claim`, que paga a la wallet que dice la hoja del árbol de Merkle — no a quien
 firma la transacción.
 
-**El paso 4 no es opcional.** Mientras exista la upgrade authority, todo lo anterior
-es decorativo: con ella se despliega otra versión del programa que vacíe los vaults.
+**El paso 4 no es opcional** para que el resto signifique algo: mientras exista la
+upgrade authority, todo lo anterior es decorativo, porque con ella se despliega otra
+versión del programa que vacíe los vaults.
+
+Pero **es también el que convierte la renta del despliegue en dinero enterrado**
+(ver §6 ter): hasta ese momento el SOL se recupera cerrando el programa, y después
+ya no. Si el presupuesto es corto, desplegar sin revocar y anunciarlo así es una
+posición honesta; revocar y arrepentirse no tiene arreglo.
 Es lo primero que mira cualquiera que audite esto, y `npm run treasury -- status`
 lo dice en cada ejecución hasta que se revoca.
 
