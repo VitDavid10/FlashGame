@@ -44,18 +44,27 @@ if [ "$FUENTE" -nt "$SO" ]; then
     exit 1
 fi
 
-# 2. Saldo. El despliegue son ~1,56 SOL de renta mas comisiones.
+# 2. Saldo. La renta la dice `solana rent`, que es quien la cobra: calcularla a
+#    mano con lamports-por-byte es justo el tipo de cuenta que sale mal y no se nota
+#    hasta que el despliegue se corta a la mitad.
 BYTES=$(stat -c%s "$SO")
-NECESARIO=$(python3 -c "print(round(($BYTES + 45) * 6.96e-9 * 2 + 0.05, 3))")
+RENTA=$(solana rent "$BYTES" | grep -oE '[0-9]+\.[0-9]+')
+NECESARIO=$(python3 -c "print(round(float('$RENTA') + 0.1, 4))")
 SALDO=$(solana balance | cut -d' ' -f1)
-echo "Binario: $BYTES bytes | necesario ~$NECESARIO SOL | tienes $SALDO SOL"
+echo "Binario : $BYTES bytes"
+echo "Renta   : $RENTA SOL (+0,1 de comisiones) = $NECESARIO"
+echo "Saldo   : $SALDO SOL"
 python3 -c "import sys; sys.exit(0 if float('$SALDO') >= float('$NECESARIO') else 1)" \
     || { echo "Saldo insuficiente."; exit 1; }
 
 # 3. Buffers huerfanos. Un despliegue cortado a medias deja ~1,5 SOL dentro de un
-#    buffer que no se ve por ningun lado. Es la forma mas comun de "perder" SOL.
-BUFFERS=$(solana program show --buffers 2>/dev/null | tail -n +2 | wc -l)
-if [ "$BUFFERS" -gt 0 ]; then
+#    buffer que no se ve por ningun lado. Es la forma mas comun de "perder" SOL, y
+#    por eso "el deploy me costo 5 SOL" casi siempre son tres intentos fallidos.
+#    Se cuentan solo las lineas que empiezan por una direccion base58: la salida
+#    trae cabecera y lineas en blanco, y contarlas da falsos positivos.
+BUFFERS=$(solana program show --buffers 2>/dev/null | grep -cE '^[1-9A-HJ-NP-Za-km-z]{32,44} ' || true)
+if [ "${BUFFERS:-0}" -gt 0 ]; then
+    echo
     echo "Hay $BUFFERS buffer(s) de intentos anteriores con SOL dentro:"
     solana program show --buffers
     echo "Recuperalo con: solana program close --buffers"
