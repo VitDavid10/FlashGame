@@ -471,5 +471,10 @@ async function walletBalance(owner) {
 
 module.exports = { walletBalance, verifyDeposit, withdraw, prepararRetiro, enviarRetiro, burn, airdropSol,
     canWithdraw, porQueNoFirma, porQueNoHayPremios, verifySignedMessage, sendInstructions, authorityPubkey,
+    // Devuelve el Keypair, o sea la clave privada. Lo usan los scripts de
+    // operacion que firman cosas que no son ni un retiro ni un premio. Que la
+    // carga siga viviendo en un solo sitio es justo lo que evita que cada script
+    // se invente su propio JSON.parse y pierda por el camino el 'de donde viene'.
+    loadAuthority,
     pagaPremio, rewardsPubkey, rewardsAparte, saldoDePremios,
     RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };
