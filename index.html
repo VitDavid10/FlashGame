@@ -5127,6 +5127,14 @@ function toggleTrailerMode() {
                     + '</span></div>'
                     + '<div class="v">' + (c.pill == null ? '' : _fmt(c.pill) + ' $PILL') + '</div>'
                     + '<div class="q">' + _esc(c.que) + '</div>'
+                    /* Para cuantos dias da. Es la otra mitad de "cuanto queda": un saldo
+                       a secas no dice si llega a manana, y esta wallet lleva lo de unos
+                       dias a proposito, asi que quedarse corta es algo que PASA. */
+                    + (c.cubre && c.cubre.dias != null
+                        ? '<div class="q" style="color:' + (c.cubre.seQuedaCorta ? '#ffb020' : '#8b9199') + '">'
+                          + 'Enough for about ' + c.cubre.dias + ' more day' + (c.cubre.dias === 1 ? '' : 's')
+                          + ' at the current daily budget.</div>'
+                        : '')
                     + '<div class="w">' + link(c.address) + '</div>'
                     + '</div>').join('');
 

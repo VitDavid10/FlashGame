@@ -202,6 +202,33 @@ async function estado() {
     }
 
     /*
+     * PARA CUANTOS DIAS DE PREMIOS DA.
+     *
+     * Separar la wallet de premios la dejo con lo de unos dias en vez de con todo el
+     * supply, que es justo lo que se buscaba: si el servidor cae en malas manos se
+     * pierde lo de esos dias. Pero eso convierte "se acaba" en algo que PASA, y el
+     * fallo es de los feos: pagaPremio revienta, un ganador no cobra, y no se sabe
+     * hasta que alguien se queja.
+     *
+     * Asi que se dice antes. `saldoDePremios()` llevaba escrita y exportada desde el
+     * principio sin que la llamara nadie — esta es la llamada que le faltaba.
+     */
+    try {
+        const premios = out.cuentas.find(x => x.clave === 'rewards');
+        if (premios && premios.pill != null) {
+            const rewards = require('./rewards.js');
+            const dia = Number(await rewards.presupuestoRaw(c)) / 10 ** solana.DECIMALS;
+            premios.cubre = {
+                presupuestoDia: dia,
+                dias: dia > 0 ? Math.floor(premios.pill / dia) : null,
+                // Tres dias es margen para reaccionar sin prisa. Por debajo hay que
+                // recargarla con scripts/send-pill.js.
+                seQuedaCorta: dia > 0 && premios.pill < dia * 3,
+            };
+        }
+    } catch (e) { /* el aviso es un extra: si falla, el resto del panel sigue */ }
+
+    /*
      * LOS HOLDERS.
      *
      * NO con getTokenLargestAccounts: el RPC publico de devnet lo tiene bloqueado y
