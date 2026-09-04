@@ -265,11 +265,8 @@
            Antes tapaban la pantalla entera y no se llegaba scrolleando: pulsar GAME o
            STORE con una abierta dejaba la vista puesta y la pagina detras, y PLAY NOW
            se colaba encima. Como secciones normales eso no puede pasar. */
-        /* La wallet, flotando bajo la barra y pegada a la derecha. position:fixed y
-           no sticky: tiene que quedarse ahi pase lo que pase con el scroll, y el zoom
-           de #page-content no la afecta porque cuelga del body. */
-        #pw-wallet { position: fixed; right: 18px; z-index: 950;
-                     top: calc(var(--navbar-height, 64px) + 12px); }
+        /* CONNECT vive en la barra del panel: es donde hace falta (ranking, rewards y
+           staking necesitan wallet) y no le quita sitio a los enlaces del nav. */
         .pw-wbtn { background: transparent; border: 1px solid #2a2f36; color: #c8cdd2;
                    font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .5px;
                    padding: 10px 14px; border-radius: 7px; cursor: pointer; transition: .18s;
@@ -282,9 +279,46 @@
         .pw-wbtn-off { border-color: #3a2027; color: #8b9199; padding: 7px 10px; }
         .pw-wbtn-off:hover { border-color: #ff6b6b; color: #ff6b6b; }
         @media (max-width: 640px) {
-            #pw-wallet { right: 10px; top: calc(var(--navbar-height, 64px) + 8px); }
             .pw-wbtn { font-size: 8px; padding: 8px 10px; }
             .pw-waddr { font-size: 8px; }
+        }
+
+        /* ===== EL PANEL (ranking / rewards / staking) =====
+           Tapa la pantalla por debajo de la barra. El scroll es SUYO, no el de la
+           pagina: asi no se llega scrolleando la portada pero si se pasa de una
+           seccion a otra sin cerrar nada. */
+        #pw-overlay { display: none; position: fixed; inset: var(--navbar-height, 64px) 0 0 0;
+                      z-index: 900; background: #050505; flex-direction: column; }
+        body.pw-panel #pw-overlay { display: flex; }
+        /* La pagina de detras no scrollea mientras el panel esta abierto: si no, al
+           llegar al final del panel seguia moviendose lo de atras. */
+        body.pw-panel { overflow: hidden; }
+
+        .ov-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+                  padding: 10px 18px; border-bottom: 1px solid #1c2026; background: #08090b;
+                  flex-wrap: wrap; }
+        .ov-tabs { display: flex; gap: 6px; }
+        .ov-tab { background: transparent; border: 1px solid transparent; color: #8b9199;
+                  font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .5px;
+                  padding: 10px 13px; border-radius: 7px; cursor: pointer; transition: .15s; }
+        .ov-tab:hover { color: #fff; }
+        /* La pestaña activa se marca sola segun por donde vas scrolleando: es lo que
+           hace que las tres se sientan un sitio y no tres. */
+        .ov-tab.on { color: #00ff88; border-color: #2a2f36; background: rgba(0,255,136,.07); }
+        .ov-right { display: flex; align-items: center; gap: 10px; }
+        .ov-close { background: transparent; border: 1px solid #2a2f36; color: #8b9199;
+                    width: 34px; height: 34px; border-radius: 7px; cursor: pointer;
+                    font-size: 20px; line-height: 1; }
+        .ov-close:hover { border-color: #ff6b6b; color: #ff6b6b; }
+        .ov-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+        .ov-sec { padding: 46px var(--gutter) 30px; display: flex; flex-direction: column;
+                  align-items: center; position: relative; }
+        .ov-sec + .ov-sec { border-top: 1px solid #1c2026; }
+        .ov-sec:last-child { padding-bottom: 90px; }
+        @media (max-width: 640px) {
+            .ov-bar { padding: 8px 10px; gap: 8px; }
+            .ov-tab { font-size: 8px; padding: 8px 9px; }
+            .ov-sec { padding: 30px 14px 24px; }
         }
 
         .pw-sec { max-width: 900px; margin: 0 auto; padding: 0 4px; }
@@ -326,6 +360,12 @@
         .pw-rw a:hover { text-decoration:underline; }
 
         /* Total + CLAIM, el mismo bloque que el cartel del juego. */
+        /* El ranking de ejemplo va atenuado y con su aviso: sin eso, alguien puede
+           pensar que esos son jugadores de verdad. */
+        .pwlb-demo .pwlb-row { opacity: .42; cursor: default; }
+        .pwlb-demo-tag { color:#ffb020; font-size:11px; text-align:center; padding:6px 0 12px;
+                         line-height:1.5; }
+
         .pw-mine { display:flex; align-items:center; justify-content:space-between; gap:12px;
                    border-top:1px solid #1c2026; margin-top:14px; padding-top:14px; flex-wrap:wrap; }
         .pw-mine-l { display:flex; align-items:baseline; gap:7px; }
@@ -778,13 +818,10 @@
            hero los mismos dos van en una sola fila, ver .hero-play-links). */
         #nav-play-area { display: none; align-items: center; gap: 10px; position: relative; }
         body.nav-play-visible #nav-play-area, body.layout-editing #nav-play-area { display: flex; }
-        /* ...pero NUNCA sobre los paneles. En leaderboard, rewards y staking la
-           llamada a la accion es otra (conectar, cobrar, stakear) y PLAY NOW encima
-           competia con ella; ademas aparecia de golpe al pulsar STORE, que ya deja el
-           hero atras. Lo decide PWSecciones.mira(), que mide con rects: el
-           IntersectionObserver que gobierna nav-play-visible NO dispara con el
-           zoom:0.9 de #page-content. */
-        body.pw-en-paneles #nav-play-area { display: none !important; }
+        /* ...pero NO con el panel abierto: ahi la llamada a la accion es otra
+           (conectar, cobrar, stakear) y PLAY NOW encima competia con ella. Fuera del
+           panel sale como siempre, al dejar atras el hero. */
+        body.pw-panel #nav-play-area { display: none !important; }
         /* Cuerpo de letra AJUSTABLE APARTE de la caja (ALT+rueda, clave navPlay
            en FONT_DEFAULTS): con solo la rueda de siempre (que escala la caja
            entera) el texto crecia/encogia pegado al borde de la placa y quedaba
@@ -1358,6 +1395,22 @@ body.trailer-open #page-content{
            detras de un desplegable la hacia invisible en movil, que es donde mas
            gente entra. Las demas si caben dentro de MENU. */
         body.nav-colapsada .nav-links-container > a.nav-link[href="#rewards"] { display: inline-flex !important; }
+        /* STAKE tambien se va al MENU en estrecho: con REWARDS fuera, MENU, $PILL y
+           los dos iconos, no queda hueco y los rotulos se montaban unos encima de
+           otros. Dentro del panel se llega igual desde su pestaña. */
+        body.nav-colapsada .nav-stake { display: none; }
+        /* El min-width en em reserva el hueco EXACTO de la fuente pixel para que la
+           barra no baile mientras carga. En estrecho eso sobra y es justo lo que hacia
+           que REWARDS, MENU y $PILL se montaran unos encima de otros: cada uno pedia
+           su hueco entero y la suma no cabia en 375px. */
+        body.nav-colapsada .nav-links-container > a.nav-link[href="#rewards"] { min-width: 0 !important; }
+        body.nav-colapsada .nav-links-container { gap: 8px; }
+        body.nav-colapsada .nav-dropdown-group { gap: 8px; }
+        @media (max-width: 420px) {
+            /* Por debajo de esto ya no cabe ni con eso: REWARDS se va al MENU con los
+               demas. Mejor un menu completo que cuatro rotulos ilegibles encimados. */
+            body.nav-colapsada .nav-links-container > a.nav-link[href="#rewards"] { display: none !important; }
+        }
         #nav-menu-dd { display: none; }
         body.nav-colapsada #nav-menu-dd { display: flex; }
         /* Cuelga hacia la DERECHA del rotulo (es el primer item por la izquierda
@@ -2643,6 +2696,7 @@ body.trailer-open #page-content{
                             <a href="#quest">QUESTS</a>
                             <a href="#shop">STORE</a>
                             <a href="#ranking">LEADERBOARD</a>
+                            <a href="#rewards">REWARDS</a>
                             <a href="#staking">STAKE</a>
                         </div>
                     </div>
@@ -2942,86 +2996,39 @@ body.trailer-open #page-content{
         </div>
     </div>
 
-    <div id="ranking" class="section-container">
-        <h1 class="section-title holo-text">Global Elite</h1>
-        <div id="lb-wrap" class="lb-wrap">
-            <div class="lb-head">
-                <span class="lb-c-pos">#</span>
-                <span class="lb-c-name">PLAYER</span>
-                <span class="lb-c-mass">BEST MASS</span>
-                <span class="lb-c-kills">KILLS</span>
-                <span class="lb-c-deaths">DEATHS</span>
-                <span class="lb-c-kd">K/D</span>
-                <span class="lb-c-games">GAMES</span>
+
+    <!-- ===================== EL PANEL =====================
+         RANKING, REWARDS y STAKING viven aqui dentro, en ese orden y scrolleables
+         entre si. NO se llega a ellas scrolleando la portada: tapan la pantalla.
+
+         Un solo overlay y no tres: son la misma conversacion —quien gana, que cobra,
+         que renta— y tenerlas separadas obligaba a cerrar una para abrir otra.
+
+         La barra de arriba cambia de seccion sin cerrar nada. Y CONNECT vive AQUI,
+         que es donde hace falta: las tres necesitan wallet. -->
+    <div id="pw-overlay" aria-hidden="true">
+        <div class="ov-bar">
+            <div class="ov-tabs">
+                <button class="ov-tab" data-ir="ov-ranking">RANKING</button>
+                <button class="ov-tab" data-ir="ov-rewards">REWARDS</button>
+                <button class="ov-tab" data-ir="ov-staking">STAKING</button>
             </div>
-            <div id="lb-body"><div class="lb-empty">Loading leaderboard…</div></div>
-        </div>
-        <div id="lb-pag" class="lb-pag"></div>
-    </div>
-
-    <!-- WALLET: FUERA de la navbar, flotando arriba a la derecha.
-         En la web la wallet solo hace falta en leaderboard, rewards y staking. Dentro
-         de la barra competia por sitio con los enlaces y obligaba a colapsarlos antes
-         de tiempo; aqui no le quita hueco a nadie y sigue estando a mano.
-         Solo CONNECT y DISCONNECT: depositar, retirar y el saldo in-game son cosas
-         del juego y no pintan nada en la portada. -->
-    <div id="pw-wallet">
-        <button class="pw-wbtn" id="pwWConnect" onclick="App.Wallet.toggle()">CONNECT WALLET</button>
-        <div class="pw-wconn" id="pwWConn" style="display:none">
-            <span class="pw-waddr" id="pwWAddr">—</span>
-            <button class="pw-wbtn pw-wbtn-off" onclick="App.Wallet.disconnect()">DISCONNECT</button>
-        </div>
-    </div>
-
-    <!-- ===================== REWARDS =====================
-         Seccion normal de la pagina, no un overlay. Se llega scrolleando desde el
-         leaderboard de arriba, y el enlace del nav es un ancla como los demas: asi
-         pulsar GAME o STORE con esto abierto no deja nada a medias. -->
-    <div id="rewards" class="section-container">
-        <h1 class="section-title holo-text">Rewards</h1>
-        <div class="pw-sec">
-            <p class="pw-sec-p">The top 10 of each day get paid from the rewards allocation. Nothing
-                       expires: an unclaimed reward waits for you.</p>
-
-            
-
-            <div class="pwc">
-                <div class="pwc-t">Your rewards</div>
-                <div id="vrMios"></div>
-                <!-- El total y un solo CLAIM, igual que en el juego: la misma pantalla
-                     en los dos sitios. El boton esta SIEMPRE, en gris cuando no hay
-                     nada — uno que aparece y desaparece no se aprende nunca. -->
-                <div class="pw-mine">
-                    <div class="pw-mine-l">
-                        <span class="pw-mine-lbl">YOUR REWARDS</span>
-                        <span class="pw-mine-val" id="vrTotal">0</span>
-                        <span class="pw-mine-lbl">$PILL</span>
-                    </div>
-                    <button class="pw-claim" id="vrClaim" disabled onclick="PWRewards.claimTodo()">CLAIM</button>
+            <div class="ov-right">
+                <button class="pw-wbtn" id="pwWConnect" onclick="App.Wallet.toggle()">CONNECT WALLET</button>
+                <div class="pw-wconn" id="pwWConn" style="display:none">
+                    <span class="pw-waddr" id="pwWAddr">—</span>
+                    <button class="pw-wbtn pw-wbtn-off" onclick="App.Wallet.disconnect()">DISCONNECT</button>
                 </div>
-                <div class="pwc-note" id="vrNota"></div>
+                <button class="ov-close" onclick="PWPanel.cerrar()" title="Close">&times;</button>
             </div>
+        </div>
+        <div class="ov-scroll" id="ovScroll">
+    <section id="ov-ranking" class="ov-sec">
+        <h1 class="section-title holo-text">Ranking</h1>
+        <div class="pw-sec">
+            <!-- El ranking del DIA: es el que decide los premios. El eterno
+                 (Global Elite) va debajo, que es el palmares y no paga nada. -->
 
-            <!-- DONDE VIVE EL DINERO. Es la respuesta a "vale, ¿y esto de donde sale?",
-                 y esta aqui y no en una pagina aparte porque es justo lo que se
-                 pregunta quien acaba de cobrar. -->
-            <div class="pwc">
-                <div class="pwc-t">The rewards wallet, and where the rest lives</div>
-                <div id="vrCuentas"></div>
-                <div class="pwc-note" id="vrMint"></div>
-            </div>
-
-            <!-- Plegado: son 11 filas de direcciones que la mayoria no va a mirar, y
-                 abiertas empujaban el staking media pantalla hacia abajo. -->
-            <details class="pwc pw-det">
-                <summary class="pwc-t">Token holders<span class="pw-det-i">▾</span></summary>
-                <div id="vrHolders"></div>
-                <div class="pwc-note" id="vrHoldersNota"></div>
-            </details>
-
-            <!-- El leaderboard del dia vive AQUI, debajo de tus premios: es de donde
-                 salen. El de arriba (Global Elite) son las estadisticas de siempre,
-                 que es otra cosa. -->
             <h2 class="pw-sec-h" id="vbTitle">Today's standings</h2>
             <p class="pw-sec-p">The top 10 of each day is paid from the treasury. Tap any player to see
                        exactly where their numbers come from — every match is anchored on Solana.</p>
@@ -3059,11 +3066,70 @@ body.trailer-open #page-content{
             </div>
 
             <div class="pwc-note" id="vbNota"></div>
-        </div>
-    </div>
 
-    <!-- ===================== STAKING ===================== -->
-    <div id="staking" class="section-container">
+            <h2 class="pw-sec-h" style="margin-top:52px">Global Elite</h2>
+        <div id="lb-wrap" class="lb-wrap">
+            <div class="lb-head">
+                <span class="lb-c-pos">#</span>
+                <span class="lb-c-name">PLAYER</span>
+                <span class="lb-c-mass">BEST MASS</span>
+                <span class="lb-c-kills">KILLS</span>
+                <span class="lb-c-deaths">DEATHS</span>
+                <span class="lb-c-kd">K/D</span>
+                <span class="lb-c-games">GAMES</span>
+            </div>
+            <div id="lb-body"><div class="lb-empty">Loading leaderboard…</div></div>
+        </div>
+        <div id="lb-pag" class="lb-pag"></div>
+        </div>
+    </section>
+
+    <section id="ov-rewards" class="ov-sec">
+        <h1 class="section-title holo-text">Rewards</h1>
+        <div class="pw-sec">
+            <p class="pw-sec-p">The top 10 of each day get paid from the rewards allocation. Nothing
+                       expires: an unclaimed reward waits for you.</p>
+
+            
+
+            <div class="pwc">
+                <div class="pwc-t">Your rewards</div>
+                <div id="vrMios"></div>
+                <!-- El total y un solo CLAIM, igual que en el juego: la misma pantalla
+                     en los dos sitios. El boton esta SIEMPRE, en gris cuando no hay
+                     nada — uno que aparece y desaparece no se aprende nunca. -->
+                <div class="pw-mine">
+                    <div class="pw-mine-l">
+                        <span class="pw-mine-lbl">YOUR REWARDS</span>
+                        <span class="pw-mine-val" id="vrTotal">0</span>
+                        <span class="pw-mine-lbl">$PILL</span>
+                    </div>
+                    <button class="pw-claim" id="vrClaim" disabled onclick="PWRewards.claimTodo()">CLAIM</button>
+                </div>
+                <div class="pwc-note" id="vrNota"></div>
+            </div>
+
+            <!-- DONDE VIVE EL DINERO. Es la respuesta a "vale, ¿y esto de donde sale?",
+                 y esta aqui y no en una pagina aparte porque es justo lo que se
+                 pregunta quien acaba de cobrar. -->
+            <div class="pwc">
+                <div class="pwc-t">Where your reward comes from</div>
+                <div id="vrCuentas"></div>
+                <div class="pwc-note" id="vrMint"></div>
+            </div>
+
+            <!-- Plegado: son 11 filas de direcciones que la mayoria no va a mirar, y
+                 abiertas empujaban el staking media pantalla hacia abajo. -->
+            <details class="pwc pw-det">
+                <summary class="pwc-t">Token holders<span class="pw-det-i">▾</span></summary>
+                <div id="vrHolders"></div>
+                <div class="pwc-note" id="vrHoldersNota"></div>
+            </details>
+
+        </div>
+    </section>
+
+    <section id="ov-staking" class="ov-sec">
         <h1 class="section-title holo-text">Staking</h1>
         <div class="pw-sec">
             <p class="pw-sec-p">Lock $PILL and take a cut of everything the game earns. No tokens are
@@ -3128,6 +3194,9 @@ body.trailer-open #page-content{
                 never locked by anyone but that timer: no approvals, no permissions, and nobody
                 — me included — can move it.</p>
             </div>
+        </div>
+    </section>
+
         </div>
     </div>
 
@@ -4420,68 +4489,174 @@ function toggleTrailerMode() {
          * callback. getBoundingClientRect() si devuelve coordenadas de viewport
          * correctas con zoom, asi que la comprobacion va con el scroll.
          */
-        const PWSecciones = {
+        /*
+         * EL PANEL: ranking, rewards y staking.
+         *
+         * Tapa la pantalla y tiene su propio scroll, asi que no se llega a estas tres
+         * scrolleando la portada — pero se pasa de una a otra sin cerrar nada.
+         *
+         * LO QUE NO PUEDE VOLVER A PASAR: que con el panel abierto pulses GAME,
+         * QUESTS o STORE y se quede el panel puesto con la pagina moviendose detras.
+         * Por eso el nav entero pasa por aqui: los tres destinos de la pagina CIERRAN
+         * el panel antes de saltar, y los tres del panel lo ABREN. No hay ningun
+         * enlace que haga las dos cosas a medias.
+         */
+        const PWPanel = {
+            SECCIONES: ['ov-ranking', 'ov-rewards', 'ov-staking'],
             cargadas: new Set(),
-            partes: [
-                { id: 'rewards', carga: () => { PWRewards.cargar(); PWBoard.cargar(); } },
-                { id: 'staking', carga: () => PWStake.refrescaEnVivo() },
-            ],
-            cerca(el, margen) {
-                const r = el.getBoundingClientRect();
-                return r.top < window.innerHeight + margen && r.bottom > -margen;
-            },
-            mira() {
-                for (const parte of this.partes) {
-                    const el = document.getElementById(parte.id);
-                    if (!el) continue;
-                    // 400px de margen: se pide justo antes de que se vea, para que al
-                    // llegar ya este pintado.
-                    if (this.cerca(el, 400) && !this.cargadas.has(parte.id)) {
-                        this.cargadas.add(parte.id);
-                        try { parte.carga(); } catch (e) {}
-                    }
-                }
-                // El staking se para al salir de pantalla: el pendiente crece por
-                // segundo, pero repintarlo sin que nadie lo mire es gastar por gastar.
-                // Como el sondeo se apaga al cargarlo todo, esto se comprueba con su
-                // propio latido, mas lento (no hay prisa por parar).
-                if (!this._latido) {
-                    this._latido = setInterval(() => {
-                        const stk = document.getElementById('staking');
-                        if (!stk || !this.cargadas.has('staking')) return;
-                        if (this.cerca(stk, 0)) PWStake.refrescaEnVivo(); else PWStake.parar();
-                    }, 2000);
+
+            abierto() { return document.body.classList.contains('pw-panel'); },
+
+            abrir(id) {
+                const yaEstaba = this.abierto();
+                document.body.classList.add('pw-panel');
+                document.getElementById('pw-overlay').setAttribute('aria-hidden', 'false');
+                this.carga(id);
+                /* Leer offsetHeight FUERZA el layout. Sin esto, el panel acaba de pasar
+                   de display:none a flex y getBoundingClientRect devuelve ceros: el
+                   salto calculaba destino 0 y se quedaba arriba siempre. */
+                const cont = document.getElementById('ovScroll');
+                if (cont) void cont.offsetHeight;
+                // Sin animar al abrir: animar desde un scroll que acaba de nacer se ve
+                // como un tiron. Estando ya abierto, si.
+                this.irA(id, yaEstaba);
+                // Se marca la PEDIDA, no la que toque por scroll: con animacion, el
+                // scroll aun esta en la de antes y se marcaba la equivocada. Al
+                // terminar el viaje, el listener de scroll la confirma.
+                for (const b of document.querySelectorAll('.ov-tab')) {
+                    b.classList.toggle('on', b.dataset.ir === id);
                 }
 
-                // PLAY NOW se esconde sobre los tres paneles: ahi la accion es otra.
-                const enPanel = ['ranking', 'rewards', 'staking'].some((id) => {
-                    const el = document.getElementById(id);
-                    return el && this.cerca(el, 0);
-                });
-                document.body.classList.toggle('pw-en-paneles', enPanel);
+                /* Y se recoloca cuando el contenido ha llegado. Saltar a una seccion
+                   que todavia esta vacia calcula el destino con la altura vacia: al
+                   llenarse, lo de abajo se desplaza y te quedas en otro sitio. Pasaba
+                   con STAKING, que aterrizaba donde empieza REWARDS. */
+                this._fija = id;
+                for (const ms of [450, 1200, 2500]) {
+                    setTimeout(() => { if (this._fija === id && this.abierto()) this.irA(id, false); }, ms);
+                }
             },
+
+            cerrar() {
+                document.body.classList.remove('pw-panel');
+                document.getElementById('pw-overlay').setAttribute('aria-hidden', 'true');
+                this._recienAbierto = false;
+                PWStake.parar();
+            },
+
+            /* Lleva el scroll DEL PANEL hasta una seccion. Animado a mano por lo
+               mismo que el de la pagina: `behavior:'smooth'` no hace nada aqui. */
+            irA(id, animar) {
+                const cont = document.getElementById('ovScroll');
+                const el = document.getElementById(id);
+                if (!cont || !el) return;
+                const destino = cont.scrollTop + el.getBoundingClientRect().top
+                    - cont.getBoundingClientRect().top;
+                if (!animar) { cont.scrollTop = destino; return; }
+                const desde = cont.scrollTop, dist = destino - desde, t0 = Date.now();
+                clearInterval(this._anim);
+                this._anim = setInterval(() => {
+                    const t = Math.min(1, (Date.now() - t0) / 380);
+                    cont.scrollTop = desde + dist * (1 - Math.pow(1 - t, 3));
+                    if (t >= 1) clearInterval(this._anim);
+                }, 16);
+            },
+
+            /* Los datos se piden al entrar en su seccion, no al abrir el panel: las
+               tres van a la cadena y pedir las tres de golpe carga el RPC para algo
+               que a lo mejor no llegas a mirar. */
+            carga(id) {
+                const pedir = (cual) => {
+                    if (this.cargadas.has(cual)) return;
+                    this.cargadas.add(cual);
+                    try {
+                        if (cual === 'ov-ranking') PWBoard.cargar();
+                        else if (cual === 'ov-rewards') { PWRewards.cargar(); PWBoard.cargar(); }
+                        else PWStake.refrescaEnVivo();
+                    } catch (e) {}
+                };
+                pedir(id);
+            },
+
+            /* La pestaña activa se marca segun por donde vas: si no, pasabas de
+               ranking a staking scrolleando y arriba seguia iluminado RANKING. */
+            marcaPestana() {
+                const cont = document.getElementById('ovScroll');
+                if (!cont) return;
+                let actual = this.SECCIONES[0];
+                for (const id of this.SECCIONES) {
+                    const el = document.getElementById(id);
+                    if (!el) continue;
+                    // "Estas en" la ultima seccion cuyo borde superior ya paso el
+                    // primer tercio de la pantalla.
+                    if (el.getBoundingClientRect().top - cont.getBoundingClientRect().top
+                        <= cont.clientHeight / 3) actual = id;
+                }
+                for (const b of document.querySelectorAll('.ov-tab')) {
+                    b.classList.toggle('on', b.dataset.ir === actual);
+                }
+                this.carga(actual);
+            },
+
             arranca() {
-                const tick = () => this.mira();
+                for (const b of document.querySelectorAll('.ov-tab')) {
+                    b.addEventListener('click', () => this.abrir(b.dataset.ir));
+                }
+                const cont = document.getElementById('ovScroll');
+                if (cont) {
+                    cont.addEventListener('wheel', () => { this._fija = null; }, { passive: true });
+                    cont.addEventListener('touchstart', () => { this._fija = null; }, { passive: true });
+                    cont.addEventListener('scroll', () => this.marcaPestana(), { passive: true });
+                }
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.abierto()) this.cerrar();
+                });
+
                 /*
-                 * SONDEO, no eventos. En esta pagina los `scroll` no llegan a window
-                 * —ni uno, aunque scrollY cambie— y el IntersectionObserver tampoco
-                 * dispara por el `zoom: 0.9` de #page-content. Las dos vias normales
-                 * estan muertas.
-                 *
-                 * Cada 400 ms son tres getBoundingClientRect: ni se nota, y funciona
-                 * pase lo que pase con el scroll. Se para sola cuando ya no queda nada
-                 * por cargar.
+                 * TODO el nav pasa por aqui. Los tres destinos de la pagina cierran el
+                 * panel antes de saltar; los tres del panel lo abren. Sin esto, pulsar
+                 * GAME con el panel abierto no hacia nada visible — el bug de siempre.
                  */
-                const t = setInterval(() => {
-                    tick();
-                    if (this.cargadas.size >= this.partes.length) clearInterval(this.vigila);
-                }, 400);
-                this.vigila = t;
-                window.addEventListener('resize', tick);
-                tick();
+                const DEL_PANEL = { '#ranking': 'ov-ranking', '#rewards': 'ov-rewards', '#staking': 'ov-staking' };
+                document.addEventListener('click', (e) => {
+                    const a = e.target.closest('a[href^="#"]');
+                    if (!a) return;
+                    const href = a.getAttribute('href');
+                    if (!href || href === '#') return;
+                    if (DEL_PANEL[href]) { e.preventDefault(); this.abrir(DEL_PANEL[href]); return; }
+                    // Un destino de la PAGINA: se cierra el panel y luego se salta.
+                    if (this.abierto() && document.querySelector(href)) this.cerrar();
+                }, true);
+
+                /*
+                 * PLAY NOW: sale al dejar atras el hero y se esconde con el panel
+                 * abierto. Va por sondeo porque el IntersectionObserver que gobernaba
+                 * `nav-play-visible` NO dispara con el zoom:0.9 de #page-content — el
+                 * boton no llegaba a salir nunca. 250 ms para que no se note el
+                 * retardo al scrollear.
+                 */
+                setInterval(() => {
+                    const hero = document.getElementById('hero');
+                    if (!hero) return;
+                    const r = hero.getBoundingClientRect();
+                    const fueraDelHero = r.bottom <= (document.querySelector('.navbar')?.offsetHeight || 64);
+                    document.body.classList.toggle('nav-play-visible', fueraDelHero && !this.abierto());
+                }, 250);
+
+                // El staking se para al salir de su seccion: el pendiente crece por
+                // segundo, pero repintarlo sin que nadie lo mire es gastar por gastar.
+                setInterval(() => {
+                    if (!this.abierto() || !this.cargadas.has('ov-staking')) return;
+                    const el = document.getElementById('ov-staking');
+                    const cont = document.getElementById('ovScroll');
+                    if (!el || !cont) return;
+                    const r = el.getBoundingClientRect(), c = cont.getBoundingClientRect();
+                    if (r.top < c.bottom && r.bottom > c.top) PWStake.refrescaEnVivo();
+                    else PWStake.parar();
+                }, 2000);
             },
         };
-        window.PWView = { open: (c) => { const el = document.getElementById(c === 'stake' ? 'staking' : c === 'board' ? 'ranking' : 'rewards'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, close: () => {} };
+        window.PWPanel = PWPanel;
 
         const _fmt = (n) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
         const _corta = (w) => (w ? w.slice(0, 4) + '…' + w.slice(-4) : '');
@@ -4623,7 +4798,10 @@ function toggleTrailerMode() {
                 if (!d) { $('vbLista').innerHTML = '<div style="color:#8b9199;padding:20px 0">Could not load the leaderboard.</div>'; return; }
                 const rep = d.reparto || {}, filas = d.entries || [], mia = _wallet();
 
-                $('vbTitle').textContent = 'Daily leaderboard · ' + (d.date || '');
+                // Sin la fecha: "Daily leaderboard · 2026-09-04" al lado de un rotulo
+                // que ya dice REWARDS se lee como si fueran dos cosas distintas. El
+                // dia va en el texto de debajo, que es donde se entiende.
+                $('vbTitle').textContent = "Today's standings";
                 $('vbBote').textContent = rep.botePill != null ? _fmt(rep.botePill) : '—';
                 $('vbEleg').textContent = filas.length;
                 $('vbRake').textContent = rep.rakeDelDia != null ? _fmt(rep.rakeDelDia) : '—';
@@ -4643,13 +4821,23 @@ function toggleTrailerMode() {
                       + '), and how many players are in the list (' + filas.length + '/' + rep.potCompletoCon + ').'
                     : '';
 
-                $('vbLista').innerHTML = !filas.length
-                    ? '<div style="color:#8b9199;padding:20px 0">Nobody qualifies yet today.<br>'
-                      + '<span style="font-size:12px">You need at least ' + (d.minKills || 3)
-                      + ' kills in paid rooms, and to have played against enough different people.</span></div>'
-                    : filas.map((f, i) => {
+                /*
+                 * Sin nadie todavia se ensena un ranking de EJEMPLO, atenuado y con su
+                 * aviso encima. Una tabla vacia no deja ver como queda esto lleno, que
+                 * es justo lo que hay que poder juzgar antes de lanzar; y sin el aviso
+                 * seria hacer creer que ya juega gente.
+                 */
+                const demo = !filas.length;
+                const lista = demo ? PWBoard.ejemplo(rep) : filas;
+                $('vbLista').className = demo ? 'pwlb-demo' : '';
+                $('vbLista').innerHTML = (demo
+                    ? '<div class="pwlb-demo-tag">EXAMPLE — nobody qualifies yet today. '
+                      + 'You need ' + (d.minKills || 3) + '+ kills in paid rooms and enough different rivals.</div>'
+                    : '') + lista.map((f, i) => {
                         const pr = (rep.puestos || []).find(x => x.rank === f.rank), pill = pr ? pr.pill : 0;
-                        return '<div class="pwlb-row' + (i < 3 ? ' t' + (i + 1) : '') + '" onclick="PWBoard.ficha(\'' + _esc(f.wallet) + '\')">'
+                        // Las filas de ejemplo no abren ficha: detras no hay nadie.
+                        return '<div class="pwlb-row' + (i < 3 ? ' t' + (i + 1) : '') + '"'
+                            + (demo ? '' : ' onclick="PWBoard.ficha(\'' + _esc(f.wallet) + '\')"') + '>'
                             + '<div class="p">' + f.rank + '</div>'
                             + '<div><div class="n">' + _esc(f.name || _corta(f.wallet)) + (mia && f.wallet === mia ? ' <span style="color:#00ff88;font-size:11px">YOU</span>' : '') + '</div>'
                             + '<div class="w">' + _corta(f.wallet) + (f.oponentes != null ? ' · ' + f.oponentes + ' different rivals' : '') + '</div></div>'
@@ -4721,6 +4909,17 @@ function toggleTrailerMode() {
                     + 'arcade commission, unclaimed pots — and all of it goes to stakers. The <b>rewards allocation</b> is '
                     + 'set aside by the team and it is what pays this leaderboard. What the game earns goes to people who '
                     + 'hold; what the team set aside goes to people who play well.';
+            },
+
+            /* Diez nombres para cuando el dia esta vacio. Los premios salen del
+               reparto real, asi que la columna de la derecha ensena lo que de verdad
+               tocaria con el bote de hoy. */
+            ejemplo(rep) {
+                const nombres = ['neo', 'trinity', 'morpheus', 'cypher', 'switch',
+                                 'dozer', 'apoc', 'tank', 'mouse', 'niobe'];
+                return nombres.map((n, i) => ({
+                    rank: i + 1, name: n, wallet: '', kills: 24 - i * 2, oponentes: 9 - i,
+                }));
             },
 
             async ficha(wallet) {
@@ -4906,7 +5105,12 @@ function toggleTrailerMode() {
                 const link = (a, txt) => '<a href="https://solscan.io/account/' + _esc(a) + cl
                     + '" target="_blank" rel="noopener">' + (txt || a) + '</a>';
 
-                $('vrCuentas').innerHTML = (d.cuentas || []).map(c =>
+                /* SOLO la wallet de premios. Las demas cuentas (autoridad, custodia,
+                   bovedas del staking) estan en la lista de holders de abajo, que es
+                   donde se comparan entre si. Aqui lo que importa es una cosa: de
+                   donde sale tu premio y cuanto queda. */
+                const suyas = (d.cuentas || []).filter(c => c.clave === 'rewards');
+                $('vrCuentas').innerHTML = suyas.map(c =>
                     '<div class="pw-acc">'
                     + '<div class="n">' + _esc(c.nombre)
                     + '<span class="pw-tag ' + (c.tipo === 'wallet' ? 'w' : 'c') + '">'
@@ -4953,9 +5157,8 @@ function toggleTrailerMode() {
 
         window.App = App;   // exponer App para el módulo ESM de blockchain (PillChain)
 
-        // REWARDS y STAKING piden a la cadena, asi que se cargan cuando se acercan y
-        // no al abrir la portada.
-        PWSecciones.arranca();
+        // El panel: sus datos se piden al entrar en cada seccion, no al cargar la web.
+        PWPanel.arranca();
         App.UI.init();
         App.Market.updateTicker();
         App.Market.initStatsLink();
