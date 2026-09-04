@@ -267,11 +267,13 @@
            se colaba encima. Como secciones normales eso no puede pasar. */
         /* CONNECT vive en la barra del panel: es donde hace falta (ranking, rewards y
            staking necesitan wallet) y no le quita sitio a los enlaces del nav. */
-        .pw-wbtn { background: transparent; border: 1px solid #2a2f36; color: #c8cdd2;
-                   font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .5px;
-                   padding: 10px 14px; border-radius: 7px; cursor: pointer; transition: .18s;
+        /* Con borde y color de marca: es la unica accion de la barra y en gris
+           apagado no se veia que hubiera que pulsarla. */
+        .pw-wbtn { background: rgba(0,255,136,.08); border: 1px solid #00ff88; color: #00ff88;
+                   font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: .5px;
+                   padding: 12px 18px; border-radius: 8px; cursor: pointer; transition: .18s;
                    text-transform: uppercase; white-space: nowrap; }
-        .pw-wbtn:hover { border-color: #00ff88; color: #00ff88; }
+        .pw-wbtn:hover { background: #00ff88; color: #04120b; }
         .pw-wconn { display: flex; align-items: center; gap: 9px;
                     background: rgba(0,0,0,.55); border: 1px solid #2a2f36; border-radius: 7px;
                     padding: 6px 6px 6px 12px; backdrop-filter: blur(4px); }
@@ -294,31 +296,32 @@
            llegar al final del panel seguia moviendose lo de atras. */
         body.pw-panel { overflow: hidden; }
 
-        .ov-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px;
-                  padding: 10px 18px; border-bottom: 1px solid #1c2026; background: #08090b;
-                  flex-wrap: wrap; }
-        .ov-tabs { display: flex; gap: 6px; }
-        .ov-tab { background: transparent; border: 1px solid transparent; color: #8b9199;
-                  font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .5px;
-                  padding: 10px 13px; border-radius: 7px; cursor: pointer; transition: .15s; }
-        .ov-tab:hover { color: #fff; }
-        /* La pestaña activa se marca sola segun por donde vas scrolleando: es lo que
-           hace que las tres se sientan un sitio y no tres. */
-        .ov-tab.on { color: #00ff88; border-color: #2a2f36; background: rgba(0,255,136,.07); }
-        .ov-right { display: flex; align-items: center; gap: 10px; }
-        .ov-close { background: transparent; border: 1px solid #2a2f36; color: #8b9199;
-                    width: 34px; height: 34px; border-radius: 7px; cursor: pointer;
-                    font-size: 20px; line-height: 1; }
-        .ov-close:hover { border-color: #ff6b6b; color: #ff6b6b; }
-        .ov-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
-        .ov-sec { padding: 46px var(--gutter) 30px; display: flex; flex-direction: column;
+        /* La barra solo lleva la wallet, pegada a la derecha y con aire por arriba:
+           antes iba rozando el borde y se leia como parte de la navbar. */
+        .ov-bar { display: flex; align-items: center; justify-content: flex-end;
+                  padding: 20px 26px 6px; }
+        .ov-scroll { flex: 1; overflow-y: auto; overflow-x: hidden;
+                     /* SIN barra visible: el scroll se hace y ya. Una barra ahi dentro
+                        parte la pantalla en dos y no aporta nada — el contenido ya dice
+                        que hay mas abajo. */
+                     scrollbar-width: none; -ms-overflow-style: none; }
+        .ov-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
+        .ov-sec { padding: 26px var(--gutter) 30px; display: flex; flex-direction: column;
                   align-items: center; position: relative; }
+        /* Titulo de seccion: blanco, grande y a la IZQUIERDA, con su explicacion
+           debajo. El centrado con degradado que se uso un rato se leia apagado al
+           lado del resto de la web. */
+        .ov-h { max-width: 900px; margin: 0 auto 20px; width: 100%;
+                display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+        .ov-h h1 { font-family: 'Russo One'; font-size: clamp(28px, 4vw, 42px); color: #fff;
+                   margin: 0; letter-spacing: 1px; text-transform: uppercase; }
+        .ov-h p { color: #9aa1a9; font-size: 13.5px; margin: 8px 0 0; max-width: 620px;
+                  line-height: 1.55; }
         .ov-sec + .ov-sec { border-top: 1px solid #1c2026; }
         .ov-sec:last-child { padding-bottom: 90px; }
         @media (max-width: 640px) {
-            .ov-bar { padding: 8px 10px; gap: 8px; }
-            .ov-tab { font-size: 8px; padding: 8px 9px; }
-            .ov-sec { padding: 30px 14px 24px; }
+            .ov-bar { padding: 14px 12px 4px; }
+            .ov-sec { padding: 20px 14px 24px; }
         }
 
         .pw-sec { max-width: 900px; margin: 0 auto; padding: 0 4px; }
@@ -348,7 +351,7 @@
         .pw-rw { display:flex; align-items:center; gap:12px; padding:11px 0;
                  border-bottom:1px solid #1c2026; font-size:12.5px; flex-wrap:wrap; }
         .pw-rw:last-child { border-bottom:0; }
-        .pw-rw .d { color:#8b9199; min-width:112px; }
+        .pw-rw .d { color:#c8cdd2; min-width:112px; }
         .pw-rw .a { font-family:'Russo One'; color:#ffd700; margin-left:auto; }
         .pw-rw .s { font-size:11px; color:#8b9199; }
         .pw-rw .no { color:#6b7178; }
@@ -381,9 +384,9 @@
         .pw-acc { display:grid; grid-template-columns:1fr auto; gap:2px 12px;
                   padding:11px 0; border-bottom:1px solid #1c2026; font-size:12.5px; }
         .pw-acc:last-child { border-bottom:0; }
-        .pw-acc .n { color:#e6e9ec; font-weight:600; }
+        .pw-acc .n { color:#fff; font-weight:600; }
         .pw-acc .v { font-family:'Russo One'; color:#ffd700; text-align:right; white-space:nowrap; }
-        .pw-acc .q { grid-column:1/-1; color:#8b9199; font-size:11.5px; line-height:1.5; }
+        .pw-acc .q { grid-column:1/-1; color:#9aa3ad; font-size:12px; line-height:1.55; }
         .pw-acc .w { grid-column:1/-1; font-size:11px; word-break:break-all; }
         .pw-acc .w a { color:#00ff88; text-decoration:none; }
         .pw-acc .w a:hover { text-decoration:underline; }
@@ -393,19 +396,24 @@
         .pw-tag.w { background:rgba(255,255,255,.06); color:#8b9199; border:1px solid #2a2f36; }
 
         /* Tarjetas de datos, compartidas por las dos vistas. */
-        .pwc { background: rgba(255,255,255,0.025); border: 1px solid #1e2227; border-radius: 12px;
+        /* Mas contraste que antes. Todo iba sobre grises muy juntos (#6f7681 sobre un
+           fondo casi negro) y el conjunto se veia lavado: los rotulos no se separaban
+           del fondo y las cifras no se separaban de los rotulos. Ahora el fondo de la
+           tarjeta se nota, el borde se ve y los tres niveles de texto —rotulo, dato,
+           nota— tienen cada uno el suyo. */
+        .pwc { background: rgba(255,255,255,0.055); border: 1px solid #2b3138; border-radius: 12px;
                padding: 18px 20px; margin-bottom: 16px; }
-        .pwc-t { font-family:'Russo One'; font-size:10px; letter-spacing:1.6px; color:#6f7681;
+        .pwc-t { font-family:'Russo One'; font-size:10.5px; letter-spacing:1.6px; color:#00ff88;
                  text-transform:uppercase; margin-bottom:14px; }
         .pwc-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px 24px; }
         .pwc-grid > div { display:flex; flex-direction:column; gap:3px; min-width:0; }
-        .pwc-grid span { font-size:11px; color:#7d848d; }
-        .pwc-grid b { font-family:'Russo One'; font-size:22px; color:#e6e9ec;
+        .pwc-grid span { font-size:11.5px; color:#9aa3ad; }
+        .pwc-grid b { font-family:'Russo One'; font-size:22px; color:#fff;
                       overflow:hidden; text-overflow:ellipsis; }
         .pwc-grid b.green { color:#00ff88; }
         .pwc-grid b.gold { color:#ffce3d; }
-        .pwc-note { font-size:11.5px; color:#6f7681; line-height:1.55; margin-top:12px; }
-        .pwc-note b { color:#9aa3ad; }
+        .pwc-note { font-size:12px; color:#8b939d; line-height:1.6; margin-top:12px; }
+        .pwc-note b { color:#dfe4e9; }
 
         .pw-in-row { display:flex; gap:10px; align-items:stretch; margin-top:6px; }
         .pw-in-row input { flex:1; background:#0e1114; border:1px solid #23282e; border-radius:9px;
@@ -3007,33 +3015,30 @@ body.trailer-open #page-content{
          La barra de arriba cambia de seccion sin cerrar nada. Y CONNECT vive AQUI,
          que es donde hace falta: las tres necesitan wallet. -->
     <div id="pw-overlay" aria-hidden="true">
+        <!-- Solo la wallet. Las pestañas sobraban: los enlaces del nav ya llevan a
+             cada seccion y aqui repetian el mismo menu dos veces. Y la X tambien:
+             cada seccion tiene su BACK TO SITE, que dice a donde vuelves. -->
         <div class="ov-bar">
-            <div class="ov-tabs">
-                <button class="ov-tab" data-ir="ov-ranking">RANKING</button>
-                <button class="ov-tab" data-ir="ov-rewards">REWARDS</button>
-                <button class="ov-tab" data-ir="ov-staking">STAKING</button>
-            </div>
-            <div class="ov-right">
-                <button class="pw-wbtn" id="pwWConnect" onclick="App.Wallet.toggle()">CONNECT WALLET</button>
-                <div class="pw-wconn" id="pwWConn" style="display:none">
-                    <span class="pw-waddr" id="pwWAddr">—</span>
-                    <button class="pw-wbtn pw-wbtn-off" onclick="App.Wallet.disconnect()">DISCONNECT</button>
-                </div>
-                <button class="ov-close" onclick="PWPanel.cerrar()" title="Close">&times;</button>
+            <button class="pw-wbtn" id="pwWConnect" onclick="App.Wallet.toggle()">CONNECT WALLET</button>
+            <div class="pw-wconn" id="pwWConn" style="display:none">
+                <span class="pw-waddr" id="pwWAddr">—</span>
+                <button class="pw-wbtn pw-wbtn-off" onclick="App.Wallet.disconnect()">DISCONNECT</button>
             </div>
         </div>
         <div class="ov-scroll" id="ovScroll">
     <section id="ov-ranking" class="ov-sec">
-        <h1 class="section-title holo-text">Ranking</h1>
+        <!-- La clasificacion del dia ES el leaderboard. El "Global Elite" de siempre
+             se va: dos tablas de lo mismo con nombres distintos solo obligaban a
+             averiguar cual manda. Manda esta, que es la que paga. -->
+        <div class="ov-h">
+            <div>
+                <h1 id="vbTitle">Leaderboard</h1>
+                <p>The top 10 of each day gets paid. Tap any player to see exactly where their
+                   numbers come from — every match is anchored on Solana.</p>
+            </div>
+            <button class="pw-view-close" onclick="PWPanel.cerrar()">&larr; BACK TO SITE</button>
+        </div>
         <div class="pw-sec">
-            <!-- El ranking del DIA: es el que decide los premios. El eterno
-                 (Global Elite) va debajo, que es el palmares y no paga nada. -->
-
-            <h2 class="pw-sec-h" id="vbTitle">Today's standings</h2>
-            <p class="pw-sec-p">The top 10 of each day is paid from the treasury. Tap any player to see
-                       exactly where their numbers come from — every match is anchored on Solana.</p>
-
-            
 
             <div class="pwc">
                 <div class="pwc-t">Today's prize pool</div>
@@ -3067,28 +3072,19 @@ body.trailer-open #page-content{
 
             <div class="pwc-note" id="vbNota"></div>
 
-            <h2 class="pw-sec-h" style="margin-top:52px">Global Elite</h2>
-        <div id="lb-wrap" class="lb-wrap">
-            <div class="lb-head">
-                <span class="lb-c-pos">#</span>
-                <span class="lb-c-name">PLAYER</span>
-                <span class="lb-c-mass">BEST MASS</span>
-                <span class="lb-c-kills">KILLS</span>
-                <span class="lb-c-deaths">DEATHS</span>
-                <span class="lb-c-kd">K/D</span>
-                <span class="lb-c-games">GAMES</span>
-            </div>
-            <div id="lb-body"><div class="lb-empty">Loading leaderboard…</div></div>
-        </div>
-        <div id="lb-pag" class="lb-pag"></div>
         </div>
     </section>
 
     <section id="ov-rewards" class="ov-sec">
-        <h1 class="section-title holo-text">Rewards</h1>
+        <div class="ov-h">
+            <div>
+                <h1>Rewards</h1>
+                <p>The top 10 of each day get paid from the rewards allocation. Nothing expires: an unclaimed reward waits for you.</p>
+            </div>
+            <button class="pw-view-close" onclick="PWPanel.cerrar()">&larr; BACK TO SITE</button>
+        </div>
         <div class="pw-sec">
-            <p class="pw-sec-p">The top 10 of each day get paid from the rewards allocation. Nothing
-                       expires: an unclaimed reward waits for you.</p>
+
 
             
 
@@ -3115,7 +3111,7 @@ body.trailer-open #page-content{
             <div class="pwc">
                 <div class="pwc-t">Where your reward comes from</div>
                 <div id="vrCuentas"></div>
-                <div class="pwc-note" id="vrMint"></div>
+
             </div>
 
             <!-- Plegado: son 11 filas de direcciones que la mayoria no va a mirar, y
@@ -3130,10 +3126,15 @@ body.trailer-open #page-content{
     </section>
 
     <section id="ov-staking" class="ov-sec">
-        <h1 class="section-title holo-text">Staking</h1>
+        <div class="ov-h">
+            <div>
+                <h1>Staking</h1>
+                <p>Lock $PILL and take a cut of everything the game earns. No tokens are minted: what you get paid is the house's own income coming back.</p>
+            </div>
+            <button class="pw-view-close" onclick="PWPanel.cerrar()">&larr; BACK TO SITE</button>
+        </div>
         <div class="pw-sec">
-            <p class="pw-sec-p">Lock $PILL and take a cut of everything the game earns. No tokens are
-                       minted: what you get paid is the house's own income coming back.</p>
+
 
             
 
@@ -4520,13 +4521,6 @@ function toggleTrailerMode() {
                 // Sin animar al abrir: animar desde un scroll que acaba de nacer se ve
                 // como un tiron. Estando ya abierto, si.
                 this.irA(id, yaEstaba);
-                // Se marca la PEDIDA, no la que toque por scroll: con animacion, el
-                // scroll aun esta en la de antes y se marcaba la equivocada. Al
-                // terminar el viaje, el listener de scroll la confirma.
-                for (const b of document.querySelectorAll('.ov-tab')) {
-                    b.classList.toggle('on', b.dataset.ir === id);
-                }
-
                 /* Y se recoloca cuando el contenido ha llegado. Saltar a una seccion
                    que todavia esta vacia calcula el destino con la altura vacia: al
                    llenarse, lo de abajo se desplaza y te quedas en otro sitio. Pasaba
@@ -4578,9 +4572,10 @@ function toggleTrailerMode() {
                 pedir(id);
             },
 
-            /* La pestaña activa se marca segun por donde vas: si no, pasabas de
-               ranking a staking scrolleando y arriba seguia iluminado RANKING. */
-            marcaPestana() {
+            /* Carga la seccion a la que has llegado scrolleando. Sin esto, bajar de
+               leaderboard a staking dejaba el staking vacio: sus datos solo se piden
+               al entrar, y "entrar" tambien es llegar rodando. */
+            alLlegar() {
                 const cont = document.getElementById('ovScroll');
                 if (!cont) return;
                 let actual = this.SECCIONES[0];
@@ -4592,21 +4587,15 @@ function toggleTrailerMode() {
                     if (el.getBoundingClientRect().top - cont.getBoundingClientRect().top
                         <= cont.clientHeight / 3) actual = id;
                 }
-                for (const b of document.querySelectorAll('.ov-tab')) {
-                    b.classList.toggle('on', b.dataset.ir === actual);
-                }
                 this.carga(actual);
             },
 
             arranca() {
-                for (const b of document.querySelectorAll('.ov-tab')) {
-                    b.addEventListener('click', () => this.abrir(b.dataset.ir));
-                }
                 const cont = document.getElementById('ovScroll');
                 if (cont) {
                     cont.addEventListener('wheel', () => { this._fija = null; }, { passive: true });
                     cont.addEventListener('touchstart', () => { this._fija = null; }, { passive: true });
-                    cont.addEventListener('scroll', () => this.marcaPestana(), { passive: true });
+                    cont.addEventListener('scroll', () => this.alLlegar(), { passive: true });
                 }
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape' && this.abierto()) this.cerrar();
@@ -4801,7 +4790,9 @@ function toggleTrailerMode() {
                 // Sin la fecha: "Daily leaderboard · 2026-09-04" al lado de un rotulo
                 // que ya dice REWARDS se lee como si fueran dos cosas distintas. El
                 // dia va en el texto de debajo, que es donde se entiende.
-                $('vbTitle').textContent = "Today's standings";
+                // El titulo es fijo: la fecha va en el texto de las tarjetas, que es
+                // donde se entiende.
+                $('vbTitle').textContent = 'Leaderboard';
                 $('vbBote').textContent = rep.botePill != null ? _fmt(rep.botePill) : '—';
                 $('vbEleg').textContent = filas.length;
                 $('vbRake').textContent = rep.rakeDelDia != null ? _fmt(rep.rakeDelDia) : '—';
@@ -5121,18 +5112,10 @@ function toggleTrailerMode() {
                     + '<div class="w">' + link(c.address) + '</div>'
                     + '</div>').join('');
 
-                const m = d.mint || {};
-                // El enlace de compra: pump.fun resuelve por direccion del mint, asi
-                // que sirve sin tocar nada el dia del lanzamiento.
-                const comprar = m.address
-                    ? ' &nbsp;·&nbsp; <a href="https://pump.fun/coin/' + _esc(m.address) + '" target="_blank" '
-                      + 'rel="noopener" style="color:#00ff88;text-decoration:none">Buy $PILL on pump.fun &rarr;</a>'
-                    : '';
-                $('vrMint').innerHTML = 'Token <b>' + _esc(m.address || '') + '</b>'
-                    + (m.supply != null ? ' · supply <b>' + _fmt(m.supply) + '</b>' : '')
-                    + comprar
-                    + '<br><b>CONTRACT VAULT</b> means an address that is not on the ed25519 curve — there is no '
-                    + 'private key that could move it. Only the program can, running its own code.';
+                /* El pie con el mint, el supply y el enlace de compra ya no va aqui: en
+                   una tarjeta que responde "de donde sale tu premio", tres datos del
+                   token de los que ninguno responde eso solo distraen. El supply y los
+                   holders estan en su lista, y comprar se hace desde $PILL del nav. */
 
                 const hs = d.holders || [];
                 $('vrHolders').innerHTML = !hs.length
