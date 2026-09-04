@@ -144,7 +144,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 
     <!-- hero=1 = el iframe decorativo de la landing. Se marca AQUI, antes del
-         <style> de abajo, y no en el <script> del body que ya detecta hero:
+         <style>
+        /* LA BARRA DE SCROLL: fina, del verde de la marca y sin flechas. */
+        * { scrollbar-width: thin; scrollbar-color: #2a3138 transparent; }
+        ::-webkit-scrollbar { width: 9px; height: 9px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2a3138; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00ff88; }
+        ::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+
+        /* FUERA LAS FLECHITAS de los input[type=number]. El spinner nativo del
+           navegador es gris de sistema y no se puede estilar: en una interfaz pixel
+           canta muchisimo, y ademas invita a subir de uno en uno una cantidad que se
+           teclea. Se quitan en TODOS: Chrome/Safari por el pseudo-elemento, Firefox
+           por appearance. */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+ de abajo, y no en el <script> del body que ya detecta hero:
          alli el override llegaba despues del primer pintado y se veia un
          parpadeo de cuadricula antes del negro. Con el atributo puesto antes de
          que el CSS se parsee, la regla de la cuadricula no llega a aplicarse

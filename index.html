@@ -73,6 +73,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&family=VT323&family=Press+Start+2P&display=block" rel="stylesheet">
 
     <style>
+        /* LA BARRA DE SCROLL. La de fabrica es ancha y gris de sistema: sobre un
+           fondo negro es lo primero que se ve al entrar y no pega con nada. Fina, del
+           verde de la marca y sin flechas. */
+        * { scrollbar-width: thin; scrollbar-color: #2a3138 transparent; }
+        ::-webkit-scrollbar { width: 9px; height: 9px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2a3138; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00ff88; }
+        ::-webkit-scrollbar-corner { background: transparent; }
+        /* Las flechas de los extremos: fuera. */
+        ::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+
+        /* FUERA LAS FLECHITAS de los input[type=number]. El spinner nativo del
+           navegador es gris de sistema y no se puede estilar: en una interfaz pixel
+           canta muchisimo, y ademas invita a subir de uno en uno una cantidad que se
+           teclea. Se quitan en TODOS: Chrome/Safari por el pseudo-elemento, Firefox
+           por appearance. */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
         /* --- VARIABLES & RESET --- */
         :root {
             --primary: #00ff88;
@@ -240,21 +261,48 @@
            La pagina de debajo no se desmonta: se queda donde estaba y vuelve
            intacta al cerrar (position:fixed sobre ella, no display:none en el
            contenido). */
-        .pw-view { position: fixed; inset: var(--navbar-height) 0 0 0; z-index: 900;
-                   background: var(--bg-dark); overflow-y: auto; display: none;
-                   animation: pwViewIn .18s ease; }
-        .pw-view.on { display: block; }
-        body.pw-viewing { overflow: hidden; }
-        @keyframes pwViewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-        .pw-view-inner { max-width: 900px; margin: 0 auto; padding: 34px 22px 80px; }
-        .pw-view-head { display: flex; align-items: baseline; justify-content: space-between;
-                        gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
-        .pw-view-head h2 { font-family: 'Russo One'; font-size: clamp(24px, 3.4vw, 38px); color: #fff;
-                           text-transform: uppercase; letter-spacing: 1px; margin: 0; }
-        .pw-view-head p { color: #8b9199; font-size: 13px; margin: 6px 0 0; max-width: 560px; line-height: 1.55; }
+        /* REWARDS y STAKING son SECCIONES de la pagina, no overlays.
+           Antes tapaban la pantalla entera y no se llegaba scrolleando: pulsar GAME o
+           STORE con una abierta dejaba la vista puesta y la pagina detras, y PLAY NOW
+           se colaba encima. Como secciones normales eso no puede pasar. */
+        /* La wallet, flotando bajo la barra y pegada a la derecha. position:fixed y
+           no sticky: tiene que quedarse ahi pase lo que pase con el scroll, y el zoom
+           de #page-content no la afecta porque cuelga del body. */
+        #pw-wallet { position: fixed; right: 18px; z-index: 950;
+                     top: calc(var(--navbar-height, 64px) + 12px); }
+        .pw-wbtn { background: transparent; border: 1px solid #2a2f36; color: #c8cdd2;
+                   font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .5px;
+                   padding: 10px 14px; border-radius: 7px; cursor: pointer; transition: .18s;
+                   text-transform: uppercase; white-space: nowrap; }
+        .pw-wbtn:hover { border-color: #00ff88; color: #00ff88; }
+        .pw-wconn { display: flex; align-items: center; gap: 9px;
+                    background: rgba(0,0,0,.55); border: 1px solid #2a2f36; border-radius: 7px;
+                    padding: 6px 6px 6px 12px; backdrop-filter: blur(4px); }
+        .pw-waddr { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #00ff88; }
+        .pw-wbtn-off { border-color: #3a2027; color: #8b9199; padding: 7px 10px; }
+        .pw-wbtn-off:hover { border-color: #ff6b6b; color: #ff6b6b; }
+        @media (max-width: 640px) {
+            #pw-wallet { right: 10px; top: calc(var(--navbar-height, 64px) + 8px); }
+            .pw-wbtn { font-size: 8px; padding: 8px 10px; }
+            .pw-waddr { font-size: 8px; }
+        }
+
+        .pw-sec { max-width: 900px; margin: 0 auto; padding: 0 4px; }
+
+        /* Tarjeta plegable. summary sin el triangulito nativo (que es gris de sistema
+           y no pega): la flecha la pone .pw-det-i y gira al abrir. */
+        .pw-det > summary { cursor: pointer; list-style: none; display: flex;
+                            align-items: center; justify-content: space-between; }
+        .pw-det > summary::-webkit-details-marker { display: none; }
+        .pw-det-i { color: #8b9199; font-size: 12px; transition: transform .18s; }
+        .pw-det[open] .pw-det-i { transform: rotate(180deg); }
+        .pw-det > summary:hover { color: #00ff88; }
+        .pw-sec-p { color: #8b9199; font-size: 13px; margin: 0 0 22px; max-width: 620px; line-height: 1.6; }
+        .pw-sec-h { font-family: 'Russo One'; font-size: clamp(19px, 2.4vw, 26px); color: #fff;
+                    margin: 40px 0 4px; letter-spacing: .5px; }
         .pw-view-close { background: transparent; border: 1px solid #2a2f36; color: #8b9199;
-                         font-family: 'Russo One'; font-size: 11px; letter-spacing: 1px;
-                         padding: 9px 16px; border-radius: 8px; cursor: pointer; transition: .15s; }
+            font-family: 'Press Start 2P', monospace; font-size: 9px; padding: 9px 13px;
+            border-radius: 6px; cursor: pointer; letter-spacing: .5px; }
         .pw-view-close:hover { border-color: #00ff88; color: #00ff88; }
 
         /* STAKE de la navbar (grupo derecho). Sin min-width: el hueco lo reserva el
@@ -718,6 +766,13 @@
            hero los mismos dos van en una sola fila, ver .hero-play-links). */
         #nav-play-area { display: none; align-items: center; gap: 10px; position: relative; }
         body.nav-play-visible #nav-play-area, body.layout-editing #nav-play-area { display: flex; }
+        /* ...pero NUNCA sobre los paneles. En leaderboard, rewards y staking la
+           llamada a la accion es otra (conectar, cobrar, stakear) y PLAY NOW encima
+           competia con ella; ademas aparecia de golpe al pulsar STORE, que ya deja el
+           hero atras. Lo decide PWSecciones.mira(), que mide con rects: el
+           IntersectionObserver que gobierna nav-play-visible NO dispara con el
+           zoom:0.9 de #page-content. */
+        body.pw-en-paneles #nav-play-area { display: none !important; }
         /* Cuerpo de letra AJUSTABLE APARTE de la caja (ALT+rueda, clave navPlay
            en FONT_DEFAULTS): con solo la rueda de siempre (que escala la caja
            entera) el texto crecia/encogia pegado al borde de la placa y quedaba
@@ -1286,6 +1341,11 @@ body.trailer-open #page-content{
            de verdad (ajustaNavbar) y, cuando no caben, se van los cuatro a la
            vez y en su hueco queda MENU, que los despliega en una columna. */
         body.nav-colapsada .nav-links-container > a.nav-link { display: none !important; }
+        /* REWARDS se queda fuera del MENU tambien en estrecho: es la unica de las
+           secciones que el jugador necesita a un toque (ahi cobra), y esconderla
+           detras de un desplegable la hacia invisible en movil, que es donde mas
+           gente entra. Las demas si caben dentro de MENU. */
+        body.nav-colapsada .nav-links-container > a.nav-link[href="#rewards"] { display: inline-flex !important; }
         #nav-menu-dd { display: none; }
         body.nav-colapsada #nav-menu-dd { display: flex; }
         /* Cuelga hacia la DERECHA del rotulo (es el primer item por la izquierda
@@ -2536,8 +2596,8 @@ body.trailer-open #page-content{
                 <a href="#hero" class="nav-link" style="min-width:4.4em">GAME</a>
                 <a href="#quest" class="nav-link" style="min-width:6.6em">QUESTS</a>
                 <a href="#shop" class="nav-link" style="min-width:5.5em">STORE</a>
-                <a href="#" class="nav-link" style="min-width:12.1em" onclick="PWView.open('board'); return false;">LEADERBOARD</a>
-                <a href="#" class="nav-link" style="min-width:7.7em" onclick="PWView.open('rewards'); return false;">REWARDS</a>
+                <a href="#ranking" class="nav-link" style="min-width:12.1em">LEADERBOARD</a>
+                <a href="#rewards" class="nav-link" style="min-width:7.7em">REWARDS</a>
                 <!-- PLAY NOW de la navbar: PEGADO al bloque de la izquierda,
                      justo detras de LEADERBOARD. Antes vivia en el grupo de la
                      derecha y se traia hasta aqui con un translate de -861px
@@ -2571,8 +2631,7 @@ body.trailer-open #page-content{
                             <a href="#quest">QUESTS</a>
                             <a href="#shop">STORE</a>
                             <a href="#ranking">LEADERBOARD</a>
-                            <a href="#" onclick="PWView.open('rewards'); return false;">REWARDS</a>
-                            <a href="#" onclick="PWView.open('stake'); return false;">STAKE</a>
+                            <a href="#staking">STAKE</a>
                         </div>
                     </div>
                 </div>
@@ -2591,30 +2650,10 @@ body.trailer-open #page-content{
                  fijos que solo cuadraban a una anchura concreta y descolocaban
                  el conjunto en cuanto se hacia zoom out. Como item de este flex
                  se queda pegado a la esquina pase lo que pase con el ancho. -->
-            <!-- Wallet: mismo montaje que /game (gameWalletArea). Balance IN GAME +
-                 CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT) cuando ya
-                 estas conectado. -->
-            <div class="wallet-area" id="wallet-area">
-                <div class="wallet-bal-box" id="wallet-bal-box"><span class="wl-lbl">IN GAME:</span><span class="wl-val" id="wallet-bal-value">0</span><span class="wl-lbl">$PILL</span></div>
-                <div class="wb-box" id="wallet-btn-box"><button class="btn-connect" onclick="App.Wallet.toggle()" id="wallet-btn"><span class="wb-txt" id="wallet-btn-txt">CONNECT</span></button></div>
-                <!-- wallet-deposit-wrap YA NO se escala/mueve el mismo: es solo el
-                     ancla (position:relative) para el desplegable. Si tambien
-                     llevara su propio transform, se SUMARIA con el de su hijo
-                     wallet-deposit-box (estan anidados) y DEPOSIT saldria
-                     doblemente escalado/movido respecto a WITHDRAW/DISCONNECT. -->
-                <div class="wallet-deposit-wrap" id="wallet-deposit-wrap">
-                    <div class="wb-box" id="wallet-deposit-box"><button class="btn-deposit" id="deposit-btn" onclick="App.Deposit.open()"><span class="wb-txt" id="wallet-deposit-txt">DEPOSIT</span></button></div>
-                    <div class="wallet-dropdown-content">
-                        <div class="wb-box" id="wallet-withdraw-box"><button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()"><span class="wb-txt" id="wallet-withdraw-txt">WITHDRAW</span></button></div>
-                        <div class="wb-box" id="wallet-disconnect-box"><button class="btn-disconnect" id="disconnect-btn" onclick="App.Wallet.disconnect()"><span class="wb-txt" id="wallet-disconnect-txt">DISCONNECT</span></button></div>
-                    </div>
-                </div>
-            </div>
-            <!-- STAKE: en el grupo de la DERECHA, entre CONNECT y $PILL. Es donde
-                 tiene sentido: las tres cosas van de la wallet, y separar el boton de
-                 stakear de la wallet con la que se stakea obligaba a cruzar la barra
-                 entera. -->
-            <a href="#" class="nav-link nav-stake" onclick="PWView.open('stake'); return false;">STAKE</a>
+            <!-- STAKE: en el grupo de la DERECHA, pegado a $PILL. La wallet ya no vive
+                 aqui (esta flotando fuera de la barra), asi que este es el ultimo
+                 enlace antes del precio. -->
+            <a href="#staking" class="nav-link nav-stake">STAKE</a>
             <div class="dropdown" id="pill-dropdown">
                 <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
                 <div class="dropdown-content">
@@ -2908,18 +2947,106 @@ body.trailer-open #page-content{
         <div id="lb-pag" class="lb-pag"></div>
     </div>
 
-    <!-- ===================== VISTA: STAKING =====================
-         Tapa la pagina entera con la barra encima. No se llega scrolleando. -->
-    <div class="pw-view" id="viewStake">
-        <div class="pw-view-inner">
-            <div class="pw-view-head">
-                <div>
-                    <h2>Staking</h2>
-                    <p>Lock $PILL and take a cut of everything the game earns. No tokens are
-                       minted: what you get paid is the house's own income coming back.</p>
-                </div>
-                <button class="pw-view-close" onclick="PWView.close()">&larr; BACK TO SITE</button>
+    <!-- WALLET: FUERA de la navbar, flotando arriba a la derecha.
+         En la web la wallet solo hace falta en leaderboard, rewards y staking. Dentro
+         de la barra competia por sitio con los enlaces y obligaba a colapsarlos antes
+         de tiempo; aqui no le quita hueco a nadie y sigue estando a mano.
+         Solo CONNECT y DISCONNECT: depositar, retirar y el saldo in-game son cosas
+         del juego y no pintan nada en la portada. -->
+    <div id="pw-wallet">
+        <button class="pw-wbtn" id="pwWConnect" onclick="App.Wallet.toggle()">CONNECT WALLET</button>
+        <div class="pw-wconn" id="pwWConn" style="display:none">
+            <span class="pw-waddr" id="pwWAddr">—</span>
+            <button class="pw-wbtn pw-wbtn-off" onclick="App.Wallet.disconnect()">DISCONNECT</button>
+        </div>
+    </div>
+
+    <!-- ===================== REWARDS =====================
+         Seccion normal de la pagina, no un overlay. Se llega scrolleando desde el
+         leaderboard de arriba, y el enlace del nav es un ancla como los demas: asi
+         pulsar GAME o STORE con esto abierto no deja nada a medias. -->
+    <div id="rewards" class="section-container">
+        <h1 class="section-title holo-text">Rewards</h1>
+        <div class="pw-sec">
+            <p class="pw-sec-p">The top 10 of each day get paid from the rewards allocation. Nothing
+                       expires: an unclaimed reward waits for you.</p>
+
+            
+
+            <div class="pwc">
+                <div class="pwc-t">Your rewards</div>
+                <div id="vrMios"></div>
+                <div class="pwc-note" id="vrNota"></div>
             </div>
+
+            <!-- DONDE VIVE EL DINERO. Es la respuesta a "vale, ¿y esto de donde sale?",
+                 y esta aqui y no en una pagina aparte porque es justo lo que se
+                 pregunta quien acaba de cobrar. -->
+            <div class="pwc">
+                <div class="pwc-t">The rewards wallet, and where the rest lives</div>
+                <div id="vrCuentas"></div>
+                <div class="pwc-note" id="vrMint"></div>
+            </div>
+
+            <!-- Plegado: son 11 filas de direcciones que la mayoria no va a mirar, y
+                 abiertas empujaban el staking media pantalla hacia abajo. -->
+            <details class="pwc pw-det">
+                <summary class="pwc-t">Token holders<span class="pw-det-i">▾</span></summary>
+                <div id="vrHolders"></div>
+                <div class="pwc-note" id="vrHoldersNota"></div>
+            </details>
+
+            <!-- El leaderboard del dia vive AQUI, debajo de tus premios: es de donde
+                 salen. El de arriba (Global Elite) son las estadisticas de siempre,
+                 que es otra cosa. -->
+            <h2 class="pw-sec-h" id="vbTitle">Today's standings</h2>
+            <p class="pw-sec-p">The top 10 of each day is paid from the treasury. Tap any player to see
+                       exactly where their numbers come from — every match is anchored on Solana.</p>
+
+            
+
+            <div class="pwc">
+                <div class="pwc-t">Today's prize pool</div>
+                <div class="pwc-grid">
+                    <div><span>Pool right now</span><b id="vbBote" class="gold">—</b></div>
+                    <div><span>Players in the list</span><b id="vbEleg">—</b></div>
+                    <div><span>Kept by the house today</span><b id="vbRake">—</b></div>
+                </div>
+                <div id="vbBarWrap" style="display:none">
+                    <div class="pw-bar"><i id="vbBarFill"></i></div>
+                    <div class="pwc-note" id="vbBarTxt"></div>
+                </div>
+                <div class="pwc-note" id="vbPorQue"></div>
+            </div>
+
+            <div class="pwc" id="vbListaCard">
+                <div class="pwc-t">Standings</div>
+                <div id="vbLista"></div>
+            </div>
+
+            <div class="pwc" id="vbPagosCard" style="display:none">
+                <div class="pwc-t">Rewards actually paid</div>
+                <div id="vbPagos"></div>
+                <div class="pwc-note" id="vbPagosNota"></div>
+            </div>
+
+            <div class="pwc" id="vbFicha" style="display:none">
+                <button class="pw-view-close" style="margin-bottom:16px" onclick="PWBoard.volver()">&larr; BACK TO STANDINGS</button>
+                <div id="vbFichaBody"></div>
+            </div>
+
+            <div class="pwc-note" id="vbNota"></div>
+        </div>
+    </div>
+
+    <!-- ===================== STAKING ===================== -->
+    <div id="staking" class="section-container">
+        <h1 class="section-title holo-text">Staking</h1>
+        <div class="pw-sec">
+            <p class="pw-sec-p">Lock $PILL and take a cut of everything the game earns. No tokens are
+                       minted: what you get paid is the house's own income coming back.</p>
+
+            
 
             <div class="pwc">
                 <div class="pwc-t">Reward pool</div>
@@ -2977,89 +3104,6 @@ body.trailer-open #page-content{
                 it starts earning too. CLAIM sends it to your wallet instead. Your principal is
                 never locked by anyone but that timer: no approvals, no permissions, and nobody
                 — me included — can move it.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===================== VISTA: LEADERBOARD DIARIO ===================== -->
-    <div class="pw-view" id="viewBoard">
-        <div class="pw-view-inner">
-            <div class="pw-view-head">
-                <div>
-                    <h2 id="vbTitle">Daily leaderboard</h2>
-                    <p>The top 10 of each day is paid from the treasury. Tap any player to see
-                       exactly where their numbers come from — every match is anchored on Solana.</p>
-                </div>
-                <button class="pw-view-close" onclick="PWView.close()">&larr; BACK TO SITE</button>
-            </div>
-
-            <div class="pwc">
-                <div class="pwc-t">Today's prize pool</div>
-                <div class="pwc-grid">
-                    <div><span>Pool right now</span><b id="vbBote" class="gold">—</b></div>
-                    <div><span>Players in the list</span><b id="vbEleg">—</b></div>
-                    <div><span>Kept by the house today</span><b id="vbRake">—</b></div>
-                </div>
-                <div id="vbBarWrap" style="display:none">
-                    <div class="pw-bar"><i id="vbBarFill"></i></div>
-                    <div class="pwc-note" id="vbBarTxt"></div>
-                </div>
-                <div class="pwc-note" id="vbPorQue"></div>
-            </div>
-
-            <div class="pwc" id="vbListaCard">
-                <div class="pwc-t">Standings</div>
-                <div id="vbLista"></div>
-            </div>
-
-            <div class="pwc" id="vbPagosCard" style="display:none">
-                <div class="pwc-t">Rewards actually paid</div>
-                <div id="vbPagos"></div>
-                <div class="pwc-note" id="vbPagosNota"></div>
-            </div>
-
-            <div class="pwc" id="vbFicha" style="display:none">
-                <button class="pw-view-close" style="margin-bottom:16px" onclick="PWBoard.volver()">&larr; BACK TO STANDINGS</button>
-                <div id="vbFichaBody"></div>
-            </div>
-
-            <div class="pwc-note" id="vbNota"></div>
-        </div>
-    </div>
-
-    <!-- ===================== VISTA: REWARDS =====================
-         Lo que te toca a ti y de donde sale. Va al lado de LEADERBOARD porque es la
-         otra mitad de la misma pregunta: ahi se ve quien gana, aqui se cobra. -->
-    <div class="pw-view" id="viewRewards">
-        <div class="pw-view-inner">
-            <div class="pw-view-head">
-                <div>
-                    <h2>Rewards</h2>
-                    <p>The top 10 of each day get paid from the rewards allocation. Nothing
-                       expires: an unclaimed reward waits for you.</p>
-                </div>
-                <button class="pw-view-close" onclick="PWView.close()">&larr; BACK TO SITE</button>
-            </div>
-
-            <div class="pwc">
-                <div class="pwc-t">Your rewards</div>
-                <div id="vrMios"></div>
-                <div class="pwc-note" id="vrNota"></div>
-            </div>
-
-            <!-- DONDE VIVE EL DINERO. Es la respuesta a "vale, ¿y esto de donde sale?",
-                 y esta aqui y no en una pagina aparte porque es justo lo que se
-                 pregunta quien acaba de cobrar. -->
-            <div class="pwc">
-                <div class="pwc-t">Where the money lives</div>
-                <div id="vrCuentas"></div>
-                <div class="pwc-note" id="vrMint"></div>
-            </div>
-
-            <div class="pwc">
-                <div class="pwc-t">Token holders</div>
-                <div id="vrHolders"></div>
-                <div class="pwc-note" id="vrHoldersNota"></div>
             </div>
         </div>
     </div>
@@ -3257,20 +3301,13 @@ body.trailer-open #page-content{
         const DOM = {
             cursor: document.getElementById('custom-cursor'),
             walletModal: document.getElementById('wallet-modal'),
-            walletBtn: document.getElementById('wallet-btn'),
-            walletBtnBox: document.getElementById('wallet-btn-box'),
             footer: document.getElementById('main-footer'),
-            depositBtn: document.getElementById('deposit-btn'),
             depositModal: document.getElementById('deposit-modal'),
             depositAmount: document.getElementById('deposit-amount'),
             depositConfirm: document.getElementById('deposit-confirm'),
             depWalletBal: document.getElementById('dep-wallet-bal'),
             depWarBal: document.getElementById('dep-war-bal'),
-            withdrawBtn: document.getElementById('withdraw-btn'),
-            disconnectBtn: document.getElementById('disconnect-btn'),
-            walletBalBox: document.getElementById('wallet-bal-box'),
             walletBalValue: document.getElementById('wallet-bal-value'),
-            walletDepositWrap: document.getElementById('wallet-deposit-wrap'),
             claimPillBtn: document.getElementById('claim-pill-btn'),
             claimSolBtn: document.getElementById('claim-sol-btn'),
             withdrawModal: document.getElementById('withdraw-modal'),
@@ -3618,6 +3655,11 @@ body.trailer-open #page-content{
                         anchor.addEventListener('click', function (e) {
                             e.preventDefault();
                             const targetId = this.getAttribute('href');
+                            // Un href="#" a secas no es un selector valido y
+                            // querySelector('#') LANZA. Habia varios enlaces asi (los
+                            // que solo abren un modal desde su onclick) y cada clic
+                            // dejaba una excepcion en consola.
+                            if (!targetId || targetId === '#') return;
                             const targetSection = document.querySelector(targetId);
                             if (targetSection) {
                                 const navbarEl = document.querySelector('.navbar');
@@ -3944,13 +3986,20 @@ body.trailer-open #page-content{
                 },
                 // Cambia de CONNECT a DEPOSIT+balance (o al reves), igual que en /game.
                 setConnectedUI: (connected) => {
-                    // La CAJA (wb-box), no solo el boton de dentro: ocultando solo
-                    // el <button> el wrapper de 166x39 se quedaba vacio pero
-                    // VISIBLE (con su outline de EDIT LAYOUT), un hueco fantasma
-                    // entre $PILL y DEPOSIT que estorbaba para agarrar $PILL.
-                    DOM.walletBtnBox.style.display = connected ? 'none' : '';
-                    DOM.walletDepositWrap.style.display = connected ? 'block' : 'none';
-                    DOM.walletBalBox.style.display = connected ? 'flex' : 'none';
+                    /* En la web solo hay dos estados: CONNECT o la direccion con
+                       DISCONNECT al lado. Depositar, retirar y el saldo in-game se
+                       quedaron en /game, que es donde se usan.
+                       Las referencias viejas (walletBtnBox y compania) ya no existen
+                       en el DOM, asi que se comprueba antes de tocarlas: el editor de
+                       layout todavia puede pedirlas. */
+                    const c = document.getElementById('pwWConnect');
+                    const box = document.getElementById('pwWConn');
+                    if (c) c.style.display = connected ? 'none' : '';
+                    if (box) box.style.display = connected ? 'flex' : 'none';
+                    const a = document.getElementById('pwWAddr');
+                    if (a && App.Wallet.address) {
+                        a.textContent = App.Wallet.address.slice(0, 4) + '…' + App.Wallet.address.slice(-4);
+                    }
                 },
                 closeModal: () => { DOM.walletModal.style.display = 'none'; },
                 connect: async (name, silent) => {
@@ -4297,31 +4346,78 @@ function toggleTrailerMode() {
          * tapan. Se abren desde la barra y se cierran con BACK. La pagina de
          * debajo no se toca — al cerrar sigue exactamente donde estaba.
          */
-        const PWView = {
-            actual: null,
-            open(cual) {
-                this.close(true);
-                const el = document.getElementById(
-                    cual === 'stake' ? 'viewStake' : cual === 'rewards' ? 'viewRewards' : 'viewBoard');
-                if (!el) return;
-                el.classList.add('on');
-                document.body.classList.add('pw-viewing');
-                this.actual = cual;
-                el.scrollTop = 0;
-                if (cual === 'stake') PWStake.refresh();
-                else if (cual === 'rewards') PWRewards.cargar();
-                else PWBoard.cargar();
+        /*
+         * REWARDS y STAKING ya no son overlays: son secciones de la pagina. Lo unico
+         * que queda por hacer es CARGAR SUS DATOS, y solo cuando se acercan.
+         *
+         * Perezoso a proposito: las dos piden a la cadena, y hacerlo al abrir la
+         * portada cargaria el RPC en cada visita para algo que la mayoria no llega a
+         * mirar. Con IntersectionObserver se pide cuando la seccion esta a punto de
+         * verse, y una sola vez.
+         */
+        /*
+         * REWARDS y STAKING ya no son overlays: son secciones de la pagina. Lo unico
+         * que queda por hacer es CARGAR SUS DATOS, y solo cuando se acercan.
+         *
+         * Perezoso a proposito: las dos piden a la cadena, y hacerlo al abrir la
+         * portada cargaria el RPC en cada visita para algo que la mayoria no llega a
+         * mirar.
+         *
+         * NO con IntersectionObserver: #page-content lleva `zoom: 0.9` y con un
+         * contenedor escalado el observer NO DISPARA NUNCA — ni una sola llamada al
+         * callback. getBoundingClientRect() si devuelve coordenadas de viewport
+         * correctas con zoom, asi que la comprobacion va con el scroll.
+         */
+        const PWSecciones = {
+            cargadas: new Set(),
+            partes: [
+                { id: 'rewards', carga: () => { PWRewards.cargar(); PWBoard.cargar(); } },
+                { id: 'staking', carga: () => PWStake.refrescaEnVivo() },
+            ],
+            cerca(el, margen) {
+                const r = el.getBoundingClientRect();
+                return r.top < window.innerHeight + margen && r.bottom > -margen;
             },
-            close(silencioso) {
-                document.querySelectorAll('.pw-view.on').forEach(v => v.classList.remove('on'));
-                document.body.classList.remove('pw-viewing');
-                this.actual = null;
-                if (!silencioso) PWStake.parar();
+            mira() {
+                for (const parte of this.partes) {
+                    const el = document.getElementById(parte.id);
+                    if (!el) continue;
+                    // 400px de margen: se pide justo antes de que se vea, para que al
+                    // llegar ya este pintado.
+                    if (this.cerca(el, 400) && !this.cargadas.has(parte.id)) {
+                        this.cargadas.add(parte.id);
+                        try { parte.carga(); } catch (e) {}
+                    }
+                }
+                // El staking se para al salir de pantalla: el pendiente crece por
+                // segundo, pero repintarlo sin que nadie lo mire es gastar por gastar.
+                const stk = document.getElementById('staking');
+                if (stk && this.cargadas.has('staking')) {
+                    if (this.cerca(stk, 0)) PWStake.refrescaEnVivo(); else PWStake.parar();
+                }
+
+                // PLAY NOW se esconde sobre los tres paneles: ahi la accion es otra.
+                const enPanel = ['ranking', 'rewards', 'staking'].some((id) => {
+                    const el = document.getElementById(id);
+                    return el && this.cerca(el, 0);
+                });
+                document.body.classList.toggle('pw-en-paneles', enPanel);
+            },
+            arranca() {
+                const tick = () => this.mira();
+                window.addEventListener('scroll', tick, { passive: true });
+                window.addEventListener('resize', tick);
+                // Aterrizar directo en #rewards (enlace del nav, recarga con hash) no
+                // genera NINGUN evento de scroll: la pagina ya carga en esa posicion.
+                // Sin estos tres, la seccion se quedaba vacia hasta que movieras la
+                // rueda.
+                window.addEventListener('hashchange', tick);
+                window.addEventListener('load', tick);
+                setTimeout(tick, 800);
+                tick();
             },
         };
-        window.PWView = PWView;
-        // Escape cierra la vista: es lo que espera cualquiera con un panel abierto.
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && PWView.actual) PWView.close(); });
+        window.PWView = { open: (c) => { const el = document.getElementById(c === 'stake' ? 'staking' : c === 'board' ? 'ranking' : 'rewards'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, close: () => {} };
 
         const _fmt = (n) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
         const _corta = (w) => (w ? w.slice(0, 4) + '…' + w.slice(-4) : '');
@@ -4352,9 +4448,18 @@ function toggleTrailerMode() {
                     } catch (e) {}
                 }
                 this.pinta();
-                // La cuenta atras se repinta sola mientras la vista siga abierta.
-                this.parar();
-                this._t = setInterval(() => { if (PWView.actual === 'stake') this.pinta(); }, 30000);
+            },
+
+            /* Repinta mientras la seccion se este mirando. Antes se ataba a la vista
+               abierta; ahora la seccion vive en la pagina, asi que quien decide es el
+               observer: fuera de pantalla no tiene sentido gastar peticiones. */
+            /* Idempotente A PROPOSITO: quien la llama es el listener de scroll, que
+               dispara decenas de veces por segundo. Sin esta guarda cada scroll
+               lanzaba un fetch nuevo y reiniciaba el temporizador. */
+            refrescaEnVivo() {
+                if (this._t) return;
+                this.refresh();
+                this._t = setInterval(() => this.refresh(), 30000);
             },
 
             pinta() {
@@ -4728,12 +4833,15 @@ function toggleTrailerMode() {
                     + '</div>').join('');
 
                 const m = d.mint || {};
+                // El enlace de compra: pump.fun resuelve por direccion del mint, asi
+                // que sirve sin tocar nada el dia del lanzamiento.
+                const comprar = m.address
+                    ? ' &nbsp;·&nbsp; <a href="https://pump.fun/coin/' + _esc(m.address) + '" target="_blank" '
+                      + 'rel="noopener" style="color:#00ff88;text-decoration:none">Buy $PILL on pump.fun &rarr;</a>'
+                    : '';
                 $('vrMint').innerHTML = 'Token <b>' + _esc(m.address || '') + '</b>'
                     + (m.supply != null ? ' · supply <b>' + _fmt(m.supply) + '</b>' : '')
-                    + '<br>' + (m.puedeAcunarMas
-                        ? '<span style="color:#ffb020">Mint authority is still live: more tokens can be created. '
-                          + 'On mainnet this gets revoked before launch.</span>'
-                        : '<span style="color:#00ff88">Mint authority revoked: no more tokens can ever be created.</span>')
+                    + comprar
                     + '<br><b>CONTRACT VAULT</b> means an address that is not on the ed25519 curve — there is no '
                     + 'private key that could move it. Only the program can, running its own code.';
 
@@ -4759,6 +4867,10 @@ function toggleTrailerMode() {
         window.PWRewards = PWRewards;
 
         window.App = App;   // exponer App para el módulo ESM de blockchain (PillChain)
+
+        // REWARDS y STAKING piden a la cadena, asi que se cargan cuando se acercan y
+        // no al abrir la portada.
+        PWSecciones.arranca();
         App.UI.init();
         App.Market.updateTicker();
         App.Market.initStatsLink();
