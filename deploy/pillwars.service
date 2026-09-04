@@ -62,6 +62,21 @@ Environment=PW_HOST_COUNT=2
 #Environment=PILL_MINT=Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r
 #Environment=SOL_RPC=https://api.devnet.solana.com
 
+# LOS DOS TIEMPOS DEL RAKE. Se confunden con facilidad y no son lo mismo:
+#
+#   RAKE_SWEEP_MIN    cada cuantos MINUTOS el dinero ENTRA en la boveda (360 = 6 h)
+#   STAKE_DRIP_SECS   en cuantos SEGUNDOS se REPARTE lo que ya esta dentro
+#                     (604800 = 7 dias: lo de esta semana alimenta la siguiente)
+#
+# Barrer una vez por semana daria el mismo reparto pero dejaria siete dias de
+# recaudacion en la wallet caliente del servidor en vez de seis horas. Con barridos
+# frecuentes y goteo largo se tienen las dos cosas: el dinero a salvo pronto y un
+# rendimiento que no da saltos con los dias buenos y malos.
+#Environment=RAKE_SWEEP_MIN=360
+#Environment=STAKE_DRIP_SECS=604800
+# Por debajo de esto no compensa el gas de la transaccion.
+#Environment=RAKE_SWEEP_MIN_PILL=1000
+
 # Comision del bote de arcade, en %. Va al pozo del staking, no a la tesoreria.
 # Es el unico porcentaje que sale del bolsillo de los jugadores. Tope duro: 50.
 Environment=ARCADE_RAKE_PCT=5

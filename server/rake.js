@@ -40,8 +40,30 @@ const SOLO_LECTURA = process.env.PW_ROLE === 'host';
 const CADA_MS = (parseInt(process.env.RAKE_SWEEP_MIN, 10) || 360) * 60 * 1000;
 /** Por debajo de esto no compensa el gas. */
 const MINIMO = parseInt(process.env.RAKE_SWEEP_MIN_PILL, 10) || 1000;
-/** En cuánto tiempo se gotea lo que va al staking. */
-const GOTEO_SECS = parseInt(process.env.STAKE_DRIP_SECS, 10) || 86400;
+/*
+ * EN CUANTO TIEMPO SE GOTEA lo que va al staking. Una semana.
+ *
+ * Lo que se recauda hoy no se reparte hoy: alimenta la semana siguiente. Asi el
+ * rendimiento no da saltos con los dias buenos y malos, y quien entra a stakear ve
+ * un APR que se sostiene unos dias en vez de uno que cambia cada mañana.
+ *
+ * OJO CON LA DIFERENCIA entre esto y CADA_MS, que es la que importa:
+ *
+ *   CADA_MS     cada cuanto el dinero ENTRA en la boveda   (6 h)
+ *   GOTEO_SECS  en cuanto tiempo se REPARTE lo que hay     (7 dias)
+ *
+ * Son dos cosas distintas y conviene no juntarlas. Barrer una vez por semana daria
+ * el mismo reparto pero dejaria SIETE DIAS de recaudacion en la wallet caliente del
+ * servidor en vez de seis horas: si esa clave cae en malas manos, la diferencia
+ * entre perder lo de una tarde y lo de una semana. Con barridos frecuentes y goteo
+ * largo se consigue lo bueno de las dos.
+ *
+ * Y una consecuencia del acumulador que conviene saber: cada aportacion SUMA lo que
+ * quedaba por repartir y reinicia el periodo a siete dias. El pozo se vacia de forma
+ * asintotica —siempre queda una cola— que es justo lo que evita el escalon de "hoy
+ * se acabo lo de la semana pasada".
+ */
+const GOTEO_SECS = parseInt(process.env.STAKE_DRIP_SECS, 10) || 604800;
 
 /*
  * `porDia` es el rake de cada dia UTC, y es lo que decide el premio del leaderboard.

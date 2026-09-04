@@ -89,6 +89,25 @@ test('por debajo del minimo no compensa el gas', async () => {
     fs.rmSync(TMP2, { recursive: true, force: true });
 });
 
+test('se barre a menudo pero se reparte despacio', () => {
+    /*
+     * Son dos tiempos distintos y es LA confusion facil de este modulo:
+     *
+     *   MINIMO/CADA_MS  cada cuanto el dinero ENTRA en la boveda
+     *   GOTEO_SECS      en cuanto tiempo se REPARTE lo que ya esta dentro
+     *
+     * Juntarlos —barrer una vez por semana— daria el mismo reparto pero dejaria siete
+     * dias de recaudacion en la wallet caliente en vez de unas horas. Este test fija
+     * que el goteo es MUCHO mas largo que el barrido, que es lo que hace que las dos
+     * cosas se puedan tener a la vez.
+     */
+    const barridoSecs = (parseInt(process.env.RAKE_SWEEP_MIN, 10) || 360) * 60;
+    assert.ok(rake.GOTEO_SECS >= barridoSecs * 12,
+        `el goteo (${rake.GOTEO_SECS}s) tiene que ser mucho mayor que el barrido (${barridoSecs}s): `
+        + 'si se acercan, cada barrido reparte casi de golpe y se puede stakear justo antes');
+    assert.equal(rake.GOTEO_SECS, 7 * 24 * 3600, 'el goteo es de una semana');
+});
+
 test('cada cola va a su instruccion: staking al pozo, tesoreria al sweep', async () => {
     const TMP3 = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-rake3-'));
     const antesDir = process.env.LB_DIR;
