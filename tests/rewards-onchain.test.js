@@ -260,7 +260,7 @@ test('sin clave de la autoridad no se intenta siquiera', async () => {
     const s = solanaFalso({ sinClave: true });
     const res = await rewards.publicarRonda(rondaDePrueba(20803), s, null);
     assert.equal(res.ok, false);
-    assert.match(res.error, /clave de la autoridad/);
+    assert.match(res.error, /no authority key/);
     assert.equal(s.enviadas.length, 0);
 });
 
