@@ -148,7 +148,7 @@ test('cambiar una kill de un recibo ya anclado se detecta', () => {
 
     const r = matches.verificar();
     assert.equal(r.ok, false);
-    assert.ok(r.fallos.some(x => x.match === id && /cambió después/.test(x.error)));
+    assert.ok(r.fallos.some(x => x.match === id && /changed after/.test(x.error)));
 
     fs.writeFileSync(f, original);
     assert.ok(matches.verificar().ok, 'al restaurarlo deberia volver a cuadrar');

@@ -250,7 +250,7 @@ function verificar(limite = 200) {
         for (const r of pub.matches) {
             const m = partida(r.id);
             if (!m) { fallos.push({ lote: l.n, match: r.id, error: 'falta el recibo' }); continue; }
-            if (sha256hex(canonico(m)) !== r.hash) fallos.push({ lote: l.n, match: r.id, error: 'el recibo cambió después de anclarse' });
+            if (sha256hex(canonico(m)) !== r.hash) fallos.push({ lote: l.n, match: r.id, error: 'the receipt changed after being anchored' });
         }
         prev = l.hash;
     }

@@ -54,7 +54,7 @@ function posicionPda(wallet) {
  */
 function decodeConfig(data) {
     const q = cual();
-    if (!q) throw new Error('sin programa de staking configurado');
+    if (!q) throw new Error('no staking program configured');
     const cfg = q.cli.decodeConfig(data);
     return {
         activo: q.modo === 'aparte' ? true : !!cfg.stakingReady,
@@ -70,7 +70,7 @@ function decodeConfig(data) {
 
 function decodeStakeAccount(data) {
     const q = cual();
-    if (!q) throw new Error('sin programa de staking configurado');
+    if (!q) throw new Error('no staking program configured');
     const a = q.cli.decodeStakeAccount(data);
     return {
         amount: BigInt(a.amount),

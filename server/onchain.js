@@ -60,9 +60,19 @@ function catalogo() {
     const esPda = (a) => { try { return !PublicKey.isOnCurve(new PublicKey(a).toBytes()); } catch (e) { return false; } };
 
     mete({
-        clave: 'rewards', nombre: 'Rewards wallet',
+        clave: 'rewards',
+        /*
+         * Sin REWARDS_SECRET, la wallet de premios ES la autoridad. Llamarla
+         * "Rewards wallet" a secas seria mentir por omision: esa direccion tiene el
+         * 82% del supply porque es la del proyecto entero, no porque los premios
+         * sean tan grandes. Cuando son la misma, se dice.
+         */
+        nombre: solana.rewardsAparte() ? 'Rewards wallet' : 'Authority + rewards wallet',
         address: solana.rewardsPubkey(),
-        que: 'Pays the daily leaderboard prizes. This is the team\'s allocation, not money the game earned.',
+        que: solana.rewardsAparte()
+            ? "Pays the daily leaderboard prizes. This is the team's allocation, not money the game earned."
+            : "Pays the daily prizes AND signs the server's operations — they are the same wallet right "
+              + "now, so this balance is the whole project's, not just the prize allocation.",
         tipo: 'wallet',
     });
     if (solana.rewardsAparte()) {
@@ -132,7 +142,7 @@ async function saldoCuenta(c, cuenta) {
 
 async function estado() {
     if (_cache && Date.now() - _cacheAt < CACHE_MS) return _cache;
-    if (!solana.MINT) return { error: 'sin token configurado' };
+    if (!solana.MINT) return { error: 'no token configured' };
 
     const { PublicKey } = require('@solana/web3.js');
     const { getMint } = require('@solana/spl-token');

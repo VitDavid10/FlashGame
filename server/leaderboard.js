@@ -344,9 +344,9 @@ function diaCerrado(date) {
  */
 async function anclarDia(date, solana, log) {
     const eslabon = chain.find(e => e.date === date);
-    if (!eslabon) return { ok: false, error: 'ese dia no esta cerrado' };
+    if (!eslabon) return { ok: false, error: 'that day is not closed' };
     if (eslabon.sig) return { ok: true, sig: eslabon.sig, repetida: true };
-    if (!solana || !solana.canWithdraw()) return { ok: false, error: 'sin clave para firmar' };
+    if (!solana || !solana.canWithdraw()) return { ok: false, error: 'no signing key available' };
 
     try {
         const { PublicKey, TransactionInstruction } = require('@solana/web3.js');

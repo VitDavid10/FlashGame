@@ -334,9 +334,9 @@ async function publicarRonda(ronda, solana, log) {
     // publicar respeta la calibracion, incluido el boton del panel de admin.
     if (DRY_RUN) {
         if (log) log(`[SECO] Ronda ${ronda.epoch} (${ronda.date}) NO publicada: ${rawToPill(ronda.totalRaw)} PILL para ${ronda.winners} ganadores`);
-        return { ok: false, error: 'modo seco (REWARD_DRY_RUN=1): la ronda queda preparada y sin publicar', seco: true };
+        return { ok: false, error: 'dry run (REWARD_DRY_RUN=1): the round is prepared but not published', seco: true };
     }
-    if (!PROGRAM) return { ok: false, error: 'sin programa de tesoreria configurado' };
+    if (!PROGRAM) return { ok: false, error: 'no treasury program configured' };
     if (!solana.canWithdraw()) return { ok: false, error: 'clave de la autoridad no disponible' };
     if (ronda.sig) return { ok: true, sig: ronda.sig, repetida: true };
     try {
@@ -388,15 +388,15 @@ async function publicarRonda(ronda, solana, log) {
 async function pagarDirecto(date, solana, log) {
     const epoch = epochDeFecha(date);
     const ronda = data.rounds[epoch];
-    if (!ronda) return { ok: false, error: 'no hay ronda preparada para ese dia' };
-    if (ronda.sig) return { ok: false, error: 'esa ronda ya se publico on-chain: se cobra con claim' };
+    if (!ronda) return { ok: false, error: 'no round prepared for that day' };
+    if (ronda.sig) return { ok: false, error: 'that round is already on-chain: claim it instead' };
     if (ronda.pagos && ronda.pagos.length) return { ok: true, repetida: true, pagos: ronda.pagos };
-    if (!solana || !solana.canWithdraw()) return { ok: false, error: 'sin clave de la autoridad' };
+    if (!solana || !solana.canWithdraw()) return { ok: false, error: 'no authority key on the server' };
 
     // El anclaje va PRIMERO. Sin el, pagar no demuestra nada.
     const eslabon = leaderboard.cadena(400).find(e => e.date === date);
     if (!eslabon || !eslabon.sig) {
-        return { ok: false, error: 'ese dia no esta anclado en la cadena todavia: ancla primero' };
+        return { ok: false, error: 'that day is not anchored on-chain yet: anchor it first' };
     }
 
     const pub = rondaPublica(epoch);
@@ -521,27 +521,27 @@ function historialDePagos(n) {
  */
 async function pagarUno(epoch, wallet, solana, log) {
     const ronda = data.rounds[epoch];
-    if (!ronda) return { ok: false, error: 'no hay ronda para esa epoca' };
-    if (ronda.cancelled) return { ok: false, error: 'esa ronda se cancelo' };
-    if (ronda.sig) return { ok: false, error: 'esa ronda esta on-chain: se cobra con claim del contrato' };
-    if (!solana || !solana.canWithdraw()) return { ok: false, error: 'sin clave de la autoridad' };
+    if (!ronda) return { ok: false, error: 'no round for that epoch' };
+    if (ronda.cancelled) return { ok: false, error: 'that round was cancelled' };
+    if (ronda.sig) return { ok: false, error: 'that round is on-chain: claim it from the contract' };
+    if (!solana || !solana.canWithdraw()) return { ok: false, error: 'no authority key on the server' };
 
     const eslabon = leaderboard.cadena(400).find(e => e.date === ronda.date);
     if (!eslabon || !eslabon.sig) {
-        return { ok: false, error: 'ese dia todavia no esta anclado en la cadena' };
+        return { ok: false, error: 'that day is not anchored on-chain yet' };
     }
 
     const pub = rondaPublica(epoch);
     const fila = pub && (pub.entries || []).find(x => x.wallet === wallet);
-    if (!fila) return { ok: false, error: 'esa wallet no sale en la lista de ese dia' };
+    if (!fila) return { ok: false, error: "that wallet is not on that day's list" };
 
     ronda.pagos = ronda.pagos || [];
     if (ronda.pagos.some(x => x.wallet === wallet && x.sig)) {
-        return { ok: false, error: 'ya cobraste ese dia', yaCobrado: true };
+        return { ok: false, error: 'you already claimed that day', yaCobrado: true };
     }
 
     const pill = rawToPill(fila.amountRaw);
-    if (!(pill > 0)) return { ok: false, error: 'premio de cero' };
+    if (!(pill > 0)) return { ok: false, error: 'zero reward' };
 
     try {
         const sig = await solana.pagaPremio(wallet, pill);

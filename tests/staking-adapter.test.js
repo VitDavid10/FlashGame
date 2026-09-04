@@ -192,6 +192,6 @@ test('la posicion de cada wallet es una PDA distinta en los dos modos', () => {
 
 test('decodificar sin programa configurado avisa en vez de devolver basura', () => {
     const st = conEntorno({});
-    assert.throws(() => st.decodeConfig(Buffer.alloc(200)), /sin programa/);
-    assert.throws(() => st.decodeStakeAccount(Buffer.alloc(200)), /sin programa/);
+    assert.throws(() => st.decodeConfig(Buffer.alloc(200)), /no staking program/);
+    assert.throws(() => st.decodeStakeAccount(Buffer.alloc(200)), /no staking program/);
 });

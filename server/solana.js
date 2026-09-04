@@ -92,15 +92,15 @@ async function verifyDeposit({ sig, fromOwner, minPill }) {
     try {
         tx = await rpc('getTransaction', [sig, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0, commitment: 'confirmed' }]);
     } catch (e) { return { ok: false, reason: 'rpc: ' + e.message }; }
-    if (!tx) return { ok: false, reason: 'tx no encontrada (aún no confirmada?)' };
-    if (tx.meta && tx.meta.err) return { ok: false, reason: 'tx falló on-chain' };
+    if (!tx) return { ok: false, reason: 'transaction not found (not confirmed yet?)' };
+    if (tx.meta && tx.meta.err) return { ok: false, reason: 'transaction failed on-chain' };
 
     const minRaw = pillToRaw(minPill);
     const treasuryDelta = deltaFor(tx.meta, DEPOSIT_OWNER);   // debe SUBIR
     const playerDelta = deltaFor(tx.meta, fromOwner);          // debe BAJAR
 
-    if (treasuryDelta < minRaw) return { ok: false, reason: 'treasury no recibió lo suficiente', amount: Number(treasuryDelta) / 10 ** DECIMALS };
-    if (playerDelta > -minRaw) return { ok: false, reason: 'el jugador no pagó esa cantidad' };
+    if (treasuryDelta < minRaw) return { ok: false, reason: 'treasury did not receive enough', amount: Number(treasuryDelta) / 10 ** DECIMALS };
+    if (playerDelta > -minRaw) return { ok: false, reason: 'the player did not pay that amount' };
     // Se acredita lo que PAGÓ EL JUGADOR (-playerDelta), no lo que subió el
     // treasury: en una tx con varias transferencias al treasury, devolver
     // treasuryDelta acreditaba a quien reclamara la firma el total de TODOS los
@@ -123,7 +123,7 @@ function loadAuthority() {
     }
     // 2) Por archivo local (en tu PC): scripts/.devnet-authority.json
     const f = path.join(__dirname, '..', 'scripts', '.devnet-authority.json');
-    if (!fs.existsSync(f)) throw new Error('clave del treasury no disponible en el servidor');
+    if (!fs.existsSync(f)) throw new Error('treasury key not available on the server');
     _authority = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(f, 'utf8'))));
     return _authority;
 }
@@ -241,7 +241,7 @@ async function withdraw(toWallet, pill) {
     if (TREASURY_PROGRAM) {
         // Con contrato el retiro NECESITA la firma del jugador, así que el servidor
         // no puede hacerlo solo: ver prepararRetiro() y enviarRetiro().
-        throw new Error('con contrato desplegado el retiro lo firma el jugador (usa /api/withdraw en dos pasos)');
+        throw new Error('with the contract deployed the player signs the withdrawal (use the two-step /api/withdraw)');
     }
 
     const fromAta = await getOrCreateAssociatedTokenAccount(conn, auth, mint, auth.publicKey);

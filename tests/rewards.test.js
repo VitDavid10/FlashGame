@@ -163,7 +163,7 @@ test('sin programa configurado, publicar avisa en vez de reventar', async () => 
     const solanaFalso = { canWithdraw: () => true, authorityPubkey: () => Keypair.generate().publicKey.toBase58(), sendInstructions: async () => 'sig' };
     const r = await rewards.publicarRonda({ epoch, root: '00'.repeat(32), totalRaw: '1', winners: 1 }, solanaFalso, null);
     assert.equal(r.ok, false);
-    assert.match(r.error, /sin programa/);
+    assert.match(r.error, /no treasury program/);
 });
 
 test('el estado resume las rondas para el panel', () => {
@@ -406,7 +406,7 @@ test('NO se paga un dia que no este anclado en la cadena', async () => {
     };
     const r = await rewards.pagarDirecto(F, solanaFalso, null);
     assert.equal(r.ok, false);
-    assert.match(r.error, /anclado/, 'deberia negarse por no estar anclado');
+    assert.match(r.error, /not anchored/, 'deberia negarse por no estar anclado');
 });
 
 test('anclado el dia, se paga a cada ganador y queda la firma', async () => {
@@ -555,7 +555,7 @@ test('claim: a quien NO sale en la lista no se le paga', async () => {
     const intruso = Keypair.generate().publicKey.toBase58();
     const r = await rewards.pagarUno(ronda.epoch, intruso, sol, null);
     assert.equal(r.ok, false);
-    assert.match(r.error, /no sale en la lista/);
+    assert.match(r.error, /not on that day/);
     assert.equal(pagos.length, 0, 'ha pagado a alguien que no estaba en la lista');
 });
 
@@ -586,7 +586,7 @@ test('claim: no se paga un dia que no este anclado', async () => {
     const w = rewards.rondaPublica(ronda.epoch).entries[0].wallet;
     const r = await rewards.pagarUno(ronda.epoch, w, sol, null);
     assert.equal(r.ok, false);
-    assert.match(r.error, /anclado/);
+    assert.match(r.error, /not anchored/);
     assert.equal(pagos.length, 0);
 });
 
