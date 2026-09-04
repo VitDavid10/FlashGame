@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
+    /* Nota bajo cada titulo de tabla: dice que es esa lista sin obligar a deducirlo
+       de los datos. */
+    .nota-tab { color: #8b9199; font-size: 12px; margin: -6px 0 10px; line-height: 1.5; }
+
     /* ===== Identidad PillWars: paleta de la web + cajas del menú del juego ===== */
     :root {
         --primary: #00ff88;
@@ -493,6 +497,31 @@
         </div>
 
         <div id="tab_transactions" style="display:none">
+            <!-- Las tres que se preguntan de verdad, cada una con su firma de Solana
+                 entera: si alguien reclama un pago, se busca aqui y sale la
+                 transaccion con la que comprobarlo en el explorador. -->
+            <h2 class="section">Money into the vaults</h2>
+            <p class="nota-tab">Every sweep of the house's take into the staking pool and the
+               treasury, with its on-chain signature. This is where the vault balance comes from.</p>
+            <table class="rank">
+                <thead><tr><th>Date</th><th>Vault</th><th style="text-align:right">Amount (PILL)</th><th>Transaction</th></tr></thead>
+                <tbody id="movVault"></tbody>
+            </table>
+
+            <h2 class="section">Deposits</h2>
+            <p class="nota-tab">$PILL players put in. This is money owed to them, not revenue.</p>
+            <table class="rank">
+                <thead><tr><th>Date</th><th>Wallet</th><th style="text-align:right">Amount (PILL)</th><th>Transaction</th></tr></thead>
+                <tbody id="movDep"></tbody>
+            </table>
+
+            <h2 class="section">Withdrawals</h2>
+            <p class="nota-tab">$PILL players took out.</p>
+            <table class="rank">
+                <thead><tr><th>Date</th><th>Wallet</th><th style="text-align:right">Amount (PILL)</th><th>Transaction</th></tr></thead>
+                <tbody id="movRet"></tbody>
+            </table>
+
             <h2 class="section">All transactions</h2>
             <table class="rank">
                 <thead><tr><th>Date</th><th>Type</th><th>Wallet</th><th style="text-align:right">Amount (PILL)</th><th>Detail</th></tr></thead>
@@ -2083,6 +2112,7 @@ function render(m) {
 
 // Transactions: tabla de movimientos de dinero (entradas, premios, depósitos, retiros)
 const TX_STYLE = {
+    vault:    ['VAULT',    '#b388ff'],
     entry:    ['ENTRY',    '#ff6b6b'],
     cashout:  ['CASHOUT',  '#00ff88'],
     prize:    ['PRIZE',    '#00ff88'],
@@ -2090,7 +2120,43 @@ const TX_STYLE = {
     deposit:  ['DEPOSIT',  '#4f9cff'],
     withdraw: ['WITHDRAW', '#ff8c42'],
 };
+/*
+ * Las tres tablas de movimientos on-chain. Comparten pintado porque son la misma
+ * fila con otra cabecera; lo unico que cambia es que en la de bovedas la columna del
+ * medio es el destino y en las otras dos, la wallet.
+ */
+function renderMovimientos(m) {
+    const mv = m.movimientos || {};
+    const cl = m.cluster ? '?cluster=' + m.cluster : '';
+    const enlace = (sig) => sig
+        ? `<a href="https://solscan.io/tx/${esc(sig)}${cl}" target="_blank" rel="noopener"
+              style="color:#00ff88;font-family:monospace;font-size:11px" title="${esc(sig)}">${esc(sig.slice(0, 10))}…</a>`
+        : '<span style="color:#666">—</span>';
+
+    const pinta = (id, filas, vacio) => {
+        const cont = document.getElementById(id); if (!cont) return;
+        cont.innerHTML = filas.length ? filas.map(tx => {
+            const w = String(tx.wallet || '-');
+            const corto = w.length > 12 ? w.slice(0, 4) + '…' + w.slice(-4) : w;
+            const n = Math.abs(tx.amount | 0);
+            return `<tr>
+                <td style="color:#888">${fecha(tx.fecha)}</td>
+                <td title="${esc(w)}" style="font-family:monospace;font-size:11.5px;color:#ccc">${esc(corto)}</td>
+                <td style="text-align:right;font-family:'Russo One';color:#00ff88">${num(n)}</td>
+                <td>${enlace(tx.sig)}</td>
+            </tr>`;
+        }).join('') : `<tr><td colspan="4" class="vacio">${vacio}</td></tr>`;
+    };
+
+    pinta('movVault', mv.vault || [],
+        'Nothing swept yet. The house\'s take piles up off-chain and moves in one transaction '
+        + 'when it passes the minimum — that keeps the gas from eating the small amounts.');
+    pinta('movDep', mv.deposits || [], 'No deposits yet.');
+    pinta('movRet', mv.withdrawals || [], 'No withdrawals yet.');
+}
+
 function renderTransactions(m) {
+    renderMovimientos(m);
     const cont = document.getElementById('txCuerpo'); if (!cont) return;
     const txs = m.transacciones || [];
     cont.innerHTML = txs.length ? txs.map(tx => {
@@ -2102,7 +2168,9 @@ function renderTransactions(m) {
             <td><span class="tag" style="background:${color}22;color:${color}">${label}</span></td>
             <td title="${esc(w)}" style="font-family:monospace;font-size:11.5px;color:#ccc">${esc(wShort)}</td>
             <td style="text-align:right;font-family:'Russo One';color:${tx.amount >= 0 ? '#00ff88' : '#ff6b6b'}">${tx.amount >= 0 ? '+' : ''}${num(tx.amount)}</td>
-            <td style="color:#888">${esc(tx.detail || '')}</td>
+            <td style="color:#888">${esc(tx.detail || '')}${tx.sig
+                ? ` <a href="https://solscan.io/tx/${esc(tx.sig)}${m.cluster ? '?cluster=' + m.cluster : ''}"
+                       target="_blank" rel="noopener" style="color:#00ff88">tx</a>` : ''}</td>
         </tr>`;
     }).join('') : '<tr><td colspan="5" class="vacio">No transactions yet. Paid entries, prizes, deposits and withdrawals will show up here.</td></tr>';
 }

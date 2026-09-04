@@ -4107,6 +4107,20 @@ body.trailer-open #page-content{
                     DOM.walletModal.style.display = 'flex';
                 },
                 // Cambia de CONNECT a DEPOSIT+balance (o al reves), igual que en /game.
+                /*
+                 * Cambiar de estado la wallet REPINTA el panel.
+                 *
+                 * Sin esto, el panel se cargaba una vez y se quedaba con lo que
+                 * hubiera entonces: conectabas y seguia poniendo "connect your wallet
+                 * to see and claim your rewards" con tus premios delante. Y al
+                 * desconectar seguian saliendo los de la wallet anterior, que es peor.
+                 */
+                repintaPanel: () => {
+                    if (!document.body.classList.contains('pw-panel')) return;
+                    try { PWRewards.cargar(); } catch (e) {}
+                    try { PWStake.refresh(); } catch (e) {}
+                    try { PWBoard.cargar(); } catch (e) {}
+                },
                 setConnectedUI: (connected) => {
                     /* En la web solo hay dos estados: CONNECT o la direccion con
                        DISCONNECT al lado. Depositar, retirar y el saldo in-game se
@@ -4122,6 +4136,7 @@ body.trailer-open #page-content{
                     if (a && App.Wallet.address) {
                         a.textContent = App.Wallet.address.slice(0, 4) + '…' + App.Wallet.address.slice(-4);
                     }
+                    App.Wallet.repintaPanel();
                 },
                 closeModal: () => { DOM.walletModal.style.display = 'none'; },
                 connect: async (name, silent) => {

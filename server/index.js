@@ -398,8 +398,17 @@ function logConnection(entry) {
 const TXLOG_FILE = path.join(__dirname, 'transactions.log');
 let txLog = [];
 try { if (fs.existsSync(TXLOG_FILE)) txLog = fs.readFileSync(TXLOG_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean).slice(-500); } catch (e) {}
-function logTx(type, wallet, amount, detail) {
+/*
+ * `sig` es la firma de Solana, ENTERA y en su propio campo.
+ *
+ * Antes iba recortada dentro del texto ("tx 5A6fb14s…"): servia para mirar pero no
+ * para buscar. Si alguien reclama un pago, con ocho caracteres no se encuentra nada
+ * — ni en el explorador ni aqui. Con la firma completa, una busqueda en el panel
+ * responde "esto se pago, aqui esta la transaccion".
+ */
+function logTx(type, wallet, amount, detail, sig) {
     const entry = { fecha: new Date().toISOString(), type, wallet: wallet || '-', amount: amount | 0, detail: detail || '' };
+    if (sig) entry.sig = sig;
     txLog.push(entry);
     if (txLog.length > 500) txLog = txLog.slice(-500);
     fs.appendFile(TXLOG_FILE, JSON.stringify(entry) + '\n', () => {});
@@ -651,7 +660,16 @@ if (PW_ROLE !== 'host') matches.arranca(solana, log);
 if (PW_ROLE !== 'host') reserves.arranca(() => warbank._balances, solana, log);
 // Barrido del rake a sus dos bolsas. Solo el Director: dos procesos saldando la
 // misma cola la barrerian dos veces.
-if (PW_ROLE !== 'host') rake.arranca(solana, require('./treasury-client.js'), process.env.TREASURY_PROGRAM || '', log);
+/*
+ * El barrido del rake a las bovedas queda apuntado con su firma. Es el dinero que
+ * ENTRA: sin este registro, "la boveda tiene X" es un saldo del que no se sabe de
+ * donde salio, y para justificar un ingreso habria que ir cruzando el explorador a
+ * mano.
+ */
+if (PW_ROLE !== 'host') {
+    rake.arranca(solana, require('./treasury-client.js'), process.env.TREASURY_PROGRAM || '', log,
+        (destino, pill, sig) => logTx('vault', destino, pill, 'rake → ' + destino, sig));
+}
 // Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
 // Math.round: la tarifa viaja DENTRO del mensaje que el jugador firma
 // ("...paying 48 PILL @ ..."), y el servidor reconstruye esa misma cadena para
@@ -1945,7 +1963,17 @@ function buildAdminState() {
         paises,
         historial,
         adminLog: adminLog.slice(-60).reverse(),
-        transacciones: txLog.slice(-200).reverse()
+        transacciones: txLog.slice(-200).reverse(),
+        /* Tres listas y no una filtrada en el navegador: son tres preguntas
+           distintas —cuanto ha entrado en las bovedas, quien ha metido, quien ha
+           sacado— y mezcladas hay que ir buscando a ojo entre las entradas de
+           partida, que son cien veces mas numerosas. */
+        movimientos: {
+            vault: txLog.filter(t => t.type === 'vault').slice(-100).reverse(),
+            deposits: txLog.filter(t => t.type === 'deposit').slice(-100).reverse(),
+            withdrawals: txLog.filter(t => t.type === 'withdraw').slice(-100).reverse(),
+        },
+        cluster: /devnet/i.test(solana.RPC) ? 'devnet' : (/testnet/i.test(solana.RPC) ? 'testnet' : null)
     };
 }
 
@@ -2985,7 +3013,7 @@ const httpServer = http.createServer(async (req, res) => {
             if (!v.ok) { res.end(JSON.stringify({ ok: false, reason: v.reason || 'no verificado' })); return; }
             if (warbank.sigUsed(sig)) { res.end(JSON.stringify({ ok: false, reason: 'depósito ya acreditado' })); return; }
             const saldo = warbank.creditDeposit(wallet, v.amount, sig);
-            logTx('deposit', wallet, v.amount, 'on-chain ' + sig.slice(0, 8) + '…');
+            logTx('deposit', wallet, v.amount, 'on-chain', sig);
             logAdmin('-', 'Depósito $PILL', wallet.slice(0, 6) + '… +' + v.amount);
             log(`Depósito acreditado: ${wallet.slice(0, 6)}… +${v.amount} PILL → saldo ${saldo}`);
             res.end(JSON.stringify({ ok: true, credited: v.amount, warBalance: saldo }));
@@ -3041,7 +3069,7 @@ const httpServer = http.createServer(async (req, res) => {
             try {
                 const sig = await solana.withdraw(wallet, amount);
                 const saldo = warbank.getBalance(wallet);
-                logTx('withdraw', wallet, -amount, 'tx ' + sig.slice(0, 8) + '…');
+                logTx('withdraw', wallet, -amount, '', sig);
                 logAdmin('-', 'Retiro $PILL', wallet.slice(0, 6) + '… -' + amount);
                 log(`Retiro: ${wallet.slice(0, 6)}… -${amount} PILL → saldo ${saldo} (tx ${sig.slice(0, 8)}…)`);
                 res.end(JSON.stringify({ ok: true, withdrawn: amount, warBalance: saldo, sig }));
@@ -3077,7 +3105,7 @@ const httpServer = http.createServer(async (req, res) => {
                 const sig = await solana.enviarRetiro(p.tx);
                 retirosPendientes.delete(wallet);   // el saldo ya se descontó al preparar
                 const saldo = warbank.getBalance(wallet);
-                logTx('withdraw', wallet, -pend.amount, 'tx ' + sig.slice(0, 8) + '…');
+                logTx('withdraw', wallet, -pend.amount, '', sig);
                 logAdmin('-', 'Retiro $PILL', wallet.slice(0, 6) + '… -' + pend.amount);
                 log(`Retiro: ${wallet.slice(0, 6)}… -${pend.amount} PILL → saldo ${saldo} (tx ${sig.slice(0, 8)}…)`);
                 res.end(JSON.stringify({ ok: true, withdrawn: pend.amount, warBalance: saldo, sig }));

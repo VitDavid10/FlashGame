@@ -122,7 +122,7 @@ function apunta(destino, pill, motivo, ts) {
  * se queda entera y se reintenta. Perder tokens por un timeout del RPC sería mucho
  * peor que esperar al siguiente ciclo.
  */
-async function barre(solana, treasuryClient, programId, log, stakingMod) {
+async function barre(solana, treasuryClient, programId, log, stakingMod, apunta) {
     const staking = stakingMod || require('./staking.js');
     const hecho = { stake: null, tesoreria: null };
     if (SOLO_LECTURA) return hecho;
@@ -147,6 +147,7 @@ async function barre(solana, treasuryClient, programId, log, stakingMod) {
             data.stakeado += cantidad;
             dirty = true; save();
             hecho.stake = { pill: cantidad, sig };
+            if (apunta) apunta('staking', cantidad, sig);
             if (log) log(`Rake: ${cantidad} $PILL al pozo del staking (goteo ${GOTEO_SECS / 3600} h) — ${sig}`);
         } catch (e) {
             if (log) log(`Rake al staking FALLIDO (${cantidad} $PILL siguen pendientes): ${e.message}`);
@@ -165,6 +166,7 @@ async function barre(solana, treasuryClient, programId, log, stakingMod) {
             data.tesoreria += cantidad;
             dirty = true; save();
             hecho.tesoreria = { pill: cantidad, sig };
+            if (apunta) apunta('treasury', cantidad, sig);
             if (log) log(`Rake: ${cantidad} $PILL a la tesoreria — ${sig}`);
         } catch (e) {
             if (log) log(`Rake a tesoreria FALLIDO (${cantidad} $PILL siguen pendientes): ${e.message}`);
@@ -173,8 +175,10 @@ async function barre(solana, treasuryClient, programId, log, stakingMod) {
     return hecho;
 }
 
-function arranca(solana, treasuryClient, programId, log) {
-    setInterval(() => { barre(solana, treasuryClient, programId, log).catch(() => {}); }, CADA_MS).unref();
+function arranca(solana, treasuryClient, programId, log, apunta) {
+    setInterval(() => {
+        barre(solana, treasuryClient, programId, log, null, apunta).catch(() => {});
+    }, CADA_MS).unref();
 }
 
 function estado() {
