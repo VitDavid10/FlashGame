@@ -21,6 +21,10 @@
 'use strict';
 
 const path = require('path');
+
+// En el VPS la configuracion vive en el .service, que un shell no hereda. Antes de
+// requerir nada de server/ (leen el entorno al importarse), se coge de ahi.
+require('./env-del-servicio.js').carga();
 process.env.LB_DIR = process.env.LB_DIR || path.join(__dirname, '..', '.tmp-demo', 'lb');
 process.env.SOL_RPC = process.env.SOL_RPC || 'https://api.devnet.solana.com';
 // El minimo por defecto son 1000 PILL; aqui se baja para que el barrido salte en
@@ -71,9 +75,22 @@ async function main() {
     console.log('Staking :', staking.PROGRAMA || '(sin desplegar)');
     console.log('Modo    :', staking.MODO || '—');
     if (!staking.PROGRAMA) {
+        /*
+         * Sin sitio a donde barrer. Lo importante es no mandar a buscar la direccion:
+         * si el servidor esta funcionando, ya la tiene, y pedirla otra vez acaba en
+         * una copiada a mano o —peor— en un `<direccion>` pegado tal cual.
+         */
+        const env = require('./env-del-servicio.js');
+        const enUnidad = env.leeUnidad(env.UNIDAD).STAKING_PROGRAM;
         console.log('');
-        console.log('Sin STAKING_PROGRAM no hay a donde barrer. Definelo y vuelve:');
-        console.log('  STAKING_PROGRAM=<direccion> node scripts/llenar-vault.js');
+        console.log('Sin STAKING_PROGRAM no hay a donde barrer.');
+        if (enUnidad) {
+            console.log(`Esta en ${env.UNIDAD} pero no ha llegado hasta aqui. Lanza el script`);
+            console.log('desde la raiz del repo para que pueda leer esa unidad.');
+        } else {
+            console.log(`No esta en el entorno ni en ${env.UNIDAD}. Anadelo alli:`);
+            console.log(String.raw`  sudo sed -i '/^\[Service\]/a Environment=STAKING_PROGRAM=LA_DIRECCION_DEL_CONTRATO' ${env.UNIDAD}`);
+        }
         process.exitCode = 1;
         return;
     }

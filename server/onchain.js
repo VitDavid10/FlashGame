@@ -168,6 +168,10 @@ async function estado() {
             authority: solana.authorityPubkey(),
             rewards: solana.rewardsPubkey(),
             rewardsAparte: solana.rewardsAparte(),
+            // Si no hay wallet de premios, por que. Sin esto un REWARDS_SECRET mal
+            // puesto se ve igual que no haberlo separado nunca: `rewards` en null y
+            // `rewardsAparte` en false, o sea la respuesta contraria a la verdad.
+            porQueSinPremios: solana.porQueNoHayPremios(),
         },
         mint: { address: solana.MINT, url: url('token', solana.MINT) },
         cuentas: [],

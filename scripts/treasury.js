@@ -29,6 +29,10 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+
+// En el VPS la configuracion vive en el .service, que un shell no hereda. Antes de
+// requerir nada de server/ (leen el entorno al importarse), se coge de ahi.
+require('./env-del-servicio.js').carga();
 const { Connection, PublicKey } = require('@solana/web3.js');
 const { getAssociatedTokenAddressSync } = require('@solana/spl-token');
 

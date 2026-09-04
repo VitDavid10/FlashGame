@@ -284,3 +284,51 @@ test('una clave invalida no se confunde con no tener clave', () => {
     if (antes) process.env.TREASURY_SECRET = antes;
     delete require.cache[RUTA];
 });
+
+test('una wallet de premios mal puesta no se hace pasar por no haberla separado', () => {
+    /*
+     * Aqui equivocarse es mas caro que en la autoridad. Con REWARDS_SECRET malo, el
+     * panel decia `rewards: null` y `rewardsAparte: false` — que es exactamente lo
+     * que dice cuando NO has separado la wallet todavia. O sea: el sitio que existe
+     * para demostrar desde donde salen los premios respondia lo contrario de la
+     * verdad, y sin fallar.
+     *
+     * Y no debe caer a la autoridad: pagaria los premios desde la wallet equivocada,
+     * saldria bien, y no se notaria hasta mirar el explorador semanas despues.
+     */
+    const RUTA = require.resolve('../server/solana.js');
+    const antes = process.env.REWARDS_SECRET;
+
+    const con = (valor) => {
+        if (valor === null) delete process.env.REWARDS_SECRET;
+        else process.env.REWARDS_SECRET = valor;
+        delete require.cache[RUTA];
+        return require('../server/solana.js');
+    };
+
+    let s = con('[1,2,3,...]');
+    assert.equal(s.rewardsPubkey(), null);
+    assert.match(s.porQueNoHayPremios(), /REWARDS_SECRET/,
+        'tiene que decir que el problema esta en la variable de los premios');
+    assert.notEqual(s.rewardsPubkey(), s.authorityPubkey(),
+        'una clave rota no puede acabar pagando desde la autoridad');
+
+    s = con('[1,2,3]');
+    assert.equal(s.rewardsPubkey(), null);
+    assert.match(s.porQueNoHayPremios(), /64/);
+
+    /*
+     * Sin variable si carga: por el fichero .rewards-wallet.json si esta, y si no
+     * por la autoridad. Cual de los dos depende de la maquina, asi que lo que se
+     * fija es lo que importa: que carga ALGO y que no da motivo, porque no haber
+     * separado la wallet es una decision, no una averia.
+     */
+    s = con(null);
+    assert.ok(s.rewardsPubkey(), 'sin variable tiene que cargar igualmente');
+    assert.equal(s.porQueNoHayPremios(), null);
+    assert.equal(s.rewardsAparte(), s.rewardsPubkey() !== s.authorityPubkey(),
+        'rewardsAparte tiene que describir si de verdad son wallets distintas');
+
+    if (antes) process.env.REWARDS_SECRET = antes;
+    delete require.cache[RUTA];
+});

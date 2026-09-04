@@ -184,29 +184,66 @@ function porQueNoFirma() { canWithdraw(); return _porQueNoHayClave; }
  * Sin REWARDS_SECRET configurado paga la autoridad, que es lo que pasaba antes.
  */
 let _rewards = null;
+
+/*
+ * Por que no se pudo cargar la wallet de premios, o null si se cargo.
+ *
+ * Aqui una clave mala era MAS peligrosa que en la autoridad. Si REWARDS_SECRET no
+ * valia, esto reventaba, `rewardsPubkey()` se tragaba el error y devolvia null, y
+ * `rewardsAparte()` devolvia false — o sea, el panel decia "Authority + rewards
+ * wallet" con la direccion vacia. Justo lo contrario de la verdad, y en el sitio
+ * que existe precisamente para demostrar desde donde salen los premios.
+ */
+let _porQueNoHayPremios = null;
+
 function loadRewards() {
     if (_rewards) return _rewards;
-    const { Keypair } = require('@solana/web3.js');
+    /*
+     * Una clave puesta y mal NO cae a la autoridad. Caer seria peor que fallar:
+     * los premios saldrian de la wallet equivocada, se pagarian bien, y nadie se
+     * enteraria hasta mirar el explorador semanas despues.
+     */
     if (process.env.REWARDS_SECRET) {
-        _rewards = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.REWARDS_SECRET)));
+        _rewards = keypairDe(process.env.REWARDS_SECRET, 'REWARDS_SECRET');
         return _rewards;
     }
     const f = path.join(__dirname, '..', 'scripts', '.rewards-wallet.json');
     if (fs.existsSync(f)) {
-        _rewards = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(f, 'utf8'))));
+        _rewards = keypairDe(fs.readFileSync(f, 'utf8'), 'scripts/.rewards-wallet.json');
         return _rewards;
     }
+    // Sin nada configurado si se cae a la autoridad: es no haber separado la wallet
+    // todavia, que es una decision, no una averia.
     _rewards = loadAuthority();
     return _rewards;
 }
 
+/** Como loadRewards pero apuntando el motivo del fallo en vez de perderlo. */
+function rewardsOrNull() {
+    try { _rewards2 = loadRewards(); _porQueNoHayPremios = null; return _rewards2; }
+    catch (e) { _porQueNoHayPremios = e.message; return null; }
+}
+let _rewards2 = null;
+
 function rewardsPubkey() {
-    try { return loadRewards().publicKey.toBase58(); } catch (e) { return null; }
+    const k = rewardsOrNull();
+    return k ? k.publicKey.toBase58() : null;
 }
 
-/** true si la wallet de premios es una distinta de la autoridad. */
+/** Por que no hay wallet de premios, o null si la hay. Para el panel. */
+function porQueNoHayPremios() { rewardsOrNull(); return _porQueNoHayPremios; }
+
+/*
+ * true si la wallet de premios es una distinta de la autoridad.
+ *
+ * Ante un fallo devuelve false, que es lo prudente: "no estan separadas" describe
+ * peor la realidad que decir que si lo estan cuando no se sabe. Quien quiera saber
+ * si es un fallo o una eleccion tiene porQueNoHayPremios().
+ */
 function rewardsAparte() {
-    try { return loadRewards().publicKey.toBase58() !== loadAuthority().publicKey.toBase58(); }
+    const r = rewardsOrNull();
+    if (!r) return false;
+    try { return r.publicKey.toBase58() !== loadAuthority().publicKey.toBase58(); }
     catch (e) { return false; }
 }
 
@@ -433,6 +470,6 @@ async function walletBalance(owner) {
 }
 
 module.exports = { walletBalance, verifyDeposit, withdraw, prepararRetiro, enviarRetiro, burn, airdropSol,
-    canWithdraw, porQueNoFirma, verifySignedMessage, sendInstructions, authorityPubkey,
+    canWithdraw, porQueNoFirma, porQueNoHayPremios, verifySignedMessage, sendInstructions, authorityPubkey,
     pagaPremio, rewardsPubkey, rewardsAparte, saldoDePremios,
     RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };

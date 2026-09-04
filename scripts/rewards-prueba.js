@@ -27,6 +27,15 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+/*
+ * A PROPOSITO no se lee el .service aqui.
+ *
+ * Los otros scripts si lo hacen, para no tener que repetirles las direcciones. Este
+ * no: sus numeros de abajo SON el escenario que demuestra. Con la config del VPS
+ * encima (REWARD_BUDGET_PILL=50000, REWARD_FACTOR=1) seguiria pasando, seguiria
+ * diciendo "premios repartidos", y estaria demostrando otra cosa.
+ */
+
 const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pillwars-premios-'));
 process.env.LB_DIR = DIR;
 process.env.REWARD_BUDGET_PILL = process.env.REWARD_BUDGET_PILL || '50000000';
