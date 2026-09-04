@@ -113,21 +113,56 @@ async function verifyDeposit({ sig, fromOwner, minPill }) {
 // --- Retiro: envía PILL del treasury de vuelta a la wallet del jugador ---
 // Requiere la keypair de la autoridad (treasury) en el servidor.
 let _authority = null;
+
+/*
+ * Convierte un array de bytes en el keypair, DICIENDO QUE PASO si no se puede.
+ *
+ * Antes cualquier fallo aqui —un JSON roto, un array de 3 numeros, un placeholder
+ * sin sustituir— acababa en el mismo sitio que no tener clave: `canWithdraw()`
+ * devolvia false y no habia forma de distinguir "no hay clave" de "la clave que hay
+ * no vale". Perdimos veinte minutos con un TREASURY_SECRET=[1,2,3,...] literal en el
+ * .service: el fichero de la clave estaba perfecto, pero la variable mandaba y
+ * fallaba callada.
+ */
+function keypairDe(texto, deDonde) {
+    const { Keypair } = require('@solana/web3.js');
+    let bytes;
+    try { bytes = JSON.parse(texto); } catch (e) {
+        throw new Error(`the key in ${deDonde} is not valid JSON`);
+    }
+    if (!Array.isArray(bytes) || bytes.length !== 64) {
+        throw new Error(`the key in ${deDonde} has ${Array.isArray(bytes) ? bytes.length : '?'} `
+            + 'bytes and a Solana key has 64 (did you leave the placeholder unreplaced?)');
+    }
+    return Keypair.fromSecretKey(Uint8Array.from(bytes));
+}
+
+/** El ultimo motivo por el que no se pudo cargar la clave, para poder decirlo. */
+let _porQueNoHayClave = null;
+
 function loadAuthority() {
     if (_authority) return _authority;
-    const { Keypair } = require('@solana/web3.js');
-    // 1) Por variable de entorno (recomendado en el VPS, no se sube a git): TREASURY_SECRET=[1,2,3,...]
+    // 1) Por variable de entorno (recomendado en el VPS, no se sube a git).
+    //    Si esta definida MANDA sobre el fichero, asi que una variable mal puesta
+    //    tapa una clave buena en disco — por eso el error dice de donde viene.
     if (process.env.TREASURY_SECRET) {
-        _authority = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.TREASURY_SECRET)));
+        _authority = keypairDe(process.env.TREASURY_SECRET, 'TREASURY_SECRET');
         return _authority;
     }
-    // 2) Por archivo local (en tu PC): scripts/.devnet-authority.json
+    // 2) Por archivo local: scripts/.devnet-authority.json
     const f = path.join(__dirname, '..', 'scripts', '.devnet-authority.json');
     if (!fs.existsSync(f)) throw new Error('treasury key not available on the server');
-    _authority = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(f, 'utf8'))));
+    _authority = keypairDe(fs.readFileSync(f, 'utf8'), 'scripts/.devnet-authority.json');
     return _authority;
 }
-function canWithdraw() { try { loadAuthority(); return true; } catch (e) { return false; } }
+
+function canWithdraw() {
+    try { loadAuthority(); _porQueNoHayClave = null; return true; }
+    catch (e) { _porQueNoHayClave = e.message; return false; }
+}
+
+/** Por que no se puede firmar, o null si si se puede. Para el panel y los avisos. */
+function porQueNoFirma() { canWithdraw(); return _porQueNoHayClave; }
 
 /* ===================== LA WALLET DE LOS PREMIOS ===================== */
 
@@ -398,6 +433,6 @@ async function walletBalance(owner) {
 }
 
 module.exports = { walletBalance, verifyDeposit, withdraw, prepararRetiro, enviarRetiro, burn, airdropSol,
-    canWithdraw, verifySignedMessage, sendInstructions, authorityPubkey,
+    canWithdraw, porQueNoFirma, verifySignedMessage, sendInstructions, authorityPubkey,
     pagaPremio, rewardsPubkey, rewardsAparte, saldoDePremios,
     RPC, MINT, DECIMALS, TREASURY_OWNER, DEPOSIT_OWNER, TREASURY_PROGRAM, pillToRaw };

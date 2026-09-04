@@ -244,3 +244,43 @@ test('limpieza', () => {
     fs.rmSync(TMP, { recursive: true, force: true });
     assert.ok(!fs.existsSync(TMP));
 });
+
+/*
+ * ESTE VA APARTE del rake, pero vive aqui porque no hay un test de solana.js y el
+ * fallo que fija costo veinte minutos de diagnostico en el VPS.
+ *
+ * TREASURY_SECRET manda sobre el fichero de la clave. Una variable mal puesta —un
+ * placeholder sin sustituir, un JSON roto— tapaba una clave buena en disco y el
+ * servidor decia lo mismo que si no hubiera ninguna. Ahora dice CUAL de las dos.
+ */
+test('una clave invalida no se confunde con no tener clave', () => {
+    const RUTA = require.resolve('../server/solana.js');
+    const antes = process.env.TREASURY_SECRET;
+
+    const con = (valor) => {
+        if (valor === null) delete process.env.TREASURY_SECRET;
+        else process.env.TREASURY_SECRET = valor;
+        delete require.cache[RUTA];
+        return require('../server/solana.js');
+    };
+
+    // El placeholder literal que se quedo en el .service.
+    let s = con('[1,2,3,...]');
+    assert.equal(s.canWithdraw(), false);
+    assert.match(s.porQueNoFirma(), /TREASURY_SECRET/,
+        'tiene que decir que el problema esta en la VARIABLE, no en el fichero');
+    assert.match(s.porQueNoFirma(), /JSON/);
+
+    // Un array valido pero que no es una clave.
+    s = con('[1,2,3]');
+    assert.equal(s.canWithdraw(), false);
+    assert.match(s.porQueNoFirma(), /64/, 'tiene que decir cuantos bytes faltan');
+
+    // Y sin variable, que caiga al fichero sin quejarse.
+    s = con(null);
+    assert.equal(s.canWithdraw(), true);
+    assert.equal(s.porQueNoFirma(), null);
+
+    if (antes) process.env.TREASURY_SECRET = antes;
+    delete require.cache[RUTA];
+});

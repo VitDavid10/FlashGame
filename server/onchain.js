@@ -162,6 +162,9 @@ async function estado() {
          */
         firmante: {
             puedeFirmar: solana.canWithdraw(),
+            // Si no puede, POR QUE. "false" a secas manda a revisar el fichero de la
+            // clave cuando el problema puede estar en la variable de entorno.
+            porQue: solana.porQueNoFirma(),
             authority: solana.authorityPubkey(),
             rewards: solana.rewardsPubkey(),
             rewardsAparte: solana.rewardsAparte(),
