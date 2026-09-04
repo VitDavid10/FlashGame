@@ -151,6 +151,21 @@ async function estado() {
     const out = {
         cluster: CLUSTER || 'mainnet',
         rpc: solana.RPC,
+        /*
+         * Si el servidor puede firmar o no. Sin clave se LEE todo igual —el staking,
+         * los holders, los saldos— pero no se mueve un token: ni barrer el rake, ni
+         * pagar premios, ni retirar.
+         *
+         * Se dice aqui porque si no, la unica forma de averiguarlo era intentar un
+         * retiro y ver si fallaba. Nunca sale la clave, solo si existe y de quien es
+         * la direccion publica.
+         */
+        firmante: {
+            puedeFirmar: solana.canWithdraw(),
+            authority: solana.authorityPubkey(),
+            rewards: solana.rewardsPubkey(),
+            rewardsAparte: solana.rewardsAparte(),
+        },
         mint: { address: solana.MINT, url: url('token', solana.MINT) },
         cuentas: [],
         holders: [],
