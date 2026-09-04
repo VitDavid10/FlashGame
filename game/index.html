@@ -1401,40 +1401,45 @@
         .gameModalBox .close { position:absolute; top:12px; right:18px; font-size:22px; color:#666; cursor:pointer; }
         .gameModalBox .close:hover { color:#fff; }
 
-        /* REWARDS: mismo formato que las ventanas de ayuda (how to play), un poco mas
-           ancha porque lleva una tabla de diez filas. */
-        .rw-box { max-width: 560px; text-align: left; }
-        .rw-sub { color:#8b9199; font-size:11px; margin:0 0 12px; line-height:1.5; }
-        .rw-list { max-height: 300px; overflow-y: auto; margin-bottom: 14px; }
-        .rw-row { display:grid; grid-template-columns: 30px 1fr auto auto; gap:10px;
-                  align-items:center; padding:8px 2px; border-bottom:1px solid #1c2026;
-                  font-size:12px; }
+        /* REWARDS dentro del cartel general. Sin min-height: el cartel se ajusta a
+           lo que hay, que es lo que evita la barra de scroll. */
+        .rw-body { min-height: 0; padding-top: 14px; gap: 0; }
+        .rw-sub { font-family:'VT323',monospace; font-size:16px; color:#ccc; margin:0 0 10px; line-height:1.3; }
+        .rw-sub b { color: var(--acc); }
+        /* SIN scroll: diez filas compactas caben enteras. Una lista con barra dentro
+           de un cartel pixel se ve como un parche, y ademas esconde justo lo que hay
+           que mirar (tu puesto). */
+        .rw-list { display: flex; flex-direction: column; }
+        .rw-row { display:grid; grid-template-columns: 26px 1fr auto 76px; gap:8px;
+                  align-items:center; padding:5px 4px; border-bottom:1px solid rgba(255,255,255,.06);
+                  font-family:'VT323',monospace; font-size:17px; line-height:1; }
         .rw-row:last-child { border-bottom:0; }
-        .rw-row .p { font-family:'Russo One'; color:#8b9199; }
+        .rw-row .p { font-family:'Press Start 2P',monospace; font-size:9px; color:#7d8a82; }
         .rw-row.t1 .p { color:#ffd700; } .rw-row.t2 .p { color:#c0c8d0; } .rw-row.t3 .p { color:#cd7f32; }
-        .rw-row.mine { background: rgba(0,255,136,0.06); border-radius:6px; }
+        .rw-row.mine { background: rgba(255,255,255,.06); }
         .rw-row .n { color:#e6e9ec; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .rw-row .k { color:#8b9199; font-size:11px; }
-        .rw-row .z { font-family:'Russo One'; color:#ffd700; }
+        .rw-row .k { color:#7d8a82; }
+        .rw-row .z { font-family:'Press Start 2P',monospace; font-size:9px; color:#ffd700; text-align:right; }
         .rw-row .z.no { color:#4a5058; }
-        /* La fila de ejemplo va atenuada y con su aviso: si se ensena un ranking
-           inventado sin decirlo, alguien va a pensar que son jugadores de verdad. */
-        .rw-list.demo .rw-row { opacity:.45; }
-        .rw-demo-tag { display:block; text-align:center; color:#ffb020; font-size:10px;
-                       letter-spacing:.5px; padding:8px 0 2px; }
+        /* El ranking de ejemplo va atenuado y con su aviso: ensenar nombres inventados
+           sin decirlo seria hacer creer que ya juega gente. */
+        .rw-list.demo .rw-row { opacity:.4; }
+        .rw-demo-tag { font-family:'Press Start 2P',monospace; font-size:8px; color:#ffb020;
+                       letter-spacing:.5px; text-align:center; padding:2px 0 8px; }
 
         .rw-mine { display:flex; align-items:center; justify-content:space-between; gap:12px;
-                   border-top:1px solid #1c2026; padding-top:14px; }
-        .rw-mine-l { display:flex; align-items:baseline; gap:7px; }
-        .rw-mine-lbl { font-family:'Press Start 2P',monospace; font-size:9px; color:#ffce3d; }
-        .rw-mine-val { font-family:'Russo One'; font-size:21px; color:#fff; }
-        .rw-claim { font-family:'Press Start 2P',monospace; font-size:10px; letter-spacing:.5px;
-                    padding:11px 20px; border-radius:7px; border:0; cursor:pointer;
-                    background:#00ff88; color:#04120b; transition:.15s; }
-        .rw-claim:hover:not(:disabled) { filter:brightness(1.12); }
+                   border-top:1px solid rgba(255,255,255,.12); margin-top:12px; padding-top:12px; }
+        .rw-mine-l { display:flex; align-items:baseline; gap:6px; }
+        .rw-mine-lbl { font-family:'Press Start 2P',monospace; font-size:8px; color:var(--acc); }
+        .rw-mine-val { font-family:'Press Start 2P',monospace; font-size:14px; color:#fff; }
+        .rw-claim { font-family:'Press Start 2P',monospace; font-size:9px; letter-spacing:.5px;
+                    padding:10px 16px; border:2px solid var(--acc); background:transparent;
+                    color:var(--acc); cursor:pointer; transition:.15s; }
+        .rw-claim:hover:not(:disabled) { background:var(--acc); color:#0a0a0a; }
         /* En gris cuando no hay nada que cobrar: se ve que existe y que ahora no toca. */
-        .rw-claim:disabled { background:#232830; color:#6b7178; cursor:not-allowed; }
-        .rw-note { color:#8b9199; font-size:10.5px; line-height:1.55; margin-top:12px; }
+        .rw-claim:disabled { border-color:#3a4048; color:#5a6068; cursor:not-allowed; }
+        .rw-note { font-family:'VT323',monospace; font-size:15px; color:#7d8a82;
+                   line-height:1.25; margin-top:10px; }
         .gameModalBox label { display:block; text-align:left; font-family:'Russo One'; font-size:11px; color:var(--primary); margin: 10px 0 5px; letter-spacing:1px; }
         .gameModalBox input { width:100%; background:#111; border:1px solid #333; border-radius:8px; color:#fff; font-family:'Inter'; font-size:14px; padding:10px 12px; outline:none; box-sizing:border-box; }
         /* El foco del Amount iba con --primary (el verde del tema) y desentonaba
@@ -2574,6 +2579,11 @@
         .gc-overlay-page {
             display: none; position: fixed; inset: 0; z-index: 30000;
             background: rgba(0,0,0,.75); align-items: center; justify-content: center; padding: 20px;
+            /* overflow-y para que un cartel mas alto que la pantalla se pueda
+               alcanzar entero en vez de cortarse por arriba. NO se toca el flex de los
+               hijos: `flex: none` sobre .general-card dejaba su ancho en 0 (el
+               `width: min(560px,100%)` se queda sin base contra la que resolver). */
+            overflow-y: auto;
         }
         .gc-overlay-page.on { display: flex; }
         .general-card { --acc: #ccff00; width: min(560px, 100%); position: relative; }
@@ -3797,27 +3807,37 @@
     <!-- REWARDS: el ranking del dia y lo que te toca, en la misma ventana.
          Antes eran dos (BOARD y CLAIM) y ninguna de las dos se entendia sola: el
          ranking sin el premio no dice para que sirve, y el premio sin el ranking no
-         dice de donde sale. -->
-    <div id="gameRewardsModal" class="gameModal">
-        <div class="gameModalBox rw-box">
-            <span class="close" onclick="RewardsUI.close()">×</span>
-            <h3>Daily rewards</h3>
-            <div class="gm-body">
-                <div class="rw-sub" id="rwSub">Top 10 of the day share the prize pool.</div>
-                <div id="rwLista" class="rw-list"></div>
+         dice de donde sale.
 
-                <!-- Lo tuyo, abajo y siempre visible: con premios o con cero. Un
-                     numero que solo aparece cuando hay algo obliga a entrar a mirar
-                     "por si acaso". -->
-                <div class="rw-mine">
-                    <div class="rw-mine-l">
-                        <span class="rw-mine-lbl">YOUR REWARDS</span>
-                        <span class="rw-mine-val" id="rwMio">0</span>
-                        <span class="rw-mine-lbl">$PILL</span>
+         Va en el CARTEL de siempre —el mismo de HOW TO PLAY, con su marco de canvas
+         y su CLOSE— y no en una caja aparte: una ventana que no se parece al resto
+         del juego se lee como si fuera de otro sitio. -->
+    <div id="rwOverlay" class="gc-overlay-page">
+        <div class="general-card" id="rwCard">
+            <canvas class="gc-frame-cv" id="rwFrameCv"></canvas>
+            <div class="gc-inner" id="rwInner">
+                <div class="gc-content">
+                    <div class="gc-head">
+                        <div class="gc-title">DAILY REWARDS</div>
+                        <button class="sb-close" id="rwCloseBtn">CLOSE</button>
                     </div>
-                    <button class="rw-claim" id="rwClaim" disabled onclick="RewardsUI.claim()">CLAIM</button>
+                    <div class="gc-body rw-body">
+                        <div class="rw-sub" id="rwSub"></div>
+                        <div id="rwLista" class="rw-list"></div>
+                        <!-- Lo tuyo, abajo y siempre visible: con premios o con cero.
+                             Un numero que solo aparece cuando hay algo obliga a entrar
+                             a mirar "por si acaso". -->
+                        <div class="rw-mine">
+                            <div class="rw-mine-l">
+                                <span class="rw-mine-lbl">YOUR REWARDS</span>
+                                <span class="rw-mine-val" id="rwMio">0</span>
+                                <span class="rw-mine-lbl">$PILL</span>
+                            </div>
+                            <button class="rw-claim" id="rwClaim" disabled onclick="RewardsUI.claim()">CLAIM</button>
+                        </div>
+                        <div class="rw-note" id="rwNota"></div>
+                    </div>
                 </div>
-                <div class="rw-note" id="rwNota"></div>
             </div>
         </div>
     </div>
@@ -5253,6 +5273,9 @@
 
     // currentServer arranca en null: la sala se elige de forma discreta en el
     // panel ROOM · PRICES, o el popup la pide al darle a PLAY.
+    // El modo tambien en el <body>: piezas de interfaz que viven fuera de este
+    // script (el cartel de REWARDS) necesitan saberlo para pintar su marco del
+    // color que toca, y `currentGameMode` no es global.
     let currentGameMode = 'classic', currentServer = null, width, height, gameRunning = false, isGodMode = false, isSpectating = false;
     let serverLeaderboard = null;   // ranking de la sala entera que manda el server (online); null = usar cálculo local (offline)
     let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
@@ -8369,6 +8392,9 @@
         SoundManager.play('select');
         ignoreNextHover = true;
         currentGameMode = m;
+        // Lo publica para las piezas que viven fuera de este script (el cartel de
+        // REWARDS pinta su marco del color del modo).
+        try { document.body.dataset.modo = m || 'classic'; } catch (e) {}
         // La wallet (IN GAME + CONNECT/DEPOSIT) NO se enseña aqui: se enseña
         // abajo, junto con el resto del menu. Aqui salia al instante mientras la
         // transicion de paneles seguia corriendo, asi que durante 1,2s eran lo
@@ -12594,15 +12620,64 @@
         fmt(n) { return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }); },
         corta(w) { return w ? w.slice(0, 4) + '…' + w.slice(-4) : ''; },
 
+        /*
+         * El marco del cartel NO es CSS: lo dibuja _pmFrameDraw en un canvas, igual
+         * que en HOW TO PLAY. Hay que redibujarlo cada vez que se abre porque depende
+         * del tamano real de la tarjeta, que no existe mientras esta oculta.
+         */
+        marco() {
+            const card = document.getElementById('rwCard');
+            const cv = document.getElementById('rwFrameCv');
+            const inner = document.getElementById('rwInner');
+            if (typeof _pmFrameDraw !== 'function' || !card || !card.clientWidth) return;
+            // PLACA y currentGameMode viven dentro del script del juego y no son
+            // globales, asi que aqui se leen de window si alguien los expuso y si no
+            // se usan los mismos valores que HOW TO PLAY: [14,42,27] es PLACA.SCREEN
+            // y 40 el grosor del marco del mockup aprobado.
+            const modo = (window.PW_MODO || (document.body.dataset.modo) || 'classic');
+            const hex = modo === 'classic' ? '#00ffaa' : '#ccff00';
+            card.classList.toggle('classic', hex === '#00ffaa');
+            const screen = (window.PLACA && window.PLACA.SCREEN) || [14, 42, 27];
+            const T = _pmFrameDraw(cv, card.clientWidth, card.clientHeight, hex, screen, 40);
+            inner.style.padding = T + 'px';
+        },
+
+        /* Insiste hasta que la tarjeta tenga tamano. 30 x 200 ms = 6 s de margen. */
+        reintentaMarco() {
+            clearTimeout(this._tMarco);
+            let n = 0;
+            const paso = () => {
+                this.marco();
+                if (!document.getElementById('rwInner').style.padding && ++n < 30) {
+                    this._tMarco = setTimeout(paso, 200);
+                }
+            };
+            paso();
+        },
+
         async open() {
-            document.getElementById('gameRewardsModal').style.display = 'flex';
-            document.getElementById('rwLista').innerHTML =
-                '<div style="color:#8b9199;text-align:center;padding:26px 0">Loading…</div>';
+            const ov = document.getElementById('rwOverlay');
+            ov.classList.add('on');
+            document.getElementById('rwLista').innerHTML = '';
+            document.getElementById('rwSub').textContent = 'Loading…';
+            this.marco();
             try { this.lb = await (await fetch('/api/leaderboard')).json(); } catch (e) { this.lb = null; }
             try { await GameWalletUI.refreshClaims(); } catch (e) {}
             this.pinta();
+            /*
+             * El marco se dibuja DESPUES de pintar y a reintentos.
+             *
+             * Depende del tamano real de la tarjeta, y ese tarda en existir por tres
+             * motivos distintos: el layout no esta rehecho justo despues de meter el
+             * contenido, la fuente pixel llega tarde y cambia las alturas, y hay
+             * arranques en los que el viewport empieza midiendo cero y la tarjeta
+             * devuelve 0 de ancho durante mas de un segundo.
+             *
+             * Se para en cuanto el marco esta puesto.
+             */
+            this.reintentaMarco();
         },
-        close() { document.getElementById('gameRewardsModal').style.display = 'none'; },
+        close() { document.getElementById('rwOverlay').classList.remove('on'); },
 
         /*
          * Un ranking de ejemplo para cuando el dia todavia no tiene a nadie.
@@ -12691,6 +12766,24 @@
         },
     };
     window.RewardsUI = RewardsUI;
+    (function () {
+        const b = document.getElementById('rwCloseBtn');
+        if (b) b.addEventListener('click', () => { try { SoundManager.play('simpleselect'); } catch (e) {} RewardsUI.close(); });
+        // Clic en el fondo y Escape cierran, como en el resto de carteles.
+        const ov = document.getElementById('rwOverlay');
+        if (ov) ov.addEventListener('click', (e) => { if (e.target === ov) RewardsUI.close(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && ov && ov.classList.contains('on')) RewardsUI.close();
+        });
+        // El marco es un canvas del tamano de la tarjeta: si la ventana cambia y no se
+        // redibuja, se queda estirado.
+        window.addEventListener('resize', () => {
+            if (ov && ov.classList.contains('on')) {
+                document.getElementById('rwInner').style.padding = '';
+                RewardsUI.reintentaMarco();
+            }
+        });
+    })();
 
     window.StakeUI = StakeUI;
 

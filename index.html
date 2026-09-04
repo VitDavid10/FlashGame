@@ -325,6 +325,18 @@
         .pw-rw a { color:#00ff88; text-decoration:none; }
         .pw-rw a:hover { text-decoration:underline; }
 
+        /* Total + CLAIM, el mismo bloque que el cartel del juego. */
+        .pw-mine { display:flex; align-items:center; justify-content:space-between; gap:12px;
+                   border-top:1px solid #1c2026; margin-top:14px; padding-top:14px; flex-wrap:wrap; }
+        .pw-mine-l { display:flex; align-items:baseline; gap:7px; }
+        .pw-mine-lbl { font-family:'Press Start 2P',monospace; font-size:9px; color:#ffce3d; }
+        .pw-mine-val { font-family:'Russo One'; font-size:21px; color:#fff; }
+        .pw-claim { font-family:'Press Start 2P',monospace; font-size:10px; letter-spacing:.5px;
+                    padding:11px 20px; border-radius:7px; border:0; cursor:pointer;
+                    background:#00ff88; color:#04120b; transition:.15s; }
+        .pw-claim:hover:not(:disabled) { filter:brightness(1.12); }
+        .pw-claim:disabled { background:#232830; color:#6b7178; cursor:not-allowed; }
+
         /* Cuentas y holders: una rejilla que aguanta direcciones largas sin desbordar. */
         .pw-acc { display:grid; grid-template-columns:1fr auto; gap:2px 12px;
                   padding:11px 0; border-bottom:1px solid #1c2026; font-size:12.5px; }
@@ -2976,6 +2988,17 @@ body.trailer-open #page-content{
             <div class="pwc">
                 <div class="pwc-t">Your rewards</div>
                 <div id="vrMios"></div>
+                <!-- El total y un solo CLAIM, igual que en el juego: la misma pantalla
+                     en los dos sitios. El boton esta SIEMPRE, en gris cuando no hay
+                     nada — uno que aparece y desaparece no se aprende nunca. -->
+                <div class="pw-mine">
+                    <div class="pw-mine-l">
+                        <span class="pw-mine-lbl">YOUR REWARDS</span>
+                        <span class="pw-mine-val" id="vrTotal">0</span>
+                        <span class="pw-mine-lbl">$PILL</span>
+                    </div>
+                    <button class="pw-claim" id="vrClaim" disabled onclick="PWRewards.claimTodo()">CLAIM</button>
+                </div>
                 <div class="pwc-note" id="vrNota"></div>
             </div>
 
@@ -4782,6 +4805,8 @@ function toggleTrailerMode() {
                 if (!_wallet()) {
                     cont.innerHTML = '<div style="color:#8b9199;padding:18px 0">'
                         + 'Connect your wallet to see and claim your rewards.</div>';
+                    document.getElementById('vrTotal').textContent = '0';
+                    document.getElementById('vrClaim').disabled = true;
                     nota.innerHTML = 'You only need to connect to <b>see</b> your rewards. Claiming does not '
                         + 'ask you to sign anything: the destination comes from the day\'s anchored list, '
                         + 'not from whoever presses the button — so a winner with no SOL can still get paid.';
@@ -4817,11 +4842,30 @@ function toggleTrailerMode() {
                         + cobrados.map(x => fila(x, true)).join('');
                 }
 
+                // Solo cuenta lo que se puede cobrar YA: un total que incluye dias sin
+                // anclar promete un boton que va a fallar.
+                const cobrable = lista.filter(x => (directo ? x.anclado : x.claimable));
+                const total = cobrable.reduce((t, x) => t + (x.pill || 0), 0);
+                this._cobrable = cobrable;
+                document.getElementById('vrTotal').textContent = _fmt(total);
+                document.getElementById('vrClaim').disabled = !(total > 0);
+
                 const pend = lista.reduce((t, x) => t + (x.pill || 0), 0);
                 nota.innerHTML = (pend > 0 ? '<b>' + _fmt(pend) + ' $PILL</b> pending. ' : '')
                     + 'Each day\'s standings are hashed and anchored on Solana <b>before</b> a single token '
                     + 'moves, so what you get paid can be checked against a list that was already public. '
                     + 'Rewards never expire.';
+            },
+
+            /* Cobra TODOS los dias pendientes. Partirlo en un boton por dia solo daba
+               mas clics para el mismo resultado. */
+            async claimTodo() {
+                const lista = this._cobrable || [];
+                if (!lista.length) return;
+                const btn = document.getElementById('vrClaim');
+                btn.disabled = true; btn.textContent = 'SENDING…';
+                try { for (const x of lista) await this.claim(x.epoch); }
+                finally { btn.textContent = 'CLAIM'; }
             },
 
             async claim(epoch) {
