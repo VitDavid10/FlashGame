@@ -3190,6 +3190,23 @@ const httpServer = http.createServer(async (req, res) => {
         res.end(JSON.stringify(out));
         return;
     }
+    /* Todo lo que hay en la cadena, digerido: que direcciones tiene el proyecto, que
+     * hace cada una, cuanto guarda y quienes son los mayores holders.
+     *
+     * Existe porque abrir Solscan direccion por direccion no explica nada: sale una
+     * lista de cuentas sin nombre y hay que acordarse de cual es cual. Y la pestaña
+     * de holders de un token de devnet muchas veces ni se rellena. */
+    if (urlPath === '/api/onchain') {
+        require('./onchain.js').estado().then(o => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify(o));
+        }).catch(e => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: e.message }));
+        });
+        return;
+    }
+
     // La cadena de hashes entera, y su verificación. Es lo que permite a cualquiera
     // comprobar que ningún día se reescribió después de cerrarse.
     if (urlPath === '/api/leaderboard/chain') {

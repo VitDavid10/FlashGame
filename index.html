@@ -257,6 +257,41 @@
                          padding: 9px 16px; border-radius: 8px; cursor: pointer; transition: .15s; }
         .pw-view-close:hover { border-color: #00ff88; color: #00ff88; }
 
+        /* STAKE de la navbar (grupo derecho). Sin min-width: el hueco lo reserva el
+           flex del grupo, no la fila de enlaces de la izquierda. */
+        .nav-stake { white-space: nowrap; align-self: center; }
+
+        /* Filas de la vista REWARDS. Mismo aire que .pw-match pero con sitio para el
+           boton de cobrar. */
+        .pw-rw { display:flex; align-items:center; gap:12px; padding:11px 0;
+                 border-bottom:1px solid #1c2026; font-size:12.5px; flex-wrap:wrap; }
+        .pw-rw:last-child { border-bottom:0; }
+        .pw-rw .d { color:#8b9199; min-width:112px; }
+        .pw-rw .a { font-family:'Russo One'; color:#ffd700; margin-left:auto; }
+        .pw-rw .s { font-size:11px; color:#8b9199; }
+        .pw-rw .no { color:#6b7178; }
+        .pw-rw button { background:#00ff88; color:#04120b; border:0; border-radius:6px;
+                        padding:7px 15px; font-family:'Press Start 2P',monospace;
+                        font-size:9px; cursor:pointer; letter-spacing:.5px; }
+        .pw-rw button:disabled { background:#232830; color:#6b7178; cursor:not-allowed; }
+        .pw-rw a { color:#00ff88; text-decoration:none; }
+        .pw-rw a:hover { text-decoration:underline; }
+
+        /* Cuentas y holders: una rejilla que aguanta direcciones largas sin desbordar. */
+        .pw-acc { display:grid; grid-template-columns:1fr auto; gap:2px 12px;
+                  padding:11px 0; border-bottom:1px solid #1c2026; font-size:12.5px; }
+        .pw-acc:last-child { border-bottom:0; }
+        .pw-acc .n { color:#e6e9ec; font-weight:600; }
+        .pw-acc .v { font-family:'Russo One'; color:#ffd700; text-align:right; white-space:nowrap; }
+        .pw-acc .q { grid-column:1/-1; color:#8b9199; font-size:11.5px; line-height:1.5; }
+        .pw-acc .w { grid-column:1/-1; font-size:11px; word-break:break-all; }
+        .pw-acc .w a { color:#00ff88; text-decoration:none; }
+        .pw-acc .w a:hover { text-decoration:underline; }
+        .pw-tag { display:inline-block; font-size:9.5px; letter-spacing:.5px; padding:2px 7px;
+                  border-radius:4px; margin-left:7px; vertical-align:middle; }
+        .pw-tag.c { background:rgba(0,255,136,.13); color:#00ff88; border:1px solid rgba(0,255,136,.35); }
+        .pw-tag.w { background:rgba(255,255,255,.06); color:#8b9199; border:1px solid #2a2f36; }
+
         /* Tarjetas de datos, compartidas por las dos vistas. */
         .pwc { background: rgba(255,255,255,0.025); border: 1px solid #1e2227; border-radius: 12px;
                padding: 18px 20px; margin-bottom: 16px; }
@@ -441,6 +476,17 @@
            verla para poder moverla/escalarla. */
         .wallet-area { display: none; align-items: center; gap: 10px; position: relative; }
         body.layout-editing .wallet-area { display: flex !important; }
+
+        /* CONNECT en la navbar de la web, SIEMPRE visible.
+           Hasta ahora `.wallet-area { display:none }` no tenia ninguna regla que lo
+           mostrara fuera del editor de layout: la landing nunca enseñaba CONNECT y
+           para conectar la wallet habia que entrar al juego. Con STAKE y REWARDS
+           viviendo aqui, la wallet hace falta AQUI.
+           El estado de dentro (CONNECT vs balance+DEPOSIT) lo sigue llevando
+           App.Wallet.setConnectedUI, que ya lo hacia. */
+        #wallet-area { display: flex; }
+        /* Arranca en "sin conectar": el balance y DEPOSIT aparecen al conectar. */
+        #wallet-bal-box { display: none; }
         .wallet-bal-box {
             display: none; align-items: center; gap: 5px;
             padding: 8px 14px; box-sizing: border-box;
@@ -480,7 +526,13 @@
             width: 190px; aspect-ratio: 1724 / 403; scale: 0.8745922401980181;
             border: 0; margin: 0; padding: 0;
             box-sizing: border-box; color: #fff;
-            font-family: 'Press Start 2P', monospace; font-size: var(--fs-4); letter-spacing: 0; text-transform: uppercase;
+            font-family: 'Press Start 2P', monospace; letter-spacing: 0; text-transform: uppercase;
+            /* Cuerpo propio y mas pequeño que el del texto corrido (--fs-4, 18px).
+               Press Start 2P es MUY ancha: a 18px, DISCONNECT llenaba la pildora de
+               lado a lado y CONNECT quedaba enorme al lado de los enlaces del nav.
+               --pw-font lo escribe EDIT LAYOUT sobre la clave walletBtnTxt, asi que
+               esto sigue siendo ajustable sin tocar CSS. */
+            font-size: var(--pw-font, 13px);
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
             cursor: pointer; transition: 0.2s; image-rendering: auto;
             display: grid; place-items: center;
@@ -2485,7 +2537,7 @@ body.trailer-open #page-content{
                 <a href="#quest" class="nav-link" style="min-width:6.6em">QUESTS</a>
                 <a href="#shop" class="nav-link" style="min-width:5.5em">STORE</a>
                 <a href="#" class="nav-link" style="min-width:12.1em" onclick="PWView.open('board'); return false;">LEADERBOARD</a>
-            <a href="#" class="nav-link" style="min-width:5.5em" onclick="PWView.open('stake'); return false;">STAKE</a>
+                <a href="#" class="nav-link" style="min-width:7.7em" onclick="PWView.open('rewards'); return false;">REWARDS</a>
                 <!-- PLAY NOW de la navbar: PEGADO al bloque de la izquierda,
                      justo detras de LEADERBOARD. Antes vivia en el grupo de la
                      derecha y se traia hasta aqui con un translate de -861px
@@ -2519,6 +2571,8 @@ body.trailer-open #page-content{
                             <a href="#quest">QUESTS</a>
                             <a href="#shop">STORE</a>
                             <a href="#ranking">LEADERBOARD</a>
+                            <a href="#" onclick="PWView.open('rewards'); return false;">REWARDS</a>
+                            <a href="#" onclick="PWView.open('stake'); return false;">STAKE</a>
                         </div>
                     </div>
                 </div>
@@ -2537,15 +2591,6 @@ body.trailer-open #page-content{
                  fijos que solo cuadraban a una anchura concreta y descolocaban
                  el conjunto en cuanto se hacia zoom out. Como item de este flex
                  se queda pegado a la esquina pase lo que pase con el ancho. -->
-            <div class="dropdown" id="pill-dropdown">
-                <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
-                <div class="dropdown-content">
-                    <div class="dropdown-box">
-                        <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon"> Chart</a>
-                        <a href="https://pump.fun" target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
-                    </div>
-                </div>
-            </div>
             <!-- Wallet: mismo montaje que /game (gameWalletArea). Balance IN GAME +
                  CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT) cuando ya
                  estas conectado. -->
@@ -2562,6 +2607,20 @@ body.trailer-open #page-content{
                     <div class="wallet-dropdown-content">
                         <div class="wb-box" id="wallet-withdraw-box"><button class="btn-withdraw" id="withdraw-btn" onclick="App.Withdraw.open()"><span class="wb-txt" id="wallet-withdraw-txt">WITHDRAW</span></button></div>
                         <div class="wb-box" id="wallet-disconnect-box"><button class="btn-disconnect" id="disconnect-btn" onclick="App.Wallet.disconnect()"><span class="wb-txt" id="wallet-disconnect-txt">DISCONNECT</span></button></div>
+                    </div>
+                </div>
+            </div>
+            <!-- STAKE: en el grupo de la DERECHA, entre CONNECT y $PILL. Es donde
+                 tiene sentido: las tres cosas van de la wallet, y separar el boton de
+                 stakear de la wallet con la que se stakea obligaba a cruzar la barra
+                 entera. -->
+            <a href="#" class="nav-link nav-stake" onclick="PWView.open('stake'); return false;">STAKE</a>
+            <div class="dropdown" id="pill-dropdown">
+                <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
+                <div class="dropdown-content">
+                    <div class="dropdown-box">
+                        <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon"> Chart</a>
+                        <a href="https://pump.fun" target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
                     </div>
                 </div>
             </div>
@@ -2965,6 +3024,43 @@ body.trailer-open #page-content{
             </div>
 
             <div class="pwc-note" id="vbNota"></div>
+        </div>
+    </div>
+
+    <!-- ===================== VISTA: REWARDS =====================
+         Lo que te toca a ti y de donde sale. Va al lado de LEADERBOARD porque es la
+         otra mitad de la misma pregunta: ahi se ve quien gana, aqui se cobra. -->
+    <div class="pw-view" id="viewRewards">
+        <div class="pw-view-inner">
+            <div class="pw-view-head">
+                <div>
+                    <h2>Rewards</h2>
+                    <p>The top 10 of each day get paid from the rewards allocation. Nothing
+                       expires: an unclaimed reward waits for you.</p>
+                </div>
+                <button class="pw-view-close" onclick="PWView.close()">&larr; BACK TO SITE</button>
+            </div>
+
+            <div class="pwc">
+                <div class="pwc-t">Your rewards</div>
+                <div id="vrMios"></div>
+                <div class="pwc-note" id="vrNota"></div>
+            </div>
+
+            <!-- DONDE VIVE EL DINERO. Es la respuesta a "vale, ¿y esto de donde sale?",
+                 y esta aqui y no en una pagina aparte porque es justo lo que se
+                 pregunta quien acaba de cobrar. -->
+            <div class="pwc">
+                <div class="pwc-t">Where the money lives</div>
+                <div id="vrCuentas"></div>
+                <div class="pwc-note" id="vrMint"></div>
+            </div>
+
+            <div class="pwc">
+                <div class="pwc-t">Token holders</div>
+                <div id="vrHolders"></div>
+                <div class="pwc-note" id="vrHoldersNota"></div>
+            </div>
         </div>
     </div>
 
@@ -4205,13 +4301,16 @@ function toggleTrailerMode() {
             actual: null,
             open(cual) {
                 this.close(true);
-                const el = document.getElementById(cual === 'stake' ? 'viewStake' : 'viewBoard');
+                const el = document.getElementById(
+                    cual === 'stake' ? 'viewStake' : cual === 'rewards' ? 'viewRewards' : 'viewBoard');
                 if (!el) return;
                 el.classList.add('on');
                 document.body.classList.add('pw-viewing');
                 this.actual = cual;
                 el.scrollTop = 0;
-                if (cual === 'stake') PWStake.refresh(); else PWBoard.cargar();
+                if (cual === 'stake') PWStake.refresh();
+                else if (cual === 'rewards') PWRewards.cargar();
+                else PWBoard.cargar();
             },
             close(silencioso) {
                 document.querySelectorAll('.pw-view.on').forEach(v => v.classList.remove('on'));
@@ -4504,6 +4603,160 @@ function toggleTrailerMode() {
             },
         };
         window.PWBoard = PWBoard;
+
+        /* ---------- REWARDS ----------
+         *
+         * Dos cosas en la misma pantalla, y a proposito: lo que te toca a ti, y de
+         * donde sale. La segunda es la que contesta a "¿esto de donde viene?" sin
+         * tener que abrir el explorador direccion por direccion.
+         */
+        const PWRewards = {
+            data: null, onchain: null,
+
+            async cargar() {
+                const w = _wallet();
+                document.getElementById('vrMios').innerHTML = w
+                    ? '<div style="color:#8b9199;padding:18px 0">Loading…</div>'
+                    : '';
+                document.getElementById('vrCuentas').innerHTML = '<div style="color:#8b9199;padding:18px 0">Loading…</div>';
+
+                // Las dos peticiones a la vez: la de la cadena tarda mas y no hay
+                // motivo para que la tuya la espere.
+                const [mios, chain] = await Promise.all([
+                    w ? fetch('/api/rewards?wallet=' + w).then(r => r.json()).catch(() => null) : null,
+                    fetch('/api/onchain').then(r => r.json()).catch(() => null),
+                ]);
+                this.data = mios; this.onchain = chain;
+                this.pintaMios(); this.pintaCadena();
+            },
+
+            /** Los premios de la wallet conectada. Sin wallet, se dice y ya. */
+            pintaMios() {
+                const cont = document.getElementById('vrMios'), nota = document.getElementById('vrNota');
+                if (!_wallet()) {
+                    cont.innerHTML = '<div style="color:#8b9199;padding:18px 0">'
+                        + 'Connect your wallet to see and claim your rewards.</div>';
+                    nota.innerHTML = 'You only need to connect to <b>see</b> your rewards. Claiming does not '
+                        + 'ask you to sign anything: the destination comes from the day\'s anchored list, '
+                        + 'not from whoever presses the button — so a winner with no SOL can still get paid.';
+                    return;
+                }
+                const d = this.data || {};
+                const directo = d.modo === 'directo';
+                const lista = directo ? (d.directos || []).filter(x => !x.cobrado) : (d.pendientes || []);
+                const cobrados = directo ? (d.directos || []).filter(x => x.cobrado) : [];
+
+                if (!lista.length && !cobrados.length) {
+                    cont.innerHTML = '<div style="color:#8b9199;padding:18px 0">'
+                        + 'Nothing yet. Finish in the daily top 10 and it shows up here.</div>';
+                } else {
+                    const fila = (x, cobrado) => {
+                        const listo = directo ? !!x.anclado : x.claimable;
+                        const estado = cobrado ? 'paid'
+                            : listo ? 'ready to claim'
+                            : directo ? 'waiting to be anchored on-chain'
+                            : 'waiting to be published on-chain';
+                        const sig = cobrado && x.sig
+                            ? '<a href="https://solscan.io/tx/' + _esc(x.sig) + '?cluster=devnet" target="_blank" rel="noopener">TX</a>'
+                            : '';
+                        return '<div class="pw-rw">'
+                            + '<div class="d">#' + x.rank + ' · ' + _esc(x.date) + '<div class="s">' + estado + '</div></div>'
+                            + '<div class="a">' + _fmt(x.pill) + ' $PILL</div>'
+                            + '<div>' + (cobrado ? sig
+                                : '<button ' + (listo ? '' : 'disabled ')
+                                  + 'onclick="PWRewards.claim(' + x.epoch + ')">CLAIM</button>') + '</div>'
+                            + '</div>';
+                    };
+                    cont.innerHTML = lista.map(x => fila(x, false)).join('')
+                        + cobrados.map(x => fila(x, true)).join('');
+                }
+
+                const pend = lista.reduce((t, x) => t + (x.pill || 0), 0);
+                nota.innerHTML = (pend > 0 ? '<b>' + _fmt(pend) + ' $PILL</b> pending. ' : '')
+                    + 'Each day\'s standings are hashed and anchored on Solana <b>before</b> a single token '
+                    + 'moves, so what you get paid can be checked against a list that was already public. '
+                    + 'Rewards never expire.';
+            },
+
+            async claim(epoch) {
+                const btns = document.querySelectorAll('#vrMios button');
+                btns.forEach(b => { b.disabled = true; });
+                try {
+                    const r = await (await fetch('/api/rewards/claim-direct', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wallet: _wallet(), epoch }),
+                    })).json();
+                    if (!r.ok) throw new Error(r.reason || 'claim failed');
+                    await this.cargar();
+                    if (window.App && App.Wallet && App.Wallet.refresh) App.Wallet.refresh();
+                } catch (e) {
+                    document.getElementById('vrNota').innerHTML =
+                        '<span style="color:#ff6b6b">' + _esc(e.message) + '</span>';
+                    btns.forEach(b => { b.disabled = false; });
+                }
+            },
+
+            /*
+             * Las cuentas del proyecto y los holders del token.
+             *
+             * Existe porque abrir Solscan direccion por direccion no explica nada: sale
+             * una lista de cuentas sin nombre. Aqui cada una lleva que es, cuanto
+             * guarda, y si puede firmar o no — que es LO que distingue un contrato de
+             * una wallet.
+             */
+            pintaCadena() {
+                const d = this.onchain, $ = (i) => document.getElementById(i);
+                if (!d || d.error) {
+                    $('vrCuentas').innerHTML = '<div style="color:#8b9199;padding:18px 0">'
+                        + 'Could not read the chain right now.</div>';
+                    $('vrHolders').innerHTML = '';
+                    return;
+                }
+                const cl = d.cluster && d.cluster !== 'mainnet' ? '?cluster=' + d.cluster : '';
+                const link = (a, txt) => '<a href="https://solscan.io/account/' + _esc(a) + cl
+                    + '" target="_blank" rel="noopener">' + (txt || a) + '</a>';
+
+                $('vrCuentas').innerHTML = (d.cuentas || []).map(c =>
+                    '<div class="pw-acc">'
+                    + '<div class="n">' + _esc(c.nombre)
+                    + '<span class="pw-tag ' + (c.tipo === 'wallet' ? 'w' : 'c') + '">'
+                    + (c.tipo === 'wallet' ? 'WALLET' : c.tipo === 'programa' ? 'PROGRAM' : 'CONTRACT VAULT')
+                    + '</span></div>'
+                    + '<div class="v">' + (c.pill == null ? '' : _fmt(c.pill) + ' $PILL') + '</div>'
+                    + '<div class="q">' + _esc(c.que) + '</div>'
+                    + '<div class="w">' + link(c.address) + '</div>'
+                    + '</div>').join('');
+
+                const m = d.mint || {};
+                $('vrMint').innerHTML = 'Token <b>' + _esc(m.address || '') + '</b>'
+                    + (m.supply != null ? ' · supply <b>' + _fmt(m.supply) + '</b>' : '')
+                    + '<br>' + (m.puedeAcunarMas
+                        ? '<span style="color:#ffb020">Mint authority is still live: more tokens can be created. '
+                          + 'On mainnet this gets revoked before launch.</span>'
+                        : '<span style="color:#00ff88">Mint authority revoked: no more tokens can ever be created.</span>')
+                    + '<br><b>CONTRACT VAULT</b> means an address that is not on the ed25519 curve — there is no '
+                    + 'private key that could move it. Only the program can, running its own code.';
+
+                const hs = d.holders || [];
+                $('vrHolders').innerHTML = !hs.length
+                    ? '<div style="color:#8b9199;padding:18px 0">No holder data right now.</div>'
+                    : hs.map(h => '<div class="pw-acc">'
+                        + '<div class="n">' + (h.nombre ? _esc(h.nombre) : _corta(h.dueno))
+                        + (h.esContrato ? '<span class="pw-tag c">CONTRACT</span>' : '') + '</div>'
+                        + '<div class="v">' + _fmt(h.pill) + '<span style="font-size:11px;color:#8b9199"> · '
+                        + (h.pct == null ? '' : h.pct.toFixed(2) + '%') + '</span></div>'
+                        + (h.que ? '<div class="q">' + _esc(h.que) + '</div>' : '')
+                        + '<div class="w">' + link(h.dueno) + '</div>'
+                        + '</div>').join('');
+
+                $('vrHoldersNota').innerHTML = 'Every account that holds $PILL, read straight from the chain. '
+                    + (d.holdersViejos ? '<span style="color:#ffb020">Showing the last good read ('
+                        + Math.round((d.holdersEdad || 0) / 60) + ' min old): the RPC is not answering.</span> ' : '')
+                    + 'Solscan\'s holders tab is often empty on devnet because the public RPC blocks the call '
+                    + 'it uses; this list comes from a different one that does work.';
+            },
+        };
+        window.PWRewards = PWRewards;
 
         window.App = App;   // exponer App para el módulo ESM de blockchain (PillChain)
         App.UI.init();
