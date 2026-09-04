@@ -5127,13 +5127,17 @@ function toggleTrailerMode() {
                     + '</span></div>'
                     + '<div class="v">' + (c.pill == null ? '' : _fmt(c.pill) + ' $PILL') + '</div>'
                     + '<div class="q">' + _esc(c.que) + '</div>'
-                    /* Para cuantos dias da. Es la otra mitad de "cuanto queda": un saldo
-                       a secas no dice si llega a manana, y esta wallet lleva lo de unos
-                       dias a proposito, asi que quedarse corta es algo que PASA. */
+                    /* Para cuantos dias da, EN EL PEOR CASO. Se divide por el techo
+                       diario, no por lo que se paga: el bote de verdad es
+                       min(rake x factor, techo) recortado por participacion, asi que
+                       casi nunca llega al techo. Decir "da para N dias" a secas se leia
+                       como una prevision cuando es un suelo, y un suelo presentado como
+                       prevision es peor que no dar el numero. */
                     + (c.cubre && c.cubre.dias != null
                         ? '<div class="q" style="color:' + (c.cubre.seQuedaCorta ? '#ffb020' : '#8b9199') + '">'
-                          + 'Enough for about ' + c.cubre.dias + ' more day' + (c.cubre.dias === 1 ? '' : 's')
-                          + ' at the current daily budget.</div>'
+                          + 'At the daily cap of ' + _fmt(c.cubre.presupuestoDia) + ' $PILL that is '
+                          + _fmt(c.cubre.dias) + ' day' + (c.cubre.dias === 1 ? '' : 's')
+                          + ' — and the pot only reaches the cap on a busy day, so it lasts longer than that.</div>'
                         : '')
                     + '<div class="w">' + link(c.address) + '</div>'
                     + '</div>').join('');
