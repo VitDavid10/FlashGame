@@ -3038,7 +3038,7 @@ const httpServer = http.createServer(async (req, res) => {
             const sigKey = 'wd_' + (Array.isArray(signature) ? signature.join(',') : '');
             if (warbank.sigUsed(sigKey)) { res.end(JSON.stringify({ ok: false, reason: 'firma ya usada' })); return; }
             if (!solana.verifySignedMessage(wallet, message, signature)) { res.end(JSON.stringify({ ok: false, reason: 'invalid signature' })); return; }
-            if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'retiros no disponibles (servidor sin clave del treasury)' })); return; }
+            if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'withdrawals unavailable (the server has no treasury key)' })); return; }
             if (warbank.getBalance(wallet) < amount) { res.end(JSON.stringify({ ok: false, reason: 'saldo WAR insuficiente' })); return; }
             warbank.creditDeposit(wallet, 0, sigKey);   // marca la firma como usada (anti-replay)
             // Descontamos ANTES de enviar (evita doble retiro); si falla on-chain, devolvemos.
@@ -3130,7 +3130,7 @@ const httpServer = http.createServer(async (req, res) => {
             let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, reason: 'invalid json' })); return; }
             const wallet = String(p.wallet || ''), kind = String(p.kind || '');
             if (!isSolAddr(wallet) || (kind !== 'pill' && kind !== 'sol')) { res.end(JSON.stringify({ ok: false, reason: 'invalid data' })); return; }
-            if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'faucet no disponible (servidor sin clave del treasury)' })); return; }
+            if (!solana.canWithdraw()) { res.end(JSON.stringify({ ok: false, reason: 'faucet unavailable (the server has no treasury key)' })); return; }
             const ip = anonIp(clientIp(req));
             const left = claimCooldownLeft(wallet, ip, kind);
             if (left > 0) { res.end(JSON.stringify({ ok: false, reason: 'ya reclamado hoy', nextInMs: left })); return; }

@@ -337,7 +337,7 @@ async function publicarRonda(ronda, solana, log) {
         return { ok: false, error: 'dry run (REWARD_DRY_RUN=1): the round is prepared but not published', seco: true };
     }
     if (!PROGRAM) return { ok: false, error: 'no treasury program configured' };
-    if (!solana.canWithdraw()) return { ok: false, error: 'clave de la autoridad no disponible' };
+    if (!solana.canWithdraw()) return { ok: false, error: 'no authority key on the server' };
     if (ronda.sig) return { ok: true, sig: ronda.sig, repetida: true };
     try {
         const ix = tc.publishRound(PROGRAM, {
