@@ -3650,6 +3650,35 @@ body.trailer-open #page-content{
                     document.addEventListener('mousedown', () => DOM.cursor.classList.add('clicking'));
                     document.addEventListener('mouseup', () => DOM.cursor.classList.remove('clicking'));
                 },
+                /*
+                 * Lleva el scroll hasta `destino`, animado.
+                 *
+                 * A MANO y no con `behavior: 'smooth'` porque en esta pagina eso es un
+                 * NO-OP: ni window.scrollTo, ni scrollingElement.scrollTo, ni
+                 * scrollIntoView mueven un pixel con smooth. Asignar scrollTop si
+                 * funciona, asi que la animacion se hace en requestAnimationFrame.
+                 * Es lo que hacia que GAME, QUESTS y STORE no llevaran a ningun sitio.
+                 */
+                deslizaHasta: (destino) => {
+                    const el = document.scrollingElement || document.documentElement;
+                    const desde = el.scrollTop;
+                    const dist = destino - desde;
+                    if (Math.abs(dist) < 2) return;
+                    const DUR = 420;
+                    const t0 = Date.now();
+                    clearInterval(App.UI._desliz);
+                    /* Con setInterval y no requestAnimationFrame: hay entornos donde
+                       rAF no corre (paneles embebidos, pestañas en segundo plano) y
+                       ahi la animacion no arrancaba nunca — el enlace no hacia nada,
+                       que es justo lo que veniamos a arreglar. 16 ms son 60 fps. */
+                    App.UI._desliz = setInterval(() => {
+                        // easeOutCubic: arranca rapido y frena al llegar, que es lo
+                        // que hace que se entienda a donde te ha llevado.
+                        const t = Math.min(1, (Date.now() - t0) / DUR);
+                        el.scrollTop = desde + dist * (1 - Math.pow(1 - t, 3));
+                        if (t >= 1) clearInterval(App.UI._desliz);
+                    }, 16);
+                },
                 setupScroll: () => {
                     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
                         anchor.addEventListener('click', function (e) {
@@ -3670,7 +3699,7 @@ body.trailer-open #page-content{
                                 // las dos dejaba el ancla 11px descuadrada.
                                 const offset = (navbarEl ? navbarEl.getBoundingClientRect().height : 0) + (tickerEl ? tickerEl.getBoundingClientRect().height : 0);
                                 const top = targetSection.getBoundingClientRect().top + window.scrollY - offset;
-                                window.scrollTo({ top, behavior: 'smooth' });
+                                App.UI.deslizaHasta(top);
                             }
                         });
                     });
@@ -4391,9 +4420,14 @@ function toggleTrailerMode() {
                 }
                 // El staking se para al salir de pantalla: el pendiente crece por
                 // segundo, pero repintarlo sin que nadie lo mire es gastar por gastar.
-                const stk = document.getElementById('staking');
-                if (stk && this.cargadas.has('staking')) {
-                    if (this.cerca(stk, 0)) PWStake.refrescaEnVivo(); else PWStake.parar();
+                // Como el sondeo se apaga al cargarlo todo, esto se comprueba con su
+                // propio latido, mas lento (no hay prisa por parar).
+                if (!this._latido) {
+                    this._latido = setInterval(() => {
+                        const stk = document.getElementById('staking');
+                        if (!stk || !this.cargadas.has('staking')) return;
+                        if (this.cerca(stk, 0)) PWStake.refrescaEnVivo(); else PWStake.parar();
+                    }, 2000);
                 }
 
                 // PLAY NOW se esconde sobre los tres paneles: ahi la accion es otra.
@@ -4405,15 +4439,22 @@ function toggleTrailerMode() {
             },
             arranca() {
                 const tick = () => this.mira();
-                window.addEventListener('scroll', tick, { passive: true });
+                /*
+                 * SONDEO, no eventos. En esta pagina los `scroll` no llegan a window
+                 * —ni uno, aunque scrollY cambie— y el IntersectionObserver tampoco
+                 * dispara por el `zoom: 0.9` de #page-content. Las dos vias normales
+                 * estan muertas.
+                 *
+                 * Cada 400 ms son tres getBoundingClientRect: ni se nota, y funciona
+                 * pase lo que pase con el scroll. Se para sola cuando ya no queda nada
+                 * por cargar.
+                 */
+                const t = setInterval(() => {
+                    tick();
+                    if (this.cargadas.size >= this.partes.length) clearInterval(this.vigila);
+                }, 400);
+                this.vigila = t;
                 window.addEventListener('resize', tick);
-                // Aterrizar directo en #rewards (enlace del nav, recarga con hash) no
-                // genera NINGUN evento de scroll: la pagina ya carga en esa posicion.
-                // Sin estos tres, la seccion se quedaba vacia hasta que movieras la
-                // rueda.
-                window.addEventListener('hashchange', tick);
-                window.addEventListener('load', tick);
-                setTimeout(tick, 800);
                 tick();
             },
         };

@@ -145,6 +145,17 @@
 
     <!-- hero=1 = el iframe decorativo de la landing. Se marca AQUI, antes del
          <style>
+
+ de abajo, y no en el <script> del body que ya detecta hero:
+         alli el override llegaba despues del primer pintado y se veia un
+         parpadeo de cuadricula antes del negro. Con el atributo puesto antes de
+         que el CSS se parsee, la regla de la cuadricula no llega a aplicarse
+         nunca (ver `html[data-hero] body`). -->
+    <script>
+        if (/[?&]hero=1\b/.test(location.search)) document.documentElement.setAttribute('data-hero', '1');
+    </script>
+
+    <style>
         /* LA BARRA DE SCROLL: fina, del verde de la marca y sin flechas. */
         * { scrollbar-width: thin; scrollbar-color: #2a3138 transparent; }
         ::-webkit-scrollbar { width: 9px; height: 9px; }
@@ -161,16 +172,7 @@
         input[type=number]::-webkit-outer-spin-button,
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; appearance: textfield; }
- de abajo, y no en el <script> del body que ya detecta hero:
-         alli el override llegaba despues del primer pintado y se veia un
-         parpadeo de cuadricula antes del negro. Con el atributo puesto antes de
-         que el CSS se parsee, la regla de la cuadricula no llega a aplicarse
-         nunca (ver `html[data-hero] body`). -->
-    <script>
-        if (/[?&]hero=1\b/.test(location.search)) document.documentElement.setAttribute('data-hero', '1');
-    </script>
 
-    <style>
         :root {
             --primary: #00ff88; --primary-dim: rgba(0, 255, 136, 0.1); --accent: #ff2a2a;
             --classic-bg-1: #002211;
@@ -1295,14 +1297,17 @@
            ALT+rueda desde SETTINGS -> EDIT LAYOUT. El default de 13px es el
            punto de partida; lo que se guarde manda. */
         #gwBalBox .gw-lbl {
-            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px); color: #ffce3d;
+            /* 10px y no 13: Press Start 2P es muy ancha y "IN GAME: 0 $PILL" llenaba
+               el recuadro de lado a lado. --gw-font sigue mandando si se ajusta desde
+               EDIT LAYOUT; esto es solo el punto de partida. */
+            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 10px); color: #ffce3d;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
         }
         /* La cantidad va con la MISMA fuente que los rotulos (lo pidio David):
            los glifos sueltos que habia antes desentonaban al lado del texto del
            resto del menu. */
         #gwBalValue {
-            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px); color: #fff;
+            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 10px); color: #fff;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.75); white-space: nowrap; line-height: 1;
             text-align: right; min-width: 60px;
         }
@@ -1315,7 +1320,9 @@
             background-color: transparent !important;
             background-image: none;
             border: 0; padding: 0; cursor: pointer;
-            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 13px) !important; letter-spacing: 0;
+            /* 11px: DISCONNECT y REWARDS son las palabras largas y a 13 tocaban los
+               bordes de la pildora. */
+            font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 11px) !important; letter-spacing: 0;
             color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase;
             /* image-rendering AUTO, no pixelated. El PNG es de 1724x403 y aqui
                se pinta a 190x44: pixelated (nearest-neighbor) tira 8 de cada 9
@@ -1354,7 +1361,7 @@
                gobierna #gwConnect Y #gwDepositWrap: un solo ajuste cambia el
                cuerpo de letra de los CUATRO botones a la vez (el dropdown lo
                hereda del wrap). */
-            font-size: var(--gw-font, 13px) !important;
+            font-size: var(--gw-font, 11px) !important;
         }
         /* Con la placa (estilo 1) los cuatro botones de wallet usan el mismo
            dibujo que PLAY/SETTINGS, generado en --gw-placa. --gw-red (el PNG) se
@@ -1371,7 +1378,7 @@
            scale no aplican a las cajas inline. */
         #gameWalletArea .gw-btn-txt {
             display: inline-block; line-height: 1;
-            font-size: var(--gw-font, 13px);
+            font-size: var(--gw-font, 11px);
         }
         /* brightness se SUMA al drop-shadow de la regla base (filter acumula
            funciones); si aqui solo pusiera brightness, sustituiria el filter
@@ -1393,6 +1400,41 @@
         .gameModalBox h3 { font-family:'Russo One'; color:#fff; font-size:22px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 1px; }
         .gameModalBox .close { position:absolute; top:12px; right:18px; font-size:22px; color:#666; cursor:pointer; }
         .gameModalBox .close:hover { color:#fff; }
+
+        /* REWARDS: mismo formato que las ventanas de ayuda (how to play), un poco mas
+           ancha porque lleva una tabla de diez filas. */
+        .rw-box { max-width: 560px; text-align: left; }
+        .rw-sub { color:#8b9199; font-size:11px; margin:0 0 12px; line-height:1.5; }
+        .rw-list { max-height: 300px; overflow-y: auto; margin-bottom: 14px; }
+        .rw-row { display:grid; grid-template-columns: 30px 1fr auto auto; gap:10px;
+                  align-items:center; padding:8px 2px; border-bottom:1px solid #1c2026;
+                  font-size:12px; }
+        .rw-row:last-child { border-bottom:0; }
+        .rw-row .p { font-family:'Russo One'; color:#8b9199; }
+        .rw-row.t1 .p { color:#ffd700; } .rw-row.t2 .p { color:#c0c8d0; } .rw-row.t3 .p { color:#cd7f32; }
+        .rw-row.mine { background: rgba(0,255,136,0.06); border-radius:6px; }
+        .rw-row .n { color:#e6e9ec; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .rw-row .k { color:#8b9199; font-size:11px; }
+        .rw-row .z { font-family:'Russo One'; color:#ffd700; }
+        .rw-row .z.no { color:#4a5058; }
+        /* La fila de ejemplo va atenuada y con su aviso: si se ensena un ranking
+           inventado sin decirlo, alguien va a pensar que son jugadores de verdad. */
+        .rw-list.demo .rw-row { opacity:.45; }
+        .rw-demo-tag { display:block; text-align:center; color:#ffb020; font-size:10px;
+                       letter-spacing:.5px; padding:8px 0 2px; }
+
+        .rw-mine { display:flex; align-items:center; justify-content:space-between; gap:12px;
+                   border-top:1px solid #1c2026; padding-top:14px; }
+        .rw-mine-l { display:flex; align-items:baseline; gap:7px; }
+        .rw-mine-lbl { font-family:'Press Start 2P',monospace; font-size:9px; color:#ffce3d; }
+        .rw-mine-val { font-family:'Russo One'; font-size:21px; color:#fff; }
+        .rw-claim { font-family:'Press Start 2P',monospace; font-size:10px; letter-spacing:.5px;
+                    padding:11px 20px; border-radius:7px; border:0; cursor:pointer;
+                    background:#00ff88; color:#04120b; transition:.15s; }
+        .rw-claim:hover:not(:disabled) { filter:brightness(1.12); }
+        /* En gris cuando no hay nada que cobrar: se ve que existe y que ahora no toca. */
+        .rw-claim:disabled { background:#232830; color:#6b7178; cursor:not-allowed; }
+        .rw-note { color:#8b9199; font-size:10.5px; line-height:1.55; margin-top:12px; }
         .gameModalBox label { display:block; text-align:left; font-family:'Russo One'; font-size:11px; color:var(--primary); margin: 10px 0 5px; letter-spacing:1px; }
         .gameModalBox input { width:100%; background:#111; border:1px solid #333; border-radius:8px; color:#fff; font-family:'Inter'; font-size:14px; padding:10px 12px; outline:none; box-sizing:border-box; }
         /* El foco del Amount iba con --primary (el verde del tema) y desentonaba
@@ -3670,13 +3712,13 @@
             <button id="gwDeposit" onclick="SoundManager.play('simpleselect'); GameWalletUI.openDeposit()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">DEPOSIT</span></button>
             <div id="gwDropdown">
                 <button onclick="SoundManager.play('simpleselect'); GameWalletUI.openWithdraw()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">WITHDRAW</span></button>
-                <!-- Solo aparece si esta wallet tiene premios sin cobrar: un boton
-                     que siempre esta ahi y casi siempre esta vacio deja de mirarse. -->
-                <button id="gwClaim" style="display:none" onclick="SoundManager.play('simpleselect'); GameWalletUI.openClaim()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">CLAIM</span></button>
-                <!-- STAKE abre su propia ventana a pantalla completa. Vive aqui y no
-                     en el menu a proposito: es una decision de cartera, no de juego. -->
-                <button id="gwStake" onclick="SoundManager.play('simpleselect'); StakeUI.open()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">STAKE</span></button>
-                <button id="gwBoard" onclick="SoundManager.play('simpleselect'); BoardUI.open()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">BOARD</span></button>
+                <!-- REWARDS: siempre visible, aunque no haya nada que cobrar. Antes
+                     era un CLAIM que solo salia con premios pendientes, y un boton que
+                     aparece y desaparece no se aprende nunca. Dentro va el ranking del
+                     dia, que es lo que explica de donde sale el premio.
+                     STAKE y BOARD ya no estan aqui: el staking vive en la web, y el
+                     ranking no necesita ventana propia si esta dentro de REWARDS. -->
+                <button id="gwRewards" onclick="SoundManager.play('simpleselect'); RewardsUI.open()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">REWARDS</span></button>
                 <button onclick="SoundManager.play('simpleselect'); GameWalletUI.disconnect()" onmouseenter="SoundManager.playSimpleHover()"><span class="gw-btn-txt">DISCONNECT</span></button>
             </div>
         </div>
@@ -3752,13 +3794,30 @@
          pasa por la cuenta del juego, va de la boveda a la wallet directamente.
          El aviso de abajo esta ahi porque la pregunta que hace todo el mundo la
          primera vez es "por que no puedo cobrarlo ya". -->
-    <div id="gameClaimModal" class="gameModal">
-        <div class="gameModalBox">
-            <span class="close" onclick="GameWalletUI.closeClaim()">×</span>
+    <!-- REWARDS: el ranking del dia y lo que te toca, en la misma ventana.
+         Antes eran dos (BOARD y CLAIM) y ninguna de las dos se entendia sola: el
+         ranking sin el premio no dice para que sirve, y el premio sin el ranking no
+         dice de donde sale. -->
+    <div id="gameRewardsModal" class="gameModal">
+        <div class="gameModalBox rw-box">
+            <span class="close" onclick="RewardsUI.close()">×</span>
             <h3>Daily rewards</h3>
             <div class="gm-body">
-                <div id="gcList" style="max-height:260px;overflow-y:auto;margin-bottom:12px"></div>
-                <div id="gcNote" style="color:#8b9199;font-size:11px;line-height:1.5"></div>
+                <div class="rw-sub" id="rwSub">Top 10 of the day share the prize pool.</div>
+                <div id="rwLista" class="rw-list"></div>
+
+                <!-- Lo tuyo, abajo y siempre visible: con premios o con cero. Un
+                     numero que solo aparece cuando hay algo obliga a entrar a mirar
+                     "por si acaso". -->
+                <div class="rw-mine">
+                    <div class="rw-mine-l">
+                        <span class="rw-mine-lbl">YOUR REWARDS</span>
+                        <span class="rw-mine-val" id="rwMio">0</span>
+                        <span class="rw-mine-lbl">$PILL</span>
+                    </div>
+                    <button class="rw-claim" id="rwClaim" disabled onclick="RewardsUI.claim()">CLAIM</button>
+                </div>
+                <div class="rw-note" id="rwNota"></div>
             </div>
         </div>
     </div>
@@ -11840,21 +11899,11 @@
          */
         premios: { pendientes: [], total: 0 },
         async refreshClaims() {
-            const btn = document.getElementById('gwClaim');
-            if (!GameWallet.address) { if (btn) btn.style.display = 'none'; return; }
+            if (!GameWallet.address) { this.premios = { pendientes: [], total: 0 }; return; }
             try {
                 this.premios = await (await fetch('/api/rewards?wallet=' + GameWallet.address)).json();
             } catch (e) { this.premios = { pendientes: [], total: 0 }; }
-            // El boton sale si hay algo que cobrar POR CUALQUIERA DE LOS DOS
-            // caminos: sin contrato los premios viven en `directos`, y mirando solo
-            // `pendientes` el boton no aparecia nunca en ese modo.
-            if (btn) btn.style.display = this.listaPremios().length ? 'block' : 'none';
         },
-        openClaim() {
-            document.getElementById('gameClaimModal').style.display = 'flex';
-            this.pintaClaims();
-        },
-        closeClaim() { document.getElementById('gameClaimModal').style.display = 'none'; },
         // Con contrato los premios se cobran on-chain; sin el, el servidor paga
         // cuando el jugador pulsa CLAIM. La pantalla es la MISMA a proposito: al
         // jugador le da igual como esta montado por dentro.
@@ -11865,102 +11914,48 @@
         },
         esDirecto() { return (this.premios || {}).modo === 'directo'; },
 
-        pintaClaims() {
-            const lista = document.getElementById('gcList'), nota = document.getElementById('gcNote');
-            const p = this.listaPremios();
-            const directo = this.esDirecto();
-            if (!p.length) {
-                lista.innerHTML = '<div style="color:#8b9199;text-align:center;padding:18px 0">Nothing to claim.<br>Finish in the daily top 10 to earn from the treasury.</div>';
-                nota.innerHTML = '';
-                return;
-            }
-            lista.innerHTML = p.map(x => {
-                // En modo directo solo hay dos estados: el dia esta anclado en la
-                // cadena (y entonces se puede cobrar) o todavia no.
-                const listo = directo ? !!x.anclado : x.claimable;
-                const enVentana = !directo && x.publicado && !listo;
-                const cuando = x.claimableAt ? new Date(x.claimableAt).toLocaleString() : '';
-                const estado = directo
-                    ? (listo ? 'READY TO CLAIM' : 'Waiting to be anchored on-chain')
-                    : (listo ? 'READY TO CLAIM'
-                        : enVentana ? 'Review window · opens ' + cuando
-                        : 'Waiting to be published on-chain');
-                // El estilo es el del boton MAX de deposit/withdraw y no .gm-btn: el
-                // pixel pack repinta .gm-btn contando con un boton de ancho completo,
-                // y a este tamano el texto acababa casi negro sobre fondo oscuro.
-                const btn = 'background:transparent;font-family:\'Russo One\';font-size:11px;padding:5px 12px;border-radius:5px;';
-                return '<div class="gm-row" style="align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.07)">'
-                    + '<span style="flex:1">'
-                    + '<b style="color:#ffce3d">#' + x.rank + '</b> · ' + x.date
-                    + '<br><span style="font-size:10px;color:' + (listo ? '#ffce3d' : '#8b9199') + '">' + estado + '</span>'
-                    + '</span>'
-                    + '<b style="color:#c8cdd2;margin-right:10px">' + this.fmt(x.pill) + ' $PILL</b>'
-                    + (listo
-                        ? '<button type="button" style="' + btn + 'border:1px solid #ffce3d;color:#ffce3d;cursor:pointer" onclick="GameWalletUI.claim(' + x.epoch + ')">CLAIM</button>'
-                        : '<button type="button" style="' + btn + 'border:1px solid #454b52;color:#454b52;cursor:default" disabled>CLAIM</button>')
-                    + '</div>';
-            }).join('');
-            nota.innerHTML = directo
-                ? 'Each day\'s standings are hashed and anchored on Solana <b>before</b> anyone is paid, '
-                  + 'so the payouts can be checked against a list that was already public. '
-                  + 'Your payment arrives as a normal transfer and you get its transaction to verify.'
-                : 'Rewards are published as a Merkle root 48 h before they can be claimed, '
-                  + 'so anyone can check the winner list against that day\'s leaderboard first. '
-                  + 'The list is public at <b>/api/rewards/&lt;epoch&gt;</b>.';
-        },
+        /*
+         * Cobra un dia. Quien pinta el estado es RewardsUI: aqui solo se mueve el
+         * dinero y se propaga el error hacia arriba.
+         *
+         * Dos caminos segun haya contrato o no, y a proposito NO se nota desde fuera:
+         * al jugador le da igual como este montado por dentro.
+         */
         async claim(epoch) {
             const p = this.listaPremios().find(x => x.epoch === epoch);
             if (!p) return;
-            if (this.esDirecto()) return this.claimDirecto(p);
             try { SoundManager.play('select'); } catch (e) {}
-            const lista = document.getElementById('gcList');
-            const antes = lista.innerHTML;
-            lista.innerHTML = '<div style="color:#c8cdd2;text-align:center;padding:24px 0">Sign in your wallet...</div>';
+            if (this.esDirecto()) return this.claimDirecto(p);
+            const sig = await window.PillChain.claim(epoch);
+            // Aviso al servidor solo para que el premio desaparezca ya de la lista.
+            // Quien cobro de verdad esta on-chain: el recibo es una cuenta que solo se
+            // puede crear una vez, asi que un aviso falso no consigue nada.
             try {
-                const sig = await window.PillChain.claim(epoch);
-                // Aviso al servidor solo para que el boton desaparezca ya. Quien
-                // cobro de verdad esta on-chain: el recibo es una cuenta que solo
-                // se puede crear una vez, asi que un aviso falso no consigue nada.
-                try {
-                    await fetch('/api/rewards/claimed', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ wallet: GameWallet.address, epoch, sig }),
-                    });
-                } catch (e) {}
-                this.closeClaim();
-                await this.refreshClaims();
-                showSystemMsg(this.fmt(p.pill) + ' $PILL sent from the treasury to your wallet.', 'REWARD CLAIMED');
-            } catch (e) {
-                lista.innerHTML = antes;
-                showSystemMsg(walletErrText(e), 'CLAIM FAILED');
-            }
+                await fetch('/api/rewards/claimed', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet: GameWallet.address, epoch, sig }),
+                });
+            } catch (e) {}
+            await this.refreshClaims();
+            showSystemMsg(this.fmt(p.pill) + ' $PILL sent from the treasury to your wallet.', 'REWARD CLAIMED');
         },
+
         /*
          * CLAIM sin contrato: se le pide al servidor que mande el premio.
          *
-         * No hay nada que firmar — el destino no lo elige quien pide el pago, sale
-         * de la lista que ya esta anclada en la cadena. Por eso tampoco hace falta
-         * tener SOL para cobrar: el gas lo pone el servidor.
+         * No hay nada que firmar — el destino no lo elige quien pide el pago, sale de
+         * la lista que ya esta anclada en la cadena. Por eso tampoco hace falta tener
+         * SOL para cobrar: el gas lo pone el servidor.
          */
         async claimDirecto(p) {
-            try { SoundManager.play('select'); } catch (e) {}
-            const lista = document.getElementById('gcList');
-            const antes = lista.innerHTML;
-            lista.innerHTML = '<div style="color:#c8cdd2;text-align:center;padding:24px 0">Sending your reward...</div>';
-            try {
-                const r = await (await fetch('/api/rewards/claim-direct', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ wallet: GameWallet.address, epoch: p.epoch }),
-                })).json();
-                if (!r.ok) throw new Error(r.reason || 'claim failed');
-                this.closeClaim();
-                await this.refreshClaims();
-                await this.refresh();
-                showSystemMsg(this.fmt(r.pill) + ' $PILL sent to your wallet.', 'REWARD CLAIMED');
-            } catch (e) {
-                lista.innerHTML = antes;
-                showSystemMsg((e && e.message) || String(e), 'CLAIM FAILED');
-            }
+            const r = await (await fetch('/api/rewards/claim-direct', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet: GameWallet.address, epoch: p.epoch }),
+            })).json();
+            if (!r.ok) throw new Error(r.reason || 'claim failed');
+            await this.refreshClaims();
+            await this.refresh();
+            showSystemMsg(this.fmt(r.pill) + ' $PILL sent to your wallet.', 'REWARD CLAIMED');
         },
 
         // Desconecta la wallet del juego (y olvida la sesion recordada)
@@ -12585,6 +12580,117 @@
         },
     };
     window.BoardUI = BoardUI;
+
+    /*
+     * REWARDS: el ranking del dia y lo que te toca, juntos.
+     *
+     * Antes eran dos ventanas (BOARD y CLAIM) y ninguna se entendia sola: el ranking
+     * sin el premio no dice para que sirve, y el premio sin el ranking no dice de
+     * donde sale. Y el boton de cobrar solo aparecia si tenias algo, asi que nunca
+     * llegabas a aprender que existia.
+     */
+    const RewardsUI = {
+        lb: null,
+        fmt(n) { return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }); },
+        corta(w) { return w ? w.slice(0, 4) + '…' + w.slice(-4) : ''; },
+
+        async open() {
+            document.getElementById('gameRewardsModal').style.display = 'flex';
+            document.getElementById('rwLista').innerHTML =
+                '<div style="color:#8b9199;text-align:center;padding:26px 0">Loading…</div>';
+            try { this.lb = await (await fetch('/api/leaderboard')).json(); } catch (e) { this.lb = null; }
+            try { await GameWalletUI.refreshClaims(); } catch (e) {}
+            this.pinta();
+        },
+        close() { document.getElementById('gameRewardsModal').style.display = 'none'; },
+
+        /*
+         * Un ranking de ejemplo para cuando el dia todavia no tiene a nadie.
+         *
+         * Va atenuado y con su aviso encima: ensenar nombres inventados sin decirlo
+         * seria hacer creer que ya juega gente. Con el aviso, cumple lo que tiene que
+         * cumplir —que se vea la forma de la pantalla— sin mentir.
+         */
+        ejemplo(rep) {
+            const nombres = ['neo', 'trinity', 'morpheus', 'cypher', 'switch',
+                             'dozer', 'apoc', 'tank', 'mouse', 'niobe'];
+            const puestos = (rep && rep.puestos) || [];
+            return nombres.map((n, i) => ({
+                rank: i + 1, name: n, wallet: '', kills: 24 - i * 2,
+                pill: (puestos.find(x => x.rank === i + 1) || {}).pill || 0,
+            }));
+        },
+
+        pinta() {
+            const $ = (i) => document.getElementById(i);
+            const d = this.lb || {};
+            const rep = d.reparto || {};
+            const filas = d.entries || [];
+            const mia = (window.GameWallet && GameWallet.address) || null;
+            const demo = filas.length === 0;
+            const lista = demo ? this.ejemplo(rep) : filas.slice(0, 10).map(f => {
+                const pr = (rep.puestos || []).find(x => x.rank === f.rank);
+                return { rank: f.rank, name: f.name, wallet: f.wallet, kills: f.kills, pill: pr ? pr.pill : 0 };
+            });
+
+            $('rwSub').innerHTML = rep.botePill != null
+                ? 'Today\'s pool: <b style="color:#ffd700">' + this.fmt(rep.botePill) + ' $PILL</b>'
+                  + ' · ' + filas.length + ' players qualify so far.'
+                : 'The top 10 of each day share the prize pool.';
+
+            const cont = $('rwLista');
+            cont.className = 'rw-list' + (demo ? ' demo' : '');
+            cont.innerHTML = lista.map(f => {
+                const cls = 'rw-row' + (f.rank <= 3 ? ' t' + f.rank : '')
+                    + (mia && f.wallet === mia ? ' mine' : '');
+                const quien = f.name ? String(f.name).replace(/[<>&]/g, '') : this.corta(f.wallet);
+                return '<div class="' + cls + '">'
+                    + '<div class="p">' + f.rank + '</div>'
+                    + '<div class="n">' + quien + '</div>'
+                    + '<div class="k">' + f.kills + ' k</div>'
+                    + '<div class="z' + (f.pill > 0 ? '' : ' no') + '">'
+                    + (f.pill > 0 ? this.fmt(f.pill) : '—') + '</div></div>';
+            }).join('');
+            if (demo) {
+                cont.insertAdjacentHTML('afterbegin',
+                    '<span class="rw-demo-tag">EXAMPLE — nobody qualifies yet today</span>');
+            }
+
+            // Lo tuyo. Con cero tambien: el boton se queda en gris, visible.
+            const pendientes = GameWalletUI.listaPremios ? GameWalletUI.listaPremios() : [];
+            const cobrable = pendientes.filter(x => (GameWalletUI.esDirecto() ? x.anclado : x.claimable));
+            const total = cobrable.reduce((t, x) => t + (x.pill || 0), 0);
+            $('rwMio').textContent = this.fmt(total);
+            const btn = $('rwClaim');
+            btn.disabled = !(total > 0);
+            this._cobrable = cobrable;
+
+            $('rwNota').innerHTML = !mia
+                ? 'Connect your wallet to see and claim your rewards.'
+                : pendientes.length && !cobrable.length
+                    ? 'You have rewards waiting for the day to be anchored on-chain. Nothing expires.'
+                    : 'Each day\'s standings are hashed and anchored on Solana <b>before</b> a single token '
+                      + 'moves, so what you get paid can be checked against a list that was already public. '
+                      + 'Rewards never expire.';
+        },
+
+        async claim() {
+            const lista = this._cobrable || [];
+            if (!lista.length) return;
+            const btn = document.getElementById('rwClaim');
+            btn.disabled = true; btn.textContent = 'SENDING…';
+            try {
+                // Se cobran TODOS los dias pendientes de golpe: partirlo en un boton
+                // por dia solo daba mas clics para el mismo resultado.
+                for (const x of lista) await GameWalletUI.claim(x.epoch);
+                await this.open();
+            } catch (e) {
+                document.getElementById('rwNota').innerHTML =
+                    '<span style="color:#ff6b6b">' + ((e && e.message) || e) + '</span>';
+            } finally { btn.textContent = 'CLAIM'; }
+        },
+    };
+    window.RewardsUI = RewardsUI;
 
     window.StakeUI = StakeUI;
 
