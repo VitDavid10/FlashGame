@@ -325,7 +325,14 @@
             .ov-sec { padding: 20px 14px 24px; }
         }
 
-        .pw-sec { max-width: 900px; margin: 0 auto; padding: 0 4px; }
+        /* width:100% es lo que la ata a la PANTALLA. Su contenedor (.ov-sec) es un
+           flex en columna con align-items:center, asi que sin ancho propio la caja
+           se dimensiona por su contenido: en escritorio daba igual porque el
+           max-width la cortaba en 900, pero en un movil de 375 el contenido pedia
+           485 y la seccion se salia por la derecha — texto, botones y media
+           tarjeta cortados. El stretch no servia aqui: los margenes auto lo
+           desactivan, y son los que la centran. */
+        .pw-sec { width: 100%; max-width: 900px; margin: 0 auto; padding: 0 4px; box-sizing: border-box; }
 
         /* Tarjeta plegable. summary sin el triangulito nativo (que es gris de sistema
            y no pega): la flecha la pone .pw-det-i y gira al abrir. */
@@ -421,7 +428,12 @@
         .pw-cargando { color:#6f7681; padding:16px 0; font-size:12.5px; }
 
         .pw-in-row { display:flex; gap:10px; align-items:stretch; margin-top:6px; }
-        .pw-in-row input { flex:1; background:#0e1114; border:1px solid #23282e; border-radius:9px;
+        /* min-width:0 y no es un detalle: un <input> trae un ancho propio de ~20
+           caracteres, y `flex:1` NO le deja bajar de ahi porque los flex items
+           tienen min-width:auto. Esa fila pedia 435px minimos, la seccion entera
+           se hacia de 485 dentro de una pantalla de 375 y se cortaba por la
+           derecha — el texto, los botones y media tarjeta. */
+        .pw-in-row input { flex:1; min-width:0; background:#0e1114; border:1px solid #23282e; border-radius:9px;
                            color:#fff; font-family:'Inter',sans-serif; font-size:15px; padding:13px 15px;
                            outline:none; box-sizing:border-box; }
         .pw-in-row input:focus { border-color:#00ff88; }
@@ -1403,27 +1415,19 @@ body.trailer-open #page-content{
            de verdad (ajustaNavbar) y, cuando no caben, se van los cuatro a la
            vez y en su hueco queda MENU, que los despliega en una columna. */
         body.nav-colapsada .nav-links-container > a.nav-link { display: none !important; }
-        /* REWARDS se queda fuera del MENU tambien en estrecho: es la unica de las
-           secciones que el jugador necesita a un toque (ahi cobra), y esconderla
-           detras de un desplegable la hacia invisible en movil, que es donde mas
-           gente entra. Las demas si caben dentro de MENU. */
-        body.nav-colapsada .nav-links-container > a.nav-link[href="#rewards"] { display: inline-flex !important; }
-        /* STAKE tambien se va al MENU en estrecho: con REWARDS fuera, MENU, $PILL y
-           los dos iconos, no queda hueco y los rotulos se montaban unos encima de
-           otros. Dentro del panel se llega igual desde su pestaña. */
+        /* En estrecho, en la barra queda MENU y nada mas. REWARDS estuvo fuera un
+           tiempo por ser la seccion donde se cobra, pero al lado de MENU y $PILL no
+           cabia: por debajo de 420px habia que esconderlo igual, asi que eran dos
+           reglas y un breakpoint para que el rotulo apareciera y desapareciera segun
+           el ancho. Esta dentro del desplegable, que es donde estan las demas. */
         body.nav-colapsada .nav-stake { display: none; }
-        /* El min-width en em reserva el hueco EXACTO de la fuente pixel para que la
-           barra no baile mientras carga. En estrecho eso sobra y es justo lo que hacia
-           que REWARDS, MENU y $PILL se montaran unos encima de otros: cada uno pedia
-           su hueco entero y la suma no cabia en 375px. */
-        body.nav-colapsada .nav-links-container > a.nav-link[href="#rewards"] { min-width: 0 !important; }
+        /* Y MENU va PEGADO al rotulo (David). Es el primer hueco de la barra y el
+           sitio donde un menu se busca; en el orden del DOM viene detras de PLAY NOW,
+           asi que se adelanta con `order` en vez de moverlo — ahi PLAY NOW depende de
+           ir justo detras de LEADERBOARD. */
+        body.nav-colapsada #nav-menu-dd { order: -1; }
         body.nav-colapsada .nav-links-container { gap: 8px; }
         body.nav-colapsada .nav-dropdown-group { gap: 8px; }
-        @media (max-width: 420px) {
-            /* Por debajo de esto ya no cabe ni con eso: REWARDS se va al MENU con los
-               demas. Mejor un menu completo que cuatro rotulos ilegibles encimados. */
-            body.nav-colapsada .nav-links-container > a.nav-link[href="#rewards"] { display: none !important; }
-        }
         #nav-menu-dd { display: none; }
         body.nav-colapsada #nav-menu-dd { display: flex; }
         /* Cuelga hacia la DERECHA del rotulo (es el primer item por la izquierda
