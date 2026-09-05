@@ -87,3 +87,4 @@ scripts/.rewards-wallet.json
 # Registro de movimientos: son datos del servidor, no codigo.
 server/transactions.log
 server/adminlog.log
+scripts/.stakers-devnet.json
