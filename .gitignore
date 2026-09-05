@@ -88,3 +88,4 @@ scripts/.rewards-wallet.json
 server/transactions.log
 server/adminlog.log
 scripts/.stakers-devnet.json
+.tmp-ataque/
