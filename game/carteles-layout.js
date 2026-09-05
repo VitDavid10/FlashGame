@@ -71,6 +71,27 @@ const CARTEL_SURFACES = {
             label: 'WITHDRAW', grupo: 'Wallet',
             box: '#gameWithdrawModal .gameModalBox', title: '#gameWithdrawModal h3', desc: '#gameWithdrawModal .gm-body', actions: '#gwdConfirm',
         },
+        /* STAKING. Es un gameModal como el deposito, pero mucho mas alto: la
+           tarjeta del pozo, la de tu posicion, el campo y tres botones. `desc`
+           apunta a la primera .stk-card (el pozo), que es el bloque que decide
+           cuanto ocupa todo lo demas. */
+        gameStakeModal: {
+            label: 'STAKING', grupo: 'Wallet',
+            box: '#gameStakeModal .gameModalBox', title: '#gameStakeModal h3',
+            desc: '#gameStakeModal .stk-card', actions: '#gameStakeModal .stk-actions',
+        },
+        /* DAILY REWARDS. El unico de la lista que NO lleva marco de imagen: se
+           dibuja en un canvas (_pmFrameDraw), el mismo de HOW TO PLAY. El editor
+           lo repinta copiando los pixeles del original, asi que hay que abrirlo
+           de verdad antes de clonar — de eso se encarga cartelDevShowRewards. */
+        rwOverlay: {
+            label: 'DAILY REWARDS', grupo: 'Wallet',
+            box: '#rwCard', title: '#rwOverlay .gc-title', desc: '#rwLista',
+            // `actions` es la fila entera de YOUR REWARDS + CLAIM: el numero y el
+            // boton se leen juntos, y moverlos por separado los descuadra.
+            actions: '#rwOverlay .rw-mine', pie: '#rwNota',
+            partes: ['title', 'desc', 'actions', 'pie'],
+        },
         walletPickerModal: {
             label: 'CONNECT WALLET', grupo: 'Wallet',
             box: '#walletPickerModal .pw-modal-box', title: '#walletPickerModal .wp-title', desc: null, actions: '#walletPickerModal .pw-modal-cancel',
@@ -208,6 +229,58 @@ window.cartelDevShowPais = (code, v) => {
     // el que toca; este se enciende por clase (.on), y el inline le ganaba.
     const d = document.getElementById('paisModal');
     if (d) d.style.removeProperty('display');
+};
+/*
+ * STAKING con datos de muestra. Sin esto el cartel sale con todo a "—" y con las
+ * dos mitades de abajo ocultas (tu posicion y la cola de salida solo aparecen con
+ * wallet conectada), asi que se afinaba un hueco que en el juego luego esta lleno.
+ * Los numeros son los de una sala con gente, no los de devnet.
+ */
+window.cartelDevShowStake = () => {
+    const m = document.getElementById('gameStakeModal');
+    if (m) m.style.display = 'flex';
+    const st = window.StakeUI;
+    if (!st) return;
+    st.walletBal = 250000;
+    st.st = {
+        enMarcha: true, activo: true,
+        pozo: 1850000, repartiendoPorDia: 26400, totalStaked: 4100000,
+        apr: (26400 * 365) / 4100000,
+        posicion: { stakeado: 120000, pendiente: 3400, saliendo: 40000,
+                    saleEl: new Date(Date.now() + 3 * 86400000).toISOString(), existe: true },
+    };
+    st.pinta();
+    // pinta() esconde las dos tarjetas de abajo si no hay wallet conectada, y en
+    // el editor nunca la hay. Se fuerzan: son la mitad del cartel que hay que
+    // colocar, y no verlas era el motivo de que no se pudiera afinar.
+    const ver = (id) => { const e = document.getElementById(id); if (e) e.style.display = ''; };
+    ver('stkMine'); ver('stkColaWrap');
+};
+/*
+ * DAILY REWARDS. Se abre sin pasar por open(), que pide el leaderboard al
+ * servidor: con la lista vacia el cartel entra solo en su modo de ejemplo, que es
+ * justo el estado que hay que poder colocar (el dia recien empezado).
+ *
+ * El marco se dibuja aqui mismo y no por reintentos: leer clientWidth despues de
+ * encender el overlay obliga al navegador a rehacer el layout en el acto, asi que
+ * cuando el editor clona ya hay pixeles que copiar.
+ */
+window.cartelDevShowRewards = () => {
+    const ov = document.getElementById('rwOverlay');
+    // El editor apaga todos los carteles con display:none inline antes de pintar el
+    // que toca; este se enciende por clase (.on) y el inline le ganaba — el mismo
+    // tropiezo que paisModal.
+    if (ov) { ov.style.removeProperty('display'); ov.classList.add('on'); }
+    const r = window.RewardsUI;
+    if (!r) return;
+    r.lb = { entries: [], reparto: { botePill: 50000, puestos: [
+        { rank: 1, pill: 15000 }, { rank: 2, pill: 10000 }, { rank: 3, pill: 7500 },
+        { rank: 4, pill: 5000 }, { rank: 5, pill: 4000 }, { rank: 6, pill: 3000 },
+        { rank: 7, pill: 2000 }, { rank: 8, pill: 1500 }, { rank: 9, pill: 1200 },
+        { rank: 10, pill: 800 },
+    ] } };
+    r.pinta();
+    r.marco();
 };
 /*
  * Texto de un cartel de fin de partida TAL CUAL lo pinta el juego. El editor

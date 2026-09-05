@@ -3740,7 +3740,7 @@
     <div id="gameDepositModal" class="gameModal">
         <div class="gameModalBox">
             <span class="close" onclick="GameWalletUI.closeDeposit()">×</span>
-            <h3>Deposit $PILL</h3>
+            <h3>DEPOSIT</h3>
             <div class="gm-body">
                 <div class="gm-row"><span>In wallet</span><b id="gdWallet" style="color:#c8cdd2">—</b></div>
                 <div class="gm-row" style="margin-bottom:14px"><span>In GAME</span><b id="gdGame" style="color:#c8cdd2">—</b></div>
@@ -3759,7 +3759,7 @@
     <div id="gameWithdrawModal" class="gameModal">
         <div class="gameModalBox">
             <span class="close" onclick="GameWalletUI.closeWithdraw()">×</span>
-            <h3>Withdraw $PILL</h3>
+            <h3>WITHDRAW</h3>
             <div class="gm-body">
                 <div class="gm-row" style="margin-bottom:14px"><span>In GAME</span><b id="gwdGame" style="color:#c8cdd2">—</b></div>
                 <label>Amount</label>
@@ -3850,7 +3850,7 @@
     <div id="gameStakeModal" class="gameModal">
         <div class="gameModalBox stake-box">
             <span class="close" onclick="StakeUI.close()">&times;</span>
-            <h3>Staking</h3>
+            <h3>STAKING</h3>
 
             <!-- El pozo. Es lo que hace creible el APR: se ve cuanto queda por
                  repartir, no solo el porcentaje. -->
@@ -6681,8 +6681,12 @@
                 'body.pixel-pack #gameDepositModal .gm-row:first-of-type,body.pixel-pack #gameWithdrawModal .gm-row:first-of-type{margin-top:10px}' +
                 // Titulo del deposit/withdraw (sin arte horneado, como pidio
                 // David): fuente pixel para los dos igual.
-                'body.pixel-pack #gameDepositModal .gameModalBox>h3,body.pixel-pack #gameWithdrawModal .gameModalBox>h3{font-family:"Press Start 2P",monospace!important;font-size:15px!important;' +
-                'color:#c8cdd2!important;text-shadow:2px 2px 0 rgba(0,0,0,.65);line-height:1.6}' +
+                'body.pixel-pack #gameDepositModal .gameModalBox>h3,body.pixel-pack #gameWithdrawModal .gameModalBox>h3,' +
+                'body.pixel-pack #gameStakeModal .gameModalBox>h3{font-family:"Press Start 2P",monospace!important;font-size:15px!important;' +
+                // Blanco y no el gris de antes (David): el gris se confundia con
+                // las etiquetas de las filas, que son de ese mismo #c8cdd2, y el
+                // titulo dejaba de leerse como titulo.
+                'color:#fff!important;text-shadow:2px 2px 0 rgba(0,0,0,.65);line-height:1.6}' +
                 // Y el resto del contenido igual (lo pidio David: "en deposit y
                 // withdraw si debe usarse en todo"): filas, etiquetas, el input
                 // de cantidad y el boton MAX. El gm-btn no entra: su rotulo es
@@ -14492,7 +14496,11 @@
         // canvas: escriben el titulo con Press Start 2P y punto. Los de skins
         // van aqui porque llegaron despues del arte y la letra generada
         // desentonaba al lado de los titulos dibujados.
-        const SYS_TITULO_TEXTO = ['SKINS', 'CONVERT', 'DESKTOP ONLY'];
+        const SYS_TITULO_TEXTO = ['SKINS', 'CONVERT', 'DESKTOP ONLY',
+            // Los de staking y premios llegaron despues del arte horneado. Con la
+            // letra procedural desentonaban al lado del resto, igual que le pasaba
+            // a SKINS/CONVERT en su dia, asi que van por el mismo camino.
+            'STAKING', 'STAKING FAILED', 'REWARD CLAIMED', 'NOT ENOUGH', 'STILL NOT ENOUGH'];
         // Marco de cada aviso (peticion de David):
         //   verde (prize-panel) -> KICKED y REJOIN EXPIRED, los avisos de partida.
         //   gris (menu-gris)    -> todo lo de wallet/dinero/conexion, el mismo
@@ -14508,7 +14516,10 @@
         const gray = ['WALLET REQUIRED', 'CONNECT ERROR', 'DEPOSIT FAILED', 'PAYMENT CANCELLED',
             'WITHDRAW FAILED', 'WITHDRAW COMPLETE', 'DEPOSIT COMPLETE',
             'INSUFFICIENT BALANCE', 'CONNECTION FAILED', 'WALLET',
-            'SKINS', 'CONVERT', 'DESKTOP ONLY'].includes(t);
+            'SKINS', 'CONVERT', 'DESKTOP ONLY',
+            // Staking y premios son dinero: mismo marco gris que el deposito y la
+            // retirada, no el verde de los avisos de partida.
+            'STAKING', 'STAKING FAILED', 'REWARD CLAIMED', 'NOT ENOUGH', 'STILL NOT ENOUGH'].includes(t);
         const box = m.querySelector('.exit-box');
         if (box) { box.classList.toggle('sys-green', green); box.classList.toggle('sys-gray', gray); }
         if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {
@@ -14536,10 +14547,11 @@
             titleEl.style.fontSize = '15px';
             titleEl.style.letterSpacing = '1px';
             titleEl.style.textShadow = '2px 2px 0 #000';
-            // SKINS/CONVERT/DESKTOP ONLY (fallos): titulo blanco, no el verde de
-            // .sys-title (marco gris de dinero, y ese verde no pega con el resto
-            // de fallos).
-            if (t === 'SKINS' || t === 'CONVERT' || t === 'DESKTOP ONLY') titleEl.style.setProperty('color', '#fff', 'important');
+            // Blanco para TODOS los de esta rama, no para tres a mano. Van sobre
+            // el marco gris de dinero y ahi el verde de .sys-title no pega; escribir
+            // la lista dos veces solo servia para que el siguiente aviso que se
+            // anadiera saliera verde sin que nadie entendiera por que.
+            titleEl.style.setProperty('color', '#fff', 'important');
         } else if (pixelMode) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';

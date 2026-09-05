@@ -166,6 +166,24 @@ const CASOS = [
   { g:'Wallet', n:'WITHDRAW',       sup:'gameWithdrawModal', art:0, show:'gameWithdrawModal' },
   { g:'Wallet', n:'CONNECT WALLET', sup:'walletPickerModal', art:1, show:'walletPickerModal' },
 
+  /* --- STAKING Y PREMIOS ---------------------------------------------------
+     Las dos ventanas y los seis avisos que sueltan. Los cuatro STAKING
+     comparten titulo, o sea que comparten clave y se colocan a la vez: el
+     juego resuelve la posicion POR TITULO (showSystemMsg), asi que no hay
+     forma de darles sitios distintos ni la habria aunque se quisiera. Estan
+     los cuatro porque lo que cambia es el LARGO del texto, y es eso lo que
+     decide si el hueco vale para todos. */
+  { g:'Wallet', n:'STAKING · panel',      sup:'gameStakeModal', art:0, stk:1 },
+  { g:'Wallet', n:'DAILY REWARDS',        sup:'rwOverlay',      art:0, rw:1 },
+  { g:'Wallet', n:'STAKING · deposito',   sup:'sysModal', art:0, sys:['120,000 $PILL staked. It starts earning right away.','STAKING'] },
+  { g:'Wallet', n:'STAKING · salida',     sup:'sysModal', art:0, sys:['40,000 $PILL on the way out. You can withdraw them in 7 days.','STAKING'] },
+  { g:'Wallet', n:'STAKING · claim',      sup:'sysModal', art:0, sys:['Rewards sent to your wallet.','STAKING'] },
+  { g:'Wallet', n:'STAKING · compound',   sup:'sysModal', art:0, sys:['Rewards moved into your stake. They earn from now on.','STAKING'] },
+  { g:'Wallet', n:'STAKING FAILED',       sup:'sysModal', art:0, sys:['The Solana network dropped the transaction (stale blockhash). Try again.','STAKING FAILED'] },
+  { g:'Wallet', n:'REWARD CLAIMED',       sup:'sysModal', art:0, sys:['168,000 $PILL sent to your wallet.','REWARD CLAIMED'] },
+  { g:'Wallet', n:'NOT ENOUGH',           sup:'sysModal', art:0, sys:['You only have 12,500 $PILL in your wallet.','NOT ENOUGH'] },
+  { g:'Wallet', n:'STILL NOT ENOUGH',     sup:'sysModal', art:0, sys:['The deposit did not cover the entry. You have 12,500 $PILL and it costs 50,000.','STILL NOT ENOUGH'] },
+
   // --- SKINS (llegaron con la tienda de pildoras de pais) ---
   // Los dos fallos van con el marco GRIS y el OK gris, como los de cartera:
   // showSystemMsg los tiene en su lista `gray`.
@@ -215,14 +233,15 @@ const CASOS = [
 // Las piezas de cada cartel las decide el juego (cartelPartesDe): title/desc/
 // actions por defecto, y las que declare en CARTEL_SURFACES.partes — el de fin
 // de partida ademas parte los botones en tres.
-const ETIQUETA = { title: 'TITULO', desc: 'TEXTO', actions: 'BOTONES',
+const ETIQUETA = { title: 'TITULO', desc: 'TEXTO', actions: 'BOTONES', mine: 'TU POSICION',
                    tryAgain: 'TRY AGAIN', spectate: 'SPECTATE', backToMenu: 'BACK TO MENU',
                    share: 'SHARE', continuar: 'CONTINUE',
                    crece: 'PILDORAS', pie: 'PIE' };
 const partesDe = sup => W().cartelPartesDe(W().CARTEL_SURFACES[sup]);
 const OCULTABLES = ['sysModal','exitModal','resultOverlay','prizeModal','skillChoiceOverlay',
                     'gameDepositModal','gameWithdrawModal','walletPickerModal','playChoiceModal',
-                    'roomChoiceModal','roomInfoModal','settingsModal','featuresModal','paisModal'];
+                    'roomChoiceModal','roomInfoModal','settingsModal','featuresModal','paisModal',
+                    'gameStakeModal','rwOverlay'];
 const CLAVE_POS = 'pw_carteles_editor_pos';
 
 /*
@@ -335,6 +354,11 @@ function clonar(c) {
   // partir de ahi es un modal normal, con su caja y sus piezas.
   else if (c.ri)    w.cartelDevShowRoomInfo(c.ri);
   else if (c.pais)  w.cartelDevShowPais(c.pais[0], c.pais[1]);
+  // Los dos de staking/premios salen vacios si no se les dan datos: el panel con
+  // todo a "—" y el ranking sin filas. Se pintan con numeros de muestra para que
+  // lo que se coloca aqui sea del tamano que tendra en el juego.
+  else if (c.stk)   w.cartelDevShowStake();
+  else if (c.rw)    w.cartelDevShowRewards();
   else if (c.prize) w.cartelDevShowPrize(c.prize);
   else if (c.exit) {
     // Mismo pintado que toggleExitModal(), pero sin sus guardas de estado
