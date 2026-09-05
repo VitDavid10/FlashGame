@@ -12318,8 +12318,13 @@
             // prometer un rendimiento que nadie puede sostener.
             if (st.apr != null && st.enMarcha) {
                 $('stkApr').textContent = (st.apr * 100).toFixed(1) + '%';
-                $('stkAprNota').textContent = st.totalStaked < 1000
-                    ? 'Almost nothing is staked yet, so this number is huge and will drop as soon as others join. It is a snapshot, not a promise.'
+                /* Por el APR y no por totalStaked: 62.000 stakeados no son "casi nada"
+                   para el umbral de 1000, y aun asi el APR salia al 1878% con el texto
+                   tranquilizador debajo. Lo que hace absurdo el numero es la proporcion
+                   entre el goteo y lo stakeado, que es justo lo que mide el APR. */
+                $('stkAprNota').textContent = (st.apr > 1 || st.totalStaked < 1000)
+                    ? 'Barely anything is staked against the current pool, so this number is huge and '
+                      + 'will drop fast as others join. It is a snapshot, not a promise.'
                     : 'Today rate over what is staked right now, annualised. It moves with the pool and with how much the game earns.';
             } else {
                 $('stkApr').textContent = '—';

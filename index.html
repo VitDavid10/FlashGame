@@ -4252,7 +4252,7 @@ body.trailer-open #page-content{
                         App.Msg.show('Deposit complete', amt.toLocaleString('en-US') + ' $PILL added to your in-GAME balance.');
                     } catch (e) {
                         console.error(e);
-                        App.Msg.show('Deposit failed', (e.message || String(e)).slice(0, 140));
+                        App.Msg.show('Deposit failed', _errWallet(e));
                     }
                     DOM.depositConfirm.disabled = false; DOM.depositConfirm.innerText = old;
                 }
@@ -4291,7 +4291,7 @@ body.trailer-open #page-content{
                         App.Msg.show('Withdraw complete', amt.toLocaleString('en-US') + ' $PILL sent back to your wallet.');
                     } catch (e) {
                         console.error(e);
-                        App.Msg.show('Withdraw failed', (e.message || String(e)).slice(0, 140));
+                        App.Msg.show('Withdraw failed', _errWallet(e));
                     }
                     DOM.withdrawConfirm.disabled = false; DOM.withdrawConfirm.innerText = old;
                 }
@@ -4315,7 +4315,7 @@ body.trailer-open #page-content{
                         App.Msg.show(okTitle, okText);
                         App.Market.fetchBalance(w); App.Market.fetchWar(w);
                     } catch (e) {
-                        App.Msg.show('Claim failed', (e.message || String(e)).slice(0, 140));
+                        App.Msg.show('Claim failed', _errWallet(e));
                     }
                     btn.disabled = false; btn.innerText = old; App.Claim._busy = false;
                 },
@@ -4666,6 +4666,34 @@ function toggleTrailerMode() {
 
         const _fmt = (n) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
         const _corta = (w) => (w ? w.slice(0, 4) + '…' + w.slice(-4) : '');
+        /*
+         * EL TEXTO DE ERROR DE LA WALLET, SIEMPRE EN INGLES Y SIEMPRE MASTICADO.
+         *
+         * Lo que devuelven la extension y el RPC no vale para ensenarlo: viene en el
+         * idioma del navegador del usuario, y a veces es un volcado entero
+         * ("Transaction simulation failed... call getLogs() for full details"), que
+         * le esta pidiendo a un jugador que depure una transaccion.
+         *
+         * Es el mismo mapeo que ya usaba /game. Aqui se volcaba el error crudo en los
+         * cuatro sitios: deposito, retiro, claim y staking.
+         */
+        function _errWallet(e) {
+            const raw = String((e && e.message) || e || '').toLowerCase();
+            // Crudo a la consola: sin verlo en algun sitio no hay forma de saber si el
+            // que falla es el RPC, la extension o el servidor.
+            console.warn('[wallet]', e);
+            if (e && (e.code === 4001 || e.code === -32003)) return 'You rejected the request in your wallet.';
+            if (/reject|denegad|declin|cancel/i.test(raw)) return 'You rejected the request in your wallet.';
+            if (/insufficient|balance|fondos|saldo/i.test(raw)) return 'Insufficient balance for this transaction.';
+            if (/429|too many|cuota|rate limit/i.test(raw)) return 'The Solana network is rate-limiting us right now. Wait a minute and try again.';
+            if (/blockhash/i.test(raw)) return 'The Solana network dropped the transaction (stale blockhash). Try again.';
+            if (/timeout: wallet/i.test(raw)) return "Your wallet didn't respond. Open the extension, close any pending request and try again.";
+            if (/^rpc:|rpc error|not found/i.test(raw)) return "Couldn't reach the Solana network. Wait a moment and try again.";
+            if (/timeout|expired|abort/i.test(raw)) return 'The request timed out. Please try again.';
+            if (/network|fetch|connection/i.test(raw)) return 'Network error talking to the wallet. Please try again.';
+            return 'Something went wrong completing the transaction. Please try again.';
+        }
+
         const _esc = (t) => String(t == null ? '' : t).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
         const _wallet = () => (window.App && App.Wallet && App.Wallet.address) || null;
 
@@ -4717,8 +4745,15 @@ function toggleTrailerMode() {
 
                 if (st.apr != null && st.enMarcha) {
                     $('vsApr').textContent = (st.apr * 100).toFixed(1) + '%';
-                    $('vsAprNota').textContent = st.totalStaked < 1000
-                        ? 'Almost nothing is staked yet, so this number is huge and will fall as soon as others join. It is a snapshot, not a promise.'
+                    /* El aviso iba con totalStaked < 1000, que es un proxy y falla justo
+                       cuando importa: con 62.000 stakeados y el pozo lleno sale un 1878% y
+                       se ensenaba el texto tranquilizador al lado. Lo que hace absurdo el
+                       numero no es que haya poco stakeado en absoluto, es la proporcion
+                       entre el goteo y lo stakeado — o sea el APR mismo. Por encima del
+                       100% no es un rendimiento con el que nadie pueda contar. */
+                    $('vsAprNota').textContent = (st.apr > 1 || st.totalStaked < 1000)
+                        ? 'Barely anything is staked against the current pool, so this number is huge and '
+                          + 'will fall fast as others join. It is a snapshot, not a promise.'
                         : "Today's rate over what is staked right now, annualised. It moves with the pool and with how much the game earns.";
                 } else {
                     $('vsApr').textContent = '—';
@@ -4763,7 +4798,7 @@ function toggleTrailerMode() {
                 const av = document.getElementById('vsAviso'), antes = av.textContent;
                 av.textContent = 'Sign in your wallet…';
                 try { await window.PillChain.stakeTx(accion, pill); await this.refresh(); App.Msg.show('Staking', ok); }
-                catch (e) { av.textContent = antes; App.Msg.show('Staking failed', (e && e.message) || String(e)); }
+                catch (e) { av.textContent = antes; App.Msg.show('Staking failed', _errWallet(e)); }
             },
             stake() {
                 const a = Math.max(0, parseInt(document.getElementById('vsAmount').value, 10) || 0);
