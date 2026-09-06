@@ -617,6 +617,15 @@
                 <button class="b mini" onclick="resetPillBandSlow()">Reset</button>
                 <span style="color:#666; font-size: 12px;">Rate the bands keep growing past the reference size (0.40 by default, i.e. 40%). Lower = fat pills stay flatter/less shaded. 1 = no slowdown.</span>
             </div>
+            <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight:600">Kill reward popup (GLOBAL, all players):</label>
+                <select id="killGainMode" onchange="aplicarKillGainMode()" style="background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;">
+                    <option value="both">Tokens + dollars</option>
+                    <option value="pill">Tokens only ($PILL)</option>
+                    <option value="usd">Dollars only ($)</option>
+                </select>
+                <span style="color:#666; font-size: 12px;">What the "+X" shows when you kill someone in classic and take their carry. "Tokens + dollars" puts the $PILL amount on top and the dollar equivalent right below it. Without an oracle rate there are no dollars to show, so "Dollars only" falls back to tokens.</span>
+            </div>
             <div class="usage" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
                 <label style="font-weight:600">Menu visuals (GLOBAL, all players) — decorative food/virus + panel bob on the login/mode-select screens:</label>
                 <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
@@ -1231,6 +1240,12 @@ function aplicarPillBandSlow() {
     if (v > 0) { send({ cmd: 'setPillBandSlow', value: v }); toast('<strong>Pill shading growth: ' + v + '</strong><br>All players', 'ok'); setTimeout(pedir, 100); }
 }
 function resetPillBandSlow() { document.getElementById('pillBandSlow').value = '0.4'; send({ cmd: 'setPillBandSlow', value: 0.4 }); toast('<strong>Pill shading growth reset (0.4)</strong>', 'ok'); setTimeout(pedir, 100); }
+function aplicarKillGainMode() {
+    const v = document.getElementById('killGainMode').value;
+    const txt = { both: 'tokens + dollars', pill: 'tokens only', usd: 'dollars only' }[v] || v;
+    send({ cmd: 'setKillGainMode', value: v });
+    toast('<strong>Kill reward popup: ' + txt + '</strong><br>All players', 'ok'); setTimeout(pedir, 100);
+}
 function aplicarMenuDeco() {
     send({ cmd: 'setMenuDeco',
         gridSize: parseInt(document.getElementById('mdGrid').value, 10),
@@ -2007,6 +2022,7 @@ function render(m) {
     if (typeof m.zoomExp === 'number' && document.activeElement.id !== 'zoomExp') { const ze = document.getElementById('zoomExp'); if (ze) ze.value = m.zoomExp; }
     if (typeof m.pillBandRef === 'number' && document.activeElement.id !== 'pillBandRef') { const el = document.getElementById('pillBandRef'); if (el) el.value = m.pillBandRef; }
     if (typeof m.pillBandSlow === 'number' && document.activeElement.id !== 'pillBandSlow') { const el = document.getElementById('pillBandSlow'); if (el) el.value = m.pillBandSlow; }
+    if (typeof m.killGainMode === 'string' && document.activeElement.id !== 'killGainMode') { const el = document.getElementById('killGainMode'); if (el) el.value = m.killGainMode; }
     if (typeof m.menuDecoGridSize === 'number' && document.activeElement.id !== 'mdGrid') { const el = document.getElementById('mdGrid'); if (el) { el.value = m.menuDecoGridSize; document.getElementById('mdGridVal').innerText = m.menuDecoGridSize + 'px'; } }
     if (typeof m.menuDecoFoodDensity === 'number' && document.activeElement.id !== 'mdFood') { const el = document.getElementById('mdFood'); if (el) { el.value = m.menuDecoFoodDensity; document.getElementById('mdFoodVal').innerText = m.menuDecoFoodDensity; } }
     if (typeof m.menuDecoVirusCount === 'number' && document.activeElement.id !== 'mdVirus') { const v = m.menuDecoVirusCount; const el = document.getElementById('mdVirus'); if (el) { el.value = v; document.getElementById('mdVirusVal').innerText = v; } }

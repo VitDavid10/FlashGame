@@ -129,6 +129,13 @@ const _clampPillBandRef = v => Math.max(6, Math.min(64, v));
 let pillBandRef = (typeof _glob.pillBandRef === 'number') ? _clampPillBandRef(_glob.pillBandRef) : 24;
 const _clampPillBandSlow = v => Math.max(0.05, Math.min(1, v));
 let pillBandSlow = (typeof _glob.pillBandSlow === 'number') ? _clampPillBandSlow(_glob.pillBandSlow) : 0.40;
+// Que enseña el cartel del botín al matar en classic (showKillGain en
+// game/index.html): 'pill' solo tokens, 'usd' solo el equivalente en dólares,
+// 'both' los dos en dos líneas. Editable en vivo desde admin, mismo canal que
+// el zoom: el cliente lo lee de /api/rooms al entrar y por ws mientras juega.
+const KILL_GAIN_MODES = ['pill', 'usd', 'both'];
+const _clampKillGainMode = v => KILL_GAIN_MODES.includes(v) ? v : 'both';
+let killGainMode = _clampKillGainMode(_glob.killGainMode);
 // Decoracion cosmetica del fondo del menu (food/virus flotando + bob de la
 // pildora/carteles + tamano de celda de la rejilla): editable en vivo desde
 // admin, el cliente los lee de /api/rooms (mismo canal que sfxVol/baseZoom
@@ -181,7 +188,7 @@ let layoutEdit = (typeof _glob.layoutEdit === 'boolean') ? _glob.layoutEdit : fa
 // RECALCULA SOLO al arrancar (ver computeRanking mas abajo) y hay que saber con
 // que criterio hacerlo; si no, cada reinicio lo dejaba en el de por defecto.
 let rankingIncludeTesters = (typeof _glob.rankingIncludeTesters === 'boolean') ? _glob.rankingIncludeTesters : false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, menuTitulo, landingLayout, cartelesLayout, pillPerDollar: _glob.pillPerDollar, pillUsd: _glob.pillUsd }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, menuTitulo, landingLayout, cartelesLayout, pillPerDollar: _glob.pillPerDollar, pillUsd: _glob.pillUsd }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -290,7 +297,7 @@ function killHosts() {
 // animaciones, zoom, tiempos de arcade) — se guardan aquí y se empujan a TODOS
 // los hosts por notify (fire-and-forget, no hace falta confirmación).
 function pushSettingsToHosts() {
-    const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
+    const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
         menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit };
     for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('settingsSync', patch); }
 }
@@ -1239,7 +1246,7 @@ function registerHostHandlers(hostEntry) {
     // Rate actual del oráculo para el cache del host recién forkeado.
     ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR, nextAt: _oracleNextAt });
     // Ajustes actuales (volumen/animaciones/zoom/tiempos) para el host recién forkeado.
-    ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
+    ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
         menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit });
 }
 
@@ -1448,6 +1455,7 @@ function applySettingsPatch(p) {
     if (typeof p.zoomExp === 'number') { zoomExp = _clampZoomExp(p.zoomExp); for (const r of rooms.values()) broadcast(r, { t: 'zoomExp', value: zoomExp }); }
     if (typeof p.pillBandRef === 'number') { pillBandRef = _clampPillBandRef(p.pillBandRef); for (const r of rooms.values()) broadcast(r, { t: 'pillBandRef', value: pillBandRef }); }
     if (typeof p.pillBandSlow === 'number') { pillBandSlow = _clampPillBandSlow(p.pillBandSlow); for (const r of rooms.values()) broadcast(r, { t: 'pillBandSlow', value: pillBandSlow }); }
+    if (typeof p.killGainMode === 'string') { killGainMode = _clampKillGainMode(p.killGainMode); for (const r of rooms.values()) broadcast(r, { t: 'killGainMode', value: killGainMode }); }
     if (typeof p.menuDecoFoodDensity === 'number') menuDecoFoodDensity = _clampN(p.menuDecoFoodDensity, 0, 150, menuDecoFoodDensity);
     if (typeof p.menuDecoVirusCount === 'number') menuDecoVirusCount = _clampN(p.menuDecoVirusCount, 1, 10, menuDecoVirusCount);
     if (typeof p.menuDecoPillBobPx === 'number') menuDecoPillBobPx = _clampN(p.menuDecoPillBobPx, 0, 12, menuDecoPillBobPx);
@@ -1936,7 +1944,7 @@ function buildAdminState() {
         maxLayers: MAX_LAYERS,
         layerEnabled: Object.assign({}, layerEnabled),
         arcadeRestartMs, arcadeLobbyMs,
-        sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
+        sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
         menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle,
         layoutEdit,
         serverCpu: serverCpuPct,
@@ -2562,7 +2570,7 @@ const httpServer = http.createServer(async (req, res) => {
                         roomName: price, layers: [],
                     });
                 }
-                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, pillUsd: _oraclePillUsd, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
+                _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, pillUsd: _oraclePillUsd, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
                     menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
@@ -2640,7 +2648,7 @@ const httpServer = http.createServer(async (req, res) => {
             });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, pillUsd: _oraclePillUsd, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow,
+        res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, pillUsd: _oraclePillUsd, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
             menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }));
         return;
     }
@@ -3826,6 +3834,13 @@ wss.on('connection', (ws, req) => {
                 if (PW_ROLE === 'director') pushSettingsToHosts();
                 ws.send(JSON.stringify(buildAdminState()));
                 log(`Global pill band slow: ${pillBandSlow}`);
+            } else if (msg.cmd === 'setKillGainMode') {
+                if (typeof msg.value === 'string') killGainMode = _clampKillGainMode(msg.value);
+                saveGlobal();
+                for (const r of rooms.values()) broadcast(r, { t: 'killGainMode', value: killGainMode });
+                if (PW_ROLE === 'director') pushSettingsToHosts();
+                ws.send(JSON.stringify(buildAdminState()));
+                log(`Global kill gain mode: ${killGainMode}`);
             } else if (msg.cmd === 'setMenuDeco') {
                 // Decoracion cosmetica del fondo del menu (food/virus, bob de
                 // pildora/carteles, tamano de rejilla) — misma mecanica que

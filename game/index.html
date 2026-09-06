@@ -2473,11 +2473,24 @@
 
         #botsBanner { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(8,12,8,0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0,255,136,0.4); border-radius: 10px; padding: 12px 28px; font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #00ff88; box-shadow: 0 0 30px rgba(0,255,136,0.2); white-space: nowrap; transition: top 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s; opacity: 0; pointer-events: none; }
         #botsBanner.show { top: 22px; opacity: 1; }
-        /* A media altura (60% desde abajo) y no pegado arriba: el hueco de arriba
+        /* A media altura (40% desde arriba) y no pegado arriba: el hueco de arriba
            lo ocupan el reloj, el aviso de pentakill y el marcador, y el +X se
-           les montaba encima. */
-        #killGainStack { position: fixed; top: auto; bottom: 60%; left: 50%; transform: translateX(-50%); z-index: 9998; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
-        .kill-gain { font-family: 'Russo One', sans-serif; font-size: 32px; letter-spacing: 2px; color: #ff9933; text-shadow: 0 0 26px rgba(255,153,51,0.9), 0 0 10px rgba(255,153,51,0.7), 0 3px 8px rgba(0,0,0,0.9); animation: killGainFloat 2s cubic-bezier(0.2,0.7,0.3,1) forwards; }
+           les montaba encima. Se ancla por TOP (antes por bottom) porque el
+           bloque crece hacia abajo: la cifra se queda donde siempre y la racha
+           cae debajo de ella. */
+        #killGainStack { position: fixed; top: 40%; bottom: auto; left: 50%; transform: translateX(-50%); z-index: 9998; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+        /* Verde de billete: el premio es dinero, y en naranja competia con el
+           ambar del CARRY del HUD. */
+        .kill-gain { font-family: 'Russo One', sans-serif; font-size: 32px; letter-spacing: 2px; color: #3ddc84; text-shadow: 0 0 26px rgba(61,220,132,0.9), 0 0 10px rgba(61,220,132,0.7), 0 3px 8px rgba(0,0,0,0.9); animation: killGainFloat 2s cubic-bezier(0.2,0.7,0.3,1) forwards; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+        /* Los dolares, en SU linea debajo de los tokens (span suelto se quedaba
+           pegado al final del renglon). Admin elige si van los dos, solo tokens
+           o solo dolares: killGainMode. */
+        .kill-gain .kg-money { display: block; text-align: center; }
+        .kill-gain .kg-usd { display: block; font-size: 0.68em; opacity: 0.92; margin-top: 6px; }
+        /* La racha va DEBAJO del dinero y en rojo, para que lo que manda en el
+           centro de la pantalla sea lo que has ganado. */
+        .kill-gain .kg-streak { font-size: 0.7em; color: #ff2a2a; margin-top: 10px; text-shadow: 0 0 18px rgba(255,42,42,0.85), 0 3px 8px rgba(0,0,0,0.9); }
+        .kill-gain .kg-streak:empty, .kill-gain .kg-money:empty { display: none; }
         @keyframes killGainFloat {
             0%   { opacity: 0; transform: translateY(20px) scale(0.7); }
             12%  { opacity: 1; transform: translateY(0) scale(1.1); }
@@ -3334,6 +3347,7 @@
         body.pixel-pack #botsBanner { font-size: 10px !important; text-shadow: 1px 1px 0 #000 !important; }
         body.pixel-pack #pentakillBanner { font-size: 13px !important; letter-spacing: 2px !important; text-shadow: 2px 2px 0 #000 !important; }
         body.pixel-pack .kill-gain { font-family: 'Press Start 2P', monospace !important; font-size: 20px !important; text-shadow: 4px 4px 0 #000, 8px 8px 0 rgba(0,0,0,0.5) !important; }
+        body.pixel-pack .kill-gain .kg-streak { text-shadow: 3px 3px 0 #000 !important; }
         body.pixel-pack #cmdBar input {
             border-radius: 0 !important; font-family: 'VT323', monospace !important; font-size: 17px !important;
             box-shadow: 4px 4px 0 rgba(0,0,0,0.6), inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05) !important;
@@ -5100,6 +5114,7 @@
             split: new Audio('../snd/split.mp3'), sprint: new Audio('../snd/sprint.mp3'), timer: new Audio('../snd/timer.mp3'),
             tp: new Audio('../snd/tp.mp3'), big: new Audio('../snd/big.mp3'), little: new Audio('../snd/little.mp3'),
             virus: new Audio('../snd/virus.mp3'), floatkill: new Audio('../snd/floatkill.mp3'),
+            money: new Audio('../snd/money.mp3'),     // caja registradora del botin de la kill
             loading: new Audio('../snd/loading.mp3'), go: new Audio('../snd/GO.mp3'),
             contador: new Audio('../snd/contador.mp3')
         },
@@ -5172,6 +5187,11 @@
         // muertes sonaban mudas y ademas soltaban un 404 en la consola.
         playKill: function() { const now = Date.now(); if (now - this.lastKillTime < 150) return; this.lastKillTime = now; this.play('kill1'); },
         playFloatKill: function() { const now = Date.now(); if (now - this.lastFloatKillTime < 200) return; this.lastFloatKillTime = now; this.play('floatkill'); },
+        // El dinero suena DETRAS del grito de la racha, no encima: a la vez se
+        // pisaban y no se entendia ninguno de los dos. El retardo se cuenta
+        // desde que llega el aviso del server, que es el mismo tick que el grito.
+        KILL_MONEY_DELAY_MS: 260,
+        playMoney: function() { setTimeout(() => this.play('money'), this.KILL_MONEY_DELAY_MS); },
         playSplit: function() { const now = Date.now(); if (now - this.lastSplitTime < 150) return; this.lastSplitTime = now; this.play('split'); },
         playMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
         stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; },
@@ -12041,6 +12061,11 @@
     // Con MONEY_IN_USD = false se vuelve a mostrar en $PILL (cuando el token exista).
     const MONEY_IN_USD = true;
     let pillRate = 0;
+    // Que ensena el cartel del botin: 'pill' (solo tokens), 'usd' (solo dolares)
+    // o 'both' (los dos, en dos lineas). Lo manda el servidor: /api/rooms al
+    // entrar y mensaje 'killGainMode' si el admin lo cambia en mitad de la
+    // partida. El default de aqui solo se usa si el servidor no contesta.
+    let killGainMode = 'both';
     // Tokens abreviados: 25000 -> 25K, 1200000 -> 1.2M. Lo que se gana son $PILL
     // y las cifras son largas; asi caben en el HUD y en los carteles.
     function fmtPillShort(pill) {
@@ -12184,16 +12209,49 @@
             setTimeout(() => GameWalletUI.refresh(), 800);
         }
     };
-    // Floating "+$X" en naranja al matar (solo classic). Aparece sobre el HUD y sube.
-    function showKillGain(amount) {
-        if (!amount || amount <= 0) return;
+    // Cartel del botin al matar (solo classic): el dinero manda en el centro de
+    // la pantalla y la racha (FIRST BLOOD, DOUBLE KILL...) va DEBAJO, en el
+    // mismo bloque. Antes la racha salia sobre TU pildora, tapandola, y el
+    // dinero flotaba suelto por su cuenta.
+    //
+    // La racha llega como evento de la sim y el dinero como mensaje del server,
+    // por caminos distintos: el primero que llega crea el bloque y el otro lo
+    // rellena. La ventana los junta solo si son de la MISMA kill.
+    const KILL_POP_JOIN_MS = 250;
+    let _killPop = null, _killPopAt = 0;
+    function killPop() {
         const stack = document.getElementById('killGainStack');
-        if (!stack) return;
+        if (!stack) return null;
+        const t = performance.now();
+        if (_killPop && _killPop.isConnected && t - _killPopAt < KILL_POP_JOIN_MS) return _killPop;
         const el = document.createElement('div');
         el.className = 'kill-gain';
-        el.innerText = '+' + fmtMoney(amount);
+        el.innerHTML = '<span class="kg-money"></span><span class="kg-streak"></span>';
         stack.appendChild(el);
         setTimeout(() => { try { el.remove(); } catch (e) {} }, 2000);
+        _killPop = el; _killPopAt = t;
+        return el;
+    }
+    // Que se ensena lo decide el admin (killGainMode). Sin rate del oraculo no
+    // hay dolares que ensenar, asi que 'usd' cae a tokens en vez de quedarse en
+    // blanco.
+    function showKillGain(amount) {
+        if (!amount || amount <= 0) return;
+        const pop = killPop(); if (!pop) return;
+        const n = Number(amount);
+        const usd = pillRate > 0 ? '$' + (n / pillRate).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '';
+        let html;
+        if (killGainMode === 'usd' && usd) html = '+' + usd;
+        else {
+            html = '+' + fmtPillShort(n) + ' $PILL';
+            if (killGainMode === 'both' && usd) html += '<span class="kg-usd">' + usd + '</span>';
+        }
+        pop.querySelector('.kg-money').innerHTML = html;
+        SoundManager.playMoney();
+    }
+    function showKillStreak(msg) {
+        const pop = killPop(); if (!pop) return;
+        pop.querySelector('.kg-streak').textContent = msg;
     }
     // Aviso de pentakill cercano: banner arriba + glow pulsante del contador.
     // Solo aplica a classic; arcade y los demás modos lo ignoran.
@@ -12862,6 +12920,8 @@
             // bandas y a que ritmo.
             setPixBandRef(data.pillBandRef);
             setPixBandSlow(data.pillBandSlow);
+            // Que ensena el cartel del botin al matar (admin).
+            if (typeof data.killGainMode === 'string') killGainMode = data.killGainMode;
             // Decoracion del fondo del menu (food/virus, bob, tamano de rejilla): admin.
             applyMenuDecoFromServer(data);
             const newRate = data.pillPerDollar || gamePillPerDollar || 10000;
@@ -14819,6 +14879,8 @@
                 setPixBandRef(msg.value);   // admin cambió el sombreado de la pildora en vivo
             } else if (msg.t === 'pillBandSlow') {
                 setPixBandSlow(msg.value);
+            } else if (msg.t === 'killGainMode') {
+                if (typeof msg.value === 'string') killGainMode = msg.value;   // admin cambió qué enseña el botín
             } else if (msg.t === 'announce') {
                 // Anuncio del admin a todos: cartel destacado + sonido.
                 setLobbyBanner('<b>' + (msg.text || '') + '</b>', 'found');
@@ -15503,7 +15565,7 @@
                     Quests.reportKill();
                     if (ev.mode === 'classic') {
                         let msg = "KILL"; if (ev.streak === 1) msg = "FIRST BLOOD"; else if (ev.streak === 2) msg = "DOUBLE KILL"; else if (ev.streak === 3) msg = "TRIPLE KILL"; else if (ev.streak === 4) msg = "QUADRA KILL"; else if (ev.streak >= 5) msg = "PENTAKILL";
-                        spawnFloatingText(msg, "#FF0000", true); SoundManager.playFloatKill();
+                        showKillStreak(msg); SoundManager.playFloatKill();
                         updatePentakillHint(ev.streak);
                         if (ev.streak >= 5) setTimeout(() => finishGameSuccess(), 1000);
                     } else {
