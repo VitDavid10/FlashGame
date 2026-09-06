@@ -620,9 +620,9 @@
             <div class="usage" style="padding: 18px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <label style="font-weight:600">Kill reward popup (GLOBAL, all players):</label>
                 <select id="killGainMode" onchange="aplicarKillGainMode()" style="background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:6px;padding:5px 8px;font-size:12px;">
+                    <option value="usd" selected>Dollars only ($)</option>
                     <option value="both">Tokens + dollars</option>
                     <option value="pill">Tokens only ($PILL)</option>
-                    <option value="usd">Dollars only ($)</option>
                 </select>
                 <span style="color:#666; font-size: 12px;">What the "+X" shows when you kill someone in classic and take their carry. "Tokens + dollars" puts the $PILL amount on top and the dollar equivalent right below it. Without an oracle rate there are no dollars to show, so "Dollars only" falls back to tokens.</span>
             </div>

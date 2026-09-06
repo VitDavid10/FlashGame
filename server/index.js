@@ -131,10 +131,11 @@ const _clampPillBandSlow = v => Math.max(0.05, Math.min(1, v));
 let pillBandSlow = (typeof _glob.pillBandSlow === 'number') ? _clampPillBandSlow(_glob.pillBandSlow) : 0.40;
 // Que enseña el cartel del botín al matar en classic (showKillGain en
 // game/index.html): 'pill' solo tokens, 'usd' solo el equivalente en dólares,
-// 'both' los dos en dos líneas. Editable en vivo desde admin, mismo canal que
-// el zoom: el cliente lo lee de /api/rooms al entrar y por ws mientras juega.
+// 'both' los dos en dos líneas. Por defecto 'usd': solo el dinero. Editable en
+// vivo desde admin, mismo canal que el zoom: el cliente lo lee de /api/rooms al
+// entrar y por ws mientras juega.
 const KILL_GAIN_MODES = ['pill', 'usd', 'both'];
-const _clampKillGainMode = v => KILL_GAIN_MODES.includes(v) ? v : 'both';
+const _clampKillGainMode = v => KILL_GAIN_MODES.includes(v) ? v : 'usd';
 let killGainMode = _clampKillGainMode(_glob.killGainMode);
 // Decoracion cosmetica del fondo del menu (food/virus flotando + bob de la
 // pildora/carteles + tamano de celda de la rejilla): editable en vivo desde
