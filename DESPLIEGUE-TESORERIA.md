@@ -109,6 +109,44 @@ solana address -k programs/pill-treasury-keypair.json
 
 ---
 
+## 1 bis. Lo que hay que arreglar ANTES del `initialize` de mainnet
+
+De la auditoría del 6/09/2026. Los dos son cambios de código, y los dos **dejan de
+tener arreglo en cuanto se llame a `initialize`**: el primero toca la `Config`, que
+no se puede migrar, y el segundo protege una carrera que solo existe en el momento
+del despliegue. En devnet da igual —ahí se puede volver a desplegar—, en mainnet no.
+
+**a) `fund_stake_rewards` es una cuarta salida de la custodia y no tiene cap.**
+La cabecera de `lib.rs` promete, como garantía nº 7, que las salidas de custodia
+que no van al jugador van capadas por época. Son tres, no dos: `sweep` tiene su
+`sweep_cap_per_epoch`, `burn` el suyo, y `fund_stake_rewards` mueve de `["custody"]`
+a `["rewards"]` sin ningún contador. Con la clave de la autoridad comprometida, una
+transacción empuja toda la custodia —dinero de los jugadores— al pozo del staking, y
+de ahí sale a una wallet cualquiera stakeando cuando `total_staked` está bajo. De
+paso deja sin efecto los topes de `sweep` y `burn`, que existen justo para eso.
+
+Hace falta el mismo patrón que ya está escrito dos veces: `stake_fund_cap_per_epoch`
++ `stake_fund_epoch` + `funded_this_epoch` en la `Config`, el bloque de época al
+principio de la instrucción, y el campo nuevo en `TightenArgs` para poder apretarlo
+después.
+
+**b) `initialize` no comprueba quién lo llama.** `pill_custody` y `pill_staking`
+llevan la constante `DEPLOYER` y `constraint = payer.key() == DEPLOYER`, con el
+comentario que explica por qué. `pill_treasury` tiene solo `#[account(mut)] payer`.
+Es la carrera que describe ese mismo comentario: quien vigile despliegues llama a
+`initialize` entre tu `deploy` y el tuyo, se pone de `authority` con su propio
+`mint`, y como `config` es `init` no admite una segunda llamada — el programa queda
+inservible con sus ~5,7 SOL de renta dentro, y encima pierdes la dirección `PiLL…`.
+Son las diez líneas de `pill-custody`, unos 640 bytes de binario.
+
+**c) Y lo de siempre, que el script ya comprueba:** `DEPLOYER` está compilado con la
+wallet de devnet (`4ToGD9…`). Para mainnet hay que cambiarlo **y recompilar**, en los
+tres contratos. `scripts/deploy-custody.sh` y `deploy-staking.sh` lo verifican contra
+la wallet activa antes de gastar un lamport; `pill_treasury` no tiene script propio,
+así que ahí la comprobación es a mano.
+
+---
+
 ## 2. Compilar y desplegar
 
 ```bash
@@ -824,6 +862,11 @@ lo dice en cada ejecución hasta que se revoca.
 
 ## 8. Antes de anunciarlo
 
+- [ ] Los dos cambios de §1 bis, hechos **antes** del `initialize` (cap de
+      `fund_stake_rewards` y guard `DEPLOYER` en `initialize`)
+- [ ] `cargo test` en verde, incluidos los del goteo con el pool vacío — el arreglo
+      se escribió sin toolchain de Rust delante y no ha pasado por el compilador
+- [ ] El keypair del programa **fuera del árbol del repo** y guardado en dos sitios
 - [ ] `npm run treasury -- status` dice **UPGRADE AUTHORITY: NINGUNA**
 - [ ] `finalized: SI`
 - [ ] `unlock_ts` a años vista
