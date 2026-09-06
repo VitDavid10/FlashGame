@@ -61,7 +61,24 @@ const PW_HOST_ID = parseInt(process.env.PW_HOST_ID, 10) || 0;
 const PW_HOST_COUNT = parseInt(process.env.PW_HOST_COUNT, 10) || 1;
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
-const ADMIN_KEY = process.env.ADMIN_KEY || '1234';
+/*
+ * Sin ADMIN_KEY definida NO se cae a una clave adivinable.
+ *
+ * El default era '1234', con un aviso en el log. Un aviso solo lo ve quien mire
+ * `journalctl`, y mientras tanto el panel —que da control total del servidor—
+ * queda abierto con la primera clave que prueba cualquiera. Encima el juego
+ * tiene otro '1234' en el cliente (unlockSettings), así que es justo la que se
+ * le ocurre a quien haya leído el código.
+ *
+ * Ahora, sin la variable, se genera una al azar y se imprime al arrancar: en
+ * local la lees en tu consola —menos fricción que recordar un valor fijo— y si
+ * en producción se olvida definir la env, la puerta no queda abierta, queda con
+ * 32 caracteres que solo salen por el log del servidor. Se mete de vuelta en
+ * process.env para que los hosts hijos (fork con el env heredado) usen la misma.
+ */
+const ADMIN_KEY_GENERADA = !process.env.ADMIN_KEY;
+const ADMIN_KEY = process.env.ADMIN_KEY || crypto.randomBytes(16).toString('hex');
+if (ADMIN_KEY_GENERADA) process.env.ADMIN_KEY = ADMIN_KEY;
 // Path del panel/editor: el repo es PUBLICO en GitHub, así que un valor fijo
 // aquí (aunque parezca random) se vería en el código fuente por cualquiera —
 // esto NO es "la clave", es solo evitar que un escaneo automático o alguien
@@ -4171,8 +4188,13 @@ if (PW_ROLE === 'director') {
 
 httpServer.listen(PORT, () => {
     log(`Servidor PillWars [${PW_ROLE}${PW_ROLE === 'host' ? ' ' + PW_HOST_ID + '/' + PW_HOST_COUNT : ''}] escuchando en ws://localhost:${PORT}`);
-    // Solo mostramos la clave si es la insegura por defecto (avisamos) — en producción NUNCA se loguea
-    if (ADMIN_KEY === '1234') log(`⚠ [SEGURIDAD] ADMIN_KEY no definida — usando '1234' por defecto. Define ADMIN_KEY en producción.`);
+    // La clave solo se imprime cuando la ha generado el propio arranque: es la
+    // única forma de conocerla, y sin ella el panel no se abre. Con ADMIN_KEY
+    // definida NUNCA se loguea, solo su longitud.
+    if (ADMIN_KEY_GENERADA) {
+        log(`⚠ [SEGURIDAD] ADMIN_KEY no definida. Clave de esta sesión (cambia en cada reinicio): ${ADMIN_KEY}`);
+        log(`  Panel: http://localhost:${PORT}${ADMIN_PATH} — define ADMIN_KEY en el .service para que sea estable.`);
+    }
     else log(`Panel de admin: http://localhost:${PORT}${ADMIN_PATH}  (clave definida en ADMIN_KEY, ${ADMIN_KEY.length} chars)`);
     // Aviso si el bundle de Solana (vendor/solana.js) se quedó atrás respecto a
     // la librería instalada: es el único mantenimiento que trae haber dejado de

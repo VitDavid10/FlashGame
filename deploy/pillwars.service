@@ -18,7 +18,10 @@ RestartSec=3
 
 # El servidor solo escucha en localhost; Caddy le pone el HTTPS por delante.
 Environment=PORT=8080
-# CAMBIA esta clave por una larga y secreta (NO dejes 1234 en producción)
+# CAMBIA esta clave por una larga y secreta. Si esta linea no existe, el servidor
+# ya NO cae a '1234': genera una al azar en cada arranque y la imprime en el log
+# (journalctl -u pillwars). Sin ella el panel no se abre, pero la clave cambia en
+# cada reinicio — o sea que aqui hay que poner una de verdad.
 Environment=ADMIN_KEY=CAMBIA_ESTA_CLAVE_LARGA
 # CAMBIA estos dos paths por algo no adivinable (el repo es publico en GitHub,
 # asi que NO pongas aqui el valor real y lo subas — esto es solo la plantilla;

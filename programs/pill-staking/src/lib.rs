@@ -368,8 +368,36 @@ pub mod pill_staking {
  * recorrer a nadie.
  */
 fn actualiza_pool(cfg: &mut Config, now: i64) -> Result<()> {
+    if now <= cfg.last_update { return Ok(()); }
+
+    /*
+     * POOL VACÍO: el goteo se PARA. No corre en balde.
+     *
+     * Antes el reloj avanzaba igual, y lo que tocaba repartir en ese hueco se
+     * quedaba encerrado en ["rewards"] para siempre: ninguna instrucción saca de
+     * ese vault, que es una PDA que es su propia autoridad. El peor momento
+     * posible para ese hueco es justo el que va a pasar de verdad — se llena el
+     * pozo, todavía no ha entrado nadie, y ese tramo se pierde.
+     *
+     * Aplazar `period_finish` exactamente lo que duró el vacío conserva lo que
+     * quedaba por repartir (period_finish - last_update no cambia) y sigue sin
+     * pagarle a nadie por un tiempo en el que no estuvo dentro, que era el único
+     * motivo por el que el reloj avanzaba.
+     */
+    if cfg.total_staked == 0 || cfg.reward_rate == 0 {
+        if cfg.reward_rate > 0 && cfg.period_finish > cfg.last_update {
+            let parado = now - cfg.last_update;
+            cfg.period_finish = cfg
+                .period_finish
+                .checked_add(parado)
+                .ok_or(StakingError::MathOverflow)?;
+        }
+        cfg.last_update = now;
+        return Ok(());
+    }
+
     let hasta = core::cmp::min(now, cfg.period_finish);
-    if hasta > cfg.last_update && cfg.total_staked > 0 && cfg.reward_rate > 0 {
+    if hasta > cfg.last_update {
         let dt = (hasta - cfg.last_update) as u128;
         let repartido = dt
             .checked_mul(cfg.reward_rate as u128)
@@ -381,10 +409,8 @@ fn actualiza_pool(cfg: &mut Config, now: i64) -> Result<()> {
             .acc_reward_per_share
             .checked_add(repartido)
             .ok_or(StakingError::MathOverflow)?;
+        cfg.last_update = hasta;
     }
-    // El reloj avanza aunque no haya nadie dentro: si no, al entrar el primero se le
-    // pagaría todo lo acumulado mientras el pool estaba vacío.
-    cfg.last_update = core::cmp::max(cfg.last_update, hasta);
     Ok(())
 }
 

@@ -1059,8 +1059,36 @@ const PRECISION: u128 = 1_000_000_000_000;
 /// cambio de saldo, o el reparto se calcularia con el saldo nuevo sobre tiempo viejo.
 fn actualiza_pool(cfg: &mut Config, now: i64) -> Result<()> {
     if !cfg.staking_ready { return err!(TreasuryError::StakingNotReady); }
+    if now <= cfg.last_update { return Ok(()); }
+
+    /*
+     * POOL VACIO: el goteo se PARA. No corre en balde.
+     *
+     * Antes el reloj avanzaba igual, y lo que tocaba repartir en ese hueco se
+     * quedaba encerrado en ["rewards"] para siempre: ninguna instruccion saca de
+     * ese vault, que es una PDA que es su propia autoridad. El peor momento
+     * posible para ese hueco es justo el que va a pasar de verdad — financias el
+     * pozo, todavia no ha entrado nadie, y ese tramo se pierde.
+     *
+     * Aplazar `period_finish` exactamente lo que duro el vacio conserva lo que
+     * quedaba por repartir (period_finish - last_update no cambia) y sigue sin
+     * pagarle a nadie por un tiempo en el que no estuvo dentro, que era el unico
+     * motivo por el que el reloj avanzaba.
+     */
+    if cfg.total_staked == 0 || cfg.reward_rate == 0 {
+        if cfg.reward_rate > 0 && cfg.period_finish > cfg.last_update {
+            let parado = now - cfg.last_update;
+            cfg.period_finish = cfg
+                .period_finish
+                .checked_add(parado)
+                .ok_or(TreasuryError::MathOverflow)?;
+        }
+        cfg.last_update = now;
+        return Ok(());
+    }
+
     let hasta = core::cmp::min(now, cfg.period_finish);
-    if hasta > cfg.last_update && cfg.total_staked > 0 && cfg.reward_rate > 0 {
+    if hasta > cfg.last_update {
         let dt = (hasta - cfg.last_update) as u128;
         let repartido = dt
             .checked_mul(cfg.reward_rate as u128)
@@ -1072,10 +1100,8 @@ fn actualiza_pool(cfg: &mut Config, now: i64) -> Result<()> {
             .acc_reward_per_share
             .checked_add(repartido)
             .ok_or(TreasuryError::MathOverflow)?;
+        cfg.last_update = hasta;
     }
-    // El reloj avanza aunque no haya nadie dentro: si no, al entrar el primero se le
-    // pagaria todo lo acumulado mientras el pool estaba vacio.
-    cfg.last_update = core::cmp::max(cfg.last_update, hasta);
     Ok(())
 }
 
@@ -1238,6 +1264,50 @@ mod tests {
         actualiza_pool(&mut cfg, 600).unwrap();
         liquida(&cfg, &mut a).unwrap();
         assert_eq!(a.pending, 10_000, "solo los 100 s que estuvo dentro");
+    }
+
+    #[test]
+    fn el_pool_vacio_aplaza_el_goteo_en_vez_de_tirarlo() {
+        // Lo que no se reparte por no haber nadie NO se puede perder: de ["rewards"]
+        // no sale nada si no es por el goteo, asi que un tramo saltado es dinero
+        // encerrado para siempre en una PDA sin llave privada.
+        let mut cfg = pool(0, 100, 0, 1_000);        // 1.000 s x 100/s = 100.000 por repartir
+        let queda = |c: &Config, ahora: i64| (c.period_finish - ahora) * c.reward_rate as i64;
+        assert_eq!(queda(&cfg, 0), 100_000);
+
+        actualiza_pool(&mut cfg, 400).unwrap();      // 400 s sin nadie dentro
+        assert_eq!(cfg.acc_reward_per_share, 0, "con el pool vacio no se reparte");
+        assert_eq!(cfg.period_finish, 1_400, "el final se aplaza lo que duro el vacio");
+        assert_eq!(queda(&cfg, 400), 100_000, "sigue por repartir lo mismo que al empezar");
+    }
+
+    #[test]
+    fn el_vacio_no_alarga_el_reparto_mas_alla_de_lo_que_quedaba() {
+        // El aplazamiento arrastra el periodo entero de una vez, tambien cuando el
+        // vacio dura mas que el propio periodo: si hiciera falta llamar varias veces
+        // para converger, el primero en entrar cobraria de menos.
+        let mut cfg = pool(0, 10, 0, 100);           // 100 s x 10/s = 1.000 por repartir
+        actualiza_pool(&mut cfg, 5_000).unwrap();    // vacio 50 veces mas largo que el periodo
+        assert_eq!(cfg.last_update, 5_000);
+        assert_eq!(cfg.period_finish, 5_100);
+        assert_eq!((cfg.period_finish - 5_000) * cfg.reward_rate as i64, 1_000);
+
+        // Y a partir de ahi reparte con normalidad, sin regalar el tramo vacio.
+        cfg.total_staked = 1_000;
+        let mut a = cuenta(1_000, &cfg);
+        actualiza_pool(&mut cfg, 5_050).unwrap();
+        liquida(&cfg, &mut a).unwrap();
+        assert_eq!(a.pending, 500, "50 s x 10/s, solo lo que estuvo dentro");
+    }
+
+    #[test]
+    fn sin_goteo_en_marcha_el_vacio_no_toca_nada() {
+        // reward_rate == 0: nunca se financio, o el periodo se agoto. No hay nada
+        // que aplazar y period_finish no se puede mover hacia adelante gratis.
+        let mut cfg = pool(0, 0, 0, 1_000);
+        actualiza_pool(&mut cfg, 900).unwrap();
+        assert_eq!(cfg.period_finish, 1_000, "sin ritmo de reparto no se aplaza nada");
+        assert_eq!(cfg.last_update, 900);
     }
 
     #[test]
