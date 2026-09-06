@@ -261,6 +261,65 @@ const MIN_PARTIDAS_COHESION = parseInt(process.env.LB_COHESION_MIN_MATCHES, 10) 
  * repartirse el top 10. Ante la duda NO marca: los tres guardas de arriba son todos
  * "si no puedo saberlo, dejo pasar".
  */
+/*
+ * TOPE A LO QUE SE LLEVA UN GRUPO ENTRE TODOS.
+ *
+ * El filtro de cohesion echa a los grupos de nueve o mas, pero por debajo de ese
+ * umbral no puede echar a nadie: cinco wallets coordinadas son indistinguibles de
+ * cinco amigos, y esa pregunta no tiene respuesta. Lo que si se puede hacer es que
+ * dominar la lista no compense, sean quienes sean.
+ *
+ * Los pesos estan muy cargados arriba —los cinco primeros puestos son el 84% del
+ * bote y los ocho primeros el 96%—, asi que un grupo pequeño que copa la cabeza se
+ * lo lleva casi todo. Con el tope, un grupo se lleva como mucho GRUPO_MAX_PCT entre
+ * todos sus miembros y el resto pasa a los que no son del grupo.
+ *
+ * NO ES UNA ACUSACION, es un limite de concentracion. Por eso se aplica igual a un
+ * cluster que a cinco amigos que juegan bien: no hace falta decidir cual es cual,
+ * que es justo lo que no se puede decidir.
+ *
+ * Un DUO nunca se capa (GRUPO_MIN_PUESTOS = 3). Dos colegas que quedan primero y
+ * segundo son lo normal en cualquier juego, y el daño de un grupo crece con cuantos
+ * puestos ocupa, no con que exista.
+ */
+const GRUPO_MAX_PCT = parseFloat(process.env.LB_GROUP_MAX_PCT) || 0.30;
+const GRUPO_MIN_PUESTOS = parseInt(process.env.LB_GROUP_MIN_SLOTS, 10) || 3;
+
+/*
+ * Agrupa por "coinciden siempre": componentes conexas del grafo de companeros fijos.
+ *
+ * Conexas y no cliques a proposito. Si A siempre juega con B y B siempre con C, los
+ * tres estan en la misma sala aunque A y C no se hayan mirado — partir eso en dos
+ * grupos seria regalar el tope al que se coloque en el borde.
+ *
+ * Devuelve wallet -> id de grupo, solo para los que tienen a alguien. Los ids son
+ * posicionales (g1, g2...) y estables dentro de un dia: se publican en la fila para
+ * que el tope se pueda recomputar desde la lista, sin publicar el grafo entero.
+ */
+function agrupaCerrados(wallets, oponentes) {
+    const dentro = new Set(wallets);
+    const padre = new Map(wallets.map(w => [w, w]));
+    const raiz = (w) => { while (padre.get(w) !== w) { padre.set(w, padre.get(padre.get(w))); w = padre.get(w); } return w; };
+    const une = (a, b) => { const ra = raiz(a), rb = raiz(b); if (ra !== rb) padre.set(ra, rb); };
+
+    for (const w of wallets) {
+        const o = oponentes && oponentes.get(w);
+        for (const otro of (o && o.fijos) || []) if (dentro.has(otro)) une(w, otro);
+    }
+    const cuenta = new Map();
+    for (const w of wallets) { const r = raiz(w); cuenta.set(r, (cuenta.get(r) || 0) + 1); }
+
+    const ids = new Map();
+    const salida = new Map();
+    for (const w of wallets) {
+        const r = raiz(w);
+        if ((cuenta.get(r) || 0) < 2) continue;          // solo, no es grupo
+        if (!ids.has(r)) ids.set(r, 'g' + (ids.size + 1));
+        salida.set(w, ids.get(r));
+    }
+    return salida;
+}
+
 function esCluster(o, poblacion) {
     if (!o || o.cohesion == null) return false;              // sin dato, no se juzga
     if ((poblacion | 0) < MIN_POBLACION_COHESION) return false;
@@ -278,7 +337,7 @@ function diversoBastante(o, poblacion) {
 
 function tablaDe(players, oponentes) {
     const hayDatos = oponentes && oponentes.size > 0;
-    return Object.entries(players)
+    const filas = Object.entries(players)
         .filter(([w, p]) => {
             if (p.kills < MIN_KILLS) return false;
             if (!hayDatos) return true;
@@ -300,6 +359,15 @@ function tablaDe(players, oponentes) {
                 cohesion: o && o.cohesion != null ? o.cohesion : null,
             };
         });
+
+    /*
+     * El grupo va en la fila y no se queda en memoria porque el tope del reparto se
+     * aplica sobre la lista PUBLICADA: asi cualquiera puede rehacer las cuentas del
+     * dia con el JSON delante, sin fiarse de lo que el servidor diga haber calculado.
+     */
+    const grupos = agrupaCerrados(filas.map(f => f.wallet), oponentes);
+    for (const f of filas) f.grupo = grupos.get(f.wallet) || null;
+    return filas;
 }
 
 /** Los oponentes del proveedor inyectado, o null si no hay. */
@@ -468,9 +536,54 @@ function verificarCadena() {
 function repartoDe(snapshot, presupuestoRaw) {
     const top = (snapshot.entries || []).slice(0, PESOS.length);
     const presupuesto = BigInt(presupuestoRaw);
+
+    /*
+     * Los pesos en milesimas (PESOS suma 100, x10 = 1000). Se trabaja en enteros por
+     * lo mismo que el resto del reparto: con decimales el sobrante del tope no
+     * cuadraria y algun claim acabaria fallando por fondos.
+     */
+    const mil = top.map((_, i) => BigInt(Math.round(PESOS[i] * 10)));
+
+    const porGrupo = new Map();
+    top.forEach((e, i) => {
+        if (!e.grupo) return;
+        if (!porGrupo.has(e.grupo)) porGrupo.set(e.grupo, []);
+        porGrupo.get(e.grupo).push(i);
+    });
+
+    const TOPE = BigInt(Math.round(GRUPO_MAX_PCT * 1000));
+    const capados = new Set();
+    let sobra = 0n;
+    for (const idx of porGrupo.values()) {
+        if (idx.length < GRUPO_MIN_PUESTOS) continue;
+        const suma = idx.reduce((t, i) => t + mil[i], 0n);
+        if (suma <= TOPE) continue;
+        // Se escala a todos los del grupo por igual: el que quedo primero sigue
+        // cobrando mas que el quinto, solo que el conjunto no pasa del tope.
+        for (const i of idx) {
+            const nuevo = (mil[i] * TOPE) / suma;
+            sobra += mil[i] - nuevo;
+            mil[i] = nuevo;
+            capados.add(i);
+        }
+    }
+
+    /*
+     * Lo recortado va a los del top que NO son de un grupo capado, en proporcion a su
+     * puesto. Si no hay ninguno —el grupo copa la lista entera— NO se reparte: se
+     * queda sin salir, como los puestos vacios. Repartirselo de vuelta a otro grupo
+     * capado deshace el tope, y darlo al primero que quede convierte el tope en una
+     * loteria.
+     */
+    if (sobra > 0n) {
+        const libres = top.map((_, i) => i).filter(i => !capados.has(i));
+        const base = libres.reduce((t, i) => t + mil[i], 0n);
+        if (base > 0n) for (const i of libres) mil[i] += (sobra * mil[i]) / base;
+    }
+
     const entries = [];
     for (let i = 0; i < top.length; i++) {
-        const parte = (presupuesto * BigInt(Math.round(PESOS[i] * 10))) / 1000n;
+        const parte = (presupuesto * mil[i]) / 1000n;
         if (parte <= 0n) continue;
         entries.push({
             rank: top[i].rank,
@@ -478,6 +591,10 @@ function repartoDe(snapshot, presupuestoRaw) {
             amountRaw: parte,
             name: top[i].name,
             score: top[i].kills,
+            // Para que en la lista de premios se vea que a esta fila se le aplico el
+            // tope, sin tener que recalcularlo para notarlo.
+            grupo: top[i].grupo || null,
+            capado: capados.has(i) || undefined,
         });
     }
     return { entries, totalRaw: entries.reduce((s, e) => s + e.amountRaw, 0n) };
@@ -491,7 +608,8 @@ module.exports = {
     save,
     PESOS, MIN_KILLS, MIN_OPONENTES, MIN_CONOCIDOS_PCT, MIN_PARTIDAS, PUBLICADOS,
     MAX_COHESION, MIN_POBLACION_COHESION, MIN_PARTIDAS_COHESION,
-    _diversoBastante: diversoBastante, _esCluster: esCluster,
+    GRUPO_MAX_PCT, GRUPO_MIN_PUESTOS,
+    _diversoBastante: diversoBastante, _esCluster: esCluster, _agrupaCerrados: agrupaCerrados,
     // Para los tests: la funcion de hash tiene que ser reproducible desde fuera, y
     // hay que poder simular el paso de los dias sin esperar a medianoche.
     _canonico: canonico, _sha256hex: sha256hex, GENESIS,

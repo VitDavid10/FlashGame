@@ -156,6 +156,101 @@ test('la fila publica la cohesion, para que se vea por que entra o no', () => {
     assert.equal(lb.tablaDe(players, oponentes)[0].cohesion, 3);
 });
 
+/* ===================== EL TOPE DE UN GRUPO ===================== */
+
+/*
+ * El filtro de cohesion echa a los grupos de nueve o mas, pero por debajo no puede
+ * echar a nadie: cinco wallets coordinadas son indistinguibles de cinco amigos. El
+ * tope no intenta distinguirlos — hace que dominar la lista no compense a ninguno
+ * de los dos.
+ */
+
+const BOTE = 100000n;   // 1 unidad = 0,001% del bote, comodo para leer porcentajes
+
+/** Un top 10 donde los `g` primeros son del mismo grupo. */
+function topConGrupo(g) {
+    return Array.from({ length: 10 }, (_, i) => ({
+        rank: i + 1, wallet: 'w' + i, name: 'w' + i, kills: 100 - i,
+        grupo: i < g ? 'g1' : null,
+    }));
+}
+const suma = (es, f) => es.filter(f).reduce((t, e) => t + e.amountRaw, 0n);
+
+test('un duo no se capa: dos colegas primero y segundo son lo normal', () => {
+    const r = lb.repartoDe({ entries: topConGrupo(2) }, BOTE);
+    const suyo = suma(r.entries, e => e.grupo === 'g1');
+    // 35 + 20 = 55% intactos.
+    assert.equal(Number(suyo) / 1000, 55, 'un grupo de dos puestos no deberia tocarse');
+    assert.ok(!r.entries.some(e => e.capado), 'y no deberia marcarse como capado');
+});
+
+test('a partir de tres puestos, el grupo no pasa del tope entre todos', () => {
+    for (const g of [3, 5, 8]) {
+        const r = lb.repartoDe({ entries: topConGrupo(g) }, BOTE);
+        const suyo = Number(suma(r.entries, e => e.grupo === 'g1')) / 100000;
+        assert.ok(suyo <= lb.GRUPO_MAX_PCT + 0.001,
+            `un grupo de ${g} se llevo ${(suyo * 100).toFixed(1)}%, por encima del tope`);
+        assert.ok(suyo > lb.GRUPO_MAX_PCT - 0.01, `un grupo de ${g} se quedo demasiado corto`);
+    }
+});
+
+test('lo recortado pasa a quien NO es del grupo', () => {
+    const r = lb.repartoDe({ entries: topConGrupo(5) }, BOTE);
+    const otros = Number(suma(r.entries, e => !e.grupo)) / 100000;
+    // Sin tope se llevarian el 16% (los puestos 6 al 10); con el, casi el 70%.
+    assert.ok(otros > 0.65, `los de fuera del grupo se llevaron solo ${(otros * 100).toFixed(1)}%`);
+});
+
+test('si el grupo copa la lista entera, el sobrante NO se paga', () => {
+    /*
+     * Es el caso que decide si el tope sirve de algo. Devolverle el sobrante al
+     * propio grupo por no tener a quien darselo deshace el tope entero y el ataque
+     * vuelve a cobrar el 100%.
+     */
+    const r = lb.repartoDe({ entries: topConGrupo(10) }, BOTE);
+    const total = Number(r.totalRaw) / 100000;
+    assert.ok(total <= lb.GRUPO_MAX_PCT + 0.001,
+        `se pago el ${(total * 100).toFixed(1)}% del bote cuando el tope es ${lb.GRUPO_MAX_PCT * 100}%`);
+});
+
+test('dentro del grupo capado se respeta el orden: el primero sigue cobrando mas', () => {
+    // Aplanarlos a todos por igual castigaria al que de verdad quedo primero, y
+    // ademas daria igual jugar bien dentro del grupo.
+    const r = lb.repartoDe({ entries: topConGrupo(5) }, BOTE);
+    const suyos = r.entries.filter(e => e.grupo === 'g1');
+    for (let i = 1; i < suyos.length; i++) {
+        assert.ok(suyos[i - 1].amountRaw > suyos[i].amountRaw,
+            'el puesto ' + i + ' deberia cobrar mas que el ' + (i + 1));
+    }
+});
+
+test('sin grupos, el reparto es exactamente el de siempre', () => {
+    const r = lb.repartoDe({ entries: topConGrupo(0) }, BOTE);
+    assert.deepEqual(r.entries.map(e => Number(e.amountRaw) / 1000), lb.PESOS);
+});
+
+test('agrupar es por cadena, no por clique', () => {
+    /*
+     * Si A siempre juega con B y B siempre con C, los tres estan en la misma sala
+     * aunque A y C no aparezcan en la lista del otro. Partirlo en dos grupos seria
+     * regalarle el tope al que se coloque en el borde.
+     */
+    const op = new Map([
+        ['A', { fijos: ['B'] }], ['B', { fijos: ['A', 'C'] }], ['C', { fijos: ['B'] }],
+        ['solo', { fijos: [] }],
+    ]);
+    const g = lb._agrupaCerrados(['A', 'B', 'C', 'solo'], op);
+    assert.equal(g.get('A'), g.get('C'), 'A y C tienen que caer en el mismo grupo');
+    assert.equal(g.get('A'), g.get('B'));
+    assert.equal(g.get('solo'), undefined, 'quien no repite con nadie no tiene grupo');
+});
+
+test('un fijo que no esta en la lista no arrastra grupo', () => {
+    // Si tu companero fijo no puntuo ese dia, tu no formas grupo con nadie.
+    const g = lb._agrupaCerrados(['A'], new Map([['A', { fijos: ['fuera'] }]]));
+    assert.equal(g.get('A'), undefined);
+});
+
 test('una wallet sin ningun recibo tampoco entra si ya hay datos', () => {
     // Si hay recibos de otros pero de esta no, es que sus kills no vienen de ninguna
     // partida anclada. Eso es exactamente lo que hay que dejar fuera.

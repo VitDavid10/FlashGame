@@ -132,8 +132,14 @@ function economia({ cicla, elegibles, puestosSuyos }) {
     const coste = rake;                                  // lo unico que no recupera
     const bote = Math.min(rake * REWARD_FACTOR, TOPE_DIA)
         * Math.min(elegibles, POT_COMPLETO_CON) / POT_COMPLETO_CON;
-    // Lo que se lleva: la suma de los pesos de los puestos que ocupa.
-    const parte = lb.PESOS.slice(0, puestosSuyos).reduce((a, b) => a + b, 0) / 100;
+    /*
+     * Lo que se lleva. Los pesos de los puestos que ocupa, PERO con el tope de grupo:
+     * si ocupa GRUPO_MIN_PUESTOS o mas, entre todos no pasan de GRUPO_MAX_PCT y el
+     * resto va a los de fuera. Sin esto la herramienta seguiria diciendo que el
+     * ataque cobra el 84% cuando ya no.
+     */
+    const bruto = lb.PESOS.slice(0, puestosSuyos).reduce((a, b) => a + b, 0) / 100;
+    const parte = puestosSuyos >= lb.GRUPO_MIN_PUESTOS ? Math.min(bruto, lb.GRUPO_MAX_PCT) : bruto;
     const gana = bote * parte;
     return { cicla, rake, coste, bote, gana, neto: gana - coste, roi: coste > 0 ? gana / coste : 0 };
 }
@@ -144,6 +150,8 @@ console.log('Filtros vivos :', `kills>=${lb.MIN_KILLS}`, `oponentes>=${lb.MIN_OP
     `partidas>=${lb.MIN_PARTIDAS}`, `conocidos>=${pct(lb.MIN_CONOCIDOS_PCT)}`);
 console.log('Economia      :', `factor ${REWARD_FACTOR}`, `tope ${fmt(TOPE_DIA)}/dia`,
     `bote completo con ${POT_COMPLETO_CON}`, `corte arcade ${ARCADE_RAKE_PCT}%`);
+console.log('Tope de grupo :', pct(lb.GRUPO_MAX_PCT), 'entre todos, desde',
+    lb.GRUPO_MIN_PUESTOS, 'puestos ocupados');
 console.log('Poblacion real:', fmt(POBLACION), 'jugadores ese dia');
 
 /* ============ 1. ¿ENTRA, JUGANDO SOLO CONTRA SI MISMO? ============ */
@@ -198,14 +206,16 @@ console.log('4. LA PALANCA — a partir de que REWARD_FACTOR deja de salir a cue
 console.log('   elegibles   recorte   factor de equilibrio   ROI con el factor', REWARD_FACTOR);
 for (const eleg of [10, 20, 50, 200]) {
     const recorte = Math.min(eleg, POT_COMPLETO_CON) / POT_COMPLETO_CON;
-    // Con mas gente elegible el bote es mayor, pero los reales ocupan puestos: se
-    // le suponen los 10 mientras el cluster sea mayor que la parte real de la lista.
-    const parte = lb.PESOS.reduce((a, b) => a + b, 0) / 100;
+    // Con el tope de grupo, ocupar los diez puestos ya no vale los diez pesos: el
+    // conjunto se queda en GRUPO_MAX_PCT. Sin esto esta tabla contradecia a la de
+    // arriba, que si lo aplica.
+    const parte = Math.min(lb.PESOS.reduce((a, b) => a + b, 0) / 100, lb.GRUPO_MAX_PCT);
     const equilibrio = 1 / (recorte * parte);
     const roi = REWARD_FACTOR * recorte * parte;
     console.log(`   ${String(eleg).padStart(9)}   ${pct(recorte).padStart(7)}   `
         + `${equilibrio.toFixed(1).padStart(20)}   ${roi.toFixed(1).padStart(17)}x`);
 }
 console.log('');
-console.log('   Con menos de 50 elegibles el recorte por participacion es la unica');
-console.log('   defensa economica que queda, y baja el ROI pero no lo pone en negativo.');
+console.log('   El tope de grupo ya esta metido en estas cuentas. Baja mucho el ROI');
+console.log('   pero NO lo pone en negativo mientras el factor sea alto: para eso');
+console.log('   haria falta un tope de', pct(1 / REWARD_FACTOR), 'o bajar el factor.');

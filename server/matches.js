@@ -310,9 +310,16 @@ function oponentesDe(desde) {
     const salida = new Map();
     for (const [w, veces] of mapa) {
         const p = partidas.get(w) || 0;
-        let cohesion = 0;
-        if (p > 0) for (const n of veces.values()) if (n / p >= COHESION_PCT) cohesion++;
-        salida.set(w, { oponentes: veces.size, partidas: p, cohesion });
+        /*
+         * `fijos` y no solo el numero: para poner un tope a lo que se lleva un grupo
+         * hay que saber QUIENES lo forman, no cuantos son. Se queda en memoria y no
+         * se publica: el grafo de con quien juega cada uno es informacion nueva sobre
+         * personas, y para lo que hace falta basta con publicar un identificador de
+         * grupo (ver tablaDe).
+         */
+        const fijos = [];
+        if (p > 0) for (const [otro, n] of veces) if (n / p >= COHESION_PCT) fijos.push(otro);
+        salida.set(w, { oponentes: veces.size, partidas: p, cohesion: fijos.length, fijos });
     }
     return salida;
 }
