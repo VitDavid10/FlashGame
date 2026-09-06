@@ -3687,7 +3687,17 @@ const httpServer = http.createServer(async (req, res) => {
     }
     // Los .md de la raíz (ROADMAP, BLOCKCHAIN-PLAN, DESPLIEGUE-VPS...) son notas
     // internas, no páginas del juego: mismo motivo, tampoco hace falta servirlas.
-    if (relLower.endsWith('.md')) { res.writeHead(403); res.end('Forbidden'); return; }
+    //
+    // Con ellos van los ficheros de proyecto. El .gitignore es el peor: está bien
+    // comentado, así que dice con nombre y apellidos dónde vive cada secreto
+    // (scripts/.rewards-wallet.json, chatbot-backend/.env...). Esas rutas ya están
+    // bloqueadas, pero no hay razón para regalar el mapa. Anchor.toml enseña los
+    // IDs de programa y la red; package.json, las dependencias exactas.
+    if (relLower.endsWith('.md') || relLower.endsWith('.toml') ||
+        relLower === '.gitignore' || relLower === '.gitattributes' || relLower === '.mailmap' ||
+        /^package(-lock)?\.json$/.test(relLower)) {
+        res.writeHead(403); res.end('Forbidden'); return;
+    }
     // El editor de carteles solo se sirve por CARTELES_PATH (arriba): el nombre
     // literal se bloquea aqui para que ni conociendolo se pueda pedir directo.
     if (relLower === 'carteles-preview.html') { res.writeHead(404); res.end('Not Found'); return; }
