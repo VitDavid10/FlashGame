@@ -4027,13 +4027,36 @@ body.trailer-open #page-content{
                     });
                 },
                 
+                /*
+                 * ¿HAY UN RATON DE VERDAD Y SITIO PARA EL CARTEL AL LADO?
+                 *
+                 * No se pregunta por isTouch, que es lo que estaba mal: vale
+                 * `'ontouchstart' in window || maxTouchPoints > 0`, o sea TRUE en
+                 * cualquier portatil con pantalla tactil. En esos, showSkill salia
+                 * antes de hacer nada y pasar el raton no enseñaba el cartel nunca.
+                 *
+                 * `hover:hover` + `pointer:fine` es la pregunta que se queria hacer:
+                 * "¿hay un puntero que pueda posarse encima?". Y el ancho minimo
+                 * porque el cartel mide 320px: al lado de una card en una pantalla
+                 * estrecha no cabe, y ahi el sitio es el centro.
+                 *
+                 * Las dos ramas usan ESTA misma funcion, asi que son complementarias
+                 * por construccion: ningun dispositivo puede caer en las dos ni
+                 * quedarse sin ninguna, que es justo lo que pasaba antes.
+                 */
+                hayRaton: () => {
+                    try {
+                        return window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches;
+                    } catch (e) { return false; }
+                },
+
                 showSkill: (e, key) => {
-                    if (App.isTouch) return; // En movil usamos click
-                    App.UI.renderTooltip(e, key);
+                    if (!App.UI.hayRaton()) return;   // sin raton, manda el tap
+                    App.UI.renderTooltip(e, key, true);
                 },
                 
                 toggleSkillMobile: (e, key) => {
-                    if (!App.isTouch) return;
+                    if (App.UI.hayRaton()) return;
                     
                     if (App.UI.activeSkill === key) {
                         App.UI.hideSkill();
@@ -4046,10 +4069,10 @@ body.trailer-open #page-content{
                     e.currentTarget.classList.add('active-mobile');
                     
                     App.UI.activeSkill = key;
-                    App.UI.renderTooltip(e, key);
+                    App.UI.renderTooltip(e, key, false);
                 },
 
-                renderTooltip: (e, key) => {
+                renderTooltip: (e, key, anclar) => {
                     const data = SKILL_DB[key];
                     if (!data) return;
 
@@ -4080,16 +4103,42 @@ body.trailer-open #page-content{
                         DOM.ttClassic.style.display = 'none';
                     }
 
-                    // Posicion: puro CSS en .skill-tooltip (left/top:50% +
-                    // margen negativo), sin JS de por medio. La version
-                    // anterior colocaba el cartel pegado a la card en
-                    // escritorio y centrado en movil segun App.isTouch, y esa
-                    // rama fallaba en dispositivos reales (isTouch a false, o
-                    // el hover sintetico de un tap disparando la rama de
-                    // escritorio) — sin ninguna condicion no hay rama que
-                    // pueda fallar. Mismo criterio que la tienda/descripcion
-                    // de pills, que tambien abren siempre centradas.
-                    DOM.tooltip.style.display = 'flex';
+                    /*
+                     * DONDE SALE.
+                     *
+                     * Al tocar, SIEMPRE centrado: en un movil no hay "donde estaba el
+                     * dedo" que valga —la card ocupa media pantalla y el cartel no
+                     * cabe al lado— y ademas el dedo tapa justo lo que se acaba de
+                     * abrir.
+                     *
+                     * Con raton, pegado a la card que se esta mirando: el ojo ya esta
+                     * ahi, y mandar la vista al centro de una pantalla de 27 pulgadas
+                     * para volver despues es peor que no moverla.
+                     *
+                     * El centrado es CSS puro (left/top al 50% con margen negativo);
+                     * anclar solo pisa esos cuatro valores, y quitarlos devuelve el
+                     * centrado sin tener que recalcular nada.
+                     */
+                    const tt = DOM.tooltip;
+                    const card = anclar && e && e.currentTarget;
+                    if (card && App.UI.hayRaton()) {
+                        const r = card.getBoundingClientRect();
+                        const W = 320, H = 396, aire = 14;
+                        // A la derecha de la card; si no cabe, a la izquierda; y si
+                        // tampoco, pegado al borde antes que medio fuera de pantalla.
+                        let x = r.right + aire;
+                        if (x + W > window.innerWidth - aire) x = r.left - W - aire;
+                        x = Math.max(aire, Math.min(x, window.innerWidth - W - aire));
+                        // Centrado con la card en vertical, sin salirse arriba o abajo.
+                        let y = r.top + r.height / 2 - H / 2;
+                        y = Math.max(aire, Math.min(y, window.innerHeight - H - aire));
+                        tt.style.left = x + 'px'; tt.style.top = y + 'px';
+                        tt.style.marginLeft = '0px'; tt.style.marginTop = '0px';
+                    } else {
+                        tt.style.left = ''; tt.style.top = '';
+                        tt.style.marginLeft = ''; tt.style.marginTop = '';
+                    }
+                    tt.style.display = 'flex';
                 },
                 hideSkill: () => {
                     DOM.tooltip.style.display = 'none';
