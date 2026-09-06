@@ -6365,6 +6365,8 @@ function toggleTrailerMode() {
         // no entra — ocultar el boton EDIT no bastaba, la funcion seguia siendo
         // llamable a mano desde la consola.
         let landingEditAllowed = false;
+        // ADMIN_KEY para SAVE FOR ALL del hero. En memoria, nunca en localStorage.
+        let _layoutAdminKey = '';
         const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
         // ===== Claves TOCADAS a mano en esta maquina =====
         // Mismo mecanismo que EDIT LAYOUT del menu del juego (game/index.html,
@@ -6607,12 +6609,19 @@ function toggleTrailerMode() {
             },
             async saveGlobal(btn) {
                 save();
+                // Mismo trato que SAVE FOR ALL del menu (game/index.html): sin la
+                // ADMIN_KEY, cualquiera con un curl podia descolocarle el hero a
+                // todo el mundo. Se guarda en memoria, no en localStorage, y se
+                // vuelve a pedir en cada recarga.
+                if (!_layoutAdminKey) _layoutAdminKey = prompt('Admin key para guardar el layout para todos:') || '';
+                if (!_layoutAdminKey) return;
                 const orig = btn ? btn.textContent : '';
                 if (btn) { btn.textContent = 'SAVING...'; btn.disabled = true; }
                 let ok = false;
                 try {
-                    const r = await fetch('/api/landing-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout }) });
+                    const r = await fetch('/api/landing-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout, key: _layoutAdminKey }) });
                     ok = (await r.json()).ok === true;
+                    if (!ok) _layoutAdminKey = '';   // clave mala: que la vuelva a pedir
                     // Ya son de todos: se sueltan las claves propias para no
                     // quedarse pegado a una version local del layout que ya subiste.
                     if (ok) { layoutMine.clear(); saveLayoutMine(); }

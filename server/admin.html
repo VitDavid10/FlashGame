@@ -1078,7 +1078,12 @@ function renderRanking() {
             <td><b style="color:#fff">${esc(p.name)}</b></td><td class="kills">${num(p.kills)}</td><td>${num(p.muertes)}</td><td>${kd}</td>
             <td>${num(p.partidas)}</td><td>${fecha(p.lastSeen)}</td>
             <td title="${esc(p.paisName || '')}"><span class="ccode">${esc(p.paisCode || '??')}</span></td>
-            <td><button class="b rojo mini" onclick="borrarRanking('${esc(p.key)}','${esc(p.name)}')">Delete</button></td>
+            <!-- escJs y no esc: dentro de un onclick el navegador DECODIFICA las
+                 entidades antes de evaluar el JS, así que el &#39; que devuelve esc()
+                 vuelve a ser una comilla y cierra el string. Un jugador llamado
+                 '-alert(1)-' (cabe en los 16 caracteres del join) ejecutaba código
+                 aquí, con la sesión de admin abierta. -->
+            <td><button class="b rojo mini" onclick="borrarRanking('${escJs(p.key)}','${escJs(p.name)}')">Delete</button></td>
         </tr>`;
     });
     document.getElementById('rankCuerpo').innerHTML = rank || `<tr><td colspan="10" class="vacio">${rankData.length ? 'No results for this search.' : 'No named players registered yet.'}</td></tr>`;

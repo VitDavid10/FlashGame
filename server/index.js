@@ -2722,8 +2722,11 @@ const httpServer = http.createServer(async (req, res) => {
         res.writeHead(405, { 'Access-Control-Allow-Origin': '*' }); res.end(); return;
     }
     // --- Layout del HERO de la landing (index.html → botón EDIT). Mismo trato
-    // que /api/menu-layout: sin auth, herramienta de diseño TEMPORAL. Aquí sí
-    // hay GET porque la landing no consulta /api/rooms. ---
+    // que /api/menu-layout: el POST va con ADMIN_KEY. Se quedó sin ella cuando
+    // menu-layout la ganó, y era el único de los tres editores abierto: un curl
+    // bastaba para descolocarle el hero a todos los visitantes, de forma
+    // persistente (se guarda en globalsettings.json). Aquí sí hay GET público
+    // porque la landing no consulta /api/rooms. ---
     if (urlPath === '/api/landing-layout') {
         if (req.method === 'OPTIONS') {
             res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
@@ -2739,6 +2742,7 @@ const httpServer = http.createServer(async (req, res) => {
             req.on('end', () => {
                 if (abortado) return;
                 let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
+                if (!adminKeyOk(payload.key)) { res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad key' })); return; }
                 const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
                 if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
                 const clean = {};
@@ -3654,7 +3658,14 @@ const httpServer = http.createServer(async (req, res) => {
     const top = relLower.split('/')[0];
     if (['server', '.git', 'node_modules', 'tasks', '.claude', 'memory',
          'deploy', 'scripts', 'tools', 'chatbot-backend', 'stress_bot', '.codegraph',
-         'docs'].includes(top)) {
+         'docs',
+         // programs/ tiene el keypair que FIJA la direccion on-chain del contrato
+         // (programs/pill-treasury-keypair.json). Estaba en .gitignore pero no
+         // aqui, asi que se descargaba por HTTP: quien lo baje puede desplegar su
+         // propio codigo en la direccion PiLL… que anuncia el proyecto. target/ es
+         // lo mismo tras compilar (target/deploy/*-keypair.json), y tests/ son
+         // vectores y fixtures que el juego tampoco pide.
+         'programs', 'target', 'tests'].includes(top)) {
         res.writeHead(403); res.end('Forbidden'); return;
     }
     // Los .md de la raíz (ROADMAP, BLOCKCHAIN-PLAN, DESPLIEGUE-VPS...) son notas
