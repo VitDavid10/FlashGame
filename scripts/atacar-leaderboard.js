@@ -41,6 +41,8 @@ const REWARD_FACTOR = parseFloat(process.env.REWARD_FACTOR) || 12;
 const TOPE_DIA = parseInt(process.env.REWARD_BUDGET_PILL, 10) || 50000;
 const POT_COMPLETO_CON = parseInt(process.env.LB_FULL_POT_AT, 10) || 50;
 const ARCADE_RAKE_PCT = parseFloat(process.env.ARCADE_RAKE_PCT) || 5;
+/** Jugadores por sala. Decide que fraccion de los cruces del cluster son amañados. */
+const SALA_REAL = Number(process.env.SALA || 25);
 
 const fmt = (n) => Number(n).toLocaleString('es-ES', { maximumFractionDigits: 0 });
 const pct = (n) => (n * 100).toFixed(1) + '%';
@@ -219,3 +221,42 @@ console.log('');
 console.log('   El tope de grupo ya esta metido en estas cuentas. Baja mucho el ROI');
 console.log('   pero NO lo pone en negativo mientras el factor sea alto: para eso');
 console.log('   haria falta un tope de', pct(1 / REWARD_FACTOR), 'o bajar el factor.');
+
+/* ============ 5. EL TAMAÑO DEL CLUSTER CONTRA LOS JUGADORES REALES ============ */
+/*
+ * Lo que las cuentas de arriba dan por supuesto y NO es gratis: que el cluster puede
+ * fabricar las kills que quiera. En classic no puede.
+ *
+ *   - Al morir pierdes el carry ENTERO y se lo lleva quien te mata (room-loop.js).
+ *   - Se gana con una racha de 5 kills, y ahi se cobra sin comision.
+ *
+ * O sea que farmear exige CINCO SEGUIDAS SIN MORIR. Entre ellos eso esta amañado,
+ * pero cada vez que se cruzan con alguien real hay partido — y si pierden, el real
+ * se lleva su carry. Por eso el tamaño del cluster no es un detalle: decide cuantos
+ * de sus encuentros son amañados.
+ *
+ * MODELO, y de los gruesos: se supone que contra un real la pelea es 50/50. Un
+ * atacante que juegue mejor que la media sube ese numero y un manco lo baja. Sirve
+ * para ver la FORMA de la curva —que caer de 20 a 5 wallets no es una mejora lineal—
+ * no para poner un numero exacto.
+ */
+console.log('');
+console.log('5. SOBREVIVIR A LOS REALES — probabilidad de encadenar 5 kills sin morir');
+console.log('   (CLASSIC, sala de ' + SALA_REAL + ', 50/50 contra un real. En arcade no hay');
+console.log('    victoria por racha: el bote se reparte al final y esa es otra cuenta.)');
+console.log('   cluster   sala suya   p(ganar un cruce)   p(racha de 5)   partidas por victoria');
+for (const c of [2, 5, 8, 12, 20]) {
+    const suya = Math.min(1, (c - 1) / (SALA_REAL - 1));
+    const pCruce = suya * 1 + (1 - suya) * 0.5;
+    const pRacha = Math.pow(pCruce, 5);
+    console.log(`   ${String(c).padStart(7)}   ${pct(suya).padStart(9)}   ${pct(pCruce).padStart(17)}   `
+        + `${pct(pRacha).padStart(13)}   ${(1 / pRacha).toFixed(1).padStart(21)}`);
+}
+console.log('');
+console.log('   Y cada intento fallido no es gratis: al morir el carry entero se lo');
+console.log('   lleva el real que le mato. El cluster pequeño no solo tarda mas — va');
+console.log('   regando de dinero a los jugadores de verdad mientras lo intenta.');
+console.log('');
+console.log('   Esto es lo que hace que el tope de grupo y el filtro de cohesion se');
+console.log('   sostengan: dejan pasar solo a los clusters pequeños, que son justo los');
+console.log('   que el juego se come solo.');
