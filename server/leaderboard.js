@@ -245,10 +245,27 @@ const MIN_PARTIDAS = parseInt(process.env.LB_MIN_MATCHES, 10) || 2;
  */
 const MAX_COHESION = parseInt(process.env.LB_MAX_COHESION, 10) || 8;
 /*
- * Poblacion minima del dia para que la cohesion signifique algo. 30 sale de la
- * simulacion: es donde el peor honrado (p95 = 4) y el cluster (19) dejan de tocarse.
+ * Poblacion minima del dia para que la cohesion signifique algo.
+ *
+ * 60, y el numero tiene historia: estuvo en 30, sacado de UNA tirada de la
+ * simulacion donde el peor honrado daba 4. La simulacion baraja, asi que una tirada
+ * no dice nada del peor caso — y aqui el peor caso es lo unico que importa, porque
+ * un falso positivo echa a un jugador legitimo del reparto.
+ *
+ * Repitiendo 40 veces, el PEOR honrado sale asi:
+ *
+ *     poblacion 25 -> 16     poblacion 50 -> 6
+ *     poblacion 30 -> 19     poblacion 60 -> 3
+ *     poblacion 40 ->  9     poblacion 100 -> 1
+ *
+ * Con 30 jugadores un honrado llegaba a 19, exactamente lo mismo que una wallet de
+ * un cluster de veinte. El filtro no habria distinguido nada: solo habria echado
+ * gente. A 60 el peor honrado se queda en 3 y quedan 5 de margen hasta el umbral.
+ *
+ * No es monotono a proposito: con poblacion 25-30 y salas de 25 sale casi siempre
+ * UNA sala con todo el mundo dentro, que es el peor caso posible para esta medida.
  */
-const MIN_POBLACION_COHESION = parseInt(process.env.LB_COHESION_MIN_POP, 10) || 30;
+const MIN_POBLACION_COHESION = parseInt(process.env.LB_COHESION_MIN_POP, 10) || 60;
 /*
  * Y partidas minimas: con una sola, TODOS los de tu sala han estado en el 100% de
  * tus partidas y la cohesion es el tamano de la sala entera. Sin esto, el filtro

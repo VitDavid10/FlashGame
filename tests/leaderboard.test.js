@@ -132,6 +132,25 @@ test('con poca gente el filtro NO se aplica: ahi la señal no existe', () => {
         'por debajo de la poblacion minima no se puede juzgar y no se juzga');
 });
 
+test('el suelo de poblacion no puede bajar de 50 sin volver a medirlo', () => {
+    /*
+     * Estuvo en 30 y era falso: salio de UNA tirada de la simulacion donde el peor
+     * honrado daba 4. Repitiendo 40 veces, con poblacion 30 un jugador legitimo
+     * llegaba a cohesion 19 — lo mismo que una wallet de un cluster de veinte. El
+     * filtro no habria distinguido nada, solo habria echado gente.
+     *
+     * El peor honrado por poblacion, sobre 40 tiradas:
+     *     25 -> 16    30 -> 19    40 -> 9    50 -> 6    60 -> 3
+     *
+     * Este test no comprueba una implementacion: fija una decision que costo un
+     * fallo, para que bajar ese numero obligue a volver a medir en vez de parecer
+     * un ajuste inocente.
+     */
+    assert.ok(lb.MIN_POBLACION_COHESION >= 50,
+        `el suelo esta en ${lb.MIN_POBLACION_COHESION}: por debajo de 50 el peor jugador `
+        + 'honrado alcanza la cohesion de un cluster y el filtro echa a gente legitima');
+});
+
 test('con una sola partida tampoco: todos los de tu sala han estado en el 100%', () => {
     // Sin este guarda, quien juega una vez sale con la cohesion del tamano de la
     // sala entera y el filtro lo echa por haber jugado poco.

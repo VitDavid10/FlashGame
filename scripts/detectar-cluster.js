@@ -236,17 +236,31 @@ console.log('   kills dejan de ser gratis. Esa es la disyuntiva que crea el dete
  * que acierta es un argumento, no una medida.
  */
 console.log('');
-console.log('6. DONDE DEJA DE HABER SEÑAL — poblacion real contra la que se compara');
-console.log('   poblacion   suelto p95   cluster   separa?');
-for (const pob of [5, 15, 25, 30, 50, 100, 500]) {
-    const sim = juega({ poblacion: pob, cluster: CLUSTER });
-    const r = estadisticas(sim, sim.reales);
-    const a = estadisticas(sim, sim.atac);
-    // Separa si entre el peor honrado y el mejor atacante cabe un umbral.
-    const separa = a.p50 > r.p95;
-    console.log(`   ${String(pob).padStart(9)}   ${String(r.p95).padStart(10)}   ${String(a.p50).padStart(7)}   `
-        + `${separa ? 'si' : 'NO — la señal no existe'}`);
+/*
+ * VEINTE TIRADAS Y EL PEOR CASO, no una tirada y la mediana.
+ *
+ * Esta tabla se leia antes de una sola simulacion, y con eso se eligio el suelo de
+ * poblacion del servidor. Estaba mal: con poblacion 30 una tirada daba 4 y otra 19.
+ * Aqui el peor caso es lo unico que cuenta, porque un falso positivo no es ruido —
+ * es un jugador honrado que se queda sin premio.
+ */
+console.log('6. DONDE DEJA DE HABER SEÑAL — el PEOR honrado de 20 tiradas');
+console.log('   poblacion   peor honrado   cluster   ¿seguro con umbral ' + lb.MAX_COHESION + '?');
+for (const pob of [15, 25, 30, 40, 50, 60, 100, 500]) {
+    let peor = 0, flojo = Infinity;
+    for (let v = 0; v < 20; v++) {
+        const sim = juega({ poblacion: pob, cluster: CLUSTER });
+        for (const w of sim.reales) peor = Math.max(peor, cohesionDe(sim.cruces, sim.partidasDe, w));
+        for (const w of sim.atac) flojo = Math.min(flojo, cohesionDe(sim.cruces, sim.partidasDe, w));
+    }
+    const seguro = peor < lb.MAX_COHESION;
+    console.log(`   ${String(pob).padStart(9)}   ${String(peor).padStart(12)}   ${String(flojo).padStart(7)}   `
+        + (seguro ? 'si (margen ' + (lb.MAX_COHESION - peor) + ')' : 'NO — echaria a honrados'));
 }
+console.log('');
+console.log('   El servidor no aplica el filtro por debajo de', lb.MIN_POBLACION_COHESION,
+    'jugadores, que es de donde');
+console.log('   sale esa columna.');
 console.log('');
 console.log('   Por debajo de una sala llena de gente real no hay nada que medir: si');
 console.log('   todos coinciden con todos, coincidir no dice nada. La defensa ahi no es');
