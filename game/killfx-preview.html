@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>PillWars — FX de kill (classic)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  /* ================= PANEL DE LA PREVIEW (no es arte del juego) ============ */
+  :root { --ok:#00ff88; --line:#233029; }
+  * { box-sizing: border-box; }
+  html, body { height:100%; }
+  body { margin:0; background:#0b0f0d; color:#dfe6e2; font:13px/1.5 system-ui,sans-serif; display:flex; overflow:hidden; }
+
+  aside { width:268px; flex:none; background:#0f1512; border-right:1px solid var(--line); padding:14px; overflow-y:auto; }
+  aside h1 { font-size:14px; margin:0 0 3px; letter-spacing:1px; }
+  aside p.sub { font-size:11px; color:#7d8a84; margin:0 0 12px; }
+  aside h2 { font-size:10px; text-transform:uppercase; letter-spacing:2px; color:#7d8a84; margin:16px 0 6px; border-bottom:1px solid var(--line); padding-bottom:4px; }
+  .v { display:block; width:100%; text-align:left; margin:0 0 5px; padding:7px 9px; border:1px solid #2a3a33;
+       background:#141b18; color:#dfe6e2; font:600 11px/1.3 monospace; letter-spacing:.3px; cursor:pointer; border-radius:3px; }
+  .v:hover { border-color:#3d5b4e; }
+  .v.on { border-color:var(--ok); background:#12251c; color:var(--ok); }
+  .v small { display:block; font-weight:400; color:#7d8a84; margin-top:3px; letter-spacing:0; }
+  .v.on small { color:#5f9c7f; }
+  .row { display:flex; gap:4px; flex-wrap:wrap; }
+  .row button { flex:1; min-width:38px; padding:6px 4px; border:1px solid #2a3a33; background:#141b18; color:#dfe6e2;
+                font:600 10px monospace; cursor:pointer; border-radius:3px; }
+  .row button.on { border-color:var(--ok); background:#12251c; color:var(--ok); }
+  .fire { width:100%; margin-top:10px; padding:11px; border:1px solid #ff5b3b; background:#2a1108; color:#ff8b5b;
+          font:700 12px monospace; letter-spacing:2px; cursor:pointer; border-radius:3px; }
+  .fire:hover { background:#3a1a0c; color:#ffb08b; }
+  .fire.alt { border-color:#3d5b4e; background:#141b18; color:#9fb5aa; margin-top:5px; padding:8px; letter-spacing:1px; }
+  label.chk { display:flex; align-items:center; gap:6px; font-size:11px; color:#9fb5aa; margin:5px 0; cursor:pointer; }
+  input[type=range] { width:100%; accent-color:#ffce3d; }
+  .hint { font-size:10px; color:#65726c; line-height:1.5; margin-top:12px; border-top:1px solid var(--line); padding-top:8px; }
+  .hint b { color:#8fa79c; }
+
+  main { flex:1; min-width:0; position:relative; }
+  /* ================= ESCENARIO = trozo de juego real ======================= */
+  #stage { position:absolute; inset:0; overflow:hidden; background:#050505;
+           --bg-color:#050505; --grid-line:rgba(255,255,255,0.03); --primary:#00ff88; }
+  #cv { position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+  /* --- HUD copiado de game/index.html (para ver dónde estorba cada FX) --- */
+  #ui { position:absolute; top:15px; left:15px; color:#fff; font-family:'Russo One'; font-size:14px;
+        pointer-events:none; z-index:10; text-shadow:0 2px 4px #000; display:flex; gap:15px; flex-wrap:wrap; max-width:calc(50% - 30px); }
+  .hud-item { background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); font-variant-numeric:tabular-nums; }
+  .hud-val { color:#00ff88; }
+  #timerDisplay { position:absolute; top:10px; left:50%; transform:translateX(-50%); color:#fff;
+                  font-family:'Russo One'; font-size:24px; text-shadow:0 0 10px var(--primary); pointer-events:none; z-index:10; }
+  #leaderboard { position:absolute; top:75px; right:15px; background:rgba(10,10,10,0.8); border:1px solid #333;
+                 color:#fff; padding:10px; border-radius:8px; width:160px; pointer-events:none; z-index:10; font-size:12px; }
+  #leaderboard h3 { margin:0 0 6px; font-family:'Russo One'; font-size:12px; letter-spacing:1px; color:#888; }
+  .lbrow { display:flex; justify-content:space-between; font-family:'Russo One'; font-size:11px; color:#ccc; }
+  /* pixel-pack: el juego SIEMPRE va en pixel (pixelMode = true) */
+  body.pixel-pack #ui, body.pixel-pack .hud-item, body.pixel-pack #timerDisplay, body.pixel-pack #leaderboard,
+  body.pixel-pack #leaderboard h3, body.pixel-pack .lbrow { font-family:'Press Start 2P', monospace !important; }
+  body.pixel-pack .hud-item { font-size:9px !important; text-shadow:1px 1px 0 #000 !important; border-radius:0 !important; line-height:1.8; }
+  body.pixel-pack #timerDisplay { font-size:15px !important; text-shadow:2px 2px 0 #000 !important; }
+  body.pixel-pack #leaderboard { border-radius:0 !important; box-shadow:3px 3px 0 rgba(0,0,0,.6); }
+  body.pixel-pack #leaderboard h3 { font-size:9px !important; }
+  body.pixel-pack .lbrow { font-size:8px !important; line-height:2; }
+  #econHud { border-color:rgba(255,206,61,0.5); }
+  #econHud.punch { animation:econPunch .45s ease-out; }
+  @keyframes econPunch {
+    0% { transform:scale(1); }
+    25% { transform:scale(1.32); background:rgba(255,206,61,0.28); border-color:#ffce3d; }
+    100% { transform:scale(1); }
+  }
+  #killsVal { font-family:'Russo One'; font-size:26px; color:#ff4444; text-shadow:0 0 10px rgba(255,68,68,0.5); line-height:1; }
+  body.pixel-pack #killsVal { font-family:'Press Start 2P', monospace !important; font-size:18px !important; text-shadow:2px 2px 0 #000 !important; }
+
+  /* --- FX ACTUAL: copiado literal de game/index.html (fixed → absolute).
+         El color sale de --gain para poder probar el verde de dinero. --- */
+  #killGainStack { position:absolute; top:auto; bottom:60%; left:50%; transform:translateX(-50%); z-index:9998;
+                   display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; }
+  .kill-gain { font-family:'Russo One', sans-serif; font-size:32px; letter-spacing:2px; color:var(--gain,#ff9933);
+               text-shadow:0 0 26px var(--gainGlowA,rgba(255,153,51,0.9)), 0 0 10px var(--gainGlowB,rgba(255,153,51,0.7)), 0 3px 8px rgba(0,0,0,0.9);
+               animation:killGainFloat 2s cubic-bezier(0.2,0.7,0.3,1) forwards; text-align:center; }
+  .kill-gain .sub { display:block; font-size:0.6em; opacity:0.92; margin-top:4px; }
+  @keyframes killGainFloat {
+      0%   { opacity:0; transform:translateY(20px) scale(0.7); }
+      12%  { opacity:1; transform:translateY(0) scale(1.1); }
+      22%  { transform:translateY(-4px) scale(1); }
+      85%  { opacity:1; transform:translateY(-30px) scale(1); }
+      100% { opacity:0; transform:translateY(-60px) scale(0.95); }
+  }
+  body.pixel-pack .kill-gain { font-family:'Press Start 2P', monospace !important; font-size:20px !important;
+                               text-shadow:4px 4px 0 #000, 8px 8px 0 rgba(0,0,0,0.5) !important; }
+
+  #tag { position:absolute; right:12px; bottom:10px; z-index:20; font:600 10px monospace; color:#4d5b55; letter-spacing:1px; pointer-events:none; }
+</style>
+</head>
+<body class="pixel-pack">
+
+<aside>
+  <h1>FX de kill — CLASSIC</h1>
+  <p class="sub">Lo que ves al matar y quedarte el carry del muerto.<br>Elige versión y dale a MATAR.</p>
+
+  <h2>Versión</h2>
+  <div id="lista"></div>
+
+  <h2>Qué premio se enseña</h2>
+  <div class="row" id="formatoRow"></div>
+
+  <h2>Color del premio</h2>
+  <div class="row" id="colorRow"></div>
+
+  <h2>Racha</h2>
+  <div class="row" id="rachaRow"></div>
+
+  <h2>Botín de la kill</h2>
+  <div class="row" id="dineroRow"></div>
+
+  <button class="fire" onclick="disparar()">MATAR &nbsp;(espacio)</button>
+  <button class="fire alt" onclick="rafaga()">RÁFAGA ×5 (racha entera)</button>
+
+  <h2>Sonido</h2>
+  <label class="chk"><input type="checkbox" id="optSnd" checked> Sonido</label>
+  <label class="chk">Retardo del <b style="color:#3ddc84">money</b>: <span id="dlyVal" style="color:#ffce3d">250 ms</span></label>
+  <input type="range" id="dly" min="0" max="1400" step="50" value="250">
+
+  <h2>Opciones</h2>
+  <label class="chk"><input type="checkbox" id="optHud" checked> HUD del juego</label>
+  <label class="chk"><input type="checkbox" id="optExpl"> Explosión al matar <span style="color:#7d5b3b">(hoy NO existe)</span></label>
+  <div class="row" id="velRow" style="margin-top:6px"></div>
+  <button class="fire alt" id="btnPausa" onclick="togglePausa()">CONGELAR (P)</button>
+  <label class="chk" style="margin-top:8px">Instante <span id="msVal" style="color:#ffce3d">—</span></label>
+  <input type="range" id="scrub" min="0" max="2400" step="40" value="0">
+
+  <div class="hint">
+    El sonido de dinero va en <b>snd/money.mp3</b>. Mientras no exista, ese hueco
+    queda mudo (da un 404 y ya está, no rompe nada).<br><br>
+    Fondo, cuadrícula, píldoras y HUD son los del juego, para juzgar cada FX en
+    su sitio y no sobre un lienzo vacío.
+  </div>
+</aside>
+
+<main>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div id="ui">
+      <div class="hud-item">ROOM: <span class="hud-val">5$</span></div>
+      <div class="hud-item">MASS: <span class="hud-val" id="hudMass">18420</span></div>
+      <div class="hud-item">ALIVE: <span class="hud-val" id="hudAlive">14</span></div>
+      <div class="hud-item" id="econHud">CARRY: <span class="hud-val" id="econVal" style="color:#ffce3d">0</span> <span style="color:#888;font-size:11px">$PILL</span></div>
+    </div>
+    <div id="timerDisplay">03:50</div>
+    <div id="leaderboard">
+      <h3>TOP MASS</h3>
+      <div class="lbrow"><span>1 xDarkz</span><span>24K</span></div>
+      <div class="lbrow"><span>2 YOU</span><span>18K</span></div>
+      <div class="lbrow"><span>3 Pablo23</span><span>11K</span></div>
+      <div style="border-top:1px solid #333;margin-top:8px;padding-top:8px;">
+        <div style="font-family:'Russo One';color:#888;font-size:11px;letter-spacing:1px;margin-bottom:3px;">KILLS</div>
+        <div id="killsVal">0</div>
+      </div>
+    </div>
+
+    <div id="killGainStack"></div>
+    <div id="tag"></div>
+  </div>
+</main>
+
+<script src="pixfont.js"></script>
+<script>
+/* ===========================================================================
+ * Preview de los FX de kill de CLASSIC.
+ * La version 0 es el efecto que hay HOY, copiado literal del juego (mismo CSS,
+ * misma clase FloatingText, mismos tiempos). Las demas son propuestas.
+ *
+ * OJO: al matar el juego NO dibuja ninguna explosion — la victima desaparece
+ * absorbida y ya esta. Las explosiones verdes de sim.js son de virus y de
+ * proyectiles. Aqui va tras un checkbox, apagada, solo para poder verla.
+ * =========================================================================== */
+
+// ---------- utilidades del pixel pack (copiadas de game/index.html) ----------
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const stage = document.getElementById('stage');
+const PILL_RATIO = 2.0;
+const _pixProbe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+function pixRgb(col) { _pixProbe.clearRect(0,0,1,1); _pixProbe.fillStyle = col; _pixProbe.fillRect(0,0,1,1); const d = _pixProbe.getImageData(0,0,1,1).data; return [d[0],d[1],d[2]]; }
+function pixShade(rgb, amt) { const t = amt < 0 ? 0 : 255, a = Math.abs(amt); return 'rgb(' + rgb.map(v => Math.round(v + (t - v) * a)).join(',') + ')'; }
+const PIX = { bg: new Map(), pill: new Map() };
+
+function pixBgPattern() {
+    const bg = getComputedStyle(stage).getPropertyValue('--bg-color').trim();
+    const gl = getComputedStyle(stage).getPropertyValue('--grid-line').trim();
+    const key = bg + '|' + gl;
+    let p = PIX.bg.get(key); if (p) return p;
+    const t = document.createElement('canvas'); t.width = 100; t.height = 100;
+    const g = t.getContext('2d'), rgb = pixRgb(bg), claro = rgb[0] > 127;
+    g.fillStyle = bg; g.fillRect(0, 0, 100, 100);
+    g.fillStyle = pixShade(rgb, claro ? -0.04 : 0.05);
+    for (const s of [[12,20],[52,8],[80,44],[28,68],[64,84]]) g.fillRect(s[0], s[1], 4, 4);
+    g.fillStyle = pixShade(rgb, claro ? -0.025 : 0.028);
+    for (const s of [[40,36],[88,72],[8,88],[72,16]]) g.fillRect(s[0], s[1], 4, 4);
+    g.fillStyle = gl; g.fillRect(0, 0, 100, 4); g.fillRect(0, 0, 4, 100);
+    p = ctx.createPattern(t, 'repeat'); PIX.bg.set(key, p); return p;
+}
+
+function pixPillSprite(wL, cTop, cBot) {
+    const key = wL + '|' + cTop + '|' + cBot;
+    let spr = PIX.pill.get(key); if (spr) return spr;
+    const hL = Math.round(wL * PILL_RATIO), R = wL / 2;
+    spr = document.createElement('canvas'); spr.width = wL; spr.height = hL;
+    const g = spr.getContext('2d'), rgbT = pixRgb(cTop), rgbB = pixRgb(cBot);
+    const inside = (x, y) => { if (x < 0 || y < 0 || x >= wL || y >= hL) return false; const cy = Math.min(Math.max(y + 0.5, R), hL - R); const dx = x + 0.5 - R, dy = y + 0.5 - cy; return dx*dx + dy*dy <= (R - 0.1) * (R - 0.1); };
+    const half = Math.floor(hL / 2);
+    for (let y = 0; y < hL; y++) for (let x = 0; x < wL; x++) {
+        if (!inside(x, y)) continue;
+        const rgb = y < half ? rgbT : rgbB;
+        let col;
+        if (!inside(x-1,y) || !inside(x+1,y) || !inside(x,y-1) || !inside(x,y+1)) col = pixShade(rgb, -0.55);
+        else if (!inside(x+2,y) || !inside(x,y+2)) col = pixShade(rgb, -0.25);
+        else if (y === half || y === half - 1) col = pixShade(rgb, -0.18);
+        else if (!inside(x-2,y) || !inside(x,y-2)) col = pixShade(rgb, 0.18);
+        else col = 'rgb(' + rgb.join(',') + ')';
+        g.fillStyle = col; g.fillRect(x, y, 1, 1);
+    }
+    const hs = Math.max(1, Math.round(wL / 6));
+    g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(Math.round(wL * 0.22), Math.round(hL * 0.14), hs, hs);
+    PIX.pill.set(key, spr); return spr;
+}
+
+// ---------- formato del premio (la opcion que iria en el panel de admin) ----
+//   'pill'  -> solo tokens   (+120K / $PILL)
+//   'usd'   -> solo dinero   (+$96)
+//   'ambas' -> los dos, uno debajo del otro
+let pillRate = 1250;                              // en el juego lo fija el oraculo
+function fmtPillShort(pill) {
+    const n = Math.round(Number(pill) || 0);
+    const corta = (v, suf) => (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + suf;
+    if (n >= 1e6) return corta(n / 1e6, 'M');
+    if (n >= 1000) return corta(n / 1000, 'K');
+    return String(n);
+}
+function fmtUsd(pill) { return '$' + Math.round(Number(pill) / pillRate).toLocaleString('en-US'); }
+function premio(pill) {
+    if (formato === 'usd')   return { grande: fmtUsd(pill), sub: '', extra: '' };
+    if (formato === 'ambas') return { grande: fmtPillShort(pill), sub: '$PILL', extra: fmtUsd(pill) };
+    return { grande: fmtPillShort(pill), sub: '$PILL', extra: '' };
+}
+// Lo mismo en texto plano, para el rotulo DOM del efecto actual.
+function premioTexto(pill) {
+    const p = premio(pill);
+    if (formato === 'usd') return { l1: '+' + p.grande, l2: '' };
+    return { l1: '+' + p.grande + ' $PILL', l2: p.extra };
+}
+
+// ---------- paletas ----------
+// El verde es el de los billetes; el naranja es el que lleva hoy el juego.
+const PALETAS = {
+    verde:   { css:'#3ddc84', glowA:'rgba(61,220,132,0.9)', glowB:'rgba(61,220,132,0.7)',
+               fill:'#e2ffe9', shade:'#35d06a', accent:'#22c55e', dark:'#04331a', glow:'#2fe57e', moneda:'#3ddc84', monedaOsc:'#126b38' },
+    naranja: { css:'#ff9933', glowA:'rgba(255,153,51,0.9)', glowB:'rgba(255,153,51,0.7)',
+               fill:'#ffe6a3', shade:'#ff9933', accent:'#ff9933', dark:'#4a1d00', glow:'#ff9933', moneda:'#ffce3d', monedaOsc:'#7a5410' },
+    oro:     { css:'#ffce3d', glowA:'rgba(255,206,61,0.9)', glowB:'rgba(255,206,61,0.7)',
+               fill:'#fff4c2', shade:'#e0a800', accent:'#ffce3d', dark:'#3a2a00', glow:'#ffce3d', moneda:'#ffce3d', monedaOsc:'#7a5410' }
+};
+let color = 'verde', formato = 'pill';
+const P = () => PALETAS[color];
+function aplicaPaleta() {
+    const p = P();
+    stage.style.setProperty('--gain', p.css);
+    stage.style.setProperty('--gainGlowA', p.glowA);
+    stage.style.setProperty('--gainGlowB', p.glowB);
+    _txtCache.clear();
+}
+
+// ---------- sonido ----------
+// floatkill = el grito de FIRST BLOOD / DOUBLE KILL que ya suena hoy.
+// money     = la caja registradora, JUSTO DESPUES (fichero: snd/money.mp3).
+const SND = { floatkill: new Audio('../snd/floatkill.mp3'), money: new Audio('../snd/money.mp3'),
+              big: new Audio('../snd/big.mp3'), kill1: new Audio('../snd/kill1.mp3') };
+Object.values(SND).forEach(a => { a.volume = 0.55; });
+function snd(k, delay) {
+    if (!optSnd.checked) return;
+    const go = () => { const a = SND[k]; if (!a) return; try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} };
+    if (delay) setTimeout(go, delay); else go();
+}
+function sonarKill() { snd('floatkill'); snd('money', (+dly.value) || 1); }
+
+// ---------- escenario ----------
+let W = 0, H = 0, DPR = 1;
+function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = stage.clientWidth; H = stage.clientHeight;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    _txtCache.clear();
+}
+window.addEventListener('resize', resize);
+
+const player = { x: 0, y: 0, r: 62, cTop: '#00ff88', cBot: '#00a85a' };
+const VICT_NAMES = ['xDarkz', 'Pablo23', 'NASA', 'Doge', 'kripto_1', 'Lunaaa', 'M4TT', 'zZzed'];
+let victim = null, victimTimer = 0;
+function nuevaVictima() {
+    const ang = Math.random() * Math.PI * 2, d = 210 + Math.random() * 120;
+    victim = { x: Math.cos(ang) * d, y: Math.sin(ang) * d * 0.75, r: 34 + Math.random() * 14,
+               cTop: '#ff5b5b', cBot: '#a51f1f', name: VICT_NAMES[Math.floor(Math.random() * VICT_NAMES.length)] };
+}
+nuevaVictima();
+
+// Explosion del juego (la de virus/proyectiles), solo si se marca el check.
+class Explosion {
+    constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; this.particles = [];
+        for (let i = 0; i < 16; i++) { const a = (Math.PI * 2 * i) / 16; this.particles.push({ x:0, y:0, vx: Math.cos(a)*8, vy: Math.sin(a)*8, r: Math.random()*5+5 }); } }
+    update(ts) { this.life -= 0.02 * ts; this.particles.forEach(p => { p.x += p.vx * ts; p.y += p.vy * ts; }); }
+    draw(g) { g.save(); g.translate(this.x, this.y); g.globalAlpha = Math.max(0, Math.ceil(this.life * 4) / 4);
+        this.particles.forEach(p => { const s = Math.max(3, p.r * 1.4);
+            g.fillStyle = '#3E8E11'; g.fillRect(p.x - s/2 - 1, p.y - s/2 - 1, s + 2, s + 2);
+            g.fillStyle = '#81F126'; g.fillRect(p.x - s/2, p.y - s/2, s, s); });
+        g.restore(); }
+}
+// FloatingText del juego, literal (px 4, life -0.015/frame, vy -2).
+class FloatingText {
+    constructor(x, y, text, col) { this.x = x; this.y = y; this.text = text; this.color = col; this.life = 1.0; this.vy = -2.0; }
+    update(ts) { this.life -= 0.015 * ts; this.y += this.vy * ts; }
+    draw(g) { g.save(); g.translate(this.x, this.y); g.globalAlpha = Math.max(0, this.life);
+        const px = 4, w = pixTextWidth(this.text, px); drawPixelText(g, this.text, -w/2, -3.5*px, px, this.color, '#000'); g.restore(); }
+}
+let explosions = [], floaters = [];
+
+// ---------- FX de pantalla ----------
+let fx = [];
+let shake = 0, flash = 0;
+const now = () => performance.now();
+function addFx(dur, draw) { fx.push({ born: clock(), dur, draw }); }
+
+const outQuart = t => 1 - Math.pow(1 - t, 4);
+const outBack  = t => 1 + 2.4 * Math.pow(t - 1, 3) + 1.6 * Math.pow(t - 1, 2);
+const inQuad   = t => t * t;
+
+// Canvas de texto pixel cacheado. fitW/fitH acotan el tamano en pantalla.
+const _txtCache = new Map();
+function texto(str, opts) {
+    const key = str + '|' + JSON.stringify(opts);
+    let c = _txtCache.get(key); if (c) return c;
+    const o = Object.assign({}, opts);
+    let px = o.px || 8;
+    const n = String(str).length;
+    if (o.fitW) px = Math.min(px, Math.floor(o.fitW / (13 * n - 2)));
+    if (o.fitH) px = Math.min(px, Math.floor(o.fitH / 15));
+    px = Math.max(2, px);
+    delete o.px; delete o.fitW; delete o.fitH;
+    c = pixFancyText(str, px, o);
+    c.gh = 15 * px;                        // alto del glifo, sin el padding del halo
+    if (_txtCache.size > 240) _txtCache.clear();
+    _txtCache.set(key, c); return c;
+}
+function pinta(g, t, cx, cy, escala, alpha) {
+    g.save(); g.globalAlpha = alpha; g.imageSmoothingEnabled = false;
+    const w = t.width * escala, h = t.height * escala;
+    g.drawImage(t, Math.round(cx - w/2), Math.round(cy - h/2), Math.round(w), Math.round(h));
+    g.restore();
+}
+function ondaPixel(g, cx, cy, radio, grosor, col, alpha) {
+    g.save(); g.globalAlpha = alpha; g.fillStyle = col;
+    const n = Math.max(12, Math.round(radio / 9));
+    for (let i = 0; i < n; i++) { const a = (Math.PI * 2 * i) / n;
+        g.fillRect(Math.round(cx + Math.cos(a) * radio - grosor/2), Math.round(cy + Math.sin(a) * radio * 0.62 - grosor/2), grosor, grosor); }
+    g.restore();
+}
+// Rotulo del premio ya montado (cifra + $PILL + dolares) con la paleta activa.
+function rotuloPremio(k, pxNum, fitW, fitH) {
+    const p = P(), pr = k.premio;
+    return {
+        num:   texto('+' + pr.grande, { px: pxNum, fitW, fitH, fill: p.fill, shade: p.shade, accent: p.accent, dark: p.dark, ink:'#000', hd: 2 }),
+        sub:   pr.sub   ? texto(pr.sub,   { px: 4, fitW: fitW * 0.7, fill: p.accent, shade: p.shade, plain: true, ink:'#000' }) : null,
+        extra: pr.extra ? texto(pr.extra, { px: 6, fitW: fitW * 0.7, fill: p.fill, shade: p.shade, accent: p.accent, dark: p.dark, thin: true }) : null
+    };
+}
+// Pinta ese rotulo centrado en (cx, cy). Devuelve el borde inferior ocupado.
+function pintaPremio(g, r, cx, cy, escala, alpha) {
+    pinta(g, r.num, cx, cy, escala, alpha);
+    let y = cy + (r.num.height * escala) / 2;
+    if (r.sub)   { y += r.sub.gh / 2 + 10;   pinta(g, r.sub, cx, y, 1, alpha * 0.9); y += r.sub.gh / 2; }
+    if (r.extra) { y += r.extra.gh / 2 + 8; pinta(g, r.extra, cx, y, 1, alpha);      y += r.extra.gh / 2; }
+    return y;
+}
+
+// ---------- estado de la demo ----------
+let racha = 1, botin = 120000, carry = 0;
+const RACHA_MSG = ['FIRST BLOOD', 'DOUBLE KILL', 'TRIPLE KILL', 'QUADRA KILL', 'PENTAKILL'];
+const RACHA_COL = ['#ff3b3b', '#ff5b3b', '#ff8b3b', '#ffce3d', '#ff2a2a'];
+const BOTINES = [[5000,'5K'], [25000,'25K'], [120000,'120K'], [1200000,'1.2M']];
+
+// ================== VERSIONES ==================
+// En todas las nuevas manda el DINERO en el centro y la racha va DEBAJO.
+const VERSIONES = [
+  {
+    id: 'actual', nombre: '0 · ACTUAL', desc: 'Lo que hay hoy: la racha en rojo sobre tu píldora y el premio flotando a media altura.',
+    fire(k) {
+      floaters.push(new FloatingText(player.x, player.y, k.msg, '#FF0000'));   // literal del juego
+      const t = premioTexto(k.amount);
+      const el = document.createElement('div');                                 // showKillGain() literal
+      el.className = 'kill-gain';
+      el.innerHTML = t.l1 + (t.l2 ? '<span class="sub">' + t.l2 + '</span>' : '');
+      if (pausa) el.style.animationPlayState = 'paused';
+      killGainStack.appendChild(el);
+      fx.push({ born: clock(), dur: 2000, draw() {}, fin() { try { el.remove(); } catch (e) {} } });
+      sonarKill();
+    }
+  },
+  {
+    id: 'hero', nombre: '1 · EL DINERO MANDA', desc: 'El premio es el titular: cifra enorme centrada con halo; la racha, pequeña, debajo.',
+    fire(k) {
+      sonarKill();
+      const r = rotuloPremio(k, 22, W * 0.46, H * 0.20);
+      const rac = texto(k.msg, { px: 5, fitW: W * 0.34, fitH: H * 0.055, fill:'#fff', shade:'#c9c9c9', accent: k.col, dark:'#2a0000', thin: true });
+      addFx(1750, (g, e) => {
+        const cy = H * 0.40;
+        const ent = Math.min(1, e / 0.14), sal = Math.max(0, (e - 0.72) / 0.28);
+        const s = (e < 0.14 ? 0.35 + outBack(ent) * 0.65 : 1) * (1 - sal * 0.12);
+        const a = e < 0.14 ? ent : 1 - inQuad(sal);
+        const abajo = pintaPremio(g, r, W/2, cy - sal * 42, s, a);
+        pinta(g, rac, W/2, abajo + rac.gh/2 + 10, 1, a * 0.95);                  // racha DEBAJO
+      });
+    }
+  },
+  {
+    id: 'slam', nombre: '2 · SLAM', desc: 'La cifra cae de golpe: aterriza con onda de choque y temblor. El nombre de la racha queda detrás, de marca de agua.',
+    fire(k) {
+      sonarKill();
+      const r = rotuloPremio(k, 24, W * 0.50, H * 0.23);
+      const rac  = texto(k.msg, { px: 6, fitW: W * 0.36, fitH: H * 0.06, fill:'#fff', shade:'#c9c9c9', accent: k.col, dark:'#2a0000', thin: true });
+      const agua = texto(k.msg, { px: 16, fitW: W * 0.90, fitH: H * 0.30, fill:'#140000', shade:'#140000', plain: true, ink: k.col });
+      const cy = H * 0.40, T = 0.17;
+      let golpeado = false;
+      addFx(1900, (g, e) => {
+        const sal = Math.max(0, (e - 0.74) / 0.26), a = 1 - inQuad(sal);
+        pinta(g, agua, W/2, cy, 1, a * 0.30);
+        if (e < T) {
+          const t = outQuart(e / T);
+          pinta(g, r.num, W/2, -r.num.gh * 0.8 + (cy + r.num.gh * 0.8) * t, 2.6 - 1.6 * t, 0.35 + 0.65 * t);
+          return;
+        }
+        if (!golpeado) { golpeado = true; if (!pausa) { shake = 13; flash = 0.5; } }
+        const post = (e - T) / (1 - T);
+        const rebote = post < 0.1 ? 1 + Math.sin(post / 0.1 * Math.PI) * 0.09 : 1;
+        if (post < 0.30) {
+          const p = post / 0.30, col = P();
+          ondaPixel(g, W/2, cy, 70 + p * 420, Math.max(8, 26 - p * 18), col.accent, (1 - p) * (1 - p) * 0.9);
+          ondaPixel(g, W/2, cy, 30 + p * 250, Math.max(6, 20 - p * 14), '#fff', (1 - p) * (1 - p) * 0.5);
+        }
+        const abajo = pintaPremio(g, r, W/2, cy - sal * 40, rebote, a);
+        pinta(g, rac, W/2, abajo + rac.gh/2 + 10, 1, a * 0.95);
+      });
+    }
+  },
+  {
+    id: 'cuenta', nombre: '3 · CONTADOR', desc: 'El carry sube delante de tus ojos: los dígitos ruedan de lo que llevabas al total, con barra.',
+    fire(k) {
+      sonarKill();
+      const p = P();
+      const rac = texto(k.msg, { px: 5, fitW: W * 0.34, fitH: H * 0.055, fill:'#fff', shade:'#c9c9c9', accent: k.col, dark:'#2a0000', thin: true });
+      const antes = k.carryAntes, total = antes + k.amount;
+      const cy = H * 0.40, CUENTA = 0.42;
+      addFx(2200, (g, e) => {
+        const sal = Math.max(0, (e - 0.78) / 0.22), a = 1 - inQuad(sal);
+        const t = Math.min(1, e / CUENTA), val = Math.round(antes + (total - antes) * outQuart(t));
+        const cifra = formato === 'usd' ? fmtUsd(val) : fmtPillShort(val);
+        const num = texto(cifra, { px: 18, fitW: W * 0.42, fitH: H * 0.19, fill: p.fill, shade: p.shade, accent: p.accent, dark: p.dark, ink:'#000', hd: 2 });
+        pinta(g, num, W/2, cy - sal * 34, 1 + (1 - t) * 0.05, a);
+        // barra del carry, con su etiqueta encima a la izquierda
+        // La barra va FUERA del halo del numero (que engorda el glifo 4px por
+        // lado): pegada, la tapaba a medias. La etiqueta CARRY sobra, ya esta
+        // el chip del HUD arriba diciendolo.
+        const bw = Math.min(430, W * 0.5), bx = (W - bw) / 2, by = cy + num.height/2 + 6 - sal * 34;
+        g.save(); g.globalAlpha = a;
+        g.fillStyle = '#000'; g.fillRect(bx - 4, by - 4, bw + 8, 24);
+        g.fillStyle = '#1b1f1d'; g.fillRect(bx, by, bw, 16);
+        const llenoAntes = bw * (antes / total || 0), lleno = bw * (val / total);
+        g.fillStyle = p.monedaOsc; g.fillRect(bx, by, llenoAntes, 16);
+        g.fillStyle = p.moneda;    g.fillRect(bx + llenoAntes, by, Math.max(0, lleno - llenoAntes), 16);
+        for (let x = bx; x < bx + bw; x += 12) { g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + 10, by, 2, 16); }
+        g.restore();
+        pinta(g, rac, W/2, by + 30 + rac.gh/2, 1, a);                            // racha DEBAJO del todo
+      });
+    }
+  },
+  {
+    id: 'ticket', nombre: '4 · RECIBOS', desc: 'Un recibo por kill que se apila a la derecha con el nombre de la víctima; el CARRY del HUD hace punch.',
+    fire(k) {
+      sonarKill();
+      const p = P(), pr = k.premio;
+      const linea = texto('+' + pr.grande + (pr.sub ? ' ' + pr.sub : ''), { px: 3, fitW: 280, fill: p.fill, shade: p.shade, accent: p.accent, dark: p.dark, thin: true });
+      const extra = pr.extra ? texto(pr.extra, { px: 3, fitW: 200, fill: p.accent, shade: p.shade, plain: true, ink:'#000' }) : null;
+      const quien = texto(k.victima.toUpperCase(), { px: 2, fitW: 200, fill:'#e6ece9', shade:'#98a29d', plain: true, ink:'#000' });
+      // El canvas de un texto pixel lleva mucho padding (los halos): el ALTO de
+      // la caja se mide con gh (alto del glifo) y el ANCHO con width (que ese
+      // padding sí hace de margen). Midiéndolo al revés salen recibos pisados.
+      const PAD = 10, GAP = 5;
+      const alto = PAD * 2 + quien.gh + GAP + linea.gh + (extra ? GAP + extra.gh : 0);
+      const ancho = Math.max(linea.width, quien.width, extra ? extra.width : 0) + 26;
+      const idx = fx.filter(f => f.ticket && clock() - f.born < 2600).length;
+      fx.push({ born: clock(), dur: 2900, ticket: true, draw(g, e) {
+        const x0 = W - 26, y0 = H * 0.16 + idx * (alto + 9);
+        const ent = Math.min(1, e / 0.09), sal = Math.max(0, (e - 0.8) / 0.2);
+        const a = (e < 0.09 ? ent : 1) * (1 - inQuad(sal));
+        const dx = (1 - outBack(ent)) * 90 + sal * 30;
+        g.save(); g.globalAlpha = a;
+        g.fillStyle = 'rgba(6,8,7,0.88)'; g.fillRect(x0 - ancho + dx, y0, ancho, alto);
+        g.fillStyle = p.accent;           g.fillRect(x0 - ancho + dx, y0, 5, alto);
+        g.restore();
+        const cx = x0 - ancho/2 + dx + 3;
+        let y = y0 + PAD;
+        pinta(g, quien, cx, y + quien.gh/2, 1, a * 0.85);  y += quien.gh + GAP;
+        pinta(g, linea, cx, y + linea.gh/2, 1, a);         y += linea.gh + GAP;
+        if (extra) pinta(g, extra, cx, y + extra.gh/2, 1, a * 0.9);
+      } });
+      econPunch();
+    }
+  },
+  {
+    id: 'vuelo', nombre: '5 · AL BOLSILLO', desc: 'El premio sale del cadáver, se lee un momento y vuela en arco con monedas hasta el CARRY del HUD.',
+    fire(k) {
+      sonarKill();
+      const p = P();
+      const r = rotuloPremio(k, 11, W * 0.26, H * 0.13);
+      const rac = texto(k.msg, { px: 7, fitW: W * 0.42, fitH: H * 0.085, fill:'#fff', shade:'#c9c9c9', accent: k.col, dark:'#2a0000', ink:'#000', glow: k.col, glowBlur: 26, hd: 1 });
+      const o = mundoAPantalla(k.vx, k.vy);
+      const rc = econHud.getBoundingClientRect(), rs = stage.getBoundingClientRect();
+      const d = { x: rc.left - rs.left + rc.width / 2, y: rc.top - rs.top + rc.height / 2 };
+      const ctrl = { x: (o.x + d.x) / 2, y: Math.min(o.y, d.y) - 190 };
+      const bez = t => ({ x: (1-t)*(1-t)*o.x + 2*(1-t)*t*ctrl.x + t*t*d.x, y: (1-t)*(1-t)*o.y + 2*(1-t)*t*ctrl.y + t*t*d.y });
+      let llegado = false;
+      addFx(1700, (g, e) => {
+        const re = Math.min(1, e / 0.12), rs2 = Math.max(0, (e - 0.55) / 0.45);
+        pinta(g, rac, W/2, H * 0.62 + rs2 * 40, e < 0.12 ? 0.5 + outBack(re) * 0.5 : 1, (e < 0.12 ? re : 1) * (1 - inQuad(rs2)));
+        g.save(); g.imageSmoothingEnabled = false;
+        for (let i = 0; i < 9; i++) {
+          const t = (e - 0.26 - i * 0.020) / 0.48; if (t <= 0 || t > 1) continue;
+          const q = bez(outQuart(t)), s = 11 - i * 0.5;
+          g.globalAlpha = (1 - t) * 0.9;
+          g.fillStyle = p.monedaOsc; g.fillRect(Math.round(q.x - s/2 - 2), Math.round(q.y - s/2 - 2), s + 4, s + 4);
+          g.fillStyle = p.moneda;    g.fillRect(Math.round(q.x - s/2), Math.round(q.y - s/2), s, s);
+        }
+        g.restore();
+        if (e < 0.22) { const q = Math.min(1, e / 0.10); pintaPremio(g, r, o.x, o.y - 26, 0.55 + outBack(q) * 0.45, q); }
+        else {
+          const t = (e - 0.22) / 0.50;
+          if (t <= 1) { const q = bez(outQuart(t));
+            pintaPremio(g, r, q.x, q.y - 26 * (1 - t), 1 - 0.72 * outQuart(t), 1 - inQuad(Math.max(0, (t - 0.75) / 0.25))); }
+          else if (!llegado) { llegado = true; econPunch(); if (!pausa) flash = 0.18; }
+        }
+      });
+    }
+  }
+];
+
+// ---------- HUD / DOM ----------
+const killGainStack = document.getElementById('killGainStack');
+const econHud = document.getElementById('econHud'), econVal = document.getElementById('econVal');
+const killsVal = document.getElementById('killsVal'), hudAlive = document.getElementById('hudAlive');
+const optSnd = document.getElementById('optSnd'), optHud = document.getElementById('optHud');
+const optExpl = document.getElementById('optExpl'), dly = document.getElementById('dly');
+function econPunch() { econHud.classList.remove('punch'); void econHud.offsetWidth; econHud.classList.add('punch'); }
+
+let vel = 1, pausa = false, activa = 0;
+const VELS = [[1,'×1'], [0.35,'×0.35'], [0.12,'×0.12']];
+
+function botones(cont, items, actual, onPick) {
+    cont.innerHTML = '';
+    items.forEach(([val, lbl]) => { const b = document.createElement('button');
+        b.textContent = lbl; b.className = val === actual ? 'on' : '';
+        b.onclick = () => onPick(val); cont.appendChild(b); });
+}
+function pintaLista() {
+    lista.innerHTML = '';
+    VERSIONES.forEach((v, i) => {
+        const b = document.createElement('button');
+        b.className = 'v' + (i === activa ? ' on' : '');
+        b.innerHTML = v.nombre + '<small>' + v.desc + '</small>';
+        b.onclick = () => { activa = i; pintaLista(); disparar(); };
+        lista.appendChild(b);
+    });
+    tag.textContent = VERSIONES[activa].nombre;
+}
+const pintaVel     = () => botones(velRow,     VELS,    vel,     v => { vel = v; pintaVel(); });
+const pintaRacha   = () => botones(rachaRow,   [[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']], racha, v => { racha = v; pintaRacha(); repite(); });
+const pintaDinero  = () => botones(dineroRow,  BOTINES, botin,   v => { botin = v; pintaDinero(); repite(); });
+const pintaFormato = () => botones(formatoRow, [['pill','$PILL'],['usd','$USD'],['ambas','LAS DOS']], formato, v => { formato = v; pintaFormato(); repite(); });
+const pintaColor   = () => botones(colorRow,   [['verde','VERDE'],['naranja','NARANJA'],['oro','ORO']], color, v => { color = v; pintaColor(); aplicaPaleta(); repite(); });
+
+function disparar() { limpia(); matar(); }
+// Al cambiar formato/color/botin se repite la kill para verlo al momento.
+function repite() { if (pausa) congelarEn(+scrub.value); else disparar(); }
+
+function togglePausa() {
+    pausa = !pausa;
+    btnPausa.textContent = pausa ? 'SEGUIR (P)' : 'CONGELAR (P)';
+    btnPausa.style.color = pausa ? '#ffce3d' : '';
+    document.querySelectorAll('.kill-gain').forEach(el => { el.style.animationPlayState = pausa ? 'paused' : 'running'; });
+}
+// Rebobina a un instante EXACTO: rehace la kill y avanza el mundo paso a paso
+// (floaters y shake son incrementales, no se pueden saltar de golpe). El rotulo
+// del efecto actual es una animacion CSS: se coloca con delay negativo.
+function congelarEn(ms) {
+    const v = victim ? Object.assign({}, victim) : null;
+    const snd0 = optSnd.checked; optSnd.checked = false;    // el scrub no debe sonar
+    limpia(); pausa = false;
+    if (v) { victim = v; victimTimer = 0; }
+    matar();
+    const n = Math.max(0, Math.round(ms / 16.667));
+    for (let i = 0; i < n; i++) { reloj += 16.667; pasoMundo(1); }
+    pausa = true; btnPausa.textContent = 'SEGUIR (P)'; btnPausa.style.color = '#ffce3d';
+    msVal.textContent = ms + ' ms';
+    document.querySelectorAll('.kill-gain').forEach(el => {
+        el.style.animationDelay = '-' + ms + 'ms'; el.style.animationPlayState = 'paused'; });
+    optSnd.checked = snd0;
+}
+
+let arranque = 0;
+function limpia() {
+    clearTimeout(arranque);
+    fx = []; floaters = []; explosions = []; killGainStack.innerHTML = '';
+    shake = 0; flash = 0; carry = 0; econVal.textContent = '0'; killsVal.textContent = '0';
+}
+
+function matar() {
+    const v = victim || (nuevaVictima(), victim);
+    if (optExpl.checked) explosions.push(new Explosion(v.x, v.y));
+    const k = {
+        msg: RACHA_MSG[racha - 1], col: RACHA_COL[racha - 1],
+        amount: botin, premio: premio(botin),
+        carryAntes: carry, victima: v.name, vx: v.x, vy: v.y
+    };
+    carry += botin;
+    econVal.textContent = fmtPillShort(carry);
+    killsVal.textContent = racha;
+    hudAlive.textContent = Math.max(1, (+hudAlive.textContent || 14) - 1);
+    VERSIONES[activa].fire(k);
+    victim = null; victimTimer = clock() + 900;
+}
+
+function rafaga() {
+    limpia();
+    for (let i = 0; i < 5; i++) setTimeout(() => { racha = i + 1; pintaRacha(); nuevaVictima(); matar(); }, i * 950);
+}
+
+document.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); disparar(); }
+    if (e.key >= '1' && e.key <= '5') { racha = +e.key; pintaRacha(); }
+    if (e.key === 'p' || e.key === 'P') togglePausa();
+});
+optHud.onchange = () => {
+    const d = optHud.checked ? '' : 'none';
+    ui.style.display = optHud.checked ? 'flex' : 'none';
+    timerDisplay.style.display = d; leaderboard.style.display = d;
+};
+dly.oninput = () => { dlyVal.textContent = dly.value + ' ms'; };
+
+function mundoAPantalla(wx, wy) { return { x: wx - player.x + W / 2, y: wy - player.y + H / 2 }; }
+
+// Puente para automatizar capturas: __lab.frame(version, racha, botin, ms)
+window.__lab = {
+    frame(v, r, b, ms) {
+        if (v != null) { activa = v; pintaLista(); }
+        if (r != null) { racha = r; pintaRacha(); }
+        if (b != null) { botin = b; pintaDinero(); }
+        scrub.value = ms | 0; congelarEn(ms | 0);
+        return VERSIONES[activa].nombre + ' @ ' + (ms | 0) + 'ms';
+    },
+    set(f, c) { if (f) { formato = f; pintaFormato(); } if (c) { color = c; pintaColor(); aplicaPaleta(); } },
+    play(v) { if (v != null) { activa = v; pintaLista(); } if (pausa) togglePausa(); disparar(); }
+};
+
+// ---------- bucle ----------
+// Reloj propio: avanza a la velocidad elegida y se para al congelar.
+let last = now(), reloj = now();
+const clock = () => reloj;
+function loop() {
+    requestAnimationFrame(loop);
+    const real = now(), dt = Math.min(50, real - last); last = real;
+    const paso = pausa ? 0 : dt * vel;
+    reloj += paso;
+    const t = reloj, ts = paso / 16.667;
+
+    const g = ctx;
+    g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (shake > 0) g.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+
+    g.fillStyle = pixBgPattern();
+    g.save(); g.translate(-player.x + W/2, -player.y + H/2); g.fillRect(player.x - W/2 - 100, player.y - H/2 - 100, W + 200, H + 200); g.restore();
+
+    g.save(); g.translate(-player.x + W/2, -player.y + H/2);
+    g.imageSmoothingEnabled = false;
+    const pill = (c) => { const wL = Math.max(6, Math.round(c.r * 2)), spr = pixPillSprite(wL, c.cTop, c.cBot);
+        g.drawImage(spr, Math.round(c.x - spr.width/2), Math.round(c.y - spr.height/2)); };
+    if (victim) { pill(victim);
+        const px = 3, w = pixTextWidth(victim.name, px);
+        drawPixelText(g, victim.name, victim.x - w/2, victim.y - victim.r * PILL_RATIO - 22, px, '#fff', '#000'); }
+    pill(player);
+    { const px = 3, w = pixTextWidth('YOU', px);
+      drawPixelText(g, 'YOU', player.x - w/2, player.y - player.r * PILL_RATIO - 24, px, '#fff', '#000'); }
+    explosions.forEach(x => x.draw(g));
+    floaters.forEach(f => f.draw(g));
+    g.restore();
+
+    for (const f of fx) { const e = (t - f.born) / f.dur; if (e >= 0 && e <= 1) f.draw(g, e); }
+    pasoMundo(ts);
+
+    if (flash > 0) { g.save(); g.globalAlpha = flash; g.fillStyle = '#fff'; g.fillRect(-20, -20, W + 40, H + 40); g.restore(); }
+}
+// Un frame de mundo (sin dibujar): lo llama el bucle y tambien congelarEn().
+function pasoMundo(ts) {
+    if (!ts) return;
+    if (!victim && victimTimer && reloj > victimTimer) { nuevaVictima(); victimTimer = 0; }
+    shake = Math.max(0, shake - 0.9 * ts);
+    flash = Math.max(0, flash - 0.075 * ts);
+    explosions.forEach(x => x.update(ts)); explosions = explosions.filter(x => x.life > 0);
+    floaters.forEach(f => f.update(ts));   floaters   = floaters.filter(f => f.life > 0);
+    fx = fx.filter(f => { const vivo = (reloj - f.born) < f.dur; if (!vivo && f.fin) f.fin(); return vivo; });
+}
+
+scrub.oninput = () => { msVal.textContent = scrub.value + ' ms'; congelarEn(+scrub.value); };
+resize(); aplicaPaleta(); pintaLista(); pintaFormato(); pintaColor(); pintaRacha(); pintaDinero(); pintaVel(); loop();
+arranque = setTimeout(matar, 500);
+</script>
+</body>
+</html>
