@@ -216,6 +216,58 @@ function recordPeak(wallet, peak, name) {
 const MIN_CONOCIDOS_PCT = parseFloat(process.env.LB_MIN_KNOWN_PCT) || 0.10;
 const MIN_PARTIDAS = parseInt(process.env.LB_MIN_MATCHES, 10) || 2;
 
+/*
+ * COHESION: con cuanta gente coincides en casi TODAS tus partidas.
+ *
+ * Los tres filtros de arriba miran CUANTOS distintos conoces, y eso se compra: un
+ * cluster de 50 wallets que juegue seis partidas con gente real pasa el 10% y copa
+ * los diez puestos (medido en scripts/atacar-leaderboard.js). Lo que no se puede
+ * comprar es dejar de coincidir SIEMPRE con los mismos — para eso hay que separar
+ * las wallets, y separadas ya no controlan la sala ni pueden regalarse kills.
+ *
+ * Simulado en scripts/detectar-cluster.js con 500 jugadores y salas de 25:
+ *
+ *     jugador suelto          cohesion 0
+ *     20 wallets siempre juntas   cohesion 19
+ *
+ * Separacion total. Pero tiene DOS limites que deciden los otros dos numeros:
+ *
+ * EL TECHO. Un grupo de amigos de verdad tambien coincide siempre. Medido: 5 amigos
+ * dan 4, 8 amigos dan 7, 12 amigos dan 11. Por eso el umbral es 8 y no 2: por debajo
+ * de 9 personas jugando juntas no se marca a nadie, porque un grupo de colegas es
+ * exactamente eso y castigarlo seria echar a los jugadores mas fieles. A cambio, un
+ * cluster de 8 wallets pasa — y con 8 wallets no se copan diez puestos.
+ *
+ * EL SUELO. Con menos gente que una sala, todos coinciden con todos y la cohesion de
+ * un honrado es tan alta como la del atacante (medido: con 5 jugadores reales, 24 y
+ * 24). Ahi la señal NO EXISTE, y aplicar el filtro solo echaria gente legitima. Por
+ * eso no se aplica por debajo de MIN_POBLACION_COHESION.
+ */
+const MAX_COHESION = parseInt(process.env.LB_MAX_COHESION, 10) || 8;
+/*
+ * Poblacion minima del dia para que la cohesion signifique algo. 30 sale de la
+ * simulacion: es donde el peor honrado (p95 = 4) y el cluster (19) dejan de tocarse.
+ */
+const MIN_POBLACION_COHESION = parseInt(process.env.LB_COHESION_MIN_POP, 10) || 30;
+/*
+ * Y partidas minimas: con una sola, TODOS los de tu sala han estado en el 100% de
+ * tus partidas y la cohesion es el tamano de la sala entera. Sin esto, el filtro
+ * echaria a cualquiera que jugase una vez, que es lo contrario de lo que hace falta.
+ */
+const MIN_PARTIDAS_COHESION = parseInt(process.env.LB_COHESION_MIN_MATCHES, 10) || 3;
+
+/*
+ * true si esta wallet parece parte de un grupo cerrado lo bastante grande como para
+ * repartirse el top 10. Ante la duda NO marca: los tres guardas de arriba son todos
+ * "si no puedo saberlo, dejo pasar".
+ */
+function esCluster(o, poblacion) {
+    if (!o || o.cohesion == null) return false;              // sin dato, no se juzga
+    if ((poblacion | 0) < MIN_POBLACION_COHESION) return false;
+    if ((o.partidas || 0) < MIN_PARTIDAS_COHESION) return false;
+    return o.cohesion >= MAX_COHESION;
+}
+
 function diversoBastante(o, poblacion) {
     if ((o.partidas || 0) < MIN_PARTIDAS) return false;
     // Con menos de dos jugadores activos no hay nada contra lo que comparar.
@@ -232,6 +284,7 @@ function tablaDe(players, oponentes) {
             if (!hayDatos) return true;
             const o = oponentes.get(w);
             if (!o || o.oponentes < MIN_OPONENTES) return false;
+            if (esCluster(o, oponentes.size)) return false;
             return diversoBastante(o, oponentes.size);
         })
         .sort(([wa, a], [wb, b]) => (b.kills - a.kills) || (b.peak - a.peak) || (wa < wb ? -1 : 1))
@@ -241,6 +294,10 @@ function tablaDe(players, oponentes) {
             return {
                 rank: i + 1, wallet, name: p.name || null, kills: p.kills, peak: p.peak,
                 oponentes: o ? o.oponentes : null,
+                // Se publica por lo mismo que `oponentes`: la fila tiene que enseñar
+                // de donde sale la decision. Quien quede fuera puede ver que numero
+                // le dejo fuera, y quien entra puede comprobar el suyo.
+                cohesion: o && o.cohesion != null ? o.cohesion : null,
             };
         });
 }
@@ -433,7 +490,8 @@ module.exports = {
     anclarDia, sinAnclar,
     save,
     PESOS, MIN_KILLS, MIN_OPONENTES, MIN_CONOCIDOS_PCT, MIN_PARTIDAS, PUBLICADOS,
-    _diversoBastante: diversoBastante,
+    MAX_COHESION, MIN_POBLACION_COHESION, MIN_PARTIDAS_COHESION,
+    _diversoBastante: diversoBastante, _esCluster: esCluster,
     // Para los tests: la funcion de hash tiene que ser reproducible desde fuera, y
     // hay que poder simular el paso de los dias sin esperar a medianoche.
     _canonico: canonico, _sha256hex: sha256hex, GENESIS,

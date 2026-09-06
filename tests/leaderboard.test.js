@@ -75,6 +75,87 @@ test('con datos, quien no se cruza con nadie queda fuera aunque juegue mas', () 
     assert.equal(t[0].oponentes, lb.MIN_OPONENTES + 10, 'la fila dice de donde sale la decision');
 });
 
+/* ===================== COHESION: EL GRUPO CERRADO ===================== */
+
+/*
+ * Los filtros de arriba miran CUANTOS distintos conoces, y eso se compra: un cluster
+ * de 50 wallets que juegue seis partidas con gente real pasa el 10% y copa el top 10
+ * (medido en scripts/atacar-leaderboard.js). Estos tests fijan el filtro que mira lo
+ * que no se puede comprar — coincidir SIEMPRE con los mismos.
+ */
+
+/** Una poblacion suficiente para que el filtro de cohesion se active. */
+function poblacionDe(n, extra = {}) {
+    const m = new Map(Object.entries(extra));
+    for (let i = m.size; i < n; i++) {
+        m.set('otro' + i, { oponentes: 40, partidas: 8, cohesion: 0 });
+    }
+    return m;
+}
+
+test('un grupo cerrado grande queda fuera aunque conozca a mucha gente', () => {
+    // Esta es la wallet que se saltaba todo lo demas: 40 oponentes distintos (los
+    // ha comprado jugando con gente real) y aun asi coincide siempre con los suyos.
+    const players = { cluster: { kills: 500, peak: 9999, name: 'yo' }, normal: { kills: 20, peak: 100, name: 'j' } };
+    const oponentes = poblacionDe(60, {
+        cluster: { oponentes: 40, partidas: 10, cohesion: lb.MAX_COHESION },
+        normal: { oponentes: 40, partidas: 10, cohesion: 0 },
+    });
+    assert.deepEqual(lb.tablaDe(players, oponentes).map(f => f.wallet), ['normal']);
+});
+
+test('un grupo de amigos por debajo del umbral SI entra', () => {
+    /*
+     * El filtro tiene que dejar pasar a la gente que juega junta de verdad. Ocho
+     * colegas dan cohesion 7, y echarlos seria castigar a los jugadores mas fieles
+     * — que es peor que dejar pasar a un cluster de ocho, porque con ocho wallets
+     * no se copan diez puestos.
+     */
+    const players = { amigo: { kills: 50, peak: 100, name: 'a' } };
+    const oponentes = poblacionDe(60, {
+        amigo: { oponentes: 40, partidas: 10, cohesion: lb.MAX_COHESION - 1 },
+    });
+    assert.deepEqual(lb.tablaDe(players, oponentes).map(f => f.wallet), ['amigo']);
+});
+
+test('con poca gente el filtro NO se aplica: ahi la señal no existe', () => {
+    /*
+     * Medido en scripts/detectar-cluster.js: con 5 jugadores reales, un honrado da
+     * cohesion 24 y el atacante tambien 24, porque todos coinciden con todos. Aplicar
+     * el filtro ahi no pilla a nadie: solo echa a los honrados.
+     */
+    const players = { a: { kills: 50, peak: 100, name: 'a' } };
+    const oponentes = poblacionDe(lb.MIN_POBLACION_COHESION - 1, {
+        a: { oponentes: 20, partidas: 10, cohesion: 99 },
+    });
+    assert.deepEqual(lb.tablaDe(players, oponentes).map(f => f.wallet), ['a'],
+        'por debajo de la poblacion minima no se puede juzgar y no se juzga');
+});
+
+test('con una sola partida tampoco: todos los de tu sala han estado en el 100%', () => {
+    // Sin este guarda, quien juega una vez sale con la cohesion del tamano de la
+    // sala entera y el filtro lo echa por haber jugado poco.
+    const players = { nuevo: { kills: 50, peak: 100, name: 'n' } };
+    const oponentes = poblacionDe(60, {
+        nuevo: { oponentes: 24, partidas: lb.MIN_PARTIDAS_COHESION - 1, cohesion: 24 },
+    });
+    assert.deepEqual(lb.tablaDe(players, oponentes).map(f => f.wallet), ['nuevo']);
+});
+
+test('sin el dato de cohesion no se juzga a nadie', () => {
+    // Recibos viejos, de antes de que se contara. Un filtro que ante la falta de
+    // datos EXCLUYE vaciaria la lista al desplegar, que es la peor forma de fallar.
+    const players = { viejo: { kills: 50, peak: 100, name: 'v' } };
+    const oponentes = poblacionDe(60, { viejo: { oponentes: 40, partidas: 10 } });
+    assert.deepEqual(lb.tablaDe(players, oponentes).map(f => f.wallet), ['viejo']);
+});
+
+test('la fila publica la cohesion, para que se vea por que entra o no', () => {
+    const players = { a: { kills: 50, peak: 100, name: 'a' } };
+    const oponentes = poblacionDe(60, { a: { oponentes: 40, partidas: 10, cohesion: 3 } });
+    assert.equal(lb.tablaDe(players, oponentes)[0].cohesion, 3);
+});
+
 test('una wallet sin ningun recibo tampoco entra si ya hay datos', () => {
     // Si hay recibos de otros pero de esta no, es que sus kills no vienen de ninguna
     // partida anclada. Eso es exactamente lo que hay que dejar fuera.

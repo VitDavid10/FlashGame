@@ -67,7 +67,12 @@ function simulaDia({ poblacion, cluster, realesConocidos, killsCluster }) {
         players[w] = { kills: Math.max(0, Math.round(40 / (1 + i * 0.35))), peak: 100 - i, name: w };
         // Un jugador de verdad se cruza con gente nueva cada partida. Se le supone
         // que conoce a un cuarto de la poblacion, que es poco para alguien activo.
-        oponentes.set(w, { partidas: 6, oponentes: Math.min(pobTotal - 1, Math.round(pobTotal * 0.25)) });
+        oponentes.set(w, {
+            partidas: 6, oponentes: Math.min(pobTotal - 1, Math.round(pobTotal * 0.25)),
+            // Un jugador suelto no repite companero: la cola lo baraja. Medido en
+            // detectar-cluster.js con 500 jugadores: cohesion 0.
+            cohesion: 0,
+        });
     }
 
     for (let i = 0; i < cluster; i++) {
@@ -79,6 +84,13 @@ function simulaDia({ poblacion, cluster, realesConocidos, killsCluster }) {
             // El techo del cluster: las otras N-1 wallets suyas, mas la gente real
             // que haya pagado por conocer.
             oponentes: Math.min(pobTotal - 1, (cluster - 1) + realesConocidos),
+            /*
+             * Y la cohesion, que es lo que no puede comprar: si sus wallets entran
+             * juntas para controlar la sala, cada una coincide con las otras N-1 en
+             * todas sus partidas. Sin este campo el ataque se enfrentaba solo a los
+             * filtros viejos y la herramienta habria dicho que gana cuando ya no.
+             */
+            cohesion: cluster - 1,
         });
     }
 

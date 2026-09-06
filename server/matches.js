@@ -270,12 +270,27 @@ function verificar(limite = 200) {
  * meses tiene muchos oponentes acumulados, y lo que interesa es si está jugando con
  * gente AHORA.
  */
+/*
+ * Que fraccion de tus partidas tiene que compartir alguien contigo para que cuente
+ * como "companero fijo". 0,8 y no 1,0 porque un cluster real no es perfecto: una
+ * wallet se cae, otra entra tarde, y exigir el 100% se esquiva sin querer.
+ */
+const COHESION_PCT = parseFloat(process.env.LB_COHESION_PCT) || 0.8;
+
 function oponentesDe(desde) {
     // `desde == null` y no `desde ||`: pasar 0 significa "desde el principio", y con
     // el || se convertia silenciosamente en la ventana por defecto — el filtro se
     // desactivaba sin que nadie se enterara, que es la peor forma de fallar aqui.
     const corte = desde == null ? Date.now() - 7 * 86400e3 : desde;
-    const mapa = new Map();   // wallet -> Set(oponentes)
+    /*
+     * wallet -> Map(otro -> VECES que han coincidido).
+     *
+     * Antes era un Set y solo se guardaba el tamano. Contar las veces no cuesta nada
+     * mas —los recibos ya traen la lista entera de cada partida— y es lo que permite
+     * distinguir "he visto a veinte personas" de "he visto a las MISMAS veinte en
+     * todas mis partidas", que es la diferencia entre un jugador y un cluster.
+     */
+    const mapa = new Map();
     const partidas = new Map();
     let ficheros = [];
     try { ficheros = fs.readdirSync(DIR); } catch (e) { return mapa; }
@@ -286,13 +301,19 @@ function oponentesDe(desde) {
         if (!m || (m.endedAt || 0) < corte) continue;
         const wallets = m.players.map(p => p.wallet).filter(Boolean);
         for (const w of wallets) {
-            if (!mapa.has(w)) mapa.set(w, new Set());
+            if (!mapa.has(w)) mapa.set(w, new Map());
             partidas.set(w, (partidas.get(w) || 0) + 1);
-            for (const otro of wallets) if (otro !== w) mapa.get(w).add(otro);
+            const mio = mapa.get(w);
+            for (const otro of wallets) if (otro !== w) mio.set(otro, (mio.get(otro) || 0) + 1);
         }
     }
     const salida = new Map();
-    for (const [w, set] of mapa) salida.set(w, { oponentes: set.size, partidas: partidas.get(w) || 0 });
+    for (const [w, veces] of mapa) {
+        const p = partidas.get(w) || 0;
+        let cohesion = 0;
+        if (p > 0) for (const n of veces.values()) if (n / p >= COHESION_PCT) cohesion++;
+        salida.set(w, { oponentes: veces.size, partidas: p, cohesion });
+    }
     return salida;
 }
 
