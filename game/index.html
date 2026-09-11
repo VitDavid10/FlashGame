@@ -13375,7 +13375,10 @@
        que cambia es el tamano y que esta centrado en la pantalla. */
     let skinBigTabActual = 'skins';
     let skinBigPagina = 0;
-    const SB_WL = 46;   // ancho logico de la pildora (en el cartel pequeno son ~20)
+    // Suelo de resolucion de la pildora ampliada: los 40 px logicos a los que
+    // pinta como mucho el cartel pequeno (skinWL). Ampliar no puede ensenar
+    // MENOS detalle del que ya se veia sin ampliar.
+    const SB_WL_MIN = 40;
     function skinBigOpen(forceTab) {
         const m = document.getElementById('skinBigModal'); if (!m) return;
         // Si la ultima vez se cerro estando en QUESTS, sbGrid/sbFoot se
@@ -13467,10 +13470,11 @@
     function skinPrecioLargo() {
         return (PAIS_PRECIO_PILL | 0).toLocaleString('en-US') + ' $PILL';
     }
-    // Ancho logico de la pildora, medido de la celda YA colocada: la rejilla
-    // reparte el hueco del cartel, asi que al agrandar el popup la pildora crece
-    // con el. Se mide despues de pintar y, si cambia, se repinta una sola vez.
-    let skinBigWL = 46, _skinBigMidiendo = false;
+    // Ancho logico de la pildora y lado en px de pantalla de cada pixel suyo,
+    // medidos de la celda YA colocada: la rejilla reparte el hueco del cartel,
+    // asi que al agrandar el popup la pildora crece con el. Se mide despues de
+    // pintar y, si cambia, se repinta una sola vez.
+    let skinBigWL = 46, skinBigPx = 1, _skinBigMidiendo = false;
     // Lado de la celda (cuadrada) y, de ahi, el ancho logico de la pildora. Se
     // calcula A MANO en vez de dejarlo en 1fr + aspect-ratio porque esa pareja
     // es circular y el navegador la resolvia dandole al grid su tamano
@@ -13491,9 +13495,17 @@
         // 2.21 = lo que crece el lado del sprite al girarlo 45 grados
         // (wL + wL*PILL_RATIO) * cos45. Los 35 px son las dos lineas de texto,
         // el boton de equipar y los huecos entre ellos.
-        const wL = Math.max(18, Math.min(120, Math.floor((lado - 35) / 2.21)));
-        if (wL === skinBigWL) return;
-        skinBigWL = wL;
+        const hueco = lado - 35;
+        // Pixel GORDO, como en partida. Antes el sprite se horneaba a todo el
+        // hueco y se pintaba 1:1 (wL ~87, pixeles de 1 px): la pildora salia con
+        // un detalle que no tiene en ningun otro sitio y dejaba de parecer pixel
+        // art. Ahora cada pixel mide `px` de pantalla, el mas gordo posible
+        // hasta el de partida (PIX_SCREEN_PX) sin bajar de SB_WL_MIN. Entero,
+        // para que con image-rendering:pixelated todos los bloques midan igual.
+        const px = Math.max(1, Math.min(PIX_SCREEN_PX, Math.floor(hueco / 2.21 / SB_WL_MIN)));
+        const wL = Math.max(18, Math.min(120, Math.floor(hueco / px / 2.21)));
+        if (wL === skinBigWL && px === skinBigPx) return;
+        skinBigWL = wL; skinBigPx = px;
         _skinBigMidiendo = true;
         try { skinBigRender(); } finally { _skinBigMidiendo = false; }
     }
@@ -13538,6 +13550,7 @@
                 o = paisPillRot(WL, code, SKIN_ANG);
             }
             cv.width = o.S; cv.height = o.S;
+            cv.style.width = cv.style.height = (o.S * skinBigPx) + 'px';
             cv.getContext('2d').drawImage(o.cv, 0, 0);
 
             const cod = document.createElement('div'); cod.className = 'sb-cod';
