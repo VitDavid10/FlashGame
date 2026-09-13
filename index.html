@@ -751,9 +751,10 @@
         .hero-game-cover { position: absolute; inset: 0; background: #000; pointer-events: none; transition: opacity .6s ease; }
         .hero-game-wrap.is-ready .hero-game-cover { opacity: 0; }
         /* LOADING: la misma barra de bloques que la pantalla de carga del juego
-           (#loadingScreen .ls-track). El top lo pone el script del hero: el
-           punto medio entre la navbar y PLAY NOW. */
-        .hero-loading { position: absolute; left: 50%; top: 18vh; z-index: 3; transform: translate(-50%, -50%);
+           (#loadingScreen .ls-track). El top lo pone el <script> que va justo
+           detras del bloque (el punto medio entre la navbar y PLAY NOW). Nace
+           oculto para no pintarse nunca en un sitio provisional. */
+        .hero-loading { position: absolute; left: 50%; top: 0; z-index: 3; transform: translate(-50%, -50%); visibility: hidden;
             display: flex; flex-direction: column; align-items: center; gap: 14px; pointer-events: none; transition: opacity .3s ease; }
         .hero-loading.is-done { opacity: 0; }
         .hero-loading-txt { font-family: 'Press Start 2P', monospace; font-size: 14px; line-height: 1; color: #fff;
@@ -2672,6 +2673,82 @@ body.trailer-open #page-content{
                 <div class="hero-loading-txt">LOADING</div>
                 <div class="hero-loading-track"><div class="hero-loading-fill" id="heroLoadingFill"></div></div>
             </div>
+            <!-- AQUI y no con el resto del JS del final: entre medias hay un
+                 <script src> que para el parser mientras se descarga, y el
+                 navegador pintaba el LOADING en su sitio provisional antes de
+                 que nadie lo colocara (se veia arriba y luego bajaba). -->
+            <script>
+            // ===== LOADING del juego de fondo =====
+            // El iframe avisa por postMessage (heroFluidez en game/index.html):
+            // 'progress' con p de 0 a 1, 'ready' cuando lleva 1 s seguido a 40 fps
+            // o mas sin parones, y 'slow' si no lo consigue en 8 s. Mientras se
+            // descarga el juego no hay dato real, asi que hasta el primer aviso la
+            // barra se acerca despacio al 30% y el 70% restante lo marca el juego.
+            (function () {
+                const wrap = document.getElementById('heroGameWrap');
+                const frame = document.getElementById('heroGameFrame');
+                const box = document.getElementById('heroLoading');
+                const fill = document.getElementById('heroLoadingFill');
+                if (!wrap || !frame || !box || !fill) return;
+                const t0 = performance.now();
+                let meta = 0, visto = 0, avisado = false, acabado = false;
+                // Punto medio entre el borde de abajo de la navbar y PLAY NOW,
+                // medido: PLAY NOW cambia de sitio con el alto de la ventana y en
+                // movil. Hasta la primera medida el bloque va oculto (ver CSS).
+                function coloca() {
+                    const play = document.getElementById('heroPlayNow'), nav = document.querySelector('.navbar');
+                    if (!play || acabado) return;
+                    const w = wrap.getBoundingClientRect();
+                    const arriba = nav ? nav.getBoundingClientRect().bottom : w.top, abajo = play.getBoundingClientRect().top;
+                    box.style.top = ((arriba + abajo) / 2 - w.top) + 'px';
+                    // En ventanas muy bajas se encoge en vez de pisar la navbar o PLAY NOW.
+                    const k = Math.max(0.5, Math.min(1, (abajo - arriba - 12) / box.offsetHeight));
+                    box.style.transform = 'translate(-50%, -50%) scale(' + k + ')';
+                    box.style.visibility = 'visible';
+                }
+                function termina(fluido) {
+                    if (acabado) return;
+                    acabado = true;
+                    window.removeEventListener('message', recibe);
+                    if (fluido) {
+                        meta = 1;
+                        // Un instante con la barra llena y se destapa.
+                        setTimeout(() => { wrap.classList.add('is-ready'); box.classList.add('is-done'); }, 250);
+                    } else {
+                        // No va fluido: se queda el fondo oscuro y el juego fuera,
+                        // para que no le quite CPU a la pagina.
+                        box.classList.add('is-done');
+                        frame.remove();
+                    }
+                    setTimeout(() => box.remove(), 1000);
+                }
+                function recibe(e) {
+                    if (e.origin !== location.origin || e.source !== frame.contentWindow) return;
+                    const d = e.data || {};
+                    if (d.pwHero === 'progress') { avisado = true; meta = Math.max(meta, 0.3 + 0.7 * Math.min(1, +d.p || 0)); }
+                    else if (d.pwHero === 'ready') termina(true);
+                    else if (d.pwHero === 'slow') termina(false);
+                }
+                window.addEventListener('message', recibe);
+                // Si el juego ni siquiera llega a avisar (no carga, error), la
+                // barra no se queda puesta para siempre.
+                setTimeout(() => { if (!avisado) termina(false); }, 25000);
+                function pinta() {
+                    if (!avisado) meta = Math.max(meta, 0.3 * (1 - Math.exp(-(performance.now() - t0) / 2500)));
+                    visto += (meta - visto) * 0.2;
+                    if (meta - visto < 0.002) visto = meta;
+                    // A bloques enteros de 16 px, como el resto de barras del pack.
+                    const ancho = fill.parentElement.clientWidth;
+                    fill.style.width = (visto >= 1 ? ancho : Math.floor(visto * ancho / 16) * 16) + 'px';
+                    if (box.isConnected && !(acabado && visto >= 1)) requestAnimationFrame(pinta);
+                }
+                coloca();
+                addEventListener('resize', coloca);
+                addEventListener('load', coloca);
+                if (document.fonts && document.fonts.ready) document.fonts.ready.then(coloca);
+                requestAnimationFrame(pinta);
+            })();
+            </script>
         </div>
         <div class="hero-main-content">
             <div class="hero-txt">
@@ -6295,74 +6372,6 @@ function toggleTrailerMode() {
                 cierre = setTimeout(() => grupo.classList.remove('open'), 450);
             });
         }
-    })();
-    // ===== LOADING del juego de fondo =====
-    // El iframe avisa por postMessage (heroFluidez en game/index.html):
-    // 'progress' con p de 0 a 1, 'ready' cuando lleva 1 s seguido a 40 fps o mas
-    // sin parones, y 'slow' si no lo consigue en 8 s. Mientras se descarga el
-    // juego no hay dato real, asi que hasta el primer aviso la barra se acerca
-    // despacio al 30% y el 70% restante lo marca el juego.
-    (function () {
-        const wrap = document.getElementById('heroGameWrap');
-        const frame = document.getElementById('heroGameFrame');
-        const box = document.getElementById('heroLoading');
-        const fill = document.getElementById('heroLoadingFill');
-        if (!wrap || !frame || !box || !fill) return;
-        const t0 = performance.now();
-        let meta = 0, visto = 0, avisado = false, acabado = false;
-        // Punto medio entre el borde de abajo de la navbar y PLAY NOW, medido:
-        // PLAY NOW cambia de sitio con el alto de la ventana y en movil.
-        function coloca() {
-            const play = document.getElementById('heroPlayNow'), nav = document.querySelector('.navbar');
-            if (!play || acabado) return;
-            const w = wrap.getBoundingClientRect();
-            const arriba = nav ? nav.getBoundingClientRect().bottom : w.top, abajo = play.getBoundingClientRect().top;
-            box.style.top = ((arriba + abajo) / 2 - w.top) + 'px';
-            // En ventanas muy bajas se encoge en vez de pisar la navbar o PLAY NOW.
-            const k = Math.max(0.5, Math.min(1, (abajo - arriba - 12) / box.offsetHeight));
-            box.style.transform = 'translate(-50%, -50%) scale(' + k + ')';
-        }
-        function termina(fluido) {
-            if (acabado) return;
-            acabado = true;
-            window.removeEventListener('message', recibe);
-            if (fluido) {
-                meta = 1;
-                // Un instante con la barra llena y se destapa.
-                setTimeout(() => { wrap.classList.add('is-ready'); box.classList.add('is-done'); }, 250);
-            } else {
-                // No va fluido: se queda el fondo oscuro y el juego fuera, para
-                // que no le quite CPU a la pagina.
-                box.classList.add('is-done');
-                frame.remove();
-            }
-            setTimeout(() => box.remove(), 1000);
-        }
-        function recibe(e) {
-            if (e.origin !== location.origin || e.source !== frame.contentWindow) return;
-            const d = e.data || {};
-            if (d.pwHero === 'progress') { avisado = true; meta = Math.max(meta, 0.3 + 0.7 * Math.min(1, +d.p || 0)); }
-            else if (d.pwHero === 'ready') termina(true);
-            else if (d.pwHero === 'slow') termina(false);
-        }
-        window.addEventListener('message', recibe);
-        // Si el juego ni siquiera llega a avisar (no carga, error), la barra no
-        // se queda puesta para siempre.
-        setTimeout(() => { if (!avisado) termina(false); }, 25000);
-        function pinta() {
-            if (!avisado) meta = Math.max(meta, 0.3 * (1 - Math.exp(-(performance.now() - t0) / 2500)));
-            visto += (meta - visto) * 0.2;
-            if (meta - visto < 0.002) visto = meta;
-            // A bloques enteros de 16 px, como el resto de barras del pack.
-            const ancho = fill.parentElement.clientWidth;
-            fill.style.width = (visto >= 1 ? ancho : Math.floor(visto * ancho / 16) * 16) + 'px';
-            if (box.isConnected && !(acabado && visto >= 1)) requestAnimationFrame(pinta);
-        }
-        coloca();
-        addEventListener('resize', coloca);
-        addEventListener('load', coloca);
-        if (document.fonts && document.fonts.ready) document.fonts.ready.then(coloca);
-        requestAnimationFrame(pinta);
     })();
     // Modal de nombre de PLAY NOW: mismo modal-overlay/cmodal-* que el de
     // contacto, en vez del prompt() nativo del navegador.

@@ -14527,8 +14527,16 @@
                     // BLOQUES sueltos, no una banda continua — dibujada con la misma
                     // rejilla dura que el resto del pack.
                     '#loadingScreen .ls-track{width:min(336px,78vw);height:22px;background:#050505;' +
-                    'box-shadow:0 0 0 3px #000,inset 0 0 0 3px #1b2a22;position:relative}' +
-                    '#loadingBar{width:0%;height:100%;' +
+                    'box-shadow:0 0 0 3px #000,inset 0 0 0 3px #1b2a22;position:relative;overflow:hidden}' +
+                    // La barra se destapa moviendo DOS capas en sentidos contrarios
+                    // con transform: #loadingBar (la ventana) entra desde la
+                    // izquierda y su <i> va al reves, asi los bloques se quedan
+                    // quietos en pantalla. Con transform la mueve el compositor del
+                    // navegador y no se congela mientras el juego arranca; con width
+                    // (lo de antes) si: medido, 10 repintados en 1 s de carga.
+                    '#loadingBar,#loadingBar i{position:absolute;inset:0;display:block;will-change:transform}' +
+                    '#loadingBar{overflow:hidden;transform:translateX(-100%)}' +
+                    '#loadingBar i{transform:translateX(100%);' +
                     'background-image:linear-gradient(90deg,#eaf6f0 0 12px,transparent 12px 16px);background-size:16px 100%;' +
                     'background-repeat:repeat-x}' +
                     '@keyframes lsFade{from{opacity:0}to{opacity:1}}' +
@@ -14550,7 +14558,7 @@
                 '<img class="ls-title-img" src="../img/pixel-hero/hero-title.png" alt="PILLWARS" ' +
                 'onerror="this.outerHTML=\'&lt;h1 class=&quot;ls-title&quot;&gt;PILLWARS&lt;/h1&gt;\'">' +
                 '<div class="ls-sub">THE CRYPTO ARENA</div>' +
-                '<div class="ls-track"><div id="loadingBar"></div></div>' +
+                '<div class="ls-track"><div id="loadingBar"><i></i></div></div>' +
                 '</div>';
             document.body.appendChild(ov);
             lsDrawPill();
@@ -14568,14 +14576,21 @@
         // Solo suena el sonido de carga (sin música; la música arranca al hacer GO).
         SoundManager.stopMusic();
         SoundManager.cargaEmpieza();
-        const bar = document.getElementById('loadingBar');
-        bar.style.transition = 'none'; bar.style.width = '0%';
+        const bar = document.getElementById('loadingBar'), barIn = bar.firstElementChild;
+        // Lleva la barra a p (0..1) en ms con esa curva. Las dos capas SIEMPRE con
+        // la misma transicion: si no, los bloques resbalarian (ver el CSS).
+        const mueve = (p, ms, curva) => {
+            bar.style.transition = barIn.style.transition = ms ? 'transform ' + ms + 'ms ' + curva : 'none';
+            bar.style.transform = 'translateX(' + ((p - 1) * 100) + '%)';
+            barIn.style.transform = 'translateX(' + ((1 - p) * 100) + '%)';
+        };
+        mueve(0, 0);
         // forzar reflow antes de animar
         void bar.offsetWidth;
         if (window.__loadingTimer) clearTimeout(window.__loadingTimer);
         const finish = () => {
             if (window.__loadingTimer) { clearTimeout(window.__loadingTimer); window.__loadingTimer = null; }
-            bar.style.transition = 'width .15s ease'; bar.style.width = '100%';
+            mueve(1, 150, 'ease-out');
             // LOADED suena al llegar al 100%. onDone recibe la promesa de cuando
             // acaba: la entrada en partida la espera para sacar el GO!.
             const loaded = SoundManager.cargaTermina();
@@ -14598,15 +14613,19 @@
         // overlay se reusa entre partidas y la imagen, una vez cargada, se
         // queda cargada.
         const startBar = () => {
-            // La barra llega al 92% en minMs; el 8% final se completa al estar lista.
-            bar.style.transition = 'width ' + minMs + 'ms linear';
-            bar.style.width = '92%';
+            // Hasta el 70% en minMs y, si aun no esta lista, sigue arrastrandose
+            // hacia el 97% cada vez mas despacio hasta LOADING_MAX_MS. Antes
+            // llegaba al 92% y se quedaba clavada hasta cargar (medido: 1 s
+            // parada entrando en partida), y parecia que se habia colgado.
+            mueve(0.7, minMs, 'linear');
             const start = Date.now();
+            let arrastrando = false;
             const tick = () => {
                 const elapsed = Date.now() - start;
                 const ready = !readyFn || readyFn();
-                if ((elapsed >= minMs && ready) || elapsed >= LOADING_MAX_MS) finish();
-                else window.__loadingTimer = setTimeout(tick, 80);
+                if ((elapsed >= minMs && ready) || elapsed >= LOADING_MAX_MS) { finish(); return; }
+                if (!arrastrando) { arrastrando = true; mueve(0.97, LOADING_MAX_MS - elapsed, 'cubic-bezier(.2,.6,.35,1)'); }
+                window.__loadingTimer = setTimeout(tick, 80);
             };
             window.__loadingTimer = setTimeout(tick, minMs);
         };
