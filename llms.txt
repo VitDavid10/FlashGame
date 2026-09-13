@@ -1,0 +1,19 @@
+# PillWars
+
+> PillWars is a free-to-play multiplayer .io arena game that runs in the browser. You control a pill: eat to grow, split, use special skills and eat the other pills to become the biggest. Rooms are free or paid in $PILL, a token on Solana.
+
+## Play
+
+- [Play PillWars](https://pillwars.fun/game/): pick a mode and jump into the arena. Arcade is a roguelike arena where you draft a skill every 30 seconds and the top 10 split the pot. Classic is a 15-minute match on a map twice as big, with only the shoot skill.
+- [Home](https://pillwars.fun/): the game at a glance, skills, daily quests, skin store, leaderboard, rewards and staking.
+
+## Transparency
+
+- [Treasury](https://pillwars.fun/treasury.html): live on-chain view of the treasury, the time lock on project funds and how daily prizes are paid.
+
+## About
+
+- [Privacy policy](https://pillwars.fun/privacy.html)
+- [Contact](https://pillwars.fun/contact.html)
+- [X](https://x.com/pillwarsdotfun)
+- [Telegram](https://t.me/pillwars)

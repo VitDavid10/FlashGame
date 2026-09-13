@@ -77,6 +77,7 @@
     </script>
     <!-- FAVICON -->
     <link rel="icon" href="img/web.png">
+    <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 
     <!-- FUENTES -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -331,7 +332,7 @@
         /* Sin BACK TO SITE: los tres decian lo mismo y repetian lo que ya hacen los
            enlaces del nav y la tecla Escape. */
         .ov-h { max-width: 900px; margin: 0 auto 20px; width: 100%; }
-        .ov-h h1 { font-family: 'Russo One'; font-size: clamp(28px, 4vw, 42px); color: #fff;
+        .ov-h h1, .ov-h h2 { font-family: 'Russo One'; font-size: clamp(28px, 4vw, 42px); color: #fff;
                    margin: 0; letter-spacing: 1px; text-transform: uppercase; }
         .ov-h p { color: #9aa1a9; font-size: 13.5px; margin: 8px 0 0; max-width: 620px;
                   line-height: 1.55; }
@@ -1476,7 +1477,7 @@ body.trailer-open #page-content{
         #ranking .lb-c-pos { font-size: var(--fs-3); }
         #ranking .lb-c-name, #ranking .lb-c-kills, #ranking .lb-c-mass { font-size: var(--fs-3); }
         #ranking .lb-pag { margin-top: 14px; }
-        .section-title { font-size: var(--fs-7); font-family: 'Russo One'; margin-bottom: 50px; text-transform: uppercase; text-align: center; }
+        .section-title { font-size: var(--fs-7); font-family: 'Russo One'; margin-top: 0.67em; margin-bottom: 50px; text-transform: uppercase; text-align: center; }
         /* Caja "proximamente" del shop: esquina recta y dorado, en linea con el
            resto de tarjetas. Antes iba en rojo (--accent) sobre el fondo morado,
            dos colores que no estan en la paleta de la marca. */
@@ -2535,7 +2536,7 @@ body.trailer-open #page-content{
     </script>
 
     <div id="custom-cursor"></div>
-    <div id="page-content">
+    <div id="page-content" role="main">
 
     <!-- NAVBAR -->
     <nav class="navbar" id="main-navbar">
@@ -2614,8 +2615,8 @@ body.trailer-open #page-content{
                 <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
                 <div class="dropdown-content">
                     <div class="dropdown-box">
-                        <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon"> Chart</a>
-                        <a href="https://pump.fun" target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
+                        <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon" alt=""> Chart</a>
+                        <a href="https://pump.fun" target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" alt="" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
                     </div>
                 </div>
             </div>
@@ -2824,28 +2825,28 @@ body.trailer-open #page-content{
             
             <div class="skills-grid" id="skills-grid-container">
                 <div class="skill-card" onmouseenter="App.UI.showSkill(event, 'shoot')" onclick="App.UI.toggleSkillMobile(event, 'shoot')" onmouseleave="App.UI.hideSkill()">
-                    <img src="img/skills-pixel/shoot.png" class="skill-icon"><div class="skill-name">SHOT</div>
+                    <img src="img/skills-pixel/shoot.png" class="skill-icon" alt="SHOT skill icon"><div class="skill-name">SHOT</div>
                 </div>
                 <div class="skill-card" onmouseenter="App.UI.showSkill(event, 'sprint')" onclick="App.UI.toggleSkillMobile(event, 'sprint')" onmouseleave="App.UI.hideSkill()">
-                    <img src="img/skills-pixel/sprint.png" class="skill-icon"><div class="skill-name">SPRINT</div>
+                    <img src="img/skills-pixel/sprint.png" class="skill-icon" alt="SPRINT skill icon"><div class="skill-name">SPRINT</div>
                 </div>
                 <div class="skill-card" onmouseenter="App.UI.showSkill(event, 'tp')" onclick="App.UI.toggleSkillMobile(event, 'tp')" onmouseleave="App.UI.hideSkill()">
-                    <img src="img/skills-pixel/tp.png" class="skill-icon"><div class="skill-name">BLINK</div>
+                    <img src="img/skills-pixel/tp.png" class="skill-icon" alt="BLINK skill icon"><div class="skill-name">BLINK</div>
                 </div>
                 <div class="skill-card" onmouseenter="App.UI.showSkill(event, 'magnet')" onclick="App.UI.toggleSkillMobile(event, 'magnet')" onmouseleave="App.UI.hideSkill()">
-                    <img src="img/skills-pixel/iman.png" class="skill-icon"><div class="skill-name">MAGNET</div>
+                    <img src="img/skills-pixel/iman.png" class="skill-icon" alt="MAGNET skill icon"><div class="skill-name">MAGNET</div>
                 </div>
                 <div class="skill-card" onmouseenter="App.UI.showSkill(event, 'clone')" onclick="App.UI.toggleSkillMobile(event, 'clone')" onmouseleave="App.UI.hideSkill()">
-                    <img src="img/skills-pixel/clon.png" class="skill-icon"><div class="skill-name">CLONE</div>
+                    <img src="img/skills-pixel/clon.png" class="skill-icon" alt="CLONE skill icon"><div class="skill-name">CLONE</div>
                 </div>
                 <div class="skill-card" onmouseenter="App.UI.showSkill(event, 'shield')" onclick="App.UI.toggleSkillMobile(event, 'shield')" onmouseleave="App.UI.hideSkill()">
-                    <img src="img/skills-pixel/inmune.png" class="skill-icon"><div class="skill-name">SHIELD</div>
+                    <img src="img/skills-pixel/inmune.png" class="skill-icon" alt="SHIELD skill icon"><div class="skill-name">SHIELD</div>
                 </div>
                 <div class="skill-card" onmouseenter="App.UI.showSkill(event, 'plus')" onclick="App.UI.toggleSkillMobile(event, 'plus')" onmouseleave="App.UI.hideSkill()">
-                    <img src="img/skills-pixel/big.png" class="skill-icon"><div class="skill-name">PLUS</div>
+                    <img src="img/skills-pixel/big.png" class="skill-icon" alt="PLUS skill icon"><div class="skill-name">PLUS</div>
                 </div>
                 <div class="skill-card" onmouseenter="App.UI.showSkill(event, 'gamble')" onclick="App.UI.toggleSkillMobile(event, 'gamble')" onmouseleave="App.UI.hideSkill()">
-                    <img src="img/skills-pixel/random.png" class="skill-icon"><div class="skill-name">GAMBLE</div>
+                    <img src="img/skills-pixel/random.png" class="skill-icon" alt="GAMBLE skill icon"><div class="skill-name">GAMBLE</div>
                 </div>
             </div>
         </div>
@@ -2854,7 +2855,7 @@ body.trailer-open #page-content{
     <!-- SECCIONES -->
     <div id="quest" class="section-container">
         <div class="store-panel">
-            <h1 class="section-title holo-text">Daily Quests</h1>
+            <h2 class="section-title holo-text">Daily Quests</h2>
             <p class="dq-subtitle">Complete 3 of 5 daily quests to unlock <b>exclusive Telegram access</b> — the contract drops there first.</p>
             <div class="dq-summary">
                 <div class="dq-ring">
@@ -2875,7 +2876,7 @@ body.trailer-open #page-content{
     </div>
     <div id="shop" class="section-container">
         <div class="store-panel">
-            <h1 class="section-title holo-text">Skin Store</h1>
+            <h2 class="section-title holo-text">Skin Store</h2>
             <div class="shop-sub">32 countries · buy with <b>$PILL</b> or <b>SP</b> · every $PILL spent here is burned</div>
             <div class="shop-carrusel">
                 <button class="shop-flecha" id="shopPrev" aria-label="Previous">&#9664;</button>
@@ -2914,7 +2915,7 @@ body.trailer-open #page-content{
              averiguar cual manda. Manda esta, que es la que paga. -->
         <div class="ov-h">
             <div>
-                <h1 id="vbTitle">Leaderboard</h1>
+                <h2 id="vbTitle">Leaderboard</h2>
                 <p>The top 10 of each day gets paid. Tap any player to see exactly where their
                    numbers come from — every match is anchored on Solana.</p>
             </div>
@@ -2959,7 +2960,7 @@ body.trailer-open #page-content{
     <section id="ov-rewards" class="ov-sec">
         <div class="ov-h">
             <div>
-                <h1>Rewards</h1>
+                <h2>Rewards</h2>
                 <p>The top 10 of each day get paid from the rewards allocation. Nothing expires: an unclaimed reward waits for you.</p>
             </div>
         </div>
@@ -3008,7 +3009,7 @@ body.trailer-open #page-content{
     <section id="ov-staking" class="ov-sec">
         <div class="ov-h">
             <div>
-                <h1>Staking</h1>
+                <h2>Staking</h2>
                 <p>Lock $PILL and take a cut of everything the game earns. No tokens are minted: what you get paid is the house's own income coming back.</p>
             </div>
         </div>
