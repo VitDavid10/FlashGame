@@ -3490,7 +3490,19 @@ const httpServer = http.createServer(async (req, res) => {
     // el fichero entero — sin él, cada F5 se volvía a bajar TODO el arte del
     // juego (~15 MB entre carteles e iconos de skill). El código (html/js) sigue
     // revalidando igual, así que un cambio se ve al instante como siempre.
-    const no404 = () => { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); };
+    // Una direccion que no existe: al navegador se le da la pagina 404 del juego
+    // (con su boton PLAY) y a lo demas (imagenes, scripts, fetch) el texto de
+    // siempre, que es lo que esperan. El codigo es 404 en los dos casos, asi
+    // Google no la toma por una pagina buena.
+    const no404 = () => {
+        const texto = () => { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); };
+        if ((req.method !== 'GET' && req.method !== 'HEAD') || !String(req.headers.accept || '').includes('text/html')) return texto();
+        fs.readFile(path.join(ROOT, '404.html'), (err, html) => {
+            if (err) return texto();
+            res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+            res.end(req.method === 'HEAD' ? undefined : html);
+        });
+    };
     let yaDir = false;
     const servir = () => fs.stat(filePath, (err, st) => {
         if (err) return no404();

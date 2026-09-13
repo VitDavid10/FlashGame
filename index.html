@@ -1,24 +1,19 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Google Analytics 4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WER49F1YEH"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-WER49F1YEH');
-</script>
+    <!-- Google Analytics 4: only loads if the visitor accepts it in the cookie
+         notice (see /cookies.js). -->
+    <script src="/cookies.js"></script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PillWars - The Crypto Arena</title>
     <meta name="description" content="PillWars is a multiplayer .io arena game: eat, grow and outsmart rival pills with special skills. Play free or enter $PILL rooms on Solana.">
-    <!-- canonical = la direccion "oficial" de esta pagina. Asi pillwars.fun,
-         pillwars.fun/index.html o un enlace con ?ref=... cuentan como UNA. -->
+    <!-- canonical = the "official" address of this page, so pillwars.fun,
+         pillwars.fun/index.html or a link with ?ref=... count as ONE page. -->
     <link rel="canonical" href="https://pillwars.fun/">
-    <!-- Open Graph + X: la tarjeta que sale al pegar el enlace en X, Telegram,
-         Discord o WhatsApp (titulo, texto e imagen de 1200x630). -->
+    <!-- Open Graph + X: the card shown when the link is pasted into X, Telegram,
+         Discord or WhatsApp (title, text and a 1200x630 image). -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="PillWars">
     <meta property="og:url" content="https://pillwars.fun/">
@@ -2376,16 +2371,15 @@ body.trailer-open #page-content{
         document.addEventListener('dragstart', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
         document.addEventListener('contextmenu', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
     </script>
-    <!-- Layout del hero: los valores que tenia guardados produccion el
-         11-sep-2026, cuando se quito el editor que los subia al servidor.
-         Vive AQUI, en el <head>, y no en el script del final:
-         se convierte en CSS antes de que el navegador pinte nada, asi que el
-         hero sale ya colocado en el primer fotograma. Puesto abajo con el
-         resto del JS se veia medio segundo el hero de fabrica (titulo y
-         cartel en otro sitio, sin el zoom) y luego el salto a su posicion.
-         El script del final lo lee de window para no tener dos copias.
-         Los comentarios que hablan de EDIT LAYOUT se refieren a ese editor:
-         lo que movia vive ahora en HERO_LAYOUT_HORNEADO. -->
+    <!-- Hero layout: the values production had saved on 11-sep-2026, when the
+         editor that uploaded them to the server was removed. It lives HERE, in
+         the <head>, and not in the script at the end: it becomes CSS before the
+         browser paints anything, so the hero shows up already in place on the
+         first frame. Placed below with the rest of the JS, the default hero was
+         visible for half a second and then jumped into position. The script at
+         the end reads it from window so there are not two copies.
+         Comments that mention EDIT LAYOUT refer to that editor: what it moved
+         now lives in HERO_LAYOUT_HORNEADO. -->
     <script>
     window.HERO_LAYOUT_ELS = {
         title: '#heroTitleWrap', play: '#heroPlayNow',

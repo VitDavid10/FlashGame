@@ -1,5 +1,4 @@
-Contact: mailto:contacto@pillwars.fun
 Contact: https://pillwars.fun/contact.html
 Expires: 2027-09-01T00:00:00.000Z
-Preferred-Languages: en, es
+Preferred-Languages: en
 Canonical: https://pillwars.fun/.well-known/security.txt

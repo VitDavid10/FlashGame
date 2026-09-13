@@ -21,76 +21,159 @@
     <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #00ff88; --accent: #ff2a2a; --bg: #050505; }
+        /* Same pixel look as the landing page: Press Start 2P for titles, VT323
+           for running text, the game arena grid behind and hard-edged panels. */
+        :root { --mint: #00ff88; --lime: #ccff00; --gold: #ffce3d; --text: #cfe9dd; --muted: #8fa39a; }
         * { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
         body {
-            margin: 0; background: var(--bg); color: #cfd3d6; font-family: 'Inter', sans-serif;
-            line-height: 1.65; font-size: 15px;
-            background-image: linear-gradient(rgba(0,255,136,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,136,0.05) 1px, transparent 1px);
-            background-size: 40px 40px;
+            margin: 0; background: #050505; color: var(--text);
+            font-family: 'VT323', monospace; font-size: 23px; line-height: 1.3;
+            background-image: linear-gradient(rgba(255,255,255,0.03) 4px, transparent 4px),
+                              linear-gradient(90deg, rgba(255,255,255,0.03) 4px, transparent 4px);
+            background-size: 100px 100px;
         }
-        .wrap { max-width: 760px; margin: 0 auto; padding: 50px 22px 80px; }
-        .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-        .pill { width: 34px; height: 18px; border-radius: 9px; background: linear-gradient(135deg, #fff 0 50%, var(--primary) 50% 100%); transform: rotate(-30deg); box-shadow: 0 0 14px rgba(0,255,136,0.5); }
-        h1 { font-family: 'Russo One', sans-serif; color: #fff; font-size: 30px; margin: 0; letter-spacing: 1px; }
-        h1 b { color: var(--primary); }
-        h2 { font-family: 'Russo One', sans-serif; color: var(--primary); font-size: 17px; margin: 34px 0 10px; text-shadow: 0 0 12px rgba(0,255,136,0.3); }
-        .upd { color: #777; font-size: 13px; margin-bottom: 30px; }
-        a { color: var(--primary); }
-        ul { padding-left: 20px; }
-        li { margin-bottom: 6px; }
-        .box { background: rgba(15,20,15,0.7); border: 1px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 18px 22px; margin-top: 12px; }
-        .back { display: inline-block; margin-top: 40px; font-family: 'Russo One', sans-serif; color: var(--primary); text-decoration: none; border: 1px solid var(--primary); padding: 10px 20px; border-radius: 8px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; }
-        .back:hover { background: var(--primary); color: #04150c; }
-        b.k { color: #fff; }
+        a { color: var(--gold); text-decoration: none; border-bottom: 2px solid rgba(255,206,61,0.45); }
+        a:hover { color: #fff; border-color: #fff; }
+
+        /* Top bar: logo on the left, PLAY on the right, stays visible while scrolling. */
+        .top {
+            position: sticky; top: 0; z-index: 10;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            padding: 12px clamp(14px, 4vw, 32px);
+            background: rgba(0,0,0,0.86); border-bottom: 2px solid #0b5a34;
+            backdrop-filter: blur(4px);
+        }
+        .top .brand { border: 0; display: block; line-height: 0; }
+        .top .brand img { height: clamp(20px, 5vw, 30px); width: auto; display: block; }
+        .play {
+            display: flex; align-items: center; justify-content: center; border: 0;
+            width: clamp(118px, 26vw, 150px); aspect-ratio: 5.5 / 1;
+            background: transparent url('/game/img/cartel-hero/btn-plain-red.png') center / 100% 100% no-repeat;
+            image-rendering: pixelated; font-family: 'Press Start 2P', monospace; font-size: clamp(9px, 2.4vw, 11px);
+            color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
+        }
+        .play:hover { color: #fff; filter: brightness(1.15); }
+
+        .wrap { width: 100%; max-width: 860px; margin: 0 auto; padding: clamp(28px, 6vw, 56px) clamp(14px, 4vw, 24px) 64px; }
+        h1 {
+            font-family: 'Press Start 2P', monospace; font-weight: normal; margin: 0;
+            font-size: clamp(20px, 5.4vw, 34px); line-height: 1.3; color: #fff; letter-spacing: 1px;
+            text-shadow: 4px 4px 0 #063e26, 8px 8px 0 rgba(0,0,0,0.55);
+        }
+        .upd { font-family: 'Press Start 2P', monospace; font-size: clamp(8px, 2.2vw, 10px); color: var(--gold); margin: 18px 0 26px; letter-spacing: 1px; line-height: 1.8; }
+        .intro { margin: 0 0 8px; color: #e6f5ee; }
+
+        /* Panels: dark box, mint border and a hard pixel shadow, like the game popups. */
+        .panel {
+            margin: 26px 0 0; padding: clamp(14px, 3.6vw, 22px) clamp(14px, 4vw, 26px);
+            background: rgba(6,12,9,0.9); border: 2px solid var(--mint);
+            box-shadow: 0 0 0 2px #000, 6px 6px 0 2px rgba(0,0,0,0.55);
+        }
+        .panel h2 {
+            font-family: 'Press Start 2P', monospace; font-weight: normal; margin: 0 0 14px;
+            font-size: clamp(11px, 3vw, 14px); line-height: 1.6; color: var(--mint); letter-spacing: 1px;
+            text-shadow: 2px 2px 0 #000;
+        }
+        .panel p { margin: 0 0 10px; }
+        .panel p:last-child { margin-bottom: 0; }
+        b.k { color: #fff; font-weight: normal; }
+        ul.items { list-style: none; margin: 0; padding: 0; }
+        ul.items li { position: relative; padding-left: 26px; margin: 0 0 10px; }
+        ul.items li:last-child { margin-bottom: 0; }
+        /* Pixel bullet: a lime square with a black outline, like the food in the arena. */
+        ul.items li::before {
+            content: ''; position: absolute; left: 4px; top: 0.45em; width: 8px; height: 8px;
+            background: var(--lime); box-shadow: 0 0 0 2px #000;
+        }
+        .note { color: var(--muted); }
+
+        .btn {
+            font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; line-height: 1.4;
+            margin-top: 8px; padding: 11px 14px; cursor: pointer; color: #fff; background: #14171c;
+            border: 2px solid var(--mint); box-shadow: 3px 3px 0 #000; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
+        }
+        .btn:hover { background: var(--mint); color: #04150c; text-shadow: none; }
+        .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+
+        .back {
+            display: inline-block; margin-top: 36px; padding: 10px 14px; border: 1px solid rgba(255,206,61,0.4); border-radius: 8px;
+            font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 1px; color: var(--gold);
+            background: rgba(0,0,0,0.55); text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
+        }
+        .back:hover { color: #fff; border-color: rgba(255,206,61,0.75); }
+
+        @media (max-width: 600px) {
+            body { font-size: 21px; }
+            .panel { box-shadow: 0 0 0 2px #000, 4px 4px 0 2px rgba(0,0,0,0.55); }
+            ul.items li { padding-left: 22px; }
+        }
     </style>
 </head>
 <body>
-    <div class="wrap">
-        <div class="logo"><div class="pill"></div><h1>PILL <b>WARS</b></h1></div>
-        <h1 style="font-size:22px; margin-top:14px;">Privacy Policy</h1>
-        <div class="upd">Last updated: June 14, 2026</div>
+    <header class="top">
+        <a class="brand" href="/"><img src="/img/pixel-hero/brand.png" alt="PILLWARS"></a>
+        <a class="play" href="/game/">PLAY</a>
+    </header>
 
-        <p>At PillWars (<a href="https://pillwars.fun">pillwars.fun</a>) we take your privacy seriously and collect the <b class="k">minimum data possible</b> to make the game work and keep it fair. This page explains, in plain language, what data we handle and why.</p>
+    <main class="wrap">
+        <h1>PRIVACY POLICY</h1>
+        <p class="upd">LAST UPDATED · SEPTEMBER 13, 2026</p>
 
-        <h2>What we collect</h2>
-        <ul>
-            <li><b class="k">Your IP address, anonymized.</b> As soon as you connect we trim your IP (we drop the last block, e.g. <i>178.105.243.x</i>). We never store or display your full IP.</li>
-            <li><b class="k">The nickname you choose</b> when playing (you decide it; we don't ask for your real name).</li>
-            <li><b class="k">Your approximate country</b>, derived from the anonymized IP, for statistics only.</li>
-            <li><b class="k">Game stats</b>: matches played, kills, deaths.</li>
-            <li><b class="k">Website usage data</b> via Google Analytics (pages visited, browser, etc.).</li>
-            <li><b class="k">Contact form</b>: if you write to us, the name, email and message you submit (handled by Web3Forms).</li>
-        </ul>
+        <p class="intro">At PillWars (<a href="https://pillwars.fun">pillwars.fun</a>) we collect the <b class="k">minimum data possible</b> to make the game work and keep it fair. This page explains, in plain language, what data we handle and why.</p>
 
-        <h2>Why we use it</h2>
-        <ul>
-            <li>To run the online game (connecting you to matches).</li>
-            <li><b class="k">Security and moderation</b>: detecting abuse and removing cheaters or disruptive players.</li>
-            <li>Anonymous statistics to understand usage and improve the game.</li>
-        </ul>
-        <p>The legal basis is our <b class="k">legitimate interest</b> in providing a secure, working service.</p>
+        <section class="panel">
+            <h2>WHAT WE COLLECT</h2>
+            <ul class="items">
+                <li><b class="k">Your IP address, anonymized.</b> As soon as you connect we trim your IP (we drop the last block, e.g. 178.105.243.x). We never store or display your full IP.</li>
+                <li><b class="k">The nickname you choose</b> when playing. You decide it; we don't ask for your real name.</li>
+                <li><b class="k">Your approximate country</b>, derived from the anonymized IP, for statistics only.</li>
+                <li><b class="k">Game stats</b>: matches played, kills, deaths.</li>
+                <li><b class="k">Website usage data</b> via Google Analytics (pages visited, browser, etc.), <b class="k">only if you accept cookies</b>.</li>
+                <li><b class="k">Contact form</b>: if you write to us, the name, email and message you submit (delivered by Web3Forms).</li>
+            </ul>
+        </section>
 
-        <h2>How long we keep it</h2>
-        <div class="box">Connection and moderation logs are <b class="k">deleted automatically after 60 days</b>. Game stats are kept while the game stays active.</div>
+        <section class="panel">
+            <h2>WHY WE USE IT</h2>
+            <ul class="items">
+                <li>To run the online game and connect you to matches.</li>
+                <li><b class="k">Security and moderation</b>: detecting abuse and removing cheaters or disruptive players.</li>
+                <li>Anonymous statistics to understand usage and improve the game.</li>
+            </ul>
+            <p class="note" style="margin-top:14px">The legal basis is our <b class="k">legitimate interest</b> in providing a secure, working service, and your <b class="k">consent</b> for Google Analytics.</p>
+        </section>
 
-        <h2>Who we share it with</h2>
-        <p>We do not sell or trade your data. We use a few external services that may process technical data:</p>
-        <ul>
-            <li><b class="k">Google Analytics</b> (website statistics).</li>
-            <li><b class="k">ip-api.com</b>, only to derive the country from the anonymized IP.</li>
-            <li><b class="k">Web3Forms</b>, only to deliver contact-form messages to us.</li>
-        </ul>
+        <section class="panel">
+            <h2>HOW LONG WE KEEP IT</h2>
+            <p>Connection and moderation logs are <b class="k">deleted automatically after 60 days</b>. Game stats are kept while the game stays active.</p>
+        </section>
 
-        <h2>Your rights</h2>
-        <p>You can request access to your data or its deletion by writing to <a href="mailto:privacidad@pillwars.fun">privacidad@pillwars.fun</a>. As the data is anonymized, in many cases we won't be able to link it to you, but we'll handle any reasonable request.</p>
+        <section class="panel">
+            <h2>WHO WE SHARE IT WITH</h2>
+            <p>We do not sell or trade your data. A few external services may process technical data:</p>
+            <ul class="items">
+                <li><b class="k">Google Analytics</b>: website statistics, only if you accept cookies.</li>
+                <li><b class="k">ip-api.com</b>: only to derive the country from the anonymized IP.</li>
+                <li><b class="k">Web3Forms</b>: only to deliver contact-form messages to us.</li>
+            </ul>
+        </section>
 
-        <h2>Cookies</h2>
-        <p>The game itself uses no tracking cookies. The website may use Google Analytics cookies. You can block them in your browser and the game will still work.</p>
+        <section class="panel">
+            <h2>YOUR RIGHTS</h2>
+            <p>You can ask for access to your data or for its deletion through our <a href="/contact.html">contact form</a>. As the data is anonymized, in many cases we won't be able to link it to you, but we will handle any reasonable request.</p>
+        </section>
 
-        <a class="back" href="/">← Back to PillWars</a>
-    </div>
+        <section class="panel" id="cookies">
+            <h2>COOKIES</h2>
+            <p>The game itself uses no tracking cookies. Google Analytics <b class="k">only loads if you accept it</b> in the cookie notice. If you reject it, nothing from Google is loaded and the game works exactly the same.</p>
+            <p>Changed your mind?</p>
+            <button type="button" class="btn" onclick="try { localStorage.removeItem('pw_cookies'); } catch (e) {} this.textContent = 'DONE: WE WILL ASK YOU AGAIN';">ASK ME AGAIN</button>
+        </section>
+
+        <a class="back" href="/">← BACK TO PILLWARS</a>
+    </main>
 </body>
 </html>
