@@ -162,6 +162,11 @@
          nunca (ver `html[data-hero] body`). -->
     <script>
         if (/[?&]hero=1\b/.test(location.search)) document.documentElement.setAttribute('data-hero', '1');
+        // Los dos sonidos de la pantalla de carga se piden YA, no desde init():
+        // alli la peticion salia cuando el script entero habia terminado y, en la
+        // primera visita, llegaban cuando la carga ya casi habia acabado.
+        // SoundManager.cargaPrepara los decodifica. El fondo de la landing no los usa.
+        else window.__cargaAudios = ['loading-loop', 'loaded'].map(n => fetch('../snd/' + n + '.wav').then(r => r.arrayBuffer()).catch(() => null));
     </script>
 
     <style>
@@ -5024,7 +5029,7 @@
             tp: new Audio('../snd/tp.mp3'), big: new Audio('../snd/big.mp3'), little: new Audio('../snd/little.mp3'),
             virus: new Audio('../snd/virus.mp3'), floatkill: new Audio('../snd/floatkill.mp3'),
             money: new Audio('../snd/money.mp3'),     // caja registradora del botin de la kill
-            loading: new Audio('../snd/loading.mp3'), go: new Audio('../snd/GO.mp3'),
+            go: new Audio('../snd/GO.mp3'),
             contador: new Audio('../snd/contador.mp3')
         },
         music: new Audio('../snd/music.mp3'), startTimer: null,
@@ -5037,6 +5042,7 @@
             this.music.muted = this.musicMuted; this.menuMusic.muted = this.menuMusicMuted;
             this.syncMusicBtn();
             for(let key in this.sounds) { this.sounds[key].load(); } this.music.load(); this.menuMusic.load();
+            this.cargaPrepara();
         },
         // El icono del boton refleja el mute de la musica que toca ahora mismo.
         syncMusicBtn: function() {
@@ -5105,7 +5111,82 @@
         playMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
         stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; },
         playMenuMusic: function(delayMs) { this.activeMusic = 'menu'; this.syncMusicBtn(); if(this.menuMusicMuted) return; this.stopMusic(); clearTimeout(this._menuMusicTimer); const d = (typeof delayMs === 'number') ? delayMs : 0; this._menuMusicTimer = setTimeout(() => { if(!this.menuMusicMuted) this.menuMusic.play().catch(e=>{}); }, d); },
-        stopMenuMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); clearTimeout(this._menuMusicTimer); this.menuMusic.pause(); this.menuMusic.currentTime = 0; }
+        stopMenuMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); clearTimeout(this._menuMusicTimer); this.menuMusic.pause(); this.menuMusic.currentTime = 0; },
+
+        // ===== Pantalla de carga: LOADING en bucle y LOADED al llegar al 100% =====
+        // Salen de snd/loading.mp3 partido en dos. loading-loop.wav es la subida
+        // de tono de siempre con un ciclo del tono ya arriba repetido al final:
+        // se toca desde el principio y, si la carga tarda, se queda en ese tono
+        // (CARGA_LOOP_START..END) todo lo que haga falta. loaded.wav son los
+        // pitidos con los que acababa. Antes sonaba el mp3 entero y se cortaba en
+        // seco al terminar la carga (a los 0.5 s entrando al juego, a los 2 s
+        // entrando en partida), asi que el final casi nunca se oia, y si la carga
+        // pasaba de 3.8 s se quedaba en silencio.
+        // Web Audio y no <audio>: el bucle empieza a mitad de fichero y no puede
+        // dejar hueco al repetir. WAV y no MP3: el MP3 mete unos milisegundos de
+        // silencio al principio y descolocaria los puntos del bucle.
+        CARGA_LOOP_START: 2.937052, CARGA_LOOP_END: 3.180862,
+        _ctx: null, _cargaBufs: null, _cargaQuiere: false, _cargaBucle: null,
+        cargaPrepara: function() {
+            // El fondo de la landing (hero=1) nunca enseña la pantalla de carga.
+            if (this._ctx || document.documentElement.hasAttribute('data-hero')) return;
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            const ctx = this._ctx = new Ctx();
+            this._cargaBufs = {};
+            // Los WAV ya se pidieron en el <head> (window.__cargaAudios).
+            const [pBucle, pFin] = window.__cargaAudios || [];
+            const decodifica = (k, pedido) => Promise.resolve(pedido)
+                .then(ab => ab && new Promise((ok, ko) => ctx.decodeAudioData(ab, ok, ko)))
+                .then(buf => { if (!buf) return; this._cargaBufs[k] = buf; if (k === 'bucle' && this._cargaQuiere) this.cargaEmpieza(); })
+                .catch(() => {});
+            decodifica('bucle', pBucle);
+            decodifica('fin', pFin);
+            // Sin un gesto previo en la pagina el navegador deja el contexto
+            // suspendido (politica de autoplay; en iOS un touchstart no cuenta, el
+            // click de despues si). Se reintenta en cada gesto hasta que arranca y,
+            // si la carga sigue en pantalla, su bucle empieza en ese momento.
+            const evs = ['pointerdown', 'click', 'keydown', 'touchend'];
+            const reanuda = () => { if (ctx.state !== 'running') ctx.resume().catch(() => {}); };
+            evs.forEach(ev => document.addEventListener(ev, reanuda, true));
+            ctx.onstatechange = () => {
+                if (ctx.state !== 'running') return;
+                evs.forEach(ev => document.removeEventListener(ev, reanuda, true));
+                if (this._cargaQuiere) this.cargaEmpieza();
+            };
+        },
+        _cargaFuente: function(buf) {
+            const ctx = this._ctx, src = ctx.createBufferSource(), g = ctx.createGain();
+            src.buffer = buf; g.gain.value = Math.min(1, SFX_MASTER);
+            src.connect(g); g.connect(ctx.destination);
+            return { src, g };
+        },
+        cargaEmpieza: function() {
+            this._cargaQuiere = true;
+            const ctx = this._ctx, buf = this._cargaBufs && this._cargaBufs.bucle;
+            // Con el contexto suspendido no se programa nada: sonaria de golpe con
+            // el primer clic aunque la carga ya hubiera acabado.
+            if (this.muted || this._cargaBucle || !buf || ctx.state !== 'running') return;
+            const b = this._cargaFuente(buf);
+            b.src.loop = true; b.src.loopStart = this.CARGA_LOOP_START; b.src.loopEnd = this.CARGA_LOOP_END;
+            b.src.start();
+            this._cargaBucle = b;
+        },
+        // Devuelve una promesa que se cumple cuando acaba LOADED (al momento si no
+        // llega a sonar), para que el GO! de la partida no se le monte encima.
+        cargaTermina: function() {
+            this._cargaQuiere = false;
+            const ctx = this._ctx, b = this._cargaBucle;
+            this._cargaBucle = null;
+            if (!ctx) return Promise.resolve();
+            // El bucle se apaga en 25 ms (cortado en seco da un clic) y a la vez
+            // entra LOADED, igual que acababa el loading.mp3 original.
+            if (b) { const t = ctx.currentTime; b.g.gain.setValueAtTime(b.g.gain.value, t); b.g.gain.linearRampToValueAtTime(0, t + 0.025); b.src.stop(t + 0.03); }
+            const buf = this._cargaBufs.fin;
+            if (this.muted || !buf || ctx.state !== 'running') return Promise.resolve();
+            this._cargaFuente(buf).src.start();
+            return new Promise(ok => setTimeout(ok, buf.duration * 1000));
+        }
     };
 
     // heroplay/heroskins arrancan el sonido SOLOS, sin ningun click previo en
@@ -5117,9 +5198,7 @@
         document.removeEventListener('click', enableAudioContext); document.removeEventListener('keydown', enableAudioContext); document.removeEventListener('touchstart', enableAudioContext);
         if (SoundManager.activeMusic === 'game' && !SoundManager.musicMuted && SoundManager.music.paused && gameRunning) SoundManager.music.play().catch(e => {});
         if (SoundManager.activeMusic === 'menu' && !SoundManager.menuMusicMuted && SoundManager.menuMusic.paused) SoundManager.menuMusic.play().catch(e => {});
-        const ld = SoundManager.sounds.loading;
-        const ls = document.getElementById('loadingScreen');
-        if (ld && ld.paused && ls && getComputedStyle(ls).display !== 'none') SoundManager.play('loading');
+        // El sonido de la pantalla de carga se reengancha solo (ver cargaPrepara).
     }
     document.addEventListener('click', enableAudioContext); document.addEventListener('keydown', enableAudioContext); document.addEventListener('touchstart', enableAudioContext);
     function toggleAudio() { SoundManager.toggleSFX(); }
@@ -13700,7 +13779,7 @@
     // no hace falta logica de respawn propia. No usa startSpectatorMode(): esa
     // lee inputs de un panel de ajustes (botsToggle, mapMult...) que ya no
     // existe en el HTML y peta en su primera linea.
-    let heroAutopilotActive = false, _heroAutopilotTimer = null, heroDemoHoldUntil = 0;
+    let heroAutopilotActive = false, _heroAutopilotTimer = null;
     // Cuenta las muertes de la pildora decorativa entre un reset de mundo y el
     // siguiente (ver el caso 'playerDied' en processSimEvents): rehacer TODA la
     // simulacion (25 bots + comida) en cada muerte es caro y las muertes pueden
@@ -13749,15 +13828,54 @@
         camera.x = c.x; camera.y = c.y; camera.scale = zoomObjetivoJugador(c.r, c.r, 1);
         lastFrameTime = Date.now();
         gameRunning = true;
-        // Medio segundo con el mapa, la comida y la pildora ya pintados pero
-        // QUIETOS antes de dejar que sim.step() mueva nada (ver el freno en
-        // updateGame). En conexiones lentas el iframe tardaba en cargar y, en
-        // cuanto terminaba, el primer fotograma llegaba ya en marcha — un
-        // salto feo de "nada" a "todo moviendose de golpe". draw() no mira
-        // este freno, asi que la escena se ve completa desde el primer
-        // fotograma, solo congelada un instante.
-        heroDemoHoldUntil = Date.now() + 500;
         if (!_heroAutopilotTimer) _heroAutopilotTimer = setInterval(heroAutopilotStep, 300);
+        // Antes aqui habia medio segundo con todo quieto para no enseñar un
+        // arranque a saltos. Ya no hace falta: la landing tapa el iframe hasta
+        // que heroFluidez avisa, asi que cuando se ve ya lleva un rato jugando.
+        if (!_heroFluidezMirando) heroFluidez();
+    }
+    // ===== El fondo solo se enseña cuando va fluido =====
+    // index.html tapa este iframe con LOADING y lo destapa al recibir 'ready'.
+    // Fluido = 1 s seguido a 40 fps o mas sin ningun fotograma de mas de 50 ms,
+    // y no antes de HERO_CALENTAR_MS (lo primero que se pinta arrastra la
+    // generacion de sprites y el resto de la carga de la landing). Si en
+    // HERO_MAX_MS con la pestaña visible no lo consigue, 'slow': la landing quita
+    // el iframe y deja el fondo oscuro. Una vez enseñado ya no se mide: si luego
+    // baja, se queda (solo es para no enseñar el tiron del arranque).
+    const HERO_FPS_MIN = 40, HERO_PARON_MS = 50, HERO_CALENTAR_MS = 1500, HERO_MAX_MS = 8000;
+    let _heroFluidezMirando = false;
+    function heroFluidez() {
+        _heroFluidezMirando = true;
+        const avisa = (estado, p) => { try { parent.postMessage({ pwHero: estado, p: p }, location.origin); } catch (e) {} };
+        // visible: ms de pestaña visible desde que arranco la demo. marcas: los
+        // fotogramas del ultimo segundo. malo: cuando fue el ultimo paron.
+        let prev = 0, visible = 0, malo = 0, ultimoAviso = 0;
+        const marcas = [];
+        const paso = now => {
+            if (!prev) malo = now;
+            else {
+                const dt = now - prev;
+                // Un hueco enorme es la pestaña volviendo de estar oculta: no
+                // cuenta como espera, pero la medida empieza de cero.
+                if (dt > 500) { marcas.length = 0; malo = now; }
+                else {
+                    visible += dt;
+                    marcas.push(now);
+                    if (dt > HERO_PARON_MS) malo = now;
+                }
+            }
+            prev = now;
+            while (marcas.length && now - marcas[0] > 1000) marcas.shift();
+            const estable = now - malo;
+            if (visible >= HERO_CALENTAR_MS && estable >= 1000 && marcas.length >= HERO_FPS_MIN) { avisa('ready', 1); return; }
+            if (visible >= HERO_MAX_MS) { avisa('slow'); return; }
+            if (now - ultimoAviso > 100) {
+                ultimoAviso = now;
+                avisa('progress', 0.5 * Math.min(1, visible / HERO_CALENTAR_MS) + 0.5 * Math.min(1, estable / 1000, marcas.length / HERO_FPS_MIN));
+            }
+            requestAnimationFrame(paso);
+        };
+        requestAnimationFrame(paso);
     }
     // Autopiloto: cada 300ms apunta mouse.x/mouse.y (en coordenadas de
     // PANTALLA) hacia su objetivo, convertidas con la misma formula que ya usa
@@ -14449,7 +14567,7 @@
         lsPaintBg();
         // Solo suena el sonido de carga (sin música; la música arranca al hacer GO).
         SoundManager.stopMusic();
-        SoundManager.play('loading');
+        SoundManager.cargaEmpieza();
         const bar = document.getElementById('loadingBar');
         bar.style.transition = 'none'; bar.style.width = '0%';
         // forzar reflow antes de animar
@@ -14458,7 +14576,9 @@
         const finish = () => {
             if (window.__loadingTimer) { clearTimeout(window.__loadingTimer); window.__loadingTimer = null; }
             bar.style.transition = 'width .15s ease'; bar.style.width = '100%';
-            SoundManager.stop('loading');
+            // LOADED suena al llegar al 100%. onDone recibe la promesa de cuando
+            // acaba: la entrada en partida la espera para sacar el GO!.
+            const loaded = SoundManager.cargaTermina();
             // El cartel se retira DESPUES de onDone, y si onDone es asincrono,
             // cuando termine. Antes se quitaba primero y se llamaba despues:
             // con un onDone que tarda en montar su pantalla (CHOOSE SKINS
@@ -14468,7 +14588,7 @@
             let r;
             // Un fallo montando la pantalla no puede dejar el cartel puesto
             // para siempre (ni el input bloqueado): pase lo que pase, se cierra.
-            try { r = onDone && onDone(); } catch (e) { console.warn('[loading] onDone', e); }
+            try { r = onDone && onDone(loaded); } catch (e) { console.warn('[loading] onDone', e); }
             if (r && typeof r.then === 'function') r.then(cerrar, cerrar); else cerrar();
         };
         // La barra no arranca hasta que el titulo (hero-title.png, lo unico
@@ -14606,7 +14726,9 @@
                     }
                     return sim && sim.isRemote && sim._camInit && myCells().length > 0;
                 },
-                () => { showGoSplash(); SoundManager.playMusic(); });
+                // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al
+                // 100% mientras tanto (showLoadingScreen espera a esta promesa).
+                loaded => loaded.then(() => { showGoSplash(); SoundManager.playMusic(); }));
         }
         if (isResume) spawnFloatingText('RECONNECTED', '#00ff88');
         // Persiste info de rejoin: si la pestaña se cierra ahora, el user podrá
@@ -14660,10 +14782,6 @@
         if (!gameRunning || !sim) return;
         const p = me();
         const now = Date.now(), delta = now - lastFrameTime; lastFrameTime = now;
-        // Arranque del hero: sim.step() se congela hasta heroDemoHoldUntil
-        // (ver heroAmbientDemo) para que el primer fotograma visible sea el
-        // mapa/comida/pildora ya en su sitio pero quietos, no ya en marcha.
-        if (heroDemoHoldUntil) { if (now < heroDemoHoldUntil) return; heroDemoHoldUntil = 0; }
 
         // 1) Input → sim (objetivo en coordenadas de mundo)
         if (isSpectating || isLoggingOut || !p) { if (p) sim.setInput('me', null); }
