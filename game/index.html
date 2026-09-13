@@ -14574,8 +14574,8 @@
         // rejilla), asi que con una pasada basta — nada de rAF eterno.
         lsPaintBg();
         // Solo suena el sonido de carga (sin música; la música arranca al hacer GO).
+        // El bucle en si arranca en startBar(), no aqui: ver su comentario.
         SoundManager.stopMusic();
-        SoundManager.cargaEmpieza();
         const bar = document.getElementById('loadingBar'), barIn = bar.firstElementChild;
         // Lleva la barra a p (0..1) en ms con esa curva. Las dos capas SIEMPRE con
         // la misma transicion: si no, los bloques resbalarian (ver el CSS).
@@ -14591,20 +14591,30 @@
         const finish = () => {
             if (window.__loadingTimer) { clearTimeout(window.__loadingTimer); window.__loadingTimer = null; }
             mueve(1, 150, 'ease-out');
-            // LOADED suena al llegar al 100%. onDone recibe la promesa de cuando
-            // acaba: la entrada en partida la espera para sacar el GO!.
-            const loaded = SoundManager.cargaTermina();
-            // El cartel se retira DESPUES de onDone, y si onDone es asincrono,
-            // cuando termine. Antes se quitaba primero y se llamaba despues:
-            // con un onDone que tarda en montar su pantalla (CHOOSE SKINS
-            // sincroniza skins y monta el login) quedaba un hueco en negro
-            // entre el final de la carga y la pantalla de destino.
-            const cerrar = () => { window.__loadingLock = false; ov.style.display = 'none'; };
-            let r;
-            // Un fallo montando la pantalla no puede dejar el cartel puesto
-            // para siempre (ni el input bloqueado): pase lo que pase, se cierra.
-            try { r = onDone && onDone(loaded); } catch (e) { console.warn('[loading] onDone', e); }
-            if (r && typeof r.then === 'function') r.then(cerrar, cerrar); else cerrar();
+            // Se espera a que la barra LLEGUE de verdad al 100% (esos mismos
+            // 150ms) antes de seguir. Antes esto era instantaneo: heroplay/
+            // heroskins no esperan a `loaded` (ver mas abajo) y su onDone podia
+            // resolver antes de que la transicion terminase, cerrando el cartel
+            // con la barra a medio rellenar — sonaba LOADED pero no se llegaba a
+            // ver la barra completa.
+            window.__loadingTimer = setTimeout(() => {
+                window.__loadingTimer = null;
+                // LOADED suena al llegar al 100% de verdad. onDone recibe la
+                // promesa de cuando acaba: la entrada en partida la espera para
+                // sacar el GO!.
+                const loaded = SoundManager.cargaTermina();
+                // El cartel se retira DESPUES de onDone, y si onDone es asincrono,
+                // cuando termine. Antes se quitaba primero y se llamaba despues:
+                // con un onDone que tarda en montar su pantalla (CHOOSE SKINS
+                // sincroniza skins y monta el login) quedaba un hueco en negro
+                // entre el final de la carga y la pantalla de destino.
+                const cerrar = () => { window.__loadingLock = false; ov.style.display = 'none'; };
+                let r;
+                // Un fallo montando la pantalla no puede dejar el cartel puesto
+                // para siempre (ni el input bloqueado): pase lo que pase, se cierra.
+                try { r = onDone && onDone(loaded); } catch (e) { console.warn('[loading] onDone', e); }
+                if (r && typeof r.then === 'function') r.then(cerrar, cerrar); else cerrar();
+            }, 150);
         };
         // La barra no arranca hasta que el titulo (hero-title.png, lo unico
         // realmente asincrono del cartel: la pildora y el fondo son dibujo
@@ -14618,6 +14628,15 @@
             // llegaba al 92% y se quedaba clavada hasta cargar (medido: 1 s
             // parada entrando en partida), y parecia que se habia colgado.
             mueve(0.7, minMs, 'linear');
+            // El bucle de carga arranca AQUI, no en cuanto se abre el cartel:
+            // antes sonaba de inmediato aunque la barra siguiera en 0% esperando
+            // al titulo (hero-title.png), asi que se oia "cargando" sin nada
+            // moviendose todavia. Dos rAF seguidos, no uno: el primero cae ANTES
+            // de que el navegador pinte el fotograma con la barra ya en marcha
+            // (el transform de arriba se acaba de fijar); el segundo ya cae
+            // DESPUES de ese pintado. Un pelin mas tarde, pero el sonido llega
+            // siempre con la barra visiblemente en marcha.
+            requestAnimationFrame(() => requestAnimationFrame(() => SoundManager.cargaEmpieza()));
             const start = Date.now();
             let arrastrando = false;
             const tick = () => {
