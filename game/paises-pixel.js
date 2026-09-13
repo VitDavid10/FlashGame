@@ -992,20 +992,19 @@ function _paisBase() {
 const _PAIS_BASE = typeof document !== 'undefined' ? _paisBase() : '';
 
 /*
- * Lo que David afina de este cartel desde el editor: el MARCO ('' = el gris V2
- * por defecto, 'v2' = verde alto, 'v3g' = el otro gris) y el sitio y el tamaño
- * de cada pieza. Todo vive junto en la clave paisModal del layout de carteles.
+ * Lo afinado de este cartel: el MARCO ('' = el gris V2 por defecto, 'v2' =
+ * verde alto, 'v3g' = el otro gris) y el sitio y el tamaño de cada pieza. Todo
+ * vive junto en la clave paisModal de carteles-layout.json.
  *
  * Se resuelve aqui y no en carteles-layout.js porque la LANDING no carga ese
  * fichero — solo este — y el cartel tiene que salir IGUAL en los dos sitios.
  * En el juego, CARTEL_LAYOUT ya esta cargado y no se pide nada; en la landing
- * se pide lo mismo que pide el juego, con el override del servidor por encima
- * de los valores de fabrica del repo.
+ * se descarga el mismo JSON que usa el juego.
  *
  * Las piezas son las mismas que declara CARTEL_SURFACES.paisModal en
- * carteles-layout.js (que es lo que lista el editor). Estan repetidas aqui
- * porque la landing no tiene aquel fichero; si se añade una pieza al cartel,
- * hay que darla de alta en los dos sitios.
+ * carteles-layout.js. Estan repetidas aqui porque la landing no tiene aquel
+ * fichero; si se añade una pieza al cartel, hay que darla de alta en los dos
+ * sitios.
  */
 const PAIS_PARTES = { title: '.pm-nom', desc: '.pm-lore', crece: '.pm-crece', pie: '.pm-pie', actions: '.pm-btns' };
 
@@ -1024,15 +1023,16 @@ function _paisAjuste() {
 }
 function _paisVarianteActual() { const v = _paisAjuste(); return (v && v.variante) || ''; }
 
-// La landing no carga carteles-layout.js, asi que se descarga lo mismo que el
-// juego: fabrica del repo + override del servidor, y manda el override.
+// La landing no carga carteles-layout.js, asi que se descarga el mismo JSON
+// que usa el juego.
 function _paisPideVariante() {
     if (_paisVarPedida || typeof CARTEL_LAYOUT === 'object') return;
     _paisVarPedida = true;
-    const pide = u => fetch(u, { cache: 'no-cache' }).then(r => (r.ok ? r.json() : {})).catch(() => ({}));
-    Promise.all([pide(_PAIS_BASE + 'carteles-layout.json'), pide('/api/carteles-layout')])
-        .then(([fabrica, override]) => {
-            _paisDescargado = Object.assign({}, fabrica, override).paisModal || null;
+    fetch(_PAIS_BASE + 'carteles-layout.json', { cache: 'no-cache' })
+        .then(r => (r.ok ? r.json() : {}))
+        .catch(() => ({}))
+        .then(j => {
+            _paisDescargado = (j && j.paisModal) || null;
             // Si el cartel ya estaba abierto cuando llego la respuesta, se
             // repinta; si no, lo coge en la proxima apertura.
             paisModalVariante(_paisVarianteActual());
@@ -1041,14 +1041,14 @@ function _paisPideVariante() {
 }
 
 /*
- * Coloca las piezas donde las dejo el editor. Mismo calculo que
+ * Coloca las piezas donde dice carteles-layout.json. Mismo calculo que
  * applyCartelSurface() en carteles-layout.js — translate + scale y no margenes,
  * para que mover una pieza no reflote a las de al lado.
  *
  * Se llama SIEMPRE, tambien dentro del juego, en vez de tirar de
  * applyCartelSurface() cuando existe: con dos caminos, la landing (que no tiene
  * aquella funcion) se quedaba sin aplicar NADA y el cartel salia distinto en
- * cada sitio, que es justo lo que el editor promete que no pasa.
+ * cada sitio.
  */
 function _paisAplicaAjuste() {
     const caja = document.getElementById(PAIS_MODAL_ID);

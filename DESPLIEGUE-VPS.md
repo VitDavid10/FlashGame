@@ -53,8 +53,8 @@ exit   # volver a root
 
 ```bash
 cp /home/pillwars/FlashGame/deploy/pillwars.service /etc/systemd/system/
-# EDITA la clave de admin y las rutas secretas del panel (ADMIN_KEY, ADMIN_PATH,
-# CARTELES_PATH: cambia los placeholders CAMBIA-... por valores tuyos, largos y
+# EDITA la clave de admin y la ruta secreta del panel (ADMIN_KEY y ADMIN_PATH:
+# cambia los placeholders CAMBIA-... por valores tuyos, largos y
 # al azar — nunca los commitees, este fichero de systemd no vive en git):
 nano /etc/systemd/system/pillwars.service
 systemctl daemon-reload

@@ -79,15 +79,14 @@ const PORT = parseInt(process.env.PORT, 10) || 8080;
 const ADMIN_KEY_GENERADA = !process.env.ADMIN_KEY;
 const ADMIN_KEY = process.env.ADMIN_KEY || crypto.randomBytes(16).toString('hex');
 if (ADMIN_KEY_GENERADA) process.env.ADMIN_KEY = ADMIN_KEY;
-// Path del panel/editor: el repo es PUBLICO en GitHub, así que un valor fijo
+// Path del panel: el repo es PUBLICO en GitHub, así que un valor fijo
 // aquí (aunque parezca random) se vería en el código fuente por cualquiera —
 // esto NO es "la clave", es solo evitar que un escaneo automático o alguien
 // tecleando /admin a lo tonto se tope con la pantalla de login. Lo que de
-// verdad protege sigue siendo ADMIN_KEY. Por eso viven en variables de
-// entorno (como ADMIN_KEY) y NO se commitean con el valor real — en
+// verdad protege sigue siendo ADMIN_KEY. Por eso vive en una variable de
+// entorno (como ADMIN_KEY) y NO se commitea con el valor real — en
 // deploy/pillwars.service solo hay un placeholder, igual que con ADMIN_KEY.
 const ADMIN_PATH = process.env.ADMIN_PATH || '/admin';
-const CARTELES_PATH = process.env.CARTELES_PATH || '/carteles-preview.html';
 // Secreto del stress test: permite entrar GRATIS a salas de pago (jugadores
 // marcados como tester, fuera de las stats). Sin definir = modo tester apagado.
 // Nunca una constante en el código: eso sería una puerta trasera pública.
@@ -176,37 +175,11 @@ let menuDecoVirusTP = (typeof _glob.menuDecoVirusTP === 'boolean') ? _glob.menuD
 // balanceo y botones desde los PNG.
 let menuCartelStyle = (_glob.menuCartelStyle === 2) ? 2 : 1;
 let menuDecoDimPct = _clampN(_glob.menuDecoDimPct, 0, 80, 0);
-// Layout del menú (posición/escala de cada elemento editable), GLOBAL: lo sube el
-// cliente desde EDIT LAYOUT → "Guardar para todos", se difunde en /api/rooms.
-let menuLayout = (_glob.menuLayout && typeof _glob.menuLayout === 'object') ? _glob.menuLayout : {};
-// Ajuste del ROTULO del menu (alto de cada palabra, hueco entre las dos, cuanto
-// sube/baja y el halo). Va APARTE de menuLayout porque el rotulo horneado no se
-// coloca con translate/scale como el resto: se centra solo y su tamaño sale de
-// las variables --titulo-*, asi que sus numeros no son {x,y,s} y no caben en el
-// saneado de menuLayout. Antes solo vivia en el localStorage de cada uno: lo
-// ajustabas y el resto del mundo seguia viendo el de fabrica.
-let menuTitulo = (_glob.menuTitulo && typeof _glob.menuTitulo === 'object') ? _glob.menuTitulo : {};
-// Lo mismo para el HERO de la landing (título, PLAY NOW, cartel del contrato y
-// contrato): lo sube el botón EDIT de index.html. Va APARTE de menuLayout para
-// que las dos herramientas no se pisen la una a la otra.
-let landingLayout = (_glob.landingLayout && typeof _glob.landingLayout === 'object') ? _glob.landingLayout : {};
-// Espaciado afinado de los carteles/pop-ups del juego (lo sube carteles-preview.html).
-// Vive AQUI y no en game/carteles-layout.json porque ese fichero es del repo y
-// deploy/update.sh hace `git reset --hard`: cada actualización del juego borraba
-// lo editado en producción. globalsettings.json está en .gitignore, así que
-// sobrevive. El JSON del repo se queda como valores de fábrica y esto se aplica
-// encima (ver game/carteles-layout.js).
-let cartelesLayout = (_glob.cartelesLayout && typeof _glob.cartelesLayout === 'object') ? _glob.cartelesLayout : {};
-// Interruptor de los DOS editores de layout (botón EDIT de la landing y
-// SETTINGS → EDIT LAYOUT del juego). Apagado = ni siquiera aparecen los botones:
-// el diseño ya está fijado en el código de cada página. Se enciende desde el
-// panel admin cuando haya que retocarlo.
-let layoutEdit = (typeof _glob.layoutEdit === 'boolean') ? _glob.layoutEdit : false;
 // Si el ranking cuenta a los testers/bots. Se guarda porque el ranking se
 // RECALCULA SOLO al arrancar (ver computeRanking mas abajo) y hay que saber con
 // que criterio hacerlo; si no, cada reinicio lo dejaba en el de por defecto.
 let rankingIncludeTesters = (typeof _glob.rankingIncludeTesters === 'boolean') ? _glob.rankingIncludeTesters : false;
-function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, rankingIncludeTesters, menuLayout, menuTitulo, landingLayout, cartelesLayout, pillPerDollar: _glob.pillPerDollar, pillUsd: _glob.pillUsd }), () => {}); }
+function saveGlobal() { fs.writeFile(GLOBAL_FILE, JSON.stringify({ arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode, menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, rankingIncludeTesters, pillPerDollar: _glob.pillPerDollar, pillUsd: _glob.pillUsd }), () => {}); }
 const TICK_MS = 25;            // 40 Hz de simulación
 const TICK_HZ = Math.round(1000 / TICK_MS);   // 40
 // Frecuencia de snapshots (global, no por sala). Editable en vivo desde el panel.
@@ -316,7 +289,7 @@ function killHosts() {
 // los hosts por notify (fire-and-forget, no hace falta confirmación).
 function pushSettingsToHosts() {
     const patch = { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
-        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit };
+        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle };
     for (const h of hostProcs.values()) { if (h.alive) h.ipc.notify('settingsSync', patch); }
 }
 // "Rendimiento" SÍ admite override por host (comparar Hz/AOI entre los dos).
@@ -1265,7 +1238,7 @@ function registerHostHandlers(hostEntry) {
     ipc.notify('oracleRate', { rate: PILL_PER_DOLLAR, nextAt: _oracleNextAt });
     // Ajustes actuales (volumen/animaciones/zoom/tiempos) para el host recién forkeado.
     ipc.notify('settingsSync', { arcadeRestartMs, arcadeLobbyMs, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
-        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit });
+        menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle });
 }
 
 // Instancia del GameHost: matchmaking y creación de salas viven en game-host.js.
@@ -1482,7 +1455,6 @@ function applySettingsPatch(p) {
     if (typeof p.menuDecoVirusTP === 'boolean') menuDecoVirusTP = p.menuDecoVirusTP;
     if (p.menuCartelStyle === 1 || p.menuCartelStyle === 2) menuCartelStyle = p.menuCartelStyle;
     if (typeof p.menuDecoDimPct === 'number') menuDecoDimPct = _clampN(p.menuDecoDimPct, 0, 80, menuDecoDimPct);
-    if (typeof p.layoutEdit === 'boolean') layoutEdit = p.layoutEdit;
 }
 // Aplica un parche de "Rendimiento" recibido por IPC (puede ir dirigido a un
 // subconjunto de hosts — ver pushPerfToHosts).
@@ -1964,7 +1936,6 @@ function buildAdminState() {
         arcadeRestartMs, arcadeLobbyMs,
         sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
         menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle,
-        layoutEdit,
         serverCpu: serverCpuPct,
         // Monitorización del PROPIO proceso (la tarjeta del Director en el panel).
         tick: pStats(tickHist.total, tickHist.n), lag: pStats(tickHist.lag, tickHist.n),
@@ -2600,7 +2571,7 @@ const httpServer = http.createServer(async (req, res) => {
                     });
                 }
                 _roomsCache = { at: nowD, body: JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, pillUsd: _oraclePillUsd, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
-                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }) };
+                    menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle }) };
             }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
             res.end(_roomsCache.body);
@@ -2678,197 +2649,7 @@ const httpServer = http.createServer(async (req, res) => {
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ rooms: list, pillPerDollar: PILL_PER_DOLLAR, oracleEveryMs: ORACLE_REFRESH_MS, oracleNextAt: _oracleNextAt, pillUsd: _oraclePillUsd, layersPerCombo: LAYERS_PER_COMBO, sfxVol, musicVol, enemyFx, baseZoom, zoomExp, pillBandRef, pillBandSlow, killGainMode,
-            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle, layoutEdit, menuLayout, menuTitulo }));
-        return;
-    }
-    // --- Layout del menú GLOBAL: el cliente lo sube desde EDIT LAYOUT → "Guardar
-    // para todos". Se persiste y se difunde a todos por /api/rooms.
-    // Protegido con ADMIN_KEY, igual que /api/landing-layout y /api/carteles-layout:
-    // hasta ahora era el ÚNICO de los tres sin auth, o sea que cualquiera con un
-    // curl podía dejarle el menú descolocado a todos los jugadores a la vez. ---
-    if (urlPath === '/api/menu-layout') {
-        if (req.method === 'OPTIONS') {
-            res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' });
-            res.end(); return;
-        }
-        if (req.method === 'POST') {
-            let body = ''; let abortado = false;
-            req.on('data', c => { if (abortado) return; body += c; if (body.length > 65536) { abortado = true; res.writeHead(413); res.end('Payload too large'); req.destroy(); } });
-            req.on('end', () => {
-                if (abortado) return;
-                let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
-                if (!adminKeyOk(payload.key)) { res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad key' })); return; }
-                const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
-                if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
-                // Sanea: solo claves con {x,y,s} numéricos (evita basura arbitraria).
-                // `b` (intensidad del halo del título, ALT+rueda en EDIT LAYOUT) es
-                // OPCIONAL: solo la traen los títulos, y si no viene no se escribe
-                // para no llenar el layout de ceros.
-                // f/w/h son igual de opcionales que `b` y se guardan con los MISMOS
-                // topes que aplica el editor en el cliente: f = cuerpo de letra
-                // (ALT+rueda / los botones TXT), w y h = ancho y alto de la barra
-                // IN GAME (CTRL / CTRL+SHIFT+rueda). Antes se tiraban aquí: podías
-                // ajustar la letra, ver el cambio, pulsar SAVE FOR ALL y al recargar
-                // volvía al tamaño de fábrica — el ajuste no sobrevivía al servidor.
-                const clean = {};
-                const opc = (v, min, max) => (typeof v === 'number' && isFinite(v)) ? Math.max(min, Math.min(max, v)) : null;
-                for (const k of Object.keys(lay).slice(0, 40)) {
-                    const t = lay[k]; if (!t || typeof t !== 'object') continue;
-                    const e = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
-                    if (typeof t.b === 'number' && isFinite(t.b)) e.b = Math.max(0, Math.min(4, t.b));
-                    const f = opc(t.f, 6, 48); if (f !== null) e.f = f;
-                    const w = opc(t.w, 40, 900); if (w !== null) e.w = w;
-                    const h = opc(t.h, 20, 400); if (h !== null) e.h = h;
-                    // ff = fuente elegida para el mini-parrafo ROOM · PRICES
-                    // (DEFAULT/PRESS START 2P/VT323, boton del editor).
-                    if (['default', 'press', 'vt323'].includes(t.ff)) e.ff = t.ff;
-                    clean[String(k).slice(0, 40)] = e;
-                }
-                menuLayout = clean;
-                // Ajuste del rotulo, si viene. Mismo trato que el layout: solo
-                // numeros y con topes, para que un payload raro no pueda dejar
-                // el titulo a 4000px de alto ni fuera de pantalla. alto/altoPw/
-                // altoWord aceptan null = "esa palabra sigue al alto comun".
-                if (payload && typeof payload.titulo === 'object' && payload.titulo) {
-                    const t = payload.titulo, tc = {};
-                    const num = (v, min, max) => (typeof v === 'number' && isFinite(v)) ? Math.max(min, Math.min(max, v)) : null;
-                    const alto = (k) => { if (t[k] === null) { tc[k] = null; return; } const v = num(t[k], 24, 400); if (v !== null) tc[k] = v; };
-                    alto('alto'); alto('altoPw'); alto('altoWord');
-                    const g = num(t.gap, 0, 400); if (g !== null) tc.gap = g;
-                    const y = num(t.y, -600, 600); if (y !== null) tc.y = y;
-                    const b = num(t.blur, 0, 80); if (b !== null) tc.blur = b;
-                    menuTitulo = tc;
-                }
-                saveGlobal();
-                if (PW_ROLE === 'director') _roomsCache = null;   // fuerza refresco del cache agregado
-                log(`Menu layout GLOBAL actualizado (${Object.keys(clean).length} elementos, rotulo ${Object.keys(menuTitulo).length} ajustes)`);
-                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
-            });
-            return;
-        }
-        res.writeHead(405, { 'Access-Control-Allow-Origin': '*' }); res.end(); return;
-    }
-    // --- Layout del HERO de la landing (index.html → botón EDIT). Mismo trato
-    // que /api/menu-layout: el POST va con ADMIN_KEY. Se quedó sin ella cuando
-    // menu-layout la ganó, y era el único de los tres editores abierto: un curl
-    // bastaba para descolocarle el hero a todos los visitantes, de forma
-    // persistente (se guarda en globalsettings.json). Aquí sí hay GET público
-    // porque la landing no consulta /api/rooms. ---
-    if (urlPath === '/api/landing-layout') {
-        if (req.method === 'OPTIONS') {
-            res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
-            res.end(); return;
-        }
-        if (req.method === 'GET') {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ layout: landingLayout, edit: layoutEdit })); return;
-        }
-        if (req.method === 'POST') {
-            let body = ''; let abortado = false;
-            req.on('data', c => { if (abortado) return; body += c; if (body.length > 65536) { abortado = true; res.writeHead(413); res.end('Payload too large'); req.destroy(); } });
-            req.on('end', () => {
-                if (abortado) return;
-                let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
-                if (!adminKeyOk(payload.key)) { res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad key' })); return; }
-                const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
-                if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
-                const clean = {};
-                // `zoom` es un numero suelto (el zoom del cuadro entero), no una
-                // caja {x,y,s}: sin este caso aparte el saneado de abajo lo tiraba
-                // y el zoom no llegaba a guardarse para todos.
-                if (typeof lay.zoom === 'number' && lay.zoom > 0) clean.zoom = Math.min(1, Math.max(0.2, lay.zoom));
-                // tagFont = fuente elegida para TODOS los .category-tag a la vez
-                // (DEFAULT/PRESS START 2P/VT323, boton TAG FONT del editor). Igual
-                // que zoom, es un valor suelto, no una caja {x,y,s}.
-                if (['default', 'press', 'vt323'].includes(lay.tagFont)) clean.tagFont = lay.tagFont;
-                // f = cuerpo de letra, b = halo del titulo, w/h = caja en px.
-                // Mismo trato que en /api/menu-layout: sin esto se tiraban aqui
-                // y los ajustes no sobrevivian a SAVE FOR ALL.
-                const opc = (v, min, max) => (typeof v === 'number' && isFinite(v)) ? Math.max(min, Math.min(max, v)) : null;
-                for (const k of Object.keys(lay).slice(0, 40)) {
-                    if (k === 'zoom' || k === 'tagFont') continue;
-                    const t = lay[k]; if (!t || typeof t !== 'object') continue;
-                    const e = { x: +t.x || 0, y: +t.y || 0, s: (typeof t.s === 'number' && t.s > 0) ? Math.min(5, t.s) : 1 };
-                    const f = opc(t.f, 6, 48); if (f !== null) e.f = f;
-                    const b = opc(t.b, 0, 4);  if (b !== null) e.b = b;
-                    const w = opc(t.w, 20, 900); if (w !== null) e.w = w;
-                    const h = opc(t.h, 10, 400); if (h !== null) e.h = h;
-                    clean[String(k).slice(0, 40)] = e;
-                }
-                landingLayout = clean; saveGlobal();
-                log(`Landing layout GLOBAL actualizado (${Object.keys(clean).length} elementos)`);
-                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
-            });
-            return;
-        }
-        res.writeHead(405, { 'Access-Control-Allow-Origin': '*' }); res.end(); return;
-    }
-    /* --- Espaciado de los carteles: lo escribe carteles-preview.html (editor de
-     * diseño) y lo lee el juego al arrancar (GET). Se guarda en
-     * globalsettings.json, NO en game/carteles-layout.json: ese es del repo y
-     * deploy/update.sh hace `git reset --hard origin/main`, así que cada
-     * actualización se llevaba por delante lo afinado en producción.
-     * El POST va protegido con la misma ADMIN_KEY que /admin: el check de "solo
-     * localhost" que había antes no servía detrás de Caddy (reverse_proxy
-     * conecta a Node por loopback, así que TODO el tráfico externo llegaba
-     * como 127.0.0.1 y el check pasaba siempre). El GET es público: es lo que
-     * pinta el juego. --- */
-    if (urlPath === '/api/carteles-layout') {
-        if (req.method === 'GET') {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify(cartelesLayout));
-            return;
-        }
-        if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
-        let body = '', abortado = false;
-        req.on('data', c => { if (abortado) return; body += c; if (body.length > 65536) { abortado = true; res.writeHead(413); res.end('Payload too large'); req.destroy(); } });
-        req.on('end', () => {
-            if (abortado) return;
-            let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
-            if (!adminKeyOk(payload.key)) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad key' })); return; }
-            const lay = payload && typeof payload.layout === 'object' && payload.layout ? payload.layout : null;
-            if (!lay) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad layout' })); return; }
-            // Sanea: cada cartel es {pieza: {x, y, s}} y nada mas, para no
-            // escribir basura arbitraria en un fichero que se commitea. Los
-            // NOMBRES de pieza NO se listan aqui: los declara cada cartel en
-            // CARTEL_SURFACES (game/carteles-layout.js) y el cliente es el
-            // unico que los conoce — con una lista fija aqui, cada pieza nueva
-            // (tryAgain/spectate/backToMenu...) se guardaba en silencio en la
-            // nada. Se validan por forma: identificador corto, valores
-            // numericos acotados y un tope de piezas por cartel.
-            const esPieza = p => /^[a-zA-Z][a-zA-Z0-9]{0,23}$/.test(p);
-            const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-            const clean = {};
-            for (const k of Object.keys(lay).slice(0, 40)) {
-                const src = lay[k]; if (!src || typeof src !== 'object') continue;
-                const dst = {};
-                for (const p of Object.keys(src).filter(esPieza).slice(0, 12)) {
-                    // `variante` no es una pieza: es que marco lleva el cartel
-                    // (hoy solo lo usa el de skins: '' gris / 'v2' verde). Va
-                    // por lista cerrada — es lo unico que no es {x,y,s} y no
-                    // debe poder colar una cadena cualquiera.
-                    if (p === 'variante') {
-                        const v = String(src[p] || '');
-                        if (v === '' || v === 'v2') dst[p] = v;
-                        continue;
-                    }
-                    const t = src[p]; if (!t || typeof t !== 'object') continue;
-                    const x = Number(t.x), y = Number(t.y), s = Number(t.s);
-                    dst[p] = {
-                        x: isFinite(x) ? clamp(Math.round(x), -600, 600) : 0,
-                        y: isFinite(y) ? clamp(Math.round(y), -600, 600) : 0,
-                        s: isFinite(s) && s > 0 ? clamp(Math.round(s * 100) / 100, 0.2, 5) : 1,
-                    };
-                }
-                if (Object.keys(dst).length) clean[String(k).slice(0, 40)] = dst;
-            }
-            cartelesLayout = clean; saveGlobal();
-            log(`Carteles layout guardado en globalsettings.json (${Object.keys(clean).length} carteles)`);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ ok: true, count: Object.keys(clean).length }));
-        });
+            menuDecoFoodDensity, menuDecoVirusCount, menuDecoPillBobPx, menuDecoCartelBobPx, menuDecoGridSize, menuDecoVirusTP, menuDecoDimPct, menuDecoSelectorGlowPct, menuDecoBlurbGlowPct, menuCartelStyle }));
         return;
     }
     // --- Config de tarifas: el juego calcula la entrada = precio($) × pillPerDollar ---
@@ -3652,21 +3433,12 @@ const httpServer = http.createServer(async (req, res) => {
             // Se inyecta en vez de que el JS asuma "/admin": si mañana se cambia
             // ADMIN_PATH solo hay que tocar la env, no el HTML.
             html = html.replace('<head>', '<head><script>window.__ADMIN_PATH__=' + JSON.stringify(ADMIN_PATH) + ';</script>');
-            // CSP cerrada (sin analytics/CDN/RPC): estas dos páginas no los usan
-            // y son las que más daño harían comprometidas.
+            // CSP cerrada (sin analytics/CDN/RPC): esta página no los usa y es
+            // la que más daño haría comprometida.
             res.setHeader('Content-Security-Policy', CSP_ADMIN);
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
             res.end(html);
         } catch (e) { res.writeHead(500); res.end('No se pudo cargar admin.html'); }
-        return;
-    }
-    if (urlPath === CARTELES_PATH) {
-        try {
-            const html = fs.readFileSync(path.join(ROOT, 'carteles-preview.html'));
-            res.setHeader('Content-Security-Policy', CSP_ADMIN);
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
-            res.end(html);
-        } catch (e) { res.writeHead(500); res.end('No se pudo cargar carteles-preview.html'); }
         return;
     }
     // Estáticos del juego servidos desde la raíz del repo (mismo origen que el WS):
@@ -3709,9 +3481,6 @@ const httpServer = http.createServer(async (req, res) => {
         /^package(-lock)?\.json$/.test(relLower)) {
         res.writeHead(403); res.end('Forbidden'); return;
     }
-    // El editor de carteles solo se sirve por CARTELES_PATH (arriba): el nombre
-    // literal se bloquea aqui para que ni conociendolo se pueda pedir directo.
-    if (relLower === 'carteles-preview.html') { res.writeHead(404); res.end('Not Found'); return; }
     // 'no-cache' NO significa "no guardes": significa "pregunta antes de usarlo".
     // Lo que faltaba era el Last-Modified para poder contestar 304 y no reenviar
     // el fichero entero — sin él, cada F5 se volvía a bajar TODO el arte del
@@ -3906,12 +3675,10 @@ wss.on('connection', (ws, req) => {
                 if (typeof msg.virusTP === 'boolean') menuDecoVirusTP = msg.virusTP;
                 if (msg.cartelStyle === 1 || msg.cartelStyle === 2) menuCartelStyle = msg.cartelStyle;
                 if (typeof msg.dimPct === 'number') menuDecoDimPct = _clampN(msg.dimPct, 0, 80, menuDecoDimPct);
-                // Interruptor de los editores de layout (landing + menu del juego).
-                if (typeof msg.layoutEdit === 'boolean') layoutEdit = msg.layoutEdit;
                 saveGlobal();
                 if (PW_ROLE === 'director') pushSettingsToHosts();
                 ws.send(JSON.stringify(buildAdminState()));
-                log(`Global menu visuals: food=${menuDecoFoodDensity} virus=${menuDecoVirusCount} pillBob=${menuDecoPillBobPx}px cartelBob=${menuDecoCartelBobPx}px grid=${menuDecoGridSize}px virusTP=${menuDecoVirusTP} dim=${menuDecoDimPct}% selGlow=${menuDecoSelectorGlowPct}% blurbGlow=${menuDecoBlurbGlowPct}% layoutEdit=${layoutEdit}`);
+                log(`Global menu visuals: food=${menuDecoFoodDensity} virus=${menuDecoVirusCount} pillBob=${menuDecoPillBobPx}px cartelBob=${menuDecoCartelBobPx}px grid=${menuDecoGridSize}px virusTP=${menuDecoVirusTP} dim=${menuDecoDimPct}% selGlow=${menuDecoSelectorGlowPct}% blurbGlow=${menuDecoBlurbGlowPct}%`);
             } else if (msg.cmd === 'announce') {
                 const text = (typeof msg.text === 'string') ? msg.text.slice(0, 140) : '';
                 if (text) {
@@ -4226,7 +3993,6 @@ httpServer.listen(PORT, () => {
         if (desfase) log(`⚠ [VENDOR] vendor/solana.js desfasado (${desfase}). Regenera con: npm run vendor:solana`);
     } catch (e) {}
     if (ADMIN_PATH === '/admin') log(`⚠ [SEGURIDAD] ADMIN_PATH no definida — usando '/admin' por defecto. Define ADMIN_PATH en producción para que no sea adivinable.`);
-    if (CARTELES_PATH === '/carteles-preview.html') log(`⚠ [SEGURIDAD] CARTELES_PATH no definida — usando '/carteles-preview.html' por defecto. Define CARTELES_PATH en producción.`);
     log(`Lobby: mínimo ${MIN_PLAYERS} reales, población objetivo ${TARGET_POP} (editable por sala en el panel)`);
     log(`Privacidad: IPs anonimizadas, logs borrados a los ${LOG_RETENTION_DAYS} días`);
 });

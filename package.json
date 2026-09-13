@@ -11,7 +11,6 @@
     "pill:send": "node scripts/send-pill.js",
     "sol:send": "node scripts/send-sol.js",
     "test:deposit": "node scripts/test-deposit.js",
-    "design:dump": "node scripts/dump-design-layout.js",
     "vendor:solana": "node scripts/vendor-solana.js",
     "vendor:check": "node scripts/vendor-check.js",
     "test": "node --test \"tests/*.test.js\"",

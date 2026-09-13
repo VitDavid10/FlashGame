@@ -1818,16 +1818,13 @@
         #ui .hud-oculto { display: none !important; }
         /* Fondo pixel del menu: canvas a baja resolucion estirado sin suavizado */
         #loginBgCv { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; filter: brightness(var(--menu-bg-bright, 1)); }
-        /* Zonas sin virus: siempre presentes (el rebote lee su rect), invisibles
-           salvo en EDIT LAYOUT. Posición por defecto = rejilla 28×14 (col 8-21/fila
-           2-3 y col 11-18/fila 4-11). pointer-events solo en el asa, para no tapar
-           los elementos editables de debajo (título, PLAY...). */
+        /* Zonas sin virus: siempre presentes (el rebote lee su rect) e
+           invisibles. Posición por defecto = rejilla 28×14 (col 8-21/fila
+           2-3 y col 11-18/fila 4-11). Sin pointer-events, para no tapar lo que
+           hay debajo (título, PLAY...). */
         .no-virus-zone { position: fixed; z-index: 58; pointer-events: none; box-sizing: border-box; border: 2px solid transparent; background: transparent; }
-        body.layout-editing .no-virus-zone { z-index: 100; border-color: #ff2a2a; background: rgba(255,42,42,0.14); box-shadow: 0 0 0 1px rgba(0,0,0,0.5) inset; }
         #noVirusZoneA { left: 25%; top: 7.143%; width: 50%; height: 14.286%; }
         #noVirusZoneB { left: 35.714%; top: 21.429%; width: 28.571%; height: 57.143%; }
-        .nvz-handle { position: absolute; top: -1px; left: -1px; display: none; pointer-events: auto; cursor: move; background: #ff2a2a; color: #fff; font: 10px 'Russo One', sans-serif; letter-spacing: 1px; padding: 2px 6px; }
-        body.layout-editing .nvz-handle { display: inline-block; }
 
         /* Columna derecha: dos bloques iguales (oracle arriba, missions/skins abajo).
            Misma animación slideUp que el login-box para que se muevan juntos al abrir.
@@ -2398,8 +2395,7 @@
            mas grande que la otra. El centrado horizontal NO se hace aqui: cada
            modo tiene un ancho distinto y el h1 vive en la columna izquierda,
            asi que lo calcula centrarTitulo() midiendo contra el centro de la
-           ventana. Todas las --titulo-* se ajustan en vivo con tituloTune() y
-           se guardan por usuario. */
+           ventana. Los valores de las --titulo-* salen de TITULO (JS). */
         :root { --titulo-alto-pw: 88px; --titulo-alto-word: 88px; --titulo-gap: 32px; --titulo-blur: 0px; --titulo-glow: #00ffaa; }
         #loginOverlay.bg-arcade { --titulo-glow: #ccff00; }
         /* width 0 y los rotulos desbordando: el h1 vive en la misma fila flex
@@ -3100,46 +3096,6 @@
            grupo, que ya llevan el contorno negro del .cp-group. */
         .cp-cell:hover { outline: 2px solid #fff; outline-offset: -1px; position: relative; z-index: 3; }
 
-        /* Editor de layout del menu: cada elemento se puede arrastrar (mover)
-           y escalar con la rueda; el resultado se guarda por usuario. */
-        body.layout-editing .menu-editable { outline: 2px dashed rgba(255,255,255,0.55); outline-offset: 3px; cursor: move !important; transition: none !important; }
-        body.layout-editing .menu-editable:hover { outline-color: #00ff88; }
-        /* OJO: nada de "pointer-events:none" en los hijos aqui. Un cartel tiene
-           DOS editables anidados (el marco #missionsPanel Y su contenido
-           #missionsInner dentro): bloquear el pointer-events de TODOS los
-           descendientes de un .menu-editable apagaba tambien el interior (y el
-           boton de cambiar pestaña) cuando el marco es el que esta marcado
-           como editable. layoutTarget() ya resuelve bien el anidado via
-           closest(), y el listener de 'click' de mas abajo ya evita que se
-           disparen botones mientras se edita — no hace falta pointer-events. */
-        /* #lsEditBar (editor de la pantalla de carga) comparte estilos: es la
-           misma herramienta. Su z-index sube por encima del propio cartel de
-           carga, que va a 9999. */
-        #layoutEditBar, #lsEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 120; display: flex; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
-        #lsEditBar { z-index: 10000; }
-        #lsEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 0.5px; }
-        #lsEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
-        #lsEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
-        #lsEditBar .leb-btn.done { background: #0f8f46; color: #fff; border-color: #000; }
-        #layoutEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 0.5px; }
-        #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
-        #layoutEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
-        #layoutEditBar .leb-btn.done { background: #0f8f46; color: #fff; border-color: #000; }
-        #layoutEditBar .leb-group { display: flex; align-items: center; gap: 5px; padding-left: 10px; border-left: 1px solid #2a2f36; }
-        #layoutEditBar .leb-label { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #6a737e; letter-spacing: 0.5px; }
-        #layoutEditBar .leb-btn.leb-sm { padding: 5px 10px; font-size: 10px; }
-        /* Asa para llevarse la barra de sitio: fija abajo tapaba lo que hubiera
-           justo debajo (la rueda de HOW TO PLAY, que vive al lado de PLAY) y no
-           habia forma de pulsarlo sin salir del editor. Doble clic = vuelve a
-           su sitio de fabrica. */
-        #layoutEditBar .leb-grip, #lsEditBar .leb-grip {
-            font-family: 'Press Start 2P', monospace; font-size: 8px; color: #6a737e; letter-spacing: 0.5px;
-            padding: 7px 10px; background: #14171c; border: 2px solid #2a2f36; cursor: grab;
-            user-select: none; touch-action: none; flex-shrink: 0;
-        }
-        #layoutEditBar .leb-grip:hover, #lsEditBar .leb-grip:hover { color: #fff; border-color: #4a525c; }
-        #layoutEditBar .leb-grip:active, #lsEditBar .leb-grip:active { cursor: grabbing; color: #fff; }
-
         /* Carteles ROOM PRICES / DAILY QUESTS: marco de piedra + fondo (PNG de
            David, quest-panel.png) via _pixFrameRule en buildPixPanelCss. */
         #oraclePanel, #missionsPanel { image-rendering: pixelated; }
@@ -3751,7 +3707,7 @@
 
     <!-- Deposit modal del juego.
          .gm-body agrupa filas/labels/input para poder mover/escalar ese bloque
-         entero desde carteles-preview (pieza desc). -->
+         entero (pieza desc en carteles-layout.json). -->
     <div id="gameDepositModal" class="gameModal">
         <div class="gameModalBox">
             <span class="close" onclick="GameWalletUI.closeDeposit()">×</span>
@@ -4118,11 +4074,6 @@
                 <button class="q-btn" id="tWhite" onclick="setTheme('white')">WHITE</button>
             </div>
 
-            <button class="btn-settings" id="btnEditLayout" style="margin-top:15px; display:none;" onclick="closeSettings(); enterLayoutEdit();">EDIT LAYOUT</button>
-            <!-- Editor TEMPORAL de la pantalla de carga. Sale/entra con el mismo
-                 interruptor que EDIT LAYOUT (panel admin -> Menu visuals). -->
-            <button class="btn-settings" id="btnEditLoading" style="margin-top:10px; display:none;" onclick="closeSettings(); loadingEdit();">EDIT LOADING</button>
-
             <button class="pw-modal-cancel" style="margin-top:15px;" onclick="closeSettings()" onmouseenter="SoundManager.playSimpleHover()">CLOSE</button>
         </div>
     </div>
@@ -4137,59 +4088,6 @@
             <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('solflare')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="">SOLFLARE</button>
             <button class="pw-modal-cancel" onclick="document.getElementById('walletPickerModal').style.display='none'" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
-    </div>
-
-    <!-- Barra del editor TEMPORAL de la pantalla de carga. Reusa los estilos de
-         #layoutEditBar (misma herramienta, mismo aspecto). Quitar junto con el
-         bloque lsEnterEdit/lsExitEdit cuando el diseño quede fijado. -->
-    <div id="lsEditBar" style="display:none;">
-        <span class="leb-grip" title="Arrastra para mover la barra · doble clic = volver abajo">MOVE</span>
-        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE &nbsp;·&nbsp; ESC = SALIR</span>
-        <button class="leb-btn" onclick="LoadingLayout.resetAll()">RESET ALL</button>
-        <button class="leb-btn done" onclick="LoadingLayout.exit()">DONE</button>
-    </div>
-
-    <!-- Barra del editor de layout del menu: visible solo en modo edicion -->
-    <div id="layoutEditBar" style="display:none;">
-        <span class="leb-grip" title="Arrastra para mover la barra · doble clic = volver abajo">MOVE</span>
-        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TITLE GLOW / TEXT SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE &nbsp;·&nbsp; EL TEXTO DE IN GAME Y EL DE LOS BOTONES SE AGARRAN APARTE DE SU CAJA</span>
-        <!-- Botones sueltos para el texto/ancho de IN GAME: el gesto de rueda
-             (ALT / CTRL+rueda) depende de acertar el punto exacto con el raton
-             y de que el navegador no se coma la combinacion (CTRL+rueda hace
-             zoom de pagina si el puntero se sale un pixel de la caja). Estos
-             botones hacen lo mismo sin depender de puntería. -->
-        <span class="leb-group">
-            <span class="leb-label">IN GAME TXT</span>
-            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBarTxt', -1)">−</button>
-            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBarTxt', 1)">+</button>
-        </span>
-        <!-- Verde de fondo de TODOS los carteles (ROOM PRICES, MISSIONS,
-             tienda ampliada, cartel general, detalle de skin): solo mas
-             oscuro/mas claro, para hacer pruebas — ver aplicaScreenBright. -->
-        <span class="leb-group">
-            <span class="leb-label">SCREEN</span>
-            <button class="leb-btn leb-sm" onclick="bumpScreenBright(-8)">−</button>
-            <button class="leb-btn leb-sm" onclick="bumpScreenBright(8)">+</button>
-        </span>
-        <!-- Un solo control para los CUATRO botones de wallet: comparten la
-             clave walletBtnTxt, asi que nunca se descuadran entre ellos. Toca
-             SOLO la letra; la caja del boton no se mueve. -->
-        <span class="leb-group">
-            <span class="leb-label">WALLET BTN TXT</span>
-            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtnTxt', -1)">−</button>
-            <button class="leb-btn leb-sm" onclick="bumpLayoutFont('walletBtnTxt', 1)">+</button>
-        </span>
-        <!-- Ciclo de fuente del mini-parrafo ROOM · PRICES: DEFAULT (Inter) /
-             PRESS START 2P / VT323. Pensado para poder usar VT323 en pixel-pack
-             en vez de Press Start 2P a 8px, dificil de leer en frase larga. -->
-        <button class="leb-btn" id="lebRoomsDescFont" onclick="cycleRoomsDescFont()">ROOM DESC FONT: DEFAULT</button>
-        <!-- Rescate: devuelve al sitio de fabrica lo que se haya arrastrado
-             fuera de la pantalla o detras del cartel y ya no se pueda pulsar. -->
-        <button class="leb-btn" onclick="rescueLostLayout()">BRING BACK LOST</button>
-        <button class="leb-btn" onclick="setLayoutAsDefault()">SET AS DEFAULT</button>
-        <button class="leb-btn" onclick="resetMenuLayout()">RESET ALL</button>
-        <button class="leb-btn" onclick="saveLayoutGlobal(this)">SAVE FOR ALL</button>
-        <button class="leb-btn done" onclick="exitLayoutEdit()">DONE</button>
     </div>
 
     <!-- FEATURES: toda la info del modo (skills database, economia, guias).
@@ -4441,7 +4339,9 @@
                         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.14.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.14 7.14 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.49.38 1.04.7 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54a7.3 7.3 0 0 0 1.63-.94l2.39.96c.24.1.46 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
                     </button>
                 </div>
-                <button class="btn-settings" id="btnSettings" onclick="openSettings()">SETTINGS</button>
+                <!-- Oculto, como ya estaba en produccion: era la puerta a los
+                     editores de layout. Dentro quedan calidad grafica y tema del mapa. -->
+                <button class="btn-settings" id="btnSettings" style="display:none;" onclick="openSettings()">SETTINGS</button>
                 <button class="btn-settings" id="btnFeatures" onclick="openFeatures()">FEATURES</button>
             </div>
 
@@ -4869,8 +4769,8 @@
     <!-- Zonas donde NINGÚN virus del fondo del menú puede entrar. Invisibles salvo
          en EDIT LAYOUT (rojo), donde se pueden mover/escalar como el resto. El
          rebote de virus (menuNoVirusZones) lee la posición REAL de estos divs. -->
-    <div id="noVirusZoneA" class="no-virus-zone"><span class="nvz-handle">NO-VIRUS A</span></div>
-    <div id="noVirusZoneB" class="no-virus-zone"><span class="nvz-handle">NO-VIRUS B</span></div>
+    <div id="noVirusZoneA" class="no-virus-zone"></div>
+    <div id="noVirusZoneB" class="no-virus-zone"></div>
 
     <!-- TOOLTIP HTML (FLOTANTE) -->
     <div id="skill-tooltip" class="skill-tooltip">
@@ -5045,9 +4945,9 @@
     // piensas. 10s desde que se ve la pantalla de modos (que es desde el arranque):
     // para entonces la pagina ya termino y no le roba ancho de banda a nadie.
     setTimeout(() => { cartelHeroLoad(); skillIconLoad(); }, 10000);
-    // Espaciado afinado de los carteles (carteles-layout.json, editado desde
-    // carteles-preview.html). Se aplica DESPUES del pixel-pack: son estilos
-    // inline, asi que ganan al CSS !important del pack.
+    // Espaciado afinado de los carteles (carteles-layout.json). Se aplica
+    // DESPUES del pixel-pack: son estilos inline, asi que ganan al CSS
+    // !important del pack.
     Promise.all([CARTEL_HERO_READY_PROMISE, CARTEL_LAYOUT_READY]).then(() => applyCartelLayout());
     // Genera el stylesheet pixel-pack YA en el arranque (si el modo pixel está
     // activo) en vez de esperar a la primera muerte/modal — antes de esto, el
@@ -7503,60 +7403,6 @@
         if (typeof data.menuCartelStyle === 'number' && menuDecoSettings.cartelStyle !== data.menuCartelStyle) { menuDecoSettings.cartelStyle = data.menuCartelStyle; changed = true; }
         if (typeof data.menuDecoDimPct === 'number' && menuDecoSettings.dimPct !== data.menuDecoDimPct) { menuDecoSettings.dimPct = data.menuDecoDimPct; changed = true; }
         if (changed) { saveMenuDecoSettings(); applyMenuDecoCss(); }
-        // Layout GLOBAL del menú (EDIT LAYOUT → "Guardar para todos"): se aplica a
-        // todos, salvo mientras TÚ estás editando (para no pisar tu edición). Solo
-        // si DIFIERE del que ya hay, que de arranque es el horneado en el código
-        // (MENU_LAYOUT_HORNEADO) — así el menú no da el salto al primer poll.
-        // IMPORTANTE: un global VACÍO ({}) NO pisa nada.
-        try {
-            if (data.menuLayout && typeof data.menuLayout === 'object' && Object.keys(data.menuLayout).length > 0 && !layoutEditing) {
-                // Se migra ANTES de comparar: si no, un global con la clave plana
-                // pareceria distinto del local ya migrado en cada poll.
-                // fundirLayoutGlobal deja intactas las claves que TU has movido
-                // a mano (ver layoutMine): sin eso el global las borraba en cada
-                // poll y las piezas volvian solas a su sitio.
-                const entrante = fundirLayoutGlobal(migrateScopedLayout(JSON.parse(JSON.stringify(data.menuLayout))));
-                if (!mismoMenuLayout(entrante, menuLayout)) { menuLayout = entrante; saveMenuLayout(); applyMenuLayout(); }
-            }
-        } catch (e) {}
-        // Rotulo del menu, igual que el layout: global, salvo mientras TU estas
-        // editando o si lo has tocado a mano y aun no le has dado a SAVE FOR
-        // ALL (la clave 'titulo' de layoutMine, mismo mecanismo que el resto de
-        // piezas). Sin ese respeto, al salir del editor el poll te devolvia el
-        // rotulo del servidor y parecia que tu ajuste no se habia guardado.
-        try {
-            if (data.menuTitulo && typeof data.menuTitulo === 'object' && Object.keys(data.menuTitulo).length > 0
-                && !layoutEditing && !layoutMine.has('titulo')) {
-                const dif = Object.keys(data.menuTitulo).some(k => TITULO[k] !== data.menuTitulo[k]);
-                if (dif) tituloTune(data.menuTitulo);
-            }
-        } catch (e) {}
-        // Interruptor de los editores de layout (panel admin → Menu visuals).
-        // layoutEditAllowed es lo que de verdad gobierna enterLayoutEdit()/
-        // loadingEdit(): el display del boton es solo el atajo visual, ver su
-        // declaracion mas arriba.
-        if (typeof data.layoutEdit === 'boolean') {
-            layoutEditAllowed = data.layoutEdit;
-            // btnSettings entra en la lista: el cartel de SETTINGS es la puerta
-            // a EDIT LAYOUT y EDIT LOADING, asi que con el interruptor del admin
-            // apagado se va entero, no solo los dos botones de dentro. Al
-            // volver a encenderlo reaparece (display:'' devuelve el del CSS).
-            for (const id of ['btnEditLayout', 'btnEditLoading', 'btnSettings']) {
-                const b = document.getElementById(id);
-                if (b) b.style.display = data.layoutEdit ? '' : 'none';
-            }
-            // Y si estaba abierto en ese momento, se cierra.
-            if (!data.layoutEdit && typeof closeSettings === 'function') {
-                const sm = document.getElementById('settingsModal');
-                if (sm && getComputedStyle(sm).display !== 'none') closeSettings();
-            }
-            // El admin lo acaba de apagar mientras alguien seguia dentro del
-            // editor: sacarlo YA, no dejarlo hasta que el solo pulse DONE.
-            if (!data.layoutEdit) {
-                if (layoutEditing) exitLayoutEdit();
-                if (lsEditing) lsExitEdit();
-            }
-        }
     }
     const MENU_DECO_FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
     const menuDeco = { items: [], w: 0, h: 0, lastT: 0 };
@@ -9173,9 +9019,6 @@
         const cpClose = document.getElementById('cpClose');
         if (cpClose) cpClose.onclick = (e) => { e.stopPropagation(); closeColorPicker(); };
         document.addEventListener('mousedown', (e) => {
-            // Mientras se edita el layout no se cierra nada: los tres elementos
-            // estan a la vista justo para poder colocarlos.
-            if (layoutEditing) return;
             // El selector se cierra solo al clicar fuera; mientras esta abierto NO
             // se cierra la paleta, que es donde se va a guardar el color elegido.
             const cp = document.getElementById('colorPicker');
@@ -9865,16 +9708,14 @@
         return _tituloPlacaOn && !document.body.classList.contains('placa-off');
     }
     // Tamaño de las letras, hueco entre PILLWARS y ARCADE/CLASSIC, y altura del
-    // conjunto. Los defaults estan en el CSS (:root); esto solo guarda lo que
-    // se cambie con tituloTune para que sobreviva a la recarga.
+    // conjunto. Son los valores que tenia guardados produccion el 11-sep-2026,
+    // cuando se quito el editor que los subia al servidor.
     // alto 88 = el alto NATIVO de los PNG, o sea 1:1 sin reescalar. Otros
     // valores siguen viendose nitidos (image-rendering:pixelated), pero los
     // pixeles dejan de medir todos lo mismo salvo en multiplos de 88.
     // altoPw/altoWord a null = los dos siguen a "alto"; con un numero, esa
-    // palabra va por libre (es lo que mueve la rueda en EDIT LAYOUT).
-    const TITULO_KEY = 'pw_titulo_placa';
-    const TITULO = { alto: 88, altoPw: null, altoWord: null, gap: 32, y: 0, blur: 0 };
-    try { Object.assign(TITULO, JSON.parse(localStorage.getItem(TITULO_KEY) || '{}')); } catch (e) {}
+    // palabra va por libre.
+    const TITULO = { alto: 88, altoPw: 94, altoWord: null, gap: 32, y: 59, blur: 0 };
     function aplicaTituloVars() {
         const r = document.documentElement.style;
         r.setProperty('--titulo-alto-pw', (TITULO.altoPw || TITULO.alto) + 'px');
@@ -9963,12 +9804,6 @@
     function _menuCaja(sels) {
         let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
         for (const sel of sels) for (const el of document.querySelectorAll(sel)) {
-            // Lo que solo se ve PORQUE el editor lo enseña (la barra de saldo,
-            // DEPOSIT, la paleta...) no cuenta para medir. Si contara, entrar en
-            // EDIT LAYOUT cambiaria la caja medida y con ella la escala y el
-            // tope de la wallet: colocabas algo mirando una composicion y al
-            // salir del editor era otra. Ver enterLayoutEdit.
-            if (el._layoutForzado) continue;
             const r = el.getBoundingClientRect();
             if (!r.width && !r.height) continue;
             if (r.left < x0) x0 = r.left;
@@ -10118,25 +9953,6 @@
         if (el && !_tituloPlacaOn) { el.classList.remove('titulo-placa'); el.style.translate = ''; }
         if (currentGameMode) setSelectedModeTitleArt(currentGameMode, 'PILLWARS ' + currentGameMode.toUpperCase());
     };
-    // Ajustar en vivo y que quede guardado. Sin argumentos devuelve lo que hay.
-    //   tituloTune({ alto: 96 })      tamaño de las letras (las dos palabras)
-    //   tituloTune({ altoPw: 110 })   solo PILLWARS
-    //   tituloTune({ altoWord: 70 })  solo ARCADE/CLASSIC
-    //   tituloTune({ gap: 40 })       hueco entre PILLWARS y ARCADE/CLASSIC
-    //   tituloTune({ y: -8 })         sube/baja el titulo entero
-    //   tituloTune({ blur: 12 })      halo del color del modo (0 = sin halo)
-    //   tituloTune({ altoPw: null })  esa palabra vuelve a seguir a "alto"
-    // marcarMio=false lo usa el poll al aplicar el rotulo GLOBAL: eso no es una
-    // edicion tuya y no debe blindarte contra el servidor.
-    window.tituloTune = (o, marcarMio) => {
-        if (marcarMio) marcarLayoutMio('titulo');
-        Object.assign(TITULO, o || {});
-        try { localStorage.setItem(TITULO_KEY, JSON.stringify(TITULO)); } catch (e) {}
-        aplicaTituloVars();
-        centrarTitulo();
-        return { ...TITULO };
-    };
-
     // Cambiar de estilo desde la consola sin pasar por el admin (solo para ti,
     // no para el resto): placaOff(true) = configuracion 2 (la anterior).
     window.placaOff = v => {
@@ -10151,28 +9967,20 @@
         for (const id of ['oraclePlaca', 'missionsPlaca', 'sbPlaca']) { const c = document.getElementById(id); if (c) c._placaKey = ''; }
     };
 
-    // --- Editor de layout del menu: mueve y escala cada elemento a tu gusto ---
-    // SETTINGS → EDIT LAYOUT. Arrastrar = mover, rueda = escalar, doble click =
-    // resetear ese elemento, ESC o DONE = salir. Persiste por usuario
-    // (localStorage) y se aplica como transform sin tocar el flujo del layout.
-    const LAYOUT_KEY = 'pw_menu_layout';
-    const LAYOUT_BACKUP_KEY = 'pw_menu_layout_backup'; // Backup por si el servidor pierde datos
+    // --- Layout del menu: sitio y escala de cada elemento ---
+    // Fijado en el codigo (MENU_LAYOUT_HORNEADO) y aplicado como translate/
+    // scale, sin tocar el flujo del layout.
     // roomsInner/questsInner apuntan al CONTENIDO de cada cartel (.cartel-inner);
-    // rooms/quests apuntan al marco entero (#oraclePanel/#missionsPanel). Los
-    // dos son editables por separado y no chocan: .cartel-inner NO cubre la
-    // franja del borde (28px de marco), asi que un click ahi solo hace
-    // match con el marco. Los *Inner van ANTES en el objeto: un click dentro
-    // del contenido debe resolver al interior (closest() encuentra primero
-    // lo mas anidado SOLO si se comprueba antes en el bucle de layoutTarget).
-    // Elementos que se redimensionan en ANCHO y ALTO por separado (CTRL+rueda /
-    // CTRL+SHIFT+rueda) en vez del escalado uniforme de siempre: son cajas de
-    // fondo (background-image estirable), no sprites de pixel art que se
-    // deformarian al perder la proporcion.
+    // rooms/quests apuntan al marco entero (#oraclePanel/#missionsPanel), y cada
+    // uno lleva su propio translate/scale.
+    // Elementos que se redimensionan en ANCHO y ALTO por separado (w/h) en vez
+    // del escalado uniforme: cajas de fondo (background-image estirable), no
+    // sprites de pixel art que se deformarian al perder la proporcion.
     // Vacio desde que la barra IN GAME dejo de tener recuadro fijo: su ancho lo
     // pone el texto, y forzarle uno a mano es justo lo que hacia que la cifra
     // se saliera por la derecha al depositar.
     const LAYOUT_RESIZABLE = new Set();
-    // Elementos cuyo TEXTO se escala aparte de la caja (ALT+rueda): la barra
+    // Elementos cuyo TEXTO se escala aparte de la caja (f, en px): la barra
     // IN GAME lleva su rotulo por CSS encima del PNG, y el cuerpo de letra que
     // le cuadre depende de lo que se haya estirado la caja. walletBarTxt es el
     // contenido de esa barra, que ademas se mueve y escala por su cuenta.
@@ -10181,7 +9989,7 @@
     // de que uno se quede con letra distinta.
     const LAYOUT_FONT_SCALABLE = new Set(['walletBar', 'walletBarTxt', 'walletBtn', 'walletBtnTxt']);
     // roomsDesc = el mini-parrafo "The on-chain oracle re-prices..." dentro de
-    // ROOM · PRICES. Unico elemento que admite CICLO de tipografia (no tamaño):
+    // ROOM · PRICES. Unico elemento con tipografia elegible (ff, no tamaño):
     // DEFAULT (Inter) / PRESS START 2P / VT323 — pensado para poder pasarlo a
     // VT323 en modo pixel-pack, donde Press Start 2P a 8px es dificil de leer
     // en una frase larga.
@@ -10200,10 +10008,6 @@
         // hueco — nunca se ven a la vez — y David los quiere siempre en el mismo
         // sitio, asi que colocar uno coloca el otro. Con dos entradas separadas
         // habia que cuadrarlos a mano y se solapaban en el editor.
-        // walletBarTxt va ANTES que walletBar a proposito: layoutTarget se queda
-        // con la PRIMERA clave que casa, asi que apuntando al texto se agarra el
-        // texto y apuntando al hueco de la barra (arriba/abajo del rotulo, o los
-        // margenes) se agarra el recuadro.
         walletBarTxt: '#gwBalInner', walletBtnTxt: '#gameWalletArea .gw-btn-txt',
         walletBar: '#gwBalBox', walletBtn: '#gwConnect, #gwDepositWrap',
         // play apunta a la CAJA (#playRow), no al boton: dentro va tambien la
@@ -10228,21 +10032,12 @@
         // por comas, igual que walletBtn: si cada pestaña guardara su sitio,
         // cambiar de una a otra descuadraria el panel.
         //
-        // VA LA PRIMERA, y eso es lo que la hace funcionar: layoutTarget
-        // devuelve la PRIMERA clave del objeto que casa via closest(), y todo
-        // este panel vive dentro de #missionsInner (questsInner). Declarada
-        // despues de el, agarrar una pildora resolvia al cartel entero y se
-        // movia todo de golpe.
-        //
         // La CABECERA (rotulo, contadores) y el PIE (pagina, puntos de pestaña,
         // flecha) no estan y no deben estar: son la navegacion del panel, tienen
         // que verse igual en las cuatro pestañas, y moverlos solo servia para
         // descuadrarlas entre si o para perder las piezas detras del cartel.
         skinGrid:    '#skinGrid, #mineGrid',
         // ===== PESTAÑA CONVERT: cada pieza por su cuenta =====
-        // Igual que las del panel de skins, van ANTES de questsInner: si no,
-        // agarrar cualquiera de ellas resolvia al cartel entero (todas viven
-        // dentro de #missionsInner) y se movia todo de golpe.
         convertDesc: '#convertDesc',
         convertInput: '#convertPillInput',
         convertOutput: '#convertOutput',
@@ -10253,109 +10048,51 @@
         rooms: '#oraclePanel', quests: '#missionsPanel',
         zoneA: '#noVirusZoneA', zoneB: '#noVirusZoneB',
     };
-    // Zonas sin virus: editables por el mismo sistema de layout, pero NO son
+    // Zonas sin virus: colocadas por el mismo sistema de layout, pero NO son
     // "obstáculos de UI" (ni rebote de comida ni reubicación) — solo las lee
     // menuNoVirusZones para el rebote de virus. Se saltan en las otras funciones.
     const LAYOUT_ZONE_KEYS = new Set(['zoneA', 'zoneB']);
-    // Layout HORNEADO (el que estaba guardado en el servidor el 28-jul-2026). Va
-    // en el codigo para que el menu salga YA colocado en el primer pintado: antes
-    // arrancaba de fabrica y saltaba a su sitio cuando respondia /api/rooms — el
-    // "al hacer F5 se mueve todo". El de localStorage ya no se lee al arrancar
-    // (solo lo escribe el editor mientras editas).
+    // Los valores que tenia guardados produccion el 13-sep-2026, cuando se quito
+    // el editor que los subia al servidor. De lo que guardaba el servidor se
+    // quedan fuera 8 claves que ya no leia nadie (convertLabel, skinFlechas,
+    // skinPuntos, skinTitulo, tabPuntos, walletConnect, walletDeposit y wheel):
+    // piezas que cambiaron de nombre o dejaron de tener clave propia, como la
+    // rueda (ver `play` en LAYOUT_ELS).
+    // Los comentarios de este fichero que hablan de EDIT LAYOUT se refieren a
+    // ese editor: lo que movia vive ahora en esta tabla.
     const MENU_LAYOUT_HORNEADO = {
-        // x recolocada al cambiar el arte de roca por el nuevo (mas estrecho
-        // por letra): con los valores viejos quedaba un hueco de 80px en arcade
-        // y 100px en classic entre PILLWARS y la palabra del modo, y el
-        // conjunto descentrado hacia la izquierda. Medido en el DOM, estos
-        // dejan el hueco en ~24px (el gap de .menu-head-row) y el titulo
-        // centrado en el viewport. La y y la escala no se tocan: el alto en
-        // pantalla no cambio, lo fija el height inline del img.
-        // x remedidas en el DOM para el arte v4, que es bastante mas ancho por
-        // letra que el anterior (PILLWARS pasa de 363 a 421px en pantalla). Con
-        // las de antes ARCADE quedaba pegado a PILLWARS (0.6px de hueco) y
-        // CLASSIC separado 72px. Objetivo: ~24px de hueco, el gap de
-        // .menu-head-row, y el conjunto centrado en el viewport.
-        // PILLWARS de classic un 8% mas grande (David lo queria un poco mayor
-        // que la palabra del modo). El scale va desde el CENTRO del elemento,
-        // asi que su x no se toca: crece 14px hacia cada lado y basta con
-        // apartar CLASSIC otros 14 para conservar el hueco de 24px. Efecto
-        // secundario bueno: al crecer, su linea base baja de 153.9 a 156.5 y
-        // queda a ras de la de CLASSIC (156.8), que antes iba 2.9px desfasada.
-        // +20px en los cuatro respecto a la tanda anterior: las medidas de
-        // entonces se tomaron antes de que selectMode rellenara el blurb, y ese
-        // texto vive en la misma .menu-head-row (flex, width:max-content), asi
-        // que al aparecer empuja al titulo. Con el blurb ya puesto el conjunto
-        // quedaba 20px a la izquierda del centro en los DOS modos.
-        titlePw_classic:   { x: 242,  y: 16,   s: 2.9724504819165265 },
-        titleWord_classic: { x: 460,  y: 19,   s: 2.2679439840192406 },
-        titlePw_arcade:    { x: 224,  y: 18,   s: 2.7522689647375245 },
-        titleWord_arcade:  { x: 453,  y: 17,   s: 2.3364925909362215 },
-        // El subtitulo (blurb) tambien es scoped por modo: el texto de arcade es
-        // mas largo que el de classic y cada uno va en un sitio distinto. Los dos
-        // arrancan del valor compartido de antes; a partir de aqui se mueven solos.
-        blurb_classic:     { x: -115, y: 85,   s: 1.4509453541079567 },
-        blurb_arcade:      { x: -115, y: 85,   s: 1.4509453541079567 },
-        pill:              { x: 263,  y: 130,  s: 1.1098449129017791 },
-        name:              { x: 256,  y: 116,  s: 1 },
-        play:              { x: 261,  y: 137,  s: 1.429502811929022 },
-        settings:          { x: 257,  y: 146,  s: 1.4083771546098733 },
-        walletBar:         { x: 0,    y: 0,    s: 1 },
-        rooms:             { x: -863, y: 217,  s: 1.5399805127988688 },
-        roomsInner:        { x: 0,    y: 2,    s: 0.9421842302867248 },
-        quests:            { x: 263,  y: -199, s: 1.5630802204908512 },
-        questsInner:       { x: 0,    y: 1,    s: 0.9282603254056407 },
-        zoneB:             { x: -2,   y: 18,   s: 1 },
+        titlePw_classic:   { x: 202.81817626953125, y: 10.818180084228516, s: 3.379477759785918, b: 0.1 },
+        titleWord_classic: { x: 505, y: 11.999996185302734, s: 2.9211579606888107, b: 0.1 },
+        titlePw_arcade:    { x: 233, y: -33, s: 3.0906750000000005, b: 0.1 },
+        titleWord_arcade:  { x: 482, y: 11, s: 2.554822084811098, b: 0.2 },
+        blurb_classic:     { x: 303.9090576171875, y: 125.90910339355469, s: 1.4509453541079567 },
+        blurb_arcade:      { x: 307.9090576171875, y: 125.90910339355469, s: 1.3269507453695115 },
+        pill:              { x: 295, y: 191, s: 1.3073406358320308 },
+        palette:           { x: 432, y: -189, s: 0.5679242256179468 },
+        colorPicker:       { x: 444, y: -154, s: 0.5850897353372465 },
+        palHint:           { x: 429, y: -327, s: 0.8118492774834594, b: 1.1 },
+        roomsDesc:         { x: 3, y: 4, s: 1.0000000000000018, ff: 'default' },
+        walletBarTxt:      { x: -2, y: 0, s: 0.9852216748768479, f: 13 },
+        walletBtnTxt:      { x: 1, y: -1, s: 0.8745922401980176, f: 18 },
+        walletBar:         { x: -1654.4544677734375, y: 7.090906143188477, s: 1.0613635506250032 },
+        walletBtn:         { x: 43.54541015625, y: -21.09090805053711, s: 0.9145421925178729 },
+        name:              { x: 292, y: 208, s: 1 },
+        play:              { x: 256, y: 251, s: 1.6103243201551891 },
+        settings:          { x: 1088, y: 186.72723388671875, s: 1.268985547654185 },
+        skinGrid:          { x: 0, y: -2, s: 1.000000000000001 },
+        convertDesc:       { x: 0, y: -9, s: 1.015 },
+        convertInput:      { x: -4, y: -5, s: 1 },
+        convertOutput:     { x: 295, y: -30, s: 1 },
+        convertBtn:        { x: -3, y: -22, s: 1 },
+        convertWarning:    { x: 1, y: -16, s: 1 },
+        tabFlecha:         { x: -3, y: -1, s: 0.8363874218953967 },
+        roomsInner:        { x: 1, y: 6, s: 0.9421842302867249 },
+        questsInner:       { x: 0, y: 0, s: 0.9563169937410253 },
+        rooms:             { x: -892, y: 288, s: 1.3670578316483069 },
+        quests:            { x: 276, y: -151, s: 1.0000000000000018 },
+        zoneB:             { x: -2, y: 18, s: 1 },
     };
-    let menuLayout = JSON.parse(JSON.stringify(MENU_LAYOUT_HORNEADO));
-    // Mismo layout sin depender del orden de las claves (el horneado se escribe a
-    // mano, el del servidor llega como se guardo).
-    function mismoMenuLayout(a, b) {
-        const na = o => JSON.stringify(Object.keys(o || {}).sort().map(k => {
-            const v = o[k];
-            // El halo (b), el tamano de caja (w/h) y el cuerpo de letra (f)
-            // entran en la comparacion: sin ellos, un layout global que solo
-            // cambiara uno de esos se veria "igual" y no llegaria a aplicarse.
-            const num = x => typeof x === 'number' ? x : null;
-            return (v && typeof v === 'object')
-                ? [k, +v.x || 0, +v.y || 0, +v.s || 1, num(v.b), num(v.w), num(v.h), num(v.f), v.ff || null]
-                : [k, v];
-        }));
-        return na(a) === na(b);
-    }
-    let layoutEditing = false, layoutDrag = null;
-    // Interruptor real del admin (panel -> Menu visuals -> Layout editors).
-    // FALLA CERRADO: hasta que el primer poll de /api/rooms confirme lo
-    // contrario, ningun editor entra — igual que el boton, que ya nace
-    // display:none en el HTML. Sin esto, enterLayoutEdit()/loadingEdit()
-    // seguian siendo funciones normales del scope: ocultar el boton no impide
-    // llamarlas a mano desde la consola, asi que el interruptor del admin no
-    // apagaba nada de verdad, solo el atajo comodo.
-    let layoutEditAllowed = false;
-    // ===== Claves TOCADAS a mano en esta maquina =====
-    // El poll de /api/rooms reemplaza menuLayout ENTERO por el global del
-    // servidor. Como el global no trae las piezas nuevas (la barra IN GAME y
-    // los botones de wallet), todo lo que se ajustaba de ellas se borraba al
-    // salir del editor: colocabas DEPOSIT/CONNECT y al rato volvian solos a su
-    // sitio. Ahora las claves que has tocado TU mandan sobre el global hasta
-    // que le des a SAVE FOR ALL (que las sube y ya son de todos) o a RESET ALL.
-    const LAYOUT_MINE_KEY = 'pw_menu_layout_mine';
-    let layoutMine = new Set();
-    try { const m = JSON.parse(localStorage.getItem(LAYOUT_MINE_KEY) || '[]'); if (Array.isArray(m)) layoutMine = new Set(m); } catch (e) {}
-    function saveLayoutMine() { try { localStorage.setItem(LAYOUT_MINE_KEY, JSON.stringify([...layoutMine])); } catch (e) {} }
-    function marcarLayoutMio(storeKey) { if (!layoutMine.has(storeKey)) { layoutMine.add(storeKey); saveLayoutMine(); } }
-    // Global entrante + lo mio por encima.
-    function fundirLayoutGlobal(entrante) {
-        const out = JSON.parse(JSON.stringify(entrante));
-        for (const k of layoutMine) { if (menuLayout[k]) out[k] = JSON.parse(JSON.stringify(menuLayout[k])); else delete out[k]; }
-        return out;
-    }
-    function saveMenuLayout() {
-        try {
-            localStorage.setItem(LAYOUT_KEY, JSON.stringify(menuLayout));
-            // Backup: por si el servidor pierde datos al reiniciar
-            localStorage.setItem(LAYOUT_BACKUP_KEY, JSON.stringify(menuLayout));
-        } catch (e) {}
-    }
+    const menuLayout = MENU_LAYOUT_HORNEADO;
     // titlePw/titleWord/blurb son el MISMO nodo del DOM para arcade y classic (el
     // contenido se cambia via innerHTML en setSelectedModeTitleArt / selectMode),
     // asi que una sola entrada de layout los movia a la vez en los dos modos.
@@ -10364,41 +10101,6 @@
     const MODE_SCOPED_LAYOUT_KEYS = new Set(['titlePw', 'titleWord', 'blurb']);
     function layoutStoreKey(key) {
         return MODE_SCOPED_LAYOUT_KEYS.has(key) ? key + '_' + (currentGameMode || 'classic') : key;
-    }
-    // Layouts guardados ANTES de que una clave pasara a ser scoped (el global del
-    // servidor y el localStorage de cada uno) traen la clave plana. Sin esto el
-    // elemento se quedaria sin colocar en los dos modos hasta que alguien
-    // reguardara: se reparte el valor plano a los dos modos y se tira la plana.
-    function migrateScopedLayout(l) {
-        if (!l || typeof l !== 'object') return l;
-        for (const key of MODE_SCOPED_LAYOUT_KEYS) {
-            if (!l[key]) continue;
-            for (const m of ['classic', 'arcade']) {
-                if (!l[key + '_' + m]) l[key + '_' + m] = { ...l[key] };
-            }
-            delete l[key];
-        }
-        return l;
-    }
-    // De arranque manda el horneado (asi el menu sale ya colocado sin esperar al
-    // primer poll), PERO las claves que tocaste tu se recuperan del localStorage:
-    // sin esto un F5 las perdia y el global volvia a colocarlo todo.
-    // Va AQUI y no junto a layoutMine: migrateScopedLayout lee
-    // MODE_SCOPED_LAYOUT_KEYS, que es un const declarado mas abajo — llamarla
-    // antes petaba por zona muerta temporal y el catch se lo tragaba en silencio.
-    if (layoutMine.size) {
-        try {
-            // Intenta cargar desde localStorage. Si está vacío, usa el backup.
-            let stored = localStorage.getItem(LAYOUT_KEY);
-            if (!stored || stored === '{}') {
-                stored = localStorage.getItem(LAYOUT_BACKUP_KEY);
-            }
-            const guardado = migrateScopedLayout(JSON.parse(stored || '{}'));
-            for (const k of layoutMine) {
-                if (guardado && guardado[k]) menuLayout[k] = guardado[k];
-                else delete menuLayout[k];
-            }
-        } catch (e) {}
     }
     function applyMenuLayout() {
         for (const key in LAYOUT_ELS) {
@@ -10415,7 +10117,7 @@
             let t = menuLayout[layoutStoreKey(key)];
             // Los DOS carteles de info (precios de sala y quests/skins) van
             // SIEMPRE a la misma altura y del mismo tamaño. Cada uno se coloca
-            // por su lado con el editor, y cuadrarlos a ojo es imposible: miden
+            // por su lado, y cuadrarlos a ojo es imposible: miden
             // lo mismo por dentro (372px), asi que cualquier diferencia de
             // escala los deja de distinto alto — con 1.659 y 1.540 salian 617 y
             // 573. El de quests toma la escala y la Y del de salas y conserva
@@ -10434,7 +10136,7 @@
             // boton movido, saltaba a su posicion original y se perdia el click.
             el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '';
             el.style.scale = t ? String(t.s || 1) : '';
-            // b = intensidad del halo (ALT+rueda). Se pone como custom property
+            // b = intensidad del halo. Se pone como custom property
             // en el propio elemento; hoy solo la leen los titulos del login, en
             // el resto no hace nada. Sin valor guardado se quita la propiedad y
             // manda el default del CSS (1 = el diseno de siempre).
@@ -10447,15 +10149,14 @@
                 el.style.width = (t && typeof t.w === 'number') ? t.w + 'px' : '';
                 el.style.height = (t && typeof t.h === 'number') ? t.h + 'px' : '';
             }
-            // f = cuerpo de letra en px del texto de dentro (ALT+rueda). Lo lee
+            // f = cuerpo de letra en px del texto de dentro. Lo lee
             // el CSS por --gw-font; sin valor guardado manda el default.
             if (LAYOUT_FONT_SCALABLE.has(key)) {
                 if (t && typeof t.f === 'number') el.style.setProperty('--gw-font', t.f + 'px');
                 else el.style.removeProperty('--gw-font');
             }
-            // ff = id de la fuente elegida (ciclo DEFAULT/PRESS START 2P/VT323).
-            // Se guarda el id (lo que sanea el servidor), no el font-family CSS
-            // crudo, y se resuelve aqui contra ROOMS_DESC_FONTS.
+            // ff = id de la fuente (DEFAULT/PRESS START 2P/VT323), que se
+            // resuelve aqui contra ROOMS_DESC_FONTS.
             if (LAYOUT_FONT_FAMILY_SCALABLE.has(key)) {
                 const fdef = t && t.ff ? ROOMS_DESC_FONTS.find(x => x.id === t.ff) : null;
                 if (fdef && fdef.ff) el.style.fontFamily = fdef.ff;
@@ -10465,8 +10166,8 @@
         }
         // La pestaña CONVERT habla con la MISMA letra que la descripcion de
         // ROOM · PRICES: David los quiere identicos, asi que no tiene ciclo de
-        // fuente propio — se le copia al contenedor la familia elegida en el
-        // boton ROOM DESC FONT y de ahi la heredan parrafos, input y boton.
+        // fuente propio — se le copia al contenedor la familia de roomsDesc y
+        // de ahi la heredan parrafos, input y boton.
         const cvBox = document.getElementById('sidePanelConvert');
         if (cvBox) {
             const rd = menuLayout[layoutStoreKey('roomsDesc')];
@@ -10484,11 +10185,10 @@
         aplicaScreenBright();   // no-op si no cambio desde la ultima vez (ver su comentario)
     }
     // Verde de fondo de TODOS los carteles (ROOM PRICES, MISSIONS, tienda
-    // ampliada, cartel general, detalle de skin): un solo mando de prueba,
-    // no rango completo de color, solo mas oscuro/mas claro (menuLayout.
-    // screenBright, -60..60), guardado local como cualquier otra clave de
-    // EDIT LAYOUT. _lastScreenBright evita repintar los canvas en cada
-    // applyMenuLayout (arrastrar dispara muchos) cuando no cambio nada.
+    // ampliada, cartel general, detalle de skin): solo mas oscuro/mas claro
+    // (menuLayout.screenBright, -60..60; sin valor, el verde de siempre).
+    // _lastScreenBright evita repintar los canvas en cada applyMenuLayout
+    // cuando no cambio nada.
     let _lastScreenBright = null;
     function aplicaScreenBright() {
         const b = Math.max(-60, Math.min(60, menuLayout.screenBright || 0));
@@ -10513,18 +10213,13 @@
         // cerrado dentro de su propia IIFE, sin nombre global que llamar aqui).
         window.dispatchEvent(new Event('resize'));
     }
-    function bumpScreenBright(delta) {
-        menuLayout.screenBright = Math.max(-60, Math.min(60, (menuLayout.screenBright || 0) + delta));
-        saveMenuLayout();
-        aplicaScreenBright();
-    }
     // Deja los DOS carteles de info (precios de sala y quests/skins) clavados a
     // la misma altura. Ya comparten escala (ver el caso 'quests' de arriba), asi
     // que miden lo mismo; lo que queda es el desfase vertical: el scale tira del
     // centro de cada uno y, como parten de sitios distintos del flujo, la misma
     // escala los dejaba a 22px de diferencia. En vez de calcularlo a ciegas se
     // MIDE lo que se ve y se corrige, que aguanta cualquier escala y cualquier
-    // posicion que se guarde desde el editor.
+    // posicion.
     function alineaCartelesInfo() {
         const a = document.getElementById('oraclePanel'), b = document.getElementById('missionsPanel');
         if (!a || !b) return;
@@ -10533,377 +10228,7 @@
         const desfase = a.getBoundingClientRect().top - b.getBoundingClientRect().top;
         if (Math.abs(desfase) > 0.5) b.style.marginTop = Math.round(desfase) + 'px';
     }
-    function layoutTarget(e) {
-        for (const key in LAYOUT_ELS) { const el = e.target.closest && e.target.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
-        return null;
-    }
-    function enterLayoutEdit() {
-        // Puerta de verdad: el boton ya nace oculto sin permiso, pero esto
-        // bloquea tambien a quien lo llame a mano desde la consola.
-        if (!layoutEditAllowed) return;
-        layoutEditing = true;
-        document.body.classList.add('layout-editing');
-        for (const key in LAYOUT_ELS) document.querySelectorAll(LAYOUT_ELS[key]).forEach(el => el.classList.add('menu-editable'));
-        // La paleta, el selector de color y el aviso de guardado solo se ven al
-        // clicar (y el aviso ni eso), asi que en el editor no habria nada que
-        // agarrar: se fuerzan visibles mientras dure la edicion y se devuelven a
-        // su estado al salir. Sin esto no habia forma de colocarlos.
-        for (const id of ['pillPalette', 'colorPicker', 'palHint']) {
-            const el = document.getElementById(id);
-            if (!el) continue;
-            el._layoutPrevDisplay = el.style.display;
-            el._layoutForzado = true;   // no cuenta para medir, ver _menuCaja
-            el.style.display = 'block';
-        }
-        // La barra de saldo y los botones de wallet solo salen con la cartera
-        // conectada; en el editor se enseñan igual para poder colocarlos, con un
-        // saldo de muestra para ver como queda la cifra mas larga.
-        // CONNECT y DEPOSIT se enseñan LOS DOS a la vez (David los quiere
-        // siempre en el mismo sitio y quiere verlo): comparten entrada de
-        // layout, asi que salen exactamente superpuestos — eso es lo correcto,
-        // no un fallo. CONNECT medio transparente para distinguir cual es cual
-        // sin esconder ninguno.
-        const wa = document.getElementById('gameWalletArea');
-        if (wa) { wa._layoutPrevDisplay = wa.style.display; wa.style.display = 'flex'; }
-        for (const id of ['gwBalBox', 'gwDepositWrap', 'gwConnect']) {
-            const el = document.getElementById(id);
-            if (!el) continue;
-            el._layoutPrevDisplay = el.style.display;
-            // Solo se marca el que estaba OCULTO: los que ya se veian jugando
-            // (CONNECT, normalmente) tienen que seguir contando igual que antes.
-            if (getComputedStyle(el).display === 'none') el._layoutForzado = true;
-            el.style.display = id === 'gwBalBox' ? 'flex' : 'block';
-            if (id === 'gwConnect') el.style.opacity = '0.55';
-        }
-        const bal = document.getElementById('gwBalValue');
-        if (bal && !bal.textContent.trim()) bal.textContent = '999,999,999';
-        renderColorPicker();
-        document.getElementById('layoutEditBar').style.display = 'flex';
-        syncRoomsDescFontBtn();
-    }
-    function exitLayoutEdit() {
-        layoutEditing = false; layoutDrag = null;
-        // Cerrar el cartel de skins cuando salimos del editor
-        if (typeof paisModalCerrar === 'function') paisModalCerrar();
-        document.body.classList.remove('layout-editing');
-        for (const id of ['pillPalette', 'colorPicker', 'palHint', 'gameWalletArea', 'gwBalBox', 'gwDepositWrap', 'gwConnect']) {
-            const el = document.getElementById(id);
-            if (el && el._layoutPrevDisplay !== undefined) { el.style.display = el._layoutPrevDisplay; delete el._layoutPrevDisplay; }
-            if (el) delete el._layoutForzado;
-        }
-        const gwc = document.getElementById('gwConnect');
-        if (gwc) gwc.style.opacity = '';
-        // El display que se restaura arriba (_layoutPrevDisplay) es una FOTO de
-        // antes de entrar al editor: si mientras tanto conectaste/desconectaste
-        // la wallet, esa foto ya no vale. refresh() lo deja correcto al momento
-        // en vez de esperar al siguiente tick de los 6s del setInterval.
-        if (!GameWallet.address) { const bal = document.getElementById('gwBalValue'); if (bal) bal.textContent = ''; }
-        if (typeof GameWalletUI !== 'undefined') GameWalletUI.refresh();
-        document.querySelectorAll('.menu-editable').forEach(el => el.classList.remove('menu-editable'));
-        document.getElementById('layoutEditBar').style.display = 'none';
-        saveMenuLayout();
-        invalidateLoginUIRects();   // el layout cambió → recalcular zonas prohibidas
-    }
-    // Botones sueltos IN GAME TXT/WIDTH (ver #layoutEditBar): mismo efecto que
-    // ALT+rueda / CTRL+rueda sobre la caja, pero sin depender de acertar el
-    // punto exacto con el raton ni de que el navegador no se coma la
-    // combinacion (CTRL+rueda fuera de la caja hace zoom de pagina).
-    // El cuerpo de letra de cualquier clave de LAYOUT_FONT_SCALABLE. El de la
-    // barra se guarda en walletBarTxt (el contenido) y no en la caja: es lo que
-    // se esta tocando, y ademas es el que manda si los dos tienen valor (la
-    // custom property del hijo pisa a la del padre).
-    function bumpLayoutFont(key, delta) {
-        const el = document.querySelector(LAYOUT_ELS[key]); if (!el) return;
-        const cur = menuLayout[key] = menuLayout[key] || { x: 0, y: 0, s: 1 };
-        const base = typeof cur.f === 'number' ? cur.f : (parseFloat(getComputedStyle(el).getPropertyValue('--gw-font')) || 13);
-        cur.f = Math.round(Math.min(48, Math.max(6, base + delta)) * 10) / 10;
-        marcarLayoutMio(key); applyMenuLayout(); saveMenuLayout();
-    }
-    // Ciclo DEFAULT -> PRESS START 2P -> VT323 -> DEFAULT del mini-parrafo
-    // ROOM · PRICES (unico elemento en LAYOUT_FONT_FAMILY_SCALABLE).
-    function cycleRoomsDescFont() {
-        const key = 'roomsDesc';
-        const cur = menuLayout[key] = menuLayout[key] || { x: 0, y: 0, s: 1 };
-        const curIdx = Math.max(0, ROOMS_DESC_FONTS.findIndex(x => x.id === cur.ff));
-        cur.ff = ROOMS_DESC_FONTS[(curIdx + 1) % ROOMS_DESC_FONTS.length].id;
-        marcarLayoutMio(key); applyMenuLayout(); saveMenuLayout();
-        syncRoomsDescFontBtn();
-    }
-    function syncRoomsDescFontBtn() {
-        const btn = document.getElementById('lebRoomsDescFont'); if (!btn) return;
-        const cur = menuLayout['roomsDesc'];
-        const f = ROOMS_DESC_FONTS.find(x => x.id === (cur && cur.ff)) || ROOMS_DESC_FONTS[0];
-        btn.textContent = 'ROOM DESC FONT: ' + f.label;
-    }
-    // Superficie del elemento que de verdad se ve: su rectangulo recortado por
-    // la ventana y por cada antepasado que corte. Lo segundo es lo que importa
-    // aqui — los carteles son overflow:hidden, asi que al arrastrar una pieza
-    // fuera del cuadro interior desaparece sin salirse de la pantalla.
-    function layoutAreaVisible(el) {
-        const r = el.getBoundingClientRect();
-        let x0 = r.left, y0 = r.top, x1 = r.right, y1 = r.bottom;
-        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-            if (getComputedStyle(p).overflow === 'visible') continue;
-            const pr = p.getBoundingClientRect();
-            x0 = Math.max(x0, pr.left); y0 = Math.max(y0, pr.top);
-            x1 = Math.min(x1, pr.right); y1 = Math.min(y1, pr.bottom);
-        }
-        x0 = Math.max(x0, 0); y0 = Math.max(y0, 0);
-        x1 = Math.min(x1, window.innerWidth); y1 = Math.min(y1, window.innerHeight);
-        return Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
-    }
-    // Devuelve a su sitio de fabrica lo que se haya arrastrado a donde ya no se
-    // puede volver a agarrar. Sin esto, un tiron de mas dejaba la pieza perdida
-    // para siempre: el doble-click que resetea una sola necesita poder pulsarla.
-    // Solo entra si (a) no se ve NADA de ella y (b) en su sitio de fabrica SI se
-    // veria — o sea, que la culpa es del arrastre y no de que este apagada por
-    // otro motivo. Toca la POSICION; el tamaño se respeta.
-    function rescueLostLayout() {
-        let n = 0;
-        for (const key in LAYOUT_ELS) {
-            if (LAYOUT_ZONE_KEYS.has(key)) continue;
-            const sk = layoutStoreKey(key);
-            const t = menuLayout[sk];
-            if (!t || (!t.x && !t.y)) continue;      // sin desplazar: nada que rescatar
-            const el = document.querySelector(LAYOUT_ELS[key]);
-            // Sin offsetParent = esta en una pestaña oculta: no se puede juzgar
-            // (mide 0x0) y resetearlo aqui seria descolocarlo sin motivo.
-            if (!el || !el.offsetParent) continue;
-            if (layoutAreaVisible(el) >= 4) continue;             // se ve: se puede agarrar
-            const antes = el.style.translate;
-            el.style.translate = '0px 0px';
-            const seVeriaEnCasa = layoutAreaVisible(el) >= 4;
-            el.style.translate = antes;
-            if (!seVeriaEnCasa) continue;                          // no es cosa del arrastre
-            t.x = 0; t.y = 0; marcarLayoutMio(sk); n++;
-        }
-        applyMenuLayout(); saveMenuLayout();
-        alert(n ? (n + ' element(s) brought back to their default position.')
-                : 'Nothing to rescue: every element is reachable.');
-    }
-    // Guarda el layout actual como default: si hace RESET ALL, vuelve a aqui.
-    function setLayoutAsDefault() {
-        try {
-            localStorage.setItem('pw_menu_layout_default', JSON.stringify(menuLayout));
-            alert('Current layout saved as DEFAULT. Use RESET ALL to restore.');
-        } catch (e) {
-            alert('Could not save as default');
-        }
-    }
-    // RESET ALL vuelve al default guardado (o al horneado si no hay custom default).
-    function resetMenuLayout() {
-        try {
-            const custom = localStorage.getItem('pw_menu_layout_default');
-            menuLayout = custom ? JSON.parse(custom) : JSON.parse(JSON.stringify(MENU_LAYOUT_HORNEADO));
-        } catch (e) {
-            menuLayout = JSON.parse(JSON.stringify(MENU_LAYOUT_HORNEADO));
-        }
-        layoutMine.clear();
-        saveLayoutMine();
-        saveMenuLayout();
-        applyMenuLayout();
-        syncRoomsDescFontBtn();
-    }
-    // Sube el layout actual al servidor → se vuelve GLOBAL para todos (se difunde
-    // por /api/rooms). Pide la ADMIN_KEY, igual que el editor de carteles: sin
-    // ella cualquiera con un curl podia descolocarle el menu a todo el mundo.
-    // Se guarda en memoria (no en localStorage) para no dejarla escrita en el
-    // navegador; se vuelve a pedir en cada recarga de la pagina.
-    let _layoutAdminKey = '';
-    async function saveLayoutGlobal(btn) {
-        saveMenuLayout();
-        if (!_layoutAdminKey) _layoutAdminKey = prompt('Admin key para guardar el layout para todos:') || '';
-        if (!_layoutAdminKey) return;
-        const orig = btn ? btn.textContent : '';
-        if (btn) { btn.textContent = 'SAVING...'; btn.disabled = true; }
-        let ok = false;
-        try {
-            // Va tambien el ajuste del ROTULO (alto de cada palabra, hueco,
-            // altura y halo). Antes se quedaba en el localStorage de quien lo
-            // tocara: lo colocabas, le dabas a SAVE FOR ALL y el resto del mundo
-            // seguia viendo el de fabrica.
-            const r = await fetch('/api/menu-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout: menuLayout, titulo: TITULO, key: _layoutAdminKey }) });
-            ok = (await r.json()).ok === true;
-            if (!ok) _layoutAdminKey = '';   // clave mala: que la vuelva a pedir
-            // Ya son de todos: se sueltan las claves propias para no quedarse
-            // pegado a una version local del layout que ya subiste.
-            if (ok) { layoutMine.clear(); saveLayoutMine(); }
-        } catch (e) {}
-        if (btn) { btn.textContent = ok ? 'SAVED ✓' : 'ERROR'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600); }
-    }
-    // La barra del editor va fija abajo en el centro, justo encima de la rueda
-    // de HOW TO PLAY: se puede agarrar por el asa MOVE y dejarla donde no
-    // estorbe. La posicion se guarda por barra en localStorage; doble clic en
-    // el asa la devuelve a su sitio de fabrica.
-    function makeEditBarDraggable(barId) {
-        const bar = document.getElementById(barId);
-        const grip = bar && bar.querySelector('.leb-grip');
-        if (!grip) return;
-        const KEY = 'pw_editbar_pos_' + barId;
-        function colocar(x, y, limitar) {
-            if (limitar) {
-                x = Math.max(0, Math.min(window.innerWidth - bar.offsetWidth, x));
-                y = Math.max(0, Math.min(window.innerHeight - bar.offsetHeight, y));
-            }
-            bar.style.left = x + 'px'; bar.style.top = y + 'px';
-            bar.style.bottom = 'auto'; bar.style.transform = 'none';
-        }
-        // Sin limitar al arrancar: la barra esta oculta y mide 0, asi que el
-        // clamp la mandaria a la esquina. Se limita ya al arrastrar.
-        try { const g = JSON.parse(localStorage.getItem(KEY)); if (g) colocar(g.x, g.y, false); } catch (e) {}
-        grip.addEventListener('pointerdown', (e) => {
-            const r = bar.getBoundingClientRect();
-            const dx = e.clientX - r.left, dy = e.clientY - r.top;
-            e.preventDefault(); e.stopPropagation();
-            // Los listeners van en window y no en el asa (con captura de
-            // puntero): el raton se adelanta a la barra al arrastrar rapido y
-            // con el asa sola el gesto se cortaba al salirse de ella.
-            const mover = (ev) => colocar(ev.clientX - dx, ev.clientY - dy, true);
-            const soltar = () => {
-                window.removeEventListener('pointermove', mover);
-                window.removeEventListener('pointerup', soltar);
-                window.removeEventListener('pointercancel', soltar);
-                try { localStorage.setItem(KEY, JSON.stringify({ x: bar.offsetLeft, y: bar.offsetTop })); } catch (e2) {}
-            };
-            window.addEventListener('pointermove', mover);
-            window.addEventListener('pointerup', soltar);
-            window.addEventListener('pointercancel', soltar);
-        });
-        grip.addEventListener('dblclick', () => {
-            bar.style.left = ''; bar.style.top = ''; bar.style.bottom = ''; bar.style.transform = '';
-            try { localStorage.removeItem(KEY); } catch (e) {}
-        });
-        window.addEventListener('resize', () => { if (bar.style.left && bar.offsetWidth) colocar(bar.offsetLeft, bar.offsetTop, true); });
-    }
-
-    (function initLayoutEdit() {
-        applyMenuLayout();
-        makeEditBarDraggable('layoutEditBar');
-        makeEditBarDraggable('lsEditBar');
-        document.addEventListener('pointerdown', (e) => {
-            if (!layoutEditing || e.target.closest('#layoutEditBar')) return;
-            const t = layoutTarget(e); if (!t) return;
-            const sk = layoutStoreKey(t.key);
-            const cur = menuLayout[sk] || { x: 0, y: 0, s: 1 };
-            // El rotulo de placa va por su cuenta: applyMenuLayout lo SALTA (se
-            // centra solo y su tamaño lo mandan las --titulo-*), asi que
-            // arrastrarlo escribia en menuLayout un valor que no lee nadie — el
-            // rotulo no se movia y el layout guardado se llenaba de basura. Su
-            // sitio de verdad es TITULO.y, que es lo que se toca aqui.
-            const esTitulo = tituloUsaPlaca() && (t.key === 'titlePw' || t.key === 'titleWord');
-            layoutDrag = esTitulo
-                ? { titulo: true, startY: e.clientY, baseY: TITULO.y || 0 }
-                : { key: sk, startX: e.clientX, startY: e.clientY, baseX: cur.x || 0, baseY: cur.y || 0 };
-            e.preventDefault(); e.stopPropagation();
-        }, true);
-        window.addEventListener('pointermove', (e) => {
-            if (!layoutEditing || !layoutDrag) return;
-            if (layoutDrag.titulo) {
-                // Solo el eje Y: la X del rotulo la calcula centrarTitulo() para
-                // dejarlo centrado en la ventana, asi que no hay nada que
-                // arrastrar a lo ancho. Se divide por la escala del menu porque
-                // TITULO.y se aplica DENTRO del bloque escalado: sin eso el
-                // rotulo iba mas despacio que el raton con la ventana pequeña.
-                const k = (typeof menuEscala === 'number' && menuEscala > 0) ? menuEscala : 1;
-                tituloTune({ y: Math.round(layoutDrag.baseY + (e.clientY - layoutDrag.startY) / k) }, true);
-                ajustaMenuResponsive();
-                return;
-            }
-            const cur = menuLayout[layoutDrag.key] = menuLayout[layoutDrag.key] || { x: 0, y: 0, s: 1 };
-            cur.x = layoutDrag.baseX + (e.clientX - layoutDrag.startX);
-            cur.y = layoutDrag.baseY + (e.clientY - layoutDrag.startY);
-            marcarLayoutMio(layoutDrag.key);
-            applyMenuLayout();
-        });
-        // tituloTune ya guarda lo suyo en cada paso, asi que el rotulo no pasa
-        // por saveMenuLayout (su sitio no vive en menuLayout).
-        window.addEventListener('pointerup', () => { if (layoutDrag) { const t = layoutDrag.titulo; layoutDrag = null; if (!t) saveMenuLayout(); } });
-        document.addEventListener('wheel', (e) => {
-            if (!layoutEditing) return;
-            const t = layoutTarget(e); if (!t) return;
-            e.preventDefault();
-            const sk = layoutStoreKey(t.key);
-            const cur = menuLayout[sk] = menuLayout[sk] || { x: 0, y: 0, s: 1 };
-            marcarLayoutMio(sk);
-            // ALT+rueda = intensidad del halo del titulo en vez del tamano. 0 lo
-            // apaga del todo y 4 es el tope; el paso de 0.1 es fino porque el
-            // efecto se nota mucho entre 0.5 y 1.5, que es donde se va a estar.
-            if (e.altKey) {
-                // En las cajas con texto propio (IN GAME) ALT+rueda es el
-                // CUERPO DE LETRA, no el halo: ahi no hay titulo que iluminar.
-                if (LAYOUT_FONT_SCALABLE.has(t.key)) {
-                    // 13 = el default del CSS (--gw-font): sin valor guardado la
-                    // custom property no esta declarada en el elemento y
-                    // getPropertyValue devuelve '', asi que el primer tick tiene
-                    // que partir del mismo 13 que se esta viendo.
-                    const base = typeof cur.f === 'number' ? cur.f :
-                        parseFloat(getComputedStyle(t.el).getPropertyValue('--gw-font')) || 13;
-                    cur.f = Math.round(Math.min(48, Math.max(6, base + (e.deltaY < 0 ? 1 : -1))) * 10) / 10;
-                } else {
-                    cur.b = Math.min(4, Math.max(0, Math.round(((typeof cur.b === 'number' ? cur.b : 1) + (e.deltaY < 0 ? 0.1 : -0.1)) * 100) / 100));
-                }
-                applyMenuLayout(); saveMenuLayout();
-                return;
-            }
-            // CTRL+rueda = ANCHO, CTRL+SHIFT+rueda = ALTO, solo en las cajas de
-            // LAYOUT_RESIZABLE (fondos estirables, no sprites). El punto de
-            // partida es el tamaño REAL en pantalla (medido, no un valor fijo de
-            // fabrica) para que el primer tick no salte de tamaño.
-            if (e.ctrlKey && LAYOUT_RESIZABLE.has(t.key)) {
-                const b = t.el.getBoundingClientRect();
-                const stepR = e.shiftKey ? 1.05 : 1.02;
-                if (e.shiftKey) cur.h = Math.max(20, Math.min(400, (typeof cur.h === 'number' ? cur.h : b.height) * (e.deltaY < 0 ? stepR : 1 / stepR)));
-                else cur.w = Math.max(40, Math.min(900, (typeof cur.w === 'number' ? cur.w : b.width) * (e.deltaY < 0 ? stepR : 1 / stepR)));
-                applyMenuLayout(); saveMenuLayout();
-                return;
-            }
-            // Con el titulo de placa la rueda cambia el ALTO REAL del rotulo en
-            // vez de un scale: el scale es un transform, no cambia la caja, y el
-            // centrado automatico (centrarTitulo) dejaba de cuadrar. Asi ademas
-            // se pueden dejar las dos palabras exactamente al mismo tamaño, que
-            // con un factor a ojo era imposible. Shift = paso grande.
-            if (tituloUsaPlaca() && (t.key === 'titlePw' || t.key === 'titleWord')) {
-                const campo = t.key === 'titlePw' ? 'altoPw' : 'altoWord';
-                const base = TITULO[campo] || TITULO.alto;
-                const paso = e.shiftKey ? 8 : 2;
-                tituloTune({ [campo]: Math.max(24, Math.min(400, base + (e.deltaY < 0 ? paso : -paso))) }, true);
-                return;
-            }
-            // 1.015 (1.5%) en vez de 1.06 (6%): con el paso viejo era dificil
-            // cuadrar dos elementos al MISMO tamano (se pasaba de largo entre
-            // un tick y el siguiente). Shift+rueda = paso grande (1.06) para
-            // moverse rapido cuando la precision no importa.
-            const step = e.shiftKey ? 1.06 : 1.015;
-            // Tope 6 y no 3: los titulos del login se pintan con un height base
-            // de 24/29px, asi que ya de partida necesitan un scale cercano a 3
-            // para su tamano normal — el PILLWARS de classic estaba en 2.97 y
-            // chocaba con el techo al primer tick, sin poder agrandarse mas.
-            cur.s = Math.min(6, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
-            applyMenuLayout(); saveMenuLayout();
-        }, { passive: false, capture: true });
-        document.addEventListener('dblclick', (e) => {
-            if (!layoutEditing) return;
-            const t = layoutTarget(e); if (!t) return;
-            // El titulo de placa no guarda su tamaño en el layout, asi que
-            // resetearlo es devolver su palabra al alto comun.
-            if (tituloUsaPlaca() && (t.key === 'titlePw' || t.key === 'titleWord')) {
-                tituloTune({ [t.key === 'titlePw' ? 'altoPw' : 'altoWord']: null }, true);
-                e.preventDefault();
-                return;
-            }
-            // Resetear uno tambien cuenta como "tocado a mano": si no, el global
-            // se lo devolvia en el siguiente poll.
-            const sk = layoutStoreKey(t.key);
-            delete menuLayout[sk]; marcarLayoutMio(sk); applyMenuLayout(); saveMenuLayout();
-            e.preventDefault();
-        }, true);
-        // En modo edicion los clicks no disparan botones/inputs del menu
-        document.addEventListener('click', (e) => {
-            if (!layoutEditing || e.target.closest('#layoutEditBar')) return;
-            e.preventDefault(); e.stopPropagation();
-        }, true);
-        window.addEventListener('keydown', (e) => { if (layoutEditing && e.code === 'Escape') exitLayoutEdit(); });
-    })();
+    applyMenuLayout();
     // MISMA tabla que classicExitFeePct() del servidor (server/index.js). Si una
     // cambia, la otra tambien: el cartel de CASHOUT se pinta con esta y el cobro
     // lo hace aquella, y si no coinciden el jugador ve una cifra y cobra otra.
@@ -11740,15 +11065,7 @@
         async refresh() {
             const balBox = document.getElementById('gwBalBox'), balVal = document.getElementById('gwBalValue');
             const conn = document.getElementById('gwConnect'), dep = document.getElementById('gwDepositWrap');
-            // GameWallet.ensure() de abajo es async: si esto se llama justo al
-            // entrar al menu (setVisible → refresh), la funcion queda en pausa
-            // ahi y el resto (los display de conn/dep/balBox) se ejecuta MAS
-            // TARDE, cuando quiza ya estas en SETTINGS -> EDIT LAYOUT. Sin este
-            // corte, ese "mas tarde" pisaba lo que el editor acababa de forzar
-            // visible (por eso CONNECT/DEPOSIT o la barra IN GAME desaparecian
-            // solos, o "saltaban", nada mas abrir el editor).
             if (!GameWallet.address) { await GameWallet.ensure(); }
-            if (layoutEditing) return;
             if (GameWallet.address) {
                 conn.style.display = 'none'; dep.style.display = 'inline-block';
                 try { this.gameBalance = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) {}
@@ -12091,10 +11408,6 @@
         if (!(MONEY_IN_USD && pillRate > 0)) return '';
         return '(~$' + (Number(pill || 0) / pillRate).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ')';
     }
-    // Puente para carteles-preview.html: ahi no hay partida, asi que nunca llega
-    // el mensaje 'econ' que bloquea el rate del oraculo y los carteles salian SIN
-    // el (~$) — o sea, el editor enseñaba una version que el jugador no ve nunca.
-    window.cartelDevSetPillRate = r => { pillRate = Number(r) || 0; };
     // <img> del icono de $PILL (solo en pixel-pack, donde existe el arte).
     function pillIcoHtml(cls) {
         if (!(pixelMode && cartelUsesAtlas('pill'))) return '';
@@ -14008,10 +13321,6 @@
     const CD_SECS = 3;
     // Número grande de cuenta atrás, estilo GO!. Se llama una vez por segundo.
     let _lastCdNum = null;
-    // _cdDevKeep: puesto por cartelDevShowCountdown (editor de carteles) para
-    // que el cartel no se autoborre al segundo, y así quede fijo en pantalla
-    // mientras se revisa.
-    let _cdDevKeep = false;
     // opts (opcional): mismo esquema que pixFancyText. Sin opts, el estilo de
     // fábrica. El dígito sale de su PNG horneado (cd-N-<modo>.png) y, si falta,
     // de la fuente procedural. MATCH STARTING/ENDING y los dígitos usan la
@@ -14033,9 +13342,7 @@
         const modeHex = modeKey === 'classic' ? '#00ffaa' : '#ccff00';
         // Rótulo Y dígito van SIN glow por defecto (David: se veía borroso; los
         // dos PNG horneados ya tienen su propio contorno/bisel, no les hace
-        // falta). opts.glowPx activa el MISMO glow para los dos por igual — lo
-        // usa cartelDevShowCountdown desde el editor de carteles para probar
-        // valores en vivo antes de decidir uno.
+        // falta). opts.glowPx activa el MISMO glow para los dos por igual.
         const glowPx = opts.glowPx || 0;
         const glow = glowPx ? modeHex : (opts.glow !== undefined ? opts.glow : null);
         const glowFilter = glowPx ? ('drop-shadow(0 0 ' + glowPx + 'px ' + modeHex + ') drop-shadow(0 0 ' + Math.round(glowPx * 2.2) + 'px ' + modeHex + ')') : 'none';
@@ -14085,45 +13392,9 @@
         else { el.innerHTML = '<div class="cd-lbl">' + label + '</div>'; const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3) lo dispara quien llama, una vez al entrar en los CD_SECS.
-        if (!_cdDevKeep) setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
+        setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
     }
     function hideCountdownNumber() { _lastCdNum = null; const el = document.getElementById('cdNum'); if (el) el.remove(); }
-    // Para el editor de carteles (carteles-preview.html): pinta MATCH STARTING/
-    // ENDING con el modo pedido y lo deja fijo en pantalla (sin autoborrado) para
-    // poder revisar fuente/color/tamaño con calma.
-    /*
-     * ROOM INFO para el editor de carteles. El popup se rellena con datos vivos
-     * de /api/rooms, que ahi no existen: sin esto saldria vacio y no se podria
-     * colocar nada. Los numeros son de una partida tipica (classic $20 a mitad,
-     * token subido un 9%) para que se vea el caso CON aviso largo, que es el que
-     * mas alto hace el cartel — colocandolo con el corto se quedaria corto.
-     */
-    window.cartelDevShowRoomInfo = function (modo) {
-        const DUR = modo === 'arcade' ? 230000 : 900000;
-        currentGameMode = modo || 'classic';
-        currentServer = '20$';
-        _lastRoomsAt = Date.now();
-        _lastRoomsData = {
-            pillUsd: 0.00473,
-            rooms: [{
-                mode: currentGameMode, room: '20$', key: currentGameMode + '_20$', priceUsd: 20,
-                pillFee: 4636, players: 12, cap: 70, state: 'playing',
-                endsIn: Math.round(DUR * 0.5), startIn: null, restartIn: null, pickLayerIdx: 1,
-                layers: [
-                    { layerIdx: 1, key: currentGameMode + '_20$_L1', players: 12, state: 'playing', endsIn: Math.round(DUR * 0.5), durationMs: DUR, openMs: Math.round(DUR * 0.5), pillFee: 4636, locked: true, maxPlayers: modo === 'arcade' ? 25 : 35, disabled: false },
-                    { layerIdx: 2, key: currentGameMode + '_20$_L2', players: 4, state: 'playing', endsIn: Math.round(DUR * 0.85), durationMs: DUR, openMs: Math.round(DUR * 0.15), pillFee: 4700, locked: true, maxPlayers: modo === 'arcade' ? 25 : 35, disabled: false },
-                ],
-            }],
-        };
-        openRoomInfo();
-    };
-
-    window.cartelDevShowCountdown = function (label, mode, n, glowPx) {
-        currentGameMode = mode === 'classic' ? 'classic' : 'arcade';
-        _lastCdNum = null;
-        _cdDevKeep = true;
-        showCountdownNumber(n || 3, label, { glowPx: glowPx || 0 });
-    };
 
     // Rejoin: si te desconectas sin querer en mitad de una partida online,
     // tienes una ventana (30s en server) para volver a entrar SIN pagar usando
@@ -15007,32 +14278,6 @@
         g.fillStyle = LS_GRID_LINE; g.fillRect(0, 0, LS_CELL, 1); g.fillRect(0, 0, 1, LS_CELL);
         return cv;
     })();
-    // ===== LAYOUT DE LA PANTALLA DE CARGA (EDITOR TEMPORAL) =====
-    // Mismo mecanismo que EDIT LAYOUT del menu: arrastrar mueve, la rueda
-    // escala, doble click resetea una pieza. Se guarda en localStorage (solo
-    // este navegador: no hay endpoint, es una herramienta de diseño). Quitar
-    // este bloque, el boton EDIT LOADING y su barra cuando quede fijado.
-    const LS_LAYOUT_KEY = 'pw_loading_layout';
-    const LS_LAYOUT_ELS = {
-        pill: '#lsPill',
-        title: '#loadingScreen .ls-title-img, #loadingScreen .ls-title',
-        sub: '#loadingScreen .ls-sub',
-        track: '#loadingScreen .ls-track',
-    };
-    let lsLayout = {};
-    try { lsLayout = JSON.parse(localStorage.getItem(LS_LAYOUT_KEY) || '{}') || {}; } catch (e) {}
-    function lsSaveLayout() { try { localStorage.setItem(LS_LAYOUT_KEY, JSON.stringify(lsLayout)); } catch (e) {} }
-    // translate/scale (no `transform`): asi no se pelea con el transform que la
-    // animacion lsFloat le pone a la pildora.
-    function lsApplyLayout() {
-        for (const k in LS_LAYOUT_ELS) {
-            const t = lsLayout[k];
-            for (const el of document.querySelectorAll(LS_LAYOUT_ELS[k])) {
-                el.style.translate = t ? (t.x || 0) + 'px ' + (t.y || 0) + 'px' : '0px 0px';
-                el.style.scale = String(t ? (t.s || 1) : 1);
-            }
-        }
-    }
     let lsPat = null;
     function lsPaintBg() {
         const cv = document.getElementById('lsBgCv'); if (!cv) return;
@@ -15107,13 +14352,7 @@
                     'background-image:linear-gradient(90deg,#eaf6f0 0 12px,transparent 12px 16px);background-size:16px 100%;' +
                     'background-repeat:repeat-x}' +
                     '@keyframes lsFade{from{opacity:0}to{opacity:1}}' +
-                    '@keyframes lsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}' +
-                    // Modo edicion: recuadro de agarre en cada pieza. La animacion
-                    // de la pildora se para (si no, se mueve mientras la colocas) y
-                    // .ls-inner suelta el flujo para que cada pieza se pueda llevar
-                    // adonde sea sin empujar a las demas.
-                    '#loadingScreen.ls-editing .ls-editable{outline:2px dashed rgba(255,255,255,.55);outline-offset:3px;cursor:move}' +
-                    '#loadingScreen.ls-editing .ls-pill{animation:none}';
+                    '@keyframes lsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}';
                 document.head.appendChild(st);
             }
             ov = document.createElement('div');
@@ -15146,7 +14385,6 @@
         // Sincrono, antes de que el navegador pinte: el fondo es estatico (solo
         // rejilla), asi que con una pasada basta — nada de rAF eterno.
         lsPaintBg();
-        lsApplyLayout();
         // Solo suena el sonido de carga (sin música; la música arranca al hacer GO).
         SoundManager.stopMusic();
         SoundManager.play('loading');
@@ -15198,86 +14436,6 @@
             startBar();
         }
     }
-
-    // ===== EDITOR TEMPORAL DE LA PANTALLA DE CARGA =====
-    // La carga real dura medio segundo, asi que no hay forma de colocar nada
-    // "en vivo": este modo la deja CONGELADA (sin temporizador, sin sonido y
-    // sin bloquear el input) para poder arrastrar sus piezas con calma.
-    // Se abre desde SETTINGS -> EDIT LOADING, o con loadingEdit() por consola.
-    let lsEditing = false, lsDrag = null;
-    function lsEditTarget(e) {
-        for (const k in LS_LAYOUT_ELS) {
-            const el = e.target.closest(LS_LAYOUT_ELS[k]);
-            if (el) return { k, el };
-        }
-        return null;
-    }
-    function lsEnterEdit() {
-        // Misma puerta que enterLayoutEdit(): el boton EDIT LOADING ya nace
-        // oculto sin permiso, esto bloquea tambien la llamada a mano.
-        if (!layoutEditAllowed || lsEditing) return;
-        lsEditing = true;
-        // El cartel, montado y quieto: minMs enorme y readyFn siempre false, asi
-        // no llega a terminar nunca. onDone no se usa — se sale con DONE.
-        showLoadingScreen(9e6, () => false, () => {});
-        // showLoadingScreen bloquea el input y arranca el sonido para la carga de
-        // verdad; aqui las dos cosas sobran.
-        window.__loadingLock = false;
-        if (window.__loadingTimer) { clearTimeout(window.__loadingTimer); window.__loadingTimer = null; }
-        SoundManager.stop('loading');
-        // Barra a media carga: colocarla a 0% seria colocar una caja vacia.
-        const bar = document.getElementById('loadingBar');
-        bar.style.transition = 'none'; bar.style.width = '55%';
-        const ov = document.getElementById('loadingScreen');
-        ov.classList.add('ls-editing');
-        for (const k in LS_LAYOUT_ELS) ov.querySelectorAll(LS_LAYOUT_ELS[k]).forEach(el => el.classList.add('ls-editable'));
-        document.getElementById('lsEditBar').style.display = 'flex';
-    }
-    function lsExitEdit() {
-        lsEditing = false; lsDrag = null;
-        const ov = document.getElementById('loadingScreen');
-        if (ov) {
-            ov.classList.remove('ls-editing');
-            ov.querySelectorAll('.ls-editable').forEach(el => el.classList.remove('ls-editable'));
-            ov.style.display = 'none';
-        }
-        document.getElementById('lsEditBar').style.display = 'none';
-        lsSaveLayout();
-    }
-    window.loadingEdit = lsEnterEdit;
-    window.LoadingLayout = {
-        exit: lsExitEdit,
-        resetAll() { lsLayout = {}; lsSaveLayout(); lsApplyLayout(); },
-    };
-    addEventListener('pointerdown', e => {
-        if (!lsEditing) return;
-        const t = lsEditTarget(e); if (!t) return;
-        const cur = lsLayout[t.k] || { x: 0, y: 0, s: 1 };
-        lsDrag = { k: t.k, x0: e.clientX, y0: e.clientY, ox: cur.x || 0, oy: cur.y || 0 };
-        e.preventDefault();
-    });
-    addEventListener('pointermove', e => {
-        if (!lsDrag) return;
-        const cur = lsLayout[lsDrag.k] = lsLayout[lsDrag.k] || { x: 0, y: 0, s: 1 };
-        cur.x = Math.round(lsDrag.ox + (e.clientX - lsDrag.x0));
-        cur.y = Math.round(lsDrag.oy + (e.clientY - lsDrag.y0));
-        lsApplyLayout();
-    });
-    addEventListener('pointerup', () => { if (lsDrag) { lsDrag = null; lsSaveLayout(); } });
-    addEventListener('wheel', e => {
-        if (!lsEditing) return;
-        const t = lsEditTarget(e); if (!t) return;
-        e.preventDefault();
-        const cur = lsLayout[t.k] = lsLayout[t.k] || { x: 0, y: 0, s: 1 };
-        cur.s = Math.round(Math.min(4, Math.max(0.2, (cur.s || 1) * (e.deltaY < 0 ? 1.06 : 1 / 1.06))) * 1000) / 1000;
-        lsApplyLayout(); lsSaveLayout();
-    }, { passive: false });
-    addEventListener('dblclick', e => {
-        if (!lsEditing) return;
-        const t = lsEditTarget(e); if (!t) return;
-        delete lsLayout[t.k]; lsApplyLayout(); lsSaveLayout();
-    });
-    addEventListener('keydown', e => { if (lsEditing && e.key === 'Escape') lsExitEdit(); });
 
     // Splash "GO!" estilo PillWars al arrancar la partida (entra grande, rebota y se
     // desvanece). Acompaña al inicio de la música y la liberación del control.

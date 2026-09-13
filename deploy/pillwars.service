@@ -23,12 +23,11 @@ Environment=PORT=8080
 # (journalctl -u pillwars). Sin ella el panel no se abre, pero la clave cambia en
 # cada reinicio — o sea que aqui hay que poner una de verdad.
 Environment=ADMIN_KEY=CAMBIA_ESTA_CLAVE_LARGA
-# CAMBIA estos dos paths por algo no adivinable (el repo es publico en GitHub,
+# CAMBIA este path por algo no adivinable (el repo es publico en GitHub,
 # asi que NO pongas aqui el valor real y lo subas — esto es solo la plantilla;
 # edita el .service real en el VPS con el valor de verdad, igual que ADMIN_KEY).
-# Sin definir caen a /admin y /carteles-preview.html (los de siempre).
+# Sin definir cae a /admin (el de siempre).
 Environment=ADMIN_PATH=/CAMBIA-ESTE-PATH
-Environment=CARTELES_PATH=/CAMBIA-ESTE-OTRO-PATH.html
 # Secreto del stress test: deja entrar GRATIS a las salas de pago (solo devnet).
 # SIN DEFINIR = modo tester apagado, que es lo correcto en produccion. Definelo
 # solo mientras lances un stress test, y pasa el MISMO valor al bot por env.

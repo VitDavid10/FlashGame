@@ -586,24 +586,14 @@
         .dropdown-content a { padding: 12px 16px; font-family: 'Press Start 2P', monospace; font-size: var(--pw-font, 12px); color: #ffce3d; text-shadow: 2px 2px 0 rgba(0,0,0,0.75); text-transform: uppercase; display: flex; align-items: center; gap: 10px; text-decoration: none; border-bottom: 1px solid rgba(255,206,61,0.25); white-space: nowrap; }
         .dropdown-content a:last-child { border-bottom: 0; }
         .dropdown-content a:hover { background: rgba(255,206,61,0.12); color: #fff; }
-        /* En EDIT LAYOUT el desplegable se queda abierto: si no, no hay forma de
-           agarrarlo (solo aparece al pasar el raton, y el hover esta apagado
-           mientras se edita). */
-        body.layout-editing #pill-dropdown .dropdown-content { display: block; }
-        /* body:not(.layout-editing): en EDIT LAYOUT el hover NO debe abrir
-           este desplegable — se interponia sobre otros elementos (p.ej. PILL
-           quedaba tapado y no se podia agarrar) mientras se intentaba mover
-           o escalar algo cerca. */
-        body:not(.layout-editing) .dropdown:hover .dropdown-content { display: block; }
+        .dropdown:hover .dropdown-content { display: block; }
         .dd-icon { width: 18px; height: 18px; border-radius: 50%; }
 
         /* Area wallet: mismo estilo que en /game (gameWalletArea). Balance IN
            GAME + CONNECT, o DEPOSIT con desplegable (WITHDRAW/DISCONNECT)
-           cuando ya estas conectado. Sin uso en la landing (aqui no se paga
-           nada): oculta salvo en EDIT LAYOUT, donde sigue haciendo falta
-           verla para poder moverla/escalarla. */
+           cuando ya estas conectado. Oculta por defecto: la de la navbar se
+           enciende justo debajo. */
         .wallet-area { display: none; align-items: center; gap: 10px; position: relative; }
-        body.layout-editing .wallet-area { display: flex !important; }
 
         /* CONNECT en la navbar de la web, SIEMPRE visible.
            Hasta ahora `.wallet-area { display:none }` no tenia ninguna regla que lo
@@ -689,11 +679,7 @@
         /* DEPOSIT con desplegable al pasar el raton: WITHDRAW y DISCONNECT debajo. */
         .wallet-deposit-wrap { display: none; position: relative; flex-shrink: 0; }
         .wallet-dropdown-content { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 1002; }
-        /* Igual que el dropdown de $PILL: en EDIT LAYOUT no depende del hover
-           (perderlo a medio arrastre lo cerraba y CHOOSE MODES/CHOOSE SKINS se
-           quedaban sin forma de agarrarlos), se fuerza siempre abierto. */
-        body:not(.layout-editing) .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
-        body.layout-editing .wallet-deposit-wrap .wallet-dropdown-content { display: block; }
+        .wallet-deposit-wrap:hover .wallet-dropdown-content { display: block; }
         .wallet-dropdown-content .wb-box { margin-top: 4px; }
         /* Los .wb-box del desplegable se PISAN entre ellos en cuanto uno se
            mueve con el editor: al ir seguidos en el DOM y sin z-index propio,
@@ -706,10 +692,6 @@
         .wallet-dropdown-content .wb-box:nth-of-type(1) { z-index: 3; }
         .wallet-dropdown-content .wb-box:nth-of-type(2) { z-index: 2; }
         .wallet-dropdown-content .wb-box:nth-of-type(3) { z-index: 1; }
-        /* Red de seguridad general del editor: la pieza bajo el raton se sube
-           del todo, asi NINGUNA posicion deja un elemento inagarrable por
-           quedar tapado por otro. */
-        body.layout-editing .hero-editable:hover { z-index: 10000; }
 
         /* --- TICKER --- */
         .ticker-wrap {
@@ -818,10 +800,6 @@
            que funcione igual si el JS no llega a correr. */
         .hero-play-group:hover .hero-play-links,
         .hero-play-group.open .hero-play-links { opacity: 1; pointer-events: auto; }
-        /* En EDIT LAYOUT se fuerza visible SIEMPRE (igual que #pill-dropdown y
-           .wallet-area mas arriba): si no, MODES/SKINS son inalcanzables en
-           cuanto el raton sale de PLAY NOW para ir a arrastrarlas. */
-        body.layout-editing .hero-play-links { opacity: 1 !important; pointer-events: auto !important; }
         /* Mismo recuadrito que OFFICIAL CONTRACT ADDRESS (.hero-ca-sign): fondo
            negro translucido, filo dorado, esquinas de 8px y blur detras. Antes
            eran solo dos palabras sueltas flotando sobre el hero, sin ninguna
@@ -837,24 +815,20 @@
         .hero-sub-link:hover { color: #fff; border-color: rgba(255,206,61,0.75); text-shadow: 0 0 10px rgba(255,206,61,0.9), 2px 2px 0 rgba(0,0,0,0.75); }
         /* PLAY NOW de la navbar: oculto mientras el hero esta a la vista (ya
            hay uno ahi dentro), aparece al hacer scroll y salir de el (ver el
-           IntersectionObserver mas abajo). En EDIT LAYOUT se fuerza visible
-           siempre, si no no habria forma de agarrarlo con el hero fuera de
-           pantalla. Posicion/tamaño se mueven desde EDIT como el resto (clave
-           navPlay en HERO_LAYOUT_ELS). Mismo sitio y mismo boton que CONNECT:
+           IntersectionObserver mas abajo). Mismo sitio y mismo boton que CONNECT:
            reusa .wallet-area/.wb-box tal cual. Al pasar el raton despliega
            MODES/SKINS en vertical, igual que el desplegable de $PILL (en el
            hero los mismos dos van en una sola fila, ver .hero-play-links). */
         #nav-play-area { display: none; align-items: center; gap: 10px; position: relative; }
-        body.nav-play-visible #nav-play-area, body.layout-editing #nav-play-area { display: flex; }
+        body.nav-play-visible #nav-play-area { display: flex; }
         /* ...pero NO con el panel abierto: ahi la llamada a la accion es otra
            (conectar, cobrar, stakear) y PLAY NOW encima competia con ella. Fuera del
            panel sale como siempre, al dejar atras el hero. */
         body.pw-panel #nav-play-area { display: none !important; }
-        /* Cuerpo de letra AJUSTABLE APARTE de la caja (ALT+rueda, clave navPlay
-           en FONT_DEFAULTS): con solo la rueda de siempre (que escala la caja
-           entera) el texto crecia/encogia pegado al borde de la placa y quedaba
-           mal encuadrado. --pw-font lo escribe apply() sobre #nav-play-area y
-           lo hereda el boton. */
+        /* Cuerpo de letra APARTE de la caja: con solo el escalado de la pieza
+           (que escala la caja entera) el texto crecia/encogia pegado al borde
+           de la placa y quedaba mal encuadrado. --pw-font lo escribe apply()
+           sobre #nav-play-area y lo hereda el boton. */
         #nav-play-area .btn-connect {
             font-size: var(--pw-font, 15px);
         }
@@ -868,7 +842,7 @@
            aqui son dos palabras sueltas y esa anchura dejaba el cuadro medio
            vacio. Se ciñe al boton. */
         #nav-play-area .dropdown-content { min-width: 100%; }
-        body:not(.layout-editing) #nav-play-area:hover .dropdown-content { display: block; }
+        #nav-play-area:hover .dropdown-content { display: block; }
         /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
            Al clicarla se esconde y toma el control la pill del canvas. */
         #heroPickMe { cursor: pointer !important; user-select: none; }
@@ -892,7 +866,7 @@
         /* Titulo devorado por la pill jugable: se va, pero sigue ocupando su
            hueco para que no salte el resto del hero. Vuelve al soltar el control.
            Se anima con `transform`, no con translate/scale, porque esas dos las
-           usa el editor de layout (LandingLayout) y se pisarian. */
+           usa el layout del hero (apply()) y se pisarian. */
         .hero-title-wrap.eaten { animation: heroTitleEaten .42s cubic-bezier(.5, -0.2, .75, .2) forwards; pointer-events: none; }
         .hero-title-wrap.vuelve { animation: heroTitleVuelve .34s cubic-bezier(.2, 1.5, .5, 1); }
         @keyframes heroTitleEaten {
@@ -1353,13 +1327,6 @@ body.trailer-open #page-content{
             position: relative; overflow: hidden;
         }
         .tooltip-video { width: 100%; height: 100%; object-fit: cover; display: block; }
-        /* EDIT LAYOUT (claves tooltipIcon -ahora selecciona el video- /skillTooltip): fuera de edicion el
-           tooltip solo aparece al hacer hover y no recibe el raton (por eso
-           pointer-events:none arriba, para no robarle el hover a la card de
-           al lado). En edicion se fuerza visible y clicable para poder
-           arrastrarlo/escalarlo sin depender del hover. */
-        body.layout-editing #skill-tooltip { display: flex !important; pointer-events: auto !important; }
-
         .tooltip-content { padding: 15px; }
         .tooltip-title { color: #fff; font-family: 'Russo One'; font-size: var(--fs-3); margin: 0 0 5px 0; text-transform: uppercase; }
         .tooltip-divider { width: 40px; height: 3px; background: var(--gold); margin-bottom: 10px; }
@@ -1392,25 +1359,6 @@ body.trailer-open #page-content{
            no puede chocar con nada. Medido: a partir de 1467 ya no habia solape,
            1500 es el corte que ya usa la hoja mas abajo. */
         @media (max-width: 1499px) { #navPlayNow { translate: none !important; } }
-        /* ===== NAVBAR ESTRECHA: los enlaces se retiran DE UNO EN UNO =====
-           La navbar es una sola fila sin wrap. Al hacer mucho zoom (que estrecha
-           el viewport en px CSS) el contenido dejaba de caber: medido a 800px de
-           ancho pedia 876px, asi que EDIT se montaba encima de $PILL y el icono
-           de Telegram se salia por el borde — el "doble ancho" que quedaba mal.
-           Los gap ya encogen antes con clamp() (ver .nav-left), pero llega un
-           punto en que no basta y hay que quitar cosas.
-           SIEMPRE se quedan: la pildora del logo con el rotulo PILLWARS, $PILL y
-           los dos iconos sociales (unos 472px en total, caben en cualquier
-           pantalla). Lo que se va son los ENLACES, y ademas por separado: uno
-           por cada escalon de 100px, empezando por el ultimo de la fila. Asi el
-           cambio se ve gradual en vez de desaparecer medio menu de golpe.
-           Los cortes estan calculados sobre el caso PEOR —con el PLAY NOW de la
-           navbar a la vista, que pide ~1143px— para que las piezas no aparezcan
-           y desaparezcan al hacer scroll dentro y fuera del hero.
-           Aplican a TODOS los anchos, telefono incluido: por debajo de 820 la
-           navbar se queda con la pildora del logo, $PILL y los dos iconos, que
-           es lo unico que tiene que caber siempre. */
-        @media (max-width: 1200px) { #btnLandingEdit { display: none !important; } }
         /* ===== NAVBAR ESTRECHA: los cuatro enlaces se van JUNTOS =====
            Antes se caian de uno en uno en 1100/1000/900/820 px fijos, o sea que
            LEADERBOARD desaparecia con 1100 de ancho teniendo sitio de sobra (el
@@ -1464,12 +1412,12 @@ body.trailer-open #page-content{
            desplegable ni se veia. Aqui se apaga el hover y manda la clase
            .abierto, que pone/quita el toque (ver navTactil en el JS). */
         @media (hover: none), (pointer: coarse) {
-            body:not(.layout-editing) .dropdown:hover .dropdown-content,
-            body:not(.layout-editing) #nav-play-area:hover .dropdown-content,
-            body:not(.layout-editing) #wallet-deposit-wrap:hover .wallet-dropdown-content { display: none; }
-            body:not(.layout-editing) .dropdown.abierto .dropdown-content,
-            body:not(.layout-editing) #nav-play-area.abierto .dropdown-content,
-            body:not(.layout-editing) #wallet-deposit-wrap.abierto .wallet-dropdown-content { display: block; }
+            .dropdown:hover .dropdown-content,
+            #nav-play-area:hover .dropdown-content,
+            #wallet-deposit-wrap:hover .wallet-dropdown-content { display: none; }
+            .dropdown.abierto .dropdown-content,
+            #nav-play-area.abierto .dropdown-content,
+            #wallet-deposit-wrap.abierto .wallet-dropdown-content { display: block; }
         }
         /* ===== UNA SOLA FILA SIEMPRE =====
            La navbar NUNCA debe partirse en dos filas: el "doble grosor" es el
@@ -1982,8 +1930,8 @@ body.trailer-open #page-content{
            empezando en x=-86 (recortado por los dos lados) y la pildora PICK ME!
            acababa en x=-385, entera fuera de pantalla. Aqui se anulan esos
            desplazamientos y cada pieza se mide en % del ancho disponible. El
-           !important es necesario: el layout llega como estilo INLINE desde
-           /api/landing-layout y no hay forma de ganarle desde la hoja. */
+           !important es necesario: el layout llega como estilo INLINE (apply()
+           del layout del hero) y no hay forma de ganarle desde la hoja. */
         @media (max-width: 600px) {
             #heroTitleWrap, #heroPlayNow, #heroCaSign, #heroCaWrap, #navPlayNow {
                 translate: none !important; scale: 1 !important;
@@ -2405,26 +2353,6 @@ body.trailer-open #page-content{
         body.pixel-pack .feature-images img,
         body.pixel-pack .full-width-img img { image-rendering: pixelated; }
 
-        /* ===== EDITOR DE LAYOUT DEL HERO (boton EDIT de la navbar) — TEMPORAL:
-           herramienta de diseño para colocar titulo/PLAY NOW/cartel/contrato.
-           Quitar el boton, esta hoja y LandingLayout cuando quede fijado. ===== */
-        body.layout-editing .hero-editable { outline: 2px dashed rgba(255,255,255,0.55); outline-offset: 3px; cursor: move !important; transition: none !important; }
-        body.layout-editing .hero-editable:hover { outline-color: #c8cdd2; }
-        /* flex-wrap + max-width: con los grupos de −/+ la barra ya no cabe de
-           una linea en 1280px, y sin envolver se salia por los lados. */
-        #layoutEditBar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 100001; display: flex; flex-wrap: wrap; justify-content: center; max-width: 96vw; align-items: center; gap: 14px; background: rgba(10,12,15,0.97); border: 2px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.7), inset 1px 1px 0 rgba(255,255,255,0.08); padding: 10px 16px; }
-        #layoutEditBar .leb-hint { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: #8a939e; letter-spacing: 0.5px; }
-        #layoutEditBar .leb-btn { padding: 7px 14px; background: #14171c; color: #9aa3ad; border: 2px solid #2a2f36; font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); cursor: pointer !important; box-shadow: 2px 2px 0 rgba(0,0,0,0.6); text-transform: uppercase; }
-        #layoutEditBar .leb-btn:hover { color: #fff; border-color: #4a525c; }
-        #layoutEditBar .leb-btn.done { background: #0f8f46; color: #fff; border-color: #000; }
-        /* Grupos de −/+ del cuerpo de letra. Mismos valores que en el editor
-           de /game (#layoutEditBar .leb-group / .leb-label / .leb-btn.leb-sm). */
-        #layoutEditBar .leb-group { display: flex; align-items: center; gap: 5px; padding-left: 10px; border-left: 1px solid #2a2f36; }
-        #layoutEditBar .leb-label { font-family: 'Press Start 2P', monospace; font-size: var(--fs-1); color: #6a737e; letter-spacing: 0.5px; }
-        #layoutEditBar .leb-btn.leb-sm { padding: 5px 10px; font-size: var(--fs-1); }
-        #btnLandingEdit { background: none; border: none; padding: 0; color: #ff9c3d; cursor: pointer !important; }
-        #btnLandingEdit:hover { color: #fff; text-shadow: 0 0 10px #ff9c3d; }
-
     </style>
     <!-- El PNG del titulo/carteles no se arrastra ni se copia con el menu
          contextual. El CSS -webkit-user-drag no lo respeta Firefox: el
@@ -2433,122 +2361,76 @@ body.trailer-open #page-content{
         document.addEventListener('dragstart', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
         document.addEventListener('contextmenu', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
     </script>
-    <!-- Layout HORNEADO del hero (el que estaba guardado en el servidor el
-         28-jul-2026). Vive AQUI, en el <head>, y no en el script del final:
+    <!-- Layout del hero: los valores que tenia guardados produccion el
+         11-sep-2026, cuando se quito el editor que los subia al servidor.
+         Vive AQUI, en el <head>, y no en el script del final:
          se convierte en CSS antes de que el navegador pinte nada, asi que el
          hero sale ya colocado en el primer fotograma. Puesto abajo con el
          resto del JS se veia medio segundo el hero de fabrica (titulo y
          cartel en otro sitio, sin el zoom) y luego el salto a su posicion.
-         LandingLayout lo lee de window para no tener dos copias. -->
+         El script del final lo lee de window para no tener dos copias.
+         Los comentarios que hablan de EDIT LAYOUT se refieren a ese editor:
+         lo que movia vive ahora en HERO_LAYOUT_HORNEADO. -->
     <script>
     window.HERO_LAYOUT_ELS = {
         title: '#heroTitleWrap', play: '#heroPlayNow',
-        // heroModes/heroSkins y NO chooseModes/chooseSkins: bajo esos dos
-        // nombres el servidor tiene guardadas las posiciones de cuando MODES y
-        // SKINS eran dos placas sueltas colocadas a mano por el hero (modes
-        // 350px por debajo, skins 402px a la izquierda y 260px arriba). Ahora
-        // que cuelgan de PLAY NOW esos translate los mandaban lejos del boton
-        // — SKINS se salia del veil y no se veia, y el hover se cerraba en el
-        // camino porque el raton tenia que cruzar el hueco. Con claves nuevas
-        // aquellos valores se quedan huerfanos y apply() no los mira (mismo
-        // caso que navChooseModes/navChooseSkins, que siguen en el JSON del
-        // servidor sin usarse).
-        // UNA sola clave para los DOS (selector con comas, mismo patron que
-        // navWalletBtn con los 4 botones de wallet): apply() usa
-        // querySelectorAll, asi que el translate/scale se aplica igual a MODES y
-        // a SKINS y nunca pueden quedar a distinta altura. Antes eran dos claves
-        // sueltas (heroModes/heroSkins) y bastaba arrastrar una un pixel para
-        // desalinearlas — justo lo que costaba cuadrar a mano.
+        // MODES y SKINS, que cuelgan de PLAY NOW. UNA sola clave para los DOS
+        // (selector con comas): apply() usa querySelectorAll, asi que el
+        // translate/scale se aplica igual a los dos y nunca quedan a distinta
+        // altura.
         heroLinks: '#heroChooseModes, #heroChooseSkins',
         pickMe: '#heroPickMe',
         caSign: '#heroCaSign', ca: '#heroCaWrap',
-        // Navbar: wallet, PILL, iconos sociales. SIN valor horneado (parten del
-        // CSS de fabrica, sin transform) — quedan neutros hasta que se editen.
-        // walletBtn/walletBtnTxt son claves COMPARTIDAS (selector con comas,
-        // igual que '#gwConnect, #gwDepositWrap' en /game): CONNECT, DEPOSIT,
-        // WITHDRAW y DISCONNECT son los mismos 4 botones que nunca se ven
-        // todos a la vez (CONNECT vs los otros tres), asi que tocar uno debe
-        // mover/escalar los cuatro de golpe — si no, cada uno se quedaba con
-        // su propio tamaño y se descuadraban entre si.
-        // walletBtnTxt va ANTES que walletBtn en el orden: el rotulo esta
-        // DENTRO del boton, y target() resuelve por el primer key que
-        // matchee via closest(), asi que el mas especifico va primero.
         // ===== Piezas de la NAVBAR =====
-        // Las cinco de abajo estrenan nombre (navWalletBtn, navPillMenu,
-        // navPill, navBal, navPlayBtn) para soltar lo que el servidor tiene
-        // guardado bajo los viejos: eran translate en PIXELES FIJOS que cruzaban
-        // la navbar de lado a lado ($PILL +1021 desde la izquierda, PLAY NOW
-        // -861 desde la derecha, CONNECT -159, IN GAME -84). Cuadraban a una
-        // anchura concreta y descolocaban el conjunto en cuanto se cambiaba el
-        // zoom. Ahora cada pieza esta en su grupo de verdad en el DOM y la
-        // coloca el flex de .navbar (space-between), asi que aguanta cualquier
-        // ancho; estas claves se quedan neutras hasta que alguien las ajuste a
-        // mano, y lo que se ajuste ya sera un retoque fino y no un cruce.
+        // Las coloca el flex de .navbar (space-between), asi que aguantan
+        // cualquier ancho: lo que lleven estas claves es un retoque fino. Las
+        // que no tienen valor en HERO_LAYOUT_HORNEADO se quedan con el CSS de
+        // fabrica, sin transform.
+        // CONNECT, DEPOSIT, WITHDRAW y DISCONNECT comparten clave: nunca se ven
+        // los cuatro a la vez y tienen que salir del mismo tamaño.
         navWalletBtn: '#wallet-btn-box, #wallet-deposit-box, #wallet-withdraw-box, #wallet-disconnect-box',
-        // navPillMenu (el desplegable CHART / BUY $PILL) va ANTES que navPill
-        // por lo mismo que walletBtnTxt: esta DENTRO de el, y target() se queda
-        // con la primera clave que casa via closest(). Asi apuntando al
-        // desplegable se agarra el desplegable, y apuntando al rotulo $PILL se
-        // agarra el conjunto. En EDIT LAYOUT el desplegable se queda abierto
-        // (ver la regla body.layout-editing de mas abajo) para poder tocarlo.
+        // El desplegable CHART / BUY $PILL y el rotulo $PILL que lo contiene.
         navPillMenu: '#pill-dropdown .dropdown-content',
         navPill: '#pill-dropdown',
         navBal: '#wallet-bal-box',
         twitterIcon: '#twitter-icon-btn', telegramIcon: '#telegram-icon-btn',
         navPlayBtn: '#nav-play-area',
-        // Tooltip flotante de las skills (el cuadro que sale al pasar el
-        // raton por SHOT/SPRINT/...). tooltipIcon (el nombre se queda igual,
-        // lo leen NAVBAR_KEYS/SCALE_MAX mas abajo; lo unico que cambio es el
-        // selector) va ANTES que skillTooltip por lo mismo que pillMenu/
-        // walletBtnTxt: el video esta DENTRO del cuadro, asi que la clave mas
-        // especifica tiene que ir primero para que target() la agarre a EL y
-        // no al cuadro entero. En EDIT LAYOUT se fuerza visible (ver la regla
-        // body.layout-editing mas abajo): normalmente solo aparece al hacer
-        // hover sobre una skill.
+        // Tooltip flotante de las skills (el cuadro que sale al pasar el raton
+        // por SHOT/SPRINT/...) y el video que lleva dentro.
         tooltipIcon: '#tooltip-video',
         skillTooltip: '#skill-tooltip',
         // Rejilla de skills (SHOT, SPRINT, BLINK...). Claves COMPARTIDAS: el
-        // selector casa con las 8, y apply() usa querySelectorAll, asi que
-        // tocar una las mueve/escala TODAS a la vez — que es justo lo que se
-        // quiere aqui (si cada una tuviera su tamaño la fila se descuadra).
-        // skillIcon va ANTES que skillCard por lo de siempre: el icono esta
-        // DENTRO de la card y target() se queda con la primera clave que casa.
+        // selector casa con las 8 y apply() usa querySelectorAll, asi que todas
+        // salen del mismo tamaño y la fila no se descuadra.
         skillIcon: '.skill-icon',
         skillCard: '.skill-card',
     };
     window.HERO_LAYOUT_HORNEADO = {
         zoom: 0.8,
-        title:  { x: 23,     y: -120.75, s: 1.23175573069396 },
-        ca:     { x: 17.25,  y: 127.75,  s: 0.8363874218953965 },
-        caSign: { x: 19.75,  y: 136,     s: 0.8616672317221851 },
-        // x a 0 = centrado exacto: .hero-game-btns ya va centrado (el veil es
-        // flex con justify-content:center y align-items:center), asi que
-        // cualquier x distinta de 0 lo saca del centro. Con -58.5 quedaba
-        // desplazado a la izquierda respecto a CHOOSE MODES/CHOOSE SKINS, que
-        // no llevan horneado y por tanto SI salen centrados. La y no se toca.
-        play:   { x: 0,      y: -4.5,    s: 1.2880203308689964 },
-        pickMe: { x: -444.5, y: -7.25,   s: 2.4798680723250732 },
-        // Las piezas de la NAVBAR no se hornean: las coloca el flex de .navbar
-        // y cualquier valor aqui volveria a fijar pixeles que solo cuadran a
-        // una anchura. (Habia un pillDropdown a 0/0/1, que ya no aplicaba a
-        // nada tras el renombrado.)
+        title:        { x: 23, y: -120.75, s: 1.0613635506250012, b: 0.3 },
+        // PLAY NOW y MODES/SKINS (heroLinks) van desplazados casi lo mismo en x
+        // (11.5 y 12.5): asi quedan alineados entre si.
+        play:         { x: 11.5, y: 320.5, s: 1.896879821797035 },
+        heroLinks:    { x: 12.5, y: 343.75, s: 1.0456783749999996 },
+        pickMe:       { x: -444.5, y: -7.25, s: 2.4798680723250732 },
+        caSign:       { x: 13.5, y: 224.75, s: 1.0772840038843767, f: 13 },
+        ca:           { x: 16, y: 232.75, s: 1.2135524440334573 },
+        // Navbar: retoques finos sobre el sitio que les da el flex.
+        navPillMenu:  { x: 159, y: 10, s: 0.9010267906580022 },
+        navPill:      { x: 7, y: 1, s: 1 },
+        twitterIcon:  { x: 14, y: 2, s: 0.9821279848031846 },
+        telegramIcon: { x: 9, y: 2, s: 0.9563169937410252 },
+        tooltipIcon:  { x: -5, y: -3, s: 0.928260325405642 },
+        // El cartel de skill es un popup centrado por CSS: solo se escala.
+        skillTooltip: { x: 0, y: 0, s: 0.9852216748768474 },
+        skillIcon:    { x: 0, y: 3, s: 1.2880203308689973 },
     };
     (function () {
-        // El horneado es el diseño BUENO de fabrica, pero si ESTE usuario ya
-        // edito y guardo algo (pw_landing_layout en localStorage — wallet,
-        // PILL, iconos...) eso manda por encima: sin esto, el primer frame
-        // salía con el sitio de fabrica y saltaba al bueno en cuanto el script
-        // de abajo corria (localStorage es sincrono, así que se puede leer
-        // aqui mismo, ANTES del primer pintado, igual que el horneado).
-        const L = Object.assign({}, window.HERO_LAYOUT_HORNEADO);
-        try {
-            const guardado = JSON.parse(localStorage.getItem('pw_landing_layout') || '{}');
-            Object.assign(L, guardado);
-        } catch (e) {}
+        const L = window.HERO_LAYOUT_HORNEADO;
         const SEL = window.HERO_LAYOUT_ELS;
         // translate/scale (no `transform`): son las mismas propiedades que usa
-        // LandingLayout, asi sus estilos inline pisan esto sin pelearse con los
-        // transform de los :hover.
+        // apply() en el script del final, asi sus estilos inline pisan esto sin
+        // pelearse con los transform de los :hover.
         let css = '.hero-main-content{scale:' + (L.zoom || 1) + '}';
         for (const k in SEL) {
             const t = L[k]; if (!t) continue;
@@ -2557,27 +2439,6 @@ body.trailer-open #page-content{
         const st = document.createElement('style');
         st.id = 'heroLayoutHorneado'; st.textContent = css;
         document.head.appendChild(st);
-    })();
-    (function () {
-        // Color de la navbar: se aplica AQUI (antes del primer pintado, igual
-        // que el layout de arriba) para que no se vea un flash del color de
-        // fabrica antes de saltar al guardado. localStorage guarda SIEMPRE un
-        // hex opaco (lo que exporta el <input type=color>, que no tiene canal
-        // alfa); el toque semi-transparente lo pone este alfa fijo al vuelo,
-        // igual que hace el script tardio de mas abajo al reaccionar al
-        // picker. Ver el comentario de .navbar: el alfa mezcla contra
-        // --bg-dark (capas de background en el mismo elemento), no contra el
-        // contenido real de la pagina, asi que sigue sin dejar ver lo que
-        // pasa por debajo al hacer scroll.
-        const NAVBAR_ALPHA = 0.78;
-        try {
-            const hex = localStorage.getItem('pw_navbar_color');
-            if (hex && /^#[0-9a-f]{6}$/i.test(hex)) {
-                const rgb = parseInt(hex.slice(1), 16);
-                const r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
-                document.documentElement.style.setProperty('--navbar-bg', 'rgba(' + r + ',' + g + ',' + b + ',' + NAVBAR_ALPHA + ')');
-            }
-        } catch (e) {}
     })();
     </script>
 </head>
@@ -2721,11 +2582,6 @@ body.trailer-open #page-content{
                         </div>
                     </div>
                 </div>
-                <!-- Editor de posicion/tamaño de los elementos del hero. OCULTO:
-                     el diseño ya esta fijado (LAYOUT_HORNEADO). Solo reaparece si
-                     se enciende "Layout editors" en el panel admin, que llega en
-                     el campo `edit` de /api/landing-layout. -->
-                <button class="nav-link" id="btnLandingEdit" style="display:none;" onclick="LandingLayout.enter()">EDIT</button>
             </div>
         </div>
 
@@ -3340,63 +3196,6 @@ body.trailer-open #page-content{
                 <span>●</span> DEFAULT MECHANIC IN CLASSIC MODE
             </div>
         </div>
-    </div>
-
-    <!-- TEMPORAL: barra del editor de layout del hero (boton EDIT de la navbar) -->
-    <div id="layoutEditBar" style="display:none;">
-        <span class="leb-hint">DRAG = MOVE &nbsp;·&nbsp; WHEEL = SIZE &nbsp;·&nbsp; ALT+WHEEL = TEXT SIZE &nbsp;·&nbsp; DOUBLE-CLICK = RESET ONE</span>
-        <!-- Botones sueltos para el cuerpo de letra. Tocan SOLO el texto: el
-             icono del desplegable, el padding y el hueco entre elementos no se
-             mueven (para eso esta la rueda a secas, que escala la pieza
-             entera). Van aparte porque el gesto ALT+rueda depende de acertar el
-             punto con el raton y de que el navegador no se coma la combinacion
-             — mismo motivo que los −/+ del editor de /game. -->
-        <span class="leb-group">
-            <span class="leb-label">$PILL MENU TXT</span>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('navPillMenu', -1)">−</button>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('navPillMenu', 1)">+</button>
-        </span>
-        <span class="leb-group">
-            <span class="leb-label">CA SIGN TXT</span>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('caSign', -1)">−</button>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('caSign', 1)">+</button>
-        </span>
-        <span class="leb-group">
-            <span class="leb-label">CONTRACT TXT</span>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('ca', -1)">−</button>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpFont('ca', 1)">+</button>
-        </span>
-        <!-- Caja del $PILL: la agranda SIN tocar su texto. Sirve para que el
-             boton llegue hasta el desplegable y no se pierda el hover al bajar
-             el raton (su caja de fabrica mide 50x10 y el menu cuelga 170px a la
-             izquierda, asi que en diagonal te salias de los dos). -->
-        <span class="leb-group">
-            <span class="leb-label">$PILL BOX W</span>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('navPill', 'w', -10)">−</button>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('navPill', 'w', 10)">+</button>
-        </span>
-        <span class="leb-group">
-            <span class="leb-label">$PILL BOX H</span>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('navPill', 'h', -5)">−</button>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpSize('navPill', 'h', 5)">+</button>
-        </span>
-        <span class="leb-group">
-            <span class="leb-label">TITLE GLOW</span>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpGlow('title', -0.1)">−</button>
-            <button class="leb-btn leb-sm" onclick="LandingLayout.bumpGlow('title', 0.1)">+</button>
-        </span>
-        <div style="display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid #2a2f36;">
-            <label style="font-family:'Press Start 2P', monospace; font-size: var(--fs-1); color:#6a737e;">NAVBAR:</label>
-            <input type="color" id="navbarColorPicker" style="width:32px; height:32px; border:1px solid #2a2f36; cursor:pointer;" />
-        </div>
-        <!-- Ciclo de 3 fuentes para TODOS los .category-tag de la pagina a la
-             vez (CORE MECHANICS, RISK & REWARD, STANDARD EXPERIENCE...): la de
-             siempre (Inter), Press Start 2P o VT323. -->
-        <button class="leb-btn" id="lebTagFont" onclick="LandingLayout.cycleTagFont(this)">TAG FONT: DEFAULT</button>
-        <button class="leb-btn" id="lebZoom" onclick="LandingLayout.zoom(this)">ZOOM 100%</button>
-        <button class="leb-btn" onclick="LandingLayout.resetAll()">RESET ALL</button>
-        <button class="leb-btn" onclick="LandingLayout.saveGlobal(this)">SAVE FOR ALL</button>
-        <button class="leb-btn done" onclick="LandingLayout.exit()">DONE</button>
     </div>
 
     <script>
@@ -6243,8 +6042,8 @@ function toggleTrailerMode() {
         //    scale:1 en .hero-main-content (ver el @media), pero en escritorio
         //    el horneado deja un 0.8 fijo SIN IMPORTAR el ancho — al cruzar
         //    los 600px el contrato pegaba un salto de golpe (mas grande, no
-        //    mas pequeño). Se interpola con el MISMO setHeroZoom que ya usa el
-        //    editor, de 0.8 a 900px hasta 1 a 600px: al llegar al movil ya
+        //    mas pequeño). Se interpola con el MISMO setHeroZoom que usa
+        //    apply(), de 0.8 a 900px hasta 1 a 600px: al llegar al movil ya
         //    esta en 1 y no hay salto.
         //
         // 2) SOLAPE: PLAY NOW sube con la altura (24vh, ver .hero-game-veil)
@@ -6254,11 +6053,10 @@ function toggleTrailerMode() {
         //    abajo SOLO lo justo para mantener un hueco minimo, via
         //    --hero-ca-nudge (ver el CSS de #heroCaSign/#heroCaWrap). En el
         //    resto de casos vale 0 y no toca nada — la posicion
-        //    horneada/editada se respeta tal cual.
+        //    horneada se respeta tal cual.
         const HERO_GAP_MIN = 40;
         const HERO_ANCHO_ANCHO = 900, HERO_ANCHO_ESTRECHO = 600;
         function ajustaHeroResponsive() {
-            if (document.body.classList.contains('layout-editing')) return;
             const raiz = document.documentElement;
             if (window.innerWidth <= HERO_ANCHO_ESTRECHO) {
                 // El movil ya tiene su propio layout (position:absolute, top:52%,
@@ -6266,11 +6064,7 @@ function toggleTrailerMode() {
                 raiz.style.removeProperty('--hero-ca-nudge');
                 return;
             }
-            let zoomBase = (window.HERO_LAYOUT_HORNEADO && window.HERO_LAYOUT_HORNEADO.zoom) || 1;
-            try {
-                const guardado = JSON.parse(localStorage.getItem('pw_landing_layout') || '{}');
-                if (guardado && typeof guardado.zoom === 'number') zoomBase = guardado.zoom;
-            } catch (e) {}
+            const zoomBase = window.HERO_LAYOUT_HORNEADO.zoom || 1;
             const t = Math.min(1, Math.max(0, (window.innerWidth - HERO_ANCHO_ESTRECHO) / (HERO_ANCHO_ANCHO - HERO_ANCHO_ESTRECHO)));
             const escala = zoomBase + (1 - zoomBase) * (1 - t);
             setHeroZoom(escala);
@@ -6323,7 +6117,6 @@ function toggleTrailerMode() {
 
         const pickMe = document.getElementById('heroPickMe');
         if (pickMe) pickMe.addEventListener('click', (e) => {
-            if (document.body.classList.contains('layout-editing')) return;
             // Ya jugando: aqui pone ESC TO LEAVE, no debe relanzar la partida.
             if (HeroPlay.active) return;
             const b = pickMe.getBoundingClientRect(), r = cv.getBoundingClientRect();
@@ -6339,333 +6132,52 @@ function toggleTrailerMode() {
             else if (e.code === 'Escape') HeroPlay.stop();
         });
 
-        // ===== EDITOR DE LAYOUT DEL HERO (TEMPORAL) =====
-        // Mismo mecanismo que EDIT LAYOUT del menu del juego: arrastrar = mover,
-        // rueda = escalar, doble click = resetear uno, ESC/DONE = salir. Se guarda
-        // por usuario en localStorage y, con SAVE FOR ALL, en el servidor
-        // (/api/landing-layout) para que lo vean todos. Quitar el boton EDIT, la
-        // barra, este bloque y el endpoint cuando el diseño quede fijado.
-        const LAYOUT_KEY = 'pw_landing_layout';
-        // Los dos viven en el <head> (ver el <script> de HERO_LAYOUT_HORNEADO):
-        // alli el horneado se convierte en CSS antes del primer pintado, para
-        // que el hero no salga de fabrica y salte al colocarse.
+        // ===== LAYOUT DEL HERO =====
+        // Sitio y escala de cada pieza, fijados en el codigo. Los dos objetos
+        // viven en el <head> (ver el <script> de HERO_LAYOUT_HORNEADO): alli se
+        // convierten en CSS antes del primer pintado, para que el hero no salga
+        // de fabrica y salte al colocarse. apply() pone ademas lo que no cabe en
+        // esa hoja: el cuerpo de letra, el halo y el zoom del cuadro.
         const LAYOUT_ELS = window.HERO_LAYOUT_ELS;
-        const LAYOUT_HORNEADO = window.HERO_LAYOUT_HORNEADO;
-        // FALTABA fusionar el guardado local aqui: sin esto, `layout` arrancaba
-        // SIEMPRE en el horneado puro y el primer apply() de mas abajo BORRABA
-        // el CSS que el <head> acababa de hornear con tu edicion, dejando el
-        // sitio de fabrica hasta que llegaba la respuesta async del fetch a
-        // /api/landing-layout (de ahi el salto/parpadeo).
-        let layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO));
-        try {
-            const guardado = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
-            Object.assign(layout, guardado);
-        } catch (e) {}
-        let editing = false, drag = null;
-        // Interruptor real del admin (panel -> Menu visuals -> Layout editors),
-        // igual que layoutEditAllowed en game/index.html. FALLA CERRADO: hasta
-        // que el fetch de mas abajo confirme lo contrario, LandingLayout.enter()
-        // no entra — ocultar el boton EDIT no bastaba, la funcion seguia siendo
-        // llamable a mano desde la consola.
-        let landingEditAllowed = false;
-        // ADMIN_KEY para SAVE FOR ALL del hero. En memoria, nunca en localStorage.
-        let _layoutAdminKey = '';
-        const save = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
-        // ===== Claves TOCADAS a mano en esta maquina =====
-        // Mismo mecanismo que EDIT LAYOUT del menu del juego (game/index.html,
-        // LAYOUT_MINE_KEY). Antes, la primera vez que este navegador cargaba la
-        // pagina SIN ediciones propias, el fetch de mas abajo copiaba el layout
-        // del servidor entero a localStorage -> a partir de ahi este navegador
-        // quedaba "con local guardado" para siempre y DEJABA DE VER cualquier
-        // actualizacion futura del servidor (SAVE FOR ALL de otra sesion, o
-        // simplemente que alguien reordenara algo), aunque el admin activara o
-        // desactivara el editor: el toggle no tiene nada que ver, el problema
-        // era que el navegador se habia quedado pegado a una foto vieja.
-        // Ahora solo las claves que TU has tocado a mano mandan sobre el global;
-        // el resto siempre se actualiza con lo ultimo del servidor.
-        const LAYOUT_MINE_KEY = 'pw_landing_layout_mine';
-        let layoutMine = new Set();
-        try { const m = JSON.parse(localStorage.getItem(LAYOUT_MINE_KEY) || '[]'); if (Array.isArray(m)) layoutMine = new Set(m); } catch (e) {}
-        function saveLayoutMine() { try { localStorage.setItem(LAYOUT_MINE_KEY, JSON.stringify([...layoutMine])); } catch (e) {} }
-        function marcarLayoutMio(key) { if (!layoutMine.has(key)) { layoutMine.add(key); saveLayoutMine(); } }
-        // Global entrante + lo mio por encima (misma logica que
-        // fundirLayoutGlobal en game/index.html).
-        function fundirLayoutGlobal(entrante) {
-            const out = JSON.parse(JSON.stringify(entrante));
-            for (const k of layoutMine) { if (layout[k]) out[k] = JSON.parse(JSON.stringify(layout[k])); else delete out[k]; }
-            return out;
-        }
-        // Claves cuya CAJA se puede estirar en px (w/h) aparte del escalado
-        // uniforme. Solo el $PILL: su caja mide 50x10 y el desplegable cuelga
-        // 170px a su izquierda, asi que al bajar el raton en diagonal se salia
-        // de los dos y el menu se cerraba. Ensanchandola se cubre ese camino.
-        const LAYOUT_RESIZABLE = new Set(['navPill']);
-        const ZOOM_PASOS = [1, 0.8, 0.6, 0.45];
-        // Ciclo de fuente para TODOS los .category-tag a la vez (CORE MECHANICS,
-        // RISK & REWARD, STANDARD EXPERIENCE...). No va por LAYOUT_ELS (esa
-        // clase matchea varios elementos sueltos por toda la pagina, no una
-        // sola pieza que mover/escalar) — se guarda como top-level en `layout`,
-        // igual que `zoom`.
-        const TAG_FONTS = [
-            { id: 'default', label: 'DEFAULT', ff: '' },
-            { id: 'press', label: 'PRESS START 2P', ff: "'Press Start 2P', monospace" },
-            { id: 'vt323', label: 'VT323', ff: "'VT323', monospace" },
-        ];
-        function applyTagFont() {
-            const f = TAG_FONTS.find(x => x.id === layout.tagFont) || TAG_FONTS[0];
-            document.querySelectorAll('.category-tag').forEach(el => {
-                if (f.ff) el.style.fontFamily = f.ff; else el.style.removeProperty('font-family');
-            });
-        }
+        const layout = window.HERO_LAYOUT_HORNEADO;
         function apply() {
             for (const key in LAYOUT_ELS) {
                 // querySelectorAll y no querySelector: una clave puede gobernar
-                // VARIOS elementos a la vez (walletBtn = los 4 botones de wallet,
-                // que comparten selector con comas). Sin esto solo se movia el
-                // PRIMERO que matcheara y los demas se quedaban quietos.
+                // VARIOS elementos a la vez (navWalletBtn = los 4 botones de
+                // wallet, que comparten selector con comas).
                 const els = document.querySelectorAll(LAYOUT_ELS[key]); if (!els.length) continue;
                 const t = layout[key];
                 // translate/scale (no `transform`) para no pisar los transform de
-                // los :hover/:active que ya tienen algunos elementos.
-                // Sin pieza se escribe el neutro EXPLICITO, no cadena vacia:
-                // vaciarlo devolveria el mando al CSS horneado del <head> y
-                // RESET ALL no resetearia nada.
+                // los :hover/:active que ya tienen algunos elementos. Sin pieza se
+                // escribe el neutro explicito.
                 for (const el of els) {
                     // El cartel de skill es un POPUP CENTRADO (ver .skill-tooltip
-                    // en la hoja): su sitio lo fija el CSS y NADIE lo mueve. El
-                    // layout global del servidor traia skillTooltip {x:-183,
-                    // y:178} de una sesion de EDIT LAYOUT en escritorio, y ese
-                    // translate se aplicaba ENCIMA del centrado — en un movil de
-                    // 375px lo sacaba casi entero de la pantalla, que es por lo
-                    // que salia descolocado hiciera lo que hiciera el CSS. La
-                    // ESCALA si se respeta: el tamaño sigue siendo ajustable.
+                    // en la hoja): su sitio lo fija el CSS y NADIE lo mueve. Un
+                    // translate encima del centrado lo sacaba casi entero de la
+                    // pantalla en un movil de 375px. La ESCALA si se respeta.
                     el.style.translate = (key === 'skillTooltip' || !t) ? '0px 0px' : (t.x || 0) + 'px ' + (t.y || 0) + 'px';
                     el.style.scale = String(t ? (t.s || 1) : 1);
-                    // Cuerpo de letra (ALT+rueda). Va por la custom property
-                    // --pw-font, que es lo que leen los font-size del CSS; sin
-                    // valor guardado se quita la property y manda el default del
-                    // CSS. Mismo mecanismo que --gw-font en game/index.html.
+                    // f = cuerpo de letra. Va por la custom property --pw-font, que
+                    // es lo que leen los font-size del CSS; sin valor se quita la
+                    // property y manda el default del CSS. Mismo mecanismo que
+                    // --gw-font en game/index.html.
                     if (t && typeof t.f === 'number') el.style.setProperty('--pw-font', t.f + 'px');
                     else el.style.removeProperty('--pw-font');
-                    // b = intensidad del halo (grupo TITLE GLOW). Lo lee el CSS
-                    // por --pw-glow; hoy solo lo usa el titulo del hero.
+                    // b = intensidad del halo. Lo lee el CSS por --pw-glow; hoy solo
+                    // lo usa el titulo del hero.
                     if (t && typeof t.b === 'number') el.style.setProperty('--pw-glow', String(t.b));
                     else el.style.removeProperty('--pw-glow');
-                    // w/h = ancho y alto en px, aparte del escalado uniforme.
-                    // Solo en las claves de LAYOUT_RESIZABLE: sirve para agrandar
-                    // la CAJA de un elemento sin tocar su texto (p.ej. el $PILL,
-                    // cuya caja de 50x10 dejaba un hueco por el que se perdia el
-                    // hover al bajar en diagonal hacia el desplegable).
-                    if (LAYOUT_RESIZABLE.has(key)) {
-                        el.style.width = (t && typeof t.w === 'number') ? t.w + 'px' : '';
-                        el.style.height = (t && typeof t.h === 'number') ? t.h + 'px' : '';
-                    }
                 }
             }
-            // El zoom es parte del layout, como las posiciones: se guarda y lo ve
-            // todo el mundo, no solo quien esta editando.
+            // El zoom del cuadro entero es parte del layout, como las posiciones.
             setHeroZoom(layout.zoom || 1);
-            applyTagFont();
-        }
-        // Texto del boton acorde al zoom guardado (al entrar en EDIT y al ciclar).
-        function syncZoomBtn() {
-            const zb = document.getElementById('lebZoom');
-            if (zb) zb.textContent = 'ZOOM ' + Math.round((layout.zoom || 1) * 100) + '%';
-        }
-        function syncTagFontBtn() {
-            const btn = document.getElementById('lebTagFont');
-            if (!btn) return;
-            const f = TAG_FONTS.find(x => x.id === layout.tagFont) || TAG_FONTS[0];
-            btn.textContent = 'TAG FONT: ' + f.label;
-        }
-        function target(e) {
-            const primero = (nodo) => {
-                if (!nodo || !nodo.closest) return null;
-                for (const key in LAYOUT_ELS) { const el = nodo.closest(LAYOUT_ELS[key]); if (el) return { key, el }; }
-                return null;
-            };
-            const arriba = primero(e.target);
-            if (e.clientX == null || !document.elementsFromPoint) return arriba;
-            // Piezas SOLAPADAS: elementFromPoint (y por tanto e.target) solo ve
-            // la de ENCIMA, asi que en cuanto algo tapaba una pieza esta se
-            // quedaba imposible de agarrar en el editor. Dos casos, los dos
-            // reales aqui:
-            //   - la tapa OTRA PIEZA editable (las dos .wb-box del desplegable
-            //     de PLAY NOW, al mover una sobre la otra),
-            //   - la tapa algo que NO es editable (el hero, un overlay...): ahi
-            //     e.target ni siquiera resuelve a una clave y antes se salia con
-            //     null sin llegar a mirar debajo — el boton no respondia a nada.
-            // Por eso se recorre TODA la pila bajo el raton, con o sin pieza
-            // arriba, y gana la de CENTRO mas cercano: siempre se puede llegar a
-            // cualquiera apuntando a su mitad.
-            // Las relaciones PADRE/HIJO se dejan fuera del desempate: ahi sigue
-            // mandando el orden de LAYOUT_ELS, que es lo que hace que el rotulo
-            // se agarre aparte de la caja que lo contiene.
-            const dist = (el) => {
-                const b = el.getBoundingClientRect();
-                return Math.hypot(e.clientX - (b.left + b.width / 2), e.clientY - (b.top + b.height / 2));
-            };
-            let mejor = arriba, mejorD = arriba ? dist(arriba.el) : Infinity;
-            for (const nodo of document.elementsFromPoint(e.clientX, e.clientY)) {
-                const c = primero(nodo);
-                if (!c) continue;
-                if (arriba && (c.el === arriba.el || c.el.contains(arriba.el) || arriba.el.contains(c.el))) continue;
-                const d = dist(c.el);
-                if (d < mejorD) { mejorD = d; mejor = c; }
-            }
-            return mejor;
-        }
-        const LandingLayout = {
-            enter() {
-                if (!landingEditAllowed) return;
-                editing = true;
-                document.body.classList.add('layout-editing');
-                for (const key in LAYOUT_ELS) { document.querySelectorAll(LAYOUT_ELS[key]).forEach(el => el.classList.add('hero-editable')); }
-                document.getElementById('layoutEditBar').style.display = 'flex';
-                syncZoomBtn();
-                syncTagFontBtn();
-                document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
-                // El tooltip de skills normalmente solo aparece con el hover de
-                // una skill-card. Aqui se rellena a mano (la regla
-                // body.layout-editing de mas arriba lo fuerza visible) para
-                // poder agarrarlo sin tener que mantener el raton encima.
-                // Se le da una posicion FIJA en pantalla en vez de la que
-                // calcula renderTooltip (relativa a la card, que esta mucho
-                // mas abajo y quedaria fuera de la vista): al ser position
-                // fixed se queda ahi mientras se baja a la zona de skills.
-                const skillCard = document.querySelector('.skill-card');
-                if (skillCard && window.App && App.UI && App.UI.renderTooltip) {
-                    App.UI.renderTooltip({ currentTarget: skillCard }, 'clone');
-                    const tt = document.getElementById('skill-tooltip');
-                    tt.style.left = Math.max(10, window.innerWidth - 300) + 'px';
-                    tt.style.top = '90px';
-                }
-            },
-            exit() {
-                // Guarda para todos AL SALIR: la barra desaparece con DONE, asi
-                // que pulsar SAVE FOR ALL despues era imposible.
-                this.saveGlobal(null);
-                editing = false; drag = null;
-                document.body.classList.remove('layout-editing');
-                document.querySelectorAll('.hero-editable').forEach(el => el.classList.remove('hero-editable'));
-                document.getElementById('layoutEditBar').style.display = 'none';
-                // El tooltip de skills se forzo visible para poder editarlo
-                // (ver enter()): al salir, que vuelva a depender del hover.
-                if (window.App && App.UI && App.UI.hideSkill) App.UI.hideSkill();
-                save();
-                reubicaTapados();   // la UI se movio -> recolocar solo lo que tape
-            },
-            // RESET vuelve al layout HORNEADO, que es el diseño bueno — no al
-            // de fabrica (todo a cero y sin zoom), que ya no es un estado al
-            // que se quiera volver desde aqui. Suelta ademas las claves propias:
-            // a partir de aqui vuelve a mandar el global del servidor.
-            resetAll() { layout = JSON.parse(JSON.stringify(LAYOUT_HORNEADO)); layoutMine.clear(); saveLayoutMine(); save(); apply(); syncZoomBtn(); syncTagFontBtn(); },
-            // Ciclo DEFAULT -> PRESS START 2P -> VT323 -> DEFAULT para todos los
-            // .category-tag de golpe.
-            cycleTagFont() {
-                const curIdx = Math.max(0, TAG_FONTS.findIndex(x => x.id === layout.tagFont));
-                layout.tagFont = TAG_FONTS[(curIdx + 1) % TAG_FONTS.length].id;
-                applyTagFont(); syncTagFontBtn(); save();
-            },
-            // Cuerpo de letra de una pieza (botones −/+ de la barra). Toca SOLO
-            // el texto: escribe `f`, que apply() vuelca en --pw-font, y los
-            // font-size del CSS lo leen. El icono del desplegable, el padding y
-            // los huecos van en px fijos, asi que no se enteran — para cambiar
-            // la pieza entera esta la rueda, que escala.
-            // Mismo criterio que bumpLayoutFont() en game/index.html.
-            bumpFont(key, delta) {
-                const el = document.querySelector(LAYOUT_ELS[key]); if (!el) return;
-                const cur = layout[key] = layout[key] || { x: 0, y: 0, s: 1 };
-                const base = typeof cur.f === 'number' ? cur.f
-                    : (parseFloat(getComputedStyle(el).getPropertyValue('--pw-font')) || FONT_DEFAULTS[key] || 13);
-                cur.f = Math.round(Math.min(48, Math.max(6, base + delta)) * 10) / 10;
-                marcarLayoutMio(key); apply(); save();
-            },
-            // Halo del titulo. 1 = el diseño de siempre, 0 = sin halo.
-            bumpGlow(key, delta) {
-                const el = document.querySelector(LAYOUT_ELS[key]); if (!el) return;
-                const cur = layout[key] = layout[key] || { x: 0, y: 0, s: 1 };
-                const base = typeof cur.b === 'number' ? cur.b
-                    : (parseFloat(getComputedStyle(el).getPropertyValue('--pw-glow')) || 1);
-                cur.b = Math.round(Math.min(4, Math.max(0, base + delta)) * 10) / 10;
-                marcarLayoutMio(key); apply(); save();
-            },
-            // Ancho/alto de la CAJA en px, sin tocar el texto ni el escalado.
-            // El punto de partida es el tamaño REAL medido en pantalla (no un
-            // valor de fabrica) para que el primer toque no de un salto.
-            bumpSize(key, dim, delta) {
-                const el = document.querySelector(LAYOUT_ELS[key]); if (!el || !LAYOUT_RESIZABLE.has(key)) return;
-                const cur = layout[key] = layout[key] || { x: 0, y: 0, s: 1 };
-                const r = el.getBoundingClientRect();
-                if (dim === 'w') cur.w = Math.round(Math.min(900, Math.max(20, (typeof cur.w === 'number' ? cur.w : r.width) + delta)));
-                else cur.h = Math.round(Math.min(400, Math.max(10, (typeof cur.h === 'number' ? cur.h : r.height) + delta)));
-                marcarLayoutMio(key); apply(); save();
-            },
-            // Zoom del cuadro entero. NO es solo una vista del editor: se guarda
-            // con el resto del layout y se queda al salir con DONE.
-            zoom(btn) {
-                const idx = (ZOOM_PASOS.indexOf(layout.zoom || 1) + 1) % ZOOM_PASOS.length;
-                layout.zoom = ZOOM_PASOS[idx];
-                save();
-                setHeroZoom(layout.zoom);
-                syncZoomBtn();
-            },
-            async saveGlobal(btn) {
-                save();
-                // Mismo trato que SAVE FOR ALL del menu (game/index.html): sin la
-                // ADMIN_KEY, cualquiera con un curl podia descolocarle el hero a
-                // todo el mundo. Se guarda en memoria, no en localStorage, y se
-                // vuelve a pedir en cada recarga.
-                if (!_layoutAdminKey) _layoutAdminKey = prompt('Admin key para guardar el layout para todos:') || '';
-                if (!_layoutAdminKey) return;
-                const orig = btn ? btn.textContent : '';
-                if (btn) { btn.textContent = 'SAVING...'; btn.disabled = true; }
-                let ok = false;
-                try {
-                    const r = await fetch('/api/landing-layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout, key: _layoutAdminKey }) });
-                    ok = (await r.json()).ok === true;
-                    if (!ok) _layoutAdminKey = '';   // clave mala: que la vuelva a pedir
-                    // Ya son de todos: se sueltan las claves propias para no
-                    // quedarse pegado a una version local del layout que ya subiste.
-                    if (ok) { layoutMine.clear(); saveLayoutMine(); }
-                } catch (e) {}
-                if (btn) { btn.textContent = ok ? 'SAVED ✓' : 'ERROR'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600); }
-            },
-        };
-        window.LandingLayout = LandingLayout;
-
-        // Navbar color picker. localStorage guarda el hex TAL CUAL lo exporta
-        // el <input type=color> (opaco, sin alfa); el alfa que da el efecto
-        // semi-transparente lo pone SIEMPRE este script (y el mismo bloque en
-        // el <head>, para el primer pintado) al escribir --navbar-bg, no el
-        // valor guardado.
-        const NAVBAR_ALPHA = 0.78;
-        const navbarColorPicker = document.getElementById('navbarColorPicker');
-        if (navbarColorPicker) {
-            let savedColor = localStorage.getItem('pw_navbar_color') || '#000000';
-            // Migra valores viejos en formato rgb()/rgba() (de antes de que
-            // el picker guardara hex) al hex que el <input type=color> exige.
-            const m = savedColor.match(/rgba?\(([^)]+)\)/);
-            if (m) {
-                const [r, g, b] = m[1].split(',').map(s => parseInt(s.trim(), 10));
-                savedColor = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-                localStorage.setItem('pw_navbar_color', savedColor);
-            }
-            navbarColorPicker.value = savedColor;
-            navbarColorPicker.addEventListener('change', (e) => {
-                const hex = e.target.value;
-                const rgb = parseInt(hex.slice(1), 16);
-                const r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
-                document.documentElement.style.setProperty('--navbar-bg', 'rgba(' + r + ',' + g + ',' + b + ',' + NAVBAR_ALPHA + ')');
-                localStorage.setItem('pw_navbar_color', hex);
-            });
         }
 
         // El desplegable de $PILL no se cierra en cuanto sales: espera un poco.
         // Con :hover puro, en cuanto el raton pisaba un pixel que no fuera ni el
         // boton ni el menu se cerraba de golpe — y eso pasa siempre que el menu
-        // se mueve de sitio con el editor (clave pillMenu), porque entonces
-        // entre los dos queda un hueco real que el padding-top ya no cubre.
+        // va desplazado (clave navPillMenu), porque entonces entre los dos queda
+        // un hueco real que el padding-top ya no cubre.
         // Medido: con el menu desplazado 30px, el camino en diagonal del boton
         // al menu cae sobre la navbar y el hover se rompe.
         // El retardo cubre ese trayecto vengas por donde vengas, sin depender de
@@ -6676,80 +6188,14 @@ function toggleTrailerMode() {
             if (!pill || !menu) return;
             let cierre = null;
             const abrir = () => { clearTimeout(cierre); menu.style.display = 'block'; };
-            // removeProperty y no display:none: asi vuelve a mandar el CSS (el
-            // :hover normal y la regla que lo deja abierto en EDIT LAYOUT).
+            // removeProperty y no display:none: asi vuelve a mandar el :hover
+            // normal del CSS.
             const cerrar = () => { clearTimeout(cierre); cierre = setTimeout(() => menu.style.removeProperty('display'), 320); };
             for (const el of [pill, menu]) {
-                el.addEventListener('mouseenter', () => { if (!editing) abrir(); });
-                el.addEventListener('mouseleave', () => { if (!editing) cerrar(); });
+                el.addEventListener('mouseenter', abrir);
+                el.addEventListener('mouseleave', cerrar);
             }
         })();
-
-        document.addEventListener('pointerdown', (e) => {
-            if (!editing || e.target.closest('#layoutEditBar')) return;
-            const t = target(e); if (!t) return;
-            const cur = layout[t.key] || { x: 0, y: 0, s: 1 };
-            drag = { key: t.key, startX: e.clientX, startY: e.clientY, baseX: cur.x || 0, baseY: cur.y || 0 };
-            e.preventDefault(); e.stopPropagation();
-        }, true);
-        // Los elementos de la navbar (wallet/PILL/iconos) NO viven dentro de
-        // .hero-main-content, asi que no llevan el scale de heroZoom: dividir
-        // su arrastre por heroZoom haria que el raton y el elemento se
-        // desincronizaran (heroZoom por defecto es 0.8).
-        const NAVBAR_KEYS = new Set(['walletBtnTxt', 'navWalletBtn', 'navBal', 'twitterIcon', 'telegramIcon', 'navPlayBtn', 'navPill', 'navPillMenu', 'tooltipIcon', 'skillTooltip', 'skillIcon', 'skillCard']);
-        window.addEventListener('pointermove', (e) => {
-            if (!editing || !drag) return;
-            const cur = layout[drag.key] = layout[drag.key] || { x: 0, y: 0, s: 1 };
-            const z = NAVBAR_KEYS.has(drag.key) ? 1 : heroZoom;
-            cur.x = drag.baseX + (e.clientX - drag.startX) / z;
-            cur.y = drag.baseY + (e.clientY - drag.startY) / z;
-            marcarLayoutMio(drag.key);
-            apply();
-        });
-        window.addEventListener('pointerup', () => { if (drag) { drag = null; save(); } });
-        // Cuerpo de letra por defecto de cada clave que admite ALT+rueda: el
-        // mismo numero que el fallback de var(--pw-font, N) en su CSS. Hace
-        // falta porque al leer --pw-font sin valor guardado no devuelve nada.
-        const FONT_DEFAULTS = { navPillMenu: 11, caSign: 13, ca: 11, navPlayBtn: 15 };
-        // Tope de escala por clave. El general (3) se queda corto en los iconos
-        // de skills: el del tooltip a 3x mide 192px dentro de una caja de
-        // ~246px, asi que ni siquiera llega a tocar los lados para recortarse.
-        const SCALE_MAX_DEFAULT = 3;
-        const SCALE_MAX = { skillIcon: 8, skillCard: 8, tooltipIcon: 8, skillTooltip: 8 };
-        document.addEventListener('wheel', (e) => {
-            if (!editing) return;
-            const t = target(e); if (!t) return;
-            e.preventDefault();
-            const cur = layout[t.key] = layout[t.key] || { x: 0, y: 0, s: 1 };
-            marcarLayoutMio(t.key);
-            // ALT+rueda = cuerpo de letra en vez de tamaño (igual que en el
-            // editor del juego). Solo en las claves que tienen --pw-font.
-            if (e.altKey && FONT_DEFAULTS[t.key]) {
-                const base = typeof cur.f === 'number' ? cur.f
-                    : (parseFloat(getComputedStyle(t.el).getPropertyValue('--pw-font')) || FONT_DEFAULTS[t.key]);
-                cur.f = Math.round(Math.min(48, Math.max(6, base + (e.deltaY < 0 ? 1 : -1))) * 10) / 10;
-            } else {
-                const step = e.shiftKey ? 1.06 : 1.015;   // shift = paso grande
-                const max = SCALE_MAX[t.key] || SCALE_MAX_DEFAULT;
-                cur.s = Math.min(max, Math.max(0.35, (cur.s || 1) * (e.deltaY < 0 ? step : 1 / step)));
-            }
-            apply(); save();
-        }, { passive: false, capture: true });
-        document.addEventListener('dblclick', (e) => {
-            if (!editing) return;
-            const t = target(e); if (!t) return;
-            // Mismo criterio que RESET ALL: la pieza vuelve a su sitio horneado.
-            const h = LAYOUT_HORNEADO[t.key];
-            layout[t.key] = h ? JSON.parse(JSON.stringify(h)) : { x: 0, y: 0, s: 1 };
-            marcarLayoutMio(t.key);
-            apply(); save(); e.preventDefault();
-        }, true);
-        // En modo edicion los clicks no disparan PLAY NOW ni el copiar del contrato
-        document.addEventListener('click', (e) => {
-            if (!editing || e.target.closest('#layoutEditBar')) return;
-            e.preventDefault(); e.stopPropagation();
-        }, true);
-        window.addEventListener('keydown', (e) => { if (editing && e.code === 'Escape') LandingLayout.exit(); });
 
         // PLAY NOW de la navbar: visible solo cuando el hero (que ya trae el
         // suyo) sale de la pantalla al hacer scroll.
@@ -6766,56 +6212,6 @@ function toggleTrailerMode() {
         })();
 
         apply();
-        // Mismo objeto sin depender del orden de las claves (el horneado se
-        // escribe a mano, el del servidor llega como se guardo). Compara la
-        // UNION de claves de los dos lados (no las de cada uno por separado):
-        // si el servidor guardo su layout ANTES de que existiera una clave
-        // nueva (p.ej. pillDropdown), esa clave sale IDENTIDAD en los dos
-        // lados en vez de "distinto solo porque falta" -> sin esto, cada
-        // clave nueva que se añade al sistema fuerza un apply() de mas al
-        // cargar (aunque el resultado visual sea el mismo), y ese repintado
-        // de mas es justo el salto que se ve en cada F5.
-        const mismoLayout = (a, b) => {
-            const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
-            const norm = o => [...keys].sort().map(k => {
-                if (k === 'zoom') return [k, (o && typeof o[k] === 'number') ? o[k] : 1];
-                if (k === 'tagFont') return [k, (o && o[k]) || 'default'];
-                const v = (o && o[k]) || {};
-                // f (letra), b (halo) y w/h (caja) entran en la comparacion: sin
-                // ellos, un layout que solo cambiara uno de esos se veria
-                // "igual" y no llegaria a aplicarse.
-                const num = x => typeof x === 'number' ? x : null;
-                return [k, +v.x || 0, +v.y || 0, +v.s || 1, num(v.f), num(v.b), num(v.w), num(v.h)];
-            });
-            return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
-        };
-        // Layout GLOBAL del servidor: SIEMPRE manda para las claves que este
-        // navegador no ha tocado a mano (fundirLayoutGlobal), asi que un
-        // SAVE FOR ALL de otra sesion (o del admin) se ve aqui sin depender de
-        // si este navegador tenia algo guardado de antes — el `edit` on/off del
-        // panel admin (Layout editors) NO participa en esto, solo decide si se
-        // muestra el boton EDIT. Solo se repinta si el resultado difiere de
-        // verdad, para no dar el salto al acabar de cargar cuando coincide.
-        fetch('/api/landing-layout', { cache: 'no-store' })
-            .then(r => r.json())
-            .then(d => {
-                landingEditAllowed = !!(d && d.edit);
-                const b = document.getElementById('btnLandingEdit');
-                if (b) b.style.display = landingEditAllowed ? '' : 'none';
-                // El admin lo apago mientras alguien seguia dentro: sacarlo YA.
-                if (!landingEditAllowed && editing) LandingLayout.exit();
-                if (editing || !d || !d.layout || !Object.keys(d.layout).length) return;
-                // Fusionado sobre el horneado (no reemplazo directo): si el
-                // servidor guardo su layout antes de que existiera una clave
-                // nueva, esa clave se queda con su default horneado en vez de
-                // desaparecer del todo. Encima, las claves tocadas a mano en
-                // ESTA maquina (layoutMine) se conservan tal cual.
-                const entrante = fundirLayoutGlobal(Object.assign(JSON.parse(JSON.stringify(LAYOUT_HORNEADO)), d.layout));
-                if (mismoLayout(entrante, layout)) return;
-                layout = entrante;
-                save(); apply();
-            })
-            .catch(() => {});
     })();
     </script>
 

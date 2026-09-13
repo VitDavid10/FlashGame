@@ -1,25 +1,65 @@
 {
   "resultOverlay#gameOver": {
     "title": {
-      "x": -3,
-      "y": 28,
+      "x": 4,
+      "y": 30,
       "s": 1.1
     },
+    "spectate": {
+      "x": -1,
+      "y": -11,
+      "s": 0.9
+    },
+    "backToMenu": {
+      "x": -3,
+      "y": -22,
+      "s": 0.9
+    },
+    "desc": {
+      "x": -3,
+      "y": 19,
+      "s": 0.85
+    },
+    "tryAgain": {
+      "x": -2,
+      "y": 0,
+      "s": 0.9
+    },
     "actions": {
-      "x": 1,
-      "y": 10,
-      "s": 1
+      "x": 3,
+      "y": -18,
+      "s": 0.9
     }
   },
   "resultOverlay#roomRestarted": {
     "title": {
       "x": 5,
-      "y": 24,
-      "s": 1.1
+      "y": 26,
+      "s": 1.05
     },
     "actions": {
+      "x": 7,
+      "y": -5,
+      "s": 0.85
+    },
+    "spectate": {
       "x": 0,
-      "y": 11,
+      "y": -12,
+      "s": 1
+    },
+    "backToMenu": {
+      "x": 0,
+      "y": -26,
+      "s": 1
+    },
+    "desc": {
+      "x": -1,
+      "y": 18,
+      "s": 0.85
+    },
+    "tryAgain": {
+      "x": 0,
+      "y": 0,
       "s": 1
     }
   },
@@ -29,38 +69,73 @@
       "y": 22,
       "s": 1
     },
-    "actions": {
+    "spectate": {
+      "x": 0,
+      "y": -12,
+      "s": 1
+    },
+    "backToMenu": {
       "x": -2,
-      "y": 11,
+      "y": -24,
+      "s": 1
+    },
+    "desc": {
+      "x": 0,
+      "y": 14,
+      "s": 1
+    },
+    "actions": {
+      "x": 0,
+      "y": -15,
+      "s": 0.85
+    },
+    "tryAgain": {
+      "x": 0,
+      "y": 0,
       "s": 1
     }
   },
   "sysModal#KICKED": {
     "title": {
-      "x": 0,
-      "y": 0,
+      "x": 1,
+      "y": 4,
       "s": 0.95
     },
     "desc": {
-      "x": 3,
-      "y": 5,
-      "s": 1
+      "x": 4,
+      "y": 8,
+      "s": 0.95
     },
     "actions": {
-      "x": 0,
-      "y": 0,
-      "s": 0.95
+      "x": 4,
+      "y": -7,
+      "s": 0.75
     }
   },
   "prizeModal#victory": {
     "desc": {
-      "x": 8,
-      "y": 1,
-      "s": 1
+      "x": 11,
+      "y": 6,
+      "s": 0.9
     },
     "actions": {
-      "x": -1,
-      "y": 12,
+      "x": 1,
+      "y": -11,
+      "s": 0.75
+    },
+    "title": {
+      "x": 0,
+      "y": 7,
+      "s": 1.05
+    },
+    "share": {
+      "x": 0,
+      "y": 0,
+      "s": 1
+    },
+    "continuar": {
+      "x": 0,
+      "y": 0,
       "s": 1
     }
   },
@@ -71,16 +146,418 @@
       "s": 0.95
     },
     "actions": {
+      "x": -6,
+      "y": -13,
+      "s": 0.8
+    },
+    "continuar": {
+      "x": 0,
+      "y": 0,
+      "s": 1
+    },
+    "desc": {
+      "x": 0,
+      "y": 0,
+      "s": 0.95
+    }
+  },
+  "prizeModal#cashout": {
+    "actions": {
+      "x": 3,
+      "y": -12,
+      "s": 0.75
+    },
+    "title": {
+      "x": 0,
+      "y": 8,
+      "s": 1.05
+    },
+    "desc": {
+      "x": 0,
+      "y": 0,
+      "s": 0.9
+    }
+  },
+  "gameDepositModal": {
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 1.15
+    }
+  },
+  "gameWithdrawModal": {
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 1.25
+    },
+    "desc": {
+      "x": 0,
+      "y": 0,
+      "s": 1
+    }
+  },
+  "walletPickerModal": {
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 1.05
+    },
+    "title": {
+      "x": 0,
+      "y": 4,
+      "s": 1
+    }
+  },
+  "exitModal#STOP SPECTATING?": {
+    "desc": {
+      "x": 1,
+      "y": 11,
+      "s": 1
+    },
+    "actions": {
+      "x": 0,
+      "y": 5,
+      "s": 0.9
+    }
+  },
+  "exitModal#LEAVE ARENA?": {
+    "desc": {
+      "x": 0,
+      "y": 9,
+      "s": 1
+    },
+    "actions": {
+      "x": 2,
+      "y": 6,
+      "s": 0.9
+    },
+    "title": {
+      "x": 1,
+      "y": 0,
+      "s": 1.05
+    }
+  },
+  "sysModal#CONNECTION FAILED": {
+    "desc": {
+      "x": 0,
+      "y": 13,
+      "s": 1
+    },
+    "actions": {
+      "x": -4,
+      "y": 5,
+      "s": 0.75
+    },
+    "title": {
+      "x": 0,
+      "y": 3,
+      "s": 1
+    }
+  },
+  "sysModal#INSUFFICIENT BALANCE": {
+    "desc": {
+      "x": -1,
+      "y": 12,
+      "s": 0.95
+    },
+    "actions": {
+      "x": -7,
+      "y": 0,
+      "s": 0.7
+    },
+    "title": {
+      "x": -2,
+      "y": 2,
+      "s": 1
+    }
+  },
+  "sysModal#DEPOSIT COMPLETE": {
+    "actions": {
+      "x": -1,
+      "y": 9,
+      "s": 0.75
+    },
+    "desc": {
+      "x": 1,
+      "y": 14,
+      "s": 1
+    }
+  },
+  "sysModal#WITHDRAW COMPLETE": {
+    "actions": {
+      "x": 2,
+      "y": 10,
+      "s": 0.75
+    },
+    "desc": {
+      "x": 0,
+      "y": 14,
+      "s": 1
+    },
+    "title": {
+      "x": -1,
+      "y": 2,
+      "s": 1
+    }
+  },
+  "sysModal#WITHDRAW FAILED": {
+    "desc": {
+      "x": -3,
+      "y": 17,
+      "s": 0.95
+    },
+    "actions": {
+      "x": 0,
+      "y": 10,
+      "s": 0.75
+    }
+  },
+  "sysModal#NOTICE": {
+    "desc": {
+      "x": 0,
+      "y": 10,
+      "s": 1
+    },
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 0.8
+    }
+  },
+  "sysModal#WALLET REQUIRED": {
+    "desc": {
+      "x": 2,
+      "y": 5,
+      "s": 1
+    },
+    "actions": {
+      "x": 1,
+      "y": -3,
+      "s": 0.8
+    },
+    "title": {
+      "x": 0,
+      "y": 0,
+      "s": 0.95
+    }
+  },
+  "sysModal#CONNECT ERROR": {
+    "actions": {
+      "x": 3,
+      "y": -1,
+      "s": 0.8
+    },
+    "desc": {
+      "x": 0,
+      "y": 10,
+      "s": 1
+    },
+    "title": {
+      "x": 0,
+      "y": 0,
+      "s": 0.95
+    }
+  },
+  "sysModal#DEPOSIT FAILED": {
+    "desc": {
+      "x": -1,
+      "y": 11,
+      "s": 0.95
+    },
+    "actions": {
+      "x": -1,
+      "y": 2,
+      "s": 0.75
+    },
+    "title": {
+      "x": 0,
+      "y": 7,
+      "s": 0.95
+    }
+  },
+  "sysModal#WALLET": {
+    "desc": {
+      "x": 0,
+      "y": 10,
+      "s": 1
+    },
+    "actions": {
+      "x": -2,
+      "y": 7,
+      "s": 0.75
+    }
+  },
+  "exitModal#WARNING: FORFEIT?": {
+    "desc": {
+      "x": 0,
+      "y": 7,
+      "s": 1
+    },
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 0.9
+    }
+  },
+  "sysModal#SKINS": {
+    "title": {
+      "x": 0,
+      "y": 0,
+      "s": 1.95
+    },
+    "actions": {
+      "x": 2,
+      "y": 13,
+      "s": 0.75
+    },
+    "desc": {
+      "x": -2,
+      "y": 21,
+      "s": 1
+    }
+  },
+  "sysModal#CONVERT": {
+    "actions": {
+      "x": 2,
+      "y": 10,
+      "s": 0.75
+    },
+    "desc": {
+      "x": 0,
+      "y": 21,
+      "s": 1
+    },
+    "title": {
+      "x": 0,
+      "y": 0,
+      "s": 1.75
+    }
+  },
+  "exitModal#SECURE CASHOUT": {
+    "actions": {
       "x": 0,
       "y": 0,
       "s": 0.85
     }
   },
-  "prizeModal#cashout": {
+  "exitModal#LEAVE LOBBY?": {
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 0.9
+    },
+    "desc": {
+      "x": 0,
+      "y": 9,
+      "s": 1
+    },
+    "title": {
+      "x": 0,
+      "y": 0,
+      "s": 1.05
+    }
+  },
+  "sysModal#PAYMENT CANCELLED": {
+    "actions": {
+      "x": -9,
+      "y": 8,
+      "s": 0.75
+    },
+    "desc": {
+      "x": 0,
+      "y": 8,
+      "s": 0.95
+    },
+    "title": {
+      "x": 0,
+      "y": 0,
+      "s": 0.95
+    }
+  },
+  "sysModal#REJOIN EXPIRED": {
+    "actions": {
+      "x": 4,
+      "y": -7,
+      "s": 0.8
+    },
+    "desc": {
+      "x": 0,
+      "y": 5,
+      "s": 0.95
+    },
+    "title": {
+      "x": 0,
+      "y": 0,
+      "s": 0.95
+    }
+  },
+  "paisModal": {
+    "crece": {
+      "x": 0,
+      "y": 0,
+      "s": 1
+    },
     "actions": {
       "x": 1,
-      "y": 11,
+      "y": -2,
+      "s": 0.85
+    },
+    "desc": {
+      "x": -19,
+      "y": 4,
+      "s": 0.95
+    },
+    "pie": {
+      "x": 1,
+      "y": -5,
       "s": 1
+    },
+    "title": {
+      "x": -3,
+      "y": 9,
+      "s": 1
+    }
+  },
+  "roomChoiceModal": {
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 0.7
+    },
+    "desc": {
+      "x": 0,
+      "y": 6,
+      "s": 1
+    },
+    "title": {
+      "x": -1,
+      "y": 6,
+      "s": 1.15
+    }
+  },
+  "settingsModal": {
+    "actions": {
+      "x": 0,
+      "y": 0,
+      "s": 0.8
+    }
+  },
+  "playChoiceModal": {
+    "actions": {
+      "x": -9,
+      "y": -6,
+      "s": 0.85
+    },
+    "desc": {
+      "x": 0,
+      "y": 3,
+      "s": 1
+    },
+    "title": {
+      "x": 3,
+      "y": 4,
+      "s": 1.25
     }
   }
 }
