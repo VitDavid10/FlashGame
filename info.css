@@ -1,0 +1,227 @@
+/*
+ * Shared look for the info pages (privacy, treasury, contact): the same pixel
+ * style as the landing page. Press Start 2P for titles, VT323 for running text,
+ * the game arena grid behind, hard-edged panels and the landing navbar pieces
+ * (pill logo, PLAY NOW with its MODES/SKINS dropdown). Built for phone and PC.
+ */
+:root {
+    --mint: #00ff88; --lime: #ccff00; --gold: #ffce3d; --red: #ff2a2a;
+    --text: #cfe9dd; --muted: #8fa39a; --bar-h: 64px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0; background: #050505; color: var(--text);
+    font-family: 'VT323', monospace; font-size: 23px; line-height: 1.3;
+    background-image: linear-gradient(rgba(255,255,255,0.03) 4px, transparent 4px),
+                      linear-gradient(90deg, rgba(255,255,255,0.03) 4px, transparent 4px);
+    background-size: 100px 100px;
+}
+a { color: var(--gold); text-decoration: none; border-bottom: 2px solid rgba(255,206,61,0.45); }
+a:hover { color: #fff; border-color: #fff; }
+b.k { color: #fff; font-weight: normal; }
+code, .mono { font-family: 'VT323', monospace; color: #a9c7b9; }
+
+/* ===== Top bar: pill logo + PILLWARS on the left, PLAY NOW on the right ===== */
+.top {
+    position: sticky; top: 0; z-index: 100;
+    height: var(--bar-h); display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 0 clamp(14px, 4vw, 32px);
+    background: rgba(0,0,0,0.88); border-bottom: 2px solid rgba(0,255,136,0.4);
+}
+.top a { border: 0; }
+.brand { display: flex; align-items: center; gap: 12px; line-height: 0; }
+/* Pixel pill like the landing logo: drawn by info.js, rotated like there. */
+.logo-pill {
+    width: 22px; height: 40px; flex-shrink: 0; transform: rotate(-30deg);
+    background: transparent no-repeat center / 100% 100%; image-rendering: pixelated;
+}
+.brand-img { height: 28px; width: auto; display: block; }
+
+/* PLAY NOW: the red pixel plate of the landing buttons (drawn by info.js). */
+.play-area { position: relative; display: flex; align-items: center; }
+.btn-play {
+    display: grid; place-items: center; width: 166px; height: 39px;
+    background: transparent var(--info-plate, none) center / 100% 100% no-repeat; image-rendering: pixelated;
+    font-family: 'Press Start 2P', monospace; font-size: 15px; color: #fff; text-transform: uppercase;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.75); filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55));
+    white-space: nowrap; cursor: pointer;
+}
+.btn-play:hover { color: #fff; filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.55)) brightness(1.15); }
+.btn-play:active { transform: translate(2px, 2px); }
+/* MODES / SKINS under PLAY NOW, same box as the landing dropdown. The padding
+   on top is a bridge so the hover is not lost on the way down. */
+.play-menu { display: none; position: absolute; top: 100%; right: 0; min-width: 100%; padding-top: 8px; z-index: 5; }
+.play-menu-box {
+    background: rgba(0,0,0,0.85); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px; overflow: hidden;
+}
+.play-menu-box a {
+    display: block; padding: 12px 16px; border: 0; border-bottom: 1px solid rgba(255,206,61,0.15);
+    font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--gold); text-align: center;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
+}
+.play-menu-box a:last-child { border-bottom: 0; }
+.play-menu-box a:hover { background: rgba(255,206,61,0.12); color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+    .play-area:hover .play-menu { display: block; }
+}
+/* Touch: a tap opens or closes the menu (see info.js), like on the landing. */
+.play-area.open .play-menu { display: block; }
+
+/* ===== Page body ===== */
+.wrap { width: 100%; max-width: 860px; margin: 0 auto; padding: clamp(26px, 6vw, 52px) clamp(14px, 4vw, 24px) 64px; }
+.wrap.wide { max-width: 980px; }
+h1 {
+    font-family: 'Press Start 2P', monospace; font-weight: normal; margin: 0;
+    font-size: clamp(20px, 5.4vw, 34px); line-height: 1.3; color: #fff; letter-spacing: 1px;
+    text-shadow: 4px 4px 0 #063e26, 8px 8px 0 rgba(0,0,0,0.55);
+}
+.upd { font-family: 'Press Start 2P', monospace; font-size: clamp(8px, 2.2vw, 10px); color: var(--gold); margin: 18px 0 26px; letter-spacing: 1px; line-height: 1.9; }
+.intro { margin: 0 0 8px; color: #e6f5ee; }
+h2.section {
+    font-family: 'Press Start 2P', monospace; font-weight: normal; margin: 40px 0 0;
+    font-size: clamp(12px, 3.2vw, 16px); line-height: 1.6; color: #fff; letter-spacing: 1px; text-transform: uppercase;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.7);
+}
+
+/* Panels: dark box, mint border and a hard pixel shadow, like the game popups. */
+.panel {
+    margin: 22px 0 0; padding: clamp(14px, 3.6vw, 22px) clamp(14px, 4vw, 26px);
+    background: rgba(6,12,9,0.9); border: 2px solid var(--mint);
+    box-shadow: 0 0 0 2px #000, 6px 6px 0 2px rgba(0,0,0,0.55);
+}
+.panel h2 {
+    font-family: 'Press Start 2P', monospace; font-weight: normal; margin: 0 0 14px;
+    font-size: clamp(11px, 3vw, 14px); line-height: 1.6; color: var(--mint); letter-spacing: 1px;
+    text-shadow: 2px 2px 0 #000;
+}
+.panel h3 {
+    font-family: 'Press Start 2P', monospace; font-weight: normal; margin: 0 0 10px;
+    font-size: clamp(9px, 2.4vw, 11px); line-height: 1.7; color: var(--muted); letter-spacing: 1px;
+}
+.panel p { margin: 0 0 10px; }
+.panel > :last-child { margin-bottom: 0; }
+.note, .muted { color: var(--muted); }
+
+/* Status boxes: same panel with the border in the colour of the verdict. */
+.panel.ok { border-color: var(--mint); }
+.panel.warn { border-color: var(--gold); }
+.panel.bad { border-color: var(--red); }
+.panel.ok b, .panel.warn b, .panel.bad b { color: #fff; font-weight: normal; }
+
+ul.items { list-style: none; margin: 0 0 10px; padding: 0; }
+ul.items li { position: relative; padding-left: 26px; margin: 0 0 10px; }
+ul.items li:last-child { margin-bottom: 0; }
+/* Pixel bullet: a lime square with a black outline, like the food in the arena. */
+ul.items li::before {
+    content: ''; position: absolute; left: 4px; top: 0.45em; width: 8px; height: 8px;
+    background: var(--lime); box-shadow: 0 0 0 2px #000;
+}
+
+/* Tables (treasury). Scroll sideways inside their own box on small screens. */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 21px; }
+th {
+    text-align: left; padding: 8px 10px; border-bottom: 2px solid rgba(0,255,136,0.35);
+    font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; letter-spacing: 1px; color: var(--muted);
+}
+td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+.num { text-align: right; white-space: nowrap; }
+
+/* Forms (contact, treasury balance check). */
+label {
+    display: block; margin: 18px 0 8px;
+    font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; color: var(--mint);
+}
+input[type=text], input[type=email], textarea, .input {
+    width: 100%; padding: 10px 12px; outline: none;
+    background: #0a0f0c; color: #fff; border: 2px solid rgba(0,255,136,0.35); border-radius: 0;
+    font-family: 'VT323', monospace; font-size: 22px; line-height: 1.2;
+}
+input[type=text]:focus, input[type=email]:focus, textarea:focus, .input:focus { border-color: var(--mint); }
+textarea { resize: vertical; min-height: 150px; }
+::placeholder { color: #5f7268; }
+
+.btn {
+    font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; line-height: 1.4;
+    padding: 11px 14px; cursor: pointer; color: #fff; background: #14171c;
+    border: 2px solid var(--mint); border-radius: 0; box-shadow: 3px 3px 0 #000; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
+}
+.btn:hover { background: var(--mint); color: #04150c; text-shadow: none; }
+.btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+.btn:disabled { opacity: 0.6; cursor: default; }
+.btn.big { width: 100%; margin-top: 24px; padding: 15px 14px; font-size: 12px; }
+
+/* BACK TO PILLWARS: the gold box of MODES/SKINS on the landing page. */
+.back {
+    display: inline-block; padding: 10px 14px; border: 1px solid rgba(255,206,61,0.4); border-radius: 8px;
+    font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 1px; color: var(--gold);
+    background: rgba(0,0,0,0.55); text-shadow: 2px 2px 0 rgba(0,0,0,0.75);
+}
+.back:hover { color: #fff; border-color: rgba(255,206,61,0.75); }
+.back.bottom { margin-top: 36px; }
+.back.top-left { margin: 0 0 24px; }
+
+.addr { display: block; margin-top: 8px; font-size: 18px; word-break: break-all; color: #7fa092; border: 0; }
+.addr:hover { color: #fff; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.vault .amt { font-family: 'Press Start 2P', monospace; font-size: clamp(16px, 3.6vw, 22px); line-height: 1.5; color: #fff; }
+.vault .amt small { font-size: 0.5em; color: var(--muted); }
+.vault.locked .amt { color: var(--gold); }
+.vault .sub { color: var(--muted); margin-top: 6px; }
+
+@media (max-width: 640px) {
+    :root { --bar-h: 56px; }
+    body { font-size: 21px; }
+    .brand { gap: 9px; }
+    .logo-pill { width: 17px; height: 31px; }
+    .brand-img { height: 19px; }
+    .btn-play { width: 128px; height: 30px; font-size: 11px; }
+    .play-menu-box a { font-size: 10px; padding: 11px 12px; }
+    .panel { box-shadow: 0 0 0 2px #000, 4px 4px 0 2px rgba(0,0,0,0.55); }
+    ul.items li { padding-left: 22px; }
+    .grid2 { grid-template-columns: 1fr; }
+    table { font-size: 19px; }
+}
+
+/* ===== Name box for PLAY NOW: the same one as the landing (#hero-name-modal) ===== */
+.name-modal {
+    display: none; position: fixed; inset: 0; z-index: 10001;
+    background: rgba(0,0,0,0.85); align-items: center; justify-content: center;
+}
+.name-modal.show { display: flex; }
+.name-box {
+    position: relative; width: 508px; max-width: calc(100vw - 32px); margin: 16px; padding: 44px 44px 40px;
+    background: transparent url('/game/img/cartel-hero/menu-gris.png') center / 100% 100% no-repeat; image-rendering: pixelated;
+    text-align: center; animation: nameBoxUp 0.3s ease-out;
+}
+@keyframes nameBoxUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.name-close {
+    position: absolute; top: 15px; right: 20px; width: 22px; height: 22px; padding: 0; border: 0; cursor: pointer;
+    background: transparent url('/game/img/cartel-hero/close-x-red.png') center / contain no-repeat; image-rendering: pixelated; opacity: 0.9;
+}
+.name-close:hover { opacity: 1; filter: brightness(1.25); }
+.name-title {
+    font-family: 'Press Start 2P', monospace; font-size: 15px; line-height: 24px; color: #c8cdd2;
+    text-transform: uppercase; text-shadow: 2px 2px 0 rgba(0,0,0,0.65); margin-bottom: 16px;
+}
+.name-box input.name-field {
+    width: 100%; padding: 11px 13px; outline: none; border-radius: 0;
+    background: #111; border: 1px solid #333; color: #fff;
+    box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6), inset -2px -2px 0 rgba(255,255,255,0.05);
+    font-family: 'Press Start 2P', monospace; font-size: 12px;
+}
+.name-box input.name-field:focus { border-color: #8a939c; }
+.name-go {
+    display: block; width: 68%; aspect-ratio: 15 / 2; margin: 18px auto 0; padding: 0; border: 0; cursor: pointer;
+    background: transparent url('/game/img/cartel-hero/btn-plain-grey.png') center / 100% 100% no-repeat; image-rendering: pixelated;
+    font-family: 'Press Start 2P', monospace; font-size: 12px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
+}
+.name-go:hover { filter: brightness(1.15); }
+.name-go:active { transform: translate(1px, 1px); }
+@media (max-width: 640px) {
+    .name-box { padding: 40px 26px 34px; }
+    .name-title { font-size: 12px; line-height: 20px; }
+    .name-go { width: 86%; }
+}

@@ -21,152 +21,111 @@
     <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Russo+One&display=swap" rel="stylesheet">
-    <style>
-        :root { --primary: #00ff88; --accent: #ff2a2a; --gold: #ffce3d; --bg: #050505; }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; background: var(--bg); color: #cfd3d6; font-family: 'Inter', sans-serif;
-            line-height: 1.65; font-size: 15px;
-            background-image: linear-gradient(rgba(0,255,136,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,136,0.05) 1px, transparent 1px);
-            background-size: 40px 40px;
-        }
-        .wrap { max-width: 860px; margin: 0 auto; padding: 50px 22px 80px; }
-        .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-        .pill { width: 34px; height: 18px; border-radius: 9px; background: linear-gradient(135deg, #fff 0 50%, var(--primary) 50% 100%); transform: rotate(-30deg); box-shadow: 0 0 14px rgba(0,255,136,0.5); }
-        h1 { font-family: 'Russo One', sans-serif; color: #fff; font-size: 30px; margin: 0; letter-spacing: 1px; }
-        h1 b { color: var(--primary); }
-        h2 { font-family: 'Russo One', sans-serif; color: var(--primary); font-size: 17px; margin: 38px 0 10px; text-shadow: 0 0 12px rgba(0,255,136,0.3); }
-        a { color: var(--primary); }
-        .upd { color: #777; font-size: 13px; margin-bottom: 26px; }
-        .box { background: rgba(15,20,15,0.7); border: 1px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 18px 22px; margin-top: 12px; }
-        b.k { color: #fff; }
-        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
-        .vault { background: rgba(15,20,15,0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 18px 20px; }
-        .vault.locked { border-color: rgba(255,206,61,0.35); }
-        .vault h3 { font-family: 'Russo One', sans-serif; font-size: 13px; margin: 0 0 4px; letter-spacing: 1px; text-transform: uppercase; color: #8b9199; }
-        .vault .amt { font-family: 'Russo One', sans-serif; font-size: 28px; color: #fff; line-height: 1.2; }
-        .vault.locked .amt { color: var(--gold); }
-        .vault .sub { font-size: 12px; color: #8b9199; margin-top: 6px; }
-        .addr { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; word-break: break-all; color: #6f757c; margin-top: 8px; display: block; }
-        .flag { border-radius: 10px; padding: 14px 18px; margin-top: 14px; font-size: 14px; }
-        .flag.ok { background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.35); }
-        .flag.bad { background: rgba(255,42,42,0.08); border: 1px solid rgba(255,42,42,0.4); }
-        .flag.warn { background: rgba(255,206,61,0.08); border: 1px solid rgba(255,206,61,0.35); }
-        .flag b { color: #fff; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        th { text-align: left; color: #8b9199; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-        td.num { text-align: right; font-variant-numeric: tabular-nums; }
-        .mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; color: #6f757c; }
-        .back { display: inline-block; margin-top: 40px; font-family: 'Russo One', sans-serif; color: var(--primary); text-decoration: none; border: 1px solid var(--primary); padding: 10px 20px; border-radius: 8px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; }
-        .back:hover { background: var(--primary); color: #04150c; }
-        .muted { color: #8b9199; font-size: 13px; }
-        ul { padding-left: 20px; }
-        li { margin-bottom: 8px; }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/info.css">
+    <script src="/info.js"></script>
 </head>
 <body>
-<div class="wrap">
-    <div class="logo"><div class="pill"></div><h1>PILL <b>WARS</b></h1></div>
-    <h1 style="font-size:22px; margin-top:14px;">Treasury</h1>
-    <div class="upd">Live from the chain. Nothing on this page is typed by hand — every number comes from
-        <a href="/api/treasury">/api/treasury</a>, and you can read the same accounts yourself on any explorer.</div>
+    <header class="top">
+        <a class="brand" href="/" aria-label="PillWars home">
+            <span class="logo-pill" aria-hidden="true"></span>
+            <img class="brand-img" src="/img/pixel-hero/brand.png" alt="PILLWARS">
+        </a>
+        <div class="play-area">
+            <a class="btn-play" href="/game/?heroplay=1&amp;name=">PLAY NOW</a>
+            <div class="play-menu">
+                <div class="play-menu-box">
+                    <a href="/game/">MODES</a>
+                    <a href="/game/?heroskins=1">SKINS</a>
+                </div>
+            </div>
+        </div>
+    </header>
 
-    <div id="app">
-        <div class="box muted">Loading…</div>
-    </div>
+    <main class="wrap wide">
+        <a class="back top-left" href="/">← BACK TO PILLWARS</a>
+        <h1>TREASURY</h1>
+        <p class="upd">LIVE FROM THE CHAIN</p>
+        <p class="intro">Nothing on this page is typed by hand: every number comes from <a href="/api/treasury">/api/treasury</a>, and you can read the same accounts yourself on any explorer.</p>
 
-    <h2>What this page proves, and what it doesn't</h2>
-    <p>Half of a transparency page is the part nobody likes writing. Here it is.</p>
-    <div class="box">
-        <p style="margin-top:0"><b class="k">Enforced by the contract — cannot be bypassed:</b></p>
-        <ul>
-            <li>Player money and project money live in <b class="k">two different accounts</b>. You can see both above.</li>
-            <li>Before the unlock date there is <b class="k">no instruction</b> that moves treasury tokens to an
-                address chosen at payout time. The only exit is a claim against a Merkle root published 48 h earlier,
-                and the recipient comes from the leaf — not from whoever signs.</li>
-            <li>The unlock date <b class="k">can only be pushed further away</b>, never brought closer.</li>
-            <li>Caps <b class="k">can only be tightened</b>. Once finalized, not even that.</li>
-        </ul>
-        <p><b class="k">Provable by publication — detectable, not prevented:</b></p>
-        <ul>
-            <li>That the winners are the ones from the leaderboard. Each day is hashed into a chain and published
-                <i>before</i> anyone knows who will win, and the full prize list sits on-chain as a Merkle root for
-                48 h before a single token moves.</li>
-            <li><b class="k">That the matches happened.</b> Receipt hashes are anchored on Solana every minute, so
-                the past cannot be invented after the fact — and each receipt carries the signature every player used
-                to enter the room, which we cannot forge.</li>
-            <li><b class="k">That we are not hiding what we owe you.</b> The full balance list is published with its
-                root anchored on-chain. Understating the debt means shaving somebody's balance, and they can check it
-                above.</li>
-        </ul>
-        <p><b class="k">Not guaranteed — say it out loud:</b></p>
-        <ul>
-            <li>If the program is still <b class="k">upgradeable</b>, everything above is decoration: a new version
-                could drain the vaults. That's why the upgrade authority is the first thing on this page.</li>
-            <li><b class="k">We could still run our own wallets.</b> Nothing tells our wallet apart from yours. What
-                stops it being free is that they must pay entries, must cross paths with enough distinct opponents to
-                qualify, and every match they play is anchored with a timestamp. It is not impossible — it is slow,
-                expensive and visible.</li>
-            <li><b class="k">We write the kills.</b> The game runs at 40 Hz off-chain; nobody can re-verify a match
-                from outside. Receipts prove a match existed at a given time and who signed into it; they do not prove
-                the score. The only thing that would close this is a multisig where one signer is not us.</li>
-            <li><b class="k">In-game balances are off-chain.</b> The contract knows how much sits in custody, not who
-                is owed what. That is what the liabilities snapshot is for.</li>
-        </ul>
-    </div>
+        <div id="app">
+            <div class="panel muted">Loading…</div>
+        </div>
 
-    <a class="back" href="/">← Back to PillWars</a>
-</div>
+        <h2 class="section">What this page proves, and what it doesn't</h2>
+        <section class="panel">
+            <p>Half of a transparency page is the part nobody likes writing. Here it is.</p>
+            <h3>ENFORCED BY THE CONTRACT: CANNOT BE BYPASSED</h3>
+            <ul class="items">
+                <li>Player money and project money live in <b class="k">two different accounts</b>. You can see both above.</li>
+                <li>Before the unlock date there is <b class="k">no instruction</b> that moves treasury tokens to an address chosen at payout time. The only exit is a claim against a Merkle root published 48 h earlier, and the recipient comes from the leaf, not from whoever signs.</li>
+                <li>The unlock date <b class="k">can only be pushed further away</b>, never brought closer.</li>
+                <li>Caps <b class="k">can only be tightened</b>. Once finalized, not even that.</li>
+            </ul>
+            <h3>PROVABLE BY PUBLICATION: DETECTABLE, NOT PREVENTED</h3>
+            <ul class="items">
+                <li>That the winners are the ones from the leaderboard. Each day is hashed into a chain and published <i>before</i> anyone knows who will win, and the full prize list sits on-chain as a Merkle root for 48 h before a single token moves.</li>
+                <li><b class="k">That the matches happened.</b> Receipt hashes are anchored on Solana every minute, so the past cannot be invented after the fact, and each receipt carries the signature every player used to enter the room, which we cannot forge.</li>
+                <li><b class="k">That we are not hiding what we owe you.</b> The full balance list is published with its root anchored on-chain. Understating the debt means shaving somebody's balance, and they can check it above.</li>
+            </ul>
+            <h3>NOT GUARANTEED: SAID OUT LOUD</h3>
+            <ul class="items">
+                <li>If the program is still <b class="k">upgradeable</b>, everything above is decoration: a new version could drain the vaults. That's why the upgrade authority is the first thing on this page.</li>
+                <li><b class="k">We could still run our own wallets.</b> Nothing tells our wallet apart from yours. What stops it being free is that they must pay entries, must cross paths with enough distinct opponents to qualify, and every match they play is anchored with a timestamp. It is not impossible: it is slow, expensive and visible.</li>
+                <li><b class="k">We write the kills.</b> The game runs at 40 Hz off-chain; nobody can re-verify a match from outside. Receipts prove a match existed at a given time and who signed into it; they do not prove the score. The only thing that would close this is a multisig where one signer is not us.</li>
+                <li><b class="k">In-game balances are off-chain.</b> The contract knows how much sits in custody, not who is owed what. That is what the liabilities snapshot is for.</li>
+            </ul>
+        </section>
+    </main>
 
 <script>
 const fmt = (n) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-// Enlaza a Solscan con el cluster que toque: en devnet, un enlace sin ?cluster
-// lleva a una cuenta que no existe y parece que la tesoreria esta vacia.
-const esDevnet = (rpc) => /devnet/i.test(rpc || '');
-const solscan = (dir, rpc) => 'https://solscan.io/account/' + dir + (esDevnet(rpc) ? '?cluster=devnet' : '');
-const solscanTx = (sig, rpc) => 'https://solscan.io/tx/' + sig + (esDevnet(rpc) ? '?cluster=devnet' : '');
+// Solscan link on the right cluster: on devnet, a link without ?cluster opens
+// an account that does not exist and the treasury looks empty.
+const isDevnet = (rpc) => /devnet/i.test(rpc || '');
+const solscan = (address, rpc) => 'https://solscan.io/account/' + address + (isDevnet(rpc) ? '?cluster=devnet' : '');
+const solscanTx = (sig, rpc) => 'https://solscan.io/tx/' + sig + (isDevnet(rpc) ? '?cluster=devnet' : '');
+const section = (title) => '<h2 class="section">' + esc(title) + '</h2>';
+const table = (html) => '<div class="table-scroll"><table>' + html + '</table></div>';
 
-function vault(titulo, sub, dato, rpc, locked) {
-    if (!dato) return '';
-    return '<div class="vault' + (locked ? ' locked' : '') + '">'
-        + '<h3>' + esc(titulo) + '</h3>'
-        + '<div class="amt">' + fmt(dato.balance) + ' <span style="font-size:14px;color:#8b9199">$PILL</span></div>'
+function vault(title, sub, data, rpc, locked) {
+    if (!data) return '';
+    return '<div class="panel vault' + (locked ? ' locked warn' : '') + '">'
+        + '<h3>' + esc(title) + '</h3>'
+        + '<div class="amt">' + fmt(data.balance) + ' <small>$PILL</small></div>'
         + '<div class="sub">' + esc(sub) + '</div>'
-        + '<a class="addr" href="' + solscan(dato.address, rpc) + '" target="_blank" rel="noopener">' + esc(dato.address) + '</a>'
+        + '<a class="addr" href="' + solscan(data.address, rpc) + '" target="_blank" rel="noopener">' + esc(data.address) + '</a>'
         + '</div>';
 }
 
-function pintaBloqueo(cfg) {
+function renderLock(cfg) {
     if (!cfg) return '';
     if (!cfg.bloqueado) {
-        return '<div class="flag warn"><b>The lock has expired.</b> The treasury can be withdrawn from freely as of '
+        return '<div class="panel warn"><b>The lock has expired.</b> The treasury can be withdrawn from freely as of '
             + esc(cfg.unlockDate.slice(0, 10)) + '.</div>';
     }
-    const anios = (cfg.diasParaDesbloqueo / 365).toFixed(1);
-    return '<div class="flag ok"><b>Locked for ' + fmt(cfg.diasParaDesbloqueo) + ' more days</b> (' + anios + ' years), '
+    const years = (cfg.diasParaDesbloqueo / 365).toFixed(1);
+    return '<div class="panel ok"><b>Locked for ' + fmt(cfg.diasParaDesbloqueo) + ' more days</b> (' + years + ' years), '
         + 'until ' + esc(cfg.unlockDate.slice(0, 10)) + '. Until then the only way out is a daily reward claimed by its winner. '
         + (cfg.finalized ? 'Parameters are <b>frozen</b>.' : 'Parameters can still be tightened (calibration phase).')
         + '</div>';
 }
 
-function pintaUpgrade(u) {
-    if (!u || !u.conocido) return '<div class="flag warn"><b>Upgrade authority: unknown.</b> Could not read it from the chain right now.</div>';
-    if (u.inmutable) return '<div class="flag ok"><b>The program is immutable.</b> The upgrade authority has been revoked: '
+function renderUpgrade(u) {
+    if (!u || !u.conocido) return '<div class="panel warn"><b>Upgrade authority: unknown.</b> Could not read it from the chain right now.</div>';
+    if (u.inmutable) return '<div class="panel ok"><b>The program is immutable.</b> The upgrade authority has been revoked: '
         + 'the code enforcing this lock cannot be replaced by anyone, including us.</div>';
-    return '<div class="flag bad"><b>The program is still upgradeable.</b> While this is the case, the lock guarantees nothing — '
+    return '<div class="panel bad"><b>The program is still upgradeable.</b> While this is the case, the lock guarantees nothing: '
         + 'whoever holds the upgrade authority (<span class="mono">' + esc(u.authority) + '</span>) could deploy a version '
         + 'that empties the vaults. This must be revoked before any of this counts.</div>';
 }
 
-function pintaReservas(d) {
+function renderReserves(d) {
     if (d.reservesRatio == null && !d.custody) return '';
-    if (d.obligaciones === 0) return '<div class="flag ok"><b>No player balances outstanding.</b> Nothing is owed right now.</div>';
+    if (d.obligaciones === 0) return '<div class="panel ok"><b>No player balances outstanding.</b> Nothing is owed right now.</div>';
     const ok = d.reservasCompletas;
-    return '<div class="flag ' + (ok ? 'ok' : 'bad') + '">'
+    return '<div class="panel ' + (ok ? 'ok' : 'bad') + '">'
         + '<b>Reserves ' + (ok ? 'fully backed' : 'SHORT') + '.</b> '
         + fmt(d.custody.balance) + ' $PILL in custody against ' + fmt(d.obligaciones) + ' $PILL owed to players'
         + (d.reservesRatio != null ? ' (' + (d.reservesRatio * 100).toFixed(2) + '%)' : '') + '.'
@@ -174,11 +133,12 @@ function pintaReservas(d) {
         + '</div>';
 }
 
-function pintaRondas(premios) {
-    const r = (premios && premios.rondas) || [];
-    if (!r.length) return '<div class="box muted">No reward rounds yet.</div>';
-    return '<table><thead><tr><th>Day</th><th>Epoch</th><th class="num">Prize pool</th><th class="num">Winners</th>'
-        + '<th class="num">Claimed</th><th>Merkle root</th></tr></thead><tbody>'
+function renderRounds(prizes) {
+    const r = (prizes && prizes.rondas) || [];
+    if (!r.length) return '<div class="panel muted">No reward rounds yet.</div>';
+    return '<div class="panel">'
+        + table('<thead><tr><th>DAY</th><th>EPOCH</th><th class="num">PRIZE POOL</th><th class="num">WINNERS</th>'
+        + '<th class="num">CLAIMED</th><th>MERKLE ROOT</th></tr></thead><tbody>'
         + r.map(x => '<tr>'
             + '<td>' + esc(x.date) + '</td>'
             + '<td class="mono">' + x.epoch + '</td>'
@@ -186,129 +146,129 @@ function pintaRondas(premios) {
             + '<td class="num">' + x.winners + '</td>'
             + '<td class="num">' + x.cobrados + '/' + x.winners + '</td>'
             + '<td class="mono"><a href="/api/rewards/' + x.epoch + '">' + esc(String(x.root).slice(0, 16)) + '…</a>'
-            + (x.publicada ? '' : ' <span style="color:#8b9199">(not published yet)</span>')
-            + (x.cancelled ? ' <span style="color:var(--accent)">cancelled</span>' : '')
+            + (x.publicada ? '' : ' <span class="muted">(not published yet)</span>')
+            + (x.cancelled ? ' <span style="color:var(--red)">cancelled</span>' : '')
             + '</td></tr>').join('')
-        + '</tbody></table>'
-        + '<p class="muted">Each root is the hash of that day\'s full prize list. Open the link, take the '
+        + '</tbody>')
+        + '<p class="muted" style="margin-top:14px">Each root is the hash of that day\'s full prize list. Open the link, take the '
         + '<code>{wallet, amountRaw}</code> pairs, rebuild the tree, and it has to give the same root that sits on-chain. '
-        + 'If it doesn\'t, the list you were shown is not the list that got paid.</p>';
+        + 'If it doesn\'t, the list you were shown is not the list that got paid.</p></div>';
 }
 
-function pintaPasivo(d) {
+function renderLiabilities(d) {
     const p = d.pasivo;
-    if (!p) return '<div class="box muted">No liabilities snapshot published yet.</div>';
-    const cubierto = d.custody ? d.custody.balance >= p.total : null;
-    let h = '<div class="flag ' + (cubierto === false ? 'bad' : 'ok') + '">'
+    if (!p) return '<div class="panel muted">No liabilities snapshot published yet.</div>';
+    const covered = d.custody ? d.custody.balance >= p.total : null;
+    let h = '<div class="panel ' + (covered === false ? 'bad' : 'ok') + '">'
         + '<b>' + fmt(p.total) + ' $PILL owed</b> across ' + fmt(p.wallets) + ' wallets, as of snapshot #' + p.snapshot + '.'
-        + (cubierto === true ? ' Fully covered by custody.' : cubierto === false ? ' <b>CUSTODY DOES NOT COVER IT.</b>' : '')
+        + (covered === true ? ' Fully covered by custody.' : covered === false ? ' <b>CUSTODY DOES NOT COVER IT.</b>' : '')
         + '</div>';
-    h += '<p class="muted">Saying how much you hold is easy. The hard half is proving how much you <b>owe</b> — '
+    h += '<div class="panel"><p class="muted">Saying how much you hold is easy. The hard half is proving how much you <b class="k">owe</b>: '
         + 'that number comes from our server. So the full balance list is published, its Merkle root is anchored on-chain, '
         + 'and each snapshot links to the previous one. To report a smaller debt we would have to shave somebody\'s balance, '
-        + 'and that somebody can see it.</p>';
-    h += '<div class="box"><b class="k">Check your own balance</b><br>'
-        + '<input id="wcheck" placeholder="paste your wallet address" style="width:100%;max-width:520px;margin-top:8px;padding:8px 10px;background:#0b0f0b;border:1px solid rgba(0,255,136,0.3);color:#cfd3d6;border-radius:6px;font-family:ui-monospace,monospace;font-size:12px">'
-        + '<button onclick="compruebaSaldo()" style="margin-left:8px;padding:8px 16px;background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:6px;cursor:pointer;font-family:inherit">Check</button>'
-        + '<div id="wresult" style="margin-top:12px"></div></div>';
-    h += '<p class="muted">Snapshot list: <a href="/api/reserves">/api/reserves</a> · '
+        + 'and that somebody can see it.</p>'
+        + '<label for="wcheck">CHECK YOUR OWN BALANCE</label>'
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap"><input id="wcheck" class="input" placeholder="Paste your wallet address" style="flex:1;min-width:220px">'
+        + '<button class="btn" onclick="checkBalance()">CHECK</button></div>'
+        + '<div id="wresult" style="margin-top:12px"></div>'
+        + '<p class="muted" style="margin-top:14px">Snapshot list: <a href="/api/reserves">/api/reserves</a> · '
         + 'this snapshot: <a href="/api/reserves/' + p.snapshot + '">/api/reserves/' + p.snapshot + '</a>'
         + (p.sig ? ' · <a href="' + solscanTx(p.sig, d.rpc) + '" target="_blank" rel="noopener">anchor tx</a>' : '')
-        + '</p>';
+        + '</p></div>';
     return h;
 }
 
-function pintaPartidas(d) {
+function renderMatches(d) {
     const m = d.partidas;
-    if (!m || !m.lotes) return '<div class="box muted">No match receipts anchored yet.</div>';
+    if (!m || !m.lotes) return '<div class="panel muted">No match receipts anchored yet.</div>';
     const ok = m.check && m.check.ok;
-    let h = '<div class="flag ' + (ok ? 'ok' : 'bad') + '">'
+    let h = '<div class="panel ' + (ok ? 'ok' : 'bad') + '">'
         + (ok ? '<b>' + fmt(m.lotes) + ' receipt batches anchored</b>, chain intact.'
               : '<b>Match receipt chain BROKEN.</b> A receipt changed after being anchored.')
         + (m.pendientes ? ' ' + m.pendientes + ' receipt(s) waiting for the next batch.' : '')
         + '</div>';
-    h += '<p class="muted">Every match writes a receipt, and every minute a batch of receipt hashes is anchored on Solana. '
-        + 'That means <b>the past cannot be invented</b>: yesterday\'s matches have yesterday\'s transactions. '
-        + 'Each receipt also carries the <b>signature each player used to enter the room</b> — we cannot put someone '
-        + 'in a match they did not play. Browse them at <a href="/api/matches/chain">/api/matches/chain</a>.</p>';
-    h += '<p class="muted">What no signature can prevent is us running our own wallets and playing against ourselves. '
+    h += '<div class="panel"><p class="muted">Every match writes a receipt, and every minute a batch of receipt hashes is anchored on Solana. '
+        + 'That means <b class="k">the past cannot be invented</b>: yesterday\'s matches have yesterday\'s transactions. '
+        + 'Each receipt also carries the <b class="k">signature each player used to enter the room</b>, so we cannot put someone '
+        + 'in a match they did not play. Browse them at <a href="/api/matches/chain">/api/matches/chain</a>.</p>'
+        + '<p class="muted">What no signature can prevent is us running our own wallets and playing against ourselves. '
         + 'That is why <a href="/api/matches/opponents">/api/matches/opponents</a> is public: a real player crosses paths '
         + 'with dozens of people, and a closed cluster of wallets does not. Below the minimum, a wallet does not enter '
-        + 'the daily leaderboard at all — no matter how many kills it piles up.</p>';
+        + 'the daily leaderboard at all, no matter how many kills it piles up.</p></div>';
     return h;
 }
 
-async function compruebaSaldo() {
+async function checkBalance() {
     const w = (document.getElementById('wcheck').value || '').trim();
     const out = document.getElementById('wresult');
     if (!w) { out.innerHTML = ''; return; }
     out.innerHTML = '<span class="muted">Checking…</span>';
     try {
         const r = await (await fetch('/api/reserves/proof?wallet=' + encodeURIComponent(w))).json();
-        if (!r || r.error) { out.innerHTML = '<span style="color:var(--accent)">' + esc(r && r.error || 'not found') + '</span>'; return; }
+        if (!r || r.error) { out.innerHTML = '<span style="color:var(--red)">' + esc(r && r.error || 'not found') + '</span>'; return; }
         out.innerHTML = r.incluida
-            ? '<div class="flag ok" style="margin:0"><b>' + fmt(r.saldo) + ' $PILL</b> for this wallet in snapshot #' + r.snapshot + '.'
+            ? '<div class="panel ok" style="margin:0"><b>' + fmt(r.saldo) + ' $PILL</b> for this wallet in snapshot #' + r.snapshot + '.'
               + '<br><span class="mono">proof: ' + r.proof.length + ' node(s) · root ' + esc(String(r.root).slice(0, 24)) + '…</span>'
               + '<br><span class="muted">If this is not what the game shows you, that is the discrepancy this page exists to expose.</span></div>'
-            : '<div class="flag warn" style="margin:0">This wallet is <b>not in the published list</b>, meaning we claim to owe it nothing. '
+            : '<div class="panel warn" style="margin:0">This wallet is <b>not in the published list</b>, meaning we claim to owe it nothing. '
               + 'If you have a balance in the game, that is a problem and you should say so publicly.</div>';
     } catch (e) {
-        out.innerHTML = '<span style="color:var(--accent)">' + esc(e.message) + '</span>';
+        out.innerHTML = '<span style="color:var(--red)">' + esc(e.message) + '</span>';
     }
 }
 
-function pintaCadena(lb) {
+function renderChain(lb) {
     if (!lb) return '';
     const c = lb.check || {};
-    const estado = c.ok
-        ? '<div class="flag ok"><b>Leaderboard chain intact</b> across ' + c.dias + ' days. '
+    const status = c.ok
+        ? '<div class="panel ok"><b>Leaderboard chain intact</b> across ' + c.dias + ' days. '
           + 'Latest hash <span class="mono">' + esc(String(c.ultimoHash).slice(0, 24)) + '…</span></div>'
-        : '<div class="flag bad"><b>Leaderboard chain BROKEN.</b> ' + (c.fallos || []).length + ' day(s) do not match what was published. '
+        : '<div class="panel bad"><b>Leaderboard chain BROKEN.</b> ' + (c.fallos || []).length + ' day(s) do not match what was published. '
           + 'Something rewrote a closed day.</div>';
-    return estado + '<p class="muted">Every day closes with <code>hash = sha256(previous_hash + that day\'s table)</code>, '
+    return status + '<div class="panel"><p class="muted">Every day closes with <code>hash = sha256(previous_hash + that day\'s table)</code>, '
         + 'so editing a past day to slip a wallet into a top 10 breaks every hash after it. '
-        + 'The whole chain is at <a href="/api/leaderboard/chain">/api/leaderboard/chain</a>.</p>';
+        + 'The whole chain is at <a href="/api/leaderboard/chain">/api/leaderboard/chain</a>.</p></div>';
 }
 
-// El render es una funcion suelta y no el cuerpo del .then para poder llamarlo con
-// datos de prueba desde la consola: render({...}) pinta la pagina entera sin tocar
-// el servidor, que es la unica forma de comprobar el aspecto de un estado que
-// todavia no existe (contrato desplegado, reservas cortas, cadena rota).
+// Rendering is a standalone function, not the body of the .then, so it can be
+// called with test data from the console: render({...}) draws the whole page
+// without the server, the only way to check how a state that does not exist
+// yet looks (contract deployed, short reserves, broken chain).
 function render(d) {
     const el = document.getElementById('app');
     let h = '';
 
     if (!d.programa) {
-        h += '<div class="flag warn"><b>The treasury contract is not deployed yet.</b> '
+        h += '<div class="panel warn"><b>The treasury contract is not deployed yet.</b> '
             + 'Right now player deposits and project funds still share a single wallet, and there is no time lock. '
-            + 'This page will show both vaults separately as soon as the program is live — '
-            + 'see <a href="https://github.com/VitDavid10/FlashGame/blob/main/TESORERIA-PLAN.md">the plan</a>.</div>';
+            + 'This page will show both vaults separately as soon as the program is live.</div>';
         if (d.treasuryOwnerLegacy) {
-            h += '<div class="box"><b class="k">Current wallet</b><a class="addr" href="' + solscan(d.treasuryOwnerLegacy, d.rpc) + '" target="_blank" rel="noopener">'
+            h += '<div class="panel"><h3>CURRENT WALLET</h3><a class="addr" href="' + solscan(d.treasuryOwnerLegacy, d.rpc) + '" target="_blank" rel="noopener">'
                 + esc(d.treasuryOwnerLegacy) + '</a></div>';
         }
     } else {
-        h += pintaUpgrade(d.upgradeAuthority);
-        h += '<h2>The two vaults</h2><div class="grid2">'
-            + vault('Custody — players\' money', 'Deposits. Withdrawable at any time. Not ours.', d.custody, d.rpc, false)
-            + vault('Treasury — locked', 'Project funds. Time-locked. Only pays daily rewards.', d.treasury, d.rpc, true)
+        h += renderUpgrade(d.upgradeAuthority);
+        h += section('The two vaults') + '<div class="grid2">'
+            + vault('Custody: players\' money', 'Deposits. Withdrawable at any time. Not ours.', d.custody, d.rpc, false)
+            + vault('Treasury: locked', 'Project funds. Time-locked. Only pays daily rewards.', d.treasury, d.rpc, true)
             + '</div>';
-        h += pintaBloqueo(d.config);
-        h += pintaReservas(d);
+        h += renderLock(d.config);
+        h += renderReserves(d);
 
         if (d.config) {
             const c = d.config;
-            h += '<h2>The tap</h2><div class="box">'
-                + '<table><tbody>'
+            h += section('The tap') + '<div class="panel">'
+                + table('<tbody>'
                 + '<tr><td>Max per day</td><td class="num">' + fmt(c.rewardCapPerEpoch) + ' $PILL</td></tr>'
                 + '<tr><td>Max share of treasury per day</td><td class="num">' + (c.rewardBpsPerEpoch / 100).toFixed(2) + '%</td></tr>'
                 + '<tr><td>Review window before a claim opens</td><td class="num">' + c.challengeHoras + ' h</td></tr>'
                 + '<tr><td>Currently reserved for unclaimed prizes</td><td class="num">' + fmt(c.reservado) + ' $PILL</td></tr>'
-                + '</tbody></table>'
-                + '<p class="muted" style="margin-bottom:0">Whichever of the first two is lower wins. Even a fully malicious operator '
+                + '</tbody>')
+                + '<p class="muted" style="margin-top:14px">Whichever of the first two is lower wins. Even a fully malicious operator '
                 + 'could not move more than this out per day, and every payout is public 48 h in advance.</p></div>';
 
-            h += '<h2>Lifetime totals</h2><div class="box"><table><tbody>'
+            h += section('Lifetime totals') + '<div class="panel">'
+                + table('<tbody>'
                 + '<tr><td>Deposited by players</td><td class="num">' + fmt(c.totales.depositado) + ' $PILL</td></tr>'
                 + '<tr><td>Withdrawn by players</td><td class="num">' + fmt(c.totales.retirado) + ' $PILL</td></tr>'
                 + '<tr><td>Funded into the treasury</td><td class="num">' + fmt(c.totales.aportado) + ' $PILL</td></tr>'
@@ -316,15 +276,16 @@ function render(d) {
                 + '<tr><td>Paid out as rewards</td><td class="num">' + fmt(c.totales.premiado) + ' $PILL</td></tr>'
                 + '<tr><td>Expired unclaimed</td><td class="num">' + fmt(c.totales.caducado) + ' $PILL</td></tr>'
                 + '<tr><td>Rounds published</td><td class="num">' + fmt(c.totales.rondas) + '</td></tr>'
-                + '</tbody></table><p class="muted" style="margin-bottom:0">Counters kept by the contract itself. Nobody can edit them.</p></div>';
+                + '</tbody>')
+                + '<p class="muted" style="margin-top:14px">Counters kept by the contract itself. Nobody can edit them.</p></div>';
         }
-        if (d.error) h += '<div class="flag warn"><b>Could not read part of the chain:</b> ' + esc(d.error) + '</div>';
+        if (d.error) h += '<div class="panel warn"><b>Could not read part of the chain:</b> ' + esc(d.error) + '</div>';
     }
 
-    h += '<h2>What we owe you</h2>' + pintaPasivo(d);
-    h += '<h2>Match receipts</h2>' + pintaPartidas(d);
-    h += '<h2>Daily reward rounds</h2>' + pintaRondas(d.premios);
-    h += '<h2>Leaderboard chain</h2>' + pintaCadena(d.leaderboard);
+    h += section('What we owe you') + renderLiabilities(d);
+    h += section('Match receipts') + renderMatches(d);
+    h += section('Daily reward rounds') + renderRounds(d.premios);
+    h += section('Leaderboard chain') + renderChain(d.leaderboard);
     h += '<p class="muted" style="margin-top:22px">Read live at ' + esc(d.generadoEn) + ' · RPC <span class="mono">' + esc(d.rpc) + '</span></p>';
 
     el.innerHTML = h;
@@ -332,7 +293,7 @@ function render(d) {
 
 fetch('/api/treasury').then(r => r.json()).then(render).catch(e => {
     document.getElementById('app').innerHTML =
-        '<div class="flag bad"><b>Could not load treasury data.</b> ' + esc(e.message) + '</div>';
+        '<div class="panel bad"><b>Could not load treasury data.</b> ' + esc(e.message) + '</div>';
 });
 </script>
 </body>
