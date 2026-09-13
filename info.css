@@ -184,6 +184,25 @@ textarea { resize: vertical; min-height: 150px; }
     .grid2 { grid-template-columns: 1fr; }
     table { font-size: 19px; }
 }
+/* PC: closer to the landing page, whose content is shown at 90% (zoom 0.9) with
+   16px running text and 22px section titles. At the sizes above (23px text, 34px
+   title) these pages looked about half as big again as the landing. This keeps a
+   little more size than the landing for reading a long page, and the same space
+   between lines as before (the letters get smaller, the ratio goes up). Phones
+   keep the sizes above untouched. */
+@media (min-width: 641px) {
+    body { font-size: 19px; line-height: 1.5; }
+    h1 { font-size: 26px; text-shadow: 3px 3px 0 #063e26, 6px 6px 0 rgba(0,0,0,0.55); }
+    .upd { font-size: 9px; margin: 16px 0 24px; }
+    .panel h2 { font-size: 13px; }
+    h2.section { font-size: 14px; }
+    .panel h3 { font-size: 10px; }
+    .wrap { max-width: 780px; }
+    .wrap.wide { max-width: 900px; }
+    table { font-size: 18px; }
+    .back { font-size: 10px; }
+    input[type=text], input[type=email], textarea, .input { font-size: 19px; }
+}
 
 /* ===== Name box for PLAY NOW: the same one as the landing (#hero-name-modal) ===== */
 .name-modal {
