@@ -12502,6 +12502,7 @@
                 try { SoundManager.play('select'); } catch (e) {}
             });
             cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
+            skinBobEngancha(cel, cel.querySelector('canvas'));
             grid.appendChild(cel);
         });
         updateSkinFoot();
@@ -12633,6 +12634,44 @@
         // Se reservan 15px por celda para la linea de texto (nombre).
         // Con el precio removido, se necesita menos espacio.
         return Math.max(14, Math.min(40, Math.floor(((alto - 4) / 2 - 15) / 2.12)));
+    }
+
+    /* Al pasar el raton por una skin, su pildora hace el mismo bob que la del
+       menu (renderMenuPill): el mismo seno de ~2.4 s y la misma amplitud
+       (menuDecoSettings.pillBobPx). Sin la respiracion: escalar el sprite un
+       1.5% volveria a dejar pixeles de distinto tamano. Solo se mueve la que
+       tiene el raton encima (un rAF para un unico canvas) y se para al salir,
+       al repintarse la rejilla o al cerrarse el cartel. En tactil no hay hover
+       que acabe, asi que ahi no se engancha. */
+    let _skinBob = null;
+    function skinBobEngancha(cel, cv) {
+        if (!cv) return;
+        cel.addEventListener('pointerenter', e => {
+            if (e.pointerType === 'touch') return;
+            skinBobPara();
+            const t0 = performance.now();
+            // Pixeles FISICOS por px CSS del canvas: el devicePixelRatio y la
+            // escala CSS del cartel (el pequeno va escalado por el layout).
+            const esc = (window.devicePixelRatio || 1) * cv.getBoundingClientRect().height / (parseFloat(getComputedStyle(cv).height) || 1);
+            const bob = { cv, raf: 0 };
+            const paso = now => {
+                if (!cv.isConnected || !cv.offsetParent) { skinBobPara(); return; }
+                // En pixeles FISICOS enteros: con medio pixel de pantalla el
+                // navegador remuestrea el sprite y el borde sale mal hecho.
+                const y = -Math.round(Math.sin((now - t0) / 380) * menuDecoSettings.pillBobPx * esc) / esc;
+                cv.style.transform = 'translateY(' + y + 'px)';
+                bob.raf = requestAnimationFrame(paso);
+            };
+            bob.raf = requestAnimationFrame(paso);
+            _skinBob = bob;
+        });
+        cel.addEventListener('pointerleave', () => { if (_skinBob && _skinBob.cv === cv) skinBobPara(); });
+    }
+    function skinBobPara() {
+        if (!_skinBob) return;
+        cancelAnimationFrame(_skinBob.raf);
+        _skinBob.cv.style.transform = '';
+        _skinBob = null;
     }
 
     /* ===== Orden propio del catalogo (se reordena arrastrando en el popup) =====
@@ -12792,11 +12831,12 @@
     function skinPrecioLargo() {
         return (PAIS_PRECIO_PILL | 0).toLocaleString('en-US') + ' $PILL';
     }
-    // Ancho logico de la pildora y lado en px de pantalla de cada pixel suyo,
-    // medidos de la celda YA colocada: la rejilla reparte el hueco del cartel,
-    // asi que al agrandar el popup la pildora crece con el. Se mide despues de
-    // pintar y, si cambia, se repinta una sola vez.
-    let skinBigWL = 46, skinBigPx = 1, _skinBigMidiendo = false;
+    // Ancho logico de la pildora y lado en px FISICOS de cada pixel suyo (con
+    // el devicePixelRatio con el que se midio), medidos de la celda YA
+    // colocada: la rejilla reparte el hueco del cartel, asi que al agrandar el
+    // popup la pildora crece con el. Se mide despues de pintar y, si cambia, se
+    // repinta una sola vez.
+    let skinBigWL = 46, skinBigPx = 1, skinBigDpr = 1, _skinBigMidiendo = false;
     // Lado de la celda (cuadrada) y, de ahi, el ancho logico de la pildora. Se
     // calcula A MANO en vez de dejarlo en 1fr + aspect-ratio porque esa pareja
     // es circular y el navegador la resolvia dandole al grid su tamano
@@ -12822,12 +12862,19 @@
         // hueco y se pintaba 1:1 (wL ~87, pixeles de 1 px): la pildora salia con
         // un detalle que no tiene en ningun otro sitio y dejaba de parecer pixel
         // art. Ahora cada pixel mide `px` de pantalla, el mas gordo posible
-        // hasta el de partida (PIX_SCREEN_PX) sin bajar de SB_WL_MIN. Entero,
-        // para que con image-rendering:pixelated todos los bloques midan igual.
-        const px = Math.max(1, Math.min(PIX_SCREEN_PX, Math.floor(hueco / 2.21 / SB_WL_MIN)));
-        const wL = Math.max(18, Math.min(120, Math.floor(hueco / px / 2.21)));
-        if (wL === skinBigWL && px === skinBigPx) return;
-        skinBigWL = wL; skinBigPx = px;
+        // hasta el de partida (PIX_SCREEN_PX) sin bajar de SB_WL_MIN.
+        // Ese tamano se redondea a pixeles FISICOS enteros: con Windows al 125%
+        // (devicePixelRatio 1.25) un pixel de 2 px CSS mide 2.5 reales y el
+        // navegador lo redondeaba a 2 o a 3 segun caia, asi que los bloques
+        // salian desiguales y el contorno "mal hecho". skinBigRender pinta el
+        // lienzo a resolucion fisica para que todos midan igual a cualquier
+        // escala de pantalla o zoom. Con devicePixelRatio 1 no cambia nada.
+        const pxCss = Math.max(1, Math.min(PIX_SCREEN_PX, Math.floor(hueco / 2.21 / SB_WL_MIN)));
+        const dpr = window.devicePixelRatio || 1;
+        const px = Math.max(1, Math.round(pxCss * dpr));
+        const wL = Math.max(18, Math.min(120, Math.floor(hueco * dpr / px / 2.21)));
+        if (wL === skinBigWL && px === skinBigPx && dpr === skinBigDpr) return;
+        skinBigWL = wL; skinBigPx = px; skinBigDpr = dpr;
         _skinBigMidiendo = true;
         try { skinBigRender(); } finally { _skinBigMidiendo = false; }
     }
@@ -12871,9 +12918,14 @@
             } else {
                 o = paisPillRot(WL, code, SKIN_ANG);
             }
-            cv.width = o.S; cv.height = o.S;
-            cv.style.width = cv.style.height = (o.S * skinBigPx) + 'px';
-            cv.getContext('2d').drawImage(o.cv, 0, 0);
+            // Lienzo a resolucion FISICA: cada pixel logico ocupa skinBigPx
+            // pixeles reales enteros y el CSS lo deja 1:1 con la pantalla.
+            const ladoDev = o.S * skinBigPx;
+            cv.width = ladoDev; cv.height = ladoDev;
+            cv.style.width = cv.style.height = (ladoDev / skinBigDpr) + 'px';
+            const gcv = cv.getContext('2d');
+            gcv.imageSmoothingEnabled = false;
+            gcv.drawImage(o.cv, 0, 0, ladoDev, ladoDev);
 
             const cod = document.createElement('div'); cod.className = 'sb-cod';
             if (esDefault) {
@@ -12926,6 +12978,7 @@
             // Click en la pildora = el cartel de detalle de siempre.
             if (!esDefault) cel.addEventListener('click', () => skinOpen(code));
             cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
+            skinBobEngancha(cel, cv);
             grid.appendChild(cel);
         });
         // Huecos vacios hasta 8: sin ellos la ultima pagina encoge la rejilla y
@@ -13052,6 +13105,7 @@
             cel.title = p.n;
             cel.addEventListener('click', () => skinOpen(p.code));
             cel.addEventListener('mouseenter', () => { try { SoundManager.playSimpleHover(); } catch (e) {} });
+            skinBobEngancha(cel, cv);
             grid.appendChild(cel);
         });
         updateSkinFoot();
