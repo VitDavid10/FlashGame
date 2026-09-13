@@ -2452,6 +2452,17 @@ setInterval(() => { const now = Date.now(); for (const [k, e] of rpcApiHits) if 
 
 const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
+    // www.pillwars.fun sirve la misma web que pillwars.fun, y Google las trata
+    // como dos sitios distintos: indexa cada página dos veces y guarda un
+    // favicon para cada uno. 301 (permanente) a la versión sin www, la misma
+    // que dice el canonical de cada página.
+    // Solo GET y HEAD: un POST redirigido con 301 llega como GET, y rompería
+    // la llamada de una pestaña que siguiera abierta en www desde antes.
+    const host = String(req.headers.host || '');
+    if ((req.method === 'GET' || req.method === 'HEAD') && /^www\./i.test(host)) {
+        res.writeHead(301, { Location: 'https://' + host.slice(4) + (req.url || '/') });
+        res.end(); return;
+    }
     // decodeURIComponent lanza URIError con escapes rotos (%zz): 400 en vez de
     // dejar la request colgada a merced del uncaughtException.
     let urlPath;
