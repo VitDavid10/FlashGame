@@ -2336,8 +2336,14 @@ function applySecurityHeaders(res) {
     res.setHeader('Content-Security-Policy', CSP_JUEGO);
     // HTTPS obligatorio durante un año: tras la primera visita el navegador ya no
     // prueba http:// ni deja saltarse un certificado malo. Por http (localhost) el
-    // navegador lo ignora, así que en local no molesta.
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+    // navegador lo ignora, así que en local no molesta. includeSubDomains: vale
+    // también para cualquier subdominio (hoy solo existe www, y va por HTTPS).
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    // Aísla la pestaña de las ventanas de otros orígenes: una web ajena que abra
+    // pillwars.fun (o que abramos nosotros, como la instalación de la wallet) no
+    // puede tocar esta ventana a través de window.opener. Los iframes no se ven
+    // afectados, y las wallets de extensión tampoco.
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
 }
 /*
  * CSP. El JS/CSS del juego y del panel va TODO inline, así que 'unsafe-inline'
