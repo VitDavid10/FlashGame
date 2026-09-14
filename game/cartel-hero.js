@@ -85,8 +85,11 @@ const CARTEL_HERO_READY_PROMISE = new Promise(r => { _cartelHeroGo = r; }).then(
     Promise.all(CARTEL_IDS.map(id => new Promise(resolve => {
         const img = new Image();
         img.onload = () => { _cartelImg.set(id, img); resolve(); };
-        img.onerror = () => resolve();
-        img.src = 'img/cartel-hero/' + id + '.png';
+        // WebP first: generated from the PNG next to it, a fraction of the
+        // weight, and this whole list is what PLAY NOW's loading screen waits
+        // for. If the WebP is missing or fails, the original PNG.
+        img.onerror = () => { if (img.src.endsWith('.webp')) img.src = 'img/cartel-hero/' + id + '.png'; else resolve(); };
+        img.src = 'img/cartel-hero/' + id + '.webp';
     }))));
 function cartelHeroLoad() { const go = _cartelHeroGo; if (go) { _cartelHeroGo = null; go(); } }
 
