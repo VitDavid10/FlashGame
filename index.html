@@ -1380,6 +1380,15 @@ body.trailer-open #page-content{
         #nav-menu-dd .dropdown-content { left: 0; right: auto; }
         #nav-menu-dd .dropdown-box { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px !important; overflow: hidden; backdrop-filter: blur(4px) !important; }
         #nav-menu-dd .dropbtn { cursor: pointer; }
+        /* MENU se ve como el icono de tres rayas (David), en el MISMO hueco: la
+           palabra sigue ahi —mide el hueco y la leen los lectores de pantalla—
+           pero sin pintar, y las rayas van encima con el color del texto. */
+        #nav-menu-dd .dropbtn { position: relative; -webkit-text-fill-color: transparent; text-shadow: none; }
+        #nav-menu-dd .dropbtn::before {
+            content: ""; position: absolute; left: calc(50% - 3px); top: 50%; width: 2.3em; height: 1.9167em; transform: translate(-50%, -50%);
+            background: linear-gradient(currentColor 0 20%, transparent 20% 40%, currentColor 40% 60%, transparent 60% 80%, currentColor 80% 100%);
+        }
+        #nav-menu-dd .dropbtn:hover::before { filter: drop-shadow(0 0 5px #fff); }
         /* Barra apretada: se cae el rotulo PILLWARS (el logo-pildora se queda) y
            PLAY NOW pasa a ocupar su sitio. Es lo que evita que, al aparecer PLAY
            NOW, MENU se vaya a la derecha y acabe encima de los iconos mientras
