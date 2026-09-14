@@ -4173,7 +4173,8 @@
 
                 <!-- VIDEO CORREGIDO (../video) -->
                 <div class="split-guide-box">
-                    <video id="guideVideo" class="split-video" src="../video/Split.mp4" autoplay loop muted playsinline></video>
+                    <!-- No src here: the clip is only requested when FEATURES opens (see openFeatures). -->
+                    <video id="guideVideo" class="split-video" loop muted playsinline></video>
                     <div class="split-explanation" id="guideText">
                         <span style="color:#00ffaa; font-weight:bold;">THE SPLIT (SPACE):</span>
                         <br>Essential for killing. You launch half your mass forward to eat enemies or escape. High risk, high reward. You can split into up to 16 pieces.
@@ -4515,12 +4516,14 @@
             var TINTE_SAT_MAX = 0.35;   // por encima de esto el pixel ya tiene color propio
             var video = document.getElementById('questPanelVideoSrc');
             var imagen = new Image();
+            // Landing background (hero=1): these panels are never shown there, so
+            // neither the video nor the image is downloaded.
+            var enLanding = document.documentElement.hasAttribute('data-hero');
             if (USAR_VIDEO) {
                 // El src va aqui y no en el html: con el cartel estatico, el mp4
                 // son 1 MB que no hacen falta y el navegador se los bajaba igual.
-                video.src = video.getAttribute('data-src');
-                video.play().catch(function () {});
-            } else {
+                if (!enLanding) { video.src = video.getAttribute('data-src'); video.play().catch(function () {}); }
+            } else if (!enLanding) {
                 imagen.src = 'img/cartel-hero/quest-panel-v2.png';
             }
             // La paleta de la pildora y el selector de 108 tonos YA NO entran
@@ -4957,7 +4960,9 @@
     // ?pwlab) y ademas conviene tenerlo descargado antes de elegir modo si te lo
     // piensas. 10s desde que se ve la pantalla de modos (que es desde el arranque):
     // para entonces la pagina ya termino y no le roba ancho de banda a nadie.
-    setTimeout(() => { cartelHeroLoad(); skillIconLoad(); }, 10000);
+    // Not in the landing background (hero=1): it never shows carteles, and
+    // PLAY NOW gets them in the game's own loading screen.
+    if (!document.documentElement.hasAttribute('data-hero')) setTimeout(() => { cartelHeroLoad(); skillIconLoad(); }, 10000);
     // Espaciado afinado de los carteles (carteles-layout.json). Se aplica
     // DESPUES del pixel-pack: son estilos inline, asi que ganan al CSS
     // !important del pack.
@@ -5008,16 +5013,14 @@
     window.addEventListener('storage', e => { if (e.key === 'pw_baseZoom') { const z = parseFloat(e.newValue); if (z > 0) ZOOM_CONFIG.baseScale = z; } });
     let enableEnemySnd = true;
 
-    // Landing background (hero=1): the music never plays there, and the two
-    // tracks weigh 11 MB. They are created with preload none and only start
-    // downloading MUSIC_DEFER_MS after the page opens (see init), so they don't
-    // compete with the landing while it loads. On the game page itself they
-    // download right away, behind the loading screen.
-    const MUSIC_DEFERRED = document.documentElement.hasAttribute('data-hero');
-    const MUSIC_DEFER_MS = 12000;
-    function musicTrack(src) {
+    // Landing background (hero=1): nothing plays there (heroAmbientDemo mutes
+    // everything), and the effects plus the two music tracks weigh 12 MB. There
+    // they are created with preload none and never downloaded; on the game page
+    // they download right away, behind the loading screen (see init).
+    const IS_HERO_BACKGROUND = document.documentElement.hasAttribute('data-hero');
+    function gameAudio(src) {
         const a = new Audio();
-        if (MUSIC_DEFERRED) a.preload = 'none';
+        if (IS_HERO_BACKGROUND) a.preload = 'none';
         a.src = src;
         return a;
     }
@@ -5030,24 +5033,24 @@
         lastCdTime: 0, lastKillTime: 0, lastSplitTime: 0, lastSimpleHoverTime: 0, lastFloatKillTime: 0,
         // CORREGIDO: Rutas a sonidos con ../
         sounds: { 
-            alert: new Audio('../snd/alert.mp3'), cd: new Audio('../snd/cd.mp3'), death: new Audio('../snd/death.mp3'),
+            alert: gameAudio('../snd/alert.mp3'), cd: gameAudio('../snd/cd.mp3'), death: gameAudio('../snd/death.mp3'),
             // Los tres nuevos. Hasta que los MP3 esten en snd/ dan 404 al
             // cargar y play() se traga el error: no suena nada y no rompe.
-            radar: new Audio('../snd/radar.mp3'),     // sale el cartel del radar
-            top10: new Audio('../snd/top10.mp3'),     // entras en el top 10
-            top1: new Audio('../snd/top1.mp3'),       // te pones primero
-            hover: new Audio('../snd/hover.mp3'), iman: new Audio('../snd/iman.mp3'), kill1: new Audio('../snd/kill1.mp3'),
-            select: new Audio('../snd/select.mp3'), shield: new Audio('../snd/shield.mp3'),
-            shoot: new Audio('../snd/shoot.mp3'), simplehover: new Audio('../snd/simplehover.mp3'), simpleselect: new Audio('../snd/simpleselect.mp3'),
-            split: new Audio('../snd/split.mp3'), sprint: new Audio('../snd/sprint.mp3'), timer: new Audio('../snd/timer.mp3'),
-            tp: new Audio('../snd/tp.mp3'), big: new Audio('../snd/big.mp3'), little: new Audio('../snd/little.mp3'),
-            virus: new Audio('../snd/virus.mp3'), floatkill: new Audio('../snd/floatkill.mp3'),
-            money: new Audio('../snd/money.mp3'),     // caja registradora del botin de la kill
-            go: new Audio('../snd/GO.mp3'),
-            contador: new Audio('../snd/contador.mp3')
+            radar: gameAudio('../snd/radar.mp3'),     // sale el cartel del radar
+            top10: gameAudio('../snd/top10.mp3'),     // entras en el top 10
+            top1: gameAudio('../snd/top1.mp3'),       // te pones primero
+            hover: gameAudio('../snd/hover.mp3'), iman: gameAudio('../snd/iman.mp3'), kill1: gameAudio('../snd/kill1.mp3'),
+            select: gameAudio('../snd/select.mp3'), shield: gameAudio('../snd/shield.mp3'),
+            shoot: gameAudio('../snd/shoot.mp3'), simplehover: gameAudio('../snd/simplehover.mp3'), simpleselect: gameAudio('../snd/simpleselect.mp3'),
+            split: gameAudio('../snd/split.mp3'), sprint: gameAudio('../snd/sprint.mp3'), timer: gameAudio('../snd/timer.mp3'),
+            tp: gameAudio('../snd/tp.mp3'), big: gameAudio('../snd/big.mp3'), little: gameAudio('../snd/little.mp3'),
+            virus: gameAudio('../snd/virus.mp3'), floatkill: gameAudio('../snd/floatkill.mp3'),
+            money: gameAudio('../snd/money.mp3'),     // caja registradora del botin de la kill
+            go: gameAudio('../snd/GO.mp3'),
+            contador: gameAudio('../snd/contador.mp3')
         },
-        music: musicTrack('../snd/music.mp3'), startTimer: null,
-        menuMusic: musicTrack('../snd/menu.mp3'),
+        music: gameAudio('../snd/music.mp3'), startTimer: null,
+        menuMusic: gameAudio('../snd/menu.mp3'),
         init: function() {
             if(localStorage.getItem('pillwars_muted') === 'true') { this.muted = true; document.getElementById('soundToggle').classList.add('muted'); }
             this.music.loop = true; this.menuMusic.loop = true; this.applyMusicVolume();
@@ -5055,9 +5058,8 @@
             this.menuMusicMuted = localStorage.getItem('pillwars_menu_music_muted') === 'true';
             this.music.muted = this.musicMuted; this.menuMusic.muted = this.menuMusicMuted;
             this.syncMusicBtn();
-            for(let key in this.sounds) { this.sounds[key].load(); }
-            const loadMusic = () => { for (const m of [this.music, this.menuMusic]) { m.preload = 'auto'; m.load(); } };
-            if (MUSIC_DEFERRED) setTimeout(loadMusic, MUSIC_DEFER_MS); else loadMusic();
+            // Landing background: nothing plays, so nothing is downloaded (see gameAudio).
+            if (!IS_HERO_BACKGROUND) { for (let key in this.sounds) { this.sounds[key].load(); } this.music.load(); this.menuMusic.load(); }
             this.cargaPrepara();
         },
         // El icono del boton refleja el mute de la musica que toca ahora mismo.
@@ -8817,7 +8819,11 @@
     }
     function openSettings() { SoundManager.play('simpleselect'); document.getElementById('settingsModal').style.display = 'flex'; }
     function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
-    function openFeatures() { SoundManager.play('simpleselect'); document.getElementById('featuresModal').style.display = 'flex'; }
+    function openFeatures() {
+        SoundManager.play('simpleselect'); document.getElementById('featuresModal').style.display = 'flex';
+        // The guide clip is requested the first time the modal opens, not with the page.
+        if (!document.getElementById('guideVideo').getAttribute('src')) updateGuideUI();
+    }
     function closeFeatures() { document.getElementById('featuresModal').style.display = 'none'; }
 
     // --- Paleta de la pildora (popup pequeno, tipo Paint refinado) ---
