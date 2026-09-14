@@ -15695,7 +15695,11 @@
         els.lbList.innerHTML = html;
     }
 
-    const fpsInterval = 1000 / 60; let then = performance.now();
+    // De fondo en la landing (hero=1) va a 40 fps: es decoracion, y cada frame
+    // pintado cuesta volcarlo al compositor — medido por traza, era casi toda la
+    // CPU de la landing. La velocidad no cambia (timeScale va por tiempo). En
+    // una pantalla de 60 Hz salen 2 de cada 3 frames.
+    const fpsInterval = 1000 / (IS_HERO_BACKGROUND ? 40 : 60); let then = performance.now();
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
     // Sin estado "neutral" (los dos portales a la vez): el selector de modo
     // arranca SIEMPRE en ARCADE, a peticion de David — ya no restaura el

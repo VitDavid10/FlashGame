@@ -205,7 +205,7 @@
         /* image-rendering SE HEREDA: sin esto, el pixelated de <body> llegaria a
            TODAS las imagenes de la pagina (capturas, iconos de wallet, tooltips).
            Las que si deben verse pixeladas lo piden por su propia clase mas
-           abajo (.hero-img, .skill-icon, #heroDecoCv...), que gana a este reset. */
+           abajo (.skill-icon...), que gana a este reset. */
         img, canvas, video { image-rendering: auto; }
 
         /* ARTE NO ARRASTRABLE: el drag nativo del navegador dejaba coger el PNG
@@ -724,17 +724,8 @@
 
         /* HERO */
         .hero-video-wrapper { position: relative; width: 100%; height: 100vh; min-height: 500px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--primary); }
-        /* Deco vieja del hero (fondo pixel + comida/virus/pildoras de mentira):
-           sustituida por el juego real de fondo (.hero-game-wrap). Se deja en
-           el DOM oculta en vez de borrarla — HeroPlay mas abajo sigue leyendo
-           heroDecoCv y heroPickMe sin comprobar null en varios sitios.
-           heroTitleWrap (PILLWARS / THE CRYPTO ARENA) tambien fuera: con el
-           juego real de fondo sobra, el contrato (heroCaSign/heroCaWrap) es la
-           info que queda. Misma razon para no borrarlo: EDIT LAYOUT y la
-           animacion "comido" de HeroPlay lo siguen leyendo. */
-        #heroDecoCv, #heroPickMe, #heroTitleWrap { display: none !important; }
         /* El juego real de fondo: iframe a game/?hero=1, con un velo oscuro
-           encima (dim) y los 3 botones. Mismo hueco que ocupaba heroDecoCv.
+           encima (dim) y los 3 botones. Ocupa el hero entero.
            pointer-events:none en el iframe: es decoracion pura (una pill en
            autopiloto, ver heroAmbientDemo en game/index.html), y sin esto
            cualquier movimiento de raton real se colaria como input dentro del
@@ -767,7 +758,7 @@
             display: flex; flex-direction: column; align-items: center; gap: 14px; pointer-events: none; transition: opacity .25s ease; }
         /* is-waiting: the title is still showing (it comes first). */
         .hero-loading.is-waiting, .hero-loading.is-done { opacity: 0; }
-        /* PILLWARS / THE CRYPTO ARENA (same letters as the .hero-txt fallback).
+        /* PILLWARS / THE CRYPTO ARENA.
            It shows first, on its own, for a moment; then the LOADING takes its
            place. If the game ends up running smoothly the title isn't needed; if
            it doesn't (slow device), the LOADING goes away and the title comes back
@@ -776,15 +767,13 @@
         .hero-load-title { position: absolute; left: 50%; top: 0; z-index: 3; transform-origin: 50% 0; text-align: center;
             white-space: nowrap; pointer-events: none; visibility: hidden; transition: opacity .25s ease; }
         .hero-load-title.is-hidden { opacity: 0; }
-        /* If the title PNG fails, .hero-txt already shows these same words. */
-        .hero-video-wrapper:has(.hero-main-content.no-img) .hero-load-title { display: none; }
         .hero-loading-txt { font-family: 'Press Start 2P', monospace; font-size: 14px; line-height: 1; color: #fff;
             letter-spacing: 2px; text-shadow: 3px 3px 0 #000; }
         .hero-loading-track { width: min(336px, 70vw); height: 22px; background: #050505;
             box-shadow: 0 0 0 3px #000, inset 0 0 0 3px #1b2a22; }
         .hero-loading-fill { width: 0; height: 100%; background-repeat: repeat-x; background-size: 16px 100%;
             background-image: linear-gradient(90deg, #eaf6f0 0 12px, transparent 12px 16px); }
-        /* Los 3 botones van en la mitad de ARRIBA: heroTitleWrap esta oculto,
+        /* Los 3 botones van en la mitad de ARRIBA: el hero no lleva titulo,
            asi que .hero-main-content (el contrato, z-index:2 por encima) se
            centra ahora mas corto y le queda el centro/mitad de abajo — sin
            esto los botones y la caja del contrato se pisaban en el mismo
@@ -894,52 +883,6 @@
            vacio. Se ciñe al boton. */
         #nav-play-area .dropdown-content { min-width: 100%; }
         #nav-play-area:hover .dropdown-content { display: block; }
-        /* Pildora "PICK ME!": el rotulo en neon encima y la pill pixel debajo.
-           Al clicarla se esconde y toma el control la pill del canvas. */
-        #heroPickMe { cursor: pointer !important; user-select: none; }
-        .pick-me-label {
-            font-family: 'Press Start 2P', monospace; font-size: var(--fs-2); color: #aaffdd;
-            text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
-            margin-bottom: 6px; white-space: nowrap; animation: pickMeGlow 1.4s ease-in-out infinite;
-        }
-        @keyframes pickMeGlow { 50% { opacity: .55; } }
-        .pick-me-pill { display: block; margin: 0 auto; image-rendering: pixelated; }
-        #heroPickMe:hover .pick-me-pill { filter: brightness(1.06); }
-        /* Mientras juegas, en el hueco del PICK ME! se lee ESC TO LEAVE (la tecla
-           que suelta el control). La pill de aqui se oculta con visibility, NO con
-           display: asi sigue ocupando su sitio y el rotulo no se mueve — la pill
-           que se ve entonces es la del canvas, que es la que llevas. */
-        .esc-to-leave { display: none; }
-        #heroPickMe.playing .pick-me-label:not(.esc-to-leave) { display: none; }
-        #heroPickMe.playing .esc-to-leave { display: block; }
-        #heroPickMe.playing .pick-me-pill { visibility: hidden; }
-        #heroPickMe.playing { cursor: default !important; }
-        /* Titulo devorado por la pill jugable: se va, pero sigue ocupando su
-           hueco para que no salte el resto del hero. Vuelve al soltar el control.
-           Se anima con `transform`, no con translate/scale, porque esas dos las
-           usa el layout del hero (apply()) y se pisarian. */
-        .hero-title-wrap.eaten { animation: heroTitleEaten .42s cubic-bezier(.5, -0.2, .75, .2) forwards; pointer-events: none; }
-        .hero-title-wrap.vuelve { animation: heroTitleVuelve .34s cubic-bezier(.2, 1.5, .5, 1); }
-        @keyframes heroTitleEaten {
-            0%   { transform: none;                        opacity: 1; filter: none; }
-            30%  { transform: scale(1.05);                 opacity: 1; filter: brightness(2.4); }
-            100% { transform: scale(.12) skewX(14deg);     opacity: 0; filter: brightness(3); }
-        }
-        @keyframes heroTitleVuelve {
-            0%   { transform: scale(.35); opacity: 0; }
-            100% { transform: none;       opacity: 1; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .hero-title-wrap.eaten { animation: none; opacity: 0; }
-            .hero-title-wrap.vuelve { animation: none; }
-        }
-        /* THE CRYPTO ARENA bajo el PILLWARS pixel: misma fuente y mismo neon
-           que el rotulo PICK ME (sin el parpadeo). */
-        .hero-sub {
-            display: none; font-family: 'Press Start 2P', monospace; font-size: var(--fs-3);
-            letter-spacing: 6px; color: #aaffdd; margin-top: 6px; white-space: nowrap;
-            text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
-        }
         /* ===== Rotulo + caja del contrato =====
            Mismo formato que la barra IN GAME (.wallet-bal-box) y el desplegable
            de $PILL: fondo negro translucido, filo dorado, esquinas de 8px, blur
@@ -1984,7 +1927,7 @@ body.trailer-open #page-content{
            !important es necesario: el layout llega como estilo INLINE (apply()
            del layout del hero) y no hay forma de ganarle desde la hoja. */
         @media (max-width: 600px) {
-            #heroTitleWrap, #heroPlayNow, #heroCaSign, #heroCaWrap, #navPlayNow {
+            #heroPlayNow, #heroCaSign, #heroCaWrap, #navPlayNow {
                 translate: none !important; scale: 1 !important;
             }
             .hero-main-content { scale: 1 !important; padding: 0 14px; }
@@ -2054,15 +1997,6 @@ body.trailer-open #page-content{
         @media (max-width: 768px) {
             body { cursor: auto !important; }
             #custom-cursor { display: none !important; }
-            /* La pildora jugable pide raton: en tactil no se puede llevar, y su
-               sitio esta calculado en px de escritorio. Fuera en movil. */
-            #heroPickMe { display: none !important; }
-            /* height fija + width auto -> a 120px de alto el titulo pide 592px
-               de ancho pase lo que pase. Al reves (ancho al 100%, alto libre)
-               entra siempre y conserva la proporcion. */
-            body.pixel-pack .hero-main-content:not(.no-img) .hero-img {
-                height: auto !important; width: 100% !important;
-            }
             /* 220 y no 260: es el mismo ancho que en escritorio (.hero-play.btn-connect
                mas arriba). Con 260 el boton se hacia MAS GRANDE al cruzar a movil
                en vez de mas pequeño — justo lo contrario de lo que se quiere al
@@ -2123,7 +2057,6 @@ body.trailer-open #page-content{
             
             .big-title { font-size: var(--fs-8); }
             .big-subtitle { font-size: var(--fs-3); letter-spacing: 4px; }
-            .hero-sub { font-size: var(--fs-1); letter-spacing: 3px; margin-top: 10px; }
             
             .main-layout { flex-direction: column; margin-top: 80px; } /* Menos margen top */
             .trailer-box { aspect-ratio: 16/9; width: 100%; }
@@ -2278,28 +2211,17 @@ body.trailer-open #page-content{
            titulos ARCADE/CLASSIC del juego). ===== */
         /* aspect-ratio = las medidas EXACTAS del PNG. Con `height` fijo y
            `width:auto`, hasta que la imagen no llega el navegador no sabe lo
-           que ocupa de ancho y le reserva CERO: el hero se pintaba con el
-           titulo colapsado y daba el tiron al terminar de bajar los 385 KB.
-           Con la proporcion declarada el hueco esta hecho desde el primer
-           fotograma y la imagen aparece dentro, sin mover nada. */
+           que ocupa de ancho y le reserva CERO, y el rotulo daba el tiron al
+           llegar. Con la proporcion declarada el hueco esta hecho desde el
+           primer fotograma y la imagen aparece dentro, sin mover nada. */
         /* Sin pixelated, por el MISMO motivo que .hero-play (ver su comentario):
-           estos dos PNG no son rejilla dura, son arte "estilo pixel" con los
-           bordes suavizados — medido, el 85% de sus rachas de color son de 1px.
-           Y encima se pintan MUY por debajo de su tamaño nativo (hero-title.png
-           es de 1200px de ancho y se ve a ~490), asi que el vecino mas cercano
-           de `pixelated` tiene que tirar 3 de cada 5 columnas: los bordes salen
-           dentados y el halo a bandas. El escalado normal del navegador es el
-           que corresponde aqui. */
-        .hero-img, .bn-img { display: none; image-rendering: auto; }
-        .hero-img { aspect-ratio: 1200 / 243; }   /* hero-title.png */
-        .bn-img   { aspect-ratio: 640 / 97; }     /* brand.png (navbar) */
-        /* --pw-glow: multiplicador del radio de los dos halos del titulo,
-           editable desde EDIT LAYOUT (grupo TITLE GLOW) y guardado en el layout
-           junto a la posicion y la escala. 1 = el valor de diseño, 0 = sin halo.
-           Mismo mecanismo que --title-glow en game/index.html. */
-        body.pixel-pack .hero-main-content:not(.no-img) .hero-img { display: inline-block; height: 120px; width: auto; filter: drop-shadow(0 0 calc(16px * var(--pw-glow, 1)) rgba(0,255,136,0.6)) drop-shadow(0 0 calc(38px * var(--pw-glow, 1)) rgba(0,255,136,0.35)) drop-shadow(6px 6px 0 rgba(0,0,0,0.5)) brightness(1.08); }
-        body.pixel-pack .hero-main-content:not(.no-img) .hero-sub { display: block; }
-        body.pixel-pack .hero-main-content:not(.no-img) .hero-txt { display: none; }
+           este PNG no es rejilla dura, es arte "estilo pixel" con los bordes
+           suavizados, y se pinta muy por debajo de su tamaño nativo: el vecino
+           mas cercano de `pixelated` tiraria columnas y los bordes saldrian
+           dentados. El escalado normal del navegador es el que corresponde. */
+        .bn-img { display: none; image-rendering: auto; aspect-ratio: 640 / 97; }   /* brand.png (navbar) */
+        /* El titulo del hero es el juego de fondo: el h1 va en el DOM pero no se ve. */
+        body.pixel-pack .hero-main-content .hero-txt { display: none; }
         /* 32px, no 44: el PNG de la navbar va SIN glow, asi que su caja es toda
            letra. Con los 44 de la version con halo el rotulo salia un tercio mas
            grande y se comia el hueco de los nav-links. */
@@ -2423,13 +2345,12 @@ body.trailer-open #page-content{
          now lives in HERO_LAYOUT_HORNEADO. -->
     <script>
     window.HERO_LAYOUT_ELS = {
-        title: '#heroTitleWrap', play: '#heroPlayNow',
+        play: '#heroPlayNow',
         // MODES y SKINS, que cuelgan de PLAY NOW. UNA sola clave para los DOS
         // (selector con comas): apply() usa querySelectorAll, asi que el
         // translate/scale se aplica igual a los dos y nunca quedan a distinta
         // altura.
         heroLinks: '#heroChooseModes, #heroChooseSkins',
-        pickMe: '#heroPickMe',
         caSign: '#heroCaSign', ca: '#heroCaWrap',
         // ===== Piezas de la NAVBAR =====
         // Las coloca el flex de .navbar (space-between), asi que aguantan
@@ -2457,12 +2378,10 @@ body.trailer-open #page-content{
     };
     window.HERO_LAYOUT_HORNEADO = {
         zoom: 0.8,
-        title:        { x: 23, y: -120.75, s: 1.0613635506250012, b: 0.3 },
         // PLAY NOW y MODES/SKINS (heroLinks) van desplazados casi lo mismo en x
         // (11.5 y 12.5): asi quedan alineados entre si.
         play:         { x: 11.5, y: 320.5, s: 1.896879821797035 },
         heroLinks:    { x: 12.5, y: 343.75, s: 1.0456783749999996 },
-        pickMe:       { x: -444.5, y: -7.25, s: 2.4798680723250732 },
         caSign:       { x: 13.5, y: 224.75, s: 1.0772840038843767, f: 13 },
         ca:           { x: 16, y: 232.75, s: 1.2135524440334573 },
         // Navbar: retoques finos sobre el sitio que les da el flex.
@@ -2668,10 +2587,7 @@ body.trailer-open #page-content{
     <div class="ticker-wrap" id="ticker-wrap"><div class="ticker"><div class="ticker-item">Loading Market Data...</div></div></div>
 
     <!-- HERO -->
-    <!-- El video de rejilla verde (mixkit) se cambio por el fondo pixel del juego,
-         que pinta heroDecoCv junto con la comida/virus/pildoras. -->
     <div class="hero-video-wrapper" id="hero">
-        <canvas id="heroDecoCv"></canvas>
         <!-- El juego REAL de fondo: iframe al propio /game (misma origen, asi
              que index.html puede llamar funciones dentro sin postMessage, ver
              HeroGame mas abajo). Un velo oscuro encima con los 3 botones tapa
@@ -2821,22 +2737,6 @@ body.trailer-open #page-content{
             <div class="hero-txt">
                 <h1 class="big-title">PILLWARS</h1>
                 <div class="big-subtitle">THE CRYPTO ARENA</div>
-            </div>
-            <!-- Titulo pixel: el PNG solo trae PILLWARS; THE CRYPTO ARENA va
-                 debajo como texto, con la misma fuente/neon que el PICK ME. -->
-            <div id="heroTitleWrap" class="hero-title-wrap">
-                <img class="hero-img" id="heroTitle" src="img/pixel-hero/hero-title.png" alt="PillWars" onerror="this.closest('.hero-main-content').classList.add('no-img')">
-                <div class="hero-sub">THE CRYPTO ARENA</div>
-            </div>
-            <!-- heroPickMe queda en el DOM pero oculto (ver #heroPickMe{display:none}):
-                 HeroPlay sigue leyendola sin comprobar null en varios sitios, y su
-                 lienzo (heroDecoCv) tambien esta oculto ahora que el fondo es el
-                 iframe del juego real, asi que "tomar el control" ya no tiene donde
-                 dibujarse aunque se dejara visible. -->
-            <div id="heroPickMe" title="Take control">
-                <div class="pick-me-label">PICK ME!</div>
-                <div class="pick-me-label esc-to-leave">ESC TO LEAVE</div>
-                <canvas class="pick-me-pill" width="86" height="86"></canvas>
             </div>
             <!-- Rotulo y caja del contrato: los dos con el MISMO formato que la
                  barra IN GAME / el desplegable de $PILL (fondo negro
@@ -5519,161 +5419,21 @@ function toggleTrailerMode() {
         if (window.App && window.App.Wallet && window.App.Wallet.address) window.App.Market.fetchWar(window.App.Wallet.address);
     </script>
 
-    <!-- ===== FONDO PIXEL DE LA PAGINA + DECO DEL HERO =====
-         El fondo de la landing pasa a ser el MISMO tile pixel del menu del juego
+    <!-- ===== FONDO PIXEL DE LA PAGINA + LAYOUT DEL HERO =====
+         El fondo de la landing es el MISMO tile pixel del menu del juego
          (_msV2Tile: base tintada + moteado + linea de rejilla gorda), respetando
-         la celda de 50px que ya tenia la web. Dentro del "cuadro" del hero (de la
-         linea verde de la navbar a la linea verde de abajo) atraviesan comida,
-         virus y pildoras de distintos tamaños con los sprites del juego, entrando
-         y saliendo por los bordes. El canvas va DETRAS del contenido: las
-         pildoras pasan por debajo del titulo. -->
+         la celda de 50px que ya tenia la web. Aqui vivia tambien la deco vieja
+         del hero (comida, virus y pildoras en un canvas, y la pill jugable PICK
+         ME!): se quito entera, el fondo del hero es el juego real (iframe). -->
     <script>
     (() => {
         'use strict';
-        // --- Sprites pixel: port de game/index.html (pixDotSprite / pixVirusSprite
-        // / pixPillSpriteRot) para que la deco sea exactamente la del juego. ---
-        const PILL_RATIO = 2.0;
-        const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
-        function pixRgb(col) { probe.clearRect(0, 0, 1, 1); probe.fillStyle = col; probe.fillRect(0, 0, 1, 1); const d = probe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
-        function pixShade(rgb, amt) { const t = amt < 0 ? 0 : 255, a = Math.abs(amt); return 'rgb(' + rgb.map(v => Math.round(v + (t - v) * a)).join(',') + ')'; }
-        const SPR = { dot: new Map(), virus: new Map(), pillRot: new Map() };
-
-        function pixDotSprite(dL, col) {
-            const key = dL + '|' + col;
-            let spr = SPR.dot.get(key); if (spr) return spr;
-            spr = document.createElement('canvas'); spr.width = dL; spr.height = dL;
-            const g = spr.getContext('2d'), rgb = pixRgb(col), R = dL / 2;
-            const inside = (x, y) => { if (x < 0 || y < 0 || x >= dL || y >= dL) return false; const dx = x + 0.5 - R, dy = y + 0.5 - R; return dx * dx + dy * dy <= (R - 0.1) * (R - 0.1); };
-            for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
-                if (!inside(x, y)) continue;
-                let c2;
-                if (dL >= 6 && (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1))) c2 = pixShade(rgb, -0.5);
-                else if (x + y > dL) c2 = pixShade(rgb, -0.22);
-                else c2 = 'rgb(' + rgb.join(',') + ')';
-                g.fillStyle = c2; g.fillRect(x, y, 1, 1);
-            }
-            g.fillStyle = 'rgba(255,255,255,0.55)'; const hp = Math.max(1, Math.floor(dL / 5));
-            g.fillRect(Math.floor(dL * 0.25), Math.floor(dL * 0.25), hp, hp);
-            SPR.dot.set(key, spr); return spr;
-        }
-
-        // Virus verde del juego (t=0: sin el tinte morado de las variantes).
-        function pixVirusSprite(dL) {
-            let spr = SPR.virus.get(dL); if (spr) return spr;
-            spr = document.createElement('canvas'); spr.width = dL; spr.height = dL;
-            const g = spr.getContext('2d'), R = dL / 2 - 0.5;
-            const rgbF = pixRgb('#9EE32D'), rgbD = pixRgb('#3E8E11');
-            const teeth = dL >= 36 ? 16 : 12;
-            const rr = (a) => R * (0.82 + 0.18 * (0.5 + 0.5 * Math.cos(a * teeth)));
-            const inside = (x, y) => { if (x < 0 || y < 0 || x >= dL || y >= dL) return false; const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2; return Math.sqrt(dx * dx + dy * dy) <= rr(Math.atan2(dy, dx)); };
-            for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
-                if (!inside(x, y)) continue;
-                const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2, d = Math.sqrt(dx * dx + dy * dy);
-                let col;
-                if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = pixShade(rgbD, -0.15);
-                else if (!inside(x + 2, y) || !inside(x, y + 2)) col = pixShade(rgbF, -0.3);
-                else if (!inside(x - 2, y) || !inside(x, y - 2)) col = pixShade(rgbF, 0.3);
-                else if (dL >= 20 && Math.abs(d - R * 0.58) < Math.max(1, dL / 40)) col = 'rgb(' + rgbD.join(',') + ')';
-                else if (dL >= 20 && d < R * 0.30) col = pixShade(rgbF, dx + dy < 0 ? -0.16 : -0.32);
-                else col = 'rgb(' + rgbF.join(',') + ')';
-                g.fillStyle = col; g.fillRect(x, y, 1, 1);
-            }
-            g.fillStyle = 'rgba(0,0,0,0.25)';
-            const spots = [[0.36, 0.42], [0.62, 0.36], [0.58, 0.64]], sr = Math.max(1, Math.round(dL / 12));
-            for (const s of spots) g.fillRect(Math.round(dL * s[0]), Math.round(dL * s[1]), sr, sr);
-            g.fillStyle = 'rgba(255,255,255,0.35)';
-            g.fillRect(Math.round(dL * 0.30), Math.round(dL * 0.24), Math.max(1, Math.round(dL / 10)), Math.max(1, Math.round(dL / 16)));
-            SPR.virus.set(dL, spr); return spr;
-        }
-
-        /* --- Pill YA ORIENTADA, port 1:1 de pixPillSpriteRot() del juego (rama
-         * detailed). El hero es una parte jugable, asi que sus pills tienen que
-         * ser EXACTAMENTE las de partida: cuerpo plano por mitad, tres bandas de
-         * reborde en el propio color con grosor direccional (fino en la parte
-         * iluminada, gordo en la punta de sombra), costura entre mitades y
-         * brillo en rombo duro. Sin contorno negro y sin sombra proyectada.
-         *
-         * El sprite se hornea girado dentro de un lienzo cuadrado y se dibuja SIN
-         * ctx.rotate(): rotando en runtime los pixeles caen torcidos y el
-         * contorno se rompe. El angulo se cuantiza a 16 pasos (22.5 grados),
-         * igual que ya hace el virus de esta misma escena. --- */
-        const PIX_ROT_STEP = Math.PI * 2 / 16;
-        // Los mismos que el juego: hasta que ancho logico crecen las bandas a
-        // ritmo normal, y a que ritmo lo hacen por encima.
-        // REF mas bajo que el del juego (24): las pills del hero son mas
-        // pequenas de base y a David le gusta que frenen desde antes.
-        const PIX_BAND_REF = 6, PIX_BAND_SLOW = 0.40;
-        function pixPillSpriteRot(wL, cTop, cBot, ang) {
-            const qa = Math.round(ang / PIX_ROT_STEP) * PIX_ROT_STEP;
-            const key = wL + '|' + Math.round(qa / PIX_ROT_STEP) + '|' + cTop + '|' + cBot;
-            let o = SPR.pillRot.get(key); if (o) return o;
-            if (SPR.pillRot.size > 500) SPR.pillRot.clear();
-            const hL = Math.round(wL * PILL_RATIO), R = wL / 2, seg = hL / 2 - R, RI = R - 0.1;
-            const c = Math.cos(qa), s = Math.sin(qa);
-            const S = Math.ceil(Math.max(wL * Math.abs(c) + hL * Math.abs(s), wL * Math.abs(s) + hL * Math.abs(c))) + 2;
-            const cv = document.createElement('canvas'); cv.width = S; cv.height = S;
-            const g = cv.getContext('2d'), rgbT = pixRgb(cTop), rgbB = pixRgb(cBot);
-            const img = g.createImageData(S, S), px = img.data;
-            const sd = (x, y) => {
-                const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
-                const cy = ly < -seg ? -seg : ly > seg ? seg : ly;
-                return Math.hypot(lx, ly - cy);
-            };
-            const inside = (x, y) => (x < 0 || y < 0 || x >= S || y >= S) ? false : sd(x, y) <= RI;
-            const LX = -0.6, LY = -0.8;   // luz arriba-izquierda en pantalla
-            // Grosores medidos sobre pill ~38-46 px; crecen 1:1 solo hasta
-            // PIX_BAND_REF y luego se frenan, para que la pill gorda no acabe con
-            // un sombron. Mismo calculo que el juego.
-            const kR = wL / 38, kB = PIX_BAND_REF / 38;
-            const kD = kR <= kB ? kR : kB + (kR - kB) * PIX_BAND_SLOW;
-            for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-                if (!inside(x, y)) continue;
-                const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
-                const rgb = ly < 0 ? rgbT : rgbB;
-                const cy = ly < -seg ? -seg : ly > seg ? seg : ly;
-                const rad = Math.hypot(lx, ly - cy);
-                let nx = lx, ny = ly - cy; const nl = rad || 1; nx /= nl; ny /= nl;
-                const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY;   // -1 sombra .. 1 luz
-                const edge = RI - rad;
-                const u = Math.max(0, Math.min(1, (1 - ndl) * 0.5));           // 0 luz .. 1 sombra
-                const w1 = (1.05 + 1.7 * u) * kD, w2 = (2.6 + 4.2 * u) * kD, w3 = (4.2 + 6.8 * u) * kD;
-                let amt;
-                if (Math.abs(ly) < 1.45 * kD) amt = -0.30;                     // costura
-                else if (edge < w1) amt = -0.44;                               // reborde
-                else if (edge < w2) amt = -0.30;                               // banda media
-                else if (u > 0.18 && edge < w3) amt = -0.15;                   // media-suave (sombra)
-                else amt = 0;
-                const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * S + x) << 2);
-                px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
-            }
-            // Brillo en rombo manhattan, en coordenadas locales de la capsula.
-            // Con tantas pills sueltas por el hero (deco + la jugable) el brillo
-            // a maxima intensidad (.95 en el centro) se acumulaba en pantalla y
-            // se veia todo muy iluminado; bajado a la mitad, mismo tamaño.
-            const glx = -0.40 * R, gly = -0.48 * (seg + R);
-            const gx = S / 2 + (glx * c - gly * s), gy = S / 2 + (glx * s + gly * c);
-            const gr = Math.max(2, Math.round(wL * 0.145));
-            for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-                if (!inside(x, y)) continue;
-                const md = Math.abs(x + 0.5 - gx) + Math.abs(y + 0.5 - gy);
-                if (md > gr) continue;
-                const a = md <= gr * 0.45 ? 0.48 : md <= gr * 0.75 ? 0.38 : 0.24;
-                const i = ((y * S + x) << 2);
-                px[i] += (255 - px[i]) * a; px[i + 1] += (255 - px[i + 1]) * a; px[i + 2] += (255 - px[i + 2]) * a;
-            }
-            g.putImageData(img, 0, 0);
-            o = { cv: cv, S: S }; SPR.pillRot.set(key, o); return o;
-        }
-
         // --- Tile del fondo: NEGRO como el de siempre, pero con el acabado
         // pixel del juego (moteado sutil + linea de rejilla gorda en vez del
         // degradado de 1.5px). La celda sigue midiendo 50px en pantalla: se
         // pinta a 25 px logicos y se escala x2 sin suavizar, asi que cada
         // "pixel" del fondo mide 2px. ---
         const PIX = 2;                    // px de pantalla por pixel logico
-        // Zoom del cuadro (solo lo toca el boton ZOOM del editor): <1 = alejarse,
-        // el contenido se encoge y cabe mas escena. 1 = vista normal.
-        let heroZoom = 1;
         const CELL = 50 / PIX;            // 25 px logicos = los cuadrados de 50px de siempre
         const GRID_LINE = 'rgb(0,40,22)';  // verde muy apagado, como el degradado que habia
         const tile = (() => {
@@ -5690,527 +5450,16 @@ function toggleTrailerMode() {
         })();
         document.body.style.setProperty('--pix-tile', 'url(' + tile.toDataURL() + ')');
 
-        // ===== ESCENA DEL HERO (coordenadas LOGICAS: x2 para pantalla) =====
-        // Comida y virus QUIETOS (como en el menu del juego: los virus solo
-        // giran). Las pildoras NPC cruzan el cuadro hacia la derecha, cada una
-        // con su rumbo y su ondulacion, esquivando el titulo y el PLAY NOW. Y
-        // una pill JUGABLE que toma el control al clicar en "PICK ME!".
-        const FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
-        const PILL_COLORS = ['#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d', '#ff5533', '#b46cff'];
-        const N_FOOD = 120, N_VIRUS = 4, N_NPC = 7;
-        const VIRUS_R = 30;               // radio logico (60 de diametro = 120px de pantalla)
-        const rnd = (a, b) => a + Math.random() * (b - a);
-        const pick = a => a[(Math.random() * a.length) | 0];
-        // Las NPC pasean: mas gordas, mas lentas (misma idea que en partida).
-        const npcSpeed = r => 55 * Math.pow(11 / r, 0.42);
-        const GIRO_MAX = 3.0;              // rad/s: lo rapido que una pill puede virar
-
-        // Sonido del mini-juego del hero: los MISMOS clips que en partida, pero a
-        // la MITAD de volumen — esto es una landing, no un juego a pantalla
-        // completa. Solo suena mientras tienes el control de la pill, y para
-        // entonces el navegador ya tiene el gesto del usuario (el click de PICK
-        // ME), asi que el autoplay no lo bloquea. Los clips no se descargan hasta
-        // que empiezas a jugar (preload=none + heroSnd.carga()).
-        const HERO_VOL = 0.5;
-        const heroSnd = (() => {
-            const clips = {}, ultimo = {};
-            for (const n of ['kill1', 'split', 'virus', 'big']) {
-                const a = new Audio('snd/' + n + '.mp3');
-                a.volume = HERO_VOL; a.preload = 'none';
-                clips[n] = a;
-            }
-            // Antirrebote POR clip: comerte tres pills en el mismo frame no debe
-            // disparar el sonido tres veces (mismo criterio que playKill del juego).
-            const f = (n, minMs = 150) => {
-                const a = clips[n]; if (!a) return;
-                const t = performance.now();
-                if (t - (ultimo[n] || 0) < minMs) return;
-                ultimo[n] = t;
-                try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {}
-            };
-            f.carga = () => { for (const n in clips) { clips[n].preload = 'auto'; clips[n].load(); } };
-            // Solo kill1: el sorteo kill1/kill2 pedia un snd/kill2.mp3 que NO
-            // existe, asi que la mitad de las veces comerse una pill no sonaba.
-            f.kill = () => f('kill1');
-            return f;
-        })();
-
-        const scene = { food: [], virus: [], npcs: [], w: 0, h: 0, last: 0 };
-
-        function newFood(w, h) { return { x: Math.random() * w, y: Math.random() * h, r: rnd(3, 6), col: pick(FOOD_COLORS) }; }
-        // Altura al azar DENTRO de la mitad libre (por debajo de la banda
-        // prohibida). Nacer arriba y bajar esquivando se veia como un embudo de
-        // pills cayendo en diagonal; naciendo ya abajo, cruzan rectas.
-        function yLibre(h, r) {
-            const desde = (scene.banda ? scene.banda.fondo : 0) + r * 1.3 + 24;
-            return desde >= h * 1.05 ? rnd(desde, desde + h * 0.15) : rnd(desde, h * 1.05);
-        }
-        // Todas las pills cruzan el cuadro hacia la DERECHA, pero cada una a su
-        // manera: su propio angulo, su propia velocidad y una ondulacion suave
-        // con fase y amplitud distintas. Ademas esquivan la banda prohibida
-        // (titulo, subtitulo, botones y todo lo que quede por encima).
-        function newNpc(w, h) {
-            const r = Math.round(rnd(9, 26));
-            const ang = rnd(-0.30, 0.30);     // rumbo propio, siempre hacia la derecha
-            return {
-                x: Math.random() * w, y: yLibre(h, r), r,
-                ang,
-                spdMul: rnd(0.7, 1.45),       // unas van mas lanzadas que otras
-                wobA: rnd(0.10, 0.45),        // amplitud de la ondulacion (rad)
-                wobF: rnd(0.25, 0.75),        // y su frecuencia
-                wobP: Math.random() * Math.PI * 2,
-                dir: ang,                     // nace ya apuntando a su rumbo (el giro es gradual)
-                esq: false,                   // esta esquivando una zona de la UI
-                top: '#ffffff', bot: pick(PILL_COLORS),
-            };
-        }
-        // Reaparece por la izquierda, a una altura al azar, con otro tamaño y
-        // color: el desfile no se agota aunque te las comas.
-        function npcRespawn(n, w, h) {
-            const nuevo = newNpc(w, h);
-            Object.assign(n, nuevo);
-            n.x = -n.r * (1 + PILL_RATIO);
-            n.y = yLibre(h, n.r);
-        }
-
-        // Rects (en coords logicas del canvas) de la UI del hero + la franja de
-        // navbar/ticker. Comida y virus estan QUIETOS, asi que uno que caiga
-        // encima del titulo o del cartel se queda ahi molestando: se colocan
-        // fuera de estas zonas. `evitar` es el subconjunto que ademas esquivan
-        // las pills al pasar (titulo y PLAY NOW).
-        const UI_SELS = ['#heroTitleWrap', '#heroPlayNow', '#heroPickMe', '#heroCaSign', '#heroCaWrap'];
-        function logicRect(el) {
-            const rc = cv.getBoundingClientRect();
-            if (!rc.width || !rc.height) return null;
-            const b = el.getBoundingClientRect();
-            if (b.width <= 0 || b.height <= 0) return null;
-            const sx = cv.width / rc.width, sy = cv.height / rc.height;
-            return { x: (b.left - rc.left) * sx, y: (b.top - rc.top) * sy, w: b.width * sx, h: b.height * sy };
-        }
-        function heroUiRects(sels, conBarra) {
-            const out = [];
-            const rc = cv.getBoundingClientRect();
-            if (conBarra && rc.height) out.push({ x: 0, y: 0, w: cv.width, h: 120 * (cv.height / rc.height) });
-            for (const sel of sels) {
-                const el = document.querySelector(sel); if (!el) continue;
-                if (sel === '#heroTitleWrap' && scene.tituloComido) continue;
-                const r = logicRect(el); if (r) out.push(r);
-            }
-            return out;
-        }
-        // Media parte de arriba del cuadro: PROHIBIDA para las pills del desfile.
-        // Va del borde superior hasta debajo del PLAY NOW, pasando por el titulo
-        // (que incluye THE CRYPTO ARENA dentro del wrap), asi que no se ve
-        // ninguna pill ni por encima del titulo ni cruzandolo a el, al subtitulo
-        // o a los botones. De ahi para abajo (cartel del contrato, contrato) van
-        // libres. Es UNA banda y no un rect por elemento a proposito: dos zonas
-        // sueltas dejaban un pasillo entre medias por el que se colaban.
-        function bandaProhibida() {
-            const rc = cv.getBoundingClientRect();
-            if (!rc.height) return null;
-            let fondo = 120 * (cv.height / rc.height);          // navbar + ticker
-            for (const sel of ['#heroTitleWrap', '.hero-play-row']) {
-                if (sel === '#heroTitleWrap' && scene.tituloComido) continue;
-                const el = document.querySelector(sel); if (!el) continue;
-                const r = logicRect(el); if (r) fondo = Math.max(fondo, r.y + r.h);
-            }
-            // Se desborda por los lados y por arriba: una pill que entre por el
-            // borde ya nace dentro de la zona y sale hacia abajo desde el principio.
-            return { x: -1e4, y: -1e4, w: cv.width + 2e4, h: 1e4 + fondo, fondo };
-        }
-        const covered = (x, y, rad, rects) => rects.some(b => x + rad > b.x && x - rad < b.x + b.w && y + rad > b.y && y - rad < b.y + b.h);
-        function placeFree(make, rects, tries) {
-            let o = make();
-            for (let t = 0; t < tries && covered(o.x, o.y, o.r || VIRUS_R, rects); t++) o = make();
-            return o;
-        }
-
-        // Solo recalcula las zonas prohibidas, sin tocar lo que ya hay en el
-        // cuadro. Es lo que hace falta cuando la UI cambia (te comes el titulo):
-        // rebuildScene() vaciaba comida, virus Y desfile, y se veia toda la
-        // escena saltar de golpe en el momento del bocado.
-        function refreshZonas() {
-            scene.zonas = heroUiRects(UI_SELS, true);
-            scene.banda = bandaProhibida();
-        }
-
-        // Recalcula las zonas y reubica SOLO lo que haya quedado debajo de la UI,
-        // dejando en su sitio todo lo demas. Es lo que toca cuando cambian los
-        // rects pero no el cuadro: al acabar de cargar las imagenes del hero
-        // (hasta entonces miden 0 y no estorban a nadie).
-        function reubicaTapados() {
-            refreshZonas();
-            const z = scene.zonas, w = scene.w, h = scene.h;
-            if (!w || !h) return;
-            for (const f of scene.food)
-                if (covered(f.x, f.y, f.r, z)) Object.assign(f, placeFree(() => newFood(w, h), z, 40));
-            for (let i = scene.virus.length - 1; i >= 0; i--) {
-                const v = scene.virus[i];
-                if (!covered(v.x, v.y, VIRUS_R * 1.4, z)) continue;
-                scene.virus.splice(i, 1);
-                spawnVirus(w, h);
-            }
-        }
-
-        function buildScene(w, h) {
-            scene.food.length = 0; scene.virus.length = 0; scene.npcs.length = 0;
-            const zonas = scene.zonas = heroUiRects(UI_SELS, true);
-            scene.banda = bandaProhibida();
-            for (let i = 0; i < N_FOOD; i++) scene.food.push(placeFree(() => newFood(w, h), zonas, 40));
-            // Virus repartidos, sin solaparse entre ellos y fuera de la UI. Si
-            // para alguno no hay hueco, se queda sin poner: un virus de menos no
-            // se nota, uno encima del PLAY NOW si.
-            for (let i = 0; i < N_VIRUS; i++) spawnVirus(w, h);
-            for (let i = 0; i < N_NPC; i++) scene.npcs.push(newNpc(w, h));
-        }
-        function spawnVirus(w, h) {
-            for (let t = 0; t < 300; t++) {
-                const v = { x: rnd(VIRUS_R, w - VIRUS_R), y: rnd(VIRUS_R, h - VIRUS_R), seed: (Math.random() * 1000) | 0 };
-                if (covered(v.x, v.y, VIRUS_R * 1.4, scene.zonas || [])) continue;
-                if (!scene.virus.every(o => Math.hypot(o.x - v.x, o.y - v.y) > VIRUS_R * 3)) continue;
-                scene.virus.push(v); return v;
-            }
-            return null;
-        }
-
-        function stepScene(w, h, dt) {
-            scene.t = (scene.t || 0) + dt;
-            for (const n of scene.npcs) {
-                // Rumbo = su angulo + su ondulacion + la esquiva de la UI.
-                const objetivo = n.ang + Math.sin(scene.t * n.wobF + n.wobP) * n.wobA + esquiva(n);
-                // El rumbo se PERSIGUE, no se teletransporta: la esquiva salta de
-                // golpe al entrar/salir de una zona, y como el sprite se pinta
-                // tumbado hacia n.dir, esos saltos se veian como giros secos de
-                // 40-70 grados encadenados (la pill "girando como loca" al pasar
-                // cerca del titulo).
-                const paso = GIRO_MAX * dt;
-                n.dir += Math.max(-paso, Math.min(paso, objetivo - n.dir));
-                const dir = n.dir;
-                const sp = npcSpeed(n.r) * n.spdMul;
-                n.x += Math.cos(dir) * sp * dt; n.y += Math.sin(dir) * sp * dt;
-                const m = n.r * (1 + PILL_RATIO);
-                if (n.x > w + m || n.y < -h * 0.35 || n.y > h * 1.35) npcRespawn(n, w, h);
-            }
-            HeroPlay.step(w, h, dt);
-        }
-        // Desvio vertical para que ninguna pill entre en la banda prohibida (ver
-        // bandaProhibida): siempre hacia ABAJO, que es el unico lado libre, y con
-        // mas fuerza cuanto mas metida esta. Devuelve el incremento de angulo.
-        // El limite se ENSANCHA mientras la pill ya esta esquivando: sin esa
-        // histeresis su propio desvio la sacaba del rango, dejaba de esquivar, el
-        // bamboleo la volvia a meter, y asi frame tras frame — de ahi los tirones
-        // repetidos al pasar cerca del titulo.
-        function esquiva(n) {
-            const b = scene.banda; if (!b) { n.esq = false; return 0; }
-            const limite = b.fondo + n.r * 1.2 + 22 + (n.esq ? 34 : 0);
-            if (n.y > limite) { n.esq = false; return 0; }
-            n.esq = true;
-            const urgencia = Math.min(1, (limite - n.y) / Math.max(1, limite));
-            return 0.55 + 0.75 * urgencia;
-        }
-
-        function drawPill(g, x, y, r, rot, top, bot) {
-            // El sprite se hornea a la MITAD del tamaño en pantalla y se estira al
-            // doble: asi el pixel del bicho mide lo mismo que el del fondo. Ya
-            // viene girado, por eso no hay ctx.rotate() aqui.
-            const wL = Math.max(6, Math.round(r));
-            const o = pixPillSpriteRot(wL, top, bot, rot);
-            const u = (r * 2) / wL;
-            g.drawImage(o.cv, x - o.S / 2 * u, y - o.S / 2 * u, o.S * u, o.S * u);
-        }
-
-        function drawScene(g, now) {
-            for (const f of scene.food) {
-                const spr = pixDotSprite(Math.max(3, Math.round(f.r)), f.col);
-                g.drawImage(spr, f.x - f.r, f.y - f.r, f.r * 2, f.r * 2);
-            }
-            for (const v of scene.virus) {
-                // Giro cuantizado de siempre (16 pasos por vuelta), en el sitio.
-                const spr = pixVirusSprite(VIRUS_R);
-                const ang = ((Math.floor(now / 110) + v.seed) % 16) * (Math.PI / 8) * (v.seed % 2 ? 1 : -1);
-                g.save(); g.translate(v.x, v.y); g.rotate(ang);
-                g.drawImage(spr, -VIRUS_R, -VIRUS_R, VIRUS_R * 2, VIRUS_R * 2); g.restore();
-            }
-            // Angulo FIJO (el mismo -45º de la pill jugable y de todo el resto del
-            // juego), no el rumbo de cada NPC: con n.dir + PI/2 el sprite giraba
-            // sobre si mismo cada vez que la ondulacion o la esquiva de la UI
-            // cambiaban su rumbo, y eso se veia como una pildora dando vueltas
-            // sin parar. Ahora se desliza sin rotar, como en la seleccion de modo.
-            for (const n of scene.npcs) drawPill(g, n.x, n.y, n.r, -Math.PI / 4, n.top, n.bot);
-            HeroPlay.draw(g);
-        }
-
-        // ===== PILL JUGABLE ("PICK ME!") =====
-        // Mecanicas portadas de shared/sim.js (velocidad, split, merge, virus)
-        // con las MISMAS formulas; solo cambian los umbrales de tamaño, porque
-        // el cuadro del hero es mucho mas pequeño que el mapa de una partida.
-        const G = {
-            VELOC_BASE: 1.4, TICK: 40,          // el juego simula a 40 Hz
-            SPLIT_FORCE: 65, SPLIT_CD: 1000, MAX_CELLS: 16,
-            BASE_MERGE_TIME: 15000, MERGE_MASS_FACTOR: 0.225,
-        };
-        // px/tick -> logicos/s, igual que en partida: 10 * VELOC_BASE * r^-0.46,
-        // con el radio efectivo del GRUPO (todas las celdas van al mismo paso).
-        const playerSpeed = rEff => G.VELOC_BASE * 10 * Math.pow(Math.max(rEff, 20), -0.46) * G.TICK;
-        const massOf = r => Math.PI * r * (r * PILL_RATIO);
-        const mergeTime = r => G.BASE_MERGE_TIME + massOf(r) * G.MERGE_MASS_FACTOR;
-
-        const HeroPlay = {
-            cells: null, top: '#ffffff', bot: '#00ffaa',
-            mx: 0, my: 0, w: 0, h: 0, lastSplit: 0,
-            // Escala del hero: se empieza mas gordo y se parte antes que en
-            // partida (r>=35 sobre 10 iniciales no da juego en este cuadro).
-            START_R: 16, SPLIT_MIN_R: 30, MAX_R: 75,
-            get active() { return !!this.cells; },
-            newCell(x, y, r, now) { return { x, y, r, boostX: 0, boostY: 0, born: now }; },
-            // Radio de arranque = el tamaño con el que SE VE la pill del DOM
-            // ("PICK ME"), medido en vivo. El layout global la escala (x2.48 hoy),
-            // asi que un START_R fijo hacia que al clicarla apareciera una pill de
-            // otro tamaño que la que acabas de pulsar.
-            startR() {
-                const pc = document.querySelector('#heroPickMe .pick-me-pill');
-                const rc = cv.getBoundingClientRect();
-                if (!pc || !rc.width || !cv.width) return this.START_R;
-                const escala = pc.getBoundingClientRect().width / pc.width;   // layout x zoom del hero
-                const unidad = rc.width / cv.width;                           // px de pantalla por unidad logica
-                if (!escala || !unidad) return this.START_R;
-                return Math.max(6, PICK_ME_PILL_W * escala / 2 / unidad);
-            },
-            start(x, y) {
-                const now = performance.now();
-                this.cells = [this.newCell(x, y, this.startR(), now)];
-                this.mx = x; this.my = y;
-                heroSnd.carga();
-                document.getElementById('heroPickMe').classList.add('playing');
-            },
-            stop() {
-                this.cells = null;
-                document.getElementById('heroPickMe').classList.remove('playing');
-                if (scene.tituloComido) {   // el titulo vuelve al salir
-                    scene.tituloComido = false;
-                    const wrap = document.getElementById('heroTitleWrap');
-                    wrap.classList.remove('eaten');
-                    // Sin esto reaparece de golpe: `eaten` es una animacion con
-                    // forwards, y al quitarla el estilo salta al base sin transicion.
-                    wrap.classList.add('vuelve');
-                    wrap.addEventListener('animationend', () => wrap.classList.remove('vuelve'), { once: true });
-                    refreshZonas();
-                }
-            },
-            // Raton en coordenadas logicas del canvas.
-            aim(clientX, clientY) {
-                const r = cv.getBoundingClientRect();
-                this.mx = (clientX - r.left) * (cv.width / r.width);
-                this.my = (clientY - r.top) * (cv.height / r.height);
-            },
-            // Igual que performSplit del juego: mitad de area, la nueva nace a
-            // dos radios en la direccion del raton y sale con un empujon que se
-            // frena al 0.9 por tick.
-            performSplit(c, ang, now) {
-                const nr = c.r / 1.414;
-                c.r = nr; c.born = now;
-                const s = this.newCell(c.x + Math.cos(ang) * nr * 2, c.y + Math.sin(ang) * nr * 2, nr, now);
-                s.boostX = Math.cos(ang) * G.SPLIT_FORCE * G.TICK;
-                s.boostY = Math.sin(ang) * G.SPLIT_FORCE * G.TICK;
-                this.cells.push(s);
-            },
-            split() {
-                const now = performance.now();
-                if (!this.cells || now - this.lastSplit < G.SPLIT_CD) return;
-                let hecho = false;
-                for (let i = this.cells.length - 1; i >= 0; i--) {
-                    const c = this.cells[i];
-                    if (c.r < this.SPLIT_MIN_R || this.cells.length >= G.MAX_CELLS) continue;
-                    this.performSplit(c, Math.atan2(this.my - c.y, this.mx - c.x), now);
-                    hecho = true;
-                }
-                if (hecho) { this.lastSplit = now; heroSnd('split'); }
-            },
-            // Split en direcciones al azar, como triggerRandomSplit (virus).
-            randomSplit(now) {
-                const n = this.cells.length;
-                for (let i = 0; i < n; i++) {
-                    const c = this.cells[i];
-                    if (c.r < this.SPLIT_MIN_R || this.cells.length >= G.MAX_CELLS) continue;
-                    this.performSplit(c, Math.random() * Math.PI * 2, now);
-                }
-            },
-            grow(c, masaExtra) { c.r = Math.min(this.MAX_R, Math.sqrt((massOf(c.r) + masaExtra) / (Math.PI * PILL_RATIO))); },
-            step(w, h, dt) {
-                this.w = w; this.h = h;
-                if (!this.cells) return;
-                const now = performance.now();
-                const grupoR = Math.max(...this.cells.map(c => c.r));
-                const sp = playerSpeed(grupoR);
-                const frena = Math.pow(0.9, dt * G.TICK);   // decaimiento del empujon del split
-                for (const c of this.cells) {
-                    const dx = this.mx - c.x, dy = this.my - c.y, d = Math.hypot(dx, dy);
-                    let vx = 0, vy = 0;
-                    if (d > 5) {
-                        vx = dx / d * sp; vy = dy / d * sp;
-                        if (d < 40) { const b = d / 40; vx *= b; vy *= b; }   // "aparca" sin vibrar
-                    }
-                    c.x += (vx + c.boostX) * dt; c.y += (vy + c.boostY) * dt;
-                    c.boostX *= frena; c.boostY *= frena;
-                    if (Math.abs(c.boostX) < 1) c.boostX = 0;
-                    if (Math.abs(c.boostY) < 1) c.boostY = 0;
-                    c.x = Math.max(c.r, Math.min(w - c.r, c.x));
-                    c.y = Math.max(c.r, Math.min(h - c.r, c.y));
-                    // Comer: la comida se repone en otro sitio, siempre hay de sobra.
-                    for (const f of scene.food) {
-                        if (Math.hypot(f.x - c.x, f.y - c.y) > c.r) continue;
-                        this.grow(c, massOf(f.r) * 2.2);
-                        Object.assign(f, placeFree(() => newFood(w, h), scene.zonas || [], 30));
-                    }
-                }
-                // Pills del desfile: te las puedes comer si eres bastante mayor
-                // que ellas (ellas nunca te comen a ti).
-                for (const n of scene.npcs) {
-                    for (const c of this.cells) {
-                        if (c.r < n.r * 1.15) continue;
-                        if (Math.hypot(n.x - c.x, n.y - c.y) > c.r) continue;
-                        this.grow(c, massOf(n.r));
-                        heroSnd.kill();
-                        npcRespawn(n, w, h);
-                        break;
-                    }
-                }
-                // El TITULO tambien se come, si la pill es 1.5 veces mas alta
-                // que el. Desaparece hasta que sueltas el control (stop()).
-                if (!scene.tituloComido) {
-                    const el = document.getElementById('heroTitle');
-                    const rt = el && el.offsetParent ? logicRect(el) : null;
-                    if (rt) for (const c of this.cells) {
-                        if (c.r * 2 * PILL_RATIO < rt.h * 1.5) continue;
-                        if (c.x + c.r < rt.x || c.x - c.r > rt.x + rt.w || c.y + c.r < rt.y || c.y - c.r > rt.y + rt.h) continue;
-                        scene.tituloComido = true;
-                        const wrap = el.closest('.hero-title-wrap');
-                        wrap.classList.remove('vuelve');
-                        wrap.classList.add('eaten');
-                        this.grow(c, massOf(rt.h / 2));
-                        heroSnd('big');
-                        refreshZonas();       // sin titulo hay hueco nuevo para la deco
-                        break;
-                    }
-                }
-                // Virus: te parte en varias, el virus desaparece y sale otro en
-                // otro sitio (igual que handleVirusCollision).
-                for (let i = scene.virus.length - 1; i >= 0; i--) {
-                    const v = scene.virus[i];
-                    const c = this.cells.find(c => c.r > VIRUS_R * 0.62 && Math.hypot(v.x - c.x, v.y - c.y) < c.r + VIRUS_R * 0.4);
-                    if (!c) continue;
-                    scene.virus.splice(i, 1);
-                    this.randomSplit(now);
-                    heroSnd('virus');
-                    spawnVirus(w, h);
-                }
-                // Entre celdas propias: se apartan, y si las dos ya pueden
-                // fusionarse se juntan sumando masa (como resolveCellCollision).
-                for (let i = 0; i < this.cells.length; i++) for (let k = i + 1; k < this.cells.length; k++) {
-                    const a = this.cells[i], b = this.cells[k];
-                    let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
-                    const min = a.r + b.r;
-                    if (d >= min) continue;
-                    if (now - a.born > mergeTime(a.r) && now - b.born > mergeTime(b.r)) {
-                        a.r = Math.min(this.MAX_R, Math.sqrt((massOf(a.r) + massOf(b.r)) / (Math.PI * PILL_RATIO)));
-                        this.cells.splice(k, 1); k--; continue;
-                    }
-                    const push = (min - d) / 2;
-                    a.x -= dx / d * push; a.y -= dy / d * push;
-                    b.x += dx / d * push; b.y += dy / d * push;
-                }
-            },
-            draw(g) {
-                if (!this.cells) return;
-                for (const c of this.cells) drawPill(g, c.x, c.y, c.r, -Math.PI / 4, this.top, this.bot);
-            },
-        };
-
-        // Enganche para trastear/depurar la escena desde la consola.
-        window.Hero = { play: HeroPlay, scene, step: stepScene, paint: (t) => paintHero(t || performance.now()), pillSprite: pixPillSpriteRot };
-
-        const cv = document.getElementById('heroDecoCv');
-        const host = document.getElementById('hero');
-        let pat = null;
-        function paintHero(now) {
-            if (!cv || !host) return;
-            // Del rect, no de clientWidth: con el zoom del editor el tamaño real
-            // en pantalla no coincide con el de layout y el canvas saldria a
-            // otra resolucion (rejilla y bichos con el pixel de otro tamaño).
-            const rc = host.getBoundingClientRect();
-            const rw = rc.width, rh = rc.height;
-            if (rw <= 0 || rh <= 0) return;
-            const W = Math.max(CELL, Math.round(rw / (PIX * heroZoom))), H = Math.max(CELL, Math.round(rh / (PIX * heroZoom)));
-            if (cv.width !== W) cv.width = W;
-            if (cv.height !== H) cv.height = H;
-            const g = cv.getContext('2d');
-            g.imageSmoothingEnabled = false;
-            if (!pat) pat = g.createPattern(tile, 'repeat');
-            g.fillStyle = pat; g.fillRect(0, 0, W, H);
-            // El tile solo pinta la linea arriba/izquierda de cada celda: sin esto
-            // la ultima fila y columna del cuadro quedarian sin cerrar.
-            g.fillStyle = GRID_LINE; g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
-            // Al cambiar de tamaño el cuadro se rehace: la comida y los virus son
-            // fijos, reescalarlos los dejaria pegados a los bordes.
-            if (scene.w !== W || scene.h !== H) { scene.w = W; scene.h = H; buildScene(W, H); }
-            // Mientras el hero se carga la escena se PINTA pero no avanza (dt 0):
-            // asi no se ve la comida y las pildoras moviendose por un cuadro que
-            // todavia se esta colocando, ni el tiron de reubicaTapados() a media
-            // carrera. En cuanto esta todo, scene.last vuelve a 0 y el primer
-            // paso es uno normal (0.016) — no se acumula el tiempo parado, que
-            // es lo que daria el salto de golpe al arrancar.
-            const dt = !heroListo ? 0 : (scene.last ? Math.min(0.05, (now - scene.last) / 1000) : 0.016);
-            scene.last = heroListo ? now : 0;
-            stepScene(W, H, dt);
-            drawScene(g, now);
-        }
-        // El movimiento del hero (comida, virus, pildoras) no arranca hasta que
-        // ha cargado TODO: imagenes y fuentes. Ver el dt de paintHero.
-        let heroListo = false;
-        // Solo gasta rAF con el hero a la vista (al hacer scroll se para).
-        let heroVisible = true;
-        if (host && window.IntersectionObserver) {
-            new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(host);
-        }
-        // Y solo si el lienzo se ve: desde que el fondo es el juego real (iframe),
-        // #heroDecoCv va con display:none, y simular y pintar su escena en cada
-        // frame era CPU tirada mientras carga la landing (medido por traza: lo
-        // que mas pesaba de la propia landing en el TBT).
-        if (cv && getComputedStyle(cv).display !== 'none') (function loop(t) { requestAnimationFrame(loop); if (heroVisible) paintHero(t || performance.now()); })();
-        const rebuildScene = () => { scene.w = 0; };
-        // En el primer frame las imagenes del hero aun no han cargado y sus rects
-        // miden 0, asi que la comida y los virus se colocan tambien donde luego
-        // estaran. Al acabar la carga NO se rehace la escena entera (eso era lo
-        // que hacia saltar todo de sitio a media carga): solo se recolocan los
-        // que se hayan quedado debajo de la UI. Las fuentes web llegan mas tarde
-        // que las imagenes y mueven un poco los rects, de ahi el segundo repaso.
-        // Y el ultimo paso de la carga es soltar el movimiento: primero se
-        // recoloca todo con el cuadro ya definitivo (con la escena quieta, asi
-        // que no se ve ningun tiron) y solo entonces empieza a moverse.
-        const arrancaHero = () => { if (heroListo) return; reubicaTapados(); heroListo = true; };
-        const cargaHero = () => {
-            reubicaTapados();
-            if (document.fonts && document.fonts.ready) document.fonts.ready.then(arrancaHero);
-            else arrancaHero();
-        };
-        if (document.readyState === 'complete') cargaHero();
-        else window.addEventListener('load', cargaHero);
-        // Red de seguridad: una imagen que no llega nunca no puede dejar el hero
-        // congelado para siempre.
-        setTimeout(arrancaHero, 4000);
-        // Alejarse del cuadro: el contenido se encoge y el canvas gana espacio
-        // logico (mas escena a la vista), como si la camara subiera.
+        // Zoom del hero: .hero-main-content lleva su propio scale. Lo ponen
+        // apply() (el horneado) y ajustaHeroResponsive() (al estrechar).
+        let heroZoom = 1;
         function setHeroZoom(z) {
-            // Idempotente: apply() lo llama en cada frame de arrastre del editor,
-            // y rehacer la escena ahi recolocaria la comida a cada pixel.
             if (z === heroZoom) return;
             heroZoom = z;
             // Siempre explicito (nunca ''), por lo mismo que en apply(): el CSS
             // horneado del <head> ya trae el zoom y vaciar el inline lo devolveria.
             const c = document.querySelector('.hero-main-content');
             if (c) c.style.scale = String(z);
-            rebuildScene();
-            paintHero(performance.now());   // repinta ya, sin esperar al frame
         }
 
         // ===== EL HERO NO SE PISA AL ESTRECHAR/BAJAR LA VENTANA =====
@@ -6276,39 +5525,6 @@ function toggleTrailerMode() {
         }
         ajustaHeroResponsive();
         window.addEventListener('resize', ajustaHeroResponsive);
-
-        // Pill del DOM ("PICK ME!"): mismo sprite y misma inclinacion de 45º con
-        // la que se ven las pills en partida. El ancho lo comparte HeroPlay.startR()
-        // para spawnear una pill del mismo tamaño que esta.
-        const PICK_ME_PILL_W = 34;
-        (() => {
-            const pc = document.querySelector('#heroPickMe .pick-me-pill');
-            if (!pc) return;
-            const g = pc.getContext('2d');
-            g.imageSmoothingEnabled = false;
-            // Mismo sprite pre-girado que las pills de la escena: el PICK ME es la
-            // pill que vas a controlar, tiene que ser la misma.
-            const o = pixPillSpriteRot(17, HeroPlay.top, HeroPlay.bot, -Math.PI / 4);
-            const u = PICK_ME_PILL_W / 17;
-            g.drawImage(o.cv, pc.width / 2 - o.S / 2 * u, pc.height / 2 - o.S / 2 * u, o.S * u, o.S * u);
-        })();
-
-        const pickMe = document.getElementById('heroPickMe');
-        if (pickMe) pickMe.addEventListener('click', (e) => {
-            // Ya jugando: aqui pone ESC TO LEAVE, no debe relanzar la partida.
-            if (HeroPlay.active) return;
-            const b = pickMe.getBoundingClientRect(), r = cv.getBoundingClientRect();
-            HeroPlay.aim(b.left + b.width / 2, b.top + b.height / 2);
-            HeroPlay.start((b.left + b.width / 2 - r.left) * (cv.width / r.width),
-                           (b.top + b.height / 2 - r.top) * (cv.height / r.height));
-            e.stopPropagation();
-        });
-        host.addEventListener('pointermove', (e) => { if (HeroPlay.active) HeroPlay.aim(e.clientX, e.clientY); });
-        window.addEventListener('keydown', (e) => {
-            if (!HeroPlay.active) return;
-            if (e.code === 'Space') { e.preventDefault(); HeroPlay.split(); }
-            else if (e.code === 'Escape') HeroPlay.stop();
-        });
 
         // ===== LAYOUT DEL HERO =====
         // Sitio y escala de cada pieza, fijados en el codigo. Los dos objetos
@@ -6492,7 +5708,7 @@ function toggleTrailerMode() {
         /* Sonido de la tienda: los MISMOS clips y los mismos disparadores que la
            de /game — simplehover al pasar por una celda, select al abrir el
            cartel y simpleselect al cambiar de pagina. A la MITAD de volumen,
-           igual criterio que heroSnd: esto es una landing, no un juego a
+           porque esto es una landing, no un juego a
            pantalla completa. Aqui no hay SoundManager (es todo el motor de audio
            del juego) ni boton de mute, asi que va este reproductor de tres
            clips. Se descargan en el primer hover y no al cargar la pagina: la
