@@ -1586,8 +1586,11 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
         }
         #musicToggle:hover .volume-slider-container, .volume-slider-container:hover { display: flex; }
+        /* Vertical volume slider: writing-mode + direction:rtl is the standard way
+           (minimum at the bottom). -webkit-appearance: slider-vertical is being
+           removed from browsers. */
         input[type=range][orient=vertical] {
-            writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 8px; height: 80px; padding: 0 5px; cursor: pointer; 
+            writing-mode: vertical-lr; direction: rtl; width: 8px; height: 80px; padding: 0 5px; cursor: pointer;
         }
 
         #exitModal {
