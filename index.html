@@ -6595,5 +6595,17 @@ fetch('/api/rooms', { cache: 'no-store' }).then(function (r) { return r.json(); 
     if (d && d.menuCartelStyle === 2) document.body.classList.add('placa-off');
 }).catch(function () {});
     </script>
+<script>
+// The game's loading screen plays snd/loading-loop.wav and snd/loaded.wav from
+// its first frame. On a first visit they could still be downloading when that
+// screen was already over, above all now that it is shorter. Together they
+// weigh 148 KB: once the landing has loaded, they are fetched so PLAY NOW finds
+// them in the browser cache.
+addEventListener('load', function () {
+    setTimeout(function () {
+        ['loading-loop', 'loaded'].forEach(function (n) { fetch('snd/' + n + '.wav').catch(function () {}); });
+    }, 1500);
+});
+</script>
 </body>
 </html>
