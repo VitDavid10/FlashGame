@@ -8351,13 +8351,14 @@
         // el bug de "no se guarda" que reporto David. Se reaplica aqui sobre
         // los nodos nuevos.
         if (typeof applyMenuLayout === 'function') applyMenuLayout();
-        // Las <img> acaban de crearse: hay que esperar a que carguen para poder
-        // medir el ancho y centrar. decode() falla si la imagen no existe, de
-        // ahi el catch (el fallback de texto ya lo cubre el onerror).
-        if (tituloUsaPlaca()) {
-            centrarTitulo();
-            for (const img of el.querySelectorAll('img')) img.decode().then(centrarTitulo).catch(() => {});
-        }
+        // Las <img> acaban de crearse y hasta que cargan miden 0 de ancho: al
+        // llegar no basta con centrar, se vuelve a medir el menu entero (escala,
+        // hueco con CONNECT y encogido del rotulo). Entrando desde el hero el menu
+        // se media antes de que llegaran y el titulo se quedaba pegado a CONNECT
+        // hasta el primer resize. decode() falla si la imagen no existe, de ahi
+        // el segundo argumento (el fallback de texto ya lo cubre el onerror).
+        if (tituloUsaPlaca()) centrarTitulo();
+        for (const img of el.querySelectorAll('img')) img.decode().then(() => { centrarTitulo(); ajustaMenuResponsive(); }, () => {});
     }
     // instant = true salta la animacion de 1200ms y muestra el login ya
     // montado: lo usa el arranque directo de las pestañas ?heroskins=1 que
@@ -9914,14 +9915,25 @@
     const MENU_PANELES = ['#oraclePlaca', '#oracleInner', '#missionsPlaca', '#missionsInner'];
     let menuEscala = 1;
     function _menuCaja(sels) {
+        // .login-box entra con slideUp (translateY de 20px a 0) cada vez que
+        // aparece el menu, y justo entonces es cuando se mide: se descuenta lo
+        // que le quede de animacion para medir donde va a quedar. Si no, el menu
+        // salia 20px mas arriba de la cuenta (pegado a CONNECT) hasta el primer resize.
+        const box = document.querySelector('#loginOverlay .login-box');
+        let dyAnim = 0;
+        if (box && box.getAnimations && box.getAnimations().some(a => a.animationName === 'slideUp' && a.playState === 'running')) {
+            const tf = getComputedStyle(box).transform;
+            if (tf && tf !== 'none') dyAnim = new DOMMatrixReadOnly(tf).m42;
+        }
         let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
         for (const sel of sels) for (const el of document.querySelectorAll(sel)) {
             const r = el.getBoundingClientRect();
             if (!r.width && !r.height) continue;
+            const dy = dyAnim && box.contains(el) ? dyAnim : 0;
             if (r.left < x0) x0 = r.left;
-            if (r.top < y0) y0 = r.top;
+            if (r.top - dy < y0) y0 = r.top - dy;
             if (r.right > x1) x1 = r.right;
-            if (r.bottom > y1) y1 = r.bottom;
+            if (r.bottom - dy > y1) y1 = r.bottom - dy;
         }
         return isFinite(x0) ? { x0, y0, w: x1 - x0, h: y1 - y0 } : null;
     }
@@ -9961,6 +9973,12 @@
         const sinBlurb = vwReal < MENU_W_BLURB;
         cuerpo.classList.toggle('menu-compacto', compacto);
         cuerpo.classList.toggle('menu-sin-blurb', sinBlurb);
+        // Los marcos de los carteles (#oraclePlaca, #missionsPlaca) son canvas que
+        // toman su tamaño en paintPlacas(), y esa solo corria en el bucle de
+        // animacion. Al entrar desde el hero se median nada mas quitar el velo del
+        // arranque, todavia a 300x150: la escala salia corta y los carteles se
+        // salian por los lados hasta el primer resize. Se dimensionan antes de medir.
+        paintPlacas();
 
         // 0) ¿El bloque central se cruza con la barra de la wallet? Solo entonces
         //    se le reserva ese hueco por arriba. Entra en el calculo de la
@@ -15695,11 +15713,7 @@
         els.lbList.innerHTML = html;
     }
 
-    // De fondo en la landing (hero=1) va a 40 fps: es decoracion, y cada frame
-    // pintado cuesta volcarlo al compositor — medido por traza, era casi toda la
-    // CPU de la landing. La velocidad no cambia (timeScale va por tiempo). En
-    // una pantalla de 60 Hz salen 2 de cada 3 frames.
-    const fpsInterval = 1000 / (IS_HERO_BACKGROUND ? 40 : 60); let then = performance.now();
+    const fpsInterval = 1000 / 60; let then = performance.now();
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
     // Sin estado "neutral" (los dos portales a la vez): el selector de modo
     // arranca SIEMPRE en ARCADE, a peticion de David — ya no restaura el
