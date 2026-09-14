@@ -3,7 +3,7 @@
 <head>
     <!-- Google Analytics 4: only loads if the visitor accepts it in the cookie
          notice (see /cookies.js). -->
-    <script src="/cookies.js"></script>
+    <script src="/cookies.js" defer></script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -2650,8 +2650,8 @@ body.trailer-open #page-content{
                 <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
                 <div class="dropdown-content">
                     <div class="dropdown-box">
-                        <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon" alt=""> Chart</a>
-                        <a href="https://pump.fun" target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" alt="" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
+                        <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon" alt="" loading="lazy"> Chart</a>
+                        <a href="https://pump.fun" target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" alt="" loading="lazy" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
                     </div>
                 </div>
             </div>
@@ -2724,7 +2724,7 @@ body.trailer-open #page-content{
                 // TITLE_MS, then it fades out and the LOADING fades in. Until the
                 // first measurement both stay hidden (see CSS).
                 const GAP = 56, TITLE_MS = 1000, SWAP_MS = 250;
-                let loadingH = 0, swapTimer = 0, showTimer = 0;
+                let loadingH = 0, ancho = 0, swapTimer = 0, showTimer = 0;
                 function coloca() {
                     const play = document.getElementById('heroPlayNow'), nav = document.querySelector('.navbar');
                     const withTitle = !!title && title.isConnected && getComputedStyle(title).display !== 'none';
@@ -2732,6 +2732,9 @@ body.trailer-open #page-content{
                     const w = wrap.getBoundingClientRect();
                     const arriba = nav ? nav.getBoundingClientRect().bottom : w.top, abajo = play.getBoundingClientRect().top;
                     if (box.isConnected && !loadingH) loadingH = box.offsetHeight;
+                    // The bar track is min(336px, 70vw): it only changes with the
+                    // window, so pinta() reuses this instead of measuring every frame.
+                    if (box.isConnected) ancho = fill.parentElement.clientWidth;
                     // Same size as the rest of the hero: .hero-main-content carries
                     // its zoom (it doesn't exist yet on the very first call).
                     const content = document.querySelector('.hero-main-content');
@@ -2793,13 +2796,17 @@ body.trailer-open #page-content{
                 // Si el juego ni siquiera llega a avisar (no carga, error), la
                 // barra no se queda puesta para siempre.
                 setTimeout(() => { if (!avisado) termina(false); }, 25000);
+                // Sin leer medidas del DOM: leer el ancho aqui forzaba un layout de
+                // toda la landing en cada fotograma mientras carga (PageSpeed lo
+                // marcaba como reflow forzado). Solo escribe si cambia el bloque.
+                let pintado = -1;
                 function pinta() {
                     if (!avisado) meta = Math.max(meta, 0.3 * (1 - Math.exp(-(performance.now() - t0) / 2500)));
                     visto += (meta - visto) * 0.2;
                     if (meta - visto < 0.002) visto = meta;
                     // A bloques enteros de 16 px, como el resto de barras del pack.
-                    const ancho = fill.parentElement.clientWidth;
-                    fill.style.width = (visto >= 1 ? ancho : Math.floor(visto * ancho / 16) * 16) + 'px';
+                    const px = visto >= 1 ? ancho : Math.floor(visto * ancho / 16) * 16;
+                    if (px !== pintado) { pintado = px; fill.style.width = px + 'px'; }
                     if (box.isConnected && !(acabado && visto >= 1)) requestAnimationFrame(pinta);
                 }
                 coloca();
@@ -3259,10 +3266,10 @@ body.trailer-open #page-content{
         <div class="modal-box">
             <div class="modal-title">Connect Wallet</div>
             <div class="wallet-option" onclick="App.Wallet.connect('phantom')">
-                <img src="https://i.imgur.com/esN0veD.png" alt="Phantom"><span>Phantom</span>
+                <img src="https://i.imgur.com/esN0veD.png" alt="Phantom" loading="lazy"><span>Phantom</span>
             </div>
-            <div class="wallet-option" onclick="App.Wallet.connect('backpack')"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="Backpack"><span>Backpack</span></div>
-            <div class="wallet-option" onclick="App.Wallet.connect('solflare')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="Solflare"><span>Solflare</span></div>
+            <div class="wallet-option" onclick="App.Wallet.connect('backpack')"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="Backpack" loading="lazy"><span>Backpack</span></div>
+            <div class="wallet-option" onclick="App.Wallet.connect('solflare')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="Solflare" loading="lazy"><span>Solflare</span></div>
             <button class="pw-modal-cancel" onclick="App.Wallet.closeModal()">CANCEL</button>
         </div>
     </div>
@@ -6165,7 +6172,11 @@ function toggleTrailerMode() {
         if (host && window.IntersectionObserver) {
             new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(host);
         }
-        (function loop(t) { requestAnimationFrame(loop); if (heroVisible) paintHero(t || performance.now()); })();
+        // Y solo si el lienzo se ve: desde que el fondo es el juego real (iframe),
+        // #heroDecoCv va con display:none, y simular y pintar su escena en cada
+        // frame era CPU tirada mientras carga la landing (medido por traza: lo
+        // que mas pesaba de la propia landing en el TBT).
+        if (cv && getComputedStyle(cv).display !== 'none') (function loop(t) { requestAnimationFrame(loop); if (heroVisible) paintHero(t || performance.now()); })();
         const rebuildScene = () => { scene.w = 0; };
         // En el primer frame las imagenes del hero aun no han cargado y sus rects
         // miden 0, asi que la comida y los virus se colocan tambien donde luego

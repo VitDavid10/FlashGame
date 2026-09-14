@@ -3,7 +3,7 @@
 <head>
     <!-- Google Analytics 4: only loads if the visitor accepts it in the cookie
          notice (see /cookies.js). -->
-    <script src="/cookies.js"></script>
+    <script src="/cookies.js" defer></script>
 
     <!-- --vpw / --vph: el ancho y el alto REALES del viewport, en px, medidos
          por JS. Los usan las pantallas que en movil se pintan giradas 90 grados
@@ -4099,9 +4099,9 @@
     <div id="walletPickerModal" class="pw-modal">
         <div class="pw-modal-box wallet-picker">
             <img class="wp-title" src="img/cartel-hero/connect-wallet.png" alt="CONNECT WALLET">
-            <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('phantom')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://i.imgur.com/esN0veD.png" alt="">PHANTOM</button>
-            <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('backpack')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="">BACKPACK</button>
-            <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('solflare')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="">SOLFLARE</button>
+            <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('phantom')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://i.imgur.com/esN0veD.png" alt="" loading="lazy">PHANTOM</button>
+            <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('backpack')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="" loading="lazy">BACKPACK</button>
+            <button class="pw-big-btn wp-btn" onclick="GameWalletUI.connectWith('solflare')" onmouseenter="SoundManager.playSimpleHover()"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="" loading="lazy">SOLFLARE</button>
             <button class="pw-modal-cancel" onclick="document.getElementById('walletPickerModal').style.display='none'" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
     </div>
