@@ -5008,6 +5008,20 @@
     window.addEventListener('storage', e => { if (e.key === 'pw_baseZoom') { const z = parseFloat(e.newValue); if (z > 0) ZOOM_CONFIG.baseScale = z; } });
     let enableEnemySnd = true;
 
+    // Landing background (hero=1): the music never plays there, and the two
+    // tracks weigh 11 MB. They are created with preload none and only start
+    // downloading MUSIC_DEFER_MS after the page opens (see init), so they don't
+    // compete with the landing while it loads. On the game page itself they
+    // download right away, behind the loading screen.
+    const MUSIC_DEFERRED = document.documentElement.hasAttribute('data-hero');
+    const MUSIC_DEFER_MS = 12000;
+    function musicTrack(src) {
+        const a = new Audio();
+        if (MUSIC_DEFERRED) a.preload = 'none';
+        a.src = src;
+        return a;
+    }
+
     const SoundManager = {
         // La musica del MENU y la de PARTIDA se silencian por separado: mutear
         // el menu no te deja la partida muda (ni al reves). El boton #musicToggle
@@ -5032,8 +5046,8 @@
             go: new Audio('../snd/GO.mp3'),
             contador: new Audio('../snd/contador.mp3')
         },
-        music: new Audio('../snd/music.mp3'), startTimer: null,
-        menuMusic: new Audio('../snd/menu.mp3'),
+        music: musicTrack('../snd/music.mp3'), startTimer: null,
+        menuMusic: musicTrack('../snd/menu.mp3'),
         init: function() {
             if(localStorage.getItem('pillwars_muted') === 'true') { this.muted = true; document.getElementById('soundToggle').classList.add('muted'); }
             this.music.loop = true; this.menuMusic.loop = true; this.applyMusicVolume();
@@ -5041,7 +5055,9 @@
             this.menuMusicMuted = localStorage.getItem('pillwars_menu_music_muted') === 'true';
             this.music.muted = this.musicMuted; this.menuMusic.muted = this.menuMusicMuted;
             this.syncMusicBtn();
-            for(let key in this.sounds) { this.sounds[key].load(); } this.music.load(); this.menuMusic.load();
+            for(let key in this.sounds) { this.sounds[key].load(); }
+            const loadMusic = () => { for (const m of [this.music, this.menuMusic]) { m.preload = 'auto'; m.load(); } };
+            if (MUSIC_DEFERRED) setTimeout(loadMusic, MUSIC_DEFER_MS); else loadMusic();
             this.cargaPrepara();
         },
         // El icono del boton refleja el mute de la musica que toca ahora mismo.

@@ -6,7 +6,16 @@
     <script src="/cookies.js"></script>
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- iPhone/iPad only: maximum-scale=1 stops Safari from zooming in by itself
+         when you tap a text field with a font under 16px (name, amounts...).
+         Pinch-to-zoom keeps working there, because Safari ignores that limit for
+         the user's own zoom. Everywhere else the page can be zoomed freely. -->
+    <script>
+        if (/iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+            document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
+        }
+    </script>
     <title>PillWars - The Crypto Arena</title>
     <meta name="description" content="PillWars is a multiplayer .io arena game: eat, grow and outsmart rival pills with special skills. Play free or enter $PILL rooms on Solana.">
     <!-- canonical = the "official" address of this page, so pillwars.fun,
@@ -2799,7 +2808,7 @@ body.trailer-open #page-content{
                 <div class="trailer-hint">
                     <span>🔊 TAP TO EXPAND & UNMUTE</span>
                 </div>
-                <video id="trailer-vid" autoplay muted loop playsinline>
+                <video id="trailer-vid" muted loop playsinline preload="none" data-lazy>
                     <source src="video/Trailer.mp4" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
@@ -2830,7 +2839,7 @@ body.trailer-open #page-content{
             <p style="max-width: 900px; margin: 0 auto; color: #888; line-height: 1.6; font-size: var(--fs-4);">PillWars brings back the addictive chaos of classic browser games like Agar.io. Enter the arena, devour smaller pills, and grow your mass to dominate the map. But size isn't everything; master your special abilities to outsmart your opponents. Learn more below:</p>
         </div>
 
-        <!-- SECCION 1 (SPLIT) - AUTOPLAY ACTIVADO -->
+        <!-- SECCION 1 (SPLIT) - the video starts when it comes into view -->
         <div class="feature-block fb-split reveal">
             <span class="fb-num">01</span>
             <div class="feature-text">
@@ -2840,7 +2849,7 @@ body.trailer-open #page-content{
             </div>
             <div class="feature-images">
                 <div class="video-card">
-                    <video autoplay muted loop playsinline>
+                    <video muted loop playsinline preload="none" data-lazy>
                         <source src="video/Split.mp4" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
@@ -2848,7 +2857,7 @@ body.trailer-open #page-content{
             </div>
         </div>
 
-        <!-- SECCION 2 (VIRUS) - AUTOPLAY ACTIVADO -->
+        <!-- SECCION 2 (VIRUS) - the video starts when it comes into view -->
         <div class="feature-block fb-virus reverse reveal">
             <span class="fb-num">02</span>
             <div class="feature-text">
@@ -2858,7 +2867,7 @@ body.trailer-open #page-content{
             </div>
             <div class="feature-images">
                 <div class="video-card">
-                    <video autoplay muted loop playsinline>
+                    <video muted loop playsinline preload="none" data-lazy>
                         <source src="video/Virus.mp4" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
@@ -2866,7 +2875,7 @@ body.trailer-open #page-content{
             </div>
         </div>
 
-        <!-- SECCION 3 (SHOOT / VIRAL BALLISTICS) - AUTOPLAY ACTIVADO -->
+        <!-- SECCION 3 (SHOOT / VIRAL BALLISTICS) - the video starts when it comes into view -->
         <div class="feature-block fb-viral reveal">
             <span class="fb-num">03</span>
             <div class="feature-text">
@@ -2876,7 +2885,7 @@ body.trailer-open #page-content{
             </div>
             <div class="feature-images">
                 <div class="video-card">
-                    <video autoplay muted loop playsinline>
+                    <video muted loop playsinline preload="none" data-lazy>
                         <source src="video/Viral.mp4" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
@@ -4442,6 +4451,32 @@ function toggleTrailerMode() {
         vid.play();
     }
 }
+
+// Page videos (the trailer and the three mechanics clips) are not downloaded
+// when the page opens: together they weigh almost 6 MB and they sit below the
+// hero. Each one starts the first time any part of it is on screen.
+// Checked on scroll with getBoundingClientRect, not IntersectionObserver:
+// #page-content has zoom:.9 and with that the observer never fires (see VISTAS).
+(function () {
+    const pending = [...document.querySelectorAll('video[data-lazy]')];
+    const check = () => {
+        for (let i = pending.length - 1; i >= 0; i--) {
+            const v = pending[i], r = v.getBoundingClientRect();
+            if (r.width && r.top < innerHeight && r.bottom > 0) {
+                pending.splice(i, 1);
+                v.preload = 'auto';
+                v.play().catch(() => {});
+            }
+        }
+        if (!pending.length) {
+            removeEventListener('scroll', check);
+            removeEventListener('resize', check);
+        }
+    };
+    addEventListener('scroll', check, { passive: true });
+    addEventListener('resize', check);
+    check();
+})();
 
 
         /* ===================== VISTAS =====================
