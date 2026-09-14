@@ -761,11 +761,23 @@
         .hero-game-wrap.is-ready .hero-game-cover { opacity: 0; }
         /* LOADING: la misma barra de bloques que la pantalla de carga del juego
            (#loadingScreen .ls-track). El top lo pone el <script> que va justo
-           detras del bloque (el punto medio entre la navbar y PLAY NOW). Nace
-           oculto para no pintarse nunca en un sitio provisional. */
+           detras del bloque (un poco por encima de PLAY NOW, en el mismo sitio
+           que el titulo). Nace oculto para no pintarse nunca en un sitio provisional. */
         .hero-loading { position: absolute; left: 50%; top: 0; z-index: 3; transform: translate(-50%, -50%); visibility: hidden;
-            display: flex; flex-direction: column; align-items: center; gap: 14px; pointer-events: none; transition: opacity .3s ease; }
-        .hero-loading.is-done { opacity: 0; }
+            display: flex; flex-direction: column; align-items: center; gap: 14px; pointer-events: none; transition: opacity .25s ease; }
+        /* is-waiting: the title is still showing (it comes first). */
+        .hero-loading.is-waiting, .hero-loading.is-done { opacity: 0; }
+        /* PILLWARS / THE CRYPTO ARENA (same letters as the .hero-txt fallback).
+           It shows first, on its own, for a moment; then the LOADING takes its
+           place. If the game ends up running smoothly the title isn't needed; if
+           it doesn't (slow device), the LOADING goes away and the title comes back
+           on the dark background. Top and scale come from the script right after
+           the block. */
+        .hero-load-title { position: absolute; left: 50%; top: 0; z-index: 3; transform-origin: 50% 0; text-align: center;
+            white-space: nowrap; pointer-events: none; visibility: hidden; transition: opacity .25s ease; }
+        .hero-load-title.is-hidden { opacity: 0; }
+        /* If the title PNG fails, .hero-txt already shows these same words. */
+        .hero-video-wrapper:has(.hero-main-content.no-img) .hero-load-title { display: none; }
         .hero-loading-txt { font-family: 'Press Start 2P', monospace; font-size: 14px; line-height: 1; color: #fff;
             letter-spacing: 2px; text-shadow: 3px 3px 0 #000; }
         .hero-loading-track { width: min(336px, 70vw); height: 22px; background: #050505;
@@ -2678,7 +2690,11 @@ body.trailer-open #page-content{
                     </div>
                 </div>
             </div>
-            <div class="hero-loading" id="heroLoading" aria-hidden="true">
+            <div class="hero-load-title" id="heroLoadTitle" aria-hidden="true">
+                <div class="big-title">PILLWARS</div>
+                <div class="big-subtitle">THE CRYPTO ARENA</div>
+            </div>
+            <div class="hero-loading is-waiting" id="heroLoading" aria-hidden="true">
                 <div class="hero-loading-txt">LOADING</div>
                 <div class="hero-loading-track"><div class="hero-loading-fill" id="heroLoadingFill"></div></div>
             </div>
@@ -2698,36 +2714,71 @@ body.trailer-open #page-content{
                 const frame = document.getElementById('heroGameFrame');
                 const box = document.getElementById('heroLoading');
                 const fill = document.getElementById('heroLoadingFill');
+                const title = document.getElementById('heroLoadTitle');
                 if (!wrap || !frame || !box || !fill) return;
                 const t0 = performance.now();
                 let meta = 0, visto = 0, avisado = false, acabado = false;
-                // Punto medio entre el borde de abajo de la navbar y PLAY NOW,
-                // medido: PLAY NOW cambia de sitio con el alto de la ventana y en
-                // movil. Hasta la primera medida el bloque va oculto (ver CSS).
+                // Title and LOADING take turns in the SAME spot: centred on one line
+                // a little above PLAY NOW, GAP px over it (measured: PLAY NOW moves
+                // with the window height and on mobile). First the title alone for
+                // TITLE_MS, then it fades out and the LOADING fades in. Until the
+                // first measurement both stay hidden (see CSS).
+                const GAP = 56, TITLE_MS = 1000, SWAP_MS = 250;
+                let loadingH = 0, swapTimer = 0, showTimer = 0;
                 function coloca() {
                     const play = document.getElementById('heroPlayNow'), nav = document.querySelector('.navbar');
-                    if (!play || acabado) return;
+                    const withTitle = !!title && title.isConnected && getComputedStyle(title).display !== 'none';
+                    if (!play || (!withTitle && !box.isConnected)) return;
                     const w = wrap.getBoundingClientRect();
                     const arriba = nav ? nav.getBoundingClientRect().bottom : w.top, abajo = play.getBoundingClientRect().top;
-                    box.style.top = ((arriba + abajo) / 2 - w.top) + 'px';
-                    // En ventanas muy bajas se encoge en vez de pisar la navbar o PLAY NOW.
-                    const k = Math.max(0.5, Math.min(1, (abajo - arriba - 12) / box.offsetHeight));
-                    box.style.transform = 'translate(-50%, -50%) scale(' + k + ')';
-                    box.style.visibility = 'visible';
+                    if (box.isConnected && !loadingH) loadingH = box.offsetHeight;
+                    // Same size as the rest of the hero: .hero-main-content carries
+                    // its zoom (it doesn't exist yet on the very first call).
+                    const content = document.querySelector('.hero-main-content');
+                    const zoom = (content && parseFloat(getComputedStyle(content).scale)) || window.HERO_LAYOUT_HORNEADO.zoom || 1;
+                    const titleH = withTitle ? title.offsetHeight * zoom : 0;
+                    const h = Math.max(titleH, loadingH);
+                    const avail = abajo - arriba, gap = Math.min(GAP, avail * 0.15);
+                    // On short or narrow windows it shrinks instead of covering the
+                    // navbar or going off the sides.
+                    let k = Math.max(0.5, Math.min(1, (avail - gap - 12) / h));
+                    if (withTitle) k = Math.min(k, (w.width - 24) / (title.offsetWidth * zoom));
+                    const centre = abajo - gap - h * k / 2 - w.top;
+                    if (withTitle) {
+                        title.style.top = (centre - titleH * k / 2) + 'px';
+                        title.style.transform = 'translate(-50%, 0) scale(' + (zoom * k) + ')';
+                        title.style.visibility = 'visible';
+                    }
+                    if (box.isConnected) {
+                        box.style.top = centre + 'px';
+                        box.style.transform = 'translate(-50%, -50%) scale(' + k + ')';
+                        box.style.visibility = 'visible';
+                    }
                 }
+                swapTimer = setTimeout(() => {
+                    if (title) title.classList.add('is-hidden');
+                    showTimer = setTimeout(() => box.classList.remove('is-waiting'), title ? SWAP_MS : 0);
+                }, title ? TITLE_MS : 0);
                 function termina(fluido) {
                     if (acabado) return;
                     acabado = true;
+                    clearTimeout(swapTimer); clearTimeout(showTimer);
                     window.removeEventListener('message', recibe);
                     if (fluido) {
                         meta = 1;
-                        // Un instante con la barra llena y se destapa.
-                        setTimeout(() => { wrap.classList.add('is-ready'); box.classList.add('is-done'); }, 250);
+                        // Un instante con la barra llena y se destapa. The title, if it is
+                        // still up, leaves with the cover: over the running game it isn't needed.
+                        setTimeout(() => {
+                            wrap.classList.add('is-ready'); box.classList.add('is-done');
+                            if (title) { title.classList.add('is-hidden'); setTimeout(() => title.remove(), 700); }
+                        }, 250);
                     } else {
                         // No va fluido: se queda el fondo oscuro y el juego fuera,
-                        // para que no le quite CPU a la pagina.
+                        // para que no le quite CPU a la pagina. The LOADING goes away
+                        // and the title comes back to its spot.
                         box.classList.add('is-done');
                         frame.remove();
+                        if (title) setTimeout(() => title.classList.remove('is-hidden'), SWAP_MS);
                     }
                     setTimeout(() => box.remove(), 1000);
                 }
