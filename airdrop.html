@@ -670,11 +670,7 @@ function walletProfile(addr) {
   // TODO real: airdrops are still sample data. NFTs come from the server.
   const got = AIRDROPS.filter(() => r() < 0.3);
   const nfts = demo ? ['saga', 'madlads'].filter(() => r() < 0.4) : c ? c.nfts || [] : [];
-  const hasSaga = nfts.includes('saga'), hasSeeker = nfts.includes('seeker'), genesis = hasSaga || hasSeeker, madlads = nfts.includes('madlads');
-  const genesisTip = '<div class="tip"><b>GENESIS TOKEN</b>' +
-    '<div class="' + (hasSaga ? 'ok' : 'no') + '"><i>' + (hasSaga ? '+' + fmt(GENESIS_PTS) : '-') + '</i>Saga Genesis Token</div>' +
-    '<div class="' + (hasSeeker ? 'ok' : 'no') + '"><i>' + (hasSeeker ? '+' + fmt(GENESIS_PTS) : '-') + '</i>Seeker Genesis Token</div>' +
-    '<b style="margin:8px 0 0">SAGA OR SEEKER, NOT BOTH</b></div>';
+  const genesis = nfts.includes('saga') || nfts.includes('seeker'), madlads = nfts.includes('madlads');
   const tip = '<div class="tip"><b>AIRDROPS QUALIFIED</b>' + AIRDROPS.map(a => {
     const ok = got.includes(a);
     return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? 'YES' : '-') + '</i>' + esc(a.name) + '</div>';
@@ -682,7 +678,7 @@ function walletProfile(addr) {
   return {
     lines: [
       ['Airdrop Hunter (' + got.length + '/' + AIRDROPS.length + ')', Math.round(HUNTER_MAX * tierPct(got.length, HUNTER_TIERS)), tip],
-      ['Saga / Seeker Genesis Token' + (wait ? ' (checking...)' : genesis ? '' : ' (none)'), genesis ? GENESIS_PTS : 0, genesisTip],
+      ['Saga / Seeker Genesis Token' + (wait ? ' (checking...)' : genesis ? '' : ' (none)'), genesis ? GENESIS_PTS : 0],
       ['Mad Lads' + (wait ? ' (checking...)' : madlads ? '' : ' (none)'), madlads ? MADLADS_PTS : 0],
       ['Wallet age (' + (wait ? 'checking...' : fmt(days) + (c && c.capped ? '+' : '') + ' days') + ')', Math.round(AGE_MAX * tierPct(days, AGE_TIERS))],
       ['Transactions (' + (wait ? 'checking...' : fmt(txs) + (c && c.capped ? '+' : '')) + ')', Math.round(TX_MAX * tierPct(txs, TX_TIERS))],
