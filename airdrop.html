@@ -1175,7 +1175,7 @@ function openCardShare() {
   const s = score(), rank = renderBoard();
   openShare({
     title: 'SHARE YOUR CARD', kind: 'card',
-    variants: [cardBreakdown, cardRank],
+    variants: [cardRank, cardBreakdown],
     text: fmt(s.total) + ' points on @' + X_ACCOUNT + '. Top ' + topPct(rank) + ' of all players.\n\nWhere do you rank?',
     done: () => completeTask('share', 300),
   });
