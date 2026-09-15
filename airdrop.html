@@ -642,8 +642,8 @@ function xProfile(x) {
   if (x.verified) lines.push(['Verified account', 300]);
   return { lines };
 }
-// On-chain: Airdrop Hunter up to 11,000; Saga/Seeker Genesis Token, NFT Holder,
-// wallet age and transactions up to 2,400 each. All but the Genesis Token go by tiers.
+// On-chain: Airdrop Hunter up to 11,000 (tiers), NFT Holder up to 4,800 (Saga or
+// Seeker Genesis Token + Mad Lads), wallet age and transactions up to 2,400 (tiers).
 const AIRDROPS = [
   { id: 'jup', name: 'Jupiter (JUP)' }, { id: 'jup2', name: 'Jupiter Jupuary' }, { id: 'jto', name: 'Jito (JTO)' },
   { id: 'pyth', name: 'Pyth (PYTH)' }, { id: 'w', name: 'Wormhole (W)' }, { id: 'tnsr', name: 'Tensor (TNSR)' },
@@ -656,14 +656,9 @@ const tierPct = (v, tiers) => tiers.reduce((p, t) => v >= t[0] ? t[1] : p, 0);
 const HUNTER_MAX = 11000, HUNTER_TIERS = [[1, .2], [2, .35], [3, .5], [4, .65], [5, .8], [6, .9], [7, 1]];
 const TX_MAX = 2400, TX_TIERS = [[50, .1], [200, .25], [500, .4], [1000, .6], [2500, .8], [5000, 1]];
 const AGE_MAX = 2400, AGE_TIERS = [[30, .1], [90, .25], [180, .4], [365, .6], [730, .8], [1095, 1]];
-// Saga and Seeker owners hold a Genesis Token in their wallet (either one pays).
-const GENESIS_PTS = 2400;
-// Blue-chip NFT collections (verified collection, checked on-chain by the server).
-const NFT_COLLECTIONS = [
-  { id: 'madlads', name: 'Mad Lads' }, { id: 'smb', name: 'SMB Gen2' }, { id: 'clay', name: 'Claynosaurz' },
-  { id: 'foxes', name: 'Famous Fox Federation' }, { id: 'tensorians', name: 'Tensorians' }, { id: 'okaybears', name: 'Okay Bears' },
-];
-const NFT_MAX = 2400, NFT_TIERS = [[1, .6], [2, .85], [3, 1]];
+// NFT Holder (checked on-chain by the server): a Saga or Seeker Genesis Token
+// (either one pays) and a Mad Lad.
+const GENESIS_PTS = 2400, MADLADS_PTS = 2400;
 function walletProfile(addr) {
   const r = rng('w:' + addr);
   // Age and transactions are real, read by the server from mainnet (S.chain);
@@ -674,13 +669,13 @@ function walletProfile(addr) {
   const wait = !demo && !c;
   // TODO real: airdrops are still sample data. NFTs come from the server.
   const got = AIRDROPS.filter(() => r() < 0.3);
-  const nfts = demo ? ['saga', 'madlads', 'clay'].filter(() => r() < 0.4) : c ? c.nfts || [] : [];
-  const genesis = nfts.includes('saga') ? 'Saga' : nfts.includes('seeker') ? 'Seeker' : '';
-  const held = NFT_COLLECTIONS.filter(n => nfts.includes(n.id));
-  const nftTip = '<div class="tip"><b>NFT COLLECTIONS</b>' + NFT_COLLECTIONS.map(n => {
-    const ok = held.includes(n);
-    return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? 'YES' : '-') + '</i>' + esc(n.name) + '</div>';
-  }).join('') + '<b style="margin:8px 0 0">1 = 60% &middot; 2 = 85% &middot; 3+ = MAX</b></div>';
+  const nfts = demo ? ['saga', 'madlads'].filter(() => r() < 0.4) : c ? c.nfts || [] : [];
+  const genesis = nfts.includes('saga') || nfts.includes('seeker'), madlads = nfts.includes('madlads');
+  const nftRows = [['Saga Genesis Token', nfts.includes('saga'), GENESIS_PTS], ['Seeker Genesis Token', nfts.includes('seeker'), GENESIS_PTS], ['Mad Lads', madlads, MADLADS_PTS]];
+  const nftTip = '<div class="tip"><b>NFTS HELD</b>' + nftRows.map(n =>
+    '<div class="' + (n[1] ? 'ok' : 'no') + '"><i>' + (n[1] ? '+' + fmt(n[2]) : '-') + '</i>' + n[0] + '</div>').join('') +
+    '<b style="margin:8px 0 0">SAGA OR SEEKER, NOT BOTH</b></div>';
+  const nftCount = (genesis ? 1 : 0) + (madlads ? 1 : 0);
   const tip = '<div class="tip"><b>AIRDROPS QUALIFIED</b>' + AIRDROPS.map(a => {
     const ok = got.includes(a);
     return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? 'YES' : '-') + '</i>' + esc(a.name) + '</div>';
@@ -688,8 +683,7 @@ function walletProfile(addr) {
   return {
     lines: [
       ['Airdrop Hunter (' + got.length + '/' + AIRDROPS.length + ')', Math.round(HUNTER_MAX * tierPct(got.length, HUNTER_TIERS)), tip],
-      [(genesis || 'Saga / Seeker') + ' Genesis Token' + (wait ? ' (checking...)' : genesis ? '' : ' (none)'), genesis ? GENESIS_PTS : 0],
-      ['NFT Holder (' + (wait ? 'checking...' : held.length + '/' + NFT_COLLECTIONS.length) + ')', Math.round(NFT_MAX * tierPct(held.length, NFT_TIERS)), nftTip],
+      ['NFT Holder (' + (wait ? 'checking...' : nftCount + '/2') + ')', (genesis ? GENESIS_PTS : 0) + (madlads ? MADLADS_PTS : 0), nftTip],
       ['Wallet age (' + (wait ? 'checking...' : fmt(days) + (c && c.capped ? '+' : '') + ' days') + ')', Math.round(AGE_MAX * tierPct(days, AGE_TIERS))],
       ['Transactions (' + (wait ? 'checking...' : fmt(txs) + (c && c.capped ? '+' : '')) + ')', Math.round(TX_MAX * tierPct(txs, TX_TIERS))],
     ],

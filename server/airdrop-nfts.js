@@ -19,11 +19,6 @@ const SGT = { mintAuthority: 'GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4', gro
 const COLLECTIONS = {
     '46pcSL5gmjBrPqGKFaLbbCmR6iVuLJbnQy13hAe7s6CC': 'saga',
     'J1S9H3QjnRtBbbuD4HjPV6RpRhwuk4zKbxsnCHuTgh9w': 'madlads',
-    'SMBtHCCC6RYRutFEPb4gZqeBLUZbMNhRKaMKZZLHi7W': 'smb',
-    'FoXyMu5xwXre7zEoSvzViRk3nGawHUp9kUh97y2NDhcq': 'foxes',
-    '6mszaj17KSfVqADrQj3o4W3zoLMTykgmV37W4QadCczK': 'clay',
-    '5PA96eCFHJSFPY9SWFeRJUHrpoNF5XZL6RrE1JADXhxf': 'tensorians',
-    '3saAedkM9o5g1u5DCqsuMZuC4GRqPB4TuMkvSsSVvGQ3': 'okaybears',
 };
 const MAX_MINTS = 2000;     // spam-heavy wallets: enough to find real NFTs
 const BATCH = 100;          // getMultipleAccounts limit
