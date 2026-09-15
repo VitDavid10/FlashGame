@@ -924,9 +924,13 @@ function drawFloor(g) {
   for (let x = 0; x < IMG_W; x += 60) g.fillRect(x, 0, 3, IMG_H);
   for (let y = 0; y < IMG_H; y += 60) g.fillRect(0, y, IMG_W, 3);
 }
+// X shrinks the card to ~600px and re-compresses it: scanlines, the fine grid and
+// the tiniest food turn into grey mush there, so the uploaded copy skips them.
+let drawingForX = false;
 function drawScreenBg(g) {
   const h = HOLE;
   g.fillStyle = 'rgb(' + SCREEN_RGB.join(',') + ')'; g.fillRect(h.x, h.y, h.w, h.h);
+  if (drawingForX) return;
   g.fillStyle = 'rgba(0,255,136,.035)';
   for (let x = h.x; x < h.x + h.w; x += 48) g.fillRect(x, h.y, 2, h.h);
   for (let y = h.y; y < h.y + h.h; y += 48) g.fillRect(h.x, y, h.w, 2);
@@ -937,8 +941,10 @@ function drawScreenFx(g) {
   const v = g.createRadialGradient(IMG_W / 2, IMG_H / 2, h.h * .35, IMG_W / 2, IMG_H / 2, h.w * .7);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)');
   g.fillStyle = v; g.fillRect(h.x, h.y, h.w, h.h);
-  g.fillStyle = 'rgba(0,0,0,.12)';
-  for (let y = h.y; y < h.y + h.h; y += 4) g.fillRect(h.x, y, h.w, 2);
+  if (!drawingForX) {
+    g.fillStyle = 'rgba(0,0,0,.12)';
+    for (let y = h.y; y < h.y + h.h; y += 4) g.fillRect(h.x, y, h.w, 2);
+  }
   g.restore();
 }
 function drawFrame(g) {
@@ -1018,7 +1024,7 @@ function drawArena(g, avoid, r, opts) {
     if (p) { blit(g, spr, p[0], p[1], K); avoid.push([p[0], p[1], size, size]); }
   }
   for (let i = 0; i < opts.food; i++) {
-    const dL = 3 + Math.floor(r() * 4), size = dL * K, p = place(size, size, 8, 0);
+    const dL = (drawingForX ? 5 : 3) + Math.floor(r() * 4), size = dL * K, p = place(size, size, 8, 0);
     if (p) blit(g, pixDotSprite(dL, FOOD_COLORS[Math.floor(r() * FOOD_COLORS.length)]), p[0], p[1], K);
   }
   g.restore();
@@ -1121,6 +1127,13 @@ function drawRun(g, shot, m, tipo) {
 }
 
 const share = { variants: [], idx: 0, text: '', done: null, blob: null };
+// Same variant and seed as the preview, drawn in the X-friendly way.
+function xBlob() {
+  const cv = document.createElement('canvas'); cv.width = IMG_W; cv.height = IMG_H;
+  drawingForX = true;
+  try { share.variants[share.idx](cv.getContext('2d'), IMG_W, IMG_H); } finally { drawingForX = false; }
+  return new Promise(res => { try { cv.toBlob(b => res(b), 'image/png'); } catch (e) { res(null); } });
+}
 function renderShare() {
   const cv = $('#shareCv'), g = cv.getContext('2d');
   g.clearRect(0, 0, cv.width, cv.height);
@@ -1158,7 +1171,7 @@ $('#sharePost').onclick = async () => {
   const btn = $('#sharePost'); btn.disabled = true;
   let link = null;
   try {
-    const blob = await share.blob;
+    const blob = await xBlob();
     const r = await fetch('/api/airdrop/card', {
       method: 'POST', body: blob,
       headers: { 'Content-Type': 'image/png', 'X-Airdrop-Ref': refCode(), 'X-Airdrop-Kind': share.kind || 'card' },
