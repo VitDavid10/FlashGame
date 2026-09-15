@@ -932,9 +932,10 @@ function drawArena(g, W, H, avoid, r, opts) {
     if (p) { blit(g, spr, p[0], p[1], K); avoid.push([p[0], p[1], size, size]); }
   }
   // Same pose as in the game (-45deg, detailed shading); only the size changes.
-  const PILL_SIZES = [6, 8, 10, 13, 17, 22];
+  // The first pill is always a big one; the rest mix small to large.
+  const PILL_SIZES = [6, 8, 10, 13, 17, 22, 28];
   for (let i = 0; i < opts.pills; i++) {
-    const wL = PILL_SIZES[Math.floor(r() * PILL_SIZES.length)], top = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)], bot = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)];
+    const wL = i === 0 ? 26 + Math.floor(r() * 8) : PILL_SIZES[Math.floor(r() * PILL_SIZES.length)], top = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)], bot = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)];
     const spr = pixPillSpriteRot(wL, top, bot, -Math.PI / 4, true), size = spr.width * K, p = place(size, size, 12, size * .3);
     if (p) { blit(g, spr, p[0], p[1], K); avoid.push([p[0], p[1], size, size]); }
   }
@@ -977,7 +978,7 @@ function cardBreakdown(g, W, H) {
   drawArena(g, W, H, [
     [58, 58, 194, 194], [270, 100, Math.max(hw, 260) + 10, 100],
     [60, 378 - ps, pw + 150, ps + 12], [66, 412, 596, 40], [66, 490, 596, 110], [730, 80, 400, 508],
-  ], r, { viruses: 2, pills: 4, food: 70 });
+  ], r, { viruses: 1 + Math.floor(r() * 2), pills: 4, food: 30 });
   drawAvatar(g, 70, 70, 170);
   text(g, handle(), 280, 140, PX, hsz, '#ffffff', 'left', '#000');
   text(g, S.w ? short(S.w) : 'no wallet linked', 280, 190, VT, 38, '#9fc2ad');
@@ -1011,7 +1012,7 @@ function cardRank(g, W, H) {
   drawArena(g, W, H, [
     [W / 2 - 87, 44, 174, 174], [W / 2 - hw / 2 - 10, 272 - hsz - 8, hw + 20, hsz + 20],
     [W / 2 - pw / 2 - 10, 408 - ps - 6, pw + 24, ps + 20], [W / 2 - 80, 430, 160, 30], [W / 2 - 430, 486, 860, 104],
-  ], r, { viruses: 3, pills: 6, food: 110 });
+  ], r, { viruses: 1 + Math.floor(r() * 2), pills: 6, food: 40 });
   drawAvatar(g, W / 2 - 75, 56, 150);
   text(g, handle(), W / 2, 272, PX, hsz, '#ffffff', 'center', '#000');
   text(g, pts, W / 2, 408, PX, ps, '#00ff88', 'center', '#003d1f');
