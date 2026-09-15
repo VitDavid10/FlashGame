@@ -171,8 +171,14 @@ function createStore(opts) {
         return { code: u.code, wallet: u.wallet, x: u.x, invites: inviteCount(u), referred: !!u.referredBy };
     }
     const codeOf = token => { const u = sessionUser(token); return u ? u.code : ''; };
+    // Latest points card of each participant: the preview of their invite link.
+    function setCard(token, cardId) {
+        const u = sessionUser(token); if (!u) return false;
+        u.card = cardId; save(); return true;
+    }
+    const cardOfCode = code => { const u = user(byCode.get(String(code || '').toLowerCase())); return u && u.card || null; };
 
-    return { linkWallet, linkX, unlink, sessionUser, publicView, codeOf, inviteCount, flush, MAX_INVITES, _data: () => data };
+    return { linkWallet, linkX, unlink, sessionUser, publicView, codeOf, setCard, cardOfCode, inviteCount, flush, MAX_INVITES, _data: () => data };
 }
 
 module.exports = { createStore, MAX_INVITES };

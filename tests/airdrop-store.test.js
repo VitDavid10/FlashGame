@@ -103,6 +103,18 @@ test('X on one device and the wallet on another end up as one person', () => {
     assert.strictEqual(s.sessionUser(phone.token).uid, u.uid);
 });
 
+test('the latest card of a participant is found by their invite code', () => {
+    const s = createStore({});
+    const a = s.linkWallet(null, W(1), '');
+    const code = s.codeOf(a.token);
+    assert.strictEqual(s.cardOfCode(code), null);
+    assert.strictEqual(s.setCard(null, 'nope'), false);
+    s.setCard(a.token, 'card1'); s.setCard(a.token, 'card2');
+    assert.strictEqual(s.cardOfCode(code), 'card2');
+    assert.strictEqual(s.cardOfCode(code.toUpperCase()), 'card2');
+    assert.strictEqual(s.cardOfCode('zzzzzzz'), null);
+});
+
 test('everything survives a restart', () => {
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airdrop-')), 'data.json');
     const s1 = createStore({ file });

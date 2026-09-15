@@ -64,6 +64,26 @@ function createAirdrop(opts) {
         try { const u = new URL(ref); return u.origin === originOf(req) ? u.pathname : null; } catch (e) { return null; }
     };
 
+    // The airdrop page with its link preview: an invite link (?ref=) shows that
+    // player's latest points card; anything else the generic card.
+    function sendHome(req, res, query) {
+        fs.readFile(path.join(ROOT, 'airdrop.html'), 'utf8', (err, html) => {
+            if (err) { res.writeHead(500); res.end(); return; }
+            const origin = originOf(req);
+            const ref = String(query.get('ref') || '').toLowerCase();
+            const card = /^[a-z2-9]{7}$/.test(ref) ? store.cardOfCode(ref) : null;
+            const img = card ? origin + '/c/' + card + '.png' : origin + '/img/airdrop-og.png';
+            const url = origin + (HOME === '/' ? '/' : HOME) + (card ? '?ref=' + ref : '');
+            const desc = 'Eat, grow and outplay rival pills. Play the Daily Arena, climb the ranking and earn airdrop points.';
+            const og = `<meta property="og:type" content="website"><meta property="og:site_name" content="PillWars">
+<meta property="og:title" content="PillWars"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(url)}">
+<meta property="og:image" content="${esc(img)}"><meta property="og:image:width" content="${CARD_W}"><meta property="og:image:height" content="${CARD_H}">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@pillwarsdotfun">
+<meta name="twitter:title" content="PillWars"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${esc(img)}">`;
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+            res.end(html.replace('<!--OG-->', og));
+        });
+    }
     function sendFile(res, rel, type) {
         fs.readFile(path.join(ROOT, rel), (err, data) => {
             if (err) { res.writeHead(500); res.end(); return; }
@@ -186,13 +206,14 @@ function createAirdrop(opts) {
         }
         if (urlPath === '/airdrop-auth/x/callback') {
             const state = query.get('state') || '', p = xPending.get(state);
-            if (!p) return redirect(res, HOME + '#xerr=state');
+            if (!p) { log('[airdrop] X callback: unknown or expired state'); return redirect(res, HOME + '#xerr=state'); }
             xPending.delete(state);
             const code = query.get('code');
-            if (!code) return redirect(res, HOME + '#xerr=denied');
+            if (!code) { log('[airdrop] X callback: no code (' + (query.get('error') || 'denied') + ')'); return redirect(res, HOME + '#xerr=denied'); }
             try {
                 const profile = await xExchange(code, p.verifier, p.redirectUri);
                 const r = store.linkX(sessionToken(req), profile);
+                log('[airdrop] X linked @' + profile.username + (sessionToken(req) ? ' (existing session)' : ' (new session)'));
                 setSession(req, res, r.token);
                 return redirect(res, HOME + '#x=ok');
             } catch (e) {
@@ -242,6 +263,7 @@ function createAirdrop(opts) {
             const id = b64url(crypto.randomBytes(9));
             await fs.promises.writeFile(path.join(CARD_DIR, id + '.png'), buf);
             await fs.promises.writeFile(path.join(CARD_DIR, id + '.json'), JSON.stringify({ ref, kind, t: Date.now() }));
+            if (kind === 'card') store.setCard(sessionToken(req), id);
             return json(200, { url: originOf(req) + '/c/' + id });
         } catch (e) {
             log('[airdrop] card save failed: ' + e.message);
@@ -316,7 +338,7 @@ function createAirdrop(opts) {
     /** true = the request was answered here. */
     async function handle(req, res, urlPath, query) {
         const isHome = ONLY ? urlPath === '/' : (urlPath === '/airdrop' || urlPath === '/airdrop/');
-        if (isHome) { sendFile(res, 'airdrop.html', 'text/html; charset=utf-8'); return true; }
+        if (isHome) { sendHome(req, res, query); return true; }
         if (ONLY && (urlPath === '/airdrop' || urlPath === '/airdrop/')) { redirect(res, '/', 301); return true; }
         if (urlPath === '/airdrop-terms') { sendFile(res, 'airdrop-terms.html', 'text/html; charset=utf-8'); return true; }
         if (urlPath === '/airdrop.html') { redirect(res, HOME, 301); return true; }

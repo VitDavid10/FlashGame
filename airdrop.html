@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PillWars</title>
 <meta name="description" content="Connect X and your Solana wallet, complete quests and play the Daily Arena to earn $PILLY airdrop points.">
+<!--OG-->
 <link rel="icon" href="img/web.png">
 <link rel="preload" href="/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
@@ -931,7 +932,9 @@ const fit = (g, str, font, size, maxW) => { g.font = size + 'px ' + font; const 
    Arena floor outside, and the in-game quest panel frame ("placa", ported from
    placaPixels in game/index.html, a bit thinner) with its dark green screen. */
 const IMG_W = 1200, IMG_H = 630;
-const FRAME = { K: 3, T: 7, RADIO: 9, RADIO_HUECO: 4, MARGIN: 14, HEX: '#00ffaa', GLOW: 0.38, GLOW_STEPS: 2,
+// MARGIN keeps (size - 2*MARGIN) a multiple of K: otherwise the frame's hole ends
+// 1px past the screen and a black line shows on the right and bottom edges.
+const FRAME = { K: 3, T: 7, RADIO: 9, RADIO_HUECO: 4, MARGIN: 15, HEX: '#00ffaa', GLOW: 0.38, GLOW_STEPS: 2,
   TONOS: { rim: 0.16, lit: 0.75, mid: 0.45, dim: 0.24, inner: 0.36, body: 0.30, masa: 0.21 }, MASA_DESDE: 4, SUB: 2 };
 const SCREEN_RGB = [14, 42, 27];
 // Hole (the screen) in image pixels: everything is laid out inside it.
@@ -1030,6 +1033,7 @@ function drawFrame(g) {
 }
 const FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
 const BOT_COLORS = ['#FF5722', '#F44336', '#3F51B5', '#9C27B0', '#FFC107', '#03A9F4', '#8BC34A', '#009688'];
+const BOT_FAMILY = ['red', 'red', 'blue', 'purple', 'yellow', 'blue', 'green', 'green'];
 const K = 4;   // screen pixels per game pixel
 // Food, viruses and rival pills in the free space of the screen. `avoid` = [x, y, w, h] kept clear.
 function drawArena(g, avoid, r, opts) {
@@ -1053,9 +1057,14 @@ function drawArena(g, avoid, r, opts) {
   for (let i = 0; i < opts.pills; i++) {
     const wL = i === 0 ? 24 + Math.floor(r() * 8) : PILL_SIZES[Math.floor(r() * PILL_SIZES.length)];
     // Never a one-colour pill: the two halves always differ. About a third wear a country skin.
-    const ti = Math.floor(r() * BOT_COLORS.length), bi = (ti + 1 + Math.floor(r() * (BOT_COLORS.length - 1))) % BOT_COLORS.length;
-    const skinPick = r(), codes = typeof paisLista === 'function' ? paisLista().map(p => p.code) : [];
-    const skin = skinPick < 0.35 && codes.length ? paisPillRot(wL, codes[Math.floor(r() * codes.length)], -Math.PI / 4) : null;
+    // Different colour families, so two greens or two reds never pass for one colour.
+    const ti = Math.floor(r() * BOT_COLORS.length);
+    const others = BOT_COLORS.map((_, k) => k).filter(k => BOT_FAMILY[k] !== BOT_FAMILY[ti]);
+    const bi = others[Math.floor(r() * others.length)];
+    // Country skins with at least two colours only: one-band flags (Brazil, Japan...)
+    // read as a plain pill at this size. The emblem is always drawn.
+    const skinPick = r(), codes = typeof paisLista === 'function' ? paisLista().filter(p => new Set(p.b).size > 1).map(p => p.code) : [];
+    const skin = skinPick < 0.35 && codes.length ? paisPillRot(wL, codes[Math.floor(r() * codes.length)], -Math.PI / 4, true) : null;
     const spr = skin ? skin.cv : pixPillSpriteRot(wL, BOT_COLORS[ti], BOT_COLORS[bi], -Math.PI / 4, true);
     const size = spr.width * K, p = place(size, size, 12, size * .3);
     if (p) { blit(g, spr, p[0], p[1], K); avoid.push([p[0], p[1], size, size]); }
@@ -1305,9 +1314,21 @@ document.querySelectorAll('.wopt').forEach(b => b.onclick = async () => {
   }
 });
 
+// The invite link's preview on X is the player's latest points card, so copying
+// the link also refreshes that card on the server.
+async function refreshInviteCard() {
+  const prev = { variants: share.variants, idx: share.idx, seed: share.seed };
+  Object.assign(share, { variants: [cardRank], idx: 0, seed: Math.floor(Math.random() * 1e9) });
+  await Promise.all([fontsReady(), loadAvatar()]);
+  const blob = xBlob();
+  Object.assign(share, prev);
+  const png = await blob;
+  if (png) fetch('/api/airdrop/card', { method: 'POST', body: png, headers: { 'Content-Type': 'image/png', 'X-Airdrop-Kind': 'card' } }).catch(() => {});
+}
 $('#refCopy').onclick = async () => {
   if (!refCode()) { toast('CONNECT X OR YOUR WALLET FIRST'); return; }
   try { await navigator.clipboard.writeText(refUrl()); toast('LINK COPIED'); } catch (e) { $('#refLink').select(); }
+  refreshInviteCard();
 };
 
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
