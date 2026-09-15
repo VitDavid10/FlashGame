@@ -738,7 +738,7 @@ document.querySelectorAll('.qtab').forEach(t => t.onclick = () => {
 
 /* ---------------- card ---------------- */
 const refCode = () => displayName().replace(/[^a-z0-9]/gi, '').slice(0, 10).toLowerCase();
-const refUrl = () => SITE + '/airdrop' + (refCode() ? '?ref=' + refCode() : '');
+const refUrl = () => SITE + '/' + (refCode() ? '?ref=' + refCode() : '');
 const topPct = rank => {
   const p = Math.min(100, Math.max(0.01, rank / PARTICIPANTS * 100));
   return (p < 1 ? p.toFixed(2) : p < 10 ? p.toFixed(1) : Math.round(p)) + '%';

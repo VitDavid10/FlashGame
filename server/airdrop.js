@@ -2,7 +2,7 @@
 /*
  * Airdrop routes for server/index.js.
  *
- *   /airdrop, /airdrop-terms           the airdrop page and its terms
+ *   /airdrop (or / with AIRDROP_ONLY), /airdrop-terms   the page and its terms
  *   /airdrop-auth/x/login|callback     Sign in with X (OAuth 2.0 + PKCE)
  *   POST /api/airdrop/card             stores a share image (PNG 1200x675)
  *   /c/<id>, /c/<id>.png               share link with og:image for X cards
@@ -45,6 +45,8 @@ function createAirdrop(opts) {
     const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET || '';
     const CARD_DIR = process.env.AIRDROP_CARD_DIR || path.join(__dirname, 'airdrop-cards');
 
+    // With the lockdown on, the airdrop IS the home page (pillwars.fun/).
+    const HOME = ONLY ? '/' : '/airdrop';
     const xPending = new Map();      // state -> { verifier, redirectUri, t }
     const cardHits = new Map();      // ip -> [timestamps]
 
@@ -97,7 +99,7 @@ function createAirdrop(opts) {
         const now = Date.now();
         for (const [k, v] of xPending) if (now - v.t > X_PENDING_TTL_MS) xPending.delete(k);
         if (urlPath === '/airdrop-auth/x/login') {
-            if (!X_CLIENT_ID) return redirect(res, '/airdrop#xerr=config');
+            if (!X_CLIENT_ID) return redirect(res, HOME + '#xerr=config');
             const verifier = b64url(crypto.randomBytes(32)), state = b64url(crypto.randomBytes(16));
             const redirectUri = originOf(req) + '/airdrop-auth/x/callback';
             xPending.set(state, { verifier, redirectUri, t: now });
@@ -109,16 +111,16 @@ function createAirdrop(opts) {
         }
         if (urlPath === '/airdrop-auth/x/callback') {
             const state = query.get('state') || '', p = xPending.get(state);
-            if (!p) return redirect(res, '/airdrop#xerr=state');
+            if (!p) return redirect(res, HOME + '#xerr=state');
             xPending.delete(state);
             const code = query.get('code');
-            if (!code) return redirect(res, '/airdrop#xerr=denied');
+            if (!code) return redirect(res, HOME + '#xerr=denied');
             try {
                 const profile = await xExchange(code, p.verifier, p.redirectUri);
-                return redirect(res, '/airdrop#x=' + b64url(JSON.stringify(profile)));
+                return redirect(res, HOME + '#x=' + b64url(JSON.stringify(profile)));
             } catch (e) {
                 log('[airdrop] X sign-in failed: ' + e.message);
-                return redirect(res, '/airdrop#xerr=api');
+                return redirect(res, HOME + '#xerr=api');
             }
         }
         return notFound(req, res);
@@ -184,7 +186,7 @@ function createAirdrop(opts) {
             let meta = {}; try { meta = JSON.parse(raw); } catch (e) {}
             const origin = originOf(req);
             const img = origin + '/c/' + id + '.png';
-            const dest = '/airdrop' + (meta.ref ? '?ref=' + encodeURIComponent(meta.ref) : '');
+            const dest = HOME + (meta.ref ? '?ref=' + encodeURIComponent(meta.ref) : '');
             const title = meta.kind === 'run' ? 'PillWars Daily Arena' : 'PillWars';
             const desc = meta.kind === 'run' ? 'Think you can beat this run? Play the Daily Arena.' : 'Eat, grow and outplay rival pills. Where do you rank?';
             const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
@@ -213,12 +215,13 @@ function createAirdrop(opts) {
         if (urlPath === '/robots.txt') {
             res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
             // /c/ must stay allowed: X's card crawler obeys robots.txt.
-            res.end('User-agent: *\nAllow: /airdrop\nAllow: /c/\nDisallow: /\n');
+            res.end('User-agent: *\nAllow: /$\nAllow: /airdrop-terms\nAllow: /c/\nDisallow: /\n');
             return true;
         }
         // The game page only inside the airdrop iframe.
         if (urlPath === '/game/' || urlPath === '/game/index.html') {
-            const ok = req.headers['sec-fetch-dest'] === 'iframe' && (sameOriginReferer(req) || '').startsWith('/airdrop');
+            const from = sameOriginReferer(req);
+            const ok = req.headers['sec-fetch-dest'] === 'iframe' && (from === '/' || (from || '').startsWith('/airdrop'));
             if (!ok) { notFound(req, res); return true; }
             return false;
         }
@@ -230,14 +233,16 @@ function createAirdrop(opts) {
 
     /** true = the request was answered here. */
     async function handle(req, res, urlPath, query) {
-        if (urlPath === '/airdrop' || urlPath === '/airdrop/') { sendFile(res, 'airdrop.html', 'text/html; charset=utf-8'); return true; }
+        const isHome = ONLY ? urlPath === '/' : (urlPath === '/airdrop' || urlPath === '/airdrop/');
+        if (isHome) { sendFile(res, 'airdrop.html', 'text/html; charset=utf-8'); return true; }
+        if (ONLY && (urlPath === '/airdrop' || urlPath === '/airdrop/')) { redirect(res, '/', 301); return true; }
         if (urlPath === '/airdrop-terms') { sendFile(res, 'airdrop-terms.html', 'text/html; charset=utf-8'); return true; }
-        if (urlPath === '/airdrop.html' || urlPath === '/airdrop-terms.html') { redirect(res, urlPath.slice(0, -5), 301); return true; }
+        if (urlPath === '/airdrop.html') { redirect(res, HOME, 301); return true; }
+        if (urlPath === '/airdrop-terms.html') { redirect(res, '/airdrop-terms', 301); return true; }
         if (urlPath.startsWith('/airdrop-auth/')) { await handleX(req, res, urlPath, query); return true; }
         if (urlPath === '/api/airdrop/card') { await handleCardUpload(req, res); return true; }
         if (urlPath.startsWith('/c/')) { handleCard(req, res, urlPath); return true; }
         if (!ONLY) return false;
-        if (urlPath === '/') { redirect(res, '/airdrop'); return true; }
         return gate(req, res, urlPath);
     }
 
