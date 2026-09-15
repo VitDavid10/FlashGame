@@ -375,7 +375,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
         <div class="qscroll" id="qInvites" hidden>
           <div class="qgroup"><span>INVITE FRIENDS</span><span id="refCount"></span></div>
           <div class="ref box" style="margin-top:0">
-            <div style="font-size:19px;color:var(--dim)">Friends count when they connect X or a wallet. Up to 50 invites.</div>
+            <div style="font-size:19px;color:var(--dim)">A friend counts when they connect a wallet that is 60+ days old with 50+ transactions. Up to 50 invites.</div>
             <div class="ref-row">
               <input id="refLink" readonly value="Connect to get your link">
               <button class="pbtn green sm" id="refCopy">COPY</button>
@@ -582,7 +582,7 @@ if (!S.daily || S.daily.date !== today()) S.daily = newDay();
 S.daily.best = S.daily.best || {}; S.daily.kills = S.daily.kills || 0;
 // Counters for the rotating missions (see QUEST_POOLS).
 S.daily.c = Object.assign({ pieces: 0, skills: 0, skillSet: [], skill: {}, splitKills: 0, splits: 0, picks: 0, virusPops: 0, gambleWins: 0 }, S.daily.c);
-const save = () => { try { const { x, w, code, refs, chain, ...keep } = S; localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) {} };
+const save = () => { try { const { x, w, code, refs, chain, pendingInv, ...keep } = S; localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) {} };
 
 // Invite code from any shared link (?ref=). Kept until this browser links a
 // wallet: that is the moment the server records the invite.
@@ -604,7 +604,7 @@ async function api(path, body) {
 }
 function applyUser(u) {
   S.x = u && u.x || null; S.w = u && u.wallet || null; S.code = u && u.code || ''; S.refs = u && u.invites || 0;
-  S.chain = u && u.chain || null;
+  S.chain = u && u.chain || null; S.pendingInv = u && u.pendingInvites || 0;
   renderAll();
   // The server reads the wallet's history in the background: ask again shortly.
   clearTimeout(chainPoll);
@@ -623,9 +623,9 @@ const loadMe = () => api('me').then(j => applyUser(j.user)).catch(() => {});
 })();
 
 /* ---------------- scoring ----------------
-   X lines use the real profile returned by X. Wallet numbers are still a
-   placeholder generator (same wallet = same numbers) until the on-chain
-   scoring is decided. */
+   X lines use the real profile returned by X. Wallet age and transactions are
+   real (server, mainnet); airdrops and the Genesis Token are still sample data.
+   Every rule is written down in docs/airdrop-points.md: keep both in sync. */
 function rng(seed) {
   let h = 2166136261;
   for (const ch of seed) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
@@ -640,8 +640,8 @@ function xProfile(x) {
   if (x.verified) lines.push(['Verified account', 300]);
   return { lines };
 }
-// On-chain = 40% of a player's maximum: Airdrop Hunter + Solana Mobile 70%
-// (10,500 + 700), wallet age and transactions 15% each (2,400).
+// On-chain: Airdrop Hunter up to 11,000, Saga/Seeker Genesis Token 3,500, wallet
+// age and transactions up to 2,400 each. All but the Genesis Token go by tiers.
 const AIRDROPS = [
   { id: 'jup', name: 'Jupiter (JUP)' }, { id: 'jup2', name: 'Jupiter Jupuary' }, { id: 'jto', name: 'Jito (JTO)' },
   { id: 'pyth', name: 'Pyth (PYTH)' }, { id: 'w', name: 'Wormhole (W)' }, { id: 'tnsr', name: 'Tensor (TNSR)' },
@@ -649,9 +649,13 @@ const AIRDROPS = [
   { id: 'met', name: 'Meteora (MET)' }, { id: 'bonk', name: 'BONK' }, { id: 'cloud', name: 'Sanctum (CLOUD)' },
   { id: 'grass', name: 'Grass (GRASS)' }, { id: 'jumper', name: 'Jumper points' },
 ];
-const AIRDROP_PTS = 750;   // 14 x 750 = 10,500
+// [minimum, share of the category]: the highest tier reached pays.
+const tierPct = (v, tiers) => tiers.reduce((p, t) => v >= t[0] ? t[1] : p, 0);
+const HUNTER_MAX = 11000, HUNTER_TIERS = [[1, .2], [2, .35], [3, .5], [4, .65], [5, .8], [6, .9], [7, 1]];
+const TX_MAX = 2400, TX_TIERS = [[50, .1], [200, .25], [500, .4], [1000, .6], [2500, .8], [5000, 1]];
+const AGE_MAX = 2400, AGE_TIERS = [[30, .1], [90, .25], [180, .4], [365, .6], [730, .8], [1095, 1]];
 // Saga and Seeker owners hold a non-transferable Genesis Token in their wallet.
-const GENESIS_PTS = 700;
+const GENESIS_PTS = 3500;
 function walletProfile(addr) {
   const r = rng('w:' + addr);
   // Age and transactions are real, read by the server from mainnet (S.chain);
@@ -665,14 +669,14 @@ function walletProfile(addr) {
   const genesis = r() < 0.15;
   const tip = '<div class="tip"><b>AIRDROPS QUALIFIED</b>' + AIRDROPS.map(a => {
     const ok = got.includes(a);
-    return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? '+' + AIRDROP_PTS : '-') + '</i>' + esc(a.name) + '</div>';
-  }).join('') + '</div>';
+    return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? 'YES' : '-') + '</i>' + esc(a.name) + '</div>';
+  }).join('') + '<b style="margin:8px 0 0">' + got.length + ' = ' + Math.round(tierPct(got.length, HUNTER_TIERS) * 100) + '% &middot; 7+ = MAX</b></div>';
   return {
     lines: [
-      ['Airdrop Hunter (' + got.length + '/' + AIRDROPS.length + ')', got.length * AIRDROP_PTS, tip],
+      ['Airdrop Hunter (' + got.length + '/' + AIRDROPS.length + ')', Math.round(HUNTER_MAX * tierPct(got.length, HUNTER_TIERS)), tip],
       ['Saga / Seeker Genesis Token' + (genesis ? '' : ' (none)'), genesis ? GENESIS_PTS : 0],
-      ['Wallet age (' + (wait ? 'checking...' : fmt(days) + (c && c.capped ? '+' : '') + ' days') + ')', Math.round(Math.min(2400, days * 1.75))],
-      ['Transactions (' + (wait ? 'checking...' : fmt(txs) + (c && c.capped ? '+' : '')) + ')', Math.round(Math.min(2400, Math.sqrt(txs) * 31))],
+      ['Wallet age (' + (wait ? 'checking...' : fmt(days) + (c && c.capped ? '+' : '') + ' days') + ')', Math.round(AGE_MAX * tierPct(days, AGE_TIERS))],
+      ['Transactions (' + (wait ? 'checking...' : fmt(txs) + (c && c.capped ? '+' : '')) + ')', Math.round(TX_MAX * tierPct(txs, TX_TIERS))],
     ],
   };
 }
@@ -682,7 +686,7 @@ const MAX_INVITES = 50;
 const inviteCount = () => Math.min(MAX_INVITES, S.refs);
 const invitePts = () => INVITE_MILES.reduce((a, m) => a + (inviteCount() >= m[0] ? m[1] : 0), 0);
 function renderInvites() {
-  $('#refCount').textContent = inviteCount() + '/' + MAX_INVITES;
+  $('#refCount').textContent = inviteCount() + '/' + MAX_INVITES + (S.pendingInv ? ' (' + S.pendingInv + ' NOT ELIGIBLE YET)' : '');
   $('#miles').innerHTML = INVITE_MILES.map(m => '<div class="mile' + (inviteCount() >= m[0] ? ' ok' : '') + '"><b>' + m[0] + '</b><em>' + (m[0] === 1 ? 'invite' : 'invites') + '</em><span>' + (inviteCount() >= m[0] ? 'DONE' : '+' + m[1]) + '</span></div>').join('');
 }
 const sum = lines =>lines.reduce((a, l) => a + l[1], 0);

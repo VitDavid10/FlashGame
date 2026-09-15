@@ -7,6 +7,8 @@ const path = require('path');
 const { createStore, MAX_INVITES } = require('../server/airdrop-store.js');
 
 const W = n => 'Wallet' + String(n).padStart(38, '0');
+// On-chain history that makes an invited wallet count (60+ days, 50+ txs).
+const real = (s, w) => s.setChain(w, { txs: 120, firstAt: Math.floor(Date.now() / 1000) - 400 * 86400, capped: false, checkedAt: Date.now() });
 const X = n => ({ id: String(1000 + n), username: 'user' + n, followers: 10, created_at: '2020-01-01T00:00:00Z' });
 
 test('linking a wallet creates a user with its own invite code', () => {
@@ -25,7 +27,23 @@ test('an invite is recorded when the invited person links a wallet with the code
     const code = s.codeOf(a.token);
     const b = s.linkWallet(null, W(2), code);
     assert.strictEqual(b.referred, true);
+    real(s, W(2));
     assert.strictEqual(s.publicView(s.sessionUser(a.token)).invites, 1);
+});
+
+test('an invite only counts when the invited wallet is 60+ days old with 50+ transactions', () => {
+    const s = createStore({});
+    const a = s.linkWallet(null, W(1), '');
+    s.linkWallet(null, W(2), s.codeOf(a.token));
+    const view = () => s.publicView(s.sessionUser(a.token));
+    const day = 86400, nowS = Math.floor(Date.now() / 1000);
+    assert.deepStrictEqual([view().invites, view().pendingInvites], [0, 1]);
+    s.setChain(W(2), { txs: 49, firstAt: nowS - 400 * day, capped: false, checkedAt: Date.now() });
+    assert.strictEqual(view().invites, 0);
+    s.setChain(W(2), { txs: 500, firstAt: nowS - 59 * day, capped: false, checkedAt: Date.now() });
+    assert.strictEqual(view().invites, 0);
+    s.setChain(W(2), { txs: 50, firstAt: nowS - 61 * day, capped: false, checkedAt: Date.now() });
+    assert.deepStrictEqual([view().invites, view().pendingInvites], [1, 0]);
 });
 
 test('linking X alone never records an invite', () => {
@@ -36,6 +54,7 @@ test('linking X alone never records an invite', () => {
     // The wallet linked later with the code does count: it is the first wallet.
     const b2 = s.linkWallet(b.token, W(2), s.codeOf(a.token));
     assert.strictEqual(b2.referred, true);
+    real(s, W(2));
     assert.strictEqual(s.publicView(s.sessionUser(a.token)).invites, 1);
     assert.strictEqual(s.sessionUser(b2.token).x.username, 'user2');
 });
@@ -59,6 +78,7 @@ test('an invite counts once: relinking or another code later changes nothing', (
     assert.strictEqual(again.referred, false);
     const other = s.linkWallet(null, W(2), s.codeOf(c.token));
     assert.strictEqual(other.referred, false);
+    real(s, W(2));
     assert.strictEqual(s.publicView(s.sessionUser(a.token)).invites, 1);
     assert.strictEqual(s.publicView(s.sessionUser(c.token)).invites, 0);
 });
@@ -88,7 +108,7 @@ test('invites stop counting at the cap', () => {
     const s = createStore({});
     const a = s.linkWallet(null, W(0), '');
     const code = s.codeOf(a.token);
-    for (let i = 1; i <= MAX_INVITES + 5; i++) s.linkWallet(null, W(i), code);
+    for (let i = 1; i <= MAX_INVITES + 5; i++) { s.linkWallet(null, W(i), code); real(s, W(i)); }
     assert.strictEqual(s.publicView(s.sessionUser(a.token)).invites, MAX_INVITES);
 });
 
@@ -120,6 +140,7 @@ test('everything survives a restart', () => {
     const s1 = createStore({ file });
     const a = s1.linkWallet(null, W(1), '');
     s1.linkWallet(null, W(2), s1.codeOf(a.token));
+    real(s1, W(2));
     s1.flush();
     const s2 = createStore({ file });
     const me = s2.publicView(s2.sessionUser(a.token));

@@ -141,6 +141,8 @@ function createAirdrop(opts) {
         if (urlPath === '/api/airdrop/me') {
             const u = store.sessionUser(sessionToken(req));
             syncChain(u);
+            // Invited wallets are checked when they link; retry any lookup that failed.
+            if (u) store.invitedOf(u).forEach(i => { if (!store.chainOf(i)) syncChain(i); });
             return json(res, 200, { user: store.publicView(u) });
         }
         if (req.method !== 'POST') return json(res, 405, { error: 'method' });

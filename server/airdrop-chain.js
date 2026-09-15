@@ -9,6 +9,7 @@ const PAGE = 1000;
 const MAX_PAGES = 20;               // 20,000 transactions: far past the points cap
 const TIMEOUT_MS = 15000;
 const REFRESH_MS = 24 * 3600 * 1000;
+const TOP_TXS = 5000, TOP_AGE_DAYS = 3 * 365;   // top tiers of the page's score
 const RETRIES = 6, RETRY_MS = 3000, PAGE_GAP_MS = 400;
 
 function createChain(opts) {
@@ -46,6 +47,8 @@ function createChain(opts) {
             }
             before = last.length ? last[last.length - 1].signature : null;
             pages++;
+            // Past both top tiers (5,000 txs and 3 years) there is nothing left to learn.
+            if (txs >= TOP_TXS && firstAt && now() / 1000 - firstAt >= TOP_AGE_DAYS * 86400) break;
         } while (last.length === PAGE && pages < MAX_PAGES);
         return { txs, firstAt, capped: last.length === PAGE, checkedAt: now() };
     }

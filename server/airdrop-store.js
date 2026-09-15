@@ -6,13 +6,16 @@
  *
  * Referral rule: an invite is recorded ONLY the first time the invited person
  * links a wallet (verified by signature before it gets here), never for
- * themselves, never twice.
+ * themselves, never twice. It counts once that wallet is 60+ days old with 50+
+ * transactions on-chain.
  */
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
 const MAX_INVITES = 50;
+const INVITE_MIN_AGE_DAYS = 60;
+const INVITE_MIN_TXS = 50;
 const CODE_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
 const CODE_LEN = 7;
 const SAVE_DELAY_MS = 1000;
@@ -164,12 +167,17 @@ function createStore(opts) {
         return u;
     }
 
-    const inviteCount = u => Math.min(MAX_INVITES, u.invited.length);
+    // An invite only counts once the invited wallet is a real one: old enough and
+    // with some history (checked on-chain, see airdrop-chain.js).
+    const qualifies = c => !!(c && c.firstAt && c.txs >= INVITE_MIN_TXS && now() / 1000 - c.firstAt >= INVITE_MIN_AGE_DAYS * 86400);
+    const invitedValid = u => u.invited.filter(id => qualifies(chainOf(user(id))));
+    const inviteCount = u => Math.min(MAX_INVITES, invitedValid(u).length);
     /** What the page is allowed to see about the signed-in user. */
     function publicView(u) {
         if (!u) return null;
         const chain = u.wallet && u.chain && u.chain.wallet === u.wallet ? { txs: u.chain.txs, firstAt: u.chain.firstAt, capped: u.chain.capped } : null;
-        return { code: u.code, wallet: u.wallet, x: u.x, invites: inviteCount(u), referred: !!u.referredBy, chain };
+        const invites = inviteCount(u);
+        return { code: u.code, wallet: u.wallet, x: u.x, invites, pendingInvites: Math.max(0, Math.min(MAX_INVITES, u.invited.length) - invites), referred: !!u.referredBy, chain };
     }
     /** On-chain history of a wallet (see airdrop-chain.js), kept with its owner. */
     function setChain(wallet, stats) {
@@ -185,7 +193,7 @@ function createStore(opts) {
     }
     const cardOfCode = code => { const u = user(byCode.get(String(code || '').toLowerCase())); return u && u.card || null; };
 
-    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, codeOf, setCard, cardOfCode, inviteCount, flush, MAX_INVITES, _data: () => data };
+    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, inviteCount, flush, MAX_INVITES, _data: () => data };
 }
 
-module.exports = { createStore, MAX_INVITES };
+module.exports = { createStore, MAX_INVITES, INVITE_MIN_AGE_DAYS, INVITE_MIN_TXS };
