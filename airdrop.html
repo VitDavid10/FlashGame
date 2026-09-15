@@ -674,7 +674,9 @@ function score() {
   const xs = x ? sum(x.lines) : 0, ws = w ? sum(w.lines) : 0;
   const qs = S.socialPts + invitePts();
   const gs = S.gamePts;
-  return { x, w, xs, ws, qs, gs, total: xs + ws + qs + gs };
+  // Finishing every one-time quest multiplies all points, past and future.
+  const raw = xs + ws + qs + gs, boost = boosted() ? Math.round(raw * (POINTS_BOOST - 1)) : 0;
+  return { x, w, xs, ws, qs, gs, raw, boost, total: raw + boost };
 }
 const displayName = () => S.x ? S.x.username : S.w ? short(S.w) : '';
 
@@ -706,24 +708,23 @@ function renderBoard() {
 }
 
 /* ---------------- social quests ---------------- */
-// One-time quests give no points by themselves: finishing all of them boosts the
-// daily post by 50%.
+// One-time quests give no points by themselves: finishing all of them boosts
+// every point by 50%.
 const TASKS = [
   { id: 'follow', t: 'FOLLOW @' + X_ACCOUNT.toUpperCase(), d: 'Follow PillWars on X.', pts: 0,
     url: () => 'https://x.com/intent/follow?screen_name=' + X_ACCOUNT },
   { id: 'tg', t: 'JOIN TELEGRAM', d: 'The contract drops there first.', pts: 0, url: () => TELEGRAM },
   { id: 'play', t: 'PLAY YOUR FIRST MATCH', d: 'Enter the Daily Arena below.', pts: 0, auto: true },
 ];
-const DAILY_POST_PTS = 100, POST_BOOST = 1.5, REPOST_PTS = 150, LIKE_PTS = 50;
+const DAILY_POST_PTS = 100, POINTS_BOOST = 1.5, REPOST_PTS = 150, LIKE_PTS = 50;
 // Sharing your points card pays again once your points grow 10% past the last share.
 const SHARE_CARD_PTS = 400, SHARE_AGAIN_GROWTH = 1.10;
 const RUN_SHARE_PTS = 30;   // sharing a match card, once a day
 const boosted = () => TASKS.every(t => S.tasks[t.id]);
-const dailyPostPts = () => Math.round(DAILY_POST_PTS * (boosted() ? POST_BOOST : 1));
 const dailyPostUrl = () => 'https://x.com/intent/post?text=' + encodeURIComponent('Playing @' + X_ACCOUNT + ' today. Eat, grow, kill pills and farm the $PILLY airdrop.') + '&url=' + encodeURIComponent(refUrl());
 // Every social quest has a key: "daily:*" lives in S.daily, the rest in S.tasks.
 function socialQuests() {
-  const daily = [{ key: 'daily:post', t: 'POST ABOUT PILLWARS', d: 'Share a post about PillWars on X. Once a day.' + (boosted() ? ' Boost on: +50%.' : ''), pts: dailyPostPts(), url: dailyPostUrl, needs: true }];
+  const daily = [{ key: 'daily:post', t: 'POST ABOUT PILLWARS', d: 'Share a post about PillWars on X. Once a day.', pts: DAILY_POST_PTS, url: dailyPostUrl, needs: true }];
   const posts = [];
   POSTS.filter(p => p.id).forEach(p => {
     posts.push({ key: 'rt:' + p.id, t: 'REPOST', d: p.title, pts: REPOST_PTS, url: () => 'https://x.com/intent/retweet?tweet_id=' + p.id });
@@ -745,7 +746,7 @@ function completeTask(key, pts) {
   S.socialPts += pts;
   if (key === 'share') S.shareAt = score().total;
   save();
-  toast(!wasBoosted && boosted() ? 'BOOST ON: DAILY POST +50%' : pts ? '+' + pts + ' AIRDROP POINTS' : 'QUEST DONE');
+  toast(!wasBoosted && boosted() ? 'BOOST ON: ALL POINTS +50%' : pts ? '+' + pts + ' AIRDROP POINTS' : 'QUEST DONE');
   renderAll();
 }
 const pendingTasks = new Set();
@@ -763,7 +764,7 @@ function renderTasks() {
   const q = socialQuests();
   const groups = [
     { title: 'DAILY', right: 'RESETS IN <b class="resetIn" style="color:#fff">' + resetText() + '</b>', items: q.daily },
-    { title: 'ONE-TIME', right: boosted() ? 'BOOST ON: DAILY POST +50%' : 'ALL DONE = DAILY POST +50% (' + q.once.filter(k => isDone(k.key)).length + '/' + q.once.length + ')', items: q.once },
+    { title: 'ONE-TIME', right: boosted() ? 'BOOST ON: ALL POINTS +50%' : 'ALL DONE = ALL POINTS +50% (' + q.once.filter(k => isDone(k.key)).length + '/' + q.once.length + ')', items: q.once },
     { title: 'SPREAD THE WORD', right: 'NEW POSTS ADDED OFTEN', items: q.posts, empty: 'No posts yet. New ones land here.' },
   ];
   const open = g => g.items.some(k => !isDone(k.key));
@@ -809,7 +810,7 @@ function renderCard() {
     return;
   }
   const parts = [['X', s.xs, '#1d9bf0'], ['WALLET', s.ws, '#00ff88'], ['QUESTS', s.qs, '#ffce3d'], ['ARENA', s.gs, '#ccff00']];
-  const tot = s.total || 1;
+  const tot = s.raw || 1;
   const group = (title, lines, pts, lock) => '<div class="bgroup"><h4><span>' + title + '</span><span style="color:var(--green)">' + (lock ? '<span style="color:var(--dim)">' + lock + '</span>' : fmt(pts)) + '</span></h4>' +
     (lines || []).map(l => '<div class="bline' + (l[2] ? ' has-tip" tabindex="0' : '') + '"><span>' + esc(l[0]) + (l[2] ? ' <u>?</u>' : '') + '</span><b>+' + fmt(l[1]) + '</b>' + (l[2] || '') + '</div>').join('') + '</div>';
   const avatar = S.x && /^https:\/\/pbs\.twimg\.com\//.test(S.x.pic || '')
@@ -827,6 +828,7 @@ function renderCard() {
       group('ON-CHAIN', s.w && s.w.lines, s.ws, S.w ? null : 'NOT CONNECTED') +
       group('QUESTS + INVITES', null, s.qs) +
       group('DAILY ARENA', null, s.gs) +
+      group('BOOST +50%', null, s.boost, boosted() ? null : 'FINISH ONE-TIME QUESTS') +
     '</div></div>' +
     '<button class="pbtn blue" id="shareCard"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE CARD</button>' +
     '<div class="card-hint">' + (!isDone('share') ? 'Share it to earn +' + SHARE_CARD_PTS + ' points' : S.x && S.w ? '' : 'Connect both to max your score') + '</div>';
@@ -1143,7 +1145,7 @@ function cardBreakdown(g) {
   text(g, pts, L, 318, PX, ps, '#00ff88', 'left', '#003d1f');
   g.font = ps + 'px ' + PX; text(g, 'POINTS', L + g.measureText(pts).width + 18, 318, PX, 20, '#9fc2ad');
   const parts = [s.xs, s.ws, s.qs, s.gs], cols = ['#1d9bf0', '#00ff88', '#ffce3d', '#ccff00'];
-  const tot = s.total || 1; let bx = L + 4;
+  const tot = s.raw || 1; let bx = L + 4;
   g.fillStyle = '#000'; g.fillRect(L, 342, 560, 36);
   parts.forEach((p, i) => { const w = 552 * p / tot; g.fillStyle = cols[i]; g.fillRect(bx, 346, w, 28); bx += w; });
   box(g, L, 404, 272, 104); box(g, L + 288, 404, 272, 104);
