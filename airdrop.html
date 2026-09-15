@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PillWars Airdrop - Season 0</title>
-<meta name="description" content="Connect X and your Solana wallet, complete quests and play the Daily Arena to earn $PILL airdrop points.">
+<meta name="description" content="Connect X and your Solana wallet, complete quests and play the Daily Arena to earn $PILLY airdrop points.">
 <link rel="icon" href="img/web.png">
 <link rel="preload" href="/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
@@ -84,8 +84,12 @@ a{color:var(--green)}
 
 /* ---------- personal card ---------- */
 .card-row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:6px;align-items:stretch}
-.pcard{background:linear-gradient(160deg,#0f3322 0%,#081a11 60%,#06120c 100%);overflow:hidden}
-.pcard::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 2px,transparent 2px 4px)}
+.pcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.acard{position:relative;width:100%;max-width:440px;padding:20px;overflow:hidden;
+  background:linear-gradient(160deg,#12402a 0%,#0b2618 55%,#08190f 100%);
+  box-shadow:0 0 0 3px #000,0 0 0 6px var(--green),0 0 0 9px #000,0 0 40px rgba(0,255,136,.2)}
+.acard::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 2px,transparent 2px 4px)}
+.card-hint{color:var(--gold);font-size:19px;text-align:center}
 .pc-top{display:flex;align-items:center;gap:14px}
 .pc-pill{width:40px;height:60px;flex:none;transform:rotate(-30deg)}
 .pc-av{width:52px;height:52px;flex:none;image-rendering:auto;box-shadow:0 0 0 3px var(--edge)}
@@ -112,10 +116,26 @@ a{color:var(--green)}
 .qpanel{display:flex;flex-direction:column}
 .qscroll{flex:1;overflow-y:auto;max-height:560px;padding-right:8px;margin-right:-8px;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
 .qscroll::-webkit-scrollbar{width:8px} .qscroll::-webkit-scrollbar-thumb{background:var(--edge)}
-.qtabs{display:flex;gap:8px;margin-bottom:14px}
-.qtabs .qtab{flex:1;--plate:var(--placa-grey)}
-.qtabs .qtab.on{--plate:var(--placa-green)}
-.qtabs .qtab span{color:#ccff00}
+.qtabs{display:flex;gap:22px;margin-bottom:14px;border-bottom:3px solid var(--line)}
+.qtabs .qtab{background:none;border:0;padding:0 0 10px;margin-bottom:-3px;border-bottom:3px solid transparent;cursor:pointer;font-family:var(--px);font-size:10px;color:var(--dim)}
+.qtabs .qtab:hover{color:#fff}
+.qtabs .qtab.on{color:#fff;border-bottom-color:var(--green)}
+.qtabs .qtab span{color:var(--arcade);margin-left:4px}
+.miles{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:10px}
+.mile{text-align:center;padding:6px 2px;background:#000;box-shadow:inset 0 0 0 2px var(--line)}
+.mile b{display:block;font-family:var(--px);font-size:9px;color:#fff}
+.mile span{font-size:16px;color:var(--gold)}
+.mile.ok{box-shadow:inset 0 0 0 2px var(--green)} .mile.ok span{color:var(--green)}
+/* ---------- share modal ---------- */
+.modal.share .panel{max-width:900px}
+.share-stage{display:flex;align-items:center;gap:10px}
+.share-stage canvas{flex:1;min-width:0;width:100%;height:auto;display:block;image-rendering:auto;box-shadow:0 0 0 3px var(--line)}
+.share-arrow{background:none;border:0;cursor:pointer;font-family:var(--px);font-size:22px;color:var(--green);padding:10px 4px;text-shadow:3px 3px 0 #004d27}
+.share-arrow:hover{color:#fff}
+.share-dots{display:flex;justify-content:center;gap:8px;margin:12px 0 4px}
+.share-dots i{width:10px;height:10px;background:var(--line)} .share-dots i.on{background:var(--green)}
+.share-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.share-tip{text-align:center;color:var(--dim);font-size:18px;margin:10px 0 0}
 .post-actions{display:flex;gap:6px}
 .qgroup{font-family:var(--px);font-size:9px;color:var(--dim);margin:16px 0 8px;display:flex;justify-content:space-between}
 .qgroup:first-child{margin-top:0}
@@ -241,6 +261,8 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
   .task{flex-wrap:wrap}
   .task .tx{flex-basis:100%}
   .task .pts{margin-left:auto}
+  .miles{grid-template-columns:repeat(4,1fr)}
+  .share-arrow{font-size:16px;padding:6px 2px}
   .screen{aspect-ratio:3/4}
   .hudq{transform:scale(.85);transform-origin:top right}
   .steps,.facts,.flow{grid-template-columns:1fr}
@@ -296,7 +318,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     <h1>PILLWARS <span>AIRDROP</span></h1>
     <p>Connect your X account and your Solana wallet. Your on-chain activity and your X profile turn into airdrop points. Climb the ranking with quests and the Daily Arena.</p>
     <div class="stats">
-      <div class="stat"><b>12,408</b><span>Participants</span></div>
+      <div class="stat"><b id="stPlayers">12,408</b><span>Participants</span></div>
       <div class="stat"><b>8.9M</b><span>Points earned</span></div>
       <div class="stat"><b id="stEnds">--</b><span>Season ends</span></div>
     </div>
@@ -317,7 +339,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       </div>
       <div class="panel cbox" id="cW">
         <div class="ic box"><svg viewBox="0 0 10 10" shape-rendering="crispEdges"><rect x="1" y="2" width="8" height="7" fill="#00ff88"/><rect x="1" y="2" width="8" height="1" fill="#9dffcf"/><rect x="2" y="1" width="5" height="1" fill="#00a857"/><rect x="6" y="4" width="3" height="3" fill="#0a1a12"/><rect x="7" y="5" width="1" height="1" fill="#ffce3d"/></svg></div>
-        <div class="ct"><b>2. CONNECT WALLET</b><span id="cWTxt">Wallet age, transactions, SOL and $PILL held.</span></div>
+        <div class="ct"><b>2. CONNECT WALLET</b><span id="cWTxt">Wallet age, transactions, SOL and $PILLY held.</span></div>
         <button class="pbtn" id="wBtn">CONNECT</button>
       </div>
     </div>
@@ -327,8 +349,8 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       <div class="panel qpanel">
         <h3 class="ptitle">QUESTS <small>BOOST YOUR SCORE</small></h3>
         <div class="qtabs">
-          <button class="pbtn sm qtab on" data-q="social">SOCIAL <span id="socCount"></span></button>
-          <button class="pbtn sm qtab" data-q="arena">DAILY ARENA <span id="arenaCount"></span></button>
+          <button class="qtab on" data-q="social">SOCIAL <span id="socCount"></span></button>
+          <button class="qtab" data-q="arena">DAILY ARENA <span id="arenaCount"></span></button>
         </div>
         <div class="qscroll" id="qSocial">
           <div class="qgroup"><span>DAILY</span><span>RESETS IN <b class="resetIn" style="color:#fff">--:--:--</b></span></div>
@@ -338,8 +360,9 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
           <div class="qgroup"><span>ONE-TIME</span></div>
           <div class="tasks" id="tasks"></div>
           <div class="ref box">
-            <b>INVITE FRIENDS</b>
-            <div style="font-size:19px;color:var(--dim);margin-top:4px">+250 per friend who connects, plus 10% of their points.</div>
+            <div class="qgroup" style="margin:0"><b>INVITE FRIENDS</b><span id="refCount"></span></div>
+            <div style="font-size:19px;color:var(--dim);margin-top:4px">Friends count when they connect X or a wallet. Up to 50 invites.</div>
+            <div class="miles" id="miles"></div>
             <div class="ref-row">
               <input id="refLink" readonly value="Connect to get your link">
               <button class="pbtn green sm" id="refCopy">COPY</button>
@@ -421,7 +444,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
   <!-- ============ TOKENOMICS ============ -->
   <div class="shead">
     <div>
-      <h2>$PILL TOKENOMICS</h2>
+      <h2>$PILLY TOKENOMICS</h2>
       <p>A fair launch on pump.fun. No presale, no private round, no hidden wallets.</p>
     </div>
   </div>
@@ -429,7 +452,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     <div class="panel">
       <div class="tk-lbl">TOTAL SUPPLY</div>
       <div class="tk-big">1,000,000,000</div>
-      <div class="tk-lbl">$PILL - FIXED, NO MINTING</div>
+      <div class="tk-lbl">$PILLY - FIXED, NO MINTING</div>
       <div class="tk-bar" id="tkBar"></div>
       <div class="legend" id="tkLegend"></div>
     </div>
@@ -444,7 +467,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     <div class="panel fact"><b>PUMP.FUN</b><span>Launches on the bonding curve, then migrates to a DEX when it completes.</span></div>
     <div class="panel fact"><b>0% TEAM MINT</b><span>Nothing is minted for the team. Every token is bought on the market.</span></div>
     <div class="panel fact"><b>SOLANA</b><span>SPL token. Fast, cheap transfers and the same wallet you use to play.</span></div>
-    <div class="panel fact"><b>BURN</b><span>Every $PILL spent in the skin shop is burned for good.</span></div>
+    <div class="panel fact"><b>BURN</b><span>Every $PILLY spent in the skin shop is burned for good.</span></div>
   </div>
   <div class="panel">
     <h3 class="ptitle">HOW THE AIRDROP WORKS</h3>
@@ -452,20 +475,20 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       <div class="box"><b>EARN POINTS</b><span>Connect X and your wallet, clear quests and play the Daily Arena during Season 0.</span></div>
       <div class="box"><b>SNAPSHOT</b><span>When the season ends, every point balance is frozen.</span></div>
       <div class="box"><b>SYBIL CHECK</b><span>Bots, farms and duplicate accounts are removed before anything is paid.</span></div>
-      <div class="box"><b>CLAIM $PILL</b><span>The pool is split by points. The more points, the bigger your share.</span></div>
+      <div class="box"><b>CLAIM $PILLY</b><span>The pool is split by points. The more points, the bigger your share.</span></div>
     </div>
   </div>
   <div class="panel">
-    <h3 class="ptitle">WHAT $PILL IS FOR</h3>
+    <h3 class="ptitle">WHAT $PILLY IS FOR</h3>
     <ul class="uses">
-      <li><span><b>Paid rooms.</b> Enter classic and arcade rooms with $PILL and play for the pot.</span></li>
-      <li><span><b>Skin shop.</b> Buy country skins. Every $PILL spent is burned.</span></li>
+      <li><span><b>Paid rooms.</b> Enter classic and arcade rooms with $PILLY and play for the pot.</span></li>
+      <li><span><b>Skin shop.</b> Buy country skins. Every $PILLY spent is burned.</span></li>
       <li><span><b>Rewards pool.</b> Room fees and unclaimed pots flow back to the players.</span></li>
-      <li><span><b>Staking.</b> Stake $PILL and earn a share of the rewards.</span></li>
+      <li><span><b>Staking.</b> Stake $PILLY and earn a share of the rewards.</span></li>
     </ul>
   </div>
 
-  <footer>Points are not tokens. Final allocation is calculated at the end of Season 0. <a href="/terms.html">Terms</a></footer>
+  <footer>Points are not tokens. Final allocation is calculated at the end of Season 0. <a href="/terms.html#airdrop">Airdrop terms</a></footer>
 </div>
 
 <!-- wallet modal -->
@@ -477,6 +500,25 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     <button class="wopt" data-w="backpack"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="">BACKPACK</button>
     <button class="wopt" data-w="demo" id="demoWallet" hidden><img src="img/web.png" alt="" style="image-rendering:pixelated">DEMO WALLET (LOCALHOST)</button>
     <button class="pbtn grey" data-close style="width:100%;margin-top:6px">CANCEL</button>
+  </div>
+</div>
+
+<!-- share modal: preview the image before posting -->
+<div class="modal share" id="mShare" hidden>
+  <div class="panel">
+    <h3 class="ptitle" id="shareTitle">SHARE</h3>
+    <div class="share-stage">
+      <button class="share-arrow" id="sharePrev" aria-label="Previous card">&lt;</button>
+      <canvas id="shareCv" width="1200" height="675"></canvas>
+      <button class="share-arrow" id="shareNext" aria-label="Next card">&gt;</button>
+    </div>
+    <div class="share-dots" id="shareDots"></div>
+    <div class="share-btns">
+      <button class="pbtn blue" id="sharePost"><img src="game/img/cartel-hero/icon-twitter.png" alt="">POST ON X</button>
+      <button class="pbtn green" id="shareSave">SAVE IMAGE</button>
+      <button class="pbtn grey" data-close>CLOSE</button>
+    </div>
+    <p class="share-tip" id="shareTip">The image is copied when you press POST ON X. Paste it into the post with Ctrl+V.</p>
   </div>
 </div>
 
@@ -496,16 +538,18 @@ const POSTS = [
 ];
 const SEASON_END = Date.UTC(2026, 10, 30);
 const SUPPLY = 1e9;
-const AIRDROP_PCT = 5;
+const AIRDROP_PCT = 15;
 // Sign in with X runs through server/airdrop-x.js (OAuth 2.0 with PKCE).
 const X_AUTH = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://' + location.hostname + ':8091' : '/airdrop-auth';
 
 const fmt = n => Math.round(n).toLocaleString('en-US');
 const short = a => a.slice(0, 4) + '...' + a.slice(-4);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const PARTICIPANTS = 12408;
+const PILL_ROWS = ['...KKKK...','..KWWWWK..','.KWLWWWWK.','.KWLWWWWK.','.KWWWWWWK.','.KWWWWWWK.','.KWWWWWWK.','.KKKKKKKK.','.KGGGGGGK.','.KGGGGGGK.','.KGGGGGDK.','.KGGGGGDK.','.KGGGGDDK.','..KGDDDK..','...KKKK...'];
+const PILL_COL = { K: '#0a1a12', W: '#c0c8d0', L: '#ffffff', G: '#00ff44', D: '#00a82d' };
 const PILL_SVG = (() => {
-  const rows = ['...KKKK...','..KWWWWK..','.KWLWWWWK.','.KWLWWWWK.','.KWWWWWWK.','.KWWWWWWK.','.KWWWWWWK.','.KKKKKKKK.','.KGGGGGGK.','.KGGGGGGK.','.KGGGGGDK.','.KGGGGGDK.','.KGGGGDDK.','..KGDDDK..','...KKKK...'];
-  const col = { K: '#0a1a12', W: '#c0c8d0', L: '#ffffff', G: '#00ff44', D: '#00a82d' };
+  const rows = PILL_ROWS, col = PILL_COL;
   let r = '';
   rows.forEach((row, y) => [...row].forEach((ch, x) => { if (col[ch]) r += '<rect x="' + x + '" y="' + y + '" width="1.02" height="1.02" fill="' + col[ch] + '"/>'; }));
   return '<svg viewBox="0 0 10 15" shape-rendering="crispEdges">' + r + '</svg>';
@@ -571,16 +615,25 @@ function walletProfile(addr) {
       ['Wallet age (' + fmt(days) + ' days)', Math.min(1500, days * 1.1)],
       ['Transactions (' + fmt(txs) + ')', Math.min(2000, Math.sqrt(txs) * 26)],
       ['SOL balance (' + sol + ')', Math.min(1500, Math.sqrt(sol) * 140)],
-      ['$PILL held (' + fmt(pill) + ')', Math.min(4000, pill / 500)],
+      ['$PILLY held (' + fmt(pill) + ')', Math.min(4000, pill / 500)],
       ['PillWars matches (' + games + ')', games * 40],
     ],
   };
 }
-const sum = lines => lines.reduce((a, l) => a + l[1], 0);
+// Invites pay at these counts only; 50 is the cap.
+const INVITE_MILES = [[1, 100], [3, 150], [5, 200], [10, 300], [15, 300], [20, 300], [25, 300], [30, 300], [35, 300], [40, 300], [45, 300], [50, 500]];
+const MAX_INVITES = 50;
+const inviteCount = () => Math.min(MAX_INVITES, S.refs);
+const invitePts = () => INVITE_MILES.reduce((a, m) => a + (inviteCount() >= m[0] ? m[1] : 0), 0);
+function renderInvites() {
+  $('#refCount').textContent = inviteCount() + '/' + MAX_INVITES;
+  $('#miles').innerHTML = INVITE_MILES.map(m => '<div class="mile' + (inviteCount() >= m[0] ? ' ok' : '') + '"><b>' + m[0] + '</b><span>+' + m[1] + '</span></div>').join('');
+}
+const sum = lines =>lines.reduce((a, l) => a + l[1], 0);
 function score() {
   const x = S.x ? xProfile(S.x) : null, w = S.w ? walletProfile(S.w) : null;
   const xs = x ? sum(x.lines) : 0, ws = w ? sum(w.lines) : 0;
-  const qs = S.socialPts + S.refs * 250;
+  const qs = S.socialPts + invitePts();
   const gs = S.gamePts;
   return { x, w, xs, ws, qs, gs, total: xs + ws + qs + gs };
 }
@@ -618,11 +671,11 @@ const TASKS = [
   { id: 'follow', t: 'FOLLOW @' + X_ACCOUNT.toUpperCase(), d: 'Follow PillWars on X.', pts: 150,
     url: () => 'https://x.com/intent/follow?screen_name=' + X_ACCOUNT },
   { id: 'tg', t: 'JOIN TELEGRAM', d: 'The contract drops there first.', pts: 100, url: () => TELEGRAM },
-  { id: 'share', t: 'SHARE YOUR CARD', d: 'Post your airdrop card on X.', pts: 300, url: () => shareCardUrl(), needs: true },
+  { id: 'share', t: 'SHARE YOUR CARD', d: 'Post your airdrop card on X.', pts: 300, open: () => openCardShare(), needs: true },
   { id: 'play', t: 'PLAY YOUR FIRST MATCH', d: 'Enter the Daily Arena below.', pts: 200, auto: true },
 ];
 const DAILY_POST_PTS = 100, REPOST_PTS = 150, LIKE_PTS = 50;
-const dailyPostUrl = () => 'https://x.com/intent/post?text=' + encodeURIComponent('Playing @' + X_ACCOUNT + ' today. Eat, grow, kill pills and farm the $PILL airdrop.') + '&url=' + encodeURIComponent(refUrl());
+const dailyPostUrl = () => 'https://x.com/intent/post?text=' + encodeURIComponent('Playing @' + X_ACCOUNT + ' today. Eat, grow, kill pills and farm the $PILLY airdrop.') + '&url=' + encodeURIComponent(refUrl());
 // Every social quest has a key: "daily:*" lives in S.daily, the rest in S.tasks.
 function socialQuests() {
   const daily = [{ key: 'daily:post', t: 'POST ABOUT PILLWARS', d: 'Share a post about PillWars on X. Once a day.', pts: DAILY_POST_PTS, url: dailyPostUrl, needs: true }];
@@ -664,6 +717,7 @@ $('#view-me').addEventListener('click', e => {
   if (!b.dataset.task) return;
   const t = socialQuests().all.find(k => k.key === b.dataset.task); if (!t) return;
   if (t.needs && !(S.x || S.w)) { toast('CONNECT X OR YOUR WALLET FIRST'); return; }
+  if (t.open) { t.open(); return; }
   if (!pendingTasks.has(t.key)) {
     window.open(t.url(), '_blank', 'noopener');
     pendingTasks.add(t.key); renderTasks();
@@ -681,11 +735,10 @@ document.querySelectorAll('.qtab').forEach(t => t.onclick = () => {
 /* ---------------- card ---------------- */
 const refCode = () => displayName().replace(/[^a-z0-9]/gi, '').slice(0, 10).toLowerCase();
 const refUrl = () => SITE + '/airdrop' + (refCode() ? '?ref=' + refCode() : '');
-function shareCardUrl() {
-  const s = score(), rank = renderBoard();
-  const txt = 'I have ' + fmt(s.total) + ' $PILL airdrop points on @' + X_ACCOUNT + (rank ? ' (rank #' + fmt(rank) + ')' : '') + '.\n\nConnect your X and wallet to check yours:';
-  return 'https://x.com/intent/post?text=' + encodeURIComponent(txt) + '&url=' + encodeURIComponent(refUrl());
-}
+const topPct = rank => {
+  const p = Math.min(100, Math.max(0.01, rank / PARTICIPANTS * 100));
+  return (p < 1 ? p.toFixed(2) : p < 10 ? p.toFixed(1) : Math.round(p)) + '%';
+};
 function renderCard() {
   const s = score(), rank = renderBoard();
   const card = $('#card');
@@ -700,7 +753,7 @@ function renderCard() {
   const avatar = S.x && /^https:\/\/pbs\.twimg\.com\//.test(S.x.pic || '')
     ? '<img class="pc-av" src="' + esc(S.x.pic) + '" alt="">'
     : PILL_SVG.replace('<svg', '<svg class="pc-pill"');
-  card.innerHTML =
+  card.innerHTML = '<div class="acard">' +
     '<div class="pc-top">' + avatar +
       '<div class="pc-id"><b>' + (S.x ? '@' + esc(S.x.username) : 'ANON PILL') + '</b><span>' + (S.w ? short(S.w) : 'no wallet yet') + '</span></div>' +
       '<div class="pc-rank"><b>#' + fmt(rank) + '</b><span>RANK</span></div></div>' +
@@ -712,27 +765,183 @@ function renderCard() {
       group('ON-CHAIN', s.w && s.w.lines, s.ws, S.w ? null : 'NOT CONNECTED') +
       group('QUESTS + INVITES', null, s.qs) +
       group('DAILY ARENA', null, s.gs) +
-    '</div>' +
-    '<div class="card-actions"><button class="pbtn blue" id="shareCard"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE CARD</button>' +
-    (S.x && S.w ? '' : '<span style="color:var(--gold);font-size:19px;align-self:center">Connect both to max your score</span>') + '</div>';
-  $('#shareCard').onclick = () => {
-    window.open(shareCardUrl(), '_blank', 'noopener');
-    completeTask('share', 300);
-  };
+    '</div></div>' +
+    '<button class="pbtn blue" id="shareCard"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE CARD</button>' +
+    '<div class="card-hint">' + (S.x && S.w ? 'Share it to earn +300 points' : 'Connect both to max your score') + '</div>';
+  $('#shareCard').onclick = openCardShare;
 }
+
+/* ---------------- share images ----------------
+   X web intents only take text, so the image is drawn here, copied to the
+   clipboard (or handed to the phone's share sheet) and pasted into the post. */
+const PX = '"Press Start 2P", monospace', VT = '"VT323", monospace';
+const fontsReady = () => Promise.all([document.fonts.load('20px ' + PX), document.fonts.load('20px ' + VT)]).catch(() => {});
+let avatarImg = null, avatarSrc = '';
+function loadAvatar() {
+  const src = S.x && /^https:\/\/pbs\.twimg\.com\//.test(S.x.pic || '') ? S.x.pic.replace('_normal', '_200x200') : '';
+  if (src === avatarSrc) return Promise.resolve(avatarImg);
+  avatarSrc = src; avatarImg = null;
+  if (!src) return Promise.resolve(null);
+  return new Promise(res => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => { avatarImg = im; res(im); }; im.onerror = () => res(null);
+    im.src = src;
+  });
+}
+function drawPill(g, x, y, size) {
+  const c = size / 15;
+  PILL_ROWS.forEach((row, ry) => [...row].forEach((ch, rx) => {
+    if (!PILL_COL[ch]) return;
+    g.fillStyle = PILL_COL[ch]; g.fillRect(Math.round(x + rx * c), Math.round(y + ry * c), Math.ceil(c), Math.ceil(c));
+  }));
+}
+function text(g, str, x, y, font, size, color, align, shadow) {
+  g.font = size + 'px ' + font; g.textAlign = align || 'left'; g.textBaseline = 'alphabetic';
+  if (shadow) { g.fillStyle = shadow; g.fillText(str, x + size / 8, y + size / 8); }
+  g.fillStyle = color; g.fillText(str, x, y);
+}
+function drawBase(g, W, H) {
+  g.fillStyle = '#050505'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(0,255,136,.08)'; g.lineWidth = 2;
+  for (let x = 0; x < W; x += 60) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+  for (let y = 0; y < H; y += 60) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  const v = g.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, W * .7);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)');
+  g.fillStyle = v; g.fillRect(0, 0, W, H);
+}
+function drawFrame(g, W, H) {
+  g.fillStyle = '#00ff88'; g.fillRect(14, 14, W - 28, 8); g.fillRect(14, H - 22, W - 28, 8); g.fillRect(14, 14, 8, H - 28); g.fillRect(W - 22, 14, 8, H - 28);
+  text(g, 'PILLWARS', 50, 78, PX, 30, '#ffffff', 'left', '#4a5156');
+  g.font = '30px ' + PX; const wPill = g.measureText('PILLWARS ').width;
+  text(g, 'AIRDROP', 50 + wPill, 78, PX, 30, '#00ff88', 'left', '#004d27');
+  g.fillStyle = '#00ff88'; g.font = '14px ' + PX; const sw = g.measureText('SEASON 0').width + 24;
+  g.fillRect(W - 50 - sw, 50, sw, 34); text(g, 'SEASON 0', W - 50 - sw / 2, 74, PX, 14, '#04150c', 'center');
+  text(g, 'pillwars.fun/airdrop', W - 50, H - 44, VT, 30, '#8fa89a', 'right');
+}
+function drawIdentity(g, x, y, s) {
+  if (avatarImg) { g.fillStyle = '#00ff88'; g.fillRect(x - 5, y - 5, 110, 110); g.drawImage(avatarImg, x, y, 100, 100); }
+  else drawPill(g, x + 15, y - 5, 110);
+  text(g, S.x ? '@' + S.x.username : 'ANON PILL', x + 130, y + 45, PX, 26, '#ffffff');
+  text(g, S.w ? short(S.w) : 'no wallet linked', x + 130, y + 88, VT, 34, '#8fa89a');
+}
+function cardBreakdown(g, W, H) {
+  const s = score(), rank = renderBoard();
+  drawBase(g, W, H); drawFrame(g, W, H);
+  drawIdentity(g, 60, 130, s);
+  text(g, fmt(s.total), 60, 380, PX, 76, '#00ff88', 'left', '#004d27');
+  g.font = '76px ' + PX; text(g, 'PTS', 60 + g.measureText(fmt(s.total)).width + 20, 380, PX, 24, '#8fa89a');
+  const parts = [['X', s.xs, '#1d9bf0'], ['WALLET', s.ws, '#00ff88'], ['QUESTS', s.qs, '#ffce3d'], ['ARENA', s.gs, '#ccff00']];
+  const tot = s.total || 1; let bx = 60;
+  g.fillStyle = '#0f3a25'; g.fillRect(56, 416, 568, 36);
+  parts.forEach(p => { const w = 560 * p[1] / tot; g.fillStyle = p[2]; g.fillRect(bx, 420, w, 28); bx += w; });
+  text(g, 'RANK #' + fmt(rank), 60, 530, PX, 26, '#ffce3d', 'left', '#5c3d00');
+  text(g, 'TOP ' + topPct(rank) + ' OF SEASON 0', 60, 575, VT, 36, '#8fa89a');
+  const rows = [['X ACCOUNT', s.xs, '#1d9bf0'], ['ON-CHAIN', s.ws, '#00ff88'], ['QUESTS + INVITES', s.qs, '#ffce3d'], ['DAILY ARENA', s.gs, '#ccff00']];
+  rows.forEach((r, i) => {
+    const y = 190 + i * 100;
+    g.fillStyle = '#07140e'; g.fillRect(690, y - 50, 450, 80);
+    g.fillStyle = r[2]; g.fillRect(690, y - 50, 8, 80);
+    text(g, r[0], 720, y - 12, PX, 16, '#8fa89a');
+    text(g, fmt(r[1]), 1120, y + 18, PX, 26, '#ffffff', 'right');
+  });
+}
+function cardRank(g, W, H) {
+  const s = score(), rank = renderBoard();
+  drawBase(g, W, H); drawFrame(g, W, H);
+  drawIdentity(g, W / 2 - 330, 120, s);
+  text(g, fmt(s.total), W / 2, 395, PX, 110, '#00ff88', 'center', '#004d27');
+  text(g, 'AIRDROP POINTS', W / 2, 450, PX, 22, '#8fa89a', 'center');
+  g.fillStyle = '#07140e'; g.fillRect(W / 2 - 440, 490, 420, 110); g.fillRect(W / 2 + 20, 490, 420, 110);
+  text(g, '#' + fmt(rank), W / 2 - 230, 555, PX, 40, '#ffce3d', 'center', '#5c3d00');
+  text(g, 'RANK', W / 2 - 230, 588, VT, 30, '#8fa89a', 'center');
+  text(g, 'TOP ' + topPct(rank), W / 2 + 230, 555, PX, 40, '#ccff00', 'center', '#1c3300');
+  text(g, 'OF ALL PLAYERS', W / 2 + 230, 588, VT, 30, '#8fa89a', 'center');
+}
+
+function drawRun(g, W, H, shot, m, tipo) {
+  drawBase(g, W, H);
+  if (shot && shot.width) {
+    const sc = Math.max(W / shot.width, H / shot.height);
+    const dw = shot.width * sc, dh = shot.height * sc;
+    g.drawImage(shot, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  }
+  const top = g.createLinearGradient(0, 0, 0, 140); top.addColorStop(0, 'rgba(0,0,0,.85)'); top.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = top; g.fillRect(0, 0, W, 140);
+  g.fillStyle = 'rgba(3,10,6,.9)'; g.fillRect(0, H - 170, W, 170);
+  g.fillStyle = '#00ff88'; g.fillRect(0, H - 174, W, 4);
+  drawFrame(g, W, H);
+  text(g, tipo === 'gameOver' ? 'GAME OVER' : 'MATCH FINISHED', 50, H - 108, PX, 26, tipo === 'gameOver' ? '#f62a2d' : '#ccff00', 'left', '#000');
+  const secs = Math.floor(m.alive), alive = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+  text(g, 'KILLS ' + m.kills, 50, H - 56, PX, 22, '#ffffff');
+  text(g, 'ALIVE ' + alive, 330, H - 56, PX, 22, '#ffffff');
+  text(g, '+' + fmt(m.earned) + ' PTS', 640, H - 56, PX, 22, '#00ff88', 'left', '#004d27');
+  text(g, S.x ? '@' + S.x.username : '', W - 50, H - 108, PX, 18, '#8fa89a', 'right');
+}
+
+const share = { variants: [], idx: 0, text: '', done: null, blob: null };
+function renderShare() {
+  const cv = $('#shareCv'), g = cv.getContext('2d');
+  g.clearRect(0, 0, cv.width, cv.height);
+  share.variants[share.idx](g, cv.width, cv.height);
+  const many = share.variants.length > 1;
+  $('#sharePrev').style.visibility = $('#shareNext').style.visibility = many ? 'visible' : 'hidden';
+  $('#shareDots').innerHTML = many ? share.variants.map((_, i) => '<i class="' + (i === share.idx ? 'on' : '') + '"></i>').join('') : '';
+  share.blob = new Promise(res => { try { cv.toBlob(b => res(b), 'image/png'); } catch (e) { res(null); } });
+}
+async function openShare(opts) {
+  Object.assign(share, { idx: 0 }, opts);
+  $('#shareTitle').textContent = opts.title;
+  $('#mShare').hidden = false;
+  await fontsReady(); await loadAvatar();
+  renderShare();
+}
+function openCardShare() {
+  const s = score(), rank = renderBoard();
+  openShare({
+    title: 'SHARE YOUR CARD',
+    variants: [cardBreakdown, cardRank],
+    text: 'I have ' + fmt(s.total) + ' airdrop points on @' + X_ACCOUNT + ', top ' + topPct(rank) + ' of Season 0.\n\nConnect your X and wallet to check yours:',
+    done: () => completeTask('share', 300),
+  });
+}
+$('#sharePrev').onclick = () => { share.idx = (share.idx + share.variants.length - 1) % share.variants.length; renderShare(); };
+$('#shareNext').onclick = () => { share.idx = (share.idx + 1) % share.variants.length; renderShare(); };
+$('#sharePost').onclick = async () => {
+  const intent = 'https://x.com/intent/post?text=' + encodeURIComponent(share.text) + '&url=' + encodeURIComponent(refUrl());
+  const touch = matchMedia('(pointer:coarse)').matches;
+  if (touch && navigator.canShare) {
+    const blob = await share.blob;
+    const file = blob && new File([blob], 'pillwars-airdrop.png', { type: 'image/png' });
+    if (file && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: share.text + ' ' + refUrl() }); if (share.done) share.done(); return; } catch (e) { if (e.name === 'AbortError') return; }
+    }
+  }
+  let copied = false;
+  try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': share.blob })]); copied = true; } catch (e) {}
+  window.open(intent, '_blank', 'noopener');
+  toast(copied ? 'IMAGE COPIED - PASTE IT IN THE POST' : 'USE SAVE IMAGE AND ATTACH IT');
+  if (share.done) share.done();
+};
+$('#shareSave').onclick = async () => {
+  const blob = await share.blob; if (!blob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'pillwars-airdrop.png';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
 
 /* ---------------- connections ---------------- */
 function renderConnections() {
   $('#cX').classList.toggle('done', !!S.x); $('#cW').classList.toggle('done', !!S.w);
   $('#cXTxt').textContent = S.x ? '@' + S.x.username + ' connected' : 'Sign in with X: followers and account age.';
-  $('#cWTxt').textContent = S.w ? short(S.w) + ' connected' : 'Wallet age, transactions, SOL and $PILL held.';
+  $('#cWTxt').textContent = S.w ? short(S.w) + ' connected' : 'Wallet age, transactions, SOL and $PILLY held.';
   $('#xBtn').textContent = S.x ? 'UNLINK' : 'CONNECT';
   $('#xBtn').className = 'pbtn ' + (S.x ? 'grey' : 'blue');
   $('#wBtn').textContent = S.w ? 'UNLINK' : 'CONNECT';
   $('#wBtn').className = 'pbtn ' + (S.w ? 'grey' : '');
   $('#refLink').value = refCode() ? refUrl() : 'Connect to get your link';
 }
-function renderAll() { renderConnections(); renderCard(); renderTasks(); renderDaily(); }
+function renderAll() { renderConnections(); renderCard(); renderTasks(); renderInvites(); renderDaily(); }
 
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => {
   if (e.target === m || e.target.closest('[data-close]')) m.hidden = true;
@@ -804,7 +1013,7 @@ function toast(msg) {
   $('#tkBar').innerHTML = parts.map(p => '<i style="width:' + p[1] + '%;background:' + p[2] + '">' + (p[1] >= 12 ? p[0] + ' ' + p[1] + '%' : '') + '</i>').join('');
   $('#tkLegend').innerHTML = parts.map(p => '<span><em style="background:' + p[2] + '"></em>' + p[0] + ' ' + p[1] + '%</span>').join('');
   $('#tkPool').textContent = fmt(SUPPLY * AIRDROP_PCT / 100);
-  $('#tkPoolPct').textContent = '$PILL - ' + AIRDROP_PCT + '% OF SUPPLY';
+  $('#tkPoolPct').textContent = '$PILLY - ' + AIRDROP_PCT + '% OF SUPPLY';
 })();
 
 /* ---------------- timers ---------------- */
@@ -984,6 +1193,13 @@ function endMatch(w, tipo) {
   dropGameSave();
   try { w.hideGameHUD(); } catch (e) {}
   const secs = Math.floor(m.alive);
+  // Grab the last game frame now: the iframe can be reloaded before the player shares.
+  let shot = null;
+  try {
+    const src = w.document.getElementById('gameCanvas');
+    shot = document.createElement('canvas'); shot.width = src.width; shot.height = src.height;
+    shot.getContext('2d').drawImage(src, 0, 0);
+  } catch (e) { shot = null; }
   const title = tipo === 'gameOver'
     ? '<img class="go" src="game/img/cartel-hero/game-over.png" alt="GAME OVER">'
     : '<div style="font-family:var(--px);color:var(--arcade);font-size:clamp(18px,3vw,30px);text-shadow:4px 4px 0 #000">MATCH FINISHED</div>';
@@ -996,11 +1212,13 @@ function endMatch(w, tipo) {
   over.hidden = false;
   $('#again').onclick = () => { over.hidden = true; w.tryAgainOnline(); };
   $('#quit').onclick = resetArena;
-  $('#shareRun').onclick = () => {
-    const txt = 'I just got ' + m.kills + (m.kills === 1 ? ' kill' : ' kills') + ' in the @' + X_ACCOUNT + ' Daily Arena' +
-      (m.earned ? ' and earned ' + fmt(m.earned) + ' $PILL airdrop points' : '') + '.\n\nThink you can beat me?';
-    window.open('https://x.com/intent/post?text=' + encodeURIComponent(txt) + '&url=' + encodeURIComponent(refUrl()), '_blank', 'noopener');
-  };
+  $('#shareRun').onclick = () => openShare({
+    title: 'SHARE YOUR RUN',
+    variants: [(g, W, H) => drawRun(g, W, H, shot, m, tipo)],
+    text: 'I just got ' + m.kills + (m.kills === 1 ? ' kill' : ' kills') + ' in the @' + X_ACCOUNT + ' Daily Arena' +
+      (m.earned ? ' and earned ' + fmt(m.earned) + ' airdrop points' : '') + '.\n\nThink you can beat me?',
+    done: null,
+  });
 }
 
 renderAll(); tick();
