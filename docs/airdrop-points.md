@@ -31,13 +31,16 @@ Checked live on mainnet by the server (`server/airdrop-tokens.js`):
 | Sanctum (CLOUD) | 14 Apr 2025 | [phantom.com](https://phantom.com/learn/crypto-101/sanctum-cloud-airdrop) |
 | Grass (GRASS), season 1 only | 27 Mar 2025 | [coingabbar.com](https://www.coingabbar.com/en/crypto-currency-news/grass-airdrop-claim-period-extended-check-grass-claim-details) |
 
-**Jupiter (JUP)** stays in the list but is **pending**: it has no fixed snapshot
-or deadline (Jupiter repeats a "Jupuary" round every year), so today there is no
-way to tell "qualified in a real round" from "bought JUP yesterday". It never
-scores until a real check is found. Dropped from the list entirely: **Jupiter
-Jupuary** (not a distinct airdrop, just another JUP round), **Kamino (KMNO)**
-(same problem as JUP: ongoing seasons, no fixed deadline), **Jumper points**
-(off-chain loyalty points, not on Solana, nothing to check on mainnet).
+**Jumper (1,000+ XP)** — checked live against a third-party site
+(`jumper-jade.vercel.app`, not run by Jumper Exchange itself; there is no
+official public API for this) that reports a Solana wallet's Jumper XP. If
+that site is unreachable the wallet just doesn't get the points this check —
+never a false yes (`server/airdrop-jumper.js`).
+
+**Jupiter (JUP)** and **Kamino (KMNO)** are not in the list: both are ongoing,
+season-based programs with no fixed snapshot or deadline, so there is no way
+to tell "qualified in a past round" from "bought the token yesterday". Also
+dropped: **Jupiter Jupuary** (not a distinct airdrop, just another JUP round).
 
 | Airdrops | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7+ |
 |---|---|---|---|---|---|---|---|---|
@@ -117,7 +120,7 @@ by themselves, but finishing all three **multiplies all your points ×1.5**, pas
 ---
 
 *Internal, do not share:*
-- *Airdrops, Genesis Tokens and Mad Lads are all real (server/airdrop-tokens.js, server/airdrop-nfts.js). Jupiter (JUP) is the one exception: still pending, see above.*
+- *Airdrops, Genesis Tokens, Mad Lads and Jumper XP are all real (server/airdrop-tokens.js, server/airdrop-nfts.js, server/airdrop-jumper.js).*
 - *Quest, arena and share points are still computed in the browser: they must move to the server before launch.*
 - *Pending: max 0.5% of the supply per person.*
 - *Source of truth in code: `airdrop.html` (tiers, quests) and `server/airdrop-store.js` (invite rule).*

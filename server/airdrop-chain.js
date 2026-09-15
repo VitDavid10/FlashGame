@@ -8,6 +8,7 @@
  */
 const { createNfts } = require('./airdrop-nfts.js');
 const { createTokens } = require('./airdrop-tokens.js');
+const jumper = require('./airdrop-jumper.js');
 
 const PAGE = 1000;
 const MAX_PAGES = 20;               // 20,000 transactions: far past the points cap
@@ -58,7 +59,12 @@ function createChain(opts) {
             if (txs >= TOP_TXS && firstAt && now() / 1000 - firstAt >= TOP_AGE_DAYS * 86400) break;
         } while (last.length === PAGE && pages < MAX_PAGES);
         const out = { txs, firstAt, capped: last.length === PAGE, checkedAt: now() };
-        if (opts.nfts !== false) { out.nfts = await nfts.walletNfts(address); out.airdrops = await tokens.walletAirdrops(address); }
+        if (opts.nfts !== false) {
+            out.nfts = await nfts.walletNfts(address);
+            out.airdrops = await tokens.walletAirdrops(address);
+            const xp = await jumper.fetchXP(address, { fetch: doFetch, log });
+            if (jumper.qualifies(xp)) out.airdrops.push('jumper');
+        }
         return out;
     }
 

@@ -650,10 +650,10 @@ function xProfile(x) {
 // Jupiter has no fixed deadline (it repeats every "Jupuary"), so it can't be
 // verified this way yet: it stays pending and never scores until we find one.
 const AIRDROPS = [
-  { id: 'jup', name: 'Jupiter (JUP)', pending: true }, { id: 'jto', name: 'Jito (JTO)' },
-  { id: 'pyth', name: 'Pyth (PYTH)' }, { id: 'w', name: 'Wormhole (W)' }, { id: 'tnsr', name: 'Tensor (TNSR)' },
-  { id: 'drift', name: 'Drift (DRIFT)' }, { id: 'me', name: 'Magic Eden (ME)' }, { id: 'met', name: 'Meteora (MET)' },
-  { id: 'bonk', name: 'BONK' }, { id: 'cloud', name: 'Sanctum (CLOUD)' }, { id: 'grass', name: 'Grass (GRASS)' },
+  { id: 'jto', name: 'Jito (JTO)' }, { id: 'pyth', name: 'Pyth (PYTH)' }, { id: 'w', name: 'Wormhole (W)' },
+  { id: 'tnsr', name: 'Tensor (TNSR)' }, { id: 'drift', name: 'Drift (DRIFT)' }, { id: 'me', name: 'Magic Eden (ME)' },
+  { id: 'met', name: 'Meteora (MET)' }, { id: 'bonk', name: 'BONK' }, { id: 'cloud', name: 'Sanctum (CLOUD)' },
+  { id: 'grass', name: 'Grass (GRASS)' }, { id: 'jumper', name: 'Jumper (1,000+ XP)' },
 ];
 // [minimum, share of the category]: the highest tier reached pays.
 const tierPct = (v, tiers) => tiers.reduce((p, t) => v >= t[0] ? t[1] : p, 0);
