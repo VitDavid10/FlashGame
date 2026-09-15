@@ -88,7 +88,7 @@ a{color:var(--green)}
 /* ---------- personal card ---------- */
 .card-row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:6px;align-items:stretch}
 .pcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
-.acard{position:relative;width:100%;max-width:440px;padding:20px;overflow:hidden;
+.acard{position:relative;width:100%;max-width:440px;padding:20px;overflow:visible;
   background:linear-gradient(160deg,#12402a 0%,#0b2618 55%,#08190f 100%);
   box-shadow:0 0 0 3px #000,0 0 0 6px var(--green),0 0 0 9px #000,0 0 40px rgba(0,255,136,.2)}
 .acard::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 2px,transparent 2px 4px)}
@@ -112,6 +112,16 @@ a{color:var(--green)}
 .bgroup h4{font-family:var(--px);font-size:10px;margin:0 0 6px;display:flex;justify-content:space-between}
 .bline{display:flex;justify-content:space-between;font-size:20px;color:var(--dim);padding:2px 0;border-bottom:2px dashed rgba(143,168,154,.12)}
 .bline b{color:#fff;font-weight:400}
+/* Airdrop Hunter: breakdown on hover (tap/focus on mobile). */
+.bline.has-tip{position:relative;cursor:help;outline:none}
+.bline.has-tip u{text-decoration:none;font-family:var(--px);font-size:9px;color:#04150c;background:var(--gold);padding:1px 4px;margin-left:4px;vertical-align:2px}
+.bline .tip{display:none;position:absolute;left:0;right:0;top:100%;z-index:20;margin-top:6px;padding:12px;background:#030a06;box-shadow:0 0 0 3px var(--line),0 0 0 6px var(--edge),6px 6px 0 6px rgba(0,0,0,.5)}
+.bline.has-tip:hover .tip,.bline.has-tip:focus .tip,.bline.has-tip:focus-within .tip{display:block}
+.bline .tip b{display:block;font-family:var(--px);font-size:9px;color:var(--arcade);margin-bottom:8px}
+.bline .tip div{display:flex;gap:10px;font-size:19px;line-height:1.25}
+.bline .tip div i{font-style:normal;min-width:48px;text-align:right;font-family:var(--px);font-size:9px;align-self:center}
+.bline .tip .ok{color:#fff} .bline .tip .ok i{color:var(--green)}
+.bline .tip .no{color:#5d7467} .bline .tip .no i{color:#5d7467}
 .card-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;position:relative;z-index:1}
 .empty-card{text-align:center;padding:40px 18px;color:var(--dim)}
 
@@ -340,7 +350,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       </div>
       <div class="panel cbox" id="cW">
         <div class="ic box"><svg viewBox="0 0 10 10" shape-rendering="crispEdges"><rect x="1" y="2" width="8" height="7" fill="#00ff88"/><rect x="1" y="2" width="8" height="1" fill="#9dffcf"/><rect x="2" y="1" width="5" height="1" fill="#00a857"/><rect x="6" y="4" width="3" height="3" fill="#0a1a12"/><rect x="7" y="5" width="1" height="1" fill="#ffce3d"/></svg></div>
-        <div class="ct"><b>2. CONNECT WALLET</b><span id="cWTxt">Wallet age, transactions, SOL and $PILLY held.</span></div>
+        <div class="ct"><b>2. CONNECT WALLET</b><span id="cWTxt">Wallet age, activity and past airdrops.</span></div>
         <button class="pbtn" id="wBtn">CONNECT</button>
       </div>
     </div>
@@ -622,25 +632,35 @@ function xProfile(x) {
   if (x.verified) lines.push(['Verified account', 300]);
   return { lines };
 }
+// On-chain = 40% of a player's maximum: Airdrop Hunter 70% (11,200), wallet age
+// and transactions 15% each (2,400).
+const AIRDROPS = [
+  { id: 'jup', name: 'Jupiter (JUP)' }, { id: 'jup2', name: 'Jupiter Jupuary' }, { id: 'jto', name: 'Jito (JTO)' },
+  { id: 'pyth', name: 'Pyth (PYTH)' }, { id: 'w', name: 'Wormhole (W)' }, { id: 'tnsr', name: 'Tensor (TNSR)' },
+  { id: 'kmno', name: 'Kamino (KMNO)' }, { id: 'drift', name: 'Drift (DRIFT)' }, { id: 'me', name: 'Magic Eden (ME)' },
+  { id: 'met', name: 'Meteora (MET)' }, { id: 'bonk', name: 'BONK' }, { id: 'cloud', name: 'Sanctum (CLOUD)' },
+  { id: 'grass', name: 'Grass (GRASS)' }, { id: 'saga', name: 'Saga / Seeker holder' },
+];
+const AIRDROP_PTS = 800;   // 14 x 800 = 11,200
 function walletProfile(addr) {
   const r = rng('w:' + addr);
   const days = Math.floor(r() * 1400 + 3);
   const txs = Math.floor(Math.pow(r(), 2) * 6000);
-  const sol = +(Math.pow(r(), 3) * 120).toFixed(2);
-  const pill = Math.floor(Math.pow(r(), 2) * 2e6);
-  const games = Math.floor(r() * 40);
+  const got = AIRDROPS.filter(() => r() < 0.3);
+  const tip = '<div class="tip"><b>AIRDROPS QUALIFIED</b>' + AIRDROPS.map(a => {
+    const ok = got.includes(a);
+    return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? '+' + AIRDROP_PTS : '-') + '</i>' + esc(a.name) + '</div>';
+  }).join('') + '</div>';
   return {
     lines: [
-      ['Wallet age (' + fmt(days) + ' days)', Math.min(1500, days * 1.1)],
-      ['Transactions (' + fmt(txs) + ')', Math.min(2000, Math.sqrt(txs) * 26)],
-      ['SOL balance (' + sol + ')', Math.min(1500, Math.sqrt(sol) * 140)],
-      ['$PILLY held (' + fmt(pill) + ')', Math.min(4000, pill / 500)],
-      ['PillWars matches (' + games + ')', games * 40],
+      ['Airdrop Hunter (' + got.length + '/' + AIRDROPS.length + ')', got.length * AIRDROP_PTS, tip],
+      ['Wallet age (' + fmt(days) + ' days)', Math.min(2400, days * 1.75)],
+      ['Transactions (' + fmt(txs) + ')', Math.min(2400, Math.sqrt(txs) * 31)],
     ],
   };
 }
-// Invites pay at these counts only; 50 is the cap.
-const INVITE_MILES = [[1, 100], [3, 150], [5, 200], [10, 300], [15, 300], [20, 300], [25, 300], [30, 300], [35, 300], [40, 300], [45, 300], [50, 500]];
+// Invites = 20% of a player's maximum (8,000 with 50). They pay at these counts only.
+const INVITE_MILES = [[1, 250], [3, 350], [5, 500], [10, 700], [15, 700], [20, 700], [25, 700], [30, 700], [35, 700], [40, 700], [45, 700], [50, 1300]];
 const MAX_INVITES = 50;
 const inviteCount = () => Math.min(MAX_INVITES, S.refs);
 const invitePts = () => INVITE_MILES.reduce((a, m) => a + (inviteCount() >= m[0] ? m[1] : 0), 0);
@@ -686,18 +706,24 @@ function renderBoard() {
 }
 
 /* ---------------- social quests ---------------- */
+// One-time quests give no points by themselves: finishing all of them boosts the
+// daily post by 50%.
 const TASKS = [
-  { id: 'follow', t: 'FOLLOW @' + X_ACCOUNT.toUpperCase(), d: 'Follow PillWars on X.', pts: 150,
+  { id: 'follow', t: 'FOLLOW @' + X_ACCOUNT.toUpperCase(), d: 'Follow PillWars on X.', pts: 0,
     url: () => 'https://x.com/intent/follow?screen_name=' + X_ACCOUNT },
-  { id: 'tg', t: 'JOIN TELEGRAM', d: 'The contract drops there first.', pts: 100, url: () => TELEGRAM },
-  { id: 'share', t: 'SHARE YOUR CARD', d: 'Post your airdrop card on X.', pts: 300, open: () => openCardShare(), needs: true },
-  { id: 'play', t: 'PLAY YOUR FIRST MATCH', d: 'Enter the Daily Arena below.', pts: 200, auto: true },
+  { id: 'tg', t: 'JOIN TELEGRAM', d: 'The contract drops there first.', pts: 0, url: () => TELEGRAM },
+  { id: 'play', t: 'PLAY YOUR FIRST MATCH', d: 'Enter the Daily Arena below.', pts: 0, auto: true },
 ];
-const DAILY_POST_PTS = 100, REPOST_PTS = 150, LIKE_PTS = 50;
+const DAILY_POST_PTS = 100, POST_BOOST = 1.5, REPOST_PTS = 150, LIKE_PTS = 50;
+// Sharing your points card pays again once your points grow 10% past the last share.
+const SHARE_CARD_PTS = 400, SHARE_AGAIN_GROWTH = 1.10;
+const RUN_SHARE_PTS = 30;   // sharing a match card, once a day
+const boosted = () => TASKS.every(t => S.tasks[t.id]);
+const dailyPostPts = () => Math.round(DAILY_POST_PTS * (boosted() ? POST_BOOST : 1));
 const dailyPostUrl = () => 'https://x.com/intent/post?text=' + encodeURIComponent('Playing @' + X_ACCOUNT + ' today. Eat, grow, kill pills and farm the $PILLY airdrop.') + '&url=' + encodeURIComponent(refUrl());
 // Every social quest has a key: "daily:*" lives in S.daily, the rest in S.tasks.
 function socialQuests() {
-  const daily = [{ key: 'daily:post', t: 'POST ABOUT PILLWARS', d: 'Share a post about PillWars on X. Once a day.', pts: DAILY_POST_PTS, url: dailyPostUrl, needs: true }];
+  const daily = [{ key: 'daily:post', t: 'POST ABOUT PILLWARS', d: 'Share a post about PillWars on X. Once a day.' + (boosted() ? ' Boost on: +50%.' : ''), pts: dailyPostPts(), url: dailyPostUrl, needs: true }];
   const posts = [];
   POSTS.filter(p => p.id).forEach(p => {
     posts.push({ key: 'rt:' + p.id, t: 'REPOST', d: p.title, pts: REPOST_PTS, url: () => 'https://x.com/intent/retweet?tweet_id=' + p.id });
@@ -706,13 +732,20 @@ function socialQuests() {
   const once = TASKS.map(t => Object.assign({ key: t.id }, t));
   return { daily, posts, once, all: daily.concat(posts, once) };
 }
-const isDone = key => key.startsWith('daily:') ? !!(S.daily.social && S.daily.social[key]) : !!S.tasks[key];
+const isDone = key => {
+  if (key.startsWith('daily:')) return !!(S.daily.social && S.daily.social[key]);
+  if (key === 'share') return !!S.tasks.share && score().total < (S.shareAt || 0) * SHARE_AGAIN_GROWTH;
+  return !!S.tasks[key];
+};
 function completeTask(key, pts) {
   if (isDone(key)) return;
+  const wasBoosted = boosted();
   if (key.startsWith('daily:')) { S.daily.social = S.daily.social || {}; S.daily.social[key] = true; }
   else S.tasks[key] = true;
-  S.socialPts += pts; save();
-  toast('+' + pts + ' AIRDROP POINTS');
+  S.socialPts += pts;
+  if (key === 'share') S.shareAt = score().total;
+  save();
+  toast(!wasBoosted && boosted() ? 'BOOST ON: DAILY POST +50%' : pts ? '+' + pts + ' AIRDROP POINTS' : 'QUEST DONE');
   renderAll();
 }
 const pendingTasks = new Set();
@@ -721,7 +754,7 @@ function taskRow(q) {
   let btn = '';
   if (!done && q.auto) btn = '<button class="pbtn grey sm" data-go="arena">PLAY</button>';
   else if (!done) btn = '<button class="pbtn green sm" data-task="' + q.key + '">' + (pendingTasks.has(q.key) ? 'VERIFY' : 'GO') + '</button>';
-  return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : '+' + q.pts) + '</span>' + btn + '</div>';
+  return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : q.pts ? '+' + q.pts : 'BOOST') + '</span>' + btn + '</div>';
 }
 // Pending first: inside a group done quests sink, and a group with nothing left
 // to do (or no posts yet) drops below the groups that still have work.
@@ -730,7 +763,7 @@ function renderTasks() {
   const q = socialQuests();
   const groups = [
     { title: 'DAILY', right: 'RESETS IN <b class="resetIn" style="color:#fff">' + resetText() + '</b>', items: q.daily },
-    { title: 'ONE-TIME', right: '', items: q.once },
+    { title: 'ONE-TIME', right: boosted() ? 'BOOST ON: DAILY POST +50%' : 'ALL DONE = DAILY POST +50% (' + q.once.filter(k => isDone(k.key)).length + '/' + q.once.length + ')', items: q.once },
     { title: 'SPREAD THE WORD', right: 'NEW POSTS ADDED OFTEN', items: q.posts, empty: 'No posts yet. New ones land here.' },
   ];
   const open = g => g.items.some(k => !isDone(k.key));
@@ -778,7 +811,7 @@ function renderCard() {
   const parts = [['X', s.xs, '#1d9bf0'], ['WALLET', s.ws, '#00ff88'], ['QUESTS', s.qs, '#ffce3d'], ['ARENA', s.gs, '#ccff00']];
   const tot = s.total || 1;
   const group = (title, lines, pts, lock) => '<div class="bgroup"><h4><span>' + title + '</span><span style="color:var(--green)">' + (lock ? '<span style="color:var(--dim)">' + lock + '</span>' : fmt(pts)) + '</span></h4>' +
-    (lines || []).map(l => '<div class="bline"><span>' + esc(l[0]) + '</span><b>+' + fmt(l[1]) + '</b></div>').join('') + '</div>';
+    (lines || []).map(l => '<div class="bline' + (l[2] ? ' has-tip" tabindex="0' : '') + '"><span>' + esc(l[0]) + (l[2] ? ' <u>?</u>' : '') + '</span><b>+' + fmt(l[1]) + '</b>' + (l[2] || '') + '</div>').join('') + '</div>';
   const avatar = S.x && /^https:\/\/pbs\.twimg\.com\//.test(S.x.pic || '')
     ? '<img class="pc-av" src="' + esc(S.x.pic) + '" alt="">'
     : PILL_SVG.replace('<svg', '<svg class="pc-pill"');
@@ -796,7 +829,7 @@ function renderCard() {
       group('DAILY ARENA', null, s.gs) +
     '</div></div>' +
     '<button class="pbtn blue" id="shareCard"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE CARD</button>' +
-    '<div class="card-hint">' + (S.x && S.w ? 'Share it to earn +300 points' : 'Connect both to max your score') + '</div>';
+    '<div class="card-hint">' + (!isDone('share') ? 'Share it to earn +' + SHARE_CARD_PTS + ' points' : S.x && S.w ? '' : 'Connect both to max your score') + '</div>';
   $('#shareCard').onclick = openCardShare;
 }
 
@@ -1207,7 +1240,7 @@ function openCardShare() {
     title: 'SHARE YOUR CARD', kind: 'card',
     variants: [cardRank, cardBreakdown],
     text: fmt(s.total) + ' points on @' + X_ACCOUNT + '. Top ' + topPct(rank) + ' of all players.\n\nWhere do you rank?',
-    done: () => completeTask('share', 300),
+    done: () => completeTask('share', SHARE_CARD_PTS),
   });
 }
 $('#sharePrev').onclick = () => { share.idx = (share.idx + share.variants.length - 1) % share.variants.length; renderShare(); };
@@ -1248,7 +1281,7 @@ $('#shareSave').onclick = async () => {
 function renderConnections() {
   $('#cX').classList.toggle('done', !!S.x); $('#cW').classList.toggle('done', !!S.w);
   $('#cXTxt').textContent = S.x ? '@' + S.x.username + ' connected' : 'Sign in with X: followers and account age.';
-  $('#cWTxt').textContent = S.w ? short(S.w) + ' connected' : 'Wallet age, transactions, SOL and $PILLY held.';
+  $('#cWTxt').textContent = S.w ? short(S.w) + ' connected' : 'Wallet age, activity and past airdrops.';
   $('#xBtn').textContent = S.x ? 'UNLINK' : 'CONNECT';
   $('#xBtn').className = 'pbtn ' + (S.x ? 'grey' : 'blue');
   $('#wBtn').textContent = S.w ? 'UNLINK' : 'CONNECT';
@@ -1381,28 +1414,28 @@ setInterval(tick, 1000);
 const T = (t, short) => ({ t, short });
 const DC = () => S.daily.c;
 const QUEST_POOLS = [
-  { tier: 'EASY', pts: 50, quests: [
+  { tier: 'EASY', pts: 20, quests: [
     { id: 'e-kill1', ...T('KILL 1 ENEMY', 'Kill 1 enemy'), goal: 1, today: () => S.daily.kills },
     { id: 'e-pieces5', ...T('EAT 5 ENEMY PIECES', 'Eat 5 pieces'), goal: 5, today: () => DC().pieces },
     { id: 'e-skills2', ...T('USE 2 SKILLS', 'Use 2 skills'), goal: 2, today: () => DC().skills },
     { id: 'e-mass3k', ...T('REACH 3,000 MASS', 'Reach 3,000 mass'), goal: 3000, match: m => m.maxMass },
     { id: 'e-survive60', ...T('SURVIVE 60 SECONDS', 'Survive 60s'), goal: 60, match: m => Math.floor(m.alive) },
   ] },
-  { tier: 'MEDIUM', pts: 150, quests: [
+  { tier: 'MEDIUM', pts: 60, quests: [
     { id: 'm-kill3', ...T('KILL 3 ENEMIES', 'Kill 3 enemies'), goal: 3, today: () => S.daily.kills },
     { id: 'm-splitkill', ...T('KILL AN ENEMY WITH A SPLIT', 'Split kill'), goal: 1, today: () => DC().splitKills },
     { id: 'm-pieces15', ...T('EAT 15 ENEMY PIECES', 'Eat 15 pieces'), goal: 15, today: () => DC().pieces },
     { id: 'm-mass8k', ...T('REACH 8,000 MASS', 'Reach 8,000 mass'), goal: 8000, match: m => m.maxMass },
     { id: 'm-skills3', ...T('USE 3 DIFFERENT SKILLS', '3 different skills'), goal: 3, today: () => DC().skillSet.length },
   ] },
-  { tier: 'HARD', pts: 300, quests: [
+  { tier: 'HARD', pts: 130, quests: [
     { id: 'h-kill5', ...T('KILL 5 ENEMIES', 'Kill 5 enemies'), goal: 5, today: () => S.daily.kills },
     { id: 'h-kill3match', ...T('KILL 3 ENEMIES IN ONE MATCH', '3 kills, one match'), goal: 3, match: m => m.kills },
     { id: 'h-mass20k', ...T('REACH 20,000 MASS', 'Reach 20,000 mass'), goal: 20000, match: m => m.maxMass },
     { id: 'h-finish', ...T('BE ALIVE WHEN THE CLOCK ENDS', 'Survive the clock'), goal: 1, match: m => m.finished ? 1 : 0 },
     { id: 'h-top5', ...T('FINISH A MATCH IN THE TOP 5', 'Finish top 5'), goal: 1, match: m => m.finished && m.place && m.place <= 5 ? 1 : 0 },
   ] },
-  { tier: 'SKILL', pts: 100, quests: [
+  { tier: 'SKILL', pts: 45, quests: [
     { id: 's-sprint', ...T('USE SPRINT', 'Use SPRINT'), goal: 1, today: () => DC().skill[3] || 0 },
     { id: 's-blink', ...T('USE BLINK', 'Use BLINK'), goal: 1, today: () => DC().skill[4] || 0 },
     { id: 's-magnet', ...T('USE MAGNET', 'Use MAGNET'), goal: 1, today: () => DC().skill[5] || 0 },
@@ -1410,7 +1443,7 @@ const QUEST_POOLS = [
     { id: 's-shot', ...T('USE SHOT', 'Use SHOT'), goal: 1, today: () => DC().skill[2] || 0 },
     { id: 's-gamble', ...T('WIN A GAMBLE', 'Win a GAMBLE'), goal: 1, today: () => DC().gambleWins },
   ] },
-  { tier: 'GRIND', pts: 100, quests: [
+  { tier: 'GRIND', pts: 45, quests: [
     { id: 'g-play3', ...T('PLAY 3 MATCHES', 'Play 3 matches'), goal: 3, today: () => S.daily.matches },
     { id: 'g-survive90', ...T('SURVIVE 90 SECONDS', 'Survive 90s'), goal: 90, match: m => Math.floor(m.alive) },
     { id: 'g-split10', ...T('SPLIT 10 TIMES', 'Split 10 times'), goal: 10, today: () => DC().splits },
@@ -1575,7 +1608,7 @@ function beginMatch(w) {
   // The game's KILLS counter is not reset by TRY AGAIN offline: count from here.
   match = { kills: 0, alive: 0, earned: 0, maxMass: 0, finished: false, place: null, start: Date.now(), killBase: gameKills(w) };
   S.daily.matches++; save();
-  completeTask('play', 200);
+  completeTask('play', 0);
   clearInterval(matchTimer);
   matchTimer = setInterval(() => {
     if (!match) return;
@@ -1685,7 +1718,7 @@ function endMatch(w, tipo) {
       ? 'Finished top #' + m.place + ' with ' + m.kills + (m.kills === 1 ? ' kill' : ' kills') + ' in the @' + X_ACCOUNT + ' Daily Arena'
       : 'I just got ' + m.kills + (m.kills === 1 ? ' kill' : ' kills') + ' in the @' + X_ACCOUNT + ' Daily Arena') +
       (m.earned ? ' and earned ' + fmt(m.earned) + ' points' : '') + '.\n\nThink you can beat me?',
-    done: null,
+    done: () => completeTask('daily:run', RUN_SHARE_PTS),
   });
 }
 
