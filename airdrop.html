@@ -468,6 +468,8 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     </div>
   </div>
 
+  <div id="howtoGameSlot"></div>
+
   <div class="shead">
     <div>
       <h2>BATTLE MODES</h2>
@@ -506,7 +508,8 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 
   </section>
 
-  <!-- ============ HOW TO PLAY (every tab: under the arena, and on THE GAME) ============ -->
+  <!-- ============ HOW TO PLAY: under the arena; on THE GAME it moves into #howtoGameSlot ============ -->
+  <div id="howtoArenaSlot">
   <div id="howto">
   <div class="shead">
     <div>
@@ -543,6 +546,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       <div class="skill box"><img src="img/skills-pixel/big.png" alt=""><b>PLUS</b><span>Instant mass</span></div>
       <div class="skill box"><img src="img/skills-pixel/random.png" alt=""><b>GAMBLE</b><span>Win mass or lose it</span></div>
     </div>
+  </div>
   </div>
   </div>
 
@@ -705,14 +709,23 @@ function applyUser(u) {
   if (S.w && !S.chain && !S.w.startsWith('Demo') && chainTries++ < 20) chainPoll = setTimeout(loadMe, 4000);
 }
 let chainPoll = 0, chainTries = 0;
-const loadMe = () => api('me').then(j => { applyUser(j.user); applyScore(j.score); }).catch(() => {});
+let xReturned = false;
+const loadMe = () => api('me').then(j => {
+  applyUser(j.user); applyScore(j.score);
+  if (xReturned) { xReturned = false; toast(S.x ? 'X CONNECTED' : 'X SIGN-IN DID NOT SAVE, TRY AGAIN'); }
+}).catch(e => {
+  console.error('[airdrop] /me failed', e);
+  if (xReturned) { xReturned = false; toast('X SIGN-IN DID NOT SAVE, TRY AGAIN'); }
+});
 
 // Coming back from X.
 (function readXReturn() {
   const h = new URLSearchParams(location.hash.slice(1));
   if (!h.has('x') && !h.has('xerr')) return;
   history.replaceState(null, '', location.pathname + location.search);
-  const why = h.has('xerr') ? ({ denied: 'X SIGN-IN CANCELLED', config: 'X SIGN-IN IS NOT SET UP YET' }[h.get('xerr')] || 'X SIGN-IN FAILED, TRY AGAIN') : 'X CONNECTED';
+  // Success is only announced once /api/airdrop/me confirms X is really linked (see loadMe).
+  if (!h.has('xerr')) { xReturned = true; return; }
+  const why = { denied: 'X SIGN-IN CANCELLED', config: 'X SIGN-IN IS NOT SET UP YET' }[h.get('xerr')] || 'X SIGN-IN FAILED, TRY AGAIN';
   setTimeout(() => toast(why), 50);
 })();
 
@@ -1508,6 +1521,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   $('#tokenBlock').hidden = v !== 'game';
   // THE GAME is about the real game: the Daily Arena stays on the other tabs.
   $('#arenaBlock').hidden = v === 'game';
+  $(v === 'game' ? '#howtoGameSlot' : '#howtoArenaSlot').appendChild($('#howto'));
   if (v === 'board') renderBoard();
   gameVideos(v === 'game');
 });
