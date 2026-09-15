@@ -77,6 +77,8 @@ a{color:var(--green)}
 .cbox{display:flex;align-items:center;gap:16px;padding:18px}
 .cbox .ic{width:52px;height:52px;flex:none;display:grid;place-items:center}
 .cbox .ic img,.cbox .ic svg{width:30px;height:30px;image-rendering:pixelated}
+.cbox .ic.ic-x{background:#000}
+.cbox .ic.ic-x svg{width:62%;height:62%;image-rendering:auto}
 .cbox .ct{flex:1;min-width:0}
 .cbox .ct b{font-family:var(--px);font-size:11px;display:block;margin-bottom:6px}
 .cbox .ct span{color:var(--dim);font-size:20px;display:block;overflow:hidden;text-overflow:ellipsis}
@@ -331,7 +333,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
   <section id="view-me">
     <div class="connect-grid">
       <div class="panel cbox" id="cX">
-        <div class="ic box"><img src="game/img/cartel-hero/icon-twitter.png" alt=""></div>
+        <div class="ic box ic-x"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></div>
         <div class="ct"><b>1. CONNECT X</b><span id="cXTxt">Sign in with X: followers and account age.</span></div>
         <button class="pbtn blue" id="xBtn">CONNECT</button>
       </div>
