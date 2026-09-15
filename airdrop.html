@@ -1168,7 +1168,7 @@ function drawRun(g, shot, m, tipo) {
   text(g, handle(), R, by + 48, PX, fit(g, handle(), PX, 18, 420), '#9fc2ad', 'right');
   const secs = Math.floor(m.alive), alive = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
   text(g, 'KILLS ' + m.kills, L, by + 98, PX, 22, '#ffffff', 'left', '#000');
-  text(g, 'ALIVE ' + alive, L + 290, by + 98, PX, 22, '#ffffff', 'left', '#000');
+  text(g, tipo !== 'gameOver' && m.place ? 'TOP #' + m.place : 'ALIVE ' + alive, L + 290, by + 98, PX, 22, '#ffffff', 'left', '#000');
   text(g, '+' + fmt(m.earned) + ' POINTS', R, by + 98, PX, 22, '#00ff88', 'right', '#003d1f');
   drawScreenFx(g); drawFrame(g);
 }
@@ -1472,10 +1472,28 @@ function noGrace(w) {
   try { const sim = w.__pwLab && w.__pwLab.sim; if (sim && sim.config) sim.config.botPlayerGraceMs = 0; } catch (e) {}
 }
 
+function gameKills(w) {
+  try { return parseInt(w.document.getElementById('killsVal').textContent, 10) || 0; } catch (e) { return 0; }
+}
+// Place by mass when the clock runs out: 1 + every rival (all its pieces) heavier than you.
+function matchPlace(w) {
+  try {
+    const sim = w.__pwLab.sim, me = sim.players.get('me');
+    const mine = me.cells.reduce((a, c) => a + c.mass, 0);
+    const rivals = new Map();
+    for (const c of sim.enemies) rivals.set(c.id, (rivals.get(c.id) || 0) + c.mass);
+    for (const p of sim.players.values()) if (p.id !== 'me') rivals.set(p.id, p.cells.reduce((a, c) => a + c.mass, 0));
+    let place = 1;
+    for (const m of rivals.values()) if (m > mine) place++;
+    return place;
+  } catch (e) { return null; }
+}
+
 function beginMatch(w) {
   over.hidden = true;
   hudq.hidden = false;
-  match = { kills: 0, alive: 0, earned: 0, start: Date.now() };
+  // The game's KILLS counter is not reset by TRY AGAIN offline: count from here.
+  match = { kills: 0, alive: 0, earned: 0, start: Date.now(), killBase: gameKills(w) };
   S.daily.matches++; save();
   completeTask('play', 200);
   clearInterval(matchTimer);
@@ -1485,6 +1503,9 @@ function beginMatch(w) {
     let running = false;
     try { const p = w.me(); running = !!(p && p.alive && p.cells.length); } catch (e) {}
     if (running) match.alive = (Date.now() - match.start) / 1000;
+    // Backup for the botKilled hook: never behind the game's own KILLS counter.
+    const k = gameKills(w) - match.killBase;
+    if (k > match.kills) match.kills = k;
     checkMissions(w);
   }, 250);
   checkMissions(w);
@@ -1540,7 +1561,14 @@ function resetArena() {
 }
 
 function endMatch(w, tipo) {
+  // When the clock runs out the game reports the end on EVERY frame: only the
+  // first call counts (later ones would redraw the panel with 0 points and eat clicks).
+  if (!match) return;
+  const k = gameKills(w) - match.killBase;
+  if (k > match.kills) match.kills = k;
   const m = stopMatch();
+  const finished = tipo !== 'gameOver';
+  m.place = finished ? matchPlace(w) : null;
   dropGameSave();
   try { w.hideGameHUD(); } catch (e) {}
   const secs = Math.floor(m.alive);
@@ -1551,11 +1579,14 @@ function endMatch(w, tipo) {
     shot = document.createElement('canvas'); shot.width = src.width; shot.height = src.height;
     shot.getContext('2d').drawImage(src, 0, 0);
   } catch (e) { shot = null; }
-  const title = tipo === 'gameOver'
-    ? '<img class="go" src="game/img/cartel-hero/game-over.png" alt="GAME OVER">'
-    : '<div style="font-family:var(--px);color:var(--arcade);font-size:clamp(18px,3vw,30px);text-shadow:4px 4px 0 #000">MATCH FINISHED</div>';
+  const title = finished
+    ? '<img class="go" src="game/img/cartel-hero/match-finished.png" alt="MATCH FINISHED">'
+    : '<img class="go" src="game/img/cartel-hero/game-over.png" alt="GAME OVER">';
+  const second = finished && m.place
+    ? 'TOP <b>#' + m.place + '</b>'
+    : 'ALIVE <b>' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0') + '</b>';
   over.innerHTML = title +
-    '<div class="res">KILLS <b>' + m.kills + '</b> &nbsp; ALIVE <b>' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0') + '</b><br>' +
+    '<div class="res">KILLS <b>' + m.kills + '</b> &nbsp; ' + second + '<br>' +
     'AIRDROP POINTS <em>+' + fmt(m.earned) + '</em></div>' +
     '<div class="btns"><button class="pbtn green big" id="again">TRY AGAIN</button>' +
     '<button class="pbtn blue big" id="shareRun"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE ON X</button>' +
@@ -1566,7 +1597,9 @@ function endMatch(w, tipo) {
   $('#shareRun').onclick = () => openShare({
     title: 'SHARE YOUR RUN', kind: 'run',
     variants: [g => drawRun(g, shot, m, tipo)],
-    text: 'I just got ' + m.kills + (m.kills === 1 ? ' kill' : ' kills') + ' in the @' + X_ACCOUNT + ' Daily Arena' +
+    text: (finished && m.place
+      ? 'Finished top #' + m.place + ' with ' + m.kills + (m.kills === 1 ? ' kill' : ' kills') + ' in the @' + X_ACCOUNT + ' Daily Arena'
+      : 'I just got ' + m.kills + (m.kills === 1 ? ' kill' : ' kills') + ' in the @' + X_ACCOUNT + ' Daily Arena') +
       (m.earned ? ' and earned ' + fmt(m.earned) + ' points' : '') + '.\n\nThink you can beat me?',
     done: null,
   });
