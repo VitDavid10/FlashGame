@@ -34,6 +34,8 @@ function createAirdrop(opts) {
     const X_CLIENT_ID = process.env.X_CLIENT_ID || '';
     const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET || '';
     const CARD_DIR = process.env.AIRDROP_CARD_DIR || path.join(__dirname, 'airdrop-cards');
+    log('[airdrop] lockdown ' + (ONLY ? 'ON' : 'off') + ' | X client id ' + (X_CLIENT_ID ? 'set (' + X_CLIENT_ID.length + ' chars)' : 'MISSING') +
+        ' | X client secret ' + (X_CLIENT_SECRET ? 'set (' + X_CLIENT_SECRET.length + ' chars)' : 'MISSING'));
 
     // With the lockdown on, the airdrop IS the home page (pillwars.fun/).
     const HOME = ONLY ? '/' : '/airdrop';
