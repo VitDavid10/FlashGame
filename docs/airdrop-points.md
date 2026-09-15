@@ -8,7 +8,8 @@ in proportion to each player's points.
 | Category | Max points | How |
 |---|---|---|
 | Airdrop Hunter | 11,000 | Tiers by Solana airdrops the wallet qualified for |
-| NFT Holder | 4,800 | Saga or Seeker Genesis Token 2,400 + Mad Lads 2,400 |
+| Saga / Seeker Genesis Token | 2,400 | Holding a Saga or Seeker Genesis Token (either one, not both) |
+| Mad Lads | 2,400 | Holding a Mad Lads NFT |
 | Wallet age | 2,400 | Tiers by days since the wallet's first transaction |
 | Transactions | 2,400 | Tiers by successful transactions |
 
@@ -21,12 +22,6 @@ Meteora (MET), BONK, Sanctum (CLOUD), Grass (GRASS), Jumper points.
 | Share | 0% | 20% | 35% | 50% | 65% | 80% | 90% | 100% |
 | Points | 0 | 2,200 | 3,850 | 5,500 | 7,150 | 8,800 | 9,900 | 11,000 |
 
-**NFT Holder**
-
-| NFT | Points |
-|---|---|
-| Saga Genesis Token **or** Seeker Genesis Token (holding both still pays once) | 2,400 |
-| Mad Lads (verified collection) | 2,400 |
 
 Each NFT (and each Genesis Token) counts for one wallet only: the first wallet that
 shows it. Moving an NFT to another wallet earns nothing more.
