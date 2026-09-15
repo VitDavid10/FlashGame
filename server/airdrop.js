@@ -23,6 +23,7 @@ const CARD_W = 1200, CARD_H = 630;
 const CARD_MAX_FILES = 20000;
 const CARD_RATE = { max: 20, windowMs: 60 * 60 * 1000 };
 const X_PENDING_TTL_MS = 10 * 60 * 1000;
+const X_LOGIN_PER_MIN = 10, X_PENDING_MAX = 20000;
 const X_SCOPES = 'tweet.read users.read';
 // With AIRDROP_ONLY=1, the only static paths served (prefixes end in '/').
 const LOCKDOWN_ALLOW = ['/game/', '/shared/', '/vendor/', '/fonts/', '/img/', '/snd/', '/video/', '/api/', '/info.css', '/info.js', '/cookies.js'];
@@ -239,6 +240,9 @@ function createAirdrop(opts) {
         for (const [k, v] of xPending) if (now - v.t > X_PENDING_TTL_MS) xPending.delete(k);
         if (urlPath === '/airdrop-auth/x/login') {
             if (!X_CLIENT_ID) return redirect(res, HOME + '#xerr=config');
+            // Each start keeps a pending state for 10 minutes: cap how fast one IP can
+            // open them, and how many can be open at once.
+            if (!hitOk('xlogin:' + clientIp(req), X_LOGIN_PER_MIN) || xPending.size >= X_PENDING_MAX) return redirect(res, HOME + '#xerr=rate');
             const verifier = b64url(crypto.randomBytes(32)), state = b64url(crypto.randomBytes(16));
             const redirectUri = originOf(req) + '/airdrop-auth/x/callback';
             xPending.set(state, { verifier, redirectUri, t: now });

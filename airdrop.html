@@ -725,7 +725,7 @@ const loadMe = () => api('me').then(j => {
   history.replaceState(null, '', location.pathname + location.search);
   // Success is only announced once /api/airdrop/me confirms X is really linked (see loadMe).
   if (!h.has('xerr')) { xReturned = true; return; }
-  const why = { denied: 'X SIGN-IN CANCELLED', config: 'X SIGN-IN IS NOT SET UP YET' }[h.get('xerr')] || 'X SIGN-IN FAILED, TRY AGAIN';
+  const why = { denied: 'X SIGN-IN CANCELLED', config: 'X SIGN-IN IS NOT SET UP YET', rate: 'TOO MANY TRIES, WAIT A MINUTE' }[h.get('xerr')] || 'X SIGN-IN FAILED, TRY AGAIN';
   setTimeout(() => toast(why), 50);
 })();
 
