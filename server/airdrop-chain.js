@@ -60,7 +60,8 @@ function createChain(opts) {
         return out;
     }
 
-    const stale = st => !st || now() - st.checkedAt > REFRESH_MS;
+    // Also stale if it predates the NFTs check (older wallets never picked it up).
+    const stale = st => !st || now() - st.checkedAt > REFRESH_MS || !st.nfts;
     let queue = Promise.resolve();
     const inFlight = new Set();
     /** Looks the wallet up in the background; `done(stats)` runs on success. */

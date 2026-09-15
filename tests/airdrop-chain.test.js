@@ -45,6 +45,13 @@ test('stops at the page cap and says so', async () => {
     assert.strictEqual(f.calls.length, MAX_PAGES);
 });
 
+test('a wallet checked before the NFT check existed is stale even if recent', () => {
+    const c = createChain({ rpc: 'x', fetch: fakeRpc(0).fetch, pageGapMs: 0 });
+    assert.strictEqual(c.stale({ txs: 1, firstAt: 1, capped: false, checkedAt: Date.now() }), true);
+    assert.strictEqual(c.stale({ txs: 1, firstAt: 1, capped: false, checkedAt: Date.now(), nfts: {} }), false);
+    assert.strictEqual(c.stale(null), true);
+});
+
 test('the page only sees the history of the wallet currently linked', () => {
     const s = createStore({});
     const W1 = 'Wallet' + '1'.padStart(38, '0'), W2 = 'Wallet' + '2'.padStart(38, '0');
