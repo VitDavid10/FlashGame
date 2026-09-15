@@ -457,11 +457,16 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
   <section id="view-game" hidden>
   <div class="shead first">
     <div>
-      <h2>THE GAME</h2>
-      <p>PillWars is a crypto arena on Solana. Eat smaller pills, run from bigger ones and play for real $PILLY.</p>
+      <h2>FIRST KILL TO EARN</h2>
+      <p>PillWars brings back the chaos of browser classics like Agar.io, with real money on the line. In a paid room every pill is a real player, and every kill pays you in $PILLY.</p>
     </div>
   </div>
-  <div style="padding:9px">
+  <div class="pillars">
+    <div class="panel pillar"><div class="num">01</div><b>SKILL, NOT LUCK</b><p>Nothing here is random: no dice, no cards, no odds against you. Every $PILLY you win comes from beating another player.</p></div>
+    <div class="panel pillar"><div class="num">02</div><b>YOUR MASS IS MONEY</b><p>Your entry rides on your pill. Eat a player and you take everything they carry. Get out alive and it is yours.</p></div>
+    <div class="panel pillar"><div class="num">03</div><b>STAKERS GET THE CUT</b><p>Room fees, the arcade cut and the skin shop fill a rewards pool. Stake $PILLY and that pool pays you.</p></div>
+  </div>
+  <div style="padding:9px;margin-top:34px">
     <div class="trailer" id="trailerBox">
       <video id="trailer" src="video/Trailer.mp4" muted loop playsinline preload="none"></video>
       <div class="trailer-hint" id="trailerHint">CLICK TO WATCH WITH SOUND</div>
@@ -470,14 +475,38 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 
   <div class="shead">
     <div>
-      <h2>EAT. GROW. PROFIT.</h2>
-      <p>The chaos of the browser classics like Agar.io, with real stakes. In a paid room every pill is a real player with $PILLY on the line.</p>
+      <h2>THE GAME</h2>
+      <p>Two ways to play, both paid in $PILLY. The entry is set in dollars and turned into $PILLY every 5 minutes, so a room costs the same whatever the token price does.</p>
     </div>
   </div>
-  <div class="pillars">
-    <div class="panel pillar"><div class="num">01</div><b>SKILL, NOT LUCK</b><p>No dice, no cards, no house odds. What you win is what you took from a player you outplayed.</p></div>
-    <div class="panel pillar"><div class="num">02</div><b>YOUR MASS IS MONEY</b><p>Your entry rides on your pill. Eat a player and their stake moves to you. Leave alive and it is yours.</p></div>
-    <div class="panel pillar"><div class="num">03</div><b>THE HOUSE GIVES BACK</b><p>Room fees, the arcade cut and the skin shop fill a rewards pool. The daily top 10 get paid and stakers share the rest.</p></div>
+  <div class="modes">
+    <div class="panel mode">
+      <img src="game/img/mode-title/CLASSIC-word-placa.png" alt="CLASSIC">
+      <span class="tag">STANDARD EXPERIENCE</span>
+      <ul class="uses">
+        <li><span>A huge open map with <b>no clock</b>. Only splitting and shooting.</span></li>
+        <li><span>Eat a player and <b>you take everything they carry</b>. Die and your killer takes yours.</span></li>
+        <li><span><b>Cash out alive</b>, or win with 5 kills, to bank it.</span></li>
+      </ul>
+    </div>
+    <div class="panel mode">
+      <img src="game/img/mode-title/ARCADE-word-placa.png" alt="ARCADE">
+      <span class="tag">ROGUELIKE EVOLUTION</span>
+      <ul class="uses">
+        <li><span><b>3:50 matches</b>. Everyone starts from zero.</span></li>
+        <li><span>Pick a <b>random skill every 30 seconds</b> and build your pill as you go.</span></li>
+        <li><span>Every death feeds the pot. <b>The top 10 split it</b>, with the most going to the top 3.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel">
+    <h3 class="ptitle">HOW A PAID MATCH WORKS</h3>
+    <div class="flow">
+      <div class="box"><b>JOIN</b><span>You pay the entry in $PILLY into a vault on Solana that holds only that match.</span></div>
+      <div class="box"><b>PLAY</b><span>The fight runs on the game server in real time. Nothing waits on the blockchain mid-match.</span></div>
+      <div class="box"><b>SETTLE</b><span>When it ends, one payout is sent. The vault can never pay out more than it holds.</span></div>
+      <div class="box"><b>GET PAID</b><span>Your winnings land in the wallet you played with.</span></div>
+    </div>
   </div>
 
   <div class="shead">
@@ -498,44 +527,10 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     <video class="mv" src="video/Shoot.mp4" muted loop playsinline preload="none"></video>
     <div><h3>VIRAL BALLISTICS</h3><p>Shoot small pieces of your own mass. Feed a virus until it pops right into a giant, then pick up what is left of them from a safe distance.</p></div>
   </div>
+  </section>
 
-  <div class="shead">
-    <div>
-      <h2>BATTLE MODES</h2>
-      <p>Every room is paid in $PILLY. An oracle updates the entry every 5 minutes, so a room always costs the same in dollars.</p>
-    </div>
-  </div>
-  <div class="modes">
-    <div class="panel mode">
-      <img src="game/img/mode-title/CLASSIC-word-placa.png" alt="CLASSIC">
-      <span class="tag">STANDARD EXPERIENCE</span>
-      <ul class="uses">
-        <li><span>A huge open map with <b>no clock</b>. Only splitting and shooting.</span></li>
-        <li><span>Eat a player and <b>their stake is yours</b>. Die and yours goes to your killer.</span></li>
-        <li><span><b>Cash out alive</b> or win with 5 kills to bank what you are carrying.</span></li>
-      </ul>
-    </div>
-    <div class="panel mode">
-      <img src="game/img/mode-title/ARCADE-word-placa.png" alt="ARCADE">
-      <span class="tag">ROGUELIKE EVOLUTION</span>
-      <ul class="uses">
-        <li><span><b>3:50 matches</b>. Everyone starts from zero.</span></li>
-        <li><span>Pick a <b>random skill every 30 seconds</b> and build your pill as you go.</span></li>
-        <li><span>Every death feeds the pot. <b>The top 10 split it</b>, with the most going to the top 3.</span></li>
-      </ul>
-    </div>
-  </div>
-  <div class="panel">
-    <h3 class="ptitle">HOW A PAID MATCH WORKS</h3>
-    <div class="flow">
-      <div class="box"><b>JOIN</b><span>You pay the entry in $PILLY into a vault on Solana that holds only that match.</span></div>
-      <div class="box"><b>PLAY</b><span>The fight runs on the game server in real time. Nothing waits on the blockchain mid-match.</span></div>
-      <div class="box"><b>SETTLE</b><span>When it ends, one payout is sent. The vault can never pay out more than it holds.</span></div>
-      <div class="box"><b>GET PAID</b><span>Winnings land in the wallet you played with. The daily top 10 also get a reward.</span></div>
-    </div>
-  </div>
-
-  <!-- ============ HOW TO PLAY ============ -->
+  <!-- ============ HOW TO PLAY (every tab: under the arena, and on THE GAME) ============ -->
+  <div id="howto">
   <div class="shead">
     <div>
       <h2>HOW TO PLAY</h2>
@@ -572,8 +567,10 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       <div class="skill box"><img src="img/skills-pixel/random.png" alt=""><b>GAMBLE</b><span>Win mass or lose it</span></div>
     </div>
   </div>
+  </div>
 
-  <!-- ============ TOKENOMICS ============ -->
+  <!-- ============ TOKENOMICS (THE GAME tab) ============ -->
+  <div id="tokenBlock" hidden>
   <div class="shead">
     <div>
       <h2>$PILLY TOKENOMICS</h2>
@@ -615,11 +612,11 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     <ul class="uses">
       <li><span><b>Paid rooms.</b> Enter classic and arcade rooms with $PILLY and play for the pot.</span></li>
       <li><span><b>Skin shop.</b> Buy country skins. Every $PILLY spent is burned.</span></li>
-      <li><span><b>Rewards pool.</b> Room fees and unclaimed pots flow back to the players.</span></li>
-      <li><span><b>Staking.</b> Stake $PILLY and earn a share of the rewards.</span></li>
+      <li><span><b>Rewards pool.</b> Room fees, the arcade cut and unclaimed pots fill it.</span></li>
+      <li><span><b>Staking.</b> Stake $PILLY and the rewards pool pays you.</span></li>
     </ul>
   </div>
-  </section>
+  </div>
 
   <footer>Points are not tokens. Final allocation is calculated at the end of Season 0. <a href="/airdrop-terms">Airdrop terms</a></footer>
 </div>
@@ -1531,6 +1528,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   $('#view-me').hidden = v !== 'me';
   $('#view-board').hidden = v !== 'board';
   $('#view-game').hidden = v !== 'game';
+  $('#tokenBlock').hidden = v !== 'game';
   // THE GAME is about the real game: the Daily Arena stays on the other tabs.
   $('#arenaBlock').hidden = v === 'game';
   if (v === 'board') renderBoard();
