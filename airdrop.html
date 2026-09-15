@@ -564,8 +564,11 @@ try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { S = {}; }
 // X, wallet, invite code and invites live on the server (/api/airdrop/me).
 S.x = null; S.w = null; S.code = ''; S.refs = 0;
 S.tasks = S.tasks || {}; S.gamePts = S.gamePts || 0; S.socialPts = S.socialPts || 0;
-if (!S.daily || S.daily.date !== today()) S.daily = { date: today(), done: {}, matches: 0, best: {}, kills: 0 };
+const newDay = () => ({ date: today(), done: {}, matches: 0, best: {}, kills: 0 });
+if (!S.daily || S.daily.date !== today()) S.daily = newDay();
 S.daily.best = S.daily.best || {}; S.daily.kills = S.daily.kills || 0;
+// Counters for the rotating missions (see QUEST_POOLS).
+S.daily.c = Object.assign({ pieces: 0, skills: 0, skillSet: [], skill: {}, splitKills: 0, splits: 0, picks: 0, virusPops: 0, gambleWins: 0 }, S.daily.c);
 const save = () => { try { const { x, w, code, refs, ...keep } = S; localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) {} };
 
 // Invite code from any shared link (?ref=). Kept until this browser links a
@@ -1364,7 +1367,7 @@ function tick() {
   $('#resetIn').textContent = txt;
   document.querySelectorAll('.resetIn').forEach(el => { el.textContent = txt; });
   $('#stEnds').textContent = Math.max(0, Math.ceil((SEASON_END - now) / 864e5)) + ' DAYS';
-  if (S.daily.date !== today()) { S.daily = { date: today(), done: {}, matches: 0, best: {}, kills: 0 }; save(); renderDaily(); renderTasks(); }
+  if (S.daily.date !== today()) { S.daily = newDay(); S.daily.c = { pieces: 0, skills: 0, skillSet: [], skill: {}, splitKills: 0, splits: 0, picks: 0, virusPops: 0, gambleWins: 0 }; MISSIONS = missionsFor(today()); save(); renderDaily(); renderTasks(); }
 }
 setInterval(tick, 1000);
 
@@ -1372,31 +1375,78 @@ setInterval(tick, 1000);
    The game runs untouched inside the iframe. This page only listens to it:
    processSimEvents (kills), showResultsUI (death / match end), returnToMenu
    (EXIT) and killPop (the floating alert classic uses for kill money). */
-const MISSIONS = [
-  { id: 'k1', t: 'KILL 1 ENEMY', short: 'Kill 1 enemy', pts: 50, goal: 1, prog: () => S.daily.kills, daily: true },
-  { id: 'k3', t: 'KILL 3 ENEMIES', short: 'Kill 3 enemies', pts: 150, goal: 3, prog: () => S.daily.kills, daily: true },
-  { id: 'k5', t: 'KILL 5 ENEMIES', short: 'Kill 5 enemies', pts: 300, goal: 5, prog: () => S.daily.kills, daily: true },
-  { id: 's90', t: 'SURVIVE 90 SECONDS', short: 'Survive 90s', pts: 100, goal: 90, prog: m => Math.floor(m.alive) },
-  { id: 'm3', t: 'PLAY 3 MATCHES', short: 'Play 3 matches', pts: 100, goal: 3, prog: () => S.daily.matches },
+/* Daily missions rotate: every UTC day one mission is drawn from each tier, and
+   everything in a tier is meant to be about as hard as the rest. `today` = counts
+   across all of today's matches; `match` = has to happen within one match. */
+const T = (t, short) => ({ t, short });
+const DC = () => S.daily.c;
+const QUEST_POOLS = [
+  { tier: 'EASY', pts: 50, quests: [
+    { id: 'e-kill1', ...T('KILL 1 ENEMY', 'Kill 1 enemy'), goal: 1, today: () => S.daily.kills },
+    { id: 'e-pieces5', ...T('EAT 5 ENEMY PIECES', 'Eat 5 pieces'), goal: 5, today: () => DC().pieces },
+    { id: 'e-skills2', ...T('USE 2 SKILLS', 'Use 2 skills'), goal: 2, today: () => DC().skills },
+    { id: 'e-mass3k', ...T('REACH 3,000 MASS', 'Reach 3,000 mass'), goal: 3000, match: m => m.maxMass },
+    { id: 'e-survive60', ...T('SURVIVE 60 SECONDS', 'Survive 60s'), goal: 60, match: m => Math.floor(m.alive) },
+  ] },
+  { tier: 'MEDIUM', pts: 150, quests: [
+    { id: 'm-kill3', ...T('KILL 3 ENEMIES', 'Kill 3 enemies'), goal: 3, today: () => S.daily.kills },
+    { id: 'm-splitkill', ...T('KILL AN ENEMY WITH A SPLIT', 'Split kill'), goal: 1, today: () => DC().splitKills },
+    { id: 'm-pieces15', ...T('EAT 15 ENEMY PIECES', 'Eat 15 pieces'), goal: 15, today: () => DC().pieces },
+    { id: 'm-mass8k', ...T('REACH 8,000 MASS', 'Reach 8,000 mass'), goal: 8000, match: m => m.maxMass },
+    { id: 'm-skills3', ...T('USE 3 DIFFERENT SKILLS', '3 different skills'), goal: 3, today: () => DC().skillSet.length },
+  ] },
+  { tier: 'HARD', pts: 300, quests: [
+    { id: 'h-kill5', ...T('KILL 5 ENEMIES', 'Kill 5 enemies'), goal: 5, today: () => S.daily.kills },
+    { id: 'h-kill3match', ...T('KILL 3 ENEMIES IN ONE MATCH', '3 kills, one match'), goal: 3, match: m => m.kills },
+    { id: 'h-mass20k', ...T('REACH 20,000 MASS', 'Reach 20,000 mass'), goal: 20000, match: m => m.maxMass },
+    { id: 'h-finish', ...T('BE ALIVE WHEN THE CLOCK ENDS', 'Survive the clock'), goal: 1, match: m => m.finished ? 1 : 0 },
+    { id: 'h-top5', ...T('FINISH A MATCH IN THE TOP 5', 'Finish top 5'), goal: 1, match: m => m.finished && m.place && m.place <= 5 ? 1 : 0 },
+  ] },
+  { tier: 'SKILL', pts: 100, quests: [
+    { id: 's-sprint', ...T('USE SPRINT', 'Use SPRINT'), goal: 1, today: () => DC().skill[3] || 0 },
+    { id: 's-blink', ...T('USE BLINK', 'Use BLINK'), goal: 1, today: () => DC().skill[4] || 0 },
+    { id: 's-magnet', ...T('USE MAGNET', 'Use MAGNET'), goal: 1, today: () => DC().skill[5] || 0 },
+    { id: 's-shield', ...T('USE SHIELD', 'Use SHIELD'), goal: 1, today: () => DC().skill[6] || 0 },
+    { id: 's-shot', ...T('USE SHOT', 'Use SHOT'), goal: 1, today: () => DC().skill[2] || 0 },
+    { id: 's-gamble', ...T('WIN A GAMBLE', 'Win a GAMBLE'), goal: 1, today: () => DC().gambleWins },
+  ] },
+  { tier: 'GRIND', pts: 100, quests: [
+    { id: 'g-play3', ...T('PLAY 3 MATCHES', 'Play 3 matches'), goal: 3, today: () => S.daily.matches },
+    { id: 'g-survive90', ...T('SURVIVE 90 SECONDS', 'Survive 90s'), goal: 90, match: m => Math.floor(m.alive) },
+    { id: 'g-split10', ...T('SPLIT 10 TIMES', 'Split 10 times'), goal: 10, today: () => DC().splits },
+    { id: 'g-picks5', ...T('PICK 5 SKILLS', 'Pick 5 skills'), goal: 5, today: () => DC().picks },
+    { id: 'g-virus', ...T('BURST ON A VIRUS', 'Burst on a virus'), goal: 1, today: () => DC().virusPops },
+  ] },
 ];
+// Same missions for everyone on a given UTC day.
+function missionsFor(day) {
+  const r = rng('quests:' + day);
+  return QUEST_POOLS.map(p => {
+    const m = Object.assign({ pts: p.pts, tier: p.tier }, p.quests[Math.floor(r() * p.quests.length)]);
+    m.prog = m.today || m.match;
+    m.test = k => m.prog(k) >= m.goal;
+    return m;
+  });
+}
+let MISSIONS = missionsFor(today());
 const missionProgress = m => {
   if (S.daily.done[m.id]) return m.goal;
-  const live = match ? m.prog(match) : 0;
-  const best = m.id === 'm3' ? S.daily.matches : m.daily ? S.daily.kills : (S.daily.best[m.id] || 0);
-  return Math.min(m.goal, Math.max(live, best));
+  const v = m.today ? m.today() : Math.max(match ? m.match(match) : 0, S.daily.best[m.id] || 0);
+  return Math.min(m.goal, v);
 };
+const fmtGoal = n => n >= 1000 ? fmt(n) : n;
 function renderDaily() {
   const done = S.daily.done;
   $('#dailyTasks').innerHTML = pendingFirst(MISSIONS, m => !!done[m.id]).map(m => {
     const ok = !!done[m.id], p = missionProgress(m);
-    return '<div class="task box' + (ok ? ' done' : '') + '"><div class="tx"><b>' + m.t + '</b><span>' + (m.id === 's90' ? 'In a single match' : 'Today') + ' - ' + p + '/' + m.goal + '</span></div><span class="pts">' + (ok ? 'DONE' : '+' + m.pts) + '</span>' + (ok ? '' : '<button class="pbtn green sm" data-go="arena">GO</button>') + '</div>';
+    return '<div class="task box' + (ok ? ' done' : '') + '"><div class="tx"><b>' + m.t + '</b><span>' + (m.match ? 'In a single match' : 'Today') + ' - ' + fmtGoal(p) + '/' + fmtGoal(m.goal) + '</span></div><span class="pts">' + (ok ? 'DONE' : '+' + m.pts) + '</span>' + (ok ? '' : '<button class="pbtn green sm" data-go="arena">GO</button>') + '</div>';
   }).join('');
   renderHud();
 }
 function renderHud() {
   const done = S.daily.done;
   $('#hudq').innerHTML = '<h5><span>DAILY QUESTS</span><span>' + Object.keys(done).length + '/' + MISSIONS.length + '</span></h5><ul>' +
-    MISSIONS.map(m => '<li class="' + (done[m.id] ? 'ok' : '') + '"><i></i>' + m.short + '<u>' + (done[m.id] ? '+' + m.pts : missionProgress(m) + '/' + m.goal) + '</u></li>').join('') + '</ul>';
+    MISSIONS.map(m => '<li class="' + (done[m.id] ? 'ok' : '') + '"><i></i>' + m.short + '<u>' + (done[m.id] ? '+' + m.pts : m.goal >= 1000 ? Math.floor(missionProgress(m) / m.goal * 100) + '%' : missionProgress(m) + '/' + m.goal) + '</u></li>').join('') + '</ul>';
 }
 
 const frame = $('#game'), veil = $('#veil'), over = $('#over'), hudq = $('#hudq');
@@ -1452,13 +1502,12 @@ function hook(w) {
 
   const origEvents = w.processSimEvents;
   w.processSimEvents = function (events) {
-    try {
-      for (const ev of events) {
-        if (ev.type === 'botKilled' && ev.playerId === 'me' && match) addKills(1, w);
-      }
-    } catch (e) {}
+    try { if (match) for (const ev of events) trackEvent(ev, w); } catch (e) {}
     return origEvents.apply(this, arguments);
   };
+  // Every skill card picked (the arcade choice every 30 seconds).
+  const origPick = w.selectArcadeSkill;
+  if (origPick) w.selectArcadeSkill = function () { if (match) { DC().picks++; save(); checkMissions(w); } return origPick.apply(this, arguments); };
   w.showResultsUI = function (tipo) { endMatch(w, tipo); };
   w.returnToMenu = function () { resetArena(); };
   const origTry = w.tryAgainOnline;
@@ -1470,6 +1519,31 @@ function hook(w) {
 // Bots normally ignore a fresh offline player for 10s; here they hunt from the start.
 function noGrace(w) {
   try { const sim = w.__pwLab && w.__pwLab.sim; if (sim && sim.config) sim.config.botPlayerGraceMs = 0; } catch (e) {}
+}
+
+// What the rotating missions count. Offline the only non-bot pill is yours, so
+// isBot === false on split and virus sounds means it was you.
+let lastSplitAt = 0, lastVirusAt = 0;
+function trackEvent(ev, w) {
+  const c = DC(), now = Date.now();
+  if (ev.type === 'botKilled' && ev.playerId === 'me') {
+    if (now - lastSplitAt < 1500) c.splitKills++;
+    addKills(1, null);
+  } else if (ev.type === 'botPieceEaten' && ev.playerId === 'me') c.pieces++;
+  else if (ev.type === 'skillUsed' && ev.playerId === 'me' && typeof ev.id === 'number') {
+    c.skills++; c.skill[ev.id] = (c.skill[ev.id] || 0) + 1;
+    if (!c.skillSet.includes(ev.id)) c.skillSet.push(ev.id);
+    if (ev.id === 8 && ev.win) c.gambleWins++;
+  } else if (ev.type === 'splitSound' && ev.isBot === false) {
+    // One SPACE splits every piece and plays one sound per piece: count it once.
+    if (now - lastSplitAt > 300) c.splits++;
+    lastSplitAt = now;
+  } else if (ev.type === 'virusSound' && ev.isBot === false) {
+    if (now - lastVirusAt > 500) c.virusPops++;
+    lastVirusAt = now;
+  } else return;
+  save();
+  checkMissions(w);
 }
 
 // Kills count for this match (shown on the card) and for today (the kill quests).
@@ -1499,7 +1573,7 @@ function beginMatch(w) {
   over.hidden = true;
   hudq.hidden = false;
   // The game's KILLS counter is not reset by TRY AGAIN offline: count from here.
-  match = { kills: 0, alive: 0, earned: 0, start: Date.now(), killBase: gameKills(w) };
+  match = { kills: 0, alive: 0, earned: 0, maxMass: 0, finished: false, place: null, start: Date.now(), killBase: gameKills(w) };
   S.daily.matches++; save();
   completeTask('play', 200);
   clearInterval(matchTimer);
@@ -1507,7 +1581,10 @@ function beginMatch(w) {
     if (!match) return;
     noGrace(w);
     let running = false;
-    try { const p = w.me(); running = !!(p && p.alive && p.cells.length); } catch (e) {}
+    try {
+      const p = w.me(); running = !!(p && p.alive && p.cells.length);
+      if (running) match.maxMass = Math.max(match.maxMass, p.cells.reduce((a, c) => a + c.mass, 0));
+    } catch (e) {}
     if (running) match.alive = (Date.now() - match.start) / 1000;
     // Backup for the botKilled hook: never behind the game's own KILLS counter.
     const k = gameKills(w) - match.killBase;
@@ -1521,7 +1598,7 @@ function beginMatch(w) {
 function checkMissions(w) {
   if (!match) return;
   for (const m of MISSIONS) {
-    if (m.id === 's90') S.daily.best[m.id] = Math.max(S.daily.best[m.id] || 0, m.prog(match));
+    if (m.match) S.daily.best[m.id] = Math.max(S.daily.best[m.id] || 0, m.match(match));
     if (S.daily.done[m.id] || !m.test(match)) continue;
     S.daily.done[m.id] = true;
     S.gamePts += m.pts; match.earned += m.pts;
@@ -1531,7 +1608,6 @@ function checkMissions(w) {
   save();
   renderHud();
 }
-MISSIONS.forEach(m => { m.test = k => m.prog(k) >= m.goal; });
 
 function popPoints(w, m) {
   try {
@@ -1572,9 +1648,11 @@ function endMatch(w, tipo) {
   if (!match) return;
   const k = gameKills(w) - match.killBase;
   if (k > match.kills) addKills(k - match.kills, null);
-  const m = stopMatch();
   const finished = tipo !== 'gameOver';
-  m.place = finished ? matchPlace(w) : null;
+  // Clock ran out with you alive: the end-of-match missions are checked before closing it.
+  if (finished) { match.finished = true; match.place = matchPlace(w); }
+  checkMissions(w);
+  const m = stopMatch();
   dropGameSave();
   try { w.hideGameHUD(); } catch (e) {}
   const secs = Math.floor(m.alive);
