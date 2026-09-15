@@ -225,12 +225,6 @@ a{color:var(--green)}
 .pillar .num{font-family:var(--px);font-size:22px;color:var(--gold);text-shadow:3px 3px 0 #5c3d00}
 .pillar b{display:block;font-family:var(--px);font-size:12px;color:#fff;margin:14px 0 10px;line-height:1.5}
 .pillar p{margin:0;color:var(--dim);font-size:21px}
-.mech{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:26px;align-items:center}
-.mech.flip video{order:2}
-.mech + .mech{margin-top:24px}
-.mech video{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#000;box-shadow:0 0 0 3px var(--line),0 0 0 6px var(--edge)}
-.mech h3{font-family:var(--px);font-size:clamp(14px,2vw,20px);color:#fff;margin:0 0 12px;text-shadow:3px 3px 0 #000}
-.mech p{margin:0;color:var(--dim);font-size:21px}
 .tag{display:inline-block;font-family:var(--px);font-size:9px;color:#04150c;background:var(--green);padding:5px 7px}
 .modes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}
 .mode img{display:block;height:44px;width:auto;max-width:100%;image-rendering:pixelated;margin:0 0 14px}
@@ -290,9 +284,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
   .facts,.flow{grid-template-columns:repeat(2,1fr)}
 }
 @media (max-width:820px){
-  .connect-grid,.card-row,.tk-grid,.modes,.mech{grid-template-columns:1fr}
-  .mech{gap:16px}
-  .mech.flip video{order:0}
+  .connect-grid,.card-row,.tk-grid,.modes{grid-template-columns:1fr}
   .mode img{height:34px}
   .panel{padding:16px}
   .hudq{min-width:0;padding:6px 8px;right:8px;top:64px}
@@ -457,16 +449,22 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
   <section id="view-game" hidden>
   <div class="shead first">
     <div>
-      <h2>FIRST KILL TO EARN</h2>
-      <p>PillWars brings back the chaos of browser classics like Agar.io, with real money on the line. In a paid room every pill is a real player, and every kill pays you in $PILLY.</p>
+      <h2>THE GAME</h2>
+      <p>PillWars is a crypto arena on Solana. It plays like Agar.io, but with real money: every player you eat pays you in $PILLY.</p>
     </div>
   </div>
   <div class="pillars">
-    <div class="panel pillar"><div class="num">01</div><b>SKILL, NOT LUCK</b><p>Nothing here is random: no dice, no cards, no odds against you. Every $PILLY you win comes from beating another player.</p></div>
-    <div class="panel pillar"><div class="num">02</div><b>YOUR MASS IS MONEY</b><p>Your entry rides on your pill. Eat a player and you take everything they carry. Get out alive and it is yours.</p></div>
-    <div class="panel pillar"><div class="num">03</div><b>STAKERS GET THE CUT</b><p>Room fees, the arcade cut and the skin shop fill a rewards pool. Stake $PILLY and that pool pays you.</p></div>
+    <div class="panel pillar"><div class="num">01</div><b>SKILL, NOT LUCK</b><p>No dice, no cards, no random prizes. The only way to win $PILLY is to beat other players in the arena.</p></div>
+    <div class="panel pillar"><div class="num">02</div><b>EVERY KILL PAYS</b><p>Every player pays an entry in $PILLY to join a room. Eat a player and their $PILLY is added to yours. Leave the room alive and you keep all of it.</p></div>
+    <div class="panel pillar"><div class="num">03</div><b>STAKING PAYS</b><p>The fees the game charges go into a rewards pool. Lock your $PILLY in staking and you get paid a share of that pool.</p></div>
   </div>
-  <div style="padding:9px;margin-top:34px">
+  <div class="shead">
+    <div>
+      <h2>FIRST KILL TO EARN</h2>
+      <p>The first game where every kill pays.</p>
+    </div>
+  </div>
+  <div style="padding:9px">
     <div class="trailer" id="trailerBox">
       <video id="trailer" src="video/Trailer.mp4" muted loop playsinline preload="none"></video>
       <div class="trailer-hint" id="trailerHint">CLICK TO WATCH WITH SOUND</div>
@@ -475,7 +473,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 
   <div class="shead">
     <div>
-      <h2>THE GAME</h2>
+      <h2>BATTLE MODES</h2>
       <p>Two ways to play, both paid in $PILLY. The entry is set in dollars and turned into $PILLY every 5 minutes, so a room costs the same whatever the token price does.</p>
     </div>
   </div>
@@ -485,7 +483,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       <span class="tag">STANDARD EXPERIENCE</span>
       <ul class="uses">
         <li><span>A huge open map with <b>no clock</b>. Only splitting and shooting.</span></li>
-        <li><span>Eat a player and <b>you take everything they carry</b>. Die and your killer takes yours.</span></li>
+        <li><span>Eat a player and <b>their $PILLY is added to yours</b>. If you die, your killer gets yours.</span></li>
         <li><span><b>Cash out alive</b>, or win with 5 kills, to bank it.</span></li>
       </ul>
     </div>
@@ -509,24 +507,6 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     </div>
   </div>
 
-  <div class="shead">
-    <div>
-      <h2>CORE MECHANICS</h2>
-      <p>Three moves decide every fight.</p>
-    </div>
-  </div>
-  <div class="panel mech">
-    <video class="mv" src="video/Split.mp4" muted loop playsinline preload="none"></video>
-    <div><h3>THE SPLIT</h3><p>Speed is a weapon. Split to throw half of your mass forward in an instant: catch a pill that thinks it is safe, or break away when you are the one being hunted.</p></div>
-  </div>
-  <div class="panel mech flip">
-    <video class="mv" src="video/Viral.mp4" muted loop playsinline preload="none"></video>
-    <div><h3>VIRAL WARFARE</h3><p>Viruses shred any pill bigger than them, but they also hand out a huge burst of mass. Hide behind one when you are small, burst on one when you can afford it.</p></div>
-  </div>
-  <div class="panel mech">
-    <video class="mv" src="video/Shoot.mp4" muted loop playsinline preload="none"></video>
-    <div><h3>VIRAL BALLISTICS</h3><p>Shoot small pieces of your own mass. Feed a virus until it pops right into a giant, then pick up what is left of them from a safe distance.</p></div>
-  </div>
   </section>
 
   <!-- ============ HOW TO PLAY (every tab: under the arena, and on THE GAME) ============ -->
