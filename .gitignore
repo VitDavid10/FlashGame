@@ -92,3 +92,7 @@ scripts/.stakers-devnet.json
 
 # Imagenes de las tarjetas compartidas del airdrop (las sube cada jugador)
 server/airdrop-cards/
+
+# Participantes e invitaciones del airdrop (datos personales, no van al repo)
+server/airdrop-data.json
+server/airdrop-data.json.tmp

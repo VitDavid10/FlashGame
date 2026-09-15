@@ -560,29 +560,44 @@ const KEY = 'pw_airdrop_v1';
 const today = () => new Date().toISOString().slice(0, 10);
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { S = {}; }
-if (typeof S.x === 'string') S.x = null;
-S.tasks = S.tasks || {}; S.gamePts = S.gamePts || 0; S.refs = S.refs || 0; S.socialPts = S.socialPts || 0;
+// X, wallet, invite code and invites live on the server (/api/airdrop/me).
+S.x = null; S.w = null; S.code = ''; S.refs = 0;
+S.tasks = S.tasks || {}; S.gamePts = S.gamePts || 0; S.socialPts = S.socialPts || 0;
 if (!S.daily || S.daily.date !== today()) S.daily = { date: today(), done: {}, matches: 0, best: {} };
 S.daily.best = S.daily.best || {};
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
-const refIn = new URLSearchParams(location.search).get('ref');
-if (refIn && !S.referredBy) { S.referredBy = refIn.slice(0, 16); save(); }
+const save = () => { try { const { x, w, code, refs, ...keep } = S; localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) {} };
 
-// Coming back from X: the auth server puts the profile in the URL fragment.
+// Invite code from any shared link (?ref=). Kept until this browser links a
+// wallet: that is the moment the server records the invite.
+const REF_KEY = 'pw_airdrop_ref';
+(function keepRef() {
+  const ref = new URLSearchParams(location.search).get('ref');
+  if (ref && /^[a-z2-9]{7}$/.test(ref)) { try { localStorage.setItem(REF_KEY, ref); } catch (e) {} }
+  if (ref) history.replaceState(null, '', location.pathname + location.hash);
+})();
+const pendingRef = () => { try { return localStorage.getItem(REF_KEY) || ''; } catch (e) { return ''; } };
+
+async function api(path, body) {
+  const r = await fetch('/api/airdrop/' + path, body === undefined ? { cache: 'no-store' } : {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'http ' + r.status);
+  return j;
+}
+function applyUser(u) {
+  S.x = u && u.x || null; S.w = u && u.wallet || null; S.code = u && u.code || ''; S.refs = u && u.invites || 0;
+  renderAll();
+}
+const loadMe = () => api('me').then(j => applyUser(j.user)).catch(() => {});
+
+// Coming back from X.
 (function readXReturn() {
   const h = new URLSearchParams(location.hash.slice(1));
   if (!h.has('x') && !h.has('xerr')) return;
   history.replaceState(null, '', location.pathname + location.search);
-  if (h.has('xerr')) {
-    const why = { denied: 'X SIGN-IN CANCELLED', config: 'X SIGN-IN IS NOT SET UP YET' }[h.get('xerr')] || 'X SIGN-IN FAILED, TRY AGAIN';
-    setTimeout(() => toast(why), 50);
-    return;
-  }
-  try {
-    const b64 = h.get('x').replace(/-/g, '+').replace(/_/g, '/');
-    const p = JSON.parse(decodeURIComponent(escape(atob(b64))));
-    if (p && /^[A-Za-z0-9_]{1,15}$/.test(p.username)) { S.x = p; save(); setTimeout(() => toast('X CONNECTED'), 50); }
-  } catch (e) {}
+  const why = h.has('xerr') ? ({ denied: 'X SIGN-IN CANCELLED', config: 'X SIGN-IN IS NOT SET UP YET' }[h.get('xerr')] || 'X SIGN-IN FAILED, TRY AGAIN') : 'X CONNECTED';
+  setTimeout(() => toast(why), 50);
 })();
 
 /* ---------------- scoring ----------------
@@ -743,7 +758,7 @@ document.querySelectorAll('.qtab').forEach(t => t.onclick = () => {
 });
 
 /* ---------------- card ---------------- */
-const refCode = () => displayName().replace(/[^a-z0-9]/gi, '').slice(0, 10).toLowerCase();
+const refCode = () => S.code || '';
 const refUrl = () => SITE + '/' + (refCode() ? '?ref=' + refCode() : '');
 const topPct = rank => {
   const p = Math.min(100, Math.max(0.01, rank / PARTICIPANTS * 100));
@@ -1194,7 +1209,7 @@ $('#sharePost').onclick = async () => {
     const blob = await xBlob();
     const r = await fetch('/api/airdrop/card', {
       method: 'POST', body: blob,
-      headers: { 'Content-Type': 'image/png', 'X-Airdrop-Ref': refCode(), 'X-Airdrop-Kind': share.kind || 'card' },
+      headers: { 'Content-Type': 'image/png', 'X-Airdrop-Kind': share.kind || 'card' },
     });
     if (r.ok) link = (await r.json()).url;
   } catch (e) {}
@@ -1232,15 +1247,25 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
 }));
 
 $('#xBtn').onclick = async () => {
-  if (S.x) { S.x = null; save(); renderAll(); return; }
+  if (S.x) { try { applyUser((await api('unlink', { what: 'x' })).user); } catch (e) { toast('COULD NOT UNLINK, TRY AGAIN'); } return; }
   // Plain navigation, not fetch: the site CSP (connect-src) blocks calls to other origins.
   location.href = X_AUTH + '/x/login';
 };
 
-$('#wBtn').onclick = () => {
-  if (S.w) { try { provider && provider.disconnect && provider.disconnect(); } catch (e) {} S.w = null; save(); renderAll(); return; }
+$('#wBtn').onclick = async () => {
+  if (S.w) {
+    try { provider && provider.disconnect && provider.disconnect(); } catch (e) {}
+    try { applyUser((await api('unlink', { what: 'wallet' })).user); } catch (e) { toast('COULD NOT UNLINK, TRY AGAIN'); }
+    return;
+  }
   $('#mWallet').hidden = false;
 };
+async function linkWallet(body) {
+  const j = await api('wallet', Object.assign({ ref: pendingRef() }, body));
+  try { localStorage.removeItem(REF_KEY); } catch (e) {}
+  applyUser(j.user);
+  toast('WALLET CONNECTED');
+}
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) $('#demoWallet').hidden = false;
 
 let provider = null;
@@ -1255,21 +1280,25 @@ document.querySelectorAll('.wopt').forEach(b => b.onclick = async () => {
   $('#mWallet').hidden = true;
   const name = b.dataset.w;
   if (name === 'demo') {
-    const abc = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    S.w = Array.from({ length: 44 }, () => abc[Math.floor(Math.random() * abc.length)]).join('');
-    save(); toast('WALLET CONNECTED'); renderAll(); return;
+    try { await linkWallet({ demo: true }); } catch (e) { toast('COULD NOT CONNECT, TRY AGAIN'); }
+    return;
   }
   const p = getProvider(name);
   if (!p) { window.open(INSTALL[name], '_blank', 'noopener'); return; }
+  let signed = false;
   try {
     const resp = await p.connect();
     const pk = (resp && resp.publicKey) || p.publicKey;
     if (!pk) throw new Error('no key');
-    await p.signMessage(new TextEncoder().encode('Sign in to PillWars Airdrop'), 'utf8');
-    provider = p; S.w = pk.toString(); save(); toast('WALLET CONNECTED'); renderAll();
+    const { nonce, message } = await api('nonce', {});
+    const out = await p.signMessage(new TextEncoder().encode(message), 'utf8');
+    signed = true;
+    const sig = out && out.signature ? out.signature : out;
+    provider = p;
+    await linkWallet({ address: pk.toString(), nonce, signature: Array.from(sig) });
   } catch (e) {
     try { p.disconnect && p.disconnect(); } catch (_) {}
-    toast('YOU NEED TO SIGN TO CONNECT');
+    toast(signed ? 'COULD NOT VERIFY THE WALLET, TRY AGAIN' : 'YOU NEED TO SIGN TO CONNECT');
   }
 });
 
@@ -1519,7 +1548,7 @@ function endMatch(w, tipo) {
   });
 }
 
-renderAll(); tick();
+renderAll(); tick(); loadMe();
 })();
 </script>
 </body>

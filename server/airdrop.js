@@ -14,6 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { createStore } = require('./airdrop-store.js');
 
 const CARD_MAX_BYTES = 1.5 * 1024 * 1024;
 const CARD_W = 1200, CARD_H = 630;
@@ -21,6 +22,10 @@ const CARD_MAX_FILES = 20000;
 const CARD_RATE = { max: 20, windowMs: 60 * 60 * 1000 };
 const X_PENDING_TTL_MS = 10 * 60 * 1000;
 const X_SCOPES = 'tweet.read users.read';
+const SESSION_COOKIE = 'pwad';
+const SESSION_MAX_AGE_S = 90 * 24 * 3600;
+const NONCE_TTL_MS = 5 * 60 * 1000;
+const WALLET_MESSAGE = nonce => 'Sign in to PillWars Airdrop\n\nThis only proves you own this wallet. It costs nothing and moves no funds.\n\nNonce: ' + nonce;
 
 const b64url = buf => Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -34,6 +39,8 @@ function createAirdrop(opts) {
     const X_CLIENT_ID = process.env.X_CLIENT_ID || '';
     const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET || '';
     const CARD_DIR = process.env.AIRDROP_CARD_DIR || path.join(__dirname, 'airdrop-cards');
+    const verifySignature = opts.verifySignature;
+    const store = createStore({ file: process.env.AIRDROP_DATA_FILE || path.join(__dirname, 'airdrop-data.json'), log });
     log('[airdrop] lockdown ' + (ONLY ? 'ON' : 'off') + ' | X client id ' + (X_CLIENT_ID ? 'set (' + X_CLIENT_ID.length + ' chars)' : 'MISSING') +
         ' | X client secret ' + (X_CLIENT_SECRET ? 'set (' + X_CLIENT_SECRET.length + ' chars)' : 'MISSING'));
 
@@ -75,6 +82,74 @@ function createAirdrop(opts) {
     }
     const redirect = (res, url, code) => { res.writeHead(code || 302, { Location: url, 'Cache-Control': 'no-store' }); res.end(); };
 
+    /* ---------------- session ---------------- */
+    function sessionToken(req) {
+        const m = new RegExp('(?:^|;\\s*)' + SESSION_COOKIE + '=([A-Za-z0-9_-]{20,64})').exec(String(req.headers.cookie || ''));
+        return m ? m[1] : null;
+    }
+    function setSession(req, res, token) {
+        const secure = originOf(req).startsWith('https:') ? '; Secure' : '';
+        res.setHeader('Set-Cookie', SESSION_COOKIE + '=' + token + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + SESSION_MAX_AGE_S + secure);
+    }
+    const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+
+    /* ---------------- participant API ---------------- */
+    const nonces = new Map();      // nonce -> expiry
+    const apiHits = new Map();
+    const hitOk = (ip, max) => {
+        const now = Date.now(), list = (apiHits.get(ip) || []).filter(t => now - t < 60000);
+        list.push(now); apiHits.set(ip, list);
+        if (apiHits.size > 50000) apiHits.clear();
+        return list.length <= max;
+    };
+    async function readJson(req) {
+        try { return JSON.parse((await readBody(req, 4096)).toString('utf8') || '{}'); } catch (e) { return null; }
+    }
+    async function handleApi(req, res, urlPath) {
+        if (urlPath === '/api/airdrop/me') {
+            return json(res, 200, { user: store.publicView(store.sessionUser(sessionToken(req))) });
+        }
+        if (req.method !== 'POST') return json(res, 405, { error: 'method' });
+        if (sameOriginReferer(req) === null) return json(res, 403, { error: 'origin' });
+        if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
+
+        if (urlPath === '/api/airdrop/nonce') {
+            const now = Date.now();
+            for (const [k, t] of nonces) if (t < now) nonces.delete(k);
+            if (nonces.size > 100000) nonces.clear();
+            const nonce = b64url(crypto.randomBytes(16));
+            nonces.set(nonce, now + NONCE_TTL_MS);
+            return json(res, 200, { nonce, message: WALLET_MESSAGE(nonce) });
+        }
+        if (urlPath === '/api/airdrop/wallet') {
+            const body = await readJson(req);
+            if (!body) return json(res, 400, { error: 'body' });
+            const ref = String(body.ref || '').slice(0, 16);
+            let wallet;
+            if (body.demo && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(originOf(req))) {
+                wallet = 'Demo' + b64url(crypto.randomBytes(30)).replace(/[-_]/g, 'x').slice(0, 40);
+            } else {
+                const nonce = String(body.nonce || ''), exp = nonces.get(nonce);
+                nonces.delete(nonce);
+                if (!exp || exp < Date.now()) return json(res, 400, { error: 'nonce' });
+                wallet = String(body.address || '');
+                if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet) || !Array.isArray(body.signature) || body.signature.length !== 64) return json(res, 400, { error: 'signature' });
+                if (!verifySignature || !verifySignature(wallet, WALLET_MESSAGE(nonce), body.signature)) return json(res, 400, { error: 'signature' });
+            }
+            const r = store.linkWallet(sessionToken(req), wallet, ref);
+            if (r.error) return json(res, 409, { error: r.error, user: store.publicView(r.user) });
+            setSession(req, res, r.token);
+            return json(res, 200, { user: store.publicView(r.user), referred: r.referred });
+        }
+        if (urlPath === '/api/airdrop/unlink') {
+            const body = await readJson(req);
+            const what = body && (body.what === 'x' || body.what === 'wallet') ? body.what : null;
+            if (!what) return json(res, 400, { error: 'what' });
+            return json(res, 200, { user: store.publicView(store.unlink(sessionToken(req), what)) });
+        }
+        return json(res, 404, { error: 'not found' });
+    }
+
     /* ---------------- Sign in with X ---------------- */
     async function xExchange(code, verifier, redirectUri) {
         const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
@@ -115,7 +190,9 @@ function createAirdrop(opts) {
             if (!code) return redirect(res, HOME + '#xerr=denied');
             try {
                 const profile = await xExchange(code, p.verifier, p.redirectUri);
-                return redirect(res, HOME + '#x=' + b64url(JSON.stringify(profile)));
+                const r = store.linkX(sessionToken(req), profile);
+                setSession(req, res, r.token);
+                return redirect(res, HOME + '#x=ok');
             } catch (e) {
                 log('[airdrop] X sign-in failed: ' + e.message);
                 return redirect(res, HOME + '#xerr=api');
@@ -153,7 +230,8 @@ function createAirdrop(opts) {
         let buf;
         try { buf = await readBody(req, CARD_MAX_BYTES); } catch (e) { return json(413, { error: 'size' }); }
         if (!isCardPng(buf)) return json(400, { error: 'image' });
-        const ref = String(req.headers['x-airdrop-ref'] || '').replace(/[^a-z0-9]/gi, '').slice(0, 16);
+        // The invite code comes from the session, never from the page.
+        const ref = store.codeOf(sessionToken(req));
         const kind = req.headers['x-airdrop-kind'] === 'run' ? 'run' : 'card';
         try {
             await fs.promises.mkdir(CARD_DIR, { recursive: true });
@@ -240,6 +318,7 @@ function createAirdrop(opts) {
         if (urlPath === '/airdrop-terms.html') { redirect(res, '/airdrop-terms', 301); return true; }
         if (urlPath.startsWith('/airdrop-auth/')) { await handleX(req, res, urlPath, query); return true; }
         if (urlPath === '/api/airdrop/card') { await handleCardUpload(req, res); return true; }
+        if (urlPath.startsWith('/api/airdrop/')) { await handleApi(req, res, urlPath); return true; }
         if (urlPath.startsWith('/c/')) { handleCard(req, res, urlPath); return true; }
         if (!ONLY) return false;
         return gate(req, res, urlPath);

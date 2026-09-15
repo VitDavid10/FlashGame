@@ -2434,7 +2434,7 @@ setInterval(() => { const now = Date.now(); for (const [k, e] of rpcApiHits) if 
 
 // Página del airdrop, login con X y tarjetas para compartir. AIRDROP_ONLY=1 deja
 // SOLO el airdrop accesible: el resto de la web contesta 404 (ver server/airdrop.js).
-const airdrop = createAirdrop({ root: ROOT, only: process.env.AIRDROP_ONLY === '1', adminPath: ADMIN_PATH, clientIp, log });
+const airdrop = createAirdrop({ root: ROOT, only: process.env.AIRDROP_ONLY === '1', adminPath: ADMIN_PATH, clientIp, log, verifySignature: solana.verifySignedMessage });
 const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     // www.pillwars.fun sirve la misma web que pillwars.fun, y Google las trata
