@@ -331,7 +331,8 @@ function createAirdrop(opts) {
         // page and the game actually load is served. Everything else is a 404.
         if (!LOCKDOWN_ALLOW.some(p => p.endsWith('/') ? urlPath.startsWith(p) : urlPath === p)) { notFound(req, res); return true; }
         // Scripts, images, fonts and API calls only for pages already on the site.
-        if (sameOriginReferer(req) === null) { notFound(req, res); return true; }
+        // The generic link preview is the exception: X's crawler sends no Referer.
+        if (sameOriginReferer(req) === null && urlPath !== '/img/airdrop-og.png') { notFound(req, res); return true; }
         return false;
     }
 
