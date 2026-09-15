@@ -613,7 +613,7 @@ function applyUser(u) {
   if (S.w && !S.chain && !S.w.startsWith('Demo') && chainTries++ < 20) chainPoll = setTimeout(loadMe, 4000);
 }
 let chainPoll = 0, chainTries = 0;
-const loadMe = () => api('me').then(j => applyUser(j.user)).catch(() => {});
+const loadMe = () => api('me').then(j => { applyUser(j.user); applyScore(j.score); }).catch(() => {});
 
 // Coming back from X.
 (function readXReturn() {
@@ -771,6 +771,9 @@ const isDone = key => {
 function completeTask(key, pts) {
   if (isDone(key)) return;
   const wasBoosted = boosted();
+  // Instant local guess so the UI reacts right away; api('quest/complete')
+  // below is what actually awards it server-side (see applyScore above) -
+  // the real pts and shareAt come back from there a moment later.
   if (key.startsWith('daily:')) { S.daily.social = S.daily.social || {}; S.daily.social[key] = true; }
   else S.tasks[key] = true;
   S.socialPts += pts;
@@ -778,6 +781,7 @@ function completeTask(key, pts) {
   save();
   toast(!wasBoosted && boosted() ? 'BOOST ON: ALL POINTS +50%' : pts ? '+' + pts + ' AIRDROP POINTS' : 'QUEST DONE');
   renderAll();
+  api('quest/complete', { key }).then(j => applyScore(j.score)).catch(() => {});
 }
 const pendingTasks = new Set();
 function taskRow(q) {
@@ -1347,6 +1351,7 @@ async function linkWallet(body) {
   const j = await api('wallet', Object.assign({ ref: pendingRef() }, body));
   try { localStorage.removeItem(REF_KEY); } catch (e) {}
   applyUser(j.user);
+  loadMe();   // also picks up S.score now that a wallet is linked
   toast('WALLET CONNECTED');
 }
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) $('#demoWallet').hidden = false;
@@ -1575,7 +1580,7 @@ function hook(w) {
   };
   // Every skill card picked (the arcade choice every 30 seconds).
   const origPick = w.selectArcadeSkill;
-  if (origPick) w.selectArcadeSkill = function () { if (match) { DC().picks++; save(); checkMissions(w); } return origPick.apply(this, arguments); };
+  if (origPick) w.selectArcadeSkill = function () { if (match) { DC().picks++; save(); checkMissions(w); arena('event', { type: 'skillPick' }); } return origPick.apply(this, arguments); };
   w.showResultsUI = function (tipo) { endMatch(w, tipo); };
   w.returnToMenu = function () { resetArena(); };
   const origTry = w.tryAgainOnline;
@@ -1589,6 +1594,21 @@ function noGrace(w) {
   try { const sim = w.__pwLab && w.__pwLab.sim; if (sim && sim.config) sim.config.botPlayerGraceMs = 0; } catch (e) {}
 }
 
+// ---- server-authoritative scoring ----
+// The counters below still update locally, INSTANTLY, so the game feels the
+// same as always (HUD, point pop-ups). The server (server/airdrop-score.js)
+// independently runs the exact same daily missions off the events forwarded
+// to it and is the one that actually stores gamePts/socialPts: a few moments
+// later applyScore() quietly corrects S with whatever the server accepted, so
+// editing S by hand in devtools has no lasting effect.
+function applyScore(sc) {
+  if (!sc) return;
+  S.gamePts = sc.gamePts; S.socialPts = sc.socialPts; S.shareAt = sc.shareAt; S.tasks = sc.tasks;
+  S.daily = Object.assign({}, S.daily, { date: sc.daily.date, done: sc.daily.done, matches: sc.daily.matches, kills: sc.daily.kills, social: sc.daily.social, c: sc.daily.c });
+  save();
+}
+const arena = (path, body) => api('arena/' + path, body || {}).then(j => applyScore(j.score)).catch(() => {});
+
 // What the rotating missions count. Offline the only non-bot pill is yours, so
 // isBot === false on split and virus sounds means it was you.
 let lastSplitAt = 0, lastVirusAt = 0;
@@ -1597,17 +1617,19 @@ function trackEvent(ev, w) {
   if (ev.type === 'botKilled' && ev.playerId === 'me') {
     if (now - lastSplitAt < 1500) c.splitKills++;
     addKills(1, null);
-  } else if (ev.type === 'botPieceEaten' && ev.playerId === 'me') c.pieces++;
+    arena('event', { type: 'botKilled' });
+  } else if (ev.type === 'botPieceEaten' && ev.playerId === 'me') { c.pieces++; arena('event', { type: 'botPieceEaten' }); }
   else if (ev.type === 'skillUsed' && ev.playerId === 'me' && typeof ev.id === 'number') {
     c.skills++; c.skill[ev.id] = (c.skill[ev.id] || 0) + 1;
     if (!c.skillSet.includes(ev.id)) c.skillSet.push(ev.id);
     if (ev.id === 8 && ev.win) c.gambleWins++;
+    arena('event', { type: 'skillUsed', id: ev.id, win: !!ev.win });
   } else if (ev.type === 'splitSound' && ev.isBot === false) {
     // One SPACE splits every piece and plays one sound per piece: count it once.
-    if (now - lastSplitAt > 300) c.splits++;
+    if (now - lastSplitAt > 300) { c.splits++; arena('event', { type: 'split' }); }
     lastSplitAt = now;
   } else if (ev.type === 'virusSound' && ev.isBot === false) {
-    if (now - lastVirusAt > 500) c.virusPops++;
+    if (now - lastVirusAt > 500) { c.virusPops++; arena('event', { type: 'virusPop' }); }
     lastVirusAt = now;
   } else return;
   save();
@@ -1644,6 +1666,8 @@ function beginMatch(w) {
   match = { kills: 0, alive: 0, earned: 0, maxMass: 0, finished: false, place: null, start: Date.now(), killBase: gameKills(w) };
   S.daily.matches++; save();
   completeTask('play', 0);
+  arena('begin');
+  let lastMassSentAt = 0;
   clearInterval(matchTimer);
   matchTimer = setInterval(() => {
     if (!match) return;
@@ -1658,6 +1682,8 @@ function beginMatch(w) {
     const k = gameKills(w) - match.killBase;
     if (k > match.kills) addKills(k - match.kills, null);
     checkMissions(w);
+    // Mass just needs its peak: report it every couple of seconds, not every tick.
+    if (running && Date.now() - lastMassSentAt > 2000) { lastMassSentAt = Date.now(); arena('event', { type: 'mass', value: Math.round(match.maxMass) }); }
   }, 250);
   checkMissions(w);
   renderDaily();
@@ -1702,6 +1728,10 @@ function stopMatch() {
 
 // EXIT from the game: back to the attract screen, never to the game menu.
 function resetArena() {
+  // Leaving mid-match (not through GAME OVER/MATCH FINISHED, which already
+  // told the server): close it server-side too, or the next PRESS TO START
+  // would find a match still "running" there.
+  if (match) arena('end', { finished: false, place: null });
   stopMatch();
   dropGameSave();
   hooked = null;
@@ -1720,6 +1750,7 @@ function endMatch(w, tipo) {
   // Clock ran out with you alive: the end-of-match missions are checked before closing it.
   if (finished) { match.finished = true; match.place = matchPlace(w); }
   checkMissions(w);
+  arena('end', { finished: match.finished, place: match.place });
   const m = stopMatch();
   dropGameSave();
   try { w.hideGameHUD(); } catch (e) {}

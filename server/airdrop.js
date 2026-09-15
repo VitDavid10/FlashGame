@@ -16,6 +16,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { createStore } = require('./airdrop-store.js');
 const { createChain } = require('./airdrop-chain.js');
+const { createScore } = require('./airdrop-score.js');
 
 const CARD_MAX_BYTES = 1.5 * 1024 * 1024;
 const CARD_W = 1200, CARD_H = 630;
@@ -53,6 +54,9 @@ function createAirdrop(opts) {
         chain.refresh(u.wallet, st => store.setChain(u.wallet, st));
     };
     log('[airdrop] on-chain RPC ' + AIRDROP_RPC.replace(/([?&]api-key=)[^&]+/, '$1***'));
+    // Real post ids to repost/like - keep this in sync with POSTS in airdrop.html.
+    const POST_IDS = [];
+    const score = createScore({ postIds: POST_IDS, inviteCountOf: store.inviteCount });
     log('[airdrop] lockdown ' + (ONLY ? 'ON' : 'off') + ' | X client id ' + (X_CLIENT_ID ? 'set (' + X_CLIENT_ID.length + ' chars)' : 'MISSING') +
         ' | X client secret ' + (X_CLIENT_SECRET ? 'set (' + X_CLIENT_SECRET.length + ' chars)' : 'MISSING'));
 
@@ -137,16 +141,41 @@ function createAirdrop(opts) {
     async function readJson(req) {
         try { return JSON.parse((await readBody(req, 4096)).toString('utf8') || '{}'); } catch (e) { return null; }
     }
+    const arenaHits = new Map();
+    // Real gameplay reports several events a minute (kills, skills, mass...);
+    // give it a much higher budget than the rest of the API.
+    const arenaHitOk = ip => {
+        const now = Date.now(), list = (arenaHits.get(ip) || []).filter(t => now - t < 60000);
+        list.push(now); arenaHits.set(ip, list);
+        if (arenaHits.size > 50000) arenaHits.clear();
+        return list.length <= 300;
+    };
     async function handleApi(req, res, urlPath) {
         if (urlPath === '/api/airdrop/me') {
             const u = store.sessionUser(sessionToken(req));
             syncChain(u);
             // Invited wallets are checked when they link; retry any lookup that failed.
             if (u) store.invitedOf(u).forEach(i => { if (!store.chainOf(i)) syncChain(i); });
-            return json(res, 200, { user: store.publicView(u) });
+            return json(res, 200, { user: store.publicView(u), score: u ? score.view(u) : null });
         }
         if (req.method !== 'POST') return json(res, 405, { error: 'method' });
         if (sameOriginReferer(req) === null) return json(res, 403, { error: 'origin' });
+
+        if (urlPath.startsWith('/api/airdrop/arena/') || urlPath === '/api/airdrop/quest/complete') {
+            if (!arenaHitOk(clientIp(req))) return json(res, 429, { error: 'rate' });
+            const u = store.sessionUser(sessionToken(req));
+            if (!u) return json(res, 401, { error: 'no_session' });
+            const body = await readJson(req);
+            if (!body) return json(res, 400, { error: 'body' });
+            let r;
+            if (urlPath === '/api/airdrop/arena/begin') r = score.beginMatch(u);
+            else if (urlPath === '/api/airdrop/arena/event') r = score.reportEvent(u, body);
+            else if (urlPath === '/api/airdrop/arena/end') r = score.endMatch(u, body);
+            else if (urlPath === '/api/airdrop/quest/complete') r = score.completeTask(u, String(body.key || ''));
+            else return json(res, 404, { error: 'not found' });
+            if (r.error) return json(res, r.error === 'rate' ? 429 : r.error === 'not_linked' ? 403 : 409, { error: r.error });
+            return json(res, 200, { score: r.view });
+        }
         if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
 
         if (urlPath === '/api/airdrop/nonce') {

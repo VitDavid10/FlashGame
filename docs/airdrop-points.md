@@ -121,6 +121,6 @@ by themselves, but finishing all three **multiplies all your points ×1.5**, pas
 
 *Internal, do not share:*
 - *Airdrops, Genesis Tokens, Mad Lads and Jumper XP are all real (server/airdrop-tokens.js, server/airdrop-nfts.js, server/airdrop-jumper.js).*
-- *Quest, arena and share points are still computed in the browser: they must move to the server before launch.*
+- *Quest, arena and share points are now computed and stored on the server (server/airdrop-score.js), not in the browser - editing localStorage has no lasting effect. Still trusted from the client: that a repost/like/follow actually happened (X isn't re-checked), and a match's `finished`/`place` outcome (the offline arena has no server-run simulation to verify it against).*
 - *Pending: max 0.5% of the supply per person.*
 - *Source of truth in code: `airdrop.html` (tiers, quests) and `server/airdrop-store.js` (invite rule).*
