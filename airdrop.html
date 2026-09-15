@@ -351,14 +351,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
           <button class="qtab" data-q="arena">DAILY QUEST</button>
           <button class="qtab" data-q="invites">INVITES</button>
         </div>
-        <div class="qscroll" id="qSocial">
-          <div class="qgroup"><span>DAILY</span><span>RESETS IN <b class="resetIn" style="color:#fff">--:--:--</b></span></div>
-          <div class="tasks" id="dailySocial"></div>
-          <div class="qgroup"><span>SPREAD THE WORD</span><span>NEW POSTS ADDED OFTEN</span></div>
-          <div class="tasks" id="postTasks"></div>
-          <div class="qgroup"><span>ONE-TIME</span></div>
-          <div class="tasks" id="tasks"></div>
-        </div>
+        <div class="qscroll" id="qSocial"></div>
         <div class="qscroll" id="qArena" hidden>
           <div class="qgroup"><span>ONE MATCH AT A TIME</span><span>RESETS IN <b class="resetIn" style="color:#fff">--:--:--</b></span></div>
           <div class="tasks" id="dailyTasks"></div>
@@ -489,7 +482,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     </ul>
   </div>
 
-  <footer>Points are not tokens. Final allocation is calculated at the end of Season 0. <a href="/terms.html#airdrop">Airdrop terms</a></footer>
+  <footer>Points are not tokens. Final allocation is calculated at the end of Season 0. <a href="/airdrop-terms.html">Airdrop terms</a></footer>
 </div>
 
 <!-- wallet modal -->
@@ -705,11 +698,21 @@ function taskRow(q) {
   else if (!done) btn = '<button class="pbtn green sm" data-task="' + q.key + '">' + (pendingTasks.has(q.key) ? 'VERIFY' : 'GO') + '</button>';
   return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : '+' + q.pts) + '</span>' + btn + '</div>';
 }
+// Pending first: inside a group done quests sink, and a group with nothing left
+// to do (or no posts yet) drops below the groups that still have work.
+const pendingFirst = (list, done) => list.filter(k => !done(k)).concat(list.filter(done));
 function renderTasks() {
   const q = socialQuests();
-  $('#dailySocial').innerHTML = q.daily.map(taskRow).join('');
-  $('#postTasks').innerHTML = q.posts.length ? q.posts.map(taskRow).join('') : '<div class="task box"><div class="tx"><span>No posts yet. New ones land here.</span></div></div>';
-  $('#tasks').innerHTML = q.once.map(taskRow).join('');
+  const groups = [
+    { title: 'DAILY', right: 'RESETS IN <b class="resetIn" style="color:#fff">' + resetText() + '</b>', items: q.daily },
+    { title: 'ONE-TIME', right: '', items: q.once },
+    { title: 'SPREAD THE WORD', right: 'NEW POSTS ADDED OFTEN', items: q.posts, empty: 'No posts yet. New ones land here.' },
+  ];
+  const open = g => g.items.some(k => !isDone(k.key));
+  $('#qSocial').innerHTML = pendingFirst(groups, g => !open(g)).map(g =>
+    '<div class="qgroup"><span>' + g.title + '</span><span>' + g.right + '</span></div><div class="tasks">' +
+    (g.items.length ? pendingFirst(g.items, k => isDone(k.key)).map(taskRow).join('') : '<div class="task box"><div class="tx"><span>' + g.empty + '</span></div></div>') +
+    '</div>').join('');
 }
 $('#view-me').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -1185,11 +1188,13 @@ function toast(msg) {
 })();
 
 /* ---------------- timers ---------------- */
-function tick() {
-  const now = Date.now();
+function resetText() {
   const next = new Date(); next.setUTCHours(24, 0, 0, 0);
-  const d = Math.max(0, next - now), p = n => String(n).padStart(2, '0');
-  const txt = p(Math.floor(d / 3600e3)) + ':' + p(Math.floor(d / 60e3) % 60) + ':' + p(Math.floor(d / 1e3) % 60);
+  const d = Math.max(0, next - Date.now()), p = n => String(n).padStart(2, '0');
+  return p(Math.floor(d / 3600e3)) + ':' + p(Math.floor(d / 60e3) % 60) + ':' + p(Math.floor(d / 1e3) % 60);
+}
+function tick() {
+  const now = Date.now(), txt = resetText();
   $('#resetIn').textContent = txt;
   document.querySelectorAll('.resetIn').forEach(el => { el.textContent = txt; });
   $('#stEnds').textContent = Math.max(0, Math.ceil((SEASON_END - now) / 864e5)) + ' DAYS';
@@ -1216,7 +1221,7 @@ const missionProgress = m => {
 };
 function renderDaily() {
   const done = S.daily.done;
-  $('#dailyTasks').innerHTML = MISSIONS.map(m => {
+  $('#dailyTasks').innerHTML = pendingFirst(MISSIONS, m => !!done[m.id]).map(m => {
     const ok = !!done[m.id], p = missionProgress(m);
     return '<div class="task box' + (ok ? ' done' : '') + '"><div class="tx"><b>' + m.t + '</b><span>' + (m.id === 'm3' ? 'Today' : 'In a single match') + ' - ' + p + '/' + m.goal + '</span></div><span class="pts">' + (ok ? 'DONE' : '+' + m.pts) + '</span>' + (ok ? '' : '<button class="pbtn green sm" data-go="arena">GO</button>') + '</div>';
   }).join('');
