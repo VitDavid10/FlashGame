@@ -45,10 +45,11 @@ test('stops at the page cap and says so', async () => {
     assert.strictEqual(f.calls.length, MAX_PAGES);
 });
 
-test('a wallet checked before the NFT check existed is stale even if recent', () => {
+test('a wallet checked before the NFTs/airdrops check existed is stale even if recent', () => {
     const c = createChain({ rpc: 'x', fetch: fakeRpc(0).fetch, pageGapMs: 0 });
     assert.strictEqual(c.stale({ txs: 1, firstAt: 1, capped: false, checkedAt: Date.now() }), true);
-    assert.strictEqual(c.stale({ txs: 1, firstAt: 1, capped: false, checkedAt: Date.now(), nfts: {} }), false);
+    assert.strictEqual(c.stale({ txs: 1, firstAt: 1, capped: false, checkedAt: Date.now(), nfts: {} }), true);
+    assert.strictEqual(c.stale({ txs: 1, firstAt: 1, capped: false, checkedAt: Date.now(), nfts: {}, airdrops: [] }), false);
     assert.strictEqual(c.stale(null), true);
 });
 
@@ -58,7 +59,7 @@ test('the page only sees the history of the wallet currently linked', () => {
     const a = s.linkWallet(null, W1, '');
     assert.strictEqual(s.publicView(s.sessionUser(a.token)).chain, null);
     s.setChain(W1, { txs: 42, firstAt: 1700000000, capped: false, checkedAt: 1 });
-    assert.deepStrictEqual(s.publicView(s.sessionUser(a.token)).chain, { txs: 42, firstAt: 1700000000, capped: false, nfts: [] });
+    assert.deepStrictEqual(s.publicView(s.sessionUser(a.token)).chain, { txs: 42, firstAt: 1700000000, capped: false, nfts: [], airdrops: [] });
     s.unlink(a.token, 'wallet');
     s.linkWallet(a.token, W2, '');
     assert.strictEqual(s.publicView(s.sessionUser(a.token)).chain, null);

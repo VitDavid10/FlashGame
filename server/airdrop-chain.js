@@ -7,6 +7,7 @@
  * one wallet at a time so a burst of sign-ups can't get the server rate limited.
  */
 const { createNfts } = require('./airdrop-nfts.js');
+const { createTokens } = require('./airdrop-tokens.js');
 
 const PAGE = 1000;
 const MAX_PAGES = 20;               // 20,000 transactions: far past the points cap
@@ -38,8 +39,9 @@ function createChain(opts) {
     }
 
     const nfts = createNfts({ call });
+    const tokens = createTokens({ call });
 
-    /** { txs, firstAt (unix s or null), capped, checkedAt, nfts: { id: mint } } */
+    /** { txs, firstAt (unix s or null), capped, checkedAt, nfts, airdrops } */
     async function walletStats(address) {
         let before, txs = 0, firstAt = null, pages = 0, last = [];
         do {
@@ -56,12 +58,12 @@ function createChain(opts) {
             if (txs >= TOP_TXS && firstAt && now() / 1000 - firstAt >= TOP_AGE_DAYS * 86400) break;
         } while (last.length === PAGE && pages < MAX_PAGES);
         const out = { txs, firstAt, capped: last.length === PAGE, checkedAt: now() };
-        if (opts.nfts !== false) out.nfts = await nfts.walletNfts(address);
+        if (opts.nfts !== false) { out.nfts = await nfts.walletNfts(address); out.airdrops = await tokens.walletAirdrops(address); }
         return out;
     }
 
-    // Also stale if it predates the NFTs check (older wallets never picked it up).
-    const stale = st => !st || now() - st.checkedAt > REFRESH_MS || !st.nfts;
+    // Also stale if it predates the NFTs/airdrops check (older wallets never picked it up).
+    const stale = st => !st || now() - st.checkedAt > REFRESH_MS || !st.nfts || !st.airdrops;
     let queue = Promise.resolve();
     const inFlight = new Set();
     /** Looks the wallet up in the background; `done(stats)` runs on success. */

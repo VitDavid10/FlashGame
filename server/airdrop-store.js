@@ -177,7 +177,7 @@ function createStore(opts) {
     function publicView(u) {
         if (!u) return null;
         const c = chainOf(u);
-        const chain = c ? { txs: c.txs, firstAt: c.firstAt, capped: c.capped, nfts: Object.keys(c.nfts || {}) } : null;
+        const chain = c ? { txs: c.txs, firstAt: c.firstAt, capped: c.capped, nfts: Object.keys(c.nfts || {}), airdrops: c.airdrops || [] } : null;
         const invites = inviteCount(u);
         return { code: u.code, wallet: u.wallet, x: u.x, invites, pendingInvites: Math.max(0, Math.min(MAX_INVITES, u.invited.length) - invites), referred: !!u.referredBy, chain };
     }

@@ -644,12 +644,16 @@ function xProfile(x) {
 }
 // On-chain: Airdrop Hunter up to 11,000 (tiers), NFT Holder up to 4,800 (Saga or
 // Seeker Genesis Token + Mad Lads), wallet age and transactions up to 2,400 (tiers).
+// Real ones are verified on the server: the wallet's account for that mint has
+// a transaction dated at or before that project's own claim deadline (a date
+// that can't be faked by buying the token today). See server/airdrop-tokens.js.
+// Jupiter has no fixed deadline (it repeats every "Jupuary"), so it can't be
+// verified this way yet: it stays pending and never scores until we find one.
 const AIRDROPS = [
-  { id: 'jup', name: 'Jupiter (JUP)' }, { id: 'jup2', name: 'Jupiter Jupuary' }, { id: 'jto', name: 'Jito (JTO)' },
+  { id: 'jup', name: 'Jupiter (JUP)', pending: true }, { id: 'jto', name: 'Jito (JTO)' },
   { id: 'pyth', name: 'Pyth (PYTH)' }, { id: 'w', name: 'Wormhole (W)' }, { id: 'tnsr', name: 'Tensor (TNSR)' },
-  { id: 'kmno', name: 'Kamino (KMNO)' }, { id: 'drift', name: 'Drift (DRIFT)' }, { id: 'me', name: 'Magic Eden (ME)' },
-  { id: 'met', name: 'Meteora (MET)' }, { id: 'bonk', name: 'BONK' }, { id: 'cloud', name: 'Sanctum (CLOUD)' },
-  { id: 'grass', name: 'Grass (GRASS)' }, { id: 'jumper', name: 'Jumper points' },
+  { id: 'drift', name: 'Drift (DRIFT)' }, { id: 'me', name: 'Magic Eden (ME)' }, { id: 'met', name: 'Meteora (MET)' },
+  { id: 'bonk', name: 'BONK' }, { id: 'cloud', name: 'Sanctum (CLOUD)' }, { id: 'grass', name: 'Grass (GRASS)' },
 ];
 // [minimum, share of the category]: the highest tier reached pays.
 const tierPct = (v, tiers) => tiers.reduce((p, t) => v >= t[0] ? t[1] : p, 0);
@@ -667,13 +671,13 @@ function walletProfile(addr) {
   const days = demo ? Math.floor(r() * 1400 + 3) : c && c.firstAt ? Math.max(0, Math.floor((Date.now() / 1000 - c.firstAt) / 86400)) : 0;
   const txs = demo ? Math.floor(Math.pow(r(), 2) * 6000) : c ? c.txs : 0;
   const wait = !demo && !c;
-  // TODO real: airdrops are still sample data. NFTs come from the server.
-  const got = AIRDROPS.filter(() => r() < 0.3);
+  const airdrops = demo ? AIRDROPS.filter(a => !a.pending).filter(() => r() < 0.3).map(a => a.id) : c ? c.airdrops || [] : [];
+  const got = AIRDROPS.filter(a => airdrops.includes(a.id));
   const nfts = demo ? ['saga', 'madlads'].filter(() => r() < 0.4) : c ? c.nfts || [] : [];
   const genesis = nfts.includes('saga') || nfts.includes('seeker'), madlads = nfts.includes('madlads');
   const tip = '<div class="tip"><b>AIRDROPS QUALIFIED</b>' + AIRDROPS.map(a => {
     const ok = got.includes(a);
-    return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? 'YES' : '-') + '</i>' + esc(a.name) + '</div>';
+    return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? 'YES' : a.pending ? '?' : '-') + '</i>' + esc(a.name) + (a.pending ? ' (pending)' : '') + '</div>';
   }).join('') + '<b style="margin:8px 0 0">' + got.length + ' = ' + Math.round(tierPct(got.length, HUNTER_TIERS) * 100) + '% &middot; 7+ = MAX</b></div>';
   return {
     lines: [

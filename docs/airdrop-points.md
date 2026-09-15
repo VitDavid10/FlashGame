@@ -13,14 +13,39 @@ in proportion to each player's points.
 | Wallet age | 2,400 | Tiers by days since the wallet's first transaction |
 | Transactions | 2,400 | Tiers by successful transactions |
 
-**Airdrop Hunter** — airdrops counted (14): Jupiter (JUP), Jupiter Jupuary, Jito (JTO),
-Pyth (PYTH), Wormhole (W), Tensor (TNSR), Kamino (KMNO), Drift (DRIFT), Magic Eden (ME),
-Meteora (MET), BONK, Sanctum (CLOUD), Grass (GRASS), Jumper points.
+**Airdrop Hunter** — a wallet qualifies for a project when its account for that
+project's token shows a transaction on or before the project's own claim
+deadline (a date on the blockchain can't be faked by buying the token today).
+Checked live on mainnet by the server (`server/airdrop-tokens.js`):
+
+| Airdrop | Deadline used | Source |
+|---|---|---|
+| Jito (JTO) | 7 Jun 2025 (18 months after the 7 Dec 2023 TGE) | [jito.network](https://www.jito.network/blog/airdrop-claiming-details/) |
+| Pyth (PYTH) | 20 Feb 2024 | [pyth.network](https://www.pyth.network/blog/pyth-network-retrospective-airdrop-eligibility-and-distribution-specifications) |
+| Wormhole (W) | 2 Jul 2024 (90 days after the ~3 Apr 2024 launch) | [wormhole.com](https://wormhole.com/blog/w-airdrop-explained) |
+| Tensor (TNSR) | 5 Oct 2024 | [solanafloor.com](https://solanafloor.com/news/solanas-top-nft-marketplace-tensor-launches-airdrop-claim-and-tnsr-token-trading) |
+| Drift (DRIFT) | 14 Nov 2025 (final extended deadline) | [drift.trade](https://www.drift.trade/governance/claims-for-the-drift-governance-token-are-now-live) |
+| Magic Eden (ME) | 1 Feb 2025 | [solanafloor.com](https://solanafloor.com/news/magic-eden-debuts-token-with-airdrop-claimable-only-via-mobile-app) |
+| Meteora (MET) | 23 Jan 2026 | [docs.meteora.ag](https://docs.meteora.ag/protocol/met/faq) |
+| BONK | 1 Feb 2023 (distributed directly on 25 Dec 2022, no claim step) | [bitdegree.org](https://www.bitdegree.org/crypto/tutorials/bonk-token-airdrop) |
+| Sanctum (CLOUD) | 14 Apr 2025 | [phantom.com](https://phantom.com/learn/crypto-101/sanctum-cloud-airdrop) |
+| Grass (GRASS), season 1 only | 27 Mar 2025 | [coingabbar.com](https://www.coingabbar.com/en/crypto-currency-news/grass-airdrop-claim-period-extended-check-grass-claim-details) |
+
+**Jupiter (JUP)** stays in the list but is **pending**: it has no fixed snapshot
+or deadline (Jupiter repeats a "Jupuary" round every year), so today there is no
+way to tell "qualified in a real round" from "bought JUP yesterday". It never
+scores until a real check is found. Dropped from the list entirely: **Jupiter
+Jupuary** (not a distinct airdrop, just another JUP round), **Kamino (KMNO)**
+(same problem as JUP: ongoing seasons, no fixed deadline), **Jumper points**
+(off-chain loyalty points, not on Solana, nothing to check on mainnet).
 
 | Airdrops | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7+ |
 |---|---|---|---|---|---|---|---|---|
 | Share | 0% | 20% | 35% | 50% | 65% | 80% | 90% | 100% |
 | Points | 0 | 2,200 | 3,850 | 5,500 | 7,150 | 8,800 | 9,900 | 11,000 |
+
+With 10 real airdrops checked today (Jupiter pending), the "7+" tier is the
+highest anyone can reach — nobody gets a 100% no one else could also reach.
 
 
 Each NFT (and each Genesis Token) counts for one wallet only: the first wallet that
@@ -92,7 +117,7 @@ by themselves, but finishing all three **multiplies all your points ×1.5**, pas
 ---
 
 *Internal, do not share:*
-- *Airdrops and Jumper points are still sample data on the page: they must be verified for real (published eligibility lists or on-chain claims) before launch. Genesis Tokens and Mad Lads are real (server/airdrop-nfts.js).*
+- *Airdrops, Genesis Tokens and Mad Lads are all real (server/airdrop-tokens.js, server/airdrop-nfts.js). Jupiter (JUP) is the one exception: still pending, see above.*
 - *Quest, arena and share points are still computed in the browser: they must move to the server before launch.*
 - *Pending: max 0.5% of the supply per person.*
 - *Source of truth in code: `airdrop.html` (tiers, quests) and `server/airdrop-store.js` (invite rule).*
