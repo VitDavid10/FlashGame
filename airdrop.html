@@ -789,92 +789,163 @@ function loadAvatar() {
     im.src = src;
   });
 }
-const IMG = {};
-function loadImg(key, src) {
-  if (IMG[key]) return IMG[key];
-  IMG[key] = new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
-  return IMG[key];
+/* Game sprites, ported from game/index.html (pixPillSpriteRot, pixDotSprite,
+   pixVirusSprite) so the share image uses the exact pills, food and viruses. */
+const PILL_RATIO = 2.0, PIX_BAND_REF = 24, PIX_BAND_SLOW = 0.40, PIX_ROT_STEP = Math.PI * 2 / 16;
+const _probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+function pixRgb(col) { _probe.clearRect(0, 0, 1, 1); _probe.fillStyle = col; _probe.fillRect(0, 0, 1, 1); const d = _probe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
+function pixShade(rgb, amt) { const t = amt < 0 ? 0 : 255, a = Math.abs(amt); return 'rgb(' + rgb.map(v => Math.round(v + (t - v) * a)).join(',') + ')'; }
+function pixPillSpriteRot(wL, cTop, cBot, ang, detailed) {
+  const qa = Math.round(ang / PIX_ROT_STEP) * PIX_ROT_STEP;
+  const hL = Math.round(wL * PILL_RATIO), R = wL / 2, seg = hL / 2 - R, RI = R - 0.1;
+  const c = Math.cos(qa), s = Math.sin(qa);
+  const S = Math.ceil(Math.max(wL * Math.abs(c) + hL * Math.abs(s), wL * Math.abs(s) + hL * Math.abs(c))) + 2;
+  const SH = detailed ? 0 : Math.max(1, Math.round(wL / 7));
+  const W = S + SH;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = W;
+  const g = cv.getContext('2d'), rgbT = pixRgb(cTop), rgbB = pixRgb(cBot);
+  const img = g.createImageData(W, W), px = img.data;
+  const sd = (x, y) => {
+    const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
+    const cy = ly < -seg ? -seg : ly > seg ? seg : ly;
+    return Math.hypot(lx, ly - cy);
+  };
+  const inside = (x, y) => (x < 0 || y < 0 || x >= S || y >= S) ? false : sd(x, y) <= RI;
+  if (SH) for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (inside(x, y)) { const i = (((y + SH) * W + x + SH) << 2); px[i + 3] = 82; }
+  const LX = -0.6, LY = -0.8, seamW = wL <= 10 ? 0.8 : 1.2;
+  const kR = wL / 38, kB = PIX_BAND_REF / 38, kD = kR <= kB ? kR : kB + (kR - kB) * PIX_BAND_SLOW;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    if (!inside(x, y)) continue;
+    const dx = x + 0.5 - S / 2, dy = y + 0.5 - S / 2, lx = dx * c + dy * s, ly = -dx * s + dy * c;
+    const rgb = ly < 0 ? rgbT : rgbB;
+    const cy = ly < -seg ? -seg : ly > seg ? seg : ly;
+    const rad = Math.hypot(lx, ly - cy), d = rad / R;
+    let nx = lx, ny = ly - cy; const nl = rad || 1; nx /= nl; ny /= nl;
+    const ndl = (nx * c - ny * s) * LX + (nx * s + ny * c) * LY;
+    let amt;
+    if (detailed) {
+      const edge = RI - rad, u = Math.max(0, Math.min(1, (1 - ndl) * 0.5));
+      const w1 = (1.05 + 1.7 * u) * kD, w2 = (2.6 + 4.2 * u) * kD, w3 = (4.2 + 6.8 * u) * kD;
+      if (Math.abs(ly) < 1.45 * kD) amt = -0.30;
+      else if (edge < w1) amt = -0.44;
+      else if (edge < w2) amt = -0.30;
+      else if (u > 0.18 && edge < w3) amt = -0.15;
+      else amt = 0;
+    } else if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) amt = -0.55;
+    else if (Math.abs(ly) < seamW) amt = -0.18;
+    else if (d > 0.70 && ndl > 0.45) amt = 0.30;
+    else if (d > 0.78 && ndl < -0.45) amt = -0.16;
+    else amt = 0;
+    const t = amt < 0 ? 0 : 255, a = Math.abs(amt), i = ((y * W + x) << 2);
+    px[i] = rgb[0] + (t - rgb[0]) * a; px[i + 1] = rgb[1] + (t - rgb[1]) * a; px[i + 2] = rgb[2] + (t - rgb[2]) * a; px[i + 3] = 255;
+  }
+  if (detailed) {
+    const glx = -0.40 * R, gly = -0.48 * (seg + R);
+    const gx = S / 2 + (glx * c - gly * s), gy = S / 2 + (glx * s + gly * c), gr = Math.max(2, Math.round(wL * 0.145));
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      if (!inside(x, y)) continue;
+      const md = Math.abs(x + 0.5 - gx) + Math.abs(y + 0.5 - gy);
+      if (md > gr) continue;
+      const a = md <= gr * 0.45 ? 0.95 : md <= gr * 0.75 ? 0.78 : 0.50, i = ((y * W + x) << 2);
+      px[i] += (255 - px[i]) * a; px[i + 1] += (255 - px[i + 1]) * a; px[i + 2] += (255 - px[i + 2]) * a;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return cv;
 }
-const SKILL_ICONS = ['shoot', 'sprint', 'tp', 'iman', 'clon', 'inmune', 'big', 'random'];
-let art = { skills: [] };
-async function loadArt() {
-  const skills = await Promise.all(SKILL_ICONS.map(k => loadImg(k, 'img/skills-pixel/' + k + '.png')));
-  art = { skills: skills.filter(Boolean) };
+function pixDotSprite(dL, col) {
+  const spr = document.createElement('canvas'); spr.width = dL; spr.height = dL;
+  const g = spr.getContext('2d'), rgb = pixRgb(col), R = dL / 2;
+  const inside = (x, y) => { if (x < 0 || y < 0 || x >= dL || y >= dL) return false; const dx = x + 0.5 - R, dy = y + 0.5 - R; return dx * dx + dy * dy <= (R - 0.1) * (R - 0.1); };
+  for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
+    if (!inside(x, y)) continue;
+    let c2;
+    if (dL >= 6 && (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1))) c2 = pixShade(rgb, -0.5);
+    else if (x + y > dL) c2 = pixShade(rgb, -0.22);
+    else c2 = 'rgb(' + rgb.join(',') + ')';
+    g.fillStyle = c2; g.fillRect(x, y, 1, 1);
+  }
+  g.fillStyle = 'rgba(255,255,255,0.55)'; const hp = Math.max(1, Math.floor(dL / 5));
+  g.fillRect(Math.floor(dL * 0.25), Math.floor(dL * 0.25), hp, hp);
+  return spr;
 }
-function shade(hex, f) {
-  const n = parseInt(hex.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.max(0, Math.min(255, Math.round(v * f))));
-  return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+function pixVirusSprite(dL) {
+  const spr = document.createElement('canvas'); spr.width = dL; spr.height = dL;
+  const g = spr.getContext('2d'), R = dL / 2 - 0.5, rgbF = pixRgb('#9EE32D'), rgbD = pixRgb('#3E8E11');
+  const teeth = dL >= 36 ? 16 : 12;
+  const rr = a => R * (0.82 + 0.18 * (0.5 + 0.5 * Math.cos(a * teeth)));
+  const inside = (x, y) => { if (x < 0 || y < 0 || x >= dL || y >= dL) return false; const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2; return Math.sqrt(dx * dx + dy * dy) <= rr(Math.atan2(dy, dx)); };
+  for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
+    if (!inside(x, y)) continue;
+    const dx = x + 0.5 - dL / 2, dy = y + 0.5 - dL / 2, d = Math.sqrt(dx * dx + dy * dy);
+    let col;
+    if (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) col = pixShade(rgbD, -0.15);
+    else if (!inside(x + 2, y) || !inside(x, y + 2)) col = pixShade(rgbF, -0.3);
+    else if (!inside(x - 2, y) || !inside(x, y - 2)) col = pixShade(rgbF, 0.3);
+    else if (dL >= 20 && Math.abs(d - R * 0.58) < Math.max(1, dL / 40)) col = 'rgb(' + rgbD.join(',') + ')';
+    else if (dL >= 20 && d < R * 0.30) col = pixShade(rgbF, dx + dy < 0 ? -0.16 : -0.32);
+    else col = 'rgb(' + rgbF.join(',') + ')';
+    g.fillStyle = col; g.fillRect(x, y, 1, 1);
+  }
+  g.fillStyle = 'rgba(0,0,0,0.25)';
+  const sr = Math.max(1, Math.round(dL / 12));
+  for (const p of [[0.36, 0.42], [0.62, 0.36], [0.58, 0.64]]) g.fillRect(Math.round(dL * p[0]), Math.round(dL * p[1]), sr, sr);
+  g.fillStyle = 'rgba(255,255,255,0.35)';
+  g.fillRect(Math.round(dL * 0.30), Math.round(dL * 0.24), Math.max(1, Math.round(dL / 10)), Math.max(1, Math.round(dL / 16)));
+  return spr;
 }
-function drawPill(g, x, y, size, top, bot, angle) {
-  const col = top ? { K: '#0a1a12', W: top, L: shade(top, 1.35), G: bot, D: shade(bot, .7) } : PILL_COL;
-  const c = size / 15;
-  g.save(); g.translate(x + size / 3, y + size / 2); g.rotate(angle || 0); g.translate(-size / 3, -size / 2);
-  PILL_ROWS.forEach((row, ry) => [...row].forEach((ch, rx) => {
-    if (!col[ch]) return;
-    g.fillStyle = col[ch]; g.fillRect(Math.round(rx * c), Math.round(ry * c), Math.ceil(c), Math.ceil(c));
-  }));
-  g.restore();
-}
+function blit(g, spr, x, y, k) { g.imageSmoothingEnabled = false; g.drawImage(spr, Math.round(x), Math.round(y), spr.width * k, spr.height * k); }
+
 function text(g, str, x, y, font, size, color, align, shadow) {
   g.font = size + 'px ' + font; g.textAlign = align || 'left'; g.textBaseline = 'alphabetic';
   if (shadow) { g.fillStyle = shadow; g.fillText(str, x + size / 8, y + size / 8); }
   g.fillStyle = color; g.fillText(str, x, y);
 }
-// Old-monitor green: same gradient and scanlines as the card on the page.
-function drawCRT(g, W, H) {
+const fit = (g, str, font, size, maxW) => { g.font = size + 'px ' + font; const w = g.measureText(str).width; return w > maxW ? Math.floor(size * maxW / w) : size; };
+
+// Every share image gets its own seed: different arena layout and screen tint.
+const CRT_TINTS = [['#12402a', '#0b2618', '#08190f'], ['#0f3b36', '#0a2624', '#071a19'], ['#1f3d14', '#15290d', '#0d1b08'], ['#123a3f', '#0b2429', '#07181c']];
+function drawCRT(g, W, H, r) {
+  const t = CRT_TINTS[Math.floor(r() * CRT_TINTS.length)];
   const bg = g.createLinearGradient(0, 0, W * .6, H * 1.1);
-  bg.addColorStop(0, '#12402a'); bg.addColorStop(.55, '#0b2618'); bg.addColorStop(1, '#08190f');
+  bg.addColorStop(0, t[0]); bg.addColorStop(.55, t[1]); bg.addColorStop(1, t[2]);
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   g.fillStyle = 'rgba(0,255,136,.05)';
   for (let x = 0; x < W; x += 48) g.fillRect(x, 0, 2, H);
   for (let y = 0; y < H; y += 48) g.fillRect(0, y, W, 2);
 }
-// Spiky lime virus like the in-game one, drawn at 40x40 and scaled up without smoothing.
-let _virus = null;
-function virusSprite() {
-  if (_virus) return _virus;
-  const N = 40, cv = document.createElement('canvas'); cv.width = cv.height = N;
-  const g = cv.getContext('2d'), img = g.createImageData(N, N), px = img.data;
-  const set = (x, y, c) => { const i = (y * N + x) * 4; px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = 255; };
-  const R = 18.5, SPIKES = 14;
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const dx = x + .5 - N / 2, dy = y + .5 - N / 2, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
-    const edge = R * (.8 + .2 * Math.pow(Math.abs(Math.cos(a * SPIKES / 2)), 3));
-    if (d > edge) continue;
-    let c = [138, 214, 46];
-    if (d > edge - 1.6) c = [46, 92, 18];
-    else if (d > edge - 3.2) c = [176, 240, 80];
-    else if ([[-5, -4], [4, -6], [6, 4], [-4, 6], [0, 0]].some(p => Math.hypot(dx - p[0], dy - p[1]) < 2.2)) c = [92, 158, 30];
-    set(x, y, c);
+const FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
+const BOT_COLORS = ['#FF5722', '#F44336', '#3F51B5', '#9C27B0', '#FFC107', '#03A9F4', '#8BC34A', '#009688'];
+const K = 4;   // screen pixels per game pixel
+// Food, viruses and rival pills in the free space. `avoid` = [x, y, w, h] kept clear.
+function drawArena(g, W, H, avoid, r, opts) {
+  const hits = (x, y, w, h, pad) => avoid.some(a => x < a[0] + a[2] + pad && x + w > a[0] - pad && y < a[1] + a[3] + pad && y + h > a[1] - pad);
+  const place = (w, h, pad, spill) => {
+    for (let i = 0; i < 60; i++) {
+      const x = -spill + r() * (W - w + spill * 2), y = -spill + r() * (H - h + spill * 2);
+      if (!hits(x, y, w, h, pad)) return [x, y];
+    }
+    return null;
+  };
+  for (let i = 0; i < opts.viruses; i++) {
+    const spr = pixVirusSprite(30), size = 30 * K, p = place(size, size, 10, size * .45);
+    if (p) { blit(g, spr, p[0], p[1], K); avoid.push([p[0], p[1], size, size]); }
   }
-  g.putImageData(img, 0, 0);
-  const out = document.createElement('canvas'); out.width = out.height = 240;
-  const o = out.getContext('2d'); o.imageSmoothingEnabled = false; o.drawImage(cv, 0, 0, 240, 240);
-  return (_virus = out);
-}
-// Food, viruses and rival pills around the content. `avoid` = [x, y, w, h] areas kept clear.
-function drawArena(g, W, H, avoid, extras) {
-  const r = rng('arena:' + displayName());
-  const food = ['#ff5f5f', '#ffce3d', '#00c2ff', '#b07cf7', '#00ff88', '#ff8a3d', '#ffffff'];
-  const free = (x, y, pad) => !avoid.some(a => x > a[0] - pad && x < a[0] + a[2] + pad && y > a[1] - pad && y < a[1] + a[3] + pad);
-  for (let i = 0; i < 160; i++) {
-    const s = 6 + Math.floor(r() * 3) * 3, x = Math.floor(r() * W), y = Math.floor(r() * H), c = food[Math.floor(r() * food.length)], a = .5 + r() * .4;
-    if (!free(x, y, 14)) continue;
-    g.globalAlpha = a; g.fillStyle = c; g.fillRect(x, y, s, s);
+  for (let i = 0; i < opts.pills; i++) {
+    const wL = 8 + Math.floor(r() * 6), top = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)], bot = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)];
+    const spr = pixPillSpriteRot(wL, top, bot, r() * Math.PI * 2, false), size = spr.width * K, p = place(size, size, 12, 0);
+    if (p) { blit(g, spr, p[0], p[1], K); avoid.push([p[0], p[1], size, size]); }
   }
-  g.globalAlpha = 1;
-  (extras || []).forEach(e => {
-    g.globalAlpha = e.alpha || 1;
-    if (e.virus) g.drawImage(virusSprite(), e.x, e.y, e.size, e.size);
-    else if (e.pill) drawPill(g, e.x, e.y, e.size, e.pill[0], e.pill[1], e.angle);
-    g.globalAlpha = 1;
-  });
+  for (let i = 0; i < opts.food; i++) {
+    const dL = 3 + Math.floor(r() * 4), size = dL * K, p = place(size, size, 8, 0);
+    if (p) blit(g, pixDotSprite(dL, FOOD_COLORS[Math.floor(r() * FOOD_COLORS.length)]), p[0], p[1], K);
+  }
 }
 function drawScreen(g, W, H) {
   const v = g.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, W * .75);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
   g.fillStyle = v; g.fillRect(0, 0, W, H);
-  g.fillStyle = 'rgba(0,0,0,.16)';
+  g.fillStyle = 'rgba(0,0,0,.14)';
   for (let y = 0; y < H; y += 4) g.fillRect(0, y, W, 2);
   g.fillStyle = '#000'; g.fillRect(0, 0, W, 10); g.fillRect(0, H - 10, W, 10); g.fillRect(0, 0, 10, H); g.fillRect(W - 10, 0, 10, H);
   g.fillStyle = '#00ff88'; g.fillRect(10, 10, W - 20, 8); g.fillRect(10, H - 18, W - 20, 8); g.fillRect(10, 10, 8, H - 20); g.fillRect(W - 18, 10, 8, H - 20);
@@ -884,84 +955,76 @@ function drawAvatar(g, x, y, size) {
   g.fillStyle = '#000'; g.fillRect(x - 12, y - 12, size + 24, size + 24);
   g.fillStyle = '#00ff88'; g.fillRect(x - 8, y - 8, size + 16, size + 16);
   g.fillStyle = '#081a10'; g.fillRect(x - 2, y - 2, size + 4, size + 4);
-  if (avatarImg) g.drawImage(avatarImg, x, y, size, size);
-  else drawPill(g, x + size * .22, y + size * .02, size * .96, null, null, -Math.PI / 5);
+  if (avatarImg) { g.imageSmoothingEnabled = true; g.drawImage(avatarImg, x, y, size, size); return; }
+  const spr = pixPillSpriteRot(30, '#c0c8d0', '#00ff44', Math.PI / 4, true), k = Math.floor(size * .9 / spr.width);
+  blit(g, spr, x + (size - spr.width * k) / 2, y + (size - spr.height * k) / 2, k);
 }
 function box(g, x, y, w, h, accent) {
-  g.fillStyle = 'rgba(3,12,7,.82)'; g.fillRect(x, y, w, h);
+  g.fillStyle = 'rgba(3,12,7,.85)'; g.fillRect(x, y, w, h);
   g.fillStyle = '#0f3a25'; g.fillRect(x, y, w, 3); g.fillRect(x, y + h - 3, w, 3); g.fillRect(x, y, 3, h); g.fillRect(x + w - 3, y, 3, h);
   if (accent) { g.fillStyle = accent; g.fillRect(x, y, 10, h); }
 }
-function drawSkills(g, cx, y, size) {
-  const n = art.skills.length, gap = 16, total = n * size + (n - 1) * gap;
-  art.skills.forEach((im, i) => { g.drawImage(im, cx - total / 2 + i * (size + gap), y, size, size); });
-}
 const handle = () => S.x ? '@' + S.x.username : 'ANON PILL';
+const seedRng = () => rng('share:' + share.seed + ':' + share.idx);
 function cardBreakdown(g, W, H) {
-  const s = score(), rank = renderBoard();
-  drawCRT(g, W, H);
-  drawArena(g, W, H, [[50, 50, 650, 570], [720, 70, 420, 540]], [
-    { virus: true, x: W - 120, y: H - 110, size: 170, alpha: .85 },
-    { virus: true, x: -60, y: H - 90, size: 130, alpha: .5 },
-    { pill: ['#f44336', '#ff9800'], x: 650, y: 10, size: 58, angle: -Math.PI / 4, alpha: .7 },
-  ]);
+  const s = score(), rank = renderBoard(), r = seedRng();
+  drawCRT(g, W, H, r);
+  drawArena(g, W, H, [[50, 50, 640, 570], [720, 70, 420, 540]], r, { viruses: 2, pills: 2, food: 45 });
   drawAvatar(g, 70, 70, 170);
-  g.font = '30px ' + PX; const hs = Math.min(30, Math.floor(30 * 400 / Math.max(1, g.measureText(handle()).width)));
-  text(g, handle(), 280, 140, PX, hs, '#ffffff', 'left', '#000');
+  text(g, handle(), 280, 140, PX, fit(g, handle(), PX, 30, 410), '#ffffff', 'left', '#000');
   text(g, S.w ? short(S.w) : 'no wallet linked', 280, 190, VT, 38, '#9fc2ad');
-  text(g, fmt(s.total), 70, 378, PX, 84, '#00ff88', 'left', '#003d1f');
-  g.font = '84px ' + PX; text(g, 'POINTS', 70 + g.measureText(fmt(s.total)).width + 22, 378, PX, 22, '#9fc2ad');
+  const pts = fmt(s.total), ps = fit(g, pts, PX, 84, 460);
+  text(g, pts, 70, 378, PX, ps, '#00ff88', 'left', '#003d1f');
+  g.font = ps + 'px ' + PX; text(g, 'POINTS', 70 + g.measureText(pts).width + 22, 378, PX, 22, '#9fc2ad');
   const parts = [s.xs, s.ws, s.qs, s.gs], cols = ['#1d9bf0', '#00ff88', '#ffce3d', '#ccff00'];
   const tot = s.total || 1; let bx = 74;
   g.fillStyle = '#000'; g.fillRect(66, 412, 596, 40);
   parts.forEach((p, i) => { const w = 588 * p / tot; g.fillStyle = cols[i]; g.fillRect(bx, 416, w, 32); bx += w; });
   box(g, 66, 490, 290, 110); box(g, 372, 490, 290, 110);
-  text(g, '#' + fmt(rank), 211, 552, PX, 34, '#ffce3d', 'center', '#5c3d00');
+  const rk = '#' + fmt(rank), tp = 'TOP ' + topPct(rank);
+  text(g, rk, 211, 552, PX, fit(g, rk, PX, 34, 250), '#ffce3d', 'center', '#5c3d00');
   text(g, 'RANK', 211, 586, VT, 30, '#9fc2ad', 'center');
-  text(g, 'TOP ' + topPct(rank), 517, 552, PX, 34, '#ccff00', 'center', '#1c3300');
+  text(g, tp, 517, 552, PX, fit(g, tp, PX, 34, 250), '#ccff00', 'center', '#1c3300');
   text(g, 'OF ALL PLAYERS', 517, 586, VT, 30, '#9fc2ad', 'center');
   const rows = [['X ACCOUNT', s.xs, cols[0]], ['ON-CHAIN', s.ws, cols[1]], ['QUESTS', s.qs, cols[2]], ['DAILY ARENA', s.gs, cols[3]]];
-  rows.forEach((r, i) => {
+  rows.forEach((row, i) => {
     const y = 80 + i * 132;
-    box(g, 730, y, 400, 112, r[2]);
-    text(g, r[0], 764, y + 44, PX, 16, '#9fc2ad');
-    text(g, fmt(r[1]), 1106, y + 90, PX, 30, '#ffffff', 'right', '#000');
+    box(g, 730, y, 400, 112, row[2]);
+    text(g, row[0], 764, y + 44, PX, 16, '#9fc2ad');
+    text(g, fmt(row[1]), 1106, y + 90, PX, fit(g, fmt(row[1]), PX, 30, 320), '#ffffff', 'right', '#000');
   });
   drawScreen(g, W, H);
 }
 function cardRank(g, W, H) {
-  const s = score(), rank = renderBoard();
-  drawCRT(g, W, H);
-  drawArena(g, W, H, [[W / 2 - 450, 40, 900, 610]], [
-    { virus: true, x: W - 200, y: H - 210, size: 240, alpha: .9 },
-    { virus: true, x: -50, y: -40, size: 170, alpha: .55 },
-    { pill: ['#f44336', '#ff9800'], x: 70, y: 380, size: 90, angle: -Math.PI / 4, alpha: .85 },
-    { pill: ['#3f51b5', '#03a9f4'], x: W - 150, y: 110, size: 70, angle: Math.PI / 5, alpha: .75 },
-  ]);
+  const s = score(), rank = renderBoard(), r = seedRng();
+  drawCRT(g, W, H, r);
+  drawArena(g, W, H, [[W / 2 - 450, 40, 900, 570]], r, { viruses: 3, pills: 4, food: 70 });
   drawAvatar(g, W / 2 - 75, 56, 150);
-  text(g, handle(), W / 2, 272, PX, 28, '#ffffff', 'center', '#000');
-  text(g, fmt(s.total), W / 2, 408, PX, 104, '#00ff88', 'center', '#003d1f');
+  text(g, handle(), W / 2, 272, PX, fit(g, handle(), PX, 28, 820), '#ffffff', 'center', '#000');
+  const pts = fmt(s.total);
+  text(g, pts, W / 2, 408, PX, fit(g, pts, PX, 104, 860), '#00ff88', 'center', '#003d1f');
   text(g, 'POINTS', W / 2, 454, PX, 22, '#9fc2ad', 'center');
   box(g, W / 2 - 430, 486, 410, 104); box(g, W / 2 + 20, 486, 410, 104);
-  text(g, '#' + fmt(rank), W / 2 - 225, 545, PX, 38, '#ffce3d', 'center', '#5c3d00');
+  const rk = '#' + fmt(rank), tp = 'TOP ' + topPct(rank);
+  text(g, rk, W / 2 - 225, 545, PX, fit(g, rk, PX, 38, 370), '#ffce3d', 'center', '#5c3d00');
   text(g, 'RANK', W / 2 - 225, 578, VT, 30, '#9fc2ad', 'center');
-  text(g, 'TOP ' + topPct(rank), W / 2 + 225, 545, PX, 38, '#ccff00', 'center', '#1c3300');
+  text(g, tp, W / 2 + 225, 545, PX, fit(g, tp, PX, 38, 370), '#ccff00', 'center', '#1c3300');
   text(g, 'OF ALL PLAYERS', W / 2 + 225, 578, VT, 30, '#9fc2ad', 'center');
-  drawSkills(g, W / 2, 610, 40);
   drawScreen(g, W, H);
 }
 
 function drawRun(g, W, H, shot, m, tipo) {
-  drawCRT(g, W, H);
+  drawCRT(g, W, H, seedRng());
   if (shot && shot.width) {
     const sc = Math.max(W / shot.width, H / shot.height);
     const dw = shot.width * sc, dh = shot.height * sc;
+    g.imageSmoothingEnabled = false;
     g.drawImage(shot, (W - dw) / 2, (H - dh) / 2, dw, dh);
   }
   g.fillStyle = 'rgba(8,25,15,.9)'; g.fillRect(0, H - 180, W, 180);
   g.fillStyle = '#00ff88'; g.fillRect(0, H - 184, W, 4);
   text(g, tipo === 'gameOver' ? 'GAME OVER' : 'MATCH FINISHED', 60, H - 112, PX, 30, tipo === 'gameOver' ? '#f62a2d' : '#ccff00', 'left', '#000');
-  text(g, handle(), W - 60, H - 112, PX, 20, '#9fc2ad', 'right');
+  text(g, handle(), W - 60, H - 112, PX, fit(g, handle(), PX, 20, 480), '#9fc2ad', 'right');
   const secs = Math.floor(m.alive), alive = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
   text(g, 'KILLS ' + m.kills, 60, H - 56, PX, 24, '#ffffff', 'left', '#000');
   text(g, 'ALIVE ' + alive, 360, H - 56, PX, 24, '#ffffff', 'left', '#000');
@@ -983,7 +1046,8 @@ async function openShare(opts) {
   Object.assign(share, { idx: 0 }, opts);
   $('#shareTitle').textContent = opts.title;
   $('#mShare').hidden = false;
-  await Promise.all([fontsReady(), loadAvatar(), loadArt()]);
+  share.seed = Math.floor(Math.random() * 1e9);
+  await Promise.all([fontsReady(), loadAvatar()]);
   renderShare();
 }
 function openCardShare() {
