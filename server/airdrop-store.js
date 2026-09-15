@@ -168,8 +168,15 @@ function createStore(opts) {
     /** What the page is allowed to see about the signed-in user. */
     function publicView(u) {
         if (!u) return null;
-        return { code: u.code, wallet: u.wallet, x: u.x, invites: inviteCount(u), referred: !!u.referredBy };
+        const chain = u.wallet && u.chain && u.chain.wallet === u.wallet ? { txs: u.chain.txs, firstAt: u.chain.firstAt, capped: u.chain.capped } : null;
+        return { code: u.code, wallet: u.wallet, x: u.x, invites: inviteCount(u), referred: !!u.referredBy, chain };
     }
+    /** On-chain history of a wallet (see airdrop-chain.js), kept with its owner. */
+    function setChain(wallet, stats) {
+        const u = user(byWallet.get(wallet)); if (!u) return false;
+        u.chain = Object.assign({ wallet }, stats); save(); return true;
+    }
+    const chainOf = u => (u && u.wallet && u.chain && u.chain.wallet === u.wallet ? u.chain : null);
     const codeOf = token => { const u = sessionUser(token); return u ? u.code : ''; };
     // Latest points card of each participant: the preview of their invite link.
     function setCard(token, cardId) {
@@ -178,7 +185,7 @@ function createStore(opts) {
     }
     const cardOfCode = code => { const u = user(byCode.get(String(code || '').toLowerCase())); return u && u.card || null; };
 
-    return { linkWallet, linkX, unlink, sessionUser, publicView, codeOf, setCard, cardOfCode, inviteCount, flush, MAX_INVITES, _data: () => data };
+    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, codeOf, setCard, cardOfCode, inviteCount, flush, MAX_INVITES, _data: () => data };
 }
 
 module.exports = { createStore, MAX_INVITES };

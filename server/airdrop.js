@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { createStore } = require('./airdrop-store.js');
+const { createChain } = require('./airdrop-chain.js');
 
 const CARD_MAX_BYTES = 1.5 * 1024 * 1024;
 const CARD_W = 1200, CARD_H = 630;
@@ -43,6 +44,15 @@ function createAirdrop(opts) {
     const CARD_DIR = process.env.AIRDROP_CARD_DIR || path.join(__dirname, 'airdrop-cards');
     const verifySignature = opts.verifySignature;
     const store = createStore({ file: process.env.AIRDROP_DATA_FILE || path.join(__dirname, 'airdrop-data.json'), log });
+    // Always mainnet: the game's SOL_RPC may point at devnet.
+    const AIRDROP_RPC = process.env.AIRDROP_RPC || 'https://api.mainnet-beta.solana.com';
+    const chain = createChain({ rpc: AIRDROP_RPC, log });
+    // Real history for linked wallets, refreshed once a day (demo wallets have none).
+    const syncChain = u => {
+        if (!u || !u.wallet || u.wallet.startsWith('Demo') || !chain.stale(store.chainOf(u))) return;
+        chain.refresh(u.wallet, st => store.setChain(u.wallet, st));
+    };
+    log('[airdrop] on-chain RPC ' + AIRDROP_RPC.replace(/([?&]api-key=)[^&]+/, '$1***'));
     log('[airdrop] lockdown ' + (ONLY ? 'ON' : 'off') + ' | X client id ' + (X_CLIENT_ID ? 'set (' + X_CLIENT_ID.length + ' chars)' : 'MISSING') +
         ' | X client secret ' + (X_CLIENT_SECRET ? 'set (' + X_CLIENT_SECRET.length + ' chars)' : 'MISSING'));
 
@@ -129,7 +139,9 @@ function createAirdrop(opts) {
     }
     async function handleApi(req, res, urlPath) {
         if (urlPath === '/api/airdrop/me') {
-            return json(res, 200, { user: store.publicView(store.sessionUser(sessionToken(req))) });
+            const u = store.sessionUser(sessionToken(req));
+            syncChain(u);
+            return json(res, 200, { user: store.publicView(u) });
         }
         if (req.method !== 'POST') return json(res, 405, { error: 'method' });
         if (sameOriginReferer(req) === null) return json(res, 403, { error: 'origin' });
@@ -161,6 +173,7 @@ function createAirdrop(opts) {
             const r = store.linkWallet(sessionToken(req), wallet, ref);
             if (r.error) return json(res, 409, { error: r.error, user: store.publicView(r.user) });
             setSession(req, res, r.token);
+            syncChain(r.user);
             return json(res, 200, { user: store.publicView(r.user), referred: r.referred });
         }
         if (urlPath === '/api/airdrop/unlink') {
