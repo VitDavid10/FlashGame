@@ -203,7 +203,9 @@ a{color:var(--green)}
 .hudq li.ok{color:var(--green)} .hudq li.ok i{background:var(--green);box-shadow:none}
 .hudq li u{text-decoration:none;margin-left:auto;color:var(--gold);font-size:17px;padding-left:8px}
 .over{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(0,0,0,.78);text-align:center;padding:16px}
-.over img.go{width:min(60%,420px);image-rendering:pixelated}
+/* Same lettering as the share card: pixel font, hard black shadow, no box. */
+.over .go{--s:clamp(22px,4.6vw,44px);font-family:var(--px);font-size:var(--s);line-height:1.2;color:#f62a2d;text-shadow:calc(var(--s)/8) calc(var(--s)/8) 0 #000;text-align:center}
+.over .go.fin{--s:clamp(16px,3.4vw,32px);color:#ccff00}
 .over .res{font-family:var(--px);font-size:clamp(11px,1.6vw,15px);line-height:2}
 .over .res b{color:var(--gold)} .over .res em{font-style:normal;color:var(--green)}
 .over .btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
@@ -1723,8 +1725,8 @@ function endMatch(w, tipo) {
     shot.getContext('2d').drawImage(src, 0, 0);
   } catch (e) { shot = null; }
   const title = finished
-    ? '<img class="go" src="game/img/cartel-hero/match-finished.png" alt="MATCH FINISHED">'
-    : '<img class="go" src="game/img/cartel-hero/game-over.png" alt="GAME OVER">';
+    ? '<div class="go fin">MATCH FINISHED</div>'
+    : '<div class="go">GAME OVER</div>';
   const second = finished && m.place
     ? 'TOP <b>#' + m.place + '</b>'
     : 'ALIVE <b>' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0') + '</b>';
