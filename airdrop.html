@@ -632,21 +632,24 @@ function xProfile(x) {
   if (x.verified) lines.push(['Verified account', 300]);
   return { lines };
 }
-// On-chain = 40% of a player's maximum: Airdrop Hunter 70% (11,200), wallet age
-// and transactions 15% each (2,400).
+// On-chain = 40% of a player's maximum: Airdrop Hunter + Solana Mobile 70%
+// (10,400 + 800), wallet age and transactions 15% each (2,400).
 const AIRDROPS = [
   { id: 'jup', name: 'Jupiter (JUP)' }, { id: 'jup2', name: 'Jupiter Jupuary' }, { id: 'jto', name: 'Jito (JTO)' },
   { id: 'pyth', name: 'Pyth (PYTH)' }, { id: 'w', name: 'Wormhole (W)' }, { id: 'tnsr', name: 'Tensor (TNSR)' },
   { id: 'kmno', name: 'Kamino (KMNO)' }, { id: 'drift', name: 'Drift (DRIFT)' }, { id: 'me', name: 'Magic Eden (ME)' },
   { id: 'met', name: 'Meteora (MET)' }, { id: 'bonk', name: 'BONK' }, { id: 'cloud', name: 'Sanctum (CLOUD)' },
-  { id: 'grass', name: 'Grass (GRASS)' }, { id: 'saga', name: 'Saga / Seeker holder' },
+  { id: 'grass', name: 'Grass (GRASS)' },
 ];
-const AIRDROP_PTS = 800;   // 14 x 800 = 11,200
+const AIRDROP_PTS = 800;   // 13 x 800 = 10,400
+// Saga and Seeker owners hold a non-transferable Genesis Token in their wallet.
+const GENESIS_PTS = 800;
 function walletProfile(addr) {
   const r = rng('w:' + addr);
   const days = Math.floor(r() * 1400 + 3);
   const txs = Math.floor(Math.pow(r(), 2) * 6000);
   const got = AIRDROPS.filter(() => r() < 0.3);
+  const genesis = r() < 0.15;
   const tip = '<div class="tip"><b>AIRDROPS QUALIFIED</b>' + AIRDROPS.map(a => {
     const ok = got.includes(a);
     return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? '+' + AIRDROP_PTS : '-') + '</i>' + esc(a.name) + '</div>';
@@ -654,6 +657,7 @@ function walletProfile(addr) {
   return {
     lines: [
       ['Airdrop Hunter (' + got.length + '/' + AIRDROPS.length + ')', got.length * AIRDROP_PTS, tip],
+      ['Saga / Seeker Genesis Token' + (genesis ? '' : ' (none)'), genesis ? GENESIS_PTS : 0],
       ['Wallet age (' + fmt(days) + ' days)', Math.min(2400, days * 1.75)],
       ['Transactions (' + fmt(txs) + ')', Math.min(2400, Math.sqrt(txs) * 31)],
     ],
