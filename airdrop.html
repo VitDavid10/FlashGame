@@ -962,16 +962,19 @@ function drawScreenFx(g, soft) {
   const v = g.createRadialGradient(IMG_W / 2, IMG_H / 2, h.h * .35, IMG_W / 2, IMG_H / 2, h.w * .7);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)');
   g.fillStyle = v; g.fillRect(h.x, h.y, h.w, h.h);
-  for (let y = h.y; y < h.y + h.h; y += 4) {
-    if (soft && y + 2 > soft[1] && y < soft[1] + soft[3]) {
+  // X shrinks the card to about half: 2px lines every 4px vanish there, so its
+  // copy gets 4px lines every 8px.
+  const step = drawingForX ? 8 : 4, line = step / 2;
+  for (let y = h.y; y < h.y + h.h; y += step) {
+    if (soft && y + line > soft[1] && y < soft[1] + soft[3]) {
       g.fillStyle = 'rgba(0,0,0,.12)';
-      g.fillRect(h.x, y, soft[0] - h.x, 2);
-      g.fillRect(soft[0] + soft[2], y, h.x + h.w - soft[0] - soft[2], 2);
+      g.fillRect(h.x, y, soft[0] - h.x, line);
+      g.fillRect(soft[0] + soft[2], y, h.x + h.w - soft[0] - soft[2], line);
       g.fillStyle = 'rgba(0,0,0,.03)';
-      g.fillRect(soft[0], y, soft[2], 2);
+      g.fillRect(soft[0], y, soft[2], line);
     } else {
       g.fillStyle = 'rgba(0,0,0,.12)';
-      g.fillRect(h.x, y, h.w, 2);
+      g.fillRect(h.x, y, h.w, line);
     }
   }
   g.restore();

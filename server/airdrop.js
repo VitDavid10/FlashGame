@@ -22,6 +22,8 @@ const CARD_MAX_FILES = 20000;
 const CARD_RATE = { max: 20, windowMs: 60 * 60 * 1000 };
 const X_PENDING_TTL_MS = 10 * 60 * 1000;
 const X_SCOPES = 'tweet.read users.read';
+// With AIRDROP_ONLY=1, the only static paths served (prefixes end in '/').
+const LOCKDOWN_ALLOW = ['/game/', '/shared/', '/vendor/', '/fonts/', '/img/', '/snd/', '/api/', '/info.css', '/info.js', '/cookies.js'];
 const SESSION_COOKIE = 'pwad';
 const SESSION_MAX_AGE_S = 90 * 24 * 3600;
 const NONCE_TTL_MS = 5 * 60 * 1000;
@@ -303,6 +305,9 @@ function createAirdrop(opts) {
             return false;
         }
         if (isDocument(req) || /\.html?$/i.test(urlPath)) { notFound(req, res); return true; }
+        // Headers can be forged with curl, so on top of that only what the airdrop
+        // page and the game actually load is served. Everything else is a 404.
+        if (!LOCKDOWN_ALLOW.some(p => p.endsWith('/') ? urlPath.startsWith(p) : urlPath === p)) { notFound(req, res); return true; }
         // Scripts, images, fonts and API calls only for pages already on the site.
         if (sameOriginReferer(req) === null) { notFound(req, res); return true; }
         return false;
