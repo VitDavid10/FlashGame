@@ -318,8 +318,8 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     <h1>PILLWARS <span>AIRDROP</span></h1>
     <p>Connect your X account and your Solana wallet. Your on-chain activity and your X profile turn into airdrop points. Climb the ranking with quests and the Daily Arena.</p>
     <div class="stats">
-      <div class="stat"><b id="stPlayers">12,408</b><span>Participants</span></div>
-      <div class="stat"><b>8.9M</b><span>Points earned</span></div>
+      <div class="stat"><b id="stPlayers">???</b><span>Participants</span></div>
+      <div class="stat"><b>???</b><span>Points earned</span></div>
       <div class="stat"><b id="stEnds">--</b><span>Season ends</span></div>
     </div>
   </header>
@@ -417,14 +417,17 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     <div class="panel step"><div class="num">05</div><b>PICK SKILLS</b><p>Every 30 seconds pick one of two random skills and fire it with keys 1 to 4.</p></div>
   </div>
   <div class="panel">
-    <h3 class="ptitle">THE SKILL ARSENAL</h3>
+    <h3 class="ptitle">CONTROLS</h3>
     <div class="keys">
-      <span class="key"><kbd>MOUSE</kbd> move</span>
-      <span class="key"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> use a skill</span>
-      <span class="key"><kbd>TAB</kbd> switch skill choice</span>
-      <span class="key"><kbd>Q</kbd> confirm skill choice</span>
+      <span class="key"><kbd>MOUSE</kbd><kbd>WASD</kbd> move</span>
+      <span class="key"><kbd>SPACE</kbd> split</span>
+      <span class="key"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>CLICK</kbd> use a skill</span>
+      <span class="key"><kbd>CLICK</kbd> or <kbd>TAB</kbd> + <kbd>Q</kbd> pick a skill</span>
       <span class="key"><kbd>ESC</kbd> exit match</span>
     </div>
+  </div>
+  <div class="panel">
+    <h3 class="ptitle">THE SKILL ARSENAL</h3>
     <div class="skills">
       <div class="skill box"><img src="img/skills-pixel/shoot.png" alt=""><b>SHOT</b><span>Shoot mass to pop viruses at range</span></div>
       <div class="skill box"><img src="img/skills-pixel/sprint.png" alt=""><b>SPRINT</b><span>Burst of speed</span></div>
@@ -520,6 +523,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 
 <div class="toast" id="toast" hidden></div>
 
+<script src="/game/paises-pixel.js"></script>
 <script>
 (() => {
 'use strict';
@@ -532,7 +536,7 @@ const TELEGRAM = 'https://t.me/pillwars';
 const POSTS = [
   { id: '', title: 'Season 0 airdrop is live', date: '2026-09-15' },
 ];
-const SEASON_END = Date.UTC(2026, 10, 30);
+const SEASON_END = Date.UTC(2026, 9, 20, 23, 59);   // 20 Oct 2026
 const SUPPLY = 1e9;
 const AIRDROP_PCT = 10;
 // Sign in with X runs through server/airdrop-x.js (OAuth 2.0 with PKCE).
@@ -926,26 +930,34 @@ function drawFloor(g) {
   for (let x = 0; x < IMG_W; x += 60) g.fillRect(x, 0, 3, IMG_H);
   for (let y = 0; y < IMG_H; y += 60) g.fillRect(0, y, IMG_W, 3);
 }
-// X shrinks the card to ~600px and re-compresses it: scanlines, the fine grid and
-// the tiniest food turn into grey mush there, so the uploaded copy skips them.
+// True while drawing the copy uploaded for X (see xBlob).
 let drawingForX = false;
 function drawScreenBg(g) {
   const h = HOLE;
   g.fillStyle = 'rgb(' + SCREEN_RGB.join(',') + ')'; g.fillRect(h.x, h.y, h.w, h.h);
-  if (drawingForX) return;
   g.fillStyle = 'rgba(0,255,136,.035)';
   for (let x = h.x; x < h.x + h.w; x += 48) g.fillRect(x, h.y, 2, h.h);
   for (let y = h.y; y < h.y + h.h; y += 48) g.fillRect(h.x, y, h.w, 2);
 }
-function drawScreenFx(g) {
+// `soft` = [x, y, w, h]: the big points number. Full scanlines there blur it once
+// X shrinks the card, so they are much fainter over it.
+function drawScreenFx(g, soft) {
   const h = HOLE;
   g.save(); g.beginPath(); g.rect(h.x, h.y, h.w, h.h); g.clip();
   const v = g.createRadialGradient(IMG_W / 2, IMG_H / 2, h.h * .35, IMG_W / 2, IMG_H / 2, h.w * .7);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)');
   g.fillStyle = v; g.fillRect(h.x, h.y, h.w, h.h);
-  if (!drawingForX) {
-    g.fillStyle = 'rgba(0,0,0,.12)';
-    for (let y = h.y; y < h.y + h.h; y += 4) g.fillRect(h.x, y, h.w, 2);
+  for (let y = h.y; y < h.y + h.h; y += 4) {
+    if (soft && y + 2 > soft[1] && y < soft[1] + soft[3]) {
+      g.fillStyle = 'rgba(0,0,0,.12)';
+      g.fillRect(h.x, y, soft[0] - h.x, 2);
+      g.fillRect(soft[0] + soft[2], y, h.x + h.w - soft[0] - soft[2], 2);
+      g.fillStyle = 'rgba(0,0,0,.03)';
+      g.fillRect(soft[0], y, soft[2], 2);
+    } else {
+      g.fillStyle = 'rgba(0,0,0,.12)';
+      g.fillRect(h.x, y, h.w, 2);
+    }
   }
   g.restore();
 }
@@ -1021,12 +1033,17 @@ function drawArena(g, avoid, r, opts) {
   // The first pill is always a big one; the rest mix small to large.
   const PILL_SIZES = [6, 8, 10, 13, 17, 22, 28];
   for (let i = 0; i < opts.pills; i++) {
-    const wL = i === 0 ? 24 + Math.floor(r() * 8) : PILL_SIZES[Math.floor(r() * PILL_SIZES.length)], top = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)], bot = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)];
-    const spr = pixPillSpriteRot(wL, top, bot, -Math.PI / 4, true), size = spr.width * K, p = place(size, size, 12, size * .3);
+    const wL = i === 0 ? 24 + Math.floor(r() * 8) : PILL_SIZES[Math.floor(r() * PILL_SIZES.length)];
+    // Never a one-colour pill: the two halves always differ. About a third wear a country skin.
+    const ti = Math.floor(r() * BOT_COLORS.length), bi = (ti + 1 + Math.floor(r() * (BOT_COLORS.length - 1))) % BOT_COLORS.length;
+    const skinPick = r(), codes = typeof paisLista === 'function' ? paisLista().map(p => p.code) : [];
+    const skin = skinPick < 0.35 && codes.length ? paisPillRot(wL, codes[Math.floor(r() * codes.length)], -Math.PI / 4) : null;
+    const spr = skin ? skin.cv : pixPillSpriteRot(wL, BOT_COLORS[ti], BOT_COLORS[bi], -Math.PI / 4, true);
+    const size = spr.width * K, p = place(size, size, 12, size * .3);
     if (p) { blit(g, spr, p[0], p[1], K); avoid.push([p[0], p[1], size, size]); }
   }
   for (let i = 0; i < opts.food; i++) {
-    const dL = (drawingForX ? 5 : 3) + Math.floor(r() * 4), size = dL * K, p = place(size, size, 8, 0);
+    const dL = 3 + Math.floor(r() * 4), size = dL * K, p = place(size, size, 8, 0);
     if (p) blit(g, pixDotSprite(dL, FOOD_COLORS[Math.floor(r() * FOOD_COLORS.length)]), p[0], p[1], K);
   }
   g.restore();
@@ -1079,7 +1096,7 @@ function cardBreakdown(g) {
     text(g, row[0], RX + 34, y + 42, PX, 15, '#9fc2ad');
     text(g, fmt(row[1]), RX + 416, y + 88, PX, fit(g, fmt(row[1]), PX, 28, 360), '#ffffff', 'right', '#000');
   });
-  drawScreenFx(g); drawFrame(g);
+  drawScreenFx(g, [L - 6, 318 - ps - 6, pw + 20, ps + 18]); drawFrame(g);
 }
 function cardRank(g) {
   const s = score(), rank = renderBoard(), r = seedRng(), CX = IMG_W / 2;
@@ -1101,7 +1118,7 @@ function cardRank(g) {
   text(g, 'RANK', CX - 220, 515, VT, 28, '#9fc2ad', 'center');
   text(g, tp, CX + 220, 484, PX, fit(g, tp, PX, 36, 360), '#ccff00', 'center', '#1c3300');
   text(g, 'OF ALL PLAYERS', CX + 220, 515, VT, 28, '#9fc2ad', 'center');
-  drawScreenFx(g); drawFrame(g);
+  drawScreenFx(g, [CX - pw / 2 - 8, 366 - ps - 6, pw + 24, ps + 20]); drawFrame(g);
 }
 
 function drawRun(g, shot, m, tipo) {
@@ -1372,12 +1389,12 @@ function hook(w) {
   hooked = w;
   injectHide(w.document);
 
-  // No command bar (Enter: /god and friends) and no Space in the arena.
+  // No command bar in the arena (Enter opens it: /god and friends).
   w.addEventListener('keydown', e => {
-    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); e.stopImmediatePropagation(); }
+    if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); e.stopImmediatePropagation(); }
   }, true);
   w.addEventListener('keyup', e => {
-    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') e.stopImmediatePropagation();
+    if (e.code === 'Enter' || e.code === 'NumpadEnter') e.stopImmediatePropagation();
   }, true);
 
   const origEvents = w.processSimEvents;
