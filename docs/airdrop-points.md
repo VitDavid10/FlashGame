@@ -8,7 +8,8 @@ in proportion to each player's points.
 | Category | Max points | How |
 |---|---|---|
 | Airdrop Hunter | 11,000 | Tiers by Solana airdrops the wallet qualified for |
-| Saga / Seeker Genesis Token | 3,500 | Holding the Genesis Token of a Saga or Seeker phone |
+| Saga / Seeker Genesis Token | 2,400 | Holding the Genesis Token of a Saga or Seeker phone (either one) |
+| NFT Holder | 2,400 | Tiers by blue-chip collections held |
 | Wallet age | 2,400 | Tiers by days since the wallet's first transaction |
 | Transactions | 2,400 | Tiers by successful transactions |
 
@@ -20,6 +21,17 @@ Meteora (MET), BONK, Sanctum (CLOUD), Grass (GRASS), Jumper points.
 |---|---|---|---|---|---|---|---|---|
 | Share | 0% | 20% | 35% | 50% | 65% | 80% | 90% | 100% |
 | Points | 0 | 2,200 | 3,850 | 5,500 | 7,150 | 8,800 | 9,900 | 11,000 |
+
+**NFT Holder** — collections: Mad Lads, SMB Gen2, Claynosaurz, Famous Fox Federation,
+Tensorians, Okay Bears. Only NFTs of the verified collection count.
+
+| Collections | 0 | 1 | 2 | 3+ |
+|---|---|---|---|---|
+| Share | 0% | 60% | 85% | 100% |
+| Points | 0 | 1,440 | 2,040 | 2,400 |
+
+Each NFT (and each Genesis Token) counts for one wallet only: the first wallet that
+shows it. Moving an NFT to another wallet earns nothing more.
 
 **Transactions**
 
@@ -87,7 +99,7 @@ by themselves, but finishing all three **multiplies all your points ×1.5**, pas
 ---
 
 *Internal, do not share:*
-- *Airdrops, Genesis Token and Jumper points are still sample data on the page: they must be verified for real (published eligibility lists or on-chain claims) before launch.*
+- *Airdrops and Jumper points are still sample data on the page: they must be verified for real (published eligibility lists or on-chain claims) before launch. Genesis Tokens and NFT collections are real (server/airdrop-nfts.js).*
 - *Quest, arena and share points are still computed in the browser: they must move to the server before launch.*
 - *Pending: max 0.5% of the supply per person.*
 - *Source of truth in code: `airdrop.html` (tiers, quests) and `server/airdrop-store.js` (invite rule).*

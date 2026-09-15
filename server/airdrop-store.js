@@ -30,6 +30,7 @@ function createStore(opts) {
         try { data = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') log('[airdrop] could not read ' + file + ': ' + e.message); }
         data.users = data.users || {}; data.sessions = data.sessions || {};
     }
+    data.nftClaims = data.nftClaims || {};   // NFT mint -> first wallet that showed it
     const byWallet = new Map(), byX = new Map(), byCode = new Map();
     for (const u of Object.values(data.users)) {
         if (u.wallet) byWallet.set(u.wallet, u.uid);
@@ -175,14 +176,22 @@ function createStore(opts) {
     /** What the page is allowed to see about the signed-in user. */
     function publicView(u) {
         if (!u) return null;
-        const chain = u.wallet && u.chain && u.chain.wallet === u.wallet ? { txs: u.chain.txs, firstAt: u.chain.firstAt, capped: u.chain.capped } : null;
+        const c = chainOf(u);
+        const chain = c ? { txs: c.txs, firstAt: c.firstAt, capped: c.capped, nfts: Object.keys(c.nfts || {}) } : null;
         const invites = inviteCount(u);
         return { code: u.code, wallet: u.wallet, x: u.x, invites, pendingInvites: Math.max(0, Math.min(MAX_INVITES, u.invited.length) - invites), referred: !!u.referredBy, chain };
     }
     /** On-chain history of a wallet (see airdrop-chain.js), kept with its owner. */
+    // Each NFT pays once per season: it counts only for the first wallet that
+    // showed it, so passing one NFT from wallet to wallet earns nothing.
     function setChain(wallet, stats) {
         const u = user(byWallet.get(wallet)); if (!u) return false;
-        u.chain = Object.assign({ wallet }, stats); save(); return true;
+        const nfts = {};
+        for (const [id, mint] of Object.entries(stats.nfts || {})) {
+            if (!data.nftClaims[mint]) data.nftClaims[mint] = wallet;
+            if (data.nftClaims[mint] === wallet) nfts[id] = mint;
+        }
+        u.chain = Object.assign({ wallet }, stats, { nfts }); save(); return true;
     }
     const chainOf = u => (u && u.wallet && u.chain && u.chain.wallet === u.wallet ? u.chain : null);
     const codeOf = token => { const u = sessionUser(token); return u ? u.code : ''; };

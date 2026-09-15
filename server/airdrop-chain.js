@@ -1,10 +1,13 @@
 'use strict';
 /*
  * Real on-chain history of an airdrop wallet: how many successful transactions
- * it appears in and when the first one happened. Read from a Solana mainnet RPC
+ * it appears in, when the first one happened and which point-giving NFTs it
+ * holds (airdrop-nfts.js). Read from a Solana mainnet RPC
  * (AIRDROP_RPC, e.g. a Helius URL; the public endpoint works for low traffic),
  * one wallet at a time so a burst of sign-ups can't get the server rate limited.
  */
+const { createNfts } = require('./airdrop-nfts.js');
+
 const PAGE = 1000;
 const MAX_PAGES = 20;               // 20,000 transactions: far past the points cap
 const TIMEOUT_MS = 15000;
@@ -34,7 +37,9 @@ function createChain(opts) {
         }
     }
 
-    /** { txs, firstAt (unix s or null), capped, checkedAt } */
+    const nfts = createNfts({ call });
+
+    /** { txs, firstAt (unix s or null), capped, checkedAt, nfts: { id: mint } } */
     async function walletStats(address) {
         let before, txs = 0, firstAt = null, pages = 0, last = [];
         do {
@@ -50,7 +55,9 @@ function createChain(opts) {
             // Past both top tiers (5,000 txs and 3 years) there is nothing left to learn.
             if (txs >= TOP_TXS && firstAt && now() / 1000 - firstAt >= TOP_AGE_DAYS * 86400) break;
         } while (last.length === PAGE && pages < MAX_PAGES);
-        return { txs, firstAt, capped: last.length === PAGE, checkedAt: now() };
+        const out = { txs, firstAt, capped: last.length === PAGE, checkedAt: now() };
+        if (opts.nfts !== false) out.nfts = await nfts.walletNfts(address);
+        return out;
     }
 
     const stale = st => !st || now() - st.checkedAt > REFRESH_MS;
