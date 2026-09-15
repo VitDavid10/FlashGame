@@ -117,7 +117,10 @@ function walletPts(wallet, chain) {
     if (!wallet) return 0;
     if (!chain) return 0;
     const days = chain.firstAt ? Math.max(0, Math.floor((Date.now() / 1000 - chain.firstAt) / 86400)) : 0;
-    const nfts = chain.nfts || [], airdrops = chain.airdrops || [];
+    // The store keeps nfts as { id: mint } (airdrop-store.js setChain); publicView
+    // turns it into a list of ids. Accept both.
+    const nfts = Array.isArray(chain.nfts) ? chain.nfts : Object.keys(chain.nfts || {});
+    const airdrops = Array.isArray(chain.airdrops) ? chain.airdrops : [];
     const genesis = nfts.includes('saga') || nfts.includes('seeker'), madlads = nfts.includes('madlads');
     return Math.round(HUNTER_MAX * tierPct(airdrops.length, HUNTER_TIERS)) +
         (genesis ? GENESIS_PTS : 0) + (madlads ? MADLADS_PTS : 0) +

@@ -233,6 +233,18 @@ test('walletPts is zero until the chain has been checked, then follows the tiers
     assert.strictEqual(full, 11000 + 2400 + 2400 + 2400 + 2400);   // every category maxed
 });
 
+test('view works with the chain exactly as the store keeps it (nfts as { id: mint })', () => {
+    const { createStore } = require('../server/airdrop-store.js');
+    const s = createStore({});
+    const W = 'Wallet' + '1'.padStart(38, '0');
+    const r = s.linkWallet(null, W, '');
+    const nowS = Math.floor(Date.now() / 1000);
+    s.setChain(W, { txs: 6000, firstAt: nowS - 4 * 365 * 86400, capped: false, checkedAt: Date.now(), nfts: { saga: 'MintA', madlads: 'MintB' }, airdrops: ['jto', 'pyth'] });
+    const sc = createScore({ inviteCountOf: s.inviteCount });
+    const u = s.sessionUser(r.token);
+    assert.strictEqual(sc.view(u).verified, Math.round(11000 * 0.35) + 2400 + 2400 + 2400 + 2400);
+});
+
 test('invitePts follows the milestone table', () => {
     assert.strictEqual(invitePts(0), 0);
     assert.strictEqual(invitePts(1), 250);

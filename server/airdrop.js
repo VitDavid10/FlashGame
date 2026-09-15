@@ -390,7 +390,15 @@ function createAirdrop(opts) {
         if (urlPath === '/airdrop-terms.html') { redirect(res, '/airdrop-terms', 301); return true; }
         if (urlPath.startsWith('/airdrop-auth/')) { await handleX(req, res, urlPath, query); return true; }
         if (urlPath === '/api/airdrop/card') { await handleCardUpload(req, res); return true; }
-        if (urlPath.startsWith('/api/airdrop/')) { await handleApi(req, res, urlPath); return true; }
+        if (urlPath.startsWith('/api/airdrop/')) {
+            // A bug here must answer 500 (and show in the log), not leave the page's request hanging.
+            try { await handleApi(req, res, urlPath); }
+            catch (e) {
+                log('[airdrop] ' + urlPath + ' failed: ' + (e && e.stack || e));
+                if (!res.headersSent) json(res, 500, { error: 'server' });
+            }
+            return true;
+        }
         if (urlPath.startsWith('/c/')) { handleCard(req, res, urlPath); return true; }
         if (!ONLY) return false;
         return gate(req, res, urlPath);
