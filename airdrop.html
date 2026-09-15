@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PillWars Airdrop - Season 0</title>
+<title>PillWars</title>
 <meta name="description" content="Connect X and your Solana wallet, complete quests and play the Daily Arena to earn $PILLY airdrop points.">
 <link rel="icon" href="img/web.png">
 <link rel="preload" href="/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -1109,7 +1109,8 @@ function drawRun(g, shot, m, tipo) {
     const sc = Math.max(h.w / shot.width, h.h / shot.height);
     const dw = shot.width * sc, dh = shot.height * sc;
     g.save(); g.beginPath(); g.rect(h.x, h.y, h.w, h.h); g.clip();
-    g.imageSmoothingEnabled = false;
+    // Non-integer scale: hard pixels look jagged once X shrinks the card.
+    g.imageSmoothingEnabled = drawingForX;
     g.drawImage(shot, h.x + (h.w - dw) / 2, h.y + (h.h - dh) / 2, dw, dh);
     g.restore();
   }
@@ -1117,12 +1118,12 @@ function drawRun(g, shot, m, tipo) {
   g.fillStyle = 'rgba(8,25,15,.92)'; g.fillRect(h.x, by, h.w, 150);
   g.fillStyle = '#00ffaa'; g.fillRect(h.x, by - 4, h.w, 4);
   const L = h.x + 30, R = h.x + h.w - 30;
-  text(g, tipo === 'gameOver' ? 'GAME OVER' : 'MATCH FINISHED', L, by + 58, PX, 28, tipo === 'gameOver' ? '#f62a2d' : '#ccff00', 'left', '#000');
-  text(g, handle(), R, by + 58, PX, fit(g, handle(), PX, 18, 420), '#9fc2ad', 'right');
+  text(g, tipo === 'gameOver' ? 'GAME OVER' : 'MATCH FINISHED', L, by + 48, PX, 28, tipo === 'gameOver' ? '#f62a2d' : '#ccff00', 'left', '#000');
+  text(g, handle(), R, by + 48, PX, fit(g, handle(), PX, 18, 420), '#9fc2ad', 'right');
   const secs = Math.floor(m.alive), alive = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
-  text(g, 'KILLS ' + m.kills, L, by + 116, PX, 22, '#ffffff', 'left', '#000');
-  text(g, 'ALIVE ' + alive, L + 290, by + 116, PX, 22, '#ffffff', 'left', '#000');
-  text(g, '+' + fmt(m.earned) + ' POINTS', R, by + 116, PX, 22, '#00ff88', 'right', '#003d1f');
+  text(g, 'KILLS ' + m.kills, L, by + 98, PX, 22, '#ffffff', 'left', '#000');
+  text(g, 'ALIVE ' + alive, L + 290, by + 98, PX, 22, '#ffffff', 'left', '#000');
+  text(g, '+' + fmt(m.earned) + ' POINTS', R, by + 98, PX, 22, '#00ff88', 'right', '#003d1f');
   drawScreenFx(g); drawFrame(g);
 }
 

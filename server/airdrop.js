@@ -185,7 +185,8 @@ function createAirdrop(opts) {
             const origin = originOf(req);
             const img = origin + '/c/' + id + '.png';
             const dest = HOME + (meta.ref ? '?ref=' + encodeURIComponent(meta.ref) : '');
-            const title = meta.kind === 'run' ? 'PillWars Daily Arena' : 'PillWars';
+            // X prints og:title on top of the image: short and always the same.
+            const title = 'PillWars';
             const desc = meta.kind === 'run' ? 'Think you can beat this run? Play the Daily Arena.' : 'Eat, grow and outplay rival pills. Where do you rank?';
             const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <title>${esc(title)}</title><meta name="robots" content="noindex">
