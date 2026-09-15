@@ -17,6 +17,7 @@ const crypto = require('crypto');
 const { createStore } = require('./airdrop-store.js');
 const { createChain } = require('./airdrop-chain.js');
 const { createScore } = require('./airdrop-score.js');
+const { createAdmin } = require('./airdrop-admin.js');
 
 const CARD_MAX_BYTES = 1.5 * 1024 * 1024;
 const CARD_W = 1200, CARD_H = 630;
@@ -58,6 +59,7 @@ function createAirdrop(opts) {
     // Real post ids to repost/like - keep this in sync with POSTS in airdrop.html.
     const POST_IDS = [];
     const score = createScore({ postIds: POST_IDS, inviteCountOf: store.inviteCount });
+    const admin = createAdmin({ store, score, log });
     log('[airdrop] lockdown ' + (ONLY ? 'ON' : 'off') + ' | X client id ' + (X_CLIENT_ID ? 'set (' + X_CLIENT_ID.length + ' chars)' : 'MISSING') +
         ' | X client secret ' + (X_CLIENT_SECRET ? 'set (' + X_CLIENT_SECRET.length + ' chars)' : 'MISSING'));
 
@@ -393,6 +395,19 @@ function createAirdrop(opts) {
         if (urlPath === '/airdrop.html') { redirect(res, HOME, 301); return true; }
         if (urlPath === '/airdrop-terms.html') { redirect(res, '/airdrop-terms', 301); return true; }
         if (urlPath.startsWith('/airdrop-auth/')) { await handleX(req, res, urlPath, query); return true; }
+        // Private dashboard: the link is minted from a shell on the server (see airdrop-admin.js).
+        if (urlPath === '/api/airdrop/admin-link') {
+            if (req.method !== 'POST' || !admin.fromServerItself(req)) { notFound(req, res); return true; }
+            res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+            res.end(admin.mint() + '\n');
+            return true;
+        }
+        if (urlPath.startsWith('/airdrop-admin/')) {
+            if (!hitOk('admin:' + clientIp(req), 20) || !admin.valid(urlPath.slice('/airdrop-admin/'.length))) { notFound(req, res); return true; }
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Referrer-Policy': 'no-referrer' });
+            res.end(admin.page());
+            return true;
+        }
         if (urlPath === '/api/airdrop/card') { await handleCardUpload(req, res); return true; }
         if (urlPath.startsWith('/api/airdrop/')) {
             // A bug here must answer 500 (and show in the log), not leave the page's request hanging.

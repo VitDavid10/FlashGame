@@ -95,6 +95,37 @@ test('quest/complete rejects a key nobody defined', async (t) => {
     assert.strictEqual(r.json.error, 'bad_key');
 });
 
+test('the admin dashboard only opens with a link minted from the server itself', async (t) => {
+    const { server, base } = await startServer();
+    t.after(() => server.close());
+
+    // From the internet (Caddy always adds x-forwarded-for): no link for you.
+    const faked = await fetch(base + '/api/airdrop/admin-link', { method: 'POST', headers: { 'X-Forwarded-For': '8.8.8.8' } });
+    assert.strictEqual(faked.status, 404);
+    // GET instead of POST, and a made-up token: nothing.
+    assert.strictEqual((await fetch(base + '/api/airdrop/admin-link')).status, 404);
+    assert.strictEqual((await fetch(base + '/airdrop-admin/not-a-real-token')).status, 404);
+
+    // From the machine itself (this test IS the machine): a working link.
+    const r = await fetch(base + '/api/airdrop/admin-link', { method: 'POST' });
+    assert.strictEqual(r.status, 200);
+    const url = (await r.text()).trim();
+    const token = url.split('/airdrop-admin/')[1];
+    assert.match(token, /^[A-Za-z0-9_-]{30,}$/);
+
+    const page = await fetch(base + '/airdrop-admin/' + token);
+    assert.strictEqual(page.status, 200);
+    assert.strictEqual(page.headers.get('x-robots-tag'), 'noindex, nofollow');
+    const html = await page.text();
+    assert.match(html, /PILLWARS AIRDROP - ADMIN/);
+    assert.match(html, /Eligible \(wallet\)/);
+
+    // Minting a new link kills the old one.
+    const url2 = (await (await fetch(base + '/api/airdrop/admin-link', { method: 'POST' })).text()).trim();
+    assert.notStrictEqual(url2, url);
+    assert.strictEqual((await fetch(base + '/airdrop-admin/' + token)).status, 404);
+});
+
 test('a request from another origin (no matching Referer) is refused', async (t) => {
     const { server, base } = await startServer();
     t.after(() => server.close());
