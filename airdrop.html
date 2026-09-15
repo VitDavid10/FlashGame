@@ -150,6 +150,8 @@ a{color:var(--green)}
 .share-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
 .share-tip{text-align:center;color:var(--dim);font-size:18px;margin:10px 0 0}
 .post-actions{display:flex;gap:6px}
+.boost-banner{font-family:var(--px);font-size:10px;line-height:1.6;color:var(--gold);border:2px solid var(--gold);background:rgba(255,206,61,.08);padding:10px 12px;margin:0 0 12px;text-align:center}
+.boost-banner.on{color:var(--green);border-color:var(--green);background:rgba(0,255,136,.08)}
 .qgroup{font-family:var(--px);font-size:9px;color:var(--dim);margin:16px 0 8px;display:flex;justify-content:space-between}
 .qgroup:first-child{margin-top:0}
 .tasks{display:grid;gap:8px}
@@ -359,6 +361,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       <div class="panel pcard" id="card"></div>
       <div class="panel qpanel">
         <h3 class="ptitle">QUESTS <small>BOOST YOUR SCORE</small></h3>
+        <div class="boost-banner" id="boostBanner"></div>
         <div class="qtabs">
           <button class="qtab on" data-q="social">SOCIAL</button>
           <button class="qtab" data-q="arena">DAILY QUEST</button>
@@ -771,6 +774,9 @@ function renderTasks() {
     { title: 'ONE-TIME', right: boosted() ? 'BOOST ON: ALL POINTS +50%' : 'ALL DONE = ALL POINTS +50% (' + q.once.filter(k => isDone(k.key)).length + '/' + q.once.length + ')', items: q.once },
     { title: 'SPREAD THE WORD', right: 'NEW POSTS ADDED OFTEN', items: q.posts, empty: 'No posts yet. New ones land here.' },
   ];
+  const nOnce = q.once.filter(k => isDone(k.key)).length, bb = $('#boostBanner');
+  bb.classList.toggle('on', boosted());
+  bb.textContent = boosted() ? 'BOOST ON: ALL YOUR POINTS x1.5' : 'FINISH THE ' + q.once.length + ' ONE-TIME QUESTS = ALL YOUR POINTS x1.5 (' + nOnce + '/' + q.once.length + ')';
   const open = g => g.items.some(k => !isDone(k.key));
   $('#qSocial').innerHTML = pendingFirst(groups, g => !open(g)).map(g =>
     '<div class="qgroup"><span>' + g.title + '</span><span>' + g.right + '</span></div><div class="tasks">' +
