@@ -112,6 +112,11 @@ a{color:var(--green)}
 .qpanel{display:flex;flex-direction:column}
 .qscroll{flex:1;overflow-y:auto;max-height:560px;padding-right:8px;margin-right:-8px;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
 .qscroll::-webkit-scrollbar{width:8px} .qscroll::-webkit-scrollbar-thumb{background:var(--edge)}
+.qtabs{display:flex;gap:8px;margin-bottom:14px}
+.qtabs .qtab{flex:1;--plate:var(--placa-grey)}
+.qtabs .qtab.on{--plate:var(--placa-green)}
+.qtabs .qtab span{color:#ccff00}
+.post-actions{display:flex;gap:6px}
 .qgroup{font-family:var(--px);font-size:9px;color:var(--dim);margin:16px 0 8px;display:flex;justify-content:space-between}
 .qgroup:first-child{margin-top:0}
 .tasks{display:grid;gap:8px}
@@ -321,11 +326,17 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       <div class="panel pcard" id="card"></div>
       <div class="panel qpanel">
         <h3 class="ptitle">QUESTS <small>BOOST YOUR SCORE</small></h3>
-        <div class="qscroll">
-          <div class="qgroup"><span>SOCIAL</span><span id="socCount"></span></div>
+        <div class="qtabs">
+          <button class="pbtn sm qtab on" data-q="social">SOCIAL <span id="socCount"></span></button>
+          <button class="pbtn sm qtab" data-q="arena">DAILY ARENA <span id="arenaCount"></span></button>
+        </div>
+        <div class="qscroll" id="qSocial">
+          <div class="qgroup"><span>DAILY</span><span>RESETS IN <b class="resetIn" style="color:#fff">--:--:--</b></span></div>
+          <div class="tasks" id="dailySocial"></div>
+          <div class="qgroup"><span>SPREAD THE WORD</span><span>NEW POSTS ADDED OFTEN</span></div>
+          <div class="tasks" id="postTasks"></div>
+          <div class="qgroup"><span>ONE-TIME</span></div>
           <div class="tasks" id="tasks"></div>
-          <div class="qgroup"><span>DAILY ARENA</span><span>RESETS IN <b id="resetIn2" style="color:#fff">--:--:--</b></span></div>
-          <div class="tasks" id="dailyTasks"></div>
           <div class="ref box">
             <b>INVITE FRIENDS</b>
             <div style="font-size:19px;color:var(--dim);margin-top:4px">+250 per friend who connects, plus 10% of their points.</div>
@@ -334,6 +345,11 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
               <button class="pbtn green sm" id="refCopy">COPY</button>
             </div>
           </div>
+        </div>
+        <div class="qscroll" id="qArena" hidden>
+          <div class="qgroup"><span>ONE MATCH AT A TIME</span><span>RESETS IN <b class="resetIn" style="color:#fff">--:--:--</b></span></div>
+          <div class="tasks" id="dailyTasks"></div>
+          <button class="pbtn green" data-go="arena" style="width:100%;margin-top:14px">PLAY THE DAILY ARENA</button>
         </div>
       </div>
     </div>
@@ -473,8 +489,11 @@ const $ = s => document.querySelector(s);
 const SITE = 'https://pillwars.fun';
 const X_ACCOUNT = 'pillwarsdotfun';
 const TELEGRAM = 'https://t.me/pillwars';
-// Id of the airdrop announcement post (the number at the end of its x.com URL).
-const ANNOUNCEMENT_POST_ID = '';
+// Posts to repost and like. Add new ones at the top: id = the number at the end
+// of the x.com/.../status/<id> URL. Each post pays once per user.
+const POSTS = [
+  { id: '', title: 'Season 0 airdrop is live', date: '2026-09-15' },
+];
 const SEASON_END = Date.UTC(2026, 10, 30);
 const SUPPLY = 1e9;
 const AIRDROP_PCT = 5;
@@ -498,7 +517,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { S = {}; }
 if (typeof S.x === 'string') S.x = null;
-S.tasks = S.tasks || {}; S.gamePts = S.gamePts || 0; S.refs = S.refs || 0;
+S.tasks = S.tasks || {}; S.gamePts = S.gamePts || 0; S.refs = S.refs || 0; S.socialPts = S.socialPts || 0;
 if (!S.daily || S.daily.date !== today()) S.daily = { date: today(), done: {}, matches: 0, best: {} };
 S.daily.best = S.daily.best || {};
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
@@ -561,7 +580,7 @@ const sum = lines => lines.reduce((a, l) => a + l[1], 0);
 function score() {
   const x = S.x ? xProfile(S.x) : null, w = S.w ? walletProfile(S.w) : null;
   const xs = x ? sum(x.lines) : 0, ws = w ? sum(w.lines) : 0;
-  const qs = TASKS.reduce((a, t) => a + (S.tasks[t.id] ? t.pts : 0), 0) + S.refs * 250;
+  const qs = S.socialPts + S.refs * 250;
   const gs = S.gamePts;
   return { x, w, xs, ws, qs, gs, total: xs + ws + qs + gs };
 }
@@ -598,38 +617,65 @@ function renderBoard() {
 const TASKS = [
   { id: 'follow', t: 'FOLLOW @' + X_ACCOUNT.toUpperCase(), d: 'Follow PillWars on X.', pts: 150,
     url: () => 'https://x.com/intent/follow?screen_name=' + X_ACCOUNT },
-  { id: 'rt', t: 'REPOST THE ANNOUNCEMENT', d: 'Repost the airdrop post on X.', pts: 150,
-    url: () => ANNOUNCEMENT_POST_ID ? 'https://x.com/intent/retweet?tweet_id=' + ANNOUNCEMENT_POST_ID : 'https://x.com/' + X_ACCOUNT },
-  { id: 'like', t: 'LIKE THE ANNOUNCEMENT', d: 'Like the airdrop post on X.', pts: 50,
-    url: () => ANNOUNCEMENT_POST_ID ? 'https://x.com/intent/like?tweet_id=' + ANNOUNCEMENT_POST_ID : 'https://x.com/' + X_ACCOUNT },
   { id: 'tg', t: 'JOIN TELEGRAM', d: 'The contract drops there first.', pts: 100, url: () => TELEGRAM },
   { id: 'share', t: 'SHARE YOUR CARD', d: 'Post your airdrop card on X.', pts: 300, url: () => shareCardUrl(), needs: true },
   { id: 'play', t: 'PLAY YOUR FIRST MATCH', d: 'Enter the Daily Arena below.', pts: 200, auto: true },
 ];
-function renderTasks() {
-  $('#socCount').textContent = TASKS.filter(t => S.tasks[t.id]).length + '/' + TASKS.length;
-  $('#tasks').innerHTML = TASKS.map(t => {
-    const done = !!S.tasks[t.id];
-    let btn;
-    if (done) btn = '';
-    else if (t.auto) btn = '<button class="pbtn grey sm" data-go="arena">PLAY</button>';
-    else btn = '<button class="pbtn green sm" data-task="' + t.id + '">' + (t.pending ? 'VERIFY' : 'GO') + '</button>';
-    return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + t.t + '</b><span>' + t.d + '</span></div><span class="pts">' + (done ? 'DONE' : '+' + t.pts) + '</span>' + btn + '</div>';
-  }).join('');
+const DAILY_POST_PTS = 100, REPOST_PTS = 150, LIKE_PTS = 50;
+const dailyPostUrl = () => 'https://x.com/intent/post?text=' + encodeURIComponent('Playing @' + X_ACCOUNT + ' today. Eat, grow, kill pills and farm the $PILL airdrop.') + '&url=' + encodeURIComponent(refUrl());
+// Every social quest has a key: "daily:*" lives in S.daily, the rest in S.tasks.
+function socialQuests() {
+  const daily = [{ key: 'daily:post', t: 'POST ABOUT PILLWARS', d: 'Share a post about PillWars on X. Once a day.', pts: DAILY_POST_PTS, url: dailyPostUrl, needs: true }];
+  const posts = [];
+  POSTS.filter(p => p.id).forEach(p => {
+    posts.push({ key: 'rt:' + p.id, t: 'REPOST', d: p.title, pts: REPOST_PTS, url: () => 'https://x.com/intent/retweet?tweet_id=' + p.id });
+    posts.push({ key: 'like:' + p.id, t: 'LIKE', d: p.title, pts: LIKE_PTS, url: () => 'https://x.com/intent/like?tweet_id=' + p.id });
+  });
+  const once = TASKS.map(t => Object.assign({ key: t.id }, t));
+  return { daily, posts, once, all: daily.concat(posts, once) };
 }
-$('#tasks').addEventListener('click', e => {
+const isDone = key => key.startsWith('daily:') ? !!(S.daily.social && S.daily.social[key]) : !!S.tasks[key];
+function completeTask(key, pts) {
+  if (isDone(key)) return;
+  if (key.startsWith('daily:')) { S.daily.social = S.daily.social || {}; S.daily.social[key] = true; }
+  else S.tasks[key] = true;
+  S.socialPts += pts; save();
+  toast('+' + pts + ' AIRDROP POINTS');
+  renderAll();
+}
+const pendingTasks = new Set();
+function taskRow(q) {
+  const done = isDone(q.key);
+  let btn = '';
+  if (!done && q.auto) btn = '<button class="pbtn grey sm" data-go="arena">PLAY</button>';
+  else if (!done) btn = '<button class="pbtn green sm" data-task="' + q.key + '">' + (pendingTasks.has(q.key) ? 'VERIFY' : 'GO') + '</button>';
+  return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : '+' + q.pts) + '</span>' + btn + '</div>';
+}
+function renderTasks() {
+  const q = socialQuests();
+  $('#socCount').textContent = q.all.filter(k => isDone(k.key)).length + '/' + q.all.length;
+  $('#dailySocial').innerHTML = q.daily.map(taskRow).join('');
+  $('#postTasks').innerHTML = q.posts.length ? q.posts.map(taskRow).join('') : '<div class="task box"><div class="tx"><span>No posts yet. New ones land here.</span></div></div>';
+  $('#tasks').innerHTML = q.once.map(taskRow).join('');
+}
+$('#view-me').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.go) { $('#screen').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
-  const t = TASKS.find(k => k.id === b.dataset.task); if (!t) return;
+  if (!b.dataset.task) return;
+  const t = socialQuests().all.find(k => k.key === b.dataset.task); if (!t) return;
   if (t.needs && !(S.x || S.w)) { toast('CONNECT X OR YOUR WALLET FIRST'); return; }
-  if (!t.pending) {
+  if (!pendingTasks.has(t.key)) {
     window.open(t.url(), '_blank', 'noopener');
-    t.pending = true; renderTasks();
+    pendingTasks.add(t.key); renderTasks();
     return;
   }
-  S.tasks[t.id] = true; t.pending = false; save();
-  toast('+' + t.pts + ' AIRDROP POINTS');
-  renderAll();
+  pendingTasks.delete(t.key);
+  completeTask(t.key, t.pts);
+});
+document.querySelectorAll('.qtab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.qtab').forEach(k => k.classList.toggle('on', k === t));
+  $('#qSocial').hidden = t.dataset.q !== 'social';
+  $('#qArena').hidden = t.dataset.q !== 'arena';
 });
 
 /* ---------------- card ---------------- */
@@ -671,7 +717,7 @@ function renderCard() {
     (S.x && S.w ? '' : '<span style="color:var(--gold);font-size:19px;align-self:center">Connect both to max your score</span>') + '</div>';
   $('#shareCard').onclick = () => {
     window.open(shareCardUrl(), '_blank', 'noopener');
-    if (!S.tasks.share) { S.tasks.share = true; save(); toast('+300 AIRDROP POINTS'); renderAll(); }
+    completeTask('share', 300);
   };
 }
 
@@ -694,10 +740,7 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
 
 $('#xBtn').onclick = async () => {
   if (S.x) { S.x = null; save(); renderAll(); return; }
-  let st = null;
-  try { st = await fetch(X_AUTH + '/x/status', { cache: 'no-store' }).then(r => r.json()); } catch (e) {}
-  if (!st) { toast('X SIGN-IN SERVER IS OFFLINE'); return; }
-  if (!st.configured) { toast('X SIGN-IN IS NOT SET UP YET'); return; }
+  // Plain navigation, not fetch: the site CSP (connect-src) blocks calls to other origins.
   location.href = X_AUTH + '/x/login?return=' + encodeURIComponent(location.origin + location.pathname);
 };
 
@@ -770,9 +813,10 @@ function tick() {
   const next = new Date(); next.setUTCHours(24, 0, 0, 0);
   const d = Math.max(0, next - now), p = n => String(n).padStart(2, '0');
   const txt = p(Math.floor(d / 3600e3)) + ':' + p(Math.floor(d / 60e3) % 60) + ':' + p(Math.floor(d / 1e3) % 60);
-  $('#resetIn').textContent = txt; $('#resetIn2').textContent = txt;
+  $('#resetIn').textContent = txt;
+  document.querySelectorAll('.resetIn').forEach(el => { el.textContent = txt; });
   $('#stEnds').textContent = Math.max(0, Math.ceil((SEASON_END - now) / 864e5)) + ' DAYS';
-  if (S.daily.date !== today()) { S.daily = { date: today(), done: {}, matches: 0, best: {} }; save(); renderDaily(); }
+  if (S.daily.date !== today()) { S.daily = { date: today(), done: {}, matches: 0, best: {} }; save(); renderDaily(); renderTasks(); }
 }
 setInterval(tick, 1000);
 
@@ -795,6 +839,7 @@ const missionProgress = m => {
 };
 function renderDaily() {
   const done = S.daily.done;
+  $('#arenaCount').textContent = Object.keys(done).length + '/' + MISSIONS.length;
   $('#dailyTasks').innerHTML = MISSIONS.map(m => {
     const ok = !!done[m.id], p = missionProgress(m);
     return '<div class="task box' + (ok ? ' done' : '') + '"><div class="tx"><b>' + m.t + '</b><span>' + (m.id === 'm3' ? 'Today' : 'In a single match') + ' - ' + p + '/' + m.goal + '</span>' +
@@ -872,7 +917,7 @@ function beginMatch(w) {
   hudq.hidden = false;
   match = { kills: 0, alive: 0, earned: 0, start: Date.now() };
   S.daily.matches++; save();
-  if (!S.tasks.play) { S.tasks.play = true; save(); renderAll(); }
+  completeTask('play', 200);
   clearInterval(matchTimer);
   matchTimer = setInterval(() => {
     if (!match) return;
