@@ -26,24 +26,14 @@
             display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center;
         }
         main { padding: 32px 20px 40px; width: 100%; max-width: 720px; }
-        .logo { display: block; width: min(420px, 78vw); height: auto; margin: 0 auto; }
         /* Same neon as THE CRYPTO ARENA on the landing page (.hero-sub). */
         .code {
-            font-size: clamp(56px, 14vw, 104px); line-height: 1; letter-spacing: 8px; margin: 22px 0 18px;
+            font-size: clamp(56px, 14vw, 104px); line-height: 1; letter-spacing: 8px; margin: 0 0 18px;
             color: #aaffdd; text-shadow: 0 0 6px var(--primary), 0 0 14px var(--primary), 0 0 26px rgba(0,255,136,0.7);
         }
         h1 { font-size: clamp(13px, 3vw, 18px); font-weight: normal; letter-spacing: 2px; color: #fff; margin: 0 0 14px; text-shadow: 3px 3px 0 rgba(0,0,0,0.7); }
         p { font-size: 10px; line-height: 1.9; color: #9aa1a9; margin: 0 auto 18px; max-width: 460px; }
         .food { display: block; width: min(480px, 86vw); height: auto; margin: 0 auto 22px; image-rendering: pixelated; }
-        /* Red button from the game menu (PLAY), with the label drawn by CSS like there. */
-        .play {
-            display: flex; align-items: center; justify-content: center; margin: 0 auto 18px;
-            width: min(360px, 80vw); aspect-ratio: 5.5 / 1; text-decoration: none;
-            background: transparent url('/game/img/cartel-hero/btn-plain-red.png') center / 100% 100% no-repeat;
-            image-rendering: pixelated; font-size: 18px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.65);
-        }
-        .play:hover { filter: brightness(1.15); }
-        .play:active { transform: translate(2px, 2px); }
         /* Gold box of MODES/SKINS on the landing page (.hero-sub-link). */
         .home {
             display: inline-block; font-size: 11px; letter-spacing: 1px; color: #ffce3d; text-decoration: none;
@@ -55,12 +45,10 @@
 </head>
 <body>
     <main>
-        <img class="logo" src="/img/pixel-hero/hero-title.png" alt="PILLWARS">
         <div class="code" aria-hidden="true">404</div>
         <h1>THIS PAGE GOT EATEN</h1>
         <p>The link is broken or the page moved. The arena is still open.</p>
         <img class="food" src="/img/404.png" alt="" width="480" height="192">
-        <a class="play" href="/game/">PLAY NOW</a>
         <a class="home" href="/">BACK TO HOME</a>
     </main>
 </body>

@@ -25,16 +25,6 @@ const X_SCOPES = 'tweet.read users.read';
 const b64url = buf => Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const NOT_FOUND_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex"><title>404 - PillWars</title><link rel="icon" href="/img/web.png">
-<style>@font-face{font-family:'Press Start 2P';src:url(/fonts/press-start-2p-latin.woff2) format('woff2')}
-html,body{margin:0;height:100%;background:#050505;color:#8fa89a;font-family:'Press Start 2P',monospace;text-align:center}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:0 16px;
-background-image:linear-gradient(rgba(0,255,136,.07) 2px,transparent 2px),linear-gradient(90deg,rgba(0,255,136,.07) 2px,transparent 2px);background-size:64px 64px}
-h1{margin:0;font-size:clamp(48px,14vw,120px);color:#00ff88;text-shadow:0 6px 0 #00a857,0 12px 0 #004d27}
-p{margin:0;font-size:12px;line-height:2}</style></head>
-<body><h1>404</h1><p>PAGE NOT FOUND</p></body></html>`;
-
 function createAirdrop(opts) {
     const ROOT = opts.root;
     const ONLY = !!opts.only;
@@ -70,10 +60,16 @@ function createAirdrop(opts) {
             res.end(data);
         });
     }
+    // Same 404.html as the real site (it only links back to /, the airdrop here).
     function notFound(req, res) {
+        const text = () => { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }); res.end('404 Not Found'); };
         const html = String(req.headers.accept || '').includes('text/html') && (req.method === 'GET' || req.method === 'HEAD');
-        res.writeHead(404, { 'Content-Type': html ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' });
-        res.end(req.method === 'HEAD' ? undefined : (html ? NOT_FOUND_HTML : '404 Not Found'));
+        if (!html) return text();
+        fs.readFile(path.join(ROOT, '404.html'), (err, data) => {
+            if (err) return text();
+            res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+            res.end(req.method === 'HEAD' ? undefined : data);
+        });
     }
     const redirect = (res, url, code) => { res.writeHead(code || 302, { Location: url, 'Cache-Control': 'no-store' }); res.end(); };
 
@@ -249,4 +245,4 @@ function createAirdrop(opts) {
     return { handle, only: ONLY };
 }
 
-module.exports = { createAirdrop, NOT_FOUND_HTML };
+module.exports = { createAirdrop };
