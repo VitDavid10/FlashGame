@@ -89,3 +89,6 @@ server/transactions.log
 server/adminlog.log
 scripts/.stakers-devnet.json
 .tmp-ataque/
+
+# Imagenes de las tarjetas compartidas del airdrop (las sube cada jugador)
+server/airdrop-cards/

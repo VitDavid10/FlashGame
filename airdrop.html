@@ -454,7 +454,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       <div class="tk-lbl">AIRDROP POOL</div>
       <div class="tk-big g" id="tkPool">--</div>
       <div class="tk-lbl" id="tkPoolPct">--</div>
-      <p style="color:var(--dim);margin:18px 0 0">The airdrop is paid with tokens the team buys on the pump.fun bonding curve at launch, the same way anyone else buys. Those tokens go into a public wallet and are sent to Season 0 players at the snapshot.</p>
+      <p style="color:var(--dim);margin:18px 0 0">The airdrop is paid with tokens the team buys on the pump.fun bonding curve at launch, the same way anyone else buys. $PILLY launches after the Season 0 snapshot, and those tokens are sent to the players right away.</p>
     </div>
   </div>
   <div class="facts">
@@ -482,7 +482,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     </ul>
   </div>
 
-  <footer>Points are not tokens. Final allocation is calculated at the end of Season 0. <a href="/airdrop-terms.html">Airdrop terms</a></footer>
+  <footer>Points are not tokens. Final allocation is calculated at the end of Season 0. <a href="/airdrop-terms">Airdrop terms</a></footer>
 </div>
 
 <!-- wallet modal -->
@@ -532,9 +532,9 @@ const POSTS = [
 ];
 const SEASON_END = Date.UTC(2026, 10, 30);
 const SUPPLY = 1e9;
-const AIRDROP_PCT = 15;
+const AIRDROP_PCT = 10;
 // Sign in with X runs through server/airdrop-x.js (OAuth 2.0 with PKCE).
-const X_AUTH = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://' + location.hostname + ':8091' : '/airdrop-auth';
+const X_AUTH = '/airdrop-auth';
 
 const fmt = n => Math.round(n).toLocaleString('en-US');
 const short = a => a.slice(0, 4) + '...' + a.slice(-4);
@@ -1069,7 +1069,7 @@ async function openShare(opts) {
 function openCardShare() {
   const s = score(), rank = renderBoard();
   openShare({
-    title: 'SHARE YOUR CARD',
+    title: 'SHARE YOUR CARD', kind: 'card',
     variants: [cardBreakdown, cardRank],
     text: fmt(s.total) + ' points on @' + X_ACCOUNT + '. Top ' + topPct(rank) + ' of all players.\n\nWhere do you rank?',
     done: () => completeTask('share', 300),
@@ -1077,20 +1077,28 @@ function openCardShare() {
 }
 $('#sharePrev').onclick = () => { share.idx = (share.idx + share.variants.length - 1) % share.variants.length; renderShare(); };
 $('#shareNext').onclick = () => { share.idx = (share.idx + 1) % share.variants.length; renderShare(); };
+// The image is uploaded and gets its own link (/c/<id>) whose og:image X shows
+// as a big card under the post. If the upload fails, the old way: copy the image.
 $('#sharePost').onclick = async () => {
-  const intent = 'https://x.com/intent/post?text=' + encodeURIComponent(share.text) + '&url=' + encodeURIComponent(refUrl());
-  const touch = matchMedia('(pointer:coarse)').matches;
-  if (touch && navigator.canShare) {
+  // Open the tab inside the click, before any await, or the browser blocks it.
+  const win = window.open('about:blank', '_blank');
+  if (win) win.opener = null;
+  const btn = $('#sharePost'); btn.disabled = true;
+  let link = null;
+  try {
     const blob = await share.blob;
-    const file = blob && new File([blob], 'pillwars-airdrop.png', { type: 'image/png' });
-    if (file && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], text: share.text + ' ' + refUrl() }); if (share.done) share.done(); return; } catch (e) { if (e.name === 'AbortError') return; }
-    }
-  }
+    const r = await fetch('/api/airdrop/card', {
+      method: 'POST', body: blob,
+      headers: { 'Content-Type': 'image/png', 'X-Airdrop-Ref': refCode(), 'X-Airdrop-Kind': share.kind || 'card' },
+    });
+    if (r.ok) link = (await r.json()).url;
+  } catch (e) {}
+  btn.disabled = false;
   let copied = false;
-  try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': share.blob })]); copied = true; } catch (e) {}
-  window.open(intent, '_blank', 'noopener');
-  toast(copied ? 'IMAGE COPIED - PASTE IT IN THE POST' : 'USE SAVE IMAGE AND ATTACH IT');
+  if (!link) { try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': share.blob })]); copied = true; } catch (e) {} }
+  const intent = 'https://x.com/intent/post?text=' + encodeURIComponent(share.text) + '&url=' + encodeURIComponent(link || refUrl());
+  if (win) win.location.href = intent; else window.open(intent, '_blank', 'noopener');
+  if (!link) toast(copied ? 'IMAGE COPIED - PASTE IT IN THE POST' : 'USE SAVE IMAGE AND ATTACH IT');
   if (share.done) share.done();
 };
 $('#shareSave').onclick = async () => {
@@ -1121,7 +1129,7 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
 $('#xBtn').onclick = async () => {
   if (S.x) { S.x = null; save(); renderAll(); return; }
   // Plain navigation, not fetch: the site CSP (connect-src) blocks calls to other origins.
-  location.href = X_AUTH + '/x/login?return=' + encodeURIComponent(location.origin + location.pathname);
+  location.href = X_AUTH + '/x/login';
 };
 
 $('#wBtn').onclick = () => {
@@ -1384,7 +1392,7 @@ function endMatch(w, tipo) {
   $('#again').onclick = () => { over.hidden = true; w.tryAgainOnline(); };
   $('#quit').onclick = resetArena;
   $('#shareRun').onclick = () => openShare({
-    title: 'SHARE YOUR RUN',
+    title: 'SHARE YOUR RUN', kind: 'run',
     variants: [(g, W, H) => drawRun(g, W, H, shot, m, tipo)],
     text: 'I just got ' + m.kills + (m.kills === 1 ? ' kill' : ' kills') + ' in the @' + X_ACCOUNT + ' Daily Arena' +
       (m.earned ? ' and earned ' + fmt(m.earned) + ' points' : '') + '.\n\nThink you can beat me?',

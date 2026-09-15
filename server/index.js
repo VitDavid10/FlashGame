@@ -47,6 +47,7 @@ const rake = require('./rake.js');                 // lo que se queda la casa, y
 leaderboard.setProveedorOponentes(() => matches.oponentesDe());
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
 const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILL + quema)
+const { createAirdrop } = require('./airdrop.js');  // página del airdrop + modo AIRDROP_ONLY
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
 const { listCombos, buildShardMap, applyOverrides } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
 const { createIpc } = require('./cluster/ipc.js');             // request/response sobre fork (Fase 4)
@@ -2431,6 +2432,9 @@ function rpcRateLimited(req) {
 }
 setInterval(() => { const now = Date.now(); for (const [k, e] of rpcApiHits) if (now >= e.resetAt) rpcApiHits.delete(k); }, 60000);
 
+// Página del airdrop, login con X y tarjetas para compartir. AIRDROP_ONLY=1 deja
+// SOLO el airdrop accesible: el resto de la web contesta 404 (ver server/airdrop.js).
+const airdrop = createAirdrop({ root: ROOT, only: process.env.AIRDROP_ONLY === '1', adminPath: ADMIN_PATH, clientIp, log });
 const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     // www.pillwars.fun sirve la misma web que pillwars.fun, y Google las trata
@@ -2450,6 +2454,7 @@ const httpServer = http.createServer(async (req, res) => {
     try { urlPath = decodeURIComponent((req.url || '/').split('?')[0]); }
     catch (e) { res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('400 Bad Request'); return; }
     const query = new URLSearchParams((req.url || '').split('?')[1] || '');
+    if (await airdrop.handle(req, res, urlPath, query)) return;
 
     // --- Salud del servidor: heap, uptime y tamaños de estructuras (diagnóstico de leaks) ---
     if (urlPath === '/api/health') {

@@ -137,5 +137,13 @@ Environment=REWARD_BUDGET_PILL=50000
 # puede pedir menos. Tras editarlas:
 #   sudo systemctl daemon-reload && sudo systemctl restart pillwars
 
+# Airdrop. AIRDROP_ONLY=1: solo se ve pillwars.fun/airdrop; el resto de la web
+# (landing, /game, terms, treasury...) contesta 404. Quitarla para reabrir la web.
+# X_CLIENT_ID / X_CLIENT_SECRET: OAuth 2.0 de la app de X (Sign in with X). La
+# callback registrada en X debe ser https://pillwars.fun/airdrop-auth/x/callback
+#Environment=AIRDROP_ONLY=1
+#Environment=X_CLIENT_ID=CAMBIA
+#Environment=X_CLIENT_SECRET=CAMBIA
+
 [Install]
 WantedBy=multi-user.target
