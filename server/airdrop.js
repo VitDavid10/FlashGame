@@ -4,7 +4,7 @@
  *
  *   /airdrop (or / with AIRDROP_ONLY), /airdrop-terms   the page and its terms
  *   /airdrop-auth/x/login|callback     Sign in with X (OAuth 2.0 + PKCE)
- *   POST /api/airdrop/card             stores a share image (PNG 1200x675)
+ *   POST /api/airdrop/card             stores a share image (PNG 1200x630)
  *   /c/<id>, /c/<id>.png               share link with og:image for X cards
  *
  * AIRDROP_ONLY=1 turns on the lockdown: every other page answers 404 and the
@@ -16,7 +16,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const CARD_MAX_BYTES = 1.5 * 1024 * 1024;
-const CARD_W = 1200, CARD_H = 675;
+const CARD_W = 1200, CARD_H = 630;
 const CARD_MAX_FILES = 20000;
 const CARD_RATE = { max: 20, windowMs: 60 * 60 * 1000 };
 const X_PENDING_TTL_MS = 10 * 60 * 1000;

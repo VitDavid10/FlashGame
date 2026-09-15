@@ -503,7 +503,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
     <h3 class="ptitle" id="shareTitle">SHARE</h3>
     <div class="share-stage">
       <button class="share-arrow" id="sharePrev" aria-label="Previous card">&lt;</button>
-      <canvas id="shareCv" width="1200" height="675"></canvas>
+      <canvas id="shareCv" width="1200" height="630"></canvas>
       <button class="share-arrow" id="shareNext" aria-label="Next card">&gt;</button>
     </div>
     <div class="share-dots" id="shareDots"></div>
@@ -512,7 +512,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
       <button class="pbtn green" id="shareSave">SAVE IMAGE</button>
       <button class="pbtn grey" data-close>CLOSE</button>
     </div>
-    <p class="share-tip" id="shareTip">The image is copied when you press POST ON X. Paste it into the post with Ctrl+V.</p>
+    <p class="share-tip" id="shareTip">POST ON X shares a link that shows this image under your post.</p>
   </div>
 </div>
 
@@ -906,27 +906,102 @@ function text(g, str, x, y, font, size, color, align, shadow) {
 }
 const fit = (g, str, font, size, maxW) => { g.font = size + 'px ' + font; const w = g.measureText(str).width; return w > maxW ? Math.floor(size * maxW / w) : size; };
 
-// Every share image gets its own seed: different arena layout and screen tint.
-const CRT_TINTS = [['#12402a', '#0b2618', '#08190f'], ['#0f3b36', '#0a2624', '#071a19'], ['#1f3d14', '#15290d', '#0d1b08'], ['#123a3f', '#0b2429', '#07181c']];
-function drawCRT(g, W, H, r) {
-  const t = CRT_TINTS[Math.floor(r() * CRT_TINTS.length)];
-  const bg = g.createLinearGradient(0, 0, W * .6, H * 1.1);
-  bg.addColorStop(0, t[0]); bg.addColorStop(.55, t[1]); bg.addColorStop(1, t[2]);
-  g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  g.fillStyle = 'rgba(0,255,136,.05)';
-  for (let x = 0; x < W; x += 48) g.fillRect(x, 0, 2, H);
-  for (let y = 0; y < H; y += 48) g.fillRect(0, y, W, 2);
+/* Share image: 1200x630 (X's large card ratio, so nothing gets cropped).
+   Arena floor outside, and the in-game quest panel frame ("placa", ported from
+   placaPixels in game/index.html, a bit thinner) with its dark green screen. */
+const IMG_W = 1200, IMG_H = 630;
+const FRAME = { K: 3, T: 7, RADIO: 9, RADIO_HUECO: 4, MARGIN: 14, HEX: '#00ffaa', GLOW: 0.38, GLOW_STEPS: 2,
+  TONOS: { rim: 0.16, lit: 0.75, mid: 0.45, dim: 0.24, inner: 0.36, body: 0.30, masa: 0.21 }, MASA_DESDE: 4, SUB: 2 };
+const SCREEN_RGB = [14, 42, 27];
+// Hole (the screen) in image pixels: everything is laid out inside it.
+const HOLE = (() => {
+  const o = FRAME.MARGIN, t = FRAME.T * FRAME.K;
+  return { x: o + t, y: o + t, w: IMG_W - 2 * (o + t), h: IMG_H - 2 * (o + t) };
+})();
+function drawFloor(g) {
+  g.fillStyle = '#050505'; g.fillRect(0, 0, IMG_W, IMG_H);
+  g.fillStyle = 'rgba(255,255,255,.03)';
+  for (let x = 0; x < IMG_W; x += 60) g.fillRect(x, 0, 3, IMG_H);
+  for (let y = 0; y < IMG_H; y += 60) g.fillRect(0, y, IMG_W, 3);
+}
+function drawScreenBg(g) {
+  const h = HOLE;
+  g.fillStyle = 'rgb(' + SCREEN_RGB.join(',') + ')'; g.fillRect(h.x, h.y, h.w, h.h);
+  g.fillStyle = 'rgba(0,255,136,.035)';
+  for (let x = h.x; x < h.x + h.w; x += 48) g.fillRect(x, h.y, 2, h.h);
+  for (let y = h.y; y < h.y + h.h; y += 48) g.fillRect(h.x, y, h.w, 2);
+}
+function drawScreenFx(g) {
+  const h = HOLE;
+  g.save(); g.beginPath(); g.rect(h.x, h.y, h.w, h.h); g.clip();
+  const v = g.createRadialGradient(IMG_W / 2, IMG_H / 2, h.h * .35, IMG_W / 2, IMG_H / 2, h.w * .7);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)');
+  g.fillStyle = v; g.fillRect(h.x, h.y, h.w, h.h);
+  g.fillStyle = 'rgba(0,0,0,.12)';
+  for (let y = h.y; y < h.y + h.h; y += 4) g.fillRect(h.x, y, h.w, 2);
+  g.restore();
+}
+function drawFrame(g) {
+  const F = FRAME, K = F.K, SUB = F.SUB;
+  const W = Math.round((IMG_W - 2 * F.MARGIN) / K), H = Math.round((IMG_H - 2 * F.MARGIN) / K), T = F.T;
+  const corner = (dx, dy, radio) => {
+    if (dx >= radio || dy >= radio) return true;
+    const ex = radio - dx, ey = radio - dy;
+    return ex * ex + ey * ey <= radio * radio;
+  };
+  const inOuter = (x, y) => x >= 0 && y >= 0 && x < W && y < H && corner(Math.min(x, W - 1 - x), Math.min(y, H - 1 - y), F.RADIO);
+  const inHole = (x, y) => {
+    if (x < T || y < T || x >= W - T || y >= H - T) return false;
+    return corner(Math.min(x - T, W - T - 1 - x), Math.min(y - T, H - T - 1 - y), F.RADIO_HUECO);
+  };
+  const inBand = (x, y) => inOuter(x, y) && !inHole(x, y);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'), img = c.createImageData(W, H), px = img.data;
+  const rgb = pixRgb(F.HEX), sh = f => rgb.map(v => Math.round(v * f)), TN = F.TONOS;
+  const C = { rim: sh(TN.rim), lit: sh(TN.lit), dim: sh(TN.dim), mid: sh(TN.mid), inner: sh(TN.inner), body: sh(TN.body), masa: sh(TN.masa) };
+  const LX = -0.6, LY = -0.75, lgx = 0, lgy = -1, HASTA = Math.max(3, F.MASA_DESDE) * SUB;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!inBand(x, y)) continue;
+    let ring = HASTA;
+    for (let r = 1; r <= HASTA && ring === HASTA; r++) {
+      for (let oy = -1; oy <= 1 && ring === HASTA; oy++) for (let ox = -1; ox <= 1; ox++) {
+        if ((!ox && !oy) || inBand(x + ox * r, y + oy * r)) continue;
+        ring = r - 1; break;
+      }
+    }
+    let col;
+    if (ring < SUB) col = C.rim;
+    else if (ring < 2 * SUB) {
+      let nx = 0, ny = 0;
+      for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
+        if ((!ox && !oy) || inBand(x + ox, y + oy)) continue;
+        const d = Math.hypot(ox, oy); nx += ox / d; ny += oy / d;
+      }
+      const l = Math.hypot(nx, ny) || 1, ndl = (nx / l) * LX + (ny / l) * LY;
+      col = ndl > 0.15 ? C.lit : ndl < -0.15 ? C.dim : C.mid;
+    } else if (ring < 3 * SUB) col = C.inner;
+    else col = ring >= F.MASA_DESDE * SUB ? C.masa : C.body;
+    const t = ((x - W / 2) * lgx + (y - H / 2) * lgy) / (Math.hypot(W, H) / 2);
+    const q = Math.round(Math.max(-1, Math.min(1, t)) * F.GLOW_STEPS) / F.GLOW_STEPS, f = 1 + F.GLOW * q;
+    const i = (y * W + x) << 2;
+    px[i] = Math.min(255, col[0] * f); px[i + 1] = Math.min(255, col[1] * f); px[i + 2] = Math.min(255, col[2] * f); px[i + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+  g.imageSmoothingEnabled = false;
+  g.drawImage(cv, F.MARGIN, F.MARGIN, W * K, H * K);
 }
 const FOOD_COLORS = ['#ffffff', '#00ffaa', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d'];
 const BOT_COLORS = ['#FF5722', '#F44336', '#3F51B5', '#9C27B0', '#FFC107', '#03A9F4', '#8BC34A', '#009688'];
 const K = 4;   // screen pixels per game pixel
-// Food, viruses and rival pills in the free space. `avoid` = [x, y, w, h] kept clear.
-function drawArena(g, W, H, avoid, r, opts) {
-  const hits = (x, y, w, h, pad) => avoid.some(a => x < a[0] + a[2] + pad && x + w > a[0] - pad && y < a[1] + a[3] + pad && y + h > a[1] - pad);
-  const place = (w, h, pad, spill) => {
+// Food, viruses and rival pills in the free space of the screen. `avoid` = [x, y, w, h] kept clear.
+function drawArena(g, avoid, r, opts) {
+  const h = HOLE;
+  g.save(); g.beginPath(); g.rect(h.x, h.y, h.w, h.h); g.clip();
+  const hits = (x, y, w, hh, pad) => avoid.some(a => x < a[0] + a[2] + pad && x + w > a[0] - pad && y < a[1] + a[3] + pad && y + hh > a[1] - pad);
+  const place = (w, hh, pad, spill) => {
     for (let i = 0; i < 60; i++) {
-      const x = -spill + r() * (W - w + spill * 2), y = -spill + r() * (H - h + spill * 2);
-      if (!hits(x, y, w, h, pad)) return [x, y];
+      const x = h.x - spill + r() * (h.w - w + spill * 2), y = h.y - spill + r() * (h.h - hh + spill * 2);
+      if (!hits(x, y, w, hh, pad)) return [x, y];
     }
     return null;
   };
@@ -938,7 +1013,7 @@ function drawArena(g, W, H, avoid, r, opts) {
   // The first pill is always a big one; the rest mix small to large.
   const PILL_SIZES = [6, 8, 10, 13, 17, 22, 28];
   for (let i = 0; i < opts.pills; i++) {
-    const wL = i === 0 ? 26 + Math.floor(r() * 8) : PILL_SIZES[Math.floor(r() * PILL_SIZES.length)], top = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)], bot = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)];
+    const wL = i === 0 ? 24 + Math.floor(r() * 8) : PILL_SIZES[Math.floor(r() * PILL_SIZES.length)], top = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)], bot = BOT_COLORS[Math.floor(r() * BOT_COLORS.length)];
     const spr = pixPillSpriteRot(wL, top, bot, -Math.PI / 4, true), size = spr.width * K, p = place(size, size, 12, size * .3);
     if (p) { blit(g, spr, p[0], p[1], K); avoid.push([p[0], p[1], size, size]); }
   }
@@ -946,106 +1021,103 @@ function drawArena(g, W, H, avoid, r, opts) {
     const dL = 3 + Math.floor(r() * 4), size = dL * K, p = place(size, size, 8, 0);
     if (p) blit(g, pixDotSprite(dL, FOOD_COLORS[Math.floor(r() * FOOD_COLORS.length)]), p[0], p[1], K);
   }
-}
-function drawScreen(g, W, H) {
-  const v = g.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, W * .75);
-  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
-  g.fillStyle = v; g.fillRect(0, 0, W, H);
-  g.fillStyle = 'rgba(0,0,0,.14)';
-  for (let y = 0; y < H; y += 4) g.fillRect(0, y, W, 2);
-  g.fillStyle = '#000'; g.fillRect(0, 0, W, 10); g.fillRect(0, H - 10, W, 10); g.fillRect(0, 0, 10, H); g.fillRect(W - 10, 0, 10, H);
-  g.fillStyle = '#00ff88'; g.fillRect(10, 10, W - 20, 8); g.fillRect(10, H - 18, W - 20, 8); g.fillRect(10, 10, 8, H - 20); g.fillRect(W - 18, 10, 8, H - 20);
-  g.fillStyle = '#000'; g.fillRect(18, 18, W - 36, 6); g.fillRect(18, H - 24, W - 36, 6); g.fillRect(18, 18, 6, H - 36); g.fillRect(W - 24, 18, 6, H - 36);
+  g.restore();
 }
 function drawAvatar(g, x, y, size) {
-  g.fillStyle = '#000'; g.fillRect(x - 12, y - 12, size + 24, size + 24);
-  g.fillStyle = '#00ff88'; g.fillRect(x - 8, y - 8, size + 16, size + 16);
+  g.fillStyle = '#000'; g.fillRect(x - 10, y - 10, size + 20, size + 20);
+  g.fillStyle = '#00ffaa'; g.fillRect(x - 6, y - 6, size + 12, size + 12);
   g.fillStyle = '#081a10'; g.fillRect(x - 2, y - 2, size + 4, size + 4);
   if (avatarImg) { g.imageSmoothingEnabled = true; g.drawImage(avatarImg, x, y, size, size); return; }
-  const spr = pixPillSpriteRot(30, '#c0c8d0', '#00ff44', Math.PI / 4, true), k = Math.floor(size * .9 / spr.width);
+  const spr = pixPillSpriteRot(30, '#c0c8d0', '#00ff44', Math.PI / 4, true), k = Math.max(1, Math.floor(size * .9 / spr.width));
   blit(g, spr, x + (size - spr.width * k) / 2, y + (size - spr.height * k) / 2, k);
 }
 function box(g, x, y, w, h, accent) {
-  g.fillStyle = 'rgba(3,12,7,.85)'; g.fillRect(x, y, w, h);
-  g.fillStyle = '#0f3a25'; g.fillRect(x, y, w, 3); g.fillRect(x, y + h - 3, w, 3); g.fillRect(x, y, 3, h); g.fillRect(x + w - 3, y, 3, h);
+  g.fillStyle = 'rgba(3,12,7,.82)'; g.fillRect(x, y, w, h);
+  g.fillStyle = '#1d5a3c'; g.fillRect(x, y, w, 3); g.fillRect(x, y + h - 3, w, 3); g.fillRect(x, y, 3, h); g.fillRect(x + w - 3, y, 3, h);
   if (accent) { g.fillStyle = accent; g.fillRect(x, y, 10, h); }
 }
 const handle = () => S.x ? '@' + S.x.username : 'ANON PILL';
 const seedRng = () => rng('share:' + share.seed + ':' + share.idx);
-function cardBreakdown(g, W, H) {
-  const s = score(), rank = renderBoard(), r = seedRng();
-  drawCRT(g, W, H, r);
-  const pts = fmt(s.total), ps = fit(g, pts, PX, 84, 460), hsz = fit(g, handle(), PX, 30, 410);
+function cardBreakdown(g) {
+  const s = score(), rank = renderBoard(), r = seedRng(), L = HOLE.x + 26, T = HOLE.y + 26;
+  drawFloor(g); drawScreenBg(g);
+  const pts = fmt(s.total), ps = fit(g, pts, PX, 74, 410), hsz = fit(g, handle(), PX, 26, 370);
   g.font = hsz + 'px ' + PX; const hw = g.measureText(handle()).width;
   g.font = ps + 'px ' + PX; const pw = g.measureText(pts).width;
-  drawArena(g, W, H, [
-    [58, 58, 194, 194], [270, 100, Math.max(hw, 260) + 10, 100],
-    [60, 378 - ps, pw + 150, ps + 12], [66, 412, 596, 40], [66, 490, 596, 110], [730, 80, 400, 508],
+  const RX = 690;
+  drawArena(g, [
+    [L - 12, T - 12, 164, 164], [L + 164, T + 20, Math.max(hw, 240) + 10, 90],
+    [L, 318 - ps, pw + 140, ps + 12], [L, 340, 560, 40], [L, 404, 560, 104], [RX, T, 440, 492],
   ], r, { viruses: 1 + Math.floor(r() * 2), pills: 4, food: 30 });
-  drawAvatar(g, 70, 70, 170);
-  text(g, handle(), 280, 140, PX, hsz, '#ffffff', 'left', '#000');
-  text(g, S.w ? short(S.w) : 'no wallet linked', 280, 190, VT, 38, '#9fc2ad');
-  text(g, pts, 70, 378, PX, ps, '#00ff88', 'left', '#003d1f');
-  g.font = ps + 'px ' + PX; text(g, 'POINTS', 70 + g.measureText(pts).width + 22, 378, PX, 22, '#9fc2ad');
+  drawAvatar(g, L, T, 140);
+  text(g, handle(), L + 170, T + 60, PX, hsz, '#ffffff', 'left', '#000');
+  text(g, S.w ? short(S.w) : 'no wallet linked', L + 170, T + 104, VT, 34, '#9fc2ad');
+  text(g, pts, L, 318, PX, ps, '#00ff88', 'left', '#003d1f');
+  g.font = ps + 'px ' + PX; text(g, 'POINTS', L + g.measureText(pts).width + 18, 318, PX, 20, '#9fc2ad');
   const parts = [s.xs, s.ws, s.qs, s.gs], cols = ['#1d9bf0', '#00ff88', '#ffce3d', '#ccff00'];
-  const tot = s.total || 1; let bx = 74;
-  g.fillStyle = '#000'; g.fillRect(66, 412, 596, 40);
-  parts.forEach((p, i) => { const w = 588 * p / tot; g.fillStyle = cols[i]; g.fillRect(bx, 416, w, 32); bx += w; });
-  box(g, 66, 490, 290, 110); box(g, 372, 490, 290, 110);
+  const tot = s.total || 1; let bx = L + 4;
+  g.fillStyle = '#000'; g.fillRect(L, 342, 560, 36);
+  parts.forEach((p, i) => { const w = 552 * p / tot; g.fillStyle = cols[i]; g.fillRect(bx, 346, w, 28); bx += w; });
+  box(g, L, 404, 272, 104); box(g, L + 288, 404, 272, 104);
   const rk = '#' + fmt(rank), tp = 'TOP ' + topPct(rank);
-  text(g, rk, 211, 552, PX, fit(g, rk, PX, 34, 250), '#ffce3d', 'center', '#5c3d00');
-  text(g, 'RANK', 211, 586, VT, 30, '#9fc2ad', 'center');
-  text(g, tp, 517, 552, PX, fit(g, tp, PX, 34, 250), '#ccff00', 'center', '#1c3300');
-  text(g, 'OF ALL PLAYERS', 517, 586, VT, 30, '#9fc2ad', 'center');
+  text(g, rk, L + 136, 462, PX, fit(g, rk, PX, 32, 236), '#ffce3d', 'center', '#5c3d00');
+  text(g, 'RANK', L + 136, 494, VT, 28, '#9fc2ad', 'center');
+  text(g, tp, L + 424, 462, PX, fit(g, tp, PX, 32, 236), '#ccff00', 'center', '#1c3300');
+  text(g, 'OF ALL PLAYERS', L + 424, 494, VT, 28, '#9fc2ad', 'center');
   const rows = [['X ACCOUNT', s.xs, cols[0]], ['ON-CHAIN', s.ws, cols[1]], ['QUESTS', s.qs, cols[2]], ['DAILY ARENA', s.gs, cols[3]]];
   rows.forEach((row, i) => {
-    const y = 80 + i * 132;
-    box(g, 730, y, 400, 112, row[2]);
-    text(g, row[0], 764, y + 44, PX, 16, '#9fc2ad');
-    text(g, fmt(row[1]), 1106, y + 90, PX, fit(g, fmt(row[1]), PX, 30, 320), '#ffffff', 'right', '#000');
+    const y = T + i * 126;
+    box(g, RX, y, 440, 108, row[2]);
+    text(g, row[0], RX + 34, y + 42, PX, 15, '#9fc2ad');
+    text(g, fmt(row[1]), RX + 416, y + 88, PX, fit(g, fmt(row[1]), PX, 28, 360), '#ffffff', 'right', '#000');
   });
-  drawScreen(g, W, H);
+  drawScreenFx(g); drawFrame(g);
 }
-function cardRank(g, W, H) {
-  const s = score(), rank = renderBoard(), r = seedRng();
-  drawCRT(g, W, H, r);
-  const pts = fmt(s.total), ps = fit(g, pts, PX, 104, 860), hsz = fit(g, handle(), PX, 28, 820);
+function cardRank(g) {
+  const s = score(), rank = renderBoard(), r = seedRng(), CX = IMG_W / 2;
+  drawFloor(g); drawScreenBg(g);
+  const pts = fmt(s.total), ps = fit(g, pts, PX, 96, 800), hsz = fit(g, handle(), PX, 26, 760);
   g.font = hsz + 'px ' + PX; const hw = g.measureText(handle()).width;
   g.font = ps + 'px ' + PX; const pw = g.measureText(pts).width;
-  drawArena(g, W, H, [
-    [W / 2 - 87, 44, 174, 174], [W / 2 - hw / 2 - 10, 272 - hsz - 8, hw + 20, hsz + 20],
-    [W / 2 - pw / 2 - 10, 408 - ps - 6, pw + 24, ps + 20], [W / 2 - 80, 430, 160, 30], [W / 2 - 430, 486, 860, 104],
+  drawArena(g, [
+    [CX - 80, 56, 160, 160], [CX - hw / 2 - 10, 244 - hsz - 8, hw + 20, hsz + 20],
+    [CX - pw / 2 - 10, 366 - ps - 6, pw + 24, ps + 20], [CX - 80, 386, 160, 30], [CX - 420, 426, 840, 104],
   ], r, { viruses: 1 + Math.floor(r() * 2), pills: 6, food: 40 });
-  drawAvatar(g, W / 2 - 75, 56, 150);
-  text(g, handle(), W / 2, 272, PX, hsz, '#ffffff', 'center', '#000');
-  text(g, pts, W / 2, 408, PX, ps, '#00ff88', 'center', '#003d1f');
-  text(g, 'POINTS', W / 2, 454, PX, 22, '#9fc2ad', 'center');
-  box(g, W / 2 - 430, 486, 410, 104); box(g, W / 2 + 20, 486, 410, 104);
+  drawAvatar(g, CX - 64, 66, 128);
+  text(g, handle(), CX, 244, PX, hsz, '#ffffff', 'center', '#000');
+  text(g, pts, CX, 366, PX, ps, '#00ff88', 'center', '#003d1f');
+  text(g, 'POINTS', CX, 408, PX, 20, '#9fc2ad', 'center');
+  box(g, CX - 420, 426, 400, 100); box(g, CX + 20, 426, 400, 100);
   const rk = '#' + fmt(rank), tp = 'TOP ' + topPct(rank);
-  text(g, rk, W / 2 - 225, 545, PX, fit(g, rk, PX, 38, 370), '#ffce3d', 'center', '#5c3d00');
-  text(g, 'RANK', W / 2 - 225, 578, VT, 30, '#9fc2ad', 'center');
-  text(g, tp, W / 2 + 225, 545, PX, fit(g, tp, PX, 38, 370), '#ccff00', 'center', '#1c3300');
-  text(g, 'OF ALL PLAYERS', W / 2 + 225, 578, VT, 30, '#9fc2ad', 'center');
-  drawScreen(g, W, H);
+  text(g, rk, CX - 220, 484, PX, fit(g, rk, PX, 36, 360), '#ffce3d', 'center', '#5c3d00');
+  text(g, 'RANK', CX - 220, 515, VT, 28, '#9fc2ad', 'center');
+  text(g, tp, CX + 220, 484, PX, fit(g, tp, PX, 36, 360), '#ccff00', 'center', '#1c3300');
+  text(g, 'OF ALL PLAYERS', CX + 220, 515, VT, 28, '#9fc2ad', 'center');
+  drawScreenFx(g); drawFrame(g);
 }
 
-function drawRun(g, W, H, shot, m, tipo) {
-  drawCRT(g, W, H, seedRng());
+function drawRun(g, shot, m, tipo) {
+  const h = HOLE;
+  drawFloor(g); drawScreenBg(g);
   if (shot && shot.width) {
-    const sc = Math.max(W / shot.width, H / shot.height);
+    const sc = Math.max(h.w / shot.width, h.h / shot.height);
     const dw = shot.width * sc, dh = shot.height * sc;
+    g.save(); g.beginPath(); g.rect(h.x, h.y, h.w, h.h); g.clip();
     g.imageSmoothingEnabled = false;
-    g.drawImage(shot, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    g.drawImage(shot, h.x + (h.w - dw) / 2, h.y + (h.h - dh) / 2, dw, dh);
+    g.restore();
   }
-  g.fillStyle = 'rgba(8,25,15,.9)'; g.fillRect(0, H - 180, W, 180);
-  g.fillStyle = '#00ff88'; g.fillRect(0, H - 184, W, 4);
-  text(g, tipo === 'gameOver' ? 'GAME OVER' : 'MATCH FINISHED', 60, H - 112, PX, 30, tipo === 'gameOver' ? '#f62a2d' : '#ccff00', 'left', '#000');
-  text(g, handle(), W - 60, H - 112, PX, fit(g, handle(), PX, 20, 480), '#9fc2ad', 'right');
+  const by = h.y + h.h - 150;
+  g.fillStyle = 'rgba(8,25,15,.92)'; g.fillRect(h.x, by, h.w, 150);
+  g.fillStyle = '#00ffaa'; g.fillRect(h.x, by - 4, h.w, 4);
+  const L = h.x + 30, R = h.x + h.w - 30;
+  text(g, tipo === 'gameOver' ? 'GAME OVER' : 'MATCH FINISHED', L, by + 58, PX, 28, tipo === 'gameOver' ? '#f62a2d' : '#ccff00', 'left', '#000');
+  text(g, handle(), R, by + 58, PX, fit(g, handle(), PX, 18, 420), '#9fc2ad', 'right');
   const secs = Math.floor(m.alive), alive = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
-  text(g, 'KILLS ' + m.kills, 60, H - 56, PX, 24, '#ffffff', 'left', '#000');
-  text(g, 'ALIVE ' + alive, 360, H - 56, PX, 24, '#ffffff', 'left', '#000');
-  text(g, '+' + fmt(m.earned) + ' POINTS', W - 60, H - 56, PX, 24, '#00ff88', 'right', '#003d1f');
-  drawScreen(g, W, H);
+  text(g, 'KILLS ' + m.kills, L, by + 116, PX, 22, '#ffffff', 'left', '#000');
+  text(g, 'ALIVE ' + alive, L + 290, by + 116, PX, 22, '#ffffff', 'left', '#000');
+  text(g, '+' + fmt(m.earned) + ' POINTS', R, by + 116, PX, 22, '#00ff88', 'right', '#003d1f');
+  drawScreenFx(g); drawFrame(g);
 }
 
 const share = { variants: [], idx: 0, text: '', done: null, blob: null };
@@ -1248,10 +1320,26 @@ let match = null, matchTimer = null, hooked = null;
 // next start: the arena always starts clean.
 const dropGameSave = () => { try { localStorage.removeItem('pillwars_save'); } catch (e) {} };
 
+// HUD pieces the arena never shows. Injected as soon as the game document exists
+// (not on load): otherwise they flash top-left while the match boots.
+const HIDE_CSS = '#hudRoom,#hudAlive,#hudMass,#pwCookies,#botsBanner,#cmdBar{display:none!important}';
+function injectHide(doc) {
+  if (!doc || !doc.head || doc.getElementById('airdropHide')) return;
+  const st = doc.createElement('style'); st.id = 'airdropHide'; st.textContent = HIDE_CSS;
+  doc.head.appendChild(st);
+}
+
 veil.addEventListener('click', () => {
   dropGameSave();
   veil.hidden = true;
   frame.src = 'game/?heroplay=1&name=' + encodeURIComponent(displayName().slice(0, 12));
+  const t0 = Date.now();
+  const early = setInterval(() => {
+    let doc = null;
+    try { doc = frame.contentDocument; } catch (e) {}
+    if (doc && /heroplay=1/.test(doc.URL) && doc.head) { injectHide(doc); clearInterval(early); }
+    else if (Date.now() - t0 > 20000) clearInterval(early);
+  }, 5);
 });
 
 frame.addEventListener('load', () => {
@@ -1266,9 +1354,7 @@ frame.addEventListener('load', () => {
 
 function hook(w) {
   hooked = w;
-  const st = w.document.createElement('style');
-  st.textContent = '#hudRoom,#hudAlive,#hudMass,#pwCookies,#botsBanner,#cmdBar{display:none!important}';
-  w.document.head.appendChild(st);
+  injectHide(w.document);
 
   // No command bar (Enter: /god and friends) and no Space in the arena.
   w.addEventListener('keydown', e => {
@@ -1393,7 +1479,7 @@ function endMatch(w, tipo) {
   $('#quit').onclick = resetArena;
   $('#shareRun').onclick = () => openShare({
     title: 'SHARE YOUR RUN', kind: 'run',
-    variants: [(g, W, H) => drawRun(g, W, H, shot, m, tipo)],
+    variants: [g => drawRun(g, shot, m, tipo)],
     text: 'I just got ' + m.kills + (m.kills === 1 ? ' kill' : ' kills') + ' in the @' + X_ACCOUNT + ' Daily Arena' +
       (m.earned ? ' and earned ' + fmt(m.earned) + ' points' : '') + '.\n\nThink you can beat me?',
     done: null,
