@@ -62,17 +62,19 @@ function createAdmin(opts) {
         const eligible = list.filter(r => r.wallet);
         const pool = SUPPLY * AIRDROP_PCT / 100;
         const sum = eligible.reduce((a, r) => a + r.total, 0) || 1;
-        eligible.forEach(r => { r.pct = r.total / sum * 100; r.tokens = pool * r.total / sum; });
+        eligible.forEach((r, i) => { r.rank = i + 1; r.pct = r.total / sum * 100; r.tokens = pool * r.total / sum; });
         return { list, eligible, pool, sum };
     }
 
     function page() {
         const { list, eligible, pool, sum } = rows();
+        // Everyone registered, not just the eligible ones - the whole point is to
+        // actually see who signed up. Rank/share/$PILLY only mean anything for a
+        // linked wallet, so those columns are blank for an X-only row.
         const head = '<tr><th>#</th><th>X</th><th>WALLET</th><th class=n>ON-CHAIN+X+INV</th><th class=n>QUESTS</th><th class=n>ARENA</th><th class=n>BOOST</th><th class=n>TOTAL</th><th class=n>SHARE</th><th class=n>$PILLY</th></tr>';
-        const body = eligible.map((r, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(r.x || '-') + '</td><td title="' + esc(r.wallet) + '">' + esc(short(r.wallet)) + '</td><td class=n>' +
-            (r.checked ? fmt(r.verified) : '<i>checking</i>') + '</td><td class=n>' + fmt(r.quests) + '</td><td class=n>' + fmt(r.arena) + '</td><td class=n>' + (r.boosted ? 'x1.5' : '-') +
-            '</td><td class=n><b>' + fmt(r.total) + '</b></td><td class=n>' + r.pct.toFixed(2) + '%</td><td class=n>' + fmt(r.tokens) + '</td></tr>').join('');
-        const noWallet = list.filter(r => !r.wallet);
+        const body = list.map((r, i) => '<tr' + (r.wallet ? '' : ' class="unlinked"') + '><td>' + (r.wallet ? r.rank : '-') + '</td><td>' + esc(r.x || '-') + '</td><td title="' + esc(r.wallet) + '">' + (r.wallet ? esc(short(r.wallet)) : '<i>no wallet</i>') + '</td><td class=n>' +
+            (r.checked ? fmt(r.verified) : r.wallet ? '<i>checking</i>' : '-') + '</td><td class=n>' + fmt(r.quests) + '</td><td class=n>' + fmt(r.arena) + '</td><td class=n>' + (r.boosted ? 'x1.5' : '-') +
+            '</td><td class=n><b>' + fmt(r.total) + '</b></td><td class=n>' + (r.wallet ? r.pct.toFixed(2) + '%' : '-') + '</td><td class=n>' + (r.wallet ? fmt(r.tokens) : '-') + '</td></tr>').join('');
         return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Airdrop admin</title>
 <meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
@@ -85,6 +87,7 @@ table{border-collapse:collapse;width:100%;background:#07140e;box-shadow:0 0 0 2p
 th,td{padding:7px 10px;border-bottom:1px solid #0f3a25;text-align:left;white-space:nowrap}
 th{color:#8fa89a;font-weight:400;font-size:12px;text-transform:uppercase}
 td.n,th.n{text-align:right} tbody tr:hover{background:#0a1f14} i{color:#8fa89a}
+tr.unlinked{opacity:.6}
 .note{color:#8fa89a;margin:18px 0 0;font-size:13px}
 </style></head><body>
 <h1>PILLWARS AIRDROP - ADMIN</h1>
@@ -97,7 +100,7 @@ td.n,th.n{text-align:right} tbody tr:hover{background:#0a1f14} i{color:#8fa89a}
   <div class="card"><b>${fmt(pool)}</b><span>$PILLY pool (${AIRDROP_PCT}%)</span></div>
 </div>
 <table><thead>${head}</thead><tbody>${body || '<tr><td colspan="10"><i>nobody yet</i></td></tr>'}</tbody></table>
-<p class="note">Only a linked wallet can be paid, so the share is split between those.${noWallet.length ? ' ' + fmt(noWallet.length) + ' registered with X only: ' + noWallet.map(r => esc(r.x)).join(', ') + '.' : ''}</p>
+<p class="note">Only a linked wallet can be paid, so rank/share/$PILLY are blank for the dimmed rows (X only, no wallet yet).</p>
 <p class="note">Points and shares are what the page shows today; the real split is the one taken at the Season 0 snapshot.</p>
 </body></html>`;
     }
