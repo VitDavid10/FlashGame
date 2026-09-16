@@ -403,7 +403,18 @@ function createAirdrop(opts) {
             return true;
         }
         if (urlPath.startsWith('/airdrop-admin/')) {
-            if (!hitOk('admin:' + clientIp(req), 20) || !admin.valid(urlPath.slice('/airdrop-admin/'.length))) { notFound(req, res); return true; }
+            if (!hitOk('admin:' + clientIp(req), 20)) { notFound(req, res); return true; }
+            const rest = urlPath.slice('/airdrop-admin/'.length);
+            const discardMatch = rest.match(/^([^/]+)\/discard$/);
+            const token = discardMatch ? discardMatch[1] : rest;
+            if (discardMatch) {
+                if (req.method !== 'POST') { notFound(req, res); return true; }
+                const body = await readJson(req);
+                const ok = body && typeof body.uid === 'string' && admin.setDiscarded(token, body.uid, !!body.on);
+                json(res, ok ? 200 : 403, { ok: !!ok });
+                return true;
+            }
+            if (req.method !== 'GET' || !admin.valid(token)) { notFound(req, res); return true; }
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Referrer-Policy': 'no-referrer' });
             res.end(admin.page());
             return true;

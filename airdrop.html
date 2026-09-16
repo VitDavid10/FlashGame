@@ -891,7 +891,7 @@ const pendingTasks = new Set();
 function taskRow(q) {
   const done = isDone(q.key);
   let btn = '';
-  if (!done && q.auto) btn = '<button class="pbtn grey sm" data-go="arena">PLAY</button>';
+  if (!done && q.auto) btn = '<button class="pbtn green sm" data-go="arena">PLAY</button>';
   else if (!done) btn = '<button class="pbtn green sm" data-task="' + q.key + '">' + (pendingTasks.has(q.key) ? 'VERIFY' : 'GO') + '</button>';
   return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : q.pts ? '+' + q.pts : 'BOOST') + '</span>' + btn + '</div>';
 }

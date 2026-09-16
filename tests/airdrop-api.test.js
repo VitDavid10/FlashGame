@@ -126,6 +126,36 @@ test('the admin dashboard only opens with a link minted from the server itself',
     assert.strictEqual((await fetch(base + '/airdrop-admin/' + token)).status, 404);
 });
 
+test('the admin dashboard can discard a wallet and restore it', async (t) => {
+    const { server, base } = await startServer();
+    t.after(() => server.close());
+    const c = client(base);
+    await c.demoWallet();
+    const token = (await (await fetch(base + '/api/airdrop/admin-link', { method: 'POST' })).text()).trim().split('/airdrop-admin/')[1];
+    // uid isn't part of publicView; pull it from the dashboard's own DISCARD button.
+    const before = await (await fetch(base + '/airdrop-admin/' + token)).text();
+    const realUid = before.match(/data-uid="([^"]+)"/)[1];
+
+    // An expired/wrong token can't discard anything.
+    const forged = await fetch(base + '/airdrop-admin/not-a-real-token/discard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: realUid, on: true }) });
+    assert.strictEqual(forged.status, 403);
+
+    const discard = await fetch(base + '/airdrop-admin/' + token + '/discard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: realUid, on: true }) });
+    assert.strictEqual(discard.status, 200);
+    assert.deepStrictEqual(await discard.json(), { ok: true });
+
+    let html = await (await fetch(base + '/airdrop-admin/' + token)).text();
+    assert.match(html, /DISCARDED \(1\)/);
+    assert.match(html, /ALL \(0\)/);
+    assert.match(html, /solscan\.io\/account\//);
+
+    const restore = await fetch(base + '/airdrop-admin/' + token + '/discard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: realUid, on: false }) });
+    assert.strictEqual(restore.status, 200);
+    html = await (await fetch(base + '/airdrop-admin/' + token)).text();
+    assert.match(html, /DISCARDED \(0\)/);
+    assert.match(html, /ALL \(1\)/);
+});
+
 test('a request from another origin (no matching Referer) is refused', async (t) => {
     const { server, base } = await startServer();
     t.after(() => server.close());

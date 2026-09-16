@@ -202,7 +202,14 @@ function createStore(opts) {
     }
     const cardOfCode = code => { const u = user(byCode.get(String(code || '').toLowerCase())); return u && u.card || null; };
 
-    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, inviteCount, flush, MAX_INVITES, _data: () => data };
+    // Admin-only, manual: a wallet someone flagged (suspected sybil/bot) as not
+    // eligible for the airdrop, regardless of its points. Reversible any time.
+    function setDiscarded(uid, discarded) {
+        const u = user(uid); if (!u) return false;
+        u.discarded = !!discarded; save(); return true;
+    }
+
+    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, inviteCount, setDiscarded, flush, MAX_INVITES, _data: () => data };
 }
 
 module.exports = { createStore, MAX_INVITES, INVITE_MIN_AGE_DAYS, INVITE_MIN_TXS };
