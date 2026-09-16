@@ -118,7 +118,7 @@ test('the admin dashboard only opens with a link minted from the server itself',
     assert.strictEqual(page.headers.get('x-robots-tag'), 'noindex, nofollow');
     const html = await page.text();
     assert.match(html, /PILLWARS AIRDROP - ADMIN/);
-    assert.match(html, /Eligible \(wallet\)/);
+    assert.match(html, /Eligible \(wallet,/);
 
     // Minting a new link kills the old one.
     const url2 = (await (await fetch(base + '/api/airdrop/admin-link', { method: 'POST' })).text()).trim();

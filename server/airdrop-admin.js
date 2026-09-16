@@ -18,6 +18,11 @@ const crypto = require('crypto');
 
 const ADMIN_TTL_MS = 30 * 60 * 1000;
 const SUPPLY = 1e9, AIRDROP_PCT = 10;
+// A wallet just old/used enough to count as a real invite (see INVITE_MIN_AGE_DAYS/
+// INVITE_MIN_TXS in airdrop-store.js) already scores about this much from age+tx
+// tiers alone. Below it, a signup is most likely a driveby: connected X and did
+// nothing else. Adjust freely - it only changes who this dashboard treats as paid.
+const MIN_ELIGIBLE_POINTS = 500;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => Math.round(n || 0).toLocaleString('en-US');
 const short = w => (w ? w.slice(0, 4) + '...' + w.slice(-4) : '-');
@@ -58,23 +63,29 @@ function createAdmin(opts) {
                 total: v.total, checked: !!store.chainOf(u),
             };
         }).sort((a, b) => b.total - a.total);
-        // Only a linked wallet can be paid: that is what makes someone eligible.
-        const eligible = list.filter(r => r.wallet);
+        // Who actually gets paid: a linked wallet AND at least MIN_ELIGIBLE_POINTS -
+        // filters out a bare "connected X and did nothing else" driveby signup.
+        const eligible = list.filter(r => r.wallet && r.total >= MIN_ELIGIBLE_POINTS);
         const pool = SUPPLY * AIRDROP_PCT / 100;
         const sum = eligible.reduce((a, r) => a + r.total, 0) || 1;
         eligible.forEach((r, i) => { r.rank = i + 1; r.pct = r.total / sum * 100; r.tokens = pool * r.total / sum; });
         return { list, eligible, pool, sum };
     }
 
+    const head = '<tr><th>#</th><th>X</th><th>WALLET</th><th class=n>ON-CHAIN+X+INV</th><th class=n>QUESTS</th><th class=n>ARENA</th><th class=n>BOOST</th><th class=n>TOTAL</th><th class=n>SHARE</th><th class=n>$PILLY</th></tr>';
+    function row(r) {
+        const paid = r.wallet && r.total >= MIN_ELIGIBLE_POINTS;
+        const why = !r.wallet ? 'no wallet' : r.total < MIN_ELIGIBLE_POINTS ? '&lt; ' + fmt(MIN_ELIGIBLE_POINTS) + ' pts' : '';
+        return '<tr' + (paid ? '' : ' class="unlinked"') + '><td>' + (paid ? r.rank : '-') + '</td><td>' + esc(r.x || '-') + '</td><td title="' + esc(r.wallet) + (why ? ' (' + why + ')' : '') + '">' +
+            (r.wallet ? esc(short(r.wallet)) : '<i>no wallet</i>') + (why && r.wallet ? ' <i>(' + why + ')</i>' : '') + '</td><td class=n>' +
+            (r.checked ? fmt(r.verified) : r.wallet ? '<i>checking</i>' : '-') + '</td><td class=n>' + fmt(r.quests) + '</td><td class=n>' + fmt(r.arena) + '</td><td class=n>' + (r.boosted ? 'x1.5' : '-') +
+            '</td><td class=n><b>' + fmt(r.total) + '</b></td><td class=n>' + (paid ? r.pct.toFixed(2) + '%' : '-') + '</td><td class=n>' + (paid ? fmt(r.tokens) : '-') + '</td></tr>';
+    }
+
     function page() {
         const { list, eligible, pool, sum } = rows();
-        // Everyone registered, not just the eligible ones - the whole point is to
-        // actually see who signed up. Rank/share/$PILLY only mean anything for a
-        // linked wallet, so those columns are blank for an X-only row.
-        const head = '<tr><th>#</th><th>X</th><th>WALLET</th><th class=n>ON-CHAIN+X+INV</th><th class=n>QUESTS</th><th class=n>ARENA</th><th class=n>BOOST</th><th class=n>TOTAL</th><th class=n>SHARE</th><th class=n>$PILLY</th></tr>';
-        const body = list.map((r, i) => '<tr' + (r.wallet ? '' : ' class="unlinked"') + '><td>' + (r.wallet ? r.rank : '-') + '</td><td>' + esc(r.x || '-') + '</td><td title="' + esc(r.wallet) + '">' + (r.wallet ? esc(short(r.wallet)) : '<i>no wallet</i>') + '</td><td class=n>' +
-            (r.checked ? fmt(r.verified) : r.wallet ? '<i>checking</i>' : '-') + '</td><td class=n>' + fmt(r.quests) + '</td><td class=n>' + fmt(r.arena) + '</td><td class=n>' + (r.boosted ? 'x1.5' : '-') +
-            '</td><td class=n><b>' + fmt(r.total) + '</b></td><td class=n>' + (r.wallet ? r.pct.toFixed(2) + '%' : '-') + '</td><td class=n>' + (r.wallet ? fmt(r.tokens) : '-') + '</td></tr>').join('');
+        const eligibleBody = eligible.map(row).join('');
+        const allBody = list.map(row).join('');
         return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Airdrop admin</title>
 <meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
@@ -83,25 +94,41 @@ h1{font-size:20px;margin:0 0 4px;color:#ccff00} .sub{color:#8fa89a;margin:0 0 20
 .cards{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
 .card{background:#07140e;box-shadow:0 0 0 2px #0f3a25;padding:12px 16px;min-width:150px}
 .card b{display:block;font-size:22px;color:#00ff88} .card span{color:#8fa89a;font-size:13px;text-transform:uppercase}
+.tabs{display:flex;gap:8px;margin-bottom:10px}
+.tabs button{font:inherit;background:#07140e;color:#8fa89a;box-shadow:0 0 0 2px #0f3a25;border:0;padding:8px 16px;cursor:pointer}
+.tabs button.on{color:#00ff88;box-shadow:0 0 0 2px #00ff88}
 table{border-collapse:collapse;width:100%;background:#07140e;box-shadow:0 0 0 2px #0f3a25}
 th,td{padding:7px 10px;border-bottom:1px solid #0f3a25;text-align:left;white-space:nowrap}
 th{color:#8fa89a;font-weight:400;font-size:12px;text-transform:uppercase}
 td.n,th.n{text-align:right} tbody tr:hover{background:#0a1f14} i{color:#8fa89a}
 tr.unlinked{opacity:.6}
 .note{color:#8fa89a;margin:18px 0 0;font-size:13px}
+[hidden]{display:none}
 </style></head><body>
 <h1>PILLWARS AIRDROP - ADMIN</h1>
 <p class="sub">${new Date(now()).toISOString().replace('T', ' ').slice(0, 16)} UTC. This link dies ${Math.max(0, Math.round((current.until - now()) / 60000))} minutes from now.</p>
 <div class="cards">
   <div class="card"><b>${fmt(list.length)}</b><span>Registered</span></div>
-  <div class="card"><b>${fmt(eligible.length)}</b><span>Eligible (wallet)</span></div>
+  <div class="card"><b>${fmt(eligible.length)}</b><span>Eligible (wallet, ${fmt(MIN_ELIGIBLE_POINTS)}+ pts)</span></div>
   <div class="card"><b>${fmt(list.filter(r => r.x).length)}</b><span>With X</span></div>
-  <div class="card"><b>${fmt(sum)}</b><span>Points in total</span></div>
+  <div class="card"><b>${fmt(sum)}</b><span>Points, eligible only</span></div>
   <div class="card"><b>${fmt(pool)}</b><span>$PILLY pool (${AIRDROP_PCT}%)</span></div>
 </div>
-<table><thead>${head}</thead><tbody>${body || '<tr><td colspan="10"><i>nobody yet</i></td></tr>'}</tbody></table>
-<p class="note">Only a linked wallet can be paid, so rank/share/$PILLY are blank for the dimmed rows (X only, no wallet yet).</p>
+<div class="tabs">
+  <button class="on" data-t="eligible">ELIGIBLE (${fmt(eligible.length)})</button>
+  <button data-t="all">ALL (${fmt(list.length)})</button>
+</div>
+<table id="tab-eligible"><thead>${head}</thead><tbody>${eligibleBody || '<tr><td colspan="10"><i>nobody eligible yet</i></td></tr>'}</tbody></table>
+<table id="tab-all" hidden><thead>${head}</thead><tbody>${allBody || '<tr><td colspan="10"><i>nobody yet</i></td></tr>'}</tbody></table>
+<p class="note">Eligible = a linked wallet with at least ${fmt(MIN_ELIGIBLE_POINTS)} points; rank/share/$PILLY are only computed among those (dimmed rows in ALL don't count).</p>
 <p class="note">Points and shares are what the page shows today; the real split is the one taken at the Season 0 snapshot.</p>
+<script>
+document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('.tabs button').forEach(function(k){k.classList.toggle('on',k===b)});
+  document.getElementById('tab-eligible').hidden = b.dataset.t !== 'eligible';
+  document.getElementById('tab-all').hidden = b.dataset.t !== 'all';
+};});
+</script>
 </body></html>`;
     }
 
