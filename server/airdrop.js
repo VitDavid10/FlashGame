@@ -29,6 +29,10 @@ const X_SCOPES = 'tweet.read users.read';
 // With AIRDROP_ONLY=1, the only static paths served (prefixes end in '/').
 const LOCKDOWN_ALLOW = ['/game/', '/shared/', '/vendor/', '/fonts/', '/img/', '/snd/', '/video/', '/api/', '/info.css', '/info.js', '/cookies.js'];
 const SESSION_COOKIE = 'pwad';
+// Private "let me in" pass for the owner while AIRDROP_ONLY hides the real site.
+// Minted from a shell on the server itself, same as the admin dashboard link.
+const UNLOCK_COOKIE = 'pwopen';
+const UNLOCK_TTL_MS = 12 * 60 * 60 * 1000;
 const SESSION_MAX_AGE_S = 90 * 24 * 3600;
 const NONCE_TTL_MS = 5 * 60 * 1000;
 const WALLET_MESSAGE = nonce => 'Sign in to PillWars Airdrop\n\nThis only proves you own this wallet. It costs nothing and moves no funds.\n\nNonce: ' + nonce;
@@ -129,6 +133,23 @@ function createAirdrop(opts) {
     function setSession(req, res, token) {
         const secure = originOf(req).startsWith('https:') ? '; Secure' : '';
         res.setHeader('Set-Cookie', SESSION_COOKIE + '=' + token + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + SESSION_MAX_AGE_S + secure);
+    }
+
+    /* ---------------- owner's pass through the lockdown ---------------- */
+    let unlockPass = null;   // { token, until }
+    function mintUnlock() {
+        unlockPass = { token: b64url(crypto.randomBytes(24)), until: Date.now() + UNLOCK_TTL_MS };
+        log('[airdrop] site unlock link minted, valid for ' + Math.round(UNLOCK_TTL_MS / 3600000) + ' hours');
+        return (process.env.AIRDROP_ORIGIN || 'https://pillwars.fun') + '/airdrop-unlock/' + unlockPass.token;
+    }
+    function unlockTokenOk(token) {
+        if (!unlockPass || Date.now() > unlockPass.until) return false;
+        const a = Buffer.from(String(token)), b = Buffer.from(unlockPass.token);
+        return a.length === b.length && crypto.timingSafeEqual(a, b);
+    }
+    function unlocked(req) {
+        const m = new RegExp('(?:^|;\\s*)' + UNLOCK_COOKIE + '=([A-Za-z0-9_-]{20,64})').exec(String(req.headers.cookie || ''));
+        return !!m && unlockTokenOk(m[1]);
     }
     const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
 
@@ -362,6 +383,10 @@ function createAirdrop(opts) {
         return String(req.headers.accept || '').includes('text/html');
     };
     function gate(req, res, urlPath) {
+        // The owner's browser carries a pass: serve the real site as if there
+        // were no lockdown (see mintUnlock). '/' keeps showing the airdrop page,
+        // so the real landing is at /index.html while this is on.
+        if (unlocked(req)) return false;
         if (adminPath && (urlPath === adminPath || urlPath.startsWith(adminPath + '/'))) return false;
         if (urlPath === '/robots.txt') {
             res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -400,6 +425,23 @@ function createAirdrop(opts) {
             if (req.method !== 'POST' || !admin.fromServerItself(req)) { notFound(req, res); return true; }
             res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
             res.end(admin.mint() + '\n');
+            return true;
+        }
+        // Same minting rule as the admin link: only from a shell on the server.
+        if (urlPath === '/api/airdrop/unlock-link') {
+            if (req.method !== 'POST' || !admin.fromServerItself(req)) { notFound(req, res); return true; }
+            res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+            res.end(mintUnlock() + '\n');
+            return true;
+        }
+        if (urlPath.startsWith('/airdrop-unlock/')) {
+            if (!hitOk('unlock:' + clientIp(req), 20)) { notFound(req, res); return true; }
+            const token = urlPath.slice('/airdrop-unlock/'.length);
+            if (req.method !== 'GET' || !unlockTokenOk(token)) { notFound(req, res); return true; }
+            const secure = originOf(req).startsWith('https:') ? '; Secure' : '';
+            res.setHeader('Set-Cookie', UNLOCK_COOKIE + '=' + token + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + Math.round(UNLOCK_TTL_MS / 1000) + secure);
+            log('[airdrop] site unlocked for one browser');
+            redirect(res, '/game/', 302);
             return true;
         }
         if (urlPath.startsWith('/airdrop-admin/')) {

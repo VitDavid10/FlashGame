@@ -162,3 +162,73 @@ test('a request from another origin (no matching Referer) is refused', async (t)
     const r = await fetch(base + '/api/airdrop/arena/begin', { method: 'POST', headers: { Referer: 'https://evil.example/' }, body: '{}' });
     assert.strictEqual(r.status, 403);
 });
+
+// A second harness, this time WITH the lockdown on, that answers 200
+// 'PASSTHROUGH' whenever the airdrop module lets a path through to the normal
+// static server. That is the only way to tell "the gate blocked it" (404 from
+// the gate) apart from "the gate allowed it" from outside.
+function startLocked() {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airdrop-lock-'));
+    fs.writeFileSync(path.join(root, 'airdrop.html'), '<!--OG--><body>airdrop</body>');
+    fs.writeFileSync(path.join(root, '404.html'), '404');
+    process.env.AIRDROP_DATA_FILE = path.join(root, 'data.json');
+    const airdrop = createAirdrop({ root, only: true, clientIp: () => '127.0.0.1', log: () => {} });
+    const server = http.createServer(async (req, res) => {
+        const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        const query = new URLSearchParams((req.url || '').split('?')[1] || '');
+        if (await airdrop.handle(req, res, urlPath, query)) return;
+        res.writeHead(200); res.end('PASSTHROUGH');
+    });
+    return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve({ server, base: 'http://127.0.0.1:' + server.address().port })));
+}
+
+test('the lockdown keeps every browser out of the real site', async (t) => {
+    const { server, base } = await startLocked();
+    t.after(() => server.close());
+    const get = (p, headers) => fetch(base + p, { headers: headers || {}, redirect: 'manual' });
+
+    // A visitor typing the address, or following a link: a browser sends
+    // sec-fetch-dest: document for that, and it must never get through.
+    assert.strictEqual((await get('/game/', { 'Sec-Fetch-Dest': 'document', Referer: base + '/' })).status, 404);
+    assert.strictEqual((await get('/index.html', { 'Sec-Fetch-Dest': 'document' })).status, 404);
+    // Someone embedding the game in their own page: the Referer gives them away.
+    assert.strictEqual((await get('/game/', { 'Sec-Fetch-Dest': 'iframe', Referer: 'https://evil.example/' })).status, 404);
+    assert.strictEqual((await get('/game/', { 'Sec-Fetch-Dest': 'iframe' })).status, 404);
+    // No walking out of the allowed prefixes.
+    assert.strictEqual((await get('/game/../server/airdrop-data.json', { Referer: base + '/' })).status, 404);
+    // Our own iframe is the one thing that works.
+    assert.strictEqual((await get('/game/', { 'Sec-Fetch-Dest': 'iframe', Referer: base + '/' })).status, 200);
+});
+
+test('the owner can unlock the real site with a link minted on the server', async (t) => {
+    const { server, base } = await startLocked();
+    t.after(() => server.close());
+
+    // Not from the internet (Caddy always adds x-forwarded-for), not by GET.
+    assert.strictEqual((await fetch(base + '/api/airdrop/unlock-link', { method: 'POST', headers: { 'X-Forwarded-For': '8.8.8.8' } })).status, 404);
+    assert.strictEqual((await fetch(base + '/api/airdrop/unlock-link')).status, 404);
+    // A made-up token sets no cookie.
+    assert.strictEqual((await fetch(base + '/airdrop-unlock/not-a-real-token', { redirect: 'manual' })).status, 404);
+
+    const url = (await (await fetch(base + '/api/airdrop/unlock-link', { method: 'POST' })).text()).trim();
+    const token = url.split('/airdrop-unlock/')[1];
+    assert.match(token, /^[A-Za-z0-9_-]{30,}$/);
+
+    const open = await fetch(base + '/airdrop-unlock/' + token, { redirect: 'manual' });
+    assert.strictEqual(open.status, 302);
+    assert.strictEqual(open.headers.get('location'), '/game/');
+    const cookie = open.headers.get('set-cookie').split(';')[0];
+    assert.match(open.headers.get('set-cookie'), /HttpOnly/);
+
+    // With the pass, the real site answers as if there were no lockdown.
+    const withPass = p => fetch(base + p, { headers: { Cookie: cookie, 'Sec-Fetch-Dest': 'document' } });
+    assert.strictEqual((await withPass('/game/')).status, 200);
+    assert.strictEqual(await (await withPass('/index.html')).text(), 'PASSTHROUGH');
+    // A forged cookie value does nothing.
+    const forged = await fetch(base + '/index.html', { headers: { Cookie: 'pwopen=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'Sec-Fetch-Dest': 'document' } });
+    assert.strictEqual(forged.status, 404);
+
+    // Minting again revokes the previous pass.
+    await fetch(base + '/api/airdrop/unlock-link', { method: 'POST' });
+    assert.strictEqual((await withPass('/index.html')).status, 404);
+});
