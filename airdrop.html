@@ -205,6 +205,7 @@ a{color:var(--green)}
 .hudq li i{font-style:normal;width:12px;height:12px;flex:none;box-shadow:inset 0 0 0 2px #6f8f80}
 .hudq li.ok{color:var(--green)} .hudq li.ok i{background:var(--green);box-shadow:none}
 .hudq li u{text-decoration:none;margin-left:auto;color:var(--gold);font-size:17px;padding-left:8px}
+.hudq.away{display:none}
 .over{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(0,0,0,.78);text-align:center;padding:16px}
 /* Same lettering as the share card: pixel font, hard black shadow, no box. */
 .over .go{--s:clamp(22px,4.6vw,44px);font-family:var(--px);font-size:var(--s);line-height:1.2;color:#f62a2d;text-shadow:calc(var(--s)/8) calc(var(--s)/8) 0 #000;text-align:center}
@@ -318,16 +319,44 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
    lives OUTSIDE that iframe as a plain sibling, so it doesn't rotate with it
    on its own: rotate it here too, gated on .screen.full so the percentages
    below are measured against the real, full device screen (inside the small
-   inline box on a non-fullscreen phone this would be off). Exact placement
-   needs checking on a real phone - nudge the `right`/scale if it doesn't sit
-   right next to the game's own EXIT/MUSIC/SOUND column. */
+   inline box on a non-fullscreen phone this would be off). Checked at 320,
+   360, 375 and 414 CSS px wide: the panel lands right next to the game's own
+   EXIT/MUSIC/SOUND column at every one of them. */
 @media (pointer:coarse) and (orientation:portrait){
+  /* Fixed size so the maths below hold: rotated 90deg around its centre, a
+     200x120 box paints as 120 wide x 200 tall with the SAME centre, so
+     right:16 + 200/2 - 120/2 = 56px from the right edge (just clear of the
+     game's own 34px button column at right:12) and bottom:52 + 120/2 - 200/2
+     = 12px, level with the bottom button. Turned, that reads as "right under
+     the exit/music/sound row". */
   .screen.full .hudq{
-    top:50%;right:22%;left:auto;bottom:auto;
-    transform:translate(50%,-50%) rotate(90deg) scale(.72);
-    transform-origin:center;
-    min-width:0;max-width:220px;
+    width:200px;height:120px;min-width:0;max-width:none;overflow:hidden;
+    top:auto;left:auto;right:16px;bottom:52px;
+    transform:rotate(90deg);transform-origin:center;
   }
+  .screen.full .hudq h5{font-size:8px;margin-bottom:6px}
+  .screen.full .hudq li{font-size:14px;margin:2px 0}
+  .screen.full .hudq li u{font-size:13px}
+  /* GAME OVER / MATCH FINISHED and the share card cover the whole screen, so
+     they turn the way the game turns its own full-screen panels: swapped
+     measurements, centred, rotated (see #resultOverlay in game/index.html). */
+  .screen.full .over,
+  body.arena-full .modal,
+  body.arena-full .toast{
+    width:100dvh;height:100vw;
+    top:50%;left:50%;right:auto;bottom:auto;
+    transform:translate(-50%,-50%) rotate(90deg);transform-origin:center;
+  }
+  body.arena-full .toast{width:auto;height:auto;max-width:80dvh}
+  /* Turned, the card's height runs along the phone's WIDTH, and the card is
+     mostly the 1200x630 canvas (height = 0.525 x width): cap the width so the
+     whole card fits in 100vw. The cap only works if everything around the
+     canvas keeps a FIXED height, so here the buttons never wrap to a second
+     row and the tip (three lines in this width) steps aside. */
+  body.arena-full .modal.share .panel{max-width:calc(190vw - 190px)}
+  body.arena-full .modal.share .share-btns{flex-wrap:nowrap;gap:8px}
+  body.arena-full .modal.share .share-btns .pbtn{flex:1 1 0;min-width:0;white-space:nowrap}
+  body.arena-full .modal.share .share-tip{display:none}
 }
 </style>
 <script>
@@ -1696,14 +1725,71 @@ function injectHide(doc) {
   doc.head.appendChild(st);
 }
 
+// The quest panel lives OUTSIDE the iframe, so it paints on top of the game's
+// own dialogs (EXIT, prize, notices) - it looked stuck over them. Watching their
+// inline display (the game shows/hides them that way) moves it out of the way.
+// The same observer covers the menu screens: in a hero URL the game never shows
+// them again by itself, so if one appears the arena has leaked back into the
+// real game (paid rooms) and is torn down. The 3s grace is for the boot, where
+// heroQuickPlay is still hiding them while this is already watching.
+const MODAL_IDS = ['exitModal', 'prizeModal', 'sysModal', 'skillChoiceOverlay'];
+const MENU_IDS = ['loginOverlay', 'modeScreen'];
+let uiWatch = null;
+function shown(el) { return !!el && !!el.style.display && el.style.display !== 'none'; }
+function watchGameUI(w) {
+  const pick = ids => ids.map(id => w.document.getElementById(id)).filter(Boolean);
+  const modals = pick(MODAL_IDS), menus = pick(MENU_IDS);
+  const sync = () => {
+    if (menus.some(shown) && match && Date.now() - match.start > 3000) return resetArena();
+    hudq.classList.toggle('away', modals.some(shown));
+  };
+  uiWatch = new w.MutationObserver(sync);
+  for (const el of modals.concat(menus)) uiWatch.observe(el, { attributes: true, attributeFilter: ['style'] });
+  sync();
+}
+function unwatchGameUI() {
+  try { uiWatch.disconnect(); } catch (e) {}
+  uiWatch = null;
+  hudq.classList.remove('away');
+}
+
 // Touch device: cover the whole screen (see .screen.full) so the game's own
 // mobile layout - built assuming it owns the full viewport - measures right.
 const isTouch = () => matchMedia('(pointer:coarse)').matches;
+// Never with frame.src: that leaves a history entry, and going back walked the
+// iframe into the real game's menu (paid rooms) from inside the airdrop page.
+// replace() overwrites the entry instead, so there is nothing to go back to.
+let wantPlay = false;
+function loadGame(url) {
+  wantPlay = /heroplay=1/.test(url);
+  try { frame.contentWindow.location.replace(url); } catch (e) { frame.src = url; }
+}
+let arenaState = false;   // our own history entry is in place
+function enterFull() {
+  if (!isTouch()) return;
+  screenEl.classList.add('full');
+  document.body.classList.add('arena-full');
+  document.body.style.overflow = 'hidden';
+  // Back now leaves the arena instead of the page (or the iframe's history).
+  try { history.pushState({ arena: 1 }, ''); arenaState = true; } catch (e) {}
+}
+function leaveFull() {
+  screenEl.classList.remove('full');
+  document.body.classList.remove('arena-full');
+  document.body.style.overflow = '';
+  // Leaving through EXIT/GAME OVER instead of Back: take our entry out again,
+  // or the next Back press would be eaten doing nothing (one dead press per
+  // match played).
+  if (arenaState) { arenaState = false; try { history.back(); } catch (e) {} }
+}
+// Back while playing: the entry is already gone, so clear the flag BEFORE the
+// teardown - otherwise leaveFull would go back again and off the page.
+addEventListener('popstate', () => { if (!screenEl.classList.contains('full')) return; arenaState = false; resetArena(); });
 veil.addEventListener('click', () => {
   dropGameSave();
   veil.hidden = true;
-  if (isTouch()) { screenEl.classList.add('full'); document.body.style.overflow = 'hidden'; }
-  frame.src = 'game/?heroplay=1&name=' + encodeURIComponent(displayName().slice(0, 12));
+  enterFull();
+  loadGame('game/?heroplay=1&name=' + encodeURIComponent(displayName().slice(0, 12)));
   const t0 = Date.now();
   const early = setInterval(() => {
     let doc = null;
@@ -1715,7 +1801,14 @@ veil.addEventListener('click', () => {
 
 frame.addEventListener('load', () => {
   const w = frame.contentWindow;
-  if (!/heroplay=1/.test(frame.src) || hooked === w) return;
+  unwatchGameUI();
+  // The hooked document is gone. If a match was still open the game navigated
+  // on its own: close it instead of leaving the panel floating over the page.
+  if (hooked && hooked !== w) { hooked = null; if (match) return resetArena(); }
+  // Our own flag, not frame.src: the iframe is navigated with replace() (no
+  // history entry) and the game rewrites its own URL on boot, so neither the
+  // src property nor the address says any more whether this is a real match.
+  if (!wantPlay || hooked === w) return;
   const wait = setInterval(() => {
     if (!w.processSimEvents || !w.showResultsUI || !w.killPop || !w.returnToMenu) return;
     clearInterval(wait);
@@ -1726,6 +1819,7 @@ frame.addEventListener('load', () => {
 function hook(w) {
   hooked = w;
   injectHide(w.document);
+  watchGameUI(w);
 
   // No command bar in the arena (Enter opens it: /god and friends).
   w.addEventListener('keydown', e => {
@@ -1895,13 +1989,13 @@ function resetArena() {
   // would find a match still "running" there.
   if (match) arena('end', { finished: false, place: null });
   stopMatch();
+  unwatchGameUI();
   dropGameSave();
   hooked = null;
   over.hidden = true;
   veil.hidden = false;
-  screenEl.classList.remove('full');
-  document.body.style.overflow = '';
-  frame.src = 'game/?hero=1';
+  leaveFull();
+  loadGame('game/?hero=1');
 }
 
 function endMatch(w, tipo) {
