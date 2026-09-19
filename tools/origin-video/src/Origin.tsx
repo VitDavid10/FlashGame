@@ -144,9 +144,9 @@ const STREAK = ["FIRST BLOOD", "DOUBLE KILL", "TRIPLE KILL", "QUADRA KILL", "PEN
 const MONEY = ["+$16.40", "+$23.00", "+$31.50", "+$42.00", "+$51.00"];
 const POPS: Kill[] = KILLS.map((at, i) => ({ at, money: MONEY[i], streak: STREAK[i] }));
 
-const A_TEXT = "Eat pills to get their money!";
-const B_TEXT = "Eat or be eaten";
-const A_CUT = "Eat pills".length, B_CUT = "Eat".length;
+// Each phrase on its own: typed, its event lands in the pause, then it clears
+// before the next one starts.
+const P1 = "Eat pills", P2 = "to get their money!", P3 = "Eat", P4 = "or be eaten";
 
 const Footage: React.FC = () => {
   const f = useCurrentFrame();
@@ -166,12 +166,14 @@ const Footage: React.FC = () => {
       ))}
       {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} /></Sequence>}
       <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} /></Sequence>
-      {/* "Eat pills" · kill 1 · "to get their money!" · kill 2 */}
-      <Caption text={A_TEXT} y={H * 0.84} size={48} out={vK3 - 20}
-        keys={[[0, 4], [A_CUT, vK1 - 5], [A_CUT, vK1 + 6], [A_TEXT.length, vK2 - 5]]} />
-      {/* "Eat" · kill 3 · "or be eaten" · death */}
-      <Caption text={B_TEXT} y={H * 0.84} size={56} color="#00ff88"
-        keys={[[0, vK3 - 12], [B_CUT, vK3 - 4], [B_CUT, vK3 + 6], [B_TEXT.length, DEATH - 3]]} />
+      {/* "Eat pills" · kill 1 */}
+      <Caption text={P1} y={H * 0.84} size={52} out={vK1 + 6} keys={[[0, 4], [P1.length, vK1 - 5]]} />
+      {/* "to get their money!" · kill 2 */}
+      <Caption text={P2} y={H * 0.84} size={52} out={vK3 - 20} keys={[[0, vK1 + 14], [P2.length, vK2 - 5]]} />
+      {/* "Eat" · kill 3 */}
+      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" out={vK3 + 6} keys={[[0, vK3 - 12], [P3.length, vK3 - 4]]} />
+      {/* "or be eaten" · death */}
+      <Caption text={P4} y={H * 0.84} size={56} color="#00ff88" keys={[[0, vK3 + 14], [P4.length, DEATH - 3]]} />
     </AbsoluteFill>
   );
 };
@@ -233,6 +235,12 @@ const Deaths: React.FC = () => (
               </div>
             </>
           )}
+          {/* Footnote right under where the gameplay box sits: it's the real game. */}
+          <div style={{
+            position: "absolute", left: 0, right: 0, top: 150 + 640 + 18, textAlign: "center",
+            fontFamily: PX, fontSize: 16, letterSpacing: 3, color: "rgba(232,245,238,0.75)",
+            textShadow: "2px 2px 0 #000",
+          }}>ACTUAL GAMEPLAY FOOTAGE</div>
           <Caption text={chunk} keys={[[0, 0], [chunk.length, 29]]} y={H * 0.84} size={56} />
         </Series.Sequence>
       ))}
