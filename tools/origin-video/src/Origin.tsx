@@ -11,9 +11,11 @@ import { KillGainStack, Kill } from "./KillGain";
 import capture from "../public/arena/events.json";
 
 // The three 1-second kill clips for the "Only the ones / that eat / survive"
-// beat: drop them in public/deaths/ and list the file names here, in order.
-// Any slot left empty shows a placeholder.
-const DEATHS: string[] = [];
+// beat: drop the recordings in public/deaths/ and list them here, in order.
+// `at` = the second of the recording where its 1-second slice starts, so a
+// 30 s Instant Replay needs no trimming. Any slot left empty shows a placeholder.
+//   e.g. { file: "kill1.mp4", at: 12.4 }
+const DEATHS: { file: string; at?: number }[] = [];
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
@@ -202,7 +204,7 @@ const Deaths: React.FC = () => (
       {CHUNKS.map((chunk, i) => (
         <Series.Sequence key={i} durationInFrames={30}>
           {DEATHS[i] ? (
-            <OffthreadVideo src={staticFile(`deaths/${DEATHS[i]}`)} style={{ width: W, height: H, objectFit: "cover" }} />
+            <OffthreadVideo src={staticFile(`deaths/${DEATHS[i].file}`)} trimBefore={Math.round((DEATHS[i].at ?? 0) * 30)} style={{ width: W, height: H, objectFit: "cover" }} />
           ) : (
             <>
               <ArenaFloor />
