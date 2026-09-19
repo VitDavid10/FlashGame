@@ -1,5 +1,6 @@
 import React from "react";
-import { interpolate, random, staticFile, useCurrentFrame } from "remotion";
+import { Img, Sequence, interpolate, random, staticFile, useCurrentFrame } from "remotion";
+import { Audio } from "@remotion/media";
 import { loadFont } from "@remotion/fonts";
 import { pillSprite } from "./pill";
 
@@ -9,10 +10,21 @@ loadFont({ family: "VT323", url: staticFile("vt323-latin.woff2") });
 
 export const PX = "PressStart, monospace";
 export const VT = "VT323, monospace";
-export const W = 1920, H = 1080;
+export const W = 1920, H = 1080, FPS = 30;
 
-/** One pill, centred on (x, y). `scale` = screen px per sprite px, so the
- *  pixels stay big and square like in the game. `grey` 0..1 drains its colour. */
+// Game scale, measured on the captured footage: 1 world unit ≈ 1.05 px on a
+// 1920x1080 canvas, and the pixel look draws every sprite pixel as 4 px
+// (PIX_SCREEN_PX in game/index.html).
+export const ES = 1.05, PIXEL = 4;
+export const GAME_ANGLE = -Math.PI / 4; // every pill in the game is drawn at -45°
+
+// Typing sound: drop a short key click at public/type.mp3 and set this to
+// "type.mp3"; it plays once per letter of every caption.
+const TYPE_SFX: string | null = null;
+const CPS = 21; // letters per second
+export const typeFrames = (text: string) => Math.ceil((text.length / CPS) * FPS);
+
+/** One pill, centred on (x, y). `scale` = screen px per sprite px. */
 export const Pill: React.FC<{
   x: number; y: number; wL?: number; scale?: number; top: string; bot: string;
   ang?: number; grey?: number; opacity?: number;
@@ -20,7 +32,7 @@ export const Pill: React.FC<{
   const { url, size } = pillSprite(wL, top, bot, ang);
   const px = size * scale;
   return (
-    <img
+    <Img
       src={url}
       style={{
         position: "absolute", left: x - px / 2, top: y - px / 2, width: px, height: px,
@@ -31,56 +43,99 @@ export const Pill: React.FC<{
   );
 };
 
-/** The arena floor: dark, with the faint grid the game draws. */
-export const Grid: React.FC<{ opacity?: number }> = ({ opacity = 1 }) => (
-  <div
-    style={{
-      position: "absolute", inset: 0, opacity, backgroundColor: "#07100b",
-      backgroundImage:
-        "linear-gradient(rgba(0,255,136,.07) 2px, transparent 2px), linear-gradient(90deg, rgba(0,255,136,.07) 2px, transparent 2px)",
-      backgroundSize: "72px 72px",
-    }}
-  />
+const hexRgb = (h: string) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const shade = (rgb: number[], amt: number) => { const t = amt < 0 ? 0 : 255, a = Math.abs(amt); return `rgb(${rgb.map((v) => Math.round(v + (t - v) * a)).join(",")})`; };
+
+// Port of pixDotSprite(dL, col, 'f'): the game's food pellet.
+const dotCache = new Map<string, string>();
+const dotSprite = (dL: number, col: string) => {
+  const key = dL + col;
+  const hit = dotCache.get(key); if (hit) return hit;
+  const cv = document.createElement("canvas"); cv.width = dL; cv.height = dL;
+  const g = cv.getContext("2d")!, rgb = hexRgb(col), R = dL / 2;
+  const inside = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= dL || y >= dL) return false;
+    const dx = x + 0.5 - R, dy = y + 0.5 - R; return dx * dx + dy * dy <= (R - 0.1) * (R - 0.1);
+  };
+  for (let y = 0; y < dL; y++) for (let x = 0; x < dL; x++) {
+    if (!inside(x, y)) continue;
+    let c2: string;
+    if (dL >= 6 && (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1))) c2 = shade(rgb, -0.5);
+    else if (x + y > dL) c2 = shade(rgb, -0.22);
+    else c2 = `rgb(${rgb.join(",")})`;
+    g.fillStyle = c2; g.fillRect(x, y, 1, 1);
+  }
+  g.fillStyle = "rgba(255,255,255,0.55)"; const hp = Math.max(1, Math.floor(dL / 5));
+  g.fillRect(Math.floor(dL * 0.25), Math.floor(dL * 0.25), hp, hp);
+  const url = cv.toDataURL(); dotCache.set(key, url); return url;
+};
+const FOOD_COLORS = ["#F44336", "#9C27B0", "#3F51B5", "#03A9F4", "#009688", "#8BC34A", "#FFC107", "#FF5722"]; // shared/sim.js
+
+/** The game's food, scattered and fixed per seed. */
+export const Food: React.FC<{ seed: string; n?: number; opacity?: number }> = ({ seed, n = 70, opacity = 1 }) => (
+  <>
+    {Array.from({ length: n }, (_, i) => {
+      const r = 5 + random(`${seed}r${i}`) * 4; // world units
+      const d = r * 2 * ES;
+      const dL = Math.max(4, Math.min(16, Math.round(d / PIXEL / 2) * 2));
+      return (
+        <Img key={i} src={dotSprite(dL, FOOD_COLORS[Math.floor(random(`${seed}c${i}`) * FOOD_COLORS.length)])}
+          style={{ position: "absolute", width: d, height: d, left: random(`${seed}x${i}`) * W, top: random(`${seed}y${i}`) * H, imageRendering: "pixelated", opacity }} />
+      );
+    })}
+  </>
 );
 
-/** Scattered food dots, fixed per seed. */
-export const Food: React.FC<{ seed: string; n?: number; opacity?: number }> = ({ seed, n = 90, opacity = 1 }) => {
-  const cols = ["#00ff88", "#ffce3d", "#1d9bf0", "#f62a2d", "#ccff00", "#ff7ac8"];
-  return (
-    <>
-      {Array.from({ length: n }, (_, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute", width: 10, height: 10, opacity,
-            left: random(`${seed}x${i}`) * W, top: random(`${seed}y${i}`) * H,
-            background: cols[Math.floor(random(`${seed}c${i}`) * cols.length)],
-          }}
-        />
-      ))}
-    </>
-  );
+// Port of pixBgPattern(): the 100x100 world tile of the arena floor.
+let tileUrl: string | null = null;
+const bgTile = () => {
+  if (tileUrl) return tileUrl;
+  const cv = document.createElement("canvas"); cv.width = 100; cv.height = 100;
+  const g = cv.getContext("2d")!, rgb = [5, 5, 5];
+  g.fillStyle = "#050505"; g.fillRect(0, 0, 100, 100);
+  g.fillStyle = shade(rgb, 0.05);
+  for (const s of [[12, 20], [52, 8], [80, 44], [28, 68], [64, 84]]) g.fillRect(s[0], s[1], 4, 4);
+  g.fillStyle = shade(rgb, 0.028);
+  for (const s of [[40, 36], [88, 72], [8, 88], [72, 16]]) g.fillRect(s[0], s[1], 4, 4);
+  g.fillStyle = "rgba(255, 255, 255, 0.03)"; g.fillRect(0, 0, 100, 4); g.fillRect(0, 0, 4, 100);
+  tileUrl = cv.toDataURL(); return tileUrl;
 };
 
-/** Big pixel caption with the site's hard black shadow, fading in from `at`. */
+/** The arena floor exactly as the game paints it. */
+export const ArenaFloor: React.FC<{ opacity?: number }> = ({ opacity = 1 }) => (
+  <div style={{
+    position: "absolute", inset: 0, opacity, backgroundColor: "#050505",
+    backgroundImage: `url(${bgTile()})`, backgroundSize: `${100 * ES}px ${100 * ES}px`, imageRendering: "pixelated",
+  }} />
+);
+
+/** Big pixel caption typed letter by letter, with the site's hard black shadow.
+ *  The untyped part is laid out but invisible, so the line never reflows. */
 export const Caption: React.FC<{
   text: string; at?: number; out?: number; y?: number; size?: number; color?: string;
 }> = ({ text, at = 0, out, y = H * 0.8, size = 46, color = "#ffffff" }) => {
   const f = useCurrentFrame();
-  const fadeIn = interpolate(f, [at, at + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const fadeOut = out === undefined ? 1 : interpolate(f, [out, out + 10], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const shown = Math.max(0, Math.min(text.length, Math.floor(((f - at) / FPS) * CPS)));
+  const typing = shown < text.length;
+  const fadeOut = out === undefined ? 1 : interpolate(f, [out, out + 8], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const d = Math.round(size / 8);
+  const cursorOn = f >= at && (typing || f < at + typeFrames(text) + 18) && Math.floor(f / 8) % 2 === 0;
   return (
-    <div
-      style={{
+    <>
+      <div style={{
         position: "absolute", left: 80, right: 80, top: y, textAlign: "center",
-        fontFamily: PX, fontSize: size, lineHeight: 1.35, color,
-        opacity: fadeIn * fadeOut,
-        transform: `translateY(${(1 - fadeIn) * 14}px)`,
+        fontFamily: PX, fontSize: size, lineHeight: 1.35, color, opacity: fadeOut,
         textShadow: `${d}px ${d}px 0 #000, ${d * 2}px ${d * 2}px 0 rgba(0,0,0,.5)`,
-      }}
-    >
-      {text}
-    </div>
+      }}>
+        {text.slice(0, shown)}
+        <span style={{ display: "inline-block", width: "0.6em", height: "0.9em", verticalAlign: "-0.1em", marginLeft: "0.1em", background: cursorOn ? color : "transparent" }} />
+        <span style={{ visibility: "hidden" }}>{text.slice(shown)}</span>
+      </div>
+      {TYPE_SFX && text.split("").map((ch, i) => ch === " " ? null : (
+        <Sequence key={i} from={at + Math.floor((i / CPS) * FPS)} durationInFrames={6} layout="none">
+          <Audio src={staticFile(TYPE_SFX)} volume={0.5} />
+        </Sequence>
+      ))}
+    </>
   );
 };

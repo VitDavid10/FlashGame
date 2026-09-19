@@ -1,25 +1,22 @@
 import React from "react";
 import {
-  AbsoluteFill, Easing, OffthreadVideo, Series, interpolate, random, spring,
+  AbsoluteFill, Easing, Img, OffthreadVideo, Sequence, Series, interpolate, random, spring,
   staticFile, useCurrentFrame, useVideoConfig,
 } from "remotion";
-import { Caption, Food, Grid, H, PX, Pill, VT, W } from "./ui";
+import { Audio } from "@remotion/media";
+import { ArenaFloor, Caption, Food, GAME_ANGLE, H, PIXEL, PX, Pill, W, typeFrames } from "./ui";
 import { PALETTE } from "./pill";
+// Written by capture/director.js next to the frames it recorded from the game.
+import capture from "../public/arena/events.json";
 
-// Drop a clip at public/gameplay.mp4 and set this to "gameplay.mp4" to replace
-// the placeholder in the last-but-one scene with real footage.
-const GAMEPLAY: string | null = null;
+// 1-second death clips for the gameplay beat: drop them in public/deaths/ and
+// list the file names here, in order. Empty = placeholder.
+const DEATHS: string[] = [];
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
-/** Fades a whole scene in and out so the hard cuts don't jump. */
-const Fade: React.FC<{ dur: number; children: React.ReactNode }> = ({ dur, children }) => {
-  const f = useCurrentFrame();
-  const o = Math.min(interpolate(f, [0, 8], [0, 1], clamp), interpolate(f, [dur - 8, dur], [1, 0], clamp));
-  return <AbsoluteFill style={{ opacity: o, backgroundColor: "#000" }}>{children}</AbsoluteFill>;
-};
-
-/* 1 — Birth: one pill appears, then thousands. */
+/* 1 — Birth: one pill appears, then dozens. */
+const BIRTH_TEXT = "Every day, thousands of coins are born on pump.fun.";
 const Birth: React.FC = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -36,13 +33,16 @@ const Birth: React.FC = () => {
             wL={10} scale={4 * s} top={t} bot={b} ang={random(`ba${i}`) * 6.28} opacity={0.55} />
         );
       })}
-      <Pill x={W / 2} y={H * 0.42} wL={20} scale={9 * pop} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={-Math.PI / 4} />
-      <Caption text="Every day, thousands of coins are born on pump.fun." at={15} y={H * 0.74} size={42} />
+      <Pill x={W / 2} y={H * 0.42} wL={20} scale={9 * pop} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
+      <Caption text={BIRTH_TEXT} at={10} y={H * 0.74} size={42} />
     </AbsoluteFill>
   );
 };
 
-/* 2 — The chart: pump, then dump. The pill rides the tip and dies with it. */
+/* 2 — The chart: pump, then dump, in exactly the time the caption takes to type. */
+const CHART_TEXT = "Most of them die by morning.";
+const DRAW = typeFrames(CHART_TEXT);
+const CHART_DUR = DRAW + 12;
 const N = 70;
 const PRICE = Array.from({ length: N }, (_, i) => {
   const noise = (random(`p${i}`) - 0.5) * 4;
@@ -52,7 +52,7 @@ const PRICE = Array.from({ length: N }, (_, i) => {
   if (i < 59) return Math.max(4, 100 - ((i - 48) / 10) * 96) + noise * 0.5;
   return 3 + noise * 0.3;
 });
-const PEAK = 48, DRAW = 150;
+const PEAK = 48;
 const frameAt = (i: number) => (i / N) * DRAW;
 
 const Chart: React.FC = () => {
@@ -61,15 +61,14 @@ const Chart: React.FC = () => {
   const L = 260, R = 1660, T = 170, B = 780;
   const px = (i: number) => L + (i / (N - 1)) * (R - L);
   const py = (v: number) => B - (v / 110) * (B - T);
-  // Stepped "pixel" line: horizontal then vertical, never diagonal.
   const step = (from: number, to: number) => {
     let d = `M ${px(from)} ${py(PRICE[from])}`;
     for (let i = from + 1; i <= to; i++) d += ` H ${px(i)} V ${py(PRICE[i])}`;
     return d;
   };
   const tip = shown - 1;
-  const grey = interpolate(f, [frameAt(52), frameAt(60) + 15], [0, 1], clamp);
-  const fall = interpolate(f, [frameAt(58), DRAW + 30], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
+  const grey = interpolate(f, [frameAt(50), frameAt(60)], [0, 1], clamp);
+  const fall = interpolate(f, [frameAt(58), CHART_DUR], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
       <svg width={W} height={H} style={{ position: "absolute" }} shapeRendering="crispEdges">
@@ -77,21 +76,23 @@ const Chart: React.FC = () => {
         <path d={step(0, Math.min(tip, PEAK))} fill="none" stroke="#00ff88" strokeWidth={10} strokeLinecap="square" />
         {tip > PEAK && <path d={step(PEAK, tip)} fill="none" stroke="#f62a2d" strokeWidth={10} strokeLinecap="square" />}
       </svg>
-      <Pill x={px(tip)} y={py(PRICE[tip]) - 70 + fall * 260} wL={18} scale={6}
-        top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={-Math.PI / 4 + fall * 2.4} grey={grey} />
-      <Caption text="Most of them die by morning." at={frameAt(57)} y={H * 0.84} size={44} />
+      <Pill x={px(tip)} y={py(PRICE[tip]) - 70 + fall * 320} wL={18} scale={6}
+        top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE + fall * 2.4} grey={grey} />
+      <Caption text={CHART_TEXT} at={0} y={H * 0.84} size={44} />
     </AbsoluteFill>
   );
 };
 
-/* 3 — The fall: a rain of grey pills into the dark. */
+/* 3 — The fall: the screen is already full of grey pills on the first frame,
+ *     so the cut from the chart never shows black. */
+const FALL_DUR = 105;
 const Fall: React.FC = () => {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill style={{ background: "radial-gradient(ellipse at center, #0b0b0b 0%, #000 70%)" }}>
-      {Array.from({ length: 140 }, (_, i) => {
-        const speed = 6 + random(`fs${i}`) * 11;
-        const y0 = -random(`fy${i}`) * H * 1.6 - 120;
+      {Array.from({ length: 150 }, (_, i) => {
+        const speed = 7 + random(`fs${i}`) * 12;
+        const y0 = -H * 1.2 + random(`fy${i}`) * H * 2.0;
         const [t, b] = PALETTE[i % PALETTE.length];
         return (
           <Pill key={i} x={random(`fx${i}`) * W} y={y0 + speed * f}
@@ -100,117 +101,143 @@ const Fall: React.FC = () => {
             grey={1} opacity={0.35 + random(`fo${i}`) * 0.5} />
         );
       })}
-      <Caption text="Where do dead coins go?" at={45} y={H * 0.44} size={58} />
+      <Caption text="Where do dead coins go?" at={10} y={H * 0.44} size={58} />
     </AbsoluteFill>
   );
 };
 
-/* 4 — The arena: they land, get their colour back, and start eating. */
-const HERO_FROM = 380, HERO_TO = 1650, HUNT_START = 110, HUNT_END = 250, HERO_Y = 560;
-const VICTIMS = [820, 1120, 1420];
-const heroX = (f: number) => interpolate(f, [HUNT_START, HUNT_END], [HERO_FROM, HERO_TO], clamp);
-const eatenAt = (vx: number) => HUNT_START + ((vx - 50 - HERO_FROM) / (HERO_TO - HERO_FROM)) * (HUNT_END - HUNT_START);
+/* 4 — The arena. The dead pills land at the game's -45°, on the game's floor
+ *     and food, get their colour back, and then the video cuts into REAL
+ *     gameplay captured from the game (capture/director.js): the green pill
+ *     centred, eating, with a split and the game's own sounds. */
+const LAND = 72, XFADE = 10;
+const S0 = 30, SPEED = 1.4; // skip the slow start of the capture, play it a bit faster
+const FOOT = Math.floor((capture.frames - 1 - S0) / SPEED);
+const toVideo = (src: number) => Math.round((src - S0) / SPEED);
+const KILLS = [...new Set(capture.kills)].map(toVideo).filter((k) => k >= 0 && k < FOOT);
+const SPLIT = capture.splitFrame == null ? null : toVideo(capture.splitFrame);
+const ARENA_DUR = LAND - XFADE + FOOT;
+
+const Footage: React.FC = () => {
+  const f = useCurrentFrame();
+  const src = Math.min(capture.frames - 1, S0 + Math.floor(f * SPEED));
+  const opacity = interpolate(f, [0, XFADE], [0, 1], clamp);
+  return (
+    <AbsoluteFill style={{ opacity }}>
+      <Img src={staticFile(`arena/${String(src).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />
+      {KILLS.map((k) => (
+        <React.Fragment key={k}>
+          <Sequence from={k} layout="none"><Audio src={staticFile("snd/kill1.mp3")} /></Sequence>
+          <Sequence from={k + 2} layout="none"><Audio src={staticFile("snd/money.mp3")} volume={0.8} /></Sequence>
+        </React.Fragment>
+      ))}
+      {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} /></Sequence>}
+    </AbsoluteFill>
+  );
+};
 
 const Arena: React.FC = () => {
   const f = useCurrentFrame();
-  const land = (i: number) => 6 + i * 4;
-  const colour = (i: number) => interpolate(f, [45 + i * 3, 75 + i * 3], [1, 0], clamp);
-  const eaten = VICTIMS.filter((vx) => f >= eatenAt(vx)).length;
-  // Background crowd, kept off the hero's lane.
-  const crowd = Array.from({ length: 12 }, (_, i) => {
-    const tx = 140 + random(`cx${i}`) * (W - 280);
-    const upper = i % 2 === 0;
-    const ty = upper ? 150 + random(`cy${i}`) * 230 : 700 + random(`cy${i}`) * 110;
-    return { tx, ty, i };
+  const heroWL = 22; // r 40 at the game's zoom, same size as in the first captured frame
+  const crowd = Array.from({ length: 14 }, (_, i) => {
+    let x = 0, y = 0;
+    for (let k = 0; k < 20; k++) {
+      x = 120 + random(`lx${i}.${k}`) * (W - 240); y = 120 + random(`ly${i}.${k}`) * (H - 240);
+      if (Math.hypot(x - W / 2, y - H / 2) > 320) break;
+    }
+    return { x, y, i };
   });
+  const land = (i: number, to: number) =>
+    interpolate(f, [2 + i * 2, 16 + i * 2], [-160, to], { ...clamp, easing: Easing.out(Easing.back(1.4)) });
+  const colour = (i: number) => interpolate(f, [22 + i * 1.5, 44 + i * 1.5], [1, 0], clamp);
   return (
     <AbsoluteFill>
-      <Grid opacity={interpolate(f, [0, 20], [0, 1], clamp)} />
-      <Food seed="arena" opacity={interpolate(f, [10, 40], [0, 1], clamp)} />
-      {crowd.map(({ tx, ty, i }) => {
+      <ArenaFloor opacity={interpolate(f, [0, 12], [0, 1], clamp)} />
+      <Food seed="land" opacity={interpolate(f, [6, 24], [0, 1], clamp)} />
+      {crowd.map(({ x, y, i }) => {
         const [t, b] = PALETTE[(i + 1) % PALETTE.length];
-        const y = interpolate(f, [land(i), land(i) + 18], [-150, ty], { ...clamp, easing: Easing.out(Easing.back(1.6)) });
-        return (
-          <Pill key={i} x={tx + Math.sin(f / 28 + i) * 22} y={y + Math.cos(f / 34 + i) * 14}
-            wL={12 + (i % 4) * 2} scale={5} top={t} bot={b} ang={Math.sin(f / 40 + i) * 0.6} grey={colour(i)} />
-        );
+        return <Pill key={i} x={x} y={land(i, y)} wL={10 + (i % 5) * 2} scale={PIXEL} top={t} bot={b} ang={GAME_ANGLE} grey={colour(i)} />;
       })}
-      {VICTIMS.map((vx, k) => {
-        const e = eatenAt(vx);
-        const gone = interpolate(f, [e, e + 7], [1, 0], clamp);
-        const [t, b] = PALETTE[(k + 3) % PALETTE.length];
-        const x = vx + (heroX(f) - vx) * (1 - gone);
-        const y = interpolate(f, [land(12 + k), land(12 + k) + 18], [-150, HERO_Y + (k - 1) * 40], { ...clamp, easing: Easing.out(Easing.back(1.6)) });
-        return gone > 0 ? (
-          <Pill key={`v${k}`} x={x} y={y} wL={12} scale={5 * gone} top={t} bot={b} grey={colour(12 + k)} />
-        ) : null;
-      })}
-      <Pill x={heroX(f)} y={interpolate(f, [land(15), land(15) + 18], [-200, HERO_Y], { ...clamp, easing: Easing.out(Easing.back(1.6)) })}
-        wL={18 + eaten * 5} scale={6} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={Math.PI / 2} grey={colour(15)} />
-      <Caption text="They get a second life." at={55} out={150} y={H * 0.83} size={46} />
-      <Caption text="Eat or be eaten." at={165} y={H * 0.83} size={52} color="#00ff88" />
+      <Pill x={W / 2} y={land(8, H / 2)} wL={heroWL} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} grey={colour(8)} />
+      <Caption text="They get a second life." at={6} out={LAND - XFADE - 6} y={H * 0.84} size={46} />
+      <Sequence from={LAND - XFADE} durationInFrames={FOOT}>
+        <Footage />
+        <Caption text="Eat or be eaten." at={14} y={H * 0.84} size={52} color="#00ff88" />
+      </Sequence>
     </AbsoluteFill>
   );
 };
 
-/* 5 — Real gameplay (placeholder until the clip exists). */
-const Gameplay: React.FC = () => (
+/* 5 — Real deaths, one second each (placeholder until the clips exist). */
+const DEATHS_DUR = DEATHS.length ? DEATHS.length * 30 : 90;
+const Deaths: React.FC = () => (
   <AbsoluteFill>
-    {GAMEPLAY ? (
-      <OffthreadVideo src={staticFile(GAMEPLAY)} muted style={{ width: W, height: H, objectFit: "cover" }} />
+    {DEATHS.length ? (
+      <Series>
+        {DEATHS.map((d) => (
+          <Series.Sequence key={d} durationInFrames={30}>
+            <OffthreadVideo src={staticFile(`deaths/${d}`)} style={{ width: W, height: H, objectFit: "cover" }} />
+          </Series.Sequence>
+        ))}
+      </Series>
     ) : (
       <>
-        <Grid />
+        <ArenaFloor />
         <div style={{
-          position: "absolute", left: 320, top: 150, width: 1280, height: 680,
+          position: "absolute", left: 320, top: 150, width: 1280, height: 640,
           border: "8px dashed #1f4d33", display: "flex", alignItems: "center", justifyContent: "center",
           flexDirection: "column", gap: 24, fontFamily: PX, color: "#2f6b4a", fontSize: 30,
         }}>
-          <div>REAL GAMEPLAY CLIP</div>
-          <div style={{ fontFamily: VT, fontSize: 34 }}>public/gameplay.mp4</div>
+          <div>1-SECOND DEATH CLIPS</div>
+          <div style={{ fontSize: 18 }}>public/deaths/*.mp4</div>
         </div>
       </>
     )}
-    <Caption text="Only the ones that eat survive." at={25} y={H * 0.86} size={44} />
+    <Caption text="Only the ones that eat survive." at={4} y={H * 0.86} size={44} />
   </AbsoluteFill>
 );
 
-/* 6 — Title. */
+/* 6 — The official title: PILLWARS as the game draws it, THE CRYPTO ARENA under it. */
+const TITLE_DUR = 110;
 const Title: React.FC = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const s = spring({ frame: f, fps, config: { damping: 12 } });
-  const s2 = spring({ frame: f - 6, fps, config: { damping: 13 } });
+  const sub = interpolate(f, [14, 26], [0, 1], clamp);
+  const tw = 1180, th = Math.round((tw * 176) / 1008);
   return (
-    <AbsoluteFill style={{ backgroundColor: "#000" }}>
-      <Grid opacity={0.5} />
-      <Pill x={W / 2} y={H * 0.3} wL={20} scale={8 * s} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={-Math.PI / 4} />
+    <AbsoluteFill style={{ backgroundColor: "#050505" }}>
+      <ArenaFloor opacity={0.7} />
+      <Food seed="title" n={45} opacity={0.6} />
+      <Img src={staticFile("PILLWARS-white-placa.png")} style={{
+        position: "absolute", width: tw, height: th, left: (W - tw) / 2, top: H * 0.3,
+        imageRendering: "pixelated", transform: `scale(${s})`,
+        filter: "drop-shadow(0 0 22px rgba(255,255,255,.35))",
+      }} />
       <div style={{
-        position: "absolute", left: 0, right: 0, top: H * 0.5, textAlign: "center",
-        fontFamily: PX, fontSize: 130, color: "#00ff88", transform: `scale(${s2})`,
-        textShadow: "16px 16px 0 #000, 22px 22px 0 rgba(0,0,0,.5)",
-      }}>PILLWARS</div>
-      <div style={{
-        position: "absolute", left: 0, right: 0, top: H * 0.72, textAlign: "center",
-        fontFamily: VT, fontSize: 52, color: "#8fa89a", opacity: interpolate(f, [25, 40], [0, 1], clamp),
-      }}>pillwars.fun</div>
+        position: "absolute", left: 0, right: 0, top: H * 0.3 + th + 70, textAlign: "center",
+        fontFamily: PX, fontSize: 54, letterSpacing: 8, color: "#4dffa0", opacity: sub,
+        textShadow: "0 0 18px rgba(0,255,136,.75), 0 0 4px rgba(0,255,136,.9)",
+      }}>THE CRYPTO ARENA</div>
     </AbsoluteFill>
   );
 };
 
 export const SCENES: [React.FC, number][] = [
-  [Birth, 90], [Chart, 210], [Fall, 210], [Arena, 270], [Gameplay, 270], [Title, 110],
+  [Birth, 90], [Chart, CHART_DUR], [Fall, FALL_DUR], [Arena, ARENA_DUR], [Deaths, DEATHS_DUR], [Title, TITLE_DUR],
 ];
 export const TOTAL = SCENES.reduce((a, [, d]) => a + d, 0);
 
+// Hard cuts, no fades through black between scenes.
 export const Origin: React.FC = () => (
   <AbsoluteFill style={{ backgroundColor: "#000" }}>
     <Series>
       {SCENES.map(([Scene, d], i) => (
         <Series.Sequence key={i} durationInFrames={d} premountFor={30}>
-          <Fade dur={d}><Scene /></Fade>
+          <Scene />
         </Series.Sequence>
       ))}
     </Series>
   </AbsoluteFill>
 );
+
