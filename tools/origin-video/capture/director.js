@@ -27,7 +27,10 @@
  * and anything else big enough to eat the hero is sent far away.
  */
 (async function director() {
-    const TICK = 1000 / 60, MAX_FRAMES = 420, AFTER_DEATH = 24;
+    const TICK = 1000 / 60, MAX_FRAMES = 520, AFTER_DEATH = 24;
+    // window.__captureMode = 'skills' before pasting records the skill clips
+    // instead (see skills() below); anything else, the kills.
+    const MODE = window.__captureMode || 'kills';
     const inject = code => { const s = document.createElement('script'); s.textContent = code; document.head.appendChild(s); };
     window.__status = { phase: 'waiting' };
 
@@ -35,7 +38,10 @@
     // one: wait for a live, non-spectating player. The match is started from
     // here so this watch is already running when it begins (loaded by URL, the
     // seconds until a pasted script arrives were enough for bots to eat the hero).
-    inject(`window.__ready = () => { try { return gameRunning && !isSpectating && me() && me().alive && me().cells.length > 0; } catch (e) { return false; } };`);
+    // A save from an earlier capture would bring back its pill (the skills
+    // mode recolours it): always start clean.
+    try { localStorage.removeItem('pillwars_save'); } catch (e) {}
+    inject(`window.__ready =() => { try { return gameRunning && !isSpectating && me() && me().alive && me().cells.length > 0; } catch (e) { return false; } };`);
     inject(`(async () => {
         if (gameRunning && !isSpectating) return;
         await selectMode('classic', true);
@@ -61,10 +67,16 @@
         // The GAME OVER panel is HTML (not in the capture) and swaps the match
         // out after 1.4 s of real time: keep the canvas alive after the death.
         window.showResultsUI = function () {};
+        // Other players' round results ("<bot> WON - PENTAKILL") are canvas
+        // text from a match that isn't this one: keep them out of the shot.
+        floatingTexts.length = 0;
+        const sft = spawnFloatingText;
+        spawnFloatingText = function (text) { if (/ WON - /.test(String(text))) return; return sft.apply(this, arguments); };
         window.__aim = (tx, ty) => { const es = getViewScale(); mouse.x = width / 2 + (tx - camera.x) * es; mouse.y = height / 2 + (ty - camera.y) * es; inputMode = 'MOUSE'; };
         window.__split = () => splitPlayer();
         window.__tick = ms => { window.__clock.t += ms; updateGame(); };
         window.__draw = () => draw();
+        window.__snapCam = (x, y) => { camera.x = x; camera.y = y; };
         // Cinematic push-in done by the GAME's camera (not by scaling the frame
         // afterwards), so the pixels stay sharp. getViewScale() feeds both the
         // drawing and the mouse mapping, so wrapping it keeps them in step.
@@ -76,43 +88,52 @@
     const ws = new WebSocket('ws://127.0.0.1:8197');
     await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('receiver not running')); });
     const cv = document.getElementById('gameCanvas');
-    const sendFrame = async n => {
+    const sendFrame = async (dir, n) => {
+        if (n === undefined) { n = dir; dir = ''; }
         const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
-        ws.send(String(n).padStart(4, '0') + '.jpg');
+        ws.send(dir + String(n).padStart(4, '0') + '.jpg');
         ws.send(await blob.arrayBuffer());
     };
-    ws.send('reset');
+    if (MODE !== 'skills') ws.send('reset');
 
     const sim = window.__pwLab.sim;
     const hero = window.me().cells[0];
     hero.r = 40;
+    Object.assign(hero, { colorTop: '#c0c8d0', colorBot: '#00ff44' });   // the default pill
     const H0 = { x: hero.x, y: hero.y };
 
     for (const v of sim.viruses) {
-        if (v.x > H0.x - 900 && v.x < H0.x + 2600 && Math.abs(v.y - H0.y) < 520) {
+        if (v.x > H0.x - 900 && v.x < H0.x + 4000 && Math.abs(v.y - H0.y) < 520) {
             v.y = H0.y + (v.y >= H0.y ? 1 : -1) * (620 + Math.random() * 260);
         }
     }
 
+    if (MODE === 'skills') return skills(sim, hero, sendFrame, ws);
+
     const plan = [
-        // Kills ~2 s apart: that's how long the classic money pop-up lasts, so
-        // two never stack. Measured hero speed ~7 units/frame; the split fires
-        // 430 units short of its prey and the half lands on it ~3 frames later.
-        // The third sits off the split's line, or the flying half takes it early.
+        // Kills ~3.5 s apart: the classic money pop-up (2 s) clears, then the
+        // next phrase is typed and clears, and only then the next kill lands.
+        // Measured hero speed ~7 units/frame; the split fires 430 units short
+        // of its prey and the half lands on it ~3 frames later, and the halves
+        // then run at only ~6.6 units/frame (a 1 s lunge first). The third sits off the split's line, or
+        // the flying half takes it early.
         { dx: 190, dy: 0, r: 16 },                  // 1: first kill, ~1 s in
-        { dx: 1020, dy: 0, r: 15, split: true },    // 2: caught with the split, ~2 s later
-        { dx: 1440, dy: 150, r: 16 },               // 3: ~2 s after that
+        { dx: 1185, dy: 0, r: 15, split: true },    // 2: caught with the split, ~3.5 s later
+        { dx: 1965, dy: 150, r: 16 },               // 3: ~3 s after that
     ];
     const pool = [...sim.enemies].filter(e => e.r < hero.r * 1.5)
         .sort((a, b) => Math.hypot(a.x - H0.x, a.y - H0.y) - Math.hypot(b.x - H0.x, b.y - H0.y));
     const prey = plan.map((p, i) => ({ c: pool[i], ax: H0.x + p.dx, ay: H0.y + p.dy, split: !!p.split, r: p.r }));
     prey.forEach(p => { p.c.r = p.r; });
     // The killer: a bot blown up to a size that swallows both halves at once.
-    const killer = { c: pool[plan.length], x: H0.x + 2150, y: H0.y + 150, go: false, wait: 15 };
+    // It waits ~2.5 s after the third kill (that pop-up clears and "or be
+    // eaten" is typed) while the hero drifts on, then charges.
+    const killer = { c: pool[plan.length], x: H0.x + 3415, y: H0.y + 150, go: false, wait: 75 };
     killer.c.r = 130;
     const cast = new Set([...prey.map(p => p.c), killer.c]);
-    const exiled = sim.enemies.filter(e => !cast.has(e) && e.r > hero.r * 0.7 &&
-        Math.hypot(e.x - H0.x, e.y - H0.y) < 3800).map(e => ({ c: e, x: H0.x - 4200, y: H0.y + 3200 }));
+    // Also any bot big enough to eat a prey before the hero gets there.
+    const exiled = sim.enemies.filter(e => !cast.has(e) && e.r > 14 &&
+        Math.hypot(e.x - H0.x, e.y - H0.y) < 5000).map(e => ({ c: e, x: H0.x - 4200, y: H0.y + 3200 }));
 
     const alive = c => sim.enemies.includes(c);
     const tame = c => { c.botSkills = []; c.botNextSkillTime = 1e15; c.shouldSplit = false; c.immuneTime = 0; c.tpPhase = 0; c.sprintTime = 0; c.magnetTime = 0; };
@@ -178,4 +199,57 @@
     ws.send('events.json'); ws.send(JSON.stringify(meta, null, 2));
     await new Promise(r => setTimeout(r, 800));
     window.__status = { phase: 'done', ...meta };
+
+    /*
+     * The "in PILLWARS" beat: four short clips, a different pill in a different
+     * spot of the map each time, running with one skill on: sprint, shield,
+     * magnet and teleport. The camera follows the pill, so it stays centred
+     * while the arena moves under it; the game's camera is pushed in so the
+     * pill reads big. Effects are switched on straight on the cells, as the
+     * sim does it (in classic the skill keys only shoot).
+     */
+    async function skills(sim, hero, sendFrame, ws) {
+        ws.send('reset skills');
+        const SHOTS = [
+            { name: 'sprint', top: '#ffffff', bot: '#1d9bf0', frames: 22, ang: 0.3,  at: [0.45, -0.35] },
+            { name: 'shield', top: '#ffce3d', bot: '#f62a2d', frames: 22, ang: 2.6,  at: [-0.5, 0.4] },
+            { name: 'magnet', top: '#ccff00', bot: '#7a3cff', frames: 22, ang: -2.2, at: [0.3, 0.55] },
+            { name: 'tp',     top: '#00e5ff', bot: '#ff9f1c', frames: 32, ang: -0.6, at: [-0.4, -0.5] },
+        ];
+        const p = window.me();
+        const lim = sim.mapSize - 600;
+        window.__zoom = 1.9;
+        const shots = [];
+        let n = 0;
+        for (const s of SHOTS) {
+            const x = s.at[0] * lim, y = s.at[1] * lim;
+            // Keep the spot safe: nothing that could eat the pill nearby.
+            for (const e of sim.enemies) if (e.r > hero.r * 0.8 && Math.hypot(e.x - x, e.y - y) < 1800) { e.x = x + 5000 * Math.sign(-x || 1); e.y = y; }
+            Object.assign(hero, { x, y, r: 48, colorTop: s.top, colorBot: s.bot, sprintTime: 0, immuneTime: 0, magnetTime: 0, tpPhase: 0, vx: 0, vy: 0, boostX: 0, boostY: 0 });
+            p.skillState[5] = 0;
+            window.__snapCam(x, y);
+            const aim = () => window.__aim(hero.x + Math.cos(s.ang) * 500, hero.y + Math.sin(s.ang) * 500);
+            const fx = () => {
+                if (s.name === 'sprint') hero.sprintTime = 10000;
+                if (s.name === 'shield') hero.immuneTime = 3000;
+                if (s.name === 'magnet') p.skillState[5] = 8000;
+            };
+            // Up to speed and with the effect already on when the clip starts.
+            for (let i = 0; i < 40; i++) { fx(); aim(); window.__tick(TICK); }
+            const from = n;
+            for (let f = 0; f < s.frames; f++) {
+                if (s.name === 'tp' && f === 3) Object.assign(hero, { tpPhase: 1, tpTimer: 500, tpDest: { x: hero.x + Math.cos(s.ang) * 420, y: hero.y + Math.sin(s.ang) * 420 } });
+                fx(); aim();
+                for (let k = 0; k < 2; k++) window.__tick(TICK);
+                window.__snapCam(hero.x, hero.y);   // dead centre, not the game's trailing camera
+                window.__draw();
+                await sendFrame('skills/', n++);
+                window.__status = { phase: 'skills', shot: s.name, frame: n };
+            }
+            shots.push({ name: s.name, from, frames: s.frames });
+        }
+        ws.send('skills/events.json'); ws.send(JSON.stringify({ fps: 30, shots }, null, 2));
+        await new Promise(r => setTimeout(r, 800));
+        window.__status = { phase: 'done', shots };
+    }
 })().catch(e => { window.__status = { phase: 'error', msg: String(e) }; });

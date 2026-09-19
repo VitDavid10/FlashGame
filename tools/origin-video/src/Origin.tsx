@@ -9,6 +9,7 @@ import { PALETTE } from "./pill";
 import { KillGainStack, Kill } from "./KillGain";
 // Written by capture/director.js next to the frames it recorded from the game.
 import capture from "../public/arena/events.json";
+import skillsCapture from "../public/skills/events.json";
 
 // The three kill clips (1.5 s each) for the "Only the ones / that eat / survive"
 // beat: drop the recordings in public/deaths/ and list them here, in order.
@@ -116,7 +117,7 @@ const Fall: React.FC = () => {
 
 /* 4 — The arena. The dead pills land at the game's -45°, on the game's floor
  *     and food, and get their colour back. */
-const LAND = 66;
+const LAND = 96;
 const Arena: React.FC = () => {
   const f = useCurrentFrame();
   const heroWL = 22; // r 40 at the game's zoom, same size as in the first captured frame
@@ -140,48 +141,28 @@ const Arena: React.FC = () => {
         return <Pill key={i} x={x} y={land(i, y)} wL={10 + (i % 5) * 2} scale={PIXEL} top={t} bot={b} ang={GAME_ANGLE} grey={colour(i)} />;
       })}
       <Pill x={W / 2} y={land(8, H / 2)} wL={heroWL} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} grey={colour(8)} />
-      <Caption text="They get a second life" at={6} out={56} y={H * 0.84} size={46} />
+      {/* Stays up ~1 s once typed (done at ~50). */}
+      <Caption text="They get a second life" at={6} out={82} y={H * 0.84} size={46} />
     </AbsoluteFill>
   );
 };
 
-/* 5 — "in PILLWARS": four quick flashes of different pills spawning, 3 s in
- *     all. The line types in fast on the first one and stays through all four. */
-const SPAWN_DUR = 90;
-const SHOTS = [
-  { pal: 1, wL: 26, x: 0.5, y: 0.42 },
-  { pal: 2, wL: 30, x: 0.38, y: 0.4 },
-  { pal: 5, wL: 24, x: 0.62, y: 0.44 },
-  { pal: 3, wL: 32, x: 0.5, y: 0.4 },
-];
-const SpawnShot: React.FC<{ pal: number; wL: number; x: number; y: number; seed: string }> = ({ pal, wL, x, y, seed }) => {
+/* 5 — "in PILLWARS": four short clips from the real game (capture/director.js,
+ *     mode 'skills'): a different pill in a different spot of the map each
+ *     time, centred and running with a skill on: sprint, shield, magnet and
+ *     teleport. The line types in fast on the first and stays through all four. */
+const SPAWN_DUR = skillsCapture.shots.reduce((a, s) => a + s.frames, 0);
+const SkillShot: React.FC<{ from: number }> = ({ from }) => {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const pop = spring({ frame: f, fps, config: { damping: 9, stiffness: 220 } });
-  const flash = interpolate(f, [0, 5], [0.85, 0], clamp);
-  const ring = interpolate(f, [0, 12], [0, 1], clamp);
-  const [t, b] = PALETTE[pal];
-  return (
-    <AbsoluteFill>
-      <ArenaFloor />
-      <Food seed={seed} />
-      <div style={{
-        position: "absolute", left: x * W - 60 - ring * 180, top: y * H - 60 - ring * 180,
-        width: 120 + ring * 360, height: 120 + ring * 360, borderRadius: "50%",
-        border: `8px solid ${b}`, opacity: 1 - ring,
-      }} />
-      <Pill x={x * W} y={y * H} wL={wL} scale={PIXEL * pop} top={t} bot={b} ang={GAME_ANGLE} />
-      <AbsoluteFill style={{ backgroundColor: "#fff", opacity: flash }} />
-    </AbsoluteFill>
-  );
+  return <Img src={staticFile(`skills/${String(from + f).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />;
 };
 const SPAWN_TEXT = "in PILLWARS";
 const Spawn: React.FC = () => (
   <AbsoluteFill>
     <Series>
-      {SHOTS.map((s, i) => (
-        <Series.Sequence key={i} durationInFrames={i % 2 ? 23 : 22}>
-          <SpawnShot {...s} seed={`spawn${i}`} />
+      {skillsCapture.shots.map((s) => (
+        <Series.Sequence key={s.name} durationInFrames={s.frames}>
+          <SkillShot from={s.from} />
         </Series.Sequence>
       ))}
     </Series>
@@ -192,16 +173,20 @@ const Spawn: React.FC = () => (
 /* 6 — REAL gameplay captured from the game in classic mode
  *     (capture/director.js), which also does the cinematic push-in with the
  *     game's own camera. One thing at a time, so it can be read and watched:
- *     each phrase is typed, clears, and only then its event lands:
+ *     each phrase is typed once the previous kill's money pop-up is gone,
+ *     clears, and only then its event lands:
  *       "Eat pills" · kill 1 · "to get their money!" · split + kill 2 ·
  *       "Eat" · kill 3 · "or be eaten" · the hero dies. */
 const [K1, K2, K3] = capture.kills;
-// A phrase starts fading 12 frames before its event (gone 4 frames before)
-// and the next one starts typing 12 frames after it.
-const OUT = 12, IN = 12;
-// The capture is retimed in stretches to leave room for each phrase: straight
-// lines between these [video, capture] anchors, each kept within ~0.8x-1.25x.
-const vK1 = 36, vK2 = vK1 + 78, vK3 = vK2 + 40, vDeath = vK3 + 54;
+const P1 = "Eat pills", P2 = "to get their money!", P3 = "Eat", P4 = "or be eaten";
+// After a kill: its pop-up (2 s) goes, then the phrase types (~19 letters/s),
+// holds, fades (8 frames) and 4 frames later the event lands.
+const POP = 62, KEEP = 12, OUT = 12;
+const typed = (p: string) => Math.max(6, Math.round(p.length * 1.6));
+const beat = (p: string) => POP + typed(p) + KEEP + OUT;
+const vK1 = 36, vK2 = vK1 + beat(P2), vK3 = vK2 + beat(P3), vDeath = vK3 + beat(P4);
+// The capture is laid out so that lands close to real speed; what's left is
+// evened out in stretches: straight lines between these [video, capture] anchors.
 const TAIL = capture.frames - 1 - capture.deathFrame;
 const ANCHORS: [number, number][] = [[0, 0], [vK1, K1], [vK2, K2], [vK3, K3], [vDeath, capture.deathFrame], [vDeath + TAIL, capture.frames - 1]];
 const toSrc = (f: number) => interpolate(f, ANCHORS.map((a) => a[0]), ANCHORS.map((a) => a[1]), clamp);
@@ -214,8 +199,11 @@ const FOOT = vDeath + TAIL + 1;
 const STREAK = ["FIRST BLOOD", "DOUBLE KILL", "TRIPLE KILL", "QUADRA KILL", "PENTAKILL"];
 const MONEY = ["+$16.40", "+$23.00", "+$31.50", "+$42.00", "+$51.00"];
 const POPS: Kill[] = KILLS.map((at, i) => ({ at, money: MONEY[i], streak: STREAK[i] }));
-
-const P1 = "Eat pills", P2 = "to get their money!", P3 = "Eat", P4 = "or be eaten";
+/** The phrase that leads into `event`, typed after the pop-up of `after`. */
+const lead = (p: string, after: number | null, event: number): { keys: [number, number][]; out: number } => {
+  const start = after === null ? 2 : after + POP;
+  return { keys: [[0, start], [p.length, start + typed(p)]], out: event - OUT };
+};
 
 const Footage: React.FC = () => {
   const f = useCurrentFrame();
@@ -235,13 +223,13 @@ const Footage: React.FC = () => {
       {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} /></Sequence>}
       <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} /></Sequence>
       {/* "Eat pills" · kill 1 */}
-      <Caption text={P1} y={H * 0.84} size={52} out={vK1 - OUT} keys={[[0, 2], [P1.length, 14]]} />
+      <Caption text={P1} y={H * 0.84} size={52} {...lead(P1, null, vK1)} />
       {/* "to get their money!" · kill 2 */}
-      <Caption text={P2} y={H * 0.84} size={52} out={vK2 - OUT} keys={[[0, vK1 + IN], [P2.length, vK2 - OUT - 12]]} />
+      <Caption text={P2} y={H * 0.84} size={52} {...lead(P2, vK1, vK2)} />
       {/* "Eat" · kill 3 */}
-      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" out={vK3 - OUT} keys={[[0, vK2 + IN], [P3.length, vK2 + IN + 6]]} />
+      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" {...lead(P3, vK2, vK3)} />
       {/* "or be eaten" · death */}
-      <Caption text={P4} y={H * 0.84} size={56} color="#00ff88" out={vDeath - OUT} keys={[[0, vK3 + IN], [P4.length, vDeath - OUT - 12]]} />
+      <Caption text={P4} y={H * 0.84} size={56} color="#00ff88" {...lead(P4, vK3, vDeath)} />
     </AbsoluteFill>
   );
 };
