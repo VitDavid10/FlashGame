@@ -19,8 +19,11 @@ const DEATHS: { file: string; at?: number }[] = [];
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
-/* 1 — Birth: one pill appears, then dozens. */
-const BIRTH_TEXT = "Every day, thousands of coins are born on pump.fun";
+/* 1 — Birth: one pill appears, then dozens. The line comes in two halves, each
+ *     on one line: the whole sentence wrapped and left a lone "o" typing on
+ *     the second line. */
+const B1 = "Every day, thousands of coins", B2 = "are born on pump.fun";
+const BIRTH_DUR = 125;
 const Birth: React.FC = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -38,7 +41,8 @@ const Birth: React.FC = () => {
         );
       })}
       <Pill x={W / 2} y={H * 0.42} wL={20} scale={9 * pop} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
-      <Caption text={BIRTH_TEXT} at={10} y={H * 0.74} size={42} />
+      <Caption text={B1} y={H * 0.74} size={42} out={60} keys={[[0, 8], [B1.length, 44]]} />
+      <Caption text={B2} y={H * 0.74} size={42} keys={[[0, 72], [B2.length, 100]]} />
     </AbsoluteFill>
   );
 };
@@ -111,73 +115,8 @@ const Fall: React.FC = () => {
 };
 
 /* 4 — The arena. The dead pills land at the game's -45°, on the game's floor
- *     and food, get their colour back, and then the video cuts into REAL
- *     gameplay captured from the game in classic mode (capture/director.js),
- *     which also does the cinematic push-in with the game's own camera.
- *     The text is split in phrases and each event lands in the pause after
- *     its phrase:
- *       "Eat pills" · kill 1 · "to get their money!" · split + kill 2 ·
- *       "Eat" · kill 3 · "or be eaten" · the hero dies. */
-const LAND = 72, XFADE = 10;
-const [K1, K2, K3] = capture.kills;
-// Kills 2 s apart on screen, the life of the classic money pop-up, so two
-// never stack. The capture is retimed in stretches to hit that: straight
-// lines between these [video, capture] anchors, each kept near real speed.
-const GAP = 64;
-const vK1 = K1, vK2 = vK1 + GAP;
-// The third kill can come much sooner after the second: stretching that to 2 s
-// would be obvious slow motion, so it only eases to ~0.8x there and the older
-// pop-up clears out when the new one arrives (see KillGainStack).
-const vK3 = vK2 + Math.min(GAP, Math.max(36, Math.round((K3 - K2) / 0.8)));
-const vDeath = vK3 + Math.min(45, Math.max(30, capture.deathFrame - K3));
-const TAIL = capture.frames - 1 - capture.deathFrame;
-const ANCHORS: [number, number][] = [[0, 0], [vK1, K1], [vK2, K2], [vK3, K3], [vDeath, capture.deathFrame], [vDeath + TAIL, capture.frames - 1]];
-const toSrc = (f: number) => interpolate(f, ANCHORS.map((a) => a[0]), ANCHORS.map((a) => a[1]), clamp);
-const toVideo = (s: number) => interpolate(s, ANCHORS.map((a) => a[1]), ANCHORS.map((a) => a[0]), clamp);
-const KILLS = [vK1, vK2, vK3];
-const SPLIT = capture.splitFrame == null ? null : Math.round(toVideo(capture.splitFrame));
-const DEATH = vDeath;
-const FOOT = vDeath + TAIL + 1;
-const ARENA_DUR = LAND - XFADE + FOOT;
-// What each kill shows, classic style: the money in green, the streak in red.
-const STREAK = ["FIRST BLOOD", "DOUBLE KILL", "TRIPLE KILL", "QUADRA KILL", "PENTAKILL"];
-const MONEY = ["+$16.40", "+$23.00", "+$31.50", "+$42.00", "+$51.00"];
-const POPS: Kill[] = KILLS.map((at, i) => ({ at, money: MONEY[i], streak: STREAK[i] }));
-
-// Each phrase on its own: typed, its event lands in the pause, then it clears
-// before the next one starts.
-const P1 = "Eat pills", P2 = "to get their money!", P3 = "Eat", P4 = "or be eaten";
-
-const Footage: React.FC = () => {
-  const f = useCurrentFrame();
-  const src = Math.round(toSrc(f));
-  const opacity = interpolate(f, [0, XFADE], [0, 1], clamp);
-  return (
-    <AbsoluteFill style={{ opacity }}>
-      <Img src={staticFile(`arena/${String(src).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />
-      <KillGainStack kills={POPS} />
-      {/* The game's own sounds for a classic kill: the eat, the streak, the till. */}
-      {KILLS.map((k) => (
-        <React.Fragment key={k}>
-          <Sequence from={k} layout="none"><Audio src={staticFile("snd/kill1.mp3")} /></Sequence>
-          <Sequence from={k} layout="none"><Audio src={staticFile("snd/floatkill.mp3")} volume={0.8} /></Sequence>
-          <Sequence from={k + 2} layout="none"><Audio src={staticFile("snd/money.mp3")} volume={0.8} /></Sequence>
-        </React.Fragment>
-      ))}
-      {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} /></Sequence>}
-      <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} /></Sequence>
-      {/* "Eat pills" · kill 1 */}
-      <Caption text={P1} y={H * 0.84} size={52} out={vK1 + 6} keys={[[0, 4], [P1.length, vK1 - 5]]} />
-      {/* "to get their money!" · kill 2 */}
-      <Caption text={P2} y={H * 0.84} size={52} out={vK3 - 20} keys={[[0, vK1 + 14], [P2.length, vK2 - 5]]} />
-      {/* "Eat" · kill 3 */}
-      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" out={vK3 + 6} keys={[[0, vK3 - 12], [P3.length, vK3 - 4]]} />
-      {/* "or be eaten" · death */}
-      <Caption text={P4} y={H * 0.84} size={56} color="#00ff88" keys={[[0, vK3 + 14], [P4.length, DEATH - 3]]} />
-    </AbsoluteFill>
-  );
-};
-
+ *     and food, and get their colour back. */
+const LAND = 66;
 const Arena: React.FC = () => {
   const f = useCurrentFrame();
   const heroWL = 22; // r 40 at the game's zoom, same size as in the first captured frame
@@ -201,15 +140,113 @@ const Arena: React.FC = () => {
         return <Pill key={i} x={x} y={land(i, y)} wL={10 + (i % 5) * 2} scale={PIXEL} top={t} bot={b} ang={GAME_ANGLE} grey={colour(i)} />;
       })}
       <Pill x={W / 2} y={land(8, H / 2)} wL={heroWL} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} grey={colour(8)} />
-      <Caption text="They get a second life" at={6} out={LAND - XFADE - 6} y={H * 0.84} size={46} />
-      <Sequence from={LAND - XFADE} durationInFrames={FOOT}>
-        <Footage />
-      </Sequence>
+      <Caption text="They get a second life" at={6} out={56} y={H * 0.84} size={46} />
     </AbsoluteFill>
   );
 };
 
-/* 5 — Real kills: three 1.5 s clips (placeholder for any still missing).
+/* 5 — "in PILLWARS": four quick flashes of different pills spawning, 3 s in
+ *     all. The line types in fast on the first one and stays through all four. */
+const SPAWN_DUR = 90;
+const SHOTS = [
+  { pal: 1, wL: 26, x: 0.5, y: 0.42 },
+  { pal: 2, wL: 30, x: 0.38, y: 0.4 },
+  { pal: 5, wL: 24, x: 0.62, y: 0.44 },
+  { pal: 3, wL: 32, x: 0.5, y: 0.4 },
+];
+const SpawnShot: React.FC<{ pal: number; wL: number; x: number; y: number; seed: string }> = ({ pal, wL, x, y, seed }) => {
+  const f = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const pop = spring({ frame: f, fps, config: { damping: 9, stiffness: 220 } });
+  const flash = interpolate(f, [0, 5], [0.85, 0], clamp);
+  const ring = interpolate(f, [0, 12], [0, 1], clamp);
+  const [t, b] = PALETTE[pal];
+  return (
+    <AbsoluteFill>
+      <ArenaFloor />
+      <Food seed={seed} />
+      <div style={{
+        position: "absolute", left: x * W - 60 - ring * 180, top: y * H - 60 - ring * 180,
+        width: 120 + ring * 360, height: 120 + ring * 360, borderRadius: "50%",
+        border: `8px solid ${b}`, opacity: 1 - ring,
+      }} />
+      <Pill x={x * W} y={y * H} wL={wL} scale={PIXEL * pop} top={t} bot={b} ang={GAME_ANGLE} />
+      <AbsoluteFill style={{ backgroundColor: "#fff", opacity: flash }} />
+    </AbsoluteFill>
+  );
+};
+const SPAWN_TEXT = "in PILLWARS";
+const Spawn: React.FC = () => (
+  <AbsoluteFill>
+    <Series>
+      {SHOTS.map((s, i) => (
+        <Series.Sequence key={i} durationInFrames={i % 2 ? 23 : 22}>
+          <SpawnShot {...s} seed={`spawn${i}`} />
+        </Series.Sequence>
+      ))}
+    </Series>
+    <Caption text={SPAWN_TEXT} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 1], [SPAWN_TEXT.length, 9]]} />
+  </AbsoluteFill>
+);
+
+/* 6 — REAL gameplay captured from the game in classic mode
+ *     (capture/director.js), which also does the cinematic push-in with the
+ *     game's own camera. One thing at a time, so it can be read and watched:
+ *     each phrase is typed, clears, and only then its event lands:
+ *       "Eat pills" · kill 1 · "to get their money!" · split + kill 2 ·
+ *       "Eat" · kill 3 · "or be eaten" · the hero dies. */
+const [K1, K2, K3] = capture.kills;
+// A phrase starts fading 12 frames before its event (gone 4 frames before)
+// and the next one starts typing 12 frames after it.
+const OUT = 12, IN = 12;
+// The capture is retimed in stretches to leave room for each phrase: straight
+// lines between these [video, capture] anchors, each kept within ~0.8x-1.25x.
+const vK1 = 36, vK2 = vK1 + 78, vK3 = vK2 + 40, vDeath = vK3 + 54;
+const TAIL = capture.frames - 1 - capture.deathFrame;
+const ANCHORS: [number, number][] = [[0, 0], [vK1, K1], [vK2, K2], [vK3, K3], [vDeath, capture.deathFrame], [vDeath + TAIL, capture.frames - 1]];
+const toSrc = (f: number) => interpolate(f, ANCHORS.map((a) => a[0]), ANCHORS.map((a) => a[1]), clamp);
+const toVideo = (s: number) => interpolate(s, ANCHORS.map((a) => a[1]), ANCHORS.map((a) => a[0]), clamp);
+const KILLS = [vK1, vK2, vK3];
+const SPLIT = capture.splitFrame == null ? null : Math.round(toVideo(capture.splitFrame));
+const DEATH = vDeath;
+const FOOT = vDeath + TAIL + 1;
+// What each kill shows, classic style: the money in green, the streak in red.
+const STREAK = ["FIRST BLOOD", "DOUBLE KILL", "TRIPLE KILL", "QUADRA KILL", "PENTAKILL"];
+const MONEY = ["+$16.40", "+$23.00", "+$31.50", "+$42.00", "+$51.00"];
+const POPS: Kill[] = KILLS.map((at, i) => ({ at, money: MONEY[i], streak: STREAK[i] }));
+
+const P1 = "Eat pills", P2 = "to get their money!", P3 = "Eat", P4 = "or be eaten";
+
+const Footage: React.FC = () => {
+  const f = useCurrentFrame();
+  const src = Math.round(toSrc(f));
+  return (
+    <AbsoluteFill>
+      <Img src={staticFile(`arena/${String(src).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />
+      <KillGainStack kills={POPS} />
+      {/* The game's own sounds for a classic kill: the eat, the streak, the till. */}
+      {KILLS.map((k) => (
+        <React.Fragment key={k}>
+          <Sequence from={k} layout="none"><Audio src={staticFile("snd/kill1.mp3")} /></Sequence>
+          <Sequence from={k} layout="none"><Audio src={staticFile("snd/floatkill.mp3")} volume={0.8} /></Sequence>
+          <Sequence from={k + 2} layout="none"><Audio src={staticFile("snd/money.mp3")} volume={0.8} /></Sequence>
+        </React.Fragment>
+      ))}
+      {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} /></Sequence>}
+      <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} /></Sequence>
+      {/* "Eat pills" · kill 1 */}
+      <Caption text={P1} y={H * 0.84} size={52} out={vK1 - OUT} keys={[[0, 2], [P1.length, 14]]} />
+      {/* "to get their money!" · kill 2 */}
+      <Caption text={P2} y={H * 0.84} size={52} out={vK2 - OUT} keys={[[0, vK1 + IN], [P2.length, vK2 - OUT - 12]]} />
+      {/* "Eat" · kill 3 */}
+      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" out={vK3 - OUT} keys={[[0, vK2 + IN], [P3.length, vK2 + IN + 6]]} />
+      {/* "or be eaten" · death */}
+      <Caption text={P4} y={H * 0.84} size={56} color="#00ff88" out={vDeath - OUT} keys={[[0, vK3 + IN], [P4.length, vDeath - OUT - 12]]} />
+    </AbsoluteFill>
+  );
+};
+
+/* 7 — Real kills: three 1.5 s clips (placeholder for any still missing).
  *     The line is split over them: each chunk is typed across a full second
  *     and then stays up for half a second before the next one. */
 const CHUNKS = ["Only the ones", "that eat", "survive"];
@@ -248,7 +285,7 @@ const Deaths: React.FC = () => (
   </AbsoluteFill>
 );
 
-/* 6 — The title exactly as the game's loading screen shows it: the PILLWARS
+/* 8 — The title exactly as the game's loading screen shows it: the PILLWARS
  *     image (img/pixel-hero/hero-title.png) and THE CRYPTO ARENA in the pixel
  *     font with the same green neon (.ls-sub in game/index.html). */
 const TITLE_DUR = 110;
@@ -276,7 +313,7 @@ const Title: React.FC = () => {
 };
 
 export const SCENES: [React.FC, number][] = [
-  [Birth, 90], [Chart, CHART_DUR], [Fall, FALL_DUR], [Arena, ARENA_DUR], [Deaths, DEATHS_DUR], [Title, TITLE_DUR],
+  [Birth, BIRTH_DUR], [Chart, CHART_DUR], [Fall, FALL_DUR], [Arena, LAND], [Spawn, SPAWN_DUR], [Footage, FOOT], [Deaths, DEATHS_DUR], [Title, TITLE_DUR],
 ];
 export const TOTAL = SCENES.reduce((a, [, d]) => a + d, 0);
 
