@@ -115,7 +115,7 @@ const Fall: React.FC = () => {
  *     gameplay captured from the game in classic mode (capture/director.js),
  *     at real speed. Two beats, both timed from what the capture logged:
  *       A (3 s): a kill, a split straight away and a second kill, under
- *                "Eat pills to get their PILL!";
+ *                "Eat pills to get their money!";
  *       B: "Eat" lands on the third kill and "be eaten" on the hero's death. */
 const LAND = 72, XFADE = 10;
 const S0 = 13; // first captured frame used: the hero about to reach its first prey
@@ -131,7 +131,7 @@ const STREAK = ["FIRST BLOOD", "DOUBLE KILL", "TRIPLE KILL", "QUADRA KILL", "PEN
 const MONEY = ["+$1.64", "+$2.30", "+$3.15", "+$4.20", "+$5.10"];
 const POPS: Kill[] = KILLS.map((at, i) => ({ at, money: MONEY[i], streak: STREAK[i] }));
 
-const A_TEXT = "Eat pills to get their PILL!";
+const A_TEXT = "Eat pills to get their money!";
 const B_TEXT = "Eat or be eaten";
 const K3 = KILLS[2];
 
@@ -197,12 +197,13 @@ const Arena: React.FC = () => {
  *     The line is split over them, one chunk typed across each second, so it's
  *     always being written and "survive" finishes on the last frame. */
 const CHUNKS = ["Only the ones", "that eat", "survive"];
-const DEATHS_DUR = CHUNKS.length * 30;
+const HOLD = 15; // "survive" stays up half a second before the title
+const DEATHS_DUR = CHUNKS.length * 30 + HOLD;
 const Deaths: React.FC = () => (
   <AbsoluteFill>
     <Series>
       {CHUNKS.map((chunk, i) => (
-        <Series.Sequence key={i} durationInFrames={30}>
+        <Series.Sequence key={i} durationInFrames={i === CHUNKS.length - 1 ? 30 + HOLD : 30}>
           {DEATHS[i] ? (
             <OffthreadVideo src={staticFile(`deaths/${DEATHS[i].file}`)} trimBefore={Math.round((DEATHS[i].at ?? 0) * 30)} style={{ width: W, height: H, objectFit: "cover" }} />
           ) : (
