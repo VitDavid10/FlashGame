@@ -21,8 +21,21 @@ export const GAME_ANGLE = -Math.PI / 4; // every pill in the game is drawn at -4
 // Typing sound: drop a short key click at public/type.mp3 and set this to
 // "type.mp3"; it plays once per letter of every caption.
 const TYPE_SFX: string | null = null;
-const CPS = 21; // letters per second
+const CPS = 15; // letters per second
 export const typeFrames = (text: string) => Math.ceil((text.length / CPS) * FPS);
+/** Frame at which each letter appears. `keys` pins the timing to the action:
+ *  [letters shown, frame] pairs, linear in between (e.g. "Eat" done exactly
+ *  on the kill). Without keys it types at CPS from `at`. */
+export type Keys = [number, number][];
+const letterFrames = (text: string, at: number, keys?: Keys) => text.split("").map((_, i) => {
+  if (!keys) return at + (i / CPS) * FPS;
+  const n = i + 1;
+  for (let k = 0; k < keys.length - 1; k++) {
+    const [c0, f0] = keys[k], [c1, f1] = keys[k + 1];
+    if (n <= c1 && c1 > c0) return f0 + ((n - c0) / (c1 - c0)) * (f1 - f0);
+  }
+  return keys[keys.length - 1][1];
+});
 
 /** One pill, centred on (x, y). `scale` = screen px per sprite px. */
 export const Pill: React.FC<{
@@ -112,14 +125,16 @@ export const ArenaFloor: React.FC<{ opacity?: number }> = ({ opacity = 1 }) => (
 /** Big pixel caption typed letter by letter, with the site's hard black shadow.
  *  The untyped part is laid out but invisible, so the line never reflows. */
 export const Caption: React.FC<{
-  text: string; at?: number; out?: number; y?: number; size?: number; color?: string;
-}> = ({ text, at = 0, out, y = H * 0.8, size = 46, color = "#ffffff" }) => {
+  text: string; at?: number; keys?: Keys; out?: number; y?: number; size?: number; color?: string;
+}> = ({ text, at = 0, keys, out, y = H * 0.8, size = 46, color = "#ffffff" }) => {
   const f = useCurrentFrame();
-  const shown = Math.max(0, Math.min(text.length, Math.floor(((f - at) / FPS) * CPS)));
+  const lf = letterFrames(text, at, keys);
+  const start = keys ? keys[0][1] : at, end = lf[lf.length - 1];
+  const shown = lf.filter((t) => f >= t).length;
   const typing = shown < text.length;
   const fadeOut = out === undefined ? 1 : interpolate(f, [out, out + 8], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const d = Math.round(size / 8);
-  const cursorOn = f >= at && (typing || f < at + typeFrames(text) + 18) && Math.floor(f / 8) % 2 === 0;
+  const cursorOn = f >= start && (typing || f < end + 18) && Math.floor(f / 8) % 2 === 0;
   return (
     <>
       <div style={{
@@ -132,7 +147,7 @@ export const Caption: React.FC<{
         <span style={{ visibility: "hidden" }}>{text.slice(shown)}</span>
       </div>
       {TYPE_SFX && text.split("").map((ch, i) => ch === " " ? null : (
-        <Sequence key={i} from={at + Math.floor((i / CPS) * FPS)} durationInFrames={6} layout="none">
+        <Sequence key={i} from={Math.floor(lf[i])} durationInFrames={6} layout="none">
           <Audio src={staticFile(TYPE_SFX)} volume={0.5} />
         </Sequence>
       ))}

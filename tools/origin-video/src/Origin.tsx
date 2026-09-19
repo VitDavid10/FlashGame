@@ -6,17 +6,19 @@ import {
 import { Audio } from "@remotion/media";
 import { ArenaFloor, Caption, Food, GAME_ANGLE, H, PIXEL, PX, Pill, W, typeFrames } from "./ui";
 import { PALETTE } from "./pill";
+import { KillGainStack, Kill } from "./KillGain";
 // Written by capture/director.js next to the frames it recorded from the game.
 import capture from "../public/arena/events.json";
 
-// 1-second death clips for the gameplay beat: drop them in public/deaths/ and
-// list the file names here, in order. Empty = placeholder.
+// The three 1-second kill clips for the "Only the ones / that eat / survive"
+// beat: drop them in public/deaths/ and list the file names here, in order.
+// Any slot left empty shows a placeholder.
 const DEATHS: string[] = [];
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
 /* 1 — Birth: one pill appears, then dozens. */
-const BIRTH_TEXT = "Every day, thousands of coins are born on pump.fun.";
+const BIRTH_TEXT = "Every day, thousands of coins are born on pump.fun";
 const Birth: React.FC = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -40,7 +42,7 @@ const Birth: React.FC = () => {
 };
 
 /* 2 — The chart: pump, then dump, in exactly the time the caption takes to type. */
-const CHART_TEXT = "Most of them die by morning.";
+const CHART_TEXT = "Most of them die by morning";
 const DRAW = typeFrames(CHART_TEXT);
 const CHART_DUR = DRAW + 12;
 const N = 70;
@@ -108,30 +110,52 @@ const Fall: React.FC = () => {
 
 /* 4 — The arena. The dead pills land at the game's -45°, on the game's floor
  *     and food, get their colour back, and then the video cuts into REAL
- *     gameplay captured from the game (capture/director.js): the green pill
- *     centred, eating, with a split and the game's own sounds. */
+ *     gameplay captured from the game in classic mode (capture/director.js),
+ *     at real speed. Two beats, both timed from what the capture logged:
+ *       A (3 s): a kill, a split straight away and a second kill, under
+ *                "Eat pills to get their PILL!";
+ *       B: "Eat" lands on the third kill and "be eaten" on the hero's death. */
 const LAND = 72, XFADE = 10;
-const S0 = 30, SPEED = 1.4; // skip the slow start of the capture, play it a bit faster
-const FOOT = Math.floor((capture.frames - 1 - S0) / SPEED);
-const toVideo = (src: number) => Math.round((src - S0) / SPEED);
-const KILLS = [...new Set(capture.kills)].map(toVideo).filter((k) => k >= 0 && k < FOOT);
-const SPLIT = capture.splitFrame == null ? null : toVideo(capture.splitFrame);
+const S0 = 13; // first captured frame used: the hero about to reach its first prey
+const v = (src: number) => src - S0; // capture frame -> footage frame (real speed)
+const KILLS = capture.kills.map(v);
+const SPLIT = capture.splitFrame == null ? null : v(capture.splitFrame);
+const DEATH = v(capture.deathFrame);
+const BEAT_A = 90;
+const FOOT = capture.frames - S0;
 const ARENA_DUR = LAND - XFADE + FOOT;
+// What each kill shows, classic style: the money in green, the streak in red.
+const STREAK = ["FIRST BLOOD", "DOUBLE KILL", "TRIPLE KILL", "QUADRA KILL", "PENTAKILL"];
+const MONEY = ["+$1.64", "+$2.30", "+$3.15", "+$4.20", "+$5.10"];
+const POPS: Kill[] = KILLS.map((at, i) => ({ at, money: MONEY[i], streak: STREAK[i] }));
+
+const A_TEXT = "Eat pills to get their PILL!";
+const B_TEXT = "Eat or be eaten";
+const K3 = KILLS[2];
 
 const Footage: React.FC = () => {
   const f = useCurrentFrame();
-  const src = Math.min(capture.frames - 1, S0 + Math.floor(f * SPEED));
+  const src = Math.min(capture.frames - 1, S0 + f);
   const opacity = interpolate(f, [0, XFADE], [0, 1], clamp);
   return (
     <AbsoluteFill style={{ opacity }}>
       <Img src={staticFile(`arena/${String(src).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />
+      <KillGainStack kills={POPS} />
+      {/* The game's own sounds for a classic kill: the eat, the streak, the till. */}
       {KILLS.map((k) => (
         <React.Fragment key={k}>
           <Sequence from={k} layout="none"><Audio src={staticFile("snd/kill1.mp3")} /></Sequence>
+          <Sequence from={k} layout="none"><Audio src={staticFile("snd/floatkill.mp3")} volume={0.8} /></Sequence>
           <Sequence from={k + 2} layout="none"><Audio src={staticFile("snd/money.mp3")} volume={0.8} /></Sequence>
         </React.Fragment>
       ))}
       {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} /></Sequence>}
+      <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} /></Sequence>
+      {/* Beat A: typed across its 3 seconds, gone before beat B starts. */}
+      <Caption text={A_TEXT} keys={[[0, 4], [A_TEXT.length, BEAT_A - 12]]} out={BEAT_A - 10} y={H * 0.84} size={48} />
+      {/* Beat B: "Eat" finishes on the third kill, "be eaten" on the death. */}
+      <Caption text={B_TEXT} y={H * 0.84} size={56} color="#00ff88"
+        keys={[[0, K3 - 9], [3, K3], [7, K3 + 12], [7, DEATH - 16], [B_TEXT.length, DEATH]]} />
     </AbsoluteFill>
   );
 };
@@ -159,65 +183,68 @@ const Arena: React.FC = () => {
         return <Pill key={i} x={x} y={land(i, y)} wL={10 + (i % 5) * 2} scale={PIXEL} top={t} bot={b} ang={GAME_ANGLE} grey={colour(i)} />;
       })}
       <Pill x={W / 2} y={land(8, H / 2)} wL={heroWL} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} grey={colour(8)} />
-      <Caption text="They get a second life." at={6} out={LAND - XFADE - 6} y={H * 0.84} size={46} />
+      <Caption text="They get a second life" at={6} out={LAND - XFADE - 6} y={H * 0.84} size={46} />
       <Sequence from={LAND - XFADE} durationInFrames={FOOT}>
         <Footage />
-        <Caption text="Eat or be eaten." at={14} y={H * 0.84} size={52} color="#00ff88" />
       </Sequence>
     </AbsoluteFill>
   );
 };
 
-/* 5 — Real deaths, one second each (placeholder until the clips exist). */
-const DEATHS_DUR = DEATHS.length ? DEATHS.length * 30 : 90;
+/* 5 — Real deaths: three 1-second clips (placeholder for any still missing).
+ *     The line is split over them, one chunk typed across each second, so it's
+ *     always being written and "survive" finishes on the last frame. */
+const CHUNKS = ["Only the ones", "that eat", "survive"];
+const DEATHS_DUR = CHUNKS.length * 30;
 const Deaths: React.FC = () => (
   <AbsoluteFill>
-    {DEATHS.length ? (
-      <Series>
-        {DEATHS.map((d) => (
-          <Series.Sequence key={d} durationInFrames={30}>
-            <OffthreadVideo src={staticFile(`deaths/${d}`)} style={{ width: W, height: H, objectFit: "cover" }} />
-          </Series.Sequence>
-        ))}
-      </Series>
-    ) : (
-      <>
-        <ArenaFloor />
-        <div style={{
-          position: "absolute", left: 320, top: 150, width: 1280, height: 640,
-          border: "8px dashed #1f4d33", display: "flex", alignItems: "center", justifyContent: "center",
-          flexDirection: "column", gap: 24, fontFamily: PX, color: "#2f6b4a", fontSize: 30,
-        }}>
-          <div>1-SECOND DEATH CLIPS</div>
-          <div style={{ fontSize: 18 }}>public/deaths/*.mp4</div>
-        </div>
-      </>
-    )}
-    <Caption text="Only the ones that eat survive." at={4} y={H * 0.86} size={44} />
+    <Series>
+      {CHUNKS.map((chunk, i) => (
+        <Series.Sequence key={i} durationInFrames={30}>
+          {DEATHS[i] ? (
+            <OffthreadVideo src={staticFile(`deaths/${DEATHS[i]}`)} style={{ width: W, height: H, objectFit: "cover" }} />
+          ) : (
+            <>
+              <ArenaFloor />
+              <div style={{
+                position: "absolute", left: 320, top: 150, width: 1280, height: 640,
+                border: "8px dashed #1f4d33", display: "flex", alignItems: "center", justifyContent: "center",
+                flexDirection: "column", gap: 24, fontFamily: PX, color: "#2f6b4a", fontSize: 30,
+              }}>
+                <div>KILL CLIP {i + 1}</div>
+                <div style={{ fontSize: 18 }}>public/deaths/</div>
+              </div>
+            </>
+          )}
+          <Caption text={chunk} keys={[[0, 0], [chunk.length, 29]]} y={H * 0.84} size={56} />
+        </Series.Sequence>
+      ))}
+    </Series>
   </AbsoluteFill>
 );
 
-/* 6 — The official title: PILLWARS as the game draws it, THE CRYPTO ARENA under it. */
+/* 6 — The title exactly as the game's loading screen shows it: the PILLWARS
+ *     image (img/pixel-hero/hero-title.png) and THE CRYPTO ARENA in the pixel
+ *     font with the same green neon (.ls-sub in game/index.html). */
 const TITLE_DUR = 110;
 const Title: React.FC = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const s = spring({ frame: f, fps, config: { damping: 12 } });
   const sub = interpolate(f, [14, 26], [0, 1], clamp);
-  const tw = 1180, th = Math.round((tw * 176) / 1008);
+  const tw = 1150, th = Math.round((tw * 243) / 1200);
   return (
     <AbsoluteFill style={{ backgroundColor: "#050505" }}>
       <ArenaFloor opacity={0.7} />
       <Food seed="title" n={45} opacity={0.6} />
-      <Img src={staticFile("PILLWARS-white-placa.png")} style={{
-        position: "absolute", width: tw, height: th, left: (W - tw) / 2, top: H * 0.3,
-        imageRendering: "pixelated", transform: `scale(${s})`,
-        filter: "drop-shadow(0 0 22px rgba(255,255,255,.35))",
+      <Img src={staticFile("hero-title.png")} style={{
+        position: "absolute", width: tw, height: th, left: (W - tw) / 2, top: H * 0.29,
+        transform: `scale(${s})`,
       }} />
       <div style={{
-        position: "absolute", left: 0, right: 0, top: H * 0.3 + th + 70, textAlign: "center",
-        fontFamily: PX, fontSize: 54, letterSpacing: 8, color: "#4dffa0", opacity: sub,
-        textShadow: "0 0 18px rgba(0,255,136,.75), 0 0 4px rgba(0,255,136,.9)",
+        position: "absolute", left: 0, right: 0, top: H * 0.29 + th + 44, textAlign: "center",
+        fontFamily: PX, fontSize: 40, letterSpacing: 14, color: "#aaffdd", whiteSpace: "nowrap", opacity: sub,
+        textShadow: "0 0 6px #00ff88, 0 0 14px #00ff88, 0 0 26px rgba(0,255,136,0.7)",
       }}>THE CRYPTO ARENA</div>
     </AbsoluteFill>
   );
