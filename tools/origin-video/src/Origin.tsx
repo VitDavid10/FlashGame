@@ -10,9 +10,9 @@ import { KillGainStack, Kill } from "./KillGain";
 // Written by capture/director.js next to the frames it recorded from the game.
 import capture from "../public/arena/events.json";
 
-// The three 1-second kill clips for the "Only the ones / that eat / survive"
+// The three kill clips (1.5 s each) for the "Only the ones / that eat / survive"
 // beat: drop the recordings in public/deaths/ and list them here, in order.
-// `at` = the second of the recording where its 1-second slice starts, so a
+// `at` = the second of the recording where its 1.5 s slice starts, so a
 // 30 s Instant Replay needs no trimming. Any slot left empty shows a placeholder.
 //   e.g. { file: "kill1.mp4", at: 12.4 }
 const DEATHS: { file: string; at?: number }[] = [];
@@ -113,31 +113,44 @@ const Fall: React.FC = () => {
 /* 4 — The arena. The dead pills land at the game's -45°, on the game's floor
  *     and food, get their colour back, and then the video cuts into REAL
  *     gameplay captured from the game in classic mode (capture/director.js),
- *     at real speed. Two beats, both timed from what the capture logged:
- *       A (3 s): a kill, a split straight away and a second kill, under
- *                "Eat pills to get their money!";
- *       B: "Eat" lands on the third kill and "be eaten" on the hero's death. */
+ *     which also does the cinematic push-in with the game's own camera.
+ *     The text is split in phrases and each event lands in the pause after
+ *     its phrase:
+ *       "Eat pills" · kill 1 · "to get their money!" · split + kill 2 ·
+ *       "Eat" · kill 3 · "or be eaten" · the hero dies. */
 const LAND = 72, XFADE = 10;
-const S0 = 13; // first captured frame used: the hero about to reach its first prey
-const v = (src: number) => src - S0; // capture frame -> footage frame (real speed)
-const KILLS = capture.kills.map(v);
-const SPLIT = capture.splitFrame == null ? null : v(capture.splitFrame);
-const DEATH = v(capture.deathFrame);
-const BEAT_A = 90;
-const FOOT = capture.frames - S0;
+const [K1, K2, K3] = capture.kills;
+// Kills 2 s apart on screen, the life of the classic money pop-up, so two
+// never stack. The capture is retimed in stretches to hit that: straight
+// lines between these [video, capture] anchors, each kept near real speed.
+const GAP = 64;
+const vK1 = K1, vK2 = vK1 + GAP;
+// The third kill can come much sooner after the second: stretching that to 2 s
+// would be obvious slow motion, so it only eases to ~0.8x there and the older
+// pop-up clears out when the new one arrives (see KillGainStack).
+const vK3 = vK2 + Math.min(GAP, Math.max(36, Math.round((K3 - K2) / 0.8)));
+const vDeath = vK3 + Math.min(45, Math.max(30, capture.deathFrame - K3));
+const TAIL = capture.frames - 1 - capture.deathFrame;
+const ANCHORS: [number, number][] = [[0, 0], [vK1, K1], [vK2, K2], [vK3, K3], [vDeath, capture.deathFrame], [vDeath + TAIL, capture.frames - 1]];
+const toSrc = (f: number) => interpolate(f, ANCHORS.map((a) => a[0]), ANCHORS.map((a) => a[1]), clamp);
+const toVideo = (s: number) => interpolate(s, ANCHORS.map((a) => a[1]), ANCHORS.map((a) => a[0]), clamp);
+const KILLS = [vK1, vK2, vK3];
+const SPLIT = capture.splitFrame == null ? null : Math.round(toVideo(capture.splitFrame));
+const DEATH = vDeath;
+const FOOT = vDeath + TAIL + 1;
 const ARENA_DUR = LAND - XFADE + FOOT;
 // What each kill shows, classic style: the money in green, the streak in red.
 const STREAK = ["FIRST BLOOD", "DOUBLE KILL", "TRIPLE KILL", "QUADRA KILL", "PENTAKILL"];
-const MONEY = ["+$1.64", "+$2.30", "+$3.15", "+$4.20", "+$5.10"];
+const MONEY = ["+$16.40", "+$23.00", "+$31.50", "+$42.00", "+$51.00"];
 const POPS: Kill[] = KILLS.map((at, i) => ({ at, money: MONEY[i], streak: STREAK[i] }));
 
 const A_TEXT = "Eat pills to get their money!";
 const B_TEXT = "Eat or be eaten";
-const K3 = KILLS[2];
+const A_CUT = "Eat pills".length, B_CUT = "Eat".length;
 
 const Footage: React.FC = () => {
   const f = useCurrentFrame();
-  const src = Math.min(capture.frames - 1, S0 + f);
+  const src = Math.round(toSrc(f));
   const opacity = interpolate(f, [0, XFADE], [0, 1], clamp);
   return (
     <AbsoluteFill style={{ opacity }}>
@@ -153,11 +166,12 @@ const Footage: React.FC = () => {
       ))}
       {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} /></Sequence>}
       <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} /></Sequence>
-      {/* Beat A: typed across its 3 seconds, gone before beat B starts. */}
-      <Caption text={A_TEXT} keys={[[0, 4], [A_TEXT.length, BEAT_A - 12]]} out={BEAT_A - 10} y={H * 0.84} size={48} />
-      {/* Beat B: "Eat" finishes on the third kill, "be eaten" on the death. */}
+      {/* "Eat pills" · kill 1 · "to get their money!" · kill 2 */}
+      <Caption text={A_TEXT} y={H * 0.84} size={48} out={vK3 - 20}
+        keys={[[0, 4], [A_CUT, vK1 - 5], [A_CUT, vK1 + 6], [A_TEXT.length, vK2 - 5]]} />
+      {/* "Eat" · kill 3 · "or be eaten" · death */}
       <Caption text={B_TEXT} y={H * 0.84} size={56} color="#00ff88"
-        keys={[[0, K3 - 9], [3, K3], [7, K3 + 12], [7, DEATH - 16], [B_TEXT.length, DEATH]]} />
+        keys={[[0, vK3 - 12], [B_CUT, vK3 - 4], [B_CUT, vK3 + 6], [B_TEXT.length, DEATH - 3]]} />
     </AbsoluteFill>
   );
 };
@@ -193,17 +207,17 @@ const Arena: React.FC = () => {
   );
 };
 
-/* 5 — Real deaths: three 1-second clips (placeholder for any still missing).
- *     The line is split over them, one chunk typed across each second, so it's
- *     always being written and "survive" finishes on the last frame. */
+/* 5 — Real kills: three 1.5 s clips (placeholder for any still missing).
+ *     The line is split over them: each chunk is typed across a full second
+ *     and then stays up for half a second before the next one. */
 const CHUNKS = ["Only the ones", "that eat", "survive"];
-const HOLD = 15; // "survive" stays up half a second before the title
-const DEATHS_DUR = CHUNKS.length * 30 + HOLD;
+const HOLD = 15; // each chunk stays up half a second once typed
+const DEATHS_DUR = CHUNKS.length * (30 + HOLD);
 const Deaths: React.FC = () => (
   <AbsoluteFill>
     <Series>
       {CHUNKS.map((chunk, i) => (
-        <Series.Sequence key={i} durationInFrames={i === CHUNKS.length - 1 ? 30 + HOLD : 30}>
+        <Series.Sequence key={i} durationInFrames={30 + HOLD}>
           {DEATHS[i] ? (
             <OffthreadVideo src={staticFile(`deaths/${DEATHS[i].file}`)} trimBefore={Math.round((DEATHS[i].at ?? 0) * 30)} style={{ width: W, height: H, objectFit: "cover" }} />
           ) : (

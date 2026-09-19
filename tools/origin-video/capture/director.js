@@ -65,6 +65,12 @@
         window.__split = () => splitPlayer();
         window.__tick = ms => { window.__clock.t += ms; updateGame(); };
         window.__draw = () => draw();
+        // Cinematic push-in done by the GAME's camera (not by scaling the frame
+        // afterwards), so the pixels stay sharp. getViewScale() feeds both the
+        // drawing and the mouse mapping, so wrapping it keeps them in step.
+        window.__zoom = 1;
+        const gvs = getViewScale;
+        window.getViewScale = function () { return gvs.apply(this, arguments) * window.__zoom; };
     })();`);
 
     const ws = new WebSocket('ws://127.0.0.1:8197');
@@ -89,20 +95,20 @@
     }
 
     const plan = [
-        // Distances measured on the first take (classic hero ~8 units/frame, the
-        // split half flies ~530 units): kill 1 at ~1 s, the split kill right
-        // after, and the third ~2 s later. It sits off the split's line, or the
-        // flying half swallows it on the way.
-        { dx: 280, dy: 0, r: 16 },                  // 1: first kill
-        { dx: 660, dy: 10, r: 15, split: true },    // 2: caught with the split
-        { dx: 1250, dy: 170, r: 16 },               // 3: eaten just before the end
+        // Kills ~2 s apart: that's how long the classic money pop-up lasts, so
+        // two never stack. Measured hero speed ~7 units/frame; the split fires
+        // 430 units short of its prey and the half lands on it ~3 frames later.
+        // The third sits off the split's line, or the flying half takes it early.
+        { dx: 190, dy: 0, r: 16 },                  // 1: first kill, ~1 s in
+        { dx: 1020, dy: 0, r: 15, split: true },    // 2: caught with the split, ~2 s later
+        { dx: 1440, dy: 150, r: 16 },               // 3: ~2 s after that
     ];
     const pool = [...sim.enemies].filter(e => e.r < hero.r * 1.5)
         .sort((a, b) => Math.hypot(a.x - H0.x, a.y - H0.y) - Math.hypot(b.x - H0.x, b.y - H0.y));
     const prey = plan.map((p, i) => ({ c: pool[i], ax: H0.x + p.dx, ay: H0.y + p.dy, split: !!p.split, r: p.r }));
     prey.forEach(p => { p.c.r = p.r; });
     // The killer: a bot blown up to a size that swallows both halves at once.
-    const killer = { c: pool[plan.length], x: H0.x + 2150, y: H0.y + 170, go: false };
+    const killer = { c: pool[plan.length], x: H0.x + 2150, y: H0.y + 150, go: false, wait: 15 };
     killer.c.r = 130;
     const cast = new Set([...prey.map(p => p.c), killer.c]);
     const exiled = sim.enemies.filter(e => !cast.has(e) && e.r > hero.r * 0.7 &&
@@ -141,7 +147,10 @@
     window.__frame = 0;
     let splitFrame = null, deathFrame = null;
     window.__status = { phase: 'recording', frame: 0 };
+    const ZOOM_TO = 1.45, ZOOM_FRAMES = 30;
+    const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     for (let f = 0; f < MAX_FRAMES; f++) {
+        window.__zoom = 1 + (ZOOM_TO - 1) * easeInOut(Math.min(1, f / ZOOM_FRAMES));
         const h = centroid();
         if (h && deathFrame === null) {
             const next = prey.find(p => alive(p.c));
@@ -149,7 +158,7 @@
                 window.__aim(next.c.x, next.c.y);
                 if (next.split && splitFrame === null && Math.hypot(next.c.x - h.x, next.c.y - h.y) < 430) { window.__split(); splitFrame = f; }
             } else {
-                killer.go = true;                     // all prey gone: here it comes
+                if (--killer.wait <= 0) killer.go = true;   // a beat after the third kill, here it comes
                 window.__aim(h.x + 400, h.y);
             }
         }

@@ -31,19 +31,25 @@ const K = 1.6;
 export const KillGainStack: React.FC<{ kills: Kill[] }> = ({ kills }) => {
   const f = useCurrentFrame();
   const live = kills.filter((k) => f >= k.at && f < k.at + LIFE);
+  // One pop-up at a time: when a new kill lands, the previous one clears out
+  // in a few frames instead of stacking under it.
+  const nextOf = (k: Kill) => kills.find((n) => n.at > k.at && f >= n.at);
   return (
-    <div style={{
-      position: "absolute", top: "40%", left: "50%", transform: "translateX(-50%)",
-      display: "flex", flexDirection: "column", alignItems: "center", gap: 4 * K,
-    }}>
+    // All at the same spot (not stacked in a column like the game's
+    // #killGainStack): only one shows at a time, and a fading one taking room
+    // would make the new one jump when it goes.
+    <div style={{ position: "absolute", top: "40%", left: 0, right: 0 }}>
       {live.map((k) => {
         const p = (f - k.at) / LIFE;
+        const next = nextOf(k);
+        const clear = next ? interpolate(f, [next.at, next.at + 6], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) : 1;
+        if (clear <= 0) return null;
         return (
           <div key={k.at} style={{
-            fontFamily: PX, fontSize: 20 * K, letterSpacing: 2 * K, color: "#3ddc84", lineHeight: 1.15,
+            position: "absolute", left: 0, right: 0, fontFamily: PX, fontSize: 20 * K, letterSpacing: 2 * K, color: "#3ddc84", lineHeight: 1.15,
             display: "flex", flexDirection: "column", alignItems: "center", whiteSpace: "nowrap",
             textShadow: `${4 * K}px ${4 * K}px 0 #000, ${8 * K}px ${8 * K}px 0 rgba(0,0,0,0.5)`,
-            opacity: at(p, 1), transform: `translateY(${at(p, 2) * K}px) scale(${at(p, 3)})`,
+            opacity: at(p, 1) * clear, transform: `translateY(${at(p, 2) * K}px) scale(${at(p, 3)})`,
           }}>
             <span>{k.money}</span>
             <span style={{ fontSize: "0.7em", color: "#ff2a2a", marginTop: 10 * K, textShadow: `${3 * K}px ${3 * K}px 0 #000` }}>{k.streak}</span>
