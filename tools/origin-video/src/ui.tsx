@@ -101,8 +101,11 @@ export const Food: React.FC<{ seed: string; n?: number; opacity?: number }> = ({
 
 /** A heap of the game's food pellets: dense in the middle, thinning out, all
  *  drawn with the same sprite the game uses. `size` is the px per texel. */
-export const FoodPile: React.FC<{ cx: number; cy: number; n: number; rx: number; ry: number; seed: string; size?: number }> =
-  ({ cx, cy, n, rx, ry, seed, size = 7 }) => (
+export const FoodPile: React.FC<{
+  cx: number; cy: number; n: number; rx: number; ry: number; seed: string; size?: number;
+  /** Box left clear, for a title to sit on the scatter without pellets on it. */
+  avoid?: { x0: number; y0: number; x1: number; y1: number };
+}> = ({ cx, cy, n, rx, ry, seed, size = 7, avoid }) => (
     <>
       {Array.from({ length: n }, (_, i) => {
         const a = random(`${seed}a${i}`) * Math.PI * 2;
@@ -114,9 +117,11 @@ export const FoodPile: React.FC<{ cx: number; cy: number; n: number; rx: number;
         const dL = random(`${seed}s${i}`) > 0.55 ? 8 : 6;
         const d = dL * size;
         const col = FOOD_COLORS[Math.floor(random(`${seed}c${i}`) * FOOD_COLORS.length)];
+        const x = cx + Math.cos(a) * r * rx, y = cy + Math.sin(a) * r * ry;
+        if (avoid && x > avoid.x0 - d && x < avoid.x1 + d && y > avoid.y0 - d && y < avoid.y1 + d) return null;
         return (
           <Img key={i} src={dotSprite(dL, col)}
-            style={{ position: "absolute", width: d, height: d, left: cx + Math.cos(a) * r * rx - d / 2, top: cy + Math.sin(a) * r * ry - d / 2, imageRendering: "pixelated" }} />
+            style={{ position: "absolute", width: d, height: d, left: x - d / 2, top: y - d / 2, imageRendering: "pixelated" }} />
         );
       })}
     </>

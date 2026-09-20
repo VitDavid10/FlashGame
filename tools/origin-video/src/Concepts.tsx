@@ -276,31 +276,24 @@ export const NoTokenC: React.FC = () => (
 );
 
 
-/* ---------- Feature card: the food that makes you grow ----------
- * Same family as the end-of-thread card (404 grid, neon headline, white line,
- * grey note), with a heap of the game's own pellets where the strip was.
+/* ---------- Feature card: the food ----------
+ * Just the word and the pellets, scattered the way they lie on the map. The
+ * text of the post goes in the post, not on the card.
  */
-const FeatureCard: React.FC<{ code: string; title: string; note: React.ReactNode; withPill?: boolean }> = ({ code, title, note, withPill }) => (
-  <AbsoluteFill style={{ ...GRID, alignItems: "center", textAlign: "center" }}>
-    <div style={{ width: 1720, marginTop: 92 }}>
-      <div style={{ fontFamily: PX, fontSize: 104, lineHeight: 1, letterSpacing: 8, color: "#aaffdd", textShadow: NEON }}>{code}</div>
-      <div style={{ fontFamily: PX, fontSize: 18 * K, letterSpacing: 2 * K, color: "#fff", marginTop: 18 * K, textShadow: `${3 * K}px ${3 * K}px 0 rgba(0,0,0,0.7)` }}>{title}</div>
-      <div style={{ fontFamily: PX, fontSize: 10 * K, lineHeight: 1.9, color: "#9aa1a9", marginTop: 14 * K, maxWidth: 460 * K, marginLeft: "auto", marginRight: "auto" }}>{note}</div>
-    </div>
-    <FoodPile cx={withPill ? W * 0.62 : W / 2} cy={H * 0.76} n={64} rx={withPill ? 300 : 400} ry={150} seed="pile" size={7} />
-    {withPill && <Pill x={W * 0.30} y={H * 0.75} wL={30} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />}
+const FoodCard: React.FC<{ top: number }> = ({ top }) => (
+  <AbsoluteFill style={GRID}>
+    <FoodPile cx={W / 2} cy={H / 2} n={170} rx={W * 0.52} ry={H * 0.52} seed="scatter" size={7}
+      avoid={{ x0: W / 2 - 430, y0: top - 30, x1: W / 2 + 430, y1: top + 190 }} />
+    <div style={{
+      position: "absolute", left: 0, right: 0, top, textAlign: "center",
+      fontFamily: PX, fontSize: 150, letterSpacing: 12, color: "#aaffdd",
+      textShadow: `${NEON}, 10px 10px 0 rgba(0,0,0,0.85)`,
+    }}>FOOD</div>
   </AbsoluteFill>
 );
 
-export const FoodA: React.FC = () => (
-  <FeatureCard code="FOOD" title="THE EASIEST WAY TO GROW"
-    note={<>Eat the pellets on the map and you get bigger. Each one you eat comes back somewhere else.</>} />
-);
-
-export const FoodB: React.FC = () => (
-  <FeatureCard code="FOOD" title="THE EASIEST WAY TO GROW" withPill
-    note={<>Eat the pellets on the map and you get bigger. Each one you eat comes back somewhere else.</>} />
-);
+export const FoodA: React.FC = () => <FoodCard top={H * 0.4} />;
+export const FoodB: React.FC = () => <FoodCard top={H * 0.1} />;
 
 export const CONCEPTS: [string, React.FC][] = [
   ["food-a", FoodA], ["food-b", FoodB], ["no-token-a", NoTokenA], ["no-token-b", NoTokenB], ["no-token-c", NoTokenC],
