@@ -268,7 +268,7 @@ const SLOTS: Record<string, (string | null)[]> = {
   shot: ["shoot.png", "clon.png", null, null],
   sprint: ["sprint.png", "iman.png", null, null],
   shield: ["inmune.png", "tp.png", "shoot.png", null],
-  tp: ["tp.png", "clon.png", "sprint.png", null],
+  magnet: ["iman.png", "clon.png", "sprint.png", null],
 };
 const SLOTS_DEFAULT = ["shoot.png", null, null, null];
 const PANEL_W = 168, PANEL_H = Math.round(PANEL_W * 808 / 601);
@@ -328,13 +328,17 @@ const GameHud: React.FC<{ hud?: Hud; shot: string }> = ({ hud, shot }) => {
     </>
   );
 };
+// A closer crop for the takes whose detail is small: the magnet's pull on the
+// food reads as nothing at the size the box gives it. 1.35x still crops inside
+// the captured 1920 (1280 x 1.35 = 1728), so no pixel is stretched.
+const ZOOM: Record<string, number> = { magnet: 1.35 };
 const DeathClip: React.FC<{ from: number; rate: number; shot: string }> = ({ from, rate, shot }) => {
   const f = useCurrentFrame();
   const at = from + Math.round(f * rate);
   return (
     <div style={{ position: "absolute", ...BOX, overflow: "hidden", border: "8px solid #1f4d33" }}>
       <Img src={staticFile(`deaths/${String(at).padStart(4, "0")}.jpg`)}
-        style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        style={{ width: "100%", height: "100%", objectFit: "cover", transform: `scale(${ZOOM[shot] ?? 1})` }} />
       <GameHud hud={(deathsCapture.hud as Hud[])[at]} shot={shot} />
     </div>
   );

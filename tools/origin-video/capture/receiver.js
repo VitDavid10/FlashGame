@@ -16,7 +16,7 @@ const http = require('http');
 const { WebSocketServer } = require('ws');
 
 const OUT = path.join(__dirname, '..', 'public');
-const PORT = 8197;
+const PORT = Number(process.env.PORT) || 8197;   // another capture running? give this one its own port
 const DIRS = ['arena', 'skills', 'deaths', 'growth'];
 const NAME = new RegExp('^(' + DIRS.join('|') + ')/(\\d{4}\\.jpg|events\\.json)$');
 

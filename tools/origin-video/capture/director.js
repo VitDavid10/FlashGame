@@ -289,7 +289,7 @@
      *   4. a Spain pill runs an Argentina one down,
      *   5. two hits of classic's shot on a virus: purple, then it bursts,
      *   6, 7, 8. three rivals using the game's skills: sprint, shield and a
-     *      teleport, with the camera riding along.
+     *      magnet, with the camera riding along.
      */
     async function deaths(sim, hero, sendFrame, ws) {
         ws.send('reset deaths');
@@ -492,7 +492,6 @@
         const MOVES = {
             sprint: { ang: -0.22, speed: 21, fire: [0, 20], seats: [[-260, 30], [-20, -80], [230, 40], [470, -60]] },
             shield: { ang: 2.85, speed: 14, fire: [0, 16, 32], seats: [[220, -90], [10, 70], [-210, -40], [-430, 60]] },
-            tp: { ang: 1.15, speed: 12, fire: [10], seats: [[-90, -230], [80, -20], [-120, 190], [60, 400]] },
         };
         const botTake = (name, i, id) => {
             const { x, y } = at(i);
@@ -517,29 +516,17 @@
                 put(star, x - Math.cos(ANG) * 520, y - Math.sin(ANG) * 520);
                 prey.forEach((c, k) => { Object.assign(c, { r: 30, skinUrl: null }); put(c, x + seats[k][0], y + seats[k][1]); });
                 window.__botSkill(star, id);
-                // The camera rides with the star. While it is teleporting OUT
-                // it holds the spot it left, so the jump reads as one: it
-                // vanishes here and the next frame is somewhere else entirely.
+                // The camera rides with the star, and holds its last spot if
+                // the star is gone, instead of snapping back to the hero.
                 const eye = { x, y };
                 return { x, y, cast, cam: () => {
-                    if (sim.enemies.includes(star) && star.tpPhase !== 1) { eye.x = star.x; eye.y = star.y; }
+                    if (sim.enemies.includes(star)) { eye.x = star.x; eye.y = star.y; }
                     window.__snapCam(eye.x, eye.y);
                 } };
             }, f => {
                 prey.forEach((c, k) => { if (sim.enemies.includes(c)) drift(c, x + seats[k][0], y + seats[k][1], f, k); });
                 if (!sim.enemies.includes(star)) return;
-                if (fire.includes(f)) {
-                    window.__botSkill(star, id);
-                    // The real teleport of the game: it picks its own spot,
-                    // anywhere on the map, and the camera goes with it. The only
-                    // thing moved is a landing on top of the off-stage pile.
-                    if (id === 4 && star.tpDest && Math.hypot(star.tpDest.x - DUMP.x, star.tpDest.y - DUMP.y) < 2200) {
-                        star.tpDest = { x: -star.tpDest.x, y: -star.tpDest.y };
-                    }
-                }
-                // While it is teleporting the game owns the cell: moving it by
-                // hand turned the jump into a slide.
-                if (star.tpPhase > 0) return;
+                if (fire.includes(f)) window.__botSkill(star, id);
                 star.r = 62;                           // no growing: a big bot is retired by the game
                 star.botSkills = []; star.botNextSkillTime = 1e15; star.massMilestoneMet = true;
                 // Straight across, nudged towards whatever pill is next in line.
@@ -551,7 +538,27 @@
         };
         await botTake('sprint', 4, 3);          // a rival bolts across, eating
         await botTake('shield', 5, 6);          // another crosses behind its shield
-        await botTake('tp', 7, 4);              // and one vanishes mid-run
+        /* 8 - the magnet. It is the HERO's: the game only drags food towards a
+         *     PLAYER's cells (a bot's magnet is just particles), and this one
+         *     has to be seen pulling the arena in. */
+        {
+            const { x, y } = at(7);
+            const snack = spare().filter(e => e.r > 6).slice(0, 3);
+            clearViruses(x, y, new Set());
+            for (const v of sim.viruses) if (Math.hypot(v.x - x, v.y - y) < 4000) { v.x = DUMP.x; v.y = DUMP.y; }
+            const cast = new Set(snack);
+            const seats = [[420, -120], [640, 90], [880, -50]];
+            await shoot('magnet', 44, 1.2, () => {
+                revive(x, y, 56);
+                snack.forEach((c, k) => { Object.assign(c, { r: 30, skinUrl: null }); put(c, x + seats[k][0], y + seats[k][1]); });
+                return { x, y, cast };
+            }, f => {
+                p.skillState[5] = 8000;            // magnet on for the whole take
+                snack.forEach((c, k) => { if (sim.enemies.includes(c)) drift(c, x + seats[k][0], y + seats[k][1], f, k); });
+                const next = snack.find(c => sim.enemies.includes(c));
+                window.__aim(next ? next.x : hero.x + 600, next ? next.y : hero.y - 60);
+            });
+        }
 
         ws.send('deaths/events.json'); ws.send(JSON.stringify({ fps: 30, shots, hud }, null, 2));
         await new Promise(r => setTimeout(r, 800));
@@ -576,7 +583,7 @@
     async function growth(sim, hero, sendFrame, ws) {
         ws.send('reset growth');
         const p = window.me();
-        const FRAMES = 120, EXTRA = 1.35;      // 4 s at 30 fps
+        const FRAMES = 120, EXTRA = 1.8;       // 4 s at 30 fps
         // A recolour every half second, from the player's own palette
         // (PAL_DEFAULT in game/index.html). The first one is the pill everybody
         // starts with: grey over green.
