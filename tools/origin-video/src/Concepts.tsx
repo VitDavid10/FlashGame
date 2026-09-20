@@ -219,64 +219,58 @@ export const Growth: React.FC = () => {
   );
 };
 
-/* ---------- The card that closes every thread: there is no token yet ---------- */
-const NOTE = "No token. No presale. Nothing to buy.";
-const Card: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
-  <AbsoluteFill style={{ backgroundColor: "#050505" }}>
-    <ArenaFloor />
-    {children}
+/* ---------- The card that closes every thread, built like the 404 page ----------
+ * Same recipe as 404.html: the arena floor as a 100px grid of 4px lines at 3%
+ * white over #050505, the neon of THE CRYPTO ARENA for the big line, white
+ * PressStart for the headline and grey for the note, and a row of food with a
+ * pill at the end.
+ */
+const GRID: React.CSSProperties = {
+  backgroundColor: "#050505",
+  backgroundImage:
+    "linear-gradient(rgba(255,255,255,0.03) 4px, transparent 4px)," +
+    "linear-gradient(90deg, rgba(255,255,255,0.03) 4px, transparent 4px)",
+  backgroundSize: "100px 100px",
+};
+const NEON = "0 0 6px #00ff88, 0 0 14px #00ff88, 0 0 26px rgba(0,255,136,0.7)";
+const FOOD_ROW = ["#FFC107", "#03A9F4", "#9C27B0", "#FF5722", "#8BC34A", "#F44336"];
+
+/** The strip of the 404: food, then the pill that ate the page. */
+const FoodRow: React.FC = () => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 46 }}>
+    {FOOD_ROW.map((c, i) => (
+      <div key={i} style={{ width: 22, height: 22, background: c, boxShadow: "inset 6px 6px 0 rgba(255,255,255,0.45), 4px 4px 0 rgba(0,0,0,0.6)" }} />
+    ))}
+    <div style={{ width: 340, height: 260, position: "relative", marginLeft: 30 }}>
+      <Pill x={170} y={130} wL={30} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
+    </div>
+  </div>
+);
+
+const Card: React.FC<{ code: string; title: string; note: React.ReactNode }> = ({ code, title, note }) => (
+  <AbsoluteFill style={{ ...GRID, alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+    <div style={{ width: 1500 }}>
+      <div style={{ fontFamily: PX, fontSize: 104, lineHeight: 1, letterSpacing: 8, color: "#aaffdd", textShadow: NEON }}>{code}</div>
+      <div style={{ fontFamily: PX, fontSize: 30, letterSpacing: 2, color: "#fff", marginTop: 36, textShadow: "3px 3px 0 rgba(0,0,0,0.7)" }}>{title}</div>
+      <div style={{ fontFamily: PX, fontSize: 18, lineHeight: 2.2, color: "#9aa1a9", marginTop: 34 }}>{note}</div>
+      <div style={{ marginTop: 26 }}><FoodRow /></div>
+    </div>
   </AbsoluteFill>
 );
 
 export const NoTokenA: React.FC = () => (
-  <Card>
-    <div style={{
-      position: "absolute", left: 180, top: 170, right: 180, bottom: 170,
-      border: "10px solid rgba(255,42,42,0.85)", boxShadow: "0 0 60px rgba(255,42,42,0.15) inset",
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 46,
-    }}>
-      <div style={{ fontFamily: PX, fontSize: 92, color: "#ff2a2a", letterSpacing: 6, textShadow: "8px 8px 0 #000" }}>NO TOKEN YET</div>
-      <div style={{ fontFamily: PX, fontSize: 30, color: "#e8f5ee", letterSpacing: 3, lineHeight: 2.1, textAlign: "center", textShadow: "4px 4px 0 #000" }}>
-        There is no PillWars token in circulation.<br />No presale. No whitelist. Nothing to buy.
-      </div>
-      <div style={{ fontFamily: PX, fontSize: 24, color: "#8b9199", letterSpacing: 3, textShadow: "3px 3px 0 #000" }}>
-        Any contract out there is not ours.
-      </div>
-    </div>
-  </Card>
+  <Card code="NO TOKEN" title="THERE IS NOTHING TO BUY"
+    note={<>PillWars has no token in circulation. No presale, no whitelist.<br />Any contract with our name on it is not ours.</>} />
 );
 
 export const NoTokenB: React.FC = () => (
-  <Card>
-    {/* A coin, crossed out with the game's red. */}
-    <div style={{ position: "absolute", left: W / 2 - 150, top: H * 0.16, width: 300, height: 300 }}>
-      <Gold x={150} y={150} n={26} spread={92} seed="ntb" size={20} />
-      <svg width={300} height={300} style={{ position: "absolute", left: 0, top: 0 }} shapeRendering="crispEdges">
-        <line x1={34} y1={34} x2={266} y2={266} stroke="#ff2a2a" strokeWidth={22} />
-        <line x1={266} y1={34} x2={34} y2={266} stroke="#ff2a2a" strokeWidth={22} />
-      </svg>
-    </div>
-    <div style={{ position: "absolute", left: 0, right: 0, top: H * 0.62, textAlign: "center" }}>
-      <div style={{ fontFamily: PX, fontSize: 64, color: "#ffffff", letterSpacing: 5, textShadow: "7px 7px 0 #000" }}>NOTHING IS LIVE</div>
-      <div style={{ fontFamily: PX, fontSize: 28, color: "#8b9199", letterSpacing: 3, marginTop: 40, lineHeight: 2, textShadow: "3px 3px 0 #000" }}>
-        {NOTE}<br />If a $PILL contract exists, it is not ours.
-      </div>
-    </div>
-  </Card>
+  <Card code="0" title="TOKENS IN CIRCULATION"
+    note={<>No presale, no whitelist, nothing for sale.<br />If you find a contract out there, it is not ours.</>} />
 );
 
 export const NoTokenC: React.FC = () => (
-  <Card>
-    {/* The pill everyone starts with, alone, and the note under it. */}
-    <Pill x={W / 2} y={H * 0.36} wL={30} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
-    <div style={{ position: "absolute", left: 0, right: 0, top: H * 0.62, textAlign: "center" }}>
-      <div style={{ fontFamily: PX, fontSize: 40, color: "#00ff88", letterSpacing: 5, textShadow: "6px 6px 0 #000" }}>END OF THREAD</div>
-      <div style={{ fontFamily: PX, fontSize: 26, color: "#e8f5ee", letterSpacing: 3, marginTop: 42, lineHeight: 2.1, textShadow: "3px 3px 0 #000" }}>
-        There is no PillWars token in circulation.<br />No presale, no whitelist, nothing to buy.<br />
-        <span style={{ color: "#ff2a2a" }}>Any contract you see is not ours.</span>
-      </div>
-    </div>
-  </Card>
+  <Card code="END" title="OF THREAD"
+    note={<>There is no PillWars token in circulation. No presale, no whitelist.<br />Any contract with our name on it is not ours.</>} />
 );
 
 export const CONCEPTS: [string, React.FC][] = [
