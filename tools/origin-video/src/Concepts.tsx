@@ -220,57 +220,52 @@ export const Growth: React.FC = () => {
 };
 
 /* ---------- The card that closes every thread, built like the 404 page ----------
- * Same recipe as 404.html: the arena floor as a 100px grid of 4px lines at 3%
- * white over #050505, the neon of THE CRYPTO ARENA for the big line, white
- * PressStart for the headline and grey for the note, and a row of food with a
- * pill at the end.
+ * Everything comes from 404.html: the arena floor grid, the neon of THE CRYPTO
+ * ARENA for the big line, white Press Start under it, grey for the note, and
+ * its own strip of food and pill (the same PNG the page inlines, pulled out to
+ * public/hud/404-food.png). Only the BACK TO HOME button is left out.
+ *
+ * The page is read on a ~800px wide screen and this is a 1920px image, so the
+ * grid and the strip are scaled by the same factor (2.4) to look like it.
  */
+const K = 2.4;
 const GRID: React.CSSProperties = {
   backgroundColor: "#050505",
   backgroundImage:
-    "linear-gradient(rgba(255,255,255,0.03) 4px, transparent 4px)," +
-    "linear-gradient(90deg, rgba(255,255,255,0.03) 4px, transparent 4px)",
-  backgroundSize: "100px 100px",
+    `linear-gradient(rgba(255,255,255,0.03) ${4 * K}px, transparent ${4 * K}px),` +
+    `linear-gradient(90deg, rgba(255,255,255,0.03) ${4 * K}px, transparent ${4 * K}px)`,
+  backgroundSize: `${100 * K}px ${100 * K}px`,
 };
 const NEON = "0 0 6px #00ff88, 0 0 14px #00ff88, 0 0 26px rgba(0,255,136,0.7)";
-const FOOD_ROW = ["#FFC107", "#03A9F4", "#9C27B0", "#FF5722", "#8BC34A", "#F44336"];
-
-/** The strip of the 404: food, then the pill that ate the page. */
-const FoodRow: React.FC = () => (
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 46 }}>
-    {FOOD_ROW.map((c, i) => (
-      <div key={i} style={{ width: 22, height: 22, background: c, boxShadow: "inset 6px 6px 0 rgba(255,255,255,0.45), 4px 4px 0 rgba(0,0,0,0.6)" }} />
-    ))}
-    <div style={{ width: 340, height: 260, position: "relative", marginLeft: 30 }}>
-      <Pill x={170} y={130} wL={30} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
-    </div>
-  </div>
-);
 
 const Card: React.FC<{ code: string; title: string; note: React.ReactNode }> = ({ code, title, note }) => (
   <AbsoluteFill style={{ ...GRID, alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-    <div style={{ width: 1500 }}>
+    <div style={{ width: 1720 }}>
+      {/* .code */}
       <div style={{ fontFamily: PX, fontSize: 104, lineHeight: 1, letterSpacing: 8, color: "#aaffdd", textShadow: NEON }}>{code}</div>
-      <div style={{ fontFamily: PX, fontSize: 30, letterSpacing: 2, color: "#fff", marginTop: 36, textShadow: "3px 3px 0 rgba(0,0,0,0.7)" }}>{title}</div>
-      <div style={{ fontFamily: PX, fontSize: 18, lineHeight: 2.2, color: "#9aa1a9", marginTop: 34 }}>{note}</div>
-      <div style={{ marginTop: 26 }}><FoodRow /></div>
+      {/* h1 */}
+      <div style={{ fontFamily: PX, fontSize: 18 * K, letterSpacing: 2 * K, color: "#fff", marginTop: 18 * K, textShadow: `${3 * K}px ${3 * K}px 0 rgba(0,0,0,0.7)` }}>{title}</div>
+      {/* p */}
+      <div style={{ fontFamily: PX, fontSize: 10 * K, lineHeight: 1.9, color: "#9aa1a9", marginTop: 14 * K, maxWidth: 460 * K, marginLeft: "auto", marginRight: "auto" }}>{note}</div>
+      {/* .food */}
+      <Img src={staticFile("hud/404-food.png")} style={{ width: 480 * K, height: "auto", marginTop: 22 * K, imageRendering: "pixelated" }} />
     </div>
   </AbsoluteFill>
 );
 
 export const NoTokenA: React.FC = () => (
   <Card code="NO TOKEN" title="THERE IS NOTHING TO BUY"
-    note={<>PillWars has no token in circulation. No presale, no whitelist.<br />Any contract with our name on it is not ours.</>} />
+    note={<>PillWars has no token in circulation. Any contract with our name on it is not ours.</>} />
 );
 
 export const NoTokenB: React.FC = () => (
   <Card code="0" title="TOKENS IN CIRCULATION"
-    note={<>No presale, no whitelist, nothing for sale.<br />If you find a contract out there, it is not ours.</>} />
+    note={<>Nothing is for sale. If you find a contract out there, it is not ours.</>} />
 );
 
 export const NoTokenC: React.FC = () => (
-  <Card code="END" title="OF THREAD"
-    note={<>There is no PillWars token in circulation. No presale, no whitelist.<br />Any contract with our name on it is not ours.</>} />
+  <Card code="END OF THREAD" title="COMMENT YOUR THOUGHTS BELOW"
+    note={<>There is no PillWars token in circulation. Any contract with our name on it is not ours.</>} />
 );
 
 export const CONCEPTS: [string, React.FC][] = [
