@@ -10,6 +10,11 @@
  * AIRDROP_ONLY=1 turns on the lockdown: every other page answers 404 and the
  * real site can't be browsed. The game is still served, but only inside the
  * airdrop page's iframe and to requests coming from it.
+ *
+ * SITE_CLOSED=1 goes one step further: EVERYTHING answers 404, the airdrop
+ * included, and nothing is served to anyone. The only door left open is the
+ * private pass (/airdrop-unlock/<token>, minted from a shell on the server),
+ * so the owner can still open the site in one browser.
  */
 const fs = require('fs');
 const path = require('path');
@@ -43,6 +48,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 function createAirdrop(opts) {
     const ROOT = opts.root;
     const ONLY = !!opts.only;
+    const CLOSED = !!opts.closed;
     const adminPath = opts.adminPath || '';
     const clientIp = opts.clientIp;
     const log = opts.log || (() => {});
@@ -146,6 +152,12 @@ function createAirdrop(opts) {
         if (!unlockPass || Date.now() > unlockPass.until) return false;
         const a = Buffer.from(String(token)), b = Buffer.from(unlockPass.token);
         return a.length === b.length && crypto.timingSafeEqual(a, b);
+    }
+    // The two paths that keep working with SITE_CLOSED=1: minting the pass
+    // from a shell on the server, and opening it in a browser.
+    function isUnlockPath(req, urlPath) {
+        return urlPath.startsWith('/airdrop-unlock/') ||
+            (urlPath === '/api/airdrop/unlock-link' && req.method === 'POST' && admin.fromServerItself(req));
     }
     function unlocked(req) {
         const m = new RegExp('(?:^|;\\s*)' + UNLOCK_COOKIE + '=([A-Za-z0-9_-]{20,64})').exec(String(req.headers.cookie || ''));
@@ -413,6 +425,8 @@ function createAirdrop(opts) {
 
     /** true = the request was answered here. */
     async function handle(req, res, urlPath, query) {
+        // Blackout: only the private pass answers, everything else is a 404.
+        if (CLOSED && !unlocked(req) && !isUnlockPath(req, urlPath)) { notFound(req, res); return true; }
         const isHome = ONLY ? urlPath === '/' : (urlPath === '/airdrop' || urlPath === '/airdrop/');
         if (isHome) { sendHome(req, res, query); return true; }
         if (ONLY && (urlPath === '/airdrop' || urlPath === '/airdrop/')) { redirect(res, '/', 301); return true; }
@@ -476,7 +490,7 @@ function createAirdrop(opts) {
         return gate(req, res, urlPath);
     }
 
-    return { handle, only: ONLY };
+    return { handle, only: ONLY, closed: CLOSED };
 }
 
 module.exports = { createAirdrop };

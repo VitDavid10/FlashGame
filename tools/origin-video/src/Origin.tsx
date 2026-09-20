@@ -240,21 +240,28 @@ const Footage: React.FC = () => {
  *     are played at 1.6x, so the whole run is as quick as the music. One
  *     single line runs under all six. */
 const BEAT = 25;                                   // 72.3 bpm at 30 fps
-const CUTS = [BEAT, BEAT, BEAT, BEAT, BEAT, BEAT, 2 * BEAT - 1];
+const CUTS = [BEAT, BEAT, BEAT, BEAT, BEAT, BEAT, BEAT, BEAT - 1];
 const RATE = 1.6;                                  // the takes, sped up as far as they stretch
+const FROM_START: string[] = [];                   // takes whose moment is at the start
 const DEATHS_DUR = CUTS.reduce((a, b) => a + b, 0);
 const DEATHS_LINE = "Only the ones that eat survive";
 const BOX = { left: 320, top: 150, width: 1280, height: 640 };
 // The game's HUD is HTML over its canvas, so it isn't in the capture: the
 // director logs what it said on every frame (public/deaths/events.json) and it
-// is drawn back here, in the pixel pack's colours, inside the box.
+// is drawn back here inside the box, with the game's OWN art — the TOP MASS
+// panel, the KILLS box and the skill slots are the same PNGs the pixel pack
+// uses (game/img/cartel-hero), copied to public/hud.
 type Hud = { mass: string; alive: string; time: string; kills: string; lb: { n: string; m: string; me?: boolean }[] };
 const chip = {
   fontFamily: PX, fontSize: 11, color: "#e8f5ee", background: "rgba(0,0,0,0.5)",
   border: "1px solid rgba(0,255,136,0.55)", padding: "5px 8px", letterSpacing: 1,
   textShadow: "0 0 6px rgba(0,255,136,0.85), 1px 1px 0 #000",
+  boxShadow: "0 0 10px rgba(0,255,136,.5), 3px 3px 0 rgba(0,0,0,.6)",
 } as const;
 const val = { color: "#ffe97a", textShadow: "0 0 6px rgba(255,206,61,0.8), 1px 1px 0 #000" } as const;
+// The slots as the game lays them out: the pill's own skill in the first one.
+const SLOTS = ["sprint.png", null, null, null];
+const PANEL_W = 168, PANEL_H = Math.round(PANEL_W * 808 / 601);
 const GameHud: React.FC<{ hud?: Hud }> = ({ hud }) => {
   if (!hud) return null;
   return (
@@ -267,15 +274,43 @@ const GameHud: React.FC<{ hud?: Hud }> = ({ hud }) => {
         position: "absolute", left: 0, right: 0, top: 12, textAlign: "center",
         fontFamily: PX, fontSize: 13, color: "#fff", textShadow: "2px 2px 0 #000",
       }}>{hud.time}</div>
+      {/* TOP MASS: the panel is the game's PNG, the list is drawn on it. */}
       <div style={{
-        position: "absolute", right: 14, top: 12, minWidth: 150, background: "rgba(0,0,0,0.5)",
-        border: "1px solid rgba(255,255,255,0.1)", padding: "6px 8px", textShadow: "1px 1px 0 #000",
+        position: "absolute", right: 12, top: 10, width: PANEL_W, height: PANEL_H, boxSizing: "border-box",
+        padding: `${Math.round(PANEL_W * 44 / 210)}px ${Math.round(PANEL_W * 16 / 210)}px 10px`,
+        backgroundImage: `url(${staticFile("hud/top-mass.png")})`, backgroundSize: "100% 100%",
+        imageRendering: "pixelated", textShadow: "1px 1px 0 #000",
       }}>
-        <div style={{ fontFamily: PX, fontSize: 8, color: "#888", letterSpacing: 1, borderBottom: "1px solid #333", paddingBottom: 4, marginBottom: 4 }}>TOP MASS</div>
-        {hud.lb.map((r, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontFamily: PX, fontSize: 8, lineHeight: 2, color: r.me ? "#00ff88" : "#e6e9ec" }}>
+        {hud.lb.slice(0, 10).map((r, i) => (
+          <div key={i} style={{
+            display: "flex", justifyContent: "space-between", gap: 8, whiteSpace: "nowrap",
+            fontFamily: PX, fontSize: 7, lineHeight: 1.85, color: r.me ? "#00ff88" : "#e6e9ec",
+          }}>
             {/* The capture plays with no name, so its own row reads YOU. */}
             <span>{r.me ? r.n.replace(/\s*$/, " YOU") : r.n}</span><span style={{ color: "#ffe97a" }}>{r.m}</span>
+          </div>
+        ))}
+      </div>
+      {/* KILLS, in its own box under the panel, same as the game. */}
+      <div style={{
+        position: "absolute", right: 12 + PANEL_W * 0.15, top: 10 + PANEL_H + 10,
+        width: PANEL_W * 0.7, height: PANEL_W * 0.7 * 206 / 326,
+        backgroundImage: `url(${staticFile("hud/kills.png")})`, backgroundSize: "100% 100%", imageRendering: "pixelated",
+      }}>
+        <div style={{
+          position: "absolute", left: 0, right: 0, top: "56%", transform: "translateY(-50%)", textAlign: "center",
+          fontFamily: PX, fontSize: 16, color: "#ff3b30", textShadow: "0 0 10px rgba(255,60,45,.75), 2px 2px 0 #000",
+        }}>{hud.kills || "0"}</div>
+      </div>
+      {/* The four skill slots, bottom centre. */}
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 14, display: "flex", justifyContent: "center", gap: 8 }}>
+        {SLOTS.map((icon, i) => (
+          <div key={i} style={{
+            width: 46, height: 46, backgroundImage: `url(${staticFile("hud/skill-slot.png")})`,
+            backgroundSize: "100% 100%", imageRendering: "pixelated",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {icon && <Img src={staticFile(`hud/${icon}`)} style={{ width: "68%", height: "68%", imageRendering: "pixelated" }} />}
           </div>
         ))}
       </div>
@@ -298,9 +333,11 @@ const Deaths: React.FC = () => (
     <Series>
       {deathsCapture.shots.map((shot, i) => {
         const len = CUTS[i] ?? BEAT;
-        // As fast as the take allows, and cut on its own climax at the end.
+        // As fast as the take allows, and cut on its own climax — the end of
+        // the take for most of them, the start for the ones whose moment is
+        // there (the shielded rival eats in its first half second).
         const rate = Math.min(RATE, (shot.frames - 1) / len);
-        const from = shot.from + Math.max(0, shot.frames - 1 - Math.round(len * rate));
+        const from = shot.from + (FROM_START.includes(shot.name) ? 0 : Math.max(0, shot.frames - 1 - Math.round(len * rate)));
         return (
           <Series.Sequence key={shot.name} durationInFrames={len}>
             <DeathClip from={from} rate={rate} />
