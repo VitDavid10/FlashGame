@@ -76,9 +76,12 @@
         window.__aim = (tx, ty) => { const es = getViewScale(); mouse.x = width / 2 + (tx - camera.x) * es; mouse.y = height / 2 + (ty - camera.y) * es; inputMode = 'MOUSE'; };
         window.__split = () => splitPlayer();
         window.__shoot = () => useSkill(1);
-        // Rivals' skill particles are a player setting, off by default: the
-        // clips of bots using skills need them on.
+        // Rivals' skill effects are a player setting, off by default. There
+        // are two switches: enableEnemyFX for the extras of the aura and
+        // enemySkillFx for the particles (the sprint bolts, the magnet). The
+        // clips of bots using skills need both.
         enableEnemyFX = true;
+        enemySkillFx = true;
         window.__botSkill = (c, id) => c.executeBotSkill(window.__pwLab.sim, id);
         window.__tick = ms => { window.__clock.t += ms; updateGame(); };
         window.__draw = () => draw();
@@ -457,8 +460,10 @@
             // It keeps closing in while it fires, so the arena scrolls under
             // it: standing still to shoot looked parked.
             await shoot('shot', 50, 1.25, () => {
-                revive(x - 380, y + 60, 72);
-                virus.x = x + 430; virus.y = y - 40; virus.damaged = false; virus.animTime = 0;
+                revive(x - 40, y + 40, 72);
+                // A shot slows down as it flies (0.93 per tick) and dies at
+                // about 285 units: farther than that and it never arrived.
+                virus.x = x + 250; virus.y = y - 30; virus.damaged = false; virus.animTime = 0;
                 return { x, y, cast };
             }, f => {
                 const live = sim.viruses.find(v => Math.hypot(v.x - x, v.y - y) < 1400) || virus;
@@ -506,7 +511,15 @@
             }, f => {
                 prey.forEach((c, k) => { if (sim.enemies.includes(c)) drift(c, x + seats[k][0], y + seats[k][1], f, k); });
                 if (!sim.enemies.includes(star)) return;
-                if (fire.includes(f)) window.__botSkill(star, id);
+                if (fire.includes(f)) {
+                    window.__botSkill(star, id);
+                    // The game teleports to a random spot of the whole map, which
+                    // is off camera: bring the landing back into the shot.
+                    if (id === 4) { star.tpDest = { x: star.x + Math.cos(ANG) * 520, y: star.y + Math.sin(ANG) * 520 }; star.tpTimer = 500; }
+                }
+                // While it is teleporting the game owns the cell: moving it by
+                // hand turned the jump into a slide.
+                if (star.tpPhase > 0) return;
                 star.r = 62;                           // no growing: a big bot is retired by the game
                 star.botSkills = []; star.botNextSkillTime = 1e15; star.massMilestoneMet = true;
                 // Straight across, nudged towards whatever pill is next in line.
