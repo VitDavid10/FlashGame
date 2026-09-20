@@ -577,9 +577,13 @@
         ws.send('reset growth');
         const p = window.me();
         const FRAMES = 120, EXTRA = 1.35;      // 4 s at 30 fps
-        // A different country skin every half second, to show the pill is
-        // yours to dress: the game's own flags (game/paises-pixel.js).
-        const SKINS = ['ES', 'AR', 'BR', 'JP', 'FR', 'DE', 'GB', 'MX'];
+        // A recolour every half second, from the player's own palette
+        // (PAL_DEFAULT in game/index.html). The first one is the pill everybody
+        // starts with: grey over green.
+        const COLORS = [
+            ['#c0c8d0', '#00ff44'], ['#ffffff', '#1a73e8'], ['#ffce3d', '#ff2a2a'], ['#00ffaa', '#cc00ff'],
+            ['#ff8c00', '#ffffff'], ['#66ccff', '#ff2a2a'], ['#cc00ff', '#ffce3d'], ['#ffffff', '#00ff44'],
+        ];
         const R0 = 11, R1 = 150;
         // The server's live values, so it frames like a real match.
         ZOOM_CONFIG.baseScale = 2; ZOOM_CONFIG.exponent = 0.29; ZOOM_CONFIG.maxScale = 3.2;
@@ -587,7 +591,18 @@
         // An empty stretch of arena: everything else parked far away.
         for (const e of sim.enemies) { e.x = sim.mapSize * 0.9; e.y = sim.mapSize * 0.9; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; e.botSkills = []; e.botNextSkillTime = 1e15; }
         for (const v of sim.viruses) if (Math.hypot(v.x - x, v.y - y) < 3000) { v.x = sim.mapSize * 0.9; v.y = sim.mapSize * 0.9; }
-        const noFood = () => { sim.foods.length = 0; if (sim.foodGrid && sim.foodGrid.clear) sim.foodGrid.clear(); };
+        // Nothing but the grid: no food, and every virus parked in a corner.
+        // Moving only the near ones was not enough — the camera pulls back as
+        // the pill grows and one of them walked into the frame.
+        const noFood = () => {
+            sim.foods.length = 0;
+            if (sim.foodGrid && sim.foodGrid.clear) sim.foodGrid.clear();
+            for (const v of sim.viruses) { v.x = sim.mapSize * 0.95; v.y = sim.mapSize * 0.95; v.vx = v.vy = 0; }
+            // The bots move on their own, and one of them wandered back into
+            // shot once the camera was wide enough: park them every frame.
+            for (const e of sim.enemies) { e.x = sim.mapSize * 0.9; e.y = sim.mapSize * 0.9; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; }
+            if (sim.ejectedMasses) sim.ejectedMasses.length = 0;
+        };
         noFood();
         p.cells.length = 0; p.cells.push(hero);
         Object.assign(hero, { x, y, r: R0, vx: 0, vy: 0, boostX: 0, boostY: 0, bornTime: sim.now });
@@ -602,7 +617,8 @@
             window.__tick(TICK); window.__tick(TICK);
             hero.r = R0 + (R1 - R0) * Math.pow(t, 1.7);
             hero.x = x; hero.y = y;
-            window.__pais.set(hero.id, SKINS[Math.floor(f / 15) % SKINS.length]);
+            const [cTop, cBot] = COLORS[Math.floor(f / 15) % COLORS.length];
+            hero.colorTop = cTop; hero.colorBot = cBot;
             // A second of each: bare for the first second, then bronze,
             // silver and gold, one per second.
             window.__rank(f >= 90 ? 1 : f >= 60 ? 2 : f >= 30 ? 3 : null);
