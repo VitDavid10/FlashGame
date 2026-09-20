@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, random, staticFile, useCurrentFrame } from "remotion";
 import growthCapture from "../public/growth/events.json";
-import { ArenaFloor, Food, GAME_ANGLE, H, PIXEL, PX, Pill, W } from "./ui";
+import { ArenaFloor, Food, FoodPile, GAME_ANGLE, H, PIXEL, PX, Pill, W } from "./ui";
 import { PALETTE } from "./pill";
 
 /*
@@ -248,7 +248,14 @@ const Card: React.FC<{ code: string; title: string; note: React.ReactNode }> = (
       {/* p */}
       <div style={{ fontFamily: PX, fontSize: 10 * K, lineHeight: 1.9, color: "#9aa1a9", marginTop: 14 * K, maxWidth: 460 * K, marginLeft: "auto", marginRight: "auto" }}>{note}</div>
       {/* .food */}
-      <Img src={staticFile("hud/404-food.png")} style={{ width: 480 * K, height: "auto", marginTop: 22 * K, imageRendering: "pixelated" }} />
+      {/* The PNG carries 24px of margin on the left and 12 on the right, so its
+          content sits a little right of its own centre: nudged back, and
+          display:block with auto margins, because as an inline image it stayed
+          glued to the left edge of the block instead of centred. */}
+      <Img src={staticFile("hud/404-food.png")} style={{
+        display: "block", width: 480 * K, height: "auto", margin: `${22 * K}px auto 0`,
+        transform: `translateX(${-6 * K}px)`, imageRendering: "pixelated",
+      }} />
     </div>
   </AbsoluteFill>
 );
@@ -268,8 +275,35 @@ export const NoTokenC: React.FC = () => (
     note={<>There is no PillWars token in circulation. Any contract with our name on it is not ours.</>} />
 );
 
+
+/* ---------- Feature card: the food that makes you grow ----------
+ * Same family as the end-of-thread card (404 grid, neon headline, white line,
+ * grey note), with a heap of the game's own pellets where the strip was.
+ */
+const FeatureCard: React.FC<{ code: string; title: string; note: React.ReactNode; withPill?: boolean }> = ({ code, title, note, withPill }) => (
+  <AbsoluteFill style={{ ...GRID, alignItems: "center", textAlign: "center" }}>
+    <div style={{ width: 1720, marginTop: 92 }}>
+      <div style={{ fontFamily: PX, fontSize: 104, lineHeight: 1, letterSpacing: 8, color: "#aaffdd", textShadow: NEON }}>{code}</div>
+      <div style={{ fontFamily: PX, fontSize: 18 * K, letterSpacing: 2 * K, color: "#fff", marginTop: 18 * K, textShadow: `${3 * K}px ${3 * K}px 0 rgba(0,0,0,0.7)` }}>{title}</div>
+      <div style={{ fontFamily: PX, fontSize: 10 * K, lineHeight: 1.9, color: "#9aa1a9", marginTop: 14 * K, maxWidth: 460 * K, marginLeft: "auto", marginRight: "auto" }}>{note}</div>
+    </div>
+    <FoodPile cx={withPill ? W * 0.62 : W / 2} cy={H * 0.76} n={64} rx={withPill ? 300 : 400} ry={150} seed="pile" size={7} />
+    {withPill && <Pill x={W * 0.30} y={H * 0.75} wL={30} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />}
+  </AbsoluteFill>
+);
+
+export const FoodA: React.FC = () => (
+  <FeatureCard code="FOOD" title="THE EASIEST WAY TO GROW"
+    note={<>Eat the pellets on the map and you get bigger. Each one you eat comes back somewhere else.</>} />
+);
+
+export const FoodB: React.FC = () => (
+  <FeatureCard code="FOOD" title="THE EASIEST WAY TO GROW" withPill
+    note={<>Eat the pellets on the map and you get bigger. Each one you eat comes back somewhere else.</>} />
+);
+
 export const CONCEPTS: [string, React.FC][] = [
-  ["no-token-a", NoTokenA], ["no-token-b", NoTokenB], ["no-token-c", NoTokenC],
+  ["food-a", FoodA], ["food-b", FoodB], ["no-token-a", NoTokenA], ["no-token-b", NoTokenB], ["no-token-c", NoTokenC],
   ["concept-arena-a", ArenaA], ["concept-arena-b", ArenaB], ["concept-arena-c", ArenaC],
   ["concept-money-a", MoneyA], ["concept-money-b", MoneyB], ["concept-money-c", MoneyC],
   ["concept-room-a", RoomA], ["concept-room-b", RoomB], ["concept-room-c", RoomC],

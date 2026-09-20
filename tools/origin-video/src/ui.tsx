@@ -99,6 +99,29 @@ export const Food: React.FC<{ seed: string; n?: number; opacity?: number }> = ({
   </>
 );
 
+/** A heap of the game's food pellets: dense in the middle, thinning out, all
+ *  drawn with the same sprite the game uses. `size` is the px per texel. */
+export const FoodPile: React.FC<{ cx: number; cy: number; n: number; rx: number; ry: number; seed: string; size?: number }> =
+  ({ cx, cy, n, rx, ry, seed, size = 7 }) => (
+    <>
+      {Array.from({ length: n }, (_, i) => {
+        const a = random(`${seed}a${i}`) * Math.PI * 2;
+        // sqrt spreads them evenly; the extra pow pulls most towards the centre
+        const r = Math.pow(random(`${seed}r${i}`), 0.6);
+        // The game's pellets are 4-6 texels wide (a food of r 5-9 at 4px per
+        // texel), so the sprite stays that coarse and only gets bigger on screen:
+        // more texels would read as a glossy ball instead of a pellet.
+        const dL = random(`${seed}s${i}`) > 0.55 ? 8 : 6;
+        const d = dL * size;
+        const col = FOOD_COLORS[Math.floor(random(`${seed}c${i}`) * FOOD_COLORS.length)];
+        return (
+          <Img key={i} src={dotSprite(dL, col)}
+            style={{ position: "absolute", width: d, height: d, left: cx + Math.cos(a) * r * rx - d / 2, top: cy + Math.sin(a) * r * ry - d / 2, imageRendering: "pixelated" }} />
+        );
+      })}
+    </>
+  );
+
 // Port of pixBgPattern(): the 100x100 world tile of the arena floor.
 let tileUrl: string | null = null;
 const bgTile = () => {
