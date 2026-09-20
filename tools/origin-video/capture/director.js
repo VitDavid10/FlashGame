@@ -577,6 +577,9 @@
         ws.send('reset growth');
         const p = window.me();
         const FRAMES = 120, EXTRA = 1.35;      // 4 s at 30 fps
+        // A different country skin every half second, to show the pill is
+        // yours to dress: the game's own flags (game/paises-pixel.js).
+        const SKINS = ['ES', 'AR', 'BR', 'JP', 'FR', 'DE', 'GB', 'MX'];
         const R0 = 11, R1 = 150;
         // The server's live values, so it frames like a real match.
         ZOOM_CONFIG.baseScale = 2; ZOOM_CONFIG.exponent = 0.29; ZOOM_CONFIG.maxScale = 3.2;
@@ -599,6 +602,7 @@
             window.__tick(TICK); window.__tick(TICK);
             hero.r = R0 + (R1 - R0) * Math.pow(t, 1.7);
             hero.x = x; hero.y = y;
+            window.__pais.set(hero.id, SKINS[Math.floor(f / 15) % SKINS.length]);
             // A second of each: bare for the first second, then bronze,
             // silver and gold, one per second.
             window.__rank(f >= 90 ? 1 : f >= 60 ? 2 : f >= 30 ? 3 : null);
