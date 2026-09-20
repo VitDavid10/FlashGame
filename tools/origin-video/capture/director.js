@@ -78,6 +78,12 @@
         window.__tick = ms => { window.__clock.t += ms; updateGame(); };
         window.__draw = () => draw();
         window.__snapCam = (x, y) => { camera.x = x; camera.y = y; };
+        // cellPais() only ever returns a country for your own cells, so a bot
+        // could never wear a flag. The capture needs Spain against Argentina:
+        // this lets the director say which cell id wears what.
+        window.__pais = new Map();
+        const cp = cellPais;
+        cellPais = function (c) { return (c && window.__pais.get(c.id)) || cp(c); };
         // Cinematic push-in done by the GAME's camera (not by scaling the frame
         // afterwards), so the pixels stay sharp. getViewScale() feeds both the
         // drawing and the mouse mapping, so wrapping it keeps them in step.
@@ -112,17 +118,16 @@
     if (MODE === 'deaths') return deaths(sim, hero, sendFrame, ws);
 
     const plan = [
-        // The kills land where the music wants them (see src/Origin.tsx): the
-        // pop-up clears, the next phrase is typed and clears, and only then
-        // the next kill. That's 86, 62 and 74 frames apart, and these
-        // distances hit them at about real speed.
+        // The kills land on the beats of the track (see src/Origin.tsx):
+        // 100, 49 and 50 frames apart, and these distances hit them at about
+        // real speed, so nothing has to be stretched or rushed afterwards.
         // Measured hero speed ~7 units/frame; the split fires 430 units short
         // of its prey and the half lands on it ~3 frames later, and the halves
         // then run at only ~6.6 units/frame (a 1 s lunge first). The third sits off the split's line, or
         // the flying half takes it early.
         { dx: 190, dy: 0, r: 16 },                  // 1: first kill, ~1 s in
         { dx: 975, dy: 0, r: 15, split: true },     // 2: caught with the split, ~2.9 s later
-        { dx: 1591, dy: 150, r: 16 },               // 3: ~2 s after that
+        { dx: 1432, dy: 150, r: 16 },               // 3: 1.7 s after that (one beat and a half)
     ];
     const pool = [...sim.enemies].filter(e => e.r < hero.r * 1.5)
         .sort((a, b) => Math.hypot(a.x - H0.x, a.y - H0.y) - Math.hypot(b.x - H0.x, b.y - H0.y));
@@ -131,7 +136,7 @@
     // The killer: a bot blown up to a size that swallows both halves at once.
     // It waits after the third kill (that pop-up clears and "or be eaten" is
     // typed) while the hero drifts on, then charges.
-    const killer = { c: pool[plan.length], x: H0.x + 3041, y: H0.y + 150, go: false, wait: 59 };
+    const killer = { c: pool[plan.length], x: H0.x + 2882, y: H0.y + 150, go: false, wait: 20 };
     killer.c.r = 130;
     const cast = new Set([...prey.map(p => p.c), killer.c]);
     // Also any bot big enough to eat a prey before the hero gets there.
@@ -257,14 +262,15 @@
     }
 
     /*
-     * The three kill clips of the closing beat, played out in the real game.
-     * Short takes: the video only keeps the last ~1.4 s of each, so everything
-     * has to happen fast and nothing ever stands still.
-     *   1. a virus bursts the hero into three and a big bot cleans them up,
-     *   2. the hero, smaller than a rival but not than its halves, splits into
-     *      the cluster and swallows them on the fly,
-     *   3. the hero, already split in two and running, is burst by the game's
-     *      own mass milestone and the pieces eat the pills around it.
+     * The closing beat: six short takes played out in the real game, cut so
+     * fast they land on the music. The video speeds them up further, so
+     * everything has to happen inside a second and nothing ever stands still.
+     *   1. a virus bursts the hero and a giant cleans it up,
+     *   2. smaller than a rival, the hero splits into its halves and eats them,
+     *   3. the game's own mass milestone bursts the hero while it feeds,
+     *   4. a Spain pill runs an Argentina one down,
+     *   5. a sprint through a line of pills, one after another,
+     *   6. a shielded pill walks straight into a bigger one and eats past it.
      */
     async function deaths(sim, hero, sendFrame, ws) {
         ws.send('reset deaths');
@@ -272,14 +278,14 @@
         const lim = sim.mapSize - 900;
         const shots = [];
         let n = 0;
-        // Off-stage corner, far from all three spots: everything that isn't in
-        // the cast is parked there every frame (bots chase, and the killer of
-        // the first clip would walk straight into the second).
+        // Off-stage corner, far from every spot: anything not in the cast is
+        // parked there every frame (bots chase, and the giant of the first
+        // take would walk straight into the second).
         const DUMP = { x: lim * 0.92, y: lim * 0.92 };
         const tame = c => { c.botSkills = []; c.botNextSkillTime = 1e15; c.shouldSplit = false; c.immuneTime = 0; c.tpPhase = 0; c.sprintTime = 0; c.magnetTime = 0; };
         const exile = keep => { for (const e of sim.enemies) if (!keep.has(e)) { tame(e); e.x = DUMP.x; e.y = DUMP.y; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; } };
         const clearViruses = (x, y, keep) => { for (const v of sim.viruses) if (!keep.has(v) && Math.hypot(v.x - x, v.y - y) < 2400) { v.x = DUMP.x; v.y = DUMP.y; } };
-        // Back from the dead: the hero is eaten in the first clip, so each one
+        // Back from the dead: the hero is eaten in the first take, so each one
         // starts by putting it back on its feet.
         const revive = (x, y, r) => {
             p.alive = true; p.killStreak = 0;
@@ -287,16 +293,16 @@
             Object.assign(hero, { x, y, r, vx: 0, vy: 0, boostX: 0, boostY: 0, sprintTime: 0, immuneTime: 0, magnetTime: 0, tpPhase: 0, bornTime: sim.now - 60000 });
             p.splitMilestones = { level1: false, level2: false };
             p.lastSplitTime = 0;
+            window.__pais.clear();
         };
         const put = (c, x, y) => { tame(c); c.x = x; c.y = y; c.vx = c.vy = 0; c.targetX = x; c.targetY = y; };
         // Nobody stands still: every pill drifts around its mark.
-        const drift = (c, ax, ay, f, i) => put(c, ax + Math.cos(f / 11 + i) * 70, ay + Math.sin(f / 9 + i * 2) * 50);
+        const drift = (c, ax, ay, f, i) => put(c, ax + Math.cos(f / 9 + i) * 80, ay + Math.sin(f / 7 + i * 2) * 60);
         const centroid = () => {
             const cells = window.me().cells; let cx = 0, cy = 0;
             cells.forEach(c => { cx += c.x; cy += c.y; });
             return cells.length ? { x: cx / cells.length, y: cy / cells.length } : null;
         };
-        // One shot: `setup` stages it, `step(f)` drives it, `frames` long.
         const shoot = async (name, frames, zoom, setup, step) => {
             const spot = setup();
             window.__zoom = zoom;
@@ -314,31 +320,32 @@
             shots.push({ name, from, frames });
         };
         const spare = () => [...sim.enemies].sort((a, b) => a.r - b.r);
+        const spots = [[-0.5, 0.45], [0.4, -0.5], [-0.35, -0.4], [0.5, 0.35], [-0.55, -0.05], [0.1, 0.55]];
+        const at = i => ({ x: spots[i][0] * lim, y: spots[i][1] * lim });
 
         /* 1 - the virus gets you, and then they do. */
         {
-            const x = -lim * 0.5, y = lim * 0.45;
-            const pool = spare();
-            const killer = pool[pool.length - 1];
+            const { x, y } = at(0);
+            const killer = spare()[sim.enemies.length - 1];
             const virus = sim.viruses[0];
             clearViruses(x, y, new Set([virus]));
             const cast = new Set([killer]);
             const go = { on: false };
-            await shoot('virus', 70, 1.3, () => {
+            await shoot('virus', 56, 1.3, () => {
                 revive(x, y, 62);
-                virus.x = x + 300; virus.y = y - 20;
-                killer.r = 150; put(killer, x + 760, y + 70);
+                virus.x = x + 240; virus.y = y - 20;
+                killer.r = 150; put(killer, x + 620, y + 60);
                 return { x, y, cast };
             }, f => {
                 const h = centroid();
                 if (!h) return;
-                if (window.me().cells.length > 1) go.on = true;   // burst: here it comes
+                if (window.me().cells.length > 1) go.on = true;
                 if (go.on) {
-                    const dx = h.x - killer.x, dy = h.y - killer.y, d = Math.hypot(dx, dy) || 1, s = Math.min(d, 21);
+                    const dx = h.x - killer.x, dy = h.y - killer.y, d = Math.hypot(dx, dy) || 1, s = Math.min(d, 26);
                     put(killer, killer.x + dx / d * s, killer.y + dy / d * s);
-                    window.__aim(h.x - 300, h.y - 60);            // run for it, too late
+                    window.__aim(h.x - 300, h.y - 60);
                 } else {
-                    put(killer, x + 760 + Math.sin(f / 8) * 40, y + 70 + Math.cos(f / 10) * 30);
+                    put(killer, x + 620 + Math.sin(f / 6) * 50, y + 60 + Math.cos(f / 8) * 40);
                     window.__aim(virus.x, virus.y);
                 }
             });
@@ -346,13 +353,13 @@
 
         /* 2 - smaller than the rival, so you split into its halves. */
         {
-            const x = lim * 0.4, y = -lim * 0.5;
+            const { x, y } = at(1);
             const rival = spare().filter(e => e.r > 6).slice(0, 5);
             clearViruses(x, y, new Set());
             const cast = new Set(rival);
-            const seats = [[470, -30], [700, 90], [930, -50], [1150, 60], [1330, -20]];
+            const seats = [[430, -30], [640, 80], [860, -50], [1060, 60], [1240, -20]];
             const split = { done: false };
-            await shoot('outnumbered', 60, 1.15, () => {
+            await shoot('outnumbered', 56, 1.15, () => {
                 revive(x, y, 60);
                 rival.forEach((c, i) => { Object.assign(c, { id: rival[0].id, name: 'WHALE', r: 34, colorTop: rival[0].colorTop, colorBot: rival[0].colorBot, skinUrl: null }); put(c, x + seats[i][0], y + seats[i][1]); });
                 return { x, y, cast };
@@ -361,34 +368,91 @@
                 const h = centroid(), next = rival.find(c => sim.enemies.includes(c));
                 if (!h || !next) return;
                 window.__aim(next.x, next.y);
-                // Split into the cluster: the flying half takes them one after
-                // another, which is what makes it quick enough to show.
-                if (!split.done && f >= 6) { window.__split(); split.done = true; }
+                if (!split.done && f >= 4) { window.__split(); split.done = true; }
             });
         }
 
         /* 3 - the mass milestone bursts you while you run, and the pieces feed. */
         {
-            const x = -lim * 0.35, y = -lim * 0.4;
+            const { x, y } = at(2);
             const snack = spare().filter(e => e.r > 6).slice(0, 5);
             clearViruses(x, y, new Set());
             const cast = new Set(snack);
-            const ring = [[620, -120], [880, 140], [1120, -90], [1380, 110], [1600, -40]];
-            await shoot('milestone', 60, 1.15, () => {
-                // Two halves, just under the game's first milestone (200000).
+            const ring = [[520, -110], [760, 130], [990, -80], [1210, 100], [1420, -30]];
+            await shoot('milestone', 56, 1.15, () => {
                 revive(x, y, Math.sqrt(96000 / (Math.PI * 2)));
-                // Freshly split, or the two halves merge back on the spot.
-                hero.bornTime = sim.now;
+                hero.bornTime = sim.now;   // freshly split, or the halves merge back
                 const twin = new (hero.constructor)(x - 150, y - 90, hero.r, hero.colorBot, hero.colorTop, hero.name, false, hero.skinUrl, hero.id, sim.now);
                 p.cells.push(twin);
                 snack.forEach((c, i) => { Object.assign(c, { r: 62, skinUrl: null }); put(c, x + ring[i][0], y + ring[i][1]); });
                 return { x, y, cast };
             }, f => {
                 snack.forEach((c, i) => { if (sim.enemies.includes(c)) drift(c, x + ring[i][0], y + ring[i][1], f, i); });
-                // On the move the whole time, and over the milestone at ~0.4 s.
-                if (f === 12) p.cells.forEach(c => { c.r = Math.sqrt(105000 / (Math.PI * 2)); c.flashColor = '#00ff00'; c.flashTime = 600; });
+                if (f === 8) p.cells.forEach(c => { c.r = Math.sqrt(105000 / (Math.PI * 2)); c.flashColor = '#00ff00'; c.flashTime = 600; });
                 const h = centroid(), next = snack.find(c => sim.enemies.includes(c));
                 if (h) window.__aim(next ? next.x : h.x + 500, next ? next.y : h.y);
+            });
+        }
+
+        /* 4 - Spain runs down Argentina. */
+        {
+            const { x, y } = at(3);
+            const prey = spare().filter(e => e.r > 6)[0];
+            clearViruses(x, y, new Set());
+            const cast = new Set([prey]);
+            await shoot('flags', 50, 1.5, () => {
+                revive(x, y, 58);
+                Object.assign(prey, { r: 40, name: 'ARG', skinUrl: null });
+                put(prey, x + 420, y - 40);
+                window.__pais.set(hero.id, 'ES');
+                window.__pais.set(prey.id, 'AR');
+                return { x, y, cast };
+            }, f => {
+                if (!sim.enemies.includes(prey)) { window.__aim(hero.x + 400, hero.y - 60); return; }
+                // It runs, and it is not fast enough.
+                put(prey, prey.x + 6.5, prey.y - 1.5 + Math.sin(f / 5) * 6);
+                window.__aim(prey.x, prey.y);
+            });
+        }
+
+        /* 5 - a sprint down a line of pills. */
+        {
+            const { x, y } = at(4);
+            const line = spare().filter(e => e.r > 6).slice(0, 5);
+            clearViruses(x, y, new Set());
+            const cast = new Set(line);
+            const seats = [[300, 40], [560, -60], [820, 50], [1080, -40], [1320, 30]];
+            await shoot('sprint', 50, 1.2, () => {
+                revive(x, y, 54);
+                line.forEach((c, i) => { Object.assign(c, { r: 30, skinUrl: null }); put(c, x + seats[i][0], y + seats[i][1]); });
+                return { x, y, cast };
+            }, f => {
+                hero.sprintTime = 10000;   // the game's sprint, on for the whole take
+                line.forEach((c, i) => { if (sim.enemies.includes(c)) drift(c, x + seats[i][0], y + seats[i][1], f, i); });
+                const next = line.find(c => sim.enemies.includes(c));
+                window.__aim(next ? next.x : hero.x + 600, next ? next.y : hero.y);
+            });
+        }
+
+        /* 6 - shielded, straight through a bigger one. */
+        {
+            const { x, y } = at(5);
+            const pool = spare().filter(e => e.r > 6);
+            const bully = pool[pool.length - 1], snack = pool.slice(0, 3);
+            clearViruses(x, y, new Set());
+            const cast = new Set([bully, ...snack]);
+            const seats = [[520, -120], [760, 90], [1000, -40]];
+            await shoot('shield', 50, 1.2, () => {
+                revive(x, y, 56);
+                bully.r = 120; put(bully, x + 260, y + 30);
+                snack.forEach((c, i) => { Object.assign(c, { r: 32, skinUrl: null }); put(c, x + seats[i][0], y + seats[i][1]); });
+                return { x, y, cast };
+            }, f => {
+                hero.immuneTime = 3000;    // the shield holds while it walks past
+                if (sim.enemies.includes(bully)) put(bully, x + 260 + Math.sin(f / 7) * 60, y + 30 + Math.cos(f / 9) * 40);
+                snack.forEach((c, i) => { if (sim.enemies.includes(c)) drift(c, x + seats[i][0], y + seats[i][1], f, i); });
+                const next = snack.find(c => sim.enemies.includes(c));
+                window.__aim(next ? next.x : hero.x + 600, next ? next.y : hero.y);
             });
         }
 
