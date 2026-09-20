@@ -32,6 +32,8 @@
     // scene), 'skills' (the four "in PILLWARS" clips) or 'deaths' (the three
     // kill clips of the closing beat). See skills() and deaths() below.
     const MODE = window.__captureMode || 'kills';
+    // The crowns of the podium only exist in ARCADE, so that take starts there.
+    const ARCADE = MODE === 'growth';
     const inject = code => { const s = document.createElement('script'); s.textContent = code; document.head.appendChild(s); };
     window.__status = { phase: 'waiting' };
 
@@ -42,10 +44,11 @@
     // A save from an earlier capture would bring back its pill (the skills
     // mode recolours it): always start clean.
     try { localStorage.removeItem('pillwars_save'); } catch (e) {}
+    window.__pwArcade = ARCADE;
     inject(`window.__ready = () => { try { return gameRunning && !isSpectating && me() && me().alive && me().cells.length > 0; } catch (e) { return false; } };`);
     inject(`(async () => {
         if (gameRunning && !isSpectating) return;
-        await selectMode('classic', true);
+        await selectMode(window.__pwArcade ? 'arcade' : 'classic', true);
         const n = document.getElementById('playerNameInput'); if (n) n.value = '';
         selectRoom('Free');
         els.modeScreen.style.display = 'none';
@@ -97,6 +100,12 @@
         // drawing and the mouse mapping, so wrapping it keeps them in step.
         window.__zoom = 1;
         const gvs = getViewScale;
+        // The game zooms out as you grow, so a growing pill looks the same size
+        // on screen. This gives the raw scale back, to cancel that out.
+        window.__rawScale = () => gvs.call(null);
+        // Your place on the podium (1-3) or null. The leaderboard recomputes it
+        // every tick, so a take sets it again right before drawing.
+        window.__rank = n => { _miPuesto = n; };
         window.getViewScale = function () { return gvs.apply(this, arguments) * window.__zoom; };
     })();`);
 
@@ -124,6 +133,7 @@
 
     if (MODE === 'skills') return skills(sim, hero, sendFrame, ws);
     if (MODE === 'deaths') return deaths(sim, hero, sendFrame, ws);
+    if (MODE === 'growth') return growth(sim, hero, sendFrame, ws);
 
     const plan = [
         // The kills land on the beats of the track (see src/Origin.tsx):
@@ -546,5 +556,49 @@
         ws.send('deaths/events.json'); ws.send(JSON.stringify({ fps: 30, shots, hud }, null, 2));
         await new Promise(r => setTimeout(r, 800));
         window.__status = { phase: 'done', shots };
+    }
+
+    /*
+     * One pill, from the moment it is born until it owns the room: it grows,
+     * and the podium crowns of arcade (bronze, silver, gold) land on its head
+     * as it climbs. Only the crowns — the plain numbers of places 4 to 10 never
+     * show, because the take sets the rank itself.
+     *
+     * The world scale is held still on purpose. In play the camera zooms out as
+     * you grow, so your own pill always looks about the same; with the scale
+     * pinned, the growth is what you actually see.
+     */
+    async function growth(sim, hero, sendFrame, ws) {
+        ws.send('reset growth');
+        const p = window.me();
+        const FRAMES = 168, SCALE = 1.15;
+        const R0 = 11, R1 = 132;
+        const x = 0, y = 0;
+        // An empty stretch of arena: everything else parked far away.
+        for (const e of sim.enemies) { e.x = sim.mapSize * 0.9; e.y = sim.mapSize * 0.9; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; e.botSkills = []; e.botNextSkillTime = 1e15; }
+        for (const v of sim.viruses) if (Math.hypot(v.x - x, v.y - y) < 3000) { v.x = sim.mapSize * 0.9; v.y = sim.mapSize * 0.9; }
+        p.cells.length = 0; p.cells.push(hero);
+        Object.assign(hero, { x, y, r: R0, vx: 0, vy: 0, boostX: 0, boostY: 0, bornTime: sim.now });
+        for (let i = 0; i < 20; i++) { window.__tick(TICK); }
+        for (let f = 0; f < FRAMES; f++) {
+            const t = f / (FRAMES - 1);
+            // Slow at first, faster as it goes: it reads as gaining speed.
+            hero.r = R0 + (R1 - R0) * Math.pow(t, 1.7);
+            hero.x = x; hero.y = y; hero.vx = hero.vy = 0;
+            window.__aim(x + 220, y - 60);
+            window.__tick(TICK); window.__tick(TICK);
+            hero.r = R0 + (R1 - R0) * Math.pow(t, 1.7);
+            hero.x = x; hero.y = y;
+            // Bronze, silver and gold as it grows.
+            window.__rank(hero.r >= 104 ? 1 : hero.r >= 72 ? 2 : hero.r >= 44 ? 3 : null);
+            window.__zoom = SCALE / window.__rawScale();
+            window.__snapCam(x, y);
+            window.__draw();
+            await sendFrame('growth/', f);
+            window.__status = { phase: 'growth', frame: f + 1, r: Math.round(hero.r) };
+        }
+        ws.send('growth/events.json'); ws.send(JSON.stringify({ fps: 30, frames: FRAMES }, null, 2));
+        await new Promise(r => setTimeout(r, 800));
+        window.__status = { phase: 'done', frames: FRAMES };
     }
 })().catch(e => { window.__status = { phase: 'error', msg: String(e) }; });

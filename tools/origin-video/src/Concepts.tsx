@@ -1,5 +1,6 @@
 import React from "react";
-import { AbsoluteFill, random } from "remotion";
+import { AbsoluteFill, Img, random, staticFile, useCurrentFrame } from "remotion";
+import growthCapture from "../public/growth/events.json";
 import { ArenaFloor, Food, GAME_ANGLE, H, PIXEL, PX, Pill, W } from "./ui";
 import { PALETTE } from "./pill";
 
@@ -210,3 +211,15 @@ export const CONCEPTS: [string, React.FC][] = [
   ["concept-money-a", MoneyA], ["concept-money-b", MoneyB], ["concept-money-c", MoneyC],
   ["concept-room-a", RoomA], ["concept-room-b", RoomB], ["concept-room-c", RoomC],
 ];
+
+/* ---------- The pill from birth to the gold crown (capture mode 'growth') ---------- */
+export const GROWTH_FRAMES = growthCapture.frames as number;
+export const Growth: React.FC = () => {
+  const f = useCurrentFrame();
+  const at = Math.min(GROWTH_FRAMES - 1, f);
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#050505" }}>
+      <Img src={staticFile(`growth/${String(at).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />
+    </AbsoluteFill>
+  );
+};

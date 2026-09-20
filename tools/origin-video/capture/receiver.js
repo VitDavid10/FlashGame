@@ -17,7 +17,7 @@ const { WebSocketServer } = require('ws');
 
 const OUT = path.join(__dirname, '..', 'public');
 const PORT = 8197;
-const DIRS = ['arena', 'skills', 'deaths'];
+const DIRS = ['arena', 'skills', 'deaths', 'growth'];
 const NAME = new RegExp('^(' + DIRS.join('|') + ')/(\\d{4}\\.jpg|events\\.json)$');
 
 const server = http.createServer((req, res) => { res.end('origin-video frame receiver'); });
