@@ -439,7 +439,7 @@
                 window.__pais.set(prey.id, 'AR');
                 return { x, y, cast };
             }, f => {
-                if (!sim.enemies.includes(prey)) { window.__aim(hero.x + 400, hero.y - 60); return; }
+                if (!sim.enemies.includes(prey)) { window.__aim(hero.x + 600, hero.y - 120); return; }
                 // It runs, and it is not fast enough.
                 put(prey, prey.x + 6.5, prey.y - 1.5 + Math.sin(f / 5) * 6);
                 window.__aim(prey.x, prey.y);
@@ -453,9 +453,11 @@
             const virus = sim.viruses[0];
             clearViruses(x, y, new Set([virus]));
             const cast = new Set();
+            // It keeps closing in while it fires, so the arena scrolls under
+            // it: standing still to shoot looked parked.
             await shoot('shot', 50, 1.25, () => {
-                revive(x, y, 72);
-                virus.x = x + 560; virus.y = y - 30; virus.damaged = false; virus.animTime = 0;
+                revive(x - 380, y + 60, 72);
+                virus.x = x + 760; virus.y = y - 40; virus.damaged = false; virus.animTime = 0;
                 return { x, y, cast };
             }, f => {
                 const live = sim.viruses.find(v => Math.hypot(v.x - x, v.y - y) < 1400) || virus;
@@ -465,52 +467,51 @@
             });
         }
 
-        /* 8, 9, 10 - other pills using the game's skills, one beat each. The
-         *     camera rides with them: these are not the hero's takes. */
-        const botTake = (name, i, id, hunt) => {
+        /* 6, 7, 8 - other pills using the game's skills. The camera rides with
+         *     the star (it is the subject of the shot) and the star never
+         *     stops: it runs a straight line eating the pills strung along it,
+         *     so the arena scrolls under it the whole take.
+         */
+        const botTake = (name, i, id) => {
             const { x, y } = at(i);
             const pool = spare().filter(e => e.r > 6);
-            const star = pool[pool.length - 1], prey = pool.slice(0, 3);
-            if (!star || prey.length < 3) return;
+            const star = pool[pool.length - 1], prey = pool.slice(0, 4);
+            if (!star || prey.length < 4) return Promise.resolve();
             clearViruses(x, y, new Set());
-            const cast = new Set([star, ...prey]);
-            const seats = [[260, -60], [420, 70], [580, -20]];
-            // Viruses well out of the way: one of these takes ran into a virus
-            // and the take lost its own star.
             for (const v of sim.viruses) if (Math.hypot(v.x - x, v.y - y) < 4000) { v.x = DUMP.x; v.y = DUMP.y; }
-            return shoot(name, 44, 1.3, () => {
+            const cast = new Set([star, ...prey]);
+            // It runs from the left edge to the right, and the pills it eats
+            // are strung along that line.
+            const SPEED = 17, ANG = -0.07;
+            const seats = [[-300, -70], [-60, 80], [180, -60], [430, 70]];
+            return shoot(name, 44, 1.25, () => {
                 revive(DUMP.x, -DUMP.y, 40);           // the hero sits this one out, off stage
-                // massMilestoneMet on from the start: a bot that crosses it
-                // gets a skill of its own and the first thing it did was
-                // teleport out of the shot.
-                Object.assign(star, { r: 62, name: name.toUpperCase(), skinUrl: null, massMilestoneMet: true, botSkills: [], botNextSkillTime: 1e15, botGcd: 1e15 });
-                put(star, x, y);
+                Object.assign(star, {
+                    r: 62, name: name.toUpperCase(), skinUrl: null,
+                    // A bot that crosses the mass milestone gets a skill of its
+                    // own, and the first thing it did was teleport out of shot.
+                    massMilestoneMet: true, botSkills: [], botNextSkillTime: 1e15, botGcd: 1e15,
+                });
+                put(star, x - 520, y + 30);
                 prey.forEach((c, k) => { Object.assign(c, { r: 30, skinUrl: null }); put(c, x + seats[k][0], y + seats[k][1]); });
                 window.__botSkill(star, id);
-                // The camera rides with the star, and stays where it was if
-                // the star is gone, instead of snapping back to the hero.
-                const eye = { x, y };
-                return { x, y, cast, cam: () => { if (sim.enemies.includes(star)) { eye.x = star.x; eye.y = star.y; } window.__snapCam(eye.x, eye.y); } };
+                return { x, y, cast, cam: () => { if (sim.enemies.includes(star)) window.__snapCam(star.x, star.y); } };
             }, f => {
-                // Its size stays put: a bot that grows big enough expires on
-                // its own (botExpira) and the take lost its star halfway.
-                if (sim.enemies.includes(star)) { star.r = 62; star.botSkills = []; star.botNextSkillTime = 1e15; star.massMilestoneMet = true; }
-                if (f === 0 || f === 12) window.__botSkill(star, id);
                 prey.forEach((c, k) => { if (sim.enemies.includes(c)) drift(c, x + seats[k][0], y + seats[k][1], f, k); });
-                const next = prey.find(c => sim.enemies.includes(c));
-                if (sim.enemies.includes(star)) {
-                    if (next && hunt) {
-                        const dx = next.x - star.x, dy = next.y - star.y, d = Math.hypot(dx, dy) || 1, sp = Math.min(d, 17);
-                        star.x += dx / d * sp; star.y += dy / d * sp;
-                    }
-                    star.vx = star.vy = 0; star.targetX = star.x; star.targetY = star.y;
-                    star.botSkills = []; star.botNextSkillTime = 1e15;
-                }
+                if (!sim.enemies.includes(star)) return;
+                if (f === 0 || f === 14 || f === 28) window.__botSkill(star, id);
+                star.r = 62;                           // no growing: a big bot is retired by the game
+                star.botSkills = []; star.botNextSkillTime = 1e15; star.massMilestoneMet = true;
+                // Straight across, nudged towards whatever pill is next in line.
+                const next = prey.find(c => sim.enemies.includes(c) && c.x > star.x - 60);
+                const ty = next ? (next.y - star.y) * 0.18 : 0;
+                star.x += Math.cos(ANG) * SPEED; star.y += Math.sin(ANG) * SPEED + ty;
+                star.vx = star.vy = 0; star.targetX = star.x; star.targetY = star.y;
             });
         };
-        await botTake('sprint', 4, 3, true);    // a rival bolts after its prey
-        await botTake('shield', 5, 6, true);    // and another one eats behind a shield
-        await botTake('tp', 7, 4, false);       // and one just vanishes
+        await botTake('sprint', 4, 3);          // a rival bolts across, eating
+        await botTake('shield', 5, 6);          // another crosses behind its shield
+        await botTake('tp', 7, 4);              // and one vanishes mid-run
 
         ws.send('deaths/events.json'); ws.send(JSON.stringify({ fps: 30, shots, hud }, null, 2));
         await new Promise(r => setTimeout(r, 800));

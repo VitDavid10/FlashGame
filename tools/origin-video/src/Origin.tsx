@@ -242,7 +242,6 @@ const Footage: React.FC = () => {
 const BEAT = 25;                                   // 72.3 bpm at 30 fps
 const CUTS = [BEAT, BEAT, BEAT, BEAT, BEAT, BEAT, BEAT, BEAT - 1];
 const RATE = 1.6;                                  // the takes, sped up as far as they stretch
-const FROM_START: string[] = [];                   // takes whose moment is at the start
 const DEATHS_DUR = CUTS.reduce((a, b) => a + b, 0);
 const DEATHS_LINE = "Only the ones that eat survive";
 const BOX = { left: 320, top: 150, width: 1280, height: 640 };
@@ -333,11 +332,11 @@ const Deaths: React.FC = () => (
     <Series>
       {deathsCapture.shots.map((shot, i) => {
         const len = CUTS[i] ?? BEAT;
-        // As fast as the take allows, and cut on its own climax — the end of
-        // the take for most of them, the start for the ones whose moment is
-        // there (the shielded rival eats in its first half second).
+        // As fast as the take allows, and cut on its liveliest stretch, which
+        // capture/pick-windows.py measures (frame-to-frame change) and writes
+        // into the capture as `best`; without it, the end of the take.
         const rate = Math.min(RATE, (shot.frames - 1) / len);
-        const from = shot.from + (FROM_START.includes(shot.name) ? 0 : Math.max(0, shot.frames - 1 - Math.round(len * rate)));
+        const from = shot.best ?? shot.from + Math.max(0, shot.frames - 1 - Math.round(len * rate));
         return (
           <Series.Sequence key={shot.name} durationInFrames={len}>
             <DeathClip from={from} rate={rate} />
