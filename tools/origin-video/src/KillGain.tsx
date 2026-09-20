@@ -9,7 +9,9 @@ import { FPS, PX } from "./ui";
 // the capture logged as kills.
 export type Kill = { at: number; money: string; streak: string };
 
-const LIFE = 2 * FPS;
+// 1.1 s, not the game pop-up's 2 s: the video has to fit the music, and
+// the next phrase only starts once this has gone.
+const LIFE = Math.round(1.1 * FPS);
 // killGainFloat: [progress, opacity, translateY, scale], eased per segment with
 // the same cubic-bezier(0.2,0.7,0.3,1) the CSS animation uses.
 const KF: [number, number, number, number][] = [

@@ -1,22 +1,16 @@
 import React from "react";
 import {
-  AbsoluteFill, Easing, Img, OffthreadVideo, Sequence, Series, interpolate, random, spring,
+  AbsoluteFill, Easing, Img, Sequence, Series, interpolate, random, spring,
   staticFile, useCurrentFrame, useVideoConfig,
 } from "remotion";
 import { Audio } from "@remotion/media";
-import { ArenaFloor, Caption, Food, GAME_ANGLE, H, PIXEL, PX, Pill, W, typeFrames } from "./ui";
+import { ArenaFloor, Caption, Food, GAME_ANGLE, H, PIXEL, PX, Pill, W } from "./ui";
 import { PALETTE } from "./pill";
 import { KillGainStack, Kill } from "./KillGain";
 // Written by capture/director.js next to the frames it recorded from the game.
 import capture from "../public/arena/events.json";
 import skillsCapture from "../public/skills/events.json";
-
-// The three kill clips (1.5 s each) for the "Only the ones / that eat / survive"
-// beat: drop the recordings in public/deaths/ and list them here, in order.
-// `at` = the second of the recording where its 1.5 s slice starts, so a
-// 30 s Instant Replay needs no trimming. Any slot left empty shows a placeholder.
-//   e.g. { file: "kill1.mp4", at: 12.4 }
-const DEATHS: { file: string; at?: number }[] = [];
+import deathsCapture from "../public/deaths/events.json";
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
@@ -24,7 +18,7 @@ const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
  *     on one line: the whole sentence wrapped and left a lone "o" typing on
  *     the second line. */
 const B1 = "Every day, thousands of coins", B2 = "are born on pump.fun";
-const BIRTH_DUR = 125;
+const BIRTH_DUR = 147;   // 0 -> 4.9 s
 const Birth: React.FC = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -42,16 +36,17 @@ const Birth: React.FC = () => {
         );
       })}
       <Pill x={W / 2} y={H * 0.42} wL={20} scale={9 * pop} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
-      <Caption text={B1} y={H * 0.74} size={42} out={60} keys={[[0, 8], [B1.length, 44]]} />
-      <Caption text={B2} y={H * 0.74} size={42} keys={[[0, 72], [B2.length, 100]]} />
+      <Caption text={B1} y={H * 0.84} size={42} out={60} keys={[[0, 8], [B1.length, 44]]} />
+      <Caption text={B2} y={H * 0.84} size={42} keys={[[0, 72], [B2.length, 104]]} />
     </AbsoluteFill>
   );
 };
 
-/* 2 — The chart: pump, then dump, in exactly the time the caption takes to type. */
-const CHART_TEXT = "Most of them die by morning";
-const DRAW = typeFrames(CHART_TEXT);
-const CHART_DUR = DRAW + 12;
+/* 2 — The chart: pump, then dump. The line is drawn over the whole scene and
+ *     the dump lands under "die by morning", the second half of the phrase. */
+const C1 = "Most of them", C2 = "die by morning";
+const CHART_DUR = 132;   // 4.9 s -> 9.3 s
+const DRAW = CHART_DUR - 12;
 const N = 70;
 const PRICE = Array.from({ length: N }, (_, i) => {
   const noise = (random(`p${i}`) - 0.5) * 4;
@@ -87,14 +82,16 @@ const Chart: React.FC = () => {
       </svg>
       <Pill x={px(tip)} y={py(PRICE[tip]) - 70 + fall * 320} wL={18} scale={6}
         top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE + fall * 2.4} grey={grey} />
-      <Caption text={CHART_TEXT} at={0} y={H * 0.84} size={44} />
+      {/* "Most of them" up to 6.2 s, then "die by morning" to the cut. */}
+      <Caption text={C1} y={H * 0.84} size={44} out={33} keys={[[0, 0], [C1.length, 26]]} />
+      <Caption text={C2} y={H * 0.84} size={44} keys={[[0, 42], [C2.length, 80]]} />
     </AbsoluteFill>
   );
 };
 
 /* 3 — The fall: the screen is already full of grey pills on the first frame,
  *     so the cut from the chart never shows black. */
-const FALL_DUR = 105;
+const FALL_DUR = 96;    // with LAND, 9.3 s -> 15.5 s
 const Fall: React.FC = () => {
   const f = useCurrentFrame();
   return (
@@ -117,7 +114,7 @@ const Fall: React.FC = () => {
 
 /* 4 — The arena. The dead pills land at the game's -45°, on the game's floor
  *     and food, and get their colour back. */
-const LAND = 96;
+const LAND = 90;
 const Arena: React.FC = () => {
   const f = useCurrentFrame();
   const heroWL = 22; // r 40 at the game's zoom, same size as in the first captured frame
@@ -142,7 +139,7 @@ const Arena: React.FC = () => {
       })}
       <Pill x={W / 2} y={land(8, H / 2)} wL={heroWL} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} grey={colour(8)} />
       {/* Stays up ~1 s once typed (done at ~50). */}
-      <Caption text="They get a second life" at={6} out={82} y={H * 0.84} size={46} />
+      <Caption text="They get a second life" at={6} out={76} y={H * 0.84} size={46} />
     </AbsoluteFill>
   );
 };
@@ -151,7 +148,11 @@ const Arena: React.FC = () => {
  *     mode 'skills'): a different pill in a different spot of the map each
  *     time, centred and running with a skill on: sprint, shield, magnet and
  *     teleport. The line types in fast on the first and stays through all four. */
-const SPAWN_DUR = skillsCapture.shots.reduce((a, s) => a + s.frames, 0);
+// 15.5 s -> 17.9 s: 72 frames over the four clips, the teleport one longer
+// (it needs the fade out and back in).
+const SPAWN_CUT: Record<string, number> = { tp: 30 };
+const spawnLen = (name: string) => SPAWN_CUT[name] ?? 14;
+const SPAWN_DUR = skillsCapture.shots.reduce((a, s) => a + spawnLen(s.name), 0);
 const SkillShot: React.FC<{ from: number }> = ({ from }) => {
   const f = useCurrentFrame();
   return <Img src={staticFile(`skills/${String(from + f).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />;
@@ -161,7 +162,7 @@ const Spawn: React.FC = () => (
   <AbsoluteFill>
     <Series>
       {skillsCapture.shots.map((s) => (
-        <Series.Sequence key={s.name} durationInFrames={s.frames}>
+        <Series.Sequence key={s.name} durationInFrames={spawnLen(s.name)}>
           <SkillShot from={s.from} />
         </Series.Sequence>
       ))}
@@ -179,12 +180,13 @@ const Spawn: React.FC = () => (
  *       "Eat" · kill 3 · "or be eaten" · the hero dies. */
 const [K1, K2, K3] = capture.kills;
 const P1 = "Eat pills", P2 = "to get their money!", P3 = "Eat", P4 = "or be eaten";
-// After a kill: its pop-up (2 s) goes, then the phrase types (~19 letters/s),
-// holds, fades (8 frames) and 4 frames later the event lands.
-const POP = 62, KEEP = 12, OUT = 12;
+// After a kill: its pop-up goes (KillGain's LIFE), then the phrase types
+// (~19 letters/s), holds, fades (8 frames) and 4 frames later the event lands.
+// It all has to fit the music: kills 1 and 2 by 22.5 s, the death by 26.5 s.
+const POP = 34, KEEP = 10, OUT = 12;
 const typed = (p: string) => Math.max(6, Math.round(p.length * 1.6));
 const beat = (p: string) => POP + typed(p) + KEEP + OUT;
-const vK1 = 36, vK2 = vK1 + beat(P2), vK3 = vK2 + beat(P3), vDeath = vK3 + beat(P4);
+const vK1 = 34, vK2 = vK1 + beat(P2), vK3 = vK2 + beat(P3), vDeath = vK3 + beat(P4);
 // The capture is laid out so that lands close to real speed; what's left is
 // evened out in stretches: straight lines between these [video, capture] anchors.
 const TAIL = capture.frames - 1 - capture.deathFrame;
@@ -234,39 +236,32 @@ const Footage: React.FC = () => {
   );
 };
 
-/* 7 — Real kills: three 1.5 s clips (placeholder for any still missing).
- *     The line is split over them: each chunk is typed across a full second
- *     and then stays up for half a second before the next one. */
+/* 7 — The three kill clips, played out in the real game (capture/director.js,
+ *     mode 'deaths'): a virus bursts you and they finish you off; you are
+ *     smaller than a rival but bigger than each of its halves, so you eat it
+ *     piece by piece; and the game's own mass milestone bursts you while your
+ *     flying halves swallow three pills. One phrase over each. */
 const CHUNKS = ["Only the ones", "that eat", "survive"];
-const HOLD = 15; // each chunk stays up half a second once typed
-const DEATHS_DUR = CHUNKS.length * (30 + HOLD);
+const CLIP = 90;   // 3 s each: 26.5 s to the title
+const DEATHS_DUR = deathsCapture.shots.length * CLIP;
+const DeathClip: React.FC<{ from: number }> = ({ from }) => {
+  const f = useCurrentFrame();
+  return <Img src={staticFile(`deaths/${String(from + f).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />;
+};
 const Deaths: React.FC = () => (
   <AbsoluteFill>
     <Series>
-      {CHUNKS.map((chunk, i) => (
-        <Series.Sequence key={i} durationInFrames={30 + HOLD}>
-          {DEATHS[i] ? (
-            <OffthreadVideo src={staticFile(`deaths/${DEATHS[i].file}`)} trimBefore={Math.round((DEATHS[i].at ?? 0) * 30)} style={{ width: W, height: H, objectFit: "cover" }} />
-          ) : (
-            <>
-              <ArenaFloor />
-              <div style={{
-                position: "absolute", left: 320, top: 150, width: 1280, height: 640,
-                border: "8px dashed #1f4d33", display: "flex", alignItems: "center", justifyContent: "center",
-                flexDirection: "column", gap: 24, fontFamily: PX, color: "#2f6b4a", fontSize: 30,
-              }}>
-                <div>KILL CLIP {i + 1}</div>
-                <div style={{ fontSize: 18 }}>public/deaths/</div>
-              </div>
-            </>
-          )}
-          {/* Footnote right under where the gameplay box sits: it's the real game. */}
+      {deathsCapture.shots.map((shot, i) => (
+        <Series.Sequence key={shot.name} durationInFrames={CLIP}>
+          {/* The last 3 s of the take: each one ends on its own climax. */}
+          <DeathClip from={shot.from + Math.max(0, shot.frames - CLIP)} />
+          {/* It's the real game, not a mock-up. */}
           <div style={{
-            position: "absolute", left: 0, right: 0, top: 150 + 640 + 18, textAlign: "center",
+            position: "absolute", left: 0, right: 0, bottom: 28, textAlign: "center",
             fontFamily: PX, fontSize: 16, letterSpacing: 3, color: "rgba(232,245,238,0.75)",
             textShadow: "2px 2px 0 #000",
           }}>ACTUAL GAMEPLAY FOOTAGE</div>
-          <Caption text={chunk} keys={[[0, 0], [chunk.length, 29]]} y={H * 0.84} size={56} />
+          <Caption text={CHUNKS[i]} keys={[[0, 2], [CHUNKS[i].length, 2 + Math.round(CHUNKS[i].length * 1.6)]]} y={H * 0.84} size={56} />
         </Series.Sequence>
       ))}
     </Series>
@@ -276,7 +271,7 @@ const Deaths: React.FC = () => (
 /* 8 — The title exactly as the game's loading screen shows it: the PILLWARS
  *     image (img/pixel-hero/hero-title.png) and THE CRYPTO ARENA in the pixel
  *     font with the same green neon (.ls-sub in game/index.html). */
-const TITLE_DUR = 110;
+const TITLE_DUR = 100;
 const Title: React.FC = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -305,9 +300,14 @@ export const SCENES: [React.FC, number][] = [
 ];
 export const TOTAL = SCENES.reduce((a, [, d]) => a + d, 0);
 
+// The music the cuts are timed to ("hyoks"): drop the file in public/ and put
+// its name here. It fades out over the last 1.5 s.
+const MUSIC: string | null = null;
+
 // Hard cuts, no fades through black between scenes.
 export const Origin: React.FC = () => (
   <AbsoluteFill style={{ backgroundColor: "#000" }}>
+    {MUSIC && <Audio src={staticFile(MUSIC)} volume={(f) => interpolate(f, [TOTAL - 45, TOTAL], [1, 0], clamp)} />}
     <Series>
       {SCENES.map(([Scene, d], i) => (
         <Series.Sequence key={i} durationInFrames={d} premountFor={30}>

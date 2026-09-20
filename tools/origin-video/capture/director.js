@@ -28,8 +28,9 @@
  */
 (async function director() {
     const TICK = 1000 / 60, MAX_FRAMES = 520, AFTER_DEATH = 24;
-    // window.__captureMode = 'skills' before pasting records the skill clips
-    // instead (see skills() below); anything else, the kills.
+    // window.__captureMode picks what to record: 'kills' (default, the arena
+    // scene), 'skills' (the four "in PILLWARS" clips) or 'deaths' (the three
+    // kill clips of the closing beat). See skills() and deaths() below.
     const MODE = window.__captureMode || 'kills';
     const inject = code => { const s = document.createElement('script'); s.textContent = code; document.head.appendChild(s); };
     window.__status = { phase: 'waiting' };
@@ -41,7 +42,7 @@
     // A save from an earlier capture would bring back its pill (the skills
     // mode recolours it): always start clean.
     try { localStorage.removeItem('pillwars_save'); } catch (e) {}
-    inject(`window.__ready =() => { try { return gameRunning && !isSpectating && me() && me().alive && me().cells.length > 0; } catch (e) { return false; } };`);
+    inject(`window.__ready = () => { try { return gameRunning && !isSpectating && me() && me().alive && me().cells.length > 0; } catch (e) { return false; } };`);
     inject(`(async () => {
         if (gameRunning && !isSpectating) return;
         await selectMode('classic', true);
@@ -89,12 +90,11 @@
     await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('receiver not running')); });
     const cv = document.getElementById('gameCanvas');
     const sendFrame = async (dir, n) => {
-        if (n === undefined) { n = dir; dir = ''; }
         const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
         ws.send(dir + String(n).padStart(4, '0') + '.jpg');
         ws.send(await blob.arrayBuffer());
     };
-    if (MODE !== 'skills') ws.send('reset');
+    if (MODE === 'kills') ws.send('reset arena');
 
     const sim = window.__pwLab.sim;
     const hero = window.me().cells[0];
@@ -109,26 +109,29 @@
     }
 
     if (MODE === 'skills') return skills(sim, hero, sendFrame, ws);
+    if (MODE === 'deaths') return deaths(sim, hero, sendFrame, ws);
 
     const plan = [
-        // Kills ~3.5 s apart: the classic money pop-up (2 s) clears, then the
-        // next phrase is typed and clears, and only then the next kill lands.
+        // The kills land where the music wants them (see src/Origin.tsx): the
+        // pop-up clears, the next phrase is typed and clears, and only then
+        // the next kill. That's 86, 62 and 74 frames apart, and these
+        // distances hit them at about real speed.
         // Measured hero speed ~7 units/frame; the split fires 430 units short
         // of its prey and the half lands on it ~3 frames later, and the halves
         // then run at only ~6.6 units/frame (a 1 s lunge first). The third sits off the split's line, or
         // the flying half takes it early.
         { dx: 190, dy: 0, r: 16 },                  // 1: first kill, ~1 s in
-        { dx: 1185, dy: 0, r: 15, split: true },    // 2: caught with the split, ~3.5 s later
-        { dx: 1965, dy: 150, r: 16 },               // 3: ~3 s after that
+        { dx: 975, dy: 0, r: 15, split: true },     // 2: caught with the split, ~2.9 s later
+        { dx: 1591, dy: 150, r: 16 },               // 3: ~2 s after that
     ];
     const pool = [...sim.enemies].filter(e => e.r < hero.r * 1.5)
         .sort((a, b) => Math.hypot(a.x - H0.x, a.y - H0.y) - Math.hypot(b.x - H0.x, b.y - H0.y));
     const prey = plan.map((p, i) => ({ c: pool[i], ax: H0.x + p.dx, ay: H0.y + p.dy, split: !!p.split, r: p.r }));
     prey.forEach(p => { p.c.r = p.r; });
     // The killer: a bot blown up to a size that swallows both halves at once.
-    // It waits ~2.5 s after the third kill (that pop-up clears and "or be
-    // eaten" is typed) while the hero drifts on, then charges.
-    const killer = { c: pool[plan.length], x: H0.x + 3415, y: H0.y + 150, go: false, wait: 75 };
+    // It waits after the third kill (that pop-up clears and "or be eaten" is
+    // typed) while the hero drifts on, then charges.
+    const killer = { c: pool[plan.length], x: H0.x + 3041, y: H0.y + 150, go: false, wait: 59 };
     killer.c.r = 130;
     const cast = new Set([...prey.map(p => p.c), killer.c]);
     // Also any bot big enough to eat a prey before the hero gets there.
@@ -186,7 +189,7 @@
         for (let k = 0; k < 2; k++) { pin(window.__clock.t); window.__tick(TICK); }
         if (deathFrame === null && !window.me().cells.length) deathFrame = f;
         window.__draw();
-        await sendFrame(f);
+        await sendFrame('arena/', f);
         window.__frame = f + 1;
         window.__status = { phase: 'recording', frame: f + 1, preyLeft: prey.filter(p => alive(p.c)).length, splitFrame, deathFrame };
         if (deathFrame !== null && f - deathFrame >= AFTER_DEATH) break;
@@ -196,7 +199,7 @@
     const kills = [];
     for (const e of window.__events) if (e.type === 'botKilled' && e.me && !kills.some(k => Math.abs(k - e.f) < 4)) kills.push(e.f);
     const meta = { fps: 30, frames: window.__frame, splitFrame, kills, deathFrame };
-    ws.send('events.json'); ws.send(JSON.stringify(meta, null, 2));
+    ws.send('arena/events.json'); ws.send(JSON.stringify(meta, null, 2));
     await new Promise(r => setTimeout(r, 800));
     window.__status = { phase: 'done', ...meta };
 
@@ -209,7 +212,7 @@
      * sim does it (in classic the skill keys only shoot).
      */
     async function skills(sim, hero, sendFrame, ws) {
-        ws.send('reset skills');
+        ws.send('reset skills');   // its own folder, so a re-run of one mode leaves the other alone
         const SHOTS = [
             { name: 'sprint', top: '#ffffff', bot: '#1d9bf0', frames: 22, ang: 0.3,  at: [0.45, -0.35] },
             { name: 'shield', top: '#ffce3d', bot: '#f62a2d', frames: 22, ang: 2.6,  at: [-0.5, 0.4] },
@@ -249,6 +252,138 @@
             shots.push({ name: s.name, from, frames: s.frames });
         }
         ws.send('skills/events.json'); ws.send(JSON.stringify({ fps: 30, shots }, null, 2));
+        await new Promise(r => setTimeout(r, 800));
+        window.__status = { phase: 'done', shots };
+    }
+
+    /*
+     * The three kill clips of the closing beat, played out in the real game:
+     *   1. a virus bursts the hero into three and a big bot cleans them up,
+     *   2. the hero, smaller than a rival but not than any of its split
+     *      halves, eats one and finishes the rest,
+     *   3. the hero, already split in two, grows until the game's own mass
+     *      milestone bursts it (triggerRandomSplit) and the flying pieces
+     *      swallow three pills on the way out.
+     */
+    async function deaths(sim, hero, sendFrame, ws) {
+        ws.send('reset deaths');
+        const p = window.me();
+        const lim = sim.mapSize - 900;
+        const shots = [];
+        let n = 0;
+        // Off-stage corner, far from all three spots: everything that isn't in
+        // the cast is parked there every frame (bots chase, and the killer of
+        // the first clip would walk straight into the second).
+        const DUMP = { x: lim * 0.92, y: lim * 0.92 };
+        const clear = (x, y, keep) => {
+            for (const v of sim.viruses) if (!keep.has(v) && Math.hypot(v.x - x, v.y - y) < 2200) { v.x = DUMP.x; v.y = DUMP.y; }
+        };
+        const tame = c => { c.botSkills = []; c.botNextSkillTime = 1e15; c.shouldSplit = false; c.immuneTime = 0; c.tpPhase = 0; c.sprintTime = 0; c.magnetTime = 0; };
+        const exile = keep => { for (const e of sim.enemies) if (!keep.has(e)) { tame(e); e.x = DUMP.x; e.y = DUMP.y; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; } };
+        // Back from the dead: the hero is eaten in the first clip, so each one
+        // starts by putting it back on its feet.
+        const revive = (x, y, r) => {
+            p.alive = true; p.killStreak = 0;
+            p.cells.length = 0; p.cells.push(hero);
+            Object.assign(hero, { x, y, r, vx: 0, vy: 0, boostX: 0, boostY: 0, sprintTime: 0, immuneTime: 0, magnetTime: 0, tpPhase: 0, bornTime: sim.now });
+            p.splitMilestones = { level1: false, level2: false };
+        };
+        const hold = (c, x, y) => { tame(c); c.x = x; c.y = y; c.vx = c.vy = 0; c.targetX = x; c.targetY = y; };
+        const centroid = () => {
+            const cells = window.me().cells; let cx = 0, cy = 0;
+            cells.forEach(c => { cx += c.x; cy += c.y; });
+            return cells.length ? { x: cx / cells.length, y: cy / cells.length } : null;
+        };
+        // One shot: `setup` stages it, `step(f)` drives it, `frames` long.
+        const shoot = async (name, frames, zoom, setup, step) => {
+            const spot = setup();
+            window.__zoom = zoom;
+            for (let i = 0; i < 20; i++) { exile(spot.cast); spot.hold && spot.hold(-1); window.__tick(TICK); }
+            window.__snapCam(spot.x, spot.y);
+            const from = n;
+            for (let f = 0; f < frames; f++) {
+                exile(spot.cast);
+                step(f);
+                for (let k = 0; k < 2; k++) window.__tick(TICK);
+                window.__draw();
+                await sendFrame('deaths/', n++);
+                window.__status = { phase: 'deaths', shot: name, frame: n, cells: window.me().cells.length };
+            }
+            shots.push({ name, from, frames });
+        };
+        const spare = () => [...sim.enemies].sort((a, b) => a.r - b.r);
+
+        /* 1 — the virus gets you, and then they do. */
+        {
+            const x = -lim * 0.5, y = lim * 0.45;
+            const pool = spare();
+            const killer = pool[pool.length - 1];
+            const virus = sim.viruses[0];
+            clear(x, y, new Set([killer, virus]));
+            const go = { on: false };
+            await shoot('virus', 110, 1.25, () => {
+                revive(x, y, 62);
+                virus.x = x + 320; virus.y = y - 30;
+                killer.r = 150; hold(killer, x + 980, y + 60);
+                return { x, y, cast: new Set([killer]), hold: () => { hold(killer, x + 980, y + 60); window.__aim(virus.x, virus.y); } };
+            }, f => {
+                const h = centroid();
+                if (!h) return;
+                if (window.me().cells.length > 1) go.on = true;   // burst: here it comes
+                if (go.on) {
+                    const dx = h.x - killer.x, dy = h.y - killer.y, d = Math.hypot(dx, dy) || 1, s = Math.min(d, 19);
+                    hold(killer, killer.x + dx / d * s, killer.y + dy / d * s);
+                    window.__aim(h.x - 260, h.y);             // run for it, too late
+                } else {
+                    hold(killer, x + 980, y + 60);
+                    window.__aim(virus.x, virus.y);
+                }
+            });
+        }
+
+        /* 2 — smaller than the rival, bigger than each of its halves. */
+        {
+            const x = lim * 0.4, y = -lim * 0.5;
+            const pool = spare().filter(e => e.r > 6);
+            const rival = pool.slice(0, 5);
+            clear(x, y, new Set(rival));
+            const id = rival[0].id;
+            const seats = [[460, -40], [660, 120], [880, -60], [1080, 90], [1280, -30]];
+            await shoot('outnumbered', 100, 1.2, () => {
+                revive(x, y, 52);
+                rival.forEach((c, i) => { Object.assign(c, { id, name: 'WHALE', r: 44, colorTop: rival[0].colorTop, colorBot: rival[0].colorBot, skinUrl: null }); hold(c, x + seats[i][0], y + seats[i][1]); });
+                return { x, y, cast: new Set(rival), hold: () => rival.forEach((c, i) => hold(c, x + seats[i][0], y + seats[i][1])) };
+            }, () => {
+                rival.forEach((c, i) => { if (sim.enemies.includes(c)) hold(c, x + seats[i][0], y + seats[i][1]); });
+                const h = centroid(), next = rival.find(c => sim.enemies.includes(c));
+                if (h && next) window.__aim(next.x, next.y);
+            });
+        }
+
+        /* 3 — the mass milestone bursts you, and the pieces feed. */
+        {
+            const x = -lim * 0.35, y = -lim * 0.4;
+            const pool = spare().filter(e => e.r > 6);
+            const snack = pool.slice(0, 4);
+            clear(x, y, new Set(snack));
+            const ring = [[520, -260], [680, 90], [420, 300], [760, -120]];
+            await shoot('milestone', 104, 0.95, () => {
+                // Two halves, just under the game's first milestone (200000).
+                revive(x, y, Math.sqrt(96000 / (Math.PI * 2)));
+                const twin = new (hero.constructor)(x + 260, y + 40, hero.r, hero.colorBot, hero.colorTop, hero.name, false, hero.skinUrl, hero.id, sim.now);
+                p.cells.push(twin);
+                snack.forEach((c, i) => { c.r = 70; hold(c, x + ring[i][0], y + ring[i][1]); });
+                return { x, y, cast: new Set(snack), hold: () => snack.forEach((c, i) => hold(c, x + ring[i][0], y + ring[i][1])) };
+            }, f => {
+                snack.forEach((c, i) => { if (sim.enemies.includes(c)) hold(c, x + ring[i][0], y + ring[i][1]); });
+                // Growing on the spot, then over the milestone at ~1 s in.
+                if (f === 24) p.cells.forEach(c => { c.r = Math.sqrt(105000 / (Math.PI * 2)); c.flashColor = '#00ff00'; c.flashTime = 600; });
+                const h = centroid(), next = snack.find(c => sim.enemies.includes(c));
+                if (h) window.__aim(next ? next.x : h.x + 400, next ? next.y : h.y);
+            });
+        }
+
+        ws.send('deaths/events.json'); ws.send(JSON.stringify({ fps: 30, shots }, null, 2));
         await new Promise(r => setTimeout(r, 800));
         window.__status = { phase: 'done', shots };
     }
