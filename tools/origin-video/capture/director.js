@@ -75,6 +75,7 @@
         spawnFloatingText = function (text) { if (/ WON - /.test(String(text))) return; return sft.apply(this, arguments); };
         window.__aim = (tx, ty) => { const es = getViewScale(); mouse.x = width / 2 + (tx - camera.x) * es; mouse.y = height / 2 + (ty - camera.y) * es; inputMode = 'MOUSE'; };
         window.__split = () => splitPlayer();
+        window.__shoot = () => useSkill(1);
         window.__tick = ms => { window.__clock.t += ms; updateGame(); };
         window.__draw = () => draw();
         window.__snapCam = (x, y) => { camera.x = x; camera.y = y; };
@@ -270,7 +271,8 @@
      *   3. the game's own mass milestone bursts the hero while it feeds,
      *   4. a Spain pill runs an Argentina one down,
      *   5. a sprint through a line of pills, one after another,
-     *   6. a shielded pill walks straight into a bigger one and eats past it.
+     *   6. a shielded pill keeps eating with a bigger one right behind it,
+     *   7. and a burst of classic's own shot at a rival.
      */
     async function deaths(sim, hero, sendFrame, ws) {
         ws.send('reset deaths');
@@ -314,13 +316,26 @@
                 step(f);
                 for (let k = 0; k < 2; k++) window.__tick(TICK);
                 window.__draw();
+                readHud();
                 await sendFrame('deaths/', n++);
                 window.__status = { phase: 'deaths', shot: name, frame: n, cells: window.me().cells.length };
             }
             shots.push({ name, from, frames });
         };
         const spare = () => [...sim.enemies].sort((a, b) => a.r - b.r);
-        const spots = [[-0.5, 0.45], [0.4, -0.5], [-0.35, -0.4], [0.5, 0.35], [-0.55, -0.05], [0.1, 0.55]];
+        // The HUD is HTML over the canvas, so it is not in the capture: log
+        // what it says, frame by frame, and the video redraws it (src/Origin).
+        const hud = [];
+        const txt = id => { const e = document.getElementById(id); return e ? e.textContent.trim() : ''; };
+        const readHud = () => {
+            // Each row is "<span>1. name</span><span>mass</span>" (.lb-item).
+            const rows = [...document.querySelectorAll('#lb-list .lb-item')].slice(0, 3).map(r => {
+                const sp = r.querySelectorAll('span');
+                return { n: sp[0] ? sp[0].textContent.trim() : '', m: sp[1] ? sp[1].textContent.trim() : '', me: r.classList.contains('is-me') };
+            });
+            hud.push({ mass: txt('score'), alive: txt('enemyCount'), time: txt('timerDisplay'), kills: txt('killsVal'), lb: rows });
+        };
+        const spots = [[-0.5, 0.45], [0.4, -0.5], [-0.35, -0.4], [0.5, 0.35], [-0.55, -0.05], [0.1, 0.55], [-0.1, -0.6]];
         const at = i => ({ x: spots[i][0] * lim, y: spots[i][1] * lim });
 
         /* 1 - the virus gets you, and then they do. */
@@ -378,7 +393,7 @@
             const snack = spare().filter(e => e.r > 6).slice(0, 5);
             clearViruses(x, y, new Set());
             const cast = new Set(snack);
-            const ring = [[520, -110], [760, 130], [990, -80], [1210, 100], [1420, -30]];
+            const ring = [[360, -100], [560, 120], [760, -70], [950, 90], [1140, -30]];
             await shoot('milestone', 56, 1.15, () => {
                 revive(x, y, Math.sqrt(96000 / (Math.PI * 2)));
                 hero.bornTime = sim.now;   // freshly split, or the halves merge back
@@ -388,7 +403,7 @@
                 return { x, y, cast };
             }, f => {
                 snack.forEach((c, i) => { if (sim.enemies.includes(c)) drift(c, x + ring[i][0], y + ring[i][1], f, i); });
-                if (f === 8) p.cells.forEach(c => { c.r = Math.sqrt(105000 / (Math.PI * 2)); c.flashColor = '#00ff00'; c.flashTime = 600; });
+                if (f === 3) p.cells.forEach(c => { c.r = Math.sqrt(105000 / (Math.PI * 2)); c.flashColor = '#00ff00'; c.flashTime = 600; });
                 const h = centroid(), next = snack.find(c => sim.enemies.includes(c));
                 if (h) window.__aim(next ? next.x : h.x + 500, next ? next.y : h.y);
             });
@@ -441,22 +456,52 @@
             const bully = pool[pool.length - 1], snack = pool.slice(0, 3);
             clearViruses(x, y, new Set());
             const cast = new Set([bully, ...snack]);
-            const seats = [[520, -120], [760, 90], [1000, -40]];
+            const seats = [[430, -110], [700, 80], [960, -40]];
+            // The big one comes from BEHIND: sitting among the prey it ate
+            // them itself and pills vanished with nobody touching them.
+            const chase = { x: x - 420, y: y + 40 };
             await shoot('shield', 50, 1.2, () => {
                 revive(x, y, 56);
-                bully.r = 120; put(bully, x + 260, y + 30);
+                bully.r = 120; put(bully, chase.x, chase.y);
                 snack.forEach((c, i) => { Object.assign(c, { r: 32, skinUrl: null }); put(c, x + seats[i][0], y + seats[i][1]); });
                 return { x, y, cast };
             }, f => {
-                hero.immuneTime = 3000;    // the shield holds while it walks past
-                if (sim.enemies.includes(bully)) put(bully, x + 260 + Math.sin(f / 7) * 60, y + 30 + Math.cos(f / 9) * 40);
+                hero.immuneTime = 3000;    // the shield holds while it runs
+                if (sim.enemies.includes(bully)) {
+                    const dx = hero.x - chase.x, dy = hero.y - chase.y, d = Math.hypot(dx, dy) || 1, sp = Math.min(d - 120, 12);
+                    if (sp > 0) { chase.x += dx / d * sp; chase.y += dy / d * sp; }
+                    put(bully, chase.x, chase.y);
+                }
                 snack.forEach((c, i) => { if (sim.enemies.includes(c)) drift(c, x + seats[i][0], y + seats[i][1], f, i); });
                 const next = snack.find(c => sim.enemies.includes(c));
                 window.__aim(next ? next.x : hero.x + 600, next ? next.y : hero.y);
             });
         }
 
-        ws.send('deaths/events.json'); ws.send(JSON.stringify({ fps: 30, shots }, null, 2));
+        /* 7 - the shot: classic's own skill, fired at a rival on the run. */
+        {
+            const { x, y } = at(6);
+            const pool = spare().filter(e => e.r > 6);
+            const target = pool[pool.length - 1], snack = pool.slice(0, 2);
+            clearViruses(x, y, new Set());
+            const cast = new Set([target, ...snack]);
+            const seats = [[820, -180], [1000, 160]];
+            await shoot('shot', 50, 1.2, () => {
+                revive(x, y, 70);
+                target.r = 95; put(target, x + 700, y - 20);
+                snack.forEach((c, i) => { Object.assign(c, { r: 30, skinUrl: null }); put(c, x + seats[i][0], y + seats[i][1]); });
+                return { x, y, cast };
+            }, f => {
+                if (sim.enemies.includes(target)) put(target, x + 700 + Math.sin(f / 6) * 70, y - 20 + Math.cos(f / 8) * 50);
+                snack.forEach((c, i) => { if (sim.enemies.includes(c)) drift(c, x + seats[i][0], y + seats[i][1], f, i); });
+                const aim = sim.enemies.includes(target) ? target : snack.find(c => sim.enemies.includes(c));
+                if (aim) window.__aim(aim.x, aim.y);
+                // A burst of shots: the cooldown lets one through every few frames.
+                if (f >= 0 && f % 5 === 0) window.__shoot();
+            });
+        }
+
+        ws.send('deaths/events.json'); ws.send(JSON.stringify({ fps: 30, shots, hud }, null, 2));
         await new Promise(r => setTimeout(r, 800));
         window.__status = { phase: 'done', shots };
     }

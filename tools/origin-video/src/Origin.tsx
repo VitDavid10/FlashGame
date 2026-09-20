@@ -23,12 +23,14 @@ const Birth: React.FC = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const pop = spring({ frame: f, fps, config: { damping: 11 } });
-  const count = Math.floor(interpolate(f, [12, 85], [0, 70], clamp));
+  // They keep being born until the cut: stopping early left the screen still
+  // for a second while the line was still typing.
+  const count = Math.floor(interpolate(f, [10, BIRTH_DUR - 6], [0, 78], clamp));
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
       {Array.from({ length: count }, (_, i) => {
-        const born = 12 + (i / 70) * 73;
-        const s = interpolate(f, [born, born + 5], [0, 1], clamp);
+        const born = 10 + (i / 78) * (BIRTH_DUR - 16);
+        const s = interpolate(f, [born, born + 7], [0, 1], clamp);
         const [t, b] = PALETTE[i % PALETTE.length];
         return (
           <Pill key={i} x={random(`bx${i}`) * W} y={random(`by${i}`) * H * 0.7 + 40}
@@ -179,7 +181,7 @@ const Spawn: React.FC = () => (
  *       "Eat pills" · kill 1 · "to get their money!" · split + kill 2 ·
  *       "Eat" · kill 3 · "or be eaten" · the hero dies. */
 const [K1, K2, K3] = capture.kills;
-const P1 = "Eat pills", P2 = "to get their money!", P3 = "Eat", P4 = "or be eaten";
+const P1 = "Eat pills", P2 = "to get their money!", P3 = "Eat or be eaten";
 // Every event lands on a beat of the track (72.3 bpm, 24.9 frames apart,
 // first beat at 0.49 s), counted from the cut at 17.92 s: 18.75, 22.07,
 // 23.73 and 25.39 s. Each phrase is typed once the previous pop-up has gone
@@ -226,10 +228,8 @@ const Footage: React.FC = () => {
       <Caption text={P1} y={H * 0.84} size={52} {...lead(P1, 1, 12, vK1)} />
       {/* "to get their money!" · kill 2 */}
       <Caption text={P2} y={H * 0.84} size={52} {...lead(P2, 60, 95, vK2)} />
-      {/* "Eat" · kill 3 */}
-      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" {...lead(P3, 152, 158, vK3)} />
-      {/* "or be eaten" · death */}
-      <Caption text={P4} y={H * 0.84} size={56} color="#00ff88" {...lead(P4, 194, 212, vDeath)} />
+      {/* "Eat or be eaten" · kill 3, and then the death with the screen clear */}
+      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" {...lead(P3, 142, 162, vK3)} />
     </AbsoluteFill>
   );
 };
@@ -240,17 +240,56 @@ const Footage: React.FC = () => {
  *     are played at 1.6x, so the whole run is as quick as the music. One
  *     single line runs under all six. */
 const BEAT = 25;                                   // 72.3 bpm at 30 fps
-const CUTS = [BEAT, BEAT, 2 * BEAT, BEAT, BEAT, 2 * BEAT - 1];
+const CUTS = [BEAT, BEAT, BEAT, BEAT, BEAT, BEAT, 2 * BEAT - 1];
 const RATE = 1.6;                                  // the takes, sped up as far as they stretch
 const DEATHS_DUR = CUTS.reduce((a, b) => a + b, 0);
 const DEATHS_LINE = "Only the ones that eat survive";
 const BOX = { left: 320, top: 150, width: 1280, height: 640 };
+// The game's HUD is HTML over its canvas, so it isn't in the capture: the
+// director logs what it said on every frame (public/deaths/events.json) and it
+// is drawn back here, in the pixel pack's colours, inside the box.
+type Hud = { mass: string; alive: string; time: string; kills: string; lb: { n: string; m: string; me?: boolean }[] };
+const chip = {
+  fontFamily: PX, fontSize: 11, color: "#e8f5ee", background: "rgba(0,0,0,0.5)",
+  border: "1px solid rgba(0,255,136,0.55)", padding: "5px 8px", letterSpacing: 1,
+  textShadow: "0 0 6px rgba(0,255,136,0.85), 1px 1px 0 #000",
+} as const;
+const val = { color: "#ffe97a", textShadow: "0 0 6px rgba(255,206,61,0.8), 1px 1px 0 #000" } as const;
+const GameHud: React.FC<{ hud?: Hud }> = ({ hud }) => {
+  if (!hud) return null;
+  return (
+    <>
+      <div style={{ position: "absolute", left: 14, top: 12, display: "flex", gap: 10 }}>
+        <div style={chip}>MASS: <span style={val}>{hud.mass}</span></div>
+        <div style={chip}>ALIVE: <span style={val}>{hud.alive}</span></div>
+      </div>
+      <div style={{
+        position: "absolute", left: 0, right: 0, top: 12, textAlign: "center",
+        fontFamily: PX, fontSize: 13, color: "#fff", textShadow: "2px 2px 0 #000",
+      }}>{hud.time}</div>
+      <div style={{
+        position: "absolute", right: 14, top: 12, minWidth: 150, background: "rgba(0,0,0,0.5)",
+        border: "1px solid rgba(255,255,255,0.1)", padding: "6px 8px", textShadow: "1px 1px 0 #000",
+      }}>
+        <div style={{ fontFamily: PX, fontSize: 8, color: "#888", letterSpacing: 1, borderBottom: "1px solid #333", paddingBottom: 4, marginBottom: 4 }}>TOP MASS</div>
+        {hud.lb.map((r, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontFamily: PX, fontSize: 8, lineHeight: 2, color: r.me ? "#00ff88" : "#e6e9ec" }}>
+            {/* The capture plays with no name, so its own row reads YOU. */}
+            <span>{r.me ? r.n.replace(/\s*$/, " YOU") : r.n}</span><span style={{ color: "#ffe97a" }}>{r.m}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+};
 const DeathClip: React.FC<{ from: number; rate: number }> = ({ from, rate }) => {
   const f = useCurrentFrame();
+  const at = from + Math.round(f * rate);
   return (
     <div style={{ position: "absolute", ...BOX, overflow: "hidden", border: "8px solid #1f4d33" }}>
-      <Img src={staticFile(`deaths/${String(from + Math.round(f * rate)).padStart(4, "0")}.jpg`)}
+      <Img src={staticFile(`deaths/${String(at).padStart(4, "0")}.jpg`)}
         style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      <GameHud hud={(deathsCapture.hud as Hud[])[at]} />
     </div>
   );
 };
@@ -276,7 +315,7 @@ const Deaths: React.FC = () => (
       })}
     </Series>
     {/* One line for the whole run: the eye stays on the gameplay. */}
-    <Caption text={DEATHS_LINE} keys={[[0, 2], [DEATHS_LINE.length, 36]]} y={H * 0.84} size={48} />
+    <Caption text={DEATHS_LINE} keys={[[0, 0], [DEATHS_LINE.length, 0]]} y={H * 0.84} size={48} />
   </AbsoluteFill>
 );
 
