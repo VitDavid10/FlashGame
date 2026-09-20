@@ -602,6 +602,10 @@
             // shot once the camera was wide enough: park them every frame.
             for (const e of sim.enemies) { e.x = sim.mapSize * 0.9; e.y = sim.mapSize * 0.9; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; }
             if (sim.ejectedMasses) sim.ejectedMasses.length = 0;
+            // The game keeps sending replacements in (botRespawnQueue), and a
+            // fresh bot spawns anywhere: that is what flashed on screen for a
+            // few frames. No relief while recording.
+            if (sim.botRespawnQueue) sim.botRespawnQueue.length = 0;
         };
         noFood();
         p.cells.length = 0; p.cells.push(hero);
@@ -623,6 +627,7 @@
             // silver and gold, one per second.
             window.__rank(f >= 90 ? 1 : f >= 60 ? 2 : f >= 30 ? 3 : null);
             window.__zoom = EXTRA;
+            noFood();                 // again after the ticks: a bot respawned mid-frame shows up otherwise
             window.__snapCam(x, y);
             window.__draw();
             await sendFrame('growth/', f);
