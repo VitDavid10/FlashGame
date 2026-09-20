@@ -189,7 +189,8 @@ const beat = (p: string) => POP + typed(p) + KEEP + OUT;
 const vK1 = 34, vK2 = vK1 + beat(P2), vK3 = vK2 + beat(P3), vDeath = vK3 + beat(P4);
 // The capture is laid out so that lands close to real speed; what's left is
 // evened out in stretches: straight lines between these [video, capture] anchors.
-const TAIL = capture.frames - 1 - capture.deathFrame;
+// Only a beat of the capture after the death: at 26.5 s the clips start.
+const TAIL = Math.min(9, capture.frames - 1 - capture.deathFrame);
 const ANCHORS: [number, number][] = [[0, 0], [vK1, K1], [vK2, K2], [vK3, K3], [vDeath, capture.deathFrame], [vDeath + TAIL, capture.frames - 1]];
 const toSrc = (f: number) => interpolate(f, ANCHORS.map((a) => a[0]), ANCHORS.map((a) => a[1]), clamp);
 const toVideo = (s: number) => interpolate(s, ANCHORS.map((a) => a[1]), ANCHORS.map((a) => a[0]), clamp);
@@ -237,31 +238,38 @@ const Footage: React.FC = () => {
 };
 
 /* 7 — The three kill clips, played out in the real game (capture/director.js,
- *     mode 'deaths'): a virus bursts you and they finish you off; you are
- *     smaller than a rival but bigger than each of its halves, so you eat it
- *     piece by piece; and the game's own mass milestone bursts you while your
- *     flying halves swallow three pills. One phrase over each. */
+ *     mode 'deaths') and shown inside the frame the placeholder used to draw,
+ *     with ACTUAL GAMEPLAY FOOTAGE under it: a virus bursts you and they
+ *     finish you off; you are smaller than a rival but not than its halves,
+ *     so you split into them; and the game's own mass milestone bursts you
+ *     while your pieces feed. Each take is cut to end just after its phrase. */
 const CHUNKS = ["Only the ones", "that eat", "survive"];
-const CLIP = 90;   // 3 s each: 26.5 s to the title
+const CLIP = 42;   // ~1.4 s each: the three together are the 4 s of the beat
 const DEATHS_DUR = deathsCapture.shots.length * CLIP;
+const BOX = { left: 320, top: 150, width: 1280, height: 640 };
 const DeathClip: React.FC<{ from: number }> = ({ from }) => {
   const f = useCurrentFrame();
-  return <Img src={staticFile(`deaths/${String(from + f).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />;
+  return (
+    <div style={{ position: "absolute", ...BOX, overflow: "hidden", border: "8px solid #1f4d33" }}>
+      <Img src={staticFile(`deaths/${String(from + f).padStart(4, "0")}.jpg`)}
+        style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    </div>
+  );
 };
 const Deaths: React.FC = () => (
   <AbsoluteFill>
     <Series>
       {deathsCapture.shots.map((shot, i) => (
         <Series.Sequence key={shot.name} durationInFrames={CLIP}>
-          {/* The last 3 s of the take: each one ends on its own climax. */}
+          {/* The last 1.4 s of the take: each one ends on its own climax. */}
           <DeathClip from={shot.from + Math.max(0, shot.frames - CLIP)} />
-          {/* It's the real game, not a mock-up. */}
+          {/* Right under the box, as on the placeholder: it's the real game. */}
           <div style={{
-            position: "absolute", left: 0, right: 0, bottom: 28, textAlign: "center",
+            position: "absolute", left: 0, right: 0, top: BOX.top + BOX.height + 18, textAlign: "center",
             fontFamily: PX, fontSize: 16, letterSpacing: 3, color: "rgba(232,245,238,0.75)",
             textShadow: "2px 2px 0 #000",
           }}>ACTUAL GAMEPLAY FOOTAGE</div>
-          <Caption text={CHUNKS[i]} keys={[[0, 2], [CHUNKS[i].length, 2 + Math.round(CHUNKS[i].length * 1.6)]]} y={H * 0.84} size={56} />
+          <Caption text={CHUNKS[i]} keys={[[0, 1], [CHUNKS[i].length, 1 + Math.round(CHUNKS[i].length * 1.3)]]} y={H * 0.84} size={56} />
         </Series.Sequence>
       ))}
     </Series>
@@ -271,7 +279,7 @@ const Deaths: React.FC = () => (
 /* 8 — The title exactly as the game's loading screen shows it: the PILLWARS
  *     image (img/pixel-hero/hero-title.png) and THE CRYPTO ARENA in the pixel
  *     font with the same green neon (.ls-sub in game/index.html). */
-const TITLE_DUR = 100;
+const TITLE_DUR = 160;   // the logo holds while the music fades
 const Title: React.FC = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -300,9 +308,11 @@ export const SCENES: [React.FC, number][] = [
 ];
 export const TOTAL = SCENES.reduce((a, [, d]) => a + d, 0);
 
-// The music the cuts are timed to ("hyoks"): drop the file in public/ and put
-// its name here. It fades out over the last 1.5 s.
-const MUSIC: string | null = null;
+// The music the cuts are timed to: the game's own snd/hyoks.mp3, copied to
+// public/snd/ (it is not committed twice). The track is 80 s long and the
+// video is not: it plays from its first frame, where the sound already
+// starts, and fades out over the last 1.5 s.
+const MUSIC = "snd/hyoks.mp3";
 
 // Hard cuts, no fades through black between scenes.
 export const Origin: React.FC = () => (

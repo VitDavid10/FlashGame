@@ -257,13 +257,14 @@
     }
 
     /*
-     * The three kill clips of the closing beat, played out in the real game:
+     * The three kill clips of the closing beat, played out in the real game.
+     * Short takes: the video only keeps the last ~1.4 s of each, so everything
+     * has to happen fast and nothing ever stands still.
      *   1. a virus bursts the hero into three and a big bot cleans them up,
-     *   2. the hero, smaller than a rival but not than any of its split
-     *      halves, eats one and finishes the rest,
-     *   3. the hero, already split in two, grows until the game's own mass
-     *      milestone bursts it (triggerRandomSplit) and the flying pieces
-     *      swallow three pills on the way out.
+     *   2. the hero, smaller than a rival but not than its halves, splits into
+     *      the cluster and swallows them on the fly,
+     *   3. the hero, already split in two and running, is burst by the game's
+     *      own mass milestone and the pieces eat the pills around it.
      */
     async function deaths(sim, hero, sendFrame, ws) {
         ws.send('reset deaths');
@@ -275,20 +276,21 @@
         // the cast is parked there every frame (bots chase, and the killer of
         // the first clip would walk straight into the second).
         const DUMP = { x: lim * 0.92, y: lim * 0.92 };
-        const clear = (x, y, keep) => {
-            for (const v of sim.viruses) if (!keep.has(v) && Math.hypot(v.x - x, v.y - y) < 2200) { v.x = DUMP.x; v.y = DUMP.y; }
-        };
         const tame = c => { c.botSkills = []; c.botNextSkillTime = 1e15; c.shouldSplit = false; c.immuneTime = 0; c.tpPhase = 0; c.sprintTime = 0; c.magnetTime = 0; };
         const exile = keep => { for (const e of sim.enemies) if (!keep.has(e)) { tame(e); e.x = DUMP.x; e.y = DUMP.y; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; } };
+        const clearViruses = (x, y, keep) => { for (const v of sim.viruses) if (!keep.has(v) && Math.hypot(v.x - x, v.y - y) < 2400) { v.x = DUMP.x; v.y = DUMP.y; } };
         // Back from the dead: the hero is eaten in the first clip, so each one
         // starts by putting it back on its feet.
         const revive = (x, y, r) => {
             p.alive = true; p.killStreak = 0;
             p.cells.length = 0; p.cells.push(hero);
-            Object.assign(hero, { x, y, r, vx: 0, vy: 0, boostX: 0, boostY: 0, sprintTime: 0, immuneTime: 0, magnetTime: 0, tpPhase: 0, bornTime: sim.now });
+            Object.assign(hero, { x, y, r, vx: 0, vy: 0, boostX: 0, boostY: 0, sprintTime: 0, immuneTime: 0, magnetTime: 0, tpPhase: 0, bornTime: sim.now - 60000 });
             p.splitMilestones = { level1: false, level2: false };
+            p.lastSplitTime = 0;
         };
-        const hold = (c, x, y) => { tame(c); c.x = x; c.y = y; c.vx = c.vy = 0; c.targetX = x; c.targetY = y; };
+        const put = (c, x, y) => { tame(c); c.x = x; c.y = y; c.vx = c.vy = 0; c.targetX = x; c.targetY = y; };
+        // Nobody stands still: every pill drifts around its mark.
+        const drift = (c, ax, ay, f, i) => put(c, ax + Math.cos(f / 11 + i) * 70, ay + Math.sin(f / 9 + i * 2) * 50);
         const centroid = () => {
             const cells = window.me().cells; let cx = 0, cy = 0;
             cells.forEach(c => { cx += c.x; cy += c.y; });
@@ -298,7 +300,7 @@
         const shoot = async (name, frames, zoom, setup, step) => {
             const spot = setup();
             window.__zoom = zoom;
-            for (let i = 0; i < 20; i++) { exile(spot.cast); spot.hold && spot.hold(-1); window.__tick(TICK); }
+            for (let i = 0; i < 16; i++) { exile(spot.cast); step(-1); window.__tick(TICK); }
             window.__snapCam(spot.x, spot.y);
             const from = n;
             for (let f = 0; f < frames; f++) {
@@ -313,73 +315,80 @@
         };
         const spare = () => [...sim.enemies].sort((a, b) => a.r - b.r);
 
-        /* 1 — the virus gets you, and then they do. */
+        /* 1 - the virus gets you, and then they do. */
         {
             const x = -lim * 0.5, y = lim * 0.45;
             const pool = spare();
             const killer = pool[pool.length - 1];
             const virus = sim.viruses[0];
-            clear(x, y, new Set([killer, virus]));
+            clearViruses(x, y, new Set([virus]));
+            const cast = new Set([killer]);
             const go = { on: false };
-            await shoot('virus', 110, 1.25, () => {
+            await shoot('virus', 70, 1.3, () => {
                 revive(x, y, 62);
-                virus.x = x + 320; virus.y = y - 30;
-                killer.r = 150; hold(killer, x + 980, y + 60);
-                return { x, y, cast: new Set([killer]), hold: () => { hold(killer, x + 980, y + 60); window.__aim(virus.x, virus.y); } };
+                virus.x = x + 300; virus.y = y - 20;
+                killer.r = 150; put(killer, x + 760, y + 70);
+                return { x, y, cast };
             }, f => {
                 const h = centroid();
                 if (!h) return;
                 if (window.me().cells.length > 1) go.on = true;   // burst: here it comes
                 if (go.on) {
-                    const dx = h.x - killer.x, dy = h.y - killer.y, d = Math.hypot(dx, dy) || 1, s = Math.min(d, 19);
-                    hold(killer, killer.x + dx / d * s, killer.y + dy / d * s);
-                    window.__aim(h.x - 260, h.y);             // run for it, too late
+                    const dx = h.x - killer.x, dy = h.y - killer.y, d = Math.hypot(dx, dy) || 1, s = Math.min(d, 21);
+                    put(killer, killer.x + dx / d * s, killer.y + dy / d * s);
+                    window.__aim(h.x - 300, h.y - 60);            // run for it, too late
                 } else {
-                    hold(killer, x + 980, y + 60);
+                    put(killer, x + 760 + Math.sin(f / 8) * 40, y + 70 + Math.cos(f / 10) * 30);
                     window.__aim(virus.x, virus.y);
                 }
             });
         }
 
-        /* 2 — smaller than the rival, bigger than each of its halves. */
+        /* 2 - smaller than the rival, so you split into its halves. */
         {
             const x = lim * 0.4, y = -lim * 0.5;
-            const pool = spare().filter(e => e.r > 6);
-            const rival = pool.slice(0, 5);
-            clear(x, y, new Set(rival));
-            const id = rival[0].id;
-            const seats = [[460, -40], [660, 120], [880, -60], [1080, 90], [1280, -30]];
-            await shoot('outnumbered', 100, 1.2, () => {
-                revive(x, y, 52);
-                rival.forEach((c, i) => { Object.assign(c, { id, name: 'WHALE', r: 44, colorTop: rival[0].colorTop, colorBot: rival[0].colorBot, skinUrl: null }); hold(c, x + seats[i][0], y + seats[i][1]); });
-                return { x, y, cast: new Set(rival), hold: () => rival.forEach((c, i) => hold(c, x + seats[i][0], y + seats[i][1])) };
-            }, () => {
-                rival.forEach((c, i) => { if (sim.enemies.includes(c)) hold(c, x + seats[i][0], y + seats[i][1]); });
+            const rival = spare().filter(e => e.r > 6).slice(0, 5);
+            clearViruses(x, y, new Set());
+            const cast = new Set(rival);
+            const seats = [[470, -30], [700, 90], [930, -50], [1150, 60], [1330, -20]];
+            const split = { done: false };
+            await shoot('outnumbered', 60, 1.15, () => {
+                revive(x, y, 60);
+                rival.forEach((c, i) => { Object.assign(c, { id: rival[0].id, name: 'WHALE', r: 34, colorTop: rival[0].colorTop, colorBot: rival[0].colorBot, skinUrl: null }); put(c, x + seats[i][0], y + seats[i][1]); });
+                return { x, y, cast };
+            }, f => {
+                rival.forEach((c, i) => { if (sim.enemies.includes(c)) drift(c, x + seats[i][0], y + seats[i][1], f, i); });
                 const h = centroid(), next = rival.find(c => sim.enemies.includes(c));
-                if (h && next) window.__aim(next.x, next.y);
+                if (!h || !next) return;
+                window.__aim(next.x, next.y);
+                // Split into the cluster: the flying half takes them one after
+                // another, which is what makes it quick enough to show.
+                if (!split.done && f >= 6) { window.__split(); split.done = true; }
             });
         }
 
-        /* 3 — the mass milestone bursts you, and the pieces feed. */
+        /* 3 - the mass milestone bursts you while you run, and the pieces feed. */
         {
             const x = -lim * 0.35, y = -lim * 0.4;
-            const pool = spare().filter(e => e.r > 6);
-            const snack = pool.slice(0, 4);
-            clear(x, y, new Set(snack));
-            const ring = [[520, -260], [680, 90], [420, 300], [760, -120]];
-            await shoot('milestone', 104, 0.95, () => {
+            const snack = spare().filter(e => e.r > 6).slice(0, 5);
+            clearViruses(x, y, new Set());
+            const cast = new Set(snack);
+            const ring = [[620, -120], [880, 140], [1120, -90], [1380, 110], [1600, -40]];
+            await shoot('milestone', 60, 1.15, () => {
                 // Two halves, just under the game's first milestone (200000).
                 revive(x, y, Math.sqrt(96000 / (Math.PI * 2)));
-                const twin = new (hero.constructor)(x + 260, y + 40, hero.r, hero.colorBot, hero.colorTop, hero.name, false, hero.skinUrl, hero.id, sim.now);
+                // Freshly split, or the two halves merge back on the spot.
+                hero.bornTime = sim.now;
+                const twin = new (hero.constructor)(x - 150, y - 90, hero.r, hero.colorBot, hero.colorTop, hero.name, false, hero.skinUrl, hero.id, sim.now);
                 p.cells.push(twin);
-                snack.forEach((c, i) => { c.r = 70; hold(c, x + ring[i][0], y + ring[i][1]); });
-                return { x, y, cast: new Set(snack), hold: () => snack.forEach((c, i) => hold(c, x + ring[i][0], y + ring[i][1])) };
+                snack.forEach((c, i) => { Object.assign(c, { r: 62, skinUrl: null }); put(c, x + ring[i][0], y + ring[i][1]); });
+                return { x, y, cast };
             }, f => {
-                snack.forEach((c, i) => { if (sim.enemies.includes(c)) hold(c, x + ring[i][0], y + ring[i][1]); });
-                // Growing on the spot, then over the milestone at ~1 s in.
-                if (f === 24) p.cells.forEach(c => { c.r = Math.sqrt(105000 / (Math.PI * 2)); c.flashColor = '#00ff00'; c.flashTime = 600; });
+                snack.forEach((c, i) => { if (sim.enemies.includes(c)) drift(c, x + ring[i][0], y + ring[i][1], f, i); });
+                // On the move the whole time, and over the milestone at ~0.4 s.
+                if (f === 12) p.cells.forEach(c => { c.r = Math.sqrt(105000 / (Math.PI * 2)); c.flashColor = '#00ff00'; c.flashTime = 600; });
                 const h = centroid(), next = snack.find(c => sim.enemies.includes(c));
-                if (h) window.__aim(next ? next.x : h.x + 400, next ? next.y : h.y);
+                if (h) window.__aim(next ? next.x : h.x + 500, next ? next.y : h.y);
             });
         }
 
