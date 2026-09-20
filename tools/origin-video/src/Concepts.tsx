@@ -206,11 +206,6 @@ export const RoomC: React.FC = () => (
   </Room>
 );
 
-export const CONCEPTS: [string, React.FC][] = [
-  ["concept-arena-a", ArenaA], ["concept-arena-b", ArenaB], ["concept-arena-c", ArenaC],
-  ["concept-money-a", MoneyA], ["concept-money-b", MoneyB], ["concept-money-c", MoneyC],
-  ["concept-room-a", RoomA], ["concept-room-b", RoomB], ["concept-room-c", RoomC],
-];
 
 /* ---------- The pill from birth to the gold crown (capture mode 'growth') ---------- */
 export const GROWTH_FRAMES = growthCapture.frames as number;
@@ -223,3 +218,70 @@ export const Growth: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+/* ---------- The card that closes every thread: there is no token yet ---------- */
+const NOTE = "No token. No presale. Nothing to buy.";
+const Card: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
+  <AbsoluteFill style={{ backgroundColor: "#050505" }}>
+    <ArenaFloor />
+    {children}
+  </AbsoluteFill>
+);
+
+export const NoTokenA: React.FC = () => (
+  <Card>
+    <div style={{
+      position: "absolute", left: 180, top: 170, right: 180, bottom: 170,
+      border: "10px solid rgba(255,42,42,0.85)", boxShadow: "0 0 60px rgba(255,42,42,0.15) inset",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 46,
+    }}>
+      <div style={{ fontFamily: PX, fontSize: 92, color: "#ff2a2a", letterSpacing: 6, textShadow: "8px 8px 0 #000" }}>NO TOKEN YET</div>
+      <div style={{ fontFamily: PX, fontSize: 30, color: "#e8f5ee", letterSpacing: 3, lineHeight: 2.1, textAlign: "center", textShadow: "4px 4px 0 #000" }}>
+        There is no PillWars token in circulation.<br />No presale. No whitelist. Nothing to buy.
+      </div>
+      <div style={{ fontFamily: PX, fontSize: 24, color: "#8b9199", letterSpacing: 3, textShadow: "3px 3px 0 #000" }}>
+        Any contract out there is not ours.
+      </div>
+    </div>
+  </Card>
+);
+
+export const NoTokenB: React.FC = () => (
+  <Card>
+    {/* A coin, crossed out with the game's red. */}
+    <div style={{ position: "absolute", left: W / 2 - 150, top: H * 0.16, width: 300, height: 300 }}>
+      <Gold x={150} y={150} n={26} spread={92} seed="ntb" size={20} />
+      <svg width={300} height={300} style={{ position: "absolute", left: 0, top: 0 }} shapeRendering="crispEdges">
+        <line x1={34} y1={34} x2={266} y2={266} stroke="#ff2a2a" strokeWidth={22} />
+        <line x1={266} y1={34} x2={34} y2={266} stroke="#ff2a2a" strokeWidth={22} />
+      </svg>
+    </div>
+    <div style={{ position: "absolute", left: 0, right: 0, top: H * 0.62, textAlign: "center" }}>
+      <div style={{ fontFamily: PX, fontSize: 64, color: "#ffffff", letterSpacing: 5, textShadow: "7px 7px 0 #000" }}>NOTHING IS LIVE</div>
+      <div style={{ fontFamily: PX, fontSize: 28, color: "#8b9199", letterSpacing: 3, marginTop: 40, lineHeight: 2, textShadow: "3px 3px 0 #000" }}>
+        {NOTE}<br />If a $PILL contract exists, it is not ours.
+      </div>
+    </div>
+  </Card>
+);
+
+export const NoTokenC: React.FC = () => (
+  <Card>
+    {/* The pill everyone starts with, alone, and the note under it. */}
+    <Pill x={W / 2} y={H * 0.36} wL={30} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
+    <div style={{ position: "absolute", left: 0, right: 0, top: H * 0.62, textAlign: "center" }}>
+      <div style={{ fontFamily: PX, fontSize: 40, color: "#00ff88", letterSpacing: 5, textShadow: "6px 6px 0 #000" }}>END OF THREAD</div>
+      <div style={{ fontFamily: PX, fontSize: 26, color: "#e8f5ee", letterSpacing: 3, marginTop: 42, lineHeight: 2.1, textShadow: "3px 3px 0 #000" }}>
+        There is no PillWars token in circulation.<br />No presale, no whitelist, nothing to buy.<br />
+        <span style={{ color: "#ff2a2a" }}>Any contract you see is not ours.</span>
+      </div>
+    </div>
+  </Card>
+);
+
+export const CONCEPTS: [string, React.FC][] = [
+  ["no-token-a", NoTokenA], ["no-token-b", NoTokenB], ["no-token-c", NoTokenC],
+  ["concept-arena-a", ArenaA], ["concept-arena-b", ArenaB], ["concept-arena-c", ArenaC],
+  ["concept-money-a", MoneyA], ["concept-money-b", MoneyB], ["concept-money-c", MoneyC],
+  ["concept-room-a", RoomA], ["concept-room-b", RoomB], ["concept-room-c", RoomC],
+];
