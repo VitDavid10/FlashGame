@@ -564,19 +564,28 @@
      * as it climbs. Only the crowns — the plain numbers of places 4 to 10 never
      * show, because the take sets the rank itself.
      *
-     * The world scale is held still on purpose. In play the camera zooms out as
-     * you grow, so your own pill always looks about the same; with the scale
-     * pinned, the growth is what you actually see.
+     * The camera is the game's own: it pulls back as the pill grows, with the
+     * live settings of the server (base zoom 2, exponent 0.29) and a little
+     * extra push-in on top, because there is no HUD and no crowd here and at
+     * the usual distance the frame would look empty.
+     *
+     * Nothing else is in the shot: the food is cleared and every other pill is
+     * parked far outside the camera, so what is left is the grid, the pill and
+     * its crown.
      */
     async function growth(sim, hero, sendFrame, ws) {
         ws.send('reset growth');
         const p = window.me();
-        const FRAMES = 168, SCALE = 1.15;
-        const R0 = 11, R1 = 132;
+        const FRAMES = 120, EXTRA = 1.35;      // 4 s at 30 fps
+        const R0 = 11, R1 = 150;
+        // The server's live values, so it frames like a real match.
+        ZOOM_CONFIG.baseScale = 2; ZOOM_CONFIG.exponent = 0.29; ZOOM_CONFIG.maxScale = 3.2;
         const x = 0, y = 0;
         // An empty stretch of arena: everything else parked far away.
         for (const e of sim.enemies) { e.x = sim.mapSize * 0.9; e.y = sim.mapSize * 0.9; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; e.botSkills = []; e.botNextSkillTime = 1e15; }
         for (const v of sim.viruses) if (Math.hypot(v.x - x, v.y - y) < 3000) { v.x = sim.mapSize * 0.9; v.y = sim.mapSize * 0.9; }
+        const noFood = () => { sim.foods.length = 0; if (sim.foodGrid && sim.foodGrid.clear) sim.foodGrid.clear(); };
+        noFood();
         p.cells.length = 0; p.cells.push(hero);
         Object.assign(hero, { x, y, r: R0, vx: 0, vy: 0, boostX: 0, boostY: 0, bornTime: sim.now });
         for (let i = 0; i < 20; i++) { window.__tick(TICK); }
@@ -585,13 +594,15 @@
             // Slow at first, faster as it goes: it reads as gaining speed.
             hero.r = R0 + (R1 - R0) * Math.pow(t, 1.7);
             hero.x = x; hero.y = y; hero.vx = hero.vy = 0;
+            noFood();
             window.__aim(x + 220, y - 60);
             window.__tick(TICK); window.__tick(TICK);
             hero.r = R0 + (R1 - R0) * Math.pow(t, 1.7);
             hero.x = x; hero.y = y;
-            // Bronze, silver and gold as it grows.
-            window.__rank(hero.r >= 104 ? 1 : hero.r >= 72 ? 2 : hero.r >= 44 ? 3 : null);
-            window.__zoom = SCALE / window.__rawScale();
+            // A second of each: bare for the first second, then bronze,
+            // silver and gold, one per second.
+            window.__rank(f >= 90 ? 1 : f >= 60 ? 2 : f >= 30 ? 3 : null);
+            window.__zoom = EXTRA;
             window.__snapCam(x, y);
             window.__draw();
             await sendFrame('growth/', f);
