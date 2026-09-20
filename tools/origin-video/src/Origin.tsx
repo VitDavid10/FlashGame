@@ -258,11 +258,23 @@ const chip = {
   boxShadow: "0 0 10px rgba(0,255,136,.5), 3px 3px 0 rgba(0,0,0,.6)",
 } as const;
 const val = { color: "#ffe97a", textShadow: "0 0 6px rgba(255,206,61,0.8), 1px 1px 0 #000" } as const;
-// The slots as the game lays them out: the pill's own skill in the first one.
-const SLOTS = ["sprint.png", null, null, null];
+// The four slots of the action bar. Every pill carries its own hand, so each
+// take shows a different one instead of the same icon over and over.
+const SLOTS: Record<string, (string | null)[]> = {
+  virus: ["shoot.png", null, null, null],
+  outnumbered: ["shoot.png", "sprint.png", null, null],
+  milestone: ["big.png", "shoot.png", "iman.png", null],
+  flags: ["sprint.png", "inmune.png", null, null],
+  shot: ["shoot.png", "clon.png", null, null],
+  sprint: ["sprint.png", "iman.png", null, null],
+  shield: ["inmune.png", "tp.png", "shoot.png", null],
+  tp: ["tp.png", "clon.png", "sprint.png", null],
+};
+const SLOTS_DEFAULT = ["shoot.png", null, null, null];
 const PANEL_W = 168, PANEL_H = Math.round(PANEL_W * 808 / 601);
-const GameHud: React.FC<{ hud?: Hud }> = ({ hud }) => {
+const GameHud: React.FC<{ hud?: Hud; shot: string }> = ({ hud, shot }) => {
   if (!hud) return null;
+  const slots = SLOTS[shot] ?? SLOTS_DEFAULT;
   return (
     <>
       <div style={{ position: "absolute", left: 14, top: 12, display: "flex", gap: 10 }}>
@@ -303,7 +315,7 @@ const GameHud: React.FC<{ hud?: Hud }> = ({ hud }) => {
       </div>
       {/* The four skill slots, bottom centre. */}
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 14, display: "flex", justifyContent: "center", gap: 8 }}>
-        {SLOTS.map((icon, i) => (
+        {slots.map((icon, i) => (
           <div key={i} style={{
             width: 46, height: 46, backgroundImage: `url(${staticFile("hud/skill-slot.png")})`,
             backgroundSize: "100% 100%", imageRendering: "pixelated",
@@ -316,14 +328,14 @@ const GameHud: React.FC<{ hud?: Hud }> = ({ hud }) => {
     </>
   );
 };
-const DeathClip: React.FC<{ from: number; rate: number }> = ({ from, rate }) => {
+const DeathClip: React.FC<{ from: number; rate: number; shot: string }> = ({ from, rate, shot }) => {
   const f = useCurrentFrame();
   const at = from + Math.round(f * rate);
   return (
     <div style={{ position: "absolute", ...BOX, overflow: "hidden", border: "8px solid #1f4d33" }}>
       <Img src={staticFile(`deaths/${String(at).padStart(4, "0")}.jpg`)}
         style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-      <GameHud hud={(deathsCapture.hud as Hud[])[at]} />
+      <GameHud hud={(deathsCapture.hud as Hud[])[at]} shot={shot} />
     </div>
   );
 };
@@ -339,7 +351,7 @@ const Deaths: React.FC = () => (
         const from = shot.best ?? shot.from + Math.max(0, shot.frames - 1 - Math.round(len * rate));
         return (
           <Series.Sequence key={shot.name} durationInFrames={len}>
-            <DeathClip from={from} rate={rate} />
+            <DeathClip from={from} rate={rate} shot={shot.name} />
             {/* Right under the box, as on the placeholder: it's the real game. */}
             <div style={{
               position: "absolute", left: 0, right: 0, top: BOX.top + BOX.height + 18, textAlign: "center",

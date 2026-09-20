@@ -43,8 +43,11 @@ def main():
             change.append(sum(i * c for i, c in enumerate(diff.histogram())))
             prev = cur
         win = min(WINDOW, n - 1)
-        best, score = 0, -1
-        for start in range(0, n - win):
+        # The first frames are the camera settling on the subject, and that jump
+        # counted as more movement than anything the pills did afterwards.
+        SKIP = min(8, max(0, n - 1 - win))
+        best, score = SKIP, -1
+        for start in range(SKIP, n - win):
             s = sum(change[start:start + win])
             if s > score:
                 score, best = s, start
