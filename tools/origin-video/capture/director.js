@@ -482,7 +482,7 @@
         const MOVES = {
             sprint: { ang: -0.22, speed: 21, fire: [0, 20], seats: [[-260, 30], [-20, -80], [230, 40], [470, -60]] },
             shield: { ang: 2.85, speed: 14, fire: [0, 16, 32], seats: [[220, -90], [10, 70], [-210, -40], [-430, 60]] },
-            tp: { ang: 1.15, speed: 12, fire: [6, 26], seats: [[-90, -230], [80, -20], [-120, 190], [60, 400]] },
+            tp: { ang: 1.15, speed: 12, fire: [10], seats: [[-90, -230], [80, -20], [-120, 190], [60, 400]] },
         };
         const botTake = (name, i, id) => {
             const { x, y } = at(i);
@@ -507,15 +507,25 @@
                 put(star, x - Math.cos(ANG) * 520, y - Math.sin(ANG) * 520);
                 prey.forEach((c, k) => { Object.assign(c, { r: 30, skinUrl: null }); put(c, x + seats[k][0], y + seats[k][1]); });
                 window.__botSkill(star, id);
-                return { x, y, cast, cam: () => { if (sim.enemies.includes(star)) window.__snapCam(star.x, star.y); } };
+                // The camera rides with the star. While it is teleporting OUT
+                // it holds the spot it left, so the jump reads as one: it
+                // vanishes here and the next frame is somewhere else entirely.
+                const eye = { x, y };
+                return { x, y, cast, cam: () => {
+                    if (sim.enemies.includes(star) && star.tpPhase !== 1) { eye.x = star.x; eye.y = star.y; }
+                    window.__snapCam(eye.x, eye.y);
+                } };
             }, f => {
                 prey.forEach((c, k) => { if (sim.enemies.includes(c)) drift(c, x + seats[k][0], y + seats[k][1], f, k); });
                 if (!sim.enemies.includes(star)) return;
                 if (fire.includes(f)) {
                     window.__botSkill(star, id);
-                    // The game teleports to a random spot of the whole map, which
-                    // is off camera: bring the landing back into the shot.
-                    if (id === 4) { star.tpDest = { x: star.x + Math.cos(ANG) * 520, y: star.y + Math.sin(ANG) * 520 }; star.tpTimer = 500; }
+                    // The real teleport of the game: it picks its own spot,
+                    // anywhere on the map, and the camera goes with it. The only
+                    // thing moved is a landing on top of the off-stage pile.
+                    if (id === 4 && star.tpDest && Math.hypot(star.tpDest.x - DUMP.x, star.tpDest.y - DUMP.y) < 2200) {
+                        star.tpDest = { x: -star.tpDest.x, y: -star.tpDest.y };
+                    }
                 }
                 // While it is teleporting the game owns the cell: moving it by
                 // hand turned the jump into a slide.
