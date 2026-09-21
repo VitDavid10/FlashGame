@@ -17,6 +17,10 @@
     window.dataLayer = window.dataLayer || [];
     window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
 
+    // Inside the Solana dApp Store app (its WebView adds this to the user
+    // agent): no notice and no Analytics at all.
+    if (navigator.userAgent.indexOf('Solana Mobile Web Shell') !== -1) return;
+
     function loadAnalytics() {
         if (window.__pwAnalytics) return;
         window.__pwAnalytics = true;

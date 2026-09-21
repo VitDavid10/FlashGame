@@ -54,7 +54,15 @@
             var de = document.documentElement;
             var w = Math.round(Math.max((vv && vv.width) || 0, window.innerWidth || 0, de.clientWidth || 0));
             var h = Math.round(Math.max((vv && vv.height) || 0, window.innerHeight || 0, de.clientHeight || 0));
-            if (w > 0 && h > 0) { el.style.setProperty('--vpw', w + 'px'); el.style.setProperty('--vph', h + 'px'); }
+            if (w > 0 && h > 0) {
+                el.style.setProperty('--vpw', w + 'px'); el.style.setProperty('--vph', h + 'px');
+                // Lado LARGO y lado CORTO, sea cual sea la orientacion: el juego
+                // en movil se maqueta siempre como una pantalla apaisada de
+                // largo x corto, y asi sale igual con el telefono en vertical
+                // (girado por CSS) que tumbado con la autorrotacion puesta.
+                el.style.setProperty('--pw-largo', Math.max(w, h) + 'px');
+                el.style.setProperty('--pw-corto', Math.min(w, h) + 'px');
+            }
         }
         sync();
         addEventListener('resize', sync, { passive: true });
@@ -488,11 +496,16 @@
            viewport se queda en vertical para siempre, asi que un
            `@media (orientation: landscape)` no llegaba a entrar NUNCA por
            mucho que se girase el aparato.
-           La condicion es la FORMA del viewport, no el sensor: mientras sea
-           mas alto que ancho se pinta girado. Si el usuario no tiene el
-           candado y gira, el viewport pasa a ser mas ancho que alto, esta
-           regla deja de aplicar sola y se ve derecho igual — los dos casos
-           quedan cubiertos con la misma regla.
+           Con el telefono TUMBADO y la autorrotacion puesta, el viewport es
+           apaisado: antes este bloque dejaba de aplicar y salia la maqueta sin
+           adaptar (PLAY fuera de pantalla a 740x360, CONNECT visible). Ahora el
+           bloque vale en las DOS orientaciones y, tumbado, el <body> entero se
+           gira -90 grados (ver "TUMBADO" al final del bloque): los +90 de aqui
+           y los -90 del body se anulan y todo sale derecho, con la MISMA
+           maqueta que en vertical. Por eso las medidas de este bloque van en
+           lado largo / lado corto (--pw-largo/--pw-corto y max()/min() de
+           100vw y 100vh), nunca en vw/vh a secas: en vertical dan lo mismo que
+           antes y tumbado no cambian de lado.
            El truco: se intercambian las medidas (ancho = alto de pantalla y
            al reves), se gira 90 grados sobre la esquina inferior izquierda y
            se sube el elemento 100vw para que al girar caiga justo encima del
@@ -504,7 +517,7 @@
            que sin esa condicion se le aplicaba la rotacion entera y la portada
            salia con el juego tumbado dentro. Ahi no se toca nada: es
            decoracion de fondo. */
-        @media (pointer: coarse) and (orientation: portrait) {
+        @media (pointer: coarse) {
             /* En dvh y no en vh: `vh` cuenta la pantalla ENTERA, incluida la
                franja que ocupa la barra del navegador, asi que el borde
                "derecho" del cartel girado caia por debajo de lo que se ve de
@@ -514,17 +527,17 @@
             html:not([data-hero]) body.mobile-allowed #modeScreen {
                 position: absolute;
                 width: 100vh; height: 100vw;
-                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
+                width: var(--pw-largo, 100dvh); height: var(--pw-corto, 100dvw);
                 top: 50%; left: 50%; right: auto; bottom: auto;
                 transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
             }
             /* El clamp de la tipografia usa vh, que aqui es el lado CORTO
                (el ancho real de la tarjeta girada): sin esto el titulo se
                dimensionaba con el lado equivocado y salia desproporcionado. */
-            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-title { font-size: clamp(28px, 6.5vw, 46px); }
-            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-desc { font-size: clamp(10px, 2.6vw, 13px); }
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-title { font-size: clamp(28px, calc(min(100vw, 100vh) * 0.065), 46px); }
+            html:not([data-hero]) body.mobile-allowed #modeWheel .mode-desc { font-size: clamp(10px, calc(min(100vw, 100vh) * 0.026), 13px); }
             body.pixel-pack.mobile-allowed #modeWheel .mode-title.no-img,
-            body.pixel-pack.mobile-allowed #modeWheel .mode-title:not(.no-img) .mt-img { max-width: 78vh; }
+            body.pixel-pack.mobile-allowed #modeWheel .mode-title:not(.no-img) .mt-img { max-width: calc(max(100vw, 100vh) * 0.78); }
 
             /* La PANTALLA DE CARGA, girada igual: viene justo despues del
                selector, asi que si saliera derecha obligaria a girar el movil
@@ -537,14 +550,14 @@
                con el sin tocarles nada. */
             html:not([data-hero]) body.mobile-allowed #loadingScreen {
                 width: 100vh; height: 100vw;
-                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
+                width: var(--pw-largo, 100dvh); height: var(--pw-corto, 100dvw);
                 top: 50%; left: 50%; right: auto; bottom: auto;
                 transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
             }
             /* El cuerpo del titulo se calculaba con vw, que girado es el lado
                CORTO: salia diminuto. Con vh usa el lado largo, que es el ancho
                real del cartel ya girado. */
-            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-title { font-size: clamp(22px, 4.4vh, 42px); }
+            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-title { font-size: clamp(22px, calc(max(100vw, 100vh) * 0.044), 42px); }
 
             /* ===== BOTONES SUELTOS (sonido, salir y wallet), TAMBIEN GIRADOS =====
                Estos cuatro cuelgan de <body>, no de #loginOverlay, asi que la
@@ -586,7 +599,7 @@
                vuelta para leerlos. */
             html:not([data-hero]) body.mobile-allowed .pw-modal {
                 width: 100vh; height: 100vw;
-                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
+                width: var(--pw-largo, 100dvh); height: var(--pw-corto, 100dvw);
                 top: 50%; left: 50%; right: auto; bottom: auto;
                 transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
             }
@@ -597,7 +610,7 @@
                contenedor entero encima del viewport. */
             html:not([data-hero]) body.mobile-allowed #skinBigModal {
                 width: 100vh !important; height: 100vw !important;
-                width: var(--vph, 100dvh) !important; height: var(--vpw, 100dvw) !important;
+                width: var(--pw-largo, 100dvh) !important; height: var(--pw-corto, 100dvw) !important;
                 top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important; transform-origin: center !important;
             }
@@ -606,7 +619,7 @@
                el resto de la interfaz si, y salia de lado en el movil. */
             html:not([data-hero]) body.mobile-allowed #gcOverlay {
                 width: 100vh !important; height: 100vw !important;
-                width: var(--vph, 100dvh) !important; height: var(--vpw, 100dvw) !important;
+                width: var(--pw-largo, 100dvh) !important; height: var(--pw-corto, 100dvw) !important;
                 top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important; transform-origin: center !important;
             }
@@ -615,14 +628,14 @@
                verdad queda disponible tras el giro (el ANCHO real, ~375px,
                ver el comentario de #paisModal .pm-inner mas arriba con el
                mismo 92vw). */
-            html:not([data-hero]) body.mobile-allowed #gcOverlay .general-card { width: 92vw !important; }
+            html:not([data-hero]) body.mobile-allowed #gcOverlay .general-card { width: calc(min(100vw, 100vh) * 0.92) !important; }
             /* Mismo motivo: alto pensado para escritorio, no para el eje
                (ahora vw) que de verdad queda tras el giro. */
             html:not([data-hero]) body.mobile-allowed #gcOverlay .gc-body { min-height: 0 !important; }
             html:not([data-hero]) body.mobile-allowed #gcOverlay .gc-video-box { height: 150px !important; }
             html:not([data-hero]) body.mobile-allowed #gcOverlay .gc-content { padding: 14px 12px !important; gap: 10px !important; }
             html:not([data-hero]) body.mobile-allowed #gcOverlay .gc-skills-grid { gap: 6px !important; }
-            html:not([data-hero]) body.mobile-allowed #gcOverlay .float-card { width: 84vw !important; }
+            html:not([data-hero]) body.mobile-allowed #gcOverlay .float-card { width: calc(min(100vw, 100vh) * 0.84) !important; }
             html:not([data-hero]) body.mobile-allowed #gcOverlay .fc-video-box { height: 100px !important; }
             /* Celda de skin en movil: la bandera y el precio no caben en el
                cuadrado mas pequeño (81px vs los 133px de escritorio) sin
@@ -653,12 +666,12 @@
                    (812+48 x 375+48) y se salia de la pantalla real. */
                 box-sizing: border-box !important;
                 width: 100vh !important; height: 100vw !important;
-                width: var(--vph, 100dvh) !important; height: var(--vpw, 100dvw) !important;
+                width: var(--pw-largo, 100dvh) !important; height: var(--pw-corto, 100dvw) !important;
                 top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) !important; transform-origin: center !important;
             }
             html:not([data-hero]) body.mobile-allowed #paisModal .pm-inner {
-                max-height: 92vw !important;
+                max-height: calc(min(100vw, 100vh) * 0.92) !important;
             }
             /* El contenido (nombre/descripcion/franjas/botones) usa padding y
                tipografia de escritorio via estas custom properties, y a ese
@@ -706,7 +719,7 @@
             /* Los popups, mas pequeños: la caja de escritorio (360px + 28/30 de
                relleno) se comia casi toda la pantalla girada. */
             html:not([data-hero]) body.mobile-allowed .pw-modal .pw-modal-box {
-                max-width: 74vh; width: 272px; padding: 14px 14px 16px;
+                max-width: calc(max(100vw, 100vh) * 0.74); width: 272px; padding: 14px 14px 16px;
             }
             /* name-choice (cartel de nombre) queda FUERA de la regla de
                arriba: David pidio que fuera IGUAL, sin ninguna diferencia, al
@@ -807,7 +820,7 @@
             html:not([data-hero]) body.mobile-allowed #minimap {
                 position: fixed;
                 width: 100vh; height: 100vw;
-                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
+                width: var(--pw-largo, 100dvh); height: var(--pw-corto, 100dvw);
                 top: 50%; left: 50%; right: auto; bottom: auto;
                 transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
             }
@@ -885,7 +898,7 @@
             html:not([data-hero]) body.mobile-allowed #exitModal {
                 position: fixed !important;
                 width: 100vh !important; height: 100vw !important;
-                width: var(--vph, 100dvh) !important; height: var(--vpw, 100dvw) !important;
+                width: var(--pw-largo, 100dvh) !important; height: var(--pw-corto, 100dvw) !important;
                 /* Todo con !important: el "#exitModal { position:absolute;
                    top:0; left:0; width:100% }" de mas abajo acababa ganando y
                    el cartel se anclaba en la esquina 0,0 en vez de centrarse. */
@@ -1090,7 +1103,7 @@
             html:not([data-hero]) body.mobile-allowed #loginOverlay {
                 position: fixed;
                 width: 100vh; height: 100vw;
-                width: var(--vph, 100dvh); height: var(--vpw, 100dvw);
+                width: var(--pw-largo, 100dvh); height: var(--pw-corto, 100dvw);
                 top: 50%; left: 50%; right: auto; bottom: auto;
                 transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
                 /* SIN scroll. Lo llevaba en `auto` y ahi estaba lo del "fondo
@@ -1104,6 +1117,57 @@
                    y la pildora ademas tiene tope por alto para que siga
                    cabiendo en cualquier telefono. */
                 overflow: hidden;
+            }
+
+            /* Carteles que el JS monta con su propio CSS en vw/vh (carga,
+               cuenta atras, GO!, resultados, popups): en movil, lado corto y
+               lado largo, para que tumbado midan lo mismo que en vertical. En
+               vertical estos valores son identicos a los de siempre. */
+            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-inner { max-width: calc(min(100vw, 100vh) * 0.92); }
+            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-pill { max-width: calc(min(100vw, 100vh) * 0.52); }
+            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-title-img {
+                height: clamp(46px, calc(min(100vw, 100vh) * 0.12), 120px); max-width: calc(min(100vw, 100vh) * 0.92);
+            }
+            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-sub {
+                font-size: clamp(7px, calc(min(100vw, 100vh) * 0.016), 14px);
+                letter-spacing: clamp(2px, calc(min(100vw, 100vh) * 0.007), 6px);
+            }
+            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-track { width: min(336px, calc(min(100vw, 100vh) * 0.78)); }
+            html:not([data-hero]) body.mobile-allowed #cdNum .cd-n { font-size: clamp(52px, calc(min(100vw, 100vh) * 0.10), 110px); }
+            html:not([data-hero]) body.mobile-allowed .result-box { max-height: calc(max(100vw, 100vh) * 0.95); }
+            html:not([data-hero]) body.mobile-allowed .pw-modal-box { max-width: calc(min(100vw, 100vh) * 0.92); }
+            html:not([data-hero]) body.mobile-allowed .pw-modal-box.features {
+                max-width: calc(min(100vw, 100vh) * 0.94); max-height: calc(max(100vw, 100vh) * 0.88);
+            }
+            /* GO! se girara con el juego: antes era el unico cartel de partida
+               que no giraba, y salia de lado con el telefono ya girado. Su
+               animacion va en los hijos (.go-txt/.go-img), asi que el giro del
+               contenedor no la pisa. */
+            html:not([data-hero]) body.mobile-allowed #goSplash { transform: rotate(90deg); }
+            html:not([data-hero]) body.mobile-allowed #goSplash .go-txt { font-size: clamp(120px, calc(min(100vw, 100vh) * 0.26), 300px); }
+            html:not([data-hero]) body.mobile-allowed #goSplash .go-img { width: clamp(205px, calc(min(100vw, 100vh) * 0.445), 513px); }
+        }
+
+        /* ===== TUMBADO: el <body> entero girado -90 grados =====
+           Con el telefono tumbado y la autorrotacion puesta, el body pasa a
+           medir corto x largo (un "vertical" virtual) y se gira -90 grados
+           encima del viewport. Dentro, el bloque de arriba gira cada pantalla
+           +90 como en vertical: se anulan y todo sale derecho, con la misma
+           maqueta que en vertical. El JS lo sabe por juegoGirado()/ptJuego(). */
+        @media (pointer: coarse) and (orientation: landscape) {
+            html:not([data-hero]) body.mobile-allowed {
+                position: fixed; top: 50%; left: 50%; right: auto; bottom: auto;
+                width: var(--pw-corto, 100vh); height: var(--pw-largo, 100vw);
+                transform: translate(-50%, -50%) rotate(-90deg); transform-origin: center;
+            }
+            /* El aviso de cookies (cookies.js) cuelga del body y no gira con
+               el juego: se pinta en el borde que, girado, es el de ABAJO, y con
+               su propio +90 queda derecho y centrado como en el resto de la web. */
+            html:not([data-hero]) body.mobile-allowed #pwCookies {
+                left: 0 !important; top: 50% !important; right: auto !important; bottom: auto !important;
+                width: min(760px, calc(var(--pw-largo, 100vw) - 24px)) !important;
+                transform-origin: 0 0 !important;
+                transform: rotate(90deg) translate(-50%, calc(-100% - 16px)) !important;
             }
         }
 
@@ -1183,7 +1247,7 @@
                La altura va en vw = el alto util con la pantalla girada. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitlePw img,
             html:not([data-hero]) body.mobile-allowed #loginOverlay #selectedModeTitle #modeTitleWord img {
-                height: min(12vw, 58px) !important; width: auto !important; max-width: 100% !important;
+                height: min(calc(min(100vw, 100vh) * 0.12), 58px) !important; width: auto !important; max-width: 100% !important;
             }
             /* Las dos mitades del rotulo (PILLWARS + ARCADE) puestas en fila
                sumaban mas del ancho disponible y la segunda se salia por el
@@ -1226,11 +1290,11 @@
                no en un vw fijo porque lo que sobra NO es proporcional al ancho:
                en un telefono estrecho un vw fijo se pasaba y volvia a desbordar. */
             html:not([data-hero]) body.mobile-allowed #loginOverlay .pill-stage {
-                margin: auto auto 10px !important; max-width: min(64vw, 300px);
-                max-height: calc(100vw - 209px);
+                margin: auto auto 10px !important; max-width: min(calc(min(100vw, 100vh) * 0.64), 300px);
+                max-height: calc(min(100vw, 100vh) - 209px);
             }
             html:not([data-hero]) body.mobile-allowed #loginOverlay #menuPillCanvas {
-                max-width: min(64vw, 300px); max-height: calc(100vw - 209px);
+                max-width: min(calc(min(100vw, 100vh) * 0.64), 300px); max-height: calc(min(100vw, 100vh) - 209px);
                 width: auto; height: auto;
             }
             /* 3) PLAY ABAJO, del ancho de su texto: al 62% del cartel salia una
@@ -9295,11 +9359,11 @@
         let vw = (caja && caja.offsetWidth) || 0;
         let vh = (caja && caja.offsetHeight) || 0;
         if (vw && vh) return { vw, vh };
-        const girado = matchMedia('(pointer: coarse) and (orientation: portrait)').matches
+        const girado = matchMedia('(pointer: coarse)').matches
             && document.body.classList.contains('mobile-allowed')
             && !document.documentElement.hasAttribute('data-hero');
         const iw = window.innerWidth || 1280, ih = window.innerHeight || 720;
-        return girado ? { vw: ih, vh: iw } : { vw: iw, vh: ih };
+        return girado ? { vw: Math.max(iw, ih), vh: Math.min(iw, ih) } : { vw: iw, vh: ih };
     }
     function paintLoginBg(mode) {
         const cv = document.getElementById('loginBgCv'); if (!cv) return;
@@ -9646,8 +9710,9 @@
         // estrecho-y-altisimo en vez de ancho-y-bajo, desbordando por los
         // lados una vez girado.
         const girado = typeof juegoGirado === 'function' && juegoGirado();
-        const maxW = Math.min((girado ? window.innerHeight : (window.innerWidth || 1280)) * 0.80, 1220);
-        const maxH = (girado ? window.innerWidth : (window.innerHeight || 720)) * 0.92;
+        const iw = window.innerWidth || 1280, ih = window.innerHeight || 720;
+        const maxW = Math.min((girado ? Math.max(iw, ih) : iw) * 0.80, 1220);
+        const maxH = (girado ? Math.min(iw, ih) : ih) * 0.92;
         caja.style.width = Math.round(maxW) + 'px';
         caja.style.height = 'auto';
         skinBigMideCeldas();   // Medir las celdas DESPUÉS de establecer el ancho
@@ -14551,6 +14616,41 @@
         // esto la ultima fila y columna quedarian sin cerrar.
         g.fillStyle = LS_GRID_LINE; g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
     }
+    // ===== APP DE LA DAPP STORE: pantalla de inicio =====
+    // Dentro de la app (el WebView de Solana Mobile añade su marca al user
+    // agent; ?app=1 lo simula en el navegador para probarlo) la carga inicial no
+    // salta sola al selector de modos: la barra se cambia por TAP TO START y
+    // espera un toque. Es tambien a donde lleva la flecha roja del selector, que
+    // en la web vuelve a la landing y dentro de la app no tiene a donde ir.
+    const EN_APP = /Solana Mobile Web Shell/.test(navigator.userAgent)
+        || new URLSearchParams(location.search).has('app');
+    // Con 'click' y no 'pointerdown': si el cartel se quitara al APOYAR el dedo,
+    // el click de despues caeria en el selector de modos de debajo y elegiria
+    // un modo sin querer.
+    function pantallaInicio() {
+        const ov = document.getElementById('loadingScreen');
+        if (!ov) return Promise.resolve();
+        window.__loadingLock = true;
+        ov.classList.add('ls-inicio');
+        ov.style.display = 'flex';
+        lsPaintBg();
+        return new Promise(ok => {
+            ov.addEventListener('click', () => {
+                ov.classList.remove('ls-inicio');
+                ov.style.display = 'none';
+                window.__loadingLock = false;
+                try { SoundManager.play('select'); } catch (e) {}
+                ok();
+            }, { once: true });
+        });
+    }
+    if (EN_APP) {
+        document.querySelectorAll('a.back-to-web').forEach(a => a.addEventListener('click', e => {
+            e.preventDefault();
+            pantallaInicio();
+        }));
+    }
+
     function showLoadingScreen(minMs, readyFn, onDone) {
         window.__loadingLock = true;
         let ov = document.getElementById('loadingScreen');
@@ -14610,7 +14710,19 @@
                     'background-image:linear-gradient(90deg,#eaf6f0 0 12px,transparent 12px 16px);background-size:16px 100%;' +
                     'background-repeat:repeat-x}' +
                     '@keyframes lsFade{from{opacity:0}to{opacity:1}}' +
-                    '@keyframes lsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}';
+                    '@keyframes lsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}' +
+                    // Pantalla de INICIO de la app (ver pantallaInicio): la misma
+                    // carga sin barra, con TAP TO START parpadeando en su sitio y
+                    // el rotulo flotando despacio, a contratiempo de la pildora.
+                    '#loadingScreen .ls-tap{display:none;height:22px;line-height:22px;white-space:nowrap;' +
+                    'font-family:\'Press Start 2P\',monospace;font-size:clamp(10px,calc(min(100vw,100vh)*.03),16px);' +
+                    'color:#fff;letter-spacing:2px;text-shadow:3px 3px 0 #000,0 0 10px #00ff88;animation:lsBlink 1.1s steps(1,end) infinite}' +
+                    '#loadingScreen.ls-inicio{cursor:pointer}' +
+                    '#loadingScreen.ls-inicio .ls-track{display:none}' +
+                    '#loadingScreen.ls-inicio .ls-tap{display:block}' +
+                    '#loadingScreen.ls-inicio .ls-title-img,#loadingScreen.ls-inicio .ls-title{animation:lsLogo 3.2s ease-in-out infinite}' +
+                    '@keyframes lsBlink{0%{opacity:1}50%{opacity:.2}}' +
+                    '@keyframes lsLogo{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}';
                 document.head.appendChild(st);
             }
             ov = document.createElement('div');
@@ -14629,6 +14741,7 @@
                 'onerror="this.outerHTML=\'&lt;h1 class=&quot;ls-title&quot;&gt;PILLWARS&lt;/h1&gt;\'">' +
                 '<div class="ls-sub">THE CRYPTO ARENA</div>' +
                 '<div class="ls-track"><div id="loadingBar"><i></i></div></div>' +
+                '<div class="ls-tap">TAP TO START</div>' +
                 '</div>';
             document.body.appendChild(ov);
             lsDrawPill();
@@ -15640,15 +15753,19 @@
     // intercambiados —ancho = alto de pantalla— y el CSS lo tumba encima del
     // viewport. Asi el juego cree que corre en una pantalla apaisada normal y
     // no hay que tocar nada de la simulacion ni del dibujo.
+    // Tumbado con la autorrotacion puesta tambien cuenta: el <body> se gira -90
+    // y las pantallas +90 (ver "TUMBADO" en el CSS), asi que se maqueta igual
+    // que en vertical. Lo unico que cambia es a donde caen los toques (ptJuego).
     function juegoGirado() {
         return document.body.classList.contains('mobile-allowed')
-            && !document.documentElement.hasAttribute('data-hero')
-            && window.matchMedia('(orientation: portrait)').matches;
+            && !document.documentElement.hasAttribute('data-hero');
     }
+    // El canvas siempre apaisado: lado largo x lado corto, en las dos orientaciones.
     function resize() {
         const g = juegoGirado();
-        width = g ? window.innerHeight : window.innerWidth;
-        height = g ? window.innerWidth : window.innerHeight;
+        const iw = window.innerWidth, ih = window.innerHeight;
+        width = g ? Math.max(iw, ih) : iw;
+        height = g ? Math.min(iw, ih) : ih;
         canvas.width = width; canvas.height = height;
         ctx.imageSmoothingEnabled = !pixelMode; scheduleAspectUpdate();
     }
@@ -15657,8 +15774,10 @@
     // logico (0,0) cae en (anchoPantalla, 0) y el (0, alto) en (0,0) — o sea
     // x_logico = clientY, y_logico = anchoPantalla - clientX. Sin esto el dedo
     // movia la pildora en la direccion equivocada.
+    // Tumbado, el giro del canvas y el del body se anulan: el canvas cae
+    // derecho sobre la pantalla y el punto no se toca.
     function ptJuego(cx, cy) {
-        if (!juegoGirado()) return { x: cx, y: cy };
+        if (!juegoGirado() || !window.matchMedia('(orientation: portrait)').matches) return { x: cx, y: cy };
         return { x: cy, y: window.innerWidth - cx };
     }
     // Notifica al server el nuevo aspect ratio (debounced) para que AOI se ajuste.
@@ -15950,6 +16069,9 @@
             if (modo === 'heroplay') return heroQuickPlay(qs.get('name') || '').then(quitarVelo);
             if (modo === 'heroskins') return heroShowSkinsStore().then(quitarVelo);
             quitarVelo();
+            // App: el selector ya esta montado detras; el cartel se queda con
+            // TAP TO START hasta el toque (showLoadingScreen espera la promesa).
+            if (EN_APP) return pantallaInicio();
         });
     })();
 
