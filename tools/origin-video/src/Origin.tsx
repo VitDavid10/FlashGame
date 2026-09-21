@@ -237,9 +237,9 @@ const Footage: React.FC = () => {
       {/* "Eat pills" · kill 1 */}
       <Until until={60}><Caption text={P1} y={H * 0.84} size={52} keys={[[0, 1], [P1.length, 1]]} instant /></Until>
       {/* "to get their money!" · kill 2 */}
-      <Until until={142}><Caption text={P2} y={H * 0.84} size={52} keys={[[0, 60], [P2.length, 60]]} instant /></Until>
+      <Until until={172}><Caption text={P2} y={H * 0.84} size={52} keys={[[0, 60], [P2.length, 60]]} instant /></Until>
       {/* "Eat or be eaten" · kill 3, and then the death with the screen clear */}
-      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 142], [P3.length, 142]]} instant />
+      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 172], [P3.length, 172]]} instant />
     </AbsoluteFill>
   );
 };
