@@ -5141,9 +5141,12 @@
         KILL_MONEY_DELAY_MS: 260,
         playMoney: function() { setTimeout(() => this.play('money'), this.KILL_MONEY_DELAY_MS); },
         playSplit: function() { const now = Date.now(); if (now - this.lastSplitTime < 150) return; this.lastSplitTime = now; this.play('split'); },
-        playMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
+        // Phone with the page hidden (another app on top, screen locked): no
+        // music may start in the background. See resumeActiveMusic.
+        hiddenOnPhone: function() { return document.hidden && document.body.classList.contains('mobile-allowed'); },
+        playMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { if (!this.hiddenOnPhone()) this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
         stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; },
-        playMenuMusic: function(delayMs) { this.activeMusic = 'menu'; this.syncMusicBtn(); if(this.menuMusicMuted) return; this.stopMusic(); clearTimeout(this._menuMusicTimer); const d = (typeof delayMs === 'number') ? delayMs : 0; this._menuMusicTimer = setTimeout(() => { if(!this.menuMusicMuted) this.menuMusic.play().catch(e=>{}); }, d); },
+        playMenuMusic: function(delayMs) { this.activeMusic = 'menu'; this.syncMusicBtn(); if(this.menuMusicMuted) return; this.stopMusic(); clearTimeout(this._menuMusicTimer); const d = (typeof delayMs === 'number') ? delayMs : 0; this._menuMusicTimer = setTimeout(() => { if(!this.menuMusicMuted && !this.hiddenOnPhone()) this.menuMusic.play().catch(e=>{}); }, d); },
         stopMenuMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); clearTimeout(this._menuMusicTimer); this.menuMusic.pause(); this.menuMusic.currentTime = 0; },
 
         // ===== Pantalla de carga: LOADING en bucle y LOADED al llegar al 100% =====
@@ -5227,13 +5230,25 @@
     // de usuario) y el .catch(()=>{}) de SoundManager lo traga en silencio.
     // En cuanto llega la PRIMERA interaccion real, reintenta lo que deberia
     // estar sonando y no sono.
-    function enableAudioContext() {
-        document.removeEventListener('click', enableAudioContext); document.removeEventListener('keydown', enableAudioContext); document.removeEventListener('touchstart', enableAudioContext);
+    function resumeActiveMusic() {
         if (SoundManager.activeMusic === 'game' && !SoundManager.musicMuted && SoundManager.music.paused && gameRunning) SoundManager.music.play().catch(e => {});
         if (SoundManager.activeMusic === 'menu' && !SoundManager.menuMusicMuted && SoundManager.menuMusic.paused) SoundManager.menuMusic.play().catch(e => {});
+    }
+    function enableAudioContext() {
+        document.removeEventListener('click', enableAudioContext); document.removeEventListener('keydown', enableAudioContext); document.removeEventListener('touchstart', enableAudioContext);
+        resumeActiveMusic();
         // El sonido de la pantalla de carga se reengancha solo (ver cargaPrepara).
     }
     document.addEventListener('click', enableAudioContext); document.addEventListener('keydown', enableAudioContext); document.addEventListener('touchstart', enableAudioContext);
+    // Phone (browser or the dApp Store app): going to another app or locking the
+    // screen left the music playing in the background. Hidden: both tracks
+    // pause. Visible again: the track that should be playing comes back, same
+    // rule as the first tap. Desktop is unchanged.
+    document.addEventListener('visibilitychange', () => {
+        if (!document.body.classList.contains('mobile-allowed')) return;
+        if (document.hidden) { SoundManager.music.pause(); SoundManager.menuMusic.pause(); }
+        else resumeActiveMusic();
+    });
     function toggleAudio() { SoundManager.toggleSFX(); }
     function toggleMusic() { SoundManager.toggleMusic(); }
     function toggleEnemyFX() { applyEnemyFx(serverEnemyFx); }

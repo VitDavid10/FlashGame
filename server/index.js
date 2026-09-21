@@ -3483,7 +3483,10 @@ const httpServer = http.createServer(async (req, res) => {
          // propio codigo en la direccion PiLL… que anuncia el proyecto. target/ es
          // lo mismo tras compilar (target/deploy/*-keypair.json), y tests/ son
          // vectores y fixtures que el juego tampoco pide.
-         'programs', 'target', 'tests'].includes(top)) {
+         'programs', 'target', 'tests',
+         // android/ es el proyecto de la app de la dApp Store (Kotlin, Gradle,
+         // la ruta de la clave de firma en twa-manifest.json): la web no lo usa.
+         'android'].includes(top)) {
         res.writeHead(403); res.end('Forbidden'); return;
     }
     // Los .md de la raíz (ROADMAP, BLOCKCHAIN-PLAN, DESPLIEGUE-VPS...) son notas

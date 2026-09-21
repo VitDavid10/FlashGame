@@ -96,3 +96,10 @@ server/airdrop-cards/
 # Participantes e invitaciones del airdrop (datos personales, no van al repo)
 server/airdrop-data.json
 server/airdrop-data.json.tmp
+
+# App de la dApp Store: la clave de firma vive FUERA del repo
+# (C:\Users\34679\pillwars-app-signing). Esto es por si alguna vez se copia aqui:
+# si se filtra, otro puede firmar "actualizaciones" de la app.
+*.keystore
+*.jks
+android/**/*.apk
