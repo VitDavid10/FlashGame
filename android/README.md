@@ -38,7 +38,8 @@ Export the password environment variables before running the CLI release build.
 
 Generado el 21-sep-2026 con `npx solana-mobile@0.5.0 webshell init android --manifest android/branding/manifest.json ...`. Si se regenera con `--force`, la plantilla pisa estos cambios y hay que volver a aplicarlos:
 
-- `AndroidManifest.xml`: `screenOrientation="sensorLandscape"`. `configChanges` lleva además `screenLayout|smallestScreenSize|keyboard|uiMode`, para que la partida no se recargue con esos cambios.
+- `AndroidManifest.xml`: `screenOrientation="portrait"`. `configChanges` lleva además `screenLayout|smallestScreenSize|keyboard|uiMode`, para que la partida no se recargue con esos cambios.
+  - Vertical y no horizontal a propósito: en vertical, el juego se gira solo por CSS (`juegoGirado()`), y ese es el camino adaptado a móvil. Con el móvil tumbado de verdad, el menú de login usa otra maquetación: a 740×360 el botón PLAY queda fuera de la pantalla y aparece CONNECT (wallet), que en la app no funcionaría. Comprobado el 21-sep-2026.
 - `MainActivity.kt`:
   - pantalla completa inmersiva (`hideSystemBars`, también al recuperar el foco) y `FLAG_KEEP_SCREEN_ON`;
   - sin tirar-para-recargar (`SwipeRefreshLayout` desactivado);
