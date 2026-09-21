@@ -1,0 +1,13 @@
+{
+  "fallbackType": "webview",
+  "generatorApp": "solana-mobile",
+  "host": "pillwars.fun",
+  "launcherName": "PillWars",
+  "name": "PillWars",
+  "packageId": "fun.pillwars.app",
+  "startUrl": "/game/",
+  "signingKey": {
+    "alias": "pillwars",
+    "path": "C:\\Users\\34679\\pillwars-app-signing\\pillwars-dappstore.keystore"
+  }
+}

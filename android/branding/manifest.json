@@ -1,0 +1,10 @@
+{
+  "name": "PillWars",
+  "short_name": "PillWars",
+  "start_url": "https://pillwars.fun/game/",
+  "background_color": "#050505",
+  "theme_color": "#CCFF00",
+  "icons": [
+    { "src": "app-icon-foreground.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
