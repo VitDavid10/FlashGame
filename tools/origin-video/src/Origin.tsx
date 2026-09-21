@@ -14,6 +14,12 @@ import deathsCapture from "../public/deaths/events.json";
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
+/** Shows its caption until `until`, the frame where the next line starts: a
+ *  line stays readable right up to its replacement, with no empty gap. */
+const Until: React.FC<{ until: number; children: React.ReactNode }> = ({ until, children }) => (
+  <Sequence from={0} durationInFrames={until} layout="none">{children}</Sequence>
+);
+
 /* 1 — Birth: one pill appears, then dozens. The line comes in two halves, each
  *     on one line: the whole sentence wrapped and left a lone "o" typing on
  *     the second line. */
@@ -38,8 +44,10 @@ const Birth: React.FC = () => {
         );
       })}
       <Pill x={W / 2} y={H * 0.42} wL={20} scale={9 * pop} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
-      <Caption text={B1} y={H * 0.84} size={42} out={60} keys={[[0, 8], [B1.length, 44]]} />
-      <Caption text={B2} y={H * 0.84} size={42} keys={[[0, 70], [B2.length, 100]]} />
+      {/* One sentence in two halves, typed straight through: the pause comes
+          after the whole of it, not in the middle. */}
+      <Until until={46}><Caption text={B1} y={H * 0.84} size={42} keys={[[0, 8], [B1.length, 44]]} /></Until>
+      <Caption text={B2} y={H * 0.84} size={42} keys={[[0, 46], [B2.length, 74]]} />
     </AbsoluteFill>
   );
 };
@@ -85,8 +93,9 @@ const Chart: React.FC = () => {
       <Pill x={px(tip)} y={py(PRICE[tip]) - 70 + fall * 320} wL={18} scale={6}
         top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE + fall * 2.4} grey={grey} />
       {/* "Most of them" up to 6.2 s, then "die by morning" to the cut. */}
-      <Caption text={C1} y={H * 0.84} size={44} out={42} keys={[[0, 0], [C1.length, 26]]} />
-      <Caption text={C2} y={H * 0.84} size={44} keys={[[0, 50], [C2.length, 88]]} />
+      {/* "Most of them" runs straight into "die by morning". */}
+      <Until until={28}><Caption text={C1} y={H * 0.84} size={44} keys={[[0, 0], [C1.length, 26]]} /></Until>
+      <Caption text={C2} y={H * 0.84} size={44} keys={[[0, 28], [C2.length, 62]]} />
     </AbsoluteFill>
   );
 };
@@ -131,8 +140,12 @@ const Arena: React.FC = () => {
   const land = (i: number, to: number) =>
     interpolate(f, [2 + i * 2, 16 + i * 2], [-160, to], { ...clamp, easing: Easing.out(Easing.back(1.4)) });
   const colour = (i: number) => interpolate(f, [22 + i * 1.5, 44 + i * 1.5], [1, 0], clamp);
+  // Once the line is typed (~50), a slow push-in on the hero pill, which sits
+  // at the centre, until the cut: that second was a still frame.
+  const push = interpolate(f, [50, LAND], [1, 1.28], { ...clamp, easing: Easing.inOut(Easing.quad) });
   return (
     <AbsoluteFill>
+      <AbsoluteFill style={{ transform: `scale(${push})`, transformOrigin: `${W / 2}px ${H / 2}px` }}>
       <ArenaFloor opacity={interpolate(f, [0, 12], [0, 1], clamp)} />
       <Food seed="land" opacity={interpolate(f, [6, 24], [0, 1], clamp)} />
       {crowd.map(({ x, y, i }) => {
@@ -140,8 +153,9 @@ const Arena: React.FC = () => {
         return <Pill key={i} x={x} y={land(i, y)} wL={10 + (i % 5) * 2} scale={PIXEL} top={t} bot={b} ang={GAME_ANGLE} grey={colour(i)} />;
       })}
       <Pill x={W / 2} y={land(8, H / 2)} wL={heroWL} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} grey={colour(8)} />
-      {/* Stays up ~1 s once typed (done at ~50). */}
-      <Caption text="They get a second life" at={4} out={84} y={H * 0.84} size={46} />
+      </AbsoluteFill>
+      {/* Up until the cut, outside the push-in so it doesn't grow with it. */}
+      <Caption text="They get a second life" at={4} y={H * 0.84} size={46} />
     </AbsoluteFill>
   );
 };
@@ -184,9 +198,8 @@ const [K1, K2, K3] = capture.kills;
 const P1 = "Eat pills", P2 = "to get their money!", P3 = "Eat or be eaten";
 // Every event lands on a beat of the track (72.3 bpm, 24.9 frames apart,
 // first beat at 0.49 s), counted from the cut at 17.92 s: 18.75, 22.07,
-// 23.73 and 25.39 s. Each phrase is typed once the previous pop-up has gone
-// and clears 4 frames before its own kill.
-const OUT = 12;
+// 23.73 and 25.39 s. Each phrase stays up until the next one starts, so it
+// can be read, and the last one until the end of the scene.
 const vK1 = 25, vK2 = 125, vK3 = 174, vDeath = 224;
 const FOOT = 249;   // to 26.22 s, where the clips take over
 // The capture is laid out so that lands close to real speed; what's left is
@@ -203,9 +216,6 @@ const DEATH = vDeath;
 const STREAK = ["FIRST BLOOD", "DOUBLE KILL", "TRIPLE KILL", "QUADRA KILL", "PENTAKILL"];
 const MONEY = ["+$16.40", "+$23.00", "+$31.50", "+$42.00", "+$51.00"];
 const POPS: Kill[] = KILLS.map((at, i) => ({ at, money: MONEY[i], streak: STREAK[i] }));
-/** A phrase typed between `start` and `done`, gone 4 frames before `event`. */
-const lead = (p: string, start: number, done: number, event: number): { keys: [number, number][]; out: number } =>
-  ({ keys: [[0, start], [p.length, done]], out: event - OUT });
 
 const Footage: React.FC = () => {
   const f = useCurrentFrame();
@@ -225,11 +235,11 @@ const Footage: React.FC = () => {
       {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} volume={0.2} /></Sequence>}
       <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} volume={0.3} /></Sequence>
       {/* "Eat pills" · kill 1 */}
-      <Caption text={P1} y={H * 0.84} size={52} {...lead(P1, 1, 12, vK1)} />
+      <Until until={60}><Caption text={P1} y={H * 0.84} size={52} keys={[[0, 1], [P1.length, 12]]} /></Until>
       {/* "to get their money!" · kill 2 */}
-      <Caption text={P2} y={H * 0.84} size={52} {...lead(P2, 60, 95, vK2)} />
+      <Until until={142}><Caption text={P2} y={H * 0.84} size={52} keys={[[0, 60], [P2.length, 95]]} /></Until>
       {/* "Eat or be eaten" · kill 3, and then the death with the screen clear */}
-      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" {...lead(P3, 142, 162, vK3)} />
+      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 142], [P3.length, 162]]} />
     </AbsoluteFill>
   );
 };
