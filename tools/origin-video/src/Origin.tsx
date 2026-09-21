@@ -46,8 +46,8 @@ const Birth: React.FC = () => {
       <Pill x={W / 2} y={H * 0.42} wL={20} scale={9 * pop} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
       {/* One sentence in two halves, typed straight through: the pause comes
           after the whole of it, not in the middle. */}
-      <Until until={46}><Caption text={B1} y={H * 0.84} size={42} keys={[[0, 8], [B1.length, 44]]} /></Until>
-      <Caption text={B2} y={H * 0.84} size={42} keys={[[0, 46], [B2.length, 74]]} />
+      <Until until={76}><Caption text={B1} y={H * 0.84} size={42} keys={[[0, 6], [B1.length, 58]]} /></Until>
+      <Caption text={B2} y={H * 0.84} size={42} keys={[[0, 76], [B2.length, 112]]} />
     </AbsoluteFill>
   );
 };
@@ -94,8 +94,8 @@ const Chart: React.FC = () => {
         top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE + fall * 2.4} grey={grey} />
       {/* "Most of them" up to 6.2 s, then "die by morning" to the cut. */}
       {/* "Most of them" runs straight into "die by morning". */}
-      <Until until={28}><Caption text={C1} y={H * 0.84} size={44} keys={[[0, 0], [C1.length, 26]]} /></Until>
-      <Caption text={C2} y={H * 0.84} size={44} keys={[[0, 28], [C2.length, 62]]} />
+      <Until until={48}><Caption text={C1} y={H * 0.84} size={44} keys={[[0, 2], [C1.length, 32]]} /></Until>
+      <Caption text={C2} y={H * 0.84} size={44} keys={[[0, 48], [C2.length, 84]]} />
     </AbsoluteFill>
   );
 };
@@ -142,7 +142,7 @@ const Arena: React.FC = () => {
   const colour = (i: number) => interpolate(f, [22 + i * 1.5, 44 + i * 1.5], [1, 0], clamp);
   // Once the line is typed (~50), a slow push-in on the hero pill, which sits
   // at the centre, until the cut: that second was a still frame.
-  const push = interpolate(f, [50, LAND], [1, 1.28], { ...clamp, easing: Easing.inOut(Easing.quad) });
+  const push = interpolate(f, [34, LAND], [1, 1.28], { ...clamp, easing: Easing.inOut(Easing.quad) });
   return (
     <AbsoluteFill>
       <AbsoluteFill style={{ transform: `scale(${push})`, transformOrigin: `${W / 2}px ${H / 2}px` }}>
@@ -155,7 +155,7 @@ const Arena: React.FC = () => {
       <Pill x={W / 2} y={land(8, H / 2)} wL={heroWL} scale={PIXEL} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} grey={colour(8)} />
       </AbsoluteFill>
       {/* Up until the cut, outside the push-in so it doesn't grow with it. */}
-      <Caption text="They get a second life" at={4} y={H * 0.84} size={46} />
+      <Caption text="They get a second life" keys={[[0, 3], [22, 26]]} y={H * 0.84} size={46} />
     </AbsoluteFill>
   );
 };
@@ -183,7 +183,7 @@ const Spawn: React.FC = () => (
         </Series.Sequence>
       ))}
     </Series>
-    <Caption text={SPAWN_TEXT} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 1], [SPAWN_TEXT.length, 9]]} />
+    <Caption text={SPAWN_TEXT} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 1], [SPAWN_TEXT.length, 1]]} instant />
   </AbsoluteFill>
 );
 
@@ -235,11 +235,11 @@ const Footage: React.FC = () => {
       {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} volume={0.2} /></Sequence>}
       <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} volume={0.3} /></Sequence>
       {/* "Eat pills" · kill 1 */}
-      <Until until={60}><Caption text={P1} y={H * 0.84} size={52} keys={[[0, 1], [P1.length, 12]]} /></Until>
+      <Until until={60}><Caption text={P1} y={H * 0.84} size={52} keys={[[0, 1], [P1.length, 1]]} instant /></Until>
       {/* "to get their money!" · kill 2 */}
-      <Until until={142}><Caption text={P2} y={H * 0.84} size={52} keys={[[0, 60], [P2.length, 95]]} /></Until>
+      <Until until={142}><Caption text={P2} y={H * 0.84} size={52} keys={[[0, 60], [P2.length, 60]]} instant /></Until>
       {/* "Eat or be eaten" · kill 3, and then the death with the screen clear */}
-      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 142], [P3.length, 162]]} />
+      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 142], [P3.length, 142]]} instant />
     </AbsoluteFill>
   );
 };
@@ -377,7 +377,7 @@ const Deaths: React.FC = () => (
       })}
     </Series>
     {/* One line for the whole run: the eye stays on the gameplay. */}
-    <Caption text={DEATHS_LINE} keys={[[0, 0], [DEATHS_LINE.length, 0]]} y={H * 0.84} size={48} />
+    <Caption text={DEATHS_LINE} keys={[[0, 0], [DEATHS_LINE.length, 0]]} y={H * 0.84} size={48} instant />
   </AbsoluteFill>
 );
 

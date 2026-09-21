@@ -154,7 +154,9 @@ export const ArenaFloor: React.FC<{ opacity?: number }> = ({ opacity = 1 }) => (
  *  The untyped part is laid out but invisible, so the line never reflows. */
 export const Caption: React.FC<{
   text: string; at?: number; keys?: Keys; out?: number; y?: number; size?: number; color?: string;
-}> = ({ text, at = 0, keys, out, y = H * 0.8, size = 46, color = "#ffffff" }) => {
+  /** Just there, all at once: no typing, no cursor. */
+  instant?: boolean;
+}> = ({ text, at = 0, keys, out, y = H * 0.8, size = 46, color = "#ffffff", instant = false }) => {
   const f = useCurrentFrame();
   const lf = letterFrames(text, at, keys);
   const start = keys ? keys[0][1] : at, end = lf[lf.length - 1];
@@ -162,7 +164,7 @@ export const Caption: React.FC<{
   const typing = shown < text.length;
   const fadeOut = out === undefined ? 1 : interpolate(f, [out, out + 8], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const d = Math.round(size / 8);
-  const cursorOn = f >= start && (typing || f < end + 18) && Math.floor(f / 8) % 2 === 0;
+  const cursorOn = !instant && f >= start && (typing || f < end + 18) && Math.floor(f / 8) % 2 === 0;
   return (
     <>
       <div style={{
