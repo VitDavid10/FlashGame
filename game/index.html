@@ -1123,14 +1123,19 @@
                cuenta atras, GO!, resultados, popups): en movil, lado corto y
                lado largo, para que tumbado midan lo mismo que en vertical. En
                vertical estos valores son identicos a los de siempre. */
-            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-inner { max-width: calc(min(100vw, 100vh) * 0.92); }
+            /* El cartel girado es ancho (lado largo) y bajo: el bloque central
+               puede usar casi todo el ancho. El rotulo va al 22% del lado corto
+               (~90px de alto en un Saga, media pantalla de ancho); al 12% de
+               antes quedaba diminuto con mucho hueco a los lados. THE CRYPTO
+               ARENA crece en la misma proporcion para no descuadrar el logo. */
+            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-inner { max-width: calc(max(100vw, 100vh) * 0.92); }
             html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-pill { max-width: calc(min(100vw, 100vh) * 0.52); }
             html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-title-img {
-                height: clamp(46px, calc(min(100vw, 100vh) * 0.12), 120px); max-width: calc(min(100vw, 100vh) * 0.92);
+                height: clamp(46px, calc(min(100vw, 100vh) * 0.22), 120px); max-width: calc(max(100vw, 100vh) * 0.8);
             }
             html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-sub {
-                font-size: clamp(7px, calc(min(100vw, 100vh) * 0.016), 14px);
-                letter-spacing: clamp(2px, calc(min(100vw, 100vh) * 0.007), 6px);
+                font-size: clamp(7px, calc(min(100vw, 100vh) * 0.026), 14px);
+                letter-spacing: clamp(2px, calc(min(100vw, 100vh) * 0.011), 6px);
             }
             html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-track { width: min(336px, calc(min(100vw, 100vh) * 0.78)); }
             html:not([data-hero]) body.mobile-allowed #cdNum .cd-n { font-size: clamp(52px, calc(min(100vw, 100vh) * 0.10), 110px); }
