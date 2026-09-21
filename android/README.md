@@ -50,7 +50,7 @@ Generado el 21-sep-2026 con `npx solana-mobile@0.5.0 webshell init android --man
 - `branding/`: el web manifest y el icono con los que se hizo el `init`. El icono es la píldora del favicon, x12 y sobre transparente; el amarillo lo pone el fondo del icono adaptativo.
 - `store/icon-512.png`: el icono de la ficha de la dApp Store.
 
-Compilar el APK firmado, con la clave fuera del repo:
+Compilar el APK firmado, con la clave fuera del repo. `tools\android\build-apk.ps1` hace esto mismo y deja el APK en `E:\android-tools\apks\`. Para inspeccionar el WebView de una build debug, usar `tools/android/cdp-eval.js`.
 
 ```powershell
 $env:JAVA_HOME = 'E:\android-tools\jdk-21.0.12.1+1'; $env:ANDROID_HOME = 'E:\android-tools\sdk'
