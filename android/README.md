@@ -62,4 +62,6 @@ $env:SOLANA_MOBILE_KEYSTORE_PASSWORD = (Get-Content -Raw 'C:\Users\34679\pillwar
 Huella SHA-256 del certificado de firma. Tiene que salir la misma en cada APK que se suba (`apksigner verify --print-certs`):
 `90f41130b6543c6250dda99bd85ad20ca824dfc0a0180b11db3db65272ed96be`.
 
-Cada actualización para la dApp Store necesita un `SOLANA_MOBILE_VERSION_CODE` mayor en `gradle.properties`. Para probar contra un servidor local, se añade `-PSOLANA_MOBILE_URL=http://localhost:8090/game/` y se ejecuta `adb reverse tcp:8090 tcp:8090`. El cleartext solo se permite hacia localhost.
+Cada actualización para la dApp Store necesita un `SOLANA_MOBILE_VERSION_CODE` mayor en `gradle.properties`. Para probar contra el servidor local, se añade `-PSOLANA_MOBILE_URL=http://localhost:8080/game/`, se ejecuta `adb reverse tcp:8080 tcp:8080` y se arranca `ABRIR-SERVIDOR.bat`.
+- Tiene que ser el 8080: sin https, el juego se conecta siempre a `ws://localhost:8080`. Con otro puerto, el online falla con «Could not resume the game».
+- El cleartext solo se permite hacia localhost.
