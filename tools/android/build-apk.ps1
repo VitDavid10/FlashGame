@@ -16,6 +16,10 @@ $args2 = @('assembleRelease', '--console=plain',
     '-PSOLANA_MOBILE_KEYSTORE_ALIAS=pillwars',
     # El compilador de Kotlin dentro del proceso de Gradle: un demonio menos en RAM.
     '-Pkotlin.compiler.execution.strategy=in-process')
+# Sin -Url, la de produccion: https://pillwars.fun + la ruta secreta de la app
+# (APP_PATH del servidor), que vive junto a la clave y no en el repo, que es
+# publico. /game/ no sirve mientras el airdrop tiene la web cerrada.
+if (-not $Url -and (Test-Path "$firma\app-path.txt")) { $Url = 'https://pillwars.fun' + (Get-Content -Raw "$firma\app-path.txt").Trim() + '/' }
 if ($Url) { $args2 += "-PSOLANA_MOBILE_URL=$Url" }
 Push-Location $proyecto
 try {

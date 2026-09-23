@@ -145,5 +145,11 @@ Environment=REWARD_BUDGET_PILL=50000
 #Environment=X_CLIENT_ID=CAMBIA
 #Environment=X_CLIENT_SECRET=CAMBIA
 
+# App de la dApp Store: APP_PATH/ sirve la carpeta game/ con otro nombre, y el
+# bloqueo del airdrop la deja pasar (como ADMIN_PATH). Secreta y fuera del repo:
+# el valor real esta en app-path.txt, junto a la clave de firma de la app, y el
+# APK abre https://pillwars.fun<APP_PATH>/. Sin ella, la app no tiene ruta.
+#Environment=APP_PATH=/CAMBIA-ESTA-RUTA
+
 [Install]
 WantedBy=multi-user.target

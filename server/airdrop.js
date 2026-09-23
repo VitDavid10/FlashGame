@@ -50,6 +50,9 @@ function createAirdrop(opts) {
     const ONLY = !!opts.only;
     const CLOSED = !!opts.closed;
     const adminPath = opts.adminPath || '';
+    // The dApp Store app's secret alias of /game/ (APP_PATH): the app opens the
+    // game there, so the lockdown lets it through like the admin panel.
+    const appPath = opts.appPath || '';
     const clientIp = opts.clientIp;
     const log = opts.log || (() => {});
     const X_CLIENT_ID = process.env.X_CLIENT_ID || '';
@@ -400,6 +403,7 @@ function createAirdrop(opts) {
         // so the real landing is at /index.html while this is on.
         if (unlocked(req)) return false;
         if (adminPath && (urlPath === adminPath || urlPath.startsWith(adminPath + '/'))) return false;
+        if (appPath && (urlPath === appPath || urlPath.startsWith(appPath + '/'))) return false;
         if (urlPath === '/robots.txt') {
             res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
             // /c/ must stay allowed: X's card crawler obeys robots.txt.

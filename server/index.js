@@ -88,6 +88,11 @@ if (ADMIN_KEY_GENERADA) process.env.ADMIN_KEY = ADMIN_KEY;
 // entorno (como ADMIN_KEY) y NO se commitea con el valor real — en
 // deploy/pillwars.service solo hay un placeholder, igual que con ADMIN_KEY.
 const ADMIN_PATH = process.env.ADMIN_PATH || '/admin';
+// Ruta de la app de la dApp Store: la carpeta game/ entera servida con otro
+// nombre, secreto por lo mismo que ADMIN_PATH (va en el .service, no aqui).
+// Con AIRDROP_ONLY, /game/ solo se sirve dentro del iframe del airdrop; la app
+// abre esta ruta y juega igual. Sin la variable (o mal formada), no existe.
+const APP_PATH = /^\/[A-Za-z0-9_-]{12,}$/.test(process.env.APP_PATH || '') ? process.env.APP_PATH : '';
 // Secreto del stress test: permite entrar GRATIS a salas de pago (jugadores
 // marcados como tester, fuera de las stats). Sin definir = modo tester apagado.
 // Nunca una constante en el código: eso sería una puerta trasera pública.
@@ -2437,7 +2442,7 @@ setInterval(() => { const now = Date.now(); for (const [k, e] of rpcApiHits) if 
 // SITE_CLOSED=1 apaga la web entera (el airdrop incluido): todo contesta 404
 // menos el pase privado /airdrop-unlock/<token>, que se acuña desde el propio
 // servidor (ver server/airdrop.js).
-const airdrop = createAirdrop({ root: ROOT, only: process.env.AIRDROP_ONLY === '1', closed: process.env.SITE_CLOSED === '1', adminPath: ADMIN_PATH, clientIp, log, verifySignature: solana.verifySignedMessage });
+const airdrop = createAirdrop({ root: ROOT, only: process.env.AIRDROP_ONLY === '1', closed: process.env.SITE_CLOSED === '1', adminPath: ADMIN_PATH, appPath: APP_PATH, clientIp, log, verifySignature: solana.verifySignedMessage });
 const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     // www.pillwars.fun sirve la misma web que pillwars.fun, y Google las trata
@@ -3459,6 +3464,20 @@ const httpServer = http.createServer(async (req, res) => {
         } catch (e) { res.writeHead(500); res.end('No se pudo cargar admin.html'); }
         return;
     }
+    // La app de la dApp Store: APP_PATH/<x> es game/<x>. Sin la barra final los
+    // relativos del juego (img/..., paises-pixel.js) caerian en la raiz.
+    if (APP_PATH && urlPath === APP_PATH) {
+        const qs = (req.url || '').indexOf('?');
+        res.writeHead(301, { Location: APP_PATH + '/' + (qs >= 0 ? req.url.slice(qs) : '') });
+        res.end(); return;
+    }
+    if (APP_PATH && urlPath.startsWith(APP_PATH + '/')) {
+        const sub = urlPath.slice(APP_PATH.length + 1);
+        // Solo lo que cuelga de game/: con ".." se llegaria a la landing, que
+        // el bloqueo del airdrop tiene escondida.
+        if (sub.split(/[\\/]/).includes('..')) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); return; }
+        urlPath = '/game/' + sub;
+    }
     // Estáticos del juego servidos desde la raíz del repo (mismo origen que el WS):
     // así el espectador del panel y un único túnel sirven web + juego + websocket.
     let rel = urlPath.replace(/^\/+/, '') || 'index.html';
@@ -4026,6 +4045,7 @@ httpServer.listen(PORT, () => {
         if (desfase) log(`⚠ [VENDOR] vendor/solana.js desfasado (${desfase}). Regenera con: npm run vendor:solana`);
     } catch (e) {}
     if (ADMIN_PATH === '/admin') log(`⚠ [SEGURIDAD] ADMIN_PATH no definida — usando '/admin' por defecto. Define ADMIN_PATH en producción para que no sea adivinable.`);
+    log(APP_PATH ? `App de la dApp Store en ${APP_PATH}/ (alias de /game/)` : 'APP_PATH no definida: la app de la dApp Store no tiene ruta propia.');
     log(`Lobby: mínimo ${MIN_PLAYERS} reales, población objetivo ${TARGET_POP} (editable por sala en el panel)`);
     log(`Privacidad: IPs anonimizadas, logs borrados a los ${LOG_RETENTION_DAYS} días`);
 });
