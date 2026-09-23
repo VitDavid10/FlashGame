@@ -60,8 +60,8 @@ a{color:var(--green)}
 
 /* ---------- hero ---------- */
 .hero{position:relative;text-align:center;padding:24px 0 6px}
-.hero-social{position:absolute;top:6px;right:24px;display:flex;gap:14px}
-.hero-social a{width:34px;height:34px;image-rendering:auto;transition:transform .3s,filter .3s}
+.hero-social{position:absolute;top:34px;right:24px;display:flex;gap:16px}
+.hero-social a{width:52px;height:52px;image-rendering:auto;transition:transform .3s,filter .3s}
 .hero-social a:hover{transform:scale(1.15)}
 #airdropTwitter{background:url('game/img/cartel-hero/icon-twitter.png') center/100% 100% no-repeat}
 #airdropTwitter:hover{filter:drop-shadow(0 0 8px rgba(29,155,240,.6))}
@@ -837,8 +837,8 @@ addEventListener('resize', fitFirstScreen);
   const el = document.getElementById('intro');
   if (!el) return;
   document.getElementById('introBrand').insertAdjacentHTML('afterbegin', PILL_SVG);
-  // The game's sound buttons would sit under ENTER; hide them in this iframe only
-  // (the Daily Arena iframe keeps them).
+  // The game's sound buttons would sit under ENTER; hide them in this iframe
+  // (the Daily Arena's own ambient iframe hides them too, see its 'load' listener).
   const fr = el.querySelector('iframe');
   const noSound = () => {
     try { const st = fr.contentDocument.createElement('style'); st.textContent = '.sound-btn{display:none!important}'; fr.contentDocument.head.appendChild(st); } catch (e) {}
@@ -1902,6 +1902,9 @@ const isTouch = () => matchMedia('(pointer:coarse)').matches;
 // Never with frame.src: that leaves a history entry, and going back walked the
 // iframe into the real game's menu (paid rooms) from inside the airdrop page.
 // replace() overwrites the entry instead, so there is nothing to go back to.
+// Absolute path (/game/...), not relative: the game rewrites its own URL to
+// just /game/ on boot (see game/index.html), and resolving 'game/...' against
+// THAT doubled it into /game/game/... -> 404 on exit back to the ambient demo.
 let wantPlay = false;
 function loadGame(url) {
   wantPlay = /heroplay=1/.test(url);
@@ -1932,7 +1935,7 @@ veil.addEventListener('click', () => {
   dropGameSave();
   veil.hidden = true;
   enterFull();
-  loadGame('game/?heroplay=1&name=' + encodeURIComponent(displayName().slice(0, 12)));
+  loadGame('/game/?heroplay=1&name=' + encodeURIComponent(displayName().slice(0, 12)));
   const t0 = Date.now();
   const early = setInterval(() => {
     let doc = null;
@@ -1945,6 +1948,9 @@ veil.addEventListener('click', () => {
 frame.addEventListener('load', () => {
   const w = frame.contentWindow;
   unwatchGameUI();
+  // Ambient demo under PRESS TO START (not a real match): its sound/music
+  // buttons control nothing worth showing before the player has even started.
+  if (!wantPlay) { try { const st = w.document.createElement('style'); st.textContent = '.sound-btn{display:none!important}'; w.document.head.appendChild(st); } catch (e) {} }
   // The hooked document is gone. If a match was still open the game navigated
   // on its own: close it instead of leaving the panel floating over the page.
   if (hooked && hooked !== w) { hooked = null; if (match) return resetArena(); }
@@ -2138,7 +2144,7 @@ function resetArena() {
   over.hidden = true;
   veil.hidden = false;
   leaveFull();
-  loadGame('game/?hero=1');
+  loadGame('/game/?hero=1');
 }
 
 function endMatch(w, tipo) {
