@@ -10,22 +10,23 @@ import { H, W } from "./ui";
  * trimmed to public/snd/action-music.wav: every scene's hit was captured on a
  * kick of it, and it ends where the song cuts. (Cut 35 ms later than the beat
  * grid says: the render delays the audio by about that much.) The effects are
- * the game's own sounds, each on the frame the capture logged it happening —
- * all but the two that ring on for ~2 s (sprint's low rumble, the shield's
- * whine): over the music they came across as a buzz (David).
+ * the game's own sounds, each on the frame the capture logged it happening.
  */
 export const ACTION_FRAMES = capture.frames as number;
 
 const ev = capture.events as {
-  catch1?: number; split?: number; catch2?: number; pop?: number; snacks?: (number | null)[];
+  sprint?: number; catch1?: number; split?: number; catch2?: number; pop?: number;
+  shield?: number; snacks?: (number | null)[];
 };
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
 const SFX: [string, number | null | undefined, number][] = [
+  ["snd/sprint.mp3", ev.sprint, 0.35],
   ["snd/kill1.mp3", ev.catch1, 0.4],
   ["snd/split.mp3", ev.split, 0.45],
   ["snd/kill1.mp3", ev.catch2, 0.4],
   ["snd/virus.mp3", ev.pop, 0.5],
+  ["snd/shield.mp3", ev.shield, 0.3],
   ...(ev.snacks ?? []).map((f): [string, number | null, number] => ["snd/kill1.mp3", f, 0.35]),
 ];
 
