@@ -655,70 +655,113 @@
     }
 
     /*
-     * A flight over the bare map: no pill, nothing eaten, just the arena as it
-     * is (food and viruses). The camera starts pushed in tight on the food and
-     * drifts along a line, pulling back as it goes so more of the map opens up
-     * and the viruses drift into shot.
+     * A flight over the bare map: no pill, nothing eaten by the camera itself,
+     * just the arena as it is (food and viruses) plus two staged bits of real
+     * gameplay it flies past: one bot running another down (the game's own
+     * collision rule eats the loser, nothing is faked) and a pill leaving the
+     * cover of a virus (isHiddenInVirus in shared/sim.js — sitting inside a
+     * virus you're smaller than is a real hiding spot, not a pose).
+     *
+     * The camera starts pushed in on the food and opens up as it goes, so more
+     * of the map (and the two vignettes) reveal themselves along the way.
      *
      * The camera is the director's, not the game's: the game's view scale is
      * replaced by a fixed curve (px per world unit), because with no player
      * there is nothing for the game's own zoom to follow. The hero is parked in
-     * a corner and every bot in the opposite one, both far from the route, so
-     * nothing touches the food or the viruses on the way.
+     * a corner and every bot not in one of the two vignettes sits in the
+     * opposite corner, both far from the route, so nothing else touches the
+     * food or the viruses on the way.
      *
      * The route is not hand-placed: it is picked by scanning the map for the
-     * straight run that passes the most viruses without one already being in
-     * the first frame (so they arrive as the view opens).
+     * straight run that passes the most viruses — spaced apart, so they don't
+     * bunch into one cluttered shot — without one already being in the first
+     * frame (so they arrive as the view opens).
      */
     async function tour(sim, hero, sendFrame, ws) {
         ws.send('reset tour');
         const FRAMES = 300;                    // 10 s at 30 fps
-        const Z0 = 2.4, Z1 = 1.25;             // px per world unit, tight to open
+        // Z0 lower and the zoom on an ease-OUT curve (was ease-in-out): the old
+        // curve barely moved for its first ~2 s — it looked stuck on the tight
+        // opening shot ("demasiado zoom" before the 2 s mark, David) — an
+        // ease-out starts opening the frame from frame 0.
+        const Z0 = 2.1, Z1 = 1.25;             // px per world unit, tight to open
         const V0 = 3.5, V1 = 8;                // camera speed, units per frame
         const M = sim.mapSize, LIM = M * 0.72;  // keep the route (and the view around it) far from the walls
         const sway = 140;                      // sideways drift, so it is not a ruler-straight line
-        const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         const easeOut = t => 1 - (1 - t) * (1 - t);
-        // How far along the line the camera is at frame f (units).
-        const along = f => { let s = 0; for (let i = 0; i < f; i++) s += V0 + (V1 - V0) * easeOut(i / (FRAMES - 1)); return s; };
-        const LEN = along(FRAMES - 1);
-        const zoomAt = f => Z0 + (Z1 - Z0) * easeInOut(f / (FRAMES - 1));
+        // How far along the line the camera is at frame f (units); cached per
+        // frame so the vignettes below can also ask "when does the camera get
+        // here" (frameAtS), not just the flight loop.
+        const ALONG = new Float64Array(FRAMES);
+        { let s = 0; for (let f = 0; f < FRAMES; f++) { ALONG[f] = s; s += V0 + (V1 - V0) * easeOut(f / (FRAMES - 1)); } }
+        const LEN = ALONG[FRAMES - 1];
+        const zoomAt = f => Z0 + (Z1 - Z0) * easeOut(f / (FRAMES - 1));
+        const frameAtS = targetS => { for (let f = 0; f < FRAMES; f++) if (ALONG[f] >= targetS) return f; return FRAMES - 1; };
 
         // What the widest frame of the run can see, for the scan.
-        const halfW = 960 / Z1, halfH = 540 / Z1;
+        const halfH = 540 / Z1;
         const first = { w: 960 / Z0, h: 540 / Z0 };
+        // Two viruses only both count on the route if they are at least this
+        // far apart along it — otherwise a tight cluster scored as well as a
+        // well-spaced run and the flight looked crowded with virus after
+        // virus ("muchos virus juntos", David).
+        const MIN_VIRUS_GAP = 900;
         let best = null;
         for (let i = 0; i < 6000; i++) {
             const sx = (Math.random() * 2 - 1) * LIM, sy = (Math.random() * 2 - 1) * LIM, a = Math.random() * Math.PI * 2;
             const ux = Math.cos(a), uy = Math.sin(a);
             if (Math.abs(sx + ux * LEN) > LIM || Math.abs(sy + uy * LEN) > LIM) continue;
-            let viruses = 0, early = 0;
+            let early = false;
+            const onRoute = [];
             for (const v of sim.viruses) {
                 const rx = v.x - sx, ry = v.y - sy;
                 const s = rx * ux + ry * uy, c = -rx * uy + ry * ux;
-                if (s > 0 && s < LEN && Math.abs(c) < halfH * 0.8) viruses++;
-                if (Math.abs(rx) < first.w + v.r && Math.abs(ry) < first.h + v.r) early++;
+                if (s > 0 && s < LEN && Math.abs(c) < halfH * 0.8) onRoute.push({ v, s, c });
+                if (Math.abs(rx) < first.w + v.r && Math.abs(ry) < first.h + v.r) { early = true; break; }
             }
             if (early) continue;
+            onRoute.sort((p, q) => p.s - q.s);
+            const spaced = [];
+            for (const o of onRoute) if (!spaced.length || o.s - spaced[spaced.length - 1].s >= MIN_VIRUS_GAP) spaced.push(o);
             let food = 0;
             for (const f of sim.foods) {
                 const rx = f.x - sx, ry = f.y - sy;
                 const s = rx * ux + ry * uy, c = -rx * uy + ry * ux;
                 if (s > 0 && s < LEN && Math.abs(c) < halfH * 0.8) food++;
             }
-            const score = Math.min(viruses, 5) * 1000 + food;
-            if (!best || score > best.score) best = { score, sx, sy, ux, uy, viruses, food };
+            const score = Math.min(spaced.length, 4) * 1000 + food;
+            if (!best || score > best.score) best = { score, sx, sy, ux, uy, spaced, food };
         }
         if (!best) throw new Error('no route found');
+        const dirX = best.ux, dirY = best.uy, perpX = -best.uy, perpY = best.ux;
 
         const HERO_AT = { x: -M * 0.93, y: -M * 0.93 }, PARK = { x: M * 0.9, y: M * 0.9 };
-        // Everything that could touch the map's contents is held in its corner.
+        // Every real bot not in one of the two vignettes gets parked at the
+        // SAME point (PARK) every frame — cheap, but it piles them on top of
+        // one another, and the game's own "bigger eats smaller" collision rule
+        // (shared/sim.js) doesn't know it's a parking spot: left in that pile
+        // for the ~3 s before its vignette starts, a cast member could get
+        // eaten by another parked bot before its own turn ever comes. So the
+        // cast is never sent there — updateCast() below places it every single
+        // frame, active or not (see castAt).
+        const castSet = new Set();
         const hold = () => {
             Object.assign(hero, { x: HERO_AT.x, y: HERO_AT.y, vx: 0, vy: 0, boostX: 0, boostY: 0 });
-            for (const e of sim.enemies) { e.x = PARK.x; e.y = PARK.y; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; e.botSkills = []; e.botNextSkillTime = 1e15; }
+            for (const e of sim.enemies) {
+                if (castSet.has(e)) continue;
+                e.x = PARK.x; e.y = PARK.y; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; e.botSkills = []; e.botNextSkillTime = 1e15;
+            }
+            // A bot's natural time-to-live or kill-streak retirement would pull
+            // it out of sim.enemies on its own; the cast has to survive on cue,
+            // not whenever the game feels like retiring it (same guard as the
+            // 'deaths' mode above).
+            sim.botExpira.clear(); sim.botStreak.clear();
+            if (sim._botRetirar) sim._botRetirar.clear();
             if (sim.ejectedMasses) sim.ejectedMasses.length = 0;
             if (sim.botRespawnQueue) sim.botRespawnQueue.length = 0;
         };
+        const tame = c => { c.botSkills = []; c.botNextSkillTime = 1e15; c.shouldSplit = false; c.immuneTime = 0; c.tpPhase = 0; c.sprintTime = 0; c.magnetTime = 0; };
+        const put = (c, x, y) => { c.x = x; c.y = y; c.vx = c.vy = 0; c.targetX = x; c.targetY = y; };
         const p = window.me();
         p.cells.length = 0; p.cells.push(hero);
         hero.r = 10;
@@ -729,18 +772,101 @@
         // draws for it would be a giveaway, and floating texts are cleared.
         floatingTexts.length = 0;
 
+        // ---- Vignette 1: one bot runs another down, about a third of the way
+        // in. Real cells, real collision (shared/sim.js resolves bot-vs-bot
+        // eating on its own): this only has to place them and let it happen.
+        const pool = [...sim.enemies].filter(e => e.r > 6).sort((a, b) => a.r - b.r);
+        const take = i => pool.splice(i, 1)[0];
+        // Two private corners, well outside where the scan even looks for a
+        // route (LIM = 0.72*M) and well apart from HERO_AT/PARK above — the
+        // cast waits there, never in the general pile, so nothing eats it
+        // ahead of its own cue.
+        const DUEL_OFF = { x: -M * 0.9, y: M * 0.95 }, HIDE_OFF = { x: M * 0.95, y: -M * 0.9 };
+        let duel = null;
+        if (pool.length >= 2) {
+            const small = take(0), big = take(pool.length - 1);
+            const s = LEN * 0.32, anchor = { x: best.sx + dirX * s, y: best.sy + dirY * s };
+            // Closing speed is only 8.5 - 1.6 = 6.9 units/frame against a
+            // ~320-unit head start, so the chase needs ~46 frames on its own —
+            // +20 cut it right at the wire (they were still just short of
+            // touching at endF); +35 leaves it room to actually land the catch.
+            const startF = Math.max(0, frameAtS(s) - 26), endF = Math.min(FRAMES - 1, frameAtS(s) + 35);
+            const smallAt = { x: anchor.x + perpX * 90 + dirX * 60, y: anchor.y + perpY * 90 + dirY * 60 };
+            const bigAt = { x: anchor.x + perpX * 90 - dirX * 260, y: anchor.y + perpY * 90 - dirY * 260 };
+            duel = { small, big, startF, endF, smallAt, bigAt };
+            castSet.add(small); castSet.add(big);
+            tame(small); tame(big);
+            small.r = 26; big.r = 34;   // 34/26 > 1.15: the real "bigger eats smaller" rule takes it from here
+            put(small, DUEL_OFF.x, DUEL_OFF.y); put(big, DUEL_OFF.x + 200, DUEL_OFF.y + 200);   // offset from each other too, or they'd eat early
+        }
+
+        // ---- Vignette 2: a pill tucked inside a virus, then it leaves cover.
+        // isHiddenInVirus() needs r < virus.r and to sit fully inside it —
+        // this places it there for real, not just visually near one.
+        let hide = null;
+        if (best.spaced.length && pool.length) {
+            const target = best.spaced.reduce((a, b) => Math.abs(b.s - LEN * 0.62) < Math.abs(a.s - LEN * 0.62) ? b : a);
+            const bot = take(pool.length - 1);
+            const v = target.v;
+            const startF = Math.max(0, frameAtS(target.s) - 26), revealF = startF + 20, endF = Math.min(FRAMES - 1, startF + 58);
+            hide = { bot, v, startF, revealF, endF };
+            castSet.add(bot);
+            tame(bot);
+            bot.r = Math.max(8, v.r * 0.45);
+            put(bot, HIDE_OFF.x, HIDE_OFF.y);
+        }
+
+        // Positions every cast member every frame — active in its vignette or
+        // tucked in its private corner otherwise. Called once per frame — the
+        // movement below is a per-frame step, not a per-tick one (the flight
+        // loop still ticks the sim twice a frame).
+        const updateCast = f => {
+            if (duel) {
+                const active = f >= duel.startF && f <= duel.endF;
+                if (!active) { put(duel.small, DUEL_OFF.x, DUEL_OFF.y); put(duel.big, DUEL_OFF.x + 200, DUEL_OFF.y + 200); }
+                else {
+                    if (f === duel.startF) { put(duel.small, duel.smallAt.x, duel.smallAt.y); put(duel.big, duel.bigAt.x, duel.bigAt.y); }
+                    const smallAlive = sim.enemies.includes(duel.small);
+                    if (smallAlive) {
+                        if (f > duel.startF) {
+                            duel.small.x += dirX * 1.6 + perpX * Math.sin(f / 5) * 2;
+                            duel.small.y += dirY * 1.6 + perpY * Math.sin(f / 5) * 2;
+                            put(duel.small, duel.small.x, duel.small.y);
+                            const dx = duel.small.x - duel.big.x, dy = duel.small.y - duel.big.y, d = Math.hypot(dx, dy) || 1, step = Math.min(d, 8.5);
+                            put(duel.big, duel.big.x + dx / d * step, duel.big.y + dy / d * step);
+                        }
+                    } else {
+                        put(duel.big, duel.big.x + dirX * 2, duel.big.y + dirY * 2);   // caught it: drifts on
+                    }
+                }
+            }
+            if (hide) {
+                const active = f >= hide.startF && f <= hide.endF;
+                if (!active) { put(hide.bot, HIDE_OFF.x, HIDE_OFF.y); return; }
+                hide.v.vx = hide.v.vy = 0;   // a fast-moving virus can burst anything touching it: hold it still while it's cover
+                if (f < hide.revealF) {
+                    put(hide.bot, hide.v.x, hide.v.y);
+                } else {
+                    const t = Math.min(1, (f - hide.revealF) / (hide.endF - hide.revealF));
+                    const e = 1 - (1 - t) * (1 - t);
+                    put(hide.bot, hide.v.x + perpX * (hide.v.r + 60) * e, hide.v.y + perpY * (hide.v.r + 60) * e);
+                }
+            }
+        };
+
         const foodBefore = sim.foods.length, virusesBefore = sim.viruses.length;
         for (let i = 0; i < 10; i++) { hold(); window.__tick(TICK); }
         const pos = f => {
-            const s = along(f), t = f / (FRAMES - 1);
+            const s = ALONG[f], t = f / (FRAMES - 1);
             const off = sway * Math.sin(t * Math.PI);
             return { x: best.sx + best.ux * s - best.uy * off, y: best.sy + best.uy * s + best.ux * off };
         };
         window.__frame = 0;
         window.__status = { phase: 'recording', frame: 0 };
         for (let f = 0; f < FRAMES; f++) {
-            hold();
-            window.__tick(TICK); window.__tick(TICK);
+            updateCast(f);
+            hold(); window.__tick(TICK);
+            hold(); window.__tick(TICK);
             hold();
             const c = pos(f);
             window.__abs = zoomAt(f);
@@ -752,8 +878,11 @@
         }
         const meta = {
             fps: 30, frames: FRAMES, zoom: [Z0, Z1], route: { from: { x: best.sx, y: best.sy }, len: Math.round(LEN) },
-            viruses: best.viruses, foodOnRoute: best.food,
-            // Nothing may be eaten: the counts are checked against the start.
+            viruses: best.spaced.length, foodOnRoute: best.food,
+            duel: duel && { startF: duel.startF, endF: duel.endF, eaten: !sim.enemies.includes(duel.small) },
+            hide: hide && { startF: hide.startF, revealF: hide.revealF, endF: hide.endF },
+            // The map itself (food/viruses) is untouched; only the vignette's
+            // own bots move or get eaten.
             foodBefore, foodAfter: sim.foods.length, virusesBefore, virusesAfter: sim.viruses.length,
         };
         ws.send('tour/events.json'); ws.send(JSON.stringify(meta, null, 2));
