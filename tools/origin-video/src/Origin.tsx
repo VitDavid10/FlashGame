@@ -46,8 +46,8 @@ const Birth: React.FC = () => {
       <Pill x={W / 2} y={H * 0.42} wL={20} scale={9 * pop} top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE} />
       {/* One sentence in two halves, typed straight through: the pause comes
           after the whole of it, not in the middle. */}
-      <Until until={76}><Caption text={B1} y={H * 0.84} size={42} keys={[[0, 6], [B1.length, 58]]} /></Until>
-      <Caption text={B2} y={H * 0.84} size={42} keys={[[0, 76], [B2.length, 112]]} />
+      <Until until={71}><Caption text={B1} y={H * 0.84} size={42} keys={[[0, 6], [B1.length, 58]]} /></Until>
+      <Caption text={B2} y={H * 0.84} size={42} keys={[[0, 71], [B2.length, 107]]} />   {/* 2.36 s, on an accent */}
     </AbsoluteFill>
   );
 };
@@ -55,7 +55,7 @@ const Birth: React.FC = () => {
 /* 2 — The chart: pump, then dump. The line is drawn over the whole scene and
  *     the dump lands under "die by morning", the second half of the phrase. */
 const C1 = "Most of them", C2 = "die by morning";
-const CHART_DUR = 124;   // 4.64 s -> 8.79 s
+const CHART_DUR = 132;   // 4.64 s -> 9.02 s, the cut on a strong accent of the track
 const DRAW = CHART_DUR - 12;
 const N = 70;
 const PRICE = Array.from({ length: N }, (_, i) => {
@@ -94,15 +94,15 @@ const Chart: React.FC = () => {
         top={PALETTE[0][0]} bot={PALETTE[0][1]} ang={GAME_ANGLE + fall * 2.4} grey={grey} />
       {/* "Most of them" up to 6.2 s, then "die by morning" to the cut. */}
       {/* "Most of them" runs straight into "die by morning". */}
-      <Until until={48}><Caption text={C1} y={H * 0.84} size={44} keys={[[0, 2], [C1.length, 32]]} /></Until>
-      <Caption text={C2} y={H * 0.84} size={44} keys={[[0, 48], [C2.length, 84]]} />
+      <Until until={40}><Caption text={C1} y={H * 0.84} size={44} keys={[[0, 2], [C1.length, 32]]} /></Until>
+      <Caption text={C2} y={H * 0.84} size={44} keys={[[0, 40], [C2.length, 76]]} />   {/* 5.96 s, on an accent */}
     </AbsoluteFill>
   );
 };
 
 /* 3 — The fall: the screen is already full of grey pills on the first frame,
  *     so the cut from the chart never shows black. */
-const FALL_DUR = 100;   // 8.79 s -> 12.11 s, a whole bar of the music
+const FALL_DUR = 92;    // 9.02 s -> 12.11 s: starts later, still ends on the bar
 const Fall: React.FC = () => {
   const f = useCurrentFrame();
   return (
@@ -235,11 +235,11 @@ const Footage: React.FC = () => {
       {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} volume={0.2} /></Sequence>}
       <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} volume={0.3} /></Sequence>
       {/* "Eat pills" · kill 1 */}
-      <Until until={60}><Caption text={P1} y={H * 0.84} size={52} keys={[[0, 1], [P1.length, 1]]} instant /></Until>
+      <Until until={49}><Caption text={P1} y={H * 0.84} size={52} keys={[[0, 1], [P1.length, 1]]} instant /></Until>
       {/* "to get their money!" · kill 2 */}
-      <Until until={172}><Caption text={P2} y={H * 0.84} size={52} keys={[[0, 60], [P2.length, 60]]} instant /></Until>
+      <Until until={165}><Caption text={P2} y={H * 0.84} size={52} keys={[[0, 49], [P2.length, 49]]} instant /></Until>   {/* 19.55 s */}
       {/* "Eat or be eaten" · kill 3, and then the death with the screen clear */}
-      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 172], [P3.length, 172]]} instant />
+      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 165], [P3.length, 165]]} instant />   {/* 23.43 s */}
     </AbsoluteFill>
   );
 };
