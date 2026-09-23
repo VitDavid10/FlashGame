@@ -17,7 +17,7 @@ const { WebSocketServer } = require('ws');
 
 const OUT = path.join(__dirname, '..', 'public');
 const PORT = Number(process.env.PORT) || 8197;   // another capture running? give this one its own port
-const DIRS = ['arena', 'skills', 'deaths', 'growth', 'tour'];
+const DIRS = ['arena', 'skills', 'deaths', 'growth', 'tour', 'action'];
 const NAME = new RegExp('^(' + DIRS.join('|') + ')/(\\d{4}\\.jpg|events\\.json)$');
 
 const server = http.createServer((req, res) => { res.end('origin-video frame receiver'); });

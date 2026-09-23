@@ -2,6 +2,7 @@ import "./index.css";
 import { Composition } from "remotion";
 import { Origin, TOTAL } from "./Origin";
 import { CONCEPTS, GROWTH_FRAMES, Growth, TOUR_FRAMES, Tour } from "./Concepts";
+import { ACTION_FRAMES, Action } from "./Action";
 import { H, W } from "./ui";
 
 export const RemotionRoot: React.FC = () => {
@@ -12,6 +13,8 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="Growth" component={Growth} durationInFrames={GROWTH_FRAMES} fps={30} width={W} height={H} />
       {/* The bare map, no pill: a flyover of food and viruses. */}
       <Composition id="Tour" component={Tour} durationInFrames={TOUR_FRAMES} fps={30} width={W} height={H} />
+      {/* 10 s of the map in action, on the beat of the game's music. */}
+      <Composition id="Action" component={Action} durationInFrames={ACTION_FRAMES} fps={30} width={W} height={H} />
       {/* Posters for the posts, one still each (see src/Concepts.tsx). */}
       {CONCEPTS.map(([id, C]) => (
         <Composition key={id} id={id} component={C} durationInFrames={1} fps={30} width={W} height={H} />

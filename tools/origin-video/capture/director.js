@@ -30,12 +30,14 @@
     const TICK = 1000 / 60, MAX_FRAMES = 520, AFTER_DEATH = 24;
     // window.__captureMode picks what to record: 'kills' (default, the arena
     // scene), 'skills' (the four "in PILLWARS" clips) or 'deaths' (the three
-    // kill clips of the closing beat), 'growth' (the pill and its crowns) or
-    // 'tour' (the bare map, no pill). See skills(), deaths(), growth() and tour().
+    // kill clips of the closing beat), 'growth' (the pill and its crowns),
+    // 'tour' (the bare map, no pill) or 'action' (10 s of scenes on the beat
+    // of the game's music). See skills(), deaths(), growth(), tour(), action().
     const MODE = window.__captureMode || 'kills';
     // The crowns of the podium only exist in ARCADE, so that take starts there.
     const ARCADE = MODE === 'growth';
-    window.__pwTour = MODE === 'tour';
+    // No player pill on screen in these two (see drawEnemyArrow below).
+    window.__pwTour = MODE === 'tour' || MODE === 'action';
     const inject = code => { const s = document.createElement('script'); s.textContent = code; document.head.appendChild(s); };
     window.__status = { phase: 'waiting' };
 
@@ -109,9 +111,9 @@
         // every tick, so a take sets it again right before drawing.
         window.__rank = n => { _miPuesto = n; };
         window.getViewScale = function () { return gvs.apply(this, arguments) * window.__zoom; };
-        // The tour has no pill on screen, so the "NOBODY NEARBY" compass (it
-        // fires after 5 s without an enemy in view) would otherwise pop up
-        // over an empty map.
+        // The tour and the action take have no pill on screen, so the
+        // "NOBODY NEARBY" compass (it fires after 5 s without an enemy in
+        // view) would otherwise pop up over an empty map.
         if (window.__pwTour) drawEnemyArrow = function () {};
     })();`);
 
@@ -133,6 +135,7 @@
 
     // Before the virus shuffle below: the tour wants the map as it is.
     if (MODE === 'tour') return tour(sim, hero, sendFrame, ws);
+    if (MODE === 'action') return action(sim, hero, sendFrame, ws);
 
     for (const v of sim.viruses) {
         if (v.x > H0.x - 900 && v.x < H0.x + 4000 && Math.abs(v.y - H0.y) < 520) {
@@ -967,6 +970,361 @@
             virusesBefore, virusesAfter: sim.viruses.length,
         };
         ws.send('tour/events.json'); ws.send(JSON.stringify(meta, null, 2));
+        await new Promise(r => setTimeout(r, 800));
+        window.__status = { phase: 'done', ...meta };
+    }
+
+    /*
+     * 10 s of action on the beat of the game's own match music (snd/music.mp3
+     * from 37.172 s: 123 bpm, a kick every 14.63 frames, bars starting on
+     * frames 0, 59, 117, 176 and 234, and the song's cut on 293). The camera
+     * flies over the map and a scene plays out in front of it on every bar,
+     * each hit landing on a kick:
+     *   bar 1  a pill sprints into shot and catches another (bar 2's first beat),
+     *   bar 2  a pill splits and its half lunges onto a prey,
+     *   bar 3  a heavy pill runs into a virus and bursts (the bar's first beat),
+     *   bar 4  a pill dives into a virus; its hunter circles it and gives up,
+     *          and the pill peeks back out,
+     *   bar 5  a pill raises its shield and eats three in a row, one a beat.
+     * All of it is the game's own mechanics — eating, splitting, the virus
+     * burst, hiding in a virus, the skills — the director only places the
+     * actors and times them.
+     *
+     * Nobody pops in or out of the shot: every actor is on the map from frame
+     * 0, comes into shot because the camera gets there, and leaves by an edge.
+     * A prey is about a third of its eater's size, and the game draws the
+     * bigger pill on top: by the time the game removes the prey it is already
+     * under its eater, so it's seen being swallowed, not vanishing (the 20 s
+     * tour ate with 36 vs 24, and the prey was still half outside).
+     */
+    async function action(sim, hero, sendFrame, ws) {
+        ws.send('reset action');
+        const FRAMES = 300;
+        const BEAT = 60 / 123.01 * 30;                   // 14.63 frames
+        const beat = k => Math.round(k * BEAT);          // 0, 15, 29, 44, 59, 73, 88 ...
+        const V = 6;                                      // camera speed, units per frame
+        const M = sim.mapSize;
+        const zBase = f => 1.7 - 0.35 * (1 - Math.pow(1 - f / (FRAMES - 1), 2));
+        // A kick in the camera on every beat, twice as hard on a bar's first.
+        const zoomAt = f => {
+            let k = Math.floor(f / BEAT);
+            while (beat(k + 1) <= f) k++;
+            while (k > 0 && beat(k) > f) k--;
+            const pulse = (k % 4 === 0 ? 0.05 : 0.025) * Math.exp(-(f - beat(k)) / 3.5);
+            return zBase(f) * (1 + pulse);
+        };
+
+        // The route: mostly left to right on screen, anywhere on the map the
+        // stretch it needs (and its margins) fits.
+        const th = (Math.random() * 2 - 1) * 0.3;
+        const dx = Math.cos(th), dy = Math.sin(th), nx = -dy, ny = dx;
+        const A0 = -1300, A1 = 3000, B = 1100;            // the stretch kept clear, in route units
+        let O = null;
+        for (let i = 0; i < 500 && !O; i++) {
+            const o = { x: (Math.random() * 2 - 1) * M * 0.8, y: (Math.random() * 2 - 1) * M * 0.8 };
+            const ok = [[A0, -B], [A0, B], [A1, -B], [A1, B]].every(([a, b]) =>
+                Math.abs(o.x + dx * a + nx * b) < M * 0.92 && Math.abs(o.y + dy * a + ny * b) < M * 0.92);
+            if (ok) O = o;
+        }
+        if (!O) throw new Error('no room for the route');
+        const W = (a, b) => ({ x: O.x + dx * a + nx * b, y: O.y + dy * a + ny * b });
+        const AB = p => { const rx = p.x - O.x, ry = p.y - O.y; return { a: rx * dx + ry * dy, b: rx * nx + ry * ny }; };
+        const cam = f => W(V * f, 50 * Math.sin(Math.PI * f / (FRAMES - 1)));
+
+        // Viruses: the stretch is emptied (before frame 0, so nobody sees it)
+        // and two are set where scenes need them.
+        const inStretch = p => { const q = AB(p); return q.a > A0 && q.a < A1 && Math.abs(q.b) < B; };
+        const far = () => { for (;;) { const p = { x: (Math.random() * 2 - 1) * M * 0.9, y: (Math.random() * 2 - 1) * M * 0.9 }; if (!inStretch(p)) return p; } };
+        for (const v of sim.viruses) if (inStretch(v)) Object.assign(v, far(), { vx: 0, vy: 0 });
+        const vPop = sim.viruses[0], vHide = sim.viruses[1];
+        Object.assign(vPop, W(730, -40), { vx: 0, vy: 0, damaged: false });
+        Object.assign(vHide, W(1120, 150), { vx: 0, vy: 0, damaged: false });
+
+        // The cast: bots that are a single cell (a split bot's pieces share an
+        // id, and the parking below goes by id).
+        const cells = new Map();
+        for (const e of sim.enemies) cells.set(e.id, (cells.get(e.id) || 0) + 1);
+        const pool = sim.enemies.filter(e => cells.get(e.id) === 1);
+        if (pool.length < 11) throw new Error('not enough bots for the cast');
+        const castIds = new Set();
+        const who = [];                                  // [label, cell], for the framing log
+        const cast = (r, label) => { const c = pool.pop(); castIds.add(c.id); adopt(c); c.r = r; who.push([label, c]); return c; };
+        // A cast pill moves only as the scene says: its own AI (botAI in
+        // shared/sim.js) would steer it at any prey within 750 units — or
+        // away from any hunter — every tick, eat a frame or two ahead of the
+        // beat, and a bot over r 45 would even split by itself.
+        const adopt = c => { tame(c); c.name = ''; c.botAI = function () {}; };
+
+        const HERO_AT = { x: -M * 0.93, y: -M * 0.93 }, PARK = { x: M * 0.9, y: M * 0.9 };
+        const tame = c => { c.botSkills = []; c.botNextSkillTime = 1e15; c.shouldSplit = false; c.immuneTime = 0; c.tpPhase = 0; c.sprintTime = 0; c.magnetTime = 0; };
+        // Everyone not in the cast waits in a corner far from the route (same
+        // as the tour). The cast is never sent there: in that pile the game's
+        // own "bigger eats smaller" would take them before their cue.
+        const hold = () => {
+            Object.assign(hero, { x: HERO_AT.x, y: HERO_AT.y, vx: 0, vy: 0, boostX: 0, boostY: 0 });
+            for (const e of sim.enemies) {
+                if (castIds.has(e.id)) continue;
+                e.x = PARK.x; e.y = PARK.y; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; e.botSkills = []; e.botNextSkillTime = 1e15;
+            }
+            sim.botExpira.clear(); sim.botStreak.clear();
+            if (sim._botRetirar) sim._botRetirar.clear();
+            if (sim.ejectedMasses) sim.ejectedMasses.length = 0;
+            if (sim.botRespawnQueue) sim.botRespawnQueue.length = 0;
+            vPop.vx = vPop.vy = vHide.vx = vHide.vy = 0;
+        };
+        const put = (c, p) => { c.x = p.x; c.y = p.y; c.vx = c.vy = 0; c.boostX = c.boostY = 0; c.targetX = p.x; c.targetY = p.y; };
+        const alive = c => sim.enemies.includes(c);
+        const lerp = (p, q, t) => ({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
+        // Waiting actors roam a little loop around their spot instead of sitting.
+        const sway = (p, f, s, amp) => ({ x: p.x + Math.sin(f / 13 + s) * amp, y: p.y + Math.sin(f / 17 + s * 2) * amp * 0.8 });
+        const smooth = t => t * t * (3 - 2 * t);
+        // The game's distance for eating (getEllipticalDist, shared/sim.js):
+        // along a pill's long axis it counts half.
+        const ell = (x, y) => { const k = 0.7071, rx = x * k - y * k, ry = (x * k + y * k) / 2; return Math.hypot(rx, ry); };
+        // Where a hunter is at frame f, closing in on its prey from a fixed
+        // bearing so the game takes the prey exactly on frame F: on F-1 it is
+        // just outside the bite (0.6 r, the game's distance), on F just inside.
+        const hunt = (f, f0, F, from, preyAt, r, ease = u => u) => {
+            const p0 = preyAt(f0), ox = from.x - p0.x, oy = from.y - p0.y, d0 = Math.hypot(ox, oy) || 1;
+            const ux = ox / d0, uy = oy / d0, bite = 0.6 * r / ell(ux, uy);
+            const u = Math.min(1, Math.max(0, (f - f0) / (F - 1 - f0)));
+            const d = f >= F ? bite * 0.8 : bite * 1.08 + (d0 - bite * 1.08) * (1 - ease(u));
+            const p = preyAt(f);
+            return { x: p.x + ux * d, y: p.y + uy * d };
+        };
+        // After a scene an actor eases from the speed it had into walking off
+        // along `dir` (route units), out the edge of the frame.
+        const leave = st => (c, f, dirA, dirB, speed) => {
+            if (!st.v) { st.v = { x: st.last.x - st.prev.x, y: st.last.y - st.prev.y }; st.t = 0; }
+            const t = Math.min(1, ++st.t / 20), to = W(0, 0), tip = W(dirA, dirB);
+            const ex = (tip.x - to.x) * speed, ey = (tip.y - to.y) * speed;
+            put(c, { x: c.x + st.v.x * (1 - t) + ex * t, y: c.y + st.v.y * (1 - t) + ey * t });
+        };
+        // An actor's last two positions, for the speed it leaves a scene with.
+        const track = c => ({ prev: { x: c.x, y: c.y }, last: { x: c.x, y: c.y }, mark(e) { this.prev = this.last; this.last = { x: e.x, y: e.y }; } });
+
+        const log = {};                                  // what happened, and on which frame
+        const scenes = [];                               // placing the cast, before the frame's ticks
+        const watch = [];                                // noting what happened, after them
+
+        // ---- Bar 1: the sprint chase. Caught on beat 4 (bar 2's first).
+        {
+            const prey = cast(16, 'sprint prey'), hunter = cast(46, 'sprinter');
+            const preyAt = f => W(150 + 3.5 * f, -110 + 35 * Math.sin(f / 12));
+            const from = W(-720, -190), F = beat(4), stH = track(hunter), off = leave(stH);
+            scenes.push(f => {
+                if (alive(prey)) { prey.r = 16; put(prey, preyAt(f)); }
+                if (f <= F) { hunter.r = 46; put(hunter, hunt(f, 0, F, from, preyAt, 46)); }
+                else { hunter.r = Math.min(hunter.r, 48); off(hunter, f, 0.35, -0.94, 6); }   // under r 49: past it, it would burst the next virus
+                stH.mark(hunter);
+                if (f === beat(1)) { window.__botSkill(hunter, 3); log.sprint = f; }
+            });
+            watch.push(f => { if (log.catch1 == null && !alive(prey)) log.catch1 = f; });
+        }
+
+        // ---- Bar 2: the split. Splits on beat 6, the half eats on beat 7.
+        {
+            const parent = cast(58, 'splitter'), prey = cast(16, 'split prey');
+            const preyAt = f => W(1000 - 2 * f, 210 + 25 * Math.sin(f / 10));
+            const rest = W(520, 170), S = beat(6), F = beat(7);
+            let half = null, from = null;
+            const stP = track(parent), stH = track(parent), offP = leave(stP), offH = leave(stH);
+            scenes.push(f => {
+                if (alive(prey)) { prey.r = 16; put(prey, preyAt(f)); }
+                if (f < S) { parent.r = 58; put(parent, sway(rest, f, 1, 22)); }
+                if (f === S) {
+                    const p = preyAt(S), before = new Set(sim.enemies);
+                    sim.performSplit(parent, Math.atan2(p.y - parent.y, p.x - parent.x));
+                    half = sim.enemies.find(e => !before.has(e));
+                    adopt(half); who.push(['split half', half]);
+                    from = { x: half.x, y: half.y };
+                    log.split = f;
+                }
+                if (f >= S && half) {
+                    if (f <= F) put(half, hunt(f, S, F, from, preyAt, half.r, u => 1 - (1 - u) * (1 - u)));
+                    else offH(half, f, 0.3, 0.95, 4);
+                    stH.mark(half);
+                    if (f > S) offP(parent, f, -0.2, 0.98, 3);
+                }
+                stP.mark(parent);
+            });
+            watch.push(f => { if (log.catch2 == null && log.split != null && !alive(prey)) log.catch2 = f; });
+        }
+
+        // ---- Bar 3: into the virus. Bursts on beat 8 (bar 3's first).
+        {
+            const big = cast(62, 'burster');
+            const rest = W(1000, -290), P = beat(8), vAt = () => ({ x: vPop.x, y: vPop.y });
+            // The game bursts a pill this heavy when its centre comes within
+            // 0.9 r of the virus's: hunt() with 1.5 r bites at 0.9 r.
+            const center = W(730, -40);
+            // Which way each piece flies (route units): fanned out ahead of the
+            // camera, clear of the other scenes' actors.
+            // (Downward, one crossed the split pair walking off that way; almost
+            // straight ahead, one kept pace with the camera and hung beside the
+            // shield scene until the end.)
+            const dirs = [[-0.35, -0.94], [0.2, -0.98], [0.7, -0.71]];
+            let pieces = null;
+            scenes.push(f => {
+                if (log.pop == null) {
+                    big.r = 62;
+                    put(big, f < 60 ? sway(rest, f, 2, 22) : hunt(f, 60, P, sway(rest, 60, 2, 22), vAt, 1.5 * 62));
+                }
+            });
+            // Right after each tick: the burst happens inside a tick and throws
+            // the pieces at random angles — they're put on their scripted
+            // paths before anything is drawn.
+            scenes.fix = (f, sub) => {
+                if (log.pop == null) {
+                    // The burst splits it: more than one cell with its id. (Not
+                    // "the virus is gone": the game recycles that very object
+                    // for the virus it spawns in its place.)
+                    if (sim.enemies.filter(e => e.id === big.id).length < 2) return;
+                    log.pop = f;
+                    pieces = sim.enemies.filter(e => e.id === big.id);
+                    pieces.forEach((c, i) => { adopt(c); if (c !== big) who.push(['piece ' + i, c]); });
+                }
+                if (!pieces) return;
+                const t = f - log.pop + (sub + 1) / 2;
+                // A burst that settles into a drift: ~160 units in the first
+                // half second, then 4 a frame, out of shot within a bar or so
+                // (at 2 they hung about the top of the frame for 5 s).
+                const D = 160 * (1 - Math.exp(-t / 5)) + 4 * t;
+                pieces.forEach((p, i) => {
+                    if (!alive(p)) return;
+                    const [a, b] = dirs[i % dirs.length], tip = W(a, b), o = W(0, 0);
+                    put(p, { x: center.x + (tip.x - o.x) * D, y: center.y + (tip.y - o.y) * D });
+                });
+            };
+        }
+
+        // ---- Bar 4: the hideout. The pill dives into the virus on beat 12
+        // (bar 4's first), the hunter reaches it on 13, circles it until 14 and
+        // leaves; the pill peeks out on 15. isHiddenInVirus (shared/sim.js):
+        // inside a virus you're smaller than, you can't be eaten. The hunter is
+        // kept under the size that would burst the virus (mass 15000).
+        {
+            const prey = cast(18, 'hider'), hunter = cast(44, 'seeker');
+            const pRest = W(1420, 330), hRest = W(1560, 360), vC = () => ({ x: vHide.x, y: vHide.y });
+            const G = 140, IN = beat(12), AT = beat(13), GO = beat(14), OUT = beat(15);
+            const pStart = sway(pRest, G, 3, 22);   // where its roam has it when it bolts
+            const path = f => lerp(pStart, vC(), smooth(Math.min(1, Math.max(0, (f - G) / (IN - G)))));
+            // The hunter stops on the virus's rim (on top of it the virus would
+            // cover it) and goes round a quarter of it.
+            const rim = ang => { const c = vC(); return { x: c.x + Math.cos(ang) * 80, y: c.y + Math.sin(ang) * 80 }; };
+            const a0 = Math.atan2(hRest.y - vHide.y, hRest.x - vHide.x);
+            const stH = track(hunter), stP = track(prey), offH = leave(stH), offP = leave(stP);
+            scenes.push(f => {
+                hunter.r = 44; prey.r = 18;
+                if (f < OUT) put(prey, f < G ? sway(pRest, f, 3, 22) : path(f));
+                else offP(prey, f, -0.5, 0.87, 5);
+                if (f < G) put(hunter, sway(hRest, f, 4, 22));
+                else if (f < G + 14) put(hunter, lerp(sway(hRest, G, 4, 22), pStart, smooth((f - G) / 14)));
+                else if (f < AT) put(hunter, lerp(path(f - 14), rim(a0), smooth(Math.max(0, (f - (AT - 12)) / 12))));
+                else if (f < GO) put(hunter, rim(a0 + (Math.PI / 2) * smooth((f - AT) / (GO - AT))));
+                else offH(hunter, f, 0.6, 0.8, 6);
+                stH.mark(hunter); stP.mark(prey);
+                if (f === IN) log.hide = f;
+                if (f === OUT) log.peek = f;
+            });
+        }
+
+        // ---- Bar 5: the shield. Up on beat 16 (bar 5's first), then three
+        // gulps on 17, 18 and 19 — the last strong kick before the cut.
+        {
+            const big = cast(50, 'shield');
+            const snacks = [[1450, -20], [1560, -100], [1675, -30]].map(([a, b]) => ({ c: cast(13, 'snack'), at: W(a, b) }));
+            const rest = W(1330, -60), UP = beat(16), EATS = [beat(17), beat(18), beat(19)];
+            const snackAt = (i, f) => sway(snacks[i].at, f, 5 + i, 16);
+            const stB = track(big), off = leave(stB);
+            let from = null;
+            scenes.push(f => {
+                snacks.forEach((s, i) => { if (alive(s.c)) { s.c.r = 13; put(s.c, snackAt(i, f)); } });
+                if (f < UP) { big.r = 50; put(big, sway(rest, f, 6, 20)); }
+                else {
+                    const i = EATS.findIndex(F => f <= F);
+                    if (i >= 0) {
+                        const f0 = i ? EATS[i - 1] : UP;
+                        if (f === f0 || !from) from = { x: big.x, y: big.y };
+                        put(big, hunt(f, f0, EATS[i], from, g => snackAt(i, g), big.r));
+                        if (f === EATS[i]) from = null;
+                    } else off(big, f, 1, 0.2, 4);
+                }
+                stB.mark(big);
+                if (f === UP) { window.__botSkill(big, 6); log.shield = f; }
+            });
+            watch.push(f => { log.snacks = snacks.map(s => (alive(s.c) ? null : (s.done = s.done ?? f))); });
+        }
+
+        // A pellet the cast eats respawns at a random spot, and a virus the
+        // burst takes too — in shot, that would be something out of nowhere.
+        let view = null;
+        const offView = (o, grid) => {
+            for (let k = 0; view && k < 50 && Math.abs(o.x - view.x) < view.hw && Math.abs(o.y - view.y) < view.hh; k++) {
+                if (grid) grid.remove(o);
+                Object.assign(o, far());
+                if (grid) grid.insert(o);
+            }
+        };
+        sim.spawnFood = function () { Object.getPrototypeOf(this).spawnFood.call(this); offView(this.foods[this.foods.length - 1], this.foodGrid); };
+        sim.spawnVirus = function () { Object.getPrototypeOf(this).spawnVirus.call(this); offView(this.viruses[this.viruses.length - 1]); };
+
+        const p = window.me();
+        p.cells.length = 0; p.cells.push(hero);
+        hero.r = 10;
+        window.__abs = zoomAt(0);
+        window.getViewScale = () => window.__abs;
+        floatingTexts.length = 0;
+
+        const virusesBefore = sim.viruses.length;
+        for (let i = 0; i < 10; i++) { scenes.forEach(s => s(0)); hold(); window.__tick(TICK); }
+        // Largest jump of any cast pill between two frames (the split lunge
+        // and the burst are the fast ones; a teleport would be hundreds).
+        const lastAt = new Map();
+        let maxStep = 0;
+        const framing = {};
+        window.__frame = 0;
+        window.__status = { phase: 'recording', frame: 0 };
+        for (let f = 0; f < FRAMES; f++) {
+            const c = cam(f), z = zoomAt(f);
+            view = { x: c.x, y: c.y, hw: 960 / z + 300, hh: 540 / z + 300 };
+            scenes.forEach(s => s(f));
+            for (let k = 0; k < 2; k++) { hold(); window.__tick(TICK); scenes.fix(f, k); }
+            hold();
+            watch.forEach(w => w(f));
+            for (const e of sim.enemies) {
+                if (!castIds.has(e.id)) continue;
+                const l = lastAt.get(e);
+                if (l) maxStep = Math.max(maxStep, Math.hypot(e.x - l.x, e.y - l.y));
+                lastAt.set(e, { x: e.x, y: e.y });
+            }
+            window.__abs = z;
+            window.__snapCam(c.x, c.y);
+            window.__draw();
+            // Where each actor is on screen (px, 1920x1080; null = eaten), every
+            // 15 frames: the framing is checked from this, not by eye.
+            if (f % 15 === 0) framing[f] = Object.fromEntries(who.map(([l, e]) => [l, alive(e)
+                ? [Math.round((e.x - c.x) * z + 960), Math.round((e.y - c.y) * z + 540), Math.round(e.r)] : null]));
+            await sendFrame('action/', f);
+            window.__frame = f + 1;
+            window.__status = { phase: 'recording', frame: f + 1, log };
+        }
+        view = null;
+        delete sim.spawnFood; delete sim.spawnVirus;
+        const meta = {
+            // public/snd/action-music.wav is snd/music.mp3 from 37.175 s: the
+            // render adds ~35 ms to the audio, and from there the kicks land
+            // ~17 ms after their frames (measured on the rendered mp4).
+            fps: 30, frames: FRAMES, music: { file: 'snd/action-music.wav', from: 37.175, bpm: 123.01 },
+            beats: Array.from({ length: 21 }, (_, k) => beat(k)),
+            // When each thing actually happened in the game (the video's
+            // sounds go on these frames).
+            events: log,
+            maxStep: Math.round(maxStep * 10) / 10,
+            virusesBefore, virusesAfter: sim.viruses.length,
+            framing,
+        };
+        ws.send('action/events.json'); ws.send(JSON.stringify(meta, null, 2));
         await new Promise(r => setTimeout(r, 800));
         window.__status = { phase: 'done', ...meta };
     }
