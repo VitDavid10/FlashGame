@@ -59,14 +59,14 @@ a{color:var(--green)}
 .box{background:var(--inset);box-shadow:inset 0 0 0 2px var(--line)}
 
 /* ---------- hero ---------- */
-.hero{text-align:center;padding:40px 0 26px}
+.hero{text-align:center;padding:24px 0 6px}
 .hero p{max-width:640px;margin:10px auto 0;color:var(--dim);font-size:24px}
 .stats{display:flex;justify-content:center;flex-wrap:wrap;gap:28px;margin:26px 0 6px}
 .stat b{display:block;font-family:var(--px);font-size:18px;color:#fff}
 .stat span{font-size:18px;color:var(--dim);text-transform:uppercase}
 
 /* ---------- tabs ---------- */
-.tabs{display:flex;justify-content:center;gap:14px;margin:26px 0 18px;flex-wrap:wrap}
+.tabs{display:flex;justify-content:center;gap:14px;margin:20px 0 16px;flex-wrap:wrap}
 .tab{--plate:var(--placa-grey)}
 .tab.on{--plate:var(--placa-green)}
 
@@ -124,7 +124,7 @@ a{color:var(--green)}
 
 /* ---------- quests (scrollable) ---------- */
 .qpanel{display:flex;flex-direction:column}
-.qscroll{flex:1;overflow-y:auto;max-height:560px;padding-right:8px;margin-right:-8px;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
+.qscroll{flex:1;overflow-y:auto;max-height:var(--qmax,560px);padding-right:8px;margin-right:-8px;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
 .qscroll::-webkit-scrollbar{width:8px} .qscroll::-webkit-scrollbar-thumb{background:var(--edge)}
 .qtabs{display:flex;gap:22px;margin:24px 0 18px;border-bottom:3px solid var(--line)}
 .qtabs .qtab{background:none;border:0;padding:0 0 10px;margin-bottom:-3px;border-bottom:3px solid transparent;cursor:pointer;font-family:var(--px);font-size:10px;color:var(--dim)}
@@ -211,7 +211,7 @@ html.intro-on,html.intro-on body{overflow:hidden}
 .intro-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(0,0,0,.35) 0%,rgba(0,0,0,.8) 100%)}
 .intro-top{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:22px 28px}
 .intro-brand{display:flex;align-items:center;gap:12px}
-.intro-brand svg{width:22px;height:33px;transform:rotate(-30deg);filter:drop-shadow(0 0 12px rgba(0,255,136,.6))}
+.intro-brand svg{width:30px;height:45px;margin-right:4px;transform:rotate(-30deg);filter:drop-shadow(0 0 12px rgba(0,255,136,.6))}
 .intro-brand img{height:28px;width:auto}
 .intro-enter{display:inline-flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(0,0,0,.35);border:2px solid #fff;
   font-family:var(--px);font-size:10px;letter-spacing:1px;color:#fff;cursor:pointer}
@@ -230,6 +230,7 @@ html.intro-on,html.intro-on body{overflow:hidden}
 @media (max-width:640px){
   .intro-top{padding:16px}
   .intro-brand img{height:20px}
+  .intro-brand svg{width:22px;height:33px}
 }
 /* Right under the game's music/sound buttons (top 20px + 40px tall, 20px from the edge). */
 .hudq{position:absolute;right:20px;top:72px;z-index:3;pointer-events:none;background:rgba(3,10,6,.86);padding:10px 12px;box-shadow:0 0 0 2px var(--line),0 0 0 4px var(--edge);min-width:210px}
@@ -582,7 +583,7 @@ else {
   </div>
   <div style="padding:9px">
     <div class="trailer" id="trailerBox">
-      <video id="trailer" src="video/Trailer.mp4" muted loop playsinline preload="none"></video>
+      <video id="trailer" src="video/pillwars-origin.mp4" muted loop playsinline preload="none"></video>
       <div class="trailer-hint" id="trailerHint">CLICK TO WATCH WITH SOUND</div>
     </div>
   </div>
@@ -785,6 +786,21 @@ const PILL_SVG = (() => {
   rows.forEach((row, y) => [...row].forEach((ch, x) => { if (col[ch]) r += '<rect x="' + x + '" y="' + y + '" width="1.02" height="1.02" fill="' + col[ch] + '"/>'; }));
   return '<svg viewBox="0 0 10 15" shape-rendering="crispEdges">' + r + '</svg>';
 })();
+
+/* On desktop the connect boxes, the card and the quests fit the first screen:
+   the quest list (it already scrolls) gives up height, down to 200px. */
+function fitQuests() {
+  const panel = document.querySelector('.qpanel'), row = document.querySelector('.card-row');
+  if (!panel || !row) return;
+  const q = [...panel.querySelectorAll('.qscroll')].find(e => e.offsetParent);
+  if (innerWidth <= 820 || !q) return panel.style.removeProperty('--qmax');
+  const rb = row.getBoundingClientRect().bottom, qr = q.getBoundingClientRect();
+  const room = innerHeight - 12 - (rb - qr.bottom) - (qr.top + scrollY);
+  panel.style.setProperty('--qmax', Math.round(Math.max(200, Math.min(560, room))) + 'px');
+}
+// Nothing measured depends on the list's own height, so this settles at once.
+addEventListener('resize', fitQuests);
+new ResizeObserver(fitQuests).observe(document.querySelector('.card-row'));
 
 /* ---------------- intro ---------------- */
 (function intro() {
