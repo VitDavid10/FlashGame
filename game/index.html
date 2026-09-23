@@ -8626,7 +8626,8 @@
             document.getElementById('panelArcade').classList.add('hidden');
             setSelectedModeTitleArt('classic', 'PILLWARS CLASSIC');
             els.selectedModeTitle.style.color = "#00ffaa";
-            if (blurb) blurb.innerHTML = 'PURE CELL-EATING — 15 MIN MATCHES, 5 KILLS = MAX PROFIT.';
+            // App: sin salas de pago no hay premio que prometer (dApp Store).
+            if (blurb) blurb.innerHTML = EN_APP ? 'PURE CELL-EATING — 15 MIN MATCHES, EAT OR BE EATEN.' : 'PURE CELL-EATING — 15 MIN MATCHES, 5 KILLS = MAX PROFIT.';
             els.loginOverlay.classList.remove('bg-arcade');
             els.loginOverlay.classList.add('bg-classic');
             document.getElementById('arcadeGuidePanel').style.display = 'none';
@@ -8637,7 +8638,7 @@
             document.getElementById('panelClassic').classList.add('hidden');
             setSelectedModeTitleArt('arcade', 'PILLWARS ARCADE');
             els.selectedModeTitle.style.color = "#ccff00";
-            if (blurb) blurb.innerHTML = 'ROGUELIKE ARENA — DRAFT SKILLS EVERY 30S, TOP 10 SPLIT THE POT.';
+            if (blurb) blurb.innerHTML = EN_APP ? 'ROGUELIKE ARENA — DRAFT SKILLS EVERY 30S, CLIMB TO THE TOP 10.' : 'ROGUELIKE ARENA — DRAFT SKILLS EVERY 30S, TOP 10 SPLIT THE POT.';
             els.loginOverlay.classList.remove('bg-classic');
             els.loginOverlay.classList.add('bg-arcade');
             document.getElementById('arcadeGuidePanel').style.display = 'flex';
@@ -8798,6 +8799,9 @@
         continueChoosePlay(kind);
     }
     function continueChoosePlay(kind) {
+        // La app de la dApp Store no tiene salas de pago (pedido por David):
+        // siempre FREE, online u offline, sin enseñar el selector de salas.
+        if (EN_APP) { selectRoom('Free'); runPlay(kind); return; }
         // En movil se pregunta la sala SIEMPRE, aunque ya hubiera uma elegida:
         // en el telefono no se ve el panel de precios, asi que sin esto te
         // metia en la ultima sala usada (normalmente Free) sin decir nada y no
@@ -15465,7 +15469,8 @@
         const tipsEl = document.querySelector('#skillChoiceOverlay .skill-tips');
         if (tipsEl) {
             tipsEl.innerHTML = ''; tipsEl.style.removeProperty('font-size');
-            tipsEl.textContent = 'PRESS [TAB] TO SWITCH - [Q] TO SELECT';
+            // En la app no hay teclado: TAB y Q no significan nada ahi.
+            tipsEl.textContent = EN_APP ? 'TAP A SKILL TO PICK IT' : 'PRESS [TAB] TO SWITCH - [Q] TO SELECT';
         }
         els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }

@@ -34,6 +34,9 @@ const X_LOGIN_PER_MIN = 10, X_PENDING_MAX = 20000;
 const X_SCOPES = 'tweet.read users.read';
 // With AIRDROP_ONLY=1, the only static paths served (prefixes end in '/').
 const LOCKDOWN_ALLOW = ['/game/', '/shared/', '/vendor/', '/fonts/', '/img/', '/snd/', '/video/', '/api/', '/info.css', '/info.js', '/cookies.js'];
+// The legal pages the dApp Store listing links to: public even through the
+// lockdown and the blackout (the store's reviewers open them).
+const LEGAL_PAGES = ['/privacy.html', '/terms.html', '/contact.html'];
 const SESSION_COOKIE = 'pwad';
 // Private "let me in" pass for the owner while AIRDROP_ONLY hides the real site.
 // Minted from a shell on the server itself, same as the admin dashboard link.
@@ -175,6 +178,14 @@ function createAirdrop(opts) {
         if (urlPath === appPath || urlPath.startsWith(appPath + '/')) return true;
         const from = sameOriginReferer(req);
         return !!from && from.startsWith(appPath + '/') &&
+            LOCKDOWN_ALLOW.some(p => p.endsWith('/') ? urlPath.startsWith(p) : urlPath === p);
+    }
+    // Same idea for the legal pages: the page itself, and what it (or its
+    // info.css, which pulls the fonts) loads from the allow-list.
+    function legal(req, urlPath) {
+        if (LEGAL_PAGES.includes(urlPath)) return true;
+        const from = sameOriginReferer(req);
+        return !!from && (LEGAL_PAGES.includes(from) || from === '/info.css') &&
             LOCKDOWN_ALLOW.some(p => p.endsWith('/') ? urlPath.startsWith(p) : urlPath === p);
     }
     const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
@@ -415,6 +426,7 @@ function createAirdrop(opts) {
         if (unlocked(req)) return false;
         if (adminPath && (urlPath === adminPath || urlPath.startsWith(adminPath + '/'))) return false;
         if (appPath && (urlPath === appPath || urlPath.startsWith(appPath + '/'))) return false;
+        if (LEGAL_PAGES.includes(urlPath)) return false;
         if (urlPath === '/robots.txt') {
             res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
             // /c/ must stay allowed: X's card crawler obeys robots.txt.
@@ -441,7 +453,7 @@ function createAirdrop(opts) {
     /** true = the request was answered here. */
     async function handle(req, res, urlPath, query) {
         // Blackout: only the private pass answers, everything else is a 404.
-        if (CLOSED && !unlocked(req) && !isUnlockPath(req, urlPath) && !fromApp(req, urlPath)) { notFound(req, res); return true; }
+        if (CLOSED && !unlocked(req) && !isUnlockPath(req, urlPath) && !fromApp(req, urlPath) && !legal(req, urlPath)) { notFound(req, res); return true; }
         const isHome = ONLY ? urlPath === '/' : (urlPath === '/airdrop' || urlPath === '/airdrop/');
         if (isHome) { sendHome(req, res, query); return true; }
         if (ONLY && (urlPath === '/airdrop' || urlPath === '/airdrop/')) { redirect(res, '/', 301); return true; }
