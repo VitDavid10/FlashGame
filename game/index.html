@@ -822,6 +822,15 @@
             html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-btn,
             html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-btn:hover,
             html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-btn.selected-choice { transform: none !important; }
+            /* App: casillas e iconos del selector algo mas grandes (104/65 en
+               vez de 90/56; en pantalla la casilla queda como los circulos de
+               skills), con el cartel exactamente igual. Misma proporcion
+               icono/casilla, que si no el fondo negro del icono pisa el marco;
+               y lo que crece la fila se quita de su margen de arriba, para que
+               el cartel no cambie de alto. */
+            html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-btn { width: 104px !important; height: 104px !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-icon { width: 65px !important; height: 65px !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed .skill-options { margin-top: 6px !important; }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
                escritorio (190px de ancho) tapaba media pantalla. */
             html:not([data-hero]) body.mobile-allowed #gameWalletArea #gwConnect,
