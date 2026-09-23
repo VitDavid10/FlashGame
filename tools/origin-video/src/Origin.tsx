@@ -235,11 +235,13 @@ const Footage: React.FC = () => {
       {SPLIT !== null && <Sequence from={SPLIT} layout="none"><Audio src={staticFile("snd/split.mp3")} volume={0.2} /></Sequence>}
       <Sequence from={DEATH} layout="none"><Audio src={staticFile("snd/death.mp3")} volume={0.3} /></Sequence>
       {/* "Eat pills" · kill 1 */}
-      <Until until={49}><Caption text={P1} y={H * 0.84} size={52} keys={[[0, 1], [P1.length, 1]]} instant /></Until>
+      <Until until={vK1 + 2}><Caption text={P1} y={H * 0.84} size={52} keys={[[0, 1], [P1.length, 1]]} instant /></Until>
       {/* "to get their money!" · kill 2 */}
-      <Until until={165}><Caption text={P2} y={H * 0.84} size={52} keys={[[0, 49], [P2.length, 49]]} instant /></Until>   {/* 19.55 s */}
+      {/* On the till of the first kill (its money sound, 2 frames after the kill). */}
+      <Until until={vK2}><Caption text={P2} y={H * 0.84} size={52} keys={[[0, vK1 + 2], [P2.length, vK1 + 2]]} instant /></Until>
       {/* "Eat or be eaten" · kill 3, and then the death with the screen clear */}
-      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" keys={[[0, 165], [P3.length, 165]]} instant />   {/* 23.43 s */}
+      {/* On the kill sound of the double kill. */}
+      <Caption text={P3} y={H * 0.84} size={56} color="#00ff88" keys={[[0, vK2], [P3.length, vK2]]} instant />
     </AbsoluteFill>
   );
 };
