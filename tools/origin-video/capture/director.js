@@ -1004,15 +1004,9 @@
         const beat = k => Math.round(k * BEAT);          // 0, 15, 29, 44, 59, 73, 88 ...
         const V = 6;                                      // camera speed, units per frame
         const M = sim.mapSize;
-        const zBase = f => 1.7 - 0.35 * (1 - Math.pow(1 - f / (FRAMES - 1), 2));
-        // A kick in the camera on every beat, twice as hard on a bar's first.
-        const zoomAt = f => {
-            let k = Math.floor(f / BEAT);
-            while (beat(k + 1) <= f) k++;
-            while (k > 0 && beat(k) > f) k--;
-            const pulse = (k % 4 === 0 ? 0.05 : 0.025) * Math.exp(-(f - beat(k)) / 3.5);
-            return zBase(f) * (1 + pulse);
-        };
+        // The shot opens up smoothly over the 10 s. (It used to kick in and out
+        // on every beat; David: it made the gameplay look like it was shaking.)
+        const zoomAt = f => 1.7 - 0.35 * (1 - Math.pow(1 - f / (FRAMES - 1), 2));
 
         // The route: mostly left to right on screen, anywhere on the map the
         // stretch it needs (and its margins) fits.
@@ -1048,7 +1042,14 @@
         if (pool.length < 11) throw new Error('not enough bots for the cast');
         const castIds = new Set();
         const who = [];                                  // [label, cell], for the framing log
-        const cast = (r, label) => { const c = pool.pop(); castIds.add(c.id); adopt(c); c.r = r; who.push([label, c]); return c; };
+        // Each actor wears its own colours (from the player palette, and none
+        // of the viruses' green): left to the bots' random ones, a take came
+        // out with half the cast the same teal, and they read as one pill.
+        const cast = (r, label, [top, bot]) => {
+            const c = pool.pop(); castIds.add(c.id); adopt(c); c.r = r; who.push([label, c]);
+            Object.assign(c, { colorTop: top, colorBot: bot, skinUrl: null });
+            return c;
+        };
         // A cast pill moves only as the scene says: its own AI (botAI in
         // shared/sim.js) would steer it at any prey within 750 units — or
         // away from any hunter — every tick, eat a frame or two ahead of the
@@ -1109,7 +1110,7 @@
 
         // ---- Bar 1: the sprint chase. Caught on beat 4 (bar 2's first).
         {
-            const prey = cast(16, 'sprint prey'), hunter = cast(46, 'sprinter');
+            const prey = cast(16, 'sprint prey', ['#66ccff', '#1a73e8']), hunter = cast(46, 'sprinter', ['#ffce3d', '#ff2a2a']);
             const preyAt = f => W(150 + 3.5 * f, -110 + 35 * Math.sin(f / 12));
             const from = W(-720, -190), F = beat(4), stH = track(hunter), off = leave(stH);
             scenes.push(f => {
@@ -1124,7 +1125,7 @@
 
         // ---- Bar 2: the split. Splits on beat 6, the half eats on beat 7.
         {
-            const parent = cast(58, 'splitter'), prey = cast(16, 'split prey');
+            const parent = cast(58, 'splitter', ['#ffffff', '#cc00ff']), prey = cast(16, 'split prey', ['#ff8c00', '#ffffff']);
             const preyAt = f => W(1000 - 2 * f, 210 + 25 * Math.sin(f / 10));
             const rest = W(520, 170), S = beat(6), F = beat(7);
             let half = null, from = null;
@@ -1153,7 +1154,7 @@
 
         // ---- Bar 3: into the virus. Bursts on beat 8 (bar 3's first).
         {
-            const big = cast(62, 'burster');
+            const big = cast(62, 'burster', ['#ff8c00', '#1a73e8']);
             const rest = W(1000, -290), P = beat(8), vAt = () => ({ x: vPop.x, y: vPop.y });
             // The game bursts a pill this heavy when its centre comes within
             // 0.9 r of the virus's: hunt() with 1.5 r bites at 0.9 r.
@@ -1204,7 +1205,7 @@
         // inside a virus you're smaller than, you can't be eaten. The hunter is
         // kept under the size that would burst the virus (mass 15000).
         {
-            const prey = cast(18, 'hider'), hunter = cast(44, 'seeker');
+            const prey = cast(18, 'hider', ['#ffffff', '#ff2a2a']), hunter = cast(44, 'seeker', ['#cc00ff', '#ffce3d']);
             const pRest = W(1420, 330), hRest = W(1560, 360), vC = () => ({ x: vHide.x, y: vHide.y });
             const G = 140, IN = beat(12), AT = beat(13), GO = beat(14), OUT = beat(15);
             const pStart = sway(pRest, G, 3, 22);   // where its roam has it when it bolts
@@ -1232,8 +1233,9 @@
         // ---- Bar 5: the shield. Up on beat 16 (bar 5's first), then three
         // gulps on 17, 18 and 19 — the last strong kick before the cut.
         {
-            const big = cast(50, 'shield');
-            const snacks = [[1450, -20], [1560, -100], [1675, -30]].map(([a, b]) => ({ c: cast(13, 'snack'), at: W(a, b) }));
+            const big = cast(50, 'shield', ['#66ccff', '#ff2a2a']);
+            const SNACK = [['#ffce3d', '#cc00ff'], ['#ffffff', '#ff8c00'], ['#ff2a2a', '#66ccff']];
+            const snacks = [[1450, -20], [1560, -100], [1675, -30]].map(([a, b], i) => ({ c: cast(13, 'snack', SNACK[i]), at: W(a, b) }));
             const rest = W(1330, -60), UP = beat(16), EATS = [beat(17), beat(18), beat(19)];
             const snackAt = (i, f) => sway(snacks[i].at, f, 5 + i, 16);
             const stB = track(big), off = leave(stB);
