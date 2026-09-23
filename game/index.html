@@ -13403,6 +13403,8 @@
     // Precio SIN abreviar: aqui hay sitio de sobra, y "25,000 $PILL" se lee
     // mucho mejor que el "25K $PILL" que hace falta en el cartel pequeno.
     function skinPrecioLargo() {
+        // En la app no hay wallet: alli las skins solo se compran con SP.
+        if (EN_APP) return PAIS_PRECIO_SP + ' SP';
         return (PAIS_PRECIO_PILL | 0).toLocaleString('en-US') + ' $PILL';
     }
     // Ancho logico de la pildora y lado en px FISICOS de cada pixel suyo (con

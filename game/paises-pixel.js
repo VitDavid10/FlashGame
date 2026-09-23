@@ -1451,9 +1451,12 @@ function paisModalVariante(v) {
 function _paisPintaBotones(code) {
     const cont = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-btns'); if (!cont) return;
     cont.innerHTML = '';
+    // La app de la dApp Store (html.pw-app, ver el head de game/index.html) no
+    // tiene wallet: el boton de $PILL solo podria fallar, asi que alli no sale.
+    const enApp = document.documentElement.classList.contains('pw-app');
     const defs = !paisTengo(code)
-        ? [['BUY · ' + paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL', PM_ROJO, () => paisComprar(code, 'pill')],
-           ['BUY · ' + PAIS_PRECIO_SP + ' SP', PM_VERDE, () => paisComprar(code, 'sp')]]
+        ? (enApp ? [] : [['BUY · ' + paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL', PM_ROJO, () => paisComprar(code, 'pill')]])
+            .concat([['BUY · ' + PAIS_PRECIO_SP + ' SP', PM_VERDE, () => paisComprar(code, 'sp')]])
         : paisPuesta() === code ? [['EQUIPPED', PM_VERDE, null]]
         : [['ASSIGN', PM_ROJO, () => paisPoner(code)]];
     // Los botones llaman al SERVIDOR, asi que son asincronos: mientras la
