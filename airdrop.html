@@ -85,6 +85,12 @@ a{color:var(--green)}
 /* ---------- personal card ---------- */
 .card-row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:6px;align-items:stretch}
 .pcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+/* .fit (desktop, set by fitFirstScreen): the row is exactly as tall as what is
+   left of the first screen. The quest list fills its panel; the card shrinks. */
+.card-row.fit{grid-template-rows:minmax(0,1fr)}
+.card-row.fit>.panel{min-height:0}
+.card-row.fit .qpanel{overflow:hidden}
+.card-row.fit .qscroll{max-height:none;flex:1 1 0;min-height:0}
 .acard{position:relative;width:100%;max-width:440px;padding:20px;overflow:visible;
   background:linear-gradient(160deg,#12402a 0%,#0b2618 55%,#08190f 100%);
   box-shadow:0 0 0 3px #000,0 0 0 6px var(--green),0 0 0 9px #000,0 0 40px rgba(0,255,136,.2)}
@@ -124,7 +130,7 @@ a{color:var(--green)}
 
 /* ---------- quests (scrollable) ---------- */
 .qpanel{display:flex;flex-direction:column}
-.qscroll{flex:1;overflow-y:auto;max-height:var(--qmax,560px);padding-right:8px;margin-right:-8px;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
+.qscroll{flex:1;overflow-y:auto;max-height:560px;padding-right:8px;margin-right:-8px;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
 .qscroll::-webkit-scrollbar{width:8px} .qscroll::-webkit-scrollbar-thumb{background:var(--edge)}
 .qtabs{display:flex;gap:22px;margin:24px 0 18px;border-bottom:3px solid var(--line)}
 .qtabs .qtab{background:none;border:0;padding:0 0 10px;margin-bottom:-3px;border-bottom:3px solid transparent;cursor:pointer;font-family:var(--px);font-size:10px;color:var(--dim)}
@@ -787,20 +793,32 @@ const PILL_SVG = (() => {
   return '<svg viewBox="0 0 10 15" shape-rendering="crispEdges">' + r + '</svg>';
 })();
 
-/* On desktop the connect boxes, the card and the quests fit the first screen:
-   the quest list (it already scrolls) gives up height, down to 200px. */
-function fitQuests() {
-  const panel = document.querySelector('.qpanel'), row = document.querySelector('.card-row');
-  if (!panel || !row) return;
-  const q = [...panel.querySelectorAll('.qscroll')].find(e => e.offsetParent);
-  if (innerWidth <= 820 || !q) return panel.style.removeProperty('--qmax');
-  const rb = row.getBoundingClientRect().bottom, qr = q.getBoundingClientRect();
-  const room = innerHeight - 12 - (rb - qr.bottom) - (qr.top + scrollY);
-  panel.style.setProperty('--qmax', Math.round(Math.max(200, Math.min(560, room))) + 'px');
+/* On desktop the connect boxes, the card and the quests fit the first screen,
+   connected or not (see .card-row.fit). Short windows just scroll. */
+function fitFirstScreen() {
+  const row = document.querySelector('.card-row'), card = document.getElementById('card');
+  if (!row || !card) return;
+  const kids = [...card.children];
+  kids.forEach(k => { k.style.zoom = ''; });
+  const avail = Math.floor(innerHeight - 6 - (row.getBoundingClientRect().top + scrollY));
+  if (innerWidth <= 820 || !row.offsetParent || avail < 420) { row.classList.remove('fit'); row.style.height = ''; return; }
+  row.classList.add('fit');
+  row.style.height = avail + 'px';
+  if (!kids.length) return;
+  // Card content at full size vs the room inside the panel; gaps don't scale.
+  const cs = getComputedStyle(card), gaps = (kids.length - 1) * (parseFloat(cs.rowGap) || 0);
+  const room = card.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - gaps;
+  const need = kids.reduce((t, k) => t + k.getBoundingClientRect().height + (parseFloat(getComputedStyle(k).marginTop) || 0), 0);
+  if (need > room) kids.forEach(k => { k.style.zoom = Math.max(0.6, room / need); });
 }
-// Nothing measured depends on the list's own height, so this settles at once.
-addEventListener('resize', fitQuests);
-new ResizeObserver(fitQuests).observe(document.querySelector('.card-row'));
+// Row height and zoom don't feed back into what is measured, so this settles at once.
+addEventListener('resize', fitFirstScreen);
+{
+  const ro = new ResizeObserver(fitFirstScreen);
+  ro.observe(document.querySelector('.card-row'));
+  ro.observe(document.querySelector('.connect-grid'));
+  new MutationObserver(fitFirstScreen).observe(document.getElementById('card'), { childList: true });
+}
 
 /* ---------------- intro ---------------- */
 (function intro() {
