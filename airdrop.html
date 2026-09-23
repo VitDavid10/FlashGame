@@ -8,6 +8,7 @@
 <!--OG-->
 <link rel="icon" href="img/web.png">
 <link rel="preload" href="/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="img/airdrop-intro.webp" as="image">
 <style>
 @font-face{font-family:'Press Start 2P';font-display:block;src:url(/fonts/press-start-2p-latin.woff2) format('woff2')}
 @font-face{font-family:'VT323';font-display:swap;src:url(/fonts/vt323-latin.woff2) format('woff2')}
@@ -58,10 +59,7 @@ a{color:var(--green)}
 .box{background:var(--inset);box-shadow:inset 0 0 0 2px var(--line)}
 
 /* ---------- hero ---------- */
-.hero{text-align:center;padding:70px 0 26px}
-.hero h1{font-family:var(--px);font-size:clamp(30px,7.4vw,80px);line-height:1.15;margin:0 0 12px;letter-spacing:2px;color:#fff;
-  text-shadow:0 5px 0 #9aa4ab,0 10px 0 #4a5156,0 0 40px rgba(255,255,255,.18)}
-.hero h1 span{display:block;color:var(--green);text-shadow:0 5px 0 #00a857,0 10px 0 #004d27,0 0 40px rgba(0,255,136,.35)}
+.hero{text-align:center;padding:40px 0 26px}
 .hero p{max-width:640px;margin:10px auto 0;color:var(--dim);font-size:24px}
 .stats{display:flex;justify-content:center;flex-wrap:wrap;gap:28px;margin:26px 0 6px}
 .stat b{display:block;font-family:var(--px);font-size:18px;color:#fff}
@@ -205,17 +203,25 @@ html.intro-on,html.intro-on body{overflow:hidden}
 .intro{position:fixed;inset:0;z-index:10000;background:#000;cursor:pointer;overflow:hidden;
   transition:opacity .5s ease,transform .5s ease;user-select:none;-webkit-user-select:none}
 .intro.out{opacity:0;transform:scale(1.04);pointer-events:none}
-.intro iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+/* Still frame first; the live game fades in only once it reports it runs smoothly. */
+.intro-still,.intro iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.intro-still{object-fit:cover}
+.intro iframe{opacity:0;transition:opacity .8s ease}
+.intro.live iframe{opacity:1}
 .intro-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(0,0,0,.35) 0%,rgba(0,0,0,.8) 100%)}
 .intro-top{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:22px 28px}
 .intro-brand{display:flex;align-items:center;gap:12px}
 .intro-brand svg{width:22px;height:33px;transform:rotate(-30deg);filter:drop-shadow(0 0 12px rgba(0,255,136,.6))}
 .intro-brand img{height:28px;width:auto}
+.intro-enter{display:inline-flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(0,0,0,.35);border:2px solid #fff;
+  font-family:var(--px);font-size:10px;letter-spacing:1px;color:#fff;cursor:pointer}
+.intro-enter svg{width:9px;height:9px;fill:currentColor}
+.intro-enter:hover{color:var(--green);border-color:var(--green)}
 .intro-low{position:absolute;left:0;right:0;bottom:96px;text-align:center;padding:0 16px}
 .intro-kicker{font-family:var(--px);font-size:clamp(10px,1.2vw,15px);letter-spacing:4px;color:var(--arcade);text-shadow:3px 3px 0 #000;margin:0 0 18px}
-.intro-title{font-family:var(--px);font-size:clamp(26px,6.4vw,96px);line-height:1.15;margin:0 0 10px;letter-spacing:2px;color:#fff;
+.intro-title{font-family:var(--px);font-size:clamp(30px,min(9vw,9vh),88px);line-height:1.15;margin:0 0 10px;letter-spacing:2px;color:#fff;
   text-shadow:0 5px 0 #9aa4ab,0 10px 0 #4a5156,0 0 40px rgba(255,255,255,.18)}
-.intro-title span{color:var(--green);text-shadow:0 5px 0 #00a857,0 10px 0 #004d27,0 0 40px rgba(0,255,136,.35)}
+.intro-title span{display:block;color:var(--green);text-shadow:0 5px 0 #00a857,0 10px 0 #004d27,0 0 40px rgba(0,255,136,.35)}
 .intro-press{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);margin:0;text-align:center;font-family:var(--px);font-size:clamp(14px,2vw,26px);color:#fff;text-shadow:4px 4px 0 #000;animation:blink 1.1s steps(1) infinite}
 .intro-scroll{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;
   font-family:var(--px);font-size:10px;letter-spacing:2px;color:var(--dim);text-shadow:2px 2px 0 #000}
@@ -224,8 +230,6 @@ html.intro-on,html.intro-on body{overflow:hidden}
 @media (max-width:640px){
   .intro-top{padding:16px}
   .intro-brand img{height:20px}
-  .intro-title{font-size:clamp(28px,9vw,60px)}
-  .intro-title span{display:block}
 }
 /* Right under the game's music/sound buttons (top 20px + 40px tall, 20px from the edge). */
 .hudq{position:absolute;right:20px;top:72px;z-index:3;pointer-events:none;background:rgba(3,10,6,.86);padding:10px 12px;box-shadow:0 0 0 2px var(--line),0 0 0 4px var(--edge);min-width:210px}
@@ -433,11 +437,12 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 
 <!-- ============ INTRO ============ -->
 <div class="intro" id="intro" role="button" tabindex="0" aria-label="Enter the Genesis Drop">
+  <img class="intro-still" src="img/airdrop-intro.webp" alt="">
   <iframe src="game/?hero=1" title="PillWars gameplay" tabindex="-1" aria-hidden="true"></iframe>
   <div class="intro-veil"></div>
   <div class="intro-top">
     <div class="intro-brand" id="introBrand"><picture><source srcset="img/pixel-hero/brand.webp" type="image/webp"><img src="img/pixel-hero/brand.png" alt="PillWars"></picture></div>
-    <button class="pbtn green sm" id="introEnter">ENTER &gt;</button>
+    <button class="intro-enter" id="introEnter">ENTER<svg viewBox="0 0 7 7" shape-rendering="crispEdges"><path d="M2 0h5v1h-5zM6 1h1v4h-1zM5 1h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1zM1 5h1v1h-1zM0 6h1v1h-1z"/></svg></button>
   </div>
   <p class="intro-press">PRESS TO APPLY</p>
   <div class="intro-low">
@@ -449,12 +454,24 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 <script>
 // Coming back from X (#x / #xerr) or straight to #game: no intro.
 if (/^#(game$|(.*&)?x(err)?=)/.test(location.hash)) document.getElementById('intro').remove();
-else document.documentElement.classList.add('intro-on');
+else {
+  document.documentElement.classList.add('intro-on');
+  // The game says when it runs smoothly (heroFluidez in game/index.html):
+  // 'ready' fades it in over the still frame, 'slow' drops it and the still stays.
+  addEventListener('message', function onHero(e) {
+    const intro = document.getElementById('intro'), fr = intro && intro.querySelector('iframe');
+    if (!fr) return removeEventListener('message', onHero);
+    if (e.origin !== location.origin || e.source !== fr.contentWindow) return;
+    const st = e.data && e.data.pwHero;
+    if (st === 'ready') intro.classList.add('live');
+    else if (st === 'slow') fr.remove();
+    if (st === 'ready' || st === 'slow') removeEventListener('message', onHero);
+  });
+}
 </script>
 
 <div class="wrap">
   <header class="hero">
-    <h1>PILLWARS <span>AIRDROP</span></h1>
     <div class="stats">
       <div class="stat"><b id="stPlayers">???</b><span>Participants</span></div>
       <div class="stat"><b>???</b><span>Points earned</span></div>
@@ -533,7 +550,7 @@ else document.documentElement.classList.add('intro-on');
   </div>
   <div style="padding:9px">
     <div class="screen" id="screen">
-      <iframe id="game" src="game/?hero=1" title="PillWars Daily Arena" allow="autoplay"></iframe>
+      <iframe id="game" data-src="game/?hero=1" title="PillWars Daily Arena" allow="autoplay"></iframe>
       <div class="hudq" id="hudq" hidden></div>
       <div class="veil" id="veil">
         <div class="press">PRESS TO START</div>
@@ -789,7 +806,7 @@ const PILL_SVG = (() => {
     el.classList.add('out');
     document.documentElement.classList.remove('intro-on');
     window.scrollTo(0, 0);
-    setTimeout(() => el.remove(), 550);
+    setTimeout(() => { el.remove(); startArena(); }, 550);
   }
   evs.forEach(t => window.addEventListener(t, open, { passive: true }));
   el.focus();
@@ -1782,6 +1799,9 @@ function renderHud() {
     MISSIONS.map(m => '<li class="' + (done[m.id] ? 'ok' : '') + '"><i></i>' + m.short + '<u>' + (done[m.id] ? '+' + m.pts : m.goal >= 1000 ? Math.floor(missionProgress(m) / m.goal * 100) + '%' : missionProgress(m) + '/' + m.goal) + '</u></li>').join('') + '</ul>';
 }
 
+// The arena's game only loads once the intro is gone: two games at once lagged.
+function startArena() { const f = document.getElementById('game'); if (!f.getAttribute('src')) f.src = f.dataset.src; }
+if (!document.getElementById('intro')) startArena();
 const frame = $('#game'), veil = $('#veil'), over = $('#over'), hudq = $('#hudq'), screenEl = $('#screen');
 let match = null, matchTimer = null, hooked = null;
 
