@@ -39,6 +39,11 @@
     <script>
     (function () {
         var el = document.documentElement;
+        // La app de la dApp Store (UA del Web Shell, o ?app para probar): sus
+        // mejoras de movil (stick, circulos de skills, margenes...) cuelgan de
+        // html.pw-app y de EN_APP. En el navegador el juego sigue como antes
+        // (pedido por David). Aqui, antes de pintar nada, para que no salte.
+        if (/Solana Mobile Web Shell/.test(navigator.userAgent) || new URLSearchParams(location.search).has('app')) el.classList.add('pw-app');
         // El MAYOR de las tres medidas, no visualViewport a secas. Las tres
         // dicen cosas distintas mientras la barra del navegador se esta
         // encogiendo -visualViewport es lo visible AHORA, que al principio es
@@ -467,7 +472,7 @@
                elemento se sale del boton por fuera (inset negativo) pero sigue
                siendo hijo suyo, asi que el toque ahi tambien cuenta como click
                en la flecha — sin agrandar ni un pixel lo que se ve. */
-            html:not([data-hero]) body.mobile-allowed .mode-wheel-arrow::before {
+            html.pw-app:not([data-hero]) body.mobile-allowed .mode-wheel-arrow::before {
                 content: ''; position: absolute; inset: -20px;
             }
             /* Separada del borde (4%, unos 35px en un movil normal) y no a 14px
@@ -590,11 +595,14 @@
             /* Extremo ABAJO-DERECHA de la pantalla sin girar, que es lo que el
                usuario ve arriba-derecha del todo con el telefono ya girado.
                Antes iban con `top`, o sea al otro extremo. */
-            /* 18 y no 12 del borde que el jugador ve a la derecha: las esquinas
-               redondeadas de la Saga se comian el borde del primer icono. */
-            html:not([data-hero]) body.mobile-allowed #soundToggle  { top: auto !important; bottom: 18px !important; right: 12px !important; }
-            html:not([data-hero]) body.mobile-allowed #musicToggle  { top: auto !important; bottom: 60px !important; right: 12px !important; }
-            html:not([data-hero]) body.mobile-allowed #exitGameBtn  { top: auto !important; bottom: 102px !important; right: 12px !important; }
+            html:not([data-hero]) body.mobile-allowed #soundToggle  { top: auto !important; bottom: 12px !important; right: 12px !important; }
+            html:not([data-hero]) body.mobile-allowed #musicToggle  { top: auto !important; bottom: 54px !important; right: 12px !important; }
+            html:not([data-hero]) body.mobile-allowed #exitGameBtn  { top: auto !important; bottom: 96px !important; right: 12px !important; }
+            /* App: 18 y no 12 del borde que el jugador ve a la derecha: las
+               esquinas redondeadas de la Saga se comian el borde del primer icono. */
+            html.pw-app:not([data-hero]) body.mobile-allowed #soundToggle { bottom: 18px !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #musicToggle { bottom: 60px !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #exitGameBtn { bottom: 102px !important; }
             /* CONNECT justo a la IZQUIERDA de esos tres (sin girar), a su misma
                altura: girado, el usuario lo ve pegado a ellos en la misma fila. */
             /* CONNECT fuera del movil de momento: en el telefono solo se puede
@@ -808,12 +816,12 @@
                 top: 50% !important; left: 68% !important; right: auto !important;
                 transform: translate(-50%, -50%) rotate(90deg) scale(0.62) !important;
             }
-            /* Las opciones, siempre del mismo tamaño: el agrandado es el cursor
-               de teclado de PC (Tab/Q) y el hover del raton. En tactil la
-               primera salia ya grande y la que tocabas crecia. */
-            html:not([data-hero]) body.mobile-allowed .skill-opt-btn,
-            html:not([data-hero]) body.mobile-allowed .skill-opt-btn:hover,
-            html:not([data-hero]) body.mobile-allowed .skill-opt-btn.selected-choice { transform: none !important; }
+            /* App: las opciones, siempre del mismo tamaño. El agrandado es el
+               cursor de teclado de PC (Tab/Q) y el hover del raton; en tactil
+               la primera salia ya grande y la que tocabas crecia. */
+            html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-btn,
+            html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-btn:hover,
+            html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-btn.selected-choice { transform: none !important; }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
                escritorio (190px de ancho) tapaba media pantalla. */
             html:not([data-hero]) body.mobile-allowed #gameWalletArea #gwConnect,
@@ -1066,16 +1074,18 @@
              * Girado el telefono: el borde derecho fisico se ve ARRIBA y el
              * superior fisico se ve a la IZQUIERDA, de ahi top+right.
              * Medido con masas de 1, 4 y 9 cifras: los dos margenes se quedan
-             * fijos y no se mueven. El de la izquierda (top) es 18 y no 12: las
-             * esquinas redondeadas de la Saga se comian el borde de MASS.
+             * en 12 y no se mueven.
              */
             html:not([data-hero]) body.mobile-allowed #ui {
-                top: 18px !important; bottom: auto !important; right: 12px !important; left: auto !important;
+                top: 12px !important; bottom: auto !important; right: 12px !important; left: auto !important;
                 transform: translate(100%, 0) rotate(90deg) scale(1) !important;
                 transform-origin: 0 0 !important;
                 flex-direction: row !important; gap: 4px !important;
                 font-size: 8px !important;
             }
+            /* App: 18 a la izquierda (top) y no 12, que las esquinas redondeadas
+               de la Saga se comian el borde de MASS. */
+            html.pw-app:not([data-hero]) body.mobile-allowed #ui { top: 18px !important; }
             /* El TIEMPO, arriba y centrado con el telefono girado (sin girar:
                borde derecho, a media altura). Iba pegado al mismo sitio que el
                resto del HUD. */
@@ -1088,14 +1098,19 @@
                 transform: translate(50%, -50%) rotate(90deg) scale(1.15) !important;
                 transform-origin: center !important;
             }
-            /* Habilidades en movil: sin barra abajo. Cada skill es un circulo
-               como el SHOOT de classic, a la izquierda de SPLIT, y si hay mas
-               crecen hacia la izquierda (pedido por David). La fila se ancla
-               por su extremo DERECHO (el del jugador), que cae donde va SHOOT,
-               y gira sobre ese punto: asi no depende de cuantas skills haya.
-               Ese punto, pasado a la pantalla sin girar, es el right/bottom de
-               .tb-shoot: x = 8% + 31px (centro), y = 95% - 92px. */
+            /* Barra de habilidades: abajo-centro -> centro del borde izquierdo. */
             html:not([data-hero]) body.mobile-allowed #actionBar {
+                top: 50% !important; left: 11% !important; right: auto !important; bottom: auto !important;
+                transform: translate(-50%, -50%) rotate(90deg) scale(1.15) !important;
+            }
+            /* App: sin barra abajo. Cada skill es un circulo como el SHOOT de
+               classic, a la izquierda de SPLIT, y si hay mas crecen hacia la
+               izquierda (pedido por David). La fila se ancla por su extremo
+               DERECHO (el del jugador), que cae donde va SHOOT, y gira sobre
+               ese punto: asi no depende de cuantas skills haya. Ese punto,
+               pasado a la pantalla sin girar, es el right/bottom de .tb-shoot:
+               x = 8% + 31px (centro), y = 95% - 92px. */
+            html.pw-app:not([data-hero]) body.mobile-allowed #actionBar {
                 top: calc(95% - 92px - 31px) !important; left: auto !important;
                 right: calc(92% - 31px) !important; bottom: auto !important;
                 transform: rotate(90deg) !important; transform-origin: 100% 50% !important;
@@ -1104,17 +1119,17 @@
             }
             /* Relleno negro opaco: los iconos pixel traen fondo negro, y asi su
                cuadrado no se distingue del circulo. */
-            html:not([data-hero]) body.mobile-allowed #actionBar .ab-slot {
+            html.pw-app:not([data-hero]) body.mobile-allowed #actionBar .ab-slot {
                 width: 62px !important; height: 62px !important; box-sizing: border-box;
                 border-radius: 50% !important; background: #000 !important;
                 border: 3px solid var(--accent) !important; box-shadow: 0 0 12px rgba(255,42,42,0.45) !important;
             }
-            html:not([data-hero]) body.mobile-allowed #actionBar .ab-slot.active { transform: scale(0.9); }
+            html.pw-app:not([data-hero]) body.mobile-allowed #actionBar .ab-slot.active { transform: scale(0.9); }
             /* Hueco vacio = sin circulo: solo se ven las skills que llevas. */
-            html:not([data-hero]) body.mobile-allowed #actionBar .ab-slot:has(> .icon-empty) { display: none !important; }
-            html:not([data-hero]) body.mobile-allowed #actionBar .skill-icon { background-color: transparent !important; background-size: 92% !important; opacity: 1; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #actionBar .ab-slot:has(> .icon-empty) { display: none !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #actionBar .skill-icon { background-color: transparent !important; background-size: 92% !important; opacity: 1; }
             /* Usos: abajo en el centro, que la esquina del circulo lo cortaria. */
-            html:not([data-hero]) body.mobile-allowed #actionBar .count-badge { right: auto; left: 50%; bottom: 3px; transform: translateX(-50%); }
+            html.pw-app:not([data-hero]) body.mobile-allowed #actionBar .count-badge { right: auto; left: 50%; bottom: 3px; transform: translateX(-50%); }
             /* TOP MASS y KILLS fuera del movil por completo (a peticion de
                David: no cabia bien, solapaba botones, y quitando solo la
                tabla y dejando el cuadrado de KILLS quedaba sucio). */
@@ -1163,17 +1178,25 @@
                cuenta atras, GO!, resultados, popups): en movil, lado corto y
                lado largo, para que tumbado midan lo mismo que en vertical. En
                vertical estos valores son identicos a los de siempre. */
-            /* El cartel girado es ancho (lado largo) y bajo: el bloque central
-               puede usar casi todo el ancho. El rotulo va al 22% del lado corto
-               (~90px de alto en un Saga, media pantalla de ancho); al 12% de
-               antes quedaba diminuto con mucho hueco a los lados. THE CRYPTO
-               ARENA crece en la misma proporcion para no descuadrar el logo. */
-            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-inner { max-width: calc(max(100vw, 100vh) * 0.92); }
+            html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-inner { max-width: calc(min(100vw, 100vh) * 0.92); }
             html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-pill { max-width: calc(min(100vw, 100vh) * 0.52); }
             html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-title-img {
-                height: clamp(46px, calc(min(100vw, 100vh) * 0.22), 120px); max-width: calc(max(100vw, 100vh) * 0.8);
+                height: clamp(46px, calc(min(100vw, 100vh) * 0.12), 120px); max-width: calc(min(100vw, 100vh) * 0.92);
             }
             html:not([data-hero]) body.mobile-allowed #loadingScreen .ls-sub {
+                font-size: clamp(7px, calc(min(100vw, 100vh) * 0.016), 14px);
+                letter-spacing: clamp(2px, calc(min(100vw, 100vh) * 0.007), 6px);
+            }
+            /* App: el cartel girado es ancho (lado largo) y bajo, asi que el
+               bloque central puede usar casi todo el ancho. El rotulo va al 22%
+               del lado corto (~90px de alto en un Saga); al 12% quedaba diminuto
+               con mucho hueco a los lados. THE CRYPTO ARENA crece en la misma
+               proporcion para no descuadrar el logo. */
+            html.pw-app:not([data-hero]) body.mobile-allowed #loadingScreen .ls-inner { max-width: calc(max(100vw, 100vh) * 0.92); }
+            html.pw-app:not([data-hero]) body.mobile-allowed #loadingScreen .ls-title-img {
+                height: clamp(46px, calc(min(100vw, 100vh) * 0.22), 120px); max-width: calc(max(100vw, 100vh) * 0.8);
+            }
+            html.pw-app:not([data-hero]) body.mobile-allowed #loadingScreen .ls-sub {
                 font-size: clamp(7px, calc(min(100vw, 100vh) * 0.026), 14px);
                 letter-spacing: clamp(2px, calc(min(100vw, 100vh) * 0.011), 6px);
             }
@@ -1738,10 +1761,12 @@
         /* Android pinta un recuadro azul translucido sobre lo que acabas de
            tocar y lo deja ahi un momento: al abrirse un cartel encima (p.ej.
            DESKTOP ONLY tras tocar una sala) quedaba flotando como un resto del
-           click anterior. En html y no elemento a elemento (se hereda): las
-           opciones del selector de skill ponen su onclick desde JS, no casaban
-           con [onclick] y seguian dejando el recuadro azul. */
-        html { -webkit-tap-highlight-color: transparent; }
+           click anterior. */
+        button, a, .pw-big-btn, .oracle-row, [onclick] { -webkit-tap-highlight-color: transparent; }
+        /* App: en html y no elemento a elemento (se hereda). Las opciones del
+           selector de skill ponen su onclick desde JS, no casan con [onclick] y
+           seguian dejando el recuadro azul. */
+        html.pw-app { -webkit-tap-highlight-color: transparent; }
         /* CARRY/POT: parpadeo verde al subir, rojo al bajar (ver EconHUD._pintar) */
         @keyframes econSube { 0% { color: #6cff9f; text-shadow: 0 0 10px rgba(0,255,136,0.8); } 100% { color: #ffce3d; text-shadow: none; } }
         @keyframes econBaja { 0% { color: #ff6b6b; text-shadow: 0 0 10px rgba(255,90,78,0.8); } 100% { color: #ffce3d; text-shadow: none; } }
@@ -3302,14 +3327,14 @@
             width: 40px; height: 40px; background: rgba(0,255,136,0.35);
             border: 2px solid var(--primary); box-shadow: 0 0 10px rgba(0,255,136,0.6);
         }
-        /* Botones tactiles SPLIT/SHOOT: ocultos salvo en movil y en partida
+        /* Botones tactiles SPLIT/SHOOT: ocultos salvo en la app y en partida
            (clase .on, ver tcBotonesConElHud). La caja es el mismo cuadro girado
            que el canvas (lado largo x lado corto, rotate 90), asi que dentro se
            colocan con right/bottom normales, como en la pantalla apaisada que
            ve el jugador; con el movil tumbado, el giro del body lo anula. */
         #touchBtns { display: none; }
         @media (pointer: coarse) {
-            html:not([data-hero]) body.mobile-allowed #touchBtns.on {
+            html.pw-app:not([data-hero]) body.mobile-allowed #touchBtns.on {
                 display: block; position: fixed; z-index: 58; pointer-events: none;
                 width: var(--pw-largo, 100dvh); height: var(--pw-corto, 100dvw);
                 top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(90deg);
@@ -5501,7 +5526,7 @@
     // color que toca, y `currentGameMode` no es global.
     let currentGameMode = 'classic', currentServer = null, width, height, gameRunning = false, isGodMode = false, isSpectating = false;
     let serverLeaderboard = null;   // ranking de la sala entera que manda el server (online); null = usar cálculo local (offline)
-    let lastFrameTime = performance.now(), timeScale = 1.0;
+    let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
     // Cuantos bots hay offline. Classic lleva mas (40) porque su mapa es el doble
     // de grande que el de arcade y con 25 te podias pasar la partida sin cruzarte
     // con nadie.
@@ -8631,20 +8656,23 @@
 
         // Sincronizar skins ANTES de mostrar el login para que la pildora sea correcta
         const showLogin = async () => {
-            // Los 1200ms son la animacion del panel que se expande. En la rueda
-            // (movil y ventana estrecha) el panel no se expande (clip-path:
-            // none) y eran 1,2s de pantalla quieta sin nada que cargar: alli se
-            // entra sin esperar.
-            const panel = document.getElementById(m === 'classic' ? 'panelClassic' : 'panelArcade');
-            const espera = (instant || getComputedStyle(panel).clipPath === 'none') ? 0 : 1200;
-            // paisSync() es una llamada de red de verdad (fetch /api/skins):
-            // corre A LA VEZ que la animacion, no antes. La pildora discreta
-            // solo sale si, acabada la animacion, aun se espera a la red.
-            const pais = typeof paisSync === 'function' ? paisSync() : null;
-            if (espera) await new Promise(ok => setTimeout(ok, espera));
-            miniCargaMuestra();
-            await pais;
-            miniCargaOculta();
+            // Los 1200ms son la animacion del panel que se expande.
+            let espera = instant ? 0 : 1200;
+            if (EN_APP) {
+                // App: en la rueda el panel no se expande (clip-path: none) y
+                // eran 1,2s de pantalla quieta sin nada que cargar, asi que se
+                // entra sin esperar. paisSync() (fetch /api/skins) corre A LA VEZ
+                // que la espera y la pildora discreta solo sale si, acabada, aun
+                // se espera a la red.
+                const panel = document.getElementById(m === 'classic' ? 'panelClassic' : 'panelArcade');
+                if (getComputedStyle(panel).clipPath === 'none') espera = 0;
+                const pais = typeof paisSync === 'function' ? paisSync() : null;
+                if (espera) await new Promise(ok => setTimeout(ok, espera));
+                espera = 0;
+                miniCargaMuestra();
+                await pais;
+                miniCargaOculta();
+            } else if (typeof paisSync === 'function') await paisSync();
             const ir = () => {
                 // Repinta el fondo del login con la deco YA reubicada a huecos, con el
                 // login todavía oculto: así aparece colocada de golpe, sin que se vea
@@ -8682,7 +8710,7 @@
                 ajustaMenuResponsive();   // el menu ya esta visible: ya se puede medir y escalar
                 els.modeScreen.style.pointerEvents = 'auto'; // Reactivar por si vuelven atrás
             };
-            ir();
+            if (espera) setTimeout(ir, espera); else ir();
         };
         return showLogin();
     }
@@ -10668,202 +10696,211 @@
         window.addEventListener('mousedown', e => { if(isSpectating && !isHoveringUI) { isSpecDragging = true; lastSpecX = e.clientX; lastSpecY = e.clientY; } });
         window.addEventListener('mouseup', () => { isSpecDragging = false; });
         window.addEventListener('mousemove', e => { if(isHoveringUI || isLoggingOut) return; const _p = ptJuego(e.clientX, e.clientY); mouse.x = _p.x; mouse.y = _p.y; if (!isSpectating && !(keys.w || keys.a || keys.s || keys.d)) { inputMode = 'MOUSE'; } });
-        // ===== CONTROL TACTIL: stick, toque y gestos =====
-        // - El PRIMER dedo que toca el juego (no un boton) lleva el rumbo. Al
-        //   tocar, la pildora va hacia ese punto, como siempre.
-        // - Si ese dedo empieza en el cuarto de abajo a la izquierda de lo que
-        //   ve el jugador, es el STICK: sale el aro y, al arrastrar, manda la
-        //   direccion del knob respecto a la base. Fuera de esa zona no hay
-        //   stick: la pildora sigue al dedo. Un dedo que entra en la zona le
-        //   quita el rumbo a uno que solo seguia al dedo.
-        // - El rumbo es de SU dedo (Touch.identifier): tocar una skill, SPLIT o
-        //   SHOOT, o hacer gestos con otro dedo, ni lo mueve ni lo quita.
-        // - Doble toque (con cualquier dedo) = split hacia ese punto. Con un
-        //   dedo llevando el rumbo, el movimiento sigue siendo suyo.
-        // - Deslizar rapido = SHOOT hacia donde deslizas: classic siempre;
-        //   arcade solo si llevas SHOOT en la barra.
-        // - Los botones SPLIT/SHOOT y las skills de la barra salen hacia donde
-        //   apunta el stick, que es hacia donde te mueves (usan mouse, como en PC).
-        const TC = { dedo: null, otros: new Map(), toque: { t: 0, x: 0, y: 0 } };
-        const TC_ZONA_MUERTA = 12, TC_DESLIZ_MS = 260, TC_DESLIZ_MIN = 60, TC_DOBLE_MS = 300, TC_DOBLE_DIST = 70;
-        // Lo que se pulsa (sonido, musica, salir, opciones de skill...) no es juego.
-        const TC_PULSABLE = 'button, [onclick], .skill-opt-btn';
-        const TC_NO_JUEGO = TC_PULSABLE + ', .ab-slot, #loginOverlay, #resultOverlay, #skillChoiceOverlay, #exitGameBtn, #exitModal, .nav-btn, #touchBtns, .pw-modal, [id$="Modal"]';
-        // Zona del stick: el cuarto de abajo a la izquierda de lo que ve el
-        // jugador (coordenadas del canvas: ptJuego ya deshace el giro).
-        function tcZonaStick(sx, sy) { const p = ptJuego(sx, sy); return p.x < width / 2 && p.y > height / 2; }
-        // Punto de PANTALLA -> objetivo en el canvas (girado o no).
-        function tcApuntaPunto(sx, sy) { const p = ptJuego(sx, sy); mouse.x = p.x; mouse.y = p.y; inputMode = 'MOUSE'; }
-        // Direccion de PANTALLA -> objetivo lejos en esa direccion, desde el
-        // centro (la camara sigue a la pildora). ptJuego es afin, asi que la
-        // diferencia de dos puntos gira el vector igual que gira el canvas. El
-        // radio deja el objetivo fuera de la zona de frenado de la sim (40 u).
-        function tcApuntaDir(dx, dy) {
-            const a = ptJuego(0, 0), b = ptJuego(dx, dy);
-            const vx = b.x - a.x, vy = b.y - a.y, d = Math.hypot(vx, vy) || 1, R = Math.min(width, height) * 0.45;
-            mouse.x = width / 2 + vx / d * R; mouse.y = height / 2 + vy / d * R; inputMode = 'MOUSE';
-        }
-        // Lanza una accion hacia un punto sin robarle el rumbo al dedo que lo
-        // lleva: con ese dedo puesto, el objetivo vuelve a ser el suyo; sin el,
-        // la pildora se queda yendo hacia ese punto (como el doble toque de siempre).
-        function tcHaciaPunto(sx, sy, accion) {
-            const antes = { x: mouse.x, y: mouse.y };
-            tcApuntaPunto(sx, sy); accion();
-            if (TC.dedo) { mouse.x = antes.x; mouse.y = antes.y; }
-        }
-        // Hueco de SHOOT: classic lo lleva siempre en la 1; arcade, el primer
-        // hueco de la barra con SHOOT (id 2) y usos. 0 = no hay.
-        function tcSlotShoot() {
-            if (currentGameMode === 'classic') return 1;
-            const p = me(), slots = p && p.skillSlots; if (!slots) return 0;
-            for (let i = 0; i < slots.length; i++) if (slots[i] && slots[i].id === 2 && (slots[i].uses > 0 || isGodMode)) return i + 1;
-            return 0;
-        }
-        function tcShootHacia(dx, dy) {
-            const slot = tcSlotShoot(); if (!slot) return false;
-            const antes = { x: mouse.x, y: mouse.y };
-            tcApuntaDir(dx, dy); useSkill(slot);
-            mouse.x = antes.x; mouse.y = antes.y;
-            return true;
-        }
-        // pwStick*: solo dibujan el aro y la bola en coordenadas de PANTALLA
-        // (no las giradas de ptJuego); el rumbo lo pone tcApuntaDir.
-        function pwStickEls() {
-            let base = document.getElementById('pwStickBase'), knob = document.getElementById('pwStickKnob');
-            if (!base) { base = document.createElement('div'); base.id = 'pwStickBase'; document.body.appendChild(base); }
-            if (!knob) { knob = document.createElement('div'); knob.id = 'pwStickKnob'; document.body.appendChild(knob); }
-            return { base, knob };
-        }
-        function pwStickMuestra(x, y) {
-            const { base, knob } = pwStickEls();
-            base.dataset.x = x; base.dataset.y = y;
-            base.style.left = knob.style.left = x + 'px';
-            base.style.top = knob.style.top = y + 'px';
-            base.style.display = knob.style.display = 'block';
-        }
-        const PW_STICK_R = 46;   // radio del aro: el knob no sale de ahi
-        function pwStickMueve(x, y) {
-            const base = document.getElementById('pwStickBase'), knob = document.getElementById('pwStickKnob');
-            if (!base || base.style.display !== 'block') return;
-            const bx = parseFloat(base.dataset.x), by = parseFloat(base.dataset.y);
-            const dx = x - bx, dy = y - by, d = Math.hypot(dx, dy) || 1, f = Math.min(1, PW_STICK_R / d);
-            knob.style.left = (bx + dx * f) + 'px';
-            knob.style.top = (by + dy * f) + 'px';
-        }
-        function pwStickOculta() {
-            const base = document.getElementById('pwStickBase'), knob = document.getElementById('pwStickKnob');
-            if (base) base.style.display = 'none';
-            if (knob) knob.style.display = 'none';
-        }
-        // Solo en partida: fuera de ella (selector de modos, menus) los toques
-        // tienen que llegar como clicks, y tcSuelta los cancela.
-        window.addEventListener('touchstart', e => {
-            if (!gameRunning || isLoggingOut || e.target.closest(TC_NO_JUEGO)) return;
-            const now = Date.now();
-            for (const t of e.changedTouches) {
-                const doble = now - TC.toque.t < TC_DOBLE_MS && Math.hypot(t.clientX - TC.toque.x, t.clientY - TC.toque.y) < TC_DOBLE_DIST;
-                if (doble) { TC.toque.t = 0; e.preventDefault(); tcHaciaPunto(t.clientX, t.clientY, splitPlayer); }
-                const stick = !doble && tcZonaStick(t.clientX, t.clientY);
-                // El dedo que solo seguia se queda como dedo de gestos ya gastado.
-                if (stick && TC.dedo && !TC.dedo.stick) {
-                    TC.otros.set(TC.dedo.id, { x0: TC.dedo.bx, y0: TC.dedo.by, t0: TC.dedo.t0, usado: true });
-                    TC.dedo = null;
+        // Control tactil. En el navegador del movil, el de siempre: el dedo
+        // lleva la pildora y doble toque = split. El de stick, gestos y
+        // botones es solo de la app (EN_APP): pedido por David, sus mejoras
+        // no cambian el juego en la web.
+        if (!EN_APP) {
+            window.addEventListener('touchmove', e => { if (!gameRunning || isLoggingOut) return; e.preventDefault(); const t = e.touches[0]; const _p = ptJuego(t.clientX, t.clientY); mouse.x = _p.x; mouse.y = _p.y; inputMode = 'MOUSE'; }, {passive: false});
+            window.addEventListener('touchstart', e => { if(e.target.closest('.ab-slot, button, #loginOverlay, #resultOverlay, #skillChoiceOverlay, #exitGameBtn, #exitModal, .nav-btn')) return; const now = Date.now(); if (now - lastTapTime < 300) { splitPlayer(); e.preventDefault(); } else { if(e.touches[0] && !isLoggingOut){ const _p = ptJuego(e.touches[0].clientX, e.touches[0].clientY); mouse.x = _p.x; mouse.y = _p.y; inputMode = 'MOUSE'; } } lastTapTime = now; }, {passive: false});
+        } else {
+            // ===== CONTROL TACTIL DE LA APP: stick, toque y gestos =====
+            // - El PRIMER dedo que toca el juego (no un boton) lleva el rumbo. Al
+            //   tocar, la pildora va hacia ese punto, como siempre.
+            // - Si ese dedo empieza en el cuarto de abajo a la izquierda de lo que
+            //   ve el jugador, es el STICK: sale el aro y, al arrastrar, manda la
+            //   direccion del knob respecto a la base. Fuera de esa zona no hay
+            //   stick: la pildora sigue al dedo. Un dedo que entra en la zona le
+            //   quita el rumbo a uno que solo seguia al dedo.
+            // - El rumbo es de SU dedo (Touch.identifier): tocar una skill, SPLIT o
+            //   SHOOT, o hacer gestos con otro dedo, ni lo mueve ni lo quita.
+            // - Doble toque (con cualquier dedo) = split hacia ese punto. Con un
+            //   dedo llevando el rumbo, el movimiento sigue siendo suyo.
+            // - Deslizar rapido = SHOOT hacia donde deslizas: classic siempre;
+            //   arcade solo si llevas SHOOT en la barra.
+            // - Los botones SPLIT/SHOOT y las skills de la barra salen hacia donde
+            //   apunta el stick, que es hacia donde te mueves (usan mouse, como en PC).
+            const TC = { dedo: null, otros: new Map(), toque: { t: 0, x: 0, y: 0 } };
+            const TC_ZONA_MUERTA = 12, TC_DESLIZ_MS = 260, TC_DESLIZ_MIN = 60, TC_DOBLE_MS = 300, TC_DOBLE_DIST = 70;
+            // Lo que se pulsa (sonido, musica, salir, opciones de skill...) no es juego.
+            const TC_PULSABLE = 'button, [onclick], .skill-opt-btn';
+            const TC_NO_JUEGO = TC_PULSABLE + ', .ab-slot, #loginOverlay, #resultOverlay, #skillChoiceOverlay, #exitGameBtn, #exitModal, .nav-btn, #touchBtns, .pw-modal, [id$="Modal"]';
+            // Zona del stick: el cuarto de abajo a la izquierda de lo que ve el
+            // jugador (coordenadas del canvas: ptJuego ya deshace el giro).
+            function tcZonaStick(sx, sy) { const p = ptJuego(sx, sy); return p.x < width / 2 && p.y > height / 2; }
+            // Punto de PANTALLA -> objetivo en el canvas (girado o no).
+            function tcApuntaPunto(sx, sy) { const p = ptJuego(sx, sy); mouse.x = p.x; mouse.y = p.y; inputMode = 'MOUSE'; }
+            // Direccion de PANTALLA -> objetivo lejos en esa direccion, desde el
+            // centro (la camara sigue a la pildora). ptJuego es afin, asi que la
+            // diferencia de dos puntos gira el vector igual que gira el canvas. El
+            // radio deja el objetivo fuera de la zona de frenado de la sim (40 u).
+            function tcApuntaDir(dx, dy) {
+                const a = ptJuego(0, 0), b = ptJuego(dx, dy);
+                const vx = b.x - a.x, vy = b.y - a.y, d = Math.hypot(vx, vy) || 1, R = Math.min(width, height) * 0.45;
+                mouse.x = width / 2 + vx / d * R; mouse.y = height / 2 + vy / d * R; inputMode = 'MOUSE';
+            }
+            // Lanza una accion hacia un punto sin robarle el rumbo al dedo que lo
+            // lleva: con ese dedo puesto, el objetivo vuelve a ser el suyo; sin el,
+            // la pildora se queda yendo hacia ese punto (como el doble toque de siempre).
+            function tcHaciaPunto(sx, sy, accion) {
+                const antes = { x: mouse.x, y: mouse.y };
+                tcApuntaPunto(sx, sy); accion();
+                if (TC.dedo) { mouse.x = antes.x; mouse.y = antes.y; }
+            }
+            // Hueco de SHOOT: classic lo lleva siempre en la 1; arcade, el primer
+            // hueco de la barra con SHOOT (id 2) y usos. 0 = no hay.
+            function tcSlotShoot() {
+                if (currentGameMode === 'classic') return 1;
+                const p = me(), slots = p && p.skillSlots; if (!slots) return 0;
+                for (let i = 0; i < slots.length; i++) if (slots[i] && slots[i].id === 2 && (slots[i].uses > 0 || isGodMode)) return i + 1;
+                return 0;
+            }
+            function tcShootHacia(dx, dy) {
+                const slot = tcSlotShoot(); if (!slot) return false;
+                const antes = { x: mouse.x, y: mouse.y };
+                tcApuntaDir(dx, dy); useSkill(slot);
+                mouse.x = antes.x; mouse.y = antes.y;
+                return true;
+            }
+            // pwStick*: solo dibujan el aro y la bola en coordenadas de PANTALLA
+            // (no las giradas de ptJuego); el rumbo lo pone tcApuntaDir.
+            function pwStickEls() {
+                let base = document.getElementById('pwStickBase'), knob = document.getElementById('pwStickKnob');
+                if (!base) { base = document.createElement('div'); base.id = 'pwStickBase'; document.body.appendChild(base); }
+                if (!knob) { knob = document.createElement('div'); knob.id = 'pwStickKnob'; document.body.appendChild(knob); }
+                return { base, knob };
+            }
+            function pwStickMuestra(x, y) {
+                const { base, knob } = pwStickEls();
+                base.dataset.x = x; base.dataset.y = y;
+                base.style.left = knob.style.left = x + 'px';
+                base.style.top = knob.style.top = y + 'px';
+                base.style.display = knob.style.display = 'block';
+            }
+            const PW_STICK_R = 46;   // radio del aro: el knob no sale de ahi
+            function pwStickMueve(x, y) {
+                const base = document.getElementById('pwStickBase'), knob = document.getElementById('pwStickKnob');
+                if (!base || base.style.display !== 'block') return;
+                const bx = parseFloat(base.dataset.x), by = parseFloat(base.dataset.y);
+                const dx = x - bx, dy = y - by, d = Math.hypot(dx, dy) || 1, f = Math.min(1, PW_STICK_R / d);
+                knob.style.left = (bx + dx * f) + 'px';
+                knob.style.top = (by + dy * f) + 'px';
+            }
+            function pwStickOculta() {
+                const base = document.getElementById('pwStickBase'), knob = document.getElementById('pwStickKnob');
+                if (base) base.style.display = 'none';
+                if (knob) knob.style.display = 'none';
+            }
+            // Solo en partida: fuera de ella (selector de modos, menus) los toques
+            // tienen que llegar como clicks, y tcSuelta los cancela.
+            window.addEventListener('touchstart', e => {
+                if (!gameRunning || isLoggingOut || e.target.closest(TC_NO_JUEGO)) return;
+                const now = Date.now();
+                for (const t of e.changedTouches) {
+                    const doble = now - TC.toque.t < TC_DOBLE_MS && Math.hypot(t.clientX - TC.toque.x, t.clientY - TC.toque.y) < TC_DOBLE_DIST;
+                    if (doble) { TC.toque.t = 0; e.preventDefault(); tcHaciaPunto(t.clientX, t.clientY, splitPlayer); }
+                    const stick = !doble && tcZonaStick(t.clientX, t.clientY);
+                    // El dedo que solo seguia se queda como dedo de gestos ya gastado.
+                    if (stick && TC.dedo && !TC.dedo.stick) {
+                        TC.otros.set(TC.dedo.id, { x0: TC.dedo.bx, y0: TC.dedo.by, t0: TC.dedo.t0, usado: true });
+                        TC.dedo = null;
+                    }
+                    if (!TC.dedo && !doble) {
+                        TC.dedo = { id: t.identifier, bx: t.clientX, by: t.clientY, t0: now, stick, joy: false, antes: { x: mouse.x, y: mouse.y } };
+                        tcApuntaPunto(t.clientX, t.clientY);
+                        if (stick) pwStickMuestra(t.clientX, t.clientY);
+                    } else {
+                        TC.otros.set(t.identifier, { x0: t.clientX, y0: t.clientY, t0: now, usado: doble });
+                    }
                 }
-                if (!TC.dedo && !doble) {
-                    TC.dedo = { id: t.identifier, bx: t.clientX, by: t.clientY, t0: now, stick, joy: false, antes: { x: mouse.x, y: mouse.y } };
-                    tcApuntaPunto(t.clientX, t.clientY);
-                    if (stick) pwStickMuestra(t.clientX, t.clientY);
-                } else {
-                    TC.otros.set(t.identifier, { x0: t.clientX, y0: t.clientY, t0: now, usado: doble });
-                }
-            }
-        }, {passive: false});
-        window.addEventListener('touchmove', e => {
-            if (!gameRunning || isLoggingOut) return;
-            e.preventDefault();
-            const s = TC.dedo; if (!s) return;
-            for (const t of e.changedTouches) {
-                if (t.identifier !== s.id) continue;
-                if (!s.stick) { tcApuntaPunto(t.clientX, t.clientY); continue; }   // sin stick: sigue al dedo
-                const dx = t.clientX - s.bx, dy = t.clientY - s.by, d = Math.hypot(dx, dy);
-                if (!s.joy && d > TC_ZONA_MUERTA) s.joy = true;
-                // Con el knob de vuelta en el centro se mantiene el ultimo rumbo.
-                if (s.joy && d > 4) tcApuntaDir(dx, dy);
-                pwStickMueve(t.clientX, t.clientY);
-            }
-        }, {passive: false});
-        const tcSuelta = e => {
-            const now = Date.now();
-            for (const t of e.changedTouches) {
-                const s = TC.dedo, esDedo = s && t.identifier === s.id;
-                const o = esDedo ? s : TC.otros.get(t.identifier);
-                if (!o) continue;   // empezo en un boton: no es nuestro, que siga su click
-                if (esDedo) { TC.dedo = null; pwStickOculta(); } else TC.otros.delete(t.identifier);
-                e.preventDefault();   // sin clicks ni ratones de compatibilidad que pisen el rumbo
-                if (e.type !== 'touchend' || o.usado) continue;
-                const x0 = esDedo ? s.bx : o.x0, y0 = esDedo ? s.by : o.y0;
-                const dx = t.clientX - x0, dy = t.clientY - y0, d = Math.hypot(dx, dy), dt = now - o.t0;
-                if (dt < TC_DESLIZ_MS && d > TC_DESLIZ_MIN) {
-                    // Deslizar: SHOOT hacia ahi. Si lo hizo el dedo del rumbo, no
-                    // era un cambio de rumbo: se vuelve a ir hacia donde se iba.
-                    if (tcShootHacia(dx, dy) && esDedo) { mouse.x = s.antes.x; mouse.y = s.antes.y; }
-                } else if (d < TC_ZONA_MUERTA && dt < TC_DOBLE_MS) {
-                    // Solo un toque corto cuenta para el doble toque: soltar el
-                    // stick con el pulgar en el centro y volver a cogerlo no
-                    // es un split.
-                    TC.toque = { t: now, x: t.clientX, y: t.clientY };
-                }
-            }
-        };
-        window.addEventListener('touchend', tcSuelta, {passive: false});
-        window.addEventListener('touchcancel', tcSuelta, {passive: false});
-        // Botones en partida (sonido, musica, salir, opciones de skill): si
-        // hay otro dedo en la pantalla (el del stick), el navegador no genera el
-        // click del que pulsa. Entonces lo damos nosotros al soltar encima.
-        const tcPulsa = new Map();   // touch id -> { el, multi }
-        window.addEventListener('touchstart', e => {
-            if (!gameRunning) return;
-            tcPulsa.forEach(p => { p.multi = true; });
-            for (const t of e.changedTouches) {
-                const el = t.target.closest && t.target.closest(TC_PULSABLE);
-                if (el && !el.closest('.ab-slot, #touchBtns')) tcPulsa.set(t.identifier, { el, multi: e.touches.length > 1 });
-            }
-        }, {passive: true});
-        window.addEventListener('touchend', e => {
-            for (const t of e.changedTouches) {
-                const p = tcPulsa.get(t.identifier); if (!p) continue;
-                tcPulsa.delete(t.identifier);
-                const bajo = document.elementFromPoint(t.clientX, t.clientY);
-                if (!p.multi || !bajo || !p.el.contains(bajo)) continue;
-                e.preventDefault();   // por si acaso: que no haya dos clicks
-                bajo.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: t.clientX, clientY: t.clientY }));
-            }
-        }, {passive: false});
-        window.addEventListener('touchcancel', e => { for (const t of e.changedTouches) tcPulsa.delete(t.identifier); });
-        // Botones SPLIT / SHOOT (derecha, solo movil): hacia donde apunta el
-        // stick. En touchstart y no en click, que llega tarde en tactil.
-        [['tbSplit', () => splitPlayer()], ['tbShoot', () => useSkill(1)]].forEach(([id, accion]) => {
-            const b = document.getElementById(id); if (!b) return;
-            b.addEventListener('touchstart', e => {
-                e.preventDefault(); e.stopPropagation();
-                b.classList.add('pulsado'); setTimeout(() => b.classList.remove('pulsado'), 140);
-                accion();
             }, {passive: false});
-        });
-        // Se ven solo en partida: van con el HUD (#ui), igual que el reloj. SHOOT
-        // solo en classic; en arcade el SHOOT es una skill de la barra.
-        (function tcBotonesConElHud() {
-            const ui = document.getElementById('ui'), caja = document.getElementById('touchBtns'), shoot = document.getElementById('tbShoot');
-            if (!ui || !caja) return;
-            const sync = () => {
-                const enPartida = !!ui.style.display && ui.style.display !== 'none';
-                caja.classList.toggle('on', enPartida);
-                if (shoot) shoot.style.display = currentGameMode === 'classic' ? '' : 'none';
-                if (!enPartida) { TC.dedo = null; TC.otros.clear(); pwStickOculta(); }
+            window.addEventListener('touchmove', e => {
+                if (!gameRunning || isLoggingOut) return;
+                e.preventDefault();
+                const s = TC.dedo; if (!s) return;
+                for (const t of e.changedTouches) {
+                    if (t.identifier !== s.id) continue;
+                    if (!s.stick) { tcApuntaPunto(t.clientX, t.clientY); continue; }   // sin stick: sigue al dedo
+                    const dx = t.clientX - s.bx, dy = t.clientY - s.by, d = Math.hypot(dx, dy);
+                    if (!s.joy && d > TC_ZONA_MUERTA) s.joy = true;
+                    // Con el knob de vuelta en el centro se mantiene el ultimo rumbo.
+                    if (s.joy && d > 4) tcApuntaDir(dx, dy);
+                    pwStickMueve(t.clientX, t.clientY);
+                }
+            }, {passive: false});
+            const tcSuelta = e => {
+                const now = Date.now();
+                for (const t of e.changedTouches) {
+                    const s = TC.dedo, esDedo = s && t.identifier === s.id;
+                    const o = esDedo ? s : TC.otros.get(t.identifier);
+                    if (!o) continue;   // empezo en un boton: no es nuestro, que siga su click
+                    if (esDedo) { TC.dedo = null; pwStickOculta(); } else TC.otros.delete(t.identifier);
+                    e.preventDefault();   // sin clicks ni ratones de compatibilidad que pisen el rumbo
+                    if (e.type !== 'touchend' || o.usado) continue;
+                    const x0 = esDedo ? s.bx : o.x0, y0 = esDedo ? s.by : o.y0;
+                    const dx = t.clientX - x0, dy = t.clientY - y0, d = Math.hypot(dx, dy), dt = now - o.t0;
+                    if (dt < TC_DESLIZ_MS && d > TC_DESLIZ_MIN) {
+                        // Deslizar: SHOOT hacia ahi. Si lo hizo el dedo del rumbo, no
+                        // era un cambio de rumbo: se vuelve a ir hacia donde se iba.
+                        if (tcShootHacia(dx, dy) && esDedo) { mouse.x = s.antes.x; mouse.y = s.antes.y; }
+                    } else if (d < TC_ZONA_MUERTA && dt < TC_DOBLE_MS) {
+                        // Solo un toque corto cuenta para el doble toque: soltar el
+                        // stick con el pulgar en el centro y volver a cogerlo no
+                        // es un split.
+                        TC.toque = { t: now, x: t.clientX, y: t.clientY };
+                    }
+                }
             };
-            new MutationObserver(sync).observe(ui, { attributes: true, attributeFilter: ['style'] });
-            sync();
-        })();
+            window.addEventListener('touchend', tcSuelta, {passive: false});
+            window.addEventListener('touchcancel', tcSuelta, {passive: false});
+            // Botones en partida (sonido, musica, salir, opciones de skill): si
+            // hay otro dedo en la pantalla (el del stick), el navegador no genera el
+            // click del que pulsa. Entonces lo damos nosotros al soltar encima.
+            const tcPulsa = new Map();   // touch id -> { el, multi }
+            window.addEventListener('touchstart', e => {
+                if (!gameRunning) return;
+                tcPulsa.forEach(p => { p.multi = true; });
+                for (const t of e.changedTouches) {
+                    const el = t.target.closest && t.target.closest(TC_PULSABLE);
+                    if (el && !el.closest('.ab-slot, #touchBtns')) tcPulsa.set(t.identifier, { el, multi: e.touches.length > 1 });
+                }
+            }, {passive: true});
+            window.addEventListener('touchend', e => {
+                for (const t of e.changedTouches) {
+                    const p = tcPulsa.get(t.identifier); if (!p) continue;
+                    tcPulsa.delete(t.identifier);
+                    const bajo = document.elementFromPoint(t.clientX, t.clientY);
+                    if (!p.multi || !bajo || !p.el.contains(bajo)) continue;
+                    e.preventDefault();   // por si acaso: que no haya dos clicks
+                    bajo.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: t.clientX, clientY: t.clientY }));
+                }
+            }, {passive: false});
+            window.addEventListener('touchcancel', e => { for (const t of e.changedTouches) tcPulsa.delete(t.identifier); });
+            // Botones SPLIT / SHOOT (derecha, solo movil): hacia donde apunta el
+            // stick. En touchstart y no en click, que llega tarde en tactil.
+            [['tbSplit', () => splitPlayer()], ['tbShoot', () => useSkill(1)]].forEach(([id, accion]) => {
+                const b = document.getElementById(id); if (!b) return;
+                b.addEventListener('touchstart', e => {
+                    e.preventDefault(); e.stopPropagation();
+                    b.classList.add('pulsado'); setTimeout(() => b.classList.remove('pulsado'), 140);
+                    accion();
+                }, {passive: false});
+            });
+            // Se ven solo en partida: van con el HUD (#ui), igual que el reloj. SHOOT
+            // solo en classic; en arcade el SHOOT es una skill de la barra.
+            (function tcBotonesConElHud() {
+                const ui = document.getElementById('ui'), caja = document.getElementById('touchBtns'), shoot = document.getElementById('tbShoot');
+                if (!ui || !caja) return;
+                const sync = () => {
+                    const enPartida = !!ui.style.display && ui.style.display !== 'none';
+                    caja.classList.toggle('on', enPartida);
+                    if (shoot) shoot.style.display = currentGameMode === 'classic' ? '' : 'none';
+                    if (!enPartida) { TC.dedo = null; TC.otros.clear(); pwStickOculta(); }
+                };
+                new MutationObserver(sync).observe(ui, { attributes: true, attributeFilter: ['style'] });
+                sync();
+            })();
+        }
         window.addEventListener('keydown', e => {
             if (!gameRunning) return;
             if (cmdBarOpen) { if (e.code === 'Escape') toggleCmdBar(false); else if (e.code === 'Enter' || e.code === 'NumpadEnter') submitCmd(); return; }
@@ -15018,8 +15055,7 @@
     // salta sola al selector de modos: la barra se cambia por TAP TO START y
     // espera un toque. Es tambien a donde lleva la flecha roja del selector, que
     // en la web vuelve a la landing y dentro de la app no tiene a donde ir.
-    const EN_APP = /Solana Mobile Web Shell/.test(navigator.userAgent)
-        || new URLSearchParams(location.search).has('app');
+    const EN_APP = document.documentElement.classList.contains('pw-app');   // la pone el script del head
     // Con 'click' y no 'pointerdown': si el cartel se quitara al APOYAR el dedo,
     // el click de despues caeria en el selector de modos de debajo y elegiria
     // un modo sin querer.
