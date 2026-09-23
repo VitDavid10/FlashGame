@@ -23,21 +23,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,8 +96,6 @@ fun WebShellScreen() {
     val refreshIndicatorColor = MaterialTheme.colorScheme.primary.toArgb()
     val refreshIndicatorBackgroundColor = MaterialTheme.colorScheme.surface.toArgb()
 
-    var progress by remember { mutableFloatStateOf(0f) }
-    var isLoading by remember { mutableStateOf(true) }
     var isRefreshing by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
     var showSplash by remember { mutableStateOf(true) }
@@ -151,9 +142,7 @@ fun WebShellScreen() {
                 webChromeClient =
                     WebShellChromeClient(
                         onProgressChanged = { newProgress ->
-                            progress = newProgress / 100f
                             if (newProgress > 0) showSplash = false
-                            isLoading = newProgress < 100
                         },
                         isDebug = BuildConfig.DEBUG,
                     )
@@ -201,7 +190,6 @@ fun WebShellScreen() {
                 setOnChildScrollUpCallback { _, _ -> webView.canScrollVertically(-1) }
                 setOnRefreshListener {
                     hasError = false
-                    isLoading = true
                     isRefreshing = true
                     webView.reload()
                 }
@@ -238,23 +226,20 @@ fun WebShellScreen() {
         }
     }
 
+    // A pantalla completa, tambien bajo la camara: apartarse de ella dejaba una
+    // franja negra de 118 px sin juego arriba (a la izquierda con el movil
+    // tumbado), que parecia la barra de estado vacia.
     WebViewLayer(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                // Con las barras escondidas solo queda apartarse de la camara
-                // (en horizontal cae en un lateral), como hace Chrome.
-                .windowInsetsPadding(WindowInsets.displayCutout),
+                .background(MaterialTheme.colorScheme.background),
         swipeRefreshLayout = swipeRefreshLayout,
         isRefreshing = isRefreshing,
-        isLoading = isLoading,
-        progress = progress,
         hasError = hasError,
         showSplash = showSplash,
         onRetry = {
             hasError = false
-            isLoading = true
             isRefreshing = false
             webView.reload()
         },
@@ -266,8 +251,6 @@ private fun WebViewLayer(
     modifier: Modifier,
     swipeRefreshLayout: SwipeRefreshLayout,
     isRefreshing: Boolean,
-    isLoading: Boolean,
-    progress: Float,
     hasError: Boolean,
     showSplash: Boolean,
     onRetry: () -> Unit,
@@ -287,16 +270,10 @@ private fun WebViewLayer(
             },
         )
 
-        if (isLoading && !hasError) {
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter),
-            )
-        }
-
+        // Sin la barra de progreso de la plantilla (LinearProgressIndicator):
+        // era la linea amarilla que asomaba arriba -a la izquierda con el
+        // movil tumbado- mientras cargaba la pagina. La carga la enseña el
+        // propio juego.
         if (hasError) {
             Box(
                 modifier =
@@ -318,6 +295,8 @@ private fun WebViewLayer(
             }
         }
 
+        // Negro liso hasta que la pagina empieza a pintar, sin el circulo de
+        // carga de Material: la carga la enseña el propio juego.
         AnimatedVisibility(
             visible = showSplash,
             exit = fadeOut(),
@@ -327,10 +306,7 @@ private fun WebViewLayer(
                     Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
+            )
         }
     }
 }

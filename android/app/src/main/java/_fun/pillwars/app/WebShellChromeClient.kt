@@ -2,6 +2,7 @@ package _fun.pillwars.app
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Message
 import android.util.Log
 import android.webkit.ConsoleMessage
@@ -20,6 +21,11 @@ class WebShellChromeClient(
     ) {
         onProgressChanged.invoke(newProgress)
     }
+
+    // Sin esto el WebView pinta su poster por defecto (fondo gris con un boton
+    // de play) en cada <video> hasta que llega el primer fotograma: salia un
+    // "reproductor" unos milisegundos antes de cada video. Transparente, no se ve.
+    override fun getDefaultVideoPoster(): Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
 
     override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
         // Console messages are page-controlled and may contain sensitive
