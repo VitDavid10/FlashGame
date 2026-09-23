@@ -1,6 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, random, staticFile, useCurrentFrame } from "remotion";
 import growthCapture from "../public/growth/events.json";
+import tourCapture from "../public/tour/events.json";
 import { ArenaFloor, Food, FoodPile, GAME_ANGLE, H, PIXEL, PX, Pill, W } from "./ui";
 import { PALETTE } from "./pill";
 
@@ -215,6 +216,18 @@ export const Growth: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: "#050505" }}>
       <Img src={staticFile(`growth/${String(at).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />
+    </AbsoluteFill>
+  );
+};
+
+/* ---------- The bare map, no pill (capture mode 'tour') ---------- */
+export const TOUR_FRAMES = tourCapture.frames as number;
+export const Tour: React.FC = () => {
+  const f = useCurrentFrame();
+  const at = Math.min(TOUR_FRAMES - 1, f);
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#050505" }}>
+      <Img src={staticFile(`tour/${String(at).padStart(4, "0")}.jpg`)} style={{ width: W, height: H }} />
     </AbsoluteFill>
   );
 };

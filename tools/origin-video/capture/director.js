@@ -30,10 +30,12 @@
     const TICK = 1000 / 60, MAX_FRAMES = 520, AFTER_DEATH = 24;
     // window.__captureMode picks what to record: 'kills' (default, the arena
     // scene), 'skills' (the four "in PILLWARS" clips) or 'deaths' (the three
-    // kill clips of the closing beat). See skills() and deaths() below.
+    // kill clips of the closing beat), 'growth' (the pill and its crowns) or
+    // 'tour' (the bare map, no pill). See skills(), deaths(), growth() and tour().
     const MODE = window.__captureMode || 'kills';
     // The crowns of the podium only exist in ARCADE, so that take starts there.
     const ARCADE = MODE === 'growth';
+    window.__pwTour = MODE === 'tour';
     const inject = code => { const s = document.createElement('script'); s.textContent = code; document.head.appendChild(s); };
     window.__status = { phase: 'waiting' };
 
@@ -107,6 +109,10 @@
         // every tick, so a take sets it again right before drawing.
         window.__rank = n => { _miPuesto = n; };
         window.getViewScale = function () { return gvs.apply(this, arguments) * window.__zoom; };
+        // The tour has no pill on screen, so the "NOBODY NEARBY" compass (it
+        // fires after 5 s without an enemy in view) would otherwise pop up
+        // over an empty map.
+        if (window.__pwTour) drawEnemyArrow = function () {};
     })();`);
 
     const ws = new WebSocket('ws://127.0.0.1:8197');
@@ -124,6 +130,9 @@
     hero.r = 40;
     Object.assign(hero, { colorTop: '#c0c8d0', colorBot: '#00ff44' });   // the default pill
     const H0 = { x: hero.x, y: hero.y };
+
+    // Before the virus shuffle below: the tour wants the map as it is.
+    if (MODE === 'tour') return tour(sim, hero, sendFrame, ws);
 
     for (const v of sim.viruses) {
         if (v.x > H0.x - 900 && v.x < H0.x + 4000 && Math.abs(v.y - H0.y) < 520) {
@@ -643,5 +652,112 @@
         ws.send('growth/events.json'); ws.send(JSON.stringify({ fps: 30, frames: FRAMES }, null, 2));
         await new Promise(r => setTimeout(r, 800));
         window.__status = { phase: 'done', frames: FRAMES };
+    }
+
+    /*
+     * A flight over the bare map: no pill, nothing eaten, just the arena as it
+     * is (food and viruses). The camera starts pushed in tight on the food and
+     * drifts along a line, pulling back as it goes so more of the map opens up
+     * and the viruses drift into shot.
+     *
+     * The camera is the director's, not the game's: the game's view scale is
+     * replaced by a fixed curve (px per world unit), because with no player
+     * there is nothing for the game's own zoom to follow. The hero is parked in
+     * a corner and every bot in the opposite one, both far from the route, so
+     * nothing touches the food or the viruses on the way.
+     *
+     * The route is not hand-placed: it is picked by scanning the map for the
+     * straight run that passes the most viruses without one already being in
+     * the first frame (so they arrive as the view opens).
+     */
+    async function tour(sim, hero, sendFrame, ws) {
+        ws.send('reset tour');
+        const FRAMES = 300;                    // 10 s at 30 fps
+        const Z0 = 2.4, Z1 = 1.25;             // px per world unit, tight to open
+        const V0 = 3.5, V1 = 8;                // camera speed, units per frame
+        const M = sim.mapSize, LIM = M * 0.72;  // keep the route (and the view around it) far from the walls
+        const sway = 140;                      // sideways drift, so it is not a ruler-straight line
+        const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        const easeOut = t => 1 - (1 - t) * (1 - t);
+        // How far along the line the camera is at frame f (units).
+        const along = f => { let s = 0; for (let i = 0; i < f; i++) s += V0 + (V1 - V0) * easeOut(i / (FRAMES - 1)); return s; };
+        const LEN = along(FRAMES - 1);
+        const zoomAt = f => Z0 + (Z1 - Z0) * easeInOut(f / (FRAMES - 1));
+
+        // What the widest frame of the run can see, for the scan.
+        const halfW = 960 / Z1, halfH = 540 / Z1;
+        const first = { w: 960 / Z0, h: 540 / Z0 };
+        let best = null;
+        for (let i = 0; i < 6000; i++) {
+            const sx = (Math.random() * 2 - 1) * LIM, sy = (Math.random() * 2 - 1) * LIM, a = Math.random() * Math.PI * 2;
+            const ux = Math.cos(a), uy = Math.sin(a);
+            if (Math.abs(sx + ux * LEN) > LIM || Math.abs(sy + uy * LEN) > LIM) continue;
+            let viruses = 0, early = 0;
+            for (const v of sim.viruses) {
+                const rx = v.x - sx, ry = v.y - sy;
+                const s = rx * ux + ry * uy, c = -rx * uy + ry * ux;
+                if (s > 0 && s < LEN && Math.abs(c) < halfH * 0.8) viruses++;
+                if (Math.abs(rx) < first.w + v.r && Math.abs(ry) < first.h + v.r) early++;
+            }
+            if (early) continue;
+            let food = 0;
+            for (const f of sim.foods) {
+                const rx = f.x - sx, ry = f.y - sy;
+                const s = rx * ux + ry * uy, c = -rx * uy + ry * ux;
+                if (s > 0 && s < LEN && Math.abs(c) < halfH * 0.8) food++;
+            }
+            const score = Math.min(viruses, 5) * 1000 + food;
+            if (!best || score > best.score) best = { score, sx, sy, ux, uy, viruses, food };
+        }
+        if (!best) throw new Error('no route found');
+
+        const HERO_AT = { x: -M * 0.93, y: -M * 0.93 }, PARK = { x: M * 0.9, y: M * 0.9 };
+        // Everything that could touch the map's contents is held in its corner.
+        const hold = () => {
+            Object.assign(hero, { x: HERO_AT.x, y: HERO_AT.y, vx: 0, vy: 0, boostX: 0, boostY: 0 });
+            for (const e of sim.enemies) { e.x = PARK.x; e.y = PARK.y; e.vx = e.vy = 0; e.targetX = e.x; e.targetY = e.y; e.botSkills = []; e.botNextSkillTime = 1e15; }
+            if (sim.ejectedMasses) sim.ejectedMasses.length = 0;
+            if (sim.botRespawnQueue) sim.botRespawnQueue.length = 0;
+        };
+        const p = window.me();
+        p.cells.length = 0; p.cells.push(hero);
+        hero.r = 10;
+        // A fixed scale instead of the game's: see above.
+        window.__abs = Z0;
+        window.getViewScale = () => window.__abs;
+        // The pill has to be out of the shot: any HUD text or hint the canvas
+        // draws for it would be a giveaway, and floating texts are cleared.
+        floatingTexts.length = 0;
+
+        const foodBefore = sim.foods.length, virusesBefore = sim.viruses.length;
+        for (let i = 0; i < 10; i++) { hold(); window.__tick(TICK); }
+        const pos = f => {
+            const s = along(f), t = f / (FRAMES - 1);
+            const off = sway * Math.sin(t * Math.PI);
+            return { x: best.sx + best.ux * s - best.uy * off, y: best.sy + best.uy * s + best.ux * off };
+        };
+        window.__frame = 0;
+        window.__status = { phase: 'recording', frame: 0 };
+        for (let f = 0; f < FRAMES; f++) {
+            hold();
+            window.__tick(TICK); window.__tick(TICK);
+            hold();
+            const c = pos(f);
+            window.__abs = zoomAt(f);
+            window.__snapCam(c.x, c.y);
+            window.__draw();
+            await sendFrame('tour/', f);
+            window.__frame = f + 1;
+            window.__status = { phase: 'recording', frame: f + 1 };
+        }
+        const meta = {
+            fps: 30, frames: FRAMES, zoom: [Z0, Z1], route: { from: { x: best.sx, y: best.sy }, len: Math.round(LEN) },
+            viruses: best.viruses, foodOnRoute: best.food,
+            // Nothing may be eaten: the counts are checked against the start.
+            foodBefore, foodAfter: sim.foods.length, virusesBefore, virusesAfter: sim.viruses.length,
+        };
+        ws.send('tour/events.json'); ws.send(JSON.stringify(meta, null, 2));
+        await new Promise(r => setTimeout(r, 800));
+        window.__status = { phase: 'done', ...meta };
     }
 })().catch(e => { window.__status = { phase: 'error', msg: String(e) }; });
