@@ -12,9 +12,10 @@
  * airdrop page's iframe and to requests coming from it.
  *
  * SITE_CLOSED=1 goes one step further: EVERYTHING answers 404, the airdrop
- * included, and nothing is served to anyone. The only door left open is the
+ * included, and nothing is served to anyone. The only doors left open are the
  * private pass (/airdrop-unlock/<token>, minted from a shell on the server),
- * so the owner can still open the site in one browser.
+ * so the owner can still open the site in one browser, and the dApp Store
+ * app's secret path (APP_PATH) with what the game loads from it.
  */
 const fs = require('fs');
 const path = require('path');
@@ -165,6 +166,16 @@ function createAirdrop(opts) {
     function unlocked(req) {
         const m = new RegExp('(?:^|;\\s*)' + UNLOCK_COOKIE + '=([A-Za-z0-9_-]{20,64})').exec(String(req.headers.cookie || ''));
         return !!m && unlockTokenOk(m[1]);
+    }
+    // The app keeps playing through the blackout: its secret path, plus the
+    // lockdown's allow-list (sounds, images, APIs...) when the page asking for
+    // them is that path. Nothing else of the site comes back.
+    function fromApp(req, urlPath) {
+        if (!appPath) return false;
+        if (urlPath === appPath || urlPath.startsWith(appPath + '/')) return true;
+        const from = sameOriginReferer(req);
+        return !!from && from.startsWith(appPath + '/') &&
+            LOCKDOWN_ALLOW.some(p => p.endsWith('/') ? urlPath.startsWith(p) : urlPath === p);
     }
     const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
 
@@ -430,7 +441,7 @@ function createAirdrop(opts) {
     /** true = the request was answered here. */
     async function handle(req, res, urlPath, query) {
         // Blackout: only the private pass answers, everything else is a 404.
-        if (CLOSED && !unlocked(req) && !isUnlockPath(req, urlPath)) { notFound(req, res); return true; }
+        if (CLOSED && !unlocked(req) && !isUnlockPath(req, urlPath) && !fromApp(req, urlPath)) { notFound(req, res); return true; }
         const isHome = ONLY ? urlPath === '/' : (urlPath === '/airdrop' || urlPath === '/airdrop/');
         if (isHome) { sendHome(req, res, query); return true; }
         if (ONLY && (urlPath === '/airdrop' || urlPath === '/airdrop/')) { redirect(res, '/', 301); return true; }
