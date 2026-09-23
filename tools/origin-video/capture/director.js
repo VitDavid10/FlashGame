@@ -680,6 +680,7 @@
     async function tour(sim, hero, sendFrame, ws) {
         ws.send('reset tour');
         const FRAMES = 300;                    // 10 s at 30 fps
+        const SMALL_R = 24, BIG_R = 36;        // the chase pair: 1.5x, well past the game's 1.15x
         // Z0 lower and the zoom on an ease-OUT curve (was ease-in-out): the old
         // curve barely moved for its first ~2 s — it looked stuck on the tight
         // opening shot ("demasiado zoom" before the 2 s mark, David) — an
@@ -706,31 +707,51 @@
         // well-spaced run and the flight looked crowded with virus after
         // virus ("muchos virus juntos", David).
         const MIN_VIRUS_GAP = 900;
+        // Where the chase plays out along the route (see Vignette 1): no virus
+        // may sit there, or the small pill hides in it and can't be eaten.
+        const DUEL_S = LEN * 0.32;
+        // The virus a pill hides in must come after the chase and early enough
+        // that the pill is all the way out before the video ends.
+        const HIDE_S_MIN = LEN * 0.45, HIDE_S_MAX = ALONG[FRAMES - 70];
+        const CROWD_AT = [0, 50, 100, 150, 200, 250, FRAMES - 1];
         let best = null;
         for (let i = 0; i < 6000; i++) {
             const sx = (Math.random() * 2 - 1) * LIM, sy = (Math.random() * 2 - 1) * LIM, a = Math.random() * Math.PI * 2;
             const ux = Math.cos(a), uy = Math.sin(a);
             if (Math.abs(sx + ux * LEN) > LIM || Math.abs(sy + uy * LEN) > LIM) continue;
-            let early = false;
+            let skip = false;
             const onRoute = [];
             for (const v of sim.viruses) {
                 const rx = v.x - sx, ry = v.y - sy;
                 const s = rx * ux + ry * uy, c = -rx * uy + ry * ux;
+                if (s > DUEL_S - 450 && s < DUEL_S + 550 && Math.abs(c - 90) < 300) { skip = true; break; }
                 if (s > 0 && s < LEN && Math.abs(c) < halfH * 0.8) onRoute.push({ v, s, c });
-                if (Math.abs(rx) < first.w + v.r && Math.abs(ry) < first.h + v.r) { early = true; break; }
+                if (Math.abs(rx) < first.w + v.r && Math.abs(ry) < first.h + v.r) { skip = true; break; }
             }
-            if (early) continue;
+            if (skip) continue;
+            // Spacing along the lane isn't enough: once the shot opens up, the
+            // whole frame counts. Never more than 2 viruses on screen at once
+            // (checked on a handful of frames; the sway is ignored, ~140 units).
+            let crowd = 0;
+            for (const k of CROWD_AT) {
+                const cx = sx + ux * ALONG[k], cy = sy + uy * ALONG[k], hw = 960 / zoomAt(k), hh = 540 / zoomAt(k);
+                let n = 0;
+                for (const v of sim.viruses) if (Math.abs(v.x - cx) < hw + v.r && Math.abs(v.y - cy) < hh + v.r) n++;
+                crowd = Math.max(crowd, n);
+            }
+            if (crowd > 2) continue;
             onRoute.sort((p, q) => p.s - q.s);
             const spaced = [];
             for (const o of onRoute) if (!spaced.length || o.s - spaced[spaced.length - 1].s >= MIN_VIRUS_GAP) spaced.push(o);
+            const hideAt = spaced.filter(o => o.s > HIDE_S_MIN && o.s < HIDE_S_MAX);
             let food = 0;
             for (const f of sim.foods) {
                 const rx = f.x - sx, ry = f.y - sy;
                 const s = rx * ux + ry * uy, c = -rx * uy + ry * ux;
                 if (s > 0 && s < LEN && Math.abs(c) < halfH * 0.8) food++;
             }
-            const score = Math.min(spaced.length, 4) * 1000 + food;
-            if (!best || score > best.score) best = { score, sx, sy, ux, uy, spaced, food };
+            const score = (hideAt.length ? 5000 : 0) + Math.min(spaced.length, 4) * 1000 + food;
+            if (!best || score > best.score) best = { score, sx, sy, ux, uy, spaced, hideAt, food, crowd };
         }
         if (!best) throw new Error('no route found');
         const dirX = best.ux, dirY = best.uy, perpX = -best.uy, perpY = best.ux;
@@ -777,84 +798,110 @@
         // eating on its own): this only has to place them and let it happen.
         const pool = [...sim.enemies].filter(e => e.r > 6).sort((a, b) => a.r - b.r);
         const take = i => pool.splice(i, 1)[0];
-        // Two private corners, well outside where the scan even looks for a
-        // route (LIM = 0.72*M) and well apart from HERO_AT/PARK above — the
-        // cast waits there, never in the general pile, so nothing eats it
-        // ahead of its own cue.
-        const DUEL_OFF = { x: -M * 0.9, y: M * 0.95 }, HIDE_OFF = { x: M * 0.95, y: -M * 0.9 };
+        // The cast is on stage from the first frame to the last, and never
+        // jumps: nobody pops in or out of the shot (David). A pill "arrives"
+        // because the camera flies up to where it already is, and "leaves"
+        // because it keeps going its own way while the camera flies on. The
+        // only exit that isn't the frame's edge is being eaten, on screen.
+        // No names over them either: they're scenery, not players.
         let duel = null;
         if (pool.length >= 2) {
             const small = take(0), big = take(pool.length - 1);
-            const s = LEN * 0.32, anchor = { x: best.sx + dirX * s, y: best.sy + dirY * s };
-            // Closing speed is only 8.5 - 1.6 = 6.9 units/frame against a
-            // ~320-unit head start, so the chase needs ~46 frames on its own —
-            // +20 cut it right at the wire (they were still just short of
-            // touching at endF); +35 leaves it room to actually land the catch.
-            const startF = Math.max(0, frameAtS(s) - 26), endF = Math.min(FRAMES - 1, frameAtS(s) + 35);
+            const s = DUEL_S, anchor = { x: best.sx + dirX * s, y: best.sy + dirY * s };
+            // The chase starts a little before the camera gets there, so it's
+            // already under way as they come into view. Closing speed is
+            // 8.5 - 1.6 = 6.9 units/frame on a ~320-unit gap: ~46 frames.
+            const startF = Math.max(0, frameAtS(s) - 26);
             const smallAt = { x: anchor.x + perpX * 90 + dirX * 60, y: anchor.y + perpY * 90 + dirY * 60 };
             const bigAt = { x: anchor.x + perpX * 90 - dirX * 260, y: anchor.y + perpY * 90 - dirY * 260 };
-            duel = { small, big, startF, endF, smallAt, bigAt };
+            duel = { small, big, startF, smallAt, bigAt };
             castSet.add(small); castSet.add(big);
             tame(small); tame(big);
-            small.r = 26; big.r = 34;   // 34/26 > 1.15: the real "bigger eats smaller" rule takes it from here
-            put(small, DUEL_OFF.x, DUEL_OFF.y); put(big, DUEL_OFF.x + 200, DUEL_OFF.y + 200);   // offset from each other too, or they'd eat early
+            // The game eats only past 1.15x. They're on stage (and eating
+            // pellets) from frame 0, which once took 34 vs 26 to 35 vs 31 —
+            // under the bar, and the big one just sat on top of the small one.
+            // Sizes are held until the catch (updateCast), with room to spare.
+            small.r = SMALL_R; big.r = BIG_R;
+            small.name = big.name = '';
+            put(small, smallAt.x, smallAt.y); put(big, bigAt.x, bigAt.y);
         }
 
         // ---- Vignette 2: a pill tucked inside a virus, then it leaves cover.
         // isHiddenInVirus() needs r < virus.r and to sit fully inside it —
-        // this places it there for real, not just visually near one.
+        // this places it there for real, not just visually near one. It's
+        // inside from frame 0, so it doesn't appear: it was always there.
         let hide = null;
-        if (best.spaced.length && pool.length) {
-            const target = best.spaced.reduce((a, b) => Math.abs(b.s - LEN * 0.62) < Math.abs(a.s - LEN * 0.62) ? b : a);
+        if (best.hideAt.length && pool.length) {
+            const target = best.hideAt.reduce((a, b) => Math.abs(b.s - LEN * 0.62) < Math.abs(a.s - LEN * 0.62) ? b : a);
             const bot = take(pool.length - 1);
             const v = target.v;
-            const startF = Math.max(0, frameAtS(target.s) - 26), revealF = startF + 20, endF = Math.min(FRAMES - 1, startF + 58);
-            hide = { bot, v, startF, revealF, endF };
+            const revealF = Math.max(0, frameAtS(target.s) - 6), outF = revealF + 38;
+            hide = { bot, v, revealF, outF };
             castSet.add(bot);
             tame(bot);
             bot.r = Math.max(8, v.r * 0.45);
-            put(bot, HIDE_OFF.x, HIDE_OFF.y);
+            bot.name = '';
+            put(bot, v.x, v.y);
         }
 
-        // Positions every cast member every frame — active in its vignette or
-        // tucked in its private corner otherwise. Called once per frame — the
-        // movement below is a per-frame step, not a per-tick one (the flight
-        // loop still ticks the sim twice a frame).
+        // Places the cast every frame. Called once per frame — the movement
+        // below is a per-frame step, not a per-tick one (the flight loop still
+        // ticks the sim twice a frame).
         const updateCast = f => {
             if (duel) {
-                const active = f >= duel.startF && f <= duel.endF;
-                if (!active) { put(duel.small, DUEL_OFF.x, DUEL_OFF.y); put(duel.big, DUEL_OFF.x + 200, DUEL_OFF.y + 200); }
-                else {
-                    if (f === duel.startF) { put(duel.small, duel.smallAt.x, duel.smallAt.y); put(duel.big, duel.bigAt.x, duel.bigAt.y); }
-                    const smallAlive = sim.enemies.includes(duel.small);
-                    if (smallAlive) {
-                        if (f > duel.startF) {
-                            duel.small.x += dirX * 1.6 + perpX * Math.sin(f / 5) * 2;
-                            duel.small.y += dirY * 1.6 + perpY * Math.sin(f / 5) * 2;
-                            put(duel.small, duel.small.x, duel.small.y);
-                            const dx = duel.small.x - duel.big.x, dy = duel.small.y - duel.big.y, d = Math.hypot(dx, dy) || 1, step = Math.min(d, 8.5);
-                            put(duel.big, duel.big.x + dx / d * step, duel.big.y + dy / d * step);
-                        }
-                    } else {
-                        put(duel.big, duel.big.x + dirX * 2, duel.big.y + dirY * 2);   // caught it: drifts on
-                    }
+                const smallAlive = sim.enemies.includes(duel.small);
+                if (smallAlive) { duel.small.r = SMALL_R; duel.big.r = BIG_R; }
+                if (f < duel.startF) {
+                    // Waiting: a small idle sway around its spot (a sine, not
+                    // accumulated, so it stays put overall).
+                    put(duel.small, duel.smallAt.x + perpX * Math.sin(f / 9) * 6, duel.smallAt.y + perpY * Math.sin(f / 9) * 6);
+                    put(duel.big, duel.bigAt.x + dirX * Math.sin(f / 11) * 6, duel.bigAt.y + dirY * Math.sin(f / 11) * 6);
+                } else if (smallAlive) {
+                    duel.small.x += dirX * 1.6 + perpX * Math.sin(f / 5) * 2;
+                    duel.small.y += dirY * 1.6 + perpY * Math.sin(f / 5) * 2;
+                    put(duel.small, duel.small.x, duel.small.y);
+                    const dx = duel.small.x - duel.big.x, dy = duel.small.y - duel.big.y, d = Math.hypot(dx, dy) || 1, step = Math.min(d, 8.5);
+                    put(duel.big, duel.big.x + dx / d * step, duel.big.y + dy / d * step);
+                } else {
+                    // Caught it: it wanders off sideways, away from the route,
+                    // and out the edge of the frame. Along the route it walked
+                    // straight into the next scene's virus.
+                    put(duel.big, duel.big.x + perpX * 3, duel.big.y + perpY * 3);
                 }
             }
             if (hide) {
-                const active = f >= hide.startF && f <= hide.endF;
-                if (!active) { put(hide.bot, HIDE_OFF.x, HIDE_OFF.y); return; }
-                hide.v.vx = hide.v.vy = 0;   // a fast-moving virus can burst anything touching it: hold it still while it's cover
-                if (f < hide.revealF) {
-                    put(hide.bot, hide.v.x, hide.v.y);
-                } else {
-                    const t = Math.min(1, (f - hide.revealF) / (hide.endF - hide.revealF));
-                    const e = 1 - (1 - t) * (1 - t);
-                    put(hide.bot, hide.v.x + perpX * (hide.v.r + 60) * e, hide.v.y + perpY * (hide.v.r + 60) * e);
+                hide.v.vx = hide.v.vy = 0;   // a moving virus can burst anything touching it: hold it still, it's cover
+                const out = hide.v.r + 60;
+                let d = 0;
+                if (f >= hide.revealF) {
+                    const t = Math.min(1, (f - hide.revealF) / (hide.outF - hide.revealF));
+                    d = out * (1 - (1 - t) * (1 - t));
+                    if (f > hide.outF) d += (f - hide.outF) * 1.5;   // out of cover, it keeps walking away
                 }
+                put(hide.bot, hide.v.x + perpX * d, hide.v.y + perpY * d);
             }
         };
 
-        const foodBefore = sim.foods.length, virusesBefore = sim.viruses.length;
+        // Food a cast pill eats respawns at a random spot of the map — and if
+        // that spot is in shot, a pellet pops out of nowhere. Respawns that
+        // land in (or next to) the frame are moved elsewhere.
+        let view = null, foodEaten = 0;
+        sim.spawnFood = function () {
+            Object.getPrototypeOf(this).spawnFood.call(this);
+            foodEaten++;
+            const fd = this.foods[this.foods.length - 1];
+            for (let k = 0; view && k < 50 && Math.abs(fd.x - view.x) < view.hw && Math.abs(fd.y - view.y) < view.hh; k++) {
+                this.foodGrid.remove(fd);
+                fd.x = (Math.random() * 2 - 1) * this.mapSize * 0.95; fd.y = (Math.random() * 2 - 1) * this.mapSize * 0.95;
+                this.foodGrid.insert(fd);
+            }
+        };
+        // Largest single-frame jump of any cast pill: a check that nobody
+        // teleported (a real move is under ~10 units a frame).
+        const lastAt = new Map();
+        let maxStep = 0;
+
+        const virusesBefore = sim.viruses.length;
         for (let i = 0; i < 10; i++) { hold(); window.__tick(TICK); }
         const pos = f => {
             const s = ALONG[f], t = f / (FRAMES - 1);
@@ -863,27 +910,39 @@
         };
         window.__frame = 0;
         window.__status = { phase: 'recording', frame: 0 };
+        foodEaten = 0;   // the warm-up ticks don't count
         for (let f = 0; f < FRAMES; f++) {
+            const c = pos(f), z = zoomAt(f);
+            // The frame plus a margin: the camera moves under 10 units a frame.
+            view = { x: c.x, y: c.y, hw: 960 / z + 300, hh: 540 / z + 300 };
             updateCast(f);
             hold(); window.__tick(TICK);
             hold(); window.__tick(TICK);
             hold();
-            const c = pos(f);
-            window.__abs = zoomAt(f);
+            for (const b of castSet) {
+                if (!sim.enemies.includes(b)) continue;
+                const l = lastAt.get(b);
+                if (l) maxStep = Math.max(maxStep, Math.hypot(b.x - l.x, b.y - l.y));
+                lastAt.set(b, { x: b.x, y: b.y });
+            }
+            window.__abs = z;
             window.__snapCam(c.x, c.y);
             window.__draw();
             await sendFrame('tour/', f);
             window.__frame = f + 1;
             window.__status = { phase: 'recording', frame: f + 1 };
         }
+        view = null;
+        delete sim.spawnFood;
         const meta = {
             fps: 30, frames: FRAMES, zoom: [Z0, Z1], route: { from: { x: best.sx, y: best.sy }, len: Math.round(LEN) },
-            viruses: best.spaced.length, foodOnRoute: best.food,
-            duel: duel && { startF: duel.startF, endF: duel.endF, eaten: !sim.enemies.includes(duel.small) },
-            hide: hide && { startF: hide.startF, revealF: hide.revealF, endF: hide.endF },
-            // The map itself (food/viruses) is untouched; only the vignette's
-            // own bots move or get eaten.
-            foodBefore, foodAfter: sim.foods.length, virusesBefore, virusesAfter: sim.viruses.length,
+            viruses: best.spaced.length, virusesOnScreenMax: best.crowd, foodOnRoute: best.food,
+            duel: duel && { startF: duel.startF, eaten: !sim.enemies.includes(duel.small) },
+            hide: hide && { revealF: hide.revealF, outF: hide.outF },
+            maxStep: Math.round(maxStep * 10) / 10,
+            // Pellets the cast pills ate on screen (each one respawned outside the frame).
+            foodEaten,
+            virusesBefore, virusesAfter: sim.viruses.length,
         };
         ws.send('tour/events.json'); ws.send(JSON.stringify(meta, null, 2));
         await new Promise(r => setTimeout(r, 800));
