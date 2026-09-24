@@ -128,10 +128,10 @@ If a link is not on this list, it is not us.
 
 🌐 **Website:** <https://pillwars.fun>
 🎁 **Genesis Drop (airdrop):** <https://pillwars.fun/airdrop>
-🐦 **X:** <https://x.com/pillwarsdotfun>
+𝕏 **X:** <https://x.com/pillwarsdotfun>
 ✈️ **Telegram community chat:** <https://t.me/pillwars_fun>
 📢 **Telegram announcements:** <https://t.me/pillwars_announcements>
-💬 **Discord:** <${INVITE}>
+👾 **Discord:** <${INVITE}>
 🏦 **Treasury (on-chain):** <https://pillwars.fun/treasury.html>
 📜 **Airdrop terms:** <https://pillwars.fun/airdrop-terms>
 
