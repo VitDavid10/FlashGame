@@ -33,7 +33,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         const m = u.message;
         if (m && m.chat.id === group) {
             if (m.is_automatic_forward) return pin(m.message_id, group);
-            if (m.pinned_message && m.from && m.from.is_bot) return tg('deleteMessage', { chat_id: group, message_id: m.message_id });
+            if (m.pinned_message) return tg('deleteMessage', { chat_id: group, message_id: m.message_id });
         }
     }
 

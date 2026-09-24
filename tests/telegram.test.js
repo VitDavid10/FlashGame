@@ -32,7 +32,7 @@ test('en el grupo se fija el anuncio reenviado, no lo que escribe la gente', asy
     const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl: f.fetchImpl });
     await t.onUpdate({ message: { message_id: 10, chat: { id: -1004327296311 }, is_automatic_forward: true } });
     await t.onUpdate({ message: { message_id: 11, chat: { id: -1004327296311 }, from: { is_bot: false }, text: 'hola' } });
-    await t.onUpdate({ message: { message_id: 12, chat: { id: -1004327296311 }, from: { is_bot: true }, pinned_message: {} } });
+    await t.onUpdate({ message: { message_id: 12, chat: { id: -1004327296311 }, sender_chat: { id: -1004433617369 }, pinned_message: {} } });
     assert.deepEqual(f.calls.map(c => [c[0], c[1].chat_id, c[1].message_id]), [['pinChatMessage', -1004327296311, 10], ['deleteMessage', -1004327296311, 12]]);
 });
 
