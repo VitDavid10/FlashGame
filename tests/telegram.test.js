@@ -45,8 +45,8 @@ test('X: la primera vez no vuelca el historial; luego reenvía y fija solo posts
     const f2 = fake([tw('120'), tw('110', { replying_to: { screen_name: 'solana' } }), tw('105'), tw('100')]);
     await createTelegram({ token: 'x', stateFile: file, fetchImpl: f2.fetchImpl }).checkX();
     assert.deepEqual(f2.calls.map(c => c[0] + ':' + (c[1].text || c[1].message_id)), [
-        'sendMessage:t105\n\nhttps://x.com/pillwarsdotfun/status/105', 'pinChatMessage:99',
-        'sendMessage:t120\n\nhttps://x.com/pillwarsdotfun/status/120', 'pinChatMessage:99',
+        'sendMessage:<b>New post on 𝕏</b>\n\nt105\n\nhttps://fixupx.com/pillwarsdotfun/status/105', 'pinChatMessage:99',
+        'sendMessage:<b>New post on 𝕏</b>\n\nt120\n\nhttps://fixupx.com/pillwarsdotfun/status/120', 'pinChatMessage:99',
     ]);
 });
 

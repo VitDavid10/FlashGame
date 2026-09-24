@@ -19,6 +19,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         if (!r.ok) throw new Error(method + ': ' + r.description);
         return r.result;
     }
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const pin = (id, where = chat) => tg('pinChatMessage', { chat_id: where, message_id: id, disable_notification: true });
 
     // Canal: fijar los posts y borrar el aviso "X pinned a message".
@@ -61,7 +62,9 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         if (!state.lastTweet) { state.lastTweet = newest; save(); return; }
         const fresh = own.filter(t => BigInt(t.id) > BigInt(state.lastTweet)).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
         for (const t of fresh) {
-            const m = await tg('sendMessage', { chat_id: chat, text: t.text + '\n\n' + t.url });
+            // fixupx.com: Telegram enseña la foto o el vídeo del post en la vista previa; al pulsar lleva a X.
+            const url = t.url.replace(/^https:\/\/(x|twitter)\.com\//, 'https://fixupx.com/');
+            const m = await tg('sendMessage', { chat_id: chat, parse_mode: 'HTML', text: '<b>New post on 𝕏</b>\n\n' + esc(t.text) + '\n\n' + url });
             await pin(m.message_id);
             state.lastTweet = t.id; save();
             log('telegram: post de X reenviado ' + t.id);
