@@ -17,6 +17,7 @@ server/globalsettings.json
 server/faucet.json
 server/hostassign.json
 server/layerassign.json
+server/telegram-state.json
 
 # Notas internas de desarrollo
 tasks/

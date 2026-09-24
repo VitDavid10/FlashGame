@@ -49,6 +49,7 @@ const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (u
 const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILL + quema)
 const { createAirdrop } = require('./airdrop.js');  // página del airdrop + modo AIRDROP_ONLY
 const { createDiscord } = require('./discord.js');  // botones verify y tickets del Discord
+const { createTelegram } = require('./telegram.js');  // anuncios fijados y posts de X en Telegram
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
 const { listCombos, buildShardMap, applyOverrides } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
 const { createIpc } = require('./cluster/ipc.js');             // request/response sobre fork (Fase 4)
@@ -2446,6 +2447,9 @@ setInterval(() => { const now = Date.now(); for (const [k, e] of rpcApiHits) if 
 const airdrop = createAirdrop({ root: ROOT, only: process.env.AIRDROP_ONLY === '1', closed: process.env.SITE_CLOSED === '1', adminPath: ADMIN_PATH, appPath: APP_PATH, clientIp, log, verifySignature: solana.verifySignedMessage });
 // Botones verify y tickets del Discord (ver server/discord.js).
 const discord = createDiscord({ publicKey: process.env.DISCORD_PUBLIC_KEY, token: process.env.DISCORD_BOT_TOKEN, log });
+// Canal de Telegram: fija cada anuncio y reenvía los posts de X (ver server/telegram.js).
+// Un solo proceso: los hosts del split no lo arrancan.
+if (PW_ROLE !== 'host') createTelegram({ token: process.env.TELEGRAM_BOT_TOKEN, stateFile: path.join(__dirname, 'telegram-state.json'), log }).start();
 const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     // www.pillwars.fun sirve la misma web que pillwars.fun, y Google las trata
