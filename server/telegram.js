@@ -1,11 +1,12 @@
 'use strict';
 // Canal de Telegram de PillWars: todo anuncio queda fijado.
+// Canal por id (no por @usuario, que puede cambiar de dueño).
 // - Posts que publica el equipo en el canal: el bot los recibe (getUpdates) y los fija.
 // - Posts nuevos de X (@pillwarsdotfun, sin respuestas ni reposts): el bot los publica y los fija.
 // Se activa con TELEGRAM_BOT_TOKEN. Solo corre en el proceso director/mono.
 const fs = require('fs');
 
-function createTelegram({ token, chat = '@pillwars_fun', xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3 } = {}) {
+function createTelegram({ token, chat = -1004433617369, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3 } = {}) {
     if (!token) return { start() {}, enabled: false };
     let state = {};
     try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch {}
@@ -23,7 +24,7 @@ function createTelegram({ token, chat = '@pillwars_fun', xHandle = 'pillwarsdotf
     // Mensajes que llegan del canal: fijar los posts y borrar el aviso "X pinned a message".
     async function onUpdate(u) {
         const p = u.channel_post;
-        if (!p || '@' + (p.chat.username || '') !== chat) return;
+        if (!p || p.chat.id !== chat) return;
         if (p.pinned_message) return tg('deleteMessage', { chat_id: chat, message_id: p.message_id });
         return pin(p.message_id);
     }

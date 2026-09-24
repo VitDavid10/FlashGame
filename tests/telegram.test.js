@@ -21,9 +21,9 @@ const stateFile = () => path.join(os.tmpdir(), 'tg-state-' + process.pid + '-' +
 test('post del canal se fija; el aviso de "pinned" se borra', async () => {
     const f = fake([]);
     const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl: f.fetchImpl });
-    await t.onUpdate({ channel_post: { message_id: 5, chat: { username: 'pillwars_fun' } } });
-    await t.onUpdate({ channel_post: { message_id: 6, chat: { username: 'pillwars_fun' }, pinned_message: {} } });
-    await t.onUpdate({ channel_post: { message_id: 7, chat: { username: 'otro' } } });
+    await t.onUpdate({ channel_post: { message_id: 5, chat: { id: -1004433617369 } } });
+    await t.onUpdate({ channel_post: { message_id: 6, chat: { id: -1004433617369 }, pinned_message: {} } });
+    await t.onUpdate({ channel_post: { message_id: 7, chat: { id: -1004327296311 } } });
     assert.deepEqual(f.calls.map(c => [c[0], c[1].message_id]), [['pinChatMessage', 5], ['deleteMessage', 6]]);
 });
 
