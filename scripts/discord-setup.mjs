@@ -80,6 +80,7 @@ const defs = [
   ['genesis-drop', '📢 INFO', 'The Season 0 $PILLY airdrop: pool, points and how it is split.', readOnly],
   ['faq', '📢 INFO', 'Frequently asked questions.', readOnly],
   ['roadmap', '📢 INFO', 'Where PillWars is going.', readOnly],
+  ['x-feed', '📢 INFO', 'Every new post from our X, automatically.', readOnly],
   ['general', '💬 COMMUNITY', 'Talk about anything PillWars.', []],
   ['clips', '💬 COMMUNITY', 'Share your best plays and screenshots.', []],
   ['suggestions', '💬 COMMUNITY', 'Ideas for modes, skills, skins and features.', []],

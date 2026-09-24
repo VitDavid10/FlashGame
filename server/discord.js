@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const GUILD = '1552774307938304002';
 const ROLE = { team: '1552778659931103292', mod: '1552778660983869560', player: '1552778663433474098' };
 const TICKETS_CATEGORY = 'TICKETS';
+const X_FEED = '1552813555902972095';   // #x-feed: cada post nuevo de X
 const TICKET_KINDS = { collab: 'Collab / partnership', bug: 'Bug report', support: 'Support', other: 'Other' };
 
 const API = 'https://discord.com/api/v10';
@@ -29,7 +30,7 @@ function verifyRequest(key, sigHex, timestamp, rawBody) {
 }
 
 function createDiscord({ publicKey, token, log = () => {}, fetchImpl = fetch } = {}) {
-    if (!publicKey) return { handle: async () => false, enabled: false };
+    if (!publicKey) return { handle: async () => false, postXFeed: async () => {}, enabled: false };
     const key = publicKeyObject(publicKey);
 
     async function api(method, path, body) {
@@ -119,7 +120,10 @@ function createDiscord({ publicKey, token, log = () => {}, fetchImpl = fetch } =
         return true;
     }
 
-    return { handle, enabled: true };
+    // Post nuevo de X en #x-feed. Solo el enlace: fixupx ya trae texto, foto y vídeo en el embed.
+    const postXFeed = url => api('POST', '/channels/' + X_FEED + '/messages', { content: '**New post on 𝕏**\n' + url });
+
+    return { handle, postXFeed, enabled: true };
 }
 
 module.exports = { createDiscord, verifyRequest, publicKeyObject };

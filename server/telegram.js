@@ -6,7 +6,7 @@
 // Se activa con TELEGRAM_BOT_TOKEN. Solo corre en el proceso director/mono.
 const fs = require('fs');
 
-function createTelegram({ token, chat = -1004433617369, group = -1004327296311, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3 } = {}) {
+function createTelegram({ token, chat = -1004433617369, group = -1004327296311, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3, onXPost = async () => {} } = {}) {
     if (!token) return { start() {}, enabled: false };
     let state = {};
     try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch {}
@@ -67,6 +67,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
             const m = await tg('sendMessage', { chat_id: chat, parse_mode: 'HTML', text: '<b>New post on 𝕏</b>\n\n' + esc(t.text) + '\n\n' + url });
             await pin(m.message_id);
             state.lastTweet = t.id; save();
+            await onXPost(url).catch(e => log('telegram: onXPost ' + e.message));
             log('telegram: post de X reenviado ' + t.id);
         }
     }

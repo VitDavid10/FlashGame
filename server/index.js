@@ -2448,8 +2448,9 @@ const airdrop = createAirdrop({ root: ROOT, only: process.env.AIRDROP_ONLY === '
 // Botones verify y tickets del Discord (ver server/discord.js).
 const discord = createDiscord({ publicKey: process.env.DISCORD_PUBLIC_KEY, token: process.env.DISCORD_BOT_TOKEN, log });
 // Canal de Telegram: fija cada anuncio y reenvía los posts de X (ver server/telegram.js).
+// Los posts de X van también a #x-feed del Discord.
 // Un solo proceso: los hosts del split no lo arrancan.
-if (PW_ROLE !== 'host') createTelegram({ token: process.env.TELEGRAM_BOT_TOKEN, stateFile: path.join(__dirname, 'telegram-state.json'), log }).start();
+if (PW_ROLE !== 'host') createTelegram({ token: process.env.TELEGRAM_BOT_TOKEN, stateFile: path.join(__dirname, 'telegram-state.json'), log, onXPost: discord.postXFeed }).start();
 const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     // www.pillwars.fun sirve la misma web que pillwars.fun, y Google las trata
