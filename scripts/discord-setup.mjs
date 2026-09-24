@@ -128,7 +128,7 @@ If a link is not on this list, it is not us.
 
 🌐 **Website:** <https://pillwars.fun>
 🎁 **Genesis Drop (airdrop):** <https://pillwars.fun/airdrop>
-𝕏 **X:** <https://x.com/pillwarsdotfun>
+🐦 **X:** <https://x.com/pillwarsdotfun>
 ✈️ **Telegram community chat:** <https://t.me/pillwars_fun>
 📢 **Telegram announcements:** <https://t.me/pillwars_announcements>
 👾 **Discord:** <${INVITE}>
