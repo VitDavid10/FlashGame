@@ -5339,8 +5339,8 @@ function toggleTrailerMode() {
                     const res = await fetch('https://api.web3forms.com/submit', { method: 'POST', body: new FormData(form) });
                     const data = await res.json();
                     if (data.success) { status.style.color = '#00ff88'; status.textContent = "✅ Message sent! We'll get back to you soon."; form.reset(); }
-                    else { status.style.color = '#ff2a2a'; status.textContent = '❌ Could not send. Email contacto@pillwars.fun'; }
-                } catch (err) { status.style.color = '#ff2a2a'; status.textContent = '❌ Connection error. Email contacto@pillwars.fun'; }
+                    else { status.style.color = '#ff2a2a'; status.textContent = '❌ Could not send. Email contact@pillwars.fun'; }
+                } catch (err) { status.style.color = '#ff2a2a'; status.textContent = '❌ Connection error. Email contact@pillwars.fun'; }
                 btn.disabled = false;
             });
             // Cerrar con la tecla Escape
