@@ -1,12 +1,12 @@
 'use strict';
-// Canal de Telegram de PillWars: todo anuncio queda fijado.
+// Canal de Telegram de PillWars: todo anuncio queda fijado, en el canal y en el grupo del chat.
 // Canal por id (no por @usuario, que puede cambiar de dueño).
 // - Posts que publica el equipo en el canal: el bot los recibe (getUpdates) y los fija.
 // - Posts nuevos de X (@pillwarsdotfun, sin respuestas ni reposts): el bot los publica y los fija.
 // Se activa con TELEGRAM_BOT_TOKEN. Solo corre en el proceso director/mono.
 const fs = require('fs');
 
-function createTelegram({ token, chat = -1004433617369, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3 } = {}) {
+function createTelegram({ token, chat = -1004433617369, group = -1004327296311, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3 } = {}) {
     if (!token) return { start() {}, enabled: false };
     let state = {};
     try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch {}
@@ -19,20 +19,27 @@ function createTelegram({ token, chat = -1004433617369, xHandle = 'pillwarsdotfu
         if (!r.ok) throw new Error(method + ': ' + r.description);
         return r.result;
     }
-    const pin = id => tg('pinChatMessage', { chat_id: chat, message_id: id, disable_notification: true });
+    const pin = (id, where = chat) => tg('pinChatMessage', { chat_id: where, message_id: id, disable_notification: true });
 
-    // Mensajes que llegan del canal: fijar los posts y borrar el aviso "X pinned a message".
+    // Canal: fijar los posts y borrar el aviso "X pinned a message".
+    // Grupo del chat (conectado al canal): cada anuncio llega como reenvío automático y se fija también ahí.
     async function onUpdate(u) {
         const p = u.channel_post;
-        if (!p || p.chat.id !== chat) return;
-        if (p.pinned_message) return tg('deleteMessage', { chat_id: chat, message_id: p.message_id });
-        return pin(p.message_id);
+        if (p && p.chat.id === chat) {
+            if (p.pinned_message) return tg('deleteMessage', { chat_id: chat, message_id: p.message_id });
+            return pin(p.message_id);
+        }
+        const m = u.message;
+        if (m && m.chat.id === group) {
+            if (m.is_automatic_forward) return pin(m.message_id, group);
+            if (m.pinned_message && m.from && m.from.is_bot) return tg('deleteMessage', { chat_id: group, message_id: m.message_id });
+        }
     }
 
     async function pollUpdates() {
         for (;;) {
             try {
-                const ups = await tg('getUpdates', { offset: state.offset || 0, timeout: 50, allowed_updates: ['channel_post'] });
+                const ups = await tg('getUpdates', { offset: state.offset || 0, timeout: 50, allowed_updates: ['channel_post', 'message'] });
                 for (const u of ups) {
                     state.offset = u.update_id + 1;
                     await onUpdate(u).catch(e => log('telegram: ' + e.message));
