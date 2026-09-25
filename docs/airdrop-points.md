@@ -1,6 +1,6 @@
 # PillWars Airdrop — how points work
 
-Season 0 ends on 20 October 2026. The $PILLY airdrop (10% of the supply) is split
+The end date of Season 0 will be announced. The $PILLY airdrop (10% of the supply) is split
 in proportion to each player's points.
 
 ## 1. Solana wallet (on-chain)

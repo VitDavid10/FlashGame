@@ -116,6 +116,6 @@ test('respuestas automáticas: enlaces oficiales y airdrop sin enlace a la web',
     const say = async text => { calls.length = 0; await t.onUpdate({ message: { message_id: 1, chat: { id: 42, type: 'private' }, from: { id: 42 }, text } }); return (calls.find(c => c[0] === 'sendMessage' && c[1].chat_id === 42) || [])[1]; };
     assert.match((await say("what's your discord?")).text, /discord\.gg\/rfZK7fQ32E/);
     const air = (await say('how do I get airdrop points?')).text;
-    assert.match(air, /Genesis Drop/);
+    assert.match(air, /Stay tuned/);
     assert.doesNotMatch(air, /pillwars\.fun/);
 });

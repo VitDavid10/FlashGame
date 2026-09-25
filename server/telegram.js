@@ -48,7 +48,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         { id: 'links', re: /\b(twitter|x account|discord|telegram|website|site|links?|socials?)\b/i,
           text: 'Here are our official links 👇\n\n🐦 X: https://x.com/pillwarsdotfun\n👾 Discord: https://discord.gg/rfZK7fQ32E\n📢 Announcements: https://t.me/pillwars_announcements\n💬 Community chat: https://t.me/pillwars_fun' },
         { id: 'airdrop', re: /\b(airdrop|genesis|points|eligible|claim|snapshot)\b/i,
-          text: 'The Genesis Drop (Season 0) runs until 20 October 2026: 100M $PILLY split between players by points.\n\nAll the details are pinned in t.me/pillwars_announcements and in #genesis-drop on our Discord (discord.gg/rfZK7fQ32E).' },
+          text: 'All the airdrop details will be announced in t.me/pillwars_announcements and on our X (@pillwarsdotfun). Stay tuned 👀' },
     ];
     const ACK = { id: 'ack', text: 'Got it! 🙌 The team will get back to you here soon.' };
     async function autoReply(m) {

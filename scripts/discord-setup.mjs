@@ -170,7 +170,7 @@ The fewer players or the more points you have, the bigger your share. The full 1
 • **Boost:** follow our X, join the Telegram, play your first match and claim the Genesis Hunter role at the bottom of this channel → **all your points ×1.5**
 
 ## Timeline
-1. **Earn points** until **20 October 2026, 23:59 UTC**.
+1. **Earn points** during Season 0. The end date will be announced in ${ch('announcements')}.
 2. **Snapshot:** every balance is frozen.
 3. **Sybil check:** bots, farms and duplicate accounts are removed.
 4. **Launch:** $PILLY goes live and the pool is sent straight to your wallet. No claim needed.
@@ -196,7 +196,7 @@ ${live(`**What is the Genesis Drop?**
 The Season 0 airdrop: 100M $PILLY split by points. Everything is in ${ch('genesis-drop')}.
 
 `)}**When does $PILLY launch? What is the contract address?**
-${live('After the Season 0 snapshot (20 October 2026). ', 'Soon. ')}The address will be posted only in ${ch('announcements')} and on our X. Anything before that is fake.
+${live('After the Season 0 snapshot. ', 'Soon. ')}The address will be posted only in ${ch('announcements')} and on our X. Anything before that is fake.
 
 ${live(`**Do I have to claim the airdrop?**
 No. It is sent straight to the wallet you linked.
@@ -222,7 +222,7 @@ const ROADMAP = `# 🗺️ Roadmap
 ${live(`• Genesis Drop (Season 0) is live
 `)}
 **🔨 Now: Season 0**
-${live(`• Earn airdrop points until 20 October 2026
+${live(`• Earn airdrop points
 `)}• Solana Seeker app (Solana dApp Store)
 • Community: Discord, Telegram, events
 
