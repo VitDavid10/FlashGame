@@ -25,7 +25,7 @@ const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const usd = (n: number) => (n >= 1e9 ? `$${n / 1e9}B` : n >= 1e6 ? `$${n / 1e6}M` : `$${n / 1e3}K`);
 
 // Frames where the camera takes a hit (shake + flash), all on the beat grid.
-const HITS = [0, BEAT(2), DROP, BEAT(5), CUTS[0], CUTS[0] + BEAT(4), ...[1, 2, 3, 4].map((b) => CUTS[1] + BEAT(b)), CUTS[2], CUTS[3], CUTS[3] + BEAT(1)];
+const HITS = [0, BEAT(2), DROP, BEAT(5), CUTS[0], CUTS[0] + BEAT(4), CUTS[1], CUTS[2], CUTS[3], CUTS[3] + BEAT(1)];
 
 /** Hard pixel slam: pops in oversized, overshoots in steps, chromatic split that settles. */
 const Slam: React.FC<{
@@ -210,7 +210,6 @@ const Card: React.FC<{ i: number }> = ({ i }) => {
       {i > 0 && (
         <div style={{ position: "absolute", left: 24, bottom: 30, fontFamily: PX, fontSize: 22, color: "#000", background: c.color, padding: "10px 14px" }}>ELIGIBLE ✓</div>
       )}
-      <Audio src={staticFile("snd/shield.mp3")} volume={0.3} />
     </div>
   );
 };
