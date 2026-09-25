@@ -172,8 +172,8 @@ test('pendientes: 👀 al llegar, 👌 al contestar y /pending lista quién espe
     const reacts = () => calls.filter(c => c[0] === 'setMessageReaction').map(c => [c[1].message_id, c[1].reaction[0].emoji]);
 
     await user(42, 'hello');          // ack 2000, cabecera 2001, copia 2002 → 👀, nota del bot 2003
-    await user(43, 'hey');            // ack 2004, cabecera 2005, copia 2006 → 👀, nota del bot 2007
-    assert.deepEqual(reacts(), [[2002, '👀'], [2006, '👀']]);
+    await user(43, 'hey');            // (la reacción de 42 gasta el 2004) ack 2005, cabecera 2006, copia 2007 → 👀
+    assert.deepEqual(reacts(), [[2002, '👀'], [2007, '👀']]);
 
     calls.length = 0;
     await admin('/pending');
