@@ -2460,6 +2460,22 @@ telegram.start();
 const inboxFails = new Map();   // ip → { n, until }: 10 claves malas = 15 min fuera
 async function handleInbox(req, res, urlPath, query) {
     const base = ADMIN_PATH + '/inbox';
+    // Instalable como app en el móvil ("Inbox" en la pantalla de inicio): manifiesto e iconos.
+    if (urlPath === base + '/manifest.webmanifest') {
+        res.writeHead(200, { 'Content-Type': 'application/manifest+json; charset=utf-8', 'Cache-Control': 'no-cache' });
+        res.end(JSON.stringify({
+            name: 'PillWars Inbox', short_name: 'Inbox', start_url: base, scope: base, display: 'standalone',
+            background_color: '#000000', theme_color: '#1d9bf0',
+            icons: [192, 512].map(s => ({ src: base + '/icon-' + s + '.png', sizes: s + 'x' + s, type: 'image/png', purpose: 'any maskable' })),
+        }));
+        return true;
+    }
+    const icon = /^\/icon-(192|512)\.png$/.exec(urlPath.slice(base.length));
+    if (icon) {
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+        res.end(fs.readFileSync(path.join(__dirname, 'inbox-icon-' + icon[1] + '.png')));
+        return true;
+    }
     if (urlPath !== base && !urlPath.startsWith(base + '/api/')) return false;
     if (urlPath === base) {
         res.setHeader('Content-Security-Policy', CSP_ADMIN);

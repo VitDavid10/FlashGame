@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>PillWars Inbox</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Inbox">
+<script>
+  // Manifiesto e icono con la ruta real del panel (la ruta es secreta y no va escrita aquí).
+  { const b = location.pathname.replace(/\/$/, '');
+    document.write('<link rel="manifest" href="' + b + '/manifest.webmanifest">' +
+                   '<link rel="apple-touch-icon" href="' + b + '/icon-192.png">' +
+                   '<link rel="icon" href="' + b + '/icon-192.png">'); }
+</script>
 <style>
   :root { --bg:#000; --panel:#0e0f11; --line:#2f3336; --text:#e7e9ea; --dim:#71767b; --blue:#1d9bf0; --in:#2f3336; --bot:#2a2140; --green:#00ff88; }
   * { box-sizing:border-box; }
