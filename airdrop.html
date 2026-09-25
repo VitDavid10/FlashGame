@@ -1690,6 +1690,73 @@ function drawRun(g, shot, m, tipo) {
   drawScreenFx(g); drawFrame(g);
 }
 
+// Options 3 and 4: the earlier cards (big points centred, and the breakdown list).
+function drawAvatar(g, x, y, size) {
+  g.fillStyle = '#000'; g.fillRect(x - 10, y - 10, size + 20, size + 20);
+  g.fillStyle = '#00ffaa'; g.fillRect(x - 6, y - 6, size + 12, size + 12);
+  g.fillStyle = '#081a10'; g.fillRect(x - 2, y - 2, size + 4, size + 4);
+  if (avatarImg) { g.imageSmoothingEnabled = true; g.drawImage(avatarImg, x, y, size, size); return; }
+  const spr = pixPillSpriteRot(30, '#c0c8d0', '#00ff44', Math.PI / 4, true), k = Math.max(1, Math.floor(size * .9 / spr.width));
+  blit(g, spr, x + (size - spr.width * k) / 2, y + (size - spr.height * k) / 2, k);
+}
+function cardBreakdownOld(g) {
+  const s = score(), rank = renderBoard(), r = seedRng(), L = HOLE.x + 26, T = HOLE.y + 26;
+  drawFloor(g); drawScreenBg(g);
+  const pts = fmt(s.total), ps = fit(g, pts, PX, 74, 410), hsz = fit(g, handle(), PX, 26, 370);
+  g.font = hsz + 'px ' + PX; const hw = g.measureText(handle()).width;
+  g.font = ps + 'px ' + PX; const pw = g.measureText(pts).width;
+  const RX = 690;
+  drawArena(g, [
+    [L - 12, T - 12, 164, 164], [L + 164, T + 20, Math.max(hw, 240) + 10, 90],
+    [L, 318 - ps, pw + 140, ps + 12], [L, 340, 560, 40], [L, 404, 560, 104], [RX, T, 440, 492],
+  ], r, { viruses: 1 + Math.floor(r() * 2), pills: 4, food: 30 });
+  drawAvatar(g, L, T, 140);
+  text(g, handle(), L + 170, T + 60, PX, hsz, '#ffffff', 'left', '#000');
+  text(g, S.w ? short(S.w) : 'no wallet linked', L + 170, T + 104, VT, 34, '#9fc2ad');
+  text(g, pts, L, 318, PX, ps, '#00ff88', 'left', '#003d1f');
+  g.font = ps + 'px ' + PX; text(g, 'POINTS', L + g.measureText(pts).width + 18, 318, PX, 20, '#9fc2ad');
+  const parts = [s.xs, s.ws, s.qs, s.gs], cols = ['#1d9bf0', '#00ff88', '#ffce3d', '#ccff00'];
+  const tot = s.raw || 1; let bx = L + 4;
+  g.fillStyle = '#000'; g.fillRect(L, 342, 560, 36);
+  parts.forEach((p, i) => { const w = 552 * p / tot; g.fillStyle = cols[i]; g.fillRect(bx, 346, w, 28); bx += w; });
+  box(g, L, 404, 272, 104); box(g, L + 288, 404, 272, 104);
+  const rk = '#' + fmt(rank), tp = 'TOP ' + topPct(rank);
+  text(g, rk, L + 136, 462, PX, fit(g, rk, PX, 32, 236), '#ffce3d', 'center', '#5c3d00');
+  text(g, 'RANK', L + 136, 494, VT, 28, '#9fc2ad', 'center');
+  text(g, tp, L + 424, 462, PX, fit(g, tp, PX, 32, 236), '#ccff00', 'center', '#1c3300');
+  text(g, 'OF ALL PLAYERS', L + 424, 494, VT, 28, '#9fc2ad', 'center');
+  const rows = [['X ACCOUNT', s.xs, cols[0]], ['ON-CHAIN', s.ws, cols[1]], ['QUESTS', s.qs, cols[2]], ['DAILY ARENA', s.gs, cols[3]]];
+  rows.forEach((row, i) => {
+    const y = T + i * 126;
+    box(g, RX, y, 440, 108, row[2]);
+    text(g, row[0], RX + 34, y + 42, PX, 15, '#9fc2ad');
+    text(g, fmt(row[1]), RX + 416, y + 88, PX, fit(g, fmt(row[1]), PX, 28, 360), '#ffffff', 'right', '#000');
+  });
+  drawScreenFx(g, [L - 6, 318 - ps - 6, pw + 20, ps + 18]); drawFrame(g);
+}
+function cardRankOld(g) {
+  const s = score(), rank = renderBoard(), r = seedRng(), CX = IMG_W / 2;
+  drawFloor(g); drawScreenBg(g);
+  const pts = fmt(s.total), ps = fit(g, pts, PX, 96, 800), hsz = fit(g, handle(), PX, 26, 760);
+  g.font = hsz + 'px ' + PX; const hw = g.measureText(handle()).width;
+  g.font = ps + 'px ' + PX; const pw = g.measureText(pts).width;
+  drawArena(g, [
+    [CX - 80, 56, 160, 160], [CX - hw / 2 - 10, 244 - hsz - 8, hw + 20, hsz + 20],
+    [CX - pw / 2 - 10, 366 - ps - 6, pw + 24, ps + 20], [CX - 80, 386, 160, 30], [CX - 420, 426, 840, 104],
+  ], r, { viruses: 1 + Math.floor(r() * 2), pills: 6, food: 40 });
+  drawAvatar(g, CX - 64, 66, 128);
+  text(g, handle(), CX, 244, PX, hsz, '#ffffff', 'center', '#000');
+  text(g, pts, CX, 366, PX, ps, '#00ff88', 'center', '#003d1f');
+  text(g, 'POINTS', CX, 408, PX, 20, '#9fc2ad', 'center');
+  box(g, CX - 420, 426, 400, 100); box(g, CX + 20, 426, 400, 100);
+  const rk = '#' + fmt(rank), tp = 'TOP ' + topPct(rank);
+  text(g, rk, CX - 220, 484, PX, fit(g, rk, PX, 36, 360), '#ffce3d', 'center', '#5c3d00');
+  text(g, 'RANK', CX - 220, 515, VT, 28, '#9fc2ad', 'center');
+  text(g, tp, CX + 220, 484, PX, fit(g, tp, PX, 36, 360), '#ccff00', 'center', '#1c3300');
+  text(g, 'OF ALL PLAYERS', CX + 220, 515, VT, 28, '#9fc2ad', 'center');
+  drawScreenFx(g, [CX - pw / 2 - 8, 366 - ps - 6, pw + 24, ps + 20]); drawFrame(g);
+}
+
 const share = { variants: [], idx: 0, text: '', done: null, blob: null };
 // Same variant and seed as the preview, drawn in the X-friendly way.
 function xBlob() {
@@ -1719,7 +1786,7 @@ function openCardShare() {
   const s = score(), rank = renderBoard();
   openShare({
     title: 'SHARE YOUR CARD', kind: 'card',
-    variants: [cardRank, cardBreakdown],
+    variants: [cardRank, cardBreakdown, cardRankOld, cardBreakdownOld],
     text: fmt(s.total) + ' points on @' + X_ACCOUNT + '. Top ' + topPct(rank) + ' of all players.\n\nWhere do you rank?',
     done: () => completeTask('share', SHARE_CARD_PTS),
   });
