@@ -161,7 +161,7 @@ The fewer players or the more points you have, the bigger your share. The full 1
 • **Invites:** up to 8,000 (the friend must link a wallet 60+ days old with 50+ transactions)
 • **Daily Arena:** up to 300 a day
 • **Social quests:** daily post, sharing your points card, reposts and likes
-• **Boost:** follow our X, join the Telegram and play your first match → **all your points ×1.5**
+• **Boost:** follow our X, join the Telegram, play your first match and claim Genesis Hunter → **all your points ×1.5**
 • **Genesis Hunter:** claim the role at the bottom of this channel with your code from the airdrop page → **+100 points**
 
 ## Timeline

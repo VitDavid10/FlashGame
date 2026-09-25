@@ -97,12 +97,11 @@ function missionsFor(day) {
     });
 }
 
-const TASK_IDS = ['follow', 'tg', 'play'];
+const TASK_IDS = ['follow', 'tg', 'play', 'discord'];
+const TASK_PTS = { discord: 100 };   // the rest only unlock the boost
 const DAILY_POST_PTS = 100, POINTS_BOOST = 1.5, REPOST_PTS = 150, LIKE_PTS = 50;
 const SHARE_CARD_PTS = 400, SHARE_AGAIN_GROWTH = 1.10;
 const RUN_SHARE_PTS = 30;
-// One-time quests that pay but stay out of the boost (see the client's EXTRA_TASKS).
-const EXTRA_TASK_PTS = { discord: 100 };
 
 function newCounters() { return { pieces: 0, skills: 0, skillSet: [], skill: {}, splitKills: 0, splits: 0, picks: 0, virusPops: 0, gambleWins: 0 }; }
 function newDaily(date) { return { date, done: {}, best: {}, matches: 0, kills: 0, social: {}, c: newCounters() }; }
@@ -239,7 +238,7 @@ function createScore(opts) {
         return { view: out };
     }
 
-    /** "I did X": follow/tg/play (0pts, unlock the boost), daily post
+    /** "I did X": follow/tg/play/discord (unlock the boost; discord also pays 100), daily post
      * (boosted), share card (reactivates once the verified total grows 10%),
      * share a run (once a day), repost/like of a real post (once per post). */
     function completeTask(u, key) {
@@ -255,8 +254,7 @@ function createScore(opts) {
         else if (key === 'share') { pts = SHARE_CARD_PTS; s.tasks.share = true; s.shareAt = rawTotal(u, s) + pts; }
         else if (key.startsWith('rt:') && validPost(key.slice(3))) { pts = REPOST_PTS; s.tasks[key] = true; }
         else if (key.startsWith('like:') && validPost(key.slice(5))) { pts = LIKE_PTS; s.tasks[key] = true; }
-        else if (TASK_IDS.includes(key)) { s.tasks[key] = true; }
-        else if (EXTRA_TASK_PTS[key]) { pts = EXTRA_TASK_PTS[key]; s.tasks[key] = true; }
+        else if (TASK_IDS.includes(key)) { pts = TASK_PTS[key] || 0; s.tasks[key] = true; }
         else return { error: 'bad_key' };
         s.socialPts += pts;
         return { view: view(u) };

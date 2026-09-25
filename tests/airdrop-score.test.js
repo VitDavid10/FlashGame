@@ -144,24 +144,23 @@ test('an unknown event type is rejected', () => {
     assert.strictEqual(sc.reportEvent(u, { type: 'lol' }).error, 'bad_type');
 });
 
-test('completing follow/telegram/play unlocks the x1.5 boost on everything', () => {
+test('completing follow/telegram/play/discord unlocks the x1.5 boost on everything', () => {
     const { sc } = engine();
     const u = user();
     sc.completeTask(u, 'follow');
     sc.completeTask(u, 'tg');
-    assert.strictEqual(sc.view(u).boosted, false);
     sc.beginMatch(u);   // credits 'play'
+    assert.strictEqual(sc.view(u).boosted, false);
+    sc.completeTask(u, 'discord');
     assert.strictEqual(sc.view(u).boosted, true);
 });
 
-test('joining Discord pays 100 once and does not count toward the boost', () => {
+test('joining Discord (Genesis Hunter) pays 100 once', () => {
     const { sc } = engine();
     const u = user();
     sc.completeTask(u, 'discord');
     sc.completeTask(u, 'discord');
     assert.strictEqual(sc.view(u).socialPts, 100);
-    sc.completeTask(u, 'follow'); sc.completeTask(u, 'tg'); sc.beginMatch(u);
-    assert.strictEqual(sc.view(u).boosted, true);   // follow/tg/play alone still unlock it
 });
 
 test('the daily post pays a flat 100 (the x1.5 boost applies to the whole total, not per-quest), once a day', () => {
@@ -180,8 +179,9 @@ test('the x1.5 boost does apply once to the whole total once every one-time task
     const u = user({ x: { username: 'a', followers: 10000 } });   // real xPts, so total > 0
     const before = sc.view(u).total;
     sc.completeTask(u, 'follow'); sc.completeTask(u, 'tg'); sc.beginMatch(u);   // credits 'play' too
+    sc.completeTask(u, 'discord');   // +100, then the whole total x1.5
     const after = sc.view(u).total;
-    assert.strictEqual(after, Math.round(before * 1.5));
+    assert.strictEqual(after, Math.round((before + 100) * 1.5));
 });
 
 test('daily post requires X or a wallet linked', () => {
