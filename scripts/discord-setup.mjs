@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 const TOKEN = readFileSync(process.env.DISCORD_TOKEN_FILE || 'C:/Users/34679/pillwars-bots/discord-token.txt', 'utf8').trim();
 const GUILD = '1552774307938304002';
 const API = 'https://discord.com/api/v10';
-const INVITE = 'https://discord.gg/vfesqyBnw7';
+const INVITE = 'https://discord.gg/rfZK7fQ32E';
 // Genesis Drop visible? false = #genesis-drop and #flex-and-refs are staff only and
 // no other text mentions the airdrop. Set to true and run again on launch day.
 const DROP_LIVE = false;

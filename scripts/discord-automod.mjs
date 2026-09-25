@@ -16,7 +16,7 @@ const RULES = [
   { name: 'Scams and invites', trigger_type: 1, trigger_metadata: {
       keyword_filter: ['*seed phrase*', '*private key*', '*recovery phrase*', '*free nitro*', '*nitro gift*', '*claim your airdrop*', '*wallet connect*', '*validate wallet*', '*dm me*', '*dm for support*', '*support ticket*', '*inbox me*', '*check your dm*', '*collab*', '*partnership*', '*promote your*', '*marketing*', '*support team*', '*contact support*', '*customer support*', '*helpdesk*', '*technical support*', '*raise a ticket*', '*official support*', '*admin will dm*', '*message me privately*', '*validate your wallet*', '*sync your wallet*', '*rectif*', '*import your wallet*', '*secret phrase*', '*12 words*', '*24 words*', '*walletconnect*', '*guaranteed profit*', '*double your*', '*account manager*', '*volume bot*', '*increase your holders*', '*boost your project*'],
       regex_patterns: ['discord(\.gg|(app)?\.com/invite)/[\w-]+', 't\.me/\+?[\w-]+'],
-      allow_list: ['discord.gg/vfesqyBnw7', 't.me/pillwars_fun', 't.me/pillwars_announcements'],
+      allow_list: ['discord.gg/rfZK7fQ32E', 't.me/pillwars_fun', 't.me/pillwars_announcements'],
     }, actions: block('Blocked: possible scam or outside link. Collabs and support go through #contact. The team never DMs first.') },
 ];
 const existing = await api('GET', `/guilds/${G}/auto-moderation/rules`);
