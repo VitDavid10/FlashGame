@@ -31,8 +31,10 @@ function createStore(opts) {
         data.users = data.users || {}; data.sessions = data.sessions || {};
     }
     data.nftClaims = data.nftClaims || {};   // NFT mint -> first wallet that showed it
-    const byWallet = new Map(), byX = new Map(), byCode = new Map();
+    data.discord = data.discord || {};       // Discord user id -> uid that claimed Genesis Hunter with it
+    const byWallet = new Map(), byX = new Map(), byCode = new Map(), byDcode = new Map();
     for (const u of Object.values(data.users)) {
+        if (u.dcode) byDcode.set(u.dcode, u.uid);
         if (u.wallet) byWallet.set(u.wallet, u.uid);
         if (u.x) byX.set(u.x.id, u.uid);
         byCode.set(u.code, u.uid);
@@ -109,6 +111,8 @@ function createStore(opts) {
             const inv = user(id); if (inv) inv.referredBy = dst.uid;
         }
         for (const s of Object.values(data.sessions)) if (s.uid === src.uid) s.uid = dst.uid;
+        if (!dst.discord && src.discord) { dst.discord = src.discord; data.discord[src.discord] = dst.uid; }
+        if (src.dcode) byDcode.delete(src.dcode);
         byCode.delete(src.code);
         if (src.wallet && byWallet.get(src.wallet) === src.uid) byWallet.delete(src.wallet);
         if (src.x && byX.get(src.x.id) === src.uid) byX.delete(src.x.id);
@@ -202,6 +206,27 @@ function createStore(opts) {
     }
     const cardOfCode = code => { const u = user(byCode.get(String(code || '').toLowerCase())); return u && u.card || null; };
 
+    // Genesis Hunter (Discord role): the page shows a private code, the user
+    // pastes it in Discord and the bot calls claimDiscord. Not the invite code:
+    // that one is public in every invite link.
+    function discordCode(token) {
+        const u = sessionUser(token); if (!u || !(u.wallet || u.x)) return null;
+        if (!u.dcode) {
+            do { u.dcode = 'GH-' + rand(4).toString('hex').toUpperCase(); } while (byDcode.has(u.dcode));
+            byDcode.set(u.dcode, u.uid); save();
+        }
+        return u.dcode;
+    }
+    function claimDiscord(code, discordId) {
+        const u = user(byDcode.get(String(code || '').trim().toUpperCase()));
+        if (!u) return { error: 'bad_code' };
+        const owner = data.discord[discordId];
+        if (owner && owner !== u.uid) return { error: 'discord_used' };
+        if (u.discord && u.discord !== discordId) return { error: 'code_used' };
+        u.discord = discordId; data.discord[discordId] = u.uid; save();
+        return { user: u };
+    }
+
     // Admin-only, manual: a wallet someone flagged (suspected sybil/bot) as not
     // eligible for the airdrop, regardless of its points. Reversible any time.
     function setDiscarded(uid, discarded) {
@@ -209,7 +234,7 @@ function createStore(opts) {
         u.discarded = !!discarded; save(); return true;
     }
 
-    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, inviteCount, setDiscarded, flush, MAX_INVITES, _data: () => data };
+    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, discordCode, claimDiscord, inviteCount, setDiscarded, flush, MAX_INVITES, _data: () => data };
 }
 
 module.exports = { createStore, MAX_INVITES, INVITE_MIN_AGE_DAYS, INVITE_MIN_TXS };

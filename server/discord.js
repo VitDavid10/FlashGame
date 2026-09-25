@@ -8,7 +8,7 @@ const crypto = require('crypto');
 
 // IDs del servidor (no son secretos). Los crea scripts/discord-setup.mjs.
 const GUILD = '1552774307938304002';
-const ROLE = { team: '1552778659931103292', mod: '1552778660983869560', player: '1552778663433474098' };
+const ROLE = { team: '1552778659931103292', mod: '1552778660983869560', player: '1552778663433474098', hunter: '1552970468666114048' };
 const TICKETS_CATEGORY = 'TICKETS';
 const X_FEED = '1552813555902972095';   // #x-feed: cada post nuevo de X
 const TICKET_KINDS = { collab: 'Collab / partnership', bug: 'Bug report', support: 'Support', other: 'Other' };
@@ -29,7 +29,7 @@ function verifyRequest(key, sigHex, timestamp, rawBody) {
     catch { return false; }
 }
 
-function createDiscord({ publicKey, token, log = () => {}, fetchImpl = fetch } = {}) {
+function createDiscord({ publicKey, token, log = () => {}, fetchImpl = fetch, claimHunter = () => ({ error: 'off' }) } = {}) {
     if (!publicKey) return { handle: async () => false, postXFeed: async () => {}, enabled: false };
     const key = publicKeyObject(publicKey);
 
@@ -79,10 +79,27 @@ function createDiscord({ publicKey, token, log = () => {}, fetchImpl = fetch } =
 
     async function onInteraction(it) {
         if (it.type === 1) return { type: 1 };                           // PING de validación
-        if (it.type !== 3 || it.guild_id !== GUILD || !it.member) return { type: 4, data: { content: 'Not available here.', flags: EPHEMERAL } };
+        if ((it.type !== 3 && it.type !== 5) || it.guild_id !== GUILD || !it.member) return { type: 4, data: { content: 'Not available here.', flags: EPHEMERAL } };
         const id = it.data && it.data.custom_id;
         const uid = it.member.user.id;
 
+        // Genesis Hunter: the button opens a form, the form brings the code from the airdrop page.
+        if (id === 'hunter' && it.type === 3) {
+            return { type: 9, data: { custom_id: 'hunter', title: 'Claim Genesis Hunter', components: [{ type: 1, components: [
+                { type: 4, custom_id: 'code', style: 1, label: 'Your code from pillwars.fun', placeholder: 'GH-XXXXXXXX', min_length: 11, max_length: 11, required: true },
+            ] }] } };
+        }
+        if (id === 'hunter' && it.type === 5) {
+            const code = (((it.data.components || [])[0] || {}).components || [])[0];
+            const r = claimHunter(code && code.value, uid);
+            if (r.error) {
+                const why = { bad_code: 'That code does not exist. Copy it again from the JOIN DISCORD quest on pillwars.fun.', discord_used: 'This Discord account already claimed with another airdrop account.', code_used: 'That code was already used by another Discord account.' };
+                return { type: 4, data: { content: '❌ ' + (why[r.error] || 'Something went wrong, please try again in a minute.'), flags: EPHEMERAL } };
+            }
+            await api('PUT', '/guilds/' + GUILD + '/members/' + uid + '/roles/' + ROLE.hunter);
+            log('discord: genesis hunter ' + uid);
+            return { type: 4, data: { content: '🎯 You are a **Genesis Hunter**! +100 airdrop points. Refresh pillwars.fun to see them.', flags: EPHEMERAL } };
+        }
         if (id === 'verify') {
             if ((it.member.roles || []).includes(ROLE.player)) return { type: 4, data: { content: 'You are already verified ✅', flags: EPHEMERAL } };
             await api('PUT', '/guilds/' + GUILD + '/members/' + uid + '/roles/' + ROLE.player);

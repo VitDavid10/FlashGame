@@ -232,13 +232,18 @@ function createAirdrop(opts) {
             if (urlPath === '/api/airdrop/arena/begin') r = score.beginMatch(u);
             else if (urlPath === '/api/airdrop/arena/event') r = score.reportEvent(u, body);
             else if (urlPath === '/api/airdrop/arena/end') r = score.endMatch(u, body);
-            else if (urlPath === '/api/airdrop/quest/complete') r = score.completeTask(u, String(body.key || ''));
+            // 'discord' is only credited by the Discord bot (claimDiscord below).
+            else if (urlPath === '/api/airdrop/quest/complete') r = body.key === 'discord' ? { error: 'bad_key' } : score.completeTask(u, String(body.key || ''));
             else return json(res, 404, { error: 'not found' });
             if (r.error) return json(res, r.error === 'rate' ? 429 : r.error === 'not_linked' ? 403 : 409, { error: r.error });
             return json(res, 200, { score: r.view });
         }
         if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
 
+        if (urlPath === '/api/airdrop/discord-code') {
+            const code = store.discordCode(sessionToken(req));
+            return code ? json(res, 200, { code }) : json(res, 403, { error: 'not_linked' });
+        }
         if (urlPath === '/api/airdrop/nonce') {
             const now = Date.now();
             for (const [k, t] of nonces) if (t < now) nonces.delete(k);
@@ -517,7 +522,16 @@ function createAirdrop(opts) {
         return gate(req, res, urlPath);
     }
 
-    return { handle, only: ONLY, closed: CLOSED };
+    /** Discord "Claim Genesis Hunter": the code from the page, pasted by `discordId`. */
+    function claimDiscord(code, discordId) {
+        const r = store.claimDiscord(code, discordId);
+        if (r.error) return r;
+        score.completeTask(r.user, 'discord');
+        log('[airdrop] Genesis Hunter: ' + r.user.uid + ' <- discord ' + discordId);
+        return { ok: true };
+    }
+
+    return { handle, only: ONLY, closed: CLOSED, claimDiscord };
 }
 
 module.exports = { createAirdrop };

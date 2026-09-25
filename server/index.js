@@ -2446,7 +2446,7 @@ setInterval(() => { const now = Date.now(); for (const [k, e] of rpcApiHits) if 
 // servidor (ver server/airdrop.js).
 const airdrop = createAirdrop({ root: ROOT, only: process.env.AIRDROP_ONLY === '1', closed: process.env.SITE_CLOSED === '1', adminPath: ADMIN_PATH, appPath: APP_PATH, clientIp, log, verifySignature: solana.verifySignedMessage });
 // Botones verify y tickets del Discord (ver server/discord.js).
-const discord = createDiscord({ publicKey: process.env.DISCORD_PUBLIC_KEY, token: process.env.DISCORD_BOT_TOKEN, log });
+const discord = createDiscord({ publicKey: process.env.DISCORD_PUBLIC_KEY, token: process.env.DISCORD_BOT_TOKEN, log, claimHunter: airdrop.claimDiscord });
 // Canal de Telegram: fija cada anuncio y reenvía los posts de X (ver server/telegram.js).
 // Los posts de X van también a #x-feed del Discord.
 // Un solo proceso: los hosts del split no lo arrancan.

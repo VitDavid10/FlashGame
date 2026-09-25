@@ -149,3 +149,18 @@ test('everything survives a restart', () => {
     const dup = s2.linkWallet(null, W(3), me.code);
     assert.strictEqual(dup.referred, true);
 });
+
+test('Genesis Hunter: the private code links one Discord account to one airdrop account', () => {
+    const s = createStore({});
+    assert.strictEqual(s.discordCode('nope'), null);   // no linked account, no code
+    const a = s.linkWallet(null, W(1), ''), b = s.linkWallet(null, W(2), '');
+    const ca = s.discordCode(a.token), cb = s.discordCode(b.token);
+    assert.match(ca, /^GH-[0-9A-F]{8}$/);
+    assert.strictEqual(s.discordCode(a.token), ca);    // stable
+    assert.notStrictEqual(ca, s.codeOf(a.token));      // not the public invite code
+    assert.strictEqual(s.claimDiscord('GH-00000000', 'd1').error, 'bad_code');
+    assert.ok(s.claimDiscord(ca.toLowerCase(), 'd1').user);
+    assert.ok(s.claimDiscord(ca, 'd1').user);          // same pair again is fine
+    assert.strictEqual(s.claimDiscord(ca, 'd2').error, 'code_used');
+    assert.strictEqual(s.claimDiscord(cb, 'd1').error, 'discord_used');
+});

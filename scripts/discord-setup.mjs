@@ -41,6 +41,8 @@ const ROLE_DEFS = [
   { name: 'Mod', color: 0xffb703, hoist: true, mentionable: true, permissions: s(MOD_PERMS) },
   { name: 'Tester', color: 0x4cc9f0, hoist: true, mentionable: false, permissions: '0' },
   { name: 'Player', color: 0x80ed99, hoist: false, mentionable: false, permissions: s(PLAYER_PERMS) },
+  // Cosmetic: given by the "Claim Genesis Hunter" button in #genesis-drop (code from the airdrop page).
+  { name: 'Genesis Hunter', color: 0xffce3d, hoist: false, mentionable: false, permissions: '0' },
 ];
 const roles = await api('GET', `/guilds/${GUILD}/roles`);
 const role = {};
@@ -160,6 +162,7 @@ The fewer players or the more points you have, the bigger your share. The full 1
 • **Daily Arena:** up to 300 a day
 • **Social quests:** daily post, sharing your points card, reposts and likes
 • **Boost:** follow our X, join the Telegram and play your first match → **all your points ×1.5**
+• **Genesis Hunter:** claim the role at the bottom of this channel with your code from the airdrop page → **+100 points**
 
 ## Timeline
 1. **Earn points** until **20 October 2026, 23:59 UTC**.
@@ -262,7 +265,11 @@ await repost(C.rules, [
   { components: [{ type: 1, components: [{ type: 2, style: 3, label: 'Verify', custom_id: 'verify', emoji: { name: '✅' } }] }], content: '**Press to enter the server** 👇' },
 ]);
 await repost(C['official-links'], [{ content: LINKS }]);
-await repost(C['genesis-drop'], [{ content: GENESIS }]);
+await repost(C['genesis-drop'], [
+  { content: GENESIS },
+  { content: '**🎯 Genesis Hunter**\nOpen the **JOIN DISCORD** quest on <https://pillwars.fun>, copy your code, press the button and paste it: you get the role and **+100 airdrop points**.',
+    components: [{ type: 1, components: [{ type: 2, style: 3, label: 'Claim Genesis Hunter', custom_id: 'hunter', emoji: { name: '🎯' } }] }] },
+]);
 await repost(C.faq, [{ content: FAQ }]);
 await repost(C.roadmap, [{ content: ROADMAP }]);
 await repost(C.contact, [{

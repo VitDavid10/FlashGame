@@ -42,3 +42,20 @@ test('verify pone el rol Player', async () => {
 test('sin DISCORD_PUBLIC_KEY no toca la ruta', async () => {
     assert.equal(await createDiscord({}).handle({}, {}, '/discord/interactions'), false);
 });
+
+test('Claim Genesis Hunter: el botón abre el formulario y el código válido da el rol', async () => {
+    const calls = [], claims = [];
+    const fetchImpl = async (url, o) => { calls.push([o.method, url]); return { status: 204, ok: true }; };
+    const claimHunter = (code, id) => { claims.push([code, id]); return code === 'GH-AAAAAAAA' ? { ok: true } : { error: 'bad_code' }; };
+    const d = createDiscord({ publicKey: PUB_HEX, token: 't', fetchImpl, claimHunter });
+    const member = { roles: [], user: { id: '42' } };
+    assert.equal(JSON.parse((await call(d, { type: 3, guild_id: GUILD, data: { custom_id: 'hunter' }, member })).body).type, 9);
+    const form = v => ({ type: 5, guild_id: GUILD, member, data: { custom_id: 'hunter', components: [{ type: 1, components: [{ type: 4, custom_id: 'code', value: v }] }] } });
+    const bad = JSON.parse((await call(d, form('GH-BBBBBBBB'))).body);
+    assert.match(bad.data.content, /does not exist/);
+    assert.equal(calls.length, 0);
+    await call(d, form('GH-AAAAAAAA'));
+    assert.deepEqual(claims, [['GH-BBBBBBBB', '42'], ['GH-AAAAAAAA', '42']]);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][0], 'PUT');
+});
