@@ -86,10 +86,10 @@
   </section>
 </div>
 <script>
-// La clave solo vive en esta pestaña (sessionStorage): al cerrarla hay que volver a ponerla.
+// La clave se recuerda en este dispositivo (localStorage): se pone una vez. Si la clave cambia, la vuelve a pedir.
 const API = location.pathname.replace(/\/$/, '') + '/api/';
 let key = '';
-try { key = sessionStorage.getItem('pw_inbox_key') || ''; } catch {}
+try { key = localStorage.getItem('pw_inbox_key') || ''; } catch {}
 let current = null, lastThreadLen = -1;
 const $ = s => document.querySelector(s);
 
@@ -100,7 +100,7 @@ async function api(op, opts = {}) {
   return r.json();
 }
 function logout(msg) {
-  key = ''; try { sessionStorage.removeItem('pw_inbox_key'); } catch {}
+  key = ''; try { localStorage.removeItem('pw_inbox_key'); } catch {}
   $('#app').style.display = 'none'; $('#login').style.display = 'flex'; $('#err').textContent = msg || '';
 }
 function when(t) {
@@ -176,7 +176,7 @@ async function start() {
 }
 $('#loginForm').onsubmit = e => {
   e.preventDefault(); key = $('#key').value.trim();
-  try { sessionStorage.setItem('pw_inbox_key', key); } catch {}
+  try { localStorage.setItem('pw_inbox_key', key); } catch {}
   start();
 };
 if (key) start();
