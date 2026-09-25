@@ -2466,7 +2466,7 @@ async function handleInbox(req, res, urlPath, query) {
         res.end(JSON.stringify({
             name: 'PillWars Inbox', short_name: 'Inbox', start_url: base, scope: base, display: 'standalone',
             background_color: '#000000', theme_color: '#1d9bf0',
-            icons: [192, 512].map(s => ({ src: base + '/icon-' + s + '.png', sizes: s + 'x' + s, type: 'image/png', purpose: 'any maskable' })),
+            icons: [192, 512].map(s => ({ src: base + '/icon-' + s + '.png?v=3', sizes: s + 'x' + s, type: 'image/png', purpose: 'any maskable' })),
         }));
         return true;
     }
