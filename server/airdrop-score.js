@@ -29,7 +29,7 @@ const AIRDROPS_TOTAL = 11;   // 10 verified airdrops + Jumper (see airdrop-token
 const HUNTER_MAX = 11000, HUNTER_TIERS = [[1, .2], [2, .35], [3, .5], [4, .65], [5, .8], [6, .9], [7, 1]];
 const TX_MAX = 2400, TX_TIERS = [[50, .1], [200, .25], [500, .4], [1000, .6], [2500, .8], [5000, 1]];
 const AGE_MAX = 2400, AGE_TIERS = [[30, .1], [90, .25], [180, .4], [365, .6], [730, .8], [1095, 1]];
-const GENESIS_PTS = 2400, MADLADS_PTS = 2400;
+const GENESIS_PTS = 7000, MADLADS_PTS = 7000;
 const INVITE_MILES = [[1, 250], [3, 350], [5, 500], [10, 700], [15, 700], [20, 700], [25, 700], [30, 700], [35, 700], [40, 700], [45, 700], [50, 1300]];
 const tierPct = (v, tiers) => tiers.reduce((p, t) => v >= t[0] ? t[1] : p, 0);
 

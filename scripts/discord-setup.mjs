@@ -156,7 +156,7 @@ Example: you finish with 10,000 points and all players together have 20,000,000 
 The fewer players or the more points you have, the bigger your share. The full 100M is always split: nothing stays with the team.
 
 ## Points
-• **Solana wallet:** up to 20,600 (past Solana airdrops, Saga/Seeker Genesis Token, Mad Lads, wallet age, transactions)
+• **Solana wallet:** up to 29,800 (past Solana airdrops, Saga/Seeker Genesis Token, Mad Lads, wallet age, transactions)
 • **X account:** up to 4,000 (followers, account age, verified)
 • **Invites:** up to 8,000 (the friend must link a wallet 60+ days old with 50+ transactions)
 • **Daily Arena:** up to 300 a day

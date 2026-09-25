@@ -8,7 +8,8 @@
 <!--OG-->
 <link rel="icon" href="img/web.png">
 <link rel="preload" href="/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="img/intro-loop-first.webp" as="image">
+<link rel="preload" href="img/intro-loop-first.webp" as="image" media="(orientation:landscape)">
+<link rel="preload" href="img/intro-loop-mobile-first.webp" as="image" media="(orientation:portrait)">
 <style>
 @font-face{font-family:'Press Start 2P';font-display:block;src:url(/fonts/press-start-2p-latin.woff2) format('woff2')}
 @font-face{font-family:'VT323';font-display:swap;src:url(/fonts/vt323-latin.woff2) format('woff2')}
@@ -233,6 +234,19 @@ html.intro-on,html.intro-on body{overflow:hidden}
 .intro{position:fixed;inset:0;z-index:10000;background:#000;cursor:pointer;overflow:hidden;
   transition:opacity .5s ease,transform .5s ease;user-select:none;-webkit-user-select:none}
 .intro.out{opacity:0;transform:scale(1.04);pointer-events:none}
+/* After ENTER the page's pieces drop in one after another, in steps like the sprites. */
+@keyframes pwIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+html.enter .hero-social,html.enter .tabs .tab,html.enter .mob-switch,html.enter #view-me .connect-grid>.panel,html.enter #view-me .card-row>.panel{animation:pwIn .3s steps(5) both}
+html.enter .hero-social{animation-delay:.15s}
+html.enter .tabs .tab:nth-child(1){animation-delay:.2s}
+html.enter .tabs .tab:nth-child(2){animation-delay:.25s}
+html.enter .tabs .tab:nth-child(3){animation-delay:.3s}
+html.enter .mob-switch{animation-delay:.35s}
+html.enter #view-me .connect-grid>.panel:nth-child(1){animation-delay:.35s}
+html.enter #view-me .connect-grid>.panel:nth-child(2){animation-delay:.4s}
+html.enter #view-me .card-row>.panel:nth-child(1){animation-delay:.45s}
+html.enter #view-me .card-row>.panel:nth-child(2){animation-delay:.5s}
+@media (prefers-reduced-motion:reduce){html.enter *{animation:none!important}}
 /* Still frame first; the live game fades in only once it reports it runs smoothly. */
 .intro-still,.intro iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
 .intro-still{object-fit:cover}
@@ -480,7 +494,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 
 <!-- ============ INTRO ============ -->
 <div class="intro" id="intro" role="button" tabindex="0" aria-label="Enter the Genesis Drop">
-  <video class="intro-still" src="video/intro-loop.mp4" poster="img/intro-loop-first.webp" autoplay muted loop playsinline aria-hidden="true"></video>
+  <video class="intro-still" autoplay muted loop playsinline aria-hidden="true"></video>
   <iframe data-src="game/?hero=1" title="PillWars gameplay" tabindex="-1" aria-hidden="true"></iframe>
   <div class="intro-veil"></div>
   <div class="intro-top">
@@ -503,6 +517,11 @@ else {
   // (or after 1.5 s), so both don't fight over the connection.
   (function () {
     const intro = document.getElementById('intro'), v = intro.querySelector('video'), fr = intro.querySelector('iframe');
+    // Upright screens get the portrait take: the landscape one would be cropped and blown up.
+    const tall = innerHeight > innerWidth;
+    v.poster = tall ? 'img/intro-loop-mobile-first.webp' : 'img/intro-loop-first.webp';
+    v.src = tall ? 'video/intro-loop-mobile.mp4' : 'video/intro-loop.mp4';
+    v.play().catch(() => {});
     const go = () => { if (!fr.src) fr.src = fr.dataset.src; };
     v.addEventListener('playing', () => setTimeout(go, 300), { once: true });
     setTimeout(go, 1500);
@@ -903,6 +922,8 @@ addEventListener('resize', fitFirstScreen);
     evs.forEach(t => window.removeEventListener(t, open));
     el.classList.add('out');
     document.documentElement.classList.remove('intro-on');
+    document.documentElement.classList.add('enter');
+    setTimeout(() => document.documentElement.classList.remove('enter'), 1000);
     window.scrollTo(0, 0);
     setTimeout(() => { el.remove(); startArena(); }, 550);
   }
@@ -990,7 +1011,7 @@ function xProfile(x) {
   if (x.verified) lines.push(['Verified account', 300]);
   return { lines };
 }
-// On-chain: Airdrop Hunter up to 11,000 (tiers), NFT Holder up to 4,800 (Saga or
+// On-chain: Airdrop Hunter up to 11,000 (tiers), NFT Holder up to 14,000 (Saga or
 // Seeker Genesis Token + Mad Lads), wallet age and transactions up to 2,400 (tiers).
 // Real ones are verified on the server: the wallet's account for that mint has
 // a transaction dated at or before that project's own claim deadline (a date
@@ -1010,7 +1031,7 @@ const TX_MAX = 2400, TX_TIERS = [[50, .1], [200, .25], [500, .4], [1000, .6], [2
 const AGE_MAX = 2400, AGE_TIERS = [[30, .1], [90, .25], [180, .4], [365, .6], [730, .8], [1095, 1]];
 // Checked on-chain by the server: a Saga or Seeker Genesis Token (either one
 // pays, not both) and, separately, a Mad Lad.
-const GENESIS_PTS = 2400, MADLADS_PTS = 2400;
+const GENESIS_PTS = 7000, MADLADS_PTS = 7000;
 function walletProfile(addr) {
   const r = rng('w:' + addr);
   // Age and transactions are real, read by the server from mainnet (S.chain);
@@ -1136,7 +1157,7 @@ const pendingTasks = new Set();
 function taskRow(q) {
   const done = isDone(q.key);
   let btn = '';
-  if (!done && q.auto) btn = '<button class="pbtn green sm" data-go="arena">PLAY</button>';
+  if (!done && q.auto) btn = '<button class="pbtn green sm" data-go="arena">GO</button>';
   else if (!done) btn = '<button class="pbtn green sm" data-task="' + q.key + '">' + (pendingTasks.has(q.key) ? 'VERIFY' : 'GO') + '</button>';
   return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : q.label || (q.pts ? '+' + q.pts : 'BOOST')) + '</span>' + btn + '</div>';
 }
@@ -1244,7 +1265,7 @@ function renderCard() {
       group('BOOST +50%', null, s.boost, boosted() ? null : 'FINISH ONE-TIME QUESTS') +
     '</div></div>' +
     '<button class="pbtn blue" id="shareCard"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE CARD</button>' +
-    '<div class="card-hint">' + (!isDone('share') ? 'Share it to earn +' + SHARE_CARD_PTS + ' points' : S.x && S.w ? '' : 'Connect both to max your score') + '</div>' +
+    '<div class="card-hint">' + (!boosted() ? 'Complete one-time (' + TASKS.filter(t => isDone(t.id)).length + '/' + TASKS.length + ') to get +50% boost' : !isDone('share') ? 'Share it to earn +' + SHARE_CARD_PTS + ' points' : S.x && S.w ? '' : 'Connect both to max your score') + '</div>' +
     (S.x && S.w ? '' : '<div class="mob-connect mob-only">' + (S.x ? '' : '<button class="pbtn blue sm" data-link="x">CONNECT X</button>') + (S.w ? '' : '<button class="pbtn sm" data-link="w">CONNECT WALLET</button>') + '</div>');
   $('#shareCard').onclick = openCardShare;
 }
