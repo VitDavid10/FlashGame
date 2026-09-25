@@ -7,7 +7,7 @@
 const fs = require('fs');
 
 function createTelegram({ token, chat = -1004433617369, group = -1004327296311, admin = 1437029421, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3, onXPost = async () => {} } = {}) {
-    if (!token) return { start() {}, enabled: false };
+    if (!token) return { start() {}, enabled: false, inbox: () => [], thread: () => null, send: async () => { throw new Error('telegram off'); } };
     let state = {};
     try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch {}
     const save = () => { try { fs.writeFileSync(stateFile, JSON.stringify(state)); } catch (e) { log('telegram: no se pudo guardar el estado ' + e.message); } };
@@ -63,6 +63,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         state.autoSent[key] = now;
         for (const [k, t] of Object.entries(state.autoSent)) if (now - t > 24 * 3600e3) delete state.autoSent[k];
         await tg('sendMessage', { chat_id: m.chat.id, text: rule.text, link_preview_options: { is_disabled: true } });
+        logMsg(m.from.id, null, 'bot', rule.text);
         return rule;
     }
 
@@ -95,6 +96,53 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         save();
     }
 
+    // Contestar abre (o mantiene) la conversación: lo que responda esa persona llega siempre,
+    // y sus mensajes pendientes pasan de 👀 a 👌.
+    async function answered(to) {
+        state.lastFrom = state.lastFrom || {};
+        state.lastFrom[to] = Date.now();
+        const pend = (state.pending || {})[to];
+        if (pend) {
+            delete state.pending[to];
+            for (const id of pend.ids) await mark(id, '👌');
+        }
+        save();
+    }
+
+    // Historial por persona para el inbox del panel de admin: los 200 últimos mensajes
+    // de las 300 conversaciones más recientes. dir: 'in' (la persona), 'out' (el equipo), 'bot' (automático).
+    const MEDIA = ['photo', 'video', 'animation', 'sticker', 'voice', 'audio', 'video_note', 'document'];
+    const describe = m => {
+        const kind = MEDIA.find(k => m[k]);
+        const text = m.text || m.caption || '';
+        return kind ? '[' + kind + ']' + (text ? ' ' + text : '') : text;
+    };
+    function logMsg(uid, who, dir, text) {
+        state.convos = state.convos || {};
+        const c = state.convos[uid] || (state.convos[uid] = { who: String(uid), msgs: [] });
+        if (who) c.who = who;
+        c.at = Date.now();
+        c.msgs.push({ t: c.at, dir, text });
+        if (c.msgs.length > 200) c.msgs.splice(0, c.msgs.length - 200);
+        if (dir === 'in') c.unread = true;
+        if (dir === 'out') c.unread = false;
+        const ids = Object.keys(state.convos);
+        if (ids.length > 300) ids.sort((a, b) => state.convos[a].at - state.convos[b].at).slice(0, ids.length - 300).forEach(k => delete state.convos[k]);
+    }
+    const last = c => c.msgs[c.msgs.length - 1] || {};
+    const inbox = () => Object.entries(state.convos || {})
+        .map(([id, c]) => ({ id, who: c.who, at: c.at, unread: !!c.unread, last: last(c).text || '', lastDir: last(c).dir }))
+        .sort((a, b) => b.at - a.at);
+    const thread = id => { const c = (state.convos || {})[id]; return c ? { id: String(id), who: c.who, msgs: c.msgs } : null; };
+    // Responder desde el inbox web: le llega como "PillWars Team", igual que desde Telegram.
+    async function send(id, text) {
+        text = String(text || '').trim().slice(0, 4000);
+        if (!text || !(state.convos || {})[id]) throw new Error('bad request');
+        await tg('sendMessage', { chat_id: Number(id), text });
+        logMsg(Number(id), null, 'out', text);
+        await answered(Number(id));
+    }
+
     async function onPrivate(m) {
         if (m.from.id === admin) {
             if (m.text === '/start') return tg('sendMessage', { chat_id: admin, text: 'You are the admin 👋\n\nWhen someone writes to this bot, their message shows up here. Reply to it (swipe or right click → Reply) and they get your answer from "PillWars Team".\n\n👀 = not answered yet, 👌 = answered. Send /pending to see who is waiting.' });
@@ -102,22 +150,15 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
             const to = m.reply_to_message && (state.relay || {})[m.reply_to_message.message_id];
             if (!to) return tg('sendMessage', { chat_id: admin, text: 'To answer someone, reply (swipe or right click → Reply) to their message.' });
             await tg('copyMessage', { chat_id: to, from_chat_id: admin, message_id: m.message_id });
-            // Contestar abre (o mantiene) la conversación: lo que responda esa persona llega siempre.
-            state.lastFrom = state.lastFrom || {};
-            state.lastFrom[to] = Date.now();
-            // Sus mensajes pendientes pasan de 👀 a 👌.
-            const pend = (state.pending || {})[to];
-            if (pend) {
-                delete state.pending[to];
-                for (const id of pend.ids) await mark(id, '👌');
-            }
-            save();
+            logMsg(to, null, 'out', describe(m));
+            await answered(to);
             return tg('setMessageReaction', { chat_id: admin, message_id: m.message_id, reaction: [{ type: 'emoji', emoji: '👍' }] }).catch(() => {});
         }
         if (m.text === '/start') {
             return tg('sendMessage', { chat_id: m.chat.id, text: 'Hi! 💊 This is PillWars support.\n\nWrite your message here and the team will answer you right here.\n\n⚠️ We will never ask for your seed phrase or private key.' });
         }
         const who = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') + (m.from.username ? ' (@' + m.from.username + ')' : '');
+        logMsg(m.from.id, who, 'in', describe(m));
         const auto = await autoReply(m);
         state.lastFrom = state.lastFrom || {};
         state.headOf = state.headOf || {};
@@ -131,7 +172,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         // Cabecera "💬 nombre" al empezar conversación (15 min sin escribir). Cada mensaje llega como
         // respuesta a la cabecera de su autor: aunque escriban varios a la vez, se ve de quién es.
         if (since > 15 * 60e3 || !state.headOf[m.from.id]) {
-            const head = await tg('sendMessage', { chat_id: admin, text: '💬 ' + who + ' · id ' + m.from.id + (auto ? '\n🤖 auto-replied: ' + auto : '') });
+            const head = await tg('sendMessage', { chat_id: admin, text: '💬 ' + who + ' · id ' + m.from.id });
             state.relay[head.message_id] = m.from.id;
             state.headOf[m.from.id] = head.message_id;
         }
@@ -195,7 +236,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         setInterval(tick, xEveryMs).unref();
     }
 
-    return { start, onUpdate, checkX, enabled: true };
+    return { start, onUpdate, checkX, inbox, thread, send, enabled: true };
 }
 
 module.exports = { createTelegram };

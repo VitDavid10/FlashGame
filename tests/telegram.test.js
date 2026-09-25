@@ -191,3 +191,18 @@ test('pendientes: 👀 al llegar, 👌 al contestar y /pending lista quién espe
     assert.equal(after.length, 2);
     assert.match(after[1], /U43/);
 });
+
+test('inbox web: guarda el hilo (persona, bot y equipo) y responder desde la web le llega', async () => {
+    const calls = []; let next = 3000;
+    const fetchImpl = async (url, o) => { calls.push([url.split('/').pop(), JSON.parse(o.body)]); return { json: async () => ({ ok: true, result: { message_id: next++ } }) }; };
+    const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
+    await t.onUpdate({ message: { message_id: 1, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Nyx', username: 'nyx' }, text: 'we do marketing' } });
+    assert.deepEqual(t.inbox().map(c => [c.id, c.who, c.unread]), [['42', 'Nyx (@nyx)', true]]);
+    assert.deepEqual(t.thread('42').msgs.map(m => m.dir), ['in', 'bot']);
+    calls.length = 0;
+    await t.send('42', 'thanks, not now');
+    assert.deepEqual(calls[0], ['sendMessage', { chat_id: 42, text: 'thanks, not now' }]);
+    assert.deepEqual(t.thread('42').msgs.map(m => m.dir), ['in', 'bot', 'out']);
+    assert.equal(t.inbox()[0].unread, false);
+    await assert.rejects(t.send('999', 'hi'));          // solo a gente que ya ha escrito
+});

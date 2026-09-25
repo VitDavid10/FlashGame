@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>PillWars Inbox</title>
+<style>
+  :root { --bg:#000; --panel:#0e0f11; --line:#2f3336; --text:#e7e9ea; --dim:#71767b; --blue:#1d9bf0; --in:#2f3336; --bot:#2a2140; --green:#00ff88; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font:15px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  button,input,textarea { font:inherit; color:inherit; }
+  #login { display:flex; height:100%; align-items:center; justify-content:center; }
+  #login form { width:min(360px,calc(100% - 32px)); display:flex; flex-direction:column; gap:12px; }
+  #login h1 { margin:0 0 8px; font-size:22px; }
+  #login input { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .btn { background:var(--blue); border:0; border-radius:999px; padding:10px 18px; font-weight:700; cursor:pointer; color:#fff; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  #err { color:#f4212e; min-height:1.4em; margin:0; }
+  #app { display:none; height:100%; grid-template-columns:minmax(260px,360px) minmax(0,1fr); }
+  #list { border-right:1px solid var(--line); overflow-y:auto; }
+  #list header, #thread header { position:sticky; top:0; background:rgba(0,0,0,.85); backdrop-filter:blur(8px); padding:14px 16px; font-weight:800; font-size:19px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; z-index:1; }
+  .conv { display:flex; gap:12px; padding:14px 16px; cursor:pointer; border-bottom:1px solid #16181c; }
+  .conv:hover { background:#080808; }
+  .conv.active { background:#16181c; border-right:2px solid var(--blue); }
+  .av { width:40px; height:40px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-weight:700; color:#000; }
+  .meta { min-width:0; flex:1; }
+  .row { display:flex; justify-content:space-between; gap:8px; }
+  .name { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .time { color:var(--dim); font-size:13px; flex:none; }
+  .last { color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .conv.unread .last { color:var(--text); font-weight:600; }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--blue); flex:none; align-self:center; }
+  #thread { display:flex; flex-direction:column; min-width:0; height:100%; overflow:hidden; }
+  #title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #msgs { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:6px; }
+  .empty { margin:auto; color:var(--dim); text-align:center; padding:24px; }
+  .b { max-width:min(75%,560px); padding:9px 14px; border-radius:20px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .b.in { align-self:flex-start; background:var(--in); border-bottom-left-radius:4px; }
+  .b.out { align-self:flex-end; background:var(--blue); color:#fff; border-bottom-right-radius:4px; }
+  .b.bot { align-self:flex-end; background:var(--bot); border-bottom-right-radius:4px; }
+  .tag { display:block; font-size:12px; font-weight:700; color:#b69cff; margin-bottom:2px; }
+  .ts { font-size:12px; color:var(--dim); }
+  .ts.in { align-self:flex-start; margin:0 6px 8px; }
+  .ts.out, .ts.bot { align-self:flex-end; margin:0 6px 8px; }
+  #compose { display:flex; gap:10px; padding:10px 12px; border-top:1px solid var(--line); align-items:flex-end; }
+  #compose textarea { flex:1; resize:none; max-height:160px; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:10px 14px; outline:none; }
+  #back { display:none; background:none; border:0; font-size:22px; cursor:pointer; padding:0 4px; }
+  @media (max-width:760px) {
+    #app { grid-template-columns:minmax(0,1fr); }
+    #app.open #list { display:none; }
+    #app:not(.open) #thread { display:none; }
+    #back { display:block; }
+    .b { max-width:85%; }
+  }
+</style>
+</head>
+<body>
+<div id="login">
+  <form id="loginForm">
+    <h1>PillWars Inbox</h1>
+    <input id="key" type="password" placeholder="Admin key" autocomplete="current-password" required>
+    <button class="btn" type="submit">Open</button>
+    <p id="err"></p>
+  </form>
+</div>
+<div id="app">
+  <section id="list"><header>Messages</header><div id="convs"></div></section>
+  <section id="thread">
+    <header><button id="back" aria-label="Back">←</button><span id="title">Select a conversation</span></header>
+    <div id="msgs"><div class="empty">Pick someone on the left to see the conversation.</div></div>
+    <form id="compose" hidden>
+      <textarea id="text" rows="1" placeholder="Reply as PillWars Team…"></textarea>
+      <button class="btn" id="sendBtn" type="submit">Send</button>
+    </form>
+  </section>
+</div>
+<script>
+// La clave solo vive en esta pestaña (sessionStorage): al cerrarla hay que volver a ponerla.
+const API = location.pathname.replace(/\/$/, '') + '/api/';
+let key = '';
+try { key = sessionStorage.getItem('pw_inbox_key') || ''; } catch {}
+let current = null, lastThreadLen = -1;
+const $ = s => document.querySelector(s);
+
+async function api(op, opts = {}) {
+  const r = await fetch(API + op, { ...opts, headers: { 'x-admin-key': key, 'Content-Type': 'application/json' } });
+  if (r.status === 401) { logout('Wrong key'); throw new Error('unauthorized'); }
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+  return r.json();
+}
+function logout(msg) {
+  key = ''; try { sessionStorage.removeItem('pw_inbox_key'); } catch {}
+  $('#app').style.display = 'none'; $('#login').style.display = 'flex'; $('#err').textContent = msg || '';
+}
+function when(t) {
+  const d = new Date(t), now = new Date();
+  return d.toDateString() === now.toDateString() ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+const COLORS = ['#00ff88', '#1d9bf0', '#ffd400', '#f91880', '#7856ff', '#ff7a00'];
+const color = id => COLORS[[...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+
+async function loadList() {
+  const list = await api('list');
+  const box = $('#convs'); box.textContent = '';
+  if (!list.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'No messages yet.'; box.append(e); }
+  for (const c of list) {
+    const el = document.createElement('div');
+    el.className = 'conv' + (c.unread ? ' unread' : '') + (c.id === current ? ' active' : '');
+    const av = document.createElement('div'); av.className = 'av'; av.style.background = color(c.id); av.textContent = (c.who || '?').trim()[0] || '?';
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const row = document.createElement('div'); row.className = 'row';
+    const name = document.createElement('span'); name.className = 'name'; name.textContent = c.who;
+    const time = document.createElement('span'); time.className = 'time'; time.textContent = when(c.at);
+    row.append(name, time);
+    const lastEl = document.createElement('div'); lastEl.className = 'last';
+    lastEl.textContent = (c.lastDir === 'out' ? 'You: ' : c.lastDir === 'bot' ? '🤖 ' : '') + c.last;
+    meta.append(row, lastEl);
+    el.append(av, meta);
+    if (c.unread) { const dot = document.createElement('span'); dot.className = 'dot'; el.append(dot); }
+    el.onclick = () => open(c.id);
+    box.append(el);
+  }
+}
+async function loadThread(scroll) {
+  if (!current) return;
+  const t = await api('thread?id=' + encodeURIComponent(current));
+  $('#title').textContent = t.who;
+  if (t.msgs.length === lastThreadLen && !scroll) return;
+  lastThreadLen = t.msgs.length;
+  const box = $('#msgs'), atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  box.textContent = '';
+  for (const m of t.msgs) {
+    const b = document.createElement('div'); b.className = 'b ' + m.dir;
+    if (m.dir === 'bot') { const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = '🤖 Auto-reply'; b.append(tag); }
+    b.append(document.createTextNode(m.text));
+    const ts = document.createElement('div'); ts.className = 'ts ' + m.dir; ts.textContent = when(m.t);
+    box.append(b, ts);
+  }
+  if (scroll || atBottom) box.scrollTop = box.scrollHeight;
+}
+async function open(id) {
+  current = id; lastThreadLen = -1;
+  $('#app').classList.add('open'); $('#compose').hidden = false;
+  await loadThread(true); loadList(); $('#text').focus();
+}
+$('#back').onclick = () => { $('#app').classList.remove('open'); current = null; loadList(); };
+$('#compose').onsubmit = async e => {
+  e.preventDefault();
+  const text = $('#text').value.trim(); if (!text || !current) return;
+  $('#sendBtn').disabled = true;
+  try { await api('send', { method: 'POST', body: JSON.stringify({ id: current, text }) }); $('#text').value = ''; autosize(); await loadThread(true); loadList(); }
+  catch (err) { if (err.message !== 'unauthorized') alert('Could not send: ' + err.message); }
+  finally { $('#sendBtn').disabled = false; }
+};
+const autosize = () => { const t = $('#text'); t.style.height = 'auto'; t.style.height = Math.min(160, t.scrollHeight) + 'px'; };
+$('#text').addEventListener('input', autosize);
+$('#text').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#compose').requestSubmit(); } });
+
+let polling = false;
+async function start() {
+  try { await loadList(); } catch { return; }
+  $('#login').style.display = 'none'; $('#app').style.display = 'grid';
+  if (!polling) { polling = true; setInterval(() => { if (key) { loadList().catch(() => {}); loadThread(false).catch(() => {}); } }, 4000); }
+}
+$('#loginForm').onsubmit = e => {
+  e.preventDefault(); key = $('#key').value.trim();
+  try { sessionStorage.setItem('pw_inbox_key', key); } catch {}
+  start();
+};
+if (key) start();
+</script>
+</body>
+</html>

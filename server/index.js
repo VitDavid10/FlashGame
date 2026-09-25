@@ -2450,7 +2450,45 @@ const discord = createDiscord({ publicKey: process.env.DISCORD_PUBLIC_KEY, token
 // Canal de Telegram: fija cada anuncio y reenvía los posts de X (ver server/telegram.js).
 // Los posts de X van también a #x-feed del Discord.
 // Un solo proceso: los hosts del split no lo arrancan.
-if (PW_ROLE !== 'host') createTelegram({ token: process.env.TELEGRAM_BOT_TOKEN, stateFile: path.join(__dirname, 'telegram-state.json'), log, onXPost: discord.postXFeed }).start();
+const telegram = PW_ROLE !== 'host'
+    ? createTelegram({ token: process.env.TELEGRAM_BOT_TOKEN, stateFile: path.join(__dirname, 'telegram-state.json'), log, onXPost: discord.postXFeed })
+    : createTelegram({});
+telegram.start();
+
+// Inbox de soporte (ADMIN_PATH/inbox): las conversaciones del bot de Telegram como un chat de MD.
+// La página es pública (sin datos); cada llamada a la API pide la clave de admin en x-admin-key.
+const inboxFails = new Map();   // ip → { n, until }: 10 claves malas = 15 min fuera
+async function handleInbox(req, res, urlPath, query) {
+    const base = ADMIN_PATH + '/inbox';
+    if (urlPath !== base && !urlPath.startsWith(base + '/api/')) return false;
+    if (urlPath === base) {
+        res.setHeader('Content-Security-Policy', CSP_ADMIN);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(fs.readFileSync(path.join(__dirname, 'inbox.html'), 'utf8'));
+        return true;
+    }
+    const json = (code, body) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)); };
+    const ip = clientIp(req), f = inboxFails.get(ip);
+    if (f && f.until > Date.now()) { json(429, { error: 'too many attempts' }); return true; }
+    if (!adminKeyOk(req.headers['x-admin-key'])) {
+        const e = f && f.until > Date.now() - 15 * 60e3 ? f : { n: 0, until: 0 };
+        if (++e.n >= 10) e.until = Date.now() + 15 * 60e3;
+        inboxFails.set(ip, e);
+        json(401, { error: 'bad key' }); return true;
+    }
+    inboxFails.delete(ip);
+    const op = urlPath.slice(base.length + 5);
+    if (op === 'list' && req.method === 'GET') { json(200, telegram.inbox()); return true; }
+    if (op === 'thread' && req.method === 'GET') { const t = telegram.thread(query.get('id')); json(t ? 200 : 404, t || { error: 'not found' }); return true; }
+    if (op === 'send' && req.method === 'POST') {
+        let body = '';
+        for await (const c of req) { body += c; if (body.length > 20000) break; }
+        try { const b = JSON.parse(body); await telegram.send(String(b.id), b.text); json(200, { ok: true }); }
+        catch (e) { json(400, { error: e.message }); }
+        return true;
+    }
+    json(404, { error: 'not found' }); return true;
+}
 const httpServer = http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     // www.pillwars.fun sirve la misma web que pillwars.fun, y Google las trata
@@ -2472,6 +2510,7 @@ const httpServer = http.createServer(async (req, res) => {
     const query = new URLSearchParams((req.url || '').split('?')[1] || '');
     // Antes que el airdrop: con SITE_CLOSED/AIRDROP_ONLY los botones del Discord siguen vivos.
     if (await discord.handle(req, res, urlPath)) return;
+    if (await handleInbox(req, res, urlPath, query)) return;
     if (await airdrop.handle(req, res, urlPath, query)) return;
 
     // --- Salud del servidor: heap, uptime y tamaños de estructuras (diagnóstico de leaks) ---
