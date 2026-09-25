@@ -138,7 +138,7 @@ function createDiscord({ publicKey, token, log = () => {}, fetchImpl = fetch, cl
     }
 
     // Post nuevo de X en #x-feed. Solo el enlace: fixupx ya trae texto, foto y vídeo en el embed.
-    const postXFeed = url => api('POST', '/channels/' + X_FEED + '/messages', { content: '**New post on 𝕏**\n❤️ Like · 🔁 RT · 💬 Reply 👇\n' + url });
+    const postXFeed = url => api('POST', '/channels/' + X_FEED + '/messages', { content: '**New post on 𝕏**\n\n❤️ Like · 🔁 RT · 💬 Reply\n' + url });
 
     return { handle, postXFeed, enabled: true };
 }

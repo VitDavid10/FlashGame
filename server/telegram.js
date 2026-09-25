@@ -7,7 +7,7 @@
 const fs = require('fs');
 
 // Llamada a la acción debajo de cada post de X reenviado (Telegram y #x-feed del Discord).
-const X_CTA = '❤️ Like · 🔁 RT · 💬 Reply 👇';
+const X_CTA = '❤️ Like · 🔁 RT · 💬 Reply';
 
 function createTelegram({ token, chat = -1004433617369, group = -1004327296311, admin = 1437029421, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3, onXPost = async () => {} } = {}) {
     if (!token) return { start() {}, enabled: false, inbox: () => [], thread: () => null, send: async () => { throw new Error('telegram off'); } };
