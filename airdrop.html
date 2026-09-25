@@ -8,8 +8,7 @@
 <!--OG-->
 <link rel="icon" href="img/web.png">
 <link rel="preload" href="/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="img/intro-loop-first.webp" as="image" media="(orientation:landscape)">
-<link rel="preload" href="img/intro-loop-mobile-first.webp" as="image" media="(orientation:portrait)">
+<link rel="preload" href="img/airdrop-intro.webp" as="image">
 <style>
 @font-face{font-family:'Press Start 2P';font-display:block;src:url(/fonts/press-start-2p-latin.woff2) format('woff2')}
 @font-face{font-family:'VT323';font-display:swap;src:url(/fonts/vt323-latin.woff2) format('woff2')}
@@ -494,8 +493,8 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 
 <!-- ============ INTRO ============ -->
 <div class="intro" id="intro" role="button" tabindex="0" aria-label="Enter the Genesis Drop">
-  <video class="intro-still" autoplay muted loop playsinline aria-hidden="true"></video>
-  <iframe data-src="game/?hero=1" title="PillWars gameplay" tabindex="-1" aria-hidden="true"></iframe>
+  <img class="intro-still" src="img/airdrop-intro.webp" alt="">
+  <iframe src="game/?hero=1" title="PillWars gameplay" tabindex="-1" aria-hidden="true"></iframe>
   <div class="intro-veil"></div>
   <div class="intro-top">
     <div class="intro-brand" id="introBrand"><picture><source srcset="img/pixel-hero/brand.webp" type="image/webp"><img src="img/pixel-hero/brand.png" alt="PillWars"></picture></div>
@@ -513,19 +512,6 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 if (/^#(game$|(.*&)?x(err)?=)/.test(location.hash)) document.getElementById('intro').remove();
 else {
   document.documentElement.classList.add('intro-on');
-  // The loop goes first: the live game only starts loading once it plays
-  // (or after 1.5 s), so both don't fight over the connection.
-  (function () {
-    const intro = document.getElementById('intro'), v = intro.querySelector('video'), fr = intro.querySelector('iframe');
-    // Upright screens get the portrait take: the landscape one would be cropped and blown up.
-    const tall = innerHeight > innerWidth;
-    v.poster = tall ? 'img/intro-loop-mobile-first.webp' : 'img/intro-loop-first.webp';
-    v.src = tall ? 'video/intro-loop-mobile.mp4' : 'video/intro-loop.mp4';
-    v.play().catch(() => {});
-    const go = () => { if (!fr.src) fr.src = fr.dataset.src; };
-    v.addEventListener('playing', () => setTimeout(go, 300), { once: true });
-    setTimeout(go, 1500);
-  })();
   // The game says when it runs smoothly (heroFluidez in game/index.html):
   // 'ready' fades it in over the still frame, 'slow' drops it and the still stays.
   addEventListener('message', function onHero(e) {
@@ -533,8 +519,7 @@ else {
     if (!fr) return removeEventListener('message', onHero);
     if (e.origin !== location.origin || e.source !== fr.contentWindow) return;
     const st = e.data && e.data.pwHero;
-    // The loop only covers the wait: once the live game has faded in, stop it.
-    if (st === 'ready') { intro.classList.add('live'); setTimeout(() => { const v = intro.querySelector('video'); if (v) v.pause(); }, 1000); }
+    if (st === 'ready') intro.classList.add('live');
     else if (st === 'slow') fr.remove();
     if (st === 'ready' || st === 'slow') removeEventListener('message', onHero);
   });
