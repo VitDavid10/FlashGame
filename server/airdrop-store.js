@@ -233,8 +233,25 @@ function createStore(opts) {
         const u = user(uid); if (!u) return false;
         u.discarded = !!discarded; save(); return true;
     }
+    // Admin-only, irreversible: wipes a participant (points, links, invites,
+    // sessions) so the same X and wallet can sign up again from zero.
+    function removeUser(uid) {
+        const u = user(uid); if (!u) return false;
+        const r = user(u.referredBy);
+        if (r) r.invited = r.invited.filter(id => id !== uid);
+        for (const id of u.invited) { const inv = user(id); if (inv && inv.referredBy === uid) inv.referredBy = null; }
+        for (const [t, s] of Object.entries(data.sessions)) if (s.uid === uid) delete data.sessions[t];
+        if (u.wallet && byWallet.get(u.wallet) === uid) byWallet.delete(u.wallet);
+        if (u.x && byX.get(u.x.id) === uid) byX.delete(u.x.id);
+        if (u.dcode) byDcode.delete(u.dcode);
+        if (u.discord && data.discord[u.discord] === uid) delete data.discord[u.discord];
+        if (u.wallet) for (const [mint, w] of Object.entries(data.nftClaims)) if (w === u.wallet) delete data.nftClaims[mint];
+        byCode.delete(u.code);
+        delete data.users[uid];
+        save(); return true;
+    }
 
-    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, discordCode, claimDiscord, inviteCount, setDiscarded, flush, MAX_INVITES, _data: () => data };
+    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, discordCode, claimDiscord, inviteCount, setDiscarded, removeUser, flush, MAX_INVITES, _data: () => data };
 }
 
 module.exports = { createStore, MAX_INVITES, INVITE_MIN_AGE_DAYS, INVITE_MIN_TXS };

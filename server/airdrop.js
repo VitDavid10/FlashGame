@@ -502,7 +502,15 @@ function createAirdrop(opts) {
             if (!hitOk('admin:' + clientIp(req), 20)) { notFound(req, res); return true; }
             const rest = urlPath.slice('/airdrop-admin/'.length);
             const discardMatch = rest.match(/^([^/]+)\/discard$/);
-            const token = discardMatch ? discardMatch[1] : rest;
+            const deleteMatch = rest.match(/^([^/]+)\/delete$/);
+            const token = discardMatch ? discardMatch[1] : deleteMatch ? deleteMatch[1] : rest;
+            if (deleteMatch) {
+                if (req.method !== 'POST') { notFound(req, res); return true; }
+                const body = await readJson(req);
+                const ok = body && typeof body.uid === 'string' && admin.removeUser(token, body.uid);
+                json(res, ok ? 200 : 403, { ok: !!ok });
+                return true;
+            }
             if (discardMatch) {
                 if (req.method !== 'POST') { notFound(req, res); return true; }
                 const body = await readJson(req);

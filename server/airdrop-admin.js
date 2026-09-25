@@ -63,6 +63,16 @@ function createAdmin(opts) {
         if (ok) log('[airdrop] admin ' + (on ? 'discarded' : 'restored') + ' ' + uid);
         return ok;
     }
+    /** Wipe a participant for good; only one already DISCARDED, and only with a valid admin token. */
+    function removeUser(token, uid) {
+        if (!valid(token) || !uid) return false;
+        const u = store._data().users[uid];
+        if (!u || !u.discarded) return false;
+        const who = (u.x ? '@' + u.x.username : '') + (u.wallet ? ' ' + u.wallet : '');
+        const ok = store.removeUser(uid);
+        if (ok) log('[airdrop] admin deleted ' + uid + ' (' + who.trim() + ')');
+        return ok;
+    }
 
     /** Everyone registered, with the same scoring the page uses. */
     function rows() {
@@ -98,7 +108,8 @@ function createAdmin(opts) {
         const discardTab = opts2 && opts2.discardTab;
         const paid = !discardTab && r.wallet && r.total >= MIN_ELIGIBLE_POINTS;
         const why = discardTab ? '' : !r.wallet ? 'no wallet' : r.total < MIN_ELIGIBLE_POINTS ? '&lt; ' + fmt(MIN_ELIGIBLE_POINTS) + ' pts' : '';
-        const action = '<button class="act" data-uid="' + esc(r.uid) + '" data-on="' + (discardTab ? '0' : '1') + '">' + (discardTab ? 'RESTORE' : 'DISCARD') + '</button>';
+        const action = '<button class="act" data-uid="' + esc(r.uid) + '" data-on="' + (discardTab ? '0' : '1') + '">' + (discardTab ? 'RESTORE' : 'DISCARD') + '</button>' +
+            (discardTab ? ' <button class="act del" data-uid="' + esc(r.uid) + '">DELETE</button>' : '');
         return '<tr' + (paid ? '' : ' class="unlinked"') + '><td>' + (paid ? r.rank : '-') + '</td><td>' + esc(r.x || '-') + '</td><td>' + walletCell(r, why) + '</td><td class=n>' +
             (r.checked ? fmt(r.verified) : r.wallet ? '<i>checking</i>' : '-') + '</td><td class=n>' + fmt(r.quests) + '</td><td class=n>' + fmt(r.arena) + '</td><td class=n>' + (r.boosted ? 'x1.5' : '-') +
             '</td><td class=n><b>' + fmt(r.total) + '</b></td><td class=n>' + (paid ? r.pct.toFixed(2) + '%' : '-') + '</td><td class=n>' + (paid ? fmt(r.tokens) : '-') + '</td><td>' + action + '</td></tr>';
@@ -128,6 +139,7 @@ tr.unlinked{opacity:.6}
 a{color:#00ff88} a:hover{color:#fff}
 .act{font:inherit;font-size:12px;background:none;color:#8fa89a;box-shadow:0 0 0 1px #0f3a25;border:0;padding:4px 8px;cursor:pointer}
 .act:hover{color:#fff;box-shadow:0 0 0 1px #8fa89a}
+.act.del{color:#f62a2d;box-shadow:0 0 0 1px #5a1414} .act.del:hover{color:#fff;box-shadow:0 0 0 1px #f62a2d}
 .note{color:#8fa89a;margin:18px 0 0;font-size:13px}
 [hidden]{display:none}
 </style></head><body>
@@ -149,13 +161,19 @@ a{color:#00ff88} a:hover{color:#fff}
 <table id="tab-all" hidden><thead>${head}</thead><tbody>${allBody || '<tr><td colspan="11"><i>nobody yet</i></td></tr>'}</tbody></table>
 <table id="tab-discarded" hidden><thead>${head}</thead><tbody>${discardedBody || '<tr><td colspan="11"><i>nobody discarded</i></td></tr>'}</tbody></table>
 <p class="note">Eligible = a linked wallet with at least ${fmt(MIN_ELIGIBLE_POINTS)} points; rank/share/$PILLY are only computed among those (dimmed rows in ALL don't count). Click a wallet to open it on Solscan.</p>
-<p class="note">DISCARD is a manual call, not automatic - it just takes a wallet out of the split until you RESTORE it. Points and shares are what the page shows today; the real split is the one taken at the Season 0 snapshot.</p>
+<p class="note">DISCARD is a manual call, not automatic - it just takes a wallet out of the split until you RESTORE it. DELETE (only in DISCARDED) wipes the participant for good, so their X and wallet can sign up again from zero. Points and shares are what the page shows today; the real split is the one taken at the Season 0 snapshot.</p>
 <script>
 document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){
   document.querySelectorAll('.tabs button').forEach(function(k){k.classList.toggle('on',k===b)});
   ['eligible','all','discarded'].forEach(function(t){document.getElementById('tab-'+t).hidden = b.dataset.t !== t;});
 };});
-document.querySelectorAll('.act').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('.act.del').forEach(function(b){b.onclick=function(){
+  if (!confirm('Delete this participant for good? Points, invites and links are wiped and their X and wallet can sign up again from zero. This cannot be undone.')) return;
+  b.disabled = true;
+  fetch(location.pathname + '/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: b.dataset.uid }) })
+    .then(function(r){ if (r.ok) location.reload(); else { b.disabled = false; alert('Could not delete - the link may have expired.'); } });
+};});
+document.querySelectorAll('.act:not(.del)').forEach(function(b){b.onclick=function(){
   b.disabled = true;
   fetch(location.pathname + '/discard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: b.dataset.uid, on: b.dataset.on === '1' }) })
     .then(function(r){ if (r.ok) location.reload(); else { b.disabled = false; alert('Could not save - the link may have expired.'); } });
@@ -164,7 +182,7 @@ document.querySelectorAll('.act').forEach(function(b){b.onclick=function(){
 </body></html>`;
     }
 
-    return { fromServerItself, mint, valid, setDiscarded, page, ADMIN_TTL_MS };
+    return { fromServerItself, mint, valid, setDiscarded, removeUser, page, ADMIN_TTL_MS };
 }
 
 module.exports = { createAdmin, fromServerItself, ADMIN_TTL_MS };

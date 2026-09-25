@@ -164,3 +164,24 @@ test('Genesis Hunter: the private code links one Discord account to one airdrop 
     assert.strictEqual(s.claimDiscord(ca, 'd2').error, 'code_used');
     assert.strictEqual(s.claimDiscord(cb, 'd1').error, 'discord_used');
 });
+
+test('removeUser wipes a participant so the same X and wallet start again from zero', () => {
+    const s = createStore({});
+    const a = s.linkWallet(null, W(1), '');
+    const b = s.linkWallet(null, W(2), s.codeOf(a.token));
+    s.linkX(b.token, X(2));
+    real(s, W(2));
+    const dc = s.discordCode(b.token); s.claimDiscord(dc, 'd9');
+    const uid = s.sessionUser(b.token).uid, oldCode = s.codeOf(b.token);
+    assert.strictEqual(s.publicView(s.sessionUser(a.token)).invites, 1);
+    assert.ok(s.removeUser(uid));
+    assert.strictEqual(s.removeUser(uid), false);
+    assert.strictEqual(s.sessionUser(b.token), null);                  // old session is dead
+    assert.strictEqual(s.publicView(s.sessionUser(a.token)).invites, 0); // the invite is gone
+    assert.strictEqual(s.claimDiscord(dc, 'd9').error, 'bad_code');
+    const again = s.linkWallet(null, W(2), '');
+    assert.notStrictEqual(s.sessionUser(again.token).uid, uid);       // a brand new record
+    assert.notStrictEqual(s.codeOf(again.token), oldCode);
+    assert.strictEqual(s.sessionUser(again.token).x, null);
+    assert.strictEqual(s.linkX(again.token, X(2)).user.uid, s.sessionUser(again.token).uid);
+});
