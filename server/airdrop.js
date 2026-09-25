@@ -155,10 +155,15 @@ function createAirdrop(opts) {
         log('[airdrop] site unlock link minted, valid for ' + Math.round(UNLOCK_TTL_MS / 3600000) + ' hours');
         return (process.env.AIRDROP_ORIGIN || 'https://pillwars.fun') + '/airdrop-unlock/' + unlockPass.token;
     }
+    // Pase fijo del dueño (AIRDROP_UNLOCK_TOKEN en el .service): no caduca ni se pierde al
+    // reiniciar. Para revocarlo, cambiar o borrar la variable.
+    const FIXED_PASS = /^[A-Za-z0-9_-]{32,64}$/.test(process.env.AIRDROP_UNLOCK_TOKEN || '') ? process.env.AIRDROP_UNLOCK_TOKEN : null;
+    const same = (x, y) => { const a = Buffer.from(String(x)), b = Buffer.from(y); return a.length === b.length && crypto.timingSafeEqual(a, b); };
+    const isFixedPass = token => !!FIXED_PASS && same(token, FIXED_PASS);
     function unlockTokenOk(token) {
+        if (isFixedPass(token)) return true;
         if (!unlockPass || Date.now() > unlockPass.until) return false;
-        const a = Buffer.from(String(token)), b = Buffer.from(unlockPass.token);
-        return a.length === b.length && crypto.timingSafeEqual(a, b);
+        return same(token, unlockPass.token);
     }
     // The two paths that keep working with SITE_CLOSED=1: minting the pass
     // from a shell on the server, and opening it in a browser.
@@ -485,7 +490,9 @@ function createAirdrop(opts) {
             const token = urlPath.slice('/airdrop-unlock/'.length);
             if (req.method !== 'GET' || !unlockTokenOk(token)) { notFound(req, res); return true; }
             const secure = originOf(req).startsWith('https:') ? '; Secure' : '';
-            res.setHeader('Set-Cookie', UNLOCK_COOKIE + '=' + token + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + Math.round(UNLOCK_TTL_MS / 1000) + secure);
+            // Con el pase fijo la cookie dura lo máximo que aceptan los navegadores (400 días).
+            const maxAge = isFixedPass(token) ? 400 * 24 * 3600 : Math.round(UNLOCK_TTL_MS / 1000);
+            res.setHeader('Set-Cookie', UNLOCK_COOKIE + '=' + token + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + maxAge + secure);
             log('[airdrop] site unlocked for one browser');
             redirect(res, '/game/', 302);
             return true;
