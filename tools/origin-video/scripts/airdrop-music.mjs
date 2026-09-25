@@ -5,7 +5,7 @@
 import { writeFileSync } from "node:fs";
 
 const SR = 44100, BPM = 120, SPB = 60 / BPM; // seconds per beat
-const BEATS = 40, LEN = BEATS * SPB + 1.5;    // 20 s + tail
+const BEATS = 44, LEN = BEATS * SPB + 1.5;    // 22 s + tail
 const N = Math.ceil(LEN * SR);
 const L = new Float32Array(N), R = new Float32Array(N);
 const K = new Float32Array(N); // kick bus, kept out of the sidechain
@@ -13,7 +13,7 @@ const t2s = (beat) => Math.round(beat * SPB * SR);
 const hz = (midi) => 440 * 2 ** ((midi - 69) / 12);
 
 // Cuts of the video, in beats (Airdrop.tsx CUTS / 15): a soft cymbal on each.
-const CUTS = [10, 19, 27, 36];
+const CUTS = [10, 19, 27, 40];
 const DROP = 4; // the groove kicks in with "$PILLY"
 const kicks = [];
 

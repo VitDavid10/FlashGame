@@ -5,15 +5,15 @@ import { ArenaFloor, FPS, Food, GAME_ANGLE, H, PIXEL, PX, Pill, VT, W } from "./
 import { PALETTE } from "./pill";
 
 /*
- * 20 s airdrop announcement on an original track made for it
+ * 22 s airdrop announcement on an original track made for it
  * (scripts/airdrop-music.mjs → public/snd/airdrop-music.wav). The track runs at
  * 120 BPM: a beat is exactly 15 frames, so every cut and every slam sits on
  * BEAT(n), and the track's cymbals are written on the same CUTS.
  * Scenes: title → 10% of the supply → who gets it → pool value vs FDV → CTA.
  */
-export const AIRDROP_FRAMES = 20 * FPS;
+export const AIRDROP_FRAMES = 22 * FPS;
 const BEAT = (n: number) => n * 15;
-const CUTS = [BEAT(10), BEAT(19), BEAT(27), BEAT(36)]; // 150, 285, 405, 540
+const CUTS = [BEAT(10), BEAT(19), BEAT(27), BEAT(40)]; // 150, 285, 405, 600
 const DROP = BEAT(4); // the track's groove kicks in with "$PILLY"
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const snap = (v: number, s = PIXEL) => Math.round(v / s) * s;
@@ -228,19 +228,19 @@ const FDVS = [1e5, 5e5, 1e6, 1e7, 1e8];
 // Pool values span $10K → $10M, so the y axis is log: $1K at the base, a decade per step.
 const CX0 = 250, CX1 = 1250, BASE = 870, CH = 460, VMIN = 1e3, VMAX = 1e7;
 const yOf = (v: number) => (Math.log10(v / VMIN) / Math.log10(VMAX / VMIN)) * CH;
-const barAt = (i: number) => BEAT(i + 1);
+const barAt = (i: number) => BEAT(1 + i * 2); // one bar every two beats
 
 const Chart: React.FC = () => {
   const f = useCurrentFrame();
   const bw = 140, step = (CX1 - CX0) / FDVS.length;
-  const grow = (i: number) => interpolate(f, [barAt(i), barAt(i) + 8], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.6)) });
+  const grow = (i: number) => interpolate(f, [barAt(i), barAt(i) + 12], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.6)) });
   const done = FDVS.filter((_, i) => grow(i) >= 1).length;
   const cur = Math.max(0, done - 1);
   const pool = (FDVS[cur] * AIRDROP_PCT) / 100;
   // the pill hops from bar top to bar top as each one lands
-  const hopT = interpolate(f, [barAt(cur) + 8, barAt(cur) + 14], [0, 1], clamp);
+  const hopT = interpolate(f, [barAt(cur) + 12, barAt(cur) + 22], [0, 1], clamp);
   const barTop = (i: number) => BASE - snap(yOf((FDVS[i] * AIRDROP_PCT) / 100), 8);
-  const px = CX0 + step * (cur + 0.5), py = barTop(cur) - 46 - (done ? Math.sin(hopT * Math.PI) * 60 : 0);
+  const px = CX0 + step * (cur + 0.5) + bw / 2 + 36, py = barTop(cur) - 40 - (done ? Math.sin(hopT * Math.PI) * 60 : 0);
   return (
     <AbsoluteFill>
       <ArenaFloor opacity={0.7} />
@@ -284,7 +284,7 @@ const Chart: React.FC = () => {
         <div style={{ fontFamily: VT, fontSize: 36, color: "#9fc2ad" }}>IF FDV HITS</div>
         <div style={{ fontFamily: PX, fontSize: 48, color: "#fff", margin: "10px 0 26px" }}>{done ? usd(FDVS[cur]) : "--"}</div>
         <div style={{ fontFamily: VT, fontSize: 36, color: "#9fc2ad" }}>THE {AIRDROP_PCT}% POOL IS</div>
-        <div style={{ fontFamily: PX, fontSize: 56, color: GOLD, marginTop: 10, textShadow: "5px 5px 0 #000", transform: `scale(${done && f - (barAt(cur) + 8) < 3 ? 1.18 : 1})`, transformOrigin: "0 50%" }}>
+        <div style={{ fontFamily: PX, fontSize: 56, color: GOLD, marginTop: 10, textShadow: "5px 5px 0 #000", transform: `scale(${done && f - (barAt(cur) + 12) < 3 ? 1.18 : 1})`, transformOrigin: "0 50%" }}>
           {done ? usd(pool) : "--"}
         </div>
       </div>
@@ -292,7 +292,7 @@ const Chart: React.FC = () => {
         ILLUSTRATIVE ONLY · POOL VALUE = {AIRDROP_PCT}% × FDV · NOT A PRICE PREDICTION · NOT FINANCIAL ADVICE
       </div>
       {FDVS.map((_, i) => (
-        <Sequence key={i} from={barAt(i) + 8} layout="none"><Audio src={staticFile("snd/kill1.mp3")} volume={0.3} /></Sequence>
+        <Sequence key={i} from={barAt(i) + 12} layout="none"><Audio src={staticFile("snd/kill1.mp3")} volume={0.3} /></Sequence>
       ))}
     </AbsoluteFill>
   );
