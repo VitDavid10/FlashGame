@@ -5,14 +5,16 @@ import { ArenaFloor, FPS, Food, GAME_ANGLE, H, PIXEL, PX, Pill, VT, W } from "./
 import { PALETTE } from "./pill";
 
 /*
- * 15 s airdrop announcement on the game's match music (snd/music.mp3 from
- * 37.21 s, trimmed to public/snd/airdrop-music.wav). The song runs at ~123 BPM:
- * a beat every ~14.6 frames, so every cut and every slam sits on BEAT(n).
+ * 20 s airdrop announcement on an original track made for it
+ * (scripts/airdrop-music.mjs → public/snd/airdrop-music.wav). The track runs at
+ * 120 BPM: a beat is exactly 15 frames, so every cut and every slam sits on
+ * BEAT(n), and the track's impacts and risers are written on the same CUTS.
  * Scenes: title → 10% of the supply → who gets it → pool value vs FDV → CTA.
  */
-export const AIRDROP_FRAMES = 15 * FPS;
-const BEAT = (n: number) => Math.round(n * 14.63);
-const CUTS = [BEAT(6), BEAT(14), BEAT(20), BEAT(28)]; // 88, 205, 293, 410
+export const AIRDROP_FRAMES = 20 * FPS;
+const BEAT = (n: number) => n * 15;
+const CUTS = [BEAT(10), BEAT(19), BEAT(27), BEAT(36)]; // 150, 285, 405, 540
+const DROP = BEAT(4); // the track's groove kicks in with "$PILLY"
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const snap = (v: number, s = PIXEL) => Math.round(v / s) * s;
 const GREEN = "#00ff88", LIME = "#ccff00", GOLD = "#ffce3d", RED = "#f62a2d", CYAN = "#00e5ff";
@@ -23,7 +25,7 @@ const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const usd = (n: number) => (n >= 1e9 ? `$${n / 1e9}B` : n >= 1e6 ? `$${n / 1e6}M` : `$${n / 1e3}K`);
 
 // Frames where the camera takes a hit (shake + flash), all on the beat grid.
-const HITS = [0, BEAT(3), BEAT(4), CUTS[0], BEAT(9), CUTS[1], CUTS[1] + BEAT(1), CUTS[1] + BEAT(2), CUTS[1] + BEAT(3), CUTS[1] + BEAT(4), CUTS[2], CUTS[3], CUTS[3] + BEAT(1)];
+const HITS = [0, BEAT(2), DROP, BEAT(5), CUTS[0], CUTS[0] + BEAT(4), ...[1, 2, 3, 4].map((b) => CUTS[1] + BEAT(b)), CUTS[2], CUTS[3], CUTS[3] + BEAT(1)];
 
 /** Hard pixel slam: pops in oversized, overshoots in steps, chromatic split that settles. */
 const Slam: React.FC<{
@@ -78,7 +80,7 @@ const Hud: React.FC = () => {
       <div style={corner(true, true)} /><div style={corner(false, true)} />
       <div style={corner(true, false)} /><div style={corner(false, false)} />
       <div style={{ position: "absolute", left: M + 24, top: M + 22, fontFamily: VT, fontSize: 38, color: GREEN, textShadow: "3px 3px 0 #000" }}>
-        PILLWARS // SEASON 0
+        PILLWARS // GENESIS DROP
       </div>
       <div style={{ position: "absolute", right: M + 24, top: M + 22, fontFamily: VT, fontSize: 38, color: "#fff", textShadow: "3px 3px 0 #000" }}>
         <span style={{ color: RED, opacity: Math.floor(f / 15) % 2 ? 0.2 : 1 }}>■</span> 00:{String(sec).padStart(2, "0")}:{String(fr).padStart(2, "0")}
@@ -90,20 +92,22 @@ const Hud: React.FC = () => {
 };
 
 // ─── 1. Title ────────────────────────────────────────────────────────────────
-const WORDS: [number, string, string][] = [[0, "SEASON 0", GREEN], [BEAT(1), "100%", "#fff"], [BEAT(2), "ON-CHAIN", LIME]];
+const WORDS: [number, string, string][] = [[0, "PILLWARS", "#fff"], [BEAT(2), "GENESIS DROP", GREEN]];
 
 const Title: React.FC = () => {
   const f = useCurrentFrame();
-  const zoom = interpolate(f, [BEAT(3), CUTS[0]], [1.12, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
+  const zoom = interpolate(f, [DROP, CUTS[0]], [1.12, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
+  // Everything drifts slowly through the intro and rushes from the drop on.
+  const dist = f < DROP ? f * 0.3 : DROP * 0.3 + (f - DROP);
   return (
     <AbsoluteFill>
-      <div style={{ position: "absolute", inset: -200, transform: `translateX(${snap(-f * 6)}px) scale(${zoom})` }}>
+      <div style={{ position: "absolute", inset: -200, transform: `translateX(${snap(-dist * 5)}px) scale(${zoom})` }}>
         <ArenaFloor /><Food seed="drop1" n={90} />
       </div>
       {/* pills rushing across the frame with speed trails */}
       {Array.from({ length: 12 }, (_, i) => {
-        const speed = 38 + (i % 4) * 14, y = 120 + ((i * 377) % 860);
-        const x = ((f * speed + i * 530) % (W + 700)) - 350;
+        const speed = 30 + (i % 4) * 12, y = 120 + ((i * 377) % 860);
+        const x = ((dist * speed + i * 530) % (W + 700)) - 350;
         const [t, b] = PALETTE[i % PALETTE.length];
         return (
           <React.Fragment key={i}>
@@ -113,11 +117,11 @@ const Title: React.FC = () => {
         );
       })}
       {WORDS.map(([at, w, c], i) => (
-        <Slam key={w} at={at} out={i < WORDS.length - 1 ? WORDS[i + 1][0] : BEAT(3)} text={w} y={H / 2 - 80} size={150} color={c} />
+        <Slam key={w} at={at} out={i < WORDS.length - 1 ? WORDS[i + 1][0] : DROP} text={w} y={H / 2 - 70} size={130} color={c} />
       ))}
-      <Slam at={BEAT(3)} text="$PILLY" y={H / 2 - 230} size={210} color={LIME} />
-      <Slam at={BEAT(4)} text="AIRDROP" y={H / 2 + 20} size={170} />
-      <Slam at={BEAT(5)} text="PLAY. HUNT. HOLD. GET PAID." y={H * 0.74} size={40} color={GREEN} />
+      <Slam at={DROP} text="$PILLY" y={H / 2 - 230} size={210} color={LIME} />
+      <Slam at={BEAT(5)} text="AIRDROP" y={H / 2 + 20} size={170} />
+      <Slam at={BEAT(6)} text="PLAY. HUNT. HOLD. GET PAID." y={H * 0.74} size={40} color={GREEN} />
     </AbsoluteFill>
   );
 };
@@ -137,9 +141,9 @@ const Supply: React.FC = () => {
       <Slam at={BEAT(1)} text="OF THE TOTAL SUPPLY" x={150} y={560} size={40} align="left" />
       {Array.from({ length: 100 }, (_, k) => {
         const i = k % 10, j = Math.floor(k / 10);
-        const on = j === 0 && f >= BEAT(1) + i * 2;
+        const on = j === 0 && f >= BEAT(1) + i * 3;
         const appear = interpolate(f, [k * 0.25, k * 0.25 + 4], [0, 1], clamp);
-        const pop = on && f < BEAT(1) + i * 2 + 3 ? 1.25 : 1;
+        const pop = on && f < BEAT(1) + i * 3 + 3 ? 1.25 : 1;
         const s = CELL * appear * pop;
         return (
           <div key={k} style={{
@@ -178,7 +182,7 @@ const CARDS: { title: string; sub: string; color: string; pal: number }[] = [
 
 const Card: React.FC<{ i: number }> = ({ i }) => {
   const f = useCurrentFrame();
-  const c = CARDS[i], at = BEAT(i) + 6;
+  const c = CARDS[i], at = BEAT(i + 1);
   const t = f - at;
   if (t < 0) return null;
   const drop = t < 3 ? -snap(260 - t * 90) : t < 5 ? 16 : 0;
@@ -220,38 +224,41 @@ const Who: React.FC = () => (
 );
 
 // ─── 4. Pool value vs FDV ────────────────────────────────────────────────────
-const FDVS = [5e6, 10e6, 25e6, 50e6, 100e6, 250e6];
-const CX0 = 250, CX1 = 1250, BASE = 870, CH = 460, VMAX = 25e6;
+const FDVS = [1e5, 5e5, 1e6, 1e7, 1e8];
+// Pool values span $10K → $10M, so the y axis is log: $1K at the base, a decade per step.
+const CX0 = 250, CX1 = 1250, BASE = 870, CH = 460, VMIN = 1e3, VMAX = 1e7;
+const yOf = (v: number) => (Math.log10(v / VMIN) / Math.log10(VMAX / VMIN)) * CH;
+const barAt = (i: number) => BEAT(i + 1);
 
 const Chart: React.FC = () => {
   const f = useCurrentFrame();
-  const bw = 120, step = (CX1 - CX0) / FDVS.length;
-  const grow = (i: number) => interpolate(f, [8 + i * 7, 16 + i * 7], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.6)) });
+  const bw = 140, step = (CX1 - CX0) / FDVS.length;
+  const grow = (i: number) => interpolate(f, [barAt(i), barAt(i) + 8], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.6)) });
   const done = FDVS.filter((_, i) => grow(i) >= 1).length;
   const cur = Math.max(0, done - 1);
   const pool = (FDVS[cur] * AIRDROP_PCT) / 100;
   // the pill hops from bar top to bar top as each one lands
-  const hopT = interpolate(f, [8 + cur * 7 + 8, 8 + cur * 7 + 14], [0, 1], clamp);
-  const barTop = (i: number) => BASE - snap((((FDVS[i] * AIRDROP_PCT) / 100) / VMAX) * CH, 8);
+  const hopT = interpolate(f, [barAt(cur) + 8, barAt(cur) + 14], [0, 1], clamp);
+  const barTop = (i: number) => BASE - snap(yOf((FDVS[i] * AIRDROP_PCT) / 100), 8);
   const px = CX0 + step * (cur + 0.5), py = barTop(cur) - 46 - (done ? Math.sin(hopT * Math.PI) * 60 : 0);
   return (
     <AbsoluteFill>
       <ArenaFloor opacity={0.7} />
       <Slam at={0} text="WHAT COULD YOUR DROP BE WORTH?" y={150} size={46} />
       {/* grid + y axis */}
-      {[0, 5e6, 10e6, 15e6, 20e6, 25e6].map((v) => {
-        const y = BASE - (v / VMAX) * CH;
+      {[VMIN, 1e4, 1e5, 1e6, 1e7].map((v) => {
+        const y = BASE - yOf(v);
         return (
           <React.Fragment key={v}>
-            <div style={{ position: "absolute", left: CX0, width: CX1 - CX0, top: y, height: 4, background: v ? "rgba(159,194,173,.14)" : "#9fc2ad", opacity: interpolate(f, [0, 8], [0, 1], clamp) }} />
-            <div style={{ position: "absolute", left: CX0 - 150, width: 130, top: y - 20, textAlign: "right", fontFamily: VT, fontSize: 34, color: "#9fc2ad" }}>{v ? usd(v) : "$0"}</div>
+            <div style={{ position: "absolute", left: CX0, width: CX1 - CX0, top: y, height: 4, background: v > VMIN ? "rgba(159,194,173,.14)" : "#9fc2ad", opacity: interpolate(f, [0, 8], [0, 1], clamp) }} />
+            <div style={{ position: "absolute", left: CX0 - 150, width: 130, top: y - 20, textAlign: "right", fontFamily: VT, fontSize: 34, color: "#9fc2ad" }}>{usd(v)}</div>
           </React.Fragment>
         );
       })}
-      <div style={{ position: "absolute", left: 70, top: BASE - CH - 70, fontFamily: VT, fontSize: 32, color: GREEN }}>AIRDROP POOL VALUE</div>
+      <div style={{ position: "absolute", left: 70, top: BASE - CH - 70, fontFamily: VT, fontSize: 32, color: GREEN }}>AIRDROP POOL VALUE (LOG SCALE)</div>
       {FDVS.map((fdv, i) => {
         const g = grow(i);
-        const h = snap((((fdv * AIRDROP_PCT) / 100) / VMAX) * CH * g, 8);
+        const h = snap(yOf((fdv * AIRDROP_PCT) / 100) * g, 8);
         const x = CX0 + step * (i + 0.5) - bw / 2;
         const hot = i === cur && done > 0;
         return (
@@ -277,7 +284,7 @@ const Chart: React.FC = () => {
         <div style={{ fontFamily: VT, fontSize: 36, color: "#9fc2ad" }}>IF FDV HITS</div>
         <div style={{ fontFamily: PX, fontSize: 48, color: "#fff", margin: "10px 0 26px" }}>{done ? usd(FDVS[cur]) : "--"}</div>
         <div style={{ fontFamily: VT, fontSize: 36, color: "#9fc2ad" }}>THE {AIRDROP_PCT}% POOL IS</div>
-        <div style={{ fontFamily: PX, fontSize: 56, color: GOLD, marginTop: 10, textShadow: "5px 5px 0 #000", transform: `scale(${done && f - (8 + cur * 7 + 8) < 3 ? 1.18 : 1})`, transformOrigin: "0 50%" }}>
+        <div style={{ fontFamily: PX, fontSize: 56, color: GOLD, marginTop: 10, textShadow: "5px 5px 0 #000", transform: `scale(${done && f - (barAt(cur) + 8) < 3 ? 1.18 : 1})`, transformOrigin: "0 50%" }}>
           {done ? usd(pool) : "--"}
         </div>
       </div>
@@ -285,7 +292,7 @@ const Chart: React.FC = () => {
         ILLUSTRATIVE ONLY · POOL VALUE = {AIRDROP_PCT}% × FDV · NOT A PRICE PREDICTION · NOT FINANCIAL ADVICE
       </div>
       {FDVS.map((_, i) => (
-        <Sequence key={i} from={16 + i * 7} layout="none"><Audio src={staticFile("snd/kill1.mp3")} volume={0.3} /></Sequence>
+        <Sequence key={i} from={barAt(i) + 8} layout="none"><Audio src={staticFile("snd/kill1.mp3")} volume={0.3} /></Sequence>
       ))}
     </AbsoluteFill>
   );
@@ -302,7 +309,7 @@ const Outro: React.FC = () => {
         const [t, b] = PALETTE[i % PALETTE.length];
         return <Pill key={i} x={W / 2 + Math.cos(a) * r * 1.2} y={H / 2 + Math.sin(a) * r * 0.7} wL={10 + (i % 3) * 4} scale={PIXEL} top={t} bot={b} ang={a + Math.PI / 2} />;
       })}
-      <Slam at={0} text="SEASON 0 ENDS OCT 20" y={H / 2 - 170} size={70} color={LIME} />
+      <Slam at={0} text="GENESIS DROP" y={H / 2 - 190} size={96} color={LIME} />
       <Slam at={BEAT(1)} text="PILLWARS.FUN/AIRDROP" y={H / 2 - 20} size={78} />
       <Slam at={BEAT(2)} text="STACK YOUR POINTS NOW" y={H / 2 + 130} size={36} color={GREEN} />
     </AbsoluteFill>
@@ -327,10 +334,7 @@ export const Airdrop: React.FC = () => {
       {f - last < 3 && <AbsoluteFill style={{ background: "#fff", opacity: 0.28 * (1 - (f - last) / 3) }} />}
       {CUTS.map((T) => <PixelWipe key={T} T={T} color={GREEN} />)}
       <Hud />
-      <Audio src={staticFile("snd/airdrop-music.wav")} volume={(v) => interpolate(v, [0, 2, AIRDROP_FRAMES - 20, AIRDROP_FRAMES], [0, 0.9, 0.9, 0], clamp)} />
-      {CUTS.map((T) => (
-        <Sequence key={T} from={T - 6} layout="none"><Audio src={staticFile("snd/sprint.mp3")} volume={0.3} /></Sequence>
-      ))}
+      <Audio src={staticFile("snd/airdrop-music.wav")} volume={(v) => interpolate(v, [0, 1, AIRDROP_FRAMES - 10, AIRDROP_FRAMES], [1, 1, 1, 0], clamp)} />
     </AbsoluteFill>
   );
 };
