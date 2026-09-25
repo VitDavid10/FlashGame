@@ -10,7 +10,7 @@ const API = 'https://discord.com/api/v10';
 const INVITE = 'https://discord.gg/rfZK7fQ32E';
 // Genesis Drop visible? false = #genesis-drop and #flex-and-refs are staff only and
 // no other text mentions the airdrop. Set to true and run again on launch day.
-const DROP_LIVE = false;
+const DROP_LIVE = true;
 const live = (on, off = '') => (DROP_LIVE ? on : off);
 
 async function api(method, path, body) {
