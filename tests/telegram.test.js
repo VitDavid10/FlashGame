@@ -88,9 +88,9 @@ test('respuestas automáticas: contesta lo típico una vez por tema y avisa al a
     const msg = text => ({ message: { message_id: 1, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Nyx' }, text } });
     const toUser = () => calls.filter(c => c[0] === 'sendMessage' && c[1].chat_id === 42).map(c => c[1].text);
 
-    await t.onUpdate(msg('Gm Sir'));
-    assert.deepEqual(toUser(), ['Hey! 👋 How can we help you?']);
-    assert.match(calls.find(c => c[0] === 'sendMessage' && c[1].chat_id === 1)[1].text, /auto-replied: greeting/);
+    await t.onUpdate(msg('Gm Sir'));                     // saludo: solo el acuse de recibo
+    assert.deepEqual(toUser(), ['Got it! 🙌 The team will get back to you here soon.']);
+    assert.match(calls.find(c => c[0] === 'sendMessage' && c[1].chat_id === 1)[1].text, /auto-replied: ack/);
 
     calls.length = 0;
     await t.onUpdate(msg('We offer marketing and KOL calls for your project'));
@@ -105,8 +105,8 @@ test('respuestas automáticas: contesta lo típico una vez por tema y avisa al a
     assert.match(toUser()[0], /isn't live yet/);
 
     calls.length = 0;
-    await t.onUpdate(msg('I can help you'));             // "can" no es "ca": solo el acuse de recibo
-    assert.deepEqual(toUser(), ['Got it! 🙌 The team will get back to you here soon.']);
+    await t.onUpdate(msg('I can help you'));             // "can" no es "ca"; el acuse ya se mandó hoy
+    assert.deepEqual(toUser(), []);
 });
 
 test('respuestas automáticas: enlaces oficiales y airdrop sin enlace a la web', async () => {

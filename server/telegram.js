@@ -41,8 +41,6 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
     // Respuestas automáticas a lo típico. Una por tema y persona cada 24 h; el mensaje
     // le llega igual al admin, marcado con 🤖. Textos revisados a mano: nada de precios ni promesas.
     const AUTO = [
-        { id: 'greeting', re: /^\W*(hi|hello|hey|gm|yo|sup|hola|good morning)\b[\s\w!.,]{0,12}$/i,
-          text: 'Hey! 👋 How can we help you?' },
         { id: 'contract', re: /\b(ca|contract|token address|presale|pre-sale|launch date|when launch|when token|buy \$?pilly|price)\b/i,
           text: "$PILLY isn't live yet. The contract address will only be posted in our announcements channel (t.me/pillwars_announcements) and on X (@pillwarsdotfun).\n\nThere is no presale. Anyone offering one is a scammer." },
         { id: 'marketing', re: /\b(marketing|promot\w*|listing|trending|kols?|calls?|call channel|volume|shill\w*|advertis\w*|collab\w*|partnership)\b/i,
