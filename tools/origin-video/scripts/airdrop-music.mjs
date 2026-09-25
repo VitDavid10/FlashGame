@@ -12,7 +12,7 @@ const K = new Float32Array(N); // kick bus, kept out of the sidechain
 const t2s = (beat) => Math.round(beat * SPB * SR);
 const hz = (midi) => 440 * 2 ** ((midi - 69) / 12);
 
-// Cuts of the video, in beats (Airdrop.tsx CUTS / 15): impact on each, riser before.
+// Cuts of the video, in beats (Airdrop.tsx CUTS / 15): a soft cymbal on each.
 const CUTS = [10, 19, 27, 36];
 const DROP = 4; // the groove kicks in with "$PILLY"
 const kicks = [];
@@ -59,16 +59,6 @@ function crash(b, amp = 0.28) {
     const x = noise(), hp = x - prev; prev = x;
     const e = Math.exp(-(i / SR) * 2.4);
     add(s0 + i, hp * e * amp, noise() * e * amp * 0.5 + hp * e * amp * 0.5);
-  }
-}
-function riser(bEnd, beats = 2, amp = 0.22) {
-  const s1 = t2s(bEnd), s0 = t2s(bEnd - beats);
-  let lp = 0;
-  for (let i = s0; i < s1; i++) {
-    const p = (i - s0) / (s1 - s0);
-    const a = 1 - Math.exp((-2 * Math.PI * (300 + 9000 * p * p)) / SR);
-    lp += a * (noise() - lp);
-    add(i, lp * p * p * amp, lp * p * p * amp);
   }
 }
 /** Square/saw voice with an ADSR-ish envelope and a one-pole low-pass. */
@@ -124,10 +114,10 @@ for (let b = 0; b < BEATS; b++) {
       .forEach(([o, m]) => tone(b + o, 0.45, m, { amp: 0.07, cut: 3500, dec: 3, duty: 0.5, pan: 0 }));
   }
 }
-// impacts and risers around the cuts, big entry on the drop, final hit
-riser(DROP, 4, 0.2); crash(DROP, 0.3);
-for (const c of CUTS) { riser(c, 2); crash(c); }
-kick(BEATS, 1); crash(BEATS, 0.3);
+// a soft cymbal on each cut, big entry on the drop, final hit
+crash(DROP, 0.15);
+for (const c of CUTS) crash(c, 0.12);
+kick(BEATS, 1); crash(BEATS, 0.15);
 for (const m of PROG[0]) tone(BEATS, 3, m, { amp: 0.06, wave: "saw", cut: 1800, dec: 1.2, det: 0.006 });
 
 // sidechain: everything but the kick ducks on each kick, then the kick goes on top

@@ -8,7 +8,7 @@ import { PALETTE } from "./pill";
  * 20 s airdrop announcement on an original track made for it
  * (scripts/airdrop-music.mjs → public/snd/airdrop-music.wav). The track runs at
  * 120 BPM: a beat is exactly 15 frames, so every cut and every slam sits on
- * BEAT(n), and the track's impacts and risers are written on the same CUTS.
+ * BEAT(n), and the track's cymbals are written on the same CUTS.
  * Scenes: title → 10% of the supply → who gets it → pool value vs FDV → CTA.
  */
 export const AIRDROP_FRAMES = 20 * FPS;
