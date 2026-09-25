@@ -76,7 +76,7 @@ function createAirdrop(opts) {
     // Real post ids to repost/like - keep this in sync with POSTS in airdrop.html.
     const POST_IDS = [];
     const score = createScore({ postIds: POST_IDS, inviteCountOf: store.inviteCount });
-    const admin = createAdmin({ store, score, log });
+    const admin = createAdmin({ store, score, log, password: process.env.ADMIN_KEY });
     log('[airdrop] lockdown ' + (ONLY ? 'ON' : 'off') + ' | X client id ' + (X_CLIENT_ID ? 'set (' + X_CLIENT_ID.length + ' chars)' : 'MISSING') +
         ' | X client secret ' + (X_CLIENT_SECRET ? 'set (' + X_CLIENT_SECRET.length + ' chars)' : 'MISSING'));
 
@@ -169,7 +169,7 @@ function createAirdrop(opts) {
     // from a shell on the server, and opening it in a browser.
     function isUnlockPath(req, urlPath) {
         // The admin dashboard too: its link is minted the same way and the page checks its token.
-        return urlPath.startsWith('/airdrop-unlock/') || urlPath.startsWith('/airdrop-admin/') ||
+        return urlPath.startsWith('/airdrop-unlock/') || urlPath === '/airdrop-admin' || urlPath.startsWith('/airdrop-admin/') ||
             ((urlPath === '/api/airdrop/unlock-link' || urlPath === '/api/airdrop/admin-link') && req.method === 'POST' && admin.fromServerItself(req));
     }
     function unlocked(req) {
@@ -496,6 +496,19 @@ function createAirdrop(opts) {
             res.setHeader('Set-Cookie', UNLOCK_COOKIE + '=' + token + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + maxAge + secure);
             log('[airdrop] site unlocked for one browser');
             redirect(res, '/game/', 302);
+            return true;
+        }
+        // Fixed entry: the admin password opens a dashboard link of its own.
+        if (urlPath === '/airdrop-admin') {
+            const noStore = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Referrer-Policy': 'no-referrer' };
+            if (req.method === 'GET') { res.writeHead(200, noStore); res.end(admin.loginPage('')); return true; }
+            if (req.method !== 'POST') { notFound(req, res); return true; }
+            if (!hitOk('adminlogin:' + clientIp(req), 5)) { res.writeHead(429, noStore); res.end(admin.loginPage('Too many tries. Wait a minute.')); return true; }
+            let pass = '';
+            try { pass = new URLSearchParams((await readBody(req, 2048)).toString('utf8')).get('password') || ''; } catch (e) {}
+            const token = admin.login(pass);
+            if (!token) { log('[airdrop] wrong admin password from ' + clientIp(req)); res.writeHead(401, noStore); res.end(admin.loginPage('Wrong password.')); return true; }
+            res.writeHead(303, { Location: '/airdrop-admin/' + token, 'Cache-Control': 'no-store' }); res.end();
             return true;
         }
         if (urlPath.startsWith('/airdrop-admin/')) {

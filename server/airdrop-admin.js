@@ -3,9 +3,9 @@
  * The airdrop's private dashboard: who is registered, their points and what
  * share of the pool that is.
  *
- * There is no password and no login form, and the page is not linked from
- * anywhere. The ONLY way in is to open a link minted from a shell ON the
- * server:
+ * Two ways in, neither linked from anywhere: /airdrop-admin asks for the
+ * admin password (ADMIN_KEY) and opens a link that lasts LOGIN_TTL_MS; or a
+ * link minted from a shell ON the server:
  *
  *   curl -s -X POST http://127.0.0.1:<port>/api/airdrop/admin-link
  *
@@ -22,6 +22,7 @@
 const crypto = require('crypto');
 
 const ADMIN_TTL_MS = 30 * 60 * 1000;
+const LOGIN_TTL_MS = 12 * 60 * 60 * 1000;
 const SUPPLY = 1e9, AIRDROP_PCT = 10;
 // A wallet just old/used enough to count as a real invite (see INVITE_MIN_AGE_DAYS/
 // INVITE_MIN_TXS in airdrop-store.js) already scores about this much from age+tx
@@ -45,16 +46,51 @@ function createAdmin(opts) {
     const now = opts.now || Date.now;
     const origin = process.env.AIRDROP_ORIGIN || 'https://pillwars.fun';
     let current = null;   // { token, until }
+    // Fixed entry /airdrop-admin: the admin password (ADMIN_KEY) opens a
+    // dashboard link of its own that lasts LOGIN_TTL_MS.
+    const password = opts.password || '';
+    const logins = new Map();   // token -> until
 
     function mint() {
         current = { token: crypto.randomBytes(24).toString('base64url'), until: now() + ADMIN_TTL_MS };
         log('[airdrop] admin link minted, valid for ' + Math.round(ADMIN_TTL_MS / 60000) + ' minutes');
         return origin + '/airdrop-admin/' + current.token;
     }
-    function valid(token) {
-        if (!current || now() > current.until) return false;
-        const a = Buffer.from(String(token)), b = Buffer.from(current.token);
+    const same = (x, y) => {
+        const a = Buffer.from(String(x)), b = Buffer.from(String(y));
         return a.length === b.length && crypto.timingSafeEqual(a, b);
+    };
+    function valid(token) {
+        const t = now();
+        for (const [k, until] of logins) if (t > until) logins.delete(k);
+        if (logins.has(String(token))) return true;
+        if (!current || t > current.until) return false;
+        return same(token, current.token);
+    }
+    /** Right password: a new dashboard token (its path is /airdrop-admin/<token>). */
+    function login(pass) {
+        if (!password || !same(crypto.createHash('sha256').update(String(pass)).digest(), crypto.createHash('sha256').update(password).digest())) return null;
+        const token = crypto.randomBytes(24).toString('base64url');
+        logins.set(token, now() + LOGIN_TTL_MS);
+        log('[airdrop] admin signed in with the password');
+        return token;
+    }
+    function loginPage(error) {
+        return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Airdrop admin</title>
+<meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#050505;color:#e8f5ee;font:15px/1.5 ui-monospace,Menlo,Consolas,monospace}
+form{background:#07140e;box-shadow:0 0 0 2px #0f3a25;padding:24px;display:grid;gap:12px;width:min(320px,90vw)}
+h1{font-size:18px;margin:0;color:#ccff00} p{margin:0;color:#f62a2d;font-size:13px}
+input,button{font:inherit;padding:10px;border:0;background:#050505;color:#e8f5ee;box-shadow:0 0 0 2px #0f3a25}
+button{background:#00ff88;color:#03220f;cursor:pointer}
+</style></head><body>
+<form method="post" action="/airdrop-admin">
+<h1>AIRDROP ADMIN</h1>
+${error ? '<p>' + esc(error) + '</p>' : ''}
+<input type="password" name="password" placeholder="Admin password" autocomplete="current-password" autofocus required>
+<button>ENTER</button>
+</form></body></html>`;
     }
     /** Toggle a discard flag; only callable with a currently valid admin token. */
     function setDiscarded(token, uid, on) {
@@ -144,7 +180,7 @@ a{color:#00ff88} a:hover{color:#fff}
 [hidden]{display:none}
 </style></head><body>
 <h1>PILLWARS AIRDROP - ADMIN</h1>
-<p class="sub">${new Date(now()).toISOString().replace('T', ' ').slice(0, 16)} UTC. This link dies ${Math.max(0, Math.round((current.until - now()) / 60000))} minutes from now.</p>
+<p class="sub">${new Date(now()).toISOString().replace('T', ' ').slice(0, 16)} UTC. Sign in again at /airdrop-admin when this link stops working.</p>
 <div class="cards">
   <div class="card"><b>${fmt(active.length)}</b><span>Registered</span></div>
   <div class="card"><b>${fmt(eligible.length)}</b><span>Eligible (wallet, ${fmt(MIN_ELIGIBLE_POINTS)}+ pts)</span></div>
@@ -182,7 +218,7 @@ document.querySelectorAll('.act:not(.del)').forEach(function(b){b.onclick=functi
 </body></html>`;
     }
 
-    return { fromServerItself, mint, valid, setDiscarded, removeUser, page, ADMIN_TTL_MS };
+    return { fromServerItself, mint, valid, login, loginPage, setDiscarded, removeUser, page, ADMIN_TTL_MS };
 }
 
 module.exports = { createAdmin, fromServerItself, ADMIN_TTL_MS };
