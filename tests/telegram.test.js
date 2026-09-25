@@ -55,3 +55,23 @@ test('X: la primera vez no vuelca el historial; luego reenvía y fija solo posts
 test('sin TELEGRAM_BOT_TOKEN no arranca', () => {
     assert.equal(createTelegram({}).enabled, false);
 });
+
+test('soporte por privado: el mensaje llega al admin y su respuesta vuelve a la persona', async () => {
+    const calls = []; let next = 500;
+    const fetchImpl = async (url, o) => {
+        const method = url.split('/').pop(), body = JSON.parse(o.body);
+        calls.push([method, body]);
+        return { json: async () => ({ ok: true, result: /sendMessage|copyMessage/.test(method) ? { message_id: next++ } : true }) };
+    };
+    const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
+    await t.onUpdate({ message: { message_id: 7, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Ana', username: 'ana' }, text: 'hi' } });
+    assert.deepEqual(calls.map(c => [c[0], c[1].chat_id]), [['sendMessage', 1], ['copyMessage', 1]]);
+    calls.length = 0;
+    // El admin responde a la copia (id 501): el bot se lo copia a Ana.
+    await t.onUpdate({ message: { message_id: 9, chat: { id: 1, type: 'private' }, from: { id: 1 }, text: 'hello!', reply_to_message: { message_id: 501 } } });
+    assert.deepEqual(calls[0], ['copyMessage', { chat_id: 42, from_chat_id: 1, message_id: 9 }]);
+    calls.length = 0;
+    // Sin responder a nada: no se manda a nadie, solo el aviso al admin.
+    await t.onUpdate({ message: { message_id: 10, chat: { id: 1, type: 'private' }, from: { id: 1 }, text: 'x' } });
+    assert.deepEqual(calls.map(c => [c[0], c[1].chat_id]), [['sendMessage', 1]]);
+});

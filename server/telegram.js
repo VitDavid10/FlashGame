@@ -6,7 +6,7 @@
 // Se activa con TELEGRAM_BOT_TOKEN. Solo corre en el proceso director/mono.
 const fs = require('fs');
 
-function createTelegram({ token, chat = -1004433617369, group = -1004327296311, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3, onXPost = async () => {} } = {}) {
+function createTelegram({ token, chat = -1004433617369, group = -1004327296311, admin = 1437029421, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3, onXPost = async () => {} } = {}) {
     if (!token) return { start() {}, enabled: false };
     let state = {};
     try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch {}
@@ -35,6 +35,32 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
             if (m.is_automatic_forward) return pin(m.message_id, group);
             if (m.pinned_message) return tg('deleteMessage', { chat_id: group, message_id: m.message_id });
         }
+        if (m && m.chat.type === 'private') return onPrivate(m);
+    }
+
+    // Soporte por privado sin enseñar la cuenta del equipo: lo que la gente escribe
+    // al bot le llega al admin; el admin contesta con "responder" y el bot se lo manda
+    // a la persona como si fuera suyo. state.relay: id del mensaje en el chat del admin → id de la persona.
+    async function onPrivate(m) {
+        if (m.from.id === admin) {
+            const to = m.reply_to_message && (state.relay || {})[m.reply_to_message.message_id];
+            if (!to) return tg('sendMessage', { chat_id: admin, text: 'To answer someone, reply (swipe or right click → Reply) to their message.' });
+            await tg('copyMessage', { chat_id: to, from_chat_id: admin, message_id: m.message_id });
+            return tg('setMessageReaction', { chat_id: admin, message_id: m.message_id, reaction: [{ type: 'emoji', emoji: '👍' }] }).catch(() => {});
+        }
+        if (m.text === '/start') {
+            return tg('sendMessage', { chat_id: m.chat.id, text: 'Hi! 💊 This is PillWars support.\n\nWrite your message here and the team will answer you right here.\n\n⚠️ We will never ask for your seed phrase or private key.' });
+        }
+        const who = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') + (m.from.username ? ' (@' + m.from.username + ')' : '');
+        const head = await tg('sendMessage', { chat_id: admin, text: '💬 ' + who + ' · id ' + m.from.id });
+        const copy = await tg('copyMessage', { chat_id: admin, from_chat_id: m.chat.id, message_id: m.message_id, reply_parameters: { message_id: head.message_id } });
+        state.relay = state.relay || {};
+        state.relay[head.message_id] = m.from.id;
+        state.relay[copy.message_id] = m.from.id;
+        // Tope para que el estado no crezca sin fin: se quedan las 1000 más recientes.
+        const keys = Object.keys(state.relay);
+        if (keys.length > 1000) for (const k of keys.slice(0, keys.length - 1000)) delete state.relay[k];
+        save();
     }
 
     async function pollUpdates() {
