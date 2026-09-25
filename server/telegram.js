@@ -34,6 +34,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         if (m && m.chat.id === group) {
             if (m.is_automatic_forward) return pin(m.message_id, group);
             if (m.pinned_message) return tg('deleteMessage', { chat_id: group, message_id: m.message_id });
+            return groupAnswer(m);
         }
         if (m && m.chat.type === 'private') return onPrivate(m);
     }
@@ -63,6 +64,19 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         for (const [k, t] of Object.entries(state.autoSent)) if (now - t > 24 * 3600e3) delete state.autoSent[k];
         await tg('sendMessage', { chat_id: m.chat.id, text: rule.text, link_preview_options: { is_disabled: true } });
         return rule.id;
+    }
+
+    // En el grupo: contrato, enlaces y airdrop se contestan en respuesta al que pregunta, pero
+    // como mucho una vez cada 10 min por tema para todo el grupo (si 4 piden el CA, se contesta al primero).
+    async function groupAnswer(m) {
+        if (!m.from || m.from.is_bot || m.sender_chat) return;       // bots, el canal y admins anónimos
+        const rule = AUTO.find(r => SOLVED.has(r.id) && r.re.test(m.text || m.caption || ''));
+        if (!rule) return;
+        state.groupSent = state.groupSent || {};
+        const now = Date.now();
+        if (now - (state.groupSent[rule.id] || 0) < 10 * 60e3) return;
+        state.groupSent[rule.id] = now; save();
+        return tg('sendMessage', { chat_id: group, text: rule.text, reply_parameters: { message_id: m.message_id }, link_preview_options: { is_disabled: true } });
     }
 
     // Soporte por privado sin enseñar la cuenta del equipo: lo que la gente escribe

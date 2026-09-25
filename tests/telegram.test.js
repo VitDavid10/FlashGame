@@ -135,3 +135,17 @@ test('chat del admin sin ruido: lo resuelto no llega y la cabecera no se repite'
     await say('about my wallet');                      // seguido: solo la copia
     assert.deepEqual(toAdmin(), ['copyMessage']);
 });
+
+test('grupo: si varios piden el CA, el bot contesta solo al primero (10 min por tema)', async () => {
+    const calls = [];
+    const fetchImpl = async (url, o) => { calls.push([url.split('/').pop(), JSON.parse(o.body)]); return { json: async () => ({ ok: true, result: { message_id: 1 } }) }; };
+    const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
+    const ask = (id, text, extra = {}) => t.onUpdate({ message: { message_id: id, chat: { id: -1004327296311 }, from: { id: 100 + id, is_bot: false }, text, ...extra } });
+    await ask(1, 'ca?');
+    await ask(2, 'whats the CA');
+    await ask(3, 'contract address pls');
+    await ask(4, 'send the discord link');
+    await ask(5, 'hello everyone');
+    await ask(6, 'ca', { sender_chat: { id: -1004327296311 } });   // admin anónimo: no se le contesta
+    assert.deepEqual(calls.map(c => [c[0], c[1].reply_parameters.message_id]), [['sendMessage', 1], ['sendMessage', 4]]);
+});
