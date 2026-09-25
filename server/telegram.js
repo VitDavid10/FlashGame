@@ -38,6 +38,33 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         if (m && m.chat.type === 'private') return onPrivate(m);
     }
 
+    // Respuestas automáticas a lo típico. Una por tema y persona cada 24 h; el mensaje
+    // le llega igual al admin, marcado con 🤖. Textos revisados a mano: nada de precios ni promesas.
+    const AUTO = [
+        { id: 'greeting', re: /^\W*(hi|hello|hey|gm|yo|sup|hola|good morning)\b[\s\w!.,]{0,12}$/i,
+          text: 'Hey! 👋 How can we help you?' },
+        { id: 'contract', re: /\b(ca|contract|token address|presale|pre-sale|launch date|when launch|when token|buy \$?pilly|price)\b/i,
+          text: "$PILLY isn't live yet. The contract address will only be posted in our announcements channel (t.me/pillwars_announcements) and on X (@pillwarsdotfun).\n\nThere is no presale. Anyone offering one is a scammer." },
+        { id: 'marketing', re: /\b(marketing|promot\w*|listing|trending|kols?|calls?|call channel|volume|shill\w*|advertis\w*|collab\w*|partnership)\b/i,
+          text: "Thanks for reaching out! 🙌 We're not running paid promotions right now.\n\nIf you have a collab idea, send us the details here (who you are, your audience and what you propose) and the team will review it." },
+        { id: 'links', re: /\b(twitter|x account|discord|telegram|website|site|links?|socials?)\b/i,
+          text: 'Here are our official links 👇\n\n🐦 X: https://x.com/pillwarsdotfun\n👾 Discord: https://discord.gg/rfZK7fQ32E\n📢 Announcements: https://t.me/pillwars_announcements\n💬 Community chat: https://t.me/pillwars_fun' },
+        { id: 'airdrop', re: /\b(airdrop|genesis|points|eligible|claim|snapshot)\b/i,
+          text: 'The Genesis Drop (Season 0) runs until 20 October 2026: 100M $PILLY split between players by points.\n\nAll the details are pinned in t.me/pillwars_announcements and in #genesis-drop on our Discord (discord.gg/rfZK7fQ32E).' },
+    ];
+    async function autoReply(m) {
+        const text = m.text || m.caption || '';
+        const rule = AUTO.find(r => r.re.test(text));
+        if (!rule) return null;
+        state.autoSent = state.autoSent || {};
+        const key = m.from.id + ':' + rule.id, now = Date.now();
+        if (now - (state.autoSent[key] || 0) < 24 * 3600e3) return null;
+        state.autoSent[key] = now;
+        for (const [k, t] of Object.entries(state.autoSent)) if (now - t > 24 * 3600e3) delete state.autoSent[k];
+        await tg('sendMessage', { chat_id: m.chat.id, text: rule.text, link_preview_options: { is_disabled: true } });
+        return rule.id;
+    }
+
     // Soporte por privado sin enseñar la cuenta del equipo: lo que la gente escribe
     // al bot le llega al admin; el admin contesta con "responder" y el bot se lo manda
     // a la persona como si fuera suyo. state.relay: id del mensaje en el chat del admin → id de la persona.
@@ -53,7 +80,8 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
             return tg('sendMessage', { chat_id: m.chat.id, text: 'Hi! 💊 This is PillWars support.\n\nWrite your message here and the team will answer you right here.\n\n⚠️ We will never ask for your seed phrase or private key.' });
         }
         const who = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') + (m.from.username ? ' (@' + m.from.username + ')' : '');
-        const head = await tg('sendMessage', { chat_id: admin, text: '💬 ' + who + ' · id ' + m.from.id });
+        const auto = await autoReply(m);
+        const head = await tg('sendMessage', { chat_id: admin, text: '💬 ' + who + ' · id ' + m.from.id + (auto ? '\n🤖 auto-replied: ' + auto : '') });
         const copy = await tg('copyMessage', { chat_id: admin, from_chat_id: m.chat.id, message_id: m.message_id, reply_parameters: { message_id: head.message_id } });
         state.relay = state.relay || {};
         state.relay[head.message_id] = m.from.id;

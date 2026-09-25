@@ -64,7 +64,7 @@ test('soporte por privado: el mensaje llega al admin y su respuesta vuelve a la 
         return { json: async () => ({ ok: true, result: /sendMessage|copyMessage/.test(method) ? { message_id: next++ } : true }) };
     };
     const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
-    await t.onUpdate({ message: { message_id: 7, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Ana', username: 'ana' }, text: 'hi' } });
+    await t.onUpdate({ message: { message_id: 7, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Ana', username: 'ana' }, text: 'my wallet does not connect' } });
     assert.deepEqual(calls.map(c => [c[0], c[1].chat_id]), [['sendMessage', 1], ['copyMessage', 1]]);
     calls.length = 0;
     // El admin responde a la copia (id 501): el bot se lo copia a Ana.
@@ -74,4 +74,47 @@ test('soporte por privado: el mensaje llega al admin y su respuesta vuelve a la 
     // Sin responder a nada: no se manda a nadie, solo el aviso al admin.
     await t.onUpdate({ message: { message_id: 10, chat: { id: 1, type: 'private' }, from: { id: 1 }, text: 'x' } });
     assert.deepEqual(calls.map(c => [c[0], c[1].chat_id]), [['sendMessage', 1]]);
+});
+
+test('respuestas automáticas: contesta lo típico una vez por tema y avisa al admin', async () => {
+    const calls = []; let next = 700;
+    const fetchImpl = async (url, o) => {
+        const method = url.split('/').pop(), body = JSON.parse(o.body);
+        calls.push([method, body]);
+        return { json: async () => ({ ok: true, result: /sendMessage|copyMessage/.test(method) ? { message_id: next++ } : true }) };
+    };
+    const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
+    const msg = text => ({ message: { message_id: 1, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Nyx' }, text } });
+    const toUser = () => calls.filter(c => c[0] === 'sendMessage' && c[1].chat_id === 42).map(c => c[1].text);
+
+    await t.onUpdate(msg('Gm Sir'));
+    assert.deepEqual(toUser(), ['Hey! 👋 How can we help you?']);
+    assert.match(calls.find(c => c[0] === 'sendMessage' && c[1].chat_id === 1)[1].text, /auto-replied: greeting/);
+
+    calls.length = 0;
+    await t.onUpdate(msg('We offer marketing and KOL calls for your project'));
+    assert.match(toUser()[0], /paid promotions/);
+
+    calls.length = 0;
+    await t.onUpdate(msg('can you do a collab?'));      // mismo tema en menos de 24 h: no repite
+    assert.deepEqual(toUser(), []);
+
+    calls.length = 0;
+    await t.onUpdate(msg("what's the CA?"));
+    assert.match(toUser()[0], /isn't live yet/);
+
+    calls.length = 0;
+    await t.onUpdate(msg('I can help you'));             // "can" no es "ca"
+    assert.deepEqual(toUser(), []);
+});
+
+test('respuestas automáticas: enlaces oficiales y airdrop sin enlace a la web', async () => {
+    const calls = [];
+    const fetchImpl = async (url, o) => { calls.push([url.split('/').pop(), JSON.parse(o.body)]); return { json: async () => ({ ok: true, result: { message_id: 1 } }) }; };
+    const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
+    const say = async text => { calls.length = 0; await t.onUpdate({ message: { message_id: 1, chat: { id: 42, type: 'private' }, from: { id: 42 }, text } }); return (calls.find(c => c[0] === 'sendMessage' && c[1].chat_id === 42) || [])[1]; };
+    assert.match((await say("what's your discord?")).text, /discord\.gg\/rfZK7fQ32E/);
+    const air = (await say('how do I get airdrop points?')).text;
+    assert.match(air, /Genesis Drop/);
+    assert.doesNotMatch(air, /pillwars\.fun/);
 });
