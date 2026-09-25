@@ -69,10 +69,10 @@ a{color:var(--green)}
 #airdropTelegram:hover{filter:drop-shadow(0 0 8px rgba(38,165,228,.6))}
 #airdropDiscord{background:url('game/img/cartel-hero/icon-discord.png') center/100% 100% no-repeat}
 #airdropDiscord:hover{filter:drop-shadow(0 0 8px rgba(88,101,242,.6))}
-@media (max-width:820px){.hero{height:auto;padding-top:16px}.hero-social{position:static;justify-content:center}.tabs{margin-top:16px}}
+@media (max-width:820px){.hero{height:auto;padding-top:32px}.hero-social{position:static;justify-content:center}.tabs{margin-top:22px}}
 
 /* ---------- tabs ---------- */
-.tabs{display:flex;justify-content:center;gap:14px;margin:24px 0 16px;flex-wrap:wrap}
+.tabs{display:flex;justify-content:center;gap:14px;margin:44px 0 20px;flex-wrap:wrap}
 .tab{--plate:var(--placa-grey)}
 .tab.on{--plate:var(--placa-green)}
 
@@ -357,8 +357,11 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
   body{font-size:20px}
   .tabs{gap:8px}
   .tab{font-size:10px;padding:2px 8px}
-  .cbox{flex-wrap:wrap}
-  .cbox .pbtn{width:100%}
+  .cbox{padding:12px;gap:10px}
+  .cbox .ic{width:40px;height:40px}
+  .cbox .ct b{font-size:10px}
+  .cbox .ct span{font-size:17px}
+  .cbox .pbtn{font-size:9px;min-height:36px;padding:2px 8px}
   .task{flex-wrap:wrap}
   .task .tx{flex-basis:100%}
   .task .pts{margin-left:auto}
@@ -592,6 +595,7 @@ else {
   <div class="shead first">
     <div>
       <h2>THE GAME</h2>
+      <p>PillWars is a crypto arena on Solana. It plays like Agar.io, but with real money: once $PILLY launches, every player you eat will pay you in $PILLY. Every fighter is a pill, our tribute to pump.fun, the home of the Solana memecoin scene. All you need is a wallet: fast matches, cheap Solana transactions and your winnings a click away.</p>
     </div>
   </div>
   <div style="padding:9px">
@@ -603,7 +607,7 @@ else {
   <div class="shead">
     <div>
       <h2>FIRST KILL TO EARN</h2>
-      <p>PillWars is a crypto arena on Solana. It plays like Agar.io, but with real money: once $PILLY launches, every player you eat will pay you in $PILLY. Every fighter is a pill, our tribute to pump.fun, the home of the Solana memecoin scene. All you need is a wallet: fast matches, cheap Solana transactions and your winnings a click away.</p>
+      <p>The first game where every kill pays. Eat or be eaten: survive the arena.</p>
     </div>
   </div>
   <div class="pillars">
