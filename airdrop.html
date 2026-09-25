@@ -814,7 +814,7 @@ else {
 <div class="modal" id="mDiscord" hidden>
   <div class="panel">
     <h3 class="ptitle">GENESIS HUNTER</h3>
-    <p class="dc-steps">1. Copy your code.<br>2. In the Discord channel <b>#genesis-drop</b>, press <b>CLAIM GENESIS HUNTER</b> and paste it.<br>You get the role and <b>+100 points</b>.</p>
+    <p class="dc-steps">1. Copy your code.<br>2. In the Discord channel <b>#genesis-drop</b>, press <b>CLAIM GENESIS HUNTER</b> and paste it.<br>You get the role and it counts toward your <b>+50% boost</b>.</p>
     <div class="ref-row"><input id="dcCode" readonly value="..."><button class="pbtn green sm" id="dcCopy">COPY</button></div>
     <a class="pbtn blue" id="dcOpen" href="https://discord.gg/vfesqyBnw7" target="_blank" rel="noopener" style="width:100%;margin-top:14px;text-decoration:none"><img src="game/img/cartel-hero/icon-discord.png" alt="">OPEN DISCORD</a>
     <button class="pbtn grey" data-close style="width:100%;margin-top:6px">CLOSE</button>
@@ -881,7 +881,8 @@ function fitFirstScreen() {
   if (!row || !card) return;
   const kids = [...card.children];
   kids.forEach(k => { k.style.zoom = ''; });
-  const avail = Math.floor(innerHeight - 6 - (row.getBoundingClientRect().top + scrollY));
+  // Same breathing room under the panels as above the icons.
+  const avail = Math.floor(innerHeight - 24 - (row.getBoundingClientRect().top + scrollY));
   // Phones only fit once linked (card or quests, one at a time; see .mob-switch).
   const phone = innerWidth <= 820;
   if ((phone && !document.getElementById('view-me').classList.contains('linked')) || !row.offsetParent || avail < (phone ? 360 : 420)) { row.classList.remove('fit'); row.style.height = ''; return; }
@@ -1114,7 +1115,7 @@ const TASKS = [
     url: () => 'https://x.com/intent/follow?screen_name=' + X_ACCOUNT },
   { id: 'tg', t: 'JOIN TELEGRAM', d: 'The contract drops there first.', pts: 0, url: () => TELEGRAM },
   { id: 'play', t: 'PLAY YOUR FIRST MATCH', d: 'Enter the Daily Arena below.', pts: 0, auto: true },
-  { id: 'discord', t: 'JOIN DISCORD', d: 'Claim the Genesis Hunter role with your code.', pts: 100, label: 'BOOST', needs: true, open: () => openDiscordClaim() },
+  { id: 'discord', t: 'JOIN DISCORD', d: 'Claim the Genesis Hunter role with your code.', pts: 0, needs: true, open: () => openDiscordClaim() },
 ];
 const DAILY_POST_PTS = 100, POINTS_BOOST = 1.5, REPOST_PTS = 150, LIKE_PTS = 50;
 // Sharing your points card pays again once your points grow 10% past the last share.
@@ -1159,7 +1160,7 @@ function taskRow(q) {
   let btn = '';
   if (!done && q.auto) btn = '<button class="pbtn green sm" data-go="arena">GO</button>';
   else if (!done) btn = '<button class="pbtn green sm" data-task="' + q.key + '">' + (pendingTasks.has(q.key) ? 'VERIFY' : 'GO') + '</button>';
-  return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : q.label || (q.pts ? '+' + q.pts : 'BOOST')) + '</span>' + btn + '</div>';
+  return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : q.pts ? '+' + q.pts : 'BOOST') + '</span>' + btn + '</div>';
 }
 // Pending first: inside a group done quests sink, and a group with nothing left
 // to do (or no posts yet) drops below the groups that still have work.
@@ -1193,7 +1194,7 @@ async function openDiscordClaim() {
   clearInterval(dcPoll);
   dcPoll = setInterval(() => {
     if (m.hidden) { clearInterval(dcPoll); return; }
-    loadMe().then(() => { if (S.tasks.discord) { m.hidden = true; toast('GENESIS HUNTER: +100 AIRDROP POINTS'); } });
+    loadMe().then(() => { if (S.tasks.discord) { m.hidden = true; toast('GENESIS HUNTER: BOOST QUEST DONE'); } });
   }, 5000);
 }
 $('#dcCopy').onclick = async () => {

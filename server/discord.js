@@ -98,7 +98,7 @@ function createDiscord({ publicKey, token, log = () => {}, fetchImpl = fetch, cl
             }
             await api('PUT', '/guilds/' + GUILD + '/members/' + uid + '/roles/' + ROLE.hunter);
             log('discord: genesis hunter ' + uid);
-            return { type: 4, data: { content: '🎯 You are a **Genesis Hunter**! +100 airdrop points. Refresh pillwars.fun to see them.', flags: EPHEMERAL } };
+            return { type: 4, data: { content: '🎯 You are a **Genesis Hunter**! Boost quest done. Refresh pillwars.fun to see it.', flags: EPHEMERAL } };
         }
         if (id === 'verify') {
             if ((it.member.roles || []).includes(ROLE.player)) return { type: 4, data: { content: 'You are already verified ✅', flags: EPHEMERAL } };

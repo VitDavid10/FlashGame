@@ -74,6 +74,8 @@ const CATS = [['📌 START HERE', []], ['📢 INFO', readOnly], ['💬 COMMUNITY
 for (const [i, [name, perms]] of CATS.entries()) cat[name] = await ensure(name, 4, { position: i, permission_overwrites: perms });
 
 const C = {};
+// airdrop-refs was renamed: rename it in place so its messages stay.
+{ const old = find('airdrop-refs', 0); if (old) Object.assign(old, await api('PATCH', `/channels/${old.id}`, { name: 'flex-and-refs' })); }
 const defs = [
   ['rules', '📌 START HERE', 'Read the rules and press Verify to unlock the server.', readOnlyForAll],
   ['announcements', '📢 INFO', 'Official news. Contract address, dates and links are only official when posted here.', readOnly],
@@ -87,7 +89,7 @@ const defs = [
   ['clips', '💬 COMMUNITY', 'Share your best plays and screenshots.', []],
   ['suggestions', '💬 COMMUNITY', 'Ideas for modes, skills, skins and features.', []],
   ['bugs', '💬 COMMUNITY', 'Public bug reports: device, browser and what happened. Private issues? Open a ticket in #contact.', []],
-  ['airdrop-refs', '💬 COMMUNITY', 'Share your airdrop invite link or points card here, and only here. Slow mode: one post per hour.', [], { rate_limit_per_user: 3600 }],
+  ['flex-and-refs', '💬 COMMUNITY', 'Flex your points card and share your referral link here, and only here. Slow mode: one post per hour.', [], { rate_limit_per_user: 3600 }],
   ['looking-to-play', '🎮 GAME', 'Find people to jump into a room with. Say mode (Arcade/Classic) and region.', []],
   ['strategy', '🎮 GAME', 'Tips, skill picks, split tricks and how to win the Daily Arena.', []],
   ['high-scores', '🎮 GAME', 'Flex your best runs. Screenshot or it did not happen.', []],
@@ -114,7 +116,7 @@ Read the rules below, then press **Verify** at the bottom to unlock the server.
 
 ## Rules
 1. **Be respectful.** No harassment, hate speech or personal attacks.
-2. **No spam or self-promo.** No ads and no invite links to other servers. Airdrop invite links go in ${ch('airdrop-refs')} only.
+2. **No spam or self-promo.** No ads and no invite links to other servers. Airdrop referral links go in ${ch('flex-and-refs')} only.
 3. **No scams.** The team will **never** DM you first, ask for your seed phrase or private key, or ask you to "verify" your wallet. Anyone who does is a scammer: report them in ${ch('contact')}.
 4. **Official info only comes from ${ch('announcements')} and ${ch('official-links')}.** Contract addresses, dates and links posted anywhere else are not official.
 5. **No financial talk.** Nothing here is financial advice. No price predictions or shilling.
@@ -161,8 +163,7 @@ The fewer players or the more points you have, the bigger your share. The full 1
 • **Invites:** up to 8,000 (the friend must link a wallet 60+ days old with 50+ transactions)
 • **Daily Arena:** up to 300 a day
 • **Social quests:** daily post, sharing your points card, reposts and likes
-• **Boost:** follow our X, join the Telegram, play your first match and claim Genesis Hunter → **all your points ×1.5**
-• **Genesis Hunter:** claim the role at the bottom of this channel with your code from the airdrop page → **+100 points**
+• **Boost:** follow our X, join the Telegram, play your first match and claim the Genesis Hunter role at the bottom of this channel → **all your points ×1.5**
 
 ## Timeline
 1. **Earn points** until **20 October 2026, 23:59 UTC**.
@@ -267,7 +268,7 @@ await repost(C.rules, [
 await repost(C['official-links'], [{ content: LINKS }]);
 await repost(C['genesis-drop'], [
   { content: GENESIS },
-  { content: '**🎯 Genesis Hunter**\nOpen the **JOIN DISCORD** quest on <https://pillwars.fun>, copy your code, press the button and paste it: you get the role and **+100 airdrop points**.',
+  { content: '**🎯 Genesis Hunter**\nOpen the **JOIN DISCORD** quest on <https://pillwars.fun>, copy your code, press the button and paste it: you get the role and it counts toward your **×1.5 boost**.',
     components: [{ type: 1, components: [{ type: 2, style: 3, label: 'Claim Genesis Hunter', custom_id: 'hunter', emoji: { name: '🎯' } }] }] },
 ]);
 await repost(C.faq, [{ content: FAQ }]);
