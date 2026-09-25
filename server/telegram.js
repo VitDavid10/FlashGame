@@ -6,6 +6,9 @@
 // Se activa con TELEGRAM_BOT_TOKEN. Solo corre en el proceso director/mono.
 const fs = require('fs');
 
+// Llamada a la acción debajo de cada post de X reenviado (Telegram y #x-feed del Discord).
+const X_CTA = '❤️ Like · 🔁 RT · 💬 Reply 👇';
+
 function createTelegram({ token, chat = -1004433617369, group = -1004327296311, admin = 1437029421, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3, onXPost = async () => {} } = {}) {
     if (!token) return { start() {}, enabled: false, inbox: () => [], thread: () => null, send: async () => { throw new Error('telegram off'); } };
     let state = {};
@@ -221,7 +224,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         for (const t of fresh) {
             // fixupx.com: Telegram enseña la foto o el vídeo del post en la vista previa; al pulsar lleva a X.
             const url = t.url.replace(/^https:\/\/(x|twitter)\.com\//, 'https://fixupx.com/');
-            const m = await tg('sendMessage', { chat_id: chat, parse_mode: 'HTML', text: '<b>New post on 𝕏</b>\n\n' + esc(t.text) + '\n\n' + url });
+            const m = await tg('sendMessage', { chat_id: chat, parse_mode: 'HTML', text: '<b>New post on 𝕏</b>\n\n' + esc(t.text) + '\n\n' + X_CTA + '\n' + url });
             await pin(m.message_id);
             state.lastTweet = t.id; save();
             await onXPost(url).catch(e => log('telegram: onXPost ' + e.message));
@@ -239,4 +242,4 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
     return { start, onUpdate, checkX, inbox, thread, send, enabled: true };
 }
 
-module.exports = { createTelegram };
+module.exports = { createTelegram, X_CTA };

@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const os = require('os');
 const path = require('path');
-const { createTelegram } = require('../server/telegram.js');
+const { createTelegram, X_CTA } = require('../server/telegram.js');
 
 function fake(tweets) {
     const calls = [];
@@ -47,8 +47,8 @@ test('X: la primera vez no vuelca el historial; luego reenvía y fija solo posts
     await createTelegram({ token: 'x', stateFile: file, fetchImpl: f2.fetchImpl, onXPost: async u => toDiscord.push(u) }).checkX();
     assert.deepEqual(toDiscord, ['https://fixupx.com/pillwarsdotfun/status/105', 'https://fixupx.com/pillwarsdotfun/status/120']);
     assert.deepEqual(f2.calls.map(c => c[0] + ':' + (c[1].text || c[1].message_id)), [
-        'sendMessage:<b>New post on 𝕏</b>\n\nt105\n\nhttps://fixupx.com/pillwarsdotfun/status/105', 'pinChatMessage:99',
-        'sendMessage:<b>New post on 𝕏</b>\n\nt120\n\nhttps://fixupx.com/pillwarsdotfun/status/120', 'pinChatMessage:99',
+        'sendMessage:<b>New post on 𝕏</b>\n\nt105\n\n' + X_CTA + '\nhttps://fixupx.com/pillwarsdotfun/status/105', 'pinChatMessage:99',
+        'sendMessage:<b>New post on 𝕏</b>\n\nt120\n\n' + X_CTA + '\nhttps://fixupx.com/pillwarsdotfun/status/120', 'pinChatMessage:99',
     ]);
 });
 
