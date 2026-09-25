@@ -149,3 +149,16 @@ test('grupo: si varios piden el CA, el bot contesta solo al primero (10 min por 
     await ask(6, 'ca', { sender_chat: { id: -1004327296311 } });   // admin anónimo: no se le contesta
     assert.deepEqual(calls.map(c => [c[0], c[1].reply_parameters.message_id]), [['sendMessage', 1], ['sendMessage', 4]]);
 });
+
+test('en mitad de una conversación llega todo, y cada mensaje cuelga de la cabecera de su autor', async () => {
+    const calls = []; let next = 1000;
+    const fetchImpl = async (url, o) => { calls.push([url.split('/').pop(), JSON.parse(o.body)]); return { json: async () => ({ ok: true, result: { message_id: next++ } }) }; };
+    const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
+    const from = (id, text) => t.onUpdate({ message: { message_id: 1, chat: { id, type: 'private' }, from: { id, first_name: 'U' + id }, text } });
+    await from(42, 'hello');                              // ack a 42 (1000), cabecera (1001), copia (1002)
+    await from(43, 'gm');                                 // ack a 43 (1003), cabecera (1004), copia (1005)
+    calls.length = 0;
+    await from(42, 'what are your links?');               // ya hablando: le llega al admin aunque sea un tema resuelto
+    const copy = calls.find(c => c[0] === 'copyMessage');
+    assert.equal(copy[1].reply_parameters.message_id, 1001);   // cuelga de la cabecera de 42, no de la de 43
+});

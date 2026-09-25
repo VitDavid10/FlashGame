@@ -88,6 +88,9 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
             const to = m.reply_to_message && (state.relay || {})[m.reply_to_message.message_id];
             if (!to) return tg('sendMessage', { chat_id: admin, text: 'To answer someone, reply (swipe or right click → Reply) to their message.' });
             await tg('copyMessage', { chat_id: to, from_chat_id: admin, message_id: m.message_id });
+            // Contestar abre (o mantiene) la conversación: lo que responda esa persona llega siempre.
+            state.lastFrom = state.lastFrom || {};
+            state.lastFrom[to] = Date.now(); save();
             return tg('setMessageReaction', { chat_id: admin, message_id: m.message_id, reaction: [{ type: 'emoji', emoji: '👍' }] }).catch(() => {});
         }
         if (m.text === '/start') {
@@ -95,20 +98,23 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         }
         const who = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') + (m.from.username ? ' (@' + m.from.username + ')' : '');
         const auto = await autoReply(m);
-        // Contrato, enlaces y airdrop quedan resueltos con la respuesta automática: no llenan el chat del admin.
-        if (SOLVED.has(auto)) { save(); return; }
-        // Cabecera solo al empezar conversación (15 min sin escribir); los siguientes mensajes van sueltos.
         state.lastFrom = state.lastFrom || {};
-        const now = Date.now(), fresh = now - (state.lastFrom[m.from.id] || 0) > 15 * 60e3;
+        state.headOf = state.headOf || {};
+        const now = Date.now(), since = now - (state.lastFrom[m.from.id] || 0);
+        // Contrato, enlaces y airdrop quedan resueltos con la respuesta automática y no llenan el
+        // chat del admin... salvo en mitad de una conversación (últimas 24 h): entonces llega todo.
+        if (SOLVED.has(auto) && since > 24 * 3600e3) { save(); return; }
         state.lastFrom[m.from.id] = now;
-        for (const [k, t] of Object.entries(state.lastFrom)) if (now - t > 24 * 3600e3) delete state.lastFrom[k];
+        for (const [k, t] of Object.entries(state.lastFrom)) if (now - t > 24 * 3600e3) { delete state.lastFrom[k]; delete state.headOf[k]; }
         state.relay = state.relay || {};
-        let head = null;
-        if (fresh) {
-            head = await tg('sendMessage', { chat_id: admin, text: '💬 ' + who + ' · id ' + m.from.id + (auto ? '\n🤖 auto-replied: ' + auto : '') });
+        // Cabecera "💬 nombre" al empezar conversación (15 min sin escribir). Cada mensaje llega como
+        // respuesta a la cabecera de su autor: aunque escriban varios a la vez, se ve de quién es.
+        if (since > 15 * 60e3 || !state.headOf[m.from.id]) {
+            const head = await tg('sendMessage', { chat_id: admin, text: '💬 ' + who + ' · id ' + m.from.id + (auto ? '\n🤖 auto-replied: ' + auto : '') });
             state.relay[head.message_id] = m.from.id;
+            state.headOf[m.from.id] = head.message_id;
         }
-        const copy = await tg('copyMessage', { chat_id: admin, from_chat_id: m.chat.id, message_id: m.message_id, ...(head ? { reply_parameters: { message_id: head.message_id } } : {}) });
+        const copy = await tg('copyMessage', { chat_id: admin, from_chat_id: m.chat.id, message_id: m.message_id, reply_parameters: { message_id: state.headOf[m.from.id], allow_sending_without_reply: true } });
         state.relay[copy.message_id] = m.from.id;
         // Tope para que el estado no crezca sin fin: se quedan las 1000 más recientes.
         const keys = Object.keys(state.relay);
