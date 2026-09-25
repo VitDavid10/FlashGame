@@ -15,7 +15,7 @@ export const SOCIALS_FRAMES = LINKS_AT + 10 + 10 * FPS; // everything on screen,
 const KEYS = ["snd/type1.wav", "snd/type2.wav", "snd/type3.wav"];
 
 /** Pixel cross burst (no white box), then the logo pops in (1.25 → 0.92 → 1) and bobs. */
-const LogoFlash: React.FC<{ src: string; cx: number; cy: number }> = ({ src, cx, cy }) => {
+const LogoFlash: React.FC<{ src: string; cx: number; cy: number; sfx: boolean }> = ({ src, cx, cy, sfx }) => {
   const f = useCurrentFrame();
   // Pixel-snapped pop: steps instead of a smooth tween, like the game's sprites.
   const pop = f < 3 ? 1.25 : f < 6 ? 0.92 : 1;
@@ -33,12 +33,12 @@ const LogoFlash: React.FC<{ src: string; cx: number; cy: number }> = ({ src, cx,
         </>
       )}
       <Img src={staticFile(src)} style={{ position: "absolute", left: cx - s / 2, top: cy - s / 2 + bob, width: s, height: s, imageRendering: "pixelated" }} />
-      <Audio src={staticFile("snd/shield.mp3")} volume={0.35} />
+      {sfx && <Audio src={staticFile("snd/shield.mp3")} volume={0.35} />}
     </>
   );
 };
 
-export const Socials: React.FC = () => {
+export const Socials: React.FC<{ logoSfx?: boolean }> = ({ logoSfx = true }) => {
   const f = useCurrentFrame();
   const links = interpolate(f, [LINKS_AT, LINKS_AT + 10], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const cy = H * 0.33;           // logos + text block centred on screen
@@ -46,8 +46,8 @@ export const Socials: React.FC = () => {
     <AbsoluteFill style={{ background: "#050505", overflow: "hidden" }}>
       <ArenaFloor />
       <Food seed="socials" n={60} />
-      <Sequence from={FLASH_A} layout="none"><LogoFlash src="social/discord.png" cx={W / 2 - 260} cy={cy} /></Sequence>
-      <Sequence from={FLASH_B} layout="none"><LogoFlash src="social/telegram.png" cx={W / 2 + 260} cy={cy} /></Sequence>
+      <Sequence from={FLASH_A} layout="none"><LogoFlash src="social/discord.png" cx={W / 2 - 260} cy={cy} sfx={logoSfx} /></Sequence>
+      <Sequence from={FLASH_B} layout="none"><LogoFlash src="social/telegram.png" cx={W / 2 + 260} cy={cy} sfx={logoSfx} /></Sequence>
       <Caption text="OFFICIAL DISCORD & TELEGRAM" at={TEXT_AT} y={H * 0.57} size={52} sfx={KEYS} />
       <Caption text="JOIN THE PILLWARS COMMUNITY!" at={TEXT_AT + typeFrames("OFFICIAL DISCORD & TELEGRAM") + 6} y={H * 0.66} size={40} color="#00ff88" sfx={KEYS} />
       <div style={{
@@ -59,3 +59,11 @@ export const Socials: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+// Version for X: starts with both logos already on screen (first frame = the
+// post's thumbnail), so the flashes and their sound are left out.
+const X_START = FLASH_B + 10;
+export const SOCIALS_X_FRAMES = SOCIALS_FRAMES - X_START;
+export const SocialsX: React.FC = () => (
+  <Sequence from={-X_START}><Socials logoSfx={false} /></Sequence>
+);
