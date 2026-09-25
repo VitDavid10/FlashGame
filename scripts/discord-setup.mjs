@@ -8,6 +8,10 @@ const TOKEN = readFileSync(process.env.DISCORD_TOKEN_FILE || 'C:/Users/34679/pil
 const GUILD = '1552774307938304002';
 const API = 'https://discord.com/api/v10';
 const INVITE = 'https://discord.gg/vfesqyBnw7';
+// Genesis Drop visible? false = #genesis-drop and #flex-and-refs are staff only and
+// no other text mentions the airdrop. Set to true and run again on launch day.
+const DROP_LIVE = false;
+const live = (on, off = '') => (DROP_LIVE ? on : off);
 
 async function api(method, path, body) {
   for (;;) {
@@ -81,7 +85,7 @@ const defs = [
   ['announcements', '📢 INFO', 'Official news. Contract address, dates and links are only official when posted here.', readOnly],
   ['minor-announcements', '📢 INFO', 'Smaller updates: patches, balance changes, events.', readOnly],
   ['official-links', '📢 INFO', 'Every official PillWars link. If it is not here, it is not us.', readOnly],
-  ['genesis-drop', '📢 INFO', 'The Season 0 $PILLY airdrop: pool, points and how it is split.', readOnly],
+  ['genesis-drop', '📢 INFO', 'The Season 0 $PILLY airdrop: pool, points and how it is split.', live(readOnly, staffOnly)],
   ['faq', '📢 INFO', 'Frequently asked questions.', readOnly],
   ['roadmap', '📢 INFO', 'Where PillWars is going.', readOnly],
   ['x-feed', '📢 INFO', 'Every new post from our X, automatically.', readOnly],
@@ -89,7 +93,7 @@ const defs = [
   ['clips', '💬 COMMUNITY', 'Share your best plays and screenshots.', []],
   ['suggestions', '💬 COMMUNITY', 'Ideas for modes, skills, skins and features.', []],
   ['bugs', '💬 COMMUNITY', 'Public bug reports: device, browser and what happened. Private issues? Open a ticket in #contact.', []],
-  ['flex-and-refs', '💬 COMMUNITY', 'Flex your points card and share your referral link here, and only here. Slow mode: one post per hour.', [], { rate_limit_per_user: 3600 }],
+  ['flex-and-refs', '💬 COMMUNITY', 'Flex your points card and share your referral link here, and only here. Slow mode: one post per hour.', live([], staffOnly), { rate_limit_per_user: 3600 }],
   ['looking-to-play', '🎮 GAME', 'Find people to jump into a room with. Say mode (Arcade/Classic) and region.', []],
   ['strategy', '🎮 GAME', 'Tips, skill picks, split tricks and how to win the Daily Arena.', []],
   ['high-scores', '🎮 GAME', 'Flex your best runs. Screenshot or it did not happen.', []],
@@ -116,7 +120,7 @@ Read the rules below, then press **Verify** at the bottom to unlock the server.
 
 ## Rules
 1. **Be respectful.** No harassment, hate speech or personal attacks.
-2. **No spam or self-promo.** No ads and no invite links to other servers. Airdrop referral links go in ${ch('flex-and-refs')} only.
+2. **No spam or self-promo.** No ads and no invite links to other servers.${live(` Airdrop referral links go in ${ch('flex-and-refs')} only.`)}
 3. **No scams.** The team will **never** DM you first, ask for your seed phrase or private key, or ask you to "verify" your wallet. Anyone who does is a scammer: report them in ${ch('contact')}.
 4. **Official info only comes from ${ch('announcements')} and ${ch('official-links')}.** Contract addresses, dates and links posted anywhere else are not official.
 5. **No financial talk.** Nothing here is financial advice. No price predictions or shilling.
@@ -132,13 +136,13 @@ const LINKS = `# Official links
 If a link is not on this list, it is not us.
 
 🌐 **Website:** <https://pillwars.fun>
-🎁 **Genesis Drop (airdrop):** <https://pillwars.fun/airdrop>
-🐦 **X:** <https://x.com/pillwarsdotfun>
+${live(`🎁 **Genesis Drop (airdrop):** <https://pillwars.fun/airdrop>
+`)}🐦 **X:** <https://x.com/pillwarsdotfun>
 ✈️ **Telegram community chat:** <https://t.me/pillwars_fun>
 📢 **Telegram announcements:** <https://t.me/pillwars_announcements>
 👾 **Discord:** <${INVITE}>
 🏦 **Treasury (on-chain):** <https://pillwars.fun/treasury.html>
-📜 **Airdrop terms:** <https://pillwars.fun/airdrop-terms>
+${live(`📜 **Airdrop terms:** <https://pillwars.fun/airdrop-terms>`)}
 
 🪙 **$PILLY contract address:** not live yet. It will be posted **only** in ${ch('announcements')} and on our X. Any address you see before that is a scam.`;
 
@@ -188,16 +192,16 @@ Yes. Free rooms are always free. Paid rooms in $PILLY will come after the token 
 **Can I play on mobile?**
 Yes, in the mobile browser. A Solana Seeker app is on the way.
 
-**What is the Genesis Drop?**
+${live(`**What is the Genesis Drop?**
 The Season 0 airdrop: 100M $PILLY split by points. Everything is in ${ch('genesis-drop')}.
 
-**When does $PILLY launch? What is the contract address?**
-After the Season 0 snapshot (20 October 2026). The address will be posted only in ${ch('announcements')} and on our X. Anything before that is fake.
+`)}**When does $PILLY launch? What is the contract address?**
+${live('After the Season 0 snapshot (20 October 2026). ', 'Soon. ')}The address will be posted only in ${ch('announcements')} and on our X. Anything before that is fake.
 
-**Do I have to claim the airdrop?**
+${live(`**Do I have to claim the airdrop?**
 No. It is sent straight to the wallet you linked.
 
-**Is there a presale or private round?**
+`)}**Is there a presale or private round?**
 No. Fair launch on pump.fun, 0% team mint.
 
 **Which wallet do I need?**
@@ -215,16 +219,16 @@ const ROADMAP = `# 🗺️ Roadmap
 • Multiplayer arena with an authoritative server (anti-cheat), Arcade and Classic modes
 • Daily quests, skin shop, leaderboard
 • On-chain treasury with a time lock on project funds
-• Genesis Drop (Season 0) is live
-
+${live(`• Genesis Drop (Season 0) is live
+`)}
 **🔨 Now: Season 0**
-• Earn airdrop points until 20 October 2026
-• Solana Seeker app (Solana dApp Store)
+${live(`• Earn airdrop points until 20 October 2026
+`)}• Solana Seeker app (Solana dApp Store)
 • Community: Discord, Telegram, events
 
 **🔜 Next: launch**
-• Snapshot and sybil check
-• $PILLY launch on pump.fun, airdrop sent straight to wallets
+${live(`• Snapshot and sybil check
+`)}• $PILLY launch on pump.fun${live(', airdrop sent straight to wallets')}
 • Paid rooms in $PILLY: eat a player, take their $PILLY
 • Skin shop in $PILLY: every token spent is burned
 
@@ -239,7 +243,7 @@ Need to talk to us privately? Press a button and a private channel opens that on
 
 🤝 **Collab:** partnerships, creators, communities, press
 🐛 **Bug:** bugs you'd rather not post in public, exploits
-🛟 **Support:** problems with your account, wallet or airdrop points
+🛟 **Support:** problems with your account, wallet${live(' or airdrop points')}
 💬 **Other:** anything else
 
 One open ticket per person. The team will never ask for your seed phrase or private key.`;
