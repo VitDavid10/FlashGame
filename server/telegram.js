@@ -63,7 +63,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         state.autoSent[key] = now;
         for (const [k, t] of Object.entries(state.autoSent)) if (now - t > 24 * 3600e3) delete state.autoSent[k];
         await tg('sendMessage', { chat_id: m.chat.id, text: rule.text, link_preview_options: { is_disabled: true } });
-        return rule.id;
+        return rule;
     }
 
     // En el grupo: contrato, enlaces y airdrop se contestan en respuesta al que pregunta, pero
@@ -82,15 +82,36 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
     // Soporte por privado sin enseñar la cuenta del equipo: lo que la gente escribe
     // al bot le llega al admin; el admin contesta con "responder" y el bot se lo manda
     // a la persona como si fuera suyo. state.relay: id del mensaje en el chat del admin → id de la persona.
+    const mark = (id, emoji) => tg('setMessageReaction', { chat_id: admin, message_id: id, reaction: [{ type: 'emoji', emoji }] }).catch(() => {});
+    // /pending: una línea por persona esperando, colgada de su último mensaje (al pulsarla, salta a él).
+    async function listPending() {
+        const list = Object.entries(state.pending || {}).sort((a, b) => a[1].at - b[1].at);
+        if (!list.length) return tg('sendMessage', { chat_id: admin, text: 'Nobody is waiting 🎉' });
+        await tg('sendMessage', { chat_id: admin, text: '⏳ ' + list.length + ' waiting for an answer:' });
+        for (const [uid, p] of list) {
+            const line = await tg('sendMessage', { chat_id: admin, text: '⏳ ' + p.who + ' · ' + p.ids.length + ' msg', reply_parameters: { message_id: p.ids[p.ids.length - 1], allow_sending_without_reply: true } });
+            state.relay[line.message_id] = Number(uid);   // responder a la línea también le contesta
+        }
+        save();
+    }
+
     async function onPrivate(m) {
         if (m.from.id === admin) {
-            if (m.text === '/start') return tg('sendMessage', { chat_id: admin, text: 'You are the admin 👋\n\nWhen someone writes to this bot, their message shows up here. Reply to it (swipe or right click → Reply) and they get your answer from "PillWars Team".' });
+            if (m.text === '/start') return tg('sendMessage', { chat_id: admin, text: 'You are the admin 👋\n\nWhen someone writes to this bot, their message shows up here. Reply to it (swipe or right click → Reply) and they get your answer from "PillWars Team".\n\n👀 = not answered yet, 👌 = answered. Send /pending to see who is waiting.' });
+            if (m.text === '/pending') return listPending();
             const to = m.reply_to_message && (state.relay || {})[m.reply_to_message.message_id];
             if (!to) return tg('sendMessage', { chat_id: admin, text: 'To answer someone, reply (swipe or right click → Reply) to their message.' });
             await tg('copyMessage', { chat_id: to, from_chat_id: admin, message_id: m.message_id });
             // Contestar abre (o mantiene) la conversación: lo que responda esa persona llega siempre.
             state.lastFrom = state.lastFrom || {};
-            state.lastFrom[to] = Date.now(); save();
+            state.lastFrom[to] = Date.now();
+            // Sus mensajes pendientes pasan de 👀 a 👌.
+            const pend = (state.pending || {})[to];
+            if (pend) {
+                delete state.pending[to];
+                for (const id of pend.ids) await mark(id, '👌');
+            }
+            save();
             return tg('setMessageReaction', { chat_id: admin, message_id: m.message_id, reaction: [{ type: 'emoji', emoji: '👍' }] }).catch(() => {});
         }
         if (m.text === '/start') {
@@ -103,7 +124,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         const now = Date.now(), since = now - (state.lastFrom[m.from.id] || 0);
         // Contrato, enlaces y airdrop quedan resueltos con la respuesta automática y no llenan el
         // chat del admin... salvo en mitad de una conversación (últimas 24 h): entonces llega todo.
-        if (SOLVED.has(auto) && since > 24 * 3600e3) { save(); return; }
+        if (auto && SOLVED.has(auto.id) && since > 24 * 3600e3) { save(); return; }
         state.lastFrom[m.from.id] = now;
         for (const [k, t] of Object.entries(state.lastFrom)) if (now - t > 24 * 3600e3) { delete state.lastFrom[k]; delete state.headOf[k]; }
         state.relay = state.relay || {};
@@ -116,6 +137,16 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         }
         const copy = await tg('copyMessage', { chat_id: admin, from_chat_id: m.chat.id, message_id: m.message_id, reply_parameters: { message_id: state.headOf[m.from.id], allow_sending_without_reply: true } });
         state.relay[copy.message_id] = m.from.id;
+        // Lo que el bot le ha contestado solo, entero, colgado de su mensaje: para saber qué ha leído ya.
+        if (auto) {
+            const note = await tg('sendMessage', { chat_id: admin, text: '🤖 The bot already answered:\n\n' + auto.text, reply_parameters: { message_id: copy.message_id }, link_preview_options: { is_disabled: true } });
+            state.relay[note.message_id] = m.from.id;
+        }
+        // Sin contestar hasta que el admin le responda: 👀 en el mensaje y a la lista de /pending.
+        state.pending = state.pending || {};
+        const p = state.pending[m.from.id] || (state.pending[m.from.id] = { who, ids: [] });
+        p.ids.push(copy.message_id); p.at = now;
+        await mark(copy.message_id, '👀');
         // Tope para que el estado no crezca sin fin: se quedan las 1000 más recientes.
         const keys = Object.keys(state.relay);
         if (keys.length > 1000) for (const k of keys.slice(0, keys.length - 1000)) delete state.relay[k];

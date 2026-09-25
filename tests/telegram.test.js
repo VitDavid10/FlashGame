@@ -65,8 +65,8 @@ test('soporte por privado: el mensaje llega al admin y su respuesta vuelve a la 
     };
     const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
     await t.onUpdate({ message: { message_id: 7, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Ana', username: 'ana' }, text: 'my wallet does not connect' } });
-    // Acuse de recibo a Ana (id 500), cabecera al admin (501) y copia de su mensaje (502).
-    assert.deepEqual(calls.map(c => [c[0], c[1].chat_id]), [['sendMessage', 42], ['sendMessage', 1], ['copyMessage', 1]]);
+    // Acuse de recibo a Ana (500), cabecera al admin (501), copia de su mensaje (502) y lo que le dijo el bot (503).
+    assert.deepEqual(calls.filter(c => c[0] !== 'setMessageReaction').map(c => [c[0], c[1].chat_id]), [['sendMessage', 42], ['sendMessage', 1], ['copyMessage', 1], ['sendMessage', 1]]);
     calls.length = 0;
     // El admin responde a la copia (id 502): el bot se lo copia a Ana.
     await t.onUpdate({ message: { message_id: 9, chat: { id: 1, type: 'private' }, from: { id: 1 }, text: 'hello!', reply_to_message: { message_id: 502 } } });
@@ -90,7 +90,7 @@ test('respuestas automáticas: contesta lo típico una vez por tema y avisa al a
 
     await t.onUpdate(msg('Gm Sir'));                     // saludo: solo el acuse de recibo
     assert.deepEqual(toUser(), ['Got it! 🙌 The team will get back to you here soon.']);
-    assert.match(calls.find(c => c[0] === 'sendMessage' && c[1].chat_id === 1)[1].text, /auto-replied: ack/);
+    assert.ok(calls.some(c => c[0] === 'sendMessage' && c[1].chat_id === 1 && /The bot already answered:\s+Got it!/.test(c[1].text)));
 
     calls.length = 0;
     await t.onUpdate(msg('We offer marketing and KOL calls for your project'));
@@ -125,12 +125,12 @@ test('chat del admin sin ruido: lo resuelto no llega y la cabecera no se repite'
     const fetchImpl = async (url, o) => { calls.push([url.split('/').pop(), JSON.parse(o.body)]); return { json: async () => ({ ok: true, result: { message_id: next++ } }) }; };
     const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
     const say = text => t.onUpdate({ message: { message_id: 1, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Nyx' }, text } });
-    const toAdmin = () => calls.filter(c => c[1].chat_id === 1).map(c => c[0]);
+    const toAdmin = () => calls.filter(c => c[1].chat_id === 1 && c[0] !== 'setMessageReaction').map(c => c[0]);
     await say("what's the CA?");                       // resuelto por el bot: nada al admin
     assert.deepEqual(toAdmin(), []);
     calls.length = 0;
-    await say('I have a question');                    // empieza conversación: cabecera + copia
-    assert.deepEqual(toAdmin(), ['sendMessage', 'copyMessage']);
+    await say('I have a question');                    // empieza conversación: cabecera + copia + lo que contestó el bot
+    assert.deepEqual(toAdmin(), ['sendMessage', 'copyMessage', 'sendMessage']);
     calls.length = 0;
     await say('about my wallet');                      // seguido: solo la copia
     assert.deepEqual(toAdmin(), ['copyMessage']);
@@ -161,4 +161,33 @@ test('en mitad de una conversación llega todo, y cada mensaje cuelga de la cabe
     await from(42, 'what are your links?');               // ya hablando: le llega al admin aunque sea un tema resuelto
     const copy = calls.find(c => c[0] === 'copyMessage');
     assert.equal(copy[1].reply_parameters.message_id, 1001);   // cuelga de la cabecera de 42, no de la de 43
+});
+
+test('pendientes: 👀 al llegar, 👌 al contestar y /pending lista quién espera', async () => {
+    const calls = []; let next = 2000;
+    const fetchImpl = async (url, o) => { calls.push([url.split('/').pop(), JSON.parse(o.body)]); return { json: async () => ({ ok: true, result: { message_id: next++ } }) }; };
+    const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
+    const user = (id, text) => t.onUpdate({ message: { message_id: 1, chat: { id, type: 'private' }, from: { id, first_name: 'U' + id }, text } });
+    const admin = (text, reply) => t.onUpdate({ message: { message_id: 50, chat: { id: 1, type: 'private' }, from: { id: 1 }, text, ...(reply ? { reply_to_message: { message_id: reply } } : {}) } });
+    const reacts = () => calls.filter(c => c[0] === 'setMessageReaction').map(c => [c[1].message_id, c[1].reaction[0].emoji]);
+
+    await user(42, 'hello');          // ack 2000, cabecera 2001, copia 2002 → 👀, nota del bot 2003
+    await user(43, 'hey');            // ack 2004, cabecera 2005, copia 2006 → 👀, nota del bot 2007
+    assert.deepEqual(reacts(), [[2002, '👀'], [2006, '👀']]);
+
+    calls.length = 0;
+    await admin('/pending');
+    const lines = calls.filter(c => c[0] === 'sendMessage').map(c => c[1].text);
+    assert.equal(lines.length, 3);
+    assert.match(lines[1], /U42/); assert.match(lines[2], /U43/);
+
+    calls.length = 0;
+    await admin('hi there', 2002);    // contesta a 42 → su mensaje pasa a 👌
+    assert.deepEqual(reacts().filter(r => r[0] === 2002), [[2002, '👌']]);
+
+    calls.length = 0;
+    await admin('/pending');
+    const after = calls.filter(c => c[0] === 'sendMessage').map(c => c[1].text);
+    assert.equal(after.length, 2);
+    assert.match(after[1], /U43/);
 });
