@@ -101,6 +101,8 @@ const TASK_IDS = ['follow', 'tg', 'play'];
 const DAILY_POST_PTS = 100, POINTS_BOOST = 1.5, REPOST_PTS = 150, LIKE_PTS = 50;
 const SHARE_CARD_PTS = 400, SHARE_AGAIN_GROWTH = 1.10;
 const RUN_SHARE_PTS = 30;
+// One-time quests that pay but stay out of the boost (see the client's EXTRA_TASKS).
+const EXTRA_TASK_PTS = { discord: 100 };
 
 function newCounters() { return { pieces: 0, skills: 0, skillSet: [], skill: {}, splitKills: 0, splits: 0, picks: 0, virusPops: 0, gambleWins: 0 }; }
 function newDaily(date) { return { date, done: {}, best: {}, matches: 0, kills: 0, social: {}, c: newCounters() }; }
@@ -254,6 +256,7 @@ function createScore(opts) {
         else if (key.startsWith('rt:') && validPost(key.slice(3))) { pts = REPOST_PTS; s.tasks[key] = true; }
         else if (key.startsWith('like:') && validPost(key.slice(5))) { pts = LIKE_PTS; s.tasks[key] = true; }
         else if (TASK_IDS.includes(key)) { s.tasks[key] = true; }
+        else if (EXTRA_TASK_PTS[key]) { pts = EXTRA_TASK_PTS[key]; s.tasks[key] = true; }
         else return { error: 'bad_key' };
         s.socialPts += pts;
         return { view: view(u) };

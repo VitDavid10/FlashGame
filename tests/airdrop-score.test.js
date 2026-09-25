@@ -154,6 +154,16 @@ test('completing follow/telegram/play unlocks the x1.5 boost on everything', () 
     assert.strictEqual(sc.view(u).boosted, true);
 });
 
+test('joining Discord pays 100 once and does not count toward the boost', () => {
+    const { sc } = engine();
+    const u = user();
+    sc.completeTask(u, 'discord');
+    sc.completeTask(u, 'discord');
+    assert.strictEqual(sc.view(u).socialPts, 100);
+    sc.completeTask(u, 'follow'); sc.completeTask(u, 'tg'); sc.beginMatch(u);
+    assert.strictEqual(sc.view(u).boosted, true);   // follow/tg/play alone still unlock it
+});
+
 test('the daily post pays a flat 100 (the x1.5 boost applies to the whole total, not per-quest), once a day', () => {
     const { sc } = engine();
     const u = user({ x: { username: 'a' } });

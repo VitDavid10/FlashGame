@@ -59,22 +59,20 @@ a{color:var(--green)}
 .box{background:var(--inset);box-shadow:inset 0 0 0 2px var(--line)}
 
 /* ---------- hero ---------- */
-.hero{position:relative;text-align:center;padding:24px 0 6px}
-.hero-social{position:absolute;top:34px;right:24px;display:flex;gap:16px}
+.hero{position:relative;height:0}
+.hero-social{position:absolute;top:0;right:24px;z-index:2;display:flex;gap:16px}
 .hero-social a{width:52px;height:52px;image-rendering:auto;transition:transform .3s,filter .3s}
 .hero-social a:hover{transform:scale(1.15)}
 #airdropTwitter{background:url('game/img/cartel-hero/icon-twitter.png') center/100% 100% no-repeat}
 #airdropTwitter:hover{filter:drop-shadow(0 0 8px rgba(29,155,240,.6))}
 #airdropTelegram{background:url('game/img/cartel-hero/icon-telegram.png') center/100% 100% no-repeat}
 #airdropTelegram:hover{filter:drop-shadow(0 0 8px rgba(38,165,228,.6))}
-@media (max-width:640px){.hero-social{position:static;justify-content:center;margin-top:12px}}
-.hero p{max-width:640px;margin:10px auto 0;color:var(--dim);font-size:24px}
-.stats{display:flex;justify-content:center;flex-wrap:wrap;gap:28px;margin:26px 0 6px}
-.stat b{display:block;font-family:var(--px);font-size:18px;color:#fff}
-.stat span{font-size:18px;color:var(--dim);text-transform:uppercase}
+#airdropDiscord{background:url('game/img/cartel-hero/icon-discord.png') center/100% 100% no-repeat}
+#airdropDiscord:hover{filter:drop-shadow(0 0 8px rgba(88,101,242,.6))}
+@media (max-width:820px){.hero{height:auto;padding-top:16px}.hero-social{position:static;justify-content:center}.tabs{margin-top:16px}}
 
 /* ---------- tabs ---------- */
-.tabs{display:flex;justify-content:center;gap:14px;margin:20px 0 16px;flex-wrap:wrap}
+.tabs{display:flex;justify-content:center;gap:14px;margin:24px 0 16px;flex-wrap:wrap}
 .tab{--plate:var(--placa-grey)}
 .tab.on{--plate:var(--placa-green)}
 
@@ -135,6 +133,16 @@ a{color:var(--green)}
 .bline .tip .no{color:#5d7467} .bline .tip .no i{color:#5d7467}
 .card-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;position:relative;z-index:1}
 .empty-card{text-align:center;padding:40px 18px;color:var(--dim)}
+/* Phones: connect first; once linked, the card and the quests take turns
+   (.card-row.quests) instead of stacking into one long scroll. */
+.mob-only{display:none!important}
+@media (max-width:820px){
+  .mob-only{display:inline-flex!important}
+  #view-me:not(.linked) .card-row,#view-me.linked .connect-grid{display:none}
+  #view-me.linked .card-row:not(.quests) .qpanel,#view-me.linked .card-row.quests .pcard{display:none}
+  .mob-connect{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .qback{align-self:flex-start;margin-bottom:14px}
+}
 
 /* ---------- quests (scrollable) ---------- */
 .qpanel{display:flex;flex-direction:column}
@@ -490,11 +498,7 @@ else {
     <div class="hero-social">
       <a href="https://x.com/pillwarsdotfun" target="_blank" rel="noopener" id="airdropTwitter" title="Twitter"></a>
       <a href="https://t.me/pillwars_fun" target="_blank" rel="noopener" id="airdropTelegram" title="Telegram"></a>
-    </div>
-    <div class="stats">
-      <div class="stat"><b id="stPlayers">???</b><span>Participants</span></div>
-      <div class="stat"><b>???</b><span>Points earned</span></div>
-      <div class="stat"><b id="stEnds">--</b><span>Season ends</span></div>
+      <a href="https://discord.gg/vfesqyBnw7" target="_blank" rel="noopener" id="airdropDiscord" title="Discord"></a>
     </div>
   </header>
 
@@ -522,6 +526,7 @@ else {
     <div class="card-row">
       <div class="panel pcard" id="card"></div>
       <div class="panel qpanel">
+        <button class="pbtn grey sm qback mob-only" data-slide="card">&lt; MY CARD</button>
         <h3 class="ptitle">QUESTS <small>BOOST YOUR SCORE</small></h3>
         <div class="boost-banner" id="boostBanner"></div>
         <div class="qtabs">
@@ -780,12 +785,12 @@ const $ = s => document.querySelector(s);
 const SITE = 'https://pillwars.fun';
 const X_ACCOUNT = 'pillwarsdotfun';
 const TELEGRAM = 'https://t.me/pillwars_fun';
+const DISCORD = 'https://discord.gg/vfesqyBnw7';
 // Posts to repost and like. Add new ones at the top: id = the number at the end
 // of the x.com/.../status/<id> URL. Each post pays once per user.
 const POSTS = [
   { id: '', title: 'Season 0 airdrop is live', date: '2026-09-15' },
 ];
-const SEASON_END = Date.UTC(2026, 9, 20, 23, 59);   // 20 Oct 2026
 const SUPPLY = 1e9;
 const AIRDROP_PCT = 10;
 // Sign in with X runs through server/airdrop-x.js (OAuth 2.0 with PKCE).
@@ -1041,6 +1046,11 @@ const TASKS = [
   { id: 'tg', t: 'JOIN TELEGRAM', d: 'The contract drops there first.', pts: 0, url: () => TELEGRAM },
   { id: 'play', t: 'PLAY YOUR FIRST MATCH', d: 'Enter the Daily Arena below.', pts: 0, auto: true },
 ];
+// One-time quests that pay points but stay out of the boost (added after the
+// boost went live: counting them would take it away from whoever had it).
+const EXTRA_TASKS = [
+  { id: 'discord', t: 'JOIN DISCORD', d: 'Hang out with the PillWars community.', pts: 100, url: () => DISCORD },
+];
 const DAILY_POST_PTS = 100, POINTS_BOOST = 1.5, REPOST_PTS = 150, LIKE_PTS = 50;
 // Sharing your points card pays again once your points grow 10% past the last share.
 const SHARE_CARD_PTS = 400, SHARE_AGAIN_GROWTH = 1.10;
@@ -1055,7 +1065,7 @@ function socialQuests() {
     posts.push({ key: 'rt:' + p.id, t: 'REPOST', d: p.title, pts: REPOST_PTS, url: () => 'https://x.com/intent/retweet?tweet_id=' + p.id });
     posts.push({ key: 'like:' + p.id, t: 'LIKE', d: p.title, pts: LIKE_PTS, url: () => 'https://x.com/intent/like?tweet_id=' + p.id });
   });
-  const once = TASKS.map(t => Object.assign({ key: t.id }, t));
+  const once = TASKS.concat(EXTRA_TASKS).map(t => Object.assign({ key: t.id }, t));
   return { daily, posts, once, all: daily.concat(posts, once) };
 }
 const isDone = key => {
@@ -1091,14 +1101,15 @@ function taskRow(q) {
 const pendingFirst = (list, done) => list.filter(k => !done(k)).concat(list.filter(done));
 function renderTasks() {
   const q = socialQuests();
+  const nOnce = TASKS.filter(t => isDone(t.id)).length;
   const groups = [
     { title: 'DAILY', right: 'RESETS IN <b class="resetIn" style="color:#fff">' + resetText() + '</b>', items: q.daily },
-    { title: 'ONE-TIME', right: boosted() ? 'BOOST ON: ALL POINTS +50%' : 'ALL DONE = ALL POINTS +50% (' + q.once.filter(k => isDone(k.key)).length + '/' + q.once.length + ')', items: q.once },
+    { title: 'ONE-TIME', right: boosted() ? 'BOOST ON: ALL POINTS +50%' : 'ALL DONE = ALL POINTS +50% (' + nOnce + '/' + TASKS.length + ')', items: q.once },
     { title: 'SPREAD THE WORD', right: 'NEW POSTS ADDED OFTEN', items: q.posts, empty: 'No posts yet. New ones land here.' },
   ];
-  const nOnce = q.once.filter(k => isDone(k.key)).length, bb = $('#boostBanner');
+  const bb = $('#boostBanner');
   bb.classList.toggle('on', boosted());
-  bb.textContent = boosted() ? 'BOOST ON: ALL YOUR POINTS x1.5' : 'FINISH THE ' + q.once.length + ' ONE-TIME QUESTS = ALL YOUR POINTS x1.5 (' + nOnce + '/' + q.once.length + ')';
+  bb.textContent = boosted() ? 'BOOST ON: ALL YOUR POINTS x1.5' : 'FINISH THE ' + TASKS.length + ' BOOST QUESTS = ALL YOUR POINTS x1.5 (' + nOnce + '/' + TASKS.length + ')';
   const open = g => g.items.some(k => !isDone(k.key));
   $('#qSocial').innerHTML = pendingFirst(groups, g => !open(g)).map(g =>
     '<div class="qgroup"><span>' + g.title + '</span><span>' + g.right + '</span></div><div class="tasks">' +
@@ -1108,6 +1119,13 @@ function renderTasks() {
 $('#view-me').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.go) { $('#screen').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  if (b.dataset.link) { $(b.dataset.link === 'x' ? '#xBtn' : '#wBtn').click(); return; }
+  if (b.dataset.slide) {
+    const row = $('.card-row');
+    row.classList.toggle('quests', b.dataset.slide === 'quests');
+    row.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
   if (!b.dataset.task) return;
   const t = socialQuests().all.find(k => k.key === b.dataset.task); if (!t) return;
   if (t.needs && !(S.x || S.w)) { toast('CONNECT X OR YOUR WALLET FIRST'); return; }
@@ -1163,7 +1181,9 @@ function renderCard() {
       group('BOOST +50%', null, s.boost, boosted() ? null : 'FINISH ONE-TIME QUESTS') +
     '</div></div>' +
     '<button class="pbtn blue" id="shareCard"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE CARD</button>' +
-    '<div class="card-hint">' + (!isDone('share') ? 'Share it to earn +' + SHARE_CARD_PTS + ' points' : S.x && S.w ? '' : 'Connect both to max your score') + '</div>';
+    '<div class="card-hint">' + (!isDone('share') ? 'Share it to earn +' + SHARE_CARD_PTS + ' points' : S.x && S.w ? '' : 'Connect both to max your score') + '</div>' +
+    (S.x && S.w ? '' : '<div class="mob-connect mob-only">' + (S.x ? '' : '<button class="pbtn blue sm" data-link="x">CONNECT X</button>') + (S.w ? '' : '<button class="pbtn sm" data-link="w">CONNECT WALLET</button>') + '</div>') +
+    '<button class="pbtn green mob-only" data-slide="quests">QUESTS &gt;</button>';
   $('#shareCard').onclick = openCardShare;
 }
 
@@ -1614,6 +1634,7 @@ $('#shareSave').onclick = async () => {
 /* ---------------- connections ---------------- */
 function renderConnections() {
   $('#cX').classList.toggle('done', !!S.x); $('#cW').classList.toggle('done', !!S.w);
+  $('#view-me').classList.toggle('linked', !!(S.x || S.w));
   $('#cXTxt').textContent = S.x ? '@' + S.x.username + ' connected' : 'Sign in with X: followers and account age.';
   $('#cWTxt').textContent = S.w ? short(S.w) + ' connected' : 'Wallet age, activity and past airdrops.';
   $('#xBtn').textContent = S.x ? 'UNLINK' : 'CONNECT';
@@ -1758,10 +1779,9 @@ function resetText() {
   return p(Math.floor(d / 3600e3)) + ':' + p(Math.floor(d / 60e3) % 60) + ':' + p(Math.floor(d / 1e3) % 60);
 }
 function tick() {
-  const now = Date.now(), txt = resetText();
+  const txt = resetText();
   $('#resetIn').textContent = txt;
   document.querySelectorAll('.resetIn').forEach(el => { el.textContent = txt; });
-  $('#stEnds').textContent = Math.max(0, Math.ceil((SEASON_END - now) / 864e5)) + ' DAYS';
   if (S.daily.date !== today()) { S.daily = newDay(); S.daily.c = { pieces: 0, skills: 0, skillSet: [], skill: {}, splitKills: 0, splits: 0, picks: 0, virusPops: 0, gambleWins: 0 }; MISSIONS = missionsFor(today()); save(); renderDaily(); renderTasks(); }
 }
 setInterval(tick, 1000);
