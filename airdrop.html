@@ -1513,7 +1513,8 @@ function drawArena(g, avoid, r, opts) {
   // The first pill is always a big one; the rest mix small to large.
   const PILL_SIZES = [6, 8, 10, 13, 17, 22, 28];
   for (let i = 0; i < opts.pills; i++) {
-    const wL = i === 0 ? 24 + Math.floor(r() * 8) : PILL_SIZES[Math.floor(r() * PILL_SIZES.length)];
+    // `sizes` = only these pill sizes (and no forced big one).
+    const wL = opts.sizes ? opts.sizes[Math.floor(r() * opts.sizes.length)] : i === 0 ? 24 + Math.floor(r() * 8) : PILL_SIZES[Math.floor(r() * PILL_SIZES.length)];
     // Never a one-colour pill: the two halves always differ. About a third wear a country skin.
     // Different colour families, so two greens or two reds never pass for one colour.
     const ti = Math.floor(r() * BOT_COLORS.length);
@@ -1529,17 +1530,12 @@ function drawArena(g, avoid, r, opts) {
   }
   for (let i = 0; i < opts.food; i++) {
     const dL = 3 + Math.floor(r() * 4), size = dL * K, p = place(size, size, 8, 0);
-    if (p) blit(g, pixDotSprite(dL, FOOD_COLORS[Math.floor(r() * FOOD_COLORS.length)]), p[0], p[1], K);
+    if (!p) continue;
+    blit(g, pixDotSprite(dL, FOOD_COLORS[Math.floor(r() * FOOD_COLORS.length)]), p[0], p[1], K);
+    // `spread`: food keeps its distance too, so it never piles up.
+    if (opts.spread) avoid.push([p[0] - 14, p[1] - 14, size + 28, size + 28]);
   }
   g.restore();
-}
-function drawAvatar(g, x, y, size) {
-  g.fillStyle = '#000'; g.fillRect(x - 10, y - 10, size + 20, size + 20);
-  g.fillStyle = '#00ffaa'; g.fillRect(x - 6, y - 6, size + 12, size + 12);
-  g.fillStyle = '#081a10'; g.fillRect(x - 2, y - 2, size + 4, size + 4);
-  if (avatarImg) { g.imageSmoothingEnabled = true; g.drawImage(avatarImg, x, y, size, size); return; }
-  const spr = pixPillSpriteRot(30, '#c0c8d0', '#00ff44', Math.PI / 4, true), k = Math.max(1, Math.floor(size * .9 / spr.width));
-  blit(g, spr, x + (size - spr.width * k) / 2, y + (size - spr.height * k) / 2, k);
 }
 function box(g, x, y, w, h, accent) {
   g.fillStyle = 'rgba(3,12,7,.82)'; g.fillRect(x, y, w, h);
@@ -1548,62 +1544,125 @@ function box(g, x, y, w, h, accent) {
 }
 const handle = () => S.x ? '@' + S.x.username : 'ANON PILL';
 const seedRng = () => rng('share:' + share.seed + ':' + share.idx);
-function cardBreakdown(g) {
-  const s = score(), rank = renderBoard(), r = seedRng(), L = HOLE.x + 26, T = HOLE.y + 26;
+// Brand wordmark for the card header (same file as the intro).
+let brandImg = null;
+const brandReady = new Promise(res => {
+  const im = new Image();
+  im.onload = () => { brandImg = im; res(); }; im.onerror = () => res();
+  im.src = 'img/pixel-hero/brand.png';
+});
+// Big "camera" photo on the left: the X avatar (or a big pill), with viewfinder marks.
+function drawPhoto(g, x, y, size) {
+  g.fillStyle = '#000'; g.fillRect(x - 8, y - 8, size + 16, size + 16);
+  g.fillStyle = '#1d5a3c'; g.fillRect(x - 5, y - 5, size + 10, size + 10);
+  g.fillStyle = '#081a10'; g.fillRect(x, y, size, size);
+  if (avatarImg) { g.imageSmoothingEnabled = true; g.drawImage(avatarImg, x, y, size, size); }
+  else {
+    const spr = pixPillSpriteRot(40, '#c0c8d0', '#00ff44', Math.PI / 4, true), k = Math.max(1, Math.floor(size * .8 / spr.width));
+    blit(g, spr, x + (size - spr.width * k) / 2, y + (size - spr.height * k) / 2, k);
+  }
+  g.fillStyle = 'rgba(0,0,0,.18)';
+  for (let yy = y; yy < y + size; yy += 6) g.fillRect(x, yy, size, 2);
+  const sh = g.createLinearGradient(0, y, 0, y + size);
+  sh.addColorStop(0, 'rgba(0,0,0,.45)'); sh.addColorStop(.18, 'rgba(0,0,0,0)'); sh.addColorStop(.8, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.55)');
+  g.fillStyle = sh; g.fillRect(x, y, size, size);
+  // Tilted stamp over the bottom of the photo.
+  g.save(); g.translate(x + size - 150, y + size - 78); g.rotate(-0.08);
+  const sw = 250, shh = 58;
+  g.fillStyle = 'rgba(3,20,11,.82)'; g.fillRect(-sw / 2, -shh / 2, sw, shh);
+  g.fillStyle = '#00ff88';
+  g.fillRect(-sw / 2, -shh / 2, sw, 4); g.fillRect(-sw / 2, shh / 2 - 4, sw, 4); g.fillRect(-sw / 2, -shh / 2, 4, shh); g.fillRect(sw / 2 - 4, -shh / 2, 4, shh);
+  text(g, 'READY TO PILL', 0, 9, PX, 16, '#00ff88', 'center');
+  g.restore();
+}
+// Header shared by both cards: pill + PILLWARS wordmark, and the airdrop badge.
+function drawCardHeader(g, L, R, y) {
+  const pill = pixPillSpriteRot(11, '#c0c8d0', '#00ff44', Math.PI / 5, true);
+  blit(g, pill, L - 6, y - 16, 3);
+  if (brandImg) { g.imageSmoothingEnabled = true; g.drawImage(brandImg, L + 80, y + 4, 44 * brandImg.width / brandImg.height, 44); }
+  else text(g, 'PILLWARS', L + 80, y + 44, PX, 34, '#ffffff', 'left', '#000');
+  const bw = 300, bh = 44, bx = R - bw;
+  g.fillStyle = '#000'; g.fillRect(bx, y + 2, bw, bh);
+  g.fillStyle = '#1d5a3c'; g.fillRect(bx + 3, y + 5, bw - 6, bh - 6);
+  g.fillStyle = '#06140c'; g.fillRect(bx + 6, y + 8, bw - 12, bh - 12);
+  g.fillStyle = '#00ff88'; g.fillRect(bx + 22, y + 18, 12, 12);
+  text(g, '$PILLY AIRDROP', bx + 50, y + 32, PX, 15, '#ffffff');
+}
+// Title slab with the handle.
+function drawSlab(g, x, y, w, h, str) {
+  g.fillStyle = '#000'; g.fillRect(x, y, w, h);
+  g.fillStyle = '#0d2a1b'; g.fillRect(x + 3, y + 3, w - 6, h - 6);
+  g.fillStyle = '#00ff88'; g.fillRect(x, y, 16, h);
+  g.fillStyle = '#ccff00'; g.fillRect(x + 16, y, 6, h);
+  const sz = fit(g, str, PX, 30, w - 60);
+  text(g, str, x + 42, y + h / 2 + sz / 2, PX, sz, '#ffffff', 'left', '#000');
+}
+// Round badge next to the points (TOP x% or RANK).
+function drawSeal(g, cx, cy, r, top, mid, bot, midCol) {
+  g.fillStyle = '#000'; g.beginPath(); g.arc(cx, cy, r + 6, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#1d5a3c'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#06140c'; g.beginPath(); g.arc(cx, cy, r - 6, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(0,255,136,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, r - 14, 0, Math.PI * 2); g.stroke();
+  text(g, top, cx, cy - 22, PX, 12, '#9fc2ad', 'center');
+  text(g, mid, cx, cy + 14, PX, fit(g, mid, PX, 24, r * 1.5), midCol, 'center', '#000');
+  text(g, bot, cx, cy + 42, PX, 10, '#9fc2ad', 'center');
+}
+const CARD = { L: 66, T: 60, PH: 430 };
+// Floor, arena, header and photo; returns the right edge of the content.
+// `avoid` = the card's own blocks below the points; the rest is kept clear here.
+function cardBase(g, X0, pw, ps, avoid) {
+  const h = HOLE, R = h.x + h.w - 30;
   drawFloor(g); drawScreenBg(g);
-  const pts = fmt(s.total), ps = fit(g, pts, PX, 74, 410), hsz = fit(g, handle(), PX, 26, 370);
-  g.font = hsz + 'px ' + PX; const hw = g.measureText(handle()).width;
-  g.font = ps + 'px ' + PX; const pw = g.measureText(pts).width;
-  const RX = 690;
-  drawArena(g, [
-    [L - 12, T - 12, 164, 164], [L + 164, T + 20, Math.max(hw, 240) + 10, 90],
-    [L, 318 - ps, pw + 140, ps + 12], [L, 340, 560, 40], [L, 404, 560, 104], [RX, T, 440, 492],
-  ], r, { viruses: 1 + Math.floor(r() * 2), pills: 4, food: 30 });
-  drawAvatar(g, L, T, 140);
-  text(g, handle(), L + 170, T + 60, PX, hsz, '#ffffff', 'left', '#000');
-  text(g, S.w ? short(S.w) : 'no wallet linked', L + 170, T + 104, VT, 34, '#9fc2ad');
-  text(g, pts, L, 318, PX, ps, '#00ff88', 'left', '#003d1f');
-  g.font = ps + 'px ' + PX; text(g, 'POINTS', L + g.measureText(pts).width + 18, 318, PX, 20, '#9fc2ad');
-  const parts = [s.xs, s.ws, s.qs, s.gs], cols = ['#1d9bf0', '#00ff88', '#ffce3d', '#ccff00'];
-  const tot = s.raw || 1; let bx = L + 4;
-  g.fillStyle = '#000'; g.fillRect(L, 342, 560, 36);
-  parts.forEach((p, i) => { const w = 552 * p / tot; g.fillStyle = cols[i]; g.fillRect(bx, 346, w, 28); bx += w; });
-  box(g, L, 404, 272, 104); box(g, L + 288, 404, 272, 104);
-  const rk = '#' + fmt(rank), tp = 'TOP ' + topPct(rank);
-  text(g, rk, L + 136, 462, PX, fit(g, rk, PX, 32, 236), '#ffce3d', 'center', '#5c3d00');
-  text(g, 'RANK', L + 136, 494, VT, 28, '#9fc2ad', 'center');
-  text(g, tp, L + 424, 462, PX, fit(g, tp, PX, 32, 236), '#ccff00', 'center', '#1c3300');
-  text(g, 'OF ALL PLAYERS', L + 424, 494, VT, 28, '#9fc2ad', 'center');
-  const rows = [['X ACCOUNT', s.xs, cols[0]], ['ON-CHAIN', s.ws, cols[1]], ['QUESTS', s.qs, cols[2]], ['DAILY ARENA', s.gs, cols[3]]];
-  rows.forEach((row, i) => {
-    const y = T + i * 126;
-    box(g, RX, y, 440, 108, row[2]);
-    text(g, row[0], RX + 34, y + 42, PX, 15, '#9fc2ad');
-    text(g, fmt(row[1]), RX + 416, y + 88, PX, fit(g, fmt(row[1]), PX, 28, 360), '#ffffff', 'right', '#000');
-  });
-  drawScreenFx(g, [L - 6, 318 - ps - 6, pw + 20, ps + 18]); drawFrame(g);
+  drawArena(g, [[CARD.L - 12, CARD.T - 20, 460, 86], [R - 310, CARD.T - 6, 316, 60], [CARD.L - 14, 118, CARD.PH + 28, CARD.PH + 28],
+    [X0 - 6, 138, 460, 32], [X0 - 6, 174, R - X0 + 12, 82], [X0 - 6, 266, 260, 40], [X0 - 6, 316, pw + 20, ps + 44]].concat(avoid),
+    seedRng(), { viruses: 0, pills: 8, food: 60, sizes: [5, 6, 7, 8], spread: true });
+  drawCardHeader(g, CARD.L, R, CARD.T);
+  drawPhoto(g, CARD.L, 132, CARD.PH);
+  return R;
+}
+function cardTop(g, X0, R, label, ps) {
+  const pts = fmt(score().total);
+  text(g, label, X0, 162, PX, 14, '#9fc2ad');
+  drawSlab(g, X0, 180, R - X0, 70, handle());
+  text(g, S.w ? short(S.w) : 'no wallet linked', X0, 296, VT, 34, '#9fc2ad');
+  text(g, 'POINTS', X0, 340, PX, 14, '#9fc2ad');
+  text(g, pts, X0, 346 + ps, PX, ps, '#00ff88', 'left', '#003d1f');
 }
 function cardRank(g) {
-  const s = score(), rank = renderBoard(), r = seedRng(), CX = IMG_W / 2;
-  drawFloor(g); drawScreenBg(g);
-  const pts = fmt(s.total), ps = fit(g, pts, PX, 96, 800), hsz = fit(g, handle(), PX, 26, 760);
-  g.font = hsz + 'px ' + PX; const hw = g.measureText(handle()).width;
+  const s = score(), rank = renderBoard(), X0 = CARD.L + CARD.PH + 44, tp = topPct(rank);
+  const pts = fmt(s.total), ps = fit(g, pts, PX, 76, 400);
   g.font = ps + 'px ' + PX; const pw = g.measureText(pts).width;
-  drawArena(g, [
-    [CX - 80, 56, 160, 160], [CX - hw / 2 - 10, 244 - hsz - 8, hw + 20, hsz + 20],
-    [CX - pw / 2 - 10, 366 - ps - 6, pw + 24, ps + 20], [CX - 80, 386, 160, 30], [CX - 420, 426, 840, 104],
-  ], r, { viruses: 1 + Math.floor(r() * 2), pills: 6, food: 40 });
-  drawAvatar(g, CX - 64, 66, 128);
-  text(g, handle(), CX, 244, PX, hsz, '#ffffff', 'center', '#000');
-  text(g, pts, CX, 366, PX, ps, '#00ff88', 'center', '#003d1f');
-  text(g, 'POINTS', CX, 408, PX, 20, '#9fc2ad', 'center');
-  box(g, CX - 420, 426, 400, 100); box(g, CX + 20, 426, 400, 100);
-  const rk = '#' + fmt(rank), tp = 'TOP ' + topPct(rank);
-  text(g, rk, CX - 220, 484, PX, fit(g, rk, PX, 36, 360), '#ffce3d', 'center', '#5c3d00');
-  text(g, 'RANK', CX - 220, 515, VT, 28, '#9fc2ad', 'center');
-  text(g, tp, CX + 220, 484, PX, fit(g, tp, PX, 36, 360), '#ccff00', 'center', '#1c3300');
-  text(g, 'OF ALL PLAYERS', CX + 220, 515, VT, 28, '#9fc2ad', 'center');
-  drawScreenFx(g, [CX - pw / 2 - 8, 366 - ps - 6, pw + 24, ps + 20]); drawFrame(g);
+  const R = cardBase(g, X0, pw, ps, [[1164 - 30 - 146, 296, 152, 152], [X0 - 6, 452, 320, 40], [X0 - 6, 510, 1164 - 30 - X0 + 12, 56]]);
+  cardTop(g, X0, R, 'GENESIS DROP', ps);
+  drawSeal(g, R - 70, 372, 68, 'TOP', tp, 'OF ALL', '#ffce3d');
+  text(g, 'RANK #' + fmt(rank), X0, 482, PX, 18, '#ffce3d', 'left', '#5c3d00');
+  // Tier bar: lit up to the player's tier, the reached one in bright green.
+  const pct = parseFloat(tp), tiers = [50, 25, 10, 1, 0.1], gap = 8, bw = (R - X0 - gap * 4) / 5, by = 516, bh = 44;
+  const reached = tiers.filter(t => pct <= t).length;
+  tiers.forEach((t, i) => {
+    const bx = X0 + i * (bw + gap), on = i < reached, last = on && i === reached - 1;
+    g.fillStyle = '#000'; g.fillRect(bx, by, bw, bh);
+    g.fillStyle = last ? '#00ff88' : on ? '#1d5a3c' : '#0d2419'; g.fillRect(bx + 3, by + 3, bw - 6, bh - 6);
+    text(g, 'TOP ' + t + '%', bx + bw / 2, by + 28, PX, 11, last ? '#03220f' : on ? '#ccffe6' : '#4b7a60', 'center');
+  });
+  drawScreenFx(g, [X0 - 6, 340, pw + 20, ps + 18]); drawFrame(g);
+}
+function cardBreakdown(g) {
+  const s = score(), rank = renderBoard(), X0 = CARD.L + CARD.PH + 44;
+  const pts = fmt(s.total), ps = fit(g, pts, PX, 70, 400);
+  g.font = ps + 'px ' + PX; const pw = g.measureText(pts).width;
+  const R = cardBase(g, X0, pw, ps, [[1164 - 30 - 138, 282, 144, 144], [X0 - 6, 442, 1164 - 30 - X0 + 12, 130]]);
+  cardTop(g, X0, R, 'POINTS BREAKDOWN', ps);
+  drawSeal(g, R - 66, 356, 62, 'RANK', '#' + fmt(rank), 'TOP ' + topPct(rank), '#ffce3d');
+  const rows = [['X ACCOUNT', s.xs, '#1d9bf0'], ['ON-CHAIN', s.ws, '#00ff88'], ['QUESTS', s.qs, '#ffce3d'], ['DAILY ARENA', s.gs, '#ccff00']];
+  const gap = 10, cw = (R - X0 - gap) / 2, ch = 56;
+  rows.forEach((row, i) => {
+    const cx = X0 + (i % 2) * (cw + gap), cy = 448 + Math.floor(i / 2) * (ch + gap), v = fmt(row[1]);
+    box(g, cx, cy, cw, ch, row[2]);
+    text(g, row[0], cx + 26, cy + 35, PX, 11, '#9fc2ad');
+    text(g, v, cx + cw - 14, cy + 38, PX, fit(g, v, PX, 20, cw - 190), '#ffffff', 'right', '#000');
+  });
+  drawScreenFx(g, [X0 - 6, 340, pw + 20, ps + 18]); drawFrame(g);
 }
 
 function drawRun(g, shot, m, tipo) {
@@ -1653,7 +1712,7 @@ async function openShare(opts) {
   $('#shareTitle').textContent = opts.title;
   $('#mShare').hidden = false;
   share.seed = Math.floor(Math.random() * 1e9);
-  await Promise.all([fontsReady(), loadAvatar()]);
+  await Promise.all([fontsReady(), loadAvatar(), brandReady]);
   renderShare();
 }
 function openCardShare() {
@@ -1779,7 +1838,7 @@ document.querySelectorAll('.wopt').forEach(b => b.onclick = async () => {
 async function refreshInviteCard() {
   const prev = { variants: share.variants, idx: share.idx, seed: share.seed };
   Object.assign(share, { variants: [cardRank], idx: 0, seed: Math.floor(Math.random() * 1e9) });
-  await Promise.all([fontsReady(), loadAvatar()]);
+  await Promise.all([fontsReady(), loadAvatar(), brandReady]);
   const blob = xBlob();
   Object.assign(share, prev);
   const png = await blob;
