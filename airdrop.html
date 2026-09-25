@@ -144,11 +144,11 @@ a{color:var(--green)}
   #view-me:not(.linked) .card-row,#view-me.linked .connect-grid{display:none}
   #view-me.linked .card-row:not(.quests) .qpanel,#view-me.linked .card-row.quests .pcard{display:none}
   .mob-connect{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-  #view-me.linked .mob-switch{display:flex;justify-content:center;gap:10px;margin:4px 0 12px}
-  .mob-switch .pbtn{flex:1;max-width:170px}
+  #view-me.linked .mob-switch{display:flex;justify-content:center;gap:10px;margin:0 0 8px}
+  .mob-switch .pbtn{flex:1;max-width:170px;font-size:10px;min-height:40px}
   .qpanel .ptitle small{display:none}
   /* Phones: the list grows with the page instead of scrolling inside a box. */
-  #view-me .qscroll{max-height:none;overflow:visible;margin-right:0;padding-right:0}
+  #view-me .card-row:not(.fit) .qscroll{max-height:none;overflow:visible;margin-right:0;padding-right:0}
 }
 
 /* ---------- quests (scrollable) ---------- */
@@ -287,7 +287,9 @@ html.intro-on,html.intro-on body{overflow:hidden}
 .trailer:hover video,.trailer.live video{opacity:1}
 .trailer.live{cursor:default}
 /* Desktop: the trailer ends around the bottom of the first screen. */
-@media (min-width:821px){.trailer{max-width:max(480px,calc((100vh - 330px) * 16 / 9));margin:0 auto}}
+@media (min-width:821px){.trailer{max-width:max(480px,calc((100vh - 330px) * 16 / 9));margin:0 auto}
+  /* Taller screens: fill the first screen so FIRST KILL TO EARN always starts below it. */
+  .game-first{min-height:calc(100vh - 190px)}}
 .trailer-hint{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);font-family:var(--px);font-size:clamp(9px,1.4vw,12px);color:#fff;
   background:rgba(3,10,6,.86);padding:12px 14px;box-shadow:0 0 0 2px var(--line),0 0 0 4px var(--edge);white-space:nowrap;pointer-events:none;
   animation:blink 1.1s steps(1) infinite}
@@ -365,7 +367,11 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
   body{font-size:20px}
   .wrap{padding:0 24px 80px}
   .tabs{gap:8px}
-  .tab{font-size:10px;padding:2px 8px}
+  .tab{font-size:9px;padding:2px 6px}
+  .tabs{gap:6px;flex-wrap:nowrap}
+  .hero{padding-top:16px}
+  .hero-social a{width:40px!important;height:40px!important}
+  .wrap .tabs{margin-top:12px}
   .cbox{padding:12px;gap:10px}
   .cbox .ic{width:40px;height:40px}
   .cbox .ct b{font-size:10px}
@@ -604,6 +610,7 @@ else {
 
   <!-- ============ THE GAME ============ -->
   <section id="view-game" hidden>
+  <div class="game-first">
   <div class="shead first">
     <div>
       <h2>THE GAME</h2>
@@ -615,6 +622,7 @@ else {
       <video id="trailer" src="video/pillwars-origin.mp4" muted loop playsinline preload="none"></video>
       <div class="trailer-hint" id="trailerHint">CLICK TO WATCH WITH SOUND</div>
     </div>
+  </div>
   </div>
   <div class="shead">
     <div>
@@ -846,7 +854,9 @@ function fitFirstScreen() {
   const kids = [...card.children];
   kids.forEach(k => { k.style.zoom = ''; });
   const avail = Math.floor(innerHeight - 6 - (row.getBoundingClientRect().top + scrollY));
-  if (innerWidth <= 820 || !row.offsetParent || avail < 420) { row.classList.remove('fit'); row.style.height = ''; return; }
+  // Phones only fit once linked (card or quests, one at a time; see .mob-switch).
+  const phone = innerWidth <= 820;
+  if ((phone && !document.getElementById('view-me').classList.contains('linked')) || !row.offsetParent || avail < (phone ? 360 : 420)) { row.classList.remove('fit'); row.style.height = ''; return; }
   row.classList.add('fit');
   row.style.height = avail + 'px';
   if (!kids.length) return;
@@ -1074,7 +1084,7 @@ const TASKS = [
     url: () => 'https://x.com/intent/follow?screen_name=' + X_ACCOUNT },
   { id: 'tg', t: 'JOIN TELEGRAM', d: 'The contract drops there first.', pts: 0, url: () => TELEGRAM },
   { id: 'play', t: 'PLAY YOUR FIRST MATCH', d: 'Enter the Daily Arena below.', pts: 0, auto: true },
-  { id: 'discord', t: 'JOIN DISCORD', d: 'Claim the Genesis Hunter role with your code.', pts: 100, needs: true, open: () => openDiscordClaim() },
+  { id: 'discord', t: 'JOIN DISCORD', d: 'Claim the Genesis Hunter role with your code.', pts: 100, label: 'BOOST', needs: true, open: () => openDiscordClaim() },
 ];
 const DAILY_POST_PTS = 100, POINTS_BOOST = 1.5, REPOST_PTS = 150, LIKE_PTS = 50;
 // Sharing your points card pays again once your points grow 10% past the last share.
@@ -1119,7 +1129,7 @@ function taskRow(q) {
   let btn = '';
   if (!done && q.auto) btn = '<button class="pbtn green sm" data-go="arena">PLAY</button>';
   else if (!done) btn = '<button class="pbtn green sm" data-task="' + q.key + '">' + (pendingTasks.has(q.key) ? 'VERIFY' : 'GO') + '</button>';
-  return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : q.pts ? '+' + q.pts : 'BOOST') + '</span>' + btn + '</div>';
+  return '<div class="task box' + (done ? ' done' : '') + '"><div class="tx"><b>' + q.t + '</b><span>' + esc(q.d) + '</span></div><span class="pts">' + (done ? 'DONE' : q.label || (q.pts ? '+' + q.pts : 'BOOST')) + '</span>' + btn + '</div>';
 }
 // Pending first: inside a group done quests sink, and a group with nothing left
 // to do (or no posts yet) drops below the groups that still have work.
@@ -1129,7 +1139,7 @@ function renderTasks() {
   const nOnce = TASKS.filter(t => isDone(t.id)).length;
   const groups = [
     { title: 'DAILY', right: 'RESETS IN <b class="resetIn" style="color:#fff">' + resetText() + '</b>', items: q.daily },
-    { title: 'ONE-TIME', right: boosted() ? 'BOOST ON: ALL POINTS +50%' : 'ALL DONE = ALL POINTS +50% (' + nOnce + '/' + TASKS.length + ')', items: q.once },
+    { title: 'ONE-TIME (' + nOnce + '/' + TASKS.length + ')', right: '', items: q.once },
     { title: 'SPREAD THE WORD', right: 'NEW POSTS ADDED OFTEN', items: q.posts, empty: 'No posts yet. New ones land here.' },
   ];
   const bb = $('#boostBanner');
@@ -1166,6 +1176,7 @@ $('#view-me').addEventListener('click', e => {
   if (b.dataset.slide) {
     const row = $('.card-row'), q = b.dataset.slide === 'quests';
     row.classList.toggle('quests', q);
+    fitFirstScreen();
     document.querySelectorAll('.mob-switch .pbtn').forEach(k => { k.className = 'pbtn ' + ((k.dataset.slide === 'quests') === q ? 'green' : 'grey'); });
     return;
   }
