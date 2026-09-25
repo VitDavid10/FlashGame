@@ -119,3 +119,19 @@ test('respuestas automáticas: enlaces oficiales y airdrop sin enlace a la web',
     assert.match(air, /Stay tuned/);
     assert.doesNotMatch(air, /pillwars\.fun/);
 });
+
+test('chat del admin sin ruido: lo resuelto no llega y la cabecera no se repite', async () => {
+    const calls = []; let next = 900;
+    const fetchImpl = async (url, o) => { calls.push([url.split('/').pop(), JSON.parse(o.body)]); return { json: async () => ({ ok: true, result: { message_id: next++ } }) }; };
+    const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
+    const say = text => t.onUpdate({ message: { message_id: 1, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Nyx' }, text } });
+    const toAdmin = () => calls.filter(c => c[1].chat_id === 1).map(c => c[0]);
+    await say("what's the CA?");                       // resuelto por el bot: nada al admin
+    assert.deepEqual(toAdmin(), []);
+    calls.length = 0;
+    await say('I have a question');                    // empieza conversación: cabecera + copia
+    assert.deepEqual(toAdmin(), ['sendMessage', 'copyMessage']);
+    calls.length = 0;
+    await say('about my wallet');                      // seguido: solo la copia
+    assert.deepEqual(toAdmin(), ['copyMessage']);
+});

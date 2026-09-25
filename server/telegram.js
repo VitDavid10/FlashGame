@@ -50,6 +50,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         { id: 'airdrop', re: /\b(airdrop|genesis|points|eligible|claim|snapshot)\b/i,
           text: 'All the airdrop details will be announced in t.me/pillwars_announcements and on our X (@pillwarsdotfun). Stay tuned 👀' },
     ];
+    const SOLVED = new Set(['contract', 'links', 'airdrop']);
     const ACK = { id: 'ack', text: 'Got it! 🙌 The team will get back to you here soon.' };
     async function autoReply(m) {
         const text = m.text || m.caption || '';
@@ -80,10 +81,20 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         }
         const who = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') + (m.from.username ? ' (@' + m.from.username + ')' : '');
         const auto = await autoReply(m);
-        const head = await tg('sendMessage', { chat_id: admin, text: '💬 ' + who + ' · id ' + m.from.id + (auto ? '\n🤖 auto-replied: ' + auto : '') });
-        const copy = await tg('copyMessage', { chat_id: admin, from_chat_id: m.chat.id, message_id: m.message_id, reply_parameters: { message_id: head.message_id } });
+        // Contrato, enlaces y airdrop quedan resueltos con la respuesta automática: no llenan el chat del admin.
+        if (SOLVED.has(auto)) { save(); return; }
+        // Cabecera solo al empezar conversación (15 min sin escribir); los siguientes mensajes van sueltos.
+        state.lastFrom = state.lastFrom || {};
+        const now = Date.now(), fresh = now - (state.lastFrom[m.from.id] || 0) > 15 * 60e3;
+        state.lastFrom[m.from.id] = now;
+        for (const [k, t] of Object.entries(state.lastFrom)) if (now - t > 24 * 3600e3) delete state.lastFrom[k];
         state.relay = state.relay || {};
-        state.relay[head.message_id] = m.from.id;
+        let head = null;
+        if (fresh) {
+            head = await tg('sendMessage', { chat_id: admin, text: '💬 ' + who + ' · id ' + m.from.id + (auto ? '\n🤖 auto-replied: ' + auto : '') });
+            state.relay[head.message_id] = m.from.id;
+        }
+        const copy = await tg('copyMessage', { chat_id: admin, from_chat_id: m.chat.id, message_id: m.message_id, ...(head ? { reply_parameters: { message_id: head.message_id } } : {}) });
         state.relay[copy.message_id] = m.from.id;
         // Tope para que el estado no crezca sin fin: se quedan las 1000 más recientes.
         const keys = Object.keys(state.relay);
