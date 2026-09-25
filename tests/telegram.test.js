@@ -206,3 +206,31 @@ test('inbox web: guarda el hilo (persona, bot y equipo) y responder desde la web
     assert.equal(t.inbox()[0].unread, false);
     await assert.rejects(t.send('999', 'hi'));          // solo a gente que ya ha escrito
 });
+
+test('inbox web: adjuntos recibidos, subir una foto y descargar un archivo', async () => {
+    const calls = []; let next = 4000;
+    const fetchImpl = async (url, o = {}) => {
+        const method = url.split('/').pop();
+        if (url.includes('/file/bot')) return { ok: true, arrayBuffer: async () => new TextEncoder().encode('VIDEO').buffer };
+        if (o.body instanceof FormData) {
+            calls.push([method, Object.fromEntries([...o.body.keys()].map(k => [k, typeof o.body.get(k) === 'string' ? o.body.get(k) : 'blob']))]);
+            return { json: async () => ({ ok: true, result: { message_id: next++, photo: [{ file_id: 'small' }, { file_id: 'BIG' }] } }) };
+        }
+        calls.push([method, JSON.parse(o.body)]);
+        return { json: async () => ({ ok: true, result: method === 'getFile' ? { file_path: 'videos/file_1.mp4' } : { message_id: next++ } }) };
+    };
+    const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
+    await t.onUpdate({ message: { message_id: 1, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Ana' }, caption: 'look', video: { file_id: 'VID', mime_type: 'video/mp4' } } });
+    const got = t.thread('42').msgs[0];
+    assert.deepEqual([got.dir, got.text, got.media.kind, got.media.file_id], ['in', 'look', 'video', 'VID']);
+
+    calls.length = 0;
+    await t.sendFile('42', Buffer.from('JPEG'), 'image/jpeg', 'pic.jpg', 'here you go');
+    assert.deepEqual(calls[0], ['sendPhoto', { chat_id: '42', caption: 'here you go', photo: 'blob' }]);
+    const sent = t.thread('42').msgs.at(-1);
+    assert.deepEqual([sent.dir, sent.media.kind, sent.media.file_id], ['out', 'photo', 'BIG']);
+
+    const f = await t.file('VID');
+    assert.equal(f.path, 'videos/file_1.mp4');
+    assert.equal(f.body.toString(), 'VIDEO');
+});

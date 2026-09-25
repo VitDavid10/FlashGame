@@ -10,7 +10,7 @@ const fs = require('fs');
 const X_CTA = '❤️ Like · 🔁 RT · 💬 Reply';
 
 function createTelegram({ token, chat = -1004433617369, group = -1004327296311, admin = 1437029421, xHandle = 'pillwarsdotfun', stateFile, log = () => {}, fetchImpl = fetch, xEveryMs = 5 * 60e3, onXPost = async () => {} } = {}) {
-    if (!token) return { start() {}, enabled: false, inbox: () => [], thread: () => null, send: async () => { throw new Error('telegram off'); } };
+    if (!token) { const off = async () => { throw new Error('telegram off'); }; return { start() {}, enabled: false, inbox: () => [], thread: () => null, send: off, sendFile: off, file: off }; }
     let state = {};
     try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch {}
     const save = () => { try { fs.writeFileSync(stateFile, JSON.stringify(state)); } catch (e) { log('telegram: no se pudo guardar el estado ' + e.message); } };
@@ -115,17 +115,20 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
     // Historial por persona para el inbox del panel de admin: los 200 últimos mensajes
     // de las 300 conversaciones más recientes. dir: 'in' (la persona), 'out' (el equipo), 'bot' (automático).
     const MEDIA = ['photo', 'video', 'animation', 'sticker', 'voice', 'audio', 'video_note', 'document'];
-    const describe = m => {
+    const describe = m => m.text || m.caption || '';
+    // Adjunto del mensaje: solo el file_id de Telegram; el archivo se pide a Telegram al verlo (ver file()).
+    const mediaOf = m => {
         const kind = MEDIA.find(k => m[k]);
-        const text = m.text || m.caption || '';
-        return kind ? '[' + kind + ']' + (text ? ' ' + text : '') : text;
+        if (!kind) return null;
+        const f = kind === 'photo' ? m.photo[m.photo.length - 1] : m[kind];
+        return { kind, file_id: f.file_id, mime: f.mime_type || '', name: f.file_name || '', size: f.file_size || 0 };
     };
-    function logMsg(uid, who, dir, text) {
+    function logMsg(uid, who, dir, text, media) {
         state.convos = state.convos || {};
         const c = state.convos[uid] || (state.convos[uid] = { who: String(uid), msgs: [] });
         if (who) c.who = who;
         c.at = Date.now();
-        c.msgs.push({ t: c.at, dir, text });
+        c.msgs.push(media ? { t: c.at, dir, text, media } : { t: c.at, dir, text });
         if (c.msgs.length > 200) c.msgs.splice(0, c.msgs.length - 200);
         if (dir === 'in') c.unread = true;
         if (dir === 'out') c.unread = false;
@@ -134,7 +137,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
     }
     const last = c => c.msgs[c.msgs.length - 1] || {};
     const inbox = () => Object.entries(state.convos || {})
-        .map(([id, c]) => ({ id, who: c.who, at: c.at, unread: !!c.unread, last: last(c).text || '', lastDir: last(c).dir }))
+        .map(([id, c]) => ({ id, who: c.who, at: c.at, unread: !!c.unread, last: last(c).text || (last(c).media ? '[' + last(c).media.kind + ']' : ''), lastDir: last(c).dir }))
         .sort((a, b) => b.at - a.at);
     const thread = id => { const c = (state.convos || {})[id]; return c ? { id: String(id), who: c.who, msgs: c.msgs } : null; };
     // Responder desde el inbox web: le llega como "PillWars Team", igual que desde Telegram.
@@ -145,6 +148,29 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         logMsg(Number(id), null, 'out', text);
         await answered(Number(id));
     }
+    // Foto/vídeo/archivo desde el inbox web (el texto de la caja va como pie).
+    async function sendFile(id, buf, mime, name, caption) {
+        if (!(state.convos || {})[id] || !buf.length) throw new Error('bad request');
+        const [method, field] = mime === 'image/gif' ? ['sendAnimation', 'animation']
+            : mime.startsWith('image/') ? ['sendPhoto', 'photo']
+            : mime.startsWith('video/') ? ['sendVideo', 'video']
+            : mime.startsWith('audio/') ? ['sendAudio', 'audio'] : ['sendDocument', 'document'];
+        const form = new FormData();
+        form.append('chat_id', String(id));
+        if (caption) form.append('caption', String(caption).slice(0, 1000));
+        form.append(field, new Blob([buf], { type: mime || 'application/octet-stream' }), name || 'file');
+        const r = await fetchImpl('https://api.telegram.org/bot' + token + '/' + method, { method: 'POST', body: form }).then(x => x.json());
+        if (!r.ok) throw new Error(method + ': ' + r.description);
+        logMsg(Number(id), null, 'out', caption || '', mediaOf(r.result));
+        await answered(Number(id));
+    }
+    // Descarga de un adjunto para verlo en el inbox. Telegram solo deja bajar hasta 20 MB a los bots.
+    async function file(fileId) {
+        const f = await tg('getFile', { file_id: String(fileId) });
+        const r = await fetchImpl('https://api.telegram.org/file/bot' + token + '/' + f.file_path);
+        if (!r.ok) throw new Error('download ' + r.status);
+        return { body: Buffer.from(await r.arrayBuffer()), path: f.file_path };
+    }
 
     async function onPrivate(m) {
         if (m.from.id === admin) {
@@ -153,7 +179,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
             const to = m.reply_to_message && (state.relay || {})[m.reply_to_message.message_id];
             if (!to) return tg('sendMessage', { chat_id: admin, text: 'To answer someone, reply (swipe or right click → Reply) to their message.' });
             await tg('copyMessage', { chat_id: to, from_chat_id: admin, message_id: m.message_id });
-            logMsg(to, null, 'out', describe(m));
+            logMsg(to, null, 'out', describe(m), mediaOf(m));
             await answered(to);
             return tg('setMessageReaction', { chat_id: admin, message_id: m.message_id, reaction: [{ type: 'emoji', emoji: '👍' }] }).catch(() => {});
         }
@@ -161,7 +187,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
             return tg('sendMessage', { chat_id: m.chat.id, text: 'Hi! 💊 This is PillWars support.\n\nWrite your message here and the team will answer you right here.\n\n⚠️ We will never ask for your seed phrase or private key.' });
         }
         const who = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') + (m.from.username ? ' (@' + m.from.username + ')' : '');
-        logMsg(m.from.id, who, 'in', describe(m));
+        logMsg(m.from.id, who, 'in', describe(m), mediaOf(m));
         const auto = await autoReply(m);
         state.lastFrom = state.lastFrom || {};
         state.headOf = state.headOf || {};
@@ -239,7 +265,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         setInterval(tick, xEveryMs).unref();
     }
 
-    return { start, onUpdate, checkX, inbox, thread, send, enabled: true };
+    return { start, onUpdate, checkX, inbox, thread, send, sendFile, file, enabled: true };
 }
 
 module.exports = { createTelegram, X_CTA };

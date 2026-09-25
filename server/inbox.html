@@ -56,6 +56,14 @@
   #compose { display:flex; gap:10px; padding:10px 12px; border-top:1px solid var(--line); align-items:flex-end; }
   #compose textarea { flex:1; resize:none; max-height:160px; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:10px 14px; outline:none; }
   #back { display:none; background:none; border:0; font-size:22px; cursor:pointer; padding:0 4px; }
+  .media { display:block; max-width:100%; max-height:360px; border-radius:14px; margin:2px 0 4px; background:#111; }
+  .media.sticker { max-height:160px; background:none; }
+  audio.media { width:260px; max-width:100%; background:none; }
+  .file { display:inline-block; padding:8px 12px; border-radius:12px; background:rgba(255,255,255,.08); color:inherit; text-decoration:none; font-weight:600; }
+  .loading { color:var(--dim); font-size:13px; }
+  #attach { background:none; border:1px solid var(--line); border-radius:50%; width:40px; height:40px; flex:none; cursor:pointer; font-size:18px; }
+  #chip { display:none; align-items:center; gap:8px; margin:0 12px 8px; padding:6px 10px; border-radius:12px; background:var(--panel); border:1px solid var(--line); font-size:14px; }
+  #chip button { background:none; border:0; color:var(--dim); cursor:pointer; font-size:16px; }
   @media (max-width:760px) {
     #app { grid-template-columns:minmax(0,1fr); }
     #app.open #list { display:none; }
@@ -79,7 +87,10 @@
   <section id="thread">
     <header><button id="back" aria-label="Back">←</button><span id="title">Select a conversation</span></header>
     <div id="msgs"><div class="empty">Pick someone on the left to see the conversation.</div></div>
+    <div id="chip"><span id="chipName"></span><button type="button" id="chipX" aria-label="Remove attachment">✕</button></div>
     <form id="compose" hidden>
+      <button type="button" id="attach" aria-label="Attach photo, video or file">📎</button>
+      <input type="file" id="fileIn" hidden>
       <textarea id="text" rows="1" placeholder="Reply as PillWars Team…"></textarea>
       <button class="btn" id="sendBtn" type="submit">Send</button>
     </form>
@@ -144,12 +155,53 @@ async function loadThread(scroll) {
   for (const m of t.msgs) {
     const b = document.createElement('div'); b.className = 'b ' + m.dir;
     if (m.dir === 'bot') { const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = '🤖 Auto-reply'; b.append(tag); }
-    b.append(document.createTextNode(m.text));
+    if (m.media) b.append(mediaEl(m.media));
+    if (m.text) b.append(document.createTextNode(m.text));
     const ts = document.createElement('div'); ts.className = 'ts ' + m.dir; ts.textContent = when(m.t);
     box.append(b, ts);
   }
   if (scroll || atBottom) box.scrollTop = box.scrollHeight;
 }
+// Adjuntos: se bajan una vez (con la clave en la cabecera) y se guardan como blob mientras la app está abierta.
+const blobs = new Map();
+async function blobUrl(fileId) {
+  if (!blobs.has(fileId)) blobs.set(fileId, (async () => {
+    const r = await fetch(API + 'file?id=' + encodeURIComponent(fileId), { headers: { 'x-admin-key': key } });
+    if (!r.ok) throw new Error(r.status === 413 ? 'too big' : 'error');
+    return URL.createObjectURL(await r.blob());
+  })());
+  return blobs.get(fileId);
+}
+function mediaEl(md) {
+  const wrap = document.createElement('div');
+  const note = document.createElement('div'); note.className = 'loading'; note.textContent = 'Loading ' + md.kind + '…';
+  wrap.append(note);
+  blobUrl(md.file_id).then(url => {
+    let el;
+    if (md.kind === 'photo' || md.kind === 'sticker' && !/tgs|webm/.test(md.mime)) { el = document.createElement('img'); el.alt = md.kind; }
+    else if (['video', 'animation', 'video_note'].includes(md.kind) || /^video\//.test(md.mime)) {
+      el = document.createElement('video'); el.controls = true; el.playsInline = true; el.preload = 'metadata';
+      if (md.kind === 'animation') { el.autoplay = el.loop = el.muted = true; el.controls = false; }
+    } else if (md.kind === 'voice' || md.kind === 'audio') { el = document.createElement('audio'); el.controls = true; }
+    else { el = document.createElement('a'); el.className = 'file'; el.textContent = '📄 ' + (md.name || 'file'); el.download = md.name || 'file'; }
+    if (el.tagName === 'A') el.href = url; else { el.src = url; el.className = 'media' + (md.kind === 'sticker' ? ' sticker' : ''); }
+    // Al cargar crece la burbuja: si estabas abajo del todo, se sigue abajo.
+    const box = $('#msgs'), stick = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+    for (const ev of ['load', 'loadedmetadata']) el.addEventListener(ev, () => { if (stick) box.scrollTop = box.scrollHeight; });
+    note.replaceWith(el);
+  }).catch(err => { note.textContent = err.message === 'too big' ? 'This ' + md.kind + ' is over 20 MB: open it in Telegram.' : 'Could not load the ' + md.kind + '.'; });
+  return wrap;
+}
+let attached = null;
+$('#attach').onclick = () => $('#fileIn').click();
+$('#fileIn').onchange = () => {
+  attached = $('#fileIn').files[0] || null;
+  if (attached && attached.size > 25 * 1024 * 1024) { alert('Max 25 MB per file.'); attached = null; }
+  $('#chip').style.display = attached ? 'flex' : 'none';
+  $('#chipName').textContent = attached ? '📎 ' + attached.name : '';
+};
+$('#chipX').onclick = () => { attached = null; $('#fileIn').value = ''; $('#chip').style.display = 'none'; };
+
 async function open(id) {
   current = id; lastThreadLen = -1;
   $('#app').classList.add('open'); $('#compose').hidden = false;
@@ -158,9 +210,19 @@ async function open(id) {
 $('#back').onclick = () => { $('#app').classList.remove('open'); current = null; loadList(); };
 $('#compose').onsubmit = async e => {
   e.preventDefault();
-  const text = $('#text').value.trim(); if (!text || !current) return;
+  const text = $('#text').value.trim(); if ((!text && !attached) || !current) return;
   $('#sendBtn').disabled = true;
-  try { await api('send', { method: 'POST', body: JSON.stringify({ id: current, text }) }); $('#text').value = ''; autosize(); await loadThread(true); loadList(); }
+  try {
+    if (attached) {
+      // El texto de la caja va como pie del archivo.
+      const r = await fetch(API + 'upload?id=' + encodeURIComponent(current) + '&caption=' + encodeURIComponent(text), {
+        method: 'POST', body: attached, headers: { 'x-admin-key': key, 'Content-Type': attached.type || 'application/octet-stream', 'x-file-name': encodeURIComponent(attached.name) },
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+      $('#chipX').click();
+    } else await api('send', { method: 'POST', body: JSON.stringify({ id: current, text }) });
+    $('#text').value = ''; autosize(); await loadThread(true); loadList();
+  }
   catch (err) { if (err.message !== 'unauthorized') alert('Could not send: ' + err.message); }
   finally { $('#sendBtn').disabled = false; }
 };

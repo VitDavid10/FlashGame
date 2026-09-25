@@ -2496,6 +2496,27 @@ async function handleInbox(req, res, urlPath, query) {
     const op = urlPath.slice(base.length + 5);
     if (op === 'list' && req.method === 'GET') { json(200, telegram.inbox()); return true; }
     if (op === 'thread' && req.method === 'GET') { const t = telegram.thread(query.get('id')); json(t ? 200 : 404, t || { error: 'not found' }); return true; }
+    // Adjuntos: el navegador los pide con la clave en la cabecera y los enseña desde un blob.
+    if (op === 'file' && req.method === 'GET') {
+        try {
+            const f = await telegram.file(query.get('id'));
+            const ext = (f.path.split('.').pop() || '').toLowerCase();
+            const TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', oga: 'audio/ogg', ogg: 'audio/ogg', mp3: 'audio/mpeg', m4a: 'audio/mp4', pdf: 'application/pdf' };
+            res.writeHead(200, { 'Content-Type': TYPES[ext] || 'application/octet-stream', 'Cache-Control': 'private, max-age=86400', 'Content-Length': f.body.length });
+            res.end(f.body);
+        } catch (e) { json(/too big/i.test(e.message) ? 413 : 400, { error: e.message }); }
+        return true;
+    }
+    if (op === 'upload' && req.method === 'POST') {
+        const chunks = []; let size = 0;
+        for await (const c of req) { size += c.length; if (size > 25 * 1024 * 1024) { json(413, { error: 'max 25 MB' }); return true; } chunks.push(c); }
+        try {
+            const name = decodeURIComponent(String(req.headers['x-file-name'] || 'file')).slice(0, 120);
+            await telegram.sendFile(String(query.get('id')), Buffer.concat(chunks), String(req.headers['content-type'] || ''), name, query.get('caption') || '');
+            json(200, { ok: true });
+        } catch (e) { json(400, { error: e.message }); }
+        return true;
+    }
     if (op === 'send' && req.method === 'POST') {
         let body = '';
         for await (const c of req) { body += c; if (body.length > 20000) break; }
