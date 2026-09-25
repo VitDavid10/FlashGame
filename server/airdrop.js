@@ -168,8 +168,9 @@ function createAirdrop(opts) {
     // The two paths that keep working with SITE_CLOSED=1: minting the pass
     // from a shell on the server, and opening it in a browser.
     function isUnlockPath(req, urlPath) {
-        return urlPath.startsWith('/airdrop-unlock/') ||
-            (urlPath === '/api/airdrop/unlock-link' && req.method === 'POST' && admin.fromServerItself(req));
+        // The admin dashboard too: its link is minted the same way and the page checks its token.
+        return urlPath.startsWith('/airdrop-unlock/') || urlPath.startsWith('/airdrop-admin/') ||
+            ((urlPath === '/api/airdrop/unlock-link' || urlPath === '/api/airdrop/admin-link') && req.method === 'POST' && admin.fromServerItself(req));
     }
     function unlocked(req) {
         const m = new RegExp('(?:^|;\\s*)' + UNLOCK_COOKIE + '=([A-Za-z0-9_-]{20,64})').exec(String(req.headers.cookie || ''));
