@@ -1602,10 +1602,17 @@ function drawSeal(g, cx, cy, r, top, mid, bot, midCol) {
   g.fillStyle = '#000'; g.beginPath(); g.arc(cx, cy, r + 6, 0, Math.PI * 2); g.fill();
   g.fillStyle = '#1d5a3c'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
   g.fillStyle = '#06140c'; g.beginPath(); g.arc(cx, cy, r - 6, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = 'rgba(0,255,136,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, r - 14, 0, Math.PI * 2); g.stroke();
-  text(g, top, cx, cy - 22, PX, 12, '#9fc2ad', 'center');
-  text(g, mid, cx, cy + 14, PX, fit(g, mid, PX, 24, r * 1.5), midCol, 'center', '#000');
-  text(g, bot, cx, cy + 42, PX, 10, '#9fc2ad', 'center');
+  g.strokeStyle = 'rgba(0,255,136,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, r - 10, 0, Math.PI * 2); g.stroke();
+  // Each line is shrunk to the circle's width at its height, with some air to the ring.
+  const ri = r - 12;
+  const line = (str, base, size, col, sh) => {
+    const d = Math.max(Math.abs(base - size - cy), Math.abs(base - cy));
+    const w = 2 * Math.sqrt(Math.max(0, ri * ri - d * d)) - 16;
+    text(g, str, cx, base, PX, Math.min(size, fit(g, str, PX, size, w)), col, 'center', sh);
+  };
+  line(top, cy - 20, 11, '#9fc2ad');
+  line(mid, cy + 11, 22, midCol, '#000');
+  line(bot, cy + 32, 10, '#9fc2ad');
 }
 const CARD = { L: 66, T: 60, PH: 430 };
 // Floor, arena, header and photo; returns the right edge of the content.
@@ -1614,7 +1621,7 @@ function cardBase(g, X0, pw, ps, avoid) {
   const h = HOLE, R = h.x + h.w - 30;
   drawFloor(g); drawScreenBg(g);
   drawArena(g, [[CARD.L - 12, CARD.T - 20, 460, 86], [R - 310, CARD.T - 6, 316, 60], [CARD.L - 14, 118, CARD.PH + 28, CARD.PH + 28],
-    [X0 - 6, 138, 460, 32], [X0 - 6, 174, R - X0 + 12, 82], [X0 - 6, 266, 260, 40], [X0 - 6, 316, pw + 20, ps + 44]].concat(avoid),
+    [X0 - 6, 138, 460, 32], [X0 - 6, 174, R - X0 + 12, 82], [X0 - 6, 266, 260, 40], [X0 - 6, 316, pw + 20, ps + 60]].concat(avoid),
     seedRng(), { viruses: 0, pills: 8, food: 60, sizes: [5, 6, 7, 8], spread: true });
   drawCardHeader(g, CARD.L, R, CARD.T);
   drawPhoto(g, CARD.L, 132, CARD.PH);
@@ -1625,8 +1632,8 @@ function cardTop(g, X0, R, label, ps) {
   text(g, label, X0, 162, PX, 14, '#9fc2ad');
   drawSlab(g, X0, 180, R - X0, 70, handle());
   text(g, S.w ? short(S.w) : 'no wallet linked', X0, 296, VT, 34, '#9fc2ad');
-  text(g, 'POINTS', X0, 340, PX, 14, '#9fc2ad');
-  text(g, pts, X0, 346 + ps, PX, ps, '#00ff88', 'left', '#003d1f');
+  text(g, 'POINTS', X0, 336, PX, 14, '#9fc2ad');
+  text(g, pts, X0, 362 + ps, PX, ps, '#00ff88', 'left', '#003d1f');
 }
 function cardRank(g) {
   const s = score(), rank = renderBoard(), X0 = CARD.L + CARD.PH + 44, tp = topPct(rank);
@@ -1645,15 +1652,15 @@ function cardRank(g) {
     g.fillStyle = last ? '#00ff88' : on ? '#1d5a3c' : '#0d2419'; g.fillRect(bx + 3, by + 3, bw - 6, bh - 6);
     text(g, 'TOP ' + t + '%', bx + bw / 2, by + 28, PX, 11, last ? '#03220f' : on ? '#ccffe6' : '#4b7a60', 'center');
   });
-  drawScreenFx(g, [X0 - 6, 340, pw + 20, ps + 18]); drawFrame(g);
+  drawScreenFx(g, [X0 - 6, 356, pw + 20, ps + 18]); drawFrame(g);
 }
 function cardBreakdown(g) {
   const s = score(), rank = renderBoard(), X0 = CARD.L + CARD.PH + 44;
-  const pts = fmt(s.total), ps = fit(g, pts, PX, 70, 400);
+  const pts = fmt(s.total), ps = fit(g, pts, PX, 64, 400);
   g.font = ps + 'px ' + PX; const pw = g.measureText(pts).width;
-  const R = cardBase(g, X0, pw, ps, [[1164 - 30 - 138, 282, 144, 144], [X0 - 6, 442, 1164 - 30 - X0 + 12, 130]]);
+  const R = cardBase(g, X0, pw, ps, [[1164 - 30 - 172, 270, 172, 172], [X0 - 6, 442, 1164 - 30 - X0 + 12, 130]]);
   cardTop(g, X0, R, 'POINTS BREAKDOWN', ps);
-  drawSeal(g, R - 66, 356, 62, 'RANK', '#' + fmt(rank), 'TOP ' + topPct(rank), '#ffce3d');
+  drawSeal(g, R - 86, 356, 80, 'RANK', '#' + fmt(rank), 'TOP ' + topPct(rank), '#ffce3d');
   const rows = [['X ACCOUNT', s.xs, '#1d9bf0'], ['ON-CHAIN', s.ws, '#00ff88'], ['QUESTS', s.qs, '#ffce3d'], ['DAILY ARENA', s.gs, '#ccff00']];
   const gap = 10, cw = (R - X0 - gap) / 2, ch = 56;
   rows.forEach((row, i) => {
@@ -1662,7 +1669,7 @@ function cardBreakdown(g) {
     text(g, row[0], cx + 26, cy + 35, PX, 11, '#9fc2ad');
     text(g, v, cx + cw - 14, cy + 38, PX, fit(g, v, PX, 20, cw - 190), '#ffffff', 'right', '#000');
   });
-  drawScreenFx(g, [X0 - 6, 340, pw + 20, ps + 18]); drawFrame(g);
+  drawScreenFx(g, [X0 - 6, 356, pw + 20, ps + 18]); drawFrame(g);
 }
 
 function drawRun(g, shot, m, tipo) {
