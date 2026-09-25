@@ -6,11 +6,12 @@ import { ArenaFloor, Caption, FPS, Food, H, VT, W, typeFrames } from "./ui";
 // Announcement: the arena floor, then the Discord and Telegram logos appear on
 // the map with a flash, then the caption. Logos are 24x24 pixel art
 // (public/social/*.png), drawn at LOGO_SCALE screen px per sprite px.
-export const SOCIALS_FRAMES = 9 * FPS;
 const LOGO_SCALE = 12;
 const LOGO = 24 * LOGO_SCALE;
 const FLASH_A = 25, FLASH_B = 60;      // frames where each logo appears
 const TEXT_AT = 100;
+const LINKS_AT = TEXT_AT + 125;
+export const SOCIALS_FRAMES = LINKS_AT + 10 + 10 * FPS; // everything on screen, then 10 s still
 const KEYS = ["snd/type1.wav", "snd/type2.wav", "snd/type3.wav"];
 
 /** Pixel cross burst (no white box), then the logo pops in (1.25 → 0.92 → 1) and bobs. */
@@ -39,7 +40,7 @@ const LogoFlash: React.FC<{ src: string; cx: number; cy: number }> = ({ src, cx,
 
 export const Socials: React.FC = () => {
   const f = useCurrentFrame();
-  const links = interpolate(f, [TEXT_AT + 125, TEXT_AT + 135], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const links = interpolate(f, [LINKS_AT, LINKS_AT + 10], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const cy = H * 0.33;           // logos + text block centred on screen
   return (
     <AbsoluteFill style={{ background: "#050505", overflow: "hidden" }}>
