@@ -52,10 +52,11 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         { id: 'airdrop', re: /\b(airdrop|genesis|points|eligible|claim|snapshot)\b/i,
           text: 'The Genesis Drop (Season 0) runs until 20 October 2026: 100M $PILLY split between players by points.\n\nAll the details are pinned in t.me/pillwars_announcements and in #genesis-drop on our Discord (discord.gg/rfZK7fQ32E).' },
     ];
+    const ACK = { id: 'ack', text: 'Got it! 🙌 The team will get back to you here soon.' };
     async function autoReply(m) {
         const text = m.text || m.caption || '';
-        const rule = AUTO.find(r => r.re.test(text));
-        if (!rule) return null;
+        // Sin tema reconocido: acuse de recibo, para que nadie se quede esperando sin saber si le leen.
+        const rule = AUTO.find(r => r.re.test(text)) || ACK;
         state.autoSent = state.autoSent || {};
         const key = m.from.id + ':' + rule.id, now = Date.now();
         if (now - (state.autoSent[key] || 0) < 24 * 3600e3) return null;

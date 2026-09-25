@@ -65,10 +65,11 @@ test('soporte por privado: el mensaje llega al admin y su respuesta vuelve a la 
     };
     const t = createTelegram({ token: 'x', stateFile: stateFile(), fetchImpl, admin: 1 });
     await t.onUpdate({ message: { message_id: 7, chat: { id: 42, type: 'private' }, from: { id: 42, first_name: 'Ana', username: 'ana' }, text: 'my wallet does not connect' } });
-    assert.deepEqual(calls.map(c => [c[0], c[1].chat_id]), [['sendMessage', 1], ['copyMessage', 1]]);
+    // Acuse de recibo a Ana (id 500), cabecera al admin (501) y copia de su mensaje (502).
+    assert.deepEqual(calls.map(c => [c[0], c[1].chat_id]), [['sendMessage', 42], ['sendMessage', 1], ['copyMessage', 1]]);
     calls.length = 0;
-    // El admin responde a la copia (id 501): el bot se lo copia a Ana.
-    await t.onUpdate({ message: { message_id: 9, chat: { id: 1, type: 'private' }, from: { id: 1 }, text: 'hello!', reply_to_message: { message_id: 501 } } });
+    // El admin responde a la copia (id 502): el bot se lo copia a Ana.
+    await t.onUpdate({ message: { message_id: 9, chat: { id: 1, type: 'private' }, from: { id: 1 }, text: 'hello!', reply_to_message: { message_id: 502 } } });
     assert.deepEqual(calls[0], ['copyMessage', { chat_id: 42, from_chat_id: 1, message_id: 9 }]);
     calls.length = 0;
     // Sin responder a nada: no se manda a nadie, solo el aviso al admin.
@@ -104,8 +105,8 @@ test('respuestas automáticas: contesta lo típico una vez por tema y avisa al a
     assert.match(toUser()[0], /isn't live yet/);
 
     calls.length = 0;
-    await t.onUpdate(msg('I can help you'));             // "can" no es "ca"
-    assert.deepEqual(toUser(), []);
+    await t.onUpdate(msg('I can help you'));             // "can" no es "ca": solo el acuse de recibo
+    assert.deepEqual(toUser(), ['Got it! 🙌 The team will get back to you here soon.']);
 });
 
 test('respuestas automáticas: enlaces oficiales y airdrop sin enlace a la web', async () => {
