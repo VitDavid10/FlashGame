@@ -156,7 +156,10 @@ export const Caption: React.FC<{
   text: string; at?: number; keys?: Keys; out?: number; y?: number; size?: number; color?: string;
   /** Just there, all at once: no typing, no cursor. */
   instant?: boolean;
-}> = ({ text, at = 0, keys, out, y = H * 0.8, size = 46, color = "#ffffff", instant = false }) => {
+  /** Key clicks for this caption, one per letter, cycling through the list. */
+  sfx?: string[];
+}> = ({ text, at = 0, keys, out, y = H * 0.8, size = 46, color = "#ffffff", instant = false, sfx }) => {
+  const clicks = instant ? null : sfx ?? (TYPE_SFX ? [TYPE_SFX] : null);
   const f = useCurrentFrame();
   const lf = letterFrames(text, at, keys);
   const start = keys ? keys[0][1] : at, end = lf[lf.length - 1];
@@ -176,9 +179,9 @@ export const Caption: React.FC<{
         <span style={{ display: "inline-block", width: "0.6em", height: "0.9em", verticalAlign: "-0.1em", marginLeft: "0.1em", background: cursorOn ? color : "transparent" }} />
         <span style={{ visibility: "hidden" }}>{text.slice(shown)}</span>
       </div>
-      {TYPE_SFX && text.split("").map((ch, i) => ch === " " ? null : (
+      {clicks && text.split("").map((ch, i) => ch === " " ? null : (
         <Sequence key={i} from={Math.floor(lf[i])} durationInFrames={6} layout="none">
-          <Audio src={staticFile(TYPE_SFX)} volume={0.5} />
+          <Audio src={staticFile(clicks[i % clicks.length])} volume={0.5} />
         </Sequence>
       ))}
     </>
