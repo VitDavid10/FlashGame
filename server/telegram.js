@@ -43,6 +43,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
     // a la persona como si fuera suyo. state.relay: id del mensaje en el chat del admin → id de la persona.
     async function onPrivate(m) {
         if (m.from.id === admin) {
+            if (m.text === '/start') return tg('sendMessage', { chat_id: admin, text: 'You are the admin 👋\n\nWhen someone writes to this bot, their message shows up here. Reply to it (swipe or right click → Reply) and they get your answer from "PillWars Team".' });
             const to = m.reply_to_message && (state.relay || {})[m.reply_to_message.message_id];
             if (!to) return tg('sendMessage', { chat_id: admin, text: 'To answer someone, reply (swipe or right click → Reply) to their message.' });
             await tg('copyMessage', { chat_id: to, from_chat_id: admin, message_id: m.message_id });
