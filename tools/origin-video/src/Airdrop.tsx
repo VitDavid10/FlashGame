@@ -25,7 +25,7 @@ const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const usd = (n: number) => (n >= 1e9 ? `$${n / 1e9}B` : n >= 1e6 ? `$${n / 1e6}M` : `$${n / 1e3}K`);
 
 // Frames where the camera takes a hit (shake + flash), all on the beat grid.
-const HITS = [0, BEAT(2), DROP, BEAT(5), CUTS[0], CUTS[0] + BEAT(4), CUTS[1], CUTS[2], CUTS[3], CUTS[3] + BEAT(1)];
+const HITS = [DROP, BEAT(5), CUTS[0], CUTS[0] + BEAT(4), CUTS[1], CUTS[2], CUTS[3], CUTS[3] + BEAT(1)];
 
 /** Hard pixel slam: pops in oversized, overshoots in steps, chromatic split that settles. */
 const Slam: React.FC<{
@@ -43,6 +43,36 @@ const Slam: React.FC<{
       transform: `scale(${s})`, transformOrigin: align === "center" ? "50% 50%" : "0% 50%",
       textShadow: `${c}px 0 0 ${RED}, ${-c}px 0 0 ${CYAN}, ${d}px ${d}px 0 #000, ${d * 2}px ${d * 2}px 0 rgba(0,0,0,.45)`,
     }}>{text}</div>
+  );
+};
+
+/** Gentle entry for the intro words: fades in and settles a few pixels, no hit. */
+const Soft: React.FC<{ at: number; out: number; text: string; y: number; size: number; color: string }> = ({ at, out, text, y, size, color }) => {
+  const f = useCurrentFrame();
+  if (f < at || f >= out) return null;
+  const o = interpolate(f, [at, at + 8, out - 6, out], [0, 1, 1, 0], clamp);
+  const d = Math.round(size / 9);
+  return (
+    <div style={{
+      position: "absolute", left: 0, right: 0, top: y + snap(interpolate(f, [at, at + 10], [24, 0], clamp)), textAlign: "center",
+      fontFamily: PX, fontSize: size, color, opacity: o, whiteSpace: "nowrap", textShadow: `${d}px ${d}px 0 #000`,
+    }}>{text}</div>
+  );
+};
+
+/** A line that appears word by word, one word per beat, laid out from the start so it never reflows. */
+const OnBeats: React.FC<{ words: string[]; at: number; y: number; size: number; color: string }> = ({ words, at, y, size, color }) => {
+  const f = useCurrentFrame();
+  const d = Math.round(size / 8);
+  return (
+    <div style={{ position: "absolute", left: 0, right: 0, top: y, display: "flex", justifyContent: "center", gap: size * 0.7, fontFamily: PX, fontSize: size, color, whiteSpace: "nowrap" }}>
+      {words.map((w, i) => {
+        const t = f - (at + BEAT(i));
+        return (
+          <span key={w} style={{ visibility: t < 0 ? "hidden" : "visible", display: "inline-block", transform: `scale(${t < 2 ? 1.35 : t < 4 ? 0.94 : 1})`, textShadow: `${d}px ${d}px 0 #000` }}>{w}</span>
+        );
+      })}
+    </div>
   );
 };
 
@@ -117,11 +147,11 @@ const Title: React.FC = () => {
         );
       })}
       {WORDS.map(([at, w, c], i) => (
-        <Slam key={w} at={at} out={i < WORDS.length - 1 ? WORDS[i + 1][0] : DROP} text={w} y={H / 2 - 70} size={130} color={c} />
+        <Soft key={w} at={at} out={i < WORDS.length - 1 ? WORDS[i + 1][0] : DROP} text={w} y={H / 2 - 70} size={130} color={c} />
       ))}
       <Slam at={DROP} text="$PILLY" y={H / 2 - 230} size={210} color={LIME} />
       <Slam at={BEAT(5)} text="AIRDROP" y={H / 2 + 20} size={170} />
-      <Slam at={BEAT(6)} text="PLAY. HUNT. HOLD. GET PAID." y={H * 0.74} size={40} color={GREEN} />
+      <OnBeats words={["PLAY.", "HUNT.", "HOLD.", "GET PAID."]} at={BEAT(6)} y={H * 0.74} size={44} color={GREEN} />
     </AbsoluteFill>
   );
 };
