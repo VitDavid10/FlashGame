@@ -2184,7 +2184,7 @@ function enterFull() {
   document.body.classList.add('arena-full');
   document.body.style.overflow = 'hidden';
   // Back now leaves the arena instead of the page (or the iframe's history).
-  try { history.pushState({ arena: 1 }, ''); arenaState = true; } catch (e) {}
+  try { if (!arenaState) history.pushState({ arena: 1 }, ''); arenaState = true; } catch (e) {}
 }
 function leaveFull() {
   screenEl.classList.remove('full');
@@ -2198,8 +2198,13 @@ function leaveFull() {
 // Back while playing: the entry is already gone, so clear the flag BEFORE the
 // teardown - otherwise leaveFull would go back again and off the page.
 addEventListener('popstate', () => { if (!screenEl.classList.contains('full')) return; arenaState = false; resetArena(); });
-veil.addEventListener('click', () => {
+// A brand-new match every time (PRESS TO START and TRY AGAIN): the game keeps
+// a room's world in memory until its clock runs out, so retrying inside it put
+// you back among bots already grown huge. Reloading the game page starts clean;
+// the daily missions live in S and on the server, so nothing of them is lost.
+function playFresh() {
   dropGameSave();
+  hooked = null;   // same iframe window, new document: let hook() run again
   veil.hidden = true;
   enterFull();
   loadGame('/game/?heroplay=1&name=' + encodeURIComponent(displayName().slice(0, 12)));
@@ -2210,7 +2215,8 @@ veil.addEventListener('click', () => {
     if (doc && /heroplay=1/.test(doc.URL) && doc.head) { injectHide(doc); clearInterval(early); }
     else if (Date.now() - t0 > 20000) clearInterval(early);
   }, 5);
-});
+}
+veil.addEventListener('click', playFresh);
 
 frame.addEventListener('load', () => {
   const w = frame.contentWindow;
@@ -2454,7 +2460,7 @@ async function endMatch(w, tipo) {
     '<button class="pbtn blue big" id="shareRun"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE ON X</button>' +
     '<button class="pbtn grey big" id="quit">EXIT</button></div>';
   over.hidden = false;
-  $('#again').onclick = () => { over.hidden = true; w.tryAgainOnline(); };
+  $('#again').onclick = () => { over.hidden = true; playFresh(); };
   $('#quit').onclick = resetArena;
   $('#shareRun').onclick = () => openShare({
     title: 'SHARE YOUR RUN', kind: 'run',
