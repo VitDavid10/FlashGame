@@ -6,6 +6,7 @@ import { ACTION_FRAMES, Action } from "./Action";
 import { SOCIALS_FRAMES, SOCIALS_X_FRAMES, Socials, SocialsX } from "./Socials";
 import { AIRDROP_FRAMES, Airdrop } from "./Airdrop";
 import { HOWTO_FRAMES, HowTo } from "./HowTo";
+import { GuidePost, POSTS, postFrames } from "./Guide";
 import { H, W } from "./ui";
 
 export const RemotionRoot: React.FC = () => {
@@ -25,6 +26,10 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="Airdrop" component={Airdrop} durationInFrames={AIRDROP_FRAMES} fps={30} width={W} height={H} />
       {/* Narrated how-to: connect X, wallet (or paste it), boost quests, Daily Arena, THE GAME tab. */}
       <Composition id="HowTo" component={HowTo} durationInFrames={HOWTO_FRAMES} fps={30} width={W} height={H} />
+      {/* "How to play" thread: one post per mechanic (Guide-move, Guide-hide, ...). */}
+      {POSTS.map((p) => (
+        <Composition key={p.id} id={"Guide-" + p.id} component={GuidePost} defaultProps={{ id: p.id }} durationInFrames={postFrames(p)} fps={30} width={W} height={H} />
+      ))}
       {/* Posters for the posts, one still each (see src/Concepts.tsx). */}
       {CONCEPTS.map(([id, C]) => (
         <Composition key={id} id={id} component={C} durationInFrames={1} fps={30} width={W} height={H} />
